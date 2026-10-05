@@ -98,6 +98,14 @@ int main() {
     assert(backupBody.find("exactGameBackupsRoot(userUid, identity->id)") != std::string::npos);
     assert(backupBody.find("workspaceBackupPath(userUid, identity->id, folderName)") != std::string::npos);
     assert(backupBody.find("sanitizeComponent(titleName)") == std::string::npos);
+    assert(backupBody.find("copyDirectoryTransactional(\"save:/\", backupDirectory.c_str())") !=
+           std::string::npos);
+    assert(backupBody.find("ensureDirectoryTree(backupDirectory") == std::string::npos);
+
+    assert(utilities.find("isBackupTransactionArtifactName(entry->d_name)") != std::string::npos);
+    assert(utilities.find(".incomplete.") != std::string::npos);
+    assert(utilities.find(".failed.") != std::string::npos);
+    assert(utilities.find(".previous.") != std::string::npos);
 
     const std::string screen = read("src/UI/BackupSelectionScreen.cpp");
     assert(screen.find("exactGameBackupsRoot(userUid, identity->id)") != std::string::npos);
@@ -127,6 +135,9 @@ int main() {
     assert(namedBody.find("exactGameBackupsRoot(userUid, identity->id)") != std::string::npos);
     assert(namedBody.find("BASE_SAVE_DIRECTORY + \"/\" + titleName") == std::string::npos);
     assert(namedBody.find("backupDir.rfind(gameDir + \"/\", 0)") != std::string::npos);
+    assert(namedBody.find("copyDirectoryTransactional(backupDir.c_str(), destDir.c_str())") !=
+           std::string::npos);
+    assert(namedBody.find("mkdir(destDir.c_str()") == std::string::npos);
 
     const std::string fileHeader = read("include/Utils/FileUtilities.h");
     const auto listDecl = fileHeader.find("listBackupDirectories(const char* gameDirectory");

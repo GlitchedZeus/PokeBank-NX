@@ -35,6 +35,7 @@ using namespace Enums;
 
 namespace UI {
     namespace {
+        constexpr int LEGACY_INSTANCE_VISIBLE_ROWS = 5;
         std::string sourceLeafName(const std::string& path) {
             const size_t slash = path.find_last_of("/\\");
             std::string leaf = slash == std::string::npos ? path : path.substr(slash + 1);
@@ -2588,11 +2589,10 @@ namespace UI {
                 legacyInstanceIndex = (legacyInstanceIndex - 1 + count) % count;
             if (kDown & HidNpadButton_Down)
                 legacyInstanceIndex = (legacyInstanceIndex + 1) % count;
-            constexpr int visibleRows = 6;
             if (legacyInstanceIndex < legacyInstanceScroll)
                 legacyInstanceScroll = legacyInstanceIndex;
-            else if (legacyInstanceIndex >= legacyInstanceScroll + visibleRows)
-                legacyInstanceScroll = legacyInstanceIndex - visibleRows + 1;
+            else if (legacyInstanceIndex >= legacyInstanceScroll + LEGACY_INSTANCE_VISIBLE_ROWS)
+                legacyInstanceScroll = legacyInstanceIndex - LEGACY_INSTANCE_VISIBLE_ROWS + 1;
             if (kDown & HidNpadButton_A) {
                 if (launchLegacyMode) launchCurrentLegacyInstance();
                 else selectCurrentLegacyInstance();
@@ -3738,7 +3738,7 @@ namespace UI {
         } else if (overlay == Overlay::LegacyInstances && u && titleIndex >= 0 &&
             titleIndex < static_cast<int>(u->titles.size())) {
             const auto& parent = u->titles[titleIndex];
-            constexpr int w = 780, h = 530, rowH = 66, visibleRows = 5;
+            constexpr int w = 780, h = 530, rowH = 66;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
             fb.drawText(x + 28, y + 18,
@@ -3754,7 +3754,7 @@ namespace UI {
 
             const int first = legacyInstanceScroll;
             drawSaveInstanceRows(fb, parent.legacyInstances, legacyInstanceIndex, first,
-                                 x, y + 122, w, rowH, visibleRows, true);
+                                 x, y + 122, w, rowH, LEGACY_INSTANCE_VISIBLE_ROWS, true);
             if (!legacyNotice.empty())
                 fb.drawText(x + 28, y + h - 38, legacyNotice, Colors::TextMuted,
                             TextStyle::Caption);

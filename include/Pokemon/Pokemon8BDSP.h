@@ -71,9 +71,32 @@ namespace Pokemon {
          */
         explicit Pokemon8BDSP(std::span<const std::byte> raw)
         {
-            // Decrypt the Gen 8 Pokemon data
-            buffer = decryptArray8BDSP(raw);
-            dataSize = raw.size();
+            const bool stored = raw.size() == SIZE_STORED8_BDSP;
+            const bool party = raw.size() == SIZE_PARTY8_BDSP;
+            if (!stored && !party) {
+                inputShapeValid = false;
+                dataSize = SIZE_PARTY8_BDSP;
+                buffer = new std::byte[dataSize]();
+                data = std::span<std::byte>(buffer, dataSize);
+                return;
+            }
+
+            std::byte* dec = decryptArray8BDSP(raw);
+            if (!dec) {
+                inputShapeValid = false;
+                dataSize = SIZE_PARTY8_BDSP;
+                buffer = new std::byte[dataSize]();
+                data = std::span<std::byte>(buffer, dataSize);
+                return;
+            }
+            if (party) {
+                buffer = dec;
+            } else {
+                buffer = new std::byte[SIZE_PARTY8_BDSP]();
+                for (size_t i = 0; i < raw.size(); ++i) buffer[i] = dec[i];
+                delete[] dec;
+            }
+            dataSize = SIZE_PARTY8_BDSP;
             data = std::span<std::byte>(buffer, dataSize);
         }
 
@@ -823,7 +846,7 @@ namespace Pokemon {
          * @return true if valid, false if data is corrupted
          */
         bool checksumValid() const noexcept override {
-            return checksum() == calculateChecksum();
+            return inputShapeValid && checksum() == calculateChecksum();
         }
 
         // ========================================

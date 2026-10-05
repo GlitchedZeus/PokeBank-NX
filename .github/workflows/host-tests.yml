@@ -13,6 +13,8 @@ permissions:
 jobs:
   host-tests:
     name: Host tests (GCC)
+    env:
+      ASAN_OPTIONS: detect_leaks=1
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
@@ -46,6 +48,7 @@ jobs:
       - name: Syntax-check device/recovery tools
         run: |
           python3 -m py_compile tools/check_device_assets.py
+          python3 -m py_compile tools/png_asset_validation.py
           python3 -m py_compile tools/package_device_build.py
           python3 -m py_compile tools/recover_workspace.py
           python3 -m py_compile tools/check_recovery_contract.py
@@ -58,8 +61,23 @@ jobs:
       - name: Verify GitHub recovery contract
         run: python3 tools/check_recovery_contract.py
 
+      - name: Verify CI repository safety contract
+        run: python3 tests/test_ci_repository_safety_contract.py
+
       - name: Verify v1 polish contracts
         run: python3 tests/test_v1_polish_contract.py
+
+      - name: Verify device PNG validation contract
+        run: python3 tests/test_device_asset_png_validation.py
+
+      - name: Verify generated species-name consumers
+        run: python3 tests/test_generated_species_name_contract.py
+
+      - name: Verify Fontstash allocation-failure guards
+        run: python3 tests/test_fontstash_allocation_contract.py
+
+      - name: Verify engineering authority routing
+        run: python3 tests/test_engineering_authority_contract.py
 
       - name: Clean host build
         run: make -f Makefile.host host-clean
@@ -88,7 +106,7 @@ jobs:
             -fsanitize=address,undefined -fno-omit-frame-pointer \
             -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
             -o build-host/test_rse_open_regression_sanitize
-          ASAN_OPTIONS=detect_leaks=0 ./build-host/test_rse_open_regression_sanitize
+          ASAN_OPTIONS="${ASAN_OPTIONS:-detect_leaks=0}" ./build-host/test_rse_open_regression_sanitize
 
       - name: Run ASan and UBSan tests
         run: make -f Makefile.host host-sanitize

@@ -1,5 +1,8 @@
 # PokeBank NX — Coding Session Runbook
 
+> **HISTORICAL RUNBOOK:** The fixed `feature/pokebank-playable` workflow below is no longer the live routing contract. Start with `docs/ENGINEERING_AUTHORITY.md`, re-fetch GitHub, and follow the currently authorized lane.
+
+
 Last updated: 2026-09-07
 
 Use this at the start and end of every coding-agent session.

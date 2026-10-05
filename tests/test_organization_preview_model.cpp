@@ -29,7 +29,10 @@ int main() {
     assert(previewMoveSelection(OrganizationPreviewKind::Banks, 3, 0, -1) == 0);
     assert(previewMoveSelection(OrganizationPreviewKind::Collections, 0, 0, 1) == 2);
     assert(previewMoveSelection(OrganizationPreviewKind::Search, 1, 0, 1) == 3);
-    assert(previewMoveSelection(OrganizationPreviewKind::Search, 6, 0, 1) == 1);
+    assert(previewMoveSelection(OrganizationPreviewKind::Search, 6, 0, 1) == 0);
+    assert(previewMoveSelection(OrganizationPreviewKind::Search, 0, 0, -1) == 6);
+    assert(previewMoveSelection(OrganizationPreviewKind::Search, 5, 0, 1) == 1);
+    assert(previewMoveSelection(OrganizationPreviewKind::Search, 1, 0, -1) == 5);
     assert(previewMoveSelection(OrganizationPreviewKind::Banks, 5, 1, 0) == 0);
 
     assert(SEARCH_FILTER_PREVIEW[0].label == std::string_view("Species"));

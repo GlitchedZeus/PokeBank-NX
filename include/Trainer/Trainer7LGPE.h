@@ -16,6 +16,7 @@
 #include <cstring>
 
 #include "Trainer/Trainer.h"
+#include "Save/LGPEReadValidation.h"
 #include "Trainer/Inventory7LGPE.h"
 #include "Pokemon/Pokemon7LGPE.h"
 #include "Encryption/Encryption7LGPE.h"
@@ -46,7 +47,16 @@ namespace Trainer {
     constexpr size_t PLAY_TIME7_LGPE = 0x0A;            // idx 10 Play time
 
     // Generation 7 Let's Go constants
-    constexpr size_t SAVE_SIZE7_LGPE = 0xB8800;         // 757,760 bytes
+    constexpr size_t SAVE_SIZE7_LGPE = Save::LGPEReadValidation::ACTIVE_SIZE;
+    constexpr size_t LGPE_FULL_FILE_SIZE = Save::LGPEReadValidation::FULL_FILE_SIZE;
+
+    inline constexpr bool isSupportedLGPEWorkspaceSize(size_t size) noexcept {
+        return Save::LGPEReadValidation::supportedSize(size);
+    }
+
+    inline std::span<const uint8_t> lgpeActiveRegion(std::span<const uint8_t> bytes) noexcept {
+        return Save::LGPEReadValidation::activeRegion(bytes);
+    }
     constexpr size_t BOX_COUNT7_LGPE = 40;              // Number of boxes
     constexpr size_t SLOTS_PER_BOX7_LGPE = 25;          // Slots per box (different from Gen 8's 30)
     constexpr size_t BOX_NAME_LENGTH7_LGPE = 0x22;      // Box name length (UTF-16LE)

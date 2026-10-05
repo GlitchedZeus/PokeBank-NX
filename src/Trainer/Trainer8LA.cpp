@@ -121,18 +121,11 @@ namespace Trainer {
             // Check if slot has valid Pokemon data (non-zero species)
             // The species ID is at offset 0x08 after decryption, but we can check
             // for an all-zero slot to skip empty slots
-            bool isEmptySlot = true;
-            for (size_t i = 0; i < SIZE_PARTY8_LA && i < slotSpan.size(); ++i) {
-                if (slotSpan[i] != std::byte{0}) {
-                    isEmptySlot = false;
-                    break;
-                }
-            }
-
-            if (!isEmptySlot) {
-                // Decrypt and create Pokemon8LA object as unique_ptr
-                // Pokemon8LA constructor handles decryption automatically
-                party.push_back(std::make_unique<Pokemon8LA>(slotSpan));
+            // Native empty slots are encrypted, non-zero records whose decrypted species is 0.
+            // Construct/decrypt first; only logical Pokemon belong in the party vector.
+            auto parsed = std::make_unique<Pokemon8LA>(slotSpan);
+            if (parsed->speciesID() != 0) {
+                party.push_back(std::move(parsed));
             }
         }
     }
@@ -211,21 +204,10 @@ namespace Trainer {
                 std::span<const std::byte> slotSpan = blockSpan.subspan(offset, SIZE_STORED8_LA);
 
                 // Check if slot has a Pokemon (non-zero data)
-                bool isEmptySlot = true;
-                for (size_t i = 0; i < SIZE_STORED8_LA && i < slotSpan.size(); ++i) {
-                    if (slotSpan[i] != std::byte{0}) {
-                        isEmptySlot = false;
-                        break;
-                    }
-                }
-
-                if (!isEmptySlot) {
-                    // Decrypt and create Pokemon8LA object
-                    boxes[boxIndex][slot] = std::make_unique<Pokemon8LA>(slotSpan);
-                } else {
-                    // Empty slot
-                    boxes[boxIndex][slot] = nullptr;
-                }
+                // Native encrypted blanks are non-zero on disk but decrypt to species 0.
+                auto parsed = std::make_unique<Pokemon8LA>(slotSpan);
+                boxes[boxIndex][slot] =
+                    parsed->speciesID() != 0 ? std::move(parsed) : nullptr;
             }
         }
     }
@@ -285,8 +267,8 @@ namespace Trainer {
          * validates it, so a zeroed slot decrypts to garbage and renders a BAD EGG. This path
          * used to memset(0) and corrupted the party into Bad Eggs on any save (even a box-name
          * edit, since the party is re-serialized unconditionally). The PartyCount byte at
-         * 6*0x178 is deliberately left untouched: empty slots load as species-0 "ghosts" that
-         * inflate party.size(), so the save's own count is authoritative, not party.size().
+         * 6*0x178 is deliberately left untouched: the save's own count remains authoritative,
+         * while parsePartyBlock now excludes decrypted species-0 blanks from the logical vector.
          */
         for (auto& block : blocks) {
             if (block.key == PARTY8_LA) {

@@ -1,5 +1,8 @@
 # PokeBank NX — Upstream Reuse Audit
 
+> **REFERENCE AUDIT:** External-project classifications and research pins remain useful, but the old "Current PokeBank NX context" / branch statements below are historical. Use `docs/ENGINEERING_AUTHORITY.md` plus live GitHub for current project state.
+
+
 Last reviewed: 2026-09-02
 
 This is the permanent research map for external projects that can accelerate PokeBank NX. Before writing a major Pokémon-format, save-parser, legality, conversion, Pokédex, generated-Pokémon, bank, or transfer subsystem from scratch, check this file and the companion bank-project audit first.

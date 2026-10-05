@@ -681,9 +681,23 @@ GameLaunchDescriptor resolveRetroArch(std::string_view gameId,
         return result;
     }
 
+    struct PlaylistMatch {
+        std::string content;
+        std::string core;
+
+        bool operator<(const PlaylistMatch& other) const noexcept {
+            return content < other.content || (content == other.content && core < other.core);
+        }
+        bool operator==(const PlaylistMatch& other) const noexcept {
+            return content == other.content && core == other.core;
+        }
+    };
+    std::vector<PlaylistMatch> matches;
+    bool sawStemMatch = false;
+    bool sawFamilyCompatibleContent = false;
+
     DIR* dir = ::opendir("sdmc:/retroarch/playlists");
     if (dir) {
-        bool sawContent = false;
         size_t filesRead = 0;
         while (const dirent* entry = ::readdir(dir)) {
             if (++filesRead > 128) break;
@@ -699,10 +713,12 @@ GameLaunchDescriptor resolveRetroArch(std::string_view gameId,
                 if (!extractJsonStringAfter(text, pos, "\"path\"", content)) { pos += 6; continue; }
                 const size_t nextPath = text.find("\"path\"", pos + 6);
                 if (normalizedLaunchStem(content) != wanted) { pos += 6; continue; }
+                sawStemMatch = true;
 
                 content = switchPath(content);
+                if (!gameLaunchContentSupported(gameId, content)) { pos += 6; continue; }
                 if (!regularFile(content)) { pos += 6; continue; }
-                sawContent = true;
+                sawFamilyCompatibleContent = true;
 
                 const size_t corePos = text.find("\"core_path\"", pos + 6);
                 if (corePos == std::string::npos ||
@@ -733,9 +749,26 @@ GameLaunchDescriptor resolveRetroArch(std::string_view gameId,
             }
         }
         ::closedir(dir);
-        result.detail = sawContent
-            ? "The matching playlist has no usable core; link the game file once."
-            : "No RetroArch playlist matches this save; link the game file once.";
+
+        std::sort(matches.begin(), matches.end());
+        matches.erase(std::unique(matches.begin(), matches.end()), matches.end());
+        if (matches.size() == 1) {
+            result.contentPath = std::move(matches.front().content);
+            result.corePath = std::move(matches.front().core);
+            result.state = GameLaunchState::Ready;
+            result.detail = "RetroArch playlist matched this save to its game file and core.";
+            return result;
+        }
+        if (matches.size() > 1) {
+            result.detail =
+                "More than one matching RetroArch game/core entry was found; link the exact game file.";
+        } else if (sawFamilyCompatibleContent) {
+            result.detail = "The matching playlist has no usable core; link the game file once.";
+        } else if (sawStemMatch) {
+            result.detail = "Same-name playlist content does not match this game family; link the exact game file.";
+        } else {
+            result.detail = "No RetroArch playlist matches this save; link the game file once.";
+        }
     } else {
         result.detail = "No RetroArch playlist could be read; link the game file once.";
     }
@@ -810,6 +843,7 @@ GameLaunchDescriptor resolveKnownHomebrew(GameLaunchProviderKind kind,
     return result;
 }
 
+#ifdef __SWITCH__
 std::string quoted(std::string_view value) {
     std::string out = "\"";
     for (char c : value) {
@@ -819,6 +853,7 @@ std::string quoted(std::string_view value) {
     out.push_back('"');
     return out;
 }
+#endif
 
 } // namespace
 

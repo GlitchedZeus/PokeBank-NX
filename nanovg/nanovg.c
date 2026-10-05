@@ -2437,7 +2437,10 @@ static int nvg__allocTextAtlas(NVGcontext* ctx)
 		ctx->fontImages[ctx->fontImageIdx+1] = ctx->params.renderCreateTexture(ctx->params.userPtr, NVG_TEXTURE_ALPHA, iw, ih, 0, NULL);
 	}
 	++ctx->fontImageIdx;
-	fonsResetAtlas(ctx->fs, iw, ih);
+	if (!fonsResetAtlas(ctx->fs, iw, ih)) {
+		--ctx->fontImageIdx;
+		return 0;
+	}
 	return 1;
 }
 

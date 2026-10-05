@@ -117,18 +117,11 @@ namespace Trainer {
             // Check if slot has valid Pokemon data (non-zero species)
             // The species ID is at offset 0x08 after decryption, but we can check
             // for an all-zero slot to skip empty slots
-            bool isEmptySlot = true;
-            for (size_t i = 0; i < SIZE_PARTY8_SWSH && i < slotSpan.size(); ++i) {
-                if (slotSpan[i] != std::byte{0}) {
-                    isEmptySlot = false;
-                    break;
-                }
-            }
-
-            if (!isEmptySlot) {
-                // Decrypt and create Pokemon8SWSH object as unique_ptr
-                // Pokemon8SWSH constructor handles decryption automatically
-                party.push_back(std::make_unique<Pokemon8SWSH>(slotSpan));
+            // Native empty slots are encrypted, non-zero records whose decrypted species is 0.
+            // Construct/decrypt first; only logical Pokemon belong in the party vector.
+            auto parsed = std::make_unique<Pokemon8SWSH>(slotSpan);
+            if (parsed->speciesID() != 0) {
+                party.push_back(std::move(parsed));
             }
         }
     }
@@ -234,21 +227,10 @@ namespace Trainer {
                 std::span<const std::byte> slotSpan = blockSpan.subspan(offset, SIZE_PARTY8_SWSH);
 
                 // Check if slot has a Pokemon (non-zero data)
-                bool isEmptySlot = true;
-                for (size_t i = 0; i < SIZE_PARTY8_SWSH && i < slotSpan.size(); ++i) {
-                    if (slotSpan[i] != std::byte{0}) {
-                        isEmptySlot = false;
-                        break;
-                    }
-                }
-
-                if (!isEmptySlot) {
-                    // Decrypt and create Pokemon8SWSH object
-                    boxes[boxIndex][slot] = std::make_unique<Pokemon8SWSH>(slotSpan);
-                } else {
-                    // Empty slot
-                    boxes[boxIndex][slot] = nullptr;
-                }
+                // Native encrypted blanks are non-zero on disk but decrypt to species 0.
+                auto parsed = std::make_unique<Pokemon8SWSH>(slotSpan);
+                boxes[boxIndex][slot] =
+                    parsed->speciesID() != 0 ? std::move(parsed) : nullptr;
             }
         }
     }
@@ -393,9 +375,9 @@ namespace Trainer {
          * party was not.
          *
          * The party-count tail after the six slots (the block is 2068 bytes, not 6*344 = 2064) is
-         * deliberately left untouched: parsePartyBlock treats an encrypted blank as occupied, so
-         * empty slots load as species-0 "ghosts" that inflate party.size(). The save's own count is
-         * authoritative, not party.size(). Same reasoning as Trainer8LA.
+         * deliberately left untouched: the save's own party-count tail remains authoritative.
+         * parsePartyBlock now drops decrypted species-0 blanks from the logical party vector, but
+         * preserving this native count avoids manufacturing count bytes during unrelated edits.
          */
         for (auto& block : blocks) {
             if (block.key == PARTY8_SWSH) {

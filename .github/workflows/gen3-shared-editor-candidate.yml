@@ -1,36 +1,8 @@
-name: Gen III Shared Editor Candidate Gate
+name: HISTORICAL / MANUAL — Gen III Shared Editor Candidate Gate
 
+
+# Frozen evidence workflow retained for reproducibility. It must never auto-run on current development.
 on:
-  pull_request:
-    branches: [feature/pokebank-playable]
-    paths:
-      - 'include/UI/Common.h'
-      - 'Makefile'
-      - 'Makefile.host*'
-      - 'include/Integration/Gen3/**'
-      - 'include/Integration/Encounter/**'
-      - 'include/Legacy/FRLG*'
-      - 'include/Pokemon/Pokemon3FRLG.h'
-      - 'include/UI/Gen3*'
-      - 'include/UI/ExactFormatEditorProvider.h'
-      - 'include/UI/ExactSaveCapabilities.h'
-      - 'include/UI/SharedPokemonEditorContract.h'
-      - 'include/UI/SharedPokemonShell.h'
-      - 'include/UI/SharedSpeciesPicker.h'
-      - 'src/Integration/Gen3/**'
-      - 'src/Legacy/FRLG*'
-      - 'src/Pokemon/Pokemon3FRLG.cpp'
-      - 'src/UI/Gen3*'
-      - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
-      - 'tests/test_gen3*'
-      - 'tests/test_encounter_guardrails.cpp'
-      - 'tests/test_pksm_gen3_adapter.cpp'
-      - 'tests/test_rse_gen3_adapter.cpp'
-      - 'tests/test_legacy_frlg_browse.cpp'
-      - 'tests/test_pre_gen3_reuse_guard.cpp'
-      - 'tests/test_source_mutation_policy.cpp'
-      - 'tests/test_write_policy.cpp'
-      - '.github/workflows/gen3-shared-editor-candidate.yml'
   workflow_dispatch:
 
 permissions:

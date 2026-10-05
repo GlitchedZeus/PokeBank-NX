@@ -1,5 +1,8 @@
 # PokeBank NX — v1.0 Roadmap
 
+> **ROADMAP, NOT BRANCH AUTHORITY:** This file describes current product direction as a dated snapshot. Re-fetch GitHub and use `docs/ENGINEERING_AUTHORITY.md` for active lane/task routing.
+
+
 Last updated: **2026-09-29**
 
 `CURRENT_STATUS.md` is authoritative for exact live state. This roadmap describes product direction, not branch ownership.
