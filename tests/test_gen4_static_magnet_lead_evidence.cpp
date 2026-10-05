@@ -72,13 +72,12 @@ int main() {
         kGrassSeed, kGrassPid, 5);
     static_assert(kMagnet.lead == Lead::MagnetPull);
 
-    // Wrong source-area eligible-slot metadata cannot become positive evidence.
-    static_assert(!matchRow(
-        false, grass, makeMeta(0, 0, 1, 3),
-        jGrassSeed, jGrassPid, 5).matched());
-    static_assert(!matchRow(
-        true, grass, makeMeta(1, 4, 0, 0),
-        kGrassSeed, kGrassPid, 5).matched());
+    // Wrong source-area eligible-slot metadata must fail at the exact attraction
+    // frame. Do not assert through matchRow here: that API intentionally searches
+    // earlier same-nature reversal candidates, and a different historical frame
+    // may legitimately satisfy the alternate alias metadata.
+    static_assert(attractedLead(makeMeta(0, 0, 1, 3), 30387u) == Lead::None);
+    static_assert(attractedLead(makeMeta(1, 4, 0, 0), 10662u) == Lead::None);
 
     // Random-level Method J Old Rod ordering: seed 13 gives Prev1 level 5,
     // Prev2 attracted-slot roll 32448 (mod 3 == 0), Prev3 passing proc, and a
