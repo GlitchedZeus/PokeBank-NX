@@ -65,10 +65,12 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
     const int selectedPos = hardwareMoveChoicePosition(choices, model.moveChoice());
     const int first = std::clamp(selectedPos - visible / 2, 0, std::max(0, count - visible));
     const int last = std::min(count, first + visible);
+    screen.touchButtons.clear();
     for (int i = first; i < last; ++i) {
         const int yy = y + layout.rowStart + (i - first) * layout.rowStep;
         const uint16_t move = choices[static_cast<std::size_t>(i)];
         const bool selected = i == selectedPos;
+        screen.touchButtons.push_back({2100 + i, x + 24, yy, panelW - 48, layout.highlightHeight});
         const std::string label =
             PokeBank::UIModel::MovePickerPresentation::rowLabel(move, Enums::GameVersion::GSC);
         if (selected)
@@ -99,6 +101,20 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
 
     if (state.mode == Mode::View || state.mode == Mode::None)
         return handlePickerInputBase(screen, down, held, stickX, stickY, touch);
+
+    const auto touchChoices = hardwareCompatibleMoveChoices(screen, state);
+    const int touchDown = screen.touchedButtonDownId(touch);
+    if (touchDown >= 2100 && touchDown < 2100 + static_cast<int>(touchChoices.size()))
+        picker.model.index = static_cast<int>(touchChoices[static_cast<std::size_t>(touchDown - 2100)]);
+    const int touchTap = screen.touchedButtonId(touch);
+    if (touchTap >= 2100 && touchTap < 2100 + static_cast<int>(touchChoices.size())) {
+        picker.model.index = static_cast<int>(touchChoices[static_cast<std::size_t>(touchTap - 2100)]);
+        down |= HidNpadButton_A;
+    }
+    if (touch.justReleased() && touch.dragged()) {
+        const int steps = std::max(1, std::abs(touch.deltaY()) / std::max(1, layout.rowStep));
+        stepHardwareMovePicker(screen, state, picker, touch.deltaY() < 0 ? steps : -steps);
+    }
 
     const uint64_t nav = screen.controllerNavigation.apply(
         down, held, stickX, stickY,

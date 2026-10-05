@@ -508,12 +508,27 @@ void activateField(TrainerViewScreen& screen, State& state) {
 }
 
 bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, uint64_t held,
-                      int stickX, int stickY) {
+                      int stickX, int stickY, const TouchInput& touch) {
     const uint64_t nav = screen.controllerNavigation.apply(
         down, held, stickX, stickY,
         HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
     const int count = static_cast<int>(state.itemChoices.size());
     using PokeBank::UIModel::Gen2HeldItemPicker::move;
+    const int touchDown = screen.touchedButtonDownId(touch);
+    if (touchDown >= 3000 && touchDown < 3000 + count) state.itemChoiceIndex = touchDown - 3000;
+    const int touchTap = screen.touchedButtonId(touch);
+    if (touchTap >= 3000 && touchTap < 3000 + count) {
+        state.itemChoiceIndex = touchTap - 3000;
+        down |= HidNpadButton_A;
+    }
+    if (touch.justReleased() && touch.dragged()) {
+        const int dx = touch.deltaX(), dy = touch.deltaY();
+        const int ax = std::abs(dx), ay = std::abs(dy);
+        if (ay >= ax && ay >= 28)
+            state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, dy < 0 ? 1 : -1);
+        else if (ax >= 28)
+            state.itemChoiceIndex = move(state.itemChoiceIndex, count, dx < 0 ? 1 : -1, 0);
+    }
     if (nav & HidNpadButton_Up) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, -1);
     if (nav & HidNpadButton_Down) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 1);
     if (nav & HidNpadButton_Left) state.itemChoiceIndex = move(state.itemChoiceIndex, count, -1, 0);
@@ -594,7 +609,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, int st
             closeToActions(screen);
         return true;
     }
-    if (state.itemPicker) return handleItemPicker(screen, state, down, held, stickX, stickY);
+    if (state.itemPicker) return handleItemPicker(screen, state, down, held, stickX, stickY, touch);
     if (state.confirmExit) return handleConfirm(screen, state, down);
 
     const uint64_t nav = screen.controllerNavigation.apply(
@@ -784,7 +799,7 @@ void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State
     StatsRadar::drawGen2Labeled(fb, x + w - 175, y + 305, 160, 150, battle);
 }
 
-void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
+void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state) {
     const int W = fb.getWidth(), H = fb.getHeight();
     constexpr int w = 1040, h = 520;
     const int x = (W - w) / 2, y = (H - h) / 2;
@@ -796,7 +811,18 @@ void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
     fb.drawText(x + 24, y + 52,
         "Page " + std::to_string(state.itemChoiceIndex / Model::pageSize + 1) + " / " + std::to_string(pages),
         Colors::TextDim, TextStyle::Caption);
-    Gen2HeldItemPickerPresentation::drawList(fb, x + 24, y + 90, w - 48, state.itemChoices, state.itemChoiceIndex);
+    screen.touchButtons.clear();
+    const int first = state.itemChoiceIndex / Model::pageSize * Model::pageSize;
+    const int last = std::min(static_cast<int>(state.itemChoices.size()), first + Model::pageSize);
+    const int gridX = x + 24, gridY = y + 90, gridW = w - 48;
+    const int cellW = gridW / Model::columns;
+    for (int i = first; i < last; ++i) {
+        const int off = i - first;
+        const int cx = gridX + (off % Model::columns) * cellW;
+        const int cy = gridY + (off / Model::columns) * 32;
+        screen.touchButtons.push_back({3000 + i, cx, cy, cellW - 12, 30});
+    }
+    Gen2HeldItemPickerPresentation::drawList(fb, gridX, gridY, gridW, state.itemChoices, state.itemChoiceIndex);
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"}, {"A", "Select"}, {"B", "Cancel"}});
 }
 
@@ -868,7 +894,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", "Random DVs"}, {"B", "Back"}});
 
-    if (state.itemPicker) drawHeldItemPicker(fb, state);
+    if (state.itemPicker) drawHeldItemPicker(screen, fb, state);
     if (state.confirmExit) drawConfirm(fb, state);
 }
 

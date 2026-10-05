@@ -129,8 +129,12 @@ void drawPickerRow(PKSEFramebuffer& fb, int x, int y, int w, const std::string& 
 
 void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state,
                     const Gen2Picker::Model& model) {
+    screen.touchButtons.clear();
     if (model.kind == Gen2Picker::Kind::Species) {
         const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
+        const int speciesStart = std::clamp(model.speciesChoice() - 9 / 2, 1, 251 - 9 + 1);
+        for (int i = 0; i < 9; ++i)
+            screen.touchButtons.push_back({2000 + speciesStart + i, modal.x + 20, modal.y + 84 + i * 43, 560, 39});
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, model.speciesChoice(), 251, model.previewShiny,
             [](uint16_t species) {
@@ -165,6 +169,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
     for (int i = first; i < last; ++i) {
         const int yy = y + 88 + (i - first) * 33;
         const bool selected = i == model.index;
+        screen.touchButtons.push_back({2000 + i, x + 20, yy - 5, panelW - 40, 30});
         if (location) {
             const auto& encounter = model.encounterChoices[static_cast<std::size_t>(i)];
             std::string label = std::string(Gen2Native::crystalCaughtLocationName(
@@ -220,6 +225,29 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
 
     if (!picker.model.active())
         return openPickerForFocusedField(screen, state, picker, down);
+
+    int touchDown = screen.touchedButtonDownId(touch);
+    if (touchDown >= 2000) {
+        if (picker.model.kind == Gen2Picker::Kind::Species) picker.model.index = std::clamp(touchDown - 2000, 1, 251);
+        else {
+            const int count = picker.model.kind == Gen2Picker::Kind::Location ? picker.model.locationCount() : 252;
+            picker.model.index = std::clamp(touchDown - 2000, 0, std::max(0, count - 1));
+        }
+    }
+    int touchTap = screen.touchedButtonId(touch);
+    if (touchTap >= 2000) {
+        if (picker.model.kind == Gen2Picker::Kind::Species) picker.model.index = std::clamp(touchTap - 2000, 1, 251);
+        else {
+            const int count = picker.model.kind == Gen2Picker::Kind::Location ? picker.model.locationCount() : 252;
+            picker.model.index = std::clamp(touchTap - 2000, 0, std::max(0, count - 1));
+        }
+        down |= HidNpadButton_A;
+    }
+    if (touch.justReleased() && touch.dragged()) {
+        const int dy = touch.deltaY();
+        const int steps = std::max(1, std::abs(dy) / 36);
+        picker.model.stepList(dy < 0 ? steps : -steps);
+    }
 
     const uint64_t nav = screen.controllerNavigation.apply(
         down, held, stickX, stickY,

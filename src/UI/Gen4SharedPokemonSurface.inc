@@ -791,39 +791,58 @@ void openAbilityPicker(TrainerViewScreen& screen, State& state,
     screen.controllerNavigation.reset();
 }
 
-bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down) {
+bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.valuePicker) return false;
-    if (state.pickerValues.empty()) {
+    const int count = static_cast<int>(state.pickerValues.size());
+    const int touchDown = screen.touchedButtonDownId(touch);
+    if (touchDown >= 6000 && touchDown < 6000 + count) state.pickerRow = touchDown - 6000;
+    const int touchTap = screen.touchedButtonId(touch);
+    if (touchTap >= 6000 && touchTap < 6000 + count) {
+        state.pickerRow = touchTap - 6000;
+        down |= HidNpadButton_A;
+    }
+    if (touch.justReleased() && touch.dragged()) {
+        const int dx = touch.deltaX(), dy = touch.deltaY();
+        const int ax = std::abs(dx), ay = std::abs(dy);
+        if (state.pickerTarget == PickerTarget::HeldItem) {
+            if (ay >= ax && ay >= 28) state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, dy < 0 ? 1 : -1);
+            else if (ax >= 28) state.pickerRow = HeldItemGrid::move(state.pickerRow, count, dx < 0 ? 1 : -1, 0);
+        } else {
+            const int steps = std::max(1, ay / 40);
+            if (dy < 0) state.pickerRow = std::min(count - 1, state.pickerRow + steps);
+            else if (dy > 0) state.pickerRow = std::max(0, state.pickerRow - steps);
+        }
+    }
+    if (count <= 0) {
         state.valuePicker = false;
         return true;
     }
-    const int pickerCount = static_cast<int>(state.pickerValues.size());
     if (state.pickerTarget == PickerTarget::HeldItem) {
         if (down & HidNpadButton_Up)
-            state.pickerRow = HeldItemGrid::move(state.pickerRow, pickerCount, 0, -1);
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, -1);
         if (down & HidNpadButton_Down)
-            state.pickerRow = HeldItemGrid::move(state.pickerRow, pickerCount, 0, 1);
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, 1);
         if (down & HidNpadButton_Left)
-            state.pickerRow = HeldItemGrid::move(state.pickerRow, pickerCount, -1, 0);
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, -1, 0);
         if (down & HidNpadButton_Right)
-            state.pickerRow = HeldItemGrid::move(state.pickerRow, pickerCount, 1, 0);
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 1, 0);
         if (down & HidNpadButton_L)
-            state.pickerRow = HeldItemGrid::move(state.pickerRow, pickerCount, 0, 0, -1);
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, 0, -1);
         if (down & HidNpadButton_R)
-            state.pickerRow = HeldItemGrid::move(state.pickerRow, pickerCount, 0, 0, 1);
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, 0, 1);
     } else {
         if (down & HidNpadButton_Up)
-            state.pickerRow = (state.pickerRow - 1 + pickerCount) % pickerCount;
+            state.pickerRow = (state.pickerRow - 1 + count) % count;
         if (down & HidNpadButton_Down)
-            state.pickerRow = (state.pickerRow + 1) % pickerCount;
+            state.pickerRow = (state.pickerRow + 1) % count;
         if (down & (HidNpadButton_Left | HidNpadButton_L))
             state.pickerRow = std::max(0, state.pickerRow - 10);
         if (down & (HidNpadButton_Right | HidNpadButton_R))
-            state.pickerRow = std::min(pickerCount - 1, state.pickerRow + 10);
+            state.pickerRow = std::min(count - 1, state.pickerRow + 10);
         if (down & HidNpadButton_ZL)
             state.pickerRow = std::max(0, state.pickerRow - 50);
         if (down & HidNpadButton_ZR)
-            state.pickerRow = std::min(pickerCount - 1, state.pickerRow + 50);
+            state.pickerRow = std::min(count - 1, state.pickerRow + 50);
     }
     if (state.pickerTarget == PickerTarget::Species && (down & HidNpadButton_Y)) {
         state.speciesPreviewShiny = !state.speciesPreviewShiny;
@@ -1088,9 +1107,9 @@ bool editStatCell(TrainerViewScreen& screen, State& state,
     return false;
 }
 
-bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
+bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!workspaceActive(state)) return false;
-    if (handleValuePicker(screen, state, down)) return true;
+    if (handleValuePicker(screen, state, down, touch)) return true;
     if (handleMoveEditor(screen, state, down)) return true;
     if (!state.session.working) {
         state.session.close();
@@ -1423,6 +1442,7 @@ const char* pickerTitle(PickerTarget target) noexcept {
 
 void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     if (!state.valuePicker || state.pickerValues.empty()) return;
+    screen.touchButtons.clear();
     const bool heldItems = state.pickerTarget == PickerTarget::HeldItem;
     const bool movePicker = state.pickerTarget == PickerTarget::Move;
     const bool speciesPicker = state.pickerTarget == PickerTarget::Species;
@@ -1475,6 +1495,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         for (int i = first; i < last; ++i) {
             const int yy = y + moveLayout.rowStart + (i - first) * moveLayout.rowStep;
             const bool selected = i == state.pickerRow;
+            screen.touchButtons.push_back({6000 + i, x + 24, yy, w - 48, moveLayout.highlightHeight});
             if (selected)
                 fb.drawSelectionHighlight(x + 24, yy, w - 48, moveLayout.highlightHeight);
             const auto value = state.pickerValues[static_cast<size_t>(i)];
@@ -1509,6 +1530,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
             const int cellX = gridX + (offset % HeldItemGrid::columns) * cellWidth;
             const int cellY = gridY + (offset / HeldItemGrid::columns) * cellHeight;
             const bool selected = i == state.pickerRow;
+            screen.touchButtons.push_back({6000 + i, cellX, cellY - 3, cellWidth - 10, cellHeight - 4});
             if (selected)
                 fb.drawSelectionHighlight(cellX, cellY - 3, cellWidth - 10, cellHeight - 4);
             const auto value = state.pickerValues[static_cast<size_t>(i)];
@@ -1531,6 +1553,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     for (int i = first; i < last; ++i) {
         const int yy = y + 90 + (i - first) * 42;
         const bool selected = i == state.pickerRow;
+        screen.touchButtons.push_back({6000 + i, x + 22, yy - 4, w - 44, 38});
         if (selected) fb.drawSelectionHighlight(x + 22, yy - 4, w - 44, 38);
         const auto value = state.pickerValues[static_cast<size_t>(i)];
         fb.drawText(x + 38, yy + 7, pickerValueLabel(screen, state, value),
@@ -1927,7 +1950,6 @@ bool ownsFrame(const TrainerViewScreen& screen) noexcept {
 
 bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
                  int stickX, int stickY, const TouchInput& touch) {
-    (void)touch;
     if (!isGen4Nds(screen)) return false;
 
     beginPassiveView(screen);
@@ -1952,7 +1974,7 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     }
     if (handleReleaseConfirm(screen, state, navigated)) return true;
     if (handleReview(screen, state, navigated)) return true;
-    if (handleWorkspace(screen, state, navigated)) return true;
+    if (handleWorkspace(screen, state, navigated, touch)) return true;
     if (handleActions(screen, state, navigated)) return true;
 
     const bool partyEntry = partyEntrySurface(screen);
