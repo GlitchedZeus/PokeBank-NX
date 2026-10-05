@@ -260,7 +260,7 @@ namespace UI
             cardHeight = CARD_PADDING + FIELD_HEIGHT + FIELD_KEY_GAP + KEY_ROW_COUNT * KEY_HEIGHT +
                          (KEY_ROW_COUNT - 1) * KEY_GAP + CARD_PADDING;
             cardX = (screenWidth - cardWidth) / 2;
-            cardY = screenHeight - NAV_BAR_HEIGHT - CARD_NAV_BAR_GAP - cardHeight;
+            cardY = screenHeight - kNavBarH - CARD_NAV_BAR_GAP - cardHeight;
             fieldX = cardX + CARD_PADDING;
             fieldY = cardY + CARD_PADDING;
             fieldWidth = keyBlockWidth;
@@ -344,7 +344,7 @@ namespace UI
             // Sampled every frame, so a stick push made while a wait below is running is seen as held
             // rather than arriving later as a fresh press.
             const HidAnalogStickState stick = padGetStickPos(&pad, 0);
-            const AnalogNavigationSample analog = analogNavigation.sample(
+            const PokeBank::UIModel::AnalogNavigationSample analog = analogNavigation.sample(
                 stick.x, stick.y, HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
             const u64 pressedButtons = padGetButtonsDown(&pad) | analog.down;
             const u64 heldButtons = padGetButtons(&pad) | analog.held;
@@ -845,7 +845,7 @@ namespace UI
                 if (pressed)
                 {
                     Color pressTint = Colors::Primary;
-                    pressTint.alpha = 110;
+                    pressTint.a = 110;
                     framebuffer.drawFilledRoundedRect(key.keyX, key.keyY, key.keyWidth, key.keyHeight,
                                                       KEY_CORNER_RADIUS, pressTint);
                     framebuffer.drawRoundedRect(key.keyX, key.keyY, key.keyWidth, key.keyHeight, KEY_CORNER_RADIUS,
@@ -892,11 +892,11 @@ namespace UI
         void drawKeyboard(KeyboardState &keyboard, PKSEFramebuffer &framebuffer)
         {
             framebuffer.drawSoftShadow(keyboard.cardX, keyboard.cardY, keyboard.cardWidth, keyboard.cardHeight,
-                                       CHROME_CORNER_RADIUS);
+                                       kChromeRadius);
             framebuffer.drawFilledRoundedRect(keyboard.cardX, keyboard.cardY, keyboard.cardWidth,
-                                              keyboard.cardHeight, CHROME_CORNER_RADIUS, Colors::Panel);
+                                              keyboard.cardHeight, kChromeRadius, Colors::Panel);
             framebuffer.drawRoundedRect(keyboard.cardX, keyboard.cardY, keyboard.cardWidth, keyboard.cardHeight,
-                                        CHROME_CORNER_RADIUS, Colors::Border, 1);
+                                        kChromeRadius, Colors::Border, 1);
             drawField(keyboard, framebuffer);
             for (int keyIndex = 0; keyIndex < static_cast<int>(keyboard.keys.size()); ++keyIndex)
                 drawKey(keyboard, framebuffer, keyIndex);
