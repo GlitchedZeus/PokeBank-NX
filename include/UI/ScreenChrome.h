@@ -217,11 +217,10 @@ namespace UI {
 
     // --- Tappable badges --------------------------------------------------------------------
     //
-    // Every screen already publishes contextual controller hints. Single-button hints act like
-    // their physical button on touch-down. Paired/directional hints add touch-only navigation on the
-    // same footer surface: tap the relevant half for Up/Down, Left/Right, L/R or ZL/ZR, or drag the
-    // D-pad/Stick segment in the direction you want to move. Existing controller handling remains the
-    // single action path, so touch cannot grow a second set of save/editor behaviors.
+    // Every screen already publishes contextual controller hints. Single-button hints use a
+    // release-confirmed tap; paired/directional hints resolve on release as well. Existing controller
+    // handling remains the single action path, so touch does not grow a second set of save/editor
+    // behaviors.
     struct NavHit { int x, y, w, h; uint64_t button; };
     enum class NavGestureKind : std::uint8_t { None, UpDown, LeftRight, DPad, LR, ZLZR };
     struct NavGestureHit { int x, y, w, h, glyphW; NavGestureKind kind; };
@@ -266,20 +265,20 @@ namespace UI {
         return px >= x && px < x + w && py >= y && py < y + h;
     }
 
-    // Hit-test the badges captured during the PREVIOUS frame's draw. Single-button targets remain
-    // edge-triggered on touch-down, matching padGetButtonsDown. Paired/directional controls resolve
-    // on release so the same region can distinguish halves and directional drags without stealing
-    // touch-down from the screen content above the footer.
+    // Hit-test the badges captured during the PREVIOUS frame's draw. All footer actions now resolve
+    // on release. A stationary tap must begin and end inside the same single-button target, while
+    // directional gestures keep their drag/half semantics. This prevents a finger that is starting a
+    // swipe from accidentally firing A/B/X/Y on contact.
     inline uint64_t navTouchButton(const TouchInput& touch) {
-        if (touch.justPressed()) {
+        if (!touch.justReleased()) return 0;
+
+        if (!touch.dragged()) {
             for (const NavHit& h : g_navHits) {
-                if (navContains(touch.x(), touch.y(), h.x, h.y, h.w, h.h))
+                if (navContains(touch.startX(), touch.startY(), h.x, h.y, h.w, h.h) &&
+                    navContains(touch.x(), touch.y(), h.x, h.y, h.w, h.h))
                     return h.button;
             }
-            return 0;
         }
-
-        if (!touch.justReleased()) return 0;
 
         // Product Home exposes Y = Quick Games. When that exact action is present, a
         // deliberate swipe in from the physical right edge maps to the same Y press.
@@ -491,10 +490,8 @@ namespace UI {
                         TextStyle::Caption);
             cx += s.labelW;
 
-            // Badge + label is one fingertip-sized target. Single buttons fire on touch-down;
-            // directional/pair tokens resolve on release so a touch-only user can reach every
-            // controller action represented by the shared footer without adding screen-specific
-            // save/editor code paths.
+            // Badge + label is one fingertip-sized target. All footer actions resolve on release so
+            // touch-down never steals a gesture from the content above it.
             const int hitY = cy - TouchTargetMin / 2;
             const int hitW = cx - segX;
             const uint64_t button = s.glyphW ? navButtonFor(s.btn) : 0;
