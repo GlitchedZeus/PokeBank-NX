@@ -132,7 +132,7 @@ namespace UI
             int repeatHeldFrames = 0;
             /// The left stick, read as one D-pad direction at a time so it steps the selection like the
             /// D-pad and repeats on the same timing.
-            AnalogNavigation analogNavigation;
+            PokeBank::UIModel::AnalogNavigation analogNavigation;
             /// Set when the console's keyboard hands back control: the buttons used to answer it may
             /// still be held, and must not arrive here as fresh presses.
             bool waitingForRelease = false;
