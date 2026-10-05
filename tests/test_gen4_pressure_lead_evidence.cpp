@@ -1,8 +1,10 @@
 #include "Legality/Gen4PressureLeadEvidence.h"
 
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <string_view>
 
 namespace {
 constexpr uint64_t makeRow(uint8_t type, uint8_t slot,
@@ -14,6 +16,19 @@ constexpr uint64_t makeRow(uint8_t type, uint8_t slot,
            (static_cast<uint64_t>(slot) << 46) |
            (static_cast<uint64_t>(rate) << 50);
 }
+
+constexpr std::string_view gameId(Legality::Gen4Wild::Game game) {
+    using Game = Legality::Gen4Wild::Game;
+    switch (game) {
+        case Game::Diamond: return "diamond_nds";
+        case Game::Pearl: return "pearl_nds";
+        case Game::Platinum: return "platinum_nds";
+        case Game::HeartGold: return "heartgold_nds";
+        case Game::SoulSilver: return "soulsilver_nds";
+        case Game::Invalid: break;
+    }
+    return {};
+}
 }
 
 int main() {
@@ -21,11 +36,13 @@ int main() {
     using Legality::Gen4WildRng::sequentialPid;
 
     // Pinned EncounterSlot4.PressureLevel is exact from LevelMax for every
-    // non-Grass family. Grass is parent-area dependent and must remain unresolved.
+    // non-Grass family. The row-only API remains conservative for Grass because
+    // parent-area identity lives only in the generated aligned source metadata.
     constexpr uint64_t grass = makeRow(0, 0, 5, 8);
     constexpr uint64_t surf = makeRow(1, 0, 5, 10);
     static_assert(exactPressureLevel(grass) == 0);
     static_assert(exactPressureLevel(surf) == 10);
+    static_assert(kSourceCount == kPressureCount);
 
     // Method J Old Rod: seed 492 has a regular nature frame, Prev1=55173 with
     // the high bit set (Pressure/Hustle/Vital Spirit passes), Prev3=35488 which
@@ -83,7 +100,8 @@ int main() {
     static_assert(honey.slot == 3);
     static_assert(honey.pressureLevel == 15);
 
-    // Do not guess the parent-area maximum for Grass.
+    // Preserve the prior row-only contract: without an indexed source alias,
+    // Grass parent-area PressureLevel is not guessed.
     static_assert(!matchRow(
         false, grass, jSurfSeed, jSurfPid, 8).matched());
     static_assert(!matchRow(
@@ -101,6 +119,67 @@ int main() {
     // D/P/Pt Rock Smash is not a Method J family and must not be invented.
     static_assert(!matchRow(
         false, kRock, jFishSeed, jFishPid, 10).matched());
+
+    // Exercise the generated source data itself, not just synthetic rows. Find an
+    // exact Grass alias where parent-area PressureLevel is above this row's own
+    // LevelMax. Such an encounter is rejected by ordinary levelMatches(), but a
+    // successful Pressure lead can legally produce the generated higher level.
+    std::size_t boostedIndex = kSourceCount;
+    for (std::size_t i = 0; i < kSourceCount; ++i) {
+        const uint64_t row = Legality::Gen4Wild::kPackedGen4WildEncounters[i];
+        const uint8_t pressure = sourcePressureLevel(i);
+        if (Legality::Gen4Wild::method(row) == 0 &&
+            pressure > Legality::Gen4Wild::maxLevel(row)) {
+            boostedIndex = i;
+            break;
+        }
+    }
+    assert(boostedIndex < kSourceCount);
+
+    const uint64_t boostedRow =
+        Legality::Gen4Wild::kPackedGen4WildEncounters[boostedIndex];
+    const uint8_t boostedLevel = sourcePressureLevel(boostedIndex);
+    assert(boostedLevel > Legality::Gen4Wild::maxLevel(boostedRow));
+    assert(!Legality::Gen4Wild::levelMatches(boostedRow, boostedLevel));
+
+    const auto sourceGame = Legality::Gen4Wild::game(boostedRow);
+    const bool sourceHgss =
+        sourceGame == Legality::Gen4Wild::Game::HeartGold ||
+        sourceGame == Legality::Gen4Wild::Game::SoulSilver;
+
+    // Derive a deterministic legal seed against the real generated source row.
+    // The bound is intentionally finite; failure remains a test failure, never a
+    // runtime legality assertion about arbitrary user data.
+    bool foundSeed = false;
+    uint32_t grassSeed = 0;
+    uint32_t grassPid = 0;
+    for (uint32_t seed = 0; seed < 0x40000u; ++seed) {
+        const uint32_t pid = sequentialPid(seed);
+        if (!matchRowWithPressure(
+                sourceHgss, boostedRow, boostedLevel,
+                seed, pid, boostedLevel).matched())
+            continue;
+        foundSeed = true;
+        grassSeed = seed;
+        grassPid = pid;
+        break;
+    }
+    assert(foundSeed);
+
+    const uint8_t encounterForm = Legality::Gen4Wild::form(boostedRow);
+    const uint8_t pokemonForm = encounterForm >= 30 ? 0 : encounterForm;
+    const auto generatedGrass = analyzeSupported(
+        gameId(sourceGame),
+        Legality::Gen4Wild::species(boostedRow),
+        Legality::Gen4Wild::location(boostedRow),
+        boostedLevel,
+        pokemonForm,
+        0,
+        grassSeed,
+        grassPid);
+    assert(generatedGrass.matched());
+    assert(generatedGrass.pressureLevel == boostedLevel);
+    assert(generatedGrass.slot == Legality::Gen4Wild::slot(boostedRow));
 
     static_assert(leadName(Lead::PressureHustleVitalSpirit)[0] == 'P');
 
