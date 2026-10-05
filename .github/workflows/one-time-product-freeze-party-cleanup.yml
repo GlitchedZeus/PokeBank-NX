@@ -135,3 +135,5 @@ jobs:
           git diff --cached --quiet && { echo "No native touch changes produced"; exit 1; }
           git commit -m "feat(ui): make touch direct and responsive"
           git push origin HEAD:feature/touch-controls-20261005
+
+# restaged after tap-slop runtime fix; exact-head guard prevents stale application
