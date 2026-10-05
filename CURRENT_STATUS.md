@@ -12,24 +12,28 @@ GitHub is authoritative. Recorded SHAs are checkpoints only: always re-fetch bef
 
 - Branch: `feature/gen4-full-editor-20260928`
 - State: **OPEN / DRAFT / NOT MERGED**
-- Current verified head: `9e8f5e746d07879aaf96da4354df8ac3aaae14f5`
-- Current tree: `b24ca7ebbe837793f43793f982e48603b6a2478b`
+- Current verified head at this refresh: `5bf7aa38d52f8cb56e94b0d32a05ca724501c92e`
+- Current tree: `70c4d4d587a293c099e3133066d663e1348c4358`
+- Runtime hotpath fix parent: `894e5f89071407dab4531573fec95c6234704670`
+- Regression-contract parent: `8dcd1d36d53f08f920f255fdcf5767740bc58a86`
 - Device state for the current combined head: **HARDWARE PENDING**
 
-The active lane now contains the current Gen I–IV application, Gen IV G4-04 editor, Product Home, Games/source assignment work, current hardware-recovery fixes, and the completed forensic-audit remediation package.
+The active lane contains the current Gen I–IV application, Gen IV G4-04 editor, Product Home, Games/source assignment work, current hotpath/hardware-recovery fixes, and the completed forensic-audit remediation package.
 
 ### Current exact-head application CI
 
-Normal application validation on `9e8f5e74...` is fully green:
+Normal application validation on `5bf7aa38...` at this refresh:
 
-- PokeBank NX Host Tests — **PASS** — run `37274894806`
-- PokeBank NX Native PR Gate — **PASS** — run `37274894800`
-- PokeBank NX Product UI Native — **PASS** — run `37274894827`
-- Gen IV Shared Editor Candidate Gate — **PASS** — run `37274894872`
-- Gen I/II Packed Move Focused — **PASS** — run `37274894959`
-- Gen I/II Packed Multi-Move Focused — **PASS** — run `37274894900`
+- PokeBank NX Product UI Native — **PASS** — run `37280003888`
+- PokeBank NX Native PR Gate — **PASS** — run `37280003895`
+- Gen IV Shared Editor Candidate Gate — **PASS** — run `37280003858`
+- Gen I/II Packed Move Focused — **PASS** — run `37280003790`
+- Gen I/II Packed Multi-Move Focused — **PASS** — run `37280003872`
+- PokeBank NX Host Tests — **IN PROGRESS** — run `37280003796`
 
-Some one-time patch/hotfix harness workflows attached to this SHA are historical repair machinery and are not the normal application gates above. They must not be used to describe the current application head as CI-red.
+Five of the six normal exact-head application lanes are green; the full Host Tests lane is still running at this status refresh. The Host lane includes the long host/sanitizer/regression pass and must finish before the exact head is described as fully automated-green.
+
+Several one-time direct-launch / Quick Games patch-harness workflows attached to the same SHA are historical repair machinery. Their failures are **not** the normal application validation matrix above and are not hardware candidates.
 
 ## Current Product UI / hardware-fix state
 
@@ -44,22 +48,22 @@ Recent PR #92 work includes:
 - neutral idle round destination controls with blue/cyan focus only;
 - sorting and Release Date ordering foundation;
 - Favorites foundation;
-- direct GBA/DS launch routing that prefers a matching installed HOME forwarder before emulator fallback;
-- normalized exact-release matching so near-name titles such as Red/FireRed, Gold/HeartGold, and Diamond/BDSP do not collide;
+- direct GBA/DS launch routing with exact-release matching and installed-forwarder/provider fallback logic;
 - Quick Games and Product Home data-freeze recovery work;
-- preserved Items return, Search-left, profile and source behavior.
+- preserved Items return, Search-left, profile and source behavior;
+- hotpath work that removes synchronous source discovery from Quick Games selection and narrows normal Gen I–III open to the selected cached source.
 
 ### Current physical retest focus
 
-The next owner hardware pass should verify:
+The next owner hardware pass should verify the exact current candidate, including:
 
-1. full Games tiles do not show trainer portraits;
-2. `X` on an assigned Gen I–III game can assign another validated matching save to the current profile;
-3. region scenery remains visible while hero text stays readable;
-4. only the focused round destination uses the blue/cyan focus treatment;
-5. a matching installed GBA HOME forwarder — especially Emerald — launches directly rather than falling through to RetroArch/file selection;
-6. a matching installed DS HOME forwarder — especially Platinum — launches directly rather than falling through to DraStic/file selection;
-7. Quick Games, Items exit, Search-left, Favorites, and Release Date ordering remain stable.
+1. Quick Games `A` selection remains cached/navigation-only and does not synchronously rediscover saves or resolve launch targets;
+2. normal Gen I–III `A` open validates only the selected cached source rather than rescanning every configured legacy provider;
+3. RetroArch Red/Blue matching is release-aware and unique while preserving Red vs FireRed and other collision guards;
+4. DS launch resolution prefers an already validated emulator/provider path before an expensive installed-forwarder fallback scan;
+5. previously passing Yellow, Gold, Silver, Crystal, Ruby, Sapphire, FireRed, LeafGreen and Emerald launch/return behavior remains intact;
+6. full Games tiles still omit trainer portraits and `X = Save / Source` can assign another validated matching save;
+7. region scenery/readability, destination focus styling, Items exit, Search-left, Favorites and Release Date ordering remain stable.
 
 Do not transfer hardware acceptance from an older SHA to this current head. The owner previously rejected the `dee2ad4745a8d83d3d804a3e244e33cfd2c39525` Product UI candidate on hardware; the current recovery/fix series is newer and must be tested as its own exact artifact.
 
@@ -82,10 +86,10 @@ The frozen audit evidence remains historical/frozen and must not be rewritten me
 
 - Branch: `feature/legality-engine-gen1-4-20260929`
 - State: **OPEN / DRAFT / NOT MERGED**
-- Current live head at this status refresh: `a634460a22810d82e67a04dbf01d2f62f8d25d9c`
+- Current live head at this status refresh: `fa4013103e6d418ff3e7268be7bb3f3c5951c4bf`
 - Mode: **READ-ONLY ANALYSIS**
 
-The legality lane now includes substantial Gen I–IV source-game, move/species, encounter/event, transfer, form/origin, PID/RNG, Gen III GameCube, and Gen IV WC4/PCD evidence.
+The legality lane now includes substantial Gen I–IV source-game, move/species, encounter/event, transfer, egg-state, form/origin, PID/RNG, Gen III GameCube, and Gen IV WC4/PCD evidence. Recent work includes state-aware Gen IV static/gift egg provenance while keeping state-unknown callers conservative.
 
 Its verdict model intentionally distinguishes:
 
@@ -153,7 +157,7 @@ Supported identities:
 
 The first safe Gen IV Party/Box View/Edit milestone is physically accepted. The later G4-04 implementation adds Create, additional native fields, forms, species mutation/reconciliation, move handling, action parity, checksum/reparse/rollback behavior, and Product UI integration.
 
-The **current combined G4-04 + Product UI head is automated-green but not device accepted**.
+The **current combined G4-04 + Product UI head remains not device accepted**. Five normal exact-head gates are currently green and Host Tests are still running at this refresh.
 
 ## Source discovery and launch
 
@@ -166,7 +170,7 @@ Current source/provider foundation includes:
 - native Switch game identities;
 - app-owned game/ROM launch bindings.
 
-Current launch routing can prefer a matching installed HOME forwarder for supported GBA/DS games before emulator fallback. Exact-release matching is used to avoid near-name collisions. This current direct-launch behavior still requires physical verification on the owner’s Switch.
+Current launch routing uses exact-release matching to avoid near-name collisions and can choose validated provider/emulator routes or matching installed HOME forwarders according to the current game/provider evidence. The current hotpath specifically avoids doing expensive launch/source resolution synchronously from Quick Games selection and prioritizes an already validated DS provider path before a fallback installed-forwarder scan.
 
 If content identity cannot be proven, the app must continue to fail closed and use an explicit source/content selection or link fallback instead of guessing.
 
@@ -189,9 +193,9 @@ MASTER VAULT PERSISTENCE: NOT STARTED
 ## Next integration boundary
 
 1. preserve the current PR #92 head or any newer forward-only work;
-2. keep the six normal application validation lanes green;
-3. produce one exact Actions-built current candidate after the UI/launch fixes settle;
-4. physically retest Games/source assignment, Quick Games, Product Home readability, Items/Search/Favorites/sorting, and GBA/DS direct launch;
+2. finish the exact-head Host Tests lane and keep all six normal application validation lanes green;
+3. produce one exact Actions-built current candidate after the hotpath/UI/launch fixes settle;
+4. physically retest Quick Games, selected-source open, Red/Blue matching, DS launch routing, Games/source assignment, Product Home, Items/Search/Favorites/sorting, and previously passing Gen I–III routes;
 5. if that exact artifact passes hardware, mark the current integrated Gen IV + Product UI candidate accepted;
 6. then begin full app-wide touch-control parity;
 7. keep the read-only legality engine moving in parallel without weakening save safety.
