@@ -41,7 +41,7 @@
 ---
 
 > [!IMPORTANT]
-> **PokeBank NX is pre-release software.** Gen I–III workflows are hardware accepted. The current Gen IV + Product UI development head is automated-green, but the latest integrated UI remains under physical Switch validation and should not be treated as a finished release build.
+> **PokeBank NX is pre-release software.** Gen I–III workflows are hardware accepted. The current Gen IV + Product UI application head is automated-green after the latest Games/UI/direct-launch recovery work, but that exact combined build still requires physical Switch acceptance before it can be treated as finished.
 
 ## Overview
 
@@ -61,19 +61,20 @@ The app is designed around staged editing, explicit source identity, conservativ
 
 | Area | State | Notes |
 |---|---|---|
-| Switch runtime / native NRO | ✅ Working | devkitA64 + libnx native build |
+| Switch runtime / native NRO | ✅ Working | C++20 + devkitA64/libnx native build |
 | Generation I | ✅ Hardware accepted | R/B/Y read + staged shared editor |
 | Generation II | ✅ Hardware accepted | G/S/C read + staged shared editor |
 | Generation III | ✅ Hardware accepted | R/S/E/FR/LG read + staged shared editor |
 | Generation IV | 🧪 Hardware validation | D/P/Pt/HG/SS staged full-editor foundation implemented |
-| Product Home / frontend | 🎨 Final polish | Current integrated head is automated-green; device acceptance still required |
+| Product Home / Games UI | 🎨 Final hardware polish | Current exact application gates are green; current UI/launch fixes need device acceptance |
+| Audit hardening | ✅ Integrated | Full forensic remediation is now merged into the active application lane: 43 verified, 1 deferred, 0 open |
 | Legality analysis | 🔬 Active R&D | Read-only Gen I–IV evidence engine in a separate development lane |
-| Touch controls | ⏳ Planned | Starts after the integrated UI candidate is physically accepted |
+| Touch controls | ⏳ Planned | Starts after the current integrated UI candidate is physically accepted |
 | Master Vault / named Banks | ⏳ Planned | UI identity exists; persistent backend is intentionally not enabled yet |
 | Live source writeback | 🔒 Locked | No global unsafe-write switch |
 
 > [!NOTE]
-> The current active Gen IV/Product UI development head passes Host Tests, the native Product UI build, and the Gen IV candidate gate. The current legality-engine development head also passes its exact-head Host Tests. Neither fact replaces physical hardware acceptance for the final application candidate.
+> The current Gen IV/Product UI application head passes Host Tests, Native PR Gate, Product UI Native, the Gen IV candidate gate, and the focused Gen I/II packed-move suites. The legality-engine lane is also independently tested. Green CI does not replace physical acceptance of the exact final NRO.
 
 ## Features
 
@@ -88,12 +89,26 @@ The current frontend is built as a console-style product experience rather than 
 - larger handheld-friendly names / levels / party spacing;
 - real per-save Pokédex progress where supported;
 - **Open** and **Launch** actions;
-- full-screen Games artwork browser;
-- quick-games drawer;
+- full-screen six-column Games artwork browser;
+- Quick Games drawer;
 - compact Games / Banks / Items / Search / More navigation;
 - top-right profile and Settings ownership;
 - remembered focus / cursor state across reconstructed screens;
-- themes and controller navigation with D-pad + left stick parity.
+- sorting and Release Date ordering foundation;
+- Favorites foundation;
+- neutral idle round destinations with blue/cyan focus only;
+- themes and controller navigation with D-pad + left-stick parity.
+
+### Games / save assignment
+
+The Games surface now does more than choose a title. It is becoming the game/save/profile assignment front end.
+
+- `X = Save / Source` opens source assignment for the selected game/profile;
+- Gen I–III can select another validated matching save instead of being trapped on the first assignment;
+- Gen IV uses the provider-neutral source-setup flow;
+- full Games tiles remain artwork/game focused rather than duplicating trainer portraits;
+- duplicate/ambiguous sources remain explicit instead of being silently guessed;
+- sort/favorite state is kept separate from profile identity and save custody.
 
 ### Pokémon / save workflows
 
@@ -113,7 +128,7 @@ Across the supported Gen I–IV foundation, PokeBank NX currently provides combi
 
 ### Generation IV editor
 
-Diamond / Pearl / Platinum / HeartGold / SoulSilver currently have the most active development work beyond the hardware-accepted Gen I–III base:
+Diamond / Pearl / Platinum / HeartGold / SoulSilver currently have the most active editor work beyond the hardware-accepted Gen I–III base:
 
 - Party + Box View/Edit;
 - empty Box Add/Create;
@@ -128,7 +143,7 @@ Diamond / Pearl / Platinum / HeartGold / SoulSilver currently have the most acti
 - checksum refresh, strict full-save reparse, and rollback;
 - immutable external emulator source during ordinary editing.
 
-The first safe Gen IV editing milestone has already passed hardware testing. The **current full Gen IV + Product UI combination remains hardware-pending while the frontend receives its finishing touches**.
+The first safe Gen IV editing milestone has already passed hardware testing. The **current full Gen IV + Product UI combination remains hardware-pending while the latest Games, Quick Games and launch fixes are physically retested**.
 
 ## Supported games
 
@@ -156,8 +171,12 @@ Current product work includes:
 - manual / remembered assignments;
 - duplicate-source handling and source identity;
 - app-owned game/ROM launch bindings;
-- direct launch when the emulator/content target is proven;
-- explicit **Link Game File** fallback when it is not.
+- installed HOME-forwarder preference for matching supported GBA/DS identities;
+- normalized exact-release matching so similarly named releases do not collide;
+- emulator/file/link fallback when an installed/content target cannot be proven;
+- explicit **Link Game File** fallback instead of path guessing.
+
+The current installed-forwarder preference — especially GBA/Emerald and DS/Platinum cases — still needs physical Switch verification on the latest candidate.
 
 > [!WARNING]
 > A save path is **not** proof of a ROM path. PokeBank NX does not guess a launch target from a similarly named save file, and launch permission never grants save-write permission.
@@ -199,7 +218,16 @@ Every source adapter must earn write permission independently.
 
 A separate development lane is building an evidence-aware legality engine for Gen I–IV. It is intentionally **analysis only** today.
 
-Current work includes exact source-game profiles, generation/game ceilings, move compatibility, encounter/event evidence, transfer history, Gen III/IV PID/RNG families, Gen IV form/origin checks, and coverage-aware reporting.
+The implemented foundation now covers far more than simple species/move bounds. Current work includes:
+
+- exact source-game profiles and generation ceilings;
+- exact-game move compatibility;
+- Gen I/II encounter, trade and history evidence;
+- substantial Gen III event, PID/IV and RNG evidence;
+- Pokémon Colosseum / XD / e-Reader / GameCube-specific evidence;
+- Gen III → IV Pal Park transfer evidence;
+- Gen IV wild/static/trade/PokéWalker/WC4/PCD/form/origin/RNG evidence;
+- coverage-aware report semantics.
 
 The report model distinguishes between:
 
@@ -208,7 +236,7 @@ The report model distinguishes between:
 - **Incomplete** — the engine does not yet have enough evidence to make a stronger statement.
 
 > [!CAUTION]
-> The legality engine does not auto-fix Pokémon, does not grant source-write permission, and does not claim parity with external legality tools until equivalent evidence and regression coverage exist.
+> The legality engine does not auto-fix Pokémon, does not grant source-write permission, and does not claim parity with external legality tools until equivalent evidence and regression coverage exist. Missing evidence and bounded-search exhaustion remain **Incomplete**.
 
 ## Engineering quality
 
@@ -223,19 +251,20 @@ Current development gates include:
 - PNG / presentation-asset validation;
 - clean devkitA64 compile + link;
 - native Product UI NRO packaging;
+- Gen IV candidate validation;
 - focused generation/editor regression suites;
 - physical Switch acceptance of exact candidate artifacts.
 
-A repository-wide forensic audit and remediation pass has also been completed in a separate lane. That hardening work covers parser boundaries, memory safety, durability, backup/custody behavior, source-mutation policy, regression coverage, and native build confidence without enabling unsafe write paths.
+A repository-wide forensic audit and remediation pass is complete. The remediation package was integrated into the active PR #92 application lane on **2026-10-05** while the frozen forensic evidence checkpoint remains preserved. Final remediation disposition is **43 verified/fixed, 1 deferred with justification, 0 open**.
 
 <details>
-<summary><strong>Active engineering lanes</strong></summary>
+<summary><strong>Engineering lanes and checkpoints</strong></summary>
 
-| Lane | Purpose |
+| Lane | Purpose / state |
 |---|---|
-| [PR #92](https://github.com/GlitchedZeus/PokeBank-NX/pull/92) | Current Gen I–IV application, Gen IV full editor, Product UI and hardware-fix work |
-| [PR #103](https://github.com/GlitchedZeus/PokeBank-NX/pull/103) | Read-only Gen I–IV legality engine research / implementation |
-| [PR #101](https://github.com/GlitchedZeus/PokeBank-NX/pull/101) | Completed forensic-audit remediation package awaiting owner-approved integration |
+| [PR #92](https://github.com/GlitchedZeus/PokeBank-NX/pull/92) | **Active:** current Gen I–IV application, Gen IV full editor, Product UI and hardware-fix work |
+| [PR #103](https://github.com/GlitchedZeus/PokeBank-NX/pull/103) | **Active:** read-only Gen I–IV legality engine research / implementation |
+| [PR #101](https://github.com/GlitchedZeus/PokeBank-NX/pull/101) | **Merged checkpoint:** completed forensic-audit remediation, integrated into PR #92 on 2026-10-05 |
 
 GitHub is authoritative. Old handoff documents and historical branch SHAs are evidence, not instructions to move active branches backward.
 
@@ -281,7 +310,7 @@ PokeBank NX does not provide commercial game ROMs or console firmware.
 
 | Path | Purpose |
 |---|---|
-| `src/` | Application, UI, save, Pokémon, conversion and integration code |
+| `src/` | Application, UI, save, Pokémon, conversion, legality and integration code |
 | `include/` | Public/internal interfaces and shared models |
 | `romfs/` | Runtime presentation/data assets packaged into the NRO |
 | `assets/` | Application metadata/icon resources |
@@ -294,18 +323,17 @@ PokeBank NX does not provide commercial game ROMs or console firmware.
 
 Near-term development order:
 
-1. **Finish Product UI / Games UI polish** and close the current hardware-visible regressions.
-2. Produce one exact, fully green **Gen I–IV + Product UI** hardware candidate.
+1. **Finish the current Games / Product Home / Quick Games / direct-launch hardware polish.**
+2. Keep one exact, fully green **Gen I–IV + Product UI** application candidate.
 3. Physically accept that exact NRO on Switch.
-4. Integrate the completed audit-remediation package into the main application lane.
-5. Add **full app-wide touch-control parity**.
-6. Build **Master Vault + named Banks** with provenance and durable records.
-7. Expand provider support and later-generation save coverage.
-8. Grow legality / provenance / search / collection tooling into product-facing workflows.
-9. Introduce source-specific write transactions only after backup, validation, readback and recovery are proven.
-10. Release hardening → **v1.0**.
+4. Add **full app-wide touch-control parity**.
+5. Build **Master Vault + named Banks** with provenance and durable records.
+6. Expand provider support and later-generation save coverage.
+7. Grow legality / provenance / search / collection tooling into product-facing workflows.
+8. Introduce source-specific write transactions only after backup, validation, readback and recovery are proven.
+9. Release hardening → **v1.0**.
 
-The legality engine can continue advancing in parallel because it is read-only and does not weaken the save-safety boundary.
+The forensic remediation integration is complete. The legality engine can continue advancing in parallel because it is read-only and does not weaken the save-safety boundary.
 
 ## Bug reports
 
@@ -319,17 +347,17 @@ Useful hardware reports include:
 - exact steps to reproduce;
 - screenshots or video when the issue is visual.
 
-Please avoid posting personal/private save files publicly. Use a disposable or sanitized test save when a reproduction fixture is necessary.
+Please avoid posting personal/private save files publicly. Use a disposable test save when a reproduction requires writable or sensitive data.
 
 ## Project documentation
 
-- [Current engineering status](CURRENT_STATUS.md)
-- [Project status](PROJECT_STATUS.md)
-- [Game support matrix](docs/GAME_SUPPORT_MATRIX.md)
-- [v1.0 roadmap](docs/V1_ROADMAP.md)
-- [UI ownership/status](docs/UI_OWNERSHIP_STATUS.md)
+The README is intentionally product-facing. Exact engineering state lives in:
 
-The README is intentionally product-facing. Exact branch checkpoints, CI run IDs, audit evidence, and handoff details belong in the engineering documents and pull requests.
+- [CURRENT_STATUS.md](CURRENT_STATUS.md) — live branch/head/CI/hardware boundary;
+- [PROJECT_STATUS.md](PROJECT_STATUS.md) — project-level milestone summary;
+- [Game Support Matrix](docs/GAME_SUPPORT_MATRIX.md) — generation/game support and device state;
+- [v1.0 Roadmap](docs/V1_ROADMAP.md) — checked/unchecked milestone plan;
+- [UI Ownership Status](docs/UI_OWNERSHIP_STATUS.md) — UI ownership and migration notes.
 
 ## License
 
@@ -338,16 +366,10 @@ PokeBank NX is licensed under the **GNU Affero General Public License v3.0 (AGPL
 > [!NOTE]
 > The complete license terms are in [LICENSE](LICENSE). The README is not a substitute for the license text.
 
-Third-party code, data, research, and reference projects retain their own licenses and attribution requirements.
-
-## Acknowledgements
-
-Pokémon save research is the result of years of work across the wider community. PokeBank NX builds on that ecosystem while keeping its own runtime, safety boundaries, tests, and product decisions explicit.
-
-Thanks to the developers, researchers, testers, emulator authors, homebrew projects, and preservation communities whose public work makes format validation possible.
+Third-party code, data, research, artwork sources, and reference projects retain their own licenses and attribution requirements.
 
 ## Disclaimer
 
-PokeBank NX is an unofficial, fan-made homebrew project. It is not affiliated with, sponsored by, or endorsed by Nintendo, The Pokémon Company, GAME FREAK, or Creatures Inc.
+PokeBank NX is an unofficial fan-made homebrew project and is not affiliated with or endorsed by Nintendo, The Pokémon Company, GAME FREAK, or Creatures Inc.
 
-Pokémon, game names, characters, artwork, and related trademarks are property of their respective owners.
+Pokémon and related trademarks and game assets are property of their respective owners.
