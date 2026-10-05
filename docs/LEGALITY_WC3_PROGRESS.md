@@ -47,15 +47,15 @@ As with PCNY, this proves compatible source-species provenance; exact evolution 
 
 ## Event3 ribbons
 
-PK3 persisted Event3 readers currently expose Champion Battle, Champion Regional, Champion National, Country and National Ribbon independently from the fateful/obedience bit. Those fixed fields are used where a pinned WC3 template makes them invariant.
+PK3 persisted Event3 readers expose Champion Battle, Champion Regional, Champion National, Country, National and Earth Ribbon independently from the fateful/obedience bit. Those fixed fields are used where a pinned WC3 template makes them invariant.
 
-Earth Ribbon remains deliberately separate from fixed non-egg event-template matching because a legitimate Gen III Pokémon can earn Earth later through Pokémon Colosseum/XD history. Pinned PKHeX source also proves a narrower rule for **unhatched Gen III event eggs**: an unhatched egg may not already carry any of the Event3 ribbons, including Earth. That egg-only invariant has been source-audited and its PK3 bit layout is covered by the existing ribbon regression, but central legality integration is still pending. It must not be implemented as a blanket Earth-Ribbon prohibition on normal hatched/event Pokémon.
+Earth Ribbon remains deliberately separate from fixed non-egg event-template matching because a legitimate Gen III Pokémon can earn Earth later through Pokémon Colosseum/XD history. Pinned PKHeX source also proves a narrower rule for **unhatched Gen III event eggs**: an unhatched egg may not already carry any of the Event3 ribbons, including Earth. That egg-only invariant is now integrated through the exact Generation III source profile using `Gen3EggEventRibbonEvidence.h`, with Invalid egg diagnostics for each present ribbon. Focused normal/sanitizer regressions cover all six readers, all ribbon combinations, exact-source exclusions and unchanged input bytes. It must not be implemented as a blanket Earth-Ribbon prohibition on normal hatched/event Pokémon.
 
 ## WC3 parity direction
 
 The pinned WC3 method inventory is represented by dedicated engine paths: MYSTRY Mew (`BACD_M`), WISHMKR (`BACD_R`), Channel, Berry Fix (`BACD_RBCD`), Negai Boshi (`BACD_TA` / `BACD_U_AX`), `BACD_R_A`, Pokémon Box (`BACD_U`), PCJP 5th Anniversary (`BACD_TA` / `BACD_TS`), Wondercard event eggs (Method 2 with source-supported Method 1/4 outcomes), PokéPark DS Download (`BACD_R`), plus PCJP/PCNY machine gifts.
 
-Remaining WC3 parity work is increasingly about historical/template depth rather than recognizing another PID method: the unhatched Event3 egg-ribbon invariant, additional fixed event-ribbon families, held-item derivation where source-backed, recipient/trade history, exact evolution timing/history, trash-byte/text restrictions and other persistent evidence that can still be proven from a surviving Pokémon.
+Remaining WC3 parity work is increasingly about historical/template depth rather than recognizing another PID method: additional fixed event-ribbon families, held-item derivation where source-backed, recipient/trade history, exact evolution timing/history, trash-byte/text restrictions and other persistent evidence that can still be proven from a surviving Pokémon.
 
 All of these paths remain **positive-only evidence** unless an invariant is independently impossible. A provenance non-match does not automatically make a Pokémon Invalid; history that cannot be proven remains **Incomplete**.
 
@@ -64,3 +64,7 @@ All of these paths remain **positive-only evidence** unless an invariant is inde
 Last fully green legality-code checkpoint: `14ae3382cf39e07ddca58af985b6c0ca958b54c1`.
 
 PokeBank NX Host Tests **#2478** passed exact pull-request identity, the complete host suite, focused RSE regression and ASan/UBSan on that exact code head.
+
+## Secondary reference audit
+
+See [ALM 23.09.25 Gen I–IV audit](audit/ALM_23_09_25_GEN1_4_AUDIT.md) for the pinned-source comparison, corpus changes, remaining source-backed gaps and read-only provenance-trace design. This is not an auto-legalization integration or parity claim.
