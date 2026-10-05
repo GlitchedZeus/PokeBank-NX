@@ -96,10 +96,24 @@ constexpr Result matchRow(bool hgss, uint64_t row, uint32_t leadMeta,
                         return {lead, candidate};
                 }
             } else {
-                // Fixed-level Grass: Prev2=50% proc, Prev1=attracted slot.
+                // Fixed-level Grass differs between the two retail methods.
+                // Pinned Method J consumes an extra frame before the 50% proc:
+                // Prev3=proc, Prev1=attracted slot (Prev2 is skipped here).
+                // Pinned Method K uses Prev2=proc, Prev1=attracted slot.
+                if (!Gen4Wild::levelMatches(row, metLevel)) {
+                    candidate = Gen3PidIv::Detail::prev(
+                        Gen3PidIv::Detail::prev(candidate));
+                    continue;
+                }
+
+                uint16_t procRand = prev2;
+                if (!hgss) {
+                    const uint32_t seed3 = Gen3PidIv::Detail::prev(seed2);
+                    procRand = static_cast<uint16_t>(seed3 >> 16);
+                }
+
                 if (Gen4LeadEffect::staticMagnetPass(
-                        Gen4LeadFailure::leadMethod(hgss), prev2) &&
-                    Gen4Wild::levelMatches(row, metLevel)) {
+                        Gen4LeadFailure::leadMethod(hgss), procRand)) {
                     const Lead lead = attractedLead(leadMeta, prev1);
                     if (lead != Lead::None)
                         return {lead, candidate};
