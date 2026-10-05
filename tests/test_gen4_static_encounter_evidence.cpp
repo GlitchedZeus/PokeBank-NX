@@ -44,6 +44,18 @@ int main() {
     static_assert(Legality::Gen4Form::formChangeableSpecies(479));
     static_assert(!Legality::Gen4Form::formChangeableSpecies(172));
 
+    // Same-species form changes remain direct static provenance rather than
+    // entering evolved-source reconstruction.
+    const auto alteredGiratina = Legality::Gen4StaticEvolution::matchEvolutionLine(
+        "platinum_nds", 487, 117, 47, 0, 0, 4, 0, 0, false, false);
+    assert(alteredGiratina.matched());
+    assert(!alteredGiratina.evolved);
+    assert(!alteredGiratina.hatchedGiftEgg);
+    assert(alteredGiratina.sourceSpecies == 487);
+    assert(alteredGiratina.row != nullptr);
+    assert(species(*alteredGiratina.row) == 487);
+    assert(form(*alteredGiratina.row) == 1);
+
     // D/P Riolu egg requires its exact egg-location evidence and fixed Poke Ball.
     assert(match("diamond_nds", 447, 40, 0, 0, 2010, 4));
     assert(!match("diamond_nds", 447, 40, 0, 0, 2010, 2));
@@ -148,6 +160,13 @@ int main() {
         "heartgold_nds", 172, 214, 30, 1, 0, 4, 1, 4, false, false);
     assert(spikyPichu != nullptr);
     assert(pidCategoryForRow(*spikyPichu) == PidCategory::Pokewalker);
+
+    // Form-1 Spiky-eared Pichu is a fixed special encounter, not an evolvable
+    // source-form provenance path. Even matching persisted source fields must not
+    // reconstruct a surviving Pikachu from this row.
+    const auto spikyToPikachu = Legality::Gen4StaticEvolution::matchEvolutionLine(
+        "heartgold_nds", 25, 214, 30, 0, 0, 4, 1, 4, false, false);
+    assert(!spikyToPikachu.matched());
 
     // Roamers use a permitted route set rather than one fixed met location.
     assert(match("platinum_nds", 481, 20, 50, 0, 0));
