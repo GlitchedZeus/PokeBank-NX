@@ -1,0 +1,434 @@
+name: ONE-TIME — hardware hotpath regression fixes
+
+on:
+  push:
+    branches: [feature/gen4-full-editor-20260928]
+    paths:
+      - '.github/workflows/one-time-hardware-hotpath-fix-20261005.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/gen4-full-editor-20260928
+          fetch-depth: 0
+
+      - name: Patch hardware regressions
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly one match, found {count}")
+              return text.replace(old, new, 1)
+
+          # 1) Quick Games selection + Gen I-III open hot path.
+          path = Path('src/UI/SaveSelectScreen.cpp')
+          text = path.read_text()
+
+          text = replace_once(
+              text,
+              '#include <algorithm>\n#include <cstring>',
+              '#include <algorithm>\n#include <array>\n#include <cstring>',
+              'SaveSelectScreen array include')
+          text = replace_once(
+              text,
+              '#include "Utils/Settings.h"\n#include "Utils/StringHelpers.h"',
+              '#include "Utils/Settings.h"\n#include "Utils/SHA256.h"\n#include "Utils/StringHelpers.h"',
+              'SaveSelectScreen SHA256 include')
+
+          helper_anchor = '''        bool browseDirectory(const std::string& path) {
+            struct stat st{};
+            return !path.empty() && ::stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+        }
+'''
+          helper = helper_anchor + '''
+        // Fast activation guard for an already-validated Gen I-III source. Re-hash only the
+        // selected battery save instead of rescanning every configured emulator/provider root.
+        // If any snapshot metadata or byte changes, the caller falls back to explicit discovery.
+        bool legacySnapshotStillCurrent(const PokeVault::Source::SaveInstance& instance) {
+            const std::string& path = instance.path();
+            if (path.empty() || instance.contentFingerprint.empty() ||
+                instance.contentFingerprint == "unavailable") return false;
+
+            struct stat st{};
+            if (::stat(path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) return false;
+            if (static_cast<uint64_t>(st.st_size) != instance.fileSize ||
+                static_cast<int64_t>(st.st_mtime) != instance.modifiedTime) return false;
+
+            FILE* file = std::fopen(path.c_str(), "rb");
+            if (!file) return false;
+
+            Utils::SHA256 hash;
+            std::array<uint8_t, 16 * 1024> buffer{};
+            uint64_t total = 0;
+            bool ok = true;
+            while (true) {
+                const size_t got = std::fread(buffer.data(), 1, buffer.size(), file);
+                if (got > 0) {
+                    hash.update(buffer.data(), got);
+                    total += static_cast<uint64_t>(got);
+                }
+                if (got < buffer.size()) {
+                    if (std::ferror(file)) ok = false;
+                    break;
+                }
+            }
+            if (std::fclose(file) != 0) ok = false;
+            if (!ok || total != instance.fileSize) return false;
+
+            std::array<uint8_t, Utils::PKSE_SHA256_HASH_SIZE> digest{};
+            hash.finalize(digest.data());
+            constexpr char digits[] = "0123456789abcdef";
+            std::string fingerprint;
+            fingerprint.reserve(digest.size() * 2);
+            for (uint8_t byte : digest) {
+                fingerprint.push_back(digits[byte >> 4]);
+                fingerprint.push_back(digits[byte & 0x0F]);
+            }
+            return fingerprint == instance.contentFingerprint;
+        }
+'''
+          text = replace_once(text, helper_anchor, helper, 'legacy snapshot helper')
+
+          quick_old = '''                if (kDown & HidNpadButton_A) {
+                    titleIndex = gamesDrawerIndex;
+                    scrollSelectionIntoView();
+                    refreshHubPreview();
+                    overlay = Overlay::None;
+                }
+'''
+          quick_new = '''                if (kDown & HidNpadButton_A) {
+                    titleIndex = gamesDrawerIndex;
+                    scrollSelectionIntoView();
+                    // Quick Games is selection/navigation only. Never mount a save, parse a
+                    // provider, scan HOME applications, or resolve ROMs on the A-button frame.
+                    refreshHubSelectionFromCache();
+                    overlay = Overlay::None;
+                }
+'''
+          text = replace_once(text, quick_old, quick_new, 'Quick Games A hot path')
+
+          open_old = '''            const auto shown = selected.legacyInstances[static_cast<size_t>(sourceIndex)];
+            auto refreshed = PokeVault::Legacy::discoverConfiguredLegacySaves();
+            *legacyCatalog = std::move(refreshed);
+            loadLegacySources(*legacyCatalog);
+
+            user = currentUser();
+            if (!user) {
+                hubNotice = "The selected save is no longer available.";
+                return;
+            }
+
+            const auto parent = std::find_if(user->titles.begin(), user->titles.end(),
+                [&](const auto& candidate) {
+                    return candidate.sourceKind == SelectedSourceKind::RetroArchFRLG &&
+                           candidate.gameId == selectedGameId;
+                });
+            if (parent == user->titles.end()) {
+                hubNotice = "The selected game no longer has a validated save.";
+                refreshHubPreview();
+                return;
+            }
+
+            // Re-map by stable game/source identity after refresh; never by the old titleIndex.
+            titleIndex = static_cast<int>(std::distance(user->titles.begin(), parent));
+            const auto instance = std::find_if(parent->legacyInstances.begin(),
+                parent->legacyInstances.end(), [&](const auto& candidate) {
+                    return candidate.sourceIdentity == shown.sourceIdentity;
+                });
+            if (instance == parent->legacyInstances.end() ||
+                !PokeVault::Source::sameValidatedSnapshot(shown, *instance)) {
+                hubNotice = "That save changed while opening. Nothing was opened.";
+                refreshHubPreview();
+                return;
+            }
+
+            selectedUserUid = user->uid;
+            selectedTitleId = 0;
+            selectedTitleName = parent->name;
+            this->selectedGameId = parent->gameId;
+            selectedSourceKind = parent->sourceKind;
+            selectedLegacySourceIndex = instance->sourceIndex;
+            titleSelected = true;
+            return;
+'''
+          open_new = '''            const auto shown = selected.legacyInstances[static_cast<size_t>(sourceIndex)];
+            if (!legacyCatalog || shown.sourceIndex >= legacyCatalog->sources.size()) {
+                refreshLegacySources(selectedGameId, shown.sourceIdentity, true);
+                return;
+            }
+            const auto& cachedSource = legacyCatalog->sources[shown.sourceIndex];
+            const bool catalogMatches = cachedSource.ready() &&
+                cachedSource.gameId == selectedGameId &&
+                cachedSource.normalizedPath == shown.normalizedPath &&
+                cachedSource.contentFingerprint == shown.contentFingerprint;
+            if (!catalogMatches || !legacySnapshotStillCurrent(shown)) {
+                // The selected file actually changed (or the in-memory handle is stale). Only this
+                // exceptional path pays for full provider discovery and asks the user to review it.
+                refreshLegacySources(selectedGameId, shown.sourceIdentity, true);
+                legacyNotice = "That save changed since discovery. Review the refreshed save list.";
+                return;
+            }
+
+            // The exact bytes are unchanged from the already strictly parsed snapshot, so reuse its
+            // generation-native parsed object and open immediately instead of rescanning all roots.
+            selectedUserUid = user->uid;
+            selectedTitleId = 0;
+            selectedTitleName = selected.name;
+            this->selectedGameId = selectedGameId;
+            selectedSourceKind = selected.sourceKind;
+            selectedLegacySourceIndex = shown.sourceIndex;
+            titleSelected = true;
+            return;
+'''
+          text = replace_once(text, open_old, open_new, 'legacy normal open hot path')
+
+          instance_old = '''        const auto shownInstance = title.legacyInstances[static_cast<size_t>(legacyInstanceIndex)];
+        const std::string sourceIdentity = shownInstance.sourceIdentity;
+        if (!refreshLegacySources(gameId, sourceIdentity, true)) return;
+        u = currentUser();
+        if (!u || titleIndex < 0 || titleIndex >= static_cast<int>(u->titles.size())) return;
+        const auto& refreshedTitle = u->titles[titleIndex];
+        if (legacyInstanceIndex < 0 ||
+            legacyInstanceIndex >= static_cast<int>(refreshedTitle.legacyInstances.size())) return;
+
+        const auto& freshInstance = refreshedTitle.legacyInstances[static_cast<size_t>(legacyInstanceIndex)];
+        if (!PokeVault::Source::sameValidatedSnapshot(shownInstance, freshInstance)) {
+            legacyNotice = "That save changed. Review the refreshed list before opening.";
+            overlay = Overlay::LegacyInstances;
+            return;
+        }
+        if (!legacyBindings || !legacyBindings->preferGameSourceAndSave(
+                freshInstance, currentProfileIdentity(), refreshedTitle.gameId)) {
+            legacyNotice = "Couldn't remember that exact save choice. Nothing was opened.";
+            overlay = Overlay::LegacyInstances;
+            return;
+        }
+        selectedUserUid = u->uid;
+        selectedTitleId = 0;
+        selectedTitleName = refreshedTitle.name;
+        selectedGameId = refreshedTitle.gameId;
+        selectedSourceKind = refreshedTitle.sourceKind;
+        selectedLegacySourceIndex =
+            refreshedTitle.legacyInstances[static_cast<size_t>(legacyInstanceIndex)].sourceIndex;
+        titleSelected = true;
+'''
+          instance_new = '''        const auto shownInstance = title.legacyInstances[static_cast<size_t>(legacyInstanceIndex)];
+        if (!legacyCatalog || shownInstance.sourceIndex >= legacyCatalog->sources.size() ||
+            !legacySnapshotStillCurrent(shownInstance)) {
+            const std::string sourceIdentity = shownInstance.sourceIdentity;
+            refreshLegacySources(gameId, sourceIdentity, true);
+            legacyNotice = "That save changed since discovery. Review the refreshed save list.";
+            return;
+        }
+        const auto& cachedSource = legacyCatalog->sources[shownInstance.sourceIndex];
+        if (!cachedSource.ready() || cachedSource.gameId != gameId ||
+            cachedSource.normalizedPath != shownInstance.normalizedPath ||
+            cachedSource.contentFingerprint != shownInstance.contentFingerprint) {
+            refreshLegacySources(gameId, shownInstance.sourceIdentity, true);
+            legacyNotice = "That save source became stale. Review the refreshed save list.";
+            return;
+        }
+        if (!legacyBindings || !legacyBindings->preferGameSourceAndSave(
+                shownInstance, currentProfileIdentity(), title.gameId)) {
+            legacyNotice = "Couldn't remember that exact save choice. Nothing was opened.";
+            overlay = Overlay::LegacyInstances;
+            return;
+        }
+        selectedUserUid = u->uid;
+        selectedTitleId = 0;
+        selectedTitleName = title.name;
+        selectedGameId = title.gameId;
+        selectedSourceKind = title.sourceKind;
+        selectedLegacySourceIndex = shownInstance.sourceIndex;
+        titleSelected = true;
+'''
+          text = replace_once(text, instance_old, instance_new, 'legacy Save Instance open hot path')
+
+          items_old = '''            const auto shown = title.legacyInstances[static_cast<size_t>(sourceIndex)];
+            auto refreshed = PokeVault::Legacy::discoverConfiguredLegacySaves();
+            *legacyCatalog = std::move(refreshed);
+            loadLegacySources(*legacyCatalog);
+
+            user = currentUser();
+            if (!user) {
+                hubNotice = "The selected save is no longer available.";
+                return;
+            }
+            const auto parent = std::find_if(user->titles.begin(), user->titles.end(),
+                [&](const auto& candidate) {
+                    return candidate.sourceKind == SelectedSourceKind::RetroArchFRLG &&
+                           candidate.gameId == title.gameId;
+                });
+            if (parent == user->titles.end()) {
+                hubNotice = "The selected save is no longer available.";
+                refreshHubPreview();
+                return;
+            }
+            titleIndex = static_cast<int>(std::distance(user->titles.begin(), parent));
+            const auto instance = std::find_if(parent->legacyInstances.begin(), parent->legacyInstances.end(),
+                [&](const auto& candidate) {
+                    return candidate.sourceIdentity == shown.sourceIdentity;
+                });
+            if (instance == parent->legacyInstances.end() ||
+                !PokeVault::Source::sameValidatedSnapshot(shown, *instance)) {
+                hubNotice = "That save changed. Nothing was opened.";
+                refreshHubPreview();
+                return;
+            }
+
+            selectedUserUid = user->uid;
+            selectedTitleId = 0;
+            selectedTitleName = parent->name;
+            selectedGameId = parent->gameId;
+            selectedSourceKind = parent->sourceKind;
+            selectedLegacySourceIndex = instance->sourceIndex;
+            titleSelected = true;
+            return;
+'''
+          items_new = '''            const auto shown = title.legacyInstances[static_cast<size_t>(sourceIndex)];
+            if (!legacyCatalog || shown.sourceIndex >= legacyCatalog->sources.size() ||
+                !legacySnapshotStillCurrent(shown)) {
+                refreshLegacySources(title.gameId, shown.sourceIdentity, true);
+                hubNotice = "That save changed since discovery. Review the refreshed save list.";
+                return;
+            }
+            const auto& cachedSource = legacyCatalog->sources[shown.sourceIndex];
+            if (!cachedSource.ready() || cachedSource.gameId != title.gameId ||
+                cachedSource.normalizedPath != shown.normalizedPath ||
+                cachedSource.contentFingerprint != shown.contentFingerprint) {
+                refreshLegacySources(title.gameId, shown.sourceIdentity, true);
+                hubNotice = "That save source became stale. Review the refreshed save list.";
+                return;
+            }
+
+            selectedUserUid = user->uid;
+            selectedTitleId = 0;
+            selectedTitleName = title.name;
+            selectedGameId = title.gameId;
+            selectedSourceKind = title.sourceKind;
+            selectedLegacySourceIndex = shown.sourceIndex;
+            titleSelected = true;
+            return;
+'''
+          text = replace_once(text, items_old, items_new, 'legacy Items hot path')
+          path.write_text(text)
+
+          # 2) RetroArch Red/Blue matching + DS provider-first launch resolution.
+          path = Path('src/UI/GameLauncher.cpp')
+          text = path.read_text()
+
+          playlist_old = '''                const size_t nextPath = text.find("\\\"path\\\"", pos + 6);
+                if (normalizedLaunchStem(content) != wanted) { pos += 6; continue; }
+                sawStemMatch = true;
+'''
+          playlist_new = '''                const size_t nextPath = text.find("\\\"path\\\"", pos + 6);
+                // Use the same bounded stem matcher as the filesystem adapters. This keeps exact
+                // matches first-class but also handles common RetroArch naming differences such as
+                // "Pokemon Red.srm" vs "Pokemon - Red Version (USA, Europe).gb". The resolver still
+                // requires exactly one usable playlist entry, so Red cannot silently become FireRed.
+                if (!gameLaunchCandidateStemMatches(gameId, sourcePath, content)) {
+                    pos += 6;
+                    continue;
+                }
+                sawStemMatch = true;
+'''
+          text = replace_once(text, playlist_old, playlist_new, 'RetroArch playlist stem matching')
+
+          launch_old = '''#ifdef __SWITCH__
+    // Gen I-III already had a working direct emulator/core path in dee2ad47. Do not put a full
+    // installed-application metadata scan in front of those launches. Keep HOME-forwarder probing
+    // focused on Nintendo DS, which is the unfinished launch tranche this code was added for.
+    if (gameId.ends_with("_nds")) {
+        if (const uint64_t forwarderTitle = installedGameForwarderTitle(gameId); forwarderTitle != 0) {
+        GameLaunchDescriptor result;
+        result.backend = GameLaunchBackend::SwitchTitle;
+        result.titleId = forwarderTitle;
+        result.providerId = std::string(providerId);
+        result.state = GameLaunchState::Ready;
+            result.detail = "Launch the installed HOME forwarder for this exact game.";
+            return result;
+        }
+    }
+#endif
+
+    const GameLaunchProviderKind kind = providerKindForSourcePath(providerId, sourcePath);
+    const std::string resolvedProvider = providerIdForKind(kind, providerId);
+    if (kind == GameLaunchProviderKind::RetroArch)
+        return resolveRetroArch(gameId, sourcePath, bindingKey);
+    if (kind == GameLaunchProviderKind::MGBA ||
+        kind == GameLaunchProviderKind::Tico ||
+        kind == GameLaunchProviderKind::DraStic ||
+        kind == GameLaunchProviderKind::MelonDS)
+        return resolveKnownHomebrew(kind, gameId, resolvedProvider, sourcePath, bindingKey);
+'''
+          launch_new = '''    // A validated emulator/provider is already the strongest launch hint. Resolve it first so an
+    // ordinary DraStic/melonDS launch never blocks the input frame on a console-wide HOME metadata
+    // scan. Installed HOME forwarders remain a fallback only when there is no provider adapter.
+    const GameLaunchProviderKind kind = providerKindForSourcePath(providerId, sourcePath);
+    const std::string resolvedProvider = providerIdForKind(kind, providerId);
+    if (kind == GameLaunchProviderKind::RetroArch)
+        return resolveRetroArch(gameId, sourcePath, bindingKey);
+    if (kind == GameLaunchProviderKind::MGBA ||
+        kind == GameLaunchProviderKind::Tico ||
+        kind == GameLaunchProviderKind::DraStic ||
+        kind == GameLaunchProviderKind::MelonDS)
+        return resolveKnownHomebrew(kind, gameId, resolvedProvider, sourcePath, bindingKey);
+
+#ifdef __SWITCH__
+    if (gameId.ends_with("_nds")) {
+        if (const uint64_t forwarderTitle = installedGameForwarderTitle(gameId); forwarderTitle != 0) {
+            GameLaunchDescriptor result;
+            result.backend = GameLaunchBackend::SwitchTitle;
+            result.titleId = forwarderTitle;
+            result.providerId = std::string(providerId);
+            result.state = GameLaunchState::Ready;
+            result.detail = "Launch the installed HOME forwarder for this exact game.";
+            return result;
+        }
+    }
+#endif
+'''
+          text = replace_once(text, launch_old, launch_new, 'DS provider-first launch ordering')
+          path.write_text(text)
+
+          # Static regression assertions: fail this one-time patch if any hot path regresses.
+          save = Path('src/UI/SaveSelectScreen.cpp').read_text()
+          launcher = Path('src/UI/GameLauncher.cpp').read_text()
+          quick = save[save.index('if (overlay == Overlay::GamesDrawer)'):save.index('if (overlay == Overlay::ProfilePicker)')]
+          if 'refreshHubPreview();' in quick:
+              raise SystemExit('Quick Games still contains heavy refreshHubPreview()')
+          if 'refreshHubSelectionFromCache();' not in quick:
+              raise SystemExit('Quick Games cached selection refresh missing')
+          select_start = save.index('void SaveSelectScreen::selectCurrentTitle()')
+          select_end = save.index('void SaveSelectScreen::selectCurrentTitleForItems()', select_start)
+          if 'discoverConfiguredLegacySaves()' in save[select_start:select_end]:
+              raise SystemExit('normal legacy A-open still performs full discovery')
+          if '!gameLaunchCandidateStemMatches(gameId, sourcePath, content)' not in launcher:
+              raise SystemExit('RetroArch release-aware stem matcher missing')
+          provider_pos = launcher.index('const GameLaunchProviderKind kind = providerKindForSourcePath')
+          forwarder_pos = launcher.index('if (gameId.ends_with("_nds"))', provider_pos)
+          if provider_pos > forwarder_pos:
+              raise SystemExit('DS HOME forwarder probe still precedes provider resolution')
+          PY
+
+      - name: Show patch
+        run: git diff --check && git diff --stat && git diff
+
+      - name: Commit fixes
+        shell: bash
+        run: |
+          git config user.name 'PokeBank NX CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add src/UI/SaveSelectScreen.cpp src/UI/GameLauncher.cpp
+          git commit -m 'fix(ui): remove hardware launch and legacy-open stalls'
+          git push origin HEAD:feature/gen4-full-editor-20260928
