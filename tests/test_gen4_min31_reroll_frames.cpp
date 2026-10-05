@@ -1,8 +1,21 @@
+#include "Legality/Gen4BugContestNoLeadEvidence.h"
 #include "Legality/Gen4LeadFrameEvidence.h"
 
 #include <cassert>
 #include <cstdint>
 #include <iostream>
+
+namespace {
+constexpr uint64_t makeRow(uint8_t type, uint8_t slot,
+                           uint8_t minimum, uint8_t maximum,
+                           uint8_t rate = 0) {
+    return (static_cast<uint64_t>(minimum) << 17) |
+           (static_cast<uint64_t>(maximum) << 24) |
+           (static_cast<uint64_t>(type) << 31) |
+           (static_cast<uint64_t>(slot) << 46) |
+           (static_cast<uint64_t>(rate) << 50);
+}
+}
 
 int main() {
     using namespace Legality::Gen4LeadFrame;
@@ -46,6 +59,59 @@ int main() {
         assert(previousRerollAttemptRejected(cursor));
         cursor = previousRerollNatureSeed(cursor);
     }
+
+    // No-lead / Sweet Scent Bug Contest history uses the same minimum-31 retry
+    // geometry but proves slot + level only at the original encounter attempt.
+    // These vectors are discriminating: the persisted attempt does not prove
+    // the same source row directly or at a shallower reroll depth.
+    using namespace Legality::Gen4BugContestNoLead;
+
+    constexpr uint32_t depth1Seed = 81u;
+    constexpr uint32_t depth1Pid = sequentialPid(depth1Seed);
+    constexpr uint64_t depth1Row = makeRow(8, 1, 7, 18, 25);
+    static_assert(depth1Pid == 0x7EF1CFBFu);
+    static_assert(directMinimum31Satisfied(depth1Seed));
+    static_assert(!matchAttempt(depth1Row, depth1Seed, depth1Pid, 18).matched());
+    constexpr auto depth1 = matchReroll(
+        depth1Row, depth1Seed, depth1Pid, 18, 1);
+    static_assert(depth1.matched());
+    static_assert(depth1.rerollDepth == 1);
+    static_assert(depth1.slot == 1);
+    static_assert(depth1.level == 18);
+    static_assert(match(depth1Row, depth1Seed, depth1Pid, 18).rerollDepth == 1);
+
+    constexpr uint32_t depth2Seed = 280u;
+    constexpr uint32_t depth2Pid = sequentialPid(depth2Seed);
+    constexpr uint64_t depth2Row = makeRow(8, 3, 7, 18, 25);
+    static_assert(depth2Pid == 0xCB57F0E6u);
+    static_assert(directMinimum31Satisfied(depth2Seed));
+    static_assert(!matchAttempt(depth2Row, depth2Seed, depth2Pid, 14).matched());
+    static_assert(!matchReroll(
+        depth2Row, depth2Seed, depth2Pid, 14, 1).matched());
+    constexpr auto depth2 = matchReroll(
+        depth2Row, depth2Seed, depth2Pid, 14, 2);
+    static_assert(depth2.matched());
+    static_assert(depth2.rerollDepth == 2);
+    static_assert(depth2.slot == 3);
+    static_assert(depth2.level == 14);
+    static_assert(match(depth2Row, depth2Seed, depth2Pid, 14).rerollDepth == 2);
+
+    constexpr uint32_t depth3Seed = 24094u;
+    constexpr uint32_t depth3Pid = sequentialPid(depth3Seed);
+    constexpr uint64_t depth3Row = makeRow(8, 5, 7, 18, 25);
+    static_assert(depth3Pid == 0x6D3F8609u);
+    static_assert(!directMinimum31Satisfied(depth3Seed));
+    static_assert(!matchReroll(
+        depth3Row, depth3Seed, depth3Pid, 18, 1).matched());
+    static_assert(!matchReroll(
+        depth3Row, depth3Seed, depth3Pid, 18, 2).matched());
+    constexpr auto depth3 = matchReroll(
+        depth3Row, depth3Seed, depth3Pid, 18, 3);
+    static_assert(depth3.matched());
+    static_assert(depth3.rerollDepth == 3);
+    static_assert(depth3.slot == 5);
+    static_assert(depth3.level == 18);
+    static_assert(match(depth3Row, depth3Seed, depth3Pid, 18).rerollDepth == 3);
 
     std::cout << "Gen IV minimum-31 reroll frame geometry: PASS\n";
 }
