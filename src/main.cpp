@@ -81,16 +81,6 @@ int main()
     Utils::logInfoToFile("Initializing Sprite Manager...");
     UI::SpriteManager::init();
 
-    Utils::logInfoToFile("Testing sprite loading...");
-    UI::Sprite* testSprite = UI::SpriteManager::getSprite(25, false); // Pikachu
-    if (testSprite && testSprite->data) {
-        logInfoToFile(("SUCCESS: Test sprite loaded! (" +
-            std::to_string(testSprite->width) + "x" +
-            std::to_string(testSprite->height) + ")").c_str());
-    } else {
-        Utils::logInfoToFile("WARNING: Test sprite failed to load - sprites may not be available");
-    }
-
     Utils::logInfoToFile("Starting UI Manager...");
 
     {

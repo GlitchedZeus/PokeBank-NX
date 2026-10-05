@@ -137,6 +137,48 @@ bool installedForwarderNameMatches(std::string_view gameId, std::string_view nor
 }
 
 #ifdef __SWITCH__
+struct InstalledApplicationName {
+    uint64_t titleId = 0;
+    std::string normalizedName;
+};
+
+const std::vector<InstalledApplicationName>& installedApplicationNames() {
+    // HOME application metadata is console-global for the lifetime of this process. Build it
+    // once, then let every game identity match in memory instead of re-querying the same control
+    // records for FireRed, Emerald, Platinum and every other launch candidate.
+    static const std::vector<InstalledApplicationName> applications = [] {
+        std::vector<InstalledApplicationName> found;
+        s32 offset = 0;
+        while (offset < 2048) {
+            NsApplicationRecord records[32]{};
+            s32 count = 0;
+            if (R_FAILED(nsListApplicationRecord(records, 32, offset, &count)) || count <= 0)
+                break;
+            for (s32 i = 0; i < count; ++i) {
+                auto* control = static_cast<NsApplicationControlData*>(
+                    std::malloc(sizeof(NsApplicationControlData)));
+                if (!control) continue;
+                u64 outSize = 0;
+                const Result rc = nsGetApplicationControlData(
+                    NsApplicationControlSource_Storage, records[i].application_id,
+                    control, sizeof(NsApplicationControlData), &outSize);
+                if (R_SUCCEEDED(rc) && outSize != 0) {
+                    NacpLanguageEntry* language = nullptr;
+                    if (R_SUCCEEDED(nacpGetLanguageEntry(&control->nacp, &language)) && language) {
+                        const std::string name = compactGameTitle(language->name);
+                        if (!name.empty()) found.push_back({records[i].application_id, name});
+                    }
+                }
+                std::free(control);
+            }
+            if (count < 32) break;
+            offset += count;
+        }
+        return found;
+    }();
+    return applications;
+}
+
 uint64_t installedGameForwarderTitle(std::string_view gameId) {
     static std::map<std::string, uint64_t> cache;
     const std::string key(gameId);
@@ -146,34 +188,10 @@ uint64_t installedGameForwarderTitle(std::string_view gameId) {
 
     uint64_t unique = 0;
     int matches = 0;
-    s32 offset = 0;
-    while (offset < 2048) {
-        NsApplicationRecord records[32]{};
-        s32 count = 0;
-        if (R_FAILED(nsListApplicationRecord(records, 32, offset, &count)) || count <= 0) break;
-        for (s32 i = 0; i < count; ++i) {
-            auto* control = static_cast<NsApplicationControlData*>(
-                std::malloc(sizeof(NsApplicationControlData)));
-            if (!control) continue;
-            u64 outSize = 0;
-            const Result rc = nsGetApplicationControlData(
-                NsApplicationControlSource_Storage, records[i].application_id,
-                control, sizeof(NsApplicationControlData), &outSize);
-            if (R_SUCCEEDED(rc) && outSize != 0) {
-                NacpLanguageEntry* language = nullptr;
-                if (R_SUCCEEDED(nacpGetLanguageEntry(&control->nacp, &language)) && language) {
-                    const std::string name = compactGameTitle(language->name);
-                    if (installedForwarderNameMatches(gameId, name)) {
-                        unique = records[i].application_id;
-                        ++matches;
-                    }
-                }
-            }
-            std::free(control);
-            if (matches > 1) break;
-        }
-        if (matches > 1 || count < 32) break;
-        offset += count;
+    for (const auto& application : installedApplicationNames()) {
+        if (!installedForwarderNameMatches(gameId, application.normalizedName)) continue;
+        unique = application.titleId;
+        if (++matches > 1) break;
     }
     if (matches != 1) unique = 0;
     cache[key] = unique;

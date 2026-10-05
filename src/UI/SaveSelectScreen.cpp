@@ -2298,7 +2298,7 @@ namespace UI {
                 if (drawerUser && gamesDrawerIndex >= 0 && gamesDrawerIndex < count) {
                     titleIndex = gamesDrawerIndex;
                     scrollSelectionIntoView();
-                    refreshHubPreview();
+                    refreshHubSelectionFromCache();
                     openSaveSourceForCurrentTitle(true, false);
                 }
                 return;
