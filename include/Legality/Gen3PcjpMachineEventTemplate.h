@@ -61,23 +61,79 @@ constexpr Distribution distributionForTid(uint16_t tid) noexcept {
     }
 }
 
+constexpr bool sourceSpeciesCompatible(uint16_t sourceSpecies,
+                                       uint16_t currentSpecies) noexcept {
+    if (sourceSpecies == currentSpecies)
+        return true;
+
+    // Pinned PKHeX EncounterGift3JPN matching receives EvoCriteria rather than
+    // requiring the surviving PK3 to remain the distributed species. Keep the
+    // reconstruction deliberately limited to descendants reachable in Gen III
+    // from species actually present in the six PCJP machine-gift tables.
+    // Direction is one-way: evolution after receipt is possible; devolution is not.
+    switch (sourceSpecies) {
+        // First: Hoenn starters.
+        case 252: return currentSpecies == 253 || currentSpecies == 254;
+        case 255: return currentSpecies == 256 || currentSpecies == 257;
+        case 258: return currentSpecies == 259 || currentSpecies == 260;
+
+        // Second: Johto starters.
+        case 152: return currentSpecies == 153 || currentSpecies == 154;
+        case 155: return currentSpecies == 156 || currentSpecies == 157;
+        case 158: return currentSpecies == 159 || currentSpecies == 160;
+
+        // Third distribution species with Gen III descendants.
+        case 23:  return currentSpecies == 24;
+        case 25:  return currentSpecies == 26;
+        case 52:  return currentSpecies == 53;
+        case 58:  return currentSpecies == 59;
+        case 69:  return currentSpecies == 70 || currentSpecies == 71;
+        case 79:  return currentSpecies == 80 || currentSpecies == 199;
+        case 90:  return currentSpecies == 91;
+        case 113: return currentSpecies == 242;
+        case 123: return currentSpecies == 212;
+
+        // Fourth: Kanto starters.
+        case 1: return currentSpecies == 2 || currentSpecies == 3;
+        case 4: return currentSpecies == 5 || currentSpecies == 6;
+        case 7: return currentSpecies == 8 || currentSpecies == 9;
+
+        // Fifth distribution species with Gen III descendants.
+        case 270: return currentSpecies == 271 || currentSpecies == 272;
+        case 273: return currentSpecies == 274 || currentSpecies == 275;
+        case 283: return currentSpecies == 284;
+        case 300: return currentSpecies == 301;
+        case 307: return currentSpecies == 308;
+
+        // Sixth distribution species with Gen III descendants.
+        case 163: return currentSpecies == 164;
+        case 179: return currentSpecies == 180 || currentSpecies == 181;
+        case 191: return currentSpecies == 192;
+        case 204: return currentSpecies == 205;
+        case 209: return currentSpecies == 210;
+        case 216: return currentSpecies == 217;
+        case 228: return currentSpecies == 229;
+        default: return false;
+    }
+}
+
 template <std::size_t N>
-constexpr bool contains(const std::array<uint16_t, N>& values,
-                        uint16_t species) noexcept {
-    for (const uint16_t value : values)
-        if (value == species)
+constexpr bool containsSpeciesHistory(const std::array<uint16_t, N>& values,
+                                      uint16_t currentSpecies) noexcept {
+    for (const uint16_t sourceSpecies : values)
+        if (sourceSpeciesCompatible(sourceSpecies, currentSpecies))
             return true;
     return false;
 }
 
 constexpr bool speciesAllowed(Distribution dist, uint16_t species) noexcept {
     switch (dist) {
-        case Distribution::First:  return contains(kFirst, species);
-        case Distribution::Second: return contains(kSecond, species);
-        case Distribution::Third:  return contains(kThird, species);
-        case Distribution::Fourth: return contains(kFourth, species);
-        case Distribution::Fifth:  return contains(kFifth, species);
-        case Distribution::Sixth:  return contains(kSixth, species);
+        case Distribution::First:  return containsSpeciesHistory(kFirst, species);
+        case Distribution::Second: return containsSpeciesHistory(kSecond, species);
+        case Distribution::Third:  return containsSpeciesHistory(kThird, species);
+        case Distribution::Fourth: return containsSpeciesHistory(kFourth, species);
+        case Distribution::Fifth:  return containsSpeciesHistory(kFifth, species);
+        case Distribution::Sixth:  return containsSpeciesHistory(kSixth, species);
         case Distribution::None: break;
     }
     return false;
