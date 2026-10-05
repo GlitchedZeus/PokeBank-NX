@@ -538,7 +538,6 @@ require("stbi_failure_reason()" in system_icons and
 require("gameLaunchBindingFamilyPrefix" in (ROOT / "include/UI/GameLaunchModel.h").read_text(encoding="utf-8"),
         "launch model must expose the stable profile+game binding family used for compatibility lookup")
 
-
 # Hardware regression: Games is assignment-first; trainer art belongs to Product Home/workspace.
 classic_fn = source[source.index("void SaveSelectScreen::drawClassicGameSources"):
                     source.index("void SaveSelectScreen::draw(PKSEFramebuffer&", source.index("void SaveSelectScreen::drawClassicGameSources"))]
@@ -552,10 +551,12 @@ require("Color(5, 14, 30, 40)" in source and "Color(3, 10, 24, 104)" in source,
 require("return beginLaunchLinkForCurrentTitle();" not in source and
         "Direct launch could not resolve this game's ROM" in source,
         "ZR Launch must never become an automatic ROM-file browser")
-require('argv += " -L "' not in launcher and
-        "envSetNextLoad(target.c_str(), argv.c_str())" in launcher and
-        "result.launcherPath = result.corePath;" in launcher,
-        "RetroArch games must chain directly into the core NRO with the ROM argument")
+require('argv += " -L " + quoted(descriptor.corePath)' in launcher and
+        "envSetNextLoad(descriptor.launcherPath.c_str(), argv.c_str())" in launcher and
+        "result.launcherPath = defaultLauncherPath" in launcher and
+        "result.corePath = defaultRetroArchCore" in launcher and
+        "result.launcherPath = result.corePath;" not in launcher,
+        "RetroArch games must chain through the frontend with -L core and the ROM argument")
 require("installedGameForwarderTitle" in launcher and
         '"Launch the installed HOME forwarder for this exact game."' in launcher,
         "emulator games must prefer an already-installed exact-game HOME forwarder")
