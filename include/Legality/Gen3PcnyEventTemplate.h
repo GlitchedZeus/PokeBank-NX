@@ -74,9 +74,35 @@ constexpr bool validTrainerName(Distribution dist,
     return false;
 }
 
+constexpr bool speciesHistoryMatches(const Entry& row,
+                                     uint16_t currentSpecies) noexcept {
+    if (row.species == currentSpecies)
+        return true;
+
+    // Pinned PKHeX EncounterGift3NY matching is evaluated against an evolution
+    // criterion rather than requiring the current species to remain identical
+    // to the distributed species. Start with the three explicitly named
+    // "Evolution" distribution rows from encounter_pcny.pkl. Keep the mapping
+    // directional: a received Pokemon may evolve, but it cannot become one of
+    // its own pre-evolutions after receipt.
+    if (static_cast<Distribution>(row.distribution) != Distribution::Evolution)
+        return false;
+
+    switch (row.species) {
+        case 25:  // Pikachu -> Raichu
+            return currentSpecies == 26;
+        case 44:  // Gloom -> Vileplume / Bellossom
+            return currentSpecies == 45 || currentSpecies == 182;
+        case 120: // Staryu -> Starmie
+            return currentSpecies == 121;
+        default:
+            return false;
+    }
+}
+
 constexpr bool persistentFieldsMatch(const Entry& row,
                                      const Candidate& c) noexcept {
-    return row.species == c.species &&
+    return speciesHistoryMatches(row, c.species) &&
            row.level == c.metLevel &&
            validTrainerId(c.tid) &&
            c.sid == 0 &&
