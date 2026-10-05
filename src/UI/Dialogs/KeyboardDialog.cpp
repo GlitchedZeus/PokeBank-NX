@@ -123,7 +123,7 @@ namespace UI
                 addKey(plans, bottomRow, secondPage, secondPageLabel, 3);
                 // Hiragana, kanji and hangul: the scripts this keyboard has no keys for, and the
                 // reason the console's own keyboard is one press away.
-                addKey(plans, bottomRow, KeyboardKeyAction::SystemKeyboard, "あ漢한", 3);
+                addKey(plans, bottomRow, KeyboardKeyAction::SystemKeyboard, "System", 3);
                 addKey(plans, bottomRow, KeyboardKeyAction::Space, "Space", 8);
                 addKey(plans, bottomRow, KeyboardKeyAction::Accept, "OK", 5);
             }
@@ -900,6 +900,9 @@ namespace UI
             drawField(keyboard, framebuffer);
             for (int keyIndex = 0; keyIndex < static_cast<int>(keyboard.keys.size()); ++keyIndex)
                 drawKey(keyboard, framebuffer, keyIndex);
+            // The prompt owns input while it is open, so it must also own the controller footer.
+            // Drawing this last replaces the background screen's stale hints and touch targets.
+            drawNavBar(framebuffer, keyboard.navHint());
         }
     }
 }

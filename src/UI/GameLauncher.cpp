@@ -613,7 +613,7 @@ GameLaunchDescriptor directDescriptor(GameLaunchProviderKind kind,
     result.contentPath = std::move(content);
     if (kind == GameLaunchProviderKind::RetroArch) {
         result.corePath = defaultRetroArchCore(gameId);
-        result.launcherPath = result.corePath;
+        result.launcherPath = std::move(launcher);
     } else {
         result.launcherPath = std::move(launcher);
     }
@@ -654,7 +654,7 @@ GameLaunchDescriptor descriptorFromStored(std::string_view gameId,
     result.contentPath = stored.contentPath;
     if (kind == GameLaunchProviderKind::RetroArch) {
         result.corePath = defaultRetroArchCore(gameId);
-        result.launcherPath = result.corePath;
+        result.launcherPath = defaultLauncherPath(kind, gameId, stored.contentPath);
     } else {
         result.launcherPath = defaultLauncherPath(kind, gameId, stored.contentPath);
     }
@@ -682,9 +682,14 @@ GameLaunchDescriptor resolveRetroArch(std::string_view gameId,
     GameLaunchDescriptor result;
     result.backend = GameLaunchBackend::RetroArch;
     result.providerId = "retroarch";
+    result.launcherPath = defaultLauncherPath(GameLaunchProviderKind::RetroArch, gameId, sourcePath);
     result.corePath = defaultRetroArchCore(gameId);
-    result.launcherPath = result.corePath;
 
+    if (result.launcherPath.empty() || !regularFile(result.launcherPath)) {
+        result.state = GameLaunchState::LauncherMissing;
+        result.detail = "The RetroArch frontend NRO is not installed at a known path.";
+        return result;
+    }
     if (result.corePath.empty() || !regularFile(result.corePath)) {
         result.state = GameLaunchState::LauncherMissing;
         result.detail = "A compatible RetroArch core NRO is not installed.";
@@ -778,7 +783,6 @@ GameLaunchDescriptor resolveRetroArch(std::string_view gameId,
         if (matches.size() == 1) {
             result.contentPath = std::move(matches.front().content);
             result.corePath = std::move(matches.front().core);
-            result.launcherPath = result.corePath;
             result.state = GameLaunchState::Ready;
             result.detail = "RetroArch playlist matched this save to its game file and core.";
             return result;
@@ -836,7 +840,8 @@ GameLaunchDescriptor resolveKnownHomebrew(GameLaunchProviderKind kind,
                 matches = findContentMatches({root}, sourcePath, gameId, 4, 512);
         } else if (kind == GameLaunchProviderKind::DraStic) {
             const auto roots = configuredDraSticLibraryRoots();
-            matches = findContentMatches(roots, sourcePath, gameId, 6, 4096);
+            // Never synchronously crawl the whole SD card on the ZR input frame.
+            matches = findContentMatches(roots, sourcePath, gameId, 1, 512);
         } else if (kind == GameLaunchProviderKind::MelonDS) {
             matches = findContentMatches({
                                              "sdmc:/switch/melonds",
@@ -860,6 +865,11 @@ GameLaunchDescriptor resolveKnownHomebrew(GameLaunchProviderKind kind,
     result.backend = GameLaunchBackend::HomebrewNro;
     result.providerId = std::string(providerId);
     result.launcherPath = launcher;
+    if (kind == GameLaunchProviderKind::DraStic && matches.empty()) {
+        result.state = GameLaunchState::LauncherOnly;
+        result.detail = "DraStic is ready; no unique ROM path was resolved, so open the emulator directly.";
+        return result;
+    }
     result.state = GameLaunchState::NeedsContentLink;
     result.detail = matches.size() > 1
         ? "More than one matching game file was found; choose the exact one."
@@ -985,7 +995,6 @@ bool saveGameLaunchBinding(std::string_view bindingKey,
     binding.contentPath = content;
     if (kind == GameLaunchProviderKind::RetroArch) {
         binding.corePath = defaultRetroArchCore(gameId);
-        binding.launcherPath = binding.corePath;
         if (binding.corePath.empty() || !regularFile(binding.corePath)) {
             error = "No compatible RetroArch core is installed for this game.";
             return false;
@@ -1068,9 +1077,12 @@ bool requestGameLaunch(const GameLaunchDescriptor& descriptor, std::string& erro
             error = "The current homebrew loader does not support chaining to another NRO.";
             return false;
         }
-        const std::string& target = descriptor.corePath.empty()
-            ? descriptor.launcherPath : descriptor.corePath;
-        if (!regularFile(target)) {
+        if (!regularFile(descriptor.launcherPath)) {
+            error = "The RetroArch frontend NRO is missing.";
+            return false;
+        }
+        if (descriptor.state != GameLaunchState::LauncherOnly &&
+            (descriptor.corePath.empty() || !regularFile(descriptor.corePath))) {
             error = "The RetroArch core NRO for this game is missing.";
             return false;
         }
@@ -1079,11 +1091,12 @@ bool requestGameLaunch(const GameLaunchDescriptor& descriptor, std::string& erro
             error = "The linked game ROM is missing.";
             return false;
         }
-        std::string argv = quoted(target);
-        if (descriptor.state != GameLaunchState::LauncherOnly &&
-            !descriptor.contentPath.empty())
+        std::string argv = quoted(descriptor.launcherPath);
+        if (descriptor.state != GameLaunchState::LauncherOnly && !descriptor.corePath.empty())
+            argv += " -L " + quoted(descriptor.corePath);
+        if (descriptor.state != GameLaunchState::LauncherOnly && !descriptor.contentPath.empty())
             argv += " " + quoted(descriptor.contentPath);
-        const Result rc = envSetNextLoad(target.c_str(), argv.c_str());
+        const Result rc = envSetNextLoad(descriptor.launcherPath.c_str(), argv.c_str());
         if (R_FAILED(rc)) {
             char buf[96];
             std::snprintf(buf, sizeof(buf), "RetroArch game launch failed (0x%08X).", static_cast<unsigned>(rc));

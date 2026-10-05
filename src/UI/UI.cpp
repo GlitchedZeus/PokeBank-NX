@@ -385,6 +385,7 @@ namespace UI {
                 fb.drawFadeOverlay();
                 fb.flush();
             }
+            keyboardBackdrop = nullptr;
 
             if (trainerScreen.hasRequestedExit()) running = false;
         }, trainerVariant);
@@ -460,12 +461,14 @@ namespace UI {
                !trainerScreen.hasRequestedExit()) {
             padUpdate(&pad);
             touch.update();
+            keyboardBackdrop = &trainerScreen;
             trainerScreen.update(pad, touch);
             if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;
             trainerScreen.draw(fb);
             fb.drawFadeOverlay();
             fb.flush();
         }
+        keyboardBackdrop = nullptr;
         if (trainerScreen.hasRequestedExit()) running = false;
         return true;
     }
@@ -510,12 +513,14 @@ namespace UI {
                !trainerScreen.hasRequestedExit()) {
             padUpdate(&pad);
             touch.update();
+            keyboardBackdrop = &trainerScreen;
             trainerScreen.update(pad, touch);
             if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;
             trainerScreen.draw(fb);
             fb.drawFadeOverlay();
             fb.flush();
         }
+        keyboardBackdrop = nullptr;
         if (trainerScreen.hasRequestedExit()) running = false;
         return true;
     }
