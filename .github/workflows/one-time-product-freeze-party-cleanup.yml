@@ -1,130 +1,14 @@
-name: One-time direct AppShell touch
+name: Disabled one-time Product Home freeze + party cleanup
+
+# This staging workflow intentionally does nothing. The broad cleanup it contained was rejected
+# after hardware feedback because it changed too much at once. Keep the file inert as an audit
+# breadcrumb; focused forward fixes are committed directly instead.
 
 on:
-  push:
-    branches: [feature/touch-controls-20261005]
-    paths:
-      - .github/workflows/one-time-product-freeze-party-cleanup.yml
-
-permissions:
-  contents: write
+  workflow_dispatch:
 
 jobs:
-  patch-touch:
+  disabled:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Verify exact touch head
-        run: |
-          set -euo pipefail
-          git fetch origin feature/touch-controls-20261005
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git rev-parse origin/feature/touch-controls-20261005)" = "$GITHUB_SHA"
-      - name: Add direct AppShell touch
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          def replace_once(path, old, new):
-              p = Path(path)
-              s = p.read_text()
-              n = s.count(old)
-              if n != 1:
-                  raise SystemExit(f"{path}: expected one match, got {n}: {old[:100]!r}")
-              p.write_text(s.replace(old, new, 1))
-
-          replace_once(
-              "include/UI/AppShellScreen.h",
-              "        std::array<HitRect, 7> settingsRects{};\n        std::string statusMessage;\n",
-              "        std::array<HitRect, 7> settingsRects{};\n"
-              "        std::array<HitRect, 8> overlayRects{};\n"
-              "        std::string statusMessage;\n")
-
-          replace_once(
-              "src/UI/AppShellScreen.cpp",
-              "    if (overlay == Overlay::More) {\n        constexpr int moreCount = 6;\n",
-              "    if (overlay == Overlay::More) {\n"
-              "        constexpr int moreCount = 6;\n"
-              "        if (touch.justTapped()) {\n"
-              "            for (const HitRect& rect : overlayRects) {\n"
-              "                if (contains(rect, touch.x(), touch.y())) {\n"
-              "                    moreIndex = rect.index;\n"
-              "                    kDown |= HidNpadButton_A;\n"
-              "                    break;\n"
-              "                }\n"
-              "            }\n"
-              "        } else if (touch.justReleased() && touch.dragged()) {\n"
-              "            const int dx = touch.deltaX(), dy = touch.deltaY();\n"
-              "            const int ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;\n"
-              "            if (ax >= 56 && ax >= ay) kDown |= dx < 0 ? HidNpadButton_Right : HidNpadButton_Left;\n"
-              "            else if (ay >= 56) kDown |= dy < 0 ? HidNpadButton_Down : HidNpadButton_Up;\n"
-              "        }\n")
-
-          replace_once(
-              "src/UI/AppShellScreen.cpp",
-              "    if (overlay == Overlay::OrganizationPreview) {\n        using PokeBank::UIModel::OrganizationPreviewKind;\n",
-              "    if (overlay == Overlay::OrganizationPreview) {\n"
-              "        using PokeBank::UIModel::OrganizationPreviewKind;\n"
-              "        if (touch.justTapped()) {\n"
-              "            for (const HitRect& rect : overlayRects) {\n"
-              "                if (contains(rect, touch.x(), touch.y())) {\n"
-              "                    previewIndex = rect.index;\n"
-              "                    kDown |= HidNpadButton_A;\n"
-              "                    break;\n"
-              "                }\n"
-              "            }\n"
-              "        } else if (touch.justReleased() && touch.dragged()) {\n"
-              "            const int dx = touch.deltaX(), dy = touch.deltaY();\n"
-              "            const int ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;\n"
-              "            if (ax >= 56 && ax >= ay) kDown |= dx < 0 ? HidNpadButton_Right : HidNpadButton_Left;\n"
-              "            else if (ay >= 56) kDown |= dy < 0 ? HidNpadButton_Down : HidNpadButton_Up;\n"
-              "        }\n")
-
-          replace_once(
-              "src/UI/AppShellScreen.cpp",
-              "            drawFocusedCard(fb, bx, by, boxW, boxH, i == previewIndex, 12);\n            const auto& box =",
-              "            drawFocusedCard(fb, bx, by, boxW, boxH, i == previewIndex, 12);\n"
-              "            overlayRects[static_cast<std::size_t>(i)] = {bx, by, boxW, boxH, i};\n"
-              "            const auto& box =")
-          replace_once(
-              "src/UI/AppShellScreen.cpp",
-              "            drawFocusedCard(fb, fx, fy, filterW, filterH, i == previewIndex, 10);\n            const auto& f =",
-              "            drawFocusedCard(fb, fx, fy, filterW, filterH, i == previewIndex, 10);\n"
-              "            overlayRects[static_cast<std::size_t>(i)] = {fx, fy, filterW, filterH, i};\n"
-              "            const auto& f =")
-          replace_once(
-              "src/UI/AppShellScreen.cpp",
-              "            drawFocusedCard(fb, cx, cy, cardW, cardH, i == previewIndex, 14);\n            const auto& c =",
-              "            drawFocusedCard(fb, cx, cy, cardW, cardH, i == previewIndex, 14);\n"
-              "            overlayRects[static_cast<std::size_t>(i)] = {cx, cy, cardW, cardH, i};\n"
-              "            const auto& c =")
-          replace_once(
-              "src/UI/AppShellScreen.cpp",
-              "        drawFocusedCard(fb, cx, cy, cardW, cardH, focused, 14);\n        fb.drawText(cx + 20, cy + 16, modules[i].title,\n",
-              "        drawFocusedCard(fb, cx, cy, cardW, cardH, focused, 14);\n"
-              "        overlayRects[static_cast<std::size_t>(i)] = {cx, cy, cardW, cardH, i};\n"
-              "        fb.drawText(cx + 20, cy + 16, modules[i].title,\n")
-
-          replace_once(
-              "src/UI/AppShellScreen.cpp",
-              "void AppShellScreen::draw(PKSEFramebuffer& fb) {\n    drawAppBackdrop(fb);\n",
-              "void AppShellScreen::draw(PKSEFramebuffer& fb) {\n"
-              "    for (auto& rect : overlayRects) rect = {};\n"
-              "    drawAppBackdrop(fb);\n")
-
-          Path(".github/workflows/one-time-product-freeze-party-cleanup.yml").write_text('''name: Disabled one-time Product Home freeze + party cleanup\n\n# This staging workflow intentionally does nothing. The broad cleanup it contained was rejected\n# after hardware feedback because it changed too much at once. Keep the file inert as an audit\n# breadcrumb; focused forward fixes are committed directly instead.\n\non:\n  workflow_dispatch:\n\njobs:\n  disabled:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo "Broad Product Home cleanup disabled; use focused hardware fixes only."\n''')
-          PY
-          git diff --check
-      - name: Commit AppShell touch changes
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add include/UI/AppShellScreen.h src/UI/AppShellScreen.cpp .github/workflows/one-time-product-freeze-party-cleanup.yml
-          git diff --cached --quiet && { echo "No AppShell touch changes produced"; exit 1; }
-          git commit -m "feat(ui): make AppShell cards direct-touch"
-          git push origin HEAD:feature/touch-controls-20261005
+      - run: echo "Broad Product Home cleanup disabled; use focused hardware fixes only."
