@@ -229,6 +229,9 @@ namespace UI {
     inline std::vector<NavGestureHit> g_navGestureHits;
     inline int g_navSurfaceX = 0;
     inline int g_navSurfaceW = 0;
+    inline int g_navContentBottom = 0;
+    inline uint64_t g_contentSwipeMask = 0;
+    inline bool g_quickGamesDrawerSwipe = false;
     inline uint64_t g_rightEdgeSwipeButton = 0;
 
     inline uint64_t navButtonFor(const std::string& btn) {
@@ -294,6 +297,42 @@ namespace UI {
                 return g_rightEdgeSwipeButton;
         }
 
+        // Quick Games is a right-side drawer. A deliberate push from its inner edge back toward
+        // the physical right edge closes it through the existing B path. This is intentionally
+        // narrower than normal grid swiping so moving left/right between covers remains easy.
+        if (g_quickGamesDrawerSwipe && g_navSurfaceW > 0 && touch.dragged()) {
+            const int dx = touch.x() - touch.startX();
+            const int dy = touch.y() - touch.startY();
+            const int ay = dy < 0 ? -dy : dy;
+            const int drawerLeft = g_navSurfaceX + g_navSurfaceW - 520;
+            constexpr int kDrawerEdgeCapture = 112;
+            constexpr int kCloseDistance = 120;
+            if (touch.startX() >= drawerLeft && touch.startX() < drawerLeft + kDrawerEdgeCapture &&
+                dx >= kCloseDistance && dx > ay * 2)
+                return HidNpadButton_B;
+        }
+
+        // Quick Games itself has no content hitboxes yet, so full-surface swipe navigation can be
+        // enabled safely there. Natural touchscreen direction is used: drag the content left to move
+        // focus right, drag it up to move focus down. Screens with direct content taps are excluded.
+        if (g_contentSwipeMask != 0 && g_navContentBottom > 0 && touch.dragged() &&
+            touch.startX() >= g_navSurfaceX && touch.startX() < g_navSurfaceX + g_navSurfaceW &&
+            touch.startY() >= kHeaderH && touch.startY() < g_navContentBottom) {
+            const int dx = touch.x() - touch.startX();
+            const int dy = touch.y() - touch.startY();
+            const int ax = dx < 0 ? -dx : dx;
+            const int ay = dy < 0 ? -dy : dy;
+            constexpr int kContentSwipeDistance = 72;
+            if (ax >= kContentSwipeDistance && ax * 3 >= ay * 4) {
+                const uint64_t direction = dx < 0 ? HidNpadButton_Right : HidNpadButton_Left;
+                if (g_contentSwipeMask & direction) return direction;
+            }
+            if (ay >= kContentSwipeDistance && ay * 3 >= ax * 4) {
+                const uint64_t direction = dy < 0 ? HidNpadButton_Down : HidNpadButton_Up;
+                if (g_contentSwipeMask & direction) return direction;
+            }
+        }
+
         for (const NavGestureHit& h : g_navGestureHits) {
             if (!navContains(touch.startX(), touch.startY(), h.x, h.y, h.w, h.h)) continue;
 
@@ -357,7 +396,21 @@ namespace UI {
         g_navGestureHits.clear();
         g_navSurfaceX = x;
         g_navSurfaceW = w;
+        g_navContentBottom = cy - TouchTargetMin / 2 - 8;
+        g_contentSwipeMask = 0;
+        g_quickGamesDrawerSwipe = false;
         g_rightEdgeSwipeButton = 0;
+
+        // Only enable full-content swiping for contexts that do not already own content drags/taps.
+        // This exact Quick Games footer is intentionally unique, which keeps editor/storage dragging
+        // completely untouched while making the quick drawer feel like a native touch surface.
+        if (hint.find("D-pad/Stick: Choose") != std::string::npos &&
+            hint.find("X: Save / Source") != std::string::npos &&
+            hint.find("B: Close") != std::string::npos) {
+            g_contentSwipeMask = HidNpadButton_Up | HidNpadButton_Down |
+                                 HidNpadButton_Left | HidNpadButton_Right;
+            g_quickGamesDrawerSwipe = true;
+        }
 
         auto trim = [](const std::string& s) {
             const size_t a = s.find_first_not_of(" \t");
