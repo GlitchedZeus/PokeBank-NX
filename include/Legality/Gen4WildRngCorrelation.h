@@ -2,6 +2,7 @@
 
 #include "Legality/Gen3PidIvCorrelation.h"
 #include "Legality/Gen4WildEncounter.h"
+#include "Legality/Gen4LeadHistoryEvidence.h"
 
 #include <cstdint>
 #include <string_view>
@@ -25,12 +26,15 @@ enum class Method : uint8_t {
     MethodKSafariFishingSuctionCups,
     MethodJSynchronize,
     MethodKSynchronize,
+    MethodJExtendedLead,
+    MethodKExtendedLead,
 };
 
 struct Result {
     Method method = Method::None;
     uint32_t encounterSeed = 0;
     uint8_t slot = 0;
+    uint16_t leadHistoryMask = 0;
 
     constexpr bool matched() const noexcept { return method != Method::None; }
 };
@@ -84,40 +88,31 @@ constexpr uint8_t superRodSlotK(uint32_t roll) noexcept {
 constexpr bool isSafari(uint8_t type) noexcept {
     return type >= 10 && type <= 14;
 }
-
 constexpr bool isSafariFishing(uint8_t type) noexcept {
     return type >= 12 && type <= 14;
 }
-
 constexpr bool isFishing(uint8_t type) noexcept {
     return (type >= 2 && type <= 4) || isSafariFishing(type);
 }
-
 constexpr bool isHeadbutt(uint8_t type) noexcept {
     return type == 6 || type == 7;
 }
-
 constexpr bool isHoneyTree(uint8_t type) noexcept {
     return type == 9;
 }
 
 constexpr uint8_t honeyTreeLevel(uint16_t rand16) noexcept {
-    // PKHeX MethodJ.GetHoneyTreeLevel: 5 + rand / 0x1745.
     return static_cast<uint8_t>(5u + (rand16 / 0x1745u));
 }
-
 constexpr uint8_t rockSmashSlot(uint16_t rand16) noexcept {
     return (rand16 % 100u) < 80u ? 0 : 1;
 }
-
 constexpr bool feebasTileReplacement(uint16_t rand16) noexcept {
-    // PKHeX MethodJ.IsFeebasChance: upper bit set means the Coronet tile
-    // replacement branch can produce Feebas when the player is on a valid tile.
     return (rand16 >> 15) == 1u;
 }
 
 constexpr Activation rockSmashActivationKind(uint8_t areaRate,
-                                                uint16_t rand16) noexcept {
+                                             uint16_t rand16) noexcept {
     if (areaRate == 0) return Activation::None;
     const uint32_t roll = rand16 % 100u;
     if (roll < areaRate)
@@ -127,7 +122,8 @@ constexpr Activation rockSmashActivationKind(uint8_t areaRate,
     return Activation::None;
 }
 
-constexpr bool rockSmashActivation(uint8_t areaRate, uint16_t rand16) noexcept {
+constexpr bool rockSmashActivation(uint8_t areaRate,
+                                   uint16_t rand16) noexcept {
     return rockSmashActivationKind(areaRate, rand16) != Activation::None;
 }
 
@@ -166,11 +162,6 @@ constexpr bool hasAny31IvWord(uint16_t word) noexcept {
 }
 
 constexpr bool directMinimum31Satisfied(uint32_t prePidSeed) noexcept {
-    // HG/SS Bug Contest and Safari encounters reroll the entire candidate up to
-    // four times when none of the six IVs is 31. A current candidate with any
-    // 31 IV is therefore directly acceptable. A no-31 candidate can still be
-    // legal only as the exhausted fourth attempt; that historical chain remains
-    // unresolved rather than being treated as invalid.
     uint32_t seed = Gen3PidIv::Detail::next(
         Gen3PidIv::Detail::next(prePidSeed));
     seed = Gen3PidIv::Detail::next(seed);
@@ -180,32 +171,28 @@ constexpr bool directMinimum31Satisfied(uint32_t prePidSeed) noexcept {
     return hasAny31IvWord(iv1) || hasAny31IvWord(iv2);
 }
 
-constexpr uint8_t fishingSlot(bool hgss, uint8_t type, uint16_t rand16) noexcept {
+constexpr uint8_t fishingSlot(bool hgss, uint8_t type,
+                              uint16_t rand16) noexcept {
     if (!isFishing(type)) return 0xFF;
     if (isSafari(type))
         return hgss ? safariSlot(rand16) : 0xFF;
     if (hgss)
         return superRodSlotK(rand16 % 100u);
-
     const uint32_t roll = rand16 / 656u;
     return type == 2 ? surfSlot(roll) : superRodSlotJ(roll);
 }
 
 constexpr Activation fishingActivationKind(bool hgss, uint8_t type,
-                                           uint16_t rand16) noexcept {
+                                            uint16_t rand16) noexcept {
     if (!isFishing(type)) return Activation::None;
     const bool oldRod = type == 2 || type == 12;
     const bool goodRod = type == 3 || type == 13;
     uint32_t rate = oldRod ? 25u : goodRod ? 50u : 75u;
     if (hgss)
-        rate += 50u; // Following Pokemon friendship bonus; PKHeX assumes best case.
+        rate += 50u;
     const uint32_t roll = hgss ? (rand16 % 100u) : (rand16 / 656u);
     if (roll < rate)
         return Activation::Normal;
-
-    // HG/SS can compound Suction Cups / Sticky Hold after the following-Pokemon
-    // bonus. In practice only Old Rod can reach this branch because Good/Super
-    // Rod are already >=100 after the +50 bonus.
     if (hgss && roll < rate * 2u)
         return Activation::SuctionCups;
     return Activation::None;
@@ -227,8 +214,6 @@ constexpr uint32_t sequentialPid(uint32_t seed) noexcept {
 constexpr int reversalWindow(uint32_t seed, uint8_t nature) noexcept {
     int count = 0;
     uint32_t upper = seed >> 16;
-    // PKHeX MethodJ.GetReversalWindow: step backward over earlier PID attempts
-    // until the prior sequential PID shares the final nature.
     for (; count < 128; ++count) {
         seed = Gen3PidIv::Detail::prev(seed);
         const uint32_t lower = seed >> 16;
@@ -241,17 +226,19 @@ constexpr int reversalWindow(uint32_t seed, uint8_t nature) noexcept {
     return -1;
 }
 
-constexpr uint8_t methodJSlot(uint8_t encounterType, uint16_t rand16) noexcept {
+constexpr uint8_t methodJSlot(uint8_t encounterType,
+                              uint16_t rand16) noexcept {
     const uint32_t roll = rand16 / 656u;
-    if (encounterType == 0) return regularSlot(roll); // Grass
-    if (encounterType == 1) return surfSlot(roll);    // Surf
+    if (encounterType == 0) return regularSlot(roll);
+    if (encounterType == 1) return surfSlot(roll);
     return 0xFF;
 }
 
-constexpr uint8_t methodKSlot(uint8_t encounterType, uint16_t rand16) noexcept {
+constexpr uint8_t methodKSlot(uint8_t encounterType,
+                              uint16_t rand16) noexcept {
     const uint32_t roll = rand16 % 100u;
-    if (encounterType == 0) return regularSlot(roll); // Grass
-    if (encounterType == 1) return surfSlot(roll);    // Surf
+    if (encounterType == 0) return regularSlot(roll);
+    if (encounterType == 1) return surfSlot(roll);
     return 0xFF;
 }
 
@@ -261,14 +248,6 @@ constexpr uint8_t randomLevel(uint8_t minimum, uint8_t maximum,
     return static_cast<uint8_t>((rand16 % width) + minimum);
 }
 
-// Conservative positive matcher for audited no-lead / Sweet-Scent-compatible paths.
-// Supported now:
-//   D/P/Pt Method J: Grass, Surf, fishing, Honey Tree
-//   HG/SS  Method K: Grass, Surf, fishing, Headbutt, Rock Smash,
-//                     Bug Contest, Safari Grass/Surf/fishing
-// Bug Contest/Safari direct proof requires the current Method-1 candidate to have
-// at least one 31 IV. Exhausted fourth-attempt no-31 reroll chains and special-lead
-// branches remain unresolved rather than pretending to be invalid.
 constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                                 uint32_t prePidSeed, uint32_t pid,
                                 uint8_t metLevel) noexcept {
@@ -308,7 +287,6 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
             } else if (type == 1) {
                 rolledSlot = hgss ? methodKSlot(type, prev2) : methodJSlot(type, prev2);
             } else if (isSafari(type)) {
-                // HG/SS Safari uses rand % 10 and has no random level frame.
                 rolledSlot = safariSlot(prev1);
             } else if (isFishing(type)) {
                 rolledSlot = fishingSlot(hgss, type, prev2);
@@ -319,8 +297,6 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
             } else if (type == 8) {
                 rolledSlot = bugContestSlot(prev2);
             } else if (isHoneyTree(type)) {
-                // Honey Tree species/slot is chosen before the normal Method J slot routine.
-                // PKHeX treats the ESV check as pre-determined.
                 rolledSlot = Gen4Wild::slot(row);
             }
 
@@ -337,7 +313,6 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                     }
 
                     if (isSafariFishing(type)) {
-                        // No random level call: activation is immediately before ESV.
                         const auto activation =
                             fishingActivationKind(hgss, type, prev2);
                         if (activation == Activation::None) {
@@ -368,9 +343,6 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                                 candidate, rolledSlot};
 
                     if (type == 8) {
-                        // LeadRequired.None can enter Bug Contest encounters via
-                        // Sweet Scent. Non-Sweet-Scent deadlock histories remain
-                        // a separate special-lead branch.
                         if (directMinimum31)
                             return {Method::MethodKBugContestNoLead,
                                     candidate, rolledSlot};
@@ -398,7 +370,6 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
 
                     if (isHeadbutt(type))
                         return {Method::MethodKHeadbuttNoLead, candidate, rolledSlot};
-
                     if (isHoneyTree(type))
                         return {Method::MethodJHoneyTreeNoLead, candidate, rolledSlot};
 
@@ -407,10 +378,6 @@ constexpr Result matchNoLeadRow(bool hgss, uint64_t row,
                             Gen3PidIv::Detail::prev(candidate)));
 
                     if (!hgss && Gen4Wild::rate(row) == 0xFFu) {
-                        // Mt. Coronet B1F always consumes a tile-replacement RNG call
-                        // between the rod activation and encounter-slot rolls. Regular
-                        // species can be obtained from a non-Feebas tile; Feebas itself
-                        // additionally requires the 50% replacement roll to pass.
                         const uint16_t tileRand =
                             static_cast<uint16_t>(activationSeed >> 16);
                         if (Gen4Wild::species(row) == 349 &&
@@ -474,9 +441,6 @@ constexpr Result matchSynchronizeRow(bool hgss, uint64_t row,
             ? (natureRand % 25u)
             : (natureRand / 0x0A3Eu);
 
-        // PKHeX tries the regular/no-lead path first when the nature roll already
-        // equals the PID nature. Successful Synchronize evidence is the distinct
-        // branch where that regular nature roll fails but the 50% sync check passes.
         if (rolledNature != nature && synchronizePass(hgss, natureRand)) {
             const uint32_t seed1 = Gen3PidIv::Detail::prev(candidate);
             const uint32_t seed2 = Gen3PidIv::Detail::prev(seed1);
@@ -497,8 +461,6 @@ constexpr Result matchSynchronizeRow(bool hgss, uint64_t row,
             } else if (isHeadbutt(type)) {
                 rolledSlot = headbuttSlot(prev2);
             } else if (isHoneyTree(type)) {
-                // Honey Tree species/slot is selected before Method J's normal
-                // slot routine, so ESV is already determined by encounter data.
                 rolledSlot = Gen4Wild::slot(row);
             }
 
@@ -520,12 +482,8 @@ constexpr Result matchSynchronizeRow(bool hgss, uint64_t row,
                     if (type == 1 || isHeadbutt(type) || isHoneyTree(type))
                         return {syncMethod, candidate, rolledSlot};
 
-                    uint32_t activationSeed =
-                        Gen3PidIv::Detail::prev(seed2);
-
+                    uint32_t activationSeed = Gen3PidIv::Detail::prev(seed2);
                     if (type == 5) {
-                        // Synchronize and Illuminate are mutually exclusive leads.
-                        // Only the normal Rock Smash activation path can prove sync.
                         if (rockSmashActivationKind(
                                 Gen4Wild::rate(row),
                                 static_cast<uint16_t>(activationSeed >> 16)) ==
@@ -547,8 +505,6 @@ constexpr Result matchSynchronizeRow(bool hgss, uint64_t row,
                                 Gen3PidIv::Detail::prev(activationSeed);
                         }
 
-                        // Synchronize cannot simultaneously be the Suction Cups /
-                        // Sticky Hold lead, so only normal fishing activation proves it.
                         if (fishingActivationKind(
                                 hgss, type,
                                 static_cast<uint16_t>(activationSeed >> 16)) ==
@@ -636,6 +592,18 @@ inline Result analyzeSupported(std::string_view exactGameId,
             sync.matched())
             return sync;
     }
+
+    const auto extended = Gen4LeadHistory::analyzeSupported(
+        exactGameId, speciesId, metLocation, metLevel, pokemonForm,
+        id32, prePidSeed, pid);
+    if (extended.matched()) {
+        return {
+            hgss ? Method::MethodKExtendedLead : Method::MethodJExtendedLead,
+            prePidSeed,
+            0xFF,
+            extended.mask,
+        };
+    }
     return {};
 }
 
@@ -656,6 +624,8 @@ constexpr const char* methodName(Method method) noexcept {
         case Method::MethodKSafariFishingSuctionCups: return "Method K Safari fishing (Suction Cups / Sticky Hold)";
         case Method::MethodJSynchronize: return "Method J (Synchronize)";
         case Method::MethodKSynchronize: return "Method K (Synchronize)";
+        case Method::MethodJExtendedLead: return "Method J (extended lead history)";
+        case Method::MethodKExtendedLead: return "Method K (extended lead history)";
         case Method::None: break;
     }
     return "No supported Method J/K match";
