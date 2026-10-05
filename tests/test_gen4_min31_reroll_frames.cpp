@@ -1,4 +1,5 @@
 #include "Legality/Gen4BugContestNoLeadEvidence.h"
+#include "Legality/Gen4BugContestSynchronizeEvidence.h"
 #include "Legality/Gen4LeadFrameEvidence.h"
 
 #include <cassert>
@@ -21,9 +22,6 @@ int main() {
     using namespace Legality::Gen4LeadFrame;
     using Legality::Gen3PidIv::Detail::prev;
 
-    // Pinned Method K recursion geometry: immediately before a new attempt's
-    // nature/sync frame sit IV2, IV1, PID-high, PID-low, and the previous
-    // attempt's nature/sync frame.
     constexpr uint32_t seed = 0x12345678u;
     constexpr uint32_t p1 = prev(seed);
     constexpr uint32_t p2 = prev(p1);
@@ -36,17 +34,11 @@ int main() {
                   static_cast<uint16_t>((p2 >> 16) & 0x7FFFu));
     static_assert(previousRerollNatureSeed(seed) == p5);
 
-    // Seed 3 has a direct minimum-31 result and can structurally occur after
-    // zero, one, or two earlier rejected attempts. These checks only validate
-    // the IV gate; lead/nature/slot history still has to be reconstructed.
     static_assert(directMinimum31Satisfied(3u));
     static_assert(minimum31IvChainAllows(3u, 0));
     static_assert(minimum31IvChainAllows(3u, 1));
     static_assert(minimum31IvChainAllows(3u, 2));
 
-    // Seed 2 has no 31 IV in the persisted attempt. Pinned HG/SS behavior can
-    // accept such a result only after all three previous attempts were rejected
-    // and the fourth/final attempt is exhausted.
     static_assert(!directMinimum31Satisfied(2u));
     static_assert(!minimum31IvChainAllows(2u, 0));
     static_assert(!minimum31IvChainAllows(2u, 1));
@@ -60,10 +52,6 @@ int main() {
         cursor = previousRerollNatureSeed(cursor);
     }
 
-    // No-lead / Sweet Scent Bug Contest history uses the same minimum-31 retry
-    // geometry but proves slot + level only at the original encounter attempt.
-    // These vectors are discriminating: the persisted attempt does not prove
-    // the same source row directly or at a shallower reroll depth.
     using namespace Legality::Gen4BugContestNoLead;
 
     constexpr uint32_t depth1Seed = 280u;
@@ -112,6 +100,60 @@ int main() {
     static_assert(depth3.slot == 5);
     static_assert(depth3.level == 18);
     static_assert(match(depth3Row, depth3Seed, depth3Pid, 18).rerollDepth == 3);
+
+    // Conservative successful-Synchronize subset: the persisted target proves
+    // Sync was required, and every retry is another successful Sync proc with
+    // the same fixed lead nature and immediate PID acceptance.
+    constexpr uint32_t syncDepth1Seed = 1469u;
+    constexpr uint32_t syncDepth1Pid = sequentialPid(syncDepth1Seed);
+    constexpr uint64_t syncDepth1Row = makeRow(8, 5, 7, 18, 25);
+    static_assert(syncDepth1Pid == 0xC88E6EF0u);
+    static_assert((syncDepth1Pid % 25u) == 12u);
+    static_assert(!Legality::Gen4BugContestSynchronize::matchSuccessfulAttempt(
+        syncDepth1Row, syncDepth1Seed, syncDepth1Pid, 9, 12).matched());
+    constexpr auto syncDepth1 =
+        Legality::Gen4BugContestSynchronize::matchReroll(
+            syncDepth1Row, syncDepth1Seed, syncDepth1Pid, 9, 1);
+    static_assert(syncDepth1.matched());
+    static_assert(syncDepth1.lockedNature == 12);
+    static_assert(syncDepth1.rerollDepth == 1);
+    static_assert(syncDepth1.slot == 5);
+    static_assert(syncDepth1.level == 9);
+
+    constexpr uint32_t syncDepth2Seed = 47914u;
+    constexpr uint32_t syncDepth2Pid = sequentialPid(syncDepth2Seed);
+    constexpr uint64_t syncDepth2Row = makeRow(8, 1, 7, 18, 25);
+    static_assert(syncDepth2Pid == 0x9EF6A5D2u);
+    static_assert((syncDepth2Pid % 25u) == 9u);
+    static_assert(!Legality::Gen4BugContestSynchronize::matchReroll(
+        syncDepth2Row, syncDepth2Seed, syncDepth2Pid, 10, 1).matched());
+    constexpr auto syncDepth2 =
+        Legality::Gen4BugContestSynchronize::matchReroll(
+            syncDepth2Row, syncDepth2Seed, syncDepth2Pid, 10, 2);
+    static_assert(syncDepth2.matched());
+    static_assert(syncDepth2.lockedNature == 9);
+    static_assert(syncDepth2.rerollDepth == 2);
+    static_assert(syncDepth2.slot == 1);
+    static_assert(syncDepth2.level == 10);
+
+    constexpr uint32_t syncDepth3Seed = 6712803u;
+    constexpr uint32_t syncDepth3Pid = sequentialPid(syncDepth3Seed);
+    constexpr uint64_t syncDepth3Row = makeRow(8, 8, 7, 18, 25);
+    static_assert(syncDepth3Pid == 0x414201AAu);
+    static_assert((syncDepth3Pid % 25u) == 17u);
+    static_assert(!directMinimum31Satisfied(syncDepth3Seed));
+    static_assert(!Legality::Gen4BugContestSynchronize::matchReroll(
+        syncDepth3Row, syncDepth3Seed, syncDepth3Pid, 9, 1).matched());
+    static_assert(!Legality::Gen4BugContestSynchronize::matchReroll(
+        syncDepth3Row, syncDepth3Seed, syncDepth3Pid, 9, 2).matched());
+    constexpr auto syncDepth3 =
+        Legality::Gen4BugContestSynchronize::matchReroll(
+            syncDepth3Row, syncDepth3Seed, syncDepth3Pid, 9, 3);
+    static_assert(syncDepth3.matched());
+    static_assert(syncDepth3.lockedNature == 17);
+    static_assert(syncDepth3.rerollDepth == 3);
+    static_assert(syncDepth3.slot == 8);
+    static_assert(syncDepth3.level == 9);
 
     std::cout << "Gen IV minimum-31 reroll frame geometry: PASS\n";
 }
