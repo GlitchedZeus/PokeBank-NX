@@ -20,6 +20,7 @@ struct Result {
     Lead lead = Lead::None;
     uint32_t encounterSeed = 0;
     uint8_t slot = 0;
+    uint8_t rerollDepth = 0;
 
     constexpr bool matched() const noexcept { return lead != Lead::None; }
 };
@@ -167,7 +168,7 @@ constexpr Result matchStaticMagnetFailure(bool hgss, uint64_t row,
         const uint32_t activationSeed = Gen3PidIv::Detail::prev(seed3);
         if (!normalActivationAllows(hgss, row, activationSeed, false))
             return {};
-        return {Lead::StaticMagnetPull, candidate, slot};
+        return {Lead::StaticMagnetPull, candidate, slot, 0};
     }
 
     if (!staticMagnetFailureAllows(hgss, prev2) ||
@@ -176,7 +177,7 @@ constexpr Result matchStaticMagnetFailure(bool hgss, uint64_t row,
     const uint8_t slot = rolledSlot(hgss, row, prev1);
     if (slot != Gen4Wild::slot(row))
         return {};
-    return {Lead::StaticMagnetPull, candidate, slot};
+    return {Lead::StaticMagnetPull, candidate, slot, 0};
 }
 
 constexpr Result matchPostNatureFailure(bool hgss, uint64_t row,
@@ -211,17 +212,17 @@ constexpr Result matchPostNatureFailure(bool hgss, uint64_t row,
     if (!normalActivationAllows(
             hgss, row, activationSeed, failureCanSweetScent(lead)))
         return {};
-    return {lead, candidate, slot};
+    return {lead, candidate, slot, 0};
 }
 
-constexpr Result matchRow(bool hgss, uint64_t row,
-                          uint32_t prePidSeed, uint32_t pid,
-                          uint8_t metLevel, Lead lead) noexcept {
+// Proves one complete lead-failure / encounter-continues origin attempt without
+// applying the HG/SS minimum-31 persisted-attempt gate. Earlier rejected origins
+// necessarily lack a 31 IV and are validated by matchBugContestReroll below.
+constexpr Result matchAttempt(bool hgss, uint64_t row,
+                              uint32_t prePidSeed, uint32_t pid,
+                              uint8_t metLevel, Lead lead) noexcept {
     const uint8_t type = Gen4Wild::method(row);
     if (lead == Lead::None || !supportedType(hgss, type))
-        return {};
-    if (Gen4LeadFrame::isBugContest(type) &&
-        !Gen4LeadFrame::directMinimum31Satisfied(prePidSeed))
         return {};
 
     const uint8_t nature = static_cast<uint8_t>(pid % 25u);
@@ -246,6 +247,72 @@ constexpr Result matchRow(bool hgss, uint64_t row,
 
         candidate = Gen3PidIv::Detail::prev(
             Gen3PidIv::Detail::prev(candidate));
+    }
+    return {};
+}
+
+// Conservative non-Synchronize subset of pinned Method K RecurseReject. The
+// complete fixed-lead failure/continue history is proven at the pre-reroll
+// origin. Later attempts prove only their generated nature and preceding
+// minimum-31 rejection. Synchronize is intentionally excluded because pinned
+// Method K carries a separate forced-nature lock across recursion.
+constexpr Result matchBugContestReroll(bool hgss, uint64_t row,
+                                       uint32_t prePidSeed, uint32_t pid,
+                                       uint8_t metLevel, Lead lead,
+                                       uint8_t depth) noexcept {
+    const uint8_t type = Gen4Wild::method(row);
+    if (!hgss || !Gen4LeadFrame::isBugContest(type) ||
+        lead == Lead::None || lead == Lead::Synchronize ||
+        depth == 0 || depth > 3 ||
+        !Gen4LeadFrame::minimum31IvChainAllows(prePidSeed, depth))
+        return {};
+
+    uint32_t attemptSeed = prePidSeed;
+    uint32_t attemptPid = pid;
+    for (uint8_t i = 0; i < depth; ++i) {
+        const uint32_t generatedPid = Gen4LeadFrame::sequentialPid(attemptSeed);
+        if (generatedPid != attemptPid ||
+            ((attemptSeed >> 16) % 25u) != (attemptPid % 25u) ||
+            !Gen4LeadFrame::previousRerollAttemptRejected(attemptSeed))
+            return {};
+
+        attemptSeed = Gen4LeadFrame::previousRerollNatureSeed(attemptSeed);
+        attemptPid = Gen4LeadFrame::sequentialPid(attemptSeed);
+    }
+
+    Result origin = matchAttempt(
+        hgss, row, attemptSeed, attemptPid, metLevel, lead);
+    if (!origin.matched())
+        return {};
+    origin.rerollDepth = depth;
+    return origin;
+}
+
+constexpr Result matchRow(bool hgss, uint64_t row,
+                          uint32_t prePidSeed, uint32_t pid,
+                          uint8_t metLevel, Lead lead) noexcept {
+    const uint8_t type = Gen4Wild::method(row);
+    if (lead == Lead::None || !supportedType(hgss, type))
+        return {};
+
+    if (!Gen4LeadFrame::isBugContest(type))
+        return matchAttempt(hgss, row, prePidSeed, pid, metLevel, lead);
+
+    if (Gen4LeadFrame::directMinimum31Satisfied(prePidSeed)) {
+        const Result direct = matchAttempt(
+            hgss, row, prePidSeed, pid, metLevel, lead);
+        if (direct.matched())
+            return direct;
+    }
+
+    if (lead == Lead::Synchronize)
+        return {};
+
+    for (uint8_t depth = 1; depth <= 3; ++depth) {
+        const Result rerolled = matchBugContestReroll(
+            hgss, row, prePidSeed, pid, metLevel, lead, depth);
+        if (rerolled.matched())
+            return rerolled;
     }
     return {};
 }
