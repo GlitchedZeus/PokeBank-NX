@@ -37,24 +37,10 @@ constexpr uint8_t sourcePressureLevel(std::size_t index) noexcept {
         : 0;
 }
 
-// Pinned EncounterSlot4.PressureLevel:
-//   Type != Grass ? LevelMax : Parent.GetPressureMax(Species, LevelMax)
-//
-// A standalone packed row does not retain its parent EncounterArea4 identity, so
-// the legacy row-only API remains conservative for Grass. The indexed source-aware
-// path below consumes the generator's exact parent-area PressureLevel instead.
 constexpr uint8_t exactPressureLevel(uint64_t row) noexcept {
     return Gen4Wild::method(row) == 0 ? 0 : Gen4Wild::maxLevel(row);
 }
 
-// Positive-only reconstruction of a successful Pressure / Hustle / Vital Spirit
-// lead branch when an exact source PressureLevel is already known. Pinned Method
-// J/K checks the lead at Prev1. Random-level families consume an ordinary level
-// roll at Prev2 but replace its result with PressureLevel, then select the normal
-// slot at Prev3. Grass has no random-level frame, so Prev2 selects its slot.
-//
-// HG/SS Bug Contest and Safari remain excluded because their minimum-31 rerolls /
-// activation deadlocks need separate reconstruction.
 constexpr Result matchRowWithPressure(bool hgss, uint64_t row,
                                       uint8_t pressureLevel,
                                       uint32_t prePidSeed, uint32_t pid,
@@ -65,7 +51,7 @@ constexpr Result matchRowWithPressure(bool hgss, uint64_t row,
         return {};
 
     const uint8_t nature = static_cast<uint8_t>(pid % 25u);
-    const int frames = Gen4WildRng::reversalWindow(prePidSeed, nature);
+    const int frames = Gen4LeadFrame::reversalWindow(prePidSeed, nature);
     if (frames < 0)
         return {};
 
@@ -85,8 +71,6 @@ constexpr Result matchRowWithPressure(bool hgss, uint64_t row,
                 const uint16_t prev2 = static_cast<uint16_t>(seed2 >> 16);
 
                 if (!Gen4LeadFailure::levelIsRandom(hgss, type)) {
-                    // The only supported fixed-level family here is Grass.
-                    // Prev1=successful pressure proc, Prev2=ordinary ESV.
                     const uint8_t slot =
                         Gen4LeadFailure::rolledSlot(hgss, row, prev2);
                     if (slot == Gen4Wild::slot(row)) {
@@ -98,9 +82,6 @@ constexpr Result matchRowWithPressure(bool hgss, uint64_t row,
                         };
                     }
                 } else {
-                    // Prev2 is the ordinary random-level call. Successful pressure
-                    // consumes it but overwrites the result with PressureLevel;
-                    // Prev3 therefore remains the ordinary ESV / slot frame.
                     const uint32_t seed3 = Gen3PidIv::Detail::prev(seed2);
                     const uint16_t prev3 = static_cast<uint16_t>(seed3 >> 16);
                     const uint8_t slot =
@@ -109,9 +90,6 @@ constexpr Result matchRowWithPressure(bool hgss, uint64_t row,
                     if (slot == Gen4Wild::slot(row)) {
                         const uint32_t activationSeed =
                             Gen3PidIv::Detail::prev(seed3);
-                        // Pressure/Hustle/Vital Spirit cannot simultaneously provide
-                        // Illuminate or Suction Cups / Sticky Hold. Require the normal
-                        // activation branch for Rock Smash / fishing families.
                         if (Gen4LeadFailure::normalActivationAllows(
                                 hgss, row, activationSeed)) {
                             return {
@@ -132,9 +110,6 @@ constexpr Result matchRowWithPressure(bool hgss, uint64_t row,
     return {};
 }
 
-// Row-only compatibility path accepted by the prior tranche. It deliberately
-// continues to refuse Grass because parent-area PressureLevel cannot be recovered
-// from the 64-bit packed row by itself.
 constexpr Result matchRow(bool hgss, uint64_t row,
                           uint32_t prePidSeed, uint32_t pid,
                           uint8_t metLevel) noexcept {
@@ -142,10 +117,6 @@ constexpr Result matchRow(bool hgss, uint64_t row,
         hgss, row, exactPressureLevel(row), prePidSeed, pid, metLevel);
 }
 
-// Source-aware positive matcher. Unlike Gen4Wild::matchesWithTrainerId, this must
-// not require ordinary levelMatches() before checking Grass: retail Pressure can
-// raise a Grass encounter to Parent.GetPressureMax, which may exceed this row's
-// own LevelMax. The generated PressureLevel alias is therefore part of the proof.
 inline Result analyzeSupported(std::string_view exactGameId,
                                uint16_t speciesId,
                                uint16_t metLocation,
