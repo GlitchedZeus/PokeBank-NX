@@ -1,0 +1,61 @@
+name: One-time apply native touch on current head
+
+on:
+  push:
+    branches: [feature/touch-controls-20261005]
+    paths:
+      - .github/workflows/one-time-native-touch-current.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify exact touch head
+        run: |
+          set -euo pipefail
+          git fetch origin feature/touch-controls-20261005
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/feature/touch-controls-20261005)" = "$GITHUB_SHA"
+
+      - name: Reuse reviewed native-touch patch
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('.github/workflows/one-time-product-freeze-party-cleanup.yml').read_text().splitlines()
+          out = []
+          capture = False
+          for line in src:
+              if "python3 - <<'PY'" in line:
+                  capture = True
+                  continue
+              if capture and line == '          PY':
+                  break
+              if capture:
+                  out.append(line[10:] if line.startswith('          ') else line)
+          if not out:
+              raise SystemExit('native-touch patch body not found')
+          Path('/tmp/native_touch_patch.py').write_text('\n'.join(out) + '\n')
+          PY
+          python3 /tmp/native_touch_patch.py
+          git diff --check
+          ! grep -q 'queueSpatialCardTap\|g_cardTapQueue\|g_touchCardHits' include/UI/ScreenChrome.h
+
+      - name: Commit exact native touch runtime
+        run: |
+          set -euo pipefail
+          rm .github/workflows/one-time-native-touch-current.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add include/UI/ScreenChrome.h include/UI/AppShellScreen.h src/UI/AppShellScreen.cpp src/UI/SaveSelectScreen.cpp src/UI/ClassicInventoryOverlay.cpp .github/workflows/one-time-product-freeze-party-cleanup.yml .github/workflows/one-time-native-touch-current.yml
+          git diff --cached --quiet && { echo 'No native touch changes produced'; exit 1; }
+          git commit -m 'feat(ui): replace controller-emulated touch with direct touch'
+          git push origin HEAD:feature/touch-controls-20261005
