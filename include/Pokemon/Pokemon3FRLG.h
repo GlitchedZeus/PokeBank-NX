@@ -183,6 +183,8 @@ namespace Pokemon {
         bool ribbonChampionNational() const noexcept override { return (rd32(0x4C) & 0x00400000u) != 0; }
         bool ribbonCountry() const noexcept override { return (rd32(0x4C) & 0x00800000u) != 0; }
         bool ribbonNational() const noexcept override { return (rd32(0x4C) & 0x01000000u) != 0; }
+        // PKHeX PK3.RibbonEarth: bit 25, independently earnable after hatching.
+        bool ribbonEarth() const noexcept override { return (rd32(0x4C) & 0x02000000u) != 0; }
         bool isShiny(uint32_t trainerID32, std::string) const noexcept override {
             const uint32_t p = pid();
             const uint16_t tsv = static_cast<uint16_t>((trainerID32 & 0xFFFF) ^ (trainerID32 >> 16));

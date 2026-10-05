@@ -424,6 +424,9 @@ namespace Pokemon {
         /** Gen III National Ribbon persistent state; false where the format/accessor is unwired. */
         virtual bool ribbonNational() const noexcept { return false; }
 
+        /** Persisted Earth Ribbon; read-only and false where the accessor is unwired. */
+        virtual bool ribbonEarth() const noexcept { return false; }
+
         /** Additional fixed Gen III event-ribbon states used by WC3 legality evidence. */
         virtual bool ribbonChampionBattle() const noexcept { return false; }
         virtual bool ribbonChampionRegional() const noexcept { return false; }

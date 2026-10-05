@@ -33,6 +33,7 @@ int main() {
     assert(p.ribbonChampionNational());
     assert(p.ribbonCountry());
     assert(!p.ribbonNational());
+    assert(p.ribbonEarth() == (p.rd32(0x4C) == 0x02000000u));
     assert(!p.isFatefulEncounter());
 
     setRibbonWord(p, 0x01000000u); // bit 24: National Ribbon
@@ -41,6 +42,7 @@ int main() {
     assert(!p.ribbonChampionNational());
     assert(!p.ribbonCountry());
     assert(p.ribbonNational());
+    assert(p.ribbonEarth() == (p.rd32(0x4C) == 0x02000000u));
     assert(!p.isFatefulEncounter());
 
     // Bit 25 is Earth Ribbon. It is intentionally not aliased to any fixed
@@ -52,6 +54,7 @@ int main() {
     assert(!p.ribbonChampionNational());
     assert(!p.ribbonCountry());
     assert(!p.ribbonNational());
+    assert(p.ribbonEarth() == (p.rd32(0x4C) == 0x02000000u));
     assert(!p.isFatefulEncounter());
 
     // Fateful/obedience is bit 31 of the same word and must remain independent.
@@ -61,7 +64,20 @@ int main() {
     assert(!p.ribbonChampionNational());
     assert(!p.ribbonCountry());
     assert(!p.ribbonNational());
+    assert(!p.ribbonEarth());
     assert(p.isFatefulEncounter());
+
+    // Exhaustively isolate every stored bit, including unused/reserved bits.
+    for (unsigned bit = 0; bit < 32; ++bit) {
+        setRibbonWord(p, uint32_t{1} << bit);
+        assert(p.ribbonChampionBattle() == (bit == 20));
+        assert(p.ribbonChampionRegional() == (bit == 21));
+        assert(p.ribbonChampionNational() == (bit == 22));
+        assert(p.ribbonCountry() == (bit == 23));
+        assert(p.ribbonNational() == (bit == 24));
+        assert(p.ribbonEarth() == (bit == 25));
+        assert(p.isFatefulEncounter() == (bit == 31));
+    }
 
     std::cout << "Gen III persisted Event3 ribbon bit readers: PASS\n";
 }
