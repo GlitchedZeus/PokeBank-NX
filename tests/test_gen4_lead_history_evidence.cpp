@@ -1,4 +1,5 @@
 #include "Legality/Gen4LeadHistoryEvidence.h"
+#include "Legality/Gen4WildRngCorrelation.h"
 
 #include <cassert>
 #include <cstddef>
@@ -42,12 +43,11 @@ constexpr std::string_view gameId(Legality::Gen4Wild::Game game) {
 int main() {
     using namespace Legality::Gen4LeadHistory;
     using Legality::Gen3PidIv::Detail::prev;
-    using Legality::Gen4WildRng::sequentialPid;
+    using Legality::Gen4LeadFrame::sequentialPid;
 
     static_assert(kSourceCount == kLeadMetaCount);
     static_assert(kSourceCount == kPressureCount);
 
-    // Reuse the accepted discriminating Method J Grass attraction vector.
     constexpr uint64_t grass = makeRow(0, 0, 5, 5);
     constexpr uint32_t jStaticSeed = 53u;
     constexpr uint32_t jStaticPid = sequentialPid(jStaticSeed);
@@ -61,7 +61,6 @@ int main() {
         jStaticSeed, jStaticPid, 5);
     static_assert(magnetSuccess.has(Path::MagnetPullSuccess));
 
-    // Reuse the accepted successful Method J Old Rod Pressure vector.
     constexpr uint32_t jPressureSeed = 492u;
     constexpr uint32_t jPressurePid = sequentialPid(jPressureSeed);
     constexpr uint64_t oldRod = makeRow(2, 0, 5, 10);
@@ -70,9 +69,6 @@ int main() {
         jPressureSeed, jPressurePid, 10);
     static_assert(pressureSuccess.has(Path::PressureSuccess));
 
-    // The accepted seed-13 Method J failure frame proves several distinct lead
-    // histories for the same saved encounter. The combined layer must retain all
-    // of them instead of selecting a single guessed lead.
     constexpr uint32_t jFailureSeed = 13u;
     constexpr uint32_t jFailurePid = sequentialPid(jFailureSeed);
     constexpr uint64_t jSlot2 = makeRow(0, 2, 5, 5);
@@ -97,9 +93,6 @@ int main() {
         jStaticSeed, jStaticPid, 5);
     static_assert(staticFailure.has(Path::StaticMagnetFailure));
 
-    // Prove the combined row matcher can accept a source-proven Grass Pressure
-    // level above this individual row's ordinary maximum. Build the row's slot
-    // directly from the accepted Method J pressure frame instead of guessing it.
     constexpr uint32_t boostedSeed = 81u;
     constexpr uint32_t boostedPid = sequentialPid(boostedSeed);
     constexpr uint32_t boostedPrev1 = prev(boostedSeed);
@@ -114,8 +107,6 @@ int main() {
         boostedSeed, boostedPid, 10);
     static_assert(boostedPressure.has(Path::PressureSuccess));
 
-    // Bug Contest and Safari stay intentionally outside the accepted extended
-    // lead-history layer until their reroll/deadlock behavior is reconstructed.
     constexpr uint64_t contest = makeRow(8, 0, 7, 18, 25);
     constexpr uint64_t safari = makeRow(10, 0, 15, 15, 6);
     static_assert(!matchIndexedRow(
@@ -125,10 +116,6 @@ int main() {
         true, safari, 0, 15,
         jStaticSeed, jStaticPid, 15).matched());
 
-    // Exercise exact generated source aliases end-to-end. Find a real Grass row
-    // whose parent-area PressureLevel is above the row's ordinary LevelMax, derive
-    // one bounded deterministic successful pressure history, then require the
-    // source-aware combined analyzer to retain that positive proof.
     std::size_t boostedIndex = kSourceCount;
     for (std::size_t i = 0; i < kSourceCount; ++i) {
         const uint64_t row = Legality::Gen4Wild::kPackedGen4WildEncounters[i];
@@ -181,9 +168,31 @@ int main() {
         sourceSeed,
         sourcePid);
     assert(generated.has(Path::PressureSuccess));
+
+    // The production-facing Gen4WildRng API must now recover the same source.
+    // Because this met level is above the packed row's ordinary LevelMax, the
+    // legacy no-lead/Synchronize loop cannot claim it; success therefore proves
+    // that the extended lead adapter is actually participating.
+    const auto central = Legality::Gen4WildRng::analyzeSupported(
+        gameId(sourceGame),
+        Legality::Gen4Wild::species(sourceRow),
+        Legality::Gen4Wild::location(sourceRow),
+        sourcePressure,
+        pokemonForm,
+        0,
+        sourceSeed,
+        sourcePid);
+    assert(central.matched());
+    assert(central.method ==
+        (sourceHgss
+            ? Legality::Gen4WildRng::Method::MethodKExtendedLead
+            : Legality::Gen4WildRng::Method::MethodJExtendedLead));
+    assert((central.leadHistoryMask &
+            static_cast<uint16_t>(Path::PressureSuccess)) != 0);
+    assert(central.slot == 0xFF);
+
     assert(!analyzeSupported(
         "not_a_gen4_game", 1, 1, 1, 0, 0, 0, 0).matched());
-
     static_assert(pathName(Path::StaticSuccess)[0] == 'S');
     static_assert(pathName(Path::IntimidateContinue)[0] == 'I');
 
