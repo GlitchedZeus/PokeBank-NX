@@ -289,6 +289,10 @@ require("if (kDown & (HidNpadButton_B | HidNpadButton_Y))" not in drawer_update 
         "Quick Games Y must be inert, B-only close, and the colored drawer edge stripe must stay removed")
 require('"X: Save / Source   •   B: Close"' not in drawer_draw,
         "Quick Games must rely on the footer for controls instead of repeating X/B instructions inside the drawer")
+require("Quick Games is selection/navigation only" in drawer_update and
+        "refreshHubSelectionFromCache();" in drawer_update and
+        "refreshHubPreview();" not in drawer_update,
+        "Quick Games A must close from cached state without synchronous save/launch discovery")
 require("openSaveSourceForCurrentTitle(true, false)" in source and
         "openSaveSourceForCurrentTitle(false, true)" in source and
         "Overlay::LegacyAssignment" in source and
@@ -448,8 +452,9 @@ require("padGetButtonsDown(&pad)" in source and
         "padGetButtons(&pad) & HidNpadButton_A" not in source,
         "action buttons must remain edge-triggered while held input is reserved for navigation repeat")
 require('"Multiple saves exist. Open Source / Game File once to choose the exact save."' in source and
-        '"That save changed while opening. Nothing was opened."' in source,
-        "ambiguous or changed legacy sources must fail closed instead of guessing")
+        '"That save changed since discovery. Review the refreshed save list."' in source and
+        "legacySnapshotStillCurrent" in source,
+        "ambiguous or changed legacy sources must fail closed without rescanning every provider")
 require("preferGameSourceAndSave(" in source and "preferredLegacySourceIndex(" in source,
         "choosing one of multiple classic saves must persist and reuse the exact source identity")
 require('users.front().name = "Game Sources";' not in source and
@@ -464,10 +469,14 @@ select_end = source.index("void SaveSelectScreen::selectCurrentTitleForItems()",
 stable_open = source[select_start:select_end]
 require("const TitleEntry selected =" in stable_open and
         "const std::string selectedGameId = selected.gameId;" in stable_open,
-        "game open must snapshot stable game identity before refreshing source discovery")
-require("candidate.gameId == selectedGameId" in stable_open and
-        "candidate.sourceIdentity == shown.sourceIdentity" in stable_open,
-        "legacy open must re-map by gameId + source identity after refresh, never stale list index")
+        "game open must snapshot stable game identity before validating the exact source")
+require("shown.sourceIndex >= legacyCatalog->sources.size()" in stable_open and
+        "cachedSource.gameId == selectedGameId" in stable_open and
+        "cachedSource.normalizedPath == shown.normalizedPath" in stable_open and
+        "cachedSource.contentFingerprint == shown.contentFingerprint" in stable_open and
+        "legacySnapshotStillCurrent(shown)" in stable_open and
+        "discoverConfiguredLegacySaves()" not in stable_open,
+        "legacy open must validate only the exact cached source and avoid full provider rediscovery")
 require("profileIdentity" in header and "sourceIdentity" in header and "sourceKind" in header and
         "titleId" in header and "currentSourceIdentity()" in header,
         "Product Home navigation state must retain stable profile/game/source identity rather than numeric indices alone")
