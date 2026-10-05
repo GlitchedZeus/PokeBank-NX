@@ -66,19 +66,19 @@ int main() {
     // the same source row directly or at a shallower reroll depth.
     using namespace Legality::Gen4BugContestNoLead;
 
-    constexpr uint32_t depth1Seed = 81u;
+    constexpr uint32_t depth1Seed = 280u;
     constexpr uint32_t depth1Pid = sequentialPid(depth1Seed);
-    constexpr uint64_t depth1Row = makeRow(8, 1, 7, 18, 25);
-    static_assert(depth1Pid == 0x7EF1CFBFu);
+    constexpr uint64_t depth1Row = makeRow(8, 7, 7, 18, 25);
+    static_assert(depth1Pid == 0xCB57F0E6u);
     static_assert(directMinimum31Satisfied(depth1Seed));
-    static_assert(!matchAttempt(depth1Row, depth1Seed, depth1Pid, 18).matched());
+    static_assert(!matchAttempt(depth1Row, depth1Seed, depth1Pid, 16).matched());
     constexpr auto depth1 = matchReroll(
-        depth1Row, depth1Seed, depth1Pid, 18, 1);
+        depth1Row, depth1Seed, depth1Pid, 16, 1);
     static_assert(depth1.matched());
     static_assert(depth1.rerollDepth == 1);
-    static_assert(depth1.slot == 1);
-    static_assert(depth1.level == 18);
-    static_assert(match(depth1Row, depth1Seed, depth1Pid, 18).rerollDepth == 1);
+    static_assert(depth1.slot == 7);
+    static_assert(depth1.level == 16);
+    static_assert(match(depth1Row, depth1Seed, depth1Pid, 16).rerollDepth == 1);
 
     constexpr uint32_t depth2Seed = 280u;
     constexpr uint32_t depth2Pid = sequentialPid(depth2Seed);
