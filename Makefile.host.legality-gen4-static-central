@@ -1,0 +1,21 @@
+# Focused central Gen IV static/gift evolution-provenance regression.
+GEN4_STATIC_CENTRAL_SOURCES := tests/test_gen4_static_central_match.cpp
+GEN4_STATIC_CENTRAL_HEADERS := include/Legality/Gen4StaticEncounter.h \
+	include/Legality/Gen4StaticEvolutionEvidence.h \
+	include/Legality/Gen4StaticEncounterData.inc \
+	include/Legality/Gen4WildEncounter.h include/Legality/Gen4WildEncounterData.inc \
+	include/Legality/Gen4FormEvidence.h \
+	include/Legality/Gen34EggMoveEvidence.h include/Legality/Gen34EggMoveData.inc
+
+HOST_TESTS += $(HOST_BUILD)/test_gen4_static_central_match
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_static_central_match_sanitize
+host-test: $(HOST_BUILD)/test_gen4_static_central_match
+host-sanitize: $(HOST_BUILD)/test_gen4_static_central_match_sanitize
+
+$(HOST_BUILD)/test_gen4_static_central_match: $(GEN4_STATIC_CENTRAL_SOURCES) $(GEN4_STATIC_CENTRAL_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN4_STATIC_CENTRAL_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_static_central_match_sanitize: $(GEN4_STATIC_CENTRAL_SOURCES) $(GEN4_STATIC_CENTRAL_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_STATIC_CENTRAL_SOURCES) -o $@
