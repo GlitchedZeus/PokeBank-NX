@@ -14,7 +14,7 @@ jobs:
   integrate-keyboard:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout exact branch
+      - name: Checkout live branch
         uses: actions/checkout@v4
         with:
           ref: feature/gen4-full-editor-20260928
@@ -25,19 +25,167 @@ jobs:
           git remote add pkse https://github.com/kiasta/PKSE.git || true
           git fetch --no-tags pkse c4b7efce2867dd72606319cdc61a5eac655f6c25
 
-      - name: Cherry-pick PKSE PR 126 keyboard
+      - name: Stage PR 126 and preserve newer PokeBank screens
+        shell: bash
         run: |
+          set -euo pipefail
           git config user.name 'PokeBank NX CI'
           git config user.email 'actions@users.noreply.github.com'
-          git cherry-pick c4b7efce2867dd72606319cdc61a5eac655f6c25
 
-      - name: Verify resulting tree
+          if test -f include/UI/Dialogs/KeyboardDialog.h && grep -q 'setKeyboardPresenter' src/UI/UI.cpp; then
+            echo 'Keyboard already integrated; refusing duplicate application.'
+            exit 1
+          fi
+
+          # Start the single merged PKSE PR #126 commit. Conflicts are expected where PokeBank NX
+          # has newer HOME/editor work; resolve those forward instead of replacing newer screens.
+          git cherry-pick c4b7efce2867dd72606319cdc61a5eac655f6c25 || true
+          test -f .git/CHERRY_PICK_HEAD
+
+          # Keep PokeBank NX's newer implementations for all diverged product/editor screens.
+          git checkout --ours -- \
+            include/UI/PKSEFramebuffer.h \
+            include/UI/UI.h \
+            include/Utils/Keyboard.h \
+            src/UI/Dialogs/PickerDialog.cpp \
+            src/UI/PKSEFramebuffer.cpp \
+            src/UI/SaveSelectScreen.cpp \
+            src/UI/TrainerViewScreen.cpp \
+            src/UI/UI.cpp \
+            src/Utils/Keyboard.cpp
+
+          # PokeBank NX intentionally removed PKSE's old ListSearch abstraction; do not resurrect it.
+          git rm -f --ignore-unmatch include/UI/ListSearch.h src/UI/ListSearch.cpp
+
+          # Keyboard utility plumbing is still the pre-PR126 wrapper in PokeBank, so take these two
+          # files directly from the merged keyboard commit. Existing call sites remain source-compatible.
+          git show c4b7efce2867dd72606319cdc61a5eac655f6c25:include/Utils/Keyboard.h > include/Utils/Keyboard.h
+          git show c4b7efce2867dd72606319cdc61a5eac655f6c25:src/Utils/Keyboard.cpp > src/Utils/Keyboard.cpp
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+
+          PKSE = 'c4b7efce2867dd72606319cdc61a5eac655f6c25'
+
+          def upstream(path: str) -> str:
+              return subprocess.check_output(['git', 'show', f'{PKSE}:{path}'], text=True)
+
+          def extract_function(text: str, signature: str) -> str:
+              start = text.index(signature)
+              brace = text.index('{', start)
+              depth = 0
+              for index in range(brace, len(text)):
+                  char = text[index]
+                  if char == '{':
+                      depth += 1
+                  elif char == '}':
+                      depth -= 1
+                      if depth == 0:
+                          return text[start:index + 1]
+              raise RuntimeError(f'unclosed function: {signature}')
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise RuntimeError(f'{label}: expected exactly one match, found {count}')
+              return text.replace(old, new, 1)
+
+          # Add only the two vector icons the keyboard needs to the newer PokeBank framebuffer.
+          header_path = Path('include/UI/PKSEFramebuffer.h')
+          header = header_path.read_text()
+          if 'drawBackspaceIcon(' not in header:
+              marker = '        // Storage-grid cursor:'
+              block = '''        // Function-key icons used by the in-app keyboard.\n        void drawBackspaceIcon(int iconX, int iconY, int size, Color color);\n        void drawShiftIcon(int iconX, int iconY, int size, Color color, bool filled);\n'''
+              header = replace_once(header, marker, block + marker, 'framebuffer keyboard declarations')
+              header_path.write_text(header)
+
+          source_path = Path('src/UI/PKSEFramebuffer.cpp')
+          source = source_path.read_text()
+          if 'PKSEFramebuffer::drawBackspaceIcon(' not in source:
+              pkse_fb = upstream('src/UI/PKSEFramebuffer.cpp')
+              backspace = extract_function(pkse_fb, 'void PKSEFramebuffer::drawBackspaceIcon')
+              shift = extract_function(pkse_fb, 'void PKSEFramebuffer::drawShiftIcon')
+              marker = '    void PKSEFramebuffer::drawPointerCursor'
+              source = replace_once(source, marker, backspace + '\n\n' + shift + '\n\n' + marker,
+                                    'framebuffer keyboard icon definitions')
+              source_path.write_text(source)
+
+          # Wire the keyboard presenter into PokeBank's newer UI manager without replacing its
+          # Product Home/save-source loops.
+          ui_header_path = Path('include/UI/UI.h')
+          ui_header = ui_header_path.read_text()
+          if '#include "Utils/Keyboard.h"' not in ui_header:
+              ui_header = replace_once(ui_header, '#include "Legacy/LegacySourceBindings.h"\n',
+                                       '#include "Legacy/LegacySourceBindings.h"\n#include "Utils/Keyboard.h"\n',
+                                       'UI keyboard include')
+          if 'UIScreen* keyboardBackdrop' not in ui_header:
+              ui_header = replace_once(ui_header, '        bool running;\n',
+                                       '        bool running;\n        UIScreen* keyboardBackdrop = nullptr;\n',
+                                       'UI keyboard backdrop member')
+          if 'Utils::KeyboardResult runKeyboard' not in ui_header:
+              marker = '        SaveSelectScreen::MainMenuDestination handleSaveSelection();'
+              declarations = '''        Utils::KeyboardResult runKeyboard(const Utils::KeyboardRequest& request);\n        void drawKeyboardBackdrop();\n\n'''
+              ui_header = replace_once(ui_header, marker, declarations + marker, 'UI keyboard methods')
+          ui_header_path.write_text(ui_header)
+
+          ui_path = Path('src/UI/UI.cpp')
+          ui = ui_path.read_text()
+          if '#include "UI/Dialogs/KeyboardDialog.h"' not in ui:
+              ui = replace_once(ui, '#include "UI/TrainerViewScreen.h"\n',
+                                '#include "UI/TrainerViewScreen.h"\n#include "UI/Dialogs/KeyboardDialog.h"\n',
+                                'UI keyboard dialog include')
+
+          if 'Utils::setKeyboardPresenter([this]' not in ui:
+              marker = '        hidInitializeTouchScreen();  // enable the touchscreen alongside the gamepad\n'
+              ui = replace_once(ui, marker,
+                                marker + '        Utils::setKeyboardPresenter([this](const Utils::KeyboardRequest& request) { return runKeyboard(request); });\n',
+                                'register keyboard presenter')
+
+          old_destructor = '''    UIManager::~UIManager() {\n    }\n'''
+          if 'Utils::setKeyboardPresenter(nullptr);' not in ui:
+              new_destructor = '''    UIManager::~UIManager() {\n        Utils::setKeyboardPresenter(nullptr);\n    }\n\n    void UIManager::drawKeyboardBackdrop() {\n        if (keyboardBackdrop)\n            keyboardBackdrop->draw(fb);\n        else\n            fb.clear(Colors::Background);\n    }\n\n    Utils::KeyboardResult UIManager::runKeyboard(const Utils::KeyboardRequest& request) {\n        Dialogs::KeyboardState keyboard;\n        keyboard.open(request, fb.getWidth(), fb.getHeight());\n        Dialogs::setActiveKeyboard(&keyboard);\n        while (!keyboard.finished && appletMainLoop()) {\n            padUpdate(&pad);\n            touch.update();\n            keyboard.update(pad, touch);\n            if (keyboard.finished) break;\n            drawKeyboardBackdrop();\n            Dialogs::drawKeyboard(keyboard, fb);\n            fb.flush();\n        }\n        Dialogs::setActiveKeyboard(nullptr);\n\n        constexpr u64 answeringButtons = HidNpadButton_A | HidNpadButton_B | HidNpadButton_X | HidNpadButton_Y |\n                                         HidNpadButton_L | HidNpadButton_R | HidNpadButton_ZL | HidNpadButton_ZR |\n                                         HidNpadButton_Plus | HidNpadButton_Minus | HidNpadButton_Up |\n                                         HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right;\n        constexpr int releaseFrameLimit = 60;\n        for (int releaseFrame = 0; releaseFrame < releaseFrameLimit && appletMainLoop(); ++releaseFrame) {\n            drawKeyboardBackdrop();\n            fb.flush();\n            padUpdate(&pad);\n            touch.update();\n            const bool buttonStillMoving = ((padGetButtons(&pad) | padGetButtonsUp(&pad)) & answeringButtons) != 0;\n            if (!buttonStillMoving && !touch.isDown() && !touch.justReleased()) break;\n        }\n        return keyboard.result();\n    }\n'''
+              ui = replace_once(ui, old_destructor, new_destructor, 'UI keyboard presenter implementation')
+
+          # The prompt is modal and raised from update(), so remember the currently-updating screen
+          # only for UIScreen-derived screens that can actually invoke editor/search prompts.
+          replacements = [
+              ('                selectScreen.update(pad, touch);',
+               '                keyboardBackdrop = &selectScreen;\n                selectScreen.update(pad, touch);'),
+              ('                backupScreen.update(pad, touch);',
+               '                keyboardBackdrop = &backupScreen;\n                backupScreen.update(pad, touch);'),
+              ('                trainerScreen.update(pad, touch);',
+               '                keyboardBackdrop = &trainerScreen;\n                trainerScreen.update(pad, touch);'),
+          ]
+          for old, new in replacements:
+              if old in ui and new not in ui:
+                  ui = ui.replace(old, new)
+          ui_path.write_text(ui)
+          PY
+
+          git add -A
+          if git diff --name-only --diff-filter=U | grep -q .; then
+            echo 'Unresolved cherry-pick conflicts remain:'
+            git diff --name-only --diff-filter=U
+            exit 1
+          fi
+          git diff --check --cached
+          git status --short
+          git cherry-pick --continue
+
+      - name: Verify integrated keyboard surface
         run: |
-          git diff --check HEAD^ HEAD
+          set -euo pipefail
           test -f include/UI/Dialogs/KeyboardDialog.h
           test -f src/UI/Dialogs/KeyboardDialog.cpp
-          grep -q 'setKeyboardPresenter' src/UI/UI.cpp
           grep -q 'KeyboardRequest' include/Utils/Keyboard.h
+          grep -q 'setKeyboardPresenter' src/UI/UI.cpp
+          grep -q 'drawBackspaceIcon' include/UI/PKSEFramebuffer.h
+          grep -q 'drawShiftIcon' include/UI/PKSEFramebuffer.h
+          grep -q 'KeyboardPage::Letters' src/UI/Dialogs/KeyboardDialog.cpp
+          grep -q 'KeyboardPage::Digits' src/UI/Dialogs/KeyboardDialog.cpp
+          grep -q 'SystemKeyboard' src/UI/Dialogs/KeyboardDialog.cpp
+          git diff --check HEAD^ HEAD
 
       - name: Push integrated keyboard
         run: git push origin HEAD:feature/gen4-full-editor-20260928
