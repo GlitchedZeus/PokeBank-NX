@@ -227,6 +227,9 @@ namespace UI {
     struct NavGestureHit { int x, y, w, h, glyphW; NavGestureKind kind; };
     inline std::vector<NavHit> g_navHits;
     inline std::vector<NavGestureHit> g_navGestureHits;
+    inline int g_navSurfaceX = 0;
+    inline int g_navSurfaceW = 0;
+    inline uint64_t g_rightEdgeSwipeButton = 0;
 
     inline uint64_t navButtonFor(const std::string& btn) {
         if (btn == "A") return HidNpadButton_A;
@@ -274,6 +277,23 @@ namespace UI {
         }
 
         if (!touch.justReleased()) return 0;
+
+        // Product Home exposes Y = Quick Games. When that exact action is present, a
+        // deliberate swipe in from the physical right edge maps to the same Y press.
+        // Keeping this semantic registration in the footer means overlays that replace
+        // the footer automatically disable the gesture instead of leaving it live behind them.
+        if (g_rightEdgeSwipeButton != 0 && g_navSurfaceW > 0 && touch.dragged()) {
+            const int dx = touch.x() - touch.startX();
+            const int dy = touch.y() - touch.startY();
+            const int ay = dy < 0 ? -dy : dy;
+            const int rightEdge = g_navSurfaceX + g_navSurfaceW;
+            constexpr int kEdgeCapture = 128;
+            constexpr int kOpenDistance = 120;
+            if (touch.startX() >= rightEdge - kEdgeCapture && touch.startX() < rightEdge &&
+                dx <= -kOpenDistance && -dx > ay * 2)
+                return g_rightEdgeSwipeButton;
+        }
+
         for (const NavGestureHit& h : g_navGestureHits) {
             if (!navContains(touch.startX(), touch.startY(), h.x, h.y, h.w, h.h)) continue;
 
@@ -335,6 +355,9 @@ namespace UI {
         // growing across frames if a screen draws a footer without drawing its normal nav bar first.
         g_navHits.clear();
         g_navGestureHits.clear();
+        g_navSurfaceX = x;
+        g_navSurfaceW = w;
+        g_rightEdgeSwipeButton = 0;
 
         auto trim = [](const std::string& s) {
             const size_t a = s.find_first_not_of(" \t");
@@ -394,6 +417,8 @@ namespace UI {
             const uint64_t button = s.glyphW ? navButtonFor(s.btn) : 0;
             if (button) {
                 g_navHits.push_back({segX, hitY, hitW, TouchTargetMin, button});
+                if (s.btn == "Y" && s.label == "Quick Games")
+                    g_rightEdgeSwipeButton = button;
             } else if (s.glyphW) {
                 const NavGestureKind kind = navGestureFor(s.btn);
                 if (kind != NavGestureKind::None)
