@@ -2,6 +2,7 @@
 
 #include "Legality/Gen4WildEncounter.h"
 #include "Legality/Gen4FormEvidence.h"
+#include "Legality/Gen34EggMoveEvidence.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -31,6 +32,15 @@ enum class PidCategory : uint8_t {
     Method1OrCuteCharm,
     Pokewalker,
     ChainShiny,
+};
+
+struct EvolutionMatchResult {
+    const uint64_t* row = nullptr;
+    uint16_t sourceSpecies = 0;
+    bool evolved = false;
+    bool hatchedGiftEgg = false;
+
+    constexpr bool matched() const noexcept { return row != nullptr; }
 };
 
 #include "Legality/Gen4StaticEncounterData.inc"
@@ -112,7 +122,9 @@ inline bool hasSpecies(std::string_view exactGameId, uint16_t speciesId) noexcep
     return false;
 }
 
-inline const uint64_t* findMatch(
+// Exact surviving-species matcher retained for callers that explicitly need the
+// original direct-row semantics.
+inline const uint64_t* findDirectMatch(
                     std::string_view exactGameId, uint16_t speciesId,
                     uint16_t metLocation, uint8_t metLevel, uint8_t pokemonForm,
                     uint16_t pokemonEggLocation, uint8_t pokemonBall,
@@ -156,6 +168,141 @@ inline const uint64_t* findMatch(
         return &row;
     }
     return nullptr;
+}
+
+inline const uint64_t* findNonEggBaseFormSource(
+        std::string_view exactGameId,
+        uint16_t sourceSpecies,
+        uint16_t metLocation,
+        uint8_t metLevel,
+        uint8_t pokemonBall,
+        uint8_t pokemonGender,
+        uint8_t pokemonNature,
+        bool pokemonShiny,
+        bool pokemonFateful) noexcept {
+    const auto wanted = Gen4Wild::gameForId(exactGameId);
+    if (wanted == Gen4Wild::Game::Invalid || sourceSpecies == 0)
+        return nullptr;
+
+    for (const uint64_t& row : kPackedGen4StaticEncounters) {
+        if (game(row) != wanted || species(row) != sourceSpecies ||
+            eggLocation(row) != 0 || form(row) != 0)
+            continue;
+
+        const uint8_t requiredBall = fixedBall(row);
+        if (requiredBall != 0 && pokemonBall != 0xFF && pokemonBall != requiredBall)
+            continue;
+        if (metLevel != level(row))
+            continue;
+
+        if (roaming(row)) {
+            if (!roamerLocationAllowed(location(row), metLocation))
+                continue;
+        } else if (location(row) != metLocation) {
+            continue;
+        }
+
+        if (!constraintsMatch(
+                row, pokemonGender, pokemonNature,
+                pokemonShiny, pokemonFateful))
+            continue;
+        return &row;
+    }
+    return nullptr;
+}
+
+inline const uint64_t* findHatchedGiftEggBaseFormSource(
+        std::string_view exactGameId,
+        uint16_t sourceSpecies,
+        uint8_t metLevel,
+        uint16_t pokemonEggLocation,
+        uint8_t pokemonBall,
+        uint8_t pokemonGender,
+        uint8_t pokemonNature,
+        bool pokemonShiny,
+        bool pokemonFateful) noexcept {
+    constexpr uint16_t kLinkTrade4 = 2002;
+
+    const auto wanted = Gen4Wild::gameForId(exactGameId);
+    if (wanted == Gen4Wild::Game::Invalid || sourceSpecies == 0 || metLevel != 0)
+        return nullptr;
+
+    for (const uint64_t& row : kPackedGen4StaticEncounters) {
+        if (game(row) != wanted || species(row) != sourceSpecies ||
+            eggLocation(row) == 0 || form(row) != 0)
+            continue;
+
+        const uint16_t expectedEgg = eggLocation(row);
+        if (pokemonEggLocation != expectedEgg && pokemonEggLocation != kLinkTrade4)
+            continue;
+
+        const uint8_t requiredBall = fixedBall(row);
+        if (requiredBall != 0 && pokemonBall != 0xFF && pokemonBall != requiredBall)
+            continue;
+
+        if (!constraintsMatch(
+                row, pokemonGender, pokemonNature,
+                pokemonShiny, pokemonFateful))
+            continue;
+        return &row;
+    }
+    return nullptr;
+}
+
+// Pinned EncounterStatic4 matches an encounter against EvoCriteria, so a later
+// evolution does not erase static/gift provenance. Keep this reconstruction
+// positive-only and return the original source row for downstream PID evidence.
+inline EvolutionMatchResult matchEvolutionLine(
+        std::string_view exactGameId,
+        uint16_t currentSpecies,
+        uint16_t metLocation,
+        uint8_t metLevel,
+        uint8_t pokemonForm,
+        uint16_t pokemonEggLocation,
+        uint8_t pokemonBall,
+        uint8_t pokemonGender,
+        uint8_t pokemonNature,
+        bool pokemonShiny,
+        bool pokemonFateful) noexcept {
+    if (const uint64_t* direct = findDirectMatch(
+            exactGameId, currentSpecies, metLocation, metLevel,
+            pokemonForm, pokemonEggLocation, pokemonBall,
+            pokemonGender, pokemonNature, pokemonShiny, pokemonFateful))
+        return {direct, currentSpecies, false, false};
+
+    uint16_t ancestor = Gen34EggMove::preEvolution(exactGameId, currentSpecies);
+    for (int depth = 0; ancestor != 0 && depth < 8; ++depth) {
+        if (const uint64_t* source = findNonEggBaseFormSource(
+                exactGameId, ancestor, metLocation, metLevel, pokemonBall,
+                pokemonGender, pokemonNature, pokemonShiny, pokemonFateful))
+            return {source, ancestor, true, false};
+
+        if (const uint64_t* source = findHatchedGiftEggBaseFormSource(
+                exactGameId, ancestor, metLevel, pokemonEggLocation, pokemonBall,
+                pokemonGender, pokemonNature, pokemonShiny, pokemonFateful))
+            return {source, ancestor, true, true};
+
+        const uint16_t next = Gen34EggMove::preEvolution(exactGameId, ancestor);
+        if (next == ancestor)
+            break;
+        ancestor = next;
+    }
+    return {};
+}
+
+// Central legality consumers use findMatch. Returning the source row here makes
+// evolved static/gift provenance visible to the existing report and preserves
+// source-row PID-category evidence without adding any new Invalid verdict.
+inline const uint64_t* findMatch(
+                    std::string_view exactGameId, uint16_t speciesId,
+                    uint16_t metLocation, uint8_t metLevel, uint8_t pokemonForm,
+                    uint16_t pokemonEggLocation, uint8_t pokemonBall,
+                    uint8_t pokemonGender, uint8_t pokemonNature,
+                    bool pokemonShiny, bool pokemonFateful) noexcept {
+    return matchEvolutionLine(
+        exactGameId, speciesId, metLocation, metLevel, pokemonForm,
+        pokemonEggLocation, pokemonBall, pokemonGender, pokemonNature,
+        pokemonShiny, pokemonFateful).row;
 }
 
 inline bool matches(std::string_view exactGameId, uint16_t speciesId,
