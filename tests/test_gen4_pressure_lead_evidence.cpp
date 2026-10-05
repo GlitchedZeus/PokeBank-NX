@@ -97,13 +97,9 @@ int main() {
     static_assert(!matchRow(
         false, kRock, jFishSeed, jFishPid, 10).matched());
 
-    // Pinned Method K reroll vector: the persisted target at seed 280 cannot be
-    // explained as a fresh direct Pressure origin for BCC slot 2. Its own
-    // nature roll matches, the preceding PID/IV attempt has no 31 IV, and that
-    // earlier attempt is a complete Pressure/Sweet Scent origin for the same
-    // encounter row. The production helper must therefore recover exactly one
-    // minimum-31 reroll instead of treating the previous IV words as fresh lead
-    // frames.
+    // One rejected minimum-31 attempt before a complete Pressure origin.
+    // The persisted target at seed 280 cannot be explained by treating its
+    // immediately preceding IV words as fresh Pressure/slot/activation frames.
     constexpr uint32_t bccRerollSeed = 280u;
     constexpr uint32_t bccRerollPid = sequentialPid(bccRerollSeed);
     constexpr uint64_t bccRerollRow = makeRow(8, 2, 7, 18, 25);
@@ -129,6 +125,59 @@ int main() {
     static_assert(bccRecovered.matched());
     static_assert(bccRecovered.rerollDepth == 1);
     static_assert(bccRecovered.slot == 2);
+
+    // The same final PID seed also has a distinct slot-0 history that requires
+    // two rejected attempts. The one-reroll origin is not a Pressure match for
+    // this row, so the result must retain depth 2 rather than collapsing to a
+    // shallower explanation.
+    constexpr uint64_t bccTwoRerollRow = makeRow(8, 0, 7, 18, 25);
+    static_assert(!matchAttemptWithPressure(
+        true, bccTwoRerollRow, 18,
+        bccRerollSeed, bccRerollPid, 18).matched());
+    static_assert(!matchBugContestRerollWithPressure(
+        true, bccTwoRerollRow, 18,
+        bccRerollSeed, bccRerollPid, 18, 1).matched());
+    constexpr auto bccTwoRerolled = matchBugContestRerollWithPressure(
+        true, bccTwoRerollRow, 18,
+        bccRerollSeed, bccRerollPid, 18, 2);
+    static_assert(bccTwoRerolled.matched());
+    static_assert(bccTwoRerolled.rerollDepth == 2);
+    static_assert(bccTwoRerolled.slot == 0);
+    constexpr auto bccTwoRecovered = matchRowWithPressure(
+        true, bccTwoRerollRow, 18,
+        bccRerollSeed, bccRerollPid, 18);
+    static_assert(bccTwoRecovered.matched());
+    static_assert(bccTwoRecovered.rerollDepth == 2);
+
+    // Fourth-attempt exhaustion: the persisted attempt itself has no 31 IV.
+    // It is positive only after all three earlier attempts are proven rejected
+    // and the oldest reachable attempt supplies the complete Pressure origin.
+    constexpr uint32_t bccExhaustSeed = 24094u;
+    constexpr uint32_t bccExhaustPid = sequentialPid(bccExhaustSeed);
+    constexpr uint64_t bccExhaustRow = makeRow(8, 1, 7, 18, 25);
+    static_assert(bccExhaustPid == 0x6D3F8609u);
+    static_assert(!Legality::Gen4LeadFrame::directMinimum31Satisfied(
+        bccExhaustSeed));
+    static_assert(!Legality::Gen4LeadFrame::minimum31IvChainAllows(
+        bccExhaustSeed, 1));
+    static_assert(!Legality::Gen4LeadFrame::minimum31IvChainAllows(
+        bccExhaustSeed, 2));
+    static_assert(Legality::Gen4LeadFrame::minimum31IvChainAllows(
+        bccExhaustSeed, 3));
+    static_assert(!matchAttemptWithPressure(
+        true, bccExhaustRow, 18,
+        bccExhaustSeed, bccExhaustPid, 18).matched());
+    constexpr auto bccExhausted = matchBugContestRerollWithPressure(
+        true, bccExhaustRow, 18,
+        bccExhaustSeed, bccExhaustPid, 18, 3);
+    static_assert(bccExhausted.matched());
+    static_assert(bccExhausted.rerollDepth == 3);
+    static_assert(bccExhausted.slot == 1);
+    constexpr auto bccExhaustRecovered = matchRowWithPressure(
+        true, bccExhaustRow, 18,
+        bccExhaustSeed, bccExhaustPid, 18);
+    static_assert(bccExhaustRecovered.matched());
+    static_assert(bccExhaustRecovered.rerollDepth == 3);
 
     std::size_t boostedIndex = kSourceCount;
     for (std::size_t i = 0; i < kSourceCount; ++i) {
