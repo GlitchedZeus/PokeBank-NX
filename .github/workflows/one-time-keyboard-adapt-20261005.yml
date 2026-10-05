@@ -39,10 +39,13 @@ jobs:
               ('NAV_BAR_HEIGHT', 'kNavBarH', 'nav bar height'),
               ('const AnalogNavigationSample analog =', 'const PokeBank::UIModel::AnalogNavigationSample analog =', 'analog sample namespace'),
               ('pressTint.alpha = 110;', 'pressTint.a = 110;', 'Color alpha field'),
-              ('CHROME_CORNER_RADIUS', 'kChromeRadius', 'chrome radius'),
           ]
           for old, new, label in replacements:
               dialog = replace_once(dialog, old, new, label)
+          chrome_count = dialog.count('CHROME_CORNER_RADIUS')
+          if chrome_count != 3:
+              raise SystemExit(f'chrome radius: expected 3 matches, found {chrome_count}')
+          dialog = dialog.replace('CHROME_CORNER_RADIUS', 'kChromeRadius')
           dialog_path.write_text(dialog)
 
           header_path = Path('include/UI/PKSEFramebuffer.h')
@@ -86,7 +89,7 @@ jobs:
           grep -q 'PokeBank::UIModel::AnalogNavigationSample' src/UI/Dialogs/KeyboardDialog.cpp
           grep -q 'kNavBarH' src/UI/Dialogs/KeyboardDialog.cpp
           grep -q 'pressTint.a = 110' src/UI/Dialogs/KeyboardDialog.cpp
-          grep -q 'kChromeRadius' src/UI/Dialogs/KeyboardDialog.cpp
+          test "$(grep -o 'kChromeRadius' src/UI/Dialogs/KeyboardDialog.cpp | wc -l)" -ge 3
           grep -q 'PKSEFramebuffer::textYCenteredOn' src/UI/PKSEFramebuffer.cpp
 
       - name: Commit and push
