@@ -12,17 +12,19 @@ GitHub is authoritative. Recorded SHAs are checkpoints only: always re-fetch bef
 
 - Branch: `feature/gen4-full-editor-20260928`
 - State: **OPEN / DRAFT / NOT MERGED**
-- Current verified head at this refresh: `5bf7aa38d52f8cb56e94b0d32a05ca724501c92e`
-- Current tree: `70c4d4d587a293c099e3133066d663e1348c4358`
+- Current verified runtime/application checkpoint: `5bf7aa38d52f8cb56e94b0d32a05ca724501c92e`
+- Runtime/application tree: `70c4d4d587a293c099e3133066d663e1348c4358`
 - Runtime hotpath fix parent: `894e5f89071407dab4531573fec95c6234704670`
 - Regression-contract parent: `8dcd1d36d53f08f920f255fdcf5767740bc58a86`
-- Device state for the current combined head: **HARDWARE PENDING**
+- Device state for the current combined application: **HARDWARE PENDING**
 
-The active lane contains the current Gen I–IV application, Gen IV G4-04 editor, Product Home, Games/source assignment work, current hotpath/hardware-recovery fixes, and the completed forensic-audit remediation package.
+The live PR branch has continued moving **forward** after that runtime checkpoint. At this refresh the GitHub branch head is `5703ad0e54f9e5076dc023a23b94489048bad145`, a workflow-only probe commit for integrating the newly merged PKSE on-screen keyboard work. That probe changes the one-time integration workflow rather than the runtime application tree. Treat `5703ad0e...` as active integration machinery, not as a transferred hardware/CI acceptance claim for a new NRO. Re-fetch before any new work because the keyboard workflow may advance the branch again.
 
-### Current exact-head application CI
+The active lane contains the current Gen I–IV application, Gen IV G4-04 editor, Product Home, Games/source assignment work, current hotpath/hardware-recovery fixes, the completed forensic-audit remediation package, and active shared on-screen-keyboard integration work.
 
-Normal application validation on `5bf7aa38...` at this refresh:
+### Runtime-checkpoint application CI
+
+Normal application validation on runtime checkpoint `5bf7aa38...` at this refresh:
 
 - PokeBank NX Product UI Native — **PASS** — run `37280003888`
 - PokeBank NX Native PR Gate — **PASS** — run `37280003895`
@@ -31,9 +33,11 @@ Normal application validation on `5bf7aa38...` at this refresh:
 - Gen I/II Packed Multi-Move Focused — **PASS** — run `37280003872`
 - PokeBank NX Host Tests — **IN PROGRESS** — run `37280003796`
 
-Five of the six normal exact-head application lanes are green; the full Host Tests lane is still running at this status refresh. The Host lane includes the long host/sanitizer/regression pass and must finish before the exact head is described as fully automated-green.
+The Host job has already passed the clean host build, complete host suite and focused RSE save-open bridge regression; ASan/UBSan is the remaining in-progress step at this documentation refresh. Do not call the runtime checkpoint fully automated-green until that workflow concludes successfully.
 
-Several one-time direct-launch / Quick Games patch-harness workflows attached to the same SHA are historical repair machinery. Their failures are **not** the normal application validation matrix above and are not hardware candidates.
+The newer workflow-only branch head `5703ad0e...` has its own exact-head CI cycle in progress. Its focused Gen I/II packed-move lanes are already green while Host, Native, Product UI Native and Gen IV candidate validation continue.
+
+Several one-time direct-launch / Quick Games / keyboard-integration workflows attached to nearby SHAs are repair/integration machinery. Their status is separate from the normal application validation matrix and they are not themselves hardware candidates.
 
 ## Current Product UI / hardware-fix state
 
@@ -51,11 +55,12 @@ Recent PR #92 work includes:
 - direct GBA/DS launch routing with exact-release matching and installed-forwarder/provider fallback logic;
 - Quick Games and Product Home data-freeze recovery work;
 - preserved Items return, Search-left, profile and source behavior;
-- hotpath work that removes synchronous source discovery from Quick Games selection and narrows normal Gen I–III open to the selected cached source.
+- hotpath work that removes synchronous source discovery from Quick Games selection and narrows normal Gen I–III open to the selected cached source;
+- active integration of the shared PKSE on-screen keyboard path into the current PokeBank-owned UI/input stack.
 
 ### Current physical retest focus
 
-The next owner hardware pass should verify the exact current candidate, including:
+The next owner hardware pass should verify the exact application candidate produced after the active keyboard integration settles, including:
 
 1. Quick Games `A` selection remains cached/navigation-only and does not synchronously rediscover saves or resolve launch targets;
 2. normal Gen I–III `A` open validates only the selected cached source rather than rescanning every configured legacy provider;
@@ -63,9 +68,10 @@ The next owner hardware pass should verify the exact current candidate, includin
 4. DS launch resolution prefers an already validated emulator/provider path before an expensive installed-forwarder fallback scan;
 5. previously passing Yellow, Gold, Silver, Crystal, Ruby, Sapphire, FireRed, LeafGreen and Emerald launch/return behavior remains intact;
 6. full Games tiles still omit trainer portraits and `X = Save / Source` can assign another validated matching save;
-7. region scenery/readability, destination focus styling, Items exit, Search-left, Favorites and Release Date ordering remain stable.
+7. region scenery/readability, destination focus styling, Items exit, Search-left, Favorites and Release Date ordering remain stable;
+8. the integrated on-screen keyboard opens, edits/cancels/accepts correctly and does not break existing controller/text-entry paths.
 
-Do not transfer hardware acceptance from an older SHA to this current head. The owner previously rejected the `dee2ad4745a8d83d3d804a3e244e33cfd2c39525` Product UI candidate on hardware; the current recovery/fix series is newer and must be tested as its own exact artifact.
+Do not transfer hardware acceptance from an older SHA to a newer application head. The owner previously rejected the `dee2ad4745a8d83d3d804a3e244e33cfd2c39525` Product UI candidate on hardware; the current recovery/fix/integration series is newer and must be tested as its own exact artifact.
 
 ## Audit remediation — COMPLETE / INTEGRATED
 
@@ -86,10 +92,12 @@ The frozen audit evidence remains historical/frozen and must not be rewritten me
 
 - Branch: `feature/legality-engine-gen1-4-20260929`
 - State: **OPEN / DRAFT / NOT MERGED**
-- Current live head at this status refresh: `fa4013103e6d418ff3e7268be7bb3f3c5951c4bf`
+- Current accepted head at this status refresh: `fa4013103e6d418ff3e7268be7bb3f3c5951c4bf`
 - Mode: **READ-ONLY ANALYSIS**
 
 The legality lane now includes substantial Gen I–IV source-game, move/species, encounter/event, transfer, egg-state, form/origin, PID/RNG, Gen III GameCube, and Gen IV WC4/PCD evidence. Recent work includes state-aware Gen IV static/gift egg provenance while keeping state-unknown callers conservative.
+
+A separate child validation PR, **#120**, is currently open for the next isolated Method J/K lead-predicate evidence tranche. It remains evidence-only and must not be confused with a MAIN/application merge.
 
 Its verdict model intentionally distinguishes:
 
@@ -157,7 +165,7 @@ Supported identities:
 
 The first safe Gen IV Party/Box View/Edit milestone is physically accepted. The later G4-04 implementation adds Create, additional native fields, forms, species mutation/reconciliation, move handling, action parity, checksum/reparse/rollback behavior, and Product UI integration.
 
-The **current combined G4-04 + Product UI head remains not device accepted**. Five normal exact-head gates are currently green and Host Tests are still running at this refresh.
+The **current combined G4-04 + Product UI application remains not device accepted**. The active branch is still moving through exact-head validation and keyboard integration, so acceptance must wait for one settled exact Actions-built NRO.
 
 ## Source discovery and launch
 
@@ -193,11 +201,12 @@ MASTER VAULT PERSISTENCE: NOT STARTED
 ## Next integration boundary
 
 1. preserve the current PR #92 head or any newer forward-only work;
-2. finish the exact-head Host Tests lane and keep all six normal application validation lanes green;
-3. produce one exact Actions-built current candidate after the hotpath/UI/launch fixes settle;
-4. physically retest Quick Games, selected-source open, Red/Blue matching, DS launch routing, Games/source assignment, Product Home, Items/Search/Favorites/sorting, and previously passing Gen I–III routes;
-5. if that exact artifact passes hardware, mark the current integrated Gen IV + Product UI candidate accepted;
-6. then begin full app-wide touch-control parity;
-7. keep the read-only legality engine moving in parallel without weakening save safety.
+2. finish the active keyboard integration without moving the branch backward;
+3. re-run and finish the six normal application validation lanes on the resulting exact application head;
+4. produce one exact Actions-built current candidate after the hotpath/UI/launch/keyboard changes settle;
+5. physically retest Quick Games, selected-source open, Red/Blue matching, DS launch routing, Games/source assignment, Product Home, Items/Search/Favorites/sorting, keyboard input, and previously passing Gen I–III routes;
+6. if that exact artifact passes hardware, mark the current integrated Gen IV + Product UI candidate accepted;
+7. then begin full app-wide touch-control parity;
+8. keep the read-only legality engine moving in parallel without weakening save safety.
 
-**ACTIVE PRODUCT PRIORITY: physically accept the current integrated Gen I–IV + Product UI foundation before touch controls, Master Vault persistence, Gen V, or live source writes.**
+**ACTIVE PRODUCT PRIORITY: settle and physically accept the current integrated Gen I–IV + Product UI foundation before touch controls, Master Vault persistence, Gen V, or live source writes.**
