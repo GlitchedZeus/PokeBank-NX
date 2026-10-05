@@ -1,0 +1,46 @@
+name: One-time Gen III touch picker signature repair
+
+on:
+  push:
+    branches: [feature/touch-controls-20261005]
+    paths:
+      - .github/workflows/one-time-touch-gen3-picker-signature.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Repair exact signature
+        run: |
+          set -euo pipefail
+          git fetch origin feature/touch-controls-20261005
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/UI/Gen3SharedPokemonSurface.inc')
+          s=p.read_text()
+          old='bool handleValuePicker(TrainerViewScreen&, State& state, u64 down) {'
+          new='bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {'
+          if s.count(old)!=1:
+              raise SystemExit(f'expected one stale Gen III signature, got {s.count(old)}')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+          git diff --check
+          grep -q 'handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch)' src/UI/Gen3SharedPokemonSurface.inc
+          grep -q 'handleValuePicker(screen, state, down, touch)' src/UI/Gen3SharedPokemonSurface.inc
+      - name: Commit runtime repair
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/UI/Gen3SharedPokemonSurface.inc
+          git commit -m 'fix(ui): repair Gen III touch picker dispatch signature'
+          git push origin HEAD:feature/touch-controls-20261005
