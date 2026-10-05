@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
@@ -28,6 +29,7 @@
 #include "Utils/Logger.h"
 #include "Utils/PokeBankPaths.h"
 #include "Utils/Settings.h"
+#include "Utils/SHA256.h"
 #include "Utils/StringHelpers.h"
 
 using namespace Utils;
@@ -180,6 +182,52 @@ namespace UI {
         bool browseDirectory(const std::string& path) {
             struct stat st{};
             return !path.empty() && ::stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+        }
+
+        // Fast activation guard for an already-validated Gen I-III source. Re-hash only the
+        // selected battery save instead of rescanning every configured emulator/provider root.
+        // If any snapshot metadata or byte changes, the caller falls back to explicit discovery.
+        bool legacySnapshotStillCurrent(const PokeVault::Source::SaveInstance& instance) {
+            const std::string& path = instance.path();
+            if (path.empty() || instance.contentFingerprint.empty() ||
+                instance.contentFingerprint == "unavailable") return false;
+
+            struct stat st{};
+            if (::stat(path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) return false;
+            if (static_cast<uint64_t>(st.st_size) != instance.fileSize ||
+                static_cast<int64_t>(st.st_mtime) != instance.modifiedTime) return false;
+
+            FILE* file = std::fopen(path.c_str(), "rb");
+            if (!file) return false;
+
+            Utils::SHA256 hash;
+            std::array<uint8_t, 16 * 1024> buffer{};
+            uint64_t total = 0;
+            bool ok = true;
+            while (true) {
+                const size_t got = std::fread(buffer.data(), 1, buffer.size(), file);
+                if (got > 0) {
+                    hash.update(buffer.data(), got);
+                    total += static_cast<uint64_t>(got);
+                }
+                if (got < buffer.size()) {
+                    if (std::ferror(file)) ok = false;
+                    break;
+                }
+            }
+            if (std::fclose(file) != 0) ok = false;
+            if (!ok || total != instance.fileSize) return false;
+
+            std::array<uint8_t, Utils::PKSE_SHA256_HASH_SIZE> digest{};
+            hash.finalize(digest.data());
+            constexpr char digits[] = "0123456789abcdef";
+            std::string fingerprint;
+            fingerprint.reserve(digest.size() * 2);
+            for (uint8_t byte : digest) {
+                fingerprint.push_back(digits[byte >> 4]);
+                fingerprint.push_back(digits[byte & 0x0F]);
+            }
+            return fingerprint == instance.contentFingerprint;
         }
 
         void drawSaveInstanceRows(
@@ -1952,46 +2000,29 @@ namespace UI {
             }
 
             const auto shown = selected.legacyInstances[static_cast<size_t>(sourceIndex)];
-            auto refreshed = PokeVault::Legacy::discoverConfiguredLegacySaves();
-            *legacyCatalog = std::move(refreshed);
-            loadLegacySources(*legacyCatalog);
-
-            user = currentUser();
-            if (!user) {
-                hubNotice = "The selected save is no longer available.";
+            if (!legacyCatalog || shown.sourceIndex >= legacyCatalog->sources.size()) {
+                refreshLegacySources(selectedGameId, shown.sourceIdentity, true);
+                return;
+            }
+            const auto& cachedSource = legacyCatalog->sources[shown.sourceIndex];
+            const bool catalogMatches = cachedSource.ready() &&
+                cachedSource.gameId == selectedGameId &&
+                cachedSource.normalizedPath == shown.normalizedPath &&
+                cachedSource.contentFingerprint == shown.contentFingerprint;
+            if (!catalogMatches || !legacySnapshotStillCurrent(shown)) {
+                refreshLegacySources(selectedGameId, shown.sourceIdentity, true);
+                legacyNotice = "That save changed since discovery. Review the refreshed save list.";
                 return;
             }
 
-            const auto parent = std::find_if(user->titles.begin(), user->titles.end(),
-                [&](const auto& candidate) {
-                    return candidate.sourceKind == SelectedSourceKind::RetroArchFRLG &&
-                           candidate.gameId == selectedGameId;
-                });
-            if (parent == user->titles.end()) {
-                hubNotice = "The selected game no longer has a validated save.";
-                refreshHubPreview();
-                return;
-            }
-
-            // Re-map by stable game/source identity after refresh; never by the old titleIndex.
-            titleIndex = static_cast<int>(std::distance(user->titles.begin(), parent));
-            const auto instance = std::find_if(parent->legacyInstances.begin(),
-                parent->legacyInstances.end(), [&](const auto& candidate) {
-                    return candidate.sourceIdentity == shown.sourceIdentity;
-                });
-            if (instance == parent->legacyInstances.end() ||
-                !PokeVault::Source::sameValidatedSnapshot(shown, *instance)) {
-                hubNotice = "That save changed while opening. Nothing was opened.";
-                refreshHubPreview();
-                return;
-            }
-
+            // The exact bytes are unchanged from the already strictly parsed snapshot, so reuse its
+            // generation-native parsed object and open immediately instead of rescanning all roots.
             selectedUserUid = user->uid;
             selectedTitleId = 0;
-            selectedTitleName = parent->name;
-            this->selectedGameId = parent->gameId;
-            selectedSourceKind = parent->sourceKind;
-            selectedLegacySourceIndex = instance->sourceIndex;
+            selectedTitleName = selected.name;
+            this->selectedGameId = selectedGameId;
+            selectedSourceKind = selected.sourceKind;
+            selectedLegacySourceIndex = shown.sourceIndex;
             titleSelected = true;
             return;
         }
@@ -2089,43 +2120,27 @@ namespace UI {
             }
 
             const auto shown = title.legacyInstances[static_cast<size_t>(sourceIndex)];
-            auto refreshed = PokeVault::Legacy::discoverConfiguredLegacySaves();
-            *legacyCatalog = std::move(refreshed);
-            loadLegacySources(*legacyCatalog);
-
-            user = currentUser();
-            if (!user) {
-                hubNotice = "The selected save is no longer available.";
+            if (!legacyCatalog || shown.sourceIndex >= legacyCatalog->sources.size() ||
+                !legacySnapshotStillCurrent(shown)) {
+                refreshLegacySources(title.gameId, shown.sourceIdentity, true);
+                hubNotice = "That save changed since discovery. Review the refreshed save list.";
                 return;
             }
-            const auto parent = std::find_if(user->titles.begin(), user->titles.end(),
-                [&](const auto& candidate) {
-                    return candidate.sourceKind == SelectedSourceKind::RetroArchFRLG &&
-                           candidate.gameId == title.gameId;
-                });
-            if (parent == user->titles.end()) {
-                hubNotice = "The selected save is no longer available.";
-                refreshHubPreview();
-                return;
-            }
-            titleIndex = static_cast<int>(std::distance(user->titles.begin(), parent));
-            const auto instance = std::find_if(parent->legacyInstances.begin(), parent->legacyInstances.end(),
-                [&](const auto& candidate) {
-                    return candidate.sourceIdentity == shown.sourceIdentity;
-                });
-            if (instance == parent->legacyInstances.end() ||
-                !PokeVault::Source::sameValidatedSnapshot(shown, *instance)) {
-                hubNotice = "That save changed. Nothing was opened.";
-                refreshHubPreview();
+            const auto& cachedSource = legacyCatalog->sources[shown.sourceIndex];
+            if (!cachedSource.ready() || cachedSource.gameId != title.gameId ||
+                cachedSource.normalizedPath != shown.normalizedPath ||
+                cachedSource.contentFingerprint != shown.contentFingerprint) {
+                refreshLegacySources(title.gameId, shown.sourceIdentity, true);
+                hubNotice = "That save source became stale. Review the refreshed save list.";
                 return;
             }
 
             selectedUserUid = user->uid;
             selectedTitleId = 0;
-            selectedTitleName = parent->name;
-            selectedGameId = parent->gameId;
-            selectedSourceKind = parent->sourceKind;
-            selectedLegacySourceIndex = instance->sourceIndex;
+            selectedTitleName = title.name;
+            selectedGameId = title.gameId;
+            selectedSourceKind = title.sourceKind;
+            selectedLegacySourceIndex = shown.sourceIndex;
             titleSelected = true;
             return;
         }
@@ -2144,33 +2159,33 @@ namespace UI {
         // deleted while the picker was open, the stale instance can no longer resolve to anything.
         const std::string gameId = title.gameId;
         const auto shownInstance = title.legacyInstances[static_cast<size_t>(legacyInstanceIndex)];
-        const std::string sourceIdentity = shownInstance.sourceIdentity;
-        if (!refreshLegacySources(gameId, sourceIdentity, true)) return;
-        u = currentUser();
-        if (!u || titleIndex < 0 || titleIndex >= static_cast<int>(u->titles.size())) return;
-        const auto& refreshedTitle = u->titles[titleIndex];
-        if (legacyInstanceIndex < 0 ||
-            legacyInstanceIndex >= static_cast<int>(refreshedTitle.legacyInstances.size())) return;
-
-        const auto& freshInstance = refreshedTitle.legacyInstances[static_cast<size_t>(legacyInstanceIndex)];
-        if (!PokeVault::Source::sameValidatedSnapshot(shownInstance, freshInstance)) {
-            legacyNotice = "That save changed. Review the refreshed list before opening.";
-            overlay = Overlay::LegacyInstances;
+        if (!legacyCatalog || shownInstance.sourceIndex >= legacyCatalog->sources.size() ||
+            !legacySnapshotStillCurrent(shownInstance)) {
+            const std::string sourceIdentity = shownInstance.sourceIdentity;
+            refreshLegacySources(gameId, sourceIdentity, true);
+            legacyNotice = "That save changed since discovery. Review the refreshed save list.";
+            return;
+        }
+        const auto& cachedSource = legacyCatalog->sources[shownInstance.sourceIndex];
+        if (!cachedSource.ready() || cachedSource.gameId != gameId ||
+            cachedSource.normalizedPath != shownInstance.normalizedPath ||
+            cachedSource.contentFingerprint != shownInstance.contentFingerprint) {
+            refreshLegacySources(gameId, shownInstance.sourceIdentity, true);
+            legacyNotice = "That save source became stale. Review the refreshed save list.";
             return;
         }
         if (!legacyBindings || !legacyBindings->preferGameSourceAndSave(
-                freshInstance, currentProfileIdentity(), refreshedTitle.gameId)) {
+                shownInstance, currentProfileIdentity(), title.gameId)) {
             legacyNotice = "Couldn't remember that exact save choice. Nothing was opened.";
             overlay = Overlay::LegacyInstances;
             return;
         }
         selectedUserUid = u->uid;
         selectedTitleId = 0;
-        selectedTitleName = refreshedTitle.name;
-        selectedGameId = refreshedTitle.gameId;
-        selectedSourceKind = refreshedTitle.sourceKind;
-        selectedLegacySourceIndex =
-            refreshedTitle.legacyInstances[static_cast<size_t>(legacyInstanceIndex)].sourceIndex;
+        selectedTitleName = title.name;
+        selectedGameId = title.gameId;
+        selectedSourceKind = title.sourceKind;
+        selectedLegacySourceIndex = shownInstance.sourceIndex;
         titleSelected = true;
     }
 
@@ -2366,7 +2381,9 @@ namespace UI {
                 if (kDown & HidNpadButton_A) {
                     titleIndex = gamesDrawerIndex;
                     scrollSelectionIntoView();
-                    refreshHubPreview();
+                    // Quick Games is selection/navigation only. Never mount a save, parse a
+                    // provider, scan HOME applications, or resolve ROMs on the A-button frame.
+                    refreshHubSelectionFromCache();
                     overlay = Overlay::None;
                 }
             }

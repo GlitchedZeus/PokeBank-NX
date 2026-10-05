@@ -733,7 +733,14 @@ GameLaunchDescriptor resolveRetroArch(std::string_view gameId,
                 std::string content;
                 if (!extractJsonStringAfter(text, pos, "\"path\"", content)) { pos += 6; continue; }
                 const size_t nextPath = text.find("\"path\"", pos + 6);
-                if (normalizedLaunchStem(content) != wanted) { pos += 6; continue; }
+                // Use the same bounded stem matcher as the filesystem adapters. This keeps exact
+                // matches first-class but also handles common RetroArch naming differences such as
+                // "Pokemon Red.srm" vs "Pokemon - Red Version (USA, Europe).gb". The resolver still
+                // requires exactly one usable playlist entry, so Red cannot silently become FireRed.
+                if (!gameLaunchCandidateStemMatches(gameId, sourcePath, content)) {
+                    pos += 6;
+                    continue;
+                }
                 sawStemMatch = true;
 
                 content = switchPath(content);
@@ -909,23 +916,9 @@ GameLaunchDescriptor resolveGameLaunch(uint64_t titleId,
         return result;
     }
 
-#ifdef __SWITCH__
-    // Gen I-III already had a working direct emulator/core path in dee2ad47. Do not put a full
-    // installed-application metadata scan in front of those launches. Keep HOME-forwarder probing
-    // focused on Nintendo DS, which is the unfinished launch tranche this code was added for.
-    if (gameId.ends_with("_nds")) {
-        if (const uint64_t forwarderTitle = installedGameForwarderTitle(gameId); forwarderTitle != 0) {
-        GameLaunchDescriptor result;
-        result.backend = GameLaunchBackend::SwitchTitle;
-        result.titleId = forwarderTitle;
-        result.providerId = std::string(providerId);
-        result.state = GameLaunchState::Ready;
-            result.detail = "Launch the installed HOME forwarder for this exact game.";
-            return result;
-        }
-    }
-#endif
-
+    // A validated emulator/provider is already the strongest launch hint. Resolve it first so an
+    // ordinary DraStic/melonDS launch never blocks the input frame on a console-wide HOME metadata
+    // scan. Installed HOME forwarders remain a fallback only when there is no provider adapter.
     const GameLaunchProviderKind kind = providerKindForSourcePath(providerId, sourcePath);
     const std::string resolvedProvider = providerIdForKind(kind, providerId);
     if (kind == GameLaunchProviderKind::RetroArch)
@@ -935,6 +928,20 @@ GameLaunchDescriptor resolveGameLaunch(uint64_t titleId,
         kind == GameLaunchProviderKind::DraStic ||
         kind == GameLaunchProviderKind::MelonDS)
         return resolveKnownHomebrew(kind, gameId, resolvedProvider, sourcePath, bindingKey);
+
+#ifdef __SWITCH__
+    if (gameId.ends_with("_nds")) {
+        if (const uint64_t forwarderTitle = installedGameForwarderTitle(gameId); forwarderTitle != 0) {
+            GameLaunchDescriptor result;
+            result.backend = GameLaunchBackend::SwitchTitle;
+            result.titleId = forwarderTitle;
+            result.providerId = std::string(providerId);
+            result.state = GameLaunchState::Ready;
+            result.detail = "Launch the installed HOME forwarder for this exact game.";
+            return result;
+        }
+    }
+#endif
 
     GameLaunchDescriptor result;
     result.backend = GameLaunchBackend::HomebrewNro;
