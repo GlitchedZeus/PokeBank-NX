@@ -1,6 +1,7 @@
 #include "Legality/Gen4BugContestNoLeadEvidence.h"
 #include "Legality/Gen4BugContestSynchronizeEvidence.h"
 #include "Legality/Gen4LeadFrameEvidence.h"
+#include "Legality/Gen4SafariNoLeadEvidence.h"
 
 #include <cassert>
 #include <cstdint>
@@ -101,9 +102,6 @@ int main() {
     static_assert(depth3.level == 18);
     static_assert(match(depth3Row, depth3Seed, depth3Pid, 18).rerollDepth == 3);
 
-    // Conservative successful-Synchronize subset: the persisted target proves
-    // Sync was required, and every retry is another successful Sync proc with
-    // the same fixed lead nature and immediate PID acceptance.
     constexpr uint32_t syncDepth1Seed = 1469u;
     constexpr uint32_t syncDepth1Pid = sequentialPid(syncDepth1Seed);
     constexpr uint64_t syncDepth1Row = makeRow(8, 5, 7, 18, 25);
@@ -126,14 +124,9 @@ int main() {
     static_assert(syncDepth1.slot == 5);
     static_assert(syncDepth1.level == 9);
 
-    // Synchronize cannot Sweet Scent in BCC: the same source row with zero
-    // encounter rate cannot be reached through movement/rate activation.
     constexpr uint64_t syncZeroRateRow = makeRow(8, 5, 7, 18, 0);
     static_assert(!Legality::Gen4BugContestSynchronize::matchReroll(
         syncZeroRateRow, syncDepth1Seed, syncDepth1Pid, 9, 1).matched());
-
-    // The third prior attempt for this final seed breaks the fixed Sync chain,
-    // so a deeper history must fail closed instead of switching lead semantics.
     static_assert(!Legality::Gen4BugContestSynchronize::matchReroll(
         syncDepth1Row, syncDepth1Seed, syncDepth1Pid, 9, 3).matched());
 
@@ -171,6 +164,65 @@ int main() {
     static_assert(syncDepth3.rerollDepth == 3);
     static_assert(syncDepth3.slot == 8);
     static_assert(syncDepth3.level == 9);
+
+    // HG/SS Safari is fixed-level Method K with rand%10 slot selection and the
+    // same four-attempt minimum-31 reroll rule. The grass vectors prove each
+    // reroll depth without relying on Safari fishing activation.
+    constexpr uint64_t safariDepth1Row = makeRow(10, 7, 15, 15, 6);
+    static_assert(!Legality::Gen4SafariNoLead::matchAttempt(
+        safariDepth1Row, depth1Seed, depth1Pid, 15).matched());
+    constexpr auto safariDepth1 = Legality::Gen4SafariNoLead::matchReroll(
+        safariDepth1Row, depth1Seed, depth1Pid, 15, 1);
+    static_assert(safariDepth1.matched());
+    static_assert(safariDepth1.slot == 7);
+    static_assert(safariDepth1.rerollDepth == 1);
+    static_assert(!safariDepth1.suctionCups);
+
+    constexpr uint64_t safariDepth2Row = makeRow(10, 9, 15, 15, 6);
+    static_assert(!Legality::Gen4SafariNoLead::matchAttempt(
+        safariDepth2Row, depth2Seed, depth2Pid, 15).matched());
+    static_assert(!Legality::Gen4SafariNoLead::matchReroll(
+        safariDepth2Row, depth2Seed, depth2Pid, 15, 1).matched());
+    constexpr auto safariDepth2 = Legality::Gen4SafariNoLead::matchReroll(
+        safariDepth2Row, depth2Seed, depth2Pid, 15, 2);
+    static_assert(safariDepth2.matched());
+    static_assert(safariDepth2.slot == 9);
+    static_assert(safariDepth2.rerollDepth == 2);
+
+    constexpr uint64_t safariDepth3Row = makeRow(10, 1, 15, 15, 6);
+    static_assert(!Legality::Gen4SafariNoLead::matchReroll(
+        safariDepth3Row, depth3Seed, depth3Pid, 15, 1).matched());
+    static_assert(!Legality::Gen4SafariNoLead::matchReroll(
+        safariDepth3Row, depth3Seed, depth3Pid, 15, 2).matched());
+    constexpr auto safariDepth3 = Legality::Gen4SafariNoLead::matchReroll(
+        safariDepth3Row, depth3Seed, depth3Pid, 15, 3);
+    static_assert(safariDepth3.matched());
+    static_assert(safariDepth3.slot == 1);
+    static_assert(safariDepth3.rerollDepth == 3);
+
+    // Safari Old Rod has a real activation distinction: at the original attempt
+    // for this depth-1 vector, the rod roll is 95. With the HG/SS +50 following
+    // Pokemon bonus, normal Old Rod activation ends at 74 and no-lead reaches
+    // this frame only through the Suction Cups / Sticky Hold fallback.
+    constexpr uint32_t safariFishSeed = 44388u;
+    constexpr uint32_t safariFishPid = sequentialPid(safariFishSeed);
+    constexpr uint64_t safariOldRodRow = makeRow(12, 7, 20, 20, 6);
+    static_assert(safariFishPid == 0xD35BB476u);
+    static_assert(!Legality::Gen4SafariNoLead::matchAttempt(
+        safariOldRodRow, safariFishSeed, safariFishPid, 20).matched());
+    constexpr auto safariFish = Legality::Gen4SafariNoLead::matchReroll(
+        safariOldRodRow, safariFishSeed, safariFishPid, 20, 1);
+    static_assert(safariFish.matched());
+    static_assert(safariFish.slot == 7);
+    static_assert(safariFish.rerollDepth == 1);
+    static_assert(safariFish.suctionCups);
+
+    static_assert(!Legality::Gen4SafariNoLead::matchReroll(
+        safariDepth1Row, depth1Seed, depth1Pid, 14, 1).matched());
+    static_assert(!Legality::Gen4SafariNoLead::matchReroll(
+        safariDepth1Row, depth1Seed, depth1Pid, 15, 0).matched());
+    static_assert(!Legality::Gen4SafariNoLead::matchReroll(
+        safariDepth1Row, depth1Seed, depth1Pid, 15, 4).matched());
 
     std::cout << "Gen IV minimum-31 reroll frame geometry: PASS\n";
 }
