@@ -34,6 +34,9 @@ namespace UI {
         32.0f,  // Title
     };
 
+    // Nunito OS/2 sCapHeight 705 / unitsPerEm 1000; used to center visible capitals, not the line box.
+    static constexpr float kNunitoCapHeightPerEm = 0.705f;
+
     static inline NVGcolor toNVG(Color c) { return nvgRGBA(c.r, c.g, c.b, c.a); }
 
     // The framebuffer SpriteManager's eviction callback should reach. Only one exists at a time
@@ -524,6 +527,15 @@ void PKSEFramebuffer::drawShiftIcon(int iconX, int iconY, int size, Color color,
         float asc = 0, desc = 0, lh = 0;
         nvgTextMetrics(vg, &asc, &desc, &lh);
         return (int)std::ceil(lh);
+    }
+
+    int PKSEFramebuffer::textYCenteredOn(int centerY, TextStyle style) const {
+        if (!vg) return centerY;
+        applyTextStyle(style);
+        float ascender = 0.0f, descender = 0.0f, lineHeightPixels = 0.0f;
+        nvgTextMetrics(vg, &ascender, &descender, &lineHeightPixels);
+        const float capitalHeight = kFontSizes[static_cast<int>(style)] * kNunitoCapHeightPerEm;
+        return static_cast<int>(std::lround(static_cast<float>(centerY) - ascender + capitalHeight / 2.0f));
     }
 
     // ---- Images / sprites ----

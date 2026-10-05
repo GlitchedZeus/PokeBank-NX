@@ -127,6 +127,8 @@ namespace UI {
         void measureText(const std::string& text, int& outWidth, int& outHeight, TextStyle style = TextStyle::Body);
         // Line height (font ascent+descent) for a style — for consistent vertical spacing.
         int  lineHeight(TextStyle style = TextStyle::Body) const;
+        // Draw-text y coordinate that centers capital letters on a row/badge midpoint.
+        int  textYCenteredOn(int centerY, TextStyle style = TextStyle::Body) const;
 
     private:
         // Lazily build + cache a NanoVG image from a raw sprite pixel buffer, keyed by the buffer
