@@ -310,7 +310,7 @@ inline bool matches(std::string_view exactGameId, uint16_t speciesId,
                     uint16_t pokemonEggLocation, uint8_t pokemonBall,
                     uint8_t pokemonGender, uint8_t pokemonNature,
                     bool pokemonShiny, bool pokemonFateful) noexcept {
-    return findMatch(
+    return findDirectMatch(
         exactGameId, speciesId, metLocation, metLevel, pokemonForm,
         pokemonEggLocation, pokemonBall, pokemonGender, pokemonNature,
         pokemonShiny, pokemonFateful) != nullptr;
