@@ -1,0 +1,93 @@
+name: One-time full-app touch foundation
+
+on:
+  push:
+    branches: [feature/touch-controls-20261005]
+    paths:
+      - .github/workflows/one-time-full-touch-foundation.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify exact touch head
+        run: |
+          set -euo pipefail
+          git fetch origin feature/touch-controls-20261005
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/feature/touch-controls-20261005)" = "$GITHUB_SHA"
+
+      - name: Apply professional touch foundation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def once(path, old, new):
+              p = Path(path)
+              s = p.read_text()
+              n = s.count(old)
+              if n != 1:
+                  raise SystemExit(f"{path}: expected one match, got {n}: {old[:140]!r}")
+              p.write_text(s.replace(old, new, 1))
+
+          # Central popup/button contract: contact focuses; clean release activates.
+          once('include/UI/TrainerViewScreenBase.h',
+               '        int touchedButtonId(const TouchInput& touch) const;  // id of a tapped button, or -1\n',
+               '        int touchedButtonDownId(const TouchInput& touch) const;  // id under fresh finger contact\n'
+               '        int touchedButtonId(const TouchInput& touch) const;      // id of a clean release-tap\n')
+
+          once('src/UI/TrainerViewScreenBase.inc',
+               '''    // Returns the id of the touch button under a fresh tap this frame, or -1 if none. Buttons are\n    // captured during the previous frame's draw (only the active overlay populates touchButtons).\n    int TrainerViewScreen::touchedButtonId(const TouchInput& touch) const {\n        if (!touch.justPressed()) return -1;\n        for (const auto& b : touchButtons) {\n            if (touch.x() >= b.x && touch.x() < b.x + b.w &&\n                touch.y() >= b.y && touch.y() < b.y + b.h)\n                return b.id;\n        }\n        return -1;\n    }\n''',
+               '''    // Touch buttons are captured during the previous frame's draw. Contact is focus-only;\n    // activation is always a clean release so scrolling can never fire the row under the finger.\n    int TrainerViewScreen::touchedButtonDownId(const TouchInput& touch) const {\n        if (!touch.justTouchedDown()) return -1;\n        for (const auto& b : touchButtons) {\n            if (touch.x() >= b.x && touch.x() < b.x + b.w &&\n                touch.y() >= b.y && touch.y() < b.y + b.h)\n                return b.id;\n        }\n        return -1;\n    }\n\n    int TrainerViewScreen::touchedButtonId(const TouchInput& touch) const {\n        if (!touch.justTapped()) return -1;\n        for (const auto& b : touchButtons) {\n            if (touch.x() >= b.x && touch.x() < b.x + b.w &&\n                touch.y() >= b.y && touch.y() < b.y + b.h)\n                return b.id;\n        }\n        return -1;\n    }\n''')
+
+          # Generic modern picker: immediate row focus, release-select, natural vertical swipes.
+          once('src/UI/TrainerViewScreenBase.inc',
+               '''            // Touch: tap an option row selects it immediately (button id = option index).\n            int ptb = touchedButtonId(touch);\n            if (ptb >= 0 && ptb < count) { pickerSel = ptb; kDown |= HidNpadButton_A; }\n\n            if (kDown & HidNpadButton_Up)                        pickerSel = (pickerSel - 1 + count) % count;\n''',
+               '''            // Native list touch: finger contact moves highlight immediately; a clean release\n            // chooses that exact row. Vertical drags browse the list and never activate a row.\n            const int ptd = touchedButtonDownId(touch);\n            if (ptd >= 0 && ptd < count) pickerSel = ptd;\n            const int ptb = touchedButtonId(touch);\n            if (ptb >= 0 && ptb < count) { pickerSel = ptb; kDown |= HidNpadButton_A; }\n            if (touch.justReleased() && touch.dragged()) {\n                const int dy = touch.deltaY();\n                const int rowH = std::max(1, PokeBank::UIModel::InventoryPickerLayout::RowHeight);\n                const int steps = std::max(1, std::abs(dy) / rowH);\n                if (dy < 0) pickerSel = std::min(count - 1, pickerSel + steps);\n                else if (dy > 0) pickerSel = std::max(0, pickerSel - steps);\n            }\n\n            if (kDown & HidNpadButton_Up)                        pickerSel = (pickerSel - 1 + count) % count;\n''')
+
+          # Give item rows immediate visual focus without activating until release.
+          once('src/UI/TrainerViewScreenBase.inc',
+               '''                    // Touch: tap a row to select + edit it.\n                    int itemTap = touchedButtonId(touch);\n                    if (itemTap >= 0 && itemTap < totalItems) {\n''',
+               '''                    // Touch: contact focuses the item; release edits it. A vertical drag\n                    // scrolls/browses without opening the row underneath.\n                    int itemDown = touchedButtonDownId(touch);\n                    if (itemDown >= 0 && itemDown < totalItems) {\n                        selectedItemIndex = itemDown;\n                        currentPage = selectedItemIndex / itemsPerPage;\n                    }\n                    if (touch.justReleased() && touch.dragged()) {\n                        const int dy = touch.deltaY();\n                        const int steps = std::max(1, std::abs(dy) / 52);\n                        if (dy < 0) selectedItemIndex = std::min(totalItems - 1, selectedItemIndex + steps);\n                        else if (dy > 0) selectedItemIndex = std::max(0, selectedItemIndex - steps);\n                        currentPage = selectedItemIndex / itemsPerPage;\n                    }\n                    int itemTap = touchedButtonId(touch);\n                    if (itemTap >= 0 && itemTap < totalItems) {\n''')
+
+          # Composite exact-format editors also receive the shared footer touch actions.
+          once('src/UI/TrainerViewScreenCompositeOverlay.cpp',
+               '    const u64 down = padGetButtonsDown(&pad);\n',
+               '    const u64 down = padGetButtonsDown(&pad) | navTouchButton(touch);\n')
+
+          # AppShell root: contact focus, release activation.
+          once('src/UI/AppShellScreen.cpp',
+               '''    if (touch.justPressed()) {\n        for (const HitRect& rect : cardRects) {\n            if (contains(rect, touch.x(), touch.y())) {\n                selectedIndex = rect.index;\n                kDown |= HidNpadButton_A;\n                break;\n            }\n        }\n    }\n''',
+               '''    if (touch.justTouchedDown()) {\n        for (const HitRect& rect : cardRects) {\n            if (contains(rect, touch.x(), touch.y())) { selectedIndex = rect.index; break; }\n        }\n    }\n    if (touch.justTapped()) {\n        for (const HitRect& rect : cardRects) {\n            if (contains(rect, touch.x(), touch.y())) { selectedIndex = rect.index; kDown |= HidNpadButton_A; break; }\n        }\n    }\n''')
+
+          # AppShell settings: categories focus on contact; options activate only on release.
+          p = Path('src/UI/AppShellScreen.cpp')
+          s = p.read_text()
+          old = '''        if (touch.justPressed()) {\n            for (const HitRect& rect : settingsCategoryRects) {\n                if (contains(rect, touch.x(), touch.y())) {\n                    settingsCategory = rect.index;\n                    settingsIndex = std::min(settingsIndex,\n                                             settingsOptionCount(settingsCategory) - 1);\n                    settingsCategoryFocused = true;\n                    return;\n                }\n            }\n            for (const HitRect& rect : settingsRects) {\n                if (contains(rect, touch.x(), touch.y())) {\n                    settingsIndex = rect.index;\n                    settingsCategoryFocused = false;\n                    kDown |= HidNpadButton_A;\n                    break;\n                }\n            }\n        }\n'''
+          new = '''        if (touch.justTouchedDown()) {\n            for (const HitRect& rect : settingsCategoryRects) {\n                if (contains(rect, touch.x(), touch.y())) {\n                    settingsCategory = rect.index;\n                    settingsIndex = std::min(settingsIndex, settingsOptionCount(settingsCategory) - 1);\n                    settingsCategoryFocused = true;\n                    break;\n                }\n            }\n            for (const HitRect& rect : settingsRects) {\n                if (contains(rect, touch.x(), touch.y())) {\n                    settingsIndex = rect.index; settingsCategoryFocused = false; break;\n                }\n            }\n        }\n        if (touch.justTapped()) {\n            for (const HitRect& rect : settingsCategoryRects) {\n                if (contains(rect, touch.x(), touch.y())) {\n                    settingsCategory = rect.index;\n                    settingsIndex = std::min(settingsIndex, settingsOptionCount(settingsCategory) - 1);\n                    settingsCategoryFocused = true;\n                    break;\n                }\n            }\n            for (const HitRect& rect : settingsRects) {\n                if (contains(rect, touch.x(), touch.y())) {\n                    settingsIndex = rect.index; settingsCategoryFocused = false; kDown |= HidNpadButton_A; break;\n                }\n            }\n        } else if (touch.justReleased() && touch.dragged()) {\n            const int dy = touch.deltaY();\n            if (dy < -44) kDown |= HidNpadButton_Down;\n            else if (dy > 44) kDown |= HidNpadButton_Up;\n        }\n'''
+          if s.count(old) != 1: raise SystemExit('AppShell settings touch block mismatch')
+          p.write_text(s.replace(old, new, 1))
+          PY
+
+          git diff --check
+          grep -q 'touchedButtonDownId' include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc
+          ! grep -q 'if (!touch.justPressed()) return -1' src/UI/TrainerViewScreenBase.inc
+
+      - name: Commit runtime touch foundation only
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc src/UI/TrainerViewScreenCompositeOverlay.cpp src/UI/AppShellScreen.cpp
+          git diff --cached --quiet && { echo 'No runtime touch changes'; exit 1; }
+          git commit -m 'feat(ui): establish full-app native touch foundation'
+          git push origin HEAD:feature/touch-controls-20261005
