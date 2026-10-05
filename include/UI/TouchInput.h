@@ -30,7 +30,7 @@ namespace UI {
          * Historically this method returned the raw touch-down edge, which made the UI feel janky:
          * a list row or button could fire before a swipe had even started. Keep the existing method
          * name so every established hitbox automatically gets the safer behavior, but only report a
-         * press once the finger has been released without crossing the drag threshold.
+         * press once the finger has been released without ever crossing the drag threshold.
          */
         bool justPressed() const { return justReleased() && !dragged(); }
         bool justTapped() const { return justPressed(); }
@@ -42,12 +42,13 @@ namespace UI {
         int deltaX() const { return curX - begX; }
         int deltaY() const { return curY - begY; }
 
-        bool dragged() const;                                           // moved past the tap-cancel threshold
+        bool dragged() const;                                           // gesture ever moved past tap slop
 
     private:
         bool curDown = false, prevDown = false;
         int curX = 0, curY = 0;   // latest touch position
         int begX = 0, begY = 0;   // position where the current touch started (recorded on contact)
+        int maxDistanceSquared = 0; // largest displacement from touch-down during this gesture
     };
 }
 
