@@ -45,6 +45,8 @@ struct EvolutionMatchResult {
 
 #include "Legality/Gen4StaticEncounterData.inc"
 
+constexpr uint16_t kLinkTrade4 = 2002;
+
 constexpr uint16_t species(uint64_t v) noexcept {
     return static_cast<uint16_t>(v & 0x1FFu);
 }
@@ -122,14 +124,15 @@ inline bool hasSpecies(std::string_view exactGameId, uint16_t speciesId) noexcep
     return false;
 }
 
-// Exact surviving-species matcher retained for callers that explicitly need the
-// original direct-row semantics.
-inline const uint64_t* findDirectMatch(
+// State-aware direct matching mirrors pinned EncounterStatic4 egg-location
+// semantics. Link Trade 2002 is valid only after the gift egg has hatched.
+inline const uint64_t* findDirectMatchWithEggState(
                     std::string_view exactGameId, uint16_t speciesId,
                     uint16_t metLocation, uint8_t metLevel, uint8_t pokemonForm,
                     uint16_t pokemonEggLocation, uint8_t pokemonBall,
                     uint8_t pokemonGender, uint8_t pokemonNature,
-                    bool pokemonShiny, bool pokemonFateful) noexcept {
+                    bool pokemonShiny, bool pokemonFateful,
+                    bool pokemonIsEgg) noexcept {
     const auto wanted = Gen4Wild::gameForId(exactGameId);
     if (wanted == Gen4Wild::Game::Invalid || speciesId == 0)
         return nullptr;
@@ -145,10 +148,13 @@ inline const uint64_t* findDirectMatch(
 
         const uint16_t expectedEgg = eggLocation(row);
         if (expectedEgg != 0) {
-            // Native PK4 eggs store encounter level 0 and preserve the gift egg location.
-            // Hatched PK4s may have any valid hatch met location, so the static table's
-            // Location=0 is not an exact met-location constraint after hatching.
-            if (metLevel != 0 || pokemonEggLocation != expectedEgg)
+            // Native PK4 gift eggs keep met level 0. Their original egg location
+            // survives normally; after an egg trade a *hatched* PK4 may instead
+            // retain Link Trade 2002. An unhatched egg may not use that exception.
+            if (metLevel != 0)
+                continue;
+            if (pokemonEggLocation != expectedEgg &&
+                (pokemonIsEgg || pokemonEggLocation != kLinkTrade4))
                 continue;
         } else {
             if (metLevel != level(row))
@@ -168,6 +174,20 @@ inline const uint64_t* findDirectMatch(
         return &row;
     }
     return nullptr;
+}
+
+// Exact surviving-species matcher retained for callers that do not carry egg
+// state. Treat unknown state conservatively as unable to prove Link Trade 2002.
+inline const uint64_t* findDirectMatch(
+                    std::string_view exactGameId, uint16_t speciesId,
+                    uint16_t metLocation, uint8_t metLevel, uint8_t pokemonForm,
+                    uint16_t pokemonEggLocation, uint8_t pokemonBall,
+                    uint8_t pokemonGender, uint8_t pokemonNature,
+                    bool pokemonShiny, bool pokemonFateful) noexcept {
+    return findDirectMatchWithEggState(
+        exactGameId, speciesId, metLocation, metLevel, pokemonForm,
+        pokemonEggLocation, pokemonBall, pokemonGender, pokemonNature,
+        pokemonShiny, pokemonFateful, true);
 }
 
 inline const uint64_t* findNonEggBaseFormSource(
@@ -221,8 +241,6 @@ inline const uint64_t* findHatchedGiftEggBaseFormSource(
         uint8_t pokemonNature,
         bool pokemonShiny,
         bool pokemonFateful) noexcept {
-    constexpr uint16_t kLinkTrade4 = 2002;
-
     const auto wanted = Gen4Wild::gameForId(exactGameId);
     if (wanted == Gen4Wild::Game::Invalid || sourceSpecies == 0 || metLevel != 0)
         return nullptr;
@@ -290,6 +308,54 @@ inline EvolutionMatchResult matchEvolutionLine(
     return {};
 }
 
+// Stateful production path: direct gift eggs can prove Link Trade 2002 only
+// after hatching, and an unhatched Pokemon cannot enter an evolved-source path.
+inline EvolutionMatchResult matchEvolutionLineWithEggState(
+        std::string_view exactGameId,
+        uint16_t currentSpecies,
+        uint16_t metLocation,
+        uint8_t metLevel,
+        uint8_t pokemonForm,
+        uint16_t pokemonEggLocation,
+        uint8_t pokemonBall,
+        uint8_t pokemonGender,
+        uint8_t pokemonNature,
+        bool pokemonShiny,
+        bool pokemonFateful,
+        bool pokemonIsEgg) noexcept {
+    if (const uint64_t* direct = findDirectMatchWithEggState(
+            exactGameId, currentSpecies, metLocation, metLevel,
+            pokemonForm, pokemonEggLocation, pokemonBall,
+            pokemonGender, pokemonNature, pokemonShiny, pokemonFateful,
+            pokemonIsEgg)) {
+        const bool hatchedGift = eggLocation(*direct) != 0 && !pokemonIsEgg;
+        return {direct, currentSpecies, false, hatchedGift};
+    }
+
+    // An unhatched PK4 cannot already be an evolved descendant of a gift egg.
+    if (pokemonIsEgg)
+        return {};
+
+    uint16_t ancestor = Gen34EggMove::preEvolution(exactGameId, currentSpecies);
+    for (int depth = 0; ancestor != 0 && depth < 8; ++depth) {
+        if (const uint64_t* source = findNonEggBaseFormSource(
+                exactGameId, ancestor, metLocation, metLevel, pokemonBall,
+                pokemonGender, pokemonNature, pokemonShiny, pokemonFateful))
+            return {source, ancestor, true, false};
+
+        if (const uint64_t* source = findHatchedGiftEggBaseFormSource(
+                exactGameId, ancestor, metLevel, pokemonEggLocation, pokemonBall,
+                pokemonGender, pokemonNature, pokemonShiny, pokemonFateful))
+            return {source, ancestor, true, true};
+
+        const uint16_t next = Gen34EggMove::preEvolution(exactGameId, ancestor);
+        if (next == ancestor)
+            break;
+        ancestor = next;
+    }
+    return {};
+}
+
 // Central legality consumers use findMatch. Returning the source row here makes
 // evolved static/gift provenance visible to the existing report and preserves
 // source-row PID-category evidence without adding any new Invalid verdict.
@@ -303,6 +369,19 @@ inline const uint64_t* findMatch(
         exactGameId, speciesId, metLocation, metLevel, pokemonForm,
         pokemonEggLocation, pokemonBall, pokemonGender, pokemonNature,
         pokemonShiny, pokemonFateful).row;
+}
+
+inline const uint64_t* findMatchWithEggState(
+                    std::string_view exactGameId, uint16_t speciesId,
+                    uint16_t metLocation, uint8_t metLevel, uint8_t pokemonForm,
+                    uint16_t pokemonEggLocation, uint8_t pokemonBall,
+                    uint8_t pokemonGender, uint8_t pokemonNature,
+                    bool pokemonShiny, bool pokemonFateful,
+                    bool pokemonIsEgg) noexcept {
+    return matchEvolutionLineWithEggState(
+        exactGameId, speciesId, metLocation, metLevel, pokemonForm,
+        pokemonEggLocation, pokemonBall, pokemonGender, pokemonNature,
+        pokemonShiny, pokemonFateful, pokemonIsEgg).row;
 }
 
 inline bool matches(std::string_view exactGameId, uint16_t speciesId,
