@@ -708,7 +708,27 @@ namespace UI {
             scrollSelectionIntoView();
             if (classicGamesActive) scrollClassicSelectionIntoView();
         }
-        refreshHubPreview();
+        refreshHubPreview(false);
+    }
+
+    void SaveSelectScreen::resumeAfterEditor() {
+        titleSelected = false;
+        selectedUserUid = {};
+        selectedTitleId = 0;
+        selectedTitleName.clear();
+        selectedGameId.clear();
+        selectedSourceKind = SelectedSourceKind::None;
+        selectedLegacySourceIndex = 0;
+        openIntent = OpenIntent::Default;
+        overlay = Overlay::None;
+        exitRequested = false;
+        appExitRequested = false;
+        requestedMainMenuDestination = MainMenuDestination::None;
+        hubNotice.clear();
+
+        // Preserve the existing catalog, focus and sort state. Refresh only what the Main Card
+        // displays; do not re-enumerate users/saves/providers just because an editor closed.
+        refreshHubPreview(false);
     }
 
     void SaveSelectScreen::loadLegacySources(
@@ -1215,7 +1235,7 @@ namespace UI {
         hubFeatureIndex = -1;
         // Full Games does not display the heavy trainer/party preview. Keep profile switching
         // inside that browser lightweight and rebuild Product Home only when it is visible again.
-        if (!classicGamesActive) refreshHubPreview();
+        if (!classicGamesActive) refreshHubPreview(false);
     }
 
     void SaveSelectScreen::refreshHubSelectionFromCache() {
@@ -1261,7 +1281,7 @@ namespace UI {
         }
     }
 
-    void SaveSelectScreen::refreshHubPreview() {
+    void SaveSelectScreen::refreshHubPreview(bool resolveLaunchTarget) {
         partyPreview = {};
         partyPreviewStatus.clear();
         previewTrainerName.clear();
@@ -1311,8 +1331,24 @@ namespace UI {
             }
         }
 
-        launchDescriptor = resolveGameLaunch(
-            title.titleId, title.gameId, providerId, sourcePath, bindingKey);
+        if (resolveLaunchTarget) {
+            launchDescriptor = resolveGameLaunch(
+                title.titleId, title.gameId, providerId, sourcePath, bindingKey);
+        } else {
+            // Presentation-only refresh: trainer/dex/party still come from the real save, but
+            // navigation must never enumerate HOME applications, playlists, or ROM libraries.
+            launchDescriptor = {};
+            if (title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
+                title.legacyInstances.size() > 1) {
+                launchDescriptor.backend = GameLaunchBackend::HomebrewNro;
+                launchDescriptor.state = GameLaunchState::ChooseSource;
+                launchDescriptor.providerId = "source-choice";
+                launchDescriptor.detail = "Choose the exact validated save/source to launch.";
+            } else {
+                launchDescriptor.state = GameLaunchState::Ready;
+                launchDescriptor.detail = "Launch target resolves when requested.";
+            }
+        }
 
         auto addParty = [&](size_t index, uint16_t species, uint8_t level,
                             uint8_t form, bool shiny) {
@@ -2604,7 +2640,7 @@ namespace UI {
             if (kDown & HidNpadButton_B) {
                 classicGamesActive = false;
                 scrollRow = 0;
-                refreshHubPreview();
+                refreshHubPreview(false);
                 return;
             }
             if (kDown & HidNpadButton_Minus) {
@@ -2779,7 +2815,7 @@ namespace UI {
                 titleIndex = (titleIndex + 1) % homeGameCount;
             if (titleIndex != before) {
                 scrollSelectionIntoView();
-                refreshHubSelectionFromCache();
+                refreshHubPreview(false);
             }
         }
 

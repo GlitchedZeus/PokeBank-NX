@@ -183,8 +183,11 @@ namespace UI {
                                                    selectScreen.getSelectedTitleName());
                         }
                     }
-                    rebuildPicker = true;
-                    break;
+                    // Return to the same Product Home instance. Rebuilding here re-ran account/save
+                    // enumeration and source parsing before a frame could draw, which looked like a freeze.
+                    selectScreen.resumeAfterEditor();
+                    fb.startFade();
+                    continue;
                 }
                 if (selectScreen.shouldExit()) break;
             }

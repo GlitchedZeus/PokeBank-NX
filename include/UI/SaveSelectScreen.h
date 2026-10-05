@@ -73,6 +73,8 @@ namespace UI {
             return requestedMainMenuDestination;
         }
         [[nodiscard]] NavigationState navigationState() const;
+        // Resume Product Home after an editor without rebuilding the whole catalog.
+        void resumeAfterEditor();
 
         bool hasSelectedTitle() const { return titleSelected; }
         AccountUid getSelectedUser() const { return selectedUserUid; }
@@ -261,7 +263,7 @@ namespace UI {
         static bool scanSaveSpace(UserEntry& user, int spaceId, int& scanned, int& forUser);
         void setUser(int idx);
         void refreshHubSelectionFromCache();
-        void refreshHubPreview();
+        void refreshHubPreview(bool resolveLaunchTarget = true);
         bool launchCurrentTitle();
         bool launchCurrentLegacyInstance();
         bool beginLaunchLinkForCurrentTitle();

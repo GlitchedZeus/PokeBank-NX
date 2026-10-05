@@ -910,14 +910,19 @@ GameLaunchDescriptor resolveGameLaunch(uint64_t titleId,
     }
 
 #ifdef __SWITCH__
-    if (const uint64_t forwarderTitle = installedGameForwarderTitle(gameId); forwarderTitle != 0) {
+    // Gen I-III already had a working direct emulator/core path in dee2ad47. Do not put a full
+    // installed-application metadata scan in front of those launches. Keep HOME-forwarder probing
+    // focused on Nintendo DS, which is the unfinished launch tranche this code was added for.
+    if (gameId.ends_with("_nds")) {
+        if (const uint64_t forwarderTitle = installedGameForwarderTitle(gameId); forwarderTitle != 0) {
         GameLaunchDescriptor result;
         result.backend = GameLaunchBackend::SwitchTitle;
         result.titleId = forwarderTitle;
         result.providerId = std::string(providerId);
         result.state = GameLaunchState::Ready;
-        result.detail = "Launch the installed HOME forwarder for this exact game.";
-        return result;
+            result.detail = "Launch the installed HOME forwarder for this exact game.";
+            return result;
+        }
     }
 #endif
 

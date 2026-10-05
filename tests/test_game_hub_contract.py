@@ -37,10 +37,10 @@ require("refreshHubSelectionFromCache" in header and "refreshHubSelectionFromCac
 lr_start = source.index("// L/R changes the selected game from anywhere on Product Home")
 lr_end = source.index("if (headerActionIndex >= 0)", lr_start)
 lr_block = source[lr_start:lr_end]
-require("refreshHubSelectionFromCache();" in lr_block and "refreshHubPreview();" not in lr_block,
-        "Product Home L/R must not run the full save/launch preview on the input frame")
+require("refreshHubPreview(false);" in lr_block and "resolveGameLaunch" not in lr_block,
+        "Product Home L/R must restore real trainer/dex/party data without launch discovery")
 cache_start = source.index("void SaveSelectScreen::refreshHubSelectionFromCache()")
-cache_end = source.index("void SaveSelectScreen::refreshHubPreview()", cache_start)
+cache_end = source.index("void SaveSelectScreen::refreshHubPreview(bool resolveLaunchTarget)", cache_start)
 cache_block = source[cache_start:cache_end]
 for forbidden in ("resolveGameLaunch", "fsdevMountSaveData", "openAssignedSource",
                   "readTrainerInfoFRLG", "discoverConfiguredLegacySaves"):
@@ -105,6 +105,8 @@ require("PartyPreviewSlot" in header, "party preview model must remain explicit"
 # Product Home, not the retired dashboard, is the app root.
 require("const auto destination = handleSaveSelection();" in ui_manager,
         "approved Games/product-home screen must be the app root")
+require("selectScreen.resumeAfterEditor();" in ui_manager,
+        "editor exit must reuse Product Home instead of rebuilding the whole save catalog")
 require("shell.hasOverlay()" in ui_manager,
         "secondary destinations must return directly to product home")
 require("Dest::MasterVault" in ui_manager and "Dest::Pokedex" in ui_manager,
@@ -495,7 +497,7 @@ selection_change_end = classic_runtime_block.index("}", selection_change_start)
 require("refreshHubPreview();" not in classic_runtime_block[selection_change_start:selection_change_end],
         "Classic grid focus changes must not perform expensive save preview parsing")
 require("classicGamesActive = false;" in classic_runtime_block and
-        "refreshHubPreview();" in classic_runtime_block[
+        "refreshHubPreview(false);" in classic_runtime_block[
             classic_runtime_block.index("if (kDown & HidNpadButton_B)"):
             classic_runtime_block.index("if (kDown & HidNpadButton_Minus)")],
         "leaving full Games must refresh the selected Product Home preview exactly at the boundary")
@@ -512,7 +514,7 @@ require("Warm only game-card artwork" in activate_block and
 set_user_start = source.index("void SaveSelectScreen::setUser")
 set_user_end = source.index("void SaveSelectScreen::refreshHubPreview", set_user_start)
 set_user_block = source[set_user_start:set_user_end]
-require("if (!classicGamesActive) refreshHubPreview();" in set_user_block,
+require("if (!classicGamesActive) refreshHubPreview(false);" in set_user_block,
         "profile switching inside full Games must not rebuild the hidden Product Home preview")
 
 # Hardware-regression contracts added after the 941ac9d7 failure report.
