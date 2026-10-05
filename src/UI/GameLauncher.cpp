@@ -446,6 +446,9 @@ std::string defaultRetroArchCore(std::string_view gameId) {
         (gameId.size() >= 4 && gameId.substr(gameId.size() - 4) == "_gbc"))
         return firstExisting({"sdmc:/retroarch/cores/gambatte_libretro_libnx.nro",
                               "sdmc:/retroarch/cores/mgba_libretro_libnx.nro"});
+    if (gameId.size() >= 4 && gameId.substr(gameId.size() - 4) == "_nds")
+        return firstExisting({"sdmc:/retroarch/cores/desmume_libretro_libnx.nro",
+                              "sdmc:/retroarch/cores/melonds_libretro_libnx.nro"});
     return {};
 }
 
@@ -757,13 +760,8 @@ GameLaunchDescriptor resolveRetroArch(std::string_view gameId,
                     continue;
                 }
 
-                result.contentPath = std::move(content);
-                result.corePath = std::move(core);
-                result.launcherPath = result.corePath;
-                result.state = GameLaunchState::Ready;
-                result.detail = "RetroArch playlist matched this save to its game file and core.";
-                ::closedir(dir);
-                return result;
+                matches.push_back({std::move(content), std::move(core)});
+                pos += 6;
             }
         }
         ::closedir(dir);
@@ -773,6 +771,7 @@ GameLaunchDescriptor resolveRetroArch(std::string_view gameId,
         if (matches.size() == 1) {
             result.contentPath = std::move(matches.front().content);
             result.corePath = std::move(matches.front().core);
+            result.launcherPath = result.corePath;
             result.state = GameLaunchState::Ready;
             result.detail = "RetroArch playlist matched this save to its game file and core.";
             return result;
