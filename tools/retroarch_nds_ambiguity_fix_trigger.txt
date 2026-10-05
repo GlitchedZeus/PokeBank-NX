@@ -1,2 +1,3 @@
 Trigger the one-time RetroArch NDS ambiguity reconciliation workflow.
+Round 2: exact current-source patch.
 DEVICE_ACCEPTED=false
