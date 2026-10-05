@@ -154,8 +154,23 @@ namespace UI {
             return;  // Ignore other inputs while confirmation is shown
         }
 
+        // Natural touch list behavior: a deliberate vertical swipe moves the selection while a
+        // stationary tap opens the row on release. Waiting for release prevents a scroll gesture
+        // that starts on a row from accidentally opening that backup on touch-down.
+        if (touch.justReleased() && touch.dragged()) {
+            const int dx = touch.x() - touch.startX();
+            const int dy = touch.y() - touch.startY();
+            const int ax = dx < 0 ? -dx : dx;
+            const int ay = dy < 0 ? -dy : dy;
+            constexpr int kSwipeDistance = 72;
+            if (ay >= kSwipeDistance && ay * 3 >= ax * 4 &&
+                touch.startY() >= CARD_Y && touch.startY() < CARD_Y + LIST_ROW_H * (LIST_MAX_VISIBLE + 1)) {
+                kDown |= dy < 0 ? HidNpadButton_Down : HidNpadButton_Up;
+            }
+        }
+
         // Touch: tap a backup tile to select + open it (account for the scroll window).
-        if (touch.justPressed()) {
+        if (touch.justReleased() && !touch.dragged()) {
             const int startY = CARD_Y + 62, tileX = CARD_X + 14, tileW = CARD_W - 28;
             if (touch.x() >= tileX && touch.x() < tileX + tileW && touch.y() >= startY) {
                 int visIdx = (touch.y() - startY) / LIST_ROW_H;
