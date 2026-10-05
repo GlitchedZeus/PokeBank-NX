@@ -49,6 +49,9 @@ constexpr Result matchRow(bool hgss, uint64_t row, uint32_t leadMeta,
     const uint8_t type = Gen4Wild::method(row);
     if (!Gen4LeadFailure::supportedType(hgss, type))
         return {};
+    if (Gen4LeadFrame::isBugContest(type) &&
+        !Gen4LeadFrame::directMinimum31Satisfied(prePidSeed))
+        return {};
 
     const uint8_t nature = static_cast<uint8_t>(pid % 25u);
     const int frames = Gen4LeadFrame::reversalWindow(prePidSeed, nature);
@@ -85,7 +88,7 @@ constexpr Result matchRow(bool hgss, uint64_t row, uint32_t leadMeta,
                     const uint32_t activationSeed =
                         Gen3PidIv::Detail::prev(seed3);
                     if (Gen4LeadFailure::normalActivationAllows(
-                            hgss, row, activationSeed))
+                            hgss, row, activationSeed, false))
                         return {lead, candidate};
                 }
             } else {
