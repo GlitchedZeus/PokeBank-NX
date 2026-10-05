@@ -1,14 +1,306 @@
-name: Disabled one-time Product Home freeze + party cleanup
-
-# This staging workflow intentionally does nothing. The broad cleanup it contained was rejected
-# after hardware feedback because it changed too much at once. Keep the file inert as an audit
-# breadcrumb; focused forward fixes are committed directly instead.
+name: One-time direct native touch controls
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [feature/touch-controls-20261005]
+    paths:
+      - .github/workflows/one-time-product-freeze-party-cleanup.yml
+
+permissions:
+  contents: write
 
 jobs:
-  disabled:
+  patch-touch:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - run: echo "Broad Product Home cleanup disabled; use focused hardware fixes only."
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify exact touch head
+        run: |
+          set -euo pipefail
+          git fetch origin feature/touch-controls-20261005
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/feature/touch-controls-20261005)" = "$GITHUB_SHA"
+
+      - name: Replace controller-emulated taps with direct touch
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              s = p.read_text()
+              n = s.count(old)
+              if n != 1:
+                  raise SystemExit(f"{path}: expected one match, got {n}: {old[:90]!r}")
+              p.write_text(s.replace(old, new, 1))
+
+          # Shared chrome keeps real footer buttons + swipes, but no longer owns card activation.
+          replace_once(
+              "include/UI/ScreenChrome.h",
+              "        g_touchCardHits = g_touchCardAccum;\n        g_touchCardAccum.clear();\n",
+              "        // Card activation belongs to the screen that owns the card. Never synthesize\n"
+              "        // multi-frame D-pad walks from a touchscreen tap.\n"
+              "        g_touchCardHits.clear();\n        g_touchCardAccum.clear();\n")
+
+          # SaveSelect gets explicit geometry for feature cards and every modal/browser row.
+          replace_once(
+              "include/UI/SaveSelectScreen.h",
+              "        std::vector<HitRect> dockRects;\n        std::vector<HitRect> headerRects;\n",
+              "        std::vector<HitRect> dockRects;\n        std::vector<HitRect> headerRects;\n"
+              "        std::vector<HitRect> featureRects;\n        std::vector<HitRect> overlayRects;\n")
+
+          replace_once(
+              "src/UI/SaveSelectScreen.cpp",
+              "        dockRects.clear();\n        headerRects.clear();\n",
+              "        dockRects.clear();\n        headerRects.clear();\n        featureRects.clear();\n        overlayRects.clear();\n")
+
+          # Full six-column browser tiles.
+          replace_once(
+              "src/UI/SaveSelectScreen.cpp",
+              "            drawFocusedCard(fb, x, y, CLASSIC_TILE_W, CLASSIC_TILE_H, focused, 16);\n",
+              "            drawFocusedCard(fb, x, y, CLASSIC_TILE_W, CLASSIC_TILE_H, focused, 16);\n"
+              "            titleRects.push_back({x, y, CLASSIC_TILE_W, CLASSIC_TILE_H, i});\n")
+
+          # Product Home feature cards.
+          replace_once(
+              "src/UI/SaveSelectScreen.cpp",
+              "        drawFocusedCard(fb, vaultX, vaultY, featureW, featureH, vaultFocused, 18);\n"
+              "        drawFocusedCard(fb, dexX, dexY, featureW, featureH, dexFocused, 18);\n",
+              "        drawFocusedCard(fb, vaultX, vaultY, featureW, featureH, vaultFocused, 18);\n"
+              "        drawFocusedCard(fb, dexX, dexY, featureW, featureH, dexFocused, 18);\n"
+              "        featureRects.push_back({vaultX, vaultY, featureW, featureH, 0});\n"
+              "        featureRects.push_back({dexX, dexY, featureW, featureH, 1});\n")
+
+          # Quick Games tiles.
+          replace_once(
+              "src/UI/SaveSelectScreen.cpp",
+              "                    drawFocusedCard(fb, bx, by, tileW, tileH, selected, 14);\n",
+              "                    drawFocusedCard(fb, bx, by, tileW, tileH, selected, 14);\n"
+              "                    overlayRects.push_back({bx, by, tileW, tileH, i});\n")
+
+          # Profile rows.
+          replace_once(
+              "src/UI/SaveSelectScreen.cpp",
+              "                drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 8, selected, 14);\n\n"
+              "                const IconImage* avatar =\n",
+              "                drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 8, selected, 14);\n"
+              "                overlayRects.push_back({x + 24, rowY, w - 48, rowH - 8, i});\n\n"
+              "                const IconImage* avatar =\n")
+
+          # Current Game workspace cards.
+          replace_once(
+              "src/UI/SaveSelectScreen.cpp",
+              "                drawFocusedCard(fb, cx, cy, cardW, cardH, focused, 14);\n"
+              "                fb.drawText(cx + 20, cy + 14, labels[i],\n",
+              "                drawFocusedCard(fb, cx, cy, cardW, cardH, focused, 14);\n"
+              "                overlayRects.push_back({cx, cy, cardW, cardH, i});\n"
+              "                fb.drawText(cx + 20, cy + 14, labels[i],\n")
+
+          # ROM/game file rows.
+          replace_once(
+              "src/UI/SaveSelectScreen.cpp",
+              "                drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 6, selected, 10);\n"
+              "                fb.drawText(x + 44, rowY + 13,\n",
+              "                drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 6, selected, 10);\n"
+              "                overlayRects.push_back({x + 24, rowY, w - 48, rowH - 6, i});\n"
+              "                fb.drawText(x + 44, rowY + 13,\n")
+
+          # Legacy Save Instances rows (helper draws them; register the same geometry explicitly).
+          replace_once(
+              "src/UI/SaveSelectScreen.cpp",
+              "            drawSaveInstanceRows(fb, parent.legacyInstances, legacyInstanceIndex, first,\n"
+              "                                 x, y + 122, w, rowH, LEGACY_INSTANCE_VISIBLE_ROWS, true);\n",
+              "            drawSaveInstanceRows(fb, parent.legacyInstances, legacyInstanceIndex, first,\n"
+              "                                 x, y + 122, w, rowH, LEGACY_INSTANCE_VISIBLE_ROWS, true);\n"
+              "            for (int i = first; i < std::min<int>(static_cast<int>(parent.legacyInstances.size()),\n"
+              "                                                  first + LEGACY_INSTANCE_VISIBLE_ROWS); ++i) {\n"
+              "                const int touchY = y + 122 + (i - first) * rowH;\n"
+              "                overlayRects.push_back({x + 24, touchY, w - 48, rowH - 6, i});\n"
+              "            }\n")
+
+          # Legacy assignment rows.
+          replace_once(
+              "src/UI/SaveSelectScreen.cpp",
+              "                drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 6,\n"
+              "                                index == legacyAssignmentIndex, 10);\n",
+              "                drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 6,\n"
+              "                                index == legacyAssignmentIndex, 10);\n"
+              "                overlayRects.push_back({x + 24, rowY, w - 48, rowH - 6, index});\n")
+
+          # Gen IV source setup rows.
+          replace_once(
+              "src/UI/SaveSelectScreen.cpp",
+              "                drawFocusedCard(fb, x + 24, ry, w - 48, rowH - 8, i == gen4SetupIndex, 10);\n"
+              "                fb.drawText(x + 44, ry + 15, rows[i],\n",
+              "                drawFocusedCard(fb, x + 24, ry, w - 48, rowH - 8, i == gen4SetupIndex, 10);\n"
+              "                overlayRects.push_back({x + 24, ry, w - 48, rowH - 8, i});\n"
+              "                fb.drawText(x + 44, ry + 15, rows[i],\n")
+
+          # Gen IV Save Instance rows.
+          replace_once(
+              "src/UI/SaveSelectScreen.cpp",
+              "            drawSaveInstanceRows(fb, gen4Instances, gen4CandidateIndex, first,\n"
+              "                                 x, y + 108, w, rowH, visibleRows, false);\n",
+              "            drawSaveInstanceRows(fb, gen4Instances, gen4CandidateIndex, first,\n"
+              "                                 x, y + 108, w, rowH, visibleRows, false);\n"
+              "            for (int i = first; i < std::min<int>(static_cast<int>(gen4Instances.size()),\n"
+              "                                                  first + visibleRows); ++i) {\n"
+              "                const int touchY = y + 108 + (i - first) * rowH;\n"
+              "                overlayRects.push_back({x + 24, touchY, w - 48, rowH - 6, i});\n"
+              "            }\n")
+
+          # Options rows.
+          replace_once(
+              "src/UI/SaveSelectScreen.cpp",
+              "                drawFocusedCard(fb, x + 22, ry, w - 44, rowH - 8, i == optionsIndex, 12);\n"
+              "                fb.drawText(x + 44, ry + 15, rows[i],\n",
+              "                drawFocusedCard(fb, x + 22, ry, w - 44, rowH - 8, i == optionsIndex, 12);\n"
+              "                overlayRects.push_back({x + 22, ry, w - 44, rowH - 8, i});\n"
+              "                fb.drawText(x + 44, ry + 15, rows[i],\n")
+
+          # Direct-tap dispatcher: exact visible row/tile -> exact selection -> existing A action.
+          replace_once(
+              "src/UI/SaveSelectScreen.cpp",
+              "            | navTouchButton(touch);\n\n        if (overlay == Overlay::GamesDrawer) {\n",
+              "            | navTouchButton(touch);\n\n"
+              "        auto tappedRect = [&](const std::vector<HitRect>& rects) -> int {\n"
+              "            if (!touch.justTapped()) return -1;\n"
+              "            const int tx = touch.x(), ty = touch.y();\n"
+              "            for (const auto& r : rects)\n"
+              "                if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h)\n"
+              "                    return r.idx;\n"
+              "            return -1;\n"
+              "        };\n\n"
+              "        if (touch.justTapped()) {\n"
+              "            if (classicGamesActive && overlay == Overlay::None) {\n"
+              "                const int idx = tappedRect(titleRects);\n"
+              "                if (idx >= 0) {\n"
+              "                    titleIndex = idx;\n"
+              "                    headerActionIndex = -1;\n"
+              "                    scrollClassicSelectionIntoView();\n"
+              "                    kDown |= HidNpadButton_A;\n"
+              "                }\n"
+              "            } else {\n"
+              "                const int idx = tappedRect(overlayRects);\n"
+              "                bool activate = idx >= 0;\n"
+              "                if (activate) {\n"
+              "                    switch (overlay) {\n"
+              "                        case Overlay::GamesDrawer:      gamesDrawerIndex = idx; break;\n"
+              "                        case Overlay::ProfilePicker:    profilePickerIndex = idx; break;\n"
+              "                        case Overlay::GameWorkspace:    gameWorkspaceIndex = idx; break;\n"
+              "                        case Overlay::GameFilePicker:   launchFileIndex = idx; break;\n"
+              "                        case Overlay::LegacyInstances:  legacyInstanceIndex = idx; break;\n"
+              "                        case Overlay::LegacyAssignment: legacyAssignmentIndex = idx; break;\n"
+              "                        case Overlay::Gen4Setup:        gen4SetupIndex = idx; break;\n"
+              "                        case Overlay::Gen4Candidates:   gen4CandidateIndex = idx; break;\n"
+              "                        case Overlay::Options:          optionsIndex = idx; break;\n"
+              "                        default: activate = false; break;\n"
+              "                    }\n"
+              "                    if (activate) kDown |= HidNpadButton_A;\n"
+              "                }\n"
+              "            }\n"
+              "        }\n\n"
+              "        if (overlay == Overlay::GamesDrawer) {\n")
+
+          # Product Home's two feature cards activate exactly what was touched.
+          replace_once(
+              "src/UI/SaveSelectScreen.cpp",
+              "            for (const auto& r : titleRects) {\n",
+              "            for (const auto& r : featureRects) {\n"
+              "                if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {\n"
+              "                    hubDockFocused = false;\n"
+              "                    headerActionIndex = -1;\n"
+              "                    hubFeatureIndex = r.idx;\n"
+              "                    requestedMainMenuDestination = r.idx == 0\n"
+              "                        ? MainMenuDestination::MasterVault : MainMenuDestination::Pokedex;\n"
+              "                    exitRequested = true;\n"
+              "                    return;\n"
+              "                }\n"
+              "            }\n"
+              "            for (const auto& r : titleRects) {\n")
+
+          # Classic inventory overlay owns its own touch rows before TrainerView's generic dispatcher.
+          replace_once(
+              "include/UI/ClassicInventoryOverlay.h",
+              "class PKSEFramebuffer;\n",
+              "class PKSEFramebuffer;\nclass TouchInput;\n")
+          replace_once(
+              "include/UI/ClassicInventoryOverlay.h",
+              "[[nodiscard]] bool handleInput(TrainerViewScreen& screen, uint64_t down);\n",
+              "[[nodiscard]] bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch);\n")
+          replace_once(
+              "src/UI/ClassicInventoryOverlay.cpp",
+              "#include \"UI/TrainerViewScreen.h\"\n",
+              "#include \"UI/TrainerViewScreen.h\"\n#include \"UI/TouchInput.h\"\n")
+          replace_once(
+              "src/UI/ClassicInventoryOverlay.cpp",
+              "bool handleInput(TrainerViewScreen& screen, uint64_t down) {\n    if (!isClassicSource(screen)) return false;\n    auto& state = stateFor(screen);\n",
+              "bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch) {\n"
+              "    if (!isClassicSource(screen)) return false;\n"
+              "    auto& state = stateFor(screen);\n"
+              "    const int touchId = screen.touchedButtonId(touch);\n"
+              "    if ((state.pickerActive || state.optionsActive || state.reviewActive) &&\n"
+              "        touch.justReleased() && touch.dragged()) {\n"
+              "        const int dx = touch.deltaX(), dy = touch.deltaY();\n"
+              "        const int ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;\n"
+              "        if (ay >= 60 && ay > ax) down |= dy < 0 ? HidNpadButton_Down : HidNpadButton_Up;\n"
+              "    }\n")
+          replace_once(
+              "src/UI/ClassicInventoryOverlay.cpp",
+              "    if (state.pickerActive) {\n        const int count = static_cast<int>(state.pickerItems.size());\n",
+              "    if (state.pickerActive) {\n        const int count = static_cast<int>(state.pickerItems.size());\n"
+              "        if (touchId >= 0 && touchId < count) { state.pickerRow = touchId; down |= HidNpadButton_A; }\n")
+          replace_once(
+              "src/UI/ClassicInventoryOverlay.cpp",
+              "    if (state.reviewActive) {\n        const auto lines = pendingLines(screen);\n        const int count = static_cast<int>(lines.size());\n",
+              "    if (state.reviewActive) {\n        const auto lines = pendingLines(screen);\n        const int count = static_cast<int>(lines.size());\n"
+              "        if (touchId >= 0 && touchId < count) state.reviewRow = touchId;\n")
+          replace_once(
+              "src/UI/ClassicInventoryOverlay.cpp",
+              "    if (state.optionsActive) {\n        constexpr int optionCount = 4;\n",
+              "    if (state.optionsActive) {\n        constexpr int optionCount = 4;\n"
+              "        if (touchId >= 0 && touchId < optionCount) { state.optionsRow = touchId; down |= HidNpadButton_A; }\n")
+          replace_once(
+              "src/UI/ClassicInventoryOverlay.cpp",
+              "            drawRow(fb, x + 30, rowY, width - 60, rows[static_cast<std::size_t>(i)], i == state.optionsRow);\n            rowY += 62;\n",
+              "            drawRow(fb, x + 30, rowY, width - 60, rows[static_cast<std::size_t>(i)], i == state.optionsRow);\n"
+              "            screen.touchButtons.push_back({i, x + 30, rowY, width - 60, 48});\n"
+              "            rowY += 62;\n")
+          replace_once(
+              "src/UI/ClassicInventoryOverlay.cpp",
+              "                drawRow(fb, x + 30, rowY, width - 60, lines[static_cast<std::size_t>(i)], i == state.reviewRow);\n                rowY += 57;\n",
+              "                drawRow(fb, x + 30, rowY, width - 60, lines[static_cast<std::size_t>(i)], i == state.reviewRow);\n"
+              "                screen.touchButtons.push_back({i, x + 30, rowY, width - 60, 48});\n"
+              "                rowY += 57;\n")
+          replace_once(
+              "src/UI/TrainerViewScreenBase.inc",
+              "        if (ClassicInventory::handleInput(*this, kDown)) return;\n",
+              "        if (ClassicInventory::handleInput(*this, kDown, touch)) return;\n")
+
+          # Restore this workflow to its original inert breadcrumb so no workflow diff remains.
+          Path(".github/workflows/one-time-product-freeze-party-cleanup.yml").write_text('''name: Disabled one-time Product Home freeze + party cleanup\n\n# This staging workflow intentionally does nothing. The broad cleanup it contained was rejected\n# after hardware feedback because it changed too much at once. Keep the file inert as an audit\n# breadcrumb; focused forward fixes are committed directly instead.\n\non:\n  workflow_dispatch:\n\njobs:\n  disabled:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo "Broad Product Home cleanup disabled; use focused hardware fixes only."\n''')
+          PY
+
+          git diff --check
+
+      - name: Commit direct touch runtime changes
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            include/UI/ScreenChrome.h \
+            include/UI/SaveSelectScreen.h \
+            src/UI/SaveSelectScreen.cpp \
+            include/UI/ClassicInventoryOverlay.h \
+            src/UI/ClassicInventoryOverlay.cpp \
+            src/UI/TrainerViewScreenBase.inc \
+            .github/workflows/one-time-product-freeze-party-cleanup.yml
+          git diff --cached --quiet && { echo "No runtime changes produced"; exit 1; }
+          git commit -m "feat(ui): replace emulated taps with direct touch"
+          git push origin HEAD:feature/touch-controls-20261005
