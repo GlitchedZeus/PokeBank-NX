@@ -232,6 +232,10 @@ namespace UI {
     inline uint64_t g_contentSwipeMask = 0;
     inline bool g_quickGamesDrawerSwipe = false;
     inline uint64_t g_rightEdgeSwipeButton = 0;
+    inline bool g_contentDragActive = false;
+    inline bool g_contentDragMoved = false;
+    inline int g_contentDragLastX = 0;
+    inline int g_contentDragLastY = 0;
 
     inline uint64_t navButtonFor(const std::string& btn) {
         if (btn == "A") return HidNpadButton_A;
@@ -265,12 +269,68 @@ namespace UI {
         return px >= x && px < x + w && py >= y && py < y + h;
     }
 
-    // Hit-test the badges captured during the PREVIOUS frame's draw. All footer actions now resolve
-    // on release. A stationary tap must begin and end inside the same single-button target, while
-    // directional gestures keep their drag/half semantics. This prevents a finger that is starting a
-    // swipe from accidentally firing A/B/X/Y on contact.
+    // Hit-test the badges captured during the PREVIOUS frame's draw. Footer buttons resolve on
+    // release, while browser/list content can step live as the finger crosses row-sized distances.
+    // Storage/editor surfaces are deliberately excluded from the generic content-drag registry.
     inline uint64_t navTouchButton(const TouchInput& touch) {
+        const bool startsInContent = g_contentSwipeMask != 0 && g_navContentBottom > 0 &&
+            touch.startX() >= g_navSurfaceX && touch.startX() < g_navSurfaceX + g_navSurfaceW &&
+            touch.startY() >= kHeaderH && touch.startY() < g_navContentBottom;
+
+        if (touch.justTouchedDown()) {
+            g_contentDragActive = false;
+            g_contentDragMoved = false;
+            g_contentDragLastX = touch.x();
+            g_contentDragLastY = touch.y();
+
+            bool quickCloseEdge = false;
+            if (g_quickGamesDrawerSwipe && g_navSurfaceW > 0) {
+                const int drawerLeft = g_navSurfaceX + g_navSurfaceW - 520;
+                constexpr int kDrawerEdgeCapture = 112;
+                quickCloseEdge = touch.startX() >= drawerLeft &&
+                                 touch.startX() < drawerLeft + kDrawerEdgeCapture;
+            }
+            if (startsInContent && !quickCloseEdge)
+                g_contentDragActive = true;
+            return 0;
+        }
+
+        if (touch.isDown()) {
+            if (!g_contentDragActive) return 0;
+
+            const int dx = touch.x() - g_contentDragLastX;
+            const int dy = touch.y() - g_contentDragLastY;
+            const int ax = dx < 0 ? -dx : dx;
+            const int ay = dy < 0 ? -dy : dy;
+            constexpr int kLiveDragStep = 52;
+
+            if (ax >= kLiveDragStep && ax * 3 >= ay * 4) {
+                const uint64_t direction = dx < 0 ? HidNpadButton_Right : HidNpadButton_Left;
+                if (g_contentSwipeMask & direction) {
+                    g_contentDragLastX = touch.x();
+                    g_contentDragLastY = touch.y();
+                    g_contentDragMoved = true;
+                    return direction;
+                }
+            }
+            if (ay >= kLiveDragStep && ay * 3 >= ax * 4) {
+                const uint64_t direction = dy < 0 ? HidNpadButton_Down : HidNpadButton_Up;
+                if (g_contentSwipeMask & direction) {
+                    g_contentDragLastX = touch.x();
+                    g_contentDragLastY = touch.y();
+                    g_contentDragMoved = true;
+                    return direction;
+                }
+            }
+            return 0;
+        }
+
         if (!touch.justReleased()) return 0;
+
+        const bool contentDragMoved = g_contentDragMoved;
+        g_contentDragActive = false;
+        g_contentDragMoved = false;
+        if (contentDragMoved) return 0;
 
         if (!touch.dragged()) {
             for (const NavHit& h : g_navHits) {
@@ -311,9 +371,8 @@ namespace UI {
                 return HidNpadButton_B;
         }
 
-        // Full-content swipes are enabled only for footer signatures known to have no competing
-        // content touch-down handler. This keeps Storage rubber-band selection and editor row taps
-        // authoritative while making the save/browser surfaces behave like native touch UIs.
+        // A very fast flick can travel from touch-down to release between two rendered frames and
+        // therefore never cross a live step while held. Keep one release-resolved fallback for that.
         if (g_contentSwipeMask != 0 && g_navContentBottom > 0 && touch.dragged() &&
             touch.startX() >= g_navSurfaceX && touch.startX() < g_navSurfaceX + g_navSurfaceW &&
             touch.startY() >= kHeaderH && touch.startY() < g_navContentBottom) {
@@ -412,9 +471,9 @@ namespace UI {
             g_quickGamesDrawerSwipe = true;
         }
 
-        // Save/browser overlays in SaveSelectScreen have no content touch-down handlers, so release-
-        // resolved swipes are safe here. Exact extra labels keep this away from TrainerView storage,
-        // editors, and modal surfaces that already own dragging or direct row taps.
+        // Save/browser overlays in SaveSelectScreen have no content touch-down handlers, so generic
+        // swipes are safe here. Exact extra labels keep this away from TrainerView storage, editors,
+        // and modal surfaces that already own dragging or direct row taps.
         const bool classicGamesBrowser =
             hint.find("Y: Sort") != std::string::npos &&
             hint.find("+: Favorite") != std::string::npos &&
