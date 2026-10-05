@@ -2,8 +2,9 @@
 """Generate compact Gen IV wild-encounter legality evidence from pinned PKHeX data.
 
 Slot numbers are retained so Method J/K frame correlation can prove the selected wild slot.
-Static / Magnet Pull eligible-slot index/count metadata is retained in a parallel table so
-lead-ability RNG paths can be reconstructed without changing the packed encounter-row ABI.
+Static / Magnet Pull eligible-slot index/count metadata and exact source-area PressureLevel
+are retained in parallel tables so lead-ability RNG paths can be reconstructed without
+changing the packed encounter-row ABI.
 """
 
 from __future__ import annotations
@@ -43,8 +44,8 @@ def parse_game(path: str, game_index: int):
 
     # A persisted PK4 identity does not retain EncounterArea4's ground-tile/source
     # area identity. Multiple source areas can therefore collapse to the same saved
-    # species/location/level/method/slot tuple while carrying different Static or
-    # Magnet Pull eligible-slot tables. Preserve every distinct lead-history tuple;
+    # species/location/level/method/slot tuple while carrying different lead-history
+    # metadata. Preserve every distinct Static/Magnet/Pressure source-area alias;
     # choosing one would create false negatives. Radar capability is positive-only
     # evidence, so it is ORed across all indistinguishable aliases.
     rows = {}
@@ -65,32 +66,51 @@ def parse_game(path: str, game_index: int):
         # Mirror PKHeX EncounterArea4.ReadRegularSlots exactly: it integer-divides
         # the post-header length by 10 and ignores any trailing container bytes.
         slot_count = (len(area) - 6) // 10
+        area_slots = []
         for slot_index in range(slot_count):
             offset = 6 + slot_index * 10
-            species = struct.unpack_from("<H", area, offset)[0]
-            form = area[offset + 2]
-            slot = area[offset + 3]
-            minimum = area[offset + 4]
-            maximum = area[offset + 5]
-            magnet_index = area[offset + 6]
-            magnet_count = area[offset + 7]
-            static_index = area[offset + 8]
-            static_count = area[offset + 9]
+            area_slots.append((
+                struct.unpack_from("<H", area, offset)[0],  # species
+                area[offset + 2],  # form
+                area[offset + 3],  # slot number
+                area[offset + 4],  # minimum level
+                area[offset + 5],  # maximum level
+                area[offset + 6],  # Magnet Pull index
+                area[offset + 7],  # Magnet Pull count
+                area[offset + 8],  # Static index
+                area[offset + 9],  # Static count
+            ))
+
+        # Pinned EncounterSlot4.PressureLevel:
+        #   Type != Grass ? LevelMax : Parent.GetPressureMax(Species, LevelMax)
+        # GetPressureMax scans only this exact EncounterArea4 source and raises the
+        # row maximum to the highest LevelMax of the same species in that area.
+        pressure_max = {}
+        if method == 0:  # SlotType4.Grass
+            for species, _form, _slot, _minimum, maximum, *_lead in area_slots:
+                pressure_max[species] = max(pressure_max.get(species, 0), maximum)
+
+        for (
+            species, form, slot, minimum, maximum,
+            magnet_index, magnet_count, static_index, static_count,
+        ) in area_slots:
+            pressure_level = pressure_max.get(species, maximum)
             key = (
                 game_index, species, location, minimum, maximum,
                 method, form, slot, rate
             )
-            lead_meta = (
-                magnet_index, magnet_count, static_index, static_count
+            history_meta = (
+                magnet_index, magnet_count, static_index, static_count,
+                pressure_level,
             )
-            state = rows.setdefault(key, {"radar": False, "lead": set()})
+            state = rows.setdefault(key, {"radar": False, "history": set()})
             state["radar"] = state["radar"] or radar_capable
-            state["lead"].add(lead_meta)
+            state["history"].add(history_meta)
 
     out = set()
     for key, state in rows.items():
-        for lead_meta in state["lead"]:
-            out.add(key + (state["radar"],) + lead_meta)
+        for history_meta in state["history"]:
+            out.add(key + (state["radar"],) + history_meta)
     return out
 
 
@@ -98,6 +118,7 @@ def pack(row):
     (
         game, species, location, minimum, maximum, method, form, slot, rate,
         radar_capable, _magnet_index, _magnet_count, _static_index, _static_count,
+        _pressure_level,
     ) = row
     if slot > 0x0F:
         raise ValueError("Gen IV wild slot number exceeds packed 4-bit field")
@@ -116,13 +137,17 @@ def pack(row):
 
 
 def pack_lead_meta(row):
-    magnet_index, magnet_count, static_index, static_count = row[-4:]
+    magnet_index, magnet_count, static_index, static_count = row[-5:-1]
     return (
         magnet_index
         | (magnet_count << 8)
         | (static_index << 16)
         | (static_count << 24)
     )
+
+
+def pressure_level(row):
+    return row[-1]
 
 
 def main() -> int:
@@ -140,7 +165,9 @@ def main() -> int:
         "// radar-capable[58] (pinned EncounterSlot4.CanUseRadar positive evidence).",
         "// Parallel lead metadata layout: MagnetPullIndex[0:7], MagnetPullCount[8:15],",
         "// StaticIndex[16:23], StaticCount[24:31] from EncounterArea4.ReadRegularSlot.",
-        "// Persisted-identity aliases with different lead tables are intentionally repeated,",
+        "// Parallel PressureLevel bytes mirror pinned EncounterSlot4.PressureLevel,",
+        "// including parent-area GetPressureMax for Grass slots.",
+        "// Persisted-identity aliases with different lead/pressure histories are repeated,",
         "// because PK4 does not retain the source EncounterArea4/ground-tile identity.",
         "// This is wild-slot evidence only. Static/gift/trade/event encounters are separate,",
         "// so absence from this table MUST NOT be interpreted as illegal.",
@@ -160,6 +187,16 @@ def main() -> int:
     for i in range(0, len(lead_meta), 8):
         chunk = ", ".join("0x%08xU" % value for value in lead_meta[i:i + 8])
         if i + 8 < len(lead_meta):
+            chunk += ","
+        lines.append("    " + chunk)
+    lines.append("};")
+    lines.append("")
+
+    lines.append("inline constexpr uint8_t kPackedGen4WildPressureLevel[] = {")
+    pressure = [pressure_level(row) for row in ordered]
+    for i in range(0, len(pressure), 16):
+        chunk = ", ".join("%d" % value for value in pressure[i:i + 16])
+        if i + 16 < len(pressure):
             chunk += ","
         lines.append("    " + chunk)
     lines.append("};")
