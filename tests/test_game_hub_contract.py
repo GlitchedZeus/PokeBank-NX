@@ -289,10 +289,10 @@ require("if (kDown & (HidNpadButton_B | HidNpadButton_Y))" not in drawer_update 
         "Quick Games Y must be inert, B-only close, and the colored drawer edge stripe must stay removed")
 require('"X: Save / Source   •   B: Close"' not in drawer_draw,
         "Quick Games must rely on the footer for controls instead of repeating X/B instructions inside the drawer")
-require("Quick Games is selection/navigation only" in drawer_update and
-        "refreshHubSelectionFromCache();" in drawer_update and
+require("refreshHubSelectionFromCache();" in drawer_update and
+        "refreshHubPreview(false);" in drawer_update and
         "refreshHubPreview();" not in drawer_update,
-        "Quick Games A must close from cached state without synchronous save/launch discovery")
+        "Quick Games A must hydrate selected save presentation without launch discovery")
 require("openSaveSourceForCurrentTitle(true, false)" in source and
         "openSaveSourceForCurrentTitle(false, true)" in source and
         "Overlay::LegacyAssignment" in source and

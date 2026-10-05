@@ -216,7 +216,18 @@ inline std::string normalizedLaunchStem(std::string_view path) {
     out.reserve(last - first);
     for (size_t i = first; i < last; ++i) {
         const unsigned char c = static_cast<unsigned char>(path[i]);
-        if (std::isalnum(c)) out.push_back(static_cast<char>(std::tolower(c)));
+        // ROM libraries and RetroArch playlists commonly use the official “Pokémon” spelling.
+        // Normalize UTF-8 é/É instead of dropping both bytes and turning it into “pokmon”.
+        if (c == 0xC3 && i + 1 < last) {
+            const unsigned char next = static_cast<unsigned char>(path[i + 1]);
+            if (next == 0xA9 || next == 0x89) {
+                out.push_back('e');
+                ++i;
+                continue;
+            }
+        }
+        if (c < 0x80 && std::isalnum(c))
+            out.push_back(static_cast<char>(std::tolower(c)));
     }
     return out;
 }
@@ -317,6 +328,46 @@ inline bool gameLaunchCandidateStemMatches(std::string_view gameId,
     for (unsigned char c : identity)
         if (std::isalnum(c)) compact.push_back(static_cast<char>(std::tolower(c)));
     return compact.size() >= 5 && candidate.find(compact) != std::string::npos;
+}
+
+inline int gameLaunchCandidateScore(std::string_view gameId,
+                                    std::string_view savePath,
+                                    std::string_view contentPath) {
+    if (!gameLaunchContentSupported(gameId, contentPath) ||
+        !gameLaunchCandidateStemMatches(gameId, savePath, contentPath))
+        return -1;
+
+    const std::string wanted = normalizedLaunchStem(savePath);
+    const std::string candidate = normalizedLaunchStem(contentPath);
+    int score = 100;
+    if (!wanted.empty() && candidate == wanted) {
+        score += 10000;
+    } else if (!wanted.empty()) {
+        if (candidate.find(wanted) != std::string::npos ||
+            wanted.find(candidate) != std::string::npos)
+            score += 4000;
+        size_t prefix = 0;
+        while (prefix < wanted.size() && prefix < candidate.size() &&
+               wanted[prefix] == candidate[prefix]) ++prefix;
+        score += static_cast<int>(std::min<size_t>(prefix, 200) * 4);
+    }
+
+    // For DS providers prefer a raw ROM in the emulator-owned library over duplicate archives
+    // or generic mirrors. A genuine equal-strength tie still fails closed and is shown in-app.
+    if (gameId.size() >= 4 && gameId.substr(gameId.size() - 4) == "_nds") {
+        const std::string ext = lowerLaunchExtension(contentPath);
+        if (ext == ".nds") score += 600;
+        else if (ext == ".zip") score += 250;
+        else if (ext == ".rar") score += 150;
+
+        std::string lower(contentPath);
+        std::transform(lower.begin(), lower.end(), lower.begin(),
+            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        if (lower.find("/switch/drastic/games/") != std::string::npos) score += 900;
+        else if (lower.find("/switch/drastic/roms/") != std::string::npos) score += 800;
+        else if (lower.find("/roms/nds/") != std::string::npos) score += 500;
+    }
+    return score;
 }
 
 inline std::string gameLaunchBindingFamilyPrefix(std::string_view profileIdentity,

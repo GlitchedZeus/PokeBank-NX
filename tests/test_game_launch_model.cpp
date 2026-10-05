@@ -9,6 +9,12 @@ int main() {
     assert(normalizedLaunchStem("sdmc:/retroarch/cores/savefiles/Pokemon Yellow.srm") == "pokemonyellow");
     assert(normalizedLaunchStem("/roms/gba/Pokemon - Emerald Version (USA).gba") ==
            "pokemonemeraldversionusa");
+    // Hardware playlists commonly use the official UTF-8 Pokémon spelling. The é bytes must
+    // normalize to e instead of disappearing and producing the unusable "pokmon..." stem.
+    assert(normalizedLaunchStem("sdmc:/roms/gb/Pok\xC3\xA9mon - Red Version (USA, Europe).gb") ==
+           "pokemonredversionusaeurope");
+    assert(normalizedLaunchStem("sdmc:/roms/gb/Pok\xC3\xA9mon - Blue Version (USA, Europe).gb") ==
+           "pokemonblueversionusaeurope");
     assert(normalizedLaunchStem("Crystal") == "crystal");
     assert(normalizedLaunchStem(".sav").empty());
 
@@ -46,7 +52,8 @@ int main() {
 
     // Hardware regression: Red and Blue saves can have generic/short save names while the
     // RetroArch playlist uses full No-Intro-style ROM names. These short release identities must
-    // still resolve, without colliding with later releases such as FireRed.
+    // still resolve, including the official UTF-8 Pokémon spelling, without colliding with later
+    // releases such as FireRed.
     assert(gameLaunchCandidateStemMatches(
         "red_gb",
         "sdmc:/retroarch/cores/savefiles/main.srm",
@@ -55,10 +62,18 @@ int main() {
         "blue_gb",
         "sdmc:/retroarch/cores/savefiles/main.srm",
         "sdmc:/roms/gb/Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb"));
+    assert(gameLaunchCandidateStemMatches(
+        "red_gb",
+        "sdmc:/retroarch/cores/savefiles/main.srm",
+        "sdmc:/roms/gb/Pok\xC3\xA9mon - Red Version (USA, Europe) (SGB Enhanced).gb"));
+    assert(gameLaunchCandidateStemMatches(
+        "blue_gb",
+        "sdmc:/retroarch/cores/savefiles/main.srm",
+        "sdmc:/roms/gb/Pok\xC3\xA9mon - Blue Version (USA, Europe) (SGB Enhanced).gb"));
     assert(!gameLaunchCandidateStemMatches(
         "red_gb",
         "sdmc:/retroarch/cores/savefiles/main.srm",
-        "sdmc:/roms/gba/Pokemon - FireRed Version (USA).gba"));
+        "sdmc:/roms/gba/Pok\xC3\xA9mon - FireRed Version (USA).gba"));
     assert(!gameLaunchCandidateStemMatches(
         "gold_gbc",
         "sdmc:/retroarch/cores/savefiles/main.srm",
@@ -77,6 +92,23 @@ int main() {
         "sdmc:/switch/drastic/user/backup/main.dsv",
         "sdmc:/roms/nds/Pokemon Pearl Version.nds"));
     assert(!gameLaunchContentSupported("platinum_nds", "/roms/Pokemon Platinum.gba"));
+
+    // Hardware regression: bounded DS discovery may see duplicate ROM/archive copies. The
+    // emulator-owned raw .nds file must outrank a generic archive while unrelated releases remain
+    // ineligible. This lets ZR auto-resolve the common duplicate case without weakening ambiguity
+    // safety for a true tie.
+    const std::string platinumSave =
+        "sdmc:/switch/drastic/user/backup/Pokemon Platinum Version (USA).dsv";
+    const int drasticRawScore = gameLaunchCandidateScore(
+        "platinum_nds", platinumSave,
+        "sdmc:/switch/drastic/games/Pokemon Platinum Version (USA).nds");
+    const int genericArchiveScore = gameLaunchCandidateScore(
+        "platinum_nds", platinumSave,
+        "sdmc:/roms/nds/Pokemon Platinum Version (USA).zip");
+    assert(drasticRawScore > genericArchiveScore);
+    assert(gameLaunchCandidateScore(
+               "platinum_nds", platinumSave,
+               "sdmc:/switch/drastic/games/Pokemon Pearl Version (USA).nds") < 0);
 
     assert(gameLaunchBindingFamilyPrefix("profile", "emerald_gba") ==
            "profile|emerald_gba|");
