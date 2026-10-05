@@ -217,16 +217,16 @@ namespace UI {
 
     // --- Tappable badges --------------------------------------------------------------------
     //
-    // Every screen already publishes a contextual hint string, so making the badges tappable gives
-    // HOME-style on-screen action buttons everywhere at once. A tap resolves to that button's press
-    // and the screen ORs it into padGetButtonsDown, so no existing handler changes -- there is one
-    // input path, not two, and a tap can never diverge from what the physical button does.
-    //
-    // Only badges standing for exactly ONE button get a hit region. "L/R", "ZL/ZR" and the d-pad stay
-    // informational: a single badge can't say whether you meant L or R, and splitting one in half
-    // would leave each half far below a usable touch target.
+    // Every screen already publishes contextual controller hints. Single-button hints act like
+    // their physical button on touch-down. Paired/directional hints add touch-only navigation on the
+    // same footer surface: tap the relevant half for Up/Down, Left/Right, L/R or ZL/ZR, or drag the
+    // D-pad/Stick segment in the direction you want to move. Existing controller handling remains the
+    // single action path, so touch cannot grow a second set of save/editor behaviors.
     struct NavHit { int x, y, w, h; uint64_t button; };
+    enum class NavGestureKind : std::uint8_t { None, UpDown, LeftRight, DPad, LR, ZLZR };
+    struct NavGestureHit { int x, y, w, h, glyphW; NavGestureKind kind; };
     inline std::vector<NavHit> g_navHits;
+    inline std::vector<NavGestureHit> g_navGestureHits;
 
     inline uint64_t navButtonFor(const std::string& btn) {
         if (btn == "A") return HidNpadButton_A;
@@ -239,18 +239,85 @@ namespace UI {
         if (btn == "R")  return HidNpadButton_R;
         if (btn == "ZL") return HidNpadButton_ZL;
         if (btn == "ZR") return HidNpadButton_ZR;
-        return 0;   // multi-button or directional badge: informational only
+        if (btn == "Left")  return HidNpadButton_Left;
+        if (btn == "Right") return HidNpadButton_Right;
+        if (btn == "Up")    return HidNpadButton_Up;
+        if (btn == "Down")  return HidNpadButton_Down;
+        return 0;
     }
 
-    // Hit-test a fresh tap against the badges captured during the PREVIOUS frame's draw (same
-    // one-frame-late contract as TrainerViewScreen::touchedButtonId). Returns a mask to fold into
-    // kDown, or 0. Edge-triggered, so it behaves exactly like padGetButtonsDown.
+    inline NavGestureKind navGestureFor(const std::string& btn) {
+        if (btn == "Up/Down") return NavGestureKind::UpDown;
+        if (btn == "Left/Right") return NavGestureKind::LeftRight;
+        if (btn == "Arrows" || btn == "D-Pad" || btn == "D-pad" || btn == "D-pad/Stick")
+            return NavGestureKind::DPad;
+        if (btn == "L/R") return NavGestureKind::LR;
+        if (btn == "ZL/ZR") return NavGestureKind::ZLZR;
+        return NavGestureKind::None;
+    }
+
+    inline bool navContains(int px, int py, int x, int y, int w, int h) {
+        return px >= x && px < x + w && py >= y && py < y + h;
+    }
+
+    // Hit-test the badges captured during the PREVIOUS frame's draw. Single-button targets remain
+    // edge-triggered on touch-down, matching padGetButtonsDown. Paired/directional controls resolve
+    // on release so the same region can distinguish halves and directional drags without stealing
+    // touch-down from the screen content above the footer.
     inline uint64_t navTouchButton(const TouchInput& touch) {
-        if (!touch.justPressed()) return 0;
-        for (const NavHit& h : g_navHits) {
-            if (touch.x() >= h.x && touch.x() < h.x + h.w &&
-                touch.y() >= h.y && touch.y() < h.y + h.h)
-                return h.button;
+        if (touch.justPressed()) {
+            for (const NavHit& h : g_navHits) {
+                if (navContains(touch.x(), touch.y(), h.x, h.y, h.w, h.h))
+                    return h.button;
+            }
+            return 0;
+        }
+
+        if (!touch.justReleased()) return 0;
+        for (const NavGestureHit& h : g_navGestureHits) {
+            if (!navContains(touch.startX(), touch.startY(), h.x, h.y, h.w, h.h)) continue;
+
+            const int dx = touch.x() - touch.startX();
+            const int dy = touch.y() - touch.startY();
+            const int ax = dx < 0 ? -dx : dx;
+            const int ay = dy < 0 ? -dy : dy;
+
+            if (h.kind == NavGestureKind::UpDown) {
+                if (touch.dragged() && ay >= ax) return dy < 0 ? HidNpadButton_Up : HidNpadButton_Down;
+                return touch.startY() < h.y + h.h / 2 ? HidNpadButton_Up : HidNpadButton_Down;
+            }
+            if (h.kind == NavGestureKind::LeftRight) {
+                if (touch.dragged() && ax >= ay) return dx < 0 ? HidNpadButton_Left : HidNpadButton_Right;
+                return touch.startX() < h.x + h.w / 2 ? HidNpadButton_Left : HidNpadButton_Right;
+            }
+            if (h.kind == NavGestureKind::LR || h.kind == NavGestureKind::ZLZR) {
+                const bool left = touch.dragged() && ax >= ay
+                    ? dx < 0
+                    : touch.startX() < h.x + h.w / 2;
+                if (h.kind == NavGestureKind::LR)
+                    return left ? HidNpadButton_L : HidNpadButton_R;
+                return left ? HidNpadButton_ZL : HidNpadButton_ZR;
+            }
+            if (h.kind == NavGestureKind::DPad) {
+                if (touch.dragged()) {
+                    if (ax >= ay) return dx < 0 ? HidNpadButton_Left : HidNpadButton_Right;
+                    return dy < 0 ? HidNpadButton_Up : HidNpadButton_Down;
+                }
+
+                // A no-drag tap is meaningful only on the actual d-pad glyph. The rest of a
+                // "D-pad/Stick: Navigate" segment is a generous drag surface, not an invisible
+                // right-arrow button just because the label sits to the glyph's right.
+                constexpr int dpadW = 24;
+                if (touch.startX() >= h.x && touch.startX() < h.x + std::min(dpadW, h.glyphW)) {
+                    const int rx = touch.startX() - (h.x + dpadW / 2);
+                    const int ry = touch.startY() - (h.y + h.h / 2);
+                    const int arx = rx < 0 ? -rx : rx;
+                    const int ary = ry < 0 ? -ry : ry;
+                    if (arx >= ary) return rx < 0 ? HidNpadButton_Left : HidNpadButton_Right;
+                    return ry < 0 ? HidNpadButton_Up : HidNpadButton_Down;
+                }
+                return 0;
+            }
         }
         return 0;
     }
@@ -263,10 +330,11 @@ namespace UI {
     inline void drawNavHints(PKSEFramebuffer& fb, int x, int w, int cy, const std::string& hint) {
         struct Seg { std::string btn, label; int glyphW, labelW; };
 
-        // Whoever draws last owns the taps, so an open modal's footer replaces the nav bar behind it
-        // rather than leaving the background live. Clearing here (not in drawNavBar) also means the
-        // list can't grow across frames if a screen ever draws a footer without a nav bar.
+        // Whoever draws last owns the touches, so an open modal's footer replaces the nav bar behind
+        // it rather than leaving the background live. Clearing here also prevents either list from
+        // growing across frames if a screen draws a footer without drawing its normal nav bar first.
         g_navHits.clear();
+        g_navGestureHits.clear();
 
         auto trim = [](const std::string& s) {
             const size_t a = s.find_first_not_of(" \t");
@@ -316,11 +384,21 @@ namespace UI {
             fb.drawText(cx, cy - th / 2, s.label, s.glyphW ? Colors::Text : Colors::Accent,
                         TextStyle::Caption);
             cx += s.labelW;
-            // The badge AND its label are one tap target -- aiming at a 24px circle is unreasonable,
-            // and the label is the part that says what will happen. Height is TouchTargetMin rather
-            // than the bar height (46), so the target stays fingertip-sized.
+
+            // Badge + label is one fingertip-sized target. Single buttons fire on touch-down;
+            // directional/pair tokens resolve on release so a touch-only user can reach every
+            // controller action represented by the shared footer without adding screen-specific
+            // save/editor code paths.
+            const int hitY = cy - TouchTargetMin / 2;
+            const int hitW = cx - segX;
             const uint64_t button = s.glyphW ? navButtonFor(s.btn) : 0;
-            if (button) g_navHits.push_back({segX, cy - TouchTargetMin / 2, cx - segX, TouchTargetMin, button});
+            if (button) {
+                g_navHits.push_back({segX, hitY, hitW, TouchTargetMin, button});
+            } else if (s.glyphW) {
+                const NavGestureKind kind = navGestureFor(s.btn);
+                if (kind != NavGestureKind::None)
+                    g_navGestureHits.push_back({segX, hitY, hitW, TouchTargetMin, s.glyphW, kind});
+            }
             cx += gap;
         }
     }
