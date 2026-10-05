@@ -45,6 +45,48 @@ int main() {
     assert(tradedEggLucario != nullptr);
     assert(species(*tradedEggLucario) == 447);
 
+    // Pinned EncounterStatic4 permits Link Trade 2002 only after the static gift
+    // egg has hatched. With explicit state, a still-Riolu traded egg can therefore
+    // be proven after hatching without accepting the same fields while unhatched.
+    assert(findDirectMatch(
+        "diamond_nds", 447, 4, 0, 0, 2002, 4, 0, 0, false, false) == nullptr);
+    const auto* hatchedTradedRiolu = findDirectMatchWithEggState(
+        "diamond_nds", 447, 4, 0, 0, 2002, 4, 0, 0, false, false, false);
+    assert(hatchedTradedRiolu != nullptr);
+    assert(species(*hatchedTradedRiolu) == 447);
+    assert(findDirectMatchWithEggState(
+        "diamond_nds", 447, 4, 0, 0, 2002, 4, 0, 0, false, false, true) == nullptr);
+
+    const auto sameSpeciesHatched =
+        Legality::Gen4StaticEvolution::matchEvolutionLineWithEggState(
+            "diamond_nds", 447, 4, 0, 0, 2002, 4, 0, 0, false, false, false);
+    assert(sameSpeciesHatched.matched());
+    assert(!sameSpeciesHatched.evolved);
+    assert(sameSpeciesHatched.hatchedGiftEgg);
+    assert(sameSpeciesHatched.sourceSpecies == 447);
+
+    const auto sameSpeciesUnhatched =
+        Legality::Gen4StaticEvolution::matchEvolutionLineWithEggState(
+            "diamond_nds", 447, 4, 0, 0, 2002, 4, 0, 0, false, false, true);
+    assert(!sameSpeciesUnhatched.matched());
+
+    // An unhatched PK4 cannot already be an evolved descendant of the source egg.
+    assert(findMatchWithEggState(
+        "diamond_nds", 448, 4, 0, 0, 2010, 4, 0, 0, false, false, true) == nullptr);
+    const auto* statefulLucario = findMatchWithEggState(
+        "diamond_nds", 448, 4, 0, 0, 2010, 4, 0, 0, false, false, false);
+    assert(statefulLucario != nullptr);
+    assert(species(*statefulLucario) == 447);
+
+    // A same-species hatched gift egg that kept the original egg location remains
+    // direct provenance and is explicitly marked as a hatched gift history.
+    const auto sameSpeciesOriginalLocation =
+        Legality::Gen4StaticEvolution::matchEvolutionLineWithEggState(
+            "diamond_nds", 447, 4, 0, 0, 2010, 4, 0, 0, false, false, false);
+    assert(sameSpeciesOriginalLocation.matched());
+    assert(!sameSpeciesOriginalLocation.evolved);
+    assert(sameSpeciesOriginalLocation.hatchedGiftEgg);
+
     // Missing persisted egg evidence remains unproven rather than being promoted.
     assert(findMatch(
         "diamond_nds", 448, 4, 0, 0, 0, 4, 0, 0, false, false) == nullptr);
