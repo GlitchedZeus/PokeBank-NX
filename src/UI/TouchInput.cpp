@@ -1,5 +1,7 @@
 #include "UI/TouchInput.h"
 
+#include <algorithm>
+
 namespace UI {
     void TouchInput::update() {
         prevDown = curDown;
@@ -8,21 +10,33 @@ namespace UI {
         if (hidGetTouchScreenStates(&st, 1) > 0 && st.count > 0) {
             curX = static_cast<int>(st.touches[0].x);
             curY = static_cast<int>(st.touches[0].y);
-            // Record the start position on the physical contact edge (curDown still contains the
-            // previous frame here). The final coordinates are retained after release so release-
-            // confirmed taps and swipes can resolve against the same 1280x720 geometry.
-            if (!curDown) { begX = curX; begY = curY; }
+
+            // Record a fresh gesture on the physical contact edge. While the finger remains down,
+            // remember the furthest point it ever reached from that origin. Using the maximum rather
+            // than only the release coordinate prevents a swipe-out-and-back gesture from becoming an
+            // accidental tap when the finger returns close to where it started.
+            if (!curDown) {
+                begX = curX;
+                begY = curY;
+                maxDistanceSquared = 0;
+            } else {
+                const int dx = curX - begX;
+                const int dy = curY - begY;
+                maxDistanceSquared = std::max(maxDistanceSquared, dx * dx + dy * dy);
+            }
             curDown = true;
         } else {
+            // Keep the final coordinates and maximum displacement after release so the release frame
+            // can classify the completed gesture consistently.
             curDown = false;
         }
     }
 
     bool TouchInput::dragged() const {
-        const int dx = curX - begX, dy = curY - begY;
-        // Keep enough tolerance for normal fingertip jitter, but hand off to drag/scroll much sooner
-        // than the old 28px window. A short intentional swipe must never be misclassified as a tap.
-        constexpr int kTapSlop = 16;
-        return (dx * dx + dy * dy) > (kTapSlop * kTapSlop);
+        // A 22 px dead-zone absorbs normal fingertip wobble on the 1280x720 Switch panel while still
+        // handing deliberate swipes to the browser/list gesture paths well before their 52-72 px step
+        // thresholds. Once the gesture ever crosses this boundary it stays a drag until release.
+        constexpr int kTapSlop = 22;
+        return maxDistanceSquared > (kTapSlop * kTapSlop);
     }
 }
