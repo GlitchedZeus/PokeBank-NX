@@ -929,8 +929,16 @@ void cancelMoveEditor(State& state) {
     state.moveEditorRow = 0;
 }
 
-bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down) {
+bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.moveEditor || !state.session.working) return false;
+    const int moveDown = screen.touchedButtonDownId(touch);
+    if (moveDown >= 41400 && moveDown < 41405) state.moveEditorRow = moveDown - 41400;
+    const int moveTap = screen.touchedButtonId(touch);
+    if (moveTap >= 41400 && moveTap < 41405) { state.moveEditorRow = moveTap - 41400; down |= HidNpadButton_A; }
+    if (touch.justReleased() && touch.dragged() && std::abs(touch.deltaY()) >= 28) {
+        const int steps = std::max(1, std::abs(touch.deltaY()) / 48);
+        state.moveEditorRow = std::clamp(state.moveEditorRow + (touch.deltaY() < 0 ? steps : -steps), 0, 4);
+    }
     if (down & HidNpadButton_Up) state.moveEditorRow = (state.moveEditorRow + 4) % 5;
     if (down & HidNpadButton_Down) state.moveEditorRow = (state.moveEditorRow + 1) % 5;
     if (down & HidNpadButton_B) {
@@ -1110,7 +1118,7 @@ bool editStatCell(TrainerViewScreen& screen, State& state,
 bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!workspaceActive(state)) return false;
     if (handleValuePicker(screen, state, down, touch)) return true;
-    if (handleMoveEditor(screen, state, down)) return true;
+    if (handleMoveEditor(screen, state, down, touch)) return true;
     if (!state.session.working) {
         state.session.close();
         return true;
@@ -1173,6 +1181,36 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
                                state.focus.panel != panelBefore);
     state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);
     state.detailsFocus = std::clamp(state.detailsFocus, 0, 15);
+
+    auto applyDirectFocus = [&](int id) {
+        if (id >= 41000 && id < 41016) {
+            const int row = id - 41000;
+            state.focus = {Shared::Panel::Details, static_cast<uint8_t>(row), 0};
+            state.detailsFocus = row;
+            return true;
+        }
+        if (id >= 41100 && id < 41106) { state.focus = {Shared::Panel::Values, static_cast<uint8_t>(id - 41100), 0}; return true; }
+        if (id >= 41120 && id < 41126) { state.focus = {Shared::Panel::Values, static_cast<uint8_t>(id - 41120), 1}; return true; }
+        if (id >= 41206 && id <= 41210) { state.focus = {Shared::Panel::Values, static_cast<uint8_t>(id - 41200), 0}; return true; }
+        if (id >= 41300 && id < 41304) { state.focus = {Shared::Panel::Moves, static_cast<uint8_t>(id - 41300), 0}; return true; }
+        return false;
+    };
+    applyDirectFocus(screen.touchedButtonDownId(touch));
+    if (applyDirectFocus(screen.touchedButtonId(touch)) && state.session.editable()) down |= HidNpadButton_A;
+    if (touch.justReleased() && touch.dragged()) {
+        const int sx = touch.startX(), sy = touch.startY();
+        const int dx = touch.deltaX(), dy = touch.deltaY();
+        if (sx >= 24 && sx < 324 && sy >= 300 && std::abs(dy) >= 28) {
+            const int steps = std::max(1, std::abs(dy) / 38);
+            state.detailsFocus = std::clamp(state.detailsFocus + (dy < 0 ? steps : -steps), 0, 15);
+            state.focus = {Shared::Panel::Details, static_cast<uint8_t>(state.detailsFocus), 0};
+        } else if (std::abs(dx) >= 96 && std::abs(dx) > std::abs(dy)) {
+            state.focus = passive
+                ? Shared::passiveViewSwitchPanel(Shared::Generation::Gen4, state.focus, dx < 0 ? 1 : -1)
+                : Shared::switchPanel(Shared::Generation::Gen4, state.focus, dx < 0 ? 1 : -1);
+            state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);
+        }
+    }
 
     if (down & HidNpadButton_B) {
         state.session.back();
@@ -1237,7 +1275,7 @@ MenuActionSet gen4Actions(const State& state, bool occupied, bool stagedAvailabl
     return result;
 }
 
-bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {
+bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.actions) return false;
     std::string error;
     const bool occupied = selectedRecord(screen, state, error).has_value();
@@ -1247,6 +1285,14 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {
     state.actionRow = std::clamp(
         state.actionRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
     if (actions.count == 0) return true;
+    const int actionDown = screen.touchedButtonDownId(touch);
+    if (actionDown >= 41600 && actionDown < 41600 + static_cast<int>(actions.count)) state.actionRow = actionDown - 41600;
+    const int actionTap = screen.touchedButtonId(touch);
+    if (actionTap >= 41600 && actionTap < 41600 + static_cast<int>(actions.count)) { state.actionRow = actionTap - 41600; down |= HidNpadButton_A; }
+    if (touch.justReleased() && touch.dragged() && std::abs(touch.deltaY()) >= 28) {
+        const int steps = std::max(1, std::abs(touch.deltaY()) / 44);
+        state.actionRow = std::clamp(state.actionRow + (touch.deltaY() < 0 ? steps : -steps), 0, static_cast<int>(actions.count) - 1);
+    }
     if (down & HidNpadButton_Up)
         state.actionRow = (state.actionRow - 1 + static_cast<int>(actions.count)) %
                           static_cast<int>(actions.count);
@@ -1467,6 +1513,16 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         const std::array<uint8_t, 2> previewTypes{
             SharedSpeciesPicker::canonicalToClassicType(speciesPersonal.type1),
             SharedSpeciesPicker::canonicalToClassicType(speciesPersonal.type2)};
+        constexpr int visibleSpecies = 9;
+        const int speciesStart = std::clamp(static_cast<int>(species) - visibleSpecies / 2,
+                                            1, 493 - visibleSpecies + 1);
+        for (int i = 0; i < visibleSpecies; ++i) {
+            const uint16_t value = static_cast<uint16_t>(speciesStart + i);
+            const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), value);
+            if (it != state.pickerValues.end())
+                screen.touchButtons.push_back({6000 + static_cast<int>(std::distance(state.pickerValues.begin(), it)),
+                                               modal.x + 20, modal.y + 84 + i * 43, 560, 39});
+        }
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, species, 493, previewShiny,
             [](uint16_t value) {
@@ -1565,6 +1621,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
 
 void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     if (!state.moveEditor || !state.session.working) return;
+    screen.touchButtons.clear();
     const auto slot = static_cast<size_t>(state.moveEditorSlot);
     const uint16_t move = state.session.working->moves()[slot];
     constexpr int w = 680, h = 390;
@@ -1590,6 +1647,7 @@ void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state
     for (int i = 0; i < 5; ++i) {
         const int yy = y + 88 + i * 48;
         const bool selected = i == state.moveEditorRow;
+        screen.touchButtons.push_back({41400 + i, x + 22, yy, w - 44, 42});
         if (selected) fb.drawSelectionHighlight(x + 22, yy, w - 44, 42);
         fb.drawText(x + 38, yy + 10, rows[static_cast<size_t>(i)].first,
                     selected ? Colors::Text : Colors::TextDim);
@@ -1641,6 +1699,15 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         state.focus.panel == Shared::Panel::Details,
         [](size_t row) { return detailLabels[row]; },
         [&](size_t row) { return detailValue(*raw, view, static_cast<int>(row)); });
+    {
+        constexpr std::size_t visibleRows = 8;
+        const auto window = Shared::scrollWindow(detailLabels.size(), visibleRows, state.detailsFocus);
+        for (std::size_t i = 0; i < window.count; ++i) {
+            const int row = static_cast<int>(window.first + i);
+            const int yy = g.y + 224 + static_cast<int>(i) * 38;
+            screen.touchButtons.push_back({41000 + row, g.leftX + 8, yy + 2, g.leftW - 36, 30});
+        }
+    }
 
     drawPanel(fb, g.midX, g.y, g.midW, g.h, "STATS");
     fb.drawText(g.midX + 126, g.y + 50, "IV", Colors::TextDim, TextStyle::Caption);
@@ -1654,6 +1721,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     for (int row = 0; row < 6; ++row) {
         const int yy = g.y + 78 + row * 40;
         const bool selected = state.focus.panel == Shared::Panel::Values && state.focus.row == row;
+        screen.touchButtons.push_back({41100 + row, g.midX + 112, yy - 5, 62, 30});
+        screen.touchButtons.push_back({41120 + row, g.midX + 176, yy - 5, 70, 30});
         if (selected) {
             const auto cell = Shared::cellFocusFor(Shared::Generation::Gen4, state.focus);
             drawFocus(fb, g.midX + cell.x, yy - 5, cell.width, 30, true);
@@ -1680,6 +1749,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         const bool selected = state.focus.panel == Shared::Panel::Values &&
                               state.focus.row == row &&
                               (state.session.mode == SessionModel::Mode::View || editable);
+        screen.touchButtons.push_back({41200 + row, g.midX + 8, yy - 5, g.midW - 16, 29});
         drawFocus(fb, g.midX + 8, yy - 5, g.midW - 16, 29, selected);
         fb.drawText(g.midX + 18, yy, derived[static_cast<size_t>(i)].first,
                     selected ? Colors::SelectedText : editable ? Colors::TextDim : Colors::TextSecondary,
@@ -1696,6 +1766,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     for (int row = 0; row < 4; ++row) {
         const int yy = g.y + 62 + row * 32;
         const bool selected = state.focus.panel == Shared::Panel::Moves && state.focus.row == row;
+        screen.touchButtons.push_back({41300 + row, g.rightX + 8, yy - 5, g.rightW - 16, 32});
         if (selected) {
             const auto cell = Shared::moveRowFocus(g.rightW);
             drawFocus(fb, g.rightX + cell.x, yy - 5, cell.width, 32, true);
@@ -1793,6 +1864,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
 }
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
+    screen.touchButtons.clear();
     std::string error;
     const bool occupied = selectedRecord(screen, state, error).has_value();
     auto* staged = editor(screen);
@@ -1819,6 +1891,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     int yy = y + geometry.rowStart;
     for (size_t i = 0; i < actions.count; ++i) {
         const bool selected = static_cast<int>(i) == state.actionRow;
+        screen.touchButtons.push_back({41600 + static_cast<int>(i), x + 22, yy, w - 44, geometry.rowHeight});
         if (selected) fb.drawSelectionHighlight(x + 22, yy, w - 44, geometry.rowHeight);
         const auto& entry = actions[i];
         const Color disabledColor(
@@ -1975,7 +2048,7 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     if (handleReleaseConfirm(screen, state, navigated)) return true;
     if (handleReview(screen, state, navigated)) return true;
     if (handleWorkspace(screen, state, navigated, touch)) return true;
-    if (handleActions(screen, state, navigated)) return true;
+    if (handleActions(screen, state, navigated, touch)) return true;
 
     const bool partyEntry = partyEntrySurface(screen);
     const bool boxEntry = boxEntrySurface(screen);
