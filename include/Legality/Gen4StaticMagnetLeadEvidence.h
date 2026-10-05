@@ -32,8 +32,6 @@ constexpr uint8_t staticCount(uint32_t meta) noexcept {
     return static_cast<uint8_t>((meta >> 24) & 0xFFu);
 }
 
-// Mirrors pinned IMagnetStatic.IsSlotValidStaticMagnet. Static is checked first,
-// then Magnet Pull. A zero count means that lead cannot yield this source slot.
 constexpr Lead attractedLead(uint32_t meta, uint16_t rand16) noexcept {
     const uint8_t sc = staticCount(meta);
     if (sc != 0 && (rand16 % sc) == staticIndex(meta))
@@ -45,9 +43,6 @@ constexpr Lead attractedLead(uint32_t meta, uint16_t rand16) noexcept {
     return Lead::None;
 }
 
-// Positive-only reconstruction of a successful Static / Magnet Pull lead path.
-// The 32-bit metadata is the source-area alias emitted alongside each packed
-// Gen IV wild row by gen_legality_gen4_wild.py.
 constexpr Result matchRow(bool hgss, uint64_t row, uint32_t leadMeta,
                           uint32_t prePidSeed, uint32_t pid,
                           uint8_t metLevel) noexcept {
@@ -56,7 +51,7 @@ constexpr Result matchRow(bool hgss, uint64_t row, uint32_t leadMeta,
         return {};
 
     const uint8_t nature = static_cast<uint8_t>(pid % 25u);
-    const int frames = Gen4WildRng::reversalWindow(prePidSeed, nature);
+    const int frames = Gen4LeadFrame::reversalWindow(prePidSeed, nature);
     if (frames < 0)
         return {};
 
@@ -77,8 +72,6 @@ constexpr Result matchRow(bool hgss, uint64_t row, uint32_t leadMeta,
                 const uint32_t seed3 = Gen3PidIv::Detail::prev(seed2);
                 const uint16_t prev3 = static_cast<uint16_t>(seed3 >> 16);
 
-                // Pinned Method J/K: Prev3=50% proc, Prev2=attracted slot,
-                // Prev1=ordinary level. The proc must activate.
                 if (!Gen4LeadEffect::staticMagnetPass(
                         Gen4LeadFailure::leadMethod(hgss), prev3) ||
                     Gen4LeadFailure::rolledLevel(row, prev1) != metLevel) {
@@ -96,10 +89,6 @@ constexpr Result matchRow(bool hgss, uint64_t row, uint32_t leadMeta,
                         return {lead, candidate};
                 }
             } else {
-                // Fixed-level Grass differs between the two retail methods.
-                // Pinned Method J consumes an extra frame before the 50% proc:
-                // Prev3=proc, Prev1=attracted slot (Prev2 is skipped here).
-                // Pinned Method K uses Prev2=proc, Prev1=attracted slot.
                 if (!Gen4Wild::levelMatches(row, metLevel)) {
                     candidate = Gen3PidIv::Detail::prev(
                         Gen3PidIv::Detail::prev(candidate));
