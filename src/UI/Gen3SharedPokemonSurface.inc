@@ -830,7 +830,7 @@ void editMoveCell(TrainerViewScreen& screen, State& state) {
 }
 
 
-bool handleValuePicker(TrainerViewScreen&, State& state, u64 down) {
+bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.valuePicker) return false;
     const int count = static_cast<int>(state.pickerValues.size());
     const int touchDown = screen.touchedButtonDownId(touch);
