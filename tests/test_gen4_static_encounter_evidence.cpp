@@ -1,4 +1,5 @@
 #include "Legality/Gen4StaticEncounter.h"
+#include "Legality/Gen4StaticEvolutionEvidence.h"
 #include "Legality/Gen4ReleaseEvidence.h"
 
 #include <cassert>
@@ -52,6 +53,48 @@ int main() {
     // Diamond gift Eevee is fixed to a Poke Ball.
     assert(match("diamond_nds", 133, 10, 5, 0, 0, 4));
     assert(!match("diamond_nds", 133, 10, 5, 0, 0, 1));
+
+    // Pinned EncounterStatic4 receives an EvoCriteria, so a later evolution does
+    // not erase native static/gift provenance. Keep this positive-only and retain
+    // the original source species/row for downstream PID evidence.
+    const auto directEevee = Legality::Gen4StaticEvolution::matchEvolutionLine(
+        "diamond_nds", 133, 10, 5, 0, 0, 4, 0, 0, false, false);
+    assert(directEevee.matched());
+    assert(!directEevee.evolved);
+    assert(directEevee.sourceSpecies == 133);
+    assert(directEevee.row != nullptr);
+    assert(species(*directEevee.row) == 133);
+
+    const auto evolvedVaporeon = Legality::Gen4StaticEvolution::matchEvolutionLine(
+        "diamond_nds", 134, 10, 5, 0, 0, 4, 0, 0, false, false);
+    assert(evolvedVaporeon.matched());
+    assert(evolvedVaporeon.evolved);
+    assert(evolvedVaporeon.sourceSpecies == 133);
+    assert(evolvedVaporeon.row != nullptr);
+    assert(species(*evolvedVaporeon.row) == 133);
+    assert(eggLocation(*evolvedVaporeon.row) == 0);
+    assert(form(*evolvedVaporeon.row) == 0);
+
+    // Persistent source fields still constrain evolved positive provenance.
+    assert(!Legality::Gen4StaticEvolution::matchEvolutionLine(
+        "diamond_nds", 134, 11, 5, 0, 0, 4, 0, 0, false, false).matched());
+    assert(!Legality::Gen4StaticEvolution::matchEvolutionLine(
+        "diamond_nds", 134, 10, 6, 0, 0, 4, 0, 0, false, false).matched());
+    assert(!Legality::Gen4StaticEvolution::matchEvolutionLine(
+        "diamond_nds", 134, 10, 5, 0, 0, 1, 0, 0, false, false).matched());
+    assert(!Legality::Gen4StaticEvolution::matchEvolutionLine(
+        "heartgold_nds", 134, 10, 5, 0, 0, 4, 0, 0, false, false).matched());
+
+    // Hatched static-gift eggs are deliberately outside this first evolved-source
+    // tranche. Riolu itself still matches directly, but a surviving Lucario is not
+    // inferred from the egg row until hatch-location semantics are represented.
+    const auto directRioluEgg = Legality::Gen4StaticEvolution::matchEvolutionLine(
+        "diamond_nds", 447, 40, 0, 0, 2010, 4, 0, 0, false, false);
+    assert(directRioluEgg.matched());
+    assert(!directRioluEgg.evolved);
+    assert(directRioluEgg.sourceSpecies == 447);
+    assert(!Legality::Gen4StaticEvolution::matchEvolutionLine(
+        "diamond_nds", 448, 40, 0, 0, 2010, 4, 0, 0, false, false).matched());
 
     // Platinum Shaymin's released static template is fateful. The encounter itself
     // was never released for Korean-language games.
