@@ -1,0 +1,113 @@
+name: ONE-TIME touch Quick Games edge swipe
+
+on:
+  push:
+    branches:
+      - feature/touch-controls-20261005
+    paths:
+      - '.github/workflows/one-time-touch-quick-swipe-20261005.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout touch branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/touch-controls-20261005
+          fetch-depth: 0
+
+      - name: Add right-edge Quick Games swipe
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('include/UI/ScreenChrome.h')
+          text = path.read_text()
+
+          def replace_once(old, new, label):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 match, found {count}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              '    inline std::vector<NavHit> g_navHits;\n'
+              '    inline std::vector<NavGestureHit> g_navGestureHits;\n',
+              '    inline std::vector<NavHit> g_navHits;\n'
+              '    inline std::vector<NavGestureHit> g_navGestureHits;\n'
+              '    inline int g_navSurfaceX = 0;\n'
+              '    inline int g_navSurfaceW = 0;\n'
+              '    inline uint64_t g_rightEdgeSwipeButton = 0;\n',
+              'touch nav globals')
+
+          replace_once(
+              '        if (!touch.justReleased()) return 0;\n'
+              '        for (const NavGestureHit& h : g_navGestureHits) {\n',
+              '        if (!touch.justReleased()) return 0;\n'
+              '\n'
+              '        // Product Home exposes Y = Quick Games. When that exact action is present, a\n'
+              '        // deliberate swipe in from the physical right edge maps to the same Y press.\n'
+              '        // Keeping this semantic registration in the footer means overlays that replace\n'
+              '        // the footer automatically disable the gesture instead of leaving it live behind them.\n'
+              '        if (g_rightEdgeSwipeButton != 0 && g_navSurfaceW > 0 && touch.dragged()) {\n'
+              '            const int dx = touch.x() - touch.startX();\n'
+              '            const int dy = touch.y() - touch.startY();\n'
+              '            const int ay = dy < 0 ? -dy : dy;\n'
+              '            const int rightEdge = g_navSurfaceX + g_navSurfaceW;\n'
+              '            constexpr int kEdgeCapture = 128;\n'
+              '            constexpr int kOpenDistance = 120;\n'
+              '            if (touch.startX() >= rightEdge - kEdgeCapture && touch.startX() < rightEdge &&\n'
+              '                dx <= -kOpenDistance && -dx > ay * 2)\n'
+              '                return g_rightEdgeSwipeButton;\n'
+              '        }\n'
+              '\n'
+              '        for (const NavGestureHit& h : g_navGestureHits) {\n',
+              'right-edge release hook')
+
+          replace_once(
+              '        g_navHits.clear();\n'
+              '        g_navGestureHits.clear();\n',
+              '        g_navHits.clear();\n'
+              '        g_navGestureHits.clear();\n'
+              '        g_navSurfaceX = x;\n'
+              '        g_navSurfaceW = w;\n'
+              '        g_rightEdgeSwipeButton = 0;\n',
+              'nav surface reset')
+
+          replace_once(
+              '            if (button) {\n'
+              '                g_navHits.push_back({segX, hitY, hitW, TouchTargetMin, button});\n'
+              '            } else if (s.glyphW) {\n',
+              '            if (button) {\n'
+              '                g_navHits.push_back({segX, hitY, hitW, TouchTargetMin, button});\n'
+              '                if (s.btn == "Y" && s.label == "Quick Games")\n'
+              '                    g_rightEdgeSwipeButton = button;\n'
+              '            } else if (s.glyphW) {\n',
+              'Quick Games semantic registration')
+
+          path.write_text(text)
+          PY
+
+          git diff --check
+          grep -q 'g_rightEdgeSwipeButton' include/UI/ScreenChrome.h
+          grep -q 'kEdgeCapture = 128' include/UI/ScreenChrome.h
+          grep -q 'kOpenDistance = 120' include/UI/ScreenChrome.h
+          grep -q 's.label == "Quick Games"' include/UI/ScreenChrome.h
+
+      - name: Commit touch change and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'PokeBank NX CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm .github/workflows/one-time-touch-quick-swipe-20261005.yml
+          git add include/UI/ScreenChrome.h
+          git commit -m 'feat(ui): open Quick Games with right-edge swipe'
+          git push origin HEAD:feature/touch-controls-20261005
