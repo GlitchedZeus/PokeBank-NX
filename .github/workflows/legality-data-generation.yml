@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - feature/legality-engine-gen1-4-20260929
+      - codex/legality-gen4-pressure-grass-source-20261005
     paths:
       - tools/gen_legality_gen4_wild.py
       - tools/gen_legality_gen34_egg_moves.py
