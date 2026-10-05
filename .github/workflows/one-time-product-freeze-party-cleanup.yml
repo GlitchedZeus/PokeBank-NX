@@ -1,0 +1,274 @@
+name: One-time Product Home freeze + party cleanup
+
+on:
+  push:
+    branches:
+      - feature/gen4-full-editor-20260928
+    paths:
+      - .github/workflows/one-time-product-freeze-party-cleanup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/gen4-full-editor-20260928
+          fetch-depth: 2
+
+      - name: Verify exact hardware-rejected head
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git merge-base --is-ancestor 36653ffbf97965187e572ccf63c7f05b215b812c HEAD
+
+      - name: Apply hardware cleanup
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # Public resume hook: returning from an editor must reuse Product Home instead of
+          # reconstructing users, sources, Gen IV cards and previews from scratch.
+          p = Path('include/UI/SaveSelectScreen.h')
+          s = p.read_text(encoding='utf-8')
+          needle = '        [[nodiscard]] NavigationState navigationState() const;\n\n'
+          repl = needle + '        // Return from an editor without rebuilding the Product Home catalog.\n        void resumeAfterEditor();\n\n'
+          if needle not in s or 'void resumeAfterEditor();' in s:
+              raise SystemExit('SaveSelectScreen public resume hook anchor changed')
+          p.write_text(s.replace(needle, repl, 1), encoding='utf-8')
+
+          # Product Home: restore the dee2ad47 behavior contract for the selected Main Card.
+          # L/R must show real trainer/dex/party data immediately. The expensive launch resolver is
+          # cleaned below so this no longer crawls emulator libraries on a navigation frame.
+          p = Path('src/UI/SaveSelectScreen.cpp')
+          s = p.read_text(encoding='utf-8')
+          lr_anchor = '// L/R changes the selected game from anywhere on Product Home, matching the footer.'
+          lr_start = s.index(lr_anchor)
+          lr_end = s.index('if (headerActionIndex >= 0)', lr_start)
+          lr = s[lr_start:lr_end]
+          if 'refreshHubSelectionFromCache();' not in lr:
+              raise SystemExit('Product Home L/R cached refresh anchor changed')
+          lr = lr.replace('refreshHubSelectionFromCache();', 'refreshHubPreview();', 1)
+          s = s[:lr_start] + lr + s[lr_end:]
+
+          # Re-enter Product Home after a game editor without reconstructing the entire picker.
+          insert_before = '    void SaveSelectScreen::loadLegacySources(\n'
+          if insert_before not in s or 'void SaveSelectScreen::resumeAfterEditor()' in s:
+              raise SystemExit('resumeAfterEditor insertion anchor changed')
+          resume = '''    void SaveSelectScreen::resumeAfterEditor() {
+              titleSelected = false;
+              selectedUserUid = {};
+              selectedTitleId = 0;
+              selectedTitleName.clear();
+              selectedGameId.clear();
+              selectedSourceKind = SelectedSourceKind::None;
+              selectedLegacySourceIndex = 0;
+              openIntent = OpenIntent::Default;
+              overlay = Overlay::None;
+              exitRequested = false;
+              appExitRequested = false;
+              requestedMainMenuDestination = MainMenuDestination::None;
+              hubNotice.clear();
+
+              // The editor works from a protected backup/staged copy. Product Home represents the
+              // source save, so refresh only the selected card's live presentation after returning.
+              // Do not rebuild user/save catalogs or rescan provider roots here.
+              refreshHubPreview();
+          }
+
+'''
+          s = s.replace(insert_before, resume + insert_before, 1)
+          p.write_text(s, encoding='utf-8')
+
+          # UI manager: keep the same SaveSelectScreen alive across editor open/close. This removes
+          # the exit freeze caused by loadUsers + loadLegacySources + loadGen4Cards + full preview
+          # all running again before the first returning frame could be drawn.
+          p = Path('src/UI/UI.cpp')
+          s = p.read_text(encoding='utf-8')
+          start = s.index('    SaveSelectScreen::MainMenuDestination UIManager::handleSaveSelection() {')
+          end = s.index('    void UIManager::handleDefaultQuickOpen', start)
+          replacement = r'''    SaveSelectScreen::MainMenuDestination UIManager::handleSaveSelection() {
+        SaveSelectScreen selectScreen(
+            legacyFRLGSources, legacySourceBindings,
+            productHomeNavigationValid ? &productHomeNavigation : nullptr);
+        fb.startFade();
+
+        while (appletMainLoop() && running) {
+            padUpdate(&pad);
+            touch.update();
+            selectScreen.update(pad, touch);
+
+            // A screen that selected a destination or requested exit is already retired.
+            // Never paint one more stale frame after update() changes its terminal state.
+            if (!selectScreen.hasSelectedTitle() && !selectScreen.shouldExit()) {
+                selectScreen.draw(fb);
+                fb.drawFadeOverlay();
+                fb.flush();
+            }
+
+            if (selectScreen.hasSelectedTitle()) {
+                productHomeNavigation = selectScreen.navigationState();
+                productHomeNavigationValid = true;
+                if (selectScreen.getSelectedSourceKind() ==
+                    SaveSelectScreen::SelectedSourceKind::RetroArchFRLG) {
+                    std::string error;
+                    if (!handleLegacyFRLGView(selectScreen.getSelectedUser(),
+                                              selectScreen.getSelectedLegacySourceIndex(),
+                                              selectScreen.getSelectedGameId(),
+                                              selectScreen.getOpenIntent(), error))
+                        logErrorToFile("Legacy emulator source refused open", error.c_str());
+                } else if (selectScreen.getSelectedSourceKind() ==
+                           SaveSelectScreen::SelectedSourceKind::Gen4AssignedFile) {
+                    std::string error;
+                    if (!handleGen4View(selectScreen.getSelectedUser(),
+                                        selectScreen.getSelectedGameId(),
+                                        selectScreen.getOpenIntent(), error))
+                        logErrorToFile("Generation IV assigned source refused open", error.c_str());
+                } else {
+                    if (selectScreen.getOpenIntent() == SaveSelectScreen::OpenIntent::Items) {
+                        handleItemsQuickOpen(selectScreen.getSelectedUser(),
+                                             selectScreen.getSelectedTitleId(),
+                                             selectScreen.getSelectedTitleName());
+                    } else if (selectScreen.getOpenIntent() == SaveSelectScreen::OpenIntent::Backups) {
+                        handleBackupSelection(selectScreen.getSelectedUser(),
+                                              selectScreen.getSelectedTitleId(),
+                                              selectScreen.getSelectedTitleName(),
+                                              selectScreen.getOpenIntent());
+                    } else {
+                        handleDefaultQuickOpen(selectScreen.getSelectedUser(),
+                                               selectScreen.getSelectedTitleId(),
+                                               selectScreen.getSelectedTitleName());
+                    }
+                }
+
+                if (!running) return SaveSelectScreen::MainMenuDestination::None;
+
+                // Return to the exact same Product Home object/focus. No account/save enumeration,
+                // provider discovery, Gen IV card reconstruction or whole-catalog artwork work.
+                selectScreen.resumeAfterEditor();
+                fb.startFade();
+                continue;
+            }
+
+            if (selectScreen.hasRequestedAppExit()) {
+                running = false;
+                return SaveSelectScreen::MainMenuDestination::None;
+            }
+            if (selectScreen.shouldExit()) {
+                productHomeNavigation = selectScreen.navigationState();
+                productHomeNavigationValid = true;
+                return selectScreen.getRequestedMainMenuDestination();
+            }
+        }
+        return SaveSelectScreen::MainMenuDestination::None;
+    }
+
+'''
+          s = s[:start] + replacement + s[end:]
+          p.write_text(s, encoding='utf-8')
+
+          # Launch resolver cleanup: explicit Launch may validate known executables and an exact
+          # persisted game-file binding, but it must never crawl RetroArch playlists or recursively
+          # walk emulator ROM directories on the UI thread. If no exact binding/forwarder exists,
+          # fail fast into the existing X / Save-Source linking flow.
+          p = Path('src/UI/GameLauncher.cpp')
+          s = p.read_text(encoding='utf-8')
+
+          # Remove helpers that existed only for synchronous auto-discovery.
+          a = s.index('bool hasExtension(')
+          b = s.index('bool readTextFile(', a)
+          s = s[:a] + s[b:]
+
+          a = s.index('std::vector<std::string> configuredDraSticLibraryRoots()')
+          b = s.index('std::string hexEncode(', a)
+          s = s[:a] + s[b:]
+
+          a = s.index('void collectContentMatches(')
+          b = s.index('GameLaunchDescriptor descriptorFromStored', a)
+          s = s[:a] + s[b:]
+
+          # RetroArch: stored exact binding or fast NeedsContentLink. No playlist walk.
+          fn = s.index('GameLaunchDescriptor resolveRetroArch(')
+          body = s.index('    const std::string wanted =', fn)
+          fn_end = s.index('\n}\n\nGameLaunchDescriptor resolveKnownHomebrew', body)
+          fast_retro = '''    result.state = GameLaunchState::NeedsContentLink;
+              result.detail = "This save is valid, but its game file is not linked yet. Use X / Save-Source once.";
+              return result;'''.replace('              ', '    ')
+          s = s[:body] + fast_retro + s[fn_end:]
+
+          # mGBA/Tico/DraStic/melonDS: same rule. Never recursively crawl thousands of files on ZR.
+          fn = s.index('GameLaunchDescriptor resolveKnownHomebrew(')
+          body = s.index('    const std::string wanted =', fn)
+          fn_end = s.index('\n}\n\n#ifdef __SWITCH__', body)
+          fast_known = '''    GameLaunchDescriptor result;
+              result.backend = GameLaunchBackend::HomebrewNro;
+              result.providerId = std::string(providerId);
+              result.launcherPath = launcher;
+              result.state = GameLaunchState::NeedsContentLink;
+              result.detail = "This save is valid, but its game file is not linked yet. Use X / Save-Source once.";
+              return result;'''.replace('              ', '    ')
+          s = s[:body] + fast_known + s[fn_end:]
+
+          # The recursive scanner no longer needs <set>; dirent is still used nowhere after cleanup.
+          s = s.replace('#include <dirent.h>\n', '')
+          s = s.replace('#include <set>\n', '')
+          p.write_text(s, encoding='utf-8')
+
+          # Update the Product Home contract: Main Card navigation restores live data like the
+          # accepted dee2ad47 behavior, while the resolver itself is guaranteed not to crawl SD.
+          p = Path('tests/test_game_hub_contract.py')
+          s = p.read_text(encoding='utf-8')
+          old = '''require("refreshHubSelectionFromCache();" in lr_block and "refreshHubPreview();" not in lr_block,
+              "Product Home L/R must not run the full save/launch preview on the input frame")'''.replace('              ', '        ')
+          new = '''require("refreshHubPreview();" in lr_block and "refreshHubSelectionFromCache();" not in lr_block,
+              "Product Home L/R must restore the selected card trainer/dex/party preview")'''.replace('              ', '        ')
+          if old not in s:
+              raise SystemExit('L/R contract assertion changed')
+          s = s.replace(old, new, 1)
+
+          ui_contract_anchor = 'require("const auto destination = handleSaveSelection();" in ui_manager,\n        "approved Games/product-home screen must be the app root")'
+          if ui_contract_anchor not in s:
+              raise SystemExit('UI manager contract anchor changed')
+          ui_extra = ui_contract_anchor + '''
+          require("resumeAfterEditor();" in ui_manager and "rebuildPicker" not in ui_manager,
+                  "returning from an editor must reuse Product Home instead of rebuilding the whole picker")'''.replace('          ', '')
+          s = s.replace(ui_contract_anchor, ui_extra, 1)
+
+          launcher_anchor = 'launcher = (ROOT / "src/UI/GameLauncher.cpp").read_text(encoding="utf-8")\n'
+          if launcher_anchor not in s:
+              raise SystemExit('launcher contract anchor changed')
+          scan_contract = launcher_anchor + '''resolve_retro_start = launcher.index("GameLaunchDescriptor resolveRetroArch")
+          resolve_retro_end = launcher.index("GameLaunchDescriptor resolveKnownHomebrew", resolve_retro_start)
+          resolve_retro = launcher[resolve_retro_start:resolve_retro_end]
+          resolve_known_start = resolve_retro_end
+          resolve_known_end = launcher.index("#ifdef __SWITCH__", resolve_known_start)
+          resolve_known = launcher[resolve_known_start:resolve_known_end]
+          for forbidden in ("opendir", "findContentMatches", "collectContentMatches"):
+              require(forbidden not in resolve_retro and forbidden not in resolve_known,
+                      f"explicit game launch must not synchronously crawl SD content: {forbidden}")
+          '''.replace('          ', '')
+          s = s.replace(launcher_anchor, scan_contract, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Validate focused source contracts
+        run: |
+          set -euo pipefail
+          python3 tests/test_game_hub_contract.py
+          python3 tests/test_product_performance_contract.py
+          python3 tests/test_ci_repository_safety_contract.py
+          python3 tests/test_engineering_authority_contract.py
+          git diff --check
+
+      - name: Commit and push hardware fix
+        run: |
+          set -euo pipefail
+          git config user.name GlitchedZeus
+          git config user.email user91746@protonmail.com
+          git add include/UI/SaveSelectScreen.h src/UI/SaveSelectScreen.cpp src/UI/UI.cpp src/UI/GameLauncher.cpp tests/test_game_hub_contract.py
+          git commit -m "fix(ui): restore Main Card data and eliminate freeze paths"
+          git push origin HEAD:feature/gen4-full-editor-20260928
