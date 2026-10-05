@@ -83,6 +83,7 @@ bool readTextFile(const std::string& path, std::string& out, size_t maxSize = 4 
 }
 
 
+#ifdef __SWITCH__
 std::string compactGameTitle(std::string_view value) {
     std::string out;
     out.reserve(value.size());
@@ -136,7 +137,6 @@ bool installedForwarderNameMatches(std::string_view gameId, std::string_view nor
     return false;
 }
 
-#ifdef __SWITCH__
 struct InstalledApplicationName {
     uint64_t titleId = 0;
     std::string normalizedName;
