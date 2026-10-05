@@ -12,6 +12,7 @@ For exact active heads and CI evidence, read `CURRENT_STATUS.md` first.
 - State: active alpha
 - Active application / hardware lane: **PR #92**
 - Active read-only legality lane: **PR #103**
+- Active legality child validation: **PR #120**
 - Full forensic remediation: **completed and merged into PR #92 via PR #101**
 
 GitHub is authoritative. Checkpoint SHAs are evidence, never instructions to move a branch backward.
@@ -23,11 +24,11 @@ PokeBank NX now has:
 - a hardware-accepted Gen I–III read/editor foundation;
 - a substantially complete staged Gen IV editor for D/P/Pt/HG/SS;
 - a modern Product Home and Games/source-management frontend;
-- current automated-green native/host/editor validation on the active application head;
+- established host/native/editor validation lanes with the latest application/input integration being revalidated as the active branch advances;
 - a completed full-repository forensic audit and remediation package integrated into the active app lane;
 - an actively growing, read-only Gen I–IV legality evidence engine in a separate lane.
 
-The project is currently in **final integrated UI / launch / hardware-polish territory before full touch controls**.
+The project is currently in **final integrated UI / input / launch / hardware-polish territory before full touch controls**.
 
 ## Current application state
 
@@ -36,7 +37,7 @@ PR #92 is the current Gen I–IV application lane.
 Current implementation includes:
 
 - Product Home selected-game presentation;
-- full Games browser and quick-games flow;
+- full Games browser and Quick Games flow;
 - game/save/profile source assignment;
 - source/provider-aware save identity;
 - region-aware hero artwork and trainer presentation;
@@ -45,13 +46,14 @@ Current implementation includes:
 - sorting / Release Date ordering foundation;
 - Favorites foundation;
 - Items/Settings/Search navigation work;
-- installed HOME-forwarder preference for matching GBA/DS launch targets;
-- fallback to provider/file/link behavior when a launch target cannot be proven;
-- full staged Gen IV G4-04 editor implementation.
+- exact-release launch matching and provider/installed-forwarder routing for supported GBA/DS flows;
+- hotpath work that avoids unnecessary synchronous source/launch scans during Quick Games and normal legacy opens;
+- full staged Gen IV G4-04 editor implementation;
+- active shared on-screen-keyboard integration work based on the merged PKSE keyboard contribution.
 
-The normal current-head application CI matrix is green: Host Tests, Native PR Gate, Product UI Native, Gen IV Candidate Gate, and both focused Gen I/II packed-move regression lanes pass.
+The active branch is moving while that final integration is validated. Recent runtime checkpoints have passed the normal native/Product UI/Gen IV/focused regression gates, while the latest exact Host/sanitizer cycles must be allowed to finish before a new combined head is called fully green. `CURRENT_STATUS.md` records the current checkpoint/run boundary.
 
-The current combined head is **not hardware accepted yet**.
+The current combined application is **not hardware accepted yet**.
 
 ## Generation status
 
@@ -73,7 +75,7 @@ Diamond / Pearl / Platinum / HeartGold / SoulSilver have the staged full-editor 
 
 The earlier safe Party/Box View/Edit milestone is physically accepted. Current G4-04 adds Create, native field parity, species/form reconciliation, move handling, action parity, strict checksum/reparse/rollback behavior, and the current Product UI/source architecture.
 
-The full G4-04 + current frontend requires its own exact physical acceptance pass.
+The full G4-04 + current frontend/input integration requires its own exact physical acceptance pass.
 
 ### Gen V+ — ⏳ not a production workflow yet
 
@@ -95,6 +97,8 @@ The audit/remediation work strengthens parser boundaries, memory safety, durabil
 
 AUDIT-043 remains intentionally deferred until a real failing disposable Gen IV save is available; the app must not manufacture trainer identity from filenames.
 
+The older isolated hardening PRs #98 and #99 are now closed as superseded because their AUDIT-013/AUDIT-012 fixes are already verified and integrated through the completed remediation lane. The old docs refresh PR #102 is also closed as superseded by the current documentation state; its branch/history remains available.
+
 ## Legality engine
 
 PR #103 is the separate **read-only Gen I–IV legality analysis lane**.
@@ -107,8 +111,11 @@ Current implemented foundation includes:
 - extensive Gen III event/PID/IV/RNG evidence;
 - Colosseum/XD/e-Reader/GameCube-specific evidence;
 - Gen III → IV Pal Park evidence;
-- extensive Gen IV wild/static/trade/PokéWalker/WC4/PCD/RNG/form/origin evidence;
+- extensive Gen IV wild/static/trade/PokéWalker/WC4/PCD evidence;
+- state-aware Gen IV egg/static/gift provenance;
 - coverage-aware verdict semantics.
+
+PR #120 is the current isolated child validation for Gen IV Method J/K lead predicates. It remains evidence-only and is not a MAIN/application merge.
 
 The legality lane is analysis only. Missing evidence stays **Incomplete**; it does not auto-fix Pokémon or grant any write permission.
 
@@ -116,16 +123,19 @@ The legality lane is analysis only. Missing evidence stays **Incomplete**; it do
 
 The next exact candidate should validate the current hardware-visible work together:
 
+- Quick Games selection remains cached/non-blocking;
+- normal Gen I–III open validates the selected cached source instead of rescanning every provider;
+- Red/Blue and other near-name releases remain exact-match safe;
+- DS launch uses the validated provider path before expensive fallback discovery when appropriate;
 - full Games browser has no trainer portraits in game tiles;
 - `X = Save / Source` can assign another validated matching Gen I–III save;
 - Gen IV provider-neutral setup remains correct;
 - Product Home region scenery stays readable;
 - round destinations are neutral until focused;
-- matching installed GBA/DS HOME forwarders launch directly before emulator fallback;
-- exact-release matching avoids similar-name collisions;
-- Quick Games, Items exit, Search-left, Favorites, and Release Date ordering remain stable.
+- Items exit, Search-left, Favorites and Release Date ordering remain stable;
+- shared on-screen keyboard integration accepts/cancels text safely without regressing controller input.
 
-A previous Product UI candidate at `dee2ad47...` was physically rejected and remains historical evidence only. Current fixes must be accepted as a new exact artifact.
+A previous Product UI candidate at `dee2ad47...` was physically rejected and remains historical evidence only. Current fixes/integrations must be accepted as a new exact artifact.
 
 ## Safety / scope locks
 
@@ -142,8 +152,8 @@ A previous Product UI candidate at `dee2ad47...` was physically rejected and rem
 
 ## Near-term order
 
-1. finish current Product Home / Games / Quick Games / direct-launch hardware polish;
-2. keep exact-head application CI green;
+1. settle current Product Home / Games / Quick Games / direct-launch / keyboard integration work;
+2. finish one exact-head full application CI pass;
 3. package one exact current NRO;
 4. physically accept that exact integrated Gen I–IV + Product UI build;
 5. begin full app-wide touch-control parity;
