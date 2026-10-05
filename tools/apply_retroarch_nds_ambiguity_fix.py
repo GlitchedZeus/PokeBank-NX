@@ -1,30 +1,37 @@
 from pathlib import Path
 
-
 PATH = Path("src/UI/GameLauncher.cpp")
 text = PATH.read_text(encoding="utf-8")
 
-# NDS RetroArch launches need a trusted default core just like GB/GBC/GBA.
-# Prefer DeSmuME when installed, then melonDS. This is executable selection only;
-# content still comes from the validated playlist/link flow below.
-fn_start = text.index("std::string defaultRetroArchCore(std::string_view gameId) {")
-fn_end = text.index("\n}\n\nGameLaunchProviderKind providerKindForSourcePath", fn_start)
-fn = text[fn_start:fn_end]
-if 'gameId.substr(gameId.size() - 4) == "_nds"' not in fn:
-    marker = "    return {};\n"
-    if fn.count(marker) != 1:
-        raise SystemExit("defaultRetroArchCore return marker changed")
-    nds = (
-        '    if (gameId.size() >= 4 && gameId.substr(gameId.size() - 4) == "_nds")\n'
-        '        return firstExisting({"sdmc:/retroarch/cores/desmume_libretro_libnx.nro",\n'
-        '                              "sdmc:/retroarch/cores/melonds_libretro_libnx.nro"});\n'
-    )
-    fn = fn.replace(marker, nds + marker, 1)
-    text = text[:fn_start] + fn + text[fn_end:]
+old_core = '''std::string defaultRetroArchCore(std::string_view gameId) {
+    if (gameId.size() >= 4 && gameId.substr(gameId.size() - 4) == "_gba")
+        return firstExisting({"sdmc:/retroarch/cores/mgba_libretro_libnx.nro"});
+    if ((gameId.size() >= 3 && gameId.substr(gameId.size() - 3) == "_gb") ||
+        (gameId.size() >= 4 && gameId.substr(gameId.size() - 4) == "_gbc"))
+        return firstExisting({"sdmc:/retroarch/cores/gambatte_libretro_libnx.nro",
+                              "sdmc:/retroarch/cores/mgba_libretro_libnx.nro"});
+    return {};
+}
+'''
+new_core = '''std::string defaultRetroArchCore(std::string_view gameId) {
+    if (gameId.size() >= 4 && gameId.substr(gameId.size() - 4) == "_gba")
+        return firstExisting({"sdmc:/retroarch/cores/mgba_libretro_libnx.nro"});
+    if ((gameId.size() >= 3 && gameId.substr(gameId.size() - 3) == "_gb") ||
+        (gameId.size() >= 4 && gameId.substr(gameId.size() - 4) == "_gbc"))
+        return firstExisting({"sdmc:/retroarch/cores/gambatte_libretro_libnx.nro",
+                              "sdmc:/retroarch/cores/mgba_libretro_libnx.nro"});
+    if (gameId.size() >= 4 && gameId.substr(gameId.size() - 4) == "_nds")
+        return firstExisting({"sdmc:/retroarch/cores/desmume_libretro_libnx.nro",
+                              "sdmc:/retroarch/cores/melonds_libretro_libnx.nro"});
+    return {};
+}
+'''
+if new_core not in text:
+    if old_core not in text:
+        raise SystemExit("defaultRetroArchCore block changed")
+    text = text.replace(old_core, new_core, 1)
 
-# The reconciler must inspect every viable same-stem playlist entry before deciding.
-# Returning on the first hit silently turns an ambiguous library into an arbitrary launch.
-early = '''                result.contentPath = std::move(content);
+old_early = '''                result.contentPath = std::move(content);
                 result.corePath = std::move(core);
                 result.launcherPath = result.corePath;
                 result.state = GameLaunchState::Ready;
@@ -32,31 +39,29 @@ early = '''                result.contentPath = std::move(content);
                 ::closedir(dir);
                 return result;
 '''
-replacement = '''                matches.push_back({std::move(content), std::move(core)});
+new_early = '''                matches.push_back({std::move(content), std::move(core)});
                 pos += 6;
 '''
-if early in text:
-    text = text.replace(early, replacement, 1)
-elif replacement not in text:
-    raise SystemExit("RetroArch playlist first-match block changed")
+if new_early not in text:
+    if old_early not in text:
+        raise SystemExit("RetroArch playlist first-match block changed")
+    text = text.replace(old_early, new_early, 1)
 
-# A unique playlist entry may use a valid core different from the preferred default;
-# launcherPath must follow the chosen playlist core.
-unique = '''        if (matches.size() == 1) {
+old_unique = '''        if (matches.size() == 1) {
             result.contentPath = std::move(matches.front().content);
             result.corePath = std::move(matches.front().core);
             result.state = GameLaunchState::Ready;
 '''
-unique_fixed = '''        if (matches.size() == 1) {
+new_unique = '''        if (matches.size() == 1) {
             result.contentPath = std::move(matches.front().content);
             result.corePath = std::move(matches.front().core);
             result.launcherPath = result.corePath;
             result.state = GameLaunchState::Ready;
 '''
-if unique in text:
-    text = text.replace(unique, unique_fixed, 1)
-elif unique_fixed not in text:
-    raise SystemExit("RetroArch unique-match block changed")
+if new_unique not in text:
+    if old_unique not in text:
+        raise SystemExit("RetroArch unique-match block changed")
+    text = text.replace(old_unique, new_unique, 1)
 
 PATH.write_text(text, encoding="utf-8")
 print("Applied RetroArch NDS core + ambiguity reconciliation fix.")
