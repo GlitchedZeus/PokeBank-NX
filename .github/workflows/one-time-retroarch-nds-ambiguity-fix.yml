@@ -1,0 +1,45 @@
+name: One-time RetroArch NDS ambiguity fix
+
+on:
+  push:
+    branches:
+      - feature/gen4-full-editor-20260928
+    paths:
+      - tools/retroarch_nds_ambiguity_fix_trigger.txt
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/gen4-full-editor-20260928
+          fetch-depth: 0
+
+      - name: Apply exact forward fix
+        run: python3 tools/apply_retroarch_nds_ambiguity_fix.py
+
+      - name: Focused RetroArch resolver contract
+        run: |
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Iinclude \
+            tests/test_retroarch_launch_resolution.cpp src/UI/GameLauncher.cpp \
+            -o /tmp/test_retroarch_launch_resolution
+          /tmp/test_retroarch_launch_resolution
+          git diff --check
+
+      - name: Commit corrected resolver
+        run: |
+          if git diff --quiet -- src/UI/GameLauncher.cpp; then
+            echo "Resolver already corrected."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/UI/GameLauncher.cpp
+          git commit -m "fix(launch): reconcile RetroArch NDS ambiguity"
+          git push origin HEAD:feature/gen4-full-editor-20260928
