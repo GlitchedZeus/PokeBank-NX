@@ -1,141 +1,14 @@
-name: One-time native touch cleanup
+name: Disabled one-time Product Home freeze + party cleanup
+
+# This staging workflow intentionally does nothing. The broad cleanup it contained was rejected
+# after hardware feedback because it changed too much at once. Keep the file inert as an audit
+# breadcrumb; focused forward fixes are committed directly instead.
 
 on:
-  push:
-    branches: [feature/touch-controls-20261005]
-    paths:
-      - .github/workflows/one-time-product-freeze-party-cleanup.yml
-
-permissions:
-  contents: write
+  workflow_dispatch:
 
 jobs:
-  patch-touch:
+  disabled:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Verify exact touch head
-        run: |
-          set -euo pipefail
-          git fetch origin feature/touch-controls-20261005
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git rev-parse origin/feature/touch-controls-20261005)" = "$GITHUB_SHA"
-
-      - name: Replace controller-like touch with native direct touch
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          def replace_once(path, old, new):
-              p = Path(path)
-              s = p.read_text()
-              n = s.count(old)
-              if n != 1:
-                  raise SystemExit(f"{path}: expected one match, got {n}: {old[:120]!r}")
-              p.write_text(s.replace(old, new, 1))
-
-          p = Path("include/UI/ScreenChrome.h")
-          s = p.read_text()
-          s = re.sub(r'\n    struct TouchCardHit \{.*?inline std::vector<TouchCardHit> g_touchCardHits;\n', '\n', s, count=1, flags=re.S)
-          s = s.replace('        g_touchCardAccum.clear();\n', '')
-          s = s.replace('        g_touchCardAccum.push_back({x, y, w, h, focused});\n', '')
-          s = s.replace('    inline bool g_productHomeCardTap = false;\n', '')
-          s = s.replace('    inline std::vector<uint64_t> g_cardTapQueue;\n', '')
-          s = s.replace('    inline std::size_t g_cardTapQueueIndex = 0;\n', '')
-          s, n = re.subn(r'\n    inline uint64_t emitQueuedCardTap\(\) \{.*?\n    // Hit-test the badges captured during the PREVIOUS frame\'s draw\.', '\n    // Hit-test the badges captured during the PREVIOUS frame\'s draw.', s, count=1, flags=re.S)
-          if n != 1: raise SystemExit('ScreenChrome: failed to remove queued card helpers')
-          s = s.replace(
-              '        // A new touch always cancels an older queued card activation; the user\'s newest gesture wins.\n'
-              '        if (touch.justTouchedDown()) {\n'
-              '            g_cardTapQueue.clear();\n'
-              '            g_cardTapQueueIndex = 0;\n'
-              '        } else if (!touch.isDown() && !touch.justReleased() && !g_cardTapQueue.empty()) {\n'
-              '            return emitQueuedCardTap();\n'
-              '        }\n\n', '')
-          s, n = re.subn(r'\n            // Proper direct card taps for the browser/list surfaces.*?\n            for \(const NavHit& h : g_navHits\) \{', '\n            for (const NavHit& h : g_navHits) {', s, count=1, flags=re.S)
-          if n != 1: raise SystemExit('ScreenChrome: failed to remove generic card activation')
-          s = s.replace(
-              '        // The footer drawn last owns both controller hints and direct-content hit geometry.\n'
-              '        // Card activation belongs to the screen that owns the card. Never synthesize\n'
-              '        // multi-frame D-pad walks from a touchscreen tap.\n'
-              '        g_touchCardHits.clear();\n'
-              '        g_touchCardAccum.clear();\n'
-              '        g_touchGlyphHits = g_touchGlyphAccum;\n',
-              '        // The footer drawn last owns controller-glyph touch geometry only. Content\n'
-              '        // cards/rows are owned by their screen and are never controller-emulated here.\n'
-              '        g_touchGlyphHits = g_touchGlyphAccum;\n')
-          s = s.replace('        g_productHomeCardTap = false;\n', '')
-          s = re.sub(r'\n        // Product Home has a hero plus two feature cards\..*?g_productHomeCardTap = true;\n', '\n', s, count=1, flags=re.S)
-          if any(x in s for x in ('queueSpatialCardTap', 'g_cardTapQueue', 'g_touchCardHits')):
-              raise SystemExit('ScreenChrome: synthetic card activation still present')
-          p.write_text(s)
-
-          replace_once(
-              "include/UI/AppShellScreen.h",
-              "        std::array<HitRect, 7> settingsRects{};\n        std::string statusMessage;\n",
-              "        std::array<HitRect, 7> settingsRects{};\n        std::array<HitRect, 8> overlayRects{};\n        std::string statusMessage;\n")
-
-          replace_once(
-              "src/UI/AppShellScreen.cpp",
-              "    if (overlay == Overlay::More) {\n        constexpr int moreCount = 6;\n",
-              "    if (overlay == Overlay::More) {\n        constexpr int moreCount = 6;\n"
-              "        if (touch.justTouchedDown()) {\n            for (const HitRect& rect : overlayRects) {\n                if (contains(rect, touch.x(), touch.y())) { moreIndex = rect.index; break; }\n            }\n        }\n"
-              "        if (touch.justTapped()) {\n            for (const HitRect& rect : overlayRects) {\n                if (contains(rect, touch.x(), touch.y())) { moreIndex = rect.index; kDown |= HidNpadButton_A; break; }\n            }\n"
-              "        } else if (touch.justReleased() && touch.dragged()) {\n            const int dx = touch.deltaX(), dy = touch.deltaY();\n            const int ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;\n            if (ax >= 56 && ax >= ay) kDown |= dx < 0 ? HidNpadButton_Right : HidNpadButton_Left;\n            else if (ay >= 56) kDown |= dy < 0 ? HidNpadButton_Down : HidNpadButton_Up;\n        }\n")
-
-          replace_once(
-              "src/UI/AppShellScreen.cpp",
-              "    if (overlay == Overlay::OrganizationPreview) {\n        using PokeBank::UIModel::OrganizationPreviewKind;\n",
-              "    if (overlay == Overlay::OrganizationPreview) {\n        using PokeBank::UIModel::OrganizationPreviewKind;\n"
-              "        if (touch.justTouchedDown()) {\n            for (const HitRect& rect : overlayRects) {\n                if (contains(rect, touch.x(), touch.y())) { previewIndex = rect.index; break; }\n            }\n        }\n"
-              "        if (touch.justTapped()) {\n            for (const HitRect& rect : overlayRects) {\n                if (contains(rect, touch.x(), touch.y())) { previewIndex = rect.index; kDown |= HidNpadButton_A; break; }\n            }\n"
-              "        } else if (touch.justReleased() && touch.dragged()) {\n            const int dx = touch.deltaX(), dy = touch.deltaY();\n            const int ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;\n            if (ax >= 56 && ax >= ay) kDown |= dx < 0 ? HidNpadButton_Right : HidNpadButton_Left;\n            else if (ay >= 56) kDown |= dy < 0 ? HidNpadButton_Down : HidNpadButton_Up;\n        }\n")
-
-          for old, new in [
-              ("            drawFocusedCard(fb, bx, by, boxW, boxH, i == previewIndex, 12);\n            const auto& box =", "            drawFocusedCard(fb, bx, by, boxW, boxH, i == previewIndex, 12);\n            overlayRects[static_cast<std::size_t>(i)] = {bx, by, boxW, boxH, i};\n            const auto& box ="),
-              ("            drawFocusedCard(fb, fx, fy, filterW, filterH, i == previewIndex, 10);\n            const auto& f =", "            drawFocusedCard(fb, fx, fy, filterW, filterH, i == previewIndex, 10);\n            overlayRects[static_cast<std::size_t>(i)] = {fx, fy, filterW, filterH, i};\n            const auto& f ="),
-              ("            drawFocusedCard(fb, cx, cy, cardW, cardH, i == previewIndex, 14);\n            const auto& c =", "            drawFocusedCard(fb, cx, cy, cardW, cardH, i == previewIndex, 14);\n            overlayRects[static_cast<std::size_t>(i)] = {cx, cy, cardW, cardH, i};\n            const auto& c ="),
-              ("        drawFocusedCard(fb, cx, cy, cardW, cardH, focused, 14);\n        fb.drawText(cx + 20, cy + 16, modules[i].title,\n", "        drawFocusedCard(fb, cx, cy, cardW, cardH, focused, 14);\n        overlayRects[static_cast<std::size_t>(i)] = {cx, cy, cardW, cardH, i};\n        fb.drawText(cx + 20, cy + 16, modules[i].title,\n"),
-              ("void AppShellScreen::draw(PKSEFramebuffer& fb) {\n    drawAppBackdrop(fb);\n", "void AppShellScreen::draw(PKSEFramebuffer& fb) {\n    for (auto& rect : overlayRects) rect = {};\n    drawAppBackdrop(fb);\n")]:
-              replace_once("src/UI/AppShellScreen.cpp", old, new)
-
-          replace_once(
-              "src/UI/SaveSelectScreen.cpp",
-              "        if (touch.justTapped()) {\n            if (classicGamesActive && overlay == Overlay::None) {\n",
-              "        if (touch.justTouchedDown()) {\n            const int tx = touch.x(), ty = touch.y();\n            if (classicGamesActive && overlay == Overlay::None) {\n                for (const auto& r : titleRects) if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) { titleIndex = r.idx; headerActionIndex = -1; break; }\n            } else {\n                for (const auto& r : overlayRects) {\n                    if (!(tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h)) continue;\n                    switch (overlay) {\n                        case Overlay::GamesDrawer: gamesDrawerIndex = r.idx; break;\n                        case Overlay::ProfilePicker: profilePickerIndex = r.idx; break;\n                        case Overlay::GameWorkspace: gameWorkspaceIndex = r.idx; break;\n                        case Overlay::GameFilePicker: launchFileIndex = r.idx; break;\n                        case Overlay::LegacyInstances: legacyInstanceIndex = r.idx; break;\n                        case Overlay::LegacyAssignment: legacyAssignmentIndex = r.idx; break;\n                        case Overlay::Gen4Setup: gen4SetupIndex = r.idx; break;\n                        case Overlay::Gen4Candidates: gen4CandidateIndex = r.idx; break;\n                        case Overlay::Options: optionsIndex = r.idx; break;\n                        default: break;\n                    }\n                    break;\n                }\n            }\n        }\n\n        if (touch.justTapped()) {\n            if (classicGamesActive && overlay == Overlay::None) {\n")
-
-          replace_once(
-              "src/UI/SaveSelectScreen.cpp",
-              "        // Touch uses the same actions as controller focus. Fine-grained app-wide touch parity is\n        // intentionally a later tranche; these existing primary hit targets remain safe now.\n        if (touch.justPressed()) {\n",
-              "        // Native Product Home touch: contact updates focus immediately; a stationary release activates.\n        if (touch.justTouchedDown()) {\n            const int tx = touch.x(), ty = touch.y();\n            for (const auto& r : headerRects) if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) { headerActionIndex = r.idx; hubDockFocused = false; hubFeatureIndex = -1; break; }\n            for (const auto& r : dockRects) if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) { hubDockFocused = true; hubFeatureIndex = -1; hubDockIndex = r.idx; headerActionIndex = -1; break; }\n            for (const auto& r : featureRects) if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) { hubDockFocused = false; headerActionIndex = -1; hubFeatureIndex = r.idx; break; }\n        }\n        if (touch.justTapped()) {\n")
-
-          replace_once(
-              "src/UI/ClassicInventoryOverlay.cpp",
-              "    const int touchId = screen.touchedButtonId(touch);\n",
-              "    const int touchId = screen.touchedButtonId(touch);\n    if (touch.justTouchedDown()) {\n        const int tx = touch.x(), ty = touch.y();\n        for (const auto& hit : screen.touchButtons) {\n            if (tx < hit.x || tx >= hit.x + hit.w || ty < hit.y || ty >= hit.y + hit.h) continue;\n            if (state.pickerActive && hit.id >= 0 && hit.id < static_cast<int>(state.pickerItems.size())) state.pickerRow = hit.id;\n            else if (state.optionsActive && hit.id >= 0 && hit.id < 4) state.optionsRow = hit.id;\n            else if (state.reviewActive && hit.id >= 0) state.reviewRow = hit.id;\n            break;\n        }\n    }\n")
-
-          Path(".github/workflows/one-time-product-freeze-party-cleanup.yml").write_text('''name: Disabled one-time Product Home freeze + party cleanup\n\n# This staging workflow intentionally does nothing. The broad cleanup it contained was rejected\n# after hardware feedback because it changed too much at once. Keep the file inert as an audit\n# breadcrumb; focused forward fixes are committed directly instead.\n\non:\n  workflow_dispatch:\n\njobs:\n  disabled:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo "Broad Product Home cleanup disabled; use focused hardware fixes only."\n''')
-          PY
-
-          git diff --check
-          ! grep -q 'queueSpatialCardTap\|g_cardTapQueue\|g_touchCardHits' include/UI/ScreenChrome.h
-
-      - name: Commit native touch cleanup
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add include/UI/ScreenChrome.h include/UI/AppShellScreen.h src/UI/AppShellScreen.cpp src/UI/SaveSelectScreen.cpp src/UI/ClassicInventoryOverlay.cpp .github/workflows/one-time-product-freeze-party-cleanup.yml
-          git diff --cached --quiet && { echo "No native touch changes produced"; exit 1; }
-          git commit -m "feat(ui): make touch direct and responsive"
-          git push origin HEAD:feature/touch-controls-20261005
-
-# restaged after tap-slop runtime fix; exact-head guard prevents stale application
-# retriggered deliberately after hardware reported controller-emulated touch jank
-# ubuntu runner: no macOS-only dependencies are used by this patch
+      - run: echo "Broad Product Home cleanup disabled; use focused hardware fixes only."
