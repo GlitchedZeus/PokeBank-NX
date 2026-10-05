@@ -8,14 +8,6 @@ on:
       - codex/legality-gen4-pressure-grass-source-20261005
     paths:
       - tools/gen_legality_gen4_wild.py
-      - tools/gen_legality_gen34_egg_moves.py
-      - tools/gen_legality_gen4_events.py
-      - tools/gen_legality_gen3_colo_shadows.py
-      - tools/gen_legality_gen3_bacd_ra_events.py
-      - tools/apply_legality_gamecube_integration.py
-      - tools/apply_legality_cxd_ot_order.py
-      - tools/apply_legality_bacd_ra_moves.py
-      - tools/apply_legality_wc3_ribbon_evidence.py
       - tools/pkhex_source.py
       - .github/workflows/legality-data-generation.yml
 
@@ -24,7 +16,7 @@ permissions:
 
 jobs:
   gen4-wild:
-    name: Regenerate pinned legality tables
+    name: Regenerate pinned Gen IV wild legality table
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -35,55 +27,34 @@ jobs:
       - name: Python info
         run: python3 --version
 
-      - name: Apply guarded legality integration migrations
-        run: |
-          python3 tools/apply_legality_gamecube_integration.py
-          python3 tools/apply_legality_cxd_ot_order.py
-          python3 tools/apply_legality_bacd_ra_moves.py
-          python3 tools/apply_legality_wc3_ribbon_evidence.py
-
-      - name: Regenerate from pinned upstream resources
-        run: |
-          python3 tools/gen_legality_gen4_wild.py
-          python3 tools/gen_legality_gen34_egg_moves.py
-          python3 tools/gen_legality_gen4_events.py
-          python3 tools/gen_legality_gen3_colo_shadows.py
-          python3 tools/gen_legality_gen3_bacd_ra_events.py
+      - name: Regenerate Gen IV wild data from pinned PKHeX
+        run: python3 tools/gen_legality_gen4_wild.py
 
       - name: Show deterministic diff and digest
         run: |
           set -euo pipefail
-          git diff -- src/Legality/Legality.cpp include/Pokemon/Pokemon.h include/Pokemon/Pokemon3FRLG.h include/Legality/Gen3BacdRaEventTemplate.h tests/test_gen3_bacd_ra_event_template.cpp docs/LEGALITY_WC3_PROGRESS.md tools/gen_legality_gen3_bacd_ra_events.py include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc include/Legality/Gen3BacdRaEventTemplateData.inc
+          git diff -- include/Legality/Gen4WildEncounterData.inc
           sha256sum include/Legality/Gen4WildEncounterData.inc
-          sha256sum include/Legality/Gen34EggMoveData.inc
-          sha256sum include/Legality/Gen4EventTemplateData.inc
-          sha256sum include/Legality/Gen3ColoShadowEncounterData.inc
-          sha256sum include/Legality/Gen3BacdRaEventTemplateData.inc
           git diff --check
 
       - name: Upload generated table
         uses: actions/upload-artifact@v4
         with:
-          name: legality-generated-evidence
-          path: |
-            include/Legality/Gen4WildEncounterData.inc
-            include/Legality/Gen34EggMoveData.inc
-            include/Legality/Gen4EventTemplateData.inc
-            include/Legality/Gen3ColoShadowEncounterData.inc
-            include/Legality/Gen3BacdRaEventTemplateData.inc
+          name: legality-gen4-wild-generated-evidence
+          path: include/Legality/Gen4WildEncounterData.inc
           if-no-files-found: error
           retention-days: 7
 
-      - name: Commit deterministic legality maintenance output
+      - name: Commit deterministic Gen IV wild output
         if: github.event_name == 'push'
         run: |
           set -euo pipefail
-          git add src/Legality/Legality.cpp include/Pokemon/Pokemon.h include/Pokemon/Pokemon3FRLG.h include/Legality/Gen3BacdRaEventTemplate.h tests/test_gen3_bacd_ra_event_template.cpp docs/LEGALITY_WC3_PROGRESS.md tools/gen_legality_gen3_bacd_ra_events.py include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc include/Legality/Gen3BacdRaEventTemplateData.inc
+          git add include/Legality/Gen4WildEncounterData.inc
           if git diff --cached --quiet; then
-            echo "Legality source and generated tables already match the branch."
+            echo "Gen IV wild source and generated table already match the branch."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "legality: regenerate pinned legality evidence"
+          git commit -m "legality: regenerate Gen IV wild pressure evidence"
           git push origin "HEAD:${GITHUB_REF_NAME}"
