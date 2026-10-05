@@ -1,0 +1,2 @@
+Trigger the one-time RetroArch NDS ambiguity reconciliation workflow.
+DEVICE_ACCEPTED=false
