@@ -111,6 +111,12 @@ int main() {
     static_assert((syncDepth1Pid % 25u) == 12u);
     static_assert(!Legality::Gen4BugContestSynchronize::matchSuccessfulAttempt(
         syncDepth1Row, syncDepth1Seed, syncDepth1Pid, 9, 12).matched());
+    static_assert(!Legality::Gen4BugContestSynchronize::matchSuccessfulAttempt(
+        syncDepth1Row, syncDepth1Seed, syncDepth1Pid, 9, 11).matched());
+    static_assert(!Legality::Gen4BugContestSynchronize::matchReroll(
+        syncDepth1Row, syncDepth1Seed, syncDepth1Pid, 9, 0).matched());
+    static_assert(!Legality::Gen4BugContestSynchronize::matchReroll(
+        syncDepth1Row, syncDepth1Seed, syncDepth1Pid, 9, 4).matched());
     constexpr auto syncDepth1 =
         Legality::Gen4BugContestSynchronize::matchReroll(
             syncDepth1Row, syncDepth1Seed, syncDepth1Pid, 9, 1);
@@ -119,6 +125,17 @@ int main() {
     static_assert(syncDepth1.rerollDepth == 1);
     static_assert(syncDepth1.slot == 5);
     static_assert(syncDepth1.level == 9);
+
+    // Synchronize cannot Sweet Scent in BCC: the same source row with zero
+    // encounter rate cannot be reached through movement/rate activation.
+    constexpr uint64_t syncZeroRateRow = makeRow(8, 5, 7, 18, 0);
+    static_assert(!Legality::Gen4BugContestSynchronize::matchReroll(
+        syncZeroRateRow, syncDepth1Seed, syncDepth1Pid, 9, 1).matched());
+
+    // The third prior attempt for this final seed breaks the fixed Sync chain,
+    // so a deeper history must fail closed instead of switching lead semantics.
+    static_assert(!Legality::Gen4BugContestSynchronize::matchReroll(
+        syncDepth1Row, syncDepth1Seed, syncDepth1Pid, 9, 3).matched());
 
     constexpr uint32_t syncDepth2Seed = 47914u;
     constexpr uint32_t syncDepth2Pid = sequentialPid(syncDepth2Seed);
