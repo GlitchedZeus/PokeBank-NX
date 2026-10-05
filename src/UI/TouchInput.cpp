@@ -20,10 +20,9 @@ namespace UI {
 
     bool TouchInput::dragged() const {
         const int dx = curX - begX, dy = curY - begY;
-        // A fingertip naturally wanders a little even during a deliberate tap. Twenty pixels was
-        // twitchy on hardware and cancelled legitimate taps near row/card edges. Twenty-eight keeps
-        // taps forgiving while remaining well below the larger thresholds used by real swipe actions.
-        constexpr int kTapSlop = 28;
+        // Keep enough tolerance for normal fingertip jitter, but hand off to drag/scroll much sooner
+        // than the old 28px window. A short intentional swipe must never be misclassified as a tap.
+        constexpr int kTapSlop = 16;
         return (dx * dx + dy * dy) > (kTapSlop * kTapSlop);
     }
 }
