@@ -8,19 +8,27 @@ GEN4_STATIC_MAGNET_SOURCES := tests/test_gen4_static_magnet_lead_evidence.cpp
 GEN4_STATIC_MAGNET_HEADERS := include/Legality/Gen4StaticMagnetLeadEvidence.h \
 	include/Legality/Gen4LeadFailureEvidence.h include/Legality/Gen4LeadEffectEvidence.h \
 	include/Legality/Gen4WildRngCorrelation.h
+GEN4_PRESSURE_LEAD_SOURCES := tests/test_gen4_pressure_lead_evidence.cpp
+GEN4_PRESSURE_LEAD_HEADERS := include/Legality/Gen4PressureLeadEvidence.h \
+	include/Legality/Gen4LeadFailureEvidence.h include/Legality/Gen4LeadEffectEvidence.h \
+	include/Legality/Gen4WildRngCorrelation.h
 
 HOST_TESTS += $(HOST_BUILD)/test_gen4_lead_effect_evidence \
 	$(HOST_BUILD)/test_gen4_lead_failure_evidence \
-	$(HOST_BUILD)/test_gen4_static_magnet_lead_evidence
+	$(HOST_BUILD)/test_gen4_static_magnet_lead_evidence \
+	$(HOST_BUILD)/test_gen4_pressure_lead_evidence
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_lead_effect_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_lead_failure_evidence_sanitize \
-	$(HOST_BUILD)/test_gen4_static_magnet_lead_evidence_sanitize
+	$(HOST_BUILD)/test_gen4_static_magnet_lead_evidence_sanitize \
+	$(HOST_BUILD)/test_gen4_pressure_lead_evidence_sanitize
 host-test: $(HOST_BUILD)/test_gen4_lead_effect_evidence \
 	$(HOST_BUILD)/test_gen4_lead_failure_evidence \
-	$(HOST_BUILD)/test_gen4_static_magnet_lead_evidence
+	$(HOST_BUILD)/test_gen4_static_magnet_lead_evidence \
+	$(HOST_BUILD)/test_gen4_pressure_lead_evidence
 host-sanitize: $(HOST_BUILD)/test_gen4_lead_effect_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_lead_failure_evidence_sanitize \
-	$(HOST_BUILD)/test_gen4_static_magnet_lead_evidence_sanitize
+	$(HOST_BUILD)/test_gen4_static_magnet_lead_evidence_sanitize \
+	$(HOST_BUILD)/test_gen4_pressure_lead_evidence_sanitize
 
 $(HOST_BUILD)/test_gen4_lead_effect_evidence: $(GEN4_LEAD_EFFECT_SOURCES) $(GEN4_LEAD_EFFECT_HEADERS)
 	@mkdir -p $(HOST_BUILD)
@@ -45,3 +53,11 @@ $(HOST_BUILD)/test_gen4_static_magnet_lead_evidence: $(GEN4_STATIC_MAGNET_SOURCE
 $(HOST_BUILD)/test_gen4_static_magnet_lead_evidence_sanitize: $(GEN4_STATIC_MAGNET_SOURCES) $(GEN4_STATIC_MAGNET_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_STATIC_MAGNET_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_pressure_lead_evidence: $(GEN4_PRESSURE_LEAD_SOURCES) $(GEN4_PRESSURE_LEAD_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN4_PRESSURE_LEAD_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_pressure_lead_evidence_sanitize: $(GEN4_PRESSURE_LEAD_SOURCES) $(GEN4_PRESSURE_LEAD_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_PRESSURE_LEAD_SOURCES) -o $@
