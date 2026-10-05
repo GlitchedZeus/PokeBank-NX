@@ -1,12 +1,22 @@
-# Focused Wurmple evolution-branch evidence regression.
-# Header-only evidence primitive: no application linkage is needed for this stage.
+# Focused Wurmple evolution-branch evidence regressions.
+# Keep the branch primitive and Gen IV wild-source classifier isolated from the
+# application report until encounter-family exclusivity is actually proven.
 GEN34_WURMPLE_SOURCES := tests/test_gen34_wurmple_evolution.cpp
 GEN34_WURMPLE_HEADERS := include/Legality/Gen34WurmpleEvolutionEvidence.h
 
-HOST_TESTS += $(HOST_BUILD)/test_gen34_wurmple_evolution
-HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_wurmple_evolution_sanitize
-host-test: $(HOST_BUILD)/test_gen34_wurmple_evolution
-host-sanitize: $(HOST_BUILD)/test_gen34_wurmple_evolution_sanitize
+GEN4_WURMPLE_WILD_SOURCES := tests/test_gen4_wurmple_wild_source.cpp
+GEN4_WURMPLE_WILD_HEADERS := include/Legality/Gen4WurmpleWildSourceEvidence.h \
+	include/Legality/Gen4WildEncounter.h include/Legality/Gen4WildEncounterData.inc \
+	include/Legality/Gen34EggMoveEvidence.h include/Legality/Gen34EggMoveData.inc
+
+HOST_TESTS += $(HOST_BUILD)/test_gen34_wurmple_evolution \
+	$(HOST_BUILD)/test_gen4_wurmple_wild_source
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_wurmple_evolution_sanitize \
+	$(HOST_BUILD)/test_gen4_wurmple_wild_source_sanitize
+host-test: $(HOST_BUILD)/test_gen34_wurmple_evolution \
+	$(HOST_BUILD)/test_gen4_wurmple_wild_source
+host-sanitize: $(HOST_BUILD)/test_gen34_wurmple_evolution_sanitize \
+	$(HOST_BUILD)/test_gen4_wurmple_wild_source_sanitize
 
 $(HOST_BUILD)/test_gen34_wurmple_evolution: $(GEN34_WURMPLE_SOURCES) $(GEN34_WURMPLE_HEADERS)
 	@mkdir -p $(HOST_BUILD)
@@ -15,3 +25,11 @@ $(HOST_BUILD)/test_gen34_wurmple_evolution: $(GEN34_WURMPLE_SOURCES) $(GEN34_WUR
 $(HOST_BUILD)/test_gen34_wurmple_evolution_sanitize: $(GEN34_WURMPLE_SOURCES) $(GEN34_WURMPLE_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN34_WURMPLE_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_wurmple_wild_source: $(GEN4_WURMPLE_WILD_SOURCES) $(GEN4_WURMPLE_WILD_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN4_WURMPLE_WILD_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_wurmple_wild_source_sanitize: $(GEN4_WURMPLE_WILD_SOURCES) $(GEN4_WURMPLE_WILD_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_WURMPLE_WILD_SOURCES) -o $@
