@@ -1,0 +1,242 @@
+name: One-time Gen III-IV full workspace touch
+
+on:
+  push:
+    branches: [feature/touch-controls-20261005]
+    paths:
+      - .github/workflows/one-time-touch-gen34-workspaces.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify exact head
+        run: |
+          set -euo pipefail
+          git fetch origin feature/touch-controls-20261005
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/feature/touch-controls-20261005)" = "$GITHUB_SHA"
+      - name: Apply direct workspace touch
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def once(path, old, new):
+              p=Path(path); s=p.read_text(); n=s.count(old)
+              if n != 1:
+                  raise SystemExit(f'{path}: expected 1 match, got {n}: {old[:140]!r}')
+              p.write_text(s.replace(old,new,1))
+
+          # =====================================================================================
+          # Generation III
+          # =====================================================================================
+          p=Path('src/UI/Gen3SharedPokemonSurface.inc'); s=p.read_text()
+
+          # Review needs its own scroll position for long staged-change lists.
+          old='''    bool review = false;\n    bool legality = false;\n'''
+          new='''    bool review = false;\n    int reviewScroll = 0;\n    bool legality = false;\n'''
+          if s.count(old)!=1: raise SystemExit('G3 state review anchor')
+          s=s.replace(old,new,1)
+          s=s.replace('''    state.review = false;\n    state.legality = false;\n''',
+                      '''    state.review = false;\n    state.reviewScroll = 0;\n    state.legality = false;\n''',1)
+
+          # Species picker: direct visible rows + drag browsing.
+          s=s.replace('''bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down) {\n''',
+                      '''bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {\n''',1)
+          species_input='''    if (down & HidNpadButton_Up)\n        state.speciesPreview = static_cast<uint16_t>(std::max<int>(1, state.speciesPreview - 1));\n'''
+          species_touch='''    const int speciesDown = screen.touchedButtonDownId(touch);\n    if (speciesDown >= 31500 && speciesDown <= 31500 + 386)\n        state.speciesPreview = static_cast<uint16_t>(speciesDown - 31500);\n    const int speciesTap = screen.touchedButtonId(touch);\n    if (speciesTap >= 31500 && speciesTap <= 31500 + 386) {\n        state.speciesPreview = static_cast<uint16_t>(speciesTap - 31500);\n        down |= HidNpadButton_A;\n    }\n    if (touch.justReleased() && touch.dragged()) {\n        const int dy = touch.deltaY();\n        if (std::abs(dy) >= 24) {\n            const int steps = std::max(1, std::abs(dy) / 43);\n            state.speciesPreview = static_cast<uint16_t>(std::clamp<int>(\n                static_cast<int>(state.speciesPreview) + (dy < 0 ? steps : -steps), 1, 386));\n        }\n    }\n    if (down & HidNpadButton_Up)\n        state.speciesPreview = static_cast<uint16_t>(std::max<int>(1, state.speciesPreview - 1));\n'''
+          if s.count(species_input)!=1: raise SystemExit('G3 species input anchor')
+          s=s.replace(species_input,species_touch,1)
+
+          # Move editor: direct rows and drag browsing.
+          s=s.replace('''bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down) {\n''',
+                      '''bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {\n''',1)
+          move_input='''    if (!state.moveEditor) return false;\n    if (state.valuePicker) return false;\n    if (down & HidNpadButton_Up) state.moveEditorRow = (state.moveEditorRow + 4) % 5;\n'''
+          move_touch='''    if (!state.moveEditor) return false;\n    if (state.valuePicker) return false;\n    const int moveDown = screen.touchedButtonDownId(touch);\n    if (moveDown >= 31400 && moveDown < 31405) state.moveEditorRow = moveDown - 31400;\n    const int moveTap = screen.touchedButtonId(touch);\n    if (moveTap >= 31400 && moveTap < 31405) { state.moveEditorRow = moveTap - 31400; down |= HidNpadButton_A; }\n    if (touch.justReleased() && touch.dragged() && std::abs(touch.deltaY()) >= 28) {\n        const int steps = std::max(1, std::abs(touch.deltaY()) / 48);\n        state.moveEditorRow = std::clamp(state.moveEditorRow + (touch.deltaY() < 0 ? steps : -steps), 0, 4);\n    }\n    if (down & HidNpadButton_Up) state.moveEditorRow = (state.moveEditorRow + 4) % 5;\n'''
+          if s.count(move_input)!=1: raise SystemExit('G3 move input anchor')
+          s=s.replace(move_input,move_touch,1)
+
+          # Dispatch touch-aware modal handlers.
+          s=s.replace('if (handleSpeciesPicker(screen, state, down)) return true;',
+                      'if (handleSpeciesPicker(screen, state, down, touch)) return true;',1)
+          s=s.replace('if (handleMoveEditor(screen, state, down)) return true;',
+                      'if (handleMoveEditor(screen, state, down, touch)) return true;',1)
+
+          # Workspace direct targeting after controller normalization, before Back/Edit actions.
+          workspace_anchor='''    state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);\n    state.detailsFocus = std::min<int>(state.detailsFocus, static_cast<int>(detailLabels.size()) - 1);\n\n    if (down & HidNpadButton_B) {\n'''
+          workspace_touch='''    state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);\n    state.detailsFocus = std::min<int>(state.detailsFocus, static_cast<int>(detailLabels.size()) - 1);\n\n    auto applyDirectFocus = [&](int id) {\n        if (id >= 31000 && id < 31000 + static_cast<int>(detailLabels.size())) {\n            const int row = id - 31000;\n            if (passiveView || detailEditable(state, row)) {\n                state.focus = {Shared::Panel::Details, static_cast<uint8_t>(row), 0};\n                state.detailsFocus = row;\n            }\n            return true;\n        }\n        if (id >= 31100 && id < 31106) {\n            state.focus = {Shared::Panel::Values, static_cast<uint8_t>(id - 31100), 0}; return true;\n        }\n        if (id >= 31120 && id < 31126) {\n            state.focus = {Shared::Panel::Values, static_cast<uint8_t>(id - 31120), 1}; return true;\n        }\n        if (id >= 31206 && id <= 31210) {\n            const int row = id - 31200;\n            if (passiveView || pidLinkedRowEditable(state, row))\n                state.focus = {Shared::Panel::Values, static_cast<uint8_t>(row), 0};\n            return true;\n        }\n        if (id >= 31300 && id < 31304) {\n            state.focus = {Shared::Panel::Moves, static_cast<uint8_t>(id - 31300), 0}; return true;\n        }\n        return false;\n    };\n    const int directDown = screen.touchedButtonDownId(touch);\n    applyDirectFocus(directDown);\n    const int directTap = screen.touchedButtonId(touch);\n    if (applyDirectFocus(directTap) && state.session.editable()) down |= HidNpadButton_A;\n    if (touch.justReleased() && touch.dragged()) {\n        const int sx = touch.startX(), sy = touch.startY();\n        const int dx = touch.deltaX(), dy = touch.deltaY();\n        if (sx >= 24 && sx < 324 && sy >= 300 && std::abs(dy) >= 28) {\n            const int steps = std::max(1, std::abs(dy) / 38);\n            state.detailsFocus = std::clamp(state.detailsFocus + (dy < 0 ? steps : -steps),\n                                             0, static_cast<int>(detailLabels.size()) - 1);\n            state.focus = {Shared::Panel::Details, static_cast<uint8_t>(state.detailsFocus), 0};\n        } else if (std::abs(dx) >= 96 && std::abs(dx) > std::abs(dy)) {\n            state.focus = passiveView\n                ? Shared::passiveViewSwitchPanel(Shared::Generation::Gen3, state.focus, dx < 0 ? 1 : -1)\n                : Shared::switchPanel(Shared::Generation::Gen3, state.focus, dx < 0 ? 1 : -1);\n            state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);\n        }\n    }\n\n    if (down & HidNpadButton_B) {\n'''
+          if s.count(workspace_anchor)!=1: raise SystemExit('G3 workspace touch anchor')
+          s=s.replace(workspace_anchor,workspace_touch,1)
+
+          # Action menu direct rows + swipe.
+          s=s.replace('''bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {\n''',
+                      '''bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {\n''',1)
+          action_anchor='''    if (actions.count == 0) return true;\n    state.actionRow = std::clamp(\n        state.actionRow, 0, std::max(0, static_cast<int>(actions.count) - 1));\n'''
+          action_touch='''    if (actions.count == 0) return true;\n    state.actionRow = std::clamp(\n        state.actionRow, 0, std::max(0, static_cast<int>(actions.count) - 1));\n    const int actionDown = screen.touchedButtonDownId(touch);\n    if (actionDown >= 31600 && actionDown < 31600 + static_cast<int>(actions.count))\n        state.actionRow = actionDown - 31600;\n    const int actionTap = screen.touchedButtonId(touch);\n    if (actionTap >= 31600 && actionTap < 31600 + static_cast<int>(actions.count)) {\n        state.actionRow = actionTap - 31600; down |= HidNpadButton_A;\n    }\n    if (touch.justReleased() && touch.dragged() && std::abs(touch.deltaY()) >= 28) {\n        const int steps = std::max(1, std::abs(touch.deltaY()) / 44);\n        state.actionRow = std::clamp(state.actionRow + (touch.deltaY() < 0 ? steps : -steps),\n                                     0, static_cast<int>(actions.count) - 1);\n    }\n'''
+          if s.count(action_anchor)!=1: raise SystemExit('G3 action touch anchor')
+          s=s.replace(action_anchor,action_touch,1)
+
+          # Review supports controller and finger scrolling when staged list exceeds viewport.
+          s=s.replace('''bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {\n''',
+                      '''bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {\n''',1)
+          review_anchor='''    if (!staged) {\n        state.review = false;\n        return true;\n    }\n    if (down & HidNpadButton_B) {\n'''
+          review_touch='''    if (!staged) {\n        state.review = false;\n        return true;\n    }\n    const int reviewCount = static_cast<int>(staged->pendingChanges().size());\n    const int reviewMax = std::max(0, reviewCount - 7);\n    if (down & HidNpadButton_Up) state.reviewScroll = std::max(0, state.reviewScroll - 1);\n    if (down & HidNpadButton_Down) state.reviewScroll = std::min(reviewMax, state.reviewScroll + 1);\n    if (touch.justReleased() && touch.dragged() && std::abs(touch.deltaY()) >= 28) {\n        const int steps = std::max(1, std::abs(touch.deltaY()) / 72);\n        state.reviewScroll = std::clamp(state.reviewScroll + (touch.deltaY() < 0 ? steps : -steps), 0, reviewMax);\n    }\n    if (down & HidNpadButton_B) {\n'''
+          if s.count(review_anchor)!=1: raise SystemExit('G3 review touch anchor')
+          s=s.replace(review_anchor,review_touch,1)
+          s=s.replace('if (handleReview(screen, state, navigated)) return true;',
+                      'if (handleReview(screen, state, navigated, touch)) return true;',1)
+          s=s.replace('if (handleActions(screen, state, navigated)) return true;',
+                      'if (handleActions(screen, state, navigated, touch)) return true;',1)
+
+          # Draw workspace exact hit geometry.
+          details_draw='''    SharedPokemonShell::drawScrollableDetails(fb, leftX, y, leftW, h,\n        detailLabels.size(), state.detailsFocus,\n        state.focus.panel == Shared::Panel::Details,\n        [](std::size_t row) { return detailLabels[row]; },\n        [&](std::size_t row) { return detailsValue(screen, p, static_cast<int>(row)); });\n'''
+          details_hits='''    SharedPokemonShell::drawScrollableDetails(fb, leftX, y, leftW, h,\n        detailLabels.size(), state.detailsFocus,\n        state.focus.panel == Shared::Panel::Details,\n        [](std::size_t row) { return detailLabels[row]; },\n        [&](std::size_t row) { return detailsValue(screen, p, static_cast<int>(row)); });\n    {\n        constexpr std::size_t visibleRows = 8;\n        const auto window = Shared::scrollWindow(detailLabels.size(), visibleRows, state.detailsFocus);\n        for (std::size_t i = 0; i < window.count; ++i) {\n            const int row = static_cast<int>(window.first + i);\n            const int yy = y + 224 + static_cast<int>(i) * 38;\n            screen.touchButtons.push_back({31000 + row, leftX + 8, yy + 2, leftW - 36, 30});\n        }\n    }\n'''
+          if s.count(details_draw)!=1: raise SystemExit('G3 details draw anchor')
+          s=s.replace(details_draw,details_hits,1)
+          stat_anchor='''        const bool selected = state.focus.panel == Shared::Panel::Values &&\n                              state.focus.row == row;\n'''
+          stat_hits='''        const bool selected = state.focus.panel == Shared::Panel::Values &&\n                              state.focus.row == row;\n        screen.touchButtons.push_back({31100 + row, midX + 112, yy - 5, 62, 30});\n        screen.touchButtons.push_back({31120 + row, midX + 176, yy - 5, 70, 30});\n'''
+          if s.count(stat_anchor)!=1: raise SystemExit('G3 stat draw anchor')
+          s=s.replace(stat_anchor,stat_hits,1)
+          derived_anchor='''        const bool selected = state.focus.panel == Shared::Panel::Values &&\n                              state.focus.row == row &&\n                              (passiveView || editableRow);\n'''
+          derived_hits='''        const bool selected = state.focus.panel == Shared::Panel::Values &&\n                              state.focus.row == row &&\n                              (passiveView || editableRow);\n        screen.touchButtons.push_back({31200 + row, midX + 8, yy - 5, midW - 16, 29});\n'''
+          if s.count(derived_anchor)!=1: raise SystemExit('G3 derived draw anchor')
+          s=s.replace(derived_anchor,derived_hits,1)
+          moves_anchor='''        const bool selected = visibleMoveFocus.panel == Shared::Panel::Moves &&\n                              visibleMoveFocus.row == row;\n'''
+          moves_hits='''        const bool selected = visibleMoveFocus.panel == Shared::Panel::Moves &&\n                              visibleMoveFocus.row == row;\n        screen.touchButtons.push_back({31300 + row, rightX + 8, yy - 5, rightW - 16, 32});\n'''
+          if s.count(moves_anchor)!=1: raise SystemExit('G3 moves draw anchor')
+          s=s.replace(moves_anchor,moves_hits,1)
+
+          # Move modal owns direct rows.
+          s=s.replace('''void drawMoveEditor(PKSEFramebuffer& fb, State& state) {\n    if (!state.moveEditor) return;\n''',
+                      '''void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {\n    if (!state.moveEditor) return;\n    screen.touchButtons.clear();\n''',1)
+          move_draw_anchor='''        const bool selected = i == state.moveEditorRow;\n        if (selected) fb.drawSelectionHighlight(x + 22, rowY, w - 44, 42);\n'''
+          move_draw_hits='''        const bool selected = i == state.moveEditorRow;\n        screen.touchButtons.push_back({31400 + i, x + 22, rowY, w - 44, 42});\n        if (selected) fb.drawSelectionHighlight(x + 22, rowY, w - 44, 42);\n'''
+          if s.count(move_draw_anchor)!=1: raise SystemExit('G3 move modal draw anchor')
+          s=s.replace(move_draw_anchor,move_draw_hits,1)
+          s=s.replace('if (state.moveEditor) drawMoveEditor(fb, state);',
+                      'if (state.moveEditor) drawMoveEditor(screen, fb, state);',1)
+
+          # Species modal owns visible species rows.
+          species_draw='''    if (state.speciesPicker) {\n        const auto modal = SharedSpeciesPicker::drawModalChrome(fb);\n        SharedSpeciesPicker::drawContent(\n'''
+          species_draw_hits='''    if (state.speciesPicker) {\n        screen.touchButtons.clear();\n        const auto modal = SharedSpeciesPicker::drawModalChrome(fb);\n        constexpr int visibleSpecies = 9;\n        const int speciesStart = std::clamp(static_cast<int>(state.speciesPreview) - visibleSpecies / 2,\n                                            1, 386 - visibleSpecies + 1);\n        for (int i = 0; i < visibleSpecies; ++i)\n            screen.touchButtons.push_back({31500 + speciesStart + i, modal.x + 20, modal.y + 84 + i * 43, 560, 39});\n        SharedSpeciesPicker::drawContent(\n'''
+          if s.count(species_draw)!=1: raise SystemExit('G3 species draw anchor')
+          s=s.replace(species_draw,species_draw_hits,1)
+
+          # Action menu owns rows.
+          action_draw_anchor='''void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {\n    auto* staged = editor(screen);\n'''
+          action_draw_new='''void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {\n    screen.touchButtons.clear();\n    auto* staged = editor(screen);\n'''
+          if s.count(action_draw_anchor)!=1: raise SystemExit('G3 action draw signature')
+          s=s.replace(action_draw_anchor,action_draw_new,1)
+          action_row_anchor='''        const bool selected = static_cast<int>(i) == state.actionRow;\n        if (selected)\n            fb.drawSelectionHighlight(x + 22, rowY, w - 44, geometry.rowHeight);\n'''
+          action_row_hits='''        const bool selected = static_cast<int>(i) == state.actionRow;\n        screen.touchButtons.push_back({31600 + static_cast<int>(i), x + 22, rowY, w - 44, geometry.rowHeight});\n        if (selected)\n            fb.drawSelectionHighlight(x + 22, rowY, w - 44, geometry.rowHeight);\n'''
+          if s.count(action_row_anchor)!=1: raise SystemExit('G3 action row draw')
+          s=s.replace(action_row_anchor,action_row_hits,1)
+
+          # Review renders a scroll window + indicator.
+          s=s.replace('''void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, State&) {\n''',
+                      '''void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {\n    screen.touchButtons.clear();\n''',1)
+          review_draw='''    int y = 112;\n    if (staged->pendingChanges().empty()) {\n        fb.drawText(50, y, "No pending changes.", Colors::TextDim, TextStyle::Body);\n    } else {\n        for (const auto& change : staged->pendingChanges()) {\n            if (y > 585) break;\n            fb.drawFilledRoundedRect(44, y, fb.getWidth() - 88, 62, 10, Colors::Panel);\n            fb.drawText(62, y + 10, change.label, Colors::Text, TextStyle::Caption);\n            fb.drawText(62, y + 34, change.beforeValue + "  ->  " + change.afterValue,\n                        Colors::TextDim, TextStyle::Caption);\n            y += 72;\n        }\n    }\n    drawNavBar(fb, {{"Y", "Discard All Staged"}, {"B", "Back"}});\n'''
+          review_draw_new='''    int y = 112;\n    const auto& changes = staged->pendingChanges();\n    if (changes.empty()) {\n        state.reviewScroll = 0;\n        fb.drawText(50, y, "No pending changes.", Colors::TextDim, TextStyle::Body);\n    } else {\n        constexpr int visible = 7;\n        const int count = static_cast<int>(changes.size());\n        state.reviewScroll = std::clamp(state.reviewScroll, 0, std::max(0, count - visible));\n        const int last = std::min(count, state.reviewScroll + visible);\n        for (int i = state.reviewScroll; i < last; ++i) {\n            const auto& change = changes[static_cast<std::size_t>(i)];\n            fb.drawFilledRoundedRect(44, y, fb.getWidth() - 88, 62, 10, Colors::Panel);\n            fb.drawText(62, y + 10, change.label, Colors::Text, TextStyle::Caption);\n            fb.drawText(62, y + 34, change.beforeValue + "  ->  " + change.afterValue,\n                        Colors::TextDim, TextStyle::Caption);\n            y += 72;\n        }\n        SharedPokemonShell::drawVerticalScrollIndicator(\n            fb, fb.getWidth() - 28, 112, 482, changes.size(), visible, state.reviewScroll);\n    }\n    drawNavBar(fb, {{"D-pad/Stick", "Scroll"}, {"Y", "Discard All Staged"}, {"B", "Back"}});\n'''
+          if s.count(review_draw)!=1: raise SystemExit('G3 review draw anchor')
+          s=s.replace(review_draw,review_draw_new,1)
+          p.write_text(s)
+
+          # =====================================================================================
+          # Generation IV
+          # =====================================================================================
+          p=Path('src/UI/Gen4SharedPokemonSurface.inc'); s=p.read_text()
+
+          # Move editor direct rows + drag.
+          s=s.replace('''bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down) {\n''',
+                      '''bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {\n''',1)
+          g4_move_anchor='''    if (!state.moveEditor || !state.session.working) return false;\n    if (down & HidNpadButton_Up) state.moveEditorRow = (state.moveEditorRow + 4) % 5;\n'''
+          g4_move_touch='''    if (!state.moveEditor || !state.session.working) return false;\n    const int moveDown = screen.touchedButtonDownId(touch);\n    if (moveDown >= 41400 && moveDown < 41405) state.moveEditorRow = moveDown - 41400;\n    const int moveTap = screen.touchedButtonId(touch);\n    if (moveTap >= 41400 && moveTap < 41405) { state.moveEditorRow = moveTap - 41400; down |= HidNpadButton_A; }\n    if (touch.justReleased() && touch.dragged() && std::abs(touch.deltaY()) >= 28) {\n        const int steps = std::max(1, std::abs(touch.deltaY()) / 48);\n        state.moveEditorRow = std::clamp(state.moveEditorRow + (touch.deltaY() < 0 ? steps : -steps), 0, 4);\n    }\n    if (down & HidNpadButton_Up) state.moveEditorRow = (state.moveEditorRow + 4) % 5;\n'''
+          if s.count(g4_move_anchor)!=1: raise SystemExit('G4 move input anchor')
+          s=s.replace(g4_move_anchor,g4_move_touch,1)
+          s=s.replace('if (handleMoveEditor(screen, state, down)) return true;',
+                      'if (handleMoveEditor(screen, state, down, touch)) return true;',1)
+
+          # Workspace direct targeting after normalization.
+          g4_workspace_anchor='''    state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);\n    state.detailsFocus = std::clamp(state.detailsFocus, 0, 15);\n\n    if (down & HidNpadButton_B) {\n'''
+          g4_workspace_touch='''    state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);\n    state.detailsFocus = std::clamp(state.detailsFocus, 0, 15);\n\n    auto applyDirectFocus = [&](int id) {\n        if (id >= 41000 && id < 41016) {\n            const int row = id - 41000;\n            state.focus = {Shared::Panel::Details, static_cast<uint8_t>(row), 0};\n            state.detailsFocus = row;\n            return true;\n        }\n        if (id >= 41100 && id < 41106) { state.focus = {Shared::Panel::Values, static_cast<uint8_t>(id - 41100), 0}; return true; }\n        if (id >= 41120 && id < 41126) { state.focus = {Shared::Panel::Values, static_cast<uint8_t>(id - 41120), 1}; return true; }\n        if (id >= 41206 && id <= 41210) { state.focus = {Shared::Panel::Values, static_cast<uint8_t>(id - 41200), 0}; return true; }\n        if (id >= 41300 && id < 41304) { state.focus = {Shared::Panel::Moves, static_cast<uint8_t>(id - 41300), 0}; return true; }\n        return false;\n    };\n    applyDirectFocus(screen.touchedButtonDownId(touch));\n    if (applyDirectFocus(screen.touchedButtonId(touch)) && state.session.editable()) down |= HidNpadButton_A;\n    if (touch.justReleased() && touch.dragged()) {\n        const int sx = touch.startX(), sy = touch.startY();\n        const int dx = touch.deltaX(), dy = touch.deltaY();\n        if (sx >= 24 && sx < 324 && sy >= 300 && std::abs(dy) >= 28) {\n            const int steps = std::max(1, std::abs(dy) / 38);\n            state.detailsFocus = std::clamp(state.detailsFocus + (dy < 0 ? steps : -steps), 0, 15);\n            state.focus = {Shared::Panel::Details, static_cast<uint8_t>(state.detailsFocus), 0};\n        } else if (std::abs(dx) >= 96 && std::abs(dx) > std::abs(dy)) {\n            state.focus = passive\n                ? Shared::passiveViewSwitchPanel(Shared::Generation::Gen4, state.focus, dx < 0 ? 1 : -1)\n                : Shared::switchPanel(Shared::Generation::Gen4, state.focus, dx < 0 ? 1 : -1);\n            state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);\n        }\n    }\n\n    if (down & HidNpadButton_B) {\n'''
+          if s.count(g4_workspace_anchor)!=1: raise SystemExit('G4 workspace touch anchor')
+          s=s.replace(g4_workspace_anchor,g4_workspace_touch,1)
+
+          # Action touch.
+          s=s.replace('''bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {\n''',
+                      '''bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {\n''',1)
+          g4_action_anchor='''    if (actions.count == 0) return true;\n    if (down & HidNpadButton_Up)\n'''
+          g4_action_touch='''    if (actions.count == 0) return true;\n    const int actionDown = screen.touchedButtonDownId(touch);\n    if (actionDown >= 41600 && actionDown < 41600 + static_cast<int>(actions.count)) state.actionRow = actionDown - 41600;\n    const int actionTap = screen.touchedButtonId(touch);\n    if (actionTap >= 41600 && actionTap < 41600 + static_cast<int>(actions.count)) { state.actionRow = actionTap - 41600; down |= HidNpadButton_A; }\n    if (touch.justReleased() && touch.dragged() && std::abs(touch.deltaY()) >= 28) {\n        const int steps = std::max(1, std::abs(touch.deltaY()) / 44);\n        state.actionRow = std::clamp(state.actionRow + (touch.deltaY() < 0 ? steps : -steps), 0, static_cast<int>(actions.count) - 1);\n    }\n    if (down & HidNpadButton_Up)\n'''
+          if s.count(g4_action_anchor)!=1: raise SystemExit('G4 action input anchor')
+          s=s.replace(g4_action_anchor,g4_action_touch,1)
+          s=s.replace('if (handleActions(screen, state, navigated)) return true;',
+                      'if (handleActions(screen, state, navigated, touch)) return true;',1)
+
+          # Species branch direct visible rows using picker index IDs expected by handler.
+          species_branch='''        SharedSpeciesPicker::drawContent(\n            fb, modal.x, modal.y, species, 493, previewShiny,\n'''
+          species_branch_hits='''        constexpr int visibleSpecies = 9;\n        const int speciesStart = std::clamp(static_cast<int>(species) - visibleSpecies / 2,\n                                            1, 493 - visibleSpecies + 1);\n        for (int i = 0; i < visibleSpecies; ++i) {\n            const uint16_t value = static_cast<uint16_t>(speciesStart + i);\n            const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), value);\n            if (it != state.pickerValues.end())\n                screen.touchButtons.push_back({6000 + static_cast<int>(std::distance(state.pickerValues.begin(), it)),\n                                               modal.x + 20, modal.y + 84 + i * 43, 560, 39});\n        }\n        SharedSpeciesPicker::drawContent(\n            fb, modal.x, modal.y, species, 493, previewShiny,\n'''
+          if s.count(species_branch)!=1: raise SystemExit('G4 species draw anchor')
+          s=s.replace(species_branch,species_branch_hits,1)
+
+          # Workspace draw geometry.
+          g4_details='''    SharedPokemonShell::drawScrollableDetails(\n        fb, g.leftX, g.y, g.leftW, g.h, detailLabels.size(), state.detailsFocus,\n        state.focus.panel == Shared::Panel::Details,\n        [](size_t row) { return detailLabels[row]; },\n        [&](size_t row) { return detailValue(*raw, view, static_cast<int>(row)); });\n'''
+          g4_details_hits='''    SharedPokemonShell::drawScrollableDetails(\n        fb, g.leftX, g.y, g.leftW, g.h, detailLabels.size(), state.detailsFocus,\n        state.focus.panel == Shared::Panel::Details,\n        [](size_t row) { return detailLabels[row]; },\n        [&](size_t row) { return detailValue(*raw, view, static_cast<int>(row)); });\n    {\n        constexpr std::size_t visibleRows = 8;\n        const auto window = Shared::scrollWindow(detailLabels.size(), visibleRows, state.detailsFocus);\n        for (std::size_t i = 0; i < window.count; ++i) {\n            const int row = static_cast<int>(window.first + i);\n            const int yy = g.y + 224 + static_cast<int>(i) * 38;\n            screen.touchButtons.push_back({41000 + row, g.leftX + 8, yy + 2, g.leftW - 36, 30});\n        }\n    }\n'''
+          if s.count(g4_details)!=1: raise SystemExit('G4 details draw anchor')
+          s=s.replace(g4_details,g4_details_hits,1)
+          g4_stat='''        const bool selected = state.focus.panel == Shared::Panel::Values && state.focus.row == row;\n'''
+          g4_stat_hits='''        const bool selected = state.focus.panel == Shared::Panel::Values && state.focus.row == row;\n        screen.touchButtons.push_back({41100 + row, g.midX + 112, yy - 5, 62, 30});\n        screen.touchButtons.push_back({41120 + row, g.midX + 176, yy - 5, 70, 30});\n'''
+          if s.count(g4_stat)!=1: raise SystemExit('G4 stat draw')
+          s=s.replace(g4_stat,g4_stat_hits,1)
+          g4_derived='''        const bool selected = state.focus.panel == Shared::Panel::Values &&\n                              state.focus.row == row &&\n                              (state.session.mode == SessionModel::Mode::View || editable);\n'''
+          g4_derived_hits='''        const bool selected = state.focus.panel == Shared::Panel::Values &&\n                              state.focus.row == row &&\n                              (state.session.mode == SessionModel::Mode::View || editable);\n        screen.touchButtons.push_back({41200 + row, g.midX + 8, yy - 5, g.midW - 16, 29});\n'''
+          if s.count(g4_derived)!=1: raise SystemExit('G4 derived draw')
+          s=s.replace(g4_derived,g4_derived_hits,1)
+          g4_moves='''        const bool selected = state.focus.panel == Shared::Panel::Moves && state.focus.row == row;\n'''
+          g4_moves_hits='''        const bool selected = state.focus.panel == Shared::Panel::Moves && state.focus.row == row;\n        screen.touchButtons.push_back({41300 + row, g.rightX + 8, yy - 5, g.rightW - 16, 32});\n'''
+          if s.count(g4_moves)!=1: raise SystemExit('G4 moves draw')
+          s=s.replace(g4_moves,g4_moves_hits,1)
+
+          # Move editor direct rows.
+          g4_move_draw='''void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {\n    if (!state.moveEditor || !state.session.working) return;\n'''
+          g4_move_draw_new='''void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {\n    if (!state.moveEditor || !state.session.working) return;\n    screen.touchButtons.clear();\n'''
+          if s.count(g4_move_draw)!=1: raise SystemExit('G4 move draw signature')
+          s=s.replace(g4_move_draw,g4_move_draw_new,1)
+          g4_move_row='''        const bool selected = i == state.moveEditorRow;\n        if (selected) fb.drawSelectionHighlight(x + 22, yy, w - 44, 42);\n'''
+          g4_move_row_hits='''        const bool selected = i == state.moveEditorRow;\n        screen.touchButtons.push_back({41400 + i, x + 22, yy, w - 44, 42});\n        if (selected) fb.drawSelectionHighlight(x + 22, yy, w - 44, 42);\n'''
+          if s.count(g4_move_row)!=1: raise SystemExit('G4 move row draw')
+          s=s.replace(g4_move_row,g4_move_row_hits,1)
+
+          # Action rows direct.
+          g4_action_draw='''void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {\n    std::string error;\n'''
+          g4_action_draw_new='''void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {\n    screen.touchButtons.clear();\n    std::string error;\n'''
+          if s.count(g4_action_draw)!=1: raise SystemExit('G4 action draw signature')
+          s=s.replace(g4_action_draw,g4_action_draw_new,1)
+          g4_action_row='''        const bool selected = static_cast<int>(i) == state.actionRow;\n        if (selected) fb.drawSelectionHighlight(x + 22, yy, w - 44, geometry.rowHeight);\n'''
+          g4_action_row_hits='''        const bool selected = static_cast<int>(i) == state.actionRow;\n        screen.touchButtons.push_back({41600 + static_cast<int>(i), x + 22, yy, w - 44, geometry.rowHeight});\n        if (selected) fb.drawSelectionHighlight(x + 22, yy, w - 44, geometry.rowHeight);\n'''
+          if s.count(g4_action_row)!=1: raise SystemExit('G4 action row draw')
+          s=s.replace(g4_action_row,g4_action_row_hits,1)
+          p.write_text(s)
+          PY
+          git diff --check
+          grep -q '31000 + row' src/UI/Gen3SharedPokemonSurface.inc
+          grep -q '31600 + static_cast<int>(i)' src/UI/Gen3SharedPokemonSurface.inc
+          grep -q '41000 + row' src/UI/Gen4SharedPokemonSurface.inc
+          grep -q '41600 + static_cast<int>(i)' src/UI/Gen4SharedPokemonSurface.inc
+          grep -q 'visibleSpecies = 9' src/UI/Gen4SharedPokemonSurface.inc
+      - name: Commit runtime only
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/UI/Gen3SharedPokemonSurface.inc src/UI/Gen4SharedPokemonSurface.inc
+          git diff --cached --quiet && { echo 'No Gen III-IV workspace touch changes'; exit 1; }
+          git commit -m 'feat(ui): complete direct touch for Gen III-IV editor workspaces'
+          git push origin HEAD:feature/touch-controls-20261005
