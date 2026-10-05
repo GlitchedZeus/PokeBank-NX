@@ -1,4 +1,4 @@
-name: ONE-TIME hardware hotpath regression fixes
+name: ONE-TIME integrate PKSE on-screen keyboard
 
 on:
   push:
@@ -11,25 +11,33 @@ permissions:
   contents: write
 
 jobs:
-  patch:
+  integrate-keyboard:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout branch
+      - name: Checkout exact branch
         uses: actions/checkout@v4
         with:
           ref: feature/gen4-full-editor-20260928
           fetch-depth: 0
 
-      - name: Apply guarded patch
-        run: python3 tools/one_time_hardware_hotpath_fix_20261005.py
+      - name: Fetch merged PKSE keyboard commit
+        run: |
+          git remote add pkse https://github.com/kiasta/PKSE.git || true
+          git fetch --no-tags pkse c4b7efce2867dd72606319cdc61a5eac655f6c25
 
-      - name: Verify diff
-        run: git diff --check && git diff --stat
-
-      - name: Commit fixes
+      - name: Cherry-pick PKSE PR 126 keyboard
         run: |
           git config user.name 'PokeBank NX CI'
           git config user.email 'actions@users.noreply.github.com'
-          git add src/UI/SaveSelectScreen.cpp src/UI/GameLauncher.cpp
-          git commit -m 'fix(ui): remove hardware launch and legacy-open stalls'
-          git push origin HEAD:feature/gen4-full-editor-20260928
+          git cherry-pick c4b7efce2867dd72606319cdc61a5eac655f6c25
+
+      - name: Verify resulting tree
+        run: |
+          git diff --check HEAD^ HEAD
+          test -f include/UI/Dialogs/KeyboardDialog.h
+          test -f src/UI/Dialogs/KeyboardDialog.cpp
+          grep -q 'setKeyboardPresenter' src/UI/UI.cpp
+          grep -q 'KeyboardRequest' include/Utils/Keyboard.h
+
+      - name: Push integrated keyboard
+        run: git push origin HEAD:feature/gen4-full-editor-20260928
