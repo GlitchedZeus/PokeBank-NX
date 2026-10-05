@@ -24,11 +24,17 @@ struct Result {
     constexpr bool matched() const noexcept { return lead != Lead::None; }
 };
 
-constexpr bool failureAllowsEncounter(bool hgss, Lead lead,
-                                      uint16_t rand16) noexcept {
-    const auto method = hgss
-        ? Gen4LeadEffect::Method::K
-        : Gen4LeadEffect::Method::J;
+constexpr Gen4LeadEffect::Method leadMethod(bool hgss) noexcept {
+    return hgss ? Gen4LeadEffect::Method::K : Gen4LeadEffect::Method::J;
+}
+
+// Synchronize, Cute Charm, Pressure/Hustle/Vital Spirit and Intimidate/Keen Eye
+// consume their failure/continue check immediately before the ordinary slot/level
+// frames in pinned Method J/K. Static/Magnet Pull is deliberately excluded here:
+// its proc frame surrounds ESV/level selection and is reconstructed separately.
+constexpr bool postNatureFailureAllows(bool hgss, Lead lead,
+                                       uint16_t rand16) noexcept {
+    const auto method = leadMethod(hgss);
     switch (lead) {
         case Lead::Synchronize:
             return Gen4LeadEffect::synchronizeFail(method, rand16);
@@ -36,15 +42,19 @@ constexpr bool failureAllowsEncounter(bool hgss, Lead lead,
             return Gen4LeadEffect::cuteCharmFail(method, rand16);
         case Lead::PressureHustleVitalSpirit:
             return Gen4LeadEffect::pressureHustleVitalSpiritFail(method, rand16);
-        case Lead::StaticMagnetPull:
-            return Gen4LeadEffect::staticMagnetFail(method, rand16);
         case Lead::IntimidateKeenEye:
             // A successful Intimidate/Keen Eye check aborts the encounter.
             return Gen4LeadEffect::intimidateKeenEyeEncounterContinues(method, rand16);
+        case Lead::StaticMagnetPull:
         case Lead::None:
             break;
     }
     return false;
+}
+
+constexpr bool staticMagnetFailureAllows(bool hgss,
+                                         uint16_t rand16) noexcept {
+    return Gen4LeadEffect::staticMagnetFail(leadMethod(hgss), rand16);
 }
 
 constexpr bool supportedType(bool hgss, uint8_t type) noexcept {
@@ -89,6 +99,13 @@ constexpr uint8_t rolledSlot(bool hgss, uint64_t row,
     return 0xFF;
 }
 
+constexpr uint8_t rolledLevel(uint64_t row, uint16_t rand16) noexcept {
+    return Gen4WildRng::isHoneyTree(Gen4Wild::method(row))
+        ? Gen4WildRng::honeyTreeLevel(rand16)
+        : Gen4WildRng::randomLevel(
+            Gen4Wild::minLevel(row), Gen4Wild::maxLevel(row), rand16);
+}
+
 constexpr bool normalActivationAllows(bool hgss, uint64_t row,
                                       uint32_t activationSeed) noexcept {
     const uint8_t type = Gen4Wild::method(row);
@@ -112,8 +129,7 @@ constexpr bool normalActivationAllows(bool hgss, uint64_t row,
             if (Gen4Wild::species(row) == 349 &&
                 !Gen4WildRng::feebasTileReplacement(tileRand))
                 return false;
-            activationSeed =
-                Gen3PidIv::Detail::prev(activationSeed);
+            activationSeed = Gen3PidIv::Detail::prev(activationSeed);
         }
 
         // None of the leads represented here is Suction Cups / Sticky Hold.
@@ -125,10 +141,86 @@ constexpr bool normalActivationAllows(bool hgss, uint64_t row,
     return false;
 }
 
-// Positive-only reconstruction of the pinned Method J/K branches where a lead
-// ability consumes its RNG check but does NOT activate, after which the ordinary
-// slot/level routine produces the encounter. Intimidate/Keen Eye is represented
-// by its encounter-continues branch because its opposite result aborts the battle.
+constexpr Result matchStaticMagnetFailure(bool hgss, uint64_t row,
+                                          uint32_t candidate,
+                                          uint8_t metLevel) noexcept {
+    const uint8_t type = Gen4Wild::method(row);
+    const uint32_t seed1 = Gen3PidIv::Detail::prev(candidate);
+    const uint16_t prev1 = static_cast<uint16_t>(seed1 >> 16);
+    const uint32_t seed2 = Gen3PidIv::Detail::prev(seed1);
+    const uint16_t prev2 = static_cast<uint16_t>(seed2 >> 16);
+
+    if (levelIsRandom(hgss, type)) {
+        const uint32_t seed3 = Gen3PidIv::Detail::prev(seed2);
+        const uint16_t prev3 = static_cast<uint16_t>(seed3 >> 16);
+
+        // Pinned Method J/K ordering for a failed Static/Magnet Pull proc:
+        // Prev3=proc, Prev2=ordinary ESV, Prev1=ordinary level.
+        if (!staticMagnetFailureAllows(hgss, prev3) ||
+            rolledLevel(row, prev1) != metLevel)
+            return {};
+
+        const uint8_t slot = rolledSlot(hgss, row, prev2);
+        if (slot != Gen4Wild::slot(row))
+            return {};
+
+        const uint32_t activationSeed = Gen3PidIv::Detail::prev(seed3);
+        if (!normalActivationAllows(hgss, row, activationSeed))
+            return {};
+        return {Lead::StaticMagnetPull, candidate, slot};
+    }
+
+    // Non-random-level supported families are Grass in this tranche.
+    // Prev2=proc and Prev1=ordinary ESV.
+    if (!staticMagnetFailureAllows(hgss, prev2) ||
+        !Gen4Wild::levelMatches(row, metLevel))
+        return {};
+    const uint8_t slot = rolledSlot(hgss, row, prev1);
+    if (slot != Gen4Wild::slot(row))
+        return {};
+    return {Lead::StaticMagnetPull, candidate, slot};
+}
+
+constexpr Result matchPostNatureFailure(bool hgss, uint64_t row,
+                                        uint32_t candidate,
+                                        uint8_t metLevel,
+                                        Lead lead) noexcept {
+    const uint8_t type = Gen4Wild::method(row);
+    const uint32_t seed1 = Gen3PidIv::Detail::prev(candidate);
+    const uint16_t leadRand = static_cast<uint16_t>(seed1 >> 16);
+    if (!postNatureFailureAllows(hgss, lead, leadRand))
+        return {};
+
+    const uint32_t seed2 = Gen3PidIv::Detail::prev(seed1);
+    const uint16_t prev2 = static_cast<uint16_t>(seed2 >> 16);
+    uint32_t slotSeed = seed2;
+    uint16_t slotRand = prev2;
+
+    if (levelIsRandom(hgss, type)) {
+        // Failure/continue check is Prev1, then level Prev2, ESV Prev3.
+        if (rolledLevel(row, prev2) != metLevel)
+            return {};
+        slotSeed = Gen3PidIv::Detail::prev(seed2);
+        slotRand = static_cast<uint16_t>(slotSeed >> 16);
+    } else if (!Gen4Wild::levelMatches(row, metLevel)) {
+        return {};
+    }
+
+    const uint8_t slot = rolledSlot(hgss, row, slotRand);
+    if (slot != Gen4Wild::slot(row))
+        return {};
+
+    const uint32_t activationSeed = Gen3PidIv::Detail::prev(slotSeed);
+    if (!normalActivationAllows(hgss, row, activationSeed))
+        return {};
+    return {lead, candidate, slot};
+}
+
+// Positive-only reconstruction of pinned Method J/K branches where a lead effect
+// does not activate and an ordinary slot can still produce the encounter. Static /
+// Magnet Pull uses its distinct proc/ESV/level ordering instead of being forced
+// into the post-nature one-call path. Intimidate/Keen Eye is represented by its
+// encounter-continues branch because the opposite bit aborts the encounter.
 constexpr Result matchRow(bool hgss, uint64_t row,
                           uint32_t prePidSeed, uint32_t pid,
                           uint8_t metLevel, Lead lead) noexcept {
@@ -144,49 +236,16 @@ constexpr Result matchRow(bool hgss, uint64_t row,
     uint32_t candidate = prePidSeed;
     for (int i = 0; i <= frames; ++i) {
         const uint16_t natureRand = static_cast<uint16_t>(candidate >> 16);
-        const uint32_t rolledNature = hgss
+        const uint32_t natureRoll = hgss
             ? (natureRand % 25u)
             : (natureRand / 0x0A3Eu);
 
-        // Pinned TryGetMatchNoSync explores these failure branches only from a
-        // regular-nature frame. Successful Synchronize is a separate path.
-        if (rolledNature == nature) {
-            const uint32_t seed1 = Gen3PidIv::Detail::prev(candidate);
-            const uint16_t leadRand = static_cast<uint16_t>(seed1 >> 16);
-            if (failureAllowsEncounter(hgss, lead, leadRand)) {
-                const uint32_t seed2 = Gen3PidIv::Detail::prev(seed1);
-                const uint16_t prev2 = static_cast<uint16_t>(seed2 >> 16);
-
-                uint32_t slotSeed = seed2;
-                uint16_t slotRand = prev2;
-
-                if (levelIsRandom(hgss, type)) {
-                    const uint8_t level = Gen4WildRng::isHoneyTree(type)
-                        ? Gen4WildRng::honeyTreeLevel(prev2)
-                        : Gen4WildRng::randomLevel(
-                            Gen4Wild::minLevel(row),
-                            Gen4Wild::maxLevel(row), prev2);
-                    if (level != metLevel) {
-                        candidate = Gen3PidIv::Detail::prev(
-                            Gen3PidIv::Detail::prev(candidate));
-                        continue;
-                    }
-                    slotSeed = Gen3PidIv::Detail::prev(seed2);
-                    slotRand = static_cast<uint16_t>(slotSeed >> 16);
-                } else if (!Gen4Wild::levelMatches(row, metLevel)) {
-                    candidate = Gen3PidIv::Detail::prev(
-                        Gen3PidIv::Detail::prev(candidate));
-                    continue;
-                }
-
-                const uint8_t slot = rolledSlot(hgss, row, slotRand);
-                if (slot == Gen4Wild::slot(row)) {
-                    const uint32_t activationSeed =
-                        Gen3PidIv::Detail::prev(slotSeed);
-                    if (normalActivationAllows(hgss, row, activationSeed))
-                        return {lead, candidate, slot};
-                }
-            }
+        if (natureRoll == nature) {
+            const Result match = lead == Lead::StaticMagnetPull
+                ? matchStaticMagnetFailure(hgss, row, candidate, metLevel)
+                : matchPostNatureFailure(hgss, row, candidate, metLevel, lead);
+            if (match.matched())
+                return match;
         }
 
         candidate = Gen3PidIv::Detail::prev(
