@@ -1,0 +1,17 @@
+# Focused Wurmple evolution-branch evidence regression.
+# Header-only evidence primitive: no application linkage is needed for this stage.
+GEN34_WURMPLE_SOURCES := tests/test_gen34_wurmple_evolution.cpp
+GEN34_WURMPLE_HEADERS := include/Legality/Gen34WurmpleEvolutionEvidence.h
+
+HOST_TESTS += $(HOST_BUILD)/test_gen34_wurmple_evolution
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_wurmple_evolution_sanitize
+host-test: $(HOST_BUILD)/test_gen34_wurmple_evolution
+host-sanitize: $(HOST_BUILD)/test_gen34_wurmple_evolution_sanitize
+
+$(HOST_BUILD)/test_gen34_wurmple_evolution: $(GEN34_WURMPLE_SOURCES) $(GEN34_WURMPLE_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN34_WURMPLE_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen34_wurmple_evolution_sanitize: $(GEN34_WURMPLE_SOURCES) $(GEN34_WURMPLE_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN34_WURMPLE_SOURCES) -o $@
