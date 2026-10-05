@@ -223,6 +223,14 @@ s = replace_once(
     "preview signature contract",
 )
 
+# Leaving Full Games should restore the real Main Card presentation without resolving launch targets.
+s = replace_once(
+    s,
+    '"refreshHubPreview();" in classic_runtime_block[\n',
+    '"refreshHubPreview(false);" in classic_runtime_block[\n',
+    "Full Games return source contract",
+)
+
 ui_anchor = '''require("const auto destination = handleSaveSelection();" in ui_manager,
         "approved Games/product-home screen must be the app root")
 '''
