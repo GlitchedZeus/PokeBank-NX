@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   patch-touch:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
@@ -138,3 +138,4 @@ jobs:
 
 # restaged after tap-slop runtime fix; exact-head guard prevents stale application
 # retriggered deliberately after hardware reported controller-emulated touch jank
+# ubuntu runner: no macOS-only dependencies are used by this patch
