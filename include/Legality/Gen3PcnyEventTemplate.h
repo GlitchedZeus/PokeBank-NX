@@ -79,15 +79,12 @@ constexpr bool speciesHistoryMatches(const Entry& row,
     if (row.species == currentSpecies)
         return true;
 
-    // Pinned PKHeX EncounterGift3NY matching is evaluated against an evolution
-    // criterion rather than requiring the current species to remain identical
-    // to the distributed species. Start with the three explicitly named
-    // "Evolution" distribution rows from encounter_pcny.pkl. Keep the mapping
-    // directional: a received Pokemon may evolve, but it cannot become one of
-    // its own pre-evolutions after receipt.
-    if (static_cast<Distribution>(row.distribution) != Distribution::Evolution)
-        return false;
-
+    // Pinned PKHeX EncounterGift3NY matching receives an EvoCriteria; current
+    // species therefore does not have to remain identical to the distributed
+    // species. Keep this table deliberately scoped to evolutions reachable in
+    // Generation III from species that actually occur in encounter_pcny.pkl.
+    // The mapping is directional: post-receipt evolution is valid, reverse
+    // evolution or unrelated species are not.
     switch (row.species) {
         case 25:  // Pikachu -> Raichu
             return currentSpecies == 26;
@@ -95,6 +92,20 @@ constexpr bool speciesHistoryMatches(const Entry& row,
             return currentSpecies == 45 || currentSpecies == 182;
         case 120: // Staryu -> Starmie
             return currentSpecies == 121;
+        case 117: // Seadra -> Kingdra
+            return currentSpecies == 230;
+        case 353: // Shuppet -> Banette
+            return currentSpecies == 354;
+        case 355: // Duskull -> Dusclops
+            return currentSpecies == 356;
+        case 228: // Houndour -> Houndoom
+            return currentSpecies == 229;
+        case 179: // Mareep -> Flaaffy -> Ampharos
+            return currentSpecies == 180 || currentSpecies == 181;
+        case 298: // Azurill -> Marill -> Azumarill
+            return currentSpecies == 183 || currentSpecies == 184;
+        case 360: // Wynaut -> Wobbuffet
+            return currentSpecies == 202;
         default:
             return false;
     }
