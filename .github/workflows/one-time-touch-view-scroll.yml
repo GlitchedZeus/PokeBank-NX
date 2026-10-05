@@ -1,0 +1,179 @@
+name: One-time professional touch View scrolling
+
+on:
+  push:
+    branches: [feature/touch-controls-20261005]
+    paths:
+      - .github/workflows/one-time-touch-view-scroll.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify exact touch head
+        run: |
+          set -euo pipefail
+          git fetch origin feature/touch-controls-20261005
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/feature/touch-controls-20261005)" = "$GITHUB_SHA"
+
+      - name: Patch View and report panels
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def once(path, old, new):
+              p=Path(path); s=p.read_text(); n=s.count(old)
+              if n != 1:
+                  raise SystemExit(f"{path}: expected 1 match, got {n}: {old[:120]!r}")
+              p.write_text(s.replace(old,new,1))
+
+          # State: independent manual scroll for the details pane and the two report overlays.
+          once('include/UI/TrainerViewScreenBase.h',
+          '''            int  leftScroll = 0;                         // left-pane vertical scroll (px); auto-follows selection, reset on (re)open\n            std::vector<int> leftOrder;                  // left-pane editable field ids in DRAW order (rebuilt each draw)\n''',
+          '''            int  leftScroll = 0;                         // left-pane vertical scroll (px); auto-follows controller selection\n            bool leftScrollManual = false;               // finger drag owns the pane until controller/tap navigation resumes\n            int legalityScroll = 0;                      // first visible legality-report row\n            int ribbonScroll = 0;                        // first visible ribbon row (row, not item index)\n            std::vector<int> leftOrder;                  // left-pane editable field ids in DRAW order (rebuilt each draw)\n''')
+
+          # Reset scroll state whenever a details session closes or opens.
+          p=Path('src/UI/TrainerViewScreenBase.inc'); s=p.read_text()
+          s=s.replace('''        details.legalityOverlay = false;\n        details.ribbonOverlay = false;\n        details.discardConfirmActive = false;   // never let it survive to overlay the next page\n''',
+          '''        details.legalityOverlay = false;\n        details.ribbonOverlay = false;\n        details.leftScrollManual = false;\n        details.legalityScroll = 0;\n        details.ribbonScroll = 0;\n        details.discardConfirmActive = false;   // never let it survive to overlay the next page\n''')
+          s=s.replace('''        details.leftScroll = 0;   // start the info column at the top\n        details.editing = false;\n''',
+          '''        details.leftScroll = 0;   // start the info column at the top\n        details.leftScrollManual = false;\n        details.legalityScroll = 0;\n        details.ribbonScroll = 0;\n        details.editing = false;\n''')
+          s=s.replace('''        details.leftScroll = 0;\n        details.editing = false;\n''',
+          '''        details.leftScroll = 0;\n        details.leftScrollManual = false;\n        details.legalityScroll = 0;\n        details.ribbonScroll = 0;\n        details.editing = false;\n''')
+
+          old='''            // Legality overlay (full issue list) intercepts input while open: B or any tap closes it.\n            if (details.legalityOverlay) {\n                if ((kDown & HidNpadButton_B) || tb >= 0) details.legalityOverlay = false;\n                return;\n            }\n            // Ribbon overlay (full ribbon/mark list) does the same.\n            if (details.ribbonOverlay) {\n                if ((kDown & HidNpadButton_B) || tb >= 0) details.ribbonOverlay = false;\n                return;\n            }\n'''
+          new='''            // Report overlays are real scroll surfaces. B or the explicit Close button exits;\n            // a vertical finger drag scrolls content and never doubles as a close/activation tap.\n            if (details.legalityOverlay) {\n                if ((kDown & HidNpadButton_B) || tb == 196) {\n                    details.legalityOverlay = false; details.legalityScroll = 0; return;\n                }\n                if (kDown & HidNpadButton_Up)   details.legalityScroll = std::max(0, details.legalityScroll - 1);\n                if (kDown & HidNpadButton_Down) details.legalityScroll += 1;\n                if (kDown & HidNpadButton_L)    details.legalityScroll = std::max(0, details.legalityScroll - 8);\n                if (kDown & HidNpadButton_R)    details.legalityScroll += 8;\n                if (touch.justReleased() && touch.dragged()) {\n                    const int dy = touch.deltaY();\n                    const int steps = std::max(1, std::abs(dy) / 30);\n                    if (dy < 0) details.legalityScroll += steps;\n                    else if (dy > 0) details.legalityScroll = std::max(0, details.legalityScroll - steps);\n                }\n                return;\n            }\n            if (details.ribbonOverlay) {\n                if ((kDown & HidNpadButton_B) || tb == 196) {\n                    details.ribbonOverlay = false; details.ribbonScroll = 0; return;\n                }\n                if (kDown & HidNpadButton_Up)   details.ribbonScroll = std::max(0, details.ribbonScroll - 1);\n                if (kDown & HidNpadButton_Down) details.ribbonScroll += 1;\n                if (kDown & HidNpadButton_L)    details.ribbonScroll = std::max(0, details.ribbonScroll - 8);\n                if (kDown & HidNpadButton_R)    details.ribbonScroll += 8;\n                if (touch.justReleased() && touch.dragged()) {\n                    const int dy = touch.deltaY();\n                    const int steps = std::max(1, std::abs(dy) / 28);\n                    if (dy < 0) details.ribbonScroll += steps;\n                    else if (dy > 0) details.ribbonScroll = std::max(0, details.ribbonScroll - steps);\n                }\n                return;\n            }\n'''
+          if s.count(old)!=1: raise SystemExit('details report input anchor missing')
+          s=s.replace(old,new,1)
+
+          s=s.replace('''            if ((kDown & HidNpadButton_Y) || tb == 94) {\n                details.ribbonOverlay = true;\n                return;\n            }\n''',
+          '''            if ((kDown & HidNpadButton_Y) || tb == 94) {\n                details.ribbonScroll = 0;\n                details.ribbonOverlay = true;\n                return;\n            }\n''',1)
+          s=s.replace('''                    details.legalityOverlay = true;\n                return;\n''',
+          '''                    { details.legalityScroll = 0; details.legalityOverlay = true; }\n                return;\n''',1)
+
+          # Finger-drag the actual left View/details pane. Activation is release-tap only, so this\n          # never fires the row underneath. Controller/tap navigation restores auto-follow mode.\n          anchor='''            // Touch: close button (99), or a stat row (0-5) / shiny (6) -> select + act (like A).\n'''
+          insert='''            // Native finger scrolling for the left details/info pane. The panel geometry is\n            // stable on the 1280x720 Switch canvas (x 24..454, content y below the sprite).\n            // Scroll by the exact finger travel in pixels; drawing clamps against real content height.\n            if (touch.justReleased() && touch.dragged() &&\n                touch.startX() >= 24 && touch.startX() < 454 &&\n                touch.startY() >= 250 && touch.startY() < 666) {\n                details.leftScroll = std::max(0, details.leftScroll - touch.deltaY());\n                details.leftScrollManual = true;\n                return;\n            }\n\n'''
+          if s.count(anchor)!=1: raise SystemExit('details touch anchor missing')
+          s=s.replace(anchor,insert+anchor,1)
+          s=s.replace('''            if (tb >= 0 && tb <= 31) { details.selectedField = tb; kDown |= HidNpadButton_A; }\n''',
+          '''            if (tb >= 0 && tb <= 31) { details.leftScrollManual = false; details.selectedField = tb; kDown |= HidNpadButton_A; }\n''',1)
+          nav='''            {\n                int& f = details.selectedField;\n'''
+          if s.count(nav)!=1: raise SystemExit('details nav anchor missing')
+          s=s.replace(nav,''''            {\n                if (kDown & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right))\n                    details.leftScrollManual = false;\n                int& f = details.selectedField;\n''',1)
+          p.write_text(s)
+
+          # Render: preserve manual scroll, replace tap-anywhere overlays with clipped scroll lists,\n          # a scrollbar, and an explicit large Close button.
+          p=Path('src/UI/Modals/PokemonDetailsModal.cpp'); s=p.read_text()
+          s=s.replace('''            if (selRowY >= 0) {\n                if (selRowY - s < contentTop)                s = selRowY - contentTop;\n                else if ((selRowY + RH) - s > contentBottom) s = (selRowY + RH) - contentBottom;\n            }\n''',
+          '''            if (!screen.details.leftScrollManual && selRowY >= 0) {\n                if (selRowY - s < contentTop)                s = selRowY - contentTop;\n                else if ((selRowY + RH) - s > contentBottom) s = (selRowY + RH) - contentBottom;\n            }\n''',1)
+
+          start=s.index('        // Legality issue overlay')
+          end=s.index('    }\n}\n}', start)
+          oldblock=s[start:end]
+          newblock=r'''        // Full report overlays are native scroll surfaces: vertical drag / Up/Down scrolls,
+        // L/R pages, and only B or the explicit Close button dismisses them.
+        if (screen.details.legalityOverlay) {
+            struct ReportLine { std::string text; Color color; };
+            std::vector<ReportLine> lines;
+            if (legalityRep.ok()) {
+                lines.push_back({"No problems found.", Color(120, 205, 140)});
+            } else {
+                for (const auto& is : legalityRep.issues) {
+                    if (is.severity == Legality::Severity::Info) continue;
+                    const Color c = (is.severity == Legality::Severity::Invalid)
+                        ? Color(235, 100, 100) : Colors::Orange;
+                    const char* tag = (is.severity == Legality::Severity::Invalid)
+                        ? "[illegal]  " : "[warning]  ";
+                    lines.push_back({std::string(tag) + is.text, c});
+                }
+            }
+            const int ow = 820, oh = H - 100;
+            const int ox = (W - ow) / 2, oy = 50;
+            const int listTop = oy + 76, listBottom = oy + oh - 72;
+            const int rowH = 30, visible = std::max(1, (listBottom - listTop) / rowH);
+            const int maxScroll = std::max(0, static_cast<int>(lines.size()) - visible);
+            screen.details.legalityScroll = std::clamp(screen.details.legalityScroll, 0, maxScroll);
+            fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 170));
+            fb.drawFilledRoundedRect(ox, oy, ow, oh, 16, Colors::Panel);
+            fb.drawRoundedRect(ox, oy, ow, oh, 16, Colors::Border, 1);
+            fb.drawText(ox + 24, oy + 20, "Legality", Colors::Text, TextStyle::Heading);
+            fb.drawText(ox + 24, oy + 50, "Swipe to scroll", Colors::TextDim, TextStyle::Caption);
+            fb.setClipRect(ox + 20, listTop, ow - 40, listBottom - listTop);
+            int y = listTop;
+            for (int i = screen.details.legalityScroll;
+                 i < static_cast<int>(lines.size()) && i < screen.details.legalityScroll + visible; ++i) {
+                fb.drawText(ox + 28, y, lines[static_cast<size_t>(i)].text,
+                            lines[static_cast<size_t>(i)].color, TextStyle::Caption);
+                y += rowH;
+            }
+            fb.clearClip();
+            drawScrollbar(fb, ox + ow - 12, listTop, listBottom - listTop,
+                          std::max(1, static_cast<int>(lines.size()) * rowH),
+                          screen.details.legalityScroll * rowH);
+            const int closeW = 150, closeH = 44, closeX = ox + ow - closeW - 22, closeY = oy + oh - closeH - 14;
+            drawGlyphButton(fb, closeX, closeY, closeW, closeH, "B", "Close");
+            screen.touchButtons.push_back({196, closeX, closeY, closeW, closeH});
+        }
+
+        if (screen.details.ribbonOverlay) {
+            const auto rb = Names::getMonRibbons(reinterpret_cast<const uint8_t*>(p->getData().data()),
+                                                 p->getGameGroup());
+            const int ow = 860, oh = H - 100;
+            const int ox = (W - ow) / 2, oy = 50;
+            const int listTop = oy + 76, listBottom = oy + oh - 72;
+            const int rowH = 30, cols = 2;
+            const int visibleRows = std::max(1, (listBottom - listTop) / rowH);
+            const int totalRows = (static_cast<int>(rb.size()) + cols - 1) / cols;
+            const int maxScroll = std::max(0, totalRows - visibleRows);
+            screen.details.ribbonScroll = std::clamp(screen.details.ribbonScroll, 0, maxScroll);
+            fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 170));
+            fb.drawFilledRoundedRect(ox, oy, ow, oh, 16, Colors::Panel);
+            fb.drawRoundedRect(ox, oy, ow, oh, 16, Colors::Border, 1);
+            fb.drawText(ox + 24, oy + 20, "Ribbons & Marks", Colors::Text, TextStyle::Heading);
+            fb.drawText(ox + 24, oy + 50, "Swipe to scroll", Colors::TextDim, TextStyle::Caption);
+            const int colW = (ow - 64) / cols;
+            fb.setClipRect(ox + 20, listTop, ow - 40, listBottom - listTop);
+            for (int r = 0; r < visibleRows; ++r) {
+                const int sourceRow = screen.details.ribbonScroll + r;
+                for (int c = 0; c < cols; ++c) {
+                    const int idx = sourceRow * cols + c;
+                    if (idx >= static_cast<int>(rb.size())) continue;
+                    fb.drawText(ox + 28 + c * colW, listTop + r * rowH,
+                                rb[static_cast<size_t>(idx)], Colors::Text, TextStyle::Caption);
+                }
+            }
+            fb.clearClip();
+            drawScrollbar(fb, ox + ow - 12, listTop, listBottom - listTop,
+                          std::max(1, totalRows * rowH), screen.details.ribbonScroll * rowH);
+            const int closeW = 150, closeH = 44, closeX = ox + ow - closeW - 22, closeY = oy + oh - closeH - 14;
+            drawGlyphButton(fb, closeX, closeY, closeW, closeH, "B", "Close");
+            screen.touchButtons.push_back({196, closeX, closeY, closeW, closeH});
+        }
+'''
+          s=s[:start]+newblock+s[end:]
+          p.write_text(s)
+          PY
+          git diff --check
+          grep -q 'legalityScroll' include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc src/UI/Modals/PokemonDetailsModal.cpp
+          grep -q 'leftScrollManual' include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc src/UI/Modals/PokemonDetailsModal.cpp
+          ! grep -q 'tap anywhere closes' src/UI/Modals/PokemonDetailsModal.cpp
+
+      - name: Commit runtime files only
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc src/UI/Modals/PokemonDetailsModal.cpp
+          git diff --cached --quiet && { echo 'No View touch changes'; exit 1; }
+          git commit -m 'feat(ui): make View panels natively touch-scrollable'
+          git push origin HEAD:feature/touch-controls-20261005
