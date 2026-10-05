@@ -216,7 +216,7 @@ void drawGen2ClassicBoxFooter(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 } // namespace
 
 void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
-    const u64 down = padGetButtonsDown(&pad);
+    const u64 down = padGetButtonsDown(&pad) | navTouchButton(touch);
     const u64 held = padGetButtons(&pad);
     const HidAnalogStickState stick = padGetStickPos(&pad, 0);
 

@@ -279,7 +279,8 @@ namespace UI {
         // during draw and hit-tested next frame. Only the active overlay populates this.
         struct TouchButton { int id, x, y, w, h; };
         std::vector<TouchButton> touchButtons;
-        int touchedButtonId(const TouchInput& touch) const;  // id of a tapped button, or -1
+        int touchedButtonDownId(const TouchInput& touch) const;  // id under fresh finger contact
+        int touchedButtonId(const TouchInput& touch) const;      // id of a clean release-tap
         void renameBox(int boxIndex);       // swkbd rename of a SAVE box; no-op where unsupported
         void renameBankBox(int box);        // swkbd rename of a BANK box (default label is "Bank N")
 

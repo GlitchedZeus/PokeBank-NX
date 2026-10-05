@@ -1427,10 +1427,20 @@ namespace UI {
     // preserve on save (PKHeX keeps them positionally), but they shouldn't clutter the UI. This
     // returns the raw indices of the current pouch's items worth showing/editing (count > 0), and
     // is the single source of truth so the panel, navigation, and edit all stay in lockstep.
-    // Returns the id of the touch button under a fresh tap this frame, or -1 if none. Buttons are
-    // captured during the previous frame's draw (only the active overlay populates touchButtons).
+    // Touch buttons are captured during the previous frame's draw. Contact is focus-only;
+    // activation is always a clean release so scrolling can never fire the row under the finger.
+    int TrainerViewScreen::touchedButtonDownId(const TouchInput& touch) const {
+        if (!touch.justTouchedDown()) return -1;
+        for (const auto& b : touchButtons) {
+            if (touch.x() >= b.x && touch.x() < b.x + b.w &&
+                touch.y() >= b.y && touch.y() < b.y + b.h)
+                return b.id;
+        }
+        return -1;
+    }
+
     int TrainerViewScreen::touchedButtonId(const TouchInput& touch) const {
-        if (!touch.justPressed()) return -1;
+        if (!touch.justTapped()) return -1;
         for (const auto& b : touchButtons) {
             if (touch.x() >= b.x && touch.x() < b.x + b.w &&
                 touch.y() >= b.y && touch.y() < b.y + b.h)
@@ -2654,9 +2664,19 @@ namespace UI {
             const int count = (pickerCount > 0) ? pickerCount : 1;
             const int page = 12;
 
-            // Touch: tap an option row selects it immediately (button id = option index).
-            int ptb = touchedButtonId(touch);
+            // Native list touch: finger contact moves highlight immediately; a clean release
+            // chooses that exact row. Vertical drags browse the list and never activate a row.
+            const int ptd = touchedButtonDownId(touch);
+            if (ptd >= 0 && ptd < count) pickerSel = ptd;
+            const int ptb = touchedButtonId(touch);
             if (ptb >= 0 && ptb < count) { pickerSel = ptb; kDown |= HidNpadButton_A; }
+            if (touch.justReleased() && touch.dragged()) {
+                const int dy = touch.deltaY();
+                const int rowH = std::max(1, PokeBank::UIModel::InventoryPickerLayout::RowHeight);
+                const int steps = std::max(1, std::abs(dy) / rowH);
+                if (dy < 0) pickerSel = std::min(count - 1, pickerSel + steps);
+                else if (dy > 0) pickerSel = std::max(0, pickerSel - steps);
+            }
 
             if (kDown & HidNpadButton_Up)                        pickerSel = (pickerSel - 1 + count) % count;
             if (kDown & HidNpadButton_Down)                      pickerSel = (pickerSel + 1) % count;
@@ -4153,7 +4173,20 @@ namespace UI {
                         currentPage = 0;
                     }
 
-                    // Touch: tap a row to select + edit it.
+                    // Touch: contact focuses the item; release edits it. A vertical drag
+                    // scrolls/browses without opening the row underneath.
+                    int itemDown = touchedButtonDownId(touch);
+                    if (itemDown >= 0 && itemDown < totalItems) {
+                        selectedItemIndex = itemDown;
+                        currentPage = selectedItemIndex / itemsPerPage;
+                    }
+                    if (touch.justReleased() && touch.dragged()) {
+                        const int dy = touch.deltaY();
+                        const int steps = std::max(1, std::abs(dy) / 52);
+                        if (dy < 0) selectedItemIndex = std::min(totalItems - 1, selectedItemIndex + steps);
+                        else if (dy > 0) selectedItemIndex = std::max(0, selectedItemIndex - steps);
+                        currentPage = selectedItemIndex / itemsPerPage;
+                    }
                     int itemTap = touchedButtonId(touch);
                     if (itemTap >= 0 && itemTap < totalItems) {
                         selectedItemIndex = itemTap;

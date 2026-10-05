@@ -375,24 +375,39 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
     }
 
     if (overlay == Overlay::Settings) {
-        if (touch.justPressed()) {
+        if (touch.justTouchedDown()) {
             for (const HitRect& rect : settingsCategoryRects) {
                 if (contains(rect, touch.x(), touch.y())) {
                     settingsCategory = rect.index;
-                    settingsIndex = std::min(settingsIndex,
-                                             settingsOptionCount(settingsCategory) - 1);
+                    settingsIndex = std::min(settingsIndex, settingsOptionCount(settingsCategory) - 1);
                     settingsCategoryFocused = true;
-                    return;
+                    break;
                 }
             }
             for (const HitRect& rect : settingsRects) {
                 if (contains(rect, touch.x(), touch.y())) {
-                    settingsIndex = rect.index;
-                    settingsCategoryFocused = false;
-                    kDown |= HidNpadButton_A;
+                    settingsIndex = rect.index; settingsCategoryFocused = false; break;
+                }
+            }
+        }
+        if (touch.justTapped()) {
+            for (const HitRect& rect : settingsCategoryRects) {
+                if (contains(rect, touch.x(), touch.y())) {
+                    settingsCategory = rect.index;
+                    settingsIndex = std::min(settingsIndex, settingsOptionCount(settingsCategory) - 1);
+                    settingsCategoryFocused = true;
                     break;
                 }
             }
+            for (const HitRect& rect : settingsRects) {
+                if (contains(rect, touch.x(), touch.y())) {
+                    settingsIndex = rect.index; settingsCategoryFocused = false; kDown |= HidNpadButton_A; break;
+                }
+            }
+        } else if (touch.justReleased() && touch.dragged()) {
+            const int dy = touch.deltaY();
+            if (dy < -44) kDown |= HidNpadButton_Down;
+            else if (dy > 44) kDown |= HidNpadButton_Up;
         }
         if (kDown & HidNpadButton_B) {
             overlay = Overlay::None;
@@ -438,13 +453,14 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
         return;
     }
 
-    if (touch.justPressed()) {
+    if (touch.justTouchedDown()) {
         for (const HitRect& rect : cardRects) {
-            if (contains(rect, touch.x(), touch.y())) {
-                selectedIndex = rect.index;
-                kDown |= HidNpadButton_A;
-                break;
-            }
+            if (contains(rect, touch.x(), touch.y())) { selectedIndex = rect.index; break; }
+        }
+    }
+    if (touch.justTapped()) {
+        for (const HitRect& rect : cardRects) {
+            if (contains(rect, touch.x(), touch.y())) { selectedIndex = rect.index; kDown |= HidNpadButton_A; break; }
         }
     }
 
