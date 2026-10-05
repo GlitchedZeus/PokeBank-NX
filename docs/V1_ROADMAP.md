@@ -1,6 +1,6 @@
 # PokeBank NX — v1.0 Roadmap
 
-Last updated: **2026-10-01**
+Last updated: **2026-10-05**
 
 `CURRENT_STATUS.md` is authoritative for exact live state. This roadmap describes product direction, not branch ownership.
 
@@ -27,6 +27,8 @@ PokeBank NX v1 should be a stable native Switch application that can:
 - [x] stable game/platform identities
 - [x] source immutability discipline
 - [x] host regression / sanitizer / native CI gates
+- [x] full forensic audit completed
+- [x] audit remediation integrated into the active Gen I–IV application lane
 
 ## Phase 1 — Gen I–III read + inventory foundation — COMPLETE / DEVICE ACCEPTED
 
@@ -48,7 +50,7 @@ PokeBank NX v1 should be a stable native Switch application that can:
 - [x] controller navigation and editor parity
 - [x] physical hardware acceptance across the current Gen I–III foundation
 
-## Phase 3 — Generation IV shared editor — ACTIVE
+## Phase 3 — Generation IV shared editor — ACTIVE / HARDWARE PENDING
 
 - [x] strict DP/Pt/HGSS read backend
 - [x] persistent provider/source assignment
@@ -62,10 +64,12 @@ PokeBank NX v1 should be a stable native Switch application that can:
 - [x] Form editing with exact-game restrictions
 - [x] trainer/origin inspection
 - [x] Box/Party action parity
-- [x] one fully integrated G4-04 + Product UI automated-green candidate
-- [ ] physical acceptance of that exact candidate
+- [x] strict reparse / checksum refresh / rollback
+- [x] full G4-04 implementation integrated with Product UI
+- [x] current exact-head automated application gates green
+- [ ] physical acceptance of the current full G4-04 + Product UI candidate
 
-## Phase 4 — product UI / source / launch integration — ACTIVE
+## Phase 4 — product UI / source / launch integration — ACTIVE / FINAL HARDWARE POLISH
 
 - [x] modern Product Home
 - [x] selected-game Open / Launch flow
@@ -74,14 +78,22 @@ PokeBank NX v1 should be a stable native Switch application that can:
 - [x] Master Vault / Pokédex visual identities
 - [x] real Gen I–IV per-save Pokédex progress
 - [x] Gen IV trainer-name propagation
-- [x] classic Game Sources alternate workflow
+- [x] Classic Game Sources alternate workflow
 - [x] cursor-memory foundation
 - [x] Backpack / Items quick-open intent foundation
 - [x] compact Items / Settings quick actions
 - [x] two-pane Settings organization + cursor memory
 - [x] grounded trainer portraits for Gen I–IV game/gender identities
-- [ ] finish exact-head CI
-- [ ] finish/verify DraStic and melonDS direct launch handoff
+- [x] region-aware Product Home scenery and readability treatment
+- [x] full Games browser used as the game/save/profile assignment surface
+- [x] X = Save / Source assignment flow for validated sources
+- [x] game sorting / Release Date ordering foundation
+- [x] Favorites foundation
+- [x] installed HOME-forwarder preference for matching GBA/DS direct launch
+- [x] exact-release launch matching to avoid near-name collisions
+- [x] current exact-head Host / native / Product UI / Gen IV / focused regression gates green
+- [ ] physically verify current GBA/DS direct-launch and fallback behavior
+- [ ] physically verify current Quick Games / Items / Search / Favorites / sorting fixes
 - [ ] integrated UI hardware acceptance
 
 ## Phase 5 — full touch controls
@@ -152,20 +164,26 @@ This starts **after** the integrated UI candidate is physically accepted.
 
 - [ ] global National/game Pokédex
 - [ ] Living Dex / Shiny Living Dex
-- [ ] search/filter/favorites/recent
+- [x] per-game Favorites/sorting foundation in the current Games UI
+- [ ] global search/filter/favorites/recent collection tooling
 - [ ] origin/current-location/provenance separation
-- [ ] legality/validation state
+- [ ] product-facing legality/validation state
 - [ ] cries where appropriate
 
 ## Phase 11 — conversion / legality / transfer workspace
 
-- [ ] host oracle/golden fixture corpus
+- [x] evidence-aware read-only Gen I–IV legality engine foundation
+- [x] coverage-aware legality verdict model: Invalid / No problems found / Incomplete
+- [x] substantial generated Gen I–IV encounter/event/RNG evidence corpus
+- [ ] complete host oracle/golden fixture corpus
 - [ ] generation-aware conversion
-- [ ] legality/provenance validation
+- [ ] product-integrated legality/provenance validation
 - [ ] controlled creation safeguards
 - [ ] staged destination representations
 - [ ] COPY / MOVE / CLONE remain distinct
 - [ ] source retirement only after durable validated destination
+
+Legality development remains **analysis only** until its evidence and product integration are complete. It does not grant write permission or silently convert missing evidence into a legal verdict.
 
 ## Phase 12 — approved write transactions
 
@@ -190,7 +208,7 @@ There is no global unsafe-write switch.
 - [ ] accessibility / Reduced Motion
 - [ ] final title/icon/NACP/startup polish
 - [ ] handheld + docked pass
-- [ ] README/support matrix/release notes match reality
+- [x] README / support matrix / roadmap kept synchronized with active development
 - [ ] release-candidate hardware torture pass
 - [ ] v1.0 tag/release
 
@@ -199,9 +217,11 @@ There is no global unsafe-write switch.
 ```text
 Gen I–III shared editor            DEVICE ACCEPTED
 Gen IV full shared editor          AUTOMATED GREEN / HARDWARE PENDING
-Product UI / source integration    FINISHING POLISH / HARDWARE PENDING
+Product UI / source integration    FINAL HARDWARE POLISH
+Audit remediation                  INTEGRATED INTO ACTIVE APP LANE
+Legality engine                    ACTIVE IN PARALLEL / READ-ONLY
         ↓
-one integrated hardware candidate
+one exact integrated hardware candidate
         ↓
 full touch controls
         ↓
