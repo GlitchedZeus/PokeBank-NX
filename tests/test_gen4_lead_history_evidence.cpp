@@ -107,11 +107,85 @@ int main() {
         boostedSeed, boostedPid, 10);
     static_assert(boostedPressure.has(Path::PressureSuccess));
 
-    constexpr uint64_t contest = makeRow(8, 0, 7, 18, 25);
+    // HG/SS Bug Catching Contest direct-attempt lead history. Pinned Method K
+    // permits a direct result only when the persisted attempt has at least one
+    // 31 IV. Leads without a Sweet Scent-capable species must also prove the
+    // two-call movement/rate activation path.
+    static_assert(Legality::Gen4LeadFailure::supportedType(true, 8));
+    static_assert(!Legality::Gen4LeadFailure::supportedType(false, 8));
+    static_assert(Legality::Gen4LeadFrame::bugContestSlot(0) == 9);
+    static_assert(Legality::Gen4LeadFrame::bugContestSlot(99) == 0);
+    static_assert(Legality::Gen4LeadFrame::bugContestActivationAllows(
+        25, 0u, false));
+    static_assert(!Legality::Gen4LeadFrame::bugContestActivationAllows(
+        25, 25u << 16, false));
+    static_assert(Legality::Gen4LeadFrame::bugContestActivationAllows(
+        25, 25u << 16, true));
+
+    constexpr uint32_t bccSeed8 = 8u;
+    constexpr uint32_t bccPid8 = sequentialPid(bccSeed8);
+    static_assert(Legality::Gen4LeadFrame::directMinimum31Satisfied(bccSeed8));
+
+    constexpr auto bccStatic = matchIndexedRow(
+        true, makeRow(8, 0, 7, 18, 25), makeMeta(0, 0, 0, 1), 18,
+        bccSeed8, bccPid8, 14);
+    static_assert(bccStatic.has(Path::StaticSuccess));
+
+    constexpr auto bccMagnet = matchIndexedRow(
+        true, makeRow(8, 0, 7, 18, 25), makeMeta(0, 1, 0, 0), 18,
+        bccSeed8, bccPid8, 14);
+    static_assert(bccMagnet.has(Path::MagnetPullSuccess));
+
+    constexpr auto bccPressure = matchIndexedRow(
+        true, makeRow(8, 1, 7, 18, 25), 0, 18,
+        bccSeed8, bccPid8, 18);
+    static_assert(bccPressure.has(Path::PressureSuccess));
+
+    constexpr auto bccSyncFail = matchIndexedRow(
+        true, makeRow(8, 1, 7, 18, 25), 0, 18,
+        bccSeed8, bccPid8, 11);
+    static_assert(bccSyncFail.has(Path::SynchronizeFailure));
+
+    constexpr uint32_t bccSeed9 = 9u;
+    constexpr uint32_t bccPid9 = sequentialPid(bccSeed9);
+    static_assert(Legality::Gen4LeadFrame::directMinimum31Satisfied(bccSeed9));
+    constexpr auto bccPressureFail = Legality::Gen4LeadFailure::matchRow(
+        true, makeRow(8, 9, 7, 18, 25), bccSeed9, bccPid9, 10,
+        Legality::Gen4LeadFailure::Lead::PressureHustleVitalSpirit);
+    static_assert(bccPressureFail.matched());
+    constexpr uint32_t bccPressureActivation = prev(prev(prev(prev(
+        bccPressureFail.encounterSeed))));
+    static_assert(((bccPressureActivation >> 16) % 100u) >= 25u);
+    static_assert(Legality::Gen4LeadFrame::bugContestActivationAllows(
+        25, bccPressureActivation, true));
+    static_assert(!Legality::Gen4LeadFrame::bugContestActivationAllows(
+        25, bccPressureActivation, false));
+    constexpr auto bccPressureFailMask = matchIndexedRow(
+        true, makeRow(8, 9, 7, 18, 25), 0, 18,
+        bccSeed9, bccPid9, 10);
+    static_assert(bccPressureFailMask.has(Path::PressureFailure));
+    static_assert(bccPressureFailMask.has(Path::IntimidateContinue));
+
+    constexpr uint32_t bccSeed17 = 17u;
+    constexpr uint32_t bccPid17 = sequentialPid(bccSeed17);
+    static_assert(Legality::Gen4LeadFrame::directMinimum31Satisfied(bccSeed17));
+    constexpr auto bccCuteFail = matchIndexedRow(
+        true, makeRow(8, 5, 7, 18, 25), 0, 18,
+        bccSeed17, bccPid17, 8);
+    static_assert(bccCuteFail.has(Path::CuteCharmFailure));
+    constexpr auto bccStaticFail = matchIndexedRow(
+        true, makeRow(8, 0, 7, 18, 25), 0, 18,
+        bccSeed17, bccPid17, 13);
+    static_assert(bccStaticFail.has(Path::StaticMagnetFailure));
+
+    constexpr uint32_t bccNo31Seed = 15u;
+    constexpr uint32_t bccNo31Pid = sequentialPid(bccNo31Seed);
+    static_assert(!Legality::Gen4LeadFrame::directMinimum31Satisfied(bccNo31Seed));
+    static_assert(!Legality::Gen4PressureLead::matchRowWithPressure(
+        true, makeRow(8, 6, 7, 18, 25), 18,
+        bccNo31Seed, bccNo31Pid, 18).matched());
+
     constexpr uint64_t safari = makeRow(10, 0, 15, 15, 6);
-    static_assert(!matchIndexedRow(
-        true, contest, 0, 18,
-        jStaticSeed, jStaticPid, 18).matched());
     static_assert(!matchIndexedRow(
         true, safari, 0, 15,
         jStaticSeed, jStaticPid, 15).matched());
@@ -169,10 +243,6 @@ int main() {
         sourcePid);
     assert(generated.has(Path::PressureSuccess));
 
-    // The production-facing Gen4WildRng API must now recover the same source.
-    // Because this met level is above the packed row's ordinary LevelMax, the
-    // legacy no-lead/Synchronize loop cannot claim it; success therefore proves
-    // that the extended lead adapter is actually participating.
     const auto central = Legality::Gen4WildRng::analyzeSupported(
         gameId(sourceGame),
         Legality::Gen4Wild::species(sourceRow),
