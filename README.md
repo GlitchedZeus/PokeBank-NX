@@ -22,9 +22,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/GlitchedZeus/PokeBank-NX/actions/workflows/host-tests.yml"><img alt="Host Tests: passing" src="https://img.shields.io/badge/Host%20Tests-passing-2ea44f?style=flat-square&logo=githubactions&logoColor=white"></a>
-  <a href="https://github.com/GlitchedZeus/PokeBank-NX/pull/92"><img alt="Product UI Native: passing" src="https://img.shields.io/badge/Product%20UI%20Native-passing-2ea44f?style=flat-square&logo=githubactions&logoColor=white"></a>
-  <a href="https://github.com/GlitchedZeus/PokeBank-NX/pull/92"><img alt="Gen IV Candidate Gate: passing" src="https://img.shields.io/badge/Gen%20IV%20Gate-passing-2ea44f?style=flat-square&logo=githubactions&logoColor=white"></a>
+  <a href="https://github.com/GlitchedZeus/PokeBank-NX/actions/workflows/host-tests.yml"><img alt="Host Tests" src="https://img.shields.io/badge/Host%20Tests-active-2ea44f?style=flat-square&logo=githubactions&logoColor=white"></a>
+  <a href="https://github.com/GlitchedZeus/PokeBank-NX/pull/92"><img alt="Product UI Native" src="https://img.shields.io/badge/Product%20UI%20Native-active-2ea44f?style=flat-square&logo=githubactions&logoColor=white"></a>
+  <a href="https://github.com/GlitchedZeus/PokeBank-NX/pull/92"><img alt="Gen IV Candidate Gate" src="https://img.shields.io/badge/Gen%20IV%20Gate-active-2ea44f?style=flat-square&logo=githubactions&logoColor=white"></a>
 </p>
 
 <p align="center">
@@ -41,7 +41,7 @@
 ---
 
 > [!IMPORTANT]
-> **PokeBank NX is pre-release software.** Gen I–III workflows are hardware accepted. The current Gen IV + Product UI application head is automated-green after the latest Games/UI/direct-launch recovery work, but that exact combined build still requires physical Switch acceptance before it can be treated as finished.
+> **PokeBank NX is pre-release software.** Gen I–III workflows are hardware accepted. The active Gen IV + Product UI lane is in final hardware-polish and exact-head validation while the latest hotpath fixes and shared on-screen-keyboard integration settle. The next combined build must still pass its own physical Switch acceptance before it can be treated as finished.
 
 ## Overview
 
@@ -66,15 +66,15 @@ The app is designed around staged editing, explicit source identity, conservativ
 | Generation II | ✅ Hardware accepted | G/S/C read + staged shared editor |
 | Generation III | ✅ Hardware accepted | R/S/E/FR/LG read + staged shared editor |
 | Generation IV | 🧪 Hardware validation | D/P/Pt/HG/SS staged full-editor foundation implemented |
-| Product Home / Games UI | 🎨 Final hardware polish | Current exact application gates are green; current UI/launch fixes need device acceptance |
-| Audit hardening | ✅ Integrated | Full forensic remediation is now merged into the active application lane: 43 verified, 1 deferred, 0 open |
+| Product Home / Games UI | 🎨 Final hardware polish | Hotpath/launch/source fixes are implemented; latest integration head is being revalidated before device acceptance |
+| Audit hardening | ✅ Integrated | Full forensic remediation is integrated into the active application lane: 43 verified, 1 deferred, 0 open |
 | Legality analysis | 🔬 Active R&D | Read-only Gen I–IV evidence engine in a separate development lane |
 | Touch controls | ⏳ Planned | Starts after the current integrated UI candidate is physically accepted |
 | Master Vault / named Banks | ⏳ Planned | UI identity exists; persistent backend is intentionally not enabled yet |
 | Live source writeback | 🔒 Locked | No global unsafe-write switch |
 
 > [!NOTE]
-> The current Gen IV/Product UI application head passes Host Tests, Native PR Gate, Product UI Native, the Gen IV candidate gate, and the focused Gen I/II packed-move suites. The legality-engine lane is also independently tested. Green CI does not replace physical acceptance of the exact final NRO.
+> The normal Host, Native, Product UI, Gen IV and focused regression gates are established and recent application checkpoints are green across those lanes. The active PR #92 branch can advance while UI/input integrations are being validated, so `CURRENT_STATUS.md` is the source for the exact checkpoint/run state. Green CI still does not replace physical acceptance of the exact final NRO.
 
 ## Features
 
@@ -143,7 +143,7 @@ Diamond / Pearl / Platinum / HeartGold / SoulSilver currently have the most acti
 - checksum refresh, strict full-save reparse, and rollback;
 - immutable external emulator source during ordinary editing.
 
-The first safe Gen IV editing milestone has already passed hardware testing. The **current full Gen IV + Product UI combination remains hardware-pending while the latest Games, Quick Games and launch fixes are physically retested**.
+The first safe Gen IV editing milestone has already passed hardware testing. The **current full Gen IV + Product UI combination remains hardware-pending while the latest Games, Quick Games, launch and text-input changes are validated and physically retested**.
 
 ## Supported games
 
@@ -171,12 +171,12 @@ Current product work includes:
 - manual / remembered assignments;
 - duplicate-source handling and source identity;
 - app-owned game/ROM launch bindings;
-- installed HOME-forwarder preference for matching supported GBA/DS identities;
-- normalized exact-release matching so similarly named releases do not collide;
-- emulator/file/link fallback when an installed/content target cannot be proven;
+- exact-release matching to prevent similarly named releases from colliding;
+- validated provider/emulator launch routing and installed HOME-forwarder fallback where appropriate;
+- hotpath work that avoids unnecessary source/launch discovery during Quick Games and normal legacy opens;
 - explicit **Link Game File** fallback instead of path guessing.
 
-The current installed-forwarder preference — especially GBA/Emerald and DS/Platinum cases — still needs physical Switch verification on the latest candidate.
+The current GBA/DS launch/hotpath behavior still needs physical Switch verification on the final exact candidate.
 
 > [!WARNING]
 > A save path is **not** proof of a ROM path. PokeBank NX does not guess a launch target from a similarly named save file, and launch permission never grants save-write permission.
@@ -227,6 +227,8 @@ The implemented foundation now covers far more than simple species/move bounds. 
 - Pokémon Colosseum / XD / e-Reader / GameCube-specific evidence;
 - Gen III → IV Pal Park transfer evidence;
 - Gen IV wild/static/trade/PokéWalker/WC4/PCD/form/origin/RNG evidence;
+- state-aware Gen IV static/gift egg provenance work;
+- Method J/K lead-predicate evidence under isolated validation;
 - coverage-aware report semantics.
 
 The report model distinguishes between:
@@ -262,8 +264,9 @@ A repository-wide forensic audit and remediation pass is complete. The remediati
 
 | Lane | Purpose / state |
 |---|---|
-| [PR #92](https://github.com/GlitchedZeus/PokeBank-NX/pull/92) | **Active:** current Gen I–IV application, Gen IV full editor, Product UI and hardware-fix work |
+| [PR #92](https://github.com/GlitchedZeus/PokeBank-NX/pull/92) | **Active:** current Gen I–IV application, Gen IV full editor, Product UI, hotpath/input integration and hardware-fix work |
 | [PR #103](https://github.com/GlitchedZeus/PokeBank-NX/pull/103) | **Active:** read-only Gen I–IV legality engine research / implementation |
+| [PR #120](https://github.com/GlitchedZeus/PokeBank-NX/pull/120) | **Active child validation:** isolated Gen IV Method J/K lead-predicate evidence |
 | [PR #101](https://github.com/GlitchedZeus/PokeBank-NX/pull/101) | **Merged checkpoint:** completed forensic-audit remediation, integrated into PR #92 on 2026-10-05 |
 
 GitHub is authoritative. Old handoff documents and historical branch SHAs are evidence, not instructions to move active branches backward.
@@ -323,9 +326,9 @@ PokeBank NX does not provide commercial game ROMs or console firmware.
 
 Near-term development order:
 
-1. **Finish the current Games / Product Home / Quick Games / direct-launch hardware polish.**
-2. Keep one exact, fully green **Gen I–IV + Product UI** application candidate.
-3. Physically accept that exact NRO on Switch.
+1. **Settle the current Games / Product Home / Quick Games / direct-launch / keyboard integration work.**
+2. Revalidate one exact **Gen I–IV + Product UI** application head across the normal CI matrix.
+3. Produce and physically accept that exact NRO on Switch.
 4. Add **full app-wide touch-control parity**.
 5. Build **Master Vault + named Banks** with provenance and durable records.
 6. Expand provider support and later-generation save coverage.
