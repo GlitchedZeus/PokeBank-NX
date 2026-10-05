@@ -18,6 +18,7 @@ struct Result {
     uint32_t encounterSeed = 0;
     uint8_t slot = 0;
     uint8_t pressureLevel = 0;
+    uint8_t rerollDepth = 0;
 
     constexpr bool matched() const noexcept { return lead != Lead::None; }
 };
@@ -41,16 +42,17 @@ constexpr uint8_t exactPressureLevel(uint64_t row) noexcept {
     return Gen4Wild::method(row) == 0 ? 0 : Gen4Wild::maxLevel(row);
 }
 
-constexpr Result matchRowWithPressure(bool hgss, uint64_t row,
-                                      uint8_t pressureLevel,
-                                      uint32_t prePidSeed, uint32_t pid,
-                                      uint8_t metLevel) noexcept {
+// Proves one complete Pressure/Hustle/Vital Spirit origin attempt. For HG/SS
+// minimum-31 encounters this intentionally does not enforce the IV gate; an
+// earlier rejected origin has no 31 IV by definition and is validated by the
+// reroll chain wrapper below.
+constexpr Result matchAttemptWithPressure(bool hgss, uint64_t row,
+                                          uint8_t pressureLevel,
+                                          uint32_t prePidSeed, uint32_t pid,
+                                          uint8_t metLevel) noexcept {
     const uint8_t type = Gen4Wild::method(row);
     if (pressureLevel == 0 || metLevel != pressureLevel ||
         !Gen4LeadFailure::supportedType(hgss, type))
-        return {};
-    if (Gen4LeadFrame::isBugContest(type) &&
-        !Gen4LeadFrame::directMinimum31Satisfied(prePidSeed))
         return {};
 
     const uint8_t nature = static_cast<uint8_t>(pid % 25u);
@@ -82,6 +84,7 @@ constexpr Result matchRowWithPressure(bool hgss, uint64_t row,
                             candidate,
                             slot,
                             pressureLevel,
+                            0,
                         };
                     }
                 } else {
@@ -100,6 +103,7 @@ constexpr Result matchRowWithPressure(bool hgss, uint64_t row,
                                 candidate,
                                 slot,
                                 pressureLevel,
+                                0,
                             };
                         }
                     }
@@ -109,6 +113,73 @@ constexpr Result matchRowWithPressure(bool hgss, uint64_t row,
 
         candidate = Gen3PidIv::Detail::prev(
             Gen3PidIv::Detail::prev(candidate));
+    }
+    return {};
+}
+
+// Mirrors the non-Synchronize Method K RecurseReject path for HG/SS Bug
+// Catching Contest. Each retry must land on its generated PID nature, the
+// immediately preceding attempt must fail the minimum-31 IV gate, and after the
+// requested number of rejections the earliest attempt must prove the complete
+// Pressure lead / slot / activation history. This is deliberately restricted to
+// Pressure-family success; other lead families keep their existing unresolved
+// behavior until their own recursion constraints are reconstructed.
+constexpr Result matchBugContestRerollWithPressure(
+        bool hgss, uint64_t row, uint8_t pressureLevel,
+        uint32_t prePidSeed, uint32_t pid, uint8_t metLevel,
+        uint8_t depth) noexcept {
+    const uint8_t type = Gen4Wild::method(row);
+    if (!hgss || !Gen4LeadFrame::isBugContest(type) ||
+        depth == 0 || depth > 3 ||
+        !Gen4LeadFrame::minimum31IvChainAllows(prePidSeed, depth))
+        return {};
+
+    uint32_t attemptSeed = prePidSeed;
+    uint32_t attemptPid = pid;
+    for (uint8_t i = 0; i < depth; ++i) {
+        const uint32_t generatedPid = Gen4LeadFrame::sequentialPid(attemptSeed);
+        if (generatedPid != attemptPid ||
+            ((attemptSeed >> 16) % 25u) != (attemptPid % 25u) ||
+            !Gen4LeadFrame::previousRerollAttemptRejected(attemptSeed))
+            return {};
+
+        attemptSeed = Gen4LeadFrame::previousRerollNatureSeed(attemptSeed);
+        attemptPid = Gen4LeadFrame::sequentialPid(attemptSeed);
+    }
+
+    Result origin = matchAttemptWithPressure(
+        hgss, row, pressureLevel, attemptSeed, attemptPid, metLevel);
+    if (!origin.matched())
+        return {};
+    origin.rerollDepth = depth;
+    return origin;
+}
+
+constexpr Result matchRowWithPressure(bool hgss, uint64_t row,
+                                      uint8_t pressureLevel,
+                                      uint32_t prePidSeed, uint32_t pid,
+                                      uint8_t metLevel) noexcept {
+    const uint8_t type = Gen4Wild::method(row);
+    if (pressureLevel == 0 || metLevel != pressureLevel ||
+        !Gen4LeadFailure::supportedType(hgss, type))
+        return {};
+
+    if (!Gen4LeadFrame::isBugContest(type))
+        return matchAttemptWithPressure(
+            hgss, row, pressureLevel, prePidSeed, pid, metLevel);
+
+    if (Gen4LeadFrame::directMinimum31Satisfied(prePidSeed)) {
+        const Result direct = matchAttemptWithPressure(
+            hgss, row, pressureLevel, prePidSeed, pid, metLevel);
+        if (direct.matched())
+            return direct;
+    }
+
+    for (uint8_t depth = 1; depth <= 3; ++depth) {
+        const Result rerolled = matchBugContestRerollWithPressure(
+            hgss, row, pressureLevel, prePidSeed, pid, metLevel, depth);
+        if (rerolled.matched())
+            return rerolled;
     }
     return {};
 }
