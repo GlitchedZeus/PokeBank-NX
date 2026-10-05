@@ -1,3 +1,4 @@
+#include "Legality/Gen3EggEventRibbonEvidence.h"
 /**
  * Legality.cpp - PKSE legality checker implementation (Layers 1+2, informational).
  *
@@ -907,6 +908,20 @@ namespace Legality {
         }
 
         if (sourceProfile && exactGeneration == 3) {
+            // Use the exact source container, never inferred transferred origin.
+            const auto eggRibbons = Gen3EggEventRibbon::evaluate({
+                pk.isEgg(), pk.ribbonEarth(), pk.ribbonNational(), pk.ribbonCountry(),
+                pk.ribbonChampionBattle(), pk.ribbonChampionRegional(), pk.ribbonChampionNational()
+            });
+            if (eggRibbons.status == Gen3EggEventRibbon::Status::Invalid) {
+                for (size_t i = 0; i < eggRibbons.contradictions.size(); ++i) {
+                    if (eggRibbons.contradictions[i])
+                        add(r, Severity::Invalid,
+                            "Unhatched Gen III egg cannot have the " +
+                                std::string(Gen3EggEventRibbon::kNames[i]) + " Ribbon",
+                            CheckIdentifier::Egg);
+                }
+            }
             addGen3PidEvidence(r, pk, species);
         } else if (sourceProfile && exactGeneration == 4 &&
                    storedGen4OriginKind == Gen4Origin::Kind::Gen4Retail) {
