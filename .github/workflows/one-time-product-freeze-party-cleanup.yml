@@ -1,14 +1,52 @@
-name: Disabled one-time Product Home freeze + party cleanup
-
-# This staging workflow intentionally does nothing. The broad cleanup it contained was rejected
-# after hardware feedback because it changed too much at once. Keep the file inert as an audit
-# breadcrumb; focused forward fixes are committed directly instead.
+name: One-time professional touch View patch runner
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [feature/touch-controls-20261005]
+    paths:
+      - .github/workflows/one-time-product-freeze-party-cleanup.yml
+
+permissions:
+  contents: write
 
 jobs:
-  disabled:
+  patch:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
-      - run: echo "Broad Product Home cleanup disabled; use focused hardware fixes only."
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify exact touch head
+        run: |
+          set -euo pipefail
+          git fetch origin feature/touch-controls-20261005
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/feature/touch-controls-20261005)" = "$GITHUB_SHA"
+      - name: Run reviewed staged View patch
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('.github/workflows/one-time-touch-view-scroll.yml').read_text().splitlines()
+          out=[]; capture=False
+          for line in src:
+              if line == "          python3 - <<'PY'": capture=True; continue
+              if capture and line == '          PY': break
+              if capture: out.append(line[10:] if line.startswith('          ') else line)
+          if not out: raise SystemExit('staged View patch body not found')
+          Path('/tmp/view_touch_patch.py').write_text('\n'.join(out)+'\n')
+          PY
+          python3 /tmp/view_touch_patch.py
+          git diff --check
+          grep -q 'legalityScroll' include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc src/UI/Modals/PokemonDetailsModal.cpp
+          grep -q 'leftScrollManual' include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc src/UI/Modals/PokemonDetailsModal.cpp
+      - name: Commit runtime files only
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add include/UI/TrainerViewScreenBase.h src/UI/TrainerViewScreenBase.inc src/UI/Modals/PokemonDetailsModal.cpp
+          git diff --cached --quiet && { echo 'No runtime View touch changes'; exit 1; }
+          git commit -m 'feat(ui): make View panels natively touch-scrollable'
+          git push origin HEAD:feature/touch-controls-20261005
