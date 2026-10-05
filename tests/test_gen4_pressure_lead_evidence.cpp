@@ -97,6 +97,39 @@ int main() {
     static_assert(!matchRow(
         false, kRock, jFishSeed, jFishPid, 10).matched());
 
+    // Pinned Method K reroll vector: the persisted target at seed 280 cannot be
+    // explained as a fresh direct Pressure origin for BCC slot 2. Its own
+    // nature roll matches, the preceding PID/IV attempt has no 31 IV, and that
+    // earlier attempt is a complete Pressure/Sweet Scent origin for the same
+    // encounter row. The production helper must therefore recover exactly one
+    // minimum-31 reroll instead of treating the previous IV words as fresh lead
+    // frames.
+    constexpr uint32_t bccRerollSeed = 280u;
+    constexpr uint32_t bccRerollPid = sequentialPid(bccRerollSeed);
+    constexpr uint64_t bccRerollRow = makeRow(8, 2, 7, 18, 25);
+    static_assert(bccRerollPid == 0xCB57F0E6u);
+    static_assert(Legality::Gen4LeadFrame::directMinimum31Satisfied(
+        bccRerollSeed));
+    static_assert(Legality::Gen4LeadFrame::previousRerollAttemptRejected(
+        bccRerollSeed));
+    static_assert(((bccRerollSeed >> 16) % 25u) ==
+                  (bccRerollPid % 25u));
+    static_assert(!matchAttemptWithPressure(
+        true, bccRerollRow, 18,
+        bccRerollSeed, bccRerollPid, 18).matched());
+    constexpr auto bccRerolled = matchBugContestRerollWithPressure(
+        true, bccRerollRow, 18,
+        bccRerollSeed, bccRerollPid, 18, 1);
+    static_assert(bccRerolled.matched());
+    static_assert(bccRerolled.rerollDepth == 1);
+    static_assert(bccRerolled.slot == 2);
+    constexpr auto bccRecovered = matchRowWithPressure(
+        true, bccRerollRow, 18,
+        bccRerollSeed, bccRerollPid, 18);
+    static_assert(bccRecovered.matched());
+    static_assert(bccRecovered.rerollDepth == 1);
+    static_assert(bccRecovered.slot == 2);
+
     std::size_t boostedIndex = kSourceCount;
     for (std::size_t i = 0; i < kSourceCount; ++i) {
         const uint64_t row = Legality::Gen4Wild::kPackedGen4WildEncounters[i];
