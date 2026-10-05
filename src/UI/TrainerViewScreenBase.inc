@@ -2499,7 +2499,7 @@ namespace UI {
 
         // Classic inventory gets first refusal on its own translated controls. This is before global
         // +/- and inherited source-write guards because classic mutations target a staged sidecar.
-        if (ClassicInventory::handleInput(*this, kDown)) return;
+        if (ClassicInventory::handleInput(*this, kDown, touch)) return;
 
         // Let's Go stores its boxes as a GAPLESS list, so anything that vacated a slot last frame
         // left a hole the game can't represent. Re-pack it here rather than at each of the

@@ -2336,6 +2336,45 @@ namespace UI {
             HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)
             | navTouchButton(touch);
 
+        auto tappedRect = [&](const std::vector<HitRect>& rects) -> int {
+            if (!touch.justTapped()) return -1;
+            const int tx = touch.x(), ty = touch.y();
+            for (const auto& r : rects)
+                if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h)
+                    return r.idx;
+            return -1;
+        };
+
+        if (touch.justTapped()) {
+            if (classicGamesActive && overlay == Overlay::None) {
+                const int idx = tappedRect(titleRects);
+                if (idx >= 0) {
+                    titleIndex = idx;
+                    headerActionIndex = -1;
+                    scrollClassicSelectionIntoView();
+                    kDown |= HidNpadButton_A;
+                }
+            } else {
+                const int idx = tappedRect(overlayRects);
+                bool activate = idx >= 0;
+                if (activate) {
+                    switch (overlay) {
+                        case Overlay::GamesDrawer:      gamesDrawerIndex = idx; break;
+                        case Overlay::ProfilePicker:    profilePickerIndex = idx; break;
+                        case Overlay::GameWorkspace:    gameWorkspaceIndex = idx; break;
+                        case Overlay::GameFilePicker:   launchFileIndex = idx; break;
+                        case Overlay::LegacyInstances:  legacyInstanceIndex = idx; break;
+                        case Overlay::LegacyAssignment: legacyAssignmentIndex = idx; break;
+                        case Overlay::Gen4Setup:        gen4SetupIndex = idx; break;
+                        case Overlay::Gen4Candidates:   gen4CandidateIndex = idx; break;
+                        case Overlay::Options:          optionsIndex = idx; break;
+                        default: activate = false; break;
+                    }
+                    if (activate) kDown |= HidNpadButton_A;
+                }
+            }
+        }
+
         if (overlay == Overlay::GamesDrawer) {
             const UserEntry* drawerUser = currentUser();
             const int count = drawerUser ? static_cast<int>(drawerUser->titles.size()) : 0;
@@ -2811,6 +2850,17 @@ namespace UI {
                     return;
                 }
             }
+            for (const auto& r : featureRects) {
+                if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
+                    hubDockFocused = false;
+                    headerActionIndex = -1;
+                    hubFeatureIndex = r.idx;
+                    requestedMainMenuDestination = r.idx == 0
+                        ? MainMenuDestination::MasterVault : MainMenuDestination::Pokedex;
+                    exitRequested = true;
+                    return;
+                }
+            }
             for (const auto& r : titleRects) {
                 if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
                     hubDockFocused = false;
@@ -3015,6 +3065,7 @@ namespace UI {
             const auto& title = u->titles[static_cast<size_t>(i)];
 
             drawFocusedCard(fb, x, y, CLASSIC_TILE_W, CLASSIC_TILE_H, focused, 16);
+            titleRects.push_back({x, y, CLASSIC_TILE_W, CLASSIC_TILE_H, i});
             if (titleFavorite(*u, title))
                 fb.drawSymbol(x + 10, y + 8, "\xE2\x99\xA5", Colors::Error, TextStyle::Body);
             const IconImage& art = SystemIcons::gameCardIcon(
@@ -3052,6 +3103,8 @@ namespace UI {
         userRects.clear();
         dockRects.clear();
         headerRects.clear();
+        featureRects.clear();
+        overlayRects.clear();
 
         const UserEntry* u = currentUser();
         const int count = u ? static_cast<int>(u->titles.size()) : 0;
@@ -3387,6 +3440,8 @@ namespace UI {
         const int dexY = vaultY + featureH + featureGap;
         drawFocusedCard(fb, vaultX, vaultY, featureW, featureH, vaultFocused, 18);
         drawFocusedCard(fb, dexX, dexY, featureW, featureH, dexFocused, 18);
+        featureRects.push_back({vaultX, vaultY, featureW, featureH, 0});
+        featureRects.push_back({dexX, dexY, featureW, featureH, 1});
         if (vaultFocused)
             fb.drawRoundedRect(vaultX, vaultY, featureW, featureH, 18, vaultAccent, 3);
         if (dexFocused)
@@ -3524,6 +3579,7 @@ namespace UI {
                     const auto& title = u->titles[static_cast<size_t>(i)];
 
                     drawFocusedCard(fb, bx, by, tileW, tileH, selected, 14);
+                    overlayRects.push_back({bx, by, tileW, tileH, i});
                     if (titleFavorite(*u, title))
                         fb.drawSymbol(bx + 8, by + 6, "\xE2\x99\xA5", Colors::Error, TextStyle::Body);
                     const std::string_view artKey =
@@ -3612,6 +3668,7 @@ namespace UI {
                 const bool selected = i == profilePickerIndex;
                 const bool current = i == userIndex;
                 drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 8, selected, 14);
+                overlayRects.push_back({x + 24, rowY, w - 48, rowH - 8, i});
 
                 const IconImage* avatar =
                     user.name == "Pokémon Saves" ? nullptr : &SystemIcons::userIcon(user.uid);
@@ -3734,6 +3791,7 @@ namespace UI {
                 const bool unavailableBackup =
                     i == 6 && title.sourceKind != SelectedSourceKind::SwitchTitle;
                 drawFocusedCard(fb, cx, cy, cardW, cardH, focused, 14);
+                overlayRects.push_back({cx, cy, cardW, cardH, i});
                 fb.drawText(cx + 20, cy + 14, labels[i],
                             focused ? Colors::SelectedText
                                     : unavailableBackup ? Colors::TextMuted
@@ -3777,6 +3835,7 @@ namespace UI {
                 const auto& entry = launchFileEntries[static_cast<size_t>(i)];
                 const bool selected = i == launchFileIndex;
                 drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 6, selected, 10);
+                overlayRects.push_back({x + 24, rowY, w - 48, rowH - 6, i});
                 fb.drawText(x + 44, rowY + 13,
                             entry.directory ? "[Folder]  " + entry.name : entry.name,
                             selected ? Colors::SelectedText : Colors::TextSecondary,
@@ -3808,6 +3867,11 @@ namespace UI {
             const int first = legacyInstanceScroll;
             drawSaveInstanceRows(fb, parent.legacyInstances, legacyInstanceIndex, first,
                                  x, y + 122, w, rowH, LEGACY_INSTANCE_VISIBLE_ROWS, true);
+            for (int i = first; i < std::min<int>(static_cast<int>(parent.legacyInstances.size()),
+                                                  first + LEGACY_INSTANCE_VISIBLE_ROWS); ++i) {
+                const int touchY = y + 122 + (i - first) * rowH;
+                overlayRects.push_back({x + 24, touchY, w - 48, rowH - 6, i});
+            }
             if (!legacyNotice.empty())
                 fb.drawText(x + 28, y + h - 38, legacyNotice, Colors::TextMuted,
                             TextStyle::Caption);
@@ -3833,6 +3897,7 @@ namespace UI {
                 const auto& entry = unassignedLegacySources[static_cast<size_t>(index)];
                 drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 6,
                                 index == legacyAssignmentIndex, 10);
+                overlayRects.push_back({x + 24, rowY, w - 48, rowH - 6, index});
                 fb.drawText(x + 44, rowY + 7, "Pokémon " + entry.title + " — " +
                             entry.instance.label,
                             index == legacyAssignmentIndex ? Colors::TextPrimary
@@ -3904,6 +3969,7 @@ namespace UI {
             int ry = y + 112;
             for (int i = 0; i < 4; ++i) {
                 drawFocusedCard(fb, x + 24, ry, w - 48, rowH - 8, i == gen4SetupIndex, 10);
+                overlayRects.push_back({x + 24, ry, w - 48, rowH - 8, i});
                 fb.drawText(x + 44, ry + 15, rows[i],
                             i == gen4SetupIndex ? Colors::TextPrimary : Colors::TextSecondary);
                 ry += rowH;
@@ -3929,6 +3995,11 @@ namespace UI {
             const int first = gen4CandidateScroll;
             drawSaveInstanceRows(fb, gen4Instances, gen4CandidateIndex, first,
                                  x, y + 108, w, rowH, visibleRows, false);
+            for (int i = first; i < std::min<int>(static_cast<int>(gen4Instances.size()),
+                                                  first + visibleRows); ++i) {
+                const int touchY = y + 108 + (i - first) * rowH;
+                overlayRects.push_back({x + 24, touchY, w - 48, rowH - 6, i});
+            }
             if (!gen4Notice.empty())
                 fb.drawText(x + 28, y + h - 34, gen4Notice, Colors::TextMuted, TextStyle::Caption);
             drawNavBar(fb, {{"D-pad/Stick", "Choose Save"}, {"A", "Open Read Only"},
@@ -3969,6 +4040,7 @@ namespace UI {
             int ry = y + 92;
             for (int i = 0; i < 3; ++i) {
                 drawFocusedCard(fb, x + 22, ry, w - 44, rowH - 8, i == optionsIndex, 12);
+                overlayRects.push_back({x + 22, ry, w - 44, rowH - 8, i});
                 fb.drawText(x + 44, ry + 15, rows[i],
                             i == optionsIndex ? Colors::TextPrimary : Colors::TextSecondary);
                 ry += rowH;

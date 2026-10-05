@@ -14,6 +14,7 @@
 #include "UI/ScreenChrome.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/TrainerViewScreen.h"
+#include "UI/TouchInput.h"
 #include "Utils/FileUtilities.h"
 #include "Utils/Keyboard.h"
 #include "Utils/PokeBankPaths.h"
@@ -590,9 +591,16 @@ bool refreshPresentation(TrainerViewScreen& screen) {
     return true;
 }
 
-bool handleInput(TrainerViewScreen& screen, uint64_t down) {
+bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch) {
     if (!isClassicSource(screen)) return false;
     auto& state = stateFor(screen);
+    const int touchId = screen.touchedButtonId(touch);
+    if ((state.pickerActive || state.optionsActive || state.reviewActive) &&
+        touch.justReleased() && touch.dragged()) {
+        const int dx = touch.deltaX(), dy = touch.deltaY();
+        const int ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;
+        if (ay >= 60 && ay > ax) down |= dy < 0 ? HidNpadButton_Down : HidNpadButton_Up;
+    }
 
     if (!state.presentationInitialized && refreshPresentation(screen)) {
         screen.captureInventorySourceBaseline();
@@ -631,6 +639,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
 
     if (state.pickerActive) {
         const int count = static_cast<int>(state.pickerItems.size());
+        if (touchId >= 0 && touchId < count) { state.pickerRow = touchId; down |= HidNpadButton_A; }
         if (count == 0) { state.pickerActive = false; return true; }
         if (down & HidNpadButton_Up) state.pickerRow = (state.pickerRow - 1 + count) % count;
         if (down & HidNpadButton_Down) state.pickerRow = (state.pickerRow + 1) % count;
@@ -652,6 +661,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
     if (state.reviewActive) {
         const auto lines = pendingLines(screen);
         const int count = static_cast<int>(lines.size());
+        if (touchId >= 0 && touchId < count) state.reviewRow = touchId;
         if (count > 0 && (down & HidNpadButton_Up)) state.reviewRow = (state.reviewRow - 1 + count) % count;
         if (count > 0 && (down & HidNpadButton_Down)) state.reviewRow = (state.reviewRow + 1) % count;
         if (down & HidNpadButton_B) {
@@ -663,6 +673,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
 
     if (state.optionsActive) {
         constexpr int optionCount = 4;
+        if (touchId >= 0 && touchId < optionCount) { state.optionsRow = touchId; down |= HidNpadButton_A; }
         if (down & HidNpadButton_Up) state.optionsRow = (state.optionsRow - 1 + optionCount) % optionCount;
         if (down & HidNpadButton_Down) state.optionsRow = (state.optionsRow + 1) % optionCount;
         if (down & HidNpadButton_B) { state.optionsActive = false; return true; }
@@ -882,6 +893,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         int rowY = y + 94;
         for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
             drawRow(fb, x + 30, rowY, width - 60, rows[static_cast<std::size_t>(i)], i == state.optionsRow);
+            screen.touchButtons.push_back({i, x + 30, rowY, width - 60, 48});
             rowY += 62;
         }
         drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Open"}, {"B", "Close"}});
@@ -902,6 +914,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             int rowY = y + 94;
             for (int i = start; i < std::min(count, start + visibleRows); ++i) {
                 drawRow(fb, x + 30, rowY, width - 60, lines[static_cast<std::size_t>(i)], i == state.reviewRow);
+                screen.touchButtons.push_back({i, x + 30, rowY, width - 60, 48});
                 rowY += 57;
             }
         }

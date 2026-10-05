@@ -233,6 +233,8 @@ namespace UI {
         std::vector<HitRect> userRects;
         std::vector<HitRect> dockRects;
         std::vector<HitRect> headerRects;
+        std::vector<HitRect> featureRects;
+        std::vector<HitRect> overlayRects;
 
         void activateHubDock();
         void activateGameWorkspace();

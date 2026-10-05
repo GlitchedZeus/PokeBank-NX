@@ -625,7 +625,9 @@ namespace UI {
         struct Seg { std::string btn, label; int glyphW, labelW; };
 
         // The footer drawn last owns both controller hints and direct-content hit geometry.
-        g_touchCardHits = g_touchCardAccum;
+        // Card activation belongs to the screen that owns the card. Never synthesize
+        // multi-frame D-pad walks from a touchscreen tap.
+        g_touchCardHits.clear();
         g_touchCardAccum.clear();
         g_touchGlyphHits = g_touchGlyphAccum;
         g_touchGlyphAccum.clear();
