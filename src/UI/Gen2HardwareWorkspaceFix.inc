@@ -1,6 +1,8 @@
-// Hardware-retest presentation/input adapter for the Generation II shared workspace.
+// Hardware-retest adapter for the Generation II shared workspace.
 // Keep the proven shared editor implementation underneath; normalize only the
 // hardware-visible focus/presentation regressions found on dc6bf22b.
+
+#include "UI/SharedPokemonShell.h"
 
 namespace UI::Gen2PokemonEditor {
 namespace {
@@ -76,12 +78,135 @@ void drawHardwareWorkspaceCorrections(TrainerViewScreen& screen, PKSEFramebuffer
     }
 }
 
+bool pointInRect(int px, int py, int x, int y, int w, int h) noexcept {
+    return px >= x && px < x + w && py >= y && py < y + h;
+}
+
+bool focusUnifiedTouchPoint(TrainerViewScreen& screen, int px, int py, bool activate,
+                            uint64_t& down) {
+    auto& state = stateFor(screen);
+    auto& unified = unifiedStateFor(screen);
+
+    // Child dialogs own the whole gesture while visible. Their rows map directly to the
+    // already-proven controller action path; release activation remains the only mutation point.
+    if (unified.moveEditor) {
+        constexpr int w = 650, h = 390, navH = 48;
+        const int x = (1280 - w) / 2;
+        const int y = (720 - navH - h) / 2;
+        for (int row = 0; row < 5; ++row) {
+            const int rowY = y + 88 + row * 48;
+            if (!pointInRect(px, py, x + 22, rowY, w - 44, 42)) continue;
+            unified.moveEditorRow = row;
+            if (activate) down |= HidNpadButton_A;
+            return true;
+        }
+        return true;
+    }
+    if (unified.progressionEditor) {
+        constexpr int x = 320, y = 168, w = 640;
+        for (int row = 0; row < 4; ++row) {
+            const int rowY = y + 96 + row * 48;
+            if (!pointInRect(px, py, x + 22, rowY - 5, w - 44, 40)) continue;
+            unified.progressionRow = row;
+            if (activate) down |= HidNpadButton_A;
+            return true;
+        }
+        return true;
+    }
+    if (state.itemPicker || state.confirmExit || pickerStateFor(screen).model.active()) return false;
+
+    // The final hardware surface is the SharedPokemonShell fullscreen layout, not the older
+    // centered workspace geometry. Hit-test exactly that 1280x720 Switch surface.
+    const SharedPokemonShell::Geometry geometry(1280, 720, kNavBarH);
+    const int contentY = geometry.y;
+    const int leftX = geometry.leftX, leftW = geometry.leftW;
+    const int midX = geometry.midX, midW = geometry.midW;
+    const int rightX = geometry.rightX, rightW = geometry.rightW;
+
+    const std::size_t detailCount = unified.crystal ? 13u : 9u;
+    const auto window = Unified::scrollWindow(detailCount, 8, unified.detailsFocus);
+    for (std::size_t i = 0; i < window.count; ++i) {
+        const int yy = contentY + 224 + static_cast<int>(i) * 38;
+        if (!pointInRect(px, py, leftX + 8, yy + 1, leftW - 36, 34)) continue;
+        const auto row = static_cast<uint8_t>(window.first + i);
+        unified.focus = {Unified::Panel::Details, row, 0};
+        unified.detailsFocus = Unified::detailsScrollFocus(unified.focus, unified.detailsFocus);
+        if (activate && state.mode != Mode::View) down |= HidNpadButton_A;
+        return true;
+    }
+
+    for (int row = 0; row < 5; ++row) {
+        const int yy = contentY + 70 + row * 34;
+        for (int col = 0; col < 2; ++col) {
+            if (row == 0 && col == 0) continue; // HP DV is derived/read-only.
+            Unified::Focus candidate{Unified::Panel::Values,
+                                     static_cast<uint8_t>(row),
+                                     static_cast<uint8_t>(col)};
+            const auto cell = Unified::cellFocus(candidate);
+            if (!pointInRect(px, py, midX + cell.x, yy - 5, cell.width, 28)) continue;
+            unified.focus = candidate;
+            if (activate && state.mode != Mode::View) down |= HidNpadButton_A;
+            return true;
+        }
+    }
+
+    const std::array<int, 2> capabilityY{contentY + 366, contentY + 408};
+    for (int i = 0; i < 2; ++i) {
+        if (!pointInRect(px, py, midX + 8, capabilityY[static_cast<std::size_t>(i)] - 5,
+                         midW - 16, 30)) continue;
+        unified.focus = {Unified::Panel::Values, static_cast<uint8_t>(5 + i), 0};
+        if (activate && state.mode != Mode::View) down |= HidNpadButton_A;
+        return true;
+    }
+
+    const auto moveCell = Unified::moveRowFocus(rightW);
+    for (int slot = 0; slot < 4; ++slot) {
+        const int yy = contentY + 62 + slot * 32;
+        if (!pointInRect(px, py, rightX + moveCell.x, yy - 5, moveCell.width, 28)) continue;
+        unified.focus = {Unified::Panel::Moves, static_cast<uint8_t>(slot), 0};
+        if (activate && state.mode != Mode::View) down |= HidNpadButton_A;
+        return true;
+    }
+    return false;
+}
+
+void handleUnifiedTouch(TrainerViewScreen& screen, const TouchInput& touch, uint64_t& down) {
+    auto& state = stateFor(screen);
+    auto& unified = unifiedStateFor(screen);
+    if (state.mode == Mode::None) return;
+    if (state.itemPicker || state.confirmExit || pickerStateFor(screen).model.active()) return;
+
+    if (touch.justTouchedDown())
+        focusUnifiedTouchPoint(screen, touch.x(), touch.y(), false, down);
+
+    // Once TouchInput classifies a gesture as a drag it can never become a tap again. Vertical
+    // drags beginning in DETAILS therefore browse/scroll without activating the row under release.
+    if (touch.justReleased() && touch.dragged() && !unified.moveEditor && !unified.progressionEditor) {
+        const SharedPokemonShell::Geometry geometry(1280, 720, kNavBarH);
+        if (pointInRect(touch.startX(), touch.startY(), geometry.leftX, geometry.y,
+                        geometry.leftW, geometry.h)) {
+            const int detailCount = unified.crystal ? 13 : 9;
+            const int steps = std::max(1, std::abs(touch.deltaY()) / 38);
+            const int direction = touch.deltaY() < 0 ? 1 : -1;
+            const int next = std::clamp(static_cast<int>(unified.focus.row) + direction * steps,
+                                        0, detailCount - 1);
+            unified.focus = {Unified::Panel::Details, static_cast<uint8_t>(next), 0};
+            unified.detailsFocus = Unified::detailsScrollFocus(unified.focus, unified.detailsFocus);
+        }
+        return;
+    }
+
+    if (touch.justTapped())
+        focusUnifiedTouchPoint(screen, touch.startX(), touch.startY(), true, down);
+}
+
 } // namespace
 
 bool handleUnifiedGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                                    int stickX, int stickY, const TouchInput& touch) {
     if (!isGSC(screen)) return false;
     if (stateFor(screen).mode != Mode::None) {
+        handleUnifiedTouch(screen, touch, down);
         normalizeHardwareMoveRowFocus(screen);
         normalizeHardwareDerivedHpDvFocus(screen);
         const auto previous = unifiedStateFor(screen).focus;
