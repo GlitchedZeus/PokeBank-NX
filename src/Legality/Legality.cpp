@@ -56,6 +56,7 @@
 #include "Legality/Gen4LeadReportingEvidence.h"
 #include "Legality/Gen34EggState.h"
 #include "Legality/Gen34EggMoveEvidence.h"
+#include "Legality/Gen34LanguageEvidence.h"
 #include "Legality/Gen4TransferEvidence.h"
 #include "Legality/Gen4ReleaseEvidence.h"
 #include "Legality/Gen4FormEvidence.h"
@@ -1347,8 +1348,21 @@ namespace Legality {
         // ---- L1: ball / language ranges (skip when unwired == 0) ----
         if (pk.ball() != 0 && pk.ball() > 37)
             add(r, Severity::Invalid, "Ball id out of range (" + std::to_string(pk.ball()) + ")");
-        if (pk.language() != 0 && (pk.language() > 10 || pk.language() == 6))
-            add(r, Severity::Invalid, "Invalid language id (" + std::to_string(pk.language()) + ")");
+
+        const uint8_t language = pk.language();
+        if (sourceProfile && (exactGeneration == 3 || exactGeneration == 4)) {
+            if (Gen34Language::isInvalid(exactGeneration, language)) {
+                add(r, Severity::Invalid,
+                    "Language id " + std::to_string(language) +
+                    " cannot exist in Generation " + std::to_string(exactGeneration),
+                    CheckIdentifier::Trainer);
+            }
+        } else if (language != 0 && (language > 10 || language == 6)) {
+            // Preserve the historical generic-format fallback where exact source identity
+            // is unavailable. Zero remains the project's unwired/unknown sentinel.
+            add(r, Severity::Invalid,
+                "Invalid language id (" + std::to_string(language) + ")");
+        }
 
         // ---- L2: level <-> EXP (EXP-derived level is authoritative; box mons read level() == 0) ----
         const uint8_t expLevel = Pokemon::getLevelFromExp(pk.exp(), Pokemon::getGrowthRate(species));
