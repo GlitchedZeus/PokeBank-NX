@@ -138,14 +138,10 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
     if (model.kind == Gen2Picker::Kind::Species) {
         const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
         const int speciesStart = std::clamp(model.speciesChoice() - 9 / 2, 1, 251 - 9 + 1);
-        const int liveOffset = overlay.scroll.offset();
-        for (int i = -1; i <= 9; ++i) {
-            const int species = speciesStart + i;
-            if (species < 1 || species > 251) continue;
-            screen.touchButtons.push_back({2000 + species,
-                                           modal.x + 20, modal.y + 84 + i * 43 + liveOffset,
+        for (int i = 0; i < 9; ++i)
+            screen.touchButtons.push_back({2000 + speciesStart + i,
+                                           modal.x + 20, modal.y + 84 + i * 43,
                                            560, 39});
-        }
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, model.speciesChoice(), 251, model.previewShiny,
             [](uint16_t species) {
@@ -248,11 +244,13 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     const int pickerCount = picker.model.kind == Gen2Picker::Kind::Species
         ? 251 : picker.model.kind == Gen2Picker::Kind::Location ? picker.model.locationCount() : 252;
     if (picker.model.kind == Gen2Picker::Kind::Species) {
-        // Shared species chrome is fixed at 1080x520 inside the 1280x720 Switch framebuffer.
-        constexpr int listX = (1280 - SharedSpeciesPicker::ModalWidth) / 2 + 20;
-        constexpr int listY = ((720 - SharedSpeciesPicker::NavBarHeight - SharedSpeciesPicker::ModalHeight) / 2) + 84;
-        picker.scroll.updateVertical(touch, listX, listY, 560, 9 * 43,
-                                     43, picker.model.index, pickerCount);
+        // The shared Species renderer follows the finger pixel-for-pixel while held. Commit the
+        // semantic preview cursor only on release so the gesture cannot accidentally activate A.
+        if (touch.justReleased() && touch.dragged()) {
+            const int dy = touch.deltaY();
+            const int steps = std::max(1, std::abs(dy) / 43);
+            picker.model.stepList(dy < 0 ? steps : -steps);
+        }
     } else {
         constexpr int panelH = 568;
         const int panelW = picker.model.kind == Gen2Picker::Kind::Move ? 1080 : 760;
