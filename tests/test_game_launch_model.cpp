@@ -15,6 +15,8 @@ int main() {
            "pokemonredversionusaeurope");
     assert(normalizedLaunchStem("sdmc:/roms/gb/Pok\xC3\xA9mon - Blue Version (USA, Europe).gb") ==
            "pokemonblueversionusaeurope");
+    assert(normalizedLaunchStem("sdmc:/roms/gb/archive.zip#Pok\xC3\xA9mon - Red Version (USA, Europe).gb") ==
+           "pokemonredversionusaeurope");
     assert(normalizedLaunchStem("Crystal") == "crystal");
     assert(normalizedLaunchStem(".sav").empty());
 
