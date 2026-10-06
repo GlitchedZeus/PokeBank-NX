@@ -6,6 +6,7 @@
 namespace UI {
     struct TouchGestureSnapshot {
         bool down = false;
+        bool released = false;
         bool dragged = false;
         int x = 0;
         int y = 0;
