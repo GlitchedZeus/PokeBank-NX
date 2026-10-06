@@ -1,0 +1,48 @@
+name: One-shot launch runtime repair 20261005
+
+on:
+  push:
+    branches:
+      - feature/gen4-full-editor-20260928
+    paths:
+      - '.github/workflows/one-shot-launch-runtime-repair-20261005.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact trigger commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 20
+          submodules: recursive
+
+      - name: Apply guarded runtime repair
+        run: |
+          set -euo pipefail
+          python3 tools/one_shot_launch_runtime_repair_20261005.py
+          git diff --check
+
+      - name: Focused launch tests
+        run: |
+          set -euo pipefail
+          make -f Makefile.host build-host/test_game_launch_model
+          ./build-host/test_game_launch_model
+          python3 tests/test_game_hub_contract.py
+
+      - name: Commit only repaired source and tests
+        run: |
+          set -euo pipefail
+          rm -f tools/one_shot_launch_runtime_repair_20261005.py
+          rm -f .github/workflows/one-shot-launch-runtime-repair-20261005.yml
+          git diff --check
+          git config user.name 'GlitchedZeus'
+          git config user.email 'user91746@protonmail.com'
+          git add -A
+          git commit -m 'fix(ui): restore stable emulator launch paths'
+          git push origin HEAD:feature/gen4-full-editor-20260928
