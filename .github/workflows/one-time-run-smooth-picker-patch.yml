@@ -22,7 +22,7 @@ jobs:
 
       - name: Guard exact parent
         env:
-          EXPECTED_PARENT: 9f6ed3893acab9a7d84bd48b3b2c8625192b5e15
+          EXPECTED_PARENT: fd9656bc2507785805684f03b6ff34b1a6221c10
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD^)" = "$EXPECTED_PARENT"
@@ -32,12 +32,13 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import textwrap
           src = Path('.github/workflows/one-time-smooth-picker-scroll-20261006.yml').read_text()
           marker = "          python3 - <<'PY'\n"
           start = src.index(marker) + len(marker)
           end = src.index("\n          PY\n", start)
-          Path('/tmp/smooth_picker_patch.py').write_text(textwrap.dedent(src[start:end]) + '\n')
+          lines = src[start:end].splitlines()
+          patch = '\n'.join(line[10:] if line.startswith('          ') else line for line in lines) + '\n'
+          Path('/tmp/smooth_picker_patch.py').write_text(patch)
           PY
           python3 /tmp/smooth_picker_patch.py
           git diff --check
