@@ -68,8 +68,8 @@ inline TouchListVisual liveHorizontalListVisual(int selected, int count, int ite
     if (!captured) return out;
 
     stride = std::max(1, stride);
-    const selectedUnit = selected / stride;
-    const selectedLane = selected % stride;
+    const int selectedUnit = selected / stride;
+    const int selectedLane = selected % stride;
     const int maxUnit = (count - 1) / stride;
     const int requestedUnits = touch.deltaX < 0
         ? (-touch.deltaX) / itemStep
