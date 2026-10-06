@@ -263,6 +263,59 @@ void drawGen2ClassicBoxFooter(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         drawNavBar(fb, {{"A", "Actions"}, {"X", "Add"}, {"L/R", "Box"}, {"B", "Back"}});
 }
 
+constexpr int kPartyTouchBase = 6200;
+
+bool basePartyTouchActive(const TrainerViewScreen& screen) noexcept {
+    return screen.detailViewActive && screen.selectedMode == TrainerViewScreen::ViewMode::Party &&
+        !screen.helpOverlayActive && !screen.details.active && !screen.actionSheet.isOpen() &&
+        !screen.saveConfirmActive && !screen.pickerActive && !screen.itemEditDialogActive &&
+        !screen.releaseConfirmActive && !screen.storageExitConfirmActive && !screen.groupMenuActive &&
+        !screen.carrying() && !screen.swapActive && !screen.currentlySelecting;
+}
+
+void publishBasePartyTouchTargets(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    if (!basePartyTouchActive(screen)) return;
+    constexpr int x = LEFT_PANEL_X;
+    constexpr int y = CONTENT_PANEL_Y;
+    constexpr int height = CONTENT_PANEL_HEIGHT;
+    constexpr int gutter = 16;
+    constexpr int slotGap = 12;
+    const int width = fb.getWidth() - x;
+    const int gridTop = y + 58;
+    const int colW = (width - 3 * gutter) / 2;
+    const int colX[2] = {x + gutter, x + gutter + colW + gutter};
+    const int slotH = (height - (gridTop - y) - 2 * slotGap - gutter) / 3;
+    for (int i = 0; i < 6; ++i) {
+        const int col = i >= 3 ? 1 : 0;
+        const int row = i >= 3 ? i - 3 : i;
+        screen.touchButtons.push_back({kPartyTouchBase + i, colX[col],
+                                       gridTop + row * (slotH + slotGap), colW, slotH});
+    }
+}
+
+bool handleBasePartyTouch(TrainerViewScreen& screen, const TouchInput& touch) {
+    if (!basePartyTouchActive(screen)) return false;
+    const int downId = screen.touchedButtonDownId(touch);
+    if (downId >= kPartyTouchBase && downId < kPartyTouchBase + 6) {
+        screen.selectedPartyIndex = downId - kPartyTouchBase;
+        return true;
+    }
+    const int tapId = screen.touchedButtonId(touch);
+    if (tapId >= kPartyTouchBase && tapId < kPartyTouchBase + 6) {
+        const int slot = tapId - kPartyTouchBase;
+        screen.selectedPartyIndex = slot;
+        if (slot >= 0 && slot < static_cast<int>(screen.trainer.party.size())) {
+            const auto* pokemon = screen.trainer.party[static_cast<std::size_t>(slot)].get();
+            if (pokemon && pokemon->speciesID() != 0) {
+                screen.openPokemonActionSheet({
+                    PokeVault::UIModel::PokemonLocation::Party, 0, slot});
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
 } // namespace
 
 void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
@@ -294,6 +347,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     }
 
     if (Gen1PokemonEditor::handleInputUX(*this, down, held, stick.x, stick.y, touch)) return;
+    if (handleBasePartyTouch(*this, touch)) return;
     updateGSCOverlay(pad, touch);
     clampSourceBoxSelection(*this);
 }
@@ -315,6 +369,7 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
 
     if (!Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this)) {
         drawGSCOverlay(fb);
+        publishBasePartyTouchTargets(*this, fb);
         drawGen2ClassicBoxFooter(*this, fb);
     }
 
