@@ -850,6 +850,7 @@ void ux2DrawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y
         const bool selected = static_cast<int>(i) == state.row;
         if (selected) fb.drawSelectionHighlight(x + 22, rowY, w - 44, 42);
         fb.drawText(x + 38, rowY + 10, names[idx], selected ? Colors::Text : Colors::TextDim);
+        screen.touchButtons.push_back({1000 + static_cast<int>(i), x + 22, rowY, w - 44, 42});
         rowY += 46;
     }
     fb.drawText(x + 24, y + h - 38, "Original source is immutable", Colors::Accent, TextStyle::Caption);
@@ -931,6 +932,7 @@ void ux2DrawSubEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int
     for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
         ux2DrawLogicalRow(fb, x + 22, rowY, w - 44, rows[static_cast<size_t>(i)].first,
                           rows[static_cast<size_t>(i)].second, i == state.subRow);
+        screen.touchButtons.push_back({1100 + i, x + 22, rowY, w - 44, 44});
         rowY += 48;
     }
 }
@@ -998,6 +1000,7 @@ void ux2DrawClone(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, 
         const bool selected = i == state.cloneSlot;
         if (selected) fb.drawSelectionHighlight(cx, cy, cellW - 8, cellH - 8);
         fb.drawRoundedRect(cx, cy, cellW - 8, cellH - 8, 8, i == writable ? Colors::Accent : Colors::Divider, 1);
+        screen.touchButtons.push_back({1200 + i, cx, cy, cellW - 8, cellH - 8});
         fb.drawText(cx + 8, cy + 8, (i < 9 ? "0" : "") + std::to_string(i + 1), Colors::TextDim, TextStyle::Caption);
         if (p) {
             fb.drawText(cx + 8, cy + 34, Names::getSpeciesName(p->species), Colors::Text, TextStyle::Caption);
@@ -1021,9 +1024,13 @@ void ux2DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         const int visible = std::max(1, (h - 150) / 48);
         const int start = std::clamp(state.reviewRow - visible / 2, 0, std::max(0, static_cast<int>(lines.size()) - visible));
         fb.setClipRect(x + 24, y + 72, w - 48, h - 130);
-        for (int i = 0; i < visible && start + i < static_cast<int>(lines.size()); ++i)
-            ux2DrawLogicalRow(fb, x + 24, y + 76 + i * 48, w - 48, std::to_string(start + i + 1),
-                              lines[static_cast<size_t>(start + i)], start + i == state.reviewRow);
+        for (int i = 0; i < visible && start + i < static_cast<int>(lines.size()); ++i) {
+            const int row = start + i;
+            const int rowY = y + 76 + i * 48;
+            ux2DrawLogicalRow(fb, x + 24, rowY, w - 48, std::to_string(row + 1),
+                              lines[static_cast<size_t>(row)], row == state.reviewRow);
+            screen.touchButtons.push_back({1300 + row, x + 24, rowY, w - 48, 44});
+        }
         fb.clearClip();
     }
     if (!state.lastExportDirectory.empty())

@@ -55,11 +55,15 @@ void drawOverlayUXCleanup2(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 [[nodiscard]] bool handleInputUXCleanup3(TrainerViewScreen& screen, uint64_t down);
 [[nodiscard]] bool handleInputUXCleanup3(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                                          int stickX, int stickY);
+[[nodiscard]] bool handleInputUXCleanup3(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                                         int stickX, int stickY, const TouchInput& touch);
 void drawOverlayUXCleanup3(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 [[nodiscard]] bool isGen1SourceUX(const TrainerViewScreen& screen) noexcept;
 [[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down);
 [[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                                  int stickX, int stickY);
+[[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                                 int stickX, int stickY, const TouchInput& touch);
 void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 } // namespace UI::Gen1PokemonEditor
 
@@ -235,7 +239,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     if (Gen2PokemonEditor::handlePickerInput(*this, down, held, stick.x, stick.y, touch)) return;
 
     if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPickerActive(*this)) {
-        if (Gen1PokemonEditor::handleInputUXCleanup3(*this, down, held, stick.x, stick.y)) return;
+        if (Gen1PokemonEditor::handleInputUXCleanup3(*this, down, held, stick.x, stick.y, touch)) return;
     }
 
     if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPassiveViewActive(*this)) {
@@ -243,7 +247,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
         return;
     }
 
-    if (Gen1PokemonEditor::handleInputUX(*this, down, held, stick.x, stick.y)) return;
+    if (Gen1PokemonEditor::handleInputUX(*this, down, held, stick.x, stick.y, touch)) return;
     updateGSCOverlay(pad, touch);
     clampSourceBoxSelection(*this);
 }

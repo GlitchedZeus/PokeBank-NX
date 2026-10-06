@@ -207,6 +207,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
         const int yy = contentY + 214 + i * 43;
         const bool selected = editable && foundation.focus.panel == Foundation::Panel::Identity && foundation.focus.row == i;
         drawClassicFocus(fb, leftX + 8, yy, leftW - 16, 38, selected);
+        if (editable) screen.touchButtons.push_back({5000 + i, leftX + 8, yy, leftW - 16, 38});
         fb.drawText(leftX + 18, yy + 7, leftLabels[static_cast<size_t>(i)],
                     selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(leftX + 108, yy + 7, leftValues[static_cast<size_t>(i)], Colors::Text, TextStyle::Caption);
@@ -238,6 +239,9 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
                                   foundation.focus.panel == Foundation::Panel::Values &&
                                   foundation.focus.row == r && foundation.focus.column == c;
             drawClassicFocus(fb, cellX, rowY, cellW - 4, 34, selected);
+            if (editable && Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r),
+                                                           static_cast<Foundation::ValueColumn>(c)))
+                screen.touchButtons.push_back({5100 + r * 10 + c, cellX, rowY, cellW - 4, 34});
             std::string value;
             if (c == 0) value = r == 0 ? std::to_string(Editor::derivedHPDV(dvs)) + " *" : std::to_string(dvs[static_cast<size_t>(r - 1)]);
             else if (c == 1) value = std::to_string(statExp[static_cast<size_t>(r)]);
@@ -250,6 +254,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     fb.drawText(gridX + 8, gridY + 244, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
     const bool shinySelected = editable && foundation.focus.panel == Foundation::Panel::Values && foundation.focus.row == 5;
     drawClassicFocus(fb, gridX, gridY + 276, midW - 20, 38, shinySelected);
+    if (editable) screen.touchButtons.push_back({5190, gridX, gridY + 276, midW - 20, 38});
     fb.drawText(gridX + 12, gridY + 286, "Shiny",
                 shinySelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
     fb.drawText(gridX + 130, gridY + 286, presentation.shiny ? "Yes" : "No",
@@ -269,6 +274,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
         const int rowY = contentY + 44 + i * 40;
         const bool selected = editable && foundation.focus.panel == Foundation::Panel::Moves && foundation.focus.row == i;
         drawClassicFocus(fb, rightX + 10, rowY, rightW - 20, 36, selected);
+        if (editable) screen.touchButtons.push_back({5200 + i, rightX + 10, rowY, rightW - 20, 36});
         const bool incompatible = !MoveCompatibility::canLearnMove(e->metadata().sourceGame, species, moves[static_cast<size_t>(i)]);
         std::string moveText = moves[static_cast<size_t>(i)] == 0 ? "Empty" : std::string(Names::getMoveName(moves[static_cast<size_t>(i)]));
         if (incompatible) moveText = "[!] " + moveText;
@@ -352,7 +358,7 @@ void drawFoundationPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const int w = state.picker == UX2Picker::Species ? 1080 : 760;
     constexpr int h = 520;
     ux3DrawPicker(screen, fb, (1280 - w) / 2, (672 - h) / 2, w, h);
-    drawFooter(fb, ux3FooterText(screen, state));
+    ux3DrawTouchNavBar(fb, state);
 }
 
 // Final Gen I presentation pass. The accepted editor still runs underneath, but this
