@@ -228,7 +228,8 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
 
     int touchDown = screen.touchedButtonDownId(touch);
     if (touchDown >= 2000) {
-        if (picker.model.kind == Gen2Picker::Kind::Species) picker.model.index = std::clamp(touchDown - 2000, 1, 251);
+        if (picker.model.kind == Gen2Picker::Kind::Species)
+            picker.model.index = std::clamp(touchDown - 2000, 1, 251) - 1;
         else {
             const int count = picker.model.kind == Gen2Picker::Kind::Location ? picker.model.locationCount() : 252;
             picker.model.index = std::clamp(touchDown - 2000, 0, std::max(0, count - 1));
@@ -236,7 +237,8 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     }
     int touchTap = screen.touchedButtonId(touch);
     if (touchTap >= 2000) {
-        if (picker.model.kind == Gen2Picker::Kind::Species) picker.model.index = std::clamp(touchTap - 2000, 1, 251);
+        if (picker.model.kind == Gen2Picker::Kind::Species)
+            picker.model.index = std::clamp(touchTap - 2000, 1, 251) - 1;
         else {
             const int count = picker.model.kind == Gen2Picker::Kind::Location ? picker.model.locationCount() : 252;
             picker.model.index = std::clamp(touchTap - 2000, 0, std::max(0, count - 1));
