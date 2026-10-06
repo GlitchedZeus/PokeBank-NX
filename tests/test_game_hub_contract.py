@@ -15,6 +15,7 @@ game_identity = (ROOT / "src/Games/GameIdentity.cpp").read_text(encoding="utf-8"
 trainer3_header = (ROOT / "include/Trainer/Trainer3FRLG.h").read_text(encoding="utf-8")
 trainer3_source = (ROOT / "src/Trainer/Trainer3FRLG.cpp").read_text(encoding="utf-8")
 save_reader = (ROOT / "src/Save/GetSaveFileContents.cpp").read_text(encoding="utf-8")
+sc_validation = (ROOT / "include/Save/SCReadValidation.h").read_text(encoding="utf-8")
 
 def require(cond: bool, message: str) -> None:
     if not cond:
@@ -102,6 +103,25 @@ require("fsdevCommitDevice" not in source,
 require("restoreBackupToTitle" not in source,
         "product-home preview must never restore/inject a save")
 require("PartyPreviewSlot" in header, "party preview model must remain explicit")
+require(source.count('"Current save party"') >= 3,
+        "every successfully parsed save family must present the Product Home party as the current save party")
+for developer_party_copy in (
+    '"Validated read-only source party"',
+    '"Remembered read-only source party"',
+    '"Party preview source no longer validates."',
+    '"Party preview source is stale."',
+):
+    require(developer_party_copy not in source,
+            f"Product Home PARTY must not expose internal source diagnostics: {developer_party_copy}")
+require('partyPreviewStatus = "Party preview unavailable.";' in source,
+        "native preview failures must stay product-facing instead of printing SC parser diagnostics in PARTY")
+require("SWSH_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error" in sc_validation,
+        "SWSH Current Box must validate its native one-byte SC value")
+require(sc_validation.count("GEN9_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error") == 2,
+        "SV and Z-A Current Box must validate their native one-byte SC values")
+require("SWSH_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error" not in sc_validation and
+        "GEN9_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error" not in sc_validation,
+        "Current Box preflight must not reject authentic saves by requiring a four-byte UInt32")
 
 # Product Home, not the retired dashboard, is the app root.
 require("const auto destination = handleSaveSelection();" in ui_manager,

@@ -1,35 +1,13 @@
-name: One-time focused party preview repair
+name: Disabled one-time Product Home freeze + party cleanup
+
+# Focused party-preview repair completed. Keep this file inert as an audit breadcrumb; future
+# hardware fixes must be narrow forward changes rather than replaying the old broad cleanup.
 
 on:
-  push:
-    branches:
-      - feature/gen4-full-editor-20260928
-    paths:
-      - .github/workflows/one-time-product-freeze-party-cleanup.yml
-
-permissions:
-  contents: write
+  workflow_dispatch:
 
 jobs:
-  repair:
+  disabled:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: feature/gen4-full-editor-20260928
-          fetch-depth: 2
-      - name: Apply guarded party preview repair
-        shell: bash
-        run: |
-          set -euo pipefail
-          git fetch origin feature/gen4-full-editor-20260928
-          test "$(git rev-parse origin/feature/gen4-full-editor-20260928)" = "$GITHUB_SHA"
-          test "$(git rev-parse HEAD^)" = "3087799225a607c716a65540ada843d11bb6a483"
-          python3 tools/one_time_party_preview_repair.py
-          python3 tests/test_game_hub_contract.py
-          git diff --check
-          git config user.name "PokeBank NX CI"
-          git config user.email "actions@users.noreply.github.com"
-          git add include/Save/SCReadValidation.h src/UI/SaveSelectScreen.cpp tests/test_game_hub_contract.py
-          git commit -m "fix(ui): show actual save parties on Product Home"
-          git push origin HEAD:feature/gen4-full-editor-20260928
+      - run: echo "Party-preview one-shot completed; helper disabled."
