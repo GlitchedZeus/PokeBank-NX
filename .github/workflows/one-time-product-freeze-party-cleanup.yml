@@ -1,14 +1,78 @@
-name: Disabled one-time Product Home freeze + party cleanup
-
-# This staging workflow intentionally does nothing. The broad cleanup it contained was rejected
-# after hardware feedback because it changed too much at once. Keep the file inert as an audit
-# breadcrumb; focused forward fixes are committed directly instead.
+name: One-time native classic box touch multi-select
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [feature/touch-controls-20261005]
+    paths:
+      - .github/workflows/one-time-product-freeze-party-cleanup.yml
+
+permissions:
+  contents: write
 
 jobs:
-  disabled:
+  patch:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
-      - run: echo "Broad Product Home cleanup disabled; use focused hardware fixes only."
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Guard exact touch head
+        run: |
+          set -euo pipefail
+          git fetch origin feature/touch-controls-20261005
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/feature/touch-controls-20261005)" = "$GITHUB_SHA"
+      - name: Add native touch rectangle selection
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/UI/ClassicPackedMoveOverlay.inc')
+          s = p.read_text()
+
+          def once(old, new, label):
+              global s
+              n = s.count(old)
+              if n != 1:
+                  raise SystemExit(f'{label}: expected 1 anchor, got {n}')
+              s = s.replace(old, new, 1)
+
+          once(
+          '''    bool selecting = false;\n    int selectionBox = 0;\n    int selectionAnchor = 0;\n    int selectionCursor = 0;\n''',
+          '''    bool selecting = false;\n    int selectionBox = 0;\n    int selectionAnchor = 0;\n    int selectionCursor = 0;\n\n    // Native touch multi-select. This is deliberately separate from the physical Y-hold state:\n    // a finger drag owns the grid directly and never synthesizes a held controller button.\n    bool touchArmed = false;\n    bool touchSelecting = false;\n''', 'carry state')
+
+          once(
+          '''    state.yPending = false;\n    state.yFrames = 0;\n    state.selecting = false;\n    screen.currentlySelecting = false;\n''',
+          '''    state.yPending = false;\n    state.yFrames = 0;\n    state.selecting = false;\n    state.touchArmed = false;\n    state.touchSelecting = false;\n    screen.currentlySelecting = false;\n''', 'selection reset')
+
+          once(
+          '''const TrainerViewScreen::TouchButton* selectedCell(TrainerViewScreen& screen) {\n    for (const auto& button : screen.touchButtons)\n        if (button.id == screen.selectedItemIndex) return &button;\n    return nullptr;\n}\n''',
+          '''const TrainerViewScreen::TouchButton* selectedCell(TrainerViewScreen& screen) {\n    for (const auto& button : screen.touchButtons)\n        if (button.id == screen.selectedItemIndex) return &button;\n    return nullptr;\n}\n\nint cellAtPoint(TrainerViewScreen& screen, int x, int y) {\n    const int capacity = classicCapacity(screen);\n    for (const auto& button : screen.touchButtons) {\n        if (button.id < 0 || button.id >= capacity) continue;\n        if (x >= button.x && x < button.x + button.w &&\n            y >= button.y && y < button.y + button.h) return button.id;\n    }\n    return -1;\n}\n''', 'cell hit helper')
+
+          once(
+          '''bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,\n                 int stickX, int stickY, const TouchInput& touch) {\n    auto& state = stateFor(screen);\n\n    if (state.active) {\n''',
+          '''bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,\n                 int stickX, int stickY, const TouchInput& touch) {\n    auto& state = stateFor(screen);\n\n    // Touch-native rectangle selection for classic packed boxes. A stationary release remains the\n    // ordinary single-cell tap handled by the base box/action path. Once drag slop is crossed, this\n    // layer owns the gesture: the rectangle follows the finger and release picks up the group.\n    // This gives touch full multi-select parity without faking a physical Y hold.\n    if (!state.active && !state.selecting && gridOwnsInput(screen)) {\n        if (down & HidNpadButton_B && state.touchArmed) {\n            screen.selectedBoxIndex = state.selectionBox;\n            screen.selectedItemIndex = state.selectionAnchor;\n            clearTransientSelection(screen, state);\n            screen.postStatus("Touch multi-select cancelled; staged boxes unchanged", 200);\n            return true;\n        }\n\n        if (touch.justTouchedDown()) {\n            const int cell = cellAtPoint(screen, touch.x(), touch.y());\n            if (cell >= 0) {\n                state.touchArmed = true;\n                state.touchSelecting = false;\n                state.selectionBox = screen.selectedBoxIndex;\n                state.selectionAnchor = cell;\n                state.selectionCursor = cell;\n            }\n        }\n\n        if (state.touchArmed && touch.isDown() && touch.dragged()) {\n            if (!state.touchSelecting)\n                screen.postStatus("Touch multi-select: drag the rectangle, release to pick up", 180);\n            state.touchSelecting = true;\n            screen.currentlySelecting = true;\n            screen.selectedBoxIndex = state.selectionBox;\n            const int cell = cellAtPoint(screen, touch.x(), touch.y());\n            if (cell >= 0) state.selectionCursor = cell;\n            screen.selectedItemIndex = state.selectionCursor;\n            return true;\n        }\n\n        if (state.touchArmed && touch.justReleased()) {\n            const bool commit = state.touchSelecting && touch.dragged();\n            state.touchArmed = false;\n            if (commit) {\n                state.touchSelecting = false;\n                screen.currentlySelecting = false;\n                screen.selectedBoxIndex = state.selectionBox;\n                screen.selectedItemIndex = state.selectionCursor;\n                return beginSelectedGroup(screen, state);\n            }\n            state.touchSelecting = false;\n            screen.currentlySelecting = false;\n            // A tap is intentionally not consumed; the normal cell/action-sheet path owns it.\n        }\n    }\n\n    if (state.active) {\n''', 'touch multi-select input')
+
+          once(
+          '''    if (state.selecting && gridOwnsInput(screen)) {\n''',
+          '''    if ((state.selecting || state.touchSelecting) && gridOwnsInput(screen)) {\n''', 'selection draw condition')
+
+          once(
+          '''        drawNavBar(fb, {{"Y", "Hold / Release Pick Up"}, {"D-pad/Stick", "Resize Selection"}, {"B", "Cancel"}});\n        return;\n''',
+          '''        if (state.touchSelecting)\n            drawNavBar(fb, {{"B", "Cancel"}});\n        else\n            drawNavBar(fb, {{"Y", "Hold / Release Pick Up"}, {"D-pad/Stick", "Resize Selection"}, {"B", "Cancel"}});\n        return;\n''', 'selection footer')
+
+          p.write_text(s)
+          PY
+          git diff --check
+          grep -q 'Touch-native rectangle selection' src/UI/ClassicPackedMoveOverlay.inc
+          grep -q 'cellAtPoint' src/UI/ClassicPackedMoveOverlay.inc
+      - name: Commit runtime change only
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/UI/ClassicPackedMoveOverlay.inc
+          git diff --cached --quiet && { echo 'No runtime touch changes'; exit 1; }
+          git commit -m 'feat(ui): add native touch drag multi-select to classic boxes'
+          git push origin HEAD:feature/touch-controls-20261005
