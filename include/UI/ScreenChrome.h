@@ -251,6 +251,15 @@ namespace UI {
     inline bool g_contentDragMoved = false;
     inline int g_contentDragLastX = 0;
     inline int g_contentDragLastY = 0;
+    inline int g_contentDragVisualX = 0;
+    inline int g_contentDragVisualY = 0;
+    inline int g_contentSwipeX = 0;
+    inline int g_contentSwipeY = kHeaderH;
+    inline int g_contentSwipeW = 0;
+    inline int g_contentSwipeH = 0;
+
+    inline int contentDragVisualX() noexcept { return g_contentDragActive ? g_contentDragVisualX : 0; }
+    inline int contentDragVisualY() noexcept { return g_contentDragActive ? g_contentDragVisualY : 0; }
 
     inline uint64_t navButtonFor(const std::string& btn) {
         if (btn == "A") return HidNpadButton_A;
@@ -284,20 +293,26 @@ namespace UI {
         return px >= x && px < x + w && py >= y && py < y + h;
     }
 
+    inline bool contentSwipeContains(int px, int py) noexcept {
+        return g_contentSwipeW > 0 && g_contentSwipeH > 0 &&
+               px >= g_contentSwipeX && px < g_contentSwipeX + g_contentSwipeW &&
+               py >= g_contentSwipeY && py < g_contentSwipeY + g_contentSwipeH;
+    }
+
     // Hit-test the badges captured during the PREVIOUS frame's draw. Footer buttons resolve on
-    // release, browser/list content can step live as the finger crosses row-sized distances, and a
-    // stationary tap on a visible card follows the same spatial navigation path before pressing A.
-    // Storage/editor surfaces are deliberately excluded from the generic card/swipe registry.
+    // release, browser/list content steps while the finger is moving, and a stationary tap on a
+    // visible card follows the same spatial navigation path before pressing A. Screen-owned editor
+    // and storage drag surfaces remain excluded from this generic registry.
     inline uint64_t navTouchButton(const TouchInput& touch) {
-        const bool startsInContent = g_contentSwipeMask != 0 && g_navContentBottom > 0 &&
-            touch.startX() >= g_navSurfaceX && touch.startX() < g_navSurfaceX + g_navSurfaceW &&
-            touch.startY() >= kHeaderH && touch.startY() < g_navContentBottom;
+        const bool startsInContent = g_contentSwipeMask != 0 && contentSwipeContains(touch.startX(), touch.startY());
 
         if (touch.justTouchedDown()) {
             g_contentDragActive = false;
             g_contentDragMoved = false;
             g_contentDragLastX = touch.x();
             g_contentDragLastY = touch.y();
+            g_contentDragVisualX = 0;
+            g_contentDragVisualY = 0;
 
             bool quickCloseEdge = false;
             if (g_quickGamesDrawerSwipe && g_navSurfaceW > 0) {
@@ -314,11 +329,16 @@ namespace UI {
         if (touch.isDown()) {
             if (!g_contentDragActive) return 0;
 
+            g_contentDragVisualX = touch.x() - touch.startX();
+            g_contentDragVisualY = touch.y() - touch.startY();
+
             const int dx = touch.x() - g_contentDragLastX;
             const int dy = touch.y() - g_contentDragLastY;
             const int ax = dx < 0 ? -dx : dx;
             const int ay = dy < 0 ? -dy : dy;
-            constexpr int kLiveDragStep = 52;
+            // Twenty-four physical pixels keeps focus tracking a finger instead of lagging by a
+            // whole card/row, while leaving actual pixel translation to screen-owned renderers.
+            constexpr int kLiveDragStep = 24;
 
             if (ax >= kLiveDragStep && ax * 3 >= ay * 4) {
                 const uint64_t direction = dx < 0 ? HidNpadButton_Right : HidNpadButton_Left;
@@ -346,6 +366,8 @@ namespace UI {
         const bool contentDragMoved = g_contentDragMoved;
         g_contentDragActive = false;
         g_contentDragMoved = false;
+        g_contentDragVisualX = 0;
+        g_contentDragVisualY = 0;
         if (contentDragMoved) return 0;
 
         if (!touch.dragged()) {
@@ -398,9 +420,8 @@ namespace UI {
 
         // A very fast flick can travel from touch-down to release between two rendered frames and
         // therefore never cross a live step while held. Keep one release-resolved fallback for that.
-        if (g_contentSwipeMask != 0 && g_navContentBottom > 0 && touch.dragged() &&
-            touch.startX() >= g_navSurfaceX && touch.startX() < g_navSurfaceX + g_navSurfaceW &&
-            touch.startY() >= kHeaderH && touch.startY() < g_navContentBottom) {
+        if (g_contentSwipeMask != 0 && touch.dragged() &&
+            contentSwipeContains(touch.startX(), touch.startY())) {
             const int dx = touch.x() - touch.startX();
             const int dy = touch.y() - touch.startY();
             const int ax = dx < 0 ? -dx : dx;
@@ -485,11 +506,29 @@ namespace UI {
         g_contentSwipeMask = 0;
         g_quickGamesDrawerSwipe = false;
         g_rightEdgeSwipeButton = 0;
+        g_contentSwipeX = x;
+        g_contentSwipeY = kHeaderH;
+        g_contentSwipeW = w;
+        g_contentSwipeH = std::max(0, g_navContentBottom - kHeaderH);
 
         const uint64_t allDirections = HidNpadButton_Up | HidNpadButton_Down |
                                        HidNpadButton_Left | HidNpadButton_Right;
         const uint64_t verticalDirections = HidNpadButton_Up | HidNpadButton_Down;
+        const uint64_t horizontalDirections = HidNpadButton_Left | HidNpadButton_Right;
 
+        // Product Home's selected-game hero card is a real touch carousel. Limit the horizontal
+        // swipe capture to that exact card so the feature cards and dock keep their own tap targets.
+        const bool productHomeHero =
+            hint.find("L/R: Change Game") != std::string::npos &&
+            hint.find("A: Open") != std::string::npos &&
+            hint.find("Y: Quick Games") != std::string::npos;
+        if (productHomeHero) {
+            g_contentSwipeMask = horizontalDirections;
+            g_contentSwipeX = 24;
+            g_contentSwipeY = 78;
+            g_contentSwipeW = 720;
+            g_contentSwipeH = 548;
+        }
 
         // Quick Games: three-column drawer with no competing content drag handler.
         if (hint.find("D-pad/Stick: Choose") != std::string::npos &&
