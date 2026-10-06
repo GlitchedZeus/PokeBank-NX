@@ -29,78 +29,57 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
 
-          def replace_once(path, old, new, label):
-              p=Path(path); s=p.read_text(); n=s.count(old)
+          p=Path('src/UI/ClassicReleaseActionFix.inc')
+          whole=p.read_text()
+          marker='namespace UI::Gen2PokemonEditor {'
+          if whole.count(marker) != 1: raise SystemExit('Gen II namespace boundary moved')
+          gen1, gen2 = whole.split(marker, 1)
+
+          def one(s, old, new, label):
+              n=s.count(old)
               if n != 1: raise SystemExit(f'{label}: expected 1 anchor, got {n}')
-              p.write_text(s.replace(old,new,1))
+              return s.replace(old,new,1)
 
-          path='src/UI/ClassicReleaseActionFix.inc'
-          p=Path(path); s=p.read_text()
+          signature='''bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,\n                              int stickX, int stickY) {\n'''
+          touch_signature='''bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,\n                              int stickX, int stickY, const TouchInput& touch) {\n'''
+          gen1=one(gen1,signature,touch_signature,'Gen I signature')
+          gen2=one(gen2,signature,touch_signature,'Gen II signature')
 
-          # Gen I handler: direct row focus on contact, activation on clean release.
-          old='''bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,\n                              int stickX, int stickY) {\n'''
-          new='''bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,\n                              int stickX, int stickY, const TouchInput& touch) {\n'''
-          if s.count(old)!=1: raise SystemExit('Gen I signature anchor')
-          s=s.replace(old,new,1)
+          gen1=one(gen1,
+          '''        const int rows = static_cast<int>(actions.count);\n        if (rows <= 0) return true;\n        if (nav & HidNpadButton_Up) state.row = (state.row + rows - 1) % rows;\n''',
+          '''        const int rows = static_cast<int>(actions.count);\n        if (rows <= 0) return true;\n        if (touch.justTouchedDown()) {\n            for (const auto& hit : screen.touchButtons) {\n                if (hit.id < 300 || hit.id >= 300 + rows) continue;\n                if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&\n                    touch.y() >= hit.y && touch.y() < hit.y + hit.h) {\n                    state.row = hit.id - 300;\n                    break;\n                }\n            }\n        }\n        const int touchedAction = screen.touchedButtonId(touch);\n        if (touchedAction >= 300 && touchedAction < 300 + rows) {\n            state.row = touchedAction - 300;\n            down |= HidNpadButton_A;\n        }\n        if (nav & HidNpadButton_Up) state.row = (state.row + rows - 1) % rows;\n''','Gen I action input')
+          gen1=one(gen1,
+          '''    if (state.mode == UX2Mode::RemoveConfirm) {\n        if (down & HidNpadButton_B) { state.mode = UX2Mode::Actions; state.row = 0; return true; }\n        if (down & HidNpadButton_A) ux2StageRemove(screen);\n''',
+          '''    if (state.mode == UX2Mode::RemoveConfirm) {\n        const int touched = screen.touchedButtonId(touch);\n        if (touched == 398) down |= HidNpadButton_B;\n        else if (touched == 399) down |= HidNpadButton_A;\n        if (down & HidNpadButton_B) { state.mode = UX2Mode::Actions; state.row = 0; return true; }\n        if (down & HidNpadButton_A) ux2StageRemove(screen);\n''','Gen I confirm input')
+          gen1=one(gen1,
+          '''        fb.drawText(x + 28, y + 126, "Original RetroArch .srm remains immutable and is never written.", Colors::Accent);\n        drawNavBar(fb, {{"A", "Confirm Release"}, {"B", "Cancel"}});\n''',
+          '''        fb.drawText(x + 28, y + 126, "Original RetroArch .srm remains immutable and is never written.", Colors::Accent);\n        const int bw = 190, bh = TouchTargetMin, by = y + h - bh - 18;\n        const int confirmX = x + w - bw - 22, cancelX = confirmX - bw - 16;\n        drawGlyphButton(fb, cancelX, by, bw, bh, "B", "Cancel");\n        screen.touchButtons.push_back({398, cancelX, by, bw, bh});\n        drawGlyphButton(fb, confirmX, by, bw, bh, "A", "Release");\n        screen.touchButtons.push_back({399, confirmX, by, bw, bh});\n        drawNavBar(fb, {{"A", "Confirm Release"}, {"B", "Cancel"}});\n''','Gen I confirm draw')
+          gen1=one(gen1,
+          '''        fb.drawText(x + 38, rowY + 10, releaseActionLabel(actions[i]),\n                    selected ? Colors::Text : Colors::TextDim);\n        rowY += 46;\n''',
+          '''        fb.drawText(x + 38, rowY + 10, releaseActionLabel(actions[i]),\n                    selected ? Colors::Text : Colors::TextDim);\n        screen.touchButtons.push_back({300 + static_cast<int>(i), x + 22, rowY, w - 44, 42});\n        rowY += 46;\n''','Gen I action rows')
 
-          old='''        const int rows = static_cast<int>(actions.count);\n        if (rows <= 0) return true;\n        if (nav & HidNpadButton_Up) state.row = (state.row + rows - 1) % rows;\n'''
-          new='''        const int rows = static_cast<int>(actions.count);\n        if (rows <= 0) return true;\n        if (touch.justTouchedDown()) {\n            for (const auto& hit : screen.touchButtons) {\n                if (hit.id < 300 || hit.id >= 300 + rows) continue;\n                if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&\n                    touch.y() >= hit.y && touch.y() < hit.y + hit.h) {\n                    state.row = hit.id - 300;\n                    break;\n                }\n            }\n        }\n        const int touchedAction = screen.touchedButtonId(touch);\n        if (touchedAction >= 300 && touchedAction < 300 + rows) {\n            state.row = touchedAction - 300;\n            down |= HidNpadButton_A;\n        }\n        if (nav & HidNpadButton_Up) state.row = (state.row + rows - 1) % rows;\n'''
-          if s.count(old)!=1: raise SystemExit('Gen I action input anchor')
-          s=s.replace(old,new,1)
+          gen2=one(gen2,
+          '''    if (confirm.active) {\n        if (down & HidNpadButton_B) {\n''',
+          '''    if (confirm.active) {\n        const int touched = screen.touchedButtonId(touch);\n        if (touched == 498) down |= HidNpadButton_B;\n        else if (touched == 499) down |= HidNpadButton_A;\n        if (down & HidNpadButton_B) {\n''','Gen II confirm input')
+          gen2=one(gen2,
+          '''    if (actions.count == 0) return true;\n\n    const uint64_t nav = screen.controllerNavigation.apply(\n''',
+          '''    if (actions.count == 0) return true;\n\n    if (touch.justTouchedDown()) {\n        for (const auto& hit : screen.touchButtons) {\n            if (hit.id < 500 || hit.id >= 500 + static_cast<int>(actions.count)) continue;\n            if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&\n                touch.y() >= hit.y && touch.y() < hit.y + hit.h) {\n                legacy.pokemonRow = hit.id - 500;\n                break;\n            }\n        }\n    }\n    const int touchedAction = screen.touchedButtonId(touch);\n    if (touchedAction >= 500 && touchedAction < 500 + static_cast<int>(actions.count)) {\n        legacy.pokemonRow = touchedAction - 500;\n        down |= HidNpadButton_A;\n    }\n\n    const uint64_t nav = screen.controllerNavigation.apply(\n''','Gen II action input')
+          gen2=one(gen2,
+          '''    screen.drawLegacyBase(fb);\n    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));\n''',
+          '''    screen.drawLegacyBase(fb);\n    screen.touchButtons.clear();\n    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));\n''','Gen II modal ownership')
+          gen2=one(gen2,
+          '''        fb.drawText(x + 28, y + 126, "Original RetroArch .srm remains immutable and is never written.", Colors::Accent);\n        drawNavBar(fb, {{"A", "Confirm Release"}, {"B", "Cancel"}});\n        return true;\n''',
+          '''        fb.drawText(x + 28, y + 126, "Original RetroArch .srm remains immutable and is never written.", Colors::Accent);\n        const int bw = 190, bh = TouchTargetMin, by = y + h - bh - 18;\n        const int confirmX = x + w - bw - 22, cancelX = confirmX - bw - 16;\n        drawGlyphButton(fb, cancelX, by, bw, bh, "B", "Cancel");\n        screen.touchButtons.push_back({498, cancelX, by, bw, bh});\n        drawGlyphButton(fb, confirmX, by, bw, bh, "A", "Release");\n        screen.touchButtons.push_back({499, confirmX, by, bw, bh});\n        drawNavBar(fb, {{"A", "Confirm Release"}, {"B", "Cancel"}});\n        return true;\n''','Gen II confirm draw')
+          gen2=one(gen2,
+          '''        fb.drawText(x + 38, rowY + 10, releaseActionLabel(actions[i]),\n                    selected ? Colors::Text : Colors::TextDim);\n        rowY += geometry.rowStep;\n''',
+          '''        fb.drawText(x + 38, rowY + 10, releaseActionLabel(actions[i]),\n                    selected ? Colors::Text : Colors::TextDim);\n        screen.touchButtons.push_back({500 + static_cast<int>(i), x + 22, rowY, w - 44, geometry.rowHeight});\n        rowY += geometry.rowStep;\n''','Gen II action rows')
 
-          old='''    if (state.mode == UX2Mode::RemoveConfirm) {\n        if (down & HidNpadButton_B) { state.mode = UX2Mode::Actions; state.row = 0; return true; }\n        if (down & HidNpadButton_A) ux2StageRemove(screen);\n'''
-          new='''    if (state.mode == UX2Mode::RemoveConfirm) {\n        const int touched = screen.touchedButtonId(touch);\n        if (touched == 398) down |= HidNpadButton_B;\n        else if (touched == 399) down |= HidNpadButton_A;\n        if (down & HidNpadButton_B) { state.mode = UX2Mode::Actions; state.row = 0; return true; }\n        if (down & HidNpadButton_A) ux2StageRemove(screen);\n'''
-          if s.count(old)!=1: raise SystemExit('Gen I confirm input anchor')
-          s=s.replace(old,new,1)
+          p.write_text(gen1 + marker + gen2)
 
-          old='''        fb.drawText(x + 28, y + 126, "Original RetroArch .srm remains immutable and is never written.", Colors::Accent);\n        drawNavBar(fb, {{"A", "Confirm Release"}, {"B", "Cancel"}});\n'''
-          new='''        fb.drawText(x + 28, y + 126, "Original RetroArch .srm remains immutable and is never written.", Colors::Accent);\n        const int bw = 190, bh = TouchTargetMin, by = y + h - bh - 18;\n        const int confirmX = x + w - bw - 22, cancelX = confirmX - bw - 16;\n        drawGlyphButton(fb, cancelX, by, bw, bh, "B", "Cancel", Colors::PanelAlt);\n        screen.touchButtons.push_back({398, cancelX, by, bw, bh});\n        drawGlyphButton(fb, confirmX, by, bw, bh, "A", "Release", Colors::Red, Colors::White);\n        screen.touchButtons.push_back({399, confirmX, by, bw, bh});\n        drawNavBar(fb, {{"A", "Confirm Release"}, {"B", "Cancel"}});\n'''
-          if s.count(old)!=1: raise SystemExit('Gen I confirm draw anchor')
-          s=s.replace(old,new,1)
-
-          old='''        fb.drawText(x + 38, rowY + 10, releaseActionLabel(actions[i]),\n                    selected ? Colors::Text : Colors::TextDim);\n        rowY += 46;\n'''
-          new='''        fb.drawText(x + 38, rowY + 10, releaseActionLabel(actions[i]),\n                    selected ? Colors::Text : Colors::TextDim);\n        screen.touchButtons.push_back({300 + static_cast<int>(i), x + 22, rowY, w - 44, 42});\n        rowY += 46;\n'''
-          if s.count(old)!=1: raise SystemExit('Gen I row draw anchor')
-          s=s.replace(old,new,1)
-
-          # Gen II handler gets the same direct action-row contract.
-          old='''bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,\n                              int stickX, int stickY) {\n'''
-          new='''bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,\n                              int stickX, int stickY, const TouchInput& touch) {\n'''
-          if s.count(old)!=1: raise SystemExit('Gen II signature anchor')
-          s=s.replace(old,new,1)
-
-          old='''    if (confirm.active) {\n        if (down & HidNpadButton_B) {\n'''
-          new='''    if (confirm.active) {\n        const int touched = screen.touchedButtonId(touch);\n        if (touched == 498) down |= HidNpadButton_B;\n        else if (touched == 499) down |= HidNpadButton_A;\n        if (down & HidNpadButton_B) {\n'''
-          if s.count(old)!=1: raise SystemExit('Gen II confirm input anchor')
-          s=s.replace(old,new,1)
-
-          old='''    if (actions.count == 0) return true;\n\n    const uint64_t nav = screen.controllerNavigation.apply(\n'''
-          new='''    if (actions.count == 0) return true;\n\n    if (touch.justTouchedDown()) {\n        for (const auto& hit : screen.touchButtons) {\n            if (hit.id < 500 || hit.id >= 500 + static_cast<int>(actions.count)) continue;\n            if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&\n                touch.y() >= hit.y && touch.y() < hit.y + hit.h) {\n                legacy.pokemonRow = hit.id - 500;\n                break;\n            }\n        }\n    }\n    const int touchedAction = screen.touchedButtonId(touch);\n    if (touchedAction >= 500 && touchedAction < 500 + static_cast<int>(actions.count)) {\n        legacy.pokemonRow = touchedAction - 500;\n        down |= HidNpadButton_A;\n    }\n\n    const uint64_t nav = screen.controllerNavigation.apply(\n'''
-          if s.count(old)!=1: raise SystemExit('Gen II action input anchor')
-          s=s.replace(old,new,1)
-
-          old='''    screen.drawLegacyBase(fb);\n    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));\n'''
-          new='''    screen.drawLegacyBase(fb);\n    screen.touchButtons.clear();\n    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));\n'''
-          if s.count(old)!=1: raise SystemExit('Gen II modal ownership anchor')
-          s=s.replace(old,new,1)
-
-          old='''        fb.drawText(x + 28, y + 126, "Original RetroArch .srm remains immutable and is never written.", Colors::Accent);\n        drawNavBar(fb, {{"A", "Confirm Release"}, {"B", "Cancel"}});\n        return true;\n'''
-          # The same text exists once in the remaining Gen II block after Gen I replacement above.
-          new='''        fb.drawText(x + 28, y + 126, "Original RetroArch .srm remains immutable and is never written.", Colors::Accent);\n        const int bw = 190, bh = TouchTargetMin, by = y + h - bh - 18;\n        const int confirmX = x + w - bw - 22, cancelX = confirmX - bw - 16;\n        drawGlyphButton(fb, cancelX, by, bw, bh, "B", "Cancel", Colors::PanelAlt);\n        screen.touchButtons.push_back({498, cancelX, by, bw, bh});\n        drawGlyphButton(fb, confirmX, by, bw, bh, "A", "Release", Colors::Red, Colors::White);\n        screen.touchButtons.push_back({499, confirmX, by, bw, bh});\n        drawNavBar(fb, {{"A", "Confirm Release"}, {"B", "Cancel"}});\n        return true;\n'''
-          if s.count(old)!=1: raise SystemExit('Gen II confirm draw anchor')
-          s=s.replace(old,new,1)
-
-          old='''        fb.drawText(x + 38, rowY + 10, releaseActionLabel(actions[i]),\n                    selected ? Colors::Text : Colors::TextDim);\n        rowY += geometry.rowStep;\n'''
-          new='''        fb.drawText(x + 38, rowY + 10, releaseActionLabel(actions[i]),\n                    selected ? Colors::Text : Colors::TextDim);\n        screen.touchButtons.push_back({500 + static_cast<int>(i), x + 22, rowY, w - 44, geometry.rowHeight});\n        rowY += geometry.rowStep;\n'''
-          if s.count(old)!=1: raise SystemExit('Gen II row draw anchor')
-          s=s.replace(old,new,1)
-          p.write_text(s)
-
-          # Composite dispatch passes the live touch gesture through to both classic action layers.
           p=Path('src/UI/TrainerViewScreenCompositeOverlay.cpp'); s=p.read_text()
           old='''    if (Gen1PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y)) return;\n    if (Gen2PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y)) return;\n'''
           new='''    if (Gen1PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y, touch)) return;\n    if (Gen2PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y, touch)) return;\n'''
-          if s.count(old)!=1: raise SystemExit('composite release dispatch anchor')
+          if s.count(old)!=1: raise SystemExit('composite dispatch anchor moved')
           p.write_text(s.replace(old,new,1))
           PY
           git diff --check
