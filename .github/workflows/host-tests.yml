@@ -49,7 +49,7 @@ jobs:
         run: |
           set -euo pipefail
           git show origin/feature/gen4-full-editor-20260928:.github/workflows/host-tests.yml > .github/workflows/host-tests.yml
-          git rm tools/touch_patch_tmp.py
+          git rm -f tools/touch_patch_tmp.py
           git diff --check
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
