@@ -26,6 +26,18 @@ jobs:
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
           git fetch origin feature/gen4-full-editor-20260928 feature/touch-controls-20261005
           test "$(git rev-parse origin/feature/touch-controls-20261005)" = "$EXPECTED_SHA"
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tools/touch_patch_tmp.py')
+          s = p.read_text()
+          old_anchor = "'''        const bool selected = foundation.focus.panel == Foundation::Panel::Moves && foundation.focus.row == i;\n        if (selected) fb.drawSelectionHighlight(rightX + 10, rowY, rightW - 20, 38);\n'''"
+          live_anchor = "'''        const bool selected = editable && foundation.focus.panel == Foundation::Panel::Moves && foundation.focus.row == i;\n        drawClassicFocus(fb, rightX + 10, rowY, rightW - 20, 36, selected);\n'''"
+          old_replacement = "'''        const bool selected = foundation.focus.panel == Foundation::Panel::Moves && foundation.focus.row == i;\n        if (selected) fb.drawSelectionHighlight(rightX + 10, rowY, rightW - 20, 38);\n        if (editable) screen.touchButtons.push_back({5200 + i, rightX + 10, rowY, rightW - 20, 38});\n'''"
+          live_replacement = "'''        const bool selected = editable && foundation.focus.panel == Foundation::Panel::Moves && foundation.focus.row == i;\n        drawClassicFocus(fb, rightX + 10, rowY, rightW - 20, 36, selected);\n        if (editable) screen.touchButtons.push_back({5200 + i, rightX + 10, rowY, rightW - 20, 36});\n'''"
+          if s.count(old_anchor) != 1 or s.count(old_replacement) != 1:
+              raise SystemExit('temporary Gen I move-row patch anchor changed unexpectedly')
+          p.write_text(s.replace(old_anchor, live_anchor, 1).replace(old_replacement, live_replacement, 1))
+          PY
           python3 tools/touch_patch_tmp.py
           git diff --check
           grep -q 'ux3DirectTouchInput' src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc
