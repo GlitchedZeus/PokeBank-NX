@@ -36,6 +36,28 @@ jobs:
           p.write_text(text.replace(old, new, 1), encoding='utf-8')
           PY
           python3 tools/one_shot_launch_runtime_repair_20261005.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tests/test_game_hub_contract.py')
+          text = p.read_text(encoding='utf-8')
+          source_line = 'source = (ROOT / "src/UI/SaveSelectScreen.cpp").read_text(encoding="utf-8")\n'
+          launcher_line = 'launcher_source = (ROOT / "src/UI/GameLauncher.cpp").read_text(encoding="utf-8")\n'
+          if launcher_line not in text:
+              if text.count(source_line) != 1:
+                  raise SystemExit('missing SaveSelect source anchor')
+              text = text.replace(source_line, source_line + launcher_line, 1)
+          old_scan = 'require("installedGameForwarderTitle(gameId)" not in source[source.find("if (kind == GameLaunchProviderKind::RetroArch)"):source.find("if (kind == GameLaunchProviderKind::MGBA")],'
+          new_scan = 'require("installedGameForwarderTitle(gameId)" not in launcher_source[launcher_source.find("if (kind == GameLaunchProviderKind::RetroArch)"):launcher_source.find("if (kind == GameLaunchProviderKind::MGBA")],'
+          if text.count(old_scan) != 1:
+              raise SystemExit(f'expected one RetroArch scan assertion, found {text.count(old_scan)}')
+          text = text.replace(old_scan, new_scan, 1)
+          old_archive = 'require("retroArchContentExists" in source and "retroArchPhysicalContentPath" in source,'
+          new_archive = 'require("retroArchContentExists" in launcher_source and "retroArchPhysicalContentPath" in launcher_source,'
+          if text.count(old_archive) != 1:
+              raise SystemExit(f'expected one archive assertion, found {text.count(old_archive)}')
+          text = text.replace(old_archive, new_archive, 1)
+          p.write_text(text, encoding='utf-8')
+          PY
           git diff --check
 
       - name: Focused launch tests
