@@ -442,7 +442,7 @@ void handlePokemonActionInput(TrainerViewScreen& screen, u64 down) {
     }
 }
 
-void handleStagedEditorInput(TrainerViewScreen& screen, u64 down) {
+void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInput& touch) {
     auto& state = editorOverlayState(screen);
     auto* editor = stagedEditor(screen);
     if (!editor) {
@@ -454,6 +454,21 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down) {
 
     if (state.review) {
         const int changeCount = static_cast<int>(editor->pendingChanges().size());
+        if (changeCount > 0 && touch.justTouchedDown()) {
+            for (const auto& hit : screen.touchButtons) {
+                if (hit.id < 900 || hit.id >= 900 + changeCount) continue;
+                if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
+                    touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
+                    state.reviewRow = hit.id - 900;
+                    break;
+                }
+            }
+        }
+        if (changeCount > 0 && touch.justReleased() && touch.dragged()) {
+            const int dy = touch.deltaY();
+            const int steps = std::max(1, std::abs(dy) / 42);
+            state.reviewRow = std::clamp(state.reviewRow + (dy < 0 ? steps : -steps), 0, changeCount - 1);
+        }
         if (changeCount > 0 && (down & HidNpadButton_Up))
             state.reviewRow = (state.reviewRow - 1 + changeCount) % changeCount;
         if (changeCount > 0 && (down & HidNpadButton_Down))
@@ -492,6 +507,27 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down) {
     }
 
     constexpr int rowCount = 4;
+    if (touch.justTouchedDown()) {
+        for (const auto& hit : screen.touchButtons) {
+            if (hit.id < 800 || hit.id >= 800 + rowCount) continue;
+            if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
+                touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
+                state.selectedRow = hit.id - 800;
+                break;
+            }
+        }
+    }
+    if (touch.justTapped()) {
+        for (const auto& hit : screen.touchButtons) {
+            if (hit.id < 800 || hit.id >= 800 + rowCount) continue;
+            if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
+                touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
+                state.selectedRow = hit.id - 800;
+                down |= HidNpadButton_A;
+                break;
+            }
+        }
+    }
     if (down & HidNpadButton_Up)
         state.selectedRow = (state.selectedRow - 1 + rowCount) % rowCount;
     if (down & HidNpadButton_Down)
@@ -564,6 +600,7 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto& state = editorOverlayState(screen);
     auto* editor = stagedEditor(screen);
     if (!state.active || !editor) return;
+    screen.touchButtons.clear();
 
     constexpr int w = 860;
     constexpr int h = 610;
@@ -684,15 +721,19 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             const int end = std::min(count, start + visible);
             for (int i = start; i < end; ++i) {
                 const auto& change = editor->pendingChanges()[static_cast<std::size_t>(i)];
+                const int rowTop = ry - 10;
+                if (i == state.reviewRow) fb.drawSelectionHighlight(x + 22, rowTop, w - 44, 48);
                 fb.drawText(x + 32, ry, change.label + ":", i == state.reviewRow ? Colors::Accent : Colors::TextDim, TextStyle::Body);
                 fb.drawText(x + 320, ry, change.beforeValue + "  ->  " + change.afterValue,
                             Colors::Text, TextStyle::Body);
+                screen.touchButtons.push_back({900 + i, x + 22, rowTop, w - 44, 48});
                 ry += 54;
             }
+            drawScrollbar(fb, x + w - 14, y + 100, std::min(visible, count) * 54,
+                          std::max(1, count * 54), start * 54);
         }
-        fb.drawText(x + 32, y + h - 74,
-                    "Up/Down Browse    A Export Edited Save    Y Discard Changes    B Back",
-                    Colors::Text, TextStyle::Body);
+        drawNavBar(fb, {{"Up/Down", "Browse"}, {"A", "Export Edited Save"},
+                        {"Y", "Discard Changes"}, {"B", "Back"}});
         if (!state.lastExportDirectory.empty())
             fb.drawText(x + 32, y + h - 42, "Last export: " + state.lastExportDirectory,
                         Colors::TextDim, TextStyle::Caption);
@@ -709,17 +750,17 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
         drawEditorRow(fb, x + 30, rowY, w - 60, rows[i].first, rows[i].second,
                       i == state.selectedRow);
+        screen.touchButtons.push_back({800 + i, x + 30, rowY, w - 60, 50});
         rowY += 57;
     }
-    fb.drawText(x + 32, y + h - 40,
-                "A Edit / Select    X Review    B Close (review required if changes are pending)",
-                Colors::TextDim, TextStyle::Caption);
+    drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Edit / Select"},
+                    {"X", "Review"}, {"B", "Close"}});
 }
 
 } // namespace
 
 void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
-    const u64 down = padGetButtonsDown(&pad);
+    const u64 down = padGetButtonsDown(&pad) | navTouchButton(touch);
     const u64 heldButtons = padGetButtons(&pad);
     const HidAnalogStickState stick = padGetStickPos(&pad, 0);
 
@@ -736,7 +777,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
                 down, heldButtons, stick.x, stick.y,
                 HidNpadButton_Up, HidNpadButton_Down,
                 HidNpadButton_Left, HidNpadButton_Right);
-            handleStagedEditorInput(*this, navigated);
+            handleStagedEditorInput(*this, navigated, touch);
             if (!overlay.active) controllerNavigation.reset();
             return;
         }
