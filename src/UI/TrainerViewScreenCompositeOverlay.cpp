@@ -232,8 +232,8 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
         ClassicPackedMove::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
     if (Gen4SharedEditorSurface::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
     if (Gen3SharedEditorSurface::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
-    if (Gen1PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y)) return;
-    if (Gen2PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y)) return;
+    if (Gen1PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y, touch)) return;
+    if (Gen2PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y, touch)) return;
 
     if (Gen2PokemonEditor::handleFinalGen2SurfaceInput(*this, down, held, stick.x, stick.y, touch)) return;
     if (Gen2PokemonEditor::handlePickerInput(*this, down, held, stick.x, stick.y, touch)) return;
