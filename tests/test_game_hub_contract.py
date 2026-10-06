@@ -3,6 +3,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 source = (ROOT / "src/UI/SaveSelectScreen.cpp").read_text(encoding="utf-8")
 launcher_source = (ROOT / "src/UI/GameLauncher.cpp").read_text(encoding="utf-8")
+launcher_header = (ROOT / "include/UI/GameLauncher.h").read_text(encoding="utf-8")
+main_source = (ROOT / "src/main.cpp").read_text(encoding="utf-8")
+root_makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+return_host_source = (ROOT / "runtime/return_host/source/main.c").read_text(encoding="utf-8")
+return_host_license = (ROOT / "runtime/return_host/LICENSE.nx-hbloader.txt").read_text(encoding="utf-8")
 header = (ROOT / "include/UI/SaveSelectScreen.h").read_text(encoding="utf-8")
 ui_manager = (ROOT / "src/UI/UI.cpp").read_text(encoding="utf-8")
 shell_source = (ROOT / "src/UI/AppShellScreen.cpp").read_text(encoding="utf-8")
@@ -164,6 +169,31 @@ require("result.launcherPath = defaultLauncherPath" in launcher,
         "stored launch metadata must not choose an arbitrary launcher NRO")
 require("result.corePath = defaultRetroArchCore" in launcher,
         "stored launch metadata must not choose an arbitrary RetroArch core")
+
+# RetroArch normal Quit must return through the PokeBank-owned host instead of falling to HOME.
+require("setGameLaunchReturnPath(std::string_view path)" in launcher_header and
+        "UI::setGameLaunchReturnPath(argv[0]);" in main_source and
+        "int main(int argc, char** argv)" in main_source,
+        "PokeBank must capture the exact currently running NRO as the emulator return target")
+retro_start = launcher_source.index("if (descriptor.backend == GameLaunchBackend::RetroArch)")
+retro_end = launcher_source.index("if (descriptor.backend == GameLaunchBackend::HomebrewNro)", retro_start)
+retro_launch = launcher_source[retro_start:retro_end]
+require("prepareRetroArchReturnHost" in retro_launch and
+        "envSetNextLoad(returnHostPath.c_str(), argv.c_str())" in retro_launch and
+        "envSetNextLoad(target.c_str(), argv.c_str())" not in retro_launch,
+        "RetroArch must chain through the bundled return host rather than exiting directly to the outer loader")
+require("RETURN_HOST_DIR := $(CURDIR)/runtime/return_host" in root_makefile and
+        "$(BUILD): return-host" in root_makefile and
+        "romfs/runtime/PokeBankReturnHost.nro" in root_makefile,
+        "the native build must package the exact return host inside PokeBank RomFS")
+require("EntryType_NextLoadPath" in return_host_source and
+        "nroEntrypointTrampoline" in return_host_source and
+        "envSetNextLoad(g_returnPath, returnArgv)" in return_host_source and
+        r"g_nextNroPath[0] == '\0'" in return_host_source,
+        "the return host must honor RetroArch child chaining and reload PokeBank only after normal final return")
+require("Copyright 2017-2018 nx-hbloader Authors" in return_host_license and
+        "Permission to use, copy, modify" in return_host_license,
+        "nx-hbloader-derived return-host code must retain its permissive upstream notice")
 require("familyPrefix" in launcher and "const StoredLaunchBinding* unique = nullptr;" in launcher and
         "if (unique) return false;" in launcher and "regularFile(stored.contentPath)" in launcher,
         "launch binding compatibility must recover exactly one valid old source identity and fail closed on ambiguity")
@@ -589,11 +619,10 @@ require("return beginLaunchLinkForCurrentTitle();" not in source and
         "Direct launch could not resolve this game's ROM" in source,
         "ZR Launch must never become an automatic ROM-file browser")
 require("const std::string& target = descriptor.corePath.empty()" in launcher and
-        "envSetNextLoad(target.c_str(), argv.c_str())" in launcher and
         "result.corePath = defaultRetroArchCore" in launcher and
         "result.launcherPath = result.corePath;" in launcher and
         'argv += " -L " + quoted(descriptor.corePath)' not in launcher,
-        "RetroArch games must use the stable direct core + ROM chain without frontend fallback")
+        "RetroArch games must preserve exact direct-core identity without frontend fallback")
 require("installedGameForwarderTitle" in launcher and
         '"Launch the installed HOME forwarder for this exact game."' in launcher,
         "emulator games must prefer an already-installed exact-game HOME forwarder")

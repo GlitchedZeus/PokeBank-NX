@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "Utils/PokeBankPaths.h"
+#include "Utils/FileUtilities.h"
 #include "Games/GameIdentity.h"
 
 #ifdef __SWITCH__
@@ -31,6 +32,9 @@ struct StoredLaunchBinding {
 
 using BindingMap = std::map<std::string, StoredLaunchBinding>;
 constexpr std::string_view kBindingHeader = "POKEBANK_GAME_LAUNCH_BINDINGS_V1\n";
+constexpr const char* kReturnHostRomfsPath = "romfs:/runtime/PokeBankReturnHost.nro";
+constexpr const char* kReturnHostFileName = "PokeBankReturnHost.nro";
+std::string g_gameLaunchReturnPath;
 
 bool regularFile(const std::string& path) {
     struct stat st{};
@@ -40,6 +44,27 @@ bool regularFile(const std::string& path) {
 bool directory(const std::string& path) {
     struct stat st{};
     return !path.empty() && ::stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+bool prepareRetroArchReturnHost(std::string& hostPath, std::string& error) {
+    if (g_gameLaunchReturnPath.empty() || !regularFile(g_gameLaunchReturnPath)) {
+        error = "PokeBank NX cannot prove its own NRO path for the RetroArch return handoff.";
+        return false;
+    }
+
+    const std::string runtimeDir = PokeBank::Paths::root() + "/runtime";
+    std::string pathError;
+    if (!PokeBank::Paths::ensureDirectoryTree(runtimeDir, &pathError)) {
+        error = pathError.empty() ? "Could not prepare the PokeBank runtime directory." : pathError;
+        return false;
+    }
+
+    hostPath = runtimeDir + "/" + kReturnHostFileName;
+    if (!Utils::copyFile(kReturnHostRomfsPath, hostPath.c_str()) || !regularFile(hostPath)) {
+        error = "Could not install the bundled RetroArch return host.";
+        return false;
+    }
+    return true;
 }
 
 std::string switchPath(std::string path) {
@@ -980,6 +1005,17 @@ std::string quoted(std::string_view value) {
 
 } // namespace
 
+void setGameLaunchReturnPath(std::string_view path) {
+#ifdef __SWITCH__
+    std::string candidate(path);
+    if (!candidate.empty() && candidate.front() == '/' && candidate.find(":/") == std::string::npos)
+        candidate = "sdmc:" + candidate;
+    g_gameLaunchReturnPath = regularFile(candidate) ? std::move(candidate) : std::string{};
+#else
+    (void)path;
+#endif
+}
+
 GameLaunchDescriptor resolveGameLaunch(uint64_t titleId,
                                        std::string_view gameId,
                                        std::string_view providerId,
@@ -1177,14 +1213,28 @@ bool requestGameLaunch(const GameLaunchDescriptor& descriptor, std::string& erro
             error = "The linked game ROM is missing.";
             return false;
         }
-        std::string argv = quoted(target);
+
+        // Stock RetroArch does not remember an arbitrary caller NRO for normal Quit. Chain through
+        // the tiny PokeBank-owned return host instead: it runs the exact same core + ROM, honors any
+        // child envSetNextLoad request, and reloads this exact PokeBank NRO only when RetroArch
+        // returns normally with no next child scheduled.
+        std::string returnHostPath;
+        if (!prepareRetroArchReturnHost(returnHostPath, error)) return false;
+
+        std::string argv = quoted(returnHostPath) + " " + quoted(g_gameLaunchReturnPath) +
+                           " " + quoted(target);
         if (descriptor.state != GameLaunchState::LauncherOnly &&
             !descriptor.contentPath.empty())
             argv += " " + quoted(descriptor.contentPath);
-        const Result rc = envSetNextLoad(target.c_str(), argv.c_str());
+        if (argv.size() >= 2000) {
+            error = "The RetroArch return handoff arguments are too long.";
+            return false;
+        }
+
+        const Result rc = envSetNextLoad(returnHostPath.c_str(), argv.c_str());
         if (R_FAILED(rc)) {
             char buf[96];
-            std::snprintf(buf, sizeof(buf), "RetroArch game launch failed (0x%08X).", static_cast<unsigned>(rc));
+            std::snprintf(buf, sizeof(buf), "RetroArch return-host launch failed (0x%08X).", static_cast<unsigned>(rc));
             error = buf;
             return false;
         }
