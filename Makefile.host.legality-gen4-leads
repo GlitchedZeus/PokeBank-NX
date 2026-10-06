@@ -8,6 +8,11 @@ GEN4_BCC_SYNC_FAILURE_SOURCES := tests/test_gen4_bcc_sync_failure_reroll.cpp
 GEN4_BCC_SYNC_FAILURE_HEADERS := include/Legality/Gen4BugContestSynchronizeFailureEvidence.h \
 	include/Legality/Gen4LeadFailureEvidence.h include/Legality/Gen4LeadEffectEvidence.h \
 	include/Legality/Gen4LeadFrameEvidence.h include/Legality/Gen4WildEncounter.h
+GEN4_BCC_SYNC_HISTORY_SOURCES := tests/test_gen4_bcc_sync_failure_history.cpp
+GEN4_BCC_SYNC_HISTORY_HEADERS := include/Legality/Gen4LeadHistoryEvidence.h \
+	include/Legality/Gen4BugContestSynchronizeFailureEvidence.h \
+	include/Legality/Gen4LeadFailureEvidence.h include/Legality/Gen4LeadEffectEvidence.h \
+	include/Legality/Gen4LeadFrameEvidence.h include/Legality/Gen4WildEncounter.h
 GEN4_STATIC_MAGNET_SOURCES := tests/test_gen4_static_magnet_lead_evidence.cpp
 GEN4_STATIC_MAGNET_HEADERS := include/Legality/Gen4StaticMagnetLeadEvidence.h \
 	include/Legality/Gen4LeadFailureEvidence.h include/Legality/Gen4LeadEffectEvidence.h \
@@ -18,6 +23,7 @@ GEN4_PRESSURE_LEAD_HEADERS := include/Legality/Gen4PressureLeadEvidence.h \
 	include/Legality/Gen4LeadFrameEvidence.h
 GEN4_LEAD_HISTORY_SOURCES := tests/test_gen4_lead_history_evidence.cpp
 GEN4_LEAD_HISTORY_HEADERS := include/Legality/Gen4LeadHistoryEvidence.h \
+	include/Legality/Gen4BugContestSynchronizeFailureEvidence.h \
 	include/Legality/Gen4PressureLeadEvidence.h include/Legality/Gen4StaticMagnetLeadEvidence.h \
 	include/Legality/Gen4LeadFailureEvidence.h include/Legality/Gen4LeadEffectEvidence.h \
 	include/Legality/Gen4LeadFrameEvidence.h include/Legality/Gen4WildRngCorrelation.h
@@ -31,6 +37,7 @@ GEN4_LEAD_REPORTING_HEADERS := include/Legality/Gen4LeadReportingEvidence.h \
 HOST_TESTS += $(HOST_BUILD)/test_gen4_lead_effect_evidence \
 	$(HOST_BUILD)/test_gen4_lead_failure_evidence \
 	$(HOST_BUILD)/test_gen4_bcc_sync_failure_reroll \
+	$(HOST_BUILD)/test_gen4_bcc_sync_failure_history \
 	$(HOST_BUILD)/test_gen4_static_magnet_lead_evidence \
 	$(HOST_BUILD)/test_gen4_pressure_lead_evidence \
 	$(HOST_BUILD)/test_gen4_lead_history_evidence \
@@ -39,6 +46,7 @@ HOST_TESTS += $(HOST_BUILD)/test_gen4_lead_effect_evidence \
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_lead_effect_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_lead_failure_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_bcc_sync_failure_reroll_sanitize \
+	$(HOST_BUILD)/test_gen4_bcc_sync_failure_history_sanitize \
 	$(HOST_BUILD)/test_gen4_static_magnet_lead_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_pressure_lead_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_lead_history_evidence_sanitize \
@@ -47,6 +55,7 @@ HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_lead_effect_evidence_sanitize \
 host-test: $(HOST_BUILD)/test_gen4_lead_effect_evidence \
 	$(HOST_BUILD)/test_gen4_lead_failure_evidence \
 	$(HOST_BUILD)/test_gen4_bcc_sync_failure_reroll \
+	$(HOST_BUILD)/test_gen4_bcc_sync_failure_history \
 	$(HOST_BUILD)/test_gen4_static_magnet_lead_evidence \
 	$(HOST_BUILD)/test_gen4_pressure_lead_evidence \
 	$(HOST_BUILD)/test_gen4_lead_history_evidence \
@@ -55,6 +64,7 @@ host-test: $(HOST_BUILD)/test_gen4_lead_effect_evidence \
 host-sanitize: $(HOST_BUILD)/test_gen4_lead_effect_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_lead_failure_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_bcc_sync_failure_reroll_sanitize \
+	$(HOST_BUILD)/test_gen4_bcc_sync_failure_history_sanitize \
 	$(HOST_BUILD)/test_gen4_static_magnet_lead_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_pressure_lead_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_lead_history_evidence_sanitize \
@@ -84,6 +94,14 @@ $(HOST_BUILD)/test_gen4_bcc_sync_failure_reroll: $(GEN4_BCC_SYNC_FAILURE_SOURCES
 $(HOST_BUILD)/test_gen4_bcc_sync_failure_reroll_sanitize: $(GEN4_BCC_SYNC_FAILURE_SOURCES) $(GEN4_BCC_SYNC_FAILURE_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_BCC_SYNC_FAILURE_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_bcc_sync_failure_history: $(GEN4_BCC_SYNC_HISTORY_SOURCES) $(GEN4_BCC_SYNC_HISTORY_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN4_BCC_SYNC_HISTORY_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_bcc_sync_failure_history_sanitize: $(GEN4_BCC_SYNC_HISTORY_SOURCES) $(GEN4_BCC_SYNC_HISTORY_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_BCC_SYNC_HISTORY_SOURCES) -o $@
 
 $(HOST_BUILD)/test_gen4_static_magnet_lead_evidence: $(GEN4_STATIC_MAGNET_SOURCES) $(GEN4_STATIC_MAGNET_HEADERS)
 	@mkdir -p $(HOST_BUILD)
