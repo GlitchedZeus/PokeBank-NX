@@ -56,6 +56,21 @@ jobs:
           if text.count(old_archive) != 1:
               raise SystemExit(f'expected one archive assertion, found {text.count(old_archive)}')
           text = text.replace(old_archive, new_archive, 1)
+          old_lifecycle = '''require('argv += " -L " + quoted(descriptor.corePath)' in launcher and
+        "envSetNextLoad(descriptor.launcherPath.c_str(), argv.c_str())" in launcher and
+        "result.launcherPath = defaultLauncherPath" in launcher and
+        "result.corePath = defaultRetroArchCore" in launcher and
+        "result.launcherPath = result.corePath;" not in launcher,
+        "RetroArch games must chain through the frontend with -L core and the ROM argument")'''
+          new_lifecycle = '''require("const std::string& target = descriptor.corePath.empty()" in launcher and
+        "envSetNextLoad(target.c_str(), argv.c_str())" in launcher and
+        "result.corePath = defaultRetroArchCore" in launcher and
+        "result.launcherPath = result.corePath;" in launcher and
+        'argv += " -L " + quoted(descriptor.corePath)' not in launcher,
+        "RetroArch games must use the stable direct core + ROM chain without frontend fallback")'''
+          if text.count(old_lifecycle) != 1:
+              raise SystemExit(f'expected one stale RetroArch lifecycle contract, found {text.count(old_lifecycle)}')
+          text = text.replace(old_lifecycle, new_lifecycle, 1)
           p.write_text(text, encoding='utf-8')
           PY
           git diff --check
