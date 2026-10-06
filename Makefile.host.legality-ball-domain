@@ -14,3 +14,26 @@ $(HOST_BUILD)/test_gen34_ball_domain_evidence: $(GEN34_BALL_DOMAIN_SOURCES) $(GE
 $(HOST_BUILD)/test_gen34_ball_domain_evidence_sanitize: $(GEN34_BALL_DOMAIN_SOURCES) $(GEN34_BALL_DOMAIN_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN34_BALL_DOMAIN_SOURCES) -o $@
+
+# Production analyzer regression. Reuse the established legality implementation graph,
+# then add the real PK4 read-only/view + encryption path for the Gen IV 24/25 boundary.
+GEN34_BALL_ANALYZER_SOURCES := tests/test_gen34_ball_domain_analyzer.cpp \
+	$(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES)) \
+	src/Pokemon/Pokemon4ReadOnly.cpp src/Pokemon/Pokemon4ReadOnlyView.cpp \
+	src/Encryption/Encryption4.cpp
+GEN34_BALL_ANALYZER_HEADERS := include/Legality/Gen34BallDomainEvidence.h \
+	include/Pokemon/Pokemon4ReadOnly.h include/Pokemon/Pokemon4ReadOnlyView.h \
+	include/Encryption/Encryption4.h
+
+HOST_TESTS += $(HOST_BUILD)/test_gen34_ball_domain_analyzer
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_ball_domain_analyzer_sanitize
+host-test: $(HOST_BUILD)/test_gen34_ball_domain_analyzer
+host-sanitize: $(HOST_BUILD)/test_gen34_ball_domain_analyzer_sanitize
+
+$(HOST_BUILD)/test_gen34_ball_domain_analyzer: $(GEN34_BALL_ANALYZER_SOURCES) $(GEN34_BALL_ANALYZER_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(GEN34_BALL_ANALYZER_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen34_ball_domain_analyzer_sanitize: $(GEN34_BALL_ANALYZER_SOURCES) $(GEN34_BALL_ANALYZER_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GEN34_BALL_ANALYZER_SOURCES) -o $@
