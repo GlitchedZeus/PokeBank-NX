@@ -7,6 +7,87 @@
 
 namespace UI {
 
+struct TouchListVisual {
+    int index = 0;
+    int offset = 0;
+    bool tracking = false;
+};
+
+// Draw-time direct manipulation for preserved screens whose semantic/controller cursor still lands
+// on release. While the finger is down, calculate the virtual row/cell and keep the sub-row pixel
+// remainder so content stays physically attached to the finger instead of waiting for release.
+// `stride` is 1 for a normal list and the column count for a vertically scrolling grid.
+inline TouchListVisual liveVerticalListVisual(int selected, int count, int rowStep,
+                                              int x, int y, int w, int h,
+                                              int stride = 1) noexcept {
+    TouchListVisual out{std::max(0, selected), 0, false};
+    if (count <= 0 || rowStep <= 0 || w <= 0 || h <= 0) return out;
+    selected = std::clamp(selected, 0, count - 1);
+    out.index = selected;
+
+    const auto& touch = latestTouchGesture();
+    const bool captured = touch.down &&
+        touch.startX >= x && touch.startX < x + w &&
+        touch.startY >= y && touch.startY < y + h;
+    if (!captured) return out;
+
+    stride = std::max(1, stride);
+    const int selectedUnit = selected / stride;
+    const int selectedColumn = selected % stride;
+    const int maxUnit = (count - 1) / stride;
+    const int requestedUnits = touch.deltaY < 0
+        ? (-touch.deltaY) / rowStep
+        : -(touch.deltaY / rowStep);
+    const int visualUnit = std::clamp(selectedUnit + requestedUnits, 0, maxUnit);
+    out.index = std::min(count - 1, visualUnit * stride + selectedColumn);
+    const int appliedUnits = visualUnit - selectedUnit;
+    out.offset = touch.deltaY + appliedUnits * rowStep;
+    out.tracking = true;
+
+    // Rubber-band the ends without ever disconnecting the content from the finger.
+    const int edge = std::max(8, rowStep / 2);
+    if (visualUnit == 0 && out.offset > edge)
+        out.offset = edge + (out.offset - edge) / 4;
+    if (visualUnit == maxUnit && out.offset < -edge)
+        out.offset = -edge + (out.offset + edge) / 4;
+    return out;
+}
+
+inline TouchListVisual liveHorizontalListVisual(int selected, int count, int itemStep,
+                                                int x, int y, int w, int h,
+                                                int stride = 1) noexcept {
+    TouchListVisual out{std::max(0, selected), 0, false};
+    if (count <= 0 || itemStep <= 0 || w <= 0 || h <= 0) return out;
+    selected = std::clamp(selected, 0, count - 1);
+    out.index = selected;
+
+    const auto& touch = latestTouchGesture();
+    const bool captured = touch.down &&
+        touch.startX >= x && touch.startX < x + w &&
+        touch.startY >= y && touch.startY < y + h;
+    if (!captured) return out;
+
+    stride = std::max(1, stride);
+    const selectedUnit = selected / stride;
+    const selectedLane = selected % stride;
+    const int maxUnit = (count - 1) / stride;
+    const int requestedUnits = touch.deltaX < 0
+        ? (-touch.deltaX) / itemStep
+        : -(touch.deltaX / itemStep);
+    const int visualUnit = std::clamp(selectedUnit + requestedUnits, 0, maxUnit);
+    out.index = std::min(count - 1, visualUnit * stride + selectedLane);
+    const int appliedUnits = visualUnit - selectedUnit;
+    out.offset = touch.deltaX + appliedUnits * itemStep;
+    out.tracking = true;
+
+    const int edge = std::max(8, itemStep / 2);
+    if (visualUnit == 0 && out.offset > edge)
+        out.offset = edge + (out.offset - edge) / 4;
+    if (visualUnit == maxUnit && out.offset < -edge)
+        out.offset = -edge + (out.offset + edge) / 4;
+    return out;
+}
+
 // Pixel-first touch scrolling for controller-oriented lists.
 //
 // The selection index remains the semantic/controller cursor, but the visible content carries a
