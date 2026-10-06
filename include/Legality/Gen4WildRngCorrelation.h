@@ -3,6 +3,9 @@
 #include "Legality/Gen3PidIvCorrelation.h"
 #include "Legality/Gen4WildEncounter.h"
 #include "Legality/Gen4LeadHistoryEvidence.h"
+#include "Legality/Gen4BugContestNoLeadEvidence.h"
+#include "Legality/Gen4BugContestSynchronizeEvidence.h"
+#include "Legality/Gen4SafariNoLeadEvidence.h"
 
 #include <cstdint>
 #include <string_view>
@@ -522,6 +525,59 @@ constexpr Result matchSynchronizeRow(bool hgss, uint64_t row,
     return {};
 }
 
+constexpr Result matchAcceptedNoLeadRerollRow(bool hgss, uint64_t row,
+                                               uint32_t prePidSeed,
+                                               uint32_t pid,
+                                               uint8_t metLevel) noexcept {
+    if (!hgss)
+        return {};
+
+    const uint8_t type = Gen4Wild::method(row);
+    if (Gen4LeadFrame::isBugContest(type)) {
+        const auto evidence = Gen4BugContestNoLead::match(
+            row, prePidSeed, pid, metLevel);
+        if (evidence.matched())
+            return {Method::MethodKBugContestNoLead,
+                    prePidSeed, evidence.slot};
+        return {};
+    }
+
+    if (!Gen4LeadFrame::isSafari(type))
+        return {};
+
+    const auto evidence = Gen4SafariNoLead::match(
+        row, prePidSeed, pid, metLevel);
+    if (!evidence.matched())
+        return {};
+
+    const Method method = Gen4LeadFrame::isSafariFishing(type)
+        ? (evidence.suctionCups
+            ? Method::MethodKSafariFishingSuctionCups
+            : Method::MethodKSafariFishingNoLead)
+        : Method::MethodKSafariNoLead;
+    return {method, prePidSeed, evidence.slot};
+}
+
+constexpr Result matchAcceptedMinimum31RerollRow(bool hgss, uint64_t row,
+                                                  uint32_t prePidSeed,
+                                                  uint32_t pid,
+                                                  uint8_t metLevel) noexcept {
+    if (const auto noLead = matchAcceptedNoLeadRerollRow(
+            hgss, row, prePidSeed, pid, metLevel);
+        noLead.matched())
+        return noLead;
+
+    if (!hgss || !Gen4LeadFrame::isBugContest(Gen4Wild::method(row)))
+        return {};
+
+    const auto sync = Gen4BugContestSynchronize::match(
+        row, prePidSeed, pid, metLevel);
+    if (!sync.matched())
+        return {};
+
+    return {Method::MethodKSynchronize, prePidSeed, sync.slot};
+}
+
 inline Result analyzeNoLead(std::string_view exactGameId, uint16_t speciesId,
                             uint16_t metLocation, uint8_t metLevel,
                             uint8_t pokemonForm, uint32_t id32,
@@ -550,6 +606,11 @@ inline Result analyzeNoLead(std::string_view exactGameId, uint16_t speciesId,
             hgss, row, prePidSeed, pid, metLevel);
         if (result.matched())
             return result;
+
+        const auto reroll = matchAcceptedNoLeadRerollRow(
+            hgss, row, prePidSeed, pid, metLevel);
+        if (reroll.matched())
+            return reroll;
     }
     return {};
 }
@@ -591,6 +652,11 @@ inline Result analyzeSupported(std::string_view exactGameId,
                 matchSynchronizeRow(hgss, row, prePidSeed, pid, metLevel);
             sync.matched())
             return sync;
+
+        if (const auto reroll = matchAcceptedMinimum31RerollRow(
+                hgss, row, prePidSeed, pid, metLevel);
+            reroll.matched())
+            return reroll;
     }
 
     const auto extended = Gen4LeadHistory::analyzeSupported(
