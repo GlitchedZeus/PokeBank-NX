@@ -80,4 +80,14 @@ require(packed, "src/UI/ClassicPackedMoveOverlay.inc",
         "touch.isDown() && touch.dragged()",
         "state.touchArmed && touch.justReleased()")
 
+# Modal glyph buttons (Back/Discard/Save, Release/Cancel, transfer confirms, etc.) are not
+# decoration. drawGlyphButton must publish its exact rectangle immediately so a button drawn after
+# the footer is still directly tappable on the next input frame through navTouchButton().
+chrome = read("include/UI/ScreenChrome.h")
+require(chrome, "include/UI/ScreenChrome.h",
+        "const TouchGlyphHit hit{bx, by, bw, bh, glyph};",
+        "g_touchGlyphAccum.push_back(hit);",
+        "g_touchGlyphHits.push_back(hit);",
+        "inline uint64_t navTouchButton(const TouchInput& touch)")
+
 print("touch modal/list contract: PASS")
