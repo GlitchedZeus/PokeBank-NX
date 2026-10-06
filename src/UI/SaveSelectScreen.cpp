@@ -68,6 +68,15 @@ namespace UI {
             return std::string(raw);
         }
 
+        // HOME forwarders are launch identities, not native Pokemon save containers. Keep the
+        // installed Switch title ID for ZR launch, but bind preview/open to the real GBA battery
+        // save assigned to the same profile.
+        std::string_view legacySaveGameIdForForwarder(std::string_view gameId) noexcept {
+            if (gameId == "firered_switch") return "firered_gba";
+            if (gameId == "leafgreen_switch") return "leafgreen_gba";
+            return {};
+        }
+
         int gamePlatformSortKey(std::string_view id) noexcept {
             if (const auto* game = PokeVault::Games::findGame(id)) {
                 using PokeVault::Games::Platform;
@@ -799,6 +808,27 @@ namespace UI {
                 ? PokeVault::Legacy::buildFRLGSourceCardsForProfile(
                     legacySources, *legacyBindings, profileIdentity(user.uid))
                 : std::vector<PokeVault::Legacy::FRLGSourceCard>{};
+
+            // An installed FireRed/LeafGreen HOME forwarder can have its own Switch savedata,
+            // but that savedata belongs to the forwarder and is not the GBA cartridge save.
+            // Attach the profile's validated GBA source to the installed card while retaining its
+            // titleId so launch still targets the installed HOME application.
+            for (auto& installed : user.titles) {
+                if (installed.sourceKind != SelectedSourceKind::SwitchTitle) continue;
+                const std::string_view saveGameId = legacySaveGameIdForForwarder(installed.gameId);
+                if (saveGameId.empty()) continue;
+                const auto card = std::find_if(cards.begin(), cards.end(), [&](const auto& candidate) {
+                    return candidate.gameId == saveGameId;
+                });
+                if (card == cards.end()) continue;
+                installed.legacyInstances = card->instances;
+                installed.sourceLabel = card->sourceLabel;
+                installed.locationLabel = std::to_string(card->instances.size()) +
+                    (card->instances.size() == 1 ? " SAVE" : " SAVES");
+                if (card->instances.size() == 1)
+                    installed.trainerName = card->instances.front().trainerName;
+            }
+
             user.titles.reserve(user.titles.size() + cards.size());
             for (const auto& card : cards) {
                 TitleEntry entry;
@@ -1409,6 +1439,39 @@ namespace UI {
             partyPreview[index].name = speciesName ? speciesName : "Unknown";
         };
 
+        const std::string_view forwarderSaveGameId = legacySaveGameIdForForwarder(title.gameId);
+        if (title.sourceKind == SelectedSourceKind::SwitchTitle && !forwarderSaveGameId.empty()) {
+            if (title.legacyInstances.size() != 1 || !legacyCatalog) {
+                partyPreviewStatus = "Party preview unavailable.";
+                return;
+            }
+            const auto& instance = title.legacyInstances.front();
+            if (instance.sourceIndex >= legacyCatalog->sources.size()) {
+                partyPreviewStatus = "Party preview unavailable.";
+                return;
+            }
+            const auto& source = legacyCatalog->sources[instance.sourceIndex];
+            if (!source.ready() || source.gameId != forwarderSaveGameId ||
+                !source.isGen3() || !source.save) {
+                partyPreviewStatus = "Party preview unavailable.";
+                return;
+            }
+            previewTrainerName = instance.trainerName;
+            previewTrainerGender = source.save->trainer().gender;
+            previewTrainerGenderKnown = true;
+            const auto dex = source.save->dexProgress();
+            previewDexSeen = dex.seen;
+            previewDexCaught = dex.caught;
+            previewDexTotal = dex.total;
+            const auto party = source.save->party();
+            for (size_t i = 0; i < std::min(party.size(), partyPreview.size()); ++i)
+                addParty(i, party[i].species, 0, 0, false);
+            partyPreviewStatus = std::any_of(partyPreview.begin(), partyPreview.end(),
+                    [](const auto& slot) { return slot.species != 0; })
+                ? "Current save party" : "No active party Pokémon.";
+            return;
+        }
+
         if (title.sourceKind == SelectedSourceKind::SwitchTitle && title.titleId != 0) {
             const Result mount = fsdevMountSaveData("pbpreview", title.titleId, user->uid);
             if (R_FAILED(mount)) {
@@ -1987,6 +2050,45 @@ namespace UI {
         const std::string selectedGameId = selected.gameId;
         const std::string profile = currentProfileIdentity();
 
+        const std::string_view forwarderSaveGameId = legacySaveGameIdForForwarder(selectedGameId);
+        if (selected.sourceKind == SelectedSourceKind::SwitchTitle && !forwarderSaveGameId.empty()) {
+            if (!legacyCatalog || selected.legacyInstances.empty()) {
+                hubNotice = "Link the matching GBA save before opening this forwarder.";
+                return;
+            }
+            int sourceIndex = 0;
+            if (selected.legacyInstances.size() > 1) {
+                sourceIndex = preferredLegacySourceIndex(
+                    selected.legacyInstances, legacyBindings, profile, forwarderSaveGameId);
+                if (sourceIndex < 0) {
+                    hubNotice = "Choose one preferred GBA save from the matching FireRed/LeafGreen game card first.";
+                    return;
+                }
+            }
+            const auto shown = selected.legacyInstances[static_cast<size_t>(sourceIndex)];
+            if (shown.sourceIndex >= legacyCatalog->sources.size()) {
+                hubNotice = "The linked GBA save is no longer available. Refresh its source first.";
+                return;
+            }
+            const auto& cachedSource = legacyCatalog->sources[shown.sourceIndex];
+            const bool catalogMatches = cachedSource.ready() &&
+                cachedSource.gameId == forwarderSaveGameId &&
+                cachedSource.normalizedPath == shown.normalizedPath &&
+                cachedSource.contentFingerprint == shown.contentFingerprint;
+            if (!catalogMatches || !legacySnapshotStillCurrent(shown)) {
+                hubNotice = "The linked GBA save changed since discovery. Refresh its source first.";
+                return;
+            }
+            selectedUserUid = user->uid;
+            selectedTitleId = 0;
+            selectedTitleName = selected.name;
+            this->selectedGameId = std::string(forwarderSaveGameId);
+            selectedSourceKind = SelectedSourceKind::RetroArchFRLG;
+            selectedLegacySourceIndex = shown.sourceIndex;
+            titleSelected = true;
+            return;
+        }
+
         if (selected.sourceKind == SelectedSourceKind::RetroArchFRLG) {
             if (!legacyCatalog || selected.legacyInstances.empty()) {
                 hubNotice = "No validated save is available for this game.";
@@ -2079,6 +2181,13 @@ namespace UI {
 
         const auto title = user->titles[static_cast<size_t>(titleIndex)];
         openIntent = OpenIntent::Items;
+
+        if (title.sourceKind == SelectedSourceKind::SwitchTitle &&
+            !legacySaveGameIdForForwarder(title.gameId).empty()) {
+            // Items for a HOME forwarder belong to the same validated GBA source as Open.
+            selectCurrentTitle();
+            return;
+        }
 
         if (title.sourceKind == SelectedSourceKind::SwitchTitle) {
             selectedUserUid = user->uid;

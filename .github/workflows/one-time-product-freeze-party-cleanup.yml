@@ -1,7 +1,7 @@
-name: Disabled one-time Product Home freeze + party cleanup
+name: Disabled one-time Product Home forwarder source repair
 
-# Focused party-preview repair completed. Keep this file inert as an audit breadcrumb; future
-# hardware fixes must be narrow forward changes rather than replaying the old broad cleanup.
+# The FireRed/LeafGreen forwarder save-source split has landed. Keep this workflow inert as an
+# audit breadcrumb; future hardware fixes must be separate forward-only changes.
 
 on:
   workflow_dispatch:
@@ -10,4 +10,4 @@ jobs:
   disabled:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Party-preview one-shot completed; helper disabled."
+      - run: echo "Forwarder source repair completed; helper disabled."

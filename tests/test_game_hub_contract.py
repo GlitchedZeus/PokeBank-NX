@@ -115,6 +115,18 @@ for developer_party_copy in (
             f"Product Home PARTY must not expose internal source diagnostics: {developer_party_copy}")
 require('partyPreviewStatus = "Party preview unavailable.";' in source,
         "native preview failures must stay product-facing instead of printing SC parser diagnostics in PARTY")
+require('if (gameId == "firered_switch") return "firered_gba";' in source and
+        'if (gameId == "leafgreen_switch") return "leafgreen_gba";' in source,
+        "HOME forwarders must map save identity to the real GBA release")
+require("installed.legacyInstances = card->instances;" in source and
+        "installed.sourceLabel = card->sourceLabel;" in source,
+        "FireRed/LeafGreen forwarder cards must attach the validated profile GBA source")
+require("source.gameId != forwarderSaveGameId" in source and
+        "this->selectedGameId = std::string(forwarderSaveGameId);" in source and
+        "selectedSourceKind = SelectedSourceKind::RetroArchFRLG;" in source,
+        "forwarder preview/open must consume the GBA save while retaining Switch launch identity")
+require(source.index("!forwarderSaveGameId.empty()") < source.index('fsdevMountSaveData("pbpreview"'),
+        "forwarder preview must bypass the forwarder's native Switch savedata mount")
 require("SWSH_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error" in sc_validation,
         "SWSH Current Box must validate its native one-byte SC value")
 require(sc_validation.count("GEN9_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error") == 2,
