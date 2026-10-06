@@ -18,7 +18,8 @@ GEN4_LEAD_HISTORY_HEADERS := include/Legality/Gen4LeadHistoryEvidence.h \
 	include/Legality/Gen4LeadFailureEvidence.h include/Legality/Gen4LeadEffectEvidence.h \
 	include/Legality/Gen4LeadFrameEvidence.h include/Legality/Gen4WildRngCorrelation.h
 GEN4_MIN31_REROLL_SOURCES := tests/test_gen4_min31_reroll_frames.cpp
-GEN4_MIN31_REROLL_HEADERS := include/Legality/Gen4LeadFrameEvidence.h
+GEN4_MIN31_REROLL_HEADERS := include/Legality/Gen4LeadFrameEvidence.h \
+	include/Legality/Gen4WildRngCorrelation.h
 
 HOST_TESTS += $(HOST_BUILD)/test_gen4_lead_effect_evidence \
 	$(HOST_BUILD)/test_gen4_lead_failure_evidence \
