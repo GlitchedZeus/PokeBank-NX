@@ -1,0 +1,42 @@
+name: Legality Ball Domain Staging
+
+on:
+  push:
+    branches:
+      - feature/legality-gen34-ball-domain-production-20261006
+    paths:
+      - tools/apply_legality_gen34_ball_domain_integration.py
+      - .github/workflows/legality-ball-domain-staging.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v4
+
+      - name: Apply guarded analyzer migration
+        run: python3 tools/apply_legality_gen34_ball_domain_integration.py
+
+      - name: Verify narrow diff
+        run: |
+          set -euo pipefail
+          git diff --check
+          git diff -- src/Legality/Legality.cpp
+          test "$(git diff --name-only | sort)" = "src/Legality/Legality.cpp"
+
+      - name: Commit analyzer integration
+        run: |
+          set -euo pipefail
+          git add src/Legality/Legality.cpp
+          if git diff --cached --quiet; then
+            echo "Ball-domain analyzer integration already applied."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "legality: enforce Gen III-IV ball domains"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
