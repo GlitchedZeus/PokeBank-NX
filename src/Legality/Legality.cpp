@@ -57,6 +57,7 @@
 #include "Legality/Gen34EggState.h"
 #include "Legality/Gen34EggMoveEvidence.h"
 #include "Legality/Gen34LanguageEvidence.h"
+#include "Legality/Gen34BallDomainEvidence.h"
 #include "Legality/Gen4TransferEvidence.h"
 #include "Legality/Gen4ReleaseEvidence.h"
 #include "Legality/Gen4FormEvidence.h"
@@ -1346,8 +1347,20 @@ namespace Legality {
         }
 
         // ---- L1: ball / language ranges (skip when unwired == 0) ----
-        if (pk.ball() != 0 && pk.ball() > 37)
-            add(r, Severity::Invalid, "Ball id out of range (" + std::to_string(pk.ball()) + ")");
+        const uint8_t ball = pk.ball();
+        if (sourceProfile && (exactGeneration == 3 || exactGeneration == 4)) {
+            if (Gen34BallDomain::isInvalid(exactGeneration, ball)) {
+                add(r, Severity::Invalid,
+                    "Ball id " + std::to_string(ball) +
+                    " cannot exist in Generation " + std::to_string(exactGeneration),
+                    CheckIdentifier::Items);
+            }
+        } else if (ball != 0 && ball > 37) {
+            // Preserve the historical generic-format fallback where exact source identity
+            // is unavailable. Zero remains the project's unwired/unknown sentinel.
+            add(r, Severity::Invalid,
+                "Ball id out of range (" + std::to_string(ball) + ")");
+        }
 
         const uint8_t language = pk.language();
         if (sourceProfile && (exactGeneration == 3 || exactGeneration == 4)) {
