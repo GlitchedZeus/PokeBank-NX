@@ -39,6 +39,11 @@ struct CarryState {
     int selectionBox = 0;
     int selectionAnchor = 0;
     int selectionCursor = 0;
+
+    // Native touch multi-select. This is deliberately separate from the physical Y-hold state:
+    // a finger drag owns the grid directly and never synthesizes a held controller button.
+    bool touchArmed = false;
+    bool touchSelecting = false;
 };
 
 constexpr int kMultiHoldFrames = 8;
@@ -114,6 +119,8 @@ void clearTransientSelection(TrainerViewScreen& screen, CarryState& state) noexc
     state.yPending = false;
     state.yFrames = 0;
     state.selecting = false;
+    state.touchArmed = false;
+    state.touchSelecting = false;
     screen.currentlySelecting = false;
     screen.controllerNavigation.reset();
 }
@@ -539,6 +546,16 @@ const TrainerViewScreen::TouchButton* selectedCell(TrainerViewScreen& screen) {
     return nullptr;
 }
 
+int cellAtPoint(TrainerViewScreen& screen, int x, int y) {
+    const int capacity = classicCapacity(screen);
+    for (const auto& button : screen.touchButtons) {
+        if (button.id < 0 || button.id >= capacity) continue;
+        if (x >= button.x && x < button.x + button.w &&
+            y >= button.y && y < button.y + button.h) return button.id;
+    }
+    return -1;
+}
+
 void drawVisual(PKSEFramebuffer& fb, const CarriedVisual& visual, int cx, int cy, int size) {
     if (auto* sprite = SpriteManager::getIconSprite(visual.species, visual.form, visual.shiny);
         sprite && sprite->data) {
@@ -553,6 +570,58 @@ void drawVisual(PKSEFramebuffer& fb, const CarriedVisual& visual, int cx, int cy
 bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                  int stickX, int stickY, const TouchInput& touch) {
     auto& state = stateFor(screen);
+
+    // Touch-native rectangle selection for classic packed boxes. A stationary release remains the
+    // ordinary single-cell tap handled by the base box/action path. Once drag slop is crossed, this
+    // layer owns the gesture: the rectangle follows the finger and release picks up the group.
+    // This gives touch full multi-select parity without faking a physical Y hold.
+    if (!state.active && !state.selecting && gridOwnsInput(screen)) {
+        if (down & HidNpadButton_B && state.touchArmed) {
+            screen.selectedBoxIndex = state.selectionBox;
+            screen.selectedItemIndex = state.selectionAnchor;
+            clearTransientSelection(screen, state);
+            screen.postStatus("Touch multi-select cancelled; staged boxes unchanged", 200);
+            return true;
+        }
+
+        if (touch.justTouchedDown()) {
+            const int cell = cellAtPoint(screen, touch.x(), touch.y());
+            if (cell >= 0) {
+                state.touchArmed = true;
+                state.touchSelecting = false;
+                state.selectionBox = screen.selectedBoxIndex;
+                state.selectionAnchor = cell;
+                state.selectionCursor = cell;
+            }
+        }
+
+        if (state.touchArmed && touch.isDown() && touch.dragged()) {
+            if (!state.touchSelecting)
+                screen.postStatus("Touch multi-select: drag the rectangle, release to pick up", 180);
+            state.touchSelecting = true;
+            screen.currentlySelecting = true;
+            screen.selectedBoxIndex = state.selectionBox;
+            const int cell = cellAtPoint(screen, touch.x(), touch.y());
+            if (cell >= 0) state.selectionCursor = cell;
+            screen.selectedItemIndex = state.selectionCursor;
+            return true;
+        }
+
+        if (state.touchArmed && touch.justReleased()) {
+            const bool commit = state.touchSelecting && touch.dragged();
+            state.touchArmed = false;
+            if (commit) {
+                state.touchSelecting = false;
+                screen.currentlySelecting = false;
+                screen.selectedBoxIndex = state.selectionBox;
+                screen.selectedItemIndex = state.selectionCursor;
+                return beginSelectedGroup(screen, state);
+            }
+            state.touchSelecting = false;
+            screen.currentlySelecting = false;
+            // A tap is intentionally not consumed; the normal cell/action-sheet path owns it.
+        }
+    }
 
     if (state.active) {
         setLegacyHoldingPresentation(screen, true);
@@ -650,7 +719,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
 void draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto& state = stateFor(screen);
 
-    if (state.selecting && gridOwnsInput(screen)) {
+    if ((state.selecting || state.touchSelecting) && gridOwnsInput(screen)) {
         const int capacity = classicCapacity(screen);
         const auto rectangle = Multi::rectangleSlots(state.selectionAnchor, state.selectionCursor, capacity);
         for (std::size_t i = 0; i < rectangle.count; ++i) {
@@ -661,7 +730,10 @@ void draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                 break;
             }
         }
-        drawNavBar(fb, {{"Y", "Hold / Release Pick Up"}, {"D-pad/Stick", "Resize Selection"}, {"B", "Cancel"}});
+        if (state.touchSelecting)
+            drawNavBar(fb, {{"B", "Cancel"}});
+        else
+            drawNavBar(fb, {{"Y", "Hold / Release Pick Up"}, {"D-pad/Stick", "Resize Selection"}, {"B", "Cancel"}});
         return;
     }
 
