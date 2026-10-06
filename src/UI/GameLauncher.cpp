@@ -46,7 +46,7 @@ bool directory(const std::string& path) {
     return !path.empty() && ::stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }
 
-bool prepareRetroArchReturnHost(std::string& hostPath, std::string& error) {
+[[maybe_unused]] bool prepareRetroArchReturnHost(std::string& hostPath, std::string& error) {
     if (g_gameLaunchReturnPath.empty() || !regularFile(g_gameLaunchReturnPath)) {
         error = "PokeBank NX cannot prove its own NRO path for the RetroArch return handoff.";
         return false;
