@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - feature/legality-engine-gen1-4-20260929
+      - feature/legality-gen34-language-production-20261006
     paths:
       - tools/gen_legality_gen4_wild.py
       - tools/gen_legality_gen34_egg_moves.py
@@ -15,6 +16,7 @@ on:
       - tools/apply_legality_cxd_ot_order.py
       - tools/apply_legality_bacd_ra_moves.py
       - tools/apply_legality_wc3_ribbon_evidence.py
+      - tools/apply_legality_gen34_language_integration.py
       - tools/pkhex_source.py
       - .github/workflows/legality-data-generation.yml
 
@@ -40,6 +42,7 @@ jobs:
           python3 tools/apply_legality_cxd_ot_order.py
           python3 tools/apply_legality_bacd_ra_moves.py
           python3 tools/apply_legality_wc3_ribbon_evidence.py
+          python3 tools/apply_legality_gen34_language_integration.py
 
       - name: Regenerate from pinned upstream resources
         run: |
