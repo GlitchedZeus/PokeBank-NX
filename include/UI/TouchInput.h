@@ -4,6 +4,21 @@
 #include <switch.h>
 
 namespace UI {
+    struct TouchGestureSnapshot {
+        bool down = false;
+        bool dragged = false;
+        int x = 0;
+        int y = 0;
+        int startX = 0;
+        int startY = 0;
+        int deltaX = 0;
+        int deltaY = 0;
+    };
+
+    // Latest touch state for draw-time direct-manipulation effects. Input still owns activation;
+    // renderers may only use this snapshot to move visible content with the finger.
+    const TouchGestureSnapshot& latestTouchGesture() noexcept;
+
     /**
      * Reads the Switch touchscreen once per frame and exposes a small gesture state machine.
      * Coordinates are framebuffer pixels: PokeBank renders at 1280x720, matching the Switch touch
