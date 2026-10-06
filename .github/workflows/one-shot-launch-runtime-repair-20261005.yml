@@ -25,6 +25,16 @@ jobs:
       - name: Apply guarded runtime repair
         run: |
           set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tools/one_shot_launch_runtime_repair_20261005.py')
+          text = p.read_text(encoding='utf-8')
+          old = 'require("retroArchContentExists" in source and "archive#member" not in source,\\n        "RetroArch launch path must validate archive-member content through its physical archive")'
+          new = 'require("retroArchContentExists" in source and "retroArchPhysicalContentPath" in source,\\n        "RetroArch launch path must validate archive-member content through its physical archive")'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one stale archive contract, found {text.count(old)}')
+          p.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
           python3 tools/one_shot_launch_runtime_repair_20261005.py
           git diff --check
 
