@@ -253,6 +253,11 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
 }
 
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
+    // Touch input is consumed before draw, so each rendered frame must publish a fresh set of
+    // hit targets. This prevents a just-closed picker/action overlay from leaving invisible
+    // rectangles ahead of the workspace it revealed.
+    touchButtons.clear();
+
     if (Gen4SharedEditorSurface::draw(*this, fb)) return;
     if (Gen3SharedEditorSurface::draw(*this, fb)) return;
 
