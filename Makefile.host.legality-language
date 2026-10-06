@@ -1,11 +1,15 @@
 # Focused Gen III-IV language-domain legality regressions.
 GEN34_LANGUAGE_SOURCES := tests/test_gen34_language_evidence.cpp
 GEN34_LANGUAGE_HEADERS := include/Legality/Gen34LanguageEvidence.h
+GEN34_LANGUAGE_ANALYZER_SOURCES := tests/test_gen34_language_analyzer.cpp \
+	$(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES))
 
 HOST_TESTS += $(HOST_BUILD)/test_gen34_language_evidence
+HOST_TESTS += $(HOST_BUILD)/test_gen34_language_analyzer
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_language_evidence_sanitize
-host-test: $(HOST_BUILD)/test_gen34_language_evidence
-host-sanitize: $(HOST_BUILD)/test_gen34_language_evidence_sanitize
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_language_analyzer_sanitize
+host-test: $(HOST_BUILD)/test_gen34_language_evidence $(HOST_BUILD)/test_gen34_language_analyzer
+host-sanitize: $(HOST_BUILD)/test_gen34_language_evidence_sanitize $(HOST_BUILD)/test_gen34_language_analyzer_sanitize
 
 $(HOST_BUILD)/test_gen34_language_evidence: $(GEN34_LANGUAGE_SOURCES) $(GEN34_LANGUAGE_HEADERS)
 	@mkdir -p $(HOST_BUILD)
@@ -14,3 +18,11 @@ $(HOST_BUILD)/test_gen34_language_evidence: $(GEN34_LANGUAGE_SOURCES) $(GEN34_LA
 $(HOST_BUILD)/test_gen34_language_evidence_sanitize: $(GEN34_LANGUAGE_SOURCES) $(GEN34_LANGUAGE_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN34_LANGUAGE_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen34_language_analyzer: $(GEN34_LANGUAGE_ANALYZER_SOURCES) $(GEN34_LANGUAGE_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) -Iinclude $(GEN34_LANGUAGE_ANALYZER_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen34_language_analyzer_sanitize: $(GEN34_LANGUAGE_ANALYZER_SOURCES) $(GEN34_LANGUAGE_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN34_LANGUAGE_ANALYZER_SOURCES) -o $@
