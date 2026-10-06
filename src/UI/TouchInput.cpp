@@ -3,6 +3,14 @@
 #include <algorithm>
 
 namespace UI {
+    namespace {
+        TouchGestureSnapshot gLatestTouch{};
+    }
+
+    const TouchGestureSnapshot& latestTouchGesture() noexcept {
+        return gLatestTouch;
+    }
+
     void TouchInput::update() {
         prevDown = curDown;
 
@@ -30,6 +38,15 @@ namespace UI {
             // can classify the completed gesture consistently.
             curDown = false;
         }
+
+        gLatestTouch.down = curDown;
+        gLatestTouch.dragged = dragged();
+        gLatestTouch.x = curX;
+        gLatestTouch.y = curY;
+        gLatestTouch.startX = begX;
+        gLatestTouch.startY = begY;
+        gLatestTouch.deltaX = curX - begX;
+        gLatestTouch.deltaY = curY - begY;
     }
 
     bool TouchInput::dragged() const {
