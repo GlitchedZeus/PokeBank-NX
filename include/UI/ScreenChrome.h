@@ -42,8 +42,10 @@ namespace UI {
     // Shared PokeBank NX backdrop. It leaves the OLED theme genuinely black and keeps only the
     // low-alpha archive rings; the background now extends cleanly to the left edge.
     inline void drawAppBackdrop(PKSEFramebuffer& fb) {
-        // Beginning a normal screen frame also begins a fresh direct-touch geometry pass.
+        // Input is consumed before draw. Begin each rendered frame with fresh direct-touch geometry;
+        // controls drawn later in this same frame republish the targets used by the next update.
         g_touchGlyphAccum.clear();
+        g_touchGlyphHits.clear();
         const int w = fb.getWidth();
         fb.clear(Colors::Background);
         fb.drawCircle(w - 58, 126, 112, withAlpha(Colors::BrandAccent, 24), 18);
@@ -211,13 +213,14 @@ namespace UI {
     }
 
     // A pressable button that carries its controller badge ON the button (glyph + label, centred).
-    // Geometry is captured here, but activation is deferred until touch release. Existing screen-
-    // specific hitboxes may still register the same button; OR-ing the same controller action is
-    // harmless and lets older editor dialogs coexist while visible glyph buttons become real touch UI.
+    // Geometry is published immediately as well as accumulated for the next footer commit. This is
+    // important for modal buttons drawn after a footer: they must still be real direct-touch targets.
     inline void drawGlyphButton(PKSEFramebuffer& fb, int bx, int by, int bw, int bh,
                                 const std::string& glyph, const std::string& label,
                                 Color fill = Colors::PanelAlt, Color textColor = Colors::Text) {
-        g_touchGlyphAccum.push_back({bx, by, bw, bh, glyph});
+        const TouchGlyphHit hit{bx, by, bw, bh, glyph};
+        g_touchGlyphAccum.push_back(hit);
+        g_touchGlyphHits.push_back(hit);
         fb.drawFilledRoundedRect(bx, by, bw, bh, 8, fill);
         fb.drawRoundedRect(bx, by, bw, bh, 8, Colors::Border, 1);
         const int gw = buttonGlyphWidth(fb, glyph);
@@ -469,9 +472,8 @@ namespace UI {
     inline void drawNavHints(PKSEFramebuffer& fb, int x, int w, int cy, const std::string& hint) {
         struct Seg { std::string btn, label; int glyphW, labelW; };
 
-        // The footer drawn last owns both controller hints and direct-content hit geometry.
-        // Card activation belongs to the screen that owns the card. Never synthesize
-        // multi-frame D-pad walks from a touchscreen tap.
+        // The footer commits glyph buttons drawn before it; buttons rendered later publish directly
+        // from drawGlyphButton(). Content cards/rows remain owned by their screen.
         g_touchGlyphHits = g_touchGlyphAccum;
         g_touchGlyphAccum.clear();
 
