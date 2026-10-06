@@ -704,7 +704,18 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
         return down;
     }
 
-    if (state.mode == UX2Mode::Actions) {
+    if (state.mode == UX2Mode::Edit || state.mode == UX2Mode::AddDraft) {
+        constexpr int fieldCount = 14;
+        int field = selectedId(2000, fieldCount, pressed);
+        if (field >= 0) state.row = field;
+        field = selectedId(2000, fieldCount, tapped);
+        if (field >= 0) { state.row = field; down |= HidNpadButton_A; }
+        if (touch.justReleased() && touch.dragged()) {
+            const int steps = std::max(1, std::abs(touch.deltaY()) / 42);
+            if (touch.deltaY() < 0) state.row = std::min(fieldCount - 1, state.row + steps);
+            else if (touch.deltaY() > 0) state.row = std::max(0, state.row - steps);
+        }
+    } else if (state.mode == UX2Mode::Actions) {
         std::string error;
         const auto pokemon = ux2SelectedPokemon(screen, error);
         const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon), hasPending(screen));
