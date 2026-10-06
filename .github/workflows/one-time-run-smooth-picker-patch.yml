@@ -1,0 +1,57 @@
+name: ONE-TIME run smooth picker patch
+
+on:
+  push:
+    branches:
+      - feature/touch-controls-20261005
+    paths:
+      - '.github/workflows/one-time-run-smooth-picker-patch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/touch-controls-20261005
+          fetch-depth: 3
+
+      - name: Guard exact parent
+        env:
+          EXPECTED_PARENT: 42837433290eafe601dfd7dd5f1b3192f3ac0239
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "$EXPECTED_PARENT"
+
+      - name: Extract and execute stored picker patch
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import textwrap
+          src = Path('.github/workflows/one-time-smooth-picker-scroll-20261006.yml').read_text()
+          marker = "          python3 - <<'PY'\n"
+          start = src.index(marker) + len(marker)
+          end = src.index("\n          PY\n", start)
+          Path('/tmp/smooth_picker_patch.py').write_text(textwrap.dedent(src[start:end]) + '\n')
+          PY
+          python3 /tmp/smooth_picker_patch.py
+          git diff --check
+          python3 tests/test_touch_modal_list_contract.py
+          python3 tests/test_touch_pokemon_editor_direct_rows_contract.py
+          python3 tests/test_touch_appwide_surface_contract.py
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/UI/Gen3SharedPokemonSurface.inc src/UI/Gen4SharedPokemonSurface.inc
+          git diff --cached --check
+          test -n "$(git diff --cached --name-only)"
+          git commit -m "feat(touch): make Gen III-IV pickers follow the finger"
+          git push origin HEAD:feature/touch-controls-20261005
