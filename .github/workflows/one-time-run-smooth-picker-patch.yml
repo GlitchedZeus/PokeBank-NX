@@ -22,7 +22,7 @@ jobs:
 
       - name: Guard exact parent
         env:
-          EXPECTED_PARENT: 49d933d3cf7ea8576ee67f6b52fe0d26ed8bcf0e
+          EXPECTED_PARENT: 310915e8011fe78abad5d1bee0a527ee3a615de6
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD^)" = "$EXPECTED_PARENT"
@@ -41,10 +41,10 @@ jobs:
           patch = 'import re\n' + patch
           patch = patch.replace(
               "text = replace_once(text, old_release, '', 'Gen III remove release-only picker jump')",
-              "text, n = re.subn(r'    if \\(touch\\.justReleased\\(\\) && touch\\.dragged\\(\\)\\) \\{.*?\\n    \\}\\n(?=    if \\(count <= 0\\))', '', text, count=1, flags=re.S)\n          if n != 1: raise SystemExit(f'Gen III remove release-only picker jump: expected one structural block, found {n}')")
+              "text, n = re.subn(r'    if \\(touch\\.justReleased\\(\\) && touch\\.dragged\\(\\)\\) \\{.*?\\n    \\}\\n(?=    if \\(count <= 0\\))', '', text, count=1, flags=re.S)\nif n != 1: raise SystemExit(f'Gen III remove release-only picker jump: expected one structural block, found {n}')")
           patch = patch.replace(
               "text = replace_once(text, old_release4, '', 'Gen IV remove release-only picker jump')",
-              "text, n = re.subn(r'    if \\(touch\\.justReleased\\(\\) && touch\\.dragged\\(\\)\\) \\{.*?\\n    \\}\\n(?=    if \\(count <= 0\\))', '', text, count=1, flags=re.S)\n          if n != 1: raise SystemExit(f'Gen IV remove release-only picker jump: expected one structural block, found {n}')")
+              "text, n = re.subn(r'    if \\(touch\\.justReleased\\(\\) && touch\\.dragged\\(\\)\\) \\{.*?\\n    \\}\\n(?=    if \\(count <= 0\\))', '', text, count=1, flags=re.S)\nif n != 1: raise SystemExit(f'Gen IV remove release-only picker jump: expected one structural block, found {n}')")
           Path('/tmp/smooth_picker_patch.py').write_text(patch)
           PY
           python3 /tmp/smooth_picker_patch.py
