@@ -72,6 +72,16 @@ int main() {
         "blue_gb",
         "sdmc:/retroarch/cores/savefiles/main.srm",
         "sdmc:/roms/gb/Pok\xC3\xA9mon - Blue Version (USA, Europe) (SGB Enhanced).gb"));
+    // RetroArch may represent compressed content as archive.zip#member.gb. The member identity
+    // must still resolve to the exact release and must not broaden Red into FireRed.
+    assert(gameLaunchCandidateStemMatches(
+        "red_gb",
+        "sdmc:/retroarch/cores/savefiles/main.srm",
+        "sdmc:/roms/gb/Pokemon Red.zip#Pok\xC3\xA9mon - Red Version (USA, Europe).gb"));
+    assert(!gameLaunchCandidateStemMatches(
+        "red_gb",
+        "sdmc:/retroarch/cores/savefiles/main.srm",
+        "sdmc:/roms/gba/FireRed.zip#Pok\xC3\xA9mon - FireRed Version (USA).gba"));
     assert(!gameLaunchCandidateStemMatches(
         "red_gb",
         "sdmc:/retroarch/cores/savefiles/main.srm",
