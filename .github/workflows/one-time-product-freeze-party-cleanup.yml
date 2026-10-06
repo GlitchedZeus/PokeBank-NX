@@ -1,14 +1,85 @@
-name: Disabled one-time Product Home freeze + party cleanup
-
-# This staging workflow intentionally does nothing. The broad cleanup it contained was rejected
-# after hardware feedback because it changed too much at once. Keep the file inert as an audit
-# breadcrumb; focused forward fixes are committed directly instead.
+name: One-time native Gen II fallback menu touch
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [feature/touch-controls-20261005]
+    paths:
+      - .github/workflows/one-time-product-freeze-party-cleanup.yml
+
+permissions:
+  contents: write
 
 jobs:
-  disabled:
+  patch:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
-      - run: echo "Broad Product Home cleanup disabled; use focused hardware fixes only."
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Guard exact touch head
+        run: |
+          set -euo pipefail
+          git fetch origin feature/touch-controls-20261005
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/feature/touch-controls-20261005)" = "$GITHUB_SHA"
+      - name: Patch Gen II staged-editor fallback touch
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/UI/TrainerViewScreenGSCOverlay.inc')
+          s=p.read_text()
+
+          def one(old,new,label):
+              global s
+              n=s.count(old)
+              if n != 1: raise SystemExit(f'{label}: expected 1 anchor, got {n}')
+              s=s.replace(old,new,1)
+
+          one('''void handleStagedEditorInput(TrainerViewScreen& screen, u64 down) {\n''',
+              '''void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInput& touch) {\n''',
+              'staged editor signature')
+
+          one('''    if (state.review) {\n        const int changeCount = static_cast<int>(editor->pendingChanges().size());\n        if (changeCount > 0 && (down & HidNpadButton_Up))\n''',
+          '''    if (state.review) {\n        const int changeCount = static_cast<int>(editor->pendingChanges().size());\n        if (changeCount > 0 && touch.justTouchedDown()) {\n            for (const auto& hit : screen.touchButtons) {\n                if (hit.id < 900 || hit.id >= 900 + changeCount) continue;\n                if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&\n                    touch.y() >= hit.y && touch.y() < hit.y + hit.h) {\n                    state.reviewRow = hit.id - 900;\n                    break;\n                }\n            }\n        }\n        if (changeCount > 0 && touch.justReleased() && touch.dragged()) {\n            const int dy = touch.deltaY();\n            const int steps = std::max(1, std::abs(dy) / 42);\n            state.reviewRow = std::clamp(state.reviewRow + (dy < 0 ? steps : -steps), 0, changeCount - 1);\n        }\n        if (changeCount > 0 && (down & HidNpadButton_Up))\n''','review native scroll')
+
+          one('''    constexpr int rowCount = 4;\n    if (down & HidNpadButton_Up)\n''',
+          '''    constexpr int rowCount = 4;\n    if (touch.justTouchedDown()) {\n        for (const auto& hit : screen.touchButtons) {\n            if (hit.id < 800 || hit.id >= 800 + rowCount) continue;\n            if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&\n                touch.y() >= hit.y && touch.y() < hit.y + hit.h) {\n                state.selectedRow = hit.id - 800;\n                break;\n            }\n        }\n    }\n    if (touch.justTapped()) {\n        for (const auto& hit : screen.touchButtons) {\n            if (hit.id < 800 || hit.id >= 800 + rowCount) continue;\n            if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&\n                touch.y() >= hit.y && touch.y() < hit.y + hit.h) {\n                state.selectedRow = hit.id - 800;\n                down |= HidNpadButton_A;\n                break;\n            }\n        }\n    }\n    if (down & HidNpadButton_Up)\n''','top menu touch')
+
+          one('''void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {\n    auto& state = editorOverlayState(screen);\n    auto* editor = stagedEditor(screen);\n    if (!state.active || !editor) return;\n''',
+          '''void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {\n    auto& state = editorOverlayState(screen);\n    auto* editor = stagedEditor(screen);\n    if (!state.active || !editor) return;\n    screen.touchButtons.clear();\n''','overlay touch ownership')
+
+          one('''            for (int i = start; i < end; ++i) {\n                const auto& change = editor->pendingChanges()[static_cast<std::size_t>(i)];\n                fb.drawText(x + 32, ry, change.label + ":", i == state.reviewRow ? Colors::Accent : Colors::TextDim, TextStyle::Body);\n                fb.drawText(x + 320, ry, change.beforeValue + "  ->  " + change.afterValue,\n                            Colors::Text, TextStyle::Body);\n                ry += 54;\n            }\n''',
+          '''            for (int i = start; i < end; ++i) {\n                const auto& change = editor->pendingChanges()[static_cast<std::size_t>(i)];\n                const int rowTop = ry - 10;\n                if (i == state.reviewRow) fb.drawSelectionHighlight(x + 22, rowTop, w - 44, 48);\n                fb.drawText(x + 32, ry, change.label + ":", i == state.reviewRow ? Colors::Accent : Colors::TextDim, TextStyle::Body);\n                fb.drawText(x + 320, ry, change.beforeValue + "  ->  " + change.afterValue,\n                            Colors::Text, TextStyle::Body);\n                screen.touchButtons.push_back({900 + i, x + 22, rowTop, w - 44, 48});\n                ry += 54;\n            }\n            drawScrollbar(fb, x + w - 14, y + 100, std::min(visible, count) * 54,\n                          std::max(1, count * 54), start * 54);\n''','review row touch + scrollbar')
+
+          one('''        fb.drawText(x + 32, y + h - 74,\n                    "Up/Down Browse    A Export Edited Save    Y Discard Changes    B Back",\n                    Colors::Text, TextStyle::Body);\n''',
+          '''        drawNavBar(fb, {{"Up/Down", "Browse"}, {"A", "Export Edited Save"},\n                        {"Y", "Discard Changes"}, {"B", "Back"}});\n''','review touch footer')
+
+          one('''    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {\n        drawEditorRow(fb, x + 30, rowY, w - 60, rows[i].first, rows[i].second,\n                      i == state.selectedRow);\n        rowY += 57;\n    }\n    fb.drawText(x + 32, y + h - 40,\n                "A Edit / Select    X Review    B Close (review required if changes are pending)",\n                Colors::TextDim, TextStyle::Caption);\n''',
+          '''    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {\n        drawEditorRow(fb, x + 30, rowY, w - 60, rows[i].first, rows[i].second,\n                      i == state.selectedRow);\n        screen.touchButtons.push_back({800 + i, x + 30, rowY, w - 60, 50});\n        rowY += 57;\n    }\n    drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Edit / Select"},\n                    {"X", "Review"}, {"B", "Close"}});\n''','top menu row/footer touch')
+
+          one('''    const u64 down = padGetButtonsDown(&pad);\n''',
+              '''    const u64 down = padGetButtonsDown(&pad) | navTouchButton(touch);\n''',
+              'fallback shared footer touch')
+
+          one('''            handleStagedEditorInput(*this, navigated);\n''',
+              '''            handleStagedEditorInput(*this, navigated, touch);\n''',
+              'fallback staged input dispatch')
+
+          p.write_text(s)
+          PY
+          git diff --check
+          grep -q 'touch.justReleased() && touch.dragged()' src/UI/TrainerViewScreenGSCOverlay.inc
+          grep -q 'screen.touchButtons.push_back({800 + i' src/UI/TrainerViewScreenGSCOverlay.inc
+          grep -q 'screen.touchButtons.push_back({900 + i' src/UI/TrainerViewScreenGSCOverlay.inc
+          grep -q 'padGetButtonsDown(&pad) | navTouchButton(touch)' src/UI/TrainerViewScreenGSCOverlay.inc
+      - name: Commit runtime change only
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/UI/TrainerViewScreenGSCOverlay.inc
+          git diff --cached --quiet && { echo 'No runtime touch changes'; exit 1; }
+          git commit -m 'feat(ui): complete native touch for Gen II staged fallback menus'
+          git push origin HEAD:feature/touch-controls-20261005
