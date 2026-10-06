@@ -1,0 +1,16 @@
+# Focused Gen III-IV ball-domain legality regressions.
+GEN34_BALL_DOMAIN_SOURCES := tests/test_gen34_ball_domain_evidence.cpp
+GEN34_BALL_DOMAIN_HEADERS := include/Legality/Gen34BallDomainEvidence.h
+
+HOST_TESTS += $(HOST_BUILD)/test_gen34_ball_domain_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_ball_domain_evidence_sanitize
+host-test: $(HOST_BUILD)/test_gen34_ball_domain_evidence
+host-sanitize: $(HOST_BUILD)/test_gen34_ball_domain_evidence_sanitize
+
+$(HOST_BUILD)/test_gen34_ball_domain_evidence: $(GEN34_BALL_DOMAIN_SOURCES) $(GEN34_BALL_DOMAIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN34_BALL_DOMAIN_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen34_ball_domain_evidence_sanitize: $(GEN34_BALL_DOMAIN_SOURCES) $(GEN34_BALL_DOMAIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN34_BALL_DOMAIN_SOURCES) -o $@
