@@ -156,7 +156,7 @@ inline std::string_view validateSWSH(const std::vector<Block>& blocks) {
     if (!findRequired(blocks, SWSH_BOX_LAYOUT, Enums::SCTypeCode::Object,
                       boxLayoutSize, error))
         return error;
-    if (!findRequired(blocks, SWSH_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error))
+    if (!findRequired(blocks, SWSH_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error))
         return error;
 
     if (const auto e = validatePokemonRecords(
@@ -200,7 +200,7 @@ inline std::string_view validateSV(const std::vector<Block>& blocks) {
     if (!findRequired(blocks, GEN9_BOX_LAYOUT, Enums::SCTypeCode::Object,
                       boxLayoutSize, error))
         return error;
-    if (!findRequired(blocks, GEN9_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error))
+    if (!findRequired(blocks, GEN9_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error))
         return error;
 
     if (const auto e = validatePokemonRecords(
@@ -244,7 +244,7 @@ inline std::string_view validateZA(const std::vector<Block>& blocks) {
     if (!findRequired(blocks, GEN9_BOX_LAYOUT, Enums::SCTypeCode::Object,
                       boxLayoutSize, error))
         return error;
-    if (!findRequired(blocks, GEN9_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error))
+    if (!findRequired(blocks, GEN9_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error))
         return error;
     if (!findRequired(blocks, ZA_SAVE_REVISION, Enums::SCTypeCode::UInt64, 8, error))
         return error;

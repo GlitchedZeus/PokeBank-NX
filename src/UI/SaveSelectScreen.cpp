@@ -1432,7 +1432,7 @@ namespace UI {
                     }
                     partyPreviewStatus = count == 0 ? "No active party Pokémon." : "Current save party";
                 } else {
-                    partyPreviewStatus = "FireRed/LeafGreen preview could not validate this save.";
+                    partyPreviewStatus = "Party preview unavailable.";
                 }
                 fsdevUnmountDevice("pbpreview");
                 return;
@@ -1460,7 +1460,7 @@ namespace UI {
                     partyPreviewStatus = count == 0 ? "No active party Pokémon." : "Current save party";
                 }, trainer);
             } else {
-                partyPreviewStatus = error.empty() ? "Party preview could not validate this save." : error;
+                partyPreviewStatus = "Party preview unavailable.";
             }
             fsdevUnmountDevice("pbpreview");
             return;
@@ -1469,8 +1469,8 @@ namespace UI {
         if (title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
             if (title.legacyInstances.size() != 1) {
                 partyPreviewStatus = title.legacyInstances.empty()
-                    ? "No validated save instance."
-                    : "Choose a Save Instance to preview its active party.";
+                    ? "Party preview unavailable."
+                    : "Choose a Save Instance to view its party.";
                 if (title.legacyInstances.size() > 1) {
                     launchDescriptor.backend = GameLaunchBackend::HomebrewNro;
                     launchDescriptor.state = GameLaunchState::ChooseSource;
@@ -1481,12 +1481,12 @@ namespace UI {
             }
             const size_t handle = title.legacyInstances.front().sourceIndex;
             if (!legacyCatalog || handle >= legacyCatalog->sources.size()) {
-                partyPreviewStatus = "Party preview source is stale.";
+                partyPreviewStatus = "Party preview unavailable.";
                 return;
             }
             const auto& source = legacyCatalog->sources[handle];
             if (!source.ready() || source.gameId != title.gameId) {
-                partyPreviewStatus = "Party preview source no longer validates.";
+                partyPreviewStatus = "Party preview unavailable.";
                 return;
             }
             if (source.isGen1()) {
@@ -1505,7 +1505,9 @@ namespace UI {
                 for (size_t i = 0; i < std::min(party.size(), partyPreview.size()); ++i)
                     addParty(i, party[i].species, 0, 0, false);
             }
-            partyPreviewStatus = "Validated read-only source party";
+            partyPreviewStatus = std::any_of(partyPreview.begin(), partyPreview.end(),
+                    [](const auto& slot) { return slot.species != 0; })
+                ? "Current save party" : "No active party Pokémon.";
             return;
         }
 
@@ -1526,9 +1528,11 @@ namespace UI {
                         addParty(i, party[i].species(), party[i].partyLevel(),
                                  party[i].form(), false);
                 }
-                partyPreviewStatus = "Remembered read-only source party";
+                partyPreviewStatus = std::any_of(partyPreview.begin(), partyPreview.end(),
+                    [](const auto& slot) { return slot.species != 0; })
+                ? "Current save party" : "No active party Pokémon.";
             } else {
-                partyPreviewStatus = "Choose a validated Save Instance to preview the active party.";
+                partyPreviewStatus = "Choose a Save Instance to view its party.";
             }
         }
     }
