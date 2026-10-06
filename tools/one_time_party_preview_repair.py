@@ -1,0 +1,126 @@
+from pathlib import Path
+
+
+def replace_exact(text: str, old: str, new: str, count: int, label: str) -> str:
+    found = text.count(old)
+    if found != count:
+        raise SystemExit(f"{label}: expected {count} matches, got {found}")
+    return text.replace(old, new)
+
+
+sc = Path("include/Save/SCReadValidation.h")
+text = sc.read_text(encoding="utf-8")
+text = replace_exact(
+    text,
+    "SWSH_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error",
+    "SWSH_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error",
+    1,
+    "SWSH current-box type",
+)
+text = replace_exact(
+    text,
+    "GEN9_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error",
+    "GEN9_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error",
+    2,
+    "Gen9 current-box type",
+)
+sc.write_text(text, encoding="utf-8")
+
+ui = Path("src/UI/SaveSelectScreen.cpp")
+text = ui.read_text(encoding="utf-8")
+text = replace_exact(
+    text,
+    'partyPreviewStatus = error.empty() ? "Party preview could not validate this save." : error;',
+    'partyPreviewStatus = "Party preview unavailable.";',
+    1,
+    "native preview diagnostic",
+)
+text = replace_exact(
+    text,
+    'partyPreviewStatus = "Validated read-only source party";',
+    'partyPreviewStatus = std::any_of(partyPreview.begin(), partyPreview.end(),\n'
+    '                    [](const auto& slot) { return slot.species != 0; })\n'
+    '                ? "Current save party" : "No active party Pokémon.";',
+    1,
+    "legacy party status",
+)
+text = replace_exact(
+    text,
+    'partyPreviewStatus = "Remembered read-only source party";',
+    'partyPreviewStatus = std::any_of(partyPreview.begin(), partyPreview.end(),\n'
+    '                    [](const auto& slot) { return slot.species != 0; })\n'
+    '                ? "Current save party" : "No active party Pokémon.";',
+    1,
+    "Gen IV party status",
+)
+text = replace_exact(
+    text,
+    'partyPreviewStatus = "FireRed/LeafGreen preview could not validate this save.";',
+    'partyPreviewStatus = "Party preview unavailable.";',
+    1,
+    "native FRLG preview failure",
+)
+text = replace_exact(
+    text,
+    '? "No validated save instance."\n                    : "Choose a Save Instance to preview its active party.";',
+    '? "Party preview unavailable."\n                    : "Choose a Save Instance to view its party.";',
+    1,
+    "legacy source-choice copy",
+)
+text = replace_exact(
+    text,
+    'partyPreviewStatus = "Party preview source is stale.";',
+    'partyPreviewStatus = "Party preview unavailable.";',
+    1,
+    "stale party source copy",
+)
+text = replace_exact(
+    text,
+    'partyPreviewStatus = "Party preview source no longer validates.";',
+    'partyPreviewStatus = "Party preview unavailable.";',
+    1,
+    "invalid party source copy",
+)
+text = replace_exact(
+    text,
+    'partyPreviewStatus = "Choose a validated Save Instance to preview the active party.";',
+    'partyPreviewStatus = "Choose a Save Instance to view its party.";',
+    1,
+    "Gen IV source-choice copy",
+)
+ui.write_text(text, encoding="utf-8")
+
+test = Path("tests/test_game_hub_contract.py")
+text = test.read_text(encoding="utf-8")
+text = replace_exact(
+    text,
+    'save_reader = (ROOT / "src/Save/GetSaveFileContents.cpp").read_text(encoding="utf-8")\n',
+    'save_reader = (ROOT / "src/Save/GetSaveFileContents.cpp").read_text(encoding="utf-8")\n'
+    'sc_validation = (ROOT / "include/Save/SCReadValidation.h").read_text(encoding="utf-8")\n',
+    1,
+    "SC contract source",
+)
+anchor = 'require("PartyPreviewSlot" in header, "party preview model must remain explicit")\n'
+assertions = '''require("PartyPreviewSlot" in header, "party preview model must remain explicit")
+require(source.count('"Current save party"') >= 3,
+        "every successfully parsed save family must present the Product Home party as the current save party")
+for developer_party_copy in (
+    '"Validated read-only source party"',
+    '"Remembered read-only source party"',
+    '"Party preview source no longer validates."',
+    '"Party preview source is stale."',
+):
+    require(developer_party_copy not in source,
+            f"Product Home PARTY must not expose internal source diagnostics: {developer_party_copy}")
+require('partyPreviewStatus = "Party preview unavailable.";' in source,
+        "native preview failures must stay product-facing instead of printing SC parser diagnostics in PARTY")
+require("SWSH_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error" in sc_validation,
+        "SWSH Current Box must validate its native one-byte SC value")
+require(sc_validation.count("GEN9_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error") == 2,
+        "SV and Z-A Current Box must validate their native one-byte SC values")
+require("SWSH_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error" not in sc_validation and
+        "GEN9_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error" not in sc_validation,
+        "Current Box preflight must not reject authentic saves by requiring a four-byte UInt32")
+'''
+text = replace_exact(text, anchor, assertions, 1, "party preview contract anchor")
+test.write_text(text, encoding="utf-8")
