@@ -16,7 +16,7 @@ def require_all(rel: str, *needles: str) -> None:
             raise AssertionError(f"{rel}: missing app-wide touch contract token: {needle}")
 
 SURFACES = {
-    "main / selected-game home / party strip / feature placeholders": (
+    "product home / selected-game card / feature placeholders": (
         "src/UI/SaveSelectScreen.cpp",
         ("headerRects", "dockRects", "featureRects", "titleRects",
          "touch.justTouchedDown()", "touch.justTapped()",
@@ -28,6 +28,36 @@ SURFACES = {
          "Overlay::GameWorkspace", "Overlay::LegacyInstances",
          "Overlay::LegacyAssignment", "Overlay::Gen4Setup",
          "Overlay::Gen4Candidates", "Overlay::Options"),
+    ),
+    "loaded-game home destinations": (
+        "src/UI/Panels/HomeMenuPanel.cpp",
+        ("screen.touchButtons.clear()",
+         "screen.touchButtons.push_back({ 100 + p.idx",
+         "screen.touchButtons.push_back({ 100 + ic.idx"),
+    ),
+    "loaded-game home input": (
+        "src/UI/TrainerViewScreenBase.inc",
+        ("homeTap >= 100 && homeTap <= 104",
+         "homeMenuIndex = homeTap - 100",
+         "kDown |= HidNpadButton_A"),
+    ),
+    "loaded-save party cards": (
+        "src/UI/TrainerViewScreenCompositeOverlay.cpp",
+        ("constexpr int kPartyTouchBase = 6200",
+         "publishBasePartyTouchTargets",
+         "handleBasePartyTouch",
+         "screen.selectedPartyIndex = downId - kPartyTouchBase",
+         "screen.touchedButtonId(touch)",
+         "PokeVault::UIModel::PokemonLocation::Party"),
+    ),
+    "trainer viewer/editor and retained loaded settings": (
+        "src/UI/TrainerViewScreenBase.inc",
+        ("screen.touchButtons.push_back({ i, cardX, cy, cardW, rowH })",
+         "tb >= 0 && tb < kEditRows",
+         "trainerSelectedRow = tb",
+         "screen.touchButtons.push_back({ i, rx, ry, rowW, rowH })",
+         "st >= 0 && st < kSettingsRows",
+         "settingsSelectedRow = st"),
     ),
     "settings / themes / diagnostics / about / more": (
         "src/UI/AppShellScreen.cpp",
