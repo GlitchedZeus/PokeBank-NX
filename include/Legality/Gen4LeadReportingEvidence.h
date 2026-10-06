@@ -64,4 +64,15 @@ inline std::string describe(uint16_t mask) {
     return describe(evidence);
 }
 
+inline std::string describeWildResult(uint16_t leadHistoryMask,
+                                      std::string_view methodName) {
+    const std::string extended = describe(leadHistoryMask);
+    if (!extended.empty())
+        return extended;
+
+    return "PID/IV spread and wild slot match Generation IV " +
+           std::string(methodName) +
+           "; uncovered lead and method-specific branches remain incomplete";
+}
+
 } // namespace Legality::Gen4LeadReporting
