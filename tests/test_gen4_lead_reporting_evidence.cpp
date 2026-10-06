@@ -12,6 +12,9 @@ int main() {
     assert(!none.matched());
     assert(Gen4LeadReporting::describe(none).empty());
     assert(Gen4LeadReporting::describe(uint16_t{0}).empty());
+    assert(Gen4LeadReporting::describeWildResult(
+               0, "Method K Bug Contest (no lead / Sweet Scent)") ==
+           "PID/IV spread and wild slot match Generation IV Method K Bug Contest (no lead / Sweet Scent); uncovered lead and method-specific branches remain incomplete");
 
     Gen4LeadReporting::ReportEvidence one{};
     one.history.add(Path::StaticSuccess);
@@ -19,6 +22,9 @@ int main() {
     assert(Gen4LeadReporting::describe(one) ==
            "PID/IV spread and wild source match extended Generation IV Method J/K lead history: Static success; other unproven lead histories remain incomplete");
     assert(Gen4LeadReporting::describe(one.history.mask) ==
+           Gen4LeadReporting::describe(one));
+    assert(Gen4LeadReporting::describeWildResult(
+               one.history.mask, "Method K (extended lead history)") ==
            Gen4LeadReporting::describe(one));
 
     Gen4LeadReporting::ReportEvidence several{};
@@ -44,6 +50,8 @@ int main() {
     assert(allDetail.find("Synchronize fail, Cute Charm fail, Pressure/Hustle/Vital Spirit fail") != std::string::npos);
     assert(allDetail.find("Static/Magnet Pull fail, Intimidate/Keen Eye encounter-continues") != std::string::npos);
     assert(Gen4LeadReporting::describe(all.history.mask) == allDetail);
+    assert(Gen4LeadReporting::describeWildResult(
+               all.history.mask, "ignored generic method") == allDetail);
 
     std::cout << "Gen IV lead reporting evidence: PASS\n";
 }
