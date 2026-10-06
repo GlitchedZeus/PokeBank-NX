@@ -117,30 +117,76 @@ void drawFooterWithClassicAddLabel(PKSEFramebuffer& fb, std::string text) {
 #define isGen1SourceUX isGen1SourceUXCleanup3
 #define handleInputUX handleInputUXCleanup3
 #define drawOverlayUX drawOverlayUXCleanup3
+// The Gen I touch overlays are preserved .inc layers; adapt their legacy free hit-test spelling
+// to the owning TrainerViewScreen without changing the editor implementation itself.
+#define touchedButtonDownId(touchArg) screen.touchedButtonDownId(touchArg)
+#define touchedButtonId(touchArg) screen.touchedButtonId(touchArg)
 #include "Gen1PokemonEditorOverlayUXCleanup3.inc"
+#undef touchedButtonId
+#undef touchedButtonDownId
 #undef drawOverlayUX
 #undef handleInputUX
 #undef isGen1SourceUX
 #undef drawFooter
 #undef ux2StageAdd
 
+#define touchedButtonDownId(touchArg) screen.touchedButtonDownId(touchArg)
+#define touchedButtonId(touchArg) screen.touchedButtonId(touchArg)
 #include "Gen1PokemonEditorOverlayFoundation.inc"
+#undef touchedButtonId
+#undef touchedButtonDownId
 #include "Gen1PokemonEditorFoundationHardwareFix.inc"
 #include "Gen1PokemonEditorPassiveView.inc"
+
+// Keep the historical no-touch Gen II foundation overload compilable while the actual composite
+// route below supplies the live TouchInput to every active picker/surface.
+namespace UI::Gen2PokemonEditor {
+namespace {
+const TouchInput kLegacyNoTouch{};
+} // namespace
+} // namespace UI::Gen2PokemonEditor
+#define touch kLegacyNoTouch
 #include "Gen2PokemonEditorFoundation.inc"
+#undef touch
+
+// Older Gen II presentation layers call the two-argument Held Item renderer. Forward them through
+// the session owner so the touch-aware renderer still publishes real cell hitboxes.
+namespace UI::Gen2PokemonEditor {
+namespace {
+void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
+    auto* owner = const_cast<TrainerViewScreen*>(state.owner);
+    if (owner) drawHeldItemPicker(*owner, fb, state);
+}
+} // namespace
+} // namespace UI::Gen2PokemonEditor
 
 #define handlePickerInput handlePickerInputBase
 #define drawPickerOverlay drawPickerOverlayBase
 #include "Gen2PokemonPickerOverlay.inc"
 #undef drawPickerOverlay
 #undef handlePickerInput
+
+// The hardware move-picker renderer already has this layout locally; expose the same exact compact
+// layout to its touch-drag handler without altering the accepted picker source layer.
+namespace UI::Gen2PokemonEditor {
+namespace {
+constexpr auto kTouchMovePickerLayout = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout();
+} // namespace
+} // namespace UI::Gen2PokemonEditor
+#define layout kTouchMovePickerLayout
 #include "Gen2HardwarePickerFix.inc"
+#undef layout
 
 #include "Gen2SharedPokemonSurface.inc"
 
 #define handleUnifiedGen2SurfaceInput handleUnifiedGen2SurfaceInputBase
 #define drawUnifiedGen2Surface drawUnifiedGen2SurfaceBase
+// The unified workspace already owns a live `touch` parameter; route it into the newly touch-aware
+// Held Item picker while preserving the older six-argument source call.
+#define handleItemPicker(screenArg, stateArg, downArg, heldArg, stickXArg, stickYArg) \
+    handleItemPicker(screenArg, stateArg, downArg, heldArg, stickXArg, stickYArg, touch)
 #include "Gen2UnifiedPokemonWorkspace.inc"
+#undef handleItemPicker
 #undef drawUnifiedGen2Surface
 #undef handleUnifiedGen2SurfaceInput
 #include "Gen2HardwareWorkspaceFix.inc"
