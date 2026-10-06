@@ -1,0 +1,62 @@
+name: ONE-TIME forward MAIN into smooth touch lane
+
+on:
+  push:
+    branches:
+      - feature/touch-controls-20261005
+    paths:
+      - '.github/workflows/one-time-touch-forward-main-20261006.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  merge-main:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact touch branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/touch-controls-20261005
+          fetch-depth: 0
+
+      - name: Guard exact touch parent and current MAIN
+        env:
+          EXPECTED_TOUCH_PARENT: 00bfcff082a7a22039bb8c8789a1b410ccac84cb
+          EXPECTED_MAIN: 98727a5b215d0bfa0bbe315522d0075b8d325721
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "$EXPECTED_TOUCH_PARENT"
+          git fetch origin feature/gen4-full-editor-20260928
+          test "$(git rev-parse origin/feature/gen4-full-editor-20260928)" = "$EXPECTED_MAIN"
+
+      - name: Merge MAIN forward, preserving touch UI
+        env:
+          EXPECTED_MAIN: 98727a5b215d0bfa0bbe315522d0075b8d325721
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git merge --no-ff --no-edit "$EXPECTED_MAIN"; then
+            # MAIN owns the new RetroArch return-host tranche. The touch lane never edited these
+            # paths, so take MAIN verbatim there and reject any unresolved UI/touch conflict.
+            git checkout --theirs -- Makefile include/UI/GameLauncher.h src/main.cpp src/UI/GameLauncher.cpp tests/test_game_hub_contract.py
+            git checkout --theirs -- runtime/return_host
+            git checkout --theirs -- .github/workflows/one-time-retroarch-return-host-v4.yml || true
+            git add Makefile include/UI/GameLauncher.h src/main.cpp src/UI/GameLauncher.cpp tests/test_game_hub_contract.py runtime/return_host
+            git add .github/workflows/one-time-retroarch-return-host-v4.yml || true
+            unresolved="$(git diff --name-only --diff-filter=U)"
+            test -z "$unresolved" || { echo "Unresolved non-launch conflicts:"; echo "$unresolved"; exit 1; }
+            git commit --no-edit
+          fi
+          git diff --check HEAD^
+          python3 tests/test_game_hub_contract.py
+          python3 tests/test_touch_modal_list_contract.py
+          python3 tests/test_touch_pokemon_editor_direct_rows_contract.py
+          python3 tests/test_touch_appwide_surface_contract.py
+
+      - name: Push forward merge without force
+        run: |
+          set -euo pipefail
+          git push origin HEAD:feature/touch-controls-20261005
