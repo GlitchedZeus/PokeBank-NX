@@ -99,7 +99,7 @@ namespace Dialogs {
         // The notice is a LINE here, not an extra dialog. This dialog is already a confirm/cancel,
         // so folding a warning in tells the user without adding a step.
         const int warnH = (screen.illegalDataWritten ? 26 : 0);
-        const int h = 168 + warnH + rows * (rowH + rowGap);
+        const int h = 226 + warnH + rows * (rowH + rowGap);
         const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
 
         int cy = drawDialogFrame(fb, x, y, w, h, "Save Changes", Colors::Text);
@@ -140,7 +140,11 @@ namespace Dialogs {
             ry += rowH + rowGap;
         }
 
-        drawDialogFooter(fb, x, y, w, h, "D-pad/Stick: Choose  |  A: Save  |  B: Cancel");
+        const int cbh = TouchTargetMin;
+        const int cby = y + h - cbh - 16;
+        const int cbw = (w - 48 - 16) / 2;
+        drawEditChoiceButton(screen, fb, x + 24, cby, cbw, cbh, "B", "Cancel", 90);
+        drawEditChoiceButton(screen, fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Save", 91);
     }
 
 }

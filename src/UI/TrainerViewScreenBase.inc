@@ -1826,7 +1826,7 @@ namespace UI {
         }
         details.active = true;
         details.readOnly = false;
-        details.leftScroll = 0;   // start the info column at the top
+        details.leftScroll = 0; details.leftScrollManual = false;   // start the info column at the top
         details.editing = false;
         details.category = 0;
         details.selectedStat = 0;
@@ -1885,7 +1885,7 @@ namespace UI {
 
         details.active = true;
         details.readOnly = readOnly;
-        details.leftScroll = 0;
+        details.leftScroll = 0; details.leftScrollManual = false;
         details.editing = false;
         details.category = 0;
         details.selectedStat = 0;
@@ -3043,7 +3043,9 @@ namespace UI {
                 if (kDown & HidNpadButton_Up)   saveDestIndex = (saveDestIndex - 1 + nDest) % nDest;
                 if (kDown & HidNpadButton_Down) saveDestIndex = (saveDestIndex + 1) % nDest;
                 const int td = touchedButtonId(touch);
-                if (td >= 0 && td < nDest) { saveDestIndex = td; kDown |= HidNpadButton_A; }
+                if (td == 90) kDown |= HidNpadButton_B;
+                else if (td == 91) kDown |= HidNpadButton_A;
+                else if (td >= 0 && td < nDest) { saveDestIndex = td; kDown |= HidNpadButton_A; }
                 // The cursor is a ROW; which destination that row means depends on the session.
                 const SaveDest chosenDest = saveDestAt(saveDestIndex);
 
@@ -3300,28 +3302,69 @@ namespace UI {
                 return;
             }
 
-            // Legality overlay (full issue list) intercepts input while open: B or any tap closes it.
+            // Report overlays are real scroll surfaces. A drag scrolls; only B or the explicit
+            // Close target exits, so reading a long report cannot accidentally dismiss it.
             if (details.legalityOverlay) {
-                if ((kDown & HidNpadButton_B) || tb >= 0) details.legalityOverlay = false;
+                if ((kDown & HidNpadButton_B) || tb == 96) {
+                    details.legalityOverlay = false; details.legalityScroll = 0; return;
+                }
+                if (kDown & HidNpadButton_Up)   details.legalityScroll = std::max(0, details.legalityScroll - 1);
+                if (kDown & HidNpadButton_Down) ++details.legalityScroll;
+                if (kDown & HidNpadButton_L)    details.legalityScroll = std::max(0, details.legalityScroll - 8);
+                if (kDown & HidNpadButton_R)    details.legalityScroll += 8;
+                if (touch.justReleased() && touch.dragged()) {
+                    const int dy = touch.deltaY();
+                    const int steps = std::max(1, std::abs(dy) / 30);
+                    if (dy < 0) details.legalityScroll += steps;
+                    else if (dy > 0) details.legalityScroll = std::max(0, details.legalityScroll - steps);
+                }
                 return;
             }
-            // Ribbon overlay (full ribbon/mark list) does the same.
             if (details.ribbonOverlay) {
-                if ((kDown & HidNpadButton_B) || tb >= 0) details.ribbonOverlay = false;
+                if ((kDown & HidNpadButton_B) || tb == 96) {
+                    details.ribbonOverlay = false; details.ribbonScroll = 0; return;
+                }
+                if (kDown & HidNpadButton_Up)   details.ribbonScroll = std::max(0, details.ribbonScroll - 1);
+                if (kDown & HidNpadButton_Down) ++details.ribbonScroll;
+                if (kDown & HidNpadButton_L)    details.ribbonScroll = std::max(0, details.ribbonScroll - 8);
+                if (kDown & HidNpadButton_R)    details.ribbonScroll += 8;
+                if (touch.justReleased() && touch.dragged()) {
+                    const int dy = touch.deltaY();
+                    const int steps = std::max(1, std::abs(dy) / 28);
+                    if (dy < 0) details.ribbonScroll += steps;
+                    else if (dy > 0) details.ribbonScroll = std::max(0, details.ribbonScroll - steps);
+                }
                 return;
             }
-            // Open the ribbon list: Y, or tapping the Ribbons row (id 94).
+            // Open reports at the top every time.
             if ((kDown & HidNpadButton_Y) || tb == 94) {
+                details.ribbonScroll = 0;
                 details.ribbonOverlay = true;
                 return;
             }
-            // Open the legality issue list: R, or tapping the legality summary (id 95) -- but ONLY
-            // when the mon actually has issues. A clean mon has nothing to show, so the button is
-            // disabled (greyed in the guide) and this does nothing.
             if ((kDown & HidNpadButton_R) || tb == 95) {
-                if (pokemon && !Legality::analyze(*pokemon, pokemon->getGameGroup()).ok())
+                if (pokemon && !Legality::analyze(*pokemon, pokemon->getGameGroup()).ok()) {
+                    details.legalityScroll = 0;
                     details.legalityOverlay = true;
+                }
                 return;
+            }
+
+            // Finger-owned scrolling for content panes. Gen II's native-data card is on the right;
+            // the modern details column is on the left. A drag returns immediately and therefore
+            // never activates whatever row happens to be under the release point.
+            const bool gen2Passive = sourceGameId == "gold_gbc" || sourceGameId == "silver_gbc" ||
+                                     sourceGameId == "crystal_gbc";
+            if (touch.justReleased() && touch.dragged()) {
+                const bool inGen2Data = gen2Passive && touch.startX() >= 796 && touch.startX() < 1016 &&
+                                        touch.startY() >= 393 && touch.startY() < 609;
+                const bool inModernInfo = !gen2Passive && touch.startX() >= 24 && touch.startX() < 454 &&
+                                          touch.startY() >= 276 && touch.startY() < 650;
+                if (inGen2Data || inModernInfo) {
+                    details.leftScroll = std::max(0, details.leftScroll - touch.deltaY());
+                    details.leftScrollManual = true;
+                    return;
+                }
             }
             // View is a genuinely read-only summary. Keep navigation, ribbons, legality, and B/close,
             // but strip every control/touch route that the inherited editor uses to change data.
@@ -3369,7 +3412,11 @@ namespace UI {
                 closeDetailsModal();
                 return;
             }
-            if (tb >= 0 && tb <= 31) { details.selectedField = tb; kDown |= HidNpadButton_A; }
+            if (tb >= 0 && tb <= 31) {
+                details.leftScrollManual = false;
+                details.selectedField = tb;
+                kDown |= HidNpadButton_A;
+            }
 
             // B closes the page. Unsaved edits would be rolled back to the last Save/open snapshot,
             // so ask before throwing them away.
@@ -3385,6 +3432,8 @@ namespace UI {
             // center column (0-9: stats/shiny/nature/gender/level), the moves column (10-14, right panel),
             // and the editable detail column (left panel; ids 15-25, navigated in draw order).
             {
+                if (kDown & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right))
+                    details.leftScrollManual = false;
                 int& f = details.selectedField;
                 // Left-pane editable field ids in DRAW (top-to-bottom) order, built by the modal draw
                 // (PokemonDetailsModal.cpp) so conditional rows (Form, Stat Nature, Pokerus, ...) appear
