@@ -1,0 +1,42 @@
+name: One-time touch forward-merge MAIN
+
+on:
+  push:
+    branches:
+      - feature/touch-controls-20261005
+    paths:
+      - .github/workflows/one-time-touch-forward-main.yml
+
+permissions:
+  contents: write
+
+jobs:
+  merge-main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/touch-controls-20261005
+          fetch-depth: 0
+      - name: Guarded forward merge and self-cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOUCH_BRANCH=feature/touch-controls-20261005
+          MAIN_BRANCH=feature/gen4-full-editor-20260928
+          EXPECTED_TOUCH_PARENT=5d9160ee8f049f1c96c86aba57c255d4d7e7efe2
+          EXPECTED_MAIN=153bfe880c4f2c98ecd4bac78d4bf2cbf22a4847
+
+          test "$(git rev-parse HEAD^)" = "$EXPECTED_TOUCH_PARENT"
+          git fetch origin "$MAIN_BRANCH" "$TOUCH_BRANCH"
+          test "$(git rev-parse origin/$TOUCH_BRANCH)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/$MAIN_BRANCH)" = "$EXPECTED_MAIN"
+
+          git config user.name "PokeBank NX CI"
+          git config user.email "actions@users.noreply.github.com"
+          git merge --no-ff --no-edit "origin/$MAIN_BRANCH" -m "merge(main): forward-preserve latest Product Home party fixes"
+          git diff --check HEAD^ HEAD
+
+          git rm .github/workflows/one-time-touch-forward-main.yml
+          git commit -m "chore(touch): remove one-shot forward-merge helper"
+          git push origin HEAD:"$TOUCH_BRANCH"
