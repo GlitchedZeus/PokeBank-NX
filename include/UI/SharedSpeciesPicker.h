@@ -6,6 +6,7 @@
 #include "UI/PKSEFramebuffer.h"
 #include "UI/SpriteManager.h"
 #include "UI/Common.h"
+#include "UI/TouchInput.h"
 #include <algorithm>
 #include <array>
 #include <string_view>
@@ -77,6 +78,12 @@ inline std::array<uint8_t, 2> classicPickerTypes(uint16_t species, int speciesCo
     return {0, 0};
 }
 
+inline bool touchStartedInside(const TouchGestureSnapshot& touch,
+                               int x, int y, int w, int h) noexcept {
+    return touch.down && touch.startX >= x && touch.startX < x + w &&
+           touch.startY >= y && touch.startY < y + h;
+}
+
 } // namespace
 
 // Extracted from the accepted Gen I visual picker and shared with Generation II.
@@ -88,23 +95,50 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
                  std::array<uint8_t, 2> previewTypes = {0xFF, 0xFF}) {
         fb.drawText(x + 24, y + 50,
                     shinyToggleAvailable
-                        ? "One species row • hover preview only • Y chooses intended Normal/Shiny appearance"
-                        : "One species row • hover preview only • Shiny is edited from the shared field",
+                        ? "Drag to browse • tap to choose • Y chooses intended Normal/Shiny appearance"
+                        : "Drag to browse • tap to choose • Shiny is edited from the shared field",
                     Colors::TextDim, TextStyle::Caption);
         constexpr int visible = 9;
-        const int start = std::clamp(selectedSpecies - visible / 2, 1, speciesCount - visible + 1);
+        constexpr int rowStep = 43;
+        constexpr int rowHeight = 39;
         const int listX = x + 20, listW = 560;
-        for (int i = 0; i < visible; ++i) {
-            const int species = start + i;
-            const int rowY = y + 84 + i * 43;
-            const bool selected = species == selectedSpecies;
-            if (selected) fb.drawSelectionHighlight(listX, rowY, listW, 39);
+        const int listY = y + 84;
+        const int listH = visible * rowStep;
+
+        // Direct-manipulation preview: while a finger is physically dragging this list, move the
+        // rendered rows by the exact pixel delta. Whole rows are folded into a temporary visual
+        // species and only the sub-row remainder is translated. The semantic selection is still
+        // committed by the owning input handler on release, so drag can never become an accidental A.
+        int visualSpecies = std::clamp(selectedSpecies, 1, speciesCount);
+        int liveOffset = 0;
+        const auto& touch = latestTouchGesture();
+        if (touchStartedInside(touch, listX, listY, listW, listH)) {
+            const int requestedRows = -touch.deltaY / rowStep;
+            visualSpecies = std::clamp(selectedSpecies + requestedRows, 1, speciesCount);
+            const int appliedRows = visualSpecies - selectedSpecies;
+            liveOffset = touch.deltaY + appliedRows * rowStep;
+            // Resist rather than expose empty space at either edge.
+            if ((visualSpecies == 1 && liveOffset > 0) ||
+                (visualSpecies == speciesCount && liveOffset < 0))
+                liveOffset /= 3;
+        }
+
+        const int start = std::clamp(visualSpecies - visible / 2, 1,
+                                     std::max(1, speciesCount - visible + 1));
+        fb.setClipRect(listX, listY, listW, listH - 2);
+        const int firstDraw = std::max(1, start - 1);
+        const int lastDraw = std::min(speciesCount, start + visible);
+        for (int species = firstDraw; species <= lastDraw; ++species) {
+            const int rowY = listY + (species - start) * rowStep + liveOffset;
+            const bool selected = species == visualSpecies;
+            if (selected) fb.drawSelectionHighlight(listX, rowY, listW, rowHeight);
             fb.drawText(listX + 16, rowY + 9,
                         rowText(static_cast<uint16_t>(species)),
                         selected ? Colors::Text : Colors::TextDim);
         }
+        fb.clearClip();
 
-        const uint16_t preview = static_cast<uint16_t>(selectedSpecies);
+        const uint16_t preview = static_cast<uint16_t>(visualSpecies);
         const int previewX = x + 610;
         constexpr int previewW = 353;
         fb.drawText(previewX, y + 86, titleText(preview), Colors::Text, TextStyle::Heading);
