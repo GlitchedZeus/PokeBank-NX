@@ -1,14 +1,50 @@
-name: Disabled one-time Product Home freeze + party cleanup
-
-# This staging workflow intentionally does nothing. The broad cleanup it contained was rejected
-# after hardware feedback because it changed too much at once. Keep the file inert as an audit
-# breadcrumb; focused forward fixes are committed directly instead.
+name: One-time direct Gen I editor-row touch
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [feature/touch-controls-20261005]
+    paths:
+      - .github/workflows/one-time-product-freeze-party-cleanup.yml
+
+permissions:
+  contents: write
 
 jobs:
-  disabled:
+  patch:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
-      - run: echo "Broad Product Home cleanup disabled; use focused hardware fixes only."
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Guard exact touch head
+        run: |
+          set -euo pipefail
+          git fetch origin feature/touch-controls-20261005
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/feature/touch-controls-20261005)" = "$GITHUB_SHA"
+      - name: Make Gen I Create/Edit rows natively touchable
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc')
+          s=p.read_text()
+          old='''    if (state.mode == UX2Mode::Actions) {\n        std::string error;\n'''
+          new='''    if (state.mode == UX2Mode::Edit || state.mode == UX2Mode::AddDraft) {\n        constexpr int fieldCount = 14;\n        int field = selectedId(2000, fieldCount, pressed);\n        if (field >= 0) state.row = field;\n        field = selectedId(2000, fieldCount, tapped);\n        if (field >= 0) { state.row = field; down |= HidNpadButton_A; }\n        if (touch.justReleased() && touch.dragged()) {\n            const int steps = std::max(1, std::abs(touch.deltaY()) / 42);\n            if (touch.deltaY() < 0) state.row = std::min(fieldCount - 1, state.row + steps);\n            else if (touch.deltaY() > 0) state.row = std::max(0, state.row - steps);\n        }\n    } else if (state.mode == UX2Mode::Actions) {\n        std::string error;\n'''
+          if s.count(old)!=1: raise SystemExit(f'editor touch dispatch anchor count={s.count(old)}')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+          git diff --check
+          grep -q 'selectedId(2000, fieldCount' src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc
+          grep -q 'touch.deltaY() / 42' src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc
+      - name: Commit runtime change only
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc
+          git diff --cached --quiet && { echo 'No runtime touch changes'; exit 1; }
+          git commit -m 'feat(ui): make Gen I editor rows directly touchable'
+          git push origin HEAD:feature/touch-controls-20261005
