@@ -22,7 +22,7 @@ jobs:
 
       - name: Guard exact parent
         env:
-          EXPECTED_PARENT: 42837433290eafe601dfd7dd5f1b3192f3ac0239
+          EXPECTED_PARENT: 9f6ed3893acab9a7d84bd48b3b2c8625192b5e15
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD^)" = "$EXPECTED_PARENT"
