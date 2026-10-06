@@ -53,6 +53,7 @@
 #include "Legality/Gen4RangerManaphy.h"
 #include "Legality/Gen4EventTemplate.h"
 #include "Legality/Gen4WildRngCorrelation.h"
+#include "Legality/Gen4LeadReportingEvidence.h"
 #include "Legality/Gen34EggState.h"
 #include "Legality/Gen34EggMoveEvidence.h"
 #include "Legality/Gen4TransferEvidence.h"
@@ -1041,9 +1042,9 @@ namespace Legality {
                         pk.form(), pk.id32(), correlation.originSeed, pk.pid());
                     if (wildRng.matched()) {
                         add(r, Severity::Info,
-                            "PID/IV spread and wild slot match Generation IV " +
-                            std::string(Gen4WildRng::methodName(wildRng.method)) +
-                            "; uncovered lead and method-specific branches remain incomplete",
+                            Gen4LeadReporting::describeWildResult(
+                                wildRng.leadHistoryMask,
+                                Gen4WildRng::methodName(wildRng.method)),
                             CheckIdentifier::PidRng);
                     } else {
                         add(r, Severity::Info,
