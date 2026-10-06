@@ -30,7 +30,7 @@ SURFACES = {
     ),
     "Backup selection": (
         "src/UI/BackupSelectionScreen.cpp",
-        ("touch.justReleased() && touch.dragged()", "touch.justTapped()"),
+        ("touch.justReleased() && touch.dragged()", "touch.justReleased() && !touch.dragged()"),
     ),
     "Classic inventory": (
         "src/UI/ClassicInventoryOverlay.cpp",
