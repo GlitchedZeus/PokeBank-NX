@@ -86,6 +86,19 @@ require(gen3, "src/UI/Gen3SharedPokemonSurface.inc",
         "touch.justReleased() && touch.dragged()",
         "SharedPokemonShell::drawVerticalScrollIndicator")
 
+# Gen III's accepted .inc helper returns true for any direct-row id, even if the exact-format
+# adapter refuses to move focus because that row is read-only. The composite include guard must
+# therefore reject those non-editable direct taps before the caller can synthesize A against the
+# previously focused field. Passive View remains allowed to focus informational rows.
+composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp")
+require(composite, "src/UI/TrainerViewScreenCompositeOverlay.cpp",
+        "#define applyDirectFocus(idArg)",
+        "passiveView || detailEditable(state, (idArg) - 31000)",
+        "passiveView || pidLinkedRowEditable(state, (idArg) - 31200)",
+        "? false : applyDirectFocus(idArg)",
+        '#include "Gen3SharedPokemonSurface.inc"',
+        "#undef applyDirectFocus")
+
 gen4 = read("src/UI/Gen4SharedPokemonSurface.inc")
 for token in (
     "PickerTarget::Species", "PickerTarget::HeldItem", "PickerTarget::Language",
