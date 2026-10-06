@@ -50,6 +50,38 @@ SURFACES = {
          "screen.touchedButtonId(touch)",
          "PokeVault::UIModel::PokemonLocation::Party"),
     ),
+    "modern boxes draw targets": (
+        "src/UI/Panels/BoxPokemonPanel.cpp",
+        ("screen.touchButtons.push_back({ kBoxNameId",
+         "screen.touchButtons.push_back({ kPrevBoxId",
+         "screen.touchButtons.push_back({ kNextBoxId",
+         "screen.touchButtons.push_back({ slotIndex",
+         "screen.touchButtons.push_back({ 2000"),
+    ),
+    "modern boxes input": (
+        "src/UI/TrainerViewScreenBase.inc",
+        ("tapped == 1000", "tapped == 1001", "tapped == 1002",
+         "tapped == 2000",
+         "tapped >= 0 && tapped < static_cast<int>(trainer.getSlotsPerBox())",
+         "if (selectedItemIndex == tapped) kDown |= HidNpadButton_A"),
+    ),
+    "dual-pane storage draw targets": (
+        "src/UI/Panels/StoragePanel.cpp",
+        ("storageTouchTargets.clear()",
+         "storageTouchTargets.push_back({savePane ? 0 : 1, boxIndex, -2",
+         "storageTouchTargets.push_back({savePane ? 0 : 1, boxIndex, -3",
+         "storageTouchTargets.push_back({savePane ? 0 : 1, boxIndex, -4",
+         "storageTouchTargets.push_back({thisPane, boxIndex, i"),
+    ),
+    "dual-pane storage input": (
+        "src/UI/TrainerViewScreenBase.inc",
+        ("for (const auto& t : storageTouchTargets)",
+         "if (touch.justPressed())",
+         "if (t.slot == -2)",
+         "else if (t.slot == -3)",
+         "else if (t.slot == -4)",
+         "kDown |= HidNpadButton_A"),
+    ),
     "trainer viewer/editor and retained loaded settings": (
         "src/UI/TrainerViewScreenBase.inc",
         ("screen.touchButtons.push_back({ i, cardX, cy, cardW, rowH })",
@@ -193,6 +225,15 @@ for face in ("A", "B", "X", "Y"):
 require_all("include/UI/ScreenChrome.h",
             "g_touchGlyphHits", "navTouchButton",
             "release-confirmed tap",
-            "Content cards/rows are owned by the screen that draws them.")
+            "Content cards/rows are owned by the screen that draws them.",
+            "constexpr int kLiveDragStep = 52",
+            "if (contentDragMoved) return 0;",
+            "constexpr int kContentSwipeDistance = 72",
+            "g_quickGamesDrawerSwipe = true",
+            "const bool profilePicker =",
+            "const bool gameFilePicker =",
+            "const bool saveInstanceList =",
+            "const bool saveAssignmentList =",
+            "g_contentSwipeMask = verticalDirections")
 
 print(f"touch app-wide surface inventory: PASS ({len(SURFACES)} surface families)")
