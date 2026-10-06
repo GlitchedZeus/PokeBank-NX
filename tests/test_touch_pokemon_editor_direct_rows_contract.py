@@ -35,6 +35,19 @@ require(gen1_input, "src/UI/Gen1PokemonEditorOverlayFoundation.inc",
         "else if (tapped == 5901) down |= HidNpadButton_Y;",
         "else if (tapped == 5902) down |= HidNpadButton_A;")
 
+classic_actions = read("src/UI/ClassicReleaseActionFix.inc")
+require(classic_actions, "src/UI/ClassicReleaseActionFix.inc",
+        "hit.id < 300 || hit.id >= 300 + rows",
+        "touchedAction >= 300 && touchedAction < 300 + rows",
+        "screen.touchButtons.push_back({300 + static_cast<int>(i)",
+        "screen.touchButtons.push_back({398",
+        "screen.touchButtons.push_back({399",
+        "hit.id < 500 || hit.id >= 500 + static_cast<int>(actions.count)",
+        "touchedAction >= 500 && touchedAction < 500 + static_cast<int>(actions.count)",
+        "screen.touchButtons.push_back({500 + static_cast<int>(i)",
+        "screen.touchButtons.push_back({498",
+        "screen.touchButtons.push_back({499")
+
 gen2 = read("src/UI/Gen2PokemonPickerOverlay.inc")
 require(gen2, "src/UI/Gen2PokemonPickerOverlay.inc",
         "screen.touchedButtonDownId(touch)",
@@ -66,7 +79,12 @@ require(gen3, "src/UI/Gen3SharedPokemonSurface.inc",
         "state.pickerRow = touchTap - 4000;",
         "screen.touchButtons.push_back({4000 + i",
         "screen.touchButtons.push_back({31500 + speciesStart + i",
-        "touch.justReleased() && touch.dragged()")
+        "actionDown >= 31600 && actionDown < 31600 + static_cast<int>(actions.count)",
+        "actionTap >= 31600 && actionTap < 31600 + static_cast<int>(actions.count)",
+        "screen.touchButtons.push_back({31600 + static_cast<int>(i)",
+        "state.reviewScroll = std::clamp",
+        "touch.justReleased() && touch.dragged()",
+        "SharedPokemonShell::drawVerticalScrollIndicator")
 
 gen4 = read("src/UI/Gen4SharedPokemonSurface.inc")
 for token in (
@@ -85,6 +103,9 @@ require(gen4, "src/UI/Gen4SharedPokemonSurface.inc",
         "screen.touchButtons.push_back({41100 + row",
         "screen.touchButtons.push_back({41120 + row",
         "screen.touchButtons.push_back({41300 + row",
+        "actionDown >= 41600 && actionDown < 41600 + static_cast<int>(actions.count)",
+        "actionTap >= 41600 && actionTap < 41600 + static_cast<int>(actions.count)",
+        "screen.touchButtons.push_back({41600 + static_cast<int>(i)",
         "touch.justReleased() && touch.dragged()")
 
-print("touch Pokémon editor direct-row contract: PASS")
+print("touch Pokémon editor direct-row/action contract: PASS")
