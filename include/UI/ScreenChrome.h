@@ -35,13 +35,28 @@ namespace UI {
     inline std::vector<TouchGlyphHit> g_touchGlyphAccum;
     inline std::vector<TouchGlyphHit> g_touchGlyphHits;
 
+    // Product Home's hero is rendered with many absolute coordinates. These two values let the
+    // shared card helper place the entire already-established hero subtree under one NanoVG
+    // translation while a finger is dragging it, then restore before the right-hand feature cards.
+    inline bool g_productHeroTransformActive = false;
+    inline bool g_productHeroSwipeRegistered = false;
+    inline int g_productHeroDragXForDraw = 0;
+
     inline Color withAlpha(Color color, std::uint8_t alpha) {
         return Color(color.r, color.g, color.b, alpha);
+    }
+
+    inline void finishProductHeroTranslation(PKSEFramebuffer& fb) {
+        if (!g_productHeroTransformActive) return;
+        fb.popTransform();
+        g_productHeroTransformActive = false;
     }
 
     // Shared PokeBank NX backdrop. It leaves the OLED theme genuinely black and keeps only the
     // low-alpha archive rings; the background now extends cleanly to the left edge.
     inline void drawAppBackdrop(PKSEFramebuffer& fb) {
+        // A NanoVG frame resets transforms, so reset the matching bookkeeping at the frame boundary.
+        g_productHeroTransformActive = false;
         // Input is consumed before draw. Begin each rendered frame with fresh direct-touch geometry;
         // controls drawn later in this same frame republish the targets used by the next update.
         g_touchGlyphAccum.clear();
@@ -92,6 +107,18 @@ namespace UI {
 
     inline void drawFocusedCard(PKSEFramebuffer& fb, int x, int y, int w, int h,
                                 bool focused, int radius = 14) {
+        // Exact Product Home hero geometry. Start one scoped translation here so all subsequent
+        // hero artwork/text/buttons inherit the same finger displacement. The first right-side
+        // feature card ends it below; drawNavHints also provides a defensive restore.
+        const bool productHero = g_productHeroSwipeRegistered && x == 24 && y == 78 && w == 720 && h == 548;
+        if (productHero && g_productHeroDragXForDraw != 0 && !g_productHeroTransformActive) {
+            const int dx = std::clamp(g_productHeroDragXForDraw, -360, 360);
+            fb.pushTranslation(static_cast<float>(dx), 0.0f);
+            g_productHeroTransformActive = true;
+        } else if (g_productHeroTransformActive && x >= 764) {
+            finishProductHeroTranslation(fb);
+        }
+
         if (focused) fb.drawSoftShadow(x, y, w, h, radius);
         // Focus never changes the card fill: teal outline + readable text carries selection.
         fb.drawFilledRoundedRect(x, y, w, h, radius, Colors::Surface);
@@ -101,6 +128,7 @@ namespace UI {
 
     inline void drawModalSurface(PKSEFramebuffer& fb, int x, int y, int w, int h,
                                  int radius = 18) {
+        finishProductHeroTranslation(fb);
         fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Color(0, 0, 0, 150));
         drawPanelSurface(fb, x, y, w, h, true, radius);
     }
@@ -245,6 +273,8 @@ namespace UI {
     inline int g_navSurfaceW = 0;
     inline int g_navContentBottom = 0;
     inline uint64_t g_contentSwipeMask = 0;
+    inline bool g_contentSwipeUsesShoulders = false;
+    inline bool g_contentSwipeReleaseOnly = false;
     inline bool g_quickGamesDrawerSwipe = false;
     inline uint64_t g_rightEdgeSwipeButton = 0;
     inline bool g_contentDragActive = false;
@@ -299,6 +329,12 @@ namespace UI {
                py >= g_contentSwipeY && py < g_contentSwipeY + g_contentSwipeH;
     }
 
+    inline uint64_t horizontalContentButton(bool towardNext) noexcept {
+        if (g_contentSwipeUsesShoulders)
+            return towardNext ? HidNpadButton_R : HidNpadButton_L;
+        return towardNext ? HidNpadButton_Right : HidNpadButton_Left;
+    }
+
     // Hit-test the badges captured during the PREVIOUS frame's draw. Footer buttons resolve on
     // release, browser/list content steps while the finger is moving, and a stationary tap on a
     // visible card follows the same spatial navigation path before pressing A. Screen-owned editor
@@ -331,6 +367,12 @@ namespace UI {
 
             g_contentDragVisualX = touch.x() - touch.startX();
             g_contentDragVisualY = touch.y() - touch.startY();
+            g_productHeroDragXForDraw = g_contentSwipeUsesShoulders
+                ? g_contentDragVisualX : 0;
+
+            // Product Home's hero is a carousel: it follows the finger continuously, but commits
+            // exactly one previous/next game only on release rather than cycling titles mid-drag.
+            if (g_contentSwipeReleaseOnly) return 0;
 
             const int dx = touch.x() - g_contentDragLastX;
             const int dy = touch.y() - g_contentDragLastY;
@@ -341,7 +383,7 @@ namespace UI {
             constexpr int kLiveDragStep = 24;
 
             if (ax >= kLiveDragStep && ax * 3 >= ay * 4) {
-                const uint64_t direction = dx < 0 ? HidNpadButton_Right : HidNpadButton_Left;
+                const uint64_t direction = horizontalContentButton(dx < 0);
                 if (g_contentSwipeMask & direction) {
                     g_contentDragLastX = touch.x();
                     g_contentDragLastY = touch.y();
@@ -364,11 +406,13 @@ namespace UI {
         if (!touch.justReleased()) return 0;
 
         const bool contentDragMoved = g_contentDragMoved;
+        const bool releaseOnly = g_contentSwipeReleaseOnly;
         g_contentDragActive = false;
         g_contentDragMoved = false;
         g_contentDragVisualX = 0;
         g_contentDragVisualY = 0;
-        if (contentDragMoved) return 0;
+        g_productHeroDragXForDraw = 0;
+        if (contentDragMoved && !releaseOnly) return 0;
 
         if (!touch.dragged()) {
             // Any controller-glyph button visibly drawn by the active surface is a real touch button.
@@ -419,7 +463,8 @@ namespace UI {
         }
 
         // A very fast flick can travel from touch-down to release between two rendered frames and
-        // therefore never cross a live step while held. Keep one release-resolved fallback for that.
+        // therefore never cross a live step while held. Product Home also intentionally resolves
+        // its carousel here so exactly one L/R action is committed after the visual drag.
         if (g_contentSwipeMask != 0 && touch.dragged() &&
             contentSwipeContains(touch.startX(), touch.startY())) {
             const int dx = touch.x() - touch.startX();
@@ -428,7 +473,7 @@ namespace UI {
             const int ay = dy < 0 ? -dy : dy;
             constexpr int kContentSwipeDistance = 72;
             if (ax >= kContentSwipeDistance && ax * 3 >= ay * 4) {
-                const uint64_t direction = dx < 0 ? HidNpadButton_Right : HidNpadButton_Left;
+                const uint64_t direction = horizontalContentButton(dx < 0);
                 if (g_contentSwipeMask & direction) return direction;
             }
             if (ay >= kContentSwipeDistance && ay * 3 >= ax * 4) {
@@ -491,6 +536,10 @@ namespace UI {
     // `cy`. A segment with no colon (e.g. "HOLDING") is a state marker and renders as accent text.
     // Shared by the screen nav bar and the dialog footer so the two always match.
     inline void drawNavHints(PKSEFramebuffer& fb, int x, int w, int cy, const std::string& hint) {
+        // Never let a hero translation leak into footer/overlay chrome even if a future Product Home
+        // layout stops drawing the right-hand feature cards.
+        finishProductHeroTranslation(fb);
+
         struct Seg { std::string btn, label; int glyphW, labelW; };
 
         // The footer commits glyph buttons drawn before it; buttons rendered later publish directly
@@ -504,6 +553,8 @@ namespace UI {
         g_navSurfaceW = w;
         g_navContentBottom = cy - TouchTargetMin / 2 - 8;
         g_contentSwipeMask = 0;
+        g_contentSwipeUsesShoulders = false;
+        g_contentSwipeReleaseOnly = false;
         g_quickGamesDrawerSwipe = false;
         g_rightEdgeSwipeButton = 0;
         g_contentSwipeX = x;
@@ -514,16 +565,20 @@ namespace UI {
         const uint64_t allDirections = HidNpadButton_Up | HidNpadButton_Down |
                                        HidNpadButton_Left | HidNpadButton_Right;
         const uint64_t verticalDirections = HidNpadButton_Up | HidNpadButton_Down;
-        const uint64_t horizontalDirections = HidNpadButton_Left | HidNpadButton_Right;
+        const uint64_t horizontalShoulders = HidNpadButton_L | HidNpadButton_R;
 
-        // Product Home's selected-game hero card is a real touch carousel. Limit the horizontal
-        // swipe capture to that exact card so the feature cards and dock keep their own tap targets.
+        // Product Home's selected-game hero card is a real touch carousel. Limit capture to that
+        // exact card, keep the card physically attached to the finger while held, and resolve one
+        // existing L/R change-game action only after release.
         const bool productHomeHero =
             hint.find("L/R: Change Game") != std::string::npos &&
             hint.find("A: Open") != std::string::npos &&
             hint.find("Y: Quick Games") != std::string::npos;
+        g_productHeroSwipeRegistered = productHomeHero;
         if (productHomeHero) {
-            g_contentSwipeMask = horizontalDirections;
+            g_contentSwipeMask = horizontalShoulders;
+            g_contentSwipeUsesShoulders = true;
+            g_contentSwipeReleaseOnly = true;
             g_contentSwipeX = 24;
             g_contentSwipeY = 78;
             g_contentSwipeW = 720;
@@ -535,6 +590,8 @@ namespace UI {
             hint.find("X: Save / Source") != std::string::npos &&
             hint.find("B: Close") != std::string::npos) {
             g_contentSwipeMask = allDirections;
+            g_contentSwipeUsesShoulders = false;
+            g_contentSwipeReleaseOnly = false;
             g_quickGamesDrawerSwipe = true;
         }
 
@@ -550,8 +607,11 @@ namespace UI {
             hint.find("ZR: Launch") != std::string::npos &&
             hint.find("+: Close Menu") != std::string::npos &&
             hint.find("B: Home") != std::string::npos;
-        if (classicGamesBrowser || currentGameGrid)
+        if (classicGamesBrowser || currentGameGrid) {
             g_contentSwipeMask = allDirections;
+            g_contentSwipeUsesShoulders = false;
+            g_contentSwipeReleaseOnly = false;
+        }
 
         const bool profilePicker = hint.find("Choose Profile") != std::string::npos &&
                                    hint.find("Use Profile") != std::string::npos;
@@ -564,8 +624,11 @@ namespace UI {
              hint.find("Refresh Saves") != std::string::npos);
         const bool saveAssignmentList = hint.find("Assign to This Profile") != std::string::npos &&
                                         hint.find("X: Refresh") != std::string::npos;
-        if (profilePicker || gameFilePicker || saveInstanceList || saveAssignmentList)
+        if (profilePicker || gameFilePicker || saveInstanceList || saveAssignmentList) {
             g_contentSwipeMask = verticalDirections;
+            g_contentSwipeUsesShoulders = false;
+            g_contentSwipeReleaseOnly = false;
+        }
 
         auto trim = [](const std::string& s) {
             const size_t a = s.find_first_not_of(" \t");
@@ -683,6 +746,7 @@ namespace UI {
 
     // Bottom nav bar: a sheet that curves along its top edge, carrying the controller badges.
     inline void drawNavBar(PKSEFramebuffer& fb, const std::string& hint) {
+        finishProductHeroTranslation(fb);
         const int W = fb.getWidth(), barY = fb.getHeight() - kNavBarH;
         fb.drawSoftShadow(0, barY, W, kNavBarH + 40, kChromeRadius);
         fb.drawFilledRoundedRect(0, barY, W, kNavBarH + kChromeRadius, kChromeRadius, Colors::Panel);
