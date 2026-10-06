@@ -58,4 +58,10 @@ inline std::string describe(const ReportEvidence& evidence) {
     return detail;
 }
 
+inline std::string describe(uint16_t mask) {
+    ReportEvidence evidence{};
+    evidence.history.mask = mask;
+    return describe(evidence);
+}
+
 } // namespace Legality::Gen4LeadReporting
