@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Legality/Gen4BugContestSynchronizeFailureEvidence.h"
 #include "Legality/Gen4PressureLeadEvidence.h"
 #include "Legality/Gen4StaticMagnetLeadEvidence.h"
 
@@ -79,7 +80,9 @@ constexpr Result matchIndexedRow(bool hgss, uint64_t row,
 
     if (Gen4LeadFailure::matchRow(
             hgss, row, prePidSeed, pid, metLevel,
-            Gen4LeadFailure::Lead::Synchronize).matched())
+            Gen4LeadFailure::Lead::Synchronize).matched() ||
+        (hgss && Gen4BugContestSynchronizeFailure::match(
+            row, prePidSeed, pid, metLevel).matched()))
         result.add(Path::SynchronizeFailure);
 
     if (Gen4LeadFailure::matchRow(
