@@ -200,6 +200,69 @@ void handleUnifiedTouch(TrainerViewScreen& screen, const TouchInput& touch, uint
         focusUnifiedTouchPoint(screen, touch.startX(), touch.startY(), true, down);
 }
 
+void handleParityTouch(TrainerViewScreen& screen, const TouchInput& touch, uint64_t& down) {
+    auto& shared = sharedSurfaceStateFor(screen);
+    auto& legacy = editorOverlayState(screen);
+
+    // Clone has one truthful writable target: the highlighted first empty slot in the selected
+    // destination box. Tapping any other cell is inert; the existing A backend remains authoritative.
+    if (shared.cloneActive) {
+        auto* editor = stagedEditor(screen);
+        if (!editor) return;
+        constexpr int w = 930, h = 540;
+        constexpr int x = (1280 - w) / 2;
+        constexpr int y = (672 - h) / 2;
+        constexpr int cols = 5, cellW = 164, cellH = 72;
+        constexpr int startX = x + 48, startY = y + 96;
+        if (touch.justTapped()) {
+            const int destination = firstEmptyGen2Slot(*editor, shared.cloneBox);
+            if (destination >= 0) {
+                const int col = destination % cols, row = destination / cols;
+                if (pointInRect(touch.startX(), touch.startY(), startX + col * cellW,
+                                startY + row * cellH, cellW - 10, cellH - 10))
+                    down |= HidNpadButton_A;
+            }
+        }
+        if (touch.justReleased() && touch.dragged() &&
+            pointInRect(touch.startX(), touch.startY(), x, y, w, h) &&
+            std::abs(touch.deltaX()) > std::abs(touch.deltaY()) &&
+            std::abs(touch.deltaX()) >= 56) {
+            down |= touch.deltaX() < 0 ? HidNpadButton_R : HidNpadButton_L;
+        }
+        return;
+    }
+
+    // Review rows are informational. Touch changes/browses the highlighted row only; it never
+    // aliases A because A exports the complete staged copy rather than acting on one row.
+    if (legacy.active && legacy.review) {
+        auto* editor = stagedEditor(screen);
+        if (!editor) return;
+        const int changeCount = static_cast<int>(editor->pendingChanges().size());
+        if (changeCount <= 0) return;
+        constexpr int w = 980, h = 540;
+        constexpr int x = (1280 - w) / 2;
+        constexpr int y = (672 - h) / 2;
+        const int first = std::clamp(legacy.reviewRow - 4, 0, std::max(0, changeCount - 9));
+        const int last = std::min(changeCount, first + 9);
+        if (touch.justTouchedDown() || touch.justTapped()) {
+            const int px = touch.justTouchedDown() ? touch.x() : touch.startX();
+            const int py = touch.justTouchedDown() ? touch.y() : touch.startY();
+            for (int i = first; i < last; ++i) {
+                const int rowY = y + 88 + (i - first) * 45;
+                if (!pointInRect(px, py, x + 22, rowY, w - 44, 42)) continue;
+                legacy.reviewRow = i;
+                break;
+            }
+        }
+        if (touch.justReleased() && touch.dragged() &&
+            pointInRect(touch.startX(), touch.startY(), x, y, w, h)) {
+            const int steps = std::max(1, std::abs(touch.deltaY()) / 45);
+            legacy.reviewRow = std::clamp(
+                legacy.reviewRow + (touch.deltaY() < 0 ? steps : -steps), 0, changeCount - 1);
+        }
+    }
+}
+
 } // namespace
 
 bool handleUnifiedGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
@@ -215,6 +278,7 @@ bool handleUnifiedGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uin
         normalizeHardwareDerivedHpDvFocus(screen, &previous);
         return handled;
     }
+    handleParityTouch(screen, touch, down);
     return handleUnifiedGen2SurfaceInputBase(screen, down, held, stickX, stickY, touch);
 }
 
