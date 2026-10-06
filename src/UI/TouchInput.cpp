@@ -40,6 +40,7 @@ namespace UI {
         }
 
         gLatestTouch.down = curDown;
+        gLatestTouch.released = justReleased();
         gLatestTouch.dragged = dragged();
         gLatestTouch.x = curX;
         gLatestTouch.y = curY;
@@ -51,8 +52,8 @@ namespace UI {
 
     bool TouchInput::dragged() const {
         // A 22 px dead-zone absorbs normal fingertip wobble on the 1280x720 Switch panel while still
-        // handing deliberate swipes to the browser/list gesture paths well before their 52-72 px step
-        // thresholds. Once the gesture ever crosses this boundary it stays a drag until release.
+        // handing deliberate swipes to live browser/list gesture paths. Once the gesture ever crosses
+        // this boundary it stays a drag until release.
         constexpr int kTapSlop = 22;
         return maxDistanceSquared > (kTapSlop * kTapSlop);
     }
