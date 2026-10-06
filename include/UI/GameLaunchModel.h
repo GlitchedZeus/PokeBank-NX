@@ -209,7 +209,10 @@ struct GameLaunchDescriptor {
 
 inline std::string normalizedLaunchStem(std::string_view path) {
     const size_t slash = path.find_last_of("/\\");
-    const size_t first = slash == std::string_view::npos ? 0 : slash + 1;
+    const size_t archiveMember = path.find_last_of('#');
+    size_t first = slash == std::string_view::npos ? 0 : slash + 1;
+    if (archiveMember != std::string_view::npos && archiveMember + 1 > first)
+        first = archiveMember + 1;
     const size_t dot = path.find_last_of('.');
     const size_t last = dot == std::string_view::npos || dot < first ? path.size() : dot;
     std::string out;

@@ -2,6 +2,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 source = (ROOT / "src/UI/SaveSelectScreen.cpp").read_text(encoding="utf-8")
+launcher_source = (ROOT / "src/UI/GameLauncher.cpp").read_text(encoding="utf-8")
 header = (ROOT / "include/UI/SaveSelectScreen.h").read_text(encoding="utf-8")
 ui_manager = (ROOT / "src/UI/UI.cpp").read_text(encoding="utf-8")
 shell_source = (ROOT / "src/UI/AppShellScreen.cpp").read_text(encoding="utf-8")
@@ -293,6 +294,10 @@ require("refreshHubSelectionFromCache();" in drawer_update and
         "refreshHubPreview(false);" in drawer_update and
         "refreshHubPreview();" not in drawer_update,
         "Quick Games A must hydrate selected save presentation without launch discovery")
+require("installedGameForwarderTitle(gameId)" not in launcher_source[launcher_source.find("if (kind == GameLaunchProviderKind::RetroArch)"):launcher_source.find("if (kind == GameLaunchProviderKind::MGBA")],
+        "RetroArch explicit launch must not block on a console-wide HOME forwarder scan")
+require("retroArchContentExists" in launcher_source and "retroArchPhysicalContentPath" in launcher_source,
+        "RetroArch launch path must validate archive-member content through its physical archive")
 require("openSaveSourceForCurrentTitle(true, false)" in source and
         "openSaveSourceForCurrentTitle(false, true)" in source and
         "Overlay::LegacyAssignment" in source and
@@ -551,12 +556,12 @@ require("Color(5, 14, 30, 40)" in source and "Color(3, 10, 24, 104)" in source,
 require("return beginLaunchLinkForCurrentTitle();" not in source and
         "Direct launch could not resolve this game's ROM" in source,
         "ZR Launch must never become an automatic ROM-file browser")
-require('argv += " -L " + quoted(descriptor.corePath)' in launcher and
-        "envSetNextLoad(descriptor.launcherPath.c_str(), argv.c_str())" in launcher and
-        "result.launcherPath = defaultLauncherPath" in launcher and
+require("const std::string& target = descriptor.corePath.empty()" in launcher and
+        "envSetNextLoad(target.c_str(), argv.c_str())" in launcher and
         "result.corePath = defaultRetroArchCore" in launcher and
-        "result.launcherPath = result.corePath;" not in launcher,
-        "RetroArch games must chain through the frontend with -L core and the ROM argument")
+        "result.launcherPath = result.corePath;" in launcher and
+        'argv += " -L " + quoted(descriptor.corePath)' not in launcher,
+        "RetroArch games must use the stable direct core + ROM chain without frontend fallback")
 require("installedGameForwarderTitle" in launcher and
         '"Launch the installed HOME forwarder for this exact game."' in launcher,
         "emulator games must prefer an already-installed exact-game HOME forwarder")
