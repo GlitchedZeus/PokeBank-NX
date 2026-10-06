@@ -11,12 +11,15 @@ int main() {
     Gen4LeadReporting::ReportEvidence none{};
     assert(!none.matched());
     assert(Gen4LeadReporting::describe(none).empty());
+    assert(Gen4LeadReporting::describe(uint16_t{0}).empty());
 
     Gen4LeadReporting::ReportEvidence one{};
     one.history.add(Path::StaticSuccess);
     assert(one.matched());
     assert(Gen4LeadReporting::describe(one) ==
            "PID/IV spread and wild source match extended Generation IV Method J/K lead history: Static success; other unproven lead histories remain incomplete");
+    assert(Gen4LeadReporting::describe(one.history.mask) ==
+           Gen4LeadReporting::describe(one));
 
     Gen4LeadReporting::ReportEvidence several{};
     several.history.add(Path::PressureSuccess);
@@ -25,6 +28,7 @@ int main() {
     const std::string detail = Gen4LeadReporting::describe(several);
     assert(detail ==
            "PID/IV spread and wild source match extended Generation IV Method J/K lead history: Pressure/Hustle/Vital Spirit success, Cute Charm fail, Intimidate/Keen Eye encounter-continues; other unproven lead histories remain incomplete");
+    assert(Gen4LeadReporting::describe(several.history.mask) == detail);
 
     Gen4LeadReporting::ReportEvidence all{};
     all.history.add(Path::IntimidateContinue);
@@ -39,6 +43,7 @@ int main() {
     assert(allDetail.find("Static success, Magnet Pull success, Pressure/Hustle/Vital Spirit success") != std::string::npos);
     assert(allDetail.find("Synchronize fail, Cute Charm fail, Pressure/Hustle/Vital Spirit fail") != std::string::npos);
     assert(allDetail.find("Static/Magnet Pull fail, Intimidate/Keen Eye encounter-continues") != std::string::npos);
+    assert(Gen4LeadReporting::describe(all.history.mask) == allDetail);
 
     std::cout << "Gen IV lead reporting evidence: PASS\n";
 }
