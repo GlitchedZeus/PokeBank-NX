@@ -1,0 +1,56 @@
+name: ONE-TIME fix return-host host build warning
+
+on:
+  push:
+    branches:
+      - feature/gen4-full-editor-20260928
+    paths:
+      - '.github/workflows/one-time-return-host-unused-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact MAIN hardware branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/gen4-full-editor-20260928
+          fetch-depth: 3
+
+      - name: Guard forward-only parent
+        env:
+          EXPECTED_PARENT: 560e520e4f7674355e71ce03e0b1f0d2aa363678
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "$EXPECTED_PARENT"
+
+      - name: Apply narrow host warning fix
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/UI/GameLauncher.cpp')
+          text = p.read_text(encoding='utf-8')
+          old = 'bool prepareRetroArchReturnHost(std::string& hostPath, std::string& error) {'
+          new = '[[maybe_unused]] bool prepareRetroArchReturnHost(std::string& hostPath, std::string& error) {'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one return-host helper signature, found {text.count(old)}')
+          p.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+          git diff --check
+          python3 tests/test_game_hub_contract.py
+          make -f Makefile.host build-host/test_retroarch_launch_resolution
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/UI/GameLauncher.cpp
+          git diff --cached --check
+          git commit -m "fix(launch): keep return host helper host-build clean"
+          git push origin HEAD:feature/gen4-full-editor-20260928

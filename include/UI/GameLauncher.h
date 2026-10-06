@@ -27,6 +27,10 @@ std::string suggestedGameLaunchBrowseRoot(std::string_view gameId,
                                           std::string_view providerId,
                                           std::string_view sourcePath);
 
+// Capture the exact PokeBank NRO that launched this process. RetroArch uses it as the
+// explicit return target through the bundled return host; other launch backends ignore it.
+void setGameLaunchReturnPath(std::string_view path);
+
 bool requestGameLaunch(const GameLaunchDescriptor& descriptor, std::string& error);
 
 } // namespace UI
