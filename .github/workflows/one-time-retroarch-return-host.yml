@@ -1,0 +1,50 @@
+name: ONE-TIME install RetroArch return host
+
+on:
+  push:
+    branches:
+      - feature/gen4-full-editor-20260928
+    paths:
+      - '.github/workflows/one-time-retroarch-return-host.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact MAIN hardware branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/gen4-full-editor-20260928
+          fetch-depth: 3
+
+      - name: Guard forward-only parent
+        env:
+          EXPECTED_RUNTIME_PARENT: 3d2ded8ba350e541211ca2c2af0019f018044d78
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "$EXPECTED_RUNTIME_PARENT"
+          echo "STAGING_SHA=$(git rev-parse HEAD)"
+          echo "PARENT_SHA=$(git rev-parse HEAD^)"
+
+      - name: Apply exact RetroArch return-host repair
+        run: |
+          set -euo pipefail
+          python3 tools/apply_retroarch_return_host_patch.py
+          git diff --check
+          python3 tests/test_game_hub_contract.py
+
+      - name: Commit and push runtime repair
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Makefile include/UI/GameLauncher.h src/main.cpp src/UI/GameLauncher.cpp \
+            runtime/return_host tests/test_game_hub_contract.py .github/workflows/product-ui-native.yml
+          git diff --cached --check
+          test -n "$(git status --porcelain)"
+          git commit -m "fix(launch): return from RetroArch to PokeBank"
+          git push origin HEAD:feature/gen4-full-editor-20260928
