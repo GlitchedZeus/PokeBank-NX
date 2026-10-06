@@ -12,7 +12,9 @@ BUILD       := build
 SOURCES     := source
 INCLUDES    :=
 NO_ICON     := 1
-NO_NACP     := 1
+APP_TITLE   := PokeBank Return Host
+APP_AUTHOR  := PokeBank NX
+APP_VERSION := 0.1.0
 
 ARCH        := -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 CFLAGS      := -g -Wall -O2 -ffunction-sections $(ARCH)
@@ -46,7 +48,7 @@ $(BUILD):
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 clean:
-	@rm -fr $(BUILD) $(TARGET).nro $(TARGET).elf $(TARGET).lst $(TARGET).map
+	@rm -fr $(BUILD) $(TARGET).nro $(TARGET).nacp $(TARGET).elf $(TARGET).lst $(TARGET).map
 
 else
 
