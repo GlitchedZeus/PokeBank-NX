@@ -83,7 +83,7 @@ jobs:
         if: github.event_name == 'push'
         run: |
           set -euo pipefail
-          git add src/Legality/Legality.cpp include/Pokemon/Pokemon.h include/Pokemon/Pokemon3FRLG.h include/Legality/Gen3BacdRaEventTemplate.h tests/test_gen3_bacd_ra_event_template.cpp docs/LEGALITY_WC3_PROGRESS.md tools/gen_legality_gen3_bacd_ra_events.py include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc include/Legality/Gen3BacdRaEventTemplateData.inc
+          git add src/Legality/Legality.cpp include/Pokemon/Pokemon.h include/Pokemon/Pokemon3FRLG.h include/Legality/Gen3BacdRaEventTemplate.h tests/test_gen3_bacd_ra_event_template.cpp docs/LEGALITY_WC3_PROGRESS.md tools/gen_legality_gen3_bacd_ra_events.py include/Legality/Gen4WildEncounterData.inc include/Legality/Gen3SafariEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc include/Legality/Gen3BacdRaEventTemplateData.inc
           if git diff --cached --quiet; then
             echo "Legality source and generated tables already match the branch."
             exit 0
