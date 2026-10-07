@@ -7,12 +7,8 @@ namespace UI {
 // otherwise portable UI/model tests.
 struct TouchGestureSnapshot {
     bool down = false;
-    bool dragged = false;
-    int x = 0;
-    int y = 0;
     int startX = 0;
     int startY = 0;
-    int deltaX = 0;
     int deltaY = 0;
 };
 
