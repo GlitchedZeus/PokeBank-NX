@@ -53,41 +53,6 @@ inline TouchListVisual liveVerticalListVisual(int selected, int count, int rowSt
     return out;
 }
 
-inline TouchListVisual liveHorizontalListVisual(int selected, int count, int itemStep,
-                                                int x, int y, int w, int h,
-                                                int stride = 1) noexcept {
-    TouchListVisual out{std::max(0, selected), 0, false};
-    if (count <= 0 || itemStep <= 0 || w <= 0 || h <= 0) return out;
-    selected = std::clamp(selected, 0, count - 1);
-    out.index = selected;
-
-    const auto& touch = latestTouchGesture();
-    const bool captured = touch.down &&
-        touch.startX >= x && touch.startX < x + w &&
-        touch.startY >= y && touch.startY < y + h;
-    if (!captured) return out;
-
-    stride = std::max(1, stride);
-    const int selectedUnit = selected / stride;
-    const int selectedLane = selected % stride;
-    const int maxUnit = (count - 1) / stride;
-    const int requestedUnits = touch.deltaX < 0
-        ? (-touch.deltaX) / itemStep
-        : -(touch.deltaX / itemStep);
-    const int visualUnit = std::clamp(selectedUnit + requestedUnits, 0, maxUnit);
-    out.index = std::min(count - 1, visualUnit * stride + selectedLane);
-    const int appliedUnits = visualUnit - selectedUnit;
-    out.offset = touch.deltaX + appliedUnits * itemStep;
-    out.tracking = true;
-
-    const int edge = std::max(8, itemStep / 2);
-    if (visualUnit == 0 && out.offset > edge)
-        out.offset = edge + (out.offset - edge) / 4;
-    if (visualUnit == maxUnit && out.offset < -edge)
-        out.offset = -edge + (out.offset + edge) / 4;
-    return out;
-}
-
 // Pixel-first touch scrolling for controller-oriented lists.
 //
 // The selection index remains the semantic/controller cursor, but the visible content carries a
@@ -152,29 +117,36 @@ private:
         stride = std::max(1, stride);
         index = std::clamp(index, 0, count - 1);
 
-        // Finger/content moving up/left produces a negative residual and advances the list.
-        while (offset_ <= -step) {
-            const int next = std::min(count - 1, index + stride);
-            if (next == index) break;
-            index = next;
-            offset_ += step;
+        // Fold whole row/cell crossings into the semantic cursor in O(1). For grids, stride is
+        // the column count: only same-lane entries are valid vertical neighbours. Never clamp to
+        // count-1 here, because a partially filled final row would silently shift the selection
+        // sideways while the user was dragging vertically.
+        if (offset_ <= -step) {
+            const int requested = (-offset_) / step;
+            const int available = std::max(0, (count - 1 - index) / stride);
+            const int crossed = std::min(requested, available);
+            index += crossed * stride;
+            offset_ += crossed * step;
         }
-        // Finger/content moving down/right produces a positive residual and goes backward.
-        while (offset_ >= step) {
-            const int next = std::max(0, index - stride);
-            if (next == index) break;
-            index = next;
-            offset_ -= step;
+        if (offset_ >= step) {
+            const int requested = offset_ / step;
+            const int available = std::max(0, index / stride);
+            const int crossed = std::min(requested, available);
+            index -= crossed * stride;
+            offset_ -= crossed * step;
         }
+
+        const bool atLeadingEdge = index - stride < 0;
+        const bool atTrailingEdge = index + stride >= count;
 
         // Small rubber-band resistance at either end. It remains visibly attached to the finger,
         // but cannot be pulled far enough to expose large empty regions.
         const int edge = std::max(8, step / 2);
-        if (index == 0 && offset_ > edge) {
+        if (atLeadingEdge && offset_ > edge) {
             offset_ = edge + (offset_ - edge) / 4;
             velocity_ /= 2;
         }
-        if (index == count - 1 && offset_ < -edge) {
+        if (atTrailingEdge && offset_ < -edge) {
             offset_ = -edge + (offset_ + edge) / 4;
             velocity_ /= 2;
         }
