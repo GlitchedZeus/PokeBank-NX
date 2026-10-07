@@ -48,6 +48,7 @@ assert "startX()" not in release_hit and "startY()" not in release_hit, \
 picker_contract = read("include/UI/InventoryUIContract.h")
 require(picker_contract, "include/UI/InventoryUIContract.h",
         "struct InventoryPickerViewport",
+        "static constexpr int RowHeight = 56;",
         "static constexpr InventoryPickerViewport viewport(",
         "constexpr bool contains(int px, int py) const noexcept")
 picker = read("src/UI/Dialogs/PickerDialog.cpp")
@@ -59,7 +60,8 @@ require(picker, "src/UI/Dialogs/PickerDialog.cpp",
         "+ visual.offset;",
         "fb.setClipRect(viewport.x, viewport.y, viewport.w, viewport.h);",
         "fb.clearClip();",
-        "first * rowH - visual.offset")
+        "first * rowH - visual.offset",
+        "screen.touchButtons.push_back({ idx, viewport.x, ry, viewport.w, rowH })")
 assert "const int ry = listTop + i * rowH;" not in picker, \
     "shared picker regressed to stationary rows during finger drag"
 
