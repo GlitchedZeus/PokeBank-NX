@@ -10,7 +10,6 @@ namespace UI {
 struct TouchListVisual {
     int index = 0;
     int offset = 0;
-    bool tracking = false;
 };
 
 // Draw-time direct manipulation for preserved screens whose semantic/controller cursor still lands
@@ -20,7 +19,7 @@ struct TouchListVisual {
 inline TouchListVisual liveVerticalListVisual(int selected, int count, int rowStep,
                                               int x, int y, int w, int h,
                                               int stride = 1) noexcept {
-    TouchListVisual out{std::max(0, selected), 0, false};
+    TouchListVisual out{std::max(0, selected), 0};
     if (count <= 0 || rowStep <= 0 || w <= 0 || h <= 0) return out;
     selected = std::clamp(selected, 0, count - 1);
     out.index = selected;
@@ -42,7 +41,6 @@ inline TouchListVisual liveVerticalListVisual(int selected, int count, int rowSt
     out.index = std::min(count - 1, visualUnit * stride + selectedColumn);
     const int appliedUnits = visualUnit - selectedUnit;
     out.offset = touch.deltaY + appliedUnits * rowStep;
-    out.tracking = true;
 
     // Rubber-band the ends without ever disconnecting the content from the finger.
     const int edge = std::max(8, rowStep / 2);
@@ -64,33 +62,25 @@ class TouchScrollState {
 public:
     void reset() noexcept {
         active_ = false;
-        moved_ = false;
         coasting_ = false;
         last_ = 0;
         offset_ = 0;
         velocity_ = 0;
     }
 
-    void stop() noexcept {
-        active_ = false;
-        moved_ = false;
-        coasting_ = false;
-        offset_ = 0;
-        velocity_ = 0;
-    }
+    void stop() noexcept { reset(); }
 
     [[nodiscard]] int offset() const noexcept { return offset_; }
 
-    bool updateVertical(const TouchInput& touch,
+    void updateVertical(const TouchInput& touch,
                         int x, int y, int w, int h,
                         int rowStep, int& index, int count,
                         int stride = 1) noexcept {
-        return update(touch, true, x, y, w, h, rowStep, index, count, stride);
+        update(touch, x, y, w, h, rowStep, index, count, stride);
     }
 
 private:
     bool active_ = false;
-    bool moved_ = false;
     bool coasting_ = false;
     int last_ = 0;
     int offset_ = 0;
@@ -143,51 +133,47 @@ private:
         }
     }
 
-    bool update(const TouchInput& touch, bool vertical,
+    void update(const TouchInput& touch,
                 int x, int y, int w, int h,
                 int step, int& index, int count, int stride) noexcept {
         if (count <= 0 || step <= 0) {
             stop();
-            return false;
+            return;
         }
 
         if (touch.justTouchedDown()) {
             active_ = inside(touch.x(), touch.y(), x, y, w, h);
-            moved_ = false;
             coasting_ = false;
             velocity_ = 0;
             offset_ = 0;
-            last_ = vertical ? touch.y() : touch.x();
-            return false;
+            last_ = touch.y();
+            return;
         }
 
         if (active_ && touch.isDown()) {
-            const int now = vertical ? touch.y() : touch.x();
+            const int now = touch.y();
             const int delta = now - last_;
             last_ = now;
-            if (delta == 0) return false;
+            if (delta == 0) return;
 
             // Track from the first pixel of movement. Tap classification remains owned by TouchInput,
             // so a tiny wobble may visually move a few pixels but still resolves as a normal tap.
             offset_ += delta;
             velocity_ = (velocity_ * 3 + delta * 5) / 8;
-            moved_ = moved_ || touch.dragged();
             rebalance(step, index, count, stride);
-            return true;
+            return;
         }
 
         if (active_ && touch.justReleased()) {
             active_ = false;
-            const bool wasDrag = moved_ || touch.dragged();
-            moved_ = false;
-            if (!wasDrag) {
+            if (!touch.dragged()) {
                 offset_ = 0;
                 velocity_ = 0;
                 coasting_ = false;
-                return false;
+                return;
             }
             coasting_ = std::abs(velocity_) >= 2;
-            return true;
+            return;
         }
 
         if (!touch.isDown() && coasting_) {
@@ -198,16 +184,14 @@ private:
                 velocity_ = 0;
                 coasting_ = false;
             }
-            return true;
+            return;
         }
 
         // Ease the remaining sub-row offset back to the semantic row once momentum is finished.
         if (!touch.isDown() && !active_ && offset_ != 0) {
             offset_ = (offset_ * 3) / 4;
             if (std::abs(offset_) <= 1) offset_ = 0;
-            return true;
         }
-        return false;
     }
 };
 
