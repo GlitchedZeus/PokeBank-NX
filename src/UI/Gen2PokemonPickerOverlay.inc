@@ -149,7 +149,8 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
                 std::snprintf(prefix, sizeof(prefix), "%03u - ", static_cast<unsigned>(species));
                 return std::string(prefix) + Names::getSpeciesName(species);
             },
-            [](uint16_t species) { return std::to_string(species) + " - " + Names::getSpeciesName(species); });
+            [](uint16_t species) { return std::to_string(species) + " - " + Names::getSpeciesName(species); },
+            &latestTouchGesture());
         drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"L/R", "Page"}, {"Y", "Normal/Shiny"}, {"A", "Select"}, {"B", "Cancel"}});
         return;
     }
