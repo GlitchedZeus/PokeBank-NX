@@ -1,0 +1,16 @@
+# Pinned Hoenn Safari Method-H frame transformation evidence regressions.
+GEN3_HOENN_SAFARI_RNG_SOURCES := tests/test_gen3_hoenn_safari_rng_evidence.cpp
+GEN3_HOENN_SAFARI_RNG_HEADERS := include/Legality/Gen3HoennSafariRngEvidence.h
+
+HOST_TESTS += $(HOST_BUILD)/test_gen3_hoenn_safari_rng_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_hoenn_safari_rng_evidence_sanitize
+host-test: $(HOST_BUILD)/test_gen3_hoenn_safari_rng_evidence
+host-sanitize: $(HOST_BUILD)/test_gen3_hoenn_safari_rng_evidence_sanitize
+
+$(HOST_BUILD)/test_gen3_hoenn_safari_rng_evidence: $(GEN3_HOENN_SAFARI_RNG_SOURCES) $(GEN3_HOENN_SAFARI_RNG_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN3_HOENN_SAFARI_RNG_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen3_hoenn_safari_rng_evidence_sanitize: $(GEN3_HOENN_SAFARI_RNG_SOURCES) $(GEN3_HOENN_SAFARI_RNG_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN3_HOENN_SAFARI_RNG_SOURCES) -o $@
