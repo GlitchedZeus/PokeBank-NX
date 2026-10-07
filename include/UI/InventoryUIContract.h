@@ -76,7 +76,7 @@ struct InventoryPickerViewport {
 struct InventoryPickerLayout {
     static constexpr int Width = 560;
     static constexpr int VerticalMargin = 60;
-    static constexpr int RowHeight = 40;
+    static constexpr int RowHeight = 56;
     static constexpr int FooterHeight = 64;
     static constexpr int HorizontalPadding = 20;
     static constexpr int TitleOffsetY = 16;
