@@ -2675,7 +2675,10 @@ namespace UI {
             if (ptd >= 0 && ptd < count) pickerSel = ptd;
             const int ptb = touchedButtonId(touch);
             if (ptb >= 0 && ptb < count) { pickerSel = ptb; kDown |= HidNpadButton_A; }
-            if (touch.justReleased() && touch.dragged()) {
+            const auto pickerViewport =
+                PokeBank::UIModel::InventoryPickerLayout::viewport(1280, 720);
+            if (touch.justReleased() && touch.dragged() &&
+                pickerViewport.contains(touch.startX(), touch.startY())) {
                 const int dy = touch.deltaY();
                 const int rowH = std::max(1, PokeBank::UIModel::InventoryPickerLayout::RowHeight);
                 const int steps = std::max(1, std::abs(dy) / rowH);
