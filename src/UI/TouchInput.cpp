@@ -40,7 +40,6 @@ namespace UI {
         }
 
         gLatestTouch.down = curDown;
-        gLatestTouch.released = justReleased();
         gLatestTouch.dragged = dragged();
         gLatestTouch.x = curX;
         gLatestTouch.y = curY;
