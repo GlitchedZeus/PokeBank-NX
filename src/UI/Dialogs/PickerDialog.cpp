@@ -188,8 +188,8 @@ namespace Dialogs {
                 label = machineLabel.c_str();
             }
             fb.drawText(px + 28, ry + (rowH - 4 - fb.lineHeight(TextStyle::Body)) / 2, label, col);
-            if (ry + rowH - 4 > viewport.y && ry < viewport.y + viewport.h)
-                screen.touchButtons.push_back({ idx, viewport.x, ry, viewport.w, rowH - 4 });  // id = option row
+            if (ry + rowH > viewport.y && ry < viewport.y + viewport.h)
+                screen.touchButtons.push_back({ idx, viewport.x, ry, viewport.w, rowH });  // id = option row
         }
         fb.clearClip();
 
