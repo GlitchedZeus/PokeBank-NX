@@ -585,11 +585,13 @@ namespace UI {
             g_contentSwipeH = 548;
         }
 
-        // Quick Games: three-column drawer with no competing content drag handler.
+        // Quick Games owns true vertical pixel scrolling in SaveSelectScreen. Keep only
+        // horizontal tile navigation here so a vertical finger drag cannot double-advance the
+        // screen-owned TouchScrollState cursor. Drawer-edge close remains active.
         if (hint.find("D-pad/Stick: Choose") != std::string::npos &&
             hint.find("X: Save / Source") != std::string::npos &&
             hint.find("B: Close") != std::string::npos) {
-            g_contentSwipeMask = allDirections;
+            g_contentSwipeMask = HidNpadButton_Left | HidNpadButton_Right;
             g_contentSwipeUsesShoulders = false;
             g_contentSwipeReleaseOnly = false;
             g_quickGamesDrawerSwipe = true;
@@ -607,7 +609,13 @@ namespace UI {
             hint.find("ZR: Launch") != std::string::npos &&
             hint.find("+: Close Menu") != std::string::npos &&
             hint.find("B: Home") != std::string::npos;
-        if (classicGamesBrowser || currentGameGrid) {
+        if (classicGamesBrowser) {
+            // Full Games owns vertical pixel scrolling; only horizontal tile navigation stays
+            // generic here.
+            g_contentSwipeMask = HidNpadButton_Left | HidNpadButton_Right;
+            g_contentSwipeUsesShoulders = false;
+            g_contentSwipeReleaseOnly = false;
+        } else if (currentGameGrid) {
             g_contentSwipeMask = allDirections;
             g_contentSwipeUsesShoulders = false;
             g_contentSwipeReleaseOnly = false;
