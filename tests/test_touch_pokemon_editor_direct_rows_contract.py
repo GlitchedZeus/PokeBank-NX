@@ -84,7 +84,9 @@ require(gen3, "src/UI/Gen3SharedPokemonSurface.inc",
         "actionTap >= 31600 && actionTap < 31600 + static_cast<int>(actions.count)",
         "screen.touchButtons.push_back({31600 + static_cast<int>(i)",
         "state.reviewScroll = std::clamp",
-        "touch.justReleased() && touch.dragged()",
+        "state.reviewTouchScroll.updateVertical(",
+        "state.reviewTouchScroll.offset()",
+        "const auto detailVisual = liveVerticalListVisual(",
         "SharedPokemonShell::drawVerticalScrollIndicator")
 
 # Gen III direct-row focus must reject read-only rows in the helper itself. Returning false is
@@ -117,6 +119,25 @@ require(gen4, "src/UI/Gen4SharedPokemonSurface.inc",
         "actionDown >= 41600 && actionDown < 41600 + static_cast<int>(actions.count)",
         "actionTap >= 41600 && actionTap < 41600 + static_cast<int>(actions.count)",
         "screen.touchButtons.push_back({41600 + static_cast<int>(i)",
-        "touch.justReleased() && touch.dragged()")
+        "const auto detailVisual = liveVerticalListVisual(",
+        "state.pickerScroll.updateVertical(")
+
+
+# Fixed action/move dialogs are fully visible. They should remain direct-tap/controller surfaces,
+# not pretend scroll views whose release position silently changes focus.
+for rel, forbidden in (
+    ("src/UI/Gen3SharedPokemonSurface.inc", (
+        "state.moveEditorRow = std::clamp(state.moveEditorRow + (touch.deltaY()",
+        "state.actionRow = std::clamp(state.actionRow + (touch.deltaY()",
+    )),
+    ("src/UI/Gen4SharedPokemonSurface.inc", (
+        "state.moveEditorRow = std::clamp(state.moveEditorRow + (touch.deltaY()",
+        "state.actionRow = std::clamp(state.actionRow + (touch.deltaY()",
+    )),
+):
+    source = read(rel)
+    for token in forbidden:
+        if token in source:
+            raise AssertionError(f"{rel}: non-overflowing fixed menu regained swipe-selection: {token}")
 
 print("touch Pokémon editor direct-row/action contract: PASS")
