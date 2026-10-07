@@ -10,6 +10,7 @@ include Makefile.host.legality-language
 include Makefile.host.legality-ball-domain
 include Makefile.host.legality-gen4-fixed-ball
 include Makefile.host.legality-gen4-fixed-ball-origin
+include Makefile.host.legality-gen3-safari
 include Makefile.host.gsc
 include Makefile.host.editor
 include Makefile.host.cleanup3
