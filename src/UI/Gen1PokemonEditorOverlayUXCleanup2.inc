@@ -1,4 +1,5 @@
 #include "UI/StatsRadar.h"
+#include "UI/TouchScroll.h"
 
 namespace UI::Gen1PokemonEditor {
 namespace {
@@ -30,6 +31,9 @@ struct UX2State {
     int row = 0;
     int subRow = 0;
     int reviewRow = 0;
+    TouchScrollState editorScroll;
+    TouchScrollState pickerScroll;
+    TouchScrollState reviewScroll;
 
     UX2Picker picker = UX2Picker::None;
     int pickerValue = 0;
