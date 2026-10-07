@@ -134,6 +134,9 @@ require(source.index("!forwarderSaveGameId.empty()") < source.index('fsdevMountS
         "forwarder preview must bypass the forwarder's native Switch savedata mount")
 require("SWSH_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error" in sc_validation,
         "SWSH Current Box must validate its native one-byte SC value")
+require("findRequiredPayload" in sc_validation and
+        "block.data.size() < minimumSize" in sc_validation,
+        "native SC payload preflight must follow trainer key+payload geometry without over-constraining wrapper type")
 require(sc_validation.count("GEN9_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error") == 2,
         "SV and Z-A Current Box must validate their native one-byte SC values")
 require("SWSH_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error" not in sc_validation and
@@ -386,6 +389,10 @@ require('"Mystery Gifts"' in shell_source and '"Clone Lineage"' in shell_source,
 require("handleDefaultQuickOpen" in ui_manager and "backupSaveData" in ui_manager and
         "SaveSelectScreen::OpenIntent::Backups" in ui_manager,
         "normal Switch Open must auto-create a protected backup/working copy while Backups stays explicit")
+require("reportOpenFailure" in header and
+        "selectScreen.reportOpenFailure(error);" in ui_manager and
+        "bool UIManager::handleDefaultQuickOpen" in ui_manager,
+        "native Product Home Open failures must surface the validation reason instead of silently returning to the card")
 require("Backups" in header and source.count("openIntent = OpenIntent::Backups;") == 1,
         "Current Game -> Backups must be the only normal route into backup history")
 require("handleItemsQuickOpen" in ui_manager and "backupSaveData" in ui_manager,
