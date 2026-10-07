@@ -45,18 +45,28 @@ assert "startX()" not in release_hit and "startY()" not in release_hit, \
     "release activation must use release coordinates so release-outside cancels"
 
 
+picker_contract = read("include/UI/InventoryUIContract.h")
+require(picker_contract, "include/UI/InventoryUIContract.h",
+        "struct InventoryPickerViewport",
+        "static constexpr InventoryPickerViewport viewport(",
+        "constexpr bool contains(int px, int py) const noexcept")
 picker = read("src/UI/Dialogs/PickerDialog.cpp")
 require(picker, "src/UI/Dialogs/PickerDialog.cpp",
         '#include "UI/TouchScroll.h"',
+        "InventoryPickerLayout::viewport(W, H)",
         "const auto visual = liveVerticalListVisual(",
         "const int visualSel = visual.index;",
         "+ visual.offset;",
-        "fb.setClipRect(px + 12, listTop",
+        "fb.setClipRect(viewport.x, viewport.y, viewport.w, viewport.h);",
         "fb.clearClip();",
         "first * rowH - visual.offset")
 assert "const int ry = listTop + i * rowH;" not in picker, \
     "shared picker regressed to stationary rows during finger drag"
 
+base_picker = read("src/UI/TrainerViewScreenBase.inc")
+require(base_picker, "src/UI/TrainerViewScreenBase.inc",
+        "InventoryPickerLayout::viewport(1280, 720)",
+        "pickerViewport.contains(touch.startX(), touch.startY())")
 details = read("src/UI/Modals/PokemonDetailsModal.cpp")
 require(details, "src/UI/Modals/PokemonDetailsModal.cpp",
         "Legality report: clipped touch-scroll surface with explicit close.",
