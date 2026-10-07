@@ -13,6 +13,7 @@
 #include "UI/ScreenChrome.h"
 #include "UI/ProductChrome.h"
 #include "UI/TouchInput.h"
+#include "UI/TouchScroll.h"
 #include "Utils/Settings.h"
 
 namespace UI {
@@ -405,9 +406,31 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
                 }
             }
         } else if (touch.justReleased() && touch.dragged()) {
-            const int dy = touch.deltaY();
-            if (dy < -44) kDown |= HidNpadButton_Down;
-            else if (dy > 44) kDown |= HidNpadButton_Up;
+            // Match the draw-time pixel-following Settings viewport: land on the row that actually
+            // crossed under the finger instead of turning the entire drag into one D-pad step.
+            constexpr int sx = 52, sy = 82, leftW = 248, gap = 18, contentY = 108;
+            constexpr int categoryStep = 48, optionStep = 86;
+            const int leftX = sx + 24;
+            const int rightX = leftX + leftW + gap;
+            const int paneTop = sy + contentY;
+            if (touch.startY() >= paneTop && touch.startY() < paneTop + 374) {
+                const int dy = touch.deltaY();
+                if (touch.startX() >= rightX && touch.startX() < 1228) {
+                    const int count = settingsOptionCount(settingsCategory);
+                    const int steps = std::max(1, std::abs(dy) / optionStep);
+                    settingsCategoryFocused = false;
+                    settingsIndex = std::clamp(
+                        settingsIndex + (dy < 0 ? steps : -steps), 0, std::max(0, count - 1));
+                } else if (touch.startX() >= leftX && touch.startX() < leftX + leftW) {
+                    const int count = static_cast<int>(kSettingsCategories.size());
+                    const int steps = std::max(1, std::abs(dy) / categoryStep);
+                    settingsCategoryFocused = true;
+                    settingsCategory = std::clamp(
+                        settingsCategory + (dy < 0 ? steps : -steps), 0, std::max(0, count - 1));
+                    settingsIndex = std::min(
+                        settingsIndex, settingsOptionCount(settingsCategory) - 1);
+                }
+            }
         }
         if (kDown & HidNpadButton_B) {
             overlay = Overlay::None;
@@ -610,8 +633,24 @@ void AppShellScreen::drawSettings(PKSEFramebuffer& fb) {
 
     for (auto& rect : settingsRects) rect = {};
 
-    int rowY = y + contentY + 48;
-    for (int index = 0; index < static_cast<int>(rows.size()); ++index) {
+    constexpr int optionStep = optionRowH + 10;
+    const int optionViewportTop = y + contentY + 48;
+    const int optionViewportH = contentH - 58;
+    const int optionCount = static_cast<int>(rows.size());
+    const auto optionVisual = liveVerticalListVisual(
+        settingsIndex, optionCount, optionStep,
+        rightX + 14, optionViewportTop, rightW - 28, optionViewportH);
+    const int visibleOptions = std::max(1, optionViewportH / optionStep + 1);
+    const int optionFirst = std::clamp(
+        optionVisual.index - visibleOptions / 2, 0,
+        std::max(0, optionCount - visibleOptions));
+    const int optionDrawFirst = std::max(0, optionFirst - 1);
+    const int optionDrawLast = std::min(optionCount, optionFirst + visibleOptions + 1);
+
+    fb.setClipRect(rightX + 12, optionViewportTop, rightW - 24, optionViewportH);
+    for (int index = optionDrawFirst; index < optionDrawLast; ++index) {
+        const int rowY = optionViewportTop +
+            (index - optionFirst) * optionStep + optionVisual.offset;
         const auto& row = rows[static_cast<std::size_t>(index)];
         const bool focused = !settingsCategoryFocused && settingsIndex == index;
         drawFocusedCard(fb, rightX + 14, rowY, rightW - 28, optionRowH,
@@ -639,10 +678,12 @@ void AppShellScreen::drawSettings(PKSEFramebuffer& fb) {
                     row.value.size() > 28 ? row.value.substr(0, 25) + "..." : row.value,
                     pillColor, TextStyle::Caption);
 
-        settingsRects[static_cast<std::size_t>(index)] =
-            {rightX + 14, rowY, rightW - 28, optionRowH, index};
-        rowY += optionRowH + 10;
+        if (rowY + optionRowH > optionViewportTop &&
+            rowY < optionViewportTop + optionViewportH)
+            settingsRects[static_cast<std::size_t>(index)] =
+                {rightX + 14, rowY, rightW - 28, optionRowH, index};
     }
+    fb.clearClip();
 
     if (statusFrames > 0 && !statusMessage.empty())
         fb.drawText(x + 30, y + h - 42, statusMessage.substr(0, 110),
