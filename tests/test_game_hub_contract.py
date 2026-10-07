@@ -396,6 +396,12 @@ require("reportOpenFailure" in header and
         "selectScreen.reportOpenFailure(error);" in ui_manager and
         "bool UIManager::handleDefaultQuickOpen" in ui_manager,
         "native Product Home Open failures must surface the validation reason instead of silently returning to the card")
+require("Overlay::OpenFailure" in source and
+        '"SAVE NOT OPENED"' in source and
+        "Technical details were written to diagnostics." in source and
+        "Native SC layout preflight failed" in save_reader and
+        "Native SC open preflight failed" in save_reader,
+        "failed native Open must show an explicit safe modal while SC details stay in diagnostics")
 require("Backups" in header and source.count("openIntent = OpenIntent::Backups;") == 1,
         "Current Game -> Backups must be the only normal route into backup history")
 require("handleItemsQuickOpen" in ui_manager and "backupSaveData" in ui_manager,
