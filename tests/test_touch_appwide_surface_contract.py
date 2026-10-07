@@ -192,10 +192,33 @@ if '#include <switch.h>' in read("include/UI/TouchGesture.h"):
     raise AssertionError("TouchGesture: renderer-facing gesture snapshot must remain host-portable")
 if '#include "UI/TouchInput.h"' in read("include/UI/SharedSpeciesPicker.h"):
     raise AssertionError("SharedSpeciesPicker: draw-only species helper must not pull libnx TouchInput")
+if '#include "UI/TouchInput.h"' in read("include/UI/Gen2HeldItemPicker.h"):
+    raise AssertionError("Gen2HeldItemPicker: host-testable model/presentation must not pull libnx TouchInput")
+if "latestTouchGesture()" in read("include/UI/Gen2HeldItemPicker.h"):
+    raise AssertionError("Gen2HeldItemPicker: touch mutation shim was reintroduced")
+gesture = read("include/UI/TouchGesture.h")
+for dead_field in ("released", "dragged", "deltaX", "int x =", "int y ="):
+    if dead_field in gesture:
+        raise AssertionError(f"TouchGesture: unused renderer snapshot field reintroduced: {dead_field}")
+scroll = read("include/UI/TouchScroll.h")
+for dead_api in ("updateHorizontal(", "dragging() const", "moving() const", "bool tracking"):
+    if dead_api in scroll:
+        raise AssertionError(f"TouchScroll: unused API/state reintroduced: {dead_api}")
+require_all("src/UI/SaveSelectScreen.cpp",
+            "void SaveSelectScreen::syncTouchScrollSurface()",
+            "launchFileTouchScroll.reset();",
+            "gamesDrawerTouchScroll.reset();",
+            "classicGamesTouchScroll.reset();",
+            "syncTouchScrollSurface();")
+require_all("src/UI/BackupSelectionScreen.cpp",
+            "backupScroll.stop();",
+            "showDeleteConfirmation = true;")
 require_all("include/UI/SharedSpeciesPicker.h",
-            "latestTouchGesture()",
-            "touch.deltaY / rowStep",
-            "liveOffset = touch.deltaY + appliedRows * rowStep",
+            "const TouchGestureSnapshot* gesture = nullptr",
+            "gesture->deltaY / rowStep",
+            "liveOffset = gesture->deltaY + appliedRows * rowStep",
             "fb.setClipRect(listX, listY, listW, listH - 2)")
+if "latestTouchGesture()" in read("include/UI/SharedSpeciesPicker.h"):
+    raise AssertionError("SharedSpeciesPicker: renderer must receive touch explicitly, not pull global state")
 
 print(f"touch app-wide surface inventory: PASS ({len(SURFACES)} surface families)")
