@@ -1114,10 +1114,9 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
     auto applyDirectFocus = [&](int id) {
         if (id >= 31000 && id < 31000 + static_cast<int>(detailLabels.size())) {
             const int row = id - 31000;
-            if (passiveView || detailEditable(state, row)) {
-                state.focus = {Shared::Panel::Details, static_cast<uint8_t>(row), 0};
-                state.detailsFocus = row;
-            }
+            if (!(passiveView || detailEditable(state, row))) return false;
+            state.focus = {Shared::Panel::Details, static_cast<uint8_t>(row), 0};
+            state.detailsFocus = row;
             return true;
         }
         if (id >= 31100 && id < 31106) {
@@ -1128,8 +1127,8 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
         }
         if (id >= 31206 && id <= 31210) {
             const int row = id - 31200;
-            if (passiveView || pidLinkedRowEditable(state, row))
-                state.focus = {Shared::Panel::Values, static_cast<uint8_t>(row), 0};
+            if (!(passiveView || pidLinkedRowEditable(state, row))) return false;
+            state.focus = {Shared::Panel::Values, static_cast<uint8_t>(row), 0};
             return true;
         }
         if (id >= 31300 && id < 31304) {
