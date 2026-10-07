@@ -1,4 +1,0 @@
-Product Home hardware-fix checkpoint
-source parent: f6f79b9f21c7a9f8893676984284ee908346107d
-
-This marker exists only to trigger the normal exact-head PR validation after the source fix was pushed by a GitHub Actions token. It is not runtime input and does not alter application behavior.

@@ -173,18 +173,21 @@ require("result.launcherPath = defaultLauncherPath" in launcher,
 require("result.corePath = defaultRetroArchCore" in launcher,
         "stored launch metadata must not choose an arbitrary RetroArch core")
 
-# RetroArch normal Quit must return through the PokeBank-owned host instead of falling to HOME.
+# Hardware safety: normal RetroArch startup must use the direct core + ROM handoff that was
+# device-proven before the nested return-host regression. Keep the return-host infrastructure
+# packaged for future lifecycle work, but never place it on the critical startup path until its
+# hbloader reimplementation is independently hardware-proven.
 require("setGameLaunchReturnPath(std::string_view path)" in launcher_header and
         "UI::setGameLaunchReturnPath(argv[0]);" in main_source and
         "int main(int argc, char** argv)" in main_source,
-        "PokeBank must capture the exact currently running NRO as the emulator return target")
+        "dormant return-host research must retain the exact PokeBank NRO return target")
 retro_start = launcher_source.index("if (descriptor.backend == GameLaunchBackend::RetroArch)")
 retro_end = launcher_source.index("if (descriptor.backend == GameLaunchBackend::HomebrewNro)", retro_start)
 retro_launch = launcher_source[retro_start:retro_end]
-require("prepareRetroArchReturnHost" in retro_launch and
-        "envSetNextLoad(returnHostPath.c_str(), argv.c_str())" in retro_launch and
-        "envSetNextLoad(target.c_str(), argv.c_str())" not in retro_launch,
-        "RetroArch must chain through the bundled return host rather than exiting directly to the outer loader")
+require("envSetNextLoad(target.c_str(), argv.c_str())" in retro_launch and
+        "prepareRetroArchReturnHost" not in retro_launch and
+        "envSetNextLoad(returnHostPath.c_str(), argv.c_str())" not in retro_launch,
+        "hardware-critical RetroArch startup must chain directly to the resolved core + ROM")
 require("RETURN_HOST_DIR := $(CURDIR)/runtime/return_host" in root_makefile and
         "$(BUILD): return-host" in root_makefile and
         "romfs/runtime/PokeBankReturnHost.nro" in root_makefile,

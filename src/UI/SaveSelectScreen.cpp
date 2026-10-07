@@ -3636,7 +3636,7 @@ namespace UI {
                         "The source save was not modified. Technical details were written to diagnostics.",
                         Colors::TextMuted, TextStyle::Caption);
             drawNavBar(fb, {{"A / B", "Return"}});
-        } else         if (overlay == Overlay::GamesDrawer) {
+        } else if (overlay == Overlay::GamesDrawer) {
             constexpr int w = 520;
             const int x = fb.getWidth() - w;
             const int h = fb.getHeight();

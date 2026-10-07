@@ -1,3 +1,0 @@
-RetroArch NDS resolver reconciliation applied and focused contract passed.
-Source parent: 437ea7d0f5bae3541eec1ee9d333e48560a6e451
-DEVICE_ACCEPTED=false
