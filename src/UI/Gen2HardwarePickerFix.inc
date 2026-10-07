@@ -5,6 +5,9 @@
 namespace UI::Gen2PokemonEditor {
 namespace {
 
+constexpr auto kHardwareMovePickerLayout =
+    PokeBank::UIModel::MovePickerPresentation::compactPickerLayout();
+
 bool hardwareMoveAllowed(const TrainerViewScreen& screen, const State& state, uint16_t move) {
     if (move == 0) return true;
     const auto game = PokeBank::UIModel::Gen2PokemonEditor::exactGameFromSourceId(screen.sourceGameId);
@@ -49,8 +52,8 @@ void stepHardwareMovePicker(const TrainerViewScreen& screen, const State& state,
 void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state,
                             const PokeBank::UIModel::Gen2PokemonPicker::Model& model) {
     const int W = fb.getWidth(), H = fb.getHeight();
-    constexpr auto layout = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout();
-    constexpr int panelW = layout.width, panelH = layout.height;
+    constexpr int panelW = kHardwareMovePickerLayout.width;
+    constexpr int panelH = kHardwareMovePickerLayout.height;
     const int x = (W - panelW) / 2, y = (H - panelH) / 2;
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 165));
     drawPanelSurface(fb, x, y, panelW, panelH, false, 18);
@@ -61,12 +64,12 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
 
     const auto choices = hardwareCompatibleMoveChoices(screen, state);
     const int count = static_cast<int>(choices.size());
-    constexpr int visible = layout.visibleRows;
+    constexpr int visible = kHardwareMovePickerLayout.visibleRows;
     const int selectedPos = hardwareMoveChoicePosition(choices, model.moveChoice());
-    const int viewportTop = y + layout.rowStart;
-    const int viewportH = visible * layout.rowStep;
+    const int viewportTop = y + kHardwareMovePickerLayout.rowStart;
+    const int viewportH = visible * kHardwareMovePickerLayout.rowStep;
     const auto visual = liveVerticalListVisual(
-        selectedPos, count, layout.rowStep,
+        selectedPos, count, kHardwareMovePickerLayout.rowStep,
         x + 24, viewportTop, panelW - 48, viewportH);
     const int first = std::clamp(
         visual.index - visible / 2, 0, std::max(0, count - visible));
@@ -75,16 +78,16 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
     screen.touchButtons.clear();
     fb.setClipRect(x + 24, viewportTop, panelW - 48, viewportH);
     for (int i = drawFirst; i < drawLast; ++i) {
-        const int yy = viewportTop + (i - first) * layout.rowStep + visual.offset;
+        const int yy = viewportTop + (i - first) * kHardwareMovePickerLayout.rowStep + visual.offset;
         const uint16_t move = choices[static_cast<std::size_t>(i)];
         const bool selected = i == visual.index;
-        if (yy + layout.highlightHeight > viewportTop && yy < viewportTop + viewportH)
+        if (yy + kHardwareMovePickerLayout.highlightHeight > viewportTop && yy < viewportTop + viewportH)
             screen.touchButtons.push_back(
-                {2100 + i, x + 24, yy, panelW - 48, layout.highlightHeight});
+                {2100 + i, x + 24, yy, panelW - 48, kHardwareMovePickerLayout.highlightHeight});
         const std::string label =
             PokeBank::UIModel::MovePickerPresentation::rowLabel(move, Enums::GameVersion::GSC);
         if (selected)
-            fb.drawSelectionHighlight(x + 24, yy, panelW - 48, layout.highlightHeight);
+            fb.drawSelectionHighlight(x + 24, yy, panelW - 48, kHardwareMovePickerLayout.highlightHeight);
         fb.drawText(x + 40, yy + 8, label,
                     selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
     }
@@ -123,7 +126,7 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         down |= HidNpadButton_A;
     }
     if (touch.justReleased() && touch.dragged()) {
-        const int steps = std::max(1, std::abs(touch.deltaY()) / std::max(1, layout.rowStep));
+        const int steps = std::max(1, std::abs(touch.deltaY()) / std::max(1, kHardwareMovePickerLayout.rowStep));
         stepHardwareMovePicker(screen, state, picker, touch.deltaY() < 0 ? steps : -steps);
     }
 
