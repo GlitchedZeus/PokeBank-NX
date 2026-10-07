@@ -243,10 +243,14 @@ namespace UI {
             PKSEFramebuffer& fb,
             const std::vector<PokeVault::Source::SaveInstance>& instances,
             int selectedIndex, int first, int x, int rowY, int width,
-            int rowHeight, int visibleRows, bool showOlderLabel) {
-            const int last = std::min<int>(
-                static_cast<int>(instances.size()), first + visibleRows);
-            for (int i = first; i < last; ++i) {
+            int rowHeight, int visibleRows, bool showOlderLabel, int liveOffset = 0) {
+            const int baseY = rowY;
+            const int drawFirst = std::max(0, first - 1);
+            const int drawLast = std::min<int>(
+                static_cast<int>(instances.size()), first + visibleRows + 1);
+            fb.setClipRect(x + 24, baseY, width - 48, visibleRows * rowHeight);
+            for (int i = drawFirst; i < drawLast; ++i) {
+                rowY = baseY + (i - first) * rowHeight + liveOffset;
                 const auto& instance = instances[static_cast<size_t>(i)];
                 drawFocusedCard(fb, x + 24, rowY, width - 48, rowHeight - 6,
                                 i == selectedIndex, 10);
@@ -266,8 +270,8 @@ namespace UI {
                     " / " + instance.sourceLabel;
                 fb.drawText(x + 44, rowY + 34, sourceLine, Colors::TextMuted,
                             TextStyle::Caption);
-                rowY += rowHeight;
             }
+            fb.clearClip();
         }
 
         void drawProductHelpOverlay(
@@ -3849,14 +3853,19 @@ namespace UI {
 
             const int count = static_cast<int>(users.size());
             const int first = std::clamp(profilePickerIndex - 1, 0, std::max(0, count - visibleRows));
-            const int last = std::min(count, first + visibleRows);
-            int rowY = y + 136;
-            for (int i = first; i < last; ++i) {
+            const int drawFirst = std::max(0, first - 1);
+            const int drawLast = std::min(count, first + visibleRows + 1);
+            const int listTop = y + 136;
+            const int liveOffset = profileTouchScroll.offset();
+            fb.setClipRect(x + 24, listTop, w - 48, visibleRows * rowH);
+            for (int i = drawFirst; i < drawLast; ++i) {
+                const int rowY = listTop + (i - first) * rowH + liveOffset;
                 const auto& user = users[static_cast<size_t>(i)];
                 const bool selected = i == profilePickerIndex;
                 const bool current = i == userIndex;
                 drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 8, selected, 14);
-                overlayRects.push_back({x + 24, rowY, w - 48, rowH - 8, i});
+                if (rowY + rowH > listTop && rowY < listTop + visibleRows * rowH)
+                    overlayRects.push_back({x + 24, rowY, w - 48, rowH - 8, i});
 
                 const IconImage* avatar =
                     user.name == "Pokémon Saves" ? nullptr : &SystemIcons::userIcon(user.uid);
@@ -3890,8 +3899,8 @@ namespace UI {
                     fb.drawText(x + w - 124, rowY + 32, "CURRENT",
                                 Colors::Info, TextStyle::Caption);
                 }
-                rowY += rowH;
             }
+            fb.clearClip();
 
             fb.drawText(x + 30, y + h - 42,
                         "Changing profile changes only which saves are shown; it never modifies save data.",
@@ -4016,20 +4025,25 @@ namespace UI {
                         launchBrowsePath.substr(0, 100), Colors::TextMuted, TextStyle::Caption);
 
             const int first = launchFileScroll;
-            const int last = std::min<int>(
-                static_cast<int>(launchFileEntries.size()), first + visibleRows);
-            int rowY = y + 132;
-            for (int i = first; i < last; ++i) {
+            const int count = static_cast<int>(launchFileEntries.size());
+            const int drawFirst = std::max(0, first - 1);
+            const int drawLast = std::min(count, first + visibleRows + 1);
+            const int listTop = y + 132;
+            const int liveOffset = launchFileTouchScroll.offset();
+            fb.setClipRect(x + 24, listTop, w - 48, visibleRows * rowH);
+            for (int i = drawFirst; i < drawLast; ++i) {
+                const int rowY = listTop + (i - first) * rowH + liveOffset;
                 const auto& entry = launchFileEntries[static_cast<size_t>(i)];
                 const bool selected = i == launchFileIndex;
                 drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 6, selected, 10);
-                overlayRects.push_back({x + 24, rowY, w - 48, rowH - 6, i});
+                if (rowY + rowH > listTop && rowY < listTop + visibleRows * rowH)
+                    overlayRects.push_back({x + 24, rowY, w - 48, rowH - 6, i});
                 fb.drawText(x + 44, rowY + 13,
                             entry.directory ? "[Folder]  " + entry.name : entry.name,
                             selected ? Colors::SelectedText : Colors::TextSecondary,
                             TextStyle::Body);
-                rowY += rowH;
             }
+            fb.clearClip();
             if (!launchFileNotice.empty())
                 fb.drawText(x + 28, y + h - 42, launchFileNotice.substr(0, 108),
                             Colors::Info, TextStyle::Caption);
@@ -4053,12 +4067,18 @@ namespace UI {
                         Colors::TextMuted, TextStyle::Caption);
 
             const int first = legacyInstanceScroll;
+            const int liveOffset = legacyInstanceTouchScroll.offset();
             drawSaveInstanceRows(fb, parent.legacyInstances, legacyInstanceIndex, first,
-                                 x, y + 122, w, rowH, LEGACY_INSTANCE_VISIBLE_ROWS, true);
-            for (int i = first; i < std::min<int>(static_cast<int>(parent.legacyInstances.size()),
-                                                  first + LEGACY_INSTANCE_VISIBLE_ROWS); ++i) {
-                const int touchY = y + 122 + (i - first) * rowH;
-                overlayRects.push_back({x + 24, touchY, w - 48, rowH - 6, i});
+                                 x, y + 122, w, rowH, LEGACY_INSTANCE_VISIBLE_ROWS, true,
+                                 liveOffset);
+            const int drawFirst = std::max(0, first - 1);
+            const int drawLast = std::min<int>(static_cast<int>(parent.legacyInstances.size()),
+                                               first + LEGACY_INSTANCE_VISIBLE_ROWS + 1);
+            for (int i = drawFirst; i < drawLast; ++i) {
+                const int touchY = y + 122 + (i - first) * rowH + liveOffset;
+                if (touchY + rowH > y + 122 &&
+                    touchY < y + 122 + LEGACY_INSTANCE_VISIBLE_ROWS * rowH)
+                    overlayRects.push_back({x + 24, touchY, w - 48, rowH - 6, i});
             }
             if (!legacyNotice.empty())
                 fb.drawText(x + 28, y + h - 38, legacyNotice, Colors::TextMuted,
@@ -4078,14 +4098,19 @@ namespace UI {
                         "Assigning claims this save for this profile and hides it from other profiles.",
                         Colors::TextSecondary, TextStyle::Caption);
             const int first = legacyAssignmentScroll;
-            const int last = std::min<int>(static_cast<int>(unassignedLegacySources.size()),
-                                           first + visibleRows);
-            int rowY = y + 108;
-            for (int index = first; index < last; ++index) {
+            const int count = static_cast<int>(unassignedLegacySources.size());
+            const int drawFirst = std::max(0, first - 1);
+            const int drawLast = std::min(count, first + visibleRows + 1);
+            const int listTop = y + 108;
+            const int liveOffset = legacyAssignmentTouchScroll.offset();
+            fb.setClipRect(x + 24, listTop, w - 48, visibleRows * rowH);
+            for (int index = drawFirst; index < drawLast; ++index) {
+                const int rowY = listTop + (index - first) * rowH + liveOffset;
                 const auto& entry = unassignedLegacySources[static_cast<size_t>(index)];
                 drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 6,
                                 index == legacyAssignmentIndex, 10);
-                overlayRects.push_back({x + 24, rowY, w - 48, rowH - 6, index});
+                if (rowY + rowH > listTop && rowY < listTop + visibleRows * rowH)
+                    overlayRects.push_back({x + 24, rowY, w - 48, rowH - 6, index});
                 fb.drawText(x + 44, rowY + 7, "Pokémon " + entry.title + " — " +
                             entry.instance.label,
                             index == legacyAssignmentIndex ? Colors::TextPrimary
@@ -4096,8 +4121,8 @@ namespace UI {
                                                                  : entry.instance.providerLabel) +
                                 " / " + entry.instance.sourceLabel,
                             Colors::TextMuted, TextStyle::Caption);
-                rowY += rowH;
             }
+            fb.clearClip();
             if (!legacyNotice.empty())
                 fb.drawText(x + 28, y + h - 36, legacyNotice, Colors::TextMuted,
                             TextStyle::Caption);
@@ -4181,12 +4206,16 @@ namespace UI {
                         Colors::TextSecondary, TextStyle::Caption);
 
             const int first = gen4CandidateScroll;
+            const int liveOffset = gen4CandidateTouchScroll.offset();
             drawSaveInstanceRows(fb, gen4Instances, gen4CandidateIndex, first,
-                                 x, y + 108, w, rowH, visibleRows, false);
-            for (int i = first; i < std::min<int>(static_cast<int>(gen4Instances.size()),
-                                                  first + visibleRows); ++i) {
-                const int touchY = y + 108 + (i - first) * rowH;
-                overlayRects.push_back({x + 24, touchY, w - 48, rowH - 6, i});
+                                 x, y + 108, w, rowH, visibleRows, false, liveOffset);
+            const int drawFirst = std::max(0, first - 1);
+            const int drawLast = std::min<int>(static_cast<int>(gen4Instances.size()),
+                                               first + visibleRows + 1);
+            for (int i = drawFirst; i < drawLast; ++i) {
+                const int touchY = y + 108 + (i - first) * rowH + liveOffset;
+                if (touchY + rowH > y + 108 && touchY < y + 108 + visibleRows * rowH)
+                    overlayRects.push_back({x + 24, touchY, w - 48, rowH - 6, i});
             }
             if (!gen4Notice.empty())
                 fb.drawText(x + 28, y + h - 34, gen4Notice, Colors::TextMuted, TextStyle::Caption);
