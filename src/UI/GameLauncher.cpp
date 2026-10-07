@@ -1214,27 +1214,23 @@ bool requestGameLaunch(const GameLaunchDescriptor& descriptor, std::string& erro
             return false;
         }
 
-        // Stock RetroArch does not remember an arbitrary caller NRO for normal Quit. Chain through
-        // the tiny PokeBank-owned return host instead: it runs the exact same core + ROM, honors any
-        // child envSetNextLoad request, and reloads this exact PokeBank NRO only when RetroArch
-        // returns normally with no next child scheduled.
-        std::string returnHostPath;
-        if (!prepareRetroArchReturnHost(returnHostPath, error)) return false;
-
-        std::string argv = quoted(returnHostPath) + " " + quoted(g_gameLaunchReturnPath) +
-                           " " + quoted(target);
+        // Hardware safety rule: normal RetroArch startup takes the direct hbloader path that
+        // was device-proven at 97f540e4. The experimental nested return host remains packaged
+        // separately for future lifecycle work, but it must not sit on the critical launch path
+        // until that loader reimplementation is independently hardware-proven.
+        std::string argv = quoted(target);
         if (descriptor.state != GameLaunchState::LauncherOnly &&
             !descriptor.contentPath.empty())
             argv += " " + quoted(descriptor.contentPath);
         if (argv.size() >= 2000) {
-            error = "The RetroArch return handoff arguments are too long.";
+            error = "The RetroArch launch arguments are too long.";
             return false;
         }
 
-        const Result rc = envSetNextLoad(returnHostPath.c_str(), argv.c_str());
+        const Result rc = envSetNextLoad(target.c_str(), argv.c_str());
         if (R_FAILED(rc)) {
             char buf[96];
-            std::snprintf(buf, sizeof(buf), "RetroArch return-host launch failed (0x%08X).", static_cast<unsigned>(rc));
+            std::snprintf(buf, sizeof(buf), "RetroArch game launch failed (0x%08X).", static_cast<unsigned>(rc));
             error = buf;
             return false;
         }

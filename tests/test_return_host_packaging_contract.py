@@ -39,4 +39,15 @@ require("envGetHeapOverrideAddr()" in host_source and
         "svcSetHeapSize" not in host_source,
         "nested host must preserve the outer hbloader child heap instead of trying to re-own the process heap")
 
-print("RetroArch return-host packaging contract: PASS")
+
+game_launcher = (ROOT / "src/UI/GameLauncher.cpp").read_text(encoding="utf-8")
+retro_start = game_launcher.index("if (descriptor.backend == GameLaunchBackend::RetroArch)")
+homebrew_start = game_launcher.index("if (descriptor.backend == GameLaunchBackend::HomebrewNro)", retro_start)
+retro_block = game_launcher[retro_start:homebrew_start]
+require("envSetNextLoad(target.c_str(), argv.c_str())" in retro_block,
+        "device-proven RetroArch startup must chain directly to the resolved target")
+require("prepareRetroArchReturnHost" not in retro_block and
+        "envSetNextLoad(returnHostPath.c_str()" not in retro_block,
+        "experimental return host must stay out of the hardware-critical RetroArch startup path")
+
+print("RetroArch return-host packaging + direct-startup contract: PASS")
