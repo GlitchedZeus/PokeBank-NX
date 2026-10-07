@@ -11,6 +11,7 @@
 
 #include "UI/UIScreen.h"
 #include "UI/NavigationRepeat.h"
+#include "UI/TouchScroll.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/GameLaunchModel.h"
 #include "Legacy/FRLGSourceBrowser.h"
@@ -168,6 +169,7 @@ namespace UI {
         std::string launchFileNotice;
         int launchFileIndex = 0;
         int launchFileScroll = 0;
+        TouchScrollState launchFileTouchScroll;
         bool launchFileReturnToLegacy = false;
 
         bool titleSelected = false;
@@ -180,6 +182,7 @@ namespace UI {
         int gamesDrawerIndex = 0;
         int gamesDrawerScroll = 0;
         int profilePickerIndex = 0;
+        TouchScrollState profileTouchScroll;
         // Main product-home focus outside the persistent dock:
         // -1 = selected game card, 0 = Master Vault, 1 = Pokédex.
         int hubFeatureIndex = -1;
@@ -192,6 +195,7 @@ namespace UI {
         int gameWorkspaceIndex = 0;
         int legacyInstanceIndex = 0;
         int legacyInstanceScroll = 0;
+        TouchScrollState legacyInstanceTouchScroll;
         AccountUid selectedUserUid{};
         u64 selectedTitleId = 0;
         std::string selectedTitleName;
@@ -209,6 +213,7 @@ namespace UI {
         std::vector<LegacyAssignmentEntry> unassignedLegacySources;
         int legacyAssignmentIndex = 0;
         int legacyAssignmentScroll = 0;
+        TouchScrollState legacyAssignmentTouchScroll;
         PokeVault::Legacy::FRLGSaveInstance legacyDetailsInstance;
         std::string legacyDetailsGameId;
 
@@ -227,6 +232,7 @@ namespace UI {
         int gen4SetupIndex = 0;
         int gen4CandidateIndex = 0;
         int gen4CandidateScroll = 0;
+        TouchScrollState gen4CandidateTouchScroll;
 
         // Tap targets captured during draw(), hit-tested on the next update().
         std::vector<HitRect> titleRects;
