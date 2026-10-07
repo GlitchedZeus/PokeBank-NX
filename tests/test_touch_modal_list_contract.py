@@ -49,9 +49,20 @@ require(details, "src/UI/Modals/PokemonDetailsModal.cpp",
         "Legality report: clipped touch-scroll surface with explicit close.",
         "screen.details.legalityScroll = std::clamp",
         "screen.details.ribbonScroll = std::clamp",
+        "livePixelScrollVisual(screen.details.leftScroll",
+        "screen.details.leftScrollMax = maxS;",
+        "!liveLeftDrag && !screen.details.leftScrollManual",
         "fb.setClipRect",
         "drawScrollbar",
         "screen.touchButtons.push_back({96, closeX, closeY, closeW, closeH});")
+assert "screen.details.leftScroll = scroll;" not in details, \
+    "draw-time direct manipulation must never overwrite committed Details scroll"
+
+gen2_details = read("src/UI/Modals/Gen2PokemonDetailsModal.cpp")
+require(gen2_details, "src/UI/Modals/Gen2PokemonDetailsModal.cpp",
+        "livePixelScrollVisual(screen.details.leftScroll",
+        "screen.details.leftScrollMax = nativeMax;",
+        "std::clamp(nativeScroll, 0, nativeMax)")
 
 backup = read("src/UI/BackupSelectionScreen.cpp")
 require(backup, "src/UI/BackupSelectionScreen.cpp",
