@@ -91,6 +91,7 @@ inline bool touchStartedInside(const TouchGestureSnapshot& touch,
 template <class RowText, class TitleText>
 void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
                  int speciesCount, bool previewShiny, RowText rowText, TitleText titleText,
+                 const TouchGestureSnapshot* gesture = nullptr,
                  bool shinyToggleAvailable = true,
                  std::array<uint8_t, 2> previewTypes = {0xFF, 0xFF}) {
         fb.drawText(x + 24, y + 50,
@@ -111,12 +112,11 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
         // committed by the owning input handler on release, so drag can never become an accidental A.
         int visualSpecies = std::clamp(selectedSpecies, 1, speciesCount);
         int liveOffset = 0;
-        const auto& touch = latestTouchGesture();
-        if (touchStartedInside(touch, listX, listY, listW, listH)) {
-            const int requestedRows = -touch.deltaY / rowStep;
+        if (gesture && touchStartedInside(*gesture, listX, listY, listW, listH)) {
+            const int requestedRows = -gesture->deltaY / rowStep;
             visualSpecies = std::clamp(selectedSpecies + requestedRows, 1, speciesCount);
             const int appliedRows = visualSpecies - selectedSpecies;
-            liveOffset = touch.deltaY + appliedRows * rowStep;
+            liveOffset = gesture->deltaY + appliedRows * rowStep;
             // Resist rather than expose empty space at either edge.
             if ((visualSpecies == 1 && liveOffset > 0) ||
                 (visualSpecies == speciesCount && liveOffset < 0))
