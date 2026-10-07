@@ -12,13 +12,11 @@ struct TouchListVisual {
     int offset = 0;
 };
 
-// Draw-time direct manipulation for preserved screens whose semantic/controller cursor still lands
-// on release. While the finger is down, calculate the virtual row/cell and keep the sub-row pixel
-// remainder so content stays physically attached to the finger instead of waiting for release.
-// `stride` is 1 for a normal list and the column count for a vertically scrolling grid.
+// Draw-time direct manipulation for preserved one-column lists whose semantic/controller cursor
+// still lands on release. While the finger is down, calculate the virtual row and keep the sub-row
+// pixel remainder so content stays physically attached to the finger instead of waiting for release.
 inline TouchListVisual liveVerticalListVisual(int selected, int count, int rowStep,
-                                              int x, int y, int w, int h,
-                                              int stride = 1) noexcept {
+                                              int x, int y, int w, int h) noexcept {
     TouchListVisual out{std::max(0, selected), 0};
     if (count <= 0 || rowStep <= 0 || w <= 0 || h <= 0) return out;
     selected = std::clamp(selected, 0, count - 1);
@@ -30,23 +28,18 @@ inline TouchListVisual liveVerticalListVisual(int selected, int count, int rowSt
         touch.startY >= y && touch.startY < y + h;
     if (!captured) return out;
 
-    stride = std::max(1, stride);
-    const int selectedUnit = selected / stride;
-    const int selectedColumn = selected % stride;
-    const int maxUnit = (count - 1) / stride;
-    const int requestedUnits = touch.deltaY < 0
+    const int requestedRows = touch.deltaY < 0
         ? (-touch.deltaY) / rowStep
         : -(touch.deltaY / rowStep);
-    const int visualUnit = std::clamp(selectedUnit + requestedUnits, 0, maxUnit);
-    out.index = std::min(count - 1, visualUnit * stride + selectedColumn);
-    const int appliedUnits = visualUnit - selectedUnit;
-    out.offset = touch.deltaY + appliedUnits * rowStep;
+    out.index = std::clamp(selected + requestedRows, 0, count - 1);
+    const int appliedRows = out.index - selected;
+    out.offset = touch.deltaY + appliedRows * rowStep;
 
     // Rubber-band the ends without ever disconnecting the content from the finger.
     const int edge = std::max(8, rowStep / 2);
-    if (visualUnit == 0 && out.offset > edge)
+    if (out.index == 0 && out.offset > edge)
         out.offset = edge + (out.offset - edge) / 4;
-    if (visualUnit == maxUnit && out.offset < -edge)
+    if (out.index == count - 1 && out.offset < -edge)
         out.offset = -edge + (out.offset + edge) / 4;
     return out;
 }
