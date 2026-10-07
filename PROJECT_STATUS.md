@@ -59,11 +59,11 @@ Current implementation includes:
 - corrected SWSH/SV/Z-A Current Box SC preflight type handling;
 - full staged Gen IV G4-04 editor implementation.
 
-The exact PR #92 checkpoint `3d2ded8ba350e541211ca2c2af0019f018044d78` is fully green across the established application CI matrix, but it is intentionally treated as an **intermediate** checkpoint rather than the next owner hardware-acceptance candidate.
+The exact PR #92 checkpoint `2d2d7bc2df57d79fe32c3bc0bfb24f80915b2efd` is fully green across the established application CI matrix and is the current **complete hardware candidate**.
 
-The reason is one known remaining launcher blocker: **stock RetroArch normal Quit currently returns to Nintendo HOME instead of reliably chaining back into PokeBank NX**. The next complete owner-test NRO is being held until that return lifecycle is solved and combined with the current preview fixes.
+It adds a PokeBank-owned RetroArch return host so normal RetroArch Quit can return through an explicit PokeBank reload path instead of relying on stock RetroArch to remember its caller. The host preserves child `NextLoadPath` requests and only reloads PokeBank after a normal final return.
 
-The current combined application is therefore **not hardware accepted yet**.
+The current combined application is **not hardware accepted yet** until this exact NRO passes on device.
 
 ## Generation status
 
@@ -202,11 +202,9 @@ Do not issue another complete owner-test NRO while a known MAIN blocker is inten
 
 ## Near-term order
 
-1. solve the RetroArch normal-Quit return lifecycle without regressing working legacy launch resolution;
-2. preserve and combine the current Product Home/SC/forwarder preview fixes;
-3. finish one exact-head full PR #92 application CI pass;
-4. package **one** complete current NRO;
-5. physically accept that exact integrated Gen I–IV + Product UI build;
+1. physically test the exact `2d2d7bc2...` Gen I–IV + Product UI candidate, especially RetroArch normal Quit → PokeBank NX return;
+2. verify the current SC/party/FireRed preview fixes in that same exact build;
+3. if the exact artifact passes, record it as the integrated hardware-accepted application checkpoint;
 6. physically validate and integrate PR #122 touch parity forward;
 7. then build Master Vault + named Banks;
 8. continue provider/later-generation expansion and product-facing legality/provenance tooling;
