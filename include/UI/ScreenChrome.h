@@ -281,15 +281,11 @@ namespace UI {
     inline bool g_contentDragMoved = false;
     inline int g_contentDragLastX = 0;
     inline int g_contentDragLastY = 0;
-    inline int g_contentDragVisualX = 0;
-    inline int g_contentDragVisualY = 0;
     inline int g_contentSwipeX = 0;
     inline int g_contentSwipeY = kHeaderH;
     inline int g_contentSwipeW = 0;
     inline int g_contentSwipeH = 0;
 
-    inline int contentDragVisualX() noexcept { return g_contentDragActive ? g_contentDragVisualX : 0; }
-    inline int contentDragVisualY() noexcept { return g_contentDragActive ? g_contentDragVisualY : 0; }
 
     inline uint64_t navButtonFor(const std::string& btn) {
         if (btn == "A") return HidNpadButton_A;
@@ -347,8 +343,6 @@ namespace UI {
             g_contentDragMoved = false;
             g_contentDragLastX = touch.x();
             g_contentDragLastY = touch.y();
-            g_contentDragVisualX = 0;
-            g_contentDragVisualY = 0;
 
             bool quickCloseEdge = false;
             if (g_quickGamesDrawerSwipe && g_navSurfaceW > 0) {
@@ -365,10 +359,8 @@ namespace UI {
         if (touch.isDown()) {
             if (!g_contentDragActive) return 0;
 
-            g_contentDragVisualX = touch.x() - touch.startX();
-            g_contentDragVisualY = touch.y() - touch.startY();
             g_productHeroDragXForDraw = g_contentSwipeUsesShoulders
-                ? g_contentDragVisualX : 0;
+                ? touch.deltaX() : 0;
 
             // Product Home's hero is a carousel: it follows the finger continuously, but commits
             // exactly one previous/next game only on release rather than cycling titles mid-drag.
@@ -409,8 +401,6 @@ namespace UI {
         const bool releaseOnly = g_contentSwipeReleaseOnly;
         g_contentDragActive = false;
         g_contentDragMoved = false;
-        g_contentDragVisualX = 0;
-        g_contentDragVisualY = 0;
         g_productHeroDragXForDraw = 0;
         if (contentDragMoved && !releaseOnly) return 0;
 
