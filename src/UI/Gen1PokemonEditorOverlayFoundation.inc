@@ -610,8 +610,8 @@ bool isGen1SourceUX(const TrainerViewScreen& screen) noexcept {
 
 uint64_t foundationDirectTouchInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch) {
     auto& foundation = foundationStateFor(screen);
-    const int pressed = touchedButtonDownId(touch);
-    const int tapped = touchedButtonId(touch);
+    const int pressed = screen.touchedButtonDownId(touch);
+    const int tapped = screen.touchedButtonId(touch);
     auto focusId = [&](int id, bool activate) {
         if (id >= 5000 && id < 5006) {
             foundation.focus = {Foundation::Panel::Identity, static_cast<uint8_t>(id - 5000), 0};
