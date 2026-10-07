@@ -67,6 +67,25 @@ inline const Block* findRequired(const std::vector<Block>& blocks,
     return nullptr;
 }
 
+inline const Block* findRequiredPayload(const std::vector<Block>& blocks,
+                                        uint32_t key,
+                                        std::size_t minimumSize,
+                                        std::string_view& error) noexcept {
+    for (const auto& block : blocks) {
+        if (block.key != key) continue;
+        // The supported Trainer readers consume these blocks by key and raw payload bytes.
+        // Their SC wrapper tag is not part of the parsed field layout, so preflight checks the
+        // source-backed payload geometry here. True scalar/value blocks still use findRequired().
+        if (block.data.size() < minimumSize) {
+            error = "A required game block is truncated for the supported layout.";
+            return nullptr;
+        }
+        return &block;
+    }
+    error = "A required game block is missing.";
+    return nullptr;
+}
+
 inline std::string_view validatePokemonRecords(const Block& block,
                                                PokemonFamily family,
                                                std::size_t entitySize,
@@ -140,21 +159,17 @@ inline std::string_view validateSWSH(const std::vector<Block>& blocks) {
     // Final SWSH pouch is Key Items: offset 4600, 64 entries, four bytes each.
     constexpr std::size_t itemSize = 4600 + 64 * 4;
 
-    if (!findRequired(
-            blocks, SWSH_MY_STATUS, Enums::SCTypeCode::Object, 0xB0 + 0x1A, error))
+    if (!findRequiredPayload(blocks, SWSH_MY_STATUS, 0xB0 + 0x1A, error))
         return error;
-    const Block* party = findRequired(
-        blocks, SWSH_PARTY, Enums::SCTypeCode::Object, partySize, error);
+    const Block* party = findRequiredPayload(blocks, SWSH_PARTY, partySize, error);
     if (!party) return error;
-    if (!findRequired(blocks, SWSH_MONEY, Enums::SCTypeCode::Object, 8, error))
+    if (!findRequiredPayload(blocks, SWSH_MONEY, 8, error))
         return error;
-    if (!findRequired(blocks, SWSH_ITEMS, Enums::SCTypeCode::Object, itemSize, error))
+    if (!findRequiredPayload(blocks, SWSH_ITEMS, itemSize, error))
         return error;
-    const Block* box = findRequired(
-        blocks, SWSH_BOX, Enums::SCTypeCode::Object, boxSize, error);
+    const Block* box = findRequiredPayload(blocks, SWSH_BOX, boxSize, error);
     if (!box) return error;
-    if (!findRequired(blocks, SWSH_BOX_LAYOUT, Enums::SCTypeCode::Object,
-                      boxLayoutSize, error))
+    if (!findRequiredPayload(blocks, SWSH_BOX_LAYOUT, boxLayoutSize, error))
         return error;
     if (!findRequired(blocks, SWSH_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error))
         return error;
@@ -183,22 +198,17 @@ inline std::string_view validateSV(const std::vector<Block>& blocks) {
     constexpr std::size_t boxLayoutSize =
         BOX_COUNT * BOX_NAME_BYTES;
 
-    if (!findRequired(
-            blocks, GEN9_MY_STATUS, Enums::SCTypeCode::Object, 0x10 + 0x1A, error))
+    if (!findRequiredPayload(blocks, GEN9_MY_STATUS, 0x10 + 0x1A, error))
         return error;
-    const Block* party = findRequired(
-        blocks, GEN9_PARTY, Enums::SCTypeCode::Object, partySize, error);
+    const Block* party = findRequiredPayload(blocks, GEN9_PARTY, partySize, error);
     if (!party) return error;
     if (!findRequired(blocks, GEN9_MONEY, Enums::SCTypeCode::UInt32, 4, error))
         return error;
-    if (!findRequired(blocks, GEN9_ITEMS, Enums::SCTypeCode::Object,
-                      GEN9_ITEM_BLOCK_BYTES, error))
+    if (!findRequiredPayload(blocks, GEN9_ITEMS, GEN9_ITEM_BLOCK_BYTES, error))
         return error;
-    const Block* box = findRequired(
-        blocks, GEN9_BOX, Enums::SCTypeCode::Object, boxSize, error);
+    const Block* box = findRequiredPayload(blocks, GEN9_BOX, boxSize, error);
     if (!box) return error;
-    if (!findRequired(blocks, GEN9_BOX_LAYOUT, Enums::SCTypeCode::Object,
-                      boxLayoutSize, error))
+    if (!findRequiredPayload(blocks, GEN9_BOX_LAYOUT, boxLayoutSize, error))
         return error;
     if (!findRequired(blocks, GEN9_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error))
         return error;
@@ -227,22 +237,17 @@ inline std::string_view validateZA(const std::vector<Block>& blocks) {
     constexpr std::size_t boxLayoutSize =
         BOX_COUNT * BOX_NAME_BYTES;
 
-    if (!findRequired(
-            blocks, GEN9_MY_STATUS, Enums::SCTypeCode::Object, 0x10 + 0x1A, error))
+    if (!findRequiredPayload(blocks, GEN9_MY_STATUS, 0x10 + 0x1A, error))
         return error;
-    const Block* party = findRequired(
-        blocks, GEN9_PARTY, Enums::SCTypeCode::Object, partySize, error);
+    const Block* party = findRequiredPayload(blocks, GEN9_PARTY, partySize, error);
     if (!party) return error;
     if (!findRequired(blocks, GEN9_MONEY, Enums::SCTypeCode::UInt32, 4, error))
         return error;
-    if (!findRequired(blocks, GEN9_ITEMS, Enums::SCTypeCode::Object,
-                      GEN9_ITEM_BLOCK_BYTES, error))
+    if (!findRequiredPayload(blocks, GEN9_ITEMS, GEN9_ITEM_BLOCK_BYTES, error))
         return error;
-    const Block* box = findRequired(
-        blocks, GEN9_BOX, Enums::SCTypeCode::Object, boxSize, error);
+    const Block* box = findRequiredPayload(blocks, GEN9_BOX, boxSize, error);
     if (!box) return error;
-    if (!findRequired(blocks, GEN9_BOX_LAYOUT, Enums::SCTypeCode::Object,
-                      boxLayoutSize, error))
+    if (!findRequiredPayload(blocks, GEN9_BOX_LAYOUT, boxLayoutSize, error))
         return error;
     if (!findRequired(blocks, GEN9_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error))
         return error;

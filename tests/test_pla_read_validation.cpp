@@ -153,9 +153,21 @@ int main() {
     shortSC[4].data.pop_back(); // Box block one byte below the supported geometry
     assert(!validateSCReadLayout(shortSC, Enums::GameVersion::ZA).empty());
 
-    auto wrongTypeSC = svLayout;
-    wrongTypeSC[3].type = SCTypeCode::Array; // item data must be an Object block
-    assert(!validateSCReadLayout(wrongTypeSC, Enums::GameVersion::SV).empty());
+    // Raw trainer payloads are consumed by key + bytes, not by their SC wrapper tag.
+    auto payloadWrapperSC = svLayout;
+    payloadWrapperSC[3].type = SCTypeCode::Array;
+    assert(validateSCReadLayout(payloadWrapperSC, Enums::GameVersion::SV).empty());
+
+    // True scalar fields remain exact-type checked.
+    auto wrongScalarSC = svLayout;
+    wrongScalarSC[2].type = SCTypeCode::UInt64; // Money is a UInt32 scalar.
+    assert(!validateSCReadLayout(wrongScalarSC, Enums::GameVersion::SV).empty());
+    auto wrongCurrentBoxSC = swshLayout;
+    wrongCurrentBoxSC[6].type = SCTypeCode::UInt32;
+    assert(!validateSCReadLayout(wrongCurrentBoxSC, Enums::GameVersion::SWSH).empty());
+    auto wrongRevisionSC = zaLayout;
+    wrongRevisionSC[7].type = SCTypeCode::UInt32;
+    assert(!validateSCReadLayout(wrongRevisionSC, Enums::GameVersion::ZA).empty());
 
     // A nonblank Pokemon record must pass its inner entity checksum/basic-domain gate.
     {

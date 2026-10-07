@@ -76,6 +76,8 @@ namespace UI {
         [[nodiscard]] NavigationState navigationState() const;
         // Resume Product Home after an editor without rebuilding the whole catalog.
         void resumeAfterEditor();
+        // Explicit Open failures stay on the selected card and surface the validation reason.
+        void reportOpenFailure(std::string message);
 
         bool hasSelectedTitle() const { return titleSelected; }
         AccountUid getSelectedUser() const { return selectedUserUid; }

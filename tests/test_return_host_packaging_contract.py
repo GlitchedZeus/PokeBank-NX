@@ -25,4 +25,18 @@ require("RETURN_HOST_DIR := $(CURDIR)/runtime/return_host" in root_makefile and
         "$(BUILD): return-host" in root_makefile,
         "main PokeBank build must still package the nested return host")
 
+host_source = (ROOT / "runtime/return_host/source/main.c").read_text(encoding="utf-8")
+require("getIsApplication();" in host_source and
+        "EnvAppletFlags_ApplicationOverride" in host_source,
+        "nested host must preserve nx-hbloader application-mode semantics")
+require("getCodeMemoryCapability();" in host_source and
+        "svcControlCodeMemory" in host_source,
+        "nested host must derive same-process code-memory capability before launching RetroArch")
+require("BreakReason_PreLoadDll" in host_source and
+        "const u64 mappedSize = (imageWithBss + 0xFFF) & ~0xFFFULL;" in host_source,
+        "nested host must use nx-hbloader load notifications and full image+BSS mapping geometry")
+require("envGetHeapOverrideAddr()" in host_source and
+        "svcSetHeapSize" not in host_source,
+        "nested host must preserve the outer hbloader child heap instead of trying to re-own the process heap")
+
 print("RetroArch return-host packaging contract: PASS")

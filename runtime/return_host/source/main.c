@@ -30,6 +30,12 @@ static NroHeader g_nroHeader;
 static u64 g_nroMappedSize;
 static AccountUid g_userIdStorage;
 static u64 g_syscallHints[3];
+static bool g_isApplication = false;
+static enum {
+    CodeMemoryUnavailable    = 0,
+    CodeMemoryForeignProcess = BIT(0),
+    CodeMemorySameProcess    = BIT(0) | BIT(1),
+} g_codeMemoryCapability = CodeMemoryUnavailable;
 
 u64 g_nroAddr = 0;
 Result g_lastRet = 0;
@@ -63,6 +69,60 @@ void __appInit(void) {
 void __appExit(void) {
     fsExit();
     smExit();
+}
+
+static void getIsApplication(void) {
+    u64 flag = 0;
+    Result rc = svcGetInfo(&flag, InfoType_IsApplication, CUR_PROCESS_HANDLE, 0);
+    if (R_SUCCEEDED(rc)) {
+        g_isApplication = flag != 0;
+        return;
+    }
+    u64 currentPid = 0;
+    if (R_FAILED(svcGetProcessId(&currentPid, CUR_PROCESS_HANDLE))) return;
+    rc = pmshellInitialize();
+    if (R_SUCCEEDED(rc)) {
+        u64 applicationPid = 0;
+        rc = pmshellGetApplicationProcessIdForShell(&applicationPid);
+        pmshellExit();
+        if (R_SUCCEEDED(rc) && currentPid == applicationPid)
+            g_isApplication = true;
+    }
+}
+
+static bool isKernel5xOrLater(void) {
+    u64 dummy = 0;
+    const Result rc =
+        svcGetInfo(&dummy, InfoType_UserExceptionContextAddress, INVALID_HANDLE, 0);
+    return R_VALUE(rc) != KERNELRESULT(InvalidEnumValue);
+}
+
+static bool isKernel4x(void) {
+    u64 dummy = 0;
+    const Result rc =
+        svcGetInfo(&dummy, InfoType_InitialProcessIdRange, INVALID_HANDLE, 0);
+    return R_VALUE(rc) != KERNELRESULT(InvalidEnumValue);
+}
+
+static void getCodeMemoryCapability(void) {
+    if (detectMesosphere()) {
+        g_codeMemoryCapability = CodeMemorySameProcess;
+        return;
+    }
+    if (isKernel5xOrLater()) {
+        Handle code = INVALID_HANDLE;
+        Result rc = svcCreateCodeMemory(&code, g_heapAddr, 0x1000);
+        if (R_SUCCEEDED(rc)) {
+            rc = svcControlCodeMemory(code, (CodeMapOperation)-1, 0, 0x1000, 0);
+            svcCloseHandle(code);
+            g_codeMemoryCapability =
+                R_VALUE(rc) == KERNELRESULT(InvalidEnumValue)
+                    ? CodeMemorySameProcess
+                    : CodeMemoryForeignProcess;
+        }
+        return;
+    }
+    if (isKernel4x()) g_codeMemoryCapability = CodeMemorySameProcess;
 }
 
 static bool copyString(char* out, size_t cap, const char* value) {
@@ -181,10 +241,16 @@ static Result loadImageAndMap(const char* path) {
     }
 
     const size_t restSize = header->size - sizeof(NroStart) - sizeof(NroHeader);
-    const u64 rwSize = (header->segments[2].size + header->bss_size + 0xFFF) & ~0xFFFULL;
-    const u64 mappedSize = header->segments[2].file_off + rwSize;
-    if ((u64)header->size + header->bss_size > g_heapSize || mappedSize > g_heapSize ||
-        !readExact(fd, rest, restSize)) {
+    const u64 rwSize =
+        (header->segments[2].size + header->bss_size + 0xFFF) & ~0xFFFULL;
+    const u64 imageWithBss = (u64)header->size + header->bss_size;
+    if (imageWithBss < header->size) {
+        close(fd);
+        fsdevUnmountAll();
+        return MAKERESULT(Module_HomebrewLoader, 43);
+    }
+    const u64 mappedSize = (imageWithBss + 0xFFF) & ~0xFFFULL;
+    if (mappedSize > g_heapSize || !readExact(fd, rest, restSize)) {
         close(fd);
         fsdevUnmountAll();
         return MAKERESULT(Module_HomebrewLoader, 43);
@@ -242,6 +308,8 @@ void NX_NORETURN loadNro(void) {
     if (!copyString(g_argv, sizeof(g_argv), g_nextArgv))
         returnToPokeBank(MAKERESULT(Module_HomebrewLoader, 47));
 
+    svcBreak(BreakReason_NotificationOnlyFlag | BreakReason_PreLoadDll,
+             (uintptr_t)g_argv, sizeof(g_argv));
     const Result rc = loadImageAndMap(g_nextNroPath);
     if (R_FAILED(rc)) returnToPokeBank(rc);
 
@@ -272,6 +340,11 @@ void NX_NORETURN loadNro(void) {
     entries[0].Value[0] = envGetMainThreadHandle();
     entries[1].Value[0] = g_procHandle;
     entries[2].Value[0] = __nx_applet_type;
+    entries[2].Value[1] = 0;
+    if (g_isApplication) {
+        entries[2].Value[0] = AppletType_SystemApplication;
+        entries[2].Value[1] = EnvAppletFlags_ApplicationOverride;
+    }
     entries[3].Value[0] = childHeapStart;
     entries[3].Value[1] = childHeapSize;
     entries[4].Value[1] = (u64)(uintptr_t)g_argv;
@@ -281,6 +354,10 @@ void NX_NORETURN loadNro(void) {
     entries[7].Value[0] = g_syscallHints[0];
     entries[7].Value[1] = g_syscallHints[1];
     entries[8].Value[0] = g_syscallHints[2];
+    if (!(g_codeMemoryCapability & BIT(0)))
+        entries[7].Value[1] &= ~(1ULL << (0x4B - 64));
+    if (!(g_codeMemoryCapability & BIT(1)))
+        entries[7].Value[1] &= ~(1ULL << (0x4C - 64));
     entries[9].Value[0] = randomGet64();
     entries[9].Value[1] = randomGet64();
     entries[10].Value[0] = (u64)(uintptr_t)&g_userIdStorage;
@@ -309,6 +386,9 @@ int main(int argc, char** argv) {
     g_procHandle = envGetOwnProcessHandle();
     if (!g_heapAddr || g_heapSize < 0x200000 || g_procHandle == INVALID_HANDLE)
         returnToPokeBank(MAKERESULT(Module_HomebrewLoader, 48));
+
+    getIsApplication();
+    getCodeMemoryCapability();
 
     for (unsigned svc = 0; svc < 0xC0; ++svc) {
         if (envIsSyscallHinted(svc))

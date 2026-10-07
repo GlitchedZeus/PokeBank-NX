@@ -792,6 +792,22 @@ namespace UI {
         refreshHubPreview(false);
     }
 
+    void SaveSelectScreen::reportOpenFailure(std::string message) {
+        titleSelected = false;
+        selectedUserUid = {};
+        selectedTitleId = 0;
+        selectedTitleName.clear();
+        selectedGameId.clear();
+        selectedSourceKind = SelectedSourceKind::None;
+        selectedLegacySourceIndex = 0;
+        openIntent = OpenIntent::Default;
+        overlay = Overlay::None;
+        exitRequested = false;
+        appExitRequested = false;
+        requestedMainMenuDestination = MainMenuDestination::None;
+        hubNotice = message.empty() ? "This save could not be opened." : std::move(message);
+    }
+
     void SaveSelectScreen::loadLegacySources(
         const PokeVault::Legacy::FRLGDiscoveryResult& legacySources) {
         for (auto& user : users) {
