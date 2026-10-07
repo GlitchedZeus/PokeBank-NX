@@ -1568,7 +1568,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
             [](uint16_t value) {
                 return gen4DexLabel(value);
             },
-            true, previewTypes);
+            &latestTouchGesture(), true, previewTypes);
         drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                         {"ZL/ZR", "Jump"}, {"Y", "Normal/Shiny"},
                         {"A", "Choose"}, {"B", "Cancel"}});
