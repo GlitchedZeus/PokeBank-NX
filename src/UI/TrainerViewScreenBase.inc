@@ -1420,6 +1420,9 @@ namespace UI {
         details.legalityOverlay = false;
         details.ribbonOverlay = false;
         details.discardConfirmActive = false;   // never let it survive to overlay the next page
+        details.leftScroll = 0;
+        details.leftScrollMax = 0;
+        details.leftScrollManual = false;
         details.editSnapshot.clear();
     }
 
@@ -1826,7 +1829,7 @@ namespace UI {
         }
         details.active = true;
         details.readOnly = false;
-        details.leftScroll = 0; details.leftScrollManual = false;   // start the info column at the top
+        details.leftScroll = 0; details.leftScrollMax = 0; details.leftScrollManual = false;   // start the info column at the top
         details.editing = false;
         details.category = 0;
         details.selectedStat = 0;
@@ -1885,7 +1888,7 @@ namespace UI {
 
         details.active = true;
         details.readOnly = readOnly;
-        details.leftScroll = 0; details.leftScrollManual = false;
+        details.leftScroll = 0; details.leftScrollMax = 0; details.leftScrollManual = false;
         details.editing = false;
         details.category = 0;
         details.selectedStat = 0;
@@ -3361,7 +3364,8 @@ namespace UI {
                 const bool inModernInfo = !gen2Passive && touch.startX() >= 24 && touch.startX() < 454 &&
                                           touch.startY() >= 276 && touch.startY() < 650;
                 if (inGen2Data || inModernInfo) {
-                    details.leftScroll = std::max(0, details.leftScroll - touch.deltaY());
+                    details.leftScroll = std::clamp(
+                        details.leftScroll - touch.deltaY(), 0, std::max(0, details.leftScrollMax));
                     details.leftScrollManual = true;
                     return;
                 }
