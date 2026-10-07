@@ -166,16 +166,7 @@ void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
 #undef drawPickerOverlay
 #undef handlePickerInput
 
-// The hardware move-picker renderer already has this layout locally; expose the same exact compact
-// layout to its touch-drag handler without altering the accepted picker source layer.
-namespace UI::Gen2PokemonEditor {
-namespace {
-constexpr auto kTouchMovePickerLayout = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout();
-} // namespace
-} // namespace UI::Gen2PokemonEditor
-#define layout kTouchMovePickerLayout
 #include "Gen2HardwarePickerFix.inc"
-#undef layout
 
 #include "Gen2SharedPokemonSurface.inc"
 
