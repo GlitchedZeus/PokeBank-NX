@@ -40,7 +40,7 @@ struct Gen2EditorOverlayGeometry {
     static constexpr int PanelY = 66;
     static constexpr int FieldRowStep = 57;
     static constexpr int FieldVisibleRows = 8;
-    static constexpr int ReviewRowStep = 54;
+    static constexpr int ReviewRowStep = 56;
     static constexpr int ReviewVisibleRows = 7;
 
     struct Rect {
@@ -766,7 +766,7 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             drawEditorRow(fb, x + 30, rowY, w - 60, rows[i].first, rows[i].second,
                           i == visual.index);
             if (rowY + 50 > viewportTop && rowY < viewportTop + viewportH)
-                screen.touchButtons.push_back({1000 + i, x + 30, rowY, w - 60, 50});
+                screen.touchButtons.push_back({1000 + i, fieldViewport.x, rowY, fieldViewport.w, rowStep});
         }
         fb.clearClip();
         fb.drawText(x + 32, y + h - 40,
@@ -802,12 +802,13 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                 {"Close", "No source write"},
             };
         }
+        constexpr int actionRowStep = 56;
         int rowY = y + 112;
         for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
             drawEditorRow(fb, x + 30, rowY, w - 60, rows[i].first, rows[i].second,
                           i == state.pokemonRow);
-            screen.touchButtons.push_back({1100 + i, x + 30, rowY, w - 60, 48});
-            rowY += 51;
+            screen.touchButtons.push_back({1100 + i, x + 30, rowY, w - 60, actionRowStep});
+            rowY += actionRowStep;
         }
         fb.drawText(x + 32, y + h - 40,
                     "A Select    X Review    B Close/Review    FORMAT VALID != full encounter legality",
@@ -846,7 +847,7 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                 fb.drawText(x + 320, textY, change.beforeValue + "  ->  " + change.afterValue,
                             Colors::Text, TextStyle::Body);
                 if (rowTop + 48 > viewportTop && rowTop < viewportTop + viewportH)
-                    screen.touchButtons.push_back({900 + i, x + 22, rowTop, w - 44, 48});
+                    screen.touchButtons.push_back({900 + i, reviewViewport.x, rowTop, reviewViewport.w, rowStep});
             }
             fb.clearClip();
             drawScrollbar(fb, x + w - 14, reviewViewport.y,
@@ -871,7 +872,7 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
         drawEditorRow(fb, x + 30, rowY, w - 60, rows[i].first, rows[i].second,
                       i == state.selectedRow);
-        screen.touchButtons.push_back({800 + i, x + 30, rowY, w - 60, 50});
+        screen.touchButtons.push_back({800 + i, x + 30, rowY, w - 60, 57});
         rowY += 57;
     }
     drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Edit / Select"},
