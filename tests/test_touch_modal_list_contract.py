@@ -68,7 +68,10 @@ assert "const int ry = listTop + i * rowH;" not in picker, \
 base_picker = read("src/UI/TrainerViewScreenBase.inc")
 require(base_picker, "src/UI/TrainerViewScreenBase.inc",
         "InventoryPickerLayout::viewport(1280, 720)",
+        "const int page = pickerViewport.visibleRows;",
         "pickerViewport.contains(touch.startX(), touch.startY())")
+if "const int page = 12;" in base_picker:
+    raise AssertionError("shared picker: page jump must derive from the visible touch viewport")
 report_contract = read("include/UI/Modals/PokemonDetailsModal.h")
 require(report_contract, "include/UI/Modals/PokemonDetailsModal.h",
         "struct ReportScrollViewport",
