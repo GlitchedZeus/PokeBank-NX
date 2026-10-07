@@ -155,6 +155,18 @@ require_all("src/UI/Gen2HardwarePickerFix.inc",
             "liveVerticalListVisual(",
             "visual.offset",
             "fb.setClipRect(")
+require_all("include/UI/SharedPokemonShell.h",
+            "int pixelOffset = 0",
+            "static_cast<int>(i) * 38 + pixelOffset")
+require_all("src/UI/Gen2HardwareFinalFix.inc",
+            "const auto detailVisual = liveVerticalListVisual(",
+            "+ detailVisual.offset")
+require_all("src/UI/Gen3SharedPokemonSurface.inc",
+            "const auto detailVisual = liveVerticalListVisual(",
+            "detailVisual.offset")
+require_all("src/UI/Gen4SharedPokemonSurface.inc",
+            "const auto detailVisual = liveVerticalListVisual(",
+            "detailVisual.offset")
 require_all("src/UI/SaveSelectScreen.cpp",
             "gamesDrawerTouchScroll.updateVertical(",
             "classicGamesTouchScroll.updateVertical(",
