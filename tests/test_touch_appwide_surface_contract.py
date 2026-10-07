@@ -59,7 +59,7 @@ SURFACES = {
     ),
     "Pokémon details / Legality / Ribbons": (
         "src/UI/Modals/PokemonDetailsModal.cpp",
-        ("touch.justReleased()", "touch.dragged()", "legalityScroll", "ribbonScroll"),
+        ("legalityScroll", "ribbonScroll", "drawScrollbar", "drawGlyphButton"),
     ),
     "Gen II details": (
         "src/UI/Modals/Gen2PokemonDetailsModal.cpp",
