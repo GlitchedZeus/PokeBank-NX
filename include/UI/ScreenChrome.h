@@ -281,19 +281,9 @@ namespace UI {
     inline int g_navSurfaceX = 0;
     inline int g_navSurfaceW = 0;
     inline int g_navContentBottom = 0;
-    inline uint64_t g_contentSwipeMask = 0;
-    inline bool g_contentSwipeUsesShoulders = false;
-    inline bool g_contentSwipeReleaseOnly = false;
     inline bool g_quickGamesDrawerSwipe = false;
     inline uint64_t g_rightEdgeSwipeButton = 0;
-    inline bool g_contentDragActive = false;
-    inline bool g_contentDragMoved = false;
-    inline int g_contentDragLastX = 0;
-    inline int g_contentDragLastY = 0;
-    inline int g_contentSwipeX = 0;
-    inline int g_contentSwipeY = kHeaderH;
-    inline int g_contentSwipeW = 0;
-    inline int g_contentSwipeH = 0;
+    inline bool g_productHeroDragActive = false;
 
 
     inline uint64_t navButtonFor(const std::string& btn) {
@@ -328,90 +318,33 @@ namespace UI {
         return px >= x && px < x + w && py >= y && py < y + h;
     }
 
-    inline bool contentSwipeContains(int px, int py) noexcept {
-        return g_contentSwipeW > 0 && g_contentSwipeH > 0 &&
-               px >= g_contentSwipeX && px < g_contentSwipeX + g_contentSwipeW &&
-               py >= g_contentSwipeY && py < g_contentSwipeY + g_contentSwipeH;
-    }
-
-    inline uint64_t horizontalContentButton(bool towardNext) noexcept {
-        if (g_contentSwipeUsesShoulders)
-            return towardNext ? HidNpadButton_R : HidNpadButton_L;
-        return towardNext ? HidNpadButton_Right : HidNpadButton_Left;
-    }
-
     // Hit-test the badges captured during the PREVIOUS frame's draw. Footer buttons resolve on
     // release, browser/list content steps while the finger is moving, and a stationary tap on a
     // visible card follows the same spatial navigation path before pressing A. Screen-owned editor
     // and storage drag surfaces remain excluded from this generic registry.
     inline uint64_t navTouchButton(const TouchInput& touch) {
-        const bool startsInContent = g_contentSwipeMask != 0 && contentSwipeContains(touch.startX(), touch.startY());
-
         if (touch.justTouchedDown()) {
-            g_contentDragActive = false;
-            g_contentDragMoved = false;
-            g_contentDragLastX = touch.x();
-            g_contentDragLastY = touch.y();
-
-            bool quickCloseEdge = false;
-            if (g_quickGamesDrawerSwipe && g_navSurfaceW > 0) {
-                const int drawerLeft = g_navSurfaceX + g_navSurfaceW - 520;
-                constexpr int kDrawerEdgeCapture = 112;
-                quickCloseEdge = touch.startX() >= drawerLeft &&
-                                 touch.startX() < drawerLeft + kDrawerEdgeCapture;
-            }
-            if (startsInContent && !quickCloseEdge)
-                g_contentDragActive = true;
+            // Only Product Home owns a whole-content horizontal drag. Lists/grids publish their
+            // own hitboxes and real TouchScrollState viewports instead of routing through a global
+            // D-pad emulator.
+            g_productHeroDragActive =
+                g_productHeroSwipeRegistered &&
+                touch.startX() >= kProductHeroX && touch.startX() < kProductHeroX + kProductHeroW &&
+                touch.startY() >= kProductHeroY && touch.startY() < kProductHeroY + kProductHeroH;
             return 0;
         }
 
         if (touch.isDown()) {
-            if (!g_contentDragActive) return 0;
-
-            g_productHeroDragXForDraw = g_contentSwipeUsesShoulders
-                ? touch.deltaX() : 0;
-
-            // Product Home's hero is a carousel: it follows the finger continuously, but commits
-            // exactly one previous/next game only on release rather than cycling titles mid-drag.
-            if (g_contentSwipeReleaseOnly) return 0;
-
-            const int dx = touch.x() - g_contentDragLastX;
-            const int dy = touch.y() - g_contentDragLastY;
-            const int ax = dx < 0 ? -dx : dx;
-            const int ay = dy < 0 ? -dy : dy;
-            // Twenty-four physical pixels keeps focus tracking a finger instead of lagging by a
-            // whole card/row, while leaving actual pixel translation to screen-owned renderers.
-            constexpr int kLiveDragStep = 24;
-
-            if (ax >= kLiveDragStep && ax * 3 >= ay * 4) {
-                const uint64_t direction = horizontalContentButton(dx < 0);
-                if (g_contentSwipeMask & direction) {
-                    g_contentDragLastX = touch.x();
-                    g_contentDragLastY = touch.y();
-                    g_contentDragMoved = true;
-                    return direction;
-                }
-            }
-            if (ay >= kLiveDragStep && ay * 3 >= ax * 4) {
-                const uint64_t direction = dy < 0 ? HidNpadButton_Down : HidNpadButton_Up;
-                if (g_contentSwipeMask & direction) {
-                    g_contentDragLastX = touch.x();
-                    g_contentDragLastY = touch.y();
-                    g_contentDragMoved = true;
-                    return direction;
-                }
-            }
+            if (g_productHeroDragActive)
+                g_productHeroDragXForDraw = touch.deltaX();
             return 0;
         }
 
         if (!touch.justReleased()) return 0;
 
-        const bool contentDragMoved = g_contentDragMoved;
-        const bool releaseOnly = g_contentSwipeReleaseOnly;
-        g_contentDragActive = false;
-        g_contentDragMoved = false;
+        const bool productHeroDrag = g_productHeroDragActive;
+        g_productHeroDragActive = false;
         g_productHeroDragXForDraw = 0;
-        if (contentDragMoved && !releaseOnly) return 0;
 
         if (!touch.dragged()) {
             // Any controller-glyph button visibly drawn by the active surface is a real touch button.
@@ -461,24 +394,16 @@ namespace UI {
                 return HidNpadButton_B;
         }
 
-        // A very fast flick can travel from touch-down to release between two rendered frames and
-        // therefore never cross a live step while held. Product Home also intentionally resolves
-        // its carousel here so exactly one L/R action is committed after the visual drag.
-        if (g_contentSwipeMask != 0 && touch.dragged() &&
-            contentSwipeContains(touch.startX(), touch.startY())) {
-            const int dx = touch.x() - touch.startX();
-            const int dy = touch.y() - touch.startY();
+        // Product Home is the only whole-content horizontal gesture. Resolve exactly one
+        // previous/next game after the visual drag; all list/grid surfaces own their own touch.
+        if (productHeroDrag && touch.dragged()) {
+            const int dx = touch.deltaX();
+            const int dy = touch.deltaY();
             const int ax = dx < 0 ? -dx : dx;
             const int ay = dy < 0 ? -dy : dy;
-            constexpr int kContentSwipeDistance = 72;
-            if (ax >= kContentSwipeDistance && ax * 3 >= ay * 4) {
-                const uint64_t direction = horizontalContentButton(dx < 0);
-                if (g_contentSwipeMask & direction) return direction;
-            }
-            if (ay >= kContentSwipeDistance && ay * 3 >= ax * 4) {
-                const uint64_t direction = dy < 0 ? HidNpadButton_Down : HidNpadButton_Up;
-                if (g_contentSwipeMask & direction) return direction;
-            }
+            constexpr int kCarouselCommitDistance = 72;
+            if (ax >= kCarouselCommitDistance && ax * 3 >= ay * 4)
+                return dx < 0 ? HidNpadButton_R : HidNpadButton_L;
         }
 
         for (const NavGestureHit& h : g_navGestureHits) {
@@ -551,19 +476,8 @@ namespace UI {
         g_navSurfaceX = x;
         g_navSurfaceW = w;
         g_navContentBottom = cy - TouchTargetMin / 2 - 8;
-        g_contentSwipeMask = 0;
-        g_contentSwipeUsesShoulders = false;
-        g_contentSwipeReleaseOnly = false;
         g_quickGamesDrawerSwipe = false;
         g_rightEdgeSwipeButton = 0;
-        g_contentSwipeX = x;
-        g_contentSwipeY = kHeaderH;
-        g_contentSwipeW = w;
-        g_contentSwipeH = std::max(0, g_navContentBottom - kHeaderH);
-
-        const uint64_t allDirections = HidNpadButton_Up | HidNpadButton_Down |
-                                       HidNpadButton_Left | HidNpadButton_Right;
-        const uint64_t horizontalShoulders = HidNpadButton_L | HidNpadButton_R;
 
         // Product Home's selected-game hero card is a real touch carousel. Limit capture to that
         // exact card, keep the card physically attached to the finger while held, and resolve one
@@ -573,56 +487,17 @@ namespace UI {
             hint.find("A: Open") != std::string::npos &&
             hint.find("Y: Quick Games") != std::string::npos;
         g_productHeroSwipeRegistered = productHomeHero;
-        if (productHomeHero) {
-            g_contentSwipeMask = horizontalShoulders;
-            g_contentSwipeUsesShoulders = true;
-            g_contentSwipeReleaseOnly = true;
-            g_contentSwipeX = kProductHeroX;
-            g_contentSwipeY = kProductHeroY;
-            g_contentSwipeW = kProductHeroW;
-            g_contentSwipeH = kProductHeroH;
-        }
 
-        // Quick Games owns true vertical pixel scrolling in SaveSelectScreen. Keep only
-        // horizontal tile navigation here so a vertical finger drag cannot double-advance the
-        // screen-owned TouchScrollState cursor. Drawer-edge close remains active.
+        // Quick Games owns true vertical pixel scrolling and direct tile taps in
+        // SaveSelectScreen. Shared chrome keeps only its deliberate inner-edge close gesture.
         if (hint.find("D-pad/Stick: Choose") != std::string::npos &&
             hint.find("X: Save / Source") != std::string::npos &&
-            hint.find("B: Close") != std::string::npos) {
-            g_contentSwipeMask = HidNpadButton_Left | HidNpadButton_Right;
-            g_contentSwipeUsesShoulders = false;
-            g_contentSwipeReleaseOnly = false;
+            hint.find("B: Close") != std::string::npos)
             g_quickGamesDrawerSwipe = true;
-        }
 
-        // Save/browser overlays in SaveSelectScreen have no content drag handlers, so generic
-        // swipes and direct card taps are safe here. Exact labels keep this away from TrainerView
-        // storage/editor surfaces, which own their own drag and direct-row semantics.
-        const bool classicGamesBrowser =
-            hint.find("Y: Sort") != std::string::npos &&
-            hint.find("+: Favorite") != std::string::npos &&
-            hint.find("ZR: Launch") != std::string::npos &&
-            hint.find("B: Back") != std::string::npos;
-        const bool currentGameGrid =
-            hint.find("ZR: Launch") != std::string::npos &&
-            hint.find("+: Close Menu") != std::string::npos &&
-            hint.find("B: Home") != std::string::npos;
-        if (classicGamesBrowser) {
-            // Full Games owns vertical pixel scrolling; only horizontal tile navigation stays
-            // generic here.
-            g_contentSwipeMask = HidNpadButton_Left | HidNpadButton_Right;
-            g_contentSwipeUsesShoulders = false;
-            g_contentSwipeReleaseOnly = false;
-        } else if (currentGameGrid) {
-            g_contentSwipeMask = allDirections;
-            g_contentSwipeUsesShoulders = false;
-            g_contentSwipeReleaseOnly = false;
-        }
-
-        // SaveSelect's long profile/file/save-source lists own true pixel-scrolling through
-        // TouchScrollState. Do not synthesize D-pad steps for those same gestures here: doing so
-        // would double-advance the cursor while the screen-owned content is already following the
-        // finger. Their footer glyph buttons remain registered/tappable below as normal.
+        // Full Games, Current Game and all long save/source lists publish direct hitboxes and own
+        // any real overflow scrolling themselves. Shared chrome intentionally does not emulate
+        // content D-pad movement for them.
 
         auto trim = [](const std::string& s) {
             const size_t a = s.find_first_not_of(" \t");
