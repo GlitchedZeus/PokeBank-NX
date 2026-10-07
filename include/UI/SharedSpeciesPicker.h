@@ -6,7 +6,7 @@
 #include "UI/PKSEFramebuffer.h"
 #include "UI/SpriteManager.h"
 #include "UI/Common.h"
-#include "UI/TouchInput.h"
+#include "UI/TouchGesture.h"
 #include <algorithm>
 #include <array>
 #include <string_view>
