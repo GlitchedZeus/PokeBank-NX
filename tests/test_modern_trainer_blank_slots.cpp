@@ -40,6 +40,14 @@ int main() {
     const std::string ui = read("src/UI/TrainerViewScreenBase.inc");
     assert(ui.find("cursorPokemon && cursorPokemon->speciesID() != 0") != std::string::npos);
 
+    const std::string saveSelectHeader = read("include/UI/SaveSelectScreen.h");
+    const std::string saveSelectSource = read("src/UI/SaveSelectScreen.cpp");
+    assert(saveSelectHeader.find("OpenFailure") != std::string::npos);
+    assert(saveSelectSource.find("overlay = Overlay::OpenFailure;") != std::string::npos);
+    assert(saveSelectSource.find("\"SAVE NOT OPENED\"") != std::string::npos);
+    assert(saveSelectSource.find("Technical details were written to diagnostics.") != std::string::npos);
+    assert(saveSelectSource.find("HidNpadButton_A | HidNpadButton_B") != std::string::npos);
+
     std::cout << "Modern trainer encrypted-blank occupancy contract: PASS\n";
     return 0;
 }

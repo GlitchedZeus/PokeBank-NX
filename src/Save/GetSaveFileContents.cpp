@@ -71,8 +71,12 @@ namespace Save {
                 error = decryptFailureMessage(status);
                 return false;
             }
-            const auto layoutError = validateSCReadLayout(blocks, group);
+            std::string diagnostic;
+            const auto layoutError = validateSCReadLayout(blocks, group, &diagnostic);
             if (!layoutError.empty()) {
+                const std::string detail = diagnostic.empty()
+                    ? std::string(layoutError) : diagnostic;
+                logErrorToFile("SC durable-workspace layout validation failed", detail.c_str());
                 error = std::string("SC layout validation failed: ") + std::string(layoutError);
                 return false;
             }
@@ -509,14 +513,25 @@ namespace Save {
             const Encryption::DecryptStatus status = Encryption::tryDecrypt(file, fileSize, blocks);
             delete[] file;
             if (status != Encryption::DecryptStatus::Ok) {
-                error = std::string("SC save not opened: ") +
-                        decryptFailureMessage(status) + " Nothing was changed.";
+                char diagnostic[256];
+                std::snprintf(diagnostic, sizeof(diagnostic),
+                    "titleId=0x%016llX decryptStatus=%u reason=%s",
+                    static_cast<unsigned long long>(titleId),
+                    static_cast<unsigned>(status), decryptFailureMessage(status));
+                logErrorToFile("Native SC open preflight failed", diagnostic);
+                error = "This save could not be opened safely. The original save was left unchanged.";
                 return false;
             }
-            const auto layoutError = validateSCReadLayout(blocks, group);
+            std::string diagnostic;
+            const auto layoutError = validateSCReadLayout(blocks, group, &diagnostic);
             if (!layoutError.empty()) {
-                error = "SC save not opened: " + std::string(layoutError) +
-                        " Nothing was changed.";
+                char titlePrefix[64];
+                std::snprintf(titlePrefix, sizeof(titlePrefix), "titleId=0x%016llX ",
+                    static_cast<unsigned long long>(titleId));
+                const std::string detail = std::string(titlePrefix) +
+                    (diagnostic.empty() ? std::string(layoutError) : diagnostic);
+                logErrorToFile("Native SC layout preflight failed", detail.c_str());
+                error = "This save could not be opened safely. The original save was left unchanged.";
                 return false;
             }
             return true;

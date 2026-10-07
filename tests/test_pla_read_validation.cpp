@@ -141,6 +141,40 @@ int main() {
     assert(validateSCReadLayout(svLayout, Enums::GameVersion::SV).empty());
     assert(validateSCReadLayout(zaLayout, Enums::GameVersion::ZA).empty());
 
+    // Native modern empty slots are encrypted blanks, not necessarily all-zero ciphertext.
+    // Species 0 after decrypt is authoritative emptiness: stale checksum/nature bytes in an empty
+    // slot must not block the whole save, while occupied records remain strict below.
+    {
+        std::vector<std::byte> plain(Encryption::SIZE_PARTY8_SWSH, std::byte{0});
+        plain[6] = std::byte{0x7F};
+        plain[0x20] = std::byte{0xFF};
+        plain[0x21] = std::byte{0xFF};
+        std::unique_ptr<std::byte[]> enc(Encryption::encryptArray8SWSH(plain, 0));
+        std::copy_n(reinterpret_cast<const uint8_t*>(enc.get()), plain.size(),
+                    swshLayout[1].data.begin());
+        assert(validateSCReadLayout(swshLayout, Enums::GameVersion::SWSH).empty());
+    }
+    {
+        std::vector<std::byte> plain(Encryption::SIZE_PARTY9_SV, std::byte{0});
+        plain[6] = std::byte{0x7F};
+        plain[0x20] = std::byte{0xFF};
+        plain[0x21] = std::byte{0xFF};
+        std::unique_ptr<std::byte[]> enc(Encryption::encryptArray9SV(plain, 0));
+        std::copy_n(reinterpret_cast<const uint8_t*>(enc.get()), plain.size(),
+                    svLayout[1].data.begin());
+        assert(validateSCReadLayout(svLayout, Enums::GameVersion::SV).empty());
+    }
+    {
+        std::vector<std::byte> plain(Encryption::SIZE_PARTY9_LZA, std::byte{0});
+        plain[6] = std::byte{0x7F};
+        plain[0x20] = std::byte{0xFF};
+        plain[0x21] = std::byte{0xFF};
+        std::unique_ptr<std::byte[]> enc(Encryption::encryptArray9LZA(plain, 0));
+        std::copy_n(reinterpret_cast<const uint8_t*>(enc.get()), plain.size(),
+                    zaLayout[1].data.begin());
+        assert(validateSCReadLayout(zaLayout, Enums::GameVersion::ZA).empty());
+    }
+
     auto duplicateSC = svLayout;
     duplicateSC.push_back(svLayout.front());
     assert(!validateSCReadLayout(duplicateSC, Enums::GameVersion::SV).empty());
@@ -161,7 +195,10 @@ int main() {
     // True scalar fields remain exact-type checked.
     auto wrongScalarSC = svLayout;
     wrongScalarSC[2].type = SCTypeCode::UInt64; // Money is a UInt32 scalar.
-    assert(!validateSCReadLayout(wrongScalarSC, Enums::GameVersion::SV).empty());
+    std::string scDiagnostic;
+    assert(!validateSCReadLayout(wrongScalarSC, Enums::GameVersion::SV, &scDiagnostic).empty());
+    assert(scDiagnostic.find("0x4F35D0DD") != std::string::npos);
+    assert(scDiagnostic.find("wrong type") != std::string::npos);
     auto wrongCurrentBoxSC = swshLayout;
     wrongCurrentBoxSC[6].type = SCTypeCode::UInt32;
     assert(!validateSCReadLayout(wrongCurrentBoxSC, Enums::GameVersion::SWSH).empty());

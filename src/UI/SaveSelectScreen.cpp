@@ -801,7 +801,11 @@ namespace UI {
         exitRequested = false;
         appExitRequested = false;
         requestedMainMenuDestination = MainMenuDestination::None;
-        hubNotice = message.empty() ? "This save could not be opened." : std::move(message);
+        openFailureMessage = message.empty()
+            ? "This save could not be opened safely."
+            : std::move(message);
+        hubNotice = "Open stopped safely; no source save was modified.";
+        overlay = Overlay::OpenFailure;
     }
 
     void SaveSelectScreen::loadLegacySources(
@@ -2470,6 +2474,14 @@ namespace UI {
             HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)
             | navTouchButton(touch);
 
+        if (overlay == Overlay::OpenFailure) {
+            if (kDown & (HidNpadButton_A | HidNpadButton_B)) {
+                overlay = Overlay::None;
+                openFailureMessage.clear();
+            }
+            return;
+        }
+
         if (overlay == Overlay::GamesDrawer) {
             const UserEntry* drawerUser = currentUser();
             const int count = drawerUser ? static_cast<int>(drawerUser->titles.size()) : 0;
@@ -3603,7 +3615,28 @@ namespace UI {
         // Blocking overlays are shared by Product Home and the classic artwork browser.
         // Keeping this renderer outside the classic base prevents invisible modals that capture
         // input and look like a frozen application until B is pressed.
-        if (overlay == Overlay::GamesDrawer) {
+        if (overlay == Overlay::OpenFailure) {
+            constexpr int w = 860, h = 280;
+            const int x = (fb.getWidth() - w) / 2;
+            const int y = (fb.getHeight() - h) / 2;
+            fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH,
+                              Color(0, 0, 0, 132));
+            drawModalSurface(fb, x, y, w, h);
+            fb.drawText(x + 30, y + 24, "SAVE NOT OPENED",
+                        Colors::Error, TextStyle::Caption);
+            fb.drawText(x + 30, y + 56, "PokeBank NX stopped before opening this save",
+                        Colors::TextPrimary, TextStyle::Heading);
+            std::string message = openFailureMessage.empty()
+                ? "This save could not be opened safely."
+                : openFailureMessage;
+            if (message.size() > 104) message = message.substr(0, 103) + "…";
+            fb.drawText(x + 30, y + 112, message,
+                        Colors::TextSecondary, TextStyle::Body);
+            fb.drawText(x + 30, y + 158,
+                        "The source save was not modified. Technical details were written to diagnostics.",
+                        Colors::TextMuted, TextStyle::Caption);
+            drawNavBar(fb, {{"A / B", "Return"}});
+        } else         if (overlay == Overlay::GamesDrawer) {
             constexpr int w = 520;
             const int x = fb.getWidth() - w;
             const int h = fb.getHeight();
