@@ -69,6 +69,20 @@ base_picker = read("src/UI/TrainerViewScreenBase.inc")
 require(base_picker, "src/UI/TrainerViewScreenBase.inc",
         "InventoryPickerLayout::viewport(1280, 720)",
         "pickerViewport.contains(touch.startX(), touch.startY())")
+report_contract = read("include/UI/Modals/PokemonDetailsModal.h")
+require(report_contract, "include/UI/Modals/PokemonDetailsModal.h",
+        "struct ReportScrollViewport",
+        "static constexpr int RowHeight = 30;",
+        "constexpr ReportScrollViewport reportScrollViewport(",
+        "constexpr bool contains(int px, int py) const noexcept")
+require(base_picker, "src/UI/TrainerViewScreenBase.inc",
+        "Modals::reportScrollViewport(1280, 720, 820)",
+        "Modals::reportScrollViewport(1280, 720, 860)",
+        "reportViewport.contains(touch.startX(), touch.startY())",
+        "Modals::ReportScrollViewport::RowHeight")
+if "std::abs(dy) / 28" in base_picker:
+    raise AssertionError("Ribbons: input row step drifted from the shared 30px renderer step")
+
 details = read("src/UI/Modals/PokemonDetailsModal.cpp")
 require(details, "src/UI/Modals/PokemonDetailsModal.cpp",
         "Legality report: clipped touch-scroll surface with explicit close.",
