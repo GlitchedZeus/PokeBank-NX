@@ -33,7 +33,7 @@ SURFACES = {
         "src/UI/AppShellScreen.cpp",
         ("touch.justTouchedDown()", "touch.justTapped()", "cardRects",
          "settingsCategoryRects", "settingsRects", "overlayRects",
-         "liveVerticalListVisual(", "optionVisual.offset"),
+         "Every Settings category currently fits in the pane (max 3 options)."),
     ),
     "Backup selection": (
         "src/UI/BackupSelectionScreen.cpp",
@@ -148,6 +148,10 @@ require_all("include/UI/ScreenChrome.h",
             "Full Games owns vertical pixel scrolling",
             "SaveSelect's long profile/file/save-source lists own true pixel-scrolling",
             "g_contentSwipeMask = HidNpadButton_Left | HidNpadButton_Right")
+if '#include "UI/TouchScroll.h"' in read("src/UI/AppShellScreen.cpp"):
+    raise AssertionError("AppShell: Settings has no overflow; fake TouchScroll dependency was reintroduced")
+if "liveVerticalListVisual(" in read("src/UI/AppShellScreen.cpp"):
+    raise AssertionError("AppShell: non-overflowing Settings rows must stay anchored, not fake-scroll")
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
             "state.pickerScroll.updateVertical(",
             "state.editorScroll.updateVertical(",
