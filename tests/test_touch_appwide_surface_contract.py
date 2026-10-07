@@ -168,6 +168,19 @@ require_all("include/UI/SharedPokemonShell.h",
 require_all("src/UI/Gen2HardwareFinalFix.inc",
             "const auto detailVisual = liveVerticalListVisual(",
             "+ detailVisual.offset")
+require_all("src/UI/Gen2PokemonEditorFoundation.inc",
+            "int stickX, int stickY, const TouchInput& touch)",
+            "return handleInput(screen, down, held, stickX, stickY, noTouch);")
+require_all("src/UI/Gen2UnifiedPokemonWorkspace.inc",
+            "handleItemPicker(screen, state, down, held, stickX, stickY, touch)")
+composite_touch = read("src/UI/TrainerViewScreenCompositeOverlay.cpp")
+for dead_macro in ("#define touch kLegacyNoTouch",
+                   "#define handleItemPicker(",
+                   "#define touchedButtonDownId(",
+                   "#define touchedButtonId(",
+                   "#define layout "):
+    if dead_macro in composite_touch:
+        raise AssertionError(f"Composite touch glue regressed to macro adapter: {dead_macro}")
 require_all("src/UI/Gen3SharedPokemonSurface.inc",
             "const auto detailVisual = liveVerticalListVisual(",
             "detailVisual.offset")
