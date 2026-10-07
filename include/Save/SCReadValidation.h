@@ -31,7 +31,7 @@ inline constexpr uint32_t SWSH_MONEY = 0x1B882B09;
 inline constexpr uint32_t SWSH_ITEMS = 0x1177C2C4;
 inline constexpr uint32_t SWSH_BOX = 0x0D66012C;
 inline constexpr uint32_t SWSH_BOX_LAYOUT = 0x19722C89;
-inline constexpr uint32_t SWSH_CURRENT_BOX = 0x017C3CBB;
+inline constexpr uint32_t SWSH_CURRENT_BOX = 0x017C3CBB; // PKHeX KCurrentBox: U32 Box Index
 
 inline constexpr uint32_t GEN9_MY_STATUS = 0xE3E89BD1;
 inline constexpr uint32_t GEN9_PARTY = 0x3AA1A9AD;
@@ -39,7 +39,7 @@ inline constexpr uint32_t GEN9_MONEY = 0x4F35D0DD;
 inline constexpr uint32_t GEN9_ITEMS = 0x21C9BD44;
 inline constexpr uint32_t GEN9_BOX = 0x0D66012C;
 inline constexpr uint32_t GEN9_BOX_LAYOUT = 0x19722C89;
-inline constexpr uint32_t GEN9_CURRENT_BOX = 0x017C3CBB;
+inline constexpr uint32_t GEN9_CURRENT_BOX = 0x017C3CBB; // PKHeX KCurrentBox: U32 Box Index
 inline constexpr uint32_t ZA_SAVE_REVISION = 0x0926555A;
 
 inline constexpr std::size_t BOX_COUNT = 32;
@@ -262,7 +262,7 @@ inline std::string_view validateSWSH(const std::vector<Block>& blocks,
     if (!box) return error;
     if (!findRequiredPayload(blocks, SWSH_BOX_LAYOUT, boxLayoutSize, error, diagnostic))
         return error;
-    if (!findRequired(blocks, SWSH_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error, diagnostic))
+    if (!findRequired(blocks, SWSH_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error, diagnostic))
         return error;
 
     if (const auto e = validatePokemonRecords(
@@ -302,7 +302,7 @@ inline std::string_view validateSV(const std::vector<Block>& blocks,
     if (!box) return error;
     if (!findRequiredPayload(blocks, GEN9_BOX_LAYOUT, boxLayoutSize, error, diagnostic))
         return error;
-    if (!findRequired(blocks, GEN9_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error, diagnostic))
+    if (!findRequired(blocks, GEN9_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error, diagnostic))
         return error;
 
     if (const auto e = validatePokemonRecords(
@@ -342,7 +342,7 @@ inline std::string_view validateZA(const std::vector<Block>& blocks,
     if (!box) return error;
     if (!findRequiredPayload(blocks, GEN9_BOX_LAYOUT, boxLayoutSize, error, diagnostic))
         return error;
-    if (!findRequired(blocks, GEN9_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error, diagnostic))
+    if (!findRequired(blocks, GEN9_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error, diagnostic))
         return error;
     if (!findRequired(blocks, ZA_SAVE_REVISION, Enums::SCTypeCode::UInt64, 8, error, diagnostic))
         return error;
