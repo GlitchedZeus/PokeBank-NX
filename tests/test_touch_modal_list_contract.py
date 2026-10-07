@@ -55,15 +55,15 @@ require(details, "src/UI/Modals/PokemonDetailsModal.cpp",
 
 backup = read("src/UI/BackupSelectionScreen.cpp")
 require(backup, "src/UI/BackupSelectionScreen.cpp",
-        "touch.justReleased() && touch.dragged()",
-        "touch.justReleased() && !touch.dragged()",
-        "kSwipeDistance")
+        "backupScroll.updateVertical(",
+        "backupScroll.offset()",
+        "backupScroll.stop()")
 
 inventory = read("src/UI/ClassicInventoryOverlay.cpp")
 require(inventory, "src/UI/ClassicInventoryOverlay.cpp",
         "bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch)",
-        "touch.justTouchedDown()",
-        "touch.justReleased() && touch.dragged()",
+        "pickerScroll.updateVertical(",
+        "reviewScroll.updateVertical(",
         "screen.touchButtons.push_back")
 
 save_confirm = read("src/UI/Dialogs/SaveConfirmDialog.cpp")
