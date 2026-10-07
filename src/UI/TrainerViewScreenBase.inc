@@ -2667,7 +2667,9 @@ namespace UI {
         if (pickerActive) {
             Pokemon::Pokemon* pkPick = detailsTargetPokemon();
             const int count = (pickerCount > 0) ? pickerCount : 1;
-            const int page = 12;
+            const auto pickerViewport =
+                PokeBank::UIModel::InventoryPickerLayout::viewport(1280, 720);
+            const int page = pickerViewport.visibleRows;
 
             // Native list touch: finger contact moves highlight immediately; a clean release
             // chooses that exact row. Vertical drags browse the list and never activate a row.
@@ -2675,8 +2677,6 @@ namespace UI {
             if (ptd >= 0 && ptd < count) pickerSel = ptd;
             const int ptb = touchedButtonId(touch);
             if (ptb >= 0 && ptb < count) { pickerSel = ptb; kDown |= HidNpadButton_A; }
-            const auto pickerViewport =
-                PokeBank::UIModel::InventoryPickerLayout::viewport(1280, 720);
             if (touch.justReleased() && touch.dragged() &&
                 pickerViewport.contains(touch.startX(), touch.startY())) {
                 const int dy = touch.deltaY();
