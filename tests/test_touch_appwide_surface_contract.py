@@ -129,8 +129,7 @@ require_all("include/UI/ScreenChrome.h",
             "release-confirmed tap",
             "Content cards/rows are owned by the screen that draws them.",
             "constexpr int kLiveDragStep = 24",
-            "g_contentDragVisualX = touch.x() - touch.startX()",
-            "g_contentDragVisualY = touch.y() - touch.startY()",
+            "? touch.deltaX() : 0;",
             "const bool productHomeHero =",
             "g_contentSwipeReleaseOnly = true;",
             "g_productHeroDragXForDraw",
@@ -180,8 +179,19 @@ require_all("src/UI/SaveSelectScreen.cpp",
 require_all("include/UI/TouchScroll.h",
             "class TouchScrollState",
             "offset_ += delta",
-            "rebalance(step, index, count, stride)",
+            "const int requested = (-offset_) / step",
+            "const int available = std::max(0, (count - 1 - index) / stride)",
+            "const bool atTrailingEdge = index + stride >= count",
             "coasting_ = std::abs(velocity_) >= 2")
+if "liveHorizontalListVisual" in read("include/UI/TouchScroll.h"):
+    raise AssertionError("TouchScroll: dead horizontal draw helper was reintroduced without a caller")
+require_all("include/UI/TouchGesture.h",
+            "struct TouchGestureSnapshot",
+            "const TouchGestureSnapshot& latestTouchGesture() noexcept")
+if '#include <switch.h>' in read("include/UI/TouchGesture.h"):
+    raise AssertionError("TouchGesture: renderer-facing gesture snapshot must remain host-portable")
+if '#include "UI/TouchInput.h"' in read("include/UI/SharedSpeciesPicker.h"):
+    raise AssertionError("SharedSpeciesPicker: draw-only species helper must not pull libnx TouchInput")
 require_all("include/UI/SharedSpeciesPicker.h",
             "latestTouchGesture()",
             "touch.deltaY / rowStep",
