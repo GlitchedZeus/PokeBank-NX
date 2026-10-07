@@ -2575,16 +2575,25 @@ namespace UI {
 
         if (overlay == Overlay::ProfilePicker) {
             const int count = static_cast<int>(users.size());
+            constexpr int w = 780, h = 560, rowH = 88, visibleRows = 4;
+            const int x = (1280 - w) / 2, y = (720 - h) / 2;
+            profileTouchScroll.updateVertical(
+                touch, x + 24, y + 136, w - 48, visibleRows * rowH,
+                rowH, profilePickerIndex, count);
             if (kDown & HidNpadButton_B) {
+                profileTouchScroll.stop();
                 overlay = Overlay::None;
                 return;
             }
             if (count > 0) {
+                if (kDown & (HidNpadButton_Up | HidNpadButton_Down))
+                    profileTouchScroll.stop();
                 if (kDown & HidNpadButton_Up)
                     profilePickerIndex = (profilePickerIndex - 1 + count) % count;
                 if (kDown & HidNpadButton_Down)
                     profilePickerIndex = (profilePickerIndex + 1) % count;
                 if (kDown & HidNpadButton_A) {
+                    profileTouchScroll.stop();
                     setUser(profilePickerIndex);
                     gamesDrawerIndex = titleIndex;
                     overlay = Overlay::None;
@@ -2632,7 +2641,13 @@ namespace UI {
 
         if (overlay == Overlay::GameFilePicker) {
             const int count = static_cast<int>(launchFileEntries.size());
+            constexpr int w = 900, h = 560, rowH = 54, visibleRows = 7;
+            const int x = (1280 - w) / 2, y = (720 - h) / 2;
+            launchFileTouchScroll.updateVertical(
+                touch, x + 24, y + 132, w - 48, visibleRows * rowH,
+                rowH, launchFileIndex, count);
             if (kDown & HidNpadButton_B) {
+                launchFileTouchScroll.stop();
                 overlay = launchFileReturnToLegacy ? Overlay::LegacyInstances : Overlay::None;
                 return;
             }
@@ -2646,11 +2661,12 @@ namespace UI {
                 return;
             }
             if (count > 0) {
+                if (kDown & (HidNpadButton_Up | HidNpadButton_Down))
+                    launchFileTouchScroll.stop();
                 if (kDown & HidNpadButton_Up)
                     launchFileIndex = (launchFileIndex - 1 + count) % count;
                 if (kDown & HidNpadButton_Down)
                     launchFileIndex = (launchFileIndex + 1) % count;
-                constexpr int visibleRows = 7;
                 if (launchFileIndex < launchFileScroll)
                     launchFileScroll = launchFileIndex;
                 else if (launchFileIndex >= launchFileScroll + visibleRows)
@@ -2672,7 +2688,13 @@ namespace UI {
         }
         if (overlay == Overlay::LegacyAssignment) {
             const int count = static_cast<int>(unassignedLegacySources.size());
+            constexpr int w = 800, h = 530, rowH = 70, visibleRows = 5;
+            const int x = (1280 - w) / 2, y = (720 - h) / 2;
+            legacyAssignmentTouchScroll.updateVertical(
+                touch, x + 24, y + 108, w - 48, visibleRows * rowH,
+                rowH, legacyAssignmentIndex, count);
             if (kDown & HidNpadButton_B) {
+                legacyAssignmentTouchScroll.stop();
                 overlay = classicGamesActive ? Overlay::None : Overlay::GamesDrawer;
                 return;
             }
@@ -2691,11 +2713,12 @@ namespace UI {
                 overlay = classicGamesActive ? Overlay::None : Overlay::GamesDrawer;
                 return;
             }
+            if (kDown & (HidNpadButton_Up | HidNpadButton_Down))
+                legacyAssignmentTouchScroll.stop();
             if (kDown & HidNpadButton_Up)
                 legacyAssignmentIndex = (legacyAssignmentIndex - 1 + count) % count;
             if (kDown & HidNpadButton_Down)
                 legacyAssignmentIndex = (legacyAssignmentIndex + 1) % count;
-            constexpr int visibleRows = 5;
             if (legacyAssignmentIndex < legacyAssignmentScroll)
                 legacyAssignmentScroll = legacyAssignmentIndex;
             else if (legacyAssignmentIndex >= legacyAssignmentScroll + visibleRows)
@@ -2734,7 +2757,13 @@ namespace UI {
         }
         if (overlay == Overlay::Gen4Candidates) {
             const int count = static_cast<int>(gen4Instances.size());
+            constexpr int w = 900, h = 540, rowH = 76, visibleRows = 5;
+            const int x = (1280 - w) / 2, y = (720 - h) / 2;
+            gen4CandidateTouchScroll.updateVertical(
+                touch, x + 24, y + 108, w - 48, visibleRows * rowH,
+                rowH, gen4CandidateIndex, count);
             if (kDown & HidNpadButton_B) {
+                gen4CandidateTouchScroll.stop();
                 overlay = gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None;
                 if (overlay == Overlay::GamesDrawer) {
                     gamesDrawerIndex = titleIndex;
@@ -2752,11 +2781,12 @@ namespace UI {
                 return;
             }
             if (count == 0) { overlay = Overlay::Gen4Setup; return; }
+            if (kDown & (HidNpadButton_Up | HidNpadButton_Down))
+                gen4CandidateTouchScroll.stop();
             if (kDown & HidNpadButton_Up)
                 gen4CandidateIndex = (gen4CandidateIndex - 1 + count) % count;
             if (kDown & HidNpadButton_Down)
                 gen4CandidateIndex = (gen4CandidateIndex + 1) % count;
-            constexpr int visibleRows = 5;
             if (gen4CandidateIndex < gen4CandidateScroll)
                 gen4CandidateScroll = gen4CandidateIndex;
             else if (gen4CandidateIndex >= gen4CandidateScroll + visibleRows)
@@ -2795,7 +2825,14 @@ namespace UI {
             }
             const auto& instances = u->titles[titleIndex].legacyInstances;
             const int count = static_cast<int>(instances.size());
+            constexpr int w = 780, h = 530, rowH = 66;
+            const int x = (1280 - w) / 2, y = (720 - h) / 2;
+            legacyInstanceTouchScroll.updateVertical(
+                touch, x + 24, y + 122, w - 48,
+                LEGACY_INSTANCE_VISIBLE_ROWS * rowH,
+                rowH, legacyInstanceIndex, count);
             if (kDown & HidNpadButton_B) {
+                legacyInstanceTouchScroll.stop();
                 overlay = Overlay::None;
                 launchLegacyMode = false;
                 return;
@@ -2821,6 +2858,8 @@ namespace UI {
                 overlay = Overlay::None;
                 return;
             }
+            if (kDown & (HidNpadButton_Up | HidNpadButton_Down))
+                legacyInstanceTouchScroll.stop();
             if (kDown & HidNpadButton_Up)
                 legacyInstanceIndex = (legacyInstanceIndex - 1 + count) % count;
             if (kDown & HidNpadButton_Down)
