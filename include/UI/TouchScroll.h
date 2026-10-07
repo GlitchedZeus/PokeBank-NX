@@ -169,7 +169,16 @@ private:
             // Track from the first pixel of movement. Tap classification remains owned by TouchInput,
             // so a tiny wobble may visually move a few pixels but still resolves as a normal tap.
             offset_ += delta;
-            velocity_ = (velocity_ * 3 + delta * 5) / 8;
+
+            // Live content remains exactly attached to the physical finger, but momentum must not
+            // trust an arbitrarily large one-frame sample. A scheduler hiccup or noisy coordinate
+            // must never turn release into a multi-page fling. Clamp only the velocity sample;
+            // offset_ above deliberately keeps the full physical delta.
+            const int maxVelocity = std::max(12, std::min(96, step * 2));
+            const int velocitySample = std::clamp(delta, -maxVelocity, maxVelocity);
+            velocity_ = std::clamp(
+                (velocity_ * 3 + velocitySample * 5) / 8,
+                -maxVelocity, maxVelocity);
             rebalance(step, index, count, stride);
             return;
         }
