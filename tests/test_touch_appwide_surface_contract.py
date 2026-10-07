@@ -75,7 +75,7 @@ SURFACES = {
     ),
     "Gen I editor foundation": (
         "src/UI/Gen1PokemonEditorFoundationHardwareFix.inc",
-        ("foundationDirectTouchInput", "touch.justTouchedDown()", "touch.justTapped()"),
+        ("touchButtons.push_back({5000 + i", "touchButtons.push_back({5100 + r * 10 + c", "ux3DrawTouchNavBar"),
     ),
     "Gen I editor overlay": (
         "src/UI/Gen1PokemonEditorOverlayFoundation.inc",
