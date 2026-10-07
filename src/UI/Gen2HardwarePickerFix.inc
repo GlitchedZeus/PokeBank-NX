@@ -63,14 +63,24 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
     const int count = static_cast<int>(choices.size());
     constexpr int visible = layout.visibleRows;
     const int selectedPos = hardwareMoveChoicePosition(choices, model.moveChoice());
-    const int first = std::clamp(selectedPos - visible / 2, 0, std::max(0, count - visible));
-    const int last = std::min(count, first + visible);
+    const int viewportTop = y + layout.rowStart;
+    const int viewportH = visible * layout.rowStep;
+    const auto visual = liveVerticalListVisual(
+        selectedPos, count, layout.rowStep,
+        x + 24, viewportTop, panelW - 48, viewportH);
+    const int first = std::clamp(
+        visual.index - visible / 2, 0, std::max(0, count - visible));
+    const int drawFirst = std::max(0, first - 1);
+    const int drawLast = std::min(count, first + visible + 1);
     screen.touchButtons.clear();
-    for (int i = first; i < last; ++i) {
-        const int yy = y + layout.rowStart + (i - first) * layout.rowStep;
+    fb.setClipRect(x + 24, viewportTop, panelW - 48, viewportH);
+    for (int i = drawFirst; i < drawLast; ++i) {
+        const int yy = viewportTop + (i - first) * layout.rowStep + visual.offset;
         const uint16_t move = choices[static_cast<std::size_t>(i)];
-        const bool selected = i == selectedPos;
-        screen.touchButtons.push_back({2100 + i, x + 24, yy, panelW - 48, layout.highlightHeight});
+        const bool selected = i == visual.index;
+        if (yy + layout.highlightHeight > viewportTop && yy < viewportTop + viewportH)
+            screen.touchButtons.push_back(
+                {2100 + i, x + 24, yy, panelW - 48, layout.highlightHeight});
         const std::string label =
             PokeBank::UIModel::MovePickerPresentation::rowLabel(move, Enums::GameVersion::GSC);
         if (selected)
@@ -78,6 +88,7 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
         fb.drawText(x + 40, yy + 8, label,
                     selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
     }
+    fb.clearClip();
     drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                     {"A", "Select"}, {"B", "Cancel"}});
 }
