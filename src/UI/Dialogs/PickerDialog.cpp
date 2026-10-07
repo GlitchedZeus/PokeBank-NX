@@ -5,6 +5,7 @@
 #include "UI/TrainerViewScreen.h"
 #include "UI/Common.h"
 #include "UI/ScreenChrome.h"     // drawScrollbar
+#include "UI/TouchScroll.h"
 #include "UI/InventoryUIContract.h"
 #include "UI/PKSEFramebuffer.h"
 #include "Trainer/Trainer.h"     // getNatureName / getAbilityName
@@ -134,11 +135,18 @@ namespace Dialogs {
         const int listBottom = py + ph - 18;
         int visible = (listBottom - listTop) / rowH;
         if (visible < 1) visible = 1;
-        int first = sel - visible / 2;
+        const auto visual = liveVerticalListVisual(
+            sel, count, rowH,
+            px + 12, listTop, pw - 24, visible * rowH);
+        const int visualSel = visual.index;
+        int first = visualSel - visible / 2;
         if (first > count - visible) first = count - visible;
         if (first < 0) first = 0;
+        const int drawFirst = std::max(0, first - 1);
+        const int drawLast = std::min(count, first + visible + 1);
 
         screen.touchButtons.clear();
+        fb.setClipRect(px + 12, listTop, pw - 24, visible * rowH);
         // the Ability picker reorders its options (legal abilities first) via screen.pickerOrder,
         // and the legal prefix renders green. Form and Gender filter rather than reorder (forms the
         // game can't hold are dropped; so are genders the species can't be), but they need the same
@@ -153,11 +161,10 @@ namespace Dialogs {
                            || kind == PickerKind::Ball    || kind == PickerKind::Form
                            || kind == PickerKind::Gender)
                            && !screen.pickerOrder.empty();
-        for (int i = 0; i < visible && (first + i) < count; ++i) {
-            const int idx = first + i;
+        for (int idx = drawFirst; idx < drawLast; ++idx) {
             const int val = (reorder && idx < static_cast<int>(screen.pickerOrder.size())) ? screen.pickerOrder[idx] : idx;
-            const int ry = listTop + i * rowH;
-            const bool s = (idx == sel);
+            const int ry = listTop + (idx - first) * rowH + visual.offset;
+            const bool s = (idx == visualSel);
             if (s) fb.drawSelectionHighlight(px + 12, ry, pw - 24, rowH - 4);
             const bool legal = reorder && idx < screen.pickerLegalCount;
             const Color col = legal ? Color(120, 210, 130) : (s ? Colors::Text : Colors::TextDim);
@@ -183,11 +190,14 @@ namespace Dialogs {
                 label = machineLabel.c_str();
             }
             fb.drawText(px + 28, ry + (rowH - 4 - fb.lineHeight(TextStyle::Body)) / 2, label, col);
-            screen.touchButtons.push_back({ idx, px + 12, ry, pw - 24, rowH - 4 });  // id = option row
+            if (ry + rowH - 4 > listTop && ry < listTop + visible * rowH)
+                screen.touchButtons.push_back({ idx, px + 12, ry, pw - 24, rowH - 4 });  // id = option row
         }
+        fb.clearClip();
 
-        // Scrollbar on the panel's right edge (same thumb as everywhere else) when the list overflows.
-        drawScrollbar(fb, px + pw - 14, listTop, visible * rowH, count * rowH, first * rowH);
+        // Scrollbar follows the same visual row + residual pixels as the content.
+        drawScrollbar(fb, px + pw - 14, listTop, visible * rowH, count * rowH,
+                      first * rowH - visual.offset);
 
         drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}, {"L/R", "Page"}});
     }
