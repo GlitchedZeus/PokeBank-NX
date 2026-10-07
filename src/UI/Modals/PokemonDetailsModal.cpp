@@ -155,15 +155,15 @@ namespace Modals {
         const int contentTop = colY + 14 + renderSz + 40;
         const int legalityH = 34;                              // legality line is pinned below the scroll
         const int contentBottom = colY + colH - legalityH - 6;
-        int liveLeftOffset = 0;
+        const int viewH = contentBottom - contentTop;
         const auto& liveTouch = latestTouchGesture();
-        if (liveTouch.down &&
+        const bool liveLeftDrag = liveTouch.down &&
             liveTouch.startX >= Lx + 1 && liveTouch.startX < Lx + Lw - 1 &&
-            liveTouch.startY >= contentTop && liveTouch.startY < contentBottom) {
-            // Direct manipulation: finger down = content under the finger moves by the same pixels.
-            liveLeftOffset = liveTouch.deltaY;
-        }
-        const int scroll = screen.details.leftScroll - liveLeftOffset;
+            liveTouch.startY >= contentTop && liveTouch.startY < contentBottom;
+        const int scroll = liveLeftDrag
+            ? livePixelScrollVisual(screen.details.leftScroll, liveTouch.deltaY,
+                                    screen.details.leftScrollMax, viewH)
+            : std::clamp(screen.details.leftScroll, 0, std::max(0, screen.details.leftScrollMax));
         int iy = contentTop;
         int selRowY = -1;                                      // absolute content-Y of the selected row
         std::vector<int> leftOrder;                            // editable field ids in draw order (nav list)
@@ -290,20 +290,24 @@ namespace Modals {
         fb.clearClip();
         screen.details.leftOrder = leftOrder;   // hand the nav its draw-order field list
 
-        // Auto-scroll so the selected field stays visible (applied next frame), plus a faint scrollbar.
+        // Auto-scroll the committed model only when touch is not actively manipulating the pane.
+        // The live visual scroll above is deliberately never written back here: release is the one
+        // semantic commit point, which prevents frame-by-frame drag deltas from compounding.
         {
             const int contentH = iy - contentTop;
-            const int viewH = contentBottom - contentTop;
-            int s = scroll;
-            if (!screen.details.leftScrollManual && selRowY >= 0) {
-                if (selRowY - s < contentTop)                s = selRowY - contentTop;
-                else if ((selRowY + RH) - s > contentBottom) s = (selRowY + RH) - contentBottom;
-            }
             const int maxS = (contentH > viewH) ? (contentH - viewH) : 0;
-            if (s < 0) s = 0;
-            if (s > maxS) s = maxS;
-            screen.details.leftScroll = s;
-            drawScrollbar(fb, Lx + Lw - 7, contentTop, viewH, contentH, s);
+            screen.details.leftScrollMax = maxS;
+            int committed = std::clamp(screen.details.leftScroll, 0, maxS);
+            if (!liveLeftDrag && !screen.details.leftScrollManual && selRowY >= 0) {
+                if (selRowY - committed < contentTop)
+                    committed = selRowY - contentTop;
+                else if ((selRowY + RH) - committed > contentBottom)
+                    committed = (selRowY + RH) - contentBottom;
+                committed = std::clamp(committed, 0, maxS);
+            }
+            screen.details.leftScroll = committed;
+            drawScrollbar(fb, Lx + Lw - 7, contentTop, viewH, contentH,
+                          std::clamp(scroll, 0, maxS));
         }
 
         // Legality summary pinned at the bottom of the left pane (R / tap opens the full issue list).
