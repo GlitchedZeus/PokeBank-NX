@@ -1,0 +1,16 @@
+# Focused Gen III source-derived Safari encounter evidence regressions.
+GEN3_SAFARI_SOURCES := tests/test_gen3_safari_encounter.cpp
+GEN3_SAFARI_HEADERS := include/Legality/Gen3SafariEncounter.h include/Legality/Gen3SafariEncounterData.inc
+
+HOST_TESTS += $(HOST_BUILD)/test_gen3_safari_encounter
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_safari_encounter_sanitize
+host-test: $(HOST_BUILD)/test_gen3_safari_encounter
+host-sanitize: $(HOST_BUILD)/test_gen3_safari_encounter_sanitize
+
+$(HOST_BUILD)/test_gen3_safari_encounter: $(GEN3_SAFARI_SOURCES) $(GEN3_SAFARI_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN3_SAFARI_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen3_safari_encounter_sanitize: $(GEN3_SAFARI_SOURCES) $(GEN3_SAFARI_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN3_SAFARI_SOURCES) -o $@
