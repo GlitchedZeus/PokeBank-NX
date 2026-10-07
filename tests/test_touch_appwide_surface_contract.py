@@ -30,12 +30,12 @@ SURFACES = {
     ),
     "Backup selection": (
         "src/UI/BackupSelectionScreen.cpp",
-        ("touch.justReleased() && touch.dragged()", "touch.justReleased() && !touch.dragged()"),
+        ("backupScroll.updateVertical(", "backupScroll.offset()", "backupScroll.stop()"),
     ),
     "Classic inventory": (
         "src/UI/ClassicInventoryOverlay.cpp",
-        ("touch.justTouchedDown()", "touch.justReleased() && touch.dragged()",
-         "touchedButtonId(touch)"),
+        ("touch.justTouchedDown()", "pickerScroll.updateVertical(",
+         "reviewScroll.updateVertical(", "touchedButtonId(touch)"),
     ),
     "Packed move selection": (
         "src/UI/ClassicPackedMoveOverlay.inc",
