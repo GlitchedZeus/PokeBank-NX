@@ -72,6 +72,7 @@ struct State {
     bool actions = false;
     bool review = false;
     int reviewScroll = 0;
+    TouchScrollState reviewTouchScroll;
     bool legality = false;
     bool confirmRelease = false;
     bool speciesPicker = false;
@@ -201,6 +202,7 @@ void beginActions(TrainerViewScreen& screen) {
     state.actions = true;
     state.review = false;
     state.reviewScroll = 0;
+    state.reviewTouchScroll.reset();
     state.legality = false;
     state.confirmRelease = false;
     state.speciesPicker = false;
@@ -1271,17 +1273,23 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
     }
     const int reviewCount = static_cast<int>(staged->pendingChanges().size());
     const int reviewMax = std::max(0, reviewCount - 7);
+    // Pending Changes is a real touch scroll view: the cards follow the finger on every frame,
+    // cross row boundaries while the finger is still down, and retain a small controlled coast.
+    // reviewScroll remains the first visible semantic row, so controller behavior is unchanged.
+    state.reviewTouchScroll.updateVertical(
+        touch, 44, 112, 1280 - 88, 482, 72,
+        state.reviewScroll, reviewMax + 1);
+    if (down & (HidNpadButton_Up | HidNpadButton_Down))
+        state.reviewTouchScroll.stop();
     if (down & HidNpadButton_Up) state.reviewScroll = std::max(0, state.reviewScroll - 1);
     if (down & HidNpadButton_Down) state.reviewScroll = std::min(reviewMax, state.reviewScroll + 1);
-    if (touch.justReleased() && touch.dragged() && std::abs(touch.deltaY()) >= 28) {
-        const int steps = std::max(1, std::abs(touch.deltaY()) / 72);
-        state.reviewScroll = std::clamp(state.reviewScroll + (touch.deltaY() < 0 ? steps : -steps), 0, reviewMax);
-    }
     if (down & HidNpadButton_B) {
+        state.reviewTouchScroll.reset();
         state.review = false;
         return true;
     }
     if (down & HidNpadButton_Y) {
+        state.reviewTouchScroll.reset();
         staged->discard();
         refreshPresentation(screen);
         state.review = false;
@@ -1824,26 +1832,35 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     fb.drawText(32, 24, "Review Pending Changes", Colors::Text, TextStyle::Heading);
     fb.drawText(32, 62, "Generation III staged workspace • original source bytes unchanged",
                 Colors::TextDim, TextStyle::Caption);
-    int y = 112;
+    constexpr int viewportY = 112;
+    constexpr int viewportH = 482;
+    constexpr int rowStep = 72;
     const auto& changes = staged->pendingChanges();
     if (changes.empty()) {
         state.reviewScroll = 0;
-        fb.drawText(50, y, "No pending changes.", Colors::TextDim, TextStyle::Body);
+        state.reviewTouchScroll.reset();
+        fb.drawText(50, viewportY, "No pending changes.", Colors::TextDim, TextStyle::Body);
     } else {
         constexpr int visible = 7;
         const int count = static_cast<int>(changes.size());
         state.reviewScroll = std::clamp(state.reviewScroll, 0, std::max(0, count - visible));
-        const int last = std::min(count, state.reviewScroll + visible);
-        for (int i = state.reviewScroll; i < last; ++i) {
+        const int first = state.reviewScroll;
+        const int drawFirst = std::max(0, first - 1);
+        const int drawLast = std::min(count, first + visible + 1);
+        const int liveOffset = state.reviewTouchScroll.offset();
+        fb.setClipRect(44, viewportY, fb.getWidth() - 88, viewportH);
+        for (int i = drawFirst; i < drawLast; ++i) {
+            const int rowY = viewportY + (i - first) * rowStep + liveOffset;
             const auto& change = changes[static_cast<std::size_t>(i)];
-            fb.drawFilledRoundedRect(44, y, fb.getWidth() - 88, 62, 10, Colors::Panel);
-            fb.drawText(62, y + 10, change.label, Colors::Text, TextStyle::Caption);
-            fb.drawText(62, y + 34, change.beforeValue + "  ->  " + change.afterValue,
+            fb.drawFilledRoundedRect(44, rowY, fb.getWidth() - 88, 62, 10, Colors::Panel);
+            fb.drawText(62, rowY + 10, change.label, Colors::Text, TextStyle::Caption);
+            fb.drawText(62, rowY + 34, change.beforeValue + "  ->  " + change.afterValue,
                         Colors::TextDim, TextStyle::Caption);
-            y += 72;
         }
+        fb.clearClip();
         SharedPokemonShell::drawVerticalScrollIndicator(
-            fb, fb.getWidth() - 28, 112, 482, changes.size(), visible, state.reviewScroll);
+            fb, fb.getWidth() - 28, viewportY, viewportH,
+            changes.size(), visible, state.reviewScroll);
     }
     drawNavBar(fb, {{"D-pad/Stick", "Scroll"}, {"Y", "Discard All Staged"}, {"B", "Back"}});
 }
