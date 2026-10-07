@@ -12,6 +12,23 @@ struct TouchListVisual {
     int offset = 0;
 };
 
+// Visual-only pixel scroll for free-form information panes. The committed scroll remains exact and
+// bounded; while a finger is held, the renderer may exceed either edge only through a short
+// resistance-limited rubber band. This prevents a long drag from pulling the entire clipped pane
+// off-screen and never mutates the committed model state.
+inline int livePixelScrollVisual(int committedScroll, int fingerDelta,
+                                 int maxScroll, int viewportH) noexcept {
+    maxScroll = std::max(0, maxScroll);
+    committedScroll = std::clamp(committedScroll, 0, maxScroll);
+    const int requested = committedScroll - fingerDelta;
+    const int edgeLimit = std::max(12, std::min(72, std::max(0, viewportH) / 4));
+    if (requested < 0)
+        return -std::min(edgeLimit, (-requested + 3) / 4);
+    if (requested > maxScroll)
+        return maxScroll + std::min(edgeLimit, (requested - maxScroll + 3) / 4);
+    return requested;
+}
+
 // Draw-time direct manipulation for preserved one-column lists whose semantic/controller cursor
 // still lands on release. While the finger is down, calculate the virtual row and keep the sub-row
 // pixel remainder so content stays physically attached to the finger instead of waiting for release.
