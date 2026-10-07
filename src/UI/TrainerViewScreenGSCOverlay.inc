@@ -11,6 +11,7 @@
 #include "UI/LegacyPresentationRules.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
+#include "UI/TouchScroll.h"
 #include "Trainer/Trainer.h"
 #include "Utils/FileUtilities.h"
 #include "Utils/Keyboard.h"
@@ -466,7 +467,7 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
         }
         if (changeCount > 0 && touch.justReleased() && touch.dragged()) {
             const int dy = touch.deltaY();
-            const int steps = std::max(1, std::abs(dy) / 42);
+            const int steps = std::max(1, std::abs(dy) / 54);
             state.reviewRow = std::clamp(state.reviewRow + (dy < 0 ? steps : -steps), 0, changeCount - 1);
         }
         if (changeCount > 0 && (down & HidNpadButton_Up))
@@ -498,10 +499,63 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
     }
 
     if (state.pokemonFields) {
+        constexpr int rowCount = 28;
+        if (touch.justTouchedDown()) {
+            for (const auto& hit : screen.touchButtons) {
+                if (hit.id < 1000 || hit.id >= 1000 + rowCount) continue;
+                if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
+                    touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
+                    state.pokemonRow = hit.id - 1000;
+                    break;
+                }
+            }
+        }
+        if (touch.justTapped()) {
+            for (const auto& hit : screen.touchButtons) {
+                if (hit.id < 1000 || hit.id >= 1000 + rowCount) continue;
+                if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
+                    touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
+                    state.pokemonRow = hit.id - 1000;
+                    down |= HidNpadButton_A;
+                    break;
+                }
+            }
+        } else if (touch.justReleased() && touch.dragged()) {
+            const int steps = std::max(1, std::abs(touch.deltaY()) / 57);
+            state.pokemonRow = std::clamp(
+                state.pokemonRow + (touch.deltaY() < 0 ? steps : -steps), 0, rowCount - 1);
+        }
         handlePokemonFieldInput(screen, down);
         return;
     }
     if (state.pokemonActions) {
+        std::string actionError;
+        const auto actionPokemon = editor->boxedPokemon(
+            static_cast<std::size_t>(state.pokemonBox),
+            static_cast<std::size_t>(state.pokemonSlot), actionError);
+        const int rowCount = static_cast<int>(
+            PokeBank::UIModel::Gen2PokemonEditor::slotActionCount(actionPokemon.has_value()));
+        if (touch.justTouchedDown()) {
+            for (const auto& hit : screen.touchButtons) {
+                if (hit.id < 1100 || hit.id >= 1100 + rowCount) continue;
+                if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
+                    touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
+                    state.pokemonRow = hit.id - 1100;
+                    break;
+                }
+            }
+        }
+        if (touch.justTapped()) {
+            for (const auto& hit : screen.touchButtons) {
+                if (hit.id < 1100 || hit.id >= 1100 + rowCount) continue;
+                if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
+                    touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
+                    state.pokemonRow = hit.id - 1100;
+                    down |= HidNpadButton_A;
+                    break;
+                }
+            }
+        }
         handlePokemonActionInput(screen, down);
         return;
     }
@@ -657,14 +711,26 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                      " (derived) / Shiny " + std::string(pokemon->shiny ? "Yes" : "No")},
         }};
         constexpr int visible = 8;
-        const int start = std::clamp(state.pokemonRow - visible / 2, 0,
-                                     static_cast<int>(rows.size()) - visible);
-        int rowY = y + 92;
-        for (int i = start; i < start + visible; ++i) {
+        constexpr int rowStep = 57;
+        const int viewportTop = y + 92;
+        const int viewportH = visible * rowStep;
+        const auto visual = liveVerticalListVisual(
+            state.pokemonRow, static_cast<int>(rows.size()), rowStep,
+            x + 30, viewportTop, w - 60, viewportH);
+        const int start = std::clamp(
+            visual.index - visible / 2, 0,
+            std::max(0, static_cast<int>(rows.size()) - visible));
+        const int drawFirst = std::max(0, start - 1);
+        const int drawLast = std::min(static_cast<int>(rows.size()), start + visible + 1);
+        fb.setClipRect(x + 30, viewportTop, w - 60, viewportH);
+        for (int i = drawFirst; i < drawLast; ++i) {
+            const int rowY = viewportTop + (i - start) * rowStep + visual.offset;
             drawEditorRow(fb, x + 30, rowY, w - 60, rows[i].first, rows[i].second,
-                          i == state.pokemonRow);
-            rowY += 57;
+                          i == visual.index);
+            if (rowY + 50 > viewportTop && rowY < viewportTop + viewportH)
+                screen.touchButtons.push_back({1000 + i, x + 30, rowY, w - 60, 50});
         }
+        fb.clearClip();
         fb.drawText(x + 32, y + h - 40,
                     "A Edit    B Pokemon Actions    HP DV is derived; shiny/gender follow Gen II DVs",
                     Colors::TextDim, TextStyle::Caption);
@@ -702,6 +768,7 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
             drawEditorRow(fb, x + 30, rowY, w - 60, rows[i].first, rows[i].second,
                           i == state.pokemonRow);
+            screen.touchButtons.push_back({1100 + i, x + 30, rowY, w - 60, 48});
             rowY += 51;
         }
         fb.drawText(x + 32, y + h - 40,
@@ -716,21 +783,35 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             fb.drawText(x + 32, ry, "No pending changes.", Colors::TextDim, TextStyle::Body);
         } else {
             constexpr int visible = 7;
+            constexpr int rowStep = 54;
             const int count = static_cast<int>(editor->pendingChanges().size());
-            const int start = std::clamp(state.reviewRow - visible / 2, 0, std::max(0, count - visible));
-            const int end = std::min(count, start + visible);
-            for (int i = start; i < end; ++i) {
+            const int viewportTop = y + 90;
+            const int viewportH = visible * rowStep;
+            const auto visual = liveVerticalListVisual(
+                state.reviewRow, count, rowStep,
+                x + 22, viewportTop, w - 44, viewportH);
+            const int start = std::clamp(
+                visual.index - visible / 2, 0, std::max(0, count - visible));
+            const int drawFirst = std::max(0, start - 1);
+            const int drawLast = std::min(count, start + visible + 1);
+            fb.setClipRect(x + 22, viewportTop, w - 44, viewportH);
+            for (int i = drawFirst; i < drawLast; ++i) {
                 const auto& change = editor->pendingChanges()[static_cast<std::size_t>(i)];
-                const int rowTop = ry - 10;
-                if (i == state.reviewRow) fb.drawSelectionHighlight(x + 22, rowTop, w - 44, 48);
-                fb.drawText(x + 32, ry, change.label + ":", i == state.reviewRow ? Colors::Accent : Colors::TextDim, TextStyle::Body);
-                fb.drawText(x + 320, ry, change.beforeValue + "  ->  " + change.afterValue,
+                const int rowTop = viewportTop + (i - start) * rowStep + visual.offset;
+                const int textY = rowTop + 10;
+                if (i == visual.index)
+                    fb.drawSelectionHighlight(x + 22, rowTop, w - 44, 48);
+                fb.drawText(x + 32, textY, change.label + ":",
+                            i == visual.index ? Colors::Accent : Colors::TextDim,
+                            TextStyle::Body);
+                fb.drawText(x + 320, textY, change.beforeValue + "  ->  " + change.afterValue,
                             Colors::Text, TextStyle::Body);
-                screen.touchButtons.push_back({900 + i, x + 22, rowTop, w - 44, 48});
-                ry += 54;
+                if (rowTop + 48 > viewportTop && rowTop < viewportTop + viewportH)
+                    screen.touchButtons.push_back({900 + i, x + 22, rowTop, w - 44, 48});
             }
-            drawScrollbar(fb, x + w - 14, y + 100, std::min(visible, count) * 54,
-                          std::max(1, count * 54), start * 54);
+            fb.clearClip();
+            drawScrollbar(fb, x + w - 14, y + 100, std::min(visible, count) * rowStep,
+                          std::max(1, count * rowStep), start * rowStep - visual.offset);
         }
         drawNavBar(fb, {{"Up/Down", "Browse"}, {"A", "Export Edited Save"},
                         {"Y", "Discard Changes"}, {"B", "Back"}});
