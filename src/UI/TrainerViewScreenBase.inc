@@ -1419,6 +1419,8 @@ namespace UI {
         details.selectedField = 0;
         details.legalityOverlay = false;
         details.ribbonOverlay = false;
+        details.legalityScroll = 0;
+        details.ribbonScroll = 0;
         details.discardConfirmActive = false;   // never let it survive to overlay the next page
         details.leftScroll = 0;
         details.leftScrollMax = 0;
