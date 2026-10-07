@@ -90,13 +90,34 @@ int main() {
         "emerald_gba", 25, 57, 25, 0, 0xAC2141C6u, rubyBlock);
     assert(emerald.resolution == MH::Resolution::Unresolved);
 
-    // Method 3's skipped PID frame remains explicitly unresolved.
+    // Method 3 uses A_CDE: the persisted PID skips one RNG frame between
+    // halves. Pinned MethodH nevertheless derives its reversal nature from the
+    // sequential A+B PID at the same OriginSeed. This vector deliberately has
+    // different persisted and Method-H natures (5 vs 14) so using pid % 25
+    // would fail to reproduce the source behavior.
     const auto method3 = Gen3PidIv::analyze(
-        0x3DD1BB49u, {23,12,31,9,3,3});
+        0x52710000u, {16,13,12,2,18,3});
     assert(method3.method == Method::Method3);
+    assert(method3.originSeed == 0x00000000u);
+    assert(MH::Detail::method3Pid(method3.originSeed) == 0x52710000u);
+    assert((0x52710000u % 25u) == 5u);
+    assert((MH::Detail::sequentialPid(method3.originSeed) % 25u) == 14u);
+
     const auto method3Safari = MH::analyze(
-        "ruby_gba", 25, 57, 25, 0, 0x3DD1BB49u, method3);
-    assert(method3Safari.resolution == MH::Resolution::Unresolved);
+        "ruby_gba", 43, 57, 29, 0, 0x52710000u, method3);
+    assert(method3Safari.resolution == MH::Resolution::FrameMatched);
+    assert(method3Safari.path == MH::Path::HoennSafariBlock);
+    assert(method3Safari.requiredBall == Gen3Safari::kSafariBall);
+    assert(method3Safari.sourceSpecies == 43);
+    assert(method3Safari.encounterType == 0);
+    assert(method3Safari.slot == 3);
+
+    // Reusing the Method-3 correlation with a sequential A+B PID is rejected;
+    // the persisted PID shape still has to be A+C.
+    const auto wrongMethod3Pid = MH::analyze(
+        "ruby_gba", 43, 57, 29, 0,
+        MH::Detail::sequentialPid(method3.originSeed), method3);
+    assert(wrongMethod3Pid.resolution == MH::Resolution::Unresolved);
 
     // A correlation object cannot be re-used with a different persisted PID.
     const auto wrongPid = MH::analyze(
