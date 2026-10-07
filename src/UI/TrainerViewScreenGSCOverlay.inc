@@ -33,6 +33,34 @@ using PokeVault::Integration::Gen2::kMasterBallItemId;
 using PokeVault::Integration::Gen2::kPokeBallItemId;
 using PokeVault::Integration::Gen2::kPotionItemId;
 
+struct Gen2EditorOverlayGeometry {
+    static constexpr int PanelW = 860;
+    static constexpr int PanelH = 610;
+    static constexpr int PanelX = (1280 - PanelW) / 2;
+    static constexpr int PanelY = 66;
+    static constexpr int FieldRowStep = 57;
+    static constexpr int FieldVisibleRows = 8;
+    static constexpr int ReviewRowStep = 54;
+    static constexpr int ReviewVisibleRows = 7;
+
+    struct Rect {
+        int x = 0, y = 0, w = 0, h = 0;
+        [[nodiscard]] constexpr bool contains(int px, int py) const noexcept {
+            return px >= x && px < x + w && py >= y && py < y + h;
+        }
+    };
+
+    [[nodiscard]] static constexpr Rect fieldViewport() noexcept {
+        return {PanelX + 30, PanelY + 92, PanelW - 60,
+                FieldVisibleRows * FieldRowStep};
+    }
+
+    [[nodiscard]] static constexpr Rect reviewViewport() noexcept {
+        return {PanelX + 22, PanelY + 90, PanelW - 44,
+                ReviewVisibleRows * ReviewRowStep};
+    }
+};
+
 struct Gen2EditorOverlayState {
     const TrainerViewScreen* owner = nullptr;
     bool active = false;
@@ -465,10 +493,14 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
                 }
             }
         }
-        if (changeCount > 0 && touch.justReleased() && touch.dragged()) {
+        const auto reviewViewport = Gen2EditorOverlayGeometry::reviewViewport();
+        if (changeCount > 0 && touch.justReleased() && touch.dragged() &&
+            reviewViewport.contains(touch.startX(), touch.startY())) {
             const int dy = touch.deltaY();
-            const int steps = std::max(1, std::abs(dy) / 54);
-            state.reviewRow = std::clamp(state.reviewRow + (dy < 0 ? steps : -steps), 0, changeCount - 1);
+            const int steps = std::max(
+                1, std::abs(dy) / Gen2EditorOverlayGeometry::ReviewRowStep);
+            state.reviewRow = std::clamp(
+                state.reviewRow + (dy < 0 ? steps : -steps), 0, changeCount - 1);
         }
         if (changeCount > 0 && (down & HidNpadButton_Up))
             state.reviewRow = (state.reviewRow - 1 + changeCount) % changeCount;
@@ -520,10 +552,15 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
                     break;
                 }
             }
-        } else if (touch.justReleased() && touch.dragged()) {
-            const int steps = std::max(1, std::abs(touch.deltaY()) / 57);
-            state.pokemonRow = std::clamp(
-                state.pokemonRow + (touch.deltaY() < 0 ? steps : -steps), 0, rowCount - 1);
+        } else {
+            const auto fieldViewport = Gen2EditorOverlayGeometry::fieldViewport();
+            if (touch.justReleased() && touch.dragged() &&
+                fieldViewport.contains(touch.startX(), touch.startY())) {
+                const int steps = std::max(
+                    1, std::abs(touch.deltaY()) / Gen2EditorOverlayGeometry::FieldRowStep);
+                state.pokemonRow = std::clamp(
+                    state.pokemonRow + (touch.deltaY() < 0 ? steps : -steps), 0, rowCount - 1);
+            }
         }
         handlePokemonFieldInput(screen, down);
         return;
@@ -656,10 +693,10 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!state.active || !editor) return;
     screen.touchButtons.clear();
 
-    constexpr int w = 860;
-    constexpr int h = 610;
-    const int x = (fb.getWidth() - w) / 2;
-    const int y = 66;
+    constexpr int w = Gen2EditorOverlayGeometry::PanelW;
+    constexpr int h = Gen2EditorOverlayGeometry::PanelH;
+    constexpr int x = Gen2EditorOverlayGeometry::PanelX;
+    constexpr int y = Gen2EditorOverlayGeometry::PanelY;
     fb.drawSoftShadow(x, y, w, h, 18);
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
     fb.drawRoundedRect(x, y, w, h, 18, Colors::Accent, 2);
@@ -710,19 +747,20 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             {"Back", "HP DV " + std::to_string(pokemon->dvs[0]) +
                      " (derived) / Shiny " + std::string(pokemon->shiny ? "Yes" : "No")},
         }};
-        constexpr int visible = 8;
-        constexpr int rowStep = 57;
-        const int viewportTop = y + 92;
-        const int viewportH = visible * rowStep;
+        constexpr int visible = Gen2EditorOverlayGeometry::FieldVisibleRows;
+        constexpr int rowStep = Gen2EditorOverlayGeometry::FieldRowStep;
+        const auto fieldViewport = Gen2EditorOverlayGeometry::fieldViewport();
+        const int viewportTop = fieldViewport.y;
+        const int viewportH = fieldViewport.h;
         const auto visual = liveVerticalListVisual(
             state.pokemonRow, static_cast<int>(rows.size()), rowStep,
-            x + 30, viewportTop, w - 60, viewportH);
+            fieldViewport.x, fieldViewport.y, fieldViewport.w, fieldViewport.h);
         const int start = std::clamp(
             visual.index - visible / 2, 0,
             std::max(0, static_cast<int>(rows.size()) - visible));
         const int drawFirst = std::max(0, start - 1);
         const int drawLast = std::min(static_cast<int>(rows.size()), start + visible + 1);
-        fb.setClipRect(x + 30, viewportTop, w - 60, viewportH);
+        fb.setClipRect(fieldViewport.x, fieldViewport.y, fieldViewport.w, fieldViewport.h);
         for (int i = drawFirst; i < drawLast; ++i) {
             const int rowY = viewportTop + (i - start) * rowStep + visual.offset;
             drawEditorRow(fb, x + 30, rowY, w - 60, rows[i].first, rows[i].second,
@@ -782,19 +820,20 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         if (editor->pendingChanges().empty()) {
             fb.drawText(x + 32, ry, "No pending changes.", Colors::TextDim, TextStyle::Body);
         } else {
-            constexpr int visible = 7;
-            constexpr int rowStep = 54;
+            constexpr int visible = Gen2EditorOverlayGeometry::ReviewVisibleRows;
+            constexpr int rowStep = Gen2EditorOverlayGeometry::ReviewRowStep;
             const int count = static_cast<int>(editor->pendingChanges().size());
-            const int viewportTop = y + 90;
-            const int viewportH = visible * rowStep;
+            const auto reviewViewport = Gen2EditorOverlayGeometry::reviewViewport();
+            const int viewportTop = reviewViewport.y;
+            const int viewportH = reviewViewport.h;
             const auto visual = liveVerticalListVisual(
                 state.reviewRow, count, rowStep,
-                x + 22, viewportTop, w - 44, viewportH);
+                reviewViewport.x, reviewViewport.y, reviewViewport.w, reviewViewport.h);
             const int start = std::clamp(
                 visual.index - visible / 2, 0, std::max(0, count - visible));
             const int drawFirst = std::max(0, start - 1);
             const int drawLast = std::min(count, start + visible + 1);
-            fb.setClipRect(x + 22, viewportTop, w - 44, viewportH);
+            fb.setClipRect(reviewViewport.x, reviewViewport.y, reviewViewport.w, reviewViewport.h);
             for (int i = drawFirst; i < drawLast; ++i) {
                 const auto& change = editor->pendingChanges()[static_cast<std::size_t>(i)];
                 const int rowTop = viewportTop + (i - start) * rowStep + visual.offset;
@@ -810,7 +849,8 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                     screen.touchButtons.push_back({900 + i, x + 22, rowTop, w - 44, 48});
             }
             fb.clearClip();
-            drawScrollbar(fb, x + w - 14, y + 100, std::min(visible, count) * rowStep,
+            drawScrollbar(fb, x + w - 14, reviewViewport.y,
+                          std::min(visible, count) * rowStep,
                           std::max(1, count * rowStep), start * rowStep - visual.offset);
         }
         drawNavBar(fb, {{"Up/Down", "Browse"}, {"A", "Export Edited Save"},
