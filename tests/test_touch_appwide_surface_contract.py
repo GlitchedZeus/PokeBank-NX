@@ -32,7 +32,8 @@ SURFACES = {
     "App shell / Settings / More": (
         "src/UI/AppShellScreen.cpp",
         ("touch.justTouchedDown()", "touch.justTapped()", "cardRects",
-         "settingsCategoryRects", "settingsRects", "overlayRects"),
+         "settingsCategoryRects", "settingsRects", "overlayRects",
+         "liveVerticalListVisual(", "optionVisual.offset"),
     ),
     "Backup selection": (
         "src/UI/BackupSelectionScreen.cpp",
@@ -77,7 +78,9 @@ SURFACES = {
     ),
     "GSC legacy editor": (
         "src/UI/TrainerViewScreenGSCOverlay.inc",
-        ("touch.justTouchedDown()", "touch.justTapped()", "touch.justReleased()"),
+        ("touch.justTouchedDown()", "touch.justTapped()", "touch.justReleased()",
+         "liveVerticalListVisual(", "visual.offset",
+         "touchButtons.push_back({1000 + i", "touchButtons.push_back({1100 + i"),
     ),
     "Gen I editor foundation": (
         "src/UI/Gen1PokemonEditorFoundationHardwareFix.inc",
@@ -96,13 +99,14 @@ SURFACES = {
     "Gen III editor": (
         "src/UI/Gen3SharedPokemonSurface.inc",
         ("handleWorkspace", "touchedButtonDownId(touch)",
-         "touchedButtonId(touch)", "touch.justReleased() && touch.dragged()"),
+         "touchedButtonId(touch)", "pickerScroll.updateVertical(",
+         "pickerScroll.offset()"),
     ),
     "Gen IV editor / party & storage views": (
         "src/UI/Gen4SharedPokemonSurface.inc",
         ("partyEntrySurface", "boxEntrySurface", "handleWorkspace",
          "touchedButtonDownId(touch)", "touchedButtonId(touch)",
-         "touch.justReleased() && touch.dragged()"),
+         "pickerScroll.updateVertical(", "pickerScroll.offset()"),
     ),
 }
 
@@ -140,6 +144,26 @@ require_all("include/UI/ScreenChrome.h",
             "Full Games owns vertical pixel scrolling",
             "SaveSelect's long profile/file/save-source lists own true pixel-scrolling",
             "g_contentSwipeMask = HidNpadButton_Left | HidNpadButton_Right")
+require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
+            "state.pickerScroll.updateVertical(",
+            "state.editorScroll.updateVertical(",
+            "state.reviewScroll.updateVertical(",
+            "state.pickerScroll.offset()",
+            "state.editorScroll.offset()",
+            "state.reviewScroll.offset()")
+require_all("src/UI/Gen2HardwarePickerFix.inc",
+            "liveVerticalListVisual(",
+            "visual.offset",
+            "fb.setClipRect(")
+require_all("src/UI/SaveSelectScreen.cpp",
+            "gamesDrawerTouchScroll.updateVertical(",
+            "classicGamesTouchScroll.updateVertical(",
+            "profileTouchScroll.updateVertical(",
+            "launchFileTouchScroll.updateVertical(",
+            "legacyInstanceTouchScroll.updateVertical(",
+            "gen4CandidateTouchScroll.updateVertical(",
+            "Touch carousel gestures resolve through ScreenChrome")
+
 require_all("include/UI/TouchScroll.h",
             "class TouchScrollState",
             "offset_ += delta",
