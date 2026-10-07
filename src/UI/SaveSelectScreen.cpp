@@ -2449,7 +2449,25 @@ namespace UI {
         }
     }
 
+    void SaveSelectScreen::syncTouchScrollSurface() {
+        if (touchScrollOverlay == overlay &&
+            touchScrollClassicGamesActive == classicGamesActive)
+            return;
+
+        launchFileTouchScroll.reset();
+        gamesDrawerTouchScroll.reset();
+        profileTouchScroll.reset();
+        legacyInstanceTouchScroll.reset();
+        legacyAssignmentTouchScroll.reset();
+        gen4CandidateTouchScroll.reset();
+        classicGamesTouchScroll.reset();
+
+        touchScrollOverlay = overlay;
+        touchScrollClassicGamesActive = classicGamesActive;
+    }
+
     void SaveSelectScreen::update(const PadState& pad, const TouchInput& touch) {
+        syncTouchScrollSurface();
         // A tap on a nav-bar badge becomes that button's press, so every handler below is
         // reached identically whether the user pressed the button or tapped its on-screen badge.
         const HidAnalogStickState stick = padGetStickPos(&pad, 0);
@@ -3322,6 +3340,10 @@ namespace UI {
     }
 
     void SaveSelectScreen::draw(PKSEFramebuffer& fb) {
+        // update() can switch overlays and return early; synchronize again before rendering so a
+        // newly entered surface can never inherit residual pixels/momentum from a prior visit.
+        syncTouchScrollSurface();
+
         titleRects.clear();
         userRects.clear();
         dockRects.clear();
