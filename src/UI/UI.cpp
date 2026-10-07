@@ -220,9 +220,15 @@ namespace UI {
                                                   selectScreen.getSelectedTitleName(),
                                                   selectScreen.getOpenIntent());
                         } else {
-                            handleDefaultQuickOpen(selectScreen.getSelectedUser(),
-                                                   selectScreen.getSelectedTitleId(),
-                                                   selectScreen.getSelectedTitleName());
+                            std::string error;
+                            if (!handleDefaultQuickOpen(selectScreen.getSelectedUser(),
+                                                        selectScreen.getSelectedTitleId(),
+                                                        selectScreen.getSelectedTitleName(),
+                                                        error)) {
+                                selectScreen.reportOpenFailure(error);
+                                fb.startFade();
+                                continue;
+                            }
                         }
                     }
                     // Return to the same Product Home instance. Rebuilding here re-ran account/save
@@ -249,8 +255,10 @@ namespace UI {
         return SaveSelectScreen::MainMenuDestination::None;
     }
 
-    void UIManager::handleDefaultQuickOpen(AccountUid userUid, u64 titleId,
-                                           const std::string& titleName) {
+    bool UIManager::handleDefaultQuickOpen(AccountUid userUid, u64 titleId,
+                                           const std::string& titleName,
+                                           std::string& error) {
+        error.clear();
         // Product Home Open is intentionally frictionless: create the same protected app-owned
         // backup/working copy first, then enter the player/game workspace. Backup history is only
         // shown when the user explicitly opens Current Game -> Backups.
@@ -261,13 +269,16 @@ namespace UI {
         if (backupPath.empty()) {
             logErrorToFile("Direct game open refused: backup creation failed",
                            titleName.c_str());
-            return;
+            error = "Couldn't create the protected working copy. Check SD card space and try again.";
+            return false;
         }
-        std::string error;
         if (!handleTrainerView(userUid, titleId, titleName, backupPath, false,
                                SaveSelectScreen::OpenIntent::Default, error)) {
             logErrorToFile("Direct game open failed after backup", error.c_str());
+            if (error.empty()) error = "This save could not be opened.";
+            return false;
         }
+        return true;
     }
 
     void UIManager::handleItemsQuickOpen(AccountUid userUid, u64 titleId,
