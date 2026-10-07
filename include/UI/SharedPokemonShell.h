@@ -90,7 +90,8 @@ inline std::string fitDetailsText(PKSEFramebuffer& fb, const std::string& text, 
 // Shared inline rows keep label and value on one baseline with a full-row focus outline.
 template <class Label, class Value>
 inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int h,
-    std::size_t total, std::size_t focus, bool focused, Label label, Value value) {
+    std::size_t total, std::size_t focus, bool focused, Label label, Value value,
+    int pixelOffset = 0) {
     constexpr std::size_t visibleRows = 8;
     // Keep one value column across scrolling windows, sized for the real field labels.
     int labelWidth = 0;
@@ -110,7 +111,7 @@ inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int 
     fb.setClipRect(x + 8, viewportY, w - 16, viewportH);
     for (std::size_t i = 0; i < window.count; ++i) {
         const auto row = window.first + i;
-        const int yy = y + 224 + static_cast<int>(i) * 38;
+        const int yy = y + 224 + static_cast<int>(i) * 38 + pixelOffset;
         const bool selected = focused && row == focus;
         if (selected)
             fb.drawRoundedRect(x + 8, yy + 2, std::max(0, w - 36), 30, 6, Colors::FocusBorder, 2);
