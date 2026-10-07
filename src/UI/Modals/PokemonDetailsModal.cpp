@@ -537,8 +537,11 @@ namespace Modals {
             }
             const int ow = 820, oh = H - 100;
             const int ox = (W - ow) / 2, oy = 50;
-            const int rowH = 30, listTop = oy + 78, listBottom = oy + oh - 72;
-            const int visible = std::max(1, (listBottom - listTop) / rowH);
+            const auto reportViewport = reportScrollViewport(W, H, ow);
+            const int rowH = ReportScrollViewport::RowHeight;
+            const int listTop = reportViewport.y;
+            const int listBottom = reportViewport.y + reportViewport.h;
+            const int visible = std::max(1, reportViewport.h / rowH);
             const int maxScroll = std::max(0, static_cast<int>(lines.size()) - visible);
             screen.details.legalityScroll = std::clamp(screen.details.legalityScroll, 0, maxScroll);
 
@@ -549,20 +552,20 @@ namespace Modals {
             fb.drawText(ox + 24, oy + 50, "Swipe or use Up/Down to scroll", Colors::TextDim, TextStyle::Caption);
             const auto legalVisual = liveVerticalListVisual(
                 screen.details.legalityScroll, maxScroll + 1, rowH,
-                ox + 20, listTop, ow - 40, listBottom - listTop);
+                reportViewport.x, reportViewport.y, reportViewport.w, reportViewport.h);
             const int visualFirst = legalVisual.index;
             const int liveOffset = legalVisual.offset;
             const int drawFirst = std::max(0, visualFirst - 1);
             const int drawLast = std::min(static_cast<int>(lines.size()),
                                           visualFirst + visible + 1);
-            fb.setClipRect(ox + 20, listTop, ow - 40, listBottom - listTop);
+            fb.setClipRect(reportViewport.x, reportViewport.y, reportViewport.w, reportViewport.h);
             for (int i = drawFirst; i < drawLast; ++i) {
                 const int ly = listTop + (i - visualFirst) * rowH + liveOffset;
                 fb.drawText(ox + 28, ly, lines[static_cast<size_t>(i)].text,
                             lines[static_cast<size_t>(i)].color, TextStyle::Caption);
             }
             fb.clearClip();
-            drawScrollbar(fb, ox + ow - 12, listTop, listBottom - listTop,
+            drawScrollbar(fb, ox + ow - 12, reportViewport.y, reportViewport.h,
                           std::max(1, static_cast<int>(lines.size()) * rowH),
                           visualFirst * rowH - liveOffset);
             const int closeW = 150, closeH = 44;
@@ -577,8 +580,12 @@ namespace Modals {
                                                  p->getGameGroup());
             const int ow = 860, oh = H - 100;
             const int ox = (W - ow) / 2, oy = 50;
-            const int rowH = 30, cols = 2, listTop = oy + 78, listBottom = oy + oh - 72;
-            const int visibleRows = std::max(1, (listBottom - listTop) / rowH);
+            const auto reportViewport = reportScrollViewport(W, H, ow);
+            const int rowH = ReportScrollViewport::RowHeight;
+            const int cols = 2;
+            const int listTop = reportViewport.y;
+            const int listBottom = reportViewport.y + reportViewport.h;
+            const int visibleRows = std::max(1, reportViewport.h / rowH);
             const int totalRows = (static_cast<int>(rb.size()) + cols - 1) / cols;
             const int maxScroll = std::max(0, totalRows - visibleRows);
             screen.details.ribbonScroll = std::clamp(screen.details.ribbonScroll, 0, maxScroll);
@@ -591,12 +598,12 @@ namespace Modals {
             const int colW = (ow - 64) / cols;
             const auto ribbonVisual = liveVerticalListVisual(
                 screen.details.ribbonScroll, maxScroll + 1, rowH,
-                ox + 20, listTop, ow - 40, listBottom - listTop);
+                reportViewport.x, reportViewport.y, reportViewport.w, reportViewport.h);
             const int visualFirst = ribbonVisual.index;
             const int liveOffset = ribbonVisual.offset;
             const int drawFirst = std::max(0, visualFirst - 1);
             const int drawLast = std::min(totalRows, visualFirst + visibleRows + 1);
-            fb.setClipRect(ox + 20, listTop, ow - 40, listBottom - listTop);
+            fb.setClipRect(reportViewport.x, reportViewport.y, reportViewport.w, reportViewport.h);
             for (int sourceRow = drawFirst; sourceRow < drawLast; ++sourceRow) {
                 const int drawY = listTop + (sourceRow - visualFirst) * rowH + liveOffset;
                 for (int c = 0; c < cols; ++c) {
@@ -607,7 +614,7 @@ namespace Modals {
                 }
             }
             fb.clearClip();
-            drawScrollbar(fb, ox + ow - 12, listTop, listBottom - listTop,
+            drawScrollbar(fb, ox + ow - 12, reportViewport.y, reportViewport.h,
                           std::max(1, totalRows * rowH),
                           visualFirst * rowH - liveOffset);
             const int closeW = 150, closeH = 44;
