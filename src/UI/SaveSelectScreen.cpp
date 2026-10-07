@@ -3084,11 +3084,29 @@ namespace UI {
             }
         }
 
-        // L/R changes the selected game from anywhere on Product Home, matching the footer.
+        // Product Home hero carousel: touch is direct manipulation, not controller emulation.
+        // The renderer follows the finger pixel-for-pixel while it is down; a deliberate horizontal
+        // release commits the adjacent game. A stationary release remains the existing A/Open tap.
         const UserEntry* homeUser = currentUser();
         const int homeGameCount = homeUser ? static_cast<int>(homeUser->titles.size()) : 0;
         if (homeGameCount > 0) {
             const int before = titleIndex;
+            if (touch.justReleased() && touch.dragged() &&
+                touch.startX() >= DETAIL_X && touch.startX() < DETAIL_X + DETAIL_W &&
+                touch.startY() >= HUB_Y && touch.startY() < HUB_Y + HUB_H) {
+                const int dx = touch.deltaX();
+                const int dy = touch.deltaY();
+                if (std::abs(dx) >= 96 && std::abs(dx) > std::abs(dy) * 3 / 2) {
+                    if (dx < 0)
+                        titleIndex = (titleIndex + 1) % homeGameCount;
+                    else
+                        titleIndex = (titleIndex - 1 + homeGameCount) % homeGameCount;
+                    hubDockFocused = false;
+                    hubFeatureIndex = -1;
+                    headerActionIndex = -1;
+                }
+            }
+            // Physical shoulders remain available and immediately cancel any touch-carousel intent.
             if (kDown & HidNpadButton_L)
                 titleIndex = (titleIndex - 1 + homeGameCount) % homeGameCount;
             if (kDown & HidNpadButton_R)
@@ -3401,6 +3419,26 @@ namespace UI {
         // Historical wording is retained because the cross-lane polish contract uses this boundary
         // to prove that physical source diagnostics stay out of the normal product presentation.
         const bool gameFocused = !hubDockFocused && hubFeatureIndex < 0 && headerActionIndex < 0;
+
+        // Phone/tablet-style carousel presentation. While the finger is physically down on the
+        // selected-game card, move the entire card by the exact horizontal finger delta. Vertical
+        // intent is ignored so ordinary taps/vertical movement never make the card wander.
+        int heroTouchOffsetX = 0;
+        const auto& heroTouch = latestTouchGesture();
+        if (heroTouch.down &&
+            heroTouch.startX >= DETAIL_X && heroTouch.startX < DETAIL_X + DETAIL_W &&
+            heroTouch.startY >= HUB_Y && heroTouch.startY < HUB_Y + HUB_H &&
+            std::abs(heroTouch.deltaX) > std::abs(heroTouch.deltaY)) {
+            heroTouchOffsetX = heroTouch.deltaX;
+            // Give the first/last card a light rubber-band instead of exposing unlimited empty space.
+            if (u && !u->titles.empty()) {
+                if ((titleIndex == 0 && heroTouchOffsetX > 0) ||
+                    (titleIndex == static_cast<int>(u->titles.size()) - 1 && heroTouchOffsetX < 0))
+                    heroTouchOffsetX /= 3;
+            }
+            heroTouchOffsetX = std::clamp(heroTouchOffsetX, -DETAIL_W + 72, DETAIL_W - 72);
+        }
+        fb.pushTranslation(static_cast<float>(heroTouchOffsetX), 0.0f);
         drawFocusedCard(fb, DETAIL_X, HUB_Y, DETAIL_W, HUB_H, gameFocused, 18);
         if (gameFocused)
             fb.drawRoundedRect(DETAIL_X, HUB_Y, DETAIL_W, HUB_H, 18, Colors::Info, 3);
@@ -3645,6 +3683,8 @@ namespace UI {
                         "Assign an emulator save or create a supported Switch save to begin.",
                         Colors::TextMuted, TextStyle::Body);
         }
+
+        fb.popTransform();
 
         // Right side: larger full-width feature cards use the space intentionally, followed by
         // the round-logo navigation group lower on the 720p canvas.
