@@ -63,7 +63,8 @@ require(gen2_item, "src/UI/Gen2PokemonEditorFoundation.inc",
         "screen.touchedButtonDownId(touch)",
         "screen.touchedButtonId(touch)",
         "state.itemChoiceIndex = touchTap - 3000;",
-        "touch.justReleased() && touch.dragged()",
+        "state.itemScroll.updateVertical(",
+        "state.itemScroll.offset()",
         "screen.touchButtons.push_back({3000 + i")
 
 gen3 = read("src/UI/Gen3SharedPokemonSurface.inc")
