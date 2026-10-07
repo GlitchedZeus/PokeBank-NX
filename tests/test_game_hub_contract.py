@@ -22,6 +22,7 @@ trainer3_source = (ROOT / "src/Trainer/Trainer3FRLG.cpp").read_text(encoding="ut
 save_reader = (ROOT / "src/Save/GetSaveFileContents.cpp").read_text(encoding="utf-8")
 sc_validation = (ROOT / "include/Save/SCReadValidation.h").read_text(encoding="utf-8")
 sc_runtime_validation = (ROOT / "tests/test_sc_read_validation.cpp").read_text(encoding="utf-8")
+pla_read_validation = (ROOT / "tests/test_pla_read_validation.cpp").read_text(encoding="utf-8")
 
 def require(cond: bool, message: str) -> None:
     if not cond:
@@ -149,6 +150,10 @@ require("makeSWSH()" in sc_runtime_validation and
         "SCTypeCode::Byte" in sc_runtime_validation and
         "key=0x017C3CBB" in sc_runtime_validation,
         "native SC Current Box root-cause regression must execute for SWSH, SV and Z-A")
+require("SWSH_CURRENT_BOX, SCTypeCode::Byte" not in pla_read_validation and
+        "GEN9_CURRENT_BOX, SCTypeCode::Byte" not in pla_read_validation and
+        pla_read_validation.count("CURRENT_BOX, SCTypeCode::UInt32") == 3,
+        "shared SC layout fixtures must use the source-backed U32 Current Box scalar")
 
 # Product Home, not the retired dashboard, is the app root.
 require("const auto destination = handleSaveSelection();" in ui_manager,
