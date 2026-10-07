@@ -2525,9 +2525,17 @@ namespace UI {
         if (overlay == Overlay::GamesDrawer) {
             const UserEntry* drawerUser = currentUser();
             const int count = drawerUser ? static_cast<int>(drawerUser->titles.size()) : 0;
+            constexpr int drawerW = 520, cols = 3, visibleRows = 3;
+            constexpr int gap = 7, margin = 10, tileH = 160, gridY = 88;
+            const int drawerX = 1280 - drawerW;
+            gamesDrawerTouchScroll.updateVertical(
+                touch, drawerX + margin, gridY, drawerW - margin * 2,
+                visibleRows * (tileH + gap) - gap, tileH + gap,
+                gamesDrawerIndex, count, cols);
             // Product Home owns Y = Open Quick Games. Once open, Y is deliberately inert;
             // B is the only close/back control so repeated Y presses cannot dismiss the sheet.
             if (kDown & HidNpadButton_B) {
+                gamesDrawerTouchScroll.stop();
                 overlay = Overlay::None;
                 return;
             }
@@ -2541,7 +2549,9 @@ namespace UI {
                 return;
             }
             if (count > 0) {
-                constexpr int cols = 3;
+                if (kDown & (HidNpadButton_Up | HidNpadButton_Down |
+                             HidNpadButton_Left | HidNpadButton_Right))
+                    gamesDrawerTouchScroll.stop();
                 const int row = gamesDrawerIndex / cols;
                 const int col = gamesDrawerIndex % cols;
                 // Treat Quick Games as a real 2-D grid. Horizontal movement never spills into
@@ -2558,13 +2568,13 @@ namespace UI {
                     if (nextRow < count)
                         gamesDrawerIndex = std::min(count - 1, nextRow + col);
                 }
-                constexpr int visibleRows = 3;
                 const int selectedRow = gamesDrawerIndex / cols;
                 if (selectedRow < gamesDrawerScroll)
                     gamesDrawerScroll = selectedRow;
                 else if (selectedRow >= gamesDrawerScroll + visibleRows)
                     gamesDrawerScroll = selectedRow - visibleRows + 1;
                 if (kDown & HidNpadButton_A) {
+                    gamesDrawerTouchScroll.stop();
                     titleIndex = gamesDrawerIndex;
                     scrollSelectionIntoView();
                     // Keep launch discovery off the A-button frame, but hydrate the selected
@@ -2881,6 +2891,7 @@ namespace UI {
 
         if (classicGamesActive) {
             if (kDown & HidNpadButton_B) {
+                classicGamesTouchScroll.stop();
                 classicGamesActive = false;
                 scrollRow = 0;
                 refreshHubPreview(false);
@@ -2930,6 +2941,15 @@ namespace UI {
             const int classicCount = classicUser ? static_cast<int>(classicUser->titles.size()) : 0;
             if (classicCount > 0) {
                 const int cols = classicTitleColumns();
+                const int gridW = cols * CLASSIC_TILE_W + (cols - 1) * CLASSIC_GAP;
+                const int startX = std::max(40, (1280 - gridW) / 2);
+                classicGamesTouchScroll.updateVertical(
+                    touch, startX, CLASSIC_GRID_Y, gridW,
+                    CLASSIC_VISIBLE_ROWS * (CLASSIC_TILE_H + CLASSIC_GAP) - CLASSIC_GAP,
+                    CLASSIC_TILE_H + CLASSIC_GAP, titleIndex, classicCount, cols);
+                if (kDown & (HidNpadButton_Up | HidNpadButton_Down |
+                             HidNpadButton_Left | HidNpadButton_Right))
+                    classicGamesTouchScroll.stop();
                 const int row = titleIndex / cols;
                 const int col = titleIndex % cols;
                 // Six-column browser navigation is spatial, not a flat cyclic list. Left/Right
@@ -2955,6 +2975,7 @@ namespace UI {
                 }
 
                 if (kDown & HidNpadButton_A) {
+                    classicGamesTouchScroll.stop();
                     openIntent = OpenIntent::Default;
                     selectCurrentTitle();
                     // Do not mount/reparse the selected save again on the same input frame.
@@ -3246,18 +3267,26 @@ namespace UI {
         const int cols = classicTitleColumns();
         const int gridW = cols * CLASSIC_TILE_W + (cols - 1) * CLASSIC_GAP;
         const int startX = std::max(40, (fb.getWidth() - gridW) / 2);
-        const int first = scrollRow * cols;
-        const int last = std::min(count, first + CLASSIC_VISIBLE_ROWS * cols);
+        const int firstRow = scrollRow;
+        const int drawFirstRow = std::max(0, firstRow - 1);
+        const int totalRows = (count + cols - 1) / cols;
+        const int drawLastRow = std::min(totalRows, firstRow + CLASSIC_VISIBLE_ROWS + 1);
+        const int liveOffset = classicGamesTouchScroll.offset();
+        const int clipH = CLASSIC_VISIBLE_ROWS * (CLASSIC_TILE_H + CLASSIC_GAP) - CLASSIC_GAP;
+        fb.setClipRect(startX, CLASSIC_GRID_Y, gridW, clipH);
+        const int first = drawFirstRow * cols;
+        const int last = std::min(count, drawLastRow * cols);
         for (int i = first; i < last; ++i) {
             const int col = i % cols;
-            const int row = (i / cols) - scrollRow;
+            const int row = (i / cols) - firstRow;
             const int x = startX + col * (CLASSIC_TILE_W + CLASSIC_GAP);
-            const int y = CLASSIC_GRID_Y + row * (CLASSIC_TILE_H + CLASSIC_GAP);
+            const int y = CLASSIC_GRID_Y + row * (CLASSIC_TILE_H + CLASSIC_GAP) + liveOffset;
             const bool focused = i == titleIndex;
             const auto& title = u->titles[static_cast<size_t>(i)];
 
             drawFocusedCard(fb, x, y, CLASSIC_TILE_W, CLASSIC_TILE_H, focused, 16);
-            titleRects.push_back({x, y, CLASSIC_TILE_W, CLASSIC_TILE_H, i});
+            if (y + CLASSIC_TILE_H > CLASSIC_GRID_Y && y < CLASSIC_GRID_Y + clipH)
+                titleRects.push_back({x, y, CLASSIC_TILE_W, CLASSIC_TILE_H, i});
             if (titleFavorite(*u, title))
                 fb.drawSymbol(x + 10, y + 8, "\xE2\x99\xA5", Colors::Error, TextStyle::Body);
             const IconImage& art = SystemIcons::gameCardIcon(
@@ -3285,6 +3314,7 @@ namespace UI {
                         Colors::TextMuted, TextStyle::Caption);
         }
 
+        fb.clearClip();
         drawNavBar(fb, {{"D-pad/Stick","Choose"},{"A","Open"},
                         {"X","Save / Source"},{"Y","Sort"},{"+","Favorite"},
                         {"ZR","Launch"},{"B","Back"}});
@@ -3757,21 +3787,29 @@ namespace UI {
                         Colors::TextSecondary, TextStyle::Caption);
 
             if (u && !u->titles.empty()) {
-                const int first = gamesDrawerScroll * cols;
+                const int firstRow = gamesDrawerScroll;
+                const int totalRows =
+                    (static_cast<int>(u->titles.size()) + cols - 1) / cols;
+                const int drawFirstRow = std::max(0, firstRow - 1);
+                const int drawLastRow = std::min(totalRows, firstRow + visibleRows + 1);
+                const int first = drawFirstRow * cols;
                 const int last = std::min<int>(
-                    static_cast<int>(u->titles.size()), first + visibleRows * cols);
+                    static_cast<int>(u->titles.size()), drawLastRow * cols);
                 const int gridY = 88;
+                const int gridH = visibleRows * (tileH + gap) - gap;
+                const int liveOffset = gamesDrawerTouchScroll.offset();
+                fb.setClipRect(x + margin, gridY, w - margin * 2, gridH);
                 for (int i = first; i < last; ++i) {
-                    const int local = i - first;
-                    const int col = local % cols;
-                    const int row = local / cols;
+                    const int col = i % cols;
+                    const int row = (i / cols) - firstRow;
                     const int bx = x + margin + col * (tileW + gap);
-                    const int by = gridY + row * (tileH + gap);
+                    const int by = gridY + row * (tileH + gap) + liveOffset;
                     const bool selected = i == gamesDrawerIndex;
                     const auto& title = u->titles[static_cast<size_t>(i)];
 
                     drawFocusedCard(fb, bx, by, tileW, tileH, selected, 14);
-                    overlayRects.push_back({bx, by, tileW, tileH, i});
+                    if (by + tileH > gridY && by < gridY + gridH)
+                        overlayRects.push_back({bx, by, tileW, tileH, i});
                     if (titleFavorite(*u, title))
                         fb.drawSymbol(bx + 8, by + 6, "\xE2\x99\xA5", Colors::Error, TextStyle::Body);
                     const std::string_view artKey =
@@ -3821,11 +3859,11 @@ namespace UI {
                     }
                 }
 
-                const int totalRows = (static_cast<int>(u->titles.size()) + cols - 1) / cols;
+                fb.clearClip();
                 if (totalRows > visibleRows)
-                    drawScrollbar(fb, x + w - 8, gridY, visibleRows * (tileH + gap) - gap,
+                    drawScrollbar(fb, x + w - 8, gridY, gridH,
                                   totalRows * (tileH + gap) - gap,
-                                  gamesDrawerScroll * (tileH + gap));
+                                  gamesDrawerScroll * (tileH + gap) - liveOffset);
             } else {
                 fb.drawText(x + 28, 150, "No Pokémon games found for this profile.",
                             Colors::TextMuted, TextStyle::Body);
