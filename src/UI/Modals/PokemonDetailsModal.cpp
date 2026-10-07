@@ -9,6 +9,7 @@
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
+#include "UI/TouchScroll.h"
 #include "UI/SpriteManager.h"
 #include "Trainer/Trainer.h"
 #include "Utils/HelperUtilities.h"
@@ -154,7 +155,15 @@ namespace Modals {
         const int contentTop = colY + 14 + renderSz + 40;
         const int legalityH = 34;                              // legality line is pinned below the scroll
         const int contentBottom = colY + colH - legalityH - 6;
-        const int scroll = screen.details.leftScroll;
+        int liveLeftOffset = 0;
+        const auto& liveTouch = latestTouchGesture();
+        if (liveTouch.down &&
+            liveTouch.startX >= Lx + 1 && liveTouch.startX < Lx + Lw - 1 &&
+            liveTouch.startY >= contentTop && liveTouch.startY < contentBottom) {
+            // Direct manipulation: finger down = content under the finger moves by the same pixels.
+            liveLeftOffset = liveTouch.deltaY;
+        }
+        const int scroll = screen.details.leftScroll - liveLeftOffset;
         int iy = contentTop;
         int selRowY = -1;                                      // absolute content-Y of the selected row
         std::vector<int> leftOrder;                            // editable field ids in draw order (nav list)
@@ -534,18 +543,24 @@ namespace Modals {
             fb.drawRoundedRect(ox, oy, ow, oh, 16, Colors::Border, 1);
             fb.drawText(ox + 24, oy + 20, "Legality", Colors::Text, TextStyle::Heading);
             fb.drawText(ox + 24, oy + 50, "Swipe or use Up/Down to scroll", Colors::TextDim, TextStyle::Caption);
+            const auto legalVisual = liveVerticalListVisual(
+                screen.details.legalityScroll, maxScroll + 1, rowH,
+                ox + 20, listTop, ow - 40, listBottom - listTop);
+            const int visualFirst = legalVisual.index;
+            const int liveOffset = legalVisual.offset;
+            const int drawFirst = std::max(0, visualFirst - 1);
+            const int drawLast = std::min(static_cast<int>(lines.size()),
+                                          visualFirst + visible + 1);
             fb.setClipRect(ox + 20, listTop, ow - 40, listBottom - listTop);
-            int ly = listTop;
-            for (int i = screen.details.legalityScroll;
-                 i < static_cast<int>(lines.size()) && i < screen.details.legalityScroll + visible; ++i) {
+            for (int i = drawFirst; i < drawLast; ++i) {
+                const int ly = listTop + (i - visualFirst) * rowH + liveOffset;
                 fb.drawText(ox + 28, ly, lines[static_cast<size_t>(i)].text,
                             lines[static_cast<size_t>(i)].color, TextStyle::Caption);
-                ly += rowH;
             }
             fb.clearClip();
             drawScrollbar(fb, ox + ow - 12, listTop, listBottom - listTop,
                           std::max(1, static_cast<int>(lines.size()) * rowH),
-                          screen.details.legalityScroll * rowH);
+                          visualFirst * rowH - liveOffset);
             const int closeW = 150, closeH = 44;
             const int closeX = ox + ow - closeW - 22, closeY = oy + oh - closeH - 14;
             drawGlyphButton(fb, closeX, closeY, closeW, closeH, "B", "Close");
@@ -570,19 +585,27 @@ namespace Modals {
             fb.drawText(ox + 24, oy + 20, "Ribbons & Marks", Colors::Text, TextStyle::Heading);
             fb.drawText(ox + 24, oy + 50, "Swipe or use Up/Down to scroll", Colors::TextDim, TextStyle::Caption);
             const int colW = (ow - 64) / cols;
+            const auto ribbonVisual = liveVerticalListVisual(
+                screen.details.ribbonScroll, maxScroll + 1, rowH,
+                ox + 20, listTop, ow - 40, listBottom - listTop);
+            const int visualFirst = ribbonVisual.index;
+            const int liveOffset = ribbonVisual.offset;
+            const int drawFirst = std::max(0, visualFirst - 1);
+            const int drawLast = std::min(totalRows, visualFirst + visibleRows + 1);
             fb.setClipRect(ox + 20, listTop, ow - 40, listBottom - listTop);
-            for (int r = 0; r < visibleRows; ++r) {
-                const int sourceRow = screen.details.ribbonScroll + r;
+            for (int sourceRow = drawFirst; sourceRow < drawLast; ++sourceRow) {
+                const int drawY = listTop + (sourceRow - visualFirst) * rowH + liveOffset;
                 for (int c = 0; c < cols; ++c) {
                     const int idx = sourceRow * cols + c;
                     if (idx >= static_cast<int>(rb.size())) continue;
-                    fb.drawText(ox + 28 + c * colW, listTop + r * rowH,
+                    fb.drawText(ox + 28 + c * colW, drawY,
                                 rb[static_cast<size_t>(idx)], Colors::Text, TextStyle::Caption);
                 }
             }
             fb.clearClip();
             drawScrollbar(fb, ox + ow - 12, listTop, listBottom - listTop,
-                          std::max(1, totalRows * rowH), screen.details.ribbonScroll * rowH);
+                          std::max(1, totalRows * rowH),
+                          visualFirst * rowH - liveOffset);
             const int closeW = 150, closeH = 44;
             const int closeX = ox + ow - closeW - 22, closeY = oy + oh - closeH - 14;
             drawGlyphButton(fb, closeX, closeY, closeW, closeH, "B", "Close");
