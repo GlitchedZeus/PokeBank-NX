@@ -613,22 +613,10 @@ namespace UI {
             g_contentSwipeReleaseOnly = false;
         }
 
-        const bool profilePicker = hint.find("Choose Profile") != std::string::npos &&
-                                   hint.find("Use Profile") != std::string::npos;
-        const bool gameFilePicker = hint.find("Open / Link") != std::string::npos &&
-                                    hint.find("Up Folder") != std::string::npos &&
-                                    hint.find("Start Folder") != std::string::npos;
-        const bool saveInstanceList = hint.find("Choose Save") != std::string::npos &&
-            (hint.find("Source Details") != std::string::npos ||
-             hint.find("Source Setup") != std::string::npos ||
-             hint.find("Refresh Saves") != std::string::npos);
-        const bool saveAssignmentList = hint.find("Assign to This Profile") != std::string::npos &&
-                                        hint.find("X: Refresh") != std::string::npos;
-        if (profilePicker || gameFilePicker || saveInstanceList || saveAssignmentList) {
-            g_contentSwipeMask = verticalDirections;
-            g_contentSwipeUsesShoulders = false;
-            g_contentSwipeReleaseOnly = false;
-        }
+        // SaveSelect's long profile/file/save-source lists own true pixel-scrolling through
+        // TouchScrollState. Do not synthesize D-pad steps for those same gestures here: doing so
+        // would double-advance the cursor while the screen-owned content is already following the
+        // finger. Their footer glyph buttons remain registered/tappable below as normal.
 
         auto trim = [](const std::string& s) {
             const size_t a = s.find_first_not_of(" \t");
