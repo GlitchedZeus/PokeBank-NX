@@ -181,9 +181,11 @@ namespace UI {
         }
 
         if (kDown & HidNpadButton_X) {
-            // X button pressed - show delete confirmation for existing backups only
+            // Modal entry freezes the underlying list. Never suspend a coasting scroll and then
+            // resume that stale momentum after the confirmation closes.
             if (selectedIndex > 0 && selectedIndex < (int)backups.size() &&
                 !backups[selectedIndex].legacyUnscoped) {
+                backupScroll.stop();
                 showDeleteConfirmation = true;
                 deleteConfirmationIndex = selectedIndex;
             }
