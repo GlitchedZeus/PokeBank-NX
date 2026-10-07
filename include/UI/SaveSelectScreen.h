@@ -192,6 +192,10 @@ namespace UI {
                              Gen4Candidates, GameFilePicker };
         Overlay overlay = Overlay::None;
         Overlay helpReturnOverlay = Overlay::None;
+        // Touch motion is surface-local. These markers let one centralized fence clear residual
+        // drag/coast state whenever an overlay or the full Games browser is entered/exited.
+        Overlay touchScrollOverlay = Overlay::None;
+        bool touchScrollClassicGamesActive = false;
         int optionsIndex = 0;
         int gameWorkspaceIndex = 0;
         int legacyInstanceIndex = 0;
@@ -243,6 +247,7 @@ namespace UI {
         std::vector<HitRect> featureRects;
         std::vector<HitRect> overlayRects;
 
+        void syncTouchScrollSurface();
         void activateHubDock();
         void activateGameWorkspace();
         void openSaveSourceForCurrentTitle(bool fromGamesDrawer, bool fromClassicGames);
