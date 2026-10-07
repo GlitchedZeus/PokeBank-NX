@@ -243,10 +243,14 @@ namespace UI {
             PKSEFramebuffer& fb,
             const std::vector<PokeVault::Source::SaveInstance>& instances,
             int selectedIndex, int first, int x, int rowY, int width,
-            int rowHeight, int visibleRows, bool showOlderLabel) {
-            const int last = std::min<int>(
-                static_cast<int>(instances.size()), first + visibleRows);
-            for (int i = first; i < last; ++i) {
+            int rowHeight, int visibleRows, bool showOlderLabel, int liveOffset = 0) {
+            const int baseY = rowY;
+            const int drawFirst = std::max(0, first - 1);
+            const int drawLast = std::min<int>(
+                static_cast<int>(instances.size()), first + visibleRows + 1);
+            fb.setClipRect(x + 24, baseY, width - 48, visibleRows * rowHeight);
+            for (int i = drawFirst; i < drawLast; ++i) {
+                rowY = baseY + (i - first) * rowHeight + liveOffset;
                 const auto& instance = instances[static_cast<size_t>(i)];
                 drawFocusedCard(fb, x + 24, rowY, width - 48, rowHeight - 6,
                                 i == selectedIndex, 10);
@@ -266,8 +270,8 @@ namespace UI {
                     " / " + instance.sourceLabel;
                 fb.drawText(x + 44, rowY + 34, sourceLine, Colors::TextMuted,
                             TextStyle::Caption);
-                rowY += rowHeight;
             }
+            fb.clearClip();
         }
 
         void drawProductHelpOverlay(
@@ -2461,7 +2465,25 @@ namespace UI {
         }
     }
 
+    void SaveSelectScreen::syncTouchScrollSurface() {
+        if (touchScrollOverlay == overlay &&
+            touchScrollClassicGamesActive == classicGamesActive)
+            return;
+
+        launchFileTouchScroll.reset();
+        gamesDrawerTouchScroll.reset();
+        profileTouchScroll.reset();
+        legacyInstanceTouchScroll.reset();
+        legacyAssignmentTouchScroll.reset();
+        gen4CandidateTouchScroll.reset();
+        classicGamesTouchScroll.reset();
+
+        touchScrollOverlay = overlay;
+        touchScrollClassicGamesActive = classicGamesActive;
+    }
+
     void SaveSelectScreen::update(const PadState& pad, const TouchInput& touch) {
+        syncTouchScrollSurface();
         // A tap on a nav-bar badge becomes that button's press, so every handler below is
         // reached identically whether the user pressed the button or tapped its on-screen badge.
         const HidAnalogStickState stick = padGetStickPos(&pad, 0);
@@ -2470,12 +2492,84 @@ namespace UI {
             HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)
             | navTouchButton(touch);
 
+        auto tappedRect = [&](const std::vector<HitRect>& rects) -> int {
+            if (!touch.justTapped()) return -1;
+            const int tx = touch.x(), ty = touch.y();
+            for (const auto& r : rects)
+                if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h)
+                    return r.idx;
+            return -1;
+        };
+
+        if (touch.justTouchedDown()) {
+            const int tx = touch.x(), ty = touch.y();
+            if (classicGamesActive && overlay == Overlay::None) {
+                for (const auto& r : titleRects)
+                    if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) { titleIndex = r.idx; headerActionIndex = -1; break; }
+            } else {
+                for (const auto& r : overlayRects) {
+                    if (!(tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h)) continue;
+                    switch (overlay) {
+                        case Overlay::GamesDrawer: gamesDrawerIndex = r.idx; break;
+                        case Overlay::ProfilePicker: profilePickerIndex = r.idx; break;
+                        case Overlay::GameWorkspace: gameWorkspaceIndex = r.idx; break;
+                        case Overlay::GameFilePicker: launchFileIndex = r.idx; break;
+                        case Overlay::LegacyInstances: legacyInstanceIndex = r.idx; break;
+                        case Overlay::LegacyAssignment: legacyAssignmentIndex = r.idx; break;
+                        case Overlay::Gen4Setup: gen4SetupIndex = r.idx; break;
+                        case Overlay::Gen4Candidates: gen4CandidateIndex = r.idx; break;
+                        case Overlay::Options: optionsIndex = r.idx; break;
+                        default: break;
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (touch.justTapped()) {
+            if (classicGamesActive && overlay == Overlay::None) {
+                const int idx = tappedRect(titleRects);
+                if (idx >= 0) {
+                    titleIndex = idx;
+                    headerActionIndex = -1;
+                    scrollClassicSelectionIntoView();
+                    kDown |= HidNpadButton_A;
+                }
+            } else {
+                const int idx = tappedRect(overlayRects);
+                bool activate = idx >= 0;
+                if (activate) {
+                    switch (overlay) {
+                        case Overlay::GamesDrawer:      gamesDrawerIndex = idx; break;
+                        case Overlay::ProfilePicker:    profilePickerIndex = idx; break;
+                        case Overlay::GameWorkspace:    gameWorkspaceIndex = idx; break;
+                        case Overlay::GameFilePicker:   launchFileIndex = idx; break;
+                        case Overlay::LegacyInstances:  legacyInstanceIndex = idx; break;
+                        case Overlay::LegacyAssignment: legacyAssignmentIndex = idx; break;
+                        case Overlay::Gen4Setup:        gen4SetupIndex = idx; break;
+                        case Overlay::Gen4Candidates:   gen4CandidateIndex = idx; break;
+                        case Overlay::Options:          optionsIndex = idx; break;
+                        default: activate = false; break;
+                    }
+                    if (activate) kDown |= HidNpadButton_A;
+                }
+            }
+        }
+
         if (overlay == Overlay::GamesDrawer) {
             const UserEntry* drawerUser = currentUser();
             const int count = drawerUser ? static_cast<int>(drawerUser->titles.size()) : 0;
+            constexpr int drawerW = 520, cols = 3, visibleRows = 3;
+            constexpr int gap = 7, margin = 10, tileH = 160, gridY = 88;
+            const int drawerX = 1280 - drawerW;
+            gamesDrawerTouchScroll.updateVertical(
+                touch, drawerX + margin, gridY, drawerW - margin * 2,
+                visibleRows * (tileH + gap) - gap, tileH + gap,
+                gamesDrawerIndex, count, cols);
             // Product Home owns Y = Open Quick Games. Once open, Y is deliberately inert;
             // B is the only close/back control so repeated Y presses cannot dismiss the sheet.
             if (kDown & HidNpadButton_B) {
+                gamesDrawerTouchScroll.stop();
                 overlay = Overlay::None;
                 return;
             }
@@ -2489,7 +2583,9 @@ namespace UI {
                 return;
             }
             if (count > 0) {
-                constexpr int cols = 3;
+                if (kDown & (HidNpadButton_Up | HidNpadButton_Down |
+                             HidNpadButton_Left | HidNpadButton_Right))
+                    gamesDrawerTouchScroll.stop();
                 const int row = gamesDrawerIndex / cols;
                 const int col = gamesDrawerIndex % cols;
                 // Treat Quick Games as a real 2-D grid. Horizontal movement never spills into
@@ -2506,13 +2602,13 @@ namespace UI {
                     if (nextRow < count)
                         gamesDrawerIndex = std::min(count - 1, nextRow + col);
                 }
-                constexpr int visibleRows = 3;
                 const int selectedRow = gamesDrawerIndex / cols;
                 if (selectedRow < gamesDrawerScroll)
                     gamesDrawerScroll = selectedRow;
                 else if (selectedRow >= gamesDrawerScroll + visibleRows)
                     gamesDrawerScroll = selectedRow - visibleRows + 1;
                 if (kDown & HidNpadButton_A) {
+                    gamesDrawerTouchScroll.stop();
                     titleIndex = gamesDrawerIndex;
                     scrollSelectionIntoView();
                     // Keep launch discovery off the A-button frame, but hydrate the selected
@@ -2527,16 +2623,25 @@ namespace UI {
 
         if (overlay == Overlay::ProfilePicker) {
             const int count = static_cast<int>(users.size());
+            constexpr int w = 780, h = 560, rowH = 88, visibleRows = 4;
+            const int x = (1280 - w) / 2, y = (720 - h) / 2;
+            profileTouchScroll.updateVertical(
+                touch, x + 24, y + 136, w - 48, visibleRows * rowH,
+                rowH, profilePickerIndex, count);
             if (kDown & HidNpadButton_B) {
+                profileTouchScroll.stop();
                 overlay = Overlay::None;
                 return;
             }
             if (count > 0) {
+                if (kDown & (HidNpadButton_Up | HidNpadButton_Down))
+                    profileTouchScroll.stop();
                 if (kDown & HidNpadButton_Up)
                     profilePickerIndex = (profilePickerIndex - 1 + count) % count;
                 if (kDown & HidNpadButton_Down)
                     profilePickerIndex = (profilePickerIndex + 1) % count;
                 if (kDown & HidNpadButton_A) {
+                    profileTouchScroll.stop();
                     setUser(profilePickerIndex);
                     gamesDrawerIndex = titleIndex;
                     overlay = Overlay::None;
@@ -2584,7 +2689,13 @@ namespace UI {
 
         if (overlay == Overlay::GameFilePicker) {
             const int count = static_cast<int>(launchFileEntries.size());
+            constexpr int w = 900, h = 560, rowH = 54, visibleRows = 7;
+            const int x = (1280 - w) / 2, y = (720 - h) / 2;
+            launchFileTouchScroll.updateVertical(
+                touch, x + 24, y + 132, w - 48, visibleRows * rowH,
+                rowH, launchFileIndex, count);
             if (kDown & HidNpadButton_B) {
+                launchFileTouchScroll.stop();
                 overlay = launchFileReturnToLegacy ? Overlay::LegacyInstances : Overlay::None;
                 return;
             }
@@ -2598,11 +2709,12 @@ namespace UI {
                 return;
             }
             if (count > 0) {
+                if (kDown & (HidNpadButton_Up | HidNpadButton_Down))
+                    launchFileTouchScroll.stop();
                 if (kDown & HidNpadButton_Up)
                     launchFileIndex = (launchFileIndex - 1 + count) % count;
                 if (kDown & HidNpadButton_Down)
                     launchFileIndex = (launchFileIndex + 1) % count;
-                constexpr int visibleRows = 7;
                 if (launchFileIndex < launchFileScroll)
                     launchFileScroll = launchFileIndex;
                 else if (launchFileIndex >= launchFileScroll + visibleRows)
@@ -2624,7 +2736,13 @@ namespace UI {
         }
         if (overlay == Overlay::LegacyAssignment) {
             const int count = static_cast<int>(unassignedLegacySources.size());
+            constexpr int w = 800, h = 530, rowH = 70, visibleRows = 5;
+            const int x = (1280 - w) / 2, y = (720 - h) / 2;
+            legacyAssignmentTouchScroll.updateVertical(
+                touch, x + 24, y + 108, w - 48, visibleRows * rowH,
+                rowH, legacyAssignmentIndex, count);
             if (kDown & HidNpadButton_B) {
+                legacyAssignmentTouchScroll.stop();
                 overlay = classicGamesActive ? Overlay::None : Overlay::GamesDrawer;
                 return;
             }
@@ -2643,11 +2761,12 @@ namespace UI {
                 overlay = classicGamesActive ? Overlay::None : Overlay::GamesDrawer;
                 return;
             }
+            if (kDown & (HidNpadButton_Up | HidNpadButton_Down))
+                legacyAssignmentTouchScroll.stop();
             if (kDown & HidNpadButton_Up)
                 legacyAssignmentIndex = (legacyAssignmentIndex - 1 + count) % count;
             if (kDown & HidNpadButton_Down)
                 legacyAssignmentIndex = (legacyAssignmentIndex + 1) % count;
-            constexpr int visibleRows = 5;
             if (legacyAssignmentIndex < legacyAssignmentScroll)
                 legacyAssignmentScroll = legacyAssignmentIndex;
             else if (legacyAssignmentIndex >= legacyAssignmentScroll + visibleRows)
@@ -2686,7 +2805,13 @@ namespace UI {
         }
         if (overlay == Overlay::Gen4Candidates) {
             const int count = static_cast<int>(gen4Instances.size());
+            constexpr int w = 900, h = 540, rowH = 76, visibleRows = 5;
+            const int x = (1280 - w) / 2, y = (720 - h) / 2;
+            gen4CandidateTouchScroll.updateVertical(
+                touch, x + 24, y + 108, w - 48, visibleRows * rowH,
+                rowH, gen4CandidateIndex, count);
             if (kDown & HidNpadButton_B) {
+                gen4CandidateTouchScroll.stop();
                 overlay = gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None;
                 if (overlay == Overlay::GamesDrawer) {
                     gamesDrawerIndex = titleIndex;
@@ -2704,11 +2829,12 @@ namespace UI {
                 return;
             }
             if (count == 0) { overlay = Overlay::Gen4Setup; return; }
+            if (kDown & (HidNpadButton_Up | HidNpadButton_Down))
+                gen4CandidateTouchScroll.stop();
             if (kDown & HidNpadButton_Up)
                 gen4CandidateIndex = (gen4CandidateIndex - 1 + count) % count;
             if (kDown & HidNpadButton_Down)
                 gen4CandidateIndex = (gen4CandidateIndex + 1) % count;
-            constexpr int visibleRows = 5;
             if (gen4CandidateIndex < gen4CandidateScroll)
                 gen4CandidateScroll = gen4CandidateIndex;
             else if (gen4CandidateIndex >= gen4CandidateScroll + visibleRows)
@@ -2747,7 +2873,14 @@ namespace UI {
             }
             const auto& instances = u->titles[titleIndex].legacyInstances;
             const int count = static_cast<int>(instances.size());
+            constexpr int w = 780, h = 530, rowH = 66;
+            const int x = (1280 - w) / 2, y = (720 - h) / 2;
+            legacyInstanceTouchScroll.updateVertical(
+                touch, x + 24, y + 122, w - 48,
+                LEGACY_INSTANCE_VISIBLE_ROWS * rowH,
+                rowH, legacyInstanceIndex, count);
             if (kDown & HidNpadButton_B) {
+                legacyInstanceTouchScroll.stop();
                 overlay = Overlay::None;
                 launchLegacyMode = false;
                 return;
@@ -2773,6 +2906,8 @@ namespace UI {
                 overlay = Overlay::None;
                 return;
             }
+            if (kDown & (HidNpadButton_Up | HidNpadButton_Down))
+                legacyInstanceTouchScroll.stop();
             if (kDown & HidNpadButton_Up)
                 legacyInstanceIndex = (legacyInstanceIndex - 1 + count) % count;
             if (kDown & HidNpadButton_Down)
@@ -2790,6 +2925,7 @@ namespace UI {
 
         if (classicGamesActive) {
             if (kDown & HidNpadButton_B) {
+                classicGamesTouchScroll.stop();
                 classicGamesActive = false;
                 scrollRow = 0;
                 refreshHubPreview(false);
@@ -2839,6 +2975,15 @@ namespace UI {
             const int classicCount = classicUser ? static_cast<int>(classicUser->titles.size()) : 0;
             if (classicCount > 0) {
                 const int cols = classicTitleColumns();
+                const int gridW = cols * CLASSIC_TILE_W + (cols - 1) * CLASSIC_GAP;
+                const int startX = std::max(40, (1280 - gridW) / 2);
+                classicGamesTouchScroll.updateVertical(
+                    touch, startX, CLASSIC_GRID_Y, gridW,
+                    CLASSIC_VISIBLE_ROWS * (CLASSIC_TILE_H + CLASSIC_GAP) - CLASSIC_GAP,
+                    CLASSIC_TILE_H + CLASSIC_GAP, titleIndex, classicCount, cols);
+                if (kDown & (HidNpadButton_Up | HidNpadButton_Down |
+                             HidNpadButton_Left | HidNpadButton_Right))
+                    classicGamesTouchScroll.stop();
                 const int row = titleIndex / cols;
                 const int col = titleIndex % cols;
                 // Six-column browser navigation is spatial, not a flat cyclic list. Left/Right
@@ -2864,6 +3009,7 @@ namespace UI {
                 }
 
                 if (kDown & HidNpadButton_A) {
+                    classicGamesTouchScroll.stop();
                     openIntent = OpenIntent::Default;
                     selectCurrentTitle();
                     // Do not mount/reparse the selected save again on the same input frame.
@@ -2918,9 +3064,14 @@ namespace UI {
             overlay = Overlay::Help;
             return;
         }
-        // Touch uses the same actions as controller focus. Fine-grained app-wide touch parity is
-        // intentionally a later tranche; these existing primary hit targets remain safe now.
-        if (touch.justPressed()) {
+        // Native Product Home touch: contact updates focus immediately; stationary release activates.
+        if (touch.justTouchedDown()) {
+            const int tx = touch.x(), ty = touch.y();
+            for (const auto& r : headerRects) if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) { headerActionIndex = r.idx; hubDockFocused = false; hubFeatureIndex = -1; break; }
+            for (const auto& r : dockRects) if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) { hubDockFocused = true; hubFeatureIndex = -1; hubDockIndex = r.idx; headerActionIndex = -1; break; }
+            for (const auto& r : featureRects) if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) { hubDockFocused = false; headerActionIndex = -1; hubFeatureIndex = r.idx; break; }
+        }
+        if (touch.justTapped()) {
             const int tx = touch.x(), ty = touch.y();
             for (const auto& r : headerRects) {
                 if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
@@ -2946,6 +3097,17 @@ namespace UI {
                     return;
                 }
             }
+            for (const auto& r : featureRects) {
+                if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
+                    hubDockFocused = false;
+                    headerActionIndex = -1;
+                    hubFeatureIndex = r.idx;
+                    requestedMainMenuDestination = r.idx == 0
+                        ? MainMenuDestination::MasterVault : MainMenuDestination::Pokedex;
+                    exitRequested = true;
+                    return;
+                }
+            }
             for (const auto& r : titleRects) {
                 if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
                     hubDockFocused = false;
@@ -2957,6 +3119,7 @@ namespace UI {
         }
 
         // L/R changes the selected game from anywhere on Product Home, matching the footer.
+        // Touch carousel gestures resolve through ScreenChrome to the same one-step L/R path.
         const UserEntry* homeUser = currentUser();
         const int homeGameCount = homeUser ? static_cast<int>(homeUser->titles.size()) : 0;
         if (homeGameCount > 0) {
@@ -3139,17 +3302,26 @@ namespace UI {
         const int cols = classicTitleColumns();
         const int gridW = cols * CLASSIC_TILE_W + (cols - 1) * CLASSIC_GAP;
         const int startX = std::max(40, (fb.getWidth() - gridW) / 2);
-        const int first = scrollRow * cols;
-        const int last = std::min(count, first + CLASSIC_VISIBLE_ROWS * cols);
+        const int firstRow = scrollRow;
+        const int drawFirstRow = std::max(0, firstRow - 1);
+        const int totalRows = (count + cols - 1) / cols;
+        const int drawLastRow = std::min(totalRows, firstRow + CLASSIC_VISIBLE_ROWS + 1);
+        const int liveOffset = classicGamesTouchScroll.offset();
+        const int clipH = CLASSIC_VISIBLE_ROWS * (CLASSIC_TILE_H + CLASSIC_GAP) - CLASSIC_GAP;
+        fb.setClipRect(startX, CLASSIC_GRID_Y, gridW, clipH);
+        const int first = drawFirstRow * cols;
+        const int last = std::min(count, drawLastRow * cols);
         for (int i = first; i < last; ++i) {
             const int col = i % cols;
-            const int row = (i / cols) - scrollRow;
+            const int row = (i / cols) - firstRow;
             const int x = startX + col * (CLASSIC_TILE_W + CLASSIC_GAP);
-            const int y = CLASSIC_GRID_Y + row * (CLASSIC_TILE_H + CLASSIC_GAP);
+            const int y = CLASSIC_GRID_Y + row * (CLASSIC_TILE_H + CLASSIC_GAP) + liveOffset;
             const bool focused = i == titleIndex;
             const auto& title = u->titles[static_cast<size_t>(i)];
 
             drawFocusedCard(fb, x, y, CLASSIC_TILE_W, CLASSIC_TILE_H, focused, 16);
+            if (y + CLASSIC_TILE_H > CLASSIC_GRID_Y && y < CLASSIC_GRID_Y + clipH)
+                titleRects.push_back({x, y, CLASSIC_TILE_W, CLASSIC_TILE_H, i});
             if (titleFavorite(*u, title))
                 fb.drawSymbol(x + 10, y + 8, "\xE2\x99\xA5", Colors::Error, TextStyle::Body);
             const IconImage& art = SystemIcons::gameCardIcon(
@@ -3177,16 +3349,23 @@ namespace UI {
                         Colors::TextMuted, TextStyle::Caption);
         }
 
+        fb.clearClip();
         drawNavBar(fb, {{"D-pad/Stick","Choose"},{"A","Open"},
                         {"X","Save / Source"},{"Y","Sort"},{"+","Favorite"},
                         {"ZR","Launch"},{"B","Back"}});
     }
 
     void SaveSelectScreen::draw(PKSEFramebuffer& fb) {
+        // update() can switch overlays and return early; synchronize again before rendering so a
+        // newly entered surface can never inherit residual pixels/momentum from a prior visit.
+        syncTouchScrollSurface();
+
         titleRects.clear();
         userRects.clear();
         dockRects.clear();
         headerRects.clear();
+        featureRects.clear();
+        overlayRects.clear();
 
         const UserEntry* u = currentUser();
         const int count = u ? static_cast<int>(u->titles.size()) : 0;
@@ -3258,8 +3437,7 @@ namespace UI {
         }
 
         // Right: selected-game hero card.
-        // Historical wording is retained because the cross-lane polish contract uses this boundary
-        // to prove that physical source diagnostics stay out of the normal product presentation.
+        // ScreenChrome owns the scoped phone-style drag transform for this exact geometry.
         const bool gameFocused = !hubDockFocused && hubFeatureIndex < 0 && headerActionIndex < 0;
         drawFocusedCard(fb, DETAIL_X, HUB_Y, DETAIL_W, HUB_H, gameFocused, 18);
         if (gameFocused)
@@ -3522,6 +3700,8 @@ namespace UI {
         const int dexY = vaultY + featureH + featureGap;
         drawFocusedCard(fb, vaultX, vaultY, featureW, featureH, vaultFocused, 18);
         drawFocusedCard(fb, dexX, dexY, featureW, featureH, dexFocused, 18);
+        featureRects.push_back({vaultX, vaultY, featureW, featureH, 0});
+        featureRects.push_back({dexX, dexY, featureW, featureH, 1});
         if (vaultFocused)
             fb.drawRoundedRect(vaultX, vaultY, featureW, featureH, 18, vaultAccent, 3);
         if (dexFocused)
@@ -3645,20 +3825,29 @@ namespace UI {
                         Colors::TextSecondary, TextStyle::Caption);
 
             if (u && !u->titles.empty()) {
-                const int first = gamesDrawerScroll * cols;
+                const int firstRow = gamesDrawerScroll;
+                const int totalRows =
+                    (static_cast<int>(u->titles.size()) + cols - 1) / cols;
+                const int drawFirstRow = std::max(0, firstRow - 1);
+                const int drawLastRow = std::min(totalRows, firstRow + visibleRows + 1);
+                const int first = drawFirstRow * cols;
                 const int last = std::min<int>(
-                    static_cast<int>(u->titles.size()), first + visibleRows * cols);
+                    static_cast<int>(u->titles.size()), drawLastRow * cols);
                 const int gridY = 88;
+                const int gridH = visibleRows * (tileH + gap) - gap;
+                const int liveOffset = gamesDrawerTouchScroll.offset();
+                fb.setClipRect(x + margin, gridY, w - margin * 2, gridH);
                 for (int i = first; i < last; ++i) {
-                    const int local = i - first;
-                    const int col = local % cols;
-                    const int row = local / cols;
+                    const int col = i % cols;
+                    const int row = (i / cols) - firstRow;
                     const int bx = x + margin + col * (tileW + gap);
-                    const int by = gridY + row * (tileH + gap);
+                    const int by = gridY + row * (tileH + gap) + liveOffset;
                     const bool selected = i == gamesDrawerIndex;
                     const auto& title = u->titles[static_cast<size_t>(i)];
 
                     drawFocusedCard(fb, bx, by, tileW, tileH, selected, 14);
+                    if (by + tileH > gridY && by < gridY + gridH)
+                        overlayRects.push_back({bx, by, tileW, tileH, i});
                     if (titleFavorite(*u, title))
                         fb.drawSymbol(bx + 8, by + 6, "\xE2\x99\xA5", Colors::Error, TextStyle::Body);
                     const std::string_view artKey =
@@ -3708,11 +3897,11 @@ namespace UI {
                     }
                 }
 
-                const int totalRows = (static_cast<int>(u->titles.size()) + cols - 1) / cols;
+                fb.clearClip();
                 if (totalRows > visibleRows)
-                    drawScrollbar(fb, x + w - 8, gridY, visibleRows * (tileH + gap) - gap,
+                    drawScrollbar(fb, x + w - 8, gridY, gridH,
                                   totalRows * (tileH + gap) - gap,
-                                  gamesDrawerScroll * (tileH + gap));
+                                  gamesDrawerScroll * (tileH + gap) - liveOffset);
             } else {
                 fb.drawText(x + 28, 150, "No Pokémon games found for this profile.",
                             Colors::TextMuted, TextStyle::Body);
@@ -3740,13 +3929,19 @@ namespace UI {
 
             const int count = static_cast<int>(users.size());
             const int first = std::clamp(profilePickerIndex - 1, 0, std::max(0, count - visibleRows));
-            const int last = std::min(count, first + visibleRows);
-            int rowY = y + 136;
-            for (int i = first; i < last; ++i) {
+            const int drawFirst = std::max(0, first - 1);
+            const int drawLast = std::min(count, first + visibleRows + 1);
+            const int listTop = y + 136;
+            const int liveOffset = profileTouchScroll.offset();
+            fb.setClipRect(x + 24, listTop, w - 48, visibleRows * rowH);
+            for (int i = drawFirst; i < drawLast; ++i) {
+                const int rowY = listTop + (i - first) * rowH + liveOffset;
                 const auto& user = users[static_cast<size_t>(i)];
                 const bool selected = i == profilePickerIndex;
                 const bool current = i == userIndex;
                 drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 8, selected, 14);
+                if (rowY + rowH > listTop && rowY < listTop + visibleRows * rowH)
+                    overlayRects.push_back({x + 24, rowY, w - 48, rowH - 8, i});
 
                 const IconImage* avatar =
                     user.name == "Pokémon Saves" ? nullptr : &SystemIcons::userIcon(user.uid);
@@ -3780,8 +3975,8 @@ namespace UI {
                     fb.drawText(x + w - 124, rowY + 32, "CURRENT",
                                 Colors::Info, TextStyle::Caption);
                 }
-                rowY += rowH;
             }
+            fb.clearClip();
 
             fb.drawText(x + 30, y + h - 42,
                         "Changing profile changes only which saves are shown; it never modifies save data.",
@@ -3869,6 +4064,7 @@ namespace UI {
                 const bool unavailableBackup =
                     i == 6 && title.sourceKind != SelectedSourceKind::SwitchTitle;
                 drawFocusedCard(fb, cx, cy, cardW, cardH, focused, 14);
+                overlayRects.push_back({cx, cy, cardW, cardH, i});
                 fb.drawText(cx + 20, cy + 14, labels[i],
                             focused ? Colors::SelectedText
                                     : unavailableBackup ? Colors::TextMuted
@@ -3905,19 +4101,25 @@ namespace UI {
                         launchBrowsePath.substr(0, 100), Colors::TextMuted, TextStyle::Caption);
 
             const int first = launchFileScroll;
-            const int last = std::min<int>(
-                static_cast<int>(launchFileEntries.size()), first + visibleRows);
-            int rowY = y + 132;
-            for (int i = first; i < last; ++i) {
+            const int count = static_cast<int>(launchFileEntries.size());
+            const int drawFirst = std::max(0, first - 1);
+            const int drawLast = std::min(count, first + visibleRows + 1);
+            const int listTop = y + 132;
+            const int liveOffset = launchFileTouchScroll.offset();
+            fb.setClipRect(x + 24, listTop, w - 48, visibleRows * rowH);
+            for (int i = drawFirst; i < drawLast; ++i) {
+                const int rowY = listTop + (i - first) * rowH + liveOffset;
                 const auto& entry = launchFileEntries[static_cast<size_t>(i)];
                 const bool selected = i == launchFileIndex;
                 drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 6, selected, 10);
+                if (rowY + rowH > listTop && rowY < listTop + visibleRows * rowH)
+                    overlayRects.push_back({x + 24, rowY, w - 48, rowH - 6, i});
                 fb.drawText(x + 44, rowY + 13,
                             entry.directory ? "[Folder]  " + entry.name : entry.name,
                             selected ? Colors::SelectedText : Colors::TextSecondary,
                             TextStyle::Body);
-                rowY += rowH;
             }
+            fb.clearClip();
             if (!launchFileNotice.empty())
                 fb.drawText(x + 28, y + h - 42, launchFileNotice.substr(0, 108),
                             Colors::Info, TextStyle::Caption);
@@ -3941,8 +4143,19 @@ namespace UI {
                         Colors::TextMuted, TextStyle::Caption);
 
             const int first = legacyInstanceScroll;
+            const int liveOffset = legacyInstanceTouchScroll.offset();
             drawSaveInstanceRows(fb, parent.legacyInstances, legacyInstanceIndex, first,
-                                 x, y + 122, w, rowH, LEGACY_INSTANCE_VISIBLE_ROWS, true);
+                                 x, y + 122, w, rowH, LEGACY_INSTANCE_VISIBLE_ROWS, true,
+                                 liveOffset);
+            const int drawFirst = std::max(0, first - 1);
+            const int drawLast = std::min<int>(static_cast<int>(parent.legacyInstances.size()),
+                                               first + LEGACY_INSTANCE_VISIBLE_ROWS + 1);
+            for (int i = drawFirst; i < drawLast; ++i) {
+                const int touchY = y + 122 + (i - first) * rowH + liveOffset;
+                if (touchY + rowH > y + 122 &&
+                    touchY < y + 122 + LEGACY_INSTANCE_VISIBLE_ROWS * rowH)
+                    overlayRects.push_back({x + 24, touchY, w - 48, rowH - 6, i});
+            }
             if (!legacyNotice.empty())
                 fb.drawText(x + 28, y + h - 38, legacyNotice, Colors::TextMuted,
                             TextStyle::Caption);
@@ -3961,13 +4174,19 @@ namespace UI {
                         "Assigning claims this save for this profile and hides it from other profiles.",
                         Colors::TextSecondary, TextStyle::Caption);
             const int first = legacyAssignmentScroll;
-            const int last = std::min<int>(static_cast<int>(unassignedLegacySources.size()),
-                                           first + visibleRows);
-            int rowY = y + 108;
-            for (int index = first; index < last; ++index) {
+            const int count = static_cast<int>(unassignedLegacySources.size());
+            const int drawFirst = std::max(0, first - 1);
+            const int drawLast = std::min(count, first + visibleRows + 1);
+            const int listTop = y + 108;
+            const int liveOffset = legacyAssignmentTouchScroll.offset();
+            fb.setClipRect(x + 24, listTop, w - 48, visibleRows * rowH);
+            for (int index = drawFirst; index < drawLast; ++index) {
+                const int rowY = listTop + (index - first) * rowH + liveOffset;
                 const auto& entry = unassignedLegacySources[static_cast<size_t>(index)];
                 drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 6,
                                 index == legacyAssignmentIndex, 10);
+                if (rowY + rowH > listTop && rowY < listTop + visibleRows * rowH)
+                    overlayRects.push_back({x + 24, rowY, w - 48, rowH - 6, index});
                 fb.drawText(x + 44, rowY + 7, "Pokémon " + entry.title + " — " +
                             entry.instance.label,
                             index == legacyAssignmentIndex ? Colors::TextPrimary
@@ -3978,8 +4197,8 @@ namespace UI {
                                                                  : entry.instance.providerLabel) +
                                 " / " + entry.instance.sourceLabel,
                             Colors::TextMuted, TextStyle::Caption);
-                rowY += rowH;
             }
+            fb.clearClip();
             if (!legacyNotice.empty())
                 fb.drawText(x + 28, y + h - 36, legacyNotice, Colors::TextMuted,
                             TextStyle::Caption);
@@ -4039,6 +4258,7 @@ namespace UI {
             int ry = y + 112;
             for (int i = 0; i < 4; ++i) {
                 drawFocusedCard(fb, x + 24, ry, w - 48, rowH - 8, i == gen4SetupIndex, 10);
+                overlayRects.push_back({x + 24, ry, w - 48, rowH - 8, i});
                 fb.drawText(x + 44, ry + 15, rows[i],
                             i == gen4SetupIndex ? Colors::TextPrimary : Colors::TextSecondary);
                 ry += rowH;
@@ -4062,8 +4282,17 @@ namespace UI {
                         Colors::TextSecondary, TextStyle::Caption);
 
             const int first = gen4CandidateScroll;
+            const int liveOffset = gen4CandidateTouchScroll.offset();
             drawSaveInstanceRows(fb, gen4Instances, gen4CandidateIndex, first,
-                                 x, y + 108, w, rowH, visibleRows, false);
+                                 x, y + 108, w, rowH, visibleRows, false, liveOffset);
+            const int drawFirst = std::max(0, first - 1);
+            const int drawLast = std::min<int>(static_cast<int>(gen4Instances.size()),
+                                               first + visibleRows + 1);
+            for (int i = drawFirst; i < drawLast; ++i) {
+                const int touchY = y + 108 + (i - first) * rowH + liveOffset;
+                if (touchY + rowH > y + 108 && touchY < y + 108 + visibleRows * rowH)
+                    overlayRects.push_back({x + 24, touchY, w - 48, rowH - 6, i});
+            }
             if (!gen4Notice.empty())
                 fb.drawText(x + 28, y + h - 34, gen4Notice, Colors::TextMuted, TextStyle::Caption);
             drawNavBar(fb, {{"D-pad/Stick", "Choose Save"}, {"A", "Open Read Only"},
@@ -4104,6 +4333,7 @@ namespace UI {
             int ry = y + 92;
             for (int i = 0; i < 3; ++i) {
                 drawFocusedCard(fb, x + 22, ry, w - 44, rowH - 8, i == optionsIndex, 12);
+                overlayRects.push_back({x + 22, ry, w - 44, rowH - 8, i});
                 fb.drawText(x + 44, ry + 15, rows[i],
                             i == optionsIndex ? Colors::TextPrimary : Colors::TextSecondary);
                 ry += rowH;

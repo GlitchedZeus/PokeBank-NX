@@ -27,6 +27,8 @@ void PKSEFramebuffer::drawRoundedRect(int,int,int,int,int,Color,int) {}
 void PKSEFramebuffer::drawSelectionHighlight(int,int,int,int) {}
 void PKSEFramebuffer::drawSpriteStaticContained(int,int,int,int,int,int,const unsigned char*,int) {}
 void PKSEFramebuffer::drawImageScaled(int,int,int,int,int,int,const unsigned char*,int) {}
+void PKSEFramebuffer::setClipRect(int,int,int,int) {}
+void PKSEFramebuffer::clearClip() {}
 Sprite* SpriteManager::getSprite(uint16_t species, bool shiny) { sprites.emplace_back(species,shiny); return nullptr; }
 Sprite* SpriteManager::getTypeSprite(uint8_t) { return nullptr; }
 }

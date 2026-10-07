@@ -11,6 +11,7 @@
 #include "UI/LegacyPresentationRules.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
+#include "UI/TouchScroll.h"
 #include "Trainer/Trainer.h"
 #include "Utils/FileUtilities.h"
 #include "Utils/Keyboard.h"
@@ -31,6 +32,34 @@ using PokeVault::Integration::Gen2::InventoryPocket;
 using PokeVault::Integration::Gen2::kMasterBallItemId;
 using PokeVault::Integration::Gen2::kPokeBallItemId;
 using PokeVault::Integration::Gen2::kPotionItemId;
+
+struct Gen2EditorOverlayGeometry {
+    static constexpr int PanelW = 860;
+    static constexpr int PanelH = 610;
+    static constexpr int PanelX = (1280 - PanelW) / 2;
+    static constexpr int PanelY = 66;
+    static constexpr int FieldRowStep = 57;
+    static constexpr int FieldVisibleRows = 8;
+    static constexpr int ReviewRowStep = 56;
+    static constexpr int ReviewVisibleRows = 7;
+
+    struct Rect {
+        int x = 0, y = 0, w = 0, h = 0;
+        [[nodiscard]] constexpr bool contains(int px, int py) const noexcept {
+            return px >= x && px < x + w && py >= y && py < y + h;
+        }
+    };
+
+    [[nodiscard]] static constexpr Rect fieldViewport() noexcept {
+        return {PanelX + 30, PanelY + 92, PanelW - 60,
+                FieldVisibleRows * FieldRowStep};
+    }
+
+    [[nodiscard]] static constexpr Rect reviewViewport() noexcept {
+        return {PanelX + 22, PanelY + 90, PanelW - 44,
+                ReviewVisibleRows * ReviewRowStep};
+    }
+};
 
 struct Gen2EditorOverlayState {
     const TrainerViewScreen* owner = nullptr;
@@ -442,7 +471,7 @@ void handlePokemonActionInput(TrainerViewScreen& screen, u64 down) {
     }
 }
 
-void handleStagedEditorInput(TrainerViewScreen& screen, u64 down) {
+void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInput& touch) {
     auto& state = editorOverlayState(screen);
     auto* editor = stagedEditor(screen);
     if (!editor) {
@@ -454,6 +483,25 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down) {
 
     if (state.review) {
         const int changeCount = static_cast<int>(editor->pendingChanges().size());
+        if (changeCount > 0 && touch.justTouchedDown()) {
+            for (const auto& hit : screen.touchButtons) {
+                if (hit.id < 900 || hit.id >= 900 + changeCount) continue;
+                if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
+                    touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
+                    state.reviewRow = hit.id - 900;
+                    break;
+                }
+            }
+        }
+        const auto reviewViewport = Gen2EditorOverlayGeometry::reviewViewport();
+        if (changeCount > 0 && touch.justReleased() && touch.dragged() &&
+            reviewViewport.contains(touch.startX(), touch.startY())) {
+            const int dy = touch.deltaY();
+            const int steps = std::max(
+                1, std::abs(dy) / Gen2EditorOverlayGeometry::ReviewRowStep);
+            state.reviewRow = std::clamp(
+                state.reviewRow + (dy < 0 ? steps : -steps), 0, changeCount - 1);
+        }
         if (changeCount > 0 && (down & HidNpadButton_Up))
             state.reviewRow = (state.reviewRow - 1 + changeCount) % changeCount;
         if (changeCount > 0 && (down & HidNpadButton_Down))
@@ -483,15 +531,94 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down) {
     }
 
     if (state.pokemonFields) {
+        constexpr int rowCount = 28;
+        if (touch.justTouchedDown()) {
+            for (const auto& hit : screen.touchButtons) {
+                if (hit.id < 1000 || hit.id >= 1000 + rowCount) continue;
+                if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
+                    touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
+                    state.pokemonRow = hit.id - 1000;
+                    break;
+                }
+            }
+        }
+        if (touch.justTapped()) {
+            for (const auto& hit : screen.touchButtons) {
+                if (hit.id < 1000 || hit.id >= 1000 + rowCount) continue;
+                if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
+                    touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
+                    state.pokemonRow = hit.id - 1000;
+                    down |= HidNpadButton_A;
+                    break;
+                }
+            }
+        } else {
+            const auto fieldViewport = Gen2EditorOverlayGeometry::fieldViewport();
+            if (touch.justReleased() && touch.dragged() &&
+                fieldViewport.contains(touch.startX(), touch.startY())) {
+                const int steps = std::max(
+                    1, std::abs(touch.deltaY()) / Gen2EditorOverlayGeometry::FieldRowStep);
+                state.pokemonRow = std::clamp(
+                    state.pokemonRow + (touch.deltaY() < 0 ? steps : -steps), 0, rowCount - 1);
+            }
+        }
         handlePokemonFieldInput(screen, down);
         return;
     }
     if (state.pokemonActions) {
+        std::string actionError;
+        const auto actionPokemon = editor->boxedPokemon(
+            static_cast<std::size_t>(state.pokemonBox),
+            static_cast<std::size_t>(state.pokemonSlot), actionError);
+        const int rowCount = static_cast<int>(
+            PokeBank::UIModel::Gen2PokemonEditor::slotActionCount(actionPokemon.has_value()));
+        if (touch.justTouchedDown()) {
+            for (const auto& hit : screen.touchButtons) {
+                if (hit.id < 1100 || hit.id >= 1100 + rowCount) continue;
+                if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
+                    touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
+                    state.pokemonRow = hit.id - 1100;
+                    break;
+                }
+            }
+        }
+        if (touch.justTapped()) {
+            for (const auto& hit : screen.touchButtons) {
+                if (hit.id < 1100 || hit.id >= 1100 + rowCount) continue;
+                if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
+                    touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
+                    state.pokemonRow = hit.id - 1100;
+                    down |= HidNpadButton_A;
+                    break;
+                }
+            }
+        }
         handlePokemonActionInput(screen, down);
         return;
     }
 
     constexpr int rowCount = 4;
+    if (touch.justTouchedDown()) {
+        for (const auto& hit : screen.touchButtons) {
+            if (hit.id < 800 || hit.id >= 800 + rowCount) continue;
+            if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
+                touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
+                state.selectedRow = hit.id - 800;
+                break;
+            }
+        }
+    }
+    if (touch.justTapped()) {
+        for (const auto& hit : screen.touchButtons) {
+            if (hit.id < 800 || hit.id >= 800 + rowCount) continue;
+            if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
+                touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
+                state.selectedRow = hit.id - 800;
+                down |= HidNpadButton_A;
+                break;
+            }
+        }
+    }
     if (down & HidNpadButton_Up)
         state.selectedRow = (state.selectedRow - 1 + rowCount) % rowCount;
     if (down & HidNpadButton_Down)
@@ -564,11 +691,12 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto& state = editorOverlayState(screen);
     auto* editor = stagedEditor(screen);
     if (!state.active || !editor) return;
+    screen.touchButtons.clear();
 
-    constexpr int w = 860;
-    constexpr int h = 610;
-    const int x = (fb.getWidth() - w) / 2;
-    const int y = 66;
+    constexpr int w = Gen2EditorOverlayGeometry::PanelW;
+    constexpr int h = Gen2EditorOverlayGeometry::PanelH;
+    constexpr int x = Gen2EditorOverlayGeometry::PanelX;
+    constexpr int y = Gen2EditorOverlayGeometry::PanelY;
     fb.drawSoftShadow(x, y, w, h, 18);
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
     fb.drawRoundedRect(x, y, w, h, 18, Colors::Accent, 2);
@@ -619,15 +747,28 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             {"Back", "HP DV " + std::to_string(pokemon->dvs[0]) +
                      " (derived) / Shiny " + std::string(pokemon->shiny ? "Yes" : "No")},
         }};
-        constexpr int visible = 8;
-        const int start = std::clamp(state.pokemonRow - visible / 2, 0,
-                                     static_cast<int>(rows.size()) - visible);
-        int rowY = y + 92;
-        for (int i = start; i < start + visible; ++i) {
+        constexpr int visible = Gen2EditorOverlayGeometry::FieldVisibleRows;
+        constexpr int rowStep = Gen2EditorOverlayGeometry::FieldRowStep;
+        const auto fieldViewport = Gen2EditorOverlayGeometry::fieldViewport();
+        const int viewportTop = fieldViewport.y;
+        const int viewportH = fieldViewport.h;
+        const auto visual = liveVerticalListVisual(
+            state.pokemonRow, static_cast<int>(rows.size()), rowStep,
+            fieldViewport.x, fieldViewport.y, fieldViewport.w, fieldViewport.h);
+        const int start = std::clamp(
+            visual.index - visible / 2, 0,
+            std::max(0, static_cast<int>(rows.size()) - visible));
+        const int drawFirst = std::max(0, start - 1);
+        const int drawLast = std::min(static_cast<int>(rows.size()), start + visible + 1);
+        fb.setClipRect(fieldViewport.x, fieldViewport.y, fieldViewport.w, fieldViewport.h);
+        for (int i = drawFirst; i < drawLast; ++i) {
+            const int rowY = viewportTop + (i - start) * rowStep + visual.offset;
             drawEditorRow(fb, x + 30, rowY, w - 60, rows[i].first, rows[i].second,
-                          i == state.pokemonRow);
-            rowY += 57;
+                          i == visual.index);
+            if (rowY + 50 > viewportTop && rowY < viewportTop + viewportH)
+                screen.touchButtons.push_back({1000 + i, fieldViewport.x, rowY, fieldViewport.w, rowStep});
         }
+        fb.clearClip();
         fb.drawText(x + 32, y + h - 40,
                     "A Edit    B Pokemon Actions    HP DV is derived; shiny/gender follow Gen II DVs",
                     Colors::TextDim, TextStyle::Caption);
@@ -661,11 +802,13 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                 {"Close", "No source write"},
             };
         }
+        constexpr int actionRowStep = 56;
         int rowY = y + 112;
         for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
             drawEditorRow(fb, x + 30, rowY, w - 60, rows[i].first, rows[i].second,
                           i == state.pokemonRow);
-            rowY += 51;
+            screen.touchButtons.push_back({1100 + i, x + 30, rowY, w - 60, actionRowStep});
+            rowY += actionRowStep;
         }
         fb.drawText(x + 32, y + h - 40,
                     "A Select    X Review    B Close/Review    FORMAT VALID != full encounter legality",
@@ -678,21 +821,41 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         if (editor->pendingChanges().empty()) {
             fb.drawText(x + 32, ry, "No pending changes.", Colors::TextDim, TextStyle::Body);
         } else {
-            constexpr int visible = 7;
+            constexpr int visible = Gen2EditorOverlayGeometry::ReviewVisibleRows;
+            constexpr int rowStep = Gen2EditorOverlayGeometry::ReviewRowStep;
             const int count = static_cast<int>(editor->pendingChanges().size());
-            const int start = std::clamp(state.reviewRow - visible / 2, 0, std::max(0, count - visible));
-            const int end = std::min(count, start + visible);
-            for (int i = start; i < end; ++i) {
+            const auto reviewViewport = Gen2EditorOverlayGeometry::reviewViewport();
+            const int viewportTop = reviewViewport.y;
+            const int viewportH = reviewViewport.h;
+            const auto visual = liveVerticalListVisual(
+                state.reviewRow, count, rowStep,
+                reviewViewport.x, reviewViewport.y, reviewViewport.w, reviewViewport.h);
+            const int start = std::clamp(
+                visual.index - visible / 2, 0, std::max(0, count - visible));
+            const int drawFirst = std::max(0, start - 1);
+            const int drawLast = std::min(count, start + visible + 1);
+            fb.setClipRect(reviewViewport.x, reviewViewport.y, reviewViewport.w, reviewViewport.h);
+            for (int i = drawFirst; i < drawLast; ++i) {
                 const auto& change = editor->pendingChanges()[static_cast<std::size_t>(i)];
-                fb.drawText(x + 32, ry, change.label + ":", i == state.reviewRow ? Colors::Accent : Colors::TextDim, TextStyle::Body);
-                fb.drawText(x + 320, ry, change.beforeValue + "  ->  " + change.afterValue,
+                const int rowTop = viewportTop + (i - start) * rowStep + visual.offset;
+                const int textY = rowTop + 10;
+                if (i == visual.index)
+                    fb.drawSelectionHighlight(x + 22, rowTop, w - 44, 48);
+                fb.drawText(x + 32, textY, change.label + ":",
+                            i == visual.index ? Colors::Accent : Colors::TextDim,
+                            TextStyle::Body);
+                fb.drawText(x + 320, textY, change.beforeValue + "  ->  " + change.afterValue,
                             Colors::Text, TextStyle::Body);
-                ry += 54;
+                if (rowTop + 48 > viewportTop && rowTop < viewportTop + viewportH)
+                    screen.touchButtons.push_back({900 + i, reviewViewport.x, rowTop, reviewViewport.w, rowStep});
             }
+            fb.clearClip();
+            drawScrollbar(fb, x + w - 14, reviewViewport.y,
+                          std::min(visible, count) * rowStep,
+                          std::max(1, count * rowStep), start * rowStep - visual.offset);
         }
-        fb.drawText(x + 32, y + h - 74,
-                    "Up/Down Browse    A Export Edited Save    Y Discard Changes    B Back",
-                    Colors::Text, TextStyle::Body);
+        drawNavBar(fb, {{"Up/Down", "Browse"}, {"A", "Export Edited Save"},
+                        {"Y", "Discard Changes"}, {"B", "Back"}});
         if (!state.lastExportDirectory.empty())
             fb.drawText(x + 32, y + h - 42, "Last export: " + state.lastExportDirectory,
                         Colors::TextDim, TextStyle::Caption);
@@ -709,17 +872,17 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
         drawEditorRow(fb, x + 30, rowY, w - 60, rows[i].first, rows[i].second,
                       i == state.selectedRow);
+        screen.touchButtons.push_back({800 + i, x + 30, rowY, w - 60, 57});
         rowY += 57;
     }
-    fb.drawText(x + 32, y + h - 40,
-                "A Edit / Select    X Review    B Close (review required if changes are pending)",
-                Colors::TextDim, TextStyle::Caption);
+    drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Edit / Select"},
+                    {"X", "Review"}, {"B", "Close"}});
 }
 
 } // namespace
 
 void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
-    const u64 down = padGetButtonsDown(&pad);
+    const u64 down = padGetButtonsDown(&pad) | navTouchButton(touch);
     const u64 heldButtons = padGetButtons(&pad);
     const HidAnalogStickState stick = padGetStickPos(&pad, 0);
 
@@ -736,7 +899,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
                 down, heldButtons, stick.x, stick.y,
                 HidNpadButton_Up, HidNpadButton_Down,
                 HidNpadButton_Left, HidNpadButton_Right);
-            handleStagedEditorInput(*this, navigated);
+            handleStagedEditorInput(*this, navigated, touch);
             if (!overlay.active) controllerNavigation.reset();
             return;
         }

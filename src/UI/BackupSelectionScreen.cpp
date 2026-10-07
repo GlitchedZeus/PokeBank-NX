@@ -154,8 +154,18 @@ namespace UI {
             return;  // Ignore other inputs while confirmation is shown
         }
 
+        // Phone/tablet-style direct manipulation: the semantic cursor advances only as a row
+        // physically crosses the viewport while the residual pixels remain attached to the finger.
+        // A short release velocity tail is handled by TouchScrollState; taps remain release-confirmed.
+        const int listY = CARD_Y + 62;
+        const int listX = CARD_X + 14;
+        const int listW = CARD_W - 28;
+        backupScroll.updateVertical(
+            touch, listX, listY, listW, LIST_MAX_VISIBLE * LIST_ROW_H,
+            LIST_ROW_H, selectedIndex, static_cast<int>(backups.size()));
+
         // Touch: tap a backup tile to select + open it (account for the scroll window).
-        if (touch.justPressed()) {
+        if (touch.justReleased() && !touch.dragged()) {
             const int startY = CARD_Y + 62, tileX = CARD_X + 14, tileW = CARD_W - 28;
             if (touch.x() >= tileX && touch.x() < tileX + tileW && touch.y() >= startY) {
                 int visIdx = (touch.y() - startY) / LIST_ROW_H;
@@ -165,18 +175,24 @@ namespace UI {
         }
 
         if (kDown & HidNpadButton_B) {
+            backupScroll.stop();
             goBack = true;
             return;
         }
 
         if (kDown & HidNpadButton_X) {
-            // X button pressed - show delete confirmation for existing backups only
+            // Modal entry freezes the underlying list. Never suspend a coasting scroll and then
+            // resume that stale momentum after the confirmation closes.
             if (selectedIndex > 0 && selectedIndex < (int)backups.size() &&
                 !backups[selectedIndex].legacyUnscoped) {
+                backupScroll.stop();
                 showDeleteConfirmation = true;
                 deleteConfirmationIndex = selectedIndex;
             }
         }
+
+        if (kDown & (HidNpadButton_Up | HidNpadButton_Down))
+            backupScroll.stop();
 
         if (kDown & HidNpadButton_Up) {
             if (selectedIndex > 0) {
@@ -258,16 +274,21 @@ namespace UI {
         const int startY = CARD_Y + 62;
         const int total = (int)backups.size();
         const int first = firstVisibleRow(selectedIndex, total);
-        const int last = std::min(total, first + LIST_MAX_VISIBLE);
-        for (int i = first; i < last; i++) {
-            int itemY = startY + (i - first) * LIST_ROW_H;
-            bool selected = (i == selectedIndex);
+        const int liveOffset = backupScroll.offset();
+        const int drawFirst = std::max(0, first - 1);
+        const int drawLast = std::min(total, first + LIST_MAX_VISIBLE + 1);
+        fb.setClipRect(CARD_X + 14, startY, CARD_W - 28, LIST_MAX_VISIBLE * LIST_ROW_H);
+        for (int i = drawFirst; i < drawLast; i++) {
+            const int itemY = startY + (i - first) * LIST_ROW_H + liveOffset;
+            const bool selected = (i == selectedIndex);
             // The first row is the "create new backup" action — accent it to stand out.
-            drawHomeTile(fb, CARD_X + 14, itemY, CARD_W - 28, LIST_ROW_H - 10, backups[i].displayName, selected, (i == 0));
+            drawHomeTile(fb, CARD_X + 14, itemY, CARD_W - 28, LIST_ROW_H - 10,
+                         backups[i].displayName, selected, (i == 0));
         }
-        // Scrollbar on the card's right edge when the list overflows -- same thumb as the details editor.
+        fb.clearClip();
+        // Scrollbar follows the exact residual pixel offset instead of snapping by whole rows.
         drawScrollbar(fb, CARD_X + CARD_W - 10, startY, LIST_MAX_VISIBLE * LIST_ROW_H,
-                      total * LIST_ROW_H, first * LIST_ROW_H);
+                      total * LIST_ROW_H, first * LIST_ROW_H - liveOffset);
     }
 
     void BackupSelectionScreen::drawDeleteConfirmation(PKSEFramebuffer& fb) {

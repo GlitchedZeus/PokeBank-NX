@@ -99,7 +99,7 @@ namespace Dialogs {
         // The notice is a LINE here, not an extra dialog. This dialog is already a confirm/cancel,
         // so folding a warning in tells the user without adding a step.
         const int warnH = (screen.illegalDataWritten ? 26 : 0);
-        const int h = 168 + warnH + rows * (rowH + rowGap);
+        const int h = 244 + warnH + rows * (rowH + rowGap);
         const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
 
         int cy = drawDialogFrame(fb, x, y, w, h, "Save Changes", Colors::Text);
@@ -113,6 +113,9 @@ namespace Dialogs {
                         Color(235, 120, 120), TextStyle::Caption);
             cy += 26;
         }
+        // Keep the physical-controller affordance visible while touch owns the same row geometry.
+        fb.drawText(x + 24, cy + 26, "D-pad/Stick: Choose  •  Tap: Select",
+                    Colors::TextDim, TextStyle::Caption);
         // There is deliberately no "this save contains DLC content" warning. Owning a DLC gates the
         // AREAS, not the Pokemon -- the patch ships the data to every copy, so a player without the
         // Expansion Pass can hold a Crown Tundra species traded to them and it works normally.
@@ -126,7 +129,7 @@ namespace Dialogs {
 
         screen.touchButtons.clear();
         const int rx = x + 20, rw = w - 40;
-        int ry = cy + 34;
+        int ry = cy + 52;
         for (int i = 0; i < rows; ++i) {
             const int d = static_cast<int>(screen.saveDestAt(i));
             const bool sel = (screen.saveDestIndex == i);
@@ -140,7 +143,11 @@ namespace Dialogs {
             ry += rowH + rowGap;
         }
 
-        drawDialogFooter(fb, x, y, w, h, "D-pad/Stick: Choose  |  A: Save  |  B: Cancel");
+        const int cbh = TouchTargetMin;
+        const int cby = y + h - cbh - 16;
+        const int cbw = (w - 48 - 16) / 2;
+        drawEditChoiceButton(screen, fb, x + 24, cby, cbw, cbh, "B", "Cancel", 90);
+        drawEditChoiceButton(screen, fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Save", 91);
     }
 
 }

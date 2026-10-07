@@ -5,6 +5,9 @@
 namespace UI::Gen2PokemonEditor {
 namespace {
 
+constexpr auto kHardwareMovePickerLayout =
+    PokeBank::UIModel::MovePickerPresentation::compactPickerLayout();
+
 bool hardwareMoveAllowed(const TrainerViewScreen& screen, const State& state, uint16_t move) {
     if (move == 0) return true;
     const auto game = PokeBank::UIModel::Gen2PokemonEditor::exactGameFromSourceId(screen.sourceGameId);
@@ -12,15 +15,30 @@ bool hardwareMoveAllowed(const TrainerViewScreen& screen, const State& state, ui
         *game, state.working.species, move);
 }
 
-std::vector<uint16_t> hardwareCompatibleMoveChoices(const TrainerViewScreen& screen,
-                                                     const State& state) {
-    std::vector<uint16_t> choices;
-    choices.reserve(252);
-    choices.push_back(0);
-    for (uint16_t move = 1; move <= 251; ++move) {
-        if (hardwareMoveAllowed(screen, state, move)) choices.push_back(move);
+const std::vector<uint16_t>& hardwareCompatibleMoveChoices(
+    const TrainerViewScreen& screen, const State& state) {
+    struct Cache {
+        std::string sourceGameId;
+        uint16_t species = 0;
+        bool valid = false;
+        std::vector<uint16_t> choices;
+    };
+    static Cache cache;
+
+    if (!cache.valid || cache.sourceGameId != screen.sourceGameId ||
+        cache.species != state.working.species) {
+        cache.sourceGameId = screen.sourceGameId;
+        cache.species = state.working.species;
+        cache.valid = true;
+        cache.choices.clear();
+        cache.choices.reserve(252);
+        cache.choices.push_back(0);
+        for (uint16_t move = 1; move <= 251; ++move) {
+            if (hardwareMoveAllowed(screen, state, move))
+                cache.choices.push_back(move);
+        }
     }
-    return choices;
+    return cache.choices;
 }
 
 int hardwareMoveChoicePosition(const std::vector<uint16_t>& choices, uint16_t move) {
@@ -37,7 +55,7 @@ void normalizeHardwareMovePicker(const TrainerViewScreen& screen, const State& s
 
 void stepHardwareMovePicker(const TrainerViewScreen& screen, const State& state,
                             PickerOverlayState& picker, int delta) {
-    const auto choices = hardwareCompatibleMoveChoices(screen, state);
+    const auto& choices = hardwareCompatibleMoveChoices(screen, state);
     if (choices.empty()) { picker.model.index = 0; return; }
     const int count = static_cast<int>(choices.size());
     const int current = hardwareMoveChoicePosition(choices, picker.model.moveChoice());
@@ -49,8 +67,8 @@ void stepHardwareMovePicker(const TrainerViewScreen& screen, const State& state,
 void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state,
                             const PokeBank::UIModel::Gen2PokemonPicker::Model& model) {
     const int W = fb.getWidth(), H = fb.getHeight();
-    constexpr auto layout = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout();
-    constexpr int panelW = layout.width, panelH = layout.height;
+    constexpr int panelW = kHardwareMovePickerLayout.width;
+    constexpr int panelH = kHardwareMovePickerLayout.height;
     const int x = (W - panelW) / 2, y = (H - panelH) / 2;
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 165));
     drawPanelSurface(fb, x, y, panelW, panelH, false, 18);
@@ -61,21 +79,34 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
 
     const auto choices = hardwareCompatibleMoveChoices(screen, state);
     const int count = static_cast<int>(choices.size());
-    constexpr int visible = layout.visibleRows;
+    constexpr int visible = kHardwareMovePickerLayout.visibleRows;
     const int selectedPos = hardwareMoveChoicePosition(choices, model.moveChoice());
-    const int first = std::clamp(selectedPos - visible / 2, 0, std::max(0, count - visible));
-    const int last = std::min(count, first + visible);
-    for (int i = first; i < last; ++i) {
-        const int yy = y + layout.rowStart + (i - first) * layout.rowStep;
+    const int viewportTop = y + kHardwareMovePickerLayout.rowStart;
+    const int viewportH = visible * kHardwareMovePickerLayout.rowStep;
+    const auto visual = liveVerticalListVisual(
+        selectedPos, count, kHardwareMovePickerLayout.rowStep,
+        x + 24, viewportTop, panelW - 48, viewportH);
+    const int first = std::clamp(
+        visual.index - visible / 2, 0, std::max(0, count - visible));
+    const int drawFirst = std::max(0, first - 1);
+    const int drawLast = std::min(count, first + visible + 1);
+    screen.touchButtons.clear();
+    fb.setClipRect(x + 24, viewportTop, panelW - 48, viewportH);
+    for (int i = drawFirst; i < drawLast; ++i) {
+        const int yy = viewportTop + (i - first) * kHardwareMovePickerLayout.rowStep + visual.offset;
         const uint16_t move = choices[static_cast<std::size_t>(i)];
-        const bool selected = i == selectedPos;
+        const bool selected = i == visual.index;
+        if (yy + kHardwareMovePickerLayout.highlightHeight > viewportTop && yy < viewportTop + viewportH)
+            screen.touchButtons.push_back(
+                {2100 + i, x + 24, yy, panelW - 48, kHardwareMovePickerLayout.highlightHeight});
         const std::string label =
             PokeBank::UIModel::MovePickerPresentation::rowLabel(move, Enums::GameVersion::GSC);
         if (selected)
-            fb.drawSelectionHighlight(x + 24, yy, panelW - 48, layout.highlightHeight);
+            fb.drawSelectionHighlight(x + 24, yy, panelW - 48, kHardwareMovePickerLayout.highlightHeight);
         fb.drawText(x + 40, yy + 8, label,
                     selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
     }
+    fb.clearClip();
     drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                     {"A", "Select"}, {"B", "Cancel"}});
 }
@@ -99,6 +130,20 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
 
     if (state.mode == Mode::View || state.mode == Mode::None)
         return handlePickerInputBase(screen, down, held, stickX, stickY, touch);
+
+    const auto& touchChoices = hardwareCompatibleMoveChoices(screen, state);
+    const int touchDown = screen.touchedButtonDownId(touch);
+    if (touchDown >= 2100 && touchDown < 2100 + static_cast<int>(touchChoices.size()))
+        picker.model.index = static_cast<int>(touchChoices[static_cast<std::size_t>(touchDown - 2100)]);
+    const int touchTap = screen.touchedButtonId(touch);
+    if (touchTap >= 2100 && touchTap < 2100 + static_cast<int>(touchChoices.size())) {
+        picker.model.index = static_cast<int>(touchChoices[static_cast<std::size_t>(touchTap - 2100)]);
+        down |= HidNpadButton_A;
+    }
+    if (touch.justReleased() && touch.dragged()) {
+        const int steps = std::max(1, std::abs(touch.deltaY()) / std::max(1, kHardwareMovePickerLayout.rowStep));
+        stepHardwareMovePicker(screen, state, picker, touch.deltaY() < 0 ? steps : -steps);
+    }
 
     const uint64_t nav = screen.controllerNavigation.apply(
         down, held, stickX, stickY,

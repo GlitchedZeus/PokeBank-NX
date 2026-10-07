@@ -1,0 +1,34 @@
+name: Touch Input Gating
+
+on:
+  push:
+    branches:
+      - feature/touch-controls-20261005
+    paths:
+      - 'include/UI/**'
+      - 'src/UI/**'
+      - 'tests/test_touch_*.py'
+      - '.github/workflows/touch-input-gating.yml'
+  pull_request:
+    paths:
+      - 'include/UI/**'
+      - 'src/UI/**'
+      - 'tests/test_touch_*.py'
+      - '.github/workflows/touch-input-gating.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  touch-contracts:
+    name: Native touch contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Modal/list gesture contract
+        run: python3 tests/test_touch_modal_list_contract.py
+      - name: Pokémon editor direct-row contract
+        run: python3 tests/test_touch_pokemon_editor_direct_rows_contract.py
+      - name: App-wide touch surface inventory
+        run: python3 tests/test_touch_appwide_surface_contract.py

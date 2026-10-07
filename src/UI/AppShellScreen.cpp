@@ -302,6 +302,14 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
 
     if (overlay == Overlay::More) {
         constexpr int moreCount = 6;
+        if (touch.justTouchedDown()) {
+            for (const HitRect& rect : overlayRects)
+                if (contains(rect, touch.x(), touch.y())) { moreIndex = rect.index; break; }
+        }
+        if (touch.justTapped()) {
+            for (const HitRect& rect : overlayRects)
+                if (contains(rect, touch.x(), touch.y())) { moreIndex = rect.index; kDown |= HidNpadButton_A; break; }
+        }
         if (kDown & HidNpadButton_B) {
             overlay = Overlay::None;
             statusMessage.clear();
@@ -323,6 +331,14 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
 
     if (overlay == Overlay::OrganizationPreview) {
         using PokeBank::UIModel::OrganizationPreviewKind;
+        if (touch.justTouchedDown()) {
+            for (const HitRect& rect : overlayRects)
+                if (contains(rect, touch.x(), touch.y())) { previewIndex = rect.index; break; }
+        }
+        if (touch.justTapped()) {
+            for (const HitRect& rect : overlayRects)
+                if (contains(rect, touch.x(), touch.y())) { previewIndex = rect.index; kDown |= HidNpadButton_A; break; }
+        }
         OrganizationPreviewKind kind = OrganizationPreviewKind::Banks;
         if (infoSection == PokeBank::UIModel::AppShellSection::Pokedex)
             kind = OrganizationPreviewKind::Collections;
@@ -349,22 +365,33 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
     }
 
     if (overlay == Overlay::Settings) {
-        if (touch.justPressed()) {
+        if (touch.justTouchedDown()) {
             for (const HitRect& rect : settingsCategoryRects) {
                 if (contains(rect, touch.x(), touch.y())) {
                     settingsCategory = rect.index;
-                    settingsIndex = std::min(settingsIndex,
-                                             settingsOptionCount(settingsCategory) - 1);
+                    settingsIndex = std::min(settingsIndex, settingsOptionCount(settingsCategory) - 1);
                     settingsCategoryFocused = true;
-                    return;
+                    break;
                 }
             }
             for (const HitRect& rect : settingsRects) {
                 if (contains(rect, touch.x(), touch.y())) {
-                    settingsIndex = rect.index;
-                    settingsCategoryFocused = false;
-                    kDown |= HidNpadButton_A;
+                    settingsIndex = rect.index; settingsCategoryFocused = false; break;
+                }
+            }
+        }
+        if (touch.justTapped()) {
+            for (const HitRect& rect : settingsCategoryRects) {
+                if (contains(rect, touch.x(), touch.y())) {
+                    settingsCategory = rect.index;
+                    settingsIndex = std::min(settingsIndex, settingsOptionCount(settingsCategory) - 1);
+                    settingsCategoryFocused = true;
                     break;
+                }
+            }
+            for (const HitRect& rect : settingsRects) {
+                if (contains(rect, touch.x(), touch.y())) {
+                    settingsIndex = rect.index; settingsCategoryFocused = false; kDown |= HidNpadButton_A; break;
                 }
             }
         }
@@ -412,13 +439,14 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
         return;
     }
 
-    if (touch.justPressed()) {
+    if (touch.justTouchedDown()) {
         for (const HitRect& rect : cardRects) {
-            if (contains(rect, touch.x(), touch.y())) {
-                selectedIndex = rect.index;
-                kDown |= HidNpadButton_A;
-                break;
-            }
+            if (contains(rect, touch.x(), touch.y())) { selectedIndex = rect.index; break; }
+        }
+    }
+    if (touch.justTapped()) {
+        for (const HitRect& rect : cardRects) {
+            if (contains(rect, touch.x(), touch.y())) { selectedIndex = rect.index; kDown |= HidNpadButton_A; break; }
         }
     }
 
@@ -568,8 +596,14 @@ void AppShellScreen::drawSettings(PKSEFramebuffer& fb) {
 
     for (auto& rect : settingsRects) rect = {};
 
-    int rowY = y + contentY + 48;
-    for (int index = 0; index < static_cast<int>(rows.size()); ++index) {
+    constexpr int optionStep = optionRowH + 10;
+    const int optionViewportTop = y + contentY + 48;
+    const int optionCount = static_cast<int>(rows.size());
+    // Every Settings category currently fits in the pane (max 3 options). Keep these rows anchored:
+    // a fake scroll surface adds gesture state without revealing any content and makes hitboxes harder
+    // to reason about. Long/overflowing lists elsewhere keep true phone-style direct manipulation.
+    for (int index = 0; index < optionCount; ++index) {
+        const int rowY = optionViewportTop + index * optionStep;
         const auto& row = rows[static_cast<std::size_t>(index)];
         const bool focused = !settingsCategoryFocused && settingsIndex == index;
         drawFocusedCard(fb, rightX + 14, rowY, rightW - 28, optionRowH,
@@ -599,7 +633,6 @@ void AppShellScreen::drawSettings(PKSEFramebuffer& fb) {
 
         settingsRects[static_cast<std::size_t>(index)] =
             {rightX + 14, rowY, rightW - 28, optionRowH, index};
-        rowY += optionRowH + 10;
     }
 
     if (statusFrames > 0 && !statusMessage.empty())
@@ -695,6 +728,7 @@ void AppShellScreen::drawOrganizationPreview(PKSEFramebuffer& fb) {
             const int bx = gridX + (i % cols) * (boxW + gap);
             const int by = gridY + 72 + (i / cols) * (boxH + gap);
             drawFocusedCard(fb, bx, by, boxW, boxH, i == previewIndex, 12);
+            overlayRects[static_cast<std::size_t>(i)] = {bx, by, boxW, boxH, i};
             const auto& box = PokeBank::UIModel::BANK_BOX_PREVIEW[static_cast<std::size_t>(i)];
             fb.drawText(bx + 16, by + 16, std::string(box.title),
                         i == previewIndex ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Body);
@@ -720,6 +754,7 @@ void AppShellScreen::drawOrganizationPreview(PKSEFramebuffer& fb) {
             const int fx = qx + (i % cols) * (filterW + gapX);
             const int fy = qy + 132 + (i / cols) * (filterH + gapY);
             drawFocusedCard(fb, fx, fy, filterW, filterH, i == previewIndex, 10);
+            overlayRects[static_cast<std::size_t>(i)] = {fx, fy, filterW, filterH, i};
             const auto& f = PokeBank::UIModel::SEARCH_FILTER_PREVIEW[static_cast<std::size_t>(i)];
             fb.drawText(fx + 14, fy + 16, std::string(f.label),
                         i == previewIndex ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Caption);
@@ -740,6 +775,7 @@ void AppShellScreen::drawOrganizationPreview(PKSEFramebuffer& fb) {
             const int cx = gx + (i % 2) * (cardW + gap);
             const int cy = gy + (i / 2) * (cardH + gap);
             drawFocusedCard(fb, cx, cy, cardW, cardH, i == previewIndex, 14);
+            overlayRects[static_cast<std::size_t>(i)] = {cx, cy, cardW, cardH, i};
             const auto& c = PokeBank::UIModel::COLLECTION_PREVIEW[static_cast<std::size_t>(i)];
             fb.drawText(cx + 20, cy + 18, std::string(c.title),
                         i == previewIndex ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Heading);
@@ -790,6 +826,7 @@ void AppShellScreen::drawMore(PKSEFramebuffer& fb) {
         const int cy = gridY + (i / 2) * (cardH + gapY);
         const bool focused = i == moreIndex;
         drawFocusedCard(fb, cx, cy, cardW, cardH, focused, 14);
+        overlayRects[static_cast<std::size_t>(i)] = {cx, cy, cardW, cardH, i};
         fb.drawText(cx + 20, cy + 16, modules[i].title,
                     focused ? Colors::SelectedText : Colors::TextPrimary,
                     TextStyle::Heading);
@@ -835,6 +872,7 @@ void AppShellScreen::drawSectionInfo(PKSEFramebuffer& fb) {
 }
 
 void AppShellScreen::draw(PKSEFramebuffer& fb) {
+    for (auto& rect : overlayRects) rect = {};
     drawAppBackdrop(fb);
     drawProductTitleBar(fb);
 
