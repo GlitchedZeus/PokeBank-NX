@@ -79,8 +79,13 @@ SURFACES = {
     "GSC legacy editor": (
         "src/UI/TrainerViewScreenGSCOverlay.inc",
         ("touch.justTouchedDown()", "touch.justTapped()", "touch.justReleased()",
+         "struct Gen2EditorOverlayGeometry",
+         "fieldViewport.contains(touch.startX(), touch.startY())",
+         "reviewViewport.contains(touch.startX(), touch.startY())",
+         "static constexpr int ReviewRowStep = 56;",
          "liveVerticalListVisual(", "visual.offset",
-         "touchButtons.push_back({1000 + i", "touchButtons.push_back({1100 + i"),
+         "touchButtons.push_back({1000 + i, fieldViewport.x",
+         "touchButtons.push_back({1100 + i, x + 30, rowY, w - 60, actionRowStep"),
     ),
     "Gen I editor foundation": (
         "src/UI/Gen1PokemonEditorFoundationHardwareFix.inc",
