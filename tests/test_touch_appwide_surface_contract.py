@@ -128,26 +128,27 @@ require_all("include/UI/ScreenChrome.h",
             "g_touchGlyphHits", "navTouchButton",
             "release-confirmed tap",
             "Content cards/rows are owned by the screen that draws them.",
-            "constexpr int kLiveDragStep = 24",
-            "? touch.deltaX() : 0;",
-            "const bool productHomeHero =",
-            "g_contentSwipeReleaseOnly = true;",
+            "g_productHeroDragActive",
             "g_productHeroDragXForDraw",
             "constexpr int kProductHeroX = 24;",
             "constexpr int kProductHeroY = 78;",
             "constexpr int kProductHeroW = 720;",
             "constexpr int kProductHeroH = 548;",
-            "g_contentSwipeX = kProductHeroX",
-            "g_contentSwipeY = kProductHeroY",
-            "g_contentSwipeW = kProductHeroW",
-            "g_contentSwipeH = kProductHeroH",
-            "if (contentDragMoved && !releaseOnly) return 0;",
-            "constexpr int kContentSwipeDistance = 72",
+            "constexpr int kCarouselCommitDistance = 72",
             "g_quickGamesDrawerSwipe = true",
-            "Quick Games owns true vertical pixel scrolling in SaveSelectScreen",
-            "Full Games owns vertical pixel scrolling",
-            "SaveSelect's long profile/file/save-source lists own true pixel-scrolling",
-            "g_contentSwipeMask = HidNpadButton_Left | HidNpadButton_Right")
+            "Shared chrome keeps only its deliberate inner-edge close gesture.",
+            "Shared chrome intentionally does not emulate",
+            "content D-pad movement for them.")
+chrome = read("include/UI/ScreenChrome.h")
+for dead in (
+    "g_contentSwipeMask", "g_contentSwipeUsesShoulders", "g_contentSwipeReleaseOnly",
+    "g_contentDragMoved", "g_contentDragLastX", "g_contentDragLastY",
+    "kLiveDragStep", "classicGamesBrowser", "currentGameGrid",
+    "contentSwipeContains", "horizontalContentButton",
+):
+    if dead in chrome:
+        raise AssertionError(f"ScreenChrome: deleted generic content-stepper state returned: {dead}")
+
 if '#include "UI/TouchScroll.h"' in read("src/UI/AppShellScreen.cpp"):
     raise AssertionError("AppShell: Settings has no overflow; fake TouchScroll dependency was reintroduced")
 if "liveVerticalListVisual(" in read("src/UI/AppShellScreen.cpp"):
