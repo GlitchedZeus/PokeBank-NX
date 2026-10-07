@@ -12,31 +12,28 @@ GitHub is authoritative. Recorded SHAs are checkpoints only: always re-fetch bef
 
 - Branch: `feature/gen4-full-editor-20260928`
 - State: **OPEN / DRAFT / NOT MERGED**
-- Current exact application head: `3d2ded8ba350e541211ca2c2af0019f018044d78`
-- Application tree: `8d214448d5ca438c731053153ed544a55a4e0143`
-- Product UI artifact workflow: `37423700586`
-- Product UI artifact: `PokeBank-NX-Product-UI-37423700586`
-- Artifact ID: `11393674948`
-- NRO SHA-256: `15e29a930a0033f0674bd542527182f70ac30838907bee0c719cc224f1f08ab5`
-- Device state: **INTERMEDIATE / NOT THE NEXT HARDWARE-ACCEPTANCE CANDIDATE**
+- Current exact application head: `2d2d7bc2df57d79fe32c3bc0bfb24f80915b2efd`
+- Application tree: `91c4b7484bf11d9408d0818a92c38ad93156916f`
+- Product UI artifact workflow: `37497307544`
+- Product UI artifact: `PokeBank-NX-Product-UI-37497307544`
+- Artifact ID: `11427853807`
+- NRO SHA-256: `785b99733495fa2f0c46ffeef0c80e8987cfbfce170464fa9a07c5ac2524f048`
+- Device state: **READY FOR EXACT HARDWARE TEST / DEVICE_ACCEPTED=false**
 
-The exact `3d2ded8b...` application is fully CI-green and contains the current Product Home/save-preview repairs. It is intentionally **not** being promoted as the next owner test round because the known RetroArch normal-Quit return lifecycle is still unresolved. `DEVICE_ACCEPTED=false` remains authoritative.
+The exact `2d2d7bc2...` application is fully CI-green and combines the current Product Home/save-preview repairs with the PokeBank-owned RetroArch return host. This is the next complete owner hardware round. `DEVICE_ACCEPTED=false` remains authoritative until this exact NRO passes on Switch.
 
 ### Exact-head application CI
 
-For `3d2ded8ba350e541211ca2c2af0019f018044d78`:
+For `2d2d7bc2df57d79fe32c3bc0bfb24f80915b2efd`:
 
-- PokeBank NX Product UI Native — **PASS** — run `37423700586`
-- PokeBank NX Native PR Gate — **PASS** — run `37423700687`
-- PokeBank NX Host Tests — **PASS** — run `37423700580`
-  - full host suite PASS
-  - focused RSE save-open bridge regression PASS
-  - ASan + UBSan PASS
-- Gen IV Shared Editor Candidate Gate — **PASS** — run `37423700584`
-- Gen I/II Packed Move Focused — **PASS** — run `37423700581`
-- Gen I/II Packed Multi-Move Focused — **PASS** — run `37423700593`
+- PokeBank NX Product UI Native — **PASS** — run `37497307544`
+- PokeBank NX Native PR Gate — **PASS** — run `37497307608`
+- PokeBank NX Host Tests — **PASS** — run `37497307470`
+- Gen IV Shared Editor Candidate Gate — **PASS** — run `37497307909`
+- Gen I/II Packed Move Focused — **PASS** — run `37497307879`
+- Gen I/II Packed Multi-Move Focused — **PASS** — run `37497307798`
 
-Green CI does not convert this intermediate checkpoint into hardware acceptance.
+Green CI does not replace physical acceptance of this exact hardware candidate.
 
 ## Current Product UI / hardware-fix state
 
@@ -66,11 +63,15 @@ Hardware PASS / working behavior to preserve:
 5. shared keyboard and numpad presentation/input passed;
 6. GB/GBC/GBA save opening is fast again.
 
-Known remaining MAIN launcher blocker:
+RetroArch return-lifecycle repair now included in the exact candidate:
 
-- **stock RetroArch normal Quit returns to Nintendo HOME instead of reliably chaining back into PokeBank NX.**
+- PokeBank captures the exact currently running NRO path.
+- RetroArch/core launch routes through bundled `PokeBankReturnHost.nro`.
+- Child `NextLoadPath` requests are preserved and honored inside the host.
+- A normal final RetroArch return with no child scheduled causes the host to schedule the exact PokeBank NRO back through the outer loader.
+- The final Product UI NRO has been checked to contain the embedded return-host payload.
 
-PokeBank can schedule RetroArch/core launch through `envSetNextLoad()`, but the return target is not preserved by stock RetroArch normal Quit. The next real owner-test NRO must include a stable explicit return-capable contract or equivalent proven mechanism. Do **not** issue another complete owner-test candidate while this blocker is knowingly open.
+This path is CI- and packaging-validated but still requires physical Switch proof.
 
 Nintendo DS quit-to-PokeBank is **not** an acceptance requirement because DraStic exposes `Quit to Launcher`; DS acceptance is direct exact-ROM boot without the earlier chooser/freeze behavior.
 
