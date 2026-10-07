@@ -87,18 +87,15 @@ require(gen3, "src/UI/Gen3SharedPokemonSurface.inc",
         "touch.justReleased() && touch.dragged()",
         "SharedPokemonShell::drawVerticalScrollIndicator")
 
-# Gen III's accepted .inc helper returns true for any direct-row id, even if the exact-format
-# adapter refuses to move focus because that row is read-only. The composite include guard must
-# therefore reject those non-editable direct taps before the caller can synthesize A against the
-# previously focused field. Passive View remains allowed to focus informational rows.
+# Gen III direct-row focus must reject read-only rows in the helper itself. Returning false is
+# essential: the caller synthesizes A only when direct focus was actually accepted. Passive View
+# still focuses informational rows, while Create/Edit cannot fall through to a stale prior field.
+require(gen3, "src/UI/Gen3SharedPokemonSurface.inc",
+        "if (!(passiveView || detailEditable(state, row))) return false;",
+        "if (!(passiveView || pidLinkedRowEditable(state, row))) return false;")
 composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp")
-require(composite, "src/UI/TrainerViewScreenCompositeOverlay.cpp",
-        "#define applyDirectFocus(idArg)",
-        "passiveView || detailEditable(state, (idArg) - 31000)",
-        "passiveView || pidLinkedRowEditable(state, (idArg) - 31200)",
-        "? false : applyDirectFocus(idArg)",
-        '#include "Gen3SharedPokemonSurface.inc"',
-        "#undef applyDirectFocus")
+if "#define applyDirectFocus" in composite:
+    raise AssertionError("Gen III touch guard regressed to a fragile include-time macro shim")
 
 gen4 = read("src/UI/Gen4SharedPokemonSurface.inc")
 for token in (
