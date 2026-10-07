@@ -44,6 +44,19 @@ assert "touch.x()" in release_hit and "touch.y()" in release_hit
 assert "startX()" not in release_hit and "startY()" not in release_hit, \
     "release activation must use release coordinates so release-outside cancels"
 
+
+picker = read("src/UI/Dialogs/PickerDialog.cpp")
+require(picker, "src/UI/Dialogs/PickerDialog.cpp",
+        '#include "UI/TouchScroll.h"',
+        "const auto visual = liveVerticalListVisual(",
+        "const int visualSel = visual.index;",
+        "+ visual.offset;",
+        "fb.setClipRect(px + 12, listTop",
+        "fb.clearClip();",
+        "first * rowH - visual.offset")
+assert "const int ry = listTop + i * rowH;" not in picker, \
+    "shared picker regressed to stationary rows during finger drag"
+
 details = read("src/UI/Modals/PokemonDetailsModal.cpp")
 require(details, "src/UI/Modals/PokemonDetailsModal.cpp",
         "Legality report: clipped touch-scroll surface with explicit close.",
