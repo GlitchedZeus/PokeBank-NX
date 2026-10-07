@@ -190,20 +190,7 @@ void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
 #include "ClassicPackedMoveOverlay.inc"
 #include "ClassicReleaseActionFix.inc"
 
-// Gen III keeps the accepted shared editor source unchanged, but its direct-touch helper historically
-// returned true even when an editable session tapped a read-only row. The caller then synthesized A,
-// which could activate the previously focused field. Gate only those two direct-focus families at
-// include time: passive View may focus every informational row; Create/Edit may activate only rows
-// the exact-format adapter says are editable. The self-reference in the replacement resolves to the
-// local lambda while this macro is disabled during its own expansion.
-#define applyDirectFocus(idArg) \
-    ((((idArg) >= 31000 && (idArg) < 31000 + static_cast<int>(detailLabels.size()) && \
-       !(passiveView || detailEditable(state, (idArg) - 31000))) || \
-      ((idArg) >= 31206 && (idArg) <= 31210 && \
-       !(passiveView || pidLinkedRowEditable(state, (idArg) - 31200)))) \
-         ? false : applyDirectFocus(idArg))
 #include "Gen3SharedPokemonSurface.inc"
-#undef applyDirectFocus
 #include "Gen4SharedPokemonSurface.inc"
 
 namespace UI {
