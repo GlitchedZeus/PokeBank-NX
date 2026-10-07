@@ -23,6 +23,7 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedHeldItemPicker.h"
 #include "UI/SharedSpeciesPicker.h"
+#include "UI/TouchScroll.h"
 #include "UI/SharedPokemonShell.h"
 #include "Utils/Keyboard.h"
 #include "Utils/StringHelpers.h"
@@ -83,6 +84,7 @@ struct State {
     bool valuePicker = false;
     PickerTarget pickerTarget = PickerTarget::None;
     int pickerRow = 0;
+    TouchScrollState pickerScroll;
     std::vector<uint16_t> pickerValues;
 
     bool moveEditor = false;
@@ -595,6 +597,7 @@ int moveMaxPP(uint16_t move, uint8_t ppUps, Enums::GameVersion group) {
 
 void openSpeciesPicker(TrainerViewScreen& screen, State& state) {
     state.valuePicker = true;
+    state.pickerScroll.reset();
     state.pickerTarget = PickerTarget::Species;
     state.pickerValues.clear();
     for (uint16_t species = 1; species <= 493; ++species)
@@ -637,6 +640,7 @@ bool beginCreate(TrainerViewScreen& screen) {
 
 void openHeldItemPicker(TrainerViewScreen& screen, State& state) {
     state.valuePicker = true;
+    state.pickerScroll.reset();
     state.pickerTarget = PickerTarget::HeldItem;
     state.pickerValues.clear();
     state.pickerValues.push_back(0);
@@ -655,6 +659,7 @@ void openHeldItemPicker(TrainerViewScreen& screen, State& state) {
 
 void openLanguagePicker(TrainerViewScreen& screen, State& state) {
     state.valuePicker = true;
+    state.pickerScroll.reset();
     state.pickerTarget = PickerTarget::Language;
     state.pickerValues.clear();
     const auto group = bridge(screen).sourceSave().rawFamily();
@@ -681,6 +686,7 @@ void openBallPicker(TrainerViewScreen& screen, State& state,
     }
 
     state.valuePicker = true;
+    state.pickerScroll.reset();
     state.pickerTarget = PickerTarget::Ball;
     state.pickerValues.clear();
     for (const auto ball : Enums::getBallList(originGroup))
@@ -704,6 +710,7 @@ void openMetLocationPicker(TrainerViewScreen& screen, State& state,
         return;
     }
     state.valuePicker = true;
+    state.pickerScroll.reset();
     state.pickerTarget = PickerTarget::MetLocation;
     state.pickerValues.clear();
     const auto table = Names::getLocationTable(record.originVersion());
@@ -722,6 +729,7 @@ void openMetLocationPicker(TrainerViewScreen& screen, State& state,
 
 void openPokerusPicker(TrainerViewScreen& screen, State& state) {
     state.valuePicker = true;
+    state.pickerScroll.reset();
     state.pickerTarget = PickerTarget::Pokerus;
     state.pickerValues = {0x00, 0x10, 0x11};
     const uint8_t current = state.session.working ? state.session.working->pokerus() : 0;
@@ -745,6 +753,7 @@ void openFormPicker(TrainerViewScreen& screen, State& state) {
         return;
     }
     state.valuePicker = true;
+    state.pickerScroll.reset();
     state.pickerTarget = PickerTarget::Form;
     const uint8_t current = state.session.working->form();
     const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
@@ -757,6 +766,7 @@ void openFormPicker(TrainerViewScreen& screen, State& state) {
 void openMovePicker(TrainerViewScreen& screen, State& state) {
     if (!state.session.working) return;
     state.valuePicker = true;
+    state.pickerScroll.reset();
     state.pickerTarget = PickerTarget::Move;
     state.pickerValues = PokeVault::Integration::Gen4MoveCompatibility::selectableMoves(
         screen.sourceGameId, state.session.working->species(),
@@ -771,6 +781,7 @@ void openMovePicker(TrainerViewScreen& screen, State& state) {
 
 void openNaturePicker(TrainerViewScreen& screen, State& state) {
     state.valuePicker = true;
+    state.pickerScroll.reset();
     state.pickerTarget = PickerTarget::Nature;
     state.pickerValues.clear();
     for (uint16_t i = 0; i < 25; ++i) state.pickerValues.push_back(i);
@@ -785,6 +796,7 @@ void openAbilityPicker(TrainerViewScreen& screen, State& state,
         return;
     }
     state.valuePicker = true;
+    state.pickerScroll.reset();
     state.pickerTarget = PickerTarget::Ability;
     state.pickerValues = {0, 1};
     state.pickerRow = state.session.working ? state.session.working->abilitySlot() : 0;
@@ -794,6 +806,39 @@ void openAbilityPicker(TrainerViewScreen& screen, State& state,
 bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.valuePicker) return false;
     const int count = static_cast<int>(state.pickerValues.size());
+    if (count > 0) {
+        if (state.pickerTarget == PickerTarget::Species) {
+  if (touch.justReleased() && touch.dragged()) {
+      const int steps = std::max(1, std::abs(touch.deltaY()) / 43);
+      state.pickerRow = std::clamp(
+          state.pickerRow + (touch.deltaY() < 0 ? steps : -steps), 0, count - 1);
+  }
+        } else if (state.pickerTarget == PickerTarget::HeldItem) {
+  constexpr int pickerW = 1040, pickerH = 520, rowStep = 40;
+  const int px = (1280 - pickerW) / 2;
+  const int py = (720 - pickerH) / 2;
+  state.pickerScroll.updateVertical(
+      touch, px + 22, py + 87, pickerW - 44,
+      HeldItemGrid::rows * rowStep + 6, rowStep,
+      state.pickerRow, count, HeldItemGrid::columns);
+        } else if (state.pickerTarget == PickerTarget::Move) {
+  constexpr auto pickerLayout = MoveUI::compactPickerLayout();
+  const int px = (1280 - pickerLayout.width) / 2;
+  const int py = (720 - pickerLayout.height) / 2;
+  state.pickerScroll.updateVertical(
+      touch, px + 24, py + pickerLayout.rowStart,
+      pickerLayout.width - 48,
+      pickerLayout.visibleRows * pickerLayout.rowStep,
+      pickerLayout.rowStep, state.pickerRow, count);
+        } else {
+  constexpr int pickerW = 680, pickerH = 560, rowStep = 42;
+  const int px = (1280 - pickerW) / 2;
+  const int py = (720 - pickerH) / 2;
+  state.pickerScroll.updateVertical(
+      touch, px + 22, py + 86, pickerW - 44,
+      10 * rowStep + 8, rowStep, state.pickerRow, count);
+        }
+    }
     const int touchDown = screen.touchedButtonDownId(touch);
     if (touchDown >= 6000 && touchDown < 6000 + count) state.pickerRow = touchDown - 6000;
     const int touchTap = screen.touchedButtonId(touch);
@@ -801,22 +846,12 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
         state.pickerRow = touchTap - 6000;
         down |= HidNpadButton_A;
     }
-    if (touch.justReleased() && touch.dragged()) {
-        const int dx = touch.deltaX(), dy = touch.deltaY();
-        const int ax = std::abs(dx), ay = std::abs(dy);
-        if (state.pickerTarget == PickerTarget::HeldItem) {
-            if (ay >= ax && ay >= 28) state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, dy < 0 ? 1 : -1);
-            else if (ax >= 28) state.pickerRow = HeldItemGrid::move(state.pickerRow, count, dx < 0 ? 1 : -1, 0);
-        } else {
-            const int steps = std::max(1, ay / 40);
-            if (dy < 0) state.pickerRow = std::min(count - 1, state.pickerRow + steps);
-            else if (dy > 0) state.pickerRow = std::max(0, state.pickerRow - steps);
-        }
-    }
     if (count <= 0) {
         state.valuePicker = false;
         return true;
     }
+    if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R | HidNpadButton_ZL | HidNpadButton_ZR))
+        state.pickerScroll.stop();
     if (state.pickerTarget == PickerTarget::HeldItem) {
         if (down & HidNpadButton_Up)
             state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, -1);
@@ -849,6 +884,7 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
         return true;
     }
     if (down & HidNpadButton_B) {
+        state.pickerScroll.stop();
         state.valuePicker = false;
         state.pickerTarget = PickerTarget::None;
         screen.controllerNavigation.reset();
@@ -856,6 +892,7 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     }
     if (!(down & HidNpadButton_A) || !state.session.working) return true;
 
+    state.pickerScroll.stop();
     const uint16_t value = state.pickerValues[static_cast<size_t>(state.pickerRow)];
     bool ok = false;
     if (state.pickerTarget == PickerTarget::Species) {
@@ -1546,18 +1583,25 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         const int count = static_cast<int>(state.pickerValues.size());
         constexpr int visible = moveLayout.visibleRows;
         const int first = std::clamp(
-            state.pickerRow - visible / 2, 0, std::max(0, count - visible));
-        const int last = std::min(count, first + visible);
-        for (int i = first; i < last; ++i) {
-            const int yy = y + moveLayout.rowStart + (i - first) * moveLayout.rowStep;
-            const bool selected = i == state.pickerRow;
-            screen.touchButtons.push_back({6000 + i, x + 24, yy, w - 48, moveLayout.highlightHeight});
-            if (selected)
-                fb.drawSelectionHighlight(x + 24, yy, w - 48, moveLayout.highlightHeight);
-            const auto value = state.pickerValues[static_cast<size_t>(i)];
-            fb.drawText(x + 40, yy + 8, pickerValueLabel(screen, state, value),
-                        selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
+  state.pickerRow - visible / 2, 0, std::max(0, count - visible));
+        const int firstDraw = std::max(0, first - 1);
+        const int lastDraw = std::min(count, first + visible + 1);
+        const int liveOffset = state.pickerScroll.offset();
+        const int viewportTop = y + moveLayout.rowStart;
+        const int viewportBottom = viewportTop + visible * moveLayout.rowStep;
+        fb.setClipRect(x + 24, viewportTop, w - 48, visible * moveLayout.rowStep);
+        for (int i = firstDraw; i < lastDraw; ++i) {
+  const int yy = viewportTop + (i - first) * moveLayout.rowStep + liveOffset;
+  const bool selected = i == state.pickerRow;
+  if (yy + moveLayout.highlightHeight > viewportTop && yy < viewportBottom)
+      screen.touchButtons.push_back({6000 + i, x + 24, yy, w - 48, moveLayout.highlightHeight});
+  if (selected)
+      fb.drawSelectionHighlight(x + 24, yy, w - 48, moveLayout.highlightHeight);
+  const auto value = state.pickerValues[static_cast<size_t>(i)];
+  fb.drawText(x + 40, yy + 8, pickerValueLabel(screen, state, value),
+              selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
         }
+        fb.clearClip();
         drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                         {"ZL/ZR", "Jump"}, {"A", "Select"}, {"B", "Cancel"}});
         return;
@@ -1574,25 +1618,35 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     "Page " + std::to_string(state.pickerRow / HeldItemGrid::pageSize + 1) +
                         " / " + std::to_string(pages),
                     Colors::TextDim, TextStyle::Caption);
-        const int first =
-            state.pickerRow / HeldItemGrid::pageSize * HeldItemGrid::pageSize;
-        const int last = std::min(count, first + HeldItemGrid::pageSize);
         const int gridX = x + 22;
         const int gridY = y + 90;
         const int cellWidth = (w - 44) / HeldItemGrid::columns;
         constexpr int cellHeight = 40;
-        for (int i = first; i < last; ++i) {
-            const int offset = i - first;
-            const int cellX = gridX + (offset % HeldItemGrid::columns) * cellWidth;
-            const int cellY = gridY + (offset / HeldItemGrid::columns) * cellHeight;
-            const bool selected = i == state.pickerRow;
-            screen.touchButtons.push_back({6000 + i, cellX, cellY - 3, cellWidth - 10, cellHeight - 4});
-            if (selected)
-                fb.drawSelectionHighlight(cellX, cellY - 3, cellWidth - 10, cellHeight - 4);
-            const auto value = state.pickerValues[static_cast<size_t>(i)];
-            fb.drawText(cellX + 10, cellY + 7, pickerValueLabel(screen, state, value),
-                        selected ? Colors::Text : Colors::TextDim, TextStyle::Caption);
+        const int totalRows = (count + HeldItemGrid::columns - 1) / HeldItemGrid::columns;
+        const int selectedRow = state.pickerRow / HeldItemGrid::columns;
+        const int firstRow = std::clamp(selectedRow - HeldItemGrid::rows / 2,
+                              0, std::max(0, totalRows - HeldItemGrid::rows));
+        const int drawFirstRow = std::max(0, firstRow - 1);
+        const int drawLastRow = std::min(totalRows, firstRow + HeldItemGrid::rows + 1);
+        const int liveOffset = state.pickerScroll.offset();
+        fb.setClipRect(gridX, gridY - 3, w - 44, HeldItemGrid::rows * cellHeight);
+        for (int row = drawFirstRow; row < drawLastRow; ++row) {
+  for (int col = 0; col < HeldItemGrid::columns; ++col) {
+      const int i = row * HeldItemGrid::columns + col;
+      if (i >= count) break;
+      const int cellX = gridX + col * cellWidth;
+      const int cellY = gridY + (row - firstRow) * cellHeight + liveOffset;
+      const bool selected = i == state.pickerRow;
+      if (cellY + cellHeight > gridY && cellY < gridY + HeldItemGrid::rows * cellHeight)
+          screen.touchButtons.push_back({6000 + i, cellX, cellY - 3, cellWidth - 10, cellHeight - 4});
+      if (selected)
+          fb.drawSelectionHighlight(cellX, cellY - 3, cellWidth - 10, cellHeight - 4);
+      const auto value = state.pickerValues[static_cast<size_t>(i)];
+      fb.drawText(cellX + 10, cellY + 7, pickerValueLabel(screen, state, value),
+                  selected ? Colors::Text : Colors::TextDim, TextStyle::Caption);
+  }
         }
+        fb.clearClip();
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
                         {"A", "Choose"}, {"B", "Cancel"}});
         return;
@@ -1603,18 +1657,26 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     std::to_string(state.pickerValues.size()),
                 Colors::TextDim, TextStyle::Caption);
     constexpr int visible = 10;
+    constexpr int rowStep = 42;
     const int first = std::clamp(
         state.pickerRow - visible / 2, 0, std::max(0, count - visible));
-    const int last = std::min(count, first + visible);
-    for (int i = first; i < last; ++i) {
-        const int yy = y + 90 + (i - first) * 42;
+    const int firstDraw = std::max(0, first - 1);
+    const int lastDraw = std::min(count, first + visible + 1);
+    const int liveOffset = state.pickerScroll.offset();
+    const int viewportTop = y + 90;
+    const int viewportBottom = viewportTop + visible * rowStep;
+    fb.setClipRect(x + 22, viewportTop - 4, w - 44, visible * rowStep);
+    for (int i = firstDraw; i < lastDraw; ++i) {
+        const int yy = viewportTop + (i - first) * rowStep + liveOffset;
         const bool selected = i == state.pickerRow;
-        screen.touchButtons.push_back({6000 + i, x + 22, yy - 4, w - 44, 38});
+        if (yy + 38 > viewportTop - 4 && yy < viewportBottom)
+  screen.touchButtons.push_back({6000 + i, x + 22, yy - 4, w - 44, 38});
         if (selected) fb.drawSelectionHighlight(x + 22, yy - 4, w - 44, 38);
         const auto value = state.pickerValues[static_cast<size_t>(i)];
         fb.drawText(x + 38, yy + 7, pickerValueLabel(screen, state, value),
-                    selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
+          selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
     }
+    fb.clearClip();
     drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                     {"ZL/ZR", "Jump"}, {"A", "Choose"}, {"B", "Cancel"}});
 }
