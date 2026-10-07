@@ -25,6 +25,13 @@ namespace UI {
     constexpr int kHeaderH      = 64;
     constexpr int kNavBarH      = 46;
 
+    // Product Home selected-game hero geometry. Input capture and draw-time translation must use
+    // the exact same rectangle; keeping one source of truth prevents hitbox/render drift.
+    constexpr int kProductHeroX = 24;
+    constexpr int kProductHeroY = 78;
+    constexpr int kProductHeroW = 720;
+    constexpr int kProductHeroH = 548;
+
     struct TouchGlyphHit {
         int x, y, w, h;
         std::string glyph;
@@ -110,7 +117,9 @@ namespace UI {
         // Exact Product Home hero geometry. Start one scoped translation here so all subsequent
         // hero artwork/text/buttons inherit the same finger displacement. The first right-side
         // feature card ends it below; drawNavHints also provides a defensive restore.
-        const bool productHero = g_productHeroSwipeRegistered && x == 24 && y == 78 && w == 720 && h == 548;
+        const bool productHero = g_productHeroSwipeRegistered &&
+            x == kProductHeroX && y == kProductHeroY &&
+            w == kProductHeroW && h == kProductHeroH;
         if (productHero && g_productHeroDragXForDraw != 0 && !g_productHeroTransformActive) {
             const int dx = std::clamp(g_productHeroDragXForDraw, -360, 360);
             fb.pushTranslation(static_cast<float>(dx), 0.0f);
@@ -554,7 +563,6 @@ namespace UI {
 
         const uint64_t allDirections = HidNpadButton_Up | HidNpadButton_Down |
                                        HidNpadButton_Left | HidNpadButton_Right;
-        const uint64_t verticalDirections = HidNpadButton_Up | HidNpadButton_Down;
         const uint64_t horizontalShoulders = HidNpadButton_L | HidNpadButton_R;
 
         // Product Home's selected-game hero card is a real touch carousel. Limit capture to that
@@ -569,10 +577,10 @@ namespace UI {
             g_contentSwipeMask = horizontalShoulders;
             g_contentSwipeUsesShoulders = true;
             g_contentSwipeReleaseOnly = true;
-            g_contentSwipeX = 24;
-            g_contentSwipeY = 78;
-            g_contentSwipeW = 720;
-            g_contentSwipeH = 548;
+            g_contentSwipeX = kProductHeroX;
+            g_contentSwipeY = kProductHeroY;
+            g_contentSwipeW = kProductHeroW;
+            g_contentSwipeH = kProductHeroH;
         }
 
         // Quick Games owns true vertical pixel scrolling in SaveSelectScreen. Keep only
