@@ -21,6 +21,7 @@ trainer3_header = (ROOT / "include/Trainer/Trainer3FRLG.h").read_text(encoding="
 trainer3_source = (ROOT / "src/Trainer/Trainer3FRLG.cpp").read_text(encoding="utf-8")
 save_reader = (ROOT / "src/Save/GetSaveFileContents.cpp").read_text(encoding="utf-8")
 sc_validation = (ROOT / "include/Save/SCReadValidation.h").read_text(encoding="utf-8")
+sc_runtime_validation = (ROOT / "tests/test_sc_read_validation.cpp").read_text(encoding="utf-8")
 
 def require(cond: bool, message: str) -> None:
     if not cond:
@@ -142,6 +143,12 @@ require(sc_validation.count("GEN9_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, err
 require("SWSH_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error" not in sc_validation and
         "GEN9_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error" not in sc_validation,
         "Current Box preflight must reject stale one-byte scalar assumptions")
+require("makeSWSH()" in sc_runtime_validation and
+        "makeSV()" in sc_runtime_validation and
+        "makeZA()" in sc_runtime_validation and
+        "SCTypeCode::Byte" in sc_runtime_validation and
+        "key=0x017C3CBB" in sc_runtime_validation,
+        "native SC Current Box root-cause regression must execute for SWSH, SV and Z-A")
 
 # Product Home, not the retired dashboard, is the app root.
 require("const auto destination = handleSaveSelection();" in ui_manager,
