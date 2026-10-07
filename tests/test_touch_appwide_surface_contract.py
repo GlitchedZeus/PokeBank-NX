@@ -152,6 +152,10 @@ if '#include "UI/TouchScroll.h"' in read("src/UI/AppShellScreen.cpp"):
     raise AssertionError("AppShell: Settings has no overflow; fake TouchScroll dependency was reintroduced")
 if "liveVerticalListVisual(" in read("src/UI/AppShellScreen.cpp"):
     raise AssertionError("AppShell: non-overflowing Settings rows must stay anchored, not fake-scroll")
+app_shell = read("src/UI/AppShellScreen.cpp")
+if "touch.justReleased() && touch.dragged()" in app_shell:
+    raise AssertionError("AppShell: fixed fully-visible card grids must not emulate D-pad on swipe")
+
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
             "state.pickerScroll.updateVertical(",
             "state.editorScroll.updateVertical(",
