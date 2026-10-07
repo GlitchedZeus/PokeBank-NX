@@ -63,7 +63,7 @@ SURFACES = {
     ),
     "Gen II details": (
         "src/UI/Modals/Gen2PokemonDetailsModal.cpp",
-        ("touch.justReleased()", "touch.dragged()"),
+        ("leftScroll", "drawScrollbar"),
     ),
     "Trainer view composite / party touch": (
         "src/UI/TrainerViewScreenCompositeOverlay.cpp",
