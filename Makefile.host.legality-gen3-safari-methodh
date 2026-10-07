@@ -1,0 +1,16 @@
+# Pinned Gen III Method-H Safari frame evidence for Regular games.
+GEN3_SAFARI_METHODH_SOURCES := tests/test_gen3_safari_methodh_evidence.cpp
+GEN3_SAFARI_METHODH_HEADERS := include/Legality/Gen3SafariMethodHEvidence.h include/Legality/Gen3SafariEncounter.h include/Legality/Gen3SafariEncounterData.inc include/Legality/Gen3MethodHSlot.h include/Legality/Gen3PidIvCorrelation.h include/Legality/Gen34EggMoveEvidence.h include/Legality/Gen34EggMoveData.inc
+
+HOST_TESTS += $(HOST_BUILD)/test_gen3_safari_methodh_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_safari_methodh_evidence_sanitize
+host-test: $(HOST_BUILD)/test_gen3_safari_methodh_evidence
+host-sanitize: $(HOST_BUILD)/test_gen3_safari_methodh_evidence_sanitize
+
+$(HOST_BUILD)/test_gen3_safari_methodh_evidence: $(GEN3_SAFARI_METHODH_SOURCES) $(GEN3_SAFARI_METHODH_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN3_SAFARI_METHODH_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen3_safari_methodh_evidence_sanitize: $(GEN3_SAFARI_METHODH_SOURCES) $(GEN3_SAFARI_METHODH_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN3_SAFARI_METHODH_SOURCES) -o $@
