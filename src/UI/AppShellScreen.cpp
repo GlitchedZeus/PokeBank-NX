@@ -309,11 +309,6 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
         if (touch.justTapped()) {
             for (const HitRect& rect : overlayRects)
                 if (contains(rect, touch.x(), touch.y())) { moreIndex = rect.index; kDown |= HidNpadButton_A; break; }
-        } else if (touch.justReleased() && touch.dragged()) {
-            const int dx = touch.deltaX(), dy = touch.deltaY();
-            const int ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;
-            if (ax >= 56 && ax >= ay) kDown |= dx < 0 ? HidNpadButton_Right : HidNpadButton_Left;
-            else if (ay >= 56) kDown |= dy < 0 ? HidNpadButton_Down : HidNpadButton_Up;
         }
         if (kDown & HidNpadButton_B) {
             overlay = Overlay::None;
@@ -343,11 +338,6 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
         if (touch.justTapped()) {
             for (const HitRect& rect : overlayRects)
                 if (contains(rect, touch.x(), touch.y())) { previewIndex = rect.index; kDown |= HidNpadButton_A; break; }
-        } else if (touch.justReleased() && touch.dragged()) {
-            const int dx = touch.deltaX(), dy = touch.deltaY();
-            const int ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;
-            if (ax >= 56 && ax >= ay) kDown |= dx < 0 ? HidNpadButton_Right : HidNpadButton_Left;
-            else if (ay >= 56) kDown |= dy < 0 ? HidNpadButton_Down : HidNpadButton_Up;
         }
         OrganizationPreviewKind kind = OrganizationPreviewKind::Banks;
         if (infoSection == PokeBank::UIModel::AppShellSection::Pokedex)
