@@ -589,7 +589,8 @@ bool active(const TrainerViewScreen& screen) noexcept {
     return stateFor(screen).mode != Mode::None;
 }
 
-bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, int stickX, int stickY) {
+bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                 int stickX, int stickY, const TouchInput& touch) {
     if (!isGSC(screen)) return false;
     auto& state = stateFor(screen);
 
@@ -661,6 +662,12 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, int st
     }
 
     return true;
+}
+
+bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                 int stickX, int stickY) {
+    static const TouchInput noTouch{};
+    return handleInput(screen, down, held, stickX, stickY, noTouch);
 }
 
 namespace {
