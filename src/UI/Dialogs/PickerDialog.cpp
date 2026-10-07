@@ -130,14 +130,12 @@ namespace Dialogs {
 
         // Scrollable list window centered on the selection.
         const int rowH = PokeBank::UIModel::InventoryPickerLayout::RowHeight;
-        const int listTop = py + PokeBank::UIModel::InventoryPickerLayout::ListTopOffset;
-        // Controls live in the shared bottom glyph bar now, so the modal can use the old footer space.
-        const int listBottom = py + ph - 18;
-        int visible = (listBottom - listTop) / rowH;
-        if (visible < 1) visible = 1;
+        const auto viewport = PokeBank::UIModel::InventoryPickerLayout::viewport(W, H);
+        const int listTop = viewport.y;
+        const int visible = viewport.visibleRows;
         const auto visual = liveVerticalListVisual(
             sel, count, rowH,
-            px + 12, listTop, pw - 24, visible * rowH);
+            viewport.x, viewport.y, viewport.w, viewport.h);
         const int visualSel = visual.index;
         int first = visualSel - visible / 2;
         if (first > count - visible) first = count - visible;
@@ -146,7 +144,7 @@ namespace Dialogs {
         const int drawLast = std::min(count, first + visible + 1);
 
         screen.touchButtons.clear();
-        fb.setClipRect(px + 12, listTop, pw - 24, visible * rowH);
+        fb.setClipRect(viewport.x, viewport.y, viewport.w, viewport.h);
         // the Ability picker reorders its options (legal abilities first) via screen.pickerOrder,
         // and the legal prefix renders green. Form and Gender filter rather than reorder (forms the
         // game can't hold are dropped; so are genders the species can't be), but they need the same
@@ -190,13 +188,13 @@ namespace Dialogs {
                 label = machineLabel.c_str();
             }
             fb.drawText(px + 28, ry + (rowH - 4 - fb.lineHeight(TextStyle::Body)) / 2, label, col);
-            if (ry + rowH - 4 > listTop && ry < listTop + visible * rowH)
-                screen.touchButtons.push_back({ idx, px + 12, ry, pw - 24, rowH - 4 });  // id = option row
+            if (ry + rowH - 4 > viewport.y && ry < viewport.y + viewport.h)
+                screen.touchButtons.push_back({ idx, viewport.x, ry, viewport.w, rowH - 4 });  // id = option row
         }
         fb.clearClip();
 
         // Scrollbar follows the same visual row + residual pixels as the content.
-        drawScrollbar(fb, px + pw - 14, listTop, visible * rowH, count * rowH,
+        drawScrollbar(fb, px + pw - 14, viewport.y, viewport.h, count * rowH,
                       first * rowH - visual.offset);
 
         drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}, {"L/R", "Page"}});
