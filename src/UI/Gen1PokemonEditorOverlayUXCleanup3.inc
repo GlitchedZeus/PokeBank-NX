@@ -484,7 +484,8 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, state.pickerValue, 151, ux3.pickerPreviewShiny,
             [](uint16_t species) { return UX::speciesPickerRow(species, Names::getSpeciesName(species)); },
-            [](uint16_t species) { return speciesCompact(species); });
+            [](uint16_t species) { return speciesCompact(species); },
+            &latestTouchGesture());
         constexpr int visibleSpecies = 9;
         const int speciesStart = std::clamp(state.pickerValue - visibleSpecies / 2, 1, 151 - visibleSpecies + 1);
         for (int i = 0; i < visibleSpecies; ++i) {
