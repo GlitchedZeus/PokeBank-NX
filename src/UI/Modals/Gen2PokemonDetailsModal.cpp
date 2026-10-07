@@ -250,7 +250,14 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     fb.drawText(leftPaneX + 10, splitY + 8, "GEN II DATA", Colors::Accent, TextStyle::Caption);
     const int nativeTop = splitY + 28;
     const int nativeBottom = splitY + splitH - 8;
-    const int nativeScroll = std::max(0, screen.details.leftScroll);
+    int liveNativeOffset = 0;
+    const auto& liveTouch = latestTouchGesture();
+    if (liveTouch.down &&
+        liveTouch.startX >= leftPaneX + 1 && liveTouch.startX < leftPaneX + leftPaneW - 1 &&
+        liveTouch.startY >= nativeTop && liveTouch.startY < nativeBottom) {
+        liveNativeOffset = liveTouch.deltaY;
+    }
+    const int nativeScroll = std::max(0, screen.details.leftScroll - liveNativeOffset);
     fb.setClipRect(leftPaneX + 1, nativeTop, leftPaneW - 2, nativeBottom - nativeTop);
     int dataY = splitY + 29 - nativeScroll;
     auto nativeRow = [&](const std::string& label, const std::string& value) {
@@ -288,7 +295,7 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     screen.details.leftScroll = std::clamp(screen.details.leftScroll, 0, nativeMax);
     fb.clearClip();
     drawScrollbar(fb, leftPaneX + leftPaneW - 6, nativeTop, nativeViewH,
-                  nativeContentH, screen.details.leftScroll);
+                  nativeContentH, std::max(0, screen.details.leftScroll - liveNativeOffset));
 
     fb.drawText(rightPaneX + 10, splitY + 8, "BATTLE STATS", Colors::Accent, TextStyle::Caption);
     StatsRadar::drawGen2Labeled(fb, rightPaneX + 6, splitY + 30, rightPaneW - 12, splitH - 38, battleStats);
