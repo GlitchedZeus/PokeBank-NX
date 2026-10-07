@@ -151,6 +151,13 @@ require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
             "state.pickerScroll.offset()",
             "state.editorScroll.offset()",
             "state.reviewScroll.offset()")
+require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc",
+            "void ux2ResetTouchMotion(UX2State& state) noexcept",
+            "state.editorScroll.reset();",
+            "state.pickerScroll.reset();",
+            "state.reviewScroll.reset();",
+            "case UX::Action::Edit:",
+            "case UX::Action::ReviewPendingChanges:")
 require_all("src/UI/Gen2HardwarePickerFix.inc",
             "liveVerticalListVisual(",
             "visual.offset",
