@@ -80,21 +80,12 @@ public:
     }
 
     [[nodiscard]] int offset() const noexcept { return offset_; }
-    [[nodiscard]] bool dragging() const noexcept { return active_ && moved_; }
-    [[nodiscard]] bool moving() const noexcept { return active_ || coasting_ || offset_ != 0; }
 
     bool updateVertical(const TouchInput& touch,
                         int x, int y, int w, int h,
                         int rowStep, int& index, int count,
                         int stride = 1) noexcept {
         return update(touch, true, x, y, w, h, rowStep, index, count, stride);
-    }
-
-    bool updateHorizontal(const TouchInput& touch,
-                          int x, int y, int w, int h,
-                          int itemStep, int& index, int count,
-                          int stride = 1) noexcept {
-        return update(touch, false, x, y, w, h, itemStep, index, count, stride);
     }
 
 private:
