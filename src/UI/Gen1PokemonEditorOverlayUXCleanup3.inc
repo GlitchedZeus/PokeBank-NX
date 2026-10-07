@@ -684,8 +684,8 @@ void ux3DrawTouchNavBar(PKSEFramebuffer& fb, const UX2State& state) {
 
 uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch) {
     auto& state = ux2StateFor(screen);
-    const int pressed = touchedButtonDownId(touch);
-    const int tapped = touchedButtonId(touch);
+    const int pressed = screen.touchedButtonDownId(touch);
+    const int tapped = screen.touchedButtonId(touch);
     auto selectedId = [&](int base, int limit, int id) -> int {
         return id >= base && id < base + limit ? id - base : -1;
     };
