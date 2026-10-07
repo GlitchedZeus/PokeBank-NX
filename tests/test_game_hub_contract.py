@@ -150,10 +150,10 @@ require("makeSWSH()" in sc_runtime_validation and
         "SCTypeCode::Byte" in sc_runtime_validation and
         "key=0x017C3CBB" in sc_runtime_validation,
         "native SC Current Box root-cause regression must execute for SWSH, SV and Z-A")
-require("SWSH_CURRENT_BOX, SCTypeCode::Byte" not in pla_read_validation and
-        "GEN9_CURRENT_BOX, SCTypeCode::Byte" not in pla_read_validation and
-        pla_read_validation.count("CURRENT_BOX, SCTypeCode::UInt32") == 3,
-        "shared SC layout fixtures must use the source-backed U32 Current Box scalar")
+require(pla_read_validation.count("CURRENT_BOX, SCTypeCode::UInt32") == 3 and
+        "wrongCurrentBoxSC[6].type = SCTypeCode::Byte;" in pla_read_validation and
+        "wrongCurrentBoxSC[6].data.resize(1);" in pla_read_validation,
+        "shared SC fixtures must accept U32 Current Box and explicitly reject the stale one-byte scalar")
 
 # Product Home, not the retired dashboard, is the app root.
 require("const auto destination = handleSaveSelection();" in ui_manager,

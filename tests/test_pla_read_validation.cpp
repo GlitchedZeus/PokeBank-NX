@@ -200,8 +200,11 @@ int main() {
     assert(scDiagnostic.find("0x4F35D0DD") != std::string::npos);
     assert(scDiagnostic.find("wrong type") != std::string::npos);
     auto wrongCurrentBoxSC = swshLayout;
-    wrongCurrentBoxSC[6].type = SCTypeCode::UInt32;
-    assert(!validateSCReadLayout(wrongCurrentBoxSC, Enums::GameVersion::SWSH).empty());
+    wrongCurrentBoxSC[6].type = SCTypeCode::Byte;
+    wrongCurrentBoxSC[6].data.resize(1);
+    assert(!validateSCReadLayout(wrongCurrentBoxSC, Enums::GameVersion::SWSH, &scDiagnostic).empty());
+    assert(scDiagnostic.find("0x017C3CBB") != std::string::npos);
+    assert(scDiagnostic.find("wrong type") != std::string::npos);
     auto wrongRevisionSC = zaLayout;
     wrongRevisionSC[7].type = SCTypeCode::UInt32;
     assert(!validateSCReadLayout(wrongRevisionSC, Enums::GameVersion::ZA).empty());
