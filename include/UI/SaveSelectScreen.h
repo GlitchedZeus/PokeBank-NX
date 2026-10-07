@@ -181,6 +181,7 @@ namespace UI {
         int hubDockIndex = 0;
         int gamesDrawerIndex = 0;
         int gamesDrawerScroll = 0;
+        TouchScrollState gamesDrawerTouchScroll;
         int profilePickerIndex = 0;
         TouchScrollState profileTouchScroll;
         // Main product-home focus outside the persistent dock:
@@ -305,6 +306,7 @@ namespace UI {
         // only when the selected tile would otherwise fall outside the window, so the grid holds
         // still while the cursor moves within it instead of re-centring (which reads as paging).
         int scrollRow = 0;
+        TouchScrollState classicGamesTouchScroll;
         void scrollSelectionIntoView();
         void scrollClassicSelectionIntoView();
     };
