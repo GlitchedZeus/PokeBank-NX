@@ -65,6 +65,12 @@ UX2State& ux2StateFor(const TrainerViewScreen& screen) {
     return state;
 }
 
+void ux2ResetTouchMotion(UX2State& state) noexcept {
+    state.editorScroll.reset();
+    state.pickerScroll.reset();
+    state.reviewScroll.reset();
+}
+
 std::optional<PokemonRecord> ux2SelectedPokemon(TrainerViewScreen& screen, std::string& error) {
     const auto& state = ux2StateFor(screen);
     return pokemonAt(screen, state.box, state.slot, error);
@@ -105,6 +111,7 @@ int ux2JumpSectionRow(int row, int direction) noexcept {
 }
 
 void ux2Close(UX2State& state) {
+    ux2ResetTouchMotion(state);
     state.mode = UX2Mode::Closed;
     state.row = 0;
     state.subRow = 0;
@@ -124,6 +131,7 @@ void ux2OpenActions(TrainerViewScreen& screen) {
         screen.postStatus("Select a Generation I box slot first");
         return;
     }
+    ux2ResetTouchMotion(state);
     state.mode = UX2Mode::Actions;
     state.box = screen.selectedBoxIndex;
     state.slot = screen.selectedItemIndex;
@@ -143,6 +151,8 @@ void ux2BeginAdd(TrainerViewScreen& screen) {
     }
     state.slot = static_cast<int>(*destination);
     state.draft = BoxPokemonCreate{};
+    state.editorScroll.reset();
+    state.pickerScroll.reset();
     state.mode = UX2Mode::AddDraft;
     state.row = 0;
     state.picker = UX2Picker::None;
@@ -193,12 +203,14 @@ bool ux2StageRemove(TrainerViewScreen& screen) {
 }
 
 void ux2OpenSpeciesPicker(UX2State& state, uint16_t current) {
+    state.pickerScroll.reset();
     state.picker = UX2Picker::Species;
     state.pickerValue = std::clamp<int>(current, 1, 151);
     state.pickerCommittedSpecies = current;
 }
 
 void ux2OpenMovePicker(UX2State& state) {
+    state.pickerScroll.reset();
     state.picker = UX2Picker::Move;
     state.pickerValue = std::clamp<int>(state.tempMove, 0, 165);
 }
@@ -500,7 +512,11 @@ void ux2HandleMainEditor(TrainerViewScreen& screen, uint64_t down) {
         }
         case 11:
             if (add) ux2StageAdd(screen);
-            else { state.mode = UX2Mode::Review; state.reviewRow = 0; }
+            else {
+                state.reviewScroll.reset();
+                state.mode = UX2Mode::Review;
+                state.reviewRow = 0;
+            }
             break;
         case 12:
             if (add) state.draft = BoxPokemonCreate{};
@@ -606,12 +622,20 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
         if (!(down & HidNpadButton_A)) return;
         switch (actions[static_cast<size_t>(state.row)]) {
             case UX::Action::View: state.mode = UX2Mode::View; break;
-            case UX::Action::Edit: state.mode = UX2Mode::Edit; state.row = 0; break;
+            case UX::Action::Edit:
+                state.editorScroll.reset();
+                state.mode = UX2Mode::Edit;
+                state.row = 0;
+                break;
             case UX::Action::Clone: ux2OpenClone(screen); break;
             case UX::Action::Remove: state.mode = UX2Mode::RemoveConfirm; break;
             case UX::Action::LegalityProvenance: state.mode = UX2Mode::Provenance; break;
             case UX::Action::AddPokemon: ux2BeginAdd(screen); break;
-            case UX::Action::ReviewPendingChanges: state.mode = UX2Mode::Review; state.reviewRow = 0; break;
+            case UX::Action::ReviewPendingChanges:
+                state.reviewScroll.reset();
+                state.mode = UX2Mode::Review;
+                state.reviewRow = 0;
+                break;
             case UX::Action::Cancel: ux2Close(state); break;
         }
         return;
