@@ -1756,18 +1756,28 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
             typeX += width + 8;
         }
     }
+    constexpr std::size_t detailVisibleRows = 8;
+    constexpr int detailRowStep = 38;
+    const int detailViewportY = g.y + 216;
+    const int detailViewportH = std::max(0, g.y + g.h - 40 - detailViewportY);
+    const auto detailVisual = liveVerticalListVisual(
+        state.detailsFocus, static_cast<int>(detailLabels.size()), detailRowStep,
+        g.leftX + 8, detailViewportY, g.leftW - 16, detailViewportH);
     SharedPokemonShell::drawScrollableDetails(
-        fb, g.leftX, g.y, g.leftW, g.h, detailLabels.size(), state.detailsFocus,
+        fb, g.leftX, g.y, g.leftW, g.h, detailLabels.size(),
+        static_cast<std::size_t>(detailVisual.index),
         state.focus.panel == Shared::Panel::Details,
         [](size_t row) { return detailLabels[row]; },
-        [&](size_t row) { return detailValue(*raw, view, static_cast<int>(row)); });
+        [&](size_t row) { return detailValue(*raw, view, static_cast<int>(row)); },
+        detailVisual.offset);
     {
-        constexpr std::size_t visibleRows = 8;
-        const auto window = Shared::scrollWindow(detailLabels.size(), visibleRows, state.detailsFocus);
+        const auto window = Shared::scrollWindow(
+            detailLabels.size(), detailVisibleRows, static_cast<std::size_t>(detailVisual.index));
         for (std::size_t i = 0; i < window.count; ++i) {
             const int row = static_cast<int>(window.first + i);
-            const int yy = g.y + 224 + static_cast<int>(i) * 38;
-            screen.touchButtons.push_back({41000 + row, g.leftX + 8, yy + 2, g.leftW - 36, 30});
+            const int yy = g.y + 224 + static_cast<int>(i) * detailRowStep + detailVisual.offset;
+            if (yy + 32 > detailViewportY && yy < detailViewportY + detailViewportH)
+                screen.touchButtons.push_back({41000 + row, g.leftX + 8, yy + 2, g.leftW - 36, 30});
         }
     }
 
