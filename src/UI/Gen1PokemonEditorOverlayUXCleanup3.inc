@@ -441,14 +441,17 @@ void ux3DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     const int viewportH = contentH - 68;
     const int visible = std::max(1, viewportH / rowH);
     const int start = std::clamp(state.row - visible / 2, 0, std::max(0, 14 - visible));
+    const int drawFirst = std::max(0, start - 1);
+    const int drawLast = std::min(14, start + visible + 1);
+    const int liveOffset = state.editorScroll.offset();
     fb.setClipRect(centerX + 8, listY, centerW - 16, viewportH);
-    for (int i = 0; i < visible && start + i < 14; ++i) {
-        const int field = start + i;
-        const int rowY = listY + i * rowH;
+    for (int field = drawFirst; field < drawLast; ++field) {
+        const int rowY = listY + (field - start) * rowH + liveOffset;
         ux2DrawLogicalRow(fb, centerX + 10, rowY, centerW - 20,
                           ux3MainRowLabel(field), ux3MainRowValue(screen, field, add, pokemon ? &*pokemon : nullptr),
                           field == state.row);
-        screen.touchButtons.push_back({2000 + field, centerX + 10, rowY, centerW - 20, rowH - 2});
+        if (rowY + rowH > listY && rowY < listY + viewportH)
+            screen.touchButtons.push_back({2000 + field, centerX + 10, rowY, centerW - 20, rowH - 2});
     }
     fb.clearClip();
 
@@ -505,18 +508,26 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         " • exact Gen I Acc / Pwr / PP",
         Colors::TextDim, TextStyle::Caption);
     constexpr int visible = 9;
-    const int start = std::clamp(selectedIndex - visible / 2, 0, std::max(0, static_cast<int>(choices.size()) - visible));
-    for (int i = 0; i < visible && start + i < static_cast<int>(choices.size()); ++i) {
-        const int idx = start + i;
+    constexpr int rowStep = 42;
+    const int count = static_cast<int>(choices.size());
+    const int start = std::clamp(selectedIndex - visible / 2, 0, std::max(0, count - visible));
+    const int drawFirst = std::max(0, start - 1);
+    const int drawLast = std::min(count, start + visible + 1);
+    const int listTop = y + 86;
+    const int liveOffset = state.pickerScroll.offset();
+    fb.setClipRect(x + 24, listTop, w - 48, visible * rowStep);
+    for (int idx = drawFirst; idx < drawLast; ++idx) {
         const int move = choices[static_cast<size_t>(idx)];
-        const int rowY = y + 86 + i * 42;
+        const int rowY = listTop + (idx - start) * rowStep + liveOffset;
         const bool selected = idx == selectedIndex;
         if (selected) fb.drawSelectionHighlight(x + 24, rowY, w - 48, 38);
-        screen.touchButtons.push_back({4000 + idx, x + 24, rowY, w - 48, 38});
+        if (rowY + 38 > listTop && rowY < listTop + visible * rowStep)
+            screen.touchButtons.push_back({4000 + idx, x + 24, rowY, w - 48, 38});
         const auto text = MoveUI::rowLabel(
             static_cast<uint16_t>(move), Enums::GameVersion::RBY);
         fb.drawText(x + 40, rowY + 8, text, selected ? Colors::Text : Colors::TextDim);
     }
+    fb.clearClip();
 }
 
 void ux3DrawClone(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
@@ -567,14 +578,19 @@ void ux3DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     }
     const int visible = std::max(1, std::min(UX3Contract::pendingGeometry(lines.size()).visibleRows,
                                              static_cast<int>(lines.size())));
-    const int start = std::clamp(state.reviewRow - visible / 2, 0, std::max(0, static_cast<int>(lines.size()) - visible));
-    fb.setClipRect(x + 24, y + 64, w - 48, h - 108);
-    for (int i = 0; i < visible && start + i < static_cast<int>(lines.size()); ++i) {
-        const int row = start + i;
-        const int rowY = y + 70 + i * 48;
+    const int count = static_cast<int>(lines.size());
+    const int start = std::clamp(state.reviewRow - visible / 2, 0, std::max(0, count - visible));
+    const int drawFirst = std::max(0, start - 1);
+    const int drawLast = std::min(count, start + visible + 1);
+    const int listTop = y + 64;
+    const int liveOffset = state.reviewScroll.offset();
+    fb.setClipRect(x + 24, listTop, w - 48, h - 108);
+    for (int row = drawFirst; row < drawLast; ++row) {
+        const int rowY = y + 70 + (row - start) * 48 + liveOffset;
         ux2DrawLogicalRow(fb, x + 24, rowY, w - 48, std::to_string(row + 1),
                           lines[static_cast<size_t>(row)], row == state.reviewRow);
-        screen.touchButtons.push_back({1300 + row, x + 24, rowY, w - 48, 44});
+        if (rowY + 44 > listTop && rowY < listTop + h - 108)
+            screen.touchButtons.push_back({1300 + row, x + 24, rowY, w - 48, 44});
     }
     fb.clearClip();
 }
@@ -688,18 +704,25 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
 
     if (state.picker == UX2Picker::Move) {
         const auto choices = ux3MoveChoices(screen);
-        int index = selectedId(4000, static_cast<int>(choices.size()), pressed);
-        if (index >= 0) state.pickerValue = choices[static_cast<size_t>(index)];
-        index = selectedId(4000, static_cast<int>(choices.size()), tapped);
-        if (index >= 0) { state.pickerValue = choices[static_cast<size_t>(index)]; down |= HidNpadButton_A; }
-        if (touch.justReleased() && touch.dragged() && !choices.empty()) {
-            int current = 0;
-            for (int i = 0; i < static_cast<int>(choices.size()); ++i)
-                if (choices[static_cast<size_t>(i)] == state.pickerValue) { current = i; break; }
-            const int steps = std::max(1, std::abs(touch.deltaY()) / 42);
-            if (touch.deltaY() < 0) current = std::min(static_cast<int>(choices.size()) - 1, current + steps);
-            else if (touch.deltaY() > 0) current = std::max(0, current - steps);
+        int current = 0;
+        for (int i = 0; i < static_cast<int>(choices.size()); ++i)
+            if (choices[static_cast<size_t>(i)] == state.pickerValue) { current = i; break; }
+        state.pickerScroll.updateVertical(
+            touch, 164, 162, 952, 9 * 42, 42, current,
+            static_cast<int>(choices.size()));
+        if (!choices.empty())
             state.pickerValue = choices[static_cast<size_t>(current)];
+        if (down & (HidNpadButton_Up | HidNpadButton_Down |
+                    HidNpadButton_Left | HidNpadButton_Right |
+                    HidNpadButton_L | HidNpadButton_R))
+            state.pickerScroll.stop();
+        int index = selectedId(4000, static_cast<int>(choices.size()), pressed);
+        if (index >= 0) { state.pickerScroll.stop(); state.pickerValue = choices[static_cast<size_t>(index)]; }
+        index = selectedId(4000, static_cast<int>(choices.size()), tapped);
+        if (index >= 0) {
+            state.pickerScroll.stop();
+            state.pickerValue = choices[static_cast<size_t>(index)];
+            down |= HidNpadButton_A;
         }
         return down;
     }
@@ -710,11 +733,12 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
         if (field >= 0) state.row = field;
         field = selectedId(2000, fieldCount, tapped);
         if (field >= 0) { state.row = field; down |= HidNpadButton_A; }
-        if (touch.justReleased() && touch.dragged()) {
-            const int steps = std::max(1, std::abs(touch.deltaY()) / 42);
-            if (touch.deltaY() < 0) state.row = std::min(fieldCount - 1, state.row + steps);
-            else if (touch.deltaY() > 0) state.row = std::max(0, state.row - steps);
-        }
+        state.editorScroll.updateVertical(
+            touch, 384, 161, 410, 438, 42, state.row, fieldCount);
+        if (down & (HidNpadButton_Up | HidNpadButton_Down |
+                    HidNpadButton_Left | HidNpadButton_Right |
+                    HidNpadButton_L | HidNpadButton_R))
+            state.editorScroll.stop();
     } else if (state.mode == UX2Mode::Actions) {
         std::string error;
         const auto pokemon = ux2SelectedPokemon(screen, error);
@@ -744,11 +768,17 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
         if (row >= 0) state.reviewRow = row;
         row = selectedId(1300, static_cast<int>(lines.size()), tapped);
         if (row >= 0) state.reviewRow = row;
-        if (touch.justReleased() && touch.dragged() && !lines.empty()) {
-            const int steps = std::max(1, std::abs(touch.deltaY()) / 48);
-            if (touch.deltaY() < 0) state.reviewRow = std::min(static_cast<int>(lines.size()) - 1, state.reviewRow + steps);
-            else if (touch.deltaY() > 0) state.reviewRow = std::max(0, state.reviewRow - steps);
+        if (!lines.empty()) {
+            const auto geometry = UX3Contract::pendingGeometry(lines.size());
+            const int rx = (1280 - geometry.width) / 2;
+            const int ry = (672 - geometry.height) / 2;
+            state.reviewScroll.updateVertical(
+                touch, rx + 24, ry + 64, geometry.width - 48,
+                geometry.height - 108, 48, state.reviewRow,
+                static_cast<int>(lines.size()));
         }
+        if (down & (HidNpadButton_Up | HidNpadButton_Down))
+            state.reviewScroll.stop();
     }
     return down;
 }
