@@ -7,6 +7,7 @@ on:
       - feature/legality-engine-gen1-4-20260929
     paths:
       - tools/gen_legality_gen4_wild.py
+      - tools/gen_legality_gen3_safari.py
       - tools/gen_legality_gen34_egg_moves.py
       - tools/gen_legality_gen4_events.py
       - tools/gen_legality_gen3_colo_shadows.py
@@ -46,6 +47,7 @@ jobs:
       - name: Regenerate from pinned upstream resources
         run: |
           python3 tools/gen_legality_gen4_wild.py
+          python3 tools/gen_legality_gen3_safari.py
           python3 tools/gen_legality_gen34_egg_moves.py
           python3 tools/gen_legality_gen4_events.py
           python3 tools/gen_legality_gen3_colo_shadows.py
@@ -54,8 +56,9 @@ jobs:
       - name: Show deterministic diff and digest
         run: |
           set -euo pipefail
-          git diff -- src/Legality/Legality.cpp include/Pokemon/Pokemon.h include/Pokemon/Pokemon3FRLG.h include/Legality/Gen3BacdRaEventTemplate.h tests/test_gen3_bacd_ra_event_template.cpp docs/LEGALITY_WC3_PROGRESS.md tools/gen_legality_gen3_bacd_ra_events.py include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc include/Legality/Gen3BacdRaEventTemplateData.inc
+          git diff -- src/Legality/Legality.cpp include/Pokemon/Pokemon.h include/Pokemon/Pokemon3FRLG.h include/Legality/Gen3BacdRaEventTemplate.h tests/test_gen3_bacd_ra_event_template.cpp docs/LEGALITY_WC3_PROGRESS.md tools/gen_legality_gen3_bacd_ra_events.py include/Legality/Gen4WildEncounterData.inc include/Legality/Gen3SafariEncounterData.inc include/Legality/Gen34EggMoveData.inc include/Legality/Gen4EventTemplateData.inc include/Legality/Gen3ColoShadowEncounterData.inc include/Legality/Gen3BacdRaEventTemplateData.inc
           sha256sum include/Legality/Gen4WildEncounterData.inc
+          sha256sum include/Legality/Gen3SafariEncounterData.inc
           sha256sum include/Legality/Gen34EggMoveData.inc
           sha256sum include/Legality/Gen4EventTemplateData.inc
           sha256sum include/Legality/Gen3ColoShadowEncounterData.inc
@@ -68,6 +71,7 @@ jobs:
           name: legality-generated-evidence
           path: |
             include/Legality/Gen4WildEncounterData.inc
+            include/Legality/Gen3SafariEncounterData.inc
             include/Legality/Gen34EggMoveData.inc
             include/Legality/Gen4EventTemplateData.inc
             include/Legality/Gen3ColoShadowEncounterData.inc
