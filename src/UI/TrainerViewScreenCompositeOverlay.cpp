@@ -117,24 +117,14 @@ void drawFooterWithClassicAddLabel(PKSEFramebuffer& fb, std::string text) {
 #define isGen1SourceUX isGen1SourceUXCleanup3
 #define handleInputUX handleInputUXCleanup3
 #define drawOverlayUX drawOverlayUXCleanup3
-// The Gen I touch overlays are preserved .inc layers; adapt their legacy free hit-test spelling
-// to the owning TrainerViewScreen without changing the editor implementation itself.
-#define touchedButtonDownId(touchArg) screen.touchedButtonDownId(touchArg)
-#define touchedButtonId(touchArg) screen.touchedButtonId(touchArg)
 #include "Gen1PokemonEditorOverlayUXCleanup3.inc"
-#undef touchedButtonId
-#undef touchedButtonDownId
 #undef drawOverlayUX
 #undef handleInputUX
 #undef isGen1SourceUX
 #undef drawFooter
 #undef ux2StageAdd
 
-#define touchedButtonDownId(touchArg) screen.touchedButtonDownId(touchArg)
-#define touchedButtonId(touchArg) screen.touchedButtonId(touchArg)
 #include "Gen1PokemonEditorOverlayFoundation.inc"
-#undef touchedButtonId
-#undef touchedButtonDownId
 #include "Gen1PokemonEditorFoundationHardwareFix.inc"
 #include "Gen1PokemonEditorPassiveView.inc"
 
