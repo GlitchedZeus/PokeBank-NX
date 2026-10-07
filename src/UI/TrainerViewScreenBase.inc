@@ -3320,9 +3320,13 @@ namespace UI {
                 if (kDown & HidNpadButton_Down) ++details.legalityScroll;
                 if (kDown & HidNpadButton_L)    details.legalityScroll = std::max(0, details.legalityScroll - 8);
                 if (kDown & HidNpadButton_R)    details.legalityScroll += 8;
-                if (touch.justReleased() && touch.dragged()) {
+                const auto reportViewport =
+                    Modals::reportScrollViewport(1280, 720, 820);
+                if (touch.justReleased() && touch.dragged() &&
+                    reportViewport.contains(touch.startX(), touch.startY())) {
                     const int dy = touch.deltaY();
-                    const int steps = std::max(1, std::abs(dy) / 30);
+                    const int steps = std::max(
+                        1, std::abs(dy) / Modals::ReportScrollViewport::RowHeight);
                     if (dy < 0) details.legalityScroll += steps;
                     else if (dy > 0) details.legalityScroll = std::max(0, details.legalityScroll - steps);
                 }
@@ -3336,9 +3340,13 @@ namespace UI {
                 if (kDown & HidNpadButton_Down) ++details.ribbonScroll;
                 if (kDown & HidNpadButton_L)    details.ribbonScroll = std::max(0, details.ribbonScroll - 8);
                 if (kDown & HidNpadButton_R)    details.ribbonScroll += 8;
-                if (touch.justReleased() && touch.dragged()) {
+                const auto reportViewport =
+                    Modals::reportScrollViewport(1280, 720, 860);
+                if (touch.justReleased() && touch.dragged() &&
+                    reportViewport.contains(touch.startX(), touch.startY())) {
                     const int dy = touch.deltaY();
-                    const int steps = std::max(1, std::abs(dy) / 28);
+                    const int steps = std::max(
+                        1, std::abs(dy) / Modals::ReportScrollViewport::RowHeight);
                     if (dy < 0) details.ribbonScroll += steps;
                     else if (dy > 0) details.ribbonScroll = std::max(0, details.ribbonScroll - steps);
                 }
