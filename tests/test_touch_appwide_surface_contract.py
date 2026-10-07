@@ -21,7 +21,13 @@ SURFACES = {
     "Product Home / Games / save source flows": (
         "src/UI/SaveSelectScreen.cpp",
         ("touch.justTouchedDown()", "touch.justTapped()", "titleRects",
-         "dockRects", "headerRects", "featureRects", "overlayRects"),
+         "dockRects", "headerRects", "featureRects", "overlayRects",
+         "gamesDrawerTouchScroll.updateVertical(",
+         "classicGamesTouchScroll.updateVertical(",
+         "profileTouchScroll.updateVertical(",
+         "launchFileTouchScroll.updateVertical(",
+         "legacyInstanceTouchScroll.updateVertical(",
+         "gen4CandidateTouchScroll.updateVertical("),
     ),
     "App shell / Settings / More": (
         "src/UI/AppShellScreen.cpp",
