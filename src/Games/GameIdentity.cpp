@@ -1,0 +1,126 @@
+#include "Games/GameIdentity.h"
+
+#include <array>
+
+namespace PokeVault::Games {
+    namespace {
+        using enum Platform;
+        using enum SourceSupport;
+
+        constexpr std::array<GameDescriptor, 28> kGames{{
+            {"red_gb",                       "Red",               GameBoy,        1, 0, ReadOnly},
+            {"blue_gb",                      "Blue",              GameBoy,        1, 0, ReadOnly},
+            {"yellow_gb",                    "Yellow",            GameBoy,        1, 0, ReadOnly},
+            {"gold_gbc",                     "Gold",              GameBoyColor,   2, 0, ReadOnly},
+            {"silver_gbc",                   "Silver",            GameBoyColor,   2, 0, ReadOnly},
+            {"crystal_gbc",                  "Crystal",           GameBoyColor,   2, 0, ReadOnly},
+            {"ruby_gba",                     "Ruby",              GameBoyAdvance, 3, 0, ReadOnly},
+            {"sapphire_gba",                 "Sapphire",          GameBoyAdvance, 3, 0, ReadOnly},
+            {"emerald_gba",                  "Emerald",           GameBoyAdvance, 3, 0, ReadOnly},
+            {"firered_gba",                  "FireRed",           GameBoyAdvance, 3, 0, ReadOnly},
+            {"leafgreen_gba",                "LeafGreen",         GameBoyAdvance, 3, 0, ReadOnly},
+            // G4-02 exposes these through the persistent game-card assignment flow.
+            // Support remains strictly read-only: no Gen IV editor, source writes or True Move.
+            {"diamond_nds",                   "Diamond",           NintendoDS,     4, 0, ReadOnly},
+            {"pearl_nds",                     "Pearl",             NintendoDS,     4, 0, ReadOnly},
+            {"platinum_nds",                  "Platinum",          NintendoDS,     4, 0, ReadOnly},
+            {"heartgold_nds",                 "HeartGold",         NintendoDS,     4, 0, ReadOnly},
+            {"soulsilver_nds",                "SoulSilver",        NintendoDS,     4, 0, ReadOnly},
+            {"firered_switch",               "FireRed",           NintendoSwitch, 3, 0x0100554023408000ULL, NativeSwitch},
+            {"leafgreen_switch",             "LeafGreen",         NintendoSwitch, 3, 0x010034D02340E000ULL, NativeSwitch},
+            {"letsgo_pikachu_switch",        "Let's Go Pikachu",  NintendoSwitch, 7, 0x010003F003A34000ULL, NativeSwitch},
+            {"letsgo_eevee_switch",          "Let's Go Eevee",    NintendoSwitch, 7, 0x0100187003A36000ULL, NativeSwitch},
+            {"sword_switch",                 "Sword",             NintendoSwitch, 8, 0x0100ABF008968000ULL, NativeSwitch},
+            {"shield_switch",                "Shield",            NintendoSwitch, 8, 0x01008DB008C2C000ULL, NativeSwitch},
+            {"brilliant_diamond_switch",     "Brilliant Diamond", NintendoSwitch, 8, 0x0100000011D90000ULL, NativeSwitch},
+            {"shining_pearl_switch",         "Shining Pearl",     NintendoSwitch, 8, 0x010018E011D92000ULL, NativeSwitch},
+            {"legends_arceus_switch",        "Legends Arceus",    NintendoSwitch, 8, 0x01001F5010DFA000ULL, NativeSwitch},
+            {"scarlet_switch",               "Scarlet",           NintendoSwitch, 9, 0x0100A3D008C5C000ULL, NativeSwitch},
+            {"violet_switch",                "Violet",            NintendoSwitch, 9, 0x01008F6008C5E000ULL, NativeSwitch},
+            {"legends_za_switch",            "Legends Z-A",       NintendoSwitch, 9, 0x0100F43008C44000ULL, NativeSwitch},
+        }};
+    }
+
+    std::span<const GameDescriptor> allGameDescriptors() noexcept { return kGames; }
+
+    const GameDescriptor* findGame(std::string_view id) noexcept {
+        for (const auto& game : kGames) if (game.id == id) return &game;
+        return nullptr;
+    }
+
+    const GameDescriptor* findSwitchGame(uint64_t titleId) noexcept {
+        if (titleId == 0) return nullptr;
+        for (const auto& game : kGames)
+            if (game.switchTitleId == titleId) return &game;
+        return nullptr;
+    }
+
+    std::string_view platformName(Platform platform) noexcept {
+        switch (platform) {
+            case Platform::GameBoy: return "Game Boy";
+            case Platform::GameBoyColor: return "Game Boy Color";
+            case Platform::GameBoyAdvance: return "Game Boy Advance";
+            case Platform::NintendoDS: return "Nintendo DS";
+            case Platform::NintendoSwitch: return "Nintendo Switch";
+        }
+        return "Unknown platform";
+    }
+
+    std::string_view legacyPlatformAbbreviation(std::string_view id) noexcept {
+        const GameDescriptor* game = findGame(id);
+        if (!game || game->support != SourceSupport::ReadOnly) return {};
+        switch (game->platform) {
+            case Platform::GameBoy: return "GB";
+            case Platform::GameBoyColor: return "GBC";
+            case Platform::GameBoyAdvance: return "GBA";
+            case Platform::NintendoDS: return "NDS";
+            case Platform::NintendoSwitch: return {};
+        }
+        return {};
+    }
+
+    std::string_view gameCardArtworkPath(std::string_view id) noexcept {
+        if (id == "red_gb") return "romfs:/game_cards/red_gb.png";
+        if (id == "blue_gb") return "romfs:/game_cards/blue_gb.png";
+        if (id == "yellow_gb") return "romfs:/game_cards/yellow_gb.png";
+        if (id == "gold_gbc") return "romfs:/game_cards/gold_gbc.png";
+        if (id == "silver_gbc") return "romfs:/game_cards/silver_gbc.png";
+        if (id == "crystal_gbc") return "romfs:/game_cards/crystal_gbc.png";
+        if (id == "ruby_gba") return "romfs:/game_cards/ruby_gba.png";
+        if (id == "sapphire_gba") return "romfs:/game_cards/sapphire_gba.png";
+        if (id == "emerald_gba") return "romfs:/game_cards/emerald_gba.png";
+        if (id == "firered_gba") return "romfs:/game_cards/firered_gba.png";
+        if (id == "leafgreen_gba") return "romfs:/game_cards/leafgreen_gba.png";
+        if (id == "diamond_nds") return "romfs:/game_cards/diamond_nds.png";
+        if (id == "pearl_nds") return "romfs:/game_cards/pearl_nds.png";
+        if (id == "platinum_nds") return "romfs:/game_cards/platinum_nds.png";
+        if (id == "heartgold_nds") return "romfs:/game_cards/heartgold_nds.png";
+        if (id == "soulsilver_nds") return "romfs:/game_cards/soulsilver_nds.png";
+        return {};
+    }
+
+    std::string_view gameRegionBackdropKey(std::string_view id) noexcept {
+        if (id == "red_gb" || id == "blue_gb" || id == "yellow_gb" ||
+            id == "firered_gba" || id == "leafgreen_gba" ||
+            id == "firered_switch" || id == "leafgreen_switch" ||
+            id == "letsgo_pikachu_switch" || id == "letsgo_eevee_switch")
+            return "kanto";
+
+        if (id == "gold_gbc" || id == "silver_gbc" || id == "crystal_gbc" ||
+            id == "heartgold_nds" || id == "soulsilver_nds")
+            return "johto";
+
+        if (id == "ruby_gba" || id == "sapphire_gba" || id == "emerald_gba")
+            return "hoenn";
+
+        if (id == "diamond_nds" || id == "pearl_nds" || id == "platinum_nds" ||
+            id == "brilliant_diamond_switch" || id == "shining_pearl_switch")
+            return "sinnoh";
+
+        if (id == "legends_arceus_switch") return "hisui";
+        if (id == "sword_switch" || id == "shield_switch") return "galar";
+        if (id == "scarlet_switch" || id == "violet_switch") return "paldea";
+        if (id == "legends_za_switch") return "kalos";
+        return {};
+    }
+}

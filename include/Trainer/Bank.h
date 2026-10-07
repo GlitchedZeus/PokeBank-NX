@@ -1,0 +1,110 @@
+/**
+ * Bank.h - Persistent cross-GAME Pokemon storage ("bank")
+ *
+ * A HOME-style storage bank: boxes of Pokemon that live OUTSIDE any single save file,
+ * persisted to the SD card under sdmc:/switch/PokeBank-NX/bank. UNIFIED across all games: every slot
+ * carries its own game-group tag + native (encrypted) per-gen bytes, so Pokemon from all
+ * six titles coexist in one bank. Deposit is passive (store as-is, byte-in == byte-out) --
+ * the bank never converts or mutates a stored mon. Only withdraw-INTO-a-save converts, and
+ * that cross-gen conversion is the caller's job (see TrainerViewScreen), not the bank's.
+ */
+#ifndef TRAINER_BANK_H
+#define TRAINER_BANK_H
+
+#include <array>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <span>
+#include <vector>
+
+#include "Pokemon/Pokemon.h"
+#include "Enums/GameVersion.h"
+#include "Trainer/BankFormatPolicy.h"
+
+namespace Trainer {
+    class Bank {
+    public:
+        /// Number of bank boxes. 8 was not enough to stage a full generation for testing (Gen 3 alone
+        /// is 386 Pokemon = 13 boxes); PKSM ships 150. The on-disk record table is fixed-size so that
+        /// slot N sits at a computable offset, which makes the file grow with this constant --
+        /// 100 boxes is ~1.1 MB. Raising it is safe: the header stores the count the file was written
+        /// with, and load() honours THAT, so a smaller older bank still opens (see load()).
+        static constexpr size_t BANK_BOX_COUNT = BankFormatPolicy::currentBoxCount;
+        static constexpr size_t BANK_SLOTS_PER_BOX = 30;    // 6x5 grid per box
+
+        /// Constructs the unified bank and loads any existing on-SD contents. On first run it
+        /// also migrates the legacy per-game bank files (gg/swsh/za/... _bank.dat), if present.
+        Bank();
+
+        /// (Re)loads the bank from its SD file, discarding any in-memory changes. Clears all
+        /// slots first, so this doubles as the "discard changes" path (revert to on-disk state).
+        void load();
+
+        /// Writes the bank to its SD file (tagged, encrypted records). Returns true on success.
+        bool save() const;
+
+        /// Canonical authoritative file used by durable transaction adapters.
+        std::string authoritativePath() const;
+
+        /// Build the exact current Bank image and prove every occupied slot round-trips.
+        bool buildVerifiedImage(std::vector<uint8_t>& out, std::string& error) const;
+
+        /// Structural validator for an arbitrary supported Bank image. Does not depend on live boxes.
+        static bool validateStorageImage(std::span<const uint8_t> image, std::string& error);
+
+        /// Mark a verified committed image as the current dirty-state baseline.
+        bool acceptCommittedImage(std::span<const uint8_t> image, std::string& error) const;
+
+        /// True if the in-memory boxes differ from the last saved/loaded on-disk state.
+        /// Used to prompt Save/Discard when leaving the storage view (HOME-style).
+        bool hasChanged() const;
+
+        size_t boxCount() const noexcept { return BANK_BOX_COUNT; }
+        size_t slotsPerBox() const noexcept { return BANK_SLOTS_PER_BOX; }
+
+        /// Longest bank box name we store/accept (characters). Cosmetic; keeps the names section bounded.
+        static constexpr size_t MAX_BOX_NAME_LEN = 24;
+
+        /// Bank Pokemon storage [box][slot]; nullptr = empty (mirrors Trainer::boxes). Slots may
+        /// hold mons from different games -- each entity knows its own getGameGroup().
+        std::vector<std::array<std::unique_ptr<::Pokemon::Pokemon>, BANK_SLOTS_PER_BOX>> boxes;
+
+        /// Optional per-box display names (parallel to `boxes`). Empty = use the default "Bank N"
+        /// label. Persisted alongside the mons and included in hasChanged(), so a rename triggers
+        /// the Save/Discard prompt on exit exactly like moving a Pokemon does.
+        std::array<std::string, BANK_BOX_COUNT> boxNames;
+
+        /// The label to show for a bank box: the user's name if set, else "Bank N" (1-indexed).
+        std::string boxDisplayName(size_t box) const;
+
+        /// Slots dropped by the last load() because their record didn't decode to a valid Pokemon
+        /// (bad checksum, species 0, unknown tag). Non-zero means the bank file was damaged.
+        size_t lastLoadRejects() const noexcept { return loadRejects; }
+
+        /// Occupied slots whose bytes did not survive an encrypt->decrypt round trip during the
+        /// last save attempt. The bank's contract is byte-in == byte-out, so non-zero means the
+        /// image is NOT safe to persist. Audit hardening makes this a fail-closed save condition.
+        size_t lastVerifyFailures() const noexcept { return verifyFailures; }
+
+        /// True when the on-disk Bank is valid enough to inspect but was written with a
+        /// newer/larger layout this build cannot round-trip without data loss.
+        bool isWriteBlocked() const noexcept { return writeBlocked; }
+        const std::string& writeBlockReason() const noexcept { return writeBlockReasonText; }
+
+    private:
+        std::string filePath() const;
+        std::vector<uint8_t> serialize() const;    // full on-disk image of the current boxes
+        void migrateLegacyBanks();                 // one-time import of the old per-group *_bank.dat files
+        /// Re-parse a serialized image and compare each occupied slot back to the live Pokemon.
+        /// Returns the number of slots that failed; also fills verifyFailures.
+        size_t verifyImage(const std::vector<uint8_t>& image) const;
+        mutable std::vector<uint8_t> savedImage;   // serialized image as of the last load()/save()
+        mutable size_t verifyFailures = 0;
+        size_t loadRejects = 0;
+        bool writeBlocked = false;
+        std::string writeBlockReasonText;
+    };
+}
+
+#endif

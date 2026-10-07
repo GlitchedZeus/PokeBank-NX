@@ -1,0 +1,533 @@
+#include <cstdint>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+#include <vector>
+#include <string>
+#include <algorithm>
+
+#include <switch.h>
+#include <sys/dirent.h>
+#include <sys/stat.h>
+#include <sys/unistd.h>
+
+#include "Globals.h"
+#include "Games/GameIdentity.h"
+#include "Safety/WritePolicy.h"
+#include "Utils/Logger.h"
+#include "Utils/FileUtilities.h"
+#include "Utils/PokeBankPaths.h"
+
+namespace Utils {
+    namespace {
+        bool pathExists(const std::string& path) {
+            struct stat st{};
+            return stat(path.c_str(), &st) == 0;
+        }
+
+        bool verifyCopiedFile(const char* path, const unsigned char* expected, size_t size) {
+            size_t actualSize = 0;
+            unsigned char* actual = readAllBytes(path, &actualSize);
+            if (!actual) return false;
+            const bool ok = actualSize == size &&
+                (size == 0 || std::memcmp(actual, expected, size) == 0);
+            delete[] actual;
+            return ok;
+        }
+    }
+    bool copyDirectoryRecursive(const char* srcPath, const char* destPath) {
+        DIR* dir = opendir(srcPath);
+        if (!dir) {
+            logErrorToFile("Failed to open source directory", srcPath);
+            logErrorToFile("opendir error", strerror(errno));
+            return false;
+        }
+
+        bool overallSuccess = true;
+        struct dirent* entry;
+        while ((entry = readdir(dir)) != NULL) {
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
+
+            char srcFilePath[512];
+            char destFilePath[512];
+            snprintf(srcFilePath, sizeof(srcFilePath), "%s/%s", srcPath, entry->d_name);
+            snprintf(destFilePath, sizeof(destFilePath), "%s/%s", destPath, entry->d_name);
+
+            if (entry->d_type == DT_DIR) {
+                // Recursively create and copy subdirectory
+                if (mkdir(destFilePath, 0777) != 0 && errno != EEXIST) {
+                    logErrorToFile("Failed to create subdirectory", destFilePath);
+                    overallSuccess = false;
+                } else {
+                    if (!copyDirectoryRecursive(srcFilePath, destFilePath)) {
+                        overallSuccess = false;
+                    }
+                }
+            } else if (entry->d_type == DT_REG) {
+                size_t size = 0;
+                unsigned char* data = readAllBytes(srcFilePath, &size);
+                if (!data) {
+                    logErrorToFile("Failed to read file", srcFilePath);
+                    overallSuccess = false;
+                    continue;
+                }
+
+                FILE* out = fopen(destFilePath, "wb");
+                if (!out) {
+                    logErrorToFile("Failed to open for writing", destFilePath);
+                    logErrorToFile("fopen error", strerror(errno));
+                    delete[] data;
+                    overallSuccess = false;
+                    continue;
+                }
+
+                bool fileSuccess = true;
+                if (fwrite(data, 1, size, out) != size) {
+                    logErrorToFile("Failed to write complete file", destFilePath);
+                    fileSuccess = false;
+                }
+                if (fflush(out) != 0) {
+                    logErrorToFile("Failed to flush copied file", destFilePath);
+                    fileSuccess = false;
+                }
+                if (fclose(out) != 0) {
+                    logErrorToFile("Failed to close copied file", destFilePath);
+                    fileSuccess = false;
+                }
+                if (fileSuccess && !verifyCopiedFile(destFilePath, data, size)) {
+                    logErrorToFile("Copied file failed byte-for-byte readback", destFilePath);
+                    fileSuccess = false;
+                }
+                if (fileSuccess) {
+                    logInfoToFile("Successfully copied and verified file", entry->d_name);
+                    logInfoToFile("File size (bytes)", std::to_string(size).c_str());
+                } else {
+                    overallSuccess = false;
+                }
+                delete[] data;
+            }
+        }
+        if (closedir(dir) != 0) {
+            logErrorToFile("Failed to close source directory", srcPath);
+            overallSuccess = false;
+        }
+        return overallSuccess;
+    }
+
+    bool copyDirectory(const char* srcPath, const char* destPath) {
+        // Create destination directory if needed
+        if (mkdir(destPath, 0777) != 0 && errno != EEXIST) {
+            logErrorToFile("Failed to create destination directory", destPath);
+            logErrorToFile("mkdir error", strerror(errno));
+            return false;
+        }
+        logInfoToFile("Created/copied to destination directory", destPath);
+        return copyDirectoryRecursive(srcPath, destPath);
+    }
+
+    bool copyFile(const char* srcPath, const char* destPath) {
+        size_t size = 0;
+        unsigned char* data = readAllBytes(srcPath, &size);
+        if (!data) {
+            logErrorToFile("Failed to read file", srcPath);
+            return false;
+        }
+
+        FILE* out = fopen(destPath, "wb");
+        if (!out) {
+            logErrorToFile("Failed to open for writing", destPath);
+            logErrorToFile("fopen error", strerror(errno));
+            delete[] data;
+            return false;
+        }
+
+        bool success = true;
+        if (fwrite(data, 1, size, out) != size) {
+            logErrorToFile("Failed to write complete file", destPath);
+            success = false;
+        }
+        if (fflush(out) != 0) {
+            logErrorToFile("Failed to flush copied file", destPath);
+            success = false;
+        }
+        if (fclose(out) != 0) {
+            logErrorToFile("Failed to close copied file", destPath);
+            success = false;
+        }
+        if (success && !verifyCopiedFile(destPath, data, size)) {
+            logErrorToFile("Copied file failed byte-for-byte readback", destPath);
+            success = false;
+        }
+        if (success) logInfoToFile("Successfully copied and verified file to", destPath);
+        delete[] data;
+        return success;
+    }
+
+    bool deleteDirectoryRecursive(const char* path) {
+        DIR* dir = opendir(path);
+        if (!dir) {
+            logErrorToFile("Failed to open directory for deletion", path);
+            return false;
+        }
+
+        bool success = true;
+        struct dirent* entry;
+        while ((entry = readdir(dir)) != NULL) {
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+                continue;
+            }
+
+            char fullPath[1024];
+            snprintf(fullPath, sizeof(fullPath), "%s/%s", path, entry->d_name);
+
+            if (entry->d_type == DT_DIR) {
+                // Recursively delete subdirectory
+                if (!deleteDirectoryRecursive(fullPath)) {
+                    success = false;
+                }
+            } else {
+                // Delete file
+                if (remove(fullPath) != 0) {
+                    logErrorToFile("Failed to delete file", fullPath);
+                    success = false;
+                }
+            }
+        }
+        closedir(dir);
+
+        // Remove the directory itself
+        if (rmdir(path) != 0) {
+            logErrorToFile("Failed to remove directory", path);
+            return false;
+        }
+
+        return success;
+    }
+
+    std::string getTimestamp() {
+        time_t now = time(nullptr);
+        struct tm* timeinfo = localtime(&now);
+
+        char buffer[32];
+        strftime(buffer, sizeof(buffer), "%Y%m%d_%H%M%S", timeinfo);
+        return std::string(buffer);
+    }
+
+    bool isBackupTransactionArtifactName(std::string_view name) noexcept {
+        return name.find(".incomplete.") != std::string_view::npos ||
+               name.find(".failed.") != std::string_view::npos ||
+               name.find(".previous.") != std::string_view::npos;
+    }
+
+    bool copyDirectoryTransactional(const char* srcPath, const char* finalPath) {
+        if (!srcPath || !finalPath || *srcPath == '\0' || *finalPath == '\0') return false;
+        const std::string final(finalPath);
+        const std::string stamp = getTimestamp();
+
+        auto uniqueSibling = [&](const char* marker) {
+            std::string candidate = final + marker + stamp;
+            for (int n = 2; n < 1000 && pathExists(candidate); ++n)
+                candidate = final + marker + stamp + "-" + std::to_string(n);
+            return candidate;
+        };
+        const std::string incomplete = uniqueSibling(".incomplete.");
+
+        if (!copyDirectory(srcPath, incomplete.c_str())) {
+            const std::string failed = uniqueSibling(".failed.");
+            if (rename(incomplete.c_str(), failed.c_str()) != 0) {
+                logErrorToFile("Failed backup remains quarantined as incomplete", incomplete.c_str());
+            } else {
+                logErrorToFile("Failed backup quarantined", failed.c_str());
+            }
+            return false;
+        }
+
+        std::string previous;
+        const bool hadFinal = pathExists(final);
+        if (hadFinal) {
+            struct stat st{};
+            if (stat(final.c_str(), &st) != 0 || !S_ISDIR(st.st_mode)) {
+                const std::string failed = uniqueSibling(".failed.");
+                (void)rename(incomplete.c_str(), failed.c_str());
+                logErrorToFile("Backup promotion refused: final path is not a directory", final.c_str());
+                return false;
+            }
+            previous = uniqueSibling(".previous.");
+            if (rename(final.c_str(), previous.c_str()) != 0) {
+                const std::string failed = uniqueSibling(".failed.");
+                (void)rename(incomplete.c_str(), failed.c_str());
+                logErrorToFile("Could not rotate prior backup before promotion", final.c_str());
+                return false;
+            }
+        }
+
+        if (rename(incomplete.c_str(), final.c_str()) != 0) {
+            logErrorToFile("Could not promote completed backup", final.c_str());
+            if (hadFinal && rename(previous.c_str(), final.c_str()) != 0)
+                logErrorToFile("Could not restore prior backup after failed promotion", previous.c_str());
+            const std::string failed = uniqueSibling(".failed.");
+            (void)rename(incomplete.c_str(), failed.c_str());
+            return false;
+        }
+
+        if (hadFinal && !previous.empty() && !deleteDirectoryRecursive(previous.c_str()))
+            logErrorToFile("Prior backup generation retained as non-browsable evidence", previous.c_str());
+        return true;
+    }
+
+    std::string backupSaveData(AccountUid userUid, u64 titleId, std::string titleName, bool timestamped) {
+        char titleBuf[32];
+        snprintf(titleBuf, sizeof(titleBuf), "0x%016llX", static_cast<unsigned long long>(titleId));
+        logInfoToFile("Pokemon titleId: ", titleBuf);
+        logInfoToFile("Pokemon Title name: ", titleName.c_str());
+
+        const auto* identity = PokeVault::Games::findSwitchGame(titleId);
+        if (!identity) {
+            logErrorToFile("Refusing backup without an exact supported Switch game identity");
+            return "";
+        }
+
+        const std::string gameDirectory =
+            PokeBank::Paths::exactGameBackupsRoot(userUid, identity->id);
+        std::string folderName = timestamped ? getTimestamp() : std::string("Working");
+        std::string backupDirectory =
+            PokeBank::Paths::workspaceBackupPath(userUid, identity->id, folderName);
+        if (timestamped && !backupDirectory.empty() && pathExists(backupDirectory)) {
+            const std::string base = folderName;
+            for (int n = 2; n < 1000 && pathExists(backupDirectory); ++n) {
+                folderName = base + "-" + std::to_string(n);
+                backupDirectory =
+                    PokeBank::Paths::workspaceBackupPath(userUid, identity->id, folderName);
+            }
+        }
+        if (gameDirectory.empty() || backupDirectory.empty()) {
+            logErrorToFile("Refusing backup without a valid profile/exact-game namespace");
+            return "";
+        }
+
+        logInfoToFile("Backup exact game identity", std::string(identity->id).c_str());
+        logInfoToFile("Backup directory", backupDirectory.c_str());
+        logInfoToFile("Backing up save for title", titleName.c_str());
+
+        std::string pathError;
+        if (!PokeBank::Paths::ensureBackupsRoot(&pathError)) {
+            logErrorToFile("Failed to create PokeBank NX backups directory", pathError.c_str());
+            return "";
+        }
+        if (!PokeBank::Paths::ensureDirectoryTree(gameDirectory, &pathError)) {
+            logErrorToFile("Failed to create profile/exact-game backup directory", pathError.c_str());
+            return "";
+        }
+        char buffer[LOG_BUFFER_SIZE];
+
+        Result result = fsdevMountSaveData("save", titleId, userUid);
+
+        if (R_FAILED(result)) {
+            snprintf(buffer, sizeof(buffer), "fsdevMountSaveData failed for titleId 0x%016lX: 0x%x", titleId, result);
+            logErrorToFile(buffer);
+            return "";
+        }
+
+        logInfoToFile("Successfully mounted save:/");
+
+        const bool copySuccess =
+            copyDirectoryTransactional("save:/", backupDirectory.c_str());
+
+        fsdevUnmountDevice("save");
+
+        if (copySuccess) {
+            logInfoToFile("Backup completed successfully!");
+            return backupDirectory;
+        }
+        logErrorToFile("Backup failed during file copying.");
+        return "";
+    }
+
+    // Tells "the backup never held this file" apart from "the copy failed". Both reach copyFile as
+    // the same failed fopen, but only the second one is an error worth reporting.
+    static bool backupHasFile(const char* path) {
+        struct stat st{};
+        return stat(path, &st) == 0 && S_ISREG(st.st_mode);
+    }
+
+    /**
+     * Copy a backup's save files onto the real game save.
+     *
+     * The backup directory IS the edited save: PKSE writes edits straight into it. This used to
+     * take a second "modified save" path as well, because edits went to a `ModifiedSave`
+     * subdirectory and only the inject path ever read them back out -- which meant saving to a
+     * backup silently changed nothing the loader would ever see. That directory is gone, so the
+     * two paths collapsed into one and the second copy pass with them.
+     *
+     * Only `primaryFile` has to exist. Which companion files sit beside it is a property of the
+     * individual save, not of the game: Sword/Shield's `poke_trade` holds a Surprise Trade result
+     * that has not been collected yet, so a save that never sent one simply has no such file. The
+     * list used to be a flat per-game array of required names, which made that ordinary case fatal
+     * -- the copy loop broke on the missing file and returned before `fsdevCommitDevice`, so the
+     * writes already made to save:/ were dropped on unmount and the user's edit disappeared with a
+     * "failed to copy" error naming a file they were never supposed to have.
+     *
+     * So an absent optional file is skipped and not logged as a failure. A file that IS there and
+     * will not copy still stops the restore, before the commit, leaving the game save untouched.
+     */
+    bool restoreBackupToTitle(AccountUid userUid, u64 titleId, const char* backupDir,
+                              const std::string& primaryFile,
+                              const std::vector<std::string>& optionalFiles) {
+        if (!PokeVault::Safety::canWriteTo(PokeVault::Safety::SaveDestination::LiveGame)) {
+            logErrorToFile("PokeBank NX blocked a live game-save write by policy");
+            return false;
+        }
+
+        char buffer[LOG_BUFFER_SIZE];
+        logInfoToFile("Restoring backup to game save", backupDir);
+
+        if (primaryFile.empty()) {
+            logErrorToFile("No primary save file specified for restore");
+            return false;
+        }
+
+        // Checked before mounting: if the one required file is missing there is nothing this can
+        // do, and bailing here means never having opened the game's save data at all.
+        char primaryPath[512];
+        snprintf(primaryPath, sizeof(primaryPath), "%s/%s", backupDir, primaryFile.c_str());
+        if (!backupHasFile(primaryPath)) {
+            snprintf(buffer, sizeof(buffer), "Backup has no %s to restore", primaryFile.c_str());
+            logErrorToFile(buffer);
+            return false;
+        }
+
+        Result result = fsdevMountSaveData("save", titleId, userUid);
+
+        if (R_FAILED(result)) {
+            snprintf(buffer, sizeof(buffer), "fsdevMountSaveData failed for titleId 0x%016lX: 0x%x", titleId, result);
+            logErrorToFile(buffer);
+            return false;
+        }
+
+        logInfoToFile("Successfully mounted save:/ for restore");
+
+        // Copy the named save files only, never subdirectories.
+        logInfoToFile("Copying backup save files to save:/", backupDir);
+
+        char srcPath[512];
+        char destPath[512];
+        bool copyAllSuccess = true;
+
+        snprintf(destPath, sizeof(destPath), "save:/%s", primaryFile.c_str());
+        if (!copyFile(primaryPath, destPath)) {
+            snprintf(buffer, sizeof(buffer), "Failed to copy %s", primaryFile.c_str());
+            logErrorToFile(buffer);
+            copyAllSuccess = false;
+        }
+
+        for (size_t i = 0; copyAllSuccess && i < optionalFiles.size(); i++) {
+            snprintf(srcPath, sizeof(srcPath), "%s/%s", backupDir, optionalFiles[i].c_str());
+
+            if (!backupHasFile(srcPath)) {
+                // Ordinary: this save never produced the file. Whatever the game currently has
+                // under that name stays where it is.
+                logInfoToFile("Not in this backup, leaving the game's copy alone", optionalFiles[i].c_str());
+                continue;
+            }
+
+            snprintf(destPath, sizeof(destPath), "save:/%s", optionalFiles[i].c_str());
+            if (!copyFile(srcPath, destPath)) {
+                snprintf(buffer, sizeof(buffer), "Failed to copy %s", optionalFiles[i].c_str());
+                logErrorToFile(buffer);
+                copyAllSuccess = false;
+            }
+        }
+
+        if (!copyAllSuccess) {
+            logErrorToFile("Failed to copy backup files to the game save");
+            fsdevUnmountDevice("save");
+            return false;
+        }
+
+        // No second pass. The copies above already wrote the edited primary file, because the
+        // backup directory holds the edits -- there is no separate "modified" copy to overlay.
+
+        // CRITICAL: Commit changes to the save device before unmounting
+        // Without this, changes remain in memory buffers and are never written to disk
+        logInfoToFile("Committing changes to save device...");
+
+        Result commitResult = fsdevCommitDevice("save");
+        if (R_FAILED(commitResult)) {
+            snprintf(buffer, sizeof(buffer), "fsdevCommitDevice failed: 0x%x", commitResult);
+            logErrorToFile(buffer);
+            fsdevUnmountDevice("save");
+            return false;
+        }
+
+        logInfoToFile("Successfully committed changes to save device");
+
+        fsdevUnmountDevice("save");
+
+        logInfoToFile("Backup restored to the game save successfully!");
+        return true;
+    }
+
+    // True only for an auto-history folder shaped exactly like getTimestamp(): YYYYMMDD_HHMMSS.
+    // User-named backups and the reusable "Working" copy are, by definition, everything else.
+    static bool isTimestampName(const std::string& name) {
+        if (name.length() != 15 || name[8] != '_') return false;
+        for (size_t i = 0; i < name.length(); ++i) {
+            if (i == 8) continue;
+            if (name[i] < '0' || name[i] > '9') return false;
+        }
+        return true;
+    }
+
+    std::vector<std::string> listBackupDirectories(const char* gameDirectory, bool includeWorking) {
+        std::vector<std::string> backupDirs;
+
+        // A missing game directory just means "no backups for this title yet" — the ordinary state
+        // before the first backup — so don't treat opendir failing as an error worth logging.
+        DIR* dir = opendir(gameDirectory);
+        if (!dir) {
+            return backupDirs;
+        }
+
+        struct dirent* entry;
+        while ((entry = readdir(dir)) != NULL) {
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+                continue;
+            }
+
+            // Incomplete/failed/previous transaction generations are evidence/recovery state,
+            // never editable backups. They stay invisible even when legacy Working is requested.
+            if (isBackupTransactionArtifactName(entry->d_name)) {
+                continue;
+            }
+
+            // "Working" is the internal reusable staging copy used when auto-backup is off, not a
+            // user backup — keep it out of the picker so it never reads as one (C5).
+            if (!includeWorking && strcmp(entry->d_name, "Working") == 0) {
+                continue;
+            }
+
+            // Every other subdirectory of the game folder IS a user-facing backup: an auto-history
+            // timestamp or a user-named backup. The old code kept only the timestamp shape, which
+            // hid every custom-named backup the destination picker can create.
+            if (entry->d_type == DT_DIR) {
+                backupDirs.push_back(entry->d_name);
+            }
+        }
+        closedir(dir);
+
+        // User-named backups first (alphabetical), then auto-history newest-first. A named backup is
+        // a deliberate choice, so it belongs at the top rather than sorted into the middle of the
+        // timestamps by ASCII accident.
+        std::sort(backupDirs.begin(), backupDirs.end(), [](const std::string& a, const std::string& b) {
+            const bool at = isTimestampName(a), bt = isTimestampName(b);
+            if (at != bt) return !at;   // named before timestamped
+            if (at)       return a > b; // both timestamps: lexicographically greatest (newest) first
+            return a < b;               // both named: alphabetical
+        });
+
+        return backupDirs;
+    }
+
+}

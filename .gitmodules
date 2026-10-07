@@ -1,0 +1,3 @@
+[submodule "vendor/PKSM-Core"]
+	path = vendor/PKSM-Core
+	url = https://github.com/FlagBrew/PKSM-Core.git

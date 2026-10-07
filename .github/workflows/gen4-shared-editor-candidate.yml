@@ -1,0 +1,255 @@
+name: Gen IV Shared Editor Candidate Gate
+
+on:
+  pull_request:
+    branches:
+      - audit/full-project-hardening-20260923
+      - integration/gen4-polish-hardware-20260928
+    paths:
+      - 'include/Integration/Gen4/**'
+      - 'src/Integration/Gen4/**'
+      - 'include/Legacy/Gen4*'
+      - 'src/Legacy/Gen4*'
+      - 'include/Pokemon/Pokemon4*'
+      - 'src/Pokemon/Pokemon4*'
+      - 'include/Encryption/Encryption4.h'
+      - 'src/Encryption/Encryption4.cpp'
+      - 'include/UI/Gen4*'
+      - 'src/UI/Gen4*'
+      - 'include/UI/ExactFormatEditorProvider.h'
+      - 'include/UI/ExactSaveCapabilities.h'
+      - 'include/UI/SharedPokemonEditorContract.h'
+      - 'include/UI/SharedPokemonShell.h'
+      - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
+      - 'src/UI/SystemIcons.cpp'
+      - 'include/UI/SystemIcons.h'
+      - 'src/Games/GameIdentity.cpp'
+      - 'include/Games/GameIdentity.h'
+      - 'romfs/trainer_portraits/**'
+      - 'romfs/region_backdrops/**'
+      - 'tools/fetch_product_art.py'
+      - 'tests/test_gen4*'
+      - 'Makefile'
+      - 'Makefile.host.gen4'
+      - '.github/workflows/gen4-shared-editor-candidate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pokebank-gen4-shared-editor-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+  HEAD_REF: ${{ github.event.pull_request.head.ref || github.ref_name }}
+  PR_NUMBER: ${{ github.event.pull_request.number || 0 }}
+  RECOVERY_SHA: 5bfc27a10de1eeaf52cb92316c1453df3d4fb613
+
+jobs:
+  focused_host:
+    name: Gen IV PK4 staged editor host + sanitizer gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          fetch-depth: 100
+          submodules: recursive
+      - name: Verify exact identity and whitespace
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APP_SHA"
+          git fetch --no-tags origin "$BASE_SHA" || true
+          if git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null && [ "$BASE_SHA" != "$APP_SHA" ]; then
+            git diff --check "$BASE_SHA"..HEAD
+          else
+            git diff --check HEAD^
+          fi
+          echo "APPLICATION_SHA=$APP_SHA"
+          echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
+      - name: Focused Gen IV editor gates
+        run: |
+          set -euo pipefail
+          for target in             test_gen4_exact_format_editor_provider             test_gen4_mutable_pokemon             test_gen4_staged_pokemon_editor             test_gen4_hardware_surface_contract             test_gen4_readonly_foundation; do
+            make -f Makefile.host "build-host/$target"
+            "./build-host/$target"
+          done
+          for target in             test_gen4_exact_format_editor_provider_sanitize             test_gen4_mutable_pokemon_sanitize             test_gen4_staged_pokemon_editor_sanitize; do
+            make -f Makefile.host "build-host/$target"
+            ASAN_OPTIONS=detect_leaks=0 "./build-host/$target"
+          done
+          echo 'GEN IV PK4 / STAGED EDITOR FOCUSED GATES: PASS'
+
+  native_ui:
+    name: Gen IV real devkitA64 shared UI compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          submodules: recursive
+      - name: Compile production UI translation units with native flags
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APP_SHA"
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work
+            make native-ui-check
+          '
+
+  native_package:
+    name: Gen IV devkitA64 compile/link + exact candidate NRO
+    needs: [focused_host, native_ui]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout exact Gen IV editor head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APP_SHA }}
+          path: application
+          submodules: recursive
+          fetch-depth: 100
+
+      - name: Checkout permanent recovery snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_SHA }}
+          path: recovery-work
+          fetch-depth: 1
+
+      - name: Verify identity and recover RomFS
+        id: identity
+        run: |
+          set -euo pipefail
+          test "$(git -C application rev-parse HEAD)" = "$APP_SHA"
+          echo "tree=$(git -C application rev-parse 'HEAD^{tree}')" >> "$GITHUB_OUTPUT"
+          echo "short=$(git -C application rev-parse --short=8 HEAD)" >> "$GITHUB_OUTPUT"
+          (cd application && python3 tools/fetch_product_art.py)
+          (cd recovery-work && python3 tools/recover_workspace.py)
+
+          # Keep branch-owned UI presentation assets while restoring the permanent base RomFS.
+          rm -rf branch-romfs-overrides
+          mkdir -p branch-romfs-overrides
+          for d in trainer_portraits region_backdrops; do
+            if [ -d "application/romfs/$d" ]; then
+              cp -a "application/romfs/$d" "branch-romfs-overrides/$d"
+            fi
+          done
+
+          rm -rf application/romfs
+          cp -a recovery-work/romfs application/romfs
+          for d in trainer_portraits region_backdrops; do
+            if [ -d "branch-romfs-overrides/$d" ]; then
+              rm -rf "application/romfs/$d"
+              cp -a "branch-romfs-overrides/$d" "application/romfs/$d"
+            fi
+          done
+          for f in red leaf gold kris brendan may lucas dawn ethan lyra chase elaine victor gloria rei akari florian juliana paxton harmony; do
+            test -s "application/romfs/trainer_portraits/$f.png"
+          done
+          for f in kanto johto hoenn sinnoh unova kalos alola galar hisui paldea; do
+            test -s "application/romfs/region_backdrops/$f.png"
+          done
+
+          for f in gold_gbc silver_gbc crystal_gbc diamond_nds pearl_nds platinum_nds heartgold_nds soulsilver_nds; do
+            test -s "application/assets/game_cards/$f.png"
+            cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
+          done
+          python3 application/tools/check_device_assets.py
+
+      - name: Clean devkitA64 compile and link
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work/application devkitpro/devkita64:latest bash -lc '
+            set -euo pipefail
+            git config --global --add safe.directory /work/application
+            make clean || true
+            make -j1
+            test -s PokeBankNX.elf
+            test -s PokeBankNX.nro
+          ' 2>&1 | tee native-build.log
+          test -s application/PokeBankNX.nro
+
+      - name: Verify presentation payload in final NRO
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct
+
+          nro = Path("application/PokeBankNX.nro").read_bytes()
+
+          def verify_png(path: Path):
+              data = path.read_bytes()
+              if len(data) < 33 or data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
+                  raise SystemExit(f"{path}: invalid PNG header")
+              width, height = struct.unpack(">II", data[16:24])
+              offset = 8
+              saw_iend = False
+              while offset + 12 <= len(data):
+                  length = struct.unpack(">I", data[offset:offset+4])[0]
+                  end = offset + 12 + length
+                  if end > len(data):
+                      raise SystemExit(f"{path}: truncated PNG chunk")
+                  kind = data[offset+4:offset+8]
+                  offset = end
+                  if kind == b"IEND":
+                      saw_iend = True
+                      break
+              if not saw_iend:
+                  raise SystemExit(f"{path}: PNG has no complete IEND")
+              if width <= 0 or height <= 0:
+                  raise SystemExit(f"{path}: invalid dimensions")
+              if data not in nro:
+                  raise SystemExit(f"{path}: exact PNG bytes are missing from final NRO RomFS")
+              return width, height
+
+          trainer_dir = Path("application/romfs/trainer_portraits")
+          for name in ("red", "leaf", "gold", "kris", "brendan", "may", "lucas", "dawn", "ethan", "lyra", "chase", "elaine", "victor", "gloria", "rei", "akari", "florian", "juliana", "paxton", "harmony"):
+              verify_png(trainer_dir / f"{name}.png")
+
+          region_dir = Path("application/romfs/region_backdrops")
+          for name in ("kanto", "johto", "hoenn", "sinnoh", "unova", "kalos", "alola", "galar", "hisui", "paldea"):
+              verify_png(region_dir / f"{name}.png")
+
+          if b"romfs:/trainer_portraits/" not in nro:
+              raise SystemExit("trainer portrait runtime path is missing from final NRO")
+          if b"romfs:/region_backdrops/" not in nro:
+              raise SystemExit("region backdrop runtime path is missing from final NRO")
+          print("final NRO presentation payload verified")
+          PY
+
+      - name: Package exact Gen IV shared-editor candidate
+        run: |
+          set -euo pipefail
+          mkdir -p device-artifact
+          short="${APP_SHA:0:8}"
+          cp application/PokeBankNX.nro "device-artifact/PokeBank-NX-Gen4-SharedEditor-${short}.nro"
+          sha256sum "device-artifact/PokeBank-NX-Gen4-SharedEditor-${short}.nro" > device-artifact/SHA256SUMS.txt
+          printf 'APPLICATION_SHA=%s\nTREE_SHA=%s\nPR=%s\nBRANCH=%s\nDEVICE_ACCEPTED=false\n'             "$APP_SHA" "${{ steps.identity.outputs.tree }}" "$PR_NUMBER" "$HEAD_REF"             > device-artifact/BUILD_IDENTITY.txt
+          cp native-build.log device-artifact/
+          cat device-artifact/BUILD_IDENTITY.txt
+          cat device-artifact/SHA256SUMS.txt
+
+      - name: Upload exact Gen IV shared-editor candidate
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gen4-SharedEditor-Candidate-${{ steps.identity.outputs.short }}
+          path: device-artifact/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Report candidate identity
+        run: |
+          echo "ARTIFACT_ID=${{ steps.upload.outputs.artifact-id }}"
+          echo "APPLICATION_SHA=$APP_SHA"
+          echo "TREE_SHA=${{ steps.identity.outputs.tree }}"
+          echo "DEVICE STATUS: CI CANDIDATE / OWNER TEST REQUIRED / NOT DEVICE ACCEPTED"

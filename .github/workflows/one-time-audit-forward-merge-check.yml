@@ -1,0 +1,47 @@
+name: One-time audit remediation forward-merge check
+
+on:
+  push:
+    branches:
+      - feature/gen4-full-editor-20260928
+    paths:
+      - .github/workflows/one-time-audit-forward-merge-check.yml
+
+permissions:
+  contents: read
+
+jobs:
+  merge-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/gen4-full-editor-20260928
+          fetch-depth: 0
+
+      - name: Verify exact branch head
+        run: |
+          set -euo pipefail
+          git fetch origin feature/gen4-full-editor-20260928 fix/full-audit-remediation-20260929
+          test "$(git rev-parse origin/feature/gen4-full-editor-20260928)" = "$GITHUB_SHA"
+
+      - name: Dry-run audit remediation merge
+        run: |
+          set -euo pipefail
+          git config user.name GlitchedZeus
+          git config user.email user91746@protonmail.com
+          set +e
+          git merge --no-commit --no-ff origin/fix/full-audit-remediation-20260929
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            echo "AUDIT_MERGE_CONFLICTS_BEGIN"
+            git diff --name-only --diff-filter=U | sort
+            echo "AUDIT_MERGE_CONFLICTS_END"
+            git status --short
+            git merge --abort || true
+            exit 1
+          fi
+          echo "Audit remediation merges cleanly into current MAIN head."
+          git diff --stat --cached
+          git merge --abort

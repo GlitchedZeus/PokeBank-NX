@@ -1,0 +1,109 @@
+# Gen I UX Cleanup #3 focused host gates. Kept in a separate make fragment so
+# the already-accepted Cleanup #2 host graph remains intact.
+
+GEN1_CLEANUP3_MOVE_SOURCES := \
+	tests/test_gen1_move_compatibility.cpp \
+	src/Integration/Gen1/Gen1MoveCompatibility.cpp
+
+HOST_TESTS += $(HOST_BUILD)/test_gen1_move_compatibility
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_move_compatibility_sanitize
+host-test: $(HOST_BUILD)/test_gen1_move_compatibility
+host-sanitize: $(HOST_BUILD)/test_gen1_move_compatibility_sanitize
+
+$(HOST_BUILD)/test_gen1_move_compatibility: $(GEN1_CLEANUP3_MOVE_SOURCES) src/Integration/Gen1/Gen1MoveCompatibilityData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_CLEANUP3_MOVE_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen1_move_compatibility_sanitize: $(GEN1_CLEANUP3_MOVE_SOURCES) src/Integration/Gen1/Gen1MoveCompatibilityData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_CLEANUP3_MOVE_SOURCES) -o $@
+
+GEN1_CLEANUP3_SHINY_SOURCES := tests/test_gen1_shiny.cpp
+
+HOST_TESTS += $(HOST_BUILD)/test_gen1_shiny
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_shiny_sanitize
+host-test: $(HOST_BUILD)/test_gen1_shiny
+host-sanitize: $(HOST_BUILD)/test_gen1_shiny_sanitize
+
+$(HOST_BUILD)/test_gen1_shiny: $(GEN1_CLEANUP3_SHINY_SOURCES) include/Integration/Gen1/Gen1Shiny.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_CLEANUP3_SHINY_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen1_shiny_sanitize: $(GEN1_CLEANUP3_SHINY_SOURCES) include/Integration/Gen1/Gen1Shiny.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_CLEANUP3_SHINY_SOURCES) -o $@
+
+GEN1_CLEANUP3_UX_SOURCES := tests/test_gen1_pokemon_editor_ux3_contract.cpp
+
+HOST_TESTS += $(HOST_BUILD)/test_gen1_pokemon_editor_ux3_contract
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_pokemon_editor_ux3_contract_sanitize
+host-test: $(HOST_BUILD)/test_gen1_pokemon_editor_ux3_contract
+host-sanitize: $(HOST_BUILD)/test_gen1_pokemon_editor_ux3_contract_sanitize
+
+$(HOST_BUILD)/test_gen1_pokemon_editor_ux3_contract: $(GEN1_CLEANUP3_UX_SOURCES) include/UI/Gen1PokemonEditorUX3Contract.h include/UI/NavigationRepeat.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_CLEANUP3_UX_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen1_pokemon_editor_ux3_contract_sanitize: $(GEN1_CLEANUP3_UX_SOURCES) include/UI/Gen1PokemonEditorUX3Contract.h include/UI/NavigationRepeat.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_CLEANUP3_UX_SOURCES) -o $@
+
+# End-to-end staged semantics for the new kid-facing shiny/move UX: a shiny Add
+# must survive strict finalize/reparse and Clone, while unrelated edits preserve an
+# existing weird source move instead of normalizing it through the picker model.
+GEN1_CLEANUP3_STAGED_SOURCES := \
+	tests/test_gen1_cleanup3_staged_semantics.cpp \
+	$(GEN1_POKEMON_COMMON) \
+	src/Integration/Gen1/Gen1MoveCompatibility.cpp
+
+HOST_TESTS += $(HOST_BUILD)/test_gen1_cleanup3_staged_semantics
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_cleanup3_staged_semantics_sanitize
+host-test: $(HOST_BUILD)/test_gen1_cleanup3_staged_semantics
+host-sanitize: $(HOST_BUILD)/test_gen1_cleanup3_staged_semantics_sanitize
+
+$(HOST_BUILD)/test_gen1_cleanup3_staged_semantics: $(GEN1_CLEANUP3_STAGED_SOURCES) src/Integration/Gen1/Gen1MoveCompatibilityData.inc src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_CLEANUP3_STAGED_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen1_cleanup3_staged_semantics_sanitize: $(GEN1_CLEANUP3_STAGED_SOURCES) src/Integration/Gen1/Gen1MoveCompatibilityData.inc src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_CLEANUP3_STAGED_SOURCES) -o $@
+
+# Permanent three-panel / generation-capability foundation contract. This is deliberately
+# host-only: later-generation capability fixtures prove layout scalability without enabling
+# unfinished Gen III serializers or live-write paths.
+POKEMON_EDITOR_FOUNDATION_SOURCES := tests/test_pokemon_editor_foundation_contract.cpp
+
+HOST_TESTS += $(HOST_BUILD)/test_pokemon_editor_foundation_contract
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_pokemon_editor_foundation_contract_sanitize
+host-test: $(HOST_BUILD)/test_pokemon_editor_foundation_contract
+host-sanitize: $(HOST_BUILD)/test_pokemon_editor_foundation_contract_sanitize
+
+$(HOST_BUILD)/test_pokemon_editor_foundation_contract: $(POKEMON_EDITOR_FOUNDATION_SOURCES) include/UI/PokemonEditorFoundationContract.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(POKEMON_EDITOR_FOUNDATION_SOURCES) -o $@
+
+$(HOST_BUILD)/test_pokemon_editor_foundation_contract_sanitize: $(POKEMON_EDITOR_FOUNDATION_SOURCES) include/UI/PokemonEditorFoundationContract.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(POKEMON_EDITOR_FOUNDATION_SOURCES) -o $@
+
+# Production Gen I presentation + recording-framebuffer radar regression gates.
+GEN1_SUMMARY_SOURCES := tests/test_gen1_summary_presentation.cpp $(GEN1_POKEMON_COMMON) \
+    src/Pokemon/Pokemon1ReadOnly.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp \
+    src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Names/NatureNames.cpp src/Names/AbilityNames.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen1_summary_presentation $(HOST_BUILD)/test_gen1_radar_render
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_summary_presentation_sanitize $(HOST_BUILD)/test_gen1_radar_render_sanitize
+host-test: $(HOST_BUILD)/test_gen1_summary_presentation $(HOST_BUILD)/test_gen1_radar_render
+host-sanitize: $(HOST_BUILD)/test_gen1_summary_presentation_sanitize $(HOST_BUILD)/test_gen1_radar_render_sanitize
+$(HOST_BUILD)/test_gen1_summary_presentation: $(GEN1_SUMMARY_SOURCES) include/UI/Gen1PokemonPresentation.h include/UI/BattleStatRadarModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(GEN1_SUMMARY_SOURCES) -o $@
+$(HOST_BUILD)/test_gen1_summary_presentation_sanitize: $(GEN1_SUMMARY_SOURCES) include/UI/Gen1PokemonPresentation.h include/UI/BattleStatRadarModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GEN1_SUMMARY_SOURCES) -o $@
+$(HOST_BUILD)/test_gen1_radar_render: tests/test_gen1_radar_render.cpp include/UI/StatsRadar.h include/UI/BattleStatRadarModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen1_radar_render.cpp -o $@
+$(HOST_BUILD)/test_gen1_radar_render_sanitize: tests/test_gen1_radar_render.cpp include/UI/StatsRadar.h include/UI/BattleStatRadarModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen1_radar_render.cpp -o $@

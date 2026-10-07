@@ -1,0 +1,48 @@
+#ifndef POKEBANK_LEGACY_FRLG_SOURCE_BROWSER_H
+#define POKEBANK_LEGACY_FRLG_SOURCE_BROWSER_H
+
+#include "Legacy/RetroArchFRLGDiscovery.h"
+#include "Legacy/LegacySourceBindings.h"
+#include "Source/SaveInstance.h"
+
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <vector>
+
+namespace PokeVault::Legacy {
+    // Historical names remain source-compatible while every generation now hands the UI the same
+    // provider-neutral Source::SaveInstance metadata. Strict parser results stay generation-native.
+    using LegacySaveInstanceKind = PokeVault::Source::SaveInstanceKind;
+    using FRLGSaveInstance = PokeVault::Source::SaveInstance;
+
+    // One UI-neutral parent card per exact game identity/source family. Validated save files are
+    // children, not duplicate top-level cards. The child retains the session-catalog index so
+    // activation never copies or reparses the raw source file.
+    struct FRLGSourceCard {
+        std::string gameId;
+        std::string title;
+        std::string platformLabel;
+        std::string sourceLabel;
+        std::string artworkKey;
+        std::vector<FRLGSaveInstance> instances;
+    };
+
+    // Only strict, ready sources become selectable cards. Invalid, ambiguous, or unreadable files
+    // stay in the diagnostic catalog but can never enter the browsing route.
+    [[nodiscard]] std::vector<FRLGSourceCard> buildFRLGSourceCards(
+        const FRLGDiscoveryResult& discovery);
+
+    // Normal Game Sources visibility is profile-scoped even though discovery is app-global.
+    [[nodiscard]] std::vector<FRLGSourceCard> buildFRLGSourceCardsForProfile(
+        const FRLGDiscoveryResult& discovery, const LegacySourceBindings& bindings,
+        std::string_view profileIdentity);
+
+    // Revalidates parent identity and child catalog index at activation time. This prevents a stale
+    // or malformed UI descriptor from routing to another release, platform, or source instance.
+    [[nodiscard]] const FRLGSource* resolveFRLGSaveInstance(
+        const FRLGDiscoveryResult& discovery, const FRLGSourceCard& card,
+        size_t instanceIndex) noexcept;
+}
+
+#endif

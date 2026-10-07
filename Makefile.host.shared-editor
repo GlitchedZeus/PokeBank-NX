@@ -1,0 +1,88 @@
+# One-Pokemon-editor architecture contract.
+SHARED_EDITOR_SOURCES := tests/test_shared_pokemon_editor_contract.cpp
+SHARED_EDITOR_HOST_TEST := $(HOST_BUILD)/test_shared_pokemon_editor_contract
+SHARED_EDITOR_SANITIZE_TEST := $(HOST_BUILD)/test_shared_pokemon_editor_contract_sanitize
+
+HOST_TESTS += $(SHARED_EDITOR_HOST_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_EDITOR_SANITIZE_TEST)
+host-test: $(SHARED_EDITOR_HOST_TEST)
+host-sanitize: $(SHARED_EDITOR_SANITIZE_TEST)
+
+$(SHARED_EDITOR_HOST_TEST): $(SHARED_EDITOR_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(SHARED_EDITOR_SANITIZE_TEST): $(SHARED_EDITOR_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+SHARED_EDITOR_HEADING_SOURCES := tests/test_shared_editor_heading_contract.cpp
+SHARED_EDITOR_HEADING_TEST := $(HOST_BUILD)/test_shared_editor_heading_contract
+SHARED_EDITOR_HEADING_SANITIZE := $(HOST_BUILD)/test_shared_editor_heading_contract_sanitize
+
+HOST_TESTS += $(SHARED_EDITOR_HEADING_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_EDITOR_HEADING_SANITIZE)
+host-test: $(SHARED_EDITOR_HEADING_TEST)
+host-sanitize: $(SHARED_EDITOR_HEADING_SANITIZE)
+
+$(SHARED_EDITOR_HEADING_TEST): $(SHARED_EDITOR_HEADING_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(SHARED_EDITOR_HEADING_SANITIZE): $(SHARED_EDITOR_HEADING_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+# Issue #71 pre-Gen-III architecture freeze guard. It is intentionally
+# product-neutral: no Gen III editor implementation or mutation path is linked.
+PRE_GEN3_REUSE_GUARD_SOURCES := tests/test_pre_gen3_reuse_guard.cpp
+PRE_GEN3_REUSE_GUARD_TEST := $(HOST_BUILD)/test_pre_gen3_reuse_guard
+PRE_GEN3_REUSE_GUARD_SANITIZE := $(HOST_BUILD)/test_pre_gen3_reuse_guard_sanitize
+
+HOST_TESTS += $(PRE_GEN3_REUSE_GUARD_TEST)
+HOST_SANITIZE_TESTS += $(PRE_GEN3_REUSE_GUARD_SANITIZE)
+host-test: $(PRE_GEN3_REUSE_GUARD_TEST)
+host-sanitize: $(PRE_GEN3_REUSE_GUARD_SANITIZE)
+
+$(PRE_GEN3_REUSE_GUARD_TEST): $(PRE_GEN3_REUSE_GUARD_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(PRE_GEN3_REUSE_GUARD_SANITIZE): $(PRE_GEN3_REUSE_GUARD_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+GSC_RENDER_SOURCES := tests/test_gsc_workspace_render.cpp src/Integration/Gen2/Gen2PersonalData.cpp \
+    $(GEN1_POKEMON_COMMON) src/Pokemon/PersonalInfoTable.cpp
+GSC_RENDER_TEST := $(HOST_BUILD)/test_gsc_workspace_render
+GSC_RENDER_SANITIZE := $(HOST_BUILD)/test_gsc_workspace_render_sanitize
+HOST_TESTS += $(GSC_RENDER_TEST)
+HOST_SANITIZE_TESTS += $(GSC_RENDER_SANITIZE)
+host-test: $(GSC_RENDER_TEST)
+host-sanitize: $(GSC_RENDER_SANITIZE)
+$(GSC_RENDER_TEST): $(GSC_RENDER_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GSC_RENDER_SOURCES) -o $@
+$(GSC_RENDER_SANITIZE): $(GSC_RENDER_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_RENDER_SOURCES) -o $@
+
+
+# Shared Gen I-IV move picker presentation: numbered rows plus exact-era
+# Accuracy / Power / base PP metadata from pinned retail-decomp tables.
+MOVE_PICKER_PRESENTATION_SOURCES := tests/test_move_picker_presentation.cpp src/Names/MoveNames.cpp
+MOVE_PICKER_PRESENTATION_TEST := $(HOST_BUILD)/test_move_picker_presentation
+MOVE_PICKER_PRESENTATION_SANITIZE := $(HOST_BUILD)/test_move_picker_presentation_sanitize
+
+HOST_TESTS += $(MOVE_PICKER_PRESENTATION_TEST)
+HOST_SANITIZE_TESTS += $(MOVE_PICKER_PRESENTATION_SANITIZE)
+host-test: $(MOVE_PICKER_PRESENTATION_TEST)
+host-sanitize: $(MOVE_PICKER_PRESENTATION_SANITIZE)
+
+$(MOVE_PICKER_PRESENTATION_TEST): $(MOVE_PICKER_PRESENTATION_SOURCES) include/UI/MovePickerPresentation.h include/Names/MoveBattleStats.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(MOVE_PICKER_PRESENTATION_SOURCES) -o $@
+
+$(MOVE_PICKER_PRESENTATION_SANITIZE): $(MOVE_PICKER_PRESENTATION_SOURCES) include/UI/MovePickerPresentation.h include/Names/MoveBattleStats.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(MOVE_PICKER_PRESENTATION_SOURCES) -o $@

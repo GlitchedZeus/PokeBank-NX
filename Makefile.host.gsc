@@ -1,0 +1,159 @@
+# Generation II GSC permanent host gates.
+GEN2_ADAPTER_SOURCES := tests/test_gsc_gen2_adapter.cpp \
+	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+GSC_INVENTORY_SOURCES := tests/test_gsc_inventory.cpp \
+	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
+GSC_PERSONAL_SOURCES := tests/test_gsc_gen2_personal.cpp \
+	src/Integration/Gen2/Gen2PersonalData.cpp
+GSC_MOVE_COMPAT_SOURCES := tests/test_gsc_move_compatibility.cpp \
+	src/Integration/Gen2/Gen2MoveCompatibility.cpp \
+	src/Integration/Gen1/Gen1MoveCompatibility.cpp
+GSC_DISCOVERY_SOURCES := tests/test_gsc_discovery.cpp \
+	src/Legacy/RetroArchGSCDiscovery.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
+	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp
+GSC_SOURCE_BROWSER_SOURCES := tests/test_gsc_source_browser.cpp \
+	src/Legacy/GSCSourceBrowser.cpp src/Legacy/LegacySourceBindings.cpp \
+	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Games/GameIdentity.cpp
+GSC_BRIDGE_SOURCES := tests/test_gsc_readonly_bridge.cpp \
+	src/Legacy/GSCReadOnlyTrainer.cpp src/Pokemon/Pokemon2ReadOnly.cpp \
+	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
+	src/Integration/Gen2/Gen2StagedEditor.cpp \
+	src/Integration/Gen2/Gen2PersonalData.cpp src/Pokemon/Experience.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp \
+	src/Names/SpeciesNames.cpp src/Names/ItemNames.cpp src/Names/NatureNames.cpp \
+	src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+GSC_BRIDGE_FLAGS := -Wno-unused-parameter
+GSC_UI_RULES_SOURCES := tests/test_gsc_ui_rules.cpp \
+	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
+GSC_PASSIVE_VIEW_CONTRACT_SOURCES := tests/test_passive_pokemon_view_contract.cpp
+GSC_EDITOR_SURFACE_CONTRACT_SOURCES := tests/test_gsc_editor_surface_contract.cpp
+GSC_NATIVE_PRESENTATION_SOURCES := tests/test_gsc_native_presentation.cpp
+GSC_EXPORT_TRANSACTION_SOURCES := tests/test_gsc_export_transaction.cpp \
+	src/Integration/Gen2/Gen2ExportTransaction.cpp \
+	src/Integration/Gen2/Gen2StagedEditor.cpp \
+	src/Integration/Gen2/Gen2ReadOnlySave.cpp \
+	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
+	src/Integration/Gen2/Gen2PersonalData.cpp \
+	src/Pokemon/Experience.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp
+
+GSC_RUNTIME_DISCOVERY_SOURCES := src/Legacy/RetroArchGSCDiscovery.cpp \
+	src/Integration/Gen2/Gen2ReadOnlySave.cpp
+RETROARCH_FRLG_SOURCES += $(GSC_RUNTIME_DISCOVERY_SOURCES)
+RSE_HOST_SOURCES += $(GSC_RUNTIME_DISCOVERY_SOURCES)
+RSE_NATIVE_SOURCES += $(GSC_RUNTIME_DISCOVERY_SOURCES)
+$(HOST_BUILD)/test_rse_gen3_native_slice: $(GSC_RUNTIME_DISCOVERY_SOURCES)
+$(HOST_BUILD)/test_rse_gen3_native_slice_sanitize: $(GSC_RUNTIME_DISCOVERY_SOURCES)
+GSC_RUNTIME_CATALOG_SOURCES := tests/test_gsc_runtime_catalog.cpp \
+	$(filter-out tests/test_retroarch_frlg_discovery.cpp,$(RETROARCH_FRLG_SOURCES)) \
+	src/Legacy/FRLGSourceBrowser.cpp src/Legacy/LegacySourceBindings.cpp
+GSC_RUNTIME_CATALOG_FLAGS := -Wno-unused-parameter
+
+GSC_HOST_TESTS := $(HOST_BUILD)/test_gsc_gen2_adapter \
+	$(HOST_BUILD)/test_gsc_inventory \
+	$(HOST_BUILD)/test_gsc_gen2_personal \
+	$(HOST_BUILD)/test_gsc_move_compatibility \
+	$(HOST_BUILD)/test_gsc_discovery \
+	$(HOST_BUILD)/test_gsc_source_browser \
+	$(HOST_BUILD)/test_gsc_readonly_bridge \
+	$(HOST_BUILD)/test_gsc_runtime_catalog \
+	$(HOST_BUILD)/test_gsc_ui_rules \
+	$(HOST_BUILD)/test_passive_pokemon_view_contract \
+	$(HOST_BUILD)/test_gsc_editor_surface_contract \
+	$(HOST_BUILD)/test_gsc_native_presentation \
+	$(HOST_BUILD)/test_gsc_export_transaction
+GSC_SANITIZE_TESTS := $(HOST_BUILD)/test_gsc_gen2_adapter_sanitize \
+	$(HOST_BUILD)/test_gsc_inventory_sanitize \
+	$(HOST_BUILD)/test_gsc_gen2_personal_sanitize \
+	$(HOST_BUILD)/test_gsc_move_compatibility_sanitize \
+	$(HOST_BUILD)/test_gsc_discovery_sanitize \
+	$(HOST_BUILD)/test_gsc_source_browser_sanitize \
+	$(HOST_BUILD)/test_gsc_readonly_bridge_sanitize \
+	$(HOST_BUILD)/test_gsc_runtime_catalog_sanitize \
+	$(HOST_BUILD)/test_gsc_ui_rules_sanitize \
+	$(HOST_BUILD)/test_passive_pokemon_view_contract_sanitize \
+	$(HOST_BUILD)/test_gsc_editor_surface_contract_sanitize \
+	$(HOST_BUILD)/test_gsc_native_presentation_sanitize \
+	$(HOST_BUILD)/test_gsc_export_transaction_sanitize
+
+HOST_TESTS += $(GSC_HOST_TESTS)
+HOST_SANITIZE_TESTS += $(GSC_SANITIZE_TESTS)
+host-test: $(GSC_HOST_TESTS)
+host-sanitize: $(GSC_SANITIZE_TESTS)
+
+$(HOST_BUILD)/test_gsc_gen2_adapter: $(GEN2_ADAPTER_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_gen2_adapter_sanitize: $(GEN2_ADAPTER_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_inventory: $(GSC_INVENTORY_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_inventory_sanitize: $(GSC_INVENTORY_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_gen2_personal: $(GSC_PERSONAL_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_gen2_personal_sanitize: $(GSC_PERSONAL_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_move_compatibility: $(GSC_MOVE_COMPAT_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_move_compatibility_sanitize: $(GSC_MOVE_COMPAT_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_discovery: $(GSC_DISCOVERY_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_discovery_sanitize: $(GSC_DISCOVERY_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_source_browser: $(GSC_SOURCE_BROWSER_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_source_browser_sanitize: $(GSC_SOURCE_BROWSER_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_readonly_bridge: $(GSC_BRIDGE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GSC_BRIDGE_FLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_readonly_bridge_sanitize: $(GSC_BRIDGE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GSC_BRIDGE_FLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_runtime_catalog: $(GSC_RUNTIME_CATALOG_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GSC_RUNTIME_CATALOG_FLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_runtime_catalog_sanitize: $(GSC_RUNTIME_CATALOG_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GSC_RUNTIME_CATALOG_FLAGS) $(SANITIZE_FLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_ui_rules: $(GSC_UI_RULES_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_ui_rules_sanitize: $(GSC_UI_RULES_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_passive_pokemon_view_contract: $(GSC_PASSIVE_VIEW_CONTRACT_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_passive_pokemon_view_contract_sanitize: $(GSC_PASSIVE_VIEW_CONTRACT_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_editor_surface_contract: $(GSC_EDITOR_SURFACE_CONTRACT_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_editor_surface_contract_sanitize: $(GSC_EDITOR_SURFACE_CONTRACT_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_native_presentation: $(GSC_NATIVE_PRESENTATION_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_native_presentation_sanitize: $(GSC_NATIVE_PRESENTATION_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_export_transaction: $(GSC_EXPORT_TRANSACTION_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/test_gsc_export_transaction_sanitize: $(GSC_EXPORT_TRANSACTION_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@

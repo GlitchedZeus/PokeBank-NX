@@ -1,0 +1,19 @@
+# Global game-aware machine-name presentation gates.
+MACHINE_DISPLAY_SOURCES := tests/test_machine_display.cpp \
+	src/Names/MachineDisplay.cpp src/Names/TMMoves.cpp src/Names/MoveNames.cpp
+
+MACHINE_HOST_TESTS := $(HOST_BUILD)/test_machine_display
+MACHINE_SANITIZE_TESTS := $(HOST_BUILD)/test_machine_display_sanitize
+
+HOST_TESTS += $(MACHINE_HOST_TESTS)
+HOST_SANITIZE_TESTS += $(MACHINE_SANITIZE_TESTS)
+host-test: $(MACHINE_HOST_TESTS)
+host-sanitize: $(MACHINE_SANITIZE_TESTS)
+
+$(HOST_BUILD)/test_machine_display: $(MACHINE_DISPLAY_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_machine_display_sanitize: $(MACHINE_DISPLAY_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@

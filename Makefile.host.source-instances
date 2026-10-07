@@ -1,0 +1,24 @@
+# Provider-neutral Save Instances model gate. Generation-specific parsers are exercised by their
+# existing suites; this pins the shared metadata/dedupe/order/profile contract itself.
+SAVE_INSTANCE_MODEL_TEST := $(HOST_BUILD)/test_save_instance_model
+SAVE_INSTANCE_MODEL_SANITIZE := $(HOST_BUILD)/test_save_instance_model_sanitize
+
+HOST_TESTS += $(SAVE_INSTANCE_MODEL_TEST)
+HOST_SANITIZE_TESTS += $(SAVE_INSTANCE_MODEL_SANITIZE)
+host-test: $(SAVE_INSTANCE_MODEL_TEST)
+host-sanitize: $(SAVE_INSTANCE_MODEL_SANITIZE)
+
+$(SAVE_INSTANCE_MODEL_TEST): tests/test_save_instance_model.cpp include/Source/SaveInstance.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(SAVE_INSTANCE_MODEL_SANITIZE): tests/test_save_instance_model.cpp include/Source/SaveInstance.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+.PHONY: save-instance-architecture-contract
+save-instance-architecture-contract:
+	python3 tests/test_save_instance_architecture_contract.py
+
+host-test: save-instance-architecture-contract
+host-sanitize: save-instance-architecture-contract

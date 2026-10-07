@@ -1,0 +1,449 @@
+#ifndef UI_SCREEN_CHROME_H
+#define UI_SCREEN_CHROME_H
+
+#include <algorithm>
+#include <cstdint>
+#include <initializer_list>
+#include <string>
+#include <vector>
+
+#include "UI/PKSEFramebuffer.h"
+#include "UI/Common.h"
+#include "UI/ControllerModel.h"
+#include "UI/TouchInput.h"
+
+namespace UI {
+    // ---------------------------------------------------------------------------------------------
+    // HOME-style screen chrome.
+    //
+    // Both bars are rounded SHEETS whose far edge runs off-screen, so only the edge facing the
+    // content is curved: the header curves along its bottom, the nav bar along its top. A soft
+    // shadow does the separating, which is why neither carries a hard divider rule any more.
+    // ---------------------------------------------------------------------------------------------
+
+    constexpr int kChromeRadius = 18;   // curve on the content-facing edge of both bars
+    constexpr int kHeaderH      = 64;
+    constexpr int kNavBarH      = 46;
+
+    inline Color withAlpha(Color color, std::uint8_t alpha) {
+        return Color(color.r, color.g, color.b, alpha);
+    }
+
+    // Shared PokeBank NX backdrop. It leaves the OLED theme genuinely black and keeps only the
+    // low-alpha archive rings; the background now extends cleanly to the left edge.
+    inline void drawAppBackdrop(PKSEFramebuffer& fb) {
+        const int w = fb.getWidth();
+        fb.clear(Colors::Background);
+        fb.drawCircle(w - 58, 126, 112, withAlpha(Colors::BrandAccent, 24), 18);
+        fb.drawCircle(w - 58, 126, 76, withAlpha(Colors::AccentSecondary, 20), 10);
+    }
+
+    struct ControllerHint {
+        std::string button;
+        std::string label;
+    };
+
+    inline std::string controllerGlyph(PokeBank::UIModel::ControllerButton button) {
+        using PokeBank::UIModel::ControllerButton;
+        switch (button) {
+            case ControllerButton::DPad:  return "Up/Down";
+            case ControllerButton::A:     return "A";
+            case ControllerButton::B:     return "B";
+            case ControllerButton::X:     return "X";
+            case ControllerButton::Y:     return "Y";
+            case ControllerButton::LR:    return "L/R";
+            case ControllerButton::ZLZR:  return "ZL/ZR";
+            case ControllerButton::Plus:  return "+";
+            case ControllerButton::Minus: return "-";
+        }
+        return {};
+    }
+
+    inline std::vector<ControllerHint> controllerHints(PokeBank::UIModel::ControllerContext context) {
+        std::vector<ControllerHint> result;
+        for (const auto& binding : PokeBank::UIModel::controllerBindings(context))
+            result.push_back({controllerGlyph(binding.button), std::string(binding.label)});
+        return result;
+    }
+
+    // Reusable semantic surfaces. New UI code chooses purpose/elevation here rather than selecting
+    // literal colors; the active OLED Black, Dark, or Light palette supplies the appearance.
+    inline void drawPanelSurface(PKSEFramebuffer& fb, int x, int y, int w, int h,
+                                 bool raised = false, int radius = 14) {
+        if (raised) fb.drawSoftShadow(x, y, w, h, radius);
+        fb.drawFilledRoundedRect(x, y, w, h, radius,
+                                 raised ? Colors::SurfaceRaised : Colors::Surface);
+        fb.drawRoundedRect(x, y, w, h, radius, Colors::Divider, 1);
+    }
+
+    inline void drawFocusedCard(PKSEFramebuffer& fb, int x, int y, int w, int h,
+                                bool focused, int radius = 14) {
+        if (focused) fb.drawSoftShadow(x, y, w, h, radius);
+        // Focus never changes the card fill: teal outline + readable text carries selection.
+        fb.drawFilledRoundedRect(x, y, w, h, radius, Colors::Surface);
+        fb.drawRoundedRect(x, y, w, h, radius,
+                           focused ? Colors::FocusBorder : Colors::Divider, focused ? 3 : 1);
+    }
+
+    inline void drawModalSurface(PKSEFramebuffer& fb, int x, int y, int w, int h,
+                                 int radius = 18) {
+        fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Color(0, 0, 0, 150));
+        drawPanelSurface(fb, x, y, w, h, true, radius);
+    }
+
+    // --- Controller-button badges -----------------------------------------------------------------
+
+    // Draw (or, with measureOnly, just measure) one controller badge, shaped like the real button:
+    // face buttons are round, shoulders are rounded rectangles, +/- are round with a drawn bar, and
+    // the d-pad is a cross with the unused axis dimmed. `cy` is the badge's vertical CENTRE.
+    // Returns the width consumed, or 0 if the token isn't a button PKSE knows how to draw.
+    inline int buttonGlyph(PKSEFramebuffer& fb, int x, int cy, const std::string& btn, bool measureOnly) {
+        // Neutral controller glyphs follow the theme. Face buttons use stable familiar colors so
+        // A/B/X/Y remain instantly distinguishable in Light, Dark and OLED Black.
+        const Color fill = Colors::TextPrimary;
+        const Color ink  = Colors::Panel;
+        constexpr int kR = 12;              // face-button radius
+
+        auto centred = [&](const std::string& s, int bx, int bw, Color textColor) {
+            int tw, th; fb.measureText(s, tw, th, TextStyle::Caption);
+            fb.drawText(bx + (bw - tw) / 2, cy - th / 2, s, textColor, TextStyle::Caption);
+        };
+
+        // Face buttons. These colors are presentation-only and never imply danger/success state.
+        if (btn.size() == 1 && (btn[0] == 'A' || btn[0] == 'B' || btn[0] == 'X' || btn[0] == 'Y')) {
+            Color faceFill = fill;
+            Color faceInk = Colors::White;
+            if (btn[0] == 'A') faceFill = Color(62, 166, 96);
+            else if (btn[0] == 'B') faceFill = Color(210, 72, 78);
+            else if (btn[0] == 'X') faceFill = Color(70, 132, 214);
+            else {
+                faceFill = Color(226, 176, 54);
+                faceInk = Color(40, 32, 12);
+            }
+            if (!measureOnly) {
+                fb.drawFilledCircle(x + kR, cy, kR, faceFill);
+                centred(btn, x, kR * 2, faceInk);
+            }
+            return kR * 2;
+        }
+
+        // Plus / Minus. The bars are drawn rather than typed -- Nunito's '+' and '-' are far too
+        // thin to read at badge size, and '-' sits at x-height instead of centred.
+        if (btn == "+" || btn == "Plus" || btn == "-" || btn == "Minus") {
+            if (!measureOnly) {
+                fb.drawFilledCircle(x + kR, cy, kR, fill);
+                fb.drawFilledRoundedRect(x + kR - 6, cy - 1, 13, 3, 1, ink);
+                if (btn == "+" || btn == "Plus")
+                    fb.drawFilledRoundedRect(x + kR - 1, cy - 6, 3, 13, 1, ink);
+            }
+            return kR * 2;
+        }
+
+        // Shoulders, and the slash pairs the hints use ("L/R", "ZL/ZR"): rounded rects sized to text.
+        if (btn == "L" || btn == "R" || btn == "ZL" || btn == "ZR" || btn == "L/R" || btn == "ZL/ZR") {
+            int tw, th; fb.measureText(btn, tw, th, TextStyle::Caption);
+            const int w = tw + 14, h = 22;
+            if (!measureOnly) { fb.drawFilledRoundedRect(x, cy - h / 2, w, h, 7, fill); centred(btn, x, w, ink); }
+            return w;
+        }
+
+        // D-pad + Left Stick. NavigationRepeat feeds both through the same directional contract, so
+        // the shared legend shows that parity instead of implying D-pad-only navigation.
+        if (btn == "Arrows" || btn == "D-Pad" || btn == "D-pad" || btn == "D-pad/Stick" ||
+            btn == "Up/Down" || btn == "Left/Right") {
+            constexpr int s = 24, a = 9, gap = 5, lsW = 26, lsH = 22;
+            if (!measureOnly) {
+                const Color dim(fill.r, fill.g, fill.b, 70);
+                const bool vOnly = (btn == "Up/Down"), hOnly = (btn == "Left/Right");
+                const int vx = x + (s - a) / 2, vy = cy - s / 2;
+                const int hx = x,               hy = cy - a / 2;
+                if (vOnly) {
+                    fb.drawFilledRoundedRect(hx, hy, s, a, 3, dim);
+                    fb.drawFilledRoundedRect(vx, vy, a, s, 3, fill);
+                } else if (hOnly) {
+                    fb.drawFilledRoundedRect(vx, vy, a, s, 3, dim);
+                    fb.drawFilledRoundedRect(hx, hy, s, a, 3, fill);
+                } else {
+                    fb.drawFilledRoundedRect(vx, vy, a, s, 3, fill);
+                    fb.drawFilledRoundedRect(hx, hy, s, a, 3, fill);
+                }
+                const int lsX = x + s + gap;
+                fb.drawFilledRoundedRect(lsX, cy - lsH / 2, lsW, lsH, 7, fill);
+                centred("LS", lsX, lsW, ink);
+            }
+            return s + gap + lsW;
+        }
+
+        // A single d-pad direction: a rounded-square badge with a geometric triangle arrow. Used by
+        // the edit dialogs' -1 / +1 steps (the shoulders take the +/-10 and +/-100 steps).
+        if (btn == "Left" || btn == "Right" || btn == "Up" || btn == "Down") {
+            constexpr int s = 22;
+            if (!measureOnly) {
+                fb.drawFilledRoundedRect(x, cy - s / 2, s, s, 6, fill);
+                const std::string tri = btn == "Left"  ? "\xE2\x97\x80"    // ◀
+                                      : btn == "Right" ? "\xE2\x96\xB6"    // ▶
+                                      : btn == "Up"    ? "\xE2\x96\xB2"    // ▲
+                                      :                  "\xE2\x96\xBC";   // ▼
+                // Measure AND draw the arrow at Caption size -- drawSymbol otherwise defaults to Body,
+                // which overflowed this 22px badge and mis-centred the glyph (the ◀ was clipping away).
+                int tw, th; fb.measureText(tri, tw, th, TextStyle::Caption);
+                fb.drawSymbol(x + (s - tw) / 2, cy - th / 2, tri, ink, TextStyle::Caption);
+            }
+            return s;
+        }
+        return 0;   // not a button we have a badge for
+    }
+
+    inline int buttonGlyphWidth(PKSEFramebuffer& fb, const std::string& btn) {
+        return buttonGlyph(fb, 0, 0, btn, true);
+    }
+
+    // A pressable button that carries its controller badge ON the button (glyph + label, centred),
+    // instead of relying on a separate "A: Confirm" guide line below it. `fill` lets destructive
+    // actions stay red; `textColor` keeps the label legible on that fill. Screen-independent (does
+    // NOT register a touch target) so any screen can use it and wire its own hit region --
+    // drawEditChoiceButton wraps this for the TrainerViewScreen dialogs.
+    inline void drawGlyphButton(PKSEFramebuffer& fb, int bx, int by, int bw, int bh,
+                                const std::string& glyph, const std::string& label,
+                                Color fill = Colors::PanelAlt, Color textColor = Colors::Text) {
+        fb.drawFilledRoundedRect(bx, by, bw, bh, 8, fill);
+        fb.drawRoundedRect(bx, by, bw, bh, 8, Colors::Border, 1);
+        const int gw = buttonGlyphWidth(fb, glyph);
+        int lw, lh; fb.measureText(label, lw, lh);
+        const int gx = bx + (bw - (gw + 10 + lw)) / 2;
+        buttonGlyph(fb, gx, by + bh / 2, glyph, false);
+        fb.drawText(gx + gw + 10, by + (bh - lh) / 2, label, textColor);
+    }
+
+    // --- Tappable badges --------------------------------------------------------------------
+    //
+    // Every screen already publishes a contextual hint string, so making the badges tappable gives
+    // HOME-style on-screen action buttons everywhere at once. A tap resolves to that button's press
+    // and the screen ORs it into padGetButtonsDown, so no existing handler changes -- there is one
+    // input path, not two, and a tap can never diverge from what the physical button does.
+    //
+    // Only badges standing for exactly ONE button get a hit region. "L/R", "ZL/ZR" and the d-pad stay
+    // informational: a single badge can't say whether you meant L or R, and splitting one in half
+    // would leave each half far below a usable touch target.
+    struct NavHit { int x, y, w, h; uint64_t button; };
+    inline std::vector<NavHit> g_navHits;
+
+    inline uint64_t navButtonFor(const std::string& btn) {
+        if (btn == "A") return HidNpadButton_A;
+        if (btn == "B") return HidNpadButton_B;
+        if (btn == "X") return HidNpadButton_X;
+        if (btn == "Y") return HidNpadButton_Y;
+        if (btn == "+"  || btn == "Plus")  return HidNpadButton_Plus;
+        if (btn == "-"  || btn == "Minus") return HidNpadButton_Minus;
+        if (btn == "L")  return HidNpadButton_L;
+        if (btn == "R")  return HidNpadButton_R;
+        if (btn == "ZL") return HidNpadButton_ZL;
+        if (btn == "ZR") return HidNpadButton_ZR;
+        return 0;   // multi-button or directional badge: informational only
+    }
+
+    // Hit-test a fresh tap against the badges captured during the PREVIOUS frame's draw (same
+    // one-frame-late contract as TrainerViewScreen::touchedButtonId). Returns a mask to fold into
+    // kDown, or 0. Edge-triggered, so it behaves exactly like padGetButtonsDown.
+    inline uint64_t navTouchButton(const TouchInput& touch) {
+        if (!touch.justPressed()) return 0;
+        for (const NavHit& h : g_navHits) {
+            if (touch.x() >= h.x && touch.x() < h.x + h.w &&
+                touch.y() >= h.y && touch.y() < h.y + h.h)
+                return h.button;
+        }
+        return 0;
+    }
+
+    // --- Hint layout ------------------------------------------------------------------------------
+
+    // Lay out a "Btn: Label  |  Btn: Label" hint as badge+label pairs, centred within [x, x+w] on
+    // `cy`. A segment with no colon (e.g. "HOLDING") is a state marker and renders as accent text.
+    // Shared by the screen nav bar and the dialog footer so the two always match.
+    inline void drawNavHints(PKSEFramebuffer& fb, int x, int w, int cy, const std::string& hint) {
+        struct Seg { std::string btn, label; int glyphW, labelW; };
+
+        // Whoever draws last owns the taps, so an open modal's footer replaces the nav bar behind it
+        // rather than leaving the background live. Clearing here (not in drawNavBar) also means the
+        // list can't grow across frames if a screen ever draws a footer without a nav bar.
+        g_navHits.clear();
+
+        auto trim = [](const std::string& s) {
+            const size_t a = s.find_first_not_of(" \t");
+            if (a == std::string::npos) return std::string();
+            return s.substr(a, s.find_last_not_of(" \t") - a + 1);
+        };
+
+        std::vector<Seg> segs;
+        for (size_t i = 0; i <= hint.size(); ) {
+            const size_t bar = hint.find('|', i);
+            const std::string tok =
+                trim(hint.substr(i, bar == std::string::npos ? std::string::npos : bar - i));
+            if (!tok.empty()) {
+                Seg s{};
+                const size_t colon = tok.find(':');
+                if (colon == std::string::npos) {
+                    s.label = tok;
+                } else {
+                    s.btn   = trim(tok.substr(0, colon));
+                    s.label = trim(tok.substr(colon + 1));
+                }
+                s.glyphW = s.btn.empty() ? 0 : buttonGlyphWidth(fb, s.btn);
+                // A button we have no badge for still has to be readable: fall back to plain text
+                // rather than silently dropping the button name and leaving a bare verb.
+                if (s.glyphW == 0 && !s.btn.empty()) s.label = s.btn + ": " + s.label;
+                int th; fb.measureText(s.label, s.labelW, th, TextStyle::Caption);
+                segs.push_back(s);
+            }
+            if (bar == std::string::npos) break;
+            i = bar + 1;
+        }
+        if (segs.empty()) return;
+
+        constexpr int kGapGlyph = 8, kGapItemMax = 26, kGapItemMin = 10, kPadX = 20;
+        int fixed = 0;
+        for (const Seg& s : segs) fixed += s.glyphW + (s.glyphW ? kGapGlyph : 0) + s.labelW;
+
+        const int n = static_cast<int>(segs.size());
+        int gap = kGapItemMax;
+        if (n > 1) gap = std::clamp((w - kPadX * 2 - fixed) / (n - 1), kGapItemMin, kGapItemMax);
+
+        int cx = x + std::max(kPadX, (w - (fixed + gap * (n - 1))) / 2);
+        for (const Seg& s : segs) {
+            const int segX = cx;
+            if (s.glyphW) { buttonGlyph(fb, cx, cy, s.btn, false); cx += s.glyphW + kGapGlyph; }
+            int tw, th; fb.measureText(s.label, tw, th, TextStyle::Caption);
+            fb.drawText(cx, cy - th / 2, s.label, s.glyphW ? Colors::Text : Colors::Accent,
+                        TextStyle::Caption);
+            cx += s.labelW;
+            // The badge AND its label are one tap target -- aiming at a 24px circle is unreasonable,
+            // and the label is the part that says what will happen. Height is TouchTargetMin rather
+            // than the bar height (46), so the target stays fingertip-sized.
+            const uint64_t button = s.glyphW ? navButtonFor(s.btn) : 0;
+            if (button) g_navHits.push_back({segX, cy - TouchTargetMin / 2, cx - segX, TouchTargetMin, button});
+            cx += gap;
+        }
+    }
+
+    // --- Bars -------------------------------------------------------------------------------------
+
+    // PokeBank NX identity bar. The compact vector archive-ball mark avoids a required image asset,
+    // keeps every theme crisp, and removes inherited PKSE product branding from the normal path.
+    inline void drawTitleBar(PKSEFramebuffer& fb, const std::string& subtitle) {
+        fb.drawSoftShadow(0, -40, fb.getWidth(), kHeaderH + 40, kChromeRadius);
+        fb.drawFilledRoundedRect(0, -kChromeRadius, fb.getWidth(), kHeaderH + kChromeRadius,
+                                 kChromeRadius, Colors::SurfaceRaised);
+
+        constexpr int cx = 34, cy = 30, r = 19;
+        constexpr Color ballWhite(248, 248, 248);
+        constexpr Color ballBand(24, 25, 29);
+
+        // Classic Poké Ball: white base, clipped red top, dark centre band and white button.
+        // Drawing from semantic AccentPrimary keeps the red consistent across all three themes.
+        fb.drawFilledCircle(cx, cy, r, ballWhite);
+        fb.setClipRect(cx - r, cy - r, r * 2, r);
+        fb.drawFilledCircle(cx, cy, r, Colors::BrandAccent);
+        fb.clearClip();
+        fb.drawFilledRect(cx - r, cy - 3, r * 2, 6, ballBand);
+        fb.drawFilledCircle(cx, cy, 8, ballBand);
+        fb.drawFilledCircle(cx, cy, 5, ballWhite);
+        fb.drawCircle(cx, cy, r, ballBand, 2);
+        fb.drawCircle(cx, cy, 5, ballBand, 1);
+
+        constexpr int brandX = 62;
+        fb.drawText(brandX, 8, "PokeBank", Colors::TextPrimary, TextStyle::Title);
+        int brandW, brandH; fb.measureText("PokeBank", brandW, brandH, TextStyle::Title);
+        const int nxX = brandX + brandW + 8;
+        fb.drawFilledRoundedRect(nxX, 15, 40, 28, 9, Colors::BrandAccent);
+        int nxW, nxH; fb.measureText("NX", nxW, nxH, TextStyle::Caption);
+        fb.drawText(nxX + (40 - nxW) / 2, 15 + (28 - nxH) / 2, "NX",
+                    Colors::Surface, TextStyle::Caption);
+
+        if (!subtitle.empty())
+            fb.drawText(nxX + 56, 23, subtitle, Colors::TextSecondary, TextStyle::Caption);
+
+        constexpr int badgeW = 112, badgeH = 26;
+        const int badgeX = fb.getWidth() - badgeW - 22;
+        fb.drawFilledRoundedRect(badgeX, 18, badgeW, badgeH, 10,
+                                 withAlpha(Colors::Info, 45));
+        fb.drawRoundedRect(badgeX, 18, badgeW, badgeH, 10, Colors::Info, 1);
+        int roW, roH; fb.measureText("LIVE LOCKED", roW, roH, TextStyle::Caption);
+        fb.drawText(badgeX + (badgeW - roW) / 2, 18 + (badgeH - roH) / 2,
+                    "LIVE LOCKED", Colors::Info, TextStyle::Caption);
+    }
+
+    // Bottom nav bar: a sheet that curves along its top edge, carrying the controller badges.
+    inline void drawNavBar(PKSEFramebuffer& fb, const std::string& hint) {
+        const int W = fb.getWidth(), barY = fb.getHeight() - kNavBarH;
+        fb.drawSoftShadow(0, barY, W, kNavBarH + 40, kChromeRadius);
+        fb.drawFilledRoundedRect(0, barY, W, kNavBarH + kChromeRadius, kChromeRadius, Colors::Panel);
+        drawNavHints(fb, 0, W, barY + kNavBarH / 2, hint);
+    }
+
+    inline void drawNavBar(PKSEFramebuffer& fb, const std::vector<ControllerHint>& hints) {
+        std::string serialized;
+        for (const ControllerHint& hint : hints) {
+            if (hint.button.empty() || hint.label.empty()) continue;
+            if (!serialized.empty()) serialized += "  |  ";
+            serialized += hint.button + ": " + hint.label;
+        }
+        drawNavBar(fb, serialized);
+    }
+
+    inline void drawNavBar(PKSEFramebuffer& fb, std::initializer_list<ControllerHint> hints) {
+        drawNavBar(fb, std::vector<ControllerHint>(hints));
+    }
+
+    inline void drawInfoOverlay(PKSEFramebuffer& fb, const std::string& title,
+                                const std::vector<std::string>& lines) {
+        constexpr int w = 700;
+        const int h = std::min(520, 140 + static_cast<int>(lines.size()) * 38);
+        const int x = (fb.getWidth() - w) / 2;
+        const int y = (fb.getHeight() - h) / 2;
+        drawModalSurface(fb, x, y, w, h);
+        fb.drawText(x + 28, y + 18, "POKEBANK NX  /  HELP", Colors::BrandAccent,
+                    TextStyle::Caption);
+        fb.drawText(x + 28, y + 44, title, Colors::TextPrimary, TextStyle::Heading);
+        fb.drawFilledRoundedRect(x + 28, y + 86, w - 56, 3, 2, Colors::BrandAccent);
+        int ly = y + 108;
+        for (const std::string& line : lines) {
+            fb.drawText(x + 30, ly, line, Colors::TextSecondary, TextStyle::Body);
+            ly += 38;
+        }
+        drawNavBar(fb, {{"B", "Close"}});
+    }
+
+    // A HOME-style selectable list tile. Selection never tints the tile: the normal dark surface
+    // stays put, a teal outline identifies focus, and selected text remains bright/readable.
+    inline void drawHomeTile(PKSEFramebuffer& fb, int x, int y, int w, int h,
+                             const std::string& label, bool selected, bool accent = false, bool enabled = true) {
+        fb.drawSoftShadow(x, y, w, h, h / 2);
+        fb.drawPill(x, y, w, h, Colors::PanelAlt);
+        if (selected) fb.drawPillBorder(x, y, w, h, Colors::FocusBorder, 2);
+        else if (accent) fb.drawPillBorder(x, y, w, h, Colors::Accent, 2);
+        const Color txt = !enabled ? Colors::TextDim
+                        : selected  ? Colors::SelectedText
+                        : accent    ? Colors::Accent
+                        :             Colors::Text;
+        int lx = x + 28;
+        if (selected) { fb.drawSymbol(x + 20, y + h / 2 - 12, "\xE2\x96\xB6", Colors::FocusBorder); lx = x + 48; }
+        int lw, lh; fb.measureText(label, lw, lh, TextStyle::Body);
+        fb.drawText(lx, y + (h - lh) / 2, label, txt, TextStyle::Body);
+    }
+
+    // A thin scrollbar thumb on a scrolling viewport's right edge, drawn ONLY when the content
+    // overflows. All pixels: `x` is the thumb's left edge, [trackY, trackY + trackH] the viewport,
+    // contentH the full content height, scroll the current offset. Item lists pass contentH =
+    // totalItems * rowH and scroll = firstItem * rowH. One helper so every scrolling surface in the
+    // app gets the same thumb the details editor uses.
+    inline void drawScrollbar(PKSEFramebuffer& fb, int x, int trackY, int trackH, int contentH, int scroll) {
+        if (contentH <= trackH || trackH <= 0) return;
+        const int maxS = contentH - trackH;
+        int s = scroll; if (s < 0) s = 0; if (s > maxS) s = maxS;
+        const int thumbH = std::max(24, trackH * trackH / contentH);
+        const int thumbY = trackY + (trackH - thumbH) * s / maxS;
+        fb.drawFilledRoundedRect(x, thumbY, 3, thumbH, 2, Colors::Border);
+    }
+}
+
+#endif
