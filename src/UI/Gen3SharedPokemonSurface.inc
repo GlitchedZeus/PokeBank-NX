@@ -989,10 +989,6 @@ bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down, const T
     if (moveDown >= 31400 && moveDown < 31405) state.moveEditorRow = moveDown - 31400;
     const int moveTap = screen.touchedButtonId(touch);
     if (moveTap >= 31400 && moveTap < 31405) { state.moveEditorRow = moveTap - 31400; down |= HidNpadButton_A; }
-    if (touch.justReleased() && touch.dragged() && std::abs(touch.deltaY()) >= 28) {
-        const int steps = std::max(1, std::abs(touch.deltaY()) / 48);
-        state.moveEditorRow = std::clamp(state.moveEditorRow + (touch.deltaY() < 0 ? steps : -steps), 0, 4);
-    }
     if (down & HidNpadButton_Up) state.moveEditorRow = (state.moveEditorRow + 4) % 5;
     if (down & HidNpadButton_Down) state.moveEditorRow = (state.moveEditorRow + 1) % 5;
     if (down & HidNpadButton_B) {
@@ -1203,11 +1199,6 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
     const int actionTap = screen.touchedButtonId(touch);
     if (actionTap >= 31600 && actionTap < 31600 + static_cast<int>(actions.count)) {
         state.actionRow = actionTap - 31600; down |= HidNpadButton_A;
-    }
-    if (touch.justReleased() && touch.dragged() && std::abs(touch.deltaY()) >= 28) {
-        const int steps = std::max(1, std::abs(touch.deltaY()) / 44);
-        state.actionRow = std::clamp(state.actionRow + (touch.deltaY() < 0 ? steps : -steps),
-                                     0, static_cast<int>(actions.count) - 1);
     }
     if (down & HidNpadButton_Up)
         state.actionRow = (state.actionRow - 1 + static_cast<int>(actions.count)) %
