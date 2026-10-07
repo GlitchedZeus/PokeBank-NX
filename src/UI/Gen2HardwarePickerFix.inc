@@ -15,15 +15,30 @@ bool hardwareMoveAllowed(const TrainerViewScreen& screen, const State& state, ui
         *game, state.working.species, move);
 }
 
-std::vector<uint16_t> hardwareCompatibleMoveChoices(const TrainerViewScreen& screen,
-                                                     const State& state) {
-    std::vector<uint16_t> choices;
-    choices.reserve(252);
-    choices.push_back(0);
-    for (uint16_t move = 1; move <= 251; ++move) {
-        if (hardwareMoveAllowed(screen, state, move)) choices.push_back(move);
+const std::vector<uint16_t>& hardwareCompatibleMoveChoices(
+    const TrainerViewScreen& screen, const State& state) {
+    struct Cache {
+        std::string sourceGameId;
+        uint16_t species = 0;
+        bool valid = false;
+        std::vector<uint16_t> choices;
+    };
+    static Cache cache;
+
+    if (!cache.valid || cache.sourceGameId != screen.sourceGameId ||
+        cache.species != state.working.species) {
+        cache.sourceGameId = screen.sourceGameId;
+        cache.species = state.working.species;
+        cache.valid = true;
+        cache.choices.clear();
+        cache.choices.reserve(252);
+        cache.choices.push_back(0);
+        for (uint16_t move = 1; move <= 251; ++move) {
+            if (hardwareMoveAllowed(screen, state, move))
+                cache.choices.push_back(move);
+        }
     }
-    return choices;
+    return cache.choices;
 }
 
 int hardwareMoveChoicePosition(const std::vector<uint16_t>& choices, uint16_t move) {
@@ -40,7 +55,7 @@ void normalizeHardwareMovePicker(const TrainerViewScreen& screen, const State& s
 
 void stepHardwareMovePicker(const TrainerViewScreen& screen, const State& state,
                             PickerOverlayState& picker, int delta) {
-    const auto choices = hardwareCompatibleMoveChoices(screen, state);
+    const auto& choices = hardwareCompatibleMoveChoices(screen, state);
     if (choices.empty()) { picker.model.index = 0; return; }
     const int count = static_cast<int>(choices.size());
     const int current = hardwareMoveChoicePosition(choices, picker.model.moveChoice());
@@ -116,7 +131,7 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     if (state.mode == Mode::View || state.mode == Mode::None)
         return handlePickerInputBase(screen, down, held, stickX, stickY, touch);
 
-    const auto touchChoices = hardwareCompatibleMoveChoices(screen, state);
+    const auto& touchChoices = hardwareCompatibleMoveChoices(screen, state);
     const int touchDown = screen.touchedButtonDownId(touch);
     if (touchDown >= 2100 && touchDown < 2100 + static_cast<int>(touchChoices.size()))
         picker.model.index = static_cast<int>(touchChoices[static_cast<std::size_t>(touchDown - 2100)]);
