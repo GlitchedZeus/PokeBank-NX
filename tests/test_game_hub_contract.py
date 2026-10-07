@@ -132,16 +132,16 @@ require("source.gameId != forwarderSaveGameId" in source and
         "forwarder preview/open must consume the GBA save while retaining Switch launch identity")
 require(source.index("!forwarderSaveGameId.empty()") < source.index('fsdevMountSaveData("pbpreview"'),
         "forwarder preview must bypass the forwarder's native Switch savedata mount")
-require("SWSH_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error" in sc_validation,
-        "SWSH Current Box must validate its native one-byte SC value")
+require("SWSH_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error" in sc_validation,
+        "SWSH Current Box must validate its native U32 SC value")
 require("findRequiredPayload" in sc_validation and
         "block.data.size() < minimumSize" in sc_validation,
         "native SC payload preflight must follow trainer key+payload geometry without over-constraining wrapper type")
-require(sc_validation.count("GEN9_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error") == 2,
-        "SV and Z-A Current Box must validate their native one-byte SC values")
-require("SWSH_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error" not in sc_validation and
-        "GEN9_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error" not in sc_validation,
-        "Current Box preflight must not reject authentic saves by requiring a four-byte UInt32")
+require(sc_validation.count("GEN9_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error") == 2,
+        "SV and Z-A Current Box must validate their native U32 SC values")
+require("SWSH_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error" not in sc_validation and
+        "GEN9_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error" not in sc_validation,
+        "Current Box preflight must reject stale one-byte scalar assumptions")
 
 # Product Home, not the retired dashboard, is the app root.
 require("const auto destination = handleSaveSelection();" in ui_manager,
