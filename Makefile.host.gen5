@@ -22,6 +22,8 @@ $(GEN5_PK5_SANITIZE): $(GEN5_PK5_INPUTS)
 GEN5_SAVE_TEST := $(HOST_BUILD)/test_gen5_readonly_save
 GEN5_SAVE_SANITIZE := $(HOST_BUILD)/test_gen5_readonly_save_sanitize
 GEN5_SAVE_INPUTS := tests/test_gen5_readonly_save.cpp \
+    src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp \
+    include/Integration/Gen5/Gen5SourceDiscovery.h \
     include/Integration/Gen5/Gen5SaveBlockLayout.h \
     include/Integration/Gen5/Gen5ReadOnlySave.h \
     include/Integration/Gen5/Gen5SaveInstanceAdapter.h \
@@ -34,8 +36,8 @@ host-sanitize: $(GEN5_SAVE_SANITIZE)
 
 $(GEN5_SAVE_TEST): $(GEN5_SAVE_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_readonly_save.cpp -o $@
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_readonly_save.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp -o $@
 
 $(GEN5_SAVE_SANITIZE): $(GEN5_SAVE_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_readonly_save.cpp -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_readonly_save.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp -o $@

@@ -105,3 +105,22 @@ Source preference remains API-only until a safe UI flow exists.
 - Save Instance diagnostics report the count of quarantined boxed records.
   Synthetic tests independently corrupt PK5 payloads and recompute outer
   save-block checksums to verify this nested integrity boundary.
+
+### Phase B tranche 3 — bounded emulator source discovery (backend only)
+
+- A dedicated Gen V reader and provider-neutral scanner inspect documented
+  **RetroArch, DraStic and melonDS** roots with bounded depth and file count.
+- Only raw exact `0x80000` battery images and exact DeSmuME-compatible
+  `.dsv` with a verified 40-byte footer are accepted. Other wrappers,
+  missing files and `.dss` savestates fail closed; no byte-offset guessing.
+- No SD-card root scan, symlink traversal, file writes, or assigned-game
+  inference from filenames. Physical-file deduplication uses device/inode.
+- A candidate's exact title comes from the validated save. Reopening
+  requires a fresh parser pass, a strict checksum and content fingerprint
+  check, source identity and metadata equivalence.
+- The scanner is not yet connected to the Games menu or automatic profile
+  assignment; historical selected-source semantics remain unchanged.
+- Host tests use disposable synthetic files and verify exact-title probes,
+  safe reopening, `.dsv` validity, savestate quarantine, bounded scans,
+  symlink refusal and changed-file rejection. Real emulator fixtures
+  and physical hardware testing are still pending.

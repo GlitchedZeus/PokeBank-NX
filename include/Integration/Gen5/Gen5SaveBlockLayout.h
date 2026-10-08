@@ -13,7 +13,7 @@ struct SaveBlock {
 // Geometry independently reviewed against PKHeX SaveBlockAccessor5BW and
 // SaveBlockAccessor5B2W2 (GPL-3.0 reference), and PKSM-Core's 70/74 block
 // save tables. Offset values describe the retail save format, not a writer.
-// Layout tables are relative to one 0x40000-byte physical partition.
+// Layout tables are relative to one BW 0x24000 or B2W2 0x26000 save copy.
 inline constexpr std::array<SaveBlock, 70> BlackWhite = {{
     {0x00000, 0x03E0, 0x003E2, 0x23F00},
     {0x00400, 0x0FF0, 0x013F2, 0x23F02},

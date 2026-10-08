@@ -1,11 +1,17 @@
 #include "Integration/Gen5/Gen5ReadOnlySave.h"
 #include "Integration/Gen5/Gen5SaveInstanceAdapter.h"
+#include "Integration/Gen5/Gen5SourceDiscovery.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <array>
+#include <cstdio>
+#include <cstdlib>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <tuple>
 #include <string>
 #include <vector>
@@ -64,6 +70,105 @@ std::vector<uint8_t> make(G::SaveFamily family,uint8_t version,size_t base=0) {
     else stamp(sav,base,L::Black2White2);
     return sav;
 }
+void fileFixture(const std::string& path,const std::vector<uint8_t>& bytes) {
+    FILE* f=std::fopen(path.c_str(),"wb");
+    assert(f);
+    assert(std::fwrite(bytes.data(),1,bytes.size(),f)==bytes.size());
+    assert(std::fclose(f)==0);
+}
+std::vector<uint8_t> dsvFixture(const std::vector<uint8_t>& raw) {
+    auto wrapped=raw;
+    wrapped.resize(raw.size()+40,0);
+    wrapped[raw.size()+4]=0; wrapped[raw.size()+5]=0;
+    wrapped[raw.size()+6]=8; wrapped[raw.size()+7]=0;
+    constexpr std::array<char,16> marker{
+        '|','-','D','E','S','M','U','M','E',' ','S','A','V','E','-','|'
+    };
+    std::copy(marker.begin(),marker.end(),wrapped.begin()+static_cast<std::ptrdiff_t>(raw.size()+24));
+    return wrapped;
+}
+void discoveryContracts() {
+    char pattern[]="/tmp/pokebank_gen5_discovery_XXXXXX";
+    const char* tmp=::mkdtemp(pattern);
+    assert(tmp);
+    const std::string dir=tmp;
+    const std::string nested=dir+"/nested";
+    assert(::mkdir(nested.c_str(),0700)==0);
+    const std::string black=dir+"/a_black.sav";
+    const std::string white=dir+"/w_white.SRM";
+    const std::string dsv=dir+"/d_white.dsv";
+    const std::string state=dir+"/b_state.dss";
+    const std::string symlinkPath=dir+"/c_outside.sav";
+    const std::string tooDeep=dir+"/nested/not_gen5.sav";
+    const auto blackRaw=make(G::SaveFamily::BlackWhite,21);
+    const auto whiteRaw=make(G::SaveFamily::BlackWhite,20);
+    fileFixture(black,blackRaw);
+    fileFixture(white,whiteRaw);
+    fileFixture(dsv,dsvFixture(whiteRaw));
+    fileFixture(state,blackRaw); // Even a valid-looking .dss is NOT a battery save.
+    fileFixture(tooDeep,std::vector<uint8_t>(L::FullSaveSize,0));
+    assert(::symlink(black.c_str(),symlinkPath.c_str())==0);
+
+    const auto probe=G::inspectSourceFile(black,"RetroArch");
+    assert(probe.ready() && probe.gameId=="black_nds");
+    assert(probe.readOnly() && probe.providerId=="retroarch");
+    assert(probe.contentFingerprint.size()==64);
+    assert(probe.physicalIdentity.find("inode:")==0);
+    assert(!G::inspectSourceFile(black,"RetroArch","white_nds").ready());
+    assert(G::inspectSourceFile(black,"RetroArch","white_nds").validation==
+           PokeVault::Source::ValidationStatus::AssignmentMismatch);
+    assert(!G::inspectSourceFile(symlinkPath,"RetroArch").ready());
+    auto direct=G::reopenValidatedSource(probe);
+    assert(direct.ready() && direct.save->exactGameId()=="black_nds");
+    assert(direct.instance.sourceIdentity==probe.sourceIdentity);
+    const auto wrapped=G::inspectSourceFile(dsv,"DraStic");
+    assert(wrapped.ready() && wrapped.gameId=="white_nds");
+    assert(wrapped.containerType=="dsv-footer");
+    assert(G::reopenValidatedSource(wrapped).ready());
+    const auto stateRow=G::inspectSourceFile(state,"DraStic");
+    assert(!stateRow.ready() && stateRow.kind==PokeVault::Source::SaveInstanceKind::SaveState);
+    const auto original=G::inspectSourceFile(white,"melonDS");
+    assert(original.ready() && original.gameId=="white_nds");
+    assert(original.containerType=="raw-nds-battery");
+
+    const G::DiscoveryRoot one{dir,"RetroArch",0};
+    const auto results=G::discoverSources(std::span<const G::DiscoveryRoot>(&one,1));
+    assert(results.filesExamined==4); // Invalid symlink skipped; nested excluded.
+    assert(results.instances.size()==4); // Three valid plus explicit DSV/DSS diagnostics.
+    assert(results.instances[0].mostRecentlyModified);
+    assert(!results.instances[1].mostRecentlyModified);
+    for(const auto& row:results.instances) {
+        assert(row.readOnly());
+        assert(row.sourcePath.find(dir)==0);
+        assert(row.sourcePath!=symlinkPath);
+    }
+    const auto limited=G::discoverSources(std::span<const G::DiscoveryRoot>(&one,1),{1});
+    assert(limited.filesExamined==1 && limited.limitReached);
+    assert(limited.instances.size()==1 && limited.instances[0].gameId=="black_nds");
+    const auto roots=G::defaultDraSticRoots();
+    assert(roots.size()==4 && roots[0].providerLabel=="DraStic");
+
+    // File changes must invalidate an earlier fingerprint. No stale reopen.
+    auto modified=blackRaw;
+    modified[0x400+4]^=0x40;
+    fileFixture(black,modified);
+    assert(!G::reopenValidatedSource(probe).ready());
+    // A DSV with a malformed padding/version/footer is unsupported.
+    auto malformed=dsvFixture(whiteRaw);
+    malformed[whiteRaw.size()+7]=1;
+    fileFixture(dsv,malformed);
+    assert(!G::inspectSourceFile(dsv,"DraStic").ready());
+
+    assert(std::remove(black.c_str())==0);
+    assert(std::remove(white.c_str())==0);
+    assert(std::remove(dsv.c_str())==0);
+    assert(std::remove(state.c_str())==0);
+    assert(std::remove(symlinkPath.c_str())==0);
+    assert(std::remove(tooDeep.c_str())==0);
+    assert(::rmdir(nested.c_str())==0);
+    assert(::rmdir(dir.c_str())==0);
+}
+
 int main() {
     for(const auto& [family,version,id] :
         {std::tuple{G::SaveFamily::BlackWhite,uint8_t{20},"white_nds"},
@@ -190,5 +295,6 @@ int main() {
     std::vector<uint8_t> empty(L::FullSaveSize,0);
     assert(!G::Gen5ReadOnlySave::parse(empty));
     assert(!G::Gen5ReadOnlySave::parse(std::span<const uint8_t>(empty.data(),0x40000)));
+    discoveryContracts();
     std::cout<<"Gen V strict BW/B2W2 save reader synthetic contracts PASS\n";
 }
