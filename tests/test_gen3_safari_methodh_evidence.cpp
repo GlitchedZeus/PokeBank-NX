@@ -101,6 +101,42 @@ int main() {
     assert(emeraldOddish.encounterType == 0);
     assert(emeraldOddish.slot == 3);
 
+    // Emerald Synchronize-success path. This vector is intentionally isolated:
+    // - Safari block roll is 95, so the block path cannot activate.
+    // - p0 is even, so Synchronize succeeds.
+    // - p0 nature (0) does not equal the generated PID nature (13), so the
+    //   ordinary no-lead nature path cannot explain the encounter.
+    // - reversal window is zero, so there are no later no-lead candidates.
+    const auto emeraldSync = Gen3PidIv::analyze(
+        0x8A3759F1u, {6,31,16,13,12,30});
+    assert(emeraldSync.method == Method::Method1);
+    assert(emeraldSync.originSeed == 0x000000E7u);
+    const uint8_t emeraldSyncNature = static_cast<uint8_t>(
+        MH::Detail::sequentialPid(emeraldSync.originSeed) % 25u);
+    assert(emeraldSyncNature == 13u);
+    assert(MH::Detail::reversalWindow(
+        emeraldSync.originSeed, emeraldSyncNature) == 0u);
+    const uint32_t emeraldSyncBlock =
+        MH::Detail::hoennSafariBlockSeed(emeraldSync.originSeed);
+    assert(!MH::Detail::hoennSafariBlockProc(emeraldSyncBlock));
+    assert((MH::Detail::upper16(emeraldSyncBlock) % 100u) == 95u);
+    assert((MH::Detail::upper16(emeraldSync.originSeed) & 1u) == 0u);
+    assert((MH::Detail::upper16(emeraldSync.originSeed) % 25u) !=
+           emeraldSyncNature);
+
+    const auto emeraldPsyduckSync = MH::analyze(
+        "emerald_gba", 54, 57, 31, 0, 0x8A3759F1u, emeraldSync);
+    assert(emeraldPsyduckSync.resolution == MH::Resolution::FrameMatched);
+    assert(emeraldPsyduckSync.path == MH::Path::EmeraldSynchronize);
+    assert(emeraldPsyduckSync.requiredBall == Gen3Safari::kSafariBall);
+    assert(emeraldPsyduckSync.sourceSpecies == 54);
+    assert(!emeraldPsyduckSync.evolved);
+    assert(emeraldPsyduckSync.encounterType == 1);
+    assert(emeraldPsyduckSync.slot == 2);
+    assert(emeraldPsyduckSync.pidSeed == emeraldSync.originSeed);
+    assert(emeraldPsyduckSync.frameSeed ==
+           Gen3PidIv::Detail::prev(emeraldSync.originSeed));
+
     // Method 3 uses A_CDE: the persisted PID skips one RNG frame between
     // halves. Pinned MethodH nevertheless derives its reversal nature from the
     // sequential A+B PID at the same OriginSeed. This vector deliberately has
