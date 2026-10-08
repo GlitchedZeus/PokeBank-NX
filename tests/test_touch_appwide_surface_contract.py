@@ -225,6 +225,14 @@ require_all("include/UI/TouchScroll.h",
             "coasting_ = std::abs(velocity_) >= 2")
 if "liveHorizontalListVisual" in read("include/UI/TouchScroll.h"):
     raise AssertionError("TouchScroll: dead horizontal draw helper was reintroduced without a caller")
+require_all("include/UI/TouchScroll.h",
+            "const bool reversed =",
+            "(velocity_ < 0 && velocitySample > 0)",
+            "(velocity_ > 0 && velocitySample < 0)",
+            "velocity_ = reversed ? velocitySample : std::clamp(")
+require_all("src/UI/Gen2HardwarePickerFix.inc",
+            "touch.startX() >= listX", "touch.startY() >= listY",
+            "std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())")
 require_all("include/UI/TouchGesture.h",
             "struct TouchGestureSnapshot",
             "const TouchGestureSnapshot& latestTouchGesture() noexcept")

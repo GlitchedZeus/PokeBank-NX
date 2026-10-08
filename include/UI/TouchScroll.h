@@ -176,7 +176,13 @@ private:
             // offset_ above deliberately keeps the full physical delta.
             const int maxVelocity = std::max(12, std::min(96, step * 2));
             const int velocitySample = std::clamp(delta, -maxVelocity, maxVelocity);
-            velocity_ = std::clamp(
+            // Respect the latest finger direction. A fast upward flick followed by a short
+            // downward correction must not keep coasting upward on release simply because the
+            // smoothed velocity still remembers the older, stronger motion.
+            const bool reversed =
+                (velocity_ < 0 && velocitySample > 0) ||
+                (velocity_ > 0 && velocitySample < 0);
+            velocity_ = reversed ? velocitySample : std::clamp(
                 (velocity_ * 3 + velocitySample * 5) / 8,
                 -maxVelocity, maxVelocity);
             rebalance(step, index, count, stride);

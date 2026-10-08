@@ -140,9 +140,19 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         picker.model.index = static_cast<int>(touchChoices[static_cast<std::size_t>(touchTap - 2100)]);
         down |= HidNpadButton_A;
     }
-    if (touch.justReleased() && touch.dragged()) {
-        const int steps = std::max(1, std::abs(touch.deltaY()) / std::max(1, kHardwareMovePickerLayout.rowStep));
-        stepHardwareMovePicker(screen, state, picker, touch.deltaY() < 0 ? steps : -steps);
+    // Only the rendered move-list viewport owns a vertical swipe. A horizontal gesture in
+    // the modal or a gesture from its footer must not silently change the chosen move.
+    const int listX = (1280 - kHardwareMovePickerLayout.width) / 2 + 24;
+    const int listY = (720 - kHardwareMovePickerLayout.height) / 2 + kHardwareMovePickerLayout.rowStart;
+    const int listW = kHardwareMovePickerLayout.width - 48;
+    const int listH = kHardwareMovePickerLayout.visibleRows * kHardwareMovePickerLayout.rowStep;
+    const int dy = touch.deltaY();
+    if (touch.justReleased() && touch.dragged() &&
+        touch.startX() >= listX && touch.startX() < listX + listW &&
+        touch.startY() >= listY && touch.startY() < listY + listH &&
+        std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
+        const int steps = std::max(1, std::abs(dy) / std::max(1, kHardwareMovePickerLayout.rowStep));
+        stepHardwareMovePicker(screen, state, picker, dy < 0 ? steps : -steps);
     }
 
     const uint64_t nav = screen.controllerNavigation.apply(
