@@ -191,3 +191,20 @@ Source preference remains API-only until a safe UI flow exists.
   reused from the Gen I–IV SaveInstance model.
 - The catalog is an API/view-model foundation; it is not connected to
   the Games screen and cannot open an assigned source on its own.
+
+### Phase C tranche 3 — shared View/Edit draft + explicit Keep
+
+- `Gen5SharedPokemonSession` uses the same shared editor exit guard as
+  accepted Gen IV, not a separate generation-specific UI.
+- View cannot edit. Edit opens an app-owned PK5 draft for one verified
+  occupied Party/Box slot; navigation and back never commit implicitly.
+- Back presents the existing edit confirmation semantics. Discard cancels
+  the draft without losing separately accepted staged workspace changes.
+- Keep rechecks original slot identity and builds a **copy** of the staged
+  workspace, replays only audited Nature/Friendship/IV/EV changes, then
+  byte-compares the complete encrypted PK5 result against the draft.
+- EV decreases are replayed before increases to avoid transient 510-total
+  overflow. A failure or concurrent slot change leaves the workspace
+  entirely unchanged.
+- No Create capability, SAV writer, original-file write, installed
+  application data modification, injection or automatic legality fix.

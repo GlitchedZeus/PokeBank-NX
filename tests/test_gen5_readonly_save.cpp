@@ -3,6 +3,7 @@
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
 #include "Integration/Gen5/Gen5AssignedSource.h"
 #include "Integration/Gen5/Gen5GameSourceCatalog.h"
+#include "Integration/Gen5/Gen5SharedPokemonSession.h"
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Games/GameIdentity.h"
@@ -362,6 +363,48 @@ int main() {
                 G::Gen5StagedPokemonWorkspace::Region::Party?
                 C::PartySize:C::StoredSize));
         }
+        // Same Gen I-IV shared exit decision model: local Edit changes are
+        // NOT committed to the staged workspace until explicit Keep.
+        G::Gen5SharedPokemonSession viewer;
+        using GSlot=G::Gen5StagedPokemonWorkspace::Slot;
+        using GRegion=G::Gen5StagedPokemonWorkspace::Region;
+        using GMode=G::Gen5SharedPokemonSession::Mode;
+        using GField=G::StagedPokemon5Record::Field;
+        assert(viewer.begin(workspace,GSlot{GRegion::Party,0,0},GMode::View,error));
+        assert(!viewer.stage(GField::Nature,0,15,error));
+        assert(viewer.back() && viewer.mode()==GMode::None);
+        assert(!viewer.begin(workspace,GSlot{GRegion::Box,24,0},GMode::Edit,error));
+        G::Gen5SharedPokemonSession editor;
+        assert(editor.begin(workspace,GSlot{GRegion::Party,0,0},GMode::Edit,error));
+        assert(editor.stage(GField::Nature,0,10,error));
+        assert(editor.current()->nature()==10);
+        assert(workspace.viewParty(0)->nature()==12);
+        assert(!editor.back() && editor.confirmExit());
+        assert(workspace.viewParty(0)->nature()==12);
+        editor.continueEditing();
+        assert(!editor.confirmExit());
+        assert(editor.keep(workspace,error));
+        assert(editor.mode()==GMode::None && workspace.viewParty(0)->nature()==10);
+        assert(workspace.changedRecordCount()==2);
+        // Local cancel never discards earlier accepted workspace edits.
+        assert(editor.begin(workspace,GSlot{GRegion::Box,0,0},GMode::Edit,error));
+        assert(editor.stage(GField::Friendship,0,87,error));
+        assert(editor.dirty());
+        editor.discardDraft();
+        assert(workspace.viewBox(0,0)->friendship()==255);
+        // Concurrent edits are not overwritten with a stale draft.
+        assert(editor.begin(workspace,GSlot{GRegion::Party,0,0},GMode::Edit,error));
+        assert(editor.stage(GField::Nature,0,13,error));
+        assert(workspace.stageParty(0,GField::Nature,0,14,&error));
+        assert(!editor.keep(workspace,error));
+        assert(workspace.viewParty(0)->nature()==14);
+        editor.discardDraft();
+        // A new box draft can be independently kept.
+        assert(editor.begin(workspace,GSlot{GRegion::Box,0,0},GMode::Edit,error));
+        assert(editor.stage(GField::Friendship,0,89,error));
+        assert(editor.keep(workspace,error));
+        assert(workspace.viewBox(0,0)->friendship()==89);
+        assert(workspace.viewBox(0,0)->ivs()[5]==31);
         workspace.discardAll();
         assert(!workspace.hasChanges());
         assert(workspace.viewParty(0)->nature()==parsed->partyPokemon(0)->nature());
