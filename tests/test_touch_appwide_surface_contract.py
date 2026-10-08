@@ -191,8 +191,13 @@ require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc",
             "case UX::Action::Edit:",
             "case UX::Action::ReviewPendingChanges:")
 require_all("src/UI/Gen2HardwarePickerFix.inc",
-            "liveVerticalListVisual(",
-            "visual.offset",
+            "picker.moveViewport.ensure(selectedPos, count, visible);",
+            "const int first = overlay.moveViewport.firstRow;",
+            "const int liveOffset = overlay.moveScroll.offset();",
+            "picker.moveScroll.updateVertical(",
+            "picker.moveViewport.firstRow, maxFirstRow + 1",
+            "picker.moveViewport.containsSelection(",
+            "picker.moveViewport.reveal(focusedPos, count, visible);",
             "fb.setClipRect(",
             "appendClippedTouchButton(",
             "x + 24, viewportTop, panelW - 48, viewportH")
@@ -302,8 +307,17 @@ require_all("include/UI/TouchScroll.h",
             "(velocity_ > 0 && velocitySample < 0)",
             "velocity_ = reversed ? velocitySample : std::clamp(")
 require_all("src/UI/Gen2HardwarePickerFix.inc",
-            "touch.startX() >= listX", "touch.startY() >= listY",
-            "std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())")
+            "picker.moveScroll.updateVertical(",
+            "touch, listX, listY, listW, listH, kHardwareMovePickerLayout.rowStep,",
+            "Focused move brought into view; press A again or tap a visible row")
+gen2_move_overlay = read("src/UI/Gen2PokemonPickerOverlay.inc")
+require_all("src/UI/Gen2PokemonPickerOverlay.inc",
+            "TouchScrollState moveScroll;",
+            "TouchPickerViewport moveViewport;",
+            "picker.moveScroll.reset();",
+            "picker.moveViewport.reset();")
+if "stepHardwareMovePicker(screen, state, picker, dy < 0" in read("src/UI/Gen2HardwarePickerFix.inc"):
+    raise AssertionError("Gen II Move picker must never change chosen Move directly on drag release")
 require_all("src/UI/Gen2HardwareWorkspaceFix.inc",
             "const bool started = focusUnifiedTouchPoint(",
             "screen, touch.startX(), touch.startY(), false, down",
