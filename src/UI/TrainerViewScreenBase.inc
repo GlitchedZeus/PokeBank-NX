@@ -1446,8 +1446,13 @@ namespace UI {
 
     int TrainerViewScreen::touchedButtonId(const TouchInput& touch) const {
         if (!touch.justTapped()) return -1;
+        // A clean release is not sufficient: the finger must also have started on THIS target.
+        // Otherwise a sub-slop movement across neighbouring editor rows can activate a row
+        // that was never touched on contact (including a destructive confirmation button).
         for (const auto& b : touchButtons) {
-            if (touch.x() >= b.x && touch.x() < b.x + b.w &&
+            if (touch.startX() >= b.x && touch.startX() < b.x + b.w &&
+                touch.startY() >= b.y && touch.startY() < b.y + b.h &&
+                touch.x() >= b.x && touch.x() < b.x + b.w &&
                 touch.y() >= b.y && touch.y() < b.y + b.h)
                 return b.id;
         }
