@@ -87,10 +87,73 @@ static void testDrawOnlyAndPixelBounds() {
     gesture.down = false;
 }
 
+static void testStaleIndexClampedWithoutMotion() {
+    TouchScrollState state;
+    TouchInput touch;
+    int row = -20;
+    touch.contact(100, 200);
+    feed(state, touch, row, 3);
+    assert(row == 0);  // A new touch must not expose an invalid cursor.
+    row = 99;
+    touch.nextFrame();
+    feed(state, touch, row, 3);
+    assert(row == 2);  // Nor may an already-held stationary finger retain one.
+}
+
+static void testPartialGridStrideAtBoundary() {
+    TouchScrollState state;
+    TouchInput touch;
+    int cell = 2;  // Column 2 is absent from the last row of a 5-item, 3-column grid.
+    touch.contact(100, 200);
+    state.updateVertical(touch, 0, 0, 400, 300, 40, cell, 5, 3);
+    touch.contact(100, 100);
+    state.updateVertical(touch, 0, 0, 400, 300, 40, cell, 5, 3);
+    assert(cell == 2 && std::abs(state.offset()) <= 40);
+
+    TouchScrollState other;
+    TouchInput second;
+    cell = 1;  // Column 1 does have a valid final-row neighbour.
+    second.contact(100, 200);
+    other.updateVertical(second, 0, 0, 400, 300, 40, cell, 5, 3);
+    second.contact(100, 160);
+    other.updateVertical(second, 0, 0, 400, 300, 40, cell, 5, 3);
+    assert(cell == 4 && other.offset() == 0);
+}
+
+static void testRealIdleCoastAndTapCancellation() {
+    TouchScrollState state;
+    TouchInput touch;
+    int row = 0;
+    touch.contact(100, 200);
+    feed(state, touch, row, 20);
+    touch.contact(100, 140);
+    feed(state, touch, row, 20);
+    touch.release();
+    feed(state, touch, row, 20);
+    const int atRelease = row * 40 - state.offset();
+    touch.nextFrame();  // The release edge is over; the next update is a true idle frame.
+    feed(state, touch, row, 20);
+    assert(row * 40 - state.offset() > atRelease);  // Momentum really advances content.
+
+    const int atNewContact = state.offset();
+    touch.contact(100, 140);
+    feed(state, touch, row, 20);
+    assert(state.offset() == atNewContact);  // A new touch interrupts coast without snapping.
+    touch.release();
+    feed(state, touch, row, 20);
+    assert(state.offset() == atNewContact);
+    touch.nextFrame();
+    feed(state, touch, row, 20);
+    assert(std::abs(state.offset()) <= std::abs(atNewContact));  // Idle settles the residual.
+}
+
 int main() {
     testContinuousPixelAndBoundary();
     testCoastReversalAndTapInterrupt();
     testEmptySingleAndBothEnds();
     testDrawOnlyAndPixelBounds();
+    testStaleIndexClampedWithoutMotion();
+    testPartialGridStrideAtBoundary();
+    testRealIdleCoastAndTapCancellation();
     std::cout << "touch-scroll runtime geometry: PASS\n";
 }
