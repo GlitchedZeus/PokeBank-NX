@@ -34,7 +34,7 @@ jobs:
         run: python3 tests/test_touch_appwide_surface_contract.py
       - name: Behavioral touch scroll geometry
         run: |
-          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror \\
-            -Itests/touch_fakes -Iinclude \\
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+            -Itests/touch_fakes -Iinclude \
             tests/test_touch_scroll_state.cpp -o /tmp/pokebank_touch_scroll_state
           /tmp/pokebank_touch_scroll_state
