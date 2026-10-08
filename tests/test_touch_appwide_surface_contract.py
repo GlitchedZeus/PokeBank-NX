@@ -37,7 +37,10 @@ SURFACES = {
     ),
     "Backup selection": (
         "src/UI/BackupSelectionScreen.cpp",
-        ("backupScroll.updateVertical(", "backupScroll.offset()", "backupScroll.stop()"),
+        ("backupScroll.updateVertical(", "backupScroll.offset()", "backupScroll.stop()",
+         "backupFirstRow, maxFirstRow + 1",
+         "insideTile(touch.startX(), touch.startY())",
+         "insideTile(touch.x(), touch.y())"),
     ),
     "Classic inventory": (
         "src/UI/ClassicInventoryOverlay.cpp",
@@ -121,6 +124,11 @@ for name, (rel, needles) in SURFACES.items():
         require_all(rel, *needles)
     except AssertionError as exc:
         raise AssertionError(f"{name}: {exc}") from exc
+
+# Backup selection must scroll its viewport, not re-center to its changing selection.
+require_all("include/UI/BackupSelectionScreen.h", "int backupFirstRow = 0;")
+if "firstVisibleRow(" in read("src/UI/BackupSelectionScreen.cpp"):
+    raise AssertionError("Backup Selection: stale selection-centered scroll helper returned")
 
 chrome = read("include/UI/ScreenChrome.h")
 for glyph in ("+", "-", "L", "R", "ZL", "ZR", "Left", "Right", "Up", "Down"):
