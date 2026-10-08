@@ -65,7 +65,7 @@ require(gen2_item, "src/UI/Gen2PokemonEditorFoundation.inc",
         "state.itemChoiceIndex = touchTap - 3000;",
         "state.itemScroll.updateVertical(",
         "state.itemScroll.offset()",
-        "screen.touchButtons.push_back({3000 + i")
+        "appendClippedTouchButton(screen.touchButtons, 3000 + i")
 
 gen3 = read("src/UI/Gen3SharedPokemonSurface.inc")
 for token in (
