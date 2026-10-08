@@ -152,6 +152,9 @@ private:
             stop();
             return;
         }
+        // The list may have shrunk since the previous frame. A stationary new touch must never
+        // leave an out-of-range semantic cursor waiting for the next pixel crossing.
+        index = std::clamp(index, 0, count - 1);
 
         if (touch.justTouchedDown()) {
             active_ = inside(touch.x(), touch.y(), x, y, w, h);
