@@ -21,7 +21,8 @@ namespace Legality::Gen3SafariMethodH {
 // failed-proc (lowered-level) and positive Pressure-family proc for Safari
 // encounters are reconstructed. Grass-area Pressure uses original per-area
 // species grouping; a bounded Emerald Static-success grass path is also
-// reconstructed. Cute Charm success and other leads remain unsupported.
+// reconstructed. Intimidate/Keen Eye non-repelled encounter checks are also
+// bounded here; Cute Charm success and other leads remain unsupported.
 //
 // Method 3 uses an A_C PID shape: one RNG frame is skipped between the two
 // persisted PID halves. Pinned LeadFinder still passes PIDIV.OriginSeed into
@@ -46,6 +47,7 @@ enum class Path : uint8_t {
     EmeraldPressureHustleFailed,
     EmeraldPressureHustleSuccess,
     EmeraldStaticSuccess,
+    EmeraldIntimidateKeenEyeCheckFailed,
 };
 
 struct Evidence {
@@ -416,6 +418,44 @@ constexpr CandidateMatch matchEmeraldStaticSuccess(
     return {Path::EmeraldStaticSuccess, frameSeed};
 }
 
+// Pinned MethodH.IsSlotValidIntimidate: an encounter occurs only when the
+// -1 adequacy check does NOT reject it (even RNG upper half). The -2 level,
+// -3 ordinary slot and optional Rock Smash activation are then checked.
+// Only an isolated positive Emerald Safari no-block, matching-nature window
+// is reconstructed. A rejected encounter cannot produce a Pokémon.
+constexpr CandidateMatch matchEmeraldIntimidateKeenEyeCheckFailed(
+        const Gen3Safari::Entry& row,
+        uint8_t metLevel,
+        uint32_t candidateSeed,
+        uint8_t nature) noexcept {
+    const uint16_t p0 = upper16(candidateSeed);
+    if ((p0 % 25u) != nature || (p0 & 1u) == 0u ||
+        hoennSafariBlockProc(hoennSafariBlockSeed(candidateSeed)))
+        return {};
+    if (row.method > 5 || row.maxLevel < row.minLevel)
+        return {};
+
+    const uint32_t frameSeed = Gen3PidIv::Detail::prev(candidateSeed);
+    const uint32_t procSeed = Gen3PidIv::Detail::prev(frameSeed);
+    const uint16_t proc = upper16(procSeed);
+    if ((proc & 1u) != 0u || (proc % 3u) == 0u)
+        return {}; // Encounter rejected, or Cute Charm-fail path overlaps.
+    const uint32_t levelSeed = Gen3PidIv::Detail::prev(procSeed);
+    const uint32_t slotSeed = Gen3PidIv::Detail::prev(levelSeed);
+    const uint32_t activationSeed = Gen3PidIv::Detail::prev(slotSeed);
+    const uint32_t span = 1u + row.maxLevel - row.minLevel;
+    const uint8_t level = static_cast<uint8_t>(
+        row.minLevel + (upper16(levelSeed) % span));
+    if (level != metLevel ||
+        Gen3MethodHSlot::get(
+            static_cast<Gen3MethodHSlot::Type>(row.method),
+            upper16(slotSeed)) != row.slot)
+        return {};
+    if (row.method == 5 && !rockSmashActivation(row, activationSeed))
+        return {};
+    return {Path::EmeraldIntimidateKeenEyeCheckFailed, frameSeed};
+}
+
 inline bool sourceSpeciesMatches(std::string_view exactGameId,
                                  uint16_t currentSpecies,
                                  uint8_t currentForm,
@@ -518,6 +558,9 @@ inline Evidence analyze(std::string_view exactGameId,
                         row, metLevel, candidateSeed, nature);
                 if (match.path == Path::None)
                     match = Detail::matchEmeraldStaticSuccess(
+                        row, metLevel, candidateSeed, nature);
+                if (match.path == Path::None)
+                    match = Detail::matchEmeraldIntimidateKeenEyeCheckFailed(
                         row, metLevel, candidateSeed, nature);
             }
             if (match.path == Path::None)

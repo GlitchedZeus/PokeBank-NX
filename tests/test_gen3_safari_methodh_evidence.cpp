@@ -355,6 +355,54 @@ int main() {
         "emerald_gba", 25, 57, 27, 0, 0xA2B5D929u,
         emeraldStatic).resolution == MH::Resolution::Unresolved);
 
+    // Emerald Safari Intimidate/Keen Eye not-repelled encounter check.
+    // Pinned MethodH.IsSlotValidIntimidate only allows the encounter when
+    // the -1 level-adequacy proc is even. The ordinary -1 level is 21,
+    // and Pressure-failure -2 level would also be 21, while the actual
+    // -2 level here is 22. The -3 Surf ESV yields Psyduck slot 0.
+    const auto emeraldIntimidate = Gen3PidIv::analyze(
+        0x87D5DA8Cu, {5,30,18,7,14,1});
+    assert(emeraldIntimidate.method == Method::Method1);
+    assert(emeraldIntimidate.originSeed == 0x0001356Bu);
+    const uint8_t intimNature = static_cast<uint8_t>(
+        MH::Detail::sequentialPid(emeraldIntimidate.originSeed) % 25u);
+    assert(intimNature == 1u);
+    assert(MH::Detail::reversalWindow(
+        emeraldIntimidate.originSeed, intimNature) == 0u);
+    const uint32_t intimBlock =
+        MH::Detail::hoennSafariBlockSeed(emeraldIntimidate.originSeed);
+    assert(!MH::Detail::hoennSafariBlockProc(intimBlock));
+    assert((MH::Detail::upper16(intimBlock) % 100u) == 88u);
+    const uint32_t intimFrame = Gen3PidIv::Detail::prev(
+        emeraldIntimidate.originSeed);
+    const uint32_t intimProcSeed = Gen3PidIv::Detail::prev(intimFrame);
+    const uint32_t intimLevelSeed = Gen3PidIv::Detail::prev(intimProcSeed);
+    const uint32_t intimSlotSeed = Gen3PidIv::Detail::prev(intimLevelSeed);
+    assert(MH::Detail::upper16(intimProcSeed) == 32638u);
+    assert((MH::Detail::upper16(intimProcSeed) & 1u) == 0u);
+    assert((MH::Detail::upper16(intimProcSeed) % 3u) != 0u);
+    assert(MH::Detail::upper16(intimLevelSeed) == 7537u);
+    assert(MH::Detail::upper16(intimSlotSeed) == 17910u);
+    assert(MH::Detail::upper16(intimSlotSeed) % 100u < 60u);
+
+    const auto psyduckIntimidate = MH::analyze(
+        "emerald_gba", 54, 57, 22, 0, 0x87D5DA8Cu,
+        emeraldIntimidate);
+    assert(psyduckIntimidate.resolution == MH::Resolution::FrameMatched);
+    assert(psyduckIntimidate.path ==
+           MH::Path::EmeraldIntimidateKeenEyeCheckFailed);
+    assert(psyduckIntimidate.requiredBall == Gen3Safari::kSafariBall);
+    assert(psyduckIntimidate.sourceSpecies == 54);
+    assert(psyduckIntimidate.encounterType == 1);
+    assert(psyduckIntimidate.slot == 0);
+    assert(psyduckIntimidate.frameSeed == intimFrame);
+
+    // This source frame does not prove a different met level. Unknown
+    // competing history remains Unresolved, never a hard Invalid verdict.
+    assert(MH::analyze(
+        "emerald_gba", 54, 57, 23, 0, 0x87D5DA8Cu,
+        emeraldIntimidate).resolution == MH::Resolution::Unresolved);
+
     // The same PID/IV frame is not an FR/LG or Ruby source: these remain
     // unresolved, not hard-invalid.
     assert(MH::analyze(
