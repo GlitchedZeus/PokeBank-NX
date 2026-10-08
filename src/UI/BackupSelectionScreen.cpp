@@ -22,15 +22,6 @@ namespace UI {
     constexpr int LIST_ROW_H = 62;
     constexpr int LIST_MAX_VISIBLE = 8;   // rows that fit in the card before scrolling
 
-    // Scroll window: keep the selected row visible (centered when scrolling).
-    static int firstVisibleRow(int sel, int total) {
-        if (total <= LIST_MAX_VISIBLE) return 0;
-        int first = sel - LIST_MAX_VISIBLE / 2;
-        if (first < 0) first = 0;
-        if (first > total - LIST_MAX_VISIBLE) first = total - LIST_MAX_VISIBLE;
-        return first;
-    }
-
     BackupSelectionScreen::BackupSelectionScreen(
         AccountUid userUid, u64 titleId, const std::string& titleName)
         : userUid(userUid), titleId(titleId), titleName(titleName), selectedIndex(0),
@@ -156,33 +147,53 @@ namespace UI {
             return;  // Ignore other inputs while confirmation is shown
         }
 
-        // Phone/tablet-style direct manipulation: the semantic cursor advances only as a row
-        // physically crosses the viewport while the residual pixels remain attached to the finger.
-        // A short release velocity tail is handled by TouchScrollState; taps remain release-confirmed.
+        // Touch moves the PHYSICAL viewport, not the selected backup. Keeping these independent
+        // prevents an entire row of visual scroll from snapping back when focus stays in view.
+        const int count = static_cast<int>(backups.size());
+        const int maxFirstRow = std::max(0, count - LIST_MAX_VISIBLE);
+        backupFirstRow = std::clamp(backupFirstRow, 0, maxFirstRow);
+        selectedIndex = std::clamp(selectedIndex, 0, std::max(0, count - 1));
         const int listY = CARD_Y + 62;
         const int listX = CARD_X + 14;
         const int listW = CARD_W - 28;
-        backupScroll.updateVertical(
-            touch, listX, listY, listW, LIST_MAX_VISIBLE * LIST_ROW_H,
-            LIST_ROW_H, selectedIndex, static_cast<int>(backups.size()));
+        if (maxFirstRow > 0) {
+            backupScroll.updateVertical(
+                touch, listX, listY, listW, LIST_MAX_VISIBLE * LIST_ROW_H,
+                LIST_ROW_H, backupFirstRow, maxFirstRow + 1);
+        } else {
+            backupScroll.stop();
+        }
 
-        // Touch: tap a backup tile to select + open it (account for the scroll window).
-        if (touch.justReleased() && !touch.dragged()) {
-            const int startY = CARD_Y + 62, tileX = CARD_X + 14, tileW = CARD_W - 28;
-            const int listBottom = startY + LIST_MAX_VISIBLE * LIST_ROW_H;
-            const auto insideList = [&](int px, int py) {
-                return px >= tileX && px < tileX + tileW &&
-                       py >= startY && py < listBottom;
-            };
-            if (insideList(touch.startX(), touch.startY()) &&
-                insideList(touch.x(), touch.y())) {
-                const int startedRow = (touch.startY() - startY) / LIST_ROW_H;
-                const int visIdx = (touch.y() - startY) / LIST_ROW_H;
-                const int idx = firstVisibleRow(selectedIndex, static_cast<int>(backups.size())) + visIdx;
-                if (visIdx == startedRow && visIdx < LIST_MAX_VISIBLE &&
-                    idx < static_cast<int>(backups.size())) {
-                    selectedIndex = idx;
+        // Action controls (including Delete) must never target a backup hidden by touch scrolling.
+        // Preserve the highlighted row until it leaves the viewport, then keep the nearest row.
+        if (count > 0) {
+            if (selectedIndex < backupFirstRow)
+                selectedIndex = backupFirstRow;
+            else if (selectedIndex >= backupFirstRow + LIST_MAX_VISIBLE)
+                selectedIndex = std::min(count - 1, backupFirstRow + LIST_MAX_VISIBLE - 1);
+        }
+
+        // Hit-test the same pixels that were rendered: account for residual scroll, the 10px
+        // row gap, and viewport clipping. Both contact and release must remain on one visible tile.
+        if (touch.justTapped()) {
+            const int listBottom = listY + LIST_MAX_VISIBLE * LIST_ROW_H;
+            const int liveOffset = backupScroll.offset();
+            const int drawFirst = std::max(0, backupFirstRow - 1);
+            const int drawLast = std::min(count, backupFirstRow + LIST_MAX_VISIBLE + 1);
+            for (int i = drawFirst; i < drawLast; ++i) {
+                const int itemY = listY + (i - backupFirstRow) * LIST_ROW_H + liveOffset;
+                const int top = std::max(listY, itemY);
+                const int bottom = std::min(listBottom, itemY + LIST_ROW_H - 10);
+                const auto insideTile = [&](int px, int py) {
+                    return px >= listX && px < listX + listW &&
+                           py >= top && py < bottom;
+                };
+                if (top < bottom &&
+                    insideTile(touch.startX(), touch.startY()) &&
+                    insideTile(touch.x(), touch.y())) {
+                    selectedIndex = i;
                     kDown |= HidNpadButton_A;
+                    break;
                 }
             }
         }
@@ -204,19 +215,22 @@ namespace UI {
             }
         }
 
-        if (kDown & (HidNpadButton_Up | HidNpadButton_Down))
-            backupScroll.stop();
+        const bool controllerMoved =
+            (kDown & (HidNpadButton_Up | HidNpadButton_Down)) != 0;
+        if (controllerMoved) backupScroll.stop();
 
         if (kDown & HidNpadButton_Up) {
-            if (selectedIndex > 0) {
-                selectedIndex--;
-            }
+            if (selectedIndex > 0) --selectedIndex;
         }
-
         if (kDown & HidNpadButton_Down) {
-            if (selectedIndex < (int)backups.size() - 1) {
-                selectedIndex++;
-            }
+            if (selectedIndex < count - 1) ++selectedIndex;
+        }
+        if (controllerMoved) {
+            // D-pad / stick navigation keeps its focused row visible without fighting a drag.
+            if (selectedIndex < backupFirstRow)
+                backupFirstRow = selectedIndex;
+            else if (selectedIndex >= backupFirstRow + LIST_MAX_VISIBLE)
+                backupFirstRow = selectedIndex - LIST_MAX_VISIBLE + 1;
         }
 
         if (kDown & HidNpadButton_A) {
@@ -286,7 +300,7 @@ namespace UI {
     void BackupSelectionScreen::drawBackupList(PKSEFramebuffer& fb) {
         const int startY = CARD_Y + 62;
         const int total = (int)backups.size();
-        const int first = firstVisibleRow(selectedIndex, total);
+        const int first = std::clamp(backupFirstRow, 0, std::max(0, total - LIST_MAX_VISIBLE));
         const int liveOffset = backupScroll.offset();
         const int drawFirst = std::max(0, first - 1);
         const int drawLast = std::min(total, first + LIST_MAX_VISIBLE + 1);
@@ -338,10 +352,12 @@ namespace UI {
             // Remove from backups list
             backups.erase(backups.begin() + index);
 
-            // Adjust selected index if needed
-            if (selectedIndex >= (int)backups.size()) {
-                selectedIndex = (int)backups.size() - 1;
-            }
+            // A shorter list must not leave the highlight or viewport beyond its final row.
+            selectedIndex = std::clamp(selectedIndex, 0, static_cast<int>(backups.size()) - 1);
+            backupFirstRow = std::clamp(
+                backupFirstRow, 0,
+                std::max(0, static_cast<int>(backups.size()) - LIST_MAX_VISIBLE));
+            backupScroll.stop();
         }
     }
 }
