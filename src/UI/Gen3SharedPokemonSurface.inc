@@ -1369,7 +1369,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
   const int yy = viewportTop + (i - first) * moveLayout.rowStep + liveOffset;
   const bool selected = i == state.pickerRow;
   if (yy + moveLayout.highlightHeight > viewportTop && yy < viewportBottom)
-      screen.touchButtons.push_back({4000 + i, x + 24, yy, w - 48, moveLayout.highlightHeight});
+      appendClippedTouchButton(screen.touchButtons, 4000 + i,
+          x + 24, yy, w - 48, moveLayout.highlightHeight,
+          x + 24, viewportTop, w - 48, visible * moveLayout.rowStep);
   if (selected)
       fb.drawSelectionHighlight(x + 24, yy, w - 48, moveLayout.highlightHeight);
   const auto value = state.pickerValues[static_cast<std::size_t>(i)];
@@ -1413,7 +1415,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
       const int cellY = gridY + (row - firstRow) * cellHeight + liveOffset;
       const bool selected = i == state.pickerRow;
       if (cellY + cellHeight > gridY && cellY < gridY + HeldItemGrid::rows * cellHeight)
-          screen.touchButtons.push_back({4000 + i, cellX, cellY - 3, cellWidth - 10, cellHeight - 4});
+          appendClippedTouchButton(screen.touchButtons, 4000 + i,
+              cellX, cellY - 3, cellWidth - 10, cellHeight - 4,
+              gridX, gridY - 3, w - 44, HeldItemGrid::rows * cellHeight);
       if (selected)
           fb.drawSelectionHighlight(cellX, cellY - 3, cellWidth - 10, cellHeight - 4);
       const auto value = state.pickerValues[static_cast<std::size_t>(i)];
@@ -1444,7 +1448,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         const int yy = viewportTop + (i - first) * rowStep + liveOffset;
         const bool selected = i == state.pickerRow;
         if (yy + 38 > viewportTop - 4 && yy < viewportBottom)
-  screen.touchButtons.push_back({4000 + i, x + 22, yy - 4, w - 44, 38});
+  appendClippedTouchButton(screen.touchButtons, 4000 + i,
+          x + 22, yy - 4, w - 44, 38,
+          x + 22, viewportTop - 4, w - 44, visible * rowStep);
         if (selected) fb.drawSelectionHighlight(x + 22, yy - 4, w - 44, 38);
         const auto value = state.pickerValues[static_cast<std::size_t>(i)];
         fb.drawText(x + 38, yy + 7, pickerValueLabel(state, value),
