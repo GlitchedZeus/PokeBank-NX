@@ -318,6 +318,21 @@ namespace UI {
         return px >= x && px < x + w && py >= y && py < y + h;
     }
 
+    // A touch target on a clipped moving list must occupy only its visible pixels.
+    // Keep this separate from drawing so the touch model cannot hit hidden rows.
+    // TrainerViewScreen's button aggregates are {id, x, y, width, height}.
+    template <class Button>
+    inline void appendClippedTouchButton(std::vector<Button>& buttons, int id,
+                                         int x, int y, int w, int h,
+                                         int clipX, int clipY, int clipW, int clipH) {
+        const int left = std::max(x, clipX);
+        const int top = std::max(y, clipY);
+        const int right = std::min(x + w, clipX + clipW);
+        const int bottom = std::min(y + h, clipY + clipH);
+        if (left < right && top < bottom)
+            buttons.push_back({id, left, top, right - left, bottom - top});
+    }
+
     // Hit-test the badges captured during the PREVIOUS frame's draw. Footer buttons resolve on
     // release, browser/list content steps while the finger is moving, and a stationary tap on a
     // visible card follows the same spatial navigation path before pressing A. Screen-owned editor
