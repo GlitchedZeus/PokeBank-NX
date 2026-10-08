@@ -824,7 +824,8 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     if (state.pickerTarget != PickerTarget::Species)
         state.pickerViewport.ensure(state.pickerRow, count, visibleRows, columns);
     const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows, columns);
-    if (count > 0) {
+    // The Species modal owns its own gesture. Other pickers scroll only when overflowing.
+    if (count > 0 && (state.pickerTarget == PickerTarget::Species || maxFirstRow > 0)) {
         if (state.pickerTarget == PickerTarget::Species) {
             const int dy = touch.deltaY();
             if (touch.justReleased() && touch.dragged() &&
@@ -860,6 +861,8 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
       10 * rowStep + 8, rowStep, state.pickerViewport.firstRow, maxFirstRow + 1);
         }
     }
+    if (maxFirstRow == 0)
+        state.pickerScroll.stop();
     const int touchDown = screen.touchedButtonDownId(touch);
     if (touchDown >= 6000 && touchDown < 6000 + count) state.pickerRow = touchDown - 6000;
     const int touchTap = screen.touchedButtonId(touch);
