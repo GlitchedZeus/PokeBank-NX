@@ -1,0 +1,66 @@
+name: PokeBank NX Gen V Focused Host
+
+on:
+  pull_request:
+    paths:
+      - 'include/Integration/Gen5/**'
+      - 'src/Integration/Gen5/**'
+      - 'include/Pokemon/Pokemon5ReadOnly.h'
+      - 'include/Encryption/Encryption5.h'
+      - 'include/UI/SharedPokemonEditorContract.h'
+      - 'include/UI/ExactSaveCapabilities.h'
+      - 'include/Games/GameIdentity.h'
+      - 'src/Games/GameIdentity.cpp'
+      - 'include/Legacy/LegacySourceBindings.h'
+      - 'src/Legacy/LegacySourceBindings.cpp'
+      - 'include/Source/SaveInstance.h'
+      - 'tests/test_gen5_*.cpp'
+      - 'Makefile.host'
+      - 'Makefile.host.gen5'
+      - '.github/workflows/gen5-focused-host.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pokebank-gen5-focused-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  exact-head-pk5:
+    name: Exact head PK5 read-only and staged contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      APPLICATION_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      ASAN_OPTIONS: detect_leaks=1
+    steps:
+      - name: Checkout exact Gen V development head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APPLICATION_SHA }}
+          fetch-depth: 2
+          submodules: recursive
+      - name: Verify immutable Git identity and whitespace
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPLICATION_SHA"
+          git diff --check HEAD^ HEAD
+          echo "APPLICATION_SHA=$APPLICATION_SHA"
+          echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
+      - name: Build and run focused Gen V host contracts
+        run: |
+          set -euo pipefail
+          for bin in test_gen5_pk5_readonly test_gen5_readonly_save; do
+            make -f Makefile.host "build-host/$bin"
+            "./build-host/$bin"
+          done
+      - name: Run focused ASan and UBSan contracts
+        run: |
+          set -euo pipefail
+          for bin in test_gen5_pk5_readonly_sanitize test_gen5_readonly_save_sanitize; do
+            make -f Makefile.host "build-host/$bin"
+            "./build-host/$bin"
+          done
+          echo "Gen V exact-head focused GCC / ASan / UBSan PASS"
