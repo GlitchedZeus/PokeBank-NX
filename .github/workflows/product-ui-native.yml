@@ -1,6 +1,10 @@
 name: PokeBank NX Product UI Native
 
 on:
+  # Every touch tranche needs an exact-head product build, not only PR merge-ref CI.
+  push:
+    branches:
+      - feature/touch-controls-20261005
   pull_request:
     branches:
       - integration/gen4-polish-hardware-20260928
