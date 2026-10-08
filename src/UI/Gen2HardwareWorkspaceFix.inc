@@ -184,7 +184,9 @@ void handleUnifiedTouch(TrainerViewScreen& screen, const TouchInput& touch, uint
     if (touch.justReleased() && touch.dragged() && !unified.moveEditor && !unified.progressionEditor) {
         const SharedPokemonShell::Geometry geometry(1280, 720, kNavBarH);
         if (pointInRect(touch.startX(), touch.startY(), geometry.leftX, geometry.y,
-                        geometry.leftW, geometry.h)) {
+                        geometry.leftW, geometry.h) &&
+            std::abs(touch.deltaY()) >= 24 &&
+            std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
             const int detailCount = unified.crystal ? 13 : 9;
             const int steps = std::max(1, std::abs(touch.deltaY()) / 38);
             const int direction = touch.deltaY() < 0 ? 1 : -1;
@@ -297,7 +299,9 @@ void handleParityTouch(TrainerViewScreen& screen, const TouchInput& touch, uint6
             }
         }
         if (touch.justReleased() && touch.dragged() &&
-            pointInRect(touch.startX(), touch.startY(), x, y, w, h)) {
+            pointInRect(touch.startX(), touch.startY(), x, y, w, h) &&
+            std::abs(touch.deltaY()) >= 24 &&
+            std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
             const int steps = std::max(1, std::abs(touch.deltaY()) / 45);
             legacy.reviewRow = std::clamp(
                 legacy.reviewRow + (touch.deltaY() < 0 ? steps : -steps), 0, changeCount - 1);
