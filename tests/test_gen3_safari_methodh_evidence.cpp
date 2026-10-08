@@ -355,6 +355,58 @@ int main() {
         "emerald_gba", 25, 57, 27, 0, 0xA2B5D929u,
         emeraldStatic).resolution == MH::Resolution::Unresolved);
 
+    // Emerald Safari nature-block Cute Charm failed-proc evidence.
+    // The separate 300-call rewind context has -1 proc=24042, divisible
+    // by three and even (not the Sync-fail proc), -2 level RNG 3400, and
+    // -3 grass slot RNG 24723 (roll23 selects Oddish slot1 at level27).
+    // p0 is odd and p0 nature1 differs from the Method1 PID nature19, so
+    // no ordinary no-block path can explain the encounter.
+    const auto blockCuteCharmFail = Gen3PidIv::analyze(
+        0x6E5390CFu, {25,2,23,21,20,16});
+    assert(blockCuteCharmFail.method == Method::Method1);
+    assert(blockCuteCharmFail.originSeed == 0x000103ABu);
+    const uint8_t ccBlockNature = static_cast<uint8_t>(
+        MH::Detail::sequentialPid(blockCuteCharmFail.originSeed) % 25u);
+    assert(ccBlockNature == 19u);
+    assert(MH::Detail::upper16(blockCuteCharmFail.originSeed) == 1u);
+    assert(MH::Detail::reversalWindow(
+        blockCuteCharmFail.originSeed, ccBlockNature) == 0u);
+    const uint32_t ccBlockFrame =
+        MH::Detail::hoennSafariBlockSeed(blockCuteCharmFail.originSeed);
+    assert(ccBlockFrame == 0x2CAAC3CFu);
+    assert(MH::Detail::hoennSafariBlockProc(ccBlockFrame));
+    assert(MH::Detail::upper16(ccBlockFrame) % 100u == 34u);
+    const uint32_t ccBlockProcSeed =
+        Gen3PidIv::Detail::prev(ccBlockFrame);
+    const uint32_t ccBlockLevelSeed =
+        Gen3PidIv::Detail::prev(ccBlockProcSeed);
+    const uint32_t ccBlockSlotSeed =
+        Gen3PidIv::Detail::prev(ccBlockLevelSeed);
+    assert(MH::Detail::upper16(ccBlockProcSeed) == 24042u);
+    assert(MH::Detail::upper16(ccBlockProcSeed) % 3u == 0u);
+    assert((MH::Detail::upper16(ccBlockProcSeed) & 1u) == 0u);
+    assert(MH::Detail::upper16(ccBlockLevelSeed) == 3400u);
+    assert(MH::Detail::upper16(ccBlockSlotSeed) == 24723u);
+    assert(MH::Detail::upper16(ccBlockSlotSeed) % 100u == 23u);
+
+    const auto oddishCcBlockFail = MH::analyze(
+        "emerald_gba", 43, 57, 27, 0, 0x6E5390CFu,
+        blockCuteCharmFail);
+    assert(oddishCcBlockFail.resolution == MH::Resolution::FrameMatched);
+    assert(oddishCcBlockFail.path ==
+           MH::Path::EmeraldSafariBlockCuteCharmFailed);
+    assert(oddishCcBlockFail.requiredBall == Gen3Safari::kSafariBall);
+    assert(oddishCcBlockFail.sourceSpecies == 43);
+    assert(oddishCcBlockFail.encounterType == 0);
+    assert(oddishCcBlockFail.slot == 1);
+    assert(oddishCcBlockFail.frameSeed == ccBlockFrame);
+
+    // A different level has no positive history in this bounded evidence
+    // subset; do not claim Invalid without proving impossibility.
+    assert(MH::analyze(
+        "emerald_gba", 43, 57, 28, 0, 0x6E5390CFu,
+        blockCuteCharmFail).resolution == MH::Resolution::Unresolved);
+
     // Emerald Safari 300-call nature-block Pressure-success. Oddish slot 1
     // is level 27, but its original EncounterArea3 #182 also has slot 3
     // Oddish level 29. PressureLevel therefore forces 29, overriding -2.

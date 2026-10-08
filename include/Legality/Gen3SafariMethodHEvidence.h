@@ -22,7 +22,8 @@ namespace Legality::Gen3SafariMethodH {
 // encounters are reconstructed. Grass-area Pressure uses original per-area
 // species grouping; a bounded Emerald Static-success grass path is also
 // reconstructed, including independent Hoenn Safari-block Static and grass
-// Pressure/Hustle/Vital Spirit success paths.
+// Pressure/Hustle/Vital Spirit success paths, plus a bounded Safari-block
+// failed Cute Charm lead-proc history.
 // Intimidate/Keen Eye non-repelled encounter checks are also bounded here; Cute Charm success and other leads remain unsupported.
 //
 // Method 3 uses an A_C PID shape: one RNG frame is skipped between the two
@@ -51,6 +52,7 @@ enum class Path : uint8_t {
     EmeraldIntimidateKeenEyeCheckFailed,
     EmeraldSafariBlockStaticSuccess,
     EmeraldSafariBlockPressureSuccess,
+    EmeraldSafariBlockCuteCharmFailed,
 };
 
 struct Evidence {
@@ -486,6 +488,38 @@ constexpr CandidateMatch matchEmeraldSafariBlockPressureSuccess(
     return {Path::EmeraldSafariBlockPressureSuccess, blockSeed};
 }
 
+// Pinned MethodH.TryGetMatchNoSync / IsSlotValidCuteCharmFail:
+// when the independent Hoenn Safari 300-call block succeeds, Cute Charm's
+// -1 proc fails if rand % 3 == 0. The normal level is then at -2 and the
+// ordinary slot at -3. Restrict to *even* failed-proc values so this positive
+// frame proof does not overlap the Synchronize-failure history (odd proc).
+// Emerald Safari grass only. No hard-invalid inference from a non-match.
+constexpr CandidateMatch matchEmeraldSafariBlockCuteCharmFail(
+        const Gen3Safari::Entry& row,
+        uint8_t metLevel,
+        uint32_t candidateSeed) noexcept {
+    if (row.method != 0 || row.maxLevel < row.minLevel)
+        return {};
+    const uint32_t blockSeed = hoennSafariBlockSeed(candidateSeed);
+    if (!hoennSafariBlockProc(blockSeed))
+        return {};
+
+    const uint32_t procSeed = Gen3PidIv::Detail::prev(blockSeed);
+    const uint16_t proc = upper16(procSeed);
+    if (proc % 3u != 0u || (proc & 1u) != 0u)
+        return {};
+    const uint32_t levelSeed = Gen3PidIv::Detail::prev(procSeed);
+    const uint32_t slotSeed = Gen3PidIv::Detail::prev(levelSeed);
+    const uint32_t span = 1u + row.maxLevel - row.minLevel;
+    const uint8_t level = static_cast<uint8_t>(
+        row.minLevel + (upper16(levelSeed) % span));
+    if (level != metLevel ||
+        Gen3MethodHSlot::get(Gen3MethodHSlot::Type::Grass,
+                            upper16(slotSeed)) != row.slot)
+        return {};
+    return {Path::EmeraldSafariBlockCuteCharmFailed, blockSeed};
+}
+
 // Pinned MethodH.IsSlotValidIntimidate: an encounter occurs only when the
 // -1 adequacy check does NOT reject it (even RNG upper half). The -2 level,
 // -3 ordinary slot and optional Rock Smash activation are then checked.
@@ -632,6 +666,9 @@ inline Evidence analyze(std::string_view exactGameId,
                         row, metLevel, candidateSeed);
                 if (match.path == Path::None)
                     match = Detail::matchEmeraldSafariBlockPressureSuccess(
+                        row, metLevel, candidateSeed);
+                if (match.path == Path::None)
+                    match = Detail::matchEmeraldSafariBlockCuteCharmFail(
                         row, metLevel, candidateSeed);
                 if (match.path == Path::None)
                     match = Detail::matchEmeraldIntimidateKeenEyeCheckFailed(
