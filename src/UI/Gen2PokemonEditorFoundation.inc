@@ -851,7 +851,9 @@ void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
             const int cx = gridX + col * cellW;
             const int cy = gridY + (row - firstRow) * rowStep + liveOffset;
             if (cy + 30 > gridY && cy < gridY + Model::rows * rowStep)
-                screen.touchButtons.push_back({3000 + i, cx, cy, cellW - 12, 30});
+                appendClippedTouchButton(screen.touchButtons, 3000 + i,
+                    cx, cy, cellW - 12, 30,
+                    gridX, gridY, gridW, Model::rows * rowStep);
             const bool selected = i == state.itemChoiceIndex;
             if (selected) {
                 fb.drawFilledRoundedRect(cx, cy, cellW - 12, 30, 6, Colors::SurfaceSelected);
