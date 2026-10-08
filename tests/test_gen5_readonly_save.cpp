@@ -1,4 +1,5 @@
 #include "Integration/Gen5/Gen5ReadOnlySave.h"
+#include "Integration/Gen5/Gen5SaveInstanceAdapter.h"
 
 #include <algorithm>
 #include <cassert>
@@ -74,6 +75,30 @@ int main() {
         const auto parsed=G::Gen5ReadOnlySave::parse(sav,id,&error);
         assert(parsed && error.empty());
         assert(parsed->family()==family && parsed->exactGameId()==id);
+        const G::SourceContext context{
+            id, "retroarch", "RetroArch", "sdmc:/retroarch/cores/savefiles/test.srm",
+            "sdmc:/retroarch/cores/savefiles/test.srm", "physical-save-fixture",
+            "fixture-test", "test-profile", 17
+        };
+        auto probe = G::probeNormalizedBattery(sav,context);
+        assert(probe.ready());
+        assert(probe.instance.generation==5 && probe.instance.gameId==id);
+        assert(probe.instance.providerId=="retroarch" && probe.instance.providerLabel=="RetroArch");
+        assert(probe.instance.readOnly() && probe.instance.partyCount==1);
+        assert(probe.instance.sourceIndex==17 && probe.instance.claimedProfile=="test-profile");
+        assert(probe.instance.sourcePath=="sdmc:/retroarch/cores/savefiles/test.srm");
+        assert(probe.instance.trainerName.empty()); // No invented Gen V text display.
+        auto mismatched=context; mismatched.assignedExactGame = "platinum_nds";
+        assert(!G::probeNormalizedBattery(sav,mismatched).ready());
+        mismatched.assignedExactGame = id;
+        mismatched.sourcePath = {};
+        assert(!G::probeNormalizedBattery(sav,mismatched).ready());
+        auto wrongAssignment=context;
+        wrongAssignment.assignedExactGame = family==G::SaveFamily::BlackWhite ?
+            "white2_nds" : "white_nds";
+        const auto mismatchProbe=G::probeNormalizedBattery(sav,wrongAssignment);
+        assert(!mismatchProbe.ready());
+        assert(mismatchProbe.instance.validation==PokeVault::Source::ValidationStatus::AssignmentMismatch);
         assert(parsed->partyCount()==1 && parsed->selectedPartition()==0);
         assert(parsed->trainer().rawName==u"NX");
         assert(parsed->trainer().tid==12345 && parsed->trainer().sid==54321);
@@ -98,6 +123,8 @@ int main() {
         const auto selected=G::Gen5ReadOnlySave::parse(backup,id,&error);
         assert(selected && selected->selectedBackupPartition());
         assert(selected->selectedCopyOffset()==copySize);
+        auto backupProbe=G::probeNormalizedBattery(backup,context);
+        assert(backupProbe.ready() && backupProbe.save->selectedBackupPartition());
         assert(!G::Gen5ReadOnlySave::parse(backup,id,&error,G::SaveCopySelection::Primary));
         assert(error.find("requested save copy")!=std::string::npos);
         // Two different valid copies must fail closed until recency is sourced.
@@ -110,6 +137,9 @@ int main() {
                   different.end(),both.begin()+static_cast<std::ptrdiff_t>(copySize));
         assert(!G::Gen5ReadOnlySave::parse(both,id,&error));
         assert(error.find("select one explicitly")!=std::string::npos);
+        const auto ambiguousProbe=G::probeNormalizedBattery(both,context);
+        assert(!ambiguousProbe.ready());
+        assert(ambiguousProbe.instance.validation==PokeVault::Source::ValidationStatus::Unsupported);
         const auto primary = G::Gen5ReadOnlySave::parse(
             both,id,&error,G::SaveCopySelection::Primary);
         const auto secondary = G::Gen5ReadOnlySave::parse(

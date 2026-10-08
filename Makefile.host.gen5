@@ -23,6 +23,7 @@ GEN5_SAVE_SANITIZE := $(HOST_BUILD)/test_gen5_readonly_save_sanitize
 GEN5_SAVE_INPUTS := tests/test_gen5_readonly_save.cpp \
     include/Integration/Gen5/Gen5SaveBlockLayout.h \
     include/Integration/Gen5/Gen5ReadOnlySave.h \
+    include/Integration/Gen5/Gen5SaveInstanceAdapter.h \
     include/Pokemon/Pokemon5ReadOnly.h include/Encryption/Encryption5.h include/Utils/CRC16.h
 
 HOST_TESTS += $(GEN5_SAVE_TEST)

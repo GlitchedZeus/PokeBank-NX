@@ -18,13 +18,14 @@ No merge or hardware acceptance is implied.
 - Synthetic record test suite; enabled in host and sanitizer test graphs.
 - No Gen V game shown as editable in the UI yet. External sources immutable.
 
-### Explicitly not yet implemented
+### Work still not enabled in the application
 
-- BW/B2W2 exact-game recognition and save-block/checksum-table validation
-- Save-slot fallback and precise BW versus B2W2 per-block layout mapping
-- Party/PC/Trainer/Dex full save parsing or emulator provider integration
-- Profile assignment, Product Home previews, shared editor, staged SAV writes
-- Switch NRO generation, CI acceptance, physical Nintendo Switch testing
+- Provider-root discovery and physical source assignment to profile/game cards
+- Emulator container adapters beyond normalized 0x80000 NDS battery images
+- Gen V Product Home / Games browsing and trainer-name presentation
+- Shared View/Create/Edit, app-owned staged SAV transactions, native Gen V writes
+- Save-copy recency resolution without explicit copy selection
+- Exact-head CI, genuine-format fixtures and owner hardware acceptance
 
 ### Source references
 
@@ -60,3 +61,13 @@ an already-normalized NDS battery image and cannot write any physical save.
 Source-backed save geometry: Project Pokémon BW / B2W2 Save Structure
 (evandixon, 2017) and PKHeX SaveUtil (0x24000 / 0x26000 core sizes).
 Source preference remains API-only until a safe UI flow exists.
+
+### Phase B tranche 1 — provider-neutral read-only adapter
+
+- `Gen5SaveInstanceAdapter.h` builds the shared `SaveInstance` metadata
+  from an already-validated, immutable in-memory Gen V source.
+- Exact title, provider label, path and assignment are explicit caller inputs.
+  Unsupported provenance, cross-title mismatches, and conflicting save
+  copies remain non-ready; no provider or title is inferred from filenames.
+- This is an integration **boundary**, not live source scanning or a UI route.
+- No direct file access, injected save bytes, or mutable source privileges.
