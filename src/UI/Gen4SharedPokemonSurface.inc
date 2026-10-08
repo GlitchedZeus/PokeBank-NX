@@ -921,6 +921,17 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     }
     if (!(down & HidNpadButton_A) || !state.session.working) return true;
 
+    // Species uses its own modal gesture. In other pickers the highlighted controller
+    // choice can be off-screen after a finger scroll; A reveals rather than accepting it unseen.
+    if (state.pickerTarget != PickerTarget::Species &&
+        !state.pickerViewport.containsSelection(
+            state.pickerRow, count, visibleRows, columns)) {
+        state.pickerScroll.stop();
+        state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
+        screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
+        return true;
+    }
+
     state.pickerScroll.stop();
     const uint16_t value = state.pickerValues[static_cast<size_t>(state.pickerRow)];
     bool ok = false;
