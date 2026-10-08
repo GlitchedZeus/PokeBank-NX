@@ -155,7 +155,8 @@ private:
             active_ = inside(touch.x(), touch.y(), x, y, w, h);
             coasting_ = false;
             velocity_ = 0;
-            offset_ = 0;
+            // Stop momentum without snapping residual pixels out from under a new touch.
+            // The existing offset is where the list was ACTUALLY drawn last frame.
             last_ = touch.y();
             return;
         }
@@ -192,7 +193,8 @@ private:
         if (active_ && touch.justReleased()) {
             active_ = false;
             if (!touch.dragged()) {
-                offset_ = 0;
+                // A tap may stop a coast but must not jump the list on release either.
+                // Ordinary idle easing below settles this small residual afterward.
                 velocity_ = 0;
                 coasting_ = false;
                 return;

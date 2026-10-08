@@ -233,6 +233,14 @@ require_all("include/UI/TouchScroll.h",
             "coasting_ = std::abs(velocity_) >= 2")
 if "liveHorizontalListVisual" in read("include/UI/TouchScroll.h"):
     raise AssertionError("TouchScroll: dead horizontal draw helper was reintroduced without a caller")
+# Restarting contact during inertia must not reposition list contents mid-touch.
+scroll_source = read("include/UI/TouchScroll.h")
+touch_down_path = scroll_source.split("if (touch.justTouchedDown()) {", 1)[1].split(
+    "if (active_ && touch.isDown())", 1)[0]
+tap_release_path = scroll_source.split("if (active_ && touch.justReleased()) {", 1)[1].split(
+    "coasting_ = std::abs(velocity_)", 1)[0]
+if "offset_ = 0;" in touch_down_path or "offset_ = 0;" in tap_release_path:
+    raise AssertionError("TouchScroll: new contact or a tap must not snap existing residual pixels")
 require_all("include/UI/TouchScroll.h",
             "const bool reversed =",
             "(velocity_ < 0 && velocitySample > 0)",
