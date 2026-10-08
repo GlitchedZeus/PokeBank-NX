@@ -4251,12 +4251,24 @@ namespace UI {
                         selectedItemIndex = itemDown;
                         currentPage = selectedItemIndex / itemsPerPage;
                     }
-                    if (touch.justReleased() && touch.dragged()) {
+                    // Only vertical drags that START on a displayed item may move its selection.
+                    // In particular, an empty pouch must never become index -1 after a swipe,
+                    // and dragging the neighboring categories/header must not move this list.
+                    const bool startedOnItem = std::any_of(
+                        touchButtons.begin(), touchButtons.end(), [&](const auto& hit) {
+                            return hit.id >= 0 && hit.id < totalItems &&
+                                   touch.startX() >= hit.x && touch.startX() < hit.x + hit.w &&
+                                   touch.startY() >= hit.y && touch.startY() < hit.y + hit.h;
+                        });
+                    if (totalItems > 0 && startedOnItem &&
+                        touch.justReleased() && touch.dragged()) {
                         const int dy = touch.deltaY();
-                        const int steps = std::max(1, std::abs(dy) / 52);
-                        if (dy < 0) selectedItemIndex = std::min(totalItems - 1, selectedItemIndex + steps);
-                        else if (dy > 0) selectedItemIndex = std::max(0, selectedItemIndex - steps);
-                        currentPage = selectedItemIndex / itemsPerPage;
+                        if (std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
+                            const int steps = std::max(1, std::abs(dy) / 52);
+                            if (dy < 0) selectedItemIndex = std::min(totalItems - 1, selectedItemIndex + steps);
+                            else selectedItemIndex = std::max(0, selectedItemIndex - steps);
+                            currentPage = selectedItemIndex / itemsPerPage;
+                        }
                     }
                     int itemTap = touchedButtonId(touch);
                     if (itemTap >= 0 && itemTap < totalItems) {
