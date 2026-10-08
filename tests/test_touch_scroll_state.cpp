@@ -147,6 +147,51 @@ static void testRealIdleCoastAndTapCancellation() {
     assert(std::abs(state.offset()) <= std::abs(atNewContact));  // Idle settles the residual.
 }
 
+static void testIndependentPickerViewport() {
+    UI::TouchPickerViewport window;
+    window.ensure(17, 60, 9);
+    assert(window.firstRow == 13);
+    // Selection stays 17 while one real row moves underneath the finger.
+    int selected = 17;
+    TouchScrollState motion;
+    TouchInput touch;
+    const int oldY = (selected - window.firstRow) * 40;
+    touch.contact(100, 200);
+    motion.updateVertical(touch, 0, 0, 400, 360, 40, window.firstRow,
+                          UI::TouchPickerViewport::maxFirst(60, 9) + 1);
+    touch.contact(100, 160);
+    motion.updateVertical(touch, 0, 0, 400, 360, 40, window.firstRow,
+                          UI::TouchPickerViewport::maxFirst(60, 9) + 1);
+    const int movedY = (selected - window.firstRow) * 40 + motion.offset();
+    assert(selected == 17 && window.firstRow == 14 && motion.offset() == 0);
+    assert(movedY == oldY - 40); // No selection-centered recenter/snap.
+    window.ensure(selected, 60, 9);
+    assert(window.firstRow == 14); // Draw-time ensure must not recentre after scroll.
+    motion.stop();
+    window.reveal(44, 60, 9);
+    assert(window.firstRow == 36); // Controller navigation reveals focused row.
+
+    UI::TouchPickerViewport grid;
+    grid.ensure(1, 17, 3, 3);
+    assert(grid.firstRow == 0);
+    assert(UI::TouchPickerViewport::maxFirst(17, 3, 3) == 3);
+    TouchScrollState gridMotion;
+    TouchInput second;
+    second.contact(100, 200);
+    gridMotion.updateVertical(second, 0, 0, 400, 120, 40, grid.firstRow, 4);
+    second.contact(100, 160);
+    gridMotion.updateVertical(second, 0, 0, 400, 120, 40, grid.firstRow, 4);
+    assert(grid.firstRow == 1); // Grid viewport scrolls by ROWS, not item indices.
+    grid.ensure(1, 17, 3, 3);
+    assert(grid.firstRow == 1);
+    grid.reveal(16, 17, 3, 3);
+    assert(grid.firstRow == 3); // Partially filled final row remains selectable.
+    grid.reset();
+    assert(grid.firstRow == -1);
+    grid.ensure(1, 17, 3, 3);
+    assert(grid.firstRow == 0); // New picker starts at its own focused value.
+}
+
 int main() {
     testContinuousPixelAndBoundary();
     testCoastReversalAndTapInterrupt();
@@ -155,5 +200,6 @@ int main() {
     testStaleIndexClampedWithoutMotion();
     testPartialGridStrideAtBoundary();
     testRealIdleCoastAndTapCancellation();
+    testIndependentPickerViewport();
     std::cout << "touch-scroll runtime geometry: PASS\n";
 }
