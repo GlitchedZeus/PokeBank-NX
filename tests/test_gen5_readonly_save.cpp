@@ -1,6 +1,7 @@
 #include "Integration/Gen5/Gen5ReadOnlySave.h"
 #include "Integration/Gen5/Gen5SaveInstanceAdapter.h"
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
+#include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 
 #include <algorithm>
 #include <cassert>
@@ -239,6 +240,38 @@ int main() {
         assert(parsed->diagnostics().validPartyRecords==1);
         assert(parsed->diagnostics().occupiedBoxRecords==1);
         assert(parsed->diagnostics().invalidBoxRecords==0);
+        G::Gen5StagedPokemonWorkspace workspace(*parsed);
+        assert(!workspace.hasChanges() && workspace.changedRecordCount()==0);
+        assert(workspace.stageParty(0,G::StagedPokemon5Record::Field::Nature,0,12,&error));
+        assert(workspace.stageBox(0,0,G::StagedPokemon5Record::Field::Friendship,0,255,&error));
+        assert(workspace.stageBox(0,0,G::StagedPokemon5Record::Field::IV,5,31,&error));
+        assert(workspace.hasChanges() && workspace.changedRecordCount()==2);
+        assert(workspace.viewParty(0)->nature()==12);
+        assert(workspace.viewBox(0,0)->friendship()==255);
+        assert(workspace.viewBox(0,0)->ivs()[5]==31);
+        // The validated source save is still byte-identical.
+        assert(parsed->partyPokemon(0)->nature()!=12);
+        assert(parsed->boxPokemon(0,0)->friendship()!=255);
+        assert(std::equal(parsed->sourceBytes().begin(),parsed->sourceBytes().end(),sav.begin()));
+        assert(!workspace.stageParty(6,G::StagedPokemon5Record::Field::Nature,0,1,&error));
+        assert(!workspace.stageBox(24,0,G::StagedPokemon5Record::Field::Nature,0,1,&error));
+        assert(!workspace.stageBox(0,29,G::StagedPokemon5Record::Field::EV,0,300,&error));
+        assert(!workspace.stageBox(0,1,G::StagedPokemon5Record::Field::Nature,0,1,&error));
+        assert(workspace.changedRecordCount()==2);
+        const auto pending=workspace.pendingReview();
+        assert(pending.size()==2);
+        for(const auto& change:pending) {
+            assert(change.before.size()==change.after.size());
+            assert(change.before!=change.after);
+            assert(change.before.size()==(change.location.region==
+                G::Gen5StagedPokemonWorkspace::Region::Party?
+                C::PartySize:C::StoredSize));
+        }
+        workspace.discardAll();
+        assert(!workspace.hasChanges());
+        assert(workspace.viewParty(0)->nature()==parsed->partyPokemon(0)->nature());
+        assert(workspace.viewBox(0,0)->friendship()==parsed->boxPokemon(0,0)->friendship());
+
         // Sign the outer block after breaking an encrypted PK5. A good SAV
         // checksum must not make the damaged entity semantically valid.
         auto nestedDamage=sav;

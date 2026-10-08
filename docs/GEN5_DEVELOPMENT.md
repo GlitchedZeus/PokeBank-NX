@@ -133,3 +133,16 @@ Source preference remains API-only until a safe UI flow exists.
 - Cross-copy substitution is rejected even if the outer file fingerprint
   and on-disk metadata are otherwise identical.
 - This is an API contract, not permission to write or a visible UI toggle.
+
+### Phase C tranche 1 — party/box slot-scoped staged workspace
+
+- Validated Gen V SAV5 is copied into an app-owned, immutable baseline.
+- Only occupied, individually validated party or box PK5 records may be
+  staged. Native slot bounds and declared party count are enforced.
+- Multiple slot edits are tracked by exact Party/Box location; a review
+  returns before/after encrypted PK5 records for each changed slot.
+- Out-of-range/empty slots, malformed records, invalid field values and
+  510-EV-total overflow fail without changing any prior staged edit.
+- Discard All drops all staged records, revealing the unmodified baseline.
+- Crucially, review records are NOT serialized to a SAV, injected into an
+  emulator, or written to the source filesystem.
