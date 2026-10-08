@@ -396,7 +396,9 @@ namespace UI {
 
         // Product Home is the only whole-content horizontal gesture. Resolve exactly one
         // previous/next game after the visual drag; all list/grid surfaces own their own touch.
-        if (productHeroDrag && touch.dragged()) {
+        // The owner must still be Product Home on release. Controller navigation can open
+        // another overlay while a finger remains on the old hero; never commit that stale drag.
+        if (productHeroDrag && g_productHeroSwipeRegistered && touch.dragged()) {
             const int dx = touch.deltaX();
             const int dy = touch.deltaY();
             const int ax = dx < 0 ? -dx : dx;
