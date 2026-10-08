@@ -259,6 +259,17 @@ require_all("include/UI/TouchScroll.h",
 require_all("src/UI/Gen2HardwarePickerFix.inc",
             "touch.startX() >= listX", "touch.startY() >= listY",
             "std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())")
+require_all("src/UI/Gen2HardwareWorkspaceFix.inc",
+            "const bool started = focusUnifiedTouchPoint(",
+            "screen, touch.startX(), touch.startY(), false, down",
+            "const bool ended = focusUnifiedTouchPoint(screen, touch.x(), touch.y(), false, down);",
+            "startFocus.panel == endFocus.panel",
+            "startFocus.row == endFocus.row",
+            "startFocus.column == endFocus.column",
+            "startMoveRow == endMoveRow",
+            "startProgressionRow == endProgressionRow",
+            "if (sameTarget)")
+
 gsc_editor = read("src/UI/TrainerViewScreenGSCOverlay.inc")
 require_all("src/UI/TrainerViewScreenGSCOverlay.inc",
             "const auto tappedHit = [&](const auto& hit)",
