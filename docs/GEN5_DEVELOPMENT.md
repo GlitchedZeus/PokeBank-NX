@@ -94,3 +94,14 @@ Source preference remains API-only until a safe UI flow exists.
   No missing cover art is linked or substituted with a fabricated asset.
 - Normal source open, assignment, shared editor and launch permissions remain
   disabled until dedicated read-only source discovery and Product UI gates pass.
+
+### Phase A tranche 3 — nested PK5 integrity diagnostics
+
+- Declared party entries still fail save opening if encrypted PK5 validation
+  fails, even when the containing save block's CRC has been refreshed.
+- Box entries are counted as occupied, empty, or quarantined-invalid.
+  Invalid stored PK5 records expose no semantic fields; they are not
+  silently repaired and no source bytes are changed.
+- Save Instance diagnostics report the count of quarantined boxed records.
+  Synthetic tests independently corrupt PK5 payloads and recompute outer
+  save-block checksums to verify this nested integrity boundary.

@@ -99,6 +99,10 @@ struct ReadOnlyProbe {
     row.diagnostic = save->selectedBackupPartition() ?
         "Gen V backup copy selected explicitly or via checksum fallback; source is read-only" :
         "Gen V primary copy validated; source is read-only";
+    if (save->diagnostics().invalidBoxRecords > 0) {
+        row.diagnostic += "; malformed boxed PK5 entries quarantined: ";
+        row.diagnostic += std::to_string(save->diagnostics().invalidBoxRecords);
+    }
     out.save = std::move(save);
     return out;
 }

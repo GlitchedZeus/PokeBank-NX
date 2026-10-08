@@ -28,6 +28,11 @@ struct TrainerReadOnly {
     uint8_t playedMinutes = 0, playedSeconds = 0;
 };
 struct DexProgress { uint16_t seen = 0, caught = 0, total = 649; };
+struct ReadDiagnostics {
+    size_t validPartyRecords = 0;
+    size_t occupiedBoxRecords = 0;
+    size_t invalidBoxRecords = 0;
+};
 
 class Gen5ReadOnlySave {
 public:
@@ -120,12 +125,28 @@ public:
                 return fail("Gen V declared party contains an invalid or empty PK5");
         }
 
+        // A validated SAV checksum does not guarantee each nested PK5 was
+        // correctly encrypted and checksummed. Quarantine damaged box slots,
+        // just as the accepted Gen IV reader does; never invent semantics.
+        ReadDiagnostics diagnostics;
+        diagnostics.validPartyRecords = count;
+        for (size_t box = 0; box < LayoutInfo::BoxCount; ++box) {
+            for (size_t slot = 0; slot < LayoutInfo::BoxSlots; ++slot) {
+                const size_t offset = partition + LayoutInfo::BoxOffset +
+                                      box*LayoutInfo::BoxStride + slot*Crypto::StoredSize;
+                const Pokemon5ReadOnly pk(source.subspan(offset, Crypto::StoredSize));
+                if (!pk.valid()) ++diagnostics.invalidBoxRecords;
+                else if (!pk.empty()) ++diagnostics.occupiedBoxRecords;
+            }
+        }
+
         Gen5ReadOnlySave out;
         out.bytes_.assign(source.begin(), source.end());
         out.base_ = partition;
         out.family_ = family;
         out.exactId_ = std::string(id);
         out.partyCount_ = count;
+        out.diagnostics_ = diagnostics;
         if (error) error->clear();
         return out;
     }
@@ -136,6 +157,7 @@ public:
     [[nodiscard]] size_t selectedCopyOffset() const noexcept { return base_; }
     [[nodiscard]] bool selectedBackupPartition() const noexcept { return base_ != 0; }
     [[nodiscard]] uint8_t partyCount() const noexcept { return partyCount_; }
+    [[nodiscard]] const ReadDiagnostics& diagnostics() const noexcept { return diagnostics_; }
     [[nodiscard]] std::span<const uint8_t> sourceBytes() const noexcept { return bytes_; }
 
     [[nodiscard]] TrainerReadOnly trainer() const {
@@ -221,6 +243,7 @@ private:
     SaveFamily family_ = SaveFamily::BlackWhite;
     size_t base_ = 0;
     uint8_t partyCount_ = 0;
+    ReadDiagnostics diagnostics_{};
 };
 } // namespace PokeVault::Integration::Gen5
 #endif

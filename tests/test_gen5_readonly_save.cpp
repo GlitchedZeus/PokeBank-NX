@@ -105,6 +105,31 @@ int main() {
         assert(parsed->trainer().playedHours==23);
         assert(parsed->partyPokemon(0)->species()==25);
         assert(parsed->boxPokemon(0,0)->species()==133);
+        assert(parsed->diagnostics().validPartyRecords==1);
+        assert(parsed->diagnostics().occupiedBoxRecords==1);
+        assert(parsed->diagnostics().invalidBoxRecords==0);
+        // Sign the outer block after breaking an encrypted PK5. A good SAV
+        // checksum must not make the damaged entity semantically valid.
+        auto nestedDamage=sav;
+        nestedDamage[L::BoxOffset+20]^=0x40;
+        if(family==G::SaveFamily::BlackWhite)stamp(nestedDamage,0,L::BlackWhite);
+        else stamp(nestedDamage,0,L::Black2White2);
+        const auto nested=G::Gen5ReadOnlySave::parse(nestedDamage,id,&error);
+        assert(nested);
+        assert(nested->diagnostics().invalidBoxRecords==1);
+        assert(nested->diagnostics().occupiedBoxRecords==0);
+        assert(!nested->boxPokemon(0,0)->valid());
+        assert(nested->boxPokemon(0,0)->species()==0);
+        const auto damagedProbe=G::probeNormalizedBattery(nestedDamage,context);
+        assert(damagedProbe.ready());
+        assert(damagedProbe.instance.diagnostic.find("quarantined")!=std::string::npos);
+        // A declared damaged party member remains a hard read failure.
+        auto nestedPartyDamage=sav;
+        nestedPartyDamage[L::PartyOffset+8+20]^=0x40;
+        if(family==G::SaveFamily::BlackWhite)stamp(nestedPartyDamage,0,L::BlackWhite);
+        else stamp(nestedPartyDamage,0,L::Black2White2);
+        assert(!G::Gen5ReadOnlySave::parse(nestedPartyDamage,id,&error));
+        assert(error.find("invalid or empty PK5")!=std::string::npos);
         assert(parsed->dexProgress().caught==1 && parsed->dexProgress().seen==1);
         assert(!parsed->partyPokemon(6) && !parsed->boxPokemon(24,0));
         assert(!G::Gen5ReadOnlySave::parse(sav,"wrong_nds",&error));
