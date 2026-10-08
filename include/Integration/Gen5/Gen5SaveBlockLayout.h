@@ -85,7 +85,7 @@ inline constexpr std::array<SaveBlock, 70> BlackWhite = {{
     {0x23D00, 0x0040, 0x23D42, 0x23F86},
     {0x23E00, 0x00FC, 0x23EFE, 0x23F88},
     {0x23F00, 0x008C, 0x23F9A, 0x23F9A},
-};
+}};
 
 inline constexpr std::array<SaveBlock, 74> Black2White2 = {{
     {0x00000, 0x03e0, 0x003E2, 0x25F00},
@@ -162,7 +162,7 @@ inline constexpr std::array<SaveBlock, 74> Black2White2 = {{
     {0x25A00, 0x03e4, 0x25DE6, 0x25F8E},
     {0x25E00, 0x00f0, 0x25EF2, 0x25F90},
     {0x25F00, 0x0094, 0x25FA2, 0x25FA2},
-};
+}};
 
 inline constexpr size_t FullSaveSize = 0x80000;
 inline constexpr size_t PartitionSize = 0x40000;
