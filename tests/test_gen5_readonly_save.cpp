@@ -141,6 +141,18 @@ void discoveryContracts() {
     assert(owned.instance.sourceIdentity==probe.sourceIdentity);
     assert(owned.instance.claimedProfile=="profile-one");
     assert(owned.instance.readOnly() && owned.instance.rememberedSource);
+    assert(owned.instance.claimedProfile=="profile-one");
+    assert(owned.instance.providerId=="retroarch");
+    // Re-parsing native bytes must preserve non-native assignment metadata.
+    auto remembered=probe;
+    remembered.rememberedSource=true;
+    remembered.mostRecentlyModified=true;
+    remembered.sourceAliases={"second-location-same-file"};
+    const auto reopenedRemembered=G::reopenValidatedSource(remembered);
+    assert(reopenedRemembered.ready());
+    assert(reopenedRemembered.instance.rememberedSource);
+    assert(reopenedRemembered.instance.mostRecentlyModified);
+    assert(reopenedRemembered.instance.sourceAliases==remembered.sourceAliases);
     assert(G::openAssignedSource(bindings,"other-profile","black_nds").status==
         G::AssignedOpenStatus::Unassigned);
     assert(G::openAssignedSource(bindings,"profile-one","white_nds").status==

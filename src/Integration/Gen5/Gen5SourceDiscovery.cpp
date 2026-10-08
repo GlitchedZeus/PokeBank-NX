@@ -341,6 +341,12 @@ ReadOnlyProbe reopenValidatedSource(const Source::SaveInstance& selected,
         out.instance.label=selected.label;
         out.instance.kind=selected.kind;
         out.instance.sourceLabel=selected.sourceLabel;
+        // Provenance flags belong to the selected Save Instance. A strict
+        // parse re-probes native bytes, not profile metadata or UI choices.
+        out.instance.rememberedSource=selected.rememberedSource;
+        out.instance.mostRecentlyModified=selected.mostRecentlyModified;
+        out.instance.sourceAliases=selected.sourceAliases;
+        out.instance.claimConflict=selected.claimConflict;
     }
     return out;
 }
