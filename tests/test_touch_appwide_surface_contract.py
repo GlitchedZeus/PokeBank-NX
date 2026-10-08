@@ -232,6 +232,32 @@ require_all("src/UI/SaveSelectScreen.cpp",
             "gen4CandidateTouchScroll.updateVertical(",
             "Touch carousel gestures resolve through ScreenChrome")
 
+# Gen III/IV picker scrolling owns an independent first-visible row, not the selected item.
+# The renderer must keep that same first row throughout finger motion, even after crossing rows.
+require_all("include/UI/TouchScroll.h",
+            "struct TouchPickerViewport",
+            "void ensure(int selected, int count, int visibleRows, int columns = 1)",
+            "void reveal(int selected, int count, int visibleRows, int columns = 1)",
+            "firstRow = std::clamp(firstRow, 0, maximum);")
+for rel in ("src/UI/Gen3SharedPokemonSurface.inc",
+            "src/UI/Gen4SharedPokemonSurface.inc"):
+    source = read(rel)
+    for token in (
+        "TouchPickerViewport pickerViewport;",
+        "state.pickerViewport.reset();",
+        "state.pickerViewport.ensure(state.pickerRow, count, visibleRows, columns);",
+        "state.pickerViewport.firstRow, maxFirstRow + 1);",
+        "state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);",
+        "const int first = state.pickerViewport.firstRow;",
+        "const int firstRow = state.pickerViewport.firstRow;",
+    ):
+        if token not in source:
+            raise AssertionError(f"{rel}: picker viewport/selection ownership regressed: {token}")
+    value_input = source.split("bool handleValuePicker(", 1)[1].split("\n}", 1)[0]
+    if "state.pickerRow, count);" in value_input or (
+            "state.pickerRow, count, HeldItemGrid::columns);" in value_input):
+        raise AssertionError(f"{rel}: pixel scrolling must not mutate selected picker row")
+
 require_all("include/UI/TouchScroll.h",
             "class TouchScrollState",
             "offset_ += delta",
