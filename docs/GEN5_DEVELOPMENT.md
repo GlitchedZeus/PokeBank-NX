@@ -37,3 +37,23 @@ Next: independently source and pin BW/B2W2 save geometry, checksum tables,
 and game-id evidence before wiring any save parser/UI path.
 
 `DEVICE_ACCEPTED=false` for all builds from this branch.
+
+### Phase A tranche 2 — strict read-only NDS battery save reader
+
+- Source-backed 70-block BW and 74-block B2W2 checksum/mirror tables.
+- Exact title match via trainer game byte: White=20, Black=21,
+  White 2=22, Black 2=23 (PKHeX GameVersion).
+- Normalized 0x80000 battery image only. Strict partitions, no guessed
+  provider transforms. A unique valid partition is selected; identical valid
+  partitions may be selected deterministically.
+- Two valid *different* partitions fail closed until freshness evidence is
+  implemented. This protects against choosing the wrong save slot.
+- Declared party, individual box PK5 reads, trainer summary and basic Dex
+  caught/seen counts. Malformed declared party is refused.
+- Synthetic tests independently cover all four exact game identities,
+  malformed records, checksum corruption and backup-only recovery.
+
+**Not yet a user-facing Gen V feature:** source discovery, provider assignment,
+Product UI routing and a staged editor remain disabled. This reader only accepts
+an already-normalized NDS battery image and cannot write any physical save.
+
