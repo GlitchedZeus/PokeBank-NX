@@ -72,6 +72,15 @@ require(gen2_item, "src/UI/Gen2PokemonEditorFoundation.inc",
         "const int firstRow = state.itemViewport.firstRow;",
         "appendClippedTouchButton(screen.touchButtons, 3000 + i")
 
+# Finger-down may focus an item, but must not cancel the very same scrolling
+# gesture that updateVertical just captured for a row-starting swipe.
+gen2_contact = gen2_item.split("const int touchDown = screen.touchedButtonDownId(touch);", 1)[1].split(
+    "const int touchTap = screen.touchedButtonId(touch);", 1)[0]
+assert "state.itemChoiceIndex = touchDown - 3000;" in gen2_contact
+assert "state.itemScroll.stop()" not in gen2_contact, (
+    "Gen II picker: touch-down focus must preserve the active drag capture"
+)
+
 gen3 = read("src/UI/Gen3SharedPokemonSurface.inc")
 for token in (
     "PickerTarget::HeldItem", "PickerTarget::Language", "PickerTarget::Ball",
