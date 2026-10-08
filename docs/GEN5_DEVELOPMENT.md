@@ -241,3 +241,18 @@ Source preference remains API-only until a safe UI flow exists.
 - Boxed PK5 records do **not** expose a synthetic level. Out-of-range party
   level data is shown as unavailable (`0`) rather than repaired or guessed.
 - No native save mutation, source write, or level-edit capability is enabled.
+
+### Phase B tranche 9 — physical replacement guard for assigned Gen V saves
+
+- New Gen V-only source IDs bind the normalized path to the underlying
+  device/inode when provided by the filesystem. If inode data is unavailable,
+  the already-verified normalized battery SHA-256 fingerprint is used instead.
+- A normal in-place update retaining the inode preserves an existing exact
+  game/profile binding, while swapping in a different physical file at the
+  same path forces an explicit reassignment.
+- Source identity is distinct from displayed provider, title and user labels;
+  the Gen I–IV binding database format and source identity algorithms are
+  unchanged. This is a Gen V development-only identity-format change, and
+  existing exploratory Gen V assignments may need to be selected again.
+- An actual Switch SD/filesystem compatibility check remains required before
+  Game Sources is enabled for Gen V.

@@ -64,8 +64,17 @@ std::string sha256Hex(std::span<const uint8_t> data) {
     for(uint8_t b:digest) { out.push_back(digits[b>>4]); out.push_back(digits[b&15]); }
     return out;
 }
-std::string pathIdentity(const std::string& path) {
-    const std::string label="gen5-file:"+normalized(path);
+std::string pathIdentity(const std::string& path,const struct stat* physical=nullptr,
+                         std::string_view contentHash={}) {
+    // Exact source identity is intentionally stricter than the visible file
+    // name: a different inode at the same path is not silently adopted as
+    // the original profile's source. FAT/devoptab sources without useful
+    // inode identity use an immutable verified content hash instead.
+    std::string label="gen5-physical-v2:"+normalized(path);
+    if(physical && physical->st_ino!=0)
+        label+=":"+identityFor(*physical,path);
+    else if(!contentHash.empty())
+        label+=":sha256:"+std::string(contentHash);
     return sha256Hex({reinterpret_cast<const uint8_t*>(label.data()),label.size()});
 }
 bool safeRegular(const std::string& path,struct stat* dst=nullptr) {
@@ -284,6 +293,7 @@ Source::SaveInstance inspectSourceFile(const std::string& path,
     }
     row.gameId=std::string(save->exactGameId());
     row.contentFingerprint=sha256Hex(bytes);
+    row.sourceIdentity=pathIdentity(path,&st,row.contentFingerprint);
     row.containerType=container;
     row.partyCount=save->partyCount();
     row.trainerName=displayTrainerName(save->trainer().rawName).value_or("");

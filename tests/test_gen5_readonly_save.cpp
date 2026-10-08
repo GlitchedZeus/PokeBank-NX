@@ -185,6 +185,37 @@ void discoveryContracts() {
         {"profile-one","black_nds",black,"RetroArch","B2W2"}));
     assert(G::openAssignedSource(badBindings,"profile-one","black_nds").status==
         G::AssignedOpenStatus::AssignmentMismatch);
+    // Keep an in-place emulator update assigned; refuse a different physical
+    // file moved into the same exact path despite valid checksum and title.
+    const std::string replacementPath=dir+"/physical_black.sav";
+    const std::string rotated=dir+"/physical_black.old";
+    const std::string replacementDb=dir+"/physical_bindings";
+    fileFixture(replacementPath,blackRaw);
+    const auto originalPhysical=G::inspectSourceFile(replacementPath,"RetroArch");
+    assert(originalPhysical.ready());
+    PokeVault::Legacy::LegacySourceBindings physicalBindings(replacementDb);
+    assert(physicalBindings.load());
+    assert(physicalBindings.assignFileAndSave(originalPhysical.sourceIdentity,
+        {"owner-one","black_nds",replacementPath,"RetroArch","BW"}));
+    assert(G::openAssignedSource(physicalBindings,"owner-one","black_nds").ready());
+    auto updatedPhysical=blackRaw;
+    updatedPhysical[0x19400+4]='Y';
+    stamp(updatedPhysical,0,L::BlackWhite);
+    fileFixture(replacementPath,updatedPhysical);
+    const auto inPlace=G::inspectSourceFile(replacementPath,"RetroArch");
+    assert(inPlace.ready() && inPlace.sourceIdentity==originalPhysical.sourceIdentity);
+    assert(inPlace.contentFingerprint!=originalPhysical.contentFingerprint);
+    assert(G::openAssignedSource(physicalBindings,"owner-one","black_nds").ready());
+    assert(::rename(replacementPath.c_str(),rotated.c_str())==0);
+    fileFixture(replacementPath,updatedPhysical);
+    const auto replacement=G::inspectSourceFile(replacementPath,"RetroArch");
+    assert(replacement.ready() && replacement.gameId=="black_nds");
+    assert(replacement.sourceIdentity!=originalPhysical.sourceIdentity);
+    assert(G::openAssignedSource(physicalBindings,"owner-one","black_nds").status==
+           G::AssignedOpenStatus::AssignmentMismatch);
+    assert(std::remove(replacementPath.c_str())==0);
+    assert(std::remove(rotated.c_str())==0);
+    assert(std::remove(replacementDb.c_str())==0);
     const auto wrapped=G::inspectSourceFile(dsv,"DraStic");
     assert(wrapped.ready() && wrapped.gameId=="white_nds");
     assert(wrapped.containerType=="dsv-footer");
