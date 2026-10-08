@@ -169,6 +169,41 @@ int main() {
     assert(oddishSyncFail.slot == 1);
     assert(oddishSyncFail.frameSeed == failFrame);
 
+    // Emerald Cute Charm failure consumes an RNG proc at -1. This vector is
+    // isolated from every accepted no-lead/Synchronize result: the Hoenn block
+    // does not activate, p0 is odd, the ordinary frame does not match the slot,
+    // and the failed proc is divisible by 3 but even (SyncFail impossible).
+    const auto emeraldCuteFail = Gen3PidIv::analyze(
+        0x54231DF8u, {2,7,7,20,29,24});
+    assert(emeraldCuteFail.method == Method::Method1);
+    assert(emeraldCuteFail.originSeed == 0x000121B4u);
+    const uint8_t cuteNature = static_cast<uint8_t>(
+        MH::Detail::sequentialPid(emeraldCuteFail.originSeed) % 25u);
+    assert(cuteNature == 1u);
+    assert(MH::Detail::reversalWindow(
+        emeraldCuteFail.originSeed, cuteNature) == 0u);
+    assert(MH::Detail::upper16(emeraldCuteFail.originSeed) == 1u);
+    const uint32_t cuteBlock =
+        MH::Detail::hoennSafariBlockSeed(emeraldCuteFail.originSeed);
+    assert(!MH::Detail::hoennSafariBlockProc(cuteBlock));
+    assert((MH::Detail::upper16(cuteBlock) % 100u) == 87u);
+    const uint32_t cuteFrame =
+        Gen3PidIv::Detail::prev(emeraldCuteFail.originSeed);
+    const uint16_t cuteProc = MH::Detail::upper16(
+        Gen3PidIv::Detail::prev(cuteFrame));
+    assert(cuteProc == 57024u);
+    assert(cuteProc % 3u == 0u && (cuteProc & 1u) == 0u);
+
+    const auto psyduckCuteFail = MH::analyze(
+        "emerald_gba", 54, 57, 21, 0, 0x54231DF8u, emeraldCuteFail);
+    assert(psyduckCuteFail.resolution == MH::Resolution::FrameMatched);
+    assert(psyduckCuteFail.path == MH::Path::EmeraldCuteCharmFailed);
+    assert(psyduckCuteFail.requiredBall == Gen3Safari::kSafariBall);
+    assert(psyduckCuteFail.sourceSpecies == 54);
+    assert(psyduckCuteFail.encounterType == 1);
+    assert(psyduckCuteFail.slot == 1);
+    assert(psyduckCuteFail.frameSeed == cuteFrame);
+
     // The same PID/IV frame is not an FR/LG or Ruby source: these remain
     // unresolved, not hard-invalid.
     assert(MH::analyze(
