@@ -17,9 +17,9 @@ namespace Legality::Gen3SafariMethodH {
 //
 // Emerald also permits broader lead-ability histories. Only an isolated
 // Synchronize-failure and Cute Charm-failure positive paths with proven
-// no-block framing are added here. Other Cute Charm branches, Static/Magnet
-// Pull, Pressure/Hustle/Vital Spirit, etc. remain unsupported. Failure is
-// Unresolved and says nothing about those histories.
+// no-block framing are added here. A bounded Pressure/Hustle/Vital Spirit
+// failed-proc (lowered-level) path is also reconstructed. Other Cute Charm,
+// Static/Magnet Pull and lead histories remain unsupported and Unresolved.
 //
 // Method 3 uses an A_C PID shape: one RNG frame is skipped between the two
 // persisted PID halves. Pinned LeadFinder still passes PIDIV.OriginSeed into
@@ -41,6 +41,7 @@ enum class Path : uint8_t {
     EmeraldSynchronize,
     EmeraldSynchronizeFailed,
     EmeraldCuteCharmFailed,
+    EmeraldPressureHustleFailed,
 };
 
 struct Evidence {
@@ -285,6 +286,45 @@ constexpr CandidateMatch matchEmeraldCuteCharmFail(
     return {Path::EmeraldCuteCharmFailed, frameSeed};
 }
 
+constexpr CandidateMatch matchEmeraldPressureHustleFail(
+        const Gen3Safari::Entry& row,
+        uint8_t metLevel,
+        uint32_t candidateSeed,
+        uint8_t nature) noexcept {
+    // Pinned MethodH.IsSlotValidHustleVitalFail:
+    // p0 = nature; -1 proc FAIL (upper16 & 1 == 0), -2 level
+    // (GetRandomLevelMinus1), -3 encounter slot. CheckEncounterActivation
+    // consumes Seed4 for Rock Smash. Positive-only and deliberately limited
+    // to a failed Hoenn Safari nature-preference block, odd p0 and no lead
+    // Synchronize-success at the same frame.
+    const uint16_t p0 = upper16(candidateSeed);
+    if ((p0 % 25u) != nature || (p0 & 1u) == 0u ||
+        hoennSafariBlockProc(hoennSafariBlockSeed(candidateSeed)))
+        return {};
+    const uint32_t frameSeed = Gen3PidIv::Detail::prev(candidateSeed);
+    const uint32_t procSeed = Gen3PidIv::Detail::prev(frameSeed);
+    if ((upper16(procSeed) & 1u) != 0u)
+        return {}; // Pressure/Hustle/Vital Spirit procced instead.
+    const uint32_t levelSeed = Gen3PidIv::Detail::prev(procSeed);
+    const uint32_t slotSeed = Gen3PidIv::Detail::prev(levelSeed);
+    const uint32_t activationSeed = Gen3PidIv::Detail::prev(slotSeed);
+    if (row.method > 5 || row.maxLevel < row.minLevel)
+        return {};
+    const uint32_t span = 1u + row.maxLevel - row.minLevel;
+    uint32_t levelBias = upper16(levelSeed) % span;
+    if (levelBias != 0u)
+        --levelBias;
+    const uint8_t level = static_cast<uint8_t>(row.minLevel + levelBias);
+    if (level != metLevel ||
+        Gen3MethodHSlot::get(
+            static_cast<Gen3MethodHSlot::Type>(row.method),
+            upper16(slotSeed)) != row.slot)
+        return {};
+    if (row.method == 5 && !rockSmashActivation(row, activationSeed))
+        return {};
+    return {Path::EmeraldPressureHustleFailed, frameSeed};
+}
+
 inline bool sourceSpeciesMatches(std::string_view exactGameId,
                                  uint16_t currentSpecies,
                                  uint8_t currentForm,
@@ -376,6 +416,9 @@ inline Evidence analyze(std::string_view exactGameId,
                         row, metLevel, candidateSeed, nature);
                 if (match.path == Path::None)
                     match = Detail::matchEmeraldCuteCharmFail(
+                        row, metLevel, candidateSeed, nature);
+                if (match.path == Path::None)
+                    match = Detail::matchEmeraldPressureHustleFail(
                         row, metLevel, candidateSeed, nature);
             }
             if (match.path == Path::None)
