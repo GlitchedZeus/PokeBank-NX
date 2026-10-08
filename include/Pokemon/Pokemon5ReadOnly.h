@@ -36,6 +36,11 @@ public:
     }
     [[nodiscard]] bool empty() const noexcept { return valid() && species() == 0; }
     [[nodiscard]] bool partyRecord() const noexcept { return source_.size() == Crypto::PartySize; }
+    // PKHeX.Core PK5.Stat_Level: party extension byte 0x8C. Boxed PK5
+    // does not store current battle level; zero means unavailable.
+    [[nodiscard]] uint8_t partyLevel() const noexcept {
+        return valid() && partyRecord() ? decoded_[0x8C] : 0;
+    }
 
     [[nodiscard]] std::span<const uint8_t> originalEncryptedBytes() const noexcept { return source_; }
     // Diagnostic access only: semantic field getters below quarantine invalid records.

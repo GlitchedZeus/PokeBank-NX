@@ -233,3 +233,11 @@ Source preference remains API-only until a safe UI flow exists.
   level fields, source mutations, save injection or implicit profile claims.
 - The production Games screen is unchanged; this is a source-backed bridge
   for integrating the existing UI without creating another one.
+
+### Phase B tranche 8 — native Gen V party level in preview
+
+- The shared Game Card preview now includes level directly from the native PK5
+  party extension at offset `0x8C` (`PKHeX.Core/PKM/PK5.cs`, `Stat_Level`).
+- Boxed PK5 records do **not** expose a synthetic level. Out-of-range party
+  level data is shown as unavailable (`0`) rather than repaired or guessed.
+- No native save mutation, source write, or level-edit capability is enabled.

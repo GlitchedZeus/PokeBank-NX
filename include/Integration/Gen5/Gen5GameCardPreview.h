@@ -21,6 +21,7 @@ struct PartyPreviewSlot {
     uint16_t species = 0;
     uint16_t heldItem = 0;
     uint8_t nature = 0;
+    uint8_t level = 0; // only the native party extension stores level
     bool shiny = false;
 };
 struct GameCardReadOnlyPreview {
@@ -58,7 +59,9 @@ struct GameCardReadOnlyPreview {
     for(size_t slot=0;slot<p.partyCount;++slot) {
         const auto pk=save.partyPokemon(slot);
         if(!pk || !pk->valid() || pk->empty())return std::nullopt;
-        p.party[slot]={true,pk->species(),pk->heldItem(),pk->nature(),pk->shiny()};
+        const uint8_t level=pk->partyLevel();
+        p.party[slot]={true,pk->species(),pk->heldItem(),pk->nature(),
+                       level>=1 && level<=100 ? level : uint8_t{0},pk->shiny()};
     }
     return p;
 }

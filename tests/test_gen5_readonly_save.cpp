@@ -152,6 +152,7 @@ void discoveryContracts() {
     assert(gamePreview->trainerName=="NX");
     assert(gamePreview->partyCount==1);
     assert(gamePreview->party[0].occupied && gamePreview->party[0].species==25);
+    assert(gamePreview->party[0].level==50);
     assert(!gamePreview->party[1].occupied && !gamePreview->backupCopySelected);
     assert(gamePreview->dexSeen==1 && gamePreview->dexCaught==1);
     assert(gamePreview->dexTotal==649);

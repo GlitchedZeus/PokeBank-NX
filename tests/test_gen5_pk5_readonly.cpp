@@ -65,6 +65,7 @@ int main() {
             const G5::Pokemon5ReadOnly entity(encrypted);
             assert(entity.valid() && !entity.empty());
             assert(entity.partyRecord() == (size == C::PartySize));
+            assert(entity.partyLevel() == (size == C::PartySize ? 50 : 0));
             assert(entity.species()==25 && entity.heldItem()==4);
             assert(entity.tid()==12345 && entity.sid()==54321);
             assert(entity.experience()==10000);
