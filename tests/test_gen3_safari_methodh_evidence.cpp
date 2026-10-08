@@ -355,6 +355,68 @@ int main() {
         "emerald_gba", 25, 57, 27, 0, 0xA2B5D929u,
         emeraldStatic).resolution == MH::Resolution::Unresolved);
 
+    // Emerald Safari 300-call nature-block Pressure-success. Oddish slot 1
+    // is level 27, but its original EncounterArea3 #182 also has slot 3
+    // Oddish level 29. PressureLevel therefore forces 29; taking an across-
+    // location maximum or using the raw slot max/rolled level would be wrong.
+    // The -3 block slot roll 22 selects slot 1. p0 is odd and ordinary p0
+    // nature 1 mismatches the PID nature 20, ruling out no-block Sync/normal.
+    const auto grassBlockPressure = Gen3PidIv::analyze(
+        0x813415B7u, {6,9,2,12,29,28});
+    assert(grassBlockPressure.method == Method::Method1);
+    assert(grassBlockPressure.originSeed == 0x000101FDu);
+    const uint8_t blockPressureNature = static_cast<uint8_t>(
+        MH::Detail::sequentialPid(grassBlockPressure.originSeed) % 25u);
+    assert(blockPressureNature == 20u);
+    assert(MH::Detail::upper16(grassBlockPressure.originSeed) == 1u);
+    assert(MH::Detail::reversalWindow(
+        grassBlockPressure.originSeed, blockPressureNature) == 0u);
+    const uint32_t grassBlockPressureFrame =
+        MH::Detail::hoennSafariBlockSeed(grassBlockPressure.originSeed);
+    assert(grassBlockPressureFrame == 0x326A4BC1u);
+    assert(MH::Detail::hoennSafariBlockProc(grassBlockPressureFrame));
+    assert(MH::Detail::upper16(grassBlockPressureFrame) % 100u == 6u);
+    const uint32_t grassBlockProcSeed =
+        Gen3PidIv::Detail::prev(grassBlockPressureFrame);
+    const uint32_t grassBlockLevelSeed =
+        Gen3PidIv::Detail::prev(grassBlockProcSeed);
+    const uint32_t grassBlockSlotSeed =
+        Gen3PidIv::Detail::prev(grassBlockLevelSeed);
+    assert(MH::Detail::upper16(grassBlockProcSeed) == 50713u);
+    assert((MH::Detail::upper16(grassBlockProcSeed) & 1u) == 1u);
+    assert(MH::Detail::upper16(grassBlockLevelSeed) == 44584u);
+    assert(MH::Detail::upper16(grassBlockSlotSeed) == 47322u);
+    assert(MH::Detail::upper16(grassBlockSlotSeed) % 100u == 22u);
+
+    bool foundPressureArea = false;
+    for (const auto& row : Gen3Safari::kGen3SafariEntries) {
+        if (row.game == 2 && row.species == 43 &&
+            row.areaIndex == 182 && row.slot == 1 && row.method == 0) {
+            assert(row.maxLevel == 27);
+            assert(MH::Detail::grassPressureLevel(row) == 29);
+            foundPressureArea = true;
+        }
+    }
+    assert(foundPressureArea);
+
+    const auto oddishBlockPressure = MH::analyze(
+        "emerald_gba", 43, 57, 29, 0, 0x813415B7u,
+        grassBlockPressure);
+    assert(oddishBlockPressure.resolution == MH::Resolution::FrameMatched);
+    assert(oddishBlockPressure.path ==
+           MH::Path::EmeraldSafariBlockPressureSuccess);
+    assert(oddishBlockPressure.requiredBall == Gen3Safari::kSafariBall);
+    assert(oddishBlockPressure.sourceSpecies == 43);
+    assert(oddishBlockPressure.encounterType == 0);
+    assert(oddishBlockPressure.slot == 1);
+    assert(oddishBlockPressure.frameSeed == grassBlockPressureFrame);
+
+    // No Oddish source slot in this area can force level 28. An unsupported
+    // alternative encounter history must remain unresolved, never Invalid.
+    assert(MH::analyze(
+        "emerald_gba", 43, 57, 28, 0, 0x813415B7u,
+        grassBlockPressure).resolution == MH::Resolution::Unresolved);
+
     // Hoenn Safari-block Static-success is a distinct MethodH context from
     // no-block Static. The pinned 300-call rewind yields block frame 0x7B4A6F2E;
     // the ordinary -2 ESV would select grass slot 1, NOT Pikachu slot 8.
