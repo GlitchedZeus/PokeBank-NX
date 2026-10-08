@@ -37,6 +37,9 @@ public:
         previousDown_ = down_;
         down_ = false;
     }
+    // Simulate a later frame without a new touch event. Without this transition the fake reports
+    // justReleased() forever, preventing behavioral tests from exercising real idle/coast frames.
+    void nextFrame() noexcept { previousDown_ = down_; }
     [[nodiscard]] bool isDown() const noexcept { return down_; }
     [[nodiscard]] bool justTouchedDown() const noexcept { return down_ && !previousDown_; }
     [[nodiscard]] bool justReleased() const noexcept { return !down_ && previousDown_; }
