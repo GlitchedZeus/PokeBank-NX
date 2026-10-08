@@ -167,9 +167,12 @@ static void testIndependentPickerViewport() {
     assert(movedY == oldY - 40); // No selection-centered recenter/snap.
     window.ensure(selected, 60, 9);
     assert(window.firstRow == 14); // Draw-time ensure must not recentre after scroll.
+    assert(window.containsSelection(selected, 60, 9));
+    assert(!window.containsSelection(44, 60, 9)); // A cannot accept a hidden option.
     motion.stop();
     window.reveal(44, 60, 9);
     assert(window.firstRow == 36); // Controller navigation reveals focused row.
+    assert(window.containsSelection(44, 60, 9));
 
     UI::TouchPickerViewport grid;
     grid.ensure(1, 17, 3, 3);
@@ -184,9 +187,12 @@ static void testIndependentPickerViewport() {
     assert(grid.firstRow == 1); // Grid viewport scrolls by ROWS, not item indices.
     grid.ensure(1, 17, 3, 3);
     assert(grid.firstRow == 1);
+    assert(!grid.containsSelection(16, 17, 3, 3));
     grid.reveal(16, 17, 3, 3);
     assert(grid.firstRow == 3); // Partially filled final row remains selectable.
+    assert(grid.containsSelection(16, 17, 3, 3));
     grid.reset();
+    assert(!grid.containsSelection(16, 17, 3, 3));
     assert(grid.firstRow == -1);
     grid.ensure(1, 17, 3, 3);
     assert(grid.firstRow == 0); // New picker starts at its own focused value.
