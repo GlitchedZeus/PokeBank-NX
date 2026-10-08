@@ -265,15 +265,20 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                                      33, picker.model.index, pickerCount);
     }
 
+    // Species target IDs encode the 1-based National Dex; Location/Move IDs are 0-based.
+    // Reject unrelated modal button IDs rather than clamping them to the last choice.
+    const bool speciesIds = picker.model.kind == Gen2Picker::Kind::Species;
+    const int firstTouchId = speciesIds ? 2001 : 2000;
+    const int endTouchId = 2000 + pickerCount + (speciesIds ? 1 : 0);
     int touchDown = screen.touchedButtonDownId(touch);
-    if (touchDown >= 2000) {
+    if (touchDown >= firstTouchId && touchDown < endTouchId) {
         if (picker.model.kind == Gen2Picker::Kind::Species)
             picker.model.index = std::clamp(touchDown - 2000, 1, 251) - 1;
         else
             picker.model.index = std::clamp(touchDown - 2000, 0, std::max(0, pickerCount - 1));
     }
     int touchTap = screen.touchedButtonId(touch);
-    if (touchTap >= 2000) {
+    if (touchTap >= firstTouchId && touchTap < endTouchId) {
         if (picker.model.kind == Gen2Picker::Kind::Species)
             picker.model.index = std::clamp(touchTap - 2000, 1, 251) - 1;
         else
