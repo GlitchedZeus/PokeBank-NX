@@ -132,7 +132,9 @@ namespace UI {
             // Tappable buttons (captured last frame): A = Delete, B = Cancel.
             if (touch.justPressed()) {
                 auto in = [&](const DlgBtn& b) {
-                    return touch.x() >= b.x && touch.x() < b.x + b.w &&
+                    return touch.startX() >= b.x && touch.startX() < b.x + b.w &&
+                           touch.startY() >= b.y && touch.startY() < b.y + b.h &&
+                           touch.x() >= b.x && touch.x() < b.x + b.w &&
                            touch.y() >= b.y && touch.y() < b.y + b.h;
                 };
                 if (in(deleteDeleteBtn))      kDown |= HidNpadButton_A;
@@ -167,10 +169,21 @@ namespace UI {
         // Touch: tap a backup tile to select + open it (account for the scroll window).
         if (touch.justReleased() && !touch.dragged()) {
             const int startY = CARD_Y + 62, tileX = CARD_X + 14, tileW = CARD_W - 28;
-            if (touch.x() >= tileX && touch.x() < tileX + tileW && touch.y() >= startY) {
-                int visIdx = (touch.y() - startY) / LIST_ROW_H;
-                int idx = firstVisibleRow(selectedIndex, (int)backups.size()) + visIdx;
-                if (visIdx >= 0 && visIdx < LIST_MAX_VISIBLE && idx < (int)backups.size()) { selectedIndex = idx; kDown |= HidNpadButton_A; }
+            const int listBottom = startY + LIST_MAX_VISIBLE * LIST_ROW_H;
+            const auto insideList = [&](int px, int py) {
+                return px >= tileX && px < tileX + tileW &&
+                       py >= startY && py < listBottom;
+            };
+            if (insideList(touch.startX(), touch.startY()) &&
+                insideList(touch.x(), touch.y())) {
+                const int startedRow = (touch.startY() - startY) / LIST_ROW_H;
+                const int visIdx = (touch.y() - startY) / LIST_ROW_H;
+                const int idx = firstVisibleRow(selectedIndex, static_cast<int>(backups.size())) + visIdx;
+                if (visIdx == startedRow && visIdx < LIST_MAX_VISIBLE &&
+                    idx < static_cast<int>(backups.size())) {
+                    selectedIndex = idx;
+                    kDown |= HidNpadButton_A;
+                }
             }
         }
 

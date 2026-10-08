@@ -259,9 +259,25 @@ require_all("src/UI/SaveSelectScreen.cpp",
             "gamesDrawerTouchScroll.reset();",
             "classicGamesTouchScroll.reset();",
             "syncTouchScrollSurface();")
+require_all("src/UI/AppShellScreen.cpp",
+            "auto tappedHit = [&](const HitRect& rect)",
+            "contains(rect, touch.startX(), touch.startY())",
+            "if (tappedHit(rect))")
+require_all("src/UI/SaveSelectScreen.cpp",
+            "void pushViewportHit(std::vector<Hit>& hits,",
+            "const int right = std::min(x + w, clipX + clipW);",
+            "const int bottom = std::min(y + h, clipY + clipH);",
+            "pushViewportHit(titleRects,",
+            "pushViewportHit(overlayRects,")
+save_select_hit_source = read("src/UI/SaveSelectScreen.cpp")
+if save_select_hit_source.count("pushViewportHit(") < 8:
+    raise AssertionError("SaveSelect: scrollable list hitboxes must be clipped to visible viewports")
 require_all("src/UI/BackupSelectionScreen.cpp",
             "backupScroll.stop();",
-            "showDeleteConfirmation = true;")
+            "showDeleteConfirmation = true;",
+            "touch.startX() >= b.x", "touch.startY() >= b.y",
+            "insideList(touch.startX(), touch.startY())",
+            "visIdx == startedRow")
 require_all("include/UI/SharedSpeciesPicker.h",
             "const TouchGestureSnapshot* gesture = nullptr",
             "gesture->deltaY / rowStep",

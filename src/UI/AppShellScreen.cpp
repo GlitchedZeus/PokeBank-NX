@@ -291,6 +291,13 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
 
     if (statusFrames > 0) --statusFrames;
 
+    // Release must remain inside the original target. Focus may follow touch-down,
+    // but a sub-slop slide into a neighbouring control must never activate it.
+    auto tappedHit = [&](const HitRect& rect) {
+        return contains(rect, touch.startX(), touch.startY()) &&
+               contains(rect, touch.x(), touch.y());
+    };
+
     if (overlay == Overlay::Diagnostics) {
         if (kDown & (HidNpadButton_B | HidNpadButton_Minus)) overlay = Overlay::Settings;
         return;
@@ -308,7 +315,7 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
         }
         if (touch.justTapped()) {
             for (const HitRect& rect : overlayRects)
-                if (contains(rect, touch.x(), touch.y())) { moreIndex = rect.index; kDown |= HidNpadButton_A; break; }
+                if (tappedHit(rect)) { moreIndex = rect.index; kDown |= HidNpadButton_A; break; }
         }
         if (kDown & HidNpadButton_B) {
             overlay = Overlay::None;
@@ -337,7 +344,7 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
         }
         if (touch.justTapped()) {
             for (const HitRect& rect : overlayRects)
-                if (contains(rect, touch.x(), touch.y())) { previewIndex = rect.index; kDown |= HidNpadButton_A; break; }
+                if (tappedHit(rect)) { previewIndex = rect.index; kDown |= HidNpadButton_A; break; }
         }
         OrganizationPreviewKind kind = OrganizationPreviewKind::Banks;
         if (infoSection == PokeBank::UIModel::AppShellSection::Pokedex)
@@ -382,7 +389,7 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
         }
         if (touch.justTapped()) {
             for (const HitRect& rect : settingsCategoryRects) {
-                if (contains(rect, touch.x(), touch.y())) {
+                if (tappedHit(rect)) {
                     settingsCategory = rect.index;
                     settingsIndex = std::min(settingsIndex, settingsOptionCount(settingsCategory) - 1);
                     settingsCategoryFocused = true;
@@ -390,7 +397,7 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
                 }
             }
             for (const HitRect& rect : settingsRects) {
-                if (contains(rect, touch.x(), touch.y())) {
+                if (tappedHit(rect)) {
                     settingsIndex = rect.index; settingsCategoryFocused = false; kDown |= HidNpadButton_A; break;
                 }
             }
@@ -446,7 +453,7 @@ void AppShellScreen::update(const PadState& pad, const TouchInput& touch) {
     }
     if (touch.justTapped()) {
         for (const HitRect& rect : cardRects) {
-            if (contains(rect, touch.x(), touch.y())) { selectedIndex = rect.index; kDown |= HidNpadButton_A; break; }
+            if (tappedHit(rect)) { selectedIndex = rect.index; kDown |= HidNpadButton_A; break; }
         }
     }
 

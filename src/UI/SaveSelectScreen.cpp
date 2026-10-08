@@ -38,6 +38,19 @@ using namespace Enums;
 namespace UI {
     namespace {
         constexpr int LEGACY_INSTANCE_VISIBLE_ROWS = 5;
+        // A scrolled row may be drawn partially under a clipped viewport. Its touch rectangle
+        // must be the visible intersection, not the full offscreen artwork/cell.
+        template <class Hit>
+        void pushViewportHit(std::vector<Hit>& hits,
+                             int x, int y, int w, int h, int index,
+                             int clipX, int clipY, int clipW, int clipH) {
+            const int left = std::max(x, clipX);
+            const int top = std::max(y, clipY);
+            const int right = std::min(x + w, clipX + clipW);
+            const int bottom = std::min(y + h, clipY + clipH);
+            if (left < right && top < bottom)
+                hits.push_back({left, top, right - left, bottom - top, index});
+        }
         std::string sourceLeafName(const std::string& path) {
             const size_t slash = path.find_last_of("/\\");
             std::string leaf = slash == std::string::npos ? path : path.substr(slash + 1);
@@ -3326,8 +3339,8 @@ namespace UI {
             const auto& title = u->titles[static_cast<size_t>(i)];
 
             drawFocusedCard(fb, x, y, CLASSIC_TILE_W, CLASSIC_TILE_H, focused, 16);
-            if (y + CLASSIC_TILE_H > CLASSIC_GRID_Y && y < CLASSIC_GRID_Y + clipH)
-                titleRects.push_back({x, y, CLASSIC_TILE_W, CLASSIC_TILE_H, i});
+            pushViewportHit(titleRects, x, y, CLASSIC_TILE_W, CLASSIC_TILE_H, i,
+                            startX, CLASSIC_GRID_Y, gridW, clipH);
             if (titleFavorite(*u, title))
                 fb.drawSymbol(x + 10, y + 8, "\xE2\x99\xA5", Colors::Error, TextStyle::Body);
             const IconImage& art = SystemIcons::gameCardIcon(
@@ -3852,8 +3865,8 @@ namespace UI {
                     const auto& title = u->titles[static_cast<size_t>(i)];
 
                     drawFocusedCard(fb, bx, by, tileW, tileH, selected, 14);
-                    if (by + tileH > gridY && by < gridY + gridH)
-                        overlayRects.push_back({bx, by, tileW, tileH, i});
+                    pushViewportHit(overlayRects, bx, by, tileW, tileH, i,
+                                    x + margin, gridY, w - margin * 2, gridH);
                     if (titleFavorite(*u, title))
                         fb.drawSymbol(bx + 8, by + 6, "\xE2\x99\xA5", Colors::Error, TextStyle::Body);
                     const std::string_view artKey =
@@ -3946,8 +3959,8 @@ namespace UI {
                 const bool selected = i == profilePickerIndex;
                 const bool current = i == userIndex;
                 drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 8, selected, 14);
-                if (rowY + rowH > listTop && rowY < listTop + visibleRows * rowH)
-                    overlayRects.push_back({x + 24, rowY, w - 48, rowH - 8, i});
+                pushViewportHit(overlayRects, x + 24, rowY, w - 48, rowH - 8, i,
+                                x + 24, listTop, w - 48, visibleRows * rowH);
 
                 const IconImage* avatar =
                     user.name == "Pokémon Saves" ? nullptr : &SystemIcons::userIcon(user.uid);
@@ -4118,8 +4131,8 @@ namespace UI {
                 const auto& entry = launchFileEntries[static_cast<size_t>(i)];
                 const bool selected = i == launchFileIndex;
                 drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 6, selected, 10);
-                if (rowY + rowH > listTop && rowY < listTop + visibleRows * rowH)
-                    overlayRects.push_back({x + 24, rowY, w - 48, rowH - 6, i});
+                pushViewportHit(overlayRects, x + 24, rowY, w - 48, rowH - 6, i,
+                                x + 24, listTop, w - 48, visibleRows * rowH);
                 fb.drawText(x + 44, rowY + 13,
                             entry.directory ? "[Folder]  " + entry.name : entry.name,
                             selected ? Colors::SelectedText : Colors::TextSecondary,
@@ -4158,9 +4171,9 @@ namespace UI {
                                                first + LEGACY_INSTANCE_VISIBLE_ROWS + 1);
             for (int i = drawFirst; i < drawLast; ++i) {
                 const int touchY = y + 122 + (i - first) * rowH + liveOffset;
-                if (touchY + rowH > y + 122 &&
-                    touchY < y + 122 + LEGACY_INSTANCE_VISIBLE_ROWS * rowH)
-                    overlayRects.push_back({x + 24, touchY, w - 48, rowH - 6, i});
+                pushViewportHit(overlayRects, x + 24, touchY, w - 48, rowH - 6, i,
+                                x + 24, y + 122, w - 48,
+                                LEGACY_INSTANCE_VISIBLE_ROWS * rowH);
             }
             if (!legacyNotice.empty())
                 fb.drawText(x + 28, y + h - 38, legacyNotice, Colors::TextMuted,
@@ -4191,8 +4204,8 @@ namespace UI {
                 const auto& entry = unassignedLegacySources[static_cast<size_t>(index)];
                 drawFocusedCard(fb, x + 24, rowY, w - 48, rowH - 6,
                                 index == legacyAssignmentIndex, 10);
-                if (rowY + rowH > listTop && rowY < listTop + visibleRows * rowH)
-                    overlayRects.push_back({x + 24, rowY, w - 48, rowH - 6, index});
+                pushViewportHit(overlayRects, x + 24, rowY, w - 48, rowH - 6, index,
+                                x + 24, listTop, w - 48, visibleRows * rowH);
                 fb.drawText(x + 44, rowY + 7, "Pokémon " + entry.title + " — " +
                             entry.instance.label,
                             index == legacyAssignmentIndex ? Colors::TextPrimary
@@ -4296,8 +4309,8 @@ namespace UI {
                                                first + visibleRows + 1);
             for (int i = drawFirst; i < drawLast; ++i) {
                 const int touchY = y + 108 + (i - first) * rowH + liveOffset;
-                if (touchY + rowH > y + 108 && touchY < y + 108 + visibleRows * rowH)
-                    overlayRects.push_back({x + 24, touchY, w - 48, rowH - 6, i});
+                pushViewportHit(overlayRects, x + 24, touchY, w - 48, rowH - 6, i,
+                                x + 24, y + 108, w - 48, visibleRows * rowH);
             }
             if (!gen4Notice.empty())
                 fb.drawText(x + 28, y + h - 34, gen4Notice, Colors::TextMuted, TextStyle::Caption);
