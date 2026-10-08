@@ -182,7 +182,9 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
     for (int i = firstDraw; i < lastDraw; ++i) {
         const int yy = listY + (i - first) * rowStep + liveOffset;
         const bool selected = i == model.index;
-        screen.touchButtons.push_back({2000 + i, x + 20, yy - 5, panelW - 40, 30});
+        appendClippedTouchButton(
+            screen.touchButtons, 2000 + i, x + 20, yy - 5, panelW - 40, 30,
+            x + 20, listY - 5, panelW - 40, visible * rowStep + 8);
         if (location) {
             const auto& encounter = model.encounterChoices[static_cast<std::size_t>(i)];
             std::string label = std::string(Gen2Native::crystalCaughtLocationName(
