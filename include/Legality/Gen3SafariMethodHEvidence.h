@@ -15,10 +15,10 @@ namespace Legality::Gen3SafariMethodH {
 // - no-lead histories for Ruby / Sapphire / Emerald / FireRed / LeafGreen
 // - Synchronize-success histories for Emerald
 //
-// Emerald also permits broader lead-ability histories (Synchronize failure,
-// Cute Charm, Static/Magnet Pull, Pressure/Hustle/Vital Spirit, etc.). Those
-// alternatives remain unsupported here. Failure remains Unresolved and says
-// nothing about those histories.
+// Emerald also permits broader lead-ability histories. Only an isolated
+// Synchronize-failure path with proven no-block framing is added here. Cute
+// Charm, Static/Magnet Pull, Pressure/Hustle/Vital Spirit, etc. remain
+// unsupported. Failure remains Unresolved and says nothing about them.
 //
 // Method 3 uses an A_C PID shape: one RNG frame is skipped between the two
 // persisted PID halves. Pinned LeadFinder still passes PIDIV.OriginSeed into
@@ -38,6 +38,7 @@ enum class Path : uint8_t {
     RegularNature,
     HoennSafariBlock,
     EmeraldSynchronize,
+    EmeraldSynchronizeFailed,
 };
 
 struct Evidence {
@@ -199,6 +200,48 @@ constexpr CandidateMatch matchEmeraldSynchronize(
     return {Path::EmeraldSynchronize, frameSeed};
 }
 
+constexpr CandidateMatch matchEmeraldSynchronizeFail(
+        const Gen3Safari::Entry& row,
+        uint8_t metLevel,
+        uint32_t candidateSeed,
+        uint8_t nature) noexcept {
+    // Pinned MethodH.TryGetMatch explores SynchronizeFail only after the
+    // normal nature call matches, then TryGetMatchNoSync checks:
+    // -1 Synchronize proc FAIL, -2 generated level, -3 slot,
+    // Seed4 encounter activation. Restrict this positive-evidence subset to
+    // a failed Hoenn Safari nature-preference block and a p0 that cannot be
+    // Synchronize-success. All other histories remain Unresolved.
+    const uint16_t p0 = upper16(candidateSeed);
+    if ((p0 % 25u) != nature || (p0 & 1u) == 0u ||
+        hoennSafariBlockProc(hoennSafariBlockSeed(candidateSeed)))
+        return {};
+
+    const uint32_t frameSeed = Gen3PidIv::Detail::prev(candidateSeed);
+    const uint32_t procSeed = Gen3PidIv::Detail::prev(frameSeed);
+    if ((upper16(procSeed) & 1u) == 0u)
+        return {}; // Synchronize proc succeeded, not failed.
+
+    const uint32_t levelSeed = Gen3PidIv::Detail::prev(procSeed);
+    const uint32_t slotSeed = Gen3PidIv::Detail::prev(levelSeed);
+    const uint32_t activationSeed = Gen3PidIv::Detail::prev(slotSeed);
+    if (row.method > 5 || row.maxLevel < row.minLevel)
+        return {};
+
+    const uint32_t span = 1u + row.maxLevel - row.minLevel;
+    const uint8_t level = static_cast<uint8_t>(
+        (upper16(levelSeed) % span) + row.minLevel);
+    if (level != metLevel)
+        return {};
+    if (Gen3MethodHSlot::get(
+            static_cast<Gen3MethodHSlot::Type>(row.method),
+            upper16(slotSeed)) != row.slot)
+        return {};
+    if (row.method == 5 && !rockSmashActivation(row, activationSeed))
+        return {};
+
+    return {Path::EmeraldSynchronizeFailed, frameSeed};
+}
+
 inline bool sourceSpeciesMatches(std::string_view exactGameId,
                                  uint16_t currentSpecies,
                                  uint8_t currentForm,
@@ -285,6 +328,9 @@ inline Evidence analyze(std::string_view exactGameId,
                 game == Gen3Safari::Game::Emerald) {
                 match = Detail::matchEmeraldSynchronize(
                     row, metLevel, candidateSeed);
+                if (match.path == Path::None)
+                    match = Detail::matchEmeraldSynchronizeFail(
+                        row, metLevel, candidateSeed, nature);
             }
             if (match.path == Path::None)
                 continue;
