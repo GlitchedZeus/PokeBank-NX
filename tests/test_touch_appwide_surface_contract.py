@@ -244,6 +244,15 @@ scroll = read("include/UI/TouchScroll.h")
 for dead_api in ("updateHorizontal(", "dragging() const", "moving() const", "bool tracking"):
     if dead_api in scroll:
         raise AssertionError(f"TouchScroll: unused API/state reintroduced: {dead_api}")
+# A clean tap must begin AND end inside one rendered target. This guards adjacent
+# footer/cards/list rows against accidental activation during a sub-slop finger wobble.
+require_all("src/UI/SaveSelectScreen.cpp",
+            "auto tappedHit = [&](const HitRect& r) -> bool",
+            "touch.startX() >= r.x", "touch.startY() >= r.y",
+            "touch.x() >= r.x", "touch.y() >= r.y",
+            "if (tappedHit(r))",
+            "const int idx = tappedRect(titleRects);",
+            "const int idx = tappedRect(overlayRects);")
 require_all("src/UI/SaveSelectScreen.cpp",
             "void SaveSelectScreen::syncTouchScrollSurface()",
             "launchFileTouchScroll.reset();",

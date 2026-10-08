@@ -2492,11 +2492,18 @@ namespace UI {
             HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)
             | navTouchButton(touch);
 
+        // Release-confirmed targets require the SAME rendered hitbox at contact and release.
+        // A small finger wobble crossing a button edge must never activate its neighbour.
+        auto tappedHit = [&](const HitRect& r) -> bool {
+            return touch.startX() >= r.x && touch.startX() < r.x + r.w &&
+                   touch.startY() >= r.y && touch.startY() < r.y + r.h &&
+                   touch.x() >= r.x && touch.x() < r.x + r.w &&
+                   touch.y() >= r.y && touch.y() < r.y + r.h;
+        };
         auto tappedRect = [&](const std::vector<HitRect>& rects) -> int {
             if (!touch.justTapped()) return -1;
-            const int tx = touch.x(), ty = touch.y();
             for (const auto& r : rects)
-                if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h)
+                if (tappedHit(r))
                     return r.idx;
             return -1;
         };
@@ -3072,9 +3079,8 @@ namespace UI {
             for (const auto& r : featureRects) if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) { hubDockFocused = false; headerActionIndex = -1; hubFeatureIndex = r.idx; break; }
         }
         if (touch.justTapped()) {
-            const int tx = touch.x(), ty = touch.y();
             for (const auto& r : headerRects) {
-                if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
+                if (tappedHit(r)) {
                     headerActionIndex = r.idx;
                     hubDockFocused = false;
                     hubFeatureIndex = -1;
@@ -3089,7 +3095,7 @@ namespace UI {
                 }
             }
             for (const auto& r : dockRects) {
-                if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
+                if (tappedHit(r)) {
                     hubDockFocused = true;
                     hubFeatureIndex = -1;
                     hubDockIndex = r.idx;
@@ -3098,7 +3104,7 @@ namespace UI {
                 }
             }
             for (const auto& r : featureRects) {
-                if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
+                if (tappedHit(r)) {
                     hubDockFocused = false;
                     headerActionIndex = -1;
                     hubFeatureIndex = r.idx;
@@ -3109,7 +3115,7 @@ namespace UI {
                 }
             }
             for (const auto& r : titleRects) {
-                if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
+                if (tappedHit(r)) {
                     hubDockFocused = false;
                     hubFeatureIndex = -1;
                     kDown |= HidNpadButton_A;
