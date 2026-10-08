@@ -208,3 +208,15 @@ Source preference remains API-only until a safe UI flow exists.
   entirely unchanged.
 - No Create capability, SAV writer, original-file write, installed
   application data modification, injection or automatic legality fix.
+
+### Phase B tranche 6 — validated Gen V trainer display text
+
+- Trainer names come only from the selected and fully validated Gen V
+  Trainer block. Maximum seven native UTF-16 code units.
+- Strict display conversion rejects malformed surrogate pairs, private-use
+  placeholders, control characters and noncharacters; unsupported text
+  leaves the trainer label empty without changing save acceptance.
+- Valid Japanese/Unicode names are converted into UTF-8 and surfaced
+  in source details and provider-neutral Save Instances rows.
+- No source text writing, nicknames, trainer editing or game assignment
+  inference has been enabled.

@@ -286,9 +286,11 @@ Source::SaveInstance inspectSourceFile(const std::string& path,
     row.contentFingerprint=sha256Hex(bytes);
     row.containerType=container;
     row.partyCount=save->partyCount();
+    row.trainerName=displayTrainerName(save->trainer().rawName).value_or("");
     row.sourceLabel=std::string("Gen V / ")+
         (save->selectedBackupPartition()?"Backup copy":"Primary copy")+
         " / Party "+std::to_string(save->partyCount());
+    if(!row.trainerName.empty())row.sourceLabel+=" / "+row.trainerName;
     row.validation=Source::ValidationStatus::Ready;
     row.diagnostic=message;
     if(save->selectedBackupPartition())row.diagnostic+="; validated backup copy";

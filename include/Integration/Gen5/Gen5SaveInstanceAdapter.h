@@ -2,6 +2,7 @@
 #define POKEBANK_GEN5_SAVE_INSTANCE_ADAPTER_H
 
 #include "Integration/Gen5/Gen5ReadOnlySave.h"
+#include "Integration/Gen5/Gen5TrainerName.h"
 #include "Source/SaveInstance.h"
 
 #include <cstddef>
@@ -94,7 +95,9 @@ struct ReadOnlyProbe {
     }
 
     row.validation = Source::ValidationStatus::Ready;
-    // Do not invent a trainer label until the Gen V UTF-16 text codec is wired.
+    // Only validated, printable UTF-16 becomes a visible trainer label.
+    // Malformed/unsupported display text does not invalidate the entire save.
+    row.trainerName = displayTrainerName(save->trainer().rawName).value_or("");
     row.partyCount = save->partyCount();
     row.diagnostic = save->selectedBackupPartition() ?
         "Gen V backup copy selected explicitly or via checksum fallback; source is read-only" :

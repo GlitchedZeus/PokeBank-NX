@@ -117,6 +117,7 @@ void discoveryContracts() {
 
     const auto probe=G::inspectSourceFile(black,"RetroArch");
     assert(probe.ready() && probe.gameId=="black_nds");
+    assert(probe.trainerName=="NX");
     assert(probe.readOnly() && probe.providerId=="retroarch");
     assert(probe.contentFingerprint.size()==64);
     assert(probe.physicalIdentity.find("inode:")==0);
@@ -315,7 +316,7 @@ int main() {
         assert(probe.instance.readOnly() && probe.instance.partyCount==1);
         assert(probe.instance.sourceIndex==17 && probe.instance.claimedProfile=="test-profile");
         assert(probe.instance.sourcePath=="sdmc:/retroarch/cores/savefiles/test.srm");
-        assert(probe.instance.trainerName.empty()); // No invented Gen V text display.
+        assert(probe.instance.trainerName=="NX"); // Verified printable UTF-16 only.
         auto mismatched=context; mismatched.assignedExactGame = "platinum_nds";
         assert(!G::probeNormalizedBattery(sav,mismatched).ready());
         mismatched.assignedExactGame = id;
@@ -329,6 +330,12 @@ int main() {
         assert(mismatchProbe.instance.validation==PokeVault::Source::ValidationStatus::AssignmentMismatch);
         assert(parsed->partyCount()==1 && parsed->selectedPartition()==0);
         assert(parsed->trainer().rawName==u"NX");
+        assert(G::displayTrainerName(parsed->trainer().rawName).value()=="NX");
+        assert(G::displayTrainerName(u"\u30CF").value()=="\xE3\x83\x8F");
+        assert(!G::displayTrainerName(std::u16string(1,char16_t(0xD800))));
+        assert(!G::displayTrainerName(std::u16string(1,char16_t(0xDC00))));
+        assert(!G::displayTrainerName(std::u16string(1,char16_t(0xE000))));
+        assert(!G::displayTrainerName(u""));
         assert(parsed->trainer().tid==12345 && parsed->trainer().sid==54321);
         assert(parsed->trainer().playedHours==23);
         assert(parsed->partyPokemon(0)->species()==25);
