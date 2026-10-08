@@ -4254,20 +4254,23 @@ namespace UI {
                     // Only vertical drags that START on a displayed item may move its selection.
                     // In particular, an empty pouch must never become index -1 after a swipe,
                     // and dragging the neighboring categories/header must not move this list.
-                    const bool startedOnItem = std::any_of(
-                        touchButtons.begin(), touchButtons.end(), [&](const auto& hit) {
-                            return hit.id >= 0 && hit.id < totalItems &&
-                                   touch.startX() >= hit.x && touch.startX() < hit.x + hit.w &&
-                                   touch.startY() >= hit.y && touch.startY() < hit.y + hit.h;
-                        });
-                    if (totalItems > 0 && startedOnItem &&
-                        touch.justReleased() && touch.dragged()) {
+                    if (totalItems > 0 && touch.justReleased() && touch.dragged()) {
                         const int dy = touch.deltaY();
                         if (std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
-                            const int steps = std::max(1, std::abs(dy) / 52);
-                            if (dy < 0) selectedItemIndex = std::min(totalItems - 1, selectedItemIndex + steps);
-                            else selectedItemIndex = std::max(0, selectedItemIndex - steps);
-                            currentPage = selectedItemIndex / itemsPerPage;
+                            // Only scan the small set of visible row rectangles on drag release,
+                            // rather than rebuilding gesture ownership on every render/update frame.
+                            const bool startedOnItem = std::any_of(
+                                touchButtons.begin(), touchButtons.end(), [&](const auto& hit) {
+                                    return hit.id >= 0 && hit.id < totalItems &&
+                                           touch.startX() >= hit.x && touch.startX() < hit.x + hit.w &&
+                                           touch.startY() >= hit.y && touch.startY() < hit.y + hit.h;
+                                });
+                            if (startedOnItem) {
+                                const int steps = std::max(1, std::abs(dy) / 52);
+                                if (dy < 0) selectedItemIndex = std::min(totalItems - 1, selectedItemIndex + steps);
+                                else selectedItemIndex = std::max(0, selectedItemIndex - steps);
+                                currentPage = selectedItemIndex / itemsPerPage;
+                            }
                         }
                     }
                     int itemTap = touchedButtonId(touch);
