@@ -183,6 +183,16 @@ require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
             "state.pickerScroll.offset()",
             "state.editorScroll.offset()",
             "state.reviewScroll.offset()")
+# Gen I's three moving vertical surfaces share the same clipped-hitbox contract as
+# later generations. A row outside a framebuffer clip must not remain tappable.
+require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
+            "appendClippedTouchButton(screen.touchButtons, 2000 + field,",
+            "centerX + 8, listY, centerW - 16, viewportH",
+            "appendClippedTouchButton(screen.touchButtons, 4000 + idx,",
+            "x + 24, listTop, w - 48, visible * rowStep",
+            "appendClippedTouchButton(screen.touchButtons, 1300 + row,",
+            "x + 24, listTop, w - 48, h - 108")
+
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc",
             "void ux2ResetTouchMotion(UX2State& state) noexcept",
             "state.editorScroll.reset();",
