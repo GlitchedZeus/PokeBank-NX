@@ -21,6 +21,7 @@ struct PickerOverlayState {
     TouchScrollState scroll;
     TouchScrollState moveScroll;
     TouchPickerViewport moveViewport;
+    TouchPickerViewport locationViewport;
 };
 
 PickerOverlayState& pickerStateFor(const TrainerViewScreen& screen) {
@@ -37,6 +38,7 @@ void closePicker(TrainerViewScreen& screen, PickerOverlayState& picker) {
     picker.scroll.reset();
     picker.moveScroll.reset();
     picker.moveViewport.reset();
+    picker.locationViewport.reset();
     screen.controllerNavigation.reset();
 }
 
@@ -54,6 +56,7 @@ bool openPickerForFocusedField(TrainerViewScreen& screen, State& state,
     picker.scroll.reset();
     picker.moveScroll.reset();
     picker.moveViewport.reset();
+    picker.locationViewport.reset();
     screen.controllerNavigation.reset();
     return true;
 }
@@ -179,7 +182,10 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
     const int count = location ? model.locationCount() : species ? 251 : 252;
     constexpr int visible = 13;
     constexpr int rowStep = 33;
-    const int first = std::clamp(model.index - visible / 2, 0, std::max(0, count - visible));
+    if (location)
+        overlay.locationViewport.ensure(model.index, count, visible);
+    const int first = location ? overlay.locationViewport.firstRow :
+        std::clamp(model.index - visible / 2, 0, std::max(0, count - visible));
     const int liveOffset = overlay.scroll.offset();
     const int firstDraw = std::max(0, first - 1);
     const int lastDraw = std::min(count, first + visible + 1);
@@ -267,8 +273,19 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         const int panelW = picker.model.kind == Gen2Picker::Kind::Move ? 1080 : 760;
         const int x = (1280 - panelW) / 2;
         const int y = (720 - panelH) / 2;
-        picker.scroll.updateVertical(touch, x + 20, y + 83, panelW - 40, 13 * 33 + 10,
-                                     33, picker.model.index, pickerCount);
+        if (picker.model.kind == Gen2Picker::Kind::Location) {
+            constexpr int visible = 13;
+            picker.locationViewport.ensure(picker.model.index, pickerCount, visible);
+            const int maxFirst = TouchPickerViewport::maxFirst(pickerCount, visible);
+            if (maxFirst > 0)
+                picker.scroll.updateVertical(
+                    touch, x + 20, y + 83, panelW - 40, visible * 33 + 10, 33,
+                    picker.locationViewport.firstRow, maxFirst + 1);
+            else picker.scroll.stop();
+        } else {
+            picker.scroll.updateVertical(touch, x + 20, y + 83, panelW - 40, 13 * 33 + 10,
+                                         33, picker.model.index, pickerCount);
+        }
     }
 
     // Species target IDs encode the 1-based National Dex; Location/Move IDs are 0-based.
@@ -315,6 +332,19 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         }
     }
 
+    if (picker.model.kind == Gen2Picker::Kind::Location) {
+        constexpr int visible = 13;
+        if (nav & (HidNpadButton_Up | HidNpadButton_Down |
+                   HidNpadButton_Left | HidNpadButton_Right))
+            picker.locationViewport.reveal(picker.model.index, pickerCount, visible);
+        if ((down & HidNpadButton_A) &&
+            !picker.locationViewport.containsSelection(picker.model.index, pickerCount, visible)) {
+            picker.scroll.stop();
+            picker.locationViewport.reveal(picker.model.index, pickerCount, visible);
+            screen.postStatus("Focused encounter brought into view; press A again or tap a visible row", 220);
+            return true;
+        }
+    }
     if (down & HidNpadButton_A) applyPickerChoice(screen, state, picker);
     return true;
 }
