@@ -85,3 +85,12 @@ Source preference remains API-only until a safe UI flow exists.
 - Ability, form, shiny PID strategy, move compatibility, source writes,
   party-stat recalculation, Create UI and full Save Instance integration remain
   unsupported until their respective source-backed contracts are ready.
+
+### Phase B tranche 2 — exact title catalog placeholders
+
+- Black, White, Black 2 and White 2 are individually registered as Gen V
+  Nintendo DS `Planned` descriptors (not `ReadOnly` or writable).
+- Their Game selection can use the existing Unova region backdrop asset.
+  No missing cover art is linked or substituted with a fabricated asset.
+- Normal source open, assignment, shared editor and launch permissions remain
+  disabled until dedicated read-only source discovery and Product UI gates pass.
