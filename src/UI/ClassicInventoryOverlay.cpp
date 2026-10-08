@@ -519,14 +519,11 @@ void openAddPicker(TrainerViewScreen& screen, ClassicGame game, ClassicPocket po
     state.pickerItems = PokeBank::UIModel::classicInventoryAddableItems(game, pocket);
     state.pickerRow = 0;
     state.pickerScroll.reset();
-    state.pickerViewport.reset();
+    state.pickerViewport.reset(); // Initialized from the actual visible rows on first draw/update.
     if (state.pickerItems.empty()) {
         screen.postStatus("No valid addable items exist in this category", 300);
         return;
     }
-    state.pickerViewport.ensure(
-        state.pickerRow, static_cast<int>(state.pickerItems.size()),
-        PokeBank::UIModel::InventoryPickerLayout::ClassicRowsPerPage);
     state.pickerActive = true;
 }
 
@@ -680,7 +677,9 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
             state.pickerScroll.stop();
         if (down & HidNpadButton_Up) state.pickerRow = (state.pickerRow - 1 + count) % count;
         if (down & HidNpadButton_Down) state.pickerRow = (state.pickerRow + 1) % count;
-        constexpr int page = PokeBank::UIModel::InventoryPickerLayout::ClassicRowsPerPage;
+        // Use the visible touchscreen viewport for controller page steps, not the older
+        // pre-footer 11-row page constant.
+        const int page = visibleRows;
         if (down & (HidNpadButton_L | HidNpadButton_Left))
             state.pickerRow = std::max(0, state.pickerRow - page);
         if (down & (HidNpadButton_R | HidNpadButton_Right))
