@@ -67,7 +67,7 @@ require(picker, "src/UI/Dialogs/PickerDialog.cpp",
         "fb.setClipRect(viewport.x, viewport.y, viewport.w, viewport.h);",
         "fb.clearClip();",
         "first * rowH - visual.offset",
-        "screen.touchButtons.push_back({ idx, viewport.x, ry, viewport.w, rowH })")
+        "appendClippedTouchButton(screen.touchButtons, idx")
 assert "const int ry = listTop + i * rowH;" not in picker, \
     "shared picker regressed to stationary rows during finger drag"
 
