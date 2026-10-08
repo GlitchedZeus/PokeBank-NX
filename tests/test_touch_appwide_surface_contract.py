@@ -139,6 +139,8 @@ require_all("include/UI/ScreenChrome.h",
             "Content cards/rows are owned by the screen that draws them.",
             "g_productHeroDragActive",
             "g_productHeroDragXForDraw",
+            // An active drag belongs only to the Product Home surface where it began.
+            "if (productHeroDrag && g_productHeroSwipeRegistered && touch.dragged())",
             "constexpr int kProductHeroX = 24;",
             "constexpr int kProductHeroY = 78;",
             "constexpr int kProductHeroW = 720;",
