@@ -189,7 +189,9 @@ namespace Dialogs {
             }
             fb.drawText(px + 28, ry + (rowH - 4 - fb.lineHeight(TextStyle::Body)) / 2, label, col);
             if (ry + rowH > viewport.y && ry < viewport.y + viewport.h)
-                screen.touchButtons.push_back({ idx, viewport.x, ry, viewport.w, rowH });  // id = option row
+                appendClippedTouchButton(screen.touchButtons, idx,
+                    viewport.x, ry, viewport.w, rowH - 4,
+                    viewport.x, viewport.y, viewport.w, viewport.h);  // id = option row
         }
         fb.clearClip();
 
