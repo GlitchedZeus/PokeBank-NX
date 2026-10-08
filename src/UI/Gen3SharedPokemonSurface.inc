@@ -926,13 +926,13 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down, cons
         state.speciesPreview = static_cast<uint16_t>(speciesTap - 31500);
         down |= HidNpadButton_A;
     }
-    if (touch.justReleased() && touch.dragged()) {
-        const int dy = touch.deltaY();
-        if (std::abs(dy) >= 24) {
-            const int steps = std::max(1, std::abs(dy) / 43);
-            state.speciesPreview = static_cast<uint16_t>(std::clamp<int>(
-                static_cast<int>(state.speciesPreview) + (dy < 0 ? steps : -steps), 1, 386));
-        }
+    const int dy = touch.deltaY();
+    if (touch.justReleased() && touch.dragged() &&
+        SharedSpeciesPicker::gestureStartedInList(touch.startX(), touch.startY()) &&
+        std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
+        const int steps = std::max(1, std::abs(dy) / 43);
+        state.speciesPreview = static_cast<uint16_t>(std::clamp<int>(
+            static_cast<int>(state.speciesPreview) + (dy < 0 ? steps : -steps), 1, 386));
     }
     if (down & HidNpadButton_Up)
         state.speciesPreview = static_cast<uint16_t>(std::max<int>(1, state.speciesPreview - 1));

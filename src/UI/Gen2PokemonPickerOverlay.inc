@@ -247,8 +247,10 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     if (picker.model.kind == Gen2Picker::Kind::Species) {
         // The shared Species renderer follows the finger pixel-for-pixel while held. Commit the
         // semantic preview cursor only on release so the gesture cannot accidentally activate A.
-        if (touch.justReleased() && touch.dragged()) {
-            const int dy = touch.deltaY();
+        const int dy = touch.deltaY();
+        if (touch.justReleased() && touch.dragged() &&
+            SharedSpeciesPicker::gestureStartedInList(touch.startX(), touch.startY()) &&
+            std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
             const int steps = std::max(1, std::abs(dy) / 43);
             picker.model.stepList(dy < 0 ? steps : -steps);
         }

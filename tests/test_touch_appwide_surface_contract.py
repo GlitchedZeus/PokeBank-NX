@@ -278,6 +278,20 @@ require_all("src/UI/BackupSelectionScreen.cpp",
             "touch.startX() >= b.x", "touch.startY() >= b.y",
             "insideList(touch.startX(), touch.startY())",
             "visIdx == startedRow")
+# All generations share one clipped Species-picker gesture origin. Horizontal drags
+# and drags starting on the preview panel cannot advance the species on release.
+require_all("include/UI/SharedSpeciesPicker.h",
+            "inline bool gestureStartedInList(int sx, int sy",
+            "sy >= modalY + listY && sy < modalY + listY + visible * rowStep")
+for rel in (
+    "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
+    "src/UI/Gen2PokemonPickerOverlay.inc",
+    "src/UI/Gen3SharedPokemonSurface.inc",
+    "src/UI/Gen4SharedPokemonSurface.inc",
+):
+    require_all(rel,
+                "SharedSpeciesPicker::gestureStartedInList(touch.startX(), touch.startY())",
+                "std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())")
 require_all("include/UI/SharedSpeciesPicker.h",
             "const TouchGestureSnapshot* gesture = nullptr",
             "gesture->deltaY / rowStep",

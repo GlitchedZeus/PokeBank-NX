@@ -808,11 +808,14 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     const int count = static_cast<int>(state.pickerValues.size());
     if (count > 0) {
         if (state.pickerTarget == PickerTarget::Species) {
-  if (touch.justReleased() && touch.dragged()) {
-      const int steps = std::max(1, std::abs(touch.deltaY()) / 43);
-      state.pickerRow = std::clamp(
-          state.pickerRow + (touch.deltaY() < 0 ? steps : -steps), 0, count - 1);
-  }
+            const int dy = touch.deltaY();
+            if (touch.justReleased() && touch.dragged() &&
+                SharedSpeciesPicker::gestureStartedInList(touch.startX(), touch.startY()) &&
+                std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
+                const int steps = std::max(1, std::abs(dy) / 43);
+                state.pickerRow = std::clamp(
+                    state.pickerRow + (dy < 0 ? steps : -steps), 0, count - 1);
+            }
         } else if (state.pickerTarget == PickerTarget::HeldItem) {
   constexpr int pickerW = 1040, pickerH = 520, rowStep = 40;
   const int px = (1280 - pickerW) / 2;

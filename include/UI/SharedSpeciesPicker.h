@@ -24,6 +24,18 @@ inline constexpr int ModalWidth = 1080;
 inline constexpr int ModalHeight = 520;
 inline constexpr int NavBarHeight = 48;
 
+// Match release-time scroll ownership to the very same clipped list used by drawContent.
+// The Switch framebuffer and touch panel both use 1280x720 logical pixels; keep optional
+// dimensions for render/layout tests without exposing libnx TouchInput to this header.
+inline bool gestureStartedInList(int sx, int sy, int frameW = 1280, int frameH = 720) noexcept {
+    const int contentHeight = std::max(ModalHeight, frameH - NavBarHeight);
+    const int modalX = (frameW - ModalWidth) / 2;
+    const int modalY = (contentHeight - ModalHeight) / 2;
+    constexpr int listX = 20, listY = 84, listW = 560, rowStep = 43, visible = 9;
+    return sx >= modalX + listX && sx < modalX + listX + listW &&
+           sy >= modalY + listY && sy < modalY + listY + visible * rowStep;
+}
+
 // One shared shell for Gen I / II / III species choice.
 // Theme accent belongs on the focused row and hints, not around the entire dialog.
 inline ModalGeometry modalGeometry(const PKSEFramebuffer& fb) {

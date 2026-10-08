@@ -695,10 +695,12 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
         if (species >= 1) state.pickerValue = species;
         species = selectedId(3000, 152, tapped);
         if (species >= 1) { state.pickerValue = species; down |= HidNpadButton_A; }
-        if (touch.justReleased() && touch.dragged()) {
-            const int steps = std::max(1, std::abs(touch.deltaY()) / 43);
-            if (touch.deltaY() < 0) state.pickerValue = std::min(151, state.pickerValue + steps);
-            else if (touch.deltaY() > 0) state.pickerValue = std::max(1, state.pickerValue - steps);
+        const int dy = touch.deltaY();
+        if (touch.justReleased() && touch.dragged() &&
+            SharedSpeciesPicker::gestureStartedInList(touch.startX(), touch.startY()) &&
+            std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
+            const int steps = std::max(1, std::abs(dy) / 43);
+            state.pickerValue = std::clamp(state.pickerValue + (dy < 0 ? steps : -steps), 1, 151);
         }
         return down;
     }
