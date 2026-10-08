@@ -55,9 +55,9 @@ inline TouchListVisual liveVerticalListVisual(int selected, int count, int rowSt
     // Rubber-band the ends without ever disconnecting the content from the finger.
     const int edge = std::max(8, rowStep / 2);
     if (out.index == 0 && out.offset > edge)
-        out.offset = edge + (out.offset - edge) / 4;
+        out.offset = edge + std::min(edge, (out.offset - edge) / 4);
     if (out.index == count - 1 && out.offset < -edge)
-        out.offset = -edge + (out.offset + edge) / 4;
+        out.offset = -edge - std::min(edge, (-out.offset - edge) / 4);
     return out;
 }
 
@@ -134,11 +134,13 @@ private:
         // but cannot be pulled far enough to expose large empty regions.
         const int edge = std::max(8, step / 2);
         if (atLeadingEdge && offset_ > edge) {
-            offset_ = edge + (offset_ - edge) / 4;
+            // Cap rather than merely divide the overshoot; a single large delta
+            // must never expose hundreds of blank pixels beyond the first row.
+            offset_ = edge + std::min(edge, (offset_ - edge) / 4);
             velocity_ /= 2;
         }
         if (atTrailingEdge && offset_ < -edge) {
-            offset_ = -edge + (offset_ + edge) / 4;
+            offset_ = -edge - std::min(edge, (-offset_ - edge) / 4);
             velocity_ /= 2;
         }
     }
