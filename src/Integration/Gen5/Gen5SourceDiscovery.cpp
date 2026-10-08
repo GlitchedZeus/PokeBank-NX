@@ -31,6 +31,18 @@ std::string normalized(std::string path) {
     while(out.size()>1 && out.back()=='/') out.pop_back();
     return out;
 }
+bool safeScanRoot(std::string_view root) {
+    // A malformed or broad RetroArch savefile_directory must never turn a
+    // bounded emulator scan into a scan of the full Switch SD card.
+    const std::string normalizedRoot=normalized(std::string(root));
+    if(normalizedRoot.empty() || normalizedRoot=="/" ||
+       normalizedRoot=="." || normalizedRoot=="sdmc:" ||
+       normalizedRoot=="sdmc:/" || normalizedRoot==".." ||
+       normalizedRoot=="sdmc")return false;
+    const std::string wrapped="/"+normalizedRoot+"/";
+    return wrapped.find("/../")==std::string::npos &&
+           wrapped.find("/./")==std::string::npos;
+}
 std::string extension(std::string_view path) {
     const size_t slash=path.find_last_of("/\\");
     const size_t dot=path.find_last_of('.');
@@ -146,7 +158,8 @@ struct ScanState {
 };
 void scan(const DiscoveryRoot& root,const std::string& dir,size_t depth,ScanState& s) {
     struct stat dirSt{};
-    if(s.result.limitReached || depth>root.maxDepth || !safeDirectory(dir,&dirSt)) return;
+    if(s.result.limitReached || depth>root.maxDepth ||
+       !safeScanRoot(dir) || !safeDirectory(dir,&dirSt)) return;
     if(!s.visitedDirs.insert(identityFor(dirSt,dir)).second)return;
     DIR* d=::opendir(dir.c_str()); if(!d)return;
     std::vector<std::string> names;
@@ -390,9 +403,9 @@ DiscoveryResult discoverKnownSources(DiscoveryLimits limits,
                                     const std::string& retroArchFallback) {
     std::vector<DiscoveryRoot> roots;
     const std::string configured=retroArchConfiguredRoot(retroArchConfig);
-    if(!configured.empty() && safeDirectory(configured))
+    if(safeScanRoot(configured) && safeDirectory(configured))
         roots.push_back({configured,"RetroArch",2});
-    else if(safeDirectory(retroArchFallback))
+    else if(safeScanRoot(retroArchFallback) && safeDirectory(retroArchFallback))
         roots.push_back({retroArchFallback,"RetroArch",2});
     for(const auto& root:defaultDraSticRoots())
         if(safeDirectory(root.path))roots.push_back(root);

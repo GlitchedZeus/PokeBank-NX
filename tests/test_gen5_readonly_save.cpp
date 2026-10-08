@@ -265,6 +265,28 @@ void discoveryContracts() {
     const auto limited=G::discoverSources(std::span<const G::DiscoveryRoot>(&one,1),{1});
     assert(limited.filesExamined==1 && limited.limitReached);
     assert(limited.instances.size()==1 && limited.instances[0].gameId=="black_nds");
+    // A maliciously broad RetroArch configured save root must never
+    // trigger an SD-card/root scan, even with an explicit config file.
+    const G::DiscoveryRoot fsRoot{"/","RetroArch",2};
+    const G::DiscoveryRoot sdRoot{"sdmc:/","RetroArch",2};
+    const G::DiscoveryRoot dotdotRoot{dir+"/../","RetroArch",2};
+    for(const auto& forbidden : {fsRoot,sdRoot,dotdotRoot}) {
+        const auto blocked=G::discoverSources(
+            std::span<const G::DiscoveryRoot>(&forbidden,1),{4});
+        assert(blocked.filesExamined==0 && blocked.instances.empty());
+    }
+    const std::string retroarchCfg=dir+"/retroarch.cfg";
+    {
+        FILE* f=std::fopen(retroarchCfg.c_str(),"wb");
+        assert(f);
+        constexpr std::string_view setting="savefile_directory = \"/\"\n";
+        assert(std::fwrite(setting.data(),1,setting.size(),f)==setting.size());
+        assert(std::fclose(f)==0);
+    }
+    const auto safeDefault=G::discoverKnownSources(
+        {4},retroarchCfg,dir+"/nonexistent_default_root");
+    assert(safeDefault.filesExamined==0 && safeDefault.instances.empty());
+    assert(std::remove(retroarchCfg.c_str())==0);
     const auto roots=G::defaultDraSticRoots();
     assert(roots.size()==4 && roots[0].providerLabel=="DraStic");
 

@@ -256,3 +256,13 @@ Source preference remains API-only until a safe UI flow exists.
   existing exploratory Gen V assignments may need to be selected again.
 - An actual Switch SD/filesystem compatibility check remains required before
   Game Sources is enabled for Gen V.
+
+### Phase B tranche 10 — prevent broad source-root traversal
+
+- Reject SD-card and filesystem roots (sdmc:/, /), dot and parent-path
+  traversal from configured or explicitly supplied Gen V source roots.
+- A hostile or misconfigured RetroArch savefile_directory never causes the
+  Gen V scanner to enumerate the SD root. Valid bounded emulator directories
+  continue to use the existing depth and file-count limits.
+- Focused tests reject /, sdmc:/, .. traversal and config pointing at
+  / without scanning any candidate files. No Gen I–IV scanner changed.
