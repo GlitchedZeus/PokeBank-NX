@@ -43,7 +43,7 @@ std::vector<Block> makeSWSH() {
         block(SWSH_BOX, SCTypeCode::Object,
               BOX_COUNT * BOX_SLOTS * Encryption::SIZE_PARTY8_SWSH),
         block(SWSH_BOX_LAYOUT, SCTypeCode::Object, BOX_COUNT * BOX_NAME_BYTES),
-        block(SWSH_CURRENT_BOX, SCTypeCode::UInt32, 4),
+        block(SWSH_CURRENT_BOX, SCTypeCode::Byte, 1),
     };
 }
 
@@ -56,7 +56,7 @@ std::vector<Block> makeSV() {
         block(GEN9_BOX, SCTypeCode::Object,
               BOX_COUNT * BOX_SLOTS * Encryption::SIZE_PARTY9_SV),
         block(GEN9_BOX_LAYOUT, SCTypeCode::Object, BOX_COUNT * BOX_NAME_BYTES),
-        block(GEN9_CURRENT_BOX, SCTypeCode::UInt32, 4),
+        block(GEN9_CURRENT_BOX, SCTypeCode::Byte, 1),
     };
 }
 
@@ -69,7 +69,7 @@ std::vector<Block> makeZA() {
         block(GEN9_BOX, SCTypeCode::Object,
               BOX_COUNT * BOX_SLOTS * Encryption::BOX_SLOT_SIZE9_LZA),
         block(GEN9_BOX_LAYOUT, SCTypeCode::Object, BOX_COUNT * BOX_NAME_BYTES),
-        block(GEN9_CURRENT_BOX, SCTypeCode::UInt32, 4),
+        block(GEN9_CURRENT_BOX, SCTypeCode::Byte, 1),
         block(ZA_SAVE_REVISION, SCTypeCode::UInt64, 8),
     };
 }
@@ -80,11 +80,11 @@ void verifyCurrentBoxContract(std::vector<Block> blocks, Validator validator, co
     require(validator(blocks, &diagnostic).empty(), game);
 
     auto& box = currentBox(blocks);
-    box.type = SCTypeCode::Byte;
-    box.data.resize(1);
+    box.type = SCTypeCode::UInt32;
+    box.data.resize(4);
     diagnostic.clear();
     const auto error = validator(blocks, &diagnostic);
-    require(!error.empty(), "one-byte Current Box must fail closed");
+    require(!error.empty(), "four-byte Current Box must fail closed");
     require(diagnostic.find("key=0x017C3CBB") != std::string::npos,
             "Current Box rejection must identify the exact block key");
     require(diagnostic.find("wrong type") != std::string::npos,
@@ -95,11 +95,11 @@ void verifyCurrentBoxContract(std::vector<Block> blocks, Validator validator, co
 
 int main() {
     verifyCurrentBoxContract(makeSWSH(), Save::SCReadValidation::validateSWSH,
-                             "SWSH U32 Current Box should pass preflight");
+                             "SWSH one-byte Current Box should pass preflight");
     verifyCurrentBoxContract(makeSV(), Save::SCReadValidation::validateSV,
-                             "SV U32 Current Box should pass preflight");
+                             "SV one-byte Current Box should pass preflight");
     verifyCurrentBoxContract(makeZA(), Save::SCReadValidation::validateZA,
-                             "Z-A U32 Current Box should pass preflight");
+                             "Z-A one-byte Current Box should pass preflight");
     std::cout << "Native SC Current Box validation: PASS\n";
     return 0;
 }
