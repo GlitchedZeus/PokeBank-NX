@@ -84,11 +84,22 @@ int main() {
     assert(geodude.resolution == MH::Resolution::FrameMatched);
     assert(geodude.encounterType == 5);
 
-    // Emerald is intentionally outside this tranche because pinned Method-H
-    // uses the broader lead-ability search there.
-    const auto emerald = MH::analyze(
-        "emerald_gba", 25, 57, 25, 0, 0xAC2141C6u, rubyBlock);
-    assert(emerald.resolution == MH::Resolution::Unresolved);
+    // Emerald has the same Hoenn Safari nature-preference block, but pinned
+    // Method-H can also search broader lead histories. This tranche proves only
+    // a no-lead positive history. For gendered species, the first matching-
+    // nature reversal count is the Emerald NoLead window.
+    const auto emeraldNoLead = Gen3PidIv::analyze(
+        0xE97E0000u, {17,19,20,16,13,12});
+    assert(emeraldNoLead.method == Method::Method1);
+    assert(emeraldNoLead.originSeed == 0x00000000u);
+    const auto emeraldOddish = MH::analyze(
+        "emerald_gba", 43, 57, 29, 0, 0xE97E0000u, emeraldNoLead);
+    assert(emeraldOddish.resolution == MH::Resolution::FrameMatched);
+    assert(emeraldOddish.path == MH::Path::HoennSafariBlock);
+    assert(emeraldOddish.requiredBall == Gen3Safari::kSafariBall);
+    assert(emeraldOddish.sourceSpecies == 43);
+    assert(emeraldOddish.encounterType == 0);
+    assert(emeraldOddish.slot == 3);
 
     // Method 3 uses A_CDE: the persisted PID skips one RNG frame between
     // halves. Pinned MethodH nevertheless derives its reversal nature from the
