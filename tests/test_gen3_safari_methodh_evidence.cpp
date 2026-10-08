@@ -355,6 +355,52 @@ int main() {
         "emerald_gba", 25, 57, 27, 0, 0xA2B5D929u,
         emeraldStatic).resolution == MH::Resolution::Unresolved);
 
+    // Hoenn Safari-block Static-success is a distinct MethodH context from
+    // no-block Static. The pinned 300-call rewind yields block frame 0x7B4A6F2E;
+    // the ordinary -2 ESV would select grass slot 1, NOT Pikachu slot 8.
+    // p0=1 (odd), but p0 %25=1 differs from sequential PID nature 14;
+    // neither ordinary-nature nor no-block Static can prove this encounter.
+    const auto blockStatic = Gen3PidIv::analyze(
+        0xF1116E24u, {26,26,14,10,24,23});
+    assert(blockStatic.method == Method::Method1);
+    assert(blockStatic.originSeed == 0x0001005Au);
+    const uint8_t blockStaticNature = static_cast<uint8_t>(
+        MH::Detail::sequentialPid(blockStatic.originSeed) % 25u);
+    assert(blockStaticNature == 14u);
+    assert(MH::Detail::upper16(blockStatic.originSeed) == 1u);
+    assert(MH::Detail::reversalWindow(
+        blockStatic.originSeed, blockStaticNature) == 0u);
+    const uint32_t blockStaticFrame = MH::Detail::hoennSafariBlockSeed(
+        blockStatic.originSeed);
+    assert(blockStaticFrame == 0x7B4A6F2Eu);
+    assert(MH::Detail::hoennSafariBlockProc(blockStaticFrame));
+    assert(MH::Detail::upper16(blockStaticFrame) % 100u == 62u);
+    const uint32_t blockLevelSeed = Gen3PidIv::Detail::prev(blockStaticFrame);
+    const uint32_t blockSlotSeed = Gen3PidIv::Detail::prev(blockLevelSeed);
+    const uint32_t blockProcSeed = Gen3PidIv::Detail::prev(blockSlotSeed);
+    assert(MH::Detail::upper16(blockLevelSeed) == 7904u);
+    assert(MH::Detail::upper16(blockSlotSeed) == 37234u);
+    assert(MH::Detail::upper16(blockProcSeed) == 6082u);
+    assert((MH::Detail::upper16(blockProcSeed) & 1u) == 0u);
+    assert((MH::Detail::upper16(blockSlotSeed) % 2u) == 0u);
+    assert(MH::Detail::upper16(blockSlotSeed) % 100u == 34u);
+
+    const auto pikachuBlockStatic = MH::analyze(
+        "emerald_gba", 25, 57, 25, 0, 0xF1116E24u, blockStatic);
+    assert(pikachuBlockStatic.resolution == MH::Resolution::FrameMatched);
+    assert(pikachuBlockStatic.path == MH::Path::EmeraldSafariBlockStaticSuccess);
+    assert(pikachuBlockStatic.requiredBall == Gen3Safari::kSafariBall);
+    assert(pikachuBlockStatic.sourceSpecies == 25);
+    assert(pikachuBlockStatic.encounterType == 0);
+    assert(pikachuBlockStatic.slot == 8);
+    assert(pikachuBlockStatic.frameSeed == blockStaticFrame);
+
+    // StaticIndex 1 (Pikachu slot 10, level 27) fails the even -2 index.
+    // No other proven history can justify that level with this same frame.
+    assert(MH::analyze(
+        "emerald_gba", 25, 57, 27, 0, 0xF1116E24u,
+        blockStatic).resolution == MH::Resolution::Unresolved);
+
     // Emerald Safari Intimidate/Keen Eye not-repelled encounter check.
     // Pinned MethodH.IsSlotValidIntimidate only allows the encounter when
     // the -1 level-adequacy proc is even. The ordinary -1 level is 21,
