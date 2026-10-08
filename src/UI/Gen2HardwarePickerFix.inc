@@ -83,19 +83,18 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
     const int selectedPos = hardwareMoveChoicePosition(choices, model.moveChoice());
     const int viewportTop = y + kHardwareMovePickerLayout.rowStart;
     const int viewportH = visible * kHardwareMovePickerLayout.rowStep;
-    const auto visual = liveVerticalListVisual(
-        selectedPos, count, kHardwareMovePickerLayout.rowStep,
-        x + 24, viewportTop, panelW - 48, viewportH);
-    const int first = std::clamp(
-        visual.index - visible / 2, 0, std::max(0, count - visible));
+    auto& overlay = pickerStateFor(screen);
+    overlay.moveViewport.ensure(selectedPos, count, visible);
+    const int first = overlay.moveViewport.firstRow;
+    const int liveOffset = overlay.moveScroll.offset();
     const int drawFirst = std::max(0, first - 1);
     const int drawLast = std::min(count, first + visible + 1);
     screen.touchButtons.clear();
     fb.setClipRect(x + 24, viewportTop, panelW - 48, viewportH);
     for (int i = drawFirst; i < drawLast; ++i) {
-        const int yy = viewportTop + (i - first) * kHardwareMovePickerLayout.rowStep + visual.offset;
+        const int yy = viewportTop + (i - first) * kHardwareMovePickerLayout.rowStep + liveOffset;
         const uint16_t move = choices[static_cast<std::size_t>(i)];
-        const bool selected = i == visual.index;
+        const bool selected = i == selectedPos;
         if (yy + kHardwareMovePickerLayout.highlightHeight > viewportTop && yy < viewportTop + viewportH)
             appendClippedTouchButton(
                 screen.touchButtons, 2100 + i, x + 24, yy,
@@ -123,7 +122,14 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
 
     if (!picker.model.active()) {
         const bool handled = handlePickerInputBase(screen, down, held, stickX, stickY, touch);
-        if (handled) normalizeHardwareMovePicker(screen, state, picker);
+        if (handled) {
+            normalizeHardwareMovePicker(screen, state, picker);
+            if (picker.model.active() &&
+                picker.model.kind == PokeBank::UIModel::Gen2PokemonPicker::Kind::Move) {
+                picker.moveScroll.reset();
+                picker.moveViewport.reset();
+            }
+        }
         return handled;
     }
 
@@ -134,6 +140,22 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         return handlePickerInputBase(screen, down, held, stickX, stickY, touch);
 
     const auto& touchChoices = hardwareCompatibleMoveChoices(screen, state);
+    const int count = static_cast<int>(touchChoices.size());
+    constexpr int visible = kHardwareMovePickerLayout.visibleRows;
+    const int selectedPos = hardwareMoveChoicePosition(touchChoices, picker.model.moveChoice());
+    picker.moveViewport.ensure(selectedPos, count, visible);
+    const int maxFirstRow = TouchPickerViewport::maxFirst(count, visible);
+    const int listX = (1280 - kHardwareMovePickerLayout.width) / 2 + 24;
+    const int listY = (720 - kHardwareMovePickerLayout.height) / 2 + kHardwareMovePickerLayout.rowStart;
+    const int listW = kHardwareMovePickerLayout.width - 48;
+    const int listH = visible * kHardwareMovePickerLayout.rowStep;
+    if (maxFirstRow > 0) {
+        picker.moveScroll.updateVertical(
+            touch, listX, listY, listW, listH, kHardwareMovePickerLayout.rowStep,
+            picker.moveViewport.firstRow, maxFirstRow + 1);
+    } else {
+        picker.moveScroll.stop();
+    }
     const int touchDown = screen.touchedButtonDownId(touch);
     if (touchDown >= 2100 && touchDown < 2100 + static_cast<int>(touchChoices.size()))
         picker.model.index = static_cast<int>(touchChoices[static_cast<std::size_t>(touchDown - 2100)]);
@@ -142,20 +164,8 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         picker.model.index = static_cast<int>(touchChoices[static_cast<std::size_t>(touchTap - 2100)]);
         down |= HidNpadButton_A;
     }
-    // Only the rendered move-list viewport owns a vertical swipe. A horizontal gesture in
-    // the modal or a gesture from its footer must not silently change the chosen move.
-    const int listX = (1280 - kHardwareMovePickerLayout.width) / 2 + 24;
-    const int listY = (720 - kHardwareMovePickerLayout.height) / 2 + kHardwareMovePickerLayout.rowStart;
-    const int listW = kHardwareMovePickerLayout.width - 48;
-    const int listH = kHardwareMovePickerLayout.visibleRows * kHardwareMovePickerLayout.rowStep;
-    const int dy = touch.deltaY();
-    if (touch.justReleased() && touch.dragged() &&
-        touch.startX() >= listX && touch.startX() < listX + listW &&
-        touch.startY() >= listY && touch.startY() < listY + listH &&
-        std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
-        const int steps = std::max(1, std::abs(dy) / std::max(1, kHardwareMovePickerLayout.rowStep));
-        stepHardwareMovePicker(screen, state, picker, dy < 0 ? steps : -steps);
-    }
+    // Move choices are selected by a tap or controller. A finger drag owns the visible
+    // viewport, not the move ID; never commit a changed move merely from swipe release.
 
     const uint64_t nav = screen.controllerNavigation.apply(
         down, held, stickX, stickY,
@@ -165,11 +175,27 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         closePicker(screen, picker);
         return true;
     }
+    if (nav & (HidNpadButton_Up | HidNpadButton_Down |
+               HidNpadButton_Left | HidNpadButton_Right))
+        picker.moveScroll.stop();
     if (nav & HidNpadButton_Up) stepHardwareMovePicker(screen, state, picker, -1);
     if (nav & HidNpadButton_Down) stepHardwareMovePicker(screen, state, picker, 1);
     if (nav & HidNpadButton_Left) stepHardwareMovePicker(screen, state, picker, -10);
     if (nav & HidNpadButton_Right) stepHardwareMovePicker(screen, state, picker, 10);
-    if (down & HidNpadButton_A) applyPickerChoice(screen, state, picker);
+    const int focusedPos = hardwareMoveChoicePosition(touchChoices, picker.model.moveChoice());
+    if (nav & (HidNpadButton_Up | HidNpadButton_Down |
+               HidNpadButton_Left | HidNpadButton_Right))
+        picker.moveViewport.reveal(focusedPos, count, visible);
+    if (down & HidNpadButton_A) {
+        if (!picker.moveViewport.containsSelection(focusedPos, count, visible)) {
+            picker.moveScroll.stop();
+            picker.moveViewport.reveal(focusedPos, count, visible);
+            screen.postStatus("Focused move brought into view; press A again or tap a visible row", 220);
+            return true;
+        }
+        picker.moveScroll.stop();
+        applyPickerChoice(screen, state, picker);
+    }
     return true;
 }
 
