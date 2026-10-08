@@ -1,5 +1,6 @@
 #include "Encryption/Encryption5.h"
 #include "Pokemon/Pokemon5ReadOnly.h"
+#include "Integration/Gen5/Gen5StagedPokemonRecord.h"
 
 #include <algorithm>
 #include <array>
@@ -104,5 +105,39 @@ int main() {
     const G5::Pokemon5ReadOnly pidChanged(raw);
     assert(pidChanged.sizeValid());
     assert(pidChanged.pid() != 0x12345678u || !pidChanged.valid());
+    // App-owned entity mutation is atomic and never touches external saves.
+    for (const size_t size : {C::StoredSize, C::PartySize}) {
+        const auto source=C::encryptCandidate(makeRecord(size,0x13579BDF));
+        std::string error;
+        auto staged=G5::StagedPokemon5Record::create(source,&error);
+        assert(staged && !staged->dirty());
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Nature,0,24,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Friendship,0,255,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::IV,0,0,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::IV,5,31,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::EV,0,255,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::EV,1,255,&error));
+        assert(staged->dirty());
+        const auto current=staged->current();
+        assert(current.valid() && current.nature()==24 && current.friendship()==255);
+        assert(current.ivs()[0]==0 && current.ivs()[5]==31);
+        assert(current.evs()[0]==255 && current.evs()[1]==255);
+        assert(std::equal(staged->originalBytes().begin(),staged->originalBytes().end(),source.begin()));
+        const auto beforeInvalid=std::vector<uint8_t>(
+            staged->stagedBytes().begin(),staged->stagedBytes().end());
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Nature,0,25,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Friendship,0,256,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::IV,6,12,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::IV,0,32,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::EV,2,1,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::EV,0,256,&error));
+        assert(std::equal(staged->stagedBytes().begin(),staged->stagedBytes().end(),
+                          beforeInvalid.begin()));
+        staged->rollback();
+        assert(!staged->dirty());
+        assert(std::equal(staged->stagedBytes().begin(),staged->stagedBytes().end(),source.begin()));
+    }
+    const auto invalidEntity = std::vector<uint8_t>(C::StoredSize,0);
+    assert(!G5::StagedPokemon5Record::create(invalidEntity).has_value());
     std::cout << "Gen V PK5 read-only record/crypto contracts PASS (32 shuffles, boxed/party, corruption)\n";
 }

@@ -2,7 +2,8 @@
 GEN5_PK5_TEST := $(HOST_BUILD)/test_gen5_pk5_readonly
 GEN5_PK5_SANITIZE := $(HOST_BUILD)/test_gen5_pk5_readonly_sanitize
 GEN5_PK5_INPUTS := tests/test_gen5_pk5_readonly.cpp \
-    include/Encryption/Encryption5.h include/Pokemon/Pokemon5ReadOnly.h
+    include/Encryption/Encryption5.h include/Pokemon/Pokemon5ReadOnly.h \
+    include/Integration/Gen5/Gen5StagedPokemonRecord.h
 
 HOST_TESTS += $(GEN5_PK5_TEST)
 HOST_SANITIZE_TESTS += $(GEN5_PK5_SANITIZE)

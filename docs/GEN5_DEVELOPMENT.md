@@ -71,3 +71,17 @@ Source preference remains API-only until a safe UI flow exists.
   copies remain non-ready; no provider or title is inferred from filenames.
 - This is an integration **boundary**, not live source scanning or a UI route.
 - No direct file access, injected save bytes, or mutable source privileges.
+
+### Phase C tranche 0 — isolated PK5 field transactions
+
+- App-owned staged record only: nature, friendship, six native IVs and EVs.
+- Hard bounds: nature 0–24, friendship 0–255, IV 0–31 each,
+  EV 0–255 each and 510 total.
+- Each accepted change: local decrypted candidate → native checksum refresh →
+  encryption → strict PK5 reparse → decoded byte-for-byte verification.
+- Invalid input leaves the staged buffer unchanged. Rollback restores original
+  bytes. Both boxed and party PK5 records are exercised by synthetic tests.
+- No native SAV slot is modified, no source/emulator file is opened or written.
+- Ability, form, shiny PID strategy, move compatibility, source writes,
+  party-stat recalculation, Create UI and full Save Instance integration remain
+  unsupported until their respective source-backed contracts are ready.
