@@ -43,11 +43,11 @@ and game-id evidence before wiring any save parser/UI path.
 - Source-backed 70-block BW and 74-block B2W2 checksum/mirror tables.
 - Exact title match via trainer game byte: White=20, Black=21,
   White 2=22, Black 2=23 (PKHeX GameVersion).
-- Normalized 0x80000 battery image only. Strict partitions, no guessed
-  provider transforms. A unique valid partition is selected; identical valid
-  partitions may be selected deterministically.
-- Two valid *different* partitions fail closed until freshness evidence is
-  implemented. This protects against choosing the wrong save slot.
+- Normalized 0x80000 battery image only. Primary at 0, adjacent backup at
+  0x24000 for BW or 0x26000 for B2W2 (never the Gen IV 0x40000 offset).
+- Unique valid copy or identical dual valid copies can be auto-selected.
+  Two different valid copies require explicit verified selection; freshness
+  is NOT inferred. Conflicting exact game identities are rejected.
 - Declared party, individual box PK5 reads, trainer summary and basic Dex
   caught/seen counts. Malformed declared party is refused.
 - Synthetic tests independently cover all four exact game identities,
@@ -56,3 +56,7 @@ and game-id evidence before wiring any save parser/UI path.
 **Not yet a user-facing Gen V feature:** source discovery, provider assignment,
 Product UI routing and a staged editor remain disabled. This reader only accepts
 an already-normalized NDS battery image and cannot write any physical save.
+
+Source-backed save geometry: Project Pokémon BW / B2W2 Save Structure
+(evandixon, 2017) and PKHeX SaveUtil (0x24000 / 0x26000 core sizes).
+Source preference remains API-only until a safe UI flow exists.

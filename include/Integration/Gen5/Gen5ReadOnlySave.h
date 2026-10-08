@@ -18,6 +18,7 @@
 namespace PokeVault::Integration::Gen5 {
 
 enum class SaveFamily : uint8_t { BlackWhite, Black2White2 };
+enum class SaveCopySelection : uint8_t { Automatic, Primary, Backup };
 
 struct TrainerReadOnly {
     std::u16string rawName; // raw UTF-16 codepoints; localization still pending
@@ -35,7 +36,8 @@ public:
     static std::optional<Gen5ReadOnlySave> parse(
         std::span<const uint8_t> source,
         std::string_view assignedExactGame = {},
-        std::string* error = nullptr) {
+        std::string* error = nullptr,
+        SaveCopySelection selection = SaveCopySelection::Automatic) {
         auto fail = [&](const char* msg) -> std::optional<Gen5ReadOnlySave> {
             if (error) *error = msg;
             return std::nullopt;
@@ -43,34 +45,57 @@ public:
         if (source.size() != LayoutInfo::FullSaveSize)
             return fail("Gen V requires a normalized 0x80000-byte NDS battery save");
 
+        // BW and B2W2 each have adjacent primary and backup save copies.
+        // Neither backup begins at Gen IV's 0x40000 partition offset.
         struct Candidate { SaveFamily family; size_t offset; };
         std::vector<Candidate> candidates;
-        for (const size_t offset : {size_t{0}, LayoutInfo::PartitionSize}) {
-            auto part = source.subspan(offset, LayoutInfo::PartitionSize);
-            if (validBlocks(part, LayoutInfo::BlackWhite))
+        for (const size_t offset : {size_t{0}, LayoutInfo::BlackWhiteCopySize}) {
+            if (validBlocks(source.subspan(offset, LayoutInfo::BlackWhiteCopySize),
+                            LayoutInfo::BlackWhite))
                 candidates.push_back({SaveFamily::BlackWhite, offset});
-            if (validBlocks(part, LayoutInfo::Black2White2))
+        }
+        for (const size_t offset : {size_t{0}, LayoutInfo::Black2White2CopySize}) {
+            if (validBlocks(source.subspan(offset, LayoutInfo::Black2White2CopySize),
+                            LayoutInfo::Black2White2))
                 candidates.push_back({SaveFamily::Black2White2, offset});
         }
         if (candidates.empty())
-            return fail("Gen V save has no fully valid BW or B2W2 checksum partition");
+            return fail("Gen V save has no fully valid BW or B2W2 checksum copy");
 
         const SaveFamily family = candidates.front().family;
-        for (const auto& c : candidates)
+        for (const auto& c : candidates) {
             if (c.family != family)
                 return fail("Gen V save layout is ambiguous between BW and B2W2");
-
-        const size_t regionSize = family == SaveFamily::BlackWhite ? 0x24000 : 0x26000;
-        const size_t partition = candidates.front().offset;
-        for (const auto& c : candidates) {
-            if (c.offset == partition) continue;
-            // Recency/counter resolution must be source backed. Different valid
-            // partitions are not silently sorted by filesystem mtime or index.
-            if (!std::equal(source.begin()+static_cast<std::ptrdiff_t>(partition),
-                            source.begin()+static_cast<std::ptrdiff_t>(partition+regionSize),
-                            source.begin()+static_cast<std::ptrdiff_t>(c.offset)))
-                return fail("Gen V has two valid but different save partitions; freshness is unresolved");
+            const uint8_t game = source[c.offset + 0x19400 + 0x1F];
+            if (gameIdFromVersion(game).empty() ||
+                (family == SaveFamily::BlackWhite && game != 20 && game != 21) ||
+                (family == SaveFamily::Black2White2 && game != 22 && game != 23))
+                return fail("Gen V exact game version disagrees with checksum layout");
+            if (game != source[candidates.front().offset + 0x19400 + 0x1F])
+                return fail("Gen V valid copies disagree on exact game identity");
         }
+
+        const size_t copySize = family == SaveFamily::BlackWhite ?
+            LayoutInfo::BlackWhiteCopySize : LayoutInfo::Black2White2CopySize;
+        auto chosen = candidates.front();
+        if (selection != SaveCopySelection::Automatic) {
+            const size_t requested = selection == SaveCopySelection::Backup ? copySize : 0;
+            const auto it = std::find_if(candidates.begin(), candidates.end(),
+                [&](const Candidate& c) { return c.offset == requested; });
+            if (it == candidates.end())
+                return fail("Gen V requested save copy failed checksums or was not present");
+            chosen = *it;
+        } else if (candidates.size() == 2) {
+            // Checksum validity alone does not establish which save is newest.
+            const auto& first = candidates[0];
+            const auto& second = candidates[1];
+            if (!std::equal(source.begin()+static_cast<std::ptrdiff_t>(first.offset),
+                            source.begin()+static_cast<std::ptrdiff_t>(first.offset+copySize),
+                            source.begin()+static_cast<std::ptrdiff_t>(second.offset)))
+                return fail("Gen V has two valid but different save copies; select one explicitly");
+            chosen = first.offset == 0 ? first : second;
+        }
+        const size_t partition = chosen.offset;
 
         const size_t trainerBase = partition + 0x19400;
         const uint8_t game = source[trainerBase + 0x1F];
@@ -107,7 +132,8 @@ public:
 
     [[nodiscard]] SaveFamily family() const noexcept { return family_; }
     [[nodiscard]] std::string_view exactGameId() const noexcept { return exactId_; }
-    [[nodiscard]] size_t selectedPartition() const noexcept { return base_ / LayoutInfo::PartitionSize; }
+    [[nodiscard]] size_t selectedPartition() const noexcept { return base_ == 0 ? 0 : 1; }
+    [[nodiscard]] size_t selectedCopyOffset() const noexcept { return base_; }
     [[nodiscard]] bool selectedBackupPartition() const noexcept { return base_ != 0; }
     [[nodiscard]] uint8_t partyCount() const noexcept { return partyCount_; }
     [[nodiscard]] std::span<const uint8_t> sourceBytes() const noexcept { return bytes_; }

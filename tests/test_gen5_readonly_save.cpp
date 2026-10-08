@@ -20,7 +20,8 @@ void write32(std::vector<uint8_t>& dst,size_t off,uint32_t value) {
 template<size_t N>
 void stamp(std::vector<uint8_t>& sav,size_t base,
            const std::array<L::SaveBlock,N>& blocks) {
-    auto partition = std::span<uint8_t>(sav).subspan(base,L::PartitionSize);
+    const size_t copySize = N == 70 ? L::BlackWhiteCopySize : L::Black2White2CopySize;
+    auto partition = std::span<uint8_t>(sav).subspan(base,copySize);
     for(const auto& b : blocks) {
         const uint16_t crc=Utils::crc16ccitt(partition.data()+b.offset,b.length);
         C::write16(partition,b.checksumOffset,crc);
@@ -91,23 +92,45 @@ int main() {
         assert(!G::Gen5ReadOnlySave::parse(wrongFamily,{},&error));
         assert(error.find("disagrees")!=std::string::npos);
         // Valid backup-only copy, primary is invalid.
-        const auto backup=make(family,version,L::PartitionSize);
+        const size_t copySize = family == G::SaveFamily::BlackWhite ?
+            L::BlackWhiteCopySize : L::Black2White2CopySize;
+        const auto backup=make(family,version,copySize);
         const auto selected=G::Gen5ReadOnlySave::parse(backup,id,&error);
         assert(selected && selected->selectedBackupPartition());
+        assert(selected->selectedCopyOffset()==copySize);
+        assert(!G::Gen5ReadOnlySave::parse(backup,id,&error,G::SaveCopySelection::Primary));
+        assert(error.find("requested save copy")!=std::string::npos);
         // Two different valid copies must fail closed until recency is sourced.
         auto both=sav;
         auto different=backup;
-        different[L::PartitionSize+0x19400+6]='Y'; // valid but newer/older unknown
-        if(family==G::SaveFamily::BlackWhite)stamp(different,L::PartitionSize,L::BlackWhite);
-        else stamp(different,L::PartitionSize,L::Black2White2);
-        std::copy(different.begin()+static_cast<std::ptrdiff_t>(L::PartitionSize),
-                  different.end(),both.begin()+static_cast<std::ptrdiff_t>(L::PartitionSize));
+        different[copySize+0x19400+6]='Y'; // valid but newer/older unknown
+        if(family==G::SaveFamily::BlackWhite)stamp(different,copySize,L::BlackWhite);
+        else stamp(different,copySize,L::Black2White2);
+        std::copy(different.begin()+static_cast<std::ptrdiff_t>(copySize),
+                  different.end(),both.begin()+static_cast<std::ptrdiff_t>(copySize));
         assert(!G::Gen5ReadOnlySave::parse(both,id,&error));
-        assert(error.find("freshness")!=std::string::npos);
+        assert(error.find("select one explicitly")!=std::string::npos);
+        const auto primary = G::Gen5ReadOnlySave::parse(
+            both,id,&error,G::SaveCopySelection::Primary);
+        const auto secondary = G::Gen5ReadOnlySave::parse(
+            both,id,&error,G::SaveCopySelection::Backup);
+        assert(primary && secondary);
+        assert(primary->selectedCopyOffset()==0 && secondary->selectedCopyOffset()==copySize);
+        assert(primary->trainer().rawName==u"NX" && secondary->trainer().rawName==u"NY");
         // Identical valid copies are deterministic and harmless.
-        std::copy(sav.begin(),sav.begin()+static_cast<std::ptrdiff_t>(L::PartitionSize),
-                  both.begin()+static_cast<std::ptrdiff_t>(L::PartitionSize));
+        std::copy(sav.begin(),sav.begin()+static_cast<std::ptrdiff_t>(copySize),
+                  both.begin()+static_cast<std::ptrdiff_t>(copySize));
         assert(G::Gen5ReadOnlySave::parse(both,id,&error)->selectedPartition()==0);
+        // Gen IV-sized 0x40000 "backup" must not be mistaken for a Gen V copy.
+        auto wrongOffset=make(family,version,0x40000);
+        assert(!G::Gen5ReadOnlySave::parse(wrongOffset,id,&error));
+        // Exact title discrepancy between valid copies must fail closed.
+        auto mismatch=make(family,static_cast<uint8_t>(version ^ 1),copySize);
+        std::copy(mismatch.begin()+static_cast<std::ptrdiff_t>(copySize),
+                  mismatch.begin()+static_cast<std::ptrdiff_t>(2*copySize),
+                  both.begin()+static_cast<std::ptrdiff_t>(copySize));
+        assert(!G::Gen5ReadOnlySave::parse(both,id,&error,G::SaveCopySelection::Primary));
+        assert(error.find("disagree on exact game identity")!=std::string::npos);
     }
     std::vector<uint8_t> empty(L::FullSaveSize,0);
     assert(!G::Gen5ReadOnlySave::parse(empty));

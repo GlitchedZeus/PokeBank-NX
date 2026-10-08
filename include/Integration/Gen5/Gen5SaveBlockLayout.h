@@ -165,7 +165,9 @@ inline constexpr std::array<SaveBlock, 74> Black2White2 = {{
 }};
 
 inline constexpr size_t FullSaveSize = 0x80000;
-inline constexpr size_t PartitionSize = 0x40000;
+// Retail save copies are adjacent. See Project Pokemon BW/B2W2 Save Structure.
+inline constexpr size_t BlackWhiteCopySize = 0x24000;
+inline constexpr size_t Black2White2CopySize = 0x26000;
 inline constexpr size_t PartyOffset = 0x18E00;
 inline constexpr size_t BoxOffset = 0x400;
 inline constexpr size_t BoxCount = 24;
