@@ -143,6 +143,7 @@ require(inventory, "src/UI/ClassicInventoryOverlay.cpp",
         "state.pickerViewport.reveal(state.pickerRow, count, visibleRows)",
         "state.reviewViewport.reveal(state.reviewRow, count, visibleRows)",
         "state.pickerViewport.containsSelection(",
+        "const int page = visibleRows;",
         "const int start = state.pickerViewport.firstRow;",
         "const int start = state.reviewViewport.firstRow;",
         "screen.touchButtons.push_back")
