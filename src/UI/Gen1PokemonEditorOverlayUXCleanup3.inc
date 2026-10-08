@@ -451,7 +451,9 @@ void ux3DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
                           ux3MainRowLabel(field), ux3MainRowValue(screen, field, add, pokemon ? &*pokemon : nullptr),
                           field == state.row);
         if (rowY + rowH > listY && rowY < listY + viewportH)
-            screen.touchButtons.push_back({2000 + field, centerX + 10, rowY, centerW - 20, rowH - 2});
+            appendClippedTouchButton(screen.touchButtons, 2000 + field,
+                centerX + 10, rowY, centerW - 20, rowH - 2,
+                centerX + 8, listY, centerW - 16, viewportH);
     }
     fb.clearClip();
 
@@ -523,7 +525,9 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         const bool selected = idx == selectedIndex;
         if (selected) fb.drawSelectionHighlight(x + 24, rowY, w - 48, 38);
         if (rowY + 38 > listTop && rowY < listTop + visible * rowStep)
-            screen.touchButtons.push_back({4000 + idx, x + 24, rowY, w - 48, 38});
+            appendClippedTouchButton(screen.touchButtons, 4000 + idx,
+                x + 24, rowY, w - 48, 38,
+                x + 24, listTop, w - 48, visible * rowStep);
         const auto text = MoveUI::rowLabel(
             static_cast<uint16_t>(move), Enums::GameVersion::RBY);
         fb.drawText(x + 40, rowY + 8, text, selected ? Colors::Text : Colors::TextDim);
@@ -591,7 +595,9 @@ void ux3DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         ux2DrawLogicalRow(fb, x + 24, rowY, w - 48, std::to_string(row + 1),
                           lines[static_cast<size_t>(row)], row == state.reviewRow);
         if (rowY + 44 > listTop && rowY < listTop + h - 108)
-            screen.touchButtons.push_back({1300 + row, x + 24, rowY, w - 48, 44});
+            appendClippedTouchButton(screen.touchButtons, 1300 + row,
+                x + 24, rowY, w - 48, 44,
+                x + 24, listTop, w - 48, h - 108);
     }
     fb.clearClip();
 }
