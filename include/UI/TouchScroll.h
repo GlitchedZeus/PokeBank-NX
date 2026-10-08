@@ -61,6 +61,47 @@ inline TouchListVisual liveVerticalListVisual(int selected, int count, int rowSt
     return out;
 }
 
+// A picker has two independent positions: a semantic controller selection and the first row
+// displayed in its scroll viewport. Never derive the viewport from selection on every draw:
+// doing that makes a one-row finger drag snap back whenever the centered selection is unchanged.
+struct TouchPickerViewport {
+    int firstRow = -1; // Lazily center the selected item on first render/update.
+
+    void reset() noexcept { firstRow = -1; }
+
+    static int maxFirst(int count, int visibleRows, int columns = 1) noexcept {
+        count = std::max(0, count);
+        columns = std::max(1, columns);
+        visibleRows = std::max(1, visibleRows);
+        const int rows = count / columns + (count % columns != 0 ? 1 : 0);
+        return std::max(0, rows - visibleRows);
+    }
+
+    void ensure(int selected, int count, int visibleRows, int columns = 1) noexcept {
+        const int maximum = maxFirst(count, visibleRows, columns);
+        if (firstRow < 0) {
+            const int selectedRow = count > 0
+                ? std::clamp(selected, 0, count - 1) / std::max(1, columns)
+                : 0;
+            firstRow = std::clamp(selectedRow - std::max(1, visibleRows) / 2, 0, maximum);
+        } else {
+            firstRow = std::clamp(firstRow, 0, maximum);
+        }
+    }
+
+    // Controller navigation is allowed to reveal its focused item. Finger scrolling is not:
+    // the gesture updates firstRow directly, without changing the selected entry.
+    void reveal(int selected, int count, int visibleRows, int columns = 1) noexcept {
+        ensure(selected, count, visibleRows, columns);
+        if (count <= 0) return;
+        visibleRows = std::max(1, visibleRows);
+        const int row = std::clamp(selected, 0, count - 1) / std::max(1, columns);
+        if (row < firstRow) firstRow = row;
+        else if (row >= firstRow + visibleRows) firstRow = row - visibleRows + 1;
+        firstRow = std::clamp(firstRow, 0, maxFirst(count, visibleRows, columns));
+    }
+};
+
 // Pixel-first touch scrolling for controller-oriented lists.
 //
 // The selection index remains the semantic/controller cursor, but the visible content carries a
