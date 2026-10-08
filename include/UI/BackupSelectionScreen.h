@@ -55,6 +55,7 @@ namespace UI {
         bool namespaceReady = false;
         std::vector<BackupInfo> backups;
         int selectedIndex;
+        int backupFirstRow = 0;  // Physical viewport; never reuse the action cursor as scroll position.
         bool backupSelected;
         bool createNewBackup;  // True if user wants to load from title directly
         bool goBack;
