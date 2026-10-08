@@ -89,6 +89,15 @@ struct TouchPickerViewport {
         }
     }
 
+    // Finger scrolling may leave the controller selection outside the visible window.
+    // Confirmations must not silently activate a hidden option; reveal it first.
+    [[nodiscard]] bool containsSelection(int selected, int count, int visibleRows,
+                                         int columns = 1) const noexcept {
+        if (count <= 0 || firstRow < 0) return false;
+        const int row = std::clamp(selected, 0, count - 1) / std::max(1, columns);
+        return row >= firstRow && row - firstRow < std::max(1, visibleRows);
+    }
+
     // Controller navigation is allowed to reveal its focused item. Finger scrolling is not:
     // the gesture updates firstRow directly, without changing the selected entry.
     void reveal(int selected, int count, int visibleRows, int columns = 1) noexcept {
