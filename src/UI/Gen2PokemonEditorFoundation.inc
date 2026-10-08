@@ -57,6 +57,7 @@ struct State : Rules::Session {
     std::vector<uint8_t> itemChoices;
     int itemChoiceIndex = 0;
     TouchScrollState itemScroll;
+    TouchPickerViewport itemViewport;
     // UI-only until a real Crystal caught-history record exists. This lets Create/Edit
     // choose OT gender before choosing a met location without fabricating caughtData.
     Gen2Native::CrystalOtGenderChoice crystalOtGender = Gen2Native::CrystalOtGenderChoice::Unknown;
@@ -396,6 +397,11 @@ void openHeldItemPicker(State& state) {
     state.itemChoices = Rules::heldItemChoices();
     state.itemChoiceIndex = PokeBank::UIModel::Gen2HeldItemPicker::initialIndex(state.itemChoices, state.working.heldItem);
     state.itemScroll.reset();
+    state.itemViewport.reset();
+    state.itemViewport.ensure(
+        state.itemChoiceIndex, static_cast<int>(state.itemChoices.size()),
+        PokeBank::UIModel::Gen2HeldItemPicker::rows,
+        PokeBank::UIModel::Gen2HeldItemPicker::columns);
     state.itemPicker = true;
 }
 
@@ -520,11 +526,17 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
     constexpr int pickerW = 1040, pickerH = 520, rowStep = 32;
     const int px = (1280 - pickerW) / 2;
     const int py = (720 - pickerH) / 2;
-    state.itemScroll.updateVertical(
-        touch, px + 24, py + 88, pickerW - 48,
-        PokeBank::UIModel::Gen2HeldItemPicker::rows * rowStep + 4,
-        rowStep, state.itemChoiceIndex, count,
-        PokeBank::UIModel::Gen2HeldItemPicker::columns);
+    namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
+    state.itemViewport.ensure(state.itemChoiceIndex, count, Model::rows, Model::columns);
+    const int maxFirstRow = TouchPickerViewport::maxFirst(count, Model::rows, Model::columns);
+    if (maxFirstRow > 0) {
+        state.itemScroll.updateVertical(
+            touch, px + 24, py + 90, pickerW - 48,
+            Model::rows * rowStep,
+            rowStep, state.itemViewport.firstRow, maxFirstRow + 1);
+    } else {
+        state.itemScroll.stop();
+    }
 
     const int touchDown = screen.touchedButtonDownId(touch);
     if (touchDown >= 3000 && touchDown < 3000 + count) {
@@ -546,6 +558,10 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
     if (nav & HidNpadButton_Right) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 1, 0);
     if (down & HidNpadButton_L) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 0, -1);
     if (down & HidNpadButton_R) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 0, 1);
+    if (nav & (HidNpadButton_Up | HidNpadButton_Down |
+               HidNpadButton_Left | HidNpadButton_Right) ||
+        down & (HidNpadButton_L | HidNpadButton_R))
+        state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, Model::columns);
     if (down & HidNpadButton_B) {
         state.itemScroll.stop();
         state.itemPicker = false;
@@ -553,6 +569,13 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
         return true;
     }
     if (down & HidNpadButton_A) {
+        if (!state.itemViewport.containsSelection(
+                state.itemChoiceIndex, count, Model::rows, Model::columns)) {
+            state.itemScroll.stop();
+            state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, Model::columns);
+            screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
+            return true;
+        }
         state.itemScroll.stop();
         state.working.heldItem = state.itemChoices[static_cast<std::size_t>(state.itemChoiceIndex)];
         state.itemPicker = false;
@@ -827,19 +850,20 @@ void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
     drawPanelSurface(fb, x, y, w, h, false, 18);
     fb.drawText(x + 24, y + 18, "Held Item — Generation II", Colors::Text, TextStyle::Heading);
     namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
-    const int pages = (static_cast<int>(state.itemChoices.size()) + Model::pageSize - 1) / Model::pageSize;
+    const int count = static_cast<int>(state.itemChoices.size());
+    const int firstVisibleItem = state.itemViewport.firstRow * Model::columns + 1;
+    const int lastVisibleItem = std::min(
+        count, (state.itemViewport.firstRow + Model::rows) * Model::columns);
     fb.drawText(x + 24, y + 52,
-        "Page " + std::to_string(state.itemChoiceIndex / Model::pageSize + 1) + " / " + std::to_string(pages),
+        "Showing " + std::to_string(firstVisibleItem) + "-" +
+            std::to_string(lastVisibleItem) + " / " + std::to_string(count),
         Colors::TextDim, TextStyle::Caption);
     screen.touchButtons.clear();
-    const int count = static_cast<int>(state.itemChoices.size());
     const int gridX = x + 24, gridY = y + 90, gridW = w - 48;
     const int cellW = gridW / Model::columns;
     constexpr int rowStep = 32;
     const int totalRows = (count + Model::columns - 1) / Model::columns;
-    const int selectedRow = state.itemChoiceIndex / Model::columns;
-    const int firstRow = std::clamp(selectedRow - Model::rows / 2,
-                                    0, std::max(0, totalRows - Model::rows));
+    const int firstRow = state.itemViewport.firstRow;
     const int drawFirstRow = std::max(0, firstRow - 1);
     const int drawLastRow = std::min(totalRows, firstRow + Model::rows + 1);
     const int liveOffset = state.itemScroll.offset();
