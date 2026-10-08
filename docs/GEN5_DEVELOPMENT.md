@@ -220,3 +220,16 @@ Source preference remains API-only until a safe UI flow exists.
   in source details and provider-neutral Save Instances rows.
 - No source text writing, nicknames, trainer editing or game assignment
   inference has been enabled.
+
+### Phase B tranche 7 — assigned game card preview contract
+
+- A read-only `Gen5GameCardPreview` consumes **only** an explicitly assigned,
+  currently validated source from `Gen5AssignedSource`; an unassigned,
+  missing or inconsistent result yields no preview.
+- Exposes selected exact game, provider identity, validated trainer name,
+  gender (only when the native value is known), Pokédex seen/caught totals,
+  and the six party slots as bounded immutable species/item/nature/shiny data.
+- Data is native Gen V, with no invented species names, ROM cover art,
+  level fields, source mutations, save injection or implicit profile claims.
+- The production Games screen is unchanged; this is a source-backed bridge
+  for integrating the existing UI without creating another one.

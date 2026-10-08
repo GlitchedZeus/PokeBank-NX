@@ -3,6 +3,7 @@
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
 #include "Integration/Gen5/Gen5AssignedSource.h"
 #include "Integration/Gen5/Gen5GameSourceCatalog.h"
+#include "Integration/Gen5/Gen5GameCardPreview.h"
 #include "Integration/Gen5/Gen5SharedPokemonSession.h"
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
@@ -143,6 +144,19 @@ void discoveryContracts() {
     assert(owned.instance.readOnly() && owned.instance.rememberedSource);
     assert(owned.instance.claimedProfile=="profile-one");
     assert(owned.instance.providerId=="retroarch");
+    const auto gamePreview=G::previewAssignedGame(owned);
+    assert(gamePreview);
+    assert(gamePreview->exactGameId=="black_nds");
+    assert(gamePreview->providerLabel=="RetroArch");
+    assert(gamePreview->sourceIdentity==probe.sourceIdentity);
+    assert(gamePreview->trainerName=="NX");
+    assert(gamePreview->partyCount==1);
+    assert(gamePreview->party[0].occupied && gamePreview->party[0].species==25);
+    assert(!gamePreview->party[1].occupied && !gamePreview->backupCopySelected);
+    assert(gamePreview->dexSeen==1 && gamePreview->dexCaught==1);
+    assert(gamePreview->dexTotal==649);
+    const G::AssignedSourceReadOnly unassigned{};
+    assert(!G::previewAssignedGame(unassigned));
     // Re-parsing native bytes must preserve non-native assignment metadata.
     auto remembered=probe;
     remembered.rememberedSource=true;
