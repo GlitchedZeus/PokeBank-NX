@@ -137,6 +137,44 @@ int main() {
     assert(emeraldPsyduckSync.frameSeed ==
            Gen3PidIv::Detail::prev(emeraldSync.originSeed));
 
+    // Emerald Synchronize-failure path: the Safari block and the earlier
+    // no-lead/Synchronize-success paths are all excluded. The failed proc is
+    // at -1, generated level at -2, encounter slot at -3.
+    const auto emeraldSyncFail = Gen3PidIv::analyze(
+        0xB9BC7402u, {4,3,8,22,31,9});
+    assert(emeraldSyncFail.method == Method::Method1);
+    assert(emeraldSyncFail.originSeed == 0x00014661u);
+    const uint8_t failNature = static_cast<uint8_t>(
+        MH::Detail::sequentialPid(emeraldSyncFail.originSeed) % 25u);
+    assert(failNature == 1u);
+    assert(MH::Detail::reversalWindow(
+        emeraldSyncFail.originSeed, failNature) == 0u);
+    assert(MH::Detail::upper16(emeraldSyncFail.originSeed) == 1u);
+    const uint32_t failBlock =
+        MH::Detail::hoennSafariBlockSeed(emeraldSyncFail.originSeed);
+    assert(!MH::Detail::hoennSafariBlockProc(failBlock));
+    assert((MH::Detail::upper16(failBlock) % 100u) == 98u);
+
+    const uint32_t failFrame =
+        Gen3PidIv::Detail::prev(emeraldSyncFail.originSeed);
+    const uint32_t failedProc = Gen3PidIv::Detail::prev(failFrame);
+    assert((MH::Detail::upper16(failedProc) & 1u) == 1u);
+    const auto oddishSyncFail = MH::analyze(
+        "emerald_gba", 43, 57, 27, 0, 0xB9BC7402u, emeraldSyncFail);
+    assert(oddishSyncFail.resolution == MH::Resolution::FrameMatched);
+    assert(oddishSyncFail.path == MH::Path::EmeraldSynchronizeFailed);
+    assert(oddishSyncFail.requiredBall == Gen3Safari::kSafariBall);
+    assert(oddishSyncFail.sourceSpecies == 43);
+    assert(oddishSyncFail.encounterType == 0);
+    assert(oddishSyncFail.slot == 1);
+    assert(oddishSyncFail.frameSeed == failFrame);
+
+    // The same PID/IV frame is not an FR/LG or Ruby source: these remain
+    // unresolved, not hard-invalid.
+    assert(MH::analyze(
+        "ruby_gba", 43, 57, 27, 0, 0xB9BC7402u, emeraldSyncFail
+    ).resolution == MH::Resolution::Unresolved);
+
     // Method 3 uses A_CDE: the persisted PID skips one RNG frame between
     // halves. Pinned MethodH nevertheless derives its reversal nature from the
     // sequential A+B PID at the same OriginSeed. This vector deliberately has
