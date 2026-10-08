@@ -848,7 +848,8 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
         : state.pickerTarget == PickerTarget::Move ? MoveUI::compactPickerLayout().visibleRows : 10;
     state.pickerViewport.ensure(state.pickerRow, count, visibleRows, columns);
     const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows, columns);
-    if (count > 0) {
+    // Fully visible lists are not scroll surfaces; don't rubber-band small pickers.
+    if (count > 0 && maxFirstRow > 0) {
         if (state.pickerTarget == PickerTarget::HeldItem) {
   constexpr int pickerW = 1040, pickerH = 520, rowStep = 40;
   const int px = (1280 - pickerW) / 2;
@@ -875,6 +876,8 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
       10 * rowStep + 8, rowStep, state.pickerViewport.firstRow, maxFirstRow + 1);
         }
     }
+    if (maxFirstRow == 0)
+        state.pickerScroll.stop();
     const int touchDown = screen.touchedButtonDownId(touch);
     if (touchDown >= 4000 && touchDown < 4000 + count) state.pickerRow = touchDown - 4000;
     const int touchTap = screen.touchedButtonId(touch);
