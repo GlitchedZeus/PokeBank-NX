@@ -204,6 +204,41 @@ int main() {
     assert(psyduckCuteFail.slot == 1);
     assert(psyduckCuteFail.frameSeed == cuteFrame);
 
+    // Pressure/Hustle/Vital Spirit failed proc reduces the encounter level by
+    // one when the RNG level bias is nonzero. Normal frame level is 24 here,
+    // while the same -2 level frame after a failed proc yields level 23.
+    // This is a source-distinct history, not an ordinary no-lead frame.
+    const auto emeraldPressureFail = Gen3PidIv::analyze(
+        0xF64C4D11u, {20,26,24,24,29,22});
+    assert(emeraldPressureFail.method == Method::Method1);
+    assert(emeraldPressureFail.originSeed == 0x000101B0u);
+    const uint8_t pressureNature = static_cast<uint8_t>(
+        MH::Detail::sequentialPid(emeraldPressureFail.originSeed) % 25u);
+    assert(pressureNature == 1u);
+    assert(MH::Detail::reversalWindow(
+        emeraldPressureFail.originSeed, pressureNature) == 8u);
+    assert(MH::Detail::upper16(emeraldPressureFail.originSeed) == 1u);
+    const uint32_t pressureBlock =
+        MH::Detail::hoennSafariBlockSeed(emeraldPressureFail.originSeed);
+    assert(!MH::Detail::hoennSafariBlockProc(pressureBlock));
+    assert((MH::Detail::upper16(pressureBlock) % 100u) == 86u);
+    const uint32_t pressureFrame =
+        Gen3PidIv::Detail::prev(emeraldPressureFail.originSeed);
+    const uint16_t pressureProc = MH::Detail::upper16(
+        Gen3PidIv::Detail::prev(pressureFrame));
+    assert(pressureProc == 55890u);
+    assert((pressureProc & 1u) == 0u); // lead ability failed
+
+    const auto psyduckPressureFail = MH::analyze(
+        "emerald_gba", 54, 57, 23, 0, 0xF64C4D11u, emeraldPressureFail);
+    assert(psyduckPressureFail.resolution == MH::Resolution::FrameMatched);
+    assert(psyduckPressureFail.path == MH::Path::EmeraldPressureHustleFailed);
+    assert(psyduckPressureFail.requiredBall == Gen3Safari::kSafariBall);
+    assert(psyduckPressureFail.sourceSpecies == 54);
+    assert(psyduckPressureFail.encounterType == 1);
+    assert(psyduckPressureFail.slot == 0);
+    assert(psyduckPressureFail.frameSeed == pressureFrame);
+
     // The same PID/IV frame is not an FR/LG or Ruby source: these remain
     // unresolved, not hard-invalid.
     assert(MH::analyze(
