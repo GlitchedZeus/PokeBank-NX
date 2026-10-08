@@ -481,6 +481,15 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
         return;
     }
 
+    // A release can activate only the control that originally captured contact.
+    // Touch-down may change focus, but must not allow an adjacent row to run A.
+    const auto tappedHit = [&](const auto& hit) {
+        return touch.startX() >= hit.x && touch.startX() < hit.x + hit.w &&
+               touch.startY() >= hit.y && touch.startY() < hit.y + hit.h &&
+               touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
+               touch.y() >= hit.y && touch.y() < hit.y + hit.h;
+    };
+
     if (state.review) {
         const int changeCount = static_cast<int>(editor->pendingChanges().size());
         if (changeCount > 0 && touch.justTouchedDown()) {
@@ -495,7 +504,9 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
         }
         const auto reviewViewport = Gen2EditorOverlayGeometry::reviewViewport();
         if (changeCount > 0 && touch.justReleased() && touch.dragged() &&
-            reviewViewport.contains(touch.startX(), touch.startY())) {
+            reviewViewport.contains(touch.startX(), touch.startY()) &&
+            std::abs(touch.deltaY()) >= 24 &&
+            std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
             const int dy = touch.deltaY();
             const int steps = std::max(
                 1, std::abs(dy) / Gen2EditorOverlayGeometry::ReviewRowStep);
@@ -545,8 +556,7 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
         if (touch.justTapped()) {
             for (const auto& hit : screen.touchButtons) {
                 if (hit.id < 1000 || hit.id >= 1000 + rowCount) continue;
-                if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
-                    touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
+                if (tappedHit(hit)) {
                     state.pokemonRow = hit.id - 1000;
                     down |= HidNpadButton_A;
                     break;
@@ -555,7 +565,9 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
         } else {
             const auto fieldViewport = Gen2EditorOverlayGeometry::fieldViewport();
             if (touch.justReleased() && touch.dragged() &&
-                fieldViewport.contains(touch.startX(), touch.startY())) {
+                fieldViewport.contains(touch.startX(), touch.startY()) &&
+                std::abs(touch.deltaY()) >= 24 &&
+                std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
                 const int steps = std::max(
                     1, std::abs(touch.deltaY()) / Gen2EditorOverlayGeometry::FieldRowStep);
                 state.pokemonRow = std::clamp(
@@ -585,8 +597,7 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
         if (touch.justTapped()) {
             for (const auto& hit : screen.touchButtons) {
                 if (hit.id < 1100 || hit.id >= 1100 + rowCount) continue;
-                if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
-                    touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
+                if (tappedHit(hit)) {
                     state.pokemonRow = hit.id - 1100;
                     down |= HidNpadButton_A;
                     break;
@@ -611,8 +622,7 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
     if (touch.justTapped()) {
         for (const auto& hit : screen.touchButtons) {
             if (hit.id < 800 || hit.id >= 800 + rowCount) continue;
-            if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
-                touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
+            if (tappedHit(hit)) {
                 state.selectedRow = hit.id - 800;
                 down |= HidNpadButton_A;
                 break;

@@ -233,6 +233,14 @@ require_all("include/UI/TouchScroll.h",
 require_all("src/UI/Gen2HardwarePickerFix.inc",
             "touch.startX() >= listX", "touch.startY() >= listY",
             "std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())")
+gsc_editor = read("src/UI/TrainerViewScreenGSCOverlay.inc")
+require_all("src/UI/TrainerViewScreenGSCOverlay.inc",
+            "const auto tappedHit = [&](const auto& hit)",
+            "touch.startX() >= hit.x", "touch.startY() >= hit.y",
+            "std::abs(touch.deltaY()) >= 24",
+            "std::abs(touch.deltaY()) > std::abs(touch.deltaX())")
+if gsc_editor.count("if (tappedHit(hit))") != 3:
+    raise AssertionError("GSC staged editor: all three direct-row actions must require same-target taps")
 require_all("include/UI/TouchGesture.h",
             "struct TouchGestureSnapshot",
             "const TouchGestureSnapshot& latestTouchGesture() noexcept")
