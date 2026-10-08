@@ -2582,10 +2582,19 @@ namespace UI {
             constexpr int drawerW = 520, cols = 3, visibleRows = 3;
             constexpr int gap = 7, margin = 10, tileH = 160, gridY = 88;
             const int drawerX = 1280 - drawerW;
-            gamesDrawerTouchScroll.updateVertical(
-                touch, drawerX + margin, gridY, drawerW - margin * 2,
-                visibleRows * (tileH + gap) - gap, tileH + gap,
-                gamesDrawerIndex, count, cols);
+            // Scroll the visible row window, not the focused game index. Crossing a row
+            // boundary must move the viewport instead of consuming the pixel delta.
+            const int totalRows = (count + cols - 1) / cols;
+            const int maxFirstRow = std::max(0, totalRows - visibleRows);
+            gamesDrawerScroll = std::clamp(gamesDrawerScroll, 0, maxFirstRow);
+            if (maxFirstRow > 0) {
+                gamesDrawerTouchScroll.updateVertical(
+                    touch, drawerX + margin, gridY, drawerW - margin * 2,
+                    visibleRows * (tileH + gap) - gap, tileH + gap,
+                    gamesDrawerScroll, maxFirstRow + 1);
+            } else {
+                gamesDrawerTouchScroll.stop();
+            }
             // Product Home owns Y = Open Quick Games. Once open, Y is deliberately inert;
             // B is the only close/back control so repeated Y presses cannot dismiss the sheet.
             if (kDown & HidNpadButton_B) {
@@ -2622,11 +2631,16 @@ namespace UI {
                     if (nextRow < count)
                         gamesDrawerIndex = std::min(count - 1, nextRow + col);
                 }
-                const int selectedRow = gamesDrawerIndex / cols;
-                if (selectedRow < gamesDrawerScroll)
-                    gamesDrawerScroll = selectedRow;
-                else if (selectedRow >= gamesDrawerScroll + visibleRows)
-                    gamesDrawerScroll = selectedRow - visibleRows + 1;
+                // Controller navigation maintains focus visibility. Touch scrolling
+                // intentionally leaves the selected game alone until an actual tap.
+                if (kDown & (HidNpadButton_Up | HidNpadButton_Down |
+                             HidNpadButton_Left | HidNpadButton_Right)) {
+                    const int selectedRow = gamesDrawerIndex / cols;
+                    if (selectedRow < gamesDrawerScroll)
+                        gamesDrawerScroll = selectedRow;
+                    else if (selectedRow >= gamesDrawerScroll + visibleRows)
+                        gamesDrawerScroll = selectedRow - visibleRows + 1;
+                }
                 if (kDown & HidNpadButton_A) {
                     gamesDrawerTouchScroll.stop();
                     titleIndex = gamesDrawerIndex;
@@ -2997,10 +3011,18 @@ namespace UI {
                 const int cols = classicTitleColumns();
                 const int gridW = cols * CLASSIC_TILE_W + (cols - 1) * CLASSIC_GAP;
                 const int startX = std::max(40, (1280 - gridW) / 2);
-                classicGamesTouchScroll.updateVertical(
-                    touch, startX, CLASSIC_GRID_Y, gridW,
-                    CLASSIC_VISIBLE_ROWS * (CLASSIC_TILE_H + CLASSIC_GAP) - CLASSIC_GAP,
-                    CLASSIC_TILE_H + CLASSIC_GAP, titleIndex, classicCount, cols);
+                const int totalRows = (classicCount + cols - 1) / cols;
+                const int maxFirstRow = std::max(0, totalRows - CLASSIC_VISIBLE_ROWS);
+                scrollRow = std::clamp(scrollRow, 0, maxFirstRow);
+                if (maxFirstRow > 0) {
+                    // The viewport first row, not titleIndex, owns the physical scroll.
+                    classicGamesTouchScroll.updateVertical(
+                        touch, startX, CLASSIC_GRID_Y, gridW,
+                        CLASSIC_VISIBLE_ROWS * (CLASSIC_TILE_H + CLASSIC_GAP) - CLASSIC_GAP,
+                        CLASSIC_TILE_H + CLASSIC_GAP, scrollRow, maxFirstRow + 1);
+                } else {
+                    classicGamesTouchScroll.stop();
+                }
                 if (kDown & (HidNpadButton_Up | HidNpadButton_Down |
                              HidNpadButton_Left | HidNpadButton_Right))
                     classicGamesTouchScroll.stop();
