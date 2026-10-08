@@ -54,6 +54,10 @@ require(gen2, "src/UI/Gen2PokemonPickerOverlay.inc",
         "screen.touchedButtonId(touch)",
         "picker.model.index = std::clamp(touchDown - 2000, 1, 251) - 1;",
         "picker.model.index = std::clamp(touchTap - 2000, 1, 251) - 1;",
+        "const int firstTouchId = speciesIds ? 2001 : 2000;",
+        "const int endTouchId = 2000 + pickerCount + (speciesIds ? 1 : 0);",
+        "touchDown >= firstTouchId && touchDown < endTouchId",
+        "touchTap >= firstTouchId && touchTap < endTouchId",
         "touch.justReleased() && touch.dragged()")
 assert "std::clamp(touchDown - 2000, 1, 251);" not in gen2
 assert "std::clamp(touchTap - 2000, 1, 251);" not in gen2
