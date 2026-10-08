@@ -193,7 +193,19 @@ require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc",
 require_all("src/UI/Gen2HardwarePickerFix.inc",
             "liveVerticalListVisual(",
             "visual.offset",
-            "fb.setClipRect(")
+            "fb.setClipRect(",
+            "appendClippedTouchButton(",
+            "x + 24, viewportTop, panelW - 48, viewportH")
+require_all("src/UI/Gen2PokemonPickerOverlay.inc",
+            "appendClippedTouchButton(",
+            "x + 20, listY - 5, panelW - 40, visible * rowStep + 8")
+picker_hit = read("src/UI/Gen2PokemonPickerOverlay.inc")
+assert "screen.touchButtons.push_back({2000 + i" not in picker_hit, (
+    "Gen II picker should not publish unclipped hitboxes for hidden rows"
+)
+require_all("src/UI/TrainerViewScreenBase.inc",
+            "std::abs(touch.deltaY()) >= 24 &&",
+            "std::abs(touch.deltaY()) > std::abs(touch.deltaX()))")
 require_all("include/UI/SharedPokemonShell.h",
             "int pixelOffset = 0",
             "static_cast<int>(i) * 38 + pixelOffset")
