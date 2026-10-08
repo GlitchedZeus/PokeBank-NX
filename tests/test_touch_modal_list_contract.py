@@ -136,6 +136,15 @@ require(inventory, "src/UI/ClassicInventoryOverlay.cpp",
         "bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch)",
         "pickerScroll.updateVertical(",
         "reviewScroll.updateVertical(",
+        "TouchPickerViewport pickerViewport;",
+        "TouchPickerViewport reviewViewport;",
+        "state.pickerViewport.firstRow, maxFirstRow + 1",
+        "state.reviewViewport.firstRow, maxFirstRow + 1",
+        "state.pickerViewport.reveal(state.pickerRow, count, visibleRows)",
+        "state.reviewViewport.reveal(state.reviewRow, count, visibleRows)",
+        "state.pickerViewport.containsSelection(",
+        "const int start = state.pickerViewport.firstRow;",
+        "const int start = state.reviewViewport.firstRow;",
         "screen.touchButtons.push_back")
 
 save_confirm = read("src/UI/Dialogs/SaveConfirmDialog.cpp")
