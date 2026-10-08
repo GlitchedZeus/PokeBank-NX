@@ -924,6 +924,15 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
         return true;
     }
     if (down & HidNpadButton_A) {
+        // The finger can browse far away from the highlighted controller choice. A must never
+        // commit that now-hidden choice: reveal it first, and require a new explicit confirm.
+        if (!state.pickerViewport.containsSelection(
+                state.pickerRow, count, visibleRows, columns)) {
+            state.pickerScroll.stop();
+            state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
+            screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
+            return true;
+        }
         state.pickerScroll.stop();
         applyValuePicker(state);
         return true;
