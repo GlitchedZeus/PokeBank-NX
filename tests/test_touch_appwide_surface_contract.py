@@ -250,6 +250,9 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc",
         "state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);",
         "const int first = state.pickerViewport.firstRow;",
         "const int firstRow = state.pickerViewport.firstRow;",
+        "const int firstVisibleItem = state.pickerViewport.firstRow * HeldItemGrid::columns + 1;",
+        "const int lastVisibleItem = std::min(",
+        "if (maxFirstRow == 0)",
     ):
         if token not in source:
             raise AssertionError(f"{rel}: picker viewport/selection ownership regressed: {token}")
