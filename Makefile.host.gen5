@@ -25,6 +25,8 @@ GEN5_SAVE_INPUTS := tests/test_gen5_readonly_save.cpp \
     src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp \
     include/Integration/Gen5/Gen5SourceDiscovery.h \
     include/Integration/Gen5/Gen5StagedPokemonWorkspace.h \
+    include/Integration/Gen5/Gen5ExactFormatEditorProvider.h \
+    include/UI/ExactSaveCapabilities.h include/UI/SharedPokemonEditorContract.h \
     include/Integration/Gen5/Gen5SaveBlockLayout.h \
     include/Integration/Gen5/Gen5ReadOnlySave.h \
     include/Integration/Gen5/Gen5SaveInstanceAdapter.h \

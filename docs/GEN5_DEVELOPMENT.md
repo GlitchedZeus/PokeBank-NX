@@ -146,3 +146,17 @@ Source preference remains API-only until a safe UI flow exists.
 - Discard All drops all staged records, revealing the unmodified baseline.
 - Crucially, review records are NOT serialized to a SAV, injected into an
   emulator, or written to the source filesystem.
+
+### Phase C tranche 2 — exact Gen V shared-editor descriptor
+
+- The existing exact-format capability model recognizes native PK5 and
+  the separately identified BW versus B2W2 game families.
+- Gen V inherits the one shared editor's geometry and source safety
+  contract; **no separate Gen V screen** or new navigation is introduced.
+- Only nature, friendship, IV and EV are designated staged-editable
+  when the validated workspace provider is present; all other fields
+  are read-only/hidden until their native mutation rules are audited.
+- Native moves remain `Unsupported` for compatibility selection, never
+  inferred by generation or legality-engine guesses.
+- No Create, direct source write or Gen V game launch/open route enabled;
+  all four title descriptors remain `Planned`.

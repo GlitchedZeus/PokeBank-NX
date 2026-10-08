@@ -2,6 +2,8 @@
 #include "Integration/Gen5/Gen5SaveInstanceAdapter.h"
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
+#include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
+#include "Games/GameIdentity.h"
 
 #include <algorithm>
 #include <cassert>
@@ -203,6 +205,37 @@ int main() {
          std::tuple{G::SaveFamily::Black2White2,uint8_t{22},"white2_nds"},
          std::tuple{G::SaveFamily::Black2White2,uint8_t{23},"black2_nds"}}) {
         const auto sav=make(family,version);
+        // Preserve the existing ONE shared editor shell. Gen V can only
+        // advertise audited staged field types, never a native SAV writer.
+        namespace Format = PokeVault::Integration::Gen5EditorProvider;
+        namespace Exact = PokeBank::UIModel::ExactFormatEditor;
+        namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+        const auto* title=PokeVault::Games::findGame(id);
+        assert(title && title->support==PokeVault::Games::SourceSupport::Planned);
+        auto stagedDescriptor=Format::descriptorForSource(id,true);
+        auto readOnlyDescriptor=Format::descriptorForSource(id,false);
+        assert(stagedDescriptor && readOnlyDescriptor);
+        assert(stagedDescriptor->exact.identity.gameId==id);
+        assert(stagedDescriptor->exact.identity.generation==
+               PokeBank::UIModel::PokemonEditorFoundation::Generation::Gen5);
+        assert(stagedDescriptor->exact.identity.format==
+               PokeBank::UIModel::PokemonEditorFoundation::SaveFormat::PK5);
+        assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Nature));
+        assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Friendship));
+        assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::IV));
+        assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::EV));
+        assert(!stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Species));
+        assert(!stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Ability));
+        assert(!stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::HeldItem));
+        assert(!stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Shiny));
+        assert(!readOnlyDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Nature));
+        assert(!stagedDescriptor->source.canWriteOriginalSource());
+        assert(!stagedDescriptor->source.saveOperations.supports(
+               PokeVault::SaveEdit::Capability::PokemonCreation));
+        const Exact::MoveCompatibilityQuery unverifiedMove{id,25,0,1,false};
+        assert(stagedDescriptor->moves.evaluate(unverifiedMove)==
+               Exact::MoveCompatibilityResult::Unsupported);
+        assert(!Format::descriptorForSource("platinum_nds",true));
         std::string error;
         const auto parsed=G::Gen5ReadOnlySave::parse(sav,id,&error);
         assert(parsed && error.empty());
