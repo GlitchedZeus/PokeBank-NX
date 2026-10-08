@@ -131,6 +131,10 @@ for face in ("A", "B", "X", "Y"):
         raise AssertionError(f"ScreenChrome: missing face-button glyph support for {face}")
 require_all("include/UI/ScreenChrome.h",
             "g_touchGlyphHits", "navTouchButton",
+            "!navContains(touch.x(), touch.y(), h.x, h.y, h.w, h.h)",
+            "if (ay < 24 || ay <= ax) return 0;",
+            "if (ax < 24 || ax <= ay) return 0;",
+            "if (touch.dragged() && (ax < 24 || ax <= ay)) return 0;",
             "release-confirmed tap",
             "Content cards/rows are owned by the screen that draws them.",
             "g_productHeroDragActive",

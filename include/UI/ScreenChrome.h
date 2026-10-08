@@ -408,6 +408,10 @@ namespace UI {
 
         for (const NavGestureHit& h : g_navGestureHits) {
             if (!navContains(touch.startX(), touch.startY(), h.x, h.y, h.w, h.h)) continue;
+            // Tap release must remain on the SAME explicit glyph region. Intentional
+            // directional swipes may finish outside it, but cross-axis drags are inert.
+            if (!touch.dragged() &&
+                !navContains(touch.x(), touch.y(), h.x, h.y, h.w, h.h)) continue;
 
             const int dx = touch.x() - touch.startX();
             const int dy = touch.y() - touch.startY();
@@ -415,15 +419,22 @@ namespace UI {
             const int ay = dy < 0 ? -dy : dy;
 
             if (h.kind == NavGestureKind::UpDown) {
-                if (touch.dragged() && ay >= ax) return dy < 0 ? HidNpadButton_Up : HidNpadButton_Down;
+                if (touch.dragged()) {
+                    if (ay < 24 || ay <= ax) return 0;
+                    return dy < 0 ? HidNpadButton_Up : HidNpadButton_Down;
+                }
                 return touch.startY() < h.y + h.h / 2 ? HidNpadButton_Up : HidNpadButton_Down;
             }
             if (h.kind == NavGestureKind::LeftRight) {
-                if (touch.dragged() && ax >= ay) return dx < 0 ? HidNpadButton_Left : HidNpadButton_Right;
+                if (touch.dragged()) {
+                    if (ax < 24 || ax <= ay) return 0;
+                    return dx < 0 ? HidNpadButton_Left : HidNpadButton_Right;
+                }
                 return touch.startX() < h.x + h.w / 2 ? HidNpadButton_Left : HidNpadButton_Right;
             }
             if (h.kind == NavGestureKind::LR || h.kind == NavGestureKind::ZLZR) {
-                const bool left = touch.dragged() && ax >= ay
+                if (touch.dragged() && (ax < 24 || ax <= ay)) return 0;
+                const bool left = touch.dragged()
                     ? dx < 0
                     : touch.startX() < h.x + h.w / 2;
                 if (h.kind == NavGestureKind::LR)
@@ -432,6 +443,7 @@ namespace UI {
             }
             if (h.kind == NavGestureKind::DPad) {
                 if (touch.dragged()) {
+                    if (std::max(ax, ay) < 24) return 0;
                     if (ax >= ay) return dx < 0 ? HidNpadButton_Left : HidNpadButton_Right;
                     return dy < 0 ? HidNpadButton_Up : HidNpadButton_Down;
                 }
