@@ -38,7 +38,8 @@ struct DiscoveryResult {
 // A file is always validated by its internal exact game ID, not its filename.
 [[nodiscard]] Source::SaveInstance inspectSourceFile(
     const std::string& path, std::string_view providerLabel,
-    std::string_view assignedExactGame = {});
+    std::string_view assignedExactGame = {},
+    SaveCopySelection copy = SaveCopySelection::Automatic);
 
 // Reopen a catalog entry only after fresh strict validation AND snapshot
 // equivalence. Never trust cached trainer data or filesystem timestamp alone.

@@ -124,3 +124,12 @@ Source preference remains API-only until a safe UI flow exists.
   safe reopening, `.dsv` validity, savestate quarantine, bounded scans,
   symlink refusal and changed-file rejection. Real emulator fixtures
   and physical hardware testing are still pending.
+
+### Phase B tranche 3b — explicit save-copy selection survives reopen
+
+- Ambiguous dual-valid save copies remain non-ready by default.
+- An explicit verified Primary/Backup selection is tracked in the
+  Save Instance source label and enforced at revalidation/reopen.
+- Cross-copy substitution is rejected even if the outer file fingerprint
+  and on-disk metadata are otherwise identical.
+- This is an API contract, not permission to write or a visible UI toggle.

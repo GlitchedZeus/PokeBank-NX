@@ -236,7 +236,8 @@ bool readNormalizedSourceReadOnly(const std::string& path,
 
 Source::SaveInstance inspectSourceFile(const std::string& path,
                                        std::string_view providerLabel,
-                                       std::string_view assignedExactGame) {
+                                       std::string_view assignedExactGame,
+                                       SaveCopySelection copy) {
     Source::SaveInstance row;
     row.generation=5;
     row.platformLabel="Nintendo DS";
@@ -275,7 +276,7 @@ Source::SaveInstance inspectSourceFile(const std::string& path,
         return row;
     }
     std::string error;
-    const auto save=Gen5ReadOnlySave::parse(bytes,{},&error);
+    const auto save=Gen5ReadOnlySave::parse(bytes,{},&error,copy);
     if(!save) {
         row.validation=statusForFailure(error);
         row.diagnostic=error;
@@ -285,7 +286,9 @@ Source::SaveInstance inspectSourceFile(const std::string& path,
     row.contentFingerprint=sha256Hex(bytes);
     row.containerType=container;
     row.partyCount=save->partyCount();
-    row.sourceLabel="Gen V / Party "+std::to_string(save->partyCount());
+    row.sourceLabel=std::string("Gen V / ")+
+        (save->selectedBackupPartition()?"Backup copy":"Primary copy")+
+        " / Party "+std::to_string(save->partyCount());
     row.validation=Source::ValidationStatus::Ready;
     row.diagnostic=message;
     if(save->selectedBackupPartition())row.diagnostic+="; validated backup copy";
@@ -309,8 +312,9 @@ ReadOnlyProbe reopenValidatedSource(const Source::SaveInstance& selected,
     if(!selected.ready() || selected.generation!=5 || !isExactGen5Id(selected.gameId))
         return out;
     const auto fresh=inspectSourceFile(selected.path(),selected.providerLabel,
-                                      selected.gameId);
-    if(!Source::sameValidatedSnapshot(selected,fresh)) {
+                                      selected.gameId,selection);
+    if(!Source::sameValidatedSnapshot(selected,fresh) ||
+       selected.sourceLabel!=fresh.sourceLabel) {
         out.instance.diagnostic="source changed since discovery; reselect/revalidate";
         return out;
     }

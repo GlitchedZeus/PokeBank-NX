@@ -153,6 +153,32 @@ void discoveryContracts() {
     modified[0x400+4]^=0x40;
     fileFixture(black,modified);
     assert(!G::reopenValidatedSource(probe).ready());
+    // Two valid but differing copies must not be silently ranked by mtime.
+    auto twoCopies=blackRaw;
+    const auto secondary=make(G::SaveFamily::BlackWhite,21,L::BlackWhiteCopySize);
+    std::copy(secondary.begin()+static_cast<std::ptrdiff_t>(L::BlackWhiteCopySize),
+              secondary.begin()+static_cast<std::ptrdiff_t>(2*L::BlackWhiteCopySize),
+              twoCopies.begin()+static_cast<std::ptrdiff_t>(L::BlackWhiteCopySize));
+    twoCopies[L::BlackWhiteCopySize+0x19400+6]='Z';
+    stamp(twoCopies,L::BlackWhiteCopySize,L::BlackWhite);
+    fileFixture(black,twoCopies);
+    assert(!G::inspectSourceFile(black,"RetroArch").ready());
+    const auto first=G::inspectSourceFile(
+        black,"RetroArch",{},G::SaveCopySelection::Primary);
+    const auto second=G::inspectSourceFile(
+        black,"RetroArch",{},G::SaveCopySelection::Backup);
+    assert(first.ready() && second.ready());
+    assert(first.gameId==second.gameId && first.gameId=="black_nds");
+    assert(first.sourceLabel.find("Primary copy")!=std::string::npos);
+    assert(second.sourceLabel.find("Backup copy")!=std::string::npos);
+    const auto openedPrimary=G::reopenValidatedSource(first,G::SaveCopySelection::Primary);
+    const auto openedBackup=G::reopenValidatedSource(second,G::SaveCopySelection::Backup);
+    assert(openedPrimary.ready() && openedBackup.ready());
+    assert(openedPrimary.save->trainer().rawName==u"NX");
+    assert(openedBackup.save->trainer().rawName==u"NZ");
+    assert(!G::reopenValidatedSource(first).ready()); // No automatic guessing.
+    assert(!G::reopenValidatedSource(second,G::SaveCopySelection::Primary).ready());
+    assert(!G::reopenValidatedSource(first,G::SaveCopySelection::Backup).ready());
     // A DSV with a malformed padding/version/footer is unsupported.
     auto malformed=dsvFixture(whiteRaw);
     malformed[whiteRaw.size()+7]=1;
