@@ -20,8 +20,8 @@ namespace Legality::Gen3SafariMethodH {
 // no-block framing are added here. A bounded Pressure/Hustle/Vital Spirit
 // failed-proc (lowered-level) and positive Pressure-family proc for Safari
 // encounters are reconstructed. Grass-area Pressure uses original per-area
-// species grouping; Cute Charm success, Static/Magnet Pull and other lead
-// histories remain unsupported/Unresolved.
+// species grouping; a bounded Emerald Static-success grass path is also
+// reconstructed. Cute Charm success and other leads remain unsupported.
 //
 // Method 3 uses an A_C PID shape: one RNG frame is skipped between the two
 // persisted PID halves. Pinned LeadFinder still passes PIDIV.OriginSeed into
@@ -45,6 +45,7 @@ enum class Path : uint8_t {
     EmeraldCuteCharmFailed,
     EmeraldPressureHustleFailed,
     EmeraldPressureHustleSuccess,
+    EmeraldStaticSuccess,
 };
 
 struct Evidence {
@@ -378,6 +379,43 @@ constexpr CandidateMatch matchEmeraldPressureHustleSuccess(
     return {Path::EmeraldPressureHustleSuccess, frameSeed};
 }
 
+// Pinned MethodH.IsSlotValidStaticMagnet and IMagnetStatic:
+// -3 Static proc succeeds on an even half-word; -2 ESV redirects among the
+// eligible Static slots (roll % StaticCount == StaticIndex); -1 produces the
+// ordinary encounter level and 0 chooses nature. Only Emerald Safari grass
+// entries with source Static metadata are included; Safari has no Magnet Pull
+// eligible rows, so this does not claim a Magnet Pull path.
+constexpr CandidateMatch matchEmeraldStaticSuccess(
+        const Gen3Safari::Entry& row,
+        uint8_t metLevel,
+        uint32_t candidateSeed,
+        uint8_t nature) noexcept {
+    const uint16_t p0 = upper16(candidateSeed);
+    if ((p0 % 25u) != nature || (p0 & 1u) == 0u ||
+        hoennSafariBlockProc(hoennSafariBlockSeed(candidateSeed)))
+        return {};
+    if (row.method != 0 || row.staticCount == 0 ||
+        row.staticIndex >= row.staticCount ||
+        row.maxLevel < row.minLevel)
+        return {};
+
+    // Hoenn Safari failed nature preference consumes a one-call rewind.
+    const uint32_t frameSeed = Gen3PidIv::Detail::prev(candidateSeed);
+    const uint32_t levelSeed = Gen3PidIv::Detail::prev(frameSeed);
+    const uint32_t slotSeed = Gen3PidIv::Detail::prev(levelSeed);
+    const uint32_t procSeed = Gen3PidIv::Detail::prev(slotSeed);
+    if ((upper16(procSeed) & 1u) != 0u)
+        return {}; // Static proc failed, not this successful lead history.
+
+    const uint32_t span = 1u + row.maxLevel - row.minLevel;
+    const uint8_t level = static_cast<uint8_t>(
+        row.minLevel + (upper16(levelSeed) % span));
+    if (level != metLevel ||
+        upper16(slotSeed) % row.staticCount != row.staticIndex)
+        return {};
+    return {Path::EmeraldStaticSuccess, frameSeed};
+}
+
 inline bool sourceSpeciesMatches(std::string_view exactGameId,
                                  uint16_t currentSpecies,
                                  uint8_t currentForm,
@@ -477,6 +515,9 @@ inline Evidence analyze(std::string_view exactGameId,
                         row, metLevel, candidateSeed, nature);
                 if (match.path == Path::None)
                     match = Detail::matchEmeraldPressureHustleSuccess(
+                        row, metLevel, candidateSeed, nature);
+                if (match.path == Path::None)
+                    match = Detail::matchEmeraldStaticSuccess(
                         row, metLevel, candidateSeed, nature);
             }
             if (match.path == Path::None)

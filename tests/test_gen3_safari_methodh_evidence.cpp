@@ -311,6 +311,50 @@ int main() {
         "emerald_gba", 43, 57, 28, 0, 0xB9BC7402u,
         emeraldPressureSuccess).resolution == MH::Resolution::Unresolved);
 
+    // Emerald Safari Static success consumes a proc at -3, redirects a slot
+    // at -2 and generates an ordinary level at -1 (relative to MethodH's
+    // failed-Safari-block nature frame). The unmodified ESV picks grass slot
+    // 7, not Pikachu's Static-eligible slot 8. This is a genuinely distinct
+    // positive lead history with zero prior reversal candidates.
+    const auto emeraldStatic = Gen3PidIv::analyze(
+        0xA2B5D929u, {8,27,6,4,25,3});
+    assert(emeraldStatic.method == Method::Method1);
+    assert(emeraldStatic.originSeed == 0x00017734u);
+    const uint8_t staticNature = static_cast<uint8_t>(
+        MH::Detail::sequentialPid(emeraldStatic.originSeed) % 25u);
+    assert(staticNature == 1u);
+    assert(MH::Detail::reversalWindow(
+        emeraldStatic.originSeed, staticNature) == 0u);
+    assert((MH::Detail::upper16(emeraldStatic.originSeed) & 1u) == 1u);
+    assert(!MH::Detail::hoennSafariBlockProc(
+        MH::Detail::hoennSafariBlockSeed(emeraldStatic.originSeed)));
+    const uint32_t staticFrame = Gen3PidIv::Detail::prev(
+        emeraldStatic.originSeed);
+    const uint32_t staticLevelSeed = Gen3PidIv::Detail::prev(staticFrame);
+    const uint32_t staticSlotSeed = Gen3PidIv::Detail::prev(staticLevelSeed);
+    const uint32_t staticProcSeed = Gen3PidIv::Detail::prev(staticSlotSeed);
+    assert(MH::Detail::upper16(staticLevelSeed) == 8908u);
+    assert(MH::Detail::upper16(staticSlotSeed) == 7888u);
+    assert(MH::Detail::upper16(staticProcSeed) == 30914u);
+    assert((MH::Detail::upper16(staticProcSeed) & 1u) == 0u);
+    assert((MH::Detail::upper16(staticSlotSeed) % 2u) == 0u);
+
+    const auto pikachuStatic = MH::analyze(
+        "emerald_gba", 25, 57, 25, 0, 0xA2B5D929u, emeraldStatic);
+    assert(pikachuStatic.resolution == MH::Resolution::FrameMatched);
+    assert(pikachuStatic.path == MH::Path::EmeraldStaticSuccess);
+    assert(pikachuStatic.requiredBall == Gen3Safari::kSafariBall);
+    assert(pikachuStatic.sourceSpecies == 25);
+    assert(pikachuStatic.encounterType == 0);
+    assert(pikachuStatic.slot == 8);
+    assert(pikachuStatic.frameSeed == staticFrame);
+
+    // StaticIndex 1 instead of 0 is not satisfied by the same -2 ESV,
+    // so the same PID/IV cannot justify Pikachu's fixed level 27 slot 10.
+    assert(MH::analyze(
+        "emerald_gba", 25, 57, 27, 0, 0xA2B5D929u,
+        emeraldStatic).resolution == MH::Resolution::Unresolved);
+
     // The same PID/IV frame is not an FR/LG or Ruby source: these remain
     // unresolved, not hard-invalid.
     assert(MH::analyze(
