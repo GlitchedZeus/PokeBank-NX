@@ -185,6 +185,7 @@ namespace UI {
         int gamesDrawerScroll = 0;
         TouchScrollState gamesDrawerTouchScroll;
         int profilePickerIndex = 0;
+        int profilePickerScroll = 0; // independent visible first row; never scroll the focus index
         TouchScrollState profileTouchScroll;
         // Main product-home focus outside the persistent dock:
         // -1 = selected game card, 0 = Master Vault, 1 = Pokédex.

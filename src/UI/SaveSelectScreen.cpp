@@ -2491,6 +2491,11 @@ namespace UI {
         gen4CandidateTouchScroll.reset();
         classicGamesTouchScroll.reset();
 
+        // Entry to a fresh profile modal starts with the chosen user visible.
+        if (touchScrollOverlay != overlay && overlay == Overlay::ProfilePicker)
+            profilePickerScroll = std::clamp(profilePickerIndex - 1, 0,
+                                             std::max(0, static_cast<int>(users.size()) - 4));
+
         touchScrollOverlay = overlay;
         touchScrollClassicGamesActive = classicGamesActive;
     }
@@ -2659,9 +2664,15 @@ namespace UI {
             const int count = static_cast<int>(users.size());
             constexpr int w = 780, h = 560, rowH = 88, visibleRows = 4;
             const int x = (1280 - w) / 2, y = (720 - h) / 2;
-            profileTouchScroll.updateVertical(
-                touch, x + 24, y + 136, w - 48, visibleRows * rowH,
-                rowH, profilePickerIndex, count);
+            const int maxFirstRow = std::max(0, count - visibleRows);
+            profilePickerScroll = std::clamp(profilePickerScroll, 0, maxFirstRow);
+            if (maxFirstRow > 0) {
+                profileTouchScroll.updateVertical(
+                    touch, x + 24, y + 136, w - 48, visibleRows * rowH,
+                    rowH, profilePickerScroll, maxFirstRow + 1);
+            } else {
+                profileTouchScroll.stop();
+            }
             if (kDown & HidNpadButton_B) {
                 profileTouchScroll.stop();
                 overlay = Overlay::None;
@@ -2674,6 +2685,12 @@ namespace UI {
                     profilePickerIndex = (profilePickerIndex - 1 + count) % count;
                 if (kDown & HidNpadButton_Down)
                     profilePickerIndex = (profilePickerIndex + 1) % count;
+                if (kDown & (HidNpadButton_Up | HidNpadButton_Down)) {
+                    if (profilePickerIndex < profilePickerScroll)
+                        profilePickerScroll = profilePickerIndex;
+                    else if (profilePickerIndex >= profilePickerScroll + visibleRows)
+                        profilePickerScroll = profilePickerIndex - visibleRows + 1;
+                }
                 if (kDown & HidNpadButton_A) {
                     profileTouchScroll.stop();
                     setUser(profilePickerIndex);
@@ -4005,7 +4022,7 @@ namespace UI {
             fb.drawFilledRect(x + 28, y + 118, w - 56, 1, Colors::Divider);
 
             const int count = static_cast<int>(users.size());
-            const int first = std::clamp(profilePickerIndex - 1, 0, std::max(0, count - visibleRows));
+            const int first = std::clamp(profilePickerScroll, 0, std::max(0, count - visibleRows));
             const int drawFirst = std::max(0, first - 1);
             const int drawLast = std::min(count, first + visibleRows + 1);
             const int listTop = y + 136;
