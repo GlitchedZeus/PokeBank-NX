@@ -85,6 +85,7 @@ struct State {
     PickerTarget pickerTarget = PickerTarget::None;
     int pickerRow = 0;
     TouchScrollState pickerScroll;
+    TouchPickerViewport pickerViewport;
     std::vector<uint16_t> pickerValues;
 
     bool moveEditor = false;
@@ -598,6 +599,7 @@ int moveMaxPP(uint16_t move, uint8_t ppUps, Enums::GameVersion group) {
 void openSpeciesPicker(TrainerViewScreen& screen, State& state) {
     state.valuePicker = true;
     state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.pickerTarget = PickerTarget::Species;
     state.pickerValues.clear();
     for (uint16_t species = 1; species <= 493; ++species)
@@ -641,6 +643,7 @@ bool beginCreate(TrainerViewScreen& screen) {
 void openHeldItemPicker(TrainerViewScreen& screen, State& state) {
     state.valuePicker = true;
     state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.pickerTarget = PickerTarget::HeldItem;
     state.pickerValues.clear();
     state.pickerValues.push_back(0);
@@ -660,6 +663,7 @@ void openHeldItemPicker(TrainerViewScreen& screen, State& state) {
 void openLanguagePicker(TrainerViewScreen& screen, State& state) {
     state.valuePicker = true;
     state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.pickerTarget = PickerTarget::Language;
     state.pickerValues.clear();
     const auto group = bridge(screen).sourceSave().rawFamily();
@@ -687,6 +691,7 @@ void openBallPicker(TrainerViewScreen& screen, State& state,
 
     state.valuePicker = true;
     state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.pickerTarget = PickerTarget::Ball;
     state.pickerValues.clear();
     for (const auto ball : Enums::getBallList(originGroup))
@@ -711,6 +716,7 @@ void openMetLocationPicker(TrainerViewScreen& screen, State& state,
     }
     state.valuePicker = true;
     state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.pickerTarget = PickerTarget::MetLocation;
     state.pickerValues.clear();
     const auto table = Names::getLocationTable(record.originVersion());
@@ -730,6 +736,7 @@ void openMetLocationPicker(TrainerViewScreen& screen, State& state,
 void openPokerusPicker(TrainerViewScreen& screen, State& state) {
     state.valuePicker = true;
     state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.pickerTarget = PickerTarget::Pokerus;
     state.pickerValues = {0x00, 0x10, 0x11};
     const uint8_t current = state.session.working ? state.session.working->pokerus() : 0;
@@ -754,6 +761,7 @@ void openFormPicker(TrainerViewScreen& screen, State& state) {
     }
     state.valuePicker = true;
     state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.pickerTarget = PickerTarget::Form;
     const uint8_t current = state.session.working->form();
     const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
@@ -767,6 +775,7 @@ void openMovePicker(TrainerViewScreen& screen, State& state) {
     if (!state.session.working) return;
     state.valuePicker = true;
     state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.pickerTarget = PickerTarget::Move;
     state.pickerValues = PokeVault::Integration::Gen4MoveCompatibility::selectableMoves(
         screen.sourceGameId, state.session.working->species(),
@@ -782,6 +791,7 @@ void openMovePicker(TrainerViewScreen& screen, State& state) {
 void openNaturePicker(TrainerViewScreen& screen, State& state) {
     state.valuePicker = true;
     state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.pickerTarget = PickerTarget::Nature;
     state.pickerValues.clear();
     for (uint16_t i = 0; i < 25; ++i) state.pickerValues.push_back(i);
@@ -797,6 +807,7 @@ void openAbilityPicker(TrainerViewScreen& screen, State& state,
     }
     state.valuePicker = true;
     state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.pickerTarget = PickerTarget::Ability;
     state.pickerValues = {0, 1};
     state.pickerRow = state.session.working ? state.session.working->abilitySlot() : 0;
@@ -806,6 +817,13 @@ void openAbilityPicker(TrainerViewScreen& screen, State& state,
 bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.valuePicker) return false;
     const int count = static_cast<int>(state.pickerValues.size());
+    const bool gridPicker = state.pickerTarget == PickerTarget::HeldItem;
+    const int columns = gridPicker ? HeldItemGrid::columns : 1;
+    const int visibleRows = gridPicker ? HeldItemGrid::rows
+        : state.pickerTarget == PickerTarget::Move ? MoveUI::compactPickerLayout().visibleRows : 10;
+    if (state.pickerTarget != PickerTarget::Species)
+        state.pickerViewport.ensure(state.pickerRow, count, visibleRows, columns);
+    const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows, columns);
     if (count > 0) {
         if (state.pickerTarget == PickerTarget::Species) {
             const int dy = touch.deltaY();
@@ -823,7 +841,7 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
   state.pickerScroll.updateVertical(
       touch, px + 22, py + 87, pickerW - 44,
       HeldItemGrid::rows * rowStep + 6, rowStep,
-      state.pickerRow, count, HeldItemGrid::columns);
+      state.pickerViewport.firstRow, maxFirstRow + 1);
         } else if (state.pickerTarget == PickerTarget::Move) {
   constexpr auto pickerLayout = MoveUI::compactPickerLayout();
   const int px = (1280 - pickerLayout.width) / 2;
@@ -832,14 +850,14 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
       touch, px + 24, py + pickerLayout.rowStart,
       pickerLayout.width - 48,
       pickerLayout.visibleRows * pickerLayout.rowStep,
-      pickerLayout.rowStep, state.pickerRow, count);
+      pickerLayout.rowStep, state.pickerViewport.firstRow, maxFirstRow + 1);
         } else {
   constexpr int pickerW = 680, pickerH = 560, rowStep = 42;
   const int px = (1280 - pickerW) / 2;
   const int py = (720 - pickerH) / 2;
   state.pickerScroll.updateVertical(
       touch, px + 22, py + 86, pickerW - 44,
-      10 * rowStep + 8, rowStep, state.pickerRow, count);
+      10 * rowStep + 8, rowStep, state.pickerViewport.firstRow, maxFirstRow + 1);
         }
     }
     const int touchDown = screen.touchedButtonDownId(touch);
@@ -882,6 +900,11 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
         if (down & HidNpadButton_ZR)
             state.pickerRow = std::min(count - 1, state.pickerRow + 50);
     }
+    if (state.pickerTarget != PickerTarget::Species &&
+        (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left |
+                 HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R |
+                 HidNpadButton_ZL | HidNpadButton_ZR)))
+        state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
     if (state.pickerTarget == PickerTarget::Species && (down & HidNpadButton_Y)) {
         state.speciesPreviewShiny = !state.speciesPreviewShiny;
         return true;
@@ -1577,8 +1600,8 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     Colors::TextDim, TextStyle::Caption);
         const int count = static_cast<int>(state.pickerValues.size());
         constexpr int visible = moveLayout.visibleRows;
-        const int first = std::clamp(
-  state.pickerRow - visible / 2, 0, std::max(0, count - visible));
+        state.pickerViewport.ensure(state.pickerRow, count, visible);
+        const int first = state.pickerViewport.firstRow;
         const int firstDraw = std::max(0, first - 1);
         const int lastDraw = std::min(count, first + visible + 1);
         const int liveOffset = state.pickerScroll.offset();
@@ -1620,9 +1643,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         const int cellWidth = (w - 44) / HeldItemGrid::columns;
         constexpr int cellHeight = 40;
         const int totalRows = (count + HeldItemGrid::columns - 1) / HeldItemGrid::columns;
-        const int selectedRow = state.pickerRow / HeldItemGrid::columns;
-        const int firstRow = std::clamp(selectedRow - HeldItemGrid::rows / 2,
-                              0, std::max(0, totalRows - HeldItemGrid::rows));
+        state.pickerViewport.ensure(state.pickerRow, count,
+                                   HeldItemGrid::rows, HeldItemGrid::columns);
+        const int firstRow = state.pickerViewport.firstRow;
         const int drawFirstRow = std::max(0, firstRow - 1);
         const int drawLastRow = std::min(totalRows, firstRow + HeldItemGrid::rows + 1);
         const int liveOffset = state.pickerScroll.offset();
@@ -1657,8 +1680,8 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                 Colors::TextDim, TextStyle::Caption);
     constexpr int visible = 10;
     constexpr int rowStep = 42;
-    const int first = std::clamp(
-        state.pickerRow - visible / 2, 0, std::max(0, count - visible));
+    state.pickerViewport.ensure(state.pickerRow, count, visible);
+    const int first = state.pickerViewport.firstRow;
     const int firstDraw = std::max(0, first - 1);
     const int lastDraw = std::min(count, first + visible + 1);
     const int liveOffset = state.pickerScroll.offset();
