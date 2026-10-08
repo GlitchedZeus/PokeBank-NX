@@ -97,8 +97,10 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
         const uint16_t move = choices[static_cast<std::size_t>(i)];
         const bool selected = i == visual.index;
         if (yy + kHardwareMovePickerLayout.highlightHeight > viewportTop && yy < viewportTop + viewportH)
-            screen.touchButtons.push_back(
-                {2100 + i, x + 24, yy, panelW - 48, kHardwareMovePickerLayout.highlightHeight});
+            appendClippedTouchButton(
+                screen.touchButtons, 2100 + i, x + 24, yy,
+                panelW - 48, kHardwareMovePickerLayout.highlightHeight,
+                x + 24, viewportTop, panelW - 48, viewportH);
         const std::string label =
             PokeBank::UIModel::MovePickerPresentation::rowLabel(move, Enums::GameVersion::GSC);
         if (selected)
