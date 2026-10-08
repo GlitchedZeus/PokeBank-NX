@@ -41,7 +41,7 @@
 ---
 
 > [!IMPORTANT]
-> **PokeBank NX is pre-release software.** The integrated Gen I–IV staged editor and Product UI foundation is now **hardware accepted** on the exact `0760334f` NRO, following a 100% owner-reported Nintendo Switch test pass and six green CI gates. Touch controls remain in their separate validation lane; the experimental **Quit RetroArch → PokeBank NX** return lifecycle is not part of this accepted startup path.
+> **PokeBank NX is pre-release software.** The integrated Gen I–IV staged editor and Product UI foundation is now **hardware accepted** on the exact `0760334f` NRO, following a 100% owner-reported Nintendo Switch test pass and six green CI gates. Touch controls remain in their separate validation lane. The owner also confirmed **Quit & Return** worked on this NRO; the experimental nested Return Host remains outside the accepted direct-launch path.
 
 ## Overview
 
@@ -66,7 +66,7 @@ The app is designed around staged editing, explicit source identity, conservativ
 | Generation II | ✅ Hardware accepted | G/S/C read + staged shared editor |
 | Generation III | ✅ Hardware accepted | R/S/E/FR/LG read + staged shared editor |
 | Generation IV | ✅ Hardware accepted | D/P/Pt/HG/SS staged full-editor foundation and integrated Product UI accepted on exact `0760334f` build; DS direct launch tested |
-| Product Home / Games UI | ✅ Hardware accepted | Exact `0760334f` Switch pass: Quick View, source routing, keyboard/numpad, legacy RetroArch launches and native SWSH/SV/Z-A preview/open |
+| Product Home / Games UI | ✅ Hardware accepted | Exact `0760334f` Switch pass: Quick View, source routing, keyboard/numpad, legacy RetroArch launches, native SWSH/SV/Z-A preview/open, and Quit & Return |
 | Audit hardening | ✅ Integrated | Full forensic remediation is integrated into the active application lane: 43 verified, 1 deferred, 0 open |
 | Legality analysis | 🔬 Active R&D | Read-only Gen I–IV evidence engine in a separate lane; language-domain work accepted and ball-domain production integration active |
 | Touch controls | 🧪 Hardware validation | App-wide direct/native touch parity is implemented in PR #122 with exact-head CI green; device acceptance is still pending |
@@ -147,7 +147,7 @@ Diamond / Pearl / Platinum / HeartGold / SoulSilver currently have the most acti
 - checksum refresh, strict full-save reparse, and rollback;
 - immutable external emulator source during ordinary editing.
 
-The first safe Gen IV editing milestone and the **integrated Gen IV + Product UI foundation** have now passed hardware testing, most recently on exact build `0760334f`. Nintendo DS direct launch is proven on hardware with Diamond while respecting DraStic's own **Quit to Launcher** behavior. Experimental RetroArch return-to-PokeBank lifecycle work remains separate from the accepted direct-launch path.
+The first safe Gen IV editing milestone and the **integrated Gen IV + Product UI foundation** have now passed hardware testing, most recently on exact build `0760334f`. Nintendo DS direct launch is proven on hardware with Diamond while respecting DraStic's own **Quit to Launcher** behavior. The owner also confirmed **Quit & Return** on this exact NRO; experimental nested Return Host changes remain separate from the accepted direct-launch path.
 
 ## Supported games
 
@@ -181,7 +181,7 @@ Current product work includes:
 - hotpath work that avoids unnecessary source/launch discovery during Quick Games and normal legacy opens;
 - explicit **Link Game File** fallback instead of path guessing.
 
-The hardware-accepted `0760334f` candidate confirms tested Gen I–III RetroArch launch resolution, including Red/Blue, and Nintendo DS direct launch without the earlier freeze/normal ROM-chooser dead end. The accepted RetroArch launch path uses **direct core handoff**; the experimental bundled **PokeBank Return Host** was bypassed after device regressions and is preserved only for future, separately validated return-lifecycle work.
+The hardware-accepted `0760334f` candidate confirms tested Gen I–III RetroArch launch resolution, including Red/Blue, and Nintendo DS direct launch without the earlier freeze/normal ROM-chooser dead end. The accepted RetroArch launch path uses **direct core handoff**, and the owner separately confirmed **Quit & Return** works on this exact NRO. The experimental bundled **PokeBank Return Host** was bypassed after device regressions and remains isolated for any later, separately validated lifecycle work.
 
 > [!WARNING]
 > A save path is **not** proof of a ROM path. PokeBank NX does not guess a launch target from a similarly named save file, and launch permission never grants save-write permission.
@@ -272,7 +272,7 @@ A repository-wide forensic audit and remediation pass is complete. The remediati
 
 | Lane | Purpose / state |
 |---|---|
-| [PR #92](https://github.com/GlitchedZeus/PokeBank-NX/pull/92) | **Hardware-accepted MAIN checkpoint:** Gen I–IV staged editor and integrated Product UI on exact `0760334f`; open/draft, not merged |
+| [PR #92](https://github.com/GlitchedZeus/PokeBank-NX/pull/92) | **Hardware-accepted MAIN checkpoint:** Gen I–IV staged editor, integrated Product UI and Quit & Return on exact `0760334f`; open/draft, not merged |
 | [PR #122](https://github.com/GlitchedZeus/PokeBank-NX/pull/122) | **Active touch lane:** app-wide direct/native touch parity is near completion; separate open/draft PR, physical acceptance and integration still pending |
 | [PR #103](https://github.com/GlitchedZeus/PokeBank-NX/pull/103) | **Active legality lane:** read-only Gen I–IV engine progressing independently; product integration tentatively planned after Gen IX |
 | [PR #149](https://github.com/GlitchedZeus/PokeBank-NX/pull/149) | **Active legality child:** Gen III/IV Ball-ID domain production integration against the accepted legality head |
@@ -337,7 +337,7 @@ Near-term development order:
 
 1. **Preserve the hardware-accepted Gen I–IV + Product UI checkpoint** (`0760334f`, `DEVICE_ACCEPTED=true`) as the working baseline; PR #92 remains unmerged until explicitly approved.
 2. Finish and physically validate **app-wide touch controls** in PR #122; integrate forward only after its own exact-build acceptance and explicit approval.
-3. Complete any remaining Product UI polish and independently validate the deferred RetroArch return-to-PokeBank lifecycle without regressing the accepted direct launch path.
+3. Complete any remaining Product UI polish while preserving the hardware-passed Quit & Return behavior; keep experimental nested return-host work isolated unless separately validated.
 4. Expand provider support and staged editing in hardware-tested steps through **Gen V, VI, VII, VIII and IX**, with exact-game validation and unchanged live-save write locks.
 5. Continue the **read-only legality engine** in parallel; defer product integration until after Gen IX, subject to evidence coverage and regression testing.
 6. Build **Master Vault + named Banks**, provenance, search and collection features as separately authorized milestones.
