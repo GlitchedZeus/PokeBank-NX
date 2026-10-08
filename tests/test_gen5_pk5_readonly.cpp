@@ -96,9 +96,13 @@ int main() {
     C::write16(sane,4,0);
     C::write16(sane,8,650);
     assert(!G5::Pokemon5ReadOnly(C::encryptCandidate(sane)).valid());
-    // Corrupting the PID/shuffle should fail integrity validation too.
+    // PK5's additive checksum excludes the PID/header. A PID-only mutation
+    // can be undetectable when the data blocks have repeated/zero contents;
+    // never assert that this checksum authenticates those excluded bytes.
     auto raw = C::encryptCandidate(makeRecord(C::PartySize,0x12345678));
     raw[1]^=0x20;
-    assert(!G5::Pokemon5ReadOnly(raw).valid());
+    const G5::Pokemon5ReadOnly pidChanged(raw);
+    assert(pidChanged.sizeValid());
+    assert(pidChanged.pid() != 0x12345678u || !pidChanged.valid());
     std::cout << "Gen V PK5 read-only record/crypto contracts PASS (32 shuffles, boxed/party, corruption)\n";
 }
