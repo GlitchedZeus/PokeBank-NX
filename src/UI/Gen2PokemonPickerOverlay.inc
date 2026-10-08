@@ -19,6 +19,8 @@ struct PickerOverlayState {
     const TrainerViewScreen* owner = nullptr;
     Gen2Picker::Model model;
     TouchScrollState scroll;
+    TouchScrollState moveScroll;
+    TouchPickerViewport moveViewport;
 };
 
 PickerOverlayState& pickerStateFor(const TrainerViewScreen& screen) {
@@ -33,6 +35,8 @@ PickerOverlayState& pickerStateFor(const TrainerViewScreen& screen) {
 void closePicker(TrainerViewScreen& screen, PickerOverlayState& picker) {
     picker.model.close();
     picker.scroll.reset();
+    picker.moveScroll.reset();
+    picker.moveViewport.reset();
     screen.controllerNavigation.reset();
 }
 
@@ -48,6 +52,8 @@ bool openPickerForFocusedField(TrainerViewScreen& screen, State& state,
         return false;
     }
     picker.scroll.reset();
+    picker.moveScroll.reset();
+    picker.moveViewport.reset();
     screen.controllerNavigation.reset();
     return true;
 }
