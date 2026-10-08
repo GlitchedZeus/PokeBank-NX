@@ -38,8 +38,8 @@ std::vector<uint8_t> makeRecord(size_t size, uint32_t pid) {
     d[0x42]=1;
     d[0x5F]=20;
     if (size == C::PartySize) {
-        d[0x8C]=50;
         for (size_t i=0x88;i<size;i++) d[i]=static_cast<uint8_t>(i*7+1);
+        d[0x8C]=50; // fill first; then restore the source-backed level field
     }
     return d;
 }

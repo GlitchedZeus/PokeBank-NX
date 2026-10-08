@@ -59,6 +59,7 @@ std::vector<uint8_t> make(G::SaveFamily family,uint8_t version,size_t base=0) {
     C::write16(pk,8,25);
     C::write16(pk,12,12345);
     C::write16(pk,14,54321);
+    pk[0x8C]=50; // native PK5 party level; boxed PK5 has no level byte
     const auto encrypted=C::encryptCandidate(pk);
     sav[base+L::PartyOffset+4]=1;
     std::copy(encrypted.begin(),encrypted.end(),
