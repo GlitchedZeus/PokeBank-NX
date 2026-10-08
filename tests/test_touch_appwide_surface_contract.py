@@ -282,6 +282,14 @@ require_all("src/UI/AppShellScreen.cpp",
             "auto tappedHit = [&](const HitRect& rect)",
             "contains(rect, touch.startX(), touch.startY())",
             "if (tappedHit(rect))")
+for surface in (
+    "launchFileScroll, maxFirstRow + 1);",
+    "legacyAssignmentScroll, maxFirstRow + 1);",
+    "legacyInstanceScroll, maxFirstRow + 1);",
+    "gen4CandidateScroll, maxFirstRow + 1);",
+):
+    if surface not in read("src/UI/SaveSelectScreen.cpp"):
+        raise AssertionError(f"SaveSelect: list scrolling must advance viewport, not selected save: {surface}")
 require_all("src/UI/SaveSelectScreen.cpp",
             "void pushViewportHit(std::vector<Hit>& hits,",
             "const int right = std::min(x + w, clipX + clipW);",

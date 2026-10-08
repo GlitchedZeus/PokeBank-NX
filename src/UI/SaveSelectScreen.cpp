@@ -2725,9 +2725,15 @@ namespace UI {
             const int count = static_cast<int>(launchFileEntries.size());
             constexpr int w = 900, h = 560, rowH = 54, visibleRows = 7;
             const int x = (1280 - w) / 2, y = (720 - h) / 2;
-            launchFileTouchScroll.updateVertical(
-                touch, x + 24, y + 132, w - 48, visibleRows * rowH,
-                rowH, launchFileIndex, count);
+            const int maxFirstRow = std::max(0, count - visibleRows);
+            launchFileScroll = std::clamp(launchFileScroll, 0, maxFirstRow);
+            if (maxFirstRow > 0) {
+                launchFileTouchScroll.updateVertical(
+                    touch, x + 24, y + 132, w - 48, visibleRows * rowH,
+                    rowH, launchFileScroll, maxFirstRow + 1);
+            } else {
+                launchFileTouchScroll.stop();
+            }
             if (kDown & HidNpadButton_B) {
                 launchFileTouchScroll.stop();
                 overlay = launchFileReturnToLegacy ? Overlay::LegacyInstances : Overlay::None;
@@ -2749,10 +2755,13 @@ namespace UI {
                     launchFileIndex = (launchFileIndex - 1 + count) % count;
                 if (kDown & HidNpadButton_Down)
                     launchFileIndex = (launchFileIndex + 1) % count;
+            // Do not snap a finger-scrolled viewport back to the focused save.
+            if (kDown & (HidNpadButton_Up | HidNpadButton_Down)) {
                 if (launchFileIndex < launchFileScroll)
                     launchFileScroll = launchFileIndex;
                 else if (launchFileIndex >= launchFileScroll + visibleRows)
                     launchFileScroll = launchFileIndex - visibleRows + 1;
+            }
                 if (kDown & HidNpadButton_A) activateGameFilePicker();
             }
             return;
@@ -2772,9 +2781,15 @@ namespace UI {
             const int count = static_cast<int>(unassignedLegacySources.size());
             constexpr int w = 800, h = 530, rowH = 70, visibleRows = 5;
             const int x = (1280 - w) / 2, y = (720 - h) / 2;
-            legacyAssignmentTouchScroll.updateVertical(
-                touch, x + 24, y + 108, w - 48, visibleRows * rowH,
-                rowH, legacyAssignmentIndex, count);
+            const int maxFirstRow = std::max(0, count - visibleRows);
+            legacyAssignmentScroll = std::clamp(legacyAssignmentScroll, 0, maxFirstRow);
+            if (maxFirstRow > 0) {
+                legacyAssignmentTouchScroll.updateVertical(
+                    touch, x + 24, y + 108, w - 48, visibleRows * rowH,
+                    rowH, legacyAssignmentScroll, maxFirstRow + 1);
+            } else {
+                legacyAssignmentTouchScroll.stop();
+            }
             if (kDown & HidNpadButton_B) {
                 legacyAssignmentTouchScroll.stop();
                 overlay = classicGamesActive ? Overlay::None : Overlay::GamesDrawer;
@@ -2801,10 +2816,13 @@ namespace UI {
                 legacyAssignmentIndex = (legacyAssignmentIndex - 1 + count) % count;
             if (kDown & HidNpadButton_Down)
                 legacyAssignmentIndex = (legacyAssignmentIndex + 1) % count;
-            if (legacyAssignmentIndex < legacyAssignmentScroll)
-                legacyAssignmentScroll = legacyAssignmentIndex;
-            else if (legacyAssignmentIndex >= legacyAssignmentScroll + visibleRows)
-                legacyAssignmentScroll = legacyAssignmentIndex - visibleRows + 1;
+            // Do not snap a finger-scrolled viewport back to the focused save.
+            if (kDown & (HidNpadButton_Up | HidNpadButton_Down)) {
+                if (legacyAssignmentIndex < legacyAssignmentScroll)
+                    legacyAssignmentScroll = legacyAssignmentIndex;
+                else if (legacyAssignmentIndex >= legacyAssignmentScroll + visibleRows)
+                    legacyAssignmentScroll = legacyAssignmentIndex - visibleRows + 1;
+            }
             if (kDown & HidNpadButton_A) assignCurrentLegacySource();
             return;
         }
@@ -2841,9 +2859,15 @@ namespace UI {
             const int count = static_cast<int>(gen4Instances.size());
             constexpr int w = 900, h = 540, rowH = 76, visibleRows = 5;
             const int x = (1280 - w) / 2, y = (720 - h) / 2;
-            gen4CandidateTouchScroll.updateVertical(
-                touch, x + 24, y + 108, w - 48, visibleRows * rowH,
-                rowH, gen4CandidateIndex, count);
+            const int maxFirstRow = std::max(0, count - visibleRows);
+            gen4CandidateScroll = std::clamp(gen4CandidateScroll, 0, maxFirstRow);
+            if (maxFirstRow > 0) {
+                gen4CandidateTouchScroll.updateVertical(
+                    touch, x + 24, y + 108, w - 48, visibleRows * rowH,
+                    rowH, gen4CandidateScroll, maxFirstRow + 1);
+            } else {
+                gen4CandidateTouchScroll.stop();
+            }
             if (kDown & HidNpadButton_B) {
                 gen4CandidateTouchScroll.stop();
                 overlay = gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None;
@@ -2869,10 +2893,13 @@ namespace UI {
                 gen4CandidateIndex = (gen4CandidateIndex - 1 + count) % count;
             if (kDown & HidNpadButton_Down)
                 gen4CandidateIndex = (gen4CandidateIndex + 1) % count;
-            if (gen4CandidateIndex < gen4CandidateScroll)
-                gen4CandidateScroll = gen4CandidateIndex;
-            else if (gen4CandidateIndex >= gen4CandidateScroll + visibleRows)
-                gen4CandidateScroll = gen4CandidateIndex - visibleRows + 1;
+            // Do not snap a finger-scrolled viewport back to the focused save.
+            if (kDown & (HidNpadButton_Up | HidNpadButton_Down)) {
+                if (gen4CandidateIndex < gen4CandidateScroll)
+                    gen4CandidateScroll = gen4CandidateIndex;
+                else if (gen4CandidateIndex >= gen4CandidateScroll + visibleRows)
+                    gen4CandidateScroll = gen4CandidateIndex - visibleRows + 1;
+            }
             if (kDown & HidNpadButton_A) {
                 const size_t handle =
                     gen4Instances[static_cast<size_t>(gen4CandidateIndex)].sourceIndex;
@@ -2909,10 +2936,16 @@ namespace UI {
             const int count = static_cast<int>(instances.size());
             constexpr int w = 780, h = 530, rowH = 66;
             const int x = (1280 - w) / 2, y = (720 - h) / 2;
-            legacyInstanceTouchScroll.updateVertical(
-                touch, x + 24, y + 122, w - 48,
-                LEGACY_INSTANCE_VISIBLE_ROWS * rowH,
-                rowH, legacyInstanceIndex, count);
+            const int maxFirstRow = std::max(0, count - LEGACY_INSTANCE_VISIBLE_ROWS);
+            legacyInstanceScroll = std::clamp(legacyInstanceScroll, 0, maxFirstRow);
+            if (maxFirstRow > 0) {
+                legacyInstanceTouchScroll.updateVertical(
+                    touch, x + 24, y + 122, w - 48,
+                    LEGACY_INSTANCE_VISIBLE_ROWS * rowH,
+                    rowH, legacyInstanceScroll, maxFirstRow + 1);
+            } else {
+                legacyInstanceTouchScroll.stop();
+            }
             if (kDown & HidNpadButton_B) {
                 legacyInstanceTouchScroll.stop();
                 overlay = Overlay::None;
@@ -2946,10 +2979,13 @@ namespace UI {
                 legacyInstanceIndex = (legacyInstanceIndex - 1 + count) % count;
             if (kDown & HidNpadButton_Down)
                 legacyInstanceIndex = (legacyInstanceIndex + 1) % count;
-            if (legacyInstanceIndex < legacyInstanceScroll)
-                legacyInstanceScroll = legacyInstanceIndex;
-            else if (legacyInstanceIndex >= legacyInstanceScroll + LEGACY_INSTANCE_VISIBLE_ROWS)
-                legacyInstanceScroll = legacyInstanceIndex - LEGACY_INSTANCE_VISIBLE_ROWS + 1;
+            // Do not snap a finger-scrolled viewport back to the focused save.
+            if (kDown & (HidNpadButton_Up | HidNpadButton_Down)) {
+                if (legacyInstanceIndex < legacyInstanceScroll)
+                    legacyInstanceScroll = legacyInstanceIndex;
+                else if (legacyInstanceIndex >= legacyInstanceScroll + LEGACY_INSTANCE_VISIBLE_ROWS)
+                    legacyInstanceScroll = legacyInstanceIndex - LEGACY_INSTANCE_VISIBLE_ROWS + 1;
+            }
             if (kDown & HidNpadButton_A) {
                 if (launchLegacyMode) launchCurrentLegacyInstance();
                 else selectCurrentLegacyInstance();
