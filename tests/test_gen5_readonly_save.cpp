@@ -1,6 +1,7 @@
 #include "Integration/Gen5/Gen5ReadOnlySave.h"
 #include "Integration/Gen5/Gen5SaveInstanceAdapter.h"
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
+#include "Integration/Gen5/Gen5AssignedSource.h"
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Games/GameIdentity.h"
@@ -124,6 +125,36 @@ void discoveryContracts() {
     auto direct=G::reopenValidatedSource(probe);
     assert(direct.ready() && direct.save->exactGameId()=="black_nds");
     assert(direct.instance.sourceIdentity==probe.sourceIdentity);
+    // The existing persistent profile/game binding is used only when a
+    // human explicitly associates this exact physical source with a game.
+    const std::string database=dir+"/gen5_bindings";
+    PokeVault::Legacy::LegacySourceBindings bindings(database);
+    assert(bindings.load());
+    assert(bindings.assignFileAndSave(probe.sourceIdentity,
+        {"profile-one","black_nds",black,"RetroArch","BW"}));
+    const auto owned=G::openAssignedSource(bindings,"profile-one","black_nds");
+    assert(owned.ready());
+    assert(owned.save->exactGameId()=="black_nds");
+    assert(owned.instance.sourceIdentity==probe.sourceIdentity);
+    assert(owned.instance.claimedProfile=="profile-one");
+    assert(owned.instance.readOnly() && owned.instance.rememberedSource);
+    assert(G::openAssignedSource(bindings,"other-profile","black_nds").status==
+        G::AssignedOpenStatus::Unassigned);
+    assert(G::openAssignedSource(bindings,"profile-one","white_nds").status==
+        G::AssignedOpenStatus::Unassigned);
+    assert(G::openAssignedSource(bindings,"profile-one","platinum_nds").status==
+        G::AssignedOpenStatus::AssignmentMismatch);
+    PokeVault::Legacy::LegacySourceBindings restored(database);
+    assert(restored.load());
+    assert(G::openAssignedSource(restored,"profile-one","black_nds").ready());
+    // A malicious/stale family claim does not reinterpret native contents.
+    const std::string badDatabase=dir+"/gen5_bad_bindings";
+    PokeVault::Legacy::LegacySourceBindings badBindings(badDatabase);
+    assert(badBindings.load());
+    assert(badBindings.assignFileAndSave(probe.sourceIdentity,
+        {"profile-one","black_nds",black,"RetroArch","B2W2"}));
+    assert(G::openAssignedSource(badBindings,"profile-one","black_nds").status==
+        G::AssignedOpenStatus::AssignmentMismatch);
     const auto wrapped=G::inspectSourceFile(dsv,"DraStic");
     assert(wrapped.ready() && wrapped.gameId=="white_nds");
     assert(wrapped.containerType=="dsv-footer");
@@ -156,6 +187,8 @@ void discoveryContracts() {
     modified[0x400+4]^=0x40;
     fileFixture(black,modified);
     assert(!G::reopenValidatedSource(probe).ready());
+    assert(!G::openAssignedSource(restored,"profile-one","black_nds").ready());
+
     // Two valid but differing copies must not be silently ranked by mtime.
     auto twoCopies=blackRaw;
     const auto secondary=make(G::SaveFamily::BlackWhite,21,L::BlackWhiteCopySize);
@@ -188,6 +221,8 @@ void discoveryContracts() {
     fileFixture(dsv,malformed);
     assert(!G::inspectSourceFile(dsv,"DraStic").ready());
 
+    assert(std::remove(database.c_str())==0);
+    assert(std::remove(badDatabase.c_str())==0);
     assert(std::remove(black.c_str())==0);
     assert(std::remove(white.c_str())==0);
     assert(std::remove(dsv.c_str())==0);

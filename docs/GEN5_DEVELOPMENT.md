@@ -160,3 +160,20 @@ Source preference remains API-only until a safe UI flow exists.
   inferred by generation or legality-engine guesses.
 - No Create, direct source write or Gen V game launch/open route enabled;
   all four title descriptors remain `Planned`.
+
+### Phase B tranche 4 — explicit profile/game assigned-source bridge
+
+- `Gen5AssignedSource` reads the same persistent `LegacySourceBindings`
+  store used by Gen I–IV. No metadata writes occur during source open.
+- Only exact Black/White/Black 2/White 2 assignments can open, with
+  explicit profile, physical source identity, provider and BW/B2W2
+  family supplied by a validated assignment.
+- Unassigned, missing, ambiguous, unreadable or wrong-family entries
+  produce distinct non-ready results. No filesystem scan or trainer-name
+  inference replaces a missing binding.
+- Opening invokes the strict Gen V source inspector, then a fresh
+  fingerprint-verified reopen. The native save remains immutable.
+- Host fixture tests exercise persisted and reloaded assignments,
+  profile isolation, wrong families, and changed source invalidation.
+- This adapter is not yet wired to the current production Games menu,
+  and it cannot grant original-source write/inject capability.
