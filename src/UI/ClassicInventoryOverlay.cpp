@@ -898,7 +898,9 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             if (stagedQuantity(screen, *pocket, itemId) != 0) label += "  (Already in pouch)";
             drawRow(fb, x + 12, rowY, width - 24, label, i == state.pickerRow, rowH - 4, true);
             if (rowY + rowH > listTop && rowY < listBottom)
-                screen.touchButtons.push_back({i, x + 12, rowY, width - 24, rowH - 4});
+                appendClippedTouchButton(screen.touchButtons, i,
+                    x + 12, rowY, width - 24, rowH - 4,
+                    x + 12, listTop, width - 24, listBottom - listTop);
         }
         fb.clearClip();
         drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Add / Select"},
@@ -963,7 +965,9 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                 drawRow(fb, x + 30, rowY, width - 60,
                         lines[static_cast<std::size_t>(i)], i == state.reviewRow);
                 if (rowY + 48 > listTop && rowY < listTop + visibleRows * rowStep)
-                    screen.touchButtons.push_back({i, x + 30, rowY, width - 60, 48});
+                    appendClippedTouchButton(screen.touchButtons, i,
+                        x + 30, rowY, width - 60, 48,
+                        x + 30, listTop, width - 60, visibleRows * rowStep);
             }
             fb.clearClip();
         }
