@@ -91,8 +91,8 @@ int main() {
                 std::vector<uint8_t>(SCReadValidation::BOX_COUNT * SCReadValidation::BOX_SLOTS * Encryption::SIZE_PARTY8_SWSH)},
             {SCReadValidation::SWSH_BOX_LAYOUT, SCTypeCode::Object, SCTypeCode::None,
                 std::vector<uint8_t>(SCReadValidation::BOX_COUNT * SCReadValidation::BOX_NAME_BYTES)},
-            {SCReadValidation::SWSH_CURRENT_BOX, SCTypeCode::UInt32, SCTypeCode::None,
-                std::vector<uint8_t>(4)},
+            {SCReadValidation::SWSH_CURRENT_BOX, SCTypeCode::Byte, SCTypeCode::None,
+                std::vector<uint8_t>(1)},
         };
     };
     auto makeSV = [] {
@@ -109,8 +109,8 @@ int main() {
                 std::vector<uint8_t>(SCReadValidation::BOX_COUNT * SCReadValidation::BOX_SLOTS * Encryption::SIZE_PARTY9_SV)},
             {SCReadValidation::GEN9_BOX_LAYOUT, SCTypeCode::Object, SCTypeCode::None,
                 std::vector<uint8_t>(SCReadValidation::BOX_COUNT * SCReadValidation::BOX_NAME_BYTES)},
-            {SCReadValidation::GEN9_CURRENT_BOX, SCTypeCode::UInt32, SCTypeCode::None,
-                std::vector<uint8_t>(4)},
+            {SCReadValidation::GEN9_CURRENT_BOX, SCTypeCode::Byte, SCTypeCode::None,
+                std::vector<uint8_t>(1)},
         };
     };
     auto makeZA = [] {
@@ -127,8 +127,8 @@ int main() {
                 std::vector<uint8_t>(SCReadValidation::BOX_COUNT * SCReadValidation::BOX_SLOTS * Encryption::BOX_SLOT_SIZE9_LZA)},
             {SCReadValidation::GEN9_BOX_LAYOUT, SCTypeCode::Object, SCTypeCode::None,
                 std::vector<uint8_t>(SCReadValidation::BOX_COUNT * SCReadValidation::BOX_NAME_BYTES)},
-            {SCReadValidation::GEN9_CURRENT_BOX, SCTypeCode::UInt32, SCTypeCode::None,
-                std::vector<uint8_t>(4)},
+            {SCReadValidation::GEN9_CURRENT_BOX, SCTypeCode::Byte, SCTypeCode::None,
+                std::vector<uint8_t>(1)},
             {SCReadValidation::ZA_SAVE_REVISION, SCTypeCode::UInt64, SCTypeCode::None,
                 std::vector<uint8_t>(8)},
         };
@@ -200,11 +200,16 @@ int main() {
     assert(scDiagnostic.find("0x4F35D0DD") != std::string::npos);
     assert(scDiagnostic.find("wrong type") != std::string::npos);
     auto wrongCurrentBoxSC = swshLayout;
-    wrongCurrentBoxSC[6].type = SCTypeCode::Byte;
-    wrongCurrentBoxSC[6].data.resize(1);
+    wrongCurrentBoxSC[6].type = SCTypeCode::UInt32;
+    wrongCurrentBoxSC[6].data.resize(4);
     assert(!validateSCReadLayout(wrongCurrentBoxSC, Enums::GameVersion::SWSH, &scDiagnostic).empty());
     assert(scDiagnostic.find("0x017C3CBB") != std::string::npos);
     assert(scDiagnostic.find("wrong type") != std::string::npos);
+    // PKHeX CurrentBox accessors use GetValue<byte>/SetValue<byte>, and its blank-block
+    // geometry allocates exactly one byte for 0x017C3CBB in SWSH, SV, and Z-A.
+    assert(swshLayout[6].data.size() == 1);
+    assert(svLayout[6].data.size() == 1);
+    assert(zaLayout[6].data.size() == 1);
     auto wrongRevisionSC = zaLayout;
     wrongRevisionSC[7].type = SCTypeCode::UInt32;
     assert(!validateSCReadLayout(wrongRevisionSC, Enums::GameVersion::ZA).empty());
