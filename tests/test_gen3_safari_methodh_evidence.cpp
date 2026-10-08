@@ -357,36 +357,38 @@ int main() {
 
     // Emerald Safari 300-call nature-block Pressure-success. Oddish slot 1
     // is level 27, but its original EncounterArea3 #182 also has slot 3
-    // Oddish level 29. PressureLevel therefore forces 29; taking an across-
-    // location maximum or using the raw slot max/rolled level would be wrong.
-    // The -3 block slot roll 22 selects slot 1. p0 is odd and ordinary p0
-    // nature 1 mismatches the PID nature 20, ruling out no-block Sync/normal.
+    // Oddish level 29. PressureLevel therefore forces 29, overriding -2.
+    // The -3 block slot roll 33 selects slot 1. p0 is odd and nature 1
+    // differs from the PID nature 22: neither no-block Synchronize nor
+    // ordinary no-block nature can account for this frame.
     const auto grassBlockPressure = Gen3PidIv::analyze(
-        0x813415B7u, {6,9,2,12,29,28});
+        0xD5343194u, {4,16,19,1,0,13});
     assert(grassBlockPressure.method == Method::Method1);
-    assert(grassBlockPressure.originSeed == 0x000101FDu);
+    assert(grassBlockPressure.originSeed == 0x00010080u);
     const uint8_t blockPressureNature = static_cast<uint8_t>(
         MH::Detail::sequentialPid(grassBlockPressure.originSeed) % 25u);
-    assert(blockPressureNature == 20u);
+    assert(blockPressureNature == 22u);
     assert(MH::Detail::upper16(grassBlockPressure.originSeed) == 1u);
     assert(MH::Detail::reversalWindow(
         grassBlockPressure.originSeed, blockPressureNature) == 0u);
     const uint32_t grassBlockPressureFrame =
         MH::Detail::hoennSafariBlockSeed(grassBlockPressure.originSeed);
-    assert(grassBlockPressureFrame == 0x326A4BC1u);
+    assert(grassBlockPressureFrame == 0x06182B34u);
     assert(MH::Detail::hoennSafariBlockProc(grassBlockPressureFrame));
-    assert(MH::Detail::upper16(grassBlockPressureFrame) % 100u == 6u);
+    assert(MH::Detail::upper16(grassBlockPressureFrame) % 100u == 60u);
+    // Pinned MethodH.IsSlotValidHustleVital: -1 successful proc (odd),
+    // -2 level call consumed but overridden, -3 ordinary slot.
     const uint32_t grassBlockProcSeed =
         Gen3PidIv::Detail::prev(grassBlockPressureFrame);
     const uint32_t grassBlockLevelSeed =
         Gen3PidIv::Detail::prev(grassBlockProcSeed);
     const uint32_t grassBlockSlotSeed =
         Gen3PidIv::Detail::prev(grassBlockLevelSeed);
-    assert(MH::Detail::upper16(grassBlockProcSeed) == 50713u);
+    assert(MH::Detail::upper16(grassBlockProcSeed) == 12795u);
     assert((MH::Detail::upper16(grassBlockProcSeed) & 1u) == 1u);
-    assert(MH::Detail::upper16(grassBlockLevelSeed) == 44584u);
-    assert(MH::Detail::upper16(grassBlockSlotSeed) == 47322u);
-    assert(MH::Detail::upper16(grassBlockSlotSeed) % 100u == 22u);
+    assert(MH::Detail::upper16(grassBlockLevelSeed) == 29390u);
+    assert(MH::Detail::upper16(grassBlockSlotSeed) == 433u);
+    assert(MH::Detail::upper16(grassBlockSlotSeed) % 100u == 33u);
 
     bool foundPressureArea = false;
     for (const auto& row : Gen3Safari::kGen3SafariEntries) {
@@ -400,7 +402,7 @@ int main() {
     assert(foundPressureArea);
 
     const auto oddishBlockPressure = MH::analyze(
-        "emerald_gba", 43, 57, 29, 0, 0x813415B7u,
+        "emerald_gba", 43, 57, 29, 0, 0xD5343194u,
         grassBlockPressure);
     assert(oddishBlockPressure.resolution == MH::Resolution::FrameMatched);
     assert(oddishBlockPressure.path ==
@@ -411,10 +413,10 @@ int main() {
     assert(oddishBlockPressure.slot == 1);
     assert(oddishBlockPressure.frameSeed == grassBlockPressureFrame);
 
-    // No Oddish source slot in this area can force level 28. An unsupported
-    // alternative encounter history must remain unresolved, never Invalid.
+    // No matching source slot forces Oddish level 28 in this frame.
+    // Unsupported competing histories remain Unresolved, never Invalid.
     assert(MH::analyze(
-        "emerald_gba", 43, 57, 28, 0, 0x813415B7u,
+        "emerald_gba", 43, 57, 28, 0, 0xD5343194u,
         grassBlockPressure).resolution == MH::Resolution::Unresolved);
 
     // Hoenn Safari-block Static-success is a distinct MethodH context from
