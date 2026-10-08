@@ -10,13 +10,14 @@
 
 namespace Legality::Gen3SafariMethodH {
 
-// This module mirrors the pinned PKHeX Method-H "Regular" path only:
-// - Ruby / Sapphire
+// This module proves only pinned PKHeX Method-H no-lead Safari histories:
+// - Ruby / Sapphire / Emerald
 // - FireRed / LeafGreen
 //
-// Emerald deliberately remains unsupported here because pinned MethodH permits
-// a broader lead-ability search there (Synchronize, Cute Charm,
-// Static/Magnet Pull, Pressure/Hustle/Vital Spirit, etc.).
+// Emerald also permits broader lead-ability histories (Synchronize, Cute Charm,
+// Static/Magnet Pull, Pressure/Hustle/Vital Spirit, etc.). Those alternatives
+// remain unsupported here. A positive match from this module proves a no-lead
+// history only; failure remains Unresolved and says nothing about those leads.
 //
 // Method 3 uses an A_C PID shape: one RNG frame is skipped between the two
 // persisted PID halves. Pinned LeadFinder still passes PIDIV.OriginSeed into
@@ -52,6 +53,7 @@ struct Evidence {
 constexpr bool supportedGame(Gen3Safari::Game game) noexcept {
     return game == Gen3Safari::Game::Ruby ||
            game == Gen3Safari::Game::Sapphire ||
+           game == Gen3Safari::Game::Emerald ||
            game == Gen3Safari::Game::FireRed ||
            game == Gen3Safari::Game::LeafGreen;
 }
@@ -84,8 +86,10 @@ constexpr uint32_t method3Pid(uint32_t seed) noexcept {
     return (third & 0xFFFF0000u) | (first >> 16);
 }
 
-// Mirrors pinned MethodJ.GetReversalWindow, which MethodH reuses for its
-// non-Emerald, non-Unown "Regular" condition.
+// Mirrors pinned MethodJ.GetReversalWindow. For Emerald gendered species,
+// pinned GetReversalWindowCute records NoLead at the first matching-nature PID;
+// that NoLead count is therefore this same reversal window. Cute Charm may
+// extend beyond it, but that separate Emerald lead path stays unresolved here.
 inline uint32_t reversalWindow(uint32_t seed, uint8_t nature) noexcept {
     uint32_t count = 0;
     uint32_t b = upper16(seed);
@@ -240,7 +244,8 @@ inline Evidence analyze(std::string_view exactGameId,
         Detail::reversalWindow(correlation.originSeed, nature);
     const bool hoennSafari =
         game == Gen3Safari::Game::Ruby ||
-        game == Gen3Safari::Game::Sapphire;
+        game == Gen3Safari::Game::Sapphire ||
+        game == Gen3Safari::Game::Emerald;
 
     uint32_t candidateSeed = correlation.originSeed;
     for (uint32_t reverse = 0; reverse <= reverseCount; ++reverse) {
