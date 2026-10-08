@@ -65,6 +65,11 @@ require(gen2_item, "src/UI/Gen2PokemonEditorFoundation.inc",
         "state.itemChoiceIndex = touchTap - 3000;",
         "state.itemScroll.updateVertical(",
         "state.itemScroll.offset()",
+        "TouchPickerViewport itemViewport;",
+        "state.itemViewport.firstRow, maxFirstRow + 1",
+        "state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, Model::columns)",
+        "state.itemViewport.containsSelection(",
+        "const int firstRow = state.itemViewport.firstRow;",
         "appendClippedTouchButton(screen.touchButtons, 3000 + i")
 
 gen3 = read("src/UI/Gen3SharedPokemonSurface.inc")
