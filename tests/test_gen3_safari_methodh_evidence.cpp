@@ -407,6 +407,52 @@ int main() {
         "emerald_gba", 43, 57, 28, 0, 0x6E5390CFu,
         blockCuteCharmFail).resolution == MH::Resolution::Unresolved);
 
+    // The same successful Safari block and Method-1 PID/IV can prove a
+    // DIFFERENT observed level under a failed Synchronize lead. Pinned
+    // IsSlotValidSyncFail requires an ODD -1 proc, -2 ordinary level,
+    // and -3 normal slot. The original pressure-success regression below
+    // proves Oddish level 29 for the same seed via Pressure; this one proves
+    // level 27 via Synchronize-failure with a real slot-1 level-27 row.
+    const auto blockSyncFail = Gen3PidIv::analyze(
+        0xD5343194u, {4,16,19,1,0,13});
+    assert(blockSyncFail.method == Method::Method1);
+    assert(blockSyncFail.originSeed == 0x00010080u);
+    const uint8_t blockSyncNature = static_cast<uint8_t>(
+        MH::Detail::sequentialPid(blockSyncFail.originSeed) % 25u);
+    assert(blockSyncNature == 22u);
+    assert(MH::Detail::reversalWindow(
+        blockSyncFail.originSeed, blockSyncNature) == 0u);
+    assert(MH::Detail::upper16(blockSyncFail.originSeed) == 1u);
+    const uint32_t syncBlockFrame =
+        MH::Detail::hoennSafariBlockSeed(blockSyncFail.originSeed);
+    assert(syncBlockFrame == 0x06182B34u);
+    assert(MH::Detail::hoennSafariBlockProc(syncBlockFrame));
+    const uint32_t syncBlockProc = Gen3PidIv::Detail::prev(syncBlockFrame);
+    const uint32_t syncBlockLevel = Gen3PidIv::Detail::prev(syncBlockProc);
+    const uint32_t syncBlockSlot = Gen3PidIv::Detail::prev(syncBlockLevel);
+    assert(MH::Detail::upper16(syncBlockProc) == 12795u);
+    assert((MH::Detail::upper16(syncBlockProc) & 1u) == 1u);
+    assert(MH::Detail::upper16(syncBlockLevel) == 29390u);
+    assert(MH::Detail::upper16(syncBlockSlot) == 433u);
+    assert(MH::Detail::upper16(syncBlockSlot) % 100u == 33u);
+
+    const auto oddishSyncBlock = MH::analyze(
+        "emerald_gba", 43, 57, 27, 0, 0xD5343194u, blockSyncFail);
+    assert(oddishSyncBlock.resolution == MH::Resolution::FrameMatched);
+    assert(oddishSyncBlock.path ==
+           MH::Path::EmeraldSafariBlockSynchronizeFailed);
+    assert(oddishSyncBlock.requiredBall == Gen3Safari::kSafariBall);
+    assert(oddishSyncBlock.sourceSpecies == 43);
+    assert(oddishSyncBlock.encounterType == 0);
+    assert(oddishSyncBlock.slot == 1);
+    assert(oddishSyncBlock.frameSeed == syncBlockFrame);
+
+    // The same frame has no source-backed Oddish level 28 history, so it
+    // remains Unresolved rather than being called a hard Invalid.
+    assert(MH::analyze(
+        "emerald_gba", 43, 57, 28, 0, 0xD5343194u,
+        blockSyncFail).resolution == MH::Resolution::Unresolved);
+
     // Emerald Safari 300-call nature-block Pressure-success. Oddish slot 1
     // is level 27, but its original EncounterArea3 #182 also has slot 3
     // Oddish level 29. PressureLevel therefore forces 29, overriding -2.
