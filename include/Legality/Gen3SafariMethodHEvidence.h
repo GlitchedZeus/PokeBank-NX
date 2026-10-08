@@ -10,14 +10,15 @@
 
 namespace Legality::Gen3SafariMethodH {
 
-// This module proves only pinned PKHeX Method-H no-lead Safari histories:
-// - Ruby / Sapphire / Emerald
-// - FireRed / LeafGreen
+// This module proves a bounded subset of pinned PKHeX Method-H Safari
+// histories:
+// - no-lead histories for Ruby / Sapphire / Emerald / FireRed / LeafGreen
+// - Synchronize-success histories for Emerald
 //
-// Emerald also permits broader lead-ability histories (Synchronize, Cute Charm,
-// Static/Magnet Pull, Pressure/Hustle/Vital Spirit, etc.). Those alternatives
-// remain unsupported here. A positive match from this module proves a no-lead
-// history only; failure remains Unresolved and says nothing about those leads.
+// Emerald also permits broader lead-ability histories (Synchronize failure,
+// Cute Charm, Static/Magnet Pull, Pressure/Hustle/Vital Spirit, etc.). Those
+// alternatives remain unsupported here. Failure remains Unresolved and says
+// nothing about those histories.
 //
 // Method 3 uses an A_C PID shape: one RNG frame is skipped between the two
 // persisted PID halves. Pinned LeadFinder still passes PIDIV.OriginSeed into
@@ -36,6 +37,7 @@ enum class Path : uint8_t {
     None,
     RegularNature,
     HoennSafariBlock,
+    EmeraldSynchronize,
 };
 
 struct Evidence {
@@ -180,6 +182,23 @@ constexpr CandidateMatch matchCandidate(const Gen3Safari::Entry& row,
     return {};
 }
 
+constexpr CandidateMatch matchEmeraldSynchronize(
+        const Gen3Safari::Entry& row,
+        uint8_t metLevel,
+        uint32_t candidateSeed) noexcept {
+    // Pinned MethodH captures p0 before applying the Hoenn Safari one-call
+    // no-block rewind. Synchronize succeeds when p0's low bit is zero.
+    const uint16_t p0 = upper16(candidateSeed);
+    if ((p0 & 1u) != 0)
+        return {};
+
+    const uint32_t frameSeed = Gen3PidIv::Detail::prev(candidateSeed);
+    if (!frameMatches(row, metLevel, frameSeed))
+        return {};
+
+    return {Path::EmeraldSynchronize, frameSeed};
+}
+
 inline bool sourceSpeciesMatches(std::string_view exactGameId,
                                  uint16_t currentSpecies,
                                  uint8_t currentForm,
@@ -260,8 +279,13 @@ inline Evidence analyze(std::string_view exactGameId,
                     exactGameId, currentSpecies, currentForm, row, evolved))
                 continue;
 
-            const auto match = Detail::matchCandidate(
+            auto match = Detail::matchCandidate(
                 row, metLevel, candidateSeed, nature, hoennSafari);
+            if (match.path == Path::None &&
+                game == Gen3Safari::Game::Emerald) {
+                match = Detail::matchEmeraldSynchronize(
+                    row, metLevel, candidateSeed);
+            }
             if (match.path == Path::None)
                 continue;
 
