@@ -269,6 +269,12 @@ require_all("src/UI/Gen2HardwareWorkspaceFix.inc",
             "startMoveRow == endMoveRow",
             "startProgressionRow == endProgressionRow",
             "if (sameTarget)")
+# Gen II Details/review panels only consume vertical drags. A sideways swipe that crossed
+# touch slop must never become an upward row jump through max(1, abs(dy) / rowH).
+gen2_workspace_touch = read("src/UI/Gen2HardwareWorkspaceFix.inc")
+if gen2_workspace_touch.count(
+    "std::abs(touch.deltaY()) > std::abs(touch.deltaX())") < 2:
+    raise AssertionError("Gen II details/review: both drag paths need vertical direction gating")
 
 gsc_editor = read("src/UI/TrainerViewScreenGSCOverlay.inc")
 require_all("src/UI/TrainerViewScreenGSCOverlay.inc",
