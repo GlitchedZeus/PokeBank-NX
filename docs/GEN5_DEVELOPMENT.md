@@ -56,4 +56,3 @@ and game-id evidence before wiring any save parser/UI path.
 **Not yet a user-facing Gen V feature:** source discovery, provider assignment,
 Product UI routing and a staged editor remain disabled. This reader only accepts
 an already-normalized NDS battery image and cannot write any physical save.
-
