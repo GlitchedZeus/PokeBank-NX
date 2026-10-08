@@ -239,6 +239,36 @@ int main() {
     assert(psyduckPressureFail.slot == 0);
     assert(psyduckPressureFail.frameSeed == pressureFrame);
 
+    // Successful Pressure/Hustle/Vital Spirit proc forces maximum level for
+    // non-grass Safari slots. Pinned EncounterSlot3.PressureLevel returns
+    // LevelMax for Surf/fishing, but grass may use parent-area pressure max.
+    // This Surf vector deliberately differs from both regular RNG level (25)
+    // and the shifted failed-proc level (26); only success forces level 30.
+    const auto emeraldPressureSuccess = Gen3PidIv::analyze(
+        0xB9BC7402u, {4,3,8,22,31,9});
+    assert(emeraldPressureSuccess.method == Method::Method1);
+    assert(emeraldPressureSuccess.originSeed == 0x00014661u);
+    const uint32_t pressureSuccessBlock =
+        MH::Detail::hoennSafariBlockSeed(emeraldPressureSuccess.originSeed);
+    assert(!MH::Detail::hoennSafariBlockProc(pressureSuccessBlock));
+    assert((MH::Detail::upper16(pressureSuccessBlock) % 100u) == 98u);
+    const uint32_t pressureSuccessFrame =
+        Gen3PidIv::Detail::prev(emeraldPressureSuccess.originSeed);
+    const uint32_t pressureSuccessProcSeed =
+        Gen3PidIv::Detail::prev(pressureSuccessFrame);
+    assert((MH::Detail::upper16(pressureSuccessProcSeed) & 1u) == 1u);
+
+    const auto psyduckPressureSuccess = MH::analyze(
+        "emerald_gba", 54, 57, 30, 0, 0xB9BC7402u,
+        emeraldPressureSuccess);
+    assert(psyduckPressureSuccess.resolution == MH::Resolution::FrameMatched);
+    assert(psyduckPressureSuccess.path == MH::Path::EmeraldPressureHustleSuccess);
+    assert(psyduckPressureSuccess.requiredBall == Gen3Safari::kSafariBall);
+    assert(psyduckPressureSuccess.sourceSpecies == 54);
+    assert(psyduckPressureSuccess.encounterType == 1); // Surf, not Grass.
+    assert(psyduckPressureSuccess.slot == 0);
+    assert(psyduckPressureSuccess.frameSeed == pressureSuccessFrame);
+
     // The same PID/IV frame is not an FR/LG or Ruby source: these remain
     // unresolved, not hard-invalid.
     assert(MH::analyze(
