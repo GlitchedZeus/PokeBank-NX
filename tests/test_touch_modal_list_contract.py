@@ -39,10 +39,16 @@ require(base, "src/UI/TrainerViewScreenBase.inc",
         "details.legalityScroll",
         "details.ribbonScroll")
 release_hit = base[base.index("int TrainerViewScreen::touchedButtonId"):
-                   base.index("int TrainerViewScreen::touchedButtonId") + 700]
-assert "touch.x()" in release_hit and "touch.y()" in release_hit
-assert "startX()" not in release_hit and "startY()" not in release_hit, \
-    "release activation must use release coordinates so release-outside cancels"
+                   base.index("int TrainerViewScreen::touchedButtonId") + 900]
+# The contact AND release must be on the same hit rectangle; a sub-slop movement
+# from an adjacent row must never activate a new editor or confirmation target.
+for coordinate in ("touch.startX()", "touch.startY()", "touch.x()", "touch.y()"):
+    assert coordinate in release_hit, (
+        f"shared editor target activation is missing same-target coordinate: {coordinate}"
+    )
+assert release_hit.index("touch.startX()") < release_hit.index("touch.x()"), (
+    "editor touch hit-testing must check contact as well as release"
+)
 
 
 picker_contract = read("include/UI/InventoryUIContract.h")
