@@ -112,6 +112,19 @@ require(gen2_details, "src/UI/Modals/Gen2PokemonDetailsModal.cpp",
         "screen.details.leftScrollMax = nativeMax;",
         "std::clamp(nativeScroll, 0, nativeMax)")
 
+# Modern/classic Items must never turn an empty pouch swipe into item -1 or
+# change selection when a drag began on a different pane.
+items_handler = base[base.index("// Only vertical drags that START on a displayed item"):
+                     base.index("// Only vertical drags that START on a displayed item") + 1900]
+for token in (
+    "if (totalItems > 0 && touch.justReleased() && touch.dragged())",
+    "std::abs(dy) > std::abs(touch.deltaX())",
+    "touch.startX() >= hit.x",
+    "touch.startY() >= hit.y",
+    "if (startedOnItem)",
+):
+    assert token in items_handler, f"Items: missing safe gesture guard: {token}"
+
 backup = read("src/UI/BackupSelectionScreen.cpp")
 require(backup, "src/UI/BackupSelectionScreen.cpp",
         "backupScroll.updateVertical(",
