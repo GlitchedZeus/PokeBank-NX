@@ -100,7 +100,7 @@ bool focusUnifiedTouchPoint(TrainerViewScreen& screen, int px, int py, bool acti
             if (activate) down |= HidNpadButton_A;
             return true;
         }
-        return true;
+        return false;
     }
     if (unified.progressionEditor) {
         constexpr int x = 320, y = 168, w = 640;
@@ -111,7 +111,7 @@ bool focusUnifiedTouchPoint(TrainerViewScreen& screen, int px, int py, bool acti
             if (activate) down |= HidNpadButton_A;
             return true;
         }
-        return true;
+        return false;
     }
     if (state.itemPicker || state.confirmExit || pickerStateFor(screen).model.active()) return false;
 
@@ -196,8 +196,50 @@ void handleUnifiedTouch(TrainerViewScreen& screen, const TouchInput& touch, uint
         return;
     }
 
-    if (touch.justTapped())
-        focusUnifiedTouchPoint(screen, touch.startX(), touch.startY(), true, down);
+    if (touch.justTapped()) {
+        // Resolve both contact and release using the SAME visible geometry. Calling the passive
+        // focus resolver for each point avoids duplicating any of the Details/Stats/Moves hitboxes.
+        // Restore state between probes: a Details focus change itself scrolls that panel.
+        const auto savedFocus = unified.focus;
+        const auto savedDetailsFocus = unified.detailsFocus;
+        const auto savedMoveRow = unified.moveEditorRow;
+        const auto savedProgressionRow = unified.progressionRow;
+
+        const bool started = focusUnifiedTouchPoint(
+            screen, touch.startX(), touch.startY(), false, down);
+        const auto startFocus = unified.focus;
+        const auto startMoveRow = unified.moveEditorRow;
+        const auto startProgressionRow = unified.progressionRow;
+
+        unified.focus = savedFocus;
+        unified.detailsFocus = savedDetailsFocus;
+        unified.moveEditorRow = savedMoveRow;
+        unified.progressionRow = savedProgressionRow;
+
+        const bool ended = focusUnifiedTouchPoint(screen, touch.x(), touch.y(), false, down);
+        const auto endFocus = unified.focus;
+        const auto endMoveRow = unified.moveEditorRow;
+        const auto endProgressionRow = unified.progressionRow;
+
+        unified.focus = savedFocus;
+        unified.detailsFocus = savedDetailsFocus;
+        unified.moveEditorRow = savedMoveRow;
+        unified.progressionRow = savedProgressionRow;
+
+        bool sameTarget = started && ended;
+        if (unified.moveEditor) {
+            sameTarget = sameTarget && startMoveRow == endMoveRow;
+        } else if (unified.progressionEditor) {
+            sameTarget = sameTarget && startProgressionRow == endProgressionRow;
+        } else {
+            sameTarget = sameTarget &&
+                         startFocus.panel == endFocus.panel &&
+                         startFocus.row == endFocus.row &&
+                         startFocus.column == endFocus.column;
+        }
+        if (sameTarget)
+            focusUnifiedTouchPoint(screen, touch.startX(), touch.startY(), true, down);
+    }
 }
 
 void handleParityTouch(TrainerViewScreen& screen, const TouchInput& touch, uint64_t& down) {
