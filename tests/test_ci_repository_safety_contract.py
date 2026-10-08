@@ -50,7 +50,7 @@ if not re.search(r"(?m)^\s*pull_request:\s*$", trigger_block):
 # Check PR-only event settings, not unrelated push-branch filters. The mandatory
 # native gate stays UNFILTERED for every PR even when exact-head touch-branch pushes
 # are enabled to validate unmerged commits.
-pr_event = re.search(r"(?m)^  pull_request:\s*$", trigger_block)
+pr_event = re.search(r"(?m)^  pull_request:[ \t]*$", trigger_block)
 if not pr_event:
     fail("AUDIT-002: native PR gate is missing a top-level pull_request event")
 following_events = trigger_block[pr_event.end():]
