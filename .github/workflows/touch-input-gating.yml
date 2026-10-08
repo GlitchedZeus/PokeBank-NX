@@ -8,12 +8,16 @@ on:
       - 'include/UI/**'
       - 'src/UI/**'
       - 'tests/test_touch_*.py'
+      - 'tests/test_touch_*.cpp'
+      - 'tests/touch_fakes/**'
       - '.github/workflows/touch-input-gating.yml'
   pull_request:
     paths:
       - 'include/UI/**'
       - 'src/UI/**'
       - 'tests/test_touch_*.py'
+      - 'tests/test_touch_*.cpp'
+      - 'tests/touch_fakes/**'
       - '.github/workflows/touch-input-gating.yml'
   workflow_dispatch:
 
