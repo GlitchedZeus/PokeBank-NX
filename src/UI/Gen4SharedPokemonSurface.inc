@@ -1636,10 +1636,16 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     const int count = static_cast<int>(state.pickerValues.size());
 
     if (heldItems) {
-        const int pages = (count + HeldItemGrid::pageSize - 1) / HeldItemGrid::pageSize;
+        // Touch can show rows beyond the selected cell without moving the controller cursor.
+        // Report the actual visible range, not the selection's (potentially stale) page number.
+        state.pickerViewport.ensure(state.pickerRow, count,
+                                   HeldItemGrid::rows, HeldItemGrid::columns);
+        const int firstVisibleItem = state.pickerViewport.firstRow * HeldItemGrid::columns + 1;
+        const int lastVisibleItem = std::min(
+            count, (state.pickerViewport.firstRow + HeldItemGrid::rows) * HeldItemGrid::columns);
         fb.drawText(x + 28, y + 55,
-                    "Page " + std::to_string(state.pickerRow / HeldItemGrid::pageSize + 1) +
-                        " / " + std::to_string(pages),
+                    "Showing " + std::to_string(firstVisibleItem) + "-" +
+                        std::to_string(lastVisibleItem) + " / " + std::to_string(count),
                     Colors::TextDim, TextStyle::Caption);
         const int gridX = x + 22;
         const int gridY = y + 90;
