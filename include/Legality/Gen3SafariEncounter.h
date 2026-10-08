@@ -64,6 +64,9 @@ struct Entry {
     uint8_t staticIndex;
     uint8_t staticCount;
     uint8_t game;
+    // Original BinLinker encounter-area index. Area identity is not location:
+    // one Safari location can contain separate grass/rod/region areas.
+    uint16_t areaIndex;
 };
 
 #include "Legality/Gen3SafariEncounterData.inc"

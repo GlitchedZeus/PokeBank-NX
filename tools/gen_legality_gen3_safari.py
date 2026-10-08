@@ -73,6 +73,7 @@ def parse_game(path: str, game_index: int, safari_location: int):
                 area[offset + 8],  # Static index
                 area[offset + 9],  # Static count
                 game_index,
+                area_index,  # original EncounterArea3 group (BinLinker index)
             ))
     return rows
 
@@ -83,7 +84,7 @@ def main() -> int:
         rows.extend(parse_game(path, game_index, safari_location))
     rows.sort(key=lambda row: (
         row[12], row[1], row[0], row[4], row[6], row[2], row[3], row[5],
-        row[7], row[8], row[9], row[10], row[11]
+        row[7], row[8], row[9], row[10], row[11], row[13]
     ))
 
     lines = [
@@ -91,6 +92,8 @@ def main() -> int:
         "// Source: PKHeX @ %s" % pkhex_source._REF,
         "// Resources: encounter_r/s/e/fr/lg.pkl (BinLinker Gen III wild slots).",
         "// Distilled rows are only PKHeX Safari locations: R/S/E=57, FR/LG=136.",
+        "// Area index is the original BinLinker EncounterArea3 group; required for",
+        "// same-species grass PressureLevel (Parent.GetPressureMax).",
         "inline constexpr Entry kGen3SafariEntries[] = {",
     ]
     for row in rows:

@@ -269,6 +269,48 @@ int main() {
     assert(psyduckPressureSuccess.slot == 0);
     assert(psyduckPressureSuccess.frameSeed == pressureSuccessFrame);
 
+    // Area-aware grass Pressure success: Emerald Oddish grass slot 1 has
+    // LevelMax=27 in area 182, but the *same area* has another Oddish slot
+    // reaching 29. Pinned EncounterArea3.GetPressureMax therefore forces 29.
+    // Distinct areas sharing Safari location 57 must NOT be collapsed together.
+    const Gen3Safari::Entry* area180Oddish = nullptr;
+    const Gen3Safari::Entry* area182Oddish = nullptr;
+    for (const auto& row : Gen3Safari::kGen3SafariEntries) {
+        if (row.game != static_cast<uint8_t>(Gen3Safari::Game::Emerald) ||
+            row.species != 43 || row.method != 0)
+            continue;
+        if (row.areaIndex == 180 && row.slot == 0)
+            area180Oddish = &row;
+        if (row.areaIndex == 182 && row.slot == 1)
+            area182Oddish = &row;
+    }
+    assert(area180Oddish != nullptr && area182Oddish != nullptr);
+    assert(area180Oddish->maxLevel == 25);
+    assert(MH::Detail::grassPressureLevel(*area180Oddish) == 27);
+    assert(area182Oddish->maxLevel == 27);
+    assert(MH::Detail::grassPressureLevel(*area182Oddish) == 29);
+
+    // Reuse an independently proven PID/IV seed, now for a distinct grass
+    // encounter source: the -3 RNG slot resolves to Oddish slot 1 while
+    // the -1 Pressure proc succeeds. Ordinary slot level is 27; grass-area
+    // Pressure raises it to 29, unlike the non-grass slot-level path.
+    const auto oddishGrassPressure = MH::analyze(
+        "emerald_gba", 43, 57, 29, 0, 0xB9BC7402u,
+        emeraldPressureSuccess);
+    assert(oddishGrassPressure.resolution == MH::Resolution::FrameMatched);
+    assert(oddishGrassPressure.path == MH::Path::EmeraldPressureHustleSuccess);
+    assert(oddishGrassPressure.requiredBall == Gen3Safari::kSafariBall);
+    assert(oddishGrassPressure.encounterType == 0);
+    assert(oddishGrassPressure.slot == 1);
+    assert(oddishGrassPressure.sourceSpecies == 43);
+    assert(oddishGrassPressure.frameSeed == pressureSuccessFrame);
+
+    // An intermediate level 28 cannot be explained by the same successful
+    // proc, nor can another encounter area be borrowed to invent that level.
+    assert(MH::analyze(
+        "emerald_gba", 43, 57, 28, 0, 0xB9BC7402u,
+        emeraldPressureSuccess).resolution == MH::Resolution::Unresolved);
+
     // The same PID/IV frame is not an FR/LG or Ruby source: these remain
     // unresolved, not hard-invalid.
     assert(MH::analyze(

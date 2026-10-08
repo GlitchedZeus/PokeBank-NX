@@ -18,9 +18,10 @@ namespace Legality::Gen3SafariMethodH {
 // Emerald also permits broader lead-ability histories. Only an isolated
 // Synchronize-failure and Cute Charm-failure positive paths with proven
 // no-block framing are added here. A bounded Pressure/Hustle/Vital Spirit
-// failed-proc (lowered-level) and positive Pressure-family proc for non-grass
-// encounters are also reconstructed. Grass-area Pressure and other Cute
-// Charm, Static/Magnet Pull and lead histories remain unsupported/Unresolved.
+// failed-proc (lowered-level) and positive Pressure-family proc for Safari
+// encounters are reconstructed. Grass-area Pressure uses original per-area
+// species grouping; Cute Charm success, Static/Magnet Pull and other lead
+// histories remain unsupported/Unresolved.
 //
 // Method 3 uses an A_C PID shape: one RNG frame is skipped between the two
 // persisted PID halves. Pinned LeadFinder still passes PIDIV.OriginSeed into
@@ -327,6 +328,21 @@ constexpr CandidateMatch matchEmeraldPressureHustleFail(
     return {Path::EmeraldPressureHustleFailed, frameSeed};
 }
 
+// Mirrors pinned EncounterArea3.GetPressureMax: for grass, check every slot
+// within the SAME EncounterArea3, restricting to the same original species.
+// Location alone is insufficient because multiple areas share Safari location.
+constexpr uint8_t grassPressureLevel(const Gen3Safari::Entry& row) noexcept {
+    uint8_t highest = row.maxLevel;
+    for (const auto& other : Gen3Safari::kGen3SafariEntries) {
+        if (other.game != row.game || other.areaIndex != row.areaIndex ||
+            other.species != row.species)
+            continue;
+        if (other.maxLevel > highest)
+            highest = other.maxLevel;
+    }
+    return highest;
+}
+
 constexpr CandidateMatch matchEmeraldPressureHustleSuccess(
         const Gen3Safari::Entry& row,
         uint8_t metLevel,
@@ -334,15 +350,17 @@ constexpr CandidateMatch matchEmeraldPressureHustleSuccess(
         uint8_t nature) noexcept {
     // Pinned MethodH.IsSlotValidHustleVital uses a successful proc at -1,
     // ignores the random level at -2, and forces EncounterSlot3.PressureLevel.
-    // For non-grass encounter types PressureLevel is exactly row.maxLevel;
-    // grass uses Parent.GetPressureMax(species, maxLevel), whose full area
-    // context is not carried by this table, so keep grass unresolved.
+    // For non-grass PressureLevel is row.maxLevel; grass instead uses pinned
+    // Parent.GetPressureMax(species, maxLevel) over the original area group.
     const uint16_t p0 = upper16(candidateSeed);
     if ((p0 % 25u) != nature || (p0 & 1u) == 0u ||
         hoennSafariBlockProc(hoennSafariBlockSeed(candidateSeed)))
         return {};
-    if (row.method == 0 || row.method > 5 ||
-        row.maxLevel < row.minLevel || metLevel != row.maxLevel)
+    if (row.method > 5 || row.maxLevel < row.minLevel)
+        return {};
+    const uint8_t pressureLevel = row.method == 0
+        ? grassPressureLevel(row) : row.maxLevel;
+    if (metLevel != pressureLevel)
         return {};
     const uint32_t frameSeed = Gen3PidIv::Detail::prev(candidateSeed);
     const uint32_t procSeed = Gen3PidIv::Detail::prev(frameSeed);
@@ -432,7 +450,9 @@ inline Evidence analyze(std::string_view exactGameId,
         for (const Gen3Safari::Entry& row : Gen3Safari::kGen3SafariEntries) {
             if (row.game != static_cast<uint8_t>(game) ||
                 row.location != metLocation ||
-                metLevel < row.minLevel || metLevel > row.maxLevel)
+                metLevel < row.minLevel ||
+                (metLevel > row.maxLevel &&
+                 !(game == Gen3Safari::Game::Emerald && row.method == 0)))
                 continue;
 
             bool evolved = false;
