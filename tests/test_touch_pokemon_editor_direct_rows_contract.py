@@ -78,7 +78,7 @@ require(gen3, "src/UI/Gen3SharedPokemonSurface.inc",
         "touchDown >= 4000 && touchDown < 4000 + count",
         "touchTap >= 4000 && touchTap < 4000 + count",
         "state.pickerRow = touchTap - 4000;",
-        "screen.touchButtons.push_back({4000 + i",
+        "appendClippedTouchButton(screen.touchButtons, 4000 + i",
         "screen.touchButtons.push_back({31500 + speciesStart + i",
         "actionDown >= 31600 && actionDown < 31600 + static_cast<int>(actions.count)",
         "actionTap >= 31600 && actionTap < 31600 + static_cast<int>(actions.count)",
@@ -111,7 +111,7 @@ require(gen4, "src/UI/Gen4SharedPokemonSurface.inc",
         "touchDown >= 6000 && touchDown < 6000 + count",
         "touchTap >= 6000 && touchTap < 6000 + count",
         "state.pickerRow = touchTap - 6000;",
-        "screen.touchButtons.push_back({6000 + i",
+        "appendClippedTouchButton(screen.touchButtons, 6000 + i",
         "screen.touchButtons.push_back({41000 + row",
         "screen.touchButtons.push_back({41100 + row",
         "screen.touchButtons.push_back({41120 + row",
@@ -121,6 +121,27 @@ require(gen4, "src/UI/Gen4SharedPokemonSurface.inc",
         "screen.touchButtons.push_back({41600 + static_cast<int>(i)",
         "const auto detailVisual = liveVerticalListVisual(",
         "state.pickerScroll.updateVertical(")
+
+
+# Shared picker clipping must trim touch hitboxes to the same actual viewport
+# used by framebuffer drawing, preventing hidden rows from becoming tappable.
+chrome = read("include/UI/ScreenChrome.h")
+require(chrome, "include/UI/ScreenChrome.h",
+        "inline void appendClippedTouchButton(",
+        "const int left = std::max(x, clipX);",
+        "const int top = std::max(y, clipY);",
+        "const int right = std::min(x + w, clipX + clipW);",
+        "const int bottom = std::min(y + h, clipY + clipH);")
+for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurface.inc"):
+    src = read(rel)
+    if src.count("appendClippedTouchButton(screen.touchButtons,") < 3:
+        raise AssertionError(f"{rel}: picker move/item/value touch targets must be clipped")
+    for expected in (
+        "x + 24, viewportTop, w - 48, visible * moveLayout.rowStep",
+        "gridX, gridY - 3, w - 44, HeldItemGrid::rows * cellHeight",
+        "x + 22, viewportTop - 4, w - 44, visible * rowStep",
+    ):
+        assert expected in src, f"{rel}: picker hitbox viewport mismatch: {expected}"
 
 
 # Fixed action/move dialogs are fully visible. They should remain direct-tap/controller surfaces,
