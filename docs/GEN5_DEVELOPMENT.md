@@ -177,3 +177,17 @@ Source preference remains API-only until a safe UI flow exists.
   profile isolation, wrong families, and changed source invalidation.
 - This adapter is not yet wired to the current production Games menu,
   and it cannot grant original-source write/inject capability.
+
+### Phase B tranche 5 — exact-game, profile-scoped Save Instances catalog
+
+- `Gen5GameSourceCatalog` produces provider-neutral rows only from strictly
+  discovered, read-only Gen V sources matching the selected exact title.
+- Physical deduplication occurs **before** persisted profile claims are
+  applied, preventing an unassigned alias of another profile's physical
+  file from leaking into the list.
+- Unassigned validated sources can appear as explicit assignable choices.
+  A source assigned to another profile is hidden, not silently reassigned.
+- Existing sort-newest/recency and remembered-preference semantics are
+  reused from the Gen I–IV SaveInstance model.
+- The catalog is an API/view-model foundation; it is not connected to
+  the Games screen and cannot open an assigned source on its own.

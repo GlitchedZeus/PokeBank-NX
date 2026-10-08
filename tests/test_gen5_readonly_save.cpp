@@ -2,6 +2,7 @@
 #include "Integration/Gen5/Gen5SaveInstanceAdapter.h"
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
 #include "Integration/Gen5/Gen5AssignedSource.h"
+#include "Integration/Gen5/Gen5GameSourceCatalog.h"
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Games/GameIdentity.h"
@@ -159,6 +160,31 @@ void discoveryContracts() {
     assert(wrapped.ready() && wrapped.gameId=="white_nds");
     assert(wrapped.containerType=="dsv-footer");
     assert(G::reopenValidatedSource(wrapped).ready());
+    assert(bindings.assignFileAndSave(wrapped.sourceIdentity,
+        {"other-profile","white_nds",dsv,"DraStic","BW"}));
+    auto samePhysical=probe;
+    samePhysical.sourceIdentity="alias-from-same-physical-file";
+    std::array<PokeVault::Source::SaveInstance,4> found{
+        samePhysical,probe,wrapped,G::inspectSourceFile(state,"DraStic")
+    };
+    const auto blackRows=G::forGameAndProfile(found,bindings,"profile-one","black_nds");
+    assert(blackRows.validQuery && blackRows.rows.size()==1);
+    assert(blackRows.rows[0].rememberedSource);
+    assert(blackRows.rows[0].sourceAliases.size()==1);
+    assert(blackRows.rows[0].sourceAliases[0]==probe.sourceIdentity);
+    assert(blackRows.rows[0].claimedProfile=="profile-one");
+    assert(blackRows.rows[0].mostRecentlyModified);
+    const auto cannotSeeBlack=G::forGameAndProfile(found,bindings,"other-profile","black_nds");
+    assert(cannotSeeBlack.rows.empty());
+    assert(cannotSeeBlack.ownedByOtherProfile==1);
+    const auto cannotSeeWhite=G::forGameAndProfile(found,bindings,"profile-one","white_nds");
+    assert(cannotSeeWhite.rows.empty());
+    assert(cannotSeeWhite.ownedByOtherProfile==1);
+    const auto whiteRows=G::forGameAndProfile(found,bindings,"other-profile","white_nds");
+    assert(whiteRows.validQuery && whiteRows.rows.size()==1);
+    assert(whiteRows.rows[0].rememberedSource);
+    assert(whiteRows.rows[0].gameId=="white_nds");
+    assert(!G::forGameAndProfile(found,bindings,"profile-one","platinum_nds").validQuery);
     const auto stateRow=G::inspectSourceFile(state,"DraStic");
     assert(!stateRow.ready() && stateRow.kind==PokeVault::Source::SaveInstanceKind::SaveState);
     const auto original=G::inspectSourceFile(white,"melonDS");
@@ -221,6 +247,7 @@ void discoveryContracts() {
     fileFixture(dsv,malformed);
     assert(!G::inspectSourceFile(dsv,"DraStic").ready());
 
+    assert(std::remove((database+".bak").c_str())==0);
     assert(std::remove(database.c_str())==0);
     assert(std::remove(badDatabase.c_str())==0);
     assert(std::remove(black.c_str())==0);
