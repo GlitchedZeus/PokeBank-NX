@@ -238,6 +238,7 @@ require_all("include/UI/TouchScroll.h",
             "struct TouchPickerViewport",
             "void ensure(int selected, int count, int visibleRows, int columns = 1)",
             "void reveal(int selected, int count, int visibleRows, int columns = 1)",
+            "bool containsSelection(int selected, int count, int visibleRows,",
             "firstRow = std::clamp(firstRow, 0, maximum);")
 for rel in ("src/UI/Gen3SharedPokemonSurface.inc",
             "src/UI/Gen4SharedPokemonSurface.inc"):
@@ -253,6 +254,9 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc",
         "const int firstVisibleItem = state.pickerViewport.firstRow * HeldItemGrid::columns + 1;",
         "const int lastVisibleItem = std::min(",
         "if (maxFirstRow == 0)",
+        "state.pickerViewport.containsSelection(",
+        "state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);",
+        "Focused choice brought into view; press A again or tap a visible row",
     ):
         if token not in source:
             raise AssertionError(f"{rel}: picker viewport/selection ownership regressed: {token}")
