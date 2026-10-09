@@ -185,6 +185,26 @@ int main() {
         true, makeRow(8, 6, 7, 18, 25), 18,
         bccNo31Seed, bccNo31Pid, 18).matched());
 
+    // Method K BCC mixed Synchronize one-reroll path: original Sync proc
+    // succeeds, its attempt lacks any 31 IV; persisted attempt fails Sync.
+    // Pinned source allows the original locked nature 20 and final nature 0
+    // to differ because the final Synchronize proc fails.
+    constexpr uint32_t mixedSeed = 0x00000572u;
+    constexpr uint32_t mixedPid = 0xC2EB29D7u;
+    constexpr uint64_t mixedRow = makeRow(8, 3, 7, 18, 50);
+    constexpr auto mixed = matchIndexedRow(
+        true, mixedRow, 0, 18, mixedSeed, mixedPid, 9);
+    static_assert(mixed.has(Path::SynchronizeMixedSuccessThenFailure));
+    static_assert(!matchIndexedRow(
+        true, makeRow(8, 3, 7, 18, 50), 0, 18,
+        mixedSeed, mixedPid, 10).has(Path::SynchronizeMixedSuccessThenFailure));
+    static_assert(!matchIndexedRow(
+        false, mixedRow, 0, 18, mixedSeed, mixedPid, 9)
+        .has(Path::SynchronizeMixedSuccessThenFailure));
+    static_assert(!matchIndexedRow(
+        true, makeRow(8, 3, 7, 18, 0), 0, 18,
+        mixedSeed, mixedPid, 9).has(Path::SynchronizeMixedSuccessThenFailure));
+
     constexpr uint64_t safari = makeRow(10, 0, 15, 15, 6);
     static_assert(!matchIndexedRow(
         true, safari, 0, 15,

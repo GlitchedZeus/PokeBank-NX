@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Legality/Gen4BugContestSynchronizeFailureEvidence.h"
+#include "Legality/Gen4BugContestMixedSyncEvidence.h"
 #include "Legality/Gen4PressureLeadEvidence.h"
 #include "Legality/Gen4StaticMagnetLeadEvidence.h"
 
@@ -20,6 +21,7 @@ enum class Path : uint16_t {
     PressureFailure = 1u << 5,
     StaticMagnetFailure = 1u << 6,
     IntimidateContinue = 1u << 7,
+    SynchronizeMixedSuccessThenFailure = 1u << 8,
 };
 
 struct Result {
@@ -84,6 +86,14 @@ constexpr Result matchIndexedRow(bool hgss, uint64_t row,
         (hgss && Gen4BugContestSynchronizeFailure::match(
             row, prePidSeed, pid, metLevel).matched()))
         result.add(Path::SynchronizeFailure);
+
+    // Pinned Method K RecurseReject: first attempt successful Sync, but
+    // rejected for lacking 31 IV; retained attempt fails Sync and rolls its
+    // nature independently. Proof is positive-only and distinct from the
+    // existing all-failed Synchronize bit.
+    if (hgss && Gen4BugContestMixedSync::matchSuccessThenFailure(
+            row, prePidSeed, pid, metLevel).matched())
+        result.add(Path::SynchronizeMixedSuccessThenFailure);
 
     if (Gen4LeadFailure::matchRow(
             hgss, row, prePidSeed, pid, metLevel,
@@ -168,6 +178,8 @@ constexpr const char* pathName(Path path) noexcept {
         case Path::StaticMagnetFailure: return "Static/Magnet Pull fail";
         case Path::IntimidateContinue:
             return "Intimidate/Keen Eye encounter-continues";
+        case Path::SynchronizeMixedSuccessThenFailure:
+            return "Synchronize success then failure (BCC reroll)";
         case Path::None: break;
     }
     return "No extended lead-history evidence";
