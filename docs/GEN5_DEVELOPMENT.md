@@ -320,3 +320,32 @@ Source preference remains API-only until a safe UI flow exists.
   behind an app-owned explicit Keep/Discard draft.
 - This is a backend model; the production modal remains gated until its
   hardware-integrated UX receives further validation.
+
+
+### 2026-10-09 — production read-only Trainer/Party/Boxes integration
+
+- The existing Product Games card now permits **A to open the assigned Black,
+  White, Black 2 or White 2 source** only after the current exact-title profile
+  assignment passes strict reopening. UIManager reopens and validates the same
+  assignment again immediately before constructing the Trainer adapter.
+- The existing shared TrainerViewScreen renders Gen V party, 24 x 30 PC boxes,
+  validated trainer identity and passive Pokemon details. No separate UI app,
+  source SAV writer, or direct PK5 mutator was added.
+- Gen5SharedReadOnlySurface intercepts **every** input frame ahead of inherited
+  edit, Storage/Bank, Items, trainer mutation and save handlers. Supported:
+  D-pad/left stick navigation, A passive View, X Party/Boxes, Y Trainer,
+  L/R box changes, B passive close/return. Touch and all other input are inert
+  for this guarded preliminary surface.
+- This is **read-only production browsing**, NOT the complete Gen V shared
+  View/Edit/Create interface. Nature/Friendship/IV/EV transactions remain
+  backend-only. Additional fields, Save/Inject, emulator launch, Inventory,
+  game writes, Bank transfer, and source writes stay disabled.
+- Native slot-address checks reject unknown region discriminants, out-of-range
+  boxes, and party references with nonzero box identities before staging or
+  opening a shared draft.
+- Focused CI now includes a production UI routing/guard contract; exact-head
+  host/sanitizer/native CI and independent hardware validation must still pass.
+  No automatic hardware acceptance is inferred from a successful build.
+
+**DEVICE_ACCEPTED=false.** Do not merge this draft PR or hand out a test NRO
+until the exact-head native/host gates pass and the owner authorizes testing.
