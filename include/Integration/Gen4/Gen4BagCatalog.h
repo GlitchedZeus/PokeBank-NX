@@ -35,11 +35,11 @@ namespace PokeVault::Integration::Gen4 {
             if(dp)return id>=428 && id<=464;
             if(pt)return id>=428 && id<=467;
             if(hgss) {
-                constexpr std::array<uint16_t,39> keys{{
+                constexpr std::array<uint16_t,38> keys{{
                     434,435,437,444,445,446,447,450,456,464,465,466,
                     468,469,470,471,472,473,474,475,476,477,478,479,
                     480,481,482,483,484,501,502,503,504,532,533,534,
-                    535,536,0
+                    535,536
                 }};
                 for(const auto key:keys)if(key==id)return true;
             }
