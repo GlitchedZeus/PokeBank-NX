@@ -5,6 +5,7 @@
 #include "UI/Gen1PokemonEditorUX3Contract.h"
 #include "UI/NavigationRepeat.h"
 #include "UI/MovePickerPresentation.h"
+#include "UI/MovePickerRowUI.h"
 
 namespace UI::Gen1PokemonEditor {
 namespace {
@@ -504,9 +505,8 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         const int rowY = y + 86 + i * 42;
         const bool selected = idx == selectedIndex;
         if (selected) fb.drawSelectionHighlight(x + 24, rowY, w - 48, 38);
-        const auto text = MoveUI::rowLabel(
-            static_cast<uint16_t>(move), Enums::GameVersion::RBY);
-        fb.drawText(x + 40, rowY + 8, text, Colors::Text);
+        MovePickerRowUI::draw(fb,x+40,rowY+4,
+                              static_cast<uint16_t>(move),Enums::GameVersion::RBY);
     }
 }
 
