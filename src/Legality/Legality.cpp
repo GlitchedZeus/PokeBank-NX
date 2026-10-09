@@ -14,6 +14,7 @@
 #include "Integration/Gen2/Gen2MoveCompatibility.h"
 #include "Integration/Gen4/Gen4MoveCompatibility.h"
 #include "Legality/Gen4WildEncounter.h"
+#include "Legality/Gen4SpecialBallEvidence.h"
 #include "Legality/Gen4StaticEncounter.h"
 #include "Legality/Gen4TradeEvidence.h"
 #include "Legality/Gen1CatchRateEvidence.h"
@@ -1423,6 +1424,23 @@ namespace Legality {
                         add(r, Severity::Info,
                             "Met data matches an audited Generation IV wild encounter slot for the stored origin game",
                             CheckIdentifier::Encounter);
+                        // Pinned Gen IV encounter-specific Ball evidence is
+                        // POSITIVE ONLY. Unknown/evolved/transferred origins or
+                        // ball mismatches must not be promoted to hard Invalid.
+                        const auto ballAffinity =
+                            Gen4SpecialBallEvidence::analyzeSupported(
+                                gen4EncounterGameId, species,
+                                pk.metLocation(), pk.metLevel(),
+                                pk.form(), pk.ball());
+                        if (ballAffinity == Gen4SpecialBallEvidence::Affinity::Sport) {
+                            add(r, Severity::Info,
+                                "Sport Ball has a compatible HeartGold/SoulSilver Bug-Catching Contest source; other provenance remains incomplete",
+                                CheckIdentifier::Items);
+                        } else if (ballAffinity == Gen4SpecialBallEvidence::Affinity::Safari) {
+                            add(r, Severity::Info,
+                                "Safari Ball has a compatible HeartGold/SoulSilver Safari Zone encounter source; other provenance remains incomplete",
+                                CheckIdentifier::Items);
+                        }
                     } else if (directGen4StaticRow != nullptr) {
                         add(r, Severity::Info,
                             "Met data matches an audited Generation IV static/gift encounter for the stored origin game",
