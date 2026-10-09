@@ -3330,7 +3330,9 @@ namespace UI {
                 const auto reportViewport =
                     Modals::reportScrollViewport(1280, 720, 820);
                 if (touch.justReleased() && touch.dragged() &&
-                    reportViewport.contains(touch.startX(), touch.startY())) {
+                    reportViewport.contains(touch.startX(), touch.startY()) &&
+                    std::abs(touch.deltaY()) >= 24 &&
+                    std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
                     const int dy = touch.deltaY();
                     const int steps = std::max(
                         1, std::abs(dy) / Modals::ReportScrollViewport::RowHeight);
@@ -3350,7 +3352,9 @@ namespace UI {
                 const auto reportViewport =
                     Modals::reportScrollViewport(1280, 720, 860);
                 if (touch.justReleased() && touch.dragged() &&
-                    reportViewport.contains(touch.startX(), touch.startY())) {
+                    reportViewport.contains(touch.startX(), touch.startY()) &&
+                    std::abs(touch.deltaY()) >= 24 &&
+                    std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
                     const int dy = touch.deltaY();
                     const int steps = std::max(
                         1, std::abs(dy) / Modals::ReportScrollViewport::RowHeight);
@@ -3383,7 +3387,9 @@ namespace UI {
                                         touch.startY() >= 393 && touch.startY() < 609;
                 const bool inModernInfo = !gen2Passive && touch.startX() >= 24 && touch.startX() < 454 &&
                                           touch.startY() >= 276 && touch.startY() < 650;
-                if (inGen2Data || inModernInfo) {
+                if ((inGen2Data || inModernInfo) &&
+                    std::abs(touch.deltaY()) >= 24 &&
+                    std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
                     details.leftScroll = std::clamp(
                         details.leftScroll - touch.deltaY(), 0, std::max(0, details.leftScrollMax));
                     details.leftScrollManual = true;
