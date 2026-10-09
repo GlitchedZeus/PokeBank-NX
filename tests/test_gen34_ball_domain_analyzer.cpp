@@ -126,13 +126,14 @@ Legality::Report analyzeNativeHgssSpecialBall(
 
 Legality::Report analyzeNativeDiamondMarshBall(
         uint16_t species, uint16_t metLocation, uint8_t metLevel,
-        uint8_t ball, uint8_t originVersion = 10) {
+        uint8_t ball, uint8_t originVersion = 10,
+        uint32_t experience = 3375) {
     std::vector<std::byte> raw(Encryption::SIZE_STORED4, std::byte{0});
     wr32(raw, 0x00, 0x12345678u);
     wr16(raw, 0x08, species);
     wr16(raw, 0x0C, 12345);
     wr16(raw, 0x0E, 54321);
-    wr32(raw, 0x10, 3375u);
+    wr32(raw, 0x10, experience);
     raw[0x17] = std::byte{2};
     raw[0x5F] = static_cast<std::byte>(originVersion);
     wr16(raw, 0x80, metLocation); // D/P native location.
@@ -377,6 +378,25 @@ int main() {
     const auto shedWrongOrigin = analyzeNativeHgssSpecialBall(292, 207, 26, 24, 12);
     assert(!hasInfo(shedWrongOrigin,
         "Shedinja's Sport or Poke Ball has a compatible"));
+
+    // Evolved Diamond Great Marsh history: Golduck #55 retains Psyduck
+    // #54's original Safari Ball, location52 and met level20.
+    const auto evolvedMarsh = analyzeNativeDiamondMarshBall(
+        55,52,20,5,10,200000);
+    assert(hasInfo(evolvedMarsh,
+        "special Ball has a compatible wild pre-evolution capture source"));
+    const auto evolvedMarshWrongBall = analyzeNativeDiamondMarshBall(
+        55,52,20,24,10,200000);
+    assert(!hasInfo(evolvedMarshWrongBall,
+        "special Ball has a compatible wild pre-evolution capture source"));
+    const auto evolvedMarshWrongLevel = analyzeNativeDiamondMarshBall(
+        55,52,1,5,10,200000);
+    assert(!hasInfo(evolvedMarshWrongLevel,
+        "special Ball has a compatible wild pre-evolution capture source"));
+    const auto evolvedMarshWrongOrigin = analyzeNativeDiamondMarshBall(
+        55,52,20,5,7,200000);
+    assert(!hasInfo(evolvedMarshWrongOrigin,
+        "special Ball has a compatible wild pre-evolution capture source"));
 
     const auto marshPositive = analyzeNativeDiamondMarshBall(24, 52, 20, 5);
     assert(hasInfo(marshPositive,

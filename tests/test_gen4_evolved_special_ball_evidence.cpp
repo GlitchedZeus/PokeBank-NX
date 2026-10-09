@@ -29,6 +29,31 @@ int main() {
         assert(outcome.sourceSpecies==16);
     }
 
+    // Independent game/source context: Diamond Great Marsh location52
+    // Psyduck #54 is a legitimate level20 Safari Ball capture that may
+    // evolve into Golduck #55. The met level remains 20 after evolution.
+    // Real Diamond source row: 0x8E400014286836, slot9, rate35.
+    constexpr uint64_t marshPsyduck=0x8E400014286836ULL;
+    static_assert(Legality::Gen4Wild::game(marshPsyduck)==
+                  Legality::Gen4Wild::Game::Diamond);
+    static_assert(Legality::Gen4Wild::species(marshPsyduck)==54);
+    static_assert(Legality::Gen4Wild::location(marshPsyduck)==52);
+    static_assert(Legality::Gen4Wild::minLevel(marshPsyduck)==20);
+    static_assert(Legality::Gen4Wild::maxLevel(marshPsyduck)==20);
+    static_assert(Legality::Gen4Wild::slot(marshPsyduck)==9);
+    static_assert(Legality::Gen4Wild::rate(marshPsyduck)==35);
+    static_assert(preEvolution("diamond_nds",55)==54);
+    const auto marshGolduck=E::analyzeSupported(
+        "diamond_nds",55,52,20,0,5,0x00010000u);
+    assert(marshGolduck.matched() && marshGolduck.affinity==A::GreatMarsh);
+    assert(marshGolduck.sourceSpecies==54);
+    assert(!E::analyzeSupported(
+        "diamond_nds",55,52,20,0,24,0x00010000u).matched());
+    assert(!E::analyzeSupported(
+        "diamond_nds",55,52,1,0,5,0x00010000u).matched());
+    assert(!E::analyzeSupported(
+        "heartgold_nds",55,52,20,0,5,0x00010000u).matched());
+
     // Pinned HeartGold Wurmple #265 Headbutt row (0xD80303051509)
     // location138, level2-3, exact species and HGSS game. A Beautifly
     // evolved via Wurmple may retain the Apricorn Ball only when the
