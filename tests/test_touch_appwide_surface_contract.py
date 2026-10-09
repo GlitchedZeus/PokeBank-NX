@@ -509,6 +509,14 @@ require_all("src/UI/BackupSelectionScreen.cpp",
             "selectedIndex >= backupFirstRow + LIST_MAX_VISIBLE",
             "selectedIndex - LIST_MAX_VISIBLE / 2",
             "Focused backup brought into view; press A or X again")
+# Delete confirmation has exclusive touch ownership: only its displayed,
+# same-target A/B rectangles can produce actions, not the footer behind it.
+require_all("src/UI/BackupSelectionScreen.cpp",
+            "const u64 footerTouch = showDeleteConfirmation ? 0 : navTouchButton(touch);",
+            "if (showDeleteConfirmation) {",
+            "if (in(deleteDeleteBtn))",
+            "else if (in(deleteCancelBtn))")
+
 # All generations share one clipped Species-picker gesture origin. Horizontal drags
 # and drags starting on the preview panel cannot advance the species on release.
 require_all("include/UI/SharedSpeciesPicker.h",

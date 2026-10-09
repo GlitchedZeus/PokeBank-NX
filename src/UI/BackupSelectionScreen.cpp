@@ -112,10 +112,14 @@ namespace UI {
 
     void BackupSelectionScreen::update(const PadState& pad, const TouchInput& touch) {
         const HidAnalogStickState stick = padGetStickPos(&pad, 0);
+        // A modal owns its own A/B touch rectangles. Never let the underlying
+        // footer synthesize Delete while the confirmation dialog is on top.
+        // Physical A/B controller buttons still use the normal pad path.
+        const u64 footerTouch = showDeleteConfirmation ? 0 : navTouchButton(touch);
         u64 kDown = controllerNavigation.apply(
             padGetButtonsDown(&pad), padGetButtons(&pad), stick.x, stick.y,
             HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)
-            | navTouchButton(touch);
+            | footerTouch;
         if (statusFrames > 0) --statusFrames;                          // expire the failure notice
 
         // Handle delete confirmation dialog
