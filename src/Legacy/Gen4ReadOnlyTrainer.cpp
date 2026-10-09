@@ -1,6 +1,7 @@
 #include "Legacy/Gen4ReadOnlyTrainer.h"
 
 #include "Pokemon/Pokemon4ReadOnlyView.h"
+#include "Integration/Gen4/Gen4ReadOnlyInventory.h"
 #include "Utils/StringHelpers.h"
 
 namespace PokeVault::Legacy {
@@ -160,8 +161,16 @@ void Gen4ReadOnlyTrainer::buildPresentation(std::string& error) {
         }
     }
 
-    // Inventory is intentionally not exposed in G4-02. Empty means unavailable, not empty bag.
+    // A selected, CRC-validated General block owns the eight native G4 bag
+    // pockets. Display only strictly decoded item IDs/quantities; never
+    // serialize, inject or write to the external .sav/.dsv source.
     items.clear();
+    if(const auto bag=Integration::Gen4::decodeReadOnlyBag(save_)) {
+        items.assign(bag->begin(),bag->end());
+    }
+    // Invalid bag data is quarantined independently; the valid Trainer,
+    // Party, Box and staged Pokemon editor remain available and read-only
+    // with respect to the original emulator source.
 }
 
 }
