@@ -146,7 +146,65 @@ Legality::Report analyzeNativeDiamondMarshBall(
     return Legality::analyze(view, Enums::GameVersion::DP, "diamond_nds");
 }
 
+
+Legality::Report analyzeGen4EggBall(uint8_t ball, bool isEgg,
+                                    uint16_t eggLocation,
+                                    uint8_t metLevel=0) {
+    std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
+    wr32(raw,0x00,0x12345678u);
+    wr16(raw,0x08,25);
+    wr16(raw,0x0C,12345);
+    wr16(raw,0x0E,54321);
+    raw[0x17]=std::byte{2};
+    raw[0x5F]=std::byte{7};  // HeartGold stored origin
+    wr16(raw,0x44,eggLocation);
+    raw[0x83]=static_cast<std::byte>(ball);
+    raw[0x86]=static_cast<std::byte>(ball);
+    raw[0x84]=static_cast<std::byte>(metLevel);
+    if(isEgg)wr32(raw,0x38,0x40000000u);
+    const auto encrypted=Encryption::encryptArray4(raw);
+    Pokemon::Pokemon4ReadOnly source(encrypted,Enums::GameVersion::HGSS);
+    assert(source.valid() && source.checksumValid());
+    assert(source.isEgg()==isEgg);
+    assert(source.eggLocationExtended()==eggLocation);
+    Pokemon::Pokemon4ReadOnlyView view(source);
+    assert(view.eggLocation()==eggLocation && view.ball()==ball);
+    return Legality::analyze(view,Enums::GameVersion::HGSS,"heartgold_nds");
+}
+
 int main() {
+    // Real PK3 egg-state and encrypted PK4 egg-origin reporting.
+    auto eggPk3=gen3WithBall(4);
+    eggPk3.setEgg(true);
+    eggPk3.setMetLevel(0);
+    eggPk3.refreshChecksum();
+    assert(eggPk3.isEgg());
+    const auto eggG3=Legality::analyze(
+        eggPk3,Enums::GameVersion::FRLG,"ruby_gba");
+    assert(hasInfo(eggG3,
+        "Native Generation III/IV egg origin has a compatible Poke Ball"));
+    eggPk3.setBall(5);
+    const auto safariEgg=Legality::analyze(
+        eggPk3,Enums::GameVersion::FRLG,"ruby_gba");
+    assert(!hasInfo(safariEgg,
+        "Native Generation III/IV egg origin has a compatible Poke Ball"));
+
+    const auto nativePk4Egg=analyzeGen4EggBall(4,true,2000);
+    assert(hasInfo(nativePk4Egg,
+        "Native Generation III/IV egg origin has a compatible Poke Ball"));
+    const auto hatchedPk4=analyzeGen4EggBall(4,false,2000);
+    assert(hasInfo(hatchedPk4,
+        "Native Generation III/IV egg origin has a compatible Poke Ball"));
+    const auto wrongBallEgg=analyzeGen4EggBall(24,true,2000);
+    assert(!hasInfo(wrongBallEgg,
+        "Native Generation III/IV egg origin has a compatible Poke Ball"));
+    const auto noEggOrigin=analyzeGen4EggBall(4,false,0);
+    assert(!hasInfo(noEggOrigin,
+        "Native Generation III/IV egg origin has a compatible Poke Ball"));
+    const auto badMet=analyzeGen4EggBall(4,true,2000,1);
+    assert(!hasInfo(badMet,
+        "Native Generation III/IV egg origin has a compatible Poke Ball"));
+
     // Exact Gen III: 12 is the pinned generation maximum, 13 is impossible.
     auto gen3Max = gen3WithBall(12);
     const auto g3Max = Legality::analyze(gen3Max, Enums::GameVersion::FRLG, "ruby_gba");

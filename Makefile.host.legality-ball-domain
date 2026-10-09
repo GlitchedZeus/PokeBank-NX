@@ -1,10 +1,17 @@
 # Focused Gen III-IV ball-domain legality regressions.
+GEN34_EGG_BALL_SOURCES := tests/test_gen34_egg_ball_evidence.cpp
+GEN34_EGG_BALL_HEADERS := include/Legality/Gen34EggBallEvidence.h \
+	include/Legality/Gen34EggState.h
 GEN34_BALL_DOMAIN_SOURCES := tests/test_gen34_ball_domain_evidence.cpp
 GEN34_BALL_DOMAIN_HEADERS := include/Legality/Gen34BallDomainEvidence.h
 
+HOST_TESTS += $(HOST_BUILD)/test_gen34_egg_ball_evidence
 HOST_TESTS += $(HOST_BUILD)/test_gen34_ball_domain_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_egg_ball_evidence_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_ball_domain_evidence_sanitize
+host-test: $(HOST_BUILD)/test_gen34_egg_ball_evidence
 host-test: $(HOST_BUILD)/test_gen34_ball_domain_evidence
+host-sanitize: $(HOST_BUILD)/test_gen34_egg_ball_evidence_sanitize
 host-sanitize: $(HOST_BUILD)/test_gen34_ball_domain_evidence_sanitize
 
 $(HOST_BUILD)/test_gen34_ball_domain_evidence: $(GEN34_BALL_DOMAIN_SOURCES) $(GEN34_BALL_DOMAIN_HEADERS)
@@ -22,6 +29,7 @@ GEN34_BALL_ANALYZER_SOURCES := tests/test_gen34_ball_domain_analyzer.cpp \
 	src/Pokemon/Pokemon4ReadOnly.cpp src/Pokemon/Pokemon4ReadOnlyView.cpp \
 	src/Encryption/Encryption4.cpp
 GEN34_BALL_ANALYZER_HEADERS := include/Legality/Gen34BallDomainEvidence.h \
+	include/Legality/Gen34EggBallEvidence.h \
 	include/Legality/Gen4SpecialBallEvidence.h \
 	include/Pokemon/Pokemon4ReadOnly.h include/Pokemon/Pokemon4ReadOnlyView.h \
 	include/Encryption/Encryption4.h
@@ -58,3 +66,11 @@ $(HOST_BUILD)/test_gen4_bcc_multiretry_native_pk4: $(GEN4_BCC_NATIVE_METHODK_SOU
 $(HOST_BUILD)/test_gen4_bcc_multiretry_native_pk4_sanitize: $(GEN4_BCC_NATIVE_METHODK_SOURCES) $(GEN4_BCC_NATIVE_METHODK_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GEN4_BCC_NATIVE_METHODK_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen34_egg_ball_evidence: $(GEN34_EGG_BALL_SOURCES) $(GEN34_EGG_BALL_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN34_EGG_BALL_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen34_egg_ball_evidence_sanitize: $(GEN34_EGG_BALL_SOURCES) $(GEN34_EGG_BALL_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN34_EGG_BALL_SOURCES) -o $@

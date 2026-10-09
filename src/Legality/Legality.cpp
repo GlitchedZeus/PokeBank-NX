@@ -57,6 +57,7 @@
 #include "Legality/Gen4WildRngCorrelation.h"
 #include "Legality/Gen4LeadReportingEvidence.h"
 #include "Legality/Gen34EggState.h"
+#include "Legality/Gen34EggBallEvidence.h"
 #include "Legality/Gen34EggMoveEvidence.h"
 #include "Legality/Gen34LanguageEvidence.h"
 #include "Legality/Gen34BallDomainEvidence.h"
@@ -891,6 +892,16 @@ namespace Legality {
                         ? "PK3 unhatched egg state has the native met-level-0 structure; exact hatch-location and inherited-move evidence remain incomplete"
                         : "PK4 egg-origin state has native met-level-0 structure and egg-location evidence; hatch-location evidence is checked separately for hatched records and inherited-move evidence remains incomplete",
                     CheckIdentifier::Egg);
+                // A native Gen III/IV egg-origin Poké Ball is compatible;
+                // this is INFO, not a complete competing-history proof.
+                if (Gen34EggBallEvidence::analyze(
+                        exactGeneration, pk.isEgg(),
+                        pk.eggLocation(), pk.metLevel(), pk.ball()) ==
+                        Gen34EggBallEvidence::Kind::NativeEggPokeBall) {
+                    add(r, Severity::Info,
+                        "Native Generation III/IV egg origin has a compatible Poke Ball; ball inheritance is unavailable before Generation VI and alternative gift/transfer provenance remains incomplete",
+                        CheckIdentifier::Items);
+                }
             }
 
             if (exactGeneration == 4 && eggState.eggOrigin &&
