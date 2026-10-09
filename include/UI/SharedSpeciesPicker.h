@@ -124,7 +124,8 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
         // committed by the owning input handler on release, so drag can never become an accidental A.
         int visualSpecies = std::clamp(selectedSpecies, 1, speciesCount);
         int liveOffset = 0;
-        if (gesture && touchStartedInside(*gesture, listX, listY, listW, listH)) {
+        if (gesture && touchStartedInside(*gesture, listX, listY, listW, listH) &&
+            permitsVerticalPreview(*gesture)) {
             const int requestedRows = -gesture->deltaY / rowStep;
             visualSpecies = std::clamp(selectedSpecies + requestedRows, 1, speciesCount);
             const int appliedRows = visualSpecies - selectedSpecies;

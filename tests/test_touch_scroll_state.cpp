@@ -239,7 +239,22 @@ static void testVerticalAxisLockSurvivesDiagonalCorrection() {
     assert(first == 6 && state.offset() == 0);
 }
 
+static void testSharedSpeciesPreviewDirection() {
+    UI::TouchGestureSnapshot gesture{};
+    gesture.down = true;
+    gesture.deltaX = 120;
+    gesture.deltaY = 43;
+    assert(!UI::permitsVerticalPreview(gesture)); // horizontal drag stays put
+    gesture.deltaX = 10;
+    gesture.deltaY = 6;
+    assert(UI::permitsVerticalPreview(gesture)); // small natural fingertip wobble
+    gesture.deltaX = 35;
+    gesture.deltaY = -80;
+    assert(UI::permitsVerticalPreview(gesture)); // real vertical swipe
+}
+
 int main() {
+    testSharedSpeciesPreviewDirection();
     testHorizontalAxisLock();
     testVerticalAxisLockSurvivesDiagonalCorrection();
     testContinuousPixelAndBoundary();

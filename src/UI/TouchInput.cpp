@@ -42,6 +42,7 @@ namespace UI {
         gLatestTouch.down = curDown;
         gLatestTouch.startX = begX;
         gLatestTouch.startY = begY;
+        gLatestTouch.deltaX = curX - begX;
         gLatestTouch.deltaY = curY - begY;
     }
 

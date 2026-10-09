@@ -413,9 +413,13 @@ if '#include "UI/TouchInput.h"' in read("include/UI/Gen2HeldItemPicker.h"):
 if "latestTouchGesture()" in read("include/UI/Gen2HeldItemPicker.h"):
     raise AssertionError("Gen2HeldItemPicker: touch mutation shim was reintroduced")
 gesture = read("include/UI/TouchGesture.h")
-for dead_field in ("released", "dragged", "deltaX", "int x =", "int y ="):
+for dead_field in ("released", "dragged", "int x =", "int y ="):
     if dead_field in gesture:
         raise AssertionError(f"TouchGesture: unused renderer snapshot field reintroduced: {dead_field}")
+require_all("include/UI/TouchGesture.h",
+            "int deltaX = 0;", "permitsVerticalPreview(")
+require_all("src/UI/TouchInput.cpp", "gLatestTouch.deltaX = curX - begX;")
+require_all("include/UI/SharedSpeciesPicker.h", "permitsVerticalPreview(*gesture)")
 scroll = read("include/UI/TouchScroll.h")
 for dead_api in ("updateHorizontal(", "dragging() const", "moving() const", "bool tracking"):
     if dead_api in scroll:

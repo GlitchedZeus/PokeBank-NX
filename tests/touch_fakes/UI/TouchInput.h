@@ -1,12 +1,7 @@
 #pragma once
 // Deterministic host-only touch samples for the shared scroll model. Never linked into Switch.
+#include "UI/TouchGesture.h"
 namespace UI {
-struct TouchGestureSnapshot {
-    bool down = false;
-    int startX = 0;
-    int startY = 0;
-    int deltaY = 0;
-};
 inline TouchGestureSnapshot& writableFakeGesture() noexcept {
     static TouchGestureSnapshot value{};
     return value;
