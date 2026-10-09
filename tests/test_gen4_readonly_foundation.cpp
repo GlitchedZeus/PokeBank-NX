@@ -1041,6 +1041,41 @@ void testNativeGen4Bag() {
         assert(trainer->items[kBalls].size()==2 &&
                trainer->items[kBalls][0].count==43);
         assert(digest(bytes)==original && digest(parsed->sourceBytes())==original);
+        // App-owned inventory quantity editing: source unchanged, native ID
+        // fixed, selected General checksum repaired, and unrelated box intact.
+        auto* workspace=trainer->stagedPokemon();
+        assert(workspace);
+        assert(!workspace->stageBagQuantity(kBalls,5,50,&error));
+        assert(!workspace->stageBagQuantity(kBalls,0,0,&error));
+        assert(!workspace->stageBagQuantity(kBalls,0,1000,&error));
+        assert(!workspace->stageBagQuantity(G4::BagPocketCount,0,10,&error));
+        const auto beforeStage=workspace->stagedBytes();
+        assert(workspace->stageBagQuantity(kBalls,0,65,&error) && error.empty());
+        assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+        assert(trainer->items[kBalls].size()==2 &&
+               trainer->items[kBalls][0].count==65 &&
+               trainer->items[kBalls][1].count==3);
+        assert(trainer->party.size()==1 && trainer->party[0] &&
+               trainer->boxes[0][0]);
+        const auto stagedOutput=workspace->finalizedBytes(&error);
+        assert(stagedOutput.size()==bytes.size());
+        assert(digest(stagedOutput)!=original);
+        const auto restaged=Gen4ReadOnlySave::parse(stagedOutput,layout,game,&error);
+        assert(restaged && restaged->generalSelection().partition==1);
+        const auto stagedBag=G4::decodeReadOnlyBag(*restaged);
+        assert(stagedBag && (*stagedBag)[kBalls][0].count==65);
+        assert(restaged->box(0,0).species()==25);
+        const size_t editedAt=PARTITION+native[kBalls].offset+2;
+        const size_t crcAt=PARTITION+s.generalSize-2;
+        for(size_t i=0;i<stagedOutput.size();++i) {
+            if(i==editedAt || i==editedAt+1 || i==crcAt || i==crcAt+1)continue;
+            assert(stagedOutput[i]==beforeStage[i]);
+        }
+        assert(digest(bytes)==original && digest(parsed->sourceBytes())==original);
+        workspace->discard();
+        assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+        assert(trainer->items[kBalls][0].count==43 &&
+               digest(bytes)==original);
         // A CRC-valid source with an invalid item ID quarantines only its bag.
         auto malformed=bytes;
         w16(malformed,PARTITION+native[kMedicine].offset,0xFFFE);
