@@ -12,12 +12,19 @@ namespace Legality::Gen4SpecialBallEvidence {
 // Ball (5). A missing match is UNRESOLVED; it is never evidence that
 // another acquisition / evolved / transferred history is impossible.
 // D/P/Pt Great Marsh and Nincada -> Shedinja exceptions are out of scope.
-enum class Affinity : uint8_t { None, Sport, Safari, GreatMarsh, ShedinjaBugContest };
+enum class Affinity : uint8_t { None, Sport, Safari, GreatMarsh, ShedinjaBugContest, ApricornWild };
 
 constexpr Affinity matchDirectRow(uint64_t row, uint8_t ball) noexcept {
     const uint8_t type = Gen4Wild::method(row);
     if (type == 8 && ball == 24)
         return Affinity::Sport;
+    // Pinned BallUseLegality.WildPokeBalls4_HGSS includes the seven Kurt
+    // Apricorn Balls (17..23). These are NOT a D/P/Pt direct wild option;
+    // HGSS BCC and Safari source types have their own fixed ball instead.
+    if (ball >= 17 && ball <= 23 && type <= 7 &&
+        (Gen4Wild::game(row) == Gen4Wild::Game::HeartGold ||
+         Gen4Wild::game(row) == Gen4Wild::Game::SoulSilver))
+        return Affinity::ApricornWild;
     if (type >= 10 && type <= 14 && ball == 5 &&
         (Gen4Wild::game(row) == Gen4Wild::Game::HeartGold ||
          Gen4Wild::game(row) == Gen4Wild::Game::SoulSilver))

@@ -1498,6 +1498,10 @@ namespace Legality {
                             add(r, Severity::Info,
                                 "Safari Ball has a compatible Diamond/Pearl/Platinum Great Marsh encounter source; other provenance remains incomplete",
                                 CheckIdentifier::Items);
+                        } else if (ballAffinity == Gen4SpecialBallEvidence::Affinity::ApricornWild) {
+                            add(r, Severity::Info,
+                                "Apricorn Ball has a compatible HeartGold/SoulSilver wild encounter source; competing transfer and acquisition provenance remain incomplete",
+                                CheckIdentifier::Items);
                         }
                     } else if (directGen4StaticRow != nullptr) {
                         add(r, Severity::Info,

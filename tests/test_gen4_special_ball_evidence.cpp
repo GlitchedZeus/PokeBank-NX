@@ -13,6 +13,32 @@ int main() {
     static_assert(Gen4Wild::location(bcc) == 207);
     static_assert(Gen4Wild::method(bcc) == 8);
     static_assert(Gen4Wild::rate(bcc) == 25);
+    // Real pinned HGSS grass source: HeartGold Pidgey #16, location149,
+    // grass slot0, level2, rate20. Kurt Apricorn IDs17..23 are native
+    // HGSS wild capture options, not D/P/Pt or fixed BCC/Safari balls.
+    constexpr uint64_t pidgey=0x50180002052A10ULL;
+    static_assert(Gen4Wild::game(pidgey)==Gen4Wild::Game::HeartGold);
+    static_assert(Gen4Wild::species(pidgey)==16);
+    static_assert(Gen4Wild::location(pidgey)==149);
+    static_assert(Gen4Wild::method(pidgey)==0);
+    static_assert(Gen4Wild::minLevel(pidgey)==2);
+    static_assert(Gen4Wild::maxLevel(pidgey)==2);
+    static_assert(Gen4Wild::slot(pidgey)==0);
+    static_assert(Gen4Wild::rate(pidgey)==20);
+    static_assert(Proof::matchDirectRow(pidgey,17)==Affinity::ApricornWild);
+    static_assert(Proof::matchDirectRow(pidgey,23)==Affinity::ApricornWild);
+    static_assert(Proof::matchDirectRow(pidgey,16)==Affinity::None);
+    static_assert(Proof::matchDirectRow(bcc,17)==Affinity::None);
+    assert(Proof::analyzeSupported(
+        "heartgold_nds",16,149,2,0,17)==Affinity::ApricornWild);
+    assert(Proof::analyzeSupported(
+        "heartgold_nds",16,149,2,0,23)==Affinity::ApricornWild);
+    assert(Proof::analyzeSupported(
+        "heartgold_nds",16,149,1,0,17)==Affinity::None);
+    assert(Proof::analyzeSupported(
+        "heartgold_nds",16,149,2,0,16)==Affinity::None);
+    assert(Proof::analyzeSupported(
+        "diamond_nds",16,149,2,0,17)==Affinity::None);
     static_assert(Proof::matchDirectRow(bcc,24) == Affinity::Sport);
     static_assert(Proof::matchDirectRow(bcc,4) == Affinity::None);
 

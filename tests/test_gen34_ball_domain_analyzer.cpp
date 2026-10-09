@@ -262,6 +262,24 @@ int main() {
     const auto hgSport = analyzeNativeHgssSpecialBall(14, 207, 15, 24);
     assert(hasInfo(hgSport,
         "Sport Ball has a compatible HeartGold/SoulSilver Bug-Catching Contest source"));
+    // Native encrypted HGSS PK4 Apricorn Ball -> read-only view ->
+    // exact source analyzer: actual HeartGold Pidgey at location149/level2.
+    const auto apricorn = analyzeNativeHgssSpecialBall(16, 149, 2, 17);
+    assert(hasInfo(apricorn,
+        "Apricorn Ball has a compatible HeartGold/SoulSilver wild encounter source"));
+    const auto apricornMoon = analyzeNativeHgssSpecialBall(16, 149, 2, 23);
+    assert(hasInfo(apricornMoon,
+        "Apricorn Ball has a compatible HeartGold/SoulSilver wild encounter source"));
+    const auto apricornWrongLevel = analyzeNativeHgssSpecialBall(16, 149, 1, 17);
+    assert(!hasInfo(apricornWrongLevel,
+        "Apricorn Ball has a compatible HeartGold/SoulSilver"));
+    const auto apricornWrongOrigin = analyzeNativeHgssSpecialBall(16, 149, 2, 17, 12);
+    assert(!hasInfo(apricornWrongOrigin,
+        "Apricorn Ball has a compatible HeartGold/SoulSilver"));
+    const auto apricornWrongBall = analyzeNativeHgssSpecialBall(16, 149, 2, 16);
+    assert(!hasInfo(apricornWrongBall,
+        "Apricorn Ball has a compatible HeartGold/SoulSilver"));
+
     const auto hgSafari = analyzeNativeHgssSpecialBall(16, 202, 15, 5);
     assert(hasInfo(hgSafari,
         "Safari Ball has a compatible HeartGold/SoulSilver Safari Zone encounter source"));
