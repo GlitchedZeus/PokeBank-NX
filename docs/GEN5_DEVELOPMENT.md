@@ -384,3 +384,35 @@ until the exact-head native/host gates pass and the owner authorizes testing.
 
 **DEVICE_ACCEPTED=false.** Native and full host CI must pass on the exact
 current branch head before a device-test NRO can be called a candidate.
+
+
+### 2026-10-09 — transactional presentation and verified field review
+
+- Fixed the explicit **A Keep Staged** action in the dirty-draft dialog:
+  `ConfirmDraft` now has the same authorized Keep path as an active Edit.
+  A failed Keep never implicitly closes or discards the draft.
+- `keepWithPresentation` and `discardAllWithPresentation` treat the
+  shared Trainer presentation refresh as part of the **same reversible
+  app-memory transaction**. A failed refresh restores the prior PK5 stage,
+  active dirty draft / exact edit cursor, and confirmation state. Real Trainer
+  presentation replacement remains all-or-nothing (party/box swap only on
+  complete success).
+- Added `Gen5SharedReview` read-only evidence: for each changed PK5,
+  independently reapply permitted Nature, Friendship, IV and EV changes to
+  the original verified encrypted entity and compare the exact resulting
+  bytes. Unsupported altered species/moves/identity cannot masquerade as an
+  approved staged-field diff, even when the forged PK5 checksum is valid.
+- Review now paginates all staged slots (4 per page) with L/R and presents
+  before/after field values. Invalid or unreconstructable differences are
+  labeled **unverified** rather than hard-invalid or legal.
+- Native staging explicitly rejects unknown/forged field enum values.
+  Host regressions cover dirty-draft A-confirm Keep, refresh failure and
+  retry, Discard All rollback, allowed-field replay, valid-checksum
+  unrelated PK5 byte edits, noncanonical slot identities, and exact
+  immutable source-byte identity.
+- This work remains **nonpersistent app memory only**. Exiting after
+  confirmed Discard & Exit drops staged changes; no SAV5 serializer,
+  injection or source-write capability is introduced.
+
+**DEVICE_ACCEPTED=false.** Exact-head native and full host gates still
+require verification; passing a prior SHA cannot qualify the new changes.
