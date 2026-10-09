@@ -2,6 +2,7 @@
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "UI/SharedHeldItemPicker.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/ItemPickerArtwork.h"
 #include "UI/Common.h"
 #include <vector>
 
@@ -38,8 +39,12 @@ inline void drawList(PKSEFramebuffer& fb, int x, int y, int width,
             fb.drawFilledRoundedRect(cellX, cellY, cellWidth - 12, 30, 6, Colors::SurfaceSelected);
             fb.drawRoundedRect(cellX, cellY, cellWidth - 12, 30, 6, Colors::FocusBorder, 2);
         }
-        fb.drawText(cellX + 10, cellY + 6, Model::itemName(items[static_cast<std::size_t>(i)]),
-                    focused ? Colors::SelectedText : Colors::Text, TextStyle::Caption);
+        const auto rawItem=items[static_cast<std::size_t>(i)];
+        fb.drawText(cellX + 10, cellY + 6, Model::itemName(rawItem),
+                    Colors::Text, TextStyle::Caption);
+        if(rawItem!=0)
+            ItemPickerArtwork::draw(fb, cellX + cellWidth - 24, cellY + 2,
+                                    26, Model::itemName(rawItem));
     }
 }
 }
