@@ -31,7 +31,7 @@ require(
     "Gen5EditorProvider::isGen5NdsId(screen.sourceGameId)",
     "if(!isGen5Source(screen))return false;",
     "trainer.sharedScreen()",
-    "state.openActions",
+    "trainer.sharedScreen().openActions",
     "state.activateSelected(staged,error)",
     "state.adjustField(delta,error)",
     "state.keep(trainer.stagedPokemon(),error)",
