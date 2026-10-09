@@ -351,3 +351,36 @@ Source preference remains API-only until a safe UI flow exists.
 
 **DEVICE_ACCEPTED=false.** Do not merge this draft PR or hand out a test NRO
 until the exact-head native/host gates pass and the owner authorizes testing.
+
+
+### 2026-10-09 — session-owned four-field shared staged Editor
+
+- The native existing Trainer/Party/Boxes screen now exposes the common
+  **Pokemon Actions** menu: View, Edit, Review Pending Changes, Cancel.
+  Empty/invalid PK5 slots never expose Add, Create, Clone or Release.
+- `Gen5SharedScreenState` belongs to the currently validated
+  `Gen5ReadOnlyTrainer`, not a global static overlay or external save. The
+  actual `Gen5SharedPokemonSession` is local to this session and refuses
+  replacement of an in-progress dirty draft.
+- Shared field identities dispatch **only Nature, Friendship, IV and EV**.
+  Up/Down selects a field, Left/Right changes its local value, and the native
+  PK5 staged serializer strictly reparses, checks checksum and enforces ranges,
+  including total EV <= 510. No species/moves/held items/OT changes are enabled.
+- **A Keep Staged** atomically applies the draft only to app-memory PK5, with
+  presentation refresh and rollback if that refresh fails. **Y Discard Draft**
+  abandons only the local draft. **B Back** prompts Keep / Discard / Continue
+  if the draft is dirty. App-memory edits are not written to any SAV.
+- Review lists the changed Party/Box slots. Discard All requires an explicit Y
+  confirmation. B out of the Trainer screen is blocked when staged changes
+  remain; the exit warning uses **Y Discard & Exit**, X Review, or B Continue.
+  The A button is never assigned a destructive discard operation.
+- This is an isolated, non-persistent staged-editor milestone, **NOT** Gen V
+  source SAV serialization/injection, Bank transfer, Pokemon creation, native
+  move compatibility, completed catalog parity, touch-controls integration,
+  or automatic legality judgement. No owner hardware acceptance is implied.
+- Focused host tests cover per-session action/view/edit/keep/review/exit,
+  malformed native slot identity, immutable underlying source, and discard
+  isolation. The focused UI contract enforces front-of-stack input interception.
+
+**DEVICE_ACCEPTED=false.** Native and full host CI must pass on the exact
+current branch head before a device-test NRO can be called a candidate.
