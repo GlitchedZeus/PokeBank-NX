@@ -5097,7 +5097,7 @@ namespace UI {
                      sourceGameId=="platinum_nds" ||
                      sourceGameId=="heartgold_nds" || sourceGameId=="soulsilver_nds");
                 if(gen4ItemView) {
-                    instructions = "D-pad/Stick: Items  |  L/R: Pocket  |  B: Back";
+                    instructions = "D-pad/Stick: Items  |  L/R: Pocket  |  X: Add Item  |  B: Back";
                     if(selectedCategory>=0 &&
                        selectedCategory<static_cast<int>(trainer.items.size()) &&
                        selectedItemIndex>=0 &&
