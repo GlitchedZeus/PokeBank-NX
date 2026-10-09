@@ -71,5 +71,14 @@ int main() {
                reverse.history.mask, "unmatched source") ==
            Gen4LeadReporting::describe(reverse));
 
+    Gen4LeadReporting::ReportEvidence multiple{};
+    multiple.history.add(Path::SynchronizeMixedMultipleRerolls);
+    assert(multiple.matched());
+    assert(Gen4LeadReporting::describe(multiple) ==
+           "PID/IV spread and wild source match extended Generation IV Method J/K lead history: Synchronize mixed two/three rerolls (BCC); other unproven lead histories remain incomplete");
+    assert(Gen4LeadReporting::describeWildResult(
+               multiple.history.mask, "no unsupported certainty") ==
+           Gen4LeadReporting::describe(multiple));
+
     std::cout << "Gen IV lead reporting evidence: PASS\n";
 }

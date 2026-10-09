@@ -32,13 +32,14 @@ inline std::string describe(const ReportEvidence& evidence) {
     if (!evidence.matched())
         return {};
 
-    constexpr std::array<Gen4LeadHistory::Path, 10> kOrder{
+    constexpr std::array<Gen4LeadHistory::Path, 11> kOrder{
         Gen4LeadHistory::Path::StaticSuccess,
         Gen4LeadHistory::Path::MagnetPullSuccess,
         Gen4LeadHistory::Path::PressureSuccess,
         Gen4LeadHistory::Path::SynchronizeFailure,
         Gen4LeadHistory::Path::SynchronizeMixedSuccessThenFailure,
         Gen4LeadHistory::Path::SynchronizeMixedFailureThenSuccess,
+        Gen4LeadHistory::Path::SynchronizeMixedMultipleRerolls,
         Gen4LeadHistory::Path::CuteCharmFailure,
         Gen4LeadHistory::Path::PressureFailure,
         Gen4LeadHistory::Path::StaticMagnetFailure,

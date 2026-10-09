@@ -3,6 +3,7 @@
 #include "Legality/Gen4BugContestSynchronizeFailureEvidence.h"
 #include "Legality/Gen4BugContestMixedSyncEvidence.h"
 #include "Legality/Gen4BugContestMixedSyncReverseEvidence.h"
+#include "Legality/Gen4BugContestMixedDepthEvidence.h"
 #include "Legality/Gen4PressureLeadEvidence.h"
 #include "Legality/Gen4StaticMagnetLeadEvidence.h"
 
@@ -24,6 +25,7 @@ enum class Path : uint16_t {
     IntimidateContinue = 1u << 7,
     SynchronizeMixedSuccessThenFailure = 1u << 8,
     SynchronizeMixedFailureThenSuccess = 1u << 9,
+    SynchronizeMixedMultipleRerolls = 1u << 10,
 };
 
 struct Result {
@@ -103,6 +105,25 @@ constexpr Result matchIndexedRow(bool hgss, uint64_t row,
     if (hgss && Gen4BugContestMixedSyncReverse::matchFailureThenSuccess(
             row, prePidSeed, pid, metLevel).matched())
         result.add(Path::SynchronizeMixedFailureThenSuccess);
+
+    // Explicit positive-only Method K two/three minimum-31 retry histories.
+    // Every candidate must prove every Sync proc, nature lock, failed IV
+    // rejection and original BCC activation. The PK4 does not retain the
+    // lead ability; this is a compatible history, not unique provenance.
+    if (hgss && Gen4LeadFrame::isBugContest(Gen4Wild::method(row))) {
+        bool proven = false;
+        for (uint8_t depth = 2; depth <= 3 && !proven; ++depth) {
+            const uint8_t limit = static_cast<uint8_t>(1u << (depth + 1u));
+            for (uint8_t mask = 1; mask < limit - 1; ++mask) {
+                if (Gen4BugContestMixedDepth::match(
+                        row, prePidSeed, pid, metLevel, depth, mask).matched()) {
+                    result.add(Path::SynchronizeMixedMultipleRerolls);
+                    proven = true;
+                    break;
+                }
+            }
+        }
+    }
 
     if (Gen4LeadFailure::matchRow(
             hgss, row, prePidSeed, pid, metLevel,
@@ -191,6 +212,8 @@ constexpr const char* pathName(Path path) noexcept {
             return "Synchronize success then failure (BCC reroll)";
         case Path::SynchronizeMixedFailureThenSuccess:
             return "Synchronize failure then success (BCC reroll)";
+        case Path::SynchronizeMixedMultipleRerolls:
+            return "Synchronize mixed two/three rerolls (BCC)";
         case Path::None: break;
     }
     return "No extended lead-history evidence";

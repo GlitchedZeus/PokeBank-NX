@@ -229,6 +229,40 @@ int main() {
         true, makeRow(8, 3, 9, 18, 0), 0, 18,
         reverseSeed, reversePid, 11).has(Path::SynchronizeMixedFailureThenSuccess));
 
+    // Pinned actual HGSS BCC source row: Kakuna #14 / location 207 /
+    // slot3 / levels9-18 / retail encounter rate25. New depth2/depth3
+    // evidence must survive the combined lead-history masks.
+    constexpr uint32_t multi2Seed = 0x000E11BEu;
+    constexpr uint32_t multi2Pid = 0x9C2C4659u;
+    constexpr uint32_t multi3Seed = 0x0014FEAAu;
+    constexpr uint32_t multi3Pid = 0x8EE19004u;
+    constexpr auto multi2 = matchIndexedRow(
+        true, mixedRow, 0, 18, multi2Seed, multi2Pid, 16);
+    constexpr auto multi3 = matchIndexedRow(
+        true, mixedRow, 0, 18, multi3Seed, multi3Pid, 10);
+    static_assert(multi2.has(Path::SynchronizeMixedMultipleRerolls));
+    static_assert(multi3.has(Path::SynchronizeMixedMultipleRerolls));
+    static_assert(!matchIndexedRow(
+        true, mixedRow, 0, 18, multi2Seed, multi2Pid, 15)
+        .has(Path::SynchronizeMixedMultipleRerolls));
+    static_assert(!matchIndexedRow(
+        true, makeRow(8, 3, 9, 18, 0), 0, 18,
+        multi3Seed, multi3Pid, 10)
+        .has(Path::SynchronizeMixedMultipleRerolls));
+    static_assert(!matchIndexedRow(
+        false, mixedRow, 0, 18, multi2Seed, multi2Pid, 16)
+        .has(Path::SynchronizeMixedMultipleRerolls));
+
+    const auto realMulti2 = analyzeSupported(
+        "heartgold_nds", 14, 207, 16, 0, 0, multi2Seed, multi2Pid);
+    const auto realMulti3 = analyzeSupported(
+        "heartgold_nds", 14, 207, 10, 0, 0, multi3Seed, multi3Pid);
+    assert(realMulti2.has(Path::SynchronizeMixedMultipleRerolls));
+    assert(realMulti3.has(Path::SynchronizeMixedMultipleRerolls));
+    assert(!analyzeSupported(
+        "diamond_nds", 14, 207, 16, 0, 0, multi2Seed, multi2Pid)
+        .has(Path::SynchronizeMixedMultipleRerolls));
+
     constexpr uint64_t safari = makeRow(10, 0, 15, 15, 6);
     static_assert(!matchIndexedRow(
         true, safari, 0, 15,
