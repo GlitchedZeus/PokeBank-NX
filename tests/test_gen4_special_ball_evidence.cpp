@@ -32,6 +32,10 @@ int main() {
         "heartgold_nds",14,207,15,0,24) == Affinity::Sport);
     assert(Proof::analyzeSupported(
         "heartgold_nds",16,202,15,0,5) == Affinity::Safari);
+    // Pinned HGSS source also contains an authentic level-16 Pidgey
+    // Safari slot at location 202. Do NOT claim it impossible!
+    assert(Proof::analyzeSupported(
+        "heartgold_nds",16,202,16,0,5) == Affinity::Safari);
 
     // Unknown, wrong generation, unwired ball, nonmatching ball/level,
     // alternate species, and non-native encounter are all simply no PROOF.
@@ -48,7 +52,7 @@ int main() {
     assert(Proof::analyzeSupported(
         "heartgold_nds",16,202,15,0,24) == Affinity::None);
     assert(Proof::analyzeSupported(
-        "heartgold_nds",16,202,16,0,5) == Affinity::None);
+        "heartgold_nds",16,202,1,0,5) == Affinity::None);
     assert(Proof::analyzeSupported(
         "unknown",14,207,15,0,24) == Affinity::None);
 
