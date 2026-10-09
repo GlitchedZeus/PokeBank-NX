@@ -343,7 +343,9 @@ int main() {
     contains(surface, "auto saved=*staged;");
     contains(surface, "*staged=std::move(saved);");
     contains(surface, "Gen IV item quantity staged; emulator source unchanged");
-    contains(surface, "if (state.itemQuantityActive)drawItemQuantity");
+    contains(surface, "else if (state.itemQuantityActive)drawItemQuantity");
+    contains(surface, "if (state.itemAddPickerActive)drawItemAddPicker");
+    contains(surface, "else if (state.itemRemoveConfirmActive)drawItemRemoveConfirm");
 
 
     // A committed staged edit must not claim UI success when the refreshed presentation failed.
