@@ -1,23 +1,19 @@
 #!/usr/bin/env python3
-"""Recover original ball and held-item PNGs from PokeAPI/sprites pinned to the
-same commit as the app's HOME renders.
+"""Recover exact Gen IV ball and held-item PNGs from a pinned PokeAPI/sprites revision.
 
-ROMFS result: romfs/sprites/items/<canonical-item-name>.png
-
-No artwork is guessed or fabricated. An absent upstream icon stays absent,
-while all 16 native Gen IV ball sprites are a strict required baseline. This
-tool runs at BUILD/RECOVERY time, never on the user's Switch. All downloaded
-assets remain generated/gitignored, like the existing Pokémon renders.
+Runs on the host during native RomFS recovery, never on the user's Switch.
+No guessed artwork or silent fallback to another item's sprite.
 """
 from __future__ import annotations
 
 import argparse
 import concurrent.futures
-import re
 import unicodedata
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+from png_asset_validation import validate_png
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "romfs" / "sprites" / "items"
@@ -33,158 +29,99 @@ REQUIRED_BALLS = (
 
 
 def slugify(name: str) -> str:
-    # Mirrors SpriteManager::getItemSprite: remove punctuation, collapse
-    # whitespace/hyphens, normalize 'Poké' to 'poke'.
     name = name.split(" (", 1)[0]
-    name = "".join(c for c in unicodedata.normalize("NFKD", name)
-                   if not unicodedata.combining(c))
-    name = name.lower()
-    name = re.sub(r"[^a-z0-9\s_-]", "", name)
-    return re.sub(r"-+", "-", re.sub(r"[\s_-]+", "-", name)).strip("-")
+    plain = "".join(ch for ch in unicodedata.normalize("NFKD", name)
+                    if not unicodedata.combining(ch)).lower()
+    out = []
+    for ch in plain:
+        if "a" <= ch <= "z" or "0" <= ch <= "9":
+            out.append(ch)
+        elif ch in " -_":
+            if out and out[-1] != "-":
+                out.append("-")
+    return "".join(out).strip("-")
 
 
 def gen4_names() -> set[str]:
-    source = NAMES.read_text(encoding="utf-8")
-    # Parse only the canonical modern item table. The same C++ file also
-    # contains Gen III lists with overlapping numeric item IDs.
-    source = source.split("static const char* ITEM_NAMES[] = {", 1)[1].split("};", 1)[0]
-    pattern = re.compile(r'^\s*"([^"\\]*(?:\\.[^"\\]*)*)",\s*//\s*(\d+)\s*
-        item_id = int(match.group(2))
-        if 1 <= item_id <= 536:
-            name = slugify(match.group(1))
-            if name and name != "none":
-                names.add(name)
-    if len(names) < 400:
-        raise RuntimeError(f"Gen IV item-name table unexpectedly incomplete: {len(names)} keys")
-    return names
-
-
-def valid_png(raw: bytes) -> bool:
-    return raw.startswith(b"\x89PNG\r\n\x1a\n") and raw[-12:-8] == b"\x00\x00\x00\x00" and raw[-8:-4] == b"IEND"
-
-
-def fetch(slug: str, force: bool) -> tuple[str, str]:
-    target = OUT / (slug + ".png")
-    if not force and target.is_file() and valid_png(target.read_bytes()):
-        return slug, "cached"
-    request = urllib.request.Request(f"{BASE_URL}/{slug}.png",
-                                    headers={"User-Agent": "PokeBank-NX-item-sprite-recovery"})
-    try:
-        with urllib.request.urlopen(request, timeout=22) as response:
-            payload = response.read()
-    except urllib.error.HTTPError as exc:
-        if exc.code == 404:
-            return slug, "not-upstream"
-        raise
-    if not valid_png(payload):
-        raise RuntimeError(f"Rejected malformed upstream PNG: {slug}")
-    tmp = target.with_suffix(".png.incomplete")
-    tmp.write_bytes(payload)
-    tmp.replace(target)
-    return slug, "fetched"
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--force", action="store_true")
-    parser.add_argument("--required-only", action="store_true",
-                        help="fast path for validating the sixteen exact Gen IV balls")
-    parser.add_argument("--verify-existing", action="store_true",
-                        help="offline check; never downloads")
-    args = parser.parse_args()
-    OUT.mkdir(parents=True, exist_ok=True)
-    names = set(REQUIRED_BALLS) if args.required_only else gen4_names() | set(REQUIRED_BALLS)
-    if args.verify_existing:
-        missing = [name for name in REQUIRED_BALLS
-                   if not (OUT / f"{name}.png").is_file() or
-                   not valid_png((OUT / f"{name}.png").read_bytes())]
-        if missing:
-            raise SystemExit("Missing required ball artwork: " + ", ".join(missing))
-        print("GEN IV BALL SPRITE PREFLIGHT: PASS (16 distinct item images)")
-        return 0
-    results = {"cached": 0, "fetched": 0, "not-upstream": 0}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as workers:
-        for slug, status in workers.map(lambda name: fetch(name, args.force), sorted(names)):
-            results[status] += 1
-    print(f"Item icon recovery from pinned PokeAPI {PINNED_REF[:12]}: {results}")
-    missing = [name for name in REQUIRED_BALLS
-               if not (OUT / f"{name}.png").is_file() or
-               not valid_png((OUT / f"{name}.png").read_bytes())]
-    if missing:
-        raise SystemExit("Missing REQUIRED ball-specific sprites: " + ", ".join(missing))
-    print("GEN IV BALL SPRITE PREFLIGHT: PASS (16 distinct item images)")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
-, re.M)
+    text = NAMES.read_text(encoding="utf-8")
+    section = text.split("static const char* ITEM_NAMES[] = {", 1)[1].split("};", 1)[0]
     names = set()
-    for match in pattern.finditer(source):
-        item_id = int(match.group(2))
+    for line in section.splitlines():
+        item_literal, separator, comment = line.partition("//")
+        if not separator:
+            continue
+        name = item_literal.strip().removesuffix(",")
+        if not (name.startswith('"') and name.endswith('"')):
+            continue
+        item_id = int(comment.strip().split()[0])
         if 1 <= item_id <= 536:
-            name = slugify(match.group(1))
-            if name and name != "none":
-                names.add(name)
+            slug = slugify(name[1:-1])
+            if slug:
+                names.add(slug)
     if len(names) < 400:
-        raise RuntimeError(f"Gen IV item-name table unexpectedly incomplete: {len(names)} keys")
+        raise RuntimeError(f"Gen IV item-name table unexpectedly incomplete: {len(names)}")
     return names
 
 
-def valid_png(raw: bytes) -> bool:
-    return raw.startswith(b"\x89PNG\r\n\x1a\n") and raw[-12:-8] == b"\x00\x00\x00\x00" and raw[-8:-4] == b"IEND"
+def validated(path: Path) -> bool:
+    if not path.is_file():
+        return False
+    ok, _reason, _dims = validate_png(path)
+    return ok
 
 
-def fetch(slug: str, force: bool) -> tuple[str, str]:
-    target = OUT / (slug + ".png")
-    if not force and target.is_file() and valid_png(target.read_bytes()):
-        return slug, "cached"
-    request = urllib.request.Request(f"{BASE_URL}/{slug}.png",
-                                    headers={"User-Agent": "PokeBank-NX-item-sprite-recovery"})
+def fetch(name: str, force: bool) -> str:
+    target = OUT / (name + ".png")
+    if not force and validated(target):
+        return "cached"
+    request = urllib.request.Request(
+        f"{BASE_URL}/{name}.png",
+        headers={"User-Agent": "PokeBank-NX-pinned-Gen4-item-sprites"},
+    )
     try:
-        with urllib.request.urlopen(request, timeout=22) as response:
+        with urllib.request.urlopen(request, timeout=30) as response:
             payload = response.read()
-    except urllib.error.HTTPError as exc:
-        if exc.code == 404:
-            return slug, "not-upstream"
+    except urllib.error.HTTPError as error:
+        if error.code == 404:
+            return "not-upstream"
         raise
-    if not valid_png(payload):
-        raise RuntimeError(f"Rejected malformed upstream PNG: {slug}")
-    tmp = target.with_suffix(".png.incomplete")
-    tmp.write_bytes(payload)
-    tmp.replace(target)
-    return slug, "fetched"
+    if not payload.startswith(bytes((137, 80, 78, 71, 13, 10, 26, 10))):
+        raise RuntimeError(f"Not a PNG: {name}")
+    temporary = target.with_suffix(".png.incomplete")
+    temporary.write_bytes(payload)
+    if not validated(temporary):
+        temporary.unlink(missing_ok=True)
+        raise RuntimeError(f"Corrupt upstream item PNG: {name}")
+    temporary.replace(target)
+    return "fetched"
+
+
+def verify_required() -> None:
+    missing = [name for name in REQUIRED_BALLS if not validated(OUT / (name + ".png"))]
+    if missing:
+        raise RuntimeError("Missing required native Gen IV ball PNGs: " + ", ".join(missing))
+    print("GEN IV BALL SPRITE PREFLIGHT: PASS (16 distinct matching ball images)")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--force", action="store_true")
-    parser.add_argument("--required-only", action="store_true",
-                        help="fast path for validating the sixteen exact Gen IV balls")
-    parser.add_argument("--verify-existing", action="store_true",
-                        help="offline check; never downloads")
-    args = parser.parse_args()
+    parser.add_argument("--required-only", action="store_true")
+    parser.add_argument("--verify-existing", action="store_true")
+    options = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
-    names = set(REQUIRED_BALLS) if args.required_only else gen4_names() | set(REQUIRED_BALLS)
-    if args.verify_existing:
-        missing = [name for name in REQUIRED_BALLS
-                   if not (OUT / f"{name}.png").is_file() or
-                   not valid_png((OUT / f"{name}.png").read_bytes())]
-        if missing:
-            raise SystemExit("Missing required ball artwork: " + ", ".join(missing))
-        print("GEN IV BALL SPRITE PREFLIGHT: PASS (16 distinct item images)")
+    if options.verify_existing:
+        verify_required()
         return 0
+    names = set(REQUIRED_BALLS)
+    if not options.required_only:
+        names.update(gen4_names())
     results = {"cached": 0, "fetched": 0, "not-upstream": 0}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as workers:
-        for slug, status in workers.map(lambda name: fetch(name, args.force), sorted(names)):
-            results[status] += 1
-    print(f"Item icon recovery from pinned PokeAPI {PINNED_REF[:12]}: {results}")
-    missing = [name for name in REQUIRED_BALLS
-               if not (OUT / f"{name}.png").is_file() or
-               not valid_png((OUT / f"{name}.png").read_bytes())]
-    if missing:
-        raise SystemExit("Missing REQUIRED ball-specific sprites: " + ", ".join(missing))
-    print("GEN IV BALL SPRITE PREFLIGHT: PASS (16 distinct item images)")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
+        for result in pool.map(lambda name: fetch(name, options.force), sorted(names)):
+            results[result] += 1
+    print(f"Item sprite recovery from pinned PokeAPI {PINNED_REF[:12]}: {results}")
+    verify_required()
     return 0
 
 
