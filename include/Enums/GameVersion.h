@@ -25,6 +25,12 @@ namespace Enums {
         P = 11,
         Pt = 12,
 
+        // Gen V native PK5 origin values (PKHeX GameVersion IDs).
+        W = 20,
+        B = 21,
+        W2 = 22,
+        B2 = 23,
+
         // Nintendo Switch
         GP = 42, // Pokemon: Let's Go, Pikachu!
         GE = 43, // Pokemon: Let's Go, Eevee!
@@ -53,6 +59,8 @@ namespace Enums {
         DP = 77,   // Pokemon Diamond/Pearl NDS save-layout group
         PT = 78,   // Pokemon Platinum NDS save-layout group
         HGSS = 79, // Pokemon HeartGold/SoulSilver NDS save-layout group
+        BW = 80,   // Pokemon Black/White NDS read-only source group
+        B2W2 = 81, // Pokemon Black 2/White 2 NDS read-only source group
 
         // Generational Groupings
         Gen7B = 84,
@@ -125,6 +133,12 @@ namespace Enums {
             case GameVersion::HG:
             case GameVersion::SS:
                 return GameVersion::HGSS;
+            case GameVersion::B:
+            case GameVersion::W:
+                return GameVersion::BW;
+            case GameVersion::B2:
+            case GameVersion::W2:
+                return GameVersion::B2W2;
 
             case GameVersion::GP:
             case GameVersion::GE:
@@ -171,6 +185,12 @@ namespace Enums {
             case GameVersion::DP: return "Diamond/Pearl";
             case GameVersion::PT: return "Platinum";
             case GameVersion::HGSS: return "HeartGold/SoulSilver";
+            case GameVersion::B: return "Black";
+            case GameVersion::W: return "White";
+            case GameVersion::B2: return "Black 2";
+            case GameVersion::W2: return "White 2";
+            case GameVersion::BW: return "Black/White";
+            case GameVersion::B2W2: return "Black 2/White 2";
             case GameVersion::GSC: return "Gold/Silver/Crystal";
             case GameVersion::RBY: return "Red/Blue/Yellow";
             case GameVersion::FRLG: return "FireRed/LeafGreen";

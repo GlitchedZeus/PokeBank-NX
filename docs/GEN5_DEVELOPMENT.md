@@ -287,3 +287,25 @@ Source preference remains API-only until a safe UI flow exists.
 - This early Product UI integration needs an exact-head native build and
   owner hardware confirmation before being considered accepted; the full
   Gen V editor/view implementation is a separate follow-up milestone.
+
+
+### Phase D tranche 2 — shared Trainer/Party/Boxes presentation bridge
+
+- Gen V PK5 now has a Pokemon5ReadOnlyView implementing the **existing**
+  shared Pokemon interface, not another user-facing editor. It exposes exact
+  PK5 Nature, IV, EV, moves, PP, PP Ups, native party level/HP/battle stats,
+  held item, trainer IDs, origin and met/egg fields from verified offsets.
+- The view inherits NO mutable PK5 buffer, exposes an empty getData() span,
+  refuses clone() and makes all inherited mutators inert. Unsupported boxed
+  levels/base-stat calculations remain unavailable rather than guessed.
+- The shared Gen5ReadOnlyTrainer holds an immutable validated SAV5 and an
+  independent staged PK5 workspace. It presents six declared party slots,
+  24 boxes × 30 slots, the verified trainer identity, and quarantines invalid
+  boxed PK5 records. It can rebuild presentation from app-owned staged edits,
+  then discard them without changing the original SAV5 bytes.
+- Native version/group IDs BW and B2W2 are separate from prior DS and modern
+  Switch game groups. Source group is derived from the validated current save,
+  not from a transferred Pokémon's origin version.
+- The production Gen V selection flow remains preview-only while its shared
+  action/edit surface is wired and hardware-checked. There is still no source
+  save writer, Create, Inject Save, item mutation or auto-fix.

@@ -1,4 +1,6 @@
 #include "Integration/Gen5/Gen5ReadOnlySave.h"
+#include "Legacy/Gen5ReadOnlyTrainer.h"
+#include "Pokemon/Pokemon5ReadOnlyView.h"
 #include "Integration/Gen5/Gen5SaveInstanceAdapter.h"
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
 #include "Integration/Gen5/Gen5AssignedSource.h"
@@ -385,6 +387,39 @@ int main() {
         const auto parsed=G::Gen5ReadOnlySave::parse(sav,id,&error);
         assert(parsed && error.empty());
         assert(parsed->family()==family && parsed->exactGameId()==id);
+        auto presented=PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*parsed,id,error);
+        assert(presented && error.empty());
+        assert(presented->getBoxCount()==24 && presented->getSlotsPerBox()==30);
+        assert(presented->getPartySize()==1 && presented->party.size()==1);
+        assert(presented->party[0] && presented->party[0]->speciesID()==25);
+        assert(presented->party[0]->level()==50);
+        assert(presented->party[0]->nature()==0);
+        assert(presented->party[0]->getData().empty());
+        assert(!presented->party[0]->clone());
+        assert(presented->party[0]->getGameGroup()==
+            (family==G::SaveFamily::BlackWhite?Enums::GameVersion::BW:
+                                                Enums::GameVersion::B2W2));
+        assert(presented->boxes.size()==24 && presented->boxes[0][0]);
+        assert(presented->boxes[0][0]->speciesID()==133);
+        assert(presented->boxes[0][0]->level()==0);
+        assert(!presented->boxes[0][1]);
+        assert(presented->trainerName=="NX" && presented->TID16==12345);
+        assert(!presented->hasStagedChanges());
+        presented->party[0]->setIV(0,31);
+        presented->party[0]->setEV(0,252);
+        presented->party[0]->setShiny(true,0);
+        assert(!presented->hasStagedChanges());
+        assert(presented->stagedPokemon().stageParty(
+            0,G::StagedPokemon5Record::Field::Nature,0,9,&error));
+        assert(presented->hasStagedChanges());
+        assert(presented->refreshStagedPokemonPresentation(error) && error.empty());
+        assert(presented->party[0]->nature()==9);
+        assert(parsed->partyPokemon(0)->nature()==0);
+        presented->stagedPokemon().discardAll();
+        assert(presented->refreshStagedPokemonPresentation(error));
+        assert(!presented->hasStagedChanges() && presented->party[0]->nature()==0);
+        assert(!PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*parsed,
+            family==G::SaveFamily::BlackWhite?"white_nds":"black_nds",error));
         const G::SourceContext context{
             id, "retroarch", "RetroArch", "sdmc:/retroarch/cores/savefiles/test.srm",
             "sdmc:/retroarch/cores/savefiles/test.srm", "physical-save-fixture",

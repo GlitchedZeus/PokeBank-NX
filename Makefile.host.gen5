@@ -28,6 +28,9 @@ GEN5_SAVE_INPUTS := tests/test_gen5_readonly_save.cpp \
     include/Integration/Gen5/Gen5AssignedSource.h include/Legacy/LegacySourceBindings.h \
     include/Integration/Gen5/Gen5GameSourceCatalog.h \
     include/Integration/Gen5/Gen5GameCardPreview.h \
+    include/Pokemon/Pokemon5ReadOnlyView.h include/Legacy/Gen5ReadOnlyTrainer.h \
+    src/Legacy/Gen5ReadOnlyTrainer.cpp src/Names/SpeciesNames.cpp \
+    include/Enums/GameVersion.h \
     include/Integration/Gen5/Gen5SharedPokemonSession.h \
     include/Integration/Gen5/Gen5TrainerName.h \
     include/Integration/Gen5/Gen5SourceDiscovery.h \
@@ -46,8 +49,8 @@ host-sanitize: $(GEN5_SAVE_SANITIZE)
 
 $(GEN5_SAVE_TEST): $(GEN5_SAVE_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_readonly_save.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp src/Integration/Gen5/Gen5AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp -o $@
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_readonly_save.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp src/Integration/Gen5/Gen5AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp src/Names/SpeciesNames.cpp -o $@
 
 $(GEN5_SAVE_SANITIZE): $(GEN5_SAVE_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_readonly_save.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp src/Integration/Gen5/Gen5AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_readonly_save.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp src/Integration/Gen5/Gen5AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp src/Names/SpeciesNames.cpp -o $@
