@@ -238,7 +238,11 @@ int main() {
     // Crystal Met Location is species/exact-game aware; accepting it writes the native
     // location and encounter-minimum caught level rather than an arbitrary landmark.
     assert(pickerModel.find("Encounter::forGameSpecies(sourceGameId, species)") != std::string::npos);
-    assert(picker.find("Species-valid Crystal encounters") != std::string::npos);
+    // The Crystal location picker now announces drag-to-browse behavior. Preserve
+    // actual species-scoped encounters and native minimum-level presentation.
+    assert(picker.find("Drag naturally to browse Crystal encounters") != std::string::npos);
+    assert(picker.find("model.locationCount()") != std::string::npos);
+    assert(picker.find("model.encounterChoices[") != std::string::npos);
     assert(picker.find("encounter->minLevel") != std::string::npos);
     assert(picker.find("Encounter::timeAllowed(*encounter, resolvedMetTime)") != std::string::npos);
     assert(picker.find("drawPokerusPicker") == std::string::npos);
@@ -274,10 +278,15 @@ int main() {
     assert(pickerFix.find("hardwareMoveAllowed") != std::string::npos);
     assert(pickerFix.find("MoveCompatibility::canLearnMove") != std::string::npos);
     assert(pickerFix.find("choices.push_back(0)") != std::string::npos);
-    assert(pickerFix.find("constexpr auto layout = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout()") != std::string::npos);
-    assert(pickerFix.find("constexpr int panelW = layout.width, panelH = layout.height") != std::string::npos);
-    assert(pickerFix.find("constexpr int visible = layout.visibleRows") != std::string::npos);
-    assert(pickerFix.find("layout.rowStep") != std::string::npos);
+    // Shared compact geometry is now held once as kHardwareMovePickerLayout,
+    // preserving the physical viewport, visual row cadence and A-confirm guard.
+    assert(pickerFix.find("kHardwareMovePickerLayout =") != std::string::npos);
+    assert(pickerFix.find("MovePickerPresentation::compactPickerLayout()") != std::string::npos);
+    assert(pickerFix.find("panelW = kHardwareMovePickerLayout.width") != std::string::npos);
+    assert(pickerFix.find("panelH = kHardwareMovePickerLayout.height") != std::string::npos);
+    assert(pickerFix.find("visible = kHardwareMovePickerLayout.visibleRows") != std::string::npos);
+    assert(pickerFix.find("kHardwareMovePickerLayout.rowStep") != std::string::npos);
+    assert(pickerFix.find("picker.moveViewport.containsSelection(") != std::string::npos);
     assert(pickerFix.find("TextStyle::Body") != std::string::npos);
     assert(pickerFix.find("Empty + compatible moves only • exact Gen II Acc / Pwr / PP") != std::string::npos);
     assert(pickerFix.find("MovePickerPresentation::rowLabel(move, Enums::GameVersion::GSC)") != std::string::npos);
