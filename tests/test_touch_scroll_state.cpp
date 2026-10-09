@@ -182,11 +182,21 @@ static void testIndependentPickerViewport() {
     assert(UI::TouchPickerViewport::maxFirst(17, 3, 3) == 3);
     TouchScrollState gridMotion;
     TouchInput second;
-    second.contact(100, 200);
+    // This viewport is only y=0..119. Contact must start *inside* its bounds.
+    second.contact(100, 100);
     gridMotion.updateVertical(second, 0, 0, 400, 120, 40, grid.firstRow, 4);
-    second.contact(100, 160);
+    second.contact(100, 60);
     gridMotion.updateVertical(second, 0, 0, 400, 120, 40, grid.firstRow, 4);
     assert(grid.firstRow == 1); // Grid viewport scrolls by ROWS, not item indices.
+
+    TouchScrollState outsideMotion;
+    TouchInput outside;
+    int outsideRow = 0;
+    outside.contact(100, 200); // Below the 120px viewport: no gesture capture.
+    outsideMotion.updateVertical(outside, 0, 0, 400, 120, 40, outsideRow, 4);
+    outside.contact(100, 60);
+    outsideMotion.updateVertical(outside, 0, 0, 400, 120, 40, outsideRow, 4);
+    assert(outsideRow == 0 && outsideMotion.offset() == 0);
     grid.ensure(1, 17, 3, 3);
     assert(grid.firstRow == 1);
     assert(!grid.containsSelection(16, 17, 3, 3));
