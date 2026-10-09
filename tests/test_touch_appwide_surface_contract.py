@@ -228,6 +228,16 @@ assert "screen.touchButtons.push_back({2000 + i" not in picker_hit, (
 require_all("src/UI/TrainerViewScreenBase.inc",
             "std::abs(touch.deltaY()) >= 24 &&",
             "std::abs(touch.deltaY()) > std::abs(touch.deltaX()))")
+# Two read-only report panels plus the detail side pane must reject sideways gestures.
+trainer_scroll = read("src/UI/TrainerViewScreenBase.inc")
+report_start = trainer_scroll.index("if (details.legalityOverlay) {")
+report_end = trainer_scroll.index("// View is a genuinely read-only summary.", report_start)
+report_gestures = trainer_scroll[report_start:report_end]
+assert report_gestures.count(
+    "std::abs(touch.deltaY()) > std::abs(touch.deltaX())") == 3, (
+    "Legality, ribbons and details must each require vertical finger intent"
+)
+assert report_gestures.count("std::abs(touch.deltaY()) >= 24") == 3
 require_all("include/UI/SharedPokemonShell.h",
             "int pixelOffset = 0",
             "static_cast<int>(i) * 38 + pixelOffset")
