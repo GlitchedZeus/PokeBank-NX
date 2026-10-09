@@ -76,11 +76,18 @@ require(manager_header, "bool handleGen5View(")
 require(
     games,
     "if (selected.sourceKind == SelectedSourceKind::Gen5AssignedFile)",
-    "Gen5::openAssignedSource(",
-    "if (!opened.ready() || !opened.save)",
-    "selectedSourceKind=selected.sourceKind;",
+    "openGen5Setup(selectedGameId,",
+    "discoverGen5Candidates();",
+    "reopenValidatedSource(chosen)",
+    "selectedSourceKind=SelectedSourceKind::Gen5AssignedFile;",
     "titleSelected=true;",
 )
+# The remembered assignment is never a silent direct-open shortcut: A must
+# reach the chooser, while candidate selection revalidates before routing.
+selector = games.split("if (selected.sourceKind == SelectedSourceKind::Gen5AssignedFile) {", 1)[1]
+selector = selector.split("if (selected.sourceKind == SelectedSourceKind::Gen4AssignedFile)", 1)[0]
+assert "discoverGen5Candidates();" in selector
+assert "titleSelected=true;" not in selector
 # The display bridge must draw from validated staged PK5, never serialize SAV5.
 require(trainer, "Gen5ReadOnlyTrainer::rebuildPresentation(")
 assert "fwrite(" not in trainer and "ofstream(" not in trainer
