@@ -5184,8 +5184,7 @@ namespace UI {
         if (helpOverlayActive) {
             drawInfoOverlay(fb, "Game Browser Controls", {
                 legacyReadOnlySource()
-                    ? legacyProviderLabel() + " " +
-                        (legacyPlatform.empty() ? std::string("LEGACY") : legacyPlatform) + " SOURCE: read-only browsing"
+                    ? legacyProviderLabel() + " SOURCE: read-only browsing"
                     : sourceReadOnly() ? "INSTALLED SOURCE: read-only browsing"
                                        : "BACKUP WORKSPACE: edits affect backup files only",
                 "Legacy Storage is app-owned bank.dat, NOT Master Vault",
