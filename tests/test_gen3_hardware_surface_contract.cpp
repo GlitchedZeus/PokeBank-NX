@@ -217,7 +217,12 @@ int main() {
     contains(surface, "state.pickerTarget == PickerTarget::HeldItem");
     contains(surface, "HeldItemGrid::move");
     contains(surface, "HeldItemGrid::columns");
-    contains(surface, "HeldItemGrid::pageSize");
+    // The shared grid still uses its fixed 4x10 geometry, but the touchscreen
+    // now moves its independent viewport instead of paging semantic focus.
+    contains(surface, "HeldItemGrid::rows");
+    contains(surface, "state.pickerViewport.firstRow * HeldItemGrid::columns + 1");
+    contains(surface, "state.pickerViewport.firstRow, maxFirstRow + 1");
+    contains(surface, "state.pickerViewport.containsSelection(");
     contains(surface, "constexpr auto moveLayout = MoveUI::compactPickerLayout()");
     contains(surface, "movePicker ? moveLayout.width");
     contains(surface, "movePicker ? moveLayout.height");
