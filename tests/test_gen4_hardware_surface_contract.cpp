@@ -134,6 +134,11 @@ int main() {
     contains(surface, "state.itemRemoveConfirmActive");
     contains(surface, "stageBagRemove(");
     contains(surface, "Gen IV item removed from staged workspace ONLY");
+    contains(surface, "state.itemAddPickerActive");
+    contains(surface, "Gen4::gen4BagChoices(staged->layout()");
+    contains(surface, "staged->stageBagAdd(");
+    contains(surface, "ItemPickerArtwork::draw(fb,x+w-31,yy+3,32,name)");
+    contains(surface, "Gen IV item added to staged workspace ONLY (x1)");
     contains(surface, "ItemPickerArtwork::draw(fb,x+w-38,y+65,36,itemName)");
     const auto removeGuardAt=surface.find("if(state.itemRemoveConfirmActive) {");
     const auto quantityEntryAt=surface.find("if(!state.itemQuantityActive) {",removeGuardAt);
@@ -145,6 +150,9 @@ int main() {
     contains(surface, "state.itemRemoveConfirmActive=false;");
     const auto stagedBag=read("src/Integration/Gen4/Gen4StagedPokemonEditor.cpp");
     contains(stagedBag, "bool Gen4StagedPokemonEditor::stageBagRemove(");
+    contains(stagedBag, "bool Gen4StagedPokemonEditor::stageBagAdd(");
+    contains(stagedBag, "gen4BagItemAllowed(layout_,pocket,itemId)");
+    contains(stagedBag, "Gen IV Add changed unrelated original save bytes");
     contains(stagedBag, "Gen IV item removal modified unrelated save bytes");
     contains(stagedBag, "Gen IV item removal changed another pocket");
     contains(surface, "MoveUI::rowLabel(value, bridge(screen).sourceSave().rawFamily())");
