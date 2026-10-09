@@ -1138,6 +1138,23 @@ void testNativeGen4Bag() {
             assert(added[i]==beforeAdd[i]);
         }
         assert(digest(bytes)==original && digest(parsed->sourceBytes())==original);
+        // The shared quantity screen must not offer x999 for every pocket:
+        // Key Items and HMs cap at 1; TMs cap at 99.
+        constexpr size_t kKeyItems=static_cast<size_t>(Bag::KeyItems);
+        constexpr size_t kMachines=static_cast<size_t>(Bag::Machines);
+        assert(workspace->stageBagAdd(kKeyItems,434,1,&error) && error.empty());
+        assert(!workspace->stageBagQuantity(kKeyItems,0,2,&error));
+        assert(workspace->stageBagAdd(kMachines,420,1,&error) && error.empty());
+        assert(!workspace->stageBagQuantity(kMachines,0,2,&error));
+        assert(workspace->stageBagAdd(kMachines,328,99,&error) && error.empty());
+        assert(!workspace->stageBagQuantity(kMachines,1,100,&error));
+        assert(workspace->stageBagQuantity(kMachines,1,99,&error) && error.empty());
+        assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+        assert(trainer->items[kKeyItems][0].count==1);
+        assert(trainer->items[kMachines].size()==2);
+        assert(trainer->items[kMachines][0].count==1 &&
+               trainer->items[kMachines][1].count==99);
+        assert(digest(bytes)==original && digest(parsed->sourceBytes())==original);
         workspace->discard();
         assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
         assert(trainer->items[kBalls][0].count==43 &&
