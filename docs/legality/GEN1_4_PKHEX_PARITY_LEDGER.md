@@ -5,7 +5,7 @@ This ledger tracks **accepted production legality behavior** on `feature/legalit
 - PKHeX: `6501f0ab46e8f8ca048539dbaf8cae8cb104e722`
 - PokeBank NX accepted baseline when this ledger was created: `90816ca57ffa918359b01e7f8cc994c8e57af6a1`
 - Last historical reconciliation: `4405098059f0f6a5a649732913b844ac77d4da35` on 2026-10-08.
-- Rechecked against accepted legality HEAD `1f5f2027c5ee47f3adbb0efee659db3e3c205918` on 2026-10-09. Emerald Safari PRs #164–#171 are now accepted **as evidence-only** and are **not** counted as production verifier parity.
+- Rechecked against accepted legality HEAD `1f5f2027c5ee47f3adbb0efee659db3e3c205918` on 2026-10-09. Updated acceptance checkpoint: `34f420b88f0b2f06c3a43ca55dbe3000f4e974c3` (exact-head CI #3141/#3147/#3149/#3150/#3151 all green; stacked #173-#176 accepted by non-force FF). Emerald Safari PRs #164–#171 are now accepted **as evidence-only** and are **not** counted as production verifier parity.
 
 It is intentionally conservative. A similarly named source file is not enough to claim parity: `Implemented` requires production-path behavior and regression evidence. `Partial` means useful source-backed checking exists but material PKHeX behavior remains unreconstructed. `Missing` means no accepted production implementation was verified. `Needs source verification` means the current comparison is not yet strong enough to classify safely.
 
@@ -33,7 +33,7 @@ The engine's semantic safety rule remains unchanged: **unknown, unsupported, or 
 | 16. Met data | Partial | Exact encounter matchers, Gen IV origin/release/hatch evidence, static/event templates and transfer classifiers validate substantial met-location/level combinations. | Full met-data combination and historical transformation parity remains incomplete. |
 | 17. Balls | Partial | Production wires `Gen34BallDomainEvidence.h` for exact Gen III/IV sources (nonzero IDs above 12 / 24 respectively are Invalid); zero is unresolved. Source/template-specific ball matching exists for several static/event/shadow sources. | **Only ID-domain checking is established generally**, not whether a particular ball was obtainable for a particular species, encounter, location or transfer history. General Gen I-IV capture-ball use legality and complete competing provenance remain incomplete. |
 | 18. Held-item / history constraints | Partial | Production resolves held-item IDs in the Pokémon's source item namespace and warns on unknown IDs. | Legal held-item sets, source-game restrictions and historical item transitions are not yet reconstructed to PKHeX parity. |
-| 19. Lead / RNG mechanics | Partial | Extensive Gen IV Method J/K lead evidence is accepted: BCC rerolls, Pressure/Hustle/Vital Spirit, Static/Magnet Pull, Synchronize success/failure subsets, Safari/Suction Cups and central reporting. | Mixed failed+successful Synchronize retry chains, failed-Synchronize nature-lock transitions, PID nature-rejection loops and other unsupported histories remain. |
+| 19. Lead / RNG mechanics | Partial | Extensive Gen IV Method J/K lead evidence is accepted: BCC rerolls, Pressure/Hustle/Vital Spirit, Static/Magnet Pull, Synchronize success/failure subsets, Safari/Suction Cups and central reporting. | One-reroll mixed successful/failed Synchronize chains in both directions are accepted (#173-#176). Two/three-reroll mixed histories remain draft (#178-#180), while PID nature-rejection loops and other unsupported histories remain incomplete. |
 | 20. Game-specific exceptions | Partial | Exact-game profiles plus many Gen I-IV special-source modules (Time Capsule, e-Reader, GameCube, event, Pokéwalker, Ranger Manaphy, Safari/BCC, etc.) are accepted. | PKHeX contains additional game/version-specific exceptions that still require source-by-source comparison and permanent vectors. |
 | 21. Verdict / reporting behavior | Implemented | Accepted engine has structured findings, `Invalid`, `No Problems Found`, `Incomplete`, explicit coverage tracking, a production report bridge and lead-history descriptions. | This status covers the reporting contract only, **not** parity of every verifier feeding it. New unsupported history must continue to resolve conservatively as Incomplete. |
 
@@ -57,6 +57,14 @@ The accepted production path `src/Legality/Legality.cpp` already uses `Gen34Lang
 ## Evidence-only versus production distinction
 
 The accepted Gen III Safari tables, evolution-aware fixed-ball origin evidence and Method-H lead paths progressively prove **positive compatible encounter histories**. The candidate Emerald lead tranches likewise remain evidence-only, with no analyzer hard `Invalid` path. No source-specific Safari conclusion should be upgraded to global Invalid until all compatible competing histories are accounted for and the production analyzer has direct regression coverage. Unknown, unsupported, or unreconstructable stays **Incomplete/unresolved**.
+
+## Gen IV Method K bounded retry checkpoint (2026-10-09)
+
+Accepted: first-Synchronize-success/retained-failure and first-failure/retained-success HGSS Bug Catching Contest one-reroll histories (#173-#176). The proofs are positive-only against the real pinned HeartGold Kakuna slot 3, location 207, levels 9-18 and encounter rate 25. They are integrated into source-indexed reporting without any new hard-Invalid classification.
+
+Pending draft: #177 tests real source and central Method K reporting; #178 models mixed Synchronize chains with two or three rejected attempts, including a legitimate fourth attempt without a 31 IV; #179 wires the new evidence to positive reporting; #180 checks end-to-end central dispatch. None is accepted parity until its own exact-head clean/full/RSE/sanitizer CI is fully green and the isolated legality branch is advanced by fresh non-force expected-head ancestry.
+
+Not reconstructed: full PID-nature rejection loops, ambiguous lead histories, all alternative origins and source-specific transfer/evolution interactions. These remain Incomplete / Unresolved, never Invalid based on absence of a bounded RNG proof.
 
 ## Highest-impact remaining work (source-by-source)
 
