@@ -524,6 +524,15 @@ int main() {
         using GRegion=G::Gen5StagedPokemonWorkspace::Region;
         using GMode=G::Gen5SharedPokemonSession::Mode;
         using GField=G::StagedPokemon5Record::Field;
+        const GSlot forgedRegion{static_cast<GRegion>(0xFF),0,0};
+        const GSlot forgedPartyBox{GRegion::Party,1,0};
+        assert(!G::Gen5StagedPokemonWorkspace::canonicalSlot(forgedRegion));
+        assert(!G::Gen5StagedPokemonWorkspace::canonicalSlot(forgedPartyBox));
+        assert(!G::selectedSlot(workspace,forgedRegion).validated);
+        assert(!G::selectedSlot(workspace,forgedPartyBox).validated);
+        assert(!viewer.begin(workspace,forgedRegion,GMode::Edit,error));
+        assert(!viewer.begin(workspace,forgedPartyBox,GMode::View,error));
+        assert(viewer.mode()==GMode::None);
         assert(viewer.begin(workspace,GSlot{GRegion::Party,0,0},GMode::View,error));
         assert(!viewer.stage(GField::Nature,0,15,error));
         assert(!G::stageSharedField(viewer,GF::Nature,0,15,error));
