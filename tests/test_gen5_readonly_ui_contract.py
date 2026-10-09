@@ -39,6 +39,9 @@ require(
     "state.requestExit(staged)",
     "state.confirmDiscardAndExit(staged)",
     "state.discardAllWithPresentation(staged,",
+    "state.moveReviewPage(1,staged)",
+    "verifyStagedReview(change,&error)",
+    "reviewedFieldLabel(verified->fields[field])",
     "screen.drawGSCOverlay(fb)",
     "screen.details.active=false;",
     "drawVerifiedSummary(screen,fb,&view",
@@ -48,6 +51,8 @@ require(
 )
 # Passive PK5 View must not invoke the legacy all-generation legality report.
 # Unknown/unsupported Gen V history is unresolved, not hard-invalid.
+assert "Gen5SharedReview.h" in surface
+assert "verifyStagedReview(" in read("include/Integration/Gen5/Gen5SharedReview.h")
 assert "Legality::analyze(" not in surface
 assert surface.index("screen.details.active=false;") < surface.index("drawVerifiedSummary(screen,fb,&view")
 assert "Gen5SharedScreenState" in read("include/Legacy/Gen5ReadOnlyTrainer.h")
