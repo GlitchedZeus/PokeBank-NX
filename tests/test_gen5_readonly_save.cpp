@@ -635,6 +635,14 @@ int main() {
         assert(editor.begin(workspace,GSlot{GRegion::Party,0,0},GMode::Edit,error));
         assert(!G::stageSharedField(editor,GF::Species,0,133,error));
         assert(!G::stageSharedField(editor,GF::IV,0,32,error));
+        // Unknown enum discriminants are forbidden at BOTH the shared
+        // adapter and native PK5 record transaction boundary.
+        const auto forbiddenField=static_cast<GField>(0xFF);
+        const auto pristineNature=editor.current()->nature();
+        assert(!editor.stage(forbiddenField,0,17,error));
+        assert(editor.current()->nature()==pristineNature);
+        assert(!G::stageSharedField(editor,static_cast<GF>(0xFF),0,17,error));
+        assert(editor.current()->nature()==pristineNature);
         assert(G::stageSharedField(editor,GF::Nature,0,10,error));
         assert(editor.current()->nature()==10);
         // An attempted second Open cannot silently destroy a dirty draft.
