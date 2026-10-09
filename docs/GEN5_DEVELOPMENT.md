@@ -329,7 +329,9 @@ Source preference remains API-only until a safe UI flow exists.
   assignment passes strict reopening. UIManager reopens and validates the same
   assignment again immediately before constructing the Trainer adapter.
 - The existing shared TrainerViewScreen renders Gen V party, 24 x 30 PC boxes,
-  validated trainer identity and passive Pokemon details. No separate UI app,
+  validated trainer identity and a source-backed **limited PK5 summary**. That
+  summary deliberately bypasses the generic details modal's unconditional
+  legality analysis; unknown Gen V histories stay unresolved. No separate UI app,
   source SAV writer, or direct PK5 mutator was added.
 - Gen5SharedReadOnlySurface intercepts **every** input frame ahead of inherited
   edit, Storage/Bank, Items, trainer mutation and save handlers. Supported:
