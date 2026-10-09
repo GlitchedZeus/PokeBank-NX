@@ -1,7 +1,10 @@
+#include "Encryption/Encryption4.h"
 #include "Legality/Legality.h"
 #include "Names/ItemNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Pokemon3FRLG.h"
+#include "Pokemon/Pokemon4ReadOnly.h"
+#include "Pokemon/Pokemon4ReadOnlyView.h"
 
 #include <array>
 #include <cassert>
@@ -9,6 +12,7 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <vector>
 
 // Legality.cpp keeps historical Trainer namespace wrappers. Keep this regression
 // independent of the full Trainer UI implementation, matching the existing
@@ -42,6 +46,40 @@ Pokemon::Pokemon3FRLG makeCandidate(uint8_t language) {
     p.setLevel(5);
     p.refreshChecksum();
     return p;
+}
+
+void put16(std::vector<std::byte>& data, size_t offset, uint16_t value) {
+    data[offset] = static_cast<std::byte>(value & 0xFFu);
+    data[offset + 1] = static_cast<std::byte>(value >> 8);
+}
+void put32(std::vector<std::byte>& data, size_t offset, uint32_t value) {
+    data[offset] = static_cast<std::byte>(value & 0xFFu);
+    data[offset + 1] = static_cast<std::byte>((value >> 8) & 0xFFu);
+    data[offset + 2] = static_cast<std::byte>((value >> 16) & 0xFFu);
+    data[offset + 3] = static_cast<std::byte>((value >> 24) & 0xFFu);
+}
+
+// Source-backed encrypted PK4 -> immutable reader -> shared view -> analyzer.
+// A PK3 fixture with exact Gen IV source context alone cannot prove PK4 decoding.
+Legality::Report analyzeNativePK4Language(uint8_t language) {
+    std::vector<std::byte> decrypted(Encryption::SIZE_STORED4, std::byte{0});
+    put32(decrypted, 0x00, 0x12345678u);
+    put16(decrypted, 0x08, 1);       // Bulbasaur
+    put16(decrypted, 0x0C, 12345);   // Trainer ID
+    put16(decrypted, 0x0E, 54321);   // Secret ID
+    put32(decrypted, 0x10, 135);     // Exp (level 5)
+    decrypted[0x15] = std::byte{65}; // Overgrow
+    decrypted[0x17] = static_cast<std::byte>(language);
+    decrypted[0x5F] = std::byte{12}; // Platinum origin marker
+    decrypted[0x83] = std::byte{4};  // Poké Ball
+    const auto encrypted = Encryption::encryptArray4(decrypted);
+    assert(encrypted.size() == Encryption::SIZE_STORED4);
+    Pokemon::Pokemon4ReadOnly source(encrypted, Enums::GameVersion::PT);
+    assert(source.valid());
+    assert(source.language() == language);
+    Pokemon::Pokemon4ReadOnlyView view(source);
+    assert(view.language() == language);
+    return Legality::analyze(view, Enums::GameVersion::PT, "platinum_nds");
 }
 }
 
@@ -94,6 +132,25 @@ int main() {
     auto genericUnused = makeCandidate(6);
     const auto bankUnused = Legality::analyze(genericUnused, Enums::GameVersion::FRLG);
     assert(hasText(bankUnused, "Invalid language id (6)"));
+
+
+    // Pinned PKHeX LanguageVerifier rejects unused 6; Legal.GetMaxLanguageID
+    // accepts Gen IV up to Korean 8. Test the real encrypted PK4 read path.
+    const auto nativeUnused = analyzeNativePK4Language(6);
+    assert(nativeUnused.hasInvalid());
+    assert(hasText(nativeUnused, "Language id 6 cannot exist in Generation 4"));
+
+    const auto nativeMaximum = analyzeNativePK4Language(8);
+    assert(!hasText(nativeMaximum, "Language id 8 cannot exist in Generation 4"));
+
+    const auto nativeTooHigh = analyzeNativePK4Language(9);
+    assert(nativeTooHigh.hasInvalid());
+    assert(hasText(nativeTooHigh, "Language id 9 cannot exist in Generation 4"));
+
+    // Value zero is an unresolved/unwired sentinel, not hard-invalid.
+    const auto nativeUnwired = analyzeNativePK4Language(0);
+    assert(!hasText(nativeUnwired, "Language id 0 cannot exist"));
+    assert(!hasText(nativeUnwired, "Invalid language id (0)"));
 
     return 0;
 }

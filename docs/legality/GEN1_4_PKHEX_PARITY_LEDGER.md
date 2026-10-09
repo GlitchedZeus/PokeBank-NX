@@ -4,7 +4,8 @@ This ledger tracks **accepted production legality behavior** on `feature/legalit
 
 - PKHeX: `6501f0ab46e8f8ca048539dbaf8cae8cb104e722`
 - PokeBank NX accepted baseline when this ledger was created: `90816ca57ffa918359b01e7f8cc994c8e57af6a1`
-- Reconciled against accepted legality head `4405098059f0f6a5a649732913b844ac77d4da35` on 2026-10-08. The current Safari candidate PRs remain evidence-only and are **not** counted as production verifier parity.
+- Last historical reconciliation: `4405098059f0f6a5a649732913b844ac77d4da35` on 2026-10-08.
+- Rechecked against accepted legality HEAD `1f5f2027c5ee47f3adbb0efee659db3e3c205918` on 2026-10-09. Emerald Safari PRs #164–#171 are now accepted **as evidence-only** and are **not** counted as production verifier parity.
 
 It is intentionally conservative. A similarly named source file is not enough to claim parity: `Implemented` requires production-path behavior and regression evidence. `Partial` means useful source-backed checking exists but material PKHeX behavior remains unreconstructed. `Missing` means no accepted production implementation was verified. `Needs source verification` means the current comparison is not yet strong enough to classify safely.
 
@@ -35,6 +36,10 @@ The engine's semantic safety rule remains unchanged: **unknown, unsupported, or 
 | 19. Lead / RNG mechanics | Partial | Extensive Gen IV Method J/K lead evidence is accepted: BCC rerolls, Pressure/Hustle/Vital Spirit, Static/Magnet Pull, Synchronize success/failure subsets, Safari/Suction Cups and central reporting. | Mixed failed+successful Synchronize retry chains, failed-Synchronize nature-lock transitions, PID nature-rejection loops and other unsupported histories remain. |
 | 20. Game-specific exceptions | Partial | Exact-game profiles plus many Gen I-IV special-source modules (Time Capsule, e-Reader, GameCube, event, Pokéwalker, Ranger Manaphy, Safari/BCC, etc.) are accepted. | PKHeX contains additional game/version-specific exceptions that still require source-by-source comparison and permanent vectors. |
 | 21. Verdict / reporting behavior | Implemented | Accepted engine has structured findings, `Invalid`, `No Problems Found`, `Incomplete`, explicit coverage tracking, a production report bridge and lead-history descriptions. | This status covers the reporting contract only, **not** parity of every verifier feeding it. New unsupported history must continue to resolve conservatively as Incomplete. |
+
+## Native PK4 language regression and pinned reference
+
+Pinned PKHeX `6501f0ab46e8f8ca048539dbaf8cae8cb104e722` (`PKHeX.Core/Legality/Verifiers/LanguageVerifier.cs` and `Legal.cs`) confirms unused ID 6 is invalid, native Gen III language max is Spanish (7), and native Gen IV max is Korean (8). The previous Gen IV PokeBank source-context analyzer test used a PK3 fixture and did not prove native encrypted PK4 decoding. A new fixture exercises encrypted PK4 -> immutable PK4 reader -> shared view -> exact source legality analyzer with IDs 6 (invalid), 8 (not rejected by language-domain check), 9 (invalid), and 0 (the codebase's intentionally unresolved sentinel). This adds a boundary regression, **not** wider OT/text/trash-byte parity or a new production hard-Invalid rule.
 
 ## Reconciled Gen III-IV domain checks (closed bounded gaps)
 
