@@ -49,8 +49,8 @@ host-sanitize: $(GEN5_SAVE_SANITIZE)
 
 $(GEN5_SAVE_TEST): $(GEN5_SAVE_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_readonly_save.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp src/Integration/Gen5/Gen5AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp src/Names/SpeciesNames.cpp -o $@
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude tests/test_gen5_readonly_save.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp src/Integration/Gen5/Gen5AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp src/Names/SpeciesNames.cpp -o $@
 
 $(GEN5_SAVE_SANITIZE): $(GEN5_SAVE_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_readonly_save.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp src/Integration/Gen5/Gen5AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp src/Names/SpeciesNames.cpp -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude tests/test_gen5_readonly_save.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp src/Integration/Gen5/Gen5AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp src/Names/SpeciesNames.cpp -o $@
