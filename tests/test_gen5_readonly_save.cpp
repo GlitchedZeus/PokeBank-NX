@@ -499,6 +499,13 @@ int main() {
         assert(nativeActions.count==4);
         assert(nativeActions[0]==GA::View && nativeActions[1]==GA::Edit);
         assert(nativeActions[2]==GA::Review && nativeActions[3]==GA::Close);
+        // A stale/forged slot flag must never surface the Edit action on
+        // an actually empty native box cell, even with pending changes.
+        auto staleSlot=nativeParty;
+        staleSlot.location={G::Gen5StagedPokemonWorkspace::Region::Box,0,1};
+        const auto staleActions=G::actions(workspace,staleSlot);
+        assert(staleActions.count==2 && staleActions[0]==GA::Review &&
+               staleActions[1]==GA::Close);
         assert(G::fieldAccess(GF::IV)==GAccess::Editable);
         assert(G::fieldAccess(GF::Nature)==GAccess::Editable);
         assert(G::fieldAccess(GF::Species)!=GAccess::Editable);
@@ -506,6 +513,7 @@ int main() {
         assert(!G::exactDescriptor("platinum_nds",true));
         G::Gen5SharedPokemonSession unsupported;
         assert(!G::openSharedDraft(unsupported,workspace,nativeParty,GA::Add,error));
+        assert(!G::openSharedDraft(unsupported,workspace,staleSlot,GA::Edit,error));
         assert(unsupported.mode()==G::Gen5SharedPokemonSession::Mode::None);
         assert(G::openSharedDraft(unsupported,workspace,nativeParty,GA::View,error));
         assert(unsupported.back());
@@ -518,11 +526,18 @@ int main() {
         using GField=G::StagedPokemon5Record::Field;
         assert(viewer.begin(workspace,GSlot{GRegion::Party,0,0},GMode::View,error));
         assert(!viewer.stage(GField::Nature,0,15,error));
+        assert(!G::stageSharedField(viewer,GF::Nature,0,15,error));
         assert(viewer.back() && viewer.mode()==GMode::None);
         assert(!viewer.begin(workspace,GSlot{GRegion::Box,24,0},GMode::Edit,error));
         G::Gen5SharedPokemonSession editor;
         assert(editor.begin(workspace,GSlot{GRegion::Party,0,0},GMode::Edit,error));
-        assert(editor.stage(GField::Nature,0,10,error));
+        assert(!G::stageSharedField(editor,GF::Species,0,133,error));
+        assert(!G::stageSharedField(editor,GF::IV,0,32,error));
+        assert(G::stageSharedField(editor,GF::Nature,0,10,error));
+        assert(editor.current()->nature()==10);
+        // An attempted second Open cannot silently destroy a dirty draft.
+        assert(!editor.begin(workspace,GSlot{GRegion::Box,0,0},GMode::Edit,error));
+        assert(editor.mode()==GMode::Edit && editor.dirty());
         assert(editor.current()->nature()==10);
         assert(workspace.viewParty(0)->nature()==12);
         assert(!editor.back() && editor.confirmExit());
