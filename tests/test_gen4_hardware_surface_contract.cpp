@@ -254,10 +254,15 @@ int main() {
     assert(locations.find("\xEF\xBB\xBF") == std::string::npos);
     contains(locationGenerator, "encoding=\"utf-8-sig\"");
 
-    // Inventory is still a later DS capability, but the visible copy must describe current G4 state.
+    // Read-only Gen IV inventory is now decoded from the selected CRC-valid
+    // General partition and rendered in the existing shared Items surface.
     assert(itemsPanel.find("G4-02") == std::string::npos);
-    contains(itemsPanel, "Generation IV inventory support is not implemented yet.");
-    contains(itemsPanel, "Party/Box Pokemon View, Edit and Create remain available.");
+    assert(itemsPanel.find("Generation IV inventory support is not implemented yet.") ==
+           std::string::npos);
+    contains(itemsPanel, "Generation IV inventory");
+    contains(itemsPanel, "bagPocketName");
+    contains(bridge, "decodeReadOnlyBag(save_)");
+    contains(bridge, "items.assign(bag->begin(),bag->end())");
 
     // A committed staged edit must not claim UI success when the refreshed presentation failed.
     contains(surface, "if (!refreshPresentation(screen))");
