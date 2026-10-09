@@ -193,6 +193,19 @@ require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
             "appendClippedTouchButton(screen.touchButtons, 1300 + row,",
             "x + 24, listTop, w - 48, h - 108")
 
+# Long Gen I Species and Move pickers must not recenter on the contact edge.
+# Scrolling and tapping are separate gestures; only a clean release may select.
+gen1_direct = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc").split(
+    "uint64_t ux3DirectTouchInput(", 1)[1]
+species_input = gen1_direct.split("if (state.picker == UX2Picker::Species) {", 1)[1].split(
+    "if (state.picker == UX2Picker::Move) {", 1)[0]
+move_input = gen1_direct.split("if (state.picker == UX2Picker::Move) {", 1)[1].split(
+    "if (state.mode == UX2Mode::Edit", 1)[0]
+for picker_name, input_body in (("Species", species_input), ("Move", move_input)):
+    if "pressed" in input_body:
+        raise AssertionError(f"Gen I {picker_name}: touch-down must not jump picker selection")
+    if "selectedId(" not in input_body or "tapped" not in input_body:
+        raise AssertionError(f"Gen I {picker_name}: clean tap selection missing")
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc",
             "void ux2ResetTouchMotion(UX2State& state) noexcept",
             "state.editorScroll.reset();",

@@ -697,9 +697,9 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
     };
 
     if (state.picker == UX2Picker::Species) {
-        int species = selectedId(3000, 152, pressed);
-        if (species >= 1) state.pickerValue = species;
-        species = selectedId(3000, 152, tapped);
+        // Keep the existing preview steady while a contact may become a swipe.
+        // The release-confirmed row target is the only direct-tap selection.
+        int species = selectedId(3000, 152, tapped);
         if (species >= 1) { state.pickerValue = species; down |= HidNpadButton_A; }
         const int dy = touch.deltaY();
         if (touch.justReleased() && touch.dragged() &&
@@ -725,9 +725,7 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
                     HidNpadButton_Left | HidNpadButton_Right |
                     HidNpadButton_L | HidNpadButton_R))
             state.pickerScroll.stop();
-        int index = selectedId(4000, static_cast<int>(choices.size()), pressed);
-        if (index >= 0) { state.pickerScroll.stop(); state.pickerValue = choices[static_cast<size_t>(index)]; }
-        index = selectedId(4000, static_cast<int>(choices.size()), tapped);
+        int index = selectedId(4000, static_cast<int>(choices.size()), tapped);
         if (index >= 0) {
             state.pickerScroll.stop();
             state.pickerValue = choices[static_cast<size_t>(index)];
