@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Legality/Gen34EggMoveEvidence.h"
+#include "Legality/Gen34WurmpleEvolutionEvidence.h"
 #include "Legality/Gen4SpecialBallEvidence.h"
 
 #include <cstdint>
@@ -31,7 +32,8 @@ inline Evidence analyzeSupported(std::string_view exactStoredOrigin,
                                  uint16_t metLocation,
                                  uint8_t metLevel,
                                  uint8_t currentForm,
-                                 uint8_t ball) noexcept {
+                                 uint8_t ball,
+                                 uint32_t pid) noexcept {
     if (currentSpecies == 0 || currentSpecies > 493 ||
         currentForm != 0 || metLevel == 0 ||
         // Shedinja has special per-origin ball semantics verified elsewhere.
@@ -46,7 +48,17 @@ inline Evidence analyzeSupported(std::string_view exactStoredOrigin,
     for (int depth = 0; ancestor != 0 && depth < 8; ++depth) {
         const auto affinity=Gen4SpecialBallEvidence::analyzeSupported(
             exactStoredOrigin, ancestor, metLocation, metLevel, 0, ball);
-        if (affinity != Gen4SpecialBallEvidence::Affinity::None) {
+        // PKHeX WurmpleUtil uses the stored PK3/PK4 PID upper half:
+        // (PID>>16)%10 / 5. A Wurmple-only encounter source is not a
+        // compatible ancestry for the opposite evolved branch. Other
+        // directly encountered cocoon origins must not be suppressed.
+        const bool incompatibleWurmple =
+            ancestor == 265 &&
+            Gen34WurmpleEvolution::evaluate(
+                265, currentSpecies, pid).status ==
+                Gen34WurmpleEvolution::Status::Incompatible;
+        if (!incompatibleWurmple &&
+            affinity != Gen4SpecialBallEvidence::Affinity::None) {
             if (out.matched() && affinity != out.affinity)
                 return {}; // contradictory types: no specific claim
             out.affinity = affinity;

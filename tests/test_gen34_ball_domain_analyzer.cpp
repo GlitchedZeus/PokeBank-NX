@@ -91,9 +91,9 @@ Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true) {
 Legality::Report analyzeNativeHgssSpecialBall(
         uint16_t species, uint16_t metLocation,
         uint8_t metLevel, uint8_t ball, uint8_t originVersion = 7,
-        uint32_t experience = 3375) {
+        uint32_t experience = 3375, uint32_t pid = 0x12345678u) {
     std::vector<std::byte> raw(Encryption::SIZE_STORED4, std::byte{0});
-    wr32(raw, 0x00, 0x12345678u);
+    wr32(raw, 0x00, pid);
     wr16(raw, 0x08, species);
     wr16(raw, 0x0C, 12345);
     wr16(raw, 0x0E, 54321);
@@ -268,6 +268,19 @@ int main() {
     // Evolved Pidgeot has no direct native Safari capture row at
     // location202/level15, but its Pidgey ancestor does. High stored EXP
     // makes a level-qualified evolved state more realistic in this fixture.
+    // Source-aware native PK4 Wurmple branch counterexample:
+    // Beautifly from HGSS Headbutt Wurmple level2 in Apricorn Ball.
+    // PID high word 1 selects Silcoon/Beautifly, high6 selects
+    // Cascoon/Dustox, so the latter cannot support this ancestry.
+    const auto nativeBeauty=analyzeNativeHgssSpecialBall(
+        267,138,2,17,7,200000,0x00010000u);
+    const auto nativeWrongBeauty=analyzeNativeHgssSpecialBall(
+        267,138,2,17,7,200000,0x00060000u);
+    assert(hasInfo(nativeBeauty,
+        "special Ball has a compatible wild pre-evolution capture source"));
+    assert(!hasInfo(nativeWrongBeauty,
+        "special Ball has a compatible wild pre-evolution capture source"));
+
     const auto evolvedSafari = analyzeNativeHgssSpecialBall(
         18, 202, 15, 5, 7, 200000);
     assert(hasInfo(evolvedSafari,

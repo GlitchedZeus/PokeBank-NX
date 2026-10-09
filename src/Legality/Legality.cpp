@@ -1468,7 +1468,7 @@ namespace Legality {
                             Gen4EvolvedSpecialBall::analyzeSupported(
                                 gen4EncounterGameId, species,
                                 pk.metLocation(), pk.metLevel(),
-                                pk.form(), pk.ball());
+                                pk.form(), pk.ball(), pk.pid());
                         if (evoBall.matched()) {
                             // This is compatible ancestor CAPTURE evidence,
                             // not a complete evolving/transfer history.

@@ -20,6 +20,7 @@ GEN4_BCC_MULTI_BRIDGE_HEADERS := include/Legality/Gen4WildRngCorrelation.h \
 	include/Legality/Gen4BugContestMixedDepthEvidence.h
 GEN4_EVOLVED_BALL_SOURCES := tests/test_gen4_evolved_special_ball_evidence.cpp
 GEN4_EVOLVED_BALL_HEADERS := include/Legality/Gen4EvolvedSpecialBallEvidence.h \
+	include/Legality/Gen34WurmpleEvolutionEvidence.h \
 	include/Legality/Gen4SpecialBallEvidence.h \
 	include/Legality/Gen34EggMoveEvidence.h \
 	include/Legality/Gen34EggMoveData.inc
