@@ -2247,7 +2247,7 @@ namespace UI {
             }
         scrollSelectionIntoView();
         refreshHubPreview();
-        hubNotice="Gen V source linked read-only. Party/Dex preview ready; editor pending.";
+        hubNotice="Gen V source linked. Press A to browse Trainer, Party and Boxes read-only.";
         if(gen5SetupFromGamesDrawer) {
             gamesDrawerIndex=titleIndex;
             gamesDrawerScroll=std::max(0,gamesDrawerIndex/3-1);
@@ -2397,11 +2397,27 @@ namespace UI {
         }
 
         if (selected.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
-            // Until the Gen V shared editor is production-wired, the exact
-            // validated Save Instances chooser is the only A-open surface.
-            openGen5Setup(selectedGameId,
-                "Gen V preview only; source saves are immutable.");
-            discoverGen5Candidates();
+            if (!legacyBindings) {
+                openGen5Setup(selectedGameId, "Choose a validated Generation V source.");
+                return;
+            }
+            const auto opened=PokeVault::Integration::Gen5::openAssignedSource(
+                *legacyBindings,profile,selectedGameId);
+            if (!opened.ready() || !opened.save) {
+                openGen5Setup(selectedGameId,opened.diagnostic.empty()
+                    ? "Gen V source is unassigned or failed strict validation."
+                    : opened.diagnostic);
+                return;
+            }
+            // Only the read-only Trainer/Party/Boxes browse layer is enabled.
+            // Reopen and revalidate again in UIManager; this preview result
+            // never grants a save writer or a generic editor capability.
+            selectedUserUid=user->uid;
+            selectedTitleId=0;
+            selectedTitleName=selected.name;
+            this->selectedGameId=selectedGameId;
+            selectedSourceKind=selected.sourceKind;
+            titleSelected=true;
             return;
         }
 
