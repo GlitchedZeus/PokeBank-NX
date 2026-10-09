@@ -4,6 +4,7 @@
 // source-save dialogs, Create and generic mutation handlers are unreachable.
 // Touch remains inert in this isolated lane until its separate safety review.
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
+#include "Integration/Gen5/Gen5SharedReview.h"
 #include "Legacy/Gen5ReadOnlyTrainer.h"
 #include "Pokemon/Pokemon5ReadOnlyView.h"
 
@@ -124,6 +125,10 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
         case Surface::Review:
             if(keys&HidNpadButton_B)state.back();
             else if(keys&HidNpadButton_Y)state.requestDiscardAll();
+            else if(keys&(HidNpadButton_Left|HidNpadButton_Up|
+                         HidNpadButton_L))state.moveReviewPage(-1,staged);
+            else if(keys&(HidNpadButton_Right|HidNpadButton_Down|
+                         HidNpadButton_R))state.moveReviewPage(1,staged);
             return true;
         case Surface::ConfirmDiscardAll:
             if(keys&HidNpadButton_B)state.back();
@@ -289,30 +294,72 @@ void drawActions(TrainerViewScreen& screen,PKSEFramebuffer& fb,
         Colors::Accent,TextStyle::Caption);
     drawNavBar(fb,{{"D-pad/Stick","Choose"},{"A","Select"},{"B","Cancel"}});
 }
+const char* reviewedStatName(size_t stat) noexcept {
+    constexpr const char* names[]={"HP","Atk","Def","Spe","SpA","SpD"};
+    return stat<6?names[stat]:"?";
+}
+std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedFieldChange& c) {
+    using Field=PokeVault::Integration::Gen5::StagedPokemon5Record::Field;
+    std::string name;
+    switch(c.field) {
+        case Field::Nature:name="Nature";break;
+        case Field::Friendship:name="Friendship";break;
+        case Field::IV:name=std::string("IV ")+reviewedStatName(c.stat);break;
+        case Field::EV:name=std::string("EV ")+reviewedStatName(c.stat);break;
+        default:name="Unsupported";break;
+    }
+    return name+": "+std::to_string(c.before)+" -> "+std::to_string(c.after);
+}
 void drawReview(TrainerViewScreen& screen,PKSEFramebuffer& fb,
+                const ScreenState& state,
                 const PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace& ws) {
     dimShared(screen,fb);
-    constexpr int x=150,y=70,w=980;
-    fb.drawFilledRoundedRect(x,y,w,500,18,Colors::Panel);
+    constexpr int x=150,y=59,w=980,h=534;
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::Border,1);
     fb.drawText(x+24,y+18,"Review Pending Changes - Generation V",
                 Colors::Text,TextStyle::Heading);
-    fb.drawText(x+24,y+58,"App-memory PK5 edits only; original emulator source is immutable",
-                Colors::Accent,TextStyle::Caption);
+    fb.drawText(x+24,y+57,
+        "Verified app-memory PK5 fields only; original emulator SAV5 unchanged",
+        Colors::Accent,TextStyle::Caption);
     const auto pending=ws.pendingReview();
-    fb.drawText(x+24,y+112,std::to_string(pending.size())+
-                " validated record(s) changed",Colors::Text,TextStyle::Body);
-    for(size_t i=0;i<pending.size() && i<7;++i) {
-        const auto& loc=pending[i].location;
+    constexpr size_t pageSize=ScreenState::kReviewPageSize;
+    const size_t pages=std::max(size_t{1},(pending.size()+pageSize-1)/pageSize);
+    const size_t page=std::min(state.reviewPage(),pages-1);
+    fb.drawText(x+24,y+94,std::to_string(pending.size())+
+        " staged Pokemon  /  Page "+std::to_string(page+1)+
+        " of "+std::to_string(pages),Colors::Text,TextStyle::Body);
+    for(size_t row=0;row<pageSize;++row) {
+        const size_t i=page*pageSize+row;
+        if(i>=pending.size())break;
+        const auto& change=pending[i];
+        const auto& loc=change.location;
+        const int yy=y+133+static_cast<int>(row)*91;
         const std::string label=loc.region==Region::Party
             ? "Party slot "+std::to_string(loc.slot+1)
             : "Box "+std::to_string(loc.box+1)+" / Slot "+std::to_string(loc.slot+1);
-        fb.drawText(x+32,y+157+static_cast<int>(i)*42,label,
-                    Colors::TextSecondary,TextStyle::Body);
+        fb.drawFilledRoundedRect(x+18,yy,w-36,83,8,Colors::PanelAlt);
+        fb.drawText(x+32,yy+8,label,Colors::Text,TextStyle::Body);
+        std::string error;
+        const auto verified=PokeVault::Integration::Gen5::verifyStagedReview(change,&error);
+        if(!verified) {
+            fb.drawText(x+32,yy+42,
+                "Unverified staged difference - no legality conclusion",
+                Colors::Warning,TextStyle::Caption);
+            continue;
+        }
+        std::string line;
+        for(size_t field=0;field<verified->fields.size() && field<3;++field) {
+            if(!line.empty())line+="  |  ";
+            line+=reviewedFieldLabel(verified->fields[field]);
+        }
+        if(verified->fields.size()>3)
+            line+="  |  +"+std::to_string(verified->fields.size()-3)+" more";
+        fb.drawText(x+32,yy+43,line,Colors::TextSecondary,TextStyle::Caption);
     }
-    if(pending.size()>7)
-        fb.drawText(x+32,y+458,"Additional staged slots: "+
-                    std::to_string(pending.size()-7),Colors::TextDim,TextStyle::Caption);
-    drawNavBar(fb,{{"B","Back"},{"Y","Request Discard All"}});
+    fb.drawText(x+24,y+h-31,"No Create, Clone, source writes or inferred legality",
+                Colors::TextDim,TextStyle::Caption);
+    drawNavBar(fb,{{"L/R","Review Pages"},{"B","Back"},{"Y","Discard All..."}});
 }
 void drawDecision(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                   std::string title,std::string message,
@@ -366,7 +413,7 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     screen.details.active=false;
     switch(state.surface()) {
         case Surface::Actions:drawActions(screen,fb,state,staged);return true;
-        case Surface::Review:drawReview(screen,fb,staged);return true;
+        case Surface::Review:drawReview(screen,fb,state,staged);return true;
         case Surface::Edit:drawEdit(screen,fb,state);return true;
         case Surface::View: {
             const auto current=state.draft().current();
