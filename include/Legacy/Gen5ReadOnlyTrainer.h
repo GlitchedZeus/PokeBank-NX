@@ -3,6 +3,7 @@
 
 #include "Integration/Gen5/Gen5ReadOnlySave.h"
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
+#include "Integration/Gen5/Gen5SharedScreenState.h"
 #include "Trainer/Trainer.h"
 
 #include <memory>
@@ -46,6 +47,14 @@ public:
     [[nodiscard]] const Integration::Gen5::Gen5StagedPokemonWorkspace& stagedPokemon() const noexcept {
         return staged_;
     }
+    // The edit controller is owned by this validated Trainer session, never
+    // a global UI pointer or a persistent save-write capability.
+    [[nodiscard]] Integration::Gen5::Gen5SharedScreenState& sharedScreen() noexcept {
+        return screen_;
+    }
+    [[nodiscard]] const Integration::Gen5::Gen5SharedScreenState& sharedScreen() const noexcept {
+        return screen_;
+    }
     // Present only already validated staged records. This never assembles,
     // writes, injects or exposes a modified SAV5.
     [[nodiscard]] bool refreshStagedPokemonPresentation(std::string& error);
@@ -57,6 +66,7 @@ private:
     Integration::Gen5::Gen5ReadOnlySave save_;
     std::string gameId_;
     Integration::Gen5::Gen5StagedPokemonWorkspace staged_;
+    Integration::Gen5::Gen5SharedScreenState screen_;
 };
 } // namespace PokeVault::Legacy
 #endif
