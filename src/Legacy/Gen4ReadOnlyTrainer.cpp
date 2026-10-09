@@ -87,8 +87,18 @@ bool Gen4ReadOnlyTrainer::refreshStagedPokemonPresentation(std::string& error) {
                 std::make_unique<Pokemon::Pokemon4ReadOnlyView>(pokemon);
         }
     }
+    // All presentation surfaces must agree with the staged General block.
+    // Refuse malformed bag metadata without replacing Party/Boxes/Items.
+    const auto displayBag=Integration::Gen4::decodeReadOnlyBag(*parsed);
+    if(!displayBag) {
+        error="Gen IV staged bag presentation failed strict validation";
+        return false;
+    }
+    std::vector<std::vector<Trainer::InventoryItem>> displayItems(
+        displayBag->begin(),displayBag->end());
     party.swap(displayParty);
     boxes.swap(displayBoxes);
+    items.swap(displayItems);
     return true;
 }
 
