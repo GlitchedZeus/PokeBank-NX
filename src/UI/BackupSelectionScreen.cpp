@@ -164,14 +164,9 @@ namespace UI {
             backupScroll.stop();
         }
 
-        // Action controls (including Delete) must never target a backup hidden by touch scrolling.
-        // Preserve the highlighted row until it leaves the viewport, then keep the nearest row.
-        if (count > 0) {
-            if (selectedIndex < backupFirstRow)
-                selectedIndex = backupFirstRow;
-            else if (selectedIndex >= backupFirstRow + LIST_MAX_VISIBLE)
-                selectedIndex = std::min(count - 1, backupFirstRow + LIST_MAX_VISIBLE - 1);
-        }
+        // The highlighted backup belongs to controller/tap focus, not the finger-scrolled
+        // viewport. Keep it unchanged even when its row scrolls out of view. An off-screen
+        // A/X action is revealed below instead of silently targeting a different backup.
 
         // Hit-test the same pixels that were rendered: account for residual scroll, the 10px
         // row gap, and viewport clipping. Both contact and release must remain on one visible tile.
@@ -201,6 +196,20 @@ namespace UI {
         if (kDown & HidNpadButton_B) {
             backupScroll.stop();
             goBack = true;
+            return;
+        }
+
+        // Never select or delete a highlighted backup that is no longer on screen.
+        // A real tile tap already sets selectedIndex to a visible row above; controller
+        // A/X must first reveal the prior focus without changing backup identity.
+        if ((kDown & (HidNpadButton_A | HidNpadButton_X)) && count > 0 &&
+            (selectedIndex < backupFirstRow ||
+             selectedIndex >= backupFirstRow + LIST_MAX_VISIBLE)) {
+            backupScroll.stop();
+            backupFirstRow = std::clamp(
+                selectedIndex - LIST_MAX_VISIBLE / 2, 0, maxFirstRow);
+            statusMessage = "Focused backup brought into view; press A or X again";
+            statusFrames = 220;
             return;
         }
 

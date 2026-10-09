@@ -498,6 +498,17 @@ require_all("src/UI/BackupSelectionScreen.cpp",
 backup_touch = read("src/UI/BackupSelectionScreen.cpp")
 assert "if (touch.justTapped())" in backup_touch
 assert "insideList(touch.startX(), touch.startY())" not in backup_touch
+# Moving the viewport must never steal selection or make a delete target a
+# different backup. The action must first reveal its original focus.
+scroll_start = backup_touch.index("backupScroll.updateVertical(")
+scroll_end = backup_touch.index("if (touch.justTapped())", scroll_start)
+assert "selectedIndex = backupFirstRow" not in backup_touch[scroll_start:scroll_end]
+assert "selectedIndex = std::min(count - 1, backupFirstRow" not in backup_touch[scroll_start:scroll_end]
+require_all("src/UI/BackupSelectionScreen.cpp",
+            "selectedIndex < backupFirstRow ||",
+            "selectedIndex >= backupFirstRow + LIST_MAX_VISIBLE",
+            "selectedIndex - LIST_MAX_VISIBLE / 2",
+            "Focused backup brought into view; press A or X again")
 # All generations share one clipped Species-picker gesture origin. Horizontal drags
 # and drags starting on the preview panel cannot advance the species on release.
 require_all("include/UI/SharedSpeciesPicker.h",
