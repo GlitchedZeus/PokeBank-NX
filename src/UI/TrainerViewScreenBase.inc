@@ -5102,7 +5102,7 @@ namespace UI {
                        selectedCategory<static_cast<int>(trainer.items.size()) &&
                        selectedItemIndex>=0 &&
                        selectedItemIndex<static_cast<int>(visibleItemIndices().size()))
-                        instructions += "  |  A: Edit Staged Quantity";
+                        instructions += "  |  A: Edit Quantity  |  Y: Remove...";
                 } else if (canOpen)
                     instructions += "  |  A: View / Actions";
                 if (detailViewActive && (selectedMode == ViewMode::Boxes || selectedMode == ViewMode::Storage))
