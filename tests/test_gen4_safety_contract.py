@@ -77,7 +77,11 @@ viewer_header = (root / 'include/UI/TrainerViewScreenBase.h').read_text()
 viewer_impl = (root / 'src/UI/TrainerViewScreenBase.inc').read_text()
 assert 'std::string sourceProviderLabel' in viewer_header
 assert 'legacyProviderLabel()' in viewer_header
-assert 'legacyProviderLabel() + " / "' in viewer_impl
+# The shared source header is now intentionally human-readable. Keep the
+# actual provider and read-only state while excluding internal revision counters.
+assert 'legacyProviderLabel() + "  •  " + titleName + "  •  Read-only source"' in viewer_impl
+assert 'if (!legacyReadOnlySource() && !trainer.saveRevisionString.empty()' in viewer_impl
+assert 'trainer.saveRevisionString != "Base"' in viewer_impl
 bridge = (root / 'src/Pokemon/Pokemon4ReadOnlyView.cpp').read_text()
 assert not re.search(r'\b(fwrite|pwrite|rename|remove|unlink)\s*\(', bridge)
 assert 'clone() const override { return nullptr; }' in (root / 'include/Pokemon/Pokemon4ReadOnlyView.h').read_text()
