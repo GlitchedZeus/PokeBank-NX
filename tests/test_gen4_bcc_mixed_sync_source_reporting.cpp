@@ -1,5 +1,6 @@
 #include "Legality/Gen4LeadHistoryEvidence.h"
 #include "Legality/Gen4LeadReportingEvidence.h"
+#include "Legality/Gen4WildRngCorrelation.h"
 #include "Legality/Gen4WildEncounter.h"
 
 #include <cassert>
@@ -72,6 +73,34 @@ int main() {
     assert(forwardText.find("other unproven lead histories remain incomplete")
            != std::string::npos);
     assert(reverseText.find("other unproven lead histories remain incomplete")
+           != std::string::npos);
+
+    // Crucial central production-path regression: the source-indexed Method K
+    // selector must not silently lose our newly proven mixed lead history.
+    // These two bounded frames have no direct competing no-lead/successful-Sync
+    // route, so the central dispatch is expected to choose ExtendedLead and
+    // retain the exact mask that feeds the user-facing legality report.
+    const auto centralForward = Gen4WildRng::analyzeSupported(
+        "heartgold_nds", 14, 207, 15, 0, 0, forwardSeed, forwardPid);
+    const auto centralReverse = Gen4WildRng::analyzeSupported(
+        "heartgold_nds", 14, 207, 11, 0, 0, reverseSeed, reversePid);
+    assert(centralForward.method == Gen4WildRng::Method::MethodKExtendedLead);
+    assert(centralReverse.method == Gen4WildRng::Method::MethodKExtendedLead);
+    assert((centralForward.leadHistoryMask & forwardBit) != 0);
+    assert((centralReverse.leadHistoryMask & reverseBit) != 0);
+    const std::string centralForwardText = Gen4LeadReporting::describeWildResult(
+        centralForward.leadHistoryMask,
+        Gen4WildRng::methodName(centralForward.method));
+    const std::string centralReverseText = Gen4LeadReporting::describeWildResult(
+        centralReverse.leadHistoryMask,
+        Gen4WildRng::methodName(centralReverse.method));
+    assert(centralForwardText.find("Synchronize success then failure (BCC reroll)")
+           != std::string::npos);
+    assert(centralReverseText.find("Synchronize failure then success (BCC reroll)")
+           != std::string::npos);
+    assert(centralForwardText.find("other unproven lead histories remain incomplete")
+           != std::string::npos);
+    assert(centralReverseText.find("other unproven lead histories remain incomplete")
            != std::string::npos);
 
     // Negative controls: source identity has to be real. A Method J source
