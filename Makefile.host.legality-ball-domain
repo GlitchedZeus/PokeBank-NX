@@ -22,6 +22,7 @@ GEN34_BALL_ANALYZER_SOURCES := tests/test_gen34_ball_domain_analyzer.cpp \
 	src/Pokemon/Pokemon4ReadOnly.cpp src/Pokemon/Pokemon4ReadOnlyView.cpp \
 	src/Encryption/Encryption4.cpp
 GEN34_BALL_ANALYZER_HEADERS := include/Legality/Gen34BallDomainEvidence.h \
+	include/Legality/Gen4SpecialBallEvidence.h \
 	include/Pokemon/Pokemon4ReadOnly.h include/Pokemon/Pokemon4ReadOnlyView.h \
 	include/Encryption/Encryption4.h
 
