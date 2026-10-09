@@ -120,6 +120,32 @@ Legality::Report analyzeNativeHgssSpecialBall(
 }
 }
 
+Legality::Report analyzeNativeDiamondMarshBall(
+        uint16_t species, uint16_t metLocation, uint8_t metLevel,
+        uint8_t ball, uint8_t originVersion = 10) {
+    std::vector<std::byte> raw(Encryption::SIZE_STORED4, std::byte{0});
+    wr32(raw, 0x00, 0x12345678u);
+    wr16(raw, 0x08, species);
+    wr16(raw, 0x0C, 12345);
+    wr16(raw, 0x0E, 54321);
+    wr32(raw, 0x10, 3375u);
+    raw[0x17] = std::byte{2};
+    raw[0x5F] = static_cast<std::byte>(originVersion);
+    wr16(raw, 0x80, metLocation); // D/P native location.
+    raw[0x83] = static_cast<std::byte>(ball);
+    raw[0x84] = static_cast<std::byte>(metLevel);
+    const auto encrypted = Encryption::encryptArray4(raw);
+    Pokemon::Pokemon4ReadOnly source(encrypted, Enums::GameVersion::DP);
+    assert(source.valid());
+    assert(source.originVersion() == originVersion);
+    assert(source.metLocationDP() == metLocation);
+    assert(source.ballDPPt() == ball);
+    Pokemon::Pokemon4ReadOnlyView view(source);
+    assert(view.metLocation() == metLocation);
+    assert(view.ball() == ball);
+    return Legality::analyze(view, Enums::GameVersion::DP, "diamond_nds");
+}
+
 int main() {
     // Exact Gen III: 12 is the pinned generation maximum, 13 is impossible.
     auto gen3Max = gen3WithBall(12);
@@ -181,6 +207,20 @@ int main() {
     const auto platinumOrigin = analyzeNativeHgssSpecialBall(14, 207, 15, 24, 12);
     assert(!hasInfo(platinumOrigin,
         "Sport Ball has a compatible HeartGold/SoulSilver"));
+    // Native encrypted Diamond PK4 -> read-only view -> source-aware
+    // Legality::analyze: Great Marsh is location 52, not HGSS Safari 202.
+    const auto marshPositive = analyzeNativeDiamondMarshBall(24, 52, 20, 5);
+    assert(hasInfo(marshPositive,
+        "Safari Ball has a compatible Diamond/Pearl/Platinum Great Marsh encounter source"));
+    const auto marshWrongBall = analyzeNativeDiamondMarshBall(24, 52, 20, 4);
+    assert(!hasInfo(marshWrongBall,
+        "Safari Ball has a compatible Diamond/Pearl/Platinum Great Marsh"));
+    const auto marshWrongLevel = analyzeNativeDiamondMarshBall(24, 52, 1, 5);
+    assert(!hasInfo(marshWrongLevel,
+        "Safari Ball has a compatible Diamond/Pearl/Platinum Great Marsh"));
+    const auto marshWrongOrigin = analyzeNativeDiamondMarshBall(24, 52, 20, 5, 7);
+    assert(!hasInfo(marshWrongOrigin,
+        "Safari Ball has a compatible Diamond/Pearl/Platinum Great Marsh"));
 
     return 0;
 }

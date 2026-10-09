@@ -1440,6 +1440,10 @@ namespace Legality {
                             add(r, Severity::Info,
                                 "Safari Ball has a compatible HeartGold/SoulSilver Safari Zone encounter source; other provenance remains incomplete",
                                 CheckIdentifier::Items);
+                        } else if (ballAffinity == Gen4SpecialBallEvidence::Affinity::GreatMarsh) {
+                            add(r, Severity::Info,
+                                "Safari Ball has a compatible Diamond/Pearl/Platinum Great Marsh encounter source; other provenance remains incomplete",
+                                CheckIdentifier::Items);
                         }
                     } else if (directGen4StaticRow != nullptr) {
                         add(r, Severity::Info,

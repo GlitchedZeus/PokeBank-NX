@@ -12,7 +12,7 @@ namespace Legality::Gen4SpecialBallEvidence {
 // Ball (5). A missing match is UNRESOLVED; it is never evidence that
 // another acquisition / evolved / transferred history is impossible.
 // D/P/Pt Great Marsh and Nincada -> Shedinja exceptions are out of scope.
-enum class Affinity : uint8_t { None, Sport, Safari };
+enum class Affinity : uint8_t { None, Sport, Safari, GreatMarsh };
 
 constexpr Affinity matchDirectRow(uint64_t row, uint8_t ball) noexcept {
     const uint8_t type = Gen4Wild::method(row);
@@ -22,6 +22,17 @@ constexpr Affinity matchDirectRow(uint64_t row, uint8_t ball) noexcept {
         (Gen4Wild::game(row) == Gen4Wild::Game::HeartGold ||
          Gen4Wild::game(row) == Gen4Wild::Game::SoulSilver))
         return Affinity::Safari;
+    // Pinned Locations4.IsSafariBallRequired: D/P/Pt Great Marsh is
+    // met location 52 (unlike HGSS Safari Zone 202). Other encounters
+    // from the same location, including surfing, share the fixed ball.
+    // This is only a POSITIVE direct-source affinity, not a proof that
+    // a nonmatching ball record has impossible transfer/egg history.
+    const auto game = Gen4Wild::game(row);
+    if (ball == 5 && Gen4Wild::location(row) == 52 &&
+        (game == Gen4Wild::Game::Diamond ||
+         game == Gen4Wild::Game::Pearl ||
+         game == Gen4Wild::Game::Platinum))
+        return Affinity::GreatMarsh;
     return Affinity::None;
 }
 

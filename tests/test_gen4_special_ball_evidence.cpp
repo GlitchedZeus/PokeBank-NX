@@ -32,6 +32,26 @@ int main() {
         "heartgold_nds",14,207,15,0,24) == Affinity::Sport);
     assert(Proof::analyzeSupported(
         "heartgold_nds",16,202,15,0,5) == Affinity::Safari);
+    // Pinned Locations4: D/P/Pt Great Marsh = location 52, fixed Safari.
+    // Real Diamond Arbok #24 encounter row; level20, grass slot 9.
+    constexpr uint64_t marsh = 0x8E400014286818ULL;
+    static_assert(Gen4Wild::game(marsh) == Gen4Wild::Game::Diamond);
+    static_assert(Gen4Wild::species(marsh) == 24);
+    static_assert(Gen4Wild::location(marsh) == 52);
+    static_assert(Gen4Wild::minLevel(marsh) == 20);
+    static_assert(Gen4Wild::maxLevel(marsh) == 20);
+    static_assert(Gen4Wild::method(marsh) == 0);
+    static_assert(Gen4Wild::slot(marsh) == 9);
+    static_assert(Proof::matchDirectRow(marsh,5) == Affinity::GreatMarsh);
+    static_assert(Proof::matchDirectRow(marsh,24) == Affinity::None);
+    assert(Proof::analyzeSupported(
+        "diamond_nds",24,52,20,0,5) == Affinity::GreatMarsh);
+    assert(Proof::analyzeSupported(
+        "diamond_nds",24,52,20,0,24) == Affinity::None);
+    assert(Proof::analyzeSupported(
+        "diamond_nds",24,52,1,0,5) == Affinity::None);
+    assert(Proof::analyzeSupported(
+        "heartgold_nds",24,52,20,0,5) == Affinity::None);
     // Pinned HGSS source also contains an authentic level-16 Pidgey
     // Safari slot at location 202. Do NOT claim it impossible!
     assert(Proof::analyzeSupported(
