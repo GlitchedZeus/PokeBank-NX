@@ -524,6 +524,44 @@ int main() {
         using GRegion=G::Gen5StagedPokemonWorkspace::Region;
         using GMode=G::Gen5SharedPokemonSession::Mode;
         using GField=G::StagedPokemon5Record::Field;
+        // Per-Trainer shared UI: this is a transient app-owned draft only.
+        auto localUiWorkspace=workspace;
+        G::Gen5SharedScreenState ui;
+        assert(!ui.openActions(localUiWorkspace,GSlot{GRegion::Party,1,0},error));
+        assert(ui.openActions(localUiWorkspace,GSlot{GRegion::Party,0,0},error));
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Actions);
+        assert(ui.activateSelected(localUiWorkspace,error)); // View
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::View);
+        assert(!ui.adjustField(1,error)); // View is immutable.
+        assert(ui.back());
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Browse);
+        assert(ui.openActions(localUiWorkspace,GSlot{GRegion::Party,0,0},error));
+        ui.moveAction(1,localUiWorkspace); // Edit
+        assert(ui.activateSelected(localUiWorkspace,error));
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
+        const auto firstNature=ui.draft().current()->nature();
+        assert(ui.adjustField(1,error));
+        assert(ui.draft().current()->nature()==firstNature+1);
+        assert(!ui.back()); // Cannot lose a dirty draft with B.
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::ConfirmDraft);
+        assert(!ui.back()); // B continues editing, preserving draft.
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
+        assert(ui.keep(localUiWorkspace,error));
+        assert(localUiWorkspace.viewParty(0)->nature()==firstNature+1);
+        assert(localUiWorkspace.hasChanges());
+        assert(!ui.requestExit(localUiWorkspace));
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::ConfirmExit);
+        ui.reviewFromExit(localUiWorkspace);
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Review);
+        ui.requestDiscardAll();
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::ConfirmDiscardAll);
+        assert(!ui.back()); // Cancel never discards staged changes.
+        assert(localUiWorkspace.hasChanges());
+        ui.requestDiscardAll();
+        assert(ui.confirmDiscardAll(localUiWorkspace));
+        assert(!localUiWorkspace.hasChanges() && ui.requestExit(localUiWorkspace));
+        assert(workspace.hasChanges()); // Separate editor/session unchanged.
+        assert(std::equal(parsed->sourceBytes().begin(),parsed->sourceBytes().end(),sav.begin()));
         const GSlot forgedRegion{static_cast<GRegion>(0xFF),0,0};
         const GSlot forgedPartyBox{GRegion::Party,1,0};
         assert(!G::Gen5StagedPokemonWorkspace::canonicalSlot(forgedRegion));
