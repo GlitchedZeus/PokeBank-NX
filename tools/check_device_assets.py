@@ -25,6 +25,13 @@ ROOT = Path(__file__).resolve().parent.parent
 ROMFS = ROOT / "romfs"
 HD_DIR = ROMFS / "sprites" / "pokemon_hd"
 TYPE_DIR = ROMFS / "sprites" / "types"
+ITEM_ICON_DIR = ROMFS / "sprites" / "items"
+BALL_ICON_NAMES = (
+    "master-ball", "ultra-ball", "great-ball", "poke-ball",
+    "safari-ball", "net-ball", "dive-ball", "nest-ball",
+    "repeat-ball", "timer-ball", "luxury-ball", "premier-ball",
+    "dusk-ball", "heal-ball", "quick-ball", "cherish-ball",
+)
 FONT_DIR = ROMFS / "fonts"
 GAME_CARD_ART_DIR = ROMFS / "game_cards"
 GENERATOR = ROOT / "tools" / "gen_hdsprites.py"
@@ -192,6 +199,25 @@ def main() -> int:
             fail(errors, f"type sprites missing for internal IDs: {missing_types}")
         else:
             ok("all 18 type sprites are present")
+
+    # Each Poké Ball picker row displays its OWN item image, not one generic
+    # ball symbol. This is an explicit generated, packaged asset contract.
+    if not ITEM_ICON_DIR.is_dir():
+        fail(errors, "native ball/item PNG directory is missing; run tools/gen_item_sprites.py")
+    else:
+        bad_ball_icons = []
+        for name in BALL_ICON_NAMES:
+            filename = ITEM_ICON_DIR / f"{name}.png"
+            if not filename.is_file():
+                bad_ball_icons.append(f"{name}: missing")
+                continue
+            valid, reason, _dimensions = validate_png(filename)
+            if not valid:
+                bad_ball_icons.append(f"{name}: {reason}")
+        if bad_ball_icons:
+            fail(errors, "ball-specific PNGs invalid/missing: " + "; ".join(bad_ball_icons))
+        else:
+            ok("all 16 distinct, PNG-validated native Poké Ball item sprites present")
 
     if not FONT_DIR.is_dir():
         fail(errors, "romfs/fonts/ is missing; run: make fonts")
