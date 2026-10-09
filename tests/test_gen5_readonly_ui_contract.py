@@ -34,7 +34,7 @@ require(
     "trainer.sharedScreen().openActions",
     "state.activateSelected(staged,error)",
     "state.adjustField(delta,error)",
-    "state.keep(trainer.stagedPokemon(),error)",
+    "trainer.sharedScreen().keep(trainer.stagedPokemon(),error)",
     "state.discardDraft()",
     "state.requestExit(staged)",
     "state.confirmDiscardAndExit(staged)",
@@ -43,7 +43,7 @@ require(
     "screen.details.active=false;",
     "drawVerifiedSummary(screen,fb,&view",
     "return true;",
-    "No trainer renaming, money editing, source-save or bank commands.",
+    "All inherited generic storage/bank/source mutation routes stay barred.",
     "(void)touch;",
 )
 # Passive PK5 View must not invoke the legacy all-generation legality report.
