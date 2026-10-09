@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <utility>
 
 namespace PokeVault::Integration::Gen5 {
 
@@ -136,13 +137,44 @@ public:
                                 static_cast<uint32_t>(value),error);
     }
     [[nodiscard]] bool keep(Workspace& workspace,std::string& error) {
-        if(surface_!=Surface::Edit) {
+        // A on the dirty-draft decision is a real Keep, not a dead action.
+        // Both states own the SAME active edit draft; View cannot Keep.
+        if((surface_!=Surface::Edit && surface_!=Surface::ConfirmDraft) ||
+           !draft_.editable()) {
             error="Generation V Keep requires an active Edit draft";
             return false;
         }
         if(!draft_.keep(workspace,error))return false;
         surface_=Surface::Browse;
         return true;
+    }
+
+    // An app-memory Keep is not complete until the existing Trainer renderer
+    // has accepted the new strictly validated PK5 presentation. The ordinary
+    // session Keep intentionally closes its draft, so snapshot BOTH the
+    // workspace and draft first. Failed presentation cannot lose the draft,
+    // alter a previous staged record, or leave a half-updated screen.
+    template <typename Refresh>
+    [[nodiscard]] bool keepWithPresentation(Workspace& workspace,
+                                            Refresh&& refresh,std::string& error) {
+        if((surface_!=Surface::Edit && surface_!=Surface::ConfirmDraft) ||
+           !draft_.editable()) {
+            error="Generation V presentation Keep requires an active Edit draft";
+            return false;
+        }
+        Workspace baselineWorkspace=workspace;
+        Gen5SharedPokemonSession baselineDraft=draft_;
+        const Surface baselineSurface=surface_;
+        if(!keep(workspace,error))return false;
+        if(std::forward<Refresh>(refresh)(error)) {
+            error.clear();
+            return true;
+        }
+        workspace=std::move(baselineWorkspace);
+        draft_=std::move(baselineDraft);
+        surface_=baselineSurface;
+        if(error.empty())error="Generation V staged presentation rejected; draft preserved";
+        return false;
     }
     // B never loses a dirty local draft. User must explicitly Keep or Discard.
     [[nodiscard]] bool back() noexcept {
@@ -184,6 +216,28 @@ public:
         workspace.discardAll();
         surface_=Surface::Browse;
         return true;
+    }
+
+    // Discard All must refresh atomically too. If an adapter rejects the
+    // restored source presentation, keep the prior staged bytes and the
+    // confirmation state so the user can cancel without losing anything.
+    template <typename Refresh>
+    [[nodiscard]] bool discardAllWithPresentation(Workspace& workspace,
+                                                  Refresh&& refresh,std::string& error) {
+        if(surface_!=Surface::ConfirmDiscardAll) {
+            error="Gen V Discard All requires an explicit confirmation";
+            return false;
+        }
+        Workspace previous=workspace;
+        if(!confirmDiscardAll(workspace))return false;
+        if(std::forward<Refresh>(refresh)(error)) {
+            error.clear();
+            return true;
+        }
+        workspace=std::move(previous);
+        surface_=Surface::ConfirmDiscardAll;
+        if(error.empty())error="Gen V discard refresh rejected; staged changes preserved";
+        return false;
     }
     [[nodiscard]] bool confirmDiscardAndExit(Workspace& workspace) noexcept {
         if(surface_!=Surface::ConfirmExit)return false;
