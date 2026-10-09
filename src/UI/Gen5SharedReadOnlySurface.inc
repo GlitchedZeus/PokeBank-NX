@@ -1,7 +1,7 @@
-// Generation V's guarded entry to the EXISTING Trainer/Party/Boxes renderer.
-// The shared PK5 draft editor is not production-wired yet. Until then this
-// layer owns EVERY Gen V controller frame: inherited Storage/Bank, Items,
-// source-save dialogs, creation and generic mutation handlers are unreachable.
+// Generation V's guarded adapter for the EXISTING shared Trainer/Party/Boxes
+// renderer. View, four-field staged Edit and Review are in app memory only.
+// This layer owns EVERY Gen V controller frame: inherited Storage/Bank, Items,
+// source-save dialogs, Create and generic mutation handlers are unreachable.
 // Touch remains inert in this isolated lane until its separate safety review.
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Legacy/Gen5ReadOnlyTrainer.h"
