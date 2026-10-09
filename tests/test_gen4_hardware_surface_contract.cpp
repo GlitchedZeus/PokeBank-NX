@@ -129,6 +129,24 @@ int main() {
     contains(surface, "PokeVault::Integration::Gen4MoveCompatibility::selectableMoves(");
     contains(surface, "screen.sourceGameId, state.session.working->species()");
     contains(surface, "state.session.working->form(), state.session.working->moves()");
+    // Gen IV native Inventory removal is APP-MEMORY staged only and always
+    // uses an explicit Y confirmation; A must never remove an item.
+    contains(surface, "state.itemRemoveConfirmActive");
+    contains(surface, "stageBagRemove(");
+    contains(surface, "Gen IV item removed from staged workspace ONLY");
+    contains(surface, "ItemPickerArtwork::draw(fb,x+w-38,y+65,36,itemName)");
+    const auto removeGuardAt=surface.find("if(state.itemRemoveConfirmActive) {");
+    const auto quantityEntryAt=surface.find("if(!state.itemQuantityActive) {",removeGuardAt);
+    assert(removeGuardAt!=std::string::npos && quantityEntryAt>removeGuardAt);
+    const auto confirmControls=surface.substr(removeGuardAt,quantityEntryAt-removeGuardAt);
+    assert(confirmControls.find("down&HidNpadButton_B")!=std::string::npos);
+    assert(confirmControls.find("down&HidNpadButton_Y")!=std::string::npos);
+    assert(confirmControls.find("down&HidNpadButton_A")==std::string::npos);
+    contains(surface, "state.itemRemoveConfirmActive=false;");
+    const auto stagedBag=read("src/Integration/Gen4/Gen4StagedPokemonEditor.cpp");
+    contains(stagedBag, "bool Gen4StagedPokemonEditor::stageBagRemove(");
+    contains(stagedBag, "Gen IV item removal modified unrelated save bytes");
+    contains(stagedBag, "Gen IV item removal changed another pocket");
     contains(surface, "MoveUI::rowLabel(value, bridge(screen).sourceSave().rawFamily())");
     contains(surface, "Empty + compatible moves only • exact Gen IV Acc / Pwr / PP");
     contains(moveCompatibility, "inline constexpr uint16_t MaxMove = 467;");
