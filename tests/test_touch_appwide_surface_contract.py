@@ -338,6 +338,15 @@ require_all("src/UI/Gen2HardwarePickerFix.inc",
             "touch, listX, listY, listW, listH, kHardwareMovePickerLayout.rowStep,",
             "Focused move brought into view; press A again or tap a visible row")
 gen2_move_overlay = read("src/UI/Gen2PokemonPickerOverlay.inc")
+gen2_teardown = """        if (picker.model.active()) picker.model.close();
+        picker.scroll.reset();
+        picker.moveScroll.reset();
+        picker.moveViewport.reset();
+        picker.locationViewport.reset();
+        return false;"""
+assert gen2_move_overlay.count(gen2_teardown) == 2, (
+    "Gen II picker View/None teardown must release all in-flight move/location motion"
+)
 require_all("src/UI/Gen2PokemonPickerOverlay.inc",
             "TouchScrollState moveScroll;",
             "TouchPickerViewport moveViewport;",
