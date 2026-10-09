@@ -33,8 +33,10 @@ void inspectSelected(TrainerViewScreen& screen) {
         screen.postStatus("No validated PK5 in this slot.",180);
         return;
     }
-    // Reuse the shared passive Pokemon-details renderer. No editor action,
-    // snapshot, picker, source mutator or save confirmation is ever opened.
+    // Passive inspection stays on the existing shared screen, but its
+    // Gen V summary must NOT invoke the older generic legality evaluator:
+    // unsupported encounter histories cannot be classified here.
+    // No editor action, snapshot, picker or save confirmation is opened.
     details.active=true;
     details.readOnly=true;
     details.editing=false;
@@ -130,12 +132,70 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
     return true;
 }
 
+// A narrow passive PK5 panel within the shared Trainer screen. It displays
+// only verified record fields; unlike the generic details modal it NEVER
+// calls Legality::analyze or synthesizes unknown history/stat calculations.
+void drawVerifiedSummary(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
+    const Pokemon::Pokemon* p=screen.detailsTargetPokemon();
+    if(!p)return;
+    const int width=fb.getWidth(),height=fb.getHeight();
+    fb.drawFilledRect(0,0,width,height-kNavBarH,Color(0,0,0,165));
+    const int x=180,y=65,w=width-360,h=height-kNavBarH-125;
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::Border,1);
+    fb.drawText(x+26,y+22,"Generation V - Verified PK5 Summary",
+                Colors::Text,TextStyle::Heading);
+    fb.drawText(x+26,y+60,"Passive View - source SAV5 unchanged - legality unresolved",
+                Colors::Accent,TextStyle::Caption);
+    const std::string species=std::string(p->species());
+    fb.drawText(x+30,y+106,species+"  #"+std::to_string(p->speciesID()),
+                Colors::Text,TextStyle::Heading);
+    const std::string level=p->level()!=0
+        ? "Level " + std::to_string(p->level())
+        : "Box level: not recorded natively";
+    fb.drawText(x+30,y+152,level+
+                (p->isShiny(p->id32(),species)?"  /  Shiny":""),
+                Colors::TextSecondary,TextStyle::Body);
+    fb.drawText(x+30,y+196,
+        "Nature: "+std::string(Trainer::getNatureName(p->nature()))+
+        "  |  Friendship: "+std::to_string(p->friendship()),
+        Colors::Text,TextStyle::Body);
+    fb.drawText(x+30,y+235,
+        "Ability ID: "+std::to_string(p->ability())+
+        "  |  Held item ID: "+std::to_string(p->heldItem()),
+        Colors::Text,TextStyle::Body);
+    fb.drawText(x+30,y+281,
+        "IV  HP "+std::to_string(p->ivHP())+" / Atk "+std::to_string(p->ivATK())+
+        " / Def "+std::to_string(p->ivDEF())+" / Spe "+std::to_string(p->ivSPE())+
+        " / SpA "+std::to_string(p->ivSPA())+" / SpD "+std::to_string(p->ivSPD()),
+        Colors::Text,TextStyle::Body);
+    fb.drawText(x+30,y+319,
+        "EV  HP "+std::to_string(p->evHP())+" / Atk "+std::to_string(p->evATK())+
+        " / Def "+std::to_string(p->evDEF())+" / Spe "+std::to_string(p->evSPE())+
+        " / SpA "+std::to_string(p->evSPA())+" / SpD "+std::to_string(p->evSPD()),
+        Colors::Text,TextStyle::Body);
+    for(int i=0;i<4;++i) {
+        fb.drawText(x+30+(i%2)*435,y+375+(i/2)*43,
+            "Move "+std::to_string(i+1)+": #"+std::to_string(p->move(i))+
+            "  PP "+std::to_string(p->movePP(i)),
+            Colors::TextSecondary,TextStyle::Body);
+    }
+}
+
 bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     if(!isGen5Source(screen))return false;
-    screen.drawGSCOverlay(fb); // exact shared screen, not a second renderer
-    if(screen.details.active)
-        drawNavBar(fb,{{"B","Back"},{"","Gen V / Read-only View"}});
-    else if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes)
+    if(screen.details.active) {
+        // Render the exact shared Party/Boxes frame without running the
+        // generic modal (which always analyzes legality, even for View).
+        screen.details.active=false;
+        screen.drawGSCOverlay(fb);
+        screen.details.active=true;
+        drawVerifiedSummary(screen,fb);
+        drawNavBar(fb,{{"B","Back"},{"","Read-only PK5"}});
+        return true;
+    }
+    screen.drawGSCOverlay(fb);
+    if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes)
         drawNavBar(fb,{{"D-pad/Stick","Navigate"},{"L/R","Box"},
                        {"A","View"},{"X","Party"},{"Y","Trainer"},{"B","Exit"}});
     else if(screen.selectedMode==TrainerViewScreen::ViewMode::Trainer)
