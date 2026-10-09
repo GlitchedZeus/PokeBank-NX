@@ -191,3 +191,22 @@ $(HOST_BUILD)/test_gen2_crystal_evolved_native: $(GSC_EVOLVED_WILD_NATIVE_SOURCE
 $(HOST_BUILD)/test_gen2_crystal_evolved_native_sanitize: $(GSC_EVOLVED_WILD_NATIVE_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+
+# Raw international Crystal .sav -> verified strict parser -> immutable PK2
+# -> production legality report; protects source-byte immutability.
+GSC_EVOLVED_RAW_PIPELINE_SOURCES := tests/test_gen2_crystal_raw_save_pipeline.cpp \
+	$(filter-out tests/test_gen2_crystal_evolved_native.cpp,$(GSC_EVOLVED_WILD_NATIVE_SOURCES)) \
+	src/Integration/Gen2/Gen2ReadOnlySave.cpp
+
+HOST_TESTS += $(HOST_BUILD)/test_gen2_crystal_raw_save_pipeline
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_crystal_raw_save_pipeline_sanitize
+host-test: $(HOST_BUILD)/test_gen2_crystal_raw_save_pipeline
+host-sanitize: $(HOST_BUILD)/test_gen2_crystal_raw_save_pipeline_sanitize
+
+$(HOST_BUILD)/test_gen2_crystal_raw_save_pipeline: $(GSC_EVOLVED_RAW_PIPELINE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gen2_crystal_raw_save_pipeline_sanitize: $(GSC_EVOLVED_RAW_PIPELINE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $^ -o $@

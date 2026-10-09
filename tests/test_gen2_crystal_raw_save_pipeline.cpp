@@ -1,0 +1,139 @@
+#include "Integration/Gen2/Gen2ReadOnlySave.h"
+#include "Legality/Legality.h"
+#include "Names/ItemNames.h"
+#include "Names/SpeciesNames.h"
+#include "Pokemon/Pokemon2ReadOnly.h"
+
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <vector>
+
+namespace Trainer {
+const char* getSpeciesName(uint16_t s) { return Names::getSpeciesName(s); }
+const char* getItemName(uint16_t i) { return Names::getItemName(i); }
+}
+
+namespace {
+using namespace PokeVault::Integration::Gen2;
+constexpr size_t kSize=0x8000, kParty=0x2865, kEnd=0x2B82;
+constexpr size_t kChecksum=0x2D0D, kCapacity=14, kText=11;
+constexpr size_t kBoxStride=1+(kCapacity+1)+kCapacity*32+
+                            2*kCapacity*kText+2;
+void putName(std::vector<uint8_t>& b,size_t at,size_t len,char c) {
+    std::fill_n(b.begin()+at,len,0x50);
+    if(c>='A'&&c<='Z')b[at]=static_cast<uint8_t>(0x80+c-'A');
+}
+void checksum(std::vector<uint8_t>& data) {
+    uint16_t v=0;
+    for(size_t i=0x2009;i<=kEnd;++i)v=static_cast<uint16_t>(v+data[i]);
+    data[kChecksum]=static_cast<uint8_t>(v&0xFF);
+    data[kChecksum+1]=static_cast<uint8_t>(v>>8);
+}
+void be16(std::vector<uint8_t>& d,size_t at,uint16_t v) {
+    d[at]=static_cast<uint8_t>(v>>8);
+    d[at+1]=static_cast<uint8_t>(v);
+}
+std::vector<uint8_t> crystalSave(uint16_t species,uint8_t level,
+                                 uint16_t caught,bool egg=false) {
+    // Pinned read-only parser: international Crystal, 32-KiB bank,
+    // 6-party slots, 20 stored boxes, international 11-byte names.
+    std::vector<uint8_t> raw(kSize,0);
+    be16(raw,0x2009,0x1234);
+    putName(raw,0x200B,11,'A');
+    raw[0x2700]=0; // current box
+    raw[0x3E3D]=1; // Crystal trainer gender
+    for(size_t b=0;b<20;++b) {
+        const size_t at=b<7 ? 0x4000+b*kBoxStride :
+                             0x6000+(b-7)*kBoxStride;
+        assert(at<raw.size());
+        raw[at]=0;
+        raw[at+1]=0xFF;
+        putName(raw,0x2703+b*9,9,static_cast<char>('A'+b%26));
+    }
+    // One party entry; the stored party body must remain 48 bytes.
+    raw[kParty]=1;
+    raw[kParty+1]=egg ? 0xFD : static_cast<uint8_t>(species);
+    raw[kParty+2]=0xFF;
+    const size_t body=kParty+1+7;
+    raw[body]=static_cast<uint8_t>(species);
+    raw[body+1]=1;      // held item
+    raw[body+2]=33;     // Tackle
+    be16(raw,body+6,0x1234);
+    const uint32_t xp=static_cast<uint32_t>(level)*level*level;
+    raw[body+8]=static_cast<uint8_t>((xp>>16)&0xFF);
+    raw[body+9]=static_cast<uint8_t>((xp>>8)&0xFF);
+    raw[body+10]=static_cast<uint8_t>(xp&0xFF);
+    raw[body+21]=0x7A;
+    raw[body+22]=0xAA;
+    raw[body+23]=35;
+    raw[body+27]=70;
+    be16(raw,body+29,caught);
+    raw[body+31]=level;
+    raw[body+32]=0; // status
+    for(int at=34;at<=46;at+=2)
+        be16(raw,body+static_cast<size_t>(at),20);
+    putName(raw,body+6*48,11,'A');
+    putName(raw,body+6*48+6*11,11,'B');
+    checksum(raw);
+    return raw;
+}
+bool hasInfo(const Legality::Report& r,const std::string& fragment) {
+    for(const auto& issue:r.issues)
+        if(issue.severity==Legality::Severity::Info &&
+           issue.text.find(fragment)!=std::string::npos)return true;
+    return false;
+}
+Legality::Report analyzeRawSave(uint16_t species,uint8_t level,
+                                uint16_t caught,bool egg=false) {
+    const auto data=crystalSave(species,level,caught,egg);
+    const auto original=data;
+    const auto parsed=parse(data,SourceGame::Crystal);
+    assert(parsed && parsed.save);
+    assert(parsed.save->metadata().sourceGameId=="crystal_gbc");
+    assert(parsed.save->party().size()==1);
+    assert(parsed.save->sourceBytes().size()==original.size());
+    assert(std::equal(parsed.save->sourceBytes().begin(),
+                      parsed.save->sourceBytes().end(),original.begin()));
+    const Pokemon::Pokemon2ReadOnly pk(parsed.save->party().front());
+    assert(pk.speciesID()==species&&pk.level()==level);
+    assert(pk.caughtData()==caught&&pk.isEgg()==egg);
+    assert(pk.isPartyRecord());
+    auto report=Legality::analyze(
+        pk,Enums::GameVersion::GSC,parsed.save->metadata().sourceGameId);
+    // Strict read-only parsing and the full legality report must NEVER
+    // mutate either its input or the retained original source copy.
+    assert(data==original);
+    assert(std::equal(parsed.save->sourceBytes().begin(),
+                      parsed.save->sourceBytes().end(),original.begin()));
+    return report;
+}
+}
+
+int main() {
+    constexpr auto evolved="PK2 caught-data is compatible with a pinned Crystal wild pre-evolution capture";
+    constexpr auto direct="PK2 caught-data location/level/time matches a pinned Crystal wild encounter slot";
+    // Actual pinned Crystal Pidgey #16 at location2, level2, daytime.
+    constexpr uint16_t pidgey=(1u<<14)|(2u<<8)|2u;
+    assert(hasInfo(analyzeRawSave(16,2,pidgey),direct));
+    assert(hasInfo(analyzeRawSave(17,18,pidgey),evolved));
+    assert(hasInfo(analyzeRawSave(18,36,pidgey),evolved));
+    assert(!hasInfo(analyzeRawSave(18,35,pidgey),evolved));
+    assert(!hasInfo(analyzeRawSave(18,36,(3u<<14)|(2u<<8)|2u),evolved));
+    assert(!hasInfo(analyzeRawSave(18,36,(1u<<14)|(2u<<8)|127u),evolved));
+    assert(!hasInfo(analyzeRawSave(16,2,pidgey,true),direct));
+    assert(!hasInfo(analyzeRawSave(18,36,pidgey,true),evolved));
+    // Actual pinned Crystal Caterpie #10, location4, level3/daytime.
+    // Butterfree needs two separate level ups after that capture.
+    constexpr uint16_t caterpie=(1u<<14)|(3u<<8)|4u;
+    assert(hasInfo(analyzeRawSave(11,7,caterpie),evolved));
+    assert(hasInfo(analyzeRawSave(12,10,caterpie),evolved));
+    assert(!hasInfo(analyzeRawSave(12,9,caterpie),evolved));
+    // Actual pinned Crystal Sentret #161, location2, level2/daytime.
+    constexpr uint16_t sentret=(1u<<14)|(2u<<8)|2u;
+    assert(hasInfo(analyzeRawSave(162,15,sentret),evolved));
+    assert(!hasInfo(analyzeRawSave(162,14,sentret),evolved));
+}
