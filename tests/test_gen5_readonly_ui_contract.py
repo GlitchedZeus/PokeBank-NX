@@ -35,10 +35,17 @@ require(
     "details.editSnapshot.clear();",
     "screen.closeDetailsModal();",
     "screen.drawGSCOverlay(fb)",
+    "screen.details.active=false;",
+    "drawVerifiedSummary(screen,fb);",
     "return true;",
     "No trainer renaming, money editing, source-save or bank commands.",
     "(void)touch;",
 )
+# Passive PK5 View must not invoke the legacy all-generation legality report.
+# Unknown/unsupported Gen V history is unresolved, not hard-invalid.
+assert "Legality::analyze(" not in surface
+assert surface.index("screen.details.active=false;") < surface.index("drawVerifiedSummary(screen,fb);")
+
 # The Gen V module itself must never invoke any generic source or bank mutation.
 for forbidden in (
     "updateLegacyBase(", "updateGSCOverlay(", "stageParty(", "stageBox(",
