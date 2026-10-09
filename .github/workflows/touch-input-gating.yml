@@ -12,6 +12,7 @@ on:
       - 'tests/test_gsc_editor_surface_contract.cpp'
       - 'tests/test_gen3_hardware_surface_contract.cpp'
       - 'tests/test_gen4_hardware_surface_contract.cpp'
+      - 'tests/test_gsc_workspace_render.cpp'
       - 'tests/touch_fakes/**'
       - '.github/workflows/touch-input-gating.yml'
   pull_request:
@@ -23,6 +24,7 @@ on:
       - 'tests/test_gsc_editor_surface_contract.cpp'
       - 'tests/test_gen3_hardware_surface_contract.cpp'
       - 'tests/test_gen4_hardware_surface_contract.cpp'
+      - 'tests/test_gsc_workspace_render.cpp'
       - 'tests/touch_fakes/**'
       - '.github/workflows/touch-input-gating.yml'
   workflow_dispatch:
@@ -63,3 +65,10 @@ jobs:
               -o "/tmp/pokebank_${gen}_surface"
             "/tmp/pokebank_${gen}_surface"
           done
+      # The real Gen II item picker draws overscan rows for direct manipulation.
+      # This executable tests the framebuffer's clipped, actually visible rows
+      # and previously failed only after the full host suite took several minutes.
+      - name: Generation II clipped held-item renderer
+        run: |
+          make -f Makefile.host build-host/test_gsc_workspace_render
+          ./build-host/test_gsc_workspace_render
