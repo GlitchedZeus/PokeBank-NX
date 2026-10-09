@@ -1,4 +1,5 @@
 #include "Integration/Gen4/Gen4StagedPokemonEditor.h"
+#include "Integration/Gen4/Gen4ReadOnlyInventory.h"
 
 #include "Encryption/Encryption4.h"
 #include "Utils/CRC16.h"
@@ -573,6 +574,92 @@ bool Gen4StagedPokemonEditor::commitPartyPokemon(
     }
 
     if (error) error->clear();
+    return true;
+}
+
+bool Gen4StagedPokemonEditor::stageBagQuantity(
+    size_t pocket,size_t visibleIndex,uint16_t quantity,std::string* error) {
+    // No removal by accidentally setting zero, no arbitrary item creation,
+    // no source writes and no writes to a recovered General partition.
+    if(quantity==0 || quantity>999 || pocket>=BagPocketCount) {
+        setError(error,"Gen IV item quantity must be 1..999 in a native pocket");
+        return false;
+    }
+    auto before=reparse(error);
+    if(!before)return false;
+    const auto previousBag=decodeReadOnlyBag(*before);
+    if(!previousBag || visibleIndex>=(*previousBag)[pocket].size()) {
+        setError(error,"Gen IV item row is unvalidated or out of range");
+        return false;
+    }
+    const auto& expected=(*previousBag)[pocket][visibleIndex];
+    const auto slots=bagLayout(layout_)[pocket];
+    const size_t base=before->generalSelection().offset;
+    const size_t blockSize=generalGeometry(layout_).size;
+    if(slots.offset>blockSize || slots.slots>(blockSize-slots.offset)/4 ||
+       base>staged_.size() || blockSize>staged_.size()-base) {
+        setError(error,"Gen IV selected General pocket region is invalid");
+        return false;
+    }
+    size_t populated=0;
+    size_t target=0;
+    bool found=false;
+    for(size_t slot=0;slot<slots.slots;++slot) {
+        const size_t at=base+slots.offset+slot*4;
+        const uint16_t id=uint16_t(staged_[at]) | (uint16_t(staged_[at+1])<<8);
+        const uint16_t count=uint16_t(staged_[at+2]) | (uint16_t(staged_[at+3])<<8);
+        if(id==0 || id==0xFFFF || count==0)continue;
+        if(populated++==visibleIndex) {
+            if(id!=expected.itemId || count!=expected.count) {
+                setError(error,"Gen IV item identity or quantity changed during selection");
+                return false;
+            }
+            target=at;
+            found=true;
+            break;
+        }
+    }
+    if(!found) {
+        setError(error,"Gen IV inventory stack no longer exists");
+        return false;
+    }
+    if(quantity==expected.count) {
+        if(error)error->clear();
+        return true;
+    }
+
+    auto old=staged_;
+    write16(staged_,target+2,quantity);
+    if(!refreshGeneralCrc(*before,error)) {
+        staged_=std::move(old);
+        return false;
+    }
+    const auto after=reparse(error);
+    if(!after) {
+        staged_=std::move(old);
+        return false;
+    }
+    const auto nextBag=decodeReadOnlyBag(*after);
+    if(!nextBag || (*nextBag)[pocket].size()!=(*previousBag)[pocket].size() ||
+       (*nextBag)[pocket][visibleIndex].itemId!=expected.itemId ||
+       (*nextBag)[pocket][visibleIndex].count!=quantity) {
+        staged_=std::move(old);
+        setError(error,"Gen IV bag change failed exact native pouch reparse");
+        return false;
+    }
+    // Verify the COMPLETE staged image: only quantity's two bytes and the
+    // selected General footer checksum may differ from the baseline image.
+    const size_t checksumAt=base+blockSize-2;
+    for(size_t i=0;i<staged_.size();++i) {
+        const bool permitted=(i==target+2 || i==target+3 ||
+                              i==checksumAt || i==checksumAt+1);
+        if(!permitted && staged_[i]!=old[i]) {
+            staged_=std::move(old);
+            setError(error,"Gen IV item edit unexpectedly changed unrelated save bytes");
+            return false;
+        }
+    }
+    if(error)error->clear();
     return true;
 }
 
