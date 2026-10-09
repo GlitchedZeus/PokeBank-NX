@@ -1,6 +1,7 @@
 #include "UI/Gen2WorkspacePresentation.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "UI/Gen2HeldItemPicker.h"
+#include <algorithm>
 #include <cassert>
 #include <iostream>
 #include <vector>
@@ -8,6 +9,10 @@ namespace {
 struct Text { int x, y, w, h; std::string value; UI::Color color; };
 std::vector<Text> texts;
 std::vector<std::pair<uint16_t, bool>> sprites;
+// The native framebuffer clips extra rows for smooth touch scrolling. The
+// renderer test double must record only visible pixels, not every drawText call.
+bool clipActive = false;
+int clipX = 0, clipY = 0, clipW = 0, clipH = 0;
 bool intersects(const Text& a, const Text& b) {
     return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
 }
@@ -17,7 +22,16 @@ PKSEFramebuffer::PKSEFramebuffer() = default;
 PKSEFramebuffer::~PKSEFramebuffer() = default;
 void PKSEFramebuffer::measureText(const std::string& s, int& w, int& h, TextStyle) { w = s.size()*9; h = 18; }
 void PKSEFramebuffer::drawText(int x,int y,const std::string& s,Color c,TextStyle style) {
-    int w,h; measureText(s,w,h,style); texts.push_back({x,y,w,h,s,c});
+    int w,h; measureText(s,w,h,style);
+    int left = x, top = y, right = x + w, bottom = y + h;
+    if (clipActive) {
+        left = std::max(left, clipX);
+        top = std::max(top, clipY);
+        right = std::min(right, clipX + clipW);
+        bottom = std::min(bottom, clipY + clipH);
+    }
+    if (left < right && top < bottom)
+        texts.push_back({left, top, right - left, bottom - top, s, c});
 }
 void PKSEFramebuffer::drawText(int x,int y,const char* s,Color c,TextStyle style) { drawText(x,y,std::string(s),c,style); }
 void PKSEFramebuffer::drawFilledRect(int,int,int,int,Color) {}
@@ -27,8 +41,11 @@ void PKSEFramebuffer::drawRoundedRect(int,int,int,int,int,Color,int) {}
 void PKSEFramebuffer::drawSelectionHighlight(int,int,int,int) {}
 void PKSEFramebuffer::drawSpriteStaticContained(int,int,int,int,int,int,const unsigned char*,int) {}
 void PKSEFramebuffer::drawImageScaled(int,int,int,int,int,int,const unsigned char*,int) {}
-void PKSEFramebuffer::setClipRect(int,int,int,int) {}
-void PKSEFramebuffer::clearClip() {}
+void PKSEFramebuffer::setClipRect(int x,int y,int w,int h) {
+    clipActive = true; clipX = x; clipY = y;
+    clipW = std::max(0,w); clipH = std::max(0,h);
+}
+void PKSEFramebuffer::clearClip() { clipActive = false; }
 Sprite* SpriteManager::getSprite(uint16_t species, bool shiny) { sprites.emplace_back(species,shiny); return nullptr; }
 Sprite* SpriteManager::getTypeSprite(uint8_t) { return nullptr; }
 }
@@ -176,6 +193,7 @@ int main() {
         }
         texts.clear();
         UI::Gen2HeldItemPickerPresentation::drawList(fb, 0, 0, 992, items, i);
+        assert(!clipActive); // Native-style viewport clipping is balanced after every draw.
         assert(texts.size() <= static_cast<std::size_t>(Held::pageSize));
         for (const auto& text : texts)
             assert(text.x >= 0 && text.y >= 0 && text.x + text.w <= 992 && text.y + text.h <= 384);
