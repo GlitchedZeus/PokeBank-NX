@@ -1,3 +1,4 @@
+#include "UI/MovePickerRowUI.h"
 // Hardware-retest adapter for the shared Generation II move picker.
 // The underlying picker/session code remains unchanged; this layer narrows the
 // normal Move list to Empty + exact-game-compatible choices, matching Gen I.
@@ -69,12 +70,9 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
         const int yy = y + layout.rowStart + (i - first) * layout.rowStep;
         const uint16_t move = choices[static_cast<std::size_t>(i)];
         const bool selected = i == selectedPos;
-        const std::string label =
-            PokeBank::UIModel::MovePickerPresentation::rowLabel(move, Enums::GameVersion::GSC);
         if (selected)
             fb.drawSelectionHighlight(x + 24, yy, panelW - 48, layout.highlightHeight);
-        fb.drawText(x + 40, yy + 8, label,
-                    Colors::Text, TextStyle::Body);
+        MovePickerRowUI::draw(fb,x+40,yy+4,move,Enums::GameVersion::GSC);
     }
     drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                     {"A", "Select"}, {"B", "Cancel"}});
