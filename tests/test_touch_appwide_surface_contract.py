@@ -215,6 +215,20 @@ for picker_name, input_body in (("Species", species_input), ("Move", move_input)
         raise AssertionError(f"Gen I {picker_name}: touch-down must not jump picker selection")
     if "selectedId(" not in input_body or "tapped" not in input_body:
         raise AssertionError(f"Gen I {picker_name}: clean tap selection missing")
+# Gen I Move follows the shared independent picker viewport contract. Dragging
+# may move the first visible row but must not change the selected Move itself.
+require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc",
+            "TouchPickerViewport pickerViewport;",
+            "state.pickerViewport.reset();")
+require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
+            "state.pickerViewport.ensure(selectedIndex, count, visible);",
+            "const int start = state.pickerViewport.firstRow;",
+            "state.pickerViewport.firstRow, maxFirst + 1);",
+            "state.pickerViewport.reveal(index, count, visible);",
+            "state.pickerViewport.containsSelection(index, count, visible)",
+            "Focused move brought into view; press A again or tap a visible row")
+if "state.pickerValue = choices[static_cast<size_t>(current)]" in move_input:
+    raise AssertionError("Gen I Move picker: finger scrolling still changes the highlighted Move")
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc",
             "void ux2ResetTouchMotion(UX2State& state) noexcept",
             "state.editorScroll.reset();",

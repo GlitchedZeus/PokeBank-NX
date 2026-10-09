@@ -33,6 +33,7 @@ struct UX2State {
     int reviewRow = 0;
     TouchScrollState editorScroll;
     TouchScrollState pickerScroll;
+    TouchPickerViewport pickerViewport;
     TouchScrollState reviewScroll;
 
     UX2Picker picker = UX2Picker::None;
@@ -68,6 +69,7 @@ UX2State& ux2StateFor(const TrainerViewScreen& screen) {
 void ux2ResetTouchMotion(UX2State& state) noexcept {
     state.editorScroll.reset();
     state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.reviewScroll.reset();
 }
 
@@ -204,6 +206,7 @@ bool ux2StageRemove(TrainerViewScreen& screen) {
 
 void ux2OpenSpeciesPicker(UX2State& state, uint16_t current) {
     state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.picker = UX2Picker::Species;
     state.pickerValue = std::clamp<int>(current, 1, 151);
     state.pickerCommittedSpecies = current;
@@ -211,6 +214,7 @@ void ux2OpenSpeciesPicker(UX2State& state, uint16_t current) {
 
 void ux2OpenMovePicker(UX2State& state) {
     state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.picker = UX2Picker::Move;
     state.pickerValue = std::clamp<int>(state.tempMove, 0, 165);
 }

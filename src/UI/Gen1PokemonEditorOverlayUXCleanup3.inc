@@ -234,11 +234,31 @@ void ux3HandleMovePicker(TrainerViewScreen& screen, uint64_t down) {
     if (down & HidNpadButton_L) index = std::max(0, index - 10);
     if (down & HidNpadButton_R) index = std::min(static_cast<int>(choices.size()) - 1, index + 10);
     state.pickerValue = choices[static_cast<size_t>(index)];
-    if (down & HidNpadButton_B) { state.picker = UX2Picker::None; return; }
+    constexpr int visible = 9;
+    const int count = static_cast<int>(choices.size());
+    state.pickerViewport.ensure(index, count, visible);
+    if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_L | HidNpadButton_R)) {
+        state.pickerScroll.stop();
+        state.pickerViewport.reveal(index, count, visible);
+    }
+    if (down & HidNpadButton_B) {
+        state.pickerScroll.reset();
+        state.pickerViewport.reset();
+        state.picker = UX2Picker::None;
+        return;
+    }
     if (!(down & HidNpadButton_A)) return;
+    if (!state.pickerViewport.containsSelection(index, count, visible)) {
+        state.pickerScroll.stop();
+        state.pickerViewport.reveal(index, count, visible);
+        screen.postStatus("Focused move brought into view; press A again or tap a visible row", 220);
+        return;
+    }
     state.tempMove = static_cast<uint8_t>(state.pickerValue);
     state.tempPPUps = 0;
     state.tempPP = Editor::moveBasePP(state.tempMove);
+    state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.picker = UX2Picker::None;
 }
 
@@ -513,7 +533,8 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     constexpr int visible = 9;
     constexpr int rowStep = 42;
     const int count = static_cast<int>(choices.size());
-    const int start = std::clamp(selectedIndex - visible / 2, 0, std::max(0, count - visible));
+    state.pickerViewport.ensure(selectedIndex, count, visible);
+    const int start = state.pickerViewport.firstRow;
     const int drawFirst = std::max(0, start - 1);
     const int drawLast = std::min(count, start + visible + 1);
     const int listTop = y + 86;
@@ -716,11 +737,18 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
         int current = 0;
         for (int i = 0; i < static_cast<int>(choices.size()); ++i)
             if (choices[static_cast<size_t>(i)] == state.pickerValue) { current = i; break; }
-        state.pickerScroll.updateVertical(
-            touch, 164, 162, 952, 9 * 42, 42, current,
-            static_cast<int>(choices.size()));
-        if (!choices.empty())
-            state.pickerValue = choices[static_cast<size_t>(current)];
+        constexpr int visible = 9;
+        const int count = static_cast<int>(choices.size());
+        state.pickerViewport.ensure(current, count, visible);
+        const int maxFirst = TouchPickerViewport::maxFirst(count, visible);
+        if (maxFirst > 0)
+            state.pickerScroll.updateVertical(
+                touch, 164, 162, 952, visible * 42, 42,
+                state.pickerViewport.firstRow, maxFirst + 1);
+        else
+            state.pickerScroll.stop();
+        // Drag the viewport without changing the chosen Move. A row tap or
+        // controller navigation is the only way to move semantic focus.
         if (down & (HidNpadButton_Up | HidNpadButton_Down |
                     HidNpadButton_Left | HidNpadButton_Right |
                     HidNpadButton_L | HidNpadButton_R))
