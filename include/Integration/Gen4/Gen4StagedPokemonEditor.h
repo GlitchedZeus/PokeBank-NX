@@ -85,6 +85,12 @@ public:
     bool stageBagRemove(size_t pocket,size_t visibleIndex,
                         std::string* error=nullptr);
 
+    // Add one strictly catalog-allowed Gen IV item to an empty native slot
+    // in the app-owned image, never an external save. No arbitrary ID
+    // reassignment, overwrite of existing stacks, or native writes.
+    bool stageBagAdd(size_t pocket,uint16_t itemId,uint16_t quantity,
+                     std::string* error=nullptr);
+
     void discard() noexcept { staged_ = original_; }
 
     [[nodiscard]] std::vector<uint8_t> finalizedBytes(std::string* error = nullptr) const;
