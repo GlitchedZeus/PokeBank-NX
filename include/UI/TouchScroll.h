@@ -126,6 +126,8 @@ public:
         last_ = 0;
         offset_ = 0;
         velocity_ = 0;
+        directionLocked_ = false;
+        horizontalGesture_ = false;
     }
 
     void stop() noexcept { reset(); }
@@ -145,6 +147,8 @@ private:
     int last_ = 0;
     int offset_ = 0;
     int velocity_ = 0;
+    bool directionLocked_ = false;
+    bool horizontalGesture_ = false;
 
     static bool inside(int px, int py, int x, int y, int w, int h) noexcept {
         return px >= x && px < x + w && py >= y && py < y + h;
@@ -210,6 +214,8 @@ private:
             active_ = inside(touch.x(), touch.y(), x, y, w, h);
             coasting_ = false;
             velocity_ = 0;
+            directionLocked_ = false;
+            horizontalGesture_ = false;
             // Stop momentum without snapping residual pixels out from under a new touch.
             // The existing offset is where the list was ACTUALLY drawn last frame.
             last_ = touch.y();
@@ -220,6 +226,23 @@ private:
             const int now = touch.y();
             const int delta = now - last_;
             last_ = now;
+
+            // Decide the gesture's axis once it clears the same slop as a real tap.
+            // Horizontal swipes must not scroll a vertical list just because the
+            // finger drifted a few pixels vertically. Keep ownership locked until
+            // release so a sideways swipe that curves does not steal the list.
+            if (!directionLocked_) {
+                const int dx = std::abs(touch.deltaX());
+                const int dy = std::abs(touch.deltaY());
+                if (std::max(dx, dy) > 22) {
+                    directionLocked_ = true;
+                    horizontalGesture_ = dx > dy;
+                }
+            }
+            if (horizontalGesture_) {
+                velocity_ = 0;
+                return;
+            }
             if (delta == 0) return;
 
             // Track from the first pixel of movement. Tap classification remains owned by TouchInput,
@@ -247,6 +270,15 @@ private:
 
         if (active_ && touch.justReleased()) {
             active_ = false;
+            if (horizontalGesture_) {
+                // A sideways drag cannot leave behind vertical momentum.
+                velocity_ = 0;
+                coasting_ = false;
+                directionLocked_ = false;
+                horizontalGesture_ = false;
+                return;
+            }
+            directionLocked_ = false;
             if (!touch.dragged()) {
                 // A tap may stop a coast but must not jump the list on release either.
                 // Ordinary idle easing below settles this small residual afterward.

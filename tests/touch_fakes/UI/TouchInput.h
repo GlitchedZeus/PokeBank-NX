@@ -46,6 +46,8 @@ public:
     [[nodiscard]] bool dragged() const noexcept { return maxSquared_ > 22 * 22; }
     [[nodiscard]] int x() const noexcept { return x_; }
     [[nodiscard]] int y() const noexcept { return y_; }
+    [[nodiscard]] int deltaX() const noexcept { return x_ - firstX_; }
+    [[nodiscard]] int deltaY() const noexcept { return y_ - firstY_; }
 private:
     bool down_ = false;
     bool previousDown_ = false;

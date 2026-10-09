@@ -198,7 +198,50 @@ static void testIndependentPickerViewport() {
     assert(grid.firstRow == 0); // New picker starts at its own focused value.
 }
 
+// A horizontal swipe must not own a vertical list even if it later curves
+// vertically. A fresh vertical contact must still scroll after that release.
+static void testHorizontalAxisLock() {
+    TouchScrollState state;
+    TouchInput touch;
+    int first = 5;
+    touch.contact(100, 200);
+    feed(state, touch, first, 30);
+    touch.contact(180, 195);
+    feed(state, touch, first, 30);
+    assert(first == 5 && state.offset() == 0);
+    touch.contact(220, 105);
+    feed(state, touch, first, 30);
+    assert(first == 5 && state.offset() == 0);
+    touch.release();
+    feed(state, touch, first, 30);
+    touch.nextFrame();
+    feed(state, touch, first, 30);
+    assert(first == 5 && state.offset() == 0);
+
+    // Direction lock must reset between gestures, not block normal vertical motion.
+    touch.contact(100, 200);
+    feed(state, touch, first, 30);
+    touch.contact(100, 160);
+    feed(state, touch, first, 30);
+    assert(first == 6 && state.offset() == 0);
+}
+
+static void testVerticalAxisLockSurvivesDiagonalCorrection() {
+    TouchScrollState state;
+    TouchInput touch;
+    int first = 4;
+    touch.contact(100, 200);
+    feed(state, touch, first, 30);
+    touch.contact(100, 160);
+    feed(state, touch, first, 30);
+    touch.contact(190, 120);
+    feed(state, touch, first, 30);
+    assert(first == 6 && state.offset() == 0);
+}
+
 int main() {
+    testHorizontalAxisLock();
+    testVerticalAxisLockSurvivesDiagonalCorrection();
     testContinuousPixelAndBoundary();
     testCoastReversalAndTapInterrupt();
     testEmptySingleAndBothEnds();
