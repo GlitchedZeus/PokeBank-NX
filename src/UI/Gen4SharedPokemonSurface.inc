@@ -2130,10 +2130,11 @@ void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const S
     fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
     fb.drawRoundedRect(x,y,w,h,18,Colors::FocusBorder,1);
     fb.drawText(x+24,y+20,"Remove Gen IV Item?",Colors::Text,TextStyle::Heading);
+    const std::string itemName=Names::getItemName(state.itemRemoveId);
     fb.drawText(x+24,y+69,
-        "Native item ID "+std::to_string(state.itemRemoveId)+
-        "  |  Count "+std::to_string(state.itemRemoveCount),
+        itemName+"  |  Count "+std::to_string(state.itemRemoveCount),
         Colors::Text,TextStyle::Body);
+    ItemPickerArtwork::draw(fb,x+w-38,y+65,36,itemName);
     fb.drawText(x+24,y+113,
         "Only the app-owned staged copy changes. Original source is immutable.",
         Colors::TextSecondary,TextStyle::Caption);
