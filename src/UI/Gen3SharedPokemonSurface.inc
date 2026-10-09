@@ -23,6 +23,7 @@
 #include "UI/Gen3SharedPokemonSession.h"
 #include "UI/Gen3EncounterPickerModel.h"
 #include "UI/MovePickerPresentation.h"
+#include "UI/ItemPickerArtwork.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedHeldItemPicker.h"
 #include "UI/SharedSpeciesPicker.h"
@@ -1279,6 +1280,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
             const auto value = state.pickerValues[static_cast<std::size_t>(i)];
             fb.drawText(cellX + 10, cellY + 7, pickerValueLabel(state, value),
                         Colors::Text, TextStyle::Caption);
+            if(value != 0)
+                ItemPickerArtwork::draw(fb, cellX + cellWidth - 24,
+                                        cellY + 2, 30, Names::getItemNameG3(value));
         }
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
                         {"A", "Choose"}, {"B", "Cancel"}});
@@ -1299,6 +1303,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         const auto value = state.pickerValues[static_cast<std::size_t>(i)];
         fb.drawText(x + 38, yy + 7, pickerValueLabel(state, value),
                     Colors::Text, TextStyle::Body);
+        if(state.pickerTarget == PickerTarget::Ball)
+            ItemPickerArtwork::draw(fb, x + w - 35, yy, 32,
+                                    Enums::getBallName(static_cast<uint8_t>(value)));
     }
     drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                     {"A", "Choose"}, {"B", "Cancel"}});
