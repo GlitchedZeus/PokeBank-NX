@@ -8,6 +8,7 @@
 #include "Integration/Gen5/Gen5GameCardPreview.h"
 #include "Integration/Gen5/Gen5SharedPokemonSession.h"
 #include "Integration/Gen5/Gen5SharedEditorBridge.h"
+#include "Integration/Gen5/Gen5SharedReview.h"
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Games/GameIdentity.h"
@@ -487,6 +488,22 @@ int main() {
             assert(change.before.size()==(change.location.region==
                 G::Gen5StagedPokemonWorkspace::Region::Party?
                 C::PartySize:C::StoredSize));
+            const auto verified=G::verifyStagedReview(change,&error);
+            assert(verified && !verified->fields.empty());
+            assert(verified->fields.size()==
+                (change.location.region==G::Gen5StagedPokemonWorkspace::Region::Party?1u:2u));
+            for(const auto& field:verified->fields)assert(field.before!=field.after);
+            // A structurally valid but unrelated species edit is not a
+            // permitted four-field PK5 stage, and cannot be misrepresented
+            // as a verified review of our supported mutations.
+            auto forged=change;
+            auto plaintext=C::decrypt(forged.after);
+            C::write16(plaintext,8,150); // Mewtwo: valid Gen V dex ID.
+            forged.after=C::encryptCandidate(plaintext);
+            assert(!G::verifyStagedReview(forged,&error));
+            forged=change;
+            forged.location.region=static_cast<G::Gen5StagedPokemonWorkspace::Region>(0xFF);
+            assert(!G::verifyStagedReview(forged,&error));
         }
         // One shared action menu and exact Gen V field capabilities.
         using GA=PokeBank::UIModel::SharedPokemonEditor::Action;
