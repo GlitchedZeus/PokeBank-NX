@@ -31,6 +31,12 @@ public:
             return slot<other.slot;
         }
     };
+    // Native slot identity must be canonical. An unrecognized enum value
+    // must never alias a valid box, and party references cannot use a box id.
+    [[nodiscard]] static constexpr bool canonicalSlot(const Slot& s) noexcept {
+        return s.region==Region::Party ? (s.box==0 && s.slot<6) :
+               s.region==Region::Box && s.box<24 && s.slot<30;
+    }
     struct PendingChange {
         Slot location;
         std::vector<uint8_t> before;
@@ -81,6 +87,7 @@ public:
 
 private:
     [[nodiscard]] std::optional<Pokemon5ReadOnly> sourceSlot(const Slot& s) const {
+        if(!canonicalSlot(s))return std::nullopt;
         if(s.region==Region::Party) {
             // Undeclared party slots are not editable.
             if(s.slot>=source_.partyCount() || s.box!=0)return std::nullopt;
@@ -89,12 +96,17 @@ private:
         return source_.boxPokemon(s.box,s.slot);
     }
     [[nodiscard]] std::optional<Pokemon5ReadOnly> view(const Slot& s) const {
+        if(!canonicalSlot(s))return std::nullopt;
         const auto it=pending_.find(s);
         if(it!=pending_.end())return it->second.current();
         return sourceSlot(s);
     }
     bool stageSlot(const Slot& location,StagedPokemon5Record::Field field,
                    size_t stat,uint32_t value,std::string* error) {
+        if(!canonicalSlot(location)) {
+            if(error)*error="Gen V staged slot identity is invalid";
+            return false;
+        }
         const auto it=pending_.find(location);
         if(it!=pending_.end()) {
             const bool ok=it->second.stage(field,stat,value,error);
