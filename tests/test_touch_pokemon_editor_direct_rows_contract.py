@@ -49,17 +49,17 @@ require(classic_actions, "src/UI/ClassicReleaseActionFix.inc",
         "screen.touchButtons.push_back({499")
 
 gen2 = read("src/UI/Gen2PokemonPickerOverlay.inc")
+# A contact may become a swipe, so changing the Gen II choice on touch-down
+# is unsafe. Only the release-confirmed hit may focus and synthesize A.
 require(gen2, "src/UI/Gen2PokemonPickerOverlay.inc",
-        "screen.touchedButtonDownId(touch)",
         "screen.touchedButtonId(touch)",
-        "picker.model.index = std::clamp(touchDown - 2000, 1, 251) - 1;",
         "picker.model.index = std::clamp(touchTap - 2000, 1, 251) - 1;",
         "const int firstTouchId = speciesIds ? 2001 : 2000;",
         "const int endTouchId = 2000 + pickerCount + (speciesIds ? 1 : 0);",
-        "touchDown >= firstTouchId && touchDown < endTouchId",
         "touchTap >= firstTouchId && touchTap < endTouchId",
         "touch.justReleased() && touch.dragged()")
-assert "std::clamp(touchDown - 2000, 1, 251);" not in gen2
+assert "screen.touchedButtonDownId(touch)" not in gen2
+assert "touchDown >= firstTouchId" not in gen2
 assert "std::clamp(touchTap - 2000, 1, 251);" not in gen2
 
 gen2_item = read("src/UI/Gen2PokemonEditorFoundation.inc")
