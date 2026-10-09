@@ -506,7 +506,7 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         if (selected) fb.drawSelectionHighlight(x + 24, rowY, w - 48, 38);
         const auto text = MoveUI::rowLabel(
             static_cast<uint16_t>(move), Enums::GameVersion::RBY);
-        fb.drawText(x + 40, rowY + 8, text, selected ? Colors::Text : Colors::TextDim);
+        fb.drawText(x + 40, rowY + 8, text, Colors::Text);
     }
 }
 
