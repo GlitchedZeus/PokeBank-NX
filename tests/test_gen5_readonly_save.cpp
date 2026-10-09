@@ -549,10 +549,17 @@ int main() {
         assert(workspace.changedRecordCount()==2);
         // Local cancel never discards earlier accepted workspace edits.
         assert(editor.begin(workspace,GSlot{GRegion::Box,0,0},GMode::Edit,error));
-        assert(editor.stage(GField::Friendship,0,87,error));
+        // Exercise all four native staged-field bridges in one local draft.
+        assert(G::stageSharedField(editor,GF::Friendship,0,87,error));
+        assert(G::stageSharedField(editor,GF::IV,0,31,error));
+        assert(G::stageSharedField(editor,GF::EV,1,10,error));
+        assert(editor.current()->friendship()==87);
+        assert(editor.current()->ivs()[0]==31);
+        assert(editor.current()->evs()[1]==10);
         assert(editor.dirty());
         editor.discardDraft();
         assert(workspace.viewBox(0,0)->friendship()==255);
+        assert(workspace.viewBox(0,0)->evs()[1]!=10);
         // Concurrent edits are not overwritten with a stale draft.
         assert(editor.begin(workspace,GSlot{GRegion::Party,0,0},GMode::Edit,error));
         assert(editor.stage(GField::Nature,0,13,error));
