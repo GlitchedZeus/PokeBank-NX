@@ -15,6 +15,12 @@ on:
       - 'src/Legacy/LegacySourceBindings.cpp'
       - 'include/Source/SaveInstance.h'
       - 'tests/test_gen5_*.cpp'
+      - 'tests/test_gen5_*.py'
+      - 'src/UI/Gen5SharedReadOnlySurface.inc'
+      - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
+      - 'src/UI/UI.cpp'
+      - 'include/UI/UI.h'
+      - 'src/UI/SaveSelectScreen.cpp'
       - 'Makefile.host'
       - 'Makefile.host.gen5'
       - '.github/workflows/gen5-focused-host.yml'
@@ -56,6 +62,8 @@ jobs:
             make -f Makefile.host "build-host/$bin"
             "./build-host/$bin"
           done
+      - name: Guard Gen V read-only production UI routing
+        run: python3 tests/test_gen5_readonly_ui_contract.py
       - name: Run focused ASan and UBSan contracts
         run: |
           set -euo pipefail
