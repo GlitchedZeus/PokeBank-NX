@@ -361,6 +361,10 @@ int main() {
     contains(gen3Bridge, "hasStagedChanges() const noexcept override");
     contains(gen4Bridge, "hasStagedChanges() const noexcept override");
     contains(baseUi, "hasUnsavedChanges || trainer.hasStagedChanges()");
+    contains(baseUi, "PokeVault::Integration::Gen4::BagPocketCount");
+    contains(baseUi, "sourceGameId==\"platinum_nds\"");
+    contains(baseUi, "A: Edit Staged Quantity");
+
     contains(baseUi, "immutableSourceBlocksSaveDialog(");
     contains(baseUi, "exitOnlySaveConfirm");
     assert(baseUi.find("!sourceReadOnly() && hasUnsavedChanges") == std::string::npos);
