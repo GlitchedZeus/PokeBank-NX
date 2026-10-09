@@ -225,6 +225,24 @@ require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc",
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc",
             "TouchPickerViewport editorViewport;",
             "state.editorViewport.reset();")
+# Pending Review is a read-only list; finger-scrolling it must not alter
+# the selected row or trigger any export/discard action.
+require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc",
+            "TouchPickerViewport reviewViewport;",
+            "state.reviewViewport.reset();")
+require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
+            "state.reviewViewport.ensure(state.reviewRow, count, visible);",
+            "const int start = state.reviewViewport.firstRow;",
+            "state.reviewViewport.firstRow,",
+            "maxFirst + 1);",
+            "state.reviewViewport.reveal(state.reviewRow, count, visible);")
+review_input = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc").split(
+    "} else if (state.mode == UX2Mode::Review) {", 1)[1].split(
+    "    return down;", 1)[0]
+assert "selectedId(1300, count, tapped)" in review_input
+assert "selectedId(1300, count, pressed)" not in review_input
+assert "touch, rx + 24, ry + 64, geometry.width - 48," in review_input
+
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
             "state.editorViewport.ensure(state.row, 14, visible);",
             "const int start = state.editorViewport.firstRow;",

@@ -36,6 +36,7 @@ struct UX2State {
     TouchScrollState pickerScroll;
     TouchPickerViewport pickerViewport;
     TouchScrollState reviewScroll;
+    TouchPickerViewport reviewViewport;
 
     UX2Picker picker = UX2Picker::None;
     int pickerValue = 0;
@@ -73,6 +74,7 @@ void ux2ResetTouchMotion(UX2State& state) noexcept {
     state.pickerScroll.reset();
     state.pickerViewport.reset();
     state.reviewScroll.reset();
+    state.reviewViewport.reset();
 }
 
 std::optional<PokemonRecord> ux2SelectedPokemon(TrainerViewScreen& screen, std::string& error) {
@@ -521,6 +523,7 @@ void ux2HandleMainEditor(TrainerViewScreen& screen, uint64_t down) {
             if (add) ux2StageAdd(screen);
             else {
                 state.reviewScroll.reset();
+                state.reviewViewport.reset();
                 state.mode = UX2Mode::Review;
                 state.reviewRow = 0;
             }
@@ -641,6 +644,7 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
             case UX::Action::AddPokemon: ux2BeginAdd(screen); break;
             case UX::Action::ReviewPendingChanges:
                 state.reviewScroll.reset();
+                state.reviewViewport.reset();
                 state.mode = UX2Mode::Review;
                 state.reviewRow = 0;
                 break;

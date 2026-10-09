@@ -329,7 +329,12 @@ void ux3HandleMainEditor(TrainerViewScreen& screen, uint64_t down) {
         }
         case 12:
             if (add) ux3StageAdd(screen);
-            else { state.mode = UX2Mode::Review; state.reviewRow = 0; }
+            else {
+                state.reviewScroll.reset();
+                state.reviewViewport.reset();
+                state.mode = UX2Mode::Review;
+                state.reviewRow = 0;
+            }
             break;
         case 13:
             if (add) state.draft = BoxPokemonCreate{};
@@ -606,7 +611,8 @@ void ux3DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     const int visible = std::max(1, std::min(UX3Contract::pendingGeometry(lines.size()).visibleRows,
                                              static_cast<int>(lines.size())));
     const int count = static_cast<int>(lines.size());
-    const int start = std::clamp(state.reviewRow - visible / 2, 0, std::max(0, count - visible));
+    state.reviewViewport.ensure(state.reviewRow, count, visible);
+    const int start = state.reviewViewport.firstRow;
     const int drawFirst = std::max(0, start - 1);
     const int drawLast = std::min(count, start + visible + 1);
     const int listTop = y + 64;
@@ -814,18 +820,27 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
         if (slot >= 0) { state.cloneSlot = slot; down |= HidNpadButton_A; }
     } else if (state.mode == UX2Mode::Review) {
         const auto lines = ux3PendingLines(screen);
-        int row = selectedId(1300, static_cast<int>(lines.size()), pressed);
+        const int count = static_cast<int>(lines.size());
+        // Touching a row can focus it on a clean release. Scrolling the
+        // pending list must never navigate the semantic review cursor.
+        const int row = selectedId(1300, count, tapped);
         if (row >= 0) state.reviewRow = row;
-        row = selectedId(1300, static_cast<int>(lines.size()), tapped);
-        if (row >= 0) state.reviewRow = row;
-        if (!lines.empty()) {
+        if (count > 0) {
             const auto geometry = UX3Contract::pendingGeometry(lines.size());
+            const int visible = std::max(1, std::min(geometry.visibleRows, count));
+            state.reviewViewport.ensure(state.reviewRow, count, visible);
             const int rx = (1280 - geometry.width) / 2;
             const int ry = (672 - geometry.height) / 2;
-            state.reviewScroll.updateVertical(
-                touch, rx + 24, ry + 64, geometry.width - 48,
-                geometry.height - 108, 48, state.reviewRow,
-                static_cast<int>(lines.size()));
+            const int maxFirst = TouchPickerViewport::maxFirst(count, visible);
+            if (maxFirst > 0)
+                state.reviewScroll.updateVertical(
+                    touch, rx + 24, ry + 64, geometry.width - 48,
+                    geometry.height - 108, 48, state.reviewViewport.firstRow,
+                    maxFirst + 1);
+            else
+                state.reviewScroll.stop();
+        } else {
+            state.reviewScroll.stop();
         }
         if (down & (HidNpadButton_Up | HidNpadButton_Down))
             state.reviewScroll.stop();
@@ -865,8 +880,18 @@ void ux3HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
         return;
     }
 
+    const bool reviewNavigation = state.mode == UX2Mode::Review &&
+        (down & (HidNpadButton_Up | HidNpadButton_Down));
     const bool manualDVApply = state.mode == UX2Mode::DVEditor && state.subRow == 5 && (down & HidNpadButton_A);
     ux2HandleActiveInput(screen, down);
+    if (reviewNavigation && state.mode == UX2Mode::Review) {
+        const auto lines = ux3PendingLines(screen);
+        const auto geometry = UX3Contract::pendingGeometry(lines.size());
+        const int count = static_cast<int>(lines.size());
+        const int visible = std::max(1, std::min(geometry.visibleRows, std::max(1, count)));
+        state.reviewScroll.stop();
+        state.reviewViewport.reveal(state.reviewRow, count, visible);
+    }
     if (manualDVApply) {
         auto& ux3 = ux3StateFor(screen);
         if (state.subForAdd) ux3.preShinyDraftDVs.reset();
