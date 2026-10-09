@@ -29,6 +29,9 @@ void PKSEFramebuffer::drawSpriteStaticContained(int,int,int,int,int,int,const un
 void PKSEFramebuffer::drawImageScaled(int,int,int,int,int,int,const unsigned char*,int) {}
 Sprite* SpriteManager::getSprite(uint16_t species, bool shiny) { sprites.emplace_back(species,shiny); return nullptr; }
 Sprite* SpriteManager::getTypeSprite(uint8_t) { return nullptr; }
+// Shared Gen II held-item picker optionally renders matching ROMFS artwork.
+// This isolated render host test deliberately has no image/assets backend.
+Sprite* SpriteManager::getItemSprite(const std::string&) { return nullptr; }
 }
 int main() {
     UI::PKSEFramebuffer fb;
