@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include "Enums/LanguageID.h"
 #include "Integration/Gen4/Gen4ReadOnlySave.h"
+#include "Integration/Gen4/Gen4ReadOnlyInventory.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
 #include "Pokemon/Pokemon4ReadOnlyView.h"
 #include "Utils/CRC16.h"
@@ -998,6 +999,63 @@ void testQuarantinedPresentationRefresh() {
     assert(digest(bytes) == sourceHash);
 }
 
+void testNativeGen4Bag() {
+    namespace G4=PokeVault::Integration::Gen4;
+    using Bag=G4::BagPocket;
+    constexpr size_t kItems=static_cast<size_t>(Bag::Items);
+    constexpr size_t kMedicine=static_cast<size_t>(Bag::Medicine);
+    constexpr size_t kBalls=static_cast<size_t>(Bag::Balls);
+    for(const auto layout:{Layout::DiamondPearl,Layout::Platinum,Layout::HeartGoldSoulSilver}) {
+        // Deliberately select the SECOND General partition and the FIRST
+        // Storage partition. Reading bag offsets from the first save half
+        // (instead of the CRC-selected General) must fail these assertions.
+        const auto native=G4::bagLayout(layout);
+        auto bytes=makeSave(layout,1,0,layout==Layout::HeartGoldSoulSilver?7:0);
+        const auto s=spec(layout);
+        auto item=[&](size_t partition,size_t pocket,size_t slot,uint16_t id,uint16_t count) {
+            const size_t off=partition*PARTITION+native[pocket].offset+slot*4;
+            w16(bytes,off,id);w16(bytes,off+2,count);
+        };
+        item(0,kItems,0,1,1);
+        item(1,kItems,0,17,12);
+        item(1,kMedicine,0,22,7);
+        item(1,kBalls,0,4,43);
+        item(1,kBalls,1,1,3);
+        stamp(bytes,0,s.generalSize,s.footerSize,10,1,MAGIC_INTL);
+        stamp(bytes,PARTITION,s.generalSize,s.footerSize,20,1,MAGIC_INTL);
+        const auto original=digest(bytes);
+        std::string error;
+        const std::string game=layout==Layout::DiamondPearl?"diamond_nds":
+            layout==Layout::Platinum?"platinum_nds":"heartgold_nds";
+        auto parsed=Gen4ReadOnlySave::parse(bytes,layout,game,&error);
+        assert(parsed && error.empty() && parsed->generalSelection().partition==1);
+        const auto bag=G4::decodeReadOnlyBag(*parsed);
+        assert(bag && bag->size()==G4::BagPocketCount);
+        assert((*bag)[kItems].size()==1 && (*bag)[kItems][0].itemId==17 &&
+               (*bag)[kItems][0].count==12);
+        assert((*bag)[kMedicine].size()==1 && (*bag)[kMedicine][0].count==7);
+        assert((*bag)[kBalls].size()==2 && (*bag)[kBalls][0].itemId==4 &&
+               (*bag)[kBalls][1].count==3);
+        auto trainer=PokeVault::Legacy::Gen4ReadOnlyTrainer::create(*parsed,game,error);
+        assert(trainer && error.empty() && trainer->items.size()==G4::BagPocketCount);
+        assert(trainer->items[kBalls].size()==2 &&
+               trainer->items[kBalls][0].count==43);
+        assert(digest(bytes)==original && digest(parsed->sourceBytes())==original);
+        // A CRC-valid source with an invalid item ID quarantines only its bag.
+        auto malformed=bytes;
+        w16(malformed,PARTITION+native[kMedicine].offset,0xFFFE);
+        stamp(malformed,PARTITION,s.generalSize,s.footerSize,20,1,MAGIC_INTL);
+        const auto corruptSource=digest(malformed);
+        auto opened=Gen4ReadOnlySave::parse(malformed,layout,game,&error);
+        assert(opened);
+        assert(!G4::decodeReadOnlyBag(*opened));
+        auto isolated=PokeVault::Legacy::Gen4ReadOnlyTrainer::create(*opened,game,error);
+        assert(isolated && isolated->items.empty());
+        assert(isolated->party.size()==1 && isolated->party[0]);
+        assert(digest(malformed)==corruptSource);
+    }
+}
+
 void testPresentationBridge() {
     using namespace PokeVault::Integration::Gen4;
     auto bytes=makeSave(Layout::DiamondPearl);
@@ -1055,6 +1113,7 @@ int main(int argc,char** argv) {
     testSourceDiscovery();
     testHardwareEmptyCartridgeShape();
     testQuarantinedPresentationRefresh();
+    testNativeGen4Bag();
     testPresentationBridge();
     testCryptoAndEntity();
     testText();
