@@ -38,3 +38,23 @@ $(HOST_BUILD)/test_gen34_ball_domain_analyzer: $(GEN34_BALL_ANALYZER_SOURCES) $(
 $(HOST_BUILD)/test_gen34_ball_domain_analyzer_sanitize: $(GEN34_BALL_ANALYZER_SOURCES) $(GEN34_BALL_ANALYZER_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GEN34_BALL_ANALYZER_SOURCES) -o $@
+
+# Production multi-reroll Method K regression through an encrypted native PK4.
+GEN4_BCC_NATIVE_METHODK_SOURCES := tests/test_gen4_bcc_multiretry_native_pk4.cpp \
+	$(filter-out tests/test_gen34_ball_domain_analyzer.cpp,$(GEN34_BALL_ANALYZER_SOURCES))
+GEN4_BCC_NATIVE_METHODK_HEADERS := $(GEN34_BALL_ANALYZER_HEADERS) \
+	include/Legality/Gen4WildRngCorrelation.h \
+	include/Legality/Gen4LeadReportingEvidence.h
+
+HOST_TESTS += $(HOST_BUILD)/test_gen4_bcc_multiretry_native_pk4
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_bcc_multiretry_native_pk4_sanitize
+host-test: $(HOST_BUILD)/test_gen4_bcc_multiretry_native_pk4
+host-sanitize: $(HOST_BUILD)/test_gen4_bcc_multiretry_native_pk4_sanitize
+
+$(HOST_BUILD)/test_gen4_bcc_multiretry_native_pk4: $(GEN4_BCC_NATIVE_METHODK_SOURCES) $(GEN4_BCC_NATIVE_METHODK_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(GEN4_BCC_NATIVE_METHODK_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_bcc_multiretry_native_pk4_sanitize: $(GEN4_BCC_NATIVE_METHODK_SOURCES) $(GEN4_BCC_NATIVE_METHODK_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GEN4_BCC_NATIVE_METHODK_SOURCES) -o $@
