@@ -23,6 +23,7 @@
 #include "UI/Gen3SharedPokemonSession.h"
 #include "UI/Gen3EncounterPickerModel.h"
 #include "UI/MovePickerPresentation.h"
+#include "UI/MovePickerRowUI.h"
 #include "UI/ItemPickerArtwork.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedHeldItemPicker.h"
@@ -1245,8 +1246,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
             if (selected)
                 fb.drawSelectionHighlight(x + 24, yy, w - 48, moveLayout.highlightHeight);
             const auto value = state.pickerValues[static_cast<std::size_t>(i)];
-            fb.drawText(x + 40, yy + 8, pickerValueLabel(state, value),
-                        Colors::Text, TextStyle::Body);
+            MovePickerRowUI::draw(fb,x+40,yy+4,value,Enums::GameVersion::FRLG);
         }
         drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                         {"A", "Select"}, {"B", "Cancel"}});
