@@ -140,8 +140,8 @@ void redrawGen2DetailsSemantics(PKSEFramebuffer& fb, const State& state,
             row == static_cast<std::size_t>(detailVisual.index);
         // Leave a clean gutter between the selection outline and the scrollbar track.
         drawGen2Focus(fb, x + 8, yy + 2, std::max(0, w - 36), 30, selected);
-        fb.drawText(x + 18, yy + 7, rows[row].first,
-                    selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, yy + 7, rows[row].first, selected ? Colors::SelectedText : Colors::TextDim,
+                    TextStyle::Caption);
         fb.drawText(x + 108, yy + 7, rows[row].second, Colors::Text, TextStyle::Caption);
     }
     fb.clearClip();

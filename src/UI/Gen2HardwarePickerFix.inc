@@ -156,9 +156,6 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     } else {
         picker.moveScroll.stop();
     }
-    const int touchDown = screen.touchedButtonDownId(touch);
-    if (touchDown >= 2100 && touchDown < 2100 + static_cast<int>(touchChoices.size()))
-        picker.model.index = static_cast<int>(touchChoices[static_cast<std::size_t>(touchDown - 2100)]);
     const int touchTap = screen.touchedButtonId(touch);
     if (touchTap >= 2100 && touchTap < 2100 + static_cast<int>(touchChoices.size())) {
         picker.model.index = static_cast<int>(touchChoices[static_cast<std::size_t>(touchTap - 2100)]);

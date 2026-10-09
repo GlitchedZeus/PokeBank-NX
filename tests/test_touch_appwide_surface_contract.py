@@ -147,7 +147,7 @@ require_all("include/UI/ScreenChrome.h",
             "Content cards/rows are owned by the screen that draws them.",
             "g_productHeroDragActive",
             "g_productHeroDragXForDraw",
-            // An active drag belongs only to the Product Home surface where it began.
+            # An active drag belongs only to the Product Home surface where it began.
             "if (productHeroDrag && g_productHeroSwipeRegistered && touch.dragged())",
             "constexpr int kProductHeroX = 24;",
             "constexpr int kProductHeroY = 78;",
@@ -354,6 +354,15 @@ require_all("src/UI/Gen2PokemonPickerOverlay.inc",
             "picker.moveViewport.reset();")
 if "stepHardwareMovePicker(screen, state, picker, dy < 0" in read("src/UI/Gen2HardwarePickerFix.inc"):
     raise AssertionError("Gen II Move picker must never change chosen Move directly on drag release")
+# A touch-down can become a drag. Wait for a clean release before changing the
+# highlighted Gen II species, move or encounter and before synthesizing A.
+for picker_path in ("src/UI/Gen2HardwarePickerFix.inc",
+                    "src/UI/Gen2PokemonPickerOverlay.inc"):
+    picker_source = read(picker_path)
+    if "screen.touchedButtonDownId(touch)" in picker_source:
+        raise AssertionError(f"{picker_path}: picker selection may change on drag contact")
+    require_all(picker_path, "screen.touchedButtonId(touch)",
+                "down |= HidNpadButton_A;")
 require_all("src/UI/Gen2HardwareWorkspaceFix.inc",
             "const bool started = focusUnifiedTouchPoint(",
             "screen, touch.startX(), touch.startY(), false, down",
