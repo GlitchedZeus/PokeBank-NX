@@ -570,6 +570,52 @@ int main() {
         assert(exitOnly.confirmDiscardAndExit(exitWorkspace)); // Y explicit exit path.
         assert(!exitWorkspace.hasChanges());
         assert(workspace.hasChanges()); // Separate editor/session unchanged.
+        // Two-phase Keep must survive a failed native presentation refresh.
+        // In particular A from the dirty-draft confirmation MUST be a Keep,
+        // never a dead button or a silent draft-discard operation.
+        auto transactionWorkspace=workspace;
+        G::Gen5SharedScreenState transactionUi;
+        assert(transactionUi.openActions(transactionWorkspace,
+            GSlot{GRegion::Party,0,0},error));
+        assert(transactionUi.activate(transactionWorkspace,GA::Edit,error));
+        const auto transactionNature=transactionUi.draft().current()->nature();
+        assert(transactionUi.adjustField(1,error));
+        assert(!transactionUi.back());
+        assert(transactionUi.surface()==G::Gen5SharedScreenState::Surface::ConfirmDraft);
+        const auto untouched=transactionWorkspace.viewParty(0)->nature();
+        assert(!transactionUi.keepWithPresentation(transactionWorkspace,
+            [](std::string& why) {
+                why="Simulated Gen V presentation refresh failure";
+                return false;
+            },error));
+        assert(error=="Simulated Gen V presentation refresh failure");
+        assert(transactionUi.surface()==G::Gen5SharedScreenState::Surface::ConfirmDraft);
+        assert(transactionUi.draft().dirty() && transactionUi.draft().editable());
+        assert(transactionUi.draft().current()->nature()==transactionNature+1);
+        assert(transactionWorkspace.viewParty(0)->nature()==untouched);
+        assert(transactionUi.keepWithPresentation(transactionWorkspace,
+            [](std::string&) {return true;},error));
+        assert(transactionUi.surface()==G::Gen5SharedScreenState::Surface::Browse);
+        assert(transactionWorkspace.viewParty(0)->nature()==transactionNature+1);
+        assert(transactionUi.openActions(transactionWorkspace,
+            GSlot{GRegion::Party,0,0},error));
+        assert(transactionUi.activate(transactionWorkspace,GA::Review,error));
+        transactionUi.requestDiscardAll();
+        assert(transactionUi.surface()==G::Gen5SharedScreenState::Surface::ConfirmDiscardAll);
+        const auto preDiscard=transactionWorkspace.changedRecordCount();
+        assert(!transactionUi.discardAllWithPresentation(transactionWorkspace,
+            [](std::string& why) {
+                why="Simulated discard presentation refresh failure";
+                return false;
+            },error));
+        assert(error=="Simulated discard presentation refresh failure");
+        assert(transactionUi.surface()==G::Gen5SharedScreenState::Surface::ConfirmDiscardAll);
+        assert(transactionWorkspace.changedRecordCount()==preDiscard);
+        assert(transactionUi.discardAllWithPresentation(transactionWorkspace,
+            [](std::string&) {return true;},error));
+        assert(transactionUi.surface()==G::Gen5SharedScreenState::Surface::Browse);
+        assert(!transactionWorkspace.hasChanges());
+        assert(workspace.hasChanges());
         assert(std::equal(parsed->sourceBytes().begin(),parsed->sourceBytes().end(),sav.begin()));
         const GSlot forgedRegion{static_cast<GRegion>(0xFF),0,0};
         const GSlot forgedPartyBox{GRegion::Party,1,0};
