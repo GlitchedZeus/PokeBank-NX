@@ -22,6 +22,7 @@
 #include "Legality/Gen1EncounterEvidence.h"
 #include "Legality/Gen12TimeCapsuleEvidence.h"
 #include "Legality/Gen2StaticEncounter.h"
+#include "Legality/Gen2CrystalEeveeGiftEvidence.h"
 #include "Legality/Gen2TradeEvidence.h"
 #include "Legality/Gen2WildEncounter.h"
 #include "Legality/Gen2CrystalEvolvedWildEvidence.h"
@@ -664,6 +665,20 @@ namespace Legality {
             } else if (Gen2Static::hasSpecies(exactSourceGameId, gen2.speciesID())) {
                 add(r, Severity::Info,
                     "No matching Gen II static/gift evidence; wild/trade/event provenance remains incomplete",
+                    CheckIdentifier::Encounter);
+            }
+
+            // Compatible *possible* ancestor gift, not proof of actual
+            // evolution or of a unique Crystal capture/trade history.
+            const auto eeveeGift = Gen2CrystalEeveeGift::analyze(
+                exactSourceGameId, gen2.speciesID(), gen2.level(),
+                gen2.caughtData(), gen2.isEgg(),
+                gen2.isShiny(gen2.id32(), {}));
+            if (eeveeGift != Gen2CrystalEeveeGift::Evidence::Unresolved) {
+                add(r, Severity::Info,
+                    eeveeGift == Gen2CrystalEeveeGift::Evidence::StoneEvolution
+                        ? "PK2 caught-data is compatible with Crystal's pinned level-20 Eevee gift ancestor and a later stone evolution; competing provenance remains incomplete"
+                        : "PK2 caught-data is compatible with Crystal's pinned level-20 Eevee gift ancestor and a later friendship-level evolution; competing provenance remains incomplete",
                     CheckIdentifier::Encounter);
             }
 

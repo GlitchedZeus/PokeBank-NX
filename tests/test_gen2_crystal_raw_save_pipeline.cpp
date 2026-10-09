@@ -132,6 +132,18 @@ int main() {
     assert(hasInfo(analyzeRawSave(11,7,caterpie),evolved));
     assert(hasInfo(analyzeRawSave(12,10,caterpie),evolved));
     assert(!hasInfo(analyzeRawSave(12,9,caterpie),evolved));
+    // Pinned Crystal Eevee gift #133 location16 level20, later evolved.
+    constexpr uint16_t eeveeGift=(1u<<14)|(20u<<8)|16u;
+    constexpr auto eeveeText="PK2 caught-data is compatible with Crystal's pinned level-20 Eevee gift ancestor";
+    assert(hasInfo(analyzeRawSave(134,20,eeveeGift),eeveeText));
+    assert(hasInfo(analyzeRawSave(135,20,eeveeGift),eeveeText));
+    assert(hasInfo(analyzeRawSave(136,20,eeveeGift),eeveeText));
+    assert(hasInfo(analyzeRawSave(196,21,eeveeGift),eeveeText));
+    assert(hasInfo(analyzeRawSave(197,21,eeveeGift),eeveeText));
+    assert(!hasInfo(analyzeRawSave(196,20,eeveeGift),eeveeText));
+    assert(!hasInfo(analyzeRawSave(196,21,eeveeGift,true),eeveeText));
+    assert(!hasInfo(analyzeRawSave(196,21,(1u<<14)|(20u<<8)|17u),eeveeText));
+
     // Actual pinned Crystal Sentret #161, location2, level2/daytime.
     constexpr uint16_t sentret=(1u<<14)|(2u<<8)|2u;
     assert(hasInfo(analyzeRawSave(162,15,sentret),evolved));

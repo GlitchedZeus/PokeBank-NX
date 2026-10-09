@@ -210,3 +210,23 @@ $(HOST_BUILD)/test_gen2_crystal_raw_save_pipeline: $(GSC_EVOLVED_RAW_PIPELINE_SO
 $(HOST_BUILD)/test_gen2_crystal_raw_save_pipeline_sanitize: $(GSC_EVOLVED_RAW_PIPELINE_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+
+# Pinned Crystal Eevee static gift after stone/friendship evolution:
+# exact caught-data positive evidence and native parsed-save regressions.
+GSC_CRYSTAL_EEVEE_GIFT_SOURCES := tests/test_gen2_crystal_eevee_gift.cpp
+GSC_CRYSTAL_EEVEE_GIFT_HEADERS := include/Legality/Gen2CrystalEeveeGiftEvidence.h \
+	include/Legality/Gen2StaticEncounter.h \
+	include/Legality/Gen2StaticEncounterData.inc
+
+HOST_TESTS += $(HOST_BUILD)/test_gen2_crystal_eevee_gift
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_crystal_eevee_gift_sanitize
+host-test: $(HOST_BUILD)/test_gen2_crystal_eevee_gift
+host-sanitize: $(HOST_BUILD)/test_gen2_crystal_eevee_gift_sanitize
+
+$(HOST_BUILD)/test_gen2_crystal_eevee_gift: $(GSC_CRYSTAL_EEVEE_GIFT_SOURCES) $(GSC_CRYSTAL_EEVEE_GIFT_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GSC_CRYSTAL_EEVEE_GIFT_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen2_crystal_eevee_gift_sanitize: $(GSC_CRYSTAL_EEVEE_GIFT_SOURCES) $(GSC_CRYSTAL_EEVEE_GIFT_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_CRYSTAL_EEVEE_GIFT_SOURCES) -o $@
