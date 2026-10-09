@@ -33,8 +33,8 @@ void wr32(std::vector<std::byte>& data, size_t at, uint32_t value) {
 }
 constexpr uint32_t iv32FromPidSeed(uint32_t origin) {
     using namespace Legality::Gen3PidIv::Detail;
-    const uint16_t low = static_cast<uint16_t>((next(next3(origin)) >> 16) & 0x7FFFu);
-    const uint16_t high = static_cast<uint16_t>((next(next(next3(origin))) >> 16) & 0x7FFFu);
+    const uint16_t low = static_cast<uint16_t>((next3(origin) >> 16) & 0x7FFFu);
+    const uint16_t high = static_cast<uint16_t>((next(next3(origin)) >> 16) & 0x7FFFu);
     return static_cast<uint32_t>(low) | (static_cast<uint32_t>(high) << 15);
 }
 constexpr std::array<uint8_t, 6> ivsFromSeed(uint32_t origin) {
