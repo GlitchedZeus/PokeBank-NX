@@ -19,71 +19,85 @@ int main() {
     using namespace Legality;
     namespace Mixed = Gen4BugContestMixedSync;
 
-    // Independently enumerated bounded Method K frame. First HG/SS Bug
-    // Contest attempt: 0x880C24A4, successful Sync (even), PID 0x7C4C9B2D
-    // nature 20, slot 3 and level 9, activation 0xC3DD8433 (roll 41 < 50).
-    // Its IV words 20995 and 5252 have no 31, so the contest rerolls.
-    // Persisted attempt: ordinary nature roll at 0x00000572 (nature 0) after
-    // failed Sync proc 0xFA992D9B (odd), PID 0xC2EB29D7 nature 0,
-    // and retained IVs contain a 31. Thus the natures differ as expected
-    // when Synchronize fails on the second attempt.
-    constexpr uint32_t finalSeed = 0x00000572u;
-    constexpr uint32_t finalPid = 0xC2EB29D7u;
-    constexpr uint64_t row = makeRow(8, 3, 7, 18, 50);
+    // REAL pinned PKHeX HeartGold Bug-Catching Contest row:
+    // Kakuna (#14), location 207, slot 3, level 9-18, encounter rate 25.
+    // Source: encounter_hg.pkl packed in Gen4WildEncounterData.inc.
+    // Do not replace the retail encounter rate with a synthetic 50% proc!
+    constexpr uint64_t row = 0x64D80412139E0EULL;
+    static_assert(Gen4Wild::game(row) == Gen4Wild::Game::HeartGold);
+    static_assert(Gen4Wild::species(row) == 14u);
+    static_assert(Gen4Wild::location(row) == 207u);
+    static_assert(Gen4Wild::method(row) == 8u);
+    static_assert(Gen4Wild::slot(row) == 3u);
+    static_assert(Gen4Wild::minLevel(row) == 9u);
+    static_assert(Gen4Wild::maxLevel(row) == 18u);
+    static_assert(Gen4Wild::rate(row) == 25u);
+
+    // First valid Method K mixed history, found independently against the
+    // actual BCC rate/level/slot, NOT a synthetic encounter probability:
+    // Origin Sync 0x2D1A9C05 passes (even), PID 0xF06D40BC nature 11.
+    // IVs [12793, 28486] contain no 31, forcing the BCC reroll.
+    // Persisted ordinary nature at 0x000019CB (nature 0) follows failed
+    // Sync 0x7F9FE7B8 (odd). PID 0x218385E9 has nature 0 and a 31 IV.
+    // Origin slot 3, level 15, activation 0xEBF86BB0 -> roll 8 < rate 25.
+    constexpr uint32_t finalSeed = 0x000019CBu;
+    constexpr uint32_t finalPid = 0x218385E9u;
     static_assert(Gen4LeadFrame::sequentialPid(finalSeed) == finalPid);
     static_assert(Gen4LeadFrame::directMinimum31Satisfied(finalSeed));
     constexpr uint32_t failSeed = Gen3PidIv::Detail::prev(finalSeed);
-    static_assert(failSeed == 0xFA992D9Bu);
+    static_assert(failSeed == 0x7F9FE7B8u);
     static_assert(Gen4BugContestSynchronizeFailure::synchronizeFails(failSeed));
     static_assert(Gen4LeadFrame::previousRerollAttemptRejected(failSeed));
     constexpr uint32_t firstSeed =
         Gen4LeadFrame::previousRerollNatureSeed(failSeed);
-    static_assert(firstSeed == 0x880C24A4u);
-    static_assert(Gen4LeadFrame::sequentialPid(firstSeed) == 0x7C4C9B2Du);
+    static_assert(firstSeed == 0x2D1A9C05u);
+    static_assert(Gen4LeadFrame::sequentialPid(firstSeed) == 0xF06D40BCu);
     static_assert(((firstSeed >> 16) & 1u) == 0u);
 
     constexpr auto matched =
-        Mixed::matchSuccessThenFailure(row, finalSeed, finalPid, 9);
+        Mixed::matchSuccessThenFailure(row, finalSeed, finalPid, 15);
     static_assert(matched.matched());
-    static_assert(matched.encounterSeed == 0xC3DD8433u);
-    static_assert(matched.originPid == 0x7C4C9B2Du);
-    static_assert(matched.originNature == 20u);
+    static_assert(matched.encounterSeed == 0xEBF86BB0u);
+    static_assert(matched.originPid == 0xF06D40BCu);
+    static_assert(matched.originNature == 11u);
     static_assert(matched.slot == 3u);
-    static_assert(matched.level == 9u);
+    static_assert(matched.level == 15u);
     static_assert(matched.rerollDepth == 1u);
     static_assert((finalPid % 25u) == 0u);
+    static_assert((matched.encounterSeed >> 16) % 100u == 8u);
 
-    // Old all-failed proof cannot accept this frame, as the origin's proc
-    // actually succeeded. The new mixed path is separate positive evidence.
+    // Old all-failed proof must reject this mixed path; the origin Sync
+    // proc actually succeeded. A non-match is Unresolved, never Invalid.
     static_assert(!Gen4BugContestSynchronizeFailure::matchReroll(
-        row, finalSeed, finalPid, 9, 1).matched());
+        row, finalSeed, finalPid, 15, 1).matched());
 
-    // Negative boundaries are Unresolved, NEVER proof of impossibility.
     static_assert(!Mixed::matchSuccessThenFailure(
-        row, finalSeed, finalPid, 10).matched()); // wrong capture level
+        row, finalSeed, finalPid, 14).matched()); // wrong met level
     static_assert(!Mixed::matchSuccessThenFailure(
-        makeRow(8, 2, 7, 18, 50), finalSeed, finalPid, 9).matched());
+        makeRow(8, 2, 9, 18, 25), finalSeed, finalPid, 15).matched());
     static_assert(!Mixed::matchSuccessThenFailure(
-        makeRow(8, 3, 7, 18, 0), finalSeed, finalPid, 9).matched());
+        makeRow(8, 3, 9, 18, 0), finalSeed, finalPid, 15).matched());
     static_assert(!Mixed::matchSuccessThenFailure(
-        makeRow(10, 3, 7, 18, 50), finalSeed, finalPid, 9).matched());
+        makeRow(10, 3, 9, 18, 25), finalSeed, finalPid, 15).matched());
     static_assert(!Mixed::matchSuccessThenFailure(
-        row, finalSeed, finalPid ^ 1u, 9).matched());
+        row, finalSeed, finalPid ^ 1u, 15).matched());
 
-    // Second independent success-then-failure frame, slot 2 at level 9.
-    // Its original successful-Sync PID nature is 18; retained nature is 0.
-    constexpr uint32_t secondSeed = 0x00000728u;
-    constexpr uint32_t secondPid = 0xC51FB321u;
+    // SECOND real-row positive with different nature-lock and retained PID:
+    // origin successful Sync at 0xC270CC55 (PID 0x3C77C707 nature 20),
+    // retained failed Sync at 0x250FEAC8 (PID 0xDAC5D2D2 nature 0).
+    // HG/SS BCC slot 3, level 16, rate 25, activation roll 1.
+    constexpr uint32_t secondSeed = 0x0000479Bu;
+    constexpr uint32_t secondPid = 0xDAC5D2D2u;
     constexpr auto second = Mixed::matchSuccessThenFailure(
-        makeRow(8, 2, 7, 18, 50), secondSeed, secondPid, 9);
+        row, secondSeed, secondPid, 16);
     static_assert(second.matched());
-    static_assert(second.encounterSeed == 0x8FD9AF41u);
-    static_assert(second.originPid == 0xF14C469Cu);
-    static_assert(second.originNature == 18u);
+    static_assert(second.encounterSeed == 0xB7FD5CC0u);
+    static_assert(second.originPid == 0x3C77C707u);
+    static_assert(second.originNature == 20u);
     static_assert(second.rerollDepth == 1u);
     static_assert(!Mixed::matchSuccessThenFailure(
-        makeRow(8, 2, 7, 18, 50), secondSeed, secondPid, 10).matched());
+        row, secondSeed, secondPid, 15).matched());
 
     assert(matched.matched() && second.matched());
-    std::cout << "Gen IV BCC mixed Synchronize single reroll: PASS\n";
+    std::cout << "Gen IV BCC real-row mixed Synchronize reroll: PASS\n";
 }

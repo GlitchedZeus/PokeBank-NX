@@ -189,21 +189,27 @@ int main() {
     // succeeds, its attempt lacks any 31 IV; persisted attempt fails Sync.
     // Pinned source allows the original locked nature 20 and final nature 0
     // to differ because the final Synchronize proc fails.
-    constexpr uint32_t mixedSeed = 0x00000572u;
-    constexpr uint32_t mixedPid = 0xC2EB29D7u;
-    constexpr uint64_t mixedRow = makeRow(8, 3, 7, 18, 50);
+    constexpr uint32_t mixedSeed = 0x000019CBu;
+    constexpr uint32_t mixedPid = 0x218385E9u;
+    // Real HeartGold Kakuna BCC row: location207, slot3, level9-18,
+    // retail encounter rate 25 (not a synthetic 50% rate).
+    constexpr uint64_t mixedRow = 0x64D80412139E0EULL;
+    static_assert(Legality::Gen4Wild::game(mixedRow) ==
+                  Legality::Gen4Wild::Game::HeartGold);
+    static_assert(Legality::Gen4Wild::species(mixedRow) == 14);
+    static_assert(Legality::Gen4Wild::rate(mixedRow) == 25);
     constexpr auto mixed = matchIndexedRow(
-        true, mixedRow, 0, 18, mixedSeed, mixedPid, 9);
+        true, mixedRow, 0, 18, mixedSeed, mixedPid, 15);
     static_assert(mixed.has(Path::SynchronizeMixedSuccessThenFailure));
     static_assert(!matchIndexedRow(
-        true, makeRow(8, 3, 7, 18, 50), 0, 18,
-        mixedSeed, mixedPid, 10).has(Path::SynchronizeMixedSuccessThenFailure));
+        true, mixedRow, 0, 18,
+        mixedSeed, mixedPid, 14).has(Path::SynchronizeMixedSuccessThenFailure));
     static_assert(!matchIndexedRow(
-        false, mixedRow, 0, 18, mixedSeed, mixedPid, 9)
+        false, mixedRow, 0, 18, mixedSeed, mixedPid, 15)
         .has(Path::SynchronizeMixedSuccessThenFailure));
     static_assert(!matchIndexedRow(
-        true, makeRow(8, 3, 7, 18, 0), 0, 18,
-        mixedSeed, mixedPid, 9).has(Path::SynchronizeMixedSuccessThenFailure));
+        true, makeRow(8, 3, 9, 18, 0), 0, 18,
+        mixedSeed, mixedPid, 15).has(Path::SynchronizeMixedSuccessThenFailure));
 
     constexpr uint64_t safari = makeRow(10, 0, 15, 15, 6);
     static_assert(!matchIndexedRow(
