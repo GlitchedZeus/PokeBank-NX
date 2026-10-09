@@ -24,6 +24,7 @@
 #include "Legality/Gen2TradeEvidence.h"
 #include "Legality/Gen2WildEncounter.h"
 #include "Legality/Gen3PidIvCorrelation.h"
+#include "Legality/Gen3SafariOriginEvidence.h"
 #include "Legality/Gen3WondercardEggEventTemplate.h"
 #include "Legality/Gen3CxdPidIvCorrelation.h"
 #include "Legality/Gen3ColoEReaderShadowEvidence.h"
@@ -712,6 +713,29 @@ namespace Legality {
                 r.coverage.transfer = CoverageLevel::Partial;
             else if (exactGeneration == 4)
                 r.coverage.transfer = CoverageLevel::Complete;
+        }
+
+        // Native Gen III Safari capture history is positive source affinity
+        // only. Use the PK3 stored origin (not necessarily the current
+        // Ruby/Emerald/FRLG save container, which may hold traded Pokémon).
+        // Evolution is included only via the pinned pre-evolution table;
+        // unknown encounter/gift/egg/transfer alternatives stay Incomplete.
+        if (sourceProfile && exactGeneration == 3 &&
+            pk.ball() == Gen3Safari::kSafariBall && !pk.isEgg()) {
+            const std::string_view storedOrigin =
+                Gen4Origin::exactGen3GameId(pk.originGame());
+            const auto safari = Gen3SafariOrigin::wildHistoryEvidence(
+                storedOrigin, species, pk.metLocation(), pk.metLevel(),
+                pk.form());
+            if (safari.resolution ==
+                    Gen3SafariOrigin::Resolution::RequiredBallKnown &&
+                safari.requiredBall == Gen3Safari::kSafariBall) {
+                add(r, Severity::Info,
+                    safari.evolved
+                        ? "Safari Ball has a compatible Generation III Safari Zone capture via a pre-evolution from the stored origin game; competing history remains incomplete"
+                        : "Safari Ball has a compatible direct Generation III Safari Zone capture source in the stored origin game; competing history remains incomplete",
+                    CheckIdentifier::Items);
+            }
         }
 
         bool matchedGen4EventTemplate = false;

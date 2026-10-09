@@ -214,6 +214,24 @@ Pokemon::Pokemon3FRLG method1CxdFemaleCollision() {
     return p;
 }
 
+Pokemon::Pokemon3FRLG safariPikachu() {
+    auto p = blankPk3();
+    p.setPID(0x12345678u);
+    p.setTID16(12345);
+    p.setSID16(54321);
+    p.setLanguage(2);
+    p.setSpecies(25);   // Pinned Ruby Safari Pikachu, slot8 / level25.
+    p.setOriginGame(2); // Ruby origin persists after Gen III trading.
+    p.setMetLocation(57);
+    p.setMetLevel(25);
+    p.setBall(5);       // Safari Ball.
+    p.setLevel(25);
+    p.setOTName(u"RED");
+    p.setNickname(u"PIKACHU");
+    p.refreshChecksum();
+    return p;
+}
+
 void forceFemaleOt(Pokemon::Pokemon3FRLG& p) {
     p.wr16(0x46, static_cast<uint16_t>(p.origins() | 0x8000u));
     p.refreshChecksum();
@@ -222,6 +240,45 @@ void forceFemaleOt(Pokemon::Pokemon3FRLG& p) {
 }
 
 int main() {
+    // Source-backed Gen III Safari Ball *positive-only* production reporting.
+    // Pinned Ruby encounter_r.pkl: Pikachu #25 at Safari location57, level25.
+    auto safari = safariPikachu();
+    const auto native = Legality::analyze(
+        safari, Enums::GameVersion::FRLG, "ruby_gba");
+    assert(hasText(native,
+        "Safari Ball has a compatible direct Generation III Safari Zone capture source"));
+    // PK3 remains Ruby-origin after being traded into a FireRed save.
+    const auto traded = Legality::analyze(
+        safari, Enums::GameVersion::FRLG, "firered_gba");
+    assert(hasText(traded,
+        "Safari Ball has a compatible direct Generation III Safari Zone capture source"));
+    // Evolution keeps the capture ball/met data; current Raichu has
+    // compatible Pikachu Safari ancestry, not a new Raichu Safari slot.
+    safari.setSpecies(26);
+    safari.setLevel(30);
+    safari.refreshChecksum();
+    const auto evolved = Legality::analyze(
+        safari, Enums::GameVersion::FRLG, "ruby_gba");
+    assert(hasText(evolved,
+        "Safari Ball has a compatible Generation III Safari Zone capture via a pre-evolution"));
+    safari.setBall(4);
+    const auto wrongBall = Legality::analyze(
+        safari, Enums::GameVersion::FRLG, "ruby_gba");
+    assert(!hasText(wrongBall,
+        "Safari Ball has a compatible Generation III Safari Zone capture"));
+    safari.setBall(5);
+    safari.setMetLocation(136); // FRLG Safari, not Ruby Safari origin.
+    const auto wrongLocation = Legality::analyze(
+        safari, Enums::GameVersion::FRLG, "ruby_gba");
+    assert(!hasText(wrongLocation,
+        "Safari Ball has a compatible Generation III Safari Zone capture"));
+    safari.setMetLocation(57);
+    safari.setOriginGame(15); // GameCube source, not native Safari.
+    const auto wrongOrigin = Legality::analyze(
+        safari, Enums::GameVersion::FRLG, "ruby_gba");
+    assert(!hasText(wrongOrigin,
+        "Safari Ball has a compatible Generation III Safari Zone capture"));
+
     auto p = bulbasaurWithSwordsDance();
 
     // Generated Gen III tables: Swords Dance is not direct for Bulbasaur in Ruby/Sapphire,
