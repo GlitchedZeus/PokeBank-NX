@@ -162,6 +162,10 @@ jobs:
             test -s "application/assets/game_cards/$f.png"
             cp "application/assets/game_cards/$f.png" "application/romfs/game_cards/$f.png"
           done
+          # The permanent recovery snapshot intentionally predates item sprites.
+          # Regenerate exact per-ball / per-item PNGs using THIS PR head's
+          # pinned generator after restoring the snapshot, before validation.
+          python3 application/tools/gen_item_sprites.py
           python3 application/tools/check_device_assets.py
 
       - name: Clean devkitA64 compile and link
