@@ -894,7 +894,11 @@ namespace Legality {
                     CheckIdentifier::Egg);
                 // A native Gen III/IV egg-origin Poké Ball is compatible;
                 // this is INFO, not a complete competing-history proof.
-                if (Gen34EggBallEvidence::analyze(
+                const bool provenNativeEggOrigin = exactGeneration == 3
+                    ? !Gen4Origin::exactGen3GameId(pk.originGame()).empty()
+                    : Gen4Origin::isNativeRetailGen4(pk.originGame());
+                if (provenNativeEggOrigin &&
+                    Gen34EggBallEvidence::analyze(
                         exactGeneration, pk.isEgg(),
                         pk.eggLocation(), pk.metLevel(), pk.ball()) ==
                         Gen34EggBallEvidence::Kind::NativeEggPokeBall) {
