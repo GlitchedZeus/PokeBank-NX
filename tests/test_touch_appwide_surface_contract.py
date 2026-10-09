@@ -125,6 +125,15 @@ for name, (rel, needles) in SURFACES.items():
     except AssertionError as exc:
         raise AssertionError(f"{name}: {exc}") from exc
 
+# Inventory row focus must stay stable on touch-down; only a completed tap
+# may select an item/review line. Otherwise a swipe changes highlighted rows.
+inventory_input = read("src/UI/ClassicInventoryOverlay.cpp")
+inventory_contact = inventory_input.split("if (touch.justTouchedDown()) {", 1)[1].split(
+    "if (!state.presentationInitialized", 1)[0]
+if "state.pickerRow = hit.id" in inventory_contact or "state.reviewRow = hit.id" in inventory_contact:
+    raise AssertionError("Classic Inventory: contact must not steal picker/review focus")
+require_all("src/UI/ClassicInventoryOverlay.cpp",
+            "state.pickerRow = touchId;", "state.reviewRow = touchId;")
 # Backup selection must scroll its viewport, not re-center to its changing selection.
 require_all("include/UI/BackupSelectionScreen.h", "int backupFirstRow = 0;")
 if "firstVisibleRow(" in read("src/UI/BackupSelectionScreen.cpp"):
