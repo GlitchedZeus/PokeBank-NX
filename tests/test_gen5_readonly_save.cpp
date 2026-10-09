@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <tuple>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace G = PokeVault::Integration::Gen5;
@@ -419,7 +420,7 @@ int main() {
         assert(presented->refreshStagedPokemonPresentation(error));
         assert(!presented->hasStagedChanges() && presented->party[0]->nature()==0);
         assert(!PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*parsed,
-            id=="black_nds"?"white_nds":"black_nds",error));
+            std::string_view(id)=="black_nds"?"white_nds":"black_nds",error));
         const G::SourceContext context{
             id, "retroarch", "RetroArch", "sdmc:/retroarch/cores/savefiles/test.srm",
             "sdmc:/retroarch/cores/savefiles/test.srm", "physical-save-fixture",
