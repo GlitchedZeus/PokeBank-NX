@@ -301,7 +301,7 @@ int main() {
     assert(itemsPanel.find("G4-02") == std::string::npos);
     assert(itemsPanel.find("Generation IV inventory support is not implemented yet.") ==
            std::string::npos);
-    contains(itemsPanel, "Generation IV inventory");
+    contains(itemsPanel, "Native Generation IV bag data failed validation.");
     contains(itemsPanel, "bagPocketName");
     contains(bridge, "decodeReadOnlyBag(save_)");
     contains(bridge, "items.assign(bag->begin(),bag->end())");
