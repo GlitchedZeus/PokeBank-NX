@@ -1,5 +1,6 @@
 #include "Integration/Gen4/Gen4ExactFormatEditorProvider.h"
 #include "Integration/Gen4/Gen4MoveCompatibility.h"
+#include "Legality/Legality.h"
 #include "Legacy/Gen4ReadOnlyTrainer.h"
 #include "Enums/Ball.h"
 #include "Enums/LanguageID.h"
@@ -1884,7 +1885,7 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
     fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
     fb.drawText(x + 24, y + 18, "Legality & Provenance", Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
-                "Exact Gen IV structural + move guardrails • encounter legality remains advisory",
+                "Exact Gen IV structure + move evidence • uncovered encounter/RNG data stays incomplete",
                 Colors::TextDim, TextStyle::Caption);
 
     std::string error;
@@ -1896,48 +1897,69 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
         return;
     }
 
+    Pokemon::Pokemon4ReadOnlyView view(*record);
+    const auto report =
+        Legality::analyze(view, view.getGameGroup(), std::string_view(screen.sourceGameId));
+
+    auto coverageText = [](Legality::CoverageLevel level) -> const char* {
+        if (level == Legality::CoverageLevel::Complete) return "Checked";
+        if (level == Legality::CoverageLevel::Partial) return "Partial";
+        return "Not covered";
+    };
+    auto coverageColor = [](Legality::CoverageLevel level) {
+        if (level == Legality::CoverageLevel::Complete) return Colors::Success;
+        if (level == Legality::CoverageLevel::Partial) return Colors::Warning;
+        return Colors::TextMuted;
+    };
+
+    const char* verdict = report.verdict() == Legality::Verdict::Invalid
+        ? "INVALID"
+        : report.verdict() == Legality::Verdict::NoProblemsFound
+            ? "NO PROBLEMS FOUND" : "INCOMPLETE";
+    const Color verdictColor = report.verdict() == Legality::Verdict::Invalid
+        ? Colors::Error
+        : report.verdict() == Legality::Verdict::NoProblemsFound
+            ? Colors::Success : Colors::Warning;
+
     fb.drawText(x + 34, y + 104, "Exact source", Colors::TextDim);
     fb.drawText(x + 250, y + 104, gameName(screen.sourceGameId), Colors::Text);
     fb.drawText(x + 34, y + 142, "PK4 structure", Colors::TextDim);
     fb.drawText(x + 250, y + 142, record->valid() ? "PASS" : "INVALID",
                 record->valid() ? Colors::Success : Colors::Error);
-    fb.drawText(x + 34, y + 180, "Source mutation", Colors::TextDim);
-    fb.drawText(x + 250, y + 180, "HARD DISABLED", Colors::Accent);
-    fb.drawText(x + 34, y + 218, "Encounter legality", Colors::TextDim);
-    fb.drawText(x + 250, y + 218, "Not fully audited", Colors::Warning);
+    fb.drawText(x + 34, y + 180, "Legality verdict", Colors::TextDim);
+    fb.drawText(x + 250, y + 180, verdict, verdictColor);
+    fb.drawText(x + 34, y + 218, "Move evidence", Colors::TextDim);
+    fb.drawText(x + 250, y + 218, coverageText(report.coverage.moves),
+                coverageColor(report.coverage.moves));
+    fb.drawText(x + 34, y + 256, "Encounter evidence", Colors::TextDim);
+    fb.drawText(x + 250, y + 256, coverageText(report.coverage.encounter),
+                coverageColor(report.coverage.encounter));
+    fb.drawText(x + 34, y + 274, "Event / Gift", Colors::TextDim);
+    fb.drawText(x + 250, y + 274, coverageText(report.coverage.eventGift),
+                coverageColor(report.coverage.eventGift));
+    fb.drawText(x + 34, y + 306, "PID / RNG correlation", Colors::TextDim);
+    fb.drawText(x + 250, y + 306, coverageText(report.coverage.pidRng),
+                coverageColor(report.coverage.pidRng));
+    fb.drawText(x + 34, y + 338, "Egg / breeding", Colors::TextDim);
+    fb.drawText(x + 250, y + 338, coverageText(report.coverage.eggBreeding),
+                coverageColor(report.coverage.eggBreeding));
+    fb.drawText(x + 34, y + 370, "Transfer evidence", Colors::TextDim);
+    fb.drawText(x + 250, y + 370, coverageText(report.coverage.transfer),
+                coverageColor(report.coverage.transfer));
+    fb.drawText(x + 34, y + 402, "Detected issues", Colors::TextDim);
+    fb.drawText(x + 250, y + 402, std::to_string(report.problemCount()),
+                report.hasInvalid() ? Colors::Error :
+                    report.problemCount() ? Colors::Warning : Colors::Success);
+    fb.drawText(x + 34, y + 434, "Source mutation", Colors::TextDim);
+    fb.drawText(x + 250, y + 434, "HARD DISABLED", Colors::Accent);
 
-    int rowY = y + 270;
-    const auto moves = record->moves();
-    for (size_t i = 0; i < moves.size(); ++i) {
-        const uint16_t move = moves[i];
-        const auto availability = PokeVault::Integration::Gen4MoveCompatibility::classify(
-            screen.sourceGameId, record->species(), record->form(), move, true);
-        const char* status = "Invalid";
-        Color color = Colors::Error;
-        using A = PokeVault::Integration::Gen4MoveCompatibility::Availability;
-        if (move == 0) {
-            status = "Empty";
-            color = Colors::TextDim;
-        } else if (availability == A::Direct) {
-            status = "OK";
-            color = Colors::Success;
-        } else if (availability == A::Transfer) {
-            status = "Transfer";
-            color = Colors::Warning;
-        } else if (availability == A::Preserved) {
-            status = "Preserved";
-            color = Colors::Warning;
-        }
-        const std::string moveName = move == 0 ? "Empty" : Names::getMoveName(move);
-        fb.drawText(x + 34, rowY, "Move " + std::to_string(i + 1), Colors::TextDim,
-                    TextStyle::Caption);
-        fb.drawText(x + 150, rowY, moveName, Colors::Text, TextStyle::Caption);
-        fb.drawText(x + 650, rowY, status, color, TextStyle::Caption);
-        rowY += 36;
-    }
+    if (report.problemCount() == 0 && report.verdict() == Legality::Verdict::Incomplete)
+        fb.drawText(x + 34, y + 448,
+                    "No problem was found by completed checks; encounter/RNG legality is still incomplete.",
+                    Colors::Warning, TextStyle::Caption);
+
     drawNavBar(fb, {{"B", "Back"}});
 }
-
 void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     screen.drawGSCOverlay(fb);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 120));

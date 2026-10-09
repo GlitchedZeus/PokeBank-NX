@@ -1,0 +1,204 @@
+#!/usr/bin/env python3
+"""Generate Gen III/IV egg-move legality evidence from pinned upstream data.
+
+Sources:
+- Gen III: PKHeX eggmove_rs.pkl from tools/pkhex_source.py's pinned PKHeX ref.
+- Gen IV: PokeAPI pokemon_moves.csv at the same pinned commit used by
+  tools/gen_gen4_move_compatibility.py.
+
+This table intentionally stores ONLY egg-move acquisition evidence. It is separate
+from the editor compatibility tables, which union level-up / egg / TM / tutor paths.
+"""
+
+from __future__ import annotations
+
+import csv
+import io
+import os
+import struct
+import urllib.request
+
+import pkhex_source
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT = os.path.join(ROOT, "include", "Legality", "Gen34EggMoveData.inc")
+
+POKEAPI_SHA = "168b1e89467054cda2e7df43ccebbb69b459497a"
+POKEAPI_BASE = (
+    f"https://raw.githubusercontent.com/PokeAPI/pokeapi/{POKEAPI_SHA}/data/v2/csv"
+)
+
+MAX_SPECIES = 493
+MAX_MOVE = 467
+WORDS = (MAX_MOVE + 64) // 64  # move ids 0..467 => 8 words
+
+# PokeAPI version_group_id: DP=8, Platinum=9, HGSS=10.
+GEN4_GROUPS = {
+    8: "kEggMovesDiamondPearl",
+    9: "kEggMovesPlatinum",
+    10: "kEggMovesHeartGoldSoulSilver",
+}
+EGG_METHOD_ID = 2
+
+
+def bin_entries16(data: bytes):
+    """Read PKHeX BinLinkerAccessor16 entries."""
+    if len(data) < 6:
+        raise ValueError("BinLinker resource is truncated")
+    count = struct.unpack_from("<H", data, 2)[0]
+    offsets = [
+        struct.unpack_from("<H", data, 4 + i * 2)[0]
+        for i in range(count + 1)
+    ]
+    for i in range(count):
+        start, end = offsets[i], offsets[i + 1]
+        if start > end or end > len(data):
+            raise ValueError("BinLinker entry offset is invalid")
+        yield data[start:end]
+
+
+def load_gen3():
+    path = pkhex_source.pkhex_path("Resources/byte/eggmove/eggmove_rs.pkl")
+    with open(path, "rb") as handle:
+        data = handle.read()
+
+    pools = [set() for _ in range(MAX_SPECIES + 1)]
+    entries = list(bin_entries16(data))
+    for species in range(1, min(MAX_SPECIES + 1, len(entries))):
+        entry = entries[species]
+        if len(entry) % 2:
+            raise ValueError(f"Gen III egg-move row {species} has odd byte length")
+        for off in range(0, len(entry), 2):
+            move = struct.unpack_from("<H", entry, off)[0]
+            if 1 <= move <= MAX_MOVE:
+                pools[species].add(move)
+    return pools
+
+
+def csv_rows(name: str):
+    # Materialize while the HTTP response is open. Returning a lazy DictReader backed
+    # by TextIOWrapper would leave it pointing at a closed response.
+    with urllib.request.urlopen(f"{POKEAPI_BASE}/{name}", timeout=60) as response:
+        text = response.read().decode("utf-8")
+    return list(csv.DictReader(io.StringIO(text)))
+
+
+def load_gen4():
+    # Map default Pokemon rows back to national species ids so alternate-form rows do
+    # not accidentally create a separate breeding species.
+    default_species = {}
+    for row in csv_rows("pokemon.csv"):
+        if row["is_default"] != "1":
+            continue
+        species = int(row["species_id"])
+        if species <= MAX_SPECIES:
+            default_species[int(row["id"])] = species
+
+    pools = {
+        group: [set() for _ in range(MAX_SPECIES + 1)]
+        for group in GEN4_GROUPS
+    }
+    for row in csv_rows("pokemon_moves.csv"):
+        group = int(row["version_group_id"])
+        if group not in pools:
+            continue
+        if int(row["pokemon_move_method_id"]) != EGG_METHOD_ID:
+            continue
+        species = default_species.get(int(row["pokemon_id"]))
+        if not species:
+            continue
+        move = int(row["move_id"])
+        if 1 <= move <= MAX_MOVE:
+            pools[group][species].add(move)
+    return pools
+
+
+def load_pre_evolutions():
+    rows = csv_rows("pokemon_species.csv")
+    parent3 = [0] * (MAX_SPECIES + 1)
+    parent4 = [0] * (MAX_SPECIES + 1)
+    for row in rows:
+        species = int(row["id"])
+        if species == 0 or species > MAX_SPECIES:
+            continue
+        parent = int(row["evolves_from_species_id"] or 0)
+        if species <= 386 and 1 <= parent <= 386:
+            parent3[species] = parent
+        if species <= 493 and 1 <= parent <= 493:
+            parent4[species] = parent
+    return parent3, parent4
+
+
+def words_for(moves):
+    words = [0] * WORDS
+    for move in moves:
+        words[move // 64] |= 1 << (move % 64)
+    return words
+
+
+def emit_table(lines, name, pools):
+    lines.append(
+        f"inline constexpr std::array<std::array<uint64_t, {WORDS}>, "
+        f"{MAX_SPECIES + 1}> {name}{{{{"
+    )
+    for species, moves in enumerate(pools):
+        words = ", ".join(f"0x{value:016x}ULL" for value in words_for(moves))
+        suffix = "," if species != MAX_SPECIES else ""
+        lines.append(f"    {{{{{words}}}}}{suffix} // {species}")
+    lines.append("}};")
+    lines.append("")
+
+
+def emit_parent_table(lines, name, parents):
+    lines.append(
+        f"inline constexpr std::array<uint16_t, {MAX_SPECIES + 1}> {name}{{{{"
+    )
+    for i in range(0, len(parents), 16):
+        chunk = ", ".join(str(value) for value in parents[i:i + 16])
+        if i + 16 < len(parents):
+            chunk += ","
+        lines.append("    " + chunk)
+    lines.append("}};")
+    lines.append("")
+
+
+def main() -> int:
+    gen3 = load_gen3()
+    gen4 = load_gen4()
+    parent3, parent4 = load_pre_evolutions()
+
+    lines = [
+        "// GENERATED by tools/gen_legality_gen34_egg_moves.py.",
+        f"// Gen III source: PKHeX @ {pkhex_source._REF}, eggmove_rs.pkl.",
+        f"// Gen IV source: PokeAPI/pokeapi @ {POKEAPI_SHA}, pokemon_moves.csv.",
+        "// PokeAPI pokemon_move_method_id=2 is Egg.",
+        "// This is positive egg-move evidence only; absence MUST NOT be treated as illegal",
+        "// until event eggs and cross-version inheritance are fully audited.",
+        "// Parent links are filtered by generation so later-introduced baby species do not",
+        "// become impossible ancestors in earlier generations.",
+        "",
+    ]
+    emit_table(lines, "kEggMovesGen3", gen3)
+    for group in sorted(GEN4_GROUPS):
+        emit_table(lines, GEN4_GROUPS[group], gen4[group])
+    emit_parent_table(lines, "kPreEvolutionGen3", parent3)
+    emit_parent_table(lines, "kPreEvolutionGen4", parent4)
+
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    with open(OUT, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write("\n".join(lines))
+
+    counts = {
+        "gen3": sum(bool(x) for x in gen3),
+        **{
+            f"vg{group}": sum(bool(x) for x in pools)
+            for group, pools in gen4.items()
+        },
+    }
+    print("wrote Gen III/IV egg-move evidence:", counts)
+    print(OUT)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

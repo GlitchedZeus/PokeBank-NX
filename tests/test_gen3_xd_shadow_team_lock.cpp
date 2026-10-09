@@ -1,0 +1,250 @@
+#include "Legality/Gen3CxdPidIvCorrelation.h"
+#include "Legality/Gen3XdShadowTeamLock.h"
+#include "Legality/Gen3ColoShadowTeamLock.h"
+#include "Legality/Gen3ColoShadowEncounter.h"
+#include "Legality/Gen3GameCubeShadowEvidence.h"
+
+#include <array>
+#include <cassert>
+#include <cstdint>
+#include <iostream>
+
+int main() {
+    namespace CXD = Legality::Gen3CxdPidIv;
+    namespace Lock = Legality::Gen3XdShadowTeamLock;
+    namespace Colo = Legality::Gen3ColoShadowTeamLock;
+    namespace ColoEncounter = Legality::Gen3ColoShadowEncounter;
+    namespace Cube = Legality::Gen3GameCubeShadowEvidence;
+
+    static_assert(Lock::kTeamSetCount == 72);
+    static_assert(Lock::kTeamVariantCount == 113);
+    static_assert(Lock::kLockCount == 389);
+    static_assert(Lock::kShadowIndexToTeamSet.size() == 84);
+
+    // The source's "First" team has no prior locks and is therefore immediately valid.
+    assert(Lock::validate(1, 0x12345678u) == Lock::Result::Matched);
+    assert(Lock::validate(0, 0x12345678u) == Lock::Result::NotMatched);
+    assert(Lock::validate(84, 0x12345678u) == Lock::Result::NotMatched);
+
+    struct DirectVector {
+        uint8_t index;
+        uint32_t pid;
+        std::array<uint8_t, 6> ivs;
+    };
+    constexpr std::array<DirectVector, 12> direct{{
+        {82, 0xAF4E3161u, {11, 29, 25, 6, 23, 10}},
+        {20, 0xC3A0F1E5u, {30, 3, 9, 10, 27, 30}},
+        {3, 0xA459BF44u, {0, 11, 4, 28, 6, 13}},
+        {22, 0x8E14DAB6u, {29, 24, 30, 16, 3, 18}},
+        {11, 0x30E87CC7u, {22, 11, 8, 26, 4, 29}},
+        {12, 0x9BECA2A6u, {31, 31, 25, 13, 22, 1}},
+        {24, 0x77D87601u, {10, 27, 26, 13, 30, 19}},
+        {9, 0x37F95B26u, {11, 8, 5, 10, 28, 14}},
+        {36, 0x2E49AC34u, {15, 24, 7, 2, 11, 2}},
+        {41, 0x1973FD07u, {13, 30, 3, 16, 20, 9}},
+        {42, 0x33893D4Cu, {26, 25, 24, 28, 29, 30}},
+        {7, 0x8CBD29DBu, {19, 29, 30, 0, 7, 2}},
+    }};
+
+    // Exact pinned PKHeX ShadowTests vectors: recover each CXD origin seed, then
+    // prove at least one source team history can reverse-generate the encounter.
+    for (const auto& vector : direct) {
+        const auto cxd = CXD::analyze(vector.pid, vector.ivs);
+        assert(cxd.matched);
+        assert(Lock::validate(vector.index, cxd.originSeed) == Lock::Result::Matched);
+    }
+
+    struct TailVector {
+        uint8_t index;
+        uint32_t finalTeamPid;
+    };
+    constexpr std::array<TailVector, 20> tails{{
+        {12, 0x31538B48u},
+        {12, 0x3494CDA1u},
+        {12, 0xC93DF897u},
+        {12, 0x5F5380F4u},
+        {12, 0x38DDE117u},
+        {12, 0x1956D8B5u},
+        {12, 0xF6EAD3E2u},
+        {12, 0xBEADBDC3u},
+        {12, 0x5EEF1076u},
+        {12, 0x451FAE3Cu},
+        {36, 0x0EC25CE5u},
+        {36, 0x0A8C9738u},
+        {36, 0x1D5AEC4Fu},
+        {36, 0x55CE5E4Bu},
+        {36, 0x9B2F5B53u},
+        {36, 0x9334337Eu},
+        {36, 0x92D31CC2u},
+        {36, 0xCBA7A0C3u},
+        {36, 0x9D1BDC4Au},
+        {36, 0x0D949325u},
+    }};
+
+    // PKHeX ShadowTeamTests publishes 10 Delcatty and 10 Butterfree CPU-team
+    // sequences. Reproduce its final-team-PID seed recovery and require at least
+    // one candidate origin to satisfy the pinned recursive lock history.
+    for (const auto& vector : tails) {
+        const auto seeds = CXD::Detail::reversePid(
+            vector.finalTeamPid & 0xFFFF0000u, vector.finalTeamPid << 16);
+        bool matched = false;
+        for (std::size_t i = 0; i < seeds.count; ++i) {
+            uint32_t origin = seeds.values[i];
+            origin = CXD::Detail::prev(CXD::Detail::prev(CXD::Detail::prev(origin)));
+            if (Lock::validate(vector.index, origin) == Lock::Result::Matched) {
+                matched = true;
+                break;
+            }
+        }
+        assert(matched);
+    }
+
+    // PKHeX's XD Mawile anti-shiny test: player TSV participates in the recursive
+    // validation and still reaches a valid source history.
+    const auto mawile = CXD::analyze(
+        0x049F2F05u, {31, 30, 29, 31, 23, 27});
+    assert(mawile.matched);
+    assert(Lock::validateXd(18, mawile.originSeed, 12345, 51882) ==
+           Lock::Result::Matched);
+
+    // Guard exhaustion is deliberately distinct from a negative proof.
+    const auto seedot = CXD::analyze(
+        0x8CBD29DBu, {19, 29, 30, 0, 7, 2});
+    assert(seedot.matched);
+    assert(Lock::validate(7, seedot.originSeed,
+                          Lock::kNoTrainerShinyValue, 1) ==
+           Lock::Result::SearchLimit);
+
+    // Normal Colosseum prior-team evidence is a separate policy from XD:
+    // no player-TSV anti-shiny restriction and no shadow/seen lock states.
+    static_assert(Colo::kTeamSetCount == 6);
+    static_assert(Colo::kTeamVariantCount == 5);
+    static_assert(Colo::kLockCount == 13);
+    assert(Colo::validate(Colo::TeamSet::First, 0x12345678u) ==
+           Colo::Result::Matched);
+
+    struct ColoVector {
+        uint32_t pid;
+        std::array<uint8_t, 6> ivs;
+    };
+    constexpr std::array<ColoVector, 3> coloMakuhita{{
+        {0xC252FEBAu, {15, 9, 17, 16, 24, 22}},
+        {0x61C676FCu, {20, 28, 21, 18, 9, 1}},
+        {0x3B27608Du, {7, 12, 5, 19, 3, 7}},
+    }};
+    for (const auto& vector : coloMakuhita) {
+        const auto cxd = CXD::analyze(vector.pid, vector.ivs);
+        assert(cxd.matched);
+        assert(Colo::validate(Colo::TeamSet::ColoMakuhita, cxd.originSeed) ==
+               Colo::Result::Matched);
+    }
+
+    const auto boundedColo = CXD::analyze(
+        0xC252FEBAu, {15, 9, 17, 16, 24, 22});
+    assert(boundedColo.matched);
+    assert(Colo::validate(Colo::TeamSet::ColoMakuhita,
+                          boundedColo.originSeed, 1) ==
+           Colo::Result::SearchLimit);
+
+    // Normal Colosseum encounter identity is source-row based rather than index
+    // keyed. The one duplicate persistent tuple must retain both valid histories.
+    static_assert(ColoEncounter::kEncounterCount == 80);
+    constexpr auto makuhitaIdentity = ColoEncounter::match(
+        {296, 15, 30, 5, false, false});
+    static_assert(makuhitaIdentity.count == 1);
+    static_assert(makuhitaIdentity.entries[0]->shadowIndex == 1);
+    static_assert(makuhitaIdentity.entries[0]->teamSet ==
+                  static_cast<uint8_t>(Colo::TeamSet::ColoMakuhita));
+
+    constexpr auto firstIdentity = ColoEncounter::match(
+        {153, 15, 30, 3, false, false});
+    static_assert(firstIdentity.count == 1);
+    static_assert(ColoEncounter::teamSet(*firstIdentity.entries[0]) ==
+                  Colo::TeamSet::First);
+
+    constexpr auto murkrowIdentity = ColoEncounter::match(
+        {198, 15, 43, 67, false, false});
+    static_assert(murkrowIdentity.count == 2);
+    static_assert(murkrowIdentity.entries[0]->shadowIndex == 29);
+    static_assert(ColoEncounter::teamSet(*murkrowIdentity.entries[0]) ==
+                  Colo::TeamSet::Murkrow);
+    static_assert(murkrowIdentity.entries[1]->shadowIndex == 37);
+    static_assert(ColoEncounter::teamSet(*murkrowIdentity.entries[1]) ==
+                  Colo::TeamSet::First);
+
+    static_assert(!ColoEncounter::match({296, 2, 30, 5, false, false}).matched());
+    static_assert(!ColoEncounter::match({296, 15, 31, 5, false, false}).matched());
+    static_assert(!ColoEncounter::match({296, 15, 30, 6, false, false}).matched());
+    static_assert(!ColoEncounter::match({296, 15, 30, 5, true, false}).matched());
+    static_assert(!ColoEncounter::match({296, 15, 30, 5, false, true}).matched());
+
+    // Family-aware routing: normal Colosseum accepts standard CXD only.
+    Cube::Candidate coloCandidate{};
+    coloCandidate.species = 296;
+    coloCandidate.originGame = 15;
+    coloCandidate.metLevel = 30;
+    coloCandidate.metLocation = 5;
+    coloCandidate.pid = 0xC252FEBAu;
+    coloCandidate.ivs = {15, 9, 17, 16, 24, 22};
+    const auto coloEvidence = Cube::analyze(coloCandidate);
+    assert(coloEvidence.family == Cube::Family::Colosseum);
+    assert(coloEvidence.identityMatched);
+    assert(coloEvidence.identityCandidateCount == 1);
+    assert(coloEvidence.correlation.matched);
+    assert(coloEvidence.correlation.variant == CXD::Variant::Standard);
+    assert(coloEvidence.history == Cube::HistoryResult::Matched);
+
+    // A valid XD CXDAnti correlation must not be accepted when persistent fields
+    // identify a normal Colosseum shadow encounter.
+    Cube::Candidate antiOnColo = coloCandidate;
+    antiOnColo.pid = 0xB7951831u;
+    antiOnColo.ivs = {9, 31, 12, 31, 25, 22};
+    antiOnColo.tid = 12345;
+    antiOnColo.sid = 35598;
+    const auto rejectedAntiColo = Cube::analyze(antiOnColo);
+    assert(rejectedAntiColo.family == Cube::Family::Colosseum);
+    assert(rejectedAntiColo.identityMatched);
+    assert(!rejectedAntiColo.correlation.matched);
+    assert(rejectedAntiColo.history == Cube::HistoryResult::None);
+
+    // Standard XD routing preserves player/CPU anti-shiny team-history evidence.
+    Cube::Candidate xdStandard{};
+    xdStandard.species = 303;
+    xdStandard.originGame = 15;
+    xdStandard.metLevel = 22;
+    xdStandard.metLocation = 111;
+    xdStandard.ball = 4;
+    xdStandard.fateful = true;
+    xdStandard.tid = 12345;
+    xdStandard.sid = 51882;
+    xdStandard.pid = 0x049F2F05u;
+    xdStandard.ivs = {31, 30, 29, 31, 23, 27};
+    const auto xdStandardEvidence = Cube::analyze(xdStandard);
+    assert(xdStandardEvidence.family == Cube::Family::XD);
+    assert(xdStandardEvidence.identityMatched);
+    assert(xdStandardEvidence.correlation.matched);
+    assert(xdStandardEvidence.correlation.variant == CXD::Variant::Standard);
+    assert(xdStandardEvidence.history == Cube::HistoryResult::Matched);
+
+    // Deterministic CXDAnti fixture on XD index 1 (empty First team) isolates the
+    // target-PID reroll policy from recursive prior-team history.
+    Cube::Candidate xdAnti{};
+    xdAnti.species = 216;
+    xdAnti.originGame = 15;
+    xdAnti.metLevel = 11;
+    xdAnti.metLocation = 143;
+    xdAnti.ball = 4;
+    xdAnti.fateful = true;
+    xdAnti.tid = 12345;
+    xdAnti.sid = 35598;
+    xdAnti.pid = 0xB7951831u;
+    xdAnti.ivs = {9, 31, 12, 31, 25, 22};
+    const auto xdAntiEvidence = Cube::analyze(xdAnti);
+    assert(xdAntiEvidence.family == Cube::Family::XD);
+    assert(xdAntiEvidence.identityMatched);
+    assert(xdAntiEvidence.correlation.matched);
+    assert(xdAntiEvidence.correlation.variant == CXD::Variant::AntiShiny);
+    assert(xdAntiEvidence.history == Cube::HistoryResult::Matched);
+
+    std::cout << "Gen III GameCube shadow family, identity and recursive RNG evidence: PASS\n";
+}

@@ -1,0 +1,16 @@
+# Evolution-aware Gen III Safari fixed-ball provenance evidence regressions.
+GEN3_SAFARI_ORIGIN_SOURCES := tests/test_gen3_safari_origin_evidence.cpp
+GEN3_SAFARI_ORIGIN_HEADERS := include/Legality/Gen3SafariOriginEvidence.h include/Legality/Gen3SafariEncounter.h include/Legality/Gen3SafariEncounterData.inc include/Legality/Gen34EggMoveEvidence.h include/Legality/Gen34EggMoveData.inc
+
+HOST_TESTS += $(HOST_BUILD)/test_gen3_safari_origin_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_safari_origin_evidence_sanitize
+host-test: $(HOST_BUILD)/test_gen3_safari_origin_evidence
+host-sanitize: $(HOST_BUILD)/test_gen3_safari_origin_evidence_sanitize
+
+$(HOST_BUILD)/test_gen3_safari_origin_evidence: $(GEN3_SAFARI_ORIGIN_SOURCES) $(GEN3_SAFARI_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN3_SAFARI_ORIGIN_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen3_safari_origin_evidence_sanitize: $(GEN3_SAFARI_ORIGIN_SOURCES) $(GEN3_SAFARI_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN3_SAFARI_ORIGIN_SOURCES) -o $@

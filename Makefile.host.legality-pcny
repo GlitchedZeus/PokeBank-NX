@@ -1,0 +1,19 @@
+# Focused Gen III PCNY Evolution-distribution provenance regression.
+# Header-only legality evidence: keep this target small and independently sanitizable.
+GEN3_PCNY_EVENT_TEMPLATE_SOURCES := tests/test_gen3_pcny_event_template.cpp
+
+GEN3_PCNY_EVENT_TEMPLATE_HOST_TESTS := $(HOST_BUILD)/test_gen3_pcny_event_template
+GEN3_PCNY_EVENT_TEMPLATE_SANITIZE_TESTS := $(HOST_BUILD)/test_gen3_pcny_event_template_sanitize
+
+HOST_TESTS += $(GEN3_PCNY_EVENT_TEMPLATE_HOST_TESTS)
+HOST_SANITIZE_TESTS += $(GEN3_PCNY_EVENT_TEMPLATE_SANITIZE_TESTS)
+host-test: $(GEN3_PCNY_EVENT_TEMPLATE_HOST_TESTS)
+host-sanitize: $(GEN3_PCNY_EVENT_TEMPLATE_SANITIZE_TESTS)
+
+$(HOST_BUILD)/test_gen3_pcny_event_template: $(GEN3_PCNY_EVENT_TEMPLATE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gen3_pcny_event_template_sanitize: $(GEN3_PCNY_EVENT_TEMPLATE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@

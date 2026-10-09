@@ -1,0 +1,16 @@
+# Focused Gen IV evolution-aware fixed-ball origin-resolution evidence.
+GEN4_FIXED_BALL_ORIGIN_SOURCES := tests/test_gen4_fixed_ball_origin_evidence.cpp
+GEN4_FIXED_BALL_ORIGIN_HEADERS := include/Legality/Gen4FixedBallOriginEvidence.h include/Legality/Gen4FixedBallEvidence.h include/Legality/Gen4WildEncounter.h include/Legality/Gen4WildEncounterData.inc include/Legality/Gen34EggMoveEvidence.h include/Legality/Gen34EggMoveData.inc
+
+HOST_TESTS += $(HOST_BUILD)/test_gen4_fixed_ball_origin_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_fixed_ball_origin_evidence_sanitize
+host-test: $(HOST_BUILD)/test_gen4_fixed_ball_origin_evidence
+host-sanitize: $(HOST_BUILD)/test_gen4_fixed_ball_origin_evidence_sanitize
+
+$(HOST_BUILD)/test_gen4_fixed_ball_origin_evidence: $(GEN4_FIXED_BALL_ORIGIN_SOURCES) $(GEN4_FIXED_BALL_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN4_FIXED_BALL_ORIGIN_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_fixed_ball_origin_evidence_sanitize: $(GEN4_FIXED_BALL_ORIGIN_SOURCES) $(GEN4_FIXED_BALL_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_FIXED_BALL_ORIGIN_SOURCES) -o $@

@@ -1,0 +1,192 @@
+#!/usr/bin/env python3
+"""Generate compact Gen IV static/gift legality evidence from pinned PKHeX source."""
+
+from __future__ import annotations
+
+import os
+import re
+
+import pkhex_source
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT = os.path.join(ROOT, "include", "Legality", "Gen4StaticEncounterData.inc")
+
+SOURCES = (
+    "Legality/Encounters/Data/Gen4/Encounters4DPPt.cs",
+    "Legality/Encounters/Data/Gen4/Encounters4HGSS.cs",
+)
+BALL_INDEX = {
+    "Poke": 4,
+    "Safari": 5,
+    "Cherish": 16,
+}
+NATURE_INDEX = {
+    "Hardy": 0, "Lonely": 1, "Brave": 2, "Adamant": 3, "Naughty": 4,
+    "Bold": 5, "Docile": 6, "Relaxed": 7, "Impish": 8, "Lax": 9,
+    "Timid": 10, "Hasty": 11, "Serious": 12, "Jolly": 13, "Naive": 14,
+    "Modest": 15, "Mild": 16, "Quiet": 17, "Bashful": 18, "Rash": 19,
+    "Calm": 20, "Gentle": 21, "Sassy": 22, "Careful": 23, "Quirky": 24,
+    "Random": 25,
+}
+SHINY_INDEX = {
+    "Random": 0,
+    "Never": 1,
+    "Always": 2,
+}
+GENDER_RANDOM = 3
+
+GAME_INDEX = {
+    "diamond_nds": 0,
+    "pearl_nds": 1,
+    "platinum_nds": 2,
+    "heartgold_nds": 3,
+    "soulsilver_nds": 4,
+}
+TABLES = {
+    "StaticDPPt": {"DPPt": ("diamond_nds", "pearl_nds", "platinum_nds")},
+    "StaticDP": {"DP": ("diamond_nds", "pearl_nds")},
+    "StaticPt": {"Pt": ("platinum_nds",)},
+    "StaticD": {"D": ("diamond_nds",)},
+    "StaticP": {"P": ("pearl_nds",)},
+    "Encounter_HGSS": {"HGSS": ("heartgold_nds", "soulsilver_nds")},
+    "StaticHG": {"HG": ("heartgold_nds",)},
+    "StaticSS": {"SS": ("soulsilver_nds",)},
+}
+
+
+def section(source: str, name: str) -> str:
+    pattern = re.compile(
+        r"(?:public|internal) static readonly EncounterStatic4\[\] "
+        + re.escape(name)
+        + r"\s*=\s*\[([\s\S]*?)\n\s*\];"
+    )
+    match = pattern.search(source)
+    if not match:
+        raise ValueError("missing Gen IV static table %s" % name)
+    return match.group(1)
+
+
+def parse_rows(source: str, table: str, tags: dict[str, tuple[str, ...]]):
+    body = section(source, table)
+    body = "\n".join(re.sub(r"//.*$", "", line) for line in body.splitlines())
+    pattern = re.compile(r"new\(\s*([A-Za-z]+)\s*\)\s*\{([\s\S]*?)\}")
+    for match in pattern.finditer(body):
+        tag, fields = match.groups()
+        species = re.search(r"\bSpecies\s*=\s*(\d+)", fields)
+        level = re.search(r"\bLevel\s*=\s*(\d+)", fields)
+        location = re.search(r"\bLocation\s*=\s*(\d+)", fields)
+        if not species or not level or not location:
+            continue
+        form = re.search(r"\bForm\s*=\s*(\d+)", fields)
+        egg = re.search(r"\bEggLocation\s*=\s*(\d+)", fields)
+        roaming = bool(re.search(r"\bIsRoaming\s*=\s*true", fields))
+        fixed_ball = re.search(r"\bFixedBall\s*=\s*Ball\.([A-Za-z]+)", fields)
+        ball = BALL_INDEX[fixed_ball.group(1)] if fixed_ball else 0
+
+        fixed_gender = re.search(r"\bGender\s*=\s*(\d+)", fields)
+        fixed_nature = re.search(r"\bNature\s*=\s*Nature\.([A-Za-z]+)", fields)
+        shiny = re.search(r"\bShiny\s*=\s*Shiny\.([A-Za-z]+)", fields)
+        gender = int(fixed_gender.group(1)) if fixed_gender else GENDER_RANDOM
+        nature = NATURE_INDEX[fixed_nature.group(1)] if fixed_nature else NATURE_INDEX["Random"]
+        shiny_rule = SHINY_INDEX[shiny.group(1)] if shiny else SHINY_INDEX["Random"]
+        fateful = bool(re.search(r"\bFatefulEncounter\s*=\s*true", fields))
+
+        for game in tags.get(tag, ()):
+            yield (
+                GAME_INDEX[game],
+                int(species.group(1)),
+                int(location.group(1)),
+                int(level.group(1)),
+                int(form.group(1)) if form else 0,
+                int(egg.group(1)) if egg else 0,
+                roaming,
+                ball,
+                gender,
+                nature,
+                shiny_rule,
+                fateful,
+            )
+
+
+def pack(row) -> int:
+    game, species, location, level, form, egg_location, roaming, fixed_ball = row[:8]
+    return (
+        species
+        | (location << 9)
+        | (level << 21)
+        | (form << 28)
+        | (egg_location << 36)
+        | (int(roaming) << 48)
+        | (game << 49)
+        | (fixed_ball << 52)
+    )
+
+
+def main() -> int:
+    texts = {}
+    for path in SOURCES:
+        with open(pkhex_source.pkhex_path(path), encoding="utf-8") as handle:
+            texts[path] = handle.read()
+
+    full_rows = set()
+    for table, tags in TABLES.items():
+        source_path = SOURCES[0] if table.startswith("Static") and table not in ("StaticHG", "StaticSS") else SOURCES[1]
+        full_rows.update(parse_rows(texts[source_path], table, tags))
+
+    ordered = sorted({row[:8] for row in full_rows})
+    constraints = sorted(
+        row for row in full_rows
+        if row[8] != GENDER_RANDOM
+        or row[9] != NATURE_INDEX["Random"]
+        or row[10] != SHINY_INDEX["Random"]
+        or row[11]
+    )
+    packed = [pack(row) for row in ordered]
+    lines = [
+        "// GENERATED by tools/gen_legality_gen4_static.py.",
+        "// Source: PKHeX @ %s" % pkhex_source._REF,
+        "// Sources: Encounters4DPPt.cs and Encounters4HGSS.cs static/gift tables.",
+        "// FixedBall is preserved when specified by the source template; 0 means unrestricted.",
+        "// Source-proven fixed gender/nature/shiny/fateful constraints are emitted separately.",
+        "// Trades, external events and PokeWalker encounters are separate evidence layers.",
+        "inline constexpr uint64_t kPackedGen4StaticEncounters[] = {",
+    ]
+    for i in range(0, len(packed), 5):
+        chunk = ", ".join("0x%016xULL" % value for value in packed[i:i + 5])
+        if i + 5 < len(packed):
+            chunk += ","
+        lines.append("    " + chunk)
+    lines.append("};")
+    lines.append("")
+    lines.append("inline constexpr StaticConstraint kGen4StaticConstraints[] = {")
+    for row in constraints:
+        lines.append(
+            "    {0x%016xULL, %d, %d, %d, %s},"
+            % (
+                pack(row),
+                row[8],
+                row[9],
+                row[10],
+                "true" if row[11] else "false",
+            )
+        )
+    lines.append("};")
+    lines.append("")
+
+    if len(ordered) != 197:
+        raise ValueError("expected 197 Gen IV static/gift rows, got %d" % len(ordered))
+    if len(constraints) != 5:
+        raise ValueError("expected 5 expanded Gen IV static constraint rows, got %d" % len(constraints))
+
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    with open(OUT, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write("\n".join(lines))
+    print(
+        "wrote %d Gen IV static/gift encounter rows and %d constraint rows to %s"
+        % (len(ordered), len(constraints), OUT)
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

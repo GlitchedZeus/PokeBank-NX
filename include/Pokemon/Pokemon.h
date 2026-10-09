@@ -393,6 +393,16 @@ namespace Pokemon {
         virtual uint16_t metLocation() const noexcept { return 0; }
         virtual void setMetLocation(uint16_t value) noexcept { (void)value; }
 
+        /**
+         * Gen IV stores parallel D/P and Pt/HGSS location/ball fields. These read-only
+         * accessors default to zero outside PK4 so legality can inspect the actual stored
+         * transfer evidence without RTTI or mutation.
+         */
+        virtual uint16_t gen4MetLocationDP() const noexcept { return 0; }
+        virtual uint16_t gen4MetLocationExtended() const noexcept { return 0; }
+        virtual uint8_t gen4BallDPPt() const noexcept { return 0; }
+        virtual uint8_t gen4BallHGSS() const noexcept { return 0; }
+
         /** Met level (level at which the Pokemon was met). */
         virtual uint8_t metLevel() const noexcept { return 0; }
         virtual void setMetLevel(uint8_t value) noexcept { (void)value; }
@@ -442,6 +452,18 @@ namespace Pokemon {
         /** Fateful-encounter ("obtained in a fateful encounter") flag; false / no-op where unwired. */
         virtual bool isFatefulEncounter() const noexcept { return false; }
         virtual void setFatefulEncounter(bool value) noexcept { (void)value; }
+
+        /** Gen III National Ribbon persistent state; false where the format/accessor is unwired. */
+        virtual bool ribbonNational() const noexcept { return false; }
+
+        /** Persisted Earth Ribbon; read-only and false where the accessor is unwired. */
+        virtual bool ribbonEarth() const noexcept { return false; }
+
+        /** Additional fixed Gen III event-ribbon states used by WC3 legality evidence. */
+        virtual bool ribbonChampionBattle() const noexcept { return false; }
+        virtual bool ribbonChampionRegional() const noexcept { return false; }
+        virtual bool ribbonChampionNational() const noexcept { return false; }
+        virtual bool ribbonCountry() const noexcept { return false; }
 
         /** Original Trainer name (UTF-16; empty if unwired). */
         virtual std::u16string otName() const { return std::u16string(); }

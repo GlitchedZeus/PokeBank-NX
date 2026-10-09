@@ -3306,12 +3306,18 @@ namespace UI {
                 details.ribbonOverlay = true;
                 return;
             }
-            // Open the legality issue list: R, or tapping the legality summary (id 95) -- but ONLY
-            // when the mon actually has issues. A clean mon has nothing to show, so the button is
-            // disabled (greyed in the guide) and this does nothing.
+            // Open the legality report: incomplete coverage is meaningful too, so an entity
+            // with no detected problems can still expose which evidence layers remain unchecked.
             if ((kDown & HidNpadButton_R) || tb == 95) {
-                if (pokemon && !Legality::analyze(*pokemon, pokemon->getGameGroup()).ok())
-                    details.legalityOverlay = true;
+                if (pokemon) {
+                    const std::string_view legalitySource =
+                        details.source == EditSource::Bank
+                            ? std::string_view{} : std::string_view(sourceGameId);
+                    const auto report =
+                        Legality::analyze(*pokemon, pokemon->getGameGroup(), legalitySource);
+                    if (report.verdict() != Legality::Verdict::NoProblemsFound)
+                        details.legalityOverlay = true;
+                }
                 return;
             }
             // View is a genuinely read-only summary. Keep navigation, ribbons, legality, and B/close,

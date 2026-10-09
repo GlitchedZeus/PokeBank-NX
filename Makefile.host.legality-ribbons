@@ -1,0 +1,40 @@
+# Focused persisted Gen III Event3 ribbon-reader regression.
+# Reuse the already-proven Gen III legality link graph, replacing its test main.
+# Legality.cpp's diagnostic helpers call the thin Trainer -> Names wrappers, so
+# include Trainer.cpp explicitly rather than leaving unresolved wrapper symbols.
+GEN3_EVENT_RIBBON_BITS_SOURCES := tests/test_gen3_event_ribbon_bits.cpp \
+	$(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES)) \
+	src/Trainer/Trainer.cpp
+
+GEN3_EVENT_RIBBON_BITS_HOST_TESTS := $(HOST_BUILD)/test_gen3_event_ribbon_bits
+GEN3_EVENT_RIBBON_BITS_SANITIZE_TESTS := $(HOST_BUILD)/test_gen3_event_ribbon_bits_sanitize
+
+HOST_TESTS += $(GEN3_EVENT_RIBBON_BITS_HOST_TESTS)
+HOST_SANITIZE_TESTS += $(GEN3_EVENT_RIBBON_BITS_SANITIZE_TESTS)
+host-test: $(GEN3_EVENT_RIBBON_BITS_HOST_TESTS)
+host-sanitize: $(GEN3_EVENT_RIBBON_BITS_SANITIZE_TESTS)
+
+$(HOST_BUILD)/test_gen3_event_ribbon_bits: $(GEN3_EVENT_RIBBON_BITS_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gen3_event_ribbon_bits_sanitize: $(GEN3_EVENT_RIBBON_BITS_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+GEN3_EGG_EVENT_RIBBON_SOURCES := tests/test_gen3_egg_event_ribbons.cpp \
+	$(filter-out tests/test_gen3_event_ribbon_bits.cpp,$(GEN3_EVENT_RIBBON_BITS_SOURCES))
+GEN3_EGG_EVENT_RIBBON_HEADERS := include/Legality/Gen3EggEventRibbonEvidence.h \
+	include/Pokemon/Pokemon.h include/Pokemon/Pokemon3FRLG.h
+HOST_TESTS += $(HOST_BUILD)/test_gen3_egg_event_ribbons
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_egg_event_ribbons_sanitize
+host-test: $(HOST_BUILD)/test_gen3_egg_event_ribbons
+host-sanitize: $(HOST_BUILD)/test_gen3_egg_event_ribbons_sanitize
+
+$(HOST_BUILD)/test_gen3_egg_event_ribbons: $(GEN3_EGG_EVENT_RIBBON_SOURCES) $(GEN3_EGG_EVENT_RIBBON_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) -Iinclude $(filter %.cpp,$^) -o $@
+
+$(HOST_BUILD)/test_gen3_egg_event_ribbons_sanitize: $(GEN3_EGG_EVENT_RIBBON_SOURCES) $(GEN3_EGG_EVENT_RIBBON_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(filter %.cpp,$^) -o $@

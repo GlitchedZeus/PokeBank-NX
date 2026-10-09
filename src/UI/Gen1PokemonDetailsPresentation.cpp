@@ -208,8 +208,10 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
         : (p.moveCompatibilityCompatible ? Colors::Success : Colors::Warning);
     compactRow(fb, rightX + 18, contentY + 235, "Move compatibility", compatibilityText, 300,
                compatibilityColor);
-    compactRow(fb, rightX + 18, contentY + 261, "Encounter legality", "Not checked", 300,
-               Colors::TextDim);
+    const Color legalityColor = p.legalityInvalid
+        ? Colors::Error : p.legalityWarning ? Colors::Warning : Colors::TextMuted;
+    compactRow(fb, rightX + 18, contentY + 261, "Legality",
+               p.legalityLabel, 300, legalityColor);
 
     const int splitY = contentY + 288;
     const int splitH = contentH - 300;
