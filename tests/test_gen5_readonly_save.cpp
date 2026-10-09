@@ -419,7 +419,7 @@ int main() {
         assert(presented->refreshStagedPokemonPresentation(error));
         assert(!presented->hasStagedChanges() && presented->party[0]->nature()==0);
         assert(!PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*parsed,
-            family==G::SaveFamily::BlackWhite?"white_nds":"black_nds",error));
+            id=="black_nds"?"white_nds":"black_nds",error));
         const G::SourceContext context{
             id, "retroarch", "RetroArch", "sdmc:/retroarch/cores/savefiles/test.srm",
             "sdmc:/retroarch/cores/savefiles/test.srm", "physical-save-fixture",
