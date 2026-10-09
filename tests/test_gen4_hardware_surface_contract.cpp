@@ -389,7 +389,8 @@ int main() {
     contains(baseUi, "hasUnsavedChanges || trainer.hasStagedChanges()");
     contains(baseUi, "PokeVault::Integration::Gen4::BagPocketCount");
     contains(baseUi, "sourceGameId==\"platinum_nds\"");
-    contains(baseUi, "A: Edit Staged Quantity");
+    contains(baseUi, "A: Edit Quantity  |  Y: Remove...");
+    contains(baseUi, "X: Add Item");
 
     contains(baseUi, "immutableSourceBlocksSaveDialog(");
     contains(baseUi, "exitOnlySaveConfirm");
