@@ -594,6 +594,11 @@ bool Gen4StagedPokemonEditor::stageBagQuantity(
         return false;
     }
     const auto& expected=(*previousBag)[pocket][visibleIndex];
+    if(!gen4BagItemAllowed(layout_,pocket,expected.itemId) ||
+       quantity>gen4BagMaxQuantity(pocket,expected.itemId)) {
+        setError(error,"Gen IV item quantity exceeds this native pocket or item limit");
+        return false;
+    }
     const auto slots=bagLayout(layout_)[pocket];
     const size_t base=before->generalSelection().offset;
     const size_t blockSize=generalGeometry(layout_).size;
