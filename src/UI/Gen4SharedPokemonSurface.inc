@@ -1648,7 +1648,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         {"Gender", genderText(raw->gender())},
         {"Shiny", view.isShiny(raw->id32(), {}) ? "Yes" : "No"},
         {"Ability", Trainer::getAbilityName(raw->ability())},
-        {"PID (read-only)", std::to_string(raw->pid())},
+        {"PID", std::to_string(raw->pid())},
     }};
     for (int i = 0; i < 5; ++i) {
         const int row = i + 6;
@@ -1665,6 +1665,11 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         if (i == 1 && editable && !selected) valueColor = genderValueColor(raw->gender());
         fb.drawText(g.midX + 130, yy, derived[static_cast<size_t>(i)].second,
                     valueColor, TextStyle::Caption);
+        // Keep the PID status on its own subordinate line, so the 10-digit
+        // value never overlaps the label in the compact shared middle panel.
+        if (i == 4)
+            fb.drawText(g.midX + 18, yy + 15, "read-only",
+                        Colors::TextDim, TextStyle::Caption);
     }
 
     drawPanel(fb, g.rightX, g.y, g.rightW, g.h, "MOVES");
