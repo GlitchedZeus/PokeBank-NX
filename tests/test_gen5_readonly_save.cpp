@@ -7,6 +7,7 @@
 #include "Integration/Gen5/Gen5GameSourceCatalog.h"
 #include "Integration/Gen5/Gen5GameCardPreview.h"
 #include "Integration/Gen5/Gen5SharedPokemonSession.h"
+#include "Integration/Gen5/Gen5SharedEditorBridge.h"
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Games/GameIdentity.h"
@@ -487,6 +488,27 @@ int main() {
                 G::Gen5StagedPokemonWorkspace::Region::Party?
                 C::PartySize:C::StoredSize));
         }
+        // One shared action menu and exact Gen V field capabilities.
+        using GA=PokeBank::UIModel::SharedPokemonEditor::Action;
+        using GF=PokeBank::UIModel::SharedPokemonEditor::FieldIdentity;
+        using GAccess=PokeBank::UIModel::SharedPokemonEditor::FieldAccess;
+        const auto nativeParty=G::selectedSlot(workspace,
+            {G::Gen5StagedPokemonWorkspace::Region::Party,0,0});
+        assert(nativeParty.validated && nativeParty.occupied);
+        const auto nativeActions=G::actions(workspace,nativeParty);
+        assert(nativeActions.count==4);
+        assert(nativeActions[0]==GA::View && nativeActions[1]==GA::Edit);
+        assert(nativeActions[2]==GA::Review && nativeActions[3]==GA::Close);
+        assert(G::fieldAccess(GF::IV)==GAccess::Editable);
+        assert(G::fieldAccess(GF::Nature)==GAccess::Editable);
+        assert(G::fieldAccess(GF::Species)!=GAccess::Editable);
+        assert(G::exactDescriptor("black_nds",true));
+        assert(!G::exactDescriptor("platinum_nds",true));
+        G::Gen5SharedPokemonSession unsupported;
+        assert(!G::openSharedDraft(unsupported,workspace,nativeParty,GA::Add,error));
+        assert(unsupported.mode()==G::Gen5SharedPokemonSession::Mode::None);
+        assert(G::openSharedDraft(unsupported,workspace,nativeParty,GA::View,error));
+        assert(unsupported.back());
         // Same Gen I-IV shared exit decision model: local Edit changes are
         // NOT committed to the staged workspace until explicit Keep.
         G::Gen5SharedPokemonSession viewer;

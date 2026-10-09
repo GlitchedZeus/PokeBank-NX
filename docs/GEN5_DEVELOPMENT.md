@@ -309,3 +309,14 @@ Source preference remains API-only until a safe UI flow exists.
 - The production Gen V selection flow remains preview-only while its shared
   action/edit surface is wired and hardware-checked. There is still no source
   save writer, Create, Inject Save, item mutation or auto-fix.
+
+### Phase D tranche 3 — audited action menu bridge for shared editor
+
+- The Gen V backend now provides the ONE existing SharedPokemonEditor
+  action/field model with verified PK5 slot selection.
+- Occupied and validated slots expose View, Edit, conditional Review and
+  Cancel only. Empty/quarantined slots cannot Create, Clone, Remove or edit.
+- The Gen V provider still permits staged Nature/Friendship/IV/EV only,
+  behind an app-owned explicit Keep/Discard draft.
+- This is a backend model; the production modal remains gated until its
+  hardware-integrated UX receives further validation.
