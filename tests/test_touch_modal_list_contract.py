@@ -173,3 +173,13 @@ require(chrome, "include/UI/ScreenChrome.h",
         "inline uint64_t navTouchButton(const TouchInput& touch)")
 
 print("touch modal/list contract: PASS")
+
+# Backup Delete is a destructive confirmation: a finger merely resting on
+# its button cannot trigger it. Releasing inside the original target is required.
+backup_code = read("src/UI/BackupSelectionScreen.cpp")
+delete_modal = backup_code.split("if (showDeleteConfirmation) {", 1)[1].split(
+    "// Touch moves the PHYSICAL viewport", 1)[0]
+assert "if (touch.justTapped())" in delete_modal
+assert "if (touch.justPressed())" not in delete_modal
+assert "touch.startX() >= b.x" in delete_modal
+assert "touch.x() >= b.x" in delete_modal

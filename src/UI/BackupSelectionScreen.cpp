@@ -125,7 +125,9 @@ namespace UI {
         // Handle delete confirmation dialog
         if (showDeleteConfirmation) {
             // Tappable buttons (captured last frame): A = Delete, B = Cancel.
-            if (touch.justPressed()) {
+            // A destructive choice must wait for a CLEAN RELEASE. Contact-only
+            // activation permits an accidental press or emerging swipe to delete.
+            if (touch.justTapped()) {
                 auto in = [&](const DlgBtn& b) {
                     return touch.startX() >= b.x && touch.startX() < b.x + b.w &&
                            touch.startY() >= b.y && touch.startY() < b.y + b.h &&

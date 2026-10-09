@@ -534,6 +534,7 @@ require_all("src/UI/BackupSelectionScreen.cpp",
 require_all("src/UI/BackupSelectionScreen.cpp",
             "const u64 footerTouch = showDeleteConfirmation ? 0 : navTouchButton(touch);",
             "if (showDeleteConfirmation) {",
+            "if (touch.justTapped()) {",
             "if (in(deleteDeleteBtn))",
             "else if (in(deleteCancelBtn))")
 
