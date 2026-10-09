@@ -1072,6 +1072,31 @@ void testNativeGen4Bag() {
             assert(stagedOutput[i]==beforeStage[i]);
         }
         assert(digest(bytes)==original && digest(parsed->sourceBytes())==original);
+        // Explicit remove operates ONLY on the app-owned image. It never
+        // accepts a bogus slot/pocket or mutates untouched item identities.
+        assert(!workspace->stageBagRemove(G4::BagPocketCount,0,&error));
+        assert(!workspace->stageBagRemove(kBalls,9,&error));
+        const auto beforeRemove=workspace->stagedBytes();
+        assert(workspace->stageBagRemove(kBalls,0,&error) && error.empty());
+        assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+        assert(trainer->items[kBalls].size()==1);
+        assert(trainer->items[kBalls][0].itemId==1 &&
+               trainer->items[kBalls][0].count==3);
+        const auto removedOutput=workspace->finalizedBytes(&error);
+        const auto removed=Gen4ReadOnlySave::parse(removedOutput,layout,game,&error);
+        assert(removed && removed->generalSelection().partition==1);
+        const auto removedBag=G4::decodeReadOnlyBag(*removed);
+        assert(removedBag && (*removedBag)[kBalls].size()==1);
+        assert((*removedBag)[kMedicine].size()==1 &&
+               (*removedBag)[kMedicine][0].count==7);
+        assert(removed->box(0,0).species()==25);
+        const size_t removedAt=PARTITION+native[kBalls].offset;
+        for(size_t i=0;i<removedOutput.size();++i) {
+            if(i>=removedAt && i<removedAt+4)continue;
+            if(i==crcAt || i==crcAt+1)continue;
+            assert(removedOutput[i]==beforeRemove[i]);
+        }
+        assert(digest(bytes)==original && digest(parsed->sourceBytes())==original);
         workspace->discard();
         assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
         assert(trainer->items[kBalls][0].count==43 &&
