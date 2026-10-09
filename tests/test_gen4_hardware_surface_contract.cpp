@@ -247,7 +247,11 @@ int main() {
     contains(surface, "drawLegality");
     contains(surface, "drawReleaseConfirm");
     assert(surface.find("const int h = occupied ? 500 : 350;") == std::string::npos);
-    contains(surface, "— Met Lv. ");
+    contains(surface, "  |  Met Lv. ");
+    assert(surface.find(" (current)") == std::string::npos);
+    contains(surface, "const bool compactChoices=");
+    contains(surface, "visibleChoices");
+    contains(surface, "Colors::Text, TextStyle::Body");
     assert(surface.find("+ \" (#\" + std::to_string(value)") == std::string::npos);
 
     // Generated location strings must never retain a source UTF-8 BOM as a visible glyph.
