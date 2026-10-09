@@ -39,7 +39,9 @@ struct SharedEditorSlot {
     const auto append=[&](Shared::Action action) {
         result.values[result.count++]=action;
     };
-    if(slot.validated && slot.occupied) {
+    // Re-read the live workspace; cached picker flags never grant edit access.
+    const auto live=selectedSlot(workspace,slot.location);
+    if(live.validated && live.occupied) {
         append(Shared::Action::View);
         append(Shared::Action::Edit);
     }
@@ -57,7 +59,10 @@ struct SharedEditorSlot {
     const Gen5StagedPokemonWorkspace& workspace,
     const SharedEditorSlot& slot,
     Shared::Action action,std::string& error) {
-    if(!slot.validated || !slot.occupied) {
+    // Cached slot metadata is presentation only. Revalidate against the
+    // current workspace before beginning any View/Edit transaction.
+    const auto live=selectedSlot(workspace,slot.location);
+    if(!live.validated || !live.occupied) {
         error="Gen V editor requires a valid, occupied native PK5 slot";
         return false;
     }
@@ -69,6 +74,27 @@ struct SharedEditorSlot {
         Gen5SharedPokemonSession::Mode::View:
         Gen5SharedPokemonSession::Mode::Edit;
     return session.begin(workspace,slot.location,mode,error);
+}
+// The existing editor speaks FieldIdentity; the PK5 draft intentionally
+// accepts only these four verified transactions. Do not forward unsupported
+// UI fields to a generic Pokemon mutator or alter the source save.
+[[nodiscard]] inline bool stageSharedField(
+    Gen5SharedPokemonSession& session,Shared::FieldIdentity field,
+    size_t stat,uint32_t value,std::string& error) {
+    using NativeField=StagedPokemon5Record::Field;
+    switch(field) {
+        case Shared::FieldIdentity::Nature:
+            return session.stage(NativeField::Nature,stat,value,error);
+        case Shared::FieldIdentity::Friendship:
+            return session.stage(NativeField::Friendship,stat,value,error);
+        case Shared::FieldIdentity::IV:
+            return session.stage(NativeField::IV,stat,value,error);
+        case Shared::FieldIdentity::EV:
+            return session.stage(NativeField::EV,stat,value,error);
+        default:
+            error="Gen V shared editor field is not verified for staged editing";
+            return false;
+    }
 }
 [[nodiscard]] inline std::optional<
     PokeBank::UIModel::ExactFormatEditor::ExactFormatEditorDescriptor>
