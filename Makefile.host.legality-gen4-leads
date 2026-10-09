@@ -8,6 +8,10 @@ GEN4_BCC_SYNC_FAILURE_SOURCES := tests/test_gen4_bcc_sync_failure_reroll.cpp
 GEN4_BCC_SYNC_FAILURE_HEADERS := include/Legality/Gen4BugContestSynchronizeFailureEvidence.h \
 	include/Legality/Gen4LeadFailureEvidence.h include/Legality/Gen4LeadEffectEvidence.h \
 	include/Legality/Gen4LeadFrameEvidence.h include/Legality/Gen4WildEncounter.h
+GEN4_BCC_MULTI_BRIDGE_SOURCES := tests/test_gen4_bcc_multi_depth_central_reporting.cpp
+GEN4_BCC_MULTI_BRIDGE_HEADERS := include/Legality/Gen4WildRngCorrelation.h \
+	include/Legality/Gen4LeadReportingEvidence.h \
+	include/Legality/Gen4BugContestMixedDepthEvidence.h
 GEN4_BCC_MULTI_DEPTH_SOURCES := tests/test_gen4_bcc_mixed_sync_depth.cpp
 GEN4_BCC_MULTI_DEPTH_HEADERS := include/Legality/Gen4BugContestMixedDepthEvidence.h \
 	include/Legality/Gen4BugContestSynchronizeEvidence.h \
@@ -57,6 +61,7 @@ GEN4_LEAD_REPORTING_SOURCES := tests/test_gen4_lead_reporting_evidence.cpp
 GEN4_LEAD_REPORTING_HEADERS := include/Legality/Gen4LeadReportingEvidence.h \
 	include/Legality/Gen4LeadHistoryEvidence.h $(GEN4_LEAD_HISTORY_HEADERS)
 
+HOST_TESTS += $(HOST_BUILD)/test_gen4_bcc_multi_depth_central_reporting
 HOST_TESTS += $(HOST_BUILD)/test_gen4_bcc_mixed_sync_depth
 HOST_TESTS += $(HOST_BUILD)/test_gen4_bcc_mixed_sync_source_reporting
 HOST_TESTS += $(HOST_BUILD)/test_gen4_bcc_mixed_sync_reverse
@@ -70,6 +75,7 @@ HOST_TESTS += $(HOST_BUILD)/test_gen4_lead_effect_evidence \
 	$(HOST_BUILD)/test_gen4_lead_history_evidence \
 	$(HOST_BUILD)/test_gen4_min31_reroll_frames \
 	$(HOST_BUILD)/test_gen4_lead_reporting_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_bcc_multi_depth_central_reporting_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_bcc_mixed_sync_depth_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_bcc_mixed_sync_source_reporting_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_bcc_mixed_sync_reverse_sanitize
@@ -83,6 +89,7 @@ HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_lead_effect_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_lead_history_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_min31_reroll_frames_sanitize \
 	$(HOST_BUILD)/test_gen4_lead_reporting_evidence_sanitize
+host-test: $(HOST_BUILD)/test_gen4_bcc_multi_depth_central_reporting
 host-test: $(HOST_BUILD)/test_gen4_bcc_mixed_sync_depth
 host-test: $(HOST_BUILD)/test_gen4_bcc_mixed_sync_source_reporting
 host-test: $(HOST_BUILD)/test_gen4_bcc_mixed_sync_reverse
@@ -96,6 +103,7 @@ host-test: $(HOST_BUILD)/test_gen4_lead_effect_evidence \
 	$(HOST_BUILD)/test_gen4_lead_history_evidence \
 	$(HOST_BUILD)/test_gen4_min31_reroll_frames \
 	$(HOST_BUILD)/test_gen4_lead_reporting_evidence
+host-sanitize: $(HOST_BUILD)/test_gen4_bcc_multi_depth_central_reporting_sanitize
 host-sanitize: $(HOST_BUILD)/test_gen4_bcc_mixed_sync_depth_sanitize
 host-sanitize: $(HOST_BUILD)/test_gen4_bcc_mixed_sync_source_reporting_sanitize
 host-sanitize: $(HOST_BUILD)/test_gen4_bcc_mixed_sync_reverse_sanitize
@@ -213,3 +221,11 @@ $(HOST_BUILD)/test_gen4_bcc_mixed_sync_depth: $(GEN4_BCC_MULTI_DEPTH_SOURCES) $(
 $(HOST_BUILD)/test_gen4_bcc_mixed_sync_depth_sanitize: $(GEN4_BCC_MULTI_DEPTH_SOURCES) $(GEN4_BCC_MULTI_DEPTH_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_BCC_MULTI_DEPTH_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_bcc_multi_depth_central_reporting: $(GEN4_BCC_MULTI_BRIDGE_SOURCES) $(GEN4_BCC_MULTI_BRIDGE_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN4_BCC_MULTI_BRIDGE_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_bcc_multi_depth_central_reporting_sanitize: $(GEN4_BCC_MULTI_BRIDGE_SOURCES) $(GEN4_BCC_MULTI_BRIDGE_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_BCC_MULTI_BRIDGE_SOURCES) -o $@
