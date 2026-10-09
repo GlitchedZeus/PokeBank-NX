@@ -1087,6 +1087,11 @@ void testNativeGen4Bag() {
         auto isolated=PokeVault::Legacy::Gen4ReadOnlyTrainer::create(*opened,game,error);
         assert(isolated && isolated->items.empty());
         assert(isolated->party.size()==1 && isolated->party[0]);
+        // Corrupt bag contents must not block an otherwise valid independent
+        // staged Pokémon presentation refresh.
+        if(isolated->stagedPokemon())
+            assert(isolated->refreshStagedPokemonPresentation(error) &&
+                   isolated->items.empty() && isolated->party[0]);
         assert(digest(malformed)==corruptSource);
     }
 }
