@@ -30,13 +30,18 @@ require(
     surface,
     "Gen5EditorProvider::isGen5NdsId(screen.sourceGameId)",
     "if(!isGen5Source(screen))return false;",
-    "if(screen.details.active)",
-    "details.readOnly=true;",
-    "details.editSnapshot.clear();",
-    "screen.closeDetailsModal();",
+    "trainer.sharedScreen()",
+    "state.openActions",
+    "state.activateSelected(staged,error)",
+    "state.adjustField(delta,error)",
+    "state.keep(trainer.stagedPokemon(),error)",
+    "state.discardDraft()",
+    "state.requestExit(staged)",
+    "state.confirmDiscardAndExit(staged)",
+    "state.confirmDiscardAll(staged)",
     "screen.drawGSCOverlay(fb)",
     "screen.details.active=false;",
-    "drawVerifiedSummary(screen,fb);",
+    "drawVerifiedSummary(screen,fb,&view",
     "return true;",
     "No trainer renaming, money editing, source-save or bank commands.",
     "(void)touch;",
@@ -44,7 +49,10 @@ require(
 # Passive PK5 View must not invoke the legacy all-generation legality report.
 # Unknown/unsupported Gen V history is unresolved, not hard-invalid.
 assert "Legality::analyze(" not in surface
-assert surface.index("screen.details.active=false;") < surface.index("drawVerifiedSummary(screen,fb);")
+assert surface.index("screen.details.active=false;") < surface.index("drawVerifiedSummary(screen,fb,&view")
+assert "Gen5SharedScreenState" in read("include/Legacy/Gen5ReadOnlyTrainer.h")
+assert "Gen5SharedPokemonSession draft_;" in read("include/Integration/Gen5/Gen5SharedScreenState.h")
+assert "requestExit(const Workspace& workspace)" in read("include/Integration/Gen5/Gen5SharedScreenState.h")
 
 # The Gen V module itself must never invoke any generic source or bank mutation.
 for forbidden in (
