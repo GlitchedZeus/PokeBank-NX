@@ -19,6 +19,7 @@
 #include "UI/Dialogs/DialogFrame.h"
 #include "UI/Gen4SharedPokemonSession.h"
 #include "UI/MovePickerPresentation.h"
+#include "UI/MovePickerRowUI.h"
 #include "UI/ItemPickerArtwork.h"
 #include "UI/ScreenChrome.h"
 #include "UI/SharedPokemonEditorContract.h"
@@ -1498,8 +1499,8 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
             if (selected)
                 fb.drawSelectionHighlight(x + 24, yy, w - 48, moveLayout.highlightHeight);
             const auto value = state.pickerValues[static_cast<size_t>(i)];
-            fb.drawText(x + 40, yy + 8, pickerValueLabel(screen, state, value),
-                        Colors::Text, TextStyle::Body);
+            MovePickerRowUI::draw(fb,x+40,yy+4,value,
+                                  bridge(screen).sourceSave().rawFamily());
         }
         drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                         {"ZL/ZR", "Jump"}, {"A", "Select"}, {"B", "Cancel"}});
