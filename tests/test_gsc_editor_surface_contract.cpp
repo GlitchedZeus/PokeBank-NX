@@ -275,7 +275,11 @@ int main() {
     assert(pickerFix.find("constexpr int panelW = layout.width, panelH = layout.height") != std::string::npos);
     assert(pickerFix.find("constexpr int visible = layout.visibleRows") != std::string::npos);
     assert(pickerFix.find("layout.rowStep") != std::string::npos);
-    assert(pickerFix.find("TextStyle::Body") != std::string::npos);
+    // The shared Gen I-IV row renderer now owns emphasized move typography,
+    // fixed Acc/Pwr/PP columns, and separators (not the Gen II overlay).
+    assert(pickerFix.find("MovePickerRowUI::draw(fb") != std::string::npos);
+    const auto moveRow = readFile("include/UI/MovePickerRowUI.h");
+    assert(moveRow.find("TextStyle::Body") != std::string::npos);
     assert(pickerFix.find("Empty + compatible moves only • exact Gen II Acc / Pwr / PP") != std::string::npos);
     assert(pickerFix.find("MovePickerPresentation::rowLabel(move, Enums::GameVersion::GSC)") != std::string::npos);
     assert(pickerFix.find("Needs correction") == std::string::npos);
