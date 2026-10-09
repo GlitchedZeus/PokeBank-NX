@@ -500,6 +500,16 @@ namespace UI {
             infoRow("Trainer ID", std::to_string(t.TID16));
             if (screen.sourceGameId == "crystal_gbc")
                 infoRow("Gender", t.trainerGender == 0 ? "Male" : t.trainerGender == 1 ? "Female" : "Unknown");
+        } else if (screen.sourceGameId == "diamond_nds" ||
+                   screen.sourceGameId == "pearl_nds" ||
+                   screen.sourceGameId == "platinum_nds" ||
+                   screen.sourceGameId == "heartgold_nds" ||
+                   screen.sourceGameId == "soulsilver_nds") {
+            // Native Gen IV IDs are two separate 16-bit numbers. Do not
+            // mash them into one 'Trainer ID' row or repeat both as 'Full'.
+            infoRow("Gender", t.trainerGender == 0 ? "Male" : "Female");
+            infoRow("Trainer ID", std::to_string(t.TID16));
+            infoRow("Secret ID", std::to_string(t.SID16));
         } else {
             infoRow("Gender", t.trainerGender == 0 ? "Male" : "Female");
             infoRow("Trainer ID", std::to_string(t.TID16) + " / " + std::to_string(t.SID16));
@@ -4834,15 +4844,16 @@ namespace UI {
 
         // --- Title bar: the shared chrome, with game name + version + DLC as the subtitle ---
         const std::string legacyPlatform(PokeVault::Games::legacyPlatformAbbreviation(sourceGameId));
+        // Product-facing source identity belongs in the top bar; native
+        // diagnostic counters (G4 P1/0 B0/0 T0:14, etc.) belong in source
+        // details/logs, not beside the game title on every screen.
         std::string subtitle = legacyReadOnlySource()
-            ? legacyProviderLabel() + " / " +
-                (legacyPlatform.empty() ? std::string("LEGACY") : legacyPlatform) + " / READ ONLY — "
-            : sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY — " : "BACKUP WORKSPACE — ";
-        subtitle += titleName;
-        if (!gameVersion.empty()) {
-            subtitle += "  v" + gameVersion;
-        }
-        if (!trainer.saveRevisionString.empty() && trainer.saveRevisionString != "Base") {
+            ? legacyProviderLabel() + "  •  " + titleName + "  •  Read-only source"
+            : (sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY — "
+                                : "BACKUP WORKSPACE — ") + titleName;
+        if (!gameVersion.empty()) subtitle += "  v" + gameVersion;
+        if (!legacyReadOnlySource() && !trainer.saveRevisionString.empty() &&
+            trainer.saveRevisionString != "Base") {
             subtitle += "  (" + trainer.saveRevisionString + ")";
         }
         drawTitleBar(fb, subtitle);
