@@ -38,18 +38,15 @@ void beginActions(TrainerViewScreen& screen) {
 }
 void keepDraft(TrainerViewScreen& screen) {
     auto& trainer=nativeTrainer(screen);
-    auto before=trainer.stagedPokemon();
     std::string error;
-    if(!trainer.sharedScreen().keep(trainer.stagedPokemon(),error)) {
+    const bool kept=trainer.sharedScreen().keepWithPresentation(
+        trainer.stagedPokemon(),
+        [&](std::string& refreshError) {
+            return trainer.refreshStagedPokemonPresentation(refreshError);
+        },error);
+    if(!kept) {
         screen.postStatus(error.empty()?"Gen V Keep was rejected":error,360);
-        return;
-    }
-    if(!trainer.refreshStagedPokemonPresentation(error)) {
-        trainer.stagedPokemon()=std::move(before);
-        std::string restored;
-        (void)trainer.refreshStagedPokemonPresentation(restored);
-        screen.postStatus("Staged PK5 presentation failed; Keep rolled back: "+error,360);
-        return;
+        return; // Dirty draft, cursor and prior staged bytes are still intact.
     }
     screen.postStatus("PK5 draft kept in app memory only; emulator save unchanged",300);
     screen.controllerNavigation.reset();
@@ -131,16 +128,15 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
         case Surface::ConfirmDiscardAll:
             if(keys&HidNpadButton_B)state.back();
             else if(keys&HidNpadButton_Y) {
-                auto before=staged;
-                if(state.confirmDiscardAll(staged)) {
-                    std::string error;
-                    if(!trainer.refreshStagedPokemonPresentation(error)) {
-                        staged=std::move(before);
-                        std::string restored;
-                        (void)trainer.refreshStagedPokemonPresentation(restored);
-                        screen.postStatus("Discard refresh rejected; previous stage restored: "+error,360);
-                    } else
-                        screen.postStatus("All app-memory PK5 changes discarded; SAV5 unchanged",260);
+                std::string error;
+                if(!state.discardAllWithPresentation(staged,
+                    [&](std::string& refreshError) {
+                        return trainer.refreshStagedPokemonPresentation(refreshError);
+                    },error)) {
+                    screen.postStatus(error.empty()
+                        ?"Discard rejected; previous staged PK5 records preserved":error,360);
+                } else {
+                    screen.postStatus("All app-memory PK5 changes discarded; SAV5 unchanged",260);
                 }
             }
             return true;
