@@ -62,6 +62,31 @@ int main() {
     // Time/marshalling semantics remain specific to the actual source.
     assert(!hasInfo(report(18,36,caught,false,"gold_gbc"),evolvedText));
 
+
+    // Newly bounded Crystal level-up ancestry, through the immutable PK2
+    // wrapper and full production legality report. All inputs are real
+    // source-row species/location/level/time combinations.
+    const uint16_t caterpie=(1u<<14)|(3u<<8)|4u;
+    const uint16_t weedle=(1u<<14)|(3u<<8)|4u;
+    const uint16_t rattata=(1u<<14)|(2u<<8)|2u;
+    const uint16_t spearow=(1u<<14)|(6u<<8)|11u;
+    const uint16_t zubat=(3u<<14)|(3u<<8)|4u;
+    const uint16_t sentret=(1u<<14)|(2u<<8)|2u;
+    assert(hasInfo(report(11,7,caterpie),evolvedText));
+    assert(hasInfo(report(12,10,caterpie),evolvedText));
+    assert(hasInfo(report(14,7,weedle),evolvedText));
+    assert(hasInfo(report(15,10,weedle),evolvedText));
+    assert(hasInfo(report(20,20,rattata),evolvedText));
+    assert(hasInfo(report(22,20,spearow),evolvedText));
+    assert(hasInfo(report(42,22,zubat),evolvedText));
+    assert(hasInfo(report(162,15,sentret),evolvedText));
+    assert(!hasInfo(report(12,9,caterpie),evolvedText));
+    assert(!hasInfo(report(15,9,weedle),evolvedText));
+    assert(!hasInfo(report(162,14,sentret),evolvedText));
+    assert(!hasInfo(report(42,22,(1u<<14)|(3u<<8)|4u),evolvedText));
+    assert(!hasInfo(report(20,20,rattata,true),evolvedText));
+    assert(!hasInfo(report(20,20,rattata,false,"silver_gbc"),evolvedText));
+
     // Real pinned Crystal surfing Tentacool at location1 level20.
     constexpr uint16_t tentacool=(1u<<14)|(20u<<8)|1u;
     assert(hasInfo(report(73,30,tentacool),evolvedText) ||
