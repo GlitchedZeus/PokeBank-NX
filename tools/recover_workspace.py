@@ -304,6 +304,12 @@ def main() -> int:
     restore_game_cards(state)
     apply_overrides()
 
+    # Generated real Poké Ball and held-item PNGs must be reproducible on
+    # every CI/device candidate. The historical RomFS snapshot predates these
+    # icons, so recover against the SAME pinned PokeAPI commit at build time.
+    run("recover pinned Gen IV ball / held-item sprites",
+        [sys.executable, str(ROOT / "tools" / "gen_item_sprites.py")])
+
     run("device asset preflight", [sys.executable, str(ROOT / state["preflight"])])
 
     if args.build:
