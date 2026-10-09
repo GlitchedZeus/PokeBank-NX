@@ -35,6 +35,7 @@ GEN4_LEAD_HISTORY_SOURCES := tests/test_gen4_lead_history_evidence.cpp
 GEN4_LEAD_HISTORY_HEADERS := include/Legality/Gen4LeadHistoryEvidence.h \
 	include/Legality/Gen4BugContestSynchronizeFailureEvidence.h \
 	include/Legality/Gen4BugContestMixedSyncEvidence.h \
+	include/Legality/Gen4BugContestMixedSyncReverseEvidence.h \
 	include/Legality/Gen4PressureLeadEvidence.h include/Legality/Gen4StaticMagnetLeadEvidence.h \
 	include/Legality/Gen4LeadFailureEvidence.h include/Legality/Gen4LeadEffectEvidence.h \
 	include/Legality/Gen4LeadFrameEvidence.h include/Legality/Gen4WildRngCorrelation.h

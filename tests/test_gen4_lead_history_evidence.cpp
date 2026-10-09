@@ -211,6 +211,24 @@ int main() {
         true, makeRow(8, 3, 9, 18, 0), 0, 18,
         mixedSeed, mixedPid, 15).has(Path::SynchronizeMixedSuccessThenFailure));
 
+    // The opposite direction is separately source-backed: rejected first
+    // attempt failed Synchronize, retained attempt succeeded Synchronize.
+    // Real HG encounter_hg.pkl Kakuna row, location 207, BCC slot3/rate25.
+    constexpr uint32_t reverseSeed = 0x00000AD2u;
+    constexpr uint32_t reversePid = 0xECE9B3BCu;
+    constexpr auto reverse = matchIndexedRow(
+        true, mixedRow, 0, 18, reverseSeed, reversePid, 11);
+    static_assert(reverse.has(Path::SynchronizeMixedFailureThenSuccess));
+    static_assert(!matchIndexedRow(
+        true, mixedRow, 0, 18, reverseSeed, reversePid, 12)
+        .has(Path::SynchronizeMixedFailureThenSuccess));
+    static_assert(!matchIndexedRow(
+        false, mixedRow, 0, 18, reverseSeed, reversePid, 11)
+        .has(Path::SynchronizeMixedFailureThenSuccess));
+    static_assert(!matchIndexedRow(
+        true, makeRow(8, 3, 9, 18, 0), 0, 18,
+        reverseSeed, reversePid, 11).has(Path::SynchronizeMixedFailureThenSuccess));
+
     constexpr uint64_t safari = makeRow(10, 0, 15, 15, 6);
     static_assert(!matchIndexedRow(
         true, safari, 0, 15,

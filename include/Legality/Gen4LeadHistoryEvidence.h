@@ -2,6 +2,7 @@
 
 #include "Legality/Gen4BugContestSynchronizeFailureEvidence.h"
 #include "Legality/Gen4BugContestMixedSyncEvidence.h"
+#include "Legality/Gen4BugContestMixedSyncReverseEvidence.h"
 #include "Legality/Gen4PressureLeadEvidence.h"
 #include "Legality/Gen4StaticMagnetLeadEvidence.h"
 
@@ -22,6 +23,7 @@ enum class Path : uint16_t {
     StaticMagnetFailure = 1u << 6,
     IntimidateContinue = 1u << 7,
     SynchronizeMixedSuccessThenFailure = 1u << 8,
+    SynchronizeMixedFailureThenSuccess = 1u << 9,
 };
 
 struct Result {
@@ -94,6 +96,13 @@ constexpr Result matchIndexedRow(bool hgss, uint64_t row,
     if (hgss && Gen4BugContestMixedSync::matchSuccessThenFailure(
             row, prePidSeed, pid, metLevel).matched())
         result.add(Path::SynchronizeMixedSuccessThenFailure);
+
+    // The complementary retail Method K BCC retry history is also a
+    // positive-only proof: rejected attempt fails Synchronize, persisted
+    // attempt succeeds it after the minimum-31 reroll.
+    if (hgss && Gen4BugContestMixedSyncReverse::matchFailureThenSuccess(
+            row, prePidSeed, pid, metLevel).matched())
+        result.add(Path::SynchronizeMixedFailureThenSuccess);
 
     if (Gen4LeadFailure::matchRow(
             hgss, row, prePidSeed, pid, metLevel,
@@ -180,6 +189,8 @@ constexpr const char* pathName(Path path) noexcept {
             return "Intimidate/Keen Eye encounter-continues";
         case Path::SynchronizeMixedSuccessThenFailure:
             return "Synchronize success then failure (BCC reroll)";
+        case Path::SynchronizeMixedFailureThenSuccess:
+            return "Synchronize failure then success (BCC reroll)";
         case Path::None: break;
     }
     return "No extended lead-history evidence";
