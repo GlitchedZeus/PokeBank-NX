@@ -9,6 +9,7 @@ on:
       - 'src/UI/**'
       - 'tests/test_touch_*.py'
       - 'tests/test_touch_*.cpp'
+      - 'tests/test_gsc_editor_surface_contract.cpp'
       - 'tests/touch_fakes/**'
       - '.github/workflows/touch-input-gating.yml'
   pull_request:
@@ -17,6 +18,7 @@ on:
       - 'src/UI/**'
       - 'tests/test_touch_*.py'
       - 'tests/test_touch_*.cpp'
+      - 'tests/test_gsc_editor_surface_contract.cpp'
       - 'tests/touch_fakes/**'
       - '.github/workflows/touch-input-gating.yml'
   workflow_dispatch:
@@ -42,3 +44,10 @@ jobs:
             -Itests/touch_fakes -Iinclude \
             tests/test_touch_scroll_state.cpp -o /tmp/pokebank_touch_scroll_state
           /tmp/pokebank_touch_scroll_state
+      # Keep this tiny source-level regression in the fast gate: host-test takes
+      # longer to rebuild all generations and previously hid stale Gen II assertions.
+      - name: Generation II editor touch-safe presentation regression
+        run: |
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+            tests/test_gsc_editor_surface_contract.cpp -o /tmp/pokebank_gsc_surface
+          /tmp/pokebank_gsc_surface
