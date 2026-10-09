@@ -278,10 +278,15 @@ int main() {
 
     // Gen I is included in the shared move text formatting requirements:
     // all four native picker paths consume the identical separator formatter.
-    contains(gen1Move, "MoveUI::rowLabel(");
-    contains(gen2Move, "MovePickerPresentation::rowLabel(");
-    contains(gen3Picker, "MoveUI::rowLabel(");
-    contains(surface, "MoveUI::rowLabel(");
+    const auto fixedMoveRows = read("include/UI/MovePickerRowUI.h");
+    contains(gen1Move, "MovePickerRowUI::draw(fb");
+    contains(gen2Move, "MovePickerRowUI::draw(fb");
+    contains(gen3Picker, "MovePickerRowUI::draw(fb");
+    contains(surface, "MovePickerRowUI::draw(fb");
+    contains(fixedMoveRows, "Presentation::numberedName(move)");
+    contains(fixedMoveRows, "x+308");
+    contains(fixedMoveRows, "x+423");
+    contains(fixedMoveRows, "x+538");
     contains(movePickerModel, "  |  Pwr ");
     contains(movePickerModel, "  |  PP ");
 
