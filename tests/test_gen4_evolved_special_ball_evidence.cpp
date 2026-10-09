@@ -35,13 +35,13 @@ int main() {
     // PID selects the Silcoon/Beautifly branch. PID upper half 1 -> 0;
     // PID upper half 6 -> 1 (Cascoon/Dustox).
     constexpr uint64_t wurmple=0xD80303051509ULL;
-    static_assert(Gen4Wild::game(wurmple)==Gen4Wild::Game::HeartGold);
-    static_assert(Gen4Wild::species(wurmple)==265);
-    static_assert(Gen4Wild::location(wurmple)==138);
-    static_assert(Gen4Wild::minLevel(wurmple)==2);
-    static_assert(Gen4Wild::maxLevel(wurmple)==3);
-    static_assert(Gen4Wild::method(wurmple)==6);
-    assert(Gen4SpecialBallEvidence::analyzeSupported(
+    static_assert(Legality::Gen4Wild::game(wurmple)==Legality::Gen4Wild::Game::HeartGold);
+    static_assert(Legality::Gen4Wild::species(wurmple)==265);
+    static_assert(Legality::Gen4Wild::location(wurmple)==138);
+    static_assert(Legality::Gen4Wild::minLevel(wurmple)==2);
+    static_assert(Legality::Gen4Wild::maxLevel(wurmple)==3);
+    static_assert(Legality::Gen4Wild::method(wurmple)==6);
+    assert(Legality::Gen4SpecialBallEvidence::analyzeSupported(
         "heartgold_nds",265,138,2,0,17)==A::ApricornWild);
     const auto beautyAllowed=E::analyzeSupported(
         "heartgold_nds",267,138,2,0,17,0x00010000u);
