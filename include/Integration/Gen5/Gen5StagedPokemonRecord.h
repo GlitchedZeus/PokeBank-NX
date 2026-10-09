@@ -82,6 +82,10 @@ public:
                 candidate[0x18+stat] = static_cast<uint8_t>(value);
                 break;
             }
+            default:
+                // A corrupted/forged enum is not a noop mutation. It must
+                // never be accepted as a valid native PK5 field transaction.
+                return fail("Gen V staged editor field is unsupported");
         }
 
         const auto encrypted = Crypto::encryptCandidate(candidate);
