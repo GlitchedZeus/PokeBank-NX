@@ -73,6 +73,12 @@ public:
                             const Pokemon::Pokemon4Mutable& pokemon,
                             std::string* error = nullptr);
 
+    // Change an already-present native bag stack's quantity ONLY in the
+    // app-owned staged save. No Add/Remove, item-ID change or source write.
+    // `visibleIndex` is the zero-based populated row within its pouch.
+    bool stageBagQuantity(size_t pocket,size_t visibleIndex,uint16_t quantity,
+                          std::string* error=nullptr);
+
     void discard() noexcept { staged_ = original_; }
 
     [[nodiscard]] std::vector<uint8_t> finalizedBytes(std::string* error = nullptr) const;
