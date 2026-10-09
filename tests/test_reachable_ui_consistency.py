@@ -8,7 +8,10 @@ def read(path: str) -> str:
 
 held = read("include/UI/Gen2HeldItemPicker.h")
 assert "Colors::SurfaceSelected" in held
-assert "focused ? Colors::SelectedText : Colors::Text" in held
+# After app-wide item picker contrast polish, all row labels use the theme-aware
+# foreground text (the selection itself uses the contrasted surface/background).
+assert "Colors::Text, TextStyle::Caption" in held
+assert "ItemPickerArtwork::draw(" in held
 
 picker = read("src/UI/Gen2PokemonPickerOverlay.inc")
 assert "selected ? Colors::SelectedText : textColor" in picker
