@@ -24,6 +24,7 @@
 #include "Legality/Gen2StaticEncounter.h"
 #include "Legality/Gen2TradeEvidence.h"
 #include "Legality/Gen2WildEncounter.h"
+#include "Legality/Gen2CrystalEvolvedWildEvidence.h"
 #include "Legality/Gen3PidIvCorrelation.h"
 #include "Legality/Gen3SafariOriginEvidence.h"
 #include "Legality/Gen3WondercardEggEventTemplate.h"
@@ -679,6 +680,13 @@ namespace Legality {
                 if (Gen2Wild::matchesCrystalCaughtData(gen2.speciesID(), gen2.caughtData())) {
                     add(r, Severity::Info,
                         "PK2 caught-data location/level/time matches a pinned Crystal wild encounter slot",
+                        CheckIdentifier::Encounter);
+                } else if (Gen2CrystalEvolvedWild::analyze(
+                        gen2.speciesID(), gen2.level(),
+                        gen2.caughtData(), gen2.isEgg()) !=
+                        Gen2CrystalEvolvedWild::Ancestor::None) {
+                    add(r, Severity::Info,
+                        "PK2 caught-data is compatible with a pinned Crystal wild pre-evolution capture; later evolution and competing provenance remain incomplete",
                         CheckIdentifier::Encounter);
                 } else if (Gen2Wild::hasSpecies(exactSourceGameId, gen2.speciesID())) {
                     add(r, Severity::Info,

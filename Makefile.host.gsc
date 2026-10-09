@@ -47,6 +47,10 @@ GSC_RUNTIME_CATALOG_SOURCES := tests/test_gsc_runtime_catalog.cpp \
 	src/Legacy/FRLGSourceBrowser.cpp src/Legacy/LegacySourceBindings.cpp
 GSC_RUNTIME_CATALOG_FLAGS := -Wno-unused-parameter
 
+GSC_EVOLVED_WILD_SOURCES := tests/test_gen2_crystal_evolved_wild.cpp
+GSC_EVOLVED_WILD_HEADERS := include/Legality/Gen2CrystalEvolvedWildEvidence.h \
+	include/Legality/Gen2WildEncounter.h \
+	include/Legality/Gen2WildEncounterData.inc
 GSC_HOST_TESTS := $(HOST_BUILD)/test_gsc_gen2_adapter \
 	$(HOST_BUILD)/test_gsc_inventory \
 	$(HOST_BUILD)/test_gsc_gen2_personal \
@@ -157,3 +161,16 @@ $(HOST_BUILD)/test_gsc_export_transaction: $(GSC_EXPORT_TRANSACTION_SOURCES)
 $(HOST_BUILD)/test_gsc_export_transaction_sanitize: $(GSC_EXPORT_TRANSACTION_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+HOST_TESTS += $(HOST_BUILD)/test_gen2_crystal_evolved_wild
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_crystal_evolved_wild_sanitize
+host-test: $(HOST_BUILD)/test_gen2_crystal_evolved_wild
+host-sanitize: $(HOST_BUILD)/test_gen2_crystal_evolved_wild_sanitize
+
+$(HOST_BUILD)/test_gen2_crystal_evolved_wild: $(GSC_EVOLVED_WILD_SOURCES) $(GSC_EVOLVED_WILD_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GSC_EVOLVED_WILD_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen2_crystal_evolved_wild_sanitize: $(GSC_EVOLVED_WILD_SOURCES) $(GSC_EVOLVED_WILD_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_EVOLVED_WILD_SOURCES) -o $@
