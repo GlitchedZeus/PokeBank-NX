@@ -1,5 +1,6 @@
 #include "Integration/Gen4/Gen4ExactFormatEditorProvider.h"
 #include "Integration/Gen4/Gen4MoveCompatibility.h"
+#include "Integration/Gen4/Gen4BagCatalog.h"
 #include "Legacy/Gen4ReadOnlyTrainer.h"
 #include "Enums/Ball.h"
 #include "Enums/LanguageID.h"
@@ -94,6 +95,10 @@ struct State {
     int itemQuantityVisibleRow = 0;
     uint16_t itemQuantityBaseline = 1;
     uint16_t itemQuantityDraft = 1;
+    bool itemAddPickerActive = false;
+    int itemAddPocket = 0;
+    int itemAddIndex = 0;
+    std::vector<uint16_t> itemAddChoices;
     bool itemRemoveConfirmActive = false;
     int itemRemovePocket = 0;
     int itemRemoveVisibleRow = 0;
@@ -140,7 +145,7 @@ bool ownsFrameImpl(const TrainerViewScreen& screen) noexcept {
     if (!isGen4Nds(screen)) return false;
     const auto& state = stateFor(screen);
     return state.actions || state.review || state.legality || state.confirmRelease ||
-           state.itemQuantityActive || state.itemRemoveConfirmActive ||
+           state.itemQuantityActive || state.itemRemoveConfirmActive || state.itemAddPickerActive ||
            state.valuePicker || state.moveEditor || workspaceActive(state);
 }
 
@@ -1962,6 +1967,74 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
                         u64 held,int stickX,int stickY) {
     const bool itemsScreen=screen.detailViewActive &&
         screen.selectedMode==TrainerViewScreen::ViewMode::Items;
+    if(state.itemAddPickerActive) {
+        const u64 keys=screen.controllerNavigation.apply(
+            down,held,stickX,stickY,
+            HidNpadButton_Up,HidNpadButton_Down,
+            HidNpadButton_Left,HidNpadButton_Right);
+        if(keys&HidNpadButton_B) {
+            state.itemAddPickerActive=false;
+            state.itemAddChoices.clear();
+            screen.controllerNavigation.reset();
+            return true;
+        }
+        const int size=static_cast<int>(state.itemAddChoices.size());
+        if(size<=0) {
+            state.itemAddPickerActive=false;
+            return true;
+        }
+        if(keys&HidNpadButton_Up)
+            state.itemAddIndex=(state.itemAddIndex+size-1)%size;
+        if(keys&HidNpadButton_Down)
+            state.itemAddIndex=(state.itemAddIndex+1)%size;
+        if(keys&(HidNpadButton_L|HidNpadButton_Left))
+            state.itemAddIndex=std::max(0,state.itemAddIndex-9);
+        if(keys&(HidNpadButton_R|HidNpadButton_Right))
+            state.itemAddIndex=std::min(size-1,state.itemAddIndex+9);
+        if(keys&HidNpadButton_ZL)
+            state.itemAddIndex=std::max(0,state.itemAddIndex-45);
+        if(keys&HidNpadButton_ZR)
+            state.itemAddIndex=std::min(size-1,state.itemAddIndex+45);
+        if(!(keys&HidNpadButton_A))return true;
+        if(!itemsScreen || screen.selectedCategory!=state.itemAddPocket) {
+            screen.postStatus("Gen IV Add pocket changed; cancelled",280);
+            state.itemAddPickerActive=false;
+            return true;
+        }
+        auto* staged=editor(screen);
+        if(!staged) {
+            screen.postStatus("Gen IV Add requires a verified staged workspace",280);
+            state.itemAddPickerActive=false;
+            return true;
+        }
+        const uint16_t id=state.itemAddChoices[static_cast<size_t>(state.itemAddIndex)];
+        auto backup=*staged;
+        std::string error;
+        if(!staged->stageBagAdd(static_cast<size_t>(state.itemAddPocket),id,1,&error)) {
+            screen.postStatus(error,300);
+            return true;
+        }
+        if(!bridge(screen).refreshStagedPokemonPresentation(error)) {
+            *staged=std::move(backup);
+            std::string restored;
+            (void)bridge(screen).refreshStagedPokemonPresentation(restored);
+            screen.postStatus("Gen IV Add display rejected; previous stage retained: "+error,360);
+            return true;
+        }
+        state.itemAddPickerActive=false;
+        state.itemAddChoices.clear();
+        const auto visible=screen.visibleItemIndices();
+        const auto& pouch=screen.trainer.items[static_cast<size_t>(state.itemAddPocket)];
+        for(size_t i=0;i<visible.size();++i)
+            if(pouch[static_cast<size_t>(visible[i])].itemId==id) {
+                screen.selectedItemIndex=static_cast<int>(i);
+                screen.currentPage=screen.selectedItemIndex/8;
+                break;
+            }
+        screen.controllerNavigation.reset();
+        screen.postStatus("Gen IV item added to staged workspace ONLY (x1)",280);
+        return true;
+    }
     if(state.itemRemoveConfirmActive) {
         // Deliberate Y->Y two-press removal with a separate confirmation frame.
         // A never removes; B always cancels without touching a staged byte.
@@ -2025,11 +2098,37 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         // Forward controller movement and B/Exit to the shared Items panel.
         // Only A on an occupied, validated native stack opens an app-memory
         // draft. A must NEVER perform a destructive removal or source write.
-        if(!itemsScreen || !(down&(HidNpadButton_A|HidNpadButton_Y)) ||
+        if(!itemsScreen || !(down&(HidNpadButton_A|HidNpadButton_Y|HidNpadButton_X)) ||
            screen.helpOverlayActive || screen.itemEditDialogActive ||
            screen.saveConfirmActive || screen.pickerActive ||
            screen.actionSheet.isOpen())return false;
         const int pocket=screen.selectedCategory;
+        if(down&HidNpadButton_X) {
+            auto* staged=editor(screen);
+            if(!staged || pocket<0 || pocket>=static_cast<int>(Gen4::BagPocketCount) ||
+               !Gen4::decodeReadOnlyBag(bridge(screen).sourceSave())) {
+                screen.postStatus("Gen IV Add requires a validated native source bag",300);
+                return true;
+            }
+            const auto candidates=Gen4::gen4BagChoices(staged->layout(),
+                                                       static_cast<size_t>(pocket));
+            const auto& existing=screen.trainer.items[static_cast<size_t>(pocket)];
+            state.itemAddChoices.clear();
+            for(const uint16_t id:candidates) {
+                const bool present=std::any_of(existing.begin(),existing.end(),
+                    [id](const auto& item){return item.itemId==id && item.count>0;});
+                if(!present)state.itemAddChoices.push_back(id);
+            }
+            if(state.itemAddChoices.empty()) {
+                screen.postStatus("No supported new Gen IV item IDs in this pocket",280);
+                return true;
+            }
+            state.itemAddPickerActive=true;
+            state.itemAddPocket=pocket;
+            state.itemAddIndex=0;
+            screen.controllerNavigation.reset();
+            return true;
+        }
         const int visible=screen.selectedItemIndex;
         if(pocket<0 || pocket>=static_cast<int>(screen.trainer.items.size()))return false;
         const auto indices=screen.visibleItemIndices();
@@ -2120,6 +2219,37 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
     screen.controllerNavigation.reset();
     screen.postStatus("Gen IV item quantity staged; emulator source unchanged",300);
     return true;
+}
+
+void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
+    screen.drawGSCOverlay(fb);
+    const int w=780,h=532,x=(fb.getWidth()-w)/2;
+    const int y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,160));
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::FocusBorder,1);
+    fb.drawText(x+24,y+17,"Add Item - Generation IV",Colors::Text,TextStyle::Heading);
+    fb.drawText(x+24,y+53,
+        std::string(Gen4::bagPocketName(static_cast<size_t>(state.itemAddPocket)))+
+        "  |  Supported native items only",Colors::TextSecondary,TextStyle::Caption);
+    const int count=static_cast<int>(state.itemAddChoices.size());
+    const int start=(state.itemAddIndex/9)*9;
+    for(int row=0;row<9 && start+row<count;++row) {
+        const int index=start+row;
+        const int yy=y+88+row*43;
+        const auto id=state.itemAddChoices[static_cast<size_t>(index)];
+        const std::string name=Names::getItemName(id);
+        if(index==state.itemAddIndex)
+            fb.drawSelectionHighlight(x+18,yy,w-36,38);
+        fb.drawText(x+32,yy+9,name,Colors::Text,TextStyle::Body);
+        ItemPickerArtwork::draw(fb,x+w-31,yy+3,32,name);
+    }
+    fb.drawText(x+24,y+h-38,
+        std::to_string(state.itemAddIndex+1)+" / "+std::to_string(count)+
+        "  |  New native stack starts at x1 (edit quantity afterward)",
+        Colors::Accent,TextStyle::Caption);
+    drawNavBar(fb,{{"D-pad/Stick","Choose"},{"L/R","Page"},
+                   {"A","Add Staged"},{"B","Cancel"}});
 }
 
 void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
@@ -2220,7 +2350,8 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
 bool draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!ownsFrameImpl(screen)) return false;
     auto& state = stateFor(screen);
-    if (state.itemRemoveConfirmActive)drawItemRemoveConfirm(screen,fb,state);
+    if (state.itemAddPickerActive)drawItemAddPicker(screen,fb,state);
+    else if (state.itemRemoveConfirmActive)drawItemRemoveConfirm(screen,fb,state);
     else if (state.itemQuantityActive)drawItemQuantity(screen,fb,state);
     else if (state.confirmRelease) drawReleaseConfirm(screen, fb, state);
     else if (state.legality) drawLegality(screen, fb, state);
