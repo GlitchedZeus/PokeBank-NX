@@ -74,7 +74,7 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
         if (selected)
             fb.drawSelectionHighlight(x + 24, yy, panelW - 48, layout.highlightHeight);
         fb.drawText(x + 40, yy + 8, label,
-                    selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
+                    Colors::Text, TextStyle::Body);
     }
     drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                     {"A", "Select"}, {"B", "Cancel"}});
