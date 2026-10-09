@@ -300,6 +300,20 @@ int main() {
     contains(itemsPanel, "bagPocketName");
     contains(bridge, "decodeReadOnlyBag(save_)");
     contains(bridge, "items.assign(bag->begin(),bag->end())");
+    // Native Item quantity changes are staged only, routed in the Gen IV
+    // overlay BEFORE the inherited generic source mutation/dialog handlers.
+    const auto stagedBackend = read("src/Integration/Gen4/Gen4StagedPokemonEditor.cpp");
+    contains(stagedBackend, "stageBagQuantity(");
+    contains(stagedBackend, "refreshGeneralCrc(*before,error)");
+    contains(stagedBackend, "unexpectedly changed unrelated save bytes");
+    contains(surface, "if(handleItemQuantity(screen,state,down,held,stickX,stickY))return true;");
+    contains(surface, "state.itemQuantityDraft");
+    contains(surface, "staged->stageBagQuantity(");
+    contains(surface, "auto saved=*staged;");
+    contains(surface, "*staged=std::move(saved);");
+    contains(surface, "Gen IV item quantity staged; emulator source unchanged");
+    contains(surface, "if (state.itemQuantityActive)drawItemQuantity");
+
 
     // A committed staged edit must not claim UI success when the refreshed presentation failed.
     contains(surface, "if (!refreshPresentation(screen))");
