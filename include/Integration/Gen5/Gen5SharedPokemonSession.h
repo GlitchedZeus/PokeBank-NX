@@ -28,6 +28,12 @@ public:
     [[nodiscard]] bool begin(const Gen5StagedPokemonWorkspace& workspace,
                              Slot location, Mode next, std::string& error) {
         error.clear();
+        // A second Open must never silently replace an existing local draft.
+        // The shared UI must explicitly Keep or Discard before switching slots.
+        if(mode_!=Mode::None) {
+            error="Gen V draft already open; Keep or Discard before changing slots";
+            return false;
+        }
         if(next != Mode::View && next != Mode::Edit) {
             error="Gen V shared editor requires explicit View or Edit";
             return false;
