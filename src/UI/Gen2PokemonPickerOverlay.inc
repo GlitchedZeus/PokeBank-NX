@@ -245,11 +245,17 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         }
         if (picker.model.active()) picker.model.close();
         picker.scroll.reset();
+        picker.moveScroll.reset();
+        picker.moveViewport.reset();
+        picker.locationViewport.reset();
         return false;
     }
     if (state.mode == Mode::None) {
         if (picker.model.active()) picker.model.close();
         picker.scroll.reset();
+        picker.moveScroll.reset();
+        picker.moveViewport.reset();
+        picker.locationViewport.reset();
         return false;
     }
 
