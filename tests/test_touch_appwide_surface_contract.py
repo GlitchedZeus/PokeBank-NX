@@ -220,6 +220,26 @@ for picker_name, input_body in (("Species", species_input), ("Move", move_input)
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc",
             "TouchPickerViewport pickerViewport;",
             "state.pickerViewport.reset();")
+# Gen I's main field viewport must never use its semantic selected row as
+# the finger-scrolled cursor. A hidden focused field is revealed before A.
+require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc",
+            "TouchPickerViewport editorViewport;",
+            "state.editorViewport.reset();")
+require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
+            "state.editorViewport.ensure(state.row, 14, visible);",
+            "const int start = state.editorViewport.firstRow;",
+            "state.editorViewport.firstRow, maxFirst + 1);",
+            "state.editorViewport.reveal(state.row, 14, 10);",
+            "state.editorViewport.containsSelection(state.row, fieldCount, visible)",
+            "Focused field brought into view; press A again or tap its row")
+field_path = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc").split(
+    "uint64_t ux3DirectTouchInput(", 1)[1].split(
+    "if (state.mode == UX2Mode::Edit || state.mode == UX2Mode::AddDraft) {", 1)[1].split(
+    "} else if (state.mode == UX2Mode::Actions) {", 1)[0]
+if "state.row = field;" not in field_path or "pressed" in field_path:
+    raise AssertionError("Gen I editor: row selection must happen on a tap, not touch-down")
+if "touch, 384, 161, 410, 438, 42, state.row" in field_path:
+    raise AssertionError("Gen I editor: finger scroll must not mutate the selected field")
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
             "state.pickerViewport.ensure(selectedIndex, count, visible);",
             "const int start = state.pickerViewport.firstRow;",

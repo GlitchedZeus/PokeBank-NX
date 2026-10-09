@@ -460,7 +460,8 @@ void ux3DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     const int listY = contentY + 52;
     const int viewportH = contentH - 68;
     const int visible = std::max(1, viewportH / rowH);
-    const int start = std::clamp(state.row - visible / 2, 0, std::max(0, 14 - visible));
+    state.editorViewport.ensure(state.row, 14, visible);
+    const int start = state.editorViewport.firstRow;
     const int drawFirst = std::max(0, start - 1);
     const int drawLast = std::min(14, start + visible + 1);
     const int liveOffset = state.editorScroll.offset();
@@ -764,16 +765,30 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
 
     if (state.mode == UX2Mode::Edit || state.mode == UX2Mode::AddDraft) {
         constexpr int fieldCount = 14;
-        int field = selectedId(2000, fieldCount, pressed);
-        if (field >= 0) state.row = field;
-        field = selectedId(2000, fieldCount, tapped);
+        constexpr int visible = 10; // 438px physical editor list / 42px row
+        // Contact is not selection: let a potential drag scroll an independent
+        // viewport, then activate a row only after a same-target tap release.
+        const int field = selectedId(2000, fieldCount, tapped);
         if (field >= 0) { state.row = field; down |= HidNpadButton_A; }
-        state.editorScroll.updateVertical(
-            touch, 384, 161, 410, 438, 42, state.row, fieldCount);
+        state.editorViewport.ensure(state.row, fieldCount, visible);
+        const int maxFirst = TouchPickerViewport::maxFirst(fieldCount, visible);
+        if (maxFirst > 0)
+            state.editorScroll.updateVertical(
+                touch, 384, 161, 410, 438, 42,
+                state.editorViewport.firstRow, maxFirst + 1);
+        else
+            state.editorScroll.stop();
         if (down & (HidNpadButton_Up | HidNpadButton_Down |
                     HidNpadButton_Left | HidNpadButton_Right |
                     HidNpadButton_L | HidNpadButton_R))
             state.editorScroll.stop();
+        if ((down & HidNpadButton_A) &&
+            !state.editorViewport.containsSelection(state.row, fieldCount, visible)) {
+            state.editorScroll.stop();
+            state.editorViewport.reveal(state.row, fieldCount, visible);
+            screen.postStatus("Focused field brought into view; press A again or tap its row", 220);
+            down &= ~HidNpadButton_A;
+        }
     } else if (state.mode == UX2Mode::Actions) {
         std::string error;
         const auto pokemon = ux2SelectedPokemon(screen, error);
@@ -839,6 +854,14 @@ void ux3HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
     }
     if (state.mode == UX2Mode::Edit || state.mode == UX2Mode::AddDraft) {
         ux3HandleMainEditor(screen, down);
+        if (state.mode == UX2Mode::Edit || state.mode == UX2Mode::AddDraft) {
+            if (down & (HidNpadButton_Up | HidNpadButton_Down |
+                        HidNpadButton_L | HidNpadButton_R |
+                        HidNpadButton_Left | HidNpadButton_Right)) {
+                state.editorScroll.stop();
+                state.editorViewport.reveal(state.row, 14, 10);
+            }
+        }
         return;
     }
 

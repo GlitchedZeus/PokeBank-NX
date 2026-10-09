@@ -32,6 +32,7 @@ struct UX2State {
     int subRow = 0;
     int reviewRow = 0;
     TouchScrollState editorScroll;
+    TouchPickerViewport editorViewport;
     TouchScrollState pickerScroll;
     TouchPickerViewport pickerViewport;
     TouchScrollState reviewScroll;
@@ -68,6 +69,7 @@ UX2State& ux2StateFor(const TrainerViewScreen& screen) {
 
 void ux2ResetTouchMotion(UX2State& state) noexcept {
     state.editorScroll.reset();
+    state.editorViewport.reset();
     state.pickerScroll.reset();
     state.pickerViewport.reset();
     state.reviewScroll.reset();
@@ -154,6 +156,7 @@ void ux2BeginAdd(TrainerViewScreen& screen) {
     state.slot = static_cast<int>(*destination);
     state.draft = BoxPokemonCreate{};
     state.editorScroll.reset();
+    state.editorViewport.reset();
     state.pickerScroll.reset();
     state.mode = UX2Mode::AddDraft;
     state.row = 0;
@@ -628,6 +631,7 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
             case UX::Action::View: state.mode = UX2Mode::View; break;
             case UX::Action::Edit:
                 state.editorScroll.reset();
+                state.editorViewport.reset();
                 state.mode = UX2Mode::Edit;
                 state.row = 0;
                 break;
