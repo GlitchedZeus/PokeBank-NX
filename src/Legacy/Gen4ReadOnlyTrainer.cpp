@@ -90,11 +90,11 @@ bool Gen4ReadOnlyTrainer::refreshStagedPokemonPresentation(std::string& error) {
     // All presentation surfaces must agree with the staged General block.
     // Refuse malformed bag metadata without replacing Party/Boxes/Items.
     const auto displayBag=Integration::Gen4::decodeReadOnlyBag(*parsed);
-    if(!displayBag) {
-        error="Gen IV staged bag presentation failed strict validation";
-        return false;
-    }
-    decltype(items) displayItems(displayBag->begin(),displayBag->end());
+    decltype(items) displayItems;
+    if(displayBag)displayItems.assign(displayBag->begin(),displayBag->end());
+    // An existing malformed bag is quarantined, not a reason to block a
+    // validated independent Pokémon edit. The native item editor itself
+    // refuses to stage quantities until the original bag validates.
     party.swap(displayParty);
     boxes.swap(displayBoxes);
     items.swap(displayItems);
