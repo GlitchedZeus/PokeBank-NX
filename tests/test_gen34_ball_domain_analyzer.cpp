@@ -90,13 +90,14 @@ Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true) {
 
 Legality::Report analyzeNativeHgssSpecialBall(
         uint16_t species, uint16_t metLocation,
-        uint8_t metLevel, uint8_t ball, uint8_t originVersion = 7) {
+        uint8_t metLevel, uint8_t ball, uint8_t originVersion = 7,
+        uint32_t experience = 3375) {
     std::vector<std::byte> raw(Encryption::SIZE_STORED4, std::byte{0});
     wr32(raw, 0x00, 0x12345678u);
     wr16(raw, 0x08, species);
     wr16(raw, 0x0C, 12345);
     wr16(raw, 0x0E, 54321);
-    wr32(raw, 0x10, 3375u);
+    wr32(raw, 0x10, experience);
     raw[0x17] = std::byte{2};
     raw[0x5F] = static_cast<std::byte>(originVersion);
     wr16(raw, 0x46, metLocation); // Extended Pt/HGSS location.
@@ -264,6 +265,30 @@ int main() {
         "Sport Ball has a compatible HeartGold/SoulSilver Bug-Catching Contest source"));
     // Native encrypted HGSS PK4 Apricorn Ball -> read-only view ->
     // exact source analyzer: actual HeartGold Pidgey at location149/level2.
+    // Evolved Pidgeot has no direct native Safari capture row at
+    // location202/level15, but its Pidgey ancestor does. High stored EXP
+    // makes a level-qualified evolved state more realistic in this fixture.
+    const auto evolvedSafari = analyzeNativeHgssSpecialBall(
+        18, 202, 15, 5, 7, 200000);
+    assert(hasInfo(evolvedSafari,
+        "special Ball has a compatible wild pre-evolution capture source"));
+    const auto evolvedApricorn = analyzeNativeHgssSpecialBall(
+        18, 149, 2, 17, 7, 200000);
+    assert(hasInfo(evolvedApricorn,
+        "special Ball has a compatible wild pre-evolution capture source"));
+    const auto evolvedWrongGame = analyzeNativeHgssSpecialBall(
+        18, 202, 15, 5, 12, 200000);
+    assert(!hasInfo(evolvedWrongGame,
+        "special Ball has a compatible wild pre-evolution capture source"));
+    const auto evolvedWrongLevel = analyzeNativeHgssSpecialBall(
+        18, 202, 1, 5, 7, 200000);
+    assert(!hasInfo(evolvedWrongLevel,
+        "special Ball has a compatible wild pre-evolution capture source"));
+    const auto evolvedWrongBall = analyzeNativeHgssSpecialBall(
+        18, 202, 15, 24, 7, 200000);
+    assert(!hasInfo(evolvedWrongBall,
+        "special Ball has a compatible wild pre-evolution capture source"));
+
     const auto apricorn = analyzeNativeHgssSpecialBall(16, 149, 2, 17);
     assert(hasInfo(apricorn,
         "Apricorn Ball has a compatible HeartGold/SoulSilver wild encounter source"));

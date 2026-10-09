@@ -18,6 +18,11 @@ GEN4_BCC_MULTI_BRIDGE_SOURCES := tests/test_gen4_bcc_multi_depth_central_reporti
 GEN4_BCC_MULTI_BRIDGE_HEADERS := include/Legality/Gen4WildRngCorrelation.h \
 	include/Legality/Gen4LeadReportingEvidence.h \
 	include/Legality/Gen4BugContestMixedDepthEvidence.h
+GEN4_EVOLVED_BALL_SOURCES := tests/test_gen4_evolved_special_ball_evidence.cpp
+GEN4_EVOLVED_BALL_HEADERS := include/Legality/Gen4EvolvedSpecialBallEvidence.h \
+	include/Legality/Gen4SpecialBallEvidence.h \
+	include/Legality/Gen34EggMoveEvidence.h \
+	include/Legality/Gen34EggMoveData.inc
 GEN4_BCC_MULTI_DEPTH_SOURCES := tests/test_gen4_bcc_mixed_sync_depth.cpp
 GEN4_BCC_MULTI_DEPTH_HEADERS := include/Legality/Gen4BugContestMixedDepthEvidence.h \
 	include/Legality/Gen4BugContestSynchronizeEvidence.h \
@@ -70,6 +75,7 @@ GEN4_LEAD_REPORTING_HEADERS := include/Legality/Gen4LeadReportingEvidence.h \
 HOST_TESTS += $(HOST_BUILD)/test_gen4_special_ball_evidence
 HOST_TESTS += $(HOST_BUILD)/test_gen4_bcc_pid_nature_rejection
 HOST_TESTS += $(HOST_BUILD)/test_gen4_bcc_multi_depth_central_reporting
+HOST_TESTS += $(HOST_BUILD)/test_gen4_evolved_special_ball_evidence
 HOST_TESTS += $(HOST_BUILD)/test_gen4_bcc_mixed_sync_depth
 HOST_TESTS += $(HOST_BUILD)/test_gen4_bcc_mixed_sync_source_reporting
 HOST_TESTS += $(HOST_BUILD)/test_gen4_bcc_mixed_sync_reverse
@@ -86,6 +92,7 @@ HOST_TESTS += $(HOST_BUILD)/test_gen4_lead_effect_evidence \
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_special_ball_evidence_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_bcc_pid_nature_rejection_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_bcc_multi_depth_central_reporting_sanitize
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_evolved_special_ball_evidence_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_bcc_mixed_sync_depth_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_bcc_mixed_sync_source_reporting_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_bcc_mixed_sync_reverse_sanitize
@@ -102,6 +109,7 @@ HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_lead_effect_evidence_sanitize \
 host-test: $(HOST_BUILD)/test_gen4_special_ball_evidence
 host-test: $(HOST_BUILD)/test_gen4_bcc_pid_nature_rejection
 host-test: $(HOST_BUILD)/test_gen4_bcc_multi_depth_central_reporting
+host-test: $(HOST_BUILD)/test_gen4_evolved_special_ball_evidence
 host-test: $(HOST_BUILD)/test_gen4_bcc_mixed_sync_depth
 host-test: $(HOST_BUILD)/test_gen4_bcc_mixed_sync_source_reporting
 host-test: $(HOST_BUILD)/test_gen4_bcc_mixed_sync_reverse
@@ -118,6 +126,7 @@ host-test: $(HOST_BUILD)/test_gen4_lead_effect_evidence \
 host-sanitize: $(HOST_BUILD)/test_gen4_special_ball_evidence_sanitize
 host-sanitize: $(HOST_BUILD)/test_gen4_bcc_pid_nature_rejection_sanitize
 host-sanitize: $(HOST_BUILD)/test_gen4_bcc_multi_depth_central_reporting_sanitize
+host-sanitize: $(HOST_BUILD)/test_gen4_evolved_special_ball_evidence_sanitize
 host-sanitize: $(HOST_BUILD)/test_gen4_bcc_mixed_sync_depth_sanitize
 host-sanitize: $(HOST_BUILD)/test_gen4_bcc_mixed_sync_source_reporting_sanitize
 host-sanitize: $(HOST_BUILD)/test_gen4_bcc_mixed_sync_reverse_sanitize
@@ -259,3 +268,11 @@ $(HOST_BUILD)/test_gen4_special_ball_evidence: $(GEN4_SPECIAL_BALL_SOURCES) $(GE
 $(HOST_BUILD)/test_gen4_special_ball_evidence_sanitize: $(GEN4_SPECIAL_BALL_SOURCES) $(GEN4_SPECIAL_BALL_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_SPECIAL_BALL_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_evolved_special_ball_evidence: $(GEN4_EVOLVED_BALL_SOURCES) $(GEN4_EVOLVED_BALL_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN4_EVOLVED_BALL_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_evolved_special_ball_evidence_sanitize: $(GEN4_EVOLVED_BALL_SOURCES) $(GEN4_EVOLVED_BALL_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_EVOLVED_BALL_SOURCES) -o $@

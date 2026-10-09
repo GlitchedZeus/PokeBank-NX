@@ -15,6 +15,7 @@
 #include "Integration/Gen4/Gen4MoveCompatibility.h"
 #include "Legality/Gen4WildEncounter.h"
 #include "Legality/Gen4SpecialBallEvidence.h"
+#include "Legality/Gen4EvolvedSpecialBallEvidence.h"
 #include "Legality/Gen4StaticEncounter.h"
 #include "Legality/Gen4TradeEvidence.h"
 #include "Legality/Gen1CatchRateEvidence.h"
@@ -1462,6 +1463,20 @@ namespace Legality {
                     // for this history. Shedinja itself has no wild slot;
                     // keep this positive origin note outside direct wild
                     // matching, with no hard-Invalid on nonmatches.
+                    if (!pk.isEgg() && species != 292) {
+                        const auto evoBall =
+                            Gen4EvolvedSpecialBall::analyzeSupported(
+                                gen4EncounterGameId, species,
+                                pk.metLocation(), pk.metLevel(),
+                                pk.form(), pk.ball());
+                        if (evoBall.matched()) {
+                            // This is compatible ancestor CAPTURE evidence,
+                            // not a complete evolving/transfer history.
+                            add(r, Severity::Info,
+                                "Generation IV special Ball has a compatible wild pre-evolution capture source for the stored origin game; evolution and competing provenance remain incomplete",
+                                CheckIdentifier::Items);
+                        }
+                    }
                     if (!pk.isEgg() && species == 292 &&
                         Gen4SpecialBallEvidence::analyzeSupported(
                             gen4EncounterGameId, species,
