@@ -2247,13 +2247,25 @@ namespace UI {
             }
         scrollSelectionIntoView();
         refreshHubPreview();
-        hubNotice="Gen V source linked. Press A to browse Trainer, Party and Boxes read-only.";
-        if(gen5SetupFromGamesDrawer) {
-            gamesDrawerIndex=titleIndex;
-            gamesDrawerScroll=std::max(0,gamesDrawerIndex/3-1);
-            overlay=Overlay::GamesDrawer;
-        } else overlay=Overlay::None;
+        // The user explicitly selected this exact validated Save Instance.
+        // Route straight to the guarded shared Trainer surface after the
+        // assignment is persisted; UIManager reopens/revalidates yet again.
+        const auto* selectedUser=currentUser();
+        if(!selectedUser || titleIndex<0 ||
+           titleIndex>=static_cast<int>(selectedUser->titles.size()) ||
+           selectedUser->titles[static_cast<size_t>(titleIndex)].gameId!=cardId) {
+            gen5Notice="Gen V card changed after assignment; reopen Games to choose it again.";
+            overlay=Overlay::Gen5Setup;
+            return false;
+        }
+        selectedUserUid=selectedUser->uid;
+        selectedTitleId=0;
+        selectedTitleName=selectedUser->titles[static_cast<size_t>(titleIndex)].name;
+        selectedGameId=cardId;
+        selectedSourceKind=SelectedSourceKind::Gen5AssignedFile;
+        titleSelected=true;
         gen5SetupFromGamesDrawer=false;
+        overlay=Overlay::None;
         return true;
     }
 
@@ -2397,27 +2409,12 @@ namespace UI {
         }
 
         if (selected.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
-            if (!legacyBindings) {
-                openGen5Setup(selectedGameId, "Choose a validated Generation V source.");
-                return;
-            }
-            const auto opened=PokeVault::Integration::Gen5::openAssignedSource(
-                *legacyBindings,profile,selectedGameId);
-            if (!opened.ready() || !opened.save) {
-                openGen5Setup(selectedGameId,opened.diagnostic.empty()
-                    ? "Gen V source is unassigned or failed strict validation."
-                    : opened.diagnostic);
-                return;
-            }
-            // Only the read-only Trainer/Party/Boxes browse layer is enabled.
-            // Reopen and revalidate again in UIManager; this preview result
-            // never grants a save writer or a generic editor capability.
-            selectedUserUid=user->uid;
-            selectedTitleId=0;
-            selectedTitleName=selected.name;
-            this->selectedGameId=selectedGameId;
-            selectedSourceKind=selected.sourceKind;
-            titleSelected=true;
+            // A always presents the exact-game Save Instances picker. An
+            // assigned path is a remembered suggestion, NOT permission to
+            // bypass explicit source choice for this edit/view session.
+            openGen5Setup(selectedGameId,
+                "Choose a validated Gen V Save Instance; source stays read-only.");
+            discoverGen5Candidates();
             return;
         }
 
