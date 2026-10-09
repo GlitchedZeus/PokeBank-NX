@@ -12,6 +12,7 @@
 #include "Enums/LanguageID.h"
 #include "Integration/Gen4/Gen4ReadOnlySave.h"
 #include "Integration/Gen4/Gen4ReadOnlyInventory.h"
+#include "Integration/Gen4/Gen4BagCatalog.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
 #include "Pokemon/Pokemon4ReadOnlyView.h"
 #include "Utils/CRC16.h"
@@ -1095,6 +1096,46 @@ void testNativeGen4Bag() {
             if(i>=removedAt && i<removedAt+4)continue;
             if(i==crcAt || i==crcAt+1)continue;
             assert(removedOutput[i]==beforeRemove[i]);
+        }
+        assert(digest(bytes)==original && digest(parsed->sourceBytes())==original);
+        // Structural PKHeX-pinned item catalog: never add arbitrary IDs,
+        // unreleased Balls, extra HM copies, or cross-generation pocket IDs.
+        assert(G4::gen4BagItemAllowed(layout,kBalls,4));
+        assert(!G4::gen4BagItemAllowed(layout,kBalls,5));
+        assert(!G4::gen4BagItemAllowed(layout,kBalls,16));
+        assert(G4::gen4BagItemAllowed(layout,kBalls,492)==
+               (layout==Layout::HeartGoldSoulSilver));
+        assert(G4::gen4BagItemAllowed(layout,kItems,112)==
+               (layout!=Layout::DiamondPearl));
+        assert(G4::gen4BagMaxQuantity(kBalls,4)==999);
+        assert(G4::gen4BagMaxQuantity(static_cast<size_t>(Bag::KeyItems),428)==1);
+        assert(G4::gen4BagMaxQuantity(static_cast<size_t>(Bag::Machines),420)==1);
+        assert(G4::gen4BagMaxQuantity(static_cast<size_t>(Bag::Machines),328)==99);
+        assert(!workspace->stageBagAdd(kBalls,16,1,&error));
+        assert(!workspace->stageBagAdd(kBalls,5,1,&error));
+        assert(!workspace->stageBagAdd(kBalls,1,1,&error)); // existing stack
+        assert(!workspace->stageBagAdd(kMedicine,4,1,&error)); // wrong pocket
+        assert(!workspace->stageBagAdd(kBalls,4,1000,&error));
+        assert(!workspace->stageBagAdd(G4::BagPocketCount,4,1,&error));
+        const auto beforeAdd=workspace->stagedBytes();
+        assert(workspace->stageBagAdd(kBalls,4,15,&error) && error.empty());
+        assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+        assert(trainer->items[kBalls].size()==2);
+        assert(trainer->items[kBalls][0].itemId==1 &&
+               trainer->items[kBalls][0].count==3);
+        assert(trainer->items[kBalls][1].itemId==4 &&
+               trainer->items[kBalls][1].count==15);
+        const auto added=workspace->finalizedBytes(&error);
+        auto reparsedAdd=Gen4ReadOnlySave::parse(added,layout,game,&error);
+        assert(reparsedAdd && reparsedAdd->generalSelection().partition==1);
+        const auto reBag=G4::decodeReadOnlyBag(*reparsedAdd);
+        assert(reBag && (*reBag)[kBalls].size()==2);
+        assert(reparsedAdd->box(0,0).species()==25);
+        const size_t addedAt=PARTITION+native[kBalls].offset+2*4;
+        for(size_t i=0;i<added.size();++i) {
+            if(i>=addedAt && i<addedAt+4)continue;
+            if(i==crcAt || i==crcAt+1)continue;
+            assert(added[i]==beforeAdd[i]);
         }
         assert(digest(bytes)==original && digest(parsed->sourceBytes())==original);
         workspace->discard();
