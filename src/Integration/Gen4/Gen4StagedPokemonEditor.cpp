@@ -1,5 +1,6 @@
 #include "Integration/Gen4/Gen4StagedPokemonEditor.h"
 #include "Integration/Gen4/Gen4ReadOnlyInventory.h"
+#include "Integration/Gen4/Gen4BagCatalog.h"
 
 #include "Encryption/Encryption4.h"
 #include "Utils/CRC16.h"
@@ -751,6 +752,110 @@ bool Gen4StagedPokemonEditor::stageBagRemove(
         if(staged_[i]!=backup[i]) {
             staged_=std::move(backup);
             setError(error,"Gen IV item removal modified unrelated save bytes");
+            return false;
+        }
+    }
+    if(error)error->clear();
+    return true;
+}
+
+bool Gen4StagedPokemonEditor::stageBagAdd(
+    size_t pocket,uint16_t itemId,uint16_t quantity,std::string* error) {
+    if(!gen4BagItemAllowed(layout_,pocket,itemId) ||
+       quantity==0 || quantity>gen4BagMaxQuantity(pocket,itemId)) {
+        setError(error,"Gen IV Add rejected: unsupported game, pouch, item or quantity");
+        return false;
+    }
+    const auto before=reparse(error);
+    if(!before)return false;
+    const auto previousBag=decodeReadOnlyBag(*before);
+    if(!previousBag) {
+        setError(error,"Gen IV Add requires a completely validated native bag");
+        return false;
+    }
+    const auto& prior=(*previousBag)[pocket];
+    for(const auto& stack:prior) {
+        if(stack.itemId==itemId) {
+            setError(error,"Gen IV item already exists in this native pocket; edit quantity instead");
+            return false;
+        }
+    }
+    const auto spec=bagLayout(layout_)[pocket];
+    const size_t base=before->generalSelection().offset;
+    const size_t blockSize=generalGeometry(layout_).size;
+    if(spec.offset>blockSize || spec.slots>(blockSize-spec.offset)/4 ||
+       base>staged_.size() || blockSize>staged_.size()-base) {
+        setError(error,"Gen IV Add selected native pocket geometry is invalid");
+        return false;
+    }
+    // Append after the last occupied native slot so the shared visible item
+    // order remains stable. Never reuse nonzero-ID/zero-quantity ghost slots
+    // or overwrite a slot whose bytes are not a native blank sentinel.
+    size_t afterLast=0;
+    for(size_t slot=0;slot<spec.slots;++slot) {
+        const size_t at=base+spec.offset+slot*4;
+        const uint16_t id=uint16_t(staged_[at]) | (uint16_t(staged_[at+1])<<8);
+        const uint16_t count=uint16_t(staged_[at+2]) | (uint16_t(staged_[at+3])<<8);
+        if(id!=0 && id!=0xFFFF && count!=0)afterLast=slot+1;
+    }
+    size_t target=0;
+    bool found=false;
+    for(size_t slot=afterLast;slot<spec.slots;++slot) {
+        const size_t at=base+spec.offset+slot*4;
+        const uint16_t id=uint16_t(staged_[at]) | (uint16_t(staged_[at+1])<<8);
+        const uint16_t count=uint16_t(staged_[at+2]) | (uint16_t(staged_[at+3])<<8);
+        if((id==0 && count==0) ||
+           (id==0xFFFF && count==0xFFFF)) {
+            target=at;
+            found=true;
+            break;
+        }
+    }
+    if(!found) {
+        setError(error,"Gen IV Add refused: native pouch has no verified trailing empty slot");
+        return false;
+    }
+
+    auto backup=staged_;
+    write16(staged_,target,itemId);
+    write16(staged_,target+2,quantity);
+    if(!refreshGeneralCrc(*before,error)) {
+        staged_=std::move(backup);
+        return false;
+    }
+    const auto after=reparse(error);
+    const auto current=after?decodeReadOnlyBag(*after):std::nullopt;
+    if(!current || (*current)[pocket].size()!=prior.size()+1 ||
+       (*current)[pocket].back().itemId!=itemId ||
+       (*current)[pocket].back().count!=quantity) {
+        staged_=std::move(backup);
+        setError(error,"Gen IV Add failed exact native pocket reparse");
+        return false;
+    }
+    for(size_t i=0;i<BagPocketCount;++i) {
+        const auto& oldPocket=(*previousBag)[i];
+        const auto& newPocket=(*current)[i];
+        if(newPocket.size()!=oldPocket.size()+(i==pocket?1:0)) {
+            staged_=std::move(backup);
+            setError(error,"Gen IV Add changed another native pocket");
+            return false;
+        }
+        for(size_t n=0;n<oldPocket.size();++n) {
+            if(oldPocket[n].itemId!=newPocket[n].itemId ||
+               oldPocket[n].count!=newPocket[n].count) {
+                staged_=std::move(backup);
+                setError(error,"Gen IV Add changed an existing item identity");
+                return false;
+            }
+        }
+    }
+    const size_t crcAt=base+blockSize-2;
+    for(size_t i=0;i<staged_.size();++i) {
+        if(i>=target && i<target+4)continue;
+        if(i==crcAt || i==crcAt+1)continue;
+        if(staged_[i]!=backup[i]) {
+            staged_=std::move(backup);
+            setError(error,"Gen IV Add changed unrelated original save bytes");
             return false;
         }
     }
