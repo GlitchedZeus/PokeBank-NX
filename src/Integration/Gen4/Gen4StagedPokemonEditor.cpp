@@ -663,6 +663,101 @@ bool Gen4StagedPokemonEditor::stageBagQuantity(
     return true;
 }
 
+bool Gen4StagedPokemonEditor::stageBagRemove(
+    size_t pocket,size_t visibleIndex,std::string* error) {
+    // This edits app-owned staged bytes only. The UI MUST ask for a separate
+    // destructive confirmation; never treat A or count=0 as a removal.
+    if(pocket>=BagPocketCount) {
+        setError(error,"Gen IV item removal references an invalid native pocket");
+        return false;
+    }
+    const auto before=reparse(error);
+    if(!before)return false;
+    const auto oldBag=decodeReadOnlyBag(*before);
+    if(!oldBag || visibleIndex>=(*oldBag)[pocket].size()) {
+        setError(error,"Gen IV item removal requires a validated existing stack");
+        return false;
+    }
+    const auto expected=(*oldBag)[pocket][visibleIndex];
+    const auto spec=bagLayout(layout_)[pocket];
+    const size_t base=before->generalSelection().offset;
+    const size_t blockSize=generalGeometry(layout_).size;
+    if(spec.offset>blockSize || spec.slots>(blockSize-spec.offset)/4 ||
+       base>staged_.size() || blockSize>staged_.size()-base) {
+        setError(error,"Gen IV selected General pocket geometry is invalid");
+        return false;
+    }
+    size_t foundAt=0;
+    size_t populated=0;
+    bool found=false;
+    for(size_t slot=0;slot<spec.slots;++slot) {
+        const size_t at=base+spec.offset+slot*4;
+        const uint16_t id=uint16_t(staged_[at]) | (uint16_t(staged_[at+1])<<8);
+        const uint16_t quantity=uint16_t(staged_[at+2]) | (uint16_t(staged_[at+3])<<8);
+        if(id==0 || id==0xFFFF || quantity==0)continue;
+        if(populated++==visibleIndex) {
+            if(id!=expected.itemId || quantity!=expected.count) {
+                setError(error,"Gen IV item removal selection changed");
+                return false;
+            }
+            foundAt=at;
+            found=true;
+            break;
+        }
+    }
+    if(!found) {
+        setError(error,"Gen IV item removal selected a missing native stack");
+        return false;
+    }
+    auto backup=staged_;
+    write16(staged_,foundAt,0);
+    write16(staged_,foundAt+2,0);
+    if(!refreshGeneralCrc(*before,error)) {
+        staged_=std::move(backup);
+        return false;
+    }
+    const auto after=reparse(error);
+    const auto newBag=after?decodeReadOnlyBag(*after):std::nullopt;
+    if(!newBag || (*newBag)[pocket].size()+1!=(*oldBag)[pocket].size()) {
+        staged_=std::move(backup);
+        setError(error,"Gen IV removal failed strict native bag reparse");
+        return false;
+    }
+    for(size_t i=0;i<BagPocketCount;++i) {
+        const auto& prior=(*oldBag)[i];
+        const auto& next=(*newBag)[i];
+        const size_t offset=(i==pocket)?1:0;
+        if(next.size()+offset!=prior.size()) {
+            staged_=std::move(backup);
+            setError(error,"Gen IV item removal changed another pocket");
+            return false;
+        }
+        for(size_t n=0;n<next.size();++n) {
+            const size_t index=(i==pocket && n>=visibleIndex)?n+1:n;
+            if(prior[index].itemId!=next[n].itemId ||
+               prior[index].count!=next[n].count) {
+                staged_=std::move(backup);
+                setError(error,"Gen IV item removal modified an unrelated stack");
+                return false;
+            }
+        }
+    }
+    // Audit every byte, not merely the displayed pouch. Only the native
+    // four-byte item slot and the verified General CRC may change.
+    const size_t crcAt=base+blockSize-2;
+    for(size_t i=0;i<staged_.size();++i) {
+        if(i>=foundAt && i<foundAt+4)continue;
+        if(i==crcAt || i==crcAt+1)continue;
+        if(staged_[i]!=backup[i]) {
+            staged_=std::move(backup);
+            setError(error,"Gen IV item removal modified unrelated save bytes");
+            return false;
+        }
+    }
+    if(error)error->clear();
+    return true;
+}
+
 std::vector<uint8_t> Gen4StagedPokemonEditor::finalizedBytes(
     std::string* error) const {
     if (staged_.size() != original_.size()) {
