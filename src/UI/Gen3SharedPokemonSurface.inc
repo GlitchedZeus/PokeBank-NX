@@ -1209,10 +1209,20 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     const bool heldItems = state.pickerTarget == PickerTarget::HeldItem;
     const bool movePicker = state.pickerTarget == PickerTarget::Move;
     constexpr auto moveLayout = MoveUI::compactPickerLayout();
-    const int w = heldItems ? 1040 : movePicker ? moveLayout.width : 680;
-    const int h = heldItems ? 520 : movePicker ? moveLayout.height : 560;
+    const int pickerCount=static_cast<int>(state.pickerValues.size());
+    const bool compactChoices=state.pickerTarget==PickerTarget::Language ||
+        state.pickerTarget==PickerTarget::Ball ||
+        state.pickerTarget==PickerTarget::MetLocation ||
+        state.pickerTarget==PickerTarget::Nature ||
+        state.pickerTarget==PickerTarget::Ability ||
+        state.pickerTarget==PickerTarget::Gender;
+    const int visibleChoices=compactChoices?std::min(8,pickerCount):10;
+    const int w = heldItems ? 1040 : movePicker ? moveLayout.width :
+        compactChoices ? 640 : 680;
+    const int h = heldItems ? 520 : movePicker ? moveLayout.height :
+        compactChoices ? 125 + visibleChoices * 42 : 560;
     const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - h) / 2;
+    const int y = (fb.getHeight() - kNavBarH - h) / 2;
 
     // Keep every Gen III picker in the same dark modal family as Gen I/II.
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Color(0, 0, 0, 165));
@@ -1235,7 +1245,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                 fb.drawSelectionHighlight(x + 24, yy, w - 48, moveLayout.highlightHeight);
             const auto value = state.pickerValues[static_cast<std::size_t>(i)];
             fb.drawText(x + 40, yy + 8, pickerValueLabel(state, value),
-                        selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
+                        Colors::Text, TextStyle::Body);
         }
         drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                         {"A", "Select"}, {"B", "Cancel"}});
@@ -1268,7 +1278,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                 fb.drawSelectionHighlight(cellX, cellY - 3, cellWidth - 10, cellHeight - 4);
             const auto value = state.pickerValues[static_cast<std::size_t>(i)];
             fb.drawText(cellX + 10, cellY + 7, pickerValueLabel(state, value),
-                        selected ? Colors::Text : Colors::TextDim, TextStyle::Caption);
+                        Colors::Text, TextStyle::Caption);
         }
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
                         {"A", "Choose"}, {"B", "Cancel"}});
@@ -1279,7 +1289,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                 std::to_string(state.pickerRow + 1) + " / " +
                     std::to_string(state.pickerValues.size()),
                 Colors::TextDim, TextStyle::Caption);
-    constexpr int visible = 10;
+    const int visible = compactChoices ? visibleChoices : 10;
     const int first = std::clamp(state.pickerRow - visible / 2, 0, std::max(0, count - visible));
     const int last = std::min(count, first + visible);
     for (int i = first; i < last; ++i) {
@@ -1288,7 +1298,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         if (selected) fb.drawSelectionHighlight(x + 22, yy - 4, w - 44, 38);
         const auto value = state.pickerValues[static_cast<std::size_t>(i)];
         fb.drawText(x + 38, yy + 7, pickerValueLabel(state, value),
-                    selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
+                    Colors::Text, TextStyle::Body);
     }
     drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                     {"A", "Choose"}, {"B", "Cancel"}});
