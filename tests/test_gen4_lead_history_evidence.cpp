@@ -187,7 +187,7 @@ int main() {
 
     // Method K BCC mixed Synchronize one-reroll path: original Sync proc
     // succeeds, its attempt lacks any 31 IV; persisted attempt fails Sync.
-    // Pinned source allows the original locked nature 20 and final nature 0
+    // Pinned source allows the original locked nature 11 and final nature 0
     // to differ because the final Synchronize proc fails.
     constexpr uint32_t mixedSeed = 0x000019CBu;
     constexpr uint32_t mixedPid = 0x218385E9u;
