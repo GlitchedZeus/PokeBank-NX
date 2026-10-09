@@ -40,6 +40,8 @@ public:
     [[nodiscard]] const Slot& target() const noexcept { return target_; }
     [[nodiscard]] int actionRow() const noexcept { return actionRow_; }
     [[nodiscard]] int fieldRow() const noexcept { return fieldRow_; }
+    [[nodiscard]] size_t reviewPage() const noexcept { return reviewPage_; }
+    static constexpr size_t kReviewPageSize = 4;
     [[nodiscard]] const Gen5SharedPokemonSession& draft() const noexcept { return draft_; }
     [[nodiscard]] bool isEditing() const noexcept { return surface_==Surface::Edit; }
 
@@ -79,7 +81,12 @@ public:
             return false;
         }
         if(action==Action::Close) {surface_=Surface::Browse;error.clear();return true;}
-        if(action==Action::Review) {surface_=Surface::Review;error.clear();return true;}
+        if(action==Action::Review) {
+            reviewPage_=0;
+            surface_=Surface::Review;
+            error.clear();
+            return true;
+        }
         if(action==Action::View || action==Action::Edit) {
             if(!openSharedDraft(draft_,workspace,selectedSlot(workspace,target_),action,error))
                 return false;
@@ -98,6 +105,15 @@ public:
             return false;
         }
         return activate(workspace,allowed[static_cast<size_t>(actionRow_)],error);
+    }
+
+    void moveReviewPage(int delta,const Workspace& workspace) noexcept {
+        if(surface_!=Surface::Review)return;
+        const size_t records=workspace.changedRecordCount();
+        const size_t pages=std::max(size_t{1},
+            (records+kReviewPageSize-1)/kReviewPageSize);
+        if(delta>0 && reviewPage_+1<pages)++reviewPage_;
+        else if(delta<0 && reviewPage_>0)--reviewPage_;
     }
 
     void moveField(int delta) noexcept {
@@ -246,8 +262,10 @@ public:
         return true;
     }
     void reviewFromExit(const Workspace& workspace) noexcept {
-        if(surface_==Surface::ConfirmExit && workspace.hasChanges())
+        if(surface_==Surface::ConfirmExit && workspace.hasChanges()) {
+            reviewPage_=0;
             surface_=Surface::Review;
+        }
     }
 
 private:
@@ -255,6 +273,7 @@ private:
     Slot target_{};
     int actionRow_=0;
     int fieldRow_=0;
+    size_t reviewPage_=0;
     Gen5SharedPokemonSession draft_;
 };
 
