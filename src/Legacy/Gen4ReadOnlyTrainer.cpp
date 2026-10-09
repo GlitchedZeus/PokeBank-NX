@@ -94,8 +94,7 @@ bool Gen4ReadOnlyTrainer::refreshStagedPokemonPresentation(std::string& error) {
         error="Gen IV staged bag presentation failed strict validation";
         return false;
     }
-    std::vector<std::vector<Trainer::InventoryItem>> displayItems(
-        displayBag->begin(),displayBag->end());
+    decltype(items) displayItems(displayBag->begin(),displayBag->end());
     party.swap(displayParty);
     boxes.swap(displayBoxes);
     items.swap(displayItems);
