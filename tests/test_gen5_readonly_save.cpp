@@ -560,6 +560,15 @@ int main() {
         ui.requestDiscardAll();
         assert(ui.confirmDiscardAll(localUiWorkspace));
         assert(!localUiWorkspace.hasChanges() && ui.requestExit(localUiWorkspace));
+        auto exitWorkspace=workspace;
+        G::Gen5SharedScreenState exitOnly;
+        assert(!exitOnly.requestExit(exitWorkspace));
+        assert(exitOnly.surface()==G::Gen5SharedScreenState::Surface::ConfirmExit);
+        assert(!exitOnly.back()); // B keeps the app-memory workspace intact.
+        assert(exitWorkspace.hasChanges());
+        assert(!exitOnly.requestExit(exitWorkspace));
+        assert(exitOnly.confirmDiscardAndExit(exitWorkspace)); // Y explicit exit path.
+        assert(!exitWorkspace.hasChanges());
         assert(workspace.hasChanges()); // Separate editor/session unchanged.
         assert(std::equal(parsed->sourceBytes().begin(),parsed->sourceBytes().end(),sav.begin()));
         const GSlot forgedRegion{static_cast<GRegion>(0xFF),0,0};
