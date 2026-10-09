@@ -19,6 +19,7 @@
 #include "UI/Dialogs/DialogFrame.h"
 #include "UI/Gen4SharedPokemonSession.h"
 #include "UI/MovePickerPresentation.h"
+#include "UI/ItemPickerArtwork.h"
 #include "UI/ScreenChrome.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedHeldItemPicker.h"
@@ -1524,6 +1525,11 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
             const auto value = state.pickerValues[static_cast<size_t>(i)];
             fb.drawText(cellX + 10, cellY + 7, pickerValueLabel(screen, state, value),
                         Colors::Text, TextStyle::Caption);
+            // Each native item carries its own corresponding PNG, not a
+            // decorative generic bag icon. Keep text if art is unavailable.
+            if(value != 0)
+                ItemPickerArtwork::draw(fb, cellX + cellWidth - 24, cellY + 2,
+                                        30, Names::getItemName(value));
         }
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
                         {"A", "Choose"}, {"B", "Cancel"}});
@@ -1545,6 +1551,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         const auto value = state.pickerValues[static_cast<size_t>(i)];
         fb.drawText(x + 38, yy + 7, pickerValueLabel(screen, state, value),
                     Colors::Text, TextStyle::Body);
+        if(state.pickerTarget == PickerTarget::Ball)
+            ItemPickerArtwork::draw(fb, x + w - 35, yy, 32,
+                                    Enums::getBallName(static_cast<uint8_t>(value)));
     }
     drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                     {"ZL/ZR", "Jump"}, {"A", "Choose"}, {"B", "Cancel"}});
