@@ -266,3 +266,24 @@ Source preference remains API-only until a safe UI flow exists.
   continue to use the existing depth and file-count limits.
 - Focused tests reject /, sdmc:/, .. traversal and config pointing at
   / without scanning any candidate files. No Gen I–IV scanner changed.
+
+
+### Phase D tranche 1 — Product Games / Save Instances preview-only wiring
+
+- Gen V Black/White/Black 2/White 2 now have dedicated Game cards in the
+  existing Product Games browser. Their immutable trainer, Dex and party
+  preview is populated only by an explicitly assigned, strictly revalidated
+  source using Gen5AssignedSource and Gen5GameCardPreview.
+- A on a Gen V card opens the existing-style Save Instances chooser and
+  source-setup modal; sources are bounded to Gen V's known emulator roots or
+  explicitly supplied manual paths. Exact title/provenance/profile identity
+  is checked again before accepting a new binding.
+- The selected save is associated with the current profile through the
+  already established metadata-only LegacySourceBindings transaction.
+  Assign/forget changes metadata, never original emulator SAV bytes.
+- Gen V remains SourceSupport::Planned in GameIdentity. There is no
+  fallback into the Gen IV editor, native save write/Inject path, Items
+  editor, or unvalidated game launcher. The UI explicitly says preview only.
+- This early Product UI integration needs an exact-head native build and
+  owner hardware confirmation before being considered accepted; the full
+  Gen V editor/view implementation is a separate follow-up milestone.
