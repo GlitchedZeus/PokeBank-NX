@@ -320,7 +320,7 @@ void drawReview(TrainerViewScreen& screen,PKSEFramebuffer& fb,
 }
 void drawDecision(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                   std::string title,std::string message,
-                  const std::vector<std::pair<std::string,std::string>>& keys) {
+                  const std::vector<ControllerHint>& keys) {
     dimShared(screen,fb);
     const int w=870,h=230,x=(fb.getWidth()-w)/2;
     const int y=(fb.getHeight()-kNavBarH-h)/2;
