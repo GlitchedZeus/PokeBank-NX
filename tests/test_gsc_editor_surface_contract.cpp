@@ -60,7 +60,10 @@ int main() {
     assert(closeBody.find("selectedItemIndex") == std::string::npos);
     assert(closeBody.find("stage") == std::string::npos);
     const auto boxBase = readFile("src/UI/TrainerViewScreenBase.inc");
-    assert(boxBase.find("subtitle += titleName") != std::string::npos);
+    // Source identity is now a human-readable provider / game / immutable
+    // status banner; the old debug-style concatenation is intentionally gone.
+    assert(boxBase.find("legacyProviderLabel() + \"  •  \" + titleName + \"  •  Read-only source\"") != std::string::npos);
+    assert(boxBase.find("if (!legacyReadOnlySource() && !trainer.saveRevisionString.empty()") != std::string::npos);
     assert(foundation.find("Gen2HeldItemPicker::initialIndex(state.itemChoices, state.working.heldItem)") != std::string::npos);
     assert(heldItemModel.find("#include \"UI/SharedHeldItemPicker.h\"") != std::string::npos);
     assert(heldItemModel.find("columns = SharedHeldItemPicker::columns") != std::string::npos);
