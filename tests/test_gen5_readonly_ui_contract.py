@@ -34,11 +34,11 @@ require(
     "trainer.sharedScreen().openActions",
     "state.activateSelected(staged,error)",
     "state.adjustField(delta,error)",
-    "trainer.sharedScreen().keep(trainer.stagedPokemon(),error)",
+    "trainer.sharedScreen().keepWithPresentation(",
     "state.discardDraft()",
     "state.requestExit(staged)",
     "state.confirmDiscardAndExit(staged)",
-    "state.confirmDiscardAll(staged)",
+    "state.discardAllWithPresentation(staged,",
     "screen.drawGSCOverlay(fb)",
     "screen.details.active=false;",
     "drawVerifiedSummary(screen,fb,&view",
@@ -53,6 +53,14 @@ assert surface.index("screen.details.active=false;") < surface.index("drawVerifi
 assert "Gen5SharedScreenState" in read("include/Legacy/Gen5ReadOnlyTrainer.h")
 assert "Gen5SharedPokemonSession draft_;" in read("include/Integration/Gen5/Gen5SharedScreenState.h")
 assert "requestExit(const Workspace& workspace)" in read("include/Integration/Gen5/Gen5SharedScreenState.h")
+
+# A successful action now includes atomic PK5 presentation acceptance; a
+# rejected renderer must preserve the active draft and previous stage.
+screen_model = read("include/Integration/Gen5/Gen5SharedScreenState.h")
+require(screen_model, "baselineWorkspace=workspace", "baselineDraft=draft_",
+        "workspace=std::move(baselineWorkspace);",
+        "surface_=baselineSurface;",
+        "discardAllWithPresentation(Workspace& workspace")
 
 # The Gen V module itself must never invoke any generic source or bank mutation.
 for forbidden in (
