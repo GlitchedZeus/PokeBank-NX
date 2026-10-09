@@ -2106,6 +2106,7 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         if(down&HidNpadButton_X) {
             auto* staged=editor(screen);
             if(!staged || pocket<0 || pocket>=static_cast<int>(Gen4::BagPocketCount) ||
+               pocket>=static_cast<int>(screen.trainer.items.size()) ||
                !Gen4::decodeReadOnlyBag(bridge(screen).sourceSave())) {
                 screen.postStatus("Gen IV Add requires a validated native source bag",300);
                 return true;
@@ -2130,9 +2131,21 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
             return true;
         }
         const int visible=screen.selectedItemIndex;
-        if(pocket<0 || pocket>=static_cast<int>(screen.trainer.items.size()))return false;
+        if(pocket<0 || pocket>=static_cast<int>(screen.trainer.items.size())) {
+            if(down&HidNpadButton_Y) {
+                screen.postStatus("No validated Gen IV item available to remove",220);
+                return true;
+            }
+            return false;
+        }
         const auto indices=screen.visibleItemIndices();
-        if(visible<0 || visible>=static_cast<int>(indices.size()))return false;
+        if(visible<0 || visible>=static_cast<int>(indices.size())) {
+            if(down&HidNpadButton_Y) {
+                screen.postStatus("Choose an existing Gen IV item before removing",220);
+                return true;
+            }
+            return false;
+        }
         const int raw=indices[static_cast<size_t>(visible)];
         if(raw<0 || raw>=static_cast<int>(screen.trainer.items[pocket].size()))return false;
         const auto& item=screen.trainer.items[pocket][static_cast<size_t>(raw)];
