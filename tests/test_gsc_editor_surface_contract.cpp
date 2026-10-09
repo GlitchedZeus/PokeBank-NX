@@ -281,7 +281,10 @@ int main() {
     const auto moveRow = readFile("include/UI/MovePickerRowUI.h");
     assert(moveRow.find("TextStyle::Body") != std::string::npos);
     assert(pickerFix.find("Empty + compatible moves only • exact Gen II Acc / Pwr / PP") != std::string::npos);
-    assert(pickerFix.find("MovePickerPresentation::rowLabel(move, Enums::GameVersion::GSC)") != std::string::npos);
+    // Generation-aware Acc / Pwr / PP now come from the shared move-row
+    // component; old Gen II-only rowLabel string assembly is intentionally gone.
+    assert(pickerFix.find("MovePickerRowUI::draw(fb,x+40,yy+4,move,Enums::GameVersion::GSC)") != std::string::npos);
+    assert(moveRow.find("Names::getMoveBattleStats(move,game)") != std::string::npos);
     assert(pickerFix.find("Needs correction") == std::string::npos);
     assert(shared.find("!editor->pendingChanges().empty()") != std::string::npos);
     assert(shared.find("static_cast<int>(actions.count) * geometry.rowStep + 62") != std::string::npos);
