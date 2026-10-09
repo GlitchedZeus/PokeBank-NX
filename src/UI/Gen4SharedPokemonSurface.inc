@@ -94,6 +94,11 @@ struct State {
     int itemQuantityVisibleRow = 0;
     uint16_t itemQuantityBaseline = 1;
     uint16_t itemQuantityDraft = 1;
+    bool itemRemoveConfirmActive = false;
+    int itemRemovePocket = 0;
+    int itemRemoveVisibleRow = 0;
+    uint16_t itemRemoveId = 0;
+    uint16_t itemRemoveCount = 0;
 
     bool moveEditor = false;
     int moveEditorSlot = 0;
@@ -135,7 +140,7 @@ bool ownsFrameImpl(const TrainerViewScreen& screen) noexcept {
     if (!isGen4Nds(screen)) return false;
     const auto& state = stateFor(screen);
     return state.actions || state.review || state.legality || state.confirmRelease ||
-           state.itemQuantityActive ||
+           state.itemQuantityActive || state.itemRemoveConfirmActive ||
            state.valuePicker || state.moveEditor || workspaceActive(state);
 }
 
@@ -1957,11 +1962,70 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
                         u64 held,int stickX,int stickY) {
     const bool itemsScreen=screen.detailViewActive &&
         screen.selectedMode==TrainerViewScreen::ViewMode::Items;
+    if(state.itemRemoveConfirmActive) {
+        // Deliberate Y->Y two-press removal with a separate confirmation frame.
+        // A never removes; B always cancels without touching a staged byte.
+        if(down&HidNpadButton_B) {
+            state.itemRemoveConfirmActive=false;
+            screen.controllerNavigation.reset();
+            return true;
+        }
+        if(!(down&HidNpadButton_Y))return true;
+        const int pocket=state.itemRemovePocket;
+        const int index=state.itemRemoveVisibleRow;
+        if(!itemsScreen || screen.selectedCategory!=pocket ||
+           screen.selectedItemIndex!=index ||
+           pocket<0 || pocket>=static_cast<int>(screen.trainer.items.size())) {
+            state.itemRemoveConfirmActive=false;
+            screen.postStatus("Gen IV item selection changed; remove cancelled",300);
+            return true;
+        }
+        const auto visible=screen.visibleItemIndices();
+        if(index<0 || index>=static_cast<int>(visible.size())) {
+            state.itemRemoveConfirmActive=false;
+            screen.postStatus("Gen IV item no longer exists; remove cancelled",300);
+            return true;
+        }
+        const auto& item=screen.trainer.items[static_cast<size_t>(pocket)]
+                                     [static_cast<size_t>(visible[static_cast<size_t>(index)])];
+        if(item.itemId!=state.itemRemoveId || item.count!=state.itemRemoveCount) {
+            state.itemRemoveConfirmActive=false;
+            screen.postStatus("Gen IV item identity/count changed; remove cancelled",300);
+            return true;
+        }
+        auto* staged=editor(screen);
+        if(!staged) {
+            state.itemRemoveConfirmActive=false;
+            screen.postStatus("Gen IV staged item removal is unavailable",300);
+            return true;
+        }
+        auto backup=*staged;
+        std::string error;
+        if(!staged->stageBagRemove(static_cast<size_t>(pocket),
+                                   static_cast<size_t>(index),&error)) {
+            screen.postStatus(error,300);
+            return true;
+        }
+        if(!bridge(screen).refreshStagedPokemonPresentation(error)) {
+            *staged=std::move(backup);
+            std::string restored;
+            (void)bridge(screen).refreshStagedPokemonPresentation(restored);
+            screen.postStatus("Gen IV item remove refresh failed; staged item retained: "+error,360);
+            return true;
+        }
+        state.itemRemoveConfirmActive=false;
+        const auto remaining=screen.visibleItemIndices().size();
+        screen.selectedItemIndex=remaining?
+            std::min(screen.selectedItemIndex,static_cast<int>(remaining)-1):0;
+        screen.controllerNavigation.reset();
+        screen.postStatus("Gen IV item removed from staged workspace ONLY",300);
+        return true;
+    }
     if(!state.itemQuantityActive) {
         // Forward controller movement and B/Exit to the shared Items panel.
         // Only A on an occupied, validated native stack opens an app-memory
         // draft. A must NEVER perform a destructive removal or source write.
-        if(!itemsScreen || !(down&HidNpadButton_A) ||
+        if(!itemsScreen || !(down&(HidNpadButton_A|HidNpadButton_Y)) ||
            screen.helpOverlayActive || screen.itemEditDialogActive ||
            screen.saveConfirmActive || screen.pickerActive ||
            screen.actionSheet.isOpen())return false;
@@ -1976,6 +2040,15 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         if(item.itemId==0 || item.count==0 || item.count>999)return false;
         if(!editor(screen)) {
             screen.postStatus("Gen IV inventory source remains read-only; staged workspace unavailable",240);
+            return true;
+        }
+        if(down&HidNpadButton_Y) {
+            state.itemRemoveConfirmActive=true;
+            state.itemRemovePocket=pocket;
+            state.itemRemoveVisibleRow=visible;
+            state.itemRemoveId=item.itemId;
+            state.itemRemoveCount=item.count;
+            screen.controllerNavigation.reset();
             return true;
         }
         state.itemQuantityActive=true;
@@ -2047,6 +2120,27 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
     screen.controllerNavigation.reset();
     screen.postStatus("Gen IV item quantity staged; emulator source unchanged",300);
     return true;
+}
+
+void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
+    screen.drawGSCOverlay(fb);
+    const int w=625,h=244,x=(fb.getWidth()-w)/2;
+    const int y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,160));
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::FocusBorder,1);
+    fb.drawText(x+24,y+20,"Remove Gen IV Item?",Colors::Text,TextStyle::Heading);
+    fb.drawText(x+24,y+69,
+        "Native item ID "+std::to_string(state.itemRemoveId)+
+        "  |  Count "+std::to_string(state.itemRemoveCount),
+        Colors::Text,TextStyle::Body);
+    fb.drawText(x+24,y+113,
+        "Only the app-owned staged copy changes. Original source is immutable.",
+        Colors::TextSecondary,TextStyle::Caption);
+    fb.drawText(x+24,y+163,
+        "Removal is irreversible within this draft until Discard Changes.",
+        Colors::Accent,TextStyle::Caption);
+    drawNavBar(fb,{{"Y","Confirm Remove"},{"B","Cancel"}});
 }
 
 void drawItemQuantity(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
@@ -2125,7 +2219,8 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
 bool draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!ownsFrameImpl(screen)) return false;
     auto& state = stateFor(screen);
-    if (state.itemQuantityActive)drawItemQuantity(screen,fb,state);
+    if (state.itemRemoveConfirmActive)drawItemRemoveConfirm(screen,fb,state);
+    else if (state.itemQuantityActive)drawItemQuantity(screen,fb,state);
     else if (state.confirmRelease) drawReleaseConfirm(screen, fb, state);
     else if (state.legality) drawLegality(screen, fb, state);
     else if (state.review) drawReview(screen, fb);
