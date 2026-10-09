@@ -5,7 +5,8 @@
 #include <cerrno>
 #include <sys/stat.h>
 
-#include "Names/ItemPouches.h"   // getPouchItems -> the add-item picker's per-pouch list
+#include "Names/ItemPouches.h"
+#include "Integration/Gen4/Gen4ReadOnlyInventory.h"   // getPouchItems -> the add-item picker's per-pouch list
 #include "Names/MoveInfo.h"      // getMoveBasePP -> a created/picked move gets real PP, not 0
 #include "Names/MoveNames.h"     // getMoveCount -> scan for a created mon's first legal move
 #include "Names/MovePresence.h"  // isMovePresent -> hide moves a game doesn't have (PKHeX-style filter)
@@ -4736,6 +4737,15 @@ namespace UI {
                         selectedItemIndex = 0;
                         break;
                     }
+                    case GameVersion::DP:
+                    case GameVersion::PT:
+                    case GameVersion::HGSS: {
+                        constexpr int count=static_cast<int>(PokeVault::Integration::Gen4::BagPocketCount);
+                        selectedCategory=(selectedCategory+count-1)%count;
+                        currentPage=0;
+                        selectedItemIndex=0;
+                        break;
+                    }
                     case GameVersion::BDSP: {
                         selectedCategory = (selectedCategory - 1 + POUCH_COUNT8BDSP) % POUCH_COUNT8BDSP;
                         currentPage = 0;
@@ -4788,6 +4798,15 @@ namespace UI {
                         selectedCategory = (selectedCategory + 1) % POUCH_COUNT8_LA;
                         currentPage = 0;
                         selectedItemIndex = 0;
+                        break;
+                    }
+                    case GameVersion::DP:
+                    case GameVersion::PT:
+                    case GameVersion::HGSS: {
+                        constexpr int count=static_cast<int>(PokeVault::Integration::Gen4::BagPocketCount);
+                        selectedCategory=(selectedCategory+1)%count;
+                        currentPage=0;
+                        selectedItemIndex=0;
                         break;
                     }
                     case GameVersion::BDSP: {
@@ -5072,7 +5091,19 @@ namespace UI {
                     canOpen = bank && slot >= 0 && storageSlot(storageFocusPane, box, slot) &&
                         storageSlot(storageFocusPane, box, slot)->speciesID() != 0;
                 }
-                if (canOpen)
+                const bool gen4ItemView =
+                    detailViewActive && selectedMode == ViewMode::Items &&
+                    (sourceGameId=="diamond_nds" || sourceGameId=="pearl_nds" ||
+                     sourceGameId=="platinum_nds" ||
+                     sourceGameId=="heartgold_nds" || sourceGameId=="soulsilver_nds");
+                if(gen4ItemView) {
+                    instructions = "D-pad/Stick: Items  |  L/R: Pocket  |  B: Back";
+                    if(selectedCategory>=0 &&
+                       selectedCategory<static_cast<int>(trainer.items.size()) &&
+                       selectedItemIndex>=0 &&
+                       selectedItemIndex<static_cast<int>(visibleItemIndices().size()))
+                        instructions += "  |  A: Edit Staged Quantity";
+                } else if (canOpen)
                     instructions += "  |  A: View / Actions";
                 if (detailViewActive && (selectedMode == ViewMode::Boxes || selectedMode == ViewMode::Storage))
                     instructions += "  |  L/R: Box  |  ZL/ZR: Jump";
