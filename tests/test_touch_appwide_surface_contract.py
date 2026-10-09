@@ -483,12 +483,21 @@ require_all("src/UI/SaveSelectScreen.cpp",
 save_select_hit_source = read("src/UI/SaveSelectScreen.cpp")
 if save_select_hit_source.count("pushViewportHit(") < 8:
     raise AssertionError("SaveSelect: scrollable list hitboxes must be clipped to visible viewports")
+# Backup tile hits use the current pixel-scrolled tile geometry, then require
+# contact AND release inside that same clipped tile before issuing A. Unlike
+# the older visIdx/startedRow check, this also rejects taps in inter-row gaps.
 require_all("src/UI/BackupSelectionScreen.cpp",
             "backupScroll.stop();",
             "showDeleteConfirmation = true;",
             "touch.startX() >= b.x", "touch.startY() >= b.y",
-            "insideList(touch.startX(), touch.startY())",
-            "visIdx == startedRow")
+            "const int liveOffset = backupScroll.offset();",
+            "const int top = std::max(listY, itemY);",
+            "const int bottom = std::min(listBottom, itemY + LIST_ROW_H - 10);",
+            "insideTile(touch.startX(), touch.startY())",
+            "insideTile(touch.x(), touch.y())")
+backup_touch = read("src/UI/BackupSelectionScreen.cpp")
+assert "if (touch.justTapped())" in backup_touch
+assert "insideList(touch.startX(), touch.startY())" not in backup_touch
 # All generations share one clipped Species-picker gesture origin. Horizontal drags
 # and drags starting on the preview panel cannot advance the species on release.
 require_all("include/UI/SharedSpeciesPicker.h",
