@@ -8,6 +8,11 @@ GEN4_BCC_SYNC_FAILURE_SOURCES := tests/test_gen4_bcc_sync_failure_reroll.cpp
 GEN4_BCC_SYNC_FAILURE_HEADERS := include/Legality/Gen4BugContestSynchronizeFailureEvidence.h \
 	include/Legality/Gen4LeadFailureEvidence.h include/Legality/Gen4LeadEffectEvidence.h \
 	include/Legality/Gen4LeadFrameEvidence.h include/Legality/Gen4WildEncounter.h
+GEN4_BCC_MIXED_SYNC_SOURCES := tests/test_gen4_bcc_mixed_sync.cpp
+GEN4_BCC_MIXED_SYNC_HEADERS := include/Legality/Gen4BugContestMixedSyncEvidence.h \
+	include/Legality/Gen4BugContestSynchronizeEvidence.h \
+	include/Legality/Gen4BugContestSynchronizeFailureEvidence.h \
+	include/Legality/Gen4LeadFrameEvidence.h include/Legality/Gen4WildEncounter.h
 GEN4_BCC_SYNC_HISTORY_SOURCES := tests/test_gen4_bcc_sync_failure_history.cpp
 GEN4_BCC_SYNC_HISTORY_HEADERS := include/Legality/Gen4LeadHistoryEvidence.h \
 	include/Legality/Gen4BugContestSynchronizeFailureEvidence.h \
@@ -34,6 +39,7 @@ GEN4_LEAD_REPORTING_SOURCES := tests/test_gen4_lead_reporting_evidence.cpp
 GEN4_LEAD_REPORTING_HEADERS := include/Legality/Gen4LeadReportingEvidence.h \
 	include/Legality/Gen4LeadHistoryEvidence.h $(GEN4_LEAD_HISTORY_HEADERS)
 
+HOST_TESTS += $(HOST_BUILD)/test_gen4_bcc_mixed_sync
 HOST_TESTS += $(HOST_BUILD)/test_gen4_lead_effect_evidence \
 	$(HOST_BUILD)/test_gen4_lead_failure_evidence \
 	$(HOST_BUILD)/test_gen4_bcc_sync_failure_reroll \
@@ -43,6 +49,7 @@ HOST_TESTS += $(HOST_BUILD)/test_gen4_lead_effect_evidence \
 	$(HOST_BUILD)/test_gen4_lead_history_evidence \
 	$(HOST_BUILD)/test_gen4_min31_reroll_frames \
 	$(HOST_BUILD)/test_gen4_lead_reporting_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_bcc_mixed_sync_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_lead_effect_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_lead_failure_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_bcc_sync_failure_reroll_sanitize \
@@ -52,6 +59,7 @@ HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_lead_effect_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_lead_history_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_min31_reroll_frames_sanitize \
 	$(HOST_BUILD)/test_gen4_lead_reporting_evidence_sanitize
+host-test: $(HOST_BUILD)/test_gen4_bcc_mixed_sync
 host-test: $(HOST_BUILD)/test_gen4_lead_effect_evidence \
 	$(HOST_BUILD)/test_gen4_lead_failure_evidence \
 	$(HOST_BUILD)/test_gen4_bcc_sync_failure_reroll \
@@ -61,6 +69,7 @@ host-test: $(HOST_BUILD)/test_gen4_lead_effect_evidence \
 	$(HOST_BUILD)/test_gen4_lead_history_evidence \
 	$(HOST_BUILD)/test_gen4_min31_reroll_frames \
 	$(HOST_BUILD)/test_gen4_lead_reporting_evidence
+host-sanitize: $(HOST_BUILD)/test_gen4_bcc_mixed_sync_sanitize
 host-sanitize: $(HOST_BUILD)/test_gen4_lead_effect_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_lead_failure_evidence_sanitize \
 	$(HOST_BUILD)/test_gen4_bcc_sync_failure_reroll_sanitize \
@@ -142,3 +151,11 @@ $(HOST_BUILD)/test_gen4_lead_reporting_evidence: $(GEN4_LEAD_REPORTING_SOURCES) 
 $(HOST_BUILD)/test_gen4_lead_reporting_evidence_sanitize: $(GEN4_LEAD_REPORTING_SOURCES) $(GEN4_LEAD_REPORTING_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_LEAD_REPORTING_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_bcc_mixed_sync: $(GEN4_BCC_MIXED_SYNC_SOURCES) $(GEN4_BCC_MIXED_SYNC_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN4_BCC_MIXED_SYNC_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen4_bcc_mixed_sync_sanitize: $(GEN4_BCC_MIXED_SYNC_SOURCES) $(GEN4_BCC_MIXED_SYNC_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_BCC_MIXED_SYNC_SOURCES) -o $@
