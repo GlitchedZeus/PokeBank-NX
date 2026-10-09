@@ -407,6 +407,57 @@ int main() {
         "emerald_gba", 43, 57, 28, 0, 0x6E5390CFu,
         blockCuteCharmFail).resolution == MH::Resolution::Unresolved);
 
+    // Hoenn Safari nature-block Intimidate/Keen Eye non-repelled frame.
+    // Pinned MethodH.IsSlotValidIntimidate rejects on an ODD -1 proc; the
+    // EVEN proc 45562 does NOT abort. -2 ordinary level RNG=8461 and -3
+    // grass selector=10035 (roll35) explain Oddish slot1 at level27.
+    // The ordinary Safari-block ESV would use -2=8461 (roll61, slot4),
+    // so the regular no-lead path cannot explain this exact Oddish frame.
+    // Odd p0=1, sequential PID nature18, zero reversal candidates exclude
+    // competing ordinary-nature and Synchronize-no-block paths.
+    const auto blockIntimidate = Gen3PidIv::analyze(
+        0x6919B1E2u, {31,2,13,8,15,17});
+    assert(blockIntimidate.method == Method::Method1);
+    assert(blockIntimidate.originSeed == 0x00010255u);
+    const uint8_t intimBlockNature = static_cast<uint8_t>(
+        MH::Detail::sequentialPid(blockIntimidate.originSeed) % 25u);
+    assert(intimBlockNature == 18u);
+    assert(MH::Detail::upper16(blockIntimidate.originSeed) == 1u);
+    assert(MH::Detail::reversalWindow(
+        blockIntimidate.originSeed, intimBlockNature) == 0u);
+    const uint32_t intimBlockFrame =
+        MH::Detail::hoennSafariBlockSeed(blockIntimidate.originSeed);
+    assert(intimBlockFrame == 0x4B6F2799u);
+    assert(MH::Detail::hoennSafariBlockProc(intimBlockFrame));
+    assert(MH::Detail::upper16(intimBlockFrame) % 100u == 11u);
+    const uint32_t intimBlockProc = Gen3PidIv::Detail::prev(intimBlockFrame);
+    const uint32_t intimBlockLevel = Gen3PidIv::Detail::prev(intimBlockProc);
+    const uint32_t intimBlockSlot = Gen3PidIv::Detail::prev(intimBlockLevel);
+    assert(MH::Detail::upper16(intimBlockProc) == 45562u);
+    assert((MH::Detail::upper16(intimBlockProc) & 1u) == 0u);
+    assert(MH::Detail::upper16(intimBlockProc) % 3u != 0u);
+    assert(MH::Detail::upper16(intimBlockLevel) == 8461u);
+    assert(MH::Detail::upper16(intimBlockLevel) % 100u == 61u);
+    assert(MH::Detail::upper16(intimBlockSlot) == 10035u);
+    assert(MH::Detail::upper16(intimBlockSlot) % 100u == 35u);
+
+    const auto oddishIntimBlock = MH::analyze(
+        "emerald_gba", 43, 57, 27, 0, 0x6919B1E2u, blockIntimidate);
+    assert(oddishIntimBlock.resolution == MH::Resolution::FrameMatched);
+    assert(oddishIntimBlock.path ==
+           MH::Path::EmeraldSafariBlockIntimidateKeenEyeCheckFailed);
+    assert(oddishIntimBlock.requiredBall == Gen3Safari::kSafariBall);
+    assert(oddishIntimBlock.sourceSpecies == 43);
+    assert(oddishIntimBlock.encounterType == 0);
+    assert(oddishIntimBlock.slot == 1);
+    assert(oddishIntimBlock.frameSeed == intimBlockFrame);
+
+    // No source-backed Oddish level28 history is reconstructed for this
+    // same frame. Unknown provenance is Unresolved, not Invalid.
+    assert(MH::analyze(
+        "emerald_gba", 43, 57, 28, 0, 0x6919B1E2u,
+        blockIntimidate).resolution == MH::Resolution::Unresolved);
+
     // The same successful Safari block and Method-1 PID/IV can prove a
     // DIFFERENT observed level under a failed Synchronize lead. Pinned
     // IsSlotValidSyncFail requires an ODD -1 proc, -2 ordinary level,
