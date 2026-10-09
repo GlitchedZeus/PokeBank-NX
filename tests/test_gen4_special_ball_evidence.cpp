@@ -46,6 +46,36 @@ int main() {
     static_assert(Proof::matchDirectRow(marsh,24) == Affinity::None);
     assert(Proof::analyzeSupported(
         "diamond_nds",24,52,20,0,5) == Affinity::GreatMarsh);
+    // Pinned real HeartGold Nincada #290 BCC row: source for an
+    // evolved Shedinja #292. Both Sport ID24 and Poké ID4 are compatible
+    // according to pinned BallVerifier.VerifyEvolvedShedinja.
+    constexpr uint64_t nincada = 0x64980424359F22ULL;
+    static_assert(Gen4Wild::game(nincada) == Gen4Wild::Game::HeartGold);
+    static_assert(Gen4Wild::species(nincada) == 290);
+    static_assert(Gen4Wild::location(nincada) == 207);
+    static_assert(Gen4Wild::method(nincada) == 8);
+    static_assert(Gen4Wild::minLevel(nincada) == 26);
+    static_assert(Gen4Wild::maxLevel(nincada) == 36);
+    static_assert(Gen4Wild::slot(nincada) == 2);
+    static_assert(Gen4Wild::rate(nincada) == 25);
+    assert(Proof::analyzeSupported(
+        "heartgold_nds",292,207,26,0,24) == Affinity::ShedinjaBugContest);
+    assert(Proof::analyzeSupported(
+        "heartgold_nds",292,207,36,0,4) == Affinity::ShedinjaBugContest);
+    assert(Proof::analyzeSupported(
+        "soulsilver_nds",292,207,26,0,24) == Affinity::ShedinjaBugContest);
+    assert(Proof::analyzeSupported(
+        "heartgold_nds",292,207,25,0,24) == Affinity::None);
+    assert(Proof::analyzeSupported(
+        "heartgold_nds",292,206,26,0,24) == Affinity::None);
+    assert(Proof::analyzeSupported(
+        "heartgold_nds",292,207,26,0,5) == Affinity::None);
+    assert(Proof::analyzeSupported(
+        "diamond_nds",292,207,26,0,24) == Affinity::None);
+    assert(Proof::analyzeSupported(
+        "heartgold_nds",292,207,26,1,24) == Affinity::None);
+    assert(Proof::analyzeSupported(
+        "heartgold_nds",291,207,26,0,4) == Affinity::None);
     assert(Proof::analyzeSupported(
         "diamond_nds",24,52,20,0,24) == Affinity::None);
     assert(Proof::analyzeSupported(

@@ -1442,6 +1442,21 @@ namespace Legality {
                 // current save container. A D-origin PK4 traded into Platinum must still be
                 // checked against Diamond encounter data. Pal Park/PBR origins are separate.
                 if (!gen4EncounterGameId.empty()) {
+                    // Nincada captured in the HGSS Bug-Catching Contest may
+                    // evolve into Shedinja. PKHeX permits Sport or Poké Ball
+                    // for this history. Shedinja itself has no wild slot;
+                    // keep this positive origin note outside direct wild
+                    // matching, with no hard-Invalid on nonmatches.
+                    if (!pk.isEgg() && species == 292 &&
+                        Gen4SpecialBallEvidence::analyzeSupported(
+                            gen4EncounterGameId, species,
+                            pk.metLocation(), pk.metLevel(),
+                            pk.form(), pk.ball()) ==
+                            Gen4SpecialBallEvidence::Affinity::ShedinjaBugContest) {
+                        add(r, Severity::Info,
+                            "Shedinja's Sport or Poke Ball has a compatible HeartGold/SoulSilver Bug-Catching Contest Nincada pre-evolution origin; competing history remains incomplete",
+                            CheckIdentifier::Items);
+                    }
                     if (pk.metLevel() != 0 && Legality::Gen4Wild::matchesWithTrainerId(
                             gen4EncounterGameId, species, pk.metLocation(), pk.metLevel(),
                             pk.form(), pk.id32())) {

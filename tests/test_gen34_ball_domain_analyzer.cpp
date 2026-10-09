@@ -209,6 +209,28 @@ int main() {
         "Sport Ball has a compatible HeartGold/SoulSilver"));
     // Native encrypted Diamond PK4 -> read-only view -> source-aware
     // Legality::analyze: Great Marsh is location 52, not HGSS Safari 202.
+    // Native encrypted HGSS PK4: current Shedinja is not directly caught,
+    // but a pinned Nincada Bug-Catching Contest ancestor at location207,
+    // level26-36 can explain either a Sport or Poké Ball.
+    const auto shedSport = analyzeNativeHgssSpecialBall(292, 207, 26, 24);
+    assert(hasInfo(shedSport,
+        "Shedinja's Sport or Poke Ball has a compatible HeartGold/SoulSilver Bug-Catching Contest Nincada pre-evolution origin"));
+    const auto shedPoke = analyzeNativeHgssSpecialBall(292, 207, 26, 4);
+    assert(hasInfo(shedPoke,
+        "Shedinja's Sport or Poke Ball has a compatible HeartGold/SoulSilver Bug-Catching Contest Nincada pre-evolution origin"));
+    const auto shedBadLocation = analyzeNativeHgssSpecialBall(292, 206, 26, 24);
+    assert(!hasInfo(shedBadLocation,
+        "Shedinja's Sport or Poke Ball has a compatible"));
+    const auto shedBadLevel = analyzeNativeHgssSpecialBall(292, 207, 1, 24);
+    assert(!hasInfo(shedBadLevel,
+        "Shedinja's Sport or Poke Ball has a compatible"));
+    const auto shedWrongBall = analyzeNativeHgssSpecialBall(292, 207, 26, 5);
+    assert(!hasInfo(shedWrongBall,
+        "Shedinja's Sport or Poke Ball has a compatible"));
+    const auto shedWrongOrigin = analyzeNativeHgssSpecialBall(292, 207, 26, 24, 12);
+    assert(!hasInfo(shedWrongOrigin,
+        "Shedinja's Sport or Poke Ball has a compatible"));
+
     const auto marshPositive = analyzeNativeDiamondMarshBall(24, 52, 20, 5);
     assert(hasInfo(marshPositive,
         "Safari Ball has a compatible Diamond/Pearl/Platinum Great Marsh encounter source"));

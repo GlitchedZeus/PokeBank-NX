@@ -12,7 +12,7 @@ namespace Legality::Gen4SpecialBallEvidence {
 // Ball (5). A missing match is UNRESOLVED; it is never evidence that
 // another acquisition / evolved / transferred history is impossible.
 // D/P/Pt Great Marsh and Nincada -> Shedinja exceptions are out of scope.
-enum class Affinity : uint8_t { None, Sport, Safari, GreatMarsh };
+enum class Affinity : uint8_t { None, Sport, Safari, GreatMarsh, ShedinjaBugContest };
 
 constexpr Affinity matchDirectRow(uint64_t row, uint8_t ball) noexcept {
     const uint8_t type = Gen4Wild::method(row);
@@ -45,6 +45,25 @@ inline Affinity analyzeSupported(std::string_view exactGameId,
     const auto wanted = Gen4Wild::gameForId(exactGameId);
     if (wanted == Gen4Wild::Game::Invalid)
         return Affinity::None;
+
+    // Pinned PKHeX BallVerifier.VerifyEvolvedShedinja:
+    // a Gen IV BCC Nincada (#290) -> Shedinja (#292) may retain a Sport
+    // Ball or revert to Poké Ball. PK4 retains the capture's met data.
+    // This is source-compatible history only, not a unique provenance
+    // or evidence that unrelated origins are impossible.
+    if (species == 292 && form == 0 && (ball == 24 || ball == 4) &&
+        (wanted == Gen4Wild::Game::HeartGold ||
+         wanted == Gen4Wild::Game::SoulSilver)) {
+        for (const uint64_t row : Gen4Wild::kPackedGen4WildEncounters) {
+            if (Gen4Wild::game(row) == wanted &&
+                Gen4Wild::species(row) == 290 &&
+                Gen4Wild::method(row) == 8 &&
+                Gen4Wild::location(row) == metLocation &&
+                Gen4Wild::levelMatches(row, metLevel) &&
+                Gen4Wild::formMatches(Gen4Wild::form(row), 0))
+                return Affinity::ShedinjaBugContest;
+        }
+    }
 
     for (const uint64_t row : Gen4Wild::kPackedGen4WildEncounters) {
         if (Gen4Wild::game(row) != wanted ||
