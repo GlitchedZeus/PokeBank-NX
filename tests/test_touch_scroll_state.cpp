@@ -168,6 +168,8 @@ static void testIndependentPickerViewport() {
     window.ensure(selected, 60, 9);
     assert(window.firstRow == 14); // Draw-time ensure must not recentre after scroll.
     assert(window.containsSelection(selected, 60, 9));
+    assert(!window.containsSelection(-1, 60, 9)); // An invalid sentinel is not row zero.
+    assert(!window.containsSelection(60, 60, 9)); // Nor may count alias the last entry.
     assert(!window.containsSelection(44, 60, 9)); // A cannot accept a hidden option.
     motion.stop();
     window.reveal(44, 60, 9);
@@ -191,6 +193,8 @@ static void testIndependentPickerViewport() {
     grid.reveal(16, 17, 3, 3);
     assert(grid.firstRow == 3); // Partially filled final row remains selectable.
     assert(grid.containsSelection(16, 17, 3, 3));
+    assert(!grid.containsSelection(-1, 17, 3, 3));
+    assert(!grid.containsSelection(17, 17, 3, 3));
     grid.reset();
     assert(!grid.containsSelection(16, 17, 3, 3));
     assert(grid.firstRow == -1);

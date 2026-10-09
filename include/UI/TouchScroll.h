@@ -93,8 +93,9 @@ struct TouchPickerViewport {
     // Confirmations must not silently activate a hidden option; reveal it first.
     [[nodiscard]] bool containsSelection(int selected, int count, int visibleRows,
                                          int columns = 1) const noexcept {
-        if (count <= 0 || firstRow < 0) return false;
-        const int row = std::clamp(selected, 0, count - 1) / std::max(1, columns);
+        // Invalid picker indices must not alias the first/last visible choice.
+        if (count <= 0 || firstRow < 0 || selected < 0 || selected >= count) return false;
+        const int row = selected / std::max(1, columns);
         return row >= firstRow && row - firstRow < std::max(1, visibleRows);
     }
 
