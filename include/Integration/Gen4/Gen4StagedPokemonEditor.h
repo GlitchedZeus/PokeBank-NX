@@ -79,6 +79,12 @@ public:
     bool stageBagQuantity(size_t pocket,size_t visibleIndex,uint16_t quantity,
                           std::string* error=nullptr);
 
+    // Destructive within the APP-OWNED staged workspace only. Explicit UI
+    // confirmation is required; native identity/count are rechecked and
+    // the external emulator SAV4 remains byte-for-byte immutable.
+    bool stageBagRemove(size_t pocket,size_t visibleIndex,
+                        std::string* error=nullptr);
+
     void discard() noexcept { staged_ = original_; }
 
     [[nodiscard]] std::vector<uint8_t> finalizedBytes(std::string* error = nullptr) const;
