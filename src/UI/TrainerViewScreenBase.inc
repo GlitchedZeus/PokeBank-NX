@@ -4843,7 +4843,6 @@ namespace UI {
         drawAppBackdrop(fb);
 
         // --- Title bar: the shared chrome, with game name + version + DLC as the subtitle ---
-        const std::string legacyPlatform(PokeVault::Games::legacyPlatformAbbreviation(sourceGameId));
         // Product-facing source identity belongs in the top bar; native
         // diagnostic counters (G4 P1/0 B0/0 T0:14, etc.) belong in source
         // details/logs, not beside the game title on every screen.
