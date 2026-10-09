@@ -72,6 +72,16 @@ int main() {
     const auto locations = read("src/Names/LocationNames.cpp");
     const auto locationGenerator = read("tools/gen_locations.py");
     const auto itemsPanel = read("src/UI/Panels/ItemsPanel.cpp");
+    const auto gen3Picker = read("src/UI/Gen3SharedPokemonSurface.inc");
+    const auto gen2Held = read("include/UI/Gen2HeldItemPicker.h");
+    const auto gen1Move = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc");
+    const auto gen2Move = read("src/UI/Gen2HardwarePickerFix.inc");
+    const auto movePickerModel = read("include/UI/MovePickerPresentation.h");
+    const auto itemArtwork = read("include/UI/ItemPickerArtwork.h");
+    const auto spriteRuntime = read("src/UI/SpriteManager.cpp");
+    const auto spriteGenerator = read("tools/gen_item_sprites.py");
+    const auto recover = read("tools/recover_workspace.py");
+    const auto assetGate = read("tools/check_device_assets.py");
     const auto trainerBase = read("include/Trainer/Trainer.h");
     const auto rbyBridge = read("include/Legacy/RBYReadOnlyTrainer.h");
     const auto gscBridge = read("include/Legacy/GSCReadOnlyTrainer.h");
@@ -252,6 +262,29 @@ int main() {
     contains(surface, "const bool compactChoices=");
     contains(surface, "visibleChoices");
     contains(surface, "Colors::Text, TextStyle::Body");
+    // Item pictures must be actual per-ball/item PNGs and part of reproducible
+    // ROMFS recovery, not a generic placeholder drawn for every choice.
+    contains(surface, "ItemPickerArtwork::draw(fb, cellX + cellWidth");
+    contains(surface, "ItemPickerArtwork::draw(fb, x + w - 35");
+    contains(gen3Picker, "ItemPickerArtwork::draw(fb, cellX + cellWidth");
+    contains(gen3Picker, "ItemPickerArtwork::draw(fb, x + w - 35");
+    contains(gen2Held, "ItemPickerArtwork::draw(fb");
+    contains(itemArtwork, "SpriteManager::getItemSprite(exactName)");
+    contains(spriteRuntime, "sprites/items/");
+    contains(spriteGenerator, "REQUIRED_BALLS");
+    contains(spriteGenerator, "PINNED_REF");
+    contains(recover, "tools\" / \"gen_item_sprites.py");
+    contains(assetGate, "BALL_ICON_NAMES");
+
+    // Gen I is included in the shared move text formatting requirements:
+    // all four native picker paths consume the identical separator formatter.
+    contains(gen1Move, "MoveUI::rowLabel(");
+    contains(gen2Move, "MovePickerPresentation::rowLabel(");
+    contains(gen3Picker, "MoveUI::rowLabel(");
+    contains(surface, "MoveUI::rowLabel(");
+    contains(movePickerModel, "  |  Pwr ");
+    contains(movePickerModel, "  |  PP ");
+
     assert(surface.find("+ \" (#\" + std::to_string(value)") == std::string::npos);
 
     // Generated location strings must never retain a source UTF-8 BOM as a visible glyph.
