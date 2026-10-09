@@ -95,6 +95,7 @@ struct State {
     int itemQuantityVisibleRow = 0;
     uint16_t itemQuantityBaseline = 1;
     uint16_t itemQuantityDraft = 1;
+    uint16_t itemQuantityMax = 999;
     bool itemAddPickerActive = false;
     int itemAddPocket = 0;
     int itemAddIndex = 0;
@@ -2150,8 +2151,13 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         if(raw<0 || raw>=static_cast<int>(screen.trainer.items[pocket].size()))return false;
         const auto& item=screen.trainer.items[pocket][static_cast<size_t>(raw)];
         if(item.itemId==0 || item.count==0 || item.count>999)return false;
-        if(!editor(screen)) {
+        auto* staged=editor(screen);
+        if(!staged) {
             screen.postStatus("Gen IV inventory source remains read-only; staged workspace unavailable",240);
+            return true;
+        }
+        if(!Gen4::gen4BagItemAllowed(staged->layout(),static_cast<size_t>(pocket),item.itemId)) {
+            screen.postStatus("Gen IV item is not in this title's verified native pocket catalog",300);
             return true;
         }
         if(down&HidNpadButton_Y) {
@@ -2168,6 +2174,8 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         state.itemQuantityVisibleRow=visible;
         state.itemQuantityBaseline=item.count;
         state.itemQuantityDraft=item.count;
+        state.itemQuantityMax=Gen4::gen4BagMaxQuantity(
+            static_cast<size_t>(pocket),item.itemId);
         screen.controllerNavigation.reset();
         return true;
     }
@@ -2188,7 +2196,8 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         (keys&HidNpadButton_Down)?-10:0;
     if(delta) {
         const int next=static_cast<int>(state.itemQuantityDraft)+delta;
-        state.itemQuantityDraft=static_cast<uint16_t>(std::clamp(next,1,999));
+        state.itemQuantityDraft=static_cast<uint16_t>(std::clamp(next,1,
+            static_cast<int>(state.itemQuantityMax)));
     }
     if(!(keys&HidNpadButton_A))return true;
     auto* staged=editor(screen);
@@ -2296,7 +2305,9 @@ void drawItemQuantity(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State&
     fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
     fb.drawText(x+24,y+22,"Gen IV Item - Staged Quantity",
                 Colors::Text,TextStyle::Heading);
-    fb.drawText(x+24,y+68,"Native stack quantity (1 - 999)",Colors::TextDim,TextStyle::Caption);
+    fb.drawText(x+24,y+68,
+        "Native stack quantity (1 - "+std::to_string(state.itemQuantityMax)+")",
+        Colors::TextDim,TextStyle::Caption);
     fb.drawText(x+24,y+111,
         std::to_string(state.itemQuantityBaseline)+"  ->  "+
         std::to_string(state.itemQuantityDraft),Colors::Text,TextStyle::Heading);
