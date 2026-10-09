@@ -150,6 +150,7 @@ public:
 private:
     [[nodiscard]] static std::optional<Pokemon5ReadOnly> readSlot(
         const Gen5StagedPokemonWorkspace& ws,const Slot& location) {
+        if(!Gen5StagedPokemonWorkspace::canonicalSlot(location))return std::nullopt;
         if(location.region==Region::Party) {
             if(location.box!=0)return std::nullopt;
             return ws.viewParty(location.slot);
