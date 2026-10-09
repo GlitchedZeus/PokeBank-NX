@@ -19,6 +19,7 @@
 #include "Trainer/Inventory3FRLG.h"
 #include "Integration/Gen1/Gen1ReadOnlyInventory.h"
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
+#include "Integration/Gen4/Gen4ReadOnlyInventory.h"
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "UI/ClassicInventoryUIModel.h"
 #include "UI/InventoryUIContract.h"
@@ -78,6 +79,9 @@ namespace Panels {
         else if (gameGroup == GameVersion::BDSP) name = getPouchInfo8BDSP(static_cast<PouchType8BDSP>(category)).name;
         else if (gameGroup == GameVersion::GG)   name = getPouchInfo7LGPE(static_cast<PouchType7LGPE>(category)).name;
         else if (gameGroup == GameVersion::GSC)  name = gscPouchDisplayName(category);
+        else if (gameGroup == GameVersion::DP || gameGroup == GameVersion::PT ||
+                 gameGroup == GameVersion::HGSS)
+            name = PokeVault::Integration::Gen4::bagPocketName(static_cast<size_t>(category));
         else if (gameGroup == GameVersion::RBY)  name = PokeVault::Integration::Gen1::inventoryCategoryName(static_cast<size_t>(category));
         else if (gameGroup == GameVersion::FRLG) name = getPouchInfo3FRLG(static_cast<PouchType3FRLG>(category)).name;
         else                                     name = getPouchInfo8SWSH(static_cast<PouchType8SWSH>(category)).name;
@@ -135,9 +139,9 @@ namespace Panels {
         }
         if (gen4Source && screen.trainer.items.empty()) {
             fb.drawText(x + 24, y + hH + 30, "Inventory unavailable", Colors::Text, TextStyle::Body);
-            fb.drawText(x + 24, y + hH + 58, "Generation IV inventory support is not implemented yet.",
+            fb.drawText(x + 24, y + hH + 58, "Native Generation IV bag data failed validation.",
                         Colors::TextDim, TextStyle::Caption);
-            fb.drawText(x + 24, y + hH + 82, "Party/Box Pokemon View, Edit and Create remain available.",
+            fb.drawText(x + 24, y + hH + 82, "Trainer and Pokemon remain available; invalid bag entries are quarantined.",
                         Colors::TextDim, TextStyle::Caption);
             fb.drawText(x + 24, y + hH + 106, "External emulator source remains read-only.",
                         Colors::TextDim, TextStyle::Caption);
