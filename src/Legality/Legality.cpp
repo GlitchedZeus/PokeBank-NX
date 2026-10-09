@@ -1463,7 +1463,11 @@ namespace Legality {
                     // for this history. Shedinja itself has no wild slot;
                     // keep this positive origin note outside direct wild
                     // matching, with no hard-Invalid on nonmatches.
-                    if (!pk.isEgg() && species != 292) {
+                    // Hatched Gen IV eggs retain EggLocation even when
+                    // IsEgg becomes false. Do not reinterpret a hatch
+                    // location/level as native wild ancestry.
+                    if (!pk.isEgg() && pk.eggLocation() == 0 &&
+                        species != 292) {
                         const auto evoBall =
                             Gen4EvolvedSpecialBall::analyzeSupported(
                                 gen4EncounterGameId, species,
@@ -1477,7 +1481,8 @@ namespace Legality {
                                 CheckIdentifier::Items);
                         }
                     }
-                    if (!pk.isEgg() && species == 292 &&
+                    if (!pk.isEgg() && pk.eggLocation() == 0 &&
+                        species == 292 &&
                         Gen4SpecialBallEvidence::analyzeSupported(
                             gen4EncounterGameId, species,
                             pk.metLocation(), pk.metLevel(),

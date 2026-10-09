@@ -91,7 +91,8 @@ Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true) {
 Legality::Report analyzeNativeHgssSpecialBall(
         uint16_t species, uint16_t metLocation,
         uint8_t metLevel, uint8_t ball, uint8_t originVersion = 7,
-        uint32_t experience = 3375, uint32_t pid = 0x12345678u) {
+        uint32_t experience = 3375, uint32_t pid = 0x12345678u,
+        uint16_t eggLocation = 0) {
     std::vector<std::byte> raw(Encryption::SIZE_STORED4, std::byte{0});
     wr32(raw, 0x00, pid);
     wr16(raw, 0x08, species);
@@ -100,6 +101,7 @@ Legality::Report analyzeNativeHgssSpecialBall(
     wr32(raw, 0x10, experience);
     raw[0x17] = std::byte{2};
     raw[0x5F] = static_cast<std::byte>(originVersion);
+    wr16(raw, 0x44, eggLocation); // Persistent Gen IV EggLocation.
     wr16(raw, 0x46, metLocation); // Extended Pt/HGSS location.
     raw[0x83] = std::byte{4};     // D/P/Pt Poké Ball shadow byte.
     raw[0x84] = static_cast<std::byte>(metLevel);
@@ -109,6 +111,7 @@ Legality::Report analyzeNativeHgssSpecialBall(
     assert(source.valid());
     assert(source.originVersion() == originVersion);
     assert(source.metLocationExtended() == metLocation);
+    assert(source.eggLocationExtended() == eggLocation);
     assert(source.metLevel() == metLevel);
     assert(source.ballHGSS() == ball);
     Pokemon::Pokemon4ReadOnlyView view(source);
@@ -289,6 +292,14 @@ int main() {
         18, 149, 2, 17, 7, 200000);
     assert(hasInfo(evolvedApricorn,
         "special Ball has a compatible wild pre-evolution capture source"));
+    // A hatched Gen IV PK4 retains a nonzero egg-location. Even a
+    // malformed record that also claims a wild met level/location must
+    // NOT receive positive wild ancestry evidence by accident.
+    const auto hatchedEvolved = analyzeNativeHgssSpecialBall(
+        18,202,15,5,7,200000,0x12345678u,2000);
+    assert(!hasInfo(hatchedEvolved,
+        "special Ball has a compatible wild pre-evolution capture source"));
+
     const auto evolvedWrongGame = analyzeNativeHgssSpecialBall(
         18, 202, 15, 5, 12, 200000);
     assert(!hasInfo(evolvedWrongGame,
@@ -347,6 +358,13 @@ int main() {
     const auto shedPoke = analyzeNativeHgssSpecialBall(292, 207, 26, 4);
     assert(hasInfo(shedPoke,
         "Shedinja's Sport or Poke Ball has a compatible HeartGold/SoulSilver Bug-Catching Contest Nincada pre-evolution origin"));
+    // Shedinja also requires a native wild-captured Nincada source;
+    // a retained egg location must not be misreported as BCC ancestry.
+    const auto shedHatchedEgg = analyzeNativeHgssSpecialBall(
+        292,207,26,24,7,200000,0x12345678u,2000);
+    assert(!hasInfo(shedHatchedEgg,
+        "Shedinja's Sport or Poke Ball has a compatible"));
+
     const auto shedBadLocation = analyzeNativeHgssSpecialBall(292, 206, 26, 24);
     assert(!hasInfo(shedBadLocation,
         "Shedinja's Sport or Poke Ball has a compatible"));
