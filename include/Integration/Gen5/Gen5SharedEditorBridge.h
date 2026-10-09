@@ -22,6 +22,8 @@ struct SharedEditorSlot {
     const Gen5StagedPokemonWorkspace& workspace,
     Gen5StagedPokemonWorkspace::Slot location) {
     std::optional<Pokemon5ReadOnly> pk;
+    if(!Gen5StagedPokemonWorkspace::canonicalSlot(location))
+        return {location,false,false};
     if(location.region==Gen5StagedPokemonWorkspace::Region::Party && location.box==0)
         pk=workspace.viewParty(location.slot);
     else if(location.region==Gen5StagedPokemonWorkspace::Region::Box)
