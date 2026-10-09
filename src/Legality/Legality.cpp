@@ -677,7 +677,9 @@ namespace Legality {
                     CheckIdentifier::Encounter);
             }
             if (gen2.caughtData() != 0 && exactSourceGameId == "crystal_gbc") {
-                if (Gen2Wild::matchesCrystalCaughtData(gen2.speciesID(), gen2.caughtData())) {
+                if (!gen2.isEgg() &&
+                    Gen2Wild::matchesCrystalCaughtData(
+                        gen2.speciesID(), gen2.caughtData())) {
                     add(r, Severity::Info,
                         "PK2 caught-data location/level/time matches a pinned Crystal wild encounter slot",
                         CheckIdentifier::Encounter);

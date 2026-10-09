@@ -174,3 +174,20 @@ $(HOST_BUILD)/test_gen2_crystal_evolved_wild: $(GSC_EVOLVED_WILD_SOURCES) $(GSC_
 $(HOST_BUILD)/test_gen2_crystal_evolved_wild_sanitize: $(GSC_EVOLVED_WILD_SOURCES) $(GSC_EVOLVED_WILD_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_EVOLVED_WILD_SOURCES) -o $@
+
+# Production report test via immutable validated PK2 record wrapper.
+GSC_EVOLVED_WILD_NATIVE_SOURCES := tests/test_gen2_crystal_evolved_native.cpp \
+	$(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES))
+
+HOST_TESTS += $(HOST_BUILD)/test_gen2_crystal_evolved_native
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_crystal_evolved_native_sanitize
+host-test: $(HOST_BUILD)/test_gen2_crystal_evolved_native
+host-sanitize: $(HOST_BUILD)/test_gen2_crystal_evolved_native_sanitize
+
+$(HOST_BUILD)/test_gen2_crystal_evolved_native: $(GSC_EVOLVED_WILD_NATIVE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gen2_crystal_evolved_native_sanitize: $(GSC_EVOLVED_WILD_NATIVE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
