@@ -86,6 +86,14 @@ struct State {
     int pickerRow = 0;
     std::vector<uint16_t> pickerValues;
 
+    // Gen IV Items use their own app-owned quantity draft, never the generic
+    // source-mutating item dialog. The actual SAV5/DS source stays immutable.
+    bool itemQuantityActive = false;
+    int itemQuantityPocket = 0;
+    int itemQuantityVisibleRow = 0;
+    uint16_t itemQuantityBaseline = 1;
+    uint16_t itemQuantityDraft = 1;
+
     bool moveEditor = false;
     int moveEditorSlot = 0;
     int moveEditorRow = 0;
@@ -126,6 +134,7 @@ bool ownsFrameImpl(const TrainerViewScreen& screen) noexcept {
     if (!isGen4Nds(screen)) return false;
     const auto& state = stateFor(screen);
     return state.actions || state.review || state.legality || state.confirmRelease ||
+           state.itemQuantityActive ||
            state.valuePicker || state.moveEditor || workspaceActive(state);
 }
 
@@ -1943,6 +1952,121 @@ void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& s
     drawNavBar(fb, {{"A", "Confirm Release"}, {"B", "Cancel"}});
 }
 
+bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
+                        u64 held,int stickX,int stickY) {
+    const bool itemsScreen=screen.detailViewActive &&
+        screen.selectedMode==TrainerViewScreen::ViewMode::Items;
+    if(!state.itemQuantityActive) {
+        // Forward controller movement and B/Exit to the shared Items panel.
+        // Only A on an occupied, validated native stack opens an app-memory
+        // draft. A must NEVER perform a destructive removal or source write.
+        if(!itemsScreen || !(down&HidNpadButton_A) ||
+           screen.helpOverlayActive || screen.itemEditDialogActive ||
+           screen.saveConfirmActive || screen.pickerActive ||
+           screen.actionSheet.isOpen())return false;
+        const int pocket=screen.selectedCategory;
+        const int visible=screen.selectedItemIndex;
+        if(pocket<0 || pocket>=static_cast<int>(screen.trainer.items.size()))return false;
+        const auto indices=screen.visibleItemIndices();
+        if(visible<0 || visible>=static_cast<int>(indices.size()))return false;
+        const int raw=indices[static_cast<size_t>(visible)];
+        if(raw<0 || raw>=static_cast<int>(screen.trainer.items[pocket].size()))return false;
+        const auto& item=screen.trainer.items[pocket][static_cast<size_t>(raw)];
+        if(item.itemId==0 || item.count==0 || item.count>999)return false;
+        if(!editor(screen)) {
+            screen.postStatus("Gen IV inventory source remains read-only; staged workspace unavailable",240);
+            return true;
+        }
+        state.itemQuantityActive=true;
+        state.itemQuantityPocket=pocket;
+        state.itemQuantityVisibleRow=visible;
+        state.itemQuantityBaseline=item.count;
+        state.itemQuantityDraft=item.count;
+        screen.controllerNavigation.reset();
+        return true;
+    }
+    // Never pass a modal's controls into the underlying source Items handler.
+    const u64 keys=screen.controllerNavigation.apply(
+        down,held,stickX,stickY,HidNpadButton_Up,HidNpadButton_Down,
+        HidNpadButton_Left,HidNpadButton_Right);
+    if(keys&HidNpadButton_B) {
+        state.itemQuantityActive=false;
+        screen.controllerNavigation.reset();
+        return true;
+    }
+    const int delta=(keys&HidNpadButton_ZL)?-10:
+        (keys&HidNpadButton_ZR)?10:
+        (keys&HidNpadButton_Left)?-1:
+        (keys&HidNpadButton_Right)?1:
+        (keys&HidNpadButton_Up)?10:
+        (keys&HidNpadButton_Down)?-10:0;
+    if(delta) {
+        const int next=static_cast<int>(state.itemQuantityDraft)+delta;
+        state.itemQuantityDraft=static_cast<uint16_t>(std::clamp(next,1,999));
+    }
+    if(!(keys&HidNpadButton_A))return true;
+    auto* staged=editor(screen);
+    if(!staged) {
+        screen.postStatus("Gen IV item quantity needs a verified staged workspace",240);
+        return true;
+    }
+    if(screen.selectedCategory!=state.itemQuantityPocket ||
+       screen.selectedItemIndex!=state.itemQuantityVisibleRow) {
+        screen.postStatus("Gen IV item selection changed; reopen the draft",240);
+        state.itemQuantityActive=false;
+        return true;
+    }
+    // The native stack ID must still match the rendered row. A separate
+    // per-session quantity draft is not a licence to overwrite unknown bag
+    // bytes. All changes remain in the staged editor's owned byte vector.
+    const auto indices=screen.visibleItemIndices();
+    if(state.itemQuantityVisibleRow<0 ||
+       state.itemQuantityVisibleRow>=static_cast<int>(indices.size())) {
+        screen.postStatus("Gen IV selected item is no longer available",240);
+        state.itemQuantityActive=false;
+        return true;
+    }
+    std::string error;
+    auto saved=*staged;
+    if(!staged->stageBagQuantity(
+           static_cast<size_t>(state.itemQuantityPocket),
+           static_cast<size_t>(state.itemQuantityVisibleRow),
+           state.itemQuantityDraft,&error)) {
+        screen.postStatus(error,300);
+        return true;
+    }
+    if(!bridge(screen).refreshStagedPokemonPresentation(error)) {
+        *staged=std::move(saved);
+        std::string restored;
+        (void)bridge(screen).refreshStagedPokemonPresentation(restored);
+        screen.postStatus("Gen IV item display rejected; draft preserved: "+error,360);
+        return true;
+    }
+    state.itemQuantityActive=false;
+    screen.controllerNavigation.reset();
+    screen.postStatus("Gen IV item quantity staged; emulator source unchanged",300);
+    return true;
+}
+
+void drawItemQuantity(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
+    screen.drawGSCOverlay(fb);
+    const int w=540,h=245,x=(fb.getWidth()-w)/2;
+    const int y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,160));
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
+    fb.drawText(x+24,y+22,"Gen IV Item - Staged Quantity",
+                Colors::Text,TextStyle::Heading);
+    fb.drawText(x+24,y+68,"Native stack quantity (1 - 999)",Colors::TextDim,TextStyle::Caption);
+    fb.drawText(x+24,y+111,
+        std::to_string(state.itemQuantityBaseline)+"  ->  "+
+        std::to_string(state.itemQuantityDraft),Colors::Text,TextStyle::Heading);
+    fb.drawText(x+24,y+161,
+        "App-memory draft only - source save is immutable",
+        Colors::Accent,TextStyle::Caption);
+    drawNavBar(fb,{{"Left/Right","- / +"},{"ZL/ZR","10"},{"A","Keep Staged"},{"B","Cancel"}});
+}
+
 } // namespace
 
 bool ownsFrame(const TrainerViewScreen& screen) noexcept {
@@ -1956,6 +2080,7 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
 
     beginPassiveView(screen);
     auto& state = stateFor(screen);
+    if(handleItemQuantity(screen,state,down,held,stickX,stickY))return true;
     const bool ownsNavigation =
         state.actions || state.review || state.legality || state.confirmRelease ||
         state.valuePicker || state.moveEditor || workspaceActive(state);
@@ -1999,7 +2124,8 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
 bool draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!ownsFrameImpl(screen)) return false;
     auto& state = stateFor(screen);
-    if (state.confirmRelease) drawReleaseConfirm(screen, fb, state);
+    if (state.itemQuantityActive)drawItemQuantity(screen,fb,state);
+    else if (state.confirmRelease) drawReleaseConfirm(screen, fb, state);
     else if (state.legality) drawLegality(screen, fb, state);
     else if (state.review) drawReview(screen, fb);
     else if (workspaceActive(state)) drawWorkspace(screen, fb, state);
