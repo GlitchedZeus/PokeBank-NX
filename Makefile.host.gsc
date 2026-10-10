@@ -230,3 +230,21 @@ $(HOST_BUILD)/test_gen2_crystal_eevee_gift: $(GSC_CRYSTAL_EEVEE_GIFT_SOURCES) $(
 $(HOST_BUILD)/test_gen2_crystal_eevee_gift_sanitize: $(GSC_CRYSTAL_EEVEE_GIFT_SOURCES) $(GSC_CRYSTAL_EEVEE_GIFT_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_CRYSTAL_EEVEE_GIFT_SOURCES) -o $@
+
+# Crystal's pinned level-5 Johto starter gifts, after level-up evolution.
+GSC_CRYSTAL_STARTER_GIFT_SOURCES := tests/test_gen2_crystal_starter_gift.cpp
+GSC_CRYSTAL_STARTER_GIFT_HEADERS := include/Legality/Gen2CrystalStarterGiftEvidence.h \
+	include/Legality/Gen2StaticEncounter.h \
+	include/Legality/Gen2StaticEncounterData.inc
+HOST_TESTS += $(HOST_BUILD)/test_gen2_crystal_starter_gift
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_crystal_starter_gift_sanitize
+host-test: $(HOST_BUILD)/test_gen2_crystal_starter_gift
+host-sanitize: $(HOST_BUILD)/test_gen2_crystal_starter_gift_sanitize
+
+$(HOST_BUILD)/test_gen2_crystal_starter_gift: $(GSC_CRYSTAL_STARTER_GIFT_SOURCES) $(GSC_CRYSTAL_STARTER_GIFT_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GSC_CRYSTAL_STARTER_GIFT_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen2_crystal_starter_gift_sanitize: $(GSC_CRYSTAL_STARTER_GIFT_SOURCES) $(GSC_CRYSTAL_STARTER_GIFT_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_CRYSTAL_STARTER_GIFT_SOURCES) -o $@

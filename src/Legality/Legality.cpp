@@ -23,6 +23,7 @@
 #include "Legality/Gen12TimeCapsuleEvidence.h"
 #include "Legality/Gen2StaticEncounter.h"
 #include "Legality/Gen2CrystalEeveeGiftEvidence.h"
+#include "Legality/Gen2CrystalStarterGiftEvidence.h"
 #include "Legality/Gen2TradeEvidence.h"
 #include "Legality/Gen2WildEncounter.h"
 #include "Legality/Gen2CrystalEvolvedWildEvidence.h"
@@ -679,6 +680,18 @@ namespace Legality {
                     eeveeGift == Gen2CrystalEeveeGift::Evidence::StoneEvolution
                         ? "PK2 caught-data is compatible with Crystal's pinned level-20 Eevee gift ancestor and a later stone evolution; competing provenance remains incomplete"
                         : "PK2 caught-data is compatible with Crystal's pinned level-20 Eevee gift ancestor and a later friendship-level evolution; competing provenance remains incomplete",
+                    CheckIdentifier::Encounter);
+            }
+
+            // Possible Johto starter gift ancestry only; a PK2 record
+            // cannot prove the trainer's selection or intervening trades.
+            if (Gen2CrystalStarterGift::analyze(
+                    exactSourceGameId, gen2.speciesID(), gen2.level(),
+                    gen2.caughtData(), gen2.isEgg(),
+                    gen2.isShiny(gen2.id32(), {})) !=
+                Gen2CrystalStarterGift::Ancestor::None) {
+                add(r, Severity::Info,
+                    "PK2 caught-data is compatible with a pinned Crystal level-5 starter gift ancestor followed by evolution; trade and alternative history remain incomplete",
                     CheckIdentifier::Encounter);
             }
 

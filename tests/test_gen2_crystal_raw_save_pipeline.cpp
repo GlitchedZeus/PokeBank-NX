@@ -154,6 +154,20 @@ int main() {
     assert(!hasInfo(analyzeRawSave(196,21,eeveeGift,true),eeveeText));
     assert(!hasInfo(analyzeRawSave(196,21,(1u<<14)|(20u<<8)|17u),eeveeText));
 
+    // Crystal's three pinned level-5 Johto starter gifts at location 1:
+    // intact met-data may remain compatible with an evolved starter.
+    constexpr uint16_t starterGift = (1u << 14) | (5u << 8) | 1u;
+    constexpr auto starterText = "PK2 caught-data is compatible with a pinned Crystal level-5 starter gift ancestor";
+    assert(hasInfo(analyzeRawSave(153, 16, starterGift), starterText));
+    assert(hasInfo(analyzeRawSave(154, 32, starterGift), starterText));
+    assert(hasInfo(analyzeRawSave(156, 14, starterGift), starterText));
+    assert(hasInfo(analyzeRawSave(157, 36, starterGift), starterText));
+    assert(hasInfo(analyzeRawSave(159, 18, starterGift), starterText));
+    assert(hasInfo(analyzeRawSave(160, 30, starterGift), starterText));
+    assert(!hasInfo(analyzeRawSave(154, 31, starterGift), starterText));
+    assert(!hasInfo(analyzeRawSave(157, 36, starterGift, true), starterText));
+    assert(!hasInfo(analyzeRawSave(160, 30, (1u << 14) | (5u << 8) | 2u), starterText));
+
     // Actual pinned Crystal Sentret #161, location2, level2/daytime.
     constexpr uint16_t sentret=(1u<<14)|(2u<<8)|2u;
     assert(hasInfo(analyzeRawSave(162,15,sentret),evolved));
