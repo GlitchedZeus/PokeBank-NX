@@ -70,13 +70,15 @@ void wr32(std::vector<std::byte>& data, size_t offset, uint32_t value) {
     data[offset + 3] = static_cast<std::byte>((value >> 24) & 0xFFu);
 }
 
-Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true) {
+Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true,
+                                 uint16_t species=1, uint16_t move=0) {
     std::vector<std::byte> decrypted(Encryption::SIZE_STORED4, std::byte{0});
     wr32(decrypted, 0x00, 0x12345678u);
-    wr16(decrypted, 0x08, 1);       // Bulbasaur
+    wr16(decrypted, 0x08, species);  // native stored PK4 species
     wr16(decrypted, 0x0C, 12345);
     wr16(decrypted, 0x0E, 54321);
     wr32(decrypted, 0x10, 135);     // level 5, Medium Slow
+    wr16(decrypted, 0x28, move);   // native stored PK4 first move
     decrypted[0x15] = std::byte{65}; // Overgrow
     decrypted[0x17] = std::byte{2};  // English
     decrypted[0x5F] = std::byte{12}; // Platinum origin value; exact provenance is not under test.
@@ -87,6 +89,7 @@ Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true) {
     Pokemon::Pokemon4ReadOnly source(encrypted, Enums::GameVersion::PT);
     assert(source.valid());
     assert(source.ballDPPt() == ball);
+    assert(source.species() == species && source.moves()[0] == move);
     Pokemon::Pokemon4ReadOnlyView view(source);
     assert(view.ball() == ball);
 
@@ -292,6 +295,32 @@ int main() {
     const auto unknownOrigin=analyzeGen4EggBall(4,true,2000,0,0);
     assert(!hasInfo(unknownOrigin,
         "Native Generation III/IV egg origin has a compatible Poke Ball"));
+
+    // Source-free known native PK3/PK4 formats have generation-specific
+    // species/move ceilings regardless of their exact save identity.
+    const auto g3Known=Legality::analyze(gen3WithBall(4),Enums::GameVersion::FRLG);
+    assert(!hasInvalidText(g3Known,"cannot exist in a Generation 3 save"));
+    auto g3NewSpecies=gen3WithBall(4);
+    g3NewSpecies.setSpecies(387); // Turtwig is Gen IV.
+    const auto g3SpeciesBad=Legality::analyze(g3NewSpecies,Enums::GameVersion::FRLG);
+    assert(hasInvalidText(g3SpeciesBad,"Species 387 cannot exist in a Generation 3 save"));
+    auto g3NewMove=gen3WithBall(4);
+    g3NewMove.setMove(0,355);
+    const auto g3MoveBad=Legality::analyze(g3NewMove,Enums::GameVersion::FRLG);
+    assert(hasInvalidText(g3MoveBad,"Move id 355 cannot exist in a Generation 3 save"));
+    auto g3LastMove=gen3WithBall(4);
+    g3LastMove.setMove(0,354);
+    assert(!hasInvalidText(Legality::analyze(g3LastMove,Enums::GameVersion::FRLG),
+                           "Move id 354 cannot exist in a Generation 3 save"));
+
+    // Actual encrypted PK4 reader -> immutable view -> source-free report.
+    const auto g4Upper=analyzeGen4Ball(4,false,493,467);
+    assert(!hasInvalidText(g4Upper,"Species 493 cannot exist"));
+    assert(!hasInvalidText(g4Upper,"Move id 467 cannot exist"));
+    assert(hasInvalidText(analyzeGen4Ball(4,false,494),
+                          "Species 494 cannot exist in a Generation 4 save"));
+    assert(hasInvalidText(analyzeGen4Ball(4,false,1,468),
+                          "Move id 468 cannot exist in a Generation 4 save"));
 
     // Exact Gen III: 12 is the pinned generation maximum, 13 is impossible.
     auto gen3Max = gen3WithBall(12);
