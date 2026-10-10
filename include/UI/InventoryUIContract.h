@@ -61,10 +61,22 @@ struct InventoryActionAvailability {
            !stagedInventoryActionsAvailable;
 }
 
+struct InventoryPickerViewport {
+    int x = 0;
+    int y = 0;
+    int w = 0;
+    int h = 0;
+    int visibleRows = 0;
+
+    [[nodiscard]] constexpr bool contains(int px, int py) const noexcept {
+        return px >= x && px < x + w && py >= y && py < y + h;
+    }
+};
+
 struct InventoryPickerLayout {
     static constexpr int Width = 560;
     static constexpr int VerticalMargin = 60;
-    static constexpr int RowHeight = 40;
+    static constexpr int RowHeight = 56;
     static constexpr int FooterHeight = 64;
     static constexpr int HorizontalPadding = 20;
     static constexpr int TitleOffsetY = 16;
@@ -72,6 +84,26 @@ struct InventoryPickerLayout {
     static constexpr int ListTopOffset = 64;
     static constexpr int ClassicListTopOffset = 90;
     static constexpr int ClassicRowsPerPage = 11;
+    static constexpr int TouchInsetX = 12;
+    static constexpr int BottomInset = 18;
+
+    [[nodiscard]] static constexpr InventoryPickerViewport viewport(
+        int screenW, int screenH) noexcept {
+        const int panelY = VerticalMargin;
+        const int panelH = screenH - 2 * VerticalMargin;
+        const int panelX = (screenW - Width) / 2;
+        const int listY = panelY + ListTopOffset;
+        const int listBottom = panelY + panelH - BottomInset;
+        const int rows = (listBottom - listY) / RowHeight;
+        const int visible = rows > 0 ? rows : 1;
+        return {
+            panelX + TouchInsetX,
+            listY,
+            Width - 2 * TouchInsetX,
+            visible * RowHeight,
+            visible,
+        };
+    }
 };
 
 struct InventoryBaselineItem {

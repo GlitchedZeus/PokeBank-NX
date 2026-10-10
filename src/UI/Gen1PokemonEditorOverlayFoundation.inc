@@ -436,6 +436,9 @@ void foundationDrawExitConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     drawGlyphButton(fb, x + (w - cbw) / 2, cby, cbw, cbh, "Y", "Discard", Colors::PanelAlt);
     drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A",
                     create ? "Keep" : "Save", Colors::PanelAlt);
+    screen.touchButtons.push_back({5900, x + 24, cby, cbw, cbh});
+    screen.touchButtons.push_back({5901, x + (w - cbw) / 2, cby, cbw, cbh});
+    screen.touchButtons.push_back({5902, x + w - 24 - cbw, cby, cbw, cbh});
 }
 
 void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -605,6 +608,48 @@ bool isGen1SourceUX(const TrainerViewScreen& screen) noexcept {
     return isGen1SourceUXCleanup3(screen);
 }
 
+uint64_t foundationDirectTouchInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch) {
+    auto& foundation = foundationStateFor(screen);
+    const int pressed = screen.touchedButtonDownId(touch);
+    const int tapped = screen.touchedButtonId(touch);
+    auto focusId = [&](int id, bool activate) {
+        if (id >= 5000 && id < 5006) {
+            foundation.focus = {Foundation::Panel::Identity, static_cast<uint8_t>(id - 5000), 0};
+            if (activate) down |= HidNpadButton_A;
+            return true;
+        }
+        if (id >= 5100 && id < 5150) {
+            const int encoded = id - 5100;
+            const int row = encoded / 10, col = encoded % 10;
+            if (row >= 0 && row < 5 && col >= 0 && col < 3) {
+                foundation.focus = {Foundation::Panel::Values, static_cast<uint8_t>(row), static_cast<uint8_t>(col)};
+                if (activate) down |= HidNpadButton_A;
+                return true;
+            }
+        }
+        if (id == 5190) {
+            foundation.focus = {Foundation::Panel::Values, static_cast<uint8_t>(Foundation::ValueRow::Shiny), 0};
+            if (activate) down |= HidNpadButton_A;
+            return true;
+        }
+        if (id >= 5200 && id < 5204) {
+            foundation.focus = {Foundation::Panel::Moves, static_cast<uint8_t>(id - 5200), 0};
+            if (activate) down |= HidNpadButton_A;
+            return true;
+        }
+        return false;
+    };
+    if (foundation.editExitConfirm) {
+        if (tapped == 5900) down |= HidNpadButton_B;
+        else if (tapped == 5901) down |= HidNpadButton_Y;
+        else if (tapped == 5902) down |= HidNpadButton_A;
+        return down;
+    }
+    focusId(pressed, false);
+    focusId(tapped, true);
+    return down;
+}
+
 bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int stickX, int stickY) {
     if (!isGen1SourceUX(screen)) return false;
     auto& state = ux2StateFor(screen);
@@ -614,6 +659,22 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int 
     auto& foundation = foundationStateFor(screen);
     const uint64_t navigated = foundation.navigation.apply(
         down, held, stickX, stickY,
+        HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
+    foundationHandleMainInput(screen, navigated);
+    return true;
+}
+
+bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int stickX, int stickY,
+                   const TouchInput& touch) {
+    if (!isGen1SourceUX(screen)) return false;
+    auto& state = ux2StateFor(screen);
+    if (!foundationMainMode(state.mode))
+        return handleInputUXCleanup3(screen, down, held, stickX, stickY, touch);
+
+    auto& foundation = foundationStateFor(screen);
+    const uint64_t touched = foundationDirectTouchInput(screen, down, touch);
+    const uint64_t navigated = foundation.navigation.apply(
+        touched, held, stickX, stickY,
         HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
     foundationHandleMainInput(screen, navigated);
     return true;

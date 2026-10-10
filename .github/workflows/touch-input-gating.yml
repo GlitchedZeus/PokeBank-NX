@@ -1,0 +1,74 @@
+name: Touch Input Gating
+
+on:
+  push:
+    branches:
+      - feature/touch-controls-20261005
+    paths:
+      - 'include/UI/**'
+      - 'src/UI/**'
+      - 'tests/test_touch_*.py'
+      - 'tests/test_touch_*.cpp'
+      - 'tests/test_gsc_editor_surface_contract.cpp'
+      - 'tests/test_gen3_hardware_surface_contract.cpp'
+      - 'tests/test_gen4_hardware_surface_contract.cpp'
+      - 'tests/test_gsc_workspace_render.cpp'
+      - 'tests/touch_fakes/**'
+      - '.github/workflows/touch-input-gating.yml'
+  pull_request:
+    paths:
+      - 'include/UI/**'
+      - 'src/UI/**'
+      - 'tests/test_touch_*.py'
+      - 'tests/test_touch_*.cpp'
+      - 'tests/test_gsc_editor_surface_contract.cpp'
+      - 'tests/test_gen3_hardware_surface_contract.cpp'
+      - 'tests/test_gen4_hardware_surface_contract.cpp'
+      - 'tests/test_gsc_workspace_render.cpp'
+      - 'tests/touch_fakes/**'
+      - '.github/workflows/touch-input-gating.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  touch-contracts:
+    name: Native touch contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Modal/list gesture contract
+        run: python3 tests/test_touch_modal_list_contract.py
+      - name: Pokémon editor direct-row contract
+        run: python3 tests/test_touch_pokemon_editor_direct_rows_contract.py
+      - name: App-wide touch surface inventory
+        run: python3 tests/test_touch_appwide_surface_contract.py
+      - name: Behavioral touch scroll geometry
+        run: |
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+            -Itests/touch_fakes -Iinclude \
+            tests/test_touch_scroll_state.cpp -o /tmp/pokebank_touch_scroll_state
+          /tmp/pokebank_touch_scroll_state
+      # Keep this tiny source-level regression in the fast gate: host-test takes
+      # longer to rebuild all generations and previously hid stale Gen II assertions.
+      - name: Generation II editor touch-safe presentation regression
+        run: |
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+            tests/test_gsc_editor_surface_contract.cpp -o /tmp/pokebank_gsc_surface
+          /tmp/pokebank_gsc_surface
+      - name: Generation III and IV hardware editor surface regressions
+        run: |
+          for gen in gen3 gen4; do
+            g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+              -Iinclude "tests/test_${gen}_hardware_surface_contract.cpp" \
+              -o "/tmp/pokebank_${gen}_surface"
+            "/tmp/pokebank_${gen}_surface"
+          done
+      # The real Gen II item picker draws overscan rows for direct manipulation.
+      # This executable tests the framebuffer's clipped, actually visible rows
+      # and previously failed only after the full host suite took several minutes.
+      - name: Generation II clipped held-item renderer
+        run: |
+          make -f Makefile.host build-host/test_gsc_workspace_render
+          ./build-host/test_gsc_workspace_render

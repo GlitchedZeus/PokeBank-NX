@@ -9,6 +9,7 @@
 #include "UI/UIScreen.h"
 #include "UI/NavigationRepeat.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/TouchScroll.h"
 
 namespace UI {
     class BackupSelectionScreen : public UIScreen {
@@ -37,6 +38,7 @@ namespace UI {
 
     private:
         PokeBank::UIModel::ControllerNavigation controllerNavigation;
+        TouchScrollState backupScroll;
         struct BackupInfo {
             std::string timestamp;
             std::string displayName;
@@ -53,6 +55,7 @@ namespace UI {
         bool namespaceReady = false;
         std::vector<BackupInfo> backups;
         int selectedIndex;
+        int backupFirstRow = 0;  // Physical viewport; never reuse the action cursor as scroll position.
         bool backupSelected;
         bool createNewBackup;  // True if user wants to load from title directly
         bool goBack;

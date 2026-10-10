@@ -55,11 +55,15 @@ void drawOverlayUXCleanup2(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 [[nodiscard]] bool handleInputUXCleanup3(TrainerViewScreen& screen, uint64_t down);
 [[nodiscard]] bool handleInputUXCleanup3(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                                          int stickX, int stickY);
+[[nodiscard]] bool handleInputUXCleanup3(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                                         int stickX, int stickY, const TouchInput& touch);
 void drawOverlayUXCleanup3(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 [[nodiscard]] bool isGen1SourceUX(const TrainerViewScreen& screen) noexcept;
 [[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down);
 [[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                                  int stickX, int stickY);
+[[nodiscard]] bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                                 int stickX, int stickY, const TouchInput& touch);
 void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 } // namespace UI::Gen1PokemonEditor
 
@@ -123,13 +127,26 @@ void drawFooterWithClassicAddLabel(PKSEFramebuffer& fb, std::string text) {
 #include "Gen1PokemonEditorOverlayFoundation.inc"
 #include "Gen1PokemonEditorFoundationHardwareFix.inc"
 #include "Gen1PokemonEditorPassiveView.inc"
+
 #include "Gen2PokemonEditorFoundation.inc"
+
+// Older Gen II presentation layers call the two-argument Held Item renderer. Forward them through
+// the session owner so the touch-aware renderer still publishes real cell hitboxes.
+namespace UI::Gen2PokemonEditor {
+namespace {
+void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
+    auto* owner = const_cast<TrainerViewScreen*>(state.owner);
+    if (owner) drawHeldItemPicker(*owner, fb, state);
+}
+} // namespace
+} // namespace UI::Gen2PokemonEditor
 
 #define handlePickerInput handlePickerInputBase
 #define drawPickerOverlay drawPickerOverlayBase
 #include "Gen2PokemonPickerOverlay.inc"
 #undef drawPickerOverlay
 #undef handlePickerInput
+
 #include "Gen2HardwarePickerFix.inc"
 
 #include "Gen2SharedPokemonSurface.inc"
@@ -148,6 +165,7 @@ void drawFooterWithClassicAddLabel(PKSEFramebuffer& fb, std::string text) {
 
 #include "ClassicPackedMoveOverlay.inc"
 #include "ClassicReleaseActionFix.inc"
+
 #include "Gen3SharedPokemonSurface.inc"
 #include "Gen4SharedPokemonSurface.inc"
 
@@ -213,10 +231,63 @@ void drawGen2ClassicBoxFooter(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         drawNavBar(fb, {{"A", "Actions"}, {"X", "Add"}, {"L/R", "Box"}, {"B", "Back"}});
 }
 
+constexpr int kPartyTouchBase = 6200;
+
+bool basePartyTouchActive(const TrainerViewScreen& screen) noexcept {
+    return screen.detailViewActive && screen.selectedMode == TrainerViewScreen::ViewMode::Party &&
+        !screen.helpOverlayActive && !screen.details.active && !screen.actionSheet.isOpen() &&
+        !screen.saveConfirmActive && !screen.pickerActive && !screen.itemEditDialogActive &&
+        !screen.releaseConfirmActive && !screen.storageExitConfirmActive && !screen.groupMenuActive &&
+        !screen.carrying() && !screen.swapActive && !screen.currentlySelecting;
+}
+
+void publishBasePartyTouchTargets(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    if (!basePartyTouchActive(screen)) return;
+    constexpr int x = LEFT_PANEL_X;
+    constexpr int y = CONTENT_PANEL_Y;
+    constexpr int height = CONTENT_PANEL_HEIGHT;
+    constexpr int gutter = 16;
+    constexpr int slotGap = 12;
+    const int width = fb.getWidth() - x;
+    const int gridTop = y + 58;
+    const int colW = (width - 3 * gutter) / 2;
+    const int colX[2] = {x + gutter, x + gutter + colW + gutter};
+    const int slotH = (height - (gridTop - y) - 2 * slotGap - gutter) / 3;
+    for (int i = 0; i < 6; ++i) {
+        const int col = i >= 3 ? 1 : 0;
+        const int row = i >= 3 ? i - 3 : i;
+        screen.touchButtons.push_back({kPartyTouchBase + i, colX[col],
+                                       gridTop + row * (slotH + slotGap), colW, slotH});
+    }
+}
+
+bool handleBasePartyTouch(TrainerViewScreen& screen, const TouchInput& touch) {
+    if (!basePartyTouchActive(screen)) return false;
+    const int downId = screen.touchedButtonDownId(touch);
+    if (downId >= kPartyTouchBase && downId < kPartyTouchBase + 6) {
+        screen.selectedPartyIndex = downId - kPartyTouchBase;
+        return true;
+    }
+    const int tapId = screen.touchedButtonId(touch);
+    if (tapId >= kPartyTouchBase && tapId < kPartyTouchBase + 6) {
+        const int slot = tapId - kPartyTouchBase;
+        screen.selectedPartyIndex = slot;
+        if (slot >= 0 && slot < static_cast<int>(screen.trainer.party.size())) {
+            const auto* pokemon = screen.trainer.party[static_cast<std::size_t>(slot)].get();
+            if (pokemon && pokemon->speciesID() != 0) {
+                screen.openPokemonActionSheet({
+                    PokeVault::UIModel::PokemonLocation::Party, 0, slot});
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
 } // namespace
 
 void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
-    const u64 down = padGetButtonsDown(&pad);
+    const u64 down = padGetButtonsDown(&pad) | navTouchButton(touch);
     const u64 held = padGetButtons(&pad);
     const HidAnalogStickState stick = padGetStickPos(&pad, 0);
 
@@ -228,14 +299,14 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
         ClassicPackedMove::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
     if (Gen4SharedEditorSurface::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
     if (Gen3SharedEditorSurface::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
-    if (Gen1PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y)) return;
-    if (Gen2PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y)) return;
+    if (Gen1PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y, touch)) return;
+    if (Gen2PokemonEditor::handleReleaseActionInput(*this, down, held, stick.x, stick.y, touch)) return;
 
     if (Gen2PokemonEditor::handleFinalGen2SurfaceInput(*this, down, held, stick.x, stick.y, touch)) return;
     if (Gen2PokemonEditor::handlePickerInput(*this, down, held, stick.x, stick.y, touch)) return;
 
     if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPickerActive(*this)) {
-        if (Gen1PokemonEditor::handleInputUXCleanup3(*this, down, held, stick.x, stick.y)) return;
+        if (Gen1PokemonEditor::handleInputUXCleanup3(*this, down, held, stick.x, stick.y, touch)) return;
     }
 
     if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPassiveViewActive(*this)) {
@@ -243,12 +314,20 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
         return;
     }
 
-    if (Gen1PokemonEditor::handleInputUX(*this, down, held, stick.x, stick.y)) return;
+    if (Gen1PokemonEditor::handleInputUX(*this, down, held, stick.x, stick.y, touch)) return;
+    if (handleBasePartyTouch(*this, touch)) return;
     updateGSCOverlay(pad, touch);
     clampSourceBoxSelection(*this);
 }
 
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
+    // Touch input is consumed before draw, so each rendered frame must publish fresh geometry.
+    // Clear both screen-owned targets and visible controller-glyph buttons here because the
+    // Gen I-IV editor frames do not all pass through drawAppBackdrop().
+    touchButtons.clear();
+    g_touchGlyphAccum.clear();
+    g_touchGlyphHits.clear();
+
     if (Gen4SharedEditorSurface::draw(*this, fb)) return;
     if (Gen3SharedEditorSurface::draw(*this, fb)) return;
 
@@ -258,6 +337,7 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
 
     if (!Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this)) {
         drawGSCOverlay(fb);
+        publishBasePartyTouchTargets(*this, fb);
         drawGen2ClassicBoxFooter(*this, fb);
     }
 

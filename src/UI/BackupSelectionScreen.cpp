@@ -22,15 +22,6 @@ namespace UI {
     constexpr int LIST_ROW_H = 62;
     constexpr int LIST_MAX_VISIBLE = 8;   // rows that fit in the card before scrolling
 
-    // Scroll window: keep the selected row visible (centered when scrolling).
-    static int firstVisibleRow(int sel, int total) {
-        if (total <= LIST_MAX_VISIBLE) return 0;
-        int first = sel - LIST_MAX_VISIBLE / 2;
-        if (first < 0) first = 0;
-        if (first > total - LIST_MAX_VISIBLE) first = total - LIST_MAX_VISIBLE;
-        return first;
-    }
-
     BackupSelectionScreen::BackupSelectionScreen(
         AccountUid userUid, u64 titleId, const std::string& titleName)
         : userUid(userUid), titleId(titleId), titleName(titleName), selectedIndex(0),
@@ -121,18 +112,27 @@ namespace UI {
 
     void BackupSelectionScreen::update(const PadState& pad, const TouchInput& touch) {
         const HidAnalogStickState stick = padGetStickPos(&pad, 0);
+        // A modal owns its own A/B touch rectangles. Never let the underlying
+        // footer synthesize Delete while the confirmation dialog is on top.
+        // Physical A/B controller buttons still use the normal pad path.
+        const u64 footerTouch = showDeleteConfirmation ? 0 : navTouchButton(touch);
         u64 kDown = controllerNavigation.apply(
             padGetButtonsDown(&pad), padGetButtons(&pad), stick.x, stick.y,
             HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)
-            | navTouchButton(touch);
+            | footerTouch;
         if (statusFrames > 0) --statusFrames;                          // expire the failure notice
 
         // Handle delete confirmation dialog
         if (showDeleteConfirmation) {
             // Tappable buttons (captured last frame): A = Delete, B = Cancel.
-            if (touch.justPressed()) {
+            // Explicit tap terminology: justTapped() is the same clean-release
+            // gesture historically exposed as justPressed(). Never use
+            // justTouchedDown() to confirm deleting app-owned backup content.
+            if (touch.justTapped()) {
                 auto in = [&](const DlgBtn& b) {
-                    return touch.x() >= b.x && touch.x() < b.x + b.w &&
+                    return touch.startX() >= b.x && touch.startX() < b.x + b.w &&
+                           touch.startY() >= b.y && touch.startY() < b.y + b.h &&
+                           touch.x() >= b.x && touch.x() < b.x + b.w &&
                            touch.y() >= b.y && touch.y() < b.y + b.h;
                 };
                 if (in(deleteDeleteBtn))      kDown |= HidNpadButton_A;
@@ -154,40 +154,99 @@ namespace UI {
             return;  // Ignore other inputs while confirmation is shown
         }
 
-        // Touch: tap a backup tile to select + open it (account for the scroll window).
-        if (touch.justPressed()) {
-            const int startY = CARD_Y + 62, tileX = CARD_X + 14, tileW = CARD_W - 28;
-            if (touch.x() >= tileX && touch.x() < tileX + tileW && touch.y() >= startY) {
-                int visIdx = (touch.y() - startY) / LIST_ROW_H;
-                int idx = firstVisibleRow(selectedIndex, (int)backups.size()) + visIdx;
-                if (visIdx >= 0 && visIdx < LIST_MAX_VISIBLE && idx < (int)backups.size()) { selectedIndex = idx; kDown |= HidNpadButton_A; }
+        // Touch moves the PHYSICAL viewport, not the selected backup. Keeping these independent
+        // prevents an entire row of visual scroll from snapping back when focus stays in view.
+        const int count = static_cast<int>(backups.size());
+        const int maxFirstRow = std::max(0, count - LIST_MAX_VISIBLE);
+        backupFirstRow = std::clamp(backupFirstRow, 0, maxFirstRow);
+        selectedIndex = std::clamp(selectedIndex, 0, std::max(0, count - 1));
+        const int listY = CARD_Y + 62;
+        const int listX = CARD_X + 14;
+        const int listW = CARD_W - 28;
+        if (maxFirstRow > 0) {
+            backupScroll.updateVertical(
+                touch, listX, listY, listW, LIST_MAX_VISIBLE * LIST_ROW_H,
+                LIST_ROW_H, backupFirstRow, maxFirstRow + 1);
+        } else {
+            backupScroll.stop();
+        }
+
+        // The highlighted backup belongs to controller/tap focus, not the finger-scrolled
+        // viewport. Keep it unchanged even when its row scrolls out of view. An off-screen
+        // A/X action is revealed below instead of silently targeting a different backup.
+
+        // Hit-test the same pixels that were rendered: account for residual scroll, the 10px
+        // row gap, and viewport clipping. Both contact and release must remain on one visible tile.
+        if (touch.justTapped()) {
+            const int listBottom = listY + LIST_MAX_VISIBLE * LIST_ROW_H;
+            const int liveOffset = backupScroll.offset();
+            const int drawFirst = std::max(0, backupFirstRow - 1);
+            const int drawLast = std::min(count, backupFirstRow + LIST_MAX_VISIBLE + 1);
+            for (int i = drawFirst; i < drawLast; ++i) {
+                const int itemY = listY + (i - backupFirstRow) * LIST_ROW_H + liveOffset;
+                const int top = std::max(listY, itemY);
+                const int bottom = std::min(listBottom, itemY + LIST_ROW_H - 10);
+                const auto insideTile = [&](int px, int py) {
+                    return px >= listX && px < listX + listW &&
+                           py >= top && py < bottom;
+                };
+                if (top < bottom &&
+                    insideTile(touch.startX(), touch.startY()) &&
+                    insideTile(touch.x(), touch.y())) {
+                    selectedIndex = i;
+                    kDown |= HidNpadButton_A;
+                    break;
+                }
             }
         }
 
         if (kDown & HidNpadButton_B) {
+            backupScroll.stop();
             goBack = true;
             return;
         }
 
+        // Never select or delete a highlighted backup that is no longer on screen.
+        // A real tile tap already sets selectedIndex to a visible row above; controller
+        // A/X must first reveal the prior focus without changing backup identity.
+        if ((kDown & (HidNpadButton_A | HidNpadButton_X)) && count > 0 &&
+            (selectedIndex < backupFirstRow ||
+             selectedIndex >= backupFirstRow + LIST_MAX_VISIBLE)) {
+            backupScroll.stop();
+            backupFirstRow = std::clamp(
+                selectedIndex - LIST_MAX_VISIBLE / 2, 0, maxFirstRow);
+            statusMessage = "Focused backup brought into view; press A or X again";
+            statusFrames = 220;
+            return;
+        }
+
         if (kDown & HidNpadButton_X) {
-            // X button pressed - show delete confirmation for existing backups only
+            // Modal entry freezes the underlying list. Never suspend a coasting scroll and then
+            // resume that stale momentum after the confirmation closes.
             if (selectedIndex > 0 && selectedIndex < (int)backups.size() &&
                 !backups[selectedIndex].legacyUnscoped) {
+                backupScroll.stop();
                 showDeleteConfirmation = true;
                 deleteConfirmationIndex = selectedIndex;
             }
         }
 
-        if (kDown & HidNpadButton_Up) {
-            if (selectedIndex > 0) {
-                selectedIndex--;
-            }
-        }
+        const bool controllerMoved =
+            (kDown & (HidNpadButton_Up | HidNpadButton_Down)) != 0;
+        if (controllerMoved) backupScroll.stop();
 
+        if (kDown & HidNpadButton_Up) {
+            if (selectedIndex > 0) --selectedIndex;
+        }
         if (kDown & HidNpadButton_Down) {
-            if (selectedIndex < (int)backups.size() - 1) {
-                selectedIndex++;
-            }
+            if (selectedIndex < count - 1) ++selectedIndex;
+        }
+        if (controllerMoved) {
+            // D-pad / stick navigation keeps its focused row visible without fighting a drag.
+            if (selectedIndex < backupFirstRow)
+                backupFirstRow = selectedIndex;
+            else if (selectedIndex >= backupFirstRow + LIST_MAX_VISIBLE)
+                backupFirstRow = selectedIndex - LIST_MAX_VISIBLE + 1;
         }
 
         if (kDown & HidNpadButton_A) {
@@ -257,17 +316,22 @@ namespace UI {
     void BackupSelectionScreen::drawBackupList(PKSEFramebuffer& fb) {
         const int startY = CARD_Y + 62;
         const int total = (int)backups.size();
-        const int first = firstVisibleRow(selectedIndex, total);
-        const int last = std::min(total, first + LIST_MAX_VISIBLE);
-        for (int i = first; i < last; i++) {
-            int itemY = startY + (i - first) * LIST_ROW_H;
-            bool selected = (i == selectedIndex);
+        const int first = std::clamp(backupFirstRow, 0, std::max(0, total - LIST_MAX_VISIBLE));
+        const int liveOffset = backupScroll.offset();
+        const int drawFirst = std::max(0, first - 1);
+        const int drawLast = std::min(total, first + LIST_MAX_VISIBLE + 1);
+        fb.setClipRect(CARD_X + 14, startY, CARD_W - 28, LIST_MAX_VISIBLE * LIST_ROW_H);
+        for (int i = drawFirst; i < drawLast; i++) {
+            const int itemY = startY + (i - first) * LIST_ROW_H + liveOffset;
+            const bool selected = (i == selectedIndex);
             // The first row is the "create new backup" action — accent it to stand out.
-            drawHomeTile(fb, CARD_X + 14, itemY, CARD_W - 28, LIST_ROW_H - 10, backups[i].displayName, selected, (i == 0));
+            drawHomeTile(fb, CARD_X + 14, itemY, CARD_W - 28, LIST_ROW_H - 10,
+                         backups[i].displayName, selected, (i == 0));
         }
-        // Scrollbar on the card's right edge when the list overflows -- same thumb as the details editor.
+        fb.clearClip();
+        // Scrollbar follows the exact residual pixel offset instead of snapping by whole rows.
         drawScrollbar(fb, CARD_X + CARD_W - 10, startY, LIST_MAX_VISIBLE * LIST_ROW_H,
-                      total * LIST_ROW_H, first * LIST_ROW_H);
+                      total * LIST_ROW_H, first * LIST_ROW_H - liveOffset);
     }
 
     void BackupSelectionScreen::drawDeleteConfirmation(PKSEFramebuffer& fb) {
@@ -304,10 +368,12 @@ namespace UI {
             // Remove from backups list
             backups.erase(backups.begin() + index);
 
-            // Adjust selected index if needed
-            if (selectedIndex >= (int)backups.size()) {
-                selectedIndex = (int)backups.size() - 1;
-            }
+            // A shorter list must not leave the highlight or viewport beyond its final row.
+            selectedIndex = std::clamp(selectedIndex, 0, static_cast<int>(backups.size()) - 1);
+            backupFirstRow = std::clamp(
+                backupFirstRow, 0,
+                std::max(0, static_cast<int>(backups.size()) - LIST_MAX_VISIBLE));
+            backupScroll.stop();
         }
     }
 }

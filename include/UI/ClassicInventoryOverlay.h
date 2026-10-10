@@ -6,6 +6,7 @@
 namespace UI {
 class TrainerViewScreen;
 class PKSEFramebuffer;
+class TouchInput;
 
 namespace ClassicInventory {
 
@@ -13,7 +14,7 @@ namespace ClassicInventory {
 // True only when PokeBank owns a staged classic editor for this read-only source.
 [[nodiscard]] bool stagedEditingAvailable(TrainerViewScreen& screen);
 // Returns true when the classic inventory layer consumed this frame's input.
-[[nodiscard]] bool handleInput(TrainerViewScreen& screen, uint64_t down);
+[[nodiscard]] bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch);
 void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb);
 // Rebuilds only the presentation lists from staged semantic inventory. It never writes a source save.
 bool refreshPresentation(TrainerViewScreen& screen);
