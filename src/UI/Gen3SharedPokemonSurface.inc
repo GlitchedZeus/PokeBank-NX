@@ -1400,7 +1400,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     Colors::TextDim, TextStyle::Caption);
         const int count = static_cast<int>(state.pickerValues.size());
         constexpr int visible = moveLayout.visibleRows;
-        const int first = std::clamp(state.pickerViewport.firstRow, 0, std::max(0, count - visible));
+        const int first = state.pickerViewport.firstRow;
         const int last = std::min(count, first + visible);
         const int viewportTop = y + moveLayout.rowStart;
         fb.setClipRect(x + 24, viewportTop, w - 48, visible * moveLayout.rowStep);
@@ -1435,6 +1435,10 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         const int cellHeight = HeldItemGrid::rowPitch;
         const int cellW = (w - 2 * HeldItemGrid::gridInsetX) / HeldItemGrid::columns;
         const int firstRow = state.pickerViewport.firstRow;
+        const int firstVisibleItem = state.pickerViewport.firstRow * HeldItemGrid::columns + 1;
+        const int lastVisibleItem = std::min(count,
+            firstVisibleItem + HeldItemGrid::pageSize - 1);
+        (void)lastVisibleItem;
         for (int i = std::max(0, (firstRow - 1) * HeldItemGrid::columns);
              i < std::min(count, (firstRow + HeldItemGrid::rows + 1) * HeldItemGrid::columns); ++i) {
             const int offset = i - firstRow * HeldItemGrid::columns;
@@ -1456,7 +1460,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     std::to_string(state.pickerValues.size()),
                 Colors::TextDim, TextStyle::Caption);
     const int visible = compactChoices ? visibleChoices : 10;
-    const int first = std::clamp(state.pickerViewport.firstRow, 0, std::max(0, count - visible));
+    const int first = state.pickerViewport.firstRow;
     const int last = std::min(count, first + visible);
     const int rowStep = naturePicker ? natureLayout.rowStep : 42;
     const int viewportTop = y + 90;
