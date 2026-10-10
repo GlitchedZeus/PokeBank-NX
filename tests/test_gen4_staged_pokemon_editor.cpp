@@ -441,6 +441,54 @@ void testCloneAndReleaseTransactions() {
     }
 }
 
+void testMoveSwapAndCrossBoxTransactions() {
+    auto original = makeSave(Layout::Platinum);
+    auto editor = Gen4StagedPokemonEditor::create(original, Layout::Platinum, "platinum_nds");
+    assert(editor);
+    std::string error;
+    const auto first = editor->boxedPokemon(0, 0, &error);
+    assert(first && error.empty());
+    const auto firstBytes = first->originalEncryptedBytes();
+    const auto untouched = editor->stagedBytes();
+
+    assert(editor->stageMoveBoxPokemon(0, 0, 0, 1, &error) && error.empty());
+    assert(!editor->boxedPokemon(0, 0, &error));
+    const auto moved = editor->boxedPokemon(0, 1, &error);
+    assert(moved && std::equal(moved->originalEncryptedBytes().begin(),
+                               moved->originalEncryptedBytes().end(), firstBytes.begin()));
+    assert(editor->originalBytes() == original);
+    const auto postMove = editor->stagedBytes();
+    assert(!editor->stageMoveBoxPokemon(0, 0, 1, 0, &error));
+    assert(editor->stagedBytes() == postMove);
+    assert(!editor->stageMoveBoxPokemon(0, 1, 18, 0, &error));
+    assert(editor->stagedBytes() == postMove);
+    error.clear();
+
+    // Populate another slot using the already-validated native Create primitive,
+    // then prove occupied-destination swap retains BOTH complete PK4 records.
+    auto draft = editor->createBoxDraft(0, 2, 25, &error);
+    assert(draft && error.empty());
+    assert(editor->stageCreateBoxPokemon(0, 2, *draft, &error));
+    const auto other = editor->boxedPokemon(0, 2, &error);
+    assert(other);
+    const auto otherBytes = other->originalEncryptedBytes();
+    assert(editor->stageMoveBoxPokemon(0, 1, 0, 2, &error) && error.empty());
+    const auto a = editor->boxedPokemon(0, 1, &error);
+    const auto b = editor->boxedPokemon(0, 2, &error);
+    assert(a && b);
+    assert(std::equal(a->originalEncryptedBytes().begin(), a->originalEncryptedBytes().end(), otherBytes.begin()));
+    assert(std::equal(b->originalEncryptedBytes().begin(), b->originalEncryptedBytes().end(), firstBytes.begin()));
+
+    // Cross-box move and cancellation/discard leave original source immutable.
+    assert(editor->stageMoveBoxPokemon(0, 2, 1, 0, &error) && error.empty());
+    assert(!editor->boxedPokemon(0, 2, &error));
+    assert(editor->boxedPokemon(1, 0, &error));
+    assert(editor->originalBytes() == original);
+    editor->discard();
+    assert(editor->stagedBytes() == untouched);
+    assert(!editor->hasChanges());
+}
+
 void testNoOpAndFailureRollback() {
     auto source = makeSave(Layout::Platinum);
     auto editor = Gen4StagedPokemonEditor::create(
@@ -514,6 +562,7 @@ int main() {
     testMixedPartitionMutationFootprint();
     testEmptySlotCreateTransaction();
     testCloneAndReleaseTransactions();
+    testMoveSwapAndCrossBoxTransactions();
     testNoOpAndFailureRollback();
     testShedinjaPartyHpRule();
     testRecoveredAndMismatchRemainReadOnly();
