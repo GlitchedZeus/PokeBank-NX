@@ -87,6 +87,7 @@ int main() {
     const auto locations = read("src/Names/LocationNames.cpp");
     const auto locationGenerator = read("tools/gen_locations.py");
     const auto itemsPanel = read("src/UI/Panels/ItemsPanel.cpp");
+    const auto boxPanel = read("src/UI/Panels/BoxPokemonPanel.cpp");
     const auto gen3Picker = read("src/UI/Gen3SharedPokemonSurface.inc");
     const auto gen2Held = read("include/UI/Gen2HeldItemPicker.h");
     const auto gen1Move = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc");
@@ -201,6 +202,9 @@ int main() {
     contains(surface, "Gen4BoxTouchActions::opensSelectedSlotActions(");
     contains(surface, "screen.touchedButtonId(touch)");
     contains(surface, "bridge(screen).stagedPokemonUnavailableReason()");
+    contains(baseUi, "const bool gen4Staged = group == Enums::GameVersion::DP");
+    contains(baseUi, "A: Actions  |  X: Add  |  B: Back");
+    contains(boxPanel, "? \"A / tap: Actions\" : \"A / tap: Edit\"");
     contains(surface, "add(MenuAction::Clone, \"Clone\", stagedAvailable);");
     contains(surface, "add(MenuAction::Release, \"Release\", stagedAvailable);");
     contains(surface, "add(MenuAction::AddMasterVault, \"Add to Master Vault\", false);");
