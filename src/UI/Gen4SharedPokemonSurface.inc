@@ -1,4 +1,5 @@
 #include "Integration/Gen4/Gen4ExactFormatEditorProvider.h"
+#include "UI/Gen4BoxTouchActions.h"
 #include "Integration/Gen4/Gen4MoveCompatibility.h"
 #include "Integration/Gen4/Gen4BagCatalog.h"
 #include "Legacy/Gen4ReadOnlyTrainer.h"
@@ -634,8 +635,14 @@ void openSpeciesPicker(TrainerViewScreen& screen, State& state) {
 bool beginCreate(TrainerViewScreen& screen) {
     auto& state = stateFor(screen);
     auto* staged = editor(screen);
-    if (!staged || state.target != TargetKind::Box) {
-        screen.postStatus("Generation IV Create requires an app-owned staged box workspace", 300);
+    if (state.target != TargetKind::Box) {
+        screen.postStatus("Generation IV Create is supported only in empty PC box slots", 300);
+        return false;
+    }
+    if (!staged) {
+        const auto& why = bridge(screen).stagedPokemonUnavailableReason();
+        screen.postStatus(why.empty()
+            ? "Generation IV Create requires a validated app-owned staged workspace" : why, 420);
         return false;
     }
     std::string error;
@@ -1264,6 +1271,12 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {
 
     const auto entry = actions[static_cast<size_t>(state.actionRow)];
     if (!entry.enabled) {
+        if (entry.action == MenuAction::Add) {
+            const auto& why = bridge(screen).stagedPokemonUnavailableReason();
+            screen.postStatus(why.empty()
+                ? "Gen IV Add needs a strictly validated staged save" : why, 420);
+            return true;
+        }
         switch (entry.action) {
             case MenuAction::AddMasterVault:
                 screen.postStatus("Master Vault is intentionally not started", 300);
@@ -2333,7 +2346,6 @@ bool ownsFrame(const TrainerViewScreen& screen) noexcept {
 
 bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
                  int stickX, int stickY, const TouchInput& touch) {
-    (void)touch;
     if (!isGen4Nds(screen)) return false;
 
     beginPassiveView(screen);
@@ -2365,6 +2377,20 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     const bool partyEntry = partyEntrySurface(screen);
     const bool boxEntry = boxEntrySurface(screen);
     if (!partyEntry && !boxEntry) return false;
+
+    // The base box view translates a second tap into A only *after* this
+    // interceptor returns. Gen IV must claim that tap here, otherwise the
+    // legacy creator runs into the immutable-source guard instead of opening
+    // the native staged Add action. A first tap on another slot still goes to
+    // base cursor navigation; box arrows and the header are never hijacked.
+    if (boxEntry && touch.justPressed() &&
+        PokeBank::UIModel::Gen4BoxTouchActions::opensSelectedSlotActions(
+            screen.touchedButtonId(touch), screen.selectedItemIndex,
+            static_cast<int>(screen.trainer.getSlotsPerBox()))) {
+        beginActions(screen);
+        return true;
+    }
+
     if (navigated & HidNpadButton_A) {
         if (partyEntry || boxEntry) beginActions(screen);
         return true;
