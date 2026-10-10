@@ -27,6 +27,7 @@
 #include "UI/ScreenChrome.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedHeldItemPicker.h"
+#include "UI/SharedHeldItemPickerPresentation.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "UI/SharedPokemonShell.h"
 #include "Utils/Keyboard.h"
@@ -1474,10 +1475,10 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     const auto natureLayout=PokeBank::UIModel::NaturePickerLayout::forChoices(totalChoices);
     const int visibleChoices=naturePicker ? natureLayout.visibleRows :
         compactChoices ? std::min(8,totalChoices) : 10;
-    const int w = heldItems ? 1040 : movePicker ? moveLayout.width :
+    const int w = heldItems ? HeldItemGrid::modalWidth : movePicker ? moveLayout.width :
         speciesPicker ? 760 : naturePicker ? natureLayout.width :
         compactChoices ? 640 : 680;
-    const int h = heldItems ? 520 : movePicker ? moveLayout.height :
+    const int h = heldItems ? HeldItemGrid::modalHeight : movePicker ? moveLayout.height :
         speciesPicker ? 560 : naturePicker ? natureLayout.height :
         compactChoices ? 125 + visibleChoices * 42 : 560;
     const int x = (fb.getWidth() - w) / 2;
@@ -1537,44 +1538,20 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         return;
     }
 
-    fb.drawText(x + 28, y + 20,
-                heldItems ? "Held Item — Generation IV" : pickerTitle(state.pickerTarget),
-                Colors::Text, TextStyle::Heading);
     const int count = static_cast<int>(state.pickerValues.size());
-
     if (heldItems) {
-        const int pages = (count + HeldItemGrid::pageSize - 1) / HeldItemGrid::pageSize;
-        fb.drawText(x + 28, y + 55,
-                    "Page " + std::to_string(state.pickerRow / HeldItemGrid::pageSize + 1) +
-                        " / " + std::to_string(pages),
-                    Colors::TextDim, TextStyle::Caption);
-        const int first =
-            state.pickerRow / HeldItemGrid::pageSize * HeldItemGrid::pageSize;
-        const int last = std::min(count, first + HeldItemGrid::pageSize);
-        const int gridX = x + 22;
-        const int gridY = y + 90;
-        const int cellWidth = (w - 44) / HeldItemGrid::columns;
-        constexpr int cellHeight = 40;
-        for (int i = first; i < last; ++i) {
-            const int offset = i - first;
-            const int cellX = gridX + (offset % HeldItemGrid::columns) * cellWidth;
-            const int cellY = gridY + (offset / HeldItemGrid::columns) * cellHeight;
-            const bool selected = i == state.pickerRow;
-            if (selected)
-                fb.drawSelectionHighlight(cellX, cellY - 3, cellWidth - 10, cellHeight - 4);
-            const auto value = state.pickerValues[static_cast<size_t>(i)];
-            fb.drawText(cellX + 10, cellY + 7, pickerValueLabel(screen, state, value),
-                        Colors::Text, TextStyle::Caption);
-            // Each native item carries its own corresponding PNG, not a
-            // decorative generic bag icon. Keep text if art is unavailable.
-            if(value != 0)
-                ItemPickerArtwork::draw(fb, cellX + cellWidth - 24, cellY + 2,
-                                        30, Names::getItemName(value));
-        }
+        SharedHeldItemPickerPresentation::drawHeading(
+            fb, x, y, "Held Item — Generation IV", state.pickerRow, count);
+        SharedHeldItemPickerPresentation::drawGrid(
+            fb, x, y, state.pickerValues, state.pickerRow,
+            [&](uint16_t value) { return pickerValueLabel(screen, state, value); },
+            [](uint16_t value) { return Names::getItemName(value); });
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
                         {"A", "Choose"}, {"B", "Cancel"}});
         return;
     }
+    fb.drawText(x + 28, y + 20, pickerTitle(state.pickerTarget),
+                Colors::Text, TextStyle::Heading);
 
     fb.drawText(x + 28, y + 55,
                 std::to_string(state.pickerRow + 1) + " / " +
