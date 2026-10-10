@@ -930,6 +930,17 @@ namespace Legality {
                     CheckIdentifier::EventGift);
             }
 
+
+        }
+
+        // Gen III -> IV transfer invariants are stored IN the encrypted PK4.
+        // A source-free bank record with a verified native PK4 format still
+        // preserves origin version, split-location markers and Ball bytes.
+        // Do not infer a particular retail container or exact Pt/HGSS
+        // acquisition history merely from compatible stored fields.
+        if ((sourceProfile && exactGeneration == 4) ||
+            (!sourceProfile &&
+             Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4)) {
             const int originGeneration = Enums::getVersionGeneration(pk.originGame());
             if (originGeneration == 0) {
                 add(r, Severity::Warning,

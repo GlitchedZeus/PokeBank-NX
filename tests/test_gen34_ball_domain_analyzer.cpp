@@ -194,6 +194,39 @@ Legality::Report analyzeGen4EggBall(uint8_t ball, bool isEgg,
         : Legality::analyze(view,Enums::GameVersion::HGSS);
 }
 
+
+Legality::Report sourceFreePalPark(uint8_t originVersion,uint16_t dp,
+                                   uint16_t extended,uint8_t ballDPPt,
+                                   uint8_t ballHGSS,bool isEgg=false) {
+    // Actual stored/encrypted PK4 format. The exact container game identity
+    // is intentionally absent; stored Gen III origin remains independently
+    // recoverable and can still prove universal transfer field rules.
+    std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
+    wr32(raw,0x00,0x12345678u);
+    wr16(raw,0x08,25); // Pikachu
+    wr16(raw,0x0C,12345);
+    wr16(raw,0x0E,54321);
+    wr32(raw,0x10,3375);
+    raw[0x17]=std::byte{2};
+    raw[0x5F]=static_cast<std::byte>(originVersion);
+    wr16(raw,0x80,dp);
+    wr16(raw,0x46,extended);
+    raw[0x83]=static_cast<std::byte>(ballDPPt);
+    raw[0x86]=static_cast<std::byte>(ballHGSS);
+    if(isEgg)wr32(raw,0x38,0x40000000u);
+    const auto encrypted=Encryption::encryptArray4(raw);
+    Pokemon::Pokemon4ReadOnly stored(encrypted,Enums::GameVersion::HGSS);
+    assert(stored.valid() && stored.checksumValid());
+    assert(stored.originVersion()==originVersion);
+    assert(stored.metLocationDP()==dp);
+    assert(stored.metLocationExtended()==extended);
+    assert(stored.ballDPPt()==ballDPPt);
+    assert(stored.ballHGSS()==ballHGSS);
+    Pokemon::Pokemon4ReadOnlyView view(stored);
+    assert(view.originGame()==originVersion);
+    return Legality::analyze(view,Enums::GameVersion::HGSS);
+}
+
 int main() {
     // Real PK3 egg-state and encrypted PK4 egg-origin reporting.
     auto eggPk3=gen3WithBall(4);
@@ -321,6 +354,39 @@ int main() {
                           "Species 494 cannot exist in a Generation 4 save"));
     assert(hasInvalidText(analyzeGen4Ball(4,false,1,468),
                           "Move id 468 cannot exist in a Generation 4 save"));
+
+
+    // Native Gen III -> IV Pal Park records retain origin and split
+    // fields independently of an exact container game/source save ID.
+    const auto dpTransfer=sourceFreePalPark(2,0x37,0,4,0);
+    assert(hasInfo(dpTransfer,"Pal Park D/P split-field pattern"));
+    assert(!hasInvalidText(dpTransfer,"Pal Park"));
+
+    const auto hgssTransfer=sourceFreePalPark(2,0x37,0x37,4,4);
+    assert(hasInfo(hgssTransfer,"Pal Park Pt/HGSS split-field pattern"));
+    assert(!hasInvalidText(hgssTransfer,"Pal Park"));
+
+    const auto badMarker=sourceFreePalPark(2,0,0,4,0);
+    assert(hasInvalidText(badMarker,
+        "Gen III-origin PK4 is missing the Pal Park transfer met location"));
+    const auto splitMismatch=sourceFreePalPark(2,0x37,0x36,4,4);
+    assert(hasInvalidText(splitMismatch,
+        "Gen III-origin PK4 has inconsistent D/P and Pt/HGSS Pal Park location fields"));
+    const auto badBall=sourceFreePalPark(2,0x37,0x37,13,0);
+    assert(hasInvalidText(badBall,
+        "Gen III -> IV Pal Park split-ball fields are inconsistent"));
+    const auto eggCannotTransfer=sourceFreePalPark(2,0x37,0x37,4,4,true);
+    assert(hasInvalidText(eggCannotTransfer,
+        "Gen III-origin egg cannot be transferred through Pal Park"));
+    const auto unknownTransferOrigin=sourceFreePalPark(0,0,0,4,0);
+    assert(hasText(unknownTransferOrigin,
+        "PK4 origin game could not be mapped to a known generation"));
+    assert(!hasInvalidText(unknownTransferOrigin,"Pal Park"));
+    // Later-generation origin is intrinsically impossible in a PK4,
+    // independent of which Gen IV game save contains the entity.
+    const auto gen5Origin=sourceFreePalPark(20,0x37,0x37,4,4);
+    assert(hasInvalidText(gen5Origin,
+        "cannot be stored directly in a retail Generation IV PK4"));
 
     // Exact Gen III: 12 is the pinned generation maximum, 13 is impossible.
     auto gen3Max = gen3WithBall(12);
