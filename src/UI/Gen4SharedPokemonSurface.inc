@@ -853,8 +853,18 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     const int count = static_cast<int>(state.pickerValues.size());
     const bool gridPicker = state.pickerTarget == PickerTarget::HeldItem;
     const int columns = gridPicker ? HeldItemGrid::columns : 1;
+    const int compactCount = std::max(0, count);
+    const bool nature = state.pickerTarget == PickerTarget::Nature;
+    const auto natureLayout = PokeBank::UIModel::NaturePickerLayout::forChoices(compactCount);
+    const bool compact = state.pickerTarget == PickerTarget::Language ||
+        state.pickerTarget == PickerTarget::Ball ||
+        state.pickerTarget == PickerTarget::MetLocation ||
+        nature || state.pickerTarget == PickerTarget::Ability ||
+        state.pickerTarget == PickerTarget::Pokerus;
     const int visibleRows = gridPicker ? HeldItemGrid::rows
-        : state.pickerTarget == PickerTarget::Move ? MoveUI::compactPickerLayout().visibleRows : 10;
+        : state.pickerTarget == PickerTarget::Move ? MoveUI::compactPickerLayout().visibleRows
+        : nature ? natureLayout.visibleRows
+        : compact ? std::min(8, compactCount) : 10;
     if (state.pickerTarget != PickerTarget::Species)
         state.pickerViewport.ensure(state.pickerRow, count, visibleRows, columns);
     const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows, columns);
@@ -870,29 +880,34 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
                     state.pickerRow + (dy < 0 ? steps : -steps), 0, count - 1);
             }
         } else if (state.pickerTarget == PickerTarget::HeldItem) {
-  constexpr int pickerW = 1040, pickerH = 520, rowStep = 40;
+  constexpr int pickerW = HeldItemGrid::modalWidth;
+  constexpr int pickerH = HeldItemGrid::modalHeight;
+  constexpr int rowStep = HeldItemGrid::rowPitch;
   const int px = (1280 - pickerW) / 2;
-  const int py = (720 - pickerH) / 2;
+  const int py = (720 - kNavBarH - pickerH) / 2;
   state.pickerScroll.updateVertical(
-      touch, px + 22, py + 87, pickerW - 44,
-      HeldItemGrid::rows * rowStep + 6, rowStep,
+      touch, px + HeldItemGrid::gridInsetX, py + HeldItemGrid::gridInsetY - 3,
+      pickerW - 2 * HeldItemGrid::gridInsetX,
+      HeldItemGrid::rows * rowStep, rowStep,
       state.pickerViewport.firstRow, maxFirstRow + 1);
         } else if (state.pickerTarget == PickerTarget::Move) {
   constexpr auto pickerLayout = MoveUI::compactPickerLayout();
   const int px = (1280 - pickerLayout.width) / 2;
-  const int py = (720 - pickerLayout.height) / 2;
+  const int py = (720 - kNavBarH - pickerLayout.height) / 2;
   state.pickerScroll.updateVertical(
       touch, px + 24, py + pickerLayout.rowStart,
       pickerLayout.width - 48,
       pickerLayout.visibleRows * pickerLayout.rowStep,
       pickerLayout.rowStep, state.pickerViewport.firstRow, maxFirstRow + 1);
         } else {
-  constexpr int pickerW = 680, pickerH = 560, rowStep = 42;
+  const int pickerW = nature ? natureLayout.width : compact ? 640 : 680;
+  const int pickerH = nature ? natureLayout.height : compact ? 125 + visibleRows * 42 : 560;
+  const int rowStep = nature ? natureLayout.rowStep : 42;
   const int px = (1280 - pickerW) / 2;
-  const int py = (720 - pickerH) / 2;
+  const int py = (720 - kNavBarH - pickerH) / 2;
   state.pickerScroll.updateVertical(
       touch, px + 22, py + 86, pickerW - 44,
-      10 * rowStep + 8, rowStep, state.pickerViewport.firstRow, maxFirstRow + 1);
+      visibleRows * rowStep, rowStep, state.pickerViewport.firstRow, maxFirstRow + 1);
         }
     }
     if (maxFirstRow == 0)
