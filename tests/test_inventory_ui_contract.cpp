@@ -61,15 +61,18 @@ int main() {
     assert(readOnlyFooter.find("Y: Remove Item") == std::string::npos);
     assert(readOnlyFooter.find("B: Back") != std::string::npos);
 
-    static_assert(InventoryPickerLayout::Width == 560);
-    static_assert(InventoryPickerLayout::VerticalMargin == 60);
-    static_assert(InventoryPickerLayout::RowHeight == 56);
+    static_assert(InventoryPickerLayout::Width == 780);
+    static_assert(InventoryPickerLayout::Height == 532);
+    static_assert(InventoryPickerLayout::VerticalMargin == 71);
+    static_assert(InventoryPickerLayout::RowHeight == 43);
     static_assert(InventoryPickerLayout::FooterHeight == 64);
     static_assert(InventoryPickerLayout::Width < 900);
-    static_assert(InventoryPickerLayout::ClassicRowsPerPage == 11);
-    // The touch picker computes its live page height from 56 px rows, not the old 40 px grid.
+    static_assert(InventoryPickerLayout::ClassicRowsPerPage == 9);
+    // Touch and controller lists have the same nine 43-pixel rows in the shared modal.
     static_assert(InventoryPickerLayout::viewport(1280, 720).visibleRows == 9);
-    static_assert(InventoryPickerLayout::viewport(1280, 720).h == 504);
+    static_assert(InventoryPickerLayout::viewport(1280, 720).h == 387);
+    static_assert(InventoryPickerLayout::viewport(1280, 720).y ==
+                  InventoryPickerLayout::VerticalMargin + InventoryPickerLayout::ClassicListTopOffset);
 
     InventoryBaseline baseline{
         {0, 17, 53, true},   // source-owned isNew item: Potion-like representative

@@ -74,25 +74,27 @@ struct InventoryPickerViewport {
 };
 
 struct InventoryPickerLayout {
-    static constexpr int Width = 560;
-    static constexpr int VerticalMargin = 60;
-    static constexpr int RowHeight = 56;
+    // Same 780x532 modal and compact row pitch as native Gen IV Add Item.
+    static constexpr int Width = 780;
+    static constexpr int Height = 532;
+    static constexpr int VerticalMargin = 71; // centred above 46px nav bar
+    static constexpr int RowHeight = 43;
     static constexpr int FooterHeight = 64;
     static constexpr int HorizontalPadding = 20;
     static constexpr int TitleOffsetY = 16;
     static constexpr int DividerOffsetY = 52;
     static constexpr int ListTopOffset = 64;
     static constexpr int ClassicListTopOffset = 90;
-    static constexpr int ClassicRowsPerPage = 11;
+    static constexpr int ClassicRowsPerPage = 9;
     static constexpr int TouchInsetX = 12;
     static constexpr int BottomInset = 18;
 
     [[nodiscard]] static constexpr InventoryPickerViewport viewport(
         int screenW, int screenH) noexcept {
         const int panelY = VerticalMargin;
-        const int panelH = screenH - 2 * VerticalMargin;
+        const int panelH = Height;
         const int panelX = (screenW - Width) / 2;
-        const int listY = panelY + ListTopOffset;
+        const int listY = panelY + ClassicListTopOffset;
         const int listBottom = panelY + panelH - BottomInset;
         const int rows = (listBottom - listY) / RowHeight;
         const int visible = rows > 0 ? rows : 1;

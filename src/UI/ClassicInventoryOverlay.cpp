@@ -656,7 +656,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         constexpr int marginY = PokeBank::UIModel::InventoryPickerLayout::VerticalMargin;
         constexpr int rowH = PokeBank::UIModel::InventoryPickerLayout::RowHeight;
         const int x = (1280 - width) / 2;
-        const int height = 720 - 2 * marginY;
+        constexpr int height = PokeBank::UIModel::InventoryPickerLayout::Height;
         const int listTop = marginY + PokeBank::UIModel::InventoryPickerLayout::ClassicListTopOffset;
         const int listBottom = marginY + height - 18;
         const int visibleRows = std::max(1, (listBottom - listTop) / rowH);
@@ -879,7 +879,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const bool compactPicker = state.pickerActive;
     const int width = compactPicker ? PokeBank::UIModel::InventoryPickerLayout::Width : 900;
     const int y = compactPicker ? PokeBank::UIModel::InventoryPickerLayout::VerticalMargin : 66;
-    const int height = compactPicker ? fb.getHeight() - 2 * y : 610;
+    const int height = compactPicker ? PokeBank::UIModel::InventoryPickerLayout::Height : 610;
     const int x = (fb.getWidth() - width) / 2;
     const int radius = compactPicker ? 16 : 18;
     fb.drawSoftShadow(x, y, width, height, radius);
