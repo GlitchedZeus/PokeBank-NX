@@ -378,10 +378,10 @@ int main() {
     const auto eggCannotTransfer=sourceFreePalPark(2,0x37,0x37,4,4,true);
     assert(hasInvalidText(eggCannotTransfer,
         "Gen III-origin egg cannot be transferred through Pal Park"));
-    const auto unknownOrigin=sourceFreePalPark(0,0,0,4,0);
-    assert(hasText(unknownOrigin,
+    const auto unknownTransferOrigin=sourceFreePalPark(0,0,0,4,0);
+    assert(hasText(unknownTransferOrigin,
         "PK4 origin game could not be mapped to a known generation"));
-    assert(!hasInvalidText(unknownOrigin,"Pal Park"));
+    assert(!hasInvalidText(unknownTransferOrigin,"Pal Park"));
     // Later-generation origin is intrinsically impossible in a PK4,
     // independent of which Gen IV game save contains the entity.
     const auto gen5Origin=sourceFreePalPark(20,0x37,0x37,4,4);
