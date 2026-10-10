@@ -51,6 +51,19 @@ constexpr bool matchesGen1SpeciesOrPreEvolutionRate(
     uint16_t species, uint8_t catchRate) noexcept {
     if (species == 0 || species > 151)
         return false;
+    // Eevee is a BRANCHED evolution family. The PKHeX-derived stage table
+    // alone has numeric neighbors, not graph edges: subtracting stage(135)
+    // accidentally selected Vaporeon as Jolteon's parent, and stage(136)
+    // selected Jolteon as Flareon's parent. Neither can evolve into the
+    // other; only Eevee and the current branch are valid ancestors.
+    if (species >= 134 && species <= 136)
+        return catchRate == kCatchRateRB[133] ||
+               catchRate == kCatchRateY[133] ||
+               catchRate == kCatchRateRB[species] ||
+               catchRate == kCatchRateY[species];
+
+    // The remaining native Gen I evolutions are sequential, linear chains;
+    // use the PKHeX-pinned stage table for their actual pre-evolutions.
     const uint16_t base = static_cast<uint16_t>(species - evolutionStage(species));
     for (uint16_t s = base; s <= species; ++s) {
         if (catchRate == kCatchRateRB[s] || catchRate == kCatchRateY[s])

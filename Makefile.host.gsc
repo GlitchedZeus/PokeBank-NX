@@ -303,3 +303,20 @@ $(HOST_BUILD)/test_gen2_crystal_tyrogue_gift: $(GSC_CRYSTAL_TYROGUE_GIFT_SOURCES
 $(HOST_BUILD)/test_gen2_crystal_tyrogue_gift_sanitize: $(GSC_CRYSTAL_TYROGUE_GIFT_SOURCES) $(GSC_CRYSTAL_TYROGUE_GIFT_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_CRYSTAL_TYROGUE_GIFT_SOURCES) -o $@
+
+# True Gen I branched Eevee ancestry through the immutable PK1 production
+# legality report (not just a helper predicate).
+GSC_GEN1_RATE_NATIVE_SOURCES := tests/test_gen1_catch_rate_native.cpp \
+	$(filter-out tests/test_gen2_crystal_evolved_native.cpp,$(GSC_EVOLVED_WILD_NATIVE_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_gen1_catch_rate_native
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_catch_rate_native_sanitize
+host-test: $(HOST_BUILD)/test_gen1_catch_rate_native
+host-sanitize: $(HOST_BUILD)/test_gen1_catch_rate_native_sanitize
+
+$(HOST_BUILD)/test_gen1_catch_rate_native: $(GSC_GEN1_RATE_NATIVE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gen1_catch_rate_native_sanitize: $(GSC_GEN1_RATE_NATIVE_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
