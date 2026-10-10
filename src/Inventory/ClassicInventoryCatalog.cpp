@@ -341,6 +341,11 @@ std::string displayItemName(ClassicGame game, ClassicPocket pocket, uint16_t ite
     if (game <= ClassicGame::Yellow) return Names::getItemNameG1(itemId);
     if (game <= ClassicGame::Crystal) {
         const auto name = PokeVault::Integration::Gen2::gen2ItemDisplayName(static_cast<uint8_t>(itemId));
+        // Gen II's original character map renders the Poké Doll's old
+        // abbreviated glyph as "# Doll". Restore the canonical item name
+        // in presentation only; keep its exact native item ID untouched.
+        if (name == "# Doll") return "Poké Doll";
+        if (name == "Brightpowder") return "BrightPowder";
         return name.empty() ? ("Item " + std::to_string(itemId)) : name;
     }
     return Names::getItemNameG3(itemId);
