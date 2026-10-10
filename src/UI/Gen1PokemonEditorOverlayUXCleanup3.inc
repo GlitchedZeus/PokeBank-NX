@@ -537,17 +537,27 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         (editor(screen) ? std::string(ux3GameName(editor(screen)->metadata().sourceGame)) : std::string("Gen I")) +
         " • exact Gen I Acc / Pwr / PP",
         Colors::TextDim, TextStyle::Caption);
-    constexpr int visible = 9;
-    const int start = std::clamp(selectedIndex - visible / 2, 0, std::max(0, static_cast<int>(choices.size()) - visible));
-    for (int i = 0; i < visible && start + i < static_cast<int>(choices.size()); ++i) {
-        const int idx = start + i;
+    constexpr int visible = 9, rowStep = 42;
+    const int count = static_cast<int>(choices.size());
+    state.pickerViewport.ensure(selectedIndex, count, visible);
+    const int start = state.pickerViewport.firstRow;
+    const int drawFirst = std::max(0, start - 1);
+    const int drawLast = std::min(count, start + visible + 1);
+    const int listTop = y + 86;
+    const int liveOffset = state.pickerScroll.offset();
+    fb.setClipRect(x + 24, listTop, w - 48, visible * rowStep);
+    for (int idx = drawFirst; idx < drawLast; ++idx) {
         const int move = choices[static_cast<size_t>(idx)];
-        const int rowY = y + 86 + i * 42;
+        const int rowY = listTop + (idx - start) * rowStep + liveOffset;
         const bool selected = idx == selectedIndex;
         if (selected) fb.drawSelectionHighlight(x + 24, rowY, w - 48, 38);
+        appendClippedTouchButton(screen.touchButtons, 4000 + idx,
+            x + 24, rowY, w - 48, 38,
+            x + 24, listTop, w - 48, visible * rowStep);
         MovePickerRowUI::draw(fb,x+40,rowY+4,
                               static_cast<uint16_t>(move),Enums::GameVersion::RBY);
     }
+    fb.clearClip();
 }
 
 void ux3DrawClone(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
