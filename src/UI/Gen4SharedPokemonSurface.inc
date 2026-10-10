@@ -29,6 +29,7 @@
 #include "UI/SharedHeldItemPicker.h"
 #include "UI/SharedHeldItemPickerPresentation.h"
 #include "UI/SharedSpeciesPicker.h"
+#include "UI/TouchScroll.h"
 #include "UI/SharedPokemonShell.h"
 #include "Utils/Keyboard.h"
 #include "Utils/StringHelpers.h"
@@ -89,6 +90,8 @@ struct State {
     bool valuePicker = false;
     PickerTarget pickerTarget = PickerTarget::None;
     int pickerRow = 0;
+    TouchScrollState pickerScroll;
+    TouchPickerViewport pickerViewport;
     std::vector<uint16_t> pickerValues;
 
     // Gen IV Items use their own app-owned quantity draft, never the generic
@@ -2415,7 +2418,7 @@ void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State
     const int y=(fb.getHeight()-kNavBarH-h)/2;
     fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,160));
     fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
-    fb.drawRoundedRect(x,y,w,h,18,Colors::FocusBorder,1);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
     fb.drawText(x+24,y+17,"Add Item - Generation IV",Colors::Text,TextStyle::Heading);
     fb.drawText(x+24,y+53,
         std::string(Gen4::bagPocketName(static_cast<size_t>(state.itemAddPocket)))+
@@ -2446,7 +2449,7 @@ void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const S
     const int y=(fb.getHeight()-kNavBarH-h)/2;
     fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,160));
     fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
-    fb.drawRoundedRect(x,y,w,h,18,Colors::FocusBorder,1);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
     fb.drawText(x+24,y+20,"Remove Gen IV Item?",Colors::Text,TextStyle::Heading);
     const std::string itemName=Names::getItemName(state.itemRemoveId);
     fb.drawText(x+24,y+69,

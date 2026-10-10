@@ -30,6 +30,7 @@
 #include "UI/SharedHeldItemPicker.h"
 #include "UI/SharedHeldItemPickerPresentation.h"
 #include "UI/SharedSpeciesPicker.h"
+#include "UI/TouchScroll.h"
 #include "Utils/Keyboard.h"
 
 #include <algorithm>
@@ -1453,7 +1454,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     {"A", "Choose"}, {"B", "Cancel"}});
 }
 
-void drawMoveEditor(PKSEFramebuffer& fb, State& state) {
+void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     if (!state.moveEditor) return;
     const auto slot = static_cast<std::size_t>(state.moveEditorSlot);
     constexpr int w = 650, h = 390;
