@@ -373,7 +373,8 @@ namespace Panels {
             : std::string("None"));
 
         // Edit hint + whole-panel tap target (opens the editor for the selected slot).
-        const char* hint = "A / tap: Edit";
+        const char* hint = (exact && exact->identity.generation == Foundation::Generation::Gen4)
+            ? "A / tap: Actions" : "A / tap: Edit";
         int hw, hh; fb.measureText(hint, hw, hh, TextStyle::Caption);
         fb.drawText(x + (width - hw) / 2, y + height - 24, hint, Colors::Accent, TextStyle::Caption);
         screen.touchButtons.push_back({ 2000, x, y + headerH, width, height - headerH });
