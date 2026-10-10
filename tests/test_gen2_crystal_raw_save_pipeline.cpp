@@ -20,9 +20,13 @@ const char* getItemName(uint16_t i) { return Names::getItemName(i); }
 namespace {
 using namespace PokeVault::Integration::Gen2;
 constexpr size_t kSize=0x8000, kParty=0x2865, kEnd=0x2B82;
-constexpr size_t kChecksum=0x2D0D, kCapacity=14, kText=11;
-constexpr size_t kBoxStride=1+(kCapacity+1)+kCapacity*32+
-                            2*kCapacity*kText+2;
+constexpr size_t kChecksum=0x2D0D, kBoxCapacity=20, kBoxCount=14;
+constexpr size_t kBoxesPerBank=7, kText=11, kBoxNameLength=9;
+constexpr size_t kCurrentBoxCopy=0x2D10;
+constexpr size_t kBoxListLength=1+(kBoxCapacity+1)+kBoxCapacity*32+
+                                2*kBoxCapacity*kText;
+constexpr size_t kBoxStride=kBoxListLength+2; // Retail padding bytes.
+static_assert(kBoxesPerBank*kBoxStride<=0x2000);
 void putName(std::vector<uint8_t>& b,size_t at,size_t len,char c) {
     std::fill_n(b.begin()+at,len,0x50);
     if(c>='A'&&c<='Z')b[at]=static_cast<uint8_t>(0x80+c-'A');
@@ -40,19 +44,22 @@ void be16(std::vector<uint8_t>& d,size_t at,uint16_t v) {
 std::vector<uint8_t> crystalSave(uint16_t species,uint8_t level,
                                  uint16_t caught,bool egg=false) {
     // Pinned read-only parser: international Crystal, 32-KiB bank,
-    // 6-party slots, 20 stored boxes, international 11-byte names.
+    // 6-party slots, 20 slots per box, 14 boxes, 11-byte names.
     std::vector<uint8_t> raw(kSize,0);
     be16(raw,0x2009,0x1234);
     putName(raw,0x200B,11,'A');
     raw[0x2700]=0; // current box
     raw[0x3E3D]=1; // Crystal trainer gender
-    for(size_t b=0;b<20;++b) {
-        const size_t at=b<7 ? 0x4000+b*kBoxStride :
-                             0x6000+(b-7)*kBoxStride;
-        assert(at<raw.size());
+    raw[kCurrentBoxCopy]=0; // Empty current-box backup list
+    raw[kCurrentBoxCopy+1]=0xFF;
+    for(size_t b=0;b<kBoxCount;++b) {
+        const size_t at=b<kBoxesPerBank ? 0x4000+b*kBoxStride :
+                             0x6000+(b-kBoxesPerBank)*kBoxStride;
+        assert(at+kBoxListLength<=raw.size());
         raw[at]=0;
         raw[at+1]=0xFF;
-        putName(raw,0x2703+b*9,9,static_cast<char>('A'+b%26));
+        putName(raw,0x2703+b*kBoxNameLength,kBoxNameLength,
+                static_cast<char>('A'+b%26));
     }
     // One party entry; the stored party body must remain 48 bytes.
     raw[kParty]=1;
@@ -94,6 +101,9 @@ Legality::Report analyzeRawSave(uint16_t species,uint8_t level,
     const auto parsed=parse(data,SourceGame::Crystal);
     assert(parsed && parsed.save);
     assert(parsed.save->metadata().sourceGameId=="crystal_gbc");
+    assert(parsed.save->metadata().boxCount==kBoxCount);
+    assert(parsed.save->metadata().boxCapacity==kBoxCapacity);
+    assert(parsed.save->boxes().size()==kBoxCount);
     assert(parsed.save->party().size()==1);
     assert(parsed.save->sourceBytes().size()==original.size());
     assert(std::equal(parsed.save->sourceBytes().begin(),
