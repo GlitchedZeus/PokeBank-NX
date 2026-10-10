@@ -2444,24 +2444,24 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         }
         const int visible=screen.selectedItemIndex;
         if(pocket<0 || pocket>=static_cast<int>(screen.trainer.items.size())) {
-            if(down&HidNpadButton_Y) {
-                screen.postStatus("No validated Gen IV item available to remove",220);
-                return true;
-            }
-            return false;
+            screen.postStatus("No validated Gen IV item pocket is selected",220);
+            return true;
         }
         const auto indices=screen.visibleItemIndices();
         if(visible<0 || visible>=static_cast<int>(indices.size())) {
-            if(down&HidNpadButton_Y) {
-                screen.postStatus("Choose an existing Gen IV item before removing",220);
-                return true;
-            }
-            return false;
+            screen.postStatus("Choose an existing Gen IV item; X adds a new staged stack",220);
+            return true;
         }
         const int raw=indices[static_cast<size_t>(visible)];
-        if(raw<0 || raw>=static_cast<int>(screen.trainer.items[pocket].size()))return false;
+        if(raw<0 || raw>=static_cast<int>(screen.trainer.items[pocket].size())) {
+            screen.postStatus("Gen IV selected item is no longer in the visible pocket",220);
+            return true;
+        }
         const auto& item=screen.trainer.items[pocket][static_cast<size_t>(raw)];
-        if(item.itemId==0 || item.count==0 || item.count>999)return false;
+        if(item.itemId==0 || item.count==0 || item.count>999) {
+            screen.postStatus("Gen IV item stack is empty or invalid; X adds a staged item",240);
+            return true;
+        }
         auto* staged=editor(screen);
         if(!staged) {
             screen.postStatus("Gen IV inventory source remains read-only; staged workspace unavailable",240);
