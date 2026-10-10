@@ -5008,9 +5008,22 @@ namespace UI {
                     if (selectedItemIndex == -1) {
                         instructions = "L/R: Box  |  A: Rename  |  B: Back";
                     } else {
-                        instructions = occ
-                            ? "Arrows: Navigate  |  L/R: Box  |  A: Actions  |  X: Release  |  Y: Grab/Move  |  B: Back"
-                            : "Arrows: Navigate  |  L/R: Box  |  A: Create  |  B: Back";
+                        // Gen IV uses the native staged PC action menu and X-to-Add.
+                        // The inherited Create / Release / Grab hints target the
+                        // legacy mutable save and are misleading on immutable sources.
+                        const auto group = trainer.getGameGroup();
+                        const bool gen4Staged = group == Enums::GameVersion::DP ||
+                            group == Enums::GameVersion::PT ||
+                            group == Enums::GameVersion::HGSS;
+                        if (gen4Staged) {
+                            instructions = occ
+                                ? "Arrows: Navigate  |  L/R: Box  |  A: Actions  |  B: Back"
+                                : "Arrows: Navigate  |  L/R: Box  |  A: Actions  |  X: Add  |  B: Back";
+                        } else {
+                            instructions = occ
+                                ? "Arrows: Navigate  |  L/R: Box  |  A: Actions  |  X: Release  |  Y: Grab/Move  |  B: Back"
+                                : "Arrows: Navigate  |  L/R: Box  |  A: Create  |  B: Back";
+                        }
                     }
                 }
             } else if(selectedMode == ViewMode::Party) { // TODO: There HAS to be a better way of doing this without all of the if/else conditionals... probably will look into this at some point.
