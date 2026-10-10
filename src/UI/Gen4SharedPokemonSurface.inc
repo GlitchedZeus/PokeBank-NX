@@ -21,6 +21,7 @@
 #include "UI/Gen4SharedPokemonSession.h"
 #include "UI/MovePickerPresentation.h"
 #include "UI/MovePickerRowUI.h"
+#include "UI/NaturePickerLayout.h"
 #include "UI/ItemPickerArtwork.h"
 #include "UI/ScreenChrome.h"
 #include "UI/SharedPokemonEditorContract.h"
@@ -1456,11 +1457,16 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         state.pickerTarget == PickerTarget::Nature ||
         state.pickerTarget == PickerTarget::Ability ||
         state.pickerTarget == PickerTarget::Pokerus;
-    const int visibleChoices=compactChoices ? std::min(8,totalChoices) : 10;
+    const bool naturePicker=state.pickerTarget==PickerTarget::Nature;
+    const auto natureLayout=PokeBank::UIModel::NaturePickerLayout::forChoices(totalChoices);
+    const int visibleChoices=naturePicker ? natureLayout.visibleRows :
+        compactChoices ? std::min(8,totalChoices) : 10;
     const int w = heldItems ? 1040 : movePicker ? moveLayout.width :
-        speciesPicker ? 760 : compactChoices ? 640 : 680;
+        speciesPicker ? 760 : naturePicker ? natureLayout.width :
+        compactChoices ? 640 : 680;
     const int h = heldItems ? 520 : movePicker ? moveLayout.height :
-        speciesPicker ? 560 : compactChoices ? 125 + visibleChoices * 42 : 560;
+        speciesPicker ? 560 : naturePicker ? natureLayout.height :
+        compactChoices ? 125 + visibleChoices * 42 : 560;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - kNavBarH - h) / 2;
 
@@ -1566,9 +1572,11 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         state.pickerRow - visible / 2, 0, std::max(0, count - visible));
     const int last = std::min(count, first + visible);
     for (int i = first; i < last; ++i) {
-        const int yy = y + 90 + (i - first) * 42;
+        const int yy = y + 90 + (i - first) *
+            (naturePicker ? natureLayout.rowStep : 42);
         const bool selected = i == state.pickerRow;
-        if (selected) fb.drawSelectionHighlight(x + 22, yy - 4, w - 44, 38);
+        if (selected) fb.drawSelectionHighlight(x + 22, yy - 4, w - 44,
+            naturePicker ? natureLayout.highlightHeight : 38);
         const auto value = state.pickerValues[static_cast<size_t>(i)];
         fb.drawText(x + 38, yy + 7, pickerValueLabel(screen, state, value),
                     Colors::Text, TextStyle::Body);
