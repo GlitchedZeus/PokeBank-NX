@@ -2522,9 +2522,87 @@ namespace UI {
             return;
         }
 
+        // Activate only a target containing both the contact origin and release point.
+        auto tappedHit = [&](const HitRect& r) -> bool {
+            return touch.startX() >= r.x && touch.startX() < r.x + r.w &&
+                   touch.startY() >= r.y && touch.startY() < r.y + r.h &&
+                   touch.x() >= r.x && touch.x() < r.x + r.w &&
+                   touch.y() >= r.y && touch.y() < r.y + r.h;
+        };
+        auto tappedRect = [&](const std::vector<HitRect>& rects) -> int {
+            if (!touch.justTapped()) return -1;
+            for (const auto& r : rects) if (tappedHit(r)) return r.idx;
+            return -1;
+        };
+        if (touch.justTouchedDown()) {
+            const int tx = touch.x(), ty = touch.y();
+            if (classicGamesActive && overlay == Overlay::None) {
+                for (const auto& r : titleRects)
+                    if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h) {
+                        titleIndex = r.idx; headerActionIndex = -1; break;
+                    }
+            } else {
+                for (const auto& r : overlayRects) {
+                    if (!(tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h)) continue;
+                    switch (overlay) {
+                        case Overlay::GamesDrawer: gamesDrawerIndex = r.idx; break;
+                        case Overlay::ProfilePicker: profilePickerIndex = r.idx; break;
+                        case Overlay::GameWorkspace: gameWorkspaceIndex = r.idx; break;
+                        case Overlay::GameFilePicker: launchFileIndex = r.idx; break;
+                        case Overlay::LegacyInstances: legacyInstanceIndex = r.idx; break;
+                        case Overlay::LegacyAssignment: legacyAssignmentIndex = r.idx; break;
+                        case Overlay::Gen4Setup: gen4SetupIndex = r.idx; break;
+                        case Overlay::Gen4Candidates: gen4CandidateIndex = r.idx; break;
+                        case Overlay::Options: optionsIndex = r.idx; break;
+                        default: break;
+                    }
+                    break;
+                }
+            }
+        }
+        if (touch.justTapped()) {
+            if (classicGamesActive && overlay == Overlay::None) {
+                const int idx = tappedRect(titleRects);
+                if (idx >= 0) {
+                    titleIndex = idx; headerActionIndex = -1;
+                    scrollClassicSelectionIntoView(); kDown |= HidNpadButton_A;
+                }
+            } else {
+                const int idx = tappedRect(overlayRects);
+                bool activate = idx >= 0;
+                if (activate) {
+                    switch (overlay) {
+                        case Overlay::GamesDrawer: gamesDrawerIndex = idx; break;
+                        case Overlay::ProfilePicker: profilePickerIndex = idx; break;
+                        case Overlay::GameWorkspace: gameWorkspaceIndex = idx; break;
+                        case Overlay::GameFilePicker: launchFileIndex = idx; break;
+                        case Overlay::LegacyInstances: legacyInstanceIndex = idx; break;
+                        case Overlay::LegacyAssignment: legacyAssignmentIndex = idx; break;
+                        case Overlay::Gen4Setup: gen4SetupIndex = idx; break;
+                        case Overlay::Gen4Candidates: gen4CandidateIndex = idx; break;
+                        case Overlay::Options: optionsIndex = idx; break;
+                        default: activate = false; break;
+                    }
+                    if (activate) kDown |= HidNpadButton_A;
+                }
+            }
+        }
+
         if (overlay == Overlay::GamesDrawer) {
             const UserEntry* drawerUser = currentUser();
             const int count = drawerUser ? static_cast<int>(drawerUser->titles.size()) : 0;
+            constexpr int drawerW = 520, cols = 3, visibleRows = 3;
+            constexpr int gap = 7, margin = 10, tileH = 160, gridY = 88;
+            const int drawerX = 1280 - drawerW;
+            const int totalRows = (count + cols - 1) / cols;
+            const int maxFirstRow = std::max(0, totalRows - visibleRows);
+            gamesDrawerScroll = std::clamp(gamesDrawerScroll, 0, maxFirstRow);
+            if (maxFirstRow > 0)
+                gamesDrawerTouchScroll.updateVertical(
+                    touch, drawerX + margin, gridY, drawerW - margin * 2,
+                    visibleRows * (tileH + gap) - gap, tileH + gap,
+                    gamesDrawerScroll, maxFirstRow + 1);
+            else gamesDrawerTouchScroll.stop();
             // Product Home owns Y = Open Quick Games. Once open, Y is deliberately inert;
             // B is the only close/back control so repeated Y presses cannot dismiss the sheet.
             if (kDown & HidNpadButton_B) {
