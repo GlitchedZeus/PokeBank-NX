@@ -74,12 +74,16 @@ struct State {
     std::string previewError;
     bool actions = false;
     bool review = false;
+    int reviewScroll = 0;
+    TouchScrollState reviewTouchScroll;
     bool legality = false;
     bool confirmRelease = false;
     bool speciesPicker = false;
     bool valuePicker = false;
     PickerTarget pickerTarget = PickerTarget::None;
     int pickerRow = 0;
+    TouchScrollState pickerScroll;
+    TouchPickerViewport pickerViewport;
     int pickerMoveSlot = 0;
     bool moveEditor = false;
     int moveEditorRow = 0;
@@ -201,6 +205,8 @@ void beginActions(TrainerViewScreen& screen) {
     auto& state = stateFor(screen);
     state.actions = true;
     state.review = false;
+    state.reviewScroll = 0;
+    state.reviewTouchScroll.reset();
     state.legality = false;
     state.confirmRelease = false;
     state.speciesPicker = false;
@@ -515,6 +521,8 @@ uint16_t currentPickerValue(const State& state, PickerTarget target, int moveSlo
 
 void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget target,
                      int moveSlot = 0) {
+    state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.pickerTarget = target;
     state.pickerMoveSlot = moveSlot;
     state.pickerValues.clear();
@@ -834,14 +842,59 @@ void editMoveCell(TrainerViewScreen& screen, State& state) {
 }
 
 
-bool handleValuePicker(TrainerViewScreen&, State& state, u64 down) {
+bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.valuePicker) return false;
     const int count = static_cast<int>(state.pickerValues.size());
+    const bool gridPicker = state.pickerTarget == PickerTarget::HeldItem;
+    const int columns = gridPicker ? HeldItemGrid::columns : 1;
+    const int visibleRows = gridPicker ? HeldItemGrid::rows
+        : state.pickerTarget == PickerTarget::Move ? MoveUI::compactPickerLayout().visibleRows : 10;
+    state.pickerViewport.ensure(state.pickerRow, count, visibleRows, columns);
+    const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows, columns);
+    // Fully visible lists are not scroll surfaces; don't rubber-band small pickers.
+    if (count > 0 && maxFirstRow > 0) {
+        if (state.pickerTarget == PickerTarget::HeldItem) {
+  constexpr int pickerW = 1040, pickerH = 520, rowStep = 40;
+  const int px = (1280 - pickerW) / 2;
+  const int py = (720 - pickerH) / 2;
+  state.pickerScroll.updateVertical(
+      touch, px + 22, py + 87, pickerW - 44,
+      HeldItemGrid::rows * rowStep + 6, rowStep,
+      state.pickerViewport.firstRow, maxFirstRow + 1);
+        } else if (state.pickerTarget == PickerTarget::Move) {
+  constexpr auto pickerLayout = MoveUI::compactPickerLayout();
+  const int px = (1280 - pickerLayout.width) / 2;
+  const int py = (720 - pickerLayout.height) / 2;
+  state.pickerScroll.updateVertical(
+      touch, px + 24, py + pickerLayout.rowStart,
+      pickerLayout.width - 48,
+      pickerLayout.visibleRows * pickerLayout.rowStep,
+      pickerLayout.rowStep, state.pickerViewport.firstRow, maxFirstRow + 1);
+        } else {
+  constexpr int pickerW = 680, pickerH = 560, rowStep = 42;
+  const int px = (1280 - pickerW) / 2;
+  const int py = (720 - pickerH) / 2;
+  state.pickerScroll.updateVertical(
+      touch, px + 22, py + 86, pickerW - 44,
+      10 * rowStep + 8, rowStep, state.pickerViewport.firstRow, maxFirstRow + 1);
+        }
+    }
+    if (maxFirstRow == 0)
+        state.pickerScroll.stop();
+    const int touchDown = screen.touchedButtonDownId(touch);
+    if (touchDown >= 4000 && touchDown < 4000 + count) state.pickerRow = touchDown - 4000;
+    const int touchTap = screen.touchedButtonId(touch);
+    if (touchTap >= 4000 && touchTap < 4000 + count) {
+        state.pickerRow = touchTap - 4000;
+        down |= HidNpadButton_A;
+    }
     if (count <= 0) {
         state.valuePicker = false;
         return true;
     }
 
+    if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R))
+        state.pickerScroll.stop();
     if (state.pickerTarget == PickerTarget::HeldItem) {
         if (down & HidNpadButton_Up)
             state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, -1);
@@ -862,21 +915,52 @@ bool handleValuePicker(TrainerViewScreen&, State& state, u64 down) {
         if (down & HidNpadButton_Right) state.pickerRow = std::min(count - 1, state.pickerRow + 10);
     }
 
+    if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left |
+                HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R))
+        state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
+
     if (down & HidNpadButton_B) {
+        state.pickerScroll.stop();
         state.valuePicker = false;
         state.pickerTarget = PickerTarget::None;
         state.pickerValues.clear();
         return true;
     }
     if (down & HidNpadButton_A) {
+        // The finger can browse far away from the highlighted controller choice. A must never
+        // commit that now-hidden choice: reveal it first, and require a new explicit confirm.
+        if (!state.pickerViewport.containsSelection(
+                state.pickerRow, count, visibleRows, columns)) {
+            state.pickerScroll.stop();
+            state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
+            screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
+            return true;
+        }
+        state.pickerScroll.stop();
         applyValuePicker(state);
         return true;
     }
     return true;
 }
 
-bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down) {
+bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.speciesPicker) return false;
+    const int speciesDown = screen.touchedButtonDownId(touch);
+    if (speciesDown >= 31500 && speciesDown <= 31500 + 386)
+        state.speciesPreview = static_cast<uint16_t>(speciesDown - 31500);
+    const int speciesTap = screen.touchedButtonId(touch);
+    if (speciesTap >= 31500 && speciesTap <= 31500 + 386) {
+        state.speciesPreview = static_cast<uint16_t>(speciesTap - 31500);
+        down |= HidNpadButton_A;
+    }
+    const int dy = touch.deltaY();
+    if (touch.justReleased() && touch.dragged() &&
+        SharedSpeciesPicker::gestureStartedInList(touch.startX(), touch.startY()) &&
+        std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
+        const int steps = std::max(1, std::abs(dy) / 43);
+        state.speciesPreview = static_cast<uint16_t>(std::clamp<int>(
+            static_cast<int>(state.speciesPreview) + (dy < 0 ? steps : -steps), 1, 386));
+    }
     if (down & HidNpadButton_Up)
         state.speciesPreview = static_cast<uint16_t>(std::max<int>(1, state.speciesPreview - 1));
     if (down & HidNpadButton_Down)
@@ -925,9 +1009,13 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down) {
     return true;
 }
 
-bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down) {
+bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.moveEditor) return false;
     if (state.valuePicker) return false;
+    const int moveDown = screen.touchedButtonDownId(touch);
+    if (moveDown >= 31400 && moveDown < 31405) state.moveEditorRow = moveDown - 31400;
+    const int moveTap = screen.touchedButtonId(touch);
+    if (moveTap >= 31400 && moveTap < 31405) { state.moveEditorRow = moveTap - 31400; down |= HidNpadButton_A; }
     if (down & HidNpadButton_Up) state.moveEditorRow = (state.moveEditorRow + 4) % 5;
     if (down & HidNpadButton_Down) state.moveEditorRow = (state.moveEditorRow + 1) % 5;
     if (down & HidNpadButton_B) {
@@ -980,11 +1068,11 @@ bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down) {
     return true;
 }
 
-bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
+bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!workspaceActive(state)) return false;
-    if (handleValuePicker(screen, state, down)) return true;
-    if (handleSpeciesPicker(screen, state, down)) return true;
-    if (handleMoveEditor(screen, state, down)) return true;
+    if (handleValuePicker(screen, state, down, touch)) return true;
+    if (handleSpeciesPicker(screen, state, down, touch)) return true;
+    if (handleMoveEditor(screen, state, down, touch)) return true;
 
     if (state.session.confirmExit) {
         if (down & HidNpadButton_A) {
@@ -1046,6 +1134,51 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
     state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);
     state.detailsFocus = std::min<int>(state.detailsFocus, static_cast<int>(detailLabels.size()) - 1);
 
+    auto applyDirectFocus = [&](int id) {
+        if (id >= 31000 && id < 31000 + static_cast<int>(detailLabels.size())) {
+            const int row = id - 31000;
+            if (!(passiveView || detailEditable(state, row))) return false;
+            state.focus = {Shared::Panel::Details, static_cast<uint8_t>(row), 0};
+            state.detailsFocus = row;
+            return true;
+        }
+        if (id >= 31100 && id < 31106) {
+            state.focus = {Shared::Panel::Values, static_cast<uint8_t>(id - 31100), 0}; return true;
+        }
+        if (id >= 31120 && id < 31126) {
+            state.focus = {Shared::Panel::Values, static_cast<uint8_t>(id - 31120), 1}; return true;
+        }
+        if (id >= 31206 && id <= 31210) {
+            const int row = id - 31200;
+            if (!(passiveView || pidLinkedRowEditable(state, row))) return false;
+            state.focus = {Shared::Panel::Values, static_cast<uint8_t>(row), 0};
+            return true;
+        }
+        if (id >= 31300 && id < 31304) {
+            state.focus = {Shared::Panel::Moves, static_cast<uint8_t>(id - 31300), 0}; return true;
+        }
+        return false;
+    };
+    const int directDown = screen.touchedButtonDownId(touch);
+    applyDirectFocus(directDown);
+    const int directTap = screen.touchedButtonId(touch);
+    if (applyDirectFocus(directTap) && state.session.editable()) down |= HidNpadButton_A;
+    if (touch.justReleased() && touch.dragged()) {
+        const int sx = touch.startX(), sy = touch.startY();
+        const int dx = touch.deltaX(), dy = touch.deltaY();
+        if (sx >= 24 && sx < 324 && sy >= 300 && std::abs(dy) >= 28) {
+            const int steps = std::max(1, std::abs(dy) / 38);
+            state.detailsFocus = std::clamp(state.detailsFocus + (dy < 0 ? steps : -steps),
+                                             0, static_cast<int>(detailLabels.size()) - 1);
+            state.focus = {Shared::Panel::Details, static_cast<uint8_t>(state.detailsFocus), 0};
+        } else if (std::abs(dx) >= 96 && std::abs(dx) > std::abs(dy)) {
+            state.focus = passiveView
+                ? Shared::passiveViewSwitchPanel(Shared::Generation::Gen3, state.focus, dx < 0 ? 1 : -1)
+                : Shared::switchPanel(Shared::Generation::Gen3, state.focus, dx < 0 ? 1 : -1);
+            state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);
+        }
+    }
+
     if (down & HidNpadButton_B) {
         if (state.session.mode == SessionModel::Mode::View) {
             state.session.mode = SessionModel::Mode::None;
@@ -1071,7 +1204,7 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
     return true;
 }
 
-bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {
+bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.actions) return false;
     auto* staged = editor(screen);
     if (!staged) {
@@ -1087,6 +1220,13 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {
     if (actions.count == 0) return true;
     state.actionRow = std::clamp(
         state.actionRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
+    const int actionDown = screen.touchedButtonDownId(touch);
+    if (actionDown >= 31600 && actionDown < 31600 + static_cast<int>(actions.count))
+        state.actionRow = actionDown - 31600;
+    const int actionTap = screen.touchedButtonId(touch);
+    if (actionTap >= 31600 && actionTap < 31600 + static_cast<int>(actions.count)) {
+        state.actionRow = actionTap - 31600; down |= HidNpadButton_A;
+    }
     if (down & HidNpadButton_Up)
         state.actionRow = (state.actionRow - 1 + static_cast<int>(actions.count)) %
                           static_cast<int>(actions.count);
@@ -1141,18 +1281,32 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {
     return true;
 }
 
-bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
+bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.review) return false;
     auto* staged = editor(screen);
     if (!staged) {
         state.review = false;
         return true;
     }
+    const int reviewCount = static_cast<int>(staged->pendingChanges().size());
+    const int reviewMax = std::max(0, reviewCount - 7);
+    // Pending Changes is a real touch scroll view: the cards follow the finger on every frame,
+    // cross row boundaries while the finger is still down, and retain a small controlled coast.
+    // reviewScroll remains the first visible semantic row, so controller behavior is unchanged.
+    state.reviewTouchScroll.updateVertical(
+        touch, 44, 112, 1280 - 88, 482, 72,
+        state.reviewScroll, reviewMax + 1);
+    if (down & (HidNpadButton_Up | HidNpadButton_Down))
+        state.reviewTouchScroll.stop();
+    if (down & HidNpadButton_Up) state.reviewScroll = std::max(0, state.reviewScroll - 1);
+    if (down & HidNpadButton_Down) state.reviewScroll = std::min(reviewMax, state.reviewScroll + 1);
     if (down & HidNpadButton_B) {
+        state.reviewTouchScroll.reset();
         state.review = false;
         return true;
     }
     if (down & HidNpadButton_Y) {
+        state.reviewTouchScroll.reset();
         staged->discard();
         refreshPresentation(screen);
         state.review = false;
@@ -1210,6 +1364,7 @@ void drawFocus(PKSEFramebuffer& fb, int x, int y, int w, int h, bool selected) {
 
 void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     if (!state.valuePicker || state.pickerValues.empty()) return;
+    screen.touchButtons.clear();
     const bool heldItems = state.pickerTarget == PickerTarget::HeldItem;
     const bool movePicker = state.pickerTarget == PickerTarget::Move;
     constexpr auto moveLayout = MoveUI::compactPickerLayout();
@@ -1323,6 +1478,7 @@ void drawMoveEditor(PKSEFramebuffer& fb, State& state) {
     int rowY = y + 88;
     for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
         const bool selected = i == state.moveEditorRow;
+        screen.touchButtons.push_back({31400 + i, x + 22, rowY, w - 44, 42});
         if (selected) fb.drawSelectionHighlight(x + 22, rowY, w - 44, 42);
         fb.drawText(x + 38, rowY + 10, rows[static_cast<std::size_t>(i)].first,
                     selected ? Colors::Text : Colors::TextDim);
@@ -1378,11 +1534,29 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
             typeX += width + 8;
         }
     }
+    constexpr std::size_t detailVisibleRows = 8;
+    constexpr int detailRowStep = 38;
+    const int detailViewportY = y + 216;
+    const int detailViewportH = std::max(0, y + h - 40 - detailViewportY);
+    const auto detailVisual = liveVerticalListVisual(
+        state.detailsFocus, static_cast<int>(detailLabels.size()), detailRowStep,
+        leftX + 8, detailViewportY, leftW - 16, detailViewportH);
     SharedPokemonShell::drawScrollableDetails(fb, leftX, y, leftW, h,
-        detailLabels.size(), state.detailsFocus,
+        detailLabels.size(), static_cast<std::size_t>(detailVisual.index),
         state.focus.panel == Shared::Panel::Details,
         [](std::size_t row) { return detailLabels[row]; },
-        [&](std::size_t row) { return detailsValue(screen, p, static_cast<int>(row)); });
+        [&](std::size_t row) { return detailsValue(screen, p, static_cast<int>(row)); },
+        detailVisual.offset);
+    {
+        const auto window = Shared::scrollWindow(
+            detailLabels.size(), detailVisibleRows, static_cast<std::size_t>(detailVisual.index));
+        for (std::size_t i = 0; i < window.count; ++i) {
+            const int row = static_cast<int>(window.first + i);
+            const int yy = y + 224 + static_cast<int>(i) * detailRowStep + detailVisual.offset;
+            if (yy + 32 > detailViewportY && yy < detailViewportY + detailViewportH)
+                screen.touchButtons.push_back({31000 + row, leftX + 8, yy + 2, leftW - 36, 30});
+        }
+    }
     drawPanel(fb, midX, y, midW, h, "STATS");
     fb.drawText(midX + 126, y + 50, "IV", Colors::TextDim, TextStyle::Caption);
     fb.drawText(midX + 190, y + 50, "EV", Colors::TextDim, TextStyle::Caption);
@@ -1392,6 +1566,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         const int yy = y + 78 + row * 40;
         const bool selected = state.focus.panel == Shared::Panel::Values &&
                               state.focus.row == row;
+        screen.touchButtons.push_back({31100 + row, midX + 112, yy - 5, 62, 30});
+        screen.touchButtons.push_back({31120 + row, midX + 176, yy - 5, 70, 30});
         if (selected) {
             const auto cell = Shared::cellFocusFor(Shared::Generation::Gen3, state.focus);
             drawFocus(fb, midX + cell.x, yy - 5, cell.width, 30, true);
@@ -1424,6 +1600,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         const bool selected = state.focus.panel == Shared::Panel::Values &&
                               state.focus.row == row &&
                               (passiveView || editableRow);
+        screen.touchButtons.push_back({31200 + row, midX + 8, yy - 5, midW - 16, 29});
         drawFocus(fb, midX + 8, yy - 5, midW - 16, 29, selected);
         const Color labelColor = selected ? Colors::SelectedText
             : editableRow ? Colors::TextDim
@@ -1448,6 +1625,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         const int yy = y + 62 + row * 32;
         const bool selected = visibleMoveFocus.panel == Shared::Panel::Moves &&
                               visibleMoveFocus.row == row;
+        screen.touchButtons.push_back({31300 + row, rightX + 8, yy - 5, rightW - 16, 32});
         if (selected) {
             const auto cell = Shared::moveRowFocus(rightW);
             drawFocus(fb, rightX + cell.x, yy - 5, cell.width, 32, true);
@@ -1544,9 +1722,15 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
                         create ? "Keep" : "Save", Colors::PanelAlt);
     }
 
-    if (state.moveEditor) drawMoveEditor(fb, state);
+    if (state.moveEditor) drawMoveEditor(screen, fb, state);
     if (state.speciesPicker) {
+        screen.touchButtons.clear();
         const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
+        constexpr int visibleSpecies = 9;
+        const int speciesStart = std::clamp(static_cast<int>(state.speciesPreview) - visibleSpecies / 2,
+                                            1, 386 - visibleSpecies + 1);
+        for (int i = 0; i < visibleSpecies; ++i)
+            screen.touchButtons.push_back({31500 + speciesStart + i, modal.x + 20, modal.y + 84 + i * 43, 560, 39});
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, state.speciesPreview, 386, state.speciesPreviewShiny,
             [](uint16_t species) {
@@ -1554,7 +1738,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
             },
             [](uint16_t species) {
                 return std::string(Names::getSpeciesName(species));
-            });
+            },
+            &latestTouchGesture());
         drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Y", "Shiny"}, {"A", "Choose"}, {"B", "Cancel"}});
     }
     if (state.valuePicker) drawValuePicker(screen, fb, state);
@@ -1583,6 +1768,7 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
 }
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
+    screen.touchButtons.clear();
     auto* staged = editor(screen);
     if (!staged) return;
     std::string error;
@@ -1613,6 +1799,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     int rowY = y + geometry.rowStart;
     for (std::size_t i = 0; i < actions.count; ++i) {
         const bool selected = static_cast<int>(i) == state.actionRow;
+        screen.touchButtons.push_back({31600 + static_cast<int>(i), x + 22, rowY, w - 44, geometry.rowHeight});
         if (selected)
             fb.drawSelectionHighlight(x + 22, rowY, w - 44, geometry.rowHeight);
         const auto action = actions[i];
@@ -1625,27 +1812,45 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
 }
 
-void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, State&) {
+void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
+    screen.touchButtons.clear();
     auto* staged = editor(screen);
     if (!staged) return;
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Colors::Background);
     fb.drawText(32, 24, "Review Pending Changes", Colors::Text, TextStyle::Heading);
     fb.drawText(32, 62, "Generation III staged workspace • original source bytes unchanged",
                 Colors::TextDim, TextStyle::Caption);
-    int y = 112;
-    if (staged->pendingChanges().empty()) {
-        fb.drawText(50, y, "No pending changes.", Colors::TextDim, TextStyle::Body);
+    constexpr int viewportY = 112;
+    constexpr int viewportH = 482;
+    constexpr int rowStep = 72;
+    const auto& changes = staged->pendingChanges();
+    if (changes.empty()) {
+        state.reviewScroll = 0;
+        state.reviewTouchScroll.reset();
+        fb.drawText(50, viewportY, "No pending changes.", Colors::TextDim, TextStyle::Body);
     } else {
-        for (const auto& change : staged->pendingChanges()) {
-            if (y > 585) break;
-            fb.drawFilledRoundedRect(44, y, fb.getWidth() - 88, 62, 10, Colors::Panel);
-            fb.drawText(62, y + 10, change.label, Colors::Text, TextStyle::Caption);
-            fb.drawText(62, y + 34, change.beforeValue + "  ->  " + change.afterValue,
+        constexpr int visible = 7;
+        const int count = static_cast<int>(changes.size());
+        state.reviewScroll = std::clamp(state.reviewScroll, 0, std::max(0, count - visible));
+        const int first = state.reviewScroll;
+        const int drawFirst = std::max(0, first - 1);
+        const int drawLast = std::min(count, first + visible + 1);
+        const int liveOffset = state.reviewTouchScroll.offset();
+        fb.setClipRect(44, viewportY, fb.getWidth() - 88, viewportH);
+        for (int i = drawFirst; i < drawLast; ++i) {
+            const int rowY = viewportY + (i - first) * rowStep + liveOffset;
+            const auto& change = changes[static_cast<std::size_t>(i)];
+            fb.drawFilledRoundedRect(44, rowY, fb.getWidth() - 88, 62, 10, Colors::Panel);
+            fb.drawText(62, rowY + 10, change.label, Colors::Text, TextStyle::Caption);
+            fb.drawText(62, rowY + 34, change.beforeValue + "  ->  " + change.afterValue,
                         Colors::TextDim, TextStyle::Caption);
-            y += 72;
         }
+        fb.clearClip();
+        SharedPokemonShell::drawVerticalScrollIndicator(
+            fb, fb.getWidth() - 28, viewportY, viewportH,
+            changes.size(), visible, state.reviewScroll);
     }
-    drawNavBar(fb, {{"Y", "Discard All Staged"}, {"B", "Back"}});
+    drawNavBar(fb, {{"D-pad/Stick", "Scroll"}, {"Y", "Discard All Staged"}, {"B", "Back"}});
 }
 
 void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
@@ -1700,7 +1905,6 @@ bool ownsFrame(const TrainerViewScreen& screen) noexcept {
 
 bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
                  int stickX, int stickY, const TouchInput& touch) {
-    (void)touch;
     if (!isGen3Gba(screen)) return false;
 
     beginPassiveView(screen);
@@ -1722,9 +1926,9 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
         return true;
     }
     if (handleReleaseConfirm(screen, state, navigated)) return true;
-    if (handleReview(screen, state, navigated)) return true;
-    if (handleWorkspace(screen, state, navigated)) return true;
-    if (handleActions(screen, state, navigated)) return true;
+    if (handleReview(screen, state, navigated, touch)) return true;
+    if (handleWorkspace(screen, state, navigated, touch)) return true;
+    if (handleActions(screen, state, navigated, touch)) return true;
 
     if (!boxEntrySurface(screen)) return false;
     const bool occupied = selectedOccupied(screen);

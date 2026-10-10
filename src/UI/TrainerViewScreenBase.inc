@@ -1430,7 +1430,12 @@ namespace UI {
         details.selectedField = 0;
         details.legalityOverlay = false;
         details.ribbonOverlay = false;
+        details.legalityScroll = 0;
+        details.ribbonScroll = 0;
         details.discardConfirmActive = false;   // never let it survive to overlay the next page
+        details.leftScroll = 0;
+        details.leftScrollMax = 0;
+        details.leftScrollManual = false;
         details.editSnapshot.clear();
     }
 
@@ -1438,12 +1443,27 @@ namespace UI {
     // preserve on save (PKHeX keeps them positionally), but they shouldn't clutter the UI. This
     // returns the raw indices of the current pouch's items worth showing/editing (count > 0), and
     // is the single source of truth so the panel, navigation, and edit all stay in lockstep.
-    // Returns the id of the touch button under a fresh tap this frame, or -1 if none. Buttons are
-    // captured during the previous frame's draw (only the active overlay populates touchButtons).
-    int TrainerViewScreen::touchedButtonId(const TouchInput& touch) const {
-        if (!touch.justPressed()) return -1;
+    // Touch buttons are captured during the previous frame's draw. Contact is focus-only;
+    // activation is always a clean release so scrolling can never fire the row under the finger.
+    int TrainerViewScreen::touchedButtonDownId(const TouchInput& touch) const {
+        if (!touch.justTouchedDown()) return -1;
         for (const auto& b : touchButtons) {
             if (touch.x() >= b.x && touch.x() < b.x + b.w &&
+                touch.y() >= b.y && touch.y() < b.y + b.h)
+                return b.id;
+        }
+        return -1;
+    }
+
+    int TrainerViewScreen::touchedButtonId(const TouchInput& touch) const {
+        if (!touch.justTapped()) return -1;
+        // A clean release is not sufficient: the finger must also have started on THIS target.
+        // Otherwise a sub-slop movement across neighbouring editor rows can activate a row
+        // that was never touched on contact (including a destructive confirmation button).
+        for (const auto& b : touchButtons) {
+            if (touch.startX() >= b.x && touch.startX() < b.x + b.w &&
+                touch.startY() >= b.y && touch.startY() < b.y + b.h &&
+                touch.x() >= b.x && touch.x() < b.x + b.w &&
                 touch.y() >= b.y && touch.y() < b.y + b.h)
                 return b.id;
         }
@@ -1827,7 +1847,7 @@ namespace UI {
         }
         details.active = true;
         details.readOnly = false;
-        details.leftScroll = 0;   // start the info column at the top
+        details.leftScroll = 0; details.leftScrollMax = 0; details.leftScrollManual = false;   // start the info column at the top
         details.editing = false;
         details.category = 0;
         details.selectedStat = 0;
@@ -1886,7 +1906,7 @@ namespace UI {
 
         details.active = true;
         details.readOnly = readOnly;
-        details.leftScroll = 0;
+        details.leftScroll = 0; details.leftScrollMax = 0; details.leftScrollManual = false;
         details.editing = false;
         details.category = 0;
         details.selectedStat = 0;
@@ -2510,7 +2530,7 @@ namespace UI {
 
         // Classic inventory gets first refusal on its own translated controls. This is before global
         // +/- and inherited source-write guards because classic mutations target a staged sidecar.
-        if (ClassicInventory::handleInput(*this, kDown)) return;
+        if (ClassicInventory::handleInput(*this, kDown, touch)) return;
 
         // Let's Go stores its boxes as a GAPLESS list, so anything that vacated a slot last frame
         // left a hole the game can't represent. Re-pack it here rather than at each of the
@@ -2663,11 +2683,26 @@ namespace UI {
         if (pickerActive) {
             Pokemon::Pokemon* pkPick = detailsTargetPokemon();
             const int count = (pickerCount > 0) ? pickerCount : 1;
-            const int page = 12;
+            const auto pickerViewport =
+                PokeBank::UIModel::InventoryPickerLayout::viewport(1280, 720);
+            const int page = pickerViewport.visibleRows;
 
-            // Touch: tap an option row selects it immediately (button id = option index).
-            int ptb = touchedButtonId(touch);
+            // Native list touch: finger contact moves highlight immediately; a clean release
+            // chooses that exact row. Vertical drags browse the list and never activate a row.
+            const int ptd = touchedButtonDownId(touch);
+            if (ptd >= 0 && ptd < count) pickerSel = ptd;
+            const int ptb = touchedButtonId(touch);
             if (ptb >= 0 && ptb < count) { pickerSel = ptb; kDown |= HidNpadButton_A; }
+            if (touch.justReleased() && touch.dragged() &&
+                pickerViewport.contains(touch.startX(), touch.startY()) &&
+                std::abs(touch.deltaY()) >= 24 &&
+                std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
+                const int dy = touch.deltaY();
+                const int rowH = std::max(1, PokeBank::UIModel::InventoryPickerLayout::RowHeight);
+                const int steps = std::max(1, std::abs(dy) / rowH);
+                if (dy < 0) pickerSel = std::min(count - 1, pickerSel + steps);
+                else if (dy > 0) pickerSel = std::max(0, pickerSel - steps);
+            }
 
             if (kDown & HidNpadButton_Up)                        pickerSel = (pickerSel - 1 + count) % count;
             if (kDown & HidNpadButton_Down)                      pickerSel = (pickerSel + 1) % count;
@@ -3034,7 +3069,9 @@ namespace UI {
                 if (kDown & HidNpadButton_Up)   saveDestIndex = (saveDestIndex - 1 + nDest) % nDest;
                 if (kDown & HidNpadButton_Down) saveDestIndex = (saveDestIndex + 1) % nDest;
                 const int td = touchedButtonId(touch);
-                if (td >= 0 && td < nDest) { saveDestIndex = td; kDown |= HidNpadButton_A; }
+                if (td == 90) kDown |= HidNpadButton_B;
+                else if (td == 91) kDown |= HidNpadButton_A;
+                else if (td >= 0 && td < nDest) { saveDestIndex = td; kDown |= HidNpadButton_A; }
                 // The cursor is a ROW; which destination that row means depends on the session.
                 const SaveDest chosenDest = saveDestAt(saveDestIndex);
 
@@ -3291,28 +3328,84 @@ namespace UI {
                 return;
             }
 
-            // Legality overlay (full issue list) intercepts input while open: B or any tap closes it.
+            // Report overlays are real scroll surfaces. A drag scrolls; only B or the explicit
+            // Close target exits, so reading a long report cannot accidentally dismiss it.
             if (details.legalityOverlay) {
-                if ((kDown & HidNpadButton_B) || tb >= 0) details.legalityOverlay = false;
+                if ((kDown & HidNpadButton_B) || tb == 96) {
+                    details.legalityOverlay = false; details.legalityScroll = 0; return;
+                }
+                if (kDown & HidNpadButton_Up)   details.legalityScroll = std::max(0, details.legalityScroll - 1);
+                if (kDown & HidNpadButton_Down) ++details.legalityScroll;
+                if (kDown & HidNpadButton_L)    details.legalityScroll = std::max(0, details.legalityScroll - 8);
+                if (kDown & HidNpadButton_R)    details.legalityScroll += 8;
+                const auto reportViewport =
+                    Modals::reportScrollViewport(1280, 720, 820);
+                if (touch.justReleased() && touch.dragged() &&
+                    reportViewport.contains(touch.startX(), touch.startY()) &&
+                    std::abs(touch.deltaY()) >= 24 &&
+                    std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
+                    const int dy = touch.deltaY();
+                    const int steps = std::max(
+                        1, std::abs(dy) / Modals::ReportScrollViewport::RowHeight);
+                    if (dy < 0) details.legalityScroll += steps;
+                    else if (dy > 0) details.legalityScroll = std::max(0, details.legalityScroll - steps);
+                }
                 return;
             }
-            // Ribbon overlay (full ribbon/mark list) does the same.
             if (details.ribbonOverlay) {
-                if ((kDown & HidNpadButton_B) || tb >= 0) details.ribbonOverlay = false;
+                if ((kDown & HidNpadButton_B) || tb == 96) {
+                    details.ribbonOverlay = false; details.ribbonScroll = 0; return;
+                }
+                if (kDown & HidNpadButton_Up)   details.ribbonScroll = std::max(0, details.ribbonScroll - 1);
+                if (kDown & HidNpadButton_Down) ++details.ribbonScroll;
+                if (kDown & HidNpadButton_L)    details.ribbonScroll = std::max(0, details.ribbonScroll - 8);
+                if (kDown & HidNpadButton_R)    details.ribbonScroll += 8;
+                const auto reportViewport =
+                    Modals::reportScrollViewport(1280, 720, 860);
+                if (touch.justReleased() && touch.dragged() &&
+                    reportViewport.contains(touch.startX(), touch.startY()) &&
+                    std::abs(touch.deltaY()) >= 24 &&
+                    std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
+                    const int dy = touch.deltaY();
+                    const int steps = std::max(
+                        1, std::abs(dy) / Modals::ReportScrollViewport::RowHeight);
+                    if (dy < 0) details.ribbonScroll += steps;
+                    else if (dy > 0) details.ribbonScroll = std::max(0, details.ribbonScroll - steps);
+                }
                 return;
             }
-            // Open the ribbon list: Y, or tapping the Ribbons row (id 94).
+            // Open reports at the top every time.
             if ((kDown & HidNpadButton_Y) || tb == 94) {
+                details.ribbonScroll = 0;
                 details.ribbonOverlay = true;
                 return;
             }
-            // Open the legality issue list: R, or tapping the legality summary (id 95) -- but ONLY
-            // when the mon actually has issues. A clean mon has nothing to show, so the button is
-            // disabled (greyed in the guide) and this does nothing.
             if ((kDown & HidNpadButton_R) || tb == 95) {
-                if (pokemon && !Legality::analyze(*pokemon, pokemon->getGameGroup()).ok())
+                if (pokemon && !Legality::analyze(*pokemon, pokemon->getGameGroup()).ok()) {
+                    details.legalityScroll = 0;
                     details.legalityOverlay = true;
+                }
                 return;
+            }
+
+            // Finger-owned scrolling for content panes. Gen II's native-data card is on the right;
+            // the modern details column is on the left. A drag returns immediately and therefore
+            // never activates whatever row happens to be under the release point.
+            const bool gen2Passive = sourceGameId == "gold_gbc" || sourceGameId == "silver_gbc" ||
+                                     sourceGameId == "crystal_gbc";
+            if (touch.justReleased() && touch.dragged()) {
+                const bool inGen2Data = gen2Passive && touch.startX() >= 796 && touch.startX() < 1016 &&
+                                        touch.startY() >= 393 && touch.startY() < 609;
+                const bool inModernInfo = !gen2Passive && touch.startX() >= 24 && touch.startX() < 454 &&
+                                          touch.startY() >= 276 && touch.startY() < 650;
+                if ((inGen2Data || inModernInfo) &&
+                    std::abs(touch.deltaY()) >= 24 &&
+                    std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
+                    details.leftScroll = std::clamp(
+                        details.leftScroll - touch.deltaY(), 0, std::max(0, details.leftScrollMax));
+                    details.leftScrollManual = true;
+                    return;
+                }
             }
             // View is a genuinely read-only summary. Keep navigation, ribbons, legality, and B/close,
             // but strip every control/touch route that the inherited editor uses to change data.
@@ -3360,7 +3453,11 @@ namespace UI {
                 closeDetailsModal();
                 return;
             }
-            if (tb >= 0 && tb <= 31) { details.selectedField = tb; kDown |= HidNpadButton_A; }
+            if (tb >= 0 && tb <= 31) {
+                details.leftScrollManual = false;
+                details.selectedField = tb;
+                kDown |= HidNpadButton_A;
+            }
 
             // B closes the page. Unsaved edits would be rolled back to the last Save/open snapshot,
             // so ask before throwing them away.
@@ -3376,6 +3473,8 @@ namespace UI {
             // center column (0-9: stats/shiny/nature/gender/level), the moves column (10-14, right panel),
             // and the editable detail column (left panel; ids 15-25, navigated in draw order).
             {
+                if (kDown & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right))
+                    details.leftScrollManual = false;
                 int& f = details.selectedField;
                 // Left-pane editable field ids in DRAW (top-to-bottom) order, built by the modal draw
                 // (PokemonDetailsModal.cpp) so conditional rows (Form, Stat Nature, Pokerus, ...) appear
@@ -4164,7 +4263,35 @@ namespace UI {
                         currentPage = 0;
                     }
 
-                    // Touch: tap a row to select + edit it.
+                    // Touch: contact focuses the item; release edits it. A vertical drag
+                    // scrolls/browses without opening the row underneath.
+                    int itemDown = touchedButtonDownId(touch);
+                    if (itemDown >= 0 && itemDown < totalItems) {
+                        selectedItemIndex = itemDown;
+                        currentPage = selectedItemIndex / itemsPerPage;
+                    }
+                    // Only vertical drags that START on a displayed item may move its selection.
+                    // In particular, an empty pouch must never become index -1 after a swipe,
+                    // and dragging the neighboring categories/header must not move this list.
+                    if (totalItems > 0 && touch.justReleased() && touch.dragged()) {
+                        const int dy = touch.deltaY();
+                        if (std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
+                            // Only scan the small set of visible row rectangles on drag release,
+                            // rather than rebuilding gesture ownership on every render/update frame.
+                            const bool startedOnItem = std::any_of(
+                                touchButtons.begin(), touchButtons.end(), [&](const auto& hit) {
+                                    return hit.id >= 0 && hit.id < totalItems &&
+                                           touch.startX() >= hit.x && touch.startX() < hit.x + hit.w &&
+                                           touch.startY() >= hit.y && touch.startY() < hit.y + hit.h;
+                                });
+                            if (startedOnItem) {
+                                const int steps = std::max(1, std::abs(dy) / 52);
+                                if (dy < 0) selectedItemIndex = std::min(totalItems - 1, selectedItemIndex + steps);
+                                else selectedItemIndex = std::max(0, selectedItemIndex - steps);
+                                currentPage = selectedItemIndex / itemsPerPage;
+                            }
+                        }
+                    }
                     int itemTap = touchedButtonId(touch);
                     if (itemTap >= 0 && itemTap < totalItems) {
                         selectedItemIndex = itemTap;
