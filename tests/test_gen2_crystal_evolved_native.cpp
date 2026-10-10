@@ -1,4 +1,5 @@
 #include "Legality/Legality.h"
+#include "Legality/Gen12FormatDomainEvidence.h"
 #include "Names/SpeciesNames.h"
 #include "Names/ItemNames.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
@@ -13,6 +14,12 @@ const char* getItemName(uint16_t id) { return Names::getItemName(id); }
 }
 
 namespace {
+bool hasInvalidText(const Legality::Report& r,const std::string& needle) {
+    for(const auto& issue:r.issues)
+        if(issue.severity==Legality::Severity::Invalid &&
+           issue.text.find(needle)!=std::string::npos) return true;
+    return false;
+}
 bool hasInfo(const Legality::Report& r,const std::string& needle) {
     for(const auto& issue : r.issues)
         if(issue.severity==Legality::Severity::Info &&
@@ -21,13 +28,14 @@ bool hasInfo(const Legality::Report& r,const std::string& needle) {
 }
 Legality::Report report(uint16_t species, uint8_t level,
                         uint16_t caughtData,bool egg=false,
-                        const std::string& source="crystal_gbc") {
+                        const std::string& source="crystal_gbc",
+                        uint16_t firstMove=33) {
     PokeVault::Integration::Gen2::PokemonRecord rec{};
     rec.species=species;
     rec.level=level;
     rec.trainerId=12345;
     rec.experience=static_cast<uint32_t>(level)*level*level;
-    rec.moves={33,0,0,0};
+    rec.moves={firstMove,0,0,0};
     rec.pp={35,0,0,0};
     rec.dvs={12,8,9,10,11};
     rec.friendship=70;
@@ -45,6 +53,15 @@ Legality::Report report(uint16_t species, uint8_t level,
 }
 
 int main() {
+    // Source-free PK2 still proves Gen II species/move maxima independently
+    // from which exact Gold/Silver/Crystal save was used.
+    assert(!hasInvalidText(report(251,30,0,false,"",251),
+        "Move id 251 cannot exist in a Generation 2 save"));
+    assert(hasInvalidText(report(25,30,0,false,"",252),
+        "Move id 252 cannot exist in a Generation 2 save"));
+    assert(hasInvalidText(report(252,30,0,false,"",33),
+        "Species 252 cannot exist in a Generation 2 save"));
+
     // Crystal location 2 Pidgey #16 at level2, valid daytime mask2.
     constexpr uint16_t caught=(1u<<14)|(2u<<8)|2u;
     constexpr auto wildText="PK2 caught-data location/level/time matches a pinned Crystal wild encounter slot";
