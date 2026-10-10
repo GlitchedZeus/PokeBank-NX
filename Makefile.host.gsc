@@ -266,3 +266,21 @@ $(HOST_BUILD)/test_gen2_crystal_dratini_gift: $(GSC_CRYSTAL_DRATINI_GIFT_SOURCES
 $(HOST_BUILD)/test_gen2_crystal_dratini_gift_sanitize: $(GSC_CRYSTAL_DRATINI_GIFT_SOURCES) $(GSC_CRYSTAL_DRATINI_GIFT_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_CRYSTAL_DRATINI_GIFT_SOURCES) -o $@
+
+# Crystal Lake of Rage fixed Red Gyarados requires shiny DVs; native raw
+# PK2 regression also verifies the parsed shiny/non-shiny distinction.
+GSC_CRYSTAL_RED_GYARADOS_SOURCES := tests/test_gen2_crystal_red_gyarados.cpp
+GSC_CRYSTAL_RED_GYARADOS_HEADERS := include/Legality/Gen2StaticEncounter.h \
+	include/Legality/Gen2StaticEncounterData.inc
+HOST_TESTS += $(HOST_BUILD)/test_gen2_crystal_red_gyarados
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_crystal_red_gyarados_sanitize
+host-test: $(HOST_BUILD)/test_gen2_crystal_red_gyarados
+host-sanitize: $(HOST_BUILD)/test_gen2_crystal_red_gyarados_sanitize
+
+$(HOST_BUILD)/test_gen2_crystal_red_gyarados: $(GSC_CRYSTAL_RED_GYARADOS_SOURCES) $(GSC_CRYSTAL_RED_GYARADOS_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GSC_CRYSTAL_RED_GYARADOS_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen2_crystal_red_gyarados_sanitize: $(GSC_CRYSTAL_RED_GYARADOS_SOURCES) $(GSC_CRYSTAL_RED_GYARADOS_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_CRYSTAL_RED_GYARADOS_SOURCES) -o $@

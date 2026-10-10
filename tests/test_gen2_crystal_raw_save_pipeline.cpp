@@ -42,7 +42,8 @@ void be16(std::vector<uint8_t>& d,size_t at,uint16_t v) {
     d[at+1]=static_cast<uint8_t>(v);
 }
 std::vector<uint8_t> crystalSave(uint16_t species,uint8_t level,
-                                 uint16_t caught,bool egg=false) {
+                                 uint16_t caught,bool egg=false,
+                                 bool shiny=true) {
     // Pinned read-only parser: international Crystal, 32-KiB bank,
     // 6-party slots, 20 slots per box, 14 boxes, 11-byte names.
     std::vector<uint8_t> raw(kSize,0);
@@ -74,7 +75,9 @@ std::vector<uint8_t> crystalSave(uint16_t species,uint8_t level,
     raw[body+8]=static_cast<uint8_t>((xp>>16)&0xFF);
     raw[body+9]=static_cast<uint8_t>((xp>>8)&0xFF);
     raw[body+10]=static_cast<uint8_t>(xp&0xFF);
-    raw[body+21]=0x7A;
+    // Gen II shiny is represented by DVs, not a separate flag:
+    // attack 7, defense/speed/special 10. Set defense 0 as non-shiny.
+    raw[body+21]=shiny ? 0x7A : 0x70;
     raw[body+22]=0xAA;
     raw[body+23]=35;
     raw[body+27]=70;
@@ -95,8 +98,9 @@ bool hasInfo(const Legality::Report& r,const std::string& fragment) {
     return false;
 }
 Legality::Report analyzeRawSave(uint16_t species,uint8_t level,
-                                uint16_t caught,bool egg=false) {
-    const auto data=crystalSave(species,level,caught,egg);
+                                uint16_t caught,bool egg=false,
+                                bool shiny=true) {
+    const auto data=crystalSave(species,level,caught,egg,shiny);
     const auto original=data;
     const auto parsed=parse(data,SourceGame::Crystal);
     assert(parsed && parsed.save);
@@ -111,6 +115,7 @@ Legality::Report analyzeRawSave(uint16_t species,uint8_t level,
     const Pokemon::Pokemon2ReadOnly pk(parsed.save->party().front());
     assert(pk.speciesID()==species&&pk.level()==level);
     assert(pk.caughtData()==caught&&pk.isEgg()==egg);
+    assert(pk.isShiny(pk.id32(), {}) == shiny);
     assert(pk.isPartyRecord());
     auto report=Legality::analyze(
         pk,Enums::GameVersion::GSC,parsed.save->metadata().sourceGameId);
@@ -179,6 +184,17 @@ int main() {
     assert(!hasInfo(analyzeRawSave(149,55,dratiniGift,true),dratiniText));
     assert(!hasInfo(analyzeRawSave(149,55,(1u << 14)|(15u << 8)|41u),dratiniText));
     assert(!hasInfo(analyzeRawSave(149,55,(1u << 14)|(16u << 8)|42u),dratiniText));
+
+    // Pinned Crystal Lake of Rage fixed Red Gyarados #130 at level 30,
+    // location 38: the static source mandates Gen II shiny DVs.
+    constexpr uint16_t redGyarados = (1u << 14) | (30u << 8) | 38u;
+    constexpr auto staticText = "PK2 data is compatible with a pinned Generation II static/gift encounter";
+    assert(hasInfo(analyzeRawSave(130,30,redGyarados,false,true),staticText));
+    assert(!hasInfo(analyzeRawSave(130,30,redGyarados,false,false),staticText));
+    assert(!hasInfo(analyzeRawSave(130,29,redGyarados,false,true),staticText));
+    assert(!hasInfo(analyzeRawSave(130,30,redGyarados,true,true),staticText));
+    assert(!hasInfo(analyzeRawSave(130,30,(1u<<14)|(29u<<8)|38u,false,true),staticText));
+    assert(!hasInfo(analyzeRawSave(130,30,(1u<<14)|(30u<<8)|39u,false,true),staticText));
 
     // Actual pinned Crystal Sentret #161, location2, level2/daytime.
     constexpr uint16_t sentret=(1u<<14)|(2u<<8)|2u;
