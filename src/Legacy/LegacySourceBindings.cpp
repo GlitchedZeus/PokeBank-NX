@@ -408,6 +408,85 @@ namespace PokeVault::Legacy {
         return false;
     }
 
+    bool LegacySourceBindings::preferGameSourceAndSave(
+        const Source::SaveInstance& instance, std::string_view profileIdentity,
+        std::string_view gameIdentity) {
+        lastError_.clear();
+        auto checked = instance;
+        applyClaims(checked);
+        if (profileIdentity.empty() || gameIdentity.empty() || !instance.ready() ||
+            instance.gameId != gameIdentity ||
+            !Source::visibleToProfile(checked, profileIdentity)) {
+            errno = EEXIST;
+            return fail("prefer-game-source-conflict");
+        }
+
+        std::vector<std::string> identities;
+        identities.reserve(instance.sourceAliases.size() + 1);
+        identities.push_back(instance.sourceIdentity);
+        for (const auto& alias : instance.sourceAliases) {
+            if (!alias.empty() &&
+                std::find(identities.begin(), identities.end(), alias) == identities.end())
+                identities.push_back(alias);
+        }
+        if (identities.front().empty()) {
+            errno = EINVAL;
+            return fail("prefer-game-source-identity");
+        }
+
+        // Validate every identity before changing the in-memory map. File-backed Gen IV rows are
+        // deliberately not repurposed as classic catalog preferences.
+        for (const auto& identity : identities) {
+            const auto found = owners_.find(identity);
+            if (found == owners_.end()) continue;
+            if (found->second.profileIdentity != profileIdentity ||
+                !found->second.sourcePath.empty()) {
+                errno = EEXIST;
+                return fail("prefer-game-source-conflict");
+            }
+        }
+
+        const auto before = owners_;
+        // Clear only the prior catalog preference. Keep its profile claim so choosing save B never
+        // makes save A suddenly visible to another profile.
+        for (auto& [identity, binding] : owners_) {
+            (void)identity;
+            if (binding.profileIdentity == profileIdentity &&
+                binding.gameIdentity == gameIdentity && binding.sourcePath.empty())
+                binding.gameIdentity.clear();
+        }
+
+        auto& primary = owners_[instance.sourceIdentity];
+        primary.profileIdentity = std::string(profileIdentity);
+        primary.gameIdentity = std::string(gameIdentity);
+        for (size_t index = 1; index < identities.size(); ++index) {
+            auto& alias = owners_[identities[index]];
+            alias.profileIdentity = std::string(profileIdentity);
+            // Only the canonical identity carries the preference, otherwise one physical file's
+            // aliases would look like multiple preferred saves.
+            alias.gameIdentity.clear();
+        }
+
+        if (save()) return true;
+        owners_ = before;
+        return false;
+    }
+
+    bool LegacySourceBindings::isPreferredGameSource(
+        const Source::SaveInstance& instance, std::string_view profileIdentity,
+        std::string_view gameIdentity) const {
+        if (profileIdentity.empty() || gameIdentity.empty() || instance.gameId != gameIdentity)
+            return false;
+        const auto matches = [&](const std::string& identity) {
+            const auto found = owners_.find(identity);
+            return found != owners_.end() &&
+                found->second.profileIdentity == profileIdentity &&
+                found->second.gameIdentity == gameIdentity;
+        };
+        if (matches(instance.sourceIdentity)) return true;
+        return std::any_of(instance.sourceAliases.begin(), instance.sourceAliases.end(), matches);
+    }
+
     bool LegacySourceBindings::unassignGameAndSave(
         std::string_view profileIdentity, std::string_view gameIdentity) {
         if (profileIdentity.empty() || gameIdentity.empty()) {

@@ -1,6 +1,7 @@
 #include "Legacy/Gen4ReadOnlyTrainer.h"
 
 #include "Pokemon/Pokemon4ReadOnlyView.h"
+#include "Integration/Gen4/Gen4ReadOnlyInventory.h"
 #include "Utils/StringHelpers.h"
 
 namespace PokeVault::Legacy {
@@ -86,8 +87,17 @@ bool Gen4ReadOnlyTrainer::refreshStagedPokemonPresentation(std::string& error) {
                 std::make_unique<Pokemon::Pokemon4ReadOnlyView>(pokemon);
         }
     }
+    // All presentation surfaces must agree with the staged General block.
+    // Refuse malformed bag metadata without replacing Party/Boxes/Items.
+    const auto displayBag=Integration::Gen4::decodeReadOnlyBag(*parsed);
+    decltype(items) displayItems;
+    if(displayBag)displayItems.assign(displayBag->begin(),displayBag->end());
+    // An existing malformed bag is quarantined, not a reason to block a
+    // validated independent Pokémon edit. The native item editor itself
+    // refuses to stage quantities until the original bag validates.
     party.swap(displayParty);
     boxes.swap(displayBoxes);
+    items.swap(displayItems);
     return true;
 }
 
@@ -160,8 +170,16 @@ void Gen4ReadOnlyTrainer::buildPresentation(std::string& error) {
         }
     }
 
-    // Inventory is intentionally not exposed in G4-02. Empty means unavailable, not empty bag.
+    // A selected, CRC-validated General block owns the eight native G4 bag
+    // pockets. Display only strictly decoded item IDs/quantities; never
+    // serialize, inject or write to the external .sav/.dsv source.
     items.clear();
+    if(const auto bag=Integration::Gen4::decodeReadOnlyBag(save_)) {
+        items.assign(bag->begin(),bag->end());
+    }
+    // Invalid bag data is quarantined independently; the valid Trainer,
+    // Party, Box and staged Pokemon editor remain available and read-only
+    // with respect to the original emulator source.
 }
 
 }

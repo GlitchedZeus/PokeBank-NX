@@ -10,6 +10,17 @@ inline constexpr int columns = 4;
 inline constexpr int rows = 10;
 inline constexpr int pageSize = columns * rows;
 
+// Exact accepted Generation III Held Item modal geometry (1280x720).
+// Gen II/III/IV share this grid; each generation supplies native item labels.
+inline constexpr int modalWidth = 1040;
+inline constexpr int modalHeight = 520;
+inline constexpr int gridInsetX = 22;
+inline constexpr int gridInsetY = 90;
+inline constexpr int rowPitch = 40;
+inline constexpr int cellWidth = (modalWidth - 2 * gridInsetX) / columns;
+static_assert(pageSize == 40 && cellWidth == 249);
+static_assert(gridInsetY + (rows - 1) * rowPitch + (rowPitch - 4) <= modalHeight);
+
 template <typename T>
 inline int initialIndex(const std::vector<T>& items, T current) {
     const auto found = std::find(items.begin(), items.end(), current);

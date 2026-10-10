@@ -29,6 +29,9 @@ void PKSEFramebuffer::drawSpriteStaticContained(int,int,int,int,int,int,const un
 void PKSEFramebuffer::drawImageScaled(int,int,int,int,int,int,const unsigned char*,int) {}
 Sprite* SpriteManager::getSprite(uint16_t species, bool shiny) { sprites.emplace_back(species,shiny); return nullptr; }
 Sprite* SpriteManager::getTypeSprite(uint8_t) { return nullptr; }
+// Shared Gen II held-item picker optionally renders matching ROMFS artwork.
+// This isolated render host test deliberately has no image/assets backend.
+Sprite* SpriteManager::getItemSprite(const std::string&) { return nullptr; }
 }
 int main() {
     UI::PKSEFramebuffer fb;
@@ -162,6 +165,11 @@ int main() {
     assert(Held::itemName(218) == "TM27 — Return");
     assert(Held::itemName(219) == "TM28 — Dig");
     assert(Held::itemName(243) == "HM01 — Cut");
+    // The item sprite asset key is the actual TM/HM, not the move display text.
+    assert(Held::spriteName(218) == "TM27");
+    assert(Held::spriteName(219) == "TM28");
+    assert(Held::spriteName(243) == "HM01");
+    assert(Held::spriteName(0) == "None");
     for (int i = 0; i < static_cast<int>(items.size()); ++i) {
         assert(Held::initialIndex(items, items[i]) == i);
         for (int direction : {-1, 1}) {
@@ -173,10 +181,13 @@ int main() {
             assert(paged >= 0 && paged < static_cast<int>(items.size()));
         }
         texts.clear();
-        UI::Gen2HeldItemPickerPresentation::drawList(fb, 0, 0, 992, items, i);
+        // Render the same accepted Gen III modal geometry used by Gen II-IV.
+        UI::Gen2HeldItemPickerPresentation::drawList(fb, 0, 0, items, i);
         assert(texts.size() <= static_cast<std::size_t>(Held::pageSize));
         for (const auto& text : texts)
-            assert(text.x >= 0 && text.y >= 0 && text.x + text.w <= 992 && text.y + text.h <= 384);
+            assert(text.x >= 0 && text.y >= 0 &&
+                   text.x + text.w <= PokeBank::UIModel::SharedHeldItemPicker::modalWidth &&
+                   text.y + text.h <= PokeBank::UIModel::SharedHeldItemPicker::modalHeight);
         for (std::size_t j = 0; j < texts.size(); ++j)
             for (std::size_t k = j + 1; k < texts.size(); ++k) assert(!intersects(texts[j], texts[k]));
     }

@@ -1,45 +1,8 @@
-name: Gen I Cleanup3 Focused Gates
+name: HISTORICAL / MANUAL — Gen I Cleanup3 Focused Gates
 
+
+# Frozen evidence workflow retained for reproducibility. It must never auto-run on current development.
 on:
-  pull_request:
-    branches: [feature/pokebank-playable]
-    paths:
-      - 'include/UI/Common.h'
-      - 'Makefile.host*'
-      - 'include/Integration/Gen1/Gen1MoveCompatibility.h'
-      - 'include/Integration/Gen1/Gen1Shiny.h'
-      - 'include/UI/Gen1PokemonDetailsPresentation.h'
-      - 'include/UI/Gen1PokemonEditorUX3Contract.h'
-      - 'include/UI/NavigationRepeat.h'
-      - 'include/UI/SharedSpeciesPicker.h'
-      - 'include/UI/SpriteManager.h'
-      - 'include/UI/StatsRadar.h'
-      - 'include/UI/BattleStatRadarModel.h'
-      - 'include/UI/Gen1PokemonPresentation.h'
-      - 'include/UI/PokemonEditorFoundationContract.h'
-      - 'include/Pokemon/Pokemon1ReadOnly.h'
-      - 'src/UI/Panels/BoxPokemonPanel.cpp'
-      - 'src/UI/Gen1PokemonEditorOverlayFoundation.inc'
-      - 'src/UI/Gen1PokemonEditorFoundationHardwareFix.inc'
-      - 'tests/test_gen1_summary_presentation.cpp'
-      - 'tests/test_gen1_radar_render.cpp'
-      - 'tests/test_pokemon_editor_foundation_contract.cpp'
-      - 'src/Integration/Gen1/Gen1MoveCompatibility*'
-      - 'src/UI/Gen1PokemonDetailsPresentation.cpp'
-      - 'src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc'
-      - 'src/UI/Modals/Gen1PokemonDetailsModal.cpp'
-      - 'src/UI/SpriteManager.cpp'
-      - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
-      - 'src/Names/SpeciesNames.cpp'
-      - 'tests/test_gen1_cleanup3_staged_semantics.cpp'
-      - 'tests/test_gen1_move_compatibility.cpp'
-      - 'tests/test_gen1_pokemon_editor_ux3_contract.cpp'
-      - 'tests/test_gen1_shiny.cpp'
-      - 'tools/check_device_assets.py'
-      - 'tools/gen_hdsprites.py'
-      - 'docs/GEN1_SHINY_SPRITE_REFERENCE.md'
-      - 'romfs/sprites/pokemon_hd/**'
-      - '.github/workflows/gen1-cleanup3-focused.yml'
   workflow_dispatch:
 
 permissions:

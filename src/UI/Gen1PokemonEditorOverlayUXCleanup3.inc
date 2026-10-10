@@ -4,11 +4,14 @@
 #include "UI/Gen1PokemonDetailsPresentation.h"
 #include "UI/Gen1PokemonEditorUX3Contract.h"
 #include "UI/NavigationRepeat.h"
+#include "UI/MovePickerPresentation.h"
+#include "UI/MovePickerRowUI.h"
 
 namespace UI::Gen1PokemonEditor {
 namespace {
 
 namespace UX3Contract = PokeBank::UIModel::Gen1Editor::UX3;
+namespace MoveUI = PokeBank::UIModel::MovePickerPresentation;
 using PokeVault::Integration::Gen1::MoveCompatibility;
 using PokeVault::Integration::Gen1::ShinyDVs;
 
@@ -491,7 +494,8 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         if (choices[static_cast<size_t>(i)] == state.pickerValue) { selectedIndex = i; break; }
     fb.drawText(x + 24, y + 50,
         "Compatible with " + speciesCompact(ux3CurrentSpecies(screen)) + " in " +
-        (editor(screen) ? std::string(ux3GameName(editor(screen)->metadata().sourceGame)) : std::string("Gen I")),
+        (editor(screen) ? std::string(ux3GameName(editor(screen)->metadata().sourceGame)) : std::string("Gen I")) +
+        " • exact Gen I Acc / Pwr / PP",
         Colors::TextDim, TextStyle::Caption);
     constexpr int visible = 9;
     const int start = std::clamp(selectedIndex - visible / 2, 0, std::max(0, static_cast<int>(choices.size()) - visible));
@@ -501,10 +505,8 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         const int rowY = y + 86 + i * 42;
         const bool selected = idx == selectedIndex;
         if (selected) fb.drawSelectionHighlight(x + 24, rowY, w - 48, 38);
-        std::string text;
-        if (move == 0) text = "000 - Empty move slot";
-        else { char prefix[16]{}; std::snprintf(prefix, sizeof(prefix), "%03d - ", move); text = std::string(prefix) + Names::getMoveName(move); }
-        fb.drawText(x + 40, rowY + 8, text, selected ? Colors::Text : Colors::TextDim);
+        MovePickerRowUI::draw(fb,x+40,rowY+4,
+                              static_cast<uint16_t>(move),Enums::GameVersion::RBY);
     }
 }
 
@@ -713,7 +715,7 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     }
 
     if (state.picker != UX2Picker::None) {
-        const int pw = state.picker == UX2Picker::Species ? 1080 : 760;
+        const int pw = state.picker == UX2Picker::Species ? 1080 : 1000;
         const int ph = 520;
         ux3DrawPicker(screen, fb, (1280 - pw) / 2, (672 - ph) / 2, pw, ph);
     }

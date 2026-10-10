@@ -10,6 +10,7 @@
 #include "Enums/GameVersion.h"
 #include "Enums/LanguageID.h"
 #include "Names/ItemNames.h"
+#include "Names/MachineDisplay.h"
 #include "Names/LocationNames.h"
 #include "Names/MoveInfo.h"
 #include "Names/MoveNames.h"
@@ -21,8 +22,13 @@
 #include "UI/Dialogs/DialogFrame.h"
 #include "UI/Gen3SharedPokemonSession.h"
 #include "UI/Gen3EncounterPickerModel.h"
+#include "UI/MovePickerPresentation.h"
+#include "UI/MovePickerRowUI.h"
+#include "UI/NaturePickerLayout.h"
+#include "UI/ItemPickerArtwork.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedHeldItemPicker.h"
+#include "UI/SharedHeldItemPickerPresentation.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "Utils/Keyboard.h"
 
@@ -44,6 +50,7 @@ namespace Gen3 = PokeVault::Integration::Gen3;
 namespace Encounter = PokeVault::Integration::EncounterGuardrails;
 namespace EncounterPicker = PokeBank::UIModel::Gen3EncounterPicker;
 namespace Context = PokeBank::UIModel::ClassicGameContext;
+namespace MoveUI = PokeBank::UIModel::MovePickerPresentation;
 
 enum class PickerTarget : uint8_t {
     None,
@@ -438,7 +445,10 @@ void normalizeEditableFocus(State& state, int verticalDirection = 0, bool panelC
 
 std::string pickerValueLabel(const State& state, uint16_t value) {
     switch (state.pickerTarget) {
-        case PickerTarget::HeldItem: return Names::getItemNameG3(value);
+        case PickerTarget::HeldItem:
+            return value == 0 ? "None" :
+                Names::machineDisplayLabel(Enums::GameVersion::FRLG, value,
+                                           Names::getItemNameG3(value));
         case PickerTarget::Language: return Enums::getLanguageName(static_cast<uint8_t>(value));
         case PickerTarget::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
         case PickerTarget::Nature: return Trainer::getNatureName(static_cast<uint8_t>(value));
@@ -468,7 +478,7 @@ std::string pickerValueLabel(const State& state, uint16_t value) {
             return label;
         }
         case PickerTarget::Move:
-            return value == 0 ? "Empty" : std::string(Names::getMoveName(value));
+            return MoveUI::rowLabel(value, Enums::GameVersion::FRLG);
         default: return {};
     }
 }
@@ -1071,8 +1081,12 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {
     std::string error;
     const bool occupied = staged->boxedPokemon(static_cast<std::size_t>(state.box),
                                                 static_cast<std::size_t>(state.slot), error).has_value();
-    const auto actions = Shared::actionsForSlot(occupied, {/*clone*/true, /*remove*/true, /*legality*/true});
+    const auto actions = Shared::actionsForSlot(
+        occupied, {/*clone*/true, /*remove*/true, /*legality*/true},
+        !staged->pendingChanges().empty());
     if (actions.count == 0) return true;
+    state.actionRow = std::clamp(
+        state.actionRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
     if (down & HidNpadButton_Up)
         state.actionRow = (state.actionRow - 1 + static_cast<int>(actions.count)) %
                           static_cast<int>(actions.count);
@@ -1198,10 +1212,25 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     if (!state.valuePicker || state.pickerValues.empty()) return;
     const bool heldItems = state.pickerTarget == PickerTarget::HeldItem;
     const bool movePicker = state.pickerTarget == PickerTarget::Move;
-    const int w = heldItems ? 1040 : movePicker ? 760 : 680;
-    const int h = movePicker ? 568 : 560;
+    constexpr auto moveLayout = MoveUI::compactPickerLayout();
+    const int pickerCount=static_cast<int>(state.pickerValues.size());
+    const bool compactChoices=state.pickerTarget==PickerTarget::Language ||
+        state.pickerTarget==PickerTarget::Ball ||
+        state.pickerTarget==PickerTarget::MetLocation ||
+        state.pickerTarget==PickerTarget::Nature ||
+        state.pickerTarget==PickerTarget::Ability ||
+        state.pickerTarget==PickerTarget::Gender;
+    const bool naturePicker=state.pickerTarget==PickerTarget::Nature;
+    const auto natureLayout=PokeBank::UIModel::NaturePickerLayout::forChoices(pickerCount);
+    const int visibleChoices=naturePicker?natureLayout.visibleRows:
+        compactChoices?std::min(8,pickerCount):10;
+    const int w = heldItems ? HeldItemGrid::modalWidth : movePicker ? moveLayout.width :
+        naturePicker ? natureLayout.width : compactChoices ? 640 : 680;
+    const int h = heldItems ? HeldItemGrid::modalHeight : movePicker ? moveLayout.height :
+        naturePicker ? natureLayout.height :
+        compactChoices ? 125 + visibleChoices * 42 : 560;
     const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - h) / 2;
+    const int y = (fb.getHeight() - kNavBarH - h) / 2;
 
     // Keep every Gen III picker in the same dark modal family as Gen I/II.
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Color(0, 0, 0, 165));
@@ -1211,70 +1240,59 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     if (movePicker) {
         fb.drawText(x + 24, y + 18, "Move — Generation III", Colors::Text, TextStyle::Heading);
         fb.drawText(x + 24, y + 52,
-                    "Empty + compatible moves only • exact current game",
+                    "Empty + compatible moves only • exact Gen III Acc / Pwr / PP",
                     Colors::TextDim, TextStyle::Caption);
         const int count = static_cast<int>(state.pickerValues.size());
-        constexpr int visible = 13;
+        constexpr int visible = moveLayout.visibleRows;
         const int first = std::clamp(state.pickerRow - visible / 2, 0, std::max(0, count - visible));
         const int last = std::min(count, first + visible);
         for (int i = first; i < last; ++i) {
-            const int yy = y + 88 + (i - first) * 33;
+            const int yy = y + moveLayout.rowStart + (i - first) * moveLayout.rowStep;
             const bool selected = i == state.pickerRow;
-            if (selected) fb.drawSelectionHighlight(x + 20, yy - 3, w - 40, 30);
+            if (selected)
+                fb.drawSelectionHighlight(x + 24, yy, w - 48, moveLayout.highlightHeight);
             const auto value = state.pickerValues[static_cast<std::size_t>(i)];
-            fb.drawText(x + 32, yy + 3, pickerValueLabel(state, value),
-                        selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
+            MovePickerRowUI::draw(fb,x+40,yy+4,value,Enums::GameVersion::FRLG);
         }
         drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                         {"A", "Select"}, {"B", "Cancel"}});
         return;
     }
 
-    fb.drawText(x + 28, y + 20, pickerTitle(state.pickerTarget), Colors::Text, TextStyle::Heading);
     const int count = static_cast<int>(state.pickerValues.size());
-
     if (heldItems) {
-        const int pages = (count + HeldItemGrid::pageSize - 1) / HeldItemGrid::pageSize;
-        fb.drawText(x + 28, y + 55,
-                    "Page " + std::to_string(state.pickerRow / HeldItemGrid::pageSize + 1) +
-                        " / " + std::to_string(pages),
-                    Colors::TextDim, TextStyle::Caption);
-        const int first = state.pickerRow / HeldItemGrid::pageSize * HeldItemGrid::pageSize;
-        const int last = std::min(count, first + HeldItemGrid::pageSize);
-        const int gridX = x + 22;
-        const int gridY = y + 90;
-        const int cellWidth = (w - 44) / HeldItemGrid::columns;
-        constexpr int cellHeight = 40;
-        for (int i = first; i < last; ++i) {
-            const int offset = i - first;
-            const int cellX = gridX + (offset % HeldItemGrid::columns) * cellWidth;
-            const int cellY = gridY + (offset / HeldItemGrid::columns) * cellHeight;
-            const bool selected = i == state.pickerRow;
-            if (selected)
-                fb.drawSelectionHighlight(cellX, cellY - 3, cellWidth - 10, cellHeight - 4);
-            const auto value = state.pickerValues[static_cast<std::size_t>(i)];
-            fb.drawText(cellX + 10, cellY + 7, pickerValueLabel(state, value),
-                        selected ? Colors::Text : Colors::TextDim, TextStyle::Caption);
-        }
+        SharedHeldItemPickerPresentation::drawHeading(
+            fb, x, y, "Held Item — Generation III", state.pickerRow, count);
+        SharedHeldItemPickerPresentation::drawGrid(
+            fb, x, y, state.pickerValues, state.pickerRow,
+            [&](uint16_t value) { return pickerValueLabel(state, value); },
+            [](uint16_t value) { return Names::getItemNameG3(value); });
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
                         {"A", "Choose"}, {"B", "Cancel"}});
         return;
     }
+    fb.drawText(x + 28, y + 20, pickerTitle(state.pickerTarget),
+                Colors::Text, TextStyle::Heading);
 
     fb.drawText(x + 28, y + 55,
                 std::to_string(state.pickerRow + 1) + " / " +
                     std::to_string(state.pickerValues.size()),
                 Colors::TextDim, TextStyle::Caption);
-    constexpr int visible = 10;
+    const int visible = compactChoices ? visibleChoices : 10;
     const int first = std::clamp(state.pickerRow - visible / 2, 0, std::max(0, count - visible));
     const int last = std::min(count, first + visible);
     for (int i = first; i < last; ++i) {
-        const int yy = y + 90 + (i - first) * 42;
+        const int yy = y + 90 + (i - first) *
+            (naturePicker ? natureLayout.rowStep : 42);
         const bool selected = i == state.pickerRow;
-        if (selected) fb.drawSelectionHighlight(x + 22, yy - 4, w - 44, 38);
+        if (selected) fb.drawSelectionHighlight(x + 22, yy - 4, w - 44,
+            naturePicker ? natureLayout.highlightHeight : 38);
         const auto value = state.pickerValues[static_cast<std::size_t>(i)];
         fb.drawText(x + 38, yy + 7, pickerValueLabel(state, value),
-                    selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
+                    Colors::Text, TextStyle::Body);
+        if(state.pickerTarget == PickerTarget::Ball)
+            ItemPickerArtwork::draw(fb, x + w - 35, yy, 32,
+                                    Enums::getBallName(static_cast<uint8_t>(value)));
     }
     drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                     {"A", "Choose"}, {"B", "Cancel"}});
@@ -1570,17 +1588,18 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     std::string error;
     const bool occupied = staged->boxedPokemon(static_cast<std::size_t>(state.box),
                                                 static_cast<std::size_t>(state.slot), error).has_value();
-    const auto actions = Shared::actionsForSlot(occupied, {true, true, true});
+    const auto actions = Shared::actionsForSlot(occupied, {true, true, true}, !staged->pendingChanges().empty());
 
     // Match the accepted Gen I/Yellow box action sheet: keep the box visible,
     // dim it, then draw one compact neutral modal on top.
     screen.drawGSCOverlay(fb);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 105));
     const int w = occupied ? 650 : 560;
-    const int h = occupied ? 500 : 350;
+    const auto geometry = Shared::actionMenuGeometry();
+    const int h = geometry.rowStart +
+                  static_cast<int>(actions.count) * geometry.rowStep + 62;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - kNavBarH - h) / 2;
-    const auto geometry = Shared::actionMenuGeometry();
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
     fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
     fb.drawText(x + 24, y + 18, occupied ? "Pokemon Actions" : "Empty Slot",

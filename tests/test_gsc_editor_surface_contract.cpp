@@ -60,7 +60,10 @@ int main() {
     assert(closeBody.find("selectedItemIndex") == std::string::npos);
     assert(closeBody.find("stage") == std::string::npos);
     const auto boxBase = readFile("src/UI/TrainerViewScreenBase.inc");
-    assert(boxBase.find("subtitle += titleName") != std::string::npos);
+    // Source identity is now a human-readable provider / game / immutable
+    // status banner; the old debug-style concatenation is intentionally gone.
+    assert(boxBase.find("legacyProviderLabel() + \"  •  \" + titleName + \"  •  Read-only source\"") != std::string::npos);
+    assert(boxBase.find("if (!legacyReadOnlySource() && !trainer.saveRevisionString.empty()") != std::string::npos);
     assert(foundation.find("Gen2HeldItemPicker::initialIndex(state.itemChoices, state.working.heldItem)") != std::string::npos);
     assert(heldItemModel.find("#include \"UI/SharedHeldItemPicker.h\"") != std::string::npos);
     assert(heldItemModel.find("columns = SharedHeldItemPicker::columns") != std::string::npos);
@@ -268,8 +271,23 @@ int main() {
     assert(pickerFix.find("hardwareMoveAllowed") != std::string::npos);
     assert(pickerFix.find("MoveCompatibility::canLearnMove") != std::string::npos);
     assert(pickerFix.find("choices.push_back(0)") != std::string::npos);
-    assert(pickerFix.find("Empty + compatible moves only") != std::string::npos);
+    assert(pickerFix.find("constexpr auto layout = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout()") != std::string::npos);
+    assert(pickerFix.find("constexpr int panelW = layout.width, panelH = layout.height") != std::string::npos);
+    assert(pickerFix.find("constexpr int visible = layout.visibleRows") != std::string::npos);
+    assert(pickerFix.find("layout.rowStep") != std::string::npos);
+    // The shared Gen I-IV row renderer now owns emphasized move typography,
+    // fixed Acc/Pwr/PP columns, and separators (not the Gen II overlay).
+    assert(pickerFix.find("MovePickerRowUI::draw(fb") != std::string::npos);
+    const auto moveRow = readFile("include/UI/MovePickerRowUI.h");
+    assert(moveRow.find("TextStyle::Body") != std::string::npos);
+    assert(pickerFix.find("Empty + compatible moves only • exact Gen II Acc / Pwr / PP") != std::string::npos);
+    // Generation-aware Acc / Pwr / PP now come from the shared move-row
+    // component; old Gen II-only rowLabel string assembly is intentionally gone.
+    assert(pickerFix.find("MovePickerRowUI::draw(fb,x+40,yy+4,move,Enums::GameVersion::GSC)") != std::string::npos);
+    assert(moveRow.find("Names::getMoveBattleStats(move,game)") != std::string::npos);
     assert(pickerFix.find("Needs correction") == std::string::npos);
+    assert(shared.find("!editor->pendingChanges().empty()") != std::string::npos);
+    assert(shared.find("static_cast<int>(actions.count) * geometry.rowStep + 62") != std::string::npos);
 
     // Empty move rows cannot focus PP/Ups and their meaningless numeric cells are hidden.
     assert(workspaceFix.find("normalizeHardwareMoveRowFocus") != std::string::npos);

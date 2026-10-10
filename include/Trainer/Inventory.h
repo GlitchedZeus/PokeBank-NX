@@ -5,10 +5,10 @@
 
 namespace Trainer {
     struct InventoryItem {
-        uint16_t itemId;
-        uint16_t count;
-        bool isNew;
-        bool isFavorite;
+        uint16_t itemId = 0;
+        uint16_t count = 0;
+        bool isNew = false;
+        bool isFavorite = false;
     };
 }
 

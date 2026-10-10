@@ -70,7 +70,7 @@ void drawParityExternalPassiveView(TrainerViewScreen& screen, PKSEFramebuffer& f
 
     screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget,
                                    16, fb.getHeight() - 68, 190, 58});
-    drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
+    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
 }
 
 bool handleParityExternalPassiveInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,

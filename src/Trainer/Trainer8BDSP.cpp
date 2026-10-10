@@ -35,6 +35,13 @@ namespace Trainer {
             boxNames.assign(BDSP_BOX_COUNT, std::string{});
             return;
         }
+        if (!PokeBank::SaveValidation::BDSP::wholeFileHashValid(saveData)) {
+            logErrorToFile("BDSP save whole-file MD5 is invalid; refusing mutable parse");
+            boxes.clear();
+            boxes.resize(BDSP_BOX_COUNT);
+            boxNames.assign(BDSP_BOX_COUNT, std::string{});
+            return;
+        }
 
         parseMyStatus();
         parseParty();
@@ -317,6 +324,21 @@ namespace Trainer {
             if (language == 0 || language == 6 || language > 10) return -1;
             return (language >= 7) ? language - 2 : language - 1;
         }
+    }
+
+    PokedexProgress Trainer8BDSP::pokedexProgress() const
+    {
+        if (saveData.size() < BDSP_DEX + BDSP_DEX_SIZE) return {};
+
+        PokedexProgress progress{};
+        progress.total = BDSP_MAX_SPECIES;
+        for (uint16_t species = 1; species <= BDSP_MAX_SPECIES; ++species) {
+            const size_t rel = OFS_STATE + static_cast<size_t>(species - 1) * 4;
+            const uint32_t state = readUInt32LittleEndian(&saveData[BDSP_DEX + rel]);
+            if (state >= 2) ++progress.seen;
+            if (state >= ZUKAN_CAUGHT) ++progress.caught;
+        }
+        return progress;
     }
 
     void Trainer8BDSP::updatePokedexBlock()

@@ -11,6 +11,7 @@
 #include "Globals.h"
 #include "Safety/WritePolicy.h"
 #include "UI/ActionSheetModel.h"
+#include "UI/MutationTargetPolicy.h"
 #include "Safety/SourceMutationPolicy.h"
 #include "UI/NavigationRepeat.h"
 #include "Utils/MoveTransactionProduction.h"
@@ -65,7 +66,7 @@ namespace UI {
 
         // Storage (bank) view input + helpers (Phase 3.3b). Called from update().
         void handleStorageInput(u64 kDown);
-        void returnHeldToOrigin();
+        bool returnHeldToOrigin();
         std::unique_ptr<Pokemon::Pokemon>& storageSlot(int pane, int box, int slot);  // pane 0=save,1=bank
         bool storageSlotLocked(int pane, int box, int slot);   // LGPE party members (save pane) are locked
         struct PreparedPlacement {
@@ -87,6 +88,14 @@ namespace UI {
         void openPokemonActionSheet(PokeVault::UIModel::PokemonTarget target);
         Pokemon::Pokemon* actionSheetTargetPokemon();
         void openActionSheetTargetDetails(bool readOnly);
+        void openItemsShortcut() {
+            selectedMode = ViewMode::Items;
+            detailViewActive = true;
+            itemsShortcutActive = true;
+            selectedCategory = 0;
+            selectedItemIndex = 0;
+            currentPage = 0;
+        }
 
         // --- HOME-style rectangle select + block carry (see moveMon below) ---
         int paneCols(int pane) const;      // grid columns (LGPE save boxes are 5 wide, everything else 6)
@@ -156,10 +165,10 @@ namespace UI {
         int selectedItemIndex = 0;  // Selected item/pokemon index in detail view (item for Items, slot for Boxes)
 
         // HOME main menu focus (shown when NOT entered). 0 Pokemon(Boxes), 1 Party, 2 Storage (pills);
-        // 3 Items, 4 Trainer, 5 Settings (circular icons). Replaces the old left mode-selector.
+        // 3 Items, 4 Trainer (circular icons). Product Home owns Settings.
         int homeMenuIndex = 0;
 
-        // Selected row in the Settings view (0-4); reached from the menu's Settings icon.
+        // Selected row in the retained internal Settings renderer (not reachable from loaded-game navigation).
         int settingsSelectedRow = 0;
 
         // Trainer info view: the focused editable row (0 Name, 1 Money) and a
@@ -310,18 +319,41 @@ namespace UI {
             return sourceKind == PokeVault::Safety::SourceKind::RetroArchLegacy
                 ? "RETROARCH" : "EXTERNAL";
         }
-        bool requireMutableWorkspace() {
+        bool requireMutationKind(PokeVault::Safety::SourceKind targetKind,
+                                 PokeVault::Safety::SourceMutation mutation) {
             if (moveRecoveryLocked) {
                 postStatus(moveRecoveryNotice.empty()
                     ? "Pokemon Move recovery is required. Storage changes are locked."
                     : moveRecoveryNotice, 480);
                 return false;
             }
-            if (!sourceReadOnly()) return true;
+            if (PokeVault::Safety::canPerform(targetKind, mutation)) return true;
             postStatus(legacyReadOnlySource()
                 ? "External source is read-only. Editing this file is disabled."
                 : "Installed source is read-only. Open a backup workspace explicitly to edit.", 300);
             return false;
+        }
+        bool requireMutableWorkspace(
+            PokeVault::Safety::SourceMutation mutation = PokeVault::Safety::SourceMutation::Edit) {
+            return requireMutationKind(sourceKind, mutation);
+        }
+        bool requireMutableStoragePane(
+            int pane,
+            PokeVault::Safety::SourceMutation mutation = PokeVault::Safety::SourceMutation::Edit) {
+            return requireMutationKind(
+                PokeBank::UIModel::mutationSourceForStoragePane(sourceKind, pane), mutation);
+        }
+        bool pokemonTargetMutable(
+            const PokeVault::UIModel::PokemonTarget& target,
+            PokeVault::Safety::SourceMutation mutation = PokeVault::Safety::SourceMutation::Edit) const {
+            return PokeBank::UIModel::canPerformOnTarget(
+                sourceKind, target.location, mutation);
+        }
+        bool requireMutablePokemonTarget(
+            const PokeVault::UIModel::PokemonTarget& target,
+            PokeVault::Safety::SourceMutation mutation = PokeVault::Safety::SourceMutation::Edit) {
+            return requireMutationKind(
+                PokeBank::UIModel::mutationSourceForTarget(sourceKind, target.location), mutation);
         }
 
         /// Cursor into the visible, backup-only destination list.
@@ -351,6 +383,8 @@ namespace UI {
         bool hasUnsavedChanges = false;
         bool exitingWithUnsavedChanges = false;
         bool exitingViaPlus = false;  // True when exiting via + button (exit app) vs B button (go back)
+        bool itemsShortcutActive = false; // Product Home Items opened directly into this view.
+        bool exitAfterSave = false;       // Save-confirm success should return to Product Home.
 
         // Stat editor (IV / EV / AV + shiny). Original* is the value on dialog entry; Current* is the
         // in-progress edit, preserved when switching between the IV/EV/AV modes.

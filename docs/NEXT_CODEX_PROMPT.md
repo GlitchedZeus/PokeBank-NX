@@ -1,5 +1,8 @@
 # NEXT CODEX PROMPT — FINISH GEN II SHARED EDITOR DEVICE CANDIDATE
 
+> **HISTORICAL PROMPT — DO NOT EXECUTE AS CURRENT WORK.** The Gen II/PR #68 task below is completed historical context. Current engineering routing lives in `docs/ENGINEERING_AUTHORITY.md`; always re-fetch GitHub first.
+
+
 Continue PokeBank NX from the existing Gen II work. Do not restart, create a replacement branch, or reset newer commits.
 
 ## Repository state

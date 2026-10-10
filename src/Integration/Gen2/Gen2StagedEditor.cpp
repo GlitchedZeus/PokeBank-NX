@@ -1134,6 +1134,10 @@ void StagedEditor::discard() noexcept {
 
 std::vector<uint8_t> StagedEditor::finalizedBytes(std::string& error) const {
     error.clear();
+    if (packedMove_.active) {
+        error = "Place or cancel carried Pokemon before finalizing the Gen II staged save";
+        return {};
+    }
     std::vector<uint8_t> result = staged_;
     const auto& layout = layoutFor(metadata_.family);
     if (!repairForStrictReload(result, metadata_, error)) return {};

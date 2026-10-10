@@ -84,7 +84,7 @@ def arr_name(prefix, bank):
 
 
 def load_entries(path):
-    with open(path, encoding="utf-8") as fh:
+    with open(path, encoding="utf-8-sig") as fh:
         lines = fh.read().split("\n")
     if lines and lines[-1] == "":
         lines = lines[:-1]

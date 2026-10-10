@@ -54,9 +54,9 @@ namespace Encryption {
 
     std::byte* decryptArray3FRLG(std::span<const std::byte> raw) {
         const size_t n = raw.size();
+        if (n != SIZE_STORED3_FRLG && n != SIZE_PARTY3_FRLG) return nullptr;
         std::byte* out = new std::byte[n]();
         for (size_t i = 0; i < n; ++i) out[i] = raw[i];
-        if (n < 0x50) return out;  // too small to hold the data block
 
         const uint32_t pid  = rd32(out + 0x00);
         const uint32_t seed = pid ^ rd32(out + 0x04);   // key = PID ^ OT_ID32
@@ -75,9 +75,9 @@ namespace Encryption {
 
     std::byte* encryptArray3FRLG(std::span<const std::byte> dec) {
         const size_t n = dec.size();
+        if (n != SIZE_STORED3_FRLG && n != SIZE_PARTY3_FRLG) return nullptr;
         std::byte* out = new std::byte[n]();
         for (size_t i = 0; i < n; ++i) out[i] = dec[i];
-        if (n < 0x50) return out;
 
         const uint32_t pid  = rd32(out + 0x00);
         const uint32_t seed = pid ^ rd32(out + 0x04);

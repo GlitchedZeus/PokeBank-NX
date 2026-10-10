@@ -14,7 +14,7 @@ std::string read(const char* path) {
 
 int main() {
     const std::string source = read("src/UI/TrainerViewScreenBase.inc");
-    const auto begin = source.find("void TrainerViewScreen::returnHeldToOrigin()");
+    const auto begin = source.find("bool TrainerViewScreen::returnHeldToOrigin()");
     const auto end = source.find(
         "std::unique_ptr<Pokemon::Pokemon>& TrainerViewScreen::storageSlot", begin);
     assert(begin != std::string::npos);
@@ -35,6 +35,17 @@ int main() {
     assert(failureGuard != std::string::npos);
     assert(destructiveClear != std::string::npos);
     assert(failureGuard < destructiveClear);
+    assert(body.find("return false;", failureGuard) != std::string::npos);
+    assert(body.find("return true;", destructiveClear) != std::string::npos);
 
-    std::cout << "Storage custody rollback contract: PASS\n";
+    // AUDIT-039 regression: regular backup save must stop if custody cannot be restored.
+    const auto saveCall = source.find("if (!returnHeldToOrigin() || carrying())");
+    const auto saveBlocked = source.find("Save blocked - held Pokemon custody could not be restored.", saveCall);
+    const auto performSave = source.find("performSave(destDir);", saveCall);
+    assert(saveCall != std::string::npos);
+    assert(saveBlocked != std::string::npos);
+    assert(performSave != std::string::npos);
+    assert(saveCall < saveBlocked && saveBlocked < performSave);
+
+    std::cout << "Storage custody rollback + save gate contract: PASS\n";
 }

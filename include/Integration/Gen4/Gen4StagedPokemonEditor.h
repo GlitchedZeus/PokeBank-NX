@@ -40,9 +40,28 @@ public:
     [[nodiscard]] std::optional<Pokemon::Pokemon4Mutable> editableBoxPokemon(
         size_t box, size_t slot, std::string* error = nullptr) const;
 
+    [[nodiscard]] std::optional<Pokemon::Pokemon4Mutable> createBoxDraft(
+        size_t box, size_t slot, uint16_t species,
+        std::string* error = nullptr) const;
+
     bool commitBoxPokemon(size_t box, size_t slot,
                           const Pokemon::Pokemon4Mutable& pokemon,
                           std::string* error = nullptr);
+
+    // Create/Add transaction primitive. Unlike commitBoxPokemon(), this refuses to
+    // overwrite an occupied slot. The candidate must already be a valid native
+    // 0x88 stored PK4; UI draft construction stays separate from save mutation.
+    bool stageCreateBoxPokemon(size_t box, size_t slot,
+                               const Pokemon::Pokemon4Mutable& pokemon,
+                               std::string* error = nullptr);
+
+    // Box-only convenience actions. Both mutate only the app-owned staged image,
+    // refresh the Storage CRC, strictly reparse, and roll back atomically on failure.
+    bool stageCloneBoxPokemon(size_t sourceBox, size_t sourceSlot,
+                              size_t destinationBox, size_t destinationSlot,
+                              std::string* error = nullptr);
+    bool stageReleaseBoxPokemon(size_t box, size_t slot,
+                                std::string* error = nullptr);
 
     [[nodiscard]] std::optional<Pokemon::Pokemon4ReadOnly> partyPokemon(
         size_t slot, std::string* error = nullptr) const;
@@ -53,6 +72,24 @@ public:
     bool commitPartyPokemon(size_t slot,
                             const Pokemon::Pokemon4Mutable& pokemon,
                             std::string* error = nullptr);
+
+    // Change an already-present native bag stack's quantity ONLY in the
+    // app-owned staged save. No Add/Remove, item-ID change or source write.
+    // `visibleIndex` is the zero-based populated row within its pouch.
+    bool stageBagQuantity(size_t pocket,size_t visibleIndex,uint16_t quantity,
+                          std::string* error=nullptr);
+
+    // Destructive within the APP-OWNED staged workspace only. Explicit UI
+    // confirmation is required; native identity/count are rechecked and
+    // the external emulator SAV4 remains byte-for-byte immutable.
+    bool stageBagRemove(size_t pocket,size_t visibleIndex,
+                        std::string* error=nullptr);
+
+    // Add one strictly catalog-allowed Gen IV item to an empty native slot
+    // in the app-owned image, never an external save. No arbitrary ID
+    // reassignment, overwrite of existing stacks, or native writes.
+    bool stageBagAdd(size_t pocket,uint16_t itemId,uint16_t quantity,
+                     std::string* error=nullptr);
 
     void discard() noexcept { staged_ = original_; }
 

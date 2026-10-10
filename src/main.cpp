@@ -14,13 +14,14 @@
 #include "UI/SpriteManager.h"
 #include "UI/SystemIcons.h"
 #include "UI/UI.h"
+#include "UI/GameLauncher.h"
 #include "Utils/Logger.h"
 #include "Utils/HelperUtilities.h"
 #include "Utils/FileUtilities.h"
 #include "Utils/Settings.h"
 #include "Utils/PhysicalMoveAudit.h"
 
-int main()
+int main(int argc, char** argv)
 {
     // Settings FIRST, before the first log line. "Enable Debug Logging" gates every sink, so
     // loading it up here is what makes the toggle cover startup as well -- read any later and the
@@ -30,6 +31,10 @@ int main()
     // (libnx mounts sdmc before main), applyTheme just swaps colour globals, and nothing in it
     // logs. It needs no service, no ROMFS and no SDL, none of which exist yet.
     Utils::loadSettings();
+
+    // Keep the exact currently running NRO path so emulator handoffs can return to this
+    // application instead of dropping to HOME/hbmenu after a normal RetroArch quit.
+    if (argc > 0 && argv && argv[0]) UI::setGameLaunchReturnPath(argv[0]);
 
     // Exact-marker opt-in only. The normal product never enters this path; the physical durability
     // harness owns only sdmc:/switch/PokeBank-NX/audit/physical and exits before account/ns/SDL UI.
@@ -80,16 +85,6 @@ int main()
     // Initialize sprite manager for Pokemon images
     Utils::logInfoToFile("Initializing Sprite Manager...");
     UI::SpriteManager::init();
-
-    Utils::logInfoToFile("Testing sprite loading...");
-    UI::Sprite* testSprite = UI::SpriteManager::getSprite(25, false); // Pikachu
-    if (testSprite && testSprite->data) {
-        logInfoToFile(("SUCCESS: Test sprite loaded! (" +
-            std::to_string(testSprite->width) + "x" +
-            std::to_string(testSprite->height) + ")").c_str());
-    } else {
-        Utils::logInfoToFile("WARNING: Test sprite failed to load - sprites may not be available");
-    }
 
     Utils::logInfoToFile("Starting UI Manager...");
 

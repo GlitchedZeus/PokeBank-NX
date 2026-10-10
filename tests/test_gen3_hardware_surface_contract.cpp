@@ -201,7 +201,7 @@ int main() {
     contains(surface, "Keep these move details");
     contains(surface, "Discard these move details");
     contains(surface, "\"Move — Generation III\"");
-    contains(surface, "\"Empty + compatible moves only • exact current game\"");
+    contains(surface, "\"Empty + compatible moves only • exact Gen III Acc / Pwr / PP\"");
     contains(surface, "Gen3::Learnset::directlyLearnable");
     contains(surface, "target != PickerTarget::Ability && target != PickerTarget::Move");
     const auto valuePickerBegin = surface.find("void drawValuePicker(");
@@ -215,8 +215,21 @@ int main() {
     contains(surface, "openValuePicker(screen, state, PickerTarget::Move, state.moveEditorSlot)");
     contains(surface, "state.pickerTarget == PickerTarget::HeldItem");
     contains(surface, "HeldItemGrid::move");
-    contains(surface, "HeldItemGrid::columns");
-    contains(surface, "HeldItemGrid::pageSize");
+    // Geometry moved into the accepted Gen III layout shared by Gen II–IV.
+    const auto heldRenderer = read("include/UI/SharedHeldItemPickerPresentation.h");
+    contains(surface, "SharedHeldItemPickerPresentation::drawGrid(");
+    contains(surface, "SharedHeldItemPickerPresentation::drawHeading(");
+    contains(heldRenderer, "Grid::columns");
+    contains(heldRenderer, "Grid::pageSize");
+    contains(heldRenderer, "Grid::rowPitch");
+    contains(heldRenderer, "ItemPickerArtwork::draw(fb");
+    contains(surface, "constexpr auto moveLayout = MoveUI::compactPickerLayout()");
+    contains(surface, "movePicker ? moveLayout.width");
+    contains(surface, "movePicker ? moveLayout.height");
+    contains(surface, "constexpr int visible = moveLayout.visibleRows");
+    contains(surface, "moveLayout.rowStep");
+    contains(surface, "Held Item — Generation III");
+    contains(surface, "Names::machineDisplayLabel(Enums::GameVersion::FRLG");
     contains(surface, "{\"D-pad/Stick\", \"Navigate\"}, {\"L/R\", \"Page\"}");
     assert(surface.find("Add Pokemon") != std::string::npos); // Box action still exists.
     const auto moveEditorBegin = surface.find("void drawMoveEditor(");
@@ -232,7 +245,8 @@ int main() {
     assert(actionsBody.find("screen.drawGSCOverlay(fb)") != std::string::npos);
     assert(actionsBody.find("Colors::Background") == std::string::npos);
     assert(actionsBody.find("const int w = occupied ? 650 : 560") != std::string::npos);
-    assert(actionsBody.find("const int h = occupied ? 500 : 350") != std::string::npos);
+    assert(actionsBody.find("static_cast<int>(actions.count) * geometry.rowStep + 62") != std::string::npos);
+    assert(actionsBody.find("const int h = occupied ? 500 : 350") == std::string::npos);
     assert(actionsBody.find("Shared::actionMenuGeometry()") != std::string::npos);
     assert(actionsBody.find("Colors::Divider, 1") != std::string::npos);
     assert(actionsBody.find("Colors::FocusBorder, 2") == std::string::npos);

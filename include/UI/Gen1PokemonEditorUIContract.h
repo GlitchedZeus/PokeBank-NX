@@ -26,14 +26,21 @@ struct ActionSet {
     constexpr Action operator[](std::size_t index) const noexcept { return values[index]; }
 };
 
-constexpr ActionSet actionsForSlot(bool occupied) noexcept {
+constexpr ActionSet actionsForSlot(bool occupied, bool hasPendingChanges = false) noexcept {
     if (occupied) {
+        if (hasPendingChanges) {
+            return {{{Action::View, Action::Edit, Action::Clone, Action::Remove,
+                      Action::LegalityProvenance, Action::ReviewPendingChanges, Action::Cancel}}, 7};
+        }
         return {{{Action::View, Action::Edit, Action::Clone, Action::Remove,
-                  Action::LegalityProvenance, Action::ReviewPendingChanges, Action::Cancel}}, 7};
+                  Action::LegalityProvenance, Action::Cancel, Action::Cancel}}, 6};
     }
-    return {{{Action::AddPokemon, Action::ReviewPendingChanges,
-              Action::LegalityProvenance, Action::Cancel,
-              Action::Cancel, Action::Cancel, Action::Cancel}}, 4};
+    if (hasPendingChanges) {
+        return {{{Action::AddPokemon, Action::ReviewPendingChanges, Action::Cancel,
+                  Action::Cancel, Action::Cancel, Action::Cancel, Action::Cancel}}, 3};
+    }
+    return {{{Action::AddPokemon, Action::Cancel, Action::Cancel, Action::Cancel,
+              Action::Cancel, Action::Cancel, Action::Cancel}}, 2};
 }
 
 enum class AddDraftEvent : uint8_t {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "UI/ExactFormatEditorProvider.h"
+#include "Integration/Gen4/Gen4MoveCompatibility.h"
 
 #include <optional>
 #include <string_view>
@@ -17,21 +18,29 @@ constexpr bool isGen4NdsId(std::string_view id) noexcept {
 constexpr PokeVault::SaveEdit::Capabilities stagedPokemonCapabilities() noexcept {
     PokeVault::SaveEdit::Capabilities caps;
     caps.add(PokeVault::SaveEdit::Capability::BoxPokemon)
-        .add(PokeVault::SaveEdit::Capability::PokemonEditing);
-    // Create remains deliberately absent until boxed PK4 Edit has passed exact
-    // serialize/reparse and owner hardware acceptance.
+        .add(PokeVault::SaveEdit::Capability::PokemonEditing)
+        .add(PokeVault::SaveEdit::Capability::PokemonCreation);
+    // G4-03 boxed/party Edit passed exact CI and owner hardware acceptance at
+    // 84dae170...; G4-04 now has a native empty-slot Create transaction.
     return caps;
 }
 
 inline Exact::MoveCompatibilityResult evaluateMove(
     const Exact::MoveCompatibilityQuery& query) noexcept {
-    if (!isGen4NdsId(query.exactGameId) || query.species == 0 || query.species > 493)
-        return Exact::MoveCompatibilityResult::Invalid;
-    if (query.move == 0) return Exact::MoveCompatibilityResult::Compatible;
-    // G4-03 starts fail-closed: existing native moves are preserved, but a new move
-    // is not offered as compatible until an exact-game Gen IV learnset provider is pinned.
-    return query.existingSourceMove ? Exact::MoveCompatibilityResult::PreserveExisting
-                                    : Exact::MoveCompatibilityResult::Unsupported;
+    namespace Compat = PokeVault::Integration::Gen4MoveCompatibility;
+    switch (Compat::classify(
+        query.exactGameId, query.species, query.form, query.move,
+        query.existingSourceMove)) {
+        case Compat::Availability::Direct:
+            return Exact::MoveCompatibilityResult::Compatible;
+        case Compat::Availability::Transfer:
+            return Exact::MoveCompatibilityResult::Unsupported;
+        case Compat::Availability::Preserved:
+            return Exact::MoveCompatibilityResult::PreserveExisting;
+        case Compat::Availability::Invalid:
+            return Exact::MoveCompatibilityResult::Invalid;
+    }
+    return Exact::MoveCompatibilityResult::Invalid;
 }
 
 inline std::optional<Exact::ExactFormatEditorDescriptor> descriptorForSource(

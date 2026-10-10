@@ -98,4 +98,29 @@ namespace PokeVault::Games {
         if (id == "soulsilver_nds") return "romfs:/game_cards/soulsilver_nds.png";
         return {};
     }
+
+    std::string_view gameRegionBackdropKey(std::string_view id) noexcept {
+        if (id == "red_gb" || id == "blue_gb" || id == "yellow_gb" ||
+            id == "firered_gba" || id == "leafgreen_gba" ||
+            id == "firered_switch" || id == "leafgreen_switch" ||
+            id == "letsgo_pikachu_switch" || id == "letsgo_eevee_switch")
+            return "kanto";
+
+        if (id == "gold_gbc" || id == "silver_gbc" || id == "crystal_gbc" ||
+            id == "heartgold_nds" || id == "soulsilver_nds")
+            return "johto";
+
+        if (id == "ruby_gba" || id == "sapphire_gba" || id == "emerald_gba")
+            return "hoenn";
+
+        if (id == "diamond_nds" || id == "pearl_nds" || id == "platinum_nds" ||
+            id == "brilliant_diamond_switch" || id == "shining_pearl_switch")
+            return "sinnoh";
+
+        if (id == "legends_arceus_switch") return "hisui";
+        if (id == "sword_switch" || id == "shield_switch") return "galar";
+        if (id == "scarlet_switch" || id == "violet_switch") return "paldea";
+        if (id == "legends_za_switch") return "kalos";
+        return {};
+    }
 }

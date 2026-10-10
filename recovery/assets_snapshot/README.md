@@ -1,16 +1,19 @@
 # Complete RomFS recovery snapshot
 
-This directory is reserved for the **complete generated RomFS snapshot** used by routine recovery.
+This directory contains the **complete generated RomFS snapshot** used by routine recovery.
 
-The project repository is private. Once a full verified asset tree exists, run:
+The committed snapshot has historical provenance that may reference older branches or application SHAs. Those identifiers are evidence of where the snapshot came from; they are **not** current development or publishing targets.
+
+For current recovery work:
 
 ```bash
 python3 tools/recover_workspace.py
 python3 tools/pack_recovery_snapshot.py
 git add -f recovery/assets_snapshot/
 git commit -m "recovery: snapshot complete verified RomFS"
-git push origin feature/pokebank-playable
 ```
+
+Before pushing anything, re-fetch GitHub and use the **current reviewed branch/PR** for the active task. Do not push recovery output directly to the historical `feature/pokebank-playable` branch.
 
 The packer creates an uncompressed deterministic tar and splits it into 80 MiB parts so no individual recovery file exceeds GitHub's normal single-file size ceiling.
 

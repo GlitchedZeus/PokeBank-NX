@@ -1,0 +1,4 @@
+Quick Games hardware freeze repair trigger
+Rejected candidate: adc92fd0b917fa32d0bf90efc98f11b3c2117c68
+Observed: Quick Games -> A on a game freezes physical Switch.
+Expected repair: cached selection only; no synchronous save mount/parser/launch resolution on the A input frame.

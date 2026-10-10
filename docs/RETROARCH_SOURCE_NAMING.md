@@ -1,5 +1,8 @@
 # RetroArch source grouping, naming and identity
 
+> **REFERENCE CONTRACT:** Source identity/naming rules remain relevant. Any section framed as the old "current FRLG blocker" or FRLG-only production state is historical and must not be used as the active roadmap; see `docs/ENGINEERING_AUTHORITY.md` and live GitHub.
+
+
 This document records the product semantics for file-based RetroArch/legacy sources so discovery, deduplication, refresh behavior and future save-state support match the intended PokeBank NX UX.
 
 ## Top-level UX rule

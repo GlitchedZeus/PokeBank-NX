@@ -25,6 +25,47 @@ namespace Dialogs {
         // Switch title; existing PokeBank backup workspaces are mutable, but live writeback to the
         // installed save is still disabled, so the warning must not depend only on SourceKind.
         if (screen.exitingWithUnsavedChanges) {
+            if (screen.itemsShortcutActive) {
+                const bool canSaveWorkingCopy = !screen.sourceReadOnly();
+                const int iw = canSaveWorkingCopy ? 760 : 600;
+                constexpr int ih = 286;
+                const int ix = (fb.getWidth() - iw) / 2;
+                const int iy = (fb.getHeight() - ih) / 2;
+                int icy = drawDialogFrame(fb, ix, iy, iw, ih, "Exit Items", Colors::Warning);
+                fb.drawText(ix + 24, icy,
+                            canSaveWorkingCopy
+                                ? "Changes are staged in PokeBank's protected working copy."
+                                : "This external source is read-only; live/source writing stays locked.",
+                            Colors::Text);
+                fb.drawText(ix + 24, icy + 30,
+                            canSaveWorkingCopy
+                                ? "Save the working copy, discard the edits, or keep editing."
+                                : "Discard the staged edits and return Home, or keep editing.",
+                            Colors::TextDim);
+
+                screen.touchButtons.clear();
+                const int cbh = TouchTargetMin;
+                const int cby = iy + ih - cbh - 18;
+                if (canSaveWorkingCopy) {
+                    constexpr int gap = 12;
+                    const int cbw = (iw - 48 - gap * 2) / 3;
+                    drawEditChoiceButton(screen, fb, ix + 24, cby, cbw, cbh,
+                                         "B", "Keep Editing", 0);
+                    drawEditChoiceButton(screen, fb, ix + 24 + cbw + gap, cby, cbw, cbh,
+                                         "Y", "Discard & Home", 1);
+                    drawEditChoiceButton(screen, fb, ix + 24 + (cbw + gap) * 2, cby, cbw, cbh,
+                                         "A", "Save Copy & Home", 2);
+                } else {
+                    constexpr int gap = 16;
+                    const int cbw = (iw - 48 - gap) / 2;
+                    drawEditChoiceButton(screen, fb, ix + 24, cby, cbw, cbh,
+                                         "B", "Keep Editing", 0);
+                    drawEditChoiceButton(screen, fb, ix + 24 + cbw + gap, cby, cbw, cbh,
+                                         "A", "Discard & Home", 1);
+                }
+                return;
+            }
+
             const bool nativeTitlePreview = screen.titleId != 0;
             constexpr int h = 270;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
@@ -99,7 +140,7 @@ namespace Dialogs {
             ry += rowH + rowGap;
         }
 
-        drawDialogFooter(fb, x, y, w, h, "Up/Down: Choose  |  A: Save  |  B: Cancel");
+        drawDialogFooter(fb, x, y, w, h, "D-pad/Stick: Choose  |  A: Save  |  B: Cancel");
     }
 
 }

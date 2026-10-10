@@ -325,10 +325,164 @@ void proveSourceUnchanged(const Pokemon::Pokemon& source,
     assert(after == before);
     assert(hashBytes(after) == beforeHash);
 }
+
+
+template <typename Entity>
+void assertMalformedEntityLengths(std::size_t storedSize, std::size_t partySize) {
+    const std::array<std::size_t, 6> rejected{{
+        0,
+        1,
+        storedSize > 0 ? storedSize - 1 : 0,
+        storedSize + 1,
+        partySize > 0 ? partySize - 1 : 0,
+        partySize + 1,
+    }};
+    for (const std::size_t size : rejected) {
+        if (size == storedSize || size == partySize) continue;
+        std::vector<std::byte> raw(size, std::byte{0});
+        Entity entity(std::span<const std::byte>(raw.data(), raw.size()));
+        assert(!entity.inputValid());
+        assert(entity.getDataSize() == partySize);
+        assert(!entity.checksumValid());
+        // Invalid input still owns a full, zero-initialized safe buffer. These representative
+        // accessors must never walk beyond it while a caller is deciding to reject the entity.
+        (void)entity.level();
+        (void)entity.statHPMax();
+        (void)entity.statATK();
+    }
+}
+
+template <typename Entity>
+void assertModernStoredNormalization(const Pokemon::Pokemon& source,
+                                     std::size_t storedSize,
+                                     std::size_t partySize) {
+    std::vector<std::byte> partyBytes = nativeBytes(source);
+    assert(partyBytes.size() == partySize);
+
+    Entity party(std::span<const std::byte>(partyBytes.data(), partyBytes.size()));
+    assert(party.inputValid());
+    assert(party.getDataSize() == partySize);
+    assert(party.checksumValid());
+
+    std::vector<std::byte> storedBytes(partyBytes.begin(), partyBytes.begin() + storedSize);
+    Entity stored(std::span<const std::byte>(storedBytes.data(), storedBytes.size()));
+    assert(stored.inputValid());
+    assert(stored.getDataSize() == partySize);
+    assert(stored.checksumValid());
+
+    // AUDIT-026's stored-size failure was specifically that party-stat APIs reached beyond the
+    // allocation. Exercise both reads and a stat-affecting edit on the normalized buffer so the
+    // sanitizer target proves the party tail is genuinely owned, not merely addressable by chance.
+    const uint8_t originalLevel = stored.level();
+    (void)stored.statHPMax();
+    (void)stored.statATK();
+    (void)stored.statDEF();
+    (void)stored.statSPE();
+    (void)stored.statSPA();
+    (void)stored.statSPD();
+    stored.setLevel(originalLevel >= 100 ? 99 : static_cast<uint8_t>(std::max<int>(1, originalLevel + 1)));
+    assert(stored.inputValid());
+    assert(stored.getDataSize() == partySize);
+    assert(stored.checksumValid());
+}
 }
 
 int main() {
     using namespace Conversion;
+
+    // AUDIT-019: native encrypted blanks are non-zero records that decrypt to species 0.
+    // Trainer parsers must decide logical occupancy from the decrypted entity, not raw bytes.
+    {
+        auto swshBlank = blankSWSH(0xA0190001u);
+        auto plaBlank  = blankPLA(0xA0190002u);
+        auto svBlank   = blankSV(0xA0190003u);
+        auto zaBlank   = blankZA(0xA0190004u);
+        assert(swshBlank->speciesID() == 0 && swshBlank->checksumValid());
+        assert(plaBlank->speciesID() == 0 && plaBlank->checksumValid());
+        assert(svBlank->speciesID() == 0 && svBlank->checksumValid());
+        assert(zaBlank->speciesID() == 0 && zaBlank->checksumValid());
+    }
+
+    // AUDIT-026: entity constructors enforce documented native lengths before decryption.
+    // Modern stored records are normalized to party-sized owned buffers before any party-stat API.
+    {
+        auto pk3Source = blankPK3(0x12345678u, 0x12345778u);
+        configurePK3(*pk3Source, 25, 0x12345678u, 0x12345778u);
+        const auto pk3Party = nativeBytes(*pk3Source);
+        assert(pk3Party.size() == Encryption::SIZE_PARTY3_FRLG);
+        Pokemon::Pokemon3FRLG pk3PartyParsed(
+            std::span<const std::byte>(pk3Party.data(), pk3Party.size()));
+        assert(pk3PartyParsed.inputValid());
+        assert(pk3PartyParsed.getDataSize() == Encryption::SIZE_PARTY3_FRLG);
+        std::vector<std::byte> pk3StoredBytes(
+            pk3Party.begin(), pk3Party.begin() + Encryption::SIZE_STORED3_FRLG);
+        Pokemon::Pokemon3FRLG pk3Stored(
+            std::span<const std::byte>(pk3StoredBytes.data(), pk3StoredBytes.size()));
+        assert(pk3Stored.inputValid());
+        assert(pk3Stored.getDataSize() == Encryption::SIZE_STORED3_FRLG);
+        assert(pk3Stored.checksumValid());
+        (void)pk3Stored.level();
+        (void)pk3Stored.statHPMax();
+        pk3Stored.setLevel(26);
+        assert(pk3Stored.checksumValid());
+        assertMalformedEntityLengths<Pokemon::Pokemon3FRLG>(
+            Encryption::SIZE_STORED3_FRLG, Encryption::SIZE_PARTY3_FRLG);
+
+        auto gg = blankGG(0xA0260001u);
+        configureModern(*gg, 25, 0, 0x10203040u, 0x10203140u,
+                        static_cast<uint8_t>(GameVersion::GP), u"PIKACHU", false);
+        assertModernStoredNormalization<Pokemon::Pokemon7LGPE>(
+            *gg, Encryption::SIZE_STORED7_LGPE, Encryption::SIZE_PARTY7_LGPE);
+        assertMalformedEntityLengths<Pokemon::Pokemon7LGPE>(
+            Encryption::SIZE_STORED7_LGPE, Encryption::SIZE_PARTY7_LGPE);
+
+        auto swsh = blankSWSH(0xA0260002u);
+        configureModern(*swsh, 25, 0, 0x20304050u, 0x20304150u,
+                        static_cast<uint8_t>(GameVersion::SW), u"PIKACHU", false);
+        assertModernStoredNormalization<Pokemon::Pokemon8SWSH>(
+            *swsh, Encryption::SIZE_STORED8_SWSH, Encryption::SIZE_PARTY8_SWSH);
+        assertMalformedEntityLengths<Pokemon::Pokemon8SWSH>(
+            Encryption::SIZE_STORED8_SWSH, Encryption::SIZE_PARTY8_SWSH);
+
+        auto bdsp = blankBDSP(0xA0260003u);
+        configureModern(*bdsp, 25, 0, 0x30405060u, 0x30405160u,
+                        static_cast<uint8_t>(GameVersion::BD), u"PIKACHU", false);
+        assertModernStoredNormalization<Pokemon::Pokemon8BDSP>(
+            *bdsp, Encryption::SIZE_STORED8_BDSP, Encryption::SIZE_PARTY8_BDSP);
+        assertMalformedEntityLengths<Pokemon::Pokemon8BDSP>(
+            Encryption::SIZE_STORED8_BDSP, Encryption::SIZE_PARTY8_BDSP);
+
+        auto pla = blankPLA(0xA0260004u);
+        configureModern(*pla, 25, 0, 0x40506070u, 0x40506170u,
+                        static_cast<uint8_t>(GameVersion::PLA), u"PIKACHU", false);
+        assertModernStoredNormalization<Pokemon::Pokemon8LA>(
+            *pla, Encryption::SIZE_STORED8_LA, Encryption::SIZE_PARTY8_LA);
+        assertMalformedEntityLengths<Pokemon::Pokemon8LA>(
+            Encryption::SIZE_STORED8_LA, Encryption::SIZE_PARTY8_LA);
+
+        auto sv = blankSV(0xA0260005u);
+        configureModern(*sv, 25, 0, 0x50607080u, 0x50607180u,
+                        static_cast<uint8_t>(GameVersion::SL), u"PIKACHU", false);
+        assertModernStoredNormalization<Pokemon::Pokemon9SV>(
+            *sv, Encryption::SIZE_STORED9_SV, Encryption::SIZE_PARTY9_SV);
+        assertMalformedEntityLengths<Pokemon::Pokemon9SV>(
+            Encryption::SIZE_STORED9_SV, Encryption::SIZE_PARTY9_SV);
+
+        auto za = blankZA(0xA0260006u);
+        configureModern(*za, 25, 0, 0x60708090u, 0x60708190u,
+                        static_cast<uint8_t>(GameVersion::ZA), u"PIKACHU", false);
+        assertModernStoredNormalization<Pokemon::Pokemon9LZA>(
+            *za, Encryption::SIZE_STORED9_LZA, Encryption::SIZE_PARTY9_LZA);
+        assertMalformedEntityLengths<Pokemon::Pokemon9LZA>(
+            Encryption::SIZE_STORED9_LZA, Encryption::SIZE_PARTY9_LZA);
+
+        std::array<std::byte, 7> tooShort{};
+        const auto tooShortBefore = tooShort;
+        Encryption::cryptPokemon(tooShort, 0x12345678u, 0x50, 4);
+        assert(tooShort == tooShortBefore);
+
+        std::cout << "fixture entity-native-length-boundary: PASS\n";
+    }
 
     // F05: real PK3 -> PK8 -> PK3 entity paths across the Gen III/modern shiny threshold.
     {

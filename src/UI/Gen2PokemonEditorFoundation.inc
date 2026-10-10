@@ -785,19 +785,20 @@ void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State
 }
 
 void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
+    namespace Grid = PokeBank::UIModel::SharedHeldItemPicker;
     const int W = fb.getWidth(), H = fb.getHeight();
-    constexpr int w = 1040, h = 520;
-    const int x = (W - w) / 2, y = (H - h) / 2;
-    fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 150));
-    drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 24, y + 18, "Held Item — Generation II", Colors::Text, TextStyle::Heading);
-    namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
-    const int pages = (static_cast<int>(state.itemChoices.size()) + Model::pageSize - 1) / Model::pageSize;
-    fb.drawText(x + 24, y + 52,
-        "Page " + std::to_string(state.itemChoiceIndex / Model::pageSize + 1) + " / " + std::to_string(pages),
-        Colors::TextDim, TextStyle::Caption);
-    Gen2HeldItemPickerPresentation::drawList(fb, x + 24, y + 90, w - 48, state.itemChoices, state.itemChoiceIndex);
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"}, {"A", "Select"}, {"B", "Cancel"}});
+    constexpr int w = Grid::modalWidth, h = Grid::modalHeight;
+    const int x = (W - w) / 2;
+    const int y = (H - kNavBarH - h) / 2;
+    fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 165));
+    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
+    SharedHeldItemPickerPresentation::drawHeading(
+        fb, x, y, "Held Item — Generation II",
+        state.itemChoiceIndex, static_cast<int>(state.itemChoices.size()));
+    Gen2HeldItemPickerPresentation::drawList(fb, x, y, state.itemChoices, state.itemChoiceIndex);
+    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
+                    {"A", "Choose"}, {"B", "Cancel"}});
 }
 
 void drawConfirm(PKSEFramebuffer& fb, const State& state) {
