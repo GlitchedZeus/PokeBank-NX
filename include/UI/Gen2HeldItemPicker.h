@@ -14,7 +14,7 @@ inline constexpr int pageSize = SharedHeldItemPicker::pageSize;
 inline int initialIndex(const std::vector<uint8_t>& items, uint8_t current) {
     return SharedHeldItemPicker::initialIndex(items, current);
 }
-constexpr int move(int index, int count, int dx, int dy, int pages = 0) noexcept {
+inline int move(int index, int count, int dx, int dy, int pages = 0) noexcept {
     return SharedHeldItemPicker::move(index, count, dx, dy, pages);
 }
 inline std::string itemName(uint8_t item) {
