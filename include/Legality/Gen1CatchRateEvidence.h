@@ -47,6 +47,15 @@ constexpr uint8_t evolutionStage(uint16_t species) noexcept {
     return species < kEvolutionStage.size() ? kEvolutionStage[species] : 0;
 }
 
+// Graph-aware original ancestor. The pinned stage offset table is a
+// linear-chain aid, NOT a complete evolution graph: all three Gen I
+// Eevee branches descend directly from #133, not from one another.
+constexpr uint16_t originalGen1Ancestor(uint16_t species) noexcept {
+    if (species == 0 || species > 151) return 0;
+    if (species >= 134 && species <= 136) return 133;
+    return static_cast<uint16_t>(species - evolutionStage(species));
+}
+
 constexpr bool matchesGen1SpeciesOrPreEvolutionRate(
     uint16_t species, uint8_t catchRate) noexcept {
     if (species == 0 || species > 151)
@@ -64,7 +73,7 @@ constexpr bool matchesGen1SpeciesOrPreEvolutionRate(
 
     // The remaining native Gen I evolutions are sequential, linear chains;
     // use the PKHeX-pinned stage table for their actual pre-evolutions.
-    const uint16_t base = static_cast<uint16_t>(species - evolutionStage(species));
+    const uint16_t base = originalGen1Ancestor(species);
     for (uint16_t s = base; s <= species; ++s) {
         if (catchRate == kCatchRateRB[s] || catchRate == kCatchRateY[s])
             return true;
