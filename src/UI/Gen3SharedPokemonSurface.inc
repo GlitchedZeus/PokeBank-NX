@@ -1400,16 +1400,22 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     Colors::TextDim, TextStyle::Caption);
         const int count = static_cast<int>(state.pickerValues.size());
         constexpr int visible = moveLayout.visibleRows;
-        const int first = std::clamp(state.pickerRow - visible / 2, 0, std::max(0, count - visible));
+        const int first = std::clamp(state.pickerViewport.firstRow, 0, std::max(0, count - visible));
         const int last = std::min(count, first + visible);
+        const int viewportTop = y + moveLayout.rowStart;
+        fb.setClipRect(x + 24, viewportTop, w - 48, visible * moveLayout.rowStep);
         for (int i = first; i < last; ++i) {
-            const int yy = y + moveLayout.rowStart + (i - first) * moveLayout.rowStep;
+            const int yy = viewportTop + (i - first) * moveLayout.rowStep + state.pickerScroll.offset();
+            appendClippedTouchButton(screen.touchButtons, 4000 + i,
+                x + 24, yy, w - 48, moveLayout.highlightHeight,
+                x + 24, viewportTop, w - 48, visible * moveLayout.rowStep);
             const bool selected = i == state.pickerRow;
             if (selected)
                 fb.drawSelectionHighlight(x + 24, yy, w - 48, moveLayout.highlightHeight);
             const auto value = state.pickerValues[static_cast<std::size_t>(i)];
             MovePickerRowUI::draw(fb,x+40,yy+4,value,Enums::GameVersion::FRLG);
         }
+        fb.clearClip();
         drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                         {"A", "Select"}, {"B", "Cancel"}});
         return;
@@ -1422,7 +1428,22 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         SharedHeldItemPickerPresentation::drawGrid(
             fb, x, y, state.pickerValues, state.pickerRow,
             [&](uint16_t value) { return pickerValueLabel(state, value); },
-            [](uint16_t value) { return Names::getItemNameG3(value); });
+            [](uint16_t value) { return Names::getItemNameG3(value); },
+            state.pickerViewport.firstRow, state.pickerScroll.offset());
+        const int gridX = x + HeldItemGrid::gridInsetX;
+        const int gridY = y + HeldItemGrid::gridInsetY;
+        const int cellHeight = HeldItemGrid::rowPitch;
+        const int cellW = (w - 2 * HeldItemGrid::gridInsetX) / HeldItemGrid::columns;
+        const int firstRow = state.pickerViewport.firstRow;
+        for (int i = std::max(0, (firstRow - 1) * HeldItemGrid::columns);
+             i < std::min(count, (firstRow + HeldItemGrid::rows + 1) * HeldItemGrid::columns); ++i) {
+            const int offset = i - firstRow * HeldItemGrid::columns;
+            const int cellX = gridX + offset % HeldItemGrid::columns * cellW;
+            const int cellY = gridY + offset / HeldItemGrid::columns * cellHeight + state.pickerScroll.offset();
+            appendClippedTouchButton(screen.touchButtons, 4000 + i,
+                cellX, cellY - 3, cellW - 10, cellHeight - 4,
+                gridX, gridY - 3, w - 44, HeldItemGrid::rows * cellHeight);
+        }
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
                         {"A", "Choose"}, {"B", "Cancel"}});
         return;
@@ -1435,11 +1456,16 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                     std::to_string(state.pickerValues.size()),
                 Colors::TextDim, TextStyle::Caption);
     const int visible = compactChoices ? visibleChoices : 10;
-    const int first = std::clamp(state.pickerRow - visible / 2, 0, std::max(0, count - visible));
+    const int first = std::clamp(state.pickerViewport.firstRow, 0, std::max(0, count - visible));
     const int last = std::min(count, first + visible);
+    const int rowStep = naturePicker ? natureLayout.rowStep : 42;
+    const int viewportTop = y + 90;
+    fb.setClipRect(x + 22, viewportTop - 4, w - 44, visible * rowStep);
     for (int i = first; i < last; ++i) {
-        const int yy = y + 90 + (i - first) *
-            (naturePicker ? natureLayout.rowStep : 42);
+        const int yy = viewportTop + (i - first) * rowStep + state.pickerScroll.offset();
+        appendClippedTouchButton(screen.touchButtons, 4000 + i,
+            x + 22, yy - 4, w - 44, naturePicker ? natureLayout.highlightHeight : 38,
+            x + 22, viewportTop - 4, w - 44, visible * rowStep);
         const bool selected = i == state.pickerRow;
         if (selected) fb.drawSelectionHighlight(x + 22, yy - 4, w - 44,
             naturePicker ? natureLayout.highlightHeight : 38);
@@ -1450,6 +1476,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
             ItemPickerArtwork::draw(fb, x + w - 35, yy, 32,
                                     Enums::getBallName(static_cast<uint8_t>(value)));
     }
+    fb.clearClip();
     drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                     {"A", "Choose"}, {"B", "Cancel"}});
 }
