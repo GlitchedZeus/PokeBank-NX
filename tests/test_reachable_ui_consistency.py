@@ -7,11 +7,17 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 held = read("include/UI/Gen2HeldItemPicker.h")
-assert "Colors::SurfaceSelected" in held
-# After app-wide item picker contrast polish, all row labels use the theme-aware
-# foreground text (the selection itself uses the contrasted surface/background).
-assert "Colors::Text, TextStyle::Caption" in held
-assert "ItemPickerArtwork::draw(" in held
+shared_held = read("include/UI/SharedHeldItemPickerPresentation.h")
+# Gen II, III and IV must use the same accepted Gen III grid/highlight.
+assert "SharedHeldItemPickerPresentation::drawGrid(" in held
+assert "fb.drawSelectionHighlight(cellX, cellY - 3" in shared_held
+assert "Colors::Text, TextStyle::Caption" in shared_held
+assert "ItemPickerArtwork::draw(" in shared_held
+for picker_path in ("src/UI/Gen3SharedPokemonSurface.inc",
+                    "src/UI/Gen4SharedPokemonSurface.inc"):
+    picker_source = read(picker_path)
+    assert "SharedHeldItemPickerPresentation::drawGrid(" in picker_source
+    assert "SharedHeldItemPickerPresentation::drawHeading(" in picker_source
 
 picker = read("src/UI/Gen2PokemonPickerOverlay.inc")
 assert "selected ? Colors::SelectedText : textColor" in picker
