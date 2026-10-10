@@ -26,6 +26,13 @@ bool hasText(const Legality::Report& report, const std::string& needle) {
     return false;
 }
 
+bool hasInvalidText(const Legality::Report& report,const std::string& needle) {
+    for(const auto& issue:report.issues)
+        if(issue.severity==Legality::Severity::Invalid &&
+           issue.text.find(needle)!=std::string::npos)return true;
+    return false;
+}
+
 bool hasInfo(const Legality::Report& report, const std::string& needle) {
     for (const auto& issue : report.issues)
         if (issue.severity == Legality::Severity::Info &&
@@ -155,7 +162,8 @@ Legality::Report analyzeNativeDiamondMarshBall(
 Legality::Report analyzeGen4EggBall(uint8_t ball, bool isEgg,
                                     uint16_t eggLocation,
                                     uint8_t metLevel=0,
-                                    uint8_t originVersion=7) {
+                                    uint8_t originVersion=7,
+                                    uint16_t hatchLocation=0) {
     std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
     wr32(raw,0x00,0x12345678u);
     wr16(raw,0x08,25);
@@ -164,6 +172,7 @@ Legality::Report analyzeGen4EggBall(uint8_t ball, bool isEgg,
     raw[0x17]=std::byte{2};
     raw[0x5F]=static_cast<std::byte>(originVersion); // stored PK4 origin
     wr16(raw,0x44,eggLocation);
+    wr16(raw,0x46,hatchLocation); // HGSS extended MetLocation
     raw[0x83]=static_cast<std::byte>(ball);
     raw[0x86]=static_cast<std::byte>(ball);
     raw[0x84]=static_cast<std::byte>(metLevel);
@@ -175,6 +184,7 @@ Legality::Report analyzeGen4EggBall(uint8_t ball, bool isEgg,
     assert(source.eggLocationExtended()==eggLocation);
     Pokemon::Pokemon4ReadOnlyView view(source);
     assert(view.eggLocation()==eggLocation && view.ball()==ball);
+    if(hatchLocation!=0)assert(view.metLocation()==hatchLocation);
     return Legality::analyze(view,Enums::GameVersion::HGSS,"heartgold_nds");
 }
 
@@ -216,6 +226,23 @@ int main() {
     const auto badMet=analyzeGen4EggBall(4,true,2000,1);
     assert(!hasInfo(badMet,
         "Native Generation III/IV egg origin has a compatible Poke Ball"));
+    // The exact HGSS container can be known while a PK4 origin byte
+    // is missing. Missing origin cannot prove an impossible hatch.
+    // A known Diamond origin cannot hatch at HGSS-only location 126
+    // without an egg's Link Trade marker.
+    constexpr auto hatchError="Hatch location is not valid for this Generation IV egg origin";
+    constexpr auto hatchUnknown="PK4 hatch origin game is unknown or unsupported";
+    const auto unknownHatched=analyzeGen4EggBall(4,false,2000,0,0,126);
+    assert(hasInfo(unknownHatched,hatchUnknown));
+    assert(!hasInvalidText(unknownHatched,hatchError));
+    const auto hgssHatched=analyzeGen4EggBall(4,false,2000,0,7,126);
+    assert(hasInfo(hgssHatched,"hatch location is valid for its stored"));
+    const auto diamondCannotHatch=analyzeGen4EggBall(4,false,2000,0,10,126);
+    assert(hasInvalidText(diamondCannotHatch,hatchError));
+    const auto linkedDiamondEgg=analyzeGen4EggBall(4,false,2002,0,10,126);
+    assert(hasInfo(linkedDiamondEgg,"traded-egg hatch location is valid"));
+    assert(!hasInvalidText(linkedDiamondEgg,hatchError));
+
     // Pal Park/Gen III origin is NOT a native Gen IV egg history, even
     // if a malformed record supplies egg-location fields and Poké Ball.
     const auto palParkOrigin=analyzeGen4EggBall(4,true,2000,0,2);

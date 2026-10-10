@@ -1002,18 +1002,31 @@ namespace Legality {
                     add(r, Severity::Invalid,
                         "Korean Generation IV egg-origin Pokemon cannot use Seabreak Path or Flower Paradise as a hatch location because the enabling Shaymin event was never distributed there",
                         CheckIdentifier::Egg);
-                } else if (!Gen4Hatch::isValidHatchedEgg(
-                               pk.originGame(), pk.eggLocation(),
-                               pk.metLocation())) {
-                    add(r, Severity::Invalid,
-                        "Hatch location is not valid for this Generation IV egg origin",
-                        CheckIdentifier::Egg);
                 } else {
-                    add(r, Severity::Info,
-                        pk.eggLocation() == Gen4Hatch::LinkTrade4
-                            ? "PK4 traded-egg hatch location is valid in a Generation IV game"
-                            : "PK4 hatch location is valid for its stored Generation IV origin game",
-                        CheckIdentifier::Egg);
+                    const auto hatch = Gen4Hatch::classifyHatchedEgg(
+                        pk.originGame(), pk.eggLocation(), pk.metLocation());
+                    switch (hatch) {
+                        case Gen4Hatch::HatchResult::InvalidKnownOrigin:
+                            add(r, Severity::Invalid,
+                                "Hatch location is not valid for this Generation IV egg origin",
+                                CheckIdentifier::Egg);
+                            break;
+                        case Gen4Hatch::HatchResult::UnknownOrigin:
+                            add(r, Severity::Info,
+                                "PK4 hatch origin game is unknown or unsupported; hatch-location legality remains unresolved",
+                                CheckIdentifier::Egg);
+                            break;
+                        case Gen4Hatch::HatchResult::ValidLinkTrade:
+                            add(r, Severity::Info,
+                                "PK4 traded-egg hatch location is valid in a Generation IV game",
+                                CheckIdentifier::Egg);
+                            break;
+                        case Gen4Hatch::HatchResult::ValidForOrigin:
+                            add(r, Severity::Info,
+                                "PK4 hatch location is valid for its stored Generation IV origin game",
+                                CheckIdentifier::Egg);
+                            break;
+                    }
                 }
             }
 

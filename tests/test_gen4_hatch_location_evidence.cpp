@@ -38,6 +38,13 @@ int main() {
     assert(!isValidForOrigin(235, 12));
     assert(!isValidForOrigin(1, 0));
     assert(!isValidHatchedEgg(0, 2000, 1));
+    assert(classifyHatchedEgg(0,2000,1)==HatchResult::UnknownOrigin);
+    assert(classifyHatchedEgg(255,2000,126)==HatchResult::UnknownOrigin);
+    assert(classifyHatchedEgg(7,2000,126)==HatchResult::ValidForOrigin);
+    assert(classifyHatchedEgg(10,2000,126)==HatchResult::InvalidKnownOrigin);
+    assert(classifyHatchedEgg(10,LinkTrade4,126)==HatchResult::ValidLinkTrade);
+    assert(classifyHatchedEgg(0,LinkTrade4,126)==HatchResult::ValidLinkTrade);
+    assert(classifyHatchedEgg(10,LinkTrade4,999)==HatchResult::InvalidKnownOrigin);
 
     std::cout << "Gen IV hatch-location evidence: PASS\n";
 }

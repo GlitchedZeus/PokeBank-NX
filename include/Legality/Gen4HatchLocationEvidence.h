@@ -70,15 +70,37 @@ constexpr bool isValidAny(uint16_t location) noexcept {
     return hasMask(location, MaskAll);
 }
 
-// PKHeX's Gen IV egg verifier checks the stored origin version for ordinary
-// eggs. A Link Trade egg can hatch in another Gen IV game without changing its
-// stored origin version, so that marker permits any Gen IV hatch location.
+// PKHeX's Gen IV egg verifier checks the stored origin version for
+// ordinary eggs. Link Trade marker 2002 permits hatching in any Gen IV
+// game. Importantly, an UNKNOWN/unwired origin byte cannot prove an
+// impossible hatch location: avoid turning missing source information
+// into hard Invalid merely because its game mask is zero.
+enum class HatchResult : uint8_t {
+    ValidForOrigin, ValidLinkTrade, InvalidKnownOrigin, UnknownOrigin,
+};
+
+constexpr HatchResult classifyHatchedEgg(uint8_t originVersion,
+                                         uint16_t eggLocation,
+                                         uint16_t metLocation) noexcept {
+    if (eggLocation == LinkTrade4)
+        return isValidAny(metLocation)
+            ? HatchResult::ValidLinkTrade
+            : HatchResult::InvalidKnownOrigin;
+    const uint8_t mask = maskForOriginVersion(originVersion);
+    if (mask == 0)
+        return HatchResult::UnknownOrigin;
+    return hasMask(metLocation, mask)
+        ? HatchResult::ValidForOrigin
+        : HatchResult::InvalidKnownOrigin;
+}
+
 constexpr bool isValidHatchedEgg(uint8_t originVersion,
                                  uint16_t eggLocation,
                                  uint16_t metLocation) noexcept {
-    if (eggLocation == LinkTrade4)
-        return isValidAny(metLocation);
-    return isValidForOrigin(metLocation, originVersion);
+    const HatchResult result = classifyHatchedEgg(
+        originVersion, eggLocation, metLocation);
+    return result == HatchResult::ValidForOrigin ||
+           result == HatchResult::ValidLinkTrade;
 }
 
 } // namespace Legality::Gen4Hatch
