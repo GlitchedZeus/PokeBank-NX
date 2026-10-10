@@ -18,6 +18,7 @@ from png_asset_validation import validate_png
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "romfs" / "sprites" / "items"
 NAMES = ROOT / "src" / "Names" / "ItemNames.cpp"
+MANIFEST = ROOT / "tools" / "pinned_item_sprite_names.txt"
 PINNED_REF = "8dfa3d97e953caaafaafd4963eff7621811af08e"
 BASE_URL = f"https://raw.githubusercontent.com/PokeAPI/sprites/{PINNED_REF}/sprites/items"
 REQUIRED_BALLS = (
@@ -40,6 +41,19 @@ def slugify(name: str) -> str:
             if out and out[-1] != "-":
                 out.append("-")
     return "".join(out).strip("-")
+
+
+
+def manifest_names() -> set[str]:
+    """All exact original item art keys pinned to the source tree."""
+    if not MANIFEST.is_file():
+        raise RuntimeError("Missing pinned item sprite manifest")
+    names = {line.strip() for line in MANIFEST.read_text(encoding="utf-8").splitlines()
+             if line.strip() and not line.startswith("#")}
+    if len(names) < 895 or any(not n or n.strip("abcdefghijklmnopqrstuvwxyz0123456789-")
+                               for n in names):
+        raise RuntimeError("Pinned item manifest invalid or unexpectedly incomplete")
+    return names
 
 
 def gen4_names() -> set[str]:
@@ -116,6 +130,7 @@ def main() -> int:
     names = set(REQUIRED_BALLS)
     if not options.required_only:
         names.update(gen4_names())
+        names.update(manifest_names())
     results = {"cached": 0, "fetched": 0, "not-upstream": 0}
     with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
         for result in pool.map(lambda name: fetch(name, options.force), sorted(names)):
