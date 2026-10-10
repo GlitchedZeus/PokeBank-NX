@@ -165,6 +165,11 @@ int main() {
     assert(Held::itemName(218) == "TM27 — Return");
     assert(Held::itemName(219) == "TM28 — Dig");
     assert(Held::itemName(243) == "HM01 — Cut");
+    // The item sprite asset key is the actual TM/HM, not the move display text.
+    assert(Held::spriteName(218) == "TM27");
+    assert(Held::spriteName(219) == "TM28");
+    assert(Held::spriteName(243) == "HM01");
+    assert(Held::spriteName(0) == "None");
     for (int i = 0; i < static_cast<int>(items.size()); ++i) {
         assert(Held::initialIndex(items, items[i]) == i);
         for (int direction : {-1, 1}) {
