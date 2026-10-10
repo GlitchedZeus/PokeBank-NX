@@ -176,10 +176,13 @@ int main() {
             assert(paged >= 0 && paged < static_cast<int>(items.size()));
         }
         texts.clear();
-        UI::Gen2HeldItemPickerPresentation::drawList(fb, 0, 0, 992, items, i);
+        // Render the same accepted Gen III modal geometry used by Gen II-IV.
+        UI::Gen2HeldItemPickerPresentation::drawList(fb, 0, 0, items, i);
         assert(texts.size() <= static_cast<std::size_t>(Held::pageSize));
         for (const auto& text : texts)
-            assert(text.x >= 0 && text.y >= 0 && text.x + text.w <= 992 && text.y + text.h <= 384);
+            assert(text.x >= 0 && text.y >= 0 &&
+                   text.x + text.w <= PokeBank::UIModel::SharedHeldItemPicker::modalWidth &&
+                   text.y + text.h <= PokeBank::UIModel::SharedHeldItemPicker::modalHeight);
         for (std::size_t j = 0; j < texts.size(); ++j)
             for (std::size_t k = j + 1; k < texts.size(); ++k) assert(!intersects(texts[j], texts[k]));
     }
