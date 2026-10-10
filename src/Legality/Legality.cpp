@@ -68,6 +68,7 @@
 #include "Legality/Gen34LanguageEvidence.h"
 #include "Legality/Gen34BallDomainEvidence.h"
 #include "Legality/Gen34FormatDomainEvidence.h"
+#include "Legality/Gen12FormatDomainEvidence.h"
 #include "Legality/Gen4TransferEvidence.h"
 #include "Legality/Gen4ReleaseEvidence.h"
 #include "Legality/Gen4FormEvidence.h"
@@ -1315,15 +1316,22 @@ namespace Legality {
 
         // Storage-format ceilings remain verifiable for source-free PK3/PK4
         // bank records. Do not turn an unrecognized format into Invalid.
+        const uint8_t nativeFormatGen =
+            Gen12FormatDomain::generationFromGroup(pk.getGameGroup()) != 0
+                ? Gen12FormatDomain::generationFromGroup(pk.getGameGroup())
+                : Gen34FormatDomain::generationFromGroup(pk.getGameGroup());
         const uint8_t speciesMoveGen = sourceProfile
-            ? sourceProfile->generation
-            : Gen34FormatDomain::generationFromGroup(pk.getGameGroup());
+            ? sourceProfile->generation : nativeFormatGen;
         const uint16_t speciesMax = sourceProfile
             ? sourceProfile->maxSpecies
-            : Gen34FormatDomain::maxSpecies(speciesMoveGen);
+            : nativeFormatGen<=2
+                ? Gen12FormatDomain::maxSpecies(nativeFormatGen)
+                : Gen34FormatDomain::maxSpecies(nativeFormatGen);
         const uint16_t moveMax = sourceProfile
             ? sourceProfile->maxMove
-            : Gen34FormatDomain::maxMove(speciesMoveGen);
+            : nativeFormatGen<=2
+                ? Gen12FormatDomain::maxMove(nativeFormatGen)
+                : Gen34FormatDomain::maxMove(nativeFormatGen);
         if (speciesMax && species > speciesMax) {
             add(r, Severity::Invalid,
                 "Species " + std::to_string(species) +
