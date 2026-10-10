@@ -91,6 +91,35 @@ std::vector<uint8_t> crystalSave(uint16_t species,uint8_t level,
     checksum(raw);
     return raw;
 }
+// Build an occupied 32-byte stored PK2 record in either Crystal SRAM bank.
+// Unlike party records, boxed PK2 entries have no trailing party stats.
+void putBoxPokemon(std::vector<uint8_t>& raw,size_t box,uint8_t species,
+                   uint8_t level,uint16_t caught) {
+    assert(box<kBoxCount && species>0);
+    const size_t at=box<kBoxesPerBank ? 0x4000+box*kBoxStride :
+                    0x6000+(box-kBoxesPerBank)*kBoxStride;
+    assert(at+kBoxListLength<=raw.size());
+    const size_t body=at+1+(kBoxCapacity+1);
+    raw[at]=1;
+    raw[at+1]=species;
+    raw[at+2]=0xFF; // Logical terminator follows the one stored species.
+    raw[body]=species;
+    raw[body+1]=1;
+    raw[body+2]=33;
+    be16(raw,body+6,0x1234);
+    const uint32_t xp=static_cast<uint32_t>(level)*level*level;
+    raw[body+8]=static_cast<uint8_t>((xp>>16)&0xFF);
+    raw[body+9]=static_cast<uint8_t>((xp>>8)&0xFF);
+    raw[body+10]=static_cast<uint8_t>(xp);
+    raw[body+21]=0x7A;
+    raw[body+22]=0xAA;
+    raw[body+23]=35;
+    raw[body+27]=70;
+    be16(raw,body+29,caught);
+    raw[body+31]=level;
+    putName(raw,body+kBoxCapacity*32,kText,'A');
+    putName(raw,body+kBoxCapacity*32+kBoxCapacity*kText,kText,'B');
+}
 bool hasInfo(const Legality::Report& r,const std::string& fragment) {
     for(const auto& issue:r.issues)
         if(issue.severity==Legality::Severity::Info &&
@@ -127,8 +156,57 @@ Legality::Report analyzeRawSave(uint16_t species,uint8_t level,
     return report;
 }
 }
+void verifyBoxedCrystalReports() {
+    // Populate an occupied box on each physical SRAM bank and the final
+    // box in bank 2, alongside the independent one-member party list.
+    constexpr uint16_t pidgeyCaught=(1u<<14)|(2u<<8)|2u;
+    constexpr uint16_t wrongLocation=(1u<<14)|(2u<<8)|127u;
+    auto raw=crystalSave(16,2,pidgeyCaught);
+    putBoxPokemon(raw,0,17,18,pidgeyCaught);
+    putBoxPokemon(raw,7,18,36,pidgeyCaught);
+    putBoxPokemon(raw,13,18,36,wrongLocation);
+    checksum(raw);
+    const auto original=raw;
+    const auto parsed=parse(raw,SourceGame::Crystal);
+    assert(parsed && parsed.save);
+    assert(parsed.save->metadata().boxCount==kBoxCount);
+    assert(parsed.save->metadata().boxCapacity==kBoxCapacity);
+    assert(parsed.save->party().size()==1);
+    assert(parsed.save->party().front().species==16);
+
+    constexpr auto sourceText=
+        "PK2 caught-data is compatible with a pinned Crystal wild pre-evolution capture";
+    auto verify=[&](size_t box,uint16_t species,uint8_t level,
+                    uint16_t caught,bool expectSource) {
+        assert(box<parsed.save->boxes().size());
+        const auto& slots=parsed.save->boxes()[box].slots;
+        assert(slots.size()==kBoxCapacity);
+        assert(slots[0].has_value());
+        for(size_t n=1;n<slots.size();++n)assert(!slots[n]);
+        const Pokemon::Pokemon2ReadOnly pk(*slots[0]);
+        assert(!pk.isPartyRecord());
+        assert(pk.strictRecord().rawBodySize==32);
+        assert(pk.speciesID()==species);
+        assert(pk.level()==level);
+        assert(pk.caughtData()==caught);
+        auto report=Legality::analyze(
+            pk,Enums::GameVersion::GSC,parsed.save->metadata().sourceGameId);
+        assert(hasInfo(report,sourceText)==expectSource);
+    };
+    verify(0,17,18,pidgeyCaught,true);
+    verify(7,18,36,pidgeyCaught,true);
+    verify(13,18,36,wrongLocation,false);
+
+    // No box or report analysis may mutate source bytes, including
+    // untouched SRAM banks, boxes, the party or the current-box copy.
+    assert(raw==original);
+    assert(parsed.save->sourceBytes().size()==original.size());
+    assert(std::equal(parsed.save->sourceBytes().begin(),
+                      parsed.save->sourceBytes().end(),original.begin()));
+}
 
 int main() {
+    verifyBoxedCrystalReports();
     constexpr auto evolved="PK2 caught-data is compatible with a pinned Crystal wild pre-evolution capture";
     constexpr auto direct="PK2 caught-data location/level/time matches a pinned Crystal wild encounter slot";
     // Actual pinned Crystal Pidgey #16 at location2, level2, daytime.
