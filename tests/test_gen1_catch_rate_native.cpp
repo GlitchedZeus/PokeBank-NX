@@ -39,9 +39,9 @@ int main() {
     // All Yellow Eevee evolutions retain a compatible Eevee rate of 45.
     for(uint16_t s:{134u,135u,136u})
         assert(hasInfo(report(s,45),ancestor));
-    // A Yellow Jolteon cannot have Vaporeon's 27 as a Gen I ancestor.
+    // A synthetic rate 27 is not found anywhere in Eevee's pinned Gen I lineage.
     assert(!hasInfo(report(135,27),ancestor));
-    // A Yellow Flareon cannot have Jolteon's 9 as an ancestor.
+    // Likewise, fabricated 9/3 cannot establish native Gen I lineage.
     assert(!hasInfo(report(136,9),ancestor));
     assert(!hasInfo(report(134,3),ancestor));
     // The current branch remains source-compatible.
