@@ -5,6 +5,7 @@ on:
     branches:
       - audit/full-project-hardening-20260923
       - integration/gen4-polish-hardware-20260928
+      - feature/gen4-full-editor-20260928
     paths:
       - 'include/Integration/Gen4/**'
       - 'src/Integration/Gen4/**'
