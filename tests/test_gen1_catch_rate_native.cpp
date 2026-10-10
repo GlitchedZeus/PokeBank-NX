@@ -36,19 +36,19 @@ bool hasInfo(const Legality::Report& r,const std::string& needle){
 }
 int main() {
     constexpr auto ancestor="species/pre-evolution provenance";
-    // All Yellow Eevee evolutions retain a compatible Eevee rate of 45.
+    constexpr auto native="current species in this exact Generation I game";
+    // The actual pinned Yellow rates for Eevee and ALL three branches
+    // are 45, so a native-evolved specimen receives the NATIVE rate
+    // message, not a distinguishable pre-evolution rate message.
     for(uint16_t s:{134u,135u,136u})
-        assert(hasInfo(report(s,45),ancestor));
-    // A synthetic rate 27 is not found anywhere in Eevee's pinned Gen I lineage.
+        assert(hasInfo(report(s,45),native));
+    // Synthetic rates from outside the real family do not prove
+    // Eevee ancestry; they might still be alternate held-item history.
     assert(!hasInfo(report(135,27),ancestor));
-    // Likewise, fabricated 9/3 cannot establish native Gen I lineage.
     assert(!hasInfo(report(136,9),ancestor));
     assert(!hasInfo(report(134,3),ancestor));
-    // The current branch remains source-compatible.
-    assert(hasInfo(report(135,9),ancestor) ||
-           hasInfo(report(135,9),"current species in this exact"));
-    assert(hasInfo(report(136,3),ancestor) ||
-           hasInfo(report(136,3),"current species in this exact"));
+    assert(!hasInfo(report(135,9),native));
+    assert(!hasInfo(report(136,3),native));
     // No hard Invalid: Gen II held items, alternative trades and event
     // histories cannot be excluded based on this byte alone.
     // The absence of this specific positive lineage is not an Invalid
