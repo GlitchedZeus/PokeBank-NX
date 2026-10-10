@@ -2004,7 +2004,14 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         {"Origin", Enums::getOriginGameName(raw->originVersion())},
         {"Language", Enums::getLanguageName(raw->language())},
         {"Ball", Enums::getBallName(view.ball())},
-        {"Met", "ID " + std::to_string(view.metLocation()) + " / Lv. " + std::to_string(raw->metLevel())},
+        {"Met", [&] {
+            const uint16_t location = view.metLocation();
+            const char* sourceName = Names::getMetLocationName(raw->originVersion(), location);
+            const std::string label = location == 0 ? "(not recorded)"
+                : (sourceName && sourceName[0]) ? std::string(sourceName)
+                : "Unknown (ID " + std::to_string(location) + ")";
+            return label + " / Lv. " + std::to_string(raw->metLevel());
+        }()},
         {"Source", "IMMUTABLE"},
         {"Create", state.session.creating() ? "New stored PK4 draft" : "Available in empty PC slots"}
     };
