@@ -90,6 +90,8 @@ int main() {
     const auto boxPanel = read("src/UI/Panels/BoxPokemonPanel.cpp");
     const auto gen3Picker = read("src/UI/Gen3SharedPokemonSurface.inc");
     const auto gen2Held = read("include/UI/Gen2HeldItemPicker.h");
+    const auto gen2Editor = read("src/UI/Gen2PokemonEditorFoundation.inc");
+    const auto sharedHeld = read("include/UI/SharedHeldItemPickerPresentation.h");
     const auto gen1Move = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc");
     const auto gen2Move = read("src/UI/Gen2HardwarePickerFix.inc");
     const auto movePickerModel = read("include/UI/MovePickerPresentation.h");
@@ -285,7 +287,7 @@ int main() {
 
     // Gen IV picker/action chrome follows the accepted shared layout instead of the cramped G4-04 prototype.
     contains(surface, "HeldItemGrid::move");
-    contains(surface, "const int w = heldItems ? 1040");
+    contains(surface, "const int w = heldItems ? HeldItemGrid::modalWidth");
     contains(surface, "constexpr auto moveLayout = MoveUI::compactPickerLayout()");
     contains(surface, "movePicker ? moveLayout.width");
     contains(surface, "movePicker ? moveLayout.height");
@@ -312,11 +314,22 @@ int main() {
     contains(surface, "Colors::Text, TextStyle::Body");
     // Item pictures must be actual per-ball/item PNGs and part of reproducible
     // ROMFS recovery, not a generic placeholder drawn for every choice.
-    contains(surface, "ItemPickerArtwork::draw(fb, cellX + cellWidth");
+    // All Held Item generations now use one exact Gen III grid renderer.
+    contains(sharedHeld, "ItemPickerArtwork::draw(fb, cellX + cellWidth - 24");
+    contains(sharedHeld, "fb.drawSelectionHighlight(cellX, cellY - 3");
+    contains(sharedHeld, "fb.drawText(cellX + 10, cellY + 7");
+    contains(gen2Held, "SharedHeldItemPickerPresentation::drawGrid(");
+    contains(gen2Editor, "SharedHeldItemPickerPresentation::drawHeading(");
+    contains(gen2Editor, "Gen2HeldItemPickerPresentation::drawList(fb, x, y");
+    contains(gen2Editor, "const int y = (H - kNavBarH - h) / 2");
+    contains(gen3Picker, "SharedHeldItemPickerPresentation::drawGrid(");
+    contains(gen3Picker, "SharedHeldItemPickerPresentation::drawHeading(");
+    contains(surface, "SharedHeldItemPickerPresentation::drawGrid(");
+    contains(surface, "SharedHeldItemPickerPresentation::drawHeading(");
     contains(surface, "ItemPickerArtwork::draw(fb, x + w - 35");
-    contains(gen3Picker, "ItemPickerArtwork::draw(fb, cellX + cellWidth");
     contains(gen3Picker, "ItemPickerArtwork::draw(fb, x + w - 35");
-    contains(gen2Held, "ItemPickerArtwork::draw(fb");
+    contains(gen2Editor, "\"A\", \"Choose\"");
+    contains(sharedHeld, "if (value != 0)");
     contains(itemArtwork, "SpriteManager::getItemSprite(exactName)");
     contains(spriteRuntime, "sprites/items/");
     contains(spriteGenerator, "REQUIRED_BALLS");
