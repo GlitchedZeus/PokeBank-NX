@@ -91,7 +91,7 @@ struct InventoryPickerLayout {
 
     [[nodiscard]] static constexpr InventoryPickerViewport viewport(
         int screenW, int screenH) noexcept {
-        const int panelY = VerticalMargin;
+        const int panelY = (screenH - 46 - Height) / 2;
         const int panelH = Height;
         const int panelX = (screenW - Width) / 2;
         const int listY = panelY + ClassicListTopOffset;
