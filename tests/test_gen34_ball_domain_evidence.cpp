@@ -1,4 +1,5 @@
 #include "Legality/Gen34BallDomainEvidence.h"
+#include "Legality/Gen34FormatDomainEvidence.h"
 
 #include <cassert>
 #include <iostream>
@@ -35,6 +36,18 @@ int main() {
     assert(Legality::Gen34BallDomain::isInvalid(4, 25));
     assert(!Legality::Gen34BallDomain::isInvalid(3, 12));
     assert(!Legality::Gen34BallDomain::isInvalid(4, 24));
+
+    // No exact container is required to identify a trusted native
+    // storage format, but a genuinely unknown group must stay unresolved.
+    namespace F = Legality::Gen34FormatDomain;
+    static_assert(F::generationFromGroup(Enums::GameVersion::FRLG)==3);
+    static_assert(F::generationFromGroup(Enums::GameVersion::DP)==4);
+    static_assert(F::generationFromGroup(Enums::GameVersion::PT)==4);
+    static_assert(F::generationFromGroup(Enums::GameVersion::HGSS)==4);
+    static_assert(F::generationFromGroup(Enums::GameVersion::RBY)==0);
+    static_assert(F::generationFromGroup(Enums::GameVersion::GSC)==0);
+    static_assert(F::generationFromGroup(Enums::GameVersion::Invalid)==0);
+    static_assert(F::generationFromGroup(Enums::GameVersion::SWSH)==0);
 
     std::cout << "Gen III-IV ball domain evidence tests passed\n";
     return 0;

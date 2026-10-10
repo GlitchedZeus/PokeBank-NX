@@ -251,15 +251,25 @@ int main() {
     const auto g4Zero = analyzeGen4Ball(0);
     assert(!hasText(g4Zero, "Ball id 0 cannot exist in Generation 4"));
 
-    // Without exact source identity, retain the historical generic fallback rather
-    // than inferring a generation from the concrete view class.
+    // Without an exact game source, the immutable encrypted PK4 format
+    // still proves the Generation IV Ball maximum; this does NOT prove
+    // any particular encounter/ball provenance.
+    const auto generic24 = analyzeGen4Ball(24, false);
+    assert(!hasText(generic24,"Ball id 24 cannot exist in Generation 4"));
     const auto generic25 = analyzeGen4Ball(25, false);
-    assert(!hasText(generic25, "cannot exist in Generation 4"));
-    assert(!hasText(generic25, "Ball id out of range"));
+    assert(hasText(generic25,"Ball id 25 cannot exist in Generation 4"));
+    assert(generic25.hasInvalid());
 
     const auto generic38 = analyzeGen4Ball(38, false);
-    assert(hasText(generic38, "Ball id out of range (38)"));
+    assert(hasText(generic38, "Ball id 38 cannot exist in Generation 4"));
     assert(generic38.hasInvalid());
+    const auto genericPk3Good=Legality::analyze(
+        gen3WithBall(12), Enums::GameVersion::FRLG);
+    assert(!hasText(genericPk3Good,"Ball id 12 cannot exist in Generation 3"));
+    const auto genericPk3Bad=Legality::analyze(
+        gen3WithBall(13), Enums::GameVersion::FRLG);
+    assert(hasText(genericPk3Bad,"Ball id 13 cannot exist in Generation 3"));
+    assert(genericPk3Bad.hasInvalid());
 
     // Real encrypted native HGSS PK4, not a synthetic PK3 interface.
     // These checks exercise the production source/provenance report path,

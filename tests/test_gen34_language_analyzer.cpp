@@ -61,7 +61,7 @@ void put32(std::vector<std::byte>& data, size_t offset, uint32_t value) {
 
 // Source-backed encrypted PK4 -> immutable reader -> shared view -> analyzer.
 // A PK3 fixture with exact Gen IV source context alone cannot prove PK4 decoding.
-Legality::Report analyzeNativePK4Language(uint8_t language) {
+Legality::Report analyzeNativePK4Language(uint8_t language, bool exactSource=true) {
     std::vector<std::byte> decrypted(Encryption::SIZE_STORED4, std::byte{0});
     put32(decrypted, 0x00, 0x12345678u);
     put16(decrypted, 0x08, 1);       // Bulbasaur
@@ -79,7 +79,9 @@ Legality::Report analyzeNativePK4Language(uint8_t language) {
     assert(source.language() == language);
     Pokemon::Pokemon4ReadOnlyView view(source);
     assert(view.language() == language);
-    return Legality::analyze(view, Enums::GameVersion::PT, "platinum_nds");
+    return exactSource
+        ? Legality::analyze(view, Enums::GameVersion::PT, "platinum_nds")
+        : Legality::analyze(view, Enums::GameVersion::PT);
 }
 }
 
@@ -123,15 +125,20 @@ int main() {
     assert(!hasText(platinumUnknown, "Language id 0 cannot exist"));
     assert(!hasText(platinumUnknown, "Invalid language id (0)"));
 
-    // No exact source keeps the historical generic-format behavior: 8 is not generically
-    // rejected, while unused language id 6 still is.
+    // Source-free PK3 remains format-known: the Generation III language
+    // maximum and unused ID 6 are provable without knowing the source game.
     auto genericEight = makeCandidate(8);
     const auto bankEight = Legality::analyze(genericEight, Enums::GameVersion::FRLG);
-    assert(!hasText(bankEight, "Invalid language id (8)"));
+    assert(hasText(bankEight, "Language id 8 cannot exist in Generation 3"));
+    assert(bankEight.hasInvalid());
 
     auto genericUnused = makeCandidate(6);
     const auto bankUnused = Legality::analyze(genericUnused, Enums::GameVersion::FRLG);
-    assert(hasText(bankUnused, "Invalid language id (6)"));
+    assert(hasText(bankUnused, "Language id 6 cannot exist in Generation 3"));
+    assert(bankUnused.hasInvalid());
+    auto genericSeven = makeCandidate(7);
+    const auto bankSeven = Legality::analyze(genericSeven, Enums::GameVersion::FRLG);
+    assert(!hasText(bankSeven,"Language id 7 cannot exist in Generation 3"));
 
 
     // Pinned PKHeX LanguageVerifier rejects unused 6; Legal.GetMaxLanguageID
@@ -146,6 +153,13 @@ int main() {
     const auto nativeTooHigh = analyzeNativePK4Language(9);
     assert(nativeTooHigh.hasInvalid());
     assert(hasText(nativeTooHigh, "Language id 9 cannot exist in Generation 4"));
+
+    // Native encrypted PK4, with no exact source save ID, still has
+    // independently verified Generation IV language domain evidence.
+    assert(hasText(analyzeNativePK4Language(9,false),
+                   "Language id 9 cannot exist in Generation 4"));
+    assert(!hasText(analyzeNativePK4Language(8,false),
+                    "Language id 8 cannot exist in Generation 4"));
 
     // Value zero is an unresolved/unwired sentinel, not hard-invalid.
     const auto nativeUnwired = analyzeNativePK4Language(0);

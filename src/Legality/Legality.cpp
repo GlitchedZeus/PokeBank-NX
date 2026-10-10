@@ -67,6 +67,7 @@
 #include "Legality/Gen34EggMoveEvidence.h"
 #include "Legality/Gen34LanguageEvidence.h"
 #include "Legality/Gen34BallDomainEvidence.h"
+#include "Legality/Gen34FormatDomainEvidence.h"
 #include "Legality/Gen4TransferEvidence.h"
 #include "Legality/Gen4ReleaseEvidence.h"
 #include "Legality/Gen4FormEvidence.h"
@@ -1472,35 +1473,45 @@ namespace Legality {
                 add(r, Severity::Warning, "Unknown held item id " + std::to_string(pk.heldItem()));
         }
 
-        // ---- L1: ball / language ranges (skip when unwired == 0) ----
+        // ---- L1: format-proven ball / language domains ----
+        // A known exact source wins; otherwise an immutable native PK3/PK4
+        // format still proves generation-wide limits without asserting any
+        // specific encounter history. Unknown source AND unknown format
+        // cannot support hard Invalid; preserve it as unresolved.
+        const uint8_t domainGeneration =
+            sourceProfile && (exactGeneration == 3 || exactGeneration == 4)
+                ? exactGeneration
+                : (!sourceProfile
+                       ? Gen34FormatDomain::generationFromGroup(pk.getGameGroup())
+                       : 0);
         const uint8_t ball = pk.ball();
-        if (sourceProfile && (exactGeneration == 3 || exactGeneration == 4)) {
-            if (Gen34BallDomain::isInvalid(exactGeneration, ball)) {
+        if (domainGeneration != 0) {
+            if (Gen34BallDomain::isInvalid(domainGeneration, ball)) {
                 add(r, Severity::Invalid,
                     "Ball id " + std::to_string(ball) +
-                    " cannot exist in Generation " + std::to_string(exactGeneration),
+                    " cannot exist in Generation " + std::to_string(domainGeneration),
                     CheckIdentifier::Items);
             }
         } else if (ball != 0 && ball > 37) {
-            // Preserve the historical generic-format fallback where exact source identity
-            // is unavailable. Zero remains the project's unwired/unknown sentinel.
-            add(r, Severity::Invalid,
-                "Ball id out of range (" + std::to_string(ball) + ")");
+            add(r, Severity::Info,
+                "Ball id " + std::to_string(ball) +
+                " cannot be classified without a verified Gen III/IV format or exact source game",
+                CheckIdentifier::Items);
         }
 
         const uint8_t language = pk.language();
-        if (sourceProfile && (exactGeneration == 3 || exactGeneration == 4)) {
-            if (Gen34Language::isInvalid(exactGeneration, language)) {
+        if (domainGeneration != 0) {
+            if (Gen34Language::isInvalid(domainGeneration, language)) {
                 add(r, Severity::Invalid,
                     "Language id " + std::to_string(language) +
-                    " cannot exist in Generation " + std::to_string(exactGeneration),
+                    " cannot exist in Generation " + std::to_string(domainGeneration),
                     CheckIdentifier::Trainer);
             }
         } else if (language != 0 && (language > 10 || language == 6)) {
-            // Preserve the historical generic-format fallback where exact source identity
-            // is unavailable. Zero remains the project's unwired/unknown sentinel.
-            add(r, Severity::Invalid,
-                "Invalid language id (" + std::to_string(language) + ")");
+            add(r, Severity::Info,
+                "Language id " + std::to_string(language) +
+                " cannot be classified without a verified Gen III/IV format or exact source game",
+                CheckIdentifier::Trainer);
         }
 
         // ---- L2: level <-> EXP (EXP-derived level is authoritative; box mons read level() == 0) ----
