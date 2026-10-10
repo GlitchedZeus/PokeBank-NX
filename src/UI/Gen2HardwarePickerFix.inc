@@ -80,18 +80,32 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
 
     const auto choices = hardwareCompatibleMoveChoices(screen, state);
     const int count = static_cast<int>(choices.size());
-    constexpr int visible = layout.visibleRows;
+    constexpr int visible = kHardwareMovePickerLayout.visibleRows;
     const int selectedPos = hardwareMoveChoicePosition(choices, model.moveChoice());
-    const int first = std::clamp(selectedPos - visible / 2, 0, std::max(0, count - visible));
-    const int last = std::min(count, first + visible);
-    for (int i = first; i < last; ++i) {
-        const int yy = y + layout.rowStart + (i - first) * layout.rowStep;
+    const int viewportTop = y + kHardwareMovePickerLayout.rowStart;
+    const int viewportH = visible * kHardwareMovePickerLayout.rowStep;
+    auto& overlay = pickerStateFor(screen);
+    overlay.moveViewport.ensure(selectedPos, count, visible);
+    const int first = overlay.moveViewport.firstRow;
+    const int liveOffset = overlay.moveScroll.offset();
+    const int drawFirst = std::max(0, first - 1);
+    const int drawLast = std::min(count, first + visible + 1);
+    screen.touchButtons.clear();
+    fb.setClipRect(x + 24, viewportTop, panelW - 48, viewportH);
+    for (int i = drawFirst; i < drawLast; ++i) {
+        const int yy = viewportTop + (i - first) * kHardwareMovePickerLayout.rowStep + liveOffset;
         const uint16_t move = choices[static_cast<std::size_t>(i)];
         const bool selected = i == selectedPos;
+        appendClippedTouchButton(
+            screen.touchButtons, 2100 + i, x + 24, yy,
+            panelW - 48, kHardwareMovePickerLayout.highlightHeight,
+            x + 24, viewportTop, panelW - 48, viewportH);
         if (selected)
-            fb.drawSelectionHighlight(x + 24, yy, panelW - 48, layout.highlightHeight);
+            fb.drawSelectionHighlight(x + 24, yy, panelW - 48,
+                                      kHardwareMovePickerLayout.highlightHeight);
         MovePickerRowUI::draw(fb,x+40,yy+4,move,Enums::GameVersion::GSC);
     }
+    fb.clearClip();
     drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
                     {"A", "Select"}, {"B", "Cancel"}});
 }
