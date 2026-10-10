@@ -281,10 +281,14 @@ int main() {
     assert(pickerFix.find("hardwareMoveAllowed") != std::string::npos);
     assert(pickerFix.find("MoveCompatibility::canLearnMove") != std::string::npos);
     assert(pickerFix.find("choices.push_back(0)") != std::string::npos);
-    assert(pickerFix.find("constexpr auto layout = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout()") != std::string::npos);
-    assert(pickerFix.find("constexpr int panelW = layout.width, panelH = layout.height") != std::string::npos);
-    assert(pickerFix.find("constexpr int visible = layout.visibleRows") != std::string::npos);
-    assert(pickerFix.find("layout.rowStep") != std::string::npos);
+    assert(pickerFix.find("kHardwareMovePickerLayout =") != std::string::npos);
+    assert(pickerFix.find("MovePickerPresentation::compactPickerLayout()") != std::string::npos);
+    assert(pickerFix.find("panelW = kHardwareMovePickerLayout.width") != std::string::npos);
+    assert(pickerFix.find("panelH = kHardwareMovePickerLayout.height") != std::string::npos);
+    assert(pickerFix.find("visible = kHardwareMovePickerLayout.visibleRows") != std::string::npos);
+    assert(pickerFix.find("kHardwareMovePickerLayout.rowStep") != std::string::npos);
+    assert(pickerFix.find("const int first = overlay.moveViewport.firstRow;") != std::string::npos);
+    assert(pickerFix.find("const int liveOffset = overlay.moveScroll.offset();") != std::string::npos);
     // The shared Gen I-IV row renderer now owns emphasized move typography,
     // fixed Acc/Pwr/PP columns, and separators (not the Gen II overlay).
     assert(pickerFix.find("MovePickerRowUI::draw(fb") != std::string::npos);
