@@ -168,6 +168,18 @@ int main() {
     assert(!hasInfo(analyzeRawSave(157, 36, starterGift, true), starterText));
     assert(!hasInfo(analyzeRawSave(160, 30, (1u << 14) | (5u << 8) | 2u), starterText));
 
+    // Source-pinned Crystal Dragon's Den Dratini gift (#147): level 15,
+    // location 42; valid Dragonair and Dragonite retain that caught-data.
+    constexpr uint16_t dratiniGift = (1u << 14) | (15u << 8) | 42u;
+    constexpr auto dratiniText = "PK2 caught-data is compatible with Crystal's pinned level-15 Dratini gift ancestor";
+    assert(hasInfo(analyzeRawSave(148,30,dratiniGift),dratiniText));
+    assert(hasInfo(analyzeRawSave(149,55,dratiniGift),dratiniText));
+    assert(!hasInfo(analyzeRawSave(148,29,dratiniGift),dratiniText));
+    assert(!hasInfo(analyzeRawSave(149,54,dratiniGift),dratiniText));
+    assert(!hasInfo(analyzeRawSave(149,55,dratiniGift,true),dratiniText));
+    assert(!hasInfo(analyzeRawSave(149,55,(1u << 14)|(15u << 8)|41u),dratiniText));
+    assert(!hasInfo(analyzeRawSave(149,55,(1u << 14)|(16u << 8)|42u),dratiniText));
+
     // Actual pinned Crystal Sentret #161, location2, level2/daytime.
     constexpr uint16_t sentret=(1u<<14)|(2u<<8)|2u;
     assert(hasInfo(analyzeRawSave(162,15,sentret),evolved));

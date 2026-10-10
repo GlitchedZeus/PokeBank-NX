@@ -248,3 +248,21 @@ $(HOST_BUILD)/test_gen2_crystal_starter_gift: $(GSC_CRYSTAL_STARTER_GIFT_SOURCES
 $(HOST_BUILD)/test_gen2_crystal_starter_gift_sanitize: $(GSC_CRYSTAL_STARTER_GIFT_SOURCES) $(GSC_CRYSTAL_STARTER_GIFT_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_CRYSTAL_STARTER_GIFT_SOURCES) -o $@
+
+# Crystal Dragon's Den level-15 Dratini gift via preserved evolution history.
+GSC_CRYSTAL_DRATINI_GIFT_SOURCES := tests/test_gen2_crystal_dratini_gift.cpp
+GSC_CRYSTAL_DRATINI_GIFT_HEADERS := include/Legality/Gen2CrystalDratiniGiftEvidence.h \
+	include/Legality/Gen2StaticEncounter.h \
+	include/Legality/Gen2StaticEncounterData.inc
+HOST_TESTS += $(HOST_BUILD)/test_gen2_crystal_dratini_gift
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_crystal_dratini_gift_sanitize
+host-test: $(HOST_BUILD)/test_gen2_crystal_dratini_gift
+host-sanitize: $(HOST_BUILD)/test_gen2_crystal_dratini_gift_sanitize
+
+$(HOST_BUILD)/test_gen2_crystal_dratini_gift: $(GSC_CRYSTAL_DRATINI_GIFT_SOURCES) $(GSC_CRYSTAL_DRATINI_GIFT_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GSC_CRYSTAL_DRATINI_GIFT_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen2_crystal_dratini_gift_sanitize: $(GSC_CRYSTAL_DRATINI_GIFT_SOURCES) $(GSC_CRYSTAL_DRATINI_GIFT_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_CRYSTAL_DRATINI_GIFT_SOURCES) -o $@

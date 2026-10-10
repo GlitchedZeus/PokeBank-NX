@@ -24,6 +24,7 @@
 #include "Legality/Gen2StaticEncounter.h"
 #include "Legality/Gen2CrystalEeveeGiftEvidence.h"
 #include "Legality/Gen2CrystalStarterGiftEvidence.h"
+#include "Legality/Gen2CrystalDratiniGiftEvidence.h"
 #include "Legality/Gen2TradeEvidence.h"
 #include "Legality/Gen2WildEncounter.h"
 #include "Legality/Gen2CrystalEvolvedWildEvidence.h"
@@ -692,6 +693,18 @@ namespace Legality {
                 Gen2CrystalStarterGift::Ancestor::None) {
                 add(r, Severity::Info,
                     "PK2 caught-data is compatible with a pinned Crystal level-5 starter gift ancestor followed by evolution; trade and alternative history remain incomplete",
+                    CheckIdentifier::Encounter);
+            }
+
+            // Compatible Dragon's Den Dratini gift ancestor, not a proof
+            // of actual capture, trainer identity or subsequent transfer.
+            if (Gen2CrystalDratiniGift::analyze(
+                    exactSourceGameId, gen2.speciesID(), gen2.level(),
+                    gen2.caughtData(), gen2.isEgg(),
+                    gen2.isShiny(gen2.id32(), {})) !=
+                Gen2CrystalDratiniGift::Evidence::Unresolved) {
+                add(r, Severity::Info,
+                    "PK2 caught-data is compatible with Crystal's pinned level-15 Dratini gift ancestor and later level-up evolution; other provenance remains incomplete",
                     CheckIdentifier::Encounter);
             }
 
