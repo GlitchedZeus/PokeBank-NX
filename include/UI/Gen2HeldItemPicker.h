@@ -1,6 +1,7 @@
 #pragma once
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "UI/SharedHeldItemPicker.h"
+#include "UI/SharedHeldItemPickerPresentation.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ItemPickerArtwork.h"
 #include "UI/Common.h"
@@ -25,26 +26,13 @@ inline std::string itemName(uint8_t item) {
 }
 
 namespace UI::Gen2HeldItemPickerPresentation {
-inline void drawList(PKSEFramebuffer& fb, int x, int y, int width,
+inline void drawList(PKSEFramebuffer& fb, int panelX, int panelY,
                      const std::vector<uint8_t>& items, int selected) {
     namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
-    const int first = selected / Model::pageSize * Model::pageSize;
-    const int last = std::min(static_cast<int>(items.size()), first + Model::pageSize);
-    const int cellWidth = width / Model::columns;
-    for (int i = first; i < last; ++i) {
-        const int cellX = x + (i - first) % Model::columns * cellWidth;
-        const int cellY = y + (i - first) / Model::columns * 32;
-        const bool focused = i == selected;
-        if (focused) {
-            fb.drawFilledRoundedRect(cellX, cellY, cellWidth - 12, 30, 6, Colors::SurfaceSelected);
-            fb.drawRoundedRect(cellX, cellY, cellWidth - 12, 30, 6, Colors::FocusBorder, 2);
-        }
-        const auto rawItem=items[static_cast<std::size_t>(i)];
-        fb.drawText(cellX + 10, cellY + 6, Model::itemName(rawItem),
-                    Colors::Text, TextStyle::Caption);
-        if(rawItem!=0)
-            ItemPickerArtwork::draw(fb, cellX + cellWidth - 24, cellY + 2,
-                                    26, Model::itemName(rawItem));
-    }
+    // True Gen II item IDs and display names; shared Gen III grid geometry.
+    SharedHeldItemPickerPresentation::drawGrid(
+        fb, panelX, panelY, items, selected,
+        [](uint8_t item) { return Model::itemName(item); },
+        [](uint8_t item) { return Model::itemName(item); });
 }
 }
