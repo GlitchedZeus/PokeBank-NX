@@ -28,29 +28,28 @@ int main() {
     assert(matchesGen1SpeciesOrPreEvolutionRate(12, 255));
     assert(classify("red_gb", 12, 255) == Evidence::Gen1SpeciesOrPreEvolutionRate);
 
-    // Branched Eevee evolutions are graph edges, NOT adjacent species IDs.
-    // Pinned Yellow source rates: Eevee 45, Vaporeon 27, Jolteon 9,
-    // Flareon 3. Jolteon/Flareon may retain Eevee's original 45,
-    // but cannot inherit the rate of their mutually exclusive siblings.
-    static_assert(expectedRate("yellow_gb", 133) == 45);
-    static_assert(expectedRate("yellow_gb", 134) == 27);
-    static_assert(expectedRate("yellow_gb", 135) == 9);
-    static_assert(expectedRate("yellow_gb", 136) == 3);
-    for (uint16_t target : {134u, 135u, 136u}) {
-        assert(matchesGen1SpeciesOrPreEvolutionRate(target, 45));
+    // Source-backed graph regression: Eevee evolves into THREE siblings,
+    // not a numerically contiguous path through Vaporeon/Jolteon.
+    // The pinned Gen I personal tables actually give ALL of these
+    // species catch rate 45, so the catch-rate byte alone CANNOT
+    // distinguish a sibling branch. Do not invent rates 27/9/3 here.
+    static_assert(originalGen1Ancestor(133) == 133);
+    static_assert(originalGen1Ancestor(134) == 133);
+    static_assert(originalGen1Ancestor(135) == 133);
+    static_assert(originalGen1Ancestor(136) == 133);
+    for (uint16_t target : {133u,134u,135u,136u}) {
+        assert(expectedRate("red_gb",target)==45);
+        assert(expectedRate("yellow_gb",target)==45);
+        assert(matchesGen1SpeciesOrPreEvolutionRate(target,45));
     }
-    assert(matchesGen1SpeciesOrPreEvolutionRate(134, 27));
-    assert(matchesGen1SpeciesOrPreEvolutionRate(135, 9));
-    assert(matchesGen1SpeciesOrPreEvolutionRate(136, 3));
-    assert(!matchesGen1SpeciesOrPreEvolutionRate(134, 9));
-    assert(!matchesGen1SpeciesOrPreEvolutionRate(134, 3));
-    assert(!matchesGen1SpeciesOrPreEvolutionRate(135, 27));
-    assert(!matchesGen1SpeciesOrPreEvolutionRate(135, 3));
-    assert(!matchesGen1SpeciesOrPreEvolutionRate(136, 27));
-    assert(!matchesGen1SpeciesOrPreEvolutionRate(136, 9));
-    // Independent linear families must retain their genuine chains.
-    assert(matchesGen1SpeciesOrPreEvolutionRate(12, 255));
-    assert(matchesGen1SpeciesOrPreEvolutionRate(26, 190));
+    assert(!matchesGen1SpeciesOrPreEvolutionRate(134,27));
+    assert(!matchesGen1SpeciesOrPreEvolutionRate(135,9));
+    assert(!matchesGen1SpeciesOrPreEvolutionRate(136,3));
+    // An unrelated linear family continues to resolve correctly.
+    assert(originalGen1Ancestor(12)==10);
+    assert(matchesGen1SpeciesOrPreEvolutionRate(12,255));
+    assert(originalGen1Ancestor(26)==25);
+    assert(matchesGen1SpeciesOrPreEvolutionRate(26,190));
 
     // Yellow Pikachu's 0xA3 catch-rate byte is also a valid Gen II held-item byte.
     // The byte alone therefore cannot prove whether the Pokemon visited Gen II.
