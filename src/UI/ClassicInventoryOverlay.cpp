@@ -16,6 +16,7 @@
 #include "UI/TrainerViewScreen.h"
 #include "UI/TouchInput.h"
 #include "UI/TouchScroll.h"
+#include "UI/ItemPickerArtwork.h"
 #include "Utils/FileUtilities.h"
 #include "Utils/Keyboard.h"
 #include "Utils/PokeBankPaths.h"
@@ -933,9 +934,14 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         for (int i = drawFirst; i < drawLast; ++i) {
             const int rowY = listTop + (i - start) * rowH + liveOffset;
             const uint16_t itemId = state.pickerItems[static_cast<std::size_t>(i)];
-            std::string label = PokeVault::Inventory::displayItemName(*game, *pocket, itemId);
+            const std::string artName = PokeVault::Inventory::displayItemName(*game, *pocket, itemId);
+            std::string label = artName;
             if (stagedQuantity(screen, *pocket, itemId) != 0) label += "  (Already in pouch)";
             drawRow(fb, x + 12, rowY, width - 24, label, i == state.pickerRow, rowH - 4, true);
+            // Render the real pinned sprite after the row background; the artwork
+            // key must not include our UI-only "(Already in pouch)" suffix.
+            // Numbered native machines fall back to a neutral disc.
+            ItemPickerArtwork::draw(fb, x + width - 35, rowY + 4, 30, artName);
             if (rowY + rowH > listTop && rowY < listBottom)
                 appendClippedTouchButton(screen.touchButtons, i,
                     x + 12, rowY, width - 24, rowH - 4,
