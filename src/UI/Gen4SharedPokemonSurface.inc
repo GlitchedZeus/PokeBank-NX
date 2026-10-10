@@ -1260,7 +1260,7 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
         }
         if (down & HidNpadButton_Y) {
             state.session.discardDraft();
-            screen.postStatus("Generation IV Edit session discarded; staged/source bytes unchanged", 300);
+            screen.postStatus("Gen IV draft cancelled; original source remains unchanged", 120);
             return true;
         }
         if (down & HidNpadButton_B) {
