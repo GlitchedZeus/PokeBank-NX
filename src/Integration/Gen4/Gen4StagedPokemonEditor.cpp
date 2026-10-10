@@ -514,15 +514,20 @@ bool Gen4StagedPokemonEditor::stageMoveBoxPokemon(
     }
     const auto& moved = parsedAfter->box(destinationBox, destinationSlot);
     const auto& replaced = parsedAfter->box(sourceBox, sourceSlot);
-    const auto expectedMoved = source.originalEncryptedBytes();
-    const auto expectedReplaced = destination.originalEncryptedBytes();
+    // Validate the complete native 0x88-byte records against the backup,
+    // including empty slots whose read-only wrapper may not expose a
+    // nonempty encrypted-record span. Never infer an empty PK4 from its ID.
+    const bool identicalDestination = std::equal(
+        staged_.begin() + static_cast<std::ptrdiff_t>(*to),
+        staged_.begin() + static_cast<std::ptrdiff_t>(*to + recordSize),
+        backup.begin() + static_cast<std::ptrdiff_t>(*from));
+    const bool identicalSource = std::equal(
+        staged_.begin() + static_cast<std::ptrdiff_t>(*from),
+        staged_.begin() + static_cast<std::ptrdiff_t>(*from + recordSize),
+        backup.begin() + static_cast<std::ptrdiff_t>(*to));
     if (!moved.valid() || moved.empty() || !replaced.valid() ||
         replaced.empty() != destination.empty() ||
-        expectedMoved.size() != recordSize || expectedReplaced.size() != recordSize ||
-        !std::equal(moved.originalEncryptedBytes().begin(),
-                    moved.originalEncryptedBytes().end(), expectedMoved.begin()) ||
-        !std::equal(replaced.originalEncryptedBytes().begin(),
-                    replaced.originalEncryptedBytes().end(), expectedReplaced.begin())) {
+        !identicalDestination || !identicalSource) {
         staged_ = backup;
         setError(error, "Gen IV Move/swap failed native PK4 read-back verification");
         return false;
