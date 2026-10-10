@@ -18,6 +18,14 @@ int main() {
     static_assert(HeldItems::columns == 4);
     static_assert(HeldItems::rows == 10);
     static_assert(HeldItems::pageSize == 40);
+    static_assert(HeldItems::modalWidth == 1040);
+    static_assert(HeldItems::modalHeight == 520);
+    static_assert(HeldItems::gridInsetX == 22);
+    static_assert(HeldItems::gridInsetY == 90);
+    static_assert(HeldItems::rowPitch == 40);
+    static_assert(HeldItems::cellWidth == 249);
+    static_assert(HeldItems::gridInsetY + (HeldItems::rows - 1) * HeldItems::rowPitch +
+                  HeldItems::rowPitch - 4 <= HeldItems::modalHeight);
     static_assert(HeldItems::futureGenerationsUseSharedGrid());
     static_assert(HeldItems::move(0, 240, 1, 0) == 1);
     static_assert(HeldItems::move(0, 240, 0, 1) == 4);
