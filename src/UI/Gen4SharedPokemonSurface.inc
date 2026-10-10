@@ -58,7 +58,7 @@ enum class PickerTarget : uint8_t {
 enum class TargetKind : uint8_t { Box, Party };
 
 enum class MenuAction : uint8_t {
-    View, AddMasterVault, AddBank, TransferGame, Edit, Clone, MakeShiny,
+    View, AddMasterVault, AddBank, TransferGame, Edit, MovePokemon, Clone, MakeShiny,
     Legality, Release, Add, Review, Close
 };
 struct MenuActionEntry {
@@ -76,6 +76,9 @@ struct State {
     const TrainerViewScreen* owner = nullptr;
     bool actions = false;
     bool review = false;
+    bool moveActive = false;
+    int moveSourceBox = 0;
+    int moveSourceSlot = 0;
     bool legality = false;
     bool confirmRelease = false;
     bool speciesPreviewShiny = false;
@@ -151,7 +154,7 @@ bool workspaceActive(const State& state) noexcept {
 bool ownsFrameImpl(const TrainerViewScreen& screen) noexcept {
     if (!isGen4Nds(screen)) return false;
     const auto& state = stateFor(screen);
-    return state.actions || state.review || state.legality || state.confirmRelease ||
+    return state.actions || state.review || state.moveActive || state.legality || state.confirmRelease ||
            state.itemQuantityActive || state.itemRemoveConfirmActive || state.itemAddPickerActive ||
            state.valuePicker || state.moveEditor || workspaceActive(state);
 }
@@ -1371,6 +1374,7 @@ MenuActionSet gen4Actions(const State& state, bool occupied, bool stagedAvailabl
 
     add(MenuAction::View, "View", true);
     add(MenuAction::Edit, "Edit", stagedAvailable);
+    add(MenuAction::MovePokemon, "Move Pokemon", stagedAvailable);
     add(MenuAction::Clone, "Clone", stagedAvailable);
     add(MenuAction::Release, "Release", stagedAvailable);
     add(MenuAction::Legality, "Legality & Provenance", true);
@@ -1441,6 +1445,16 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
             break;
         case MenuAction::Edit:
             beginViewOrEdit(screen, SessionModel::Mode::Edit);
+            break;
+        case MenuAction::MovePokemon:
+            // The native move/swap transaction runs only after A confirms a destination.
+            state.actions = false;
+            state.moveActive = true;
+            state.moveSourceBox = state.box;
+            state.moveSourceSlot = state.slot;
+            screen.selectedBoxIndex = state.box;
+            screen.selectedItemIndex = state.slot;
+            screen.controllerNavigation.reset();
             break;
         case MenuAction::Add:
             beginCreate(screen);
@@ -2006,6 +2020,83 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     if (state.valuePicker) drawValuePicker(screen, fb, state);
 }
 
+
+bool handleBoxMove(TrainerViewScreen& screen, State& state,
+                   u64 down, const TouchInput& touch) {
+    if (!state.moveActive) return false;
+    const int currentBox = std::clamp(screen.selectedBoxIndex, 0, 17);
+    const int currentSlot = std::clamp(screen.selectedItemIndex, 0, 29);
+    int nextBox = currentBox, nextSlot = currentSlot;
+    if (down & HidNpadButton_B) {
+        state.moveActive = false;
+        screen.selectedBoxIndex = state.moveSourceBox;
+        screen.selectedItemIndex = state.moveSourceSlot;
+        screen.postStatus("Gen IV Move cancelled; no staged bytes modified", 180);
+        screen.controllerNavigation.reset();
+        return true;
+    }
+    if (down & HidNpadButton_Left && nextSlot % 6 > 0) --nextSlot;
+    if (down & HidNpadButton_Right && nextSlot % 6 < 5) ++nextSlot;
+    if (down & HidNpadButton_Up && nextSlot >= 6) nextSlot -= 6;
+    if (down & HidNpadButton_Down && nextSlot < 24) nextSlot += 6;
+    if (down & HidNpadButton_L) nextBox = (nextBox + 17) % 18;
+    if (down & HidNpadButton_R) nextBox = (nextBox + 1) % 18;
+
+    // A tap changes the destination only. A second stationary tap on the
+    // already-focused destination or the physical A button confirms.
+    const int tapped = screen.touchedButtonId(touch);
+    if (touch.justPressed() && !touch.dragged() && tapped >= 0 && tapped < 30) {
+        if (tapped == currentSlot) down |= HidNpadButton_A;
+        else nextSlot = tapped;
+    }
+    screen.selectedBoxIndex = nextBox;
+    screen.selectedItemIndex = nextSlot;
+    if (!(down & HidNpadButton_A)) return true;
+    if (nextBox == state.moveSourceBox && nextSlot == state.moveSourceSlot) {
+        screen.postStatus("Choose a different destination or press B to cancel", 180);
+        return true;
+    }
+    auto* staged = editor(screen);
+    if (!staged) {
+        state.moveActive = false;
+        screen.postStatus("Gen IV Move unavailable without a validated staged copy", 300);
+        return true;
+    }
+    std::string error;
+    if (!staged->stageMoveBoxPokemon(
+            static_cast<size_t>(state.moveSourceBox), static_cast<size_t>(state.moveSourceSlot),
+            static_cast<size_t>(nextBox), static_cast<size_t>(nextSlot), &error)) {
+        screen.postStatus(error.empty() ? "Gen IV staged Move failed" : error, 360);
+        return true;
+    }
+    state.moveActive = false;
+    if (refreshPresentation(screen))
+        screen.postStatus("Gen IV move/swap staged; original source unchanged", 270);
+    screen.controllerNavigation.reset();
+    return true;
+}
+
+void drawBoxMove(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state) {
+    // Reuse the existing full six-by-five box view and cursor: don't draw a
+    // duplicate editor whose sprites or slot positions could diverge.
+    screen.drawGSCOverlay(fb);
+    constexpr int x = 836, y = 116, w = 430, h = 128;
+    fb.drawFilledRoundedRect(x, y, w, h, 12, Colors::Panel);
+    fb.drawRoundedRect(x, y, w, h, 12, Colors::Divider, 1);
+    fb.drawText(x + 18, y + 10, "Move Pokemon — Staged", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 18, y + 52,
+        "From Box " + std::to_string(state.moveSourceBox + 1) +
+        " / Slot " + std::to_string(state.moveSourceSlot + 1),
+        Colors::TextSecondary, TextStyle::Caption);
+    fb.drawText(x + 18, y + 82,
+        "To Box " + std::to_string(screen.selectedBoxIndex + 1) +
+        " / Slot " + std::to_string(screen.selectedItemIndex + 1) +
+        "  |  A: Move / Swap",
+        Colors::Text, TextStyle::Caption);
+    drawNavBar(fb, {{"D-pad/Stick", "Slot"}, {"L/R", "Box"},
+                    {"A", "Move / Swap"}, {"B", "Cancel"}});
+}
+
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     screen.touchButtons.clear();
     std::string error;
@@ -2525,7 +2616,7 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     auto& state = stateFor(screen);
     if(handleItemQuantity(screen,state,down,held,stickX,stickY))return true;
     const bool ownsNavigation =
-        state.actions || state.review || state.legality || state.confirmRelease ||
+        state.actions || state.review || state.moveActive || state.legality || state.confirmRelease ||
         state.valuePicker || state.moveEditor || workspaceActive(state);
     const u64 navigated = ownsNavigation
         ? screen.controllerNavigation.apply(
@@ -2542,6 +2633,7 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
         }
         return true;
     }
+    if (handleBoxMove(screen, state, navigated, touch)) return true;
     if (handleReleaseConfirm(screen, state, navigated)) return true;
     if (handleReview(screen, state, navigated)) return true;
     if (handleWorkspace(screen, state, navigated, touch)) return true;
@@ -2587,6 +2679,7 @@ bool draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     else if (state.confirmRelease) drawReleaseConfirm(screen, fb, state);
     else if (state.legality) drawLegality(screen, fb, state);
     else if (state.review) drawReview(screen, fb);
+    else if (state.moveActive) drawBoxMove(screen, fb, state);
     else if (workspaceActive(state)) drawWorkspace(screen, fb, state);
     else if (state.actions) drawActions(screen, fb, state);
     return true;
