@@ -652,12 +652,12 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
 
     if (state.pickerActive) {
         const int count = static_cast<int>(state.pickerItems.size());
-        constexpr int width = PokeBank::UIModel::InventoryPickerLayout::Width;
-        constexpr int marginY = PokeBank::UIModel::InventoryPickerLayout::VerticalMargin;
-        constexpr int rowH = PokeBank::UIModel::InventoryPickerLayout::RowHeight;
+        constexpr int width = PokeBank::UIModel::ClassicAddItemPickerLayout::Width;
+        const int marginY = PokeBank::UIModel::ClassicAddItemPickerLayout::panelY(720);
+        constexpr int rowH = PokeBank::UIModel::ClassicAddItemPickerLayout::RowHeight;
         const int x = (1280 - width) / 2;
-        constexpr int height = PokeBank::UIModel::InventoryPickerLayout::Height;
-        const int listTop = marginY + PokeBank::UIModel::InventoryPickerLayout::ClassicListTopOffset;
+        constexpr int height = PokeBank::UIModel::ClassicAddItemPickerLayout::Height;
+        const int listTop = marginY + PokeBank::UIModel::ClassicAddItemPickerLayout::ClassicListTopOffset;
         const int listBottom = marginY + height - 18;
         const int visibleRows = std::max(1, (listBottom - listTop) / rowH);
         state.pickerViewport.ensure(state.pickerRow, count, visibleRows);
@@ -877,9 +877,9 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     screen.touchButtons.clear();
     const bool compactPicker = state.pickerActive;
-    const int width = compactPicker ? PokeBank::UIModel::InventoryPickerLayout::Width : 900;
-    const int y = compactPicker ? PokeBank::UIModel::InventoryPickerLayout::VerticalMargin : 66;
-    const int height = compactPicker ? PokeBank::UIModel::InventoryPickerLayout::Height : 610;
+    const int width = compactPicker ? PokeBank::UIModel::ClassicAddItemPickerLayout::Width : 900;
+    const int y = compactPicker ? PokeBank::UIModel::ClassicAddItemPickerLayout::panelY(fb.getHeight()) : 66;
+    const int height = compactPicker ? PokeBank::UIModel::ClassicAddItemPickerLayout::Height : 610;
     const int x = (fb.getWidth() - width) / 2;
     const int radius = compactPicker ? 16 : 18;
     fb.drawSoftShadow(x, y, width, height, radius);
@@ -909,7 +909,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     }
 
     if (state.pickerActive && game && pocket) {
-        constexpr int pad = PokeBank::UIModel::InventoryPickerLayout::HorizontalPadding;
+        constexpr int pad = PokeBank::UIModel::ClassicAddItemPickerLayout::HorizontalPadding;
         fb.drawText(x + pad, y + 16, "Add Item to " + std::string(PokeVault::Inventory::pocketName(*pocket)),
                     Colors::Text, TextStyle::Heading);
         const int count = static_cast<int>(state.pickerItems.size());
@@ -920,8 +920,8 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         fb.drawText(x + pad, y + 54, "Exact game + pocket catalog", Colors::TextDim, TextStyle::Caption);
         fb.drawHDivider(x + pad, y + 76, width - pad * 2);
 
-        const int rowH = PokeBank::UIModel::InventoryPickerLayout::RowHeight;
-        const int listTop = y + PokeBank::UIModel::InventoryPickerLayout::ClassicListTopOffset;
+        const int rowH = PokeBank::UIModel::ClassicAddItemPickerLayout::RowHeight;
+        const int listTop = y + PokeBank::UIModel::ClassicAddItemPickerLayout::ClassicListTopOffset;
         // Controls live in the shared bottom glyph bar now, so the modal can use the old footer space.
         const int listBottom = y + height - 18;
         const int visibleRows = std::max(1, (listBottom - listTop) / rowH);
