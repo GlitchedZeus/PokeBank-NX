@@ -104,11 +104,12 @@ int main() {
     contains(surface, "SessionModel::nativeAbilitySlots(state.session.working.species)");
     contains(surface, "target != PickerTarget::Ability &&");
     contains(surface, "state.session.setShiny");
-    // Gen III must use the same shared D-pad/left-stick navigation path as Gen I/II.
+    // Gen III must use the same shared D-pad/left-stick navigation path as Gen I/II, with touch
+    // routed into the same workspace/action handlers rather than a parallel mutation path.
     contains(surface, "screen.controllerNavigation.apply(");
     contains(surface, "down, held, stickX, stickY");
-    contains(surface, "handleWorkspace(screen, state, navigated)");
-    contains(surface, "handleActions(screen, state, navigated)");
+    contains(surface, "handleWorkspace(screen, state, navigated, touch)");
+    contains(surface, "handleActions(screen, state, navigated, touch)");
     assert(surface.find("(void)stickX") == std::string::npos);
     assert(surface.find("(void)stickY") == std::string::npos);
     // Gen III species picker matches the accepted Gen I shiny-preview interaction:

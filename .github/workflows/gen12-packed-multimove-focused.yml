@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/gen12-packed-y-multimove-20260917
+      - feature/touch-controls-20261005
   pull_request:
     paths:
       - 'include/UI/Common.h'

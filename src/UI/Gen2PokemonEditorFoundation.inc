@@ -22,6 +22,7 @@
 #include "UI/PokemonEditorFoundationContract.h"
 #include "UI/StatsRadar.h"
 #include "UI/ScreenChrome.h"
+#include "UI/TouchScroll.h"
 #include "UI/Dialogs/DialogFrame.h"
 
 #include <algorithm>
@@ -55,6 +56,8 @@ struct State : Rules::Session {
     uint32_t rng = 0x2A6F19D3u;
     std::vector<uint8_t> itemChoices;
     int itemChoiceIndex = 0;
+    TouchScrollState itemScroll;
+    TouchPickerViewport itemViewport;
     // UI-only until a real Crystal caught-history record exists. This lets Create/Edit
     // choose OT gender before choosing a met location without fabricating caughtData.
     Gen2Native::CrystalOtGenderChoice crystalOtGender = Gen2Native::CrystalOtGenderChoice::Unknown;
@@ -393,6 +396,12 @@ void randomizeDVs(State& state) {
 void openHeldItemPicker(State& state) {
     state.itemChoices = Rules::heldItemChoices();
     state.itemChoiceIndex = PokeBank::UIModel::Gen2HeldItemPicker::initialIndex(state.itemChoices, state.working.heldItem);
+    state.itemScroll.reset();
+    state.itemViewport.reset();
+    state.itemViewport.ensure(
+        state.itemChoiceIndex, static_cast<int>(state.itemChoices.size()),
+        PokeBank::UIModel::Gen2HeldItemPicker::rows,
+        PokeBank::UIModel::Gen2HeldItemPicker::columns);
     state.itemPicker = true;
 }
 
@@ -508,24 +517,68 @@ void activateField(TrainerViewScreen& screen, State& state) {
 }
 
 bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, uint64_t held,
-                      int stickX, int stickY) {
+                      int stickX, int stickY, const TouchInput& touch) {
     const uint64_t nav = screen.controllerNavigation.apply(
         down, held, stickX, stickY,
         HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
     const int count = static_cast<int>(state.itemChoices.size());
     using PokeBank::UIModel::Gen2HeldItemPicker::move;
+    namespace Grid = PokeBank::UIModel::SharedHeldItemPicker;
+    constexpr int pickerW = Grid::modalWidth, pickerH = Grid::modalHeight, rowStep = Grid::rowPitch;
+    const int px = (1280 - pickerW) / 2;
+    const int py = (720 - kNavBarH - pickerH) / 2;
+    namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
+    state.itemViewport.ensure(state.itemChoiceIndex, count, Model::rows, Model::columns);
+    const int maxFirstRow = TouchPickerViewport::maxFirst(count, Model::rows, Model::columns);
+    if (maxFirstRow > 0) {
+        state.itemScroll.updateVertical(
+            touch, px + Grid::gridInsetX, py + Grid::gridInsetY - 3,
+            pickerW - 2 * Grid::gridInsetX, Model::rows * rowStep,
+            rowStep, state.itemViewport.firstRow, maxFirstRow + 1);
+    } else {
+        state.itemScroll.stop();
+    }
+
+    const int touchDown = screen.touchedButtonDownId(touch);
+    if (touchDown >= 3000 && touchDown < 3000 + count) {
+        // Contact only moves focus. Stopping the scroll here would discard the gesture
+        // captured by updateVertical above and make every row-starting drag unscrollable.
+        state.itemChoiceIndex = touchDown - 3000;
+    }
+    const int touchTap = screen.touchedButtonId(touch);
+    if (touchTap >= 3000 && touchTap < 3000 + count) {
+        state.itemScroll.stop();
+        state.itemChoiceIndex = touchTap - 3000;
+        down |= HidNpadButton_A;
+    }
+    if (nav & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right) ||
+        down & (HidNpadButton_L | HidNpadButton_R))
+        state.itemScroll.stop();
     if (nav & HidNpadButton_Up) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, -1);
     if (nav & HidNpadButton_Down) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 1);
     if (nav & HidNpadButton_Left) state.itemChoiceIndex = move(state.itemChoiceIndex, count, -1, 0);
     if (nav & HidNpadButton_Right) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 1, 0);
     if (down & HidNpadButton_L) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 0, -1);
     if (down & HidNpadButton_R) state.itemChoiceIndex = move(state.itemChoiceIndex, count, 0, 0, 1);
+    if (nav & (HidNpadButton_Up | HidNpadButton_Down |
+               HidNpadButton_Left | HidNpadButton_Right) ||
+        down & (HidNpadButton_L | HidNpadButton_R))
+        state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, Model::columns);
     if (down & HidNpadButton_B) {
+        state.itemScroll.stop();
         state.itemPicker = false;
         screen.controllerNavigation.reset();
         return true;
     }
     if (down & HidNpadButton_A) {
+        if (!state.itemViewport.containsSelection(
+                state.itemChoiceIndex, count, Model::rows, Model::columns)) {
+            state.itemScroll.stop();
+            state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, Model::columns);
+            screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
+            return true;
+        }
+        state.itemScroll.stop();
         state.working.heldItem = state.itemChoices[static_cast<std::size_t>(state.itemChoiceIndex)];
         state.itemPicker = false;
         screen.controllerNavigation.reset();
@@ -561,7 +614,8 @@ bool active(const TrainerViewScreen& screen) noexcept {
     return stateFor(screen).mode != Mode::None;
 }
 
-bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, int stickX, int stickY) {
+bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                 int stickX, int stickY, const TouchInput& touch) {
     if (!isGSC(screen)) return false;
     auto& state = stateFor(screen);
 
@@ -594,7 +648,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, int st
             closeToActions(screen);
         return true;
     }
-    if (state.itemPicker) return handleItemPicker(screen, state, down, held, stickX, stickY);
+    if (state.itemPicker) return handleItemPicker(screen, state, down, held, stickX, stickY, touch);
     if (state.confirmExit) return handleConfirm(screen, state, down);
 
     const uint64_t nav = screen.controllerNavigation.apply(
@@ -633,6 +687,12 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, int st
     }
 
     return true;
+}
+
+bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
+                 int stickX, int stickY) {
+    static const TouchInput noTouch{};
+    return handleInput(screen, down, held, stickX, stickY, noTouch);
 }
 
 namespace {
@@ -784,7 +844,7 @@ void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State
     StatsRadar::drawGen2Labeled(fb, x + w - 175, y + 305, 160, 150, battle);
 }
 
-void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
+void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state) {
     namespace Grid = PokeBank::UIModel::SharedHeldItemPicker;
     const int W = fb.getWidth(), H = fb.getHeight();
     constexpr int w = Grid::modalWidth, h = Grid::modalHeight;
@@ -796,7 +856,24 @@ void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
     SharedHeldItemPickerPresentation::drawHeading(
         fb, x, y, "Held Item — Generation II",
         state.itemChoiceIndex, static_cast<int>(state.itemChoices.size()));
-    Gen2HeldItemPickerPresentation::drawList(fb, x, y, state.itemChoices, state.itemChoiceIndex);
+    namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
+    const int count = static_cast<int>(state.itemChoices.size());
+    const int firstRow = state.itemViewport.firstRow;
+    const int liveOffset = state.itemScroll.offset();
+    Gen2HeldItemPickerPresentation::drawList(fb, x, y, state.itemChoices, state.itemChoiceIndex,
+                                             firstRow, liveOffset);
+    const int gridX = x + Grid::gridInsetX, gridY = y + Grid::gridInsetY;
+    const int cellW = (Grid::modalWidth - 2 * Grid::gridInsetX) / Grid::columns;
+    for (int i = std::max(0, (firstRow - 1) * Grid::columns);
+         i < std::min(count, (firstRow + Model::rows + 1) * Grid::columns); ++i) {
+        const int off = i - firstRow * Grid::columns;
+        const int cellX = gridX + (off % Grid::columns) * cellW;
+        const int cellY = gridY + (off / Grid::columns) * Grid::rowPitch + liveOffset;
+        appendClippedTouchButton(screen.touchButtons, 3000 + i,
+            cellX, cellY - 3, cellW - 10, Grid::rowPitch - 4,
+            gridX, gridY - 3, Grid::modalWidth - 2 * Grid::gridInsetX,
+            Grid::rows * Grid::rowPitch);
+    }
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
                     {"A", "Choose"}, {"B", "Cancel"}});
 }
@@ -869,7 +946,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", "Random DVs"}, {"B", "Back"}});
 
-    if (state.itemPicker) drawHeldItemPicker(fb, state);
+    if (state.itemPicker) drawHeldItemPicker(screen, fb, state);
     if (state.confirmExit) drawConfirm(fb, state);
 }
 

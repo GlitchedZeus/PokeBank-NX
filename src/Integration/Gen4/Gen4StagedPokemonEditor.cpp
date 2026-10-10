@@ -468,6 +468,74 @@ bool Gen4StagedPokemonEditor::stageCloneBoxPokemon(
     return true;
 }
 
+bool Gen4StagedPokemonEditor::stageMoveBoxPokemon(
+    size_t sourceBox, size_t sourceSlot,
+    size_t destinationBox, size_t destinationSlot,
+    std::string* error) {
+    auto parsedBefore = reparse(error);
+    if (!parsedBefore) return false;
+    if (sourceBox >= 18 || destinationBox >= 18 ||
+        sourceSlot >= 30 || destinationSlot >= 30) {
+        setError(error, "Gen IV Move box/slot is outside native 18 x 30 storage");
+        return false;
+    }
+    const auto& source = parsedBefore->box(sourceBox, sourceSlot);
+    const auto& destination = parsedBefore->box(destinationBox, destinationSlot);
+    if (!source.valid() || source.empty() || !destination.valid()) {
+        setError(error, "Gen IV Move requires a valid occupied source and valid destination");
+        return false;
+    }
+    if (sourceBox == destinationBox && sourceSlot == destinationSlot) {
+        if (error) error->clear();
+        return true;
+    }
+    const auto from = boxRecordOffset(*parsedBefore, sourceBox, sourceSlot);
+    const auto to = boxRecordOffset(*parsedBefore, destinationBox, destinationSlot);
+    if (!from || !to || *from == *to) {
+        setError(error, "Gen IV Move target is outside native Storage blocks");
+        return false;
+    }
+
+    // Source and destination raw bytes (including any unknown stored fields)
+    // are swapped verbatim. We never rebuild or lose a PK4 field.
+    const auto backup = staged_;
+    constexpr size_t recordSize = Encryption::SIZE_STORED4;
+    for (size_t i = 0; i < recordSize; ++i)
+        std::swap(staged_[*from + i], staged_[*to + i]);
+
+    if (!refreshStorageCrc(*parsedBefore, error)) {
+        staged_ = backup;
+        return false;
+    }
+    auto parsedAfter = reparse(error);
+    if (!parsedAfter) {
+        staged_ = backup;
+        return false;
+    }
+    const auto& moved = parsedAfter->box(destinationBox, destinationSlot);
+    const auto& replaced = parsedAfter->box(sourceBox, sourceSlot);
+    // Validate the complete native 0x88-byte records against the backup,
+    // including empty slots whose read-only wrapper may not expose a
+    // nonempty encrypted-record span. Never infer an empty PK4 from its ID.
+    const bool identicalDestination = std::equal(
+        staged_.begin() + static_cast<std::ptrdiff_t>(*to),
+        staged_.begin() + static_cast<std::ptrdiff_t>(*to + recordSize),
+        backup.begin() + static_cast<std::ptrdiff_t>(*from));
+    const bool identicalSource = std::equal(
+        staged_.begin() + static_cast<std::ptrdiff_t>(*from),
+        staged_.begin() + static_cast<std::ptrdiff_t>(*from + recordSize),
+        backup.begin() + static_cast<std::ptrdiff_t>(*to));
+    if (!moved.valid() || moved.empty() || !replaced.valid() ||
+        replaced.empty() != destination.empty() ||
+        !identicalDestination || !identicalSource) {
+        staged_ = backup;
+        setError(error, "Gen IV Move/swap failed native PK4 read-back verification");
+        return false;
+    }
+    if (error) error->clear();
+    return true;
+}
+
 bool Gen4StagedPokemonEditor::stageReleaseBoxPokemon(
     size_t box, size_t slot, std::string* error) {
     auto parsedBefore = reparse(error);

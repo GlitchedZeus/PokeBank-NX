@@ -18,6 +18,7 @@ from png_asset_validation import validate_png
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "romfs" / "sprites" / "items"
 NAMES = ROOT / "src" / "Names" / "ItemNames.cpp"
+MANIFEST = ROOT / "tools" / "pinned_item_sprite_names.txt"
 PINNED_REF = "8dfa3d97e953caaafaafd4963eff7621811af08e"
 BASE_URL = f"https://raw.githubusercontent.com/PokeAPI/sprites/{PINNED_REF}/sprites/items"
 REQUIRED_BALLS = (
@@ -26,6 +27,13 @@ REQUIRED_BALLS = (
     "repeat-ball", "timer-ball", "luxury-ball", "premier-ball",
     "dusk-ball", "heal-ball", "quick-ball", "cherish-ball",
 )
+# Protect native Gen I–IV inventory/held-picker artwork from becoming
+# Gen IV-only again. Every key exists in the pinned 898-PNG manifest.
+REQUIRED_CLASSIC = (
+    "poke-doll", "bright-powder", "up-grade", "red-apricorn",
+    "air-mail", "flame-mail", "tm-normal", "tm-fire", "hm01",
+)
+
 
 
 def slugify(name: str) -> str:
@@ -40,6 +48,19 @@ def slugify(name: str) -> str:
             if out and out[-1] != "-":
                 out.append("-")
     return "".join(out).strip("-")
+
+
+
+def manifest_names() -> set[str]:
+    """All exact original item art keys pinned to the source tree."""
+    if not MANIFEST.is_file():
+        raise RuntimeError("Missing pinned item sprite manifest")
+    names = {line.strip() for line in MANIFEST.read_text(encoding="utf-8").splitlines()
+             if line.strip() and not line.startswith("#")}
+    if len(names) < 895 or any(not n or n.strip("abcdefghijklmnopqrstuvwxyz0123456789-")
+                               for n in names):
+        raise RuntimeError("Pinned item manifest invalid or unexpectedly incomplete")
+    return names
 
 
 def gen4_names() -> set[str]:
@@ -96,11 +117,17 @@ def fetch(name: str, force: bool) -> str:
     return "fetched"
 
 
-def verify_required() -> None:
+def verify_required(include_classic: bool = False) -> None:
     missing = [name for name in REQUIRED_BALLS if not validated(OUT / (name + ".png"))]
     if missing:
         raise RuntimeError("Missing required native Gen IV ball PNGs: " + ", ".join(missing))
     print("GEN IV BALL SPRITE PREFLIGHT: PASS (16 distinct matching ball images)")
+    if include_classic:
+        classics = [name for name in REQUIRED_CLASSIC
+                    if not validated(OUT / (name + ".png"))]
+        if classics:
+            raise RuntimeError("Missing pinned Gen I–IV item icons: " + ", ".join(classics))
+        print("CLASSIC ITEM SPRITE PREFLIGHT: PASS (TM/HM, mail, apricorn and key items)")
 
 
 def main() -> int:
@@ -111,17 +138,18 @@ def main() -> int:
     options = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     if options.verify_existing:
-        verify_required()
+        verify_required(include_classic=not options.required_only)
         return 0
     names = set(REQUIRED_BALLS)
     if not options.required_only:
         names.update(gen4_names())
+        names.update(manifest_names())
     results = {"cached": 0, "fetched": 0, "not-upstream": 0}
     with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
         for result in pool.map(lambda name: fetch(name, options.force), sorted(names)):
             results[result] += 1
     print(f"Item sprite recovery from pinned PokeAPI {PINNED_REF[:12]}: {results}")
-    verify_required()
+    verify_required(include_classic=not options.required_only)
     return 0
 
 

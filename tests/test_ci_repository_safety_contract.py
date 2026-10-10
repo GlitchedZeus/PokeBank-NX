@@ -47,9 +47,18 @@ native_text = NATIVE_GATE.read_text(encoding="utf-8")
 trigger_block = native_text.split("permissions:", 1)[0]
 if not re.search(r"(?m)^\s*pull_request:\s*$", trigger_block):
     fail("AUDIT-002: native PR gate must run on pull_request")
-if re.search(r"(?m)^\s+branches:\s*$", trigger_block):
+# Check PR-only event settings, not unrelated push-branch filters. The mandatory
+# native gate stays UNFILTERED for every PR even when exact-head touch-branch pushes
+# are enabled to validate unmerged commits.
+pr_event = re.search(r"(?m)^  pull_request:[ \t]*$", trigger_block)
+if not pr_event:
+    fail("AUDIT-002: native PR gate is missing a top-level pull_request event")
+following_events = trigger_block[pr_event.end():]
+next_event = re.search(r"(?m)^  [a-z][a-z_]*:\s*$", following_events)
+pr_config = following_events[:next_event.start()] if next_event else following_events
+if re.search(r"(?m)^\s+branches:\s*$", pr_config):
     fail("AUDIT-002: native PR gate must not be branch-filtered")
-if re.search(r"(?m)^\s+paths:\s*$", trigger_block):
+if re.search(r"(?m)^\s+paths:\s*$", pr_config):
     fail("AUDIT-002: native PR gate must not be path-filtered")
 for required in (
     "devkitpro/devkita64@sha256:",

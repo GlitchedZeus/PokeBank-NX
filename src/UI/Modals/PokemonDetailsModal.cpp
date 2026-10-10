@@ -9,6 +9,7 @@
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
+#include "UI/TouchScroll.h"
 #include "UI/SpriteManager.h"
 #include "Trainer/Trainer.h"
 #include "Utils/HelperUtilities.h"
@@ -154,7 +155,15 @@ namespace Modals {
         const int contentTop = colY + 14 + renderSz + 40;
         const int legalityH = 34;                              // legality line is pinned below the scroll
         const int contentBottom = colY + colH - legalityH - 6;
-        const int scroll = screen.details.leftScroll;
+        const int viewH = contentBottom - contentTop;
+        const auto& liveTouch = latestTouchGesture();
+        const bool liveLeftDrag = liveTouch.down &&
+            liveTouch.startX >= Lx + 1 && liveTouch.startX < Lx + Lw - 1 &&
+            liveTouch.startY >= contentTop && liveTouch.startY < contentBottom;
+        const int scroll = liveLeftDrag
+            ? livePixelScrollVisual(screen.details.leftScroll, liveTouch.deltaY,
+                                    screen.details.leftScrollMax, viewH)
+            : std::clamp(screen.details.leftScroll, 0, std::max(0, screen.details.leftScrollMax));
         int iy = contentTop;
         int selRowY = -1;                                      // absolute content-Y of the selected row
         std::vector<int> leftOrder;                            // editable field ids in draw order (nav list)
@@ -281,20 +290,24 @@ namespace Modals {
         fb.clearClip();
         screen.details.leftOrder = leftOrder;   // hand the nav its draw-order field list
 
-        // Auto-scroll so the selected field stays visible (applied next frame), plus a faint scrollbar.
+        // Auto-scroll the committed model only when touch is not actively manipulating the pane.
+        // The live visual scroll above is deliberately never written back here: release is the one
+        // semantic commit point, which prevents frame-by-frame drag deltas from compounding.
         {
             const int contentH = iy - contentTop;
-            const int viewH = contentBottom - contentTop;
-            int s = scroll;
-            if (selRowY >= 0) {
-                if (selRowY - s < contentTop)                s = selRowY - contentTop;
-                else if ((selRowY + RH) - s > contentBottom) s = (selRowY + RH) - contentBottom;
-            }
             const int maxS = (contentH > viewH) ? (contentH - viewH) : 0;
-            if (s < 0) s = 0;
-            if (s > maxS) s = maxS;
-            screen.details.leftScroll = s;
-            drawScrollbar(fb, Lx + Lw - 7, contentTop, viewH, contentH, s);
+            screen.details.leftScrollMax = maxS;
+            int committed = std::clamp(screen.details.leftScroll, 0, maxS);
+            if (!liveLeftDrag && !screen.details.leftScrollManual && selRowY >= 0) {
+                if (selRowY - committed < contentTop)
+                    committed = selRowY - contentTop;
+                else if ((selRowY + RH) - committed > contentBottom)
+                    committed = (selRowY + RH) - contentBottom;
+                committed = std::clamp(committed, 0, maxS);
+            }
+            screen.details.leftScroll = committed;
+            drawScrollbar(fb, Lx + Lw - 7, contentTop, viewH, contentH,
+                          std::clamp(scroll, 0, maxS));
         }
 
         // Legality summary pinned at the bottom of the left pane (R / tap opens the full issue list).
@@ -508,63 +521,106 @@ namespace Modals {
             drawNavBar(fb, navHint);
         }
 
-        // Legality issue overlay — opened via Y or by tapping the legality summary; any tap / B closes.
+        // Legality report: clipped touch-scroll surface with explicit close.
         if (screen.details.legalityOverlay) {
+            struct ReportLine { std::string text; Color color; };
+            std::vector<ReportLine> lines;
+            if (legalityRep.ok()) {
+                lines.push_back({"No problems found.", Color(120, 205, 140)});
+            } else {
+                for (const auto& issue : legalityRep.issues) {
+                    if (issue.severity == Legality::Severity::Info) continue;
+                    const bool invalid = issue.severity == Legality::Severity::Invalid;
+                    lines.push_back({std::string(invalid ? "[illegal]  " : "[warning]  ") + issue.text,
+                                     invalid ? Color(235, 100, 100) : Colors::Orange});
+                }
+            }
+            const int ow = 820, oh = H - 100;
+            const int ox = (W - ow) / 2, oy = 50;
+            const auto reportViewport = reportScrollViewport(W, H, ow);
+            const int rowH = ReportScrollViewport::RowHeight;
+            const int listTop = reportViewport.y;
+            const int listBottom = reportViewport.y + reportViewport.h;
+            const int visible = std::max(1, reportViewport.h / rowH);
+            const int maxScroll = std::max(0, static_cast<int>(lines.size()) - visible);
+            screen.details.legalityScroll = std::clamp(screen.details.legalityScroll, 0, maxScroll);
+
             fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 170));
-            const int rowsN = static_cast<int>(legalityRep.issues.size());
-            const int ow = 760, oh = std::min(H - 60, 96 + std::max(1, rowsN) * 30);
-            const int ox = (W - ow) / 2, oy = (H - oh) / 2;
             fb.drawFilledRoundedRect(ox, oy, ow, oh, 16, Colors::Panel);
             fb.drawRoundedRect(ox, oy, ow, oh, 16, Colors::Border, 1);
             fb.drawText(ox + 24, oy + 20, "Legality", Colors::Text, TextStyle::Heading);
-            { const char* h = "B / tap: close"; int hw, hh; fb.measureText(h, hw, hh, TextStyle::Caption);
-              fb.drawText(ox + ow - 24 - hw, oy + 28, h, Colors::TextDim, TextStyle::Caption); }
-            int ly = oy + 66;
-            if (legalityRep.ok()) {
-                fb.drawText(ox + 28, ly, "No problems found.", Color(120, 205, 140), TextStyle::Body);
-            } else {
-                for (const auto& is : legalityRep.issues) {
-                    if (is.severity == Legality::Severity::Info) continue;
-                    if (ly > oy + oh - 30) break;
-                    const Color c = (is.severity == Legality::Severity::Invalid) ? Color(235, 100, 100) : Colors::Orange;
-                    const char* tag = (is.severity == Legality::Severity::Invalid) ? "[illegal]  " : "[warning]  ";
-                    fb.drawText(ox + 28, ly, std::string(tag) + is.text, c, TextStyle::Caption);
-                    ly += 30;
-                }
+            fb.drawText(ox + 24, oy + 50, "Swipe or use Up/Down to scroll", Colors::TextDim, TextStyle::Caption);
+            const auto legalVisual = liveVerticalListVisual(
+                screen.details.legalityScroll, maxScroll + 1, rowH,
+                reportViewport.x, reportViewport.y, reportViewport.w, reportViewport.h);
+            const int visualFirst = legalVisual.index;
+            const int liveOffset = legalVisual.offset;
+            const int drawFirst = std::max(0, visualFirst - 1);
+            const int drawLast = std::min(static_cast<int>(lines.size()),
+                                          visualFirst + visible + 1);
+            fb.setClipRect(reportViewport.x, reportViewport.y, reportViewport.w, reportViewport.h);
+            for (int i = drawFirst; i < drawLast; ++i) {
+                const int ly = listTop + (i - visualFirst) * rowH + liveOffset;
+                fb.drawText(ox + 28, ly, lines[static_cast<size_t>(i)].text,
+                            lines[static_cast<size_t>(i)].color, TextStyle::Caption);
             }
-            // id 96: tap anywhere closes -- but NOT over the nav bar, whose badges are themselves
-            // tappable. Overlapping them would fire both the badge's button and this close.
-            screen.touchButtons.push_back({ 96, 0, 0, W, H - kNavBarH });
+            fb.clearClip();
+            drawScrollbar(fb, ox + ow - 12, reportViewport.y, reportViewport.h,
+                          std::max(1, static_cast<int>(lines.size()) * rowH),
+                          visualFirst * rowH - liveOffset);
+            const int closeW = 150, closeH = 44;
+            const int closeX = ox + ow - closeW - 22, closeY = oy + oh - closeH - 14;
+            drawGlyphButton(fb, closeX, closeY, closeW, closeH, "B", "Close");
+            screen.touchButtons.push_back({96, closeX, closeY, closeW, closeH});
         }
 
-        // Ribbon list overlay — opened by tapping the Ribbons row; any tap / B closes.
-        // Two columns, because a fully-decorated Gen 8/9 mon can carry dozens of ribbons and marks.
+        // Ribbon/mark report: the same native scroll contract in two compact columns.
         if (screen.details.ribbonOverlay) {
             const auto rb = Names::getMonRibbons(reinterpret_cast<const uint8_t*>(p->getData().data()),
                                                  p->getGameGroup());
+            const int ow = 860, oh = H - 100;
+            const int ox = (W - ow) / 2, oy = 50;
+            const auto reportViewport = reportScrollViewport(W, H, ow);
+            const int rowH = ReportScrollViewport::RowHeight;
+            const int cols = 2;
+            const int listTop = reportViewport.y;
+            const int listBottom = reportViewport.y + reportViewport.h;
+            const int visibleRows = std::max(1, reportViewport.h / rowH);
+            const int totalRows = (static_cast<int>(rb.size()) + cols - 1) / cols;
+            const int maxScroll = std::max(0, totalRows - visibleRows);
+            screen.details.ribbonScroll = std::clamp(screen.details.ribbonScroll, 0, maxScroll);
+
             fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 170));
-            const int cols = (rb.size() > 12) ? 2 : 1;
-            const int perCol = (static_cast<int>(rb.size()) + cols - 1) / std::max(1, cols);
-            const int ow = (cols == 2) ? 860 : 560;
-            const int oh = std::min(H - 60, 96 + std::max(1, perCol) * 28);
-            const int ox = (W - ow) / 2, oy = (H - oh) / 2;
             fb.drawFilledRoundedRect(ox, oy, ow, oh, 16, Colors::Panel);
             fb.drawRoundedRect(ox, oy, ow, oh, 16, Colors::Border, 1);
             fb.drawText(ox + 24, oy + 20, "Ribbons & Marks", Colors::Text, TextStyle::Heading);
-            { const char* h = "B / tap: close"; int hw, hh; fb.measureText(h, hw, hh, TextStyle::Caption);
-              fb.drawText(ox + ow - 24 - hw, oy + 28, h, Colors::TextDim, TextStyle::Caption); }
-            const int colW = (ow - 56) / std::max(1, cols);
-            for (size_t i = 0; i < rb.size(); ++i) {
-                const int c = static_cast<int>(i) / std::max(1, perCol);
-                const int r = static_cast<int>(i) % std::max(1, perCol);
-                const int tx = ox + 28 + c * colW;
-                const int ty = oy + 66 + r * 28;
-                if (ty > oy + oh - 26) continue;
-                fb.drawText(tx, ty, rb[i], Colors::Text, TextStyle::Caption);
+            fb.drawText(ox + 24, oy + 50, "Swipe or use Up/Down to scroll", Colors::TextDim, TextStyle::Caption);
+            const int colW = (ow - 64) / cols;
+            const auto ribbonVisual = liveVerticalListVisual(
+                screen.details.ribbonScroll, maxScroll + 1, rowH,
+                reportViewport.x, reportViewport.y, reportViewport.w, reportViewport.h);
+            const int visualFirst = ribbonVisual.index;
+            const int liveOffset = ribbonVisual.offset;
+            const int drawFirst = std::max(0, visualFirst - 1);
+            const int drawLast = std::min(totalRows, visualFirst + visibleRows + 1);
+            fb.setClipRect(reportViewport.x, reportViewport.y, reportViewport.w, reportViewport.h);
+            for (int sourceRow = drawFirst; sourceRow < drawLast; ++sourceRow) {
+                const int drawY = listTop + (sourceRow - visualFirst) * rowH + liveOffset;
+                for (int c = 0; c < cols; ++c) {
+                    const int idx = sourceRow * cols + c;
+                    if (idx >= static_cast<int>(rb.size())) continue;
+                    fb.drawText(ox + 28 + c * colW, drawY,
+                                rb[static_cast<size_t>(idx)], Colors::Text, TextStyle::Caption);
+                }
             }
-            // id 96: tap anywhere closes -- but NOT over the nav bar, whose badges are themselves
-            // tappable. Overlapping them would fire both the badge's button and this close.
-            screen.touchButtons.push_back({ 96, 0, 0, W, H - kNavBarH });
+            fb.clearClip();
+            drawScrollbar(fb, ox + ow - 12, reportViewport.y, reportViewport.h,
+                          std::max(1, totalRows * rowH),
+                          visualFirst * rowH - liveOffset);
+            const int closeW = 150, closeH = 44;
+            const int closeX = ox + ow - closeW - 22, closeY = oy + oh - closeH - 14;
+            drawGlyphButton(fb, closeX, closeY, closeW, closeH, "B", "Close");
+            screen.touchButtons.push_back({96, closeX, closeY, closeW, closeH});
         }
     }
 }

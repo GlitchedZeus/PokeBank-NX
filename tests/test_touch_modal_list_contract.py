@@ -1,0 +1,185 @@
+#!/usr/bin/env python3
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+def read(rel: str) -> str:
+    path = ROOT / rel
+    if not path.is_file():
+        raise AssertionError(f"missing touch contract source: {rel}")
+    return path.read_text(encoding="utf-8")
+
+def require(text: str, rel: str, *needles: str) -> None:
+    for needle in needles:
+        if needle not in text:
+            raise AssertionError(f"{rel}: missing touch contract token: {needle}")
+
+touch_h = read("include/UI/TouchInput.h")
+touch_cpp = read("src/UI/TouchInput.cpp")
+require(touch_h, "include/UI/TouchInput.h",
+        "bool justTouchedDown() const",
+        "bool justReleased() const",
+        "bool justPressed() const { return justReleased() && !dragged(); }",
+        "bool justTapped() const { return justPressed(); }",
+        "int startX() const", "int startY() const")
+require(touch_cpp, "src/UI/TouchInput.cpp",
+        "maxDistanceSquared = std::max(maxDistanceSquared",
+        "constexpr int kTapSlop = 22",
+        "return maxDistanceSquared > (kTapSlop * kTapSlop);")
+
+base = read("src/UI/TrainerViewScreenBase.inc")
+require(base, "src/UI/TrainerViewScreenBase.inc",
+        "int TrainerViewScreen::touchedButtonDownId",
+        "if (!touch.justTouchedDown()) return -1;",
+        "int TrainerViewScreen::touchedButtonId",
+        "if (!touch.justTapped()) return -1;",
+        "if (details.legalityOverlay)",
+        "if (details.ribbonOverlay)",
+        "touch.justReleased() && touch.dragged()",
+        "details.legalityScroll",
+        "details.ribbonScroll")
+release_hit = base[base.index("int TrainerViewScreen::touchedButtonId"):
+                   base.index("int TrainerViewScreen::touchedButtonId") + 900]
+# The contact AND release must be on the same hit rectangle; a sub-slop movement
+# from an adjacent row must never activate a new editor or confirmation target.
+for coordinate in ("touch.startX()", "touch.startY()", "touch.x()", "touch.y()"):
+    assert coordinate in release_hit, (
+        f"shared editor target activation is missing same-target coordinate: {coordinate}"
+    )
+assert release_hit.index("touch.startX()") < release_hit.index("touch.x()"), (
+    "editor touch hit-testing must check contact as well as release"
+)
+
+
+picker_contract = read("include/UI/InventoryUIContract.h")
+require(picker_contract, "include/UI/InventoryUIContract.h",
+        "struct InventoryPickerViewport",
+        "static constexpr int RowHeight = 56;",
+        "static constexpr InventoryPickerViewport viewport(",
+        "constexpr bool contains(int px, int py) const noexcept")
+picker = read("src/UI/Dialogs/PickerDialog.cpp")
+require(picker, "src/UI/Dialogs/PickerDialog.cpp",
+        '#include "UI/TouchScroll.h"',
+        "InventoryPickerLayout::viewport(W, H)",
+        "const auto visual = liveVerticalListVisual(",
+        "const int visualSel = visual.index;",
+        "+ visual.offset;",
+        "fb.setClipRect(viewport.x, viewport.y, viewport.w, viewport.h);",
+        "fb.clearClip();",
+        "first * rowH - visual.offset",
+        "appendClippedTouchButton(screen.touchButtons, idx")
+assert "const int ry = listTop + i * rowH;" not in picker, \
+    "shared picker regressed to stationary rows during finger drag"
+
+base_picker = read("src/UI/TrainerViewScreenBase.inc")
+require(base_picker, "src/UI/TrainerViewScreenBase.inc",
+        "InventoryPickerLayout::viewport(1280, 720)",
+        "const int page = pickerViewport.visibleRows;",
+        "pickerViewport.contains(touch.startX(), touch.startY())")
+if "const int page = 12;" in base_picker:
+    raise AssertionError("shared picker: page jump must derive from the visible touch viewport")
+report_contract = read("include/UI/Modals/PokemonDetailsModal.h")
+require(report_contract, "include/UI/Modals/PokemonDetailsModal.h",
+        "struct ReportScrollViewport",
+        "static constexpr int RowHeight = 30;",
+        "constexpr ReportScrollViewport reportScrollViewport(",
+        "constexpr bool contains(int px, int py) const noexcept")
+require(base_picker, "src/UI/TrainerViewScreenBase.inc",
+        "Modals::reportScrollViewport(1280, 720, 820)",
+        "Modals::reportScrollViewport(1280, 720, 860)",
+        "reportViewport.contains(touch.startX(), touch.startY())",
+        "Modals::ReportScrollViewport::RowHeight")
+if "std::abs(dy) / 28" in base_picker:
+    raise AssertionError("Ribbons: input row step drifted from the shared 30px renderer step")
+
+details = read("src/UI/Modals/PokemonDetailsModal.cpp")
+require(details, "src/UI/Modals/PokemonDetailsModal.cpp",
+        "Legality report: clipped touch-scroll surface with explicit close.",
+        "screen.details.legalityScroll = std::clamp",
+        "screen.details.ribbonScroll = std::clamp",
+        "livePixelScrollVisual(screen.details.leftScroll",
+        "screen.details.leftScrollMax = maxS;",
+        "!liveLeftDrag && !screen.details.leftScrollManual",
+        "fb.setClipRect",
+        "drawScrollbar",
+        "screen.touchButtons.push_back({96, closeX, closeY, closeW, closeH});")
+assert "screen.details.leftScroll = scroll;" not in details, \
+    "draw-time direct manipulation must never overwrite committed Details scroll"
+
+gen2_details = read("src/UI/Modals/Gen2PokemonDetailsModal.cpp")
+require(gen2_details, "src/UI/Modals/Gen2PokemonDetailsModal.cpp",
+        "livePixelScrollVisual(screen.details.leftScroll",
+        "screen.details.leftScrollMax = nativeMax;",
+        "std::clamp(nativeScroll, 0, nativeMax)")
+
+# Modern/classic Items must never turn an empty pouch swipe into item -1 or
+# change selection when a drag began on a different pane.
+items_handler = base[base.index("// Only vertical drags that START on a displayed item"):
+                     base.index("// Only vertical drags that START on a displayed item") + 1900]
+for token in (
+    "if (totalItems > 0 && touch.justReleased() && touch.dragged())",
+    "std::abs(dy) > std::abs(touch.deltaX())",
+    "touch.startX() >= hit.x",
+    "touch.startY() >= hit.y",
+    "if (startedOnItem)",
+):
+    assert token in items_handler, f"Items: missing safe gesture guard: {token}"
+
+backup = read("src/UI/BackupSelectionScreen.cpp")
+require(backup, "src/UI/BackupSelectionScreen.cpp",
+        "backupScroll.updateVertical(",
+        "backupScroll.offset()",
+        "backupScroll.stop()")
+
+inventory = read("src/UI/ClassicInventoryOverlay.cpp")
+require(inventory, "src/UI/ClassicInventoryOverlay.cpp",
+        "bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch)",
+        "pickerScroll.updateVertical(",
+        "reviewScroll.updateVertical(",
+        "TouchPickerViewport pickerViewport;",
+        "TouchPickerViewport reviewViewport;",
+        "state.pickerViewport.firstRow, maxFirstRow + 1",
+        "state.reviewViewport.firstRow, maxFirstRow + 1",
+        "state.pickerViewport.reveal(state.pickerRow, count, visibleRows)",
+        "state.reviewViewport.reveal(state.reviewRow, count, visibleRows)",
+        "state.pickerViewport.containsSelection(",
+        "const int page = visibleRows;",
+        "const int start = state.pickerViewport.firstRow;",
+        "const int start = state.reviewViewport.firstRow;",
+        "screen.touchButtons.push_back")
+
+save_confirm = read("src/UI/Dialogs/SaveConfirmDialog.cpp")
+require(save_confirm, "src/UI/Dialogs/SaveConfirmDialog.cpp",
+        "drawEditChoiceButton(screen, fb",
+        "\"B\", \"Cancel\", 90",
+        "\"A\", \"Save\", 91")
+
+packed = read("src/UI/ClassicPackedMoveOverlay.inc")
+require(packed, "src/UI/ClassicPackedMoveOverlay.inc",
+        "bool touchArmed = false;",
+        "bool touchSelecting = false;",
+        "cellAtPoint",
+        "touch.isDown() && touch.dragged()",
+        "state.touchArmed && touch.justReleased()")
+
+# Modal glyph buttons (Back/Discard/Save, Release/Cancel, transfer confirms, etc.) are not
+# decoration. drawGlyphButton must publish its exact rectangle immediately so a button drawn after
+# the footer is still directly tappable on the next input frame through navTouchButton().
+chrome = read("include/UI/ScreenChrome.h")
+require(chrome, "include/UI/ScreenChrome.h",
+        "const TouchGlyphHit hit{bx, by, bw, bh, glyph};",
+        "g_touchGlyphAccum.push_back(hit);",
+        "g_touchGlyphHits.push_back(hit);",
+        "inline uint64_t navTouchButton(const TouchInput& touch)")
+
+print("touch modal/list contract: PASS")
+
+# Backup Delete is a destructive confirmation: a finger merely resting on
+# its button cannot trigger it. Releasing inside the original target is required.
+backup_code = read("src/UI/BackupSelectionScreen.cpp")
+delete_modal = backup_code.split("if (showDeleteConfirmation) {", 1)[1].split(
+    "// Touch moves the PHYSICAL viewport", 1)[0]
+assert "if (touch.justTapped())" in delete_modal
+assert "if (touch.justPressed())" not in delete_modal
+assert "touch.startX() >= b.x" in delete_modal
+assert "touch.x() >= b.x" in delete_modal

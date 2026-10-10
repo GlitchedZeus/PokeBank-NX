@@ -14,7 +14,7 @@ inline constexpr int pageSize = SharedHeldItemPicker::pageSize;
 inline int initialIndex(const std::vector<uint8_t>& items, uint8_t current) {
     return SharedHeldItemPicker::initialIndex(items, current);
 }
-constexpr int move(int index, int count, int dx, int dy, int pages = 0) noexcept {
+inline int move(int index, int count, int dx, int dy, int pages = 0) noexcept {
     return SharedHeldItemPicker::move(index, count, dx, dy, pages);
 }
 inline std::string itemName(uint8_t item) {
@@ -40,12 +40,13 @@ inline std::string spriteName(uint8_t item) {
 
 namespace UI::Gen2HeldItemPickerPresentation {
 inline void drawList(PKSEFramebuffer& fb, int panelX, int panelY,
-                     const std::vector<uint8_t>& items, int selected) {
+                     const std::vector<uint8_t>& items, int selected,
+                     int firstVisibleRow = -1, int scrollOffset = 0) {
     namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
     // True Gen II item IDs and display names; shared Gen III grid geometry.
     SharedHeldItemPickerPresentation::drawGrid(
         fb, panelX, panelY, items, selected,
         [](uint8_t item) { return Model::itemName(item); },
-        [](uint8_t item) { return Model::spriteName(item); });
+        [](uint8_t item) { return Model::spriteName(item); }, firstVisibleRow, scrollOffset);
 }
 }

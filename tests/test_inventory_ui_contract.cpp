@@ -61,12 +61,24 @@ int main() {
     assert(readOnlyFooter.find("Y: Remove Item") == std::string::npos);
     assert(readOnlyFooter.find("B: Back") != std::string::npos);
 
+    // Generic PickerDialog keeps its touch-safe 56px rows.
     static_assert(InventoryPickerLayout::Width == 560);
     static_assert(InventoryPickerLayout::VerticalMargin == 60);
-    static_assert(InventoryPickerLayout::RowHeight == 40);
+    static_assert(InventoryPickerLayout::RowHeight == 56);
     static_assert(InventoryPickerLayout::FooterHeight == 64);
-    static_assert(InventoryPickerLayout::Width < 900);
     static_assert(InventoryPickerLayout::ClassicRowsPerPage == 11);
+    static_assert(InventoryPickerLayout::viewport(1280, 720).visibleRows == 9);
+    static_assert(InventoryPickerLayout::viewport(1280, 720).h == 504);
+
+    // Only Gen I-III Add Item adopts the nine-row Gen IV modal geometry.
+    static_assert(ClassicAddItemPickerLayout::Width == 780);
+    static_assert(ClassicAddItemPickerLayout::Height == 532);
+    static_assert(ClassicAddItemPickerLayout::panelY(720) == 71);
+    static_assert(ClassicAddItemPickerLayout::RowHeight == 43);
+    static_assert(ClassicAddItemPickerLayout::RowsPerPage == 9);
+    static_assert(ClassicAddItemPickerLayout::viewport(1280, 720).visibleRows == 9);
+    static_assert(ClassicAddItemPickerLayout::viewport(1280, 720).h == 387);
+    static_assert(ClassicAddItemPickerLayout::viewport(1280, 720).y == 161);
 
     InventoryBaseline baseline{
         {0, 17, 53, true},   // source-owned isNew item: Potion-like representative

@@ -1,4 +1,5 @@
 #include "UI/StatsRadar.h"
+#include "UI/TouchScroll.h"
 
 namespace UI::Gen1PokemonEditor {
 namespace {
@@ -30,6 +31,12 @@ struct UX2State {
     int row = 0;
     int subRow = 0;
     int reviewRow = 0;
+    TouchScrollState editorScroll;
+    TouchPickerViewport editorViewport;
+    TouchScrollState pickerScroll;
+    TouchPickerViewport pickerViewport;
+    TouchScrollState reviewScroll;
+    TouchPickerViewport reviewViewport;
 
     UX2Picker picker = UX2Picker::None;
     int pickerValue = 0;
@@ -59,6 +66,15 @@ UX2State& ux2StateFor(const TrainerViewScreen& screen) {
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
+}
+
+void ux2ResetTouchMotion(UX2State& state) noexcept {
+    state.editorScroll.reset();
+    state.editorViewport.reset();
+    state.pickerScroll.reset();
+    state.pickerViewport.reset();
+    state.reviewScroll.reset();
+    state.reviewViewport.reset();
 }
 
 std::optional<PokemonRecord> ux2SelectedPokemon(TrainerViewScreen& screen, std::string& error) {
@@ -101,6 +117,7 @@ int ux2JumpSectionRow(int row, int direction) noexcept {
 }
 
 void ux2Close(UX2State& state) {
+    ux2ResetTouchMotion(state);
     state.mode = UX2Mode::Closed;
     state.row = 0;
     state.subRow = 0;
@@ -120,6 +137,7 @@ void ux2OpenActions(TrainerViewScreen& screen) {
         screen.postStatus("Select a Generation I box slot first");
         return;
     }
+    ux2ResetTouchMotion(state);
     state.mode = UX2Mode::Actions;
     state.box = screen.selectedBoxIndex;
     state.slot = screen.selectedItemIndex;
@@ -139,6 +157,9 @@ void ux2BeginAdd(TrainerViewScreen& screen) {
     }
     state.slot = static_cast<int>(*destination);
     state.draft = BoxPokemonCreate{};
+    state.editorScroll.reset();
+    state.editorViewport.reset();
+    state.pickerScroll.reset();
     state.mode = UX2Mode::AddDraft;
     state.row = 0;
     state.picker = UX2Picker::None;
@@ -189,12 +210,16 @@ bool ux2StageRemove(TrainerViewScreen& screen) {
 }
 
 void ux2OpenSpeciesPicker(UX2State& state, uint16_t current) {
+    state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.picker = UX2Picker::Species;
     state.pickerValue = std::clamp<int>(current, 1, 151);
     state.pickerCommittedSpecies = current;
 }
 
 void ux2OpenMovePicker(UX2State& state) {
+    state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.picker = UX2Picker::Move;
     state.pickerValue = std::clamp<int>(state.tempMove, 0, 165);
 }
@@ -496,7 +521,12 @@ void ux2HandleMainEditor(TrainerViewScreen& screen, uint64_t down) {
         }
         case 11:
             if (add) ux2StageAdd(screen);
-            else { state.mode = UX2Mode::Review; state.reviewRow = 0; }
+            else {
+                state.reviewScroll.reset();
+                state.reviewViewport.reset();
+                state.mode = UX2Mode::Review;
+                state.reviewRow = 0;
+            }
             break;
         case 12:
             if (add) state.draft = BoxPokemonCreate{};
@@ -602,12 +632,22 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
         if (!(down & HidNpadButton_A)) return;
         switch (actions[static_cast<size_t>(state.row)]) {
             case UX::Action::View: state.mode = UX2Mode::View; break;
-            case UX::Action::Edit: state.mode = UX2Mode::Edit; state.row = 0; break;
+            case UX::Action::Edit:
+                state.editorScroll.reset();
+                state.editorViewport.reset();
+                state.mode = UX2Mode::Edit;
+                state.row = 0;
+                break;
             case UX::Action::Clone: ux2OpenClone(screen); break;
             case UX::Action::Remove: state.mode = UX2Mode::RemoveConfirm; break;
             case UX::Action::LegalityProvenance: state.mode = UX2Mode::Provenance; break;
             case UX::Action::AddPokemon: ux2BeginAdd(screen); break;
-            case UX::Action::ReviewPendingChanges: state.mode = UX2Mode::Review; state.reviewRow = 0; break;
+            case UX::Action::ReviewPendingChanges:
+                state.reviewScroll.reset();
+                state.reviewViewport.reset();
+                state.mode = UX2Mode::Review;
+                state.reviewRow = 0;
+                break;
             case UX::Action::Cancel: ux2Close(state); break;
         }
         return;
@@ -850,6 +890,7 @@ void ux2DrawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y
         const bool selected = static_cast<int>(i) == state.row;
         if (selected) fb.drawSelectionHighlight(x + 22, rowY, w - 44, 42);
         fb.drawText(x + 38, rowY + 10, names[idx], selected ? Colors::Text : Colors::TextDim);
+        screen.touchButtons.push_back({1000 + static_cast<int>(i), x + 22, rowY, w - 44, 42});
         rowY += 46;
     }
     fb.drawText(x + 24, y + h - 38, "Original source is immutable", Colors::Accent, TextStyle::Caption);
@@ -931,6 +972,7 @@ void ux2DrawSubEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int
     for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
         ux2DrawLogicalRow(fb, x + 22, rowY, w - 44, rows[static_cast<size_t>(i)].first,
                           rows[static_cast<size_t>(i)].second, i == state.subRow);
+        screen.touchButtons.push_back({1100 + i, x + 22, rowY, w - 44, 44});
         rowY += 48;
     }
 }
@@ -998,6 +1040,7 @@ void ux2DrawClone(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, 
         const bool selected = i == state.cloneSlot;
         if (selected) fb.drawSelectionHighlight(cx, cy, cellW - 8, cellH - 8);
         fb.drawRoundedRect(cx, cy, cellW - 8, cellH - 8, 8, i == writable ? Colors::Accent : Colors::Divider, 1);
+        screen.touchButtons.push_back({1200 + i, cx, cy, cellW - 8, cellH - 8});
         fb.drawText(cx + 8, cy + 8, (i < 9 ? "0" : "") + std::to_string(i + 1), Colors::TextDim, TextStyle::Caption);
         if (p) {
             fb.drawText(cx + 8, cy + 34, Names::getSpeciesName(p->species), Colors::Text, TextStyle::Caption);
@@ -1021,9 +1064,13 @@ void ux2DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         const int visible = std::max(1, (h - 150) / 48);
         const int start = std::clamp(state.reviewRow - visible / 2, 0, std::max(0, static_cast<int>(lines.size()) - visible));
         fb.setClipRect(x + 24, y + 72, w - 48, h - 130);
-        for (int i = 0; i < visible && start + i < static_cast<int>(lines.size()); ++i)
-            ux2DrawLogicalRow(fb, x + 24, y + 76 + i * 48, w - 48, std::to_string(start + i + 1),
-                              lines[static_cast<size_t>(start + i)], start + i == state.reviewRow);
+        for (int i = 0; i < visible && start + i < static_cast<int>(lines.size()); ++i) {
+            const int row = start + i;
+            const int rowY = y + 76 + i * 48;
+            ux2DrawLogicalRow(fb, x + 24, rowY, w - 48, std::to_string(row + 1),
+                              lines[static_cast<size_t>(row)], row == state.reviewRow);
+            screen.touchButtons.push_back({1300 + row, x + 24, rowY, w - 48, 44});
+        }
         fb.clearClip();
     }
     if (!state.lastExportDirectory.empty())

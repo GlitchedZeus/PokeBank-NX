@@ -438,6 +438,26 @@ int main() {
     contains(baseUi, "const bool exitOnlySaveConfirm = saveConfirmActive && exitingWithUnsavedChanges;");
     assert(baseUi.find("statEdit.dialogActive = saveConfirmActive") == std::string::npos);
 
+    // Gen IV Move Pokémon uses exact staged native 0x88-byte transactions.
+    // Action visibility and A/Touch move-confirm paths must not depend on
+    // the legacy source-mutating box machinery.
+    contains(surface, "MenuAction::MovePokemon");
+    contains(surface, "state.moveSourceBox = state.box;");
+    contains(surface, "state.moveSourceSlot = state.slot;");
+    contains(surface, "bool handleBoxMove(");
+    contains(surface, "stageMoveBoxPokemon(");
+    contains(surface, "if (down & HidNpadButton_B)");
+    contains(surface, "state.moveActive = false;");
+    contains(surface, "Gen IV move/swap staged; original source unchanged");
+    // The outer border is always neutral; focus belongs to the selected row.
+    const auto addItemStart = surface.find("void drawItemAddPicker(");
+    const auto addItemEnd = surface.find("void drawItemRemoveConfirm(", addItemStart);
+    assert(addItemStart != std::string::npos && addItemEnd > addItemStart);
+    const auto addItemBody = surface.substr(addItemStart, addItemEnd - addItemStart);
+    assert(addItemBody.find("fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1)") != std::string::npos);
+    assert(addItemBody.find("fb.drawRoundedRect(x,y,w,h,18,Colors::FocusBorder,1)") == std::string::npos);
+    contains(addItemBody, "ItemPickerArtwork::draw");
+
     // Final composite routes Gen IV before generic/Gen III fallback.
     contains(composite, "#include \"Gen4SharedPokemonSurface.inc\"");
     const auto update = composite.find("void TrainerViewScreen::update");
