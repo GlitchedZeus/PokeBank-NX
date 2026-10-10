@@ -588,6 +588,23 @@ namespace Legality {
             } else {
                 eggEvidenceGameId = {};
             }
+        } else if (!sourceProfile) {
+            // A source-free PK3/PK4 still carries its original-game byte.
+            // The immutable native format plus stored game can identify a
+            // compatible egg-move group; never infer an actual breeding
+            // encounter or classify absent evidence as Invalid.
+            const uint8_t nativeGeneration =
+                Gen34FormatDomain::generationFromGroup(pk.getGameGroup());
+            if (nativeGeneration == 3) {
+                eggEvidenceGameId =
+                    Gen4Origin::exactGen3GameId(pk.originGame());
+            } else if (nativeGeneration == 4) {
+                eggEvidenceGameId =
+                    Gen4Origin::exactRetailGameId(pk.originGame());
+                if (eggEvidenceGameId.empty())
+                    eggEvidenceGameId =
+                        Gen4Origin::exactGen3GameId(pk.originGame());
+            }
         }
 
         if (sourceProfile && exactGeneration == 1 &&

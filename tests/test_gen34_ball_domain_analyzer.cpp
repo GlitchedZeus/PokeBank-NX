@@ -71,7 +71,8 @@ void wr32(std::vector<std::byte>& data, size_t offset, uint32_t value) {
 }
 
 Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true,
-                                 uint16_t species=1, uint16_t move=0) {
+                                 uint16_t species=1, uint16_t move=0,
+                                 uint8_t originVersion=12) {
     std::vector<std::byte> decrypted(Encryption::SIZE_STORED4, std::byte{0});
     wr32(decrypted, 0x00, 0x12345678u);
     wr16(decrypted, 0x08, species);  // native stored PK4 species
@@ -81,7 +82,7 @@ Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true,
     wr16(decrypted, 0x28, move);   // native stored PK4 first move
     decrypted[0x15] = std::byte{65}; // Overgrow
     decrypted[0x17] = std::byte{2};  // English
-    decrypted[0x5F] = std::byte{12}; // Platinum origin value; exact provenance is not under test.
+    decrypted[0x5F] = static_cast<std::byte>(originVersion); // native PK4 stored origin
     decrypted[0x83] = static_cast<std::byte>(ball);
 
     const auto encrypted = Encryption::encryptArray4(decrypted);
@@ -89,6 +90,7 @@ Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true,
     Pokemon::Pokemon4ReadOnly source(encrypted, Enums::GameVersion::PT);
     assert(source.valid());
     assert(source.ballDPPt() == ball);
+    assert(source.originVersion()==originVersion);
     assert(source.species() == species && source.moves()[0] == move);
     Pokemon::Pokemon4ReadOnlyView view(source);
     assert(view.ball() == ball);
@@ -328,6 +330,33 @@ int main() {
     const auto unknownOrigin=analyzeGen4EggBall(4,true,2000,0,0);
     assert(!hasInfo(unknownOrigin,
         "Native Generation III/IV egg origin has a compatible Poke Ball"));
+
+    // Source-free immutable PK3/PK4 still retains origin-game evidence
+    // for a positive egg-move LEARNSET possibility, not a proven hatch.
+    auto g3Egg=gen3WithBall(4);
+    g3Egg.setMove(0,80); // Bulbasaur Petal Dance, Gen III egg.
+    assert(hasInfo(Legality::analyze(g3Egg,Enums::GameVersion::FRLG),
+                   "direct egg move"));
+    auto g3NonEgg=gen3WithBall(4);
+    g3NonEgg.setMove(0,57); // Surf is not a Bulbasaur egg move.
+    assert(!hasInfo(Legality::analyze(g3NonEgg,Enums::GameVersion::FRLG),
+                    "direct egg move"));
+    auto unknownG3=g3Egg;
+    unknownG3.setOriginGame(0);
+    assert(!hasInfo(Legality::analyze(unknownG3,Enums::GameVersion::FRLG),
+                    "direct egg move"));
+
+    // HGSS added Bulbasaur egg move #124; D/P/Pt did not.
+    // Derive the group from the stored PK4 origin, never the current
+    // save container when a source context is missing.
+    assert(hasInfo(analyzeGen4Ball(4,false,1,124,7),"direct egg move"));
+    assert(!hasInfo(analyzeGen4Ball(4,false,1,124,12),"direct egg move"));
+    assert(!hasInfo(analyzeGen4Ball(4,false,1,124,0),"direct egg move"));
+    // Gen III Bulbasaur -> Pal Park in Gen IV retains Gen III egg pool.
+    assert(hasInfo(analyzeGen4Ball(4,false,1,80,2),"direct egg move"));
+    // Evolved Ivysaur retains a Diamond-origin Bulbasaur egg move.
+    assert(hasInfo(analyzeGen4Ball(4,false,2,437,10),
+                   "retained pre-evolution egg move"));
 
     // Source-free known native PK3/PK4 formats have generation-specific
     // species/move ceilings regardless of their exact save identity.
