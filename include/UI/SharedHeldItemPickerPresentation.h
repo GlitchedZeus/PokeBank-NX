@@ -30,19 +30,24 @@ inline void drawHeading(PKSEFramebuffer& fb, int x, int y,
 template <typename Item, typename LabelFor, typename SpriteNameFor>
 inline void drawGrid(PKSEFramebuffer& fb, int x, int y,
                      const std::vector<Item>& items, int selected,
-                     LabelFor labelFor, SpriteNameFor spriteNameFor) {
+                     LabelFor labelFor, SpriteNameFor spriteNameFor,
+                     int firstVisibleRow = -1, int scrollOffset = 0) {
     const int count = static_cast<int>(items.size());
     if (count == 0) return;
     const int focused = std::clamp(selected, 0, count - 1);
-    const int first = focused / Grid::pageSize * Grid::pageSize;
-    const int last = std::min(count, first + Grid::pageSize);
+    const int first = firstVisibleRow < 0 ? focused / Grid::pageSize * Grid::pageSize
+        : std::clamp(firstVisibleRow, 0, (count - 1) / Grid::columns) * Grid::columns;
+    const int last = std::min(count, first + Grid::pageSize + Grid::columns);
+    const int drawFirst = std::max(0, first - Grid::columns);
     const int gridX = x + Grid::gridInsetX;
     const int gridY = y + Grid::gridInsetY;
     const int cellWidth = (Grid::modalWidth - 2 * Grid::gridInsetX) / Grid::columns;
-    for (int i = first; i < last; ++i) {
+    fb.setClipRect(gridX, gridY - 3, Grid::modalWidth - 2 * Grid::gridInsetX,
+                   Grid::rows * Grid::rowPitch);
+    for (int i = drawFirst; i < last; ++i) {
         const int offset = i - first;
         const int cellX = gridX + (offset % Grid::columns) * cellWidth;
-        const int cellY = gridY + (offset / Grid::columns) * Grid::rowPitch;
+        const int cellY = gridY + (offset / Grid::columns) * Grid::rowPitch + scrollOffset;
         if (i == focused)
             fb.drawSelectionHighlight(cellX, cellY - 3, cellWidth - 10, Grid::rowPitch - 4);
         const Item value = items[static_cast<std::size_t>(i)];
@@ -52,6 +57,7 @@ inline void drawGrid(PKSEFramebuffer& fb, int x, int y,
             ItemPickerArtwork::draw(fb, cellX + cellWidth - 24,
                                     cellY + 2, 30, spriteNameFor(value));
     }
+    fb.clearClip();
 }
 
 } // namespace UI::SharedHeldItemPickerPresentation

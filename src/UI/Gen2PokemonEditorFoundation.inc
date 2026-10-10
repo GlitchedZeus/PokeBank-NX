@@ -523,16 +523,17 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
         HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
     const int count = static_cast<int>(state.itemChoices.size());
     using PokeBank::UIModel::Gen2HeldItemPicker::move;
-    constexpr int pickerW = 1040, pickerH = 520, rowStep = 32;
+    namespace Grid = PokeBank::UIModel::SharedHeldItemPicker;
+    constexpr int pickerW = Grid::modalWidth, pickerH = Grid::modalHeight, rowStep = Grid::rowPitch;
     const int px = (1280 - pickerW) / 2;
-    const int py = (720 - pickerH) / 2;
+    const int py = (720 - kNavBarH - pickerH) / 2;
     namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
     state.itemViewport.ensure(state.itemChoiceIndex, count, Model::rows, Model::columns);
     const int maxFirstRow = TouchPickerViewport::maxFirst(count, Model::rows, Model::columns);
     if (maxFirstRow > 0) {
         state.itemScroll.updateVertical(
-            touch, px + 24, py + 90, pickerW - 48,
-            Model::rows * rowStep,
+            touch, px + Grid::gridInsetX, py + Grid::gridInsetY - 3,
+            pickerW - 2 * Grid::gridInsetX, Model::rows * rowStep,
             rowStep, state.itemViewport.firstRow, maxFirstRow + 1);
     } else {
         state.itemScroll.stop();
@@ -843,7 +844,7 @@ void drawMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State
     StatsRadar::drawGen2Labeled(fb, x + w - 175, y + 305, 160, 150, battle);
 }
 
-void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
+void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state) {
     namespace Grid = PokeBank::UIModel::SharedHeldItemPicker;
     const int W = fb.getWidth(), H = fb.getHeight();
     constexpr int w = Grid::modalWidth, h = Grid::modalHeight;
@@ -855,7 +856,24 @@ void drawHeldItemPicker(PKSEFramebuffer& fb, const State& state) {
     SharedHeldItemPickerPresentation::drawHeading(
         fb, x, y, "Held Item — Generation II",
         state.itemChoiceIndex, static_cast<int>(state.itemChoices.size()));
-    Gen2HeldItemPickerPresentation::drawList(fb, x, y, state.itemChoices, state.itemChoiceIndex);
+    namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
+    const int count = static_cast<int>(state.itemChoices.size());
+    const int firstRow = state.itemViewport.firstRow;
+    const int liveOffset = state.itemScroll.offset();
+    Gen2HeldItemPickerPresentation::drawList(fb, x, y, state.itemChoices, state.itemChoiceIndex,
+                                             firstRow, liveOffset);
+    const int gridX = x + Grid::gridInsetX, gridY = y + Grid::gridInsetY;
+    const int cellW = (Grid::modalWidth - 2 * Grid::gridInsetX) / Grid::columns;
+    for (int i = std::max(0, (firstRow - 1) * Grid::columns);
+         i < std::min(count, (firstRow + Model::rows + 1) * Grid::columns); ++i) {
+        const int off = i - firstRow * Grid::columns;
+        const int cellX = gridX + (off % Grid::columns) * cellW;
+        const int cellY = gridY + (off / Grid::columns) * Grid::rowPitch + liveOffset;
+        appendClippedTouchButton(screen.touchButtons, 3000 + i,
+            cellX, cellY - 3, cellW - 10, Grid::rowPitch - 4,
+            gridX, gridY - 3, Grid::modalWidth - 2 * Grid::gridInsetX,
+            Grid::rows * Grid::rowPitch);
+    }
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
                     {"A", "Choose"}, {"B", "Cancel"}});
 }
