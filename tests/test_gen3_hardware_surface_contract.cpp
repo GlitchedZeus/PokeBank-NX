@@ -215,8 +215,14 @@ int main() {
     contains(surface, "openValuePicker(screen, state, PickerTarget::Move, state.moveEditorSlot)");
     contains(surface, "state.pickerTarget == PickerTarget::HeldItem");
     contains(surface, "HeldItemGrid::move");
-    contains(surface, "HeldItemGrid::columns");
-    contains(surface, "HeldItemGrid::pageSize");
+    // Geometry moved into the accepted Gen III layout shared by Gen II–IV.
+    const auto heldRenderer = read("include/UI/SharedHeldItemPickerPresentation.h");
+    contains(surface, "SharedHeldItemPickerPresentation::drawGrid(");
+    contains(surface, "SharedHeldItemPickerPresentation::drawHeading(");
+    contains(heldRenderer, "Grid::columns");
+    contains(heldRenderer, "Grid::pageSize");
+    contains(heldRenderer, "Grid::rowPitch");
+    contains(heldRenderer, "ItemPickerArtwork::draw(fb");
     contains(surface, "constexpr auto moveLayout = MoveUI::compactPickerLayout()");
     contains(surface, "movePicker ? moveLayout.width");
     contains(surface, "movePicker ? moveLayout.height");
