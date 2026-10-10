@@ -651,11 +651,30 @@ namespace Legality {
                     "PK2 structure is compatible with a possible Generation I origin through Time Capsule; this does not prove the transfer occurred",
                     CheckIdentifier::Transfer);
             }
-            if (Gen12TimeCapsule::canCurrentlyTradeToGen1(
+            // The present-day Time Capsule restrictions cannot disprove a
+            // previous Gen I origin. Explain all four distinct outcomes.
+            switch (Gen12TimeCapsule::classifyCurrentTrade(
                     gen2.speciesID(), gen2.isEgg(), moves)) {
-                add(r, Severity::Info,
-                    "Current PK2 species/moves are compatible with a Gen II -> Gen I Time Capsule trade",
-                    CheckIdentifier::Transfer);
+                case Gen12TimeCapsule::CurrentTrade::Compatible:
+                    add(r, Severity::Info,
+                        "Current PK2 species/moves are compatible with a Gen II -> Gen I Time Capsule trade",
+                        CheckIdentifier::Transfer);
+                    break;
+                case Gen12TimeCapsule::CurrentTrade::EggNotTradeable:
+                    add(r, Severity::Info,
+                        "Current PK2 is an Egg and cannot currently enter the Time Capsule; historical origin remains unresolved",
+                        CheckIdentifier::Transfer);
+                    break;
+                case Gen12TimeCapsule::CurrentTrade::SpeciesNotInGen1:
+                    add(r, Severity::Info,
+                        "Current PK2 species cannot currently enter the Time Capsule because it does not exist in Gen I; a Gen I pre-evolution origin may still be possible",
+                        CheckIdentifier::Transfer);
+                    break;
+                case Gen12TimeCapsule::CurrentTrade::MoveNotInGen1:
+                    add(r, Severity::Info,
+                        "Current PK2 moves cannot currently enter the Time Capsule because a move was introduced after Gen I; prior Gen I origin is not disproved",
+                        CheckIdentifier::Transfer);
+                    break;
             }
 
             if (Gen2Static::matches(

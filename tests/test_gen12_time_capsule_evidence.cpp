@@ -24,5 +24,20 @@ int main() {
     assert(!canCurrentlyTradeToGen1(25, false, std::array<uint16_t,4>{166, 0, 0, 0}));
     assert(!canCurrentlyTradeToGen1(25, true, std::array<uint16_t,4>{85, 0, 0, 0}));
 
+    // Current Time Capsule eligibility is separate from a possible earlier
+    // Gen I origin. A returned Pokemon may evolve or learn Gen II moves.
+    constexpr std::array<uint16_t,4> gen1Moves{85,98,129,0};
+    constexpr std::array<uint16_t,4> gen2Move{85,166,0,0};
+    assert(classifyCurrentTrade(25,false,gen1Moves)==CurrentTrade::Compatible);
+    assert(classifyCurrentTrade(25,false,gen2Move)==CurrentTrade::MoveNotInGen1);
+    assert(classifyCurrentTrade(169,false,gen1Moves)==CurrentTrade::SpeciesNotInGen1);
+    assert(classifyCurrentTrade(152,false,gen1Moves)==CurrentTrade::SpeciesNotInGen1);
+    assert(classifyCurrentTrade(25,true,gen1Moves)==CurrentTrade::EggNotTradeable);
+    assert(classifyCurrentTrade(0,false,gen1Moves)==CurrentTrade::SpeciesNotInGen1);
+    assert(couldOriginateGen1(169,false,0));
+    assert(couldOriginateGen1(25,false,0));
+    assert(!canCurrentlyTradeToGen1(25,false,gen2Move));
+    assert(!canCurrentlyTradeToGen1(169,false,gen1Moves));
+
     std::cout << "Gen I/II Time Capsule compatibility evidence: PASS\n";
 }

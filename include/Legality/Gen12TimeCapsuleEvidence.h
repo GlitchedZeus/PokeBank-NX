@@ -36,17 +36,30 @@ constexpr bool couldOriginateGen1(uint16_t species, bool isEgg, uint16_t caughtD
     return !isEgg && caughtData == 0 && canVisitGen1Species(species);
 }
 
-// Whether the entity's CURRENT Gen II species/moves are acceptable to send through Time Capsule
-// into a Gen I cartridge. This is compatibility evidence, not proof that the trade occurred.
+// PKHeX GBRestrictions / Time Capsule gate: the Gen I move ceiling
+// is #165, Struggle. Distinguish *current* eligibility from possible
+// *historical* origin. Evolution or a new move learned after returning
+// to Gen II does not disprove an earlier Gen I ancestor.
+enum class CurrentTrade : uint8_t {
+    Compatible, EggNotTradeable, SpeciesNotInGen1, MoveNotInGen1,
+};
+
+constexpr CurrentTrade classifyCurrentTrade(
+    uint16_t species, bool isEgg,
+    const std::array<uint16_t, 4>& moves) noexcept {
+    if (isEgg) return CurrentTrade::EggNotTradeable;
+    if (species == 0 || species > 151)
+        return CurrentTrade::SpeciesNotInGen1;
+    for (const uint16_t move : moves)
+        if (move > 165) return CurrentTrade::MoveNotInGen1;
+    return CurrentTrade::Compatible;
+}
+
 constexpr bool canCurrentlyTradeToGen1(
-    uint16_t species, bool isEgg, const std::array<uint16_t, 4>& moves) noexcept {
-    if (isEgg || species == 0 || species > 151)
-        return false;
-    for (const uint16_t move : moves) {
-        if (move > 165)
-            return false;
-    }
-    return true;
+    uint16_t species, bool isEgg,
+    const std::array<uint16_t, 4>& moves) noexcept {
+    return classifyCurrentTrade(species, isEgg, moves) ==
+           CurrentTrade::Compatible;
 }
 
 } // namespace Legality::Gen12TimeCapsule

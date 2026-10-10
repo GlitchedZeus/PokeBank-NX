@@ -43,7 +43,8 @@ void be16(std::vector<uint8_t>& d,size_t at,uint16_t v) {
 }
 std::vector<uint8_t> crystalSave(uint16_t species,uint8_t level,
                                  uint16_t caught,bool egg=false,
-                                 bool shiny=true) {
+                                 bool shiny=true,
+                                 uint8_t firstMove=33) {
     // Pinned read-only parser: international Crystal, 32-KiB bank,
     // 6-party slots, 20 slots per box, 14 boxes, 11-byte names.
     std::vector<uint8_t> raw(kSize,0);
@@ -69,7 +70,7 @@ std::vector<uint8_t> crystalSave(uint16_t species,uint8_t level,
     const size_t body=kParty+1+7;
     raw[body]=static_cast<uint8_t>(species);
     raw[body+1]=1;      // held item
-    raw[body+2]=33;     // Tackle
+    raw[body+2]=firstMove; // selected move for Time Capsule coverage
     be16(raw,body+6,0x1234);
     const uint32_t xp=static_cast<uint32_t>(level)*level*level;
     raw[body+8]=static_cast<uint8_t>((xp>>16)&0xFF);
@@ -128,8 +129,9 @@ bool hasInfo(const Legality::Report& r,const std::string& fragment) {
 }
 Legality::Report analyzeRawSave(uint16_t species,uint8_t level,
                                 uint16_t caught,bool egg=false,
-                                bool shiny=true) {
-    const auto data=crystalSave(species,level,caught,egg,shiny);
+                                bool shiny=true,
+                                uint8_t firstMove=33) {
+    const auto data=crystalSave(species,level,caught,egg,shiny,firstMove);
     const auto original=data;
     const auto parsed=parse(data,SourceGame::Crystal);
     assert(parsed && parsed.save);
@@ -144,6 +146,7 @@ Legality::Report analyzeRawSave(uint16_t species,uint8_t level,
     const Pokemon::Pokemon2ReadOnly pk(parsed.save->party().front());
     assert(pk.speciesID()==species&&pk.level()==level);
     assert(pk.caughtData()==caught&&pk.isEgg()==egg);
+    assert(pk.move(0)==firstMove);
     assert(pk.isShiny(pk.id32(), {}) == shiny);
     assert(pk.isPartyRecord());
     auto report=Legality::analyze(
@@ -207,6 +210,26 @@ void verifyBoxedCrystalReports() {
 
 int main() {
     verifyBoxedCrystalReports();
+    // Strict Crystal save -> immutable PK2 -> production Time Capsule report.
+    // Current tradeability and historical Gen I origin must remain separate.
+    constexpr auto eligible="Current PK2 species/moves are compatible with a Gen II -> Gen I Time Capsule trade";
+    constexpr auto fromGen1="PK2 structure is compatible with a possible Generation I origin through Time Capsule";
+    constexpr auto badMove="Current PK2 moves cannot currently enter the Time Capsule";
+    constexpr auto badSpecies="Current PK2 species cannot currently enter the Time Capsule";
+    constexpr auto badEgg="Current PK2 is an Egg and cannot currently enter the Time Capsule";
+    assert(hasInfo(analyzeRawSave(25,20,0),eligible));
+    assert(hasInfo(analyzeRawSave(25,20,0),fromGen1));
+    assert(hasInfo(analyzeRawSave(25,20,0,false,true,166),badMove));
+    assert(hasInfo(analyzeRawSave(25,20,0,false,true,166),fromGen1));
+    assert(!hasInfo(analyzeRawSave(25,20,0,false,true,166),eligible));
+    assert(hasInfo(analyzeRawSave(169,40,0),badSpecies)); // Crobat
+    assert(hasInfo(analyzeRawSave(169,40,0),fromGen1)); // Golbat ancestor
+    assert(hasInfo(analyzeRawSave(152,10,0),badSpecies)); // Chikorita
+    assert(!hasInfo(analyzeRawSave(152,10,0),fromGen1));
+    assert(hasInfo(analyzeRawSave(25,20,0,true),badEgg));
+    assert(!hasInfo(analyzeRawSave(25,20,0,true),fromGen1));
+    assert(!hasInfo(analyzeRawSave(25,20,0,true),eligible));
+
     constexpr auto evolved="PK2 caught-data is compatible with a pinned Crystal wild pre-evolution capture";
     constexpr auto direct="PK2 caught-data location/level/time matches a pinned Crystal wild encounter slot";
     // Actual pinned Crystal Pidgey #16 at location2, level2, daytime.
