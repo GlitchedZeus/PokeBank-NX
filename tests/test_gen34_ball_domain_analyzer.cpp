@@ -163,7 +163,8 @@ Legality::Report analyzeGen4EggBall(uint8_t ball, bool isEgg,
                                     uint16_t eggLocation,
                                     uint8_t metLevel=0,
                                     uint8_t originVersion=7,
-                                    uint16_t hatchLocation=0) {
+                                    uint16_t hatchLocation=0,
+                                    bool exactSource=true) {
     std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
     wr32(raw,0x00,0x12345678u);
     wr16(raw,0x08,25);
@@ -185,7 +186,9 @@ Legality::Report analyzeGen4EggBall(uint8_t ball, bool isEgg,
     Pokemon::Pokemon4ReadOnlyView view(source);
     assert(view.eggLocation()==eggLocation && view.ball()==ball);
     if(hatchLocation!=0)assert(view.metLocation()==hatchLocation);
-    return Legality::analyze(view,Enums::GameVersion::HGSS,"heartgold_nds");
+    return exactSource
+        ? Legality::analyze(view,Enums::GameVersion::HGSS,"heartgold_nds")
+        : Legality::analyze(view,Enums::GameVersion::HGSS);
 }
 
 int main() {
@@ -199,6 +202,22 @@ int main() {
         eggPk3,Enums::GameVersion::FRLG,"ruby_gba");
     assert(hasInfo(eggG3,
         "Native Generation III/IV egg origin has a compatible Poke Ball"));
+    // Source-free native PK3 has a known Gen III format; preserve its
+    // structurally necessary egg-level and source-compatible Ball rules.
+    const auto sourcefreePk3 = Legality::analyze(
+        eggPk3, Enums::GameVersion::FRLG);
+    assert(hasInfo(sourcefreePk3,
+        "PK3 unhatched egg state has the native met-level-0 structure"));
+    assert(hasInfo(sourcefreePk3,
+        "Native Generation III/IV egg origin has a compatible Poke Ball"));
+    eggPk3.setMetLevel(1);
+    const auto invalidSourcefreePk3 = Legality::analyze(
+        eggPk3, Enums::GameVersion::FRLG);
+    assert(hasInvalidText(invalidSourcefreePk3,
+        "Egg-origin record has invalid met level"));
+    eggPk3.setMetLevel(0);
+    eggPk3.refreshChecksum();
+
     eggPk3.setOriginGame(15); // GameCube, not a native Gen III egg origin.
     const auto cubeEgg=Legality::analyze(
         eggPk3,Enums::GameVersion::FRLG,"ruby_gba");
@@ -210,6 +229,28 @@ int main() {
         eggPk3,Enums::GameVersion::FRLG,"ruby_gba");
     assert(!hasInfo(safariEgg,
         "Native Generation III/IV egg origin has a compatible Poke Ball"));
+
+    // Real encrypted PK4 without a known enclosing save remains
+    // format-known. Reuse the same native structural, ball and hatch checks.
+    const auto sourcefreePk4Egg=analyzeGen4EggBall(4,true,2000,0,7,0,false);
+    assert(hasInfo(sourcefreePk4Egg,
+        "PK4 egg-origin state has native met-level-0 structure"));
+    assert(hasInfo(sourcefreePk4Egg,
+        "Native Generation III/IV egg origin has a compatible Poke Ball"));
+    const auto sourcefreeMetBad=analyzeGen4EggBall(4,true,2000,1,7,0,false);
+    assert(hasInvalidText(sourcefreeMetBad,
+        "Egg-origin record has invalid met level"));
+    const auto sourcefreeMissingLoc=analyzeGen4EggBall(4,true,0,0,7,0,false);
+    assert(hasInvalidText(sourcefreeMissingLoc,
+        "Unhatched PK4 egg is missing egg location"));
+    const auto sourcefreeKnownHatch=analyzeGen4EggBall(4,false,2000,0,10,126,false);
+    assert(hasInvalidText(sourcefreeKnownHatch,
+        "Hatch location is not valid for this Generation IV egg origin"));
+    const auto sourcefreeUnknownHatch=analyzeGen4EggBall(4,false,2000,0,0,126,false);
+    assert(hasInfo(sourcefreeUnknownHatch,
+        "PK4 hatch origin game is unknown or unsupported"));
+    assert(!hasInvalidText(sourcefreeUnknownHatch,
+        "Hatch location is not valid for this Generation IV egg origin"));
 
     const auto nativePk4Egg=analyzeGen4EggBall(4,true,2000);
     assert(hasInfo(nativePk4Egg,

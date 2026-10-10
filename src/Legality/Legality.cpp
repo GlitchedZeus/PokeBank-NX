@@ -966,27 +966,37 @@ namespace Legality {
             }
         }
 
-        if (sourceProfile && (exactGeneration == 3 || exactGeneration == 4)) {
+        // Structural egg origin is an invariant of a verified native PK3/PK4
+        // format, not of which specific retail save supplied it. The source
+        // can be unknown while the record's stored generation is proven.
+        // Never infer a historical hatch game from this format-only check.
+        const uint8_t eggFormatGeneration =
+            sourceProfile && (exactGeneration == 3 || exactGeneration == 4)
+                ? exactGeneration
+                : (!sourceProfile
+                       ? Gen34FormatDomain::generationFromGroup(pk.getGameGroup())
+                       : 0);
+        if (eggFormatGeneration == 3 || eggFormatGeneration == 4) {
             const auto eggState = Gen34EggState::analyze(
-                exactGeneration, pk.isEgg(), pk.eggLocation(), pk.metLevel());
+                eggFormatGeneration, pk.isEgg(), pk.eggLocation(), pk.metLevel());
             if (eggState.invalid()) {
                 add(r, Severity::Invalid,
                     std::string(Gen34EggState::evidenceName(eggState.evidence)),
                     CheckIdentifier::Egg);
             } else if (eggState.applies()) {
                 add(r, Severity::Info,
-                    exactGeneration == 3
+                    eggFormatGeneration == 3
                         ? "PK3 unhatched egg state has the native met-level-0 structure; exact hatch-location and inherited-move evidence remain incomplete"
                         : "PK4 egg-origin state has native met-level-0 structure and egg-location evidence; hatch-location evidence is checked separately for hatched records and inherited-move evidence remains incomplete",
                     CheckIdentifier::Egg);
                 // A native Gen III/IV egg-origin Poké Ball is compatible;
                 // this is INFO, not a complete competing-history proof.
-                const bool provenNativeEggOrigin = exactGeneration == 3
+                const bool provenNativeEggOrigin = eggFormatGeneration == 3
                     ? !Gen4Origin::exactGen3GameId(pk.originGame()).empty()
                     : Gen4Origin::isNativeRetailGen4(pk.originGame());
                 if (provenNativeEggOrigin &&
                     Gen34EggBallEvidence::analyze(
-                        exactGeneration, pk.isEgg(),
+                        eggFormatGeneration, pk.isEgg(),
                         pk.eggLocation(), pk.metLevel(), pk.ball()) ==
                         Gen34EggBallEvidence::Kind::NativeEggPokeBall) {
                     add(r, Severity::Info,
@@ -995,7 +1005,7 @@ namespace Legality {
                 }
             }
 
-            if (exactGeneration == 4 && eggState.eggOrigin &&
+            if (eggFormatGeneration == 4 && eggState.eggOrigin &&
                 !eggState.invalid() && !pk.isEgg()) {
                 if (Gen4Release::eggHatchLocationUnreleased(
                         pk.language(), pk.metLocation())) {
