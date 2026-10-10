@@ -1285,22 +1285,31 @@ namespace Legality {
             add(r, Severity::Invalid, "Unknown species id " + std::to_string(species),
                 CheckIdentifier::Species);
 
-        if (sourceProfile && species > sourceProfile->maxSpecies) {
+        // Storage-format ceilings remain verifiable for source-free PK3/PK4
+        // bank records. Do not turn an unrecognized format into Invalid.
+        const uint8_t speciesMoveGen = sourceProfile
+            ? sourceProfile->generation
+            : Gen34FormatDomain::generationFromGroup(pk.getGameGroup());
+        const uint16_t speciesMax = sourceProfile
+            ? sourceProfile->maxSpecies
+            : Gen34FormatDomain::maxSpecies(speciesMoveGen);
+        const uint16_t moveMax = sourceProfile
+            ? sourceProfile->maxMove
+            : Gen34FormatDomain::maxMove(speciesMoveGen);
+        if (speciesMax && species > speciesMax) {
             add(r, Severity::Invalid,
                 "Species " + std::to_string(species) +
-                " cannot exist in a Generation " + std::to_string(sourceProfile->generation) +
-                " save (maximum species id " + std::to_string(sourceProfile->maxSpecies) + ")",
+                " cannot exist in a Generation " + std::to_string(speciesMoveGen) +
+                " save (maximum species id " + std::to_string(speciesMax) + ")",
                 CheckIdentifier::SourceGame);
         }
-
-        for (int slot = 0; sourceProfile && slot < 4; ++slot) {
+        for (int slot = 0; moveMax && slot < 4; ++slot) {
             const uint16_t moveId = pk.move(slot);
-            if (moveId > sourceProfile->maxMove) {
+            if (moveId > moveMax) {
                 add(r, Severity::Invalid,
                     "Move id " + std::to_string(moveId) +
-                    " cannot exist in a Generation " +
-                    std::to_string(sourceProfile->generation) +
-                    " save (maximum move id " + std::to_string(sourceProfile->maxMove) + ")",
+                    " cannot exist in a Generation " + std::to_string(speciesMoveGen) +
+                    " save (maximum move id " + std::to_string(moveMax) + ")",
                     CheckIdentifier::Moves);
             }
         }

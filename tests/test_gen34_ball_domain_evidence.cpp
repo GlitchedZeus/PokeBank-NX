@@ -1,5 +1,6 @@
 #include "Legality/Gen34BallDomainEvidence.h"
 #include "Legality/Gen34FormatDomainEvidence.h"
+#include "Legality/LegalityContext.h"
 
 #include <cassert>
 #include <iostream>
@@ -48,6 +49,20 @@ int main() {
     static_assert(F::generationFromGroup(Enums::GameVersion::GSC)==0);
     static_assert(F::generationFromGroup(Enums::GameVersion::Invalid)==0);
     static_assert(F::generationFromGroup(Enums::GameVersion::SWSH)==0);
+
+    static_assert(F::maxSpecies(3)==386 && F::maxMove(3)==354);
+    static_assert(F::maxSpecies(4)==493 && F::maxMove(4)==467);
+    static_assert(F::maxSpecies(0)==0 && F::maxMove(0)==0);
+    static_assert(!F::impossibleSpecies(0,65535));
+    static_assert(!F::impossibleMove(0,65535));
+    static_assert(F::impossibleSpecies(3,387));
+    static_assert(F::impossibleMove(3,355));
+    static_assert(F::impossibleSpecies(4,494));
+    static_assert(F::impossibleMove(4,468));
+    static_assert(Legality::sourceGameProfile("ruby_gba")->maxSpecies==F::maxSpecies(3));
+    static_assert(Legality::sourceGameProfile("ruby_gba")->maxMove==F::maxMove(3));
+    static_assert(Legality::sourceGameProfile("heartgold_nds")->maxSpecies==F::maxSpecies(4));
+    static_assert(Legality::sourceGameProfile("heartgold_nds")->maxMove==F::maxMove(4));
 
     std::cout << "Gen III-IV ball domain evidence tests passed\n";
     return 0;

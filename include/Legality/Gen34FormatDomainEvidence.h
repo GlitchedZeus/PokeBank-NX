@@ -27,4 +27,17 @@ constexpr uint8_t generationFromGroup(Enums::GameVersion group) noexcept {
             return 0;
     }
 }
+// Pinned PKHeX and project SourceGameProfile generation ceilings.
+constexpr uint16_t maxSpecies(uint8_t gen) noexcept {
+    return gen==3 ? 386 : gen==4 ? 493 : 0;
+}
+constexpr uint16_t maxMove(uint8_t gen) noexcept {
+    return gen==3 ? 354 : gen==4 ? 467 : 0;
+}
+constexpr bool impossibleSpecies(uint8_t gen,uint16_t species) noexcept {
+    return maxSpecies(gen)!=0 && species>maxSpecies(gen);
+}
+constexpr bool impossibleMove(uint8_t gen,uint16_t move) noexcept {
+    return maxMove(gen)!=0 && move>maxMove(gen);
+}
 } // namespace Legality::Gen34FormatDomain
