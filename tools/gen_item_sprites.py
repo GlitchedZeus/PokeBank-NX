@@ -27,6 +27,13 @@ REQUIRED_BALLS = (
     "repeat-ball", "timer-ball", "luxury-ball", "premier-ball",
     "dusk-ball", "heal-ball", "quick-ball", "cherish-ball",
 )
+# Protect native Gen I–IV inventory/held-picker artwork from becoming
+# Gen IV-only again. Every key exists in the pinned 898-PNG manifest.
+REQUIRED_CLASSIC = (
+    "poke-doll", "bright-powder", "up-grade", "red-apricorn",
+    "air-mail", "flame-mail", "tm-normal", "tm-fire", "hm01",
+)
+
 
 
 def slugify(name: str) -> str:
@@ -110,11 +117,17 @@ def fetch(name: str, force: bool) -> str:
     return "fetched"
 
 
-def verify_required() -> None:
+def verify_required(include_classic: bool = False) -> None:
     missing = [name for name in REQUIRED_BALLS if not validated(OUT / (name + ".png"))]
     if missing:
         raise RuntimeError("Missing required native Gen IV ball PNGs: " + ", ".join(missing))
     print("GEN IV BALL SPRITE PREFLIGHT: PASS (16 distinct matching ball images)")
+    if include_classic:
+        classics = [name for name in REQUIRED_CLASSIC
+                    if not validated(OUT / (name + ".png"))]
+        if classics:
+            raise RuntimeError("Missing pinned Gen I–IV item icons: " + ", ".join(classics))
+        print("CLASSIC ITEM SPRITE PREFLIGHT: PASS (TM/HM, mail, apricorn and key items)")
 
 
 def main() -> int:
@@ -125,7 +138,7 @@ def main() -> int:
     options = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     if options.verify_existing:
-        verify_required()
+        verify_required(include_classic=not options.required_only)
         return 0
     names = set(REQUIRED_BALLS)
     if not options.required_only:
@@ -136,7 +149,7 @@ def main() -> int:
         for result in pool.map(lambda name: fetch(name, options.force), sorted(names)):
             results[result] += 1
     print(f"Item sprite recovery from pinned PokeAPI {PINNED_REF[:12]}: {results}")
-    verify_required()
+    verify_required(include_classic=not options.required_only)
     return 0
 
 
