@@ -284,3 +284,22 @@ $(HOST_BUILD)/test_gen2_crystal_red_gyarados: $(GSC_CRYSTAL_RED_GYARADOS_SOURCES
 $(HOST_BUILD)/test_gen2_crystal_red_gyarados_sanitize: $(GSC_CRYSTAL_RED_GYARADOS_SOURCES) $(GSC_CRYSTAL_RED_GYARADOS_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_CRYSTAL_RED_GYARADOS_SOURCES) -o $@
+
+# Crystal Tyrogue level-10 gift through Hitmonlee/Hitmonchan/Hitmontop.
+GSC_CRYSTAL_TYROGUE_GIFT_SOURCES := tests/test_gen2_crystal_tyrogue_gift.cpp
+GSC_CRYSTAL_TYROGUE_GIFT_HEADERS := include/Legality/Gen2CrystalTyrogueGiftEvidence.h \
+	include/Legality/Gen2StaticEncounter.h \
+	include/Legality/Gen2StaticEncounterData.inc
+
+HOST_TESTS += $(HOST_BUILD)/test_gen2_crystal_tyrogue_gift
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_crystal_tyrogue_gift_sanitize
+host-test: $(HOST_BUILD)/test_gen2_crystal_tyrogue_gift
+host-sanitize: $(HOST_BUILD)/test_gen2_crystal_tyrogue_gift_sanitize
+
+$(HOST_BUILD)/test_gen2_crystal_tyrogue_gift: $(GSC_CRYSTAL_TYROGUE_GIFT_SOURCES) $(GSC_CRYSTAL_TYROGUE_GIFT_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GSC_CRYSTAL_TYROGUE_GIFT_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen2_crystal_tyrogue_gift_sanitize: $(GSC_CRYSTAL_TYROGUE_GIFT_SOURCES) $(GSC_CRYSTAL_TYROGUE_GIFT_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_CRYSTAL_TYROGUE_GIFT_SOURCES) -o $@

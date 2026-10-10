@@ -25,6 +25,7 @@
 #include "Legality/Gen2CrystalEeveeGiftEvidence.h"
 #include "Legality/Gen2CrystalStarterGiftEvidence.h"
 #include "Legality/Gen2CrystalDratiniGiftEvidence.h"
+#include "Legality/Gen2CrystalTyrogueGiftEvidence.h"
 #include "Legality/Gen2TradeEvidence.h"
 #include "Legality/Gen2WildEncounter.h"
 #include "Legality/Gen2CrystalEvolvedWildEvidence.h"
@@ -705,6 +706,20 @@ namespace Legality {
                 Gen2CrystalDratiniGift::Evidence::Unresolved) {
                 add(r, Severity::Info,
                     "PK2 caught-data is compatible with Crystal's pinned level-15 Dratini gift ancestor and later level-up evolution; other provenance remains incomplete",
+                    CheckIdentifier::Encounter);
+            }
+
+            // The pinned Crystal Tyrogue gift may evolve into three
+            // Hitmon species after a level-up at 20. The evolved
+            // specimen does not preserve the Attack/Defense relation
+            // at evolution time; do not claim one unique history.
+            if (Gen2CrystalTyrogueGift::analyze(
+                    exactSourceGameId, gen2.speciesID(), gen2.level(),
+                    gen2.caughtData(), gen2.isEgg(),
+                    gen2.isShiny(gen2.id32(), {})) !=
+                Gen2CrystalTyrogueGift::Evolution::Unresolved) {
+                add(r, Severity::Info,
+                    "PK2 caught-data is compatible with Crystal's pinned level-10 Tyrogue gift ancestor and a later Hitmon evolution; evolution-time stats and other origins remain unresolved",
                     CheckIdentifier::Encounter);
             }
 

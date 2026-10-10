@@ -196,6 +196,20 @@ int main() {
     assert(!hasInfo(analyzeRawSave(130,30,(1u<<14)|(29u<<8)|38u,false,true),staticText));
     assert(!hasInfo(analyzeRawSave(130,30,(1u<<14)|(30u<<8)|39u,false,true),staticText));
 
+    // Pinned Crystal level-10 Tyrogue gift, location 35; evolved
+    // Hitmonlee, Hitmonchan and Hitmontop remain possible histories.
+    constexpr uint16_t tyrogueGift = (1u<<14)|(10u<<8)|35u;
+    constexpr auto tyrogueText = "PK2 caught-data is compatible with Crystal's pinned level-10 Tyrogue gift ancestor";
+    assert(hasInfo(analyzeRawSave(106,20,tyrogueGift),tyrogueText));
+    assert(hasInfo(analyzeRawSave(107,20,tyrogueGift),tyrogueText));
+    assert(hasInfo(analyzeRawSave(237,20,tyrogueGift),tyrogueText));
+    assert(hasInfo(analyzeRawSave(237,45,tyrogueGift,false,false),tyrogueText));
+    assert(!hasInfo(analyzeRawSave(106,19,tyrogueGift),tyrogueText));
+    assert(!hasInfo(analyzeRawSave(107,20,tyrogueGift,true),tyrogueText));
+    assert(!hasInfo(analyzeRawSave(237,20,(1u<<14)|(9u<<8)|35u),tyrogueText));
+    assert(!hasInfo(analyzeRawSave(237,20,(1u<<14)|(10u<<8)|34u),tyrogueText));
+    assert(!hasInfo(analyzeRawSave(236,20,tyrogueGift),tyrogueText));
+
     // Actual pinned Crystal Sentret #161, location2, level2/daytime.
     constexpr uint16_t sentret=(1u<<14)|(2u<<8)|2u;
     assert(hasInfo(analyzeRawSave(162,15,sentret),evolved));
