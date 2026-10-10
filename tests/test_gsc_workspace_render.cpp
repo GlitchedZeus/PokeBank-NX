@@ -38,6 +38,11 @@ void PKSEFramebuffer::drawFilledRect(int,int,int,int,Color) {}
 void PKSEFramebuffer::drawFilledCircle(int,int,int,Color) {}
 void PKSEFramebuffer::drawFilledRoundedRect(int,int,int,int,int,Color) {}
 void PKSEFramebuffer::drawRoundedRect(int,int,int,int,int,Color,int) {}
+void PKSEFramebuffer::drawCircle(int,int,int,Color,int) {}
+void PKSEFramebuffer::setClipRect(int x,int y,int w,int h) {
+    clipActive = true; clipX = x; clipY = y; clipW = w; clipH = h;
+}
+void PKSEFramebuffer::clearClip() { clipActive = false; }
 void PKSEFramebuffer::drawSelectionHighlight(int,int,int,int) {}
 void PKSEFramebuffer::drawSpriteStaticContained(int,int,int,int,int,int,const unsigned char*,int) {}
 void PKSEFramebuffer::drawImageScaled(int,int,int,int,int,int,const unsigned char*,int) {}
