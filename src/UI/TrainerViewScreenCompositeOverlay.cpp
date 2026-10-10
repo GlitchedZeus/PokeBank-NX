@@ -150,6 +150,7 @@ void drawFooterWithClassicAddLabel(PKSEFramebuffer& fb, std::string text) {
 #include "ClassicReleaseActionFix.inc"
 #include "Gen3SharedPokemonSurface.inc"
 #include "Gen4SharedPokemonSurface.inc"
+#include "Gen5SharedReadOnlySurface.inc"
 
 namespace UI {
 namespace {
@@ -224,6 +225,10 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     // the adapter's native capacity before any source action/move layer sees it.
     clampSourceBoxSelection(*this);
 
+    // Generation V currently offers only the shared read-only Trainer/Party/Boxes
+    // surface. Intercept ALL inputs here, before inherited bank/edit/save handlers.
+    if (Gen5SharedReadOnlySurface::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
+
     if (classicPackedMoveLayerAvailable(*this) &&
         ClassicPackedMove::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
     if (Gen4SharedEditorSurface::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
@@ -249,6 +254,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
 }
 
 void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
+    if (Gen5SharedReadOnlySurface::draw(*this, fb)) return;
     if (Gen4SharedEditorSurface::draw(*this, fb)) return;
     if (Gen3SharedEditorSurface::draw(*this, fb)) return;
 

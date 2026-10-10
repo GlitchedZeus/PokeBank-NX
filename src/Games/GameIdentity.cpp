@@ -7,7 +7,7 @@ namespace PokeVault::Games {
         using enum Platform;
         using enum SourceSupport;
 
-        constexpr std::array<GameDescriptor, 28> kGames{{
+        constexpr std::array<GameDescriptor, 32> kGames{{
             {"red_gb",                       "Red",               GameBoy,        1, 0, ReadOnly},
             {"blue_gb",                      "Blue",              GameBoy,        1, 0, ReadOnly},
             {"yellow_gb",                    "Yellow",            GameBoy,        1, 0, ReadOnly},
@@ -26,6 +26,12 @@ namespace PokeVault::Games {
             {"platinum_nds",                  "Platinum",          NintendoDS,     4, 0, ReadOnly},
             {"heartgold_nds",                 "HeartGold",         NintendoDS,     4, 0, ReadOnly},
             {"soulsilver_nds",                "SoulSilver",        NintendoDS,     4, 0, ReadOnly},
+            // G5-01: exact game identities only. Planned keeps all user-facing
+            // open/edit/assignment routes disabled until provider and UI validation.
+            {"black_nds",                     "Black",             NintendoDS,     5, 0, Planned},
+            {"white_nds",                     "White",             NintendoDS,     5, 0, Planned},
+            {"black2_nds",                    "Black 2",           NintendoDS,     5, 0, Planned},
+            {"white2_nds",                    "White 2",           NintendoDS,     5, 0, Planned},
             {"firered_switch",               "FireRed",           NintendoSwitch, 3, 0x0100554023408000ULL, NativeSwitch},
             {"leafgreen_switch",             "LeafGreen",         NintendoSwitch, 3, 0x010034D02340E000ULL, NativeSwitch},
             {"letsgo_pikachu_switch",        "Let's Go Pikachu",  NintendoSwitch, 7, 0x010003F003A34000ULL, NativeSwitch},
@@ -116,6 +122,9 @@ namespace PokeVault::Games {
         if (id == "diamond_nds" || id == "pearl_nds" || id == "platinum_nds" ||
             id == "brilliant_diamond_switch" || id == "shining_pearl_switch")
             return "sinnoh";
+
+        if (id == "black_nds" || id == "white_nds" ||
+            id == "black2_nds" || id == "white2_nds") return "unova";
 
         if (id == "legends_arceus_switch") return "hisui";
         if (id == "sword_switch" || id == "shield_switch") return "galar";

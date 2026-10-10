@@ -1,0 +1,59 @@
+# Gen V phase A: strictly read-only PK5 record foundation; no source writer.
+GEN5_PK5_TEST := $(HOST_BUILD)/test_gen5_pk5_readonly
+GEN5_PK5_SANITIZE := $(HOST_BUILD)/test_gen5_pk5_readonly_sanitize
+GEN5_PK5_INPUTS := tests/test_gen5_pk5_readonly.cpp \
+    include/Encryption/Encryption5.h include/Pokemon/Pokemon5ReadOnly.h \
+    include/Integration/Gen5/Gen5StagedPokemonRecord.h
+
+HOST_TESTS += $(GEN5_PK5_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_PK5_SANITIZE)
+host-test: $(GEN5_PK5_TEST)
+host-sanitize: $(GEN5_PK5_SANITIZE)
+
+$(GEN5_PK5_TEST): $(GEN5_PK5_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_pk5_readonly.cpp -o $@
+
+$(GEN5_PK5_SANITIZE): $(GEN5_PK5_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_pk5_readonly.cpp -o $@
+
+# Phase A tranche 2: strict BW/B2W2 battery save checksum & reader contracts.
+GEN5_SAVE_TEST := $(HOST_BUILD)/test_gen5_readonly_save
+GEN5_SAVE_SANITIZE := $(HOST_BUILD)/test_gen5_readonly_save_sanitize
+GEN5_SAVE_INPUTS := tests/test_gen5_readonly_save.cpp \
+    src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp \
+    src/Games/GameIdentity.cpp include/Games/GameIdentity.h \
+    src/Integration/Gen5/Gen5AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp \
+    include/Integration/Gen5/Gen5AssignedSource.h include/Legacy/LegacySourceBindings.h \
+    include/Integration/Gen5/Gen5GameSourceCatalog.h \
+    include/Integration/Gen5/Gen5GameCardPreview.h \
+    include/Pokemon/Pokemon5ReadOnlyView.h include/Legacy/Gen5ReadOnlyTrainer.h \
+    src/Legacy/Gen5ReadOnlyTrainer.cpp src/Names/SpeciesNames.cpp \
+    include/Enums/GameVersion.h \
+    include/Integration/Gen5/Gen5SharedPokemonSession.h \
+    include/Integration/Gen5/Gen5SharedEditorBridge.h \
+    include/Integration/Gen5/Gen5SharedScreenState.h \
+    include/Integration/Gen5/Gen5SharedReview.h \
+    include/Integration/Gen5/Gen5TrainerName.h \
+    include/Integration/Gen5/Gen5SourceDiscovery.h \
+    include/Integration/Gen5/Gen5StagedPokemonWorkspace.h \
+    include/Integration/Gen5/Gen5ExactFormatEditorProvider.h \
+    include/UI/ExactSaveCapabilities.h include/UI/SharedPokemonEditorContract.h \
+    include/Integration/Gen5/Gen5SaveBlockLayout.h \
+    include/Integration/Gen5/Gen5ReadOnlySave.h \
+    include/Integration/Gen5/Gen5SaveInstanceAdapter.h \
+    include/Pokemon/Pokemon5ReadOnly.h include/Encryption/Encryption5.h include/Utils/CRC16.h
+
+HOST_TESTS += $(GEN5_SAVE_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_SAVE_SANITIZE)
+host-test: $(GEN5_SAVE_TEST)
+host-sanitize: $(GEN5_SAVE_SANITIZE)
+
+$(GEN5_SAVE_TEST): $(GEN5_SAVE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude tests/test_gen5_readonly_save.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp src/Integration/Gen5/Gen5AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp src/Names/SpeciesNames.cpp -o $@
+
+$(GEN5_SAVE_SANITIZE): $(GEN5_SAVE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude tests/test_gen5_readonly_save.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp src/Integration/Gen5/Gen5AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp src/Names/SpeciesNames.cpp -o $@
