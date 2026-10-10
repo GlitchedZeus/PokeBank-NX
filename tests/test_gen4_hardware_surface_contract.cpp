@@ -1,4 +1,5 @@
 #include "UI/SharedPokemonEditorContract.h"
+#include "UI/Gen4BoxTouchActions.h"
 
 #include <cassert>
 #include <fstream>
@@ -23,6 +24,20 @@ int main() {
     namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
     static_assert(Shared::genderUsesInlineToggle(Shared::Generation::Gen4));
     static_assert(!Shared::genderOpensDedicatedPicker(Shared::Generation::Gen4));
+
+    // First tap on a different slot still selects it via the legacy box cursor.
+    // Only a tap on the focused slot or its summary enters Gen IV actions.
+    namespace BoxTouch = PokeBank::UIModel::Gen4BoxTouchActions;
+    static_assert(BoxTouch::opensSelectedSlotActions(0, 0, 30));
+    static_assert(BoxTouch::opensSelectedSlotActions(29, 29, 30));
+    static_assert(BoxTouch::opensSelectedSlotActions(BoxTouch::SummaryPanelTouchId, 12, 30));
+    static_assert(!BoxTouch::opensSelectedSlotActions(3, 2, 30));
+    static_assert(!BoxTouch::opensSelectedSlotActions(1000, 2, 30));
+    static_assert(!BoxTouch::opensSelectedSlotActions(1001, 2, 30));
+    static_assert(!BoxTouch::opensSelectedSlotActions(1002, 2, 30));
+    static_assert(!BoxTouch::opensSelectedSlotActions(BoxTouch::SummaryPanelTouchId, -1, 30));
+    static_assert(!BoxTouch::opensSelectedSlotActions(BoxTouch::SummaryPanelTouchId, 30, 30));
+    static_assert(!BoxTouch::opensSelectedSlotActions(0, 0, 0));
 
     // Immutable external sources still need the staged dirty-session exit confirmation.
     static_assert(Shared::immutableSourceBlocksSaveDialog(true, false));
@@ -183,6 +198,9 @@ int main() {
     contains(surface, "add(MenuAction::Add, \"Add Pokemon\", stagedAvailable);");
     contains(surface, "case MenuAction::Add:");
     contains(surface, "beginCreate(screen)");
+    contains(surface, "Gen4BoxTouchActions::opensSelectedSlotActions(");
+    contains(surface, "screen.touchedButtonId(touch)");
+    contains(surface, "bridge(screen).stagedPokemonUnavailableReason()");
     contains(surface, "add(MenuAction::Clone, \"Clone\", stagedAvailable);");
     contains(surface, "add(MenuAction::Release, \"Release\", stagedAvailable);");
     contains(surface, "add(MenuAction::AddMasterVault, \"Add to Master Vault\", false);");
