@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 import struct
 import urllib.request
+import urllib.parse
 import zlib
 from pathlib import Path
 
@@ -240,14 +241,42 @@ def recover_real_mail_sheet(keys, out=OUT):
     cache_file=CACHE / "crystal-mail-sheet-52408.png"
     cache_file.parent.mkdir(parents=True,exist_ok=True)
     if not cache_file.is_file():
-        request=urllib.request.Request(REAL_MAIL_SHEET,
-            headers={"User-Agent":"PokeBank-NX-GameArchive-HistoricalAsset/1.0",
-                     "Referer":"https://www.spriters-resource.com/"})
-        with urllib.request.urlopen(request,timeout=22) as source:
-            payload=source.read()
-        if len(payload)>2_000_000:
-            raise ValueError("Unexpectedly huge external mail sprite sheet")
-        cache_file.write_bytes(payload)
+        # Original resource blocks GitHub Actions (HTTP403) occasionally.
+        # Two standards-compliant public image-proxy routes provide the same
+        # immutable source when hotlinking fails. Every route is strictly
+        # checked against the fixed dimensions before caching and cropping.
+        # These mirrors are NOT alternative artwork or generated scenes.
+        targets = (
+            REAL_MAIL_SHEET,
+            "https://wsrv.nl/?url=" + urllib.parse.quote(REAL_MAIL_SHEET, safe=""),
+            "https://images.weserv.nl/?url=" +
+                urllib.parse.quote(REAL_MAIL_SHEET, safe=""),
+            "https://corsproxy.io/?url=" +
+                urllib.parse.quote(REAL_MAIL_SHEET, safe=""),
+        )
+        failures = []
+        for index, url in enumerate(targets):
+            try:
+                request=urllib.request.Request(url,
+                    headers={"User-Agent":"Mozilla/5.0 (PokeBank-NX-art-recovery)",
+                             "Accept":"image/png,image/*;q=0.8",
+                             "Referer":"https://www.spriters-resource.com/"})
+                with urllib.request.urlopen(request,timeout=20) as source:
+                    payload=source.read(2_000_001)
+                if len(payload)>2_000_000:
+                    raise ValueError("Unexpectedly huge source image")
+                w,h,_=decode(payload)
+                if (w,h)!=MAIL_SHEET_SIZE:
+                    raise ValueError("Source proxy did not return the pinned sheet")
+                cache_file.write_bytes(payload)
+                print("Authentic Pokémon Crystal mail screenshot source " +
+                      str(index+1) + "/" + str(len(targets)) + ": VERIFIED")
+                break
+            except (OSError, ValueError) as exc:
+                failures.append(str(index+1) + ":" + type(exc).__name__)
+        if not cache_file.is_file():
+            raise OSError("Original Crystal mail image blocked on all 4 routes: "+
+                          ", ".join(failures))
     width,height,pixels=decode(cache_file.read_bytes())
     if (width,height)!=MAIL_SHEET_SIZE:
         raise ValueError("Authentic Crystal sheet changed source dimensions")
