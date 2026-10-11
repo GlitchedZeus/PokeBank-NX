@@ -1,0 +1,794 @@
+[
+  {
+    "game_source": "pokeemerald",
+    "seed_before_inherit": "00000000",
+    "draws": [
+      0,
+      59774,
+      21105,
+      12720,
+      36418,
+      58060
+    ],
+    "selected_stats": [
+      0,
+      5,
+      3
+    ],
+    "parents": [
+      0,
+      0,
+      0
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      30,
+      0,
+      0,
+      30,
+      0,
+      30
+    ],
+    "final_seed": "E2CCA5EE",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokeemerald",
+    "seed_before_inherit": "00000001",
+    "draws": [
+      16838,
+      44065,
+      53998,
+      8119,
+      31203,
+      46760
+    ],
+    "selected_stats": [
+      2,
+      1,
+      4
+    ],
+    "parents": [
+      1,
+      1,
+      0
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      0,
+      31,
+      31,
+      0,
+      30,
+      0
+    ],
+    "final_seed": "B6A8FDE7",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokeemerald",
+    "seed_before_inherit": "00000002",
+    "draws": [
+      33676,
+      28355,
+      21356,
+      3517,
+      25988,
+      35461
+    ],
+    "selected_stats": [
+      4,
+      1,
+      1
+    ],
+    "parents": [
+      1,
+      0,
+      1
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      0,
+      31,
+      0,
+      0,
+      31,
+      0
+    ],
+    "final_seed": "8A8555E0",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokeemerald",
+    "seed_before_inherit": "00000003",
+    "draws": [
+      50515,
+      12646,
+      54250,
+      64452,
+      20774,
+      24161
+    ],
+    "selected_stats": [
+      1,
+      2,
+      4
+    ],
+    "parents": [
+      0,
+      0,
+      1
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      0,
+      30,
+      30,
+      0,
+      31,
+      0
+    ],
+    "final_seed": "5E61ADD9",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokeemerald",
+    "seed_before_inherit": "0000002A",
+    "draws": [
+      51849,
+      55339,
+      26386,
+      16065,
+      14008,
+      42227
+    ],
+    "selected_stats": [
+      3,
+      5,
+      4
+    ],
+    "parents": [
+      1,
+      0,
+      1
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      0,
+      0,
+      0,
+      31,
+      31,
+      30
+    ],
+    "final_seed": "A4F314C8",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokeemerald",
+    "seed_before_inherit": "0000FFFF",
+    "draws": [
+      3239,
+      49476,
+      36520,
+      49851,
+      60126,
+      26345
+    ],
+    "selected_stats": [
+      5,
+      2,
+      1
+    ],
+    "parents": [
+      1,
+      0,
+      1
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      0,
+      31,
+      30,
+      0,
+      0,
+      31
+    ],
+    "final_seed": "66E94DF5",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokeemerald",
+    "seed_before_inherit": "12345678",
+    "draws": [
+      2929,
+      34026,
+      55690,
+      62688,
+      9860,
+      38967
+    ],
+    "selected_stats": [
+      1,
+      2,
+      4
+    ],
+    "parents": [
+      0,
+      0,
+      1
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      0,
+      30,
+      30,
+      0,
+      31,
+      0
+    ],
+    "final_seed": "983788A6",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokeemerald",
+    "seed_before_inherit": "FFFFFFFF",
+    "draws": [
+      48698,
+      9947,
+      53747,
+      17322,
+      41633,
+      3824
+    ],
+    "selected_stats": [
+      2,
+      3,
+      5
+    ],
+    "parents": [
+      0,
+      1,
+      0
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      0,
+      0,
+      30,
+      31,
+      0,
+      30
+    ],
+    "final_seed": "0EF04DF5",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokeruby",
+    "seed_before_inherit": "00000000",
+    "draws": [
+      0,
+      59774,
+      21105,
+      12720,
+      36418,
+      58060
+    ],
+    "selected_stats": [
+      0,
+      5,
+      2
+    ],
+    "parents": [
+      0,
+      0,
+      0
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      30,
+      0,
+      30,
+      0,
+      0,
+      30
+    ],
+    "final_seed": "E2CCA5EE",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokeruby",
+    "seed_before_inherit": "00000001",
+    "draws": [
+      16838,
+      44065,
+      53998,
+      8119,
+      31203,
+      46760
+    ],
+    "selected_stats": [
+      2,
+      0,
+      4
+    ],
+    "parents": [
+      1,
+      1,
+      0
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      31,
+      0,
+      31,
+      0,
+      30,
+      0
+    ],
+    "final_seed": "B6A8FDE7",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokeruby",
+    "seed_before_inherit": "00000002",
+    "draws": [
+      33676,
+      28355,
+      21356,
+      3517,
+      25988,
+      35461
+    ],
+    "selected_stats": [
+      4,
+      0,
+      1
+    ],
+    "parents": [
+      1,
+      0,
+      1
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      30,
+      31,
+      0,
+      0,
+      31,
+      0
+    ],
+    "final_seed": "8A8555E0",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokeruby",
+    "seed_before_inherit": "00000003",
+    "draws": [
+      50515,
+      12646,
+      54250,
+      64452,
+      20774,
+      24161
+    ],
+    "selected_stats": [
+      1,
+      2,
+      4
+    ],
+    "parents": [
+      0,
+      0,
+      1
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      0,
+      30,
+      30,
+      0,
+      31,
+      0
+    ],
+    "final_seed": "5E61ADD9",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokeruby",
+    "seed_before_inherit": "0000002A",
+    "draws": [
+      51849,
+      55339,
+      26386,
+      16065,
+      14008,
+      42227
+    ],
+    "selected_stats": [
+      3,
+      5,
+      2
+    ],
+    "parents": [
+      1,
+      0,
+      1
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      0,
+      0,
+      31,
+      31,
+      0,
+      30
+    ],
+    "final_seed": "A4F314C8",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokeruby",
+    "seed_before_inherit": "0000FFFF",
+    "draws": [
+      3239,
+      49476,
+      36520,
+      49851,
+      60126,
+      26345
+    ],
+    "selected_stats": [
+      5,
+      1,
+      0
+    ],
+    "parents": [
+      1,
+      0,
+      1
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      31,
+      30,
+      0,
+      0,
+      0,
+      31
+    ],
+    "final_seed": "66E94DF5",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokeruby",
+    "seed_before_inherit": "12345678",
+    "draws": [
+      2929,
+      34026,
+      55690,
+      62688,
+      9860,
+      38967
+    ],
+    "selected_stats": [
+      1,
+      2,
+      4
+    ],
+    "parents": [
+      0,
+      0,
+      1
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      0,
+      30,
+      30,
+      0,
+      31,
+      0
+    ],
+    "final_seed": "983788A6",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokeruby",
+    "seed_before_inherit": "FFFFFFFF",
+    "draws": [
+      48698,
+      9947,
+      53747,
+      17322,
+      41633,
+      3824
+    ],
+    "selected_stats": [
+      2,
+      3,
+      5
+    ],
+    "parents": [
+      0,
+      1,
+      0
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      0,
+      0,
+      30,
+      31,
+      0,
+      30
+    ],
+    "final_seed": "0EF04DF5",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokefirered",
+    "seed_before_inherit": "00000000",
+    "draws": [
+      0,
+      59774,
+      21105,
+      12720,
+      36418,
+      58060
+    ],
+    "selected_stats": [
+      0,
+      5,
+      2
+    ],
+    "parents": [
+      0,
+      0,
+      0
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      30,
+      0,
+      30,
+      0,
+      0,
+      30
+    ],
+    "final_seed": "E2CCA5EE",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokefirered",
+    "seed_before_inherit": "00000001",
+    "draws": [
+      16838,
+      44065,
+      53998,
+      8119,
+      31203,
+      46760
+    ],
+    "selected_stats": [
+      2,
+      0,
+      4
+    ],
+    "parents": [
+      1,
+      1,
+      0
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      31,
+      0,
+      31,
+      0,
+      30,
+      0
+    ],
+    "final_seed": "B6A8FDE7",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokefirered",
+    "seed_before_inherit": "00000002",
+    "draws": [
+      33676,
+      28355,
+      21356,
+      3517,
+      25988,
+      35461
+    ],
+    "selected_stats": [
+      4,
+      0,
+      1
+    ],
+    "parents": [
+      1,
+      0,
+      1
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      30,
+      31,
+      0,
+      0,
+      31,
+      0
+    ],
+    "final_seed": "8A8555E0",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokefirered",
+    "seed_before_inherit": "00000003",
+    "draws": [
+      50515,
+      12646,
+      54250,
+      64452,
+      20774,
+      24161
+    ],
+    "selected_stats": [
+      1,
+      2,
+      4
+    ],
+    "parents": [
+      0,
+      0,
+      1
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      0,
+      30,
+      30,
+      0,
+      31,
+      0
+    ],
+    "final_seed": "5E61ADD9",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokefirered",
+    "seed_before_inherit": "0000002A",
+    "draws": [
+      51849,
+      55339,
+      26386,
+      16065,
+      14008,
+      42227
+    ],
+    "selected_stats": [
+      3,
+      5,
+      2
+    ],
+    "parents": [
+      1,
+      0,
+      1
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      0,
+      0,
+      31,
+      31,
+      0,
+      30
+    ],
+    "final_seed": "A4F314C8",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokefirered",
+    "seed_before_inherit": "0000FFFF",
+    "draws": [
+      3239,
+      49476,
+      36520,
+      49851,
+      60126,
+      26345
+    ],
+    "selected_stats": [
+      5,
+      1,
+      0
+    ],
+    "parents": [
+      1,
+      0,
+      1
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      31,
+      30,
+      0,
+      0,
+      0,
+      31
+    ],
+    "final_seed": "66E94DF5",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokefirered",
+    "seed_before_inherit": "12345678",
+    "draws": [
+      2929,
+      34026,
+      55690,
+      62688,
+      9860,
+      38967
+    ],
+    "selected_stats": [
+      1,
+      2,
+      4
+    ],
+    "parents": [
+      0,
+      0,
+      1
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      0,
+      30,
+      30,
+      0,
+      31,
+      0
+    ],
+    "final_seed": "983788A6",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  },
+  {
+    "game_source": "pokefirered",
+    "seed_before_inherit": "FFFFFFFF",
+    "draws": [
+      48698,
+      9947,
+      53747,
+      17322,
+      41633,
+      3824
+    ],
+    "selected_stats": [
+      2,
+      3,
+      5
+    ],
+    "parents": [
+      0,
+      1,
+      0
+    ],
+    "final_ivs_hp_atk_def_spe_spa_spd": [
+      0,
+      0,
+      30,
+      31,
+      0,
+      30
+    ],
+    "final_seed": "0EF04DF5",
+    "independent_check": "PASS: unchanged extracted retail C vs independent Python",
+    "scope": "synthetic IV-inheritance-stage vector; no PID, native PK3 or encounter legitimacy claim"
+  }
+]

@@ -1,0 +1,989 @@
+[
+  {
+    "id": "NX-ANALYZE",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "fecfbca9b0323578fd423f5d90486ddb2d0da72e",
+    "license": "Existing project license; no licensing change by audit",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/fecfbca9b0323578fd423f5d90486ddb2d0da72e/src/Legality/Legality.cpp",
+    "source_path": "src/Legality/Legality.cpp",
+    "symbol": "Report analyze",
+    "matching_lines": [
+      559,
+      1963
+    ],
+    "line_range": [
+      1,
+      1967
+    ],
+    "sha256": "c8942ecd6b60614bffbaa6e0ff170c3b1eca40c4d6ad93e2fbbea7dc647bef4c",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "NX-EGGMOVE",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "fecfbca9b0323578fd423f5d90486ddb2d0da72e",
+    "license": "Existing project license; no licensing change by audit",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/fecfbca9b0323578fd423f5d90486ddb2d0da72e/include/Legality/Gen34EggMoveEvidence.h",
+    "source_path": "include/Legality/Gen34EggMoveEvidence.h",
+    "symbol": "classify",
+    "matching_lines": [
+      85
+    ],
+    "line_range": [
+      1,
+      120
+    ],
+    "sha256": "5a1f5411590efe91b0403730cc496e1544de68159ddfca41079c0367c946246e",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "NX-MOVE3",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "fecfbca9b0323578fd423f5d90486ddb2d0da72e",
+    "license": "Existing project license; no licensing change by audit",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/fecfbca9b0323578fd423f5d90486ddb2d0da72e/include/Integration/Gen3/Gen3LearnsetTable.h",
+    "source_path": "include/Integration/Gen3/Gen3LearnsetTable.h",
+    "symbol": "Availability classify",
+    "matching_lines": [
+      2252
+    ],
+    "line_range": [
+      1,
+      2276
+    ],
+    "sha256": "e6534faa503ba5a86b7e818c573693c9ba017f1db872711bf6174ec83c6115e4",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "NX-MOVE4",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "fecfbca9b0323578fd423f5d90486ddb2d0da72e",
+    "license": "Existing project license; no licensing change by audit",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/fecfbca9b0323578fd423f5d90486ddb2d0da72e/include/Integration/Gen4/Gen4MoveCompatibility.h",
+    "source_path": "include/Integration/Gen4/Gen4MoveCompatibility.h",
+    "symbol": "Availability classify",
+    "matching_lines": [
+      1575
+    ],
+    "line_range": [
+      1,
+      1609
+    ],
+    "sha256": "998e12c60ff127c501291256e769e7a0c3e1f51876f625b9efbdccbfd48b0d23",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "NX-EVENT4",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "fecfbca9b0323578fd423f5d90486ddb2d0da72e",
+    "license": "Existing project license; no licensing change by audit",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/fecfbca9b0323578fd423f5d90486ddb2d0da72e/include/Legality/Gen4EventTemplate.h",
+    "source_path": "include/Legality/Gen4EventTemplate.h",
+    "symbol": "struct EventTemplate",
+    "matching_lines": [
+      11
+    ],
+    "line_range": [
+      1,
+      153
+    ],
+    "sha256": "7a47b3c3e7092f45efe25fbee8798325468c863822bba13872c2dcf9d552df1f",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "NX-FIELDS",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "fecfbca9b0323578fd423f5d90486ddb2d0da72e",
+    "license": "Existing project license; no licensing change by audit",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/fecfbca9b0323578fd423f5d90486ddb2d0da72e/include/Pokemon/Pokemon.h",
+    "source_path": "include/Pokemon/Pokemon.h",
+    "symbol": "ribbonNational",
+    "matching_lines": [
+      425
+    ],
+    "line_range": [
+      1,
+      667
+    ],
+    "sha256": "ab576c2b1282906eed7ccb4f5e58396959500a21ee97d61f7a4e5520ad59e0a4",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "NX-WILD4",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "fecfbca9b0323578fd423f5d90486ddb2d0da72e",
+    "license": "Existing project license; no licensing change by audit",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/fecfbca9b0323578fd423f5d90486ddb2d0da72e/include/Legality/Gen4WildEncounter.h",
+    "source_path": "include/Legality/Gen4WildEncounter.h",
+    "symbol": "munchlaxTreeIndices",
+    "matching_lines": [
+      89,
+      115
+    ],
+    "line_range": [
+      1,
+      254
+    ],
+    "sha256": "37cdc185c85c60d2b8e3f98a338d8d083fc92bb33da7a46f0a31d47334f13b46",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "NX-TRANSFER",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "fecfbca9b0323578fd423f5d90486ddb2d0da72e",
+    "license": "Existing project license; no licensing change by audit",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/fecfbca9b0323578fd423f5d90486ddb2d0da72e/include/Legality/Gen4TransferEvidence.h",
+    "source_path": "include/Legality/Gen4TransferEvidence.h",
+    "symbol": "namespace",
+    "matching_lines": [
+      5,
+      97
+    ],
+    "line_range": [
+      1,
+      97
+    ],
+    "sha256": "e2c6c7b7ddaa0e6ffddda26882dcc847f8b153b0dce871f314c597091820cf85",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "NX-RNG4",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "fecfbca9b0323578fd423f5d90486ddb2d0da72e",
+    "license": "Existing project license; no licensing change by audit",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/fecfbca9b0323578fd423f5d90486ddb2d0da72e/include/Legality/Gen4LeadFrameEvidence.h",
+    "source_path": "include/Legality/Gen4LeadFrameEvidence.h",
+    "symbol": "namespace",
+    "matching_lines": [
+      8,
+      280
+    ],
+    "line_range": [
+      1,
+      280
+    ],
+    "sha256": "6f2533e23fa6c1ab38434d7504d51bcde3fc20348e70973a874fbb926306a827",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-HISTORY",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/LearnSource/Verify/LearnVerifierHistory.cs",
+    "source_path": "PKHeX.Core/Legality/LearnSource/Verify/LearnVerifierHistory.cs",
+    "symbol": "MarkAndIterate",
+    "matching_lines": [
+      22,
+      25
+    ],
+    "line_range": [
+      1,
+      137
+    ],
+    "sha256": "af681aab46f3804a6bfde0f9c269474f5c7fdb1e30fac3693e382b1ff190208e",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-BREED",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/Breeding.cs",
+    "source_path": "PKHeX.Core/Legality/Breeding.cs",
+    "symbol": "IsValidSpeciesBit34",
+    "matching_lines": [
+      47
+    ],
+    "line_range": [
+      1,
+      217
+    ],
+    "sha256": "605de22e8eac51091601c2c7424141ad1157093537e096631e3fa7302a700e61",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-TRASH",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/Verifiers/TrashByteVerifier.cs",
+    "source_path": "PKHeX.Core/Legality/Verifiers/TrashByteVerifier.cs",
+    "symbol": "VerifyTrashBytesPalPark",
+    "matching_lines": [
+      27,
+      31
+    ],
+    "line_range": [
+      1,
+      175
+    ],
+    "sha256": "c525f7ece6c88e3c9b1ce8287fb0060ff6902ba8d2e5aac1c14a0a3b9305c1d5",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-RIBBON",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/Verifiers/Ribbons/RibbonVerifierUnique4.cs",
+    "source_path": "PKHeX.Core/Legality/Verifiers/Ribbons/RibbonVerifierUnique4.cs",
+    "symbol": "AddMissingContest4",
+    "matching_lines": [
+      22,
+      60
+    ],
+    "line_range": [
+      1,
+      140
+    ],
+    "sha256": "f9416c61d012b73b7c5a5cc05d63e7a43d6070cdd3204a51c99ffbc1792b3e81",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-RIBRULE",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/Verifiers/Ribbons/RibbonRules.cs",
+    "source_path": "PKHeX.Core/Legality/Verifiers/Ribbons/RibbonRules.cs",
+    "symbol": "IsAllowedContest4",
+    "matching_lines": [
+      361,
+      368,
+      389,
+      394,
+      400
+    ],
+    "line_range": [
+      1,
+      450
+    ],
+    "sha256": "0886ef60382dec8fa559f1a7807c711c99d65900b27a1345388a13ea3417d80e",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-METHOD",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/RNG/MethodFinder.cs",
+    "source_path": "PKHeX.Core/Legality/RNG/MethodFinder.cs",
+    "symbol": "GetLCRNGMatch",
+    "matching_lines": [
+      35,
+      129
+    ],
+    "line_range": [
+      1,
+      592
+    ],
+    "sha256": "fde60f5c562d1f48534859adc26be52b9c67753ffaffc3d85a4e95ae1a3d44ef",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-LEARNREADER",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/Learnset/LearnsetReader.cs",
+    "source_path": "PKHeX.Core/Legality/Learnset/LearnsetReader.cs",
+    "symbol": "ReadLearnset16",
+    "matching_lines": [
+      23,
+      30
+    ],
+    "line_range": [
+      1,
+      44
+    ],
+    "sha256": "845c051fa9f538b7d19473cf28b0d330067f694304c0e67dd46f6e9e99e342f7",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-BIN",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/Assets/BinLinkerAccessor16.cs",
+    "source_path": "PKHeX.Core/Legality/Assets/BinLinkerAccessor16.cs",
+    "symbol": "GetEntry",
+    "matching_lines": [
+      33,
+      37
+    ],
+    "line_range": [
+      1,
+      71
+    ],
+    "sha256": "2353665981a406cc7f4d81c46e48a2d3f30eb4f6b92a890a4dc6e731ac0d812a",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "E-DAYCARE",
+    "repository": "pret/pokeemerald",
+    "revision": "731ad5bfd6e6f265508d0efcca0ba42f9dcf5881",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/pret/pokeemerald/blob/731ad5bfd6e6f265508d0efcca0ba42f9dcf5881/src/daycare.c",
+    "source_path": "src/daycare.c",
+    "symbol": "InheritIVs",
+    "matching_lines": [
+      527,
+      814
+    ],
+    "line_range": [
+      1,
+      1298
+    ],
+    "sha256": "b20e1aef476abbd91b4882cca5dbe03002a0473c3a963bbadfce9dc7c8984964",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "E-EVO",
+    "repository": "pret/pokeemerald",
+    "revision": "731ad5bfd6e6f265508d0efcca0ba42f9dcf5881",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/pret/pokeemerald/blob/731ad5bfd6e6f265508d0efcca0ba42f9dcf5881/src/evolution_scene.c",
+    "source_path": "src/evolution_scene.c",
+    "symbol": "CreateShedinja",
+    "matching_lines": [
+      548,
+      814
+    ],
+    "line_range": [
+      1,
+      1685
+    ],
+    "sha256": "6ea3c720517bbecf7ba7379929ddeccb139bd841eeb8a5d1e0042fe5869019dd",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "E-LEVEL",
+    "repository": "pret/pokeemerald",
+    "revision": "731ad5bfd6e6f265508d0efcca0ba42f9dcf5881",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/pret/pokeemerald/blob/731ad5bfd6e6f265508d0efcca0ba42f9dcf5881/src/data/pokemon/level_up_learnsets.h",
+    "source_path": "src/data/pokemon/level_up_learnsets.h",
+    "symbol": "sNinjaskLevelUpLearnset",
+    "matching_lines": [
+      3926
+    ],
+    "line_range": [
+      1,
+      5617
+    ],
+    "sha256": "a7569a51e3bb0ca4f094830c76c6db45a692c7ed64db21e59bc76a90237599e0",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "E-RNG",
+    "repository": "pret/pokeemerald",
+    "revision": "731ad5bfd6e6f265508d0efcca0ba42f9dcf5881",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/pret/pokeemerald/blob/731ad5bfd6e6f265508d0efcca0ba42f9dcf5881/include/random.h",
+    "source_path": "include/random.h",
+    "symbol": "ISO_RANDOMIZE1",
+    "matching_lines": [
+      16
+    ],
+    "line_range": [
+      1,
+      23
+    ],
+    "sha256": "566ab9be0a0840b31465faf3df5c529445a9c6d08959fd4f7f1f0ec7e637c941",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "RS-DAYCARE",
+    "repository": "pret/pokeruby",
+    "revision": "5784633ce4ef7ade1a7f2d2d0c288e3d5e6cdd7f",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/pret/pokeruby/blob/5784633ce4ef7ade1a7f2d2d0c288e3d5e6cdd7f/src/daycare.c",
+    "source_path": "src/daycare.c",
+    "symbol": "InheritIVs",
+    "matching_lines": [
+      406,
+      676
+    ],
+    "line_range": [
+      1,
+      1075
+    ],
+    "sha256": "f4aafb22b8d55f5fe90c930fb84a5c4c468e6bf590d34a1eceddc304c676eb63",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "FR-DAYCARE",
+    "repository": "pret/pokefirered",
+    "revision": "037335f4c725d7c9aecdac87066f2002b4bd7e14",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/pret/pokefirered/blob/037335f4c725d7c9aecdac87066f2002b4bd7e14/src/daycare.c",
+    "source_path": "src/daycare.c",
+    "symbol": "InheritIVs",
+    "matching_lines": [
+      791,
+      1073
+    ],
+    "line_range": [
+      1,
+      2155
+    ],
+    "sha256": "3509b363c4cadd7bb9de83fe288b49a8decc76d53d8b600c81b557ba052173ba",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "C-BREED",
+    "repository": "pret/pokecrystal",
+    "revision": "3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/pret/pokecrystal/blob/3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6/engine/pokemon/breeding.asm",
+    "source_path": "engine/pokemon/breeding.asm",
+    "symbol": "InitEggMoves",
+    "matching_lines": [
+      391
+    ],
+    "line_range": [
+      1,
+      955
+    ],
+    "sha256": "6a4a2537eab3aa245abbc04e3809ab8804b6f1b91a3b2a23c2acad6b918f7e29",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "C-DAYCARE",
+    "repository": "pret/pokecrystal",
+    "revision": "3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/pret/pokecrystal/blob/3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6/engine/events/daycare.asm",
+    "source_path": "engine/events/daycare.asm",
+    "symbol": ".GotDVs",
+    "matching_lines": [
+      655,
+      659,
+      671,
+      674,
+      679,
+      683
+    ],
+    "line_range": [
+      1,
+      724
+    ],
+    "sha256": "53e6f1de756c6f5cedd28035cdcfe8e43dc6d00c7929b2066cce98ec077220db",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "C-TIMECAPSULE",
+    "repository": "pret/pokecrystal",
+    "revision": "3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/pret/pokecrystal/blob/3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6/engine/link/time_capsule.asm",
+    "source_path": "engine/link/time_capsule.asm",
+    "symbol": "",
+    "matching_lines": [],
+    "line_range": [
+      1,
+      144
+    ],
+    "sha256": "bb5fa2bdba1260aa7e17cd40887cf246a7c05400495ad6490ef1001237b50e1f",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PT-DAYCARE",
+    "repository": "pret/pokeplatinum",
+    "revision": "637bb186e11b5ce1ee578981311c057498e57126",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/pret/pokeplatinum/blob/637bb186e11b5ce1ee578981311c057498e57126/src/overlay005/daycare.c",
+    "source_path": "src/overlay005/daycare.c",
+    "symbol": "Egg_InheritIVs",
+    "matching_lines": [
+      396,
+      766
+    ],
+    "line_range": [
+      1,
+      1214
+    ],
+    "sha256": "88e0fac100a3b25f82208509dd01e98e84ffda945ab5e221d39a976e5aafaf0e",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "HG-DAYCARE",
+    "repository": "pret/pokeheartgold",
+    "revision": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/pret/pokeheartgold/blob/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/get_egg.c",
+    "source_path": "src/get_egg.c",
+    "symbol": "InheritIVs",
+    "matching_lines": [
+      38,
+      294,
+      632
+    ],
+    "line_range": [
+      1,
+      1054
+    ],
+    "sha256": "65f7bc5bb30aedea2260cdbc6a80af99da4d5f34f0681828dfd355b4d8bd08b2",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "HG-LANGUAGE",
+    "repository": "pret/pokeheartgold",
+    "revision": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/pret/pokeheartgold/blob/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/daycare.c",
+    "source_path": "src/daycare.c",
+    "symbol": "Save_Daycare_MasudaCheck",
+    "matching_lines": [
+      65
+    ],
+    "line_range": [
+      1,
+      100
+    ],
+    "sha256": "077948145972cbad55c28f835d4a61d59b75fd9ffb5d50fe358606a7feb30375",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-GROUP1",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/LearnSource/Group/LearnGroup1.cs",
+    "source_path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroup1.cs",
+    "symbol": "public bool Check",
+    "matching_lines": [
+      25
+    ],
+    "line_range": [
+      1,
+      242
+    ],
+    "sha256": "976c429c49c2efca26b943820e93b5a39d86689b9329383a554ce22cb69317e5",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-GROUP2",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/LearnSource/Group/LearnGroup2.cs",
+    "source_path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroup2.cs",
+    "symbol": "public bool Check",
+    "matching_lines": [
+      23
+    ],
+    "line_range": [
+      1,
+      214
+    ],
+    "sha256": "1b3d5f55c28b321c5c1e3edc7363c3e4a6ebc827d35f7f574df98a3eae11f971",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-GROUP3",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/LearnSource/Group/LearnGroup3.cs",
+    "source_path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroup3.cs",
+    "symbol": "public bool Check",
+    "matching_lines": [
+      17
+    ],
+    "line_range": [
+      1,
+      230
+    ],
+    "sha256": "5e3c1884a103bef957dc0ad64fa32f74f0b0d2b6e13717ae8f37332413b63033",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-GROUP4",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/LearnSource/Group/LearnGroup4.cs",
+    "source_path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroup4.cs",
+    "symbol": "public bool Check",
+    "matching_lines": [
+      17
+    ],
+    "line_range": [
+      1,
+      177
+    ],
+    "sha256": "3783f617612e95d29fb04e39342a1fbec55f2d5c283be31b7dbb6e48b6b80dac",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-EGGMOVE2",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/Moves/Breeding/MoveBreed2.cs",
+    "source_path": "PKHeX.Core/Legality/Moves/Breeding/MoveBreed2.cs",
+    "symbol": "Validate",
+    "matching_lines": [
+      17,
+      18
+    ],
+    "line_range": [
+      1,
+      183
+    ],
+    "sha256": "60bfb5ddba75b4a7613e5ce7c534c479516008d8c95a297ba954c8e6d7ac0379",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-EGGMOVE3",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/Moves/Breeding/MoveBreed3.cs",
+    "source_path": "PKHeX.Core/Legality/Moves/Breeding/MoveBreed3.cs",
+    "symbol": "Validate",
+    "matching_lines": [
+      18,
+      19
+    ],
+    "line_range": [
+      1,
+      183
+    ],
+    "sha256": "e21b7405ad237e4448bba27f2654cce5d8bc7eddac48f78bdf60d07280846722",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-EGGMOVE4",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/Moves/Breeding/MoveBreed4.cs",
+    "source_path": "PKHeX.Core/Legality/Moves/Breeding/MoveBreed4.cs",
+    "symbol": "Validate",
+    "matching_lines": [
+      18,
+      19
+    ],
+    "line_range": [
+      1,
+      186
+    ],
+    "sha256": "83f1c09b7267e2d478dc90579f321b1ab222df482ff3fb1cd9c6108a938b7441",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-SOURCE1RB",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/LearnSource/Sources/LearnSource1RB.cs",
+    "source_path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource1RB.cs",
+    "symbol": "GetCanLearn",
+    "matching_lines": [
+      35
+    ],
+    "line_range": [
+      1,
+      109
+    ],
+    "sha256": "1dbb8733be56fc11778c92bf02d1bae1c1e1d025ac846b86179b5352fc426e4f",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-SOURCE1YW",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/LearnSource/Sources/LearnSource1YW.cs",
+    "source_path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource1YW.cs",
+    "symbol": "GetCanLearn",
+    "matching_lines": [
+      35
+    ],
+    "line_range": [
+      1,
+      109
+    ],
+    "sha256": "15afd4db47640f1b8feead415eb00a7aea3d1b85814895987838a542d2e441f6",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-SOURCE2GS",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/LearnSource/Sources/LearnSource2GS.cs",
+    "source_path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource2GS.cs",
+    "symbol": "GetCanLearn",
+    "matching_lines": [
+      79
+    ],
+    "line_range": [
+      1,
+      137
+    ],
+    "sha256": "a0e882a742d44876abb94f9f531ee224bffad9f247dce0be1bc3de52f72870cd",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-SOURCE2C",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/LearnSource/Sources/LearnSource2C.cs",
+    "source_path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource2C.cs",
+    "symbol": "GetCanLearn",
+    "matching_lines": [
+      53
+    ],
+    "line_range": [
+      1,
+      126
+    ],
+    "sha256": "4de4ef7289d6a55277940de5e75af0a2d44efdbdb64f96e8f715bb144571c88f",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-SOURCE2Stadium",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/LearnSource/Sources/LearnSource2Stadium.cs",
+    "source_path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource2Stadium.cs",
+    "symbol": "GetCanLearn",
+    "matching_lines": [
+      24
+    ],
+    "line_range": [
+      1,
+      64
+    ],
+    "sha256": "40a2bb0ef1e38d87c5457f1376f6474fa181a68b5ac5ff9cebdf0d5ab9cbc918",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-SOURCE3RS",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/LearnSource/Sources/LearnSource3RS.cs",
+    "source_path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource3RS.cs",
+    "symbol": "GetCanLearn",
+    "matching_lines": [
+      52
+    ],
+    "line_range": [
+      1,
+      193
+    ],
+    "sha256": "ef14f66cd3113fabd6790e315565756b9cebee59adea63a3948bc70a741cb69c",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-SOURCE3E",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/LearnSource/Sources/LearnSource3E.cs",
+    "source_path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource3E.cs",
+    "symbol": "GetCanLearn",
+    "matching_lines": [
+      53
+    ],
+    "line_range": [
+      1,
+      176
+    ],
+    "sha256": "0b403a32d060318b02b18e2a92b0088365aa1914b66c15488b1a9e45384734fa",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-SOURCE3FR",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/LearnSource/Sources/LearnSource3FR.cs",
+    "source_path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource3FR.cs",
+    "symbol": "GetCanLearn",
+    "matching_lines": [
+      53
+    ],
+    "line_range": [
+      1,
+      144
+    ],
+    "sha256": "1fb4bf04860b1a250d1f493a8b6eda0871da2c25d7bc662d54ac6fe35a91b28e",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-SOURCE3LG",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/LearnSource/Sources/LearnSource3LG.cs",
+    "source_path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource3LG.cs",
+    "symbol": "GetCanLearn",
+    "matching_lines": [
+      53
+    ],
+    "line_range": [
+      1,
+      144
+    ],
+    "sha256": "510f3ae2b2f065d643e471c27b68343a21991af27d160ba4be31d88464e84da6",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-SOURCE4DP",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/LearnSource/Sources/LearnSource4DP.cs",
+    "source_path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource4DP.cs",
+    "symbol": "GetCanLearn",
+    "matching_lines": [
+      52
+    ],
+    "line_range": [
+      1,
+      133
+    ],
+    "sha256": "b99673826943276b54769d11514cdf8d355becb472d633f4337cef2da5f14c8a",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-SOURCE4Pt",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/LearnSource/Sources/LearnSource4Pt.cs",
+    "source_path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource4Pt.cs",
+    "symbol": "GetCanLearn",
+    "matching_lines": [
+      51
+    ],
+    "line_range": [
+      1,
+      162
+    ],
+    "sha256": "70ba9a0912ed2401de43191ca4f917317040f7a7554ddca6dc3dd63d70897acf",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-SOURCE4HGSS",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/LearnSource/Sources/LearnSource4HGSS.cs",
+    "source_path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource4HGSS.cs",
+    "symbol": "GetCanLearn",
+    "matching_lines": [
+      52
+    ],
+    "line_range": [
+      1,
+      168
+    ],
+    "sha256": "1be304d7f8a878958346b58820fa8d208c854657d20e21bd043311a9c903ac0e",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  }
+]

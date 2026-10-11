@@ -1,0 +1,62 @@
+{
+  "PKHeX": {
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review"
+  },
+  "pokered": {
+    "repository": "pret/pokered",
+    "revision": "af519899719f0754965776faac0e836a3b906e6d",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established"
+  },
+  "pokecrystal": {
+    "repository": "pret/pokecrystal",
+    "revision": "3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established"
+  },
+  "pokefirered": {
+    "repository": "pret/pokefirered",
+    "revision": "037335f4c725d7c9aecdac87066f2002b4bd7e14",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established"
+  },
+  "pokeyellow": {
+    "repository": "pret/pokeyellow",
+    "revision": "e89ead154b9968aa50eed9328ff2b38b6c194382",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established"
+  },
+  "pokeplatinum": {
+    "repository": "pret/pokeplatinum",
+    "revision": "637bb186e11b5ce1ee578981311c057498e57126",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established"
+  },
+  "pokeheartgold": {
+    "repository": "pret/pokeheartgold",
+    "revision": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established"
+  },
+  "pokeruby": {
+    "repository": "pret/pokeruby",
+    "revision": "5784633ce4ef7ade1a7f2d2d0c288e3d5e6cdd7f",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established"
+  },
+  "pokegold": {
+    "repository": "pret/pokegold",
+    "revision": "ef0201d8daf47e8b3ea1518eacf890f37d4cd5e8",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established"
+  },
+  "EventsGallery": {
+    "repository": "projectpokemon/EventsGallery",
+    "revision": "154d81be88453f6f78ec1d6d86e85fe0f2f5c240",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established"
+  },
+  "pokeemerald": {
+    "repository": "pret/pokeemerald",
+    "revision": "731ad5bfd6e6f265508d0efcca0ba42f9dcf5881",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established"
+  },
+  "PokeBank-NX": {
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "fecfbca9b0323578fd423f5d90486ddb2d0da72e",
+    "license": "Existing project license; no licensing change by audit"
+  }
+}
