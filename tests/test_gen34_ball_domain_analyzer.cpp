@@ -300,10 +300,16 @@ int main() {
     // species/move ceilings regardless of their exact save identity.
     const auto g3Known=Legality::analyze(gen3WithBall(4),Enums::GameVersion::FRLG);
     assert(!hasInvalidText(g3Known,"cannot exist in a Generation 3 save"));
-    auto g3NewSpecies=gen3WithBall(4);
-    g3NewSpecies.setSpecies(387); // Turtwig is Gen IV.
-    const auto g3SpeciesBad=Legality::analyze(g3NewSpecies,Enums::GameVersion::FRLG);
-    assert(hasInvalidText(g3SpeciesBad,"Species 387 cannot exist in a Generation 3 save"));
+    // Gen III stores a separate INTERNAL species index, not National
+    // Dex IDs. Its converter cannot encode Turtwig #387 at all, and
+    // maps an unsupported setter request to an empty record. Do not
+    // fabricate a source-free native PK3 containing National species
+    // #387 just to satisfy the ceiling verifier. The pinned 386 ceiling
+    // is independently statically verified in the helper test; the
+    // retained native PK3 move boundary is tested end-to-end below.
+    auto g3Unsupported=gen3WithBall(4);
+    g3Unsupported.setSpecies(387);
+    assert(g3Unsupported.speciesID()==0);
     auto g3NewMove=gen3WithBall(4);
     g3NewMove.setMove(0,355);
     const auto g3MoveBad=Legality::analyze(g3NewMove,Enums::GameVersion::FRLG);
