@@ -6,7 +6,7 @@ namespace M=Legality::Gen14CandidateMoveHistory;
 // A pinned native Gen IV Charmander fixed-PID template at card 67.
 // Initial moves are EXPLICITLY synthetic conditional witnesses; the
 // current generated PCD projection does not contain raw initial moves.
-constexpr auto source=Gen4EventTemplate::Candidate{
+constexpr auto source=Legality::Gen4EventTemplate::Candidate{
     4,7200,58364,0x0f199b50u,40,3053,16,0,0,1,7,0,true
 };
 constexpr M::Witness laterFlamethrower{
@@ -60,6 +60,6 @@ constexpr auto evolved=[] {
 static_assert(evolved.status==J::Status::CompatibleCandidate);
 int main(){
     assert(J::evaluate(base).status==J::Status::CompatibleCandidate);
-    assert(J::evaluate(swappedCardEvent).status==J::Status::CandidateContradicted);
+    assert(swappedCardEvent.status==J::Status::CandidateContradicted);
     std::cout<<"Gen IV conditional single-event four-slot witness: PASS\n";
 }
