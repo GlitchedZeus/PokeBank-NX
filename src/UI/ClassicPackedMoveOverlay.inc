@@ -539,6 +539,9 @@ bool cancel(TrainerViewScreen& screen, CarryState& state) {
         if (auto* editor = trainer.stagedPokemon())
             ok = editor->cancelSparseMove(error) && trainer.refreshStagedPokemonPresentation(error);
     }
+    // Gen IV pickup is a visual/deferred transaction: no PK4 was changed
+    // before placement. A B cancel therefore restores without any write.
+    if (state.generation == CarryGeneration::Gen4) ok = true;
     if (ok) {
         screen.selectedBoxIndex = state.sourceBox;
         screen.selectedItemIndex = state.sourceSlot;
@@ -550,7 +553,107 @@ bool cancel(TrainerViewScreen& screen, CarryState& state) {
     return true;
 }
 
+// Gen IV exact-slot box transactions are atomically validated on a copy of
+// the app-owned staged save. The same Y pickup/hold/touch selection and visual
+// controller as Gens I-III feeds this generation-specific backend.
+bool placeGen4(TrainerViewScreen& screen, CarryState& state) {
+    auto& trainer = static_cast<PokeVault::Legacy::Gen4ReadOnlyTrainer&>(screen.trainer);
+    auto* editor = trainer.stagedPokemon();
+    if (!editor || state.gen4SourceSlots.empty()) {
+        screen.postStatus("No validated Gen IV move transaction", 320);
+        return true;
+    }
+    const int destinationBox = screen.selectedBoxIndex;
+    const int destinationSlot = screen.selectedItemIndex;
+    if (destinationBox < 0 || destinationBox >= 18 ||
+        destinationSlot < 0 || destinationSlot >= 30) {
+        screen.postStatus("Choose a valid Gen IV box slot", 260);
+        return true;
+    }
+    int minRow = 5, minCol = 6, maxRow = 0, maxCol = 0;
+    for (auto source : state.gen4SourceSlots) {
+        minRow = std::min(minRow, static_cast<int>(source / 6));
+        minCol = std::min(minCol, static_cast<int>(source % 6));
+        maxRow = std::max(maxRow, static_cast<int>(source / 6));
+        maxCol = std::max(maxCol, static_cast<int>(source % 6));
+    }
+    const int destRow = destinationSlot / 6, destCol = destinationSlot % 6;
+    if (destRow + maxRow - minRow >= 5 ||
+        destCol + maxCol - minCol >= 6) {
+        screen.postStatus("Group does not fit at that exact destination", 280);
+        return true;
+    }
+    std::vector<std::pair<std::size_t, std::size_t>> movePairs;
+    for (auto source : state.gen4SourceSlots) {
+        const int row = destRow + static_cast<int>(source / 6) - minRow;
+        const int col = destCol + static_cast<int>(source % 6) - minCol;
+        movePairs.emplace_back(source, static_cast<std::size_t>(row * 6 + col));
+    }
+    const bool sameBox = destinationBox == state.sourceBox;
+    bool samePosition = sameBox;
+    for (const auto& entry : movePairs)
+        samePosition = samePosition && entry.first == entry.second;
+    if (samePosition) {
+        screen.postStatus("Pokemon returned to their original positions", 200);
+        clearState(screen, state);
+        return true;
+    }
+
+    auto candidate = *editor;
+    std::string error;
+    if (movePairs.size() > 1) {
+        // Sparse multi-select preserves exact offsets, refuses both overlap
+        // and occupied targets, and never silently shuffles a packed box.
+        for (const auto& entry : movePairs) {
+            if (sameBox &&
+                std::find(state.gen4SourceSlots.begin(),
+                          state.gen4SourceSlots.end(), entry.second)
+                    != state.gen4SourceSlots.end()) {
+                screen.postStatus("Multi destination overlaps source; B cancels", 280);
+                return true;
+            }
+            auto occupied = candidate.boxedPokemon(
+                static_cast<std::size_t>(destinationBox), entry.second, &error);
+            if (occupied) {
+                screen.postStatus("Multi requires empty destination slots", 280);
+                return true;
+            }
+            if (error != "selected Gen IV box slot is empty") {
+                screen.postStatus(error.empty() ? "Invalid target PK4" : error, 300);
+                return true;
+            }
+        }
+    }
+
+    for (const auto& [source, destination] : movePairs) {
+        if (!candidate.stageMoveBoxPokemon(
+                static_cast<std::size_t>(state.sourceBox), source,
+                static_cast<std::size_t>(destinationBox), destination, &error)) {
+            screen.postStatus(error.empty() ? "Gen IV staged Move failed" : error, 340);
+            return true;
+        }
+    }
+
+    auto backup = *editor;
+    *editor = std::move(candidate);
+    if (!trainer.refreshStagedPokemonPresentation(error)) {
+        *editor = std::move(backup);
+        std::string restoreError;
+        (void)trainer.refreshStagedPokemonPresentation(restoreError);
+        screen.postStatus("Move presentation failed; staged transaction rolled back: " + error, 380);
+        return true;
+    }
+
+    screen.selectedItemIndex = destinationSlot;
+    screen.postStatus(movePairs.size() == 1
+        ? "Gen IV Pokemon moved/swapped in staged save"
+        : std::to_string(movePairs.size()) + " Gen IV Pokemon moved in staged save", 270);
+    clearState(screen, state);
+    return true;
+}
+
 bool place(TrainerViewScreen& screen, CarryState& state) {
+    if (state.generation == CarryGeneration::Gen4) return placeGen4(screen, state);
     if (screen.selectedItemIndex < 0) {
         screen.postStatus("Choose a box slot before placing the carried Pokemon", 220);
         return true;
