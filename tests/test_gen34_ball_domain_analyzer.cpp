@@ -1041,7 +1041,7 @@ int main() {
         Candidate{},1,{33,75,0,0}).joint.status==
         WitnessStatus::Unresolved);
 
-    constexpr auto jointEmeraldText="Emerald candidate four-slot level-up witness:";
+    constexpr auto jointEmeraldText="Emerald independent direct level-up opportunities:";
     auto emeraldJoint=gen3WithBall(4);
     emeraldJoint.setOriginGame(3);
     emeraldJoint.setSpecies(1);

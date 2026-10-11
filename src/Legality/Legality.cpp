@@ -2136,12 +2136,13 @@ namespace Legality {
                    joint.joint.status==
                        Gen14CandidateMoveHistory::Status::WitnessesCompatible) {
                     add(r,Severity::Info,
-                        "Emerald candidate four-slot level-up witness: all " +
+                        "Emerald independent direct level-up opportunities: all " +
                         std::to_string(joint.storedMoves) +
-                        " stored moves have compatible direct current-species "
-                        "level-up opportunities along one hypothetical stage; "
-                        "encounter level, actual acquisition, evolution and "
-                        "move retention remain unresolved",
+                        " stored moves individually appear in the pinned "
+                        "current-species Emerald level-up table; a joint "
+                        "four-slot learning order, encounter snapshot, "
+                        "trainer decisions, evolution and retention "
+                        "are NOT verified",
                         CheckIdentifier::Moves);
                 }
             }
