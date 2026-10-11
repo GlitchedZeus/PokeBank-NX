@@ -14,7 +14,20 @@ It is intentionally conservative. A similarly named source file is not enough to
 
 The engine's semantic safety rule remains unchanged: **unknown, unsupported, or unreconstructable history is unresolved / Incomplete, not Invalid.** `Invalid` requires source-backed evidence that the represented Pokémon is impossible.
 
-## Current accepted checkpoint (2026-10-11)
+## Current accepted checkpoint (2026-10-11; through #234)
+
+**Current live-verified isolated legality HEAD: \`c03e7d9f9443baa118641ab2d4db3e9c1410c0eb\`**, through acceptance of #234. This branch is **not MAIN** and umbrella PR #103 remains **OPEN / DRAFT / NOT MERGED**.
+
+- **Last verified acceptance:** #226 (detached PK3 original GBA game move-pool evidence), followed by stacked #231, #232, #233 and #234. Each of #231–#234 passed its own exact-head PR identity, clean host, full host tests, focused RSE save-open regression, and ASan/UBSan on runs [38118271975](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38118271975), [38118387134](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38118387134), [38118554204](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38118554204), and [38118763675](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38118763675), respectively. Acceptance was ancestry-checked, zero-behind and non-force with expected SHA; the branches were administratively closed.
+- **Gen III source-free full moveset (#231):** source-backed original GBA identity routes a detached native PK3 to bounded four-slot, three-family (R/S, Emerald, FRLG) pool coverage. Each move's individual compatibility is not assumed to establish a feasible four-move historical acquisition route.
+- **Gen IV native source-free full moveset (#232):** detached encrypted native PK4 retains original D/P, Platinum, HGSS origin and gains individual and four-slot bounded game-pool coverage. No actual trade, tutor, breeding, or source-game visit is inferred from membership.
+- **Pal Park move stage (#233):** a structurally native Gen III-origin PK4 can carry GBA move IDs <=354 or newer Gen IV IDs 355–467; ID >354 necessarily requires acquisition after migration in any legitimate historical route. Gen III/IV source-pool candidates and timing uncertainty remain independent.
+- **Gen I/II source-free four-slot move families (#234):** immutable PK1/PK2 wrappers can bound Red/Blue vs Yellow and Gold/Silver vs Crystal/Time Capsule game-family compatibility without fabricating a cartridge-of-origin byte. Missing table evidence is not an Invalid verdict.
+- **Queued or running, NOT ACCEPTED at this documentation checkpoint:** #235 enforces native split-field and ball validity before positive Pal Park move-stage evidence; #236 exposes that same bounded move-stage evidence from exact current Gen IV save containers; #237 suppresses a false claim that PK4 move IDs beyond 467 are legitimate post-migration learning; #238 computes a six-family GBA/NDS full four-slot minimal-pool/two-era bound. Require each candidate's own completed exact-head green identity, host, RSE and ASan/UBSan run and ancestor-first non-force acceptance before counting it.
+- **Parity remains partial:** 20 Partial and 1 Implemented *reporting contract* among 21 tracked verifier categories. These are not a measured PKHeX parity percentage. The new union/set-cover findings cannot prove level-specific acquisition timing, parent compatibility, legal egg-move combinations, move-tutor availability windows, event-exclusive move grants, a unique transfer route, or actual coexistence of all four moves.
+- **Safety invariants unchanged:** original source saves and staged Pokémon stay immutable; no auto-fix or write-permission changes; no Gen V/Master Vault, MAIN/Product UI/touch work in this lane. Unsupported or unreconstructable evidence is Incomplete/Unresolved, never automatically Invalid.
+
+## Prior accepted checkpoint (2026-10-11; through #221)
 
 **Live accepted isolated legality HEAD:** `fecfbca9b0323578fd423f5d90486ddb2d0da72e` (through #221), **not merged into MAIN**. Earlier checkpoint and "unaccepted" statements below are date-stamped historical records, not the current PR queue. Re-fetch the live GitHub branch and exact-head CI before any further acceptance.
 
