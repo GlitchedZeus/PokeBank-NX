@@ -124,6 +124,13 @@ bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held
         legacy.pokemonRow = (legacy.pokemonRow + 1) % static_cast<int>(actions.count);
     legacy.pokemonRow = std::clamp(legacy.pokemonRow, 0, static_cast<int>(actions.count) - 1);
 
+    // Native Gen II menu rows are directly touchable, not merely controller
+    // hints. Ignore drag releases; a tap commits only its own visible row.
+    const int touched = screen.touchedButtonId(touch);
+    if (touched >= 31600 && touched < 31600 + static_cast<int>(actions.count)) {
+        legacy.pokemonRow = touched - 31600;
+        down |= HidNpadButton_A;
+    }
     if (down & HidNpadButton_B) {
         legacy.active = false;
         legacy.pokemonActions = false;
