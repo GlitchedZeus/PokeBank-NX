@@ -116,6 +116,22 @@ namespace Panels {
                     std::string("Items - ") + pouchName, Colors::Text, TextStyle::Heading);
 
         screen.touchButtons.clear();
+        // Header category arrows remain available even if this pocket is empty.
+        // Their touch IDs are negative and cannot be confused with item rows.
+        using CategoryTouch = PokeBank::UIModel::InventoryCategoryTouch;
+        const int arrowY = CategoryTouch::topY(y, hH);
+        const int prevX = CategoryTouch::previousX(x, width);
+        const int nextX = CategoryTouch::nextX(x, width);
+        fb.drawFilledRoundedRect(prevX, arrowY, CategoryTouch::Width,
+                                 CategoryTouch::Height, 9, Colors::PanelAlt);
+        fb.drawFilledRoundedRect(nextX, arrowY, CategoryTouch::Width,
+                                 CategoryTouch::Height, 9, Colors::PanelAlt);
+        fb.drawText(prevX + 14, arrowY + 3, "<", Colors::Text, TextStyle::Body);
+        fb.drawText(nextX + 14, arrowY + 3, ">", Colors::Text, TextStyle::Body);
+        screen.touchButtons.push_back({CategoryTouch::PreviousId, prevX, arrowY,
+                                       CategoryTouch::Width, CategoryTouch::Height});
+        screen.touchButtons.push_back({CategoryTouch::NextId, nextX, arrowY,
+                                       CategoryTouch::Width, CategoryTouch::Height});
 
         // The strict legacy inventory decoders are optional submodels. A malformed inventory must
         // never turn an otherwise valid read-only save into "Invalid category" or hide its Pokemon.
