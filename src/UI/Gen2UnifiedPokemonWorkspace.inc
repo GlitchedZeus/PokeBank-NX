@@ -533,7 +533,8 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         unified.focus = {Unified::Panel::Details, static_cast<uint8_t>(touchedDetail), 0};
         unified.detailsFocus = static_cast<std::size_t>(touchedDetail);
         mirrorPickerFocus(state, unified.focus);
-        return activateUnifiedField(screen, state, unified.focus);
+        (void)activateUnifiedField(screen, state, unified.focus);
+        return true; // the modal always consumes a row tap, even for inert fields
     }
 
     const uint64_t nav = screen.controllerNavigation.apply(
