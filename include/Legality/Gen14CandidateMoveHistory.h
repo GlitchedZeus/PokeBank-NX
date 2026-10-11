@@ -114,9 +114,22 @@ constexpr bool valid(const Candidate& candidate, const Witness& w) noexcept {
     // returning to Gen II, with an independent verified method. An
     // inherited egg-only move is never simply re-inherited by the SAME
     // individual after returning. This excludes one asserted route only.
-    if(candidate.verifiedTimeCapsuleEntryStage!=0 && w.move>165) {
-        if(w.stage<=candidate.verifiedTimeCapsuleReturnStage ||
-           w.method==Method::Egg)return false;
+    if(candidate.verifiedTimeCapsuleEntryStage!=0) {
+        // An original birth or original event distribution is a one-time
+        // acquisition: the same individual cannot receive another egg
+        // inheritance or its original gift *after* the verified visit.
+        // Later level/tutor/machine teaching is a separate method.
+        if((w.method==Method::Egg || w.method==Method::Event) &&
+           w.stage>=candidate.verifiedTimeCapsuleEntryStage)return false;
+        if(w.move>165) {
+            // Neither an original Gen II event nor an alleged
+            // retained transfer can carry a >165 move across Gen I.
+            // Reacquisition requires a real later method witness.
+            if(w.method==Method::Egg || w.method==Method::Event ||
+               w.method==Method::TransferRetained ||
+               w.stage<=candidate.verifiedTimeCapsuleReturnStage)
+                return false;
+        }
     }
     return candidate.id!=0 && w.candidateId==candidate.id &&
         w.move!=0 && w.minLevel<=w.maxLevel &&

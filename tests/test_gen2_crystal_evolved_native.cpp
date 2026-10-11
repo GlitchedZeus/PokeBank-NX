@@ -271,6 +271,18 @@ int main() {
     assert(History::evaluate(capsuleRoute,
         {oldMove,newMove,{}, {}}).status==
         History::Status::CandidateContradicted);
+    // Inventing a *second original event gift* after returning from Gen I
+    // is not a verified later move-teaching method on the same Pokémon.
+    newMove.options[0]={newMove.move,400,History::Method::Event,
+                       5,40,4,987,0,true};
+    assert(History::evaluate(capsuleRoute,
+        {oldMove,newMove,{}, {}}).status==
+        History::Status::CandidateContradicted);
+    newMove.options[0]={newMove.move,400,History::Method::TransferRetained,
+                       5,40,4,0,0,true};
+    assert(History::evaluate(capsuleRoute,
+        {oldMove,newMove,{}, {}}).status==
+        History::Status::CandidateContradicted);
     capsuleRoute.retailTimeCapsulePolicyVerified=false;
     assert(History::evaluate(capsuleRoute,
         {oldMove,newMove,{}, {}}).status==

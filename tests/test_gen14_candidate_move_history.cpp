@@ -93,8 +93,28 @@ static_assert(evaluate(full,{slot(166,oldEgg166),{},{},{}}).status==
 // reacquire its original egg-only Gen II move after it returns.
 constexpr Witness postReturnEgg166{
     166,42,Method::Egg,5,60,4,0,900,true};
+constexpr Witness inventedPostReturnGift166{
+    166,42,Method::Event,5,60,4,987,0,true};
+constexpr Witness inventedRetained166{
+    166,42,Method::TransferRetained,5,60,4,0,0,true};
+constexpr Witness inventedPostReturnGift85{
+    85,42,Method::Event,5,60,4,987,0,true};
+constexpr Witness inventedSecondEgg85{
+    85,42,Method::Egg,5,60,4,0,900,true};
+constexpr Witness originalEvent85{
+    85,42,Method::Event,5,60,1,987,0,true};
 static_assert(evaluate(capsule,{slot(166,postReturnEgg166),{},{},{}}).status==
               Status::CandidateContradicted);
+static_assert(evaluate(capsule,{slot(166,inventedPostReturnGift166),{},{},{}}).status==
+              Status::CandidateContradicted);
+static_assert(evaluate(capsule,{slot(166,inventedRetained166),{},{},{}}).status==
+              Status::CandidateContradicted);
+static_assert(evaluate(capsule,{slot(85,inventedPostReturnGift85),{},{},{}}).status==
+              Status::CandidateContradicted);
+static_assert(evaluate(capsule,{slot(85,inventedSecondEgg85),{},{},{}}).status==
+              Status::CandidateContradicted);
+static_assert(evaluate(capsule,{slot(85,originalEvent85),{},{},{}}).status==
+              Status::WitnessesCompatible);
 constexpr auto capsuleUnknownPolicy=[] {
     auto c=capsule;c.retailTimeCapsulePolicyVerified=false;return c;
 }();
