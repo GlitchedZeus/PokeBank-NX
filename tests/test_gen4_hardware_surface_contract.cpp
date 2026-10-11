@@ -147,7 +147,7 @@ int main() {
     contains(classicMove, "candidate.stageMoveBoxPokemon(");
     contains(classicMove, "auto candidate = *editor;");
     contains(classicMove, "*editor = std::move(candidate)");
-    contains(classicMove, "Gen IV staged Pokemon editing is unavailable");
+    contains(classicMove, "Generation IV staged Pokemon editing is unavailable");
     contains(surface, "ClassicPackedMove::beginGen4FromAction(screen, state.box, state.slot)");
     assert(surface.find("bool handleBoxMove(") == std::string::npos);
     assert(surface.find("BoxMove::next") == std::string::npos);
