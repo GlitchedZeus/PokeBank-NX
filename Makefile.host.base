@@ -154,6 +154,8 @@ HOST_TESTS += $(HOST_BUILD)/test_gen14_candidate_move_history
 HOST_TESTS += $(HOST_BUILD)/test_gen3_egg_iv_inheritance_stage
 HOST_TESTS += $(HOST_BUILD)/test_gen3_joint_egg_candidate
 HOST_TESTS += $(HOST_BUILD)/test_gen3_emerald_levelup_timeline
+HOST_TESTS += $(HOST_BUILD)/test_gen14_candidate_set_coverage
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen14_candidate_set_coverage_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_emerald_levelup_timeline_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_joint_egg_candidate_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen34_same_parent_egg_history
@@ -333,6 +335,14 @@ $(HOST_BUILD)/test_gen34_same_parent_egg_history: tests/test_gen34_same_parent_e
 $(HOST_BUILD)/test_gen34_same_parent_egg_history_sanitize: tests/test_gen34_same_parent_egg_history.cpp include/Legality/Gen34SameParentEggHistory.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen34_same_parent_egg_history.cpp -o $@
+
+$(HOST_BUILD)/test_gen14_candidate_set_coverage: tests/test_gen14_candidate_set_coverage.cpp include/Legality/Gen14CandidateSetCoverage.h include/Legality/Gen14CandidateMoveHistory.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen14_candidate_set_coverage.cpp -o $@
+
+$(HOST_BUILD)/test_gen14_candidate_set_coverage_sanitize: tests/test_gen14_candidate_set_coverage.cpp include/Legality/Gen14CandidateSetCoverage.h include/Legality/Gen14CandidateMoveHistory.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen14_candidate_set_coverage.cpp -o $@
 
 $(HOST_BUILD)/test_gen3_emerald_levelup_timeline: tests/test_gen3_emerald_levelup_timeline.cpp include/Legality/Gen3EmeraldLevelUpTimeline.h include/Legality/Gen3EmeraldLevelUpEvidence.h
 	@mkdir -p $(HOST_BUILD)

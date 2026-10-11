@@ -1,0 +1,7 @@
+# MOVE-001 — exhaustive encounter candidates, not exhaustive Pokémon
+
+`Gen14CandidateSetCoverage` accepts at most 8 **separately source-grounded** original encounter candidates, each with a separate 4-slot, up-to-8-method candidate history, and a separate caller assertion that ALL feasible original encounters were enumerated. Candidate histories cannot share arbitrary event/egg parent IDs via a union. An individual candidate contradiction never says the Pokémon is globally Invalid.
+
+Statuses remain distinct for zero candidates, bounded buffer overflow, unknown source enumeration, ungrounded original encounter candidates, unproven acquisition methods and the rare `AllGroundedCandidatesContradicted` over one explicitly complete supplied candidate domain. A genuine verified positive candidate is a `OneConditionalRoute`, which is *not* confirmation of actual specimen authenticity. Even `AllGroundedCandidatesContradicted` is **not** wired to the product's global Invalid or automatic fixes; it only evaluates a source-attested submitted subproblem, whose completeness still needs external real game proof.
+
+Host/sanitizer fixtures exercise two compatible candidates, independent contradiction with verified full enumeration, same mismatch with unknown enumeration, nonexhaustive method tables, unsupported source candidate, candidate-set capacity overflow, absent candidates, alternate surviving paths and unknown source methods. Source data/scripts, encounter enumeration and original save history are not inferred; native save data remains read-only.
