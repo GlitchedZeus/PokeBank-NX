@@ -144,9 +144,8 @@ void drawParityGen2Actions(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         screen.touchButtons.push_back({31600 + static_cast<int>(i),
                                       x + 22, rowY, w - 44, geometry.rowHeight});
         const bool selected = static_cast<int>(i) == legacy.pokemonRow;
-        if (selected) fb.drawSelectionHighlight(x + 22, rowY, w - 44, geometry.rowHeight);
-        fb.drawText(x + 38, rowY + 10, SharedEditor::actionLabel(actions[i]),
-                    selected ? Colors::Text : Colors::TextDim);
+        drawNativeActionRow(fb, x + 22, rowY, w - 44, geometry.rowHeight,
+                            SharedEditor::actionLabel(actions[i]), selected);
         rowY += geometry.rowStep;
     }
     fb.drawText(x + 24, y + h - 38, "Original source is immutable", Colors::Accent, TextStyle::Caption);
