@@ -44,6 +44,17 @@ constexpr Witness oldSurf{57,42,Method::TransferRetained,5,70,1,0,0,true};
 constexpr Witness laterSurf{57,42,Method::LaterAcquisition,5,70,3,0,0,true};
 constexpr Witness tooEarlySurf{57,42,Method::LaterAcquisition,5,70,2,0,0,true};
 constexpr Witness oldThunderbolt{85,42,Method::TransferRetained,5,70,1,0,0,true};
+// A new egg hatch or a second original distribution cannot occur on
+// the same creature AFTER its verified Pal Park migration.
+constexpr Witness eggAfterPalPark{85,42,Method::Egg,5,70,3,0,900,true};
+constexpr Witness eventAfterPalPark{85,42,Method::Event,5,70,3,77,0,true};
+constexpr Witness eggBeforePalPark{85,42,Method::Egg,5,70,1,0,900,true};
+static_assert(evaluate(palParkCandidate,{slot(85,eggAfterPalPark),{},{},{}}).status==
+              Status::CandidateContradicted);
+static_assert(evaluate(palParkCandidate,{slot(85,eventAfterPalPark),{},{},{}}).status==
+              Status::CandidateContradicted);
+static_assert(evaluate(palParkCandidate,{slot(85,eggBeforePalPark),{},{},{}}).status==
+              Status::WitnessesCompatible);
 static_assert(evaluate(palParkCandidate,{slot(57,oldSurf),{},{},{}}).status==
               Status::CandidateContradicted);
 static_assert(evaluate(palParkCandidate,{slot(57,laterSurf),{},{},{}}).status==

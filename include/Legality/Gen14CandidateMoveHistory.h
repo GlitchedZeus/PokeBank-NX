@@ -102,6 +102,12 @@ constexpr bool valid(const Candidate& candidate, const Witness& w) noexcept {
     // Pokémon or all alternative events, trades and histories.
     if(candidate.verifiedPalParkStage!=0) {
         if(candidate.verifiedPalParkStage>candidate.finalStage)return false;
+        // The SAME original Pokémon cannot hatch from a second egg
+        // or receive a second one-time origin event after migrating.
+        // Existing inherited/event moves may be retained from BEFORE
+        // the edge, subject to the other transfer restrictions.
+        if((w.method==Method::Egg || w.method==Method::Event) &&
+           w.stage>=candidate.verifiedPalParkStage)return false;
         if(w.method==Method::TransferRetained &&
            Gen34PalParkHMIds::isGen3HM(w.move))return false;
         if(w.method==Method::TransferRetained &&
