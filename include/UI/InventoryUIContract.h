@@ -114,10 +114,10 @@ struct ClassicAddItemPickerLayout {
     static constexpr int NavBarHeight = 46;
     static constexpr int RowHeight = 43;
     static constexpr int HorizontalPadding = 20;
-    static constexpr int ClassicListTopOffset = 90;
+    static constexpr int ClassicListTopOffset = 88;
     static constexpr int RowsPerPage = 9;
     static constexpr int TouchInsetX = 12;
-    static constexpr int BottomInset = 18;
+    static constexpr int BottomInset = 57;
 
     [[nodiscard]] static constexpr int panelY(int screenH) noexcept {
         return (screenH - NavBarHeight - Height) / 2;
