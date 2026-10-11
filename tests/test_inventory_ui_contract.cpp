@@ -16,6 +16,19 @@ int main() {
     static_assert(inventoryAction(InventoryInput::Minus) == InventoryAction::Help);
     static_assert(inventoryAction(InventoryInput::B) == InventoryAction::Back);
 
+    // Distinct negative header IDs must never overlap item rows or the -1
+    // no-target sentinel. Both hitboxes stay within the inventory header.
+    static_assert(InventoryCategoryTouch::PreviousId < -1);
+    static_assert(InventoryCategoryTouch::NextId < -1);
+    static_assert(InventoryCategoryTouch::PreviousId != InventoryCategoryTouch::NextId);
+    static_assert(InventoryCategoryTouch::previousX(244, 1024) +
+                  InventoryCategoryTouch::Width + InventoryCategoryTouch::Gap ==
+                  InventoryCategoryTouch::nextX(244, 1024));
+    static_assert(InventoryCategoryTouch::nextX(244, 1024) +
+                  InventoryCategoryTouch::Width == 244 + 1024 -
+                  InventoryCategoryTouch::RightInset);
+    static_assert(InventoryCategoryTouch::topY(80, 46) == 86);
+
     constexpr auto occupied = inventoryActionAvailability(true, true, true, true);
     static_assert(occupied.editAmount && occupied.addItem && occupied.removeItem);
     constexpr auto empty = inventoryActionAvailability(true, true, false, false);
