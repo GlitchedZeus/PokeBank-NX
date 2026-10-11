@@ -236,8 +236,13 @@ namespace Panels {
             // Generation-specific TM/HM types are resolved through the
             // actual machine -> move table, never by matching raw IDs across
             // games. Gen II mail resolves to its own original game motif.
+            const auto itemGameGroup = !classicGame ? gameGroup
+                : *classicGame <= PokeVault::Inventory::ClassicGame::Yellow
+                    ? GameVersion::RBY
+                : *classicGame <= PokeVault::Inventory::ClassicGame::Crystal
+                    ? GameVersion::GSC : GameVersion::FRLG;
             std::string artworkKey = ClassicMachineArtwork::artKey(
-                gameGroup, item.itemId);
+                itemGameGroup, item.itemId);
             const std::string normalized = ItemSpriteKey::slug(displayName);
             if (selected && gscSource && ItemSpriteKey::isGen2Mail(normalized))
                 selectedGscMail = normalized;
