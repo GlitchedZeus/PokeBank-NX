@@ -24,6 +24,7 @@
 #include "UI/MovePickerRowUI.h"
 #include "UI/NaturePickerLayout.h"
 #include "UI/ItemPickerArtwork.h"
+#include "UI/ItemPickerSort.h"
 #include "UI/Gen4BoxMoveNavigation.h"
 #include "UI/Gen4DataPresentation.h"
 #include "UI/Gen4ItemListWindow.h"
@@ -109,6 +110,8 @@ struct State {
     int itemAddPocket = 0;
     int itemAddIndex = 0;
     std::vector<uint16_t> itemAddChoices;
+    std::vector<uint16_t> itemAddNativeChoices;
+    ItemPickerSort::Mode itemAddSort = ItemPickerSort::Mode::Native;
     bool itemRemoveConfirmActive = false;
     int itemRemovePocket = 0;
     int itemRemoveVisibleRow = 0;
@@ -2238,6 +2241,17 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
             state.itemAddPickerActive=false;
             return true;
         }
+        if(down&HidNpadButton_X) {
+            state.itemAddSort = ItemPickerSort::next(state.itemAddSort);
+            state.itemAddIndex = ItemPickerSort::reorder(
+                state.itemAddChoices, state.itemAddNativeChoices,
+                state.itemAddSort, state.itemAddIndex,
+                [&](uint16_t id) {
+                    return Names::machineDisplayLabel(
+                        screen.trainer.getGameGroup(), id, Names::getItemName(id));
+                });
+            return true;
+        }
         if(keys&HidNpadButton_Up)
             state.itemAddIndex=(state.itemAddIndex+size-1)%size;
         if(keys&HidNpadButton_Down)
@@ -2381,6 +2395,8 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
             }
             state.itemAddPickerActive=true;
             state.itemAddPocket=pocket;
+            state.itemAddNativeChoices=state.itemAddChoices;
+            state.itemAddSort=ItemPickerSort::Mode::Native;
             state.itemAddIndex=0;
             screen.controllerNavigation.reset();
             return true;
@@ -2507,7 +2523,7 @@ void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State
     fb.drawText(x+24,y+17,"Add Item - Generation IV",Colors::Text,TextStyle::Heading);
     fb.drawText(x+24,y+53,
         std::string(Gen4::bagPocketName(static_cast<size_t>(state.itemAddPocket)))+
-        "  |  Supported native items only",Colors::TextSecondary,TextStyle::Caption);
+        "  |  Sort: "+ItemPickerSort::label(state.itemAddSort),Colors::TextSecondary,TextStyle::Caption);
     const int count=static_cast<int>(state.itemAddChoices.size());
     const int start=PokeBank::UIModel::Gen4ItemListWindow::first(
         state.itemAddIndex,count,9);
@@ -2515,7 +2531,8 @@ void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State
         const int index=start+row;
         const int yy=y+88+row*43;
         const auto id=state.itemAddChoices[static_cast<size_t>(index)];
-        const std::string name=Names::getItemName(id);
+        const std::string name=Names::machineDisplayLabel(
+            screen.trainer.getGameGroup(), id, Names::getItemName(id));
         if(index==state.itemAddIndex)
             fb.drawSelectionHighlight(x+18,yy,w-36,38);
         fb.drawText(x+32,yy+9,name,Colors::Text,TextStyle::Body);
@@ -2527,7 +2544,7 @@ void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State
         "  |  New native stack starts at x1 (edit quantity afterward)",
         Colors::Accent,TextStyle::Caption);
     drawNavBar(fb,{{"D-pad/Stick","Choose"},{"L/R","Page"},
-                   {"A","Add Staged"},{"B","Cancel"}});
+                   {"A","Add Staged"},{"B","Cancel"},{"X","Sort"}});
 }
 
 void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
