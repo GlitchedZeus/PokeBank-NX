@@ -134,6 +134,15 @@ if "state.pickerRow = hit.id" in inventory_contact or "state.reviewRow = hit.id"
     raise AssertionError("Classic Inventory: contact must not steal picker/review focus")
 require_all("src/UI/ClassicInventoryOverlay.cpp",
             "state.pickerRow = touchId;", "state.reviewRow = touchId;")
+# A visible Gen III/IV Pokémon tap must route to the SAME native action sheet as A;
+# the inherited generic action sheet cannot edit or clone staged Pokémon.
+require_all("src/UI/Gen3SharedPokemonSurface.inc",
+            "if (touch.justTapped()) {", "screen.selectedItemIndex = tapped;",
+            "if (selectedOccupied(screen)) beginActions(screen);")
+require_all("src/UI/Gen4SharedPokemonSurface.inc",
+            "if (boxEntry && touch.justTapped())", "screen.selectedItemIndex = tapped;",
+            "if (selectedOccupied(screen)) beginActions(screen);",
+            "if (partyEntry && touch.justTapped())", "screen.selectedPartyIndex = tapped - 6200;")
 # The header arrows must use the Gen I–III exact-game category catalog, not the
 # old two-pocket RBY inherited category counter.
 require_all("src/UI/ClassicInventoryOverlay.cpp",
