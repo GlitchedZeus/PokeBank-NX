@@ -681,6 +681,21 @@ int main() {
     const auto unhatchedDiamond=sourceFreePalPark(
         10,0,0,4,0,true,33,1);
     assert(!hasInfo(unhatchedDiamond,pk4Direct));
+    // Adult fallback has no authority to warn on an *unhatched* egg with
+    // unknown parent inheritance. Native-format move ceilings and true
+    // egg-specific structural rules remain independently enforced.
+    auto unhatchedRubyEvent=gen3WithBall(4);
+    unhatchedRubyEvent.setSpecies(1);
+    unhatchedRubyEvent.setOriginGame(2);
+    unhatchedRubyEvent.setMove(0,354); // outside normal Bulbasaur pool
+    unhatchedRubyEvent.setEgg(true);
+    unhatchedRubyEvent.refreshChecksum();
+    assert(!hasText(
+        Legality::analyze(unhatchedRubyEvent,Enums::GameVersion::FRLG),
+        "Move may not be learnable"));
+    const auto unhatchedGen4Unproven=sourceFreePalPark(
+        10,0,0,4,0,true,467,1);
+    assert(!hasText(unhatchedGen4Unproven,"Move may not be learnable"));
 
     // Source-free known native PK3/PK4 formats have generation-specific
     // species/move ceilings regardless of their exact save identity.
