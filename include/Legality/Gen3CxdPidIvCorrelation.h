@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Legality/Gen3PidIvCorrelation.h"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -75,6 +76,7 @@ constexpr bool ivsMatch(uint32_t a, uint32_t b,
 } // namespace Detail
 
 constexpr Result analyze(uint32_t pid, const std::array<uint8_t, 6>& ivs) noexcept {
+    if(!Gen3PidIv::validStoredIVs(ivs))return {};
     const uint32_t top = pid & 0xFFFF0000u;
     const uint32_t bottom = pid << 16;
     const uint32_t iv1 = Detail::packIv1(ivs);
@@ -98,6 +100,7 @@ constexpr Result analyze(uint32_t pid, const std::array<uint8_t, 6>& ivs) noexce
 constexpr Result analyzeWithTrainer(uint32_t pid,
                                     const std::array<uint8_t, 6>& ivs,
                                     uint16_t tid, uint16_t sid) noexcept {
+    if(!Gen3PidIv::validStoredIVs(ivs))return {};
     const auto regular = analyze(pid, ivs);
     if (regular.matched)
         return regular;

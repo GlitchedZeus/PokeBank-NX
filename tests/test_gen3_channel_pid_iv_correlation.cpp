@@ -5,6 +5,12 @@
 #include <iostream>
 
 int main() {
+    for(uint8_t k=0;k<6;++k) {
+        auto iv=std::array<uint8_t,6>{6,31,14,27,5,27};
+        iv[k]=32;
+        assert(!analyze(0x264750D9u,iv,45819,2,1).matched);
+    }
+
     using Legality::Gen3ChannelPidIv::analyze;
 
     // Canonical PKHeX Pokémon Channel Jirachi vector.

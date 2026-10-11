@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Legality/Gen3PidIvCorrelation.h"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -62,6 +63,7 @@ constexpr uint32_t sequentialIv32(uint32_t seed) noexcept {
 constexpr Result analyze(uint32_t pid, const std::array<uint8_t, 6>& ivs,
                          uint16_t sid16, uint8_t originGame,
                          uint8_t otGender) noexcept {
+    if(!Gen3PidIv::validStoredIVs(ivs))return {};
     if (originGame != 1 && originGame != 2)
         return {};
 

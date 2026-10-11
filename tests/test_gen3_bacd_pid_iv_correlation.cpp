@@ -12,6 +12,16 @@
 #include <iostream>
 
 int main() {
+    // All six BACD event IVs are 5-bit fields. A malformed input
+    // cannot reconstruct either a regular or trainer-dependent event.
+    for(uint8_t k=0;k<6;++k) {
+        auto iv=std::array<uint8_t,6>{12,25,27,30,2,31};
+        iv[k]=32;
+        assert(analyze(0x67DBFC33u,iv).variant==Variant::None);
+        assert(analyzeWithTrainer(0x67DBFC33u,iv,40122,45819).variant==
+               Variant::None);
+    }
+
     using Legality::Gen3BacdPidIv::Variant;
     using Legality::Gen3BacdPidIv::analyze;
     using Legality::Gen3BacdPidIv::analyzeWithTrainer;

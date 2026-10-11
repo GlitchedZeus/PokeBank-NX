@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Legality/Gen3PidIvCorrelation.h"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -104,6 +105,7 @@ constexpr uint32_t forceShiny(uint32_t x16, uint32_t b16, uint32_t idXor) noexce
 // Forced-shiny, restricted-seed and exact event-template checks remain separate.
 constexpr Result analyzeWithTrainer(uint32_t pid, const std::array<uint8_t, 6>& ivs,
                                     uint16_t tid16, uint16_t sid16) noexcept {
+    if(!Gen3PidIv::validStoredIVs(ivs))return {};
     const uint32_t iv1 =
         static_cast<uint32_t>(ivs[0]) |
         (static_cast<uint32_t>(ivs[1]) << 5) |
