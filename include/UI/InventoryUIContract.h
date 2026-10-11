@@ -61,6 +61,27 @@ struct InventoryActionAvailability {
            !stagedInventoryActionsAvailable;
 }
 
+// Non-item hit targets for the bag header. Negative IDs cannot collide
+// with item rows (0..N-1); -1 is reserved for no touch target.
+struct InventoryCategoryTouch {
+    static constexpr int PreviousId = -20;
+    static constexpr int NextId = -21;
+    static constexpr int Width = 44;
+    static constexpr int Height = 34;
+    static constexpr int Gap = 12;
+    static constexpr int RightInset = 20;
+
+    [[nodiscard]] static constexpr int previousX(int panelX, int panelWidth) noexcept {
+        return panelX + panelWidth - RightInset - 2 * Width - Gap;
+    }
+    [[nodiscard]] static constexpr int nextX(int panelX, int panelWidth) noexcept {
+        return panelX + panelWidth - RightInset - Width;
+    }
+    [[nodiscard]] static constexpr int topY(int panelY, int headerHeight) noexcept {
+        return panelY + (headerHeight - Height) / 2;
+    }
+};
+
 struct InventoryPickerViewport {
     int x = 0;
     int y = 0;
