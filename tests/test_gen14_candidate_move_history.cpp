@@ -66,6 +66,66 @@ static_assert(evaluate(palParkCandidate,{alternativeSurf(),
                                          slot(85,oldThunderbolt),{},{}}).status==
               Status::WitnessesCompatible);
 
+// MOVE-002: Gen II -> Gen I -> Gen II Time Capsule history is
+// directional; old Gen II-only egg moves cannot cross the Gen I edge.
+// The source/game/language policy is a hypothetical VERIFIED fixture,
+// not something intrinsically recoverable from a detached PK2.
+constexpr Candidate capsule{42,60,5,true,5,0,2,3,25,true};
+constexpr Witness oldEgg166{
+    166,42,Method::Egg,5,60,1,0,900,true};
+constexpr Witness tooEarly166{
+    166,42,Method::LaterAcquisition,5,60,2,0,0,true};
+constexpr Witness afterReturn166{
+    166,42,Method::LaterAcquisition,5,60,4,0,0,true};
+constexpr Witness retained85{
+    85,42,Method::TransferRetained,5,60,1,0,0,true};
+static_assert(evaluate(capsule,{slot(166,oldEgg166),{},{},{}}).status==
+              Status::CandidateContradicted);
+static_assert(evaluate(capsule,{slot(166,tooEarly166),{},{},{}}).status==
+              Status::CandidateContradicted);
+static_assert(evaluate(capsule,{slot(166,afterReturn166),{},{},{}}).status==
+              Status::WitnessesCompatible);
+static_assert(evaluate(capsule,{slot(85,retained85),{},{},{}}).status==
+              Status::WitnessesCompatible);
+static_assert(evaluate(full,{slot(166,oldEgg166),{},{},{}}).status==
+              Status::WitnessesCompatible);
+// No ordinary egg-inheritance method can make the same individual
+// reacquire its original egg-only Gen II move after it returns.
+constexpr Witness postReturnEgg166{
+    166,42,Method::Egg,5,60,4,0,900,true};
+static_assert(evaluate(capsule,{slot(166,postReturnEgg166),{},{},{}}).status==
+              Status::CandidateContradicted);
+constexpr auto capsuleUnknownPolicy=[] {
+    auto c=capsule;c.retailTimeCapsulePolicyVerified=false;return c;
+}();
+static_assert(evaluate(capsuleUnknownPolicy,
+                       {slot(166,oldEgg166),{},{},{}}).status==
+              Status::Unresolved);
+constexpr auto capsuleUnknownSpecies=[] {
+    auto c=capsule;c.speciesAtTimeCapsule=0;return c;
+}();
+static_assert(evaluate(capsuleUnknownSpecies,
+                       {slot(166,oldEgg166),{},{},{}}).status==
+              Status::Unresolved);
+constexpr auto capsuleWrongOrder=[] {
+    auto c=capsule;c.verifiedTimeCapsuleReturnStage=2;return c;
+}();
+static_assert(evaluate(capsuleWrongOrder,
+                       {slot(166,oldEgg166),{},{},{}}).status==
+              Status::Unresolved);
+constexpr Slot alternativeTimeCapsule() {
+    Slot s=slot(166,oldEgg166);
+    s.options[1]=afterReturn166;
+    s.count=2;
+    return s;
+}
+static_assert(evaluate(capsule,{alternativeTimeCapsule(),
+                               slot(85,retained85),{},{}}).status==
+              Status::WitnessesCompatible);
+static_assert(evaluate(Candidate{42,60,5,false,5,0,2,3,25,true},
+                       {slot(166,oldEgg166),{},{},{}}).status==
+              Status::Unresolved);
+
 int main(){
     auto a=evaluate(full,{slot(97,sibling(97,42,38)),slot(226,sibling(226,42,45)),{}, {}});
     assert(a.status==Status::CandidateContradicted && a.storedSlots==2);

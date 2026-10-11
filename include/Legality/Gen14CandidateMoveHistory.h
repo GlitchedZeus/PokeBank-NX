@@ -44,6 +44,13 @@ struct Candidate {
     // Park provenance and assigned this ordered boundary stage. The
     // engine must not infer Pal Park merely from an origin label.
     uint8_t verifiedPalParkStage=0;
+    // MOVE-002: ONLY an independently verified Gen II -> Gen I ->
+    // Gen II Time Capsule visit. The stored PK2 itself does not say this
+    // trip occurred. Ordinal stage values distinguish entry and return.
+    uint8_t verifiedTimeCapsuleEntryStage=0;
+    uint8_t verifiedTimeCapsuleReturnStage=0;
+    uint16_t speciesAtTimeCapsule=0; // Independently sourced Gen I species
+    bool retailTimeCapsulePolicyVerified=false; // Korean/Stadium variants unknown
 };
 struct Result {
     Status status=Status::Unresolved;
@@ -102,6 +109,15 @@ constexpr bool valid(const Candidate& candidate, const Witness& w) noexcept {
         if(w.method==Method::LaterAcquisition &&
            w.stage<=candidate.verifiedPalParkStage)return false;
     }
+    // A Gen II-only move (>165) cannot survive a *verified* visit
+    // through the Gen I game. A candidate may reacquire it only after
+    // returning to Gen II, with an independent verified method. An
+    // inherited egg-only move is never simply re-inherited by the SAME
+    // individual after returning. This excludes one asserted route only.
+    if(candidate.verifiedTimeCapsuleEntryStage!=0 && w.move>165) {
+        if(w.stage<=candidate.verifiedTimeCapsuleReturnStage ||
+           w.method==Method::Egg)return false;
+    }
     return candidate.id!=0 && w.candidateId==candidate.id &&
         w.move!=0 && w.minLevel<=w.maxLevel &&
         w.minLevel<=candidate.currentLevel && w.stage<=candidate.finalStage &&
@@ -152,6 +168,18 @@ constexpr Result evaluate(const Candidate& candidate,
     if(!result.storedSlots) {result.status=Status::Empty;return result;}
     if(!candidate.id || !candidate.currentLevel ||
        candidate.minEncounterLevel>candidate.currentLevel) return result;
+    if(candidate.verifiedTimeCapsuleEntryStage!=0) {
+        // Caller must establish BOTH directions, a legal Gen I species
+        // at the boundary, and a verified retail-language/source policy.
+        // Missing details are Unresolved, never CandidateContradicted.
+        if(!candidate.retailTimeCapsulePolicyVerified ||
+           candidate.verifiedTimeCapsuleReturnStage <=
+               candidate.verifiedTimeCapsuleEntryStage ||
+           candidate.verifiedTimeCapsuleReturnStage>candidate.finalStage ||
+           candidate.speciesAtTimeCapsule<1 ||
+           candidate.speciesAtTimeCapsule>151)
+            return result;
+    }
     Search findings{};
     search(candidate,slots,pos,result.storedSlots,0,{},findings);
     result.coveredSlots=findings.bestCoverage;
