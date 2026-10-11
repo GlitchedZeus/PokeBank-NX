@@ -18,7 +18,7 @@ SIZE = 32
 KEYS = (
     "silver-leaf", "gold-leaf", "pink-bow", "polkadot-bow",
     "gs-ball", "egg-ticket", "normal-box", "gorgeous-box",
-    "brick-piece",
+    "brick-piece", "tm-unknown",
 )
 CLEAR = (0, 0, 0, 0)
 INK = (40, 42, 59, 255)
@@ -157,6 +157,29 @@ def brick(c):
     c.line(10,10,23,14,(255,189,141,255))
     c.line(9,17,9,24,edge);c.line(5,21,16,24,(235,126,96,255))
 
+def neutral_machine(c):
+    """A neutral disc for original Gen II ???-type TM03 Curse.
+
+    This must NOT borrow a Normal-type TM icon: Curse was typeless in GSC.
+    """
+    rim=(71,76,91,255)
+    shell=(164,175,191,255)
+    shine=(220,233,243,255)
+    face=(95,104,124,255)
+    c.ellipse(3,5,28,27,rim)
+    c.ellipse(5,6,26,25,shell)
+    c.line(8,10,22,10,shine)
+    c.line(7,11,24,11,shine)
+    c.line(8,14,24,14,face)
+    c.line(8,16,24,16,face)
+    # Pixel-font question mark, large enough to read at item-picker scale.
+    c.line(13,18,13,15,rim)
+    c.line(13,15,18,15,rim)
+    c.line(18,15,19,17,rim)
+    c.line(19,17,16,20,rim)
+    c.line(16,20,16,21,rim)
+    c.rect(15,23,17,24,rim)
+
 def make(name):
     c=Icon()
     if name=="silver-leaf":leaf(c)
@@ -168,6 +191,7 @@ def make(name):
     elif name=="normal-box":gift(c)
     elif name=="gorgeous-box":gift(c,True)
     elif name=="brick-piece":brick(c)
+    elif name=="tm-unknown":neutral_machine(c)
     else:raise ValueError(name)
     return c.png()
 
