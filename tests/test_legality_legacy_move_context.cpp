@@ -47,31 +47,34 @@ int main() {
         auto p = baseMon();
         p.setMove(0, 57); // Surf: not in Bulbasaur's audited R/B/Y compatibility pool.
         const auto report = Legality::analyze(p, Enums::GameVersion::FRLG, "red_gb");
-        assert(hasText(report, "exact Gen I game"));
-        assert(report.coverage.sourceGame == Legality::CoverageLevel::Complete);
-        assert(report.coverage.encounter == Legality::CoverageLevel::Partial);
-        assert(report.verdict() == Legality::Verdict::Incomplete);
+        // PK3 is an immutable Generation III format, regardless of an
+        // externally supplied Gen I save label. Source-only Gen I move
+        // compatibility must remain unresolved instead of being claimed.
+        assert(hasText(report, "Exact source-game label conflicts"));
+        assert(!hasText(report, "exact Gen I game"));
+        assert(report.coverage.sourceGame != Legality::CoverageLevel::Complete);
+        assert(!hasText(report, "No matching Gen I wild"));
     }
 
     {
         auto p = baseMon();
         p.setMove(0, 57); // Still outside Bulbasaur's G/S/C + Time Capsule compatibility pool.
         const auto report = Legality::analyze(p, Enums::GameVersion::FRLG, "gold_gbc");
-        assert(hasText(report, "exact Gen II game"));
-        assert(report.coverage.sourceGame == Legality::CoverageLevel::Complete);
-        assert(report.verdict() == Legality::Verdict::Incomplete);
+        assert(hasText(report, "Exact source-game label conflicts"));
+        assert(!hasText(report, "exact Gen II game"));
+        assert(report.coverage.sourceGame != Legality::CoverageLevel::Complete);
     }
 
     {
         auto p = baseMon();
         p.setMove(0, 467); // Gen IV format-valid id, but not a Bulbasaur direct/transfer move.
         const auto report = Legality::analyze(p, Enums::GameVersion::FRLG, "platinum_nds");
-        assert(hasText(report, "exact Gen IV game"));
-        assert(report.coverage.sourceGame == Legality::CoverageLevel::Complete);
-        assert(report.coverage.encounter == Legality::CoverageLevel::Partial);
-        // This focused test deliberately reuses a PK3 wrapper to exercise the exact-game
-        // move tables. The newer transfer verifier can therefore flag the synthetic entity
-        // as an invalid Gen III -> IV transfer; do not use the global verdict here.
+        // A PK3 carrying move #467 cannot legally be evaluated as native
+        // Platinum. Preserve its true Generation III ceiling instead.
+        assert(hasText(report, "Exact source-game label conflicts"));
+        assert(!hasText(report, "exact Gen IV game"));
+        assert(report.coverage.sourceGame != Legality::CoverageLevel::Complete);
+        assert(hasText(report, "Move id 467 cannot exist in a Generation 3 save"));
         assert(!hasText(report, "Move id 467 cannot exist in a Generation 4 save"));
     }
 
@@ -79,7 +82,9 @@ int main() {
         auto p = baseMon();
         p.setMove(0, 468); // Gen V move id: cannot exist in a Gen IV entity.
         const auto report = Legality::analyze(p, Enums::GameVersion::FRLG, "platinum_nds");
-        assert(hasText(report, "cannot exist in a Generation 4 save"));
+        assert(hasText(report, "Exact source-game label conflicts"));
+        assert(hasText(report, "Move id 468 cannot exist in a Generation 3 save"));
+        assert(!hasText(report, "Move id 468 cannot exist in a Generation 4 save"));
         assert(report.hasInvalid());
         assert(report.verdict() == Legality::Verdict::Invalid);
     }
@@ -98,9 +103,13 @@ int main() {
         p.setLevel(5);
         p.setMove(0, 0);
         const auto report = Legality::analyze(p, Enums::GameVersion::FRLG, "platinum_nds");
-        assert(hasText(report, "static/gift encounter for the stored origin game"));
-        assert(!hasText(report, "No matching Gen IV wild/static/gift/trade evidence for the stored origin game"));
+        // The original game byte says Diamond, but the enclosing entity
+        // is a PK3 and the alleged Platinum source label is contradictory.
+        // Do not manufacture a verified Generation IV gift history.
+        assert(hasText(report, "Exact source-game label conflicts"));
+        assert(!hasText(report, "static/gift encounter for the stored origin game"));
+        assert(report.coverage.sourceGame != Legality::CoverageLevel::Complete);
     }
 
-    std::cout << "Gen I/II/IV exact-source legality context: PASS\n";
+    std::cout << "Gen I/II/IV contradictory-source format protection: PASS\n";
 }
