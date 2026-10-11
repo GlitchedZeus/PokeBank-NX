@@ -201,6 +201,12 @@ assert "render_classic_icons()" in generator
 mail_renderer = (ROOT / "tools/render_gen2_mail_stationery.py").read_text(encoding="utf-8")
 assert "render_unavailable_exact_mail(remaining)" in generator
 assert "recover_real_mail_sheet(unavailable)" in generator
+assert "render_original_mail_icons()" in generator
+assert "icons_bad" in generator
+assert "gsc-mail-icon-" in (ROOT / "include/UI/Gen2HeldItemPicker.h").read_text(encoding="utf-8")
+assert '"gsc-mail-icon-" + normalized' in (ROOT / "src/UI/Panels/ItemsPanel.cpp").read_text(encoding="utf-8")
+assert "def render_original_mail_icons" in mail_renderer
+
 assert "tuple(dims) != (160, 144)" in generator
 assert "GEN2_MAIL_SOURCES" in generator
 for key in GEN2_MAIL_ART:
