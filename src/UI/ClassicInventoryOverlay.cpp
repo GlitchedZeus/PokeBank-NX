@@ -949,7 +949,23 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             if (i == state.pickerRow)
                 fb.drawSelectionHighlight(x + 18, rowY, width - 36, rowH - 5);
             fb.drawText(x + 32, rowY + 9, label, Colors::Text, TextStyle::Body);
-            ItemPickerArtwork::draw(fb, x + width - 31, rowY + 3, 32, artName);
+            // Native IDs are never interchangeable across generations.
+            // A label like TM43 cannot select art without its actual GBA/GBC
+            // taught move. PC Items uses the same discs as the TM/HM pocket.
+            std::string spriteKey = artName;
+            if (PokeVault::Inventory::classicMachineMove(*game, itemId) != 0) {
+                const auto group = *game <= ClassicGame::Yellow
+                    ? Enums::GameVersion::RBY
+                    : *game <= ClassicGame::Crystal
+                        ? Enums::GameVersion::GSC : Enums::GameVersion::FRLG;
+                spriteKey = ClassicMachineArtwork::artKey(group, itemId);
+            } else if (*game > ClassicGame::Yellow &&
+                       *game <= ClassicGame::Crystal) {
+                const std::string slug = ItemSpriteKey::slug(artName);
+                if (ItemSpriteKey::isGen2Mail(slug))
+                    spriteKey = "gsc-mail-icon-" + slug;
+            }
+            ItemPickerArtwork::draw(fb, x + width - 31, rowY + 3, 32, spriteKey);
             if (rowY + rowH > listTop && rowY < listBottom)
                 appendClippedTouchButton(screen.touchButtons, i,
                     x + 12, rowY, width - 24, rowH - 4,
