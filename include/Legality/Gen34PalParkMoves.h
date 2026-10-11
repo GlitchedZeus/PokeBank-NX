@@ -54,7 +54,11 @@ inline Result classify(Source original,uint16_t species,uint8_t form,
             Gen3::Learnset::learnableSomewhere(species,m);
         const bool g4Some=
             Gen4MoveCompatibility::anywhereInGen4(species,form,m);
-        if(m>354)++r.gen4StorageOnly;
+        // Only IDs inside the native Gen IV move domain can serve as
+        // positive *post-migration* stage evidence. A malformed PK4 id
+        // >=468 is structurally impossible and belongs to the unmodeled
+        // category, not to a legitimate Gen IV acquisition path.
+        if(m>354 && m<=467)++r.gen4StorageOnly;
         if(g3Direct)++r.originalGbaCompatible;
         else if(g3Some)++r.otherGbaCompatible;
         else if(g4Some)++r.gen4CompatibleOnly;

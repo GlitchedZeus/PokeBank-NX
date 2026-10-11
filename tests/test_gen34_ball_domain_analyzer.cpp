@@ -827,6 +827,11 @@ int main() {
         G34Source::RubyGBA,25,0,std::array<uint16_t,4>{85,467,0,0});
     assert(unknownPalSet.gen4StorageOnly==1);
     assert(unknownPalSet.unmodeled==1 && !unknownPalSet.allAudited());
+    const auto structurallyImpossibleMove=Legality::Gen34PalParkMoves::classify(
+        G34Source::RubyGBA,25,0,std::array<uint16_t,4>{85,468,0,0});
+    assert(structurallyImpossibleMove.gen4StorageOnly==0);
+    assert(structurallyImpossibleMove.unmodeled==1);
+    assert(!structurallyImpossibleMove.allAudited());
 
     constexpr auto stagePrefix="Source-free Pal Park PK4 move-stage evidence:";
     const auto actualPalMoves=analyzeDetachedPalParkMoves(2,85,363);
@@ -854,6 +859,20 @@ int main() {
         2,85,363,false,true,true,false);
     assert(hasInvalidText(badBallStage,"split-ball fields are inconsistent"));
     assert(!hasText(badBallStage,stagePrefix));
+    // Move ID 468 cannot exist in native Gen IV, so it must never be
+    // presented as a legitimate post-migration acquisition stage.
+    const auto impossibleSourceFree=analyzeDetachedPalParkMoves(2,85,468);
+    assert(hasInvalidText(impossibleSourceFree,
+        "Move id 468 cannot exist in a Generation 4 save"));
+    assert(!hasInfo(impossibleSourceFree,
+        "stored move(s) exceed the Gen III PK3 move-ID ceiling"));
+    assert(!hasInfo(impossibleSourceFree,
+        "all nonempty move slots have at least one audited Gen III or IV"));
+    const auto impossibleExact=analyzeDetachedPalParkMoves(2,85,468,true);
+    assert(hasInvalidText(impossibleExact,
+        "Move id 468 cannot exist in a Generation 4 save"));
+    assert(!hasInfo(impossibleExact,
+        "move(s) exceed the Gen III PK3 move-ID ceiling and require post-migration"));
     const auto unknownPal=analyzeDetachedPalParkMoves(2,85,467);
     assert(!hasInfo(unknownPal,
         "all nonempty move slots have at least one audited Gen III or IV"));
