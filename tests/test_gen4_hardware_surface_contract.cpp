@@ -5,6 +5,7 @@
 #include "UI/ClassicMachineArtwork.h"
 #include "UI/Gen4DataPresentation.h"
 #include "UI/Gen4ItemListWindow.h"
+#include "Integration/Gen4/Gen4BagCatalog.h"
 #include "UI/ItemSpriteKey.h"
 
 #include <cassert>
@@ -265,18 +266,55 @@ int main() {
     contains(surface, "Gen IV item removed from staged workspace ONLY");
     contains(surface, "state.itemAddPickerActive");
     contains(surface, "Gen4::gen4BagChoices(staged->layout()");
-    contains(surface, "staged->stageBagAdd(");
+    contains(surface, "current->stageBagAdd(");
     contains(surface, "ItemPickerArtwork::drawNativeItem(fb,x+w-31,yy+3,32,");
-    contains(surface, "Gen IV item added to staged workspace ONLY (x1)");
+    contains(surface, "Gen IV item added to staged workspace ONLY (x");
     contains(surface, "ItemPickerArtwork::drawNativeItem(fb,x+w-38,y+65,36,");
     const auto removeGuardAt=surface.find("if(state.itemRemoveConfirmActive) {");
-    const auto quantityEntryAt=surface.find("if(!state.itemQuantityActive) {",removeGuardAt);
+    const auto quantityEntryAt=surface.find(
+        "// Forward controller movement and B/Exit to the shared Items panel.",removeGuardAt);
     assert(removeGuardAt!=std::string::npos && quantityEntryAt>removeGuardAt);
     const auto confirmControls=surface.substr(removeGuardAt,quantityEntryAt-removeGuardAt);
     assert(confirmControls.find("down&HidNpadButton_B")!=std::string::npos);
     assert(confirmControls.find("down&HidNpadButton_Y")!=std::string::npos);
     assert(confirmControls.find("down&HidNpadButton_A")==std::string::npos);
     contains(surface, "state.itemRemoveConfirmActive=false;");
+    // Both Gen IV inventory mutations must use the exact same native Switch
+    // number keyboard as Gen I-III. A picker cancellation cannot stage bytes.
+    // Validate the actual pocket-specific maxima, not an arbitrary 999 cap.
+    namespace G4Bag = PokeVault::Integration::Gen4;
+    static_assert(G4Bag::gen4BagMaxQuantity(
+        static_cast<size_t>(G4Bag::BagPocket::KeyItems),428) == 1);
+    static_assert(G4Bag::gen4BagMaxQuantity(
+        static_cast<size_t>(G4Bag::BagPocket::Machines),328) == 99);
+    static_assert(G4Bag::gen4BagMaxQuantity(
+        static_cast<size_t>(G4Bag::BagPocket::Machines),420) == 1);
+    static_assert(G4Bag::gen4BagMaxQuantity(
+        static_cast<size_t>(G4Bag::BagPocket::Items),68) == 999);
+    const auto addAt=surface.find("if(state.itemAddPickerActive) {");
+    const auto addEnd=surface.find("if(state.itemRemoveConfirmActive) {",addAt);
+    const auto editEnd=surface.find("void drawItemAddPicker(",quantityEntryAt);
+    assert(addAt!=std::string::npos && addEnd>addAt && editEnd>quantityEntryAt);
+    const auto addPath=surface.substr(addAt,addEnd-addAt);
+    const auto editPath=surface.substr(quantityEntryAt,editEnd-quantityEntryAt);
+    contains(addPath,"Utils::promptNumber(");
+    contains(editPath,"Utils::promptNumber(");
+    contains(addPath,"if(!r.accepted)return true;");
+    contains(editPath,"if(!r.accepted)return true;");
+    contains(addPath,"Gen4::gen4BagMaxQuantity(");
+    contains(editPath,"Gen4::gen4BagMaxQuantity(");
+    contains(addPath,"Gen4::gen4BagItemAllowed(");
+    contains(editPath,"item.itemId!=originalId");
+    contains(addPath,"static_cast<uint16_t>(r.value)");
+    contains(editPath,"static_cast<uint16_t>(r.value)");
+    contains(addPath,"*current=std::move(backup)");
+    contains(editPath,"*current=std::move(backup)");
+    assert(addPath.find("Utils::promptNumber(")<addPath.find("stageBagAdd("));
+    assert(editPath.find("Utils::promptNumber(")<editPath.find("stageBagQuantity("));
+    assert(surface.find("drawItemQuantity(")==std::string::npos);
+    assert(surface.find("itemQuantityActive")==std::string::npos);
+    assert(surface.find("itemQuantityDraft")==std::string::npos);
+
     const auto stagedBag=read("src/Integration/Gen4/Gen4StagedPokemonEditor.cpp");
     contains(stagedBag, "bool Gen4StagedPokemonEditor::stageBagRemove(");
     contains(stagedBag, "bool Gen4StagedPokemonEditor::stageBagAdd(");
