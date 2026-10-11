@@ -25,7 +25,6 @@
 #include "UI/NaturePickerLayout.h"
 #include "UI/ItemPickerArtwork.h"
 #include "UI/Gen4BoxMoveNavigation.h"
-#include "UI/Gen4BoxMoveMode.h"
 #include "UI/Gen4DataPresentation.h"
 #include "UI/Gen4ItemListWindow.h"
 #include "UI/ScreenChrome.h"
@@ -60,7 +59,6 @@ enum class PickerTarget : uint8_t {
     None, Species, HeldItem, Language, Ball, MetLocation, Pokerus, Form, Move, Nature, Ability
 };
 enum class TargetKind : uint8_t { Box, Party };
-namespace BoxMove = PokeBank::UIModel::Gen4BoxMoveControl;
 
 enum class MenuAction : uint8_t {
     View, AddMasterVault, AddBank, TransferGame, Edit, MovePokemon, Clone, MakeShiny,
@@ -81,17 +79,6 @@ struct State {
     const TrainerViewScreen* owner = nullptr;
     bool actions = false;
     bool review = false;
-    bool moveActive = false;
-    BoxMove::Mode boxMoveMode = BoxMove::Mode::Menu;
-    int moveSourceBox = 0;
-    int moveSourceSlot = 0;
-    // Y grabs a single Pokemon. X on an occupied box slot enters the
-    // rectangular Multi selection: move the corner, X grabs, Y drops.
-    bool moveSelecting = false;
-    bool moveMulti = false;
-    std::vector<int> moveSelectionSlots;
-    int moveSelectionWidth = 1;
-    int moveSelectionHeight = 1;
     bool legality = false;
     bool confirmRelease = false;
     bool speciesPreviewShiny = false;
@@ -167,7 +154,7 @@ bool workspaceActive(const State& state) noexcept {
 bool ownsFrameImpl(const TrainerViewScreen& screen) noexcept {
     if (!isGen4Nds(screen)) return false;
     const auto& state = stateFor(screen);
-    return state.actions || state.review || state.moveActive || state.legality || state.confirmRelease ||
+    return state.actions || state.review || state.legality || state.confirmRelease ||
            state.itemQuantityActive || state.itemRemoveConfirmActive || state.itemAddPickerActive ||
            state.valuePicker || state.moveEditor || workspaceActive(state);
 }
@@ -1483,18 +1470,11 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
             beginViewOrEdit(screen, SessionModel::Mode::Edit);
             break;
         case MenuAction::MovePokemon:
-            // The native move/swap transaction runs only after A confirms a destination.
+            // This menu shortcut enters the SAME hold-Y picker and carried
+            // visual as Gens I-III, rather than a second native move handler.
             state.actions = false;
-            state.moveActive = true;
-            state.moveSourceBox = state.box;
-            state.moveSourceSlot = state.slot;
-            state.moveSelecting = false;
-            state.moveMulti = false;
-            state.moveSelectionSlots.clear();
-            state.moveSelectionWidth = state.moveSelectionHeight = 1;
-            screen.selectedBoxIndex = state.box;
-            screen.selectedItemIndex = state.slot;
-            screen.controllerNavigation.reset();
+            if (!ClassicPackedMove::beginGen4FromAction(screen, state.box, state.slot))
+                screen.postStatus("Gen IV move could not start", 260);
             break;
         case MenuAction::Add:
             beginCreate(screen);
@@ -2081,269 +2061,6 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
 }
 
 
-bool handleBoxMove(TrainerViewScreen& screen, State& state,
-                   u64 down, const TouchInput& touch) {
-    if (!state.moveActive) return false;
-    const int currentBox = std::clamp(screen.selectedBoxIndex, 0, 17);
-    const int currentSlot = std::clamp(screen.selectedItemIndex, 0, 29);
-    int nextBox = currentBox, nextSlot = currentSlot;
-    if (down & HidNpadButton_B) {
-        state.moveActive = false;
-        screen.selectedBoxIndex = state.moveSourceBox;
-        screen.selectedItemIndex = state.moveSourceSlot;
-        screen.postStatus("Gen IV Move cancelled; no staged bytes modified", 180);
-        screen.controllerNavigation.reset();
-        return true;
-    }
-    // An unfinished rectangle must stay in its source box. L/R and
-    // five-box jumps are available again after the group is picked up.
-    if (state.moveSelecting)
-        down &= ~(HidNpadButton_L | HidNpadButton_R |
-                  HidNpadButton_ZL | HidNpadButton_ZR);
-    // Use the same full-wrap PC cursor and five-box jump as Gen I–III.
-    namespace Nav = PokeBank::UIModel::Gen4BoxMoveNavigation;
-    Nav::Cursor cursor{nextBox, nextSlot};
-    if (down & HidNpadButton_Left) cursor = Nav::navigate(cursor, Nav::Direction::Left);
-    if (down & HidNpadButton_Right) cursor = Nav::navigate(cursor, Nav::Direction::Right);
-    if (down & HidNpadButton_Up) cursor = Nav::navigate(cursor, Nav::Direction::Up);
-    if (down & HidNpadButton_Down) cursor = Nav::navigate(cursor, Nav::Direction::Down);
-    if (down & HidNpadButton_L) cursor = Nav::navigate(cursor, Nav::Direction::PreviousBox);
-    if (down & HidNpadButton_R) cursor = Nav::navigate(cursor, Nav::Direction::NextBox);
-    if (down & HidNpadButton_ZL) cursor = Nav::navigate(cursor, Nav::Direction::JumpBack);
-    if (down & HidNpadButton_ZR) cursor = Nav::navigate(cursor, Nav::Direction::JumpForward);
-    nextBox = cursor.box;
-    nextSlot = cursor.slot;
-
-    // A tap changes the destination only. A second stationary tap on the
-    // already-focused destination or the physical A button confirms.
-    const int tapped = screen.touchedButtonId(touch);
-    if (touch.justPressed() && !touch.dragged()) {
-        if (tapped == 1000) {
-            const auto next = Nav::navigate({nextBox, nextSlot}, Nav::Direction::PreviousBox);
-            nextBox = next.box;
-        } else if (tapped == 1001) {
-            const auto next = Nav::navigate({nextBox, nextSlot}, Nav::Direction::NextBox);
-            nextBox = next.box;
-        } else if (tapped >= 0 && tapped < 30) {
-            // First tap focuses; second tap places with PKSE Storage's A action.
-            if (tapped == currentSlot && nextBox == currentBox) down |= HidNpadButton_A;
-            else nextSlot = tapped;
-        }
-    }
-    screen.selectedBoxIndex = nextBox;
-    screen.selectedItemIndex = nextSlot;
-
-    // X starts rectangle selection from an occupied source. Cursor motion
-    // expands the region just like Gen III Multi, with one bounded native box.
-    // Another X (or A) lifts every occupied slot in that rectangle.
-    if (state.moveSelecting) {
-        if (!(down & (HidNpadButton_X | HidNpadButton_A))) return true;
-        const int fromRow = state.moveSourceSlot / 6;
-        const int fromCol = state.moveSourceSlot % 6;
-        const int toRow = nextSlot / 6;
-        const int toCol = nextSlot % 6;
-        const int lowRow = std::min(fromRow, toRow);
-        const int lowCol = std::min(fromCol, toCol);
-        const int highRow = std::max(fromRow, toRow);
-        const int highCol = std::max(fromCol, toCol);
-        auto* staged = editor(screen);
-        if (!staged) {
-            screen.postStatus("No validated staged Gen IV box workspace", 240);
-            return true;
-        }
-        std::vector<int> occupiedSlots;
-        std::string error;
-        for (int row = lowRow; row <= highRow; ++row) {
-            for (int col = lowCol; col <= highCol; ++col) {
-                const int slot = row * 6 + col;
-                auto pk4 = staged->boxedPokemon(
-                    static_cast<size_t>(state.moveSourceBox),
-                    static_cast<size_t>(slot), &error);
-                if (pk4) occupiedSlots.push_back(slot);
-                else if (error != "selected Gen IV box slot is empty") {
-                    screen.postStatus(error.empty() ? "Invalid Gen IV slot" : error, 300);
-                    return true;
-                }
-            }
-        }
-        if (occupiedSlots.empty()) {
-            screen.postStatus("Multi selection has no Pokemon; choose a populated area", 240);
-            return true;
-        }
-        state.moveSelecting = false;
-        state.moveMulti = true;
-        state.moveSelectionSlots = std::move(occupiedSlots);
-        state.moveSelectionWidth = highCol - lowCol + 1;
-        state.moveSelectionHeight = highRow - lowRow + 1;
-        state.moveSourceSlot = lowRow * 6 + lowCol;
-        screen.selectedItemIndex = state.moveSourceSlot;
-        screen.postStatus("Multi grabbed: " +
-            std::to_string(state.moveSelectionSlots.size()) +
-            " Pokemon; Y to drop into empty slots (B cancels)", 300);
-        return true;
-    }
-
-    // PKSE Storage places a carried block with A. Y is reserved for
-    // choosing Menu/Move/Multi only while hands are empty.
-    if (!(down & HidNpadButton_A)) return true;
-    if (state.moveMulti) {
-        auto* staged = editor(screen);
-        if (!staged) {
-            screen.postStatus("No validated staged Gen IV workspace", 240);
-            return true;
-        }
-        const int srcRow = state.moveSourceSlot / 6;
-        const int srcCol = state.moveSourceSlot % 6;
-        const int dstRow = nextSlot / 6;
-        const int dstCol = nextSlot % 6;
-        if (dstCol + state.moveSelectionWidth > 6 ||
-            dstRow + state.moveSelectionHeight > 5) {
-            screen.postStatus("Multi selection crosses a box edge; choose another slot", 280);
-            return true;
-        }
-        // Overlap would require a simultaneous permutation. Do not apply
-        // sequential swaps to a source rectangle whose destination overlaps it.
-        if (nextBox == state.moveSourceBox &&
-            dstCol < srcCol + state.moveSelectionWidth &&
-            srcCol < dstCol + state.moveSelectionWidth &&
-            dstRow < srcRow + state.moveSelectionHeight &&
-            srcRow < dstRow + state.moveSelectionHeight) {
-            screen.postStatus("Multi destination overlaps source; move farther or press B", 280);
-            return true;
-        }
-        auto candidate = *staged;
-        std::string error;
-        std::vector<std::pair<int,int>> moves;
-        for (int sourceSlot : state.moveSelectionSlots) {
-            const int row = dstRow + sourceSlot / 6 - srcRow;
-            const int col = dstCol + sourceSlot % 6 - srcCol;
-            const int destinationSlot = row * 6 + col;
-            // Group moves never overwrite occupied destinations or lose
-            // unknown PK4 fields. Single Y still supports native swaps.
-            if (candidate.boxedPokemon(static_cast<size_t>(nextBox),
-                                       static_cast<size_t>(destinationSlot), &error)) {
-                screen.postStatus("Multi needs empty destination slots; no changes made", 300);
-                return true;
-            }
-            if (error != "selected Gen IV box slot is empty") {
-                screen.postStatus(error.empty() ? "Destination invalid" : error, 300);
-                return true;
-            }
-            moves.emplace_back(sourceSlot, destinationSlot);
-        }
-        for (const auto& [sourceSlot, destinationSlot] : moves) {
-            if (!candidate.stageMoveBoxPokemon(
-                    static_cast<size_t>(state.moveSourceBox), static_cast<size_t>(sourceSlot),
-                    static_cast<size_t>(nextBox), static_cast<size_t>(destinationSlot), &error)) {
-                screen.postStatus(error.empty() ? "Multi move validation failed" : error, 320);
-                return true; // Candidate discarded; original staged bytes untouched.
-            }
-        }
-        auto before = *staged;
-        *staged = std::move(candidate);
-        if (!refreshPresentation(screen)) {
-            *staged = std::move(before);
-            (void)refreshPresentation(screen);
-            return true;
-        }
-        const auto count = state.moveSelectionSlots.size();
-        state.moveActive = state.moveMulti = false;
-        state.moveSelectionSlots.clear();
-        screen.postStatus(std::to_string(count) +
-            " Gen IV Pokemon moved in staged save; source unchanged", 300);
-        screen.controllerNavigation.reset();
-        return true;
-    }
-    if (nextBox == state.moveSourceBox && nextSlot == state.moveSourceSlot) {
-        state.moveActive = false; // Put it back at its original slot without a write.
-        screen.postStatus("Gen IV Pokemon returned to its slot; nothing changed", 180);
-        screen.controllerNavigation.reset();
-        return true;
-    }
-    auto* staged = editor(screen);
-    if (!staged) {
-        state.moveActive = false;
-        screen.postStatus("Gen IV Move unavailable without a validated staged copy", 300);
-        return true;
-    }
-    std::string error;
-    if (!staged->stageMoveBoxPokemon(
-            static_cast<size_t>(state.moveSourceBox), static_cast<size_t>(state.moveSourceSlot),
-            static_cast<size_t>(nextBox), static_cast<size_t>(nextSlot), &error)) {
-        screen.postStatus(error.empty() ? "Gen IV staged Move failed" : error, 360);
-        return true;
-    }
-    state.moveActive = false;
-    if (refreshPresentation(screen))
-        screen.postStatus("Gen IV move/swap staged; original source unchanged", 270);
-    screen.controllerNavigation.reset();
-    return true;
-}
-
-void drawBoxMove(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state) {
-    // Existing 6x5 box renderer remains authoritative for sprites/slots.
-    screen.drawGSCOverlay(fb);
-    const int srcRow = state.moveSourceSlot / 6;
-    const int srcCol = state.moveSourceSlot % 6;
-    const int dstRow = screen.selectedItemIndex / 6;
-    const int dstCol = screen.selectedItemIndex % 6;
-    const int srcEndRow = screen.selectedItemIndex / 6;
-    const int srcEndCol = screen.selectedItemIndex % 6;
-    // Overlay the actual selected cells; don't just claim "Multi" in a toast.
-    for (const auto& target : screen.touchButtons) {
-        if (target.id < 0 || target.id >= 30) continue;
-        const int row = target.id / 6, col = target.id % 6;
-        bool outline = false;
-        if (state.moveSelecting && screen.selectedBoxIndex == state.moveSourceBox) {
-            outline = row >= std::min(srcRow, srcEndRow) &&
-                      row <= std::max(srcRow, srcEndRow) &&
-                      col >= std::min(srcCol, srcEndCol) &&
-                      col <= std::max(srcCol, srcEndCol);
-        } else if (state.moveMulti) {
-            for (int sourceSlot : state.moveSelectionSlots) {
-                const int dr = sourceSlot / 6 - srcRow;
-                const int dc = sourceSlot % 6 - srcCol;
-                if (row == dstRow + dr && col == dstCol + dc) {
-                    outline = true;
-                    break;
-                }
-            }
-        }
-        if (outline) {
-            fb.drawRoundedRect(target.x + 2, target.y + 2,
-                               target.w - 4, target.h - 4, 7, Colors::FocusBorder, 2);
-        }
-    }
-    constexpr int x = 836, y = 116, w = 430, h = 136;
-    fb.drawFilledRoundedRect(x, y, w, h, 12, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 12, Colors::Divider, 1);
-    fb.drawText(x + 18, y + 10,
-                state.moveSelecting ? "Select Pokemon - Multi" :
-                state.moveMulti ? "Move Pokemon - Multi" : "Move Pokemon - Single",
-                Colors::Text, TextStyle::Heading);
-    if (state.moveSelecting) {
-        fb.drawText(x + 18, y + 50, "Move corner to select a rectangle",
-                    Colors::TextSecondary, TextStyle::Caption);
-        fb.drawText(x + 18, y + 82, "X: Grab selection  |  B: Cancel",
-                    Colors::Text, TextStyle::Caption);
-        drawNavBar(fb, {{"D-pad/Stick", "Expand"}, {"X/A", "Grab"}, {"B", "Cancel"}});
-    } else {
-        fb.drawText(x + 18, y + 50,
-                    std::string(state.moveMulti ? "Group: " : "Grabbed: ") +
-                    (state.moveMulti ? std::to_string(state.moveSelectionSlots.size()) +
-                     " Pokemon" : "1 Pokemon") +
-                    "  |  From Box " + std::to_string(state.moveSourceBox + 1),
-                    Colors::TextSecondary, TextStyle::Caption);
-        fb.drawText(x + 18, y + 82,
-                    "To Box " + std::to_string(screen.selectedBoxIndex + 1) +
-                    " / Slot " + std::to_string(screen.selectedItemIndex + 1) +
-                    "  |  A: Drop",
-                    Colors::Text, TextStyle::Caption);
-        drawNavBar(fb, {{"D-pad/Stick", "Slot"}, {"L/R", "Box"}, {"ZL/ZR", "Jump"},
-                        {"A", state.moveMulti ? "Drop group" : "Drop/Swap"},
-                        {"B", "Cancel"}});
-    }
-}
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     screen.touchButtons.clear();
@@ -2865,7 +2582,7 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     auto& state = stateFor(screen);
     if(handleItemQuantity(screen,state,down,held,stickX,stickY))return true;
     const bool ownsNavigation =
-        state.actions || state.review || state.moveActive || state.legality || state.confirmRelease ||
+        state.actions || state.review || state.legality || state.confirmRelease ||
         state.valuePicker || state.moveEditor || workspaceActive(state);
     const u64 navigated = ownsNavigation
         ? screen.controllerNavigation.apply(
@@ -2882,7 +2599,6 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
         }
         return true;
     }
-    if (handleBoxMove(screen, state, navigated, touch)) return true;
     if (handleReleaseConfirm(screen, state, navigated)) return true;
     if (handleReview(screen, state, navigated)) return true;
     if (handleWorkspace(screen, state, navigated, touch)) return true;
@@ -2905,49 +2621,6 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
         return true;
     }
 
-    // PKSE Storage's exact mode vocabulary: Y selects Menu, Move or Multi.
-    // X has no unconditional special meaning in Menu mode. In Move it lifts
-    // one occupied PK4; in Multi it anchors a rectangular selection (even
-    // when the anchor is empty), just like Storage's pickupMulti().
-    if (boxEntry && (navigated & HidNpadButton_Y)) {
-        auto& movement = stateFor(screen);
-        movement.boxMoveMode = BoxMove::next(movement.boxMoveMode);
-        const char* message = movement.boxMoveMode == BoxMove::Mode::Menu
-            ? "Box mode: Menu (A actions)"
-            : movement.boxMoveMode == BoxMove::Mode::Move
-            ? "Box mode: Move (X grab, A drop)"
-            : "Box mode: Multi (X anchor rectangle, X grab, A drop)";
-        screen.postStatus(message, 300);
-        screen.controllerNavigation.reset();
-        return true;
-    }
-    if (boxEntry && (navigated & HidNpadButton_X) &&
-        state.boxMoveMode != BoxMove::Mode::Menu) {
-        auto* staged = editor(screen);
-        if (!staged) {
-            screen.postStatus("Move requires a validated staged Gen IV save", 260);
-            return true;
-        }
-        const bool multi = state.boxMoveMode == BoxMove::Mode::Multi;
-        if (!BoxMove::canPickUp(state.boxMoveMode, selectedOccupied(screen))) {
-            screen.postStatus("Select an occupied Pokemon to move", 220);
-            return true;
-        }
-        auto& movement = stateFor(screen);
-        movement.actions = false;
-        movement.moveActive = true;
-        movement.moveSelecting = multi;
-        movement.moveMulti = false;
-        movement.moveSourceBox = screen.selectedBoxIndex;
-        movement.moveSourceSlot = screen.selectedItemIndex;
-        movement.moveSelectionSlots.clear();
-        movement.moveSelectionWidth = movement.moveSelectionHeight = 1;
-        screen.controllerNavigation.reset();
-        screen.postStatus(multi
-            ? "Multi: move corner, X grab group, A place (B cancel)"
-            : "Pokemon grabbed: move cursor, A drop/swap (B cancel)", 300);
-        return true;
-    }
 
     if (navigated & HidNpadButton_A) {
         if (partyEntry || boxEntry) beginActions(screen);
@@ -2964,34 +2637,14 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
 }
 
 bool draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    if (!ownsFrameImpl(screen)) return false;
     auto& state = stateFor(screen);
-    if (!ownsFrameImpl(screen)) {
-        // Keep the selected PKSE cursor mode visible between presses. The
-        // stock Boxes footer says X: Release/Y: Swap, which is misleading
-        // when the Gen IV staged move mode has taken over those controls.
-        if (!boxEntrySurface(screen) || state.boxMoveMode == BoxMove::Mode::Menu)
-            return false;
-        screen.drawGSCOverlay(fb);
-        constexpr int w = 392, h = 46, x = 846, y = 112;
-        fb.drawFilledRoundedRect(x, y, w, h, 12, Colors::Panel);
-        fb.drawRoundedRect(x, y, w, h, 12, Colors::FocusBorder, 2);
-        fb.drawText(x + 14, y + 11,
-            state.boxMoveMode == BoxMove::Mode::Move
-                ? "PKSE Move mode - X to grab"
-                : "PKSE Multi mode - X to anchor",
-            Colors::Text, TextStyle::Body);
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"Y", "Change mode"},
-                        {"X", state.boxMoveMode == BoxMove::Mode::Move
-                            ? "Grab" : "Select group"}, {"A", "Actions"}});
-        return true;
-    }
     if (state.itemAddPickerActive)drawItemAddPicker(screen,fb,state);
     else if (state.itemRemoveConfirmActive)drawItemRemoveConfirm(screen,fb,state);
     else if (state.itemQuantityActive)drawItemQuantity(screen,fb,state);
     else if (state.confirmRelease) drawReleaseConfirm(screen, fb, state);
     else if (state.legality) drawLegality(screen, fb, state);
     else if (state.review) drawReview(screen, fb);
-    else if (state.moveActive) drawBoxMove(screen, fb, state);
     else if (workspaceActive(state)) drawWorkspace(screen, fb, state);
     else if (state.actions) drawActions(screen, fb, state);
     return true;
