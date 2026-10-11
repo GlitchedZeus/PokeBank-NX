@@ -2003,6 +2003,18 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     if (handleActions(screen, state, navigated, touch)) return true;
 
     if (!boxEntrySurface(screen)) return false;
+    // A and a release-confirmed finger tap must enter the same native Gen III
+    // action model. Do this BEFORE the inherited box input can open its old
+    // generic sheet with disabled Edit/Clone actions for a staged GBA source.
+    if (touch.justTapped()) {
+        const int tapped = screen.touchedButtonId(touch);
+        const int slots = static_cast<int>(screen.trainer.getSlotsPerBox());
+        if (tapped >= 0 && tapped < slots) {
+            screen.selectedItemIndex = tapped;
+            if (selectedOccupied(screen)) beginActions(screen);
+            return true; // Empty slot: focus only; X remains the explicit Add path.
+        }
+    }
     const bool occupied = selectedOccupied(screen);
     const auto activation = Shared::boxActivation(
         occupied, (down & HidNpadButton_A) != 0, (down & HidNpadButton_X) != 0);
