@@ -584,6 +584,51 @@ int main() {
     assert(!hasInfo(Legality::analyze(rubyUnknownOrigin,Enums::GameVersion::FRLG),
                     gen3DetachedWild));
 
+    // Entire pret-derived Gen III original-source learnset classifications
+    // now reach the native-PK3 -> production legality report, even when
+    // the original save container is absent. Compatibility is INFO-only.
+    constexpr auto pk3Direct="Source-free PK3 move is in the audited direct move pool";
+    constexpr auto pk3Other="Source-free PK3 move is available in another Generation III game's audited move pool";
+    auto rubyTackle=gen3WithBall(4);
+    rubyTackle.setSpecies(1);
+    rubyTackle.setOriginGame(2);
+    rubyTackle.setMove(0,33);
+    rubyTackle.refreshChecksum();
+    assert(hasInfo(Legality::analyze(rubyTackle,Enums::GameVersion::FRLG),pk3Direct));
+
+    // Bulbasaur Swords Dance is not in pret Ruby's direct pool; the
+    // Emerald/FRLG source tables include it. It is cross-game possible,
+    // NOT proof that a specific physical transfer actually occurred.
+    auto rubyTutor=gen3WithBall(4);
+    rubyTutor.setSpecies(1);
+    rubyTutor.setOriginGame(2);
+    rubyTutor.setMove(0,14);
+    rubyTutor.refreshChecksum();
+    assert(hasInfo(Legality::analyze(rubyTutor,Enums::GameVersion::FRLG),pk3Other));
+    assert(!hasInfo(Legality::analyze(rubyTutor,Enums::GameVersion::FRLG),pk3Direct));
+
+    // The same move belongs to FireRed's direct Gen III source pool.
+    auto fireRedTutor=gen3WithBall(4);
+    fireRedTutor.setSpecies(1);
+    fireRedTutor.setOriginGame(4);
+    fireRedTutor.setMove(0,14);
+    fireRedTutor.refreshChecksum();
+    assert(hasInfo(Legality::analyze(fireRedTutor,Enums::GameVersion::FRLG),pk3Direct));
+
+    // A missing/unsupported original game does NOT justify claiming
+    // any source game or an impossible event/egg/transfer history.
+    auto unknownGameTutor=gen3WithBall(4);
+    unknownGameTutor.setSpecies(1);
+    unknownGameTutor.setOriginGame(0);
+    unknownGameTutor.setMove(0,14);
+    unknownGameTutor.refreshChecksum();
+    const auto unknownReport=Legality::analyze(unknownGameTutor,Enums::GameVersion::FRLG);
+    assert(!hasInfo(unknownReport,pk3Direct));
+    assert(!hasInfo(unknownReport,pk3Other));
+    // Exact-source behavior remains separated from the source-free path.
+    assert(!hasInfo(Legality::analyze(
+        rubyTutor,Enums::GameVersion::FRLG,"ruby_gba"),pk3Other));
+
     // Source-free known native PK3/PK4 formats have generation-specific
     // species/move ceilings regardless of their exact save identity.
     const auto g3Known=Legality::analyze(gen3WithBall(4),Enums::GameVersion::FRLG);

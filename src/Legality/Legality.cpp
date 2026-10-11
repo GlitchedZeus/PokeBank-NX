@@ -1580,6 +1580,45 @@ namespace Legality {
                         CheckIdentifier::Moves);
                 }
             }
+        } else if (!sourceProfile &&
+                   Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 3 &&
+                   !Gen4Origin::exactGen3GameId(pk.originGame()).empty()) {
+            // Banked/native PK3 retains the original GBA game code even
+            // without a save source. Use pinned pret-derived direct and
+            // other-Gen-III compatibility *positively*. A move can be
+            // taught after trading, inherited, event-taught or retained,
+            // so these findings NEVER prove the actual acquisition path.
+            using Gen3Source=PokeVault::Integration::Gen3::SourceGame;
+            using Gen3Learn=PokeVault::Integration::Gen3::Learnset::Availability;
+            Gen3Source original=Gen3Source::RubyGBA;
+            const auto originalGameId=
+                Gen4Origin::exactGen3GameId(pk.originGame());
+            if (exactGen3Source(originalGameId,original)) {
+                const std::array<uint16_t,4> moves{
+                    pk.move(0),pk.move(1),pk.move(2),pk.move(3)
+                };
+                for(const uint16_t moveId : moves) {
+                    if(moveId==0 || moveId>354)continue;
+                    const auto availability=
+                        PokeVault::Integration::Gen3::Learnset::classify(
+                            original,species,moveId,moves);
+                    if(availability==Gen3Learn::Direct) {
+                        add(r,Severity::Info,
+                            "Source-free PK3 move is in the audited direct move pool for its stored original GBA game: " +
+                            std::string(Names::getMoveName(moveId)) +
+                            "; actual acquisition remains unresolved",
+                            CheckIdentifier::Moves);
+                    } else if(availability==Gen3Learn::Transfer) {
+                        add(r,Severity::Info,
+                            "Source-free PK3 move is available in another Generation III game's audited move pool: " +
+                            std::string(Names::getMoveName(moveId)) +
+                            "; actual trading and acquisition history remain unresolved",
+                            CheckIdentifier::Moves);
+                    }
+                    // Preserved/unmatched, event and breeding histories
+                    // are not exclusive-proof sources: never hard Invalid.
+                }
+            }
         } else if (Pokemon::getLearnableBits(species, pk.form(), originGroup) != nullptr) {
             for (int i = 0; i < 4; ++i) {
                 const uint16_t moveId = pk.move(i);
