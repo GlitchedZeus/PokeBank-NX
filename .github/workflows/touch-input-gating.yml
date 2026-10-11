@@ -8,6 +8,11 @@ on:
       - 'include/UI/**'
       - 'src/UI/**'
       - 'tests/test_touch_*.py'
+      - 'tests/test_item_sprite_coverage.py'
+      - 'tools/pinned_item_sprite_names.txt'
+      - 'src/Inventory/ClassicInventoryCatalog.cpp'
+      - 'src/Names/ItemNames.cpp'
+      - 'src/Integration/Gen2/Gen2ReadOnlyInventory.cpp'
       - 'tests/test_touch_*.cpp'
       - 'tests/test_gsc_editor_surface_contract.cpp'
       - 'tests/test_gen3_hardware_surface_contract.cpp'
@@ -20,6 +25,11 @@ on:
       - 'include/UI/**'
       - 'src/UI/**'
       - 'tests/test_touch_*.py'
+      - 'tests/test_item_sprite_coverage.py'
+      - 'tools/pinned_item_sprite_names.txt'
+      - 'src/Inventory/ClassicInventoryCatalog.cpp'
+      - 'src/Names/ItemNames.cpp'
+      - 'src/Integration/Gen2/Gen2ReadOnlyInventory.cpp'
       - 'tests/test_touch_*.cpp'
       - 'tests/test_gsc_editor_surface_contract.cpp'
       - 'tests/test_gen3_hardware_surface_contract.cpp'
@@ -44,6 +54,8 @@ jobs:
         run: python3 tests/test_touch_pokemon_editor_direct_rows_contract.py
       - name: App-wide touch surface inventory
         run: python3 tests/test_touch_appwide_surface_contract.py
+      - name: Exhaustive Gen I-IV item artwork catalog audit
+        run: python3 tests/test_item_sprite_coverage.py
       - name: Behavioral touch scroll geometry
         run: |
           g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror \
