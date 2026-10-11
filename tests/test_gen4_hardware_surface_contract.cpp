@@ -1,6 +1,7 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen4BoxTouchActions.h"
 #include "UI/Gen4BoxMoveNavigation.h"
+#include "UI/Gen4BoxMoveMode.h"
 #include "UI/Gen4DataPresentation.h"
 #include "UI/Gen4ItemListWindow.h"
 #include "UI/ItemSpriteKey.h"
@@ -43,8 +44,20 @@ int main() {
     static_assert(!BoxTouch::opensSelectedSlotActions(BoxTouch::SummaryPanelTouchId, 30, 30));
     static_assert(!BoxTouch::opensSelectedSlotActions(0, 0, 0));
 
-    // Gen IV Move Pokémon must use the same five-by-six wrapping, box arrows,
-    // Y grab/drop and 5-box jump semantics as the existing older-generation UI.
+    // Gen IV uses the PKSE Storage Y mode cycle, followed by X pickup/
+    // rectangle selection and A placement; never X as a direct global hotkey.
+    namespace BoxMode = PokeBank::UIModel::Gen4BoxMoveControl;
+    using Mode = BoxMode::Mode;
+    static_assert(BoxMode::next(Mode::Menu) == Mode::Move);
+    static_assert(BoxMode::next(Mode::Move) == Mode::Multi);
+    static_assert(BoxMode::next(Mode::Multi) == Mode::Menu);
+    static_assert(!BoxMode::canPickUp(Mode::Menu, true));
+    static_assert(!BoxMode::canPickUp(Mode::Move, false));
+    static_assert(BoxMode::canPickUp(Mode::Move, true));
+    static_assert(BoxMode::canPickUp(Mode::Multi, false));
+    static_assert(BoxMode::canPickUp(Mode::Multi, true));
+
+    // Cursor must retain the PKSE five-by-six box navigation and five-box jump.
     namespace MoveNav = PokeBank::UIModel::Gen4BoxMoveNavigation;
     using Direction = MoveNav::Direction;
     static_assert(MoveNav::navigate({0,0}, Direction::Left).slot == 5);
@@ -131,11 +144,13 @@ int main() {
 
     const auto surface = read("src/UI/Gen4SharedPokemonSurface.inc");
     contains(surface, "Gen4ItemListWindow::first(");
-    // Hardware regression: box view Y directly grabs a Pokemon; X on
-    // occupied slot starts a visible rectangular selection. Multi moves
-    // validate empty targets on a temporary copy before publishing staged bytes.
-    contains(surface, "HidNpadButton_Y | HidNpadButton_X");
-    contains(surface, "move.moveSelecting = (navigated & HidNpadButton_X) != 0");
+    // PKSE Storage Y mode cycle, not a new direct-X selection shortcut.
+    contains(surface, "movement.boxMoveMode = BoxMove::next(movement.boxMoveMode)");
+    contains(surface, "state.boxMoveMode != BoxMove::Mode::Menu");
+    contains(surface, "BoxMove::canPickUp(state.boxMoveMode, selectedOccupied(screen))");
+    contains(surface, "PKSE Multi mode - X to anchor");
+    contains(surface, "if (!(down & HidNpadButton_A)) return true;");
+    contains(surface, "Gen IV Pokemon returned to its slot; nothing changed");
     contains(surface, "if (state.moveSelecting)");
     contains(surface, "state.moveSelectionSlots = std::move(occupiedSlots)");
     contains(surface, "Multi needs empty destination slots; no changes made");
@@ -516,7 +531,7 @@ int main() {
     contains(surface, "bool handleBoxMove(");
     contains(surface, "stageMoveBoxPokemon(");
     contains(surface, "Nav::Direction::JumpForward");
-    contains(surface, "{\"Y/A\", state.moveMulti ? \"Drop group\" : \"Drop/Swap\"}");
+    contains(surface, "{\"A\", state.moveMulti ? \"Drop group\" : \"Drop/Swap\"}");
     contains(surface, "if (down & HidNpadButton_B)");
     contains(surface, "state.moveActive = false;");
     contains(surface, "Gen IV move/swap staged; original source unchanged");
