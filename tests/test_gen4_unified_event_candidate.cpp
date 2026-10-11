@@ -51,9 +51,19 @@ void runCases() {
     auto noStartingMoves=in;
     noStartingMoves.moves.initialMovesIndependentlyVerified=false;
     assert(U::evaluate(noStartingMoves).status==U::Status::UnknownOriginalMoves);
+    // Even an incomplete search may positively establish one route if
+    // all used methods are already verified. Force a truly UNVERIFIED
+    // source method to exercise Unknown, not a false negative.
     auto noRoutes=in;
     noRoutes.moves.history.allRelevantRoutesEnumerated=false;
+    noRoutes.moves.laterRoutes[2].options[0]={
+        53,7001,H::Method::BroadPool,40,60,2,0,0,false
+    };
     assert(U::evaluate(noRoutes).status==U::Status::UnknownMoveRoutes);
+    auto incompleteButPositive=in;
+    incompleteButPositive.moves.history.allRelevantRoutesEnumerated=false;
+    assert(U::evaluate(incompleteButPositive).status==
+           U::Status::KnownConditionalCandidate);
     auto wrongCard=in;wrongCard.moves.claimedCardId=68;
     assert(U::evaluate(wrongCard).status==U::Status::IdentityMismatch);
     auto missingRibbons=in;missingRibbons.nativeRibbonCapability=false;
