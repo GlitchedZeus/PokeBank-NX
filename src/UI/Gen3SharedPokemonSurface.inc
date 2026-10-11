@@ -1872,11 +1872,10 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     for (std::size_t i = 0; i < actions.count; ++i) {
         const bool selected = static_cast<int>(i) == state.actionRow;
         screen.touchButtons.push_back({31600 + static_cast<int>(i), x + 22, rowY, w - 44, geometry.rowHeight});
-        if (selected)
-            fb.drawSelectionHighlight(x + 22, rowY, w - 44, geometry.rowHeight);
         const auto action = actions[i];
         const char* label = action == Shared::Action::Remove ? "Release" : Shared::actionLabel(action);
-        fb.drawText(x + 38, rowY + 10, label, selected ? Colors::Text : Colors::TextDim);
+        drawNativeActionRow(fb, x + 22, rowY, w - 44, geometry.rowHeight,
+                            label, selected);
         rowY += geometry.rowStep;
     }
     fb.drawText(x + 24, y + h - 38, "Original source is immutable",
