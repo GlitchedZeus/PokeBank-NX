@@ -1707,6 +1707,7 @@ namespace Legality {
             if (Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
                 Gen4Origin::kind(pk.originGame()) ==
                     Gen4Origin::Kind::Gen3GameCube &&
+                Gen34PalParkSpecies::nearestGen3Ancestor(species) != 0 &&
                 Gen34PalParkMoves::verifiedTransferFields(
                     pk.gen4MetLocationDP(),pk.gen4MetLocationExtended(),
                     pk.gen4BallDPPt(),pk.gen4BallHGSS(),pk.isEgg())) {
@@ -1842,6 +1843,7 @@ namespace Legality {
                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
                    Gen4Origin::kind(pk.originGame()) ==
                        Gen4Origin::Kind::Gen3GameCube &&
+                   Gen34PalParkSpecies::nearestGen3Ancestor(species) != 0 &&
                    Gen34PalParkMoves::verifiedTransferFields(
                        pk.gen4MetLocationDP(),pk.gen4MetLocationExtended(),
                        pk.gen4BallDPPt(),pk.gen4BallHGSS(),pk.isEgg())) {
