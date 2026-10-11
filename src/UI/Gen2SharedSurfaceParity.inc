@@ -308,7 +308,7 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         std::string error;
         const bool occupied = editor->boxedPokemon(static_cast<std::size_t>(box), static_cast<std::size_t>(slot), error).has_value();
         const auto activation = SharedEditor::boxActivation(occupied,
-            (down & HidNpadButton_A) != 0, (down & HidNpadButton_X) != 0);
+            (down & HidNpadButton_A) != 0 || boxTap, (down & HidNpadButton_X) != 0);
         if (activation == SharedEditor::BoxActivation::Add) {
             return beginCreate(screen, box);
         }
