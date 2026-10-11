@@ -1801,6 +1801,54 @@ namespace Legality {
             }
         }
 
+        // ---- L3: source-free native PK4 retail-origin wild evidence ----
+        // A detached encrypted PK4 retains its ORIGINAL retail origin game
+        // byte independently of the physical save containing it today.
+        // The same pinned encounter slots therefore provide bounded
+        // POSITIVE INFO compatibility even if the exact container is gone.
+        // An unmatched slot or an unknown/Gen III transferred origin is
+        // unresolved; this is never unique capture proof or hard Invalid.
+        if (!sourceProfile &&
+            Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
+            !pk.isEgg() && pk.eggLocation() == 0 && pk.metLevel() != 0) {
+            const auto nativeOrigin = Gen4Origin::exactRetailGameId(pk.originGame());
+            if (!nativeOrigin.empty() &&
+                Gen4Wild::matchesWithTrainerId(
+                    nativeOrigin, species, pk.metLocation(), pk.metLevel(),
+                    pk.form(), pk.id32())) {
+                add(r, Severity::Info,
+                    "Source-free native PK4 met data matches a pinned Generation IV wild encounter slot for its stored retail origin; capture, trades and competing history remain unresolved",
+                    CheckIdentifier::Encounter);
+                const auto specialBall =
+                    Gen4SpecialBallEvidence::analyzeSupported(
+                        nativeOrigin, species, pk.metLocation(),
+                        pk.metLevel(), pk.form(), pk.ball());
+                switch (specialBall) {
+                    case Gen4SpecialBallEvidence::Affinity::Sport:
+                        add(r, Severity::Info,
+                            "Source-free PK4 Sport Ball has a compatible HGSS Bug-Catching Contest encounter source; acquisition history remains incomplete",
+                            CheckIdentifier::Items);
+                        break;
+                    case Gen4SpecialBallEvidence::Affinity::Safari:
+                        add(r, Severity::Info,
+                            "Source-free PK4 Safari Ball has a compatible HGSS Safari Zone encounter source; acquisition history remains incomplete",
+                            CheckIdentifier::Items);
+                        break;
+                    case Gen4SpecialBallEvidence::Affinity::GreatMarsh:
+                        add(r, Severity::Info,
+                            "Source-free PK4 Safari Ball has a compatible D/P/Pt Great Marsh encounter source; acquisition history remains incomplete",
+                            CheckIdentifier::Items);
+                        break;
+                    case Gen4SpecialBallEvidence::Affinity::ApricornWild:
+                        add(r, Severity::Info,
+                            "Source-free PK4 Apricorn Ball has a compatible HGSS wild encounter source; acquisition history remains incomplete",
+                            CheckIdentifier::Items);
+                        break;
+                    default: break;
+                }
+            }
+        }
+
         // ---- L2: gender vs the species gender ratio (255 genderless / 254 female-only / 0 male-only) ----
         if (!sourceProfile || exactGeneration >= 2) {
             const uint8_t g = pk.gender();

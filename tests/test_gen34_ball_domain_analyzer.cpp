@@ -107,7 +107,8 @@ Legality::Report analyzeNativeHgssSpecialBall(
         uint16_t species, uint16_t metLocation,
         uint8_t metLevel, uint8_t ball, uint8_t originVersion = 7,
         uint32_t experience = 3375, uint32_t pid = 0x12345678u,
-        uint16_t eggLocation = 0) {
+        uint16_t eggLocation = 0,
+        bool exactSource = true) {
     std::vector<std::byte> raw(Encryption::SIZE_STORED4, std::byte{0});
     wr32(raw, 0x00, pid);
     wr16(raw, 0x08, species);
@@ -134,8 +135,9 @@ Legality::Report analyzeNativeHgssSpecialBall(
     // The shared view prefers a known HGSS ball over the stored D/P/Pt
     // Poké Ball shadow. Both valid special balls are greater than ID 4.
     assert(view.ball() == ball);
-    return Legality::analyze(
-        view, Enums::GameVersion::HGSS, "heartgold_nds");
+    return exactSource
+        ? Legality::analyze(view, Enums::GameVersion::HGSS, "heartgold_nds")
+        : Legality::analyze(view, Enums::GameVersion::HGSS);
 }
 }
 
@@ -551,6 +553,33 @@ int main() {
         18, 202, 15, 24, 7, 200000);
     assert(!hasInfo(evolvedWrongBall,
         "special Ball has a compatible wild pre-evolution capture source"));
+
+    // Strict encrypted PK4 → immutable reader → shared view → report
+    // WITHOUT original save identity. Stored HGSS retail origin still
+    // supplies positive encounter and Kurt Apricorn Ball evidence.
+    constexpr auto detachedWild="Source-free native PK4 met data matches a pinned Generation IV wild encounter slot for its stored retail origin";
+    constexpr auto detachedApricorn="Source-free PK4 Apricorn Ball has a compatible HGSS wild encounter source";
+    const auto detachedPidgey=analyzeNativeHgssSpecialBall(
+        16,149,2,17,7,3375,0x12345678u,0,false);
+    assert(hasInfo(detachedPidgey,detachedWild));
+    assert(hasInfo(detachedPidgey,detachedApricorn));
+    const auto detachedPidgeyWrongOrigin=analyzeNativeHgssSpecialBall(
+        16,149,2,17,12,3375,0x12345678u,0,false);
+    assert(!hasInfo(detachedPidgeyWrongOrigin,detachedWild));
+    assert(!hasInfo(detachedPidgeyWrongOrigin,detachedApricorn));
+    const auto detachedPidgeyUnknown=analyzeNativeHgssSpecialBall(
+        16,149,2,17,0,3375,0x12345678u,0,false);
+    assert(!hasInfo(detachedPidgeyUnknown,detachedWild));
+    const auto detachedPidgeyWrongLevel=analyzeNativeHgssSpecialBall(
+        16,149,1,17,7,3375,0x12345678u,0,false);
+    assert(!hasInfo(detachedPidgeyWrongLevel,detachedWild));
+    const auto detachedPidgeyEgg=analyzeNativeHgssSpecialBall(
+        16,149,2,17,7,3375,0x12345678u,2002,false);
+    assert(!hasInfo(detachedPidgeyEgg,detachedWild));
+    const auto detachedPidgeyWrongBall=analyzeNativeHgssSpecialBall(
+        16,149,2,4,7,3375,0x12345678u,0,false);
+    assert(hasInfo(detachedPidgeyWrongBall,detachedWild));
+    assert(!hasInfo(detachedPidgeyWrongBall,detachedApricorn));
 
     const auto apricorn = analyzeNativeHgssSpecialBall(16, 149, 2, 17);
     assert(hasInfo(apricorn,
