@@ -299,7 +299,7 @@ int main() {
     const auto editPath=surface.substr(quantityEntryAt,editEnd-quantityEntryAt);
     // Modal touch taps select the displayed native ID; swipes only move
     // the nine-row presentation and may never synthesize the Add action.
-    contains(addPath,"const TouchInput& touch");
+    contains(surface,"int stickX,int stickY,const TouchInput& touch)");
     contains(addPath,"touch.justReleased() && touch.dragged()");
     contains(addPath,"touch.justTapped()");
     contains(addPath,"startRow==endRow && selected<size");
