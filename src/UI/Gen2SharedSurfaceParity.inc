@@ -136,8 +136,13 @@ void drawParityGen2Actions(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         std::to_string(legacy.pokemonSlot + 1) + "  •  staged copy only",
         Colors::TextDim, TextStyle::Caption);
 
+    // Hide the inherited box hit targets while this modal is active; only
+    // the foreground native action rows own touches.
+    screen.touchButtons.clear();
     int rowY = y + geometry.rowStart;
     for (std::size_t i = 0; i < actions.count; ++i) {
+        screen.touchButtons.push_back({31600 + static_cast<int>(i),
+                                      x + 22, rowY, w - 44, geometry.rowHeight});
         const bool selected = static_cast<int>(i) == legacy.pokemonRow;
         if (selected) fb.drawSelectionHighlight(x + 22, rowY, w - 44, geometry.rowHeight);
         fb.drawText(x + 38, rowY + 10, SharedEditor::actionLabel(actions[i]),
