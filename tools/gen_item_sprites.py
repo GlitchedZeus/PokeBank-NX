@@ -62,6 +62,29 @@ GEN2_MAIL_SOURCES = {
     "surf-mail": "Surf_Mail.png",
 }
 
+# When Bulbagarden Archives refuses hotlinking from GitHub Actions, use
+# original game art extracted from the pinned pret/pokecrystal decompilation.
+# These are genuine Gen II MAIL MOTIFS, NOT full 160x144 stationery backgrounds.
+# Never count a recovered motif as an exact full stationery image.
+POKECRYSTAL_MAIL_REF = "e058e4f50b3bbf7377e036b81c25a72c54656c5c"
+GEN2_MAIL_MOTIFS = {
+    "bluesky-mail": "cloud.png",
+    "eon-mail": "eevee.png",
+    "flower-mail": "flower_1.png",
+    "liteblue-mail": "dratini.png",
+    "lovely-mail": "large_heart.png",
+    "mirage-mail": "mew.png",
+    "morph-mail": "ditto.png",
+    "music-mail": "natu.png",
+    "portraitmail": "portraitmail_border.png",
+    "surf-mail": "lapras.png",
+}
+assert set(GEN2_MAIL_MOTIFS) == set(GEN2_MAIL_SOURCES)
+GEN2_MAIL_MOTIF_URL = (
+    "https://raw.githubusercontent.com/pret/pokecrystal/"
+    + POKECRYSTAL_MAIL_REF + "/gfx/mail/"
+)
+
 REQUIRED_BALLS = (
     "master-ball", "ultra-ball", "great-ball", "poke-ball",
     "safari-ball", "net-ball", "dive-ball", "nest-ball",
@@ -184,7 +207,11 @@ def fetch_gen2_mail(key: str, filename: str, force: bool) -> str:
     """Recover a distinct, correctly attributed Gen II mail background."""
     target = OUT / (key + ".png")
     if not force and validated(target):
-        return "cached"
+        # The cache can contain an original motif rather than the full
+        # background. Only 160x144 qualifies as exact stationery art.
+        ok, _, dims = validate_png(target)
+        if ok and tuple(dims) == (160, 144):
+            return "cached-exact"
     digest = hashlib.md5(filename.encode("ascii")).hexdigest()
     url = ("https://archives.bulbagarden.net/media/upload/"
            + digest[:1] + "/" + digest[:2] + "/" + urllib.parse.quote(filename))
@@ -256,6 +283,22 @@ def main() -> int:
                 pool.map(lambda pair: fetch_gen2_mail(pair[0], pair[1], options.force),
                          GEN2_MAIL_SOURCES.items())))
         print(f"Generation II original Mail art (Bulbagarden Archives): {mail_status}")
+        motif_status = {}
+        for key, motif_file in GEN2_MAIL_MOTIFS.items():
+            target = OUT / (key + ".png")
+            ok, _, dimensions = validate_png(target) if target.is_file() else (False, "", ())
+            if ok and tuple(dimensions) == (160, 144):
+                motif_status[key] = "full-original"
+                continue
+            motif_status[key] = fetch_extra(
+                key, GEN2_MAIL_MOTIF_URL + motif_file, options.force)
+        print("Generation II authentic original-game motifs (not full stationery): "
+              + str(motif_status))
+        missing_mail = [key for key in GEN2_MAIL_MOTIFS
+                        if not validated(OUT / (key + ".png"))]
+        if missing_mail:
+            raise RuntimeError("Missing both original mail and pinned Gen II motif: "
+                               + ", ".join(missing_mail))
     verify_required(include_classic=not options.required_only)
     return 0
 
