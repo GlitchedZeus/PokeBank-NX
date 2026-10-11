@@ -740,6 +740,53 @@ int main() {
     assert(!hasText(Legality::analyze(rubyTutor,Enums::GameVersion::FRLG,"ruby_gba"),
                     "joint move bound"));
 
+    // Original GameCube code 15 survives in a native PK3, but no single
+    // intermediate GBA game is encoded by that code. Compare real pinned
+    // move pools without naming Ruby, Emerald or FRLG as the true source.
+    namespace G3Joint=Legality::Gen3JointMoveEvidence;
+    const auto gcSingle=G3Joint::classifyUnanchored(
+        1,{33,74,0,0});
+    assert(gcSingle.bound==G3Joint::Bound::OnePool);
+    assert(gcSingle.minimumPools==1);
+    const auto gcMixed=G3Joint::classifyUnanchored(
+        4,{7,232,0,0});
+    assert(gcMixed.bound==G3Joint::Bound::MultiplePools);
+    assert(gcMixed.minimumPools==2);
+    assert(G3Joint::classifyUnanchored(
+        4,{7,354,0,0}).bound==G3Joint::Bound::Unresolved);
+    assert(G3Joint::classifyUnanchored(
+        4,{0,0,0,0}).bound==G3Joint::Bound::Empty);
+
+    constexpr auto gcPoolText=
+        "Source-free GameCube-origin PK3: 2 stored move(s) appear in at least one audited GBA game pool";
+    constexpr auto gcJointText=
+        "Source-free GameCube-origin PK3 joint move bound: at least 2 audited GBA game-family pools";
+    auto gcNative=gen3WithBall(4);
+    gcNative.setSpecies(4);
+    gcNative.setOriginGame(15); // GameCube original code; no GBA identity.
+    gcNative.setMove(0,7);       // Emerald compatibility
+    gcNative.setMove(1,232);     // FRLG compatibility
+    gcNative.refreshChecksum();
+    assert(gcNative.originGame()==15);
+    const auto gcReport=Legality::analyze(gcNative,Enums::GameVersion::FRLG);
+    assert(hasInfo(gcReport,gcPoolText));
+    assert(hasInfo(gcReport,gcJointText));
+    assert(!hasInvalidText(gcReport,gcJointText));
+    assert(!hasInfo(gcReport,"Source-free PK3 joint move bound:"));
+    assert(!hasInfo(gcReport,
+        "Source-free PK3 move is in the audited direct move pool"));
+    assert(!hasInfo(Legality::analyze(
+        gcNative,Enums::GameVersion::FRLG,"ruby_gba"),gcJointText));
+
+    gcNative.setMove(1,354);
+    gcNative.refreshChecksum();
+    assert(!hasText(Legality::analyze(
+        gcNative,Enums::GameVersion::FRLG),"GameCube-origin PK3 joint move bound"));
+    gcNative.setOriginGame(0); // Unknown is not automatically GameCube.
+    gcNative.setMove(1,232);
+    gcNative.refreshChecksum();
+    assert(!hasText(Legality::analyze(
+        gcNative,Enums::GameVersion::FRLG),"GameCube-origin PK3"));
     // Source-free known native PK3/PK4 formats have generation-specific
     // species/move ceilings regardless of their exact save identity.
     const auto g3Known=Legality::analyze(gen3WithBall(4),Enums::GameVersion::FRLG);

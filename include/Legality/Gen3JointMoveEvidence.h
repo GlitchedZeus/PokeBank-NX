@@ -73,4 +73,41 @@ inline Result classify(Source origin,uint16_t species,
     }
     return best?Result{Bound::MultiplePools,minCount,best,false}:Result{};
 }
+// A retained GameCube (Colosseum/XD) origin is not a Ruby/Sapphire,
+// Emerald or FRLG original-cartridge identity. The union of those three
+// pinned GBA pools provides only *possible* intermediate game evidence.
+// No game-family mask is labeled as original or proven visited.
+struct UnanchoredResult {
+    Bound bound=Bound::Unresolved;
+    uint8_t minimumPools=0;
+};
+
+inline UnanchoredResult classifyUnanchored(
+    uint16_t species,const std::array<uint16_t,4>& moves) noexcept {
+    std::array<uint8_t,4> masks{};
+    uint8_t used=0,common=7;
+    for(const uint16_t move:moves) {
+        if(!move)continue;
+        const uint8_t mask=moveMask(species,move);
+        if(mask==0)return {}; // Unmodeled GameCube/event move is unknown.
+        masks[used++]=mask;
+        common&=mask;
+    }
+    if(!used)return {Bound::Empty,0};
+    if(common)return {Bound::OnePool,1};
+    uint8_t minCount=4;
+    for(uint8_t subset=1;subset<8;++subset) {
+        bool covers=true;
+        for(uint8_t i=0;i<used;++i)
+            if((subset&masks[i])==0){covers=false;break;}
+        if(covers) {
+            const auto count=countBits(subset);
+            if(count<minCount)minCount=count;
+        }
+    }
+    return minCount<=3
+        ? UnanchoredResult{Bound::MultiplePools,minCount}
+        : UnanchoredResult{};
+}
+
 } // namespace Legality::Gen3JointMoveEvidence

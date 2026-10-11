@@ -1800,6 +1800,44 @@ namespace Legality {
                 }
             }
         } else if (!sourceProfile &&
+                   Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 3 &&
+                   Gen4Origin::kind(pk.originGame()) ==
+                       Gen4Origin::Kind::Gen3GameCube) {
+            // Original GameCube origin 15 does not name the GBA game
+            // used subsequently. Source-neutral game-pool membership is
+            // only a possible intermediary; GameCube-only event or tutor
+            // moves absent from the three tables remain Unresolved.
+            const std::array<uint16_t,4> moves{
+                pk.move(0),pk.move(1),pk.move(2),pk.move(3)};
+            uint8_t gbaPoolCompatible=0;
+            for(const uint16_t move:moves)
+                if(move!=0 && move<=354 &&
+                   Gen3JointMoveEvidence::moveMask(species,move)!=0)
+                    ++gbaPoolCompatible;
+            if(gbaPoolCompatible) {
+                add(r,Severity::Info,
+                    "Source-free GameCube-origin PK3: " +
+                    std::to_string(gbaPoolCompatible) +
+                    " stored move(s) appear in at least one audited GBA game pool; neither an intervening GBA game nor an acquisition method is identified",
+                    CheckIdentifier::Moves);
+            }
+            const auto bound=Gen3JointMoveEvidence::classifyUnanchored(
+                species,moves);
+            if(bound.bound==Gen3JointMoveEvidence::Bound::OnePool) {
+                add(r,Severity::Info,
+                    "Source-free GameCube-origin PK3 joint move bound: all current moves share a possible GBA family pool; no original GBA game or visit is proven",
+                    CheckIdentifier::Moves);
+            } else if(bound.bound==
+                      Gen3JointMoveEvidence::Bound::MultiplePools) {
+                add(r,Severity::Info,
+                    "Source-free GameCube-origin PK3 joint move bound: at least " +
+                    std::to_string(bound.minimumPools) +
+                    " audited GBA game-family pools cover all current moves; GameCube-only sources and actual trade history remain unresolved",
+                    CheckIdentifier::Moves);
+            }
+            // Unmodeled moves suppress a joint coverage finding, never
+            // imply invalidity or an invented GameCube/GBA visit.
+        } else if (!sourceProfile &&
                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
                    Gen4Origin::kind(pk.originGame()) ==
                        Gen4Origin::Kind::Gen3Handheld &&
