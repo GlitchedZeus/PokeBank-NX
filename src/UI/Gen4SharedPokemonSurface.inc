@@ -1995,13 +1995,13 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
             PokeVault::Integration::Gen4EditorProvider::descriptorForSource(
                 screen.sourceGameId, editor(screen) != nullptr);
         auto result = PokeBank::UIModel::ExactFormatEditor::MoveCompatibilityResult::Invalid;
-        if (descriptor)
+        if (move != 0 && descriptor)
             result = descriptor->moves.evaluate(
                 {screen.sourceGameId, raw->species(), raw->form(), move, existingSource});
-        const char* status = "Invalid";
-        Color statusColor = Colors::Error;
+        const char* status = move == 0 ? "-" : "Invalid";
+        Color statusColor = move == 0 ? Colors::TextDim : Colors::Error;
         using MoveResult = PokeBank::UIModel::ExactFormatEditor::MoveCompatibilityResult;
-        if (result == MoveResult::Compatible) {
+        if (move != 0 && result == MoveResult::Compatible) {
             status = "OK";
             statusColor = Colors::Success;
         } else if (result == MoveResult::PreserveExisting) {
