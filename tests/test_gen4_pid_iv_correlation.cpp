@@ -17,6 +17,11 @@ int main() {
     // A Gen III Method-2 vector must not be accepted as normal Gen IV Method 1.
     assert(analyze(0x5271E97Eu, {2,18,3,12,22,24}).method == Method::None);
 
+    for(uint8_t index=0;index<6;++index) {
+        auto invalid=std::array<uint8_t,6>{17,19,20,16,13,12};
+        invalid[index]=32;
+        assert(analyze(0xE97E0000u,invalid).method==Method::None);
+    }
     // One IV changed from the Method-1 vector.
     assert(analyze(0xE97E0000u, {17,19,21,16,13,12}).method == Method::None);
 

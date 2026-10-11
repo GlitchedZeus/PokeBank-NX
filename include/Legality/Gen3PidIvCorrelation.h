@@ -148,6 +148,14 @@ constexpr Result scanMethod3(uint32_t first, uint32_t third,
 
 } // namespace Detail
 
+// Canonical six-element PK3/PK4 IV input is six independent 5-bit
+// fields. Never allow caller-provided 32+ values to bleed into the
+// adjacent packed IV fields and spuriously reconstruct a retail seed.
+constexpr bool validStoredIVs(const std::array<uint8_t,6>& ivs) noexcept {
+    for(uint8_t iv:ivs)if(iv>31)return false;
+    return true;
+}
+
 // IV order is the canonical PK3 order: HP, Attack, Defense, Speed, Sp. Atk, Sp. Def.
 //
 // This intentionally recognizes only the normal GBA handheld LCRNG Method 1/2/3/4 family.
@@ -155,6 +163,7 @@ constexpr Result scanMethod3(uint32_t first, uint32_t third,
 // separate legality layers; Method::None therefore means "unresolved", not "illegal".
 constexpr Result analyzeRoamer(uint32_t pid,
                                const std::array<uint8_t, 6>& ivs) noexcept {
+    if(!validStoredIVs(ivs))return {};
     // Ruby/Sapphire and FR/LG roaming encounters have the classic Gen III save bug:
     // only the low 8 bits of the generated IV32 survive. Emerald roamers use normal
     // Method 1 and should be checked with analyze() instead.
@@ -188,6 +197,7 @@ constexpr bool isRoamerSpecies(uint16_t species) noexcept {
 
 constexpr Result analyze(uint32_t pid, const std::array<uint8_t, 6>& ivs,
                          bool unown = false) noexcept {
+    if(!validStoredIVs(ivs))return {};
     const uint32_t iv1 = static_cast<uint32_t>(ivs[0])
                        | (static_cast<uint32_t>(ivs[1]) << 5)
                        | (static_cast<uint32_t>(ivs[2]) << 10);

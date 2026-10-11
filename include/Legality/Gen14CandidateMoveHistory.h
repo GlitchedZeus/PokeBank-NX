@@ -179,6 +179,17 @@ constexpr Result evaluate(const Candidate& candidate,
             completeTables=false;
     }
     if(!result.storedSlots) {result.status=Status::Empty;return result;}
+    // A malformed hypothetical current four-slot snapshot (duplicate
+    // move IDs, or a nonzero move after an empty slot) cannot certify
+    // one retail acquisition history. These malformed *inputs* are
+    // Unresolved, NEVER an exhaustive candidate contradiction.
+    bool foundEmpty=false;
+    for(uint8_t i=0;i<slots.size();++i) {
+        if(!slots[i].move){foundEmpty=true;continue;}
+        if(foundEmpty)return result;
+        for(uint8_t j=0;j<i;++j)
+            if(slots[j].move==slots[i].move)return result;
+    }
     if(!candidate.id || !candidate.currentLevel ||
        candidate.minEncounterLevel>candidate.currentLevel) return result;
     if(candidate.verifiedTimeCapsuleEntryStage!=0) {
