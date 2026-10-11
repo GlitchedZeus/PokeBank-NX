@@ -66,7 +66,7 @@ int main() {
     // Native PK1 has no stored original cartridge identity. These
     // real pinned R/B/Y compatibility pools only provide source-free
     // candidates, never a claim that Yellow was the actual source.
-    using Gen12=Legality::Gen12JointMoveEvidence;
+    namespace Gen12=Legality::Gen12JointMoveEvidence;
     const auto g1Common=Gen12::classify(1,25,{84,85,0,0});
     assert(g1Common.bound==Gen12::Bound::OneFamily);
     assert(g1Common.familyMask==3);

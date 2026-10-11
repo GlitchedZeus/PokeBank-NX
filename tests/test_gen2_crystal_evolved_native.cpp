@@ -76,7 +76,7 @@ int main() {
     // Gold/Silver and Crystal can expose disjoint compatibility
     // evidence for the same native PK2 four-slot record. Gen II compatibility
     // includes Gen I Time Capsule move pools, but no actual trade is proven.
-    using Gen12=Legality::Gen12JointMoveEvidence;
+    namespace Gen12=Legality::Gen12JointMoveEvidence;
     const auto splitSpinarak=Gen12::classify(2,167,{103,97,0,0});
     assert(splitSpinarak.bound==Gen12::Bound::TwoFamilies);
     assert(splitSpinarak.minFamilies==2 && splitSpinarak.familyMask==3);
