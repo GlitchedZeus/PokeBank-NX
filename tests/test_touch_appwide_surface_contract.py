@@ -134,6 +134,11 @@ if "state.pickerRow = hit.id" in inventory_contact or "state.reviewRow = hit.id"
     raise AssertionError("Classic Inventory: contact must not steal picker/review focus")
 require_all("src/UI/ClassicInventoryOverlay.cpp",
             "state.pickerRow = touchId;", "state.reviewRow = touchId;")
+# The header arrows must use the Gen I–III exact-game category catalog, not the
+# old two-pocket RBY inherited category counter.
+require_all("src/UI/ClassicInventoryOverlay.cpp",
+            "touchId == CategoryTouch::PreviousId", "touchId == CategoryTouch::NextId",
+            "down |= HidNpadButton_L", "down |= HidNpadButton_R")
 # Backup selection must scroll its viewport, not re-center to its changing selection.
 require_all("include/UI/BackupSelectionScreen.h", "int backupFirstRow = 0;")
 if "firstVisibleRow(" in read("src/UI/BackupSelectionScreen.cpp"):
