@@ -17,7 +17,8 @@ from pathlib import Path
 
 from png_asset_validation import validate_png
 from render_classic_item_icons import KEYS as CUSTOM_GSC_ICONS, build as render_classic_icons
-from render_gen2_mail_stationery import render_unavailable_exact_mail
+from render_gen2_mail_stationery import (render_unavailable_exact_mail,
+                                         recover_real_mail_sheet)
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "romfs" / "sprites" / "items"
@@ -316,8 +317,18 @@ def main() -> int:
         # The fallback is explicitly reconstructed, never labelled exact ROM.
         unavailable = [key for key, result in mail_status.items()
                        if result not in ("fetched", "cached-exact")]
-        reconstructed = render_unavailable_exact_mail(unavailable)
-        print("Generation II original-game source reconstructed stationery: "
+        source_exact = {}
+        if unavailable:
+            try:
+                source_exact = recover_real_mail_sheet(unavailable)
+            except (OSError, urllib.error.URLError, TimeoutError, ValueError) as exc:
+                print("Authentic Crystal mail sprite sheet unavailable: " +
+                      type(exc).__name__ + " " + str(exc))
+        remaining = [key for key in unavailable if key not in source_exact]
+        reconstructed = render_unavailable_exact_mail(remaining)
+        print("Authentic Gen II mail screenshots from original Crystal sprite sheet: "
+              + str(source_exact))
+        print("RECONSTRUCTED Gen II stationery (not pixel-identical screenshots): "
               + str(reconstructed))
         invalid_mail = [key for key in GEN2_MAIL_SOURCES
                         if not validated(OUT / (key + ".png"))]
