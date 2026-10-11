@@ -23,6 +23,8 @@ GEN2_MAIL_ART = {
     "portraitmail", "surf-mail",
 }
 ART |= EXTRAS
+# Historical equivalent icons deliberately do NOT count as original-era art.
+HISTORICAL_PROXIES = {"x-special", "exp-all"}
 
 # Original Gen II mail art is recovered from Bulbagarden Archives separately.
 # These exact stationery backgrounds are OPTIONAL at package time: the
@@ -97,6 +99,7 @@ def audit(gen: str, entries: dict[int, str], ids: set[int]) -> list[tuple[int, s
     match = 0
     machines = 0
     generic_mail = 0
+    proxy = 0
     eligible = 0
     for item_id in sorted(ids):
         name = entries.get(item_id, "")
@@ -110,13 +113,15 @@ def audit(gen: str, entries: dict[int, str], ids: set[int]) -> list[tuple[int, s
         if name in ("", "???", "(None)", "NONE", "TERU-SAMA"): continue
         eligible += 1
         key = art_key(name)
-        if key in GEN2_MAIL_ART: generic_mail += 1
+        if normalized(name) in HISTORICAL_PROXIES: proxy += 1
+        elif key in GEN2_MAIL_ART: generic_mail += 1
         elif key in ART: match += 1
         elif re.fullmatch(r"(?:tm|hm)\d+", key) and "tm-normal" in ART:
             machines += 1
         else: unresolved.append((item_id, name, key))
     print(f"{gen}: {eligible} eligible item identities, {match} exact artwork,"
           f" {machines} generic machine discs, {generic_mail} generic mail envelopes,"
+          f" {proxy} labelled historical proxies,"
           f" {len(unresolved)} no verified sprite")
     for item_id, name, key in unresolved:
         print(f"  MISSING {gen} native ID {item_id}: {name} [lookup={key}]")
@@ -138,6 +143,7 @@ unresolved["Gen IV"] = audit("Gen IV", g4, gen4_held | gen4_bag)
 # Exact hardware regressions: these were blank with the old direct slug lookup.
 for name, expected in {
     "Thunderstone": "thunder-stone", "X Defend": "x-defense",
+    "X Special": "x-sp-atk", "Exp. All": "exp-share",
     "Brightpowder": "bright-powder", "Parlyz Heal": "paralyze-heal",
     "Itemfinder": "itemfinder", "TM27": "tm27", "HM01": "hm01",
     "DeepSeaTooth": "deep-sea-tooth", "NeverMeltIce": "never-melt-ice",
