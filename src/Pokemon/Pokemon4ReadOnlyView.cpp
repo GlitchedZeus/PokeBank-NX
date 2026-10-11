@@ -116,6 +116,19 @@ bool Pokemon4ReadOnlyView::gen4ContestRibbonRanks(
         out[i]=static_cast<uint8_t>((bits>>(4u*i))&0x0Fu);
     return true;
 }
+bool Pokemon4ReadOnlyView::gen4RawTextFields(
+        std::array<std::byte,22>& nickname,
+        std::array<std::byte,16>& ot) const noexcept {
+    if(!source_.valid() || !source_.checksumValid() || source_.empty())
+        return false;
+    const auto raw=source_.decryptedBytes();
+    if(raw.size()<0x78)return false;
+    for(size_t i=0;i<nickname.size();++i)
+        nickname[i]=raw[0x48+i];
+    for(size_t i=0;i<ot.size();++i)
+        ot[i]=raw[0x68+i];
+    return true;
+}
 bool Pokemon4ReadOnlyView::isNicknamed() const noexcept { return source_.isNicknamed(); }
 bool Pokemon4ReadOnlyView::isFatefulEncounter() const noexcept { return source_.fatefulEncounter(); }
 std::u16string Pokemon4ReadOnlyView::otName() const { return source_.originalTrainerName(); }

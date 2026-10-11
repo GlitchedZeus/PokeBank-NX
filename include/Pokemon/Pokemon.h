@@ -422,6 +422,15 @@ namespace Pokemon {
         virtual bool isFatefulEncounter() const noexcept { return false; }
         virtual void setFatefulEncounter(bool value) noexcept { (void)value; }
 
+        /** Untouched native Gen IV nickname and OT raw text bytes from the
+         * validated immutable PK4 record. Missing wiring is Unavailable,
+         * not an all-zero field. These bytes are NOT reconstructed from
+         * decoded Unicode and do not claim trash-byte legality. */
+        virtual bool gen4RawTextFields(std::array<std::byte,22>&,
+                                       std::array<std::byte,16>&) const noexcept {
+            return false;
+        }
+
         /** Complete native PK4 Sinnoh contest-rank data capability.
          * False means Unavailable, NOT five known zero-value categories.
          * Unmodified immutable native PK4 views may expose full rank bits;

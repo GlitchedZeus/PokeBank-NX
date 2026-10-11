@@ -66,6 +66,7 @@
 #include "Legality/Gen34EggBallEvidence.h"
 #include "Legality/Gen34EggMoveEvidence.h"
 #include "Legality/Gen4ContestRibbonEvidence.h"
+#include "Legality/Gen4RawTextEvidence.h"
 #include "Legality/Gen34OrdinaryEggMoveConstruction.h"
 #include "Legality/Gen4EggMoveFamilyEvidence.h"
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
@@ -2146,7 +2147,23 @@ namespace Legality {
             }
         }
 
-        // META-001: only a native immutable PK4 view can affirm that all
+        // META-001/EVENT-001: raw native PK4 text is an independent
+        // capability from decoded OT/nickname Unicode. It is only
+        // positive evidence that terminator and any trailing raw words
+        // are actually preserved, not a Pal Park/PCD trash verifier.
+        if(!sourceFormatMismatch &&
+           Gen34FormatDomain::generationFromGroup(pk.getGameGroup())==4) {
+            std::array<std::byte,22> nick{};
+            std::array<std::byte,16> ot{};
+            const bool available=pk.gen4RawTextFields(nick,ot);
+            const auto text=Gen4RawTextEvidence::classify(available,nick,ot);
+            if(text.fullyTerminated())
+                add(r,Severity::Info,
+                    "Native PK4 raw nickname and OT text fields have preserved 0xFFFF terminators; post-terminator bytes remain available for future source-specific Pal Park and event comparisons, not yet verified",
+                    CheckIdentifier::Misc);
+        }
+
+                // META-001: only a native immutable PK4 view can affirm that all
         // five Sinnoh contest-rank sets were really decoded. Generic false
         // ribbon methods are not an absence proof for other generations.
         if(!sourceFormatMismatch &&

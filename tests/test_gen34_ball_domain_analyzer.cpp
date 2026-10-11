@@ -7,6 +7,7 @@
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen34OrdinaryEggMoveConstruction.h"
 #include "Legality/Gen4ContestRibbonEvidence.h"
+#include "Legality/Gen4RawTextEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
 #include "Legality/Gen34PalParkMoves.h"
 #include "Legality/Gen34PalParkHMHistory.h"
@@ -114,6 +115,47 @@ Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true,
     return exactSource
         ? Legality::analyze(view, Enums::GameVersion::PT, "platinum_nds")
         : Legality::analyze(view, Enums::GameVersion::PT);
+}
+
+Legality::Report analyzeNativeGen4RawText(
+        bool nicknameTerminates,bool otTerminates,bool withTrailing,
+        bool exactSource=false) {
+    std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
+    wr32(raw,0x00,0x12345678u);
+    wr16(raw,0x08,1);  // Bulbasaur native PK4
+    wr16(raw,0x0C,12345);
+    wr16(raw,0x0E,54321);
+    wr32(raw,0x10,135);
+    raw[0x17]=std::byte{2};
+    raw[0x5F]=std::byte{12};
+    raw[0x83]=std::byte{4};
+    wr16(raw,0x48,0x0041);
+    wr16(raw,0x68,0x0052);
+    if(nicknameTerminates)wr16(raw,0x4A,0xFFFFu);
+    if(otTerminates)wr16(raw,0x6A,0xFFFFu);
+    if(withTrailing) {
+        wr16(raw,0x4C,0xBEEFu);
+        wr16(raw,0x6C,0xA5A5u);
+    }
+    const auto enc=Encryption::encryptArray4(raw);
+    Pokemon::Pokemon4ReadOnly native(enc,Enums::GameVersion::PT);
+    assert(native.valid() && native.checksumValid());
+    Pokemon::Pokemon4ReadOnlyView view(native);
+    std::array<std::byte,22> nick{};
+    std::array<std::byte,16> ot{};
+    assert(view.gen4RawTextFields(nick,ot));
+    assert(nick[0]==std::byte{0x41} && ot[0]==std::byte{0x52});
+    const auto evidence=Legality::Gen4RawTextEvidence::classify(true,nick,ot);
+    assert(evidence.nickname.terminatorPresent==nicknameTerminates);
+    assert(evidence.originalTrainer.terminatorPresent==otTerminates);
+    if(nicknameTerminates && otTerminates && withTrailing) {
+        assert(evidence.nickname.postTerminatorNonzero);
+        assert(evidence.originalTrainer.postTerminatorNonzero);
+        assert(nick[4]==std::byte{0xEF} && ot[4]==std::byte{0xA5});
+    }
+    return exactSource
+        ? Legality::analyze(view,Enums::GameVersion::PT,"platinum_nds")
+        : Legality::analyze(view,Enums::GameVersion::PT);
 }
 
 Legality::Report analyzeNativeGen4ContestRanks(
@@ -1089,6 +1131,34 @@ int main() {
                            "Move id 354 cannot exist in a Generation 3 save"));
 
     // Actual encrypted PK4 reader -> immutable view -> source-free report.
+    // META-001/EVENT-001: native encrypted PK4 keeps exact raw OT and
+    // nickname bytes; neither encoded terminators nor post-terminator
+    // evidence can be reconstructed from converted Unicode strings.
+    constexpr std::array<std::byte,22> rawNickWithTerm{
+        std::byte{0x41},std::byte{0},std::byte{0xFF},std::byte{0xFF},
+        std::byte{0xEF},std::byte{0xBE}};
+    constexpr std::array<std::byte,16> rawOTWithTerm{
+        std::byte{0x52},std::byte{0},std::byte{0xFF},std::byte{0xFF},
+        std::byte{0xA5},std::byte{0xA5}};
+    namespace RawText=Legality::Gen4RawTextEvidence;
+    static_assert(RawText::classify(false,rawNickWithTerm,rawOTWithTerm)
+                  .status==RawText::Status::Unavailable);
+    static_assert(RawText::classify(true,rawNickWithTerm,rawOTWithTerm)
+                  .fullyTerminated());
+    static_assert(RawText::classify(true,rawNickWithTerm,rawOTWithTerm)
+                  .nickname.postTerminatorNonzero);
+    constexpr auto rawTextFinding="Native PK4 raw nickname and OT text fields";
+    assert(hasInfo(analyzeNativeGen4RawText(true,true,true),rawTextFinding));
+    assert(hasInfo(analyzeNativeGen4RawText(true,true,false,true),rawTextFinding));
+    assert(!hasText(analyzeNativeGen4RawText(true,false,true),rawTextFinding));
+    assert(!hasText(analyzeNativeGen4RawText(false,true,true),rawTextFinding));
+    assert(!hasText(analyzeNativeGen4RawText(false,false,false),rawTextFinding));
+    assert(!hasInvalidText(analyzeNativeGen4RawText(true,true,true),
+                           rawTextFinding));
+    std::array<std::byte,22> absentNickname{};
+    std::array<std::byte,16> absentOT{};
+    assert(!gen3WithBall(4).gen4RawTextFields(absentNickname,absentOT));
+
     // META-001: native encrypted PK4 0x60 low twenty ribbon bits.
     // Prefixes are rank-chain only; they do not establish actual wins.
     namespace Ribbons=Legality::Gen4ContestRibbon;
