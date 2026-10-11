@@ -8,8 +8,11 @@
 #include <string_view>
 namespace Legality::Gen34SameParentEggHistory {
 enum class Status : uint8_t {
-    Unsupported, UnknownParents, UnknownLightBall,
-    CandidateCompatible, CandidateMismatch
+    Unsupported, UnknownParents, UnknownPairEligibility,
+    UnknownLightBall, CandidateCompatible, CandidateMismatch
+};
+enum class PairProof : uint8_t {
+    Unknown, IndependentlyCompatible, IndependentlyIncompatible
 };
 struct Input {
     std::string_view game{};
@@ -20,6 +23,8 @@ struct Input {
     std::array<bool,4> verifiedMachine{},verifiedSharedLevel{};
     bool lightBallKnown=false,lightBall=false;
     std::array<uint16_t,4> observed{};
+    uint16_t fatherSpecies=0,motherSpecies=0;
+    PairProof pairProof=PairProof::Unknown;
 };
 struct Result {
     Status status=Status::UnknownParents;
@@ -36,7 +41,20 @@ constexpr Result evaluate(const Input& in) noexcept {
     Result out{};
     if(!supportedGame(in.game) || in.species==0 || in.species>493)
         {out.status=Status::Unsupported;return out;}
+    const bool gen3=in.game=="ruby_gba" || in.game=="sapphire_gba" ||
+        in.game=="emerald_gba" || in.game=="firered_gba" ||
+        in.game=="leafgreen_gba";
+    if(gen3 && in.species>386)
+        {out.status=Status::Unsupported;return out;}
     if(!in.snapshotsKnown || !in.fatherId || !in.motherId)return out;
+    const uint16_t maxSpecies=gen3?386:493;
+    if(!in.fatherSpecies || !in.motherSpecies ||
+       in.fatherSpecies>maxSpecies || in.motherSpecies>maxSpecies ||
+       in.pairProof==PairProof::Unknown) {
+        out.status=Status::UnknownPairEligibility;return out;
+    }
+    if(in.pairProof==PairProof::IndependentlyIncompatible)
+        {out.status=Status::CandidateMismatch;return out;}
     Gen34OrdinaryEggMoveConstruction::Input source{};
     source.gameId=in.game;source.species=in.species;
     source.baseMoves=in.base;source.lightBallStateKnown=in.lightBallKnown;
