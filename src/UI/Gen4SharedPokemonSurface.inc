@@ -24,6 +24,7 @@
 #include "UI/MovePickerRowUI.h"
 #include "UI/NaturePickerLayout.h"
 #include "UI/ItemPickerArtwork.h"
+#include "UI/Gen4BoxMoveNavigation.h"
 #include "UI/ScreenChrome.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedHeldItemPicker.h"
@@ -2074,23 +2075,46 @@ bool handleBoxMove(TrainerViewScreen& screen, State& state,
         screen.controllerNavigation.reset();
         return true;
     }
-    if (down & HidNpadButton_Left && nextSlot % 6 > 0) --nextSlot;
-    if (down & HidNpadButton_Right && nextSlot % 6 < 5) ++nextSlot;
-    if (down & HidNpadButton_Up && nextSlot >= 6) nextSlot -= 6;
-    if (down & HidNpadButton_Down && nextSlot < 24) nextSlot += 6;
-    if (down & HidNpadButton_L) nextBox = (nextBox + 17) % 18;
-    if (down & HidNpadButton_R) nextBox = (nextBox + 1) % 18;
+    // Use the same full-wrap PC cursor and five-box jump as Gen I–III.
+    namespace Nav = PokeBank::UIModel::Gen4BoxMoveNavigation;
+    Nav::Cursor cursor{nextBox, nextSlot};
+    if (down & HidNpadButton_Left) cursor = Nav::navigate(cursor, Nav::Direction::Left);
+    if (down & HidNpadButton_Right) cursor = Nav::navigate(cursor, Nav::Direction::Right);
+    if (down & HidNpadButton_Up) cursor = Nav::navigate(cursor, Nav::Direction::Up);
+    if (down & HidNpadButton_Down) cursor = Nav::navigate(cursor, Nav::Direction::Down);
+    if (down & HidNpadButton_L) cursor = Nav::navigate(cursor, Nav::Direction::PreviousBox);
+    if (down & HidNpadButton_R) cursor = Nav::navigate(cursor, Nav::Direction::NextBox);
+    if (down & HidNpadButton_ZL) cursor = Nav::navigate(cursor, Nav::Direction::JumpBack);
+    if (down & HidNpadButton_ZR) cursor = Nav::navigate(cursor, Nav::Direction::JumpForward);
+    nextBox = cursor.box;
+    nextSlot = cursor.slot;
 
     // A tap changes the destination only. A second stationary tap on the
     // already-focused destination or the physical A button confirms.
     const int tapped = screen.touchedButtonId(touch);
-    if (touch.justPressed() && !touch.dragged() && tapped >= 0 && tapped < 30) {
-        if (tapped == currentSlot) down |= HidNpadButton_A;
-        else nextSlot = tapped;
+    if (touch.justPressed() && !touch.dragged()) {
+        if (tapped == 1000) {
+            const auto next = Nav::navigate({nextBox, nextSlot}, Nav::Direction::PreviousBox);
+            nextBox = next.box;
+        } else if (tapped == 1001) {
+            const auto next = Nav::navigate({nextBox, nextSlot}, Nav::Direction::NextBox);
+            nextBox = next.box;
+        } else if (tapped >= 0 && tapped < 30) {
+            // First tap focuses; second tap drops like a Y press.
+            if (tapped == currentSlot && nextBox == currentBox) down |= HidNpadButton_Y;
+            else nextSlot = tapped;
+        }
     }
     screen.selectedBoxIndex = nextBox;
     screen.selectedItemIndex = nextSlot;
-    if (!(down & HidNpadButton_A)) return true;
+    if (!(down & (HidNpadButton_Y | HidNpadButton_A))) return true;
+    if (nextBox == state.moveSourceBox && nextSlot == state.moveSourceSlot &&
+        (down & HidNpadButton_Y)) {
+        state.moveActive = false; // Y on grabbed source cancels like Gen III.
+        screen.postStatus("Gen IV grab cancelled; no staged bytes modified", 120);
+        screen.controllerNavigation.reset();
+        return true;
+    }
     if (nextBox == state.moveSourceBox && nextSlot == state.moveSourceSlot) {
         screen.postStatus("Choose a different destination or press B to cancel", 180);
         return true;
@@ -2130,10 +2154,10 @@ void drawBoxMove(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& st
     fb.drawText(x + 18, y + 82,
         "To Box " + std::to_string(screen.selectedBoxIndex + 1) +
         " / Slot " + std::to_string(screen.selectedItemIndex + 1) +
-        "  |  A: Move / Swap",
+        "  |  Y: Drop / Swap",
         Colors::Text, TextStyle::Caption);
     drawNavBar(fb, {{"D-pad/Stick", "Slot"}, {"L/R", "Box"},
-                    {"A", "Move / Swap"}, {"B", "Cancel"}});
+                    {"ZL/ZR", "Jump"}, {"Y/A", "Drop / Swap"}, {"B", "Cancel"}});
 }
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
