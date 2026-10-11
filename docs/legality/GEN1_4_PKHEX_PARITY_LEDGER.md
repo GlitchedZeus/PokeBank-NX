@@ -14,7 +14,16 @@ It is intentionally conservative. A similarly named source file is not enough to
 
 The engine's semantic safety rule remains unchanged: **unknown, unsupported, or unreconstructable history is unresolved / Incomplete, not Invalid.** `Invalid` requires source-backed evidence that the represented Pokémon is impossible.
 
-## Current accepted checkpoint (2026-10-11; through #242)
+## Latest accepted checkpoint (2026-10-11; through #248)
+
+**Accepted isolated legality HEAD:** `06eda48b4ea366dcd062cfd34602af8aee32c11c` on 2026-10-11. This is NOT MAIN. Umbrella #103 remains OPEN / DRAFT / NOT MERGED.
+
+- **Accepted forward-only:** #243 (possible detached PK2 Gen I Time Capsule ancestry), then the dependent green stack **#244–#248**: conditional Time Capsule timing; malformed PK2 move-ID controls; source-neutral GameCube-origin PK3 four-slot compatibility; pinned full Emerald current-species level-up opportunities (386 National Dex species, 3,947 level/move entries); and the parity ledger. Each #244–#248 exact-head host CI was successful, and each was accepted in order by a non-force expected-SHA fast-forward with an exact-head post-check. Each PR was closed administratively, not GitHub-merged and not merged into MAIN.
+- **Staging only, NOT YET ACCEPTED:** draft [#255](https://github.com/GlitchedZeus/PokeBank-NX/pull/255) combines #249 Gen IV original-retail-game egg-move family candidates, #253 candidate-scoped four-slot witness compatibility, and #254 Emerald Shedinja one-evolution stage evidence. Independent green sibling CI does NOT prove the integrated merge tree is green. Draft #255 also adds a conditional Emerald current-species direct level-up candidate bridge and RNG-002's explicitly bounded nature-reversal SearchExhausted result with a synthetic 129-rejection vector. Full integrated exact-head CI and fresh zero-behind ancestry are mandatory before promotion.
+- **Research-only:** [#252](https://github.com/GlitchedZeus/PokeBank-NX/pull/252) remains outside production. Its 10 evidence packets / 28 verifier rows / 30 move-method rows identify unresolved egg-IV version mechanics, event projection fields, Pal Park move chronology, broader move histories, and RNG budget limits. Its scenarios are not automatically executed native fixtures.
+- **Safety/parity:** Overall tracked classification remains **20 Partial / 1 Implemented reporting contract**; this is NOT a PKHeX parity percentage. Move-pool matches, candidate-local contradictions, RNG search exhaustion, and hypothetical source-game routes must not become global Invalid without exhaustive source-backed encounter and acquisition alternatives. No original-save or staged-Pokémon mutation, auto-fix, save writes, Gen V, Master Vault, MAIN, UI or touch work is part of this lane.
+
+## Prior accepted checkpoint (2026-10-11; through #242)
 
 **Live-verified isolated legality HEAD:** `d7c72389dfdb9927f884cbb66fb141f2da8fa6f9` through acceptance of #242. This is NOT MAIN. Umbrella #103 remains **OPEN / DRAFT / NOT MERGED**.
 
