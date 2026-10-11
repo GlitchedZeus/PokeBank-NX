@@ -71,7 +71,8 @@ void wr32(std::vector<std::byte>& data, size_t offset, uint32_t value) {
 }
 
 Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true,
-                                 uint16_t species=1, uint16_t move=0) {
+                                 uint16_t species=1, uint16_t move=0,
+                                 uint8_t originVersion=12) {
     std::vector<std::byte> decrypted(Encryption::SIZE_STORED4, std::byte{0});
     wr32(decrypted, 0x00, 0x12345678u);
     wr16(decrypted, 0x08, species);  // native stored PK4 species
@@ -81,7 +82,7 @@ Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true,
     wr16(decrypted, 0x28, move);   // native stored PK4 first move
     decrypted[0x15] = std::byte{65}; // Overgrow
     decrypted[0x17] = std::byte{2};  // English
-    decrypted[0x5F] = std::byte{12}; // Platinum origin value; exact provenance is not under test.
+    decrypted[0x5F] = static_cast<std::byte>(originVersion); // native PK4 stored origin
     decrypted[0x83] = static_cast<std::byte>(ball);
 
     const auto encrypted = Encryption::encryptArray4(decrypted);
@@ -89,6 +90,7 @@ Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true,
     Pokemon::Pokemon4ReadOnly source(encrypted, Enums::GameVersion::PT);
     assert(source.valid());
     assert(source.ballDPPt() == ball);
+    assert(source.originVersion()==originVersion);
     assert(source.species() == species && source.moves()[0] == move);
     Pokemon::Pokemon4ReadOnlyView view(source);
     assert(view.ball() == ball);
@@ -194,6 +196,39 @@ Legality::Report analyzeGen4EggBall(uint8_t ball, bool isEgg,
         : Legality::analyze(view,Enums::GameVersion::HGSS);
 }
 
+
+Legality::Report sourceFreePalPark(uint8_t originVersion,uint16_t dp,
+                                   uint16_t extended,uint8_t ballDPPt,
+                                   uint8_t ballHGSS,bool isEgg=false) {
+    // Actual stored/encrypted PK4 format. The exact container game identity
+    // is intentionally absent; stored Gen III origin remains independently
+    // recoverable and can still prove universal transfer field rules.
+    std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
+    wr32(raw,0x00,0x12345678u);
+    wr16(raw,0x08,25); // Pikachu
+    wr16(raw,0x0C,12345);
+    wr16(raw,0x0E,54321);
+    wr32(raw,0x10,3375);
+    raw[0x17]=std::byte{2};
+    raw[0x5F]=static_cast<std::byte>(originVersion);
+    wr16(raw,0x80,dp);
+    wr16(raw,0x46,extended);
+    raw[0x83]=static_cast<std::byte>(ballDPPt);
+    raw[0x86]=static_cast<std::byte>(ballHGSS);
+    if(isEgg)wr32(raw,0x38,0x40000000u);
+    const auto encrypted=Encryption::encryptArray4(raw);
+    Pokemon::Pokemon4ReadOnly stored(encrypted,Enums::GameVersion::HGSS);
+    assert(stored.valid() && stored.checksumValid());
+    assert(stored.originVersion()==originVersion);
+    assert(stored.metLocationDP()==dp);
+    assert(stored.metLocationExtended()==extended);
+    assert(stored.ballDPPt()==ballDPPt);
+    assert(stored.ballHGSS()==ballHGSS);
+    Pokemon::Pokemon4ReadOnlyView view(stored);
+    assert(view.originGame()==originVersion);
+    return Legality::analyze(view,Enums::GameVersion::HGSS);
+}
+
 int main() {
     // Real PK3 egg-state and encrypted PK4 egg-origin reporting.
     auto eggPk3=gen3WithBall(4);
@@ -296,17 +331,41 @@ int main() {
     assert(!hasInfo(unknownOrigin,
         "Native Generation III/IV egg origin has a compatible Poke Ball"));
 
+    // Source-free immutable PK3/PK4 still retains origin-game evidence
+    // for a positive egg-move LEARNSET possibility, not a proven hatch.
+    auto g3Egg=gen3WithBall(4);
+    g3Egg.setMove(0,80); // Bulbasaur Petal Dance, Gen III egg.
+    assert(hasInfo(Legality::analyze(g3Egg,Enums::GameVersion::FRLG),
+                   "direct egg move"));
+    auto g3NonEgg=gen3WithBall(4);
+    g3NonEgg.setMove(0,57); // Surf is not a Bulbasaur egg move.
+    assert(!hasInfo(Legality::analyze(g3NonEgg,Enums::GameVersion::FRLG),
+                    "direct egg move"));
+    auto unknownG3=g3Egg;
+    unknownG3.setOriginGame(0);
+    assert(!hasInfo(Legality::analyze(unknownG3,Enums::GameVersion::FRLG),
+                    "direct egg move"));
+
+    // HGSS added Bulbasaur egg move #124; D/P/Pt did not.
+    // Derive the group from the stored PK4 origin, never the current
+    // save container when a source context is missing.
+    assert(hasInfo(analyzeGen4Ball(4,false,1,124,7),"direct egg move"));
+    assert(!hasInfo(analyzeGen4Ball(4,false,1,124,12),"direct egg move"));
+    assert(!hasInfo(analyzeGen4Ball(4,false,1,124,0),"direct egg move"));
+    // Gen III Bulbasaur -> Pal Park in Gen IV retains Gen III egg pool.
+    assert(hasInfo(analyzeGen4Ball(4,false,1,80,2),"direct egg move"));
+    // Evolved Ivysaur retains a Diamond-origin Bulbasaur egg move.
+    assert(hasInfo(analyzeGen4Ball(4,false,2,437,10),
+                   "retained pre-evolution egg move"));
+
     // Source-free known native PK3/PK4 formats have generation-specific
     // species/move ceilings regardless of their exact save identity.
     const auto g3Known=Legality::analyze(gen3WithBall(4),Enums::GameVersion::FRLG);
     assert(!hasInvalidText(g3Known,"cannot exist in a Generation 3 save"));
-    // Gen III stores a separate INTERNAL species index, not National
-    // Dex IDs. Its converter cannot encode Turtwig #387 at all, and
-    // maps an unsupported setter request to an empty record. Do not
-    // fabricate a source-free native PK3 containing National species
-    // #387 just to satisfy the ceiling verifier. The pinned 386 ceiling
-    // is independently statically verified in the helper test; the
-    // retained native PK3 move boundary is tested end-to-end below.
+    // Native PK3 stores a Gen III INTERNAL species index. National #387
+    // has no Gen III internal mapping: setSpecies(387) returns empty,
+    // not an impossible retained National-Dex value. This negative
+    // control must not invent an impossible source-format specimen.
     auto g3Unsupported=gen3WithBall(4);
     g3Unsupported.setSpecies(387);
     assert(g3Unsupported.speciesID()==0);
@@ -327,6 +386,39 @@ int main() {
                           "Species 494 cannot exist in a Generation 4 save"));
     assert(hasInvalidText(analyzeGen4Ball(4,false,1,468),
                           "Move id 468 cannot exist in a Generation 4 save"));
+
+
+    // Native Gen III -> IV Pal Park records retain origin and split
+    // fields independently of an exact container game/source save ID.
+    const auto dpTransfer=sourceFreePalPark(2,0x37,0,4,0);
+    assert(hasInfo(dpTransfer,"Pal Park D/P split-field pattern"));
+    assert(!hasInvalidText(dpTransfer,"Pal Park"));
+
+    const auto hgssTransfer=sourceFreePalPark(2,0x37,0x37,4,4);
+    assert(hasInfo(hgssTransfer,"Pal Park Pt/HGSS split-field pattern"));
+    assert(!hasInvalidText(hgssTransfer,"Pal Park"));
+
+    const auto badMarker=sourceFreePalPark(2,0,0,4,0);
+    assert(hasInvalidText(badMarker,
+        "Gen III-origin PK4 is missing the Pal Park transfer met location"));
+    const auto splitMismatch=sourceFreePalPark(2,0x37,0x36,4,4);
+    assert(hasInvalidText(splitMismatch,
+        "Gen III-origin PK4 has inconsistent D/P and Pt/HGSS Pal Park location fields"));
+    const auto badBall=sourceFreePalPark(2,0x37,0x37,13,0);
+    assert(hasInvalidText(badBall,
+        "Gen III -> IV Pal Park split-ball fields are inconsistent"));
+    const auto eggCannotTransfer=sourceFreePalPark(2,0x37,0x37,4,4,true);
+    assert(hasInvalidText(eggCannotTransfer,
+        "Gen III-origin egg cannot be transferred through Pal Park"));
+    const auto unknownTransferOrigin=sourceFreePalPark(0,0,0,4,0);
+    assert(hasText(unknownTransferOrigin,
+        "PK4 origin game could not be mapped to a known generation"));
+    assert(!hasInvalidText(unknownTransferOrigin,"Pal Park"));
+    // Later-generation origin is intrinsically impossible in a PK4,
+    // independent of which Gen IV game save contains the entity.
+    const auto gen5Origin=sourceFreePalPark(20,0x37,0x37,4,4);
+    assert(hasInvalidText(gen5Origin,
+        "cannot be stored directly in a retail Generation IV PK4"));
 
     // Exact Gen III: 12 is the pinned generation maximum, 13 is impossible.
     auto gen3Max = gen3WithBall(12);
