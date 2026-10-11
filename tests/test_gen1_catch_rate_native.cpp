@@ -54,6 +54,13 @@ int main() {
     static_assert(Legality::sourceGameProfile("yellow_gb")->maxMove==G::maxMove(1));
     static_assert(Legality::sourceGameProfile("crystal_gbc")->maxSpecies==G::maxSpecies(2));
     static_assert(Legality::sourceGameProfile("gold_gbc")->maxMove==G::maxMove(2));
+    // An immutable source-free PK1 can use the union of audited R/B/Y
+    // move pools as INFO compatibility, never unique original game proof.
+    constexpr auto compatiblePool="Source-free native PK1 move occurs in at least one audited Red/Blue/Yellow compatibility pool";
+    assert(hasInfo(report(25,190,85,""),compatiblePool)); // Pikachu Thunderbolt
+    assert(!hasInfo(report(25,190,85,"yellow_gb"),compatiblePool));
+    assert(!hasInfo(report(25,190,166,""),compatiblePool)); // not a Gen I move
+
     // Source-free immutable PK1 still proves Gen I ceiling 151/165.
     // The PK1 move byte can represent 166; the retail Gen I moveset cannot.
     assert(!invalidMessage(report(25,190,165,""),

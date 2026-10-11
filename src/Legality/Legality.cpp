@@ -1581,6 +1581,52 @@ namespace Legality {
                 }
             }
         } else if (!sourceProfile &&
+                   Gen12FormatDomain::generationFromGroup(pk.getGameGroup()) == 1) {
+            // Native PK1 proves Gen I format, not which exact R/B/Y
+            // save once contained it. A move occurring in ANY audited
+            // game pool can be reported as POSSIBLE; tradebacks/events
+            // and evolution chronology remain unproven.
+            using Source=PokeVault::Integration::Gen1::SourceGame;
+            for(int i=0;i<4;++i){
+                const uint16_t moveId=pk.move(i);
+                if(moveId==0 || moveId>165)continue;
+                if(PokeVault::Integration::Gen1::MoveCompatibility::canLearnMove(
+                       Source::Red,species,moveId) ||
+                   PokeVault::Integration::Gen1::MoveCompatibility::canLearnMove(
+                       Source::Blue,species,moveId) ||
+                   PokeVault::Integration::Gen1::MoveCompatibility::canLearnMove(
+                       Source::Yellow,species,moveId)) {
+                    add(r,Severity::Info,
+                        "Source-free native PK1 move occurs in at least one audited Red/Blue/Yellow compatibility pool: " +
+                        std::string(Names::getMoveName(moveId)) +
+                        "; exact retail game and tradeback history remain unresolved",
+                        CheckIdentifier::Moves);
+                }
+            }
+        } else if (!sourceProfile &&
+                   Gen12FormatDomain::generationFromGroup(pk.getGameGroup()) == 2) {
+            // Native PK2 retains the current move IDs, but may have
+            // passed through Gold/Silver/Crystal and the Time Capsule.
+            // This union gives evidence of a POSSIBLE pool, not proof
+            // of breeding, trainer or tradeback history.
+            using Source=PokeVault::Integration::Gen2::SourceGame;
+            for(int i=0;i<4;++i){
+                const uint16_t moveId=pk.move(i);
+                if(moveId==0 || moveId>251)continue;
+                if(PokeVault::Integration::Gen2::MoveCompatibility::canLearnMove(
+                       Source::Gold,species,moveId) ||
+                   PokeVault::Integration::Gen2::MoveCompatibility::canLearnMove(
+                       Source::Silver,species,moveId) ||
+                   PokeVault::Integration::Gen2::MoveCompatibility::canLearnMove(
+                       Source::Crystal,species,moveId)) {
+                    add(r,Severity::Info,
+                        "Source-free native PK2 move occurs in at least one audited Gold/Silver/Crystal native/Time Capsule pool: " +
+                        std::string(Names::getMoveName(moveId)) +
+                        "; breeding and transfer history remain unresolved",
+                        CheckIdentifier::Moves);
+                }
+            }
+        } else if (!sourceProfile &&
                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 3 &&
                    !Gen4Origin::exactGen3GameId(pk.originGame()).empty()) {
             // Banked/native PK3 retains the original GBA game code even
