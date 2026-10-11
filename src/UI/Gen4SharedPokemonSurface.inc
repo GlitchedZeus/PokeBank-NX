@@ -2515,7 +2515,8 @@ void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State
         if(index==state.itemAddIndex)
             fb.drawSelectionHighlight(x+18,yy,w-36,38);
         fb.drawText(x+32,yy+9,name,Colors::Text,TextStyle::Body);
-        ItemPickerArtwork::draw(fb,x+w-31,yy+3,32,name);
+        ItemPickerArtwork::drawNativeItem(fb,x+w-31,yy+3,32,
+                                        screen.trainer.getGameGroup(), id, name);
     }
     fb.drawText(x+24,y+h-38,
         std::to_string(state.itemAddIndex+1)+" / "+std::to_string(count)+
@@ -2537,7 +2538,8 @@ void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const S
     fb.drawText(x+24,y+69,
         itemName+"  |  Count "+std::to_string(state.itemRemoveCount),
         Colors::Text,TextStyle::Body);
-    ItemPickerArtwork::draw(fb,x+w-38,y+65,36,itemName);
+    ItemPickerArtwork::drawNativeItem(fb,x+w-38,y+65,36,
+                                    screen.trainer.getGameGroup(), state.itemRemoveId, itemName);
     fb.drawText(x+24,y+113,
         "Only the app-owned staged copy changes. Original source is immutable.",
         Colors::TextSecondary,TextStyle::Caption);
