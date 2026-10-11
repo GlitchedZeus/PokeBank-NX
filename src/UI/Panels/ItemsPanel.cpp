@@ -243,8 +243,11 @@ namespace Panels {
                 selectedGscMail = normalized;
             const bool machine = ItemSpriteKey::isTM(normalized) ||
                                  ItemSpriteKey::isHM(normalized);
-            if (artworkKey.empty() && !machine)
-                artworkKey = normalized;
+            if (artworkKey.empty() && !machine) {
+                artworkKey = gscSource && ItemSpriteKey::isGen2Mail(normalized)
+                    ? "gsc-mail-icon-" + normalized
+                    : normalized;
+            }
             if (!artworkKey.empty()) {
                 auto* art = SpriteManager::getItemSprite(artworkKey);
                 if (art && art->data && art->width > 0 && art->height > 0) {
