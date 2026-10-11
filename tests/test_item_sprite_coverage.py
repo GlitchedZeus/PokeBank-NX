@@ -24,7 +24,14 @@ GEN2_MAIL_ART = {
 }
 ART |= EXTRAS
 # Historical equivalent icons deliberately do NOT count as original-era art.
-HISTORICAL_PROXIES = {"x-special", "exp-all"}
+HISTORICAL_PROXIES = {
+    "x-special", "exp-all",
+    # All ten Gen II berries have later-generation successors with related
+    # effects. Report their icons as proxies, never as exact GSC-era artwork.
+    "poison-cure-berry", "paralyze-cure-berry", "mint-berry",
+    "ice-berry", "burnt-berry", "mystery-berry", "berry",
+    "bitter-berry", "miracle-berry", "gold-berry",
+}
 
 # Original Gen II mail art is recovered from Bulbagarden Archives separately.
 # These exact stationery backgrounds are OPTIONAL at package time: the
@@ -144,6 +151,11 @@ unresolved["Gen IV"] = audit("Gen IV", g4, gen4_held | gen4_bag)
 for name, expected in {
     "Thunderstone": "thunder-stone", "X Defend": "x-defense",
     "X Special": "x-sp-atk", "Exp. All": "exp-share",
+    "Poison Cure Berry": "pecha-berry", "Paralyze Cure Berry": "cheri-berry",
+    "Mint Berry": "chesto-berry", "Ice Berry": "rawst-berry",
+    "Burnt Berry": "aspear-berry", "Mystery Berry": "leppa-berry",
+    "Berry": "oran-berry", "Bitter Berry": "persim-berry",
+    "Miracle Berry": "lum-berry", "Gold Berry": "sitrus-berry",
     "Brightpowder": "bright-powder", "Parlyz Heal": "paralyze-heal",
     "Itemfinder": "itemfinder", "TM27": "tm27", "HM01": "hm01",
     "DeepSeaTooth": "deep-sea-tooth", "NeverMeltIce": "never-melt-ice",
