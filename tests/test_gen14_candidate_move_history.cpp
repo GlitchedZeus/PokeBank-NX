@@ -62,7 +62,7 @@ constexpr Slot alternativeSurf() {
     Slot s=slot(57,oldSurf);
     s.options[1]=laterSurf;s.count=2;return s;
 }
-static_assert(evaluate(palParkCandidate,{slot(57,alternativeSurf()),
+static_assert(evaluate(palParkCandidate,{alternativeSurf(),
                                          slot(85,oldThunderbolt),{},{}}).status==
               Status::WitnessesCompatible);
 
