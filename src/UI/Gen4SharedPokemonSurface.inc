@@ -26,6 +26,7 @@
 #include "UI/ItemPickerArtwork.h"
 #include "UI/Gen4BoxMoveNavigation.h"
 #include "UI/Gen4DataPresentation.h"
+#include "UI/Gen4ItemListWindow.h"
 #include "UI/ScreenChrome.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedHeldItemPicker.h"
@@ -2608,7 +2609,8 @@ void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State
         std::string(Gen4::bagPocketName(static_cast<size_t>(state.itemAddPocket)))+
         "  |  Supported native items only",Colors::TextSecondary,TextStyle::Caption);
     const int count=static_cast<int>(state.itemAddChoices.size());
-    const int start=(state.itemAddIndex/9)*9;
+    const int start=PokeBank::UIModel::Gen4ItemListWindow::first(
+        state.itemAddIndex,count,9);
     for(int row=0;row<9 && start+row<count;++row) {
         const int index=start+row;
         const int yy=y+88+row*43;
