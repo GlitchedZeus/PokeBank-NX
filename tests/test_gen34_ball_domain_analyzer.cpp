@@ -966,10 +966,10 @@ int main() {
     static_assert(Legality::Gen34PalParkSpecies::nearestGen3Ancestor(445)==0);
 
     // The same evolved PK4 can preserve the ancestral GBA move #38
-    // (Magneton) and then learn Gen IV move #363 as Magnezone.
+    // (Magneton in Emerald/FRLG, not R/S) and later learn Gen IV move #363 as Magnezone.
     using StageSource=PokeVault::Integration::Gen3::SourceGame;
     const auto evolvedStage=Legality::Gen34PalParkMoves::classify(
-        StageSource::RubyGBA,462,0,{38,363,0,0});
+        StageSource::EmeraldGBA,462,0,{38,363,0,0});
     assert(evolvedStage.storedMoves==2);
     assert(evolvedStage.originalGbaCompatible==1);
     assert(evolvedStage.gen4StorageOnly==1);
@@ -986,13 +986,13 @@ int main() {
         Legality::Gen34PalParkMoves::JointBound::Unresolved);
 
     const auto evolvedStageNative=analyzeDetachedPalParkMoves(
-        2,38,363,false,true,false,false,462);
+        3,38,363,false,true,false,false,462);
     assert(hasInfo(evolvedStageNative,
         "stored move(s) occur in the audited original GBA game"));
     assert(hasInfo(evolvedStageNative,
         "joint history bound: the audited move pools require both a Gen III-era and a Gen IV-era source"));
     const auto evolvedStageExact=analyzeDetachedPalParkMoves(
-        2,38,363,true,true,false,false,462);
+        3,38,363,true,true,false,false,462);
     assert(hasInfo(evolvedStageExact,
         "move(s) occur in the audited retained original GBA game pool"));
     assert(hasInfo(evolvedStageExact,
