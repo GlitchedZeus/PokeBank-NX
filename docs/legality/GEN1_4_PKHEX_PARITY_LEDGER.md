@@ -14,7 +14,18 @@ It is intentionally conservative. A similarly named source file is not enough to
 
 The engine's semantic safety rule remains unchanged: **unknown, unsupported, or unreconstructable history is unresolved / Incomplete, not Invalid.** `Invalid` requires source-backed evidence that the represented Pokémon is impossible.
 
-## Current accepted checkpoint (2026-10-11; through #234)
+## Current accepted checkpoint (2026-10-11; through #243)
+
+**Live-verified isolated Gen I–IV legality HEAD:** `4d3026e0bbe90f2eb1505c107b1c74498c051549` through #243. The branch is distinct from MAIN and umbrella PR #103 remains **OPEN / DRAFT / NOT MERGED**. Earlier headings below are historical snapshots; their then-pending PR lists do not describe the current queue.
+
+- **Fully accepted read-only stack:** #235–#243 following #231–#234, using verified forward ancestry and their own completed successful exact-head PR application identity, clean host, full host tests, focused RSE save-open and ASan/UBSan jobs. #235 repairs inconsistent Pal Park split-location/Ball provenance; #236 adds exact-save positive Pal Park move-stage bounds; #237 prevents malformed move IDs >467 from counting as legitimate post-migration evidence; #238 adds all-four-slot exact minimal set cover across three Gen III plus three Gen IV game-family pools; #239 reconciles the then-current audit ledger.
+- **Gen III→IV evolution history (#240–#241):** native PK4 can retain a GBA origin after a valid Gen IV evolution such as Magneton→Magnezone or Porygon2→Porygon-Z; evolution-lineage checks distinguish impossible GBA ancestors from legitimate evolved current species. An audited pre-transfer ancestor's GBA move pool remains eligible for positive move-retention evidence. Native regression fixtures were repaired forward, preserving all ancestry.
+- **GameCube→GBA→Pal Park (#242):** persistent GameCube original-game code 15 does not specify which intermediary GBA cartridge was used. Only structurally proven Pal Park and universal PK3-to-PK4 move-ID timing can yield positive stage evidence; no original R/S/E/FRLG save or historical trade route is invented.
+- **PK2 Time Capsule (#243):** exact-source and detached native PK2 records can report structural *possible* historical Gen I ancestry separately from their **current** Gen II→Gen I trade eligibility. Later Gen II evolution or move learning never proves a visit or disproves a possible earlier one.
+- **Development PRs not yet accepted at this checkpoint:** #249 extends positive-only native PK4 egg-move family comparison to its stored original retail game, and #250 stacks a conditional post-Gen-I move-ID timing bound on native PK2. Both are draft branches; their own complete exact-head CI is mandatory before any acceptance. Do not count draft behavior toward accepted parity.
+- **Current classification remains 20 Partial and 1 Implemented *reporting contract* among 21 tracked categories**, not a measured overall PKHeX parity percentage. Material missing history includes level-specific move acquisition, breeding parent combinations, tutor availability windows, event-only exceptions and some PID/RNG methods. No source save/staged Pokémon mutations, automatic fixes or write-permission changes were introduced.
+
+## Prior accepted checkpoint (2026-10-11; through #234)
 
 **Current live-verified isolated legality HEAD: \`c03e7d9f9443baa118641ab2d4db3e9c1410c0eb\`**, through acceptance of #234. This branch is **not MAIN** and umbrella PR #103 remains **OPEN / DRAFT / NOT MERGED**.
 
