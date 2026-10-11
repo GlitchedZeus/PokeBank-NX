@@ -14,7 +14,17 @@ It is intentionally conservative. A similarly named source file is not enough to
 
 The engine's semantic safety rule remains unchanged: **unknown, unsupported, or unreconstructable history is unresolved / Incomplete, not Invalid.** `Invalid` requires source-backed evidence that the represented Pokémon is impossible.
 
-## Current accepted checkpoint (2026-10-11; through #234)
+## Current accepted checkpoint (2026-10-11; through #242)
+
+**Live-verified isolated legality HEAD:** `d7c72389dfdb9927f884cbb66fb141f2da8fa6f9` through acceptance of #242. This is NOT MAIN. Umbrella #103 remains **OPEN / DRAFT / NOT MERGED**.
+
+- **Accepted PRs #235–#242:** #235 gates Pal Park historical positives on validated split location/Ball fields; #236 exposes bounded move stages in exact-source Gen IV saves; #237 excludes impossible native Gen IV move IDs >467; #238 uses six pinned Gen III/IV pools for exact bounded four-slot set cover; #239 reconciles the parity ledger; #240 verifies an actual Gen III ancestor before interpreting newer Gen IV evolved species as valid Pal Park provenance; #241 retains GBA ancestral move options after Gen IV evolution (Emerald Magneton to Magnezone); #242 adds source-independent GameCube-origin post-migration move-ID evidence without inventing the intermediary GBA game.
+- **Independently green exact-head CI:** [#235](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38121369684), [#236](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38121499648), [#237](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38121567152), [#238](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38121704858), [#239](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38121777772), [#240](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38122422626), [#241](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38123372690), [#242](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38123398992). Each completed PR identity, clean host build, full host tests, focused RSE save-open regression and ASan/UBSan successfully, then was accepted with fresh zero-behind ancestry and non-force expected-SHA fast-forward. Administrative PR closure does not mean a MAIN merge.
+- **Not accepted at this checkpoint:** DRAFT #243 potential Gen I ancestor from detached PK2; #244 conditional Gen II move/evolution timing after hypothetical Time Capsule; #245 malformed PK2 ID reporting versus legitimate Gen II era; #246 detached GameCube-origin PK3 neutral GBA move-pool coverage; #247 pinned Emerald level-up-method evidence (3,947 level/move entries, 386 National Dex species; `pret/pokeemerald@5eff78649e7170a877b961ef0b3da13b81a16038`). Each requires its own full exact-head green CI and ordered non-force acceptance.
+- **Parity status remains 20 Partial and 1 Implemented reporting contract among 21 tracked areas.** This is not a quantified PKHeX parity percentage. Historical timing, breeding-parent combinations, event-only moves, accurate tutor windows, full Gen I–IV level-up coverage, RNG edge cases, OT/trash bytes, ribbons and exact transfers remain material gaps. Game-family set cover is never proof of a single valid simultaneous historical moveset.
+- **Safety:** original saves and staged Pokémon stay immutable. No automatic fixes or write permissions; no Gen V, Master Vault, MAIN, Product UI or touch development in this lane. Unknown or unsupported provenance is Incomplete/Unresolved, not automatically Invalid.
+
+## Prior accepted checkpoint (2026-10-11; through #234)
 
 **Current live-verified isolated legality HEAD: \`c03e7d9f9443baa118641ab2d4db3e9c1410c0eb\`**, through acceptance of #234. This branch is **not MAIN** and umbrella PR #103 remains **OPEN / DRAFT / NOT MERGED**.
 
