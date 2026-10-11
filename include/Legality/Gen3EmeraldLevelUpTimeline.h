@@ -9,7 +9,8 @@
 namespace Legality::Gen3EmeraldLevelUpTimeline {
 enum class Decision : uint8_t { AutoLearn, ReplaceSlot, Decline, AlreadyKnown };
 enum class Status : uint8_t { Unsupported, UnknownSnapshot, UnknownSpeciesContinuity,
-    IncompleteTrainingHistory, CandidateContradicted, CandidateConsistent };
+    UnknownGameContinuity, IncompleteTrainingHistory,
+    CandidateContradicted, CandidateConsistent };
 struct Step {
     uint8_t level=0;
     uint16_t offeredMove=0;
@@ -22,6 +23,12 @@ struct Input {
     uint8_t encounterLevel=0, observedLevel=0;
     bool initialSnapshotVerified=false;
     bool sameSpeciesVerified=false;
+    // The same Emerald game and absence of TM, tutor, trade, daycare,
+    // Move Deleter, event or other move mutation throughout the claimed
+    // interval must be independently established for an EXCLUSIVE
+    // ordinary level-up-only timeline, not inferred from current PK3.
+    bool sameEmeraldGameThroughoutVerified=false;
+    bool noOtherMoveChangesVerified=false;
     bool allOffersAndDecisionsVerified=false;
     std::array<uint16_t,4> initialMoves{}, observedMoves{};
     std::array<Step,24> steps{};
@@ -58,11 +65,16 @@ constexpr Result evaluate(const Input& in) noexcept {
     if(!in.sameSpeciesVerified){
         out.status=Status::UnknownSpeciesContinuity;return out;
     }
+    if(!in.sameEmeraldGameThroughoutVerified) {
+        out.status=Status::UnknownGameContinuity;return out;
+    }
     out.reconstructed=in.initialMoves;
     if(!structural(in.initialMoves)||!structural(in.observedMoves)){
         out.status=Status::CandidateContradicted;return out;
     }
-    if(!in.allOffersAndDecisionsVerified||in.stepCount>in.steps.size()){
+    if(!in.allOffersAndDecisionsVerified ||
+       !in.noOtherMoveChangesVerified ||
+       in.stepCount>in.steps.size()){
         out.status=Status::IncompleteTrainingHistory;return out;
     }
     const uint16_t begin=Gen3EmeraldLevelUp::kEmeraldLevelOffsets[in.species];

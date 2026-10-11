@@ -12,6 +12,8 @@ void runCases() {
     in.encounterLevel=5;in.observedLevel=32;
     in.initialSnapshotVerified=true;
     in.sameSpeciesVerified=true;
+    in.sameEmeraldGameThroughoutVerified=true;
+    in.noOtherMoveChangesVerified=true;
     in.allOffersAndDecisionsVerified=true;
     in.initialMoves={33,45,0,0};in.stepCount=7;
     in.steps[0]={7,73,D::AutoLearn,2};
@@ -38,6 +40,10 @@ void runCases() {
     assert(E::evaluate(missingSnapshot).status==E::Status::UnknownSnapshot);
     auto unknownEvo=in;unknownEvo.sameSpeciesVerified=false;
     assert(E::evaluate(unknownEvo).status==E::Status::UnknownSpeciesContinuity);
+    auto unknownGame=in;unknownGame.sameEmeraldGameThroughoutVerified=false;
+    assert(E::evaluate(unknownGame).status==E::Status::UnknownGameContinuity);
+    auto unknownTutor=in;unknownTutor.noOtherMoveChangesVerified=false;
+    assert(E::evaluate(unknownTutor).status==E::Status::IncompleteTrainingHistory);
     auto partial=in;partial.allOffersAndDecisionsVerified=false;
     assert(E::evaluate(partial).status==E::Status::IncompleteTrainingHistory);
     auto missingOne=in;missingOne.stepCount=6;
@@ -50,6 +56,24 @@ void runCases() {
     assert(E::evaluate(invalidSpecies).status==E::Status::Unsupported);
     auto invalidSlots=in;invalidSlots.initialMoves={33,0,45,0};
     assert(E::evaluate(invalidSlots).status==E::Status::CandidateContradicted);
+    // Ivysaur already knows Growl before a source-listed second offer at
+    // level 4. A duplicate move is not inserted or taught twice.
+    E::Input repeated{};
+    repeated.game="emerald_gba";repeated.species=2;
+    repeated.encounterLevel=1;repeated.observedLevel=4;
+    repeated.initialSnapshotVerified=true;
+    repeated.sameSpeciesVerified=true;
+    repeated.sameEmeraldGameThroughoutVerified=true;
+    repeated.noOtherMoveChangesVerified=true;
+    repeated.allOffersAndDecisionsVerified=true;
+    repeated.initialMoves={33,45,73,0};
+    repeated.observedMoves={33,45,73,0};
+    repeated.stepCount=1;
+    repeated.steps[0]={4,45,D::AlreadyKnown,0};
+    assert(E::evaluate(repeated).status==E::Status::CandidateConsistent);
+    auto inventedRepeat=repeated;
+    inventedRepeat.steps[0].decision=D::AutoLearn;
+    assert(E::evaluate(inventedRepeat).status==E::Status::CandidateContradicted);
     auto identical=in;identical.encounterLevel=32;
     identical.initialMoves=in.observedMoves;identical.stepCount=0;
     assert(E::evaluate(identical).status==E::Status::CandidateConsistent);
