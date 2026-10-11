@@ -658,7 +658,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         const int x = (1280 - width) / 2;
         constexpr int height = PokeBank::UIModel::ClassicAddItemPickerLayout::Height;
         const int listTop = marginY + PokeBank::UIModel::ClassicAddItemPickerLayout::ClassicListTopOffset;
-        const int listBottom = marginY + height - 18;
+        const int listBottom = marginY + height - PokeBank::UIModel::ClassicAddItemPickerLayout::BottomInset;
         const int visibleRows = std::max(1, (listBottom - listTop) / rowH);
         state.pickerViewport.ensure(state.pickerRow, count, visibleRows);
         const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows);
@@ -882,7 +882,14 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const int height = compactPicker ? PokeBank::UIModel::ClassicAddItemPickerLayout::Height : 610;
     const int x = (fb.getWidth() - width) / 2;
     const int radius = compactPicker ? 16 : 18;
-    fb.drawSoftShadow(x, y, width, height, radius);
+    if (compactPicker) {
+        // Match Gen IV's modal ownership: dim underlying source Items and
+        // route all new touch controls only to this foreground picker.
+        fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 46,
+                          Color(0, 0, 0, 160));
+    } else {
+        fb.drawSoftShadow(x, y, width, height, radius);
+    }
     fb.drawFilledRoundedRect(x, y, width, height, radius, Colors::Panel);
     fb.drawRoundedRect(x, y, width, height, radius, Colors::Divider, 1);
 
@@ -917,13 +924,13 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         int posW = 0, posH = 0;
         fb.measureText(pos, posW, posH, TextStyle::Caption);
         fb.drawText(x + width - pad - posW, y + 22, pos, Colors::TextDim, TextStyle::Caption);
-        fb.drawText(x + pad, y + 54, "Exact game + pocket catalog", Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + pad, y + 54, "Supported native items only", Colors::TextSecondary, TextStyle::Caption);
         fb.drawHDivider(x + pad, y + 76, width - pad * 2);
 
         const int rowH = PokeBank::UIModel::ClassicAddItemPickerLayout::RowHeight;
         const int listTop = y + PokeBank::UIModel::ClassicAddItemPickerLayout::ClassicListTopOffset;
         // Controls live in the shared bottom glyph bar now, so the modal can use the old footer space.
-        const int listBottom = y + height - 18;
+        const int listBottom = y + height - PokeBank::UIModel::ClassicAddItemPickerLayout::BottomInset;
         const int visibleRows = std::max(1, (listBottom - listTop) / rowH);
         state.pickerViewport.ensure(state.pickerRow, count, visibleRows);
         const int start = state.pickerViewport.firstRow;
@@ -937,17 +944,22 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             const std::string artName = PokeVault::Inventory::displayItemName(*game, *pocket, itemId);
             std::string label = artName;
             if (stagedQuantity(screen, *pocket, itemId) != 0) label += "  (Already in pouch)";
-            drawRow(fb, x + 12, rowY, width - 24, label, i == state.pickerRow, rowH - 4, true);
-            // Render the real pinned sprite after the row background; the artwork
-            // key must not include our UI-only "(Already in pouch)" suffix.
-            // Numbered native machines fall back to a neutral disc.
-            ItemPickerArtwork::draw(fb, x + width - 35, rowY + 4, 30, artName);
+            // Gen IV visual parity: only focused row has the highlight. The
+            // old full-width blue row cards obscured the foreground contrast.
+            if (i == state.pickerRow)
+                fb.drawSelectionHighlight(x + 18, rowY, width - 36, rowH - 5);
+            fb.drawText(x + 32, rowY + 9, label, Colors::Text, TextStyle::Body);
+            ItemPickerArtwork::draw(fb, x + width - 31, rowY + 3, 32, artName);
             if (rowY + rowH > listTop && rowY < listBottom)
                 appendClippedTouchButton(screen.touchButtons, i,
                     x + 12, rowY, width - 24, rowH - 4,
                     x + 12, listTop, width - 24, listBottom - listTop);
         }
         fb.clearClip();
+        fb.drawText(x + pad, y + height - 38,
+            std::to_string(state.pickerRow + 1) + " / " + std::to_string(count) +
+            "  |  Choose exact native item (quantity confirmed afterward)",
+            Colors::Accent, TextStyle::Caption);
         drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Add / Select"},
                         {"B", "Cancel"}, {"L/R", "Page"}});
         return;
