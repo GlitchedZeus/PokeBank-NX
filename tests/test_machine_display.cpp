@@ -1,6 +1,7 @@
 #include "Names/MachineDisplay.h"
 #include "Names/MoveNames.h"
 #include "Names/TMMoves.h"
+#include "UI/ClassicMachineArtwork.h"
 
 #include <cassert>
 #include <cstdint>
@@ -60,6 +61,23 @@ int main() {
     assert(Names::machineDisplayMatches(GameVersion::GSC, 191, "TM01", "1"));
     assert(Names::machineDisplayMatches(GameVersion::GSC, 191, "TM01", "dynamic"));
     assert(!Names::machineDisplayMatches(GameVersion::GSC, 191, "TM01", "surf"));
+
+    // Image art is selected by the move the native machine TEACHES,
+    // not its visible TM number. This covers the screenshot regressions.
+    using UI::ClassicMachineArtwork::artKey;
+    assert(artKey(GameVersion::RBY, 201) == "tm-normal"); // TM01 Mega Punch
+    assert(artKey(GameVersion::RBY, 206) == "tm-poison"); // TM06 Toxic
+    assert(artKey(GameVersion::RBY, 198) == "hm-water"); // HM03 Surf
+    assert(artKey(GameVersion::GSC, 191) == "tm-fighting"); // TM01 Dynamic Punch
+    assert(artKey(GameVersion::GSC, 245) == "hm-water"); // HM03 Surf
+    assert(artKey(GameVersion::FRLG, 289) == "tm-fighting"); // TM01 Focus Punch
+    assert(artKey(GameVersion::PT, 328) == "tm-fighting");
+    assert(artKey(GameVersion::DP, 424) == "hm-flying"); // HM05 Defog
+    assert(artKey(GameVersion::HGSS, 424) == "hm-water"); // HM05 Whirlpool
+    assert(artKey(GameVersion::GSC, 195).empty()); // gap must stay untyped
+    assert(artKey(GameVersion::RBY, 1).empty()); // not a machine
+    static_assert(UI::ClassicMachineArtwork::Gen1Types[2] == 1);
+    static_assert(UI::ClassicMachineArtwork::Gen2Types[2] == 2);
 
     std::cout << "machine display tests passed\n";
     return 0;
