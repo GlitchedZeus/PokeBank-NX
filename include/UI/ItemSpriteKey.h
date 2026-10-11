@@ -62,6 +62,17 @@ inline std::string slug(std::string_view label) {
     if (key == "ragecandybar") return "rage-candy-bar";
     if (key == "ss-ticket" || key == "ssticket") return "ss-ticket";
     if (key == "doll") return "poke-doll"; // Gen II retail "# DOLL"
+    // Gen IV ItemNames display synonyms for these EXACT native item IDs,
+    // cross-checked against the Diamond/Pearl/HGSS index table. Sprite
+    // remapping only; do not reinterpret a different generation's raw ID.
+    if (key == "guidebook") return "journal";          // Gen IV ID 433
+    if (key == "sticker-case") return "seal-case";      // ID 434
+    if (key == "sticker-bag") return "seal-bag";        // ID 436
+    if (key == "bike") return "bicycle";                // ID 450
+    if (key == "lunar-feather") return "lunar-wing";    // ID 453
+    if (key == "secret-medicine") return "secret-potion"; // ID 464
+    if (key == "silver-feather") return "silver-wing"; // ID 482
+    if (key == "rainbow-feather") return "rainbow-wing"; // ID 483
     if (key == "itemfinder") return "itemfinder"; // verified extra asset
 
     // Gen II's historical mail labels sometimes differ from the source
