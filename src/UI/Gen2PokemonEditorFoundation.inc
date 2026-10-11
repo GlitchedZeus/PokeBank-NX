@@ -8,6 +8,7 @@
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
 #include "Integration/Gen2/Gen2HeldItems.h"
 #include "UI/Gen2HeldItemPicker.h"
+#include "UI/ItemPickerSort.h"
 #include "UI/Gen2NativePresentation.h"
 #include "UI/ExactSaveCapabilities.h"
 #include "UI/SharedPokemonEditorContract.h"
@@ -55,6 +56,8 @@ struct State : Rules::Session {
     int column = 0;
     uint32_t rng = 0x2A6F19D3u;
     std::vector<uint8_t> itemChoices;
+    std::vector<uint8_t> itemNativeChoices;
+    ItemPickerSort::Mode itemSort = ItemPickerSort::Mode::Native;
     int itemChoiceIndex = 0;
     TouchScrollState itemScroll;
     TouchPickerViewport itemViewport;
@@ -395,6 +398,8 @@ void randomizeDVs(State& state) {
 
 void openHeldItemPicker(State& state) {
     state.itemChoices = Rules::heldItemChoices();
+    state.itemNativeChoices = state.itemChoices;
+    state.itemSort = ItemPickerSort::Mode::Native;
     state.itemChoiceIndex = PokeBank::UIModel::Gen2HeldItemPicker::initialIndex(state.itemChoices, state.working.heldItem);
     state.itemScroll.reset();
     state.itemViewport.reset();
@@ -550,6 +555,18 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
         state.itemScroll.stop();
         state.itemChoiceIndex = touchTap - 3000;
         down |= HidNpadButton_A;
+    }
+    if (down & HidNpadButton_X) {
+        state.itemSort = ItemPickerSort::next(state.itemSort);
+        state.itemChoiceIndex = ItemPickerSort::reorder(
+            state.itemChoices, state.itemNativeChoices, state.itemSort,
+            state.itemChoiceIndex, [](uint8_t id) {
+                return PokeBank::UIModel::Gen2HeldItemPicker::itemName(id);
+            });
+        state.itemScroll.stop();
+        state.itemViewport.reset();
+        state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, Model::columns);
+        return true;
     }
     if (nav & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right) ||
         down & (HidNpadButton_L | HidNpadButton_R))
@@ -857,6 +874,9 @@ void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
         fb, x, y, "Held Item — Generation II",
         state.itemChoiceIndex, static_cast<int>(state.itemChoices.size()));
     namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
+    fb.drawText(x + w - 250, y + 55,
+                std::string("Sort: ") + ItemPickerSort::label(state.itemSort),
+                Colors::TextDim, TextStyle::Caption);
     const int count = static_cast<int>(state.itemChoices.size());
     const int firstRow = state.itemViewport.firstRow;
     const int liveOffset = state.itemScroll.offset();
@@ -875,7 +895,7 @@ void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
             Grid::rows * Grid::rowPitch);
     }
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
-                    {"A", "Choose"}, {"B", "Cancel"}});
+                    {"A", "Choose"}, {"B", "Cancel"}, {"X", "Sort"}});
 }
 
 void drawConfirm(PKSEFramebuffer& fb, const State& state) {
