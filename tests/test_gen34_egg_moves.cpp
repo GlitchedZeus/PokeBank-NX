@@ -49,7 +49,7 @@ int main() {
     assert(!isEggMove("platinum_nds", 1, 468));
 
     // Gen IV egg-move family source cannot be inferred from the current
-    // physical save. HGSS Bulbasaur Sweet Scent #124 was not a D/P/Pt
+    // physical save. HGSS Bulbasaur Sludge #124 was not a D/P/Pt
     // egg move; Petal Dance #80 is shared. All conclusions are INFO-only.
     namespace Families=Legality::Gen4EggMoveFamily;
     const auto dp=Families::classify("diamond_nds",1,{80,124,0,0});
