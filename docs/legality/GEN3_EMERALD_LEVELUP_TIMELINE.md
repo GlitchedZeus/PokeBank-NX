@@ -1,0 +1,9 @@
+# MOVE-001: full source-pinned Emerald four-slot level-up timeline
+
+Emerald has 3,947 positive level-up entries for National species 1–386. Individual compatibility does **not** demonstrate simultaneous four-slot retained moves.
+
+The new exact-game `Gen3EmeraldLevelUpTimeline` verifies **every** level-up offer strictly in pinned pret/pokeemerald level table order, including multiple offered moves at one level. It replays automatic learning into free slots, prompted replacement when full, declining prompted moves and recognizing an already known move, retaining exact four-slot order and rejecting duplicates. Its source identifier must be exactly `emerald_gba` and the species must be attested **unchanged** throughout the claimed interval. The original 4-slot state and every trainer decision must be supplied separately; none is recoverable from a detached PK3.
+
+One explicit Bulbasaur hypothetical level 5 → 32: learn Leech Seed at 7 and Vine Whip at 10, replace Tackle and Growl with Poison Powder and Sleep Powder at 15, replace Leech Seed with Razor Leaf at 20, decline Sweet Scent at 25 and Growth at 32 → exact `77/79/75/22`. Negative tests reject reversed same-level offers, wrong auto slot, missing source decision, skipped auto-learn with a free slot, wrong final slot order, fabricated extra offer, invalid source/game, unsupported species, and false evolution continuity. Dedicated host and sanitizer targets.
+
+This is a *bounded conditional source-attested opportunity*, not proof of a particular original save encounter, real trainer decisions or a complete four-move acquisition history across tutors, items, breeding, evolution and events. A missing snapshot/history yields Unknown; a contradicted hypothetical route never globally Invalid. Source Pokémon and saves remain immutable.
