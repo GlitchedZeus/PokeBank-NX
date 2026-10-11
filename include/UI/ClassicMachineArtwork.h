@@ -134,6 +134,7 @@ inline std::string artKey(Enums::GameVersion game, std::uint16_t itemId) {
     using G = Enums::GameVersion;
     const char* prefix = nullptr;
     std::uint8_t type = 0;
+    if (game == G::GSC) return gscArtKey(itemId);
     if (game == G::RBY) {
         if (itemId >= 196 && itemId <= 200) {
             prefix = "hm-"; type = Gen1Machines[50 + itemId - 196];
