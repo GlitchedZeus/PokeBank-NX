@@ -16,3 +16,7 @@ Further work needs parent-candidate enumeration, exact original-game encounters,
 ## Reversible six-draw stage with supplied final RNG state
 
 The stage now has a constant-time inverse of six Gen III LCRNG steps. `rewindSix` and `verifyKnownStage` are **candidate-local** only and require the final RNG state independently supplied by a known hypothetical history. All 24 pinned synthetic vectors assert reversal to their exact documented entry seeds, then reforward-validate the documented final IVs. Missing parents return `UnknownParentHistory`; a mismatch means **that one known-state candidate is contradicted**, not that the stored child is Illegal. No native PK3 contains this historical final-stage RNG state; there is **no claim of an automatic seed reversal from child's current PID/IVs**.
+
+## Rejected hypothetical IV domains (read-only)
+
+A caller-supplied original-child or known-parent IV greater than 31 is not a valid stored Gen III IV input. Both the forward six-draw stage and reverse candidate verifier explicitly return `MalformedIVDomain` for known malformed snapshots (including observed child values), rather than accidentally reporting a successful known history. If parents are actually unknown, `UnknownParentHistory` takes precedence: a malformed *hypothetical* array does not establish the biological parents. This is candidate-input validation, not a new legality rule on real saves.

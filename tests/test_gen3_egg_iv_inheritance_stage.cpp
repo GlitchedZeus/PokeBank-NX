@@ -12,6 +12,21 @@ int main(){
     constexpr std::array<uint8_t,6> initial{0,0,0,0,0,0};
     constexpr std::array<uint8_t,6> low{30,30,30,30,30,30};
     constexpr std::array<uint8_t,6> high{31,31,31,31,31,31};
+    // Source-backed structural bounds: GBA stored IVs are 0..31; a
+    // hypothetical >31 parent/child must not be a successful witness.
+    constexpr std::array<uint8_t,6> malformed{32,0,0,0,0,0};
+    static_assert(G::validIVs(initial));
+    static_assert(!G::validIVs(malformed));
+    static_assert(G::replay("ruby_gba",0,malformed,low,high,true).status==
+                  G::Status::MalformedIVDomain);
+    static_assert(G::replay("emerald_gba",0,initial,low,malformed,true).status==
+                  G::Status::MalformedIVDomain);
+    static_assert(G::verifyKnownStage("firered_gba",0,malformed,
+                  initial,low,high,true)==G::CandidateCheck::MalformedIVDomain);
+    static_assert(G::verifyKnownStage("firered_gba",0,initial,
+                  initial,malformed,high,true)==G::CandidateCheck::MalformedIVDomain);
+    static_assert(G::verifyKnownStage("firered_gba",0,malformed,
+                  initial,low,high,false)==G::CandidateCheck::UnknownParentHistory);
     static_assert(G::family("sapphire_gba")==G::Family::RubySapphire);
     static_assert(G::family("leafgreen_gba")==G::Family::FireRedLeafGreen);
     static_assert(G::family("platinum_nds")==G::Family::Unknown);

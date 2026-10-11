@@ -10,9 +10,9 @@
 
 namespace Legality::Gen3EggIVInheritanceStage {
 enum class Family : uint8_t { Unknown, RubySapphire, Emerald, FireRedLeafGreen };
-enum class Status : uint8_t { UnsupportedGame, UnknownParentHistory, ReplayedStage };
+enum class Status : uint8_t { UnsupportedGame, UnknownParentHistory, MalformedIVDomain, ReplayedStage };
 enum class CandidateCheck : uint8_t {
-    UnsupportedGame, UnknownParentHistory, Matched, CandidateMismatch
+    UnsupportedGame, UnknownParentHistory, MalformedIVDomain, Matched, CandidateMismatch
 };
 constexpr Family family(std::string_view id) noexcept {
     if(id=="ruby_gba"||id=="sapphire_gba") return Family::RubySapphire;
@@ -46,6 +46,10 @@ constexpr uint32_t rewindSix(uint32_t finalSeed) noexcept {
         seed=static_cast<uint32_t>(seed*0xEEB9EB65u+0x0A3561A1u);
     return seed;
 }
+constexpr bool validIVs(const std::array<uint8_t,6>& values) noexcept {
+    for(uint8_t value:values)if(value>31)return false;
+    return true;
+}
 constexpr Result replay(std::string_view game,uint32_t seed,
                         const std::array<uint8_t,6>& initial,
                         const std::array<uint8_t,6>& parent0,
@@ -54,6 +58,8 @@ constexpr Result replay(std::string_view game,uint32_t seed,
     const Family f=family(game);
     if(f==Family::Unknown)return {};
     if(!knownParents)return {Status::UnknownParentHistory};
+    if(!validIVs(initial)||!validIVs(parent0)||!validIVs(parent1))
+        return {Status::MalformedIVDomain};
     Result result{};
     result.status=Status::ReplayedStage;
     result.childIVs=initial;
@@ -106,6 +112,9 @@ constexpr CandidateCheck verifyKnownStage(
         bool knownParents) noexcept {
     if(family(game)==Family::Unknown)return CandidateCheck::UnsupportedGame;
     if(!knownParents)return CandidateCheck::UnknownParentHistory;
+    if(!validIVs(observedChild)||!validIVs(initialChild)||
+       !validIVs(parent0)||!validIVs(parent1))
+        return CandidateCheck::MalformedIVDomain;
     const auto result=replay(game,rewindSix(knownFinalSeed),
                              initialChild,parent0,parent1,true);
     if(result.status!=Status::ReplayedStage)
