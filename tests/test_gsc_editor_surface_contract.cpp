@@ -186,9 +186,9 @@ int main() {
     assert(unified.find("fb.setClipRect(x + 8, top, w - 16, visible * rowHeight)") != std::string::npos);
     // The final Gen II repaint now uses a touch-aware pixel-offset viewport but
     // still renders an eight-row clipped window over the semantic Details list.
-    assert(finalFix.find("const auto detailVisual = liveVerticalListVisual(") != std::string::npos);
-    assert(finalFix.find("rows.size(), 8, static_cast<std::size_t>(detailVisual.index)") != std::string::npos);
-    assert(finalFix.find("detailVisual.offset") != std::string::npos);
+    assert(finalFix.find("const int detailFirst = std::max(0, unified.detailsViewport.firstRow)") != std::string::npos);
+    assert(finalFix.find("static_cast<std::size_t>(detailFirst)") != std::string::npos);
+    assert(finalFix.find("unified.detailsTouchScroll.offset()") != std::string::npos);
     assert(finalFix.find("viewportY = y + 216") != std::string::npos);
     assert(finalFix.find("fb.clearClip()") != std::string::npos);
     assert(unified.find("\"OT Name\", p.originalTrainer") != std::string::npos);
