@@ -1,5 +1,6 @@
 #include "Encryption/Encryption4.h"
 #include "Integration/Gen4/Gen4ReadOnlySave.h"
+#include "Integration/Gen4/Gen4BagCatalog.h"
 #include "Integration/Gen4/Gen4StagedPokemonEditor.h"
 #include "Pokemon/Pokemon4Mutable.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
@@ -544,6 +545,76 @@ void testSharedHoldYGroupPlacementAtomicity() {
     assert(!editor->hasChanges());
 }
 
+void testGen4BagQuantityBoundsAndSourceImmutability() {
+    // Run against three strict dual-partition retail-layout fixtures, not
+    // only an isolated presenter/source-code string contract. Exercise the
+    // same backend called after numeric-keypad confirmation.
+    namespace Bag = PokeVault::Integration::Gen4;
+    const size_t items = static_cast<size_t>(Bag::BagPocket::Items);
+    const size_t keyItems = static_cast<size_t>(Bag::BagPocket::KeyItems);
+    const size_t machines = static_cast<size_t>(Bag::BagPocket::Machines);
+    for (const auto layout : {Layout::DiamondPearl, Layout::Platinum,
+                              Layout::HeartGoldSoulSilver}) {
+        const auto original = makeSave(layout);
+        std::string error;
+        auto editor = Gen4StagedPokemonEditor::create(
+            original, layout, gameId(layout), &error);
+        assert(editor && error.empty());
+        assert(Bag::gen4BagItemAllowed(layout, items, 68));
+        assert(Bag::gen4BagItemAllowed(layout, keyItems, 434));
+        assert(Bag::gen4BagItemAllowed(layout, machines, 328));
+        assert(Bag::gen4BagItemAllowed(layout, machines, 420));
+        assert(Bag::gen4BagMaxQuantity(items, 68) == 999);
+        assert(Bag::gen4BagMaxQuantity(keyItems, 434) == 1);
+        assert(Bag::gen4BagMaxQuantity(machines, 328) == 99);
+        assert(Bag::gen4BagMaxQuantity(machines, 420) == 1);
+
+        assert(editor->stageBagAdd(items, 68, 777, &error) && error.empty());
+        assert(editor->stageBagAdd(machines, 328, 42, &error) && error.empty());
+        assert(editor->stageBagAdd(machines, 420, 1, &error) && error.empty());
+        assert(editor->stageBagAdd(keyItems, 434, 1, &error) && error.empty());
+
+        // Invalid keyboard-style inputs are byte-for-byte inert. A count of
+        // zero must never be a disguised Delete action.
+        const auto prior = editor->stagedBytes();
+        assert(!editor->stageBagAdd(items, 69, 0, &error));
+        assert(!editor->stageBagAdd(machines, 329, 100, &error));
+        assert(!editor->stageBagAdd(machines, 421, 2, &error));
+        assert(!editor->stageBagAdd(keyItems, 435, 2, &error));
+        assert(!editor->stageBagQuantity(items, 0, 0, &error));
+        assert(!editor->stageBagQuantity(machines, 0, 100, &error));
+        assert(!editor->stageBagQuantity(machines, 1, 2, &error));
+        assert(!editor->stageBagQuantity(keyItems, 0, 2, &error));
+        assert(editor->stagedBytes() == prior);
+        error.clear();
+
+        // Valid edits change ONLY app-owned staging and reparse into exact
+        // native items; the original dual-partition emulator save is intact.
+        assert(editor->stageBagQuantity(items, 0, 900, &error) && error.empty());
+        assert(editor->stageBagQuantity(machines, 0, 99, &error) && error.empty());
+        assert(editor->stageBagQuantity(machines, 1, 1, &error) && error.empty());
+        const auto finished = editor->finalizedBytes(&error);
+        assert(!finished.empty() && error.empty());
+        const auto parsed = Gen4ReadOnlySave::parse(
+            finished, layout, gameId(layout), &error);
+        assert(parsed && error.empty());
+        const auto bag = Bag::decodeReadOnlyBag(*parsed);
+        assert(bag);
+        assert((*bag)[items].size() == 1 && (*bag)[items][0].itemId == 68 &&
+               (*bag)[items][0].count == 900);
+        assert((*bag)[machines].size() == 2);
+        assert((*bag)[machines][0].itemId == 328 &&
+               (*bag)[machines][0].count == 99);
+        assert((*bag)[machines][1].itemId == 420 &&
+               (*bag)[machines][1].count == 1);
+        assert((*bag)[keyItems].size() == 1 &&
+               (*bag)[keyItems][0].count == 1);
+        assert(editor->originalBytes() == original);
+        editor->discard();
+        assert(editor->stagedBytes() == original);
+    }
+}
+
 void testNoOpAndFailureRollback() {
     auto source = makeSave(Layout::Platinum);
     auto editor = Gen4StagedPokemonEditor::create(
@@ -619,6 +690,7 @@ int main() {
     testCloneAndReleaseTransactions();
     testMoveSwapAndCrossBoxTransactions();
     testSharedHoldYGroupPlacementAtomicity();
+    testGen4BagQuantityBoundsAndSourceImmutability();
     testNoOpAndFailureRollback();
     testShedinjaPartyHpRule();
     testRecoveredAndMismatchRemainReadOnly();
