@@ -2685,12 +2685,24 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     // legacy creator runs into the immutable-source guard instead of opening
     // the native staged Add action. A first tap on another slot still goes to
     // base cursor navigation; box arrows and the header are never hijacked.
-    if (boxEntry && touch.justPressed() &&
-        PokeBank::UIModel::Gen4BoxTouchActions::opensSelectedSlotActions(
-            screen.touchedButtonId(touch), screen.selectedItemIndex,
-            static_cast<int>(screen.trainer.getSlotsPerBox()))) {
-        beginActions(screen);
-        return true;
+    if (boxEntry && touch.justTapped()) {
+        const int tapped = screen.touchedButtonId(touch);
+        const int slots = static_cast<int>(screen.trainer.getSlotsPerBox());
+        if (tapped >= 0 && tapped < slots) {
+            screen.selectedItemIndex = tapped;
+            // A on an occupied box slot already enters this exact staged menu.
+            // A tap does too, including when tapping a different Pokémon.
+            if (selectedOccupied(screen)) beginActions(screen);
+            return true; // Unoccupied slot: focus only, X is explicit Add.
+        }
+    }
+    if (partyEntry && touch.justTapped()) {
+        const int tapped = screen.touchedButtonId(touch);
+        if (tapped >= 6200 && tapped < 6206) {
+            screen.selectedPartyIndex = tapped - 6200;
+            beginActions(screen);
+            return true;
+        }
     }
 
 
