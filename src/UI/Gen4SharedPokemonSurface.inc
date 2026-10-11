@@ -2092,6 +2092,11 @@ bool handleBoxMove(TrainerViewScreen& screen, State& state,
         screen.controllerNavigation.reset();
         return true;
     }
+    // An unfinished rectangle must stay in its source box. L/R and
+    // five-box jumps are available again after the group is picked up.
+    if (state.moveSelecting)
+        down &= ~(HidNpadButton_L | HidNpadButton_R |
+                  HidNpadButton_ZL | HidNpadButton_ZR);
     // Use the same full-wrap PC cursor and five-box jump as Gen I–III.
     namespace Nav = PokeBank::UIModel::Gen4BoxMoveNavigation;
     Nav::Cursor cursor{nextBox, nextSlot};
@@ -2124,7 +2129,126 @@ bool handleBoxMove(TrainerViewScreen& screen, State& state,
     }
     screen.selectedBoxIndex = nextBox;
     screen.selectedItemIndex = nextSlot;
+
+    // X starts rectangle selection from an occupied source. Cursor motion
+    // expands the region just like Gen III Multi, with one bounded native box.
+    // Another X (or A) lifts every occupied slot in that rectangle.
+    if (state.moveSelecting) {
+        if (!(down & (HidNpadButton_X | HidNpadButton_A))) return true;
+        const int fromRow = state.moveSourceSlot / 6;
+        const int fromCol = state.moveSourceSlot % 6;
+        const int toRow = nextSlot / 6;
+        const int toCol = nextSlot % 6;
+        const int lowRow = std::min(fromRow, toRow);
+        const int lowCol = std::min(fromCol, toCol);
+        const int highRow = std::max(fromRow, toRow);
+        const int highCol = std::max(fromCol, toCol);
+        auto* staged = editor(screen);
+        if (!staged) {
+            screen.postStatus("No validated staged Gen IV box workspace", 240);
+            return true;
+        }
+        std::vector<int> occupiedSlots;
+        std::string error;
+        for (int row = lowRow; row <= highRow; ++row) {
+            for (int col = lowCol; col <= highCol; ++col) {
+                const int slot = row * 6 + col;
+                auto pk4 = staged->boxedPokemon(
+                    static_cast<size_t>(state.moveSourceBox),
+                    static_cast<size_t>(slot), &error);
+                if (pk4) occupiedSlots.push_back(slot);
+                else if (error != "selected Gen IV box slot is empty") {
+                    screen.postStatus(error.empty() ? "Invalid Gen IV slot" : error, 300);
+                    return true;
+                }
+            }
+        }
+        if (occupiedSlots.empty()) {
+            screen.postStatus("Multi selection has no Pokemon; choose a populated area", 240);
+            return true;
+        }
+        state.moveSelecting = false;
+        state.moveMulti = true;
+        state.moveSelectionSlots = std::move(occupiedSlots);
+        state.moveSelectionWidth = highCol - lowCol + 1;
+        state.moveSelectionHeight = highRow - lowRow + 1;
+        state.moveSourceSlot = lowRow * 6 + lowCol;
+        screen.selectedItemIndex = state.moveSourceSlot;
+        screen.postStatus("Multi grabbed: " +
+            std::to_string(state.moveSelectionSlots.size()) +
+            " Pokemon; Y to drop into empty slots (B cancels)", 300);
+        return true;
+    }
+
     if (!(down & (HidNpadButton_Y | HidNpadButton_A))) return true;
+    if (state.moveMulti) {
+        auto* staged = editor(screen);
+        if (!staged) {
+            screen.postStatus("No validated staged Gen IV workspace", 240);
+            return true;
+        }
+        const int srcRow = state.moveSourceSlot / 6;
+        const int srcCol = state.moveSourceSlot % 6;
+        const int dstRow = nextSlot / 6;
+        const int dstCol = nextSlot % 6;
+        if (dstCol + state.moveSelectionWidth > 6 ||
+            dstRow + state.moveSelectionHeight > 5) {
+            screen.postStatus("Multi selection crosses a box edge; choose another slot", 280);
+            return true;
+        }
+        // Overlap would require a simultaneous permutation. Do not apply
+        // sequential swaps to a source rectangle whose destination overlaps it.
+        if (nextBox == state.moveSourceBox &&
+            dstCol < srcCol + state.moveSelectionWidth &&
+            srcCol < dstCol + state.moveSelectionWidth &&
+            dstRow < srcRow + state.moveSelectionHeight &&
+            srcRow < dstRow + state.moveSelectionHeight) {
+            screen.postStatus("Multi destination overlaps source; move farther or press B", 280);
+            return true;
+        }
+        auto candidate = *staged;
+        std::string error;
+        std::vector<std::pair<int,int>> moves;
+        for (int sourceSlot : state.moveSelectionSlots) {
+            const int row = dstRow + sourceSlot / 6 - srcRow;
+            const int col = dstCol + sourceSlot % 6 - srcCol;
+            const int destinationSlot = row * 6 + col;
+            // Group moves never overwrite occupied destinations or lose
+            // unknown PK4 fields. Single Y still supports native swaps.
+            if (candidate.boxedPokemon(static_cast<size_t>(nextBox),
+                                       static_cast<size_t>(destinationSlot), &error)) {
+                screen.postStatus("Multi needs empty destination slots; no changes made", 300);
+                return true;
+            }
+            if (error != "selected Gen IV box slot is empty") {
+                screen.postStatus(error.empty() ? "Destination invalid" : error, 300);
+                return true;
+            }
+            moves.emplace_back(sourceSlot, destinationSlot);
+        }
+        for (const auto& [sourceSlot, destinationSlot] : moves) {
+            if (!candidate.stageMoveBoxPokemon(
+                    static_cast<size_t>(state.moveSourceBox), static_cast<size_t>(sourceSlot),
+                    static_cast<size_t>(nextBox), static_cast<size_t>(destinationSlot), &error)) {
+                screen.postStatus(error.empty() ? "Multi move validation failed" : error, 320);
+                return true; // Candidate discarded; original staged bytes untouched.
+            }
+        }
+        auto before = *staged;
+        *staged = std::move(candidate);
+        if (!refreshPresentation(screen)) {
+            *staged = std::move(before);
+            (void)refreshPresentation(screen);
+            return true;
+        }
+        const auto count = state.moveSelectionSlots.size();
+        state.moveActive = state.moveMulti = false;
+        state.moveSelectionSlots.clear();
+        screen.postStatus(std::to_string(count) +
+            " Gen IV Pokemon moved in staged save; source unchanged", 300);
+        screen.controllerNavigation.reset();
+        return true;
+    }
     if (nextBox == state.moveSourceBox && nextSlot == state.moveSourceSlot &&
         (down & HidNpadButton_Y)) {
         state.moveActive = false; // Y on grabbed source cancels like Gen III.
