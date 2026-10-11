@@ -150,7 +150,9 @@ HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_egg_state_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_hatch_location_evidence
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_hatch_location_evidence_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen34_egg_moves
+HOST_TESTS += $(HOST_BUILD)/test_gen14_candidate_move_history
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_egg_moves_sanitize
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen14_candidate_move_history_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_wild_rng_correlation
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_wild_rng_correlation_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_wild_encounter_evidence
@@ -285,6 +287,14 @@ $(HOST_BUILD)/test_gen4_hatch_location_evidence: tests/test_gen4_hatch_location_
 $(HOST_BUILD)/test_gen4_hatch_location_evidence_sanitize: tests/test_gen4_hatch_location_evidence.cpp include/Legality/Gen4HatchLocationEvidence.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_hatch_location_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen14_candidate_move_history: tests/test_gen14_candidate_move_history.cpp include/Legality/Gen14CandidateMoveHistory.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen14_candidate_move_history.cpp -o $@
+
+$(HOST_BUILD)/test_gen14_candidate_move_history_sanitize: tests/test_gen14_candidate_move_history.cpp include/Legality/Gen14CandidateMoveHistory.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen14_candidate_move_history.cpp -o $@
 
 $(HOST_BUILD)/test_gen34_egg_moves: tests/test_gen34_egg_moves.cpp \
 		include/Legality/Gen34EggMoveEvidence.h include/Legality/Gen34EggMoveData.inc
