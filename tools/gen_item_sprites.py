@@ -203,6 +203,11 @@ def fetch_gen2_mail(key: str, filename: str, force: bool) -> str:
             return "unavailable/invalid-image"
         temporary.replace(target)
         return "fetched"
+    except urllib.error.HTTPError as error:
+        # Archives may reject CI hotlink requests. Keep all ten images
+        # optional, but report the actual status (403 versus 404) so the
+        # origin/mirror can be fixed without guessing or disguising absence.
+        return f"unavailable/http-{error.code}"
     except (OSError, urllib.error.URLError, TimeoutError) as error:
         return "unavailable/" + type(error).__name__
 
