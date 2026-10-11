@@ -833,6 +833,42 @@ int main() {
     assert(structurallyImpossibleMove.unmodeled==1);
     assert(!structurallyImpossibleMove.allAudited());
 
+    // A four-slot HISTORICAL LOWER BOUND, not just separate GBA-vs-NDS
+    // move count. Pikachu's Body Slam #34 is in the pinned Gen III
+    // pools but NOT any Gen IV pool. #363 is Gen IV-only. Both source
+    // eras are required in the audited union tables, not necessarily a
+    // verified historical sequence. Known unmodeled moves stay unknown.
+    using Joint=Legality::Gen34PalParkMoves::JointBound;
+    const auto mixedEra=Legality::Gen34PalParkMoves::classifyJoint(
+        25,0,std::array<uint16_t,4>{34,363,0,0});
+    assert(mixedEra.bound==Joint::MultiplePools);
+    assert(mixedEra.minimumPools==2 && mixedEra.requiresBothEras);
+    const auto singleEra=Legality::Gen34PalParkMoves::classifyJoint(
+        25,0,std::array<uint16_t,4>{85,363,0,0});
+    assert(singleEra.bound==Joint::OnePool);
+    assert(singleEra.minimumPools==1 && !singleEra.requiresBothEras);
+    assert(Legality::Gen34PalParkMoves::classifyJoint(
+        25,0,std::array<uint16_t,4>{34,468,0,0}).bound==
+        Joint::Unresolved);
+    assert(Legality::Gen34PalParkMoves::classifyJoint(
+        25,0,std::array<uint16_t,4>{0,0,0,0}).bound==
+        Joint::Empty);
+
+    const auto mixedEraSourceFree=analyzeDetachedPalParkMoves(2,34,363);
+    assert(hasInfo(mixedEraSourceFree,
+        "Source-free Pal Park PK4 joint history bound: at least 2 distinct"));
+    assert(hasInfo(mixedEraSourceFree,
+        "joint history bound: the audited move pools require both a Gen III-era and a Gen IV-era source"));
+    const auto mixedEraExact=analyzeDetachedPalParkMoves(2,34,363,true);
+    assert(hasInfo(mixedEraExact,
+        "Exact-source Pal Park PK4 joint history bound: at least 2 distinct"));
+    assert(hasInfo(mixedEraExact,
+        "joint history bound: the audited move pools require both a Gen III-era and a Gen IV-era source"));
+    const auto mixedEraUnknown=analyzeDetachedPalParkMoves(2,34,468);
+    assert(!hasText(mixedEraUnknown,"joint history bound"));
+    const auto mixedEraBadMarker=analyzeDetachedPalParkMoves(
+        2,34,363,false,true,false,true);
+    assert(!hasText(mixedEraBadMarker,"joint history bound"));
     constexpr auto stagePrefix="Source-free Pal Park PK4 move-stage evidence:";
     const auto actualPalMoves=analyzeDetachedPalParkMoves(2,85,363);
     assert(hasInfo(actualPalMoves,

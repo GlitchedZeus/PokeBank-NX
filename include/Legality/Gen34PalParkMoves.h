@@ -66,4 +66,78 @@ inline Result classify(Source original,uint16_t species,uint8_t form,
     }
     return r;
 }
+// Exact lower bound for how many independently audited source-game pools
+// must cover all four current moves of a migrated Gen III-origin Pokemon.
+// This is a COVERAGE bound over union tables, not a feasible tutor/parent/
+// evolution/trade route. Any unmodeled move makes the bound unresolved.
+enum class JointBound : uint8_t {
+    Empty,
+    OnePool,
+    MultiplePools,
+    Unresolved,
+};
+
+struct JointResult {
+    JointBound bound=JointBound::Unresolved;
+    uint8_t minimumPools=0;
+    bool requiresBothEras=false;
+};
+
+inline uint8_t jointMask(uint16_t species,uint8_t form,uint16_t move) noexcept {
+    if(move==0 || move>467)return 0;
+    using namespace PokeVault::Integration;
+    uint8_t mask=0;
+    if(move<=354) {
+        if(Gen3::Learnset::directlyLearnable(Gen3::SourceGame::RubyGBA,
+                                           species,move))mask|=1u;
+        if(Gen3::Learnset::directlyLearnable(Gen3::SourceGame::EmeraldGBA,
+                                           species,move))mask|=2u;
+        if(Gen3::Learnset::directlyLearnable(Gen3::SourceGame::FireRedGBA,
+                                           species,move))mask|=4u;
+    }
+    if(Gen4MoveCompatibility::direct("diamond_nds",species,form,move))
+        mask|=8u;
+    if(Gen4MoveCompatibility::direct("platinum_nds",species,form,move))
+        mask|=16u;
+    if(Gen4MoveCompatibility::direct("heartgold_nds",species,form,move))
+        mask|=32u;
+    return mask;
+}
+
+inline JointResult classifyJoint(
+        uint16_t species,uint8_t form,
+        const std::array<uint16_t,4>& moves) noexcept {
+    std::array<uint8_t,4> masks{};
+    uint8_t used=0,minimum=5;
+    bool gbaExclusive=false,ndsExclusive=false;
+    for(uint16_t move:moves) {
+        if(move==0)continue;
+        const uint8_t mask=jointMask(species,form,move);
+        if(mask==0)return {}; // Includes ID >467 and unsupported events.
+        masks[used++]=mask;
+        if((mask & 0x38u)==0)gbaExclusive=true;
+        if((mask & 0x07u)==0)ndsExclusive=true;
+    }
+    if(used==0)return {JointBound::Empty,0,false};
+    // Only 6 exact pinned families exist (RS, E, FRLG, DP, Pt, HGSS).
+    // Exhaustive finite set cover is constant-time: 63 subsets x 4 slots.
+    for(uint8_t subset=1;subset<=63;++subset) {
+        bool covers=true;
+        for(uint8_t i=0;i<used;++i) {
+            if((subset & masks[i])==0){covers=false;break;}
+        }
+        if(!covers)continue;
+        uint8_t count=0;
+        for(uint8_t b=subset;b;b>>=1)
+            count+=static_cast<uint8_t>(b&1u);
+        if(count<minimum)minimum=count;
+    }
+    if(minimum==5)return {};
+    return {
+        minimum==1?JointBound::OnePool:JointBound::MultiplePools,
+        minimum,
+        gbaExclusive && ndsExclusive
+    };
+}
+
 } // namespace Legality::Gen34PalParkMoves

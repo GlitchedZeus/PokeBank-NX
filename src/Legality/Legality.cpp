@@ -1654,6 +1654,20 @@ namespace Legality {
                             "Exact-source Pal Park PK4 move-stage evidence: all nonempty move slots have a candidate Gen III or IV compatibility pool; historical joint acquisition unresolved",
                             CheckIdentifier::Moves);
                     }
+                    const auto joint=Gen34PalParkMoves::classifyJoint(
+                        species,pk.form(),
+                        {pk.move(0),pk.move(1),pk.move(2),pk.move(3)});
+                    if(joint.bound==Gen34PalParkMoves::JointBound::MultiplePools) {
+                        add(r,Severity::Info,
+                            "Exact-source Pal Park PK4 joint history bound: at least " +
+                            std::to_string(joint.minimumPools) +
+                            " distinct audited Gen III/IV game pools cover the stored moves; actual acquisition histories unresolved",
+                            CheckIdentifier::Moves);
+                        if(joint.requiresBothEras)
+                            add(r,Severity::Info,
+                                "Exact-source Pal Park PK4 joint history bound: the audited move pools require both a Gen III-era and a Gen IV-era source; retention and actual trade history unresolved",
+                                CheckIdentifier::Moves);
+                    }
                 }
             }
         } else if (!sourceProfile &&
@@ -1758,6 +1772,19 @@ namespace Legality {
                     add(r,Severity::Info,
                         "Source-free Pal Park PK4 move-stage evidence: all nonempty move slots have at least one audited Gen III or IV game-pool candidate; joint acquisition history unresolved",
                         CheckIdentifier::Moves);
+                }
+                const auto joint=Gen34PalParkMoves::classifyJoint(
+                    species,pk.form(),moves);
+                if(joint.bound==Gen34PalParkMoves::JointBound::MultiplePools) {
+                    add(r,Severity::Info,
+                        "Source-free Pal Park PK4 joint history bound: at least " +
+                        std::to_string(joint.minimumPools) +
+                        " distinct audited Gen III/IV game pools cover the stored moves; actual acquisition histories unresolved",
+                        CheckIdentifier::Moves);
+                    if(joint.requiresBothEras)
+                        add(r,Severity::Info,
+                            "Source-free Pal Park PK4 joint history bound: the audited move pools require both a Gen III-era and a Gen IV-era source; retention and actual trade history unresolved",
+                            CheckIdentifier::Moves);
                 }
                 // An unmodeled slot suppresses joint evidence, never marks
                 // the Pokemon Invalid, nor implies a fake transfer event.
