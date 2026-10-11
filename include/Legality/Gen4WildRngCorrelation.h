@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Legality/Gen3PidIvCorrelation.h"
+#include "Legality/Gen4NatureReversalEvidence.h"
 #include "Legality/Gen4WildEncounter.h"
 #include "Legality/Gen4LeadHistoryEvidence.h"
 #include "Legality/Gen4BugContestNoLeadEvidence.h"
@@ -215,18 +216,11 @@ constexpr uint32_t sequentialPid(uint32_t seed) noexcept {
 }
 
 constexpr int reversalWindow(uint32_t seed, uint8_t nature) noexcept {
-    int count = 0;
-    uint32_t upper = seed >> 16;
-    for (; count < 128; ++count) {
-        seed = Gen3PidIv::Detail::prev(seed);
-        const uint32_t lower = seed >> 16;
-        const uint32_t pid = (upper << 16) | lower;
-        if ((pid % 25u) == nature)
-            return count;
-        seed = Gen3PidIv::Detail::prev(seed);
-        upper = seed >> 16;
-    }
-    return -1;
+    // Legacy callers still use -1 for a bounded non-match; it means that
+    // the search budget was exhausted, NOT that no legal history exists.
+    const auto evidence=Gen4NatureReversal::search(seed,nature);
+    return evidence.matched()
+        ? static_cast<int>(evidence.rejectedPidPairs) : -1;
 }
 
 constexpr uint8_t methodJSlot(uint8_t encounterType,

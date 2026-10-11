@@ -24,6 +24,32 @@ int main() {
     static_assert(Gen4Wild::maxLevel(kRealHeartGoldKakuna) == 18);
     static_assert(Gen4Wild::rate(kRealHeartGoldKakuna) == 25);
 
+
+    // Codex RNG-002, pinned synthetic HGSS nature/PID-stage vector.
+    // The retail stage has 129 rejected PIDs before retaining EA0705DB.
+    // A 128-pair search has NOT disproved this history: it exhausted.
+    // This vector is not a native PK4, slot, or full wild encounter proof.
+    constexpr uint32_t longNatureSeed=0xE0D14A4Fu;
+    constexpr auto bounded=Gen4NatureReversal::search(
+        longNatureSeed,20,128);
+    constexpr auto extended=Gen4NatureReversal::search(
+        longNatureSeed,20,256);
+    static_assert(sequentialPid(longNatureSeed)==0xEA0705DBu);
+    static_assert(bounded.status==
+        Gen4NatureReversal::Status::SearchExhausted);
+    static_assert(bounded.inspectedPidPairs==128 &&
+                  !bounded.matched());
+    static_assert(extended.status==Gen4NatureReversal::Status::Matched);
+    static_assert(extended.rejectedPidPairs==129 &&
+                  extended.inspectedPidPairs==130);
+    static_assert(Gen4LeadFrame::reversalWindow(
+        longNatureSeed,20)==-1);
+    static_assert(Gen4WildRng::reversalWindow(
+        longNatureSeed,20)==-1);
+    static_assert(Gen4NatureReversal::search(
+        longNatureSeed,25).status==
+        Gen4NatureReversal::Status::InvalidNature);
+
     // Pinned Method K GenerateMethodK.SetRandomK: an ordinary nature roll
     // is followed by repeated 2-frame PIDs until pid % 25 == nature.
     // One rejected PID before retention: nature =23, rejected 0x00000312
