@@ -16,6 +16,7 @@ import urllib.request
 from pathlib import Path
 
 from png_asset_validation import validate_png
+from render_classic_item_icons import KEYS as CUSTOM_GSC_ICONS, build as render_classic_icons
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "romfs" / "sprites" / "items"
@@ -39,6 +40,12 @@ EXTRA_EXACT_ICONS = {
     "classic-mail-envelope": (
         "https://raw.githubusercontent.com/smogon/sprites/"
         + SMOGON_REF + "/src/minisprites/items/imail.png"
+    ),
+    # This is a genuinely identified old GSC item, rather than a random
+    # substitute. Present in the separately pinned Smogon minisprite set.
+    "berserk-gene": (
+        "https://raw.githubusercontent.com/smogon/sprites/"
+        + SMOGON_REF + "/src/minisprites/items/iberserk_gene.png"
     ),
 }
 
@@ -249,7 +256,15 @@ def verify_required(include_classic: bool = False) -> None:
                     if not validated(OUT / (name + ".png"))]
         if classics:
             raise RuntimeError("Missing pinned Gen I–IV item icons: " + ", ".join(classics))
-        print("CLASSIC ITEM SPRITE PREFLIGHT: PASS (TM/HM, mail, apricorn and key items)")
+        # Nine unused/historical GSC objects have no ROM-originating bag art.
+        # Bundle deliberately NEW distinct custom illustrations, not blank
+        # icons, and fail rather than fall back to unrelated inventory items.
+        custom = [name for name in CUSTOM_GSC_ICONS
+                  if not validated(OUT / (name + ".png"))]
+        if custom:
+            raise RuntimeError("Missing custom GSC historical item sprites: " + ", ".join(custom))
+        assert validated(OUT / "berserk-gene.png")
+        print("CLASSIC ITEM SPRITE PREFLIGHT: PASS (type discs, stationery motifs, special historical icons)")
 
 
 def main() -> int:
@@ -277,6 +292,7 @@ def main() -> int:
             for name, url in EXTRA_EXACT_ICONS.items()
         }
         print(f"Extra pinned exact item images (Smogon {SMOGON_REF[:12]}): {extras}")
+        print(f"Distinct custom Gen II historical item illustrations: {render_classic_icons()}")
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
             mail_status = dict(zip(
                 GEN2_MAIL_SOURCES,
