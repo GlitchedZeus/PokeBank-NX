@@ -100,14 +100,7 @@ struct State {
     std::vector<uint16_t> pickerNativeValues;
     ItemPickerSort::Mode pickerSort = ItemPickerSort::Mode::Native;
 
-    // Gen IV Items use their own app-owned quantity draft, never the generic
-    // source-mutating item dialog. The actual SAV5/DS source stays immutable.
-    bool itemQuantityActive = false;
-    int itemQuantityPocket = 0;
-    int itemQuantityVisibleRow = 0;
-    uint16_t itemQuantityBaseline = 1;
-    uint16_t itemQuantityDraft = 1;
-    uint16_t itemQuantityMax = 999;
+    // Use the same native Switch keypad as Gen I-III, never an in-app stepper.
     bool itemAddPickerActive = false;
     int itemAddPocket = 0;
     int itemAddIndex = 0;
@@ -160,7 +153,7 @@ bool ownsFrameImpl(const TrainerViewScreen& screen) noexcept {
     if (!isGen4Nds(screen)) return false;
     const auto& state = stateFor(screen);
     return state.actions || state.review || state.legality || state.confirmRelease ||
-           state.itemQuantityActive || state.itemRemoveConfirmActive || state.itemAddPickerActive ||
+           state.itemRemoveConfirmActive || state.itemAddPickerActive ||
            state.valuePicker || state.moveEditor || workspaceActive(state);
 }
 
@@ -2299,17 +2292,46 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
             return true;
         }
         const uint16_t id=state.itemAddChoices[static_cast<size_t>(state.itemAddIndex)];
-        auto backup=*staged;
+        const uint16_t limit=Gen4::gen4BagMaxQuantity(
+            static_cast<size_t>(state.itemAddPocket),id);
+        if(!limit || !Gen4::gen4BagItemAllowed(
+                staged->layout(),static_cast<size_t>(state.itemAddPocket),id)) {
+            screen.postStatus("Gen IV item invalid in selected native pocket",300);
+            return true;
+        }
+        const auto r=Utils::promptNumber(
+            "Add "+Names::machineDisplayLabel(
+                screen.trainer.getGameGroup(),id,Names::getItemName(id)),
+            1,1,static_cast<int>(limit));
+        screen.controllerNavigation.reset();
+        if(!r.accepted)return true; // Cancel is byte-for-byte inert.
+        if(r.value<1 || r.value>static_cast<int>(limit)) {
+            screen.postStatus("Gen IV item quantity outside native limits",300);
+            return true;
+        }
+        if(!screen.detailViewActive ||
+           screen.selectedMode!=TrainerViewScreen::ViewMode::Items ||
+           screen.selectedCategory!=state.itemAddPocket) {
+            screen.postStatus("Gen IV pocket changed; add cancelled",280);
+            return true;
+        }
+        auto* current=editor(screen);
+        if(!current) {
+            screen.postStatus("Gen IV staged workspace unavailable",280);
+            return true;
+        }
+        auto backup=*current;
         std::string error;
-        if(!staged->stageBagAdd(static_cast<size_t>(state.itemAddPocket),id,1,&error)) {
+        if(!current->stageBagAdd(static_cast<size_t>(state.itemAddPocket),
+                                 id,static_cast<uint16_t>(r.value),&error)) {
             screen.postStatus(error,300);
             return true;
         }
         if(!bridge(screen).refreshStagedPokemonPresentation(error)) {
-            *staged=std::move(backup);
+            *current=std::move(backup);
             std::string restored;
             (void)bridge(screen).refreshStagedPokemonPresentation(restored);
-            screen.postStatus("Gen IV Add display rejected; previous stage retained: "+error,360);
+            screen.postStatus("Gen IV Add refresh failed; previous stage retained: "+error,360);
             return true;
         }
         state.itemAddPickerActive=false;
@@ -2323,7 +2345,8 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
                 break;
             }
         screen.controllerNavigation.reset();
-        screen.postStatus("Gen IV item added to staged workspace ONLY (x1)",280);
+        screen.postStatus("Gen IV item added to staged workspace ONLY (x"+
+                          std::to_string(r.value)+")",280);
         return true;
     }
     if(state.itemRemoveConfirmActive) {
@@ -2385,7 +2408,7 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         screen.postStatus("Gen IV item removed from staged workspace ONLY",300);
         return true;
     }
-    if(!state.itemQuantityActive) {
+    {
         // Forward controller movement and B/Exit to the shared Items panel.
         // Only A on an occupied, validated native stack opens an app-memory
         // draft. A must NEVER perform a destructive removal or source write.
@@ -2461,78 +2484,69 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
             screen.controllerNavigation.reset();
             return true;
         }
-        state.itemQuantityActive=true;
-        state.itemQuantityPocket=pocket;
-        state.itemQuantityVisibleRow=visible;
-        state.itemQuantityBaseline=item.count;
-        state.itemQuantityDraft=item.count;
-        state.itemQuantityMax=Gen4::gen4BagMaxQuantity(
+        const uint16_t limit=Gen4::gen4BagMaxQuantity(
             static_cast<size_t>(pocket),item.itemId);
+        if(!limit || item.count>limit) {
+            screen.postStatus("Gen IV item quantity outside native limits",300);
+            return true;
+        }
+        const uint16_t originalId=item.itemId;
+        const uint16_t originalCount=item.count;
+        const auto r=Utils::promptNumber(
+            "Edit "+Names::machineDisplayLabel(
+                screen.trainer.getGameGroup(),originalId,Names::getItemName(originalId)),
+            static_cast<int>(originalCount),1,static_cast<int>(limit));
         screen.controllerNavigation.reset();
+        if(!r.accepted)return true; // Cancel cannot mutate the stage.
+        if(r.value<1 || r.value>static_cast<int>(limit)) {
+            screen.postStatus("Gen IV item quantity outside native limits",300);
+            return true;
+        }
+        if(r.value==originalCount)return true;
+        if(!screen.detailViewActive ||
+           screen.selectedMode!=TrainerViewScreen::ViewMode::Items ||
+           screen.selectedCategory!=pocket || screen.selectedItemIndex!=visible) {
+            screen.postStatus("Gen IV selection changed; quantity edit cancelled",280);
+            return true;
+        }
+        const auto freshIndices=screen.visibleItemIndices();
+        if(visible<0 || visible>=static_cast<int>(freshIndices.size())) {
+            screen.postStatus("Gen IV selected item no longer available",280);
+            return true;
+        }
+        const int freshRaw=freshIndices[static_cast<size_t>(visible)];
+        const auto& currentPocket=screen.trainer.items[static_cast<size_t>(pocket)];
+        if(freshRaw<0 || freshRaw>=static_cast<int>(currentPocket.size()) ||
+           currentPocket[static_cast<size_t>(freshRaw)].itemId!=originalId ||
+           currentPocket[static_cast<size_t>(freshRaw)].count!=originalCount) {
+            screen.postStatus("Gen IV item identity changed; edit cancelled",280);
+            return true;
+        }
+        auto* current=editor(screen);
+        if(!current) {
+            screen.postStatus("Gen IV staged workspace unavailable",280);
+            return true;
+        }
+        auto backup=*current;
+        std::string error;
+        if(!current->stageBagQuantity(
+            static_cast<size_t>(pocket),static_cast<size_t>(visible),
+            static_cast<uint16_t>(r.value),&error)) {
+            screen.postStatus(error,300);
+            return true;
+        }
+        if(!bridge(screen).refreshStagedPokemonPresentation(error)) {
+            *current=std::move(backup);
+            std::string restored;
+            (void)bridge(screen).refreshStagedPokemonPresentation(restored);
+            screen.postStatus("Gen IV item refresh failed; previous stage retained: "+error,360);
+            return true;
+        }
+        screen.postStatus("Gen IV item quantity staged; emulator source unchanged",300);
         return true;
     }
-    // Never pass a modal's controls into the underlying source Items handler.
-    const u64 keys=screen.controllerNavigation.apply(
-        down,held,stickX,stickY,HidNpadButton_Up,HidNpadButton_Down,
-        HidNpadButton_Left,HidNpadButton_Right);
-    if(keys&HidNpadButton_B) {
-        state.itemQuantityActive=false;
-        screen.controllerNavigation.reset();
-        return true;
-    }
-    const int delta=(keys&HidNpadButton_ZL)?-10:
-        (keys&HidNpadButton_ZR)?10:
-        (keys&HidNpadButton_Left)?-1:
-        (keys&HidNpadButton_Right)?1:
-        (keys&HidNpadButton_Up)?10:
-        (keys&HidNpadButton_Down)?-10:0;
-    if(delta) {
-        const int next=static_cast<int>(state.itemQuantityDraft)+delta;
-        state.itemQuantityDraft=static_cast<uint16_t>(std::clamp(next,1,
-            static_cast<int>(state.itemQuantityMax)));
-    }
-    if(!(keys&HidNpadButton_A))return true;
-    auto* staged=editor(screen);
-    if(!staged) {
-        screen.postStatus("Gen IV item quantity needs a verified staged workspace",240);
-        return true;
-    }
-    if(screen.selectedCategory!=state.itemQuantityPocket ||
-       screen.selectedItemIndex!=state.itemQuantityVisibleRow) {
-        screen.postStatus("Gen IV item selection changed; reopen the draft",240);
-        state.itemQuantityActive=false;
-        return true;
-    }
-    // The native stack ID must still match the rendered row. A separate
-    // per-session quantity draft is not a licence to overwrite unknown bag
-    // bytes. All changes remain in the staged editor's owned byte vector.
-    const auto indices=screen.visibleItemIndices();
-    if(state.itemQuantityVisibleRow<0 ||
-       state.itemQuantityVisibleRow>=static_cast<int>(indices.size())) {
-        screen.postStatus("Gen IV selected item is no longer available",240);
-        state.itemQuantityActive=false;
-        return true;
-    }
-    std::string error;
-    auto saved=*staged;
-    if(!staged->stageBagQuantity(
-           static_cast<size_t>(state.itemQuantityPocket),
-           static_cast<size_t>(state.itemQuantityVisibleRow),
-           state.itemQuantityDraft,&error)) {
-        screen.postStatus(error,300);
-        return true;
-    }
-    if(!bridge(screen).refreshStagedPokemonPresentation(error)) {
-        *staged=std::move(saved);
-        std::string restored;
-        (void)bridge(screen).refreshStagedPokemonPresentation(restored);
-        screen.postStatus("Gen IV item display rejected; draft preserved: "+error,360);
-        return true;
-    }
-    state.itemQuantityActive=false;
-    screen.controllerNavigation.reset();
-    screen.postStatus("Gen IV item quantity staged; emulator source unchanged",300);
-    return true;
+    // D-pad/stick movement and B remain owned by the underlying Items panel.
+    return false;
 }
 
 void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
@@ -2563,10 +2577,10 @@ void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State
     }
     fb.drawText(x+24,y+h-38,
         std::to_string(state.itemAddIndex+1)+" / "+std::to_string(count)+
-        "  |  New native stack starts at x1 (edit quantity afterward)",
+        "  |  A opens numeric quantity keypad",
         Colors::Accent,TextStyle::Caption);
     drawNavBar(fb,{{"D-pad/Stick","Choose"},{"L/R","Page"},
-                   {"A","Add Staged"},{"B","Cancel"},{"X","Sort"}});
+                   {"A","Set Quantity"},{"B","Cancel"},{"X","Sort"}});
 }
 
 void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
@@ -2590,27 +2604,6 @@ void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const S
         "Removal is irreversible within this draft until Discard Changes.",
         Colors::Accent,TextStyle::Caption);
     drawNavBar(fb,{{"Y","Confirm Remove"},{"B","Cancel"}});
-}
-
-void drawItemQuantity(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
-    screen.drawGSCOverlay(fb);
-    const int w=540,h=245,x=(fb.getWidth()-w)/2;
-    const int y=(fb.getHeight()-kNavBarH-h)/2;
-    fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,160));
-    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
-    fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
-    fb.drawText(x+24,y+22,"Gen IV Item - Staged Quantity",
-                Colors::Text,TextStyle::Heading);
-    fb.drawText(x+24,y+68,
-        "Native stack quantity (1 - "+std::to_string(state.itemQuantityMax)+")",
-        Colors::TextDim,TextStyle::Caption);
-    fb.drawText(x+24,y+111,
-        std::to_string(state.itemQuantityBaseline)+"  ->  "+
-        std::to_string(state.itemQuantityDraft),Colors::Text,TextStyle::Heading);
-    fb.drawText(x+24,y+161,
-        "App-memory draft only - source save is immutable",
-        Colors::Accent,TextStyle::Caption);
-    drawNavBar(fb,{{"Left/Right","- / +"},{"ZL/ZR","10"},{"A","Keep Staged"},{"B","Cancel"}});
 }
 
 } // namespace
@@ -2686,7 +2679,6 @@ bool draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto& state = stateFor(screen);
     if (state.itemAddPickerActive)drawItemAddPicker(screen,fb,state);
     else if (state.itemRemoveConfirmActive)drawItemRemoveConfirm(screen,fb,state);
-    else if (state.itemQuantityActive)drawItemQuantity(screen,fb,state);
     else if (state.confirmRelease) drawReleaseConfirm(screen, fb, state);
     else if (state.legality) drawLegality(screen, fb, state);
     else if (state.review) drawReview(screen, fb);
