@@ -1,0 +1,9 @@
+# Gen IV single event-card evidence bundle (EVENT-001 / META-001)
+
+A native stored PK4 carries moves, three persisted ribbon DWORDs and raw 22-byte nickname / 16-byte OT buffers. None by itself can prove receipt of a particular retail Wonder Card. The pinned current 247-card event *structural template index* omits **original card move slots, explicit ribbon requirements and original encoded OT/nickname/trash bytes**.
+
+`Gen4UnifiedEventCandidateEvidence` correlates **one original card ID** with separately and explicitly source-attested initial move slots, later learning, expected persistent ribbon masks and exact expected original text bytes. The model does not union moves belonging to event card #68 with another event card #67, and does not pretend that actual archived card #67 guaranteed the synthetic input masks or names.
+
+It retains independent provenance states: missing initial moves, incomplete learning methods, ambiguous identities, unknown native ribbon words, absent event ribbon template, conflicting synthetic template, absent PK4 raw bytes, and unknown original event raw string bytes. A missing template is **Unknown**, not a mismatch; a byte or bit mismatch requires an independently attested source requirement, and even then rules out ONLY this asserted card candidate. Fully consistent evidence means only a *conditional hypothetical history*, not proof of historical distribution, location, language, or real card receipt.
+
+The fixture tests those combinations, evolved species, missing/contradicted masks, and raw text original buffer equality; all source-specific expected move, ribbon and text values are **explicitly synthetic**. The native encrypted PK4 → immutable view capabilities have their own production regression in `test_gen34_ball_domain_analyzer`. No save writes, source mutation or global Invalid was added.
