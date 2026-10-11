@@ -202,8 +202,11 @@ namespace UI {
         const auto fallback = [&]() -> Sprite* {
             if (ItemSpriteKey::isGen2Mail(key))
                 return getItemSprite("classic-mail-envelope");
+            // Never claim an untyped TM/HM is a Normal-type machine. The
+            // caller already resolves type from its exact native game and
+            // item ID; if the lookup remains unknown it draws a neutral disc.
             if (ItemSpriteKey::isTM(key) || ItemSpriteKey::isHM(key))
-                return getItemSprite("tm-normal");
+                return nullptr;
             return nullptr;
         };
         const auto cached = itemSpriteCache.find(key);
