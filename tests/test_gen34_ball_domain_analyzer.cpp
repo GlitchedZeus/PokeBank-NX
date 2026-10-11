@@ -665,6 +665,23 @@ int main() {
     assert(!hasInfo(sourceFreePalPark(0,0x37,0x37,4,4,false,33,1),oldDirect));
     assert(!hasInfo(sourceFreePalPark(2,0x37,0x37,4,4,false,355,1),oldDirect));
 
+    // Adult move pool evidence must not be assigned to unhatched
+    // native PK3/PK4. Parent inheritance is checked by egg-specific
+    // analyzers; a general TM/tutor union cannot prove an egg acquired
+    // those moves before hatching.
+    auto unhatchedRuby=gen3WithBall(4);
+    unhatchedRuby.setSpecies(1);
+    unhatchedRuby.setOriginGame(2);
+    unhatchedRuby.setMove(0,33);
+    unhatchedRuby.setEgg(true);
+    unhatchedRuby.refreshChecksum();
+    assert(!hasInfo(Legality::analyze(unhatchedRuby,Enums::GameVersion::FRLG),pk3Direct));
+    // This strict encrypted PK4 fixture marks the stored Egg flag,
+    // while preserving a known Diamond original game and move #33.
+    const auto unhatchedDiamond=sourceFreePalPark(
+        10,0,0,4,0,true,33,1);
+    assert(!hasInfo(unhatchedDiamond,pk4Direct));
+
     // Source-free known native PK3/PK4 formats have generation-specific
     // species/move ceilings regardless of their exact save identity.
     const auto g3Known=Legality::analyze(gen3WithBall(4),Enums::GameVersion::FRLG);
