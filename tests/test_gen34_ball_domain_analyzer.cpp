@@ -4,6 +4,7 @@
 #include "Legality/Gen3JointMoveEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
 #include "Legality/Gen34PalParkMoves.h"
+#include "Legality/Gen34PalParkSpecies.h"
 #include "Legality/Gen4RangerManaphy.h"
 #include "Legality/Gen4EventTemplate.h"
 #include "Names/ItemNames.h"
