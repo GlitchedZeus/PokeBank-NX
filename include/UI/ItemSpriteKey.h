@@ -27,6 +27,16 @@ inline std::string slug(std::string_view label) {
         }
     }
     while (!key.empty() && key.back() == '-') key.pop_back();
+    // TM27 — Return and HM01 — Cut are display labels, not filenames.
+    // Never try to load tm27-return.png. Keep the original numbered ID.
+    if (key.size() > 3 &&
+        ((key[0] == 't' && key[1] == 'm') || (key[0] == 'h' && key[1] == 'm')) &&
+        std::isdigit(static_cast<unsigned char>(key[2]))) {
+        size_t cursor = 2;
+        while (cursor < key.size() &&
+               std::isdigit(static_cast<unsigned char>(key[cursor]))) ++cursor;
+        if (cursor < key.size() && key[cursor] == '-') key.resize(cursor);
+    }
     if (key == "none" || key == "no-item" || key == "???" ||
         key == "teru-sama") return {};
 
