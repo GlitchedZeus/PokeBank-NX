@@ -49,9 +49,14 @@ constexpr Result evaluate(const Input& in) noexcept {
     if(!in.snapshotsKnown || !in.fatherId || !in.motherId)return out;
     const uint16_t maxSpecies=gen3?386:493;
     if(!in.fatherSpecies || !in.motherSpecies ||
-       in.fatherSpecies>maxSpecies || in.motherSpecies>maxSpecies ||
        in.pairProof==PairProof::Unknown) {
         out.status=Status::UnknownPairEligibility;return out;
+    }
+    // A known hypothetical parent's species outside the source game's
+    // Pokédex proves this candidate pair is impossible; it does NOT make
+    // the child's original parentage or overall legality impossible.
+    if(in.fatherSpecies>maxSpecies || in.motherSpecies>maxSpecies) {
+        out.status=Status::CandidateMismatch;return out;
     }
     if(in.pairProof==PairProof::IndependentlyIncompatible)
         {out.status=Status::CandidateMismatch;return out;}
