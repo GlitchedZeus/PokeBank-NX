@@ -58,6 +58,14 @@ Legality::Report report(uint16_t species, uint8_t level,
 }
 
 int main() {
+    // A source-free native PK2 retains its moves, but no unique retail
+    // game, parent chain or Time Capsule sequence. Positive pool only.
+    constexpr auto compatiblePool=
+        "Source-free native PK2 move occurs in at least one audited Gold/Silver/Crystal native/Time Capsule pool";
+    assert(hasInfo(report(25,20,0,false,"",85),compatiblePool)); // Pikachu Thunderbolt
+    assert(!hasInfo(report(25,20,0,false,"crystal_gbc",85),compatiblePool));
+    assert(!hasInfo(report(25,20,0,false,"",0),compatiblePool));
+
     // Source-free PK2 still proves Gen II species/move maxima independently
     // from which exact Gold/Silver/Crystal save was used.
     assert(!hasInvalidText(report(251,30,0,false,"",251),
