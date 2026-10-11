@@ -32,6 +32,9 @@ inline std::string spriteName(uint8_t item) {
     const std::string disc = UI::ClassicMachineArtwork::gscArtKey(item);
     if (!disc.empty()) return disc;
     std::string name = itemName(item);
+    const std::string key = UI::ItemSpriteKey::slug(name);
+    if (UI::ItemSpriteKey::isGen2Mail(key))
+        return "gsc-mail-icon-" + key;
     if (name.size() > 2 && ((name[0] == 'T' && name[1] == 'M') ||
                             (name[0] == 'H' && name[1] == 'M'))) {
         const std::size_t end = name.find(' ');
