@@ -18,6 +18,9 @@ void runCases() {
     m.lightBallKnown=true;m.observed={80,345,15,33};
     in.father={101,true,{30,30,30,30,30,30}};
     in.mother={202,true,{31,31,31,31,31,31}};
+    in.sharedParentStageIndependentlyVerified=true;
+    in.moveParentStageToken=0x1234ABCDu;
+    in.ivParentStageToken=0x1234ABCDu;
     in.initialChildIVs={0,0,0,0,0,0};
     constexpr uint32_t entrance=0x00000002u;
     auto staged=G::replay("firered_gba",entrance,in.initialChildIVs,
@@ -39,6 +42,12 @@ void runCases() {
     assert(H::evaluate(differentMom).status==H::Status::IncoherentParentWitness);
     auto unknownParent=in;unknownParent.father.originalIVsKnown=false;
     assert(H::evaluate(unknownParent).status==H::Status::UnknownIVParentSnapshot);
+    auto missingSharedStage=in;missingSharedStage.sharedParentStageIndependentlyVerified=false;
+    assert(H::evaluate(missingSharedStage).status==H::Status::UnknownSharedParentStage);
+    auto wrongSharedStage=in;wrongSharedStage.ivParentStageToken=0xBEEFu;
+    assert(H::evaluate(wrongSharedStage).status==H::Status::IncoherentParentStage);
+    auto missingStageToken=in;missingStageToken.moveParentStageToken=0;
+    assert(H::evaluate(missingStageToken).status==H::Status::UnknownSharedParentStage);
     auto missingFinalState=in;missingFinalState.independentlyKnownFinalIVStageState=false;
     assert(H::evaluate(missingFinalState).status==H::Status::UnknownIVRNGHistory);
     auto oppositeDonor=in;oppositeDonor.mother.originalIVs={0,0,0,0,0,0};

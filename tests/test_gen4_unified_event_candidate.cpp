@@ -37,6 +37,13 @@ void runCases() {
     in.originalEventRawTextVerified=true;
     in.originalEventNickname=in.rawNickname;
     in.originalEventOT=in.rawOT;
+    // These hashes are a synthetic equality key ONLY; not a real
+    // fetched WC4/PCD SHA. Original archive identity must be verified
+    // independently in a real application.
+    in.archiveDigestsIndependentlyVerified=true;
+    in.moveSourceArchiveSha256[0]=std::byte{0x7A};
+    in.ribbonSourceArchiveSha256=in.moveSourceArchiveSha256;
+    in.rawTextSourceArchiveSha256=in.moveSourceArchiveSha256;
     auto supported=U::evaluate(in);
     assert(supported.status==U::Status::KnownConditionalCandidate);
     assert(supported.moveEvidence.retainedInitialMoves==2);
@@ -90,6 +97,17 @@ void runCases() {
     unverifiedTextMismatch.originalEventRawTextVerified=false;
     assert(U::evaluate(unverifiedTextMismatch).status==
            U::Status::UnknownOriginalRawText);
+    auto missingArchive=in;
+    missingArchive.archiveDigestsIndependentlyVerified=false;
+    assert(U::evaluate(missingArchive).status==
+           U::Status::UnknownArchiveProvenance);
+    auto emptyArchive=in;emptyArchive.moveSourceArchiveSha256={};
+    assert(U::evaluate(emptyArchive).status==
+           U::Status::UnknownArchiveProvenance);
+    auto differentArchive=in;
+    differentArchive.rawTextSourceArchiveSha256[0]=std::byte{0x14};
+    assert(U::evaluate(differentArchive).status==
+           U::Status::IncoherentArchiveProvenance);
     auto evolved=in;evolved.moves.stored.species=5;
     assert(U::evaluate(evolved).status==U::Status::KnownConditionalCandidate);
     auto noId=in;noId.moves.history.id=0;

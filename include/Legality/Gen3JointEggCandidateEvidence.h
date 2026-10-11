@@ -16,6 +16,7 @@ enum class Status : uint8_t {
     UnsupportedGame, UnknownMoveParentHistory, UnknownPairEligibility,
     UnknownLightBall, IncoherentParentWitness,
     UnknownIVParentSnapshot, UnknownIVRNGHistory,
+    UnknownSharedParentStage, IncoherentParentStage,
     InvalidIVCandidateInput, MoveCandidateContradicted,
     IVCandidateContradicted, KnownCandidateConsistent
 };
@@ -27,6 +28,12 @@ struct Parent {
 struct Input {
     Move::Input moveHistory{};
     Parent father{},mother{};
+    // A shared father/mother ID is not enough if the two descriptions
+    // refer to DIFFERENT historical parent moveset/IV snapshots.
+    // Explicit source-attested stage tokens cannot be recovered from PK3.
+    bool sharedParentStageIndependentlyVerified=false;
+    uint64_t moveParentStageToken=0;
+    uint64_t ivParentStageToken=0;
     bool independentlyKnownFinalIVStageState=false;
     uint32_t finalIVStageRNGState=0;
     std::array<uint8_t,6> initialChildIVs{};
@@ -67,6 +74,13 @@ constexpr Result evaluate(const Input& in) noexcept {
     }
     if(!in.father.originalIVsKnown || !in.mother.originalIVsKnown) {
         out.status=Status::UnknownIVParentSnapshot;return out;
+    }
+    if(!in.sharedParentStageIndependentlyVerified ||
+       !in.moveParentStageToken || !in.ivParentStageToken) {
+        out.status=Status::UnknownSharedParentStage;return out;
+    }
+    if(in.moveParentStageToken!=in.ivParentStageToken) {
+        out.status=Status::IncoherentParentStage;return out;
     }
     if(!in.independentlyKnownFinalIVStageState) {
         out.status=Status::UnknownIVRNGHistory;return out;

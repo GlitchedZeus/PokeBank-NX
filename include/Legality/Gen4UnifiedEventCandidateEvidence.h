@@ -22,6 +22,7 @@ enum class Status : uint8_t {
     UnknownNativeRibbons, UnknownRibbonTemplate,
     InconsistentRibbonTemplate,
     UnknownNativeRawText, UnknownOriginalRawText,
+    UnknownArchiveProvenance, IncoherentArchiveProvenance,
     CandidateContradicted, KnownConditionalCandidate
 };
 struct Input {
@@ -38,6 +39,14 @@ struct Input {
     bool originalEventRawTextVerified=false;
     std::array<std::byte,22> originalEventNickname{};
     std::array<std::byte,16> originalEventOT{};
+    // Card IDs are not globally unique across all distributions,
+    // languages and archival revisions. Require all three externally
+    // sourced evidence projections to identify the SAME original
+    // archive payload (independently supplied 256-bit SHA-256 bytes).
+    bool archiveDigestsIndependentlyVerified=false;
+    std::array<std::byte,32> moveSourceArchiveSha256{};
+    std::array<std::byte,32> ribbonSourceArchiveSha256{};
+    std::array<std::byte,32> rawTextSourceArchiveSha256{};
 };
 struct Result {
     Status status=Status::UnknownCardIdentity;
@@ -91,6 +100,16 @@ constexpr Result evaluate(const Input& in) noexcept {
     if(in.rawNickname!=in.originalEventNickname ||
        in.rawOT!=in.originalEventOT) {
         out.status=Status::CandidateContradicted;return out;
+    }
+    bool anyDigestByte=false;
+    for(const auto value:in.moveSourceArchiveSha256)
+        if(value!=std::byte{0}) anyDigestByte=true;
+    if(!in.archiveDigestsIndependentlyVerified || !anyDigestByte) {
+        out.status=Status::UnknownArchiveProvenance;return out;
+    }
+    if(in.moveSourceArchiveSha256!=in.ribbonSourceArchiveSha256 ||
+       in.moveSourceArchiveSha256!=in.rawTextSourceArchiveSha256) {
+        out.status=Status::IncoherentArchiveProvenance;return out;
     }
     out.status=Status::KnownConditionalCandidate;
     return out;

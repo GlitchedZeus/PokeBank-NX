@@ -7,3 +7,7 @@
 The conditional checker separates impossible hypothetical move lists, impossible known IV-stage observations and out-of-domain candidate inputs. A result of `KnownCandidateConsistent` means that **one fully supplied scenario** matches, **not** that the historical parents and RNG state truly existed or can be recovered from the stored child. A native PK3 contains none of those full historical parent identities or RNG stages.
 
 Host and sanitizer tests cover same-parent moves/IVs, switched father and mother IDs, partial evidence, source game routing, inherited-IV mismatch, malformed >31 values, and moveset contradiction. Existing 24 forward/reverse synthetic retail vectors remain independent evidence. This interface is read-only and never issues global Invalid or mutates saves.
+
+## Parent-pair timestamp / snapshot coupling
+
+Parent IDs alone can accidentally combine a father's moveset from one time with an incompatible earlier/later original IV snapshot. The joint checker now requires an **independently attested nonzero shared parent-stage token** for both evidence inputs. Missing stage linkage is Unknown; mismatched stage tokens mark the asserted joint witness incoherent. Tokens are hypothetical supplied provenance, **not** stored native PK3 fields or newly inferred historical proof.
