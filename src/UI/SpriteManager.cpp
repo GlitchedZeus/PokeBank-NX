@@ -6,6 +6,7 @@
 #include <string>
 
 #include "UI/SpriteManager.h"
+#include "UI/ItemSpriteKey.h"
 #include "Pokemon/FormSpriteMapping.h"
 #include "Utils/Logger.h"
 
@@ -189,34 +190,26 @@ namespace UI {
     }
 
     Sprite* SpriteManager::getItemSprite(const std::string& itemName) {
-        // Normalize the SAME visible item name used by each generation's
-        // native picker. Exclude all path separators/foreign characters,
-        // avoiding path traversal and guesses at item IDs between gens.
-        std::string slug;
-        slug.reserve(itemName.size());
-        for(size_t i=0;i<itemName.size();++i) {
-            const unsigned char ch=static_cast<unsigned char>(itemName[i]);
-            if(ch==0xC3 && i+1<itemName.size() &&
-               static_cast<unsigned char>(itemName[i+1])==0xA9) {
-                slug.push_back('e');++i;continue; // Poké Ball
-            }
-            if(ch>='A' && ch<='Z')slug.push_back(static_cast<char>(ch-'A'+'a'));
-            else if((ch>='a' && ch<='z') || (ch>='0' && ch<='9'))
-                slug.push_back(static_cast<char>(ch));
-            else if(ch==' ' || ch=='-' || ch=='_') {
-                if(!slug.empty() && slug.back()!='-')slug.push_back('-');
-            }
-            // Ignore punctuation such as King's Rock apostrophe and ".".
-            // A Gen II "(native ID)" suffix is not a part of the item key.
-            if(ch==' ' && i+1<itemName.size() && itemName[i+1]=='(')break;
-        }
-        while(!slug.empty() && slug.back()=='-')slug.pop_back();
-        if(slug.empty() || slug=="none" || slug=="no-item")return nullptr;
+        // Shared Gen I-IV name aliases, not a conversion between native IDs.
+        // Machine labels may contain a move suffix (TM27 — Return); the helper
+        // retains only the exact machine identifier.
+        const std::string key = ItemSpriteKey::slug(itemName);
+        if (key.empty()) return nullptr;
+        const auto cached = itemSpriteCache.find(key);
+        if (cached != itemSpriteCache.end()) return cached->second;
 
-        const auto it=itemSpriteCache.find(slug);
-        if(it!=itemSpriteCache.end())return it->second;
-        Sprite* sprite=loadSprite("sprites/items/"+slug+".png");
-        itemSpriteCache.emplace(std::move(slug),sprite);
+        Sprite* sprite = loadSprite("sprites/items/" + key + ".png");
+        if (!sprite && ItemSpriteKey::isTM(key)) {
+            // Pinned Pokémon artwork exposes type-based discs but no numbered
+            // TM image.  Use the neutral gray disc graphic, not a guessed type.
+            sprite = getItemSprite("tm-normal");
+        }
+        if (!sprite && ItemSpriteKey::isHM(key)) {
+            // Prefer the exact HM01–HM08 asset when available; never silently
+            // substitute a different numbered HM.
+            sprite = getItemSprite("tm-normal");
+        }
+        itemSpriteCache.emplace(key, sprite);
         return sprite;
     }
 
