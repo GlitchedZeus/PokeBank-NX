@@ -473,7 +473,7 @@ int main() {
     contains(surface, "bool handleBoxMove(");
     contains(surface, "stageMoveBoxPokemon(");
     contains(surface, "Nav::Direction::JumpForward");
-    contains(surface, '{"Y/A", "Drop / Swap"}');
+    contains(surface, "{\"Y/A\", \"Drop / Swap\"}");
     contains(surface, "if (down & HidNpadButton_B)");
     contains(surface, "state.moveActive = false;");
     contains(surface, "Gen IV move/swap staged; original source unchanged");
