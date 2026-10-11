@@ -1872,6 +1872,37 @@ namespace Legality {
             }
         }
 
+        // ---- L3: source-free native PK4 fixed NPC-trade evidence ----
+        // Exact Gen IV NPC trade templates encode PID, TID/SID, IVs,
+        // language, gender, ability slot and origin/met fields. These
+        // bytes survive the loss of a save container, so a native PK4
+        // can retain strong POSITIVE trade compatibility. This remains
+        // a possible provenance note: no claim of unique trade history.
+        if (!sourceProfile &&
+            Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
+            !pk.isEgg()) {
+            const auto originalRetail =
+                Gen4Origin::exactRetailGameId(pk.originGame());
+            if (!originalRetail.empty()) {
+                const auto trade = Gen4Trade::matchEvolutionLine(
+                    originalRetail, species, pk.pid(), pk.id32(),
+                    pk.gender(), pk.otGender(), pk.abilityNumber(),
+                    pk.language(), std::array<uint8_t,6>{
+                        pk.ivHP(),pk.ivATK(),pk.ivDEF(),
+                        pk.ivSPE(),pk.ivSPA(),pk.ivSPD()},
+                    pk.metLocation(),pk.metLevel());
+                if (trade.matched) {
+                    std::string detail =
+                        "Source-free native PK4 PID/trainer/IV/ability/language/met fields match a pinned Generation IV in-game NPC trade for the stored retail origin; other provenance remains unresolved";
+                    if (trade.evolved)
+                        detail += " with source ancestor species " +
+                            std::to_string(trade.sourceSpecies);
+                    add(r, Severity::Info,std::move(detail),
+                        CheckIdentifier::Encounter);
+                }
+            }
+        }
+
         // ---- L2: gender vs the species gender ratio (255 genderless / 254 female-only / 0 male-only) ----
         if (!sourceProfile || exactGeneration >= 2) {
             const uint8_t g = pk.gender();

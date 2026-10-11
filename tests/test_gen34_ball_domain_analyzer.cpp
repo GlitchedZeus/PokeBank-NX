@@ -1,5 +1,6 @@
 #include "Encryption/Encryption4.h"
 #include "Legality/Legality.h"
+#include "Legality/Gen4TradeEvidence.h"
 #include "Names/ItemNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Pokemon3FRLG.h"
@@ -237,7 +238,57 @@ Legality::Report sourceFreePalPark(uint8_t originVersion,uint16_t dp,
     return Legality::analyze(view,Enums::GameVersion::HGSS);
 }
 
+// Pinned Diamond NPC Abra is a fixed PID/TID/IV/OT-gender template.
+// Create actual encrypted PK4, never a synthetic stand-in helper report.
+Legality::Report analyzeDetachedNpcAbra(uint16_t species=63,
+                                        uint8_t originalGame=10,
+                                        uint8_t language=1,
+                                        uint32_t pid=0x0000008Eu,
+                                        uint8_t atkIV=15,
+                                        bool exactSource=false) {
+    std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
+    wr32(raw,0x00,pid);
+    wr16(raw,0x08,species);
+    wr16(raw,0x0C,25643);
+    wr16(raw,0x0E,0);
+    wr32(raw,0x10,3375);
+    raw[0x17]=static_cast<std::byte>(language);
+    raw[0x5F]=static_cast<std::byte>(originalGame);
+    wr32(raw,0x38,Legality::Gen4Trade::packIVs({
+        15,atkIV,15,20,25,25}));
+    wr16(raw,0x80,2001); // link-trade met location
+    raw[0x83]=std::byte{4}; // native Poke Ball
+    raw[0x84]=std::byte{0x81}; // female OT, received level1
+    const auto encrypted=Encryption::encryptArray4(raw);
+    Pokemon::Pokemon4ReadOnly stored(encrypted,Enums::GameVersion::DP);
+    assert(stored.valid() && stored.checksumValid());
+    assert(stored.species()==species && stored.pid()==pid);
+    assert(stored.originVersion()==originalGame);
+    assert(stored.metLocationDP()==2001);
+    assert(stored.originalTrainerGender()==1);
+    Pokemon::Pokemon4ReadOnlyView view(stored);
+    assert(view.metLocation()==2001 && view.metLevel()==1);
+    assert(view.abilityNumber()==static_cast<uint8_t>(1u<<(pid&1u)));
+    return exactSource
+        ? Legality::analyze(view,Enums::GameVersion::DP,"diamond_nds")
+        : Legality::analyze(view,Enums::GameVersion::DP);
+}
+
 int main() {
+    // Source-free exact-origin NPC trade proof: all native encrypted PK4
+    // identity fields must match a pinned Diamond template. Wrong PID,
+    // original retail game, language, or IV breaks only the positive
+    // compatibility; absence does NOT establish global illegality.
+    constexpr auto detachedTrade="Source-free native PK4 PID/trainer/IV/ability/language/met fields match a pinned Generation IV in-game NPC trade";
+    assert(hasInfo(analyzeDetachedNpcAbra(),detachedTrade));
+    assert(hasInfo(analyzeDetachedNpcAbra(64),detachedTrade));
+    assert(hasInfo(analyzeDetachedNpcAbra(64),
+                   "with source ancestor species 63"));
+    assert(!hasInfo(analyzeDetachedNpcAbra(63,7),detachedTrade));
+    assert(!hasInfo(analyzeDetachedNpcAbra(63,10,2),detachedTrade));
+    assert(!hasInfo(analyzeDetachedNpcAbra(63,10,1,0x8Fu),detachedTrade));
+    assert(!hasInfo(analyzeDetachedNpcAbra(63,10,1,0x8Eu,14),detachedTrade));
+
     // Real PK3 egg-state and encrypted PK4 egg-origin reporting.
     auto eggPk3=gen3WithBall(4);
     eggPk3.setEgg(true);
