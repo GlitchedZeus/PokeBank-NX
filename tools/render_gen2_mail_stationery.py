@@ -297,6 +297,54 @@ def recover_real_mail_sheet(keys, out=OUT):
         recovered[key]="AUTHENTIC Crystal screenshot"
     return recovered
 
+def render_original_mail_icons(keys=ORDER, out=OUT):
+    """32x32 mail-list icons from each matching Crystal original graphics tile.
+
+    Mail stationery in Gen II is a *screen*, not a native item minisprite.
+    These are recognisable UI-sized extracts of authentic Crystal motifs,
+    distinct from the full stationery screenshot/reconstruction.
+    """
+    out.mkdir(parents=True, exist_ok=True)
+    results={}
+    for key in keys:
+        name=SOURCES[key][0]
+        width,height,src=download(name)
+        if width <= 0 or height <= 0:
+            raise RuntimeError("Invalid pinned mail icon motif: "+name)
+        backdrop,shade,ink=[rgb(x) for x in PALS[ORDER.index(key)]]
+        canvas=[[ (0,0,0,0) for _ in range(32)] for _ in range(32)]
+        for y in range(2,30):
+            for x in range(2,30):
+                canvas[y][x]=backdrop
+        for i in range(2,30):
+            canvas[2][i]=shade
+            canvas[29][i]=shade
+            canvas[i][2]=shade
+            canvas[i][29]=shade
+        scale=min(26/width, 26/height, 3.0)
+        w=max(1,int(width*scale))
+        h=max(1,int(height*scale))
+        ox=(32-w)//2
+        oy=(32-h)//2
+        painted=0
+        for dy in range(h):
+            for dx in range(w):
+                px=src[min(height-1,int(dy/scale))][min(width-1,int(dx/scale))]
+                r,g,b,a=px
+                if a<96 or r+g+b>500: continue
+                canvas[oy+dy][ox+dx]=ink
+                painted+=1
+        if painted==0:
+            raise RuntimeError("Original Crystal mail motif has no visible ink: "+name)
+        path=out/("gsc-mail-icon-"+key+".png")
+        path.write_bytes(encode(canvas))
+        valid,reason,dims=validate_png(path)
+        if not valid or tuple(dims)!=(32,32):
+            raise RuntimeError("Invalid 32px Crystal mail icon: "+key+": "+reason)
+        results[key]="32x32 original-game motif illustration"
+    return results
+
+
 def render_unavailable_exact_mail(keys, out=OUT):
     out.mkdir(parents=True,exist_ok=True)
     rendered={}
