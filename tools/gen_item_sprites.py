@@ -18,7 +18,8 @@ from pathlib import Path
 from png_asset_validation import validate_png
 from render_classic_item_icons import KEYS as CUSTOM_GSC_ICONS, build as render_classic_icons
 from render_gen2_mail_stationery import (render_unavailable_exact_mail,
-                                         recover_real_mail_sheet)
+                                         recover_real_mail_sheet,
+                                         render_original_mail_icons)
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "romfs" / "sprites" / "items"
@@ -276,6 +277,15 @@ def verify_required(include_classic: bool = False) -> None:
         if mail_bad:
             raise RuntimeError("Mail background is not full 160x144 GSC stationery: "
                                + ", ".join(mail_bad))
+        icons_bad = []
+        for key in GEN2_MAIL_SOURCES:
+            file = OUT / ("gsc-mail-icon-" + key + ".png")
+            valid, reason, dims = validate_png(file) if file.exists() else (False, "absent", ())
+            if not valid or tuple(dims) != (32, 32):
+                icons_bad.append(key)
+        if icons_bad:
+            raise RuntimeError("Mail icon is not 32x32 Crystal artwork: "
+                               + ", ".join(icons_bad))
         print("CLASSIC ITEM SPRITE PREFLIGHT: PASS (machine type discs, full 160x144 mail art, GSC historic icons)")
 
 
@@ -330,6 +340,8 @@ def main() -> int:
               + str(source_exact))
         print("RECONSTRUCTED Gen II stationery (not pixel-identical screenshots): "
               + str(reconstructed))
+        icons = render_original_mail_icons()
+        print("Generation II original Crystal source 32px mail icons: " + str(icons))
         invalid_mail = [key for key in GEN2_MAIL_SOURCES
                         if not validated(OUT / (key + ".png"))]
         if invalid_mail:
