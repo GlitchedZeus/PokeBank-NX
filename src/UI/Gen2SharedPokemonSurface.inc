@@ -103,7 +103,7 @@ int firstEmptyGen2Slot(Gen2::StagedEditor& editor, int box) {
 }
 
 bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held,
-                         int stickX, int stickY) {
+                         int stickX, int stickY, const TouchInput& touch) {
     auto& legacy = editorOverlayState(screen);
     auto* editor = stagedEditor(screen);
     if (!editor || !legacy.active || legacy.review || !legacy.pokemonActions) return false;
