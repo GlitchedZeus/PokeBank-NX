@@ -529,13 +529,13 @@ int main() {
     contains(stagedBackend, "stageBagQuantity(");
     contains(stagedBackend, "refreshGeneralCrc(*before,error)");
     contains(stagedBackend, "unexpectedly changed unrelated save bytes");
-    contains(surface, "if(handleItemQuantity(screen,state,down,held,stickX,stickY))return true;");
-    contains(surface, "state.itemQuantityDraft");
-    contains(surface, "staged->stageBagQuantity(");
-    contains(surface, "auto saved=*staged;");
-    contains(surface, "*staged=std::move(saved);");
+    contains(surface, "if(handleItemQuantity(screen,state,down,held,stickX,stickY,touch))return true;");
+    contains(surface, "if(!r.accepted)return true;");
+    contains(surface, "current->stageBagQuantity(");
+    contains(surface, "auto backup=*current;");
+    contains(surface, "*current=std::move(backup);");
     contains(surface, "Gen IV item quantity staged; emulator source unchanged");
-    contains(surface, "else if (state.itemQuantityActive)drawItemQuantity");
+    assert(surface.find("else if (state.itemQuantityActive)drawItemQuantity")==std::string::npos);
     contains(surface, "if (state.itemAddPickerActive)drawItemAddPicker");
     contains(surface, "else if (state.itemRemoveConfirmActive)drawItemRemoveConfirm");
 
