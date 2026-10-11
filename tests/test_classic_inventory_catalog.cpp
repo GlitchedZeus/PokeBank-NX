@@ -81,6 +81,30 @@ int main() {
     assert(displayItemName(ClassicGame::Gold, ClassicPocket::TMHM, 191).find("TM01") == 0);
     assert(displayItemName(ClassicGame::FireRed, ClassicPocket::TMHM, 289).find("TM01") == 0);
 
+    // Exhaustive retail-era machine coverage (including PC Items). The same
+    // native machine ID must teach the same in-generation move in both picker
+    // and PC views. Modern TM assignments must never contaminate Gen III.
+    for (auto game : {ClassicGame::Red,ClassicGame::Blue,ClassicGame::Yellow,
+                      ClassicGame::Gold,ClassicGame::Silver,ClassicGame::Crystal,
+                      ClassicGame::Ruby,ClassicGame::Sapphire,ClassicGame::Emerald,
+                      ClassicGame::FireRed,ClassicGame::LeafGreen}) {
+        const auto machines=addableItems(game,ClassicPocket::TMHM);
+        const std::size_t expected=game<=ClassicGame::Yellow ? 55 :
+                                   game<=ClassicGame::Crystal ? 57 : 58;
+        assert(machines.size()==expected);
+        const uint16_t maxMove=game<=ClassicGame::Yellow ? 165 :
+                               game<=ClassicGame::Crystal ? 251 : 354;
+        for(const auto nativeId:machines) {
+            const uint16_t move=classicMachineMove(game,nativeId);
+            assert(move>0 && move<=maxMove);
+            const auto bagName=displayItemName(game,ClassicPocket::TMHM,nativeId);
+            const auto pcName=displayItemName(game,ClassicPocket::PCItems,nativeId);
+            assert(bagName==pcName);
+            assert(bagName.find("TM")==0 || bagName.find("HM")==0);
+            assert(bagName.find(" — ")!=std::string::npos);
+        }
+    }
+
     std::cout << "classic inventory catalog: PASS\n";
     return 0;
 }
