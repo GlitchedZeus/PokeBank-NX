@@ -213,4 +213,4 @@ assert "return getItemSprite(\"tm-normal\")" not in sprite_loader
 assert "ClassicMachineArtwork::artKey(" in (ROOT / "src/UI/Panels/ItemsPanel.cpp").read_text(encoding="utf-8")
 assert all(not value for value in unresolved.values()), unresolved
 assert len(g1) >= 80 and len(g3) >= 370 and len(g4) >= 530
-print("Complete generation catalog coverage audit: PASS (remaining unavailable art reported)")
+print("Generation I-IV item catalog sprite resolution: PASS (zero unresolved native item labels)")
