@@ -85,7 +85,7 @@ constexpr Result analyzeColosseum(uint16_t species,
                                   uint16_t tid,
                                   uint16_t sid,
                                   uint32_t rerollLimit = kMaxPidRerolls) noexcept {
-    if (species != 197 && species != 196 ||
+    if ((species != 197 && species != 196) ||
         !Gen3PidIv::validStoredIVs(ivs))
         return {};
 
