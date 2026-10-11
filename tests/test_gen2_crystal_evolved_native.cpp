@@ -1,5 +1,6 @@
 #include "Legality/Legality.h"
 #include "Legality/Gen12FormatDomainEvidence.h"
+#include "Legality/Gen14CandidateMoveHistory.h"
 #include "Legality/Gen12JointMoveEvidence.h"
 #include "Legality/Gen12TimeCapsuleEvidence.h"
 #include "Names/SpeciesNames.h"
@@ -232,5 +233,50 @@ int main() {
     assert(hasInfo(report(73,30,tentacool),evolvedText) ||
            hasInfo(report(73,30,tentacool),wildText));
     assert(!hasInfo(report(73,29,tentacool),evolvedText));
+    // MOVE-002: the same native immutable PK2 can contain a retained
+    // Gen I move and a later Gen II move, but a real Time Capsule trip
+    // is NOT persisted. Interpret only explicitly hypothetical routes.
+    PokeVault::Integration::Gen2::PokemonRecord stagePk2{};
+    stagePk2.species=25;
+    stagePk2.level=40;
+    stagePk2.trainerId=12345;
+    stagePk2.moves={85,166,0,0};
+    stagePk2.originalTrainer="RED";
+    stagePk2.nickname="PIKACHU";
+    const Pokemon::Pokemon2ReadOnly nativeStage(stagePk2);
+    assert(nativeStage.move(0)==85 && nativeStage.move(1)==166);
+    const auto stagedReport=Legality::analyze(
+        nativeStage,Enums::GameVersion::GSC);
+    assert(hasInfo(stagedReport,
+        "Current PK2 moves cannot currently enter the Time Capsule"));
+    assert(!hasInvalidText(stagedReport,
+        "Move id 166 cannot exist in a Generation 2 save"));
+    namespace History=Legality::Gen14CandidateMoveHistory;
+    History::Candidate capsuleRoute{400,40,5,true,5,0,2,3,25,true};
+    History::Slot oldMove{};
+    oldMove.move=nativeStage.move(0);
+    oldMove.options[0]={oldMove.move,400,History::Method::TransferRetained,
+                       5,40,1,0,0,true};
+    oldMove.count=1;oldMove.exhaustive=true;
+    History::Slot newMove{};
+    newMove.move=nativeStage.move(1);
+    newMove.options[0]={newMove.move,400,History::Method::LaterAcquisition,
+                       5,40,4,0,0,true};
+    newMove.count=1;newMove.exhaustive=true;
+    assert(History::evaluate(capsuleRoute,
+        {oldMove,newMove,{}, {}}).status==
+        History::Status::WitnessesCompatible);
+    newMove.options[0]={newMove.move,400,History::Method::Egg,
+                       5,40,1,0,1001,true};
+    assert(History::evaluate(capsuleRoute,
+        {oldMove,newMove,{}, {}}).status==
+        History::Status::CandidateContradicted);
+    capsuleRoute.retailTimeCapsulePolicyVerified=false;
+    assert(History::evaluate(capsuleRoute,
+        {oldMove,newMove,{}, {}}).status==
+        History::Status::Unresolved);
+    // Source-neutral analyzer never invents the actual historical visit.
+    assert(!hasInfo(stagedReport,"verified Time Capsule visit"));
+
     return 0;
 }
