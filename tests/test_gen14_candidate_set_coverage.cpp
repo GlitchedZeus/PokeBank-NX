@@ -49,6 +49,41 @@ void runCases() {
     unknownMethod.alternatives[1].moves[0].options[0].candidateId=999;
     assert(A::evaluate(unknownMethod).status==
            A::Status::UnknownAcquisitionMethods);
+    // Malformed stored move slots on an otherwise source-grounded
+    // original encounter cannot produce a global exhaustion claim.
+    // An alternative intact original encounter remains viable.
+    auto duplicates=in;
+    duplicates.alternatives[0].moves[1]=
+        duplicates.alternatives[0].moves[0];
+    assert(A::evaluate(duplicates).status==A::Status::OneConditionalRoute);
+    duplicates.alternatives[1].moves[1]=
+        duplicates.alternatives[1].moves[0];
+    assert(A::evaluate(duplicates).status==
+           A::Status::UnknownAcquisitionMethods);
+    auto holey=in;
+    for(auto& original:holey.alternatives) {
+        original.moves[2]=original.moves[0];
+        original.moves[2].move=97;
+        original.moves[2].options[0].move=97;
+    }
+    assert(A::evaluate(holey).status==
+           A::Status::UnknownAcquisitionMethods);
+    auto gen1OutOfDomain=in;
+    for(auto& original:gen1OutOfDomain.alternatives) {
+        original.candidate.observedGeneration=1;
+        original.moves[0].move=166;
+        original.moves[0].options[0].move=166;
+    }
+    assert(A::evaluate(gen1OutOfDomain).status==
+           A::Status::UnknownAcquisitionMethods);
+    auto gen4OutOfDomain=in;
+    for(auto& original:gen4OutOfDomain.alternatives) {
+        original.candidate.observedGeneration=4;
+        original.moves[0].move=468;
+        original.moves[0].options[0].move=468;
+    }
+    assert(A::evaluate(gen4OutOfDomain).status==
+           A::Status::UnknownAcquisitionMethods);
     auto noCandidates=in;noCandidates.count=0;
     assert(A::evaluate(noCandidates).status==A::Status::NoCandidates);
     auto capacity=in;capacity.count=9;
