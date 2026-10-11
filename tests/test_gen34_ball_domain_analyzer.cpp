@@ -5,6 +5,7 @@
 #include "Legality/Gen3ShedinjaEvolutionMoveEvidence.h"
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
 #include "Legality/Gen3EmeraldLevelUpTimeline.h"
+#include "Legality/Gen3EmeraldPalParkJointPath.h"
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen34OrdinaryEggMoveConstruction.h"
 #include "Legality/Gen4ContestRibbonEvidence.h"
@@ -1085,6 +1086,52 @@ int main() {
     detachedHistory.sameEmeraldGameThroughoutVerified=false;
     assert(Timeline::evaluate(detachedHistory).status==
            Timeline::Status::UnknownGameContinuity);
+    // Production native-format PK3 + encrypted PK4 transfer boundary:
+    // the analyzer can read the exact stored four move slots from each.
+    // This is a SYNTHETIC PAIR of well-formed native records, not an
+    // original paired retail Pal Park save or inferred actual history.
+    std::vector<std::byte> rawTransferred(Encryption::SIZE_STORED4,
+                                           std::byte{0});
+    wr32(rawTransferred,0x00,0x12345678u);
+    wr16(rawTransferred,0x08,1); // Bulbasaur
+    wr16(rawTransferred,0x0C,12345);
+    wr16(rawTransferred,0x0E,54321);
+    wr16(rawTransferred,0x28,77); // Poison Powder
+    wr16(rawTransferred,0x2A,79); // Sleep Powder
+    wr16(rawTransferred,0x2C,75); // Razor Leaf
+    wr16(rawTransferred,0x2E,22); // Vine Whip
+    rawTransferred[0x17]=std::byte{2};
+    rawTransferred[0x5F]=std::byte{3}; // Original Emerald
+    rawTransferred[0x83]=std::byte{4};
+    const auto encryptedTransferred=Encryption::encryptArray4(rawTransferred);
+    Pokemon::Pokemon4ReadOnly nativeArrival(
+        encryptedTransferred,Enums::GameVersion::PT);
+    assert(nativeArrival.valid() && nativeArrival.checksumValid());
+    Pokemon::Pokemon4ReadOnlyView arrivalView(nativeArrival);
+    assert(arrivalView.speciesID()==nativeTimeline.speciesID());
+    namespace EmeraldPark=Legality::Gen3EmeraldPalParkJointPath;
+    EmeraldPark::Input paired{};
+    paired.learning=nativeHypothesis;
+    paired.migration.sourceGame="emerald_gba";
+    paired.migration.destinationGame="platinum_nds";
+    paired.migration.species=arrivalView.speciesID();
+    paired.migration.independentlyVerifiedPreTransfer=true;
+    paired.migration.independentlyVerifiedImmediateArrival=true;
+    paired.migration.unchangedSpeciesThroughArrivalVerified=true;
+    paired.migration.outboundGbaMoves={nativeTimeline.move(0),
+        nativeTimeline.move(1),nativeTimeline.move(2),nativeTimeline.move(3)};
+    paired.migration.immediateNdsMoves={arrivalView.move(0),
+        arrivalView.move(1),arrivalView.move(2),arrivalView.move(3)};
+    paired.sameOriginalSourceSnapshotVerified=true;
+    paired.originalLearningStageToken=0x1234u;
+    paired.outboundGbaStageToken=0x1234u;
+    assert(EmeraldPark::evaluate(paired).status==
+           EmeraldPark::Status::KnownConditionalCombinedPath);
+    auto notHistoricallyLinked=paired;
+    notHistoricallyLinked.sameOriginalSourceSnapshotVerified=false;
+    assert(EmeraldPark::evaluate(notHistoricallyLinked).status==
+           EmeraldPark::Status::UnknownSharedSource);
+
     // Calling the full analyzer by itself must not imply a witnessed
     // historical sequence; no stored PK3 encodes these seven choices.
     constexpr auto jointEmeraldText="Emerald independent direct level-up opportunities:";
