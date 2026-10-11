@@ -1,9 +1,9 @@
 # MOVE-001 — Replace membership pools with candidate-scoped acquisition witnesses
 
-Research ID: **MOVE-001**  
-Affected generations/games: I–IV: RB/Y, GS/C, RS/E/FR/LG, DP/Pt/HGSS  
-Audited application revision: `fecfbca9b0323578fd423f5d90486ddb2d0da72e`  
-Estimated complexity: **High**  
+Research ID: **MOVE-001**
+Affected generations/games: I–IV: RB/Y, GS/C, RS/E/FR/LG, DP/Pt/HGSS
+Audited application revision: `fecfbca9b0323578fd423f5d90486ddb2d0da72e`
+Estimated complexity: **High**
 Evidence confidence: **B**, subject to the precise scope below.
 
 ## Current implementation and wiring

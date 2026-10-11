@@ -1,9 +1,9 @@
 # MOVE-002 — Time Capsule acquisition is a directional history constraint
 
-Research ID: **MOVE-002**  
-Affected generations/games: I–II retail RB/Y and GS/C; Korean and console policy must remain explicit  
-Audited application revision: `fecfbca9b0323578fd423f5d90486ddb2d0da72e`  
-Estimated complexity: **High**  
+Research ID: **MOVE-002**
+Affected generations/games: I–II retail RB/Y and GS/C; Korean and console policy must remain explicit
+Audited application revision: `fecfbca9b0323578fd423f5d90486ddb2d0da72e`
+Estimated complexity: **High**
 Evidence confidence: **B**, subject to the precise scope below.
 
 ## Current implementation and wiring

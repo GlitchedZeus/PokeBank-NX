@@ -1,9 +1,9 @@
 # BREED-001 — Ordered egg moves and distinct ordinary/event origins
 
-Research ID: **BREED-001**  
-Affected generations/games: II–IV; independent retail details: Crystal, Emerald, Platinum, HGSS  
-Audited application revision: `fecfbca9b0323578fd423f5d90486ddb2d0da72e`  
-Estimated complexity: **High**  
+Research ID: **BREED-001**
+Affected generations/games: II–IV; independent retail details: Crystal, Emerald, Platinum, HGSS
+Audited application revision: `fecfbca9b0323578fd423f5d90486ddb2d0da72e`
+Estimated complexity: **High**
 Evidence confidence: **B**, subject to the precise scope below.
 
 ## Current implementation and wiring

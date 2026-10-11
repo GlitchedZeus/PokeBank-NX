@@ -1,9 +1,9 @@
 # TRANSFER-001 — Pal Park is a lossy, one-way acquisition boundary
 
-Research ID: **TRANSFER-001**  
-Affected generations/games: III → IV; native PK3/PK4  
-Audited application revision: `fecfbca9b0323578fd423f5d90486ddb2d0da72e`  
-Estimated complexity: **Medium for evidence; High for global closure**  
+Research ID: **TRANSFER-001**
+Affected generations/games: III → IV; native PK3/PK4
+Audited application revision: `fecfbca9b0323578fd423f5d90486ddb2d0da72e`
+Estimated complexity: **Medium for evidence; High for global closure**
 Evidence confidence: **B**, subject to the precise scope below.
 
 ## Current implementation and wiring

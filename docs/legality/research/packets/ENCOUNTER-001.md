@@ -1,9 +1,9 @@
 # ENCOUNTER-001 — Audit encounter conditions without treating table absence as impossibility
 
-Research ID: **ENCOUNTER-001**  
-Affected generations/games: I–IV coverage inventory, detailed normalized IV categories  
-Audited application revision: `fecfbca9b0323578fd423f5d90486ddb2d0da72e`  
-Estimated complexity: **Medium**  
+Research ID: **ENCOUNTER-001**
+Affected generations/games: I–IV coverage inventory, detailed normalized IV categories
+Audited application revision: `fecfbca9b0323578fd423f5d90486ddb2d0da72e`
+Estimated complexity: **Medium**
 Evidence confidence: **B**, subject to the precise scope below.
 
 ## Current implementation and wiring

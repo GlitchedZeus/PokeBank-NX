@@ -1,9 +1,9 @@
 # META-001 — Native ribbon chains and raw-text capability boundaries
 
-Research ID: **META-001**  
-Affected generations/games: III–IV with immediate bounded IV ribbon work  
-Audited application revision: `fecfbca9b0323578fd423f5d90486ddb2d0da72e`  
-Estimated complexity: **Medium**  
+Research ID: **META-001**
+Affected generations/games: III–IV with immediate bounded IV ribbon work
+Audited application revision: `fecfbca9b0323578fd423f5d90486ddb2d0da72e`
+Estimated complexity: **Medium**
 Evidence confidence: **B**, subject to the precise scope below.
 
 ## Current implementation and wiring

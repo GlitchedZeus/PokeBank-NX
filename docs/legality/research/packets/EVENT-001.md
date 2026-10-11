@@ -1,9 +1,9 @@
 # EVENT-001 — Event template projection loses moves, text and ribbons
 
-Research ID: **EVENT-001**  
-Affected generations/games: III–IV events, with exact field audit of IV WC4/PCD  
-Audited application revision: `fecfbca9b0323578fd423f5d90486ddb2d0da72e`  
-Estimated complexity: **Medium for projection; High for historical closure**  
+Research ID: **EVENT-001**
+Affected generations/games: III–IV events, with exact field audit of IV WC4/PCD
+Audited application revision: `fecfbca9b0323578fd423f5d90486ddb2d0da72e`
+Estimated complexity: **Medium for projection; High for historical closure**
 Evidence confidence: **B**, subject to the precise scope below.
 
 ## Current implementation and wiring

@@ -1,9 +1,9 @@
 # MOVE-003 — Shedinja copies an evolution-time moveset, not Ninjask’s lifetime pool
 
-Research ID: **MOVE-003**  
-Affected generations/games: III–IV; retail independent confirmation here is Emerald  
-Audited application revision: `fecfbca9b0323578fd423f5d90486ddb2d0da72e`  
-Estimated complexity: **High**  
+Research ID: **MOVE-003**
+Affected generations/games: III–IV; retail independent confirmation here is Emerald
+Audited application revision: `fecfbca9b0323578fd423f5d90486ddb2d0da72e`
+Estimated complexity: **High**
 Evidence confidence: **B**, subject to the precise scope below.
 
 ## Current implementation and wiring
