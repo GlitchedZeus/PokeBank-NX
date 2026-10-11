@@ -135,7 +135,8 @@ Legality::Report analyzeSourceFreeNativeGen4Moves(
 
 Legality::Report analyzeDetachedPalParkMoves(
         uint8_t originalVersion,uint16_t move1,uint16_t move2,
-        bool exactSource=false,bool withPalParkMarker=true) {
+        bool exactSource=false,bool withPalParkMarker=true,
+        bool incompatibleBall=false,bool invalidSplit=false) {
     std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
     wr32(raw,0x00,0x12345678u);
     wr16(raw,0x08,25); // Pikachu, available in original Gen III.
@@ -146,10 +147,10 @@ Legality::Report analyzeDetachedPalParkMoves(
     wr16(raw,0x2A,move2);
     raw[0x17]=std::byte{2};
     raw[0x5F]=static_cast<std::byte>(originalVersion);
-    raw[0x83]=std::byte{4};  // Gen III Poké Ball retained.
+    raw[0x83]=static_cast<std::byte>(incompatibleBall ? 13 : 4);
     if(withPalParkMarker) {
-        wr16(raw,0x80,0x37); // D/P Pal Park.
-        wr16(raw,0x46,0x37); // Pt/HGSS Pal Park extension.
+        wr16(raw,0x80,invalidSplit ? 0x36 : 0x37);
+        wr16(raw,0x46,0x37);
     }
     const auto encrypted=Encryption::encryptArray4(raw);
     Pokemon::Pokemon4ReadOnly pk(encrypted,Enums::GameVersion::PT);
@@ -836,6 +837,23 @@ int main() {
     assert(hasInfo(actualPalMoves,
         "all nonempty move slots have at least one audited Gen III or IV"));
     assert(!hasInvalidText(actualPalMoves,stagePrefix));
+    // A Pal Park marker in the extended field is insufficient when
+    // either the D/P split location or the Gen III ball bytes contradict
+    // the transfer. Structural Invalid remains independently reported.
+    using namespace Legality::Gen34PalParkMoves;
+    static_assert(verifiedTransferFields(0x37,0x37,4,0,false));
+    static_assert(verifiedTransferFields(0x37,0,4,0,false));
+    static_assert(!verifiedTransferFields(0x36,0x37,4,0,false));
+    static_assert(!verifiedTransferFields(0x37,0x37,13,0,false));
+    static_assert(!verifiedTransferFields(0x37,0x37,4,0,true));
+    const auto badSplitStage=analyzeDetachedPalParkMoves(
+        2,85,363,false,true,false,true);
+    assert(hasInvalidText(badSplitStage,"inconsistent D/P and Pt/HGSS"));
+    assert(!hasText(badSplitStage,stagePrefix));
+    const auto badBallStage=analyzeDetachedPalParkMoves(
+        2,85,363,false,true,true,false);
+    assert(hasInvalidText(badBallStage,"split-ball fields are inconsistent"));
+    assert(!hasText(badBallStage,stagePrefix));
     const auto unknownPal=analyzeDetachedPalParkMoves(2,85,467);
     assert(!hasInfo(unknownPal,
         "all nonempty move slots have at least one audited Gen III or IV"));

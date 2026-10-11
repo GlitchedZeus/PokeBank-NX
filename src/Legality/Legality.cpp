@@ -1671,8 +1671,9 @@ namespace Legality {
                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
                    Gen4Origin::kind(pk.originGame()) ==
                        Gen4Origin::Kind::Gen3Handheld &&
-                   pk.metLocation() == Gen4Transfer::kPalParkMetLocation &&
-                   !pk.isEgg()) {
+                   Gen34PalParkMoves::verifiedTransferFields(
+                       pk.gen4MetLocationDP(),pk.gen4MetLocationExtended(),
+                       pk.gen4BallDPPt(),pk.gen4BallHGSS(),pk.isEgg())) {
             // The native encrypted PK4 and Pal Park marker are verified.
             // Stored GBA origin remains independently recoverable without
             // the original .sav; no simulated trade or save write occurs.

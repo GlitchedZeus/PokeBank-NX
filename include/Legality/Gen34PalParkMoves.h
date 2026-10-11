@@ -4,11 +4,26 @@
 // acquisition timing, parents, transfer routes or actual trade history.
 #include "Integration/Gen3/Gen3LearnsetTable.h"
 #include "Integration/Gen4/Gen4MoveCompatibility.h"
+#include "Legality/Gen4TransferEvidence.h"
 #include <array>
 #include <cstdint>
 
 namespace Legality::Gen34PalParkMoves {
 using Source=PokeVault::Integration::Gen3::SourceGame;
+
+// Positive move-stage provenance requires a structurally consistent Pal
+// Park marker AND the stored Gen III Ball bytes. Merely finding the marker
+// in one PK4 field cannot justify source/migration provenance when the
+// other split fields contradict it.
+constexpr bool verifiedTransferFields(
+        uint16_t metDP,uint16_t metExtended,
+        uint8_t ballDPPt,uint8_t ballHGSS,bool egg) noexcept {
+    const auto e=Gen4Transfer::classifyStoredFields(
+        3,metDP,metExtended,egg);
+    return (e==Gen4Transfer::Evidence::PalParkDiamondPearlFields ||
+            e==Gen4Transfer::Evidence::PalParkPtHgssFields) &&
+           Gen4Transfer::validPalParkBallFields(e,ballDPPt,ballHGSS);
+}
 
 struct Result {
     uint8_t storedMoves=0;
