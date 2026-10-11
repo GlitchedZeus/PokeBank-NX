@@ -193,6 +193,7 @@ namespace Panels {
         const int startIdx = screen.currentPage * itemsPerPage;
         const int endIdx = std::min(startIdx + itemsPerPage, total);
         int ry = y + hH + 40;
+        std::string selectedGscMail;
         for (int i = startIdx; i < endIdx; ++i) {
             const InventoryItem& item = pouch[visible[i]];
             const bool selected = screen.detailViewActive && i == screen.selectedItemIndex;
@@ -238,6 +239,8 @@ namespace Panels {
             std::string artworkKey = ClassicMachineArtwork::artKey(
                 gameGroup, item.itemId);
             const std::string normalized = ItemSpriteKey::slug(displayName);
+            if (selected && gscSource && ItemSpriteKey::isGen2Mail(normalized))
+                selectedGscMail = normalized;
             const bool machine = ItemSpriteKey::isTM(normalized) ||
                                  ItemSpriteKey::isHM(normalized);
             if (artworkKey.empty() && !machine)
@@ -262,6 +265,27 @@ namespace Panels {
                         cnt, selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
             screen.touchButtons.push_back({ i, tileX, ry, tileW, tileH });
             ry += rowPitch;
+        }
+
+        // Generation II mail is full 160x144 stationery, not a Gen III/IV
+        // miniature icon. Display the authentic-source artwork at a useful
+        // size only where the HOME-wide Items layout has spare room; never
+        // cover the list or its touch targets.
+        const int previewX = tileX + tileW + 12;
+        if (!selectedGscMail.empty() && previewX + 174 <= x + width - 8) {
+            auto* art = SpriteManager::getItemSprite(selectedGscMail);
+            if (art && art->data && art->width == 160 && art->height == 144) {
+                const int previewY = y + hH + 74;
+                fb.drawFilledRoundedRect(previewX, previewY, 174, 193, 12,
+                                         Colors::PanelAlt);
+                fb.drawText(previewX + 10, previewY + 10, "GSC Mail",
+                            Colors::Text, TextStyle::Caption);
+                fb.drawSpriteStaticContained(previewX + 7, previewY + 33,
+                                             160, 144, art->width, art->height,
+                                             art->data, art->channels);
+                fb.drawText(previewX + 12, previewY + 180, "Stationery",
+                            Colors::TextSecondary, TextStyle::Caption);
+            }
         }
     }
 }
