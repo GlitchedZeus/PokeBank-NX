@@ -55,6 +55,32 @@ void runCases() {
     assert(E::evaluate(identical).status==E::Status::CandidateConsistent);
     auto tooMany=in;tooMany.stepCount=25;
     assert(E::evaluate(tooMany).status==E::Status::IncompleteTrainingHistory);
+    // Walk the entire independently pinned 386-species / 3,947-move
+    // Emerald resource under the real host and sanitizer compilers.
+    // Validate ordered levels, full 0..354 move domain and stage
+    // capacity for ALL species rather than only one Bulbasaur fixture.
+    namespace Table=Legality::Gen3EmeraldLevelUp;
+    assert(Table::kEmeraldLevelOffsets[387]==3947);
+    uint32_t verifiedEntries=0;
+    uint16_t maximumOffers=0;
+    for(uint16_t species=1;species<=386;++species) {
+        const auto begin=Table::kEmeraldLevelOffsets[species];
+        const auto end=Table::kEmeraldLevelOffsets[species+1];
+        assert(end>begin && end-begin<=24);
+        if(end-begin>maximumOffers)
+            maximumOffers=static_cast<uint16_t>(end-begin);
+        uint8_t lastLevel=0;
+        for(uint16_t i=begin;i<end;++i) {
+            const uint16_t packed=Table::kEmeraldPackedLevelMoves[i];
+            const uint8_t level=static_cast<uint8_t>(packed>>9);
+            const uint16_t move=packed&511u;
+            assert(level>=1 && level<=100 && level>=lastLevel);
+            assert(move>=1 && move<=354);
+            lastLevel=level;
+            ++verifiedEntries;
+        }
+    }
+    assert(verifiedEntries==3947 && maximumOffers==17);
     assert(Legality::Gen3EmeraldLevelUp::firstLevelBetween(1,73,5,10)==7);
     assert(Legality::Gen3EmeraldLevelUp::firstLevelBetween(1,79,14,15)==15);
 }
