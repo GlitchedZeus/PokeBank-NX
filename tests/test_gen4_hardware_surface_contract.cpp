@@ -297,6 +297,14 @@ int main() {
     assert(addAt!=std::string::npos && addEnd>addAt && editEnd>quantityEntryAt);
     const auto addPath=surface.substr(addAt,addEnd-addAt);
     const auto editPath=surface.substr(quantityEntryAt,editEnd-quantityEntryAt);
+    // Modal touch taps select the displayed native ID; swipes only move
+    // the nine-row presentation and may never synthesize the Add action.
+    contains(addPath,"const TouchInput& touch");
+    contains(addPath,"touch.justReleased() && touch.dragged()");
+    contains(addPath,"touch.justTapped()");
+    contains(addPath,"startRow==endRow && selected<size");
+    contains(addPath,"keys|=HidNpadButton_A");
+    contains(addPath,"Gen4ItemListWindow::first(");
     contains(addPath,"Utils::promptNumber(");
     contains(editPath,"Utils::promptNumber(");
     contains(addPath,"if(!r.accepted)return true;");
