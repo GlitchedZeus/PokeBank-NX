@@ -1,6 +1,8 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen4BoxTouchActions.h"
 #include "UI/Gen4BoxMoveNavigation.h"
+#include "UI/Gen4DataPresentation.h"
+#include "UI/Gen4ItemListWindow.h"
 #include "UI/ItemSpriteKey.h"
 
 #include <cassert>
@@ -55,9 +57,33 @@ int main() {
     static_assert(MoveNav::navigate({17,0}, Direction::JumpForward).box == 4);
     static_assert(MoveNav::navigate({0,29}, Direction::Left).slot == 28);
 
+    // An up-wrap from 1/13 to 13/13 shows a full 9-row window, not
+    // an almost-empty 4-row final page. Selection stays visible throughout.
+    namespace ItemWindow = PokeBank::UIModel::Gen4ItemListWindow;
+    static_assert(ItemWindow::first(0, 13) == 0);
+    static_assert(ItemWindow::first(4, 13) == 0);
+    static_assert(ItemWindow::first(5, 13) == 1);
+    static_assert(ItemWindow::first(12, 13) == 4);
+    static_assert(ItemWindow::first(3, 4) == 0);
+    static_assert(ItemWindow::first(0, 0) == 0);
+
+    // PK4 PC markings and Pokérus are real fields, never a fake decimal
+    // summary. High unknown marking bits remain explicitly visible.
+    namespace Data = PokeBank::UIModel::Gen4DataPresentation;
+    assert(Data::markings(0) == "None");
+    assert(Data::markings(0x01) == "Cir");
+    assert(Data::markings(0x09) == "Cir Hrt");
+    assert(Data::markings(0x3f) == "Cir Tri Sq Hrt Star Dia");
+    assert(Data::markings(0x40) == "Other bits");
+    assert(std::string(Data::pokerus(0)) == "None");
+    assert(std::string(Data::pokerus(0x10)) == "Cured");
+    assert(std::string(Data::pokerus(0x12)) == "Infected");
+
     // Every generation shares the same genuine-art name resolver.
     assert(UI::ItemSpriteKey::slug("Thunderstone") == "thunder-stone");
     assert(UI::ItemSpriteKey::slug("X Defend") == "x-defense");
+    assert(UI::ItemSpriteKey::slug("X Special") == "x-sp-atk");
+    assert(UI::ItemSpriteKey::slug("Exp. All") == "exp-share");
     assert(UI::ItemSpriteKey::slug("Itemfinder") == "itemfinder");
     assert(UI::ItemSpriteKey::slug("DeepSeaTooth") == "deep-sea-tooth");
     assert(UI::ItemSpriteKey::slug("TM27 — Return") == "tm27");
@@ -104,6 +130,9 @@ int main() {
     assert(goBack && !saveConfirmActive && !exitingWithUnsavedChanges);
 
     const auto surface = read("src/UI/Gen4SharedPokemonSurface.inc");
+    contains(surface, "Gen4ItemListWindow::first(");
+    contains(surface, "Gen4DataPresentation::markings(raw->markings())");
+    contains(surface, "Gen4DataPresentation::pokerus(raw->pokerusState())");
     const auto moveCompatibility = read("include/Integration/Gen4/Gen4MoveCompatibility.h");
     const auto composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp");
     const auto bridge = read("src/Legacy/Gen4ReadOnlyTrainer.cpp");
