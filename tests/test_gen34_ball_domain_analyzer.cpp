@@ -961,6 +961,8 @@ int main() {
     assert(!hasText(gamecubeExact,gcFree));
     assert(!hasText(analyzeDetachedPalParkMoves(15,85,468),gcFree));
     assert(!hasText(analyzeDetachedPalParkMoves(15,85,354),gcFree));
+    assert(!hasText(analyzeDetachedPalParkMoves(15,85,363,false,true,false,false,387),gcFree));
+    assert(!hasText(analyzeDetachedPalParkMoves(15,85,363,true,true,false,false,387),gcExact));
     assert(!hasText(analyzeDetachedPalParkMoves(15,85,363,false,false),gcFree));
     assert(!hasText(analyzeDetachedPalParkMoves(
         15,85,363,false,true,false,true),gcFree));
