@@ -27,8 +27,23 @@ require(touch_cpp, "src/UI/TouchInput.cpp",
         "constexpr int kTapSlop = 22",
         "return maxDistanceSquared > (kTapSlop * kTapSlop);")
 
+# Bag category arrows are distinct from row targets and remain active
+# for empty pockets; they must map into the established L/R action path.
+items_panel = read("src/UI/Panels/ItemsPanel.cpp")
+require(items_panel, "src/UI/Panels/ItemsPanel.cpp",
+        "CategoryTouch::PreviousId", "CategoryTouch::NextId",
+        "screen.touchButtons.push_back({CategoryTouch::PreviousId",
+        "screen.touchButtons.push_back({CategoryTouch::NextId")
+category_contract = read("include/UI/InventoryUIContract.h")
+require(category_contract, "include/UI/InventoryUIContract.h",
+        "struct InventoryCategoryTouch", "PreviousId = -20",
+        "NextId = -21")
+
 base = read("src/UI/TrainerViewScreenBase.inc")
 require(base, "src/UI/TrainerViewScreenBase.inc",
+        "categoryTouchId == PokeBank::UIModel::InventoryCategoryTouch::PreviousId",
+        "categoryTouchId == PokeBank::UIModel::InventoryCategoryTouch::NextId",
+
         "int TrainerViewScreen::touchedButtonDownId",
         "if (!touch.justTouchedDown()) return -1;",
         "int TrainerViewScreen::touchedButtonId",
