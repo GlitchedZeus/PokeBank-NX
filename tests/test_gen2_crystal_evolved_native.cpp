@@ -35,7 +35,12 @@ Legality::Report report(uint16_t species, uint8_t level,
     rec.level=level;
     rec.trainerId=12345;
     rec.experience=static_cast<uint32_t>(level)*level*level;
-    rec.moves={firstMove,0,0,0};
+    // Native PK2 move slots are bytes. Source-proof boundary vectors
+    // 251/252 fit in one byte, but the fixture accepts uint16_t to make
+    // the requested move explicit. Do not implicitly narrow a runtime
+    // value under -Werror.
+    assert(firstMove<=255);
+    rec.moves={static_cast<uint8_t>(firstMove),0,0,0};
     rec.pp={35,0,0,0};
     rec.dvs={12,8,9,10,11};
     rec.friendship=70;
