@@ -67,6 +67,7 @@
 #include "Legality/Gen34EggMoveEvidence.h"
 #include "Legality/Gen3JointMoveEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
+#include "Legality/Gen34PalParkMoves.h"
 #include "Legality/Gen34LanguageEvidence.h"
 #include "Legality/Gen34BallDomainEvidence.h"
 #include "Legality/Gen34FormatDomainEvidence.h"
@@ -1636,6 +1637,56 @@ namespace Legality {
                         " distinct Gen III game pools are needed in the audited data; event, breeding, tutor and actual trade histories unresolved",
                         CheckIdentifier::Moves);
                 }
+            }
+        } else if (!sourceProfile &&
+                   Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
+                   Gen4Origin::kind(pk.originGame()) ==
+                       Gen4Origin::Kind::Gen3Handheld &&
+                   pk.metLocation() == Gen4Transfer::kPalParkMetLocation &&
+                   !pk.isEgg()) {
+            // The native encrypted PK4 and Pal Park marker are verified.
+            // Stored GBA origin remains independently recoverable without
+            // the original .sav; no simulated trade or save write occurs.
+            PokeVault::Integration::Gen3::SourceGame original=
+                PokeVault::Integration::Gen3::SourceGame::RubyGBA;
+            if(exactGen3Source(Gen4Origin::exactGen3GameId(pk.originGame()),
+                               original)) {
+                const std::array<uint16_t,4> moves{
+                    pk.move(0),pk.move(1),pk.move(2),pk.move(3)
+                };
+                const auto stage=Gen34PalParkMoves::classify(
+                    original,species,pk.form(),moves);
+                if(stage.gen4StorageOnly) {
+                    add(r,Severity::Info,
+                        "Source-free Pal Park PK4 move-stage evidence: " +
+                        std::to_string(stage.gen4StorageOnly) +
+                        " stored move(s) exceed the Gen III PK3 move-ID ceiling; a legitimate history requires post-migration acquisition, but its method remains unresolved",
+                        CheckIdentifier::Moves);
+                }
+                if(stage.originalGbaCompatible) {
+                    add(r,Severity::Info,
+                        "Source-free Pal Park PK4 move-stage evidence: " +
+                        std::to_string(stage.originalGbaCompatible) +
+                        " stored move(s) occur in the audited original GBA game's move pool; retention versus later learning remains unresolved",
+                        CheckIdentifier::Moves);
+                }
+                if(stage.otherGbaCompatible) {
+                    add(r,Severity::Info,
+                        "Source-free Pal Park PK4 move-stage evidence: some stored moves occur in other Gen III game pools; original trade and inheritance history unresolved",
+                        CheckIdentifier::Moves);
+                }
+                if(stage.gen4CompatibleOnly) {
+                    add(r,Severity::Info,
+                        "Source-free Pal Park PK4 move-stage evidence: some stored moves have audited Gen IV compatibility without a matching Gen III pool; timing and acquisition method unresolved",
+                        CheckIdentifier::Moves);
+                }
+                if(stage.allAudited()) {
+                    add(r,Severity::Info,
+                        "Source-free Pal Park PK4 move-stage evidence: all nonempty move slots have at least one audited Gen III or IV game-pool candidate; joint acquisition history unresolved",
+                        CheckIdentifier::Moves);
+                }
+                // An unmodeled slot suppresses joint evidence, never marks
+                // the Pokemon Invalid, nor implies a fake transfer event.
             }
         } else if (!sourceProfile &&
                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&

@@ -3,6 +3,7 @@
 #include "Legality/Gen4TradeEvidence.h"
 #include "Legality/Gen3JointMoveEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
+#include "Legality/Gen34PalParkMoves.h"
 #include "Legality/Gen4RangerManaphy.h"
 #include "Legality/Gen4EventTemplate.h"
 #include "Names/ItemNames.h"
@@ -130,6 +131,36 @@ Legality::Report analyzeSourceFreeNativeGen4Moves(
     assert(pk.moves()[0]==first && pk.moves()[1]==second);
     Pokemon::Pokemon4ReadOnlyView view(pk);
     return Legality::analyze(view,Enums::GameVersion::PT);
+}
+
+Legality::Report analyzeDetachedPalParkMoves(
+        uint8_t originalVersion,uint16_t move1,uint16_t move2,
+        bool exactSource=false,bool withPalParkMarker=true) {
+    std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
+    wr32(raw,0x00,0x12345678u);
+    wr16(raw,0x08,25); // Pikachu, available in original Gen III.
+    wr16(raw,0x0C,12345);
+    wr16(raw,0x0E,54321);
+    wr32(raw,0x10,3375);
+    wr16(raw,0x28,move1);
+    wr16(raw,0x2A,move2);
+    raw[0x17]=std::byte{2};
+    raw[0x5F]=static_cast<std::byte>(originalVersion);
+    raw[0x83]=std::byte{4};  // Gen III Poké Ball retained.
+    if(withPalParkMarker) {
+        wr16(raw,0x80,0x37); // D/P Pal Park.
+        wr16(raw,0x46,0x37); // Pt/HGSS Pal Park extension.
+    }
+    const auto encrypted=Encryption::encryptArray4(raw);
+    Pokemon::Pokemon4ReadOnly pk(encrypted,Enums::GameVersion::PT);
+    assert(pk.valid() && pk.checksumValid());
+    assert(pk.originVersion()==originalVersion);
+    assert(pk.moves()[0]==move1 && pk.moves()[1]==move2);
+    Pokemon::Pokemon4ReadOnlyView view(pk);
+    if(withPalParkMarker)assert(view.metLocation()==0x37);
+    return exactSource
+        ? Legality::analyze(view,Enums::GameVersion::PT,"platinum_nds")
+        : Legality::analyze(view,Enums::GameVersion::PT);
 }
 
 Legality::Report analyzeNativeHgssSpecialBall(
@@ -779,6 +810,45 @@ int main() {
     assert(!hasText(nativeUnknownOrigin,"Source-free native PK4 joint move bound"));
     const auto palParkStillGen3=analyzeSourceFreeNativeGen4Moves(2,6,29,432);
     assert(!hasText(palParkStillGen3,"Source-free native PK4 joint move bound"));
+
+    // Cross-generation historical move-STAGE evidence: Pikachu's
+    // Thunderbolt #85 is in Ruby's GBA pool; #363 exists only in the PK4
+    // move-ID domain and Gen IV Pikachu pool. No actual learning claim.
+    using G34Source=PokeVault::Integration::Gen3::SourceGame;
+    const auto palSet=Legality::Gen34PalParkMoves::classify(
+        G34Source::RubyGBA,25,0,std::array<uint16_t,4>{85,363,0,0});
+    assert(palSet.storedMoves==2);
+    assert(palSet.originalGbaCompatible==1);
+    assert(palSet.gen4StorageOnly==1);
+    assert(palSet.gen4CompatibleOnly==1);
+    assert(palSet.allAudited());
+    const auto unknownPalSet=Legality::Gen34PalParkMoves::classify(
+        G34Source::RubyGBA,25,0,std::array<uint16_t,4>{85,467,0,0});
+    assert(unknownPalSet.gen4StorageOnly==1);
+    assert(unknownPalSet.unmodeled==1 && !unknownPalSet.allAudited());
+
+    constexpr auto stagePrefix="Source-free Pal Park PK4 move-stage evidence:";
+    const auto actualPalMoves=analyzeDetachedPalParkMoves(2,85,363);
+    assert(hasInfo(actualPalMoves,
+        "stored move(s) exceed the Gen III PK3 move-ID ceiling"));
+    assert(hasInfo(actualPalMoves,
+        "stored move(s) occur in the audited original GBA game"));
+    assert(hasInfo(actualPalMoves,
+        "all nonempty move slots have at least one audited Gen III or IV"));
+    assert(!hasInvalidText(actualPalMoves,stagePrefix));
+    const auto unknownPal=analyzeDetachedPalParkMoves(2,85,467);
+    assert(!hasInfo(unknownPal,
+        "all nonempty move slots have at least one audited Gen III or IV"));
+    // A non-Pal-Park native Gen IV origin, an absent transfer marker and an
+    // exact physical source cannot inherit source-free stage assertions.
+    assert(!hasText(analyzeDetachedPalParkMoves(10,85,363),
+                    stagePrefix));
+    assert(!hasText(analyzeDetachedPalParkMoves(2,85,363,false,false),
+                    stagePrefix));
+    assert(!hasText(analyzeDetachedPalParkMoves(2,85,363,true),
+                    stagePrefix));
+    assert(!hasText(analyzeDetachedPalParkMoves(0,85,363),
+                    stagePrefix));
 
     // Native Gen III -> IV Pal Park records retain origin and split
     // fields independently of an exact container game/source save ID.
