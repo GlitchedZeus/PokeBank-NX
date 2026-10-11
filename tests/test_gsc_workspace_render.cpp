@@ -190,6 +190,7 @@ int main() {
     assert(Held::spriteName(218) == "tm-normal");
     assert(Held::spriteName(219) == "tm-ground");
     assert(Held::spriteName(243) == "hm-normal");
+    assert(Held::spriteName(193) == "tm-unknown"); // Original GSC ??? Curse TM03
     assert(Held::spriteName(0) == "None");
     // GSC bag/held modal uses dedicated 32px original-game motifs; the
     // corresponding 160x144 stationery is presented only in the mail preview.
