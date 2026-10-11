@@ -25,6 +25,7 @@
 #include "UI/NaturePickerLayout.h"
 #include "UI/ItemPickerArtwork.h"
 #include "UI/Gen4BoxMoveNavigation.h"
+#include "UI/Gen4BoxMoveMode.h"
 #include "UI/Gen4DataPresentation.h"
 #include "UI/Gen4ItemListWindow.h"
 #include "UI/ScreenChrome.h"
@@ -59,9 +60,7 @@ enum class PickerTarget : uint8_t {
     None, Species, HeldItem, Language, Ball, MetLocation, Pokerus, Form, Move, Nature, Ability
 };
 enum class TargetKind : uint8_t { Box, Party };
-// Mirror PKSE Storage: Y cycles Menu -> Move -> Multi. X deliberately
-// picks a single slot or anchors a rectangle; A/Y places carried records.
-enum class BoxMoveMode : uint8_t { Menu, Move, Multi };
+namespace BoxMove = PokeBank::UIModel::Gen4BoxMoveControl;
 
 enum class MenuAction : uint8_t {
     View, AddMasterVault, AddBank, TransferGame, Edit, MovePokemon, Clone, MakeShiny,
@@ -83,7 +82,7 @@ struct State {
     bool actions = false;
     bool review = false;
     bool moveActive = false;
-    BoxMoveMode boxMoveMode = BoxMoveMode::Menu;
+    BoxMove::Mode boxMoveMode = BoxMove::Mode::Menu;
     int moveSourceBox = 0;
     int moveSourceSlot = 0;
     // Y grabs a single Pokemon. X on an occupied box slot enters the
@@ -2915,13 +2914,10 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     // when the anchor is empty), just like Storage's pickupMulti().
     if (boxEntry && (navigated & HidNpadButton_Y)) {
         auto& movement = stateFor(screen);
-        movement.boxMoveMode =
-            movement.boxMoveMode == BoxMoveMode::Menu ? BoxMoveMode::Move :
-            movement.boxMoveMode == BoxMoveMode::Move ? BoxMoveMode::Multi :
-            BoxMoveMode::Menu;
-        const char* message = movement.boxMoveMode == BoxMoveMode::Menu
+        movement.boxMoveMode = BoxMove::next(movement.boxMoveMode);
+        const char* message = movement.boxMoveMode == BoxMove::Mode::Menu
             ? "Box mode: Menu (A actions)"
-            : movement.boxMoveMode == BoxMoveMode::Move
+            : movement.boxMoveMode == BoxMove::Mode::Move
             ? "Box mode: Move (X grab, A drop)"
             : "Box mode: Multi (X anchor rectangle, X grab, A drop)";
         screen.postStatus(message, 300);
@@ -2929,14 +2925,14 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
         return true;
     }
     if (boxEntry && (navigated & HidNpadButton_X) &&
-        state.boxMoveMode != BoxMoveMode::Menu) {
+        state.boxMoveMode != BoxMove::Mode::Menu) {
         auto* staged = editor(screen);
         if (!staged) {
             screen.postStatus("Move requires a validated staged Gen IV save", 260);
             return true;
         }
-        const bool multi = state.boxMoveMode == BoxMoveMode::Multi;
-        if (!multi && !selectedOccupied(screen)) {
+        const bool multi = state.boxMoveMode == BoxMove::Mode::Multi;
+        if (!BoxMove::canPickUp(state.boxMoveMode, selectedOccupied(screen))) {
             screen.postStatus("Select an occupied Pokemon to move", 220);
             return true;
         }
