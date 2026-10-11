@@ -750,6 +750,14 @@ void drawVisual(PKSEFramebuffer& fb, const CarriedVisual& visual, int cx, int cy
 
 } // namespace
 
+bool beginGen4FromAction(TrainerViewScreen& screen, int box, int slot) {
+    if (!isGen4(screen) || box < 0 || box >= 18 || slot < 0 || slot >= 30)
+        return false;
+    auto& state = stateFor(screen);
+    if (state.active || state.selecting || state.yPending) return false;
+    return beginGen4(screen, state, box, slot, {static_cast<std::size_t>(slot)});
+}
+
 bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                  int stickX, int stickY, const TouchInput& touch) {
     auto& state = stateFor(screen);
@@ -924,6 +932,21 @@ void draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     if (state.active && screen.selectedMode == TrainerViewScreen::ViewMode::Boxes &&
         screen.detailViewActive && screen.selectedItemIndex >= 0) {
+        // Gens I-III visibly lift their source sprites while carried. Gen IV
+        // defers its native PK4 transaction until Y places, so mask those
+        // source cells in the rendered box instead of altering staged data
+        // before confirmation. This is presentation-only and reversible.
+        if (state.generation == CarryGeneration::Gen4 &&
+            screen.selectedBoxIndex == state.sourceBox) {
+            for (const auto& button : screen.touchButtons) {
+                if (button.id < 0 || button.id >= 30) continue;
+                if (std::find(state.gen4SourceSlots.begin(), state.gen4SourceSlots.end(),
+                              static_cast<std::size_t>(button.id)) == state.gen4SourceSlots.end())
+                    continue;
+                fb.drawFilledRoundedRect(button.x + 2, button.y + 2,
+                    button.w - 4, button.h - 4, 9, Colors::Panel);
+            }
+        }
         const auto* cell = selectedCell(screen);
         if (!cell) return;
         const int cx = cell->x + cell->w / 2;
