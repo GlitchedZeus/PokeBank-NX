@@ -2027,7 +2027,11 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
             return label + " / Lv. " + std::to_string(raw->metLevel());
         }()},
         {"Source", "IMMUTABLE"},
-        {"Create", state.session.creating() ? "New stored PK4 draft" : "Available in empty PC slots"}
+        {"Record", state.session.creating() ? "New PK4 draft" : "Stored PK4"},
+        {"Fateful", raw->fatefulEncounter() ? "Yes" : "No"},
+        {"Egg status", raw->isEgg() ? "Unhatched" : "Not egg"},
+        {"OT gender", raw->originalTrainerGender() == 0 ? "Male" : "Female"},
+        {"Markings", std::to_string(raw->markings())}
     };
     SharedPokemonShell::drawDataAndGraph(
         fb, g.rightX, g.y + 244, g.rightW, g.h - 256, "GEN IV DATA", rows, stats);
