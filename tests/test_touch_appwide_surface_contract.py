@@ -134,6 +134,16 @@ if "state.pickerRow = hit.id" in inventory_contact or "state.reviewRow = hit.id"
     raise AssertionError("Classic Inventory: contact must not steal picker/review focus")
 require_all("src/UI/ClassicInventoryOverlay.cpp",
             "state.pickerRow = touchId;", "state.reviewRow = touchId;")
+# A single tap on an occupied Pokémon must open the same real staged action
+# surface across Gen I–IV. Native Gen II actions also publish direct row hitboxes.
+require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
+            "screen.selectedItemIndex = target;", "input |= HidNpadButton_A;")
+require_all("src/UI/Gen2SharedSurfaceParity.inc",
+            "screen.selectedItemIndex = tappedSlot;", "|| boxTap",
+            "screen.touchButtons.push_back({31600 + static_cast<int>(i)")
+require_all("src/UI/Gen2SharedPokemonSurface.inc",
+            "const int touched = screen.touchedButtonId(touch);",
+            "legacy.pokemonRow = touched - 31600;")
 # A visible Gen III/IV Pokémon tap must route to the SAME native action sheet as A;
 # the inherited generic action sheet cannot edit or clone staged Pokémon.
 require_all("src/UI/Gen3SharedPokemonSurface.inc",
