@@ -4229,6 +4229,14 @@ namespace UI {
                     requireMutableWorkspace();
                     kDown &= ~(HidNpadButton_A | HidNpadButton_X | HidNpadButton_Y);
                 }
+                // Shared ItemsPanel header hitboxes navigate pockets by touch,
+                // including an empty native Gen IV bag pocket. Reuse the same
+                // guarded L/R navigation path as the physical controller.
+                const int categoryTouchId = touchedButtonId(touch);
+                if (categoryTouchId == PokeBank::UIModel::InventoryCategoryTouch::PreviousId)
+                    kDown |= HidNpadButton_L;
+                else if (categoryTouchId == PokeBank::UIModel::InventoryCategoryTouch::NextId)
+                    kDown |= HidNpadButton_R;
                 const auto inventoryActionPressed = [&](PokeBank::UIModel::InventoryAction action) {
                     using PokeBank::UIModel::InventoryInput;
                     return ((kDown & HidNpadButton_A) && PokeBank::UIModel::inventoryAction(InventoryInput::A) == action)
