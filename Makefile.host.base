@@ -151,6 +151,8 @@ HOST_TESTS += $(HOST_BUILD)/test_gen4_hatch_location_evidence
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_hatch_location_evidence_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen34_egg_moves
 HOST_TESTS += $(HOST_BUILD)/test_gen14_candidate_move_history
+HOST_TESTS += $(HOST_BUILD)/test_gen3_egg_iv_inheritance_stage
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_egg_iv_inheritance_stage_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_egg_moves_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen14_candidate_move_history_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen4_wild_rng_correlation
@@ -287,6 +289,14 @@ $(HOST_BUILD)/test_gen4_hatch_location_evidence: tests/test_gen4_hatch_location_
 $(HOST_BUILD)/test_gen4_hatch_location_evidence_sanitize: tests/test_gen4_hatch_location_evidence.cpp include/Legality/Gen4HatchLocationEvidence.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_hatch_location_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_egg_iv_inheritance_stage: tests/test_gen3_egg_iv_inheritance_stage.cpp include/Legality/Gen3EggIVInheritanceStage.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen3_egg_iv_inheritance_stage.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_egg_iv_inheritance_stage_sanitize: tests/test_gen3_egg_iv_inheritance_stage.cpp include/Legality/Gen3EggIVInheritanceStage.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_egg_iv_inheritance_stage.cpp -o $@
 
 $(HOST_BUILD)/test_gen14_candidate_move_history: tests/test_gen14_candidate_move_history.cpp include/Legality/Gen14CandidateMoveHistory.h
 	@mkdir -p $(HOST_BUILD)
