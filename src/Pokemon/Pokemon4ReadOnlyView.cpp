@@ -104,6 +104,18 @@ uint16_t Pokemon4ReadOnlyView::eggLocation() const noexcept {
         return source_.eggLocationExtended();
     return source_.eggLocationDP();
 }
+bool Pokemon4ReadOnlyView::gen4ContestRibbonRanks(
+        std::array<uint8_t,5>& out) const noexcept {
+    if(!source_.valid() || !source_.checksumValid() || source_.empty())
+        return false;
+    // Native PK4 decrypted raw 0x60..0x62: five consecutive 4-bit
+    // Sinnoh contest ranks, Cool / Beauty / Cute / Smart / Tough.
+    // The data is read-only; unsupported Pokemon types return Unavailable.
+    const uint32_t bits=source_.ribbons()[2];
+    for(size_t i=0;i<out.size();++i)
+        out[i]=static_cast<uint8_t>((bits>>(4u*i))&0x0Fu);
+    return true;
+}
 bool Pokemon4ReadOnlyView::isNicknamed() const noexcept { return source_.isNicknamed(); }
 bool Pokemon4ReadOnlyView::isFatefulEncounter() const noexcept { return source_.fatefulEncounter(); }
 std::u16string Pokemon4ReadOnlyView::otName() const { return source_.originalTrainerName(); }

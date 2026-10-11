@@ -6,6 +6,7 @@
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen34OrdinaryEggMoveConstruction.h"
+#include "Legality/Gen4ContestRibbonEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
 #include "Legality/Gen34PalParkMoves.h"
 #include "Legality/Gen34PalParkHMHistory.h"
@@ -113,6 +114,31 @@ Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true,
     return exactSource
         ? Legality::analyze(view, Enums::GameVersion::PT, "platinum_nds")
         : Legality::analyze(view, Enums::GameVersion::PT);
+}
+
+Legality::Report analyzeNativeGen4ContestRanks(
+        uint32_t ranks,bool exactSource=false) {
+    std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
+    wr32(raw,0x00,0x12345678u);
+    wr16(raw,0x08,1);
+    wr16(raw,0x0C,12345);
+    wr16(raw,0x0E,54321);
+    wr32(raw,0x10,135);
+    wr32(raw,0x60,ranks);
+    raw[0x17]=std::byte{2};
+    raw[0x5F]=std::byte{12};
+    raw[0x83]=std::byte{4};
+    const auto enc=Encryption::encryptArray4(raw);
+    Pokemon::Pokemon4ReadOnly native(enc,Enums::GameVersion::PT);
+    assert(native.valid() && native.checksumValid());
+    assert((native.ribbons()[2]&0xFFFFFu)==(ranks&0xFFFFFu));
+    Pokemon::Pokemon4ReadOnlyView view(native);
+    std::array<uint8_t,5> decoded{};
+    assert(view.gen4ContestRibbonRanks(decoded));
+    assert(decoded[0]==(ranks&0xFu));
+    return exactSource
+        ? Legality::analyze(view,Enums::GameVersion::PT,"platinum_nds")
+        : Legality::analyze(view,Enums::GameVersion::PT);
 }
 
 Legality::Report analyzeNativeGen4EggMoveFamilies(
@@ -1063,6 +1089,30 @@ int main() {
                            "Move id 354 cannot exist in a Generation 3 save"));
 
     // Actual encrypted PK4 reader -> immutable view -> source-free report.
+    // META-001: native encrypted PK4 0x60 low twenty ribbon bits.
+    // Prefixes are rank-chain only; they do not establish actual wins.
+    namespace Ribbons=Legality::Gen4ContestRibbon;
+    static_assert(Ribbons::evaluate(false,{8,0,0,0,0}).status==
+                  Ribbons::Status::Unavailable);
+    static_assert(Ribbons::evaluate(true,{0,1,3,7,15}).status==
+                  Ribbons::Status::Consistent);
+    static_assert(Ribbons::evaluate(true,{15,15,15,15,15}).status==
+                  Ribbons::Status::Consistent);
+    static_assert(Ribbons::evaluate(true,{8,0,0,0,0}).status==
+                  Ribbons::Status::RankGap);
+    static_assert(Ribbons::evaluate(true,{8,0,5,0,0}).gapCategoriesMask==5);
+    constexpr auto ribbonGap="Native PK4 Sinnoh contest-ribbon rank sequence";
+    const auto ribbonGood=analyzeNativeGen4ContestRanks(0xF7310,false);
+    assert(!hasText(ribbonGood,ribbonGap));
+    const auto ribbonOnlyMaster=analyzeNativeGen4ContestRanks(8,false);
+    assert(hasText(ribbonOnlyMaster,ribbonGap));
+    assert(!hasInvalidText(ribbonOnlyMaster,ribbonGap));
+    assert(hasText(analyzeNativeGen4ContestRanks(8,true),ribbonGap));
+    assert(hasText(analyzeNativeGen4ContestRanks(0x505,false),ribbonGap));
+    assert(!hasText(analyzeNativeGen4ContestRanks(0,false),ribbonGap));
+    assert(!hasText(Legality::analyze(
+        gen3WithBall(4),Enums::GameVersion::FRLG),ribbonGap));
+
     const auto g4Upper=analyzeGen4Ball(4,false,493,467);
     assert(!hasInvalidText(g4Upper,"Species 493 cannot exist"));
     assert(!hasInvalidText(g4Upper,"Move id 467 cannot exist"));

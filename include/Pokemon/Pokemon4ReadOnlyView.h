@@ -67,6 +67,7 @@ public:
     uint8_t gen4BallHGSS() const noexcept override;
     uint8_t metLevel() const noexcept override;
     uint16_t eggLocation() const noexcept override;
+    bool gen4ContestRibbonRanks(std::array<uint8_t,5>& out) const noexcept override;
     int getMaxNicknameLength() const noexcept override { return 10; }
     bool isNicknamed() const noexcept override;
     bool isFatefulEncounter() const noexcept override;

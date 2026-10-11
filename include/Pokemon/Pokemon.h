@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <vector>
+#include <array>
 #include <span>
 #include <string>
 #include <memory>
@@ -420,6 +421,14 @@ namespace Pokemon {
         /** Fateful-encounter ("obtained in a fateful encounter") flag; false / no-op where unwired. */
         virtual bool isFatefulEncounter() const noexcept { return false; }
         virtual void setFatefulEncounter(bool value) noexcept { (void)value; }
+
+        /** Complete native PK4 Sinnoh contest-rank data capability.
+         * False means Unavailable, NOT five known zero-value categories.
+         * Unmodified immutable native PK4 views may expose full rank bits;
+         * unsupported generations / editable records keep this unavailable. */
+        virtual bool gen4ContestRibbonRanks(std::array<uint8_t,5>&) const noexcept {
+            return false;
+        }
 
         /** Gen III National Ribbon persistent state; false where the format/accessor is unwired. */
         virtual bool ribbonNational() const noexcept { return false; }

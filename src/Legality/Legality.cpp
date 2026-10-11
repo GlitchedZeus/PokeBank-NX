@@ -65,6 +65,7 @@
 #include "Legality/Gen34EggState.h"
 #include "Legality/Gen34EggBallEvidence.h"
 #include "Legality/Gen34EggMoveEvidence.h"
+#include "Legality/Gen4ContestRibbonEvidence.h"
 #include "Legality/Gen34OrdinaryEggMoveConstruction.h"
 #include "Legality/Gen4EggMoveFamilyEvidence.h"
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
@@ -2143,6 +2144,25 @@ namespace Legality {
                         CheckIdentifier::Moves);
                 }
             }
+        }
+
+        // META-001: only a native immutable PK4 view can affirm that all
+        // five Sinnoh contest-rank sets were really decoded. Generic false
+        // ribbon methods are not an absence proof for other generations.
+        if(!sourceFormatMismatch &&
+           Gen34FormatDomain::generationFromGroup(pk.getGameGroup())==4) {
+            std::array<uint8_t,5> nativeContest{};
+            const bool available=pk.gen4ContestRibbonRanks(nativeContest);
+            const auto ribbon=Gen4ContestRibbon::evaluate(
+                available,nativeContest);
+            if(ribbon.status==Gen4ContestRibbon::Status::RankGap)
+                add(r,Severity::Warning,
+                    "Native PK4 Sinnoh contest-ribbon rank sequence has a missing prerequisite rank in " +
+                    std::to_string(Gen4ContestRibbon::Result(ribbon).gapCategoriesMask ? ribbon.gapCategoriesMask : 0) +
+                    " category mask; complete source eligibility and special acquisition history remain unresolved",
+                    CheckIdentifier::Misc);
+            // Consistent means only this prefix constraint passed, not that
+            // every ribbon has a valid capture, trade or contest history.
         }
 
         // ---- L1: held item is a known id (skip when none) ----
