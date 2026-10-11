@@ -25,6 +25,7 @@
 #include "UI/NaturePickerLayout.h"
 #include "UI/ItemPickerArtwork.h"
 #include "UI/Gen4BoxMoveNavigation.h"
+#include "UI/Gen4DataPresentation.h"
 #include "UI/ScreenChrome.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedHeldItemPicker.h"
@@ -2026,12 +2027,12 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
                 : "Unknown (ID " + std::to_string(location) + ")";
             return label + " / Lv. " + std::to_string(raw->metLevel());
         }()},
-        {"Source", "IMMUTABLE"},
-        {"Record", state.session.creating() ? "New PK4 draft" : "Stored PK4"},
+        {"Friendship", std::to_string(raw->friendship())},
+        {"Pokérus", PokeBank::UIModel::Gen4DataPresentation::pokerus(raw->pokerusState())},
         {"Fateful", raw->fatefulEncounter() ? "Yes" : "No"},
         {"Egg status", raw->isEgg() ? "Unhatched" : "Not egg"},
         {"OT gender", raw->originalTrainerGender() == 0 ? "Male" : "Female"},
-        {"Markings", std::to_string(raw->markings())}
+        {"PC markings", PokeBank::UIModel::Gen4DataPresentation::markings(raw->markings())}
     };
     SharedPokemonShell::drawDataAndGraph(
         fb, g.rightX, g.y + 244, g.rightW, g.h - 256, "GEN IV DATA", rows, stats);
