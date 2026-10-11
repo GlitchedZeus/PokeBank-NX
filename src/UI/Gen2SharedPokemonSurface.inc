@@ -307,8 +307,8 @@ void drawSharedActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     int yy = y + geometry.rowStart;
     for (std::size_t i = 0; i < actions.count; ++i) {
         const bool selected = legacy.pokemonRow == static_cast<int>(i);
-        if (selected) fb.drawSelectionHighlight(x + 22, yy, w - 44, geometry.rowHeight);
-        fb.drawText(x + 38, yy + 10, sharedActionLabel(actions[i]), selected ? Colors::Text : Colors::TextDim);
+        drawNativeActionRow(fb, x + 22, yy, w - 44, geometry.rowHeight,
+                            sharedActionLabel(actions[i]), selected);
         yy += geometry.rowStep;
     }
     fb.drawText(x + 24, y + h - 38, "Original source is immutable", Colors::Accent, TextStyle::Caption);
