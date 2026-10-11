@@ -178,7 +178,7 @@ Legality::Report analyzeNativeGen4RibbonWords(uint32_t a,uint32_t b,uint32_t c) 
     Pokemon::Pokemon4ReadOnlyView view(pk);
     std::array<uint32_t,3> observed{};
     assert(view.gen4RawRibbonWords(observed));
-    assert(observed==std::array<uint32_t,3>{a,b,c});
+    assert((observed==std::array<uint32_t,3>{a,b,c}));
     return Legality::analyze(view,Enums::GameVersion::PT);
 }
 
