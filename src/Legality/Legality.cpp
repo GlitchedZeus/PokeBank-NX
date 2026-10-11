@@ -1938,6 +1938,37 @@ namespace Legality {
             }
         }
 
+        // ---- L3: detached PK4 WC4/PCD event template compatibility ----
+        // The pinned Gen IV Pokémon gift database matches persistent
+        // Trainer IDs, fixed/anti-shiny PID, game version, location/level,
+        // form, Ball and language. That format-backed compatibility does
+        // not depend on the current physical save. INFO ONLY; a matching
+        // template is not proof of a historical gift distribution or
+        // recipient identity, and a negative match remains unresolved.
+        if (!sourceProfile &&
+            Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
+            Gen4Origin::isNativeRetailGen4(pk.originGame()) &&
+            !pk.isEgg()) {
+            const auto event=Gen4EventTemplate::matchEvolutionLine({
+                species,pk.tid16(),pk.sid16(),pk.pid(),
+                pk.metLevel(),pk.metLocation(),pk.ball(),pk.form(),
+                pk.gender(),pk.language(),pk.originGame(),pk.otGender(),
+                pk.isFatefulEncounter()
+            });
+            if (event.matched) {
+                r.coverage.eventGift=CoverageLevel::Partial;
+                std::string detail=
+                    "Source-free native PK4 persistent fields match a pinned Generation IV WC4/PCD Pokemon event template; distribution and other provenance remain unresolved";
+                if (event.evolved)
+                    detail += " after evolution from source species " +
+                        std::to_string(event.sourceSpecies);
+                if (event.fixedPid)
+                    detail += " with matching fixed PID";
+                add(r,Severity::Info,std::move(detail),
+                    CheckIdentifier::EventGift);
+            }
+        }
+
         // ---- L2: gender vs the species gender ratio (255 genderless / 254 female-only / 0 male-only) ----
         if (!sourceProfile || exactGeneration >= 2) {
             const uint8_t g = pk.gender();

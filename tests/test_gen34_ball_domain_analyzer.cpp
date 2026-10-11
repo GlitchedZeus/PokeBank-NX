@@ -2,6 +2,7 @@
 #include "Legality/Legality.h"
 #include "Legality/Gen4TradeEvidence.h"
 #include "Legality/Gen4RangerManaphy.h"
+#include "Legality/Gen4EventTemplate.h"
 #include "Names/ItemNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Pokemon3FRLG.h"
@@ -304,6 +305,34 @@ Legality::Report analyzeDetachedRanger(uint32_t pid=0x5271E97Eu,
     return Legality::analyze(view,Enums::GameVersion::DP);
 }
 
+Legality::Report analyzeDetachedPcd(uint16_t species=25,
+                                    uint8_t originVersion=10,
+                                    uint32_t pid=0x246e13afu,
+                                    uint16_t metLocation=3060,
+                                    uint8_t metLevel=50,
+                                    uint8_t ball=16,
+                                    uint8_t language=2) {
+    std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
+    wr32(raw,0x00,pid);
+    wr16(raw,0x08,species);
+    wr16(raw,0x0C,8107);wr16(raw,0x0E,20846);
+    wr32(raw,0x10,125000);
+    raw[0x17]=static_cast<std::byte>(language);
+    raw[0x40]=std::byte{1}; // male, fateful, form0
+    raw[0x5F]=static_cast<std::byte>(originVersion);
+    wr16(raw,0x80,metLocation);
+    raw[0x83]=static_cast<std::byte>(ball);
+    raw[0x84]=static_cast<std::byte>(metLevel);
+    const auto encrypted=Encryption::encryptArray4(raw);
+    Pokemon::Pokemon4ReadOnly stored(encrypted,Enums::GameVersion::DP);
+    assert(stored.valid() && stored.checksumValid());
+    assert(stored.pid()==pid && stored.originVersion()==originVersion);
+    Pokemon::Pokemon4ReadOnlyView view(stored);
+    assert(view.speciesID()==species && view.metLocation()==metLocation);
+    assert(view.metLevel()==metLevel && view.ball()==ball);
+    return Legality::analyze(view,Enums::GameVersion::DP);
+}
+
 int main() {
     // Source-free exact-origin NPC trade proof: all native encrypted PK4
     // identity fields must match a pinned Diamond template. Wrong PID,
@@ -338,6 +367,22 @@ int main() {
                     rangerPositive)); // not genderless
     const auto rangerWrongPid=analyzeDetachedRanger(0x12345678u);
     assert(!hasInfo(rangerWrongPid,rangerMethod));
+
+    // Pinned first WC4 Pokémon PCD: Diamond/Pearl fixed-PID Pikachu.
+    // A detached encrypted native PK4 retains all the template identity
+    // fields, but a match is only INFO-compatible event provenance.
+    constexpr auto wc4="Source-free native PK4 persistent fields match a pinned Generation IV WC4/PCD Pokemon event template";
+    assert(hasInfo(analyzeDetachedPcd(),wc4));
+    const auto evolvedPcd=analyzeDetachedPcd(26);
+    assert(hasInfo(evolvedPcd,wc4));
+    assert(hasInfo(evolvedPcd,"after evolution from source species 25"));
+    assert(!hasInfo(analyzeDetachedPcd(25,7),wc4));
+    assert(!hasInfo(analyzeDetachedPcd(25,0),wc4));
+    assert(!hasInfo(analyzeDetachedPcd(25,10,0x246e13aeu),wc4));
+    assert(!hasInfo(analyzeDetachedPcd(25,10,0x246e13afu,3059),wc4));
+    assert(!hasInfo(analyzeDetachedPcd(25,10,0x246e13afu,3060,51),wc4));
+    assert(!hasInfo(analyzeDetachedPcd(25,10,0x246e13afu,3060,50,4),wc4));
+    assert(!hasInfo(analyzeDetachedPcd(25,10,0x246e13afu,3060,50,16,5),wc4));
 
     // Real PK3 egg-state and encrypted PK4 egg-origin reporting.
     auto eggPk3=gen3WithBall(4);
