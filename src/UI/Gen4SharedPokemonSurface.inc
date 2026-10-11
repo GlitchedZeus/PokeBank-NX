@@ -97,6 +97,8 @@ struct State {
     TouchScrollState pickerScroll;
     TouchPickerViewport pickerViewport;
     std::vector<uint16_t> pickerValues;
+    std::vector<uint16_t> pickerNativeValues;
+    ItemPickerSort::Mode pickerSort = ItemPickerSort::Mode::Native;
 
     // Gen IV Items use their own app-owned quantity draft, never the generic
     // source-mutating item dialog. The actual SAV5/DS source stays immutable.
@@ -690,6 +692,8 @@ void openHeldItemPicker(TrainerViewScreen& screen, State& state) {
     for (uint16_t item = 1; item < count && item <= maximum; ++item)
         if (Names::isGen4HeldItemPresent(item, group))
             state.pickerValues.push_back(item);
+    state.pickerNativeValues = state.pickerValues;
+    state.pickerSort = ItemPickerSort::Mode::Native;
     const uint16_t current = state.session.working ? state.session.working->heldItem() : 0;
     const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
     state.pickerRow = it == state.pickerValues.end() ? 0 :
@@ -924,6 +928,17 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     }
     if (count <= 0) {
         state.valuePicker = false;
+        return true;
+    }
+    if (gridPicker && (down & HidNpadButton_X)) {
+        state.pickerSort = ItemPickerSort::next(state.pickerSort);
+        state.pickerRow = ItemPickerSort::reorder(
+            state.pickerValues, state.pickerNativeValues,
+            state.pickerSort, state.pickerRow,
+            [&](uint16_t id) { return pickerValueLabel(screen, state, id); });
+        state.pickerScroll.stop();
+        state.pickerViewport.reset();
+        state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
         return true;
     }
     if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R | HidNpadButton_ZL | HidNpadButton_ZR))
@@ -1729,6 +1744,9 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     if (heldItems) {
         SharedHeldItemPickerPresentation::drawHeading(
             fb, x, y, "Held Item — Generation IV", state.pickerRow, count);
+        fb.drawText(x + w - 250, y + 55,
+                    std::string("Sort: ") + ItemPickerSort::label(state.pickerSort),
+                    Colors::TextDim, TextStyle::Caption);
         SharedHeldItemPickerPresentation::drawGrid(
             fb, x, y, state.pickerValues, state.pickerRow,
             [&](uint16_t value) { return pickerValueLabel(screen, state, value); },
@@ -1757,7 +1775,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
                 gridX, gridY - 3, w - 44, HeldItemGrid::rows * cellHeight);
         }
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
-                        {"A", "Choose"}, {"B", "Cancel"}});
+                        {"A", "Choose"}, {"B", "Cancel"}, {"X", "Sort"}});
         return;
     }
     fb.drawText(x + 28, y + 20, pickerTitle(state.pickerTarget),
