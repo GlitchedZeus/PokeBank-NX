@@ -489,6 +489,61 @@ void testMoveSwapAndCrossBoxTransactions() {
     assert(!editor->hasChanges());
 }
 
+void testSharedHoldYGroupPlacementAtomicity() {
+    // Gen IV now uses the existing Gen I-III Y-hold shared carrier. Unlike
+    // the packed generations, native PK4 slots are sparse: a carried group
+    // must be prepared on a detached staged editor and published all at once.
+    auto original = makeSave(Layout::Platinum);
+    auto editor = Gen4StagedPokemonEditor::create(
+        original, Layout::Platinum, "platinum_nds");
+    assert(editor);
+    std::string error;
+    auto secondDraft = editor->createBoxDraft(0, 1, 4, &error);
+    assert(secondDraft && error.empty());
+    assert(editor->stageCreateBoxPokemon(0, 1, *secondDraft, &error));
+    const auto baseline = editor->stagedBytes();
+    const auto first = editor->boxedPokemon(0, 0, &error);
+    const auto second = editor->boxedPokemon(0, 1, &error);
+    assert(first && second);
+    const auto firstBytes = first->originalEncryptedBytes();
+    const auto secondBytes = second->originalEncryptedBytes();
+
+    // First placement on the candidate succeeds; if the second placement
+    // fails, throwing away the candidate must preserve every baseline byte.
+    {
+        auto candidate = *editor;
+        assert(candidate.stageMoveBoxPokemon(0, 0, 1, 0, &error));
+        assert(!candidate.stageMoveBoxPokemon(0, 1, 18, 1, &error));
+        assert(editor->stagedBytes() == baseline);
+        assert(editor->boxedPokemon(0, 0, &error));
+        assert(editor->boxedPokemon(0, 1, &error));
+    }
+
+    // Valid nonoverlapping group: preserve the exact encrypted PK4 payloads,
+    // leave the original emulator image untouched, and make both old source
+    // slots empty. This models a single published shared-overlay Y drop.
+    {
+        auto candidate = *editor;
+        assert(candidate.stageMoveBoxPokemon(0, 0, 1, 0, &error));
+        assert(candidate.stageMoveBoxPokemon(0, 1, 1, 1, &error));
+        *editor = std::move(candidate);
+    }
+    const auto movedFirst = editor->boxedPokemon(1, 0, &error);
+    const auto movedSecond = editor->boxedPokemon(1, 1, &error);
+    assert(movedFirst && movedSecond);
+    assert(std::equal(firstBytes.begin(), firstBytes.end(),
+                      movedFirst->originalEncryptedBytes().begin()));
+    assert(std::equal(secondBytes.begin(), secondBytes.end(),
+                      movedSecond->originalEncryptedBytes().begin()));
+    assert(!editor->boxedPokemon(0, 0, &error));
+    assert(!editor->boxedPokemon(0, 1, &error));
+    assert(editor->originalBytes() == original);
+
+    editor->discard();
+    assert(editor->stagedBytes() == original);
+    assert(!editor->hasChanges());
+}
+
 void testNoOpAndFailureRollback() {
     auto source = makeSave(Layout::Platinum);
     auto editor = Gen4StagedPokemonEditor::create(
@@ -563,6 +618,7 @@ int main() {
     testEmptySlotCreateTransaction();
     testCloneAndReleaseTransactions();
     testMoveSwapAndCrossBoxTransactions();
+    testSharedHoldYGroupPlacementAtomicity();
     testNoOpAndFailureRollback();
     testShedinjaPartyHpRule();
     testRecoveredAndMismatchRemainReadOnly();
