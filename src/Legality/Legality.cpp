@@ -1849,6 +1849,29 @@ namespace Legality {
             }
         }
 
+        // ---- L3: source-free native PK4 static/gift ancestry ----
+        // A detached PK4 retains the original retail game's version and
+        // persisted encounter fields. Use the same PKHeX-pinned static/gift
+        // matcher with explicit egg state for POSITIVE compatibility only.
+        // A missing row or a possible external event is unresolved, not
+        // proof of illegality or of a unique acquisition history.
+        if (!sourceProfile &&
+            Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4) {
+            const auto sourceGame = Gen4Origin::exactRetailGameId(pk.originGame());
+            if (!sourceGame.empty() &&
+                !Gen4Release::staticEncounterUnreleased(species,pk.language()) &&
+                Gen4Static::findMatchWithEggState(
+                    sourceGame, species, pk.metLocation(), pk.metLevel(),
+                    pk.form(), pk.eggLocation(), pk.ball(),
+                    pk.gender(), pk.nature(),
+                    pk.isShiny(pk.id32(), {}), pk.isFatefulEncounter(),
+                    pk.isEgg()) != nullptr) {
+                add(r, Severity::Info,
+                    "Source-free native PK4 fields are compatible with a pinned Generation IV static or gift encounter for its stored retail origin; evolution, trade and other provenance remain unresolved",
+                    CheckIdentifier::Encounter);
+            }
+        }
+
         // ---- L2: gender vs the species gender ratio (255 genderless / 254 female-only / 0 male-only) ----
         if (!sourceProfile || exactGeneration >= 2) {
             const uint8_t g = pk.gender();

@@ -144,7 +144,8 @@ Legality::Report analyzeNativeHgssSpecialBall(
 Legality::Report analyzeNativeDiamondMarshBall(
         uint16_t species, uint16_t metLocation, uint8_t metLevel,
         uint8_t ball, uint8_t originVersion = 10,
-        uint32_t experience = 3375) {
+        uint32_t experience = 3375,
+        bool exactSource = true) {
     std::vector<std::byte> raw(Encryption::SIZE_STORED4, std::byte{0});
     wr32(raw, 0x00, 0x12345678u);
     wr16(raw, 0x08, species);
@@ -165,7 +166,9 @@ Legality::Report analyzeNativeDiamondMarshBall(
     Pokemon::Pokemon4ReadOnlyView view(source);
     assert(view.metLocation() == metLocation);
     assert(view.ball() == ball);
-    return Legality::analyze(view, Enums::GameVersion::DP, "diamond_nds");
+    return exactSource
+        ? Legality::analyze(view, Enums::GameVersion::DP, "diamond_nds")
+        : Legality::analyze(view, Enums::GameVersion::DP);
 }
 
 
@@ -616,6 +619,26 @@ int main() {
     assert(!hasInfo(platinumOrigin,
         "Sport Ball has a compatible HeartGold/SoulSilver"));
     // Native encrypted Diamond PK4 -> read-only view -> source-aware
+    // A real encrypted PK4 preserves its original Diamond gift Eevee
+    // origin code, location and met level after detaching from its save.
+    // INFO compatibility is reportable without claiming gift receipt.
+    constexpr auto detachedGift="Source-free native PK4 fields are compatible with a pinned Generation IV static or gift encounter for its stored retail origin";
+    const auto diamondGift=analyzeNativeDiamondMarshBall(
+        133,10,5,4,10,3375,false);
+    assert(hasInfo(diamondGift,detachedGift));
+    const auto diamondGiftEvolved=analyzeNativeDiamondMarshBall(
+        134,10,5,4,10,3375,false);
+    assert(hasInfo(diamondGiftEvolved,detachedGift));
+    const auto platinumWrongLevel=analyzeNativeDiamondMarshBall(
+        133,10,5,4,12,3375,false);
+    assert(!hasInfo(platinumWrongLevel,detachedGift));
+    const auto unknownGiftOrigin=analyzeNativeDiamondMarshBall(
+        133,10,5,4,0,3375,false);
+    assert(!hasInfo(unknownGiftOrigin,detachedGift));
+    const auto wrongGiftLocation=analyzeNativeDiamondMarshBall(
+        133,11,5,4,10,3375,false);
+    assert(!hasInfo(wrongGiftLocation,detachedGift));
+
     // Legality::analyze: Great Marsh is location 52, not HGSS Safari 202.
     // Native encrypted HGSS PK4: current Shedinja is not directly caught,
     // but a pinned Nincada Bug-Catching Contest ancestor at location207,
