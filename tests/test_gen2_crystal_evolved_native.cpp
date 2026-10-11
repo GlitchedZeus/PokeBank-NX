@@ -1,6 +1,7 @@
 #include "Legality/Legality.h"
 #include "Legality/Gen12FormatDomainEvidence.h"
 #include "Legality/Gen12JointMoveEvidence.h"
+#include "Legality/Gen12TimeCapsuleEvidence.h"
 #include "Names/SpeciesNames.h"
 #include "Names/ItemNames.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
