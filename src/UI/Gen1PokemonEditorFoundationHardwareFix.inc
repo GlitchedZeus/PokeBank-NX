@@ -354,6 +354,10 @@ void drawFoundationPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         drawOverlayUXCleanup3(screen, fb);
         return;
     }
+    // drawFullscreenGen1Workspace published its background field hitboxes.
+    // The modal owns the next frame's entire touch registry; discard every
+    // underlying DETAILS/STATS/MOVES target before registering picker rows.
+    screen.touchButtons.clear();
     // ux3DrawPicker applies the existing dimmer exactly once.
     const int w = state.picker == UX2Picker::Species ? 1080 : 760;
     constexpr int h = 520;
