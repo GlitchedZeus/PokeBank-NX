@@ -4,6 +4,7 @@
 #include "Legality/Gen3JointMoveEvidence.h"
 #include "Legality/Gen3ShedinjaEvolutionMoveEvidence.h"
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
+#include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
 #include "Legality/Gen34PalParkMoves.h"
 #include "Legality/Gen34PalParkSpecies.h"
@@ -915,6 +916,63 @@ int main() {
     emeraldLevelMon.refreshChecksum();
     assert(!hasInfo(Legality::analyze(
         emeraldLevelMon,Enums::GameVersion::FRLG),emeraldLevelText));
+
+
+    // MOVE-002: pinned level-aware method witnesses are attached to *one*
+    // candidate identity; the encounter-level bound excludes moves learned
+    // only before that candidate could have been encountered. Missing direct
+    // methods and source mismatches are unresolved, never global Invalid.
+    namespace EmeraldCandidate=Legality::Gen3EmeraldCandidateMoveEvidence;
+    using Candidate=Legality::Gen14CandidateMoveHistory::Candidate;
+    using WitnessStatus=Legality::Gen14CandidateMoveHistory::Status;
+    constexpr Candidate earlyEmerald{11,20,1,false,1};
+    constexpr auto twoDirect=EmeraldCandidate::classify(
+        earlyEmerald,1,{33,75,0,0});
+    static_assert(twoDirect.storedMoves==2 &&
+                  twoDirect.directLevelUpSlots==2 &&
+                  twoDirect.joint.status==WitnessStatus::WitnessesCompatible);
+    constexpr Candidate laterEncounter{11,20,10,false,1};
+    constexpr auto lateRoute=EmeraldCandidate::classify(
+        laterEncounter,1,{33,75,0,0});
+    static_assert(lateRoute.directLevelUpSlots==1 &&
+                  lateRoute.joint.status==WitnessStatus::Unresolved);
+    static_assert(Legality::Gen3EmeraldLevelUp::firstLevelBetween(
+        1,33,10,20)==0);
+    static_assert(Legality::Gen3EmeraldLevelUp::firstLevelBetween(
+        1,75,10,20)==20);
+    static_assert(EmeraldCandidate::classify(
+        earlyEmerald,1,{33,14,0,0}).joint.status==
+        WitnessStatus::Unresolved);
+    static_assert(EmeraldCandidate::classify(
+        Candidate{},1,{33,75,0,0}).joint.status==
+        WitnessStatus::Unresolved);
+
+    constexpr auto jointEmeraldText="Emerald candidate four-slot level-up witness:";
+    auto emeraldJoint=gen3WithBall(4);
+    emeraldJoint.setOriginGame(3);
+    emeraldJoint.setSpecies(1);
+    emeraldJoint.setLevel(20);
+    emeraldJoint.setMove(0,33);
+    emeraldJoint.setMove(1,75);
+    emeraldJoint.refreshChecksum();
+    assert(hasInfo(Legality::analyze(
+        emeraldJoint,Enums::GameVersion::FRLG),jointEmeraldText));
+    assert(hasInfo(Legality::analyze(
+        emeraldJoint,Enums::GameVersion::FRLG,"emerald_gba"),jointEmeraldText));
+    emeraldJoint.setMove(1,14); // Valid tutor possibility; no level-up witness.
+    emeraldJoint.refreshChecksum();
+    assert(!hasInfo(Legality::analyze(
+        emeraldJoint,Enums::GameVersion::FRLG),jointEmeraldText));
+    emeraldJoint.setMove(1,75);
+    emeraldJoint.setLevel(19);
+    emeraldJoint.refreshChecksum();
+    assert(!hasInfo(Legality::analyze(
+        emeraldJoint,Enums::GameVersion::FRLG),jointEmeraldText));
+    emeraldJoint.setLevel(20);
+    emeraldJoint.setOriginGame(2); // Original Ruby != Emerald.
+    emeraldJoint.refreshChecksum();
+    assert(!hasInfo(Legality::analyze(
+        emeraldJoint,Enums::GameVersion::FRLG),jointEmeraldText));
 
     // Source-free known native PK3/PK4 formats have generation-specific
     // species/move ceilings regardless of their exact save identity.

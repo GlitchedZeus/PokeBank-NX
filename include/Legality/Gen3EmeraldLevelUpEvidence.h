@@ -32,4 +32,30 @@ constexpr uint8_t firstLevelAtOrBefore(
     return earliest;
 }
 
+/**
+ * Earliest known direct Emerald level-up acquisition in the bounded interval.
+ * Unlike firstLevelAtOrBefore, this must not treat a level learned before the
+ * candidate's encounter as a verified post-encounter acquisition. A zero is
+ * only a missing positive witness, never a proof of move illegality.
+ */
+constexpr uint8_t firstLevelBetween(
+    uint16_t nationalSpecies,uint16_t moveId,
+    uint8_t minLevel,uint8_t maxLevel) noexcept {
+    if(nationalSpecies==0 || nationalSpecies>386 ||
+       moveId==0 || moveId>354 || minLevel==0 ||
+       maxLevel<minLevel || maxLevel>100)
+        return 0;
+    uint8_t earliest=0;
+    for(uint16_t i=kEmeraldLevelOffsets[nationalSpecies];
+        i<kEmeraldLevelOffsets[nationalSpecies+1];++i) {
+        const uint16_t entry=kEmeraldPackedLevelMoves[i];
+        const uint16_t move=entry&511u;
+        const uint8_t level=static_cast<uint8_t>(entry>>9);
+        if(move==moveId && level>=minLevel && level<=maxLevel &&
+           (earliest==0 || level<earliest))
+            earliest=level;
+    }
+    return earliest;
+}
+
 } // namespace Legality::Gen3EmeraldLevelUp

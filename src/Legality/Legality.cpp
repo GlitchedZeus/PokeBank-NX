@@ -67,6 +67,7 @@
 #include "Legality/Gen34EggMoveEvidence.h"
 #include "Legality/Gen4EggMoveFamilyEvidence.h"
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
+#include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen3JointMoveEvidence.h"
 #include "Legality/Gen3ShedinjaEvolutionMoveEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
@@ -2052,6 +2053,34 @@ namespace Legality {
                         " is listed for the current species from level " +
                         std::to_string(earliest) +
                         ", no higher than its current level; actual acquisition and earlier evolution remain unresolved",
+                        CheckIdentifier::Moves);
+                }
+            }
+
+            // Hypothetical uninterrupted current-species Emerald level-up
+            // candidate only. Original Emerald identity does NOT recover an
+            // encounter level, a parent, or a proven evolution chronology.
+            // The level-1 bound is a *possibility*, not an encounter claim.
+            // Keep the result positive-only and distinct from the per-slot
+            // evidence above; no absence or contradiction yields Invalid.
+            if(!sourceFormatMismatch && !pk.isEgg() &&
+               Gen4Origin::exactGen3GameId(pk.originGame())=="emerald_gba") {
+                const Gen14CandidateMoveHistory::Candidate hypothetical{
+                    1,pk.level(),1,false,1};
+                const auto joint=Gen3EmeraldCandidateMoveEvidence::classify(
+                    hypothetical,species,
+                    {pk.move(0),pk.move(1),pk.move(2),pk.move(3)});
+                if(joint.storedMoves>=2 &&
+                   joint.directLevelUpSlots==joint.storedMoves &&
+                   joint.joint.status==
+                       Gen14CandidateMoveHistory::Status::WitnessesCompatible) {
+                    add(r,Severity::Info,
+                        "Emerald candidate four-slot level-up witness: all " +
+                        std::to_string(joint.storedMoves) +
+                        " stored moves have compatible direct current-species "
+                        "level-up opportunities along one hypothetical stage; "
+                        "encounter level, actual acquisition, evolution and "
+                        "move retention remain unresolved",
                         CheckIdentifier::Moves);
                 }
             }
