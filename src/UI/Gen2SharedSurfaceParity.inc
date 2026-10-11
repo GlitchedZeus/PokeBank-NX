@@ -279,6 +279,13 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
     const auto surface = screen.selectedMode == TrainerViewScreen::ViewMode::Boxes ? Access::Surface::Boxes
         : storage && screen.storageFocusPane == 0 ? Access::Surface::StorageSave
         : screen.selectedMode == TrainerViewScreen::ViewMode::Trainer ? Access::Surface::Trainer : Access::Surface::Other;
+    // A box-cell tap selects that exact slot and activates the same staged
+    // Actions surface as A. Do not let the inherited two-tap box handler open
+    // its generic, mostly disabled source-save sheet.
+    const int tappedSlot = touch.justTapped() ? screen.touchedButtonId(touch) : -1;
+    const bool boxTap = surface == Access::Surface::Boxes && screen.detailViewActive &&
+        tappedSlot >= 0 && tappedSlot < static_cast<int>(screen.trainer.getSlotsPerBox());
+    if (boxTap) screen.selectedItemIndex = tappedSlot;
     const int box = storage ? screen.stSaveBox : screen.selectedBoxIndex;
     const int slot = storage ? screen.stSaveSlot : screen.selectedItemIndex;
     const bool validSlot = editor && box >= 0 && slot >= 0 &&
