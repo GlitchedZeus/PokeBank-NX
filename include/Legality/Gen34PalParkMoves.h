@@ -5,6 +5,7 @@
 #include "Integration/Gen3/Gen3LearnsetTable.h"
 #include "Integration/Gen4/Gen4MoveCompatibility.h"
 #include "Legality/Gen4TransferEvidence.h"
+#include "Legality/Gen34PalParkSpecies.h"
 #include <array>
 #include <cstdint>
 
@@ -45,13 +46,17 @@ inline Result classify(Source original,uint16_t species,uint8_t form,
                        const std::array<uint16_t,4>& moves) noexcept {
     using namespace PokeVault::Integration;
     Result r{};
+    const uint16_t gbaSpecies=Gen34PalParkSpecies::nearestGen3Ancestor(species);
+    // A Gen IV-only species without any GBA-era ancestral source cannot
+    // produce a positive move-history candidate from a Gen III origin.
+    if(gbaSpecies==0)return r;
     for(uint16_t m:moves) {
         if(!m)continue;
         ++r.storedMoves;
         const bool g3Direct=m<=354 &&
-            Gen3::Learnset::directlyLearnable(original,species,m);
+            Gen3::Learnset::directlyLearnable(original,gbaSpecies,m);
         const bool g3Some=m<=354 &&
-            Gen3::Learnset::learnableSomewhere(species,m);
+            Gen3::Learnset::learnableSomewhere(gbaSpecies,m);
         const bool g4Some=
             Gen4MoveCompatibility::anywhereInGen4(species,form,m);
         // Only IDs inside the native Gen IV move domain can serve as
@@ -87,13 +92,15 @@ inline uint8_t jointMask(uint16_t species,uint8_t form,uint16_t move) noexcept {
     if(move==0 || move>467)return 0;
     using namespace PokeVault::Integration;
     uint8_t mask=0;
+    const uint16_t gbaSpecies=Gen34PalParkSpecies::nearestGen3Ancestor(species);
+    if(gbaSpecies==0)return 0; // No legitimate Gen III Pal Park source.
     if(move<=354) {
         if(Gen3::Learnset::directlyLearnable(Gen3::SourceGame::RubyGBA,
-                                           species,move))mask|=1u;
+                                           gbaSpecies,move))mask|=1u;
         if(Gen3::Learnset::directlyLearnable(Gen3::SourceGame::EmeraldGBA,
-                                           species,move))mask|=2u;
+                                           gbaSpecies,move))mask|=2u;
         if(Gen3::Learnset::directlyLearnable(Gen3::SourceGame::FireRedGBA,
-                                           species,move))mask|=4u;
+                                           gbaSpecies,move))mask|=4u;
     }
     if(Gen4MoveCompatibility::direct("diamond_nds",species,form,move))
         mask|=8u;
