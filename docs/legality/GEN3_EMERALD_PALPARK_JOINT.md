@@ -1,0 +1,9 @@
+# MOVE-001/TRANSFER-001 — one chronological Emerald → Pal Park hypothesis
+
+This joint candidate path combines (a) source-attested exact Emerald same-species level-up trainer decisions and four-slot retention and (b) source-attested exact immediately-pre-Pal Park move state and immediate Gen IV arrival move state. **The two hypothetical histories must refer to one independently evidenced source Pokémon at one shared exact original stage**. Caller-supplied nonzero matching stage tokens are necessary but **not sufficient proof of actual retail history**; they are explicitly marked independently attested rather than inferred from a PK3/PK4 origin flag.
+
+The checker refuses to union two independent plausible but incompatible move states. Unknown trainer choices, unknown source-game continuity, unknown actual pre-transfer or arrival snapshots, stage-token mismatch, source game/species mismatch and contradicted transfer rules have distinct outcomes. A fully matching result means only that an externally submitted conditional history is internally coherent, not that the real Pokémon has been proved legal.
+
+A pinned Emerald Lv5→32 Bulbasaur learning sequence yields four slots 77/79/75/22. A hypothetical immediate Pal Park transfer to Platinum preserves the same four non-HM moves. Changing the claimed GBA outgoing state, source species, target arrival state, trainer decision, or proof flag yields separate Incoherent/Unknown/Contradicted candidate results. Permanent host and ASan/UBSan regressions verify these boundaries.
+
+Not implemented: genuine PK3→PK4 paired archive evidence, all original encounter candidates, cross-game trading before migration, special event distribution histories, language restrictions and full trainer move acquisition families. No global Invalid, source mutations or auto-fixes.

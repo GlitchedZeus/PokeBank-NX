@@ -156,6 +156,8 @@ HOST_TESTS += $(HOST_BUILD)/test_gen3_joint_egg_candidate
 HOST_TESTS += $(HOST_BUILD)/test_gen3_emerald_levelup_timeline
 HOST_TESTS += $(HOST_BUILD)/test_gen14_candidate_set_coverage
 HOST_TESTS += $(HOST_BUILD)/test_gen34_palpark_snapshot
+HOST_TESTS += $(HOST_BUILD)/test_gen3_emerald_palpark_joint
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_emerald_palpark_joint_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_palpark_snapshot_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen14_candidate_set_coverage_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_emerald_levelup_timeline_sanitize
@@ -337,6 +339,14 @@ $(HOST_BUILD)/test_gen34_same_parent_egg_history: tests/test_gen34_same_parent_e
 $(HOST_BUILD)/test_gen34_same_parent_egg_history_sanitize: tests/test_gen34_same_parent_egg_history.cpp include/Legality/Gen34SameParentEggHistory.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen34_same_parent_egg_history.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_emerald_palpark_joint: tests/test_gen3_emerald_palpark_joint.cpp include/Legality/Gen3EmeraldPalParkJointPath.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen3_emerald_palpark_joint.cpp -o $@
+
+$(HOST_BUILD)/test_gen3_emerald_palpark_joint_sanitize: tests/test_gen3_emerald_palpark_joint.cpp include/Legality/Gen3EmeraldPalParkJointPath.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_emerald_palpark_joint.cpp -o $@
 
 $(HOST_BUILD)/test_gen34_palpark_snapshot: tests/test_gen34_palpark_snapshot.cpp include/Legality/Gen34PalParkSnapshotTransition.h include/Legality/Gen34PalParkHMIds.h
 	@mkdir -p $(HOST_BUILD)
