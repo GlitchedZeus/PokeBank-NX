@@ -184,10 +184,12 @@ int main() {
     assert(Held::itemName(218) == "TM27 — Return");
     assert(Held::itemName(219) == "TM28 — Dig");
     assert(Held::itemName(243) == "HM01 — Cut");
-    // The item sprite asset key is the actual TM/HM, not the move display text.
-    assert(Held::spriteName(218) == "TM27");
-    assert(Held::spriteName(219) == "TM28");
-    assert(Held::spriteName(243) == "HM01");
+    // The item sprite is the verified GSC-era MOVE TYPE disc, not the
+    // item number: TM27 Return -> Normal; TM28 Dig -> Ground; HM01 Cut -> Normal.
+    // Each generation maps machine IDs separately, so number-only art is wrong.
+    assert(Held::spriteName(218) == "tm-normal");
+    assert(Held::spriteName(219) == "tm-ground");
+    assert(Held::spriteName(243) == "hm-normal");
     assert(Held::spriteName(0) == "None");
     for (int i = 0; i < static_cast<int>(items.size()); ++i) {
         assert(Held::initialIndex(items, items[i]) == i);
