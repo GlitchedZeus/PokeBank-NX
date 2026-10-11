@@ -2,6 +2,7 @@
 #include "Legacy/RBYReadOnlyTrainer.h"
 #include "Legacy/GSCReadOnlyTrainer.h"
 #include "Legacy/FRLGReadOnlyTrainer.h"
+#include "Legacy/Gen4ReadOnlyTrainer.h"
 #include "UI/ClassicPackedMultiSelect.h"
 #include "UI/SpriteManager.h"
 
@@ -13,7 +14,7 @@ namespace UI::ClassicPackedMove {
 namespace {
 
 namespace Multi = PokeBank::UIModel::ClassicPackedMove;
-enum class CarryGeneration : uint8_t { None, Gen1, Gen2, Gen3 };
+enum class CarryGeneration : uint8_t { None, Gen1, Gen2, Gen3, Gen4 };
 
 struct CarriedVisual {
     uint16_t species = 0;
@@ -29,6 +30,9 @@ struct CarryState {
     int sourceBox = 0;
     int sourceSlot = 0;
     std::vector<CarriedVisual> visuals;
+    // Gen IV leaves PK4 source bytes in the staged image until the entire
+    // validated drop commits; cancellation never requires a recovery write.
+    std::vector<std::size_t> gen4SourceSlots;
 
     bool yPending = false;
     int yFrames = 0;
@@ -76,8 +80,15 @@ bool isGen3(const TrainerViewScreen& screen) noexcept {
            screen.sourceGameId == "leafgreen_gba";
 }
 
+bool isGen4(const TrainerViewScreen& screen) noexcept {
+    const auto& id = screen.sourceGameId;
+    return id == "diamond_nds" || id == "pearl_nds" ||
+           id == "platinum_nds" || id == "heartgold_nds" ||
+           id == "soulsilver_nds";
+}
+
 bool classicSource(const TrainerViewScreen& screen) noexcept {
-    return isGen1(screen) || isGen2(screen) || isGen3(screen);
+    return isGen1(screen) || isGen2(screen) || isGen3(screen) || isGen4(screen);
 }
 
 bool gridOwnsInput(const TrainerViewScreen& screen) noexcept {
@@ -94,6 +105,10 @@ bool gridOwnsInput(const TrainerViewScreen& screen) noexcept {
 }
 
 int classicCapacity(TrainerViewScreen& screen) {
+    if (isGen4(screen)) {
+        auto& trainer = static_cast<PokeVault::Legacy::Gen4ReadOnlyTrainer&>(screen.trainer);
+        return trainer.stagedPokemon() ? 30 : 0;
+    }
     if (isGen3(screen)) {
         auto& trainer = static_cast<PokeVault::Legacy::FRLGReadOnlyTrainer&>(screen.trainer);
         return trainer.stagedPokemon() ? 30 : 0;
