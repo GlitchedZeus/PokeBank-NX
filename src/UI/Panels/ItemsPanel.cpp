@@ -29,6 +29,9 @@
 #include "Names/TMMoves.h"
 #include "Names/MachineDisplay.h"
 #include "Names/ItemNames.h"
+#include "UI/ClassicMachineArtwork.h"
+#include "UI/ItemSpriteKey.h"
+#include "UI/SpriteManager.h"
 
 using namespace Trainer;
 using namespace Enums;
@@ -227,6 +230,29 @@ namespace Panels {
                 }
                 displayName = Names::machineDisplayLabel(gameGroup, item.itemId, baseName);
             }
+            // Both the inventory list and the Held Item picker must display
+            // artwork. Historically this panel drew *no item sprite at all*.
+            // Generation-specific TM/HM types are resolved through the
+            // actual machine -> move table, never by matching raw IDs across
+            // games. Gen II mail resolves to its own original game motif.
+            std::string artworkKey = ClassicMachineArtwork::artKey(
+                gameGroup, item.itemId);
+            const std::string normalized = ItemSpriteKey::slug(displayName);
+            const bool machine = ItemSpriteKey::isTM(normalized) ||
+                                 ItemSpriteKey::isHM(normalized);
+            if (artworkKey.empty() && !machine)
+                artworkKey = normalized;
+            if (!artworkKey.empty()) {
+                auto* art = SpriteManager::getItemSprite(artworkKey);
+                if (art && art->data && art->width > 0 && art->height > 0) {
+                    constexpr int iconSize = 38;
+                    fb.drawSpriteStaticContained(nx, ry + (tileH - iconSize) / 2,
+                                                 iconSize, iconSize,
+                                                 art->width, art->height,
+                                                 art->data, art->channels);
+                }
+            }
+            nx += 48;
             fb.drawText(nx, ry + (tileH - fb.lineHeight(TextStyle::Body)) / 2,
                         displayName, nameCol, TextStyle::Body);
 
