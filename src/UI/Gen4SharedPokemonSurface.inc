@@ -82,6 +82,13 @@ struct State {
     bool moveActive = false;
     int moveSourceBox = 0;
     int moveSourceSlot = 0;
+    // Y grabs a single Pokemon. X on an occupied box slot enters the
+    // rectangular Multi selection: move the corner, X grabs, Y drops.
+    bool moveSelecting = false;
+    bool moveMulti = false;
+    std::vector<int> moveSelectionSlots;
+    int moveSelectionWidth = 1;
+    int moveSelectionHeight = 1;
     bool legality = false;
     bool confirmRelease = false;
     bool speciesPreviewShiny = false;
@@ -1478,6 +1485,10 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
             state.moveActive = true;
             state.moveSourceBox = state.box;
             state.moveSourceSlot = state.slot;
+            state.moveSelecting = false;
+            state.moveMulti = false;
+            state.moveSelectionSlots.clear();
+            state.moveSelectionWidth = state.moveSelectionHeight = 1;
             screen.selectedBoxIndex = state.box;
             screen.selectedItemIndex = state.slot;
             screen.controllerNavigation.reset();
@@ -2723,6 +2734,31 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
             screen.touchedButtonId(touch), screen.selectedItemIndex,
             static_cast<int>(screen.trainer.getSlotsPerBox()))) {
         beginActions(screen);
+        return true;
+    }
+
+    // The regular Gen IV box view now offers direct Gen III-style pickup
+    // controls, without opening the large action sheet for every move.
+    if (boxEntry && (navigated & (HidNpadButton_Y | HidNpadButton_X)) &&
+        selectedOccupied(screen)) {
+        auto* staged = editor(screen);
+        if (!staged) {
+            screen.postStatus("Move requires a validated staged Gen IV save", 260);
+            return true;
+        }
+        auto& move = stateFor(screen);
+        move.actions = false;
+        move.moveActive = true;
+        move.moveSelecting = (navigated & HidNpadButton_X) != 0;
+        move.moveMulti = false;
+        move.moveSourceBox = screen.selectedBoxIndex;
+        move.moveSourceSlot = screen.selectedItemIndex;
+        move.moveSelectionSlots.clear();
+        move.moveSelectionWidth = move.moveSelectionHeight = 1;
+        screen.controllerNavigation.reset();
+        screen.postStatus(move.moveSelecting
+            ? "Multi: move corner, X grab group, Y drop (B cancel)"
+            : "Pokemon grabbed: move cursor, Y drop/swap (B cancel)", 280);
         return true;
     }
 
