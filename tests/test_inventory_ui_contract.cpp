@@ -27,7 +27,10 @@ int main() {
     static_assert(InventoryCategoryTouch::nextX(244, 1024) +
                   InventoryCategoryTouch::Width == 244 + 1024 -
                   InventoryCategoryTouch::RightInset);
-    static_assert(InventoryCategoryTouch::topY(80, 46) == 86);
+    static_assert(InventoryCategoryTouch::topY(80, 46) == 83);
+    static_assert(InventoryCategoryTouch::Width >= 52);
+    static_assert(InventoryCategoryTouch::Gap >= 20);
+    static_assert(InventoryCategoryTouch::Height <= 46);
 
     constexpr auto occupied = inventoryActionAvailability(true, true, true, true);
     static_assert(occupied.editAmount && occupied.addItem && occupied.removeItem);
