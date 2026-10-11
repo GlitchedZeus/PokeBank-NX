@@ -199,7 +199,8 @@ for name in CUSTOM_GSC:
 assert "berserk-gene" in generator and "iberserk_gene.png" in generator
 assert "render_classic_icons()" in generator
 mail_renderer = (ROOT / "tools/render_gen2_mail_stationery.py").read_text(encoding="utf-8")
-assert "render_unavailable_exact_mail(unavailable)" in generator
+assert "render_unavailable_exact_mail(remaining)" in generator
+assert "recover_real_mail_sheet(unavailable)" in generator
 assert "tuple(dims) != (160, 144)" in generator
 assert "GEN2_MAIL_SOURCES" in generator
 for key in GEN2_MAIL_ART:
