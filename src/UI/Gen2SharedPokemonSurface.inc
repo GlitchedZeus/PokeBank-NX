@@ -589,7 +589,7 @@ bool handleSharedSurfaceInput(TrainerViewScreen& screen, uint64_t down, uint64_t
     if (handleSharedProvenance(screen, down)) return true;
     if (handleSharedClone(screen, down)) return true;
     if (handleSharedReview(screen, down, held, stickX, stickY)) return true;
-    if (handleSharedActions(screen, down, held, stickX, stickY)) return true;
+    if (handleSharedActions(screen, down, held, stickX, stickY, touch)) return true;
     auto& state = stateFor(screen);
     if (state.mode == Mode::View) {
         if (PokeBank::UIModel::passiveViewAction(down & HidNpadButton_B, screen.touchedButtonId(touch)) ==
