@@ -62,6 +62,13 @@ int main() {
         "Move id 166 cannot exist in a Generation 1 save"));
     assert(invalidMessage(report(152,45,33,""),
         "Species 152 cannot exist in a Generation 1 save"));
+    // Strict native PK1 with a contradictory Crystal label must still
+    // reject Gen II-only moves using its true Gen I storage ceiling.
+    const auto mismatchedPk1=report(25,190,166,"crystal_gbc");
+    assert(invalidMessage(mismatchedPk1,
+        "Move id 166 cannot exist in a Generation 1 save"));
+    assert(!invalidMessage(mismatchedPk1,
+        "Move id 166 cannot exist in a Generation 2 save"));
 
     constexpr auto ancestor="species/pre-evolution provenance";
     constexpr auto native="current species in this exact Generation I game";

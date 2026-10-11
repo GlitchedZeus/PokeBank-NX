@@ -558,7 +558,25 @@ namespace Legality {
 
     Report analyze(const Pokemon::Pokemon& pk, const Context& context) {
         const auto originGroup = context.originGroup;
-        const auto exactSourceGameId = context.exactSourceGameId;
+        // A claimed save source must never override a verified native
+        // PK1/PK2/PK3/PK4 storage format. Otherwise an accidentally
+        // mislabelled bank entity can receive fabricated source-specific
+        // Invalid findings from the wrong game generation.
+        const uint8_t native12 =
+            Gen12FormatDomain::generationFromGroup(pk.getGameGroup());
+        const uint8_t nativeFormatGeneration = native12 != 0
+            ? native12
+            : Gen34FormatDomain::generationFromGroup(pk.getGameGroup());
+        const auto* suppliedSource =
+            sourceGameProfile(context.exactSourceGameId);
+        const bool sourceFormatMismatch = suppliedSource &&
+            nativeFormatGeneration != 0 &&
+            suppliedSource->generation != nativeFormatGeneration;
+        // Sanitizing here, before any exact-game helper is initialized,
+        // also prevents downstream source-only event/wild/trade templates
+        // from accidentally using the contradictory label.
+        const std::string_view exactSourceGameId = sourceFormatMismatch
+            ? std::string_view{} : context.exactSourceGameId;
         Report r;
         PokeVault::Integration::Gen1::SourceGame gen1Source =
             PokeVault::Integration::Gen1::SourceGame::Red;
@@ -571,6 +589,11 @@ namespace Legality {
         const bool hasExactGen3Source = exactGen3Source(exactSourceGameId, gen3Source);
         const uint16_t species = pk.speciesID();
         if (species == 0) return r;  // empty slot — nothing to validate
+        if (sourceFormatMismatch) {
+            add(r, Severity::Warning,
+                "Exact source-game label conflicts with the verified native PK1-PK4 storage format; source identity and source-specific encounter legality remain unresolved",
+                CheckIdentifier::SourceGame);
+        }
 
         const auto* sourceProfile = sourceGameProfile(exactSourceGameId);
         const uint8_t exactGeneration = sourceProfile ? sourceProfile->generation : 0;

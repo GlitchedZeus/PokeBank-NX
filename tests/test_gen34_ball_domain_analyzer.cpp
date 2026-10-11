@@ -72,7 +72,8 @@ void wr32(std::vector<std::byte>& data, size_t offset, uint32_t value) {
 
 Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true,
                                  uint16_t species=1, uint16_t move=0,
-                                 uint8_t originVersion=12) {
+                                 uint8_t originVersion=12,
+                                 const char* sourceOverride=nullptr) {
     std::vector<std::byte> decrypted(Encryption::SIZE_STORED4, std::byte{0});
     wr32(decrypted, 0x00, 0x12345678u);
     wr16(decrypted, 0x08, species);  // native stored PK4 species
@@ -95,6 +96,8 @@ Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true,
     Pokemon::Pokemon4ReadOnlyView view(source);
     assert(view.ball() == ball);
 
+    if(sourceOverride)
+        return Legality::analyze(view,Enums::GameVersion::PT,sourceOverride);
     return exactSource
         ? Legality::analyze(view, Enums::GameVersion::PT, "platinum_nds")
         : Legality::analyze(view, Enums::GameVersion::PT);
@@ -357,6 +360,33 @@ int main() {
     // Evolved Ivysaur retains a Diamond-origin Bulbasaur egg move.
     assert(hasInfo(analyzeGen4Ball(4,false,2,437,10),
                    "retained pre-evolution egg move"));
+
+    // Contradictory exact source labels must NOT rewrite the known
+    // immutable storage generation or produce false encounter verdicts.
+    auto pk3WrongLabel=gen3WithBall(4);
+    pk3WrongLabel.setMove(0,355);
+    const auto g3Mislabeled=Legality::analyze(
+        pk3WrongLabel,Enums::GameVersion::FRLG,"platinum_nds");
+    assert(hasText(g3Mislabeled,
+        "Exact source-game label conflicts with the verified native PK1-PK4 storage format"));
+    assert(hasInvalidText(g3Mislabeled,
+        "Move id 355 cannot exist in a Generation 3 save"));
+    assert(!hasInvalidText(g3Mislabeled,
+        "Move id 355 cannot exist in a Generation 4 save"));
+
+    // A verified encrypted PK4 is NOT converted to PK3 by a wrong Ruby
+    // source label: ball #13 and move #467 are valid Gen IV format IDs
+    // even though Gen III rejects them. Ball #25 is truly impossible.
+    const auto pk4WrongLabel=analyzeGen4Ball(13,false,1,467,12,"ruby_gba");
+    assert(hasText(pk4WrongLabel,
+        "Exact source-game label conflicts with the verified native PK1-PK4 storage format"));
+    assert(!hasInvalidText(pk4WrongLabel,
+        "Ball id 13 cannot exist in Generation 3"));
+    assert(!hasInvalidText(pk4WrongLabel,
+        "Move id 467 cannot exist in a Generation 3 save"));
+    const auto pk4RealBad=analyzeGen4Ball(25,false,1,467,12,"ruby_gba");
+    assert(hasInvalidText(pk4RealBad,
+        "Ball id 25 cannot exist in Generation 4"));
 
     // Source-free known native PK3/PK4 formats have generation-specific
     // species/move ceilings regardless of their exact save identity.

@@ -66,6 +66,11 @@ int main() {
         "Move id 252 cannot exist in a Generation 2 save"));
     assert(hasInvalidText(report(252,30,0,false,"",33),
         "Species 252 cannot exist in a Generation 2 save"));
+    // Strict native PK2 with a contradictory Yellow label remains Gen II.
+    assert(!hasInvalidText(report(25,20,0,false,"yellow_gb",251),
+        "Move id 251 cannot exist in a Generation 1 save"));
+    assert(hasInvalidText(report(25,20,0,false,"yellow_gb",252),
+        "Move id 252 cannot exist in a Generation 2 save"));
 
     // Source-free immutable native PK2: universally known current
     // Time Capsule eligibility is still reportable. The unknown source
