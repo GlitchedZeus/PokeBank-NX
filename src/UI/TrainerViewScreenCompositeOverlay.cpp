@@ -188,6 +188,10 @@ void clampSourceBoxSelection(TrainerViewScreen& screen) noexcept {
 }
 
 bool classicPackedMoveLayerAvailable(const TrainerViewScreen& screen) noexcept {
+    // This is PokeBank NX's existing Gen I-III hold-Y/carry/multi overlay,
+    // now reused by Gen IV. The shared editor owns its own modal frames.
+    if (ClassicPackedMove::isGen4(screen))
+        return !Gen4SharedEditorSurface::ownsFrame(screen);
     if (Gen3SharedEditorSurface::isGen3Gba(screen))
         return !Gen3SharedEditorSurface::ownsFrame(screen);
     if (Gen1PokemonEditor::isGen1SourceUX(screen)) {
