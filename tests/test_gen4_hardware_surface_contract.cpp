@@ -2,6 +2,7 @@
 #include "UI/Gen4BoxTouchActions.h"
 #include "UI/Gen4BoxMoveNavigation.h"
 #include "UI/ClassicPackedMultiSelect.h"
+#include "UI/ClassicMachineArtwork.h"
 #include "UI/Gen4DataPresentation.h"
 #include "UI/Gen4ItemListWindow.h"
 #include "UI/ItemSpriteKey.h"
@@ -54,6 +55,21 @@ int main() {
     static_assert(rectangle.count == 4);
     static_assert(rectangle[0] == 0 && rectangle[1] == 1);
     static_assert(rectangle[2] == 6 && rectangle[3] == 7);
+
+    // In-generation disc artwork must not use modern typing blindly.
+    namespace Disc = UI::ClassicMachineArtwork;
+    static_assert(Disc::Gen1Types.size() == 166);
+    static_assert(Disc::Gen2Types.size() == 252);
+    static_assert(Disc::Gen3Types.size() == 355);
+    static_assert(Disc::Gen4Types.size() == 468);
+    static_assert(Disc::Gen1Machines.size() == 55);
+    static_assert(Disc::Gen1Types[2] == 1);  // RBY Karate Chop is Normal.
+    static_assert(Disc::Gen2Types[2] == 2);  // GSC Karate Chop is Fighting.
+    static_assert(Disc::Gen1Machines[5] == 4); // RBY TM06 Toxic: Poison.
+    static_assert(Disc::Gen1Machines[52] == 11); // RBY HM03 Surf: Water.
+    static_assert(Disc::Gen2Types[174] == 0); // GSC Curse has ??? type.
+    assert(Disc::moveType(Enums::GameVersion::RBY, 2) == 1);
+    assert(Disc::moveType(Enums::GameVersion::GSC, 2) == 2);
 
     // An up-wrap from 1/13 to 13/13 shows a full 9-row window, not
     // an almost-empty 4-row final page. Selection stays visible throughout.
@@ -177,6 +193,8 @@ int main() {
     const auto locations = read("src/Names/LocationNames.cpp");
     const auto locationGenerator = read("tools/gen_locations.py");
     const auto itemsPanel = read("src/UI/Panels/ItemsPanel.cpp");
+    contains(itemsPanel, "ClassicMachineArtwork::artKey(");
+    contains(itemsPanel, "fb.drawSpriteStaticContained(nx,");
     const auto boxPanel = read("src/UI/Panels/BoxPokemonPanel.cpp");
     const auto gen3Picker = read("src/UI/Gen3SharedPokemonSurface.inc");
     const auto gen2Held = read("include/UI/Gen2HeldItemPicker.h");
