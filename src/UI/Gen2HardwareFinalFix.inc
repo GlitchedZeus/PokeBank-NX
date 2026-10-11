@@ -125,19 +125,22 @@ void redrawGen2DetailsSemantics(PKSEFramebuffer& fb, const State& state,
     const int viewportBottom = y + h - 34;
     const int viewportH = std::max(0, viewportBottom - viewportY);
     constexpr int detailRowStep = 38;
-    const auto detailVisual = liveVerticalListVisual(
-        static_cast<int>(unified.detailsFocus), static_cast<int>(rows.size()), detailRowStep,
-        x + 8, viewportY, w - 16, viewportH);
+    // Match the stable clipped touch viewport already used by drawUnifiedDetails.
+    // Re-centring from focus here previously undid every finger-scroll frame.
+    const int detailFirst = std::max(0, unified.detailsViewport.firstRow);
+    const int detailOffset = unified.detailsTouchScroll.offset();
     fb.drawFilledRect(x + 8, viewportY, w - 16, viewportH, Colors::Panel);
-    const auto window = UnifiedContract::scrollWindow(
-        rows.size(), 8, static_cast<std::size_t>(detailVisual.index));
+    const UnifiedContract::ScrollWindow window{
+        static_cast<std::size_t>(detailFirst),
+        std::min<std::size_t>(8, rows.size() - static_cast<std::size_t>(detailFirst)),
+        rows.size() > 8};
     fb.setClipRect(x + 8, viewportY, w - 16, viewportH);
     for (std::size_t i = 0; i < window.count; ++i) {
         const std::size_t row = window.first + i;
-        const int yy = y + 224 + static_cast<int>(i) * detailRowStep + detailVisual.offset;
+        const int yy = y + 224 + static_cast<int>(i) * detailRowStep + detailOffset;
         const bool selected =
             unified.focus.panel == UnifiedContract::Panel::Details &&
-            row == static_cast<std::size_t>(detailVisual.index);
+            row == static_cast<std::size_t>(unified.focus.row);
         // Leave a clean gutter between the selection outline and the scrollbar track.
         drawGen2Focus(fb, x + 8, yy + 2, std::max(0, w - 36), 30, selected);
         fb.drawText(x + 18, yy + 7, rows[row].first, selected ? Colors::SelectedText : Colors::TextDim,
