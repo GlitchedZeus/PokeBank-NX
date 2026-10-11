@@ -33,6 +33,9 @@ void runCases(){
     assert(L::evaluate(shuffled).status==L::Status::MalformedHistory);
     auto early=in;early.steps[1].level=39;
     assert(L::evaluate(early).status==L::Status::MalformedHistory);
+    auto inventedMethod=in;
+    inventedMethod.steps[1].method=static_cast<L::Method>(255);
+    assert(L::evaluate(inventedMethod).status==L::Status::MalformedHistory);
     auto tooNew=in;tooNew.steps[1].move=468;
     assert(L::evaluate(tooNew).status==L::Status::MalformedHistory);
     auto wrongEnd=in;wrongEnd.observedMoves={15,22,73,92};

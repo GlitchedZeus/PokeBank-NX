@@ -43,6 +43,17 @@ constexpr uint8_t firstEmpty(const std::array<uint16_t,4>& moves) noexcept {
     for(uint8_t i=0;i<4;++i)if(!moves[i])return i;
     return 4;
 }
+constexpr bool supportedMethod(Method method) noexcept {
+    switch(method) {
+        case Method::LevelUp:
+        case Method::TechnicalMachine:
+        case Method::HiddenMachine:
+        case Method::Tutor:
+        case Method::Reminder:
+            return true;
+    }
+    return false;
+}
 constexpr bool contains(const std::array<uint16_t,4>& moves,uint16_t move) noexcept {
     for(uint16_t value:moves)if(value==move)return true;
     return false;
@@ -73,7 +84,8 @@ constexpr Result evaluate(const Input& in) noexcept {
         const Step step=in.steps[i];
         if(!step.stage || step.stage<=lastStage ||
            step.level<lastLevel || step.level>in.observedLevel ||
-           !step.move || step.move>467 || step.forgetSlot>=4) {
+           !step.move || step.move>467 || step.forgetSlot>=4 ||
+           !supportedMethod(step.method)) {
             out.status=Status::MalformedHistory;return out;
         }
         lastStage=step.stage;lastLevel=step.level;
