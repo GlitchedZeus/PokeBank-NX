@@ -2,6 +2,7 @@
 #include "Legality/Legality.h"
 #include "Legality/Gen4TradeEvidence.h"
 #include "Legality/Gen3JointMoveEvidence.h"
+#include "Legality/Gen3ShedinjaEvolutionMoveEvidence.h"
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
 #include "Legality/Gen34PalParkMoves.h"
@@ -674,6 +675,54 @@ int main() {
     rubyUnknownOrigin.setMetLevel(2);
     assert(!hasInfo(Legality::analyze(rubyUnknownOrigin,Enums::GameVersion::FRLG),
                     gen3DetachedWild));
+
+    // MOVE-003: actual native PK3 -> immutable analyzer; an ordinary
+    // Emerald Nincada→Ninjask→Shedinja sibling copy occurs at a single
+    // evolution level, not at both Ninjask's Agility (38) and Baton (45).
+    using Legality::Gen3ShedinjaEvolutionMove::classify;
+    static_assert(classify(292,50,{97,226,0,0}).oneEvolutionCannotIntroduceBoth);
+    static_assert(classify(292,38,{97,0,0,0}).ordinaryAgilityCopyPossible);
+    static_assert(!classify(292,37,{97,0,0,0}).ordinaryAgilityCopyPossible);
+    static_assert(classify(292,45,{226,0,0,0}).ordinaryBatonCopyPossible);
+    static_assert(!classify(292,44,{226,0,0,0}).ordinaryBatonCopyPossible);
+    static_assert(!classify(292,50,{14,226,0,0}).oneEvolutionCannotIntroduceBoth);
+    static_assert(!classify(291,50,{97,226,0,0}).oneEvolutionCannotIntroduceBoth);
+    constexpr auto shedConflict="Emerald Shedinja candidate move-history bound:";
+    constexpr auto shedPositive="Emerald Shedinja candidate move-history evidence:";
+    auto shed=gen3WithBall(4);
+    shed.setSpecies(292);
+    shed.setOriginGame(3); // Stored original Emerald GBA.
+    shed.setLevel(50);
+    shed.setMove(0,97);
+    shed.setMove(1,226);
+    shed.refreshChecksum();
+    const auto shedDetached=Legality::analyze(shed,Enums::GameVersion::FRLG);
+    assert(hasInfo(shedDetached,shedConflict));
+    assert(!hasInvalidText(shedDetached,shedConflict));
+    assert(hasInfo(Legality::analyze(
+        shed,Enums::GameVersion::FRLG,"emerald_gba"),shedConflict));
+    shed.setMove(1,14); // Swords Dance: a separate acquisition alternative.
+    shed.refreshChecksum();
+    assert(!hasInfo(Legality::analyze(shed,Enums::GameVersion::FRLG),shedConflict));
+    shed.setMove(1,0);
+    shed.setLevel(38);
+    shed.refreshChecksum();
+    assert(hasInfo(Legality::analyze(shed,Enums::GameVersion::FRLG),shedPositive));
+    shed.setLevel(37);
+    shed.refreshChecksum();
+    assert(!hasText(Legality::analyze(shed,Enums::GameVersion::FRLG),
+                    "Emerald Shedinja candidate move-history"));
+    shed.setLevel(50);
+    shed.setOriginGame(2); // Wrong retained original game: Ruby.
+    shed.setMove(1,226);
+    shed.refreshChecksum();
+    assert(!hasText(Legality::analyze(shed,Enums::GameVersion::FRLG),
+                    "Emerald Shedinja candidate move-history"));
+    shed.setOriginGame(3);
+    shed.setSpecies(291); // Ninjask, not Shedinja.
+    shed.refreshChecksum();
+    assert(!hasText(Legality::analyze(shed,Enums::GameVersion::FRLG),
+                    "Emerald Shedinja candidate move-history"));
 
     // Entire pret-derived Gen III original-source learnset classifications
     // now reach the native-PK3 -> production legality report, even when

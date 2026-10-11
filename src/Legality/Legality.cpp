@@ -68,6 +68,7 @@
 #include "Legality/Gen4EggMoveFamilyEvidence.h"
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
 #include "Legality/Gen3JointMoveEvidence.h"
+#include "Legality/Gen3ShedinjaEvolutionMoveEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
 #include "Legality/Gen34PalParkMoves.h"
 #include "Legality/Gen34PalParkSpecies.h"
@@ -600,6 +601,33 @@ namespace Legality {
             add(r, Severity::Warning,
                 "Exact source-game label conflicts with the verified native PK1-PK4 storage format; source identity and source-specific encounter legality remain unresolved",
                 CheckIdentifier::SourceGame);
+        }
+
+        // MOVE-003: a Shedinja is copied from the freshly evolved
+        // Ninjask at ONE ordinary Emerald evolution level. The later
+        // existence of both moves in Ninjask's lifelong learnset does not
+        // establish a common single-evolution acquisition path.
+        // A stored Emerald-origin PK3 is necessary for this candidate-
+        // scoped INFO witness; no alternative route is globally excluded.
+        if (!sourceFormatMismatch && !pk.isEgg() &&
+            Gen34FormatDomain::generationFromGroup(pk.getGameGroup())==3 &&
+            Gen4Origin::exactGen3GameId(pk.originGame())=="emerald_gba" &&
+            species==292) {
+            const uint8_t currentLevel=Pokemon::getLevelFromExp(
+                pk.exp(),Pokemon::getGrowthRate(species));
+            const auto evolution=Gen3ShedinjaEvolutionMove::classify(
+                species,currentLevel,
+                {pk.move(0),pk.move(1),pk.move(2),pk.move(3)});
+            if (evolution.oneEvolutionCannotIntroduceBoth) {
+                add(r,Severity::Info,
+                    "Emerald Shedinja candidate move-history bound: Agility (#97) at level 38 and Baton Pass (#226) at level 45 cannot both be introduced by one ordinary Ninjask-to-Shedinja sibling-copy evolution; other move-acquisition histories remain unresolved",
+                    CheckIdentifier::Moves);
+            } else if (evolution.ordinaryAgilityCopyPossible ||
+                       evolution.ordinaryBatonCopyPossible) {
+                add(r,Severity::Info,
+                    "Emerald Shedinja candidate move-history evidence: the stored move can be copied during one eligible Ninjask evolution level; actual timing and alternative histories remain unresolved",
+                    CheckIdentifier::Moves);
+            }
         }
 
         const auto* sourceProfile = sourceGameProfile(exactSourceGameId);
