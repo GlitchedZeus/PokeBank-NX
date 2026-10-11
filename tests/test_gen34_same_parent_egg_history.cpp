@@ -35,8 +35,18 @@ static_assert(noMotherMove.status==H::Status::CandidateMismatch);
 constexpr auto ruby=[] {
     auto p=pair;p.game="ruby_gba";return H::evaluate(p);
 }();
-static_assert(!Legality::Gen34EggMove::isEggMove("ruby_gba",1,345));
-static_assert(ruby.status==H::Status::CandidateMismatch);
+// Ruby also permits #345 in the pinned dataset: do not invent a
+// supposed Ruby/FRLG difference for this shared Bulbasaur move.
+static_assert(Legality::Gen34EggMove::isEggMove("ruby_gba",1,345));
+static_assert(ruby.status==H::Status::CandidateCompatible);
+constexpr auto rubyWithGen4OnlyMove=[] {
+    auto p=pair;p.game="ruby_gba";
+    // Leaf Storm #437 is a Gen IV addition, not a Ruby egg move.
+    p.father={80,437,15,33};
+    return H::evaluate(p);
+}();
+static_assert(!Legality::Gen34EggMove::isEggMove("ruby_gba",1,437));
+static_assert(rubyWithGen4OnlyMove.status==H::Status::CandidateMismatch);
 constexpr auto volt=[] {
     H::Input p{};p.game="emerald_gba";p.species=172;
     p.fatherId=1;p.motherId=2;p.snapshotsKnown=true;
