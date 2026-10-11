@@ -154,6 +154,8 @@ HOST_TESTS += $(HOST_BUILD)/test_gen14_candidate_move_history
 HOST_TESTS += $(HOST_BUILD)/test_gen3_egg_iv_inheritance_stage
 HOST_TESTS += $(HOST_BUILD)/test_gen34_same_parent_egg_history
 HOST_TESTS += $(HOST_BUILD)/test_gen4_event_joint_move_history
+HOST_TESTS += $(HOST_BUILD)/test_gen4_event_ribbon_candidate
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_event_ribbon_candidate_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_event_joint_move_history_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_same_parent_egg_history_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_egg_iv_inheritance_stage_sanitize
@@ -293,6 +295,14 @@ $(HOST_BUILD)/test_gen4_hatch_location_evidence: tests/test_gen4_hatch_location_
 $(HOST_BUILD)/test_gen4_hatch_location_evidence_sanitize: tests/test_gen4_hatch_location_evidence.cpp include/Legality/Gen4HatchLocationEvidence.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_hatch_location_evidence.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_event_ribbon_candidate: tests/test_gen4_event_ribbon_candidate.cpp include/Legality/Gen4EventRibbonCandidate.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_event_ribbon_candidate.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_event_ribbon_candidate_sanitize: tests/test_gen4_event_ribbon_candidate.cpp include/Legality/Gen4EventRibbonCandidate.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_event_ribbon_candidate.cpp -o $@
 
 $(HOST_BUILD)/test_gen4_event_joint_move_history: tests/test_gen4_event_joint_move_history.cpp include/Legality/Gen4EventJointMoveHistory.h
 	@mkdir -p $(HOST_BUILD)

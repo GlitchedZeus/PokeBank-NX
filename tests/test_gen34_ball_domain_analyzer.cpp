@@ -14,6 +14,7 @@
 #include "Legality/Gen34PalParkSpecies.h"
 #include "Legality/Gen4RangerManaphy.h"
 #include "Legality/Gen4EventTemplate.h"
+#include "Legality/Gen4EventRibbonCandidate.h"
 #include "Names/ItemNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Pokemon3FRLG.h"
@@ -156,6 +157,29 @@ Legality::Report analyzeNativeGen4RawText(
     return exactSource
         ? Legality::analyze(view,Enums::GameVersion::PT,"platinum_nds")
         : Legality::analyze(view,Enums::GameVersion::PT);
+}
+
+Legality::Report analyzeNativeGen4RibbonWords(uint32_t a,uint32_t b,uint32_t c) {
+    std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
+    wr32(raw,0x00,0x12345678u);
+    wr16(raw,0x08,1);
+    wr16(raw,0x0C,12345);
+    wr16(raw,0x0E,54321);
+    wr32(raw,0x10,135);
+    wr32(raw,0x24,a);
+    wr32(raw,0x3C,b);
+    wr32(raw,0x60,c);
+    raw[0x17]=std::byte{2};
+    raw[0x5F]=std::byte{12};
+    raw[0x83]=std::byte{4};
+    const auto enc=Encryption::encryptArray4(raw);
+    Pokemon::Pokemon4ReadOnly pk(enc,Enums::GameVersion::PT);
+    assert(pk.valid() && pk.checksumValid());
+    Pokemon::Pokemon4ReadOnlyView view(pk);
+    std::array<uint32_t,3> observed{};
+    assert(view.gen4RawRibbonWords(observed));
+    assert(observed==std::array<uint32_t,3>{a,b,c});
+    return Legality::analyze(view,Enums::GameVersion::PT);
 }
 
 Legality::Report analyzeNativeGen4ContestRanks(
@@ -1158,6 +1182,32 @@ int main() {
     std::array<std::byte,22> absentNickname{};
     std::array<std::byte,16> absentOT{};
     assert(!gen3WithBall(4).gen4RawTextFields(absentNickname,absentOT));
+
+    // EVENT-001: native immutable PK4 ribbon DWORD capability. The
+    // candidate checker never infers template ribbons from missing PCD data.
+    namespace EventRibbons=Legality::Gen4EventRibbonCandidate;
+    constexpr auto eventSource=Legality::Gen4EventTemplate::Candidate{
+        4,7200,58364,0x0f199b50u,40,3053,16,0,0,1,7,0,true};
+    constexpr EventRibbons::Requirement requirement{
+        true,{1u,2u,4u},{8u,16u,32u}
+    };
+    constexpr auto match=EventRibbons::evaluate(
+        eventSource,67,true,{1u,2u,4u},requirement);
+    static_assert(match.status==EventRibbons::Status::CandidateCompatible);
+    static_assert(EventRibbons::evaluate(
+        eventSource,67,true,{0u,2u,4u},requirement).status==
+        EventRibbons::Status::CandidateContradicted);
+    static_assert(EventRibbons::evaluate(
+        eventSource,67,false,{1u,2u,4u},requirement).status==
+        EventRibbons::Status::UnavailableRibbonData);
+    static_assert(EventRibbons::evaluate(
+        eventSource,67,true,{1u,2u,4u},{}).status==
+        EventRibbons::Status::UnknownEventRibbonTemplate);
+    static_assert(EventRibbons::evaluate(
+        eventSource,0,true,{1u,2u,4u},requirement).status==
+        EventRibbons::Status::IdentityMismatch);
+    assert(!hasInvalidText(analyzeNativeGen4RibbonWords(1,2,4),
+                           "event ribbon"));
 
     // META-001: native encrypted PK4 0x60 low twenty ribbon bits.
     // Prefixes are rank-chain only; they do not establish actual wins.

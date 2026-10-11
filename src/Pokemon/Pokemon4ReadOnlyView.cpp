@@ -104,6 +104,13 @@ uint16_t Pokemon4ReadOnlyView::eggLocation() const noexcept {
         return source_.eggLocationExtended();
     return source_.eggLocationDP();
 }
+bool Pokemon4ReadOnlyView::gen4RawRibbonWords(
+        std::array<uint32_t,3>& out) const noexcept {
+    if(!source_.valid() || !source_.checksumValid() || source_.empty())
+        return false;
+    out=source_.ribbons();
+    return true;
+}
 bool Pokemon4ReadOnlyView::gen4ContestRibbonRanks(
         std::array<uint8_t,5>& out) const noexcept {
     if(!source_.valid() || !source_.checksumValid() || source_.empty())

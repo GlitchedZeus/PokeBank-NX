@@ -431,6 +431,13 @@ namespace Pokemon {
             return false;
         }
 
+        /** Exact 3 persisted ribbon DWORDs from a validated immutable
+         * native PK4. Unavailable on formats without proven layout;
+         * event-specific required/forbidden bits are separate evidence. */
+        virtual bool gen4RawRibbonWords(std::array<uint32_t,3>&) const noexcept {
+            return false;
+        }
+
         /** Complete native PK4 Sinnoh contest-rank data capability.
          * False means Unavailable, NOT five known zero-value categories.
          * Unmodified immutable native PK4 views may expose full rank bits;

@@ -68,6 +68,7 @@ public:
     uint8_t metLevel() const noexcept override;
     uint16_t eggLocation() const noexcept override;
     bool gen4ContestRibbonRanks(std::array<uint8_t,5>& out) const noexcept override;
+    bool gen4RawRibbonWords(std::array<uint32_t,3>& out) const noexcept override;
     bool gen4RawTextFields(std::array<std::byte,22>& nickname,
                            std::array<std::byte,16>& ot) const noexcept override;
     int getMaxNicknameLength() const noexcept override { return 10; }
