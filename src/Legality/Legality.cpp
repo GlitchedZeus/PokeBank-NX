@@ -72,6 +72,7 @@
 #include "Legality/Gen3ShedinjaEvolutionMoveEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
 #include "Legality/Gen34PalParkMoves.h"
+#include "Legality/Gen34PalParkHMHistory.h"
 #include "Legality/Gen34PalParkSpecies.h"
 #include "Legality/Gen12JointMoveEvidence.h"
 #include "Legality/Gen34LanguageEvidence.h"
@@ -1108,6 +1109,36 @@ namespace Legality {
                     add(r,Severity::Info,
                         "Gen III-origin PK4 species can descend from a Gen III species via Generation IV evolution; actual evolution and migration history unresolved",
                         CheckIdentifier::Transfer);
+                }
+                // TRANSFER-001: an observed GBA HM in a valid Pal Park
+                // native PK4 is NOT proof it crossed migration. It needs a
+                // later Gen IV learning route; other game pools and transfer
+                // histories are not fully reconstructed. This is INFO only.
+                if(!sourceFormatMismatch &&
+                   Gen4Origin::kind(pk.originGame())==
+                       Gen4Origin::Kind::Gen3Handheld &&
+                   lineage!=Gen34PalParkSpecies::Evidence::NoGen3Ancestor) {
+                    const auto hm=Gen34PalParkHMHistory::classify(
+                        species,pk.form(),
+                        {pk.move(0),pk.move(1),pk.move(2),pk.move(3)});
+                    if(hm.storedGen3HM)
+                        add(r,Severity::Info,
+                            "Pal Park HM chronology: " +
+                            std::to_string(hm.storedGen3HM) +
+                            " stored Gen III HM move(s) require acquisition after migration; retaining the old HM across the transfer boundary is not a complete history",
+                            CheckIdentifier::Moves);
+                    if(hm.gen4PoolCandidates)
+                        add(r,Severity::Info,
+                            "Pal Park HM chronology: " +
+                            std::to_string(hm.gen4PoolCandidates) +
+                            " HM move(s) have audited possible Gen IV learning pools; actual post-transfer teaching, level and visited game remain unresolved",
+                            CheckIdentifier::Moves);
+                    if(hm.unmodeledReacquisitions)
+                        add(r,Severity::Info,
+                            "Pal Park HM chronology: " +
+                            std::to_string(hm.unmodeledReacquisitions) +
+                            " HM move(s) have no audited later-learning witness; alternative event and transfer histories remain unresolved, not Invalid",
+                            CheckIdentifier::Moves);
                 }
             }
             if (originGeneration == 0) {

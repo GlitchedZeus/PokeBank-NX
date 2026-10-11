@@ -7,6 +7,7 @@
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
 #include "Legality/Gen34PalParkMoves.h"
+#include "Legality/Gen34PalParkHMHistory.h"
 #include "Legality/Gen34PalParkSpecies.h"
 #include "Legality/Gen4RangerManaphy.h"
 #include "Legality/Gen4EventTemplate.h"
@@ -1106,6 +1107,47 @@ int main() {
     const auto mixedEraBadMarker=analyzeDetachedPalParkMoves(
         2,34,363,false,true,false,true);
     assert(!hasText(mixedEraBadMarker,"joint history bound"));
+    // TRANSFER-001: Gen III HM #148 Flash in a native encrypted
+    // Pal Park PK4 can have a post-transfer Gen IV candidate (TM70).
+    // A stored Gen III HM never proves that the old HM survived the edge.
+    // No hard Invalid follows from unsupported or incomplete histories.
+    namespace PalHM=Legality::Gen34PalParkHMHistory;
+    static_assert(PalHM::isGen3HM(15) && PalHM::isGen3HM(19) &&
+                  PalHM::isGen3HM(57) && PalHM::isGen3HM(70) &&
+                  PalHM::isGen3HM(148) && PalHM::isGen3HM(249) &&
+                  PalHM::isGen3HM(127) && PalHM::isGen3HM(291));
+    static_assert(!PalHM::isGen3HM(85) &&
+                  !PalHM::isGen3HM(0) &&
+                  !PalHM::isGen3HM(468));
+    const auto hmPositive=PalHM::classify(25,0,{148,85,0,0});
+    assert(hmPositive.storedGen3HM==1 &&
+           hmPositive.gen4PoolCandidates==1 &&
+           hmPositive.unmodeledReacquisitions==0);
+    const auto hmUnmodeled=PalHM::classify(25,0,{291,85,0,0});
+    assert(hmUnmodeled.storedGen3HM==1 &&
+           hmUnmodeled.gen4PoolCandidates==0 &&
+           hmUnmodeled.unmodeledReacquisitions==1);
+    const auto hmNone=PalHM::classify(25,0,{85,0,0,0});
+    assert(hmNone.storedGen3HM==0);
+    constexpr auto hmText="Pal Park HM chronology:";
+    const auto nativeHM=analyzeDetachedPalParkMoves(2,148,85);
+    assert(hasInfo(nativeHM,hmText));
+    assert(hasInfo(nativeHM,"possible Gen IV learning pools"));
+    assert(!hasInvalidText(nativeHM,hmText));
+    const auto exactNativeHM=analyzeDetachedPalParkMoves(2,148,85,true);
+    assert(hasInfo(exactNativeHM,hmText));
+    const auto nativeUnknownHM=analyzeDetachedPalParkMoves(2,291,85);
+    assert(hasInfo(nativeUnknownHM,hmText));
+    assert(hasInfo(nativeUnknownHM,"alternative event and transfer histories"));
+    assert(!hasInvalidText(nativeUnknownHM,hmText));
+    assert(!hasText(analyzeDetachedPalParkMoves(
+        2,148,85,false,false),hmText)); // No Pal Park marker.
+    assert(!hasText(analyzeDetachedPalParkMoves(
+        2,148,85,false,true,true),hmText)); // Invalid Ball.
+    assert(!hasText(analyzeDetachedPalParkMoves(
+        2,148,85,false,true,false,true),hmText)); // Invalid split fields.
+    assert(!hasText(analyzeDetachedPalParkMoves(2,85,86),hmText));
+
     constexpr auto stagePrefix="Source-free Pal Park PK4 move-stage evidence:";
     const auto actualPalMoves=analyzeDetachedPalParkMoves(2,85,363);
     assert(hasInfo(actualPalMoves,
