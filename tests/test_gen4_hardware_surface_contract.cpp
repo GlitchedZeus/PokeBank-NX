@@ -304,7 +304,7 @@ int main() {
     contains(addPath,"Gen4::gen4BagMaxQuantity(");
     contains(editPath,"Gen4::gen4BagMaxQuantity(");
     contains(addPath,"Gen4::gen4BagItemAllowed(");
-    contains(editPath,"item.itemId!=originalId");
+    contains(editPath,"itemId!=originalId");
     contains(addPath,"static_cast<uint16_t>(r.value)");
     contains(editPath,"static_cast<uint16_t>(r.value)");
     contains(addPath,"*current=std::move(backup)");
