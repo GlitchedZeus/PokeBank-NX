@@ -17,6 +17,7 @@ from pathlib import Path
 
 from png_asset_validation import validate_png
 from render_classic_item_icons import KEYS as CUSTOM_GSC_ICONS, build as render_classic_icons
+from render_gen2_mail_stationery import render_unavailable_exact_mail
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "romfs" / "sprites" / "items"
@@ -213,9 +214,8 @@ def fetch_extra(name: str, url: str, force: bool) -> str:
 def fetch_gen2_mail(key: str, filename: str, force: bool) -> str:
     """Recover a distinct, correctly attributed Gen II mail background."""
     target = OUT / (key + ".png")
-    if not force and validated(target):
-        # The cache can contain an original motif rather than the full
-        # background. Only 160x144 qualifies as exact stationery art.
+    provenance = ROOT / "build-mail-source" / (key + ".verified-original")
+    if not force and validated(target) and provenance.is_file():
         ok, _, dims = validate_png(target)
         if ok and tuple(dims) == (160, 144):
             return "cached-exact"
@@ -236,6 +236,8 @@ def fetch_gen2_mail(key: str, filename: str, force: bool) -> str:
             temporary.unlink(missing_ok=True)
             return "unavailable/invalid-image"
         temporary.replace(target)
+        provenance.parent.mkdir(parents=True, exist_ok=True)
+        provenance.write_text(hashlib.sha256(payload).hexdigest(), encoding="ascii")
         return "fetched"
     except urllib.error.HTTPError as error:
         # Archives may reject CI hotlink requests. Keep all ten images
@@ -264,7 +266,16 @@ def verify_required(include_classic: bool = False) -> None:
         if custom:
             raise RuntimeError("Missing custom GSC historical item sprites: " + ", ".join(custom))
         assert validated(OUT / "berserk-gene.png")
-        print("CLASSIC ITEM SPRITE PREFLIGHT: PASS (type discs, stationery motifs, special historical icons)")
+        mail_bad = []
+        for key in GEN2_MAIL_SOURCES:
+            file = OUT / (key + ".png")
+            valid, reason, dims = validate_png(file) if file.exists() else (False, "absent", ())
+            if not valid or tuple(dims) != (160, 144):
+                mail_bad.append(key)
+        if mail_bad:
+            raise RuntimeError("Mail background is not full 160x144 GSC stationery: "
+                               + ", ".join(mail_bad))
+        print("CLASSIC ITEM SPRITE PREFLIGHT: PASS (machine type discs, full 160x144 mail art, GSC historic icons)")
 
 
 def main() -> int:
@@ -299,22 +310,20 @@ def main() -> int:
                 pool.map(lambda pair: fetch_gen2_mail(pair[0], pair[1], options.force),
                          GEN2_MAIL_SOURCES.items())))
         print(f"Generation II original Mail art (Bulbagarden Archives): {mail_status}")
-        motif_status = {}
-        for key, motif_file in GEN2_MAIL_MOTIFS.items():
-            target = OUT / (key + ".png")
-            ok, _, dimensions = validate_png(target) if target.is_file() else (False, "", ())
-            if ok and tuple(dimensions) == (160, 144):
-                motif_status[key] = "full-original"
-                continue
-            motif_status[key] = fetch_extra(
-                key, GEN2_MAIL_MOTIF_URL + motif_file, options.force)
-        print("Generation II authentic original-game motifs (not full stationery): "
-              + str(motif_status))
-        missing_mail = [key for key in GEN2_MAIL_MOTIFS
+        # If the Archives rejects the genuine 160x144 screenshot, render a
+        # full stationery preview from the ORIGINAL Crystal PNG motifs/borders
+        # and palette; do not silently show a tiny letter motif as "mail art".
+        # The fallback is explicitly reconstructed, never labelled exact ROM.
+        unavailable = [key for key, result in mail_status.items()
+                       if result not in ("fetched", "cached-exact")]
+        reconstructed = render_unavailable_exact_mail(unavailable)
+        print("Generation II original-game source reconstructed stationery: "
+              + str(reconstructed))
+        invalid_mail = [key for key in GEN2_MAIL_SOURCES
                         if not validated(OUT / (key + ".png"))]
-        if missing_mail:
-            raise RuntimeError("Missing both original mail and pinned Gen II motif: "
-                               + ", ".join(missing_mail))
+        if invalid_mail:
+            raise RuntimeError("Missing full-size GSC stationery art: "
+                               + ", ".join(invalid_mail))
     verify_required(include_classic=not options.required_only)
     return 0
 
