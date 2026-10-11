@@ -78,7 +78,8 @@ int main() {
     static_assert(ClassicAddItemPickerLayout::RowsPerPage == 9);
     static_assert(ClassicAddItemPickerLayout::viewport(1280, 720).visibleRows == 9);
     static_assert(ClassicAddItemPickerLayout::viewport(1280, 720).h == 387);
-    static_assert(ClassicAddItemPickerLayout::viewport(1280, 720).y == 161);
+    static_assert(ClassicAddItemPickerLayout::viewport(1280, 720).y == 159);
+    static_assert(ClassicAddItemPickerLayout::BottomInset == 57);
 
     InventoryBaseline baseline{
         {0, 17, 53, true},   // source-owned isNew item: Potion-like representative
