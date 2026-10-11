@@ -49,6 +49,21 @@ inline std::string slug(std::string_view label) {
     // same item role; never misreport these as exact original-era artwork.
     if (key == "x-special") return "x-sp-atk";
     if (key == "exp-all") return "exp-share";
+    // Gen II's ten original berry identities lack distinct sprite art in
+    // the pinned archive. These later-generation successor berries have the
+    // documented corresponding effects, and are labelled as REPRESENTATIVE
+    // in the audit (not original GSC item graphics). Important: Ice Berry
+    // cures BURN while Burnt Berry cures FREEZE, despite their names.
+    if (key == "poison-cure-berry") return "pecha-berry";
+    if (key == "paralyze-cure-berry") return "cheri-berry";
+    if (key == "mint-berry") return "chesto-berry";
+    if (key == "ice-berry") return "rawst-berry";
+    if (key == "burnt-berry") return "aspear-berry";
+    if (key == "mystery-berry") return "leppa-berry";
+    if (key == "berry") return "oran-berry";
+    if (key == "bitter-berry") return "persim-berry";
+    if (key == "miracle-berry") return "lum-berry";
+    if (key == "gold-berry") return "sitrus-berry";
     if (key == "parlyz-heal") return "paralyze-heal";
     if (key == "brightpowder") return "bright-powder";
     if (key == "elixer") return "elixir";
