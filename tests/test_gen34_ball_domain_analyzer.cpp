@@ -1,6 +1,7 @@
 #include "Encryption/Encryption4.h"
 #include "Legality/Legality.h"
 #include "Legality/Gen4TradeEvidence.h"
+#include "Legality/Gen4RangerManaphy.h"
 #include "Names/ItemNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Pokemon3FRLG.h"
@@ -274,6 +275,35 @@ Legality::Report analyzeDetachedNpcAbra(uint16_t species=63,
         : Legality::analyze(view,Enums::GameVersion::DP);
 }
 
+Legality::Report analyzeDetachedRanger(uint32_t pid=0x5271E97Eu,
+                                       uint8_t language=2,
+                                       uint8_t ball=4,
+                                       uint16_t eggLocation=3001,
+                                       uint8_t originVersion=10,
+                                       uint8_t gender=2) {
+    std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
+    wr32(raw,0x00,pid);
+    wr16(raw,0x08,490); // Ranger Manaphy
+    wr16(raw,0x0C,12345);wr16(raw,0x0E,54321);
+    wr32(raw,0x10,3375);
+    raw[0x17]=static_cast<std::byte>(language);
+    raw[0x40]=static_cast<std::byte>(1u | (gender<<1)); // fateful/gender
+    wr16(raw,0x44,eggLocation);
+    raw[0x5F]=static_cast<std::byte>(originVersion);
+    wr32(raw,0x38,0x40000000u | Legality::Gen4Trade::packIVs({
+        16,13,12,2,18,3}));
+    raw[0x83]=static_cast<std::byte>(ball);
+    const auto encrypted=Encryption::encryptArray4(raw);
+    Pokemon::Pokemon4ReadOnly stored(encrypted,Enums::GameVersion::DP);
+    assert(stored.valid() && stored.checksumValid());
+    assert(stored.isEgg() && stored.species()==490);
+    assert(stored.originVersion()==originVersion);
+    Pokemon::Pokemon4ReadOnlyView view(stored);
+    assert(view.eggLocation()==eggLocation && view.ball()==ball);
+    assert(view.gender()==gender && view.isFatefulEncounter());
+    return Legality::analyze(view,Enums::GameVersion::DP);
+}
+
 int main() {
     // Source-free exact-origin NPC trade proof: all native encrypted PK4
     // identity fields must match a pinned Diamond template. Wrong PID,
@@ -288,6 +318,26 @@ int main() {
     assert(!hasInfo(analyzeDetachedNpcAbra(63,10,2),detachedTrade));
     assert(!hasInfo(analyzeDetachedNpcAbra(63,10,1,0x8Fu),detachedTrade));
     assert(!hasInfo(analyzeDetachedNpcAbra(63,10,1,0x8Eu,14),detachedTrade));
+
+    // Encrypted native PK4 Ranger PGT, no known physical source save:
+    // only a positive pinned Method 1 match supports RNG provenance.
+    constexpr auto rangerPositive="Source-free native PK4 has compatible Ranger Manaphy PGT structure and";
+    constexpr auto rangerMethod="Ranger Manaphy Method 1";
+    const auto rangerEgg=analyzeDetachedRanger();
+    assert(hasInfo(rangerEgg,rangerPositive));
+    assert(hasInfo(rangerEgg,rangerMethod));
+    assert(!hasInfo(analyzeDetachedRanger(0x5271E97Eu,2,16),
+                    rangerPositive)); // incompatible Ball
+    assert(!hasInfo(analyzeDetachedRanger(0x5271E97Eu,8),
+                    rangerPositive)); // Korean language unsupported
+    assert(!hasInfo(analyzeDetachedRanger(0x5271E97Eu,2,4,0),
+                    rangerPositive)); // missing Ranger provenance marker
+    assert(!hasInfo(analyzeDetachedRanger(0x5271E97Eu,2,4,3001,0),
+                    rangerPositive)); // unknown native origin version
+    assert(!hasInfo(analyzeDetachedRanger(0x5271E97Eu,2,4,3001,10,0),
+                    rangerPositive)); // not genderless
+    const auto rangerWrongPid=analyzeDetachedRanger(0x12345678u);
+    assert(!hasInfo(rangerWrongPid,rangerMethod));
 
     // Real PK3 egg-state and encrypted PK4 egg-origin reporting.
     auto eggPk3=gen3WithBall(4);

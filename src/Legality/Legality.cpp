@@ -1903,6 +1903,41 @@ namespace Legality {
             }
         }
 
+        // ---- L3: source-free PK4 Ranger Manaphy PGT evidence ----
+        // These pinned structural and Method-1/recipient anti-shiny fields
+        // survive in an encrypted native PK4 without a known save source.
+        // This is POSITIVE INFO evidence only, never a claim that a
+        // Ranger gift or full transfer/recipient history is uniquely proven.
+        if (!sourceProfile &&
+            Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
+            Gen4Origin::isNativeRetailGen4(pk.originGame())) {
+            const Gen4RangerManaphy::Candidate ranger{
+                species,pk.language(),pk.gender(),pk.isEgg(),
+                pk.eggLocation(),pk.metLocation(),pk.ball(),
+                pk.isFatefulEncounter()
+            };
+            if (Gen4RangerManaphy::matches(ranger)) {
+                r.coverage.eventGift = CoverageLevel::Partial;
+                const auto pidCheck=Gen4RangerManaphy::analyzePidIv(
+                    ranger,pk.pid(),
+                    std::array<uint8_t,6>{
+                        pk.ivHP(),pk.ivATK(),pk.ivDEF(),
+                        pk.ivSPE(),pk.ivSPA(),pk.ivSPD()},
+                    pk.tid16(),pk.sid16());
+                if (pidCheck.matched()) {
+                    add(r,Severity::Info,
+                        "Source-free native PK4 has compatible Ranger Manaphy PGT structure and " +
+                        std::string(Gen4RangerManaphy::pidEvidenceName(pidCheck.evidence)) +
+                        " PID/IV evidence; actual gift and recipient history remain unresolved",
+                        CheckIdentifier::EventGift);
+                } else {
+                    add(r,Severity::Info,
+                        "Source-free native PK4 has compatible Ranger Manaphy PGT structure; PID/IV and original recipient history remain unresolved",
+                        CheckIdentifier::EventGift);
+                }
+            }
+        }
+
         // ---- L2: gender vs the species gender ratio (255 genderless / 254 female-only / 0 male-only) ----
         if (!sourceProfile || exactGeneration >= 2) {
             const uint8_t g = pk.gender();
