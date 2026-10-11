@@ -1318,7 +1318,11 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
         return false;
     };
     applyDirectFocus(screen.touchedButtonDownId(touch));
-    if (applyDirectFocus(screen.touchedButtonId(touch)) && state.session.editable()) down |= HidNpadButton_A;
+    const int pressedRow = screen.touchedButtonId(touch);
+    if (applyDirectFocus(pressedRow) && state.session.editable()) down |= HidNpadButton_A;
+    if (pressedRow == 41015 && passive && state.session.working &&
+        state.session.working->formCount() <= 1)
+        screen.postStatus("This Gen IV Pokémon has only its default form", 135);
     if (touch.justReleased() && touch.dragged()) {
         const int sx = touch.startX(), sy = touch.startY();
         const int dx = touch.deltaX(), dy = touch.deltaY();
@@ -1342,6 +1346,10 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
         keepWorkspace(screen);
         return true;
     }
+    if ((down & HidNpadButton_A) && passive &&
+        state.focus.panel == Shared::Panel::Details && state.focus.row == 15 &&
+        state.session.working && state.session.working->formCount() <= 1)
+        screen.postStatus("This Gen IV Pokémon has only its default form", 135);
     if (!(down & HidNpadButton_A) || !state.session.editable()) return true;
 
     if (state.focus.panel == Shared::Panel::Details) {
@@ -1867,7 +1875,12 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         static_cast<std::size_t>(detailVisual.index),
         state.focus.panel == Shared::Panel::Details,
         [](size_t row) { return detailLabels[row]; },
-        [&](size_t row) { return detailValue(*raw, view, static_cast<int>(row)); },
+        [&](size_t row) {
+            if (row == 15 && state.session.working &&
+                state.session.working->formCount() <= 1)
+                return std::string("Default (fixed)");
+            return detailValue(*raw, view, static_cast<int>(row));
+        },
         detailVisual.offset);
     {
         const auto window = Shared::scrollWindow(
