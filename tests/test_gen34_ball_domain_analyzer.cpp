@@ -1,6 +1,7 @@
 #include "Encryption/Encryption4.h"
 #include "Legality/Legality.h"
 #include "Legality/Gen4TradeEvidence.h"
+#include "Legality/Gen3JointMoveEvidence.h"
 #include "Legality/Gen4RangerManaphy.h"
 #include "Legality/Gen4EventTemplate.h"
 #include "Names/ItemNames.h"
@@ -628,6 +629,56 @@ int main() {
     // Exact-source behavior remains separated from the source-free path.
     assert(!hasInfo(Legality::analyze(
         rubyTutor,Enums::GameVersion::FRLG,"ruby_gba"),pk3Other));
+
+    // Joint four-slot source-pool intersection and minimum set cover.
+    // Both moves may be individually available while NO single audited
+    // game pool contains both (not a verdict of impossible trade history).
+    using JBound=Legality::Gen3JointMoveEvidence::Bound;
+    using JSource=PokeVault::Integration::Gen3::SourceGame;
+    const auto nativeSet=Legality::Gen3JointMoveEvidence::classify(
+        JSource::RubyGBA,1,std::array<uint16_t,4>{33,74,0,0});
+    assert(nativeSet.bound==JBound::OnePool && nativeSet.originalPoolCovers);
+    const auto otherSet=Legality::Gen3JointMoveEvidence::classify(
+        JSource::RubyGBA,1,std::array<uint16_t,4>{33,14,0,0});
+    assert(otherSet.bound==JBound::OnePool && !otherSet.originalPoolCovers);
+    const auto mixedSet=Legality::Gen3JointMoveEvidence::classify(
+        JSource::FireRedGBA,4,std::array<uint16_t,4>{7,232,0,0});
+    assert(mixedSet.bound==JBound::MultiplePools);
+    assert(mixedSet.minimumPools==2 && mixedSet.poolMask==6);
+    assert(Legality::Gen3JointMoveEvidence::classify(
+        JSource::FireRedGBA,4,std::array<uint16_t,4>{7,354,0,0}).bound
+        ==JBound::Unresolved);
+    assert(Legality::Gen3JointMoveEvidence::classify(
+        JSource::RubyGBA,1,std::array<uint16_t,4>{0,0,0,0}).bound
+        ==JBound::Empty);
+
+    rubyTackle.setMove(1,74);
+    rubyTackle.refreshChecksum();
+    assert(hasInfo(Legality::analyze(rubyTackle,Enums::GameVersion::FRLG),
+        "joint move bound: all stored moves share the original GBA game"));
+    rubyTutor.setMove(0,33);
+    rubyTutor.setMove(1,14);
+    rubyTutor.refreshChecksum();
+    assert(hasInfo(Legality::analyze(rubyTutor,Enums::GameVersion::FRLG),
+        "joint move bound: all stored moves share another Gen III game"));
+    auto mixedNative=gen3WithBall(4);
+    mixedNative.setSpecies(4);    // Charmander, native PK3 internal index
+    mixedNative.setOriginGame(4); // FireRed
+    mixedNative.setMove(0,7);     // Emerald-only for this species
+    mixedNative.setMove(1,232);   // FRLG-only for this species
+    mixedNative.refreshChecksum();
+    const auto mixedReport=Legality::analyze(mixedNative,Enums::GameVersion::FRLG);
+    assert(hasInfo(mixedReport,
+        "joint move bound: at least 2 distinct Gen III game pools"));
+    assert(!hasInvalidText(mixedReport,"joint move bound"));
+    mixedNative.setMove(1,354);
+    mixedNative.refreshChecksum();
+    assert(!hasText(Legality::analyze(mixedNative,Enums::GameVersion::FRLG),
+                    "joint move bound"));
+    assert(!hasText(Legality::analyze(unknownGameTutor,Enums::GameVersion::FRLG),
+                    "joint move bound"));
+    assert(!hasText(Legality::analyze(rubyTutor,Enums::GameVersion::FRLG,"ruby_gba"),
+                    "joint move bound"));
 
     // Source-free known native PK3/PK4 formats have generation-specific
     // species/move ceilings regardless of their exact save identity.

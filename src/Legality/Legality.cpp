@@ -65,6 +65,7 @@
 #include "Legality/Gen34EggState.h"
 #include "Legality/Gen34EggBallEvidence.h"
 #include "Legality/Gen34EggMoveEvidence.h"
+#include "Legality/Gen3JointMoveEvidence.h"
 #include "Legality/Gen34LanguageEvidence.h"
 #include "Legality/Gen34BallDomainEvidence.h"
 #include "Legality/Gen34FormatDomainEvidence.h"
@@ -1617,6 +1618,22 @@ namespace Legality {
                     }
                     // Preserved/unmatched, event and breeding histories
                     // are not exclusive-proof sources: never hard Invalid.
+                }
+                const auto joint=Gen3JointMoveEvidence::classify(
+                    original,species,moves);
+                using Bound=Gen3JointMoveEvidence::Bound;
+                if(joint.bound==Bound::OnePool) {
+                    add(r,Severity::Info,
+                        joint.originalPoolCovers
+                          ? "Source-free PK3 joint move bound: all stored moves share the original GBA game's audited pool; simultaneous acquisition unresolved"
+                          : "Source-free PK3 joint move bound: all stored moves share another Gen III game's audited pool; acquisition and trade history unresolved",
+                        CheckIdentifier::Moves);
+                } else if(joint.bound==Bound::MultiplePools) {
+                    add(r,Severity::Info,
+                        "Source-free PK3 joint move bound: at least " +
+                        std::to_string(joint.minimumPools) +
+                        " distinct Gen III game pools are needed in the audited data; event, breeding, tutor and actual trade histories unresolved",
+                        CheckIdentifier::Moves);
                 }
             }
         } else if (Pokemon::getLearnableBits(species, pk.form(), originGroup) != nullptr) {
