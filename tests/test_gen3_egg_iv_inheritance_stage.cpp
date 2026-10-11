@@ -259,6 +259,136 @@ int main(){
         static_assert(r.finalSeed==0x0EF04DF5u);
         assert(r.matches(std::array<uint8_t,6>{0,0,30,31,0,30}));
     }
+        // Independently executed stage vector 1/24; known final state.
+    static_assert(G::rewindSix(0xE2CCA5EEu)==0x00000000u);
+    static_assert(G::verifyKnownStage("emerald_gba",
+        0xE2CCA5EEu,std::array<uint8_t,6>{30,0,0,30,0,30},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 2/24; known final state.
+    static_assert(G::rewindSix(0xB6A8FDE7u)==0x00000001u);
+    static_assert(G::verifyKnownStage("emerald_gba",
+        0xB6A8FDE7u,std::array<uint8_t,6>{0,31,31,0,30,0},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 3/24; known final state.
+    static_assert(G::rewindSix(0x8A8555E0u)==0x00000002u);
+    static_assert(G::verifyKnownStage("emerald_gba",
+        0x8A8555E0u,std::array<uint8_t,6>{0,31,0,0,31,0},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 4/24; known final state.
+    static_assert(G::rewindSix(0x5E61ADD9u)==0x00000003u);
+    static_assert(G::verifyKnownStage("emerald_gba",
+        0x5E61ADD9u,std::array<uint8_t,6>{0,30,30,0,31,0},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 5/24; known final state.
+    static_assert(G::rewindSix(0xA4F314C8u)==0x0000002Au);
+    static_assert(G::verifyKnownStage("emerald_gba",
+        0xA4F314C8u,std::array<uint8_t,6>{0,0,0,31,31,30},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 6/24; known final state.
+    static_assert(G::rewindSix(0x66E94DF5u)==0x0000FFFFu);
+    static_assert(G::verifyKnownStage("emerald_gba",
+        0x66E94DF5u,std::array<uint8_t,6>{0,31,30,0,0,31},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 7/24; known final state.
+    static_assert(G::rewindSix(0x983788A6u)==0x12345678u);
+    static_assert(G::verifyKnownStage("emerald_gba",
+        0x983788A6u,std::array<uint8_t,6>{0,30,30,0,31,0},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 8/24; known final state.
+    static_assert(G::rewindSix(0x0EF04DF5u)==0xFFFFFFFFu);
+    static_assert(G::verifyKnownStage("emerald_gba",
+        0x0EF04DF5u,std::array<uint8_t,6>{0,0,30,31,0,30},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 9/24; known final state.
+    static_assert(G::rewindSix(0xE2CCA5EEu)==0x00000000u);
+    static_assert(G::verifyKnownStage("ruby_gba",
+        0xE2CCA5EEu,std::array<uint8_t,6>{30,0,30,0,0,30},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 10/24; known final state.
+    static_assert(G::rewindSix(0xB6A8FDE7u)==0x00000001u);
+    static_assert(G::verifyKnownStage("ruby_gba",
+        0xB6A8FDE7u,std::array<uint8_t,6>{31,0,31,0,30,0},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 11/24; known final state.
+    static_assert(G::rewindSix(0x8A8555E0u)==0x00000002u);
+    static_assert(G::verifyKnownStage("ruby_gba",
+        0x8A8555E0u,std::array<uint8_t,6>{30,31,0,0,31,0},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 12/24; known final state.
+    static_assert(G::rewindSix(0x5E61ADD9u)==0x00000003u);
+    static_assert(G::verifyKnownStage("ruby_gba",
+        0x5E61ADD9u,std::array<uint8_t,6>{0,30,30,0,31,0},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 13/24; known final state.
+    static_assert(G::rewindSix(0xA4F314C8u)==0x0000002Au);
+    static_assert(G::verifyKnownStage("ruby_gba",
+        0xA4F314C8u,std::array<uint8_t,6>{0,0,31,31,0,30},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 14/24; known final state.
+    static_assert(G::rewindSix(0x66E94DF5u)==0x0000FFFFu);
+    static_assert(G::verifyKnownStage("ruby_gba",
+        0x66E94DF5u,std::array<uint8_t,6>{31,30,0,0,0,31},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 15/24; known final state.
+    static_assert(G::rewindSix(0x983788A6u)==0x12345678u);
+    static_assert(G::verifyKnownStage("ruby_gba",
+        0x983788A6u,std::array<uint8_t,6>{0,30,30,0,31,0},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 16/24; known final state.
+    static_assert(G::rewindSix(0x0EF04DF5u)==0xFFFFFFFFu);
+    static_assert(G::verifyKnownStage("ruby_gba",
+        0x0EF04DF5u,std::array<uint8_t,6>{0,0,30,31,0,30},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 17/24; known final state.
+    static_assert(G::rewindSix(0xE2CCA5EEu)==0x00000000u);
+    static_assert(G::verifyKnownStage("firered_gba",
+        0xE2CCA5EEu,std::array<uint8_t,6>{30,0,30,0,0,30},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 18/24; known final state.
+    static_assert(G::rewindSix(0xB6A8FDE7u)==0x00000001u);
+    static_assert(G::verifyKnownStage("firered_gba",
+        0xB6A8FDE7u,std::array<uint8_t,6>{31,0,31,0,30,0},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 19/24; known final state.
+    static_assert(G::rewindSix(0x8A8555E0u)==0x00000002u);
+    static_assert(G::verifyKnownStage("firered_gba",
+        0x8A8555E0u,std::array<uint8_t,6>{30,31,0,0,31,0},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 20/24; known final state.
+    static_assert(G::rewindSix(0x5E61ADD9u)==0x00000003u);
+    static_assert(G::verifyKnownStage("firered_gba",
+        0x5E61ADD9u,std::array<uint8_t,6>{0,30,30,0,31,0},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 21/24; known final state.
+    static_assert(G::rewindSix(0xA4F314C8u)==0x0000002Au);
+    static_assert(G::verifyKnownStage("firered_gba",
+        0xA4F314C8u,std::array<uint8_t,6>{0,0,31,31,0,30},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 22/24; known final state.
+    static_assert(G::rewindSix(0x66E94DF5u)==0x0000FFFFu);
+    static_assert(G::verifyKnownStage("firered_gba",
+        0x66E94DF5u,std::array<uint8_t,6>{31,30,0,0,0,31},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 23/24; known final state.
+    static_assert(G::rewindSix(0x983788A6u)==0x12345678u);
+    static_assert(G::verifyKnownStage("firered_gba",
+        0x983788A6u,std::array<uint8_t,6>{0,30,30,0,31,0},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    // Independently executed stage vector 24/24; known final state.
+    static_assert(G::rewindSix(0x0EF04DF5u)==0xFFFFFFFFu);
+    static_assert(G::verifyKnownStage("firered_gba",
+        0x0EF04DF5u,std::array<uint8_t,6>{0,0,30,31,0,30},
+        initial,low,high,true)==G::CandidateCheck::Matched);
+    static_assert(G::verifyKnownStage(
+        "emerald_gba",0xE2CCA5EEu,initial,
+        initial,low,high,false)==G::CandidateCheck::UnknownParentHistory);
+    static_assert(G::verifyKnownStage(
+        "unknown",0xE2CCA5EEu,initial,
+        initial,low,high,true)==G::CandidateCheck::UnsupportedGame);
+    static_assert(G::verifyKnownStage(
+        "emerald_gba",0xE2CCA5EEu,initial,
+        initial,low,high,true)==G::CandidateCheck::CandidateMismatch);
+
     // Emerald can repeat inheritance of the same stat due to the retail
     // compaction bug: there need not be three DISTINCT inherited IVs.
     constexpr auto repeat=G::replay("emerald_gba",2,initial,low,high,true);

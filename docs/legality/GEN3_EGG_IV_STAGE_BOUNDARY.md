@@ -12,3 +12,7 @@ The Ruby/Sapphire and FireRed/LeafGreen stat-removal behavior differs from Emera
 - No PKHeX GPL code, retail decompilation body or game assets have been imported. This independently written bounded algorithm is based on behavior recorded in the cited research packet; license/source provenance remains separate.
 
 Further work needs parent-candidate enumeration, exact original-game encounters, persisted/known parental identities or explicit existential alternatives, game-specific PID generation stages, and native fixtures.
+
+## Reversible six-draw stage with supplied final RNG state
+
+The stage now has a constant-time inverse of six Gen III LCRNG steps. `rewindSix` and `verifyKnownStage` are **candidate-local** only and require the final RNG state independently supplied by a known hypothetical history. All 24 pinned synthetic vectors assert reversal to their exact documented entry seeds, then reforward-validate the documented final IVs. Missing parents return `UnknownParentHistory`; a mismatch means **that one known-state candidate is contradicted**, not that the stored child is Illegal. No native PK3 contains this historical final-stage RNG state; there is **no claim of an automatic seed reversal from child's current PID/IVs**.

@@ -11,6 +11,9 @@
 namespace Legality::Gen3EggIVInheritanceStage {
 enum class Family : uint8_t { Unknown, RubySapphire, Emerald, FireRedLeafGreen };
 enum class Status : uint8_t { UnsupportedGame, UnknownParentHistory, ReplayedStage };
+enum class CandidateCheck : uint8_t {
+    UnsupportedGame, UnknownParentHistory, Matched, CandidateMismatch
+};
 constexpr Family family(std::string_view id) noexcept {
     if(id=="ruby_gba"||id=="sapphire_gba") return Family::RubySapphire;
     if(id=="emerald_gba")return Family::Emerald;
@@ -32,6 +35,16 @@ struct Result {
 };
 constexpr uint32_t next(uint32_t state) noexcept {
     return static_cast<uint32_t>(state*0x41C64E6Du+0x6073u);
+}
+// Exactly six LCRNG calls in the verified inheritance stage: three
+// selected-stat and three donor draws. This inverse cannot reconstruct a
+// seed from only the child's stored IV/PID; the stage-ending state must
+// be independently known. It does not traverse the pending PID stage.
+constexpr uint32_t rewindSix(uint32_t finalSeed) noexcept {
+    uint32_t seed=finalSeed;
+    for(uint8_t i=0;i<6;++i)
+        seed=static_cast<uint32_t>(seed*0xEEB9EB65u+0x0A3561A1u);
+    return seed;
 }
 constexpr Result replay(std::string_view game,uint32_t seed,
                         const std::array<uint8_t,6>& initial,
@@ -80,5 +93,25 @@ constexpr Result replay(std::string_view game,uint32_t seed,
     }
     result.finalSeed=seed;
     return result;
+}
+// Validate one EXPLICIT known-parent AND known final-RNG-state stage.
+// A mismatch falsifies only that candidate history, never every possible
+// unknown pair, seed, pending PID, breeding mode or game distribution.
+constexpr CandidateCheck verifyKnownStage(
+        std::string_view game,uint32_t knownFinalSeed,
+        const std::array<uint8_t,6>& observedChild,
+        const std::array<uint8_t,6>& initialChild,
+        const std::array<uint8_t,6>& parent0,
+        const std::array<uint8_t,6>& parent1,
+        bool knownParents) noexcept {
+    if(family(game)==Family::Unknown)return CandidateCheck::UnsupportedGame;
+    if(!knownParents)return CandidateCheck::UnknownParentHistory;
+    const auto result=replay(game,rewindSix(knownFinalSeed),
+                             initialChild,parent0,parent1,true);
+    if(result.status!=Status::ReplayedStage)
+        return CandidateCheck::UnsupportedGame;
+    return (result.finalSeed==knownFinalSeed &&
+            result.matches(observedChild)) ?
+        CandidateCheck::Matched:CandidateCheck::CandidateMismatch;
 }
 } // namespace Legality::Gen3EggIVInheritanceStage
