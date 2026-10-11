@@ -2281,24 +2281,68 @@ bool handleBoxMove(TrainerViewScreen& screen, State& state,
 }
 
 void drawBoxMove(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state) {
-    // Reuse the existing full six-by-five box view and cursor: don't draw a
-    // duplicate editor whose sprites or slot positions could diverge.
+    // Existing 6x5 box renderer remains authoritative for sprites/slots.
     screen.drawGSCOverlay(fb);
-    constexpr int x = 836, y = 116, w = 430, h = 128;
+    const int srcRow = state.moveSourceSlot / 6;
+    const int srcCol = state.moveSourceSlot % 6;
+    const int dstRow = screen.selectedItemIndex / 6;
+    const int dstCol = screen.selectedItemIndex % 6;
+    const int srcEndRow = screen.selectedItemIndex / 6;
+    const int srcEndCol = screen.selectedItemIndex % 6;
+    // Overlay the actual selected cells; don't just claim "Multi" in a toast.
+    for (const auto& target : screen.touchButtons) {
+        if (target.id < 0 || target.id >= 30) continue;
+        const int row = target.id / 6, col = target.id % 6;
+        bool outline = false;
+        if (state.moveSelecting && screen.selectedBoxIndex == state.moveSourceBox) {
+            outline = row >= std::min(srcRow, srcEndRow) &&
+                      row <= std::max(srcRow, srcEndRow) &&
+                      col >= std::min(srcCol, srcEndCol) &&
+                      col <= std::max(srcCol, srcEndCol);
+        } else if (state.moveMulti) {
+            for (int sourceSlot : state.moveSelectionSlots) {
+                const int dr = sourceSlot / 6 - srcRow;
+                const int dc = sourceSlot % 6 - srcCol;
+                if (row == dstRow + dr && col == dstCol + dc) {
+                    outline = true;
+                    break;
+                }
+            }
+        }
+        if (outline) {
+            fb.drawRoundedRect(target.x + 2, target.y + 2,
+                               target.w - 4, target.h - 4, 7, Colors::FocusBorder, 2);
+        }
+    }
+    constexpr int x = 836, y = 116, w = 430, h = 136;
     fb.drawFilledRoundedRect(x, y, w, h, 12, Colors::Panel);
     fb.drawRoundedRect(x, y, w, h, 12, Colors::Divider, 1);
-    fb.drawText(x + 18, y + 10, "Move Pokemon — Staged", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 18, y + 52,
-        "From Box " + std::to_string(state.moveSourceBox + 1) +
-        " / Slot " + std::to_string(state.moveSourceSlot + 1),
-        Colors::TextSecondary, TextStyle::Caption);
-    fb.drawText(x + 18, y + 82,
-        "To Box " + std::to_string(screen.selectedBoxIndex + 1) +
-        " / Slot " + std::to_string(screen.selectedItemIndex + 1) +
-        "  |  Y: Drop / Swap",
-        Colors::Text, TextStyle::Caption);
-    drawNavBar(fb, {{"D-pad/Stick", "Slot"}, {"L/R", "Box"},
-                    {"ZL/ZR", "Jump"}, {"Y/A", "Drop / Swap"}, {"B", "Cancel"}});
+    fb.drawText(x + 18, y + 10,
+                state.moveSelecting ? "Select Pokemon - Multi" :
+                state.moveMulti ? "Move Pokemon - Multi" : "Move Pokemon - Single",
+                Colors::Text, TextStyle::Heading);
+    if (state.moveSelecting) {
+        fb.drawText(x + 18, y + 50, "Move corner to select a rectangle",
+                    Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(x + 18, y + 82, "X: Grab selection  |  B: Cancel",
+                    Colors::Text, TextStyle::Caption);
+        drawNavBar(fb, {{"D-pad/Stick", "Expand"}, {"X/A", "Grab"}, {"B", "Cancel"}});
+    } else {
+        fb.drawText(x + 18, y + 50,
+                    std::string(state.moveMulti ? "Group: " : "Grabbed: ") +
+                    (state.moveMulti ? std::to_string(state.moveSelectionSlots.size()) +
+                     " Pokemon" : "1 Pokemon") +
+                    "  |  From Box " + std::to_string(state.moveSourceBox + 1),
+                    Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(x + 18, y + 82,
+                    "To Box " + std::to_string(screen.selectedBoxIndex + 1) +
+                    " / Slot " + std::to_string(screen.selectedItemIndex + 1) +
+                    "  |  Y: Drop",
+                    Colors::Text, TextStyle::Caption);
+        drawNavBar(fb, {{"D-pad/Stick", "Slot"}, {"L/R", "Box"}, {"ZL/ZR", "Jump"},
+                        {"Y/A", state.moveMulti ? "Drop group" : "Drop/Swap"},
+                        {"B", "Cancel"}});
+    }
 }
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
