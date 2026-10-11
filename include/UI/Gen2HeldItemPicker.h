@@ -29,8 +29,7 @@ inline std::string itemName(uint8_t item) {
 // but the pinned item sprite is named "tm27.png", not "tm27-return.png".
 // Never convert a Gen II item number into a Gen III/IV item number.
 inline std::string spriteName(uint8_t item) {
-    const std::string disc = UI::ClassicMachineArtwork::artKey(
-        Enums::GameVersion::GSC, item);
+    const std::string disc = UI::ClassicMachineArtwork::gscArtKey(item);
     if (!disc.empty()) return disc;
     std::string name = itemName(item);
     if (name.size() > 2 && ((name[0] == 'T' && name[1] == 'M') ||
