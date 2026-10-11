@@ -56,6 +56,13 @@ jobs:
         run: python3 tests/test_touch_appwide_surface_contract.py
       - name: Exhaustive Gen I-IV item artwork catalog audit
         run: python3 tests/test_item_sprite_coverage.py
+      - name: Gen I-IV PC, TM/HM and Held Item sort wiring
+        run: python3 tests/test_item_picker_integration_contract.py
+      - name: Native item sort behavior and selected ID preservation
+        run: |
+          g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+            -Iinclude tests/test_item_picker_sort.cpp -o /tmp/pokebank_item_picker_sort
+          /tmp/pokebank_item_picker_sort
       - name: Behavioral touch scroll geometry
         run: |
           g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror \
