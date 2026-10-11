@@ -135,5 +135,9 @@ for name, expected in {
 
 assert all('"' + key + '"' in (ROOT / "tools/gen_item_sprites.py").read_text(encoding="utf-8") for key in GEN2_MAIL_ART)
 assert 'ItemSpriteKey::isGen2Mail(key)' in (ROOT / "src/UI/SpriteManager.cpp").read_text(encoding="utf-8")
+# Fallback aliases must NEVER own a second pointer to the same decoded PNG.
+sprite_loader = (ROOT / "src/UI/SpriteManager.cpp").read_text(encoding="utf-8")
+assert "return sprite ? sprite : fallback();" in sprite_loader
+assert "itemSpriteCache.emplace(key, sprite); // unique owned allocation or miss" in sprite_loader
 assert len(g1) >= 80 and len(g3) >= 370 and len(g4) >= 530
 print("Complete generation catalog coverage audit: PASS (remaining unavailable art reported)")

@@ -195,29 +195,24 @@ namespace UI {
         // retains only the exact machine identifier.
         const std::string key = ItemSpriteKey::slug(itemName);
         if (key.empty()) return nullptr;
+        // Only canonical PNG loads are OWNED by this cache. The fallback
+        // returned below is borrowed from its own canonical cache entry.
+        // Never store one Sprite* under both "tm27" and "tm-normal" (or each
+        // Gen II mail and "classic-mail-envelope"): cleanup would double-delete.
+        const auto fallback = [&]() -> Sprite* {
+            if (ItemSpriteKey::isGen2Mail(key))
+                return getItemSprite("classic-mail-envelope");
+            if (ItemSpriteKey::isTM(key) || ItemSpriteKey::isHM(key))
+                return getItemSprite("tm-normal");
+            return nullptr;
+        };
         const auto cached = itemSpriteCache.find(key);
-        if (cached != itemSpriteCache.end()) return cached->second;
+        if (cached != itemSpriteCache.end())
+            return cached->second ? cached->second : fallback();
 
         Sprite* sprite = loadSprite("sprites/items/" + key + ".png");
-        if (!sprite && ItemSpriteKey::isGen2Mail(key)) {
-            // Preserve unique original Gen II stationery when packaged. If a
-            // source archive is temporarily unreachable at build time, a
-            // neutral envelope is preferable to a blank icon; never borrow
-            // another Mail type's bag sprite.
-            sprite = getItemSprite("classic-mail-envelope");
-        }
-        if (!sprite && ItemSpriteKey::isTM(key)) {
-            // Pinned Pokémon artwork exposes type-based discs but no numbered
-            // TM image.  Use the neutral gray disc graphic, not a guessed type.
-            sprite = getItemSprite("tm-normal");
-        }
-        if (!sprite && ItemSpriteKey::isHM(key)) {
-            // Prefer the exact HM01–HM08 asset when available; never silently
-            // substitute a different numbered HM.
-            sprite = getItemSprite("tm-normal");
-        }
-        itemSpriteCache.emplace(key, sprite);
-        return sprite;
+        itemSpriteCache.emplace(key, sprite); // unique owned allocation or miss
+        return sprite ? sprite : fallback();
     }
 
     Sprite* SpriteManager::getTypeSprite(uint8_t typeId) {
