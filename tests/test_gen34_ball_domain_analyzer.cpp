@@ -2,6 +2,7 @@
 #include "Legality/Legality.h"
 #include "Legality/Gen4TradeEvidence.h"
 #include "Legality/Gen3JointMoveEvidence.h"
+#include "Legality/Gen4JointMoveEvidence.h"
 #include "Legality/Gen4RangerManaphy.h"
 #include "Legality/Gen4EventTemplate.h"
 #include "Names/ItemNames.h"
@@ -105,6 +106,30 @@ Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true,
     return exactSource
         ? Legality::analyze(view, Enums::GameVersion::PT, "platinum_nds")
         : Legality::analyze(view, Enums::GameVersion::PT);
+}
+
+Legality::Report analyzeSourceFreeNativeGen4Moves(
+        uint8_t originalVersion,uint16_t species,
+        uint16_t first,uint16_t second) {
+    // The native encrypted PK4 -> read-only view -> central analyzer path.
+    std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
+    wr32(raw,0x00,0x12345678u);
+    wr16(raw,0x08,species);
+    wr16(raw,0x0C,12345);
+    wr16(raw,0x0E,54321);
+    wr32(raw,0x10,3375);
+    wr16(raw,0x28,first);
+    wr16(raw,0x2A,second);
+    raw[0x17]=std::byte{2};
+    raw[0x5F]=static_cast<std::byte>(originalVersion);
+    raw[0x83]=std::byte{4};
+    const auto enc=Encryption::encryptArray4(raw);
+    Pokemon::Pokemon4ReadOnly pk(enc,Enums::GameVersion::PT);
+    assert(pk.valid() && pk.checksumValid());
+    assert(pk.originVersion()==originalVersion);
+    assert(pk.moves()[0]==first && pk.moves()[1]==second);
+    Pokemon::Pokemon4ReadOnlyView view(pk);
+    return Legality::analyze(view,Enums::GameVersion::PT);
 }
 
 Legality::Report analyzeNativeHgssSpecialBall(
@@ -709,6 +734,51 @@ int main() {
     assert(hasInvalidText(analyzeGen4Ball(4,false,1,468),
                           "Move id 468 cannot exist in a Generation 4 save"));
 
+
+    // Source-free native PK4 retains an original Diamond, Platinum, or
+    // HGSS game code even after separation from the physical save.
+    using G4Bound=Legality::Gen4JointMoveEvidence::Bound;
+    constexpr auto diamond="diamond_nds";
+    constexpr auto directG4="Source-free native PK4 move is in its stored original";
+    constexpr auto otherG4="Source-free native PK4 move appears in another";
+    const auto g4Own=Legality::Gen4JointMoveEvidence::classify(
+        diamond,1,0,std::array<uint16_t,4>{33,74,0,0});
+    assert(g4Own.bound==G4Bound::OnePool && g4Own.originalPoolCovers);
+    const auto g4Other=Legality::Gen4JointMoveEvidence::classify(
+        diamond,6,0,std::array<uint16_t,4>{29,53,0,0});
+    assert(g4Other.bound==G4Bound::OnePool && !g4Other.originalPoolCovers);
+    const auto g4Split=Legality::Gen4JointMoveEvidence::classify(
+        diamond,6,0,std::array<uint16_t,4>{29,432,0,0});
+    assert(g4Split.bound==G4Bound::MultiplePools);
+    assert(g4Split.minimumPools==2 && g4Split.poolMask==5);
+    assert(Legality::Gen4JointMoveEvidence::classify(
+        diamond,6,0,std::array<uint16_t,4>{29,467,0,0}).bound
+           ==G4Bound::Unresolved);
+    assert(Legality::Gen4JointMoveEvidence::classify(
+        diamond,6,0,std::array<uint16_t,4>{0,0,0,0}).bound
+           ==G4Bound::Empty);
+    assert(Legality::Gen4JointMoveEvidence::classify(
+        "invalid_origin",6,0,std::array<uint16_t,4>{29,432,0,0}).bound
+           ==G4Bound::Unresolved);
+
+    const auto nativeDiamond=analyzeSourceFreeNativeGen4Moves(10,1,33,74);
+    assert(hasInfo(nativeDiamond,directG4));
+    assert(hasInfo(nativeDiamond,
+        "joint move bound: all moves share the stored original Gen IV game"));
+    const auto nativeOther=analyzeSourceFreeNativeGen4Moves(10,6,29,53);
+    assert(hasInfo(nativeOther,otherG4));
+    assert(hasInfo(nativeOther,
+        "joint move bound: all moves share another Gen IV game"));
+    const auto nativeSplit=analyzeSourceFreeNativeGen4Moves(10,6,29,432);
+    assert(hasInfo(nativeSplit,
+        "joint move bound: at least 2 distinct Gen IV game pools"));
+    assert(!hasInvalidText(nativeSplit,"joint move bound"));
+    const auto nativeUnmodeled=analyzeSourceFreeNativeGen4Moves(10,6,29,467);
+    assert(!hasText(nativeUnmodeled,"joint move bound"));
+    const auto nativeUnknownOrigin=analyzeSourceFreeNativeGen4Moves(0,6,29,432);
+    assert(!hasText(nativeUnknownOrigin,"Source-free native PK4 joint move bound"));
+    const auto palParkStillGen3=analyzeSourceFreeNativeGen4Moves(2,6,29,432);
+    assert(!hasText(palParkStillGen3,"Source-free native PK4 joint move bound"));
 
     // Native Gen III -> IV Pal Park records retain origin and split
     // fields independently of an exact container game/source save ID.

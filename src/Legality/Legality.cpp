@@ -66,6 +66,7 @@
 #include "Legality/Gen34EggBallEvidence.h"
 #include "Legality/Gen34EggMoveEvidence.h"
 #include "Legality/Gen3JointMoveEvidence.h"
+#include "Legality/Gen4JointMoveEvidence.h"
 #include "Legality/Gen34LanguageEvidence.h"
 #include "Legality/Gen34BallDomainEvidence.h"
 #include "Legality/Gen34FormatDomainEvidence.h"
@@ -1635,6 +1636,48 @@ namespace Legality {
                         " distinct Gen III game pools are needed in the audited data; event, breeding, tutor and actual trade histories unresolved",
                         CheckIdentifier::Moves);
                 }
+            }
+        } else if (!sourceProfile &&
+                   Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
+                   Gen4Origin::isNativeRetailGen4(pk.originGame())) {
+            // A detached native PK4 retains retail D/P/Pt/HGSS game identity.
+            // Do not apply this to Pal Park/Gen III-origin or unrecognized PK4.
+            const auto original=Gen4Origin::exactRetailGameId(pk.originGame());
+            const std::array<uint16_t,4> moves{
+                pk.move(0),pk.move(1),pk.move(2),pk.move(3)
+            };
+            for(uint16_t move:moves) {
+                if(!move || move>467)continue;
+                using namespace PokeVault::Integration::Gen4MoveCompatibility;
+                if(direct(original,species,pk.form(),move)) {
+                    add(r,Severity::Info,
+                        "Source-free native PK4 move is in its stored original Gen IV game's audited pool: " +
+                        std::string(Names::getMoveName(move)) +
+                        "; actual acquisition remains unresolved",
+                        CheckIdentifier::Moves);
+                } else if(anywhereInGen4(species,pk.form(),move)) {
+                    add(r,Severity::Info,
+                        "Source-free native PK4 move appears in another Gen IV game's audited pool: " +
+                        std::string(Names::getMoveName(move)) +
+                        "; actual acquisition and transfer remain unresolved",
+                        CheckIdentifier::Moves);
+                }
+            }
+            const auto joint=Gen4JointMoveEvidence::classify(
+                original,species,pk.form(),moves);
+            using Bound=Gen4JointMoveEvidence::Bound;
+            if(joint.bound==Bound::OnePool) {
+                add(r,Severity::Info,
+                    joint.originalPoolCovers
+                      ? "Source-free native PK4 joint move bound: all moves share the stored original Gen IV game's audited pool; simultaneous acquisition unresolved"
+                      : "Source-free native PK4 joint move bound: all moves share another Gen IV game's audited pool; acquisition and trade history unresolved",
+                    CheckIdentifier::Moves);
+            } else if(joint.bound==Bound::MultiplePools) {
+                add(r,Severity::Info,
+                    "Source-free native PK4 joint move bound: at least " +
+                    std::to_string(joint.minimumPools) +
+                    " distinct Gen IV game pools are needed in the audited data; event, breeding, tutor and actual trade histories unresolved",
+                    CheckIdentifier::Moves);
             }
         } else if (Pokemon::getLearnableBits(species, pk.form(), originGroup) != nullptr) {
             for (int i = 0; i < 4; ++i) {
