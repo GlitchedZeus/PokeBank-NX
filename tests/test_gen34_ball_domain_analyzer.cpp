@@ -210,16 +210,18 @@ Legality::Report analyzeGen4EggBall(uint8_t ball, bool isEgg,
 
 Legality::Report sourceFreePalPark(uint8_t originVersion,uint16_t dp,
                                    uint16_t extended,uint8_t ballDPPt,
-                                   uint8_t ballHGSS,bool isEgg=false) {
+                                   uint8_t ballHGSS,bool isEgg=false,
+                                   uint16_t move=0,uint16_t species=25) {
     // Actual stored/encrypted PK4 format. The exact container game identity
     // is intentionally absent; stored Gen III origin remains independently
     // recoverable and can still prove universal transfer field rules.
     std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
     wr32(raw,0x00,0x12345678u);
-    wr16(raw,0x08,25); // Pikachu
+    wr16(raw,0x08,species); // strict native PK4 species
     wr16(raw,0x0C,12345);
     wr16(raw,0x0E,54321);
     wr32(raw,0x10,3375);
+    wr16(raw,0x28,move); // persisted first move
     raw[0x17]=std::byte{2};
     raw[0x5F]=static_cast<std::byte>(originVersion);
     wr16(raw,0x80,dp);
@@ -235,6 +237,7 @@ Legality::Report sourceFreePalPark(uint8_t originVersion,uint16_t dp,
     assert(stored.metLocationExtended()==extended);
     assert(stored.ballDPPt()==ballDPPt);
     assert(stored.ballHGSS()==ballHGSS);
+    assert(stored.species()==species && stored.moves()[0]==move);
     Pokemon::Pokemon4ReadOnlyView view(stored);
     assert(view.originGame()==originVersion);
     return Legality::analyze(view,Enums::GameVersion::HGSS);
@@ -647,6 +650,20 @@ int main() {
         4,false,1,173,10,"diamond_nds");
     assert(!hasInfo(exactDiamond,pk4Other));
     assert(!hasInfo(exactDiamond,pk4Direct));
+
+    // Native encrypted PK4 -> strict read-only view -> central analyzer:
+    // Gen III retained-move evidence requires *valid* Pal Park encoding
+    // and compatible original GBA learnset; does not prove the move was
+    // actually transferred, or exclude later Gen IV acquisition.
+    constexpr auto oldDirect="Source-free Pal Park PK4 move is compatible with the original GBA game's direct Generation III move pool";
+    constexpr auto oldOther="Source-free Pal Park PK4 move is compatible with another Generation III game's audited move pool";
+    assert(hasInfo(sourceFreePalPark(2,0x37,0x37,4,4,false,33,1),oldDirect));
+    assert(hasInfo(sourceFreePalPark(2,0x37,0x37,4,4,false,14,1),oldOther));
+    assert(!hasInfo(sourceFreePalPark(2,0,0,4,0,false,33,1),oldDirect));
+    assert(!hasInfo(sourceFreePalPark(2,0x37,0x37,13,0,false,33,1),oldDirect));
+    assert(!hasInfo(sourceFreePalPark(2,0x37,0x37,4,4,true,33,1),oldDirect));
+    assert(!hasInfo(sourceFreePalPark(0,0x37,0x37,4,4,false,33,1),oldDirect));
+    assert(!hasInfo(sourceFreePalPark(2,0x37,0x37,4,4,false,355,1),oldDirect));
 
     // Source-free known native PK3/PK4 formats have generation-specific
     // species/move ceilings regardless of their exact save identity.
