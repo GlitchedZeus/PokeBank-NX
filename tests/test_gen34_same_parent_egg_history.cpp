@@ -88,7 +88,7 @@ static_assert(impossibleGen3Baby.status==H::Status::Unsupported);
 constexpr auto impossibleGen3Father=[]{
     auto p=pair;p.fatherSpecies=493;return H::evaluate(p);
 }();
-static_assert(impossibleGen3Father.status==H::Status::UnknownPairEligibility);
+static_assert(impossibleGen3Father.status==H::Status::CandidateMismatch);
 constexpr auto gen4ParentRange=[]{
     auto p=pair;p.game="diamond_nds";
     p.fatherSpecies=493;p.motherSpecies=493;
