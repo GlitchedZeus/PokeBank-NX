@@ -131,6 +131,20 @@ int main() {
 
     const auto surface = read("src/UI/Gen4SharedPokemonSurface.inc");
     contains(surface, "Gen4ItemListWindow::first(");
+    // Hardware regression: box view Y directly grabs a Pokemon; X on
+    // occupied slot starts a visible rectangular selection. Multi moves
+    // validate empty targets on a temporary copy before publishing staged bytes.
+    contains(surface, "HidNpadButton_Y | HidNpadButton_X");
+    contains(surface, "move.moveSelecting = (navigated & HidNpadButton_X) != 0");
+    contains(surface, "if (state.moveSelecting)");
+    contains(surface, "state.moveSelectionSlots = std::move(occupiedSlots)");
+    contains(surface, "Multi needs empty destination slots; no changes made");
+    contains(surface, "auto candidate = *staged;");
+    contains(surface, "if (!candidate.stageMoveBoxPokemon(");
+    contains(surface, "*staged = std::move(candidate);");
+    contains(surface, "Move Pokemon - Multi");
+    contains(surface, "const char* status = move == 0 ? \"-\" : \"Invalid\";");
+
     contains(surface, "Gen4DataPresentation::markings(raw->markings())");
     contains(surface, "Gen4DataPresentation::pokerus(raw->pokerusState())");
     const auto moveCompatibility = read("include/Integration/Gen4/Gen4MoveCompatibility.h");
