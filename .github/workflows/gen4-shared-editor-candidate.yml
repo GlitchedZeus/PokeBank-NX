@@ -5,6 +5,7 @@ on:
     branches:
       - audit/full-project-hardening-20260923
       - integration/gen4-polish-hardware-20260928
+      - feature/gen4-full-editor-20260928
     paths:
       - 'include/Integration/Gen4/**'
       - 'src/Integration/Gen4/**'
@@ -222,6 +223,50 @@ jobs:
           region_dir = Path("application/romfs/region_backdrops")
           for name in ("kanto", "johto", "hoenn", "sinnoh", "unova", "kalos", "alola", "galar", "hisui", "paldea"):
               verify_png(region_dir / f"{name}.png")
+
+          # The owner reported missing item sprites in earlier *installed
+          # NROs* even when the generator/preflight reported success. Verify
+          # the actual byte-for-byte packaged PNGs, not only the source tree.
+          item_dir = Path("application/romfs/sprites/items")
+          required_item_icons = (
+              # Gen I regressions: no stand-in blank for X Special / Exp. All.
+              "itemfinder", "x-sp-atk", "x-defense", "exp-share",
+              "thunder-stone", "berserk-gene",
+              # Generation II native item IDs without original per-item art:
+              # deliberately distinct custom illustrations.
+              "silver-leaf", "gold-leaf", "pink-bow", "polkadot-bow",
+              "gs-ball", "egg-ticket", "normal-box", "gorgeous-box",
+              "brick-piece", "tm-unknown",
+              # Original per-type TM/HM discs pinned by the generator.
+              "tm-normal", "tm-fighting", "tm-flying", "tm-poison",
+              "tm-ground", "tm-rock", "tm-bug", "tm-ghost", "tm-steel",
+              "tm-fire", "tm-water", "tm-grass", "tm-electric",
+              "tm-psychic", "tm-ice", "tm-dragon", "tm-dark", "tm-fairy",
+              "hm-normal", "hm-fighting", "hm-flying", "hm-water",
+          )
+          for key in required_item_icons:
+              dims = verify_png(item_dir / f"{key}.png")
+              if dims[0] > 128 or dims[1] > 128:
+                  raise SystemExit(f"unexpected item icon size for {key}: {dims}")
+          mail = (
+              "bluesky-mail", "eon-mail", "flower-mail", "liteblue-mail",
+              "lovely-mail", "mirage-mail", "morph-mail", "music-mail",
+              "portraitmail", "surf-mail",
+          )
+          for key in mail:
+              # Full stationery and its readable compact original motif
+              # MUST be distinct assets, both present inside the NRO.
+              full = verify_png(item_dir / f"{key}.png")
+              icon = verify_png(item_dir / f"gsc-mail-icon-{key}.png")
+              if full != (160, 144) or icon != (32, 32):
+                  raise SystemExit(
+                      f"invalid packaged Gen II mail {key}: {full} / {icon}")
+          if b"sprites/items/" not in nro:
+              raise SystemExit("item sprite runtime path is missing from final NRO")
+          print(
+              f"final NRO historical-item/TM-HM/mail payload verified: "
+              f"{len(required_item_icons)} exact icon files + "
+              f"{2 * len(mail)} distinct mail files")
 
           if b"romfs:/trainer_portraits/" not in nro:
               raise SystemExit("trainer portrait runtime path is missing from final NRO")

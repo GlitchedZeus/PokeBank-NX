@@ -16,6 +16,19 @@ int main() {
     static_assert(inventoryAction(InventoryInput::Minus) == InventoryAction::Help);
     static_assert(inventoryAction(InventoryInput::B) == InventoryAction::Back);
 
+    // Distinct negative header IDs must never overlap item rows or the -1
+    // no-target sentinel. Both hitboxes stay within the inventory header.
+    static_assert(InventoryCategoryTouch::PreviousId < -1);
+    static_assert(InventoryCategoryTouch::NextId < -1);
+    static_assert(InventoryCategoryTouch::PreviousId != InventoryCategoryTouch::NextId);
+    static_assert(InventoryCategoryTouch::previousX(244, 1024) +
+                  InventoryCategoryTouch::Width + InventoryCategoryTouch::Gap ==
+                  InventoryCategoryTouch::nextX(244, 1024));
+    static_assert(InventoryCategoryTouch::nextX(244, 1024) +
+                  InventoryCategoryTouch::Width == 244 + 1024 -
+                  InventoryCategoryTouch::RightInset);
+    static_assert(InventoryCategoryTouch::topY(80, 46) == 86);
+
     constexpr auto occupied = inventoryActionAvailability(true, true, true, true);
     static_assert(occupied.editAmount && occupied.addItem && occupied.removeItem);
     constexpr auto empty = inventoryActionAvailability(true, true, false, false);
@@ -61,12 +74,25 @@ int main() {
     assert(readOnlyFooter.find("Y: Remove Item") == std::string::npos);
     assert(readOnlyFooter.find("B: Back") != std::string::npos);
 
+    // Generic PickerDialog keeps its touch-safe 56px rows.
     static_assert(InventoryPickerLayout::Width == 560);
     static_assert(InventoryPickerLayout::VerticalMargin == 60);
-    static_assert(InventoryPickerLayout::RowHeight == 40);
+    static_assert(InventoryPickerLayout::RowHeight == 56);
     static_assert(InventoryPickerLayout::FooterHeight == 64);
-    static_assert(InventoryPickerLayout::Width < 900);
     static_assert(InventoryPickerLayout::ClassicRowsPerPage == 11);
+    static_assert(InventoryPickerLayout::viewport(1280, 720).visibleRows == 9);
+    static_assert(InventoryPickerLayout::viewport(1280, 720).h == 504);
+
+    // Only Gen I-III Add Item adopts the nine-row Gen IV modal geometry.
+    static_assert(ClassicAddItemPickerLayout::Width == 780);
+    static_assert(ClassicAddItemPickerLayout::Height == 532);
+    static_assert(ClassicAddItemPickerLayout::panelY(720) == 71);
+    static_assert(ClassicAddItemPickerLayout::RowHeight == 43);
+    static_assert(ClassicAddItemPickerLayout::RowsPerPage == 9);
+    static_assert(ClassicAddItemPickerLayout::viewport(1280, 720).visibleRows == 9);
+    static_assert(ClassicAddItemPickerLayout::viewport(1280, 720).h == 387);
+    static_assert(ClassicAddItemPickerLayout::viewport(1280, 720).y == 159);
+    static_assert(ClassicAddItemPickerLayout::BottomInset == 57);
 
     InventoryBaseline baseline{
         {0, 17, 53, true},   // source-owned isNew item: Potion-like representative

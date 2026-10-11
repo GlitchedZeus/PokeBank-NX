@@ -483,7 +483,8 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
     }
 
     if (pickerStateFor(screen).model.active()) return false;
-    if (state.itemPicker) return handleItemPicker(screen, state, down, held, stickX, stickY);
+    if (state.itemPicker)
+        return handleItemPicker(screen, state, down, held, stickX, stickY, touch);
     if (state.confirmExit) return handleConfirm(screen, state, down);
     if (handleProgressionEditor(screen, down, held, stickX, stickY)) return true;
     if (handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY)) return true;

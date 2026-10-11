@@ -1,6 +1,9 @@
 name: PokeBank NX Native PR Gate
 
 on:
+  push:
+    branches:
+      - feature/touch-controls-20261005
   pull_request:
   workflow_dispatch:
 

@@ -279,7 +279,8 @@ namespace UI {
         // during draw and hit-tested next frame. Only the active overlay populates this.
         struct TouchButton { int id, x, y, w, h; };
         std::vector<TouchButton> touchButtons;
-        int touchedButtonId(const TouchInput& touch) const;  // id of a tapped button, or -1
+        int touchedButtonDownId(const TouchInput& touch) const;  // id under fresh finger contact
+        int touchedButtonId(const TouchInput& touch) const;      // id of a clean release-tap
         void renameBox(int boxIndex);       // swkbd rename of a SAVE box; no-op where unsupported
         void renameBankBox(int box);        // swkbd rename of a BANK box (default label is "Bank N")
 
@@ -421,7 +422,11 @@ namespace UI {
             /// Keep/Discard on the way out; an EXISTING mon being edited did not.
             bool discardConfirmActive = false;
             int  lastCenterField = 0;                    // remembered center-column row when hopping to/from moves
-            int  leftScroll = 0;                         // left-pane vertical scroll (px); auto-follows selection, reset on (re)open
+            int  leftScroll = 0;                         // committed left/info pane vertical scroll (px)
+            int  leftScrollMax = 0;                      // last rendered content bound; keeps live drag/commit bounded
+            bool leftScrollManual = false;               // finger drag owns scroll until direct/controller selection resumes
+            int legalityScroll = 0;                      // first visible legality-report row
+            int ribbonScroll = 0;                        // first visible ribbon/mark row
             std::vector<int> leftOrder;                  // left-pane editable field ids in DRAW order (rebuilt each draw)
             std::vector<std::byte> editSnapshot;         // baseline bytes for the "Unsaved changes" marker + revert
         };

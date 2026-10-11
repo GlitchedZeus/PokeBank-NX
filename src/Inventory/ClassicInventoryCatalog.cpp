@@ -122,9 +122,9 @@ constexpr std::array<uint16_t, 57> kG2MachineMoves{{
     9,138,197,156,213,168,211,7,210,171,15,19,57,70,148,250,127,
 }};
 constexpr std::array<uint16_t, 58> kG3MachineMoves{{
-    264,337,352,347,46,92,258,339,331,526,241,269,58,59,63,113,182,240,202,219,218,76,231,85,
-    87,89,216,91,94,247,280,104,115,351,53,188,201,126,317,332,259,263,521,156,213,168,211,285,
-    503,315,15,19,57,70,148,249,127,431,
+    264,337,352,347,46,92,258,339,331,237,241,269,58,59,63,113,182,240,202,219,218,76,231,85,
+    87,89,216,91,94,247,280,104,115,351,53,188,201,126,317,332,259,263,290,156,213,168,211,285,
+    289,315,15,19,57,70,148,249,127,291,
 }};
 
 template <std::size_t N>
@@ -320,8 +320,7 @@ std::string displayItemName(ClassicGame game, ClassicPocket pocket, uint16_t ite
     // Generation II PC Items can contain machines too. If the exact id is a machine, present the
     // same polished TM/HM + move label regardless of which legitimate inventory category owns it.
     if (move != 0 && (pocket == ClassicPocket::TMHM ||
-                      (game <= ClassicGame::Crystal &&
-                       pocket == ClassicPocket::PCItems))) {
+                      pocket == ClassicPocket::PCItems)) {
         if (game <= ClassicGame::Yellow) {
             if (itemId <= 200) return machineLabel("HM", itemId - 195, 2, move);
             return machineLabel("TM", itemId - 200, 2, move);
@@ -341,6 +340,11 @@ std::string displayItemName(ClassicGame game, ClassicPocket pocket, uint16_t ite
     if (game <= ClassicGame::Yellow) return Names::getItemNameG1(itemId);
     if (game <= ClassicGame::Crystal) {
         const auto name = PokeVault::Integration::Gen2::gen2ItemDisplayName(static_cast<uint8_t>(itemId));
+        // Gen II's original character map renders the Poké Doll's old
+        // abbreviated glyph as "# Doll". Restore the canonical item name
+        // in presentation only; keep its exact native item ID untouched.
+        if (name == "# Doll") return "Poké Doll";
+        if (name == "Brightpowder") return "BrightPowder";
         return name.empty() ? ("Item " + std::to_string(itemId)) : name;
     }
     return Names::getItemNameG3(itemId);

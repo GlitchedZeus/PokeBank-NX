@@ -235,11 +235,31 @@ void ux3HandleMovePicker(TrainerViewScreen& screen, uint64_t down) {
     if (down & HidNpadButton_L) index = std::max(0, index - 10);
     if (down & HidNpadButton_R) index = std::min(static_cast<int>(choices.size()) - 1, index + 10);
     state.pickerValue = choices[static_cast<size_t>(index)];
-    if (down & HidNpadButton_B) { state.picker = UX2Picker::None; return; }
+    constexpr int visible = 9;
+    const int count = static_cast<int>(choices.size());
+    state.pickerViewport.ensure(index, count, visible);
+    if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_L | HidNpadButton_R)) {
+        state.pickerScroll.stop();
+        state.pickerViewport.reveal(index, count, visible);
+    }
+    if (down & HidNpadButton_B) {
+        state.pickerScroll.reset();
+        state.pickerViewport.reset();
+        state.picker = UX2Picker::None;
+        return;
+    }
     if (!(down & HidNpadButton_A)) return;
+    if (!state.pickerViewport.containsSelection(index, count, visible)) {
+        state.pickerScroll.stop();
+        state.pickerViewport.reveal(index, count, visible);
+        screen.postStatus("Focused move brought into view; press A again or tap a visible row", 220);
+        return;
+    }
     state.tempMove = static_cast<uint8_t>(state.pickerValue);
     state.tempPPUps = 0;
     state.tempPP = Editor::moveBasePP(state.tempMove);
+    state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.picker = UX2Picker::None;
 }
 
@@ -310,7 +330,12 @@ void ux3HandleMainEditor(TrainerViewScreen& screen, uint64_t down) {
         }
         case 12:
             if (add) ux3StageAdd(screen);
-            else { state.mode = UX2Mode::Review; state.reviewRow = 0; }
+            else {
+                state.reviewScroll.reset();
+                state.reviewViewport.reset();
+                state.mode = UX2Mode::Review;
+                state.reviewRow = 0;
+            }
             break;
         case 13:
             if (add) state.draft = BoxPokemonCreate{};
@@ -441,13 +466,21 @@ void ux3DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     const int listY = contentY + 52;
     const int viewportH = contentH - 68;
     const int visible = std::max(1, viewportH / rowH);
-    const int start = std::clamp(state.row - visible / 2, 0, std::max(0, 14 - visible));
+    state.editorViewport.ensure(state.row, 14, visible);
+    const int start = state.editorViewport.firstRow;
+    const int drawFirst = std::max(0, start - 1);
+    const int drawLast = std::min(14, start + visible + 1);
+    const int liveOffset = state.editorScroll.offset();
     fb.setClipRect(centerX + 8, listY, centerW - 16, viewportH);
-    for (int i = 0; i < visible && start + i < 14; ++i) {
-        const int field = start + i;
-        ux2DrawLogicalRow(fb, centerX + 10, listY + i * rowH, centerW - 20,
+    for (int field = drawFirst; field < drawLast; ++field) {
+        const int rowY = listY + (field - start) * rowH + liveOffset;
+        ux2DrawLogicalRow(fb, centerX + 10, rowY, centerW - 20,
                           ux3MainRowLabel(field), ux3MainRowValue(screen, field, add, pokemon ? &*pokemon : nullptr),
                           field == state.row);
+        if (rowY + rowH > listY && rowY < listY + viewportH)
+            appendClippedTouchButton(screen.touchButtons, 2000 + field,
+                centerX + 10, rowY, centerW - 20, rowH - 2,
+                centerX + 8, listY, centerW - 16, viewportH);
     }
     fb.clearClip();
 
@@ -480,7 +513,14 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, state.pickerValue, 151, ux3.pickerPreviewShiny,
             [](uint16_t species) { return UX::speciesPickerRow(species, Names::getSpeciesName(species)); },
-            [](uint16_t species) { return speciesCompact(species); });
+            [](uint16_t species) { return speciesCompact(species); },
+            &latestTouchGesture());
+        constexpr int visibleSpecies = 9;
+        const int speciesStart = std::clamp(state.pickerValue - visibleSpecies / 2, 1, 151 - visibleSpecies + 1);
+        for (int i = 0; i < visibleSpecies; ++i) {
+            const int species = speciesStart + i;
+            screen.touchButtons.push_back({3000 + species, modal.x + 20, modal.y + 84 + i * 43, 560, 39});
+        }
         return;
     }
 
@@ -497,17 +537,27 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         (editor(screen) ? std::string(ux3GameName(editor(screen)->metadata().sourceGame)) : std::string("Gen I")) +
         " • exact Gen I Acc / Pwr / PP",
         Colors::TextDim, TextStyle::Caption);
-    constexpr int visible = 9;
-    const int start = std::clamp(selectedIndex - visible / 2, 0, std::max(0, static_cast<int>(choices.size()) - visible));
-    for (int i = 0; i < visible && start + i < static_cast<int>(choices.size()); ++i) {
-        const int idx = start + i;
+    constexpr int visible = 9, rowStep = 42;
+    const int count = static_cast<int>(choices.size());
+    state.pickerViewport.ensure(selectedIndex, count, visible);
+    const int start = state.pickerViewport.firstRow;
+    const int drawFirst = std::max(0, start - 1);
+    const int drawLast = std::min(count, start + visible + 1);
+    const int listTop = y + 86;
+    const int liveOffset = state.pickerScroll.offset();
+    fb.setClipRect(x + 24, listTop, w - 48, visible * rowStep);
+    for (int idx = drawFirst; idx < drawLast; ++idx) {
         const int move = choices[static_cast<size_t>(idx)];
-        const int rowY = y + 86 + i * 42;
+        const int rowY = listTop + (idx - start) * rowStep + liveOffset;
         const bool selected = idx == selectedIndex;
         if (selected) fb.drawSelectionHighlight(x + 24, rowY, w - 48, 38);
+        appendClippedTouchButton(screen.touchButtons, 4000 + idx,
+            x + 24, rowY, w - 48, 38,
+            x + 24, listTop, w - 48, visible * rowStep);
         MovePickerRowUI::draw(fb,x+40,rowY+4,
                               static_cast<uint16_t>(move),Enums::GameVersion::RBY);
     }
+    fb.clearClip();
 }
 
 void ux3DrawClone(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
@@ -533,6 +583,7 @@ void ux3DrawClone(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, 
         const bool selected = i == state.cloneSlot;
         if (selected) fb.drawSelectionHighlight(cx, cy, cellW - 8, cellH - 8);
         fb.drawRoundedRect(cx, cy, cellW - 8, cellH - 8, 8, i == writable ? Colors::Accent : Colors::Divider, 1);
+        screen.touchButtons.push_back({1200 + i, cx, cy, cellW - 8, cellH - 8});
         fb.drawText(cx + 7, cy + 6, (i < 9 ? "0" : "") + std::to_string(i + 1), Colors::TextDim, TextStyle::Caption);
         if (pokemon) {
             const bool shiny = ux3IsShiny(*pokemon);
@@ -557,11 +608,23 @@ void ux3DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     }
     const int visible = std::max(1, std::min(UX3Contract::pendingGeometry(lines.size()).visibleRows,
                                              static_cast<int>(lines.size())));
-    const int start = std::clamp(state.reviewRow - visible / 2, 0, std::max(0, static_cast<int>(lines.size()) - visible));
-    fb.setClipRect(x + 24, y + 64, w - 48, h - 108);
-    for (int i = 0; i < visible && start + i < static_cast<int>(lines.size()); ++i)
-        ux2DrawLogicalRow(fb, x + 24, y + 70 + i * 48, w - 48, std::to_string(start + i + 1),
-                          lines[static_cast<size_t>(start + i)], start + i == state.reviewRow);
+    const int count = static_cast<int>(lines.size());
+    state.reviewViewport.ensure(state.reviewRow, count, visible);
+    const int start = state.reviewViewport.firstRow;
+    const int drawFirst = std::max(0, start - 1);
+    const int drawLast = std::min(count, start + visible + 1);
+    const int listTop = y + 64;
+    const int liveOffset = state.reviewScroll.offset();
+    fb.setClipRect(x + 24, listTop, w - 48, h - 108);
+    for (int row = drawFirst; row < drawLast; ++row) {
+        const int rowY = y + 70 + (row - start) * 48 + liveOffset;
+        ux2DrawLogicalRow(fb, x + 24, rowY, w - 48, std::to_string(row + 1),
+                          lines[static_cast<size_t>(row)], row == state.reviewRow);
+        if (rowY + 44 > listTop && rowY < listTop + h - 108)
+            appendClippedTouchButton(screen.touchButtons, 1300 + row,
+                x + 24, rowY, w - 48, 44,
+                x + 24, listTop, w - 48, h - 108);
+    }
     fb.clearClip();
 }
 
@@ -618,6 +681,171 @@ std::string ux3FooterText(const TrainerViewScreen& screen, const UX2State& state
     return ux2FooterText(screen, state);
 }
 
+void ux3DrawTouchNavBar(PKSEFramebuffer& fb, const UX2State& state) {
+    if (state.picker == UX2Picker::Species) {
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"}, {"Y", "Shiny"}, {"A", "Select"}, {"B", "Cancel"}});
+        return;
+    }
+    if (state.picker == UX2Picker::Move) {
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"}, {"A", "Select"}, {"B", "Cancel"}});
+        return;
+    }
+    switch (state.mode) {
+        case UX2Mode::View:
+        case UX2Mode::Provenance: drawNavBar(fb, {{"B", "Back"}}); return;
+        case UX2Mode::Edit:
+            drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"}, {"Y", "Random DVs"}, {"B", "Exit"}}); return;
+        case UX2Mode::AddDraft:
+            drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"}, {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}}); return;
+        case UX2Mode::Actions:
+            drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Select"}, {"B", "Back"}}); return;
+        case UX2Mode::LevelExpEditor:
+        case UX2Mode::MoveEditor:
+        case UX2Mode::DVEditor:
+        case UX2Mode::StatExpEditor:
+            drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Edit / Apply"}, {"B", "Cancel"}}); return;
+        case UX2Mode::CloneDestination:
+            drawNavBar(fb, {{"D-pad/Stick", "Slot"}, {"L/R", "Box"}, {"A", "Stage Clone"}, {"B", "Cancel"}}); return;
+        case UX2Mode::RemoveConfirm:
+            drawNavBar(fb, {{"A", "Confirm Remove"}, {"B", "Cancel"}}); return;
+        case UX2Mode::Review:
+            drawNavBar(fb, {{"Up/Down", "Browse"}, {"A", "Export Copy"}, {"Y", "Discard Staged"}, {"B", "Back"}}); return;
+        case UX2Mode::Closed: return;
+    }
+}
+
+uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch) {
+    auto& state = ux2StateFor(screen);
+    const int pressed = screen.touchedButtonDownId(touch);
+    const int tapped = screen.touchedButtonId(touch);
+    auto selectedId = [&](int base, int limit, int id) -> int {
+        return id >= base && id < base + limit ? id - base : -1;
+    };
+
+    if (state.picker == UX2Picker::Species) {
+        // Keep the existing preview steady while a contact may become a swipe.
+        // The release-confirmed row target is the only direct-tap selection.
+        int species = selectedId(3000, 152, tapped);
+        if (species >= 1) { state.pickerValue = species; down |= HidNpadButton_A; }
+        const int dy = touch.deltaY();
+        if (touch.justReleased() && touch.dragged() &&
+            SharedSpeciesPicker::gestureStartedInList(touch.startX(), touch.startY()) &&
+            std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
+            const int steps = std::max(1, std::abs(dy) / 43);
+            state.pickerValue = std::clamp(state.pickerValue + (dy < 0 ? steps : -steps), 1, 151);
+        }
+        return down;
+    }
+
+    if (state.picker == UX2Picker::Move) {
+        const auto choices = ux3MoveChoices(screen);
+        int current = 0;
+        for (int i = 0; i < static_cast<int>(choices.size()); ++i)
+            if (choices[static_cast<size_t>(i)] == state.pickerValue) { current = i; break; }
+        constexpr int visible = 9;
+        const int count = static_cast<int>(choices.size());
+        state.pickerViewport.ensure(current, count, visible);
+        const int maxFirst = TouchPickerViewport::maxFirst(count, visible);
+        if (maxFirst > 0)
+            state.pickerScroll.updateVertical(
+                touch, 164, 162, 952, visible * 42, 42,
+                state.pickerViewport.firstRow, maxFirst + 1);
+        else
+            state.pickerScroll.stop();
+        // Drag the viewport without changing the chosen Move. A row tap or
+        // controller navigation is the only way to move semantic focus.
+        if (down & (HidNpadButton_Up | HidNpadButton_Down |
+                    HidNpadButton_Left | HidNpadButton_Right |
+                    HidNpadButton_L | HidNpadButton_R))
+            state.pickerScroll.stop();
+        int index = selectedId(4000, static_cast<int>(choices.size()), tapped);
+        if (index >= 0) {
+            state.pickerScroll.stop();
+            state.pickerValue = choices[static_cast<size_t>(index)];
+            down |= HidNpadButton_A;
+        }
+        return down;
+    }
+
+    if (state.mode == UX2Mode::Edit || state.mode == UX2Mode::AddDraft) {
+        constexpr int fieldCount = 14;
+        constexpr int visible = 10; // 438px physical editor list / 42px row
+        // Contact is not selection: let a potential drag scroll an independent
+        // viewport, then activate a row only after a same-target tap release.
+        const int field = selectedId(2000, fieldCount, tapped);
+        if (field >= 0) { state.row = field; down |= HidNpadButton_A; }
+        state.editorViewport.ensure(state.row, fieldCount, visible);
+        const int maxFirst = TouchPickerViewport::maxFirst(fieldCount, visible);
+        if (maxFirst > 0)
+            state.editorScroll.updateVertical(
+                touch, 384, 161, 410, 438, 42,
+                state.editorViewport.firstRow, maxFirst + 1);
+        else
+            state.editorScroll.stop();
+        if (down & (HidNpadButton_Up | HidNpadButton_Down |
+                    HidNpadButton_Left | HidNpadButton_Right |
+                    HidNpadButton_L | HidNpadButton_R))
+            state.editorScroll.stop();
+        if ((down & HidNpadButton_A) &&
+            !state.editorViewport.containsSelection(state.row, fieldCount, visible)) {
+            state.editorScroll.stop();
+            state.editorViewport.reveal(state.row, fieldCount, visible);
+            screen.postStatus("Focused field brought into view; press A again or tap its row", 220);
+            down &= ~HidNpadButton_A;
+        }
+    } else if (state.mode == UX2Mode::Actions) {
+        std::string error;
+        const auto pokemon = ux2SelectedPokemon(screen, error);
+        const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon), hasPending(screen));
+        int row = selectedId(1000, static_cast<int>(actions.count), pressed);
+        if (row >= 0) state.row = row;
+        row = selectedId(1000, static_cast<int>(actions.count), tapped);
+        if (row >= 0) { state.row = row; down |= HidNpadButton_A; }
+    } else if (state.mode == UX2Mode::LevelExpEditor || state.mode == UX2Mode::MoveEditor ||
+               state.mode == UX2Mode::DVEditor || state.mode == UX2Mode::StatExpEditor) {
+        int rowCount = state.mode == UX2Mode::LevelExpEditor ? 4 :
+                       state.mode == UX2Mode::MoveEditor ? 5 : 7;
+        int row = selectedId(1100, rowCount, pressed);
+        if (row >= 0) state.subRow = row;
+        row = selectedId(1100, rowCount, tapped);
+        if (row >= 0) { state.subRow = row; down |= HidNpadButton_A; }
+    } else if (state.mode == UX2Mode::CloneDestination) {
+        auto* e = editor(screen);
+        const int slots = e ? ux2SlotCount(*e, state.cloneBox) : 0;
+        int slot = selectedId(1200, slots, pressed);
+        if (slot >= 0) state.cloneSlot = slot;
+        slot = selectedId(1200, slots, tapped);
+        if (slot >= 0) { state.cloneSlot = slot; down |= HidNpadButton_A; }
+    } else if (state.mode == UX2Mode::Review) {
+        const auto lines = ux3PendingLines(screen);
+        const int count = static_cast<int>(lines.size());
+        // Touching a row can focus it on a clean release. Scrolling the
+        // pending list must never navigate the semantic review cursor.
+        const int row = selectedId(1300, count, tapped);
+        if (row >= 0) state.reviewRow = row;
+        if (count > 0) {
+            const auto geometry = UX3Contract::pendingGeometry(lines.size());
+            const int visible = std::max(1, std::min(geometry.visibleRows, count));
+            state.reviewViewport.ensure(state.reviewRow, count, visible);
+            const int rx = (1280 - geometry.width) / 2;
+            const int ry = (672 - geometry.height) / 2;
+            const int maxFirst = TouchPickerViewport::maxFirst(count, visible);
+            if (maxFirst > 0)
+                state.reviewScroll.updateVertical(
+                    touch, rx + 24, ry + 64, geometry.width - 48,
+                    geometry.height - 108, 48, state.reviewViewport.firstRow,
+                    maxFirst + 1);
+            else
+                state.reviewScroll.stop();
+        } else {
+            state.reviewScroll.stop();
+        }
+        if (down & (HidNpadButton_Up | HidNpadButton_Down))
+            state.reviewScroll.stop();
+    }
+    return down;
+}
+
 void ux3DialogGeometry(TrainerViewScreen& screen, int& x, int& y, int& w, int& h) {
     auto& state = ux2StateFor(screen);
     ux2DialogGeometry(screen, x, y, w, h);
@@ -639,11 +867,29 @@ void ux3HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
     }
     if (state.mode == UX2Mode::Edit || state.mode == UX2Mode::AddDraft) {
         ux3HandleMainEditor(screen, down);
+        if (state.mode == UX2Mode::Edit || state.mode == UX2Mode::AddDraft) {
+            if (down & (HidNpadButton_Up | HidNpadButton_Down |
+                        HidNpadButton_L | HidNpadButton_R |
+                        HidNpadButton_Left | HidNpadButton_Right)) {
+                state.editorScroll.stop();
+                state.editorViewport.reveal(state.row, 14, 10);
+            }
+        }
         return;
     }
 
+    const bool reviewNavigation = state.mode == UX2Mode::Review &&
+        (down & (HidNpadButton_Up | HidNpadButton_Down));
     const bool manualDVApply = state.mode == UX2Mode::DVEditor && state.subRow == 5 && (down & HidNpadButton_A);
     ux2HandleActiveInput(screen, down);
+    if (reviewNavigation && state.mode == UX2Mode::Review) {
+        const auto lines = ux3PendingLines(screen);
+        const auto geometry = UX3Contract::pendingGeometry(lines.size());
+        const int count = static_cast<int>(lines.size());
+        const int visible = std::max(1, std::min(geometry.visibleRows, std::max(1, count)));
+        state.reviewScroll.stop();
+        state.reviewViewport.reveal(state.reviewRow, count, visible);
+    }
     if (manualDVApply) {
         auto& ux3 = ux3StateFor(screen);
         if (state.subForAdd) ux3.preShinyDraftDVs.reset();
@@ -672,6 +918,11 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int 
     // Preserve Cleanup #2's accepted empty/occupied entry behavior. Analog navigation
     // is only consumed after the Gen I overlay itself owns the active screen.
     return handleInputUXCleanup2(screen, down);
+}
+
+bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int stickX, int stickY,
+                   const TouchInput& touch) {
+    return handleInputUX(screen, ux3DirectTouchInput(screen, down, touch), held, stickX, stickY);
 }
 
 bool handleInputUX(TrainerViewScreen& screen, uint64_t down) {
@@ -719,7 +970,7 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         const int ph = 520;
         ux3DrawPicker(screen, fb, (1280 - pw) / 2, (672 - ph) / 2, pw, ph);
     }
-    drawFooter(fb, ux3FooterText(screen, state));
+    ux3DrawTouchNavBar(fb, state);
 }
 
 } // namespace UI::Gen1PokemonEditor

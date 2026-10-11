@@ -1,5 +1,12 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen4BoxTouchActions.h"
+#include "UI/Gen4BoxMoveNavigation.h"
+#include "UI/ClassicPackedMultiSelect.h"
+#include "UI/ClassicMachineArtwork.h"
+#include "UI/Gen4DataPresentation.h"
+#include "UI/Gen4ItemListWindow.h"
+#include "Integration/Gen4/Gen4BagCatalog.h"
+#include "UI/ItemSpriteKey.h"
 
 #include <cassert>
 #include <fstream>
@@ -38,6 +45,66 @@ int main() {
     static_assert(!BoxTouch::opensSelectedSlotActions(BoxTouch::SummaryPanelTouchId, -1, 30));
     static_assert(!BoxTouch::opensSelectedSlotActions(BoxTouch::SummaryPanelTouchId, 30, 30));
     static_assert(!BoxTouch::opensSelectedSlotActions(0, 0, 0));
+
+    // The authoritative Gen I-III selector is now also used for Gen IV.
+    // It has a six-column grid, bounded rectangle and a held-Y countdown.
+    namespace Multi = PokeBank::UIModel::ClassicPackedMove;
+    static_assert(Multi::gridColumns(30) == 6);
+    static_assert(Multi::moveCursor(0, Multi::Direction::Right, 30) == 1);
+    static_assert(Multi::moveCursor(0, Multi::Direction::Up, 30) == 0);
+    constexpr auto rectangle = Multi::rectangleSlots(0, 7, 30);
+    static_assert(rectangle.count == 4);
+    static_assert(rectangle[0] == 0 && rectangle[1] == 1);
+    static_assert(rectangle[2] == 6 && rectangle[3] == 7);
+
+    // In-generation disc artwork must not use modern typing blindly.
+    namespace Disc = UI::ClassicMachineArtwork;
+    static_assert(Disc::Gen1Types.size() == 166);
+    static_assert(Disc::Gen2Types.size() == 252);
+    static_assert(Disc::Gen3Types.size() == 355);
+    static_assert(Disc::Gen4Types.size() == 468);
+    static_assert(Disc::Gen1Machines.size() == 55);
+    static_assert(Disc::Gen1Types[2] == 1);  // RBY Karate Chop is Normal.
+    static_assert(Disc::Gen2Types[2] == 2);  // GSC Karate Chop is Fighting.
+    static_assert(Disc::Gen1Machines[5] == 4); // RBY TM06 Toxic: Poison.
+    static_assert(Disc::Gen1Machines[52] == 11); // RBY HM03 Surf: Water.
+    static_assert(Disc::Gen2Types[174] == 0); // GSC Curse has ??? type.
+    assert(Disc::moveType(Enums::GameVersion::RBY, 2) == 1);
+    assert(Disc::moveType(Enums::GameVersion::GSC, 2) == 2);
+
+    // An up-wrap from 1/13 to 13/13 shows a full 9-row window, not
+    // an almost-empty 4-row final page. Selection stays visible throughout.
+    namespace ItemWindow = PokeBank::UIModel::Gen4ItemListWindow;
+    static_assert(ItemWindow::first(0, 13) == 0);
+    static_assert(ItemWindow::first(4, 13) == 0);
+    static_assert(ItemWindow::first(5, 13) == 1);
+    static_assert(ItemWindow::first(12, 13) == 4);
+    static_assert(ItemWindow::first(3, 4) == 0);
+    static_assert(ItemWindow::first(0, 0) == 0);
+
+    // PK4 PC markings and Pokérus are real fields, never a fake decimal
+    // summary. High unknown marking bits remain explicitly visible.
+    namespace Data = PokeBank::UIModel::Gen4DataPresentation;
+    assert(Data::markings(0) == "None");
+    assert(Data::markings(0x01) == "Cir");
+    assert(Data::markings(0x09) == "Cir Hrt");
+    assert(Data::markings(0x3f) == "Cir Tri Sq Hrt Star Dia");
+    assert(Data::markings(0x40) == "Other bits");
+    assert(std::string(Data::pokerus(0)) == "None");
+    assert(std::string(Data::pokerus(0x10)) == "Cured");
+    assert(std::string(Data::pokerus(0x12)) == "Infected");
+
+    // Every generation shares the same genuine-art name resolver.
+    assert(UI::ItemSpriteKey::slug("Thunderstone") == "thunder-stone");
+    assert(UI::ItemSpriteKey::slug("X Defend") == "x-defense");
+    assert(UI::ItemSpriteKey::slug("X Special") == "x-sp-atk");
+    assert(UI::ItemSpriteKey::slug("Exp. All") == "exp-share");
+    assert(UI::ItemSpriteKey::slug("Itemfinder") == "itemfinder");
+    assert(UI::ItemSpriteKey::slug("DeepSeaTooth") == "deep-sea-tooth");
+    assert(UI::ItemSpriteKey::slug("TM27 — Return") == "tm27");
+    assert(UI::ItemSpriteKey::slug("HM01 — Cut") == "hm01");
+    assert(UI::ItemSpriteKey::isTM(UI::ItemSpriteKey::slug("TM01 — Dynamic Punch")));
+    assert(UI::ItemSpriteKey::isHM(UI::ItemSpriteKey::slug("HM01 — Cut")));
 
     // Immutable external sources still need the staged dirty-session exit confirmation.
     static_assert(Shared::immutableSourceBlocksSaveDialog(true, false));
@@ -78,8 +145,48 @@ int main() {
     assert(goBack && !saveConfirmActive && !exitingWithUnsavedChanges);
 
     const auto surface = read("src/UI/Gen4SharedPokemonSurface.inc");
-    const auto moveCompatibility = read("include/Integration/Gen4/Gen4MoveCompatibility.h");
+    contains(surface, "Gen4ItemListWindow::first(");
+    const auto classicMove = read("src/UI/ClassicPackedMoveOverlay.inc");
     const auto composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp");
+    // Require Gen IV to enter the already accepted Y tap/hold-release path,
+    // with the carried sprite, touch-drag, B cancellation and atomic PK4 drop.
+    contains(composite, "if (ClassicPackedMove::isGen4(screen))");
+    contains(composite, "ClassicPackedMove::handleInput(*this");
+    contains(classicMove, "constexpr int kMultiHoldFrames = 8");
+    contains(classicMove, "if (!(held & HidNpadButton_Y)) return beginSelectedGroup(screen, state)");
+    contains(classicMove, "if (down & HidNpadButton_Y) return place(screen, state)");
+    contains(classicMove, "state.touchSelecting = true");
+    contains(classicMove, "if (state.touchArmed && touch.justReleased())");
+    contains(classicMove, "CarryGeneration::Gen4");
+    contains(classicMove, "return beginGen4(screen, state, box, slot,");
+    contains(classicMove, "return beginGen4(screen, state, state.selectionBox, state.selectionAnchor, slots)");
+    contains(classicMove, "return placeGen4(screen, state)");
+    contains(classicMove, "candidate.stageMoveBoxPokemon(");
+    contains(classicMove, "auto candidate = *editor;");
+    contains(classicMove, "state.gen4StagedOwner = editor;");
+    contains(classicMove, "state.gen4PickupRecords = std::move(pickupRecords)");
+    contains(classicMove, "editor != state.gen4StagedOwner");
+    contains(classicMove, "state.gen4SourceSlots.size() != state.gen4PickupRecords.size()");
+    contains(classicMove, "state.gen4PickupRecords[i].begin()");
+    contains(classicMove, "Gen IV carried Pokemon changed; no move staged");
+    // The immutable carry snapshot is checked BEFORE candidate edits; a
+    // stale record/session must never be used as a fresh source by slot ID.
+    const auto gen4Place = classicMove.find("bool placeGen4(");
+    const auto snapshotCheck = classicMove.find("editor != state.gen4StagedOwner", gen4Place);
+    const auto mutationBegin = classicMove.find("auto candidate = *editor;", gen4Place);
+    assert(gen4Place != std::string::npos && snapshotCheck != std::string::npos);
+    assert(mutationBegin != std::string::npos && snapshotCheck < mutationBegin);
+
+    contains(classicMove, "*editor = std::move(candidate)");
+    contains(classicMove, "Generation IV staged Pokemon editing is unavailable");
+    contains(surface, "ClassicPackedMove::beginGen4FromAction(screen, state.box, state.slot)");
+    assert(surface.find("bool handleBoxMove(") == std::string::npos);
+    assert(surface.find("BoxMove::next") == std::string::npos);
+    contains(surface, "const char* status = move == 0 ? \"-\" : \"Invalid\";");
+
+    contains(surface, "Gen4DataPresentation::markings(raw->markings())");
+    contains(surface, "Gen4DataPresentation::pokerus(raw->pokerusState())");
+    const auto moveCompatibility = read("include/Integration/Gen4/Gen4MoveCompatibility.h");
     const auto bridge = read("src/Legacy/Gen4ReadOnlyTrainer.cpp");
     const auto staged = read("src/Integration/Gen4/Gen4StagedPokemonEditor.cpp");
     const auto session = read("include/UI/Gen4SharedPokemonSession.h");
@@ -87,6 +194,9 @@ int main() {
     const auto locations = read("src/Names/LocationNames.cpp");
     const auto locationGenerator = read("tools/gen_locations.py");
     const auto itemsPanel = read("src/UI/Panels/ItemsPanel.cpp");
+    contains(itemsPanel, "ClassicMachineArtwork::artKey(");
+    contains(itemsPanel, "fb.drawSpriteStaticContained(nx,");
+    contains(surface, "ItemPickerArtwork::drawNativeItem(");
     const auto boxPanel = read("src/UI/Panels/BoxPokemonPanel.cpp");
     const auto gen3Picker = read("src/UI/Gen3SharedPokemonSurface.inc");
     const auto gen2Held = read("include/UI/Gen2HeldItemPicker.h");
@@ -97,6 +207,8 @@ int main() {
     const auto movePickerModel = read("include/UI/MovePickerPresentation.h");
     const auto itemArtwork = read("include/UI/ItemPickerArtwork.h");
     const auto spriteRuntime = read("src/UI/SpriteManager.cpp");
+    contains(itemArtwork, "ClassicMachineArtwork::artKey(game, itemId)");
+    contains(spriteRuntime, "Never claim an untyped TM/HM is a Normal-type machine");
     const auto spriteGenerator = read("tools/gen_item_sprites.py");
     const auto recover = read("tools/recover_workspace.py");
     const auto assetGate = read("tools/check_device_assets.py");
@@ -154,18 +266,63 @@ int main() {
     contains(surface, "Gen IV item removed from staged workspace ONLY");
     contains(surface, "state.itemAddPickerActive");
     contains(surface, "Gen4::gen4BagChoices(staged->layout()");
-    contains(surface, "staged->stageBagAdd(");
-    contains(surface, "ItemPickerArtwork::draw(fb,x+w-31,yy+3,32,name)");
-    contains(surface, "Gen IV item added to staged workspace ONLY (x1)");
-    contains(surface, "ItemPickerArtwork::draw(fb,x+w-38,y+65,36,itemName)");
+    contains(surface, "current->stageBagAdd(");
+    contains(surface, "ItemPickerArtwork::drawNativeItem(fb,x+w-31,yy+3,32,");
+    contains(surface, "Gen IV item added to staged workspace ONLY (x");
+    contains(surface, "ItemPickerArtwork::drawNativeItem(fb,x+w-38,y+65,36,");
     const auto removeGuardAt=surface.find("if(state.itemRemoveConfirmActive) {");
-    const auto quantityEntryAt=surface.find("if(!state.itemQuantityActive) {",removeGuardAt);
+    const auto quantityEntryAt=surface.find(
+        "// Forward controller movement and B/Exit to the shared Items panel.",removeGuardAt);
     assert(removeGuardAt!=std::string::npos && quantityEntryAt>removeGuardAt);
     const auto confirmControls=surface.substr(removeGuardAt,quantityEntryAt-removeGuardAt);
     assert(confirmControls.find("down&HidNpadButton_B")!=std::string::npos);
     assert(confirmControls.find("down&HidNpadButton_Y")!=std::string::npos);
     assert(confirmControls.find("down&HidNpadButton_A")==std::string::npos);
     contains(surface, "state.itemRemoveConfirmActive=false;");
+    // Both Gen IV inventory mutations must use the exact same native Switch
+    // number keyboard as Gen I-III. A picker cancellation cannot stage bytes.
+    // Validate the actual pocket-specific maxima, not an arbitrary 999 cap.
+    namespace G4Bag = PokeVault::Integration::Gen4;
+    static_assert(G4Bag::gen4BagMaxQuantity(
+        static_cast<size_t>(G4Bag::BagPocket::KeyItems),428) == 1);
+    static_assert(G4Bag::gen4BagMaxQuantity(
+        static_cast<size_t>(G4Bag::BagPocket::Machines),328) == 99);
+    static_assert(G4Bag::gen4BagMaxQuantity(
+        static_cast<size_t>(G4Bag::BagPocket::Machines),420) == 1);
+    static_assert(G4Bag::gen4BagMaxQuantity(
+        static_cast<size_t>(G4Bag::BagPocket::Items),68) == 999);
+    const auto addAt=surface.find("if(state.itemAddPickerActive) {");
+    const auto addEnd=surface.find("if(state.itemRemoveConfirmActive) {",addAt);
+    const auto editEnd=surface.find("void drawItemAddPicker(",quantityEntryAt);
+    assert(addAt!=std::string::npos && addEnd>addAt && editEnd>quantityEntryAt);
+    const auto addPath=surface.substr(addAt,addEnd-addAt);
+    const auto editPath=surface.substr(quantityEntryAt,editEnd-quantityEntryAt);
+    // Modal touch taps select the displayed native ID; swipes only move
+    // the nine-row presentation and may never synthesize the Add action.
+    contains(surface,"int stickX,int stickY,const TouchInput& touch)");
+    contains(addPath,"touch.justReleased() && touch.dragged()");
+    contains(addPath,"touch.justTapped()");
+    contains(addPath,"startRow==endRow && selected<size");
+    contains(addPath,"keys|=HidNpadButton_A");
+    contains(addPath,"Gen4ItemListWindow::first(");
+    contains(addPath,"Utils::promptNumber(");
+    contains(editPath,"Utils::promptNumber(");
+    contains(addPath,"if(!r.accepted)return true;");
+    contains(editPath,"if(!r.accepted)return true;");
+    contains(addPath,"Gen4::gen4BagMaxQuantity(");
+    contains(editPath,"Gen4::gen4BagMaxQuantity(");
+    contains(addPath,"Gen4::gen4BagItemAllowed(");
+    contains(editPath,"itemId!=originalId");
+    contains(addPath,"static_cast<uint16_t>(r.value)");
+    contains(editPath,"static_cast<uint16_t>(r.value)");
+    contains(addPath,"*current=std::move(backup)");
+    contains(editPath,"*current=std::move(backup)");
+    assert(addPath.find("Utils::promptNumber(")<addPath.find("stageBagAdd("));
+    assert(editPath.find("Utils::promptNumber(")<editPath.find("stageBagQuantity("));
+    assert(surface.find("drawItemQuantity(")==std::string::npos);
+    assert(surface.find("itemQuantityActive")==std::string::npos);
+    assert(surface.find("itemQuantityDraft")==std::string::npos);
+
     const auto stagedBag=read("src/Integration/Gen4/Gen4StagedPokemonEditor.cpp");
     contains(stagedBag, "bool Gen4StagedPokemonEditor::stageBagRemove(");
     contains(stagedBag, "bool Gen4StagedPokemonEditor::stageBagAdd(");
@@ -372,13 +529,13 @@ int main() {
     contains(stagedBackend, "stageBagQuantity(");
     contains(stagedBackend, "refreshGeneralCrc(*before,error)");
     contains(stagedBackend, "unexpectedly changed unrelated save bytes");
-    contains(surface, "if(handleItemQuantity(screen,state,down,held,stickX,stickY))return true;");
-    contains(surface, "state.itemQuantityDraft");
-    contains(surface, "staged->stageBagQuantity(");
-    contains(surface, "auto saved=*staged;");
-    contains(surface, "*staged=std::move(saved);");
+    contains(surface, "if(handleItemQuantity(screen,state,down,held,stickX,stickY,touch))return true;");
+    contains(surface, "if(!r.accepted)return true;");
+    contains(surface, "current->stageBagQuantity(");
+    contains(surface, "auto backup=*current;");
+    contains(surface, "*current=std::move(backup);");
     contains(surface, "Gen IV item quantity staged; emulator source unchanged");
-    contains(surface, "else if (state.itemQuantityActive)drawItemQuantity");
+    assert(surface.find("else if (state.itemQuantityActive)drawItemQuantity")==std::string::npos);
     contains(surface, "if (state.itemAddPickerActive)drawItemAddPicker");
     contains(surface, "else if (state.itemRemoveConfirmActive)drawItemRemoveConfirm");
 
@@ -437,6 +594,28 @@ int main() {
     contains(baseUi, "immutableSourceBlocksSaveDialog(");
     contains(baseUi, "const bool exitOnlySaveConfirm = saveConfirmActive && exitingWithUnsavedChanges;");
     assert(baseUi.find("statEdit.dialogActive = saveConfirmActive") == std::string::npos);
+
+    // Gen IV Move Pokémon uses exact staged native 0x88-byte transactions.
+    // Action visibility and A/Touch move-confirm paths must not depend on
+    // the legacy source-mutating box machinery.
+    contains(surface, "MenuAction::MovePokemon");
+    // No second control state: the shared carrier is the only movement owner.
+    assert(surface.find("state.moveActive") == std::string::npos);
+    assert(surface.find("drawBoxMove") == std::string::npos);
+    // The outer border is always neutral; focus belongs to the selected row.
+    const auto addItemStart = surface.find("void drawItemAddPicker(");
+    const auto addItemEnd = surface.find("void drawItemRemoveConfirm(", addItemStart);
+    assert(addItemStart != std::string::npos && addItemEnd > addItemStart);
+    const auto addItemBody = surface.substr(addItemStart, addItemEnd - addItemStart);
+    assert(addItemBody.find("fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1)") != std::string::npos);
+    assert(addItemBody.find("fb.drawRoundedRect(x,y,w,h,18,Colors::FocusBorder,1)") == std::string::npos);
+    contains(addItemBody, "ItemPickerArtwork::draw");
+
+    // The fixed-form Bulbasaur field is clearly informational in View.
+    contains(surface, "Default (fixed)");
+    contains(surface, "This Gen IV Pokémon has only its default form");
+    // Gen IV native Items have eight separate bag pockets even in detail view.
+    contains(baseUi, "PokeVault::Integration::Gen4::BagPocketCount");
 
     // Final composite routes Gen IV before generic/Gen III fallback.
     contains(composite, "#include \"Gen4SharedPokemonSurface.inc\"");

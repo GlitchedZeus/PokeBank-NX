@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feature/pokebank-playable
+      - feature/touch-controls-20261005
   pull_request:
 
 permissions:

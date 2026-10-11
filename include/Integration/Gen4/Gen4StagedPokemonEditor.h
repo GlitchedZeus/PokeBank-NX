@@ -63,6 +63,13 @@ public:
     bool stageReleaseBoxPokemon(size_t box, size_t slot,
                                 std::string* error = nullptr);
 
+    // Atomic move into an empty slot or swap with another occupied slot.
+    // Copies exactly two native encrypted 0x88 PK4 slots in APP-OWNED staged
+    // bytes; updates Storage CRC; strictly reparses/validates both slots.
+    bool stageMoveBoxPokemon(size_t sourceBox, size_t sourceSlot,
+                             size_t destinationBox, size_t destinationSlot,
+                             std::string* error = nullptr);
+
     [[nodiscard]] std::optional<Pokemon::Pokemon4ReadOnly> partyPokemon(
         size_t slot, std::string* error = nullptr) const;
 

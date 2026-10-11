@@ -21,7 +21,7 @@ inline void draw(PKSEFramebuffer& fb,int x,int y,
         return;
     }
     fb.drawText(x,y,Presentation::numberedName(move),
-                Colors::Text,TextStyle::Heading);
+                Colors::Text,TextStyle::Body);
     const auto* stats=Names::getMoveBattleStats(move,game);
     const std::string acc=stats&&stats->accuracy?std::to_string(stats->accuracy):"--";
     const std::string pwr=stats&&stats->power?std::to_string(stats->power):"--";

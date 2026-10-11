@@ -61,10 +61,44 @@ struct InventoryActionAvailability {
            !stagedInventoryActionsAvailable;
 }
 
+// Non-item hit targets for the bag header. Negative IDs cannot collide
+// with item rows (0..N-1); -1 is reserved for no touch target.
+struct InventoryCategoryTouch {
+    static constexpr int PreviousId = -20;
+    static constexpr int NextId = -21;
+    static constexpr int Width = 44;
+    static constexpr int Height = 34;
+    static constexpr int Gap = 12;
+    static constexpr int RightInset = 20;
+
+    [[nodiscard]] static constexpr int previousX(int panelX, int panelWidth) noexcept {
+        return panelX + panelWidth - RightInset - 2 * Width - Gap;
+    }
+    [[nodiscard]] static constexpr int nextX(int panelX, int panelWidth) noexcept {
+        return panelX + panelWidth - RightInset - Width;
+    }
+    [[nodiscard]] static constexpr int topY(int panelY, int headerHeight) noexcept {
+        return panelY + (headerHeight - Height) / 2;
+    }
+};
+
+struct InventoryPickerViewport {
+    int x = 0;
+    int y = 0;
+    int w = 0;
+    int h = 0;
+    int visibleRows = 0;
+
+    [[nodiscard]] constexpr bool contains(int px, int py) const noexcept {
+        return px >= x && px < x + w && py >= y && py < y + h;
+    }
+};
+
 struct InventoryPickerLayout {
+    // Generic item picker geometry (independent of classic Add Item).
     static constexpr int Width = 560;
     static constexpr int VerticalMargin = 60;
-    static constexpr int RowHeight = 40;
+    static constexpr int RowHeight = 56;
     static constexpr int FooterHeight = 64;
     static constexpr int HorizontalPadding = 20;
     static constexpr int TitleOffsetY = 16;
@@ -72,6 +106,51 @@ struct InventoryPickerLayout {
     static constexpr int ListTopOffset = 64;
     static constexpr int ClassicListTopOffset = 90;
     static constexpr int ClassicRowsPerPage = 11;
+    static constexpr int TouchInsetX = 12;
+    static constexpr int BottomInset = 18;
+
+    [[nodiscard]] static constexpr InventoryPickerViewport viewport(
+        int screenW, int screenH) noexcept {
+        const int panelY = VerticalMargin;
+        const int panelH = screenH - 2 * VerticalMargin;
+        const int panelX = (screenW - Width) / 2;
+        const int listY = panelY + ListTopOffset;
+        const int listBottom = panelY + panelH - BottomInset;
+        const int rows = (listBottom - listY) / RowHeight;
+        const int visible = rows > 0 ? rows : 1;
+        return {
+            panelX + TouchInsetX,
+            listY,
+            Width - 2 * TouchInsetX,
+            visible * RowHeight,
+            visible,
+        };
+    }
+};
+
+struct ClassicAddItemPickerLayout {
+    // Gen I-III Add Item modal matches Gen IV but does not alter PickerDialog.
+    static constexpr int Width = 780;
+    static constexpr int Height = 532;
+    static constexpr int NavBarHeight = 46;
+    static constexpr int RowHeight = 43;
+    static constexpr int HorizontalPadding = 20;
+    static constexpr int ClassicListTopOffset = 88;
+    static constexpr int RowsPerPage = 9;
+    static constexpr int TouchInsetX = 12;
+    static constexpr int BottomInset = 57;
+
+    [[nodiscard]] static constexpr int panelY(int screenH) noexcept {
+        return (screenH - NavBarHeight - Height) / 2;
+    }
+
+    [[nodiscard]] static constexpr InventoryPickerViewport viewport(
+        int screenW, int screenH) noexcept {
+        const int x = (screenW - Width) / 2 + TouchInsetX;
+        const int y = panelY(screenH) + ClassicListTopOffset;
+        const int rows = (Height - ClassicListTopOffset - BottomInset) / RowHeight;
+        return {x, y, Width - 2 * TouchInsetX, rows * RowHeight, rows};
+    }
 };
 
 struct InventoryBaselineItem {

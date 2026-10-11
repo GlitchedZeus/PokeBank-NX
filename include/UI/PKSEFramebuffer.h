@@ -53,6 +53,12 @@ namespace UI {
         void setClipRect(int x, int y, int w, int h);
         void clearClip();
 
+        // Scoped NanoVG translation used by direct-manipulation touch surfaces. Call pushTranslation
+        // before drawing a self-contained card/list and popTransform immediately afterwards. This
+        // moves existing absolute-coordinate UI as one visual object without changing hit semantics.
+        void pushTranslation(float dx, float dy);
+        void popTransform();
+
         // --- Higher-level themed helpers ---
         // Encapsulate the current look so panels stay simple and stay consistent when the
         // theme changes. All pull from the active Colors palette.

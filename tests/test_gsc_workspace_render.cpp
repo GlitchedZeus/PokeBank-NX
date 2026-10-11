@@ -1,6 +1,7 @@
 #include "UI/Gen2WorkspacePresentation.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "UI/Gen2HeldItemPicker.h"
+#include <algorithm>
 #include <cassert>
 #include <iostream>
 #include <vector>
@@ -8,6 +9,10 @@ namespace {
 struct Text { int x, y, w, h; std::string value; UI::Color color; };
 std::vector<Text> texts;
 std::vector<std::pair<uint16_t, bool>> sprites;
+// The native framebuffer clips extra rows for smooth touch scrolling. The
+// renderer test double must record only visible pixels, not every drawText call.
+bool clipActive = false;
+int clipX = 0, clipY = 0, clipW = 0, clipH = 0;
 bool intersects(const Text& a, const Text& b) {
     return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
 }
@@ -17,13 +22,27 @@ PKSEFramebuffer::PKSEFramebuffer() = default;
 PKSEFramebuffer::~PKSEFramebuffer() = default;
 void PKSEFramebuffer::measureText(const std::string& s, int& w, int& h, TextStyle) { w = s.size()*9; h = 18; }
 void PKSEFramebuffer::drawText(int x,int y,const std::string& s,Color c,TextStyle style) {
-    int w,h; measureText(s,w,h,style); texts.push_back({x,y,w,h,s,c});
+    int w,h; measureText(s,w,h,style);
+    int left = x, top = y, right = x + w, bottom = y + h;
+    if (clipActive) {
+        left = std::max(left, clipX);
+        top = std::max(top, clipY);
+        right = std::min(right, clipX + clipW);
+        bottom = std::min(bottom, clipY + clipH);
+    }
+    if (left < right && top < bottom)
+        texts.push_back({left, top, right - left, bottom - top, s, c});
 }
 void PKSEFramebuffer::drawText(int x,int y,const char* s,Color c,TextStyle style) { drawText(x,y,std::string(s),c,style); }
 void PKSEFramebuffer::drawFilledRect(int,int,int,int,Color) {}
 void PKSEFramebuffer::drawFilledCircle(int,int,int,Color) {}
 void PKSEFramebuffer::drawFilledRoundedRect(int,int,int,int,int,Color) {}
 void PKSEFramebuffer::drawRoundedRect(int,int,int,int,int,Color,int) {}
+void PKSEFramebuffer::drawCircle(int,int,int,Color,int) {}
+void PKSEFramebuffer::setClipRect(int x,int y,int w,int h) {
+    clipActive = true; clipX = x; clipY = y; clipW = w; clipH = h;
+}
+void PKSEFramebuffer::clearClip() { clipActive = false; }
 void PKSEFramebuffer::drawSelectionHighlight(int,int,int,int) {}
 void PKSEFramebuffer::drawSpriteStaticContained(int,int,int,int,int,int,const unsigned char*,int) {}
 void PKSEFramebuffer::drawImageScaled(int,int,int,int,int,int,const unsigned char*,int) {}
@@ -165,11 +184,26 @@ int main() {
     assert(Held::itemName(218) == "TM27 — Return");
     assert(Held::itemName(219) == "TM28 — Dig");
     assert(Held::itemName(243) == "HM01 — Cut");
-    // The item sprite asset key is the actual TM/HM, not the move display text.
-    assert(Held::spriteName(218) == "TM27");
-    assert(Held::spriteName(219) == "TM28");
-    assert(Held::spriteName(243) == "HM01");
+    // The item sprite is the verified GSC-era MOVE TYPE disc, not the
+    // item number: TM27 Return -> Normal; TM28 Dig -> Ground; HM01 Cut -> Normal.
+    // Each generation maps machine IDs separately, so number-only art is wrong.
+    assert(Held::spriteName(218) == "tm-normal");
+    assert(Held::spriteName(219) == "tm-ground");
+    assert(Held::spriteName(243) == "hm-normal");
+    assert(Held::spriteName(193) == "tm-unknown"); // Original GSC ??? Curse TM03
     assert(Held::spriteName(0) == "None");
+    // GSC bag/held modal uses dedicated 32px original-game motifs; the
+    // corresponding 160x144 stationery is presented only in the mail preview.
+    assert(Held::spriteName(158) == "gsc-mail-icon-flower-mail");
+    assert(Held::spriteName(181) == "gsc-mail-icon-surf-mail");
+    assert(Held::spriteName(182) == "gsc-mail-icon-liteblue-mail");
+    assert(Held::spriteName(183) == "gsc-mail-icon-portraitmail");
+    assert(Held::spriteName(184) == "gsc-mail-icon-lovely-mail");
+    assert(Held::spriteName(185) == "gsc-mail-icon-eon-mail");
+    assert(Held::spriteName(186) == "gsc-mail-icon-morph-mail");
+    assert(Held::spriteName(187) == "gsc-mail-icon-bluesky-mail");
+    assert(Held::spriteName(188) == "gsc-mail-icon-music-mail");
+    assert(Held::spriteName(189) == "gsc-mail-icon-mirage-mail");
     for (int i = 0; i < static_cast<int>(items.size()); ++i) {
         assert(Held::initialIndex(items, items[i]) == i);
         for (int direction : {-1, 1}) {
