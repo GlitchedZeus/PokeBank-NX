@@ -67,6 +67,29 @@ int main() {
     assert(hasInvalidText(report(252,30,0,false,"",33),
         "Species 252 cannot exist in a Generation 2 save"));
 
+    // Source-free immutable native PK2: universally known current
+    // Time Capsule eligibility is still reportable. The unknown source
+    // game must NOT trigger Crystal-only positive encounter provenance.
+    constexpr auto canTrade="Current PK2 species/moves are compatible with a Gen II -> Gen I Time Capsule trade";
+    constexpr auto wrongMove="Current PK2 moves cannot currently enter the Time Capsule";
+    constexpr auto wrongSpecies="Current PK2 species cannot currently enter the Time Capsule";
+    constexpr auto eggRejected="Current PK2 is an Egg and cannot currently enter the Time Capsule";
+    const auto sourcefreeCanTrade=report(25,20,0,false,"",33);
+    assert(hasInfo(sourcefreeCanTrade,canTrade));
+    const auto sourcefreeMove=report(25,20,0,false,"",166);
+    assert(hasInfo(sourcefreeMove,wrongMove));
+    assert(!hasInfo(sourcefreeMove,canTrade));
+    const auto sourcefreeEvolved=report(169,40,0,false,"",33);
+    assert(hasInfo(sourcefreeEvolved,wrongSpecies));
+    const auto sourcefreeGen2Only=report(152,10,0,false,"",33);
+    assert(hasInfo(sourcefreeGen2Only,wrongSpecies));
+    const auto sourcefreeEgg=report(25,20,0,true,"",33);
+    assert(hasInfo(sourcefreeEgg,eggRejected));
+    assert(!hasInfo(sourcefreeEgg,canTrade));
+    const auto sourcefreeCaught=report(16,2,(1u<<14)|(2u<<8)|2u,false,"",33);
+    assert(!hasInfo(sourcefreeCaught,"pinned Crystal wild encounter"));
+    assert(!hasInfo(sourcefreeCaught,"pinned Generation II static/gift encounter"));
+
     // Crystal location 2 Pidgey #16 at level2, valid daytime mask2.
     constexpr uint16_t caught=(1u<<14)|(2u<<8)|2u;
     constexpr auto wildText="PK2 caught-data location/level/time matches a pinned Crystal wild encounter slot";

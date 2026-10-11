@@ -799,6 +799,43 @@ namespace Legality {
 
         }
 
+        // An immutable native PK2 from a bank/box can have an unknown
+        // physical source save. Its CURRENT Time Capsule eligibility
+        // still follows Gen II-wide species/egg/move constraints. This
+        // cannot infer Crystal-only caught data, a trainer or a past
+        // trade; keep those exact-source encounter checks above gated.
+        if (!sourceProfile &&
+            pk.getGameGroup() == Pokemon::Pokemon2ReadOnly::kReadOnlyGameGroup) {
+            const auto& gen2 = static_cast<const Pokemon::Pokemon2ReadOnly&>(pk);
+            const std::array<uint16_t,4> moves{
+                gen2.move(0),gen2.move(1),gen2.move(2),gen2.move(3)
+            };
+            switch (Gen12TimeCapsule::classifyCurrentTrade(
+                    gen2.speciesID(),gen2.isEgg(),moves)) {
+                case Gen12TimeCapsule::CurrentTrade::Compatible:
+                    add(r, Severity::Info,
+                        "Current PK2 species/moves are compatible with a Gen II -> Gen I Time Capsule trade",
+                        CheckIdentifier::Transfer);
+                    break;
+                case Gen12TimeCapsule::CurrentTrade::EggNotTradeable:
+                    add(r, Severity::Info,
+                        "Current PK2 is an Egg and cannot currently enter the Time Capsule; historical origin remains unresolved",
+                        CheckIdentifier::Transfer);
+                    break;
+                case Gen12TimeCapsule::CurrentTrade::SpeciesNotInGen1:
+                    add(r, Severity::Info,
+                        "Current PK2 species cannot currently enter the Time Capsule because it does not exist in Gen I; a Gen I pre-evolution origin may still be possible",
+                        CheckIdentifier::Transfer);
+                    break;
+                case Gen12TimeCapsule::CurrentTrade::MoveNotInGen1:
+                    add(r, Severity::Info,
+                        "Current PK2 moves cannot currently enter the Time Capsule because a move was introduced after Gen I; prior Gen I origin is not disproved",
+                        CheckIdentifier::Transfer);
+                    break;
+            }
+            r.coverage.transfer=CoverageLevel::Partial;
+        }
+
         if (sourceProfile) {
             r.coverage.sourceGame = CoverageLevel::Complete;
             r.coverage.encounter = sourceProfile->encounterCoverage;
