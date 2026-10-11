@@ -69,6 +69,7 @@ int main() {
     assert(artKey(GameVersion::RBY, 206) == "tm-poison"); // TM06 Toxic
     assert(artKey(GameVersion::RBY, 198) == "hm-water"); // HM03 Surf
     assert(artKey(GameVersion::GSC, 191) == "tm-fighting"); // TM01 Dynamic Punch
+    assert(artKey(GameVersion::GSC, 193) == "tm-unknown"); // TM03 Curse = ??? type
     assert(artKey(GameVersion::GSC, 245) == "hm-water"); // HM03 Surf
     assert(artKey(GameVersion::FRLG, 289) == "tm-fighting"); // TM01 Focus Punch
     assert(artKey(GameVersion::PT, 328) == "tm-fighting");
