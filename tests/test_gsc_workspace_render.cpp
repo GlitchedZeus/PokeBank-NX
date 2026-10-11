@@ -191,6 +191,18 @@ int main() {
     assert(Held::spriteName(219) == "tm-ground");
     assert(Held::spriteName(243) == "hm-normal");
     assert(Held::spriteName(0) == "None");
+    // GSC bag/held modal uses dedicated 32px original-game motifs; the
+    // corresponding 160x144 stationery is presented only in the mail preview.
+    assert(Held::spriteName(158) == "gsc-mail-icon-flower-mail");
+    assert(Held::spriteName(181) == "gsc-mail-icon-surf-mail");
+    assert(Held::spriteName(182) == "gsc-mail-icon-liteblue-mail");
+    assert(Held::spriteName(183) == "gsc-mail-icon-portraitmail");
+    assert(Held::spriteName(184) == "gsc-mail-icon-lovely-mail");
+    assert(Held::spriteName(185) == "gsc-mail-icon-eon-mail");
+    assert(Held::spriteName(186) == "gsc-mail-icon-morph-mail");
+    assert(Held::spriteName(187) == "gsc-mail-icon-bluesky-mail");
+    assert(Held::spriteName(188) == "gsc-mail-icon-music-mail");
+    assert(Held::spriteName(189) == "gsc-mail-icon-mirage-mail");
     for (int i = 0; i < static_cast<int>(items.size()); ++i) {
         assert(Held::initialIndex(items, items[i]) == i);
         for (int direction : {-1, 1}) {
