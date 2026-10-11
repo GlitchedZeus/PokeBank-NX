@@ -44,6 +44,11 @@ inline std::string slug(std::string_view label) {
     // lookup fixes only.  The inventory label and native IDs are untouched.
     if (key == "thunderstone") return "thunder-stone";
     if (key == "x-defend") return "x-defense";
+    // Historically named items have no dedicated sprite in the pinned PNG
+    // archive. Use a clearly classified modern REPRESENTATIVE icon for the
+    // same item role; never misreport these as exact original-era artwork.
+    if (key == "x-special") return "x-sp-atk";
+    if (key == "exp-all") return "exp-share";
     if (key == "parlyz-heal") return "paralyze-heal";
     if (key == "brightpowder") return "bright-powder";
     if (key == "elixer") return "elixir";
