@@ -40,6 +40,16 @@ constexpr bool couldOriginateGen1(uint16_t species, bool isEgg, uint16_t caughtD
 // is #165, Struggle. Distinguish *current* eligibility from possible
 // *historical* origin. Evolution or a new move learned after returning
 // to Gen II does not disprove an earlier Gen I ancestor.
+// Conditional timing bound: if this PK2 did visit Gen I, move IDs
+// 166-251 in its current slots necessarily entered the record in Gen II.
+// The count does not establish that the visit actually occurred.
+constexpr uint8_t postGen1MoveIds(const std::array<uint16_t,4>& moves) noexcept {
+    uint8_t count=0;
+    for (const uint16_t move : moves)
+        if (move > 165 && move <= 251) ++count;
+    return count;
+}
+
 enum class CurrentTrade : uint8_t {
     Compatible, EggNotTradeable, SpeciesNotInGen1, MoveNotInGen1,
 };

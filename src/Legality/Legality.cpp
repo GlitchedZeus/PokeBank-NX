@@ -698,6 +698,13 @@ namespace Legality {
                 add(r, Severity::Info,
                     "PK2 structure is compatible with a possible Generation I origin through Time Capsule; this does not prove the transfer occurred",
                     CheckIdentifier::Transfer);
+                const uint8_t newer=Gen12TimeCapsule::postGen1MoveIds(moves);
+                if(newer)
+                    add(r,Severity::Info,
+                        "Exact-source PK2 conditional Time Capsule move-stage evidence: " +
+                        std::to_string(newer) +
+                        " stored Gen II move ID(s) were introduced after Gen I; if this Pokemon truly originated in Gen I they require post-return acquisition, but the trade itself is unproven",
+                        CheckIdentifier::Moves);
             }
             // The present-day Time Capsule restrictions cannot disprove a
             // previous Gen I origin. Explain all four distinct outcomes.
@@ -846,6 +853,13 @@ namespace Legality {
                 add(r,Severity::Info,
                     "Source-free native PK2 may descend from a Generation I ancestor; no original cartridge, Time Capsule trade or evolution sequence is proven",
                     CheckIdentifier::Transfer);
+                const uint8_t newer=Gen12TimeCapsule::postGen1MoveIds(moves);
+                if(newer)
+                    add(r,Severity::Info,
+                        "Source-free PK2 conditional Time Capsule move-stage evidence: " +
+                        std::to_string(newer) +
+                        " stored Gen II move ID(s) were introduced after Gen I; if this Pokemon truly originated in Gen I they require post-return acquisition, but the trade itself is unproven",
+                        CheckIdentifier::Moves);
             }
             switch (Gen12TimeCapsule::classifyCurrentTrade(
                     gen2.speciesID(),gen2.isEgg(),moves)) {

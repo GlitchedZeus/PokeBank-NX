@@ -1,6 +1,7 @@
 #include "Legality/Legality.h"
 #include "Legality/Gen12FormatDomainEvidence.h"
 #include "Legality/Gen12JointMoveEvidence.h"
+#include "Legality/Gen12TimeCapsuleEvidence.h"
 #include "Names/SpeciesNames.h"
 #include "Names/ItemNames.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
@@ -122,6 +123,23 @@ int main() {
     const auto sourcefreeEgg=report(25,20,0,true,"",33);
     assert(hasInfo(sourcefreeEgg,eggRejected));
     assert(!hasInfo(sourcefreeEgg,canTrade));
+    // Retained source-free PK2 possible Gen I ancestry is NOT proof a
+    // Time Capsule trade actually happened. If it did, move #166 must
+    // have entered the four-slot record after returning to Gen II.
+    constexpr auto stageSourceFree=
+        "Source-free PK2 conditional Time Capsule move-stage evidence:";
+    constexpr auto stageExact=
+        "Exact-source PK2 conditional Time Capsule move-stage evidence:";
+    assert(Legality::Gen12TimeCapsule::postGen1MoveIds({165,166,251,0})==2);
+    assert(Legality::Gen12TimeCapsule::postGen1MoveIds({0,165,252,0})==0);
+    assert(hasInfo(sourcefreeMove,stageSourceFree));
+    assert(!hasInfo(sourcefreeCanTrade,stageSourceFree));
+    assert(!hasInfo(sourcefreeGen2Only,stageSourceFree));
+    assert(!hasInfo(report(25,20,0,true,"",166),stageSourceFree));
+    assert(hasInfo(report(25,20,0,false,"crystal_gbc",166),stageExact));
+    assert(!hasInfo(report(25,20,0,false,"crystal_gbc",165),stageExact));
+    assert(!hasInfo(report(25,20,0,false,"",252),stageSourceFree));
+
     const auto sourcefreeCaught=report(16,2,(1u<<14)|(2u<<8)|2u,false,"",33);
     // Historical Gen I ancestry is independent of whether the current
     // Gen II evolved species or move list can still enter Time Capsule.
