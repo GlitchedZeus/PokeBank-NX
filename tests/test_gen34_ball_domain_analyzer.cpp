@@ -136,10 +136,11 @@ Legality::Report analyzeSourceFreeNativeGen4Moves(
 Legality::Report analyzeDetachedPalParkMoves(
         uint8_t originalVersion,uint16_t move1,uint16_t move2,
         bool exactSource=false,bool withPalParkMarker=true,
-        bool incompatibleBall=false,bool invalidSplit=false) {
+        bool incompatibleBall=false,bool invalidSplit=false,
+        uint16_t species=25) {
     std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
     wr32(raw,0x00,0x12345678u);
-    wr16(raw,0x08,25); // Pikachu, available in original Gen III.
+    wr16(raw,0x08,species); // National species ID for PK4 lineage tests.
     wr16(raw,0x0C,12345);
     wr16(raw,0x0E,54321);
     wr32(raw,0x10,3375);
@@ -268,13 +269,14 @@ Legality::Report analyzeGen4EggBall(uint8_t ball, bool isEgg,
 
 Legality::Report sourceFreePalPark(uint8_t originVersion,uint16_t dp,
                                    uint16_t extended,uint8_t ballDPPt,
-                                   uint8_t ballHGSS,bool isEgg=false) {
+                                   uint8_t ballHGSS,bool isEgg=false,
+                                   uint16_t species=25) {
     // Actual stored/encrypted PK4 format. The exact container game identity
     // is intentionally absent; stored Gen III origin remains independently
     // recoverable and can still prove universal transfer field rules.
     std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
     wr32(raw,0x00,0x12345678u);
-    wr16(raw,0x08,25); // Pikachu
+    wr16(raw,0x08,species); // National PK4 species, possibly evolved post-transfer.
     wr16(raw,0x0C,12345);
     wr16(raw,0x0E,54321);
     wr32(raw,0x10,3375);
@@ -939,6 +941,48 @@ int main() {
     assert(!hasText(exactNoMarker,"Exact-source Pal Park PK4 move-stage evidence"));
     assert(!hasText(analyzeDetachedPalParkMoves(0,85,363),
                     stagePrefix));
+
+    // Pal Park retains the source generation after legitimate in-game
+    // evolution. National species >386 alone is NOT an invalid Gen III
+    // provenance claim: Magneton #82 -> Magnezone #462 and Porygon2
+    // #233 -> Porygon-Z #474 become possible after entering Gen IV.
+    // Unrelated Gen IV starter/new lineages cannot originate from GBA.
+    using Lineage=Legality::Gen34PalParkSpecies::Evidence;
+    static_assert(Legality::Gen34PalParkSpecies::classify(386)==Lineage::Gen3NativeSpecies);
+    static_assert(Legality::Gen34PalParkSpecies::classify(462)==Lineage::Gen4EvolutionFromGen3);
+    static_assert(Legality::Gen34PalParkSpecies::classify(474)==Lineage::Gen4EvolutionFromGen3);
+    static_assert(Legality::Gen34PalParkSpecies::classify(473)==Lineage::Gen4EvolutionFromGen3);
+    static_assert(Legality::Gen34PalParkSpecies::classify(387)==Lineage::NoGen3Ancestor);
+    static_assert(Legality::Gen34PalParkSpecies::classify(445)==Lineage::NoGen3Ancestor);
+    static_assert(Legality::Gen34PalParkSpecies::classify(493)==Lineage::NoGen3Ancestor);
+    static_assert(Legality::Gen34PalParkSpecies::classify(494)==Lineage::Unknown);
+
+    constexpr auto noGbaLineage=
+        "Gen III-origin PK4 species has no Gen III species in its audited Generation IV evolution lineage";
+    constexpr auto evolvedAfter=
+        "can descend from a Gen III species via Generation IV evolution";
+    const auto turtwigSourceFree=sourceFreePalPark(2,0x37,0x37,4,0,false,387);
+    assert(hasInvalidText(turtwigSourceFree,noGbaLineage));
+    assert(!hasInfo(turtwigSourceFree,evolvedAfter));
+    const auto magnezoneSourceFree=sourceFreePalPark(2,0x37,0x37,4,0,false,462);
+    assert(!hasInvalidText(magnezoneSourceFree,noGbaLineage));
+    assert(hasInfo(magnezoneSourceFree,evolvedAfter));
+    const auto porygonZSourceFree=sourceFreePalPark(2,0x37,0x37,4,0,false,474);
+    assert(!hasInvalidText(porygonZSourceFree,noGbaLineage));
+    assert(hasInfo(porygonZSourceFree,evolvedAfter));
+    assert(hasInvalidText(
+        analyzeDetachedPalParkMoves(2,85,363,true,true,false,false,387),
+        noGbaLineage));
+    assert(!hasInvalidText(
+        analyzeDetachedPalParkMoves(2,85,363,true,true,false,false,462),
+        noGbaLineage));
+    assert(hasInfo(
+        analyzeDetachedPalParkMoves(2,85,363,true,true,false,false,462),
+        evolvedAfter));
+    // Without a Gen III origin byte, never infer the ancestry constraint.
+    assert(!hasInvalidText(
+        analyzeDetachedPalParkMoves(10,85,363,false,true,false,false,387),
+        noGbaLineage));
 
     // Native Gen III -> IV Pal Park records retain origin and split
     // fields independently of an exact container game/source save ID.

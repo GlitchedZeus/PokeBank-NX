@@ -68,6 +68,7 @@
 #include "Legality/Gen3JointMoveEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
 #include "Legality/Gen34PalParkMoves.h"
+#include "Legality/Gen34PalParkSpecies.h"
 #include "Legality/Gen12JointMoveEvidence.h"
 #include "Legality/Gen34LanguageEvidence.h"
 #include "Legality/Gen34BallDomainEvidence.h"
@@ -1024,6 +1025,25 @@ namespace Legality {
             (!sourceProfile &&
              Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4)) {
             const int originGeneration = Enums::getVersionGeneration(pk.originGame());
+            // A PK4 may retain a genuine GBA/GameCube origin after evolving
+            // into a Gen IV-introduced species (Magnezone, Porygon-Z...).
+            // Only a proven lack of *any* Gen III ancestor is impossible.
+            // The source/container game is not a substitute for the native
+            // PK4 format or its preserved original-game identity.
+            if (Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
+                Gen4Origin::isPalParkOrigin(pk.originGame())) {
+                const auto lineage=Gen34PalParkSpecies::classify(species);
+                if (lineage==Gen34PalParkSpecies::Evidence::NoGen3Ancestor) {
+                    add(r,Severity::Invalid,
+                        "Gen III-origin PK4 species has no Gen III species in its audited Generation IV evolution lineage",
+                        CheckIdentifier::Transfer);
+                } else if (lineage==
+                           Gen34PalParkSpecies::Evidence::Gen4EvolutionFromGen3) {
+                    add(r,Severity::Info,
+                        "Gen III-origin PK4 species can descend from a Gen III species via Generation IV evolution; actual evolution and migration history unresolved",
+                        CheckIdentifier::Transfer);
+                }
+            }
             if (originGeneration == 0) {
                 add(r, Severity::Warning,
                     "PK4 origin game could not be mapped to a known generation",
