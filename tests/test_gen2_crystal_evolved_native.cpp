@@ -65,6 +65,10 @@ int main() {
     assert(hasInfo(report(25,20,0,false,"",85),compatiblePool)); // Pikachu Thunderbolt
     assert(!hasInfo(report(25,20,0,false,"crystal_gbc",85),compatiblePool));
     assert(!hasInfo(report(25,20,0,false,"",0),compatiblePool));
+    // A still-unhatched PK2 Egg cannot be credited with adult level-up,
+    // TM/HM or tutor acquisition merely because a species pool contains
+    // a move. Its possible parental inheritance is a separate verifier.
+    assert(!hasInfo(report(25,20,0,true,"",85),compatiblePool));
 
     // Source-free PK2 still proves Gen II species/move maxima independently
     // from which exact Gold/Silver/Crystal save was used.

@@ -1604,7 +1604,8 @@ namespace Legality {
                 }
             }
         } else if (!sourceProfile &&
-                   Gen12FormatDomain::generationFromGroup(pk.getGameGroup()) == 2) {
+                   Gen12FormatDomain::generationFromGroup(pk.getGameGroup()) == 2 &&
+                   !pk.isEgg()) {
             // Native PK2 retains the current move IDs, but may have
             // passed through Gold/Silver/Crystal and the Time Capsule.
             // This union gives evidence of a POSSIBLE pool, not proof
@@ -1628,6 +1629,7 @@ namespace Legality {
             }
         } else if (!sourceProfile &&
                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 3 &&
+                   !pk.isEgg() &&
                    !Gen4Origin::exactGen3GameId(pk.originGame()).empty()) {
             // Banked/native PK3 retains the original GBA game code even
             // without a save source. Use pinned pret-derived direct and
@@ -1667,6 +1669,7 @@ namespace Legality {
             }
         } else if (!sourceProfile &&
                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
+                   !pk.isEgg() &&
                    Gen4Origin::isNativeRetailGen4(pk.originGame())) {
             // Detached PK4 keeps its original retail game. The pinned
             // PokeAPI-derived Gen IV level-up/egg/tutor/machine source
@@ -1745,6 +1748,14 @@ namespace Legality {
                     }
                 }
             }
+        } else if (!sourceProfile && pk.isEgg() &&
+                   (Gen12FormatDomain::generationFromGroup(pk.getGameGroup()) == 2 ||
+                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 3 ||
+                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4)) {
+            // Unhatched eggs require parent-inheritance and egg-specific
+            // learnset analysis. Generic adult direct/tutor/TM/HM union
+            // pools can emit false warnings on an unknown parent history.
+            // Keep such history unresolved, not fabricated invalidity.
         } else if (Pokemon::getLearnableBits(species, pk.form(), originGroup) != nullptr) {
             for (int i = 0; i < 4; ++i) {
                 const uint16_t moveId = pk.move(i);
