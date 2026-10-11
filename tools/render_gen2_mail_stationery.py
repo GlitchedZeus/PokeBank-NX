@@ -213,6 +213,61 @@ def assemble(key: str):
         if x%32==16:canvas[121][x]=ink
     return encode(canvas)
 
+# Actual 10 finished 160x144 Game Boy Color mail screens, preserved in a
+# fixed Pokémon Crystal sprite sheet by FrenchOrange/The Spriters Resource.
+# The raw sheet has two six-column rows, with two Portraitmail variations
+# (Japanese / international). We crop the international Portraitmail.
+# This is authentic game screenshot art; unlike our fallback reconstruction,
+# these are not synthesized layouts. Original Pokémon imagery © Nintendo/TPC.
+REAL_MAIL_SHEET = (
+    "https://www.spriters-resource.com/media/assets/49/52408.png"
+    "?updated=1755473031"
+)
+MAIL_SHEET_SIZE = (1184, 344)
+MAIL_TILE = (160, 144)
+MAIL_CROP = {
+    "bluesky-mail": (8,24), "eon-mail": (176,24),
+    "flower-mail": (344,24), "liteblue-mail": (512,24),
+    "lovely-mail": (680,24), "mirage-mail": (848,24),
+    "morph-mail": (8,192), "music-mail": (176,192),
+    "portraitmail": (512,192), "surf-mail": (848,192)
+}
+
+def recover_real_mail_sheet(keys, out=OUT):
+    """Prefer pixel-for-pixel original screenshot crops over reconstructions."""
+    if not keys: return {}
+    out.mkdir(parents=True,exist_ok=True)
+    cache_file=CACHE / "crystal-mail-sheet-52408.png"
+    cache_file.parent.mkdir(parents=True,exist_ok=True)
+    if not cache_file.is_file():
+        request=urllib.request.Request(REAL_MAIL_SHEET,
+            headers={"User-Agent":"PokeBank-NX-GameArchive-HistoricalAsset/1.0",
+                     "Referer":"https://www.spriters-resource.com/"})
+        with urllib.request.urlopen(request,timeout=22) as source:
+            payload=source.read()
+        if len(payload)>2_000_000:
+            raise ValueError("Unexpectedly huge external mail sprite sheet")
+        cache_file.write_bytes(payload)
+    width,height,pixels=decode(cache_file.read_bytes())
+    if (width,height)!=MAIL_SHEET_SIZE:
+        raise ValueError("Authentic Crystal sheet changed source dimensions")
+    recovered={}
+    for key in keys:
+        x,y=MAIL_CROP[key]
+        tile=[row[x:x+160] for row in pixels[y:y+144]]
+        if len(tile)!=144 or any(len(row)!=160 for row in tile):
+            raise ValueError("Source sheet unexpectedly truncated: "+key)
+        # Reject blank crops rather than silently bundling the wrong rectangle.
+        if len(set(c for row in tile for c in row))<4:
+            raise ValueError("Mail screenshot crop is not an actual stationery: "+key)
+        target=out/(key+".png")
+        target.write_bytes(encode(tile))
+        valid,reason,size=validate_png(target)
+        if not valid or tuple(size)!=MAIL_TILE:
+            raise ValueError("Authentic screenshot asset invalid: "+key+": "+reason)
+        recovered[key]="AUTHENTIC Crystal screenshot"
+    return recovered
+
 def render_unavailable_exact_mail(keys, out=OUT):
     out.mkdir(parents=True,exist_ok=True)
     rendered={}
