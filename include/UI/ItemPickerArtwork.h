@@ -2,6 +2,8 @@
 #define POKEBANK_UI_ITEM_PICKER_ARTWORK_H
 
 #include "UI/SpriteManager.h"
+#include "UI/ClassicMachineArtwork.h"
+#include "UI/ItemSpriteKey.h"
 #include "UI/PKSEFramebuffer.h"
 #include <string>
 #include <cctype>
@@ -33,6 +35,23 @@ inline void draw(PKSEFramebuffer& fb, int right, int y, int px,
     }
     fb.drawSpriteStaticContained(right-px,y,px,px,
                                  art->width,art->height,art->data,art->channels);
+}
+
+// Machine item identities are only meaningful with both the exact game
+// generation and the native ID. Reusing TM01 across generations is wrong.
+// An unrecognised move's type deliberately gets the neutral fallback, not
+// the Normal-type picture of an unrelated move.
+inline void drawNativeItem(PKSEFramebuffer& fb, int right, int y, int px,
+                           Enums::GameVersion game, uint16_t itemId,
+                           const std::string& displayName) {
+    const std::string machineArt = ClassicMachineArtwork::artKey(game, itemId);
+    if (!machineArt.empty()) {
+        draw(fb, right, y, px, machineArt);
+    } else {
+        // In this rare case the move's original type may be ???.
+        // The existing draw() fallback supplies a neutral outline.
+        draw(fb, right, y, px, displayName);
+    }
 }
 
 } // namespace UI::ItemPickerArtwork
