@@ -2125,8 +2125,8 @@ bool handleBoxMove(TrainerViewScreen& screen, State& state,
             const auto next = Nav::navigate({nextBox, nextSlot}, Nav::Direction::NextBox);
             nextBox = next.box;
         } else if (tapped >= 0 && tapped < 30) {
-            // First tap focuses; second tap drops like a Y press.
-            if (tapped == currentSlot && nextBox == currentBox) down |= HidNpadButton_Y;
+            // First tap focuses; second tap places with PKSE Storage's A action.
+            if (tapped == currentSlot && nextBox == currentBox) down |= HidNpadButton_A;
             else nextSlot = tapped;
         }
     }
@@ -2183,7 +2183,9 @@ bool handleBoxMove(TrainerViewScreen& screen, State& state,
         return true;
     }
 
-    if (!(down & (HidNpadButton_Y | HidNpadButton_A))) return true;
+    // PKSE Storage places a carried block with A. Y is reserved for
+    // choosing Menu/Move/Multi only while hands are empty.
+    if (!(down & HidNpadButton_A)) return true;
     if (state.moveMulti) {
         auto* staged = editor(screen);
         if (!staged) {
@@ -2252,15 +2254,10 @@ bool handleBoxMove(TrainerViewScreen& screen, State& state,
         screen.controllerNavigation.reset();
         return true;
     }
-    if (nextBox == state.moveSourceBox && nextSlot == state.moveSourceSlot &&
-        (down & HidNpadButton_Y)) {
-        state.moveActive = false; // Y on grabbed source cancels like Gen III.
-        screen.postStatus("Gen IV grab cancelled; no staged bytes modified", 120);
-        screen.controllerNavigation.reset();
-        return true;
-    }
     if (nextBox == state.moveSourceBox && nextSlot == state.moveSourceSlot) {
-        screen.postStatus("Choose a different destination or press B to cancel", 180);
+        state.moveActive = false; // Put it back at its original slot without a write.
+        screen.postStatus("Gen IV Pokemon returned to its slot; nothing changed", 180);
+        screen.controllerNavigation.reset();
         return true;
     }
     auto* staged = editor(screen);
@@ -2340,10 +2337,10 @@ void drawBoxMove(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& st
         fb.drawText(x + 18, y + 82,
                     "To Box " + std::to_string(screen.selectedBoxIndex + 1) +
                     " / Slot " + std::to_string(screen.selectedItemIndex + 1) +
-                    "  |  Y: Drop",
+                    "  |  A: Drop",
                     Colors::Text, TextStyle::Caption);
         drawNavBar(fb, {{"D-pad/Stick", "Slot"}, {"L/R", "Box"}, {"ZL/ZR", "Jump"},
-                        {"Y/A", state.moveMulti ? "Drop group" : "Drop/Swap"},
+                        {"A", state.moveMulti ? "Drop group" : "Drop/Swap"},
                         {"B", "Cancel"}});
     }
 }
