@@ -1,5 +1,7 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen4BoxTouchActions.h"
+#include "UI/Gen4BoxMoveNavigation.h"
+#include "UI/ItemSpriteKey.h"
 
 #include <cassert>
 #include <fstream>
@@ -38,6 +40,30 @@ int main() {
     static_assert(!BoxTouch::opensSelectedSlotActions(BoxTouch::SummaryPanelTouchId, -1, 30));
     static_assert(!BoxTouch::opensSelectedSlotActions(BoxTouch::SummaryPanelTouchId, 30, 30));
     static_assert(!BoxTouch::opensSelectedSlotActions(0, 0, 0));
+
+    // Gen IV Move Pokémon must use the same five-by-six wrapping, box arrows,
+    // Y grab/drop and 5-box jump semantics as the existing older-generation UI.
+    namespace MoveNav = PokeBank::UIModel::Gen4BoxMoveNavigation;
+    using Direction = MoveNav::Direction;
+    static_assert(MoveNav::navigate({0,0}, Direction::Left).slot == 5);
+    static_assert(MoveNav::navigate({0,5}, Direction::Right).slot == 0);
+    static_assert(MoveNav::navigate({0,0}, Direction::Up).slot == 24);
+    static_assert(MoveNav::navigate({0,25}, Direction::Down).slot == 1);
+    static_assert(MoveNav::navigate({0,0}, Direction::PreviousBox).box == 17);
+    static_assert(MoveNav::navigate({17,0}, Direction::NextBox).box == 0);
+    static_assert(MoveNav::navigate({0,0}, Direction::JumpBack).box == 13);
+    static_assert(MoveNav::navigate({17,0}, Direction::JumpForward).box == 4);
+    static_assert(MoveNav::navigate({0,29}, Direction::Left).slot == 28);
+
+    // Every generation shares the same genuine-art name resolver.
+    assert(UI::ItemSpriteKey::slug("Thunderstone") == "thunder-stone");
+    assert(UI::ItemSpriteKey::slug("X Defend") == "x-defense");
+    assert(UI::ItemSpriteKey::slug("Itemfinder") == "itemfinder");
+    assert(UI::ItemSpriteKey::slug("DeepSeaTooth") == "deep-sea-tooth");
+    assert(UI::ItemSpriteKey::slug("TM27 — Return") == "tm27");
+    assert(UI::ItemSpriteKey::slug("HM01 — Cut") == "hm01");
+    assert(UI::ItemSpriteKey::isTM(UI::ItemSpriteKey::slug("TM01 — Dynamic Punch")));
+    assert(UI::ItemSpriteKey::isHM(UI::ItemSpriteKey::slug("HM01 — Cut")));
 
     // Immutable external sources still need the staged dirty-session exit confirmation.
     static_assert(Shared::immutableSourceBlocksSaveDialog(true, false));
@@ -446,6 +472,8 @@ int main() {
     contains(surface, "state.moveSourceSlot = state.slot;");
     contains(surface, "bool handleBoxMove(");
     contains(surface, "stageMoveBoxPokemon(");
+    contains(surface, "Nav::Direction::JumpForward");
+    contains(surface, '{"Y/A", "Drop / Swap"}');
     contains(surface, "if (down & HidNpadButton_B)");
     contains(surface, "state.moveActive = false;");
     contains(surface, "Gen IV move/swap staged; original source unchanged");
@@ -457,6 +485,12 @@ int main() {
     assert(addItemBody.find("fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1)") != std::string::npos);
     assert(addItemBody.find("fb.drawRoundedRect(x,y,w,h,18,Colors::FocusBorder,1)") == std::string::npos);
     contains(addItemBody, "ItemPickerArtwork::draw");
+
+    // The fixed-form Bulbasaur field is clearly informational in View.
+    contains(surface, "Default (fixed)");
+    contains(surface, "This Gen IV Pokémon has only its default form");
+    // Gen IV native Items have eight separate bag pockets even in detail view.
+    contains(baseUi, "PokeVault::Integration::Gen4::BagPocketCount");
 
     // Final composite routes Gen IV before generic/Gen III fallback.
     contains(composite, "#include \"Gen4SharedPokemonSurface.inc\"");
