@@ -41,6 +41,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <cstdlib>
 #include <optional>
 #include <string>
 #include <utility>
@@ -2237,11 +2238,11 @@ void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& s
 }
 
 bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
-                        u64 held,int stickX,int stickY) {
+                        u64 held,int stickX,int stickY,const TouchInput& touch) {
     const bool itemsScreen=screen.detailViewActive &&
         screen.selectedMode==TrainerViewScreen::ViewMode::Items;
     if(state.itemAddPickerActive) {
-        const u64 keys=screen.controllerNavigation.apply(
+        u64 keys=screen.controllerNavigation.apply(
             down,held,stickX,stickY,
             HidNpadButton_Up,HidNpadButton_Down,
             HidNpadButton_Left,HidNpadButton_Right);
@@ -2255,6 +2256,39 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         if(size<=0) {
             state.itemAddPickerActive=false;
             return true;
+        }
+        // Match the drawn nine-row foreground list. A clean tap chooses an
+        // item and opens the same quantity keyboard as controller A. Swipes
+        // move the selected window without triggering any staged mutation.
+        constexpr int panelW=780,panelH=532,rowH=43;
+        const int panelX=(1280-panelW)/2;
+        const int panelY=(720-kNavBarH-panelH)/2;
+        const int top=panelY+88,left=panelX+18,right=panelX+panelW-18;
+        const auto onList=[&](int x,int y) {
+            return x>=left && x<right && y>=top && y<top+9*rowH;
+        };
+        if(touch.justReleased() && touch.dragged()) {
+            const int dy=touch.deltaY();
+            if(onList(touch.startX(),touch.startY()) &&
+               std::abs(dy)>=24 && std::abs(dy)>std::abs(touch.deltaX())) {
+                const int rows=std::max(1,std::abs(dy)/rowH);
+                state.itemAddIndex=std::clamp(
+                    state.itemAddIndex+(dy<0?rows:-rows),0,size-1);
+            }
+            return true;
+        }
+        if(touch.justTapped() &&
+           onList(touch.startX(),touch.startY()) &&
+           onList(touch.x(),touch.y())) {
+            const int startRow=(touch.startY()-top)/rowH;
+            const int endRow=(touch.y()-top)/rowH;
+            const int first=PokeBank::UIModel::Gen4ItemListWindow::first(
+                state.itemAddIndex,size,9);
+            const int selected=first+endRow;
+            if(startRow==endRow && selected<size) {
+                state.itemAddIndex=selected;
+                keys|=HidNpadButton_A;
+            }
         }
         if(down&HidNpadButton_X) {
             state.itemAddSort = ItemPickerSort::next(state.itemAddSort);
@@ -2618,7 +2652,7 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
 
     beginPassiveView(screen);
     auto& state = stateFor(screen);
-    if(handleItemQuantity(screen,state,down,held,stickX,stickY))return true;
+    if(handleItemQuantity(screen,state,down,held,stickX,stickY,touch))return true;
     const bool ownsNavigation =
         state.actions || state.review || state.legality || state.confirmRelease ||
         state.valuePicker || state.moveEditor || workspaceActive(state);
