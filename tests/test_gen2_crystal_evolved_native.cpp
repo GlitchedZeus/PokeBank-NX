@@ -1,5 +1,6 @@
 #include "Legality/Legality.h"
 #include "Legality/Gen12FormatDomainEvidence.h"
+#include "Legality/Gen12JointMoveEvidence.h"
 #include "Names/SpeciesNames.h"
 #include "Names/ItemNames.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
@@ -71,6 +72,36 @@ int main() {
         "Move id 251 cannot exist in a Generation 1 save"));
     assert(hasInvalidText(report(25,20,0,false,"yellow_gb",252),
         "Move id 252 cannot exist in a Generation 2 save"));
+
+    // Gold/Silver and Crystal can expose disjoint compatibility
+    // evidence for the same native PK2 four-slot record. Gen II compatibility
+    // includes Gen I Time Capsule move pools, but no actual trade is proven.
+    using Gen12=Legality::Gen12JointMoveEvidence;
+    const auto splitSpinarak=Gen12::classify(2,167,{103,97,0,0});
+    assert(splitSpinarak.bound==Gen12::Bound::TwoFamilies);
+    assert(splitSpinarak.minFamilies==2 && splitSpinarak.familyMask==3);
+    const auto crystalSpinarak=Gen12::classify(2,167,{97,0,0,0});
+    assert(crystalSpinarak.bound==Gen12::Bound::OneFamily);
+    assert(crystalSpinarak.familyMask==2);
+    assert(Gen12::classify(2,167,{0,0,0,0}).bound==
+           Gen12::Bound::Empty);
+    assert(Gen12::classify(2,167,{103,252,0,0}).bound==
+           Gen12::Bound::Unresolved);
+    PokeVault::Integration::Gen2::PokemonRecord spinarak{};
+    spinarak.species=167;
+    spinarak.level=25;
+    spinarak.trainerId=12345;
+    spinarak.moves={103,97,0,0};
+    spinarak.originalTrainer="RED";
+    spinarak.nickname="SPINARAK";
+    const Pokemon::Pokemon2ReadOnly nativeSpinarak(spinarak);
+    const auto sourceFreeReport=Legality::analyze(
+        nativeSpinarak,Enums::GameVersion::GSC);
+    assert(hasInfo(sourceFreeReport,
+        "Source-free native PK2 joint move bound: current moves require both"));
+    assert(!hasInfo(Legality::analyze(
+        nativeSpinarak,Enums::GameVersion::GSC,"crystal_gbc"),
+        "Source-free native PK2 joint move bound"));
 
     // Source-free immutable native PK2: universally known current
     // Time Capsule eligibility is still reportable. The unknown source

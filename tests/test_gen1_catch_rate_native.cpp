@@ -1,6 +1,7 @@
 #include "Legality/Legality.h"
 #include "Legality/Gen12FormatDomainEvidence.h"
 #include "Legality/LegalityContext.h"
+#include "Legality/Gen12JointMoveEvidence.h"
 #include "Names/ItemNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
@@ -62,6 +63,34 @@ int main() {
         "Move id 166 cannot exist in a Generation 1 save"));
     assert(invalidMessage(report(152,45,33,""),
         "Species 152 cannot exist in a Generation 1 save"));
+    // Native PK1 has no stored original cartridge identity. These
+    // real pinned R/B/Y compatibility pools only provide source-free
+    // candidates, never a claim that Yellow was the actual source.
+    using Gen12=Legality::Gen12JointMoveEvidence;
+    const auto g1Common=Gen12::classify(1,25,{84,85,0,0});
+    assert(g1Common.bound==Gen12::Bound::OneFamily);
+    assert(g1Common.familyMask==3);
+    const auto yellowOnly=Gen12::classify(1,25,{21,84,0,0});
+    assert(yellowOnly.bound==Gen12::Bound::OneFamily);
+    assert(yellowOnly.familyMask==2);
+    assert(Gen12::classify(1,25,{21,166,0,0}).bound==
+           Gen12::Bound::Unresolved);
+    assert(Gen12::classify(1,25,{0,0,0,0}).bound==
+           Gen12::Bound::Empty);
+    PokeVault::Integration::Gen1::PokemonRecord sourcefree{};
+    sourcefree.species=25;
+    sourcefree.catchRate=190;
+    sourcefree.level=20;
+    sourcefree.trainerId=12345;
+    sourcefree.moves={21,84,0,0};
+    sourcefree.originalTrainer="RED";
+    sourcefree.nickname="PIKACHU";
+    const Pokemon::Pokemon1ReadOnly pk1(sourcefree);
+    assert(hasInfo(Legality::analyze(pk1,Enums::GameVersion::RBY),
+        "Source-free native PK1 joint move bound: all stored moves share"));
+    assert(!hasInfo(Legality::analyze(pk1,Enums::GameVersion::RBY,"red_gb"),
+        "Source-free native PK1 joint move bound"));
+
     // Strict native PK1 with a contradictory Crystal label must still
     // reject Gen II-only moves using its true Gen I storage ceiling.
     const auto mismatchedPk1=report(25,190,166,"crystal_gbc");

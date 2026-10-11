@@ -68,6 +68,7 @@
 #include "Legality/Gen3JointMoveEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
 #include "Legality/Gen34PalParkMoves.h"
+#include "Legality/Gen12JointMoveEvidence.h"
 #include "Legality/Gen34LanguageEvidence.h"
 #include "Legality/Gen34BallDomainEvidence.h"
 #include "Legality/Gen34FormatDomainEvidence.h"
@@ -1537,6 +1538,34 @@ namespace Legality {
                         CheckIdentifier::Moves);
                 }
             }
+        } else if (!sourceProfile &&
+                   (pk.getGameGroup() ==
+                        Pokemon::Pokemon1ReadOnly::kReadOnlyGameGroup ||
+                    pk.getGameGroup() ==
+                        Pokemon::Pokemon2ReadOnly::kReadOnlyGameGroup)) {
+            // True native read-only PK1/PK2 wrappers; neither format proves
+            // whether Red/Blue/Yellow or Gold/Silver/Crystal is the origin.
+            const uint8_t generation=
+                pk.getGameGroup() == Pokemon::Pokemon1ReadOnly::kReadOnlyGameGroup
+                  ? 1u : 2u;
+            const auto bound=Gen12JointMoveEvidence::classify(
+                generation,species,
+                {pk.move(0),pk.move(1),pk.move(2),pk.move(3)});
+            using B=Gen12JointMoveEvidence::Bound;
+            if(bound.bound==B::OneFamily) {
+                add(r,Severity::Info,
+                    generation==1
+                        ? "Source-free native PK1 joint move bound: all stored moves share at least one audited Red/Blue or Yellow pool; original game and tradeback history unresolved"
+                        : "Source-free native PK2 joint move bound: all stored moves share at least one audited Gold/Silver or Crystal/Time Capsule compatibility pool; historical timing and original game unresolved",
+                    CheckIdentifier::Moves);
+            } else if(bound.bound==B::TwoFamilies) {
+                add(r,Severity::Info,
+                    generation==1
+                        ? "Source-free native PK1 joint move bound: current moves span Red/Blue and Yellow compatibility pools; historical trading and acquisition unresolved"
+                        : "Source-free native PK2 joint move bound: current moves require both Gold/Silver and Crystal/Time Capsule compatibility pools in the audited tables; actual trade and acquisition histories unresolved",
+                    CheckIdentifier::Moves);
+            }
+            // Unknown / missing pool never implies an impossible history.
         } else if (hasExactGen3Source) {
             const std::array<uint16_t, 4> sourceMoves{
                 pk.move(0), pk.move(1), pk.move(2), pk.move(3)
