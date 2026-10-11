@@ -17,3 +17,21 @@ $(HOST_BUILD)/test_machine_display: $(MACHINE_DISPLAY_SOURCES)
 $(HOST_BUILD)/test_machine_display_sanitize: $(MACHINE_DISPLAY_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+
+# UI-only sorting never mutates a native game item ID or staged source.
+ITEM_PICKER_SORT_SRC := tests/test_item_picker_sort.cpp
+ITEM_PICKER_SORT_TEST := $(HOST_BUILD)/test_item_picker_sort
+ITEM_PICKER_SORT_SANITIZE := $(HOST_BUILD)/test_item_picker_sort_sanitize
+HOST_TESTS += $(ITEM_PICKER_SORT_TEST)
+HOST_SANITIZE_TESTS += $(ITEM_PICKER_SORT_SANITIZE)
+host-test: $(ITEM_PICKER_SORT_TEST)
+host-sanitize: $(ITEM_PICKER_SORT_SANITIZE)
+
+$(ITEM_PICKER_SORT_TEST): $(ITEM_PICKER_SORT_SRC) include/UI/ItemPickerSort.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(ITEM_PICKER_SORT_SANITIZE): $(ITEM_PICKER_SORT_SRC) include/UI/ItemPickerSort.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
