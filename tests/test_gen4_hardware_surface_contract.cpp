@@ -130,6 +130,7 @@ int main() {
     const auto surface = read("src/UI/Gen4SharedPokemonSurface.inc");
     contains(surface, "Gen4ItemListWindow::first(");
     const auto classicMove = read("src/UI/ClassicPackedMoveOverlay.inc");
+    const auto composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp");
     // Require Gen IV to enter the already accepted Y tap/hold-release path,
     // with the carried sprite, touch-drag, B cancellation and atomic PK4 drop.
     contains(composite, "if (ClassicPackedMove::isGen4(screen))");
@@ -155,7 +156,6 @@ int main() {
     contains(surface, "Gen4DataPresentation::markings(raw->markings())");
     contains(surface, "Gen4DataPresentation::pokerus(raw->pokerusState())");
     const auto moveCompatibility = read("include/Integration/Gen4/Gen4MoveCompatibility.h");
-    const auto composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp");
     const auto bridge = read("src/Legacy/Gen4ReadOnlyTrainer.cpp");
     const auto staged = read("src/Integration/Gen4/Gen4StagedPokemonEditor.cpp");
     const auto session = read("include/UI/Gen4SharedPokemonSession.h");
