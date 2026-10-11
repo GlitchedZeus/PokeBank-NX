@@ -1375,5 +1375,199 @@
     "retrieved_date": "2026-10-11",
     "evidence_grade": "B",
     "uncertainty": "Pinned source inspection; pending PR status recorded separately. Upstream .NET breeding tests were not executed here."
+  },
+  {
+    "id": "NX-JOINT-EGG-REFRESH",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "fe3e3d054ef7d42c31df3e772e8370e2c7587c8a",
+    "license": "Existing project license",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/fe3e3d054ef7d42c31df3e772e8370e2c7587c8a/include/Legality/Gen3JointEggCandidateEvidence.h",
+    "source_path": "include/Legality/Gen3JointEggCandidateEvidence.h",
+    "symbol": "verifyKnownStage",
+    "matching_lines": [
+      88
+    ],
+    "line_range": [
+      1,
+      107
+    ],
+    "sha256": "e80039fc42ef0c0c453251e7d857ee2d0975b43a20c6fa3671a97cccf0bfaa92",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Retail control-flow harness uses explicit field/gender/lineage stubs; see BREED-002/BREED-003. Current engine source compared at stated revision."
+  },
+  {
+    "id": "NX-IV-STAGE-REFRESH",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "fe3e3d054ef7d42c31df3e772e8370e2c7587c8a",
+    "license": "Existing project license",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/fe3e3d054ef7d42c31df3e772e8370e2c7587c8a/include/Legality/Gen3EggIVInheritanceStage.h",
+    "source_path": "include/Legality/Gen3EggIVInheritanceStage.h",
+    "symbol": "replay",
+    "matching_lines": [
+      3,
+      53,
+      118
+    ],
+    "line_range": [
+      1,
+      126
+    ],
+    "sha256": "3e379f9e1094352aabc5b23bf08d0576bd2b82e4b79ee52382ef5e327530b0d3",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Retail control-flow harness uses explicit field/gender/lineage stubs; see BREED-002/BREED-003. Current engine source compared at stated revision."
+  },
+  {
+    "id": "NX-JOINT-EGG-TEST-REFRESH",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "fe3e3d054ef7d42c31df3e772e8370e2c7587c8a",
+    "license": "Existing project license",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/fe3e3d054ef7d42c31df3e772e8370e2c7587c8a/tests/test_gen3_joint_egg_candidate.cpp",
+    "source_path": "tests/test_gen3_joint_egg_candidate.cpp",
+    "symbol": "runCases",
+    "matching_lines": [
+      9,
+      78
+    ],
+    "line_range": [
+      1,
+      80
+    ],
+    "sha256": "ddadd006743e2f3f80e18c262a917003a3e0094ed5217010bb23de494dcee1ef",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Retail control-flow harness uses explicit field/gender/lineage stubs; see BREED-002/BREED-003. Current engine source compared at stated revision."
+  },
+  {
+    "id": "NX-SAME-PARENT-REFRESH",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "fe3e3d054ef7d42c31df3e772e8370e2c7587c8a",
+    "license": "Existing project license",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/fe3e3d054ef7d42c31df3e772e8370e2c7587c8a/include/Legality/Gen34SameParentEggHistory.h",
+    "source_path": "include/Legality/Gen34SameParentEggHistory.h",
+    "symbol": "PairProof",
+    "matching_lines": [
+      14,
+      27,
+      52,
+      61
+    ],
+    "line_range": [
+      1,
+      88
+    ],
+    "sha256": "3dcd4219e60645a0dc775d01f8a8dba231c047ceecc3d91b26e04abbb47cbeea",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Retail control-flow harness uses explicit field/gender/lineage stubs; see BREED-002/BREED-003. Current engine source compared at stated revision."
+  },
+  {
+    "id": "NX-TIMELINE-REFRESH",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "fe3e3d054ef7d42c31df3e772e8370e2c7587c8a",
+    "license": "Existing project license",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/fe3e3d054ef7d42c31df3e772e8370e2c7587c8a/include/Legality/Gen3EmeraldLevelUpTimeline.h",
+    "source_path": "include/Legality/Gen3EmeraldLevelUpTimeline.h",
+    "symbol": "evaluate",
+    "matching_lines": [
+      59
+    ],
+    "line_range": [
+      1,
+      125
+    ],
+    "sha256": "e01d7d65dd998c4bf57eef27b9edfebf8f965c69caf50bf3d918a4357123ec15",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Retail control-flow harness uses explicit field/gender/lineage stubs; see BREED-002/BREED-003. Current engine source compared at stated revision."
+  },
+  {
+    "id": "E-PARENT-ROLES",
+    "repository": "pret/pokeemerald",
+    "revision": "731ad5bfd6e6f265508d0efcca0ba42f9dcf5881",
+    "license": "LICENSE REVIEW REQUIRED; reference only",
+    "url": "https://github.com/pret/pokeemerald/blob/731ad5bfd6e6f265508d0efcca0ba42f9dcf5881/src/daycare.c",
+    "source_path": "src/daycare.c",
+    "symbol": "DetermineEggSpeciesAndParentSlots",
+    "matching_lines": [
+      762,
+      811
+    ],
+    "line_range": [
+      1,
+      1298
+    ],
+    "sha256": "b20e1aef476abbd91b4882cca5dbe03002a0473c3a963bbadfce9dc7c8984964",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Retail control-flow harness uses explicit field/gender/lineage stubs; see BREED-002/BREED-003. Current engine source compared at stated revision."
+  },
+  {
+    "id": "E-PARENT-CONSTANTS",
+    "repository": "pret/pokeemerald",
+    "revision": "731ad5bfd6e6f265508d0efcca0ba42f9dcf5881",
+    "license": "LICENSE REVIEW REQUIRED; reference only",
+    "url": "https://github.com/pret/pokeemerald/blob/731ad5bfd6e6f265508d0efcca0ba42f9dcf5881/include/constants/daycare.h",
+    "source_path": "include/constants/daycare.h",
+    "symbol": "PARENTS_",
+    "matching_lines": [
+      5,
+      6,
+      7,
+      8
+    ],
+    "line_range": [
+      1,
+      27
+    ],
+    "sha256": "25c2f31cf0b5779b3caa0cca53ca892733748f0310cf3d9d51b4e3a6c20896ea",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Retail control-flow harness uses explicit field/gender/lineage stubs; see BREED-002/BREED-003. Current engine source compared at stated revision."
+  },
+  {
+    "id": "PT-PARENT-ELIGIBILITY",
+    "repository": "pret/pokeplatinum",
+    "revision": "637bb186e11b5ce1ee578981311c057498e57126",
+    "license": "LICENSE REVIEW REQUIRED; reference only",
+    "url": "https://github.com/pret/pokeplatinum/blob/637bb186e11b5ce1ee578981311c057498e57126/src/overlay005/daycare.c",
+    "source_path": "src/overlay005/daycare.c",
+    "symbol": "BoxMon_GetPairDaycareCompatibilityScore",
+    "matching_lines": [
+      817,
+      882,
+      1213
+    ],
+    "line_range": [
+      1,
+      1214
+    ],
+    "sha256": "88e0fac100a3b25f82208509dd01e98e84ffda945ab5e221d39a976e5aafaf0e",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Retail control-flow harness uses explicit field/gender/lineage stubs; see BREED-002/BREED-003. Current engine source compared at stated revision."
+  },
+  {
+    "id": "HGSS-PARENT-ELIGIBILITY",
+    "repository": "pret/pokeheartgold",
+    "revision": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+    "license": "LICENSE REVIEW REQUIRED; reference only",
+    "url": "https://github.com/pret/pokeheartgold/blob/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/get_egg.c",
+    "source_path": "src/get_egg.c",
+    "symbol": "ComputeCompatibilityBetweenBoxMons",
+    "matching_lines": [
+      47,
+      669,
+      729
+    ],
+    "line_range": [
+      1,
+      1054
+    ],
+    "sha256": "65f7bc5bb30aedea2260cdbc6a80af99da4d5f34f0681828dfd355b4d8bd08b2",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Retail control-flow harness uses explicit field/gender/lineage stubs; see BREED-002/BREED-003. Current engine source compared at stated revision."
   }
 ]

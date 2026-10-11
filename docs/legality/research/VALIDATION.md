@@ -40,3 +40,15 @@ Those tests ran against the research branch's unchanged production baseline `fec
 The 70-row catalog comprises 24 verified inheritance-stage outputs, 24 fixed-seed/parent contradictory-output controls, one verified long nature-stage witness plus one fixed-output control, 13 unexecuted scenario proposals, five inspected upstream Gen II test expectations, and two rows pointing to existing native test suites. A contradictory fixed-output control disproves that exact construction, not every possible Pokémon history.
 
 No full host suite, .NET test suite, Switch build or sanitizer run was performed for this documentation-only change. Proposed scenario rows are not passing tests. Retail functions are extracted to temporary files for the local harness; their source bodies are not committed.
+
+## Tranche 2 validation
+
+Run:
+
+```sh
+python docs/legality/research/scripts/audit_parent_slot_binding.py SOURCE_ROOT
+python docs/legality/research/scripts/reproduce_parent_eligibility.py SOURCE_ROOT
+python docs/legality/research/scripts/validate_research.py SOURCE_ROOT
+```
+
+At pinned accepted engine `fe3e3d05`, the first script confirms 48 direct retail-stage agreements and reproduces 24 incorrect candidate-local joint rejections. This is an expected defect reproduction, not a production fix test. The second passes 17,496 original-function/independent-model eligibility comparisons across three retail sources plus 24 Emerald role cases. All copied retail/NX inputs exist only in temporary directories. Python with safe tar extraction filters, a C compiler and C++17 are required. The historical counts above describe the first tranche; the expanded registry has 76 sources and the catalog 143 rows.

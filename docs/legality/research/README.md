@@ -1,5 +1,8 @@
 # Gen I–IV legality research — 2026-10-11
 
+**Follow-up refresh:** the newer accepted engine is `fe3e3d05`. Read [Tranche 2](TRANCHE_2_ENGINE_REFRESH.md) before acting on the original backlog below. It credits the implemented work and supplies a confirmed parent-slot integration defect plus independently executed eligibility evidence.
+
+
 Start with [the audit summary](RESEARCH_AUDIT_SUMMARY.md), then [the ordered backlog](IMPLEMENTATION_BACKLOG.md). This directory contains research only; it does not change production legality.
 
 - [Live development reconciliation](LIVE_DEVELOPMENT_RECONCILIATION.md)

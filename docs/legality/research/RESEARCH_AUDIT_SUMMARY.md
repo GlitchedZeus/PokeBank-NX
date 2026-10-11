@@ -1,5 +1,8 @@
 # Gen I–IV legality research audit — October 11, 2026
 
+**Follow-up refresh:** the newer accepted engine is `fe3e3d05`. Read [Tranche 2](TRANCHE_2_ENGINE_REFRESH.md) before acting on the original backlog below. It credits the implemented work and supplies a confirmed parent-slot integration defect plus independently executed eligibility evidence.
+
+
 The highest-value remaining work is **feasible move history**, built on the engine's accepted four-slot game-family coverage. Current pool coverage answers which families can collectively explain move membership. It does not prove that one encounter, evolution, breeding and transfer history can produce all four moves together. Keep those claims separate in both the implementation and its reports.
 
 This research-only tranche delivers **10 evidence packets, 28 verifier-family rows, 30 move-acquisition matrix rows, 67 pinned source records and 70 cataloged test cases/scenarios**. Counts include explicitly unexecuted proposals; they are not 70 verified legitimate Pokémon. No new production rule, ROM, preserved Pokémon binary or save modification is included.

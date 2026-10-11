@@ -1,5 +1,8 @@
 # Gen I–IV forensic gap matrix
 
+**Follow-up refresh:** the newer accepted engine is `fe3e3d05`. Read [Tranche 2](TRANCHE_2_ENGINE_REFRESH.md) before acting on the original backlog below. It credits the implemented work and supplies a confirmed parent-slot integration defect plus independently executed eligibility evidence.
+
+
 Historical application baseline: `fecfbca9b0323578fd423f5d90486ddb2d0da72e`. Delivery reconciliation uses accepted **4d3026e0bbe90f2eb1505c107b1c74498c051549** and pending #244–#249. See [live reconciliation](LIVE_DEVELOPMENT_RECONCILIATION.md). The rows below credit the newer four-slot pool coverage; missing feasible chronology is a narrower claim.
 
 The baseline ledger has 20 Partial areas and one Implemented reporting contract. That count is **not a parity percentage**. The newer ledger update #224 is explicitly accounted for. The following is a verifier-family audit with concrete deep packets for selected high-impact gaps; “Needs independent source confirmation” means no exhaustive claim is being made.

@@ -1,5 +1,8 @@
 # Prioritized engineering handoff
 
+**Follow-up refresh:** the newer accepted engine is `fe3e3d05`. Read [Tranche 2](TRANCHE_2_ENGINE_REFRESH.md) before acting on the original backlog below. It credits the implemented work and supplies a confirmed parent-slot integration defect plus independently executed eligibility evidence.
+
+
 This is a research PR. Delivery source freeze is `4d3026e0bbe90f2eb1505c107b1c74498c051549`. Read [live reconciliation](LIVE_DEVELOPMENT_RECONCILIATION.md) first: joint family coverage is accepted, #247 already supplies Emerald level-up data, and #249 supplies Gen IV egg-family reporting. The tasks below extend these bounded features.
 
 ## READY FOR MAIN LEGALITY DEVELOPMENT

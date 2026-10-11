@@ -1,5 +1,8 @@
 # Live development reconciliation
 
+**Follow-up refresh:** the newer accepted engine is `fe3e3d05`. Read [Tranche 2](TRANCHE_2_ENGINE_REFRESH.md) before acting on the original backlog below. It credits the implemented work and supplies a confirmed parent-slot integration defect plus independently executed eligibility evidence.
+
+
 Delivery source freeze: **4d3026e0bbe90f2eb1505c107b1c74498c051549**, October 11, 2026. Research working-tree production remains the original `fecfbca9` baseline. Later sources were inspected through Git objects; no accepted checkout or branch was moved by this research.
 
 The earlier `github-final-checkpoint.json` is a historical intermediate checkpoint, despite its name. Use [github-delivery-checkpoint.json](evidence/github-delivery-checkpoint.json) for delivery status. Development continued during this audit; these findings apply to the named revisions, not an unbounded future head.
