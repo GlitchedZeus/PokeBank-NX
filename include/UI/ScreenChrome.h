@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdlib>
 #include <initializer_list>
 #include <string>
 #include <vector>
@@ -261,6 +262,25 @@ namespace UI {
         return finger.startX >= x && finger.startX < x + w &&
                finger.startY >= y && finger.startY < y + h &&
                px >= x && px < x + w && py >= y && py < y + h;
+    }
+
+    // All staged Gen I-IV Pokémon action sheets use this single touch-friendly
+    // visual row. Navigation and actual capabilities stay with the native
+    // generation's action model, so no greyed-out placeholder can mutate data.
+    inline void drawNativeActionRow(PKSEFramebuffer& fb, int x, int y, int w, int h,
+                                    const std::string& label, bool selected, bool enabled = true) {
+        const bool pressed = enabled && touchPressedRect(x, y, w, h);
+        fb.drawFilledRoundedRect(x, y, w, h, 10,
+                                 pressed ? withAlpha(Colors::FocusBorder, 125) : Colors::PanelAlt);
+        fb.drawRoundedRect(x, y, w, h, 10,
+                           selected || pressed ? Colors::FocusBorder : Colors::Divider,
+                           selected || pressed ? 2 : 1);
+        const Color disabledColor(Colors::TextDim.r, Colors::TextDim.g, Colors::TextDim.b, 105);
+        const Color color = enabled ? (selected ? Colors::Text : Colors::TextSecondary)
+                                    : disabledColor;
+        int th = 0, tw = 0;
+        fb.measureText(label, tw, th, TextStyle::Body);
+        fb.drawText(x + 16, y + (h - th) / 2, label, color, TextStyle::Body);
     }
 
     // A pressable button that carries its controller badge ON the button (glyph + label, centred).
