@@ -4,6 +4,7 @@
 #include "Legality/Gen3JointMoveEvidence.h"
 #include "Legality/Gen3ShedinjaEvolutionMoveEvidence.h"
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
+#include "Legality/Gen3EmeraldLevelUpTimeline.h"
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen34OrdinaryEggMoveConstruction.h"
 #include "Legality/Gen4ContestRibbonEvidence.h"
@@ -1041,6 +1042,51 @@ int main() {
         Candidate{},1,{33,75,0,0}).joint.status==
         WitnessStatus::Unresolved);
 
+    // Read-only native PK3 -> exact conditional Emerald move-history
+    // bridge: current native moves are factual, but the original trainer
+    // decisions and same-game/same-species history are NOT stored.
+    auto nativeTimeline=gen3WithBall(4);
+    nativeTimeline.setOriginGame(3); // Original Emerald
+    nativeTimeline.setSpecies(1);
+    nativeTimeline.setLevel(32);
+    nativeTimeline.setMove(0,77);
+    nativeTimeline.setMove(1,79);
+    nativeTimeline.setMove(2,75);
+    nativeTimeline.setMove(3,22);
+    nativeTimeline.refreshChecksum();
+    assert(nativeTimeline.checksumValid());
+    namespace Timeline=Legality::Gen3EmeraldLevelUpTimeline;
+    Timeline::Input nativeHypothesis{};
+    nativeHypothesis.game="emerald_gba";
+    nativeHypothesis.species=nativeTimeline.speciesID();
+    nativeHypothesis.encounterLevel=5;
+    nativeHypothesis.observedLevel=nativeTimeline.level();
+    nativeHypothesis.initialSnapshotVerified=true;
+    nativeHypothesis.sameSpeciesVerified=true;
+    nativeHypothesis.sameEmeraldGameThroughoutVerified=true;
+    nativeHypothesis.noOtherMoveChangesVerified=true;
+    nativeHypothesis.allOffersAndDecisionsVerified=true;
+    nativeHypothesis.initialMoves={33,45,0,0};
+    nativeHypothesis.observedMoves={nativeTimeline.move(0),
+                                   nativeTimeline.move(1),
+                                   nativeTimeline.move(2),
+                                   nativeTimeline.move(3)};
+    nativeHypothesis.stepCount=7;
+    nativeHypothesis.steps[0]={7,73,Timeline::Decision::AutoLearn,2};
+    nativeHypothesis.steps[1]={10,22,Timeline::Decision::AutoLearn,3};
+    nativeHypothesis.steps[2]={15,77,Timeline::Decision::ReplaceSlot,0};
+    nativeHypothesis.steps[3]={15,79,Timeline::Decision::ReplaceSlot,1};
+    nativeHypothesis.steps[4]={20,75,Timeline::Decision::ReplaceSlot,2};
+    nativeHypothesis.steps[5]={25,230,Timeline::Decision::Decline,0};
+    nativeHypothesis.steps[6]={32,74,Timeline::Decision::Decline,0};
+    const auto nativeResult=Timeline::evaluate(nativeHypothesis);
+    assert(nativeResult.status==Timeline::Status::CandidateConsistent);
+    auto detachedHistory=nativeHypothesis;
+    detachedHistory.sameEmeraldGameThroughoutVerified=false;
+    assert(Timeline::evaluate(detachedHistory).status==
+           Timeline::Status::UnknownGameContinuity);
+    // Calling the full analyzer by itself must not imply a witnessed
+    // historical sequence; no stored PK3 encodes these seven choices.
     constexpr auto jointEmeraldText="Emerald independent direct level-up opportunities:";
     auto emeraldJoint=gen3WithBall(4);
     emeraldJoint.setOriginGame(3);
