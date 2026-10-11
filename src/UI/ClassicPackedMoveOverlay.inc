@@ -7,6 +7,7 @@
 #include "UI/SpriteManager.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cmath>
 #include <vector>
 
@@ -33,6 +34,10 @@ struct CarryState {
     // Gen IV leaves PK4 source bytes in the staged image until the entire
     // validated drop commits; cancellation never requires a recovery write.
     std::vector<std::size_t> gen4SourceSlots;
+    // A carry must never be placed into another opened Save Instance or
+    // after the selected PK4 source records have changed in the workspace.
+    const void* gen4StagedOwner = nullptr;
+    std::vector<std::vector<std::byte>> gen4PickupRecords;
 
     bool yPending = false;
     int yFrames = 0;
@@ -350,6 +355,7 @@ bool beginGen4(TrainerViewScreen& screen, CarryState& state, int box, int anchor
         return true;
     }
     std::vector<CarriedVisual> visuals;
+    std::vector<std::vector<std::byte>> pickupRecords;
     std::string error;
     for (auto slot : slots) {
         auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(box), slot, &error);
@@ -362,6 +368,8 @@ bool beginGen4(TrainerViewScreen& screen, CarryState& state, int box, int anchor
         const bool shiny = ((pid & 0xffffu) ^ (pid >> 16) ^
                             pokemon->tid() ^ pokemon->sid()) < 8;
         visuals.push_back({pokemon->species(), pokemon->form(), shiny});
+        const auto bytes = pokemon->originalEncryptedBytes();
+        pickupRecords.emplace_back(bytes.begin(), bytes.end());
     }
     if (visuals.empty()) {
         screen.postStatus("The selected rectangle contains no Pokemon", 220);
@@ -373,6 +381,8 @@ bool beginGen4(TrainerViewScreen& screen, CarryState& state, int box, int anchor
     state.sourceBox = box;
     state.sourceSlot = anchorSlot;
     state.gen4SourceSlots = slots;
+    state.gen4StagedOwner = editor;
+    state.gen4PickupRecords = std::move(pickupRecords);
     state.visuals = std::move(visuals);
     clearTransientSelection(screen, state);
     setLegacyHoldingPresentation(screen, true);
@@ -562,6 +572,33 @@ bool placeGen4(TrainerViewScreen& screen, CarryState& state) {
     if (!editor || state.gen4SourceSlots.empty()) {
         screen.postStatus("No validated Gen IV move transaction", 320);
         return true;
+    }
+    // A save instance switch or record edit invalidates an outstanding carry.
+    // Never interpret the stored slot numbers against a different workspace.
+    if (editor != state.gen4StagedOwner ||
+        state.gen4SourceSlots.size() != state.gen4PickupRecords.size()) {
+        clearState(screen, state);
+        screen.postStatus("Gen IV source workspace changed; pickup cancelled safely", 340);
+        return true;
+    }
+    for (std::size_t i = 0; i < state.gen4SourceSlots.size(); ++i) {
+        std::string sourceError;
+        auto current = editor->boxedPokemon(
+            static_cast<std::size_t>(state.sourceBox),
+            state.gen4SourceSlots[i], &sourceError);
+        if (!current) {
+            clearState(screen, state);
+            screen.postStatus("Gen IV carried source disappeared; no move staged", 340);
+            return true;
+        }
+        const auto bytes = current->originalEncryptedBytes();
+        if (!std::equal(bytes.begin(), bytes.end(),
+                        state.gen4PickupRecords[i].begin(),
+                        state.gen4PickupRecords[i].end())) {
+            clearState(screen, state);
+            screen.postStatus("Gen IV carried Pokemon changed; no move staged", 340);
+            return true;
+        }
     }
     const int destinationBox = screen.selectedBoxIndex;
     const int destinationSlot = screen.selectedItemIndex;
