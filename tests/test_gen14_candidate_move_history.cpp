@@ -146,6 +146,19 @@ static_assert(evaluate(Candidate{42,60,5,false,5,0,2,3,25,true},
                        {slot(166,oldEgg166),{},{},{}}).status==
               Status::Unresolved);
 
+// A malformed hypothetical stored move array must never claim a valid
+// same-history certificate or a fully exhausted encounter contradiction.
+constexpr auto duplicateStoredMoves=evaluate(full,{
+    slot(97,sibling(97,42,38)),slot(97,sibling(97,42,38)),{},{}});
+static_assert(duplicateStoredMoves.status==Status::Unresolved);
+constexpr auto holeInStoredMoves=evaluate(full,{
+    slot(97,sibling(97,42,38)),{},
+    slot(226,tutor(226,42,40)),{}});
+static_assert(holeInStoredMoves.status==Status::Unresolved);
+constexpr auto intactStoredMoves=evaluate(full,{
+    slot(97,sibling(97,42,38)),slot(226,tutor(226,42,40)),{},{}});
+static_assert(intactStoredMoves.status==Status::WitnessesCompatible);
+
 int main(){
     auto a=evaluate(full,{slot(97,sibling(97,42,38)),slot(226,sibling(226,42,45)),{}, {}});
     assert(a.status==Status::CandidateContradicted && a.storedSlots==2);
