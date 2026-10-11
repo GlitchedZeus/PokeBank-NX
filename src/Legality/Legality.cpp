@@ -1748,6 +1748,14 @@ namespace Legality {
                     }
                 }
             }
+        } else if (!sourceProfile && pk.isEgg() &&
+                   (Gen12FormatDomain::generationFromGroup(pk.getGameGroup()) == 2 ||
+                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 3 ||
+                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4)) {
+            // Unhatched eggs require parent-inheritance and egg-specific
+            // learnset analysis. Generic adult direct/tutor/TM/HM union
+            // pools can emit false warnings on an unknown parent history.
+            // Keep such history unresolved, not fabricated invalidity.
         } else if (Pokemon::getLearnableBits(species, pk.form(), originGroup) != nullptr) {
             for (int i = 0; i < 4; ++i) {
                 const uint16_t moveId = pk.move(i);
