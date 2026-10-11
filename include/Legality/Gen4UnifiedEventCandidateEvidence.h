@@ -37,6 +37,12 @@ struct Input {
     // fields (e.g. archived PCD material) are supplied. Decoded Unicode
     // and raw-terminator presence alone cannot prove event provenance.
     bool originalEventRawTextVerified=false;
+    // A legitimate renamed gift, migrated/re-encoded trash buffer or
+    // other source transformation can change raw PK4 text bytes. Exact
+    // comparison is meaningful ONLY if caller independently proves
+    // no relevant nickname/OT encoding transformation occurred.
+    bool originalNicknameRawBytesStillComparable=false;
+    bool originalOTRawBytesStillComparable=false;
     std::array<std::byte,22> originalEventNickname{};
     std::array<std::byte,16> originalEventOT{};
     // Card IDs are not globally unique across all distributions,
@@ -94,7 +100,9 @@ constexpr Result evaluate(const Input& in) noexcept {
     if(out.rawTextEvidence.status!=Text::Status::Known) {
         out.status=Status::UnknownNativeRawText;return out;
     }
-    if(!in.originalEventRawTextVerified) {
+    if(!in.originalEventRawTextVerified ||
+       !in.originalNicknameRawBytesStillComparable ||
+       !in.originalOTRawBytesStillComparable) {
         out.status=Status::UnknownOriginalRawText;return out;
     }
     if(in.rawNickname!=in.originalEventNickname ||

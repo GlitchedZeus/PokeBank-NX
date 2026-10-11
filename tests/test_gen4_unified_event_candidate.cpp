@@ -35,6 +35,8 @@ void runCases() {
     in.rawOT[2]=std::byte{0xFF};
     in.rawOT[3]=std::byte{0xFF};
     in.originalEventRawTextVerified=true;
+    in.originalNicknameRawBytesStillComparable=true;
+    in.originalOTRawBytesStillComparable=true;
     in.originalEventNickname=in.rawNickname;
     in.originalEventOT=in.rawOT;
     // These hashes are a synthetic equality key ONLY; not a real
@@ -90,6 +92,16 @@ void runCases() {
     assert(U::evaluate(noNativeText).status==U::Status::UnknownNativeRawText);
     auto noOriginalText=in;noOriginalText.originalEventRawTextVerified=false;
     assert(U::evaluate(noOriginalText).status==U::Status::UnknownOriginalRawText);
+    auto potentiallyRenamed=in;
+    potentiallyRenamed.rawNickname[0]=std::byte{0x42};
+    potentiallyRenamed.originalNicknameRawBytesStillComparable=false;
+    assert(U::evaluate(potentiallyRenamed).status==
+           U::Status::UnknownOriginalRawText);
+    auto reencodedTrainer=in;
+    reencodedTrainer.rawOT[6]=std::byte{0xFA};
+    reencodedTrainer.originalOTRawBytesStillComparable=false;
+    assert(U::evaluate(reencodedTrainer).status==
+           U::Status::UnknownOriginalRawText);
     auto differentText=in;differentText.rawOT[6]=std::byte{0xFA};
     assert(U::evaluate(differentText).status==U::Status::CandidateContradicted);
     auto unverifiedTextMismatch=in;
