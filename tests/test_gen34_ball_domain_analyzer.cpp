@@ -863,8 +863,25 @@ int main() {
                     stagePrefix));
     assert(!hasText(analyzeDetachedPalParkMoves(2,85,363,false,false),
                     stagePrefix));
-    assert(!hasText(analyzeDetachedPalParkMoves(2,85,363,true),
-                    stagePrefix));
+    const auto exactPalMoves=analyzeDetachedPalParkMoves(2,85,363,true);
+    assert(!hasText(exactPalMoves,stagePrefix));
+    assert(hasInfo(exactPalMoves,
+        "Exact-source Pal Park PK4 move-stage evidence: 1 move(s) exceed the Gen III PK3 move-ID ceiling"));
+    assert(hasInfo(exactPalMoves,
+        "move(s) occur in the audited retained original GBA game pool"));
+    assert(hasInfo(exactPalMoves,
+        "all nonempty move slots have a candidate Gen III or IV"));
+    assert(!hasInvalidText(exactPalMoves,
+        "Exact-source Pal Park PK4 move-stage evidence"));
+    const auto exactSplitInvalid=analyzeDetachedPalParkMoves(
+        2,85,363,true,true,false,true);
+    assert(!hasText(exactSplitInvalid,"Exact-source Pal Park PK4 move-stage evidence"));
+    const auto exactBallInvalid=analyzeDetachedPalParkMoves(
+        2,85,363,true,true,true,false);
+    assert(!hasText(exactBallInvalid,"Exact-source Pal Park PK4 move-stage evidence"));
+    const auto exactNoMarker=analyzeDetachedPalParkMoves(
+        2,85,363,true,false);
+    assert(!hasText(exactNoMarker,"Exact-source Pal Park PK4 move-stage evidence"));
     assert(!hasText(analyzeDetachedPalParkMoves(0,85,363),
                     stagePrefix));
 

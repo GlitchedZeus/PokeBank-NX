@@ -1612,6 +1612,50 @@ namespace Legality {
                         CheckIdentifier::Moves);
                 }
             }
+            // Exact current NDS save identity is independent of the
+            // retained original GBA game. A structurally consistent native
+            // Pal Park PK4 also carries the Generation III move-ID ceiling.
+            // This is only an acquisition-stage lower bound, never evidence
+            // that a specific tutor or cross-game trade actually occurred.
+            if (Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
+                Gen4Origin::kind(pk.originGame()) ==
+                    Gen4Origin::Kind::Gen3Handheld &&
+                Gen34PalParkMoves::verifiedTransferFields(
+                    pk.gen4MetLocationDP(),pk.gen4MetLocationExtended(),
+                    pk.gen4BallDPPt(),pk.gen4BallHGSS(),pk.isEgg())) {
+                PokeVault::Integration::Gen3::SourceGame gba=
+                    PokeVault::Integration::Gen3::SourceGame::RubyGBA;
+                if (exactGen3Source(
+                        Gen4Origin::exactGen3GameId(pk.originGame()),gba)) {
+                    const auto history=Gen34PalParkMoves::classify(
+                        gba,species,pk.form(),
+                        {pk.move(0),pk.move(1),pk.move(2),pk.move(3)});
+                    if (history.gen4StorageOnly) {
+                        add(r,Severity::Info,
+                            "Exact-source Pal Park PK4 move-stage evidence: " +
+                            std::to_string(history.gen4StorageOnly) +
+                            " move(s) exceed the Gen III PK3 move-ID ceiling and require post-migration acquisition in a legitimate history; acquisition method unresolved",
+                            CheckIdentifier::Moves);
+                    }
+                    if (history.originalGbaCompatible) {
+                        add(r,Severity::Info,
+                            "Exact-source Pal Park PK4 move-stage evidence: " +
+                            std::to_string(history.originalGbaCompatible) +
+                            " move(s) occur in the audited retained original GBA game pool; retention versus later learning unresolved",
+                            CheckIdentifier::Moves);
+                    }
+                    if (history.gen4CompatibleOnly) {
+                        add(r,Severity::Info,
+                            "Exact-source Pal Park PK4 move-stage evidence: some stored moves have audited Gen IV compatibility without a matching Gen III pool; actual teaching history unresolved",
+                            CheckIdentifier::Moves);
+                    }
+                    if (history.allAudited()) {
+                        add(r,Severity::Info,
+                            "Exact-source Pal Park PK4 move-stage evidence: all nonempty move slots have a candidate Gen III or IV compatibility pool; historical joint acquisition unresolved",
+                            CheckIdentifier::Moves);
+                    }
+                }
+            }
         } else if (!sourceProfile &&
                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 3 &&
                    !Gen4Origin::exactGen3GameId(pk.originGame()).empty()) {
