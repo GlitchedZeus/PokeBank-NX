@@ -838,6 +838,14 @@ namespace Legality {
             const std::array<uint16_t,4> moves{
                 gen2.move(0),gen2.move(1),gen2.move(2),gen2.move(3)
             };
+            // Source-free PK2 preserves structural Gen I ancestry candidates
+            // even when the current species/move set cannot trade back.
+            if (Gen12TimeCapsule::couldOriginateGen1(
+                    gen2.speciesID(),gen2.isEgg(),gen2.caughtData())) {
+                add(r,Severity::Info,
+                    "Source-free native PK2 may descend from a Generation I ancestor; no original cartridge, Time Capsule trade or evolution sequence is proven",
+                    CheckIdentifier::Transfer);
+            }
             switch (Gen12TimeCapsule::classifyCurrentTrade(
                     gen2.speciesID(),gen2.isEgg(),moves)) {
                 case Gen12TimeCapsule::CurrentTrade::Compatible:

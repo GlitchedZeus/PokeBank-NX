@@ -123,6 +123,17 @@ int main() {
     assert(hasInfo(sourcefreeEgg,eggRejected));
     assert(!hasInfo(sourcefreeEgg,canTrade));
     const auto sourcefreeCaught=report(16,2,(1u<<14)|(2u<<8)|2u,false,"",33);
+    // Historical Gen I ancestry is independent of whether the current
+    // Gen II evolved species or move list can still enter Time Capsule.
+    constexpr auto potentialGen1=
+        "Source-free native PK2 may descend from a Generation I ancestor";
+    assert(hasInfo(sourcefreeCanTrade,potentialGen1));
+    assert(hasInfo(sourcefreeMove,potentialGen1)); // Move #166 learned later.
+    assert(hasInfo(sourcefreeEvolved,potentialGen1)); // Crobat <- Zubat.
+    assert(!hasInfo(sourcefreeGen2Only,potentialGen1));
+    assert(!hasInfo(sourcefreeEgg,potentialGen1));
+    assert(!hasInfo(sourcefreeCaught,potentialGen1));
+    assert(!hasInfo(report(25,20,0,false,"crystal_gbc",33),potentialGen1));
     assert(!hasInfo(sourcefreeCaught,"pinned Crystal wild encounter"));
     assert(!hasInfo(sourcefreeCaught,"pinned Generation II static/gift encounter"));
 
