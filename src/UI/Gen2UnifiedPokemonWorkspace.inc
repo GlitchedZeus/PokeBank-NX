@@ -19,6 +19,8 @@ struct UnifiedWorkspaceState {
     // making Held Item and Crystal metadata painful to reach by touch.
     TouchScrollState detailsTouchScroll;
     TouchPickerViewport detailsViewport;
+    int detailsTouchX = 0, detailsTouchY = 0;
+    int detailsTouchW = 0, detailsTouchH = 0;
     bool crystal = false;
     bool progressionEditor = false;
     int progressionRow = 0;
@@ -44,6 +46,7 @@ UnifiedWorkspaceState& unifiedStateFor(const TrainerViewScreen& screen) {
         state.detailsFocus = 0;
         state.detailsTouchScroll.reset();
         state.detailsViewport.reset();
+        state.detailsTouchW = state.detailsTouchH = 0;
         state.progressionEditor = false;
         state.progressionRow = 0;
         state.lastMode = mode;
@@ -58,6 +61,7 @@ void resetUnifiedFocus(TrainerViewScreen& screen) {
     unified.detailsFocus = 0;
     unified.detailsTouchScroll.reset();
     unified.detailsViewport.reset();
+    unified.detailsTouchW = unified.detailsTouchH = 0;
     unified.progressionEditor = false;
     unified.progressionRow = 0;
     unified.moveEditor = false;
@@ -464,16 +468,16 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
 int updateUnifiedDetailsTouch(TrainerViewScreen& screen, UnifiedWorkspaceState& unified,
                               const TouchInput& touch, uint64_t down) {
     constexpr int kRowsVisible = 8, kRowHeight = 38;
-    const auto geometry = Unified::geometry720p();
-    const int contentY = geometry.y + 74;
-    const int x = geometry.x + 18 + 8;
-    const int y = contentY + 224;
-    const int width = 300 - 16;
+    // Read hit geometry from the actual last rendered left panel. Gen II
+    // has both a modal shell and an edge-to-edge hardware shell; hardcoded
+    // modal coordinates miss Held Item on the latter.
+    if (unified.detailsTouchW <= 0 || unified.detailsTouchH <= 0) return -1;
     const int count = unified.crystal ? 13 : 9;
     unified.detailsViewport.ensure(unified.focus.row, count, kRowsVisible);
     const int maximum = TouchPickerViewport::maxFirst(count, kRowsVisible);
     unified.detailsTouchScroll.updateVertical(
-        touch, x, y, width, kRowsVisible * kRowHeight, kRowHeight,
+        touch, unified.detailsTouchX, unified.detailsTouchY,
+        unified.detailsTouchW, unified.detailsTouchH, kRowHeight,
         unified.detailsViewport.firstRow, maximum + 1);
     if (down & (HidNpadButton_Up | HidNpadButton_Down |
                 HidNpadButton_L | HidNpadButton_R))
@@ -733,6 +737,10 @@ void drawUnifiedDetails(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
     unified.detailsViewport.ensure(unified.focus.row, count, visible);
     const int first = unified.detailsViewport.firstRow;
     const int top = y + 224;
+    unified.detailsTouchX = x + 8;
+    unified.detailsTouchY = top;
+    unified.detailsTouchW = w - 16;
+    unified.detailsTouchH = visible * rowHeight;
     const int offset = unified.detailsTouchScroll.offset();
     fb.setClipRect(x + 8, top, w - 16, visible * rowHeight);
     for (int row = std::max(0, first - 1); row < std::min(count, first + visible + 1); ++row) {
