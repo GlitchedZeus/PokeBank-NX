@@ -146,6 +146,20 @@ int main() {
     contains(classicMove, "return placeGen4(screen, state)");
     contains(classicMove, "candidate.stageMoveBoxPokemon(");
     contains(classicMove, "auto candidate = *editor;");
+    contains(classicMove, "state.gen4StagedOwner = editor;");
+    contains(classicMove, "state.gen4PickupRecords = std::move(pickupRecords)");
+    contains(classicMove, "editor != state.gen4StagedOwner");
+    contains(classicMove, "state.gen4SourceSlots.size() != state.gen4PickupRecords.size()");
+    contains(classicMove, "state.gen4PickupRecords[i].begin()");
+    contains(classicMove, "Gen IV carried Pokemon changed; no move staged");
+    // The immutable carry snapshot is checked BEFORE candidate edits; a
+    // stale record/session must never be used as a fresh source by slot ID.
+    const auto gen4Place = classicMove.find("bool placeGen4(");
+    const auto snapshotCheck = classicMove.find("editor != state.gen4StagedOwner", gen4Place);
+    const auto mutationBegin = classicMove.find("auto candidate = *editor;", gen4Place);
+    assert(gen4Place != std::string::npos && snapshotCheck != std::string::npos);
+    assert(mutationBegin != std::string::npos && snapshotCheck < mutationBegin);
+
     contains(classicMove, "*editor = std::move(candidate)");
     contains(classicMove, "Generation IV staged Pokemon editing is unavailable");
     contains(surface, "ClassicPackedMove::beginGen4FromAction(screen, state.box, state.slot)");
