@@ -4396,6 +4396,15 @@ namespace UI {
                                 selectedItemIndex = 0;
                                 break;
                             }
+                            case GameVersion::DP:
+                            case GameVersion::PT:
+                            case GameVersion::HGSS: {
+                                constexpr int count = static_cast<int>(PokeVault::Integration::Gen4::BagPocketCount);
+                                selectedCategory = (selectedCategory + count - 1) % count;
+                                currentPage = 0;
+                                selectedItemIndex = 0;
+                                break;
+                            }
                             case GameVersion::BDSP: {
                                 selectedCategory = (selectedCategory - 1 + POUCH_COUNT8BDSP) % POUCH_COUNT8BDSP;
                                 currentPage = 0;
@@ -4446,6 +4455,15 @@ namespace UI {
                             }
                             case GameVersion::PLA: {
                                 selectedCategory = (selectedCategory + 1) % POUCH_COUNT8_LA;
+                                currentPage = 0;
+                                selectedItemIndex = 0;
+                                break;
+                            }
+                            case GameVersion::DP:
+                            case GameVersion::PT:
+                            case GameVersion::HGSS: {
+                                constexpr int count = static_cast<int>(PokeVault::Integration::Gen4::BagPocketCount);
+                                selectedCategory = (selectedCategory + 1) % count;
                                 currentPage = 0;
                                 selectedItemIndex = 0;
                                 break;
