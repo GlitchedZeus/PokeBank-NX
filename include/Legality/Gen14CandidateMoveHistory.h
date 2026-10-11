@@ -51,6 +51,10 @@ struct Candidate {
     uint8_t verifiedTimeCapsuleReturnStage=0;
     uint16_t speciesAtTimeCapsule=0; // Independently sourced Gen I species
     bool retailTimeCapsulePolicyVerified=false; // Korean/Stadium variants unknown
+    // Destination format generation (1..4), if independently known.
+    // 0 means unknown: still reject >Gen IV move ids, never invent a
+    // narrower source generation from a source-free Pokemon.
+    uint8_t observedGeneration=0;
 };
 struct Result {
     Status status=Status::Unresolved;
@@ -189,9 +193,18 @@ constexpr Result evaluate(const Candidate& candidate,
     // move IDs, or a nonzero move after an empty slot) cannot certify
     // one retail acquisition history. These malformed *inputs* are
     // Unresolved, NEVER an exhaustive candidate contradiction.
+    uint16_t moveCeiling=467;
+    switch(candidate.observedGeneration) {
+        case 0: case 4: moveCeiling=467;break;
+        case 3:moveCeiling=354;break;
+        case 2:moveCeiling=251;break;
+        case 1:moveCeiling=165;break;
+        default:return result;
+    }
     bool foundEmpty=false;
     for(uint8_t i=0;i<slots.size();++i) {
         if(!slots[i].move){foundEmpty=true;continue;}
+        if(slots[i].move>moveCeiling)return result;
         if(foundEmpty)return result;
         for(uint8_t j=0;j<i;++j)
             if(slots[j].move==slots[i].move)return result;

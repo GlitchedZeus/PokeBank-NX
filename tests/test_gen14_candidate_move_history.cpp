@@ -166,6 +166,25 @@ constexpr auto holeInStoredMoves=evaluate(full,{
     slot(97,sibling(97,42,38)),{},
     slot(226,tutor(226,42,40)),{}});
 static_assert(holeInStoredMoves.status==Status::Unresolved);
+// Generation-tagged methods cannot treat moves first added in later
+// games as valid existing moves in Gen I/II/III. Unknown game keeps
+// a broad Gen I-IV ceiling, not a fabricated source identity.
+constexpr Candidate gen1Known{42,50,5,true,5,0,0,0,0,false,1};
+constexpr Candidate gen2Known{42,50,5,true,5,0,0,0,0,false,2};
+constexpr Candidate gen3Known{42,50,5,true,5,0,0,0,0,false,3};
+constexpr Candidate gen4Known{42,50,5,true,5,0,0,0,0,false,4};
+static_assert(evaluate(gen1Known,{slot(166,tutor(166,42,40)),{},{},{}})
+              .status==Status::Unresolved);
+static_assert(evaluate(gen2Known,{slot(252,tutor(252,42,40)),{},{},{}})
+              .status==Status::Unresolved);
+static_assert(evaluate(gen3Known,{slot(355,tutor(355,42,40)),{},{},{}})
+              .status==Status::Unresolved);
+static_assert(evaluate(gen4Known,{slot(468,tutor(468,42,40)),{},{},{}})
+              .status==Status::Unresolved);
+static_assert(evaluate(full,{slot(468,tutor(468,42,40)),{},{},{}})
+              .status==Status::Unresolved);
+static_assert(evaluate(gen4Known,{slot(467,tutor(467,42,40)),{},{},{}})
+              .status==Status::WitnessesCompatible);
 constexpr auto intactStoredMoves=evaluate(full,{
     slot(97,sibling(97,42,38)),slot(226,tutor(226,42,40)),{},{}});
 static_assert(intactStoredMoves.status==Status::WitnessesCompatible);
