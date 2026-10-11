@@ -4,6 +4,7 @@
 // witness set is not proof that a full four-slot history actually occurred.
 // Never convert CandidateContradicted to global Invalid unless *all* genuine
 // encounter candidates and all acquisition paths were independently exhausted.
+#include "Legality/Gen34PalParkHMIds.h"
 #include <array>
 #include <cstdint>
 
@@ -39,6 +40,10 @@ struct Candidate {
     uint8_t minEncounterLevel=1;
     bool allRelevantRoutesEnumerated=false;
     uint8_t finalStage=5;       // No acquisition beyond observed stage.
+    // If nonzero, CALLER has independently verified Gen III -> IV Pal
+    // Park provenance and assigned this ordered boundary stage. The
+    // engine must not infer Pal Park merely from an origin label.
+    uint8_t verifiedPalParkStage=0;
 };
 struct Result {
     Status status=Status::Unresolved;
@@ -83,6 +88,20 @@ constexpr bool extend(Selection& choice, const Witness& w) noexcept {
     return true;
 }
 constexpr bool valid(const Candidate& candidate, const Witness& w) noexcept {
+    // A candidate with verified Pal Park provenance cannot treat an old
+    // Generation III HM as retained across migration. HM on the native PK4
+    // instead needs an independently verified later-acquisition witness.
+    // This rejects only this explicitly supplied candidate path, never a
+    // Pokémon or all alternative events, trades and histories.
+    if(candidate.verifiedPalParkStage!=0) {
+        if(candidate.verifiedPalParkStage>candidate.finalStage)return false;
+        if(w.method==Method::TransferRetained &&
+           Gen34PalParkHMIds::isGen3HM(w.move))return false;
+        if(w.method==Method::TransferRetained &&
+           w.stage>candidate.verifiedPalParkStage)return false;
+        if(w.method==Method::LaterAcquisition &&
+           w.stage<=candidate.verifiedPalParkStage)return false;
+    }
     return candidate.id!=0 && w.candidateId==candidate.id &&
         w.move!=0 && w.minLevel<=w.maxLevel &&
         w.minLevel<=candidate.currentLevel && w.stage<=candidate.finalStage &&
