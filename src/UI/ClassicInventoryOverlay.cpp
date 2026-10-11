@@ -17,6 +17,7 @@
 #include "UI/TouchInput.h"
 #include "UI/TouchScroll.h"
 #include "UI/ItemPickerArtwork.h"
+#include "UI/ItemPickerSort.h"
 #include "Utils/FileUtilities.h"
 #include "Utils/Keyboard.h"
 #include "Utils/PokeBankPaths.h"
@@ -71,6 +72,8 @@ struct OverlayState {
     uint16_t pendingItem = 0;
     uint16_t pendingQuantity = 0;
     std::vector<uint16_t> pickerItems;
+    std::vector<uint16_t> pickerNativeItems;
+    ItemPickerSort::Mode pickerSort = ItemPickerSort::Mode::Native;
     std::string lastExportDirectory;
 };
 
@@ -518,6 +521,8 @@ void queueMutationWithWarning(TrainerViewScreen& screen, ClassicGame game, Class
 void openAddPicker(TrainerViewScreen& screen, ClassicGame game, ClassicPocket pocket) {
     auto& state = stateFor(screen);
     state.pickerItems = PokeBank::UIModel::classicInventoryAddableItems(game, pocket);
+    state.pickerNativeItems = state.pickerItems;
+    state.pickerSort = ItemPickerSort::Mode::Native;
     state.pickerRow = 0;
     state.pickerScroll.reset();
     state.pickerViewport.reset(); // Initialized from the actual visible rows on first draw/update.
@@ -675,6 +680,23 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
             down |= HidNpadButton_A;
         }
         if (count == 0) { state.pickerScroll.stop(); state.pickerActive = false; return true; }
+        if (down & HidNpadButton_X) {
+            ClassicGame game{};
+            ClassicPocket pocket{};
+            if (currentPocket(screen, game, pocket)) {
+                state.pickerSort = ItemPickerSort::next(state.pickerSort);
+                state.pickerRow = ItemPickerSort::reorder(
+                    state.pickerItems, state.pickerNativeItems,
+                    state.pickerSort, state.pickerRow,
+                    [&](uint16_t id) {
+                        return PokeVault::Inventory::displayItemName(game, pocket, id);
+                    });
+                state.pickerScroll.stop();
+                state.pickerViewport.reset();
+                state.pickerViewport.reveal(state.pickerRow, count, visibleRows);
+            }
+            return true;
+        }
         if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left |
                     HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R))
             state.pickerScroll.stop();
@@ -924,7 +946,9 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         int posW = 0, posH = 0;
         fb.measureText(pos, posW, posH, TextStyle::Caption);
         fb.drawText(x + width - pad - posW, y + 22, pos, Colors::TextDim, TextStyle::Caption);
-        fb.drawText(x + pad, y + 54, "Supported native items only", Colors::TextSecondary, TextStyle::Caption);
+        fb.drawText(x + pad, y + 54,
+                    std::string("Supported native items | Sort: ") + ItemPickerSort::label(state.pickerSort),
+                    Colors::TextSecondary, TextStyle::Caption);
         fb.drawHDivider(x + pad, y + 76, width - pad * 2);
 
         const int rowH = PokeBank::UIModel::ClassicAddItemPickerLayout::RowHeight;
@@ -977,7 +1001,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             "  |  Choose exact native item (quantity confirmed afterward)",
             Colors::Accent, TextStyle::Caption);
         drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Add / Select"},
-                        {"B", "Cancel"}, {"L/R", "Page"}});
+                        {"B", "Cancel"}, {"L/R", "Page"}, {"X", "Sort"}});
         return;
     }
 
