@@ -13,10 +13,8 @@ void runCases(){
     constexpr auto shortBudget=N::verifyKnownCandidate(longHistory);
     static_assert(shortBudget.status==N::CandidateStatus::SearchExhausted);
     static_assert(shortBudget.reverse.inspectedPidPairs==128);
-    constexpr auto fullBudget=[]{
-        auto c=longHistory;c.pairBudget=256;
-        return N::verifyKnownCandidate(c);
-    }();
+    constexpr auto fullBudget=N::verifyKnownCandidate(
+        N::Candidate{true,0xE0D14A4Fu,0xEA0705DBu,20,256});
     static_assert(fullBudget.status==N::CandidateStatus::CandidateConsistent);
     static_assert(fullBudget.reverse.rejectedPidPairs==129);
     static_assert(fullBudget.reverse.inspectedPidPairs==130);
