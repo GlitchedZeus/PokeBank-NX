@@ -2967,8 +2967,27 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
 }
 
 bool draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    if (!ownsFrameImpl(screen)) return false;
     auto& state = stateFor(screen);
+    if (!ownsFrameImpl(screen)) {
+        // Keep the selected PKSE cursor mode visible between presses. The
+        // stock Boxes footer says X: Release/Y: Swap, which is misleading
+        // when the Gen IV staged move mode has taken over those controls.
+        if (!boxEntrySurface(screen) || state.boxMoveMode == BoxMove::Mode::Menu)
+            return false;
+        screen.drawGSCOverlay(fb);
+        constexpr int w = 392, h = 46, x = 846, y = 112;
+        fb.drawFilledRoundedRect(x, y, w, h, 12, Colors::Panel);
+        fb.drawRoundedRect(x, y, w, h, 12, Colors::FocusBorder, 2);
+        fb.drawText(x + 14, y + 11,
+            state.boxMoveMode == BoxMove::Mode::Move
+                ? "PKSE Move mode - X to grab"
+                : "PKSE Multi mode - X to anchor",
+            Colors::Text, TextStyle::Body);
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"Y", "Change mode"},
+                        {"X", state.boxMoveMode == BoxMove::Mode::Move
+                            ? "Grab" : "Select group"}, {"A", "Actions"}});
+        return true;
+    }
     if (state.itemAddPickerActive)drawItemAddPicker(screen,fb,state);
     else if (state.itemRemoveConfirmActive)drawItemRemoveConfirm(screen,fb,state);
     else if (state.itemQuantityActive)drawItemQuantity(screen,fb,state);
