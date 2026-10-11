@@ -16,7 +16,7 @@ G2 = (ROOT / "src/Integration/Gen2/Gen2ReadOnlyInventory.cpp").read_text(encodin
 KEYS = (ROOT / "include/UI/ItemSpriteKey.h").read_text(encoding="utf-8")
 ART = set((ROOT / "tools/pinned_item_sprite_names.txt").read_text(encoding="utf-8").splitlines())
 ART = {name for name in ART if name and not name.startswith("#")}
-EXTRAS = {"itemfinder"}
+EXTRAS = {"itemfinder", "classic-mail-envelope"}
 ART |= EXTRAS
 
 def table(name: str) -> dict[int, str]:
@@ -72,6 +72,7 @@ def audit(gen: str, entries: dict[int, str], ids: set[int]) -> list[tuple[int, s
     unresolved = []
     match = 0
     machines = 0
+    generic_mail = 0
     eligible = 0
     for item_id in sorted(ids):
         name = entries.get(item_id, "")
@@ -85,12 +86,14 @@ def audit(gen: str, entries: dict[int, str], ids: set[int]) -> list[tuple[int, s
         if name in ("", "???", "(None)", "NONE", "TERU-SAMA"): continue
         eligible += 1
         key = art_key(name)
-        if key in ART: match += 1
+        if key == "classic-mail-envelope": generic_mail += 1
+        elif key in ART: match += 1
         elif re.fullmatch(r"(?:tm|hm)\d+", key) and "tm-normal" in ART:
             machines += 1
         else: unresolved.append((item_id, name, key))
     print(f"{gen}: {eligible} eligible item identities, {match} exact artwork,"
-          f" {machines} generic machine discs, {len(unresolved)} no verified sprite")
+          f" {machines} generic machine discs, {generic_mail} generic mail envelopes,"
+          f" {len(unresolved)} no verified sprite")
     for item_id, name, key in unresolved:
         print(f"  MISSING {gen} native ID {item_id}: {name} [lookup={key}]")
     return unresolved
@@ -115,6 +118,12 @@ for name, expected in {
     "Itemfinder": "itemfinder", "TM27": "tm27", "HM01": "hm01",
     "DeepSeaTooth": "deep-sea-tooth", "NeverMeltIce": "never-melt-ice",
     "Leek": "stick", "Upgrade": "up-grade",
+    "Flower Mail": "classic-mail-envelope",
+    "Blue Sky Mail": "classic-mail-envelope",
+    "Lite Blue Mail": "classic-mail-envelope",
+    "Portrait Mail": "classic-mail-envelope",
+    "Surf Mail": "classic-mail-envelope",
+    "Air Mail": "air-mail", "Orange Mail": "orange-mail",
 }.items():
     assert art_key(name) == expected, (name, art_key(name), expected)
     assert expected in ART or expected.startswith(("tm", "hm"))

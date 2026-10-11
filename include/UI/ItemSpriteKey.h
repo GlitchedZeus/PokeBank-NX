@@ -63,6 +63,20 @@ inline std::string slug(std::string_view label) {
     if (key == "ss-ticket" || key == "ssticket") return "ss-ticket";
     if (key == "doll") return "poke-doll"; // Gen II retail "# DOLL"
     if (key == "itemfinder") return "itemfinder"; // verified extra asset
+
+    // Gen II's ten unique Mail TYPES are different stationery backgrounds,
+    // but the pinned item icon sets have NO matching 24x24 bag icons for
+    // those types. Only in this case, display a clearly GENERIC mail envelope
+    // instead of a blank icon or some other Mail type's artwork.
+    // Exact Gen III/IV Mail sprites are left untouched.
+    if (key == "blue-sky-mail" || key == "bluesky-mail" ||
+        key == "eon-mail" || key == "flower-mail" ||
+        key == "lite-blue-mail" || key == "litebluemail" ||
+        key == "lovely-mail" || key == "mirage-mail" ||
+        key == "morph-mail" || key == "music-mail" ||
+        key == "portrait-mail" || key == "portraitmail" ||
+        key == "surf-mail")
+        return "classic-mail-envelope";
     return key;
 }
 

@@ -31,6 +31,13 @@ EXTRA_EXACT_ICONS = {
         "https://raw.githubusercontent.com/smogon/sprites/"
         + SMOGON_REF + "/src/minisprites/otheritems/iitemfinder.png"
     ),
+    # A truthful GENERIC envelope for Gen II's ten mail backgrounds.
+    # Those exist as unique stationery screenshots, not 24px bag icons.
+    # Never mislabel another generation's Mail as a Gen II type.
+    "classic-mail-envelope": (
+        "https://raw.githubusercontent.com/smogon/sprites/"
+        + SMOGON_REF + "/src/minisprites/items/imail.png"
+    ),
 }
 
 REQUIRED_BALLS = (
@@ -44,7 +51,7 @@ REQUIRED_BALLS = (
 REQUIRED_CLASSIC = (
     "poke-doll", "bright-powder", "up-grade", "red-apricorn",
     "air-mail", "flame-mail", "tm-normal", "tm-fire", "hm01",
-    "itemfinder",
+    "itemfinder", "classic-mail-envelope",
 )
 
 
