@@ -2158,7 +2158,7 @@ namespace Legality {
             if(ribbon.status==Gen4ContestRibbon::Status::RankGap)
                 add(r,Severity::Warning,
                     "Native PK4 Sinnoh contest-ribbon rank sequence has a missing prerequisite rank in " +
-                    std::to_string(Gen4ContestRibbon::Result(ribbon).gapCategoriesMask ? ribbon.gapCategoriesMask : 0) +
+                    std::to_string(ribbon.gapCategoriesMask) +
                     " category mask; complete source eligibility and special acquisition history remain unresolved",
                     CheckIdentifier::Misc);
             // Consistent means only this prefix constraint passed, not that
