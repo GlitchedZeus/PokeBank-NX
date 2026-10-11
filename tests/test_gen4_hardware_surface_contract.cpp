@@ -32,9 +32,20 @@ int main() {
     static_assert(Shared::genderUsesInlineToggle(Shared::Generation::Gen4));
     static_assert(!Shared::genderOpensDedicatedPicker(Shared::Generation::Gen4));
 
-    // First tap on a different slot still selects it via the legacy box cursor.
-    // Only a tap on the focused slot or its summary enters Gen IV actions.
+    // First tap on ANY native box slot selects it; an occupied slot immediately
+    // opens the same native staged Actions menu as A, rather than the generic
+    // read-only menu. Header arrows and summary are not box slots.
     namespace BoxTouch = PokeBank::UIModel::Gen4BoxTouchActions;
+    static_assert(BoxTouch::selectsTappedBoxSlot(0, 30));
+    static_assert(BoxTouch::selectsTappedBoxSlot(29, 30));
+    static_assert(BoxTouch::selectsTappedBoxSlot(3, 30));
+    static_assert(!BoxTouch::selectsTappedBoxSlot(30, 30));
+    static_assert(!BoxTouch::selectsTappedBoxSlot(-1, 30));
+    static_assert(!BoxTouch::selectsTappedBoxSlot(1000, 30));
+    static_assert(!BoxTouch::selectsTappedBoxSlot(1001, 30));
+    static_assert(!BoxTouch::selectsTappedBoxSlot(1002, 30));
+    static_assert(!BoxTouch::selectsTappedBoxSlot(BoxTouch::SummaryPanelTouchId, 30));
+    static_assert(!BoxTouch::selectsTappedBoxSlot(0, 0));
     static_assert(BoxTouch::opensSelectedSlotActions(0, 0, 30));
     static_assert(BoxTouch::opensSelectedSlotActions(29, 29, 30));
     static_assert(BoxTouch::opensSelectedSlotActions(BoxTouch::SummaryPanelTouchId, 12, 30));
@@ -358,7 +369,9 @@ int main() {
     contains(surface, "add(MenuAction::Add, \"Add Pokemon\", stagedAvailable);");
     contains(surface, "case MenuAction::Add:");
     contains(surface, "beginCreate(screen)");
-    contains(surface, "Gen4BoxTouchActions::opensSelectedSlotActions(");
+    contains(surface, "Gen4BoxTouchActions::selectsTappedBoxSlot(");
+    contains(surface, "screen.selectedItemIndex = tapped;");
+    contains(surface, "if (selectedOccupied(screen)) beginActions(screen);");
     contains(surface, "screen.touchedButtonId(touch)");
     contains(surface, "bridge(screen).stagedPokemonUnavailableReason()");
     contains(baseUi, "const bool gen4Staged = group == Enums::GameVersion::DP");
