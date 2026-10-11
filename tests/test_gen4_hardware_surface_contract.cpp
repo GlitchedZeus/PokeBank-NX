@@ -470,9 +470,12 @@ int main() {
     contains(surface, "static_cast<int>(actions.count) * geometry.rowStep + 62");
     contains(surface, "state.target == TargetKind::Party");
     contains(surface, "Master Vault is intentionally not started");
-    contains(surface, "const Color disabledColor(");
-    contains(surface, "Colors::TextSecondary");
-    contains(surface, "Colors::TextDim.b, 105");
+    contains(surface, "drawNativeActionRow(fb, x + 22, yy, w - 44");
+    contains(surface, "entry.label, selected, entry.enabled");
+    const auto chrome = read("include/UI/ScreenChrome.h");
+    contains(chrome, "const Color disabledColor(");
+    contains(chrome, "Colors::TextSecondary");
+    contains(chrome, "Colors::TextDim.b, 105");
     contains(surface, "Live source writes remain hard disabled");
     contains(surface, "drawLegality");
     contains(surface, "drawReleaseConfirm");
