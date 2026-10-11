@@ -54,7 +54,13 @@ def normalized(value: str) -> str:
     return re.sub(r"-+$", "", re.sub(r"[ _-]+", "-",
         re.sub(r"[^a-z0-9 _-]", "", value)))
 
-aliases = dict(re.findall(r'if \(key == "([^"]+)"\) return "([^"]+)";', KEYS))
+# Capture both single-key rules and OR aliases (such as S.S.Ticket).
+# They must resolve to the same canonical artwork as the runtime.
+aliases = {}
+for conditions, art in re.findall(r'if \(([^)\n]+)\) return "([^"]+)";', KEYS):
+    for source in re.findall(r'key == "([^"]+)"', conditions):
+        assert source not in aliases or aliases[source] == art, source
+        aliases[source] = art
 assert aliases and len(aliases) >= 15
 assert all(dst in ART or dst in GEN2_MAIL_ART for dst in aliases.values()), (
     "ItemSpriteKey alias has neither pinned art nor a verified supplemental source",
@@ -97,9 +103,9 @@ def audit(gen: str, entries: dict[int, str], ids: set[int]) -> list[tuple[int, s
         if gen == "Gen I" and 196 <= item_id <= 250:
             name = "HM%02d" % (item_id - 195) if item_id <= 200 else "TM%02d" % (item_id - 200)
         if gen == "Gen II" and item_id >= 191:
-            machines = raw_ids("kG2Machines")
-            if item_id in machines:
-                ordinal = machines.index(item_id)
+            machine_ids = raw_ids("kG2Machines")
+            if item_id in machine_ids:
+                ordinal = machine_ids.index(item_id)
                 name = "TM%02d" % (ordinal + 1) if ordinal < 50 else "HM%02d" % (ordinal - 49)
         if name in ("", "???", "(None)", "NONE", "TERU-SAMA"): continue
         eligible += 1
