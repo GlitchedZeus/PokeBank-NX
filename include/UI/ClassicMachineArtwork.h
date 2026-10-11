@@ -109,6 +109,25 @@ inline constexpr std::uint8_t moveType(Enums::GameVersion game, std::uint16_t mo
         default: return 0;
     }
 }
+// Gen II Held Item screens also run in lean host tests without the Names
+// object library. Keep the exact 57 native GSC machine items and their
+// in-generation move types in a header-resident, constexpr-only lookup.
+inline constexpr std::array<std::uint8_t, 57> Gen2MachineItemIDs = {{
+    191, 192, 193, 194, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249
+}};
+inline constexpr std::array<std::uint8_t, 57> Gen2MachineArtTypes = {{
+    2, 1, 0, 6, 1, 4, 13, 2, 1, 1, 10, 1, 1, 15, 1, 15, 1, 11, 12, 1, 1, 12, 9, 16, 13, 5, 1, 5, 14, 8, 5, 1, 15, 1, 1, 4, 6, 10, 1, 1, 13, 14, 2, 14, 1, 17, 9, 10, 7, 8, 1, 3, 11, 1, 1, 11, 11
+}};
+inline std::string gscArtKey(std::uint16_t itemId) {
+    for (std::size_t i = 0; i < Gen2MachineItemIDs.size(); ++i) {
+        if (itemId != Gen2MachineItemIDs[i]) continue;
+        const auto type = Gen2MachineArtTypes[i];
+        return type
+            ? std::string(i >= 50 ? "hm-" : "tm-") + typeName(type)
+            : std::string{};
+    }
+    return {};
+}
 // RBY raw item IDs 196..200 are HM01-05, 201..250 are TM01-50.
 // Never reinterpret the same numeric IDs in another generation.
 inline std::string artKey(Enums::GameVersion game, std::uint16_t itemId) {
