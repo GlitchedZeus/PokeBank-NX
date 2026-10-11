@@ -259,7 +259,7 @@ void drawFullscreenGen2Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     const int midX = geometry.midX, midW = geometry.midW;
     const int rightX = geometry.rightX, rightW = geometry.rightW;
 
-    drawUnifiedDetails(fb, state, unified, leftX, contentY, leftW, contentH, passive);
+    drawUnifiedDetails(screen, fb, state, unified, leftX, contentY, leftW, contentH, passive);
     drawUnifiedValues(fb, state, unified, midX, contentY, midW, contentH, passive);
     drawUnifiedMoves(fb, screen, state, unified, rightX, contentY, rightW, contentH, passive);
     redrawGen2DetailsSemantics(fb, state, unified, leftX, contentY, leftW, contentH, passive);
