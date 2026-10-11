@@ -2114,14 +2114,9 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     for (size_t i = 0; i < actions.count; ++i) {
         const bool selected = static_cast<int>(i) == state.actionRow;
         screen.touchButtons.push_back({41600 + static_cast<int>(i), x + 22, yy, w - 44, geometry.rowHeight});
-        if (selected) fb.drawSelectionHighlight(x + 22, yy, w - 44, geometry.rowHeight);
         const auto& entry = actions[i];
-        const Color disabledColor(
-            Colors::TextDim.r, Colors::TextDim.g, Colors::TextDim.b, 105);
-        const Color rowColor = entry.enabled
-            ? (selected ? Colors::Text : Colors::TextSecondary)
-            : disabledColor;
-        fb.drawText(x + 38, yy + 10, entry.label, rowColor);
+        drawNativeActionRow(fb, x + 22, yy, w - 44, geometry.rowHeight,
+                            entry.label, selected, entry.enabled);
         yy += geometry.rowStep;
     }
     fb.drawText(x + 24, y + h - 34,
