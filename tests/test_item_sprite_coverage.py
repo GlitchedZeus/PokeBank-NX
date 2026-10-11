@@ -223,3 +223,30 @@ assert "ClassicMachineArtwork::artKey(" in (ROOT / "src/UI/Panels/ItemsPanel.cpp
 assert all(not value for value in unresolved.values()), unresolved
 assert len(g1) >= 80 and len(g3) >= 370 and len(g4) >= 530
 print("Generation I-IV item catalog sprite resolution: PASS (zero unresolved native item labels)")
+
+
+# Hardware screenshot regressions: every picker is generation-aware and the
+# currently focused native item remains the same after presentation-only sort.
+classic_picker = (ROOT / "src/UI/ClassicInventoryOverlay.cpp").read_text(encoding="utf-8")
+gen4_picker = (ROOT / "src/UI/Gen4SharedPokemonSurface.inc").read_text(encoding="utf-8")
+gen3_picker = (ROOT / "src/UI/Gen3SharedPokemonSurface.inc").read_text(encoding="utf-8")
+catalog = (ROOT / "src/Inventory/ClassicInventoryCatalog.cpp").read_text(encoding="utf-8")
+artwork = (ROOT / "include/UI/ItemPickerArtwork.h").read_text(encoding="utf-8")
+native_disc = (ROOT / "include/UI/ClassicMachineArtwork.h").read_text(encoding="utf-8")
+for source in (classic_picker, gen3_picker, gen4_picker):
+    assert "ItemPickerSort::next(" in source
+    assert "ItemPickerSort::reorder(" in source
+assert "ClassicMachineArtwork::artKey(group, itemId)" in classic_picker
+assert "ItemPickerArtwork::draw(fb, x + width - 31" in classic_picker
+assert "PokeVault::Inventory::displayItemName(*game, *pocket, itemId)" in classic_picker
+assert "std::string label = artName;" in classic_picker
+assert "Names::machineDisplayLabel(" in gen4_picker
+assert "ItemPickerArtwork::drawNativeItem(fb,x+w-31,yy+3,32," in gen4_picker
+assert "ClassicMachineArtwork::artKey(" in gen3_picker
+assert "ClassicMachineArtwork::artKey(" in gen4_picker
+assert "Gen2MachineArtTypes" in native_disc and '"tm-unknown"' in native_disc
+assert "const uint16_t move = classicMachineMove(game, itemId)" in catalog
+assert "pocket == ClassicPocket::PCItems" in catalog
+assert "return kG3MachineMoves[itemId - 289]" in catalog
+assert "SpriteManager::getItemSprite(exactName)" in artwork
+print("Hardware screenshot TM/HM names, typed art and picker sort routing: PASS")
