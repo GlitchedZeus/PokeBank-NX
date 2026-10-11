@@ -979,6 +979,21 @@ int main() {
     assert(hasInfo(
         analyzeDetachedPalParkMoves(2,85,363,true,true,false,false,462),
         evolvedAfter));
+    // Origin version alone is insufficient: event/special-origin PK4
+    // records without valid Pal Park structural fields must not inherit
+    // an impossible-GBA-ancestor verdict from the origin byte alone.
+    const auto noPalParkLineage=sourceFreePalPark(
+        2,0,0,4,0,false,387);
+    assert(!hasInvalidText(noPalParkLineage,noGbaLineage));
+    const auto contradictoryBallLineage=sourceFreePalPark(
+        2,0x37,0x37,13,0,false,387);
+    assert(!hasInvalidText(contradictoryBallLineage,noGbaLineage));
+    const auto contradictorySplitLineage=sourceFreePalPark(
+        2,0x36,0x37,4,0,false,387);
+    assert(!hasInvalidText(contradictorySplitLineage,noGbaLineage));
+    assert(!hasInvalidText(
+        analyzeDetachedPalParkMoves(2,85,363,true,false,false,false,387),
+        noGbaLineage));
     // Without a Gen III origin byte, never infer the ancestry constraint.
     assert(!hasInvalidText(
         analyzeDetachedPalParkMoves(10,85,363,false,true,false,false,387),

@@ -1031,7 +1031,10 @@ namespace Legality {
             // The source/container game is not a substitute for the native
             // PK4 format or its preserved original-game identity.
             if (Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
-                Gen4Origin::isPalParkOrigin(pk.originGame())) {
+                Gen4Origin::isPalParkOrigin(pk.originGame()) &&
+                Gen34PalParkMoves::verifiedTransferFields(
+                    pk.gen4MetLocationDP(),pk.gen4MetLocationExtended(),
+                    pk.gen4BallDPPt(),pk.gen4BallHGSS(),pk.isEgg())) {
                 const auto lineage=Gen34PalParkSpecies::classify(species);
                 if (lineage==Gen34PalParkSpecies::Evidence::NoGen3Ancestor) {
                     add(r,Severity::Invalid,
