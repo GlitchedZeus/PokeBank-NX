@@ -65,6 +65,7 @@
 #include "Legality/Gen34EggState.h"
 #include "Legality/Gen34EggBallEvidence.h"
 #include "Legality/Gen34EggMoveEvidence.h"
+#include "Legality/Gen3EmeraldLevelUpEvidence.h"
 #include "Legality/Gen3JointMoveEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
 #include "Legality/Gen34PalParkMoves.h"
@@ -1968,6 +1969,36 @@ namespace Legality {
                     add(r, Severity::Warning,
                         "Move may not be learnable: " + std::string(Names::getMoveName(moveId)),
                         CheckIdentifier::Moves);
+            }
+        }
+
+        // Pinned pret Emerald LEVEL-UP METHOD evidence, separate from the
+        // broad Gen III union learnable pool above. Only a positive level
+        // opportunity on the CURRENT species can be confirmed here;
+        // evolution timing, egg inheritance, tutors and events are not
+        // mutually excluded by absence. A detached PK3 retains its GBA
+        // original-game byte; a source claim must independently match PK3.
+        const bool emeraldLevelEvidence =
+            Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 3 &&
+            (sourceProfile
+                ? (exactGeneration == 3 &&
+                   exactSourceGameId == "emerald_gba")
+                : Gen4Origin::exactGen3GameId(pk.originGame()) ==
+                      "emerald_gba");
+        if(emeraldLevelEvidence) {
+            for(int slot=0;slot<4;++slot) {
+                const uint16_t move=pk.move(slot);
+                const auto earliest=Gen3EmeraldLevelUp::firstLevelAtOrBefore(
+                    species,move,pk.level());
+                if(earliest!=0) {
+                    add(r,Severity::Info,
+                        "Emerald level-up method evidence: " +
+                        std::string(Names::getMoveName(move)) +
+                        " is listed for the current species from level " +
+                        std::to_string(earliest) +
+                        ", no higher than its current level; actual acquisition and earlier evolution remain unresolved",
+                        CheckIdentifier::Moves);
+                }
             }
         }
 

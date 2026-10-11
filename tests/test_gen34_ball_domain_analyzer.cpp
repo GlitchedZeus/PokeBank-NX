@@ -2,6 +2,7 @@
 #include "Legality/Legality.h"
 #include "Legality/Gen4TradeEvidence.h"
 #include "Legality/Gen3JointMoveEvidence.h"
+#include "Legality/Gen3EmeraldLevelUpEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
 #include "Legality/Gen34PalParkMoves.h"
 #include "Legality/Gen34PalParkSpecies.h"
@@ -787,6 +788,56 @@ int main() {
     gcNative.refreshChecksum();
     assert(!hasText(Legality::analyze(
         gcNative,Enums::GameVersion::FRLG),"GameCube-origin PK3"));
+    // Unlike Gen III's broad 'can learn someday' union, this pinned
+    // Emerald table preserves actual native per-level learning entries.
+    // Positive method evidence is NOT proof the move was actually learned
+    // that way; lack of a level-up opportunity cannot disprove TM/egg/event.
+    namespace EmeraldLv=Legality::Gen3EmeraldLevelUp;
+    static_assert(EmeraldLv::firstLevelAtOrBefore(1,33,1)==1); // Tackle
+    static_assert(EmeraldLv::firstLevelAtOrBefore(1,75,19)==0); // Razor Leaf
+    static_assert(EmeraldLv::firstLevelAtOrBefore(1,75,20)==20);
+    static_assert(EmeraldLv::firstLevelAtOrBefore(4,52,6)==0); // Ember
+    static_assert(EmeraldLv::firstLevelAtOrBefore(4,52,7)==7);
+    static_assert(EmeraldLv::firstLevelAtOrBefore(1,14,100)==0); // Tutor
+    static_assert(EmeraldLv::firstLevelAtOrBefore(0,33,50)==0);
+    static_assert(EmeraldLv::firstLevelAtOrBefore(387,33,50)==0);
+    static_assert(EmeraldLv::firstLevelAtOrBefore(1,355,100)==0);
+
+    constexpr auto emeraldLevelText=
+        "Emerald level-up method evidence:";
+    auto emeraldLevelMon=gen3WithBall(4);
+    emeraldLevelMon.setSpecies(1);
+    emeraldLevelMon.setOriginGame(3);
+    emeraldLevelMon.setLevel(20);
+    emeraldLevelMon.setMove(0,75); // Bulbasaur Razor Leaf at Lv20.
+    emeraldLevelMon.refreshChecksum();
+    assert(emeraldLevelMon.level()==20);
+    const auto emeraldSourceFree=Legality::analyze(
+        emeraldLevelMon,Enums::GameVersion::FRLG);
+    assert(hasInfo(emeraldSourceFree,emeraldLevelText));
+    assert(hasInfo(emeraldSourceFree,
+        "from level 20, no higher than its current level"));
+    assert(hasInfo(Legality::analyze(
+        emeraldLevelMon,Enums::GameVersion::FRLG,"emerald_gba"),
+        emeraldLevelText));
+    assert(!hasInfo(Legality::analyze(
+        emeraldLevelMon,Enums::GameVersion::FRLG,"ruby_gba"),
+        emeraldLevelText));
+    emeraldLevelMon.setLevel(19);
+    emeraldLevelMon.refreshChecksum();
+    assert(!hasInfo(Legality::analyze(
+        emeraldLevelMon,Enums::GameVersion::FRLG),emeraldLevelText));
+    emeraldLevelMon.setLevel(20);
+    emeraldLevelMon.setOriginGame(2); // Ruby origin != Emerald.
+    emeraldLevelMon.refreshChecksum();
+    assert(!hasInfo(Legality::analyze(
+        emeraldLevelMon,Enums::GameVersion::FRLG),emeraldLevelText));
+    emeraldLevelMon.setOriginGame(3);
+    emeraldLevelMon.setMove(0,14); // Swords Dance compatibility via tutor.
+    emeraldLevelMon.refreshChecksum();
+    assert(!hasInfo(Legality::analyze(
+        emeraldLevelMon,Enums::GameVersion::FRLG),emeraldLevelText));
+
     // Source-free known native PK3/PK4 formats have generation-specific
     // species/move ceilings regardless of their exact save identity.
     const auto g3Known=Legality::analyze(gen3WithBall(4),Enums::GameVersion::FRLG);
