@@ -10,6 +10,10 @@ Evidence confidence: **B**, subject to the precise scope below.
 
 `Gen4EventTemplate::EventTemplate` stores species, IDs, PID, met data, ball/form/gender/language/version/OT gender/fateful/card ID, but **no moves, OT/nickname bytes or ribbons**. `tools/gen_legality_gen4_events.py` extracts 247 Pokémon PCD templates and intentionally drops those other fields. Analyzer matching is positive-only. PR #223 adds detached-source wiring of the same matcher; it does not fill these data gaps. PR #222 is now accepted; neither pending nor accepted wiring should be counted as complete event legality.
 
+## Live development reconciliation
+
+Accepted source freeze advanced to `4d3026e0`; four-slot game-family coverage and guarded retained Gen III paths are now implemented. Pending #247 adds full Emerald level-up method evidence and #249 adds Gen IV egg-family evidence. These are not complete acquisition histories. See [live reconciliation](../LIVE_DEVELOPMENT_RECONCILIATION.md) for exact hashes, boundaries and the independent Emerald comparison. The baseline description above is historical.
+
 ## Authoritative sources
 
 - **NX-EVENT4**: [include/Legality/Gen4EventTemplate.h](https://github.com/GlitchedZeus/PokeBank-NX/blob/fecfbca9b0323578fd423f5d90486ddb2d0da72e/include/Legality/Gen4EventTemplate.h); `struct EventTemplate`; grade B.
@@ -25,6 +29,8 @@ Preserve an event candidate's full initial moves and identity constraints before
 Do not union special moves from different events by species. For an event candidate, first enforce its fixed identity and generation method; then permit deletions and subsequent learnable moves. An ordinary egg candidate is a distinct history. Absence of an exact archive match cannot become global Invalid while the archive or identity transformations are incomplete.
 
 ## Archive audit and normalized record policy
+
+Pinned primary archive notes: [Gallery README](https://github.com/projectpokemon/EventsGallery/blob/154d81be88453f6f78ec1d6d86e85fe0f2f5c240/README.md) and [altered legality cards README](https://github.com/projectpokemon/EventsGallery/blob/154d81be88453f6f78ec1d6d86e85fe0f2f5c240/PKHeX%20Legality/README.md). The Gallery explicitly confirms PGT-derived placeholder wondercards; the legality directory explicitly distinguishes altered cards from original preserved data.
 
 The EventsGallery tree was fetched at the revision in `evidence/repositories.json`. Its top-level separation includes **Released**, **Unreleased**, **Extras**, and **PKHeX Legality**. Folder placement alone does not prove original distribution authenticity. This tranche inspects the index and README, not the individual distribution files; it makes no claim that every record in Released is original or complete. Do not download commercial distribution ROMs. No archive Pokémon, personal saves, or commercial binaries are imported by this research.
 

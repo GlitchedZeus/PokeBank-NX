@@ -1,5 +1,145 @@
 [
   {
+    "id": "RED-LEVEL",
+    "repository": "pret/pokered",
+    "revision": "af519899719f0754965776faac0e836a3b906e6d",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/pret/pokered/blob/af519899719f0754965776faac0e836a3b906e6d/data/pokemon/evos_moves.asm",
+    "source_path": "data/pokemon/evos_moves.asm",
+    "symbol": "EvosMovesPointerTable",
+    "matching_lines": [
+      11
+    ],
+    "line_range": [
+      1,
+      2143
+    ],
+    "sha256": "1a4c475c47134440a4a4e54265314638d8c6953da558d7d6a7b7f7bc206c2f30",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "YELLOW-LEVEL",
+    "repository": "pret/pokeyellow",
+    "revision": "e89ead154b9968aa50eed9328ff2b38b6c194382",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/pret/pokeyellow/blob/e89ead154b9968aa50eed9328ff2b38b6c194382/data/pokemon/evos_moves.asm",
+    "source_path": "data/pokemon/evos_moves.asm",
+    "symbol": "EvosMovesPointerTable",
+    "matching_lines": [
+      11
+    ],
+    "line_range": [
+      1,
+      2170
+    ],
+    "sha256": "7e72c0e034ce7f895d604cf0d3cd9f4ada2f3312ed75c57fa23c16a70d55b0ef",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "GOLD-BREED",
+    "repository": "pret/pokegold",
+    "revision": "ef0201d8daf47e8b3ea1518eacf890f37d4cd5e8",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/pret/pokegold/blob/ef0201d8daf47e8b3ea1518eacf890f37d4cd5e8/engine/pokemon/breeding.asm",
+    "source_path": "engine/pokemon/breeding.asm",
+    "symbol": "InitEggMoves",
+    "matching_lines": [
+      389
+    ],
+    "line_range": [
+      1,
+      939
+    ],
+    "sha256": "8a47622440f84201c60781b66e84367d11a755ac5204c06ae45388afa854e328",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-LICENSE",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/LICENSE",
+    "source_path": "LICENSE",
+    "symbol": "Version 3",
+    "matching_lines": [
+      4
+    ],
+    "line_range": [
+      1,
+      596
+    ],
+    "sha256": "ccb349b4132ed7737f25e5adebfe61f3d52dca33708df1e50352320438d1d4c2",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "NX-LICENSE",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "fecfbca9b0323578fd423f5d90486ddb2d0da72e",
+    "license": "Existing project license; no licensing change by audit",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/fecfbca9b0323578fd423f5d90486ddb2d0da72e/LICENSE",
+    "source_path": "LICENSE",
+    "symbol": "Version 3",
+    "matching_lines": [
+      2
+    ],
+    "line_range": [
+      1,
+      661
+    ],
+    "sha256": "8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "EV-README",
+    "repository": "projectpokemon/EventsGallery",
+    "revision": "154d81be88453f6f78ec1d6d86e85fe0f2f5c240",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/projectpokemon/EventsGallery/blob/154d81be88453f6f78ec1d6d86e85fe0f2f5c240/README.md",
+    "source_path": "README.md",
+    "symbol": "placeholder",
+    "matching_lines": [
+      2
+    ],
+    "line_range": [
+      1,
+      661
+    ],
+    "sha256": "3adc23f8149b2a45ae87cb7c777b898036535d0a7a7564b556106301a1680a19",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "EV-ALTERED",
+    "repository": "projectpokemon/EventsGallery",
+    "revision": "154d81be88453f6f78ec1d6d86e85fe0f2f5c240",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/projectpokemon/EventsGallery/blob/154d81be88453f6f78ec1d6d86e85fe0f2f5c240/PKHeX%20Legality/README.md",
+    "source_path": "PKHeX Legality/README.md",
+    "symbol": "altered",
+    "matching_lines": [
+      2
+    ],
+    "line_range": [
+      1,
+      661
+    ],
+    "sha256": "a727d9932a2d646c19d1246834cf21434507ee0d8c2de39f72047661e187d747",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
     "id": "NX-ANALYZE",
     "repository": "GlitchedZeus/PokeBank-NX",
     "revision": "fecfbca9b0323578fd423f5d90486ddb2d0da72e",
@@ -158,6 +298,90 @@
       97
     ],
     "sha256": "e2c6c7b7ddaa0e6ffddda26882dcc847f8b153b0dce871f314c597091820cf85",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "HG-PID",
+    "repository": "pret/pokeheartgold",
+    "revision": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/pret/pokeheartgold/blob/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/pokemon.c",
+    "source_path": "src/pokemon.c",
+    "symbol": "CreateMonWithNature",
+    "matching_lines": [
+      258
+    ],
+    "line_range": [
+      1,
+      5044
+    ],
+    "sha256": "6924639b76ff3c05fc6100c76d1af167c4e043e3867965fec5f7605d412fb1eb",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "HG-ENCOUNTER",
+    "repository": "pret/pokeheartgold",
+    "revision": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+    "license": "LICENSE REVIEW REQUIRED; no blanket reuse permission established",
+    "url": "https://github.com/pret/pokeheartgold/blob/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/field/encounter_check.c",
+    "source_path": "src/field/encounter_check.c",
+    "symbol": "getWildMonNature",
+    "matching_lines": [
+      91,
+      734,
+      847,
+      858,
+      870
+    ],
+    "line_range": [
+      1,
+      1429
+    ],
+    "sha256": "a91dad88736b55698c9d06485c98167b48b732f81469c75234327cb5d9dc1c18",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-METHODK",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/RNG/ClassicEra/Gen4/GenerateMethodK.cs",
+    "source_path": "PKHeX.Core/Legality/RNG/ClassicEra/Gen4/GenerateMethodK.cs",
+    "symbol": "SetRandomK",
+    "matching_lines": [
+      20
+    ],
+    "line_range": [
+      1,
+      183
+    ],
+    "sha256": "2e6b44f9ce9b5005d0eb63e775eb490734f39595230de3563855889151ff18e9",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "PK-METHODJ",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only; dataset provenance requires review",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/RNG/ClassicEra/Gen4/GenerateMethodJ.cs",
+    "source_path": "PKHeX.Core/Legality/RNG/ClassicEra/Gen4/GenerateMethodJ.cs",
+    "symbol": "SetRandomJ",
+    "matching_lines": [
+      20
+    ],
+    "line_range": [
+      1,
+      183
+    ],
+    "sha256": "febc61e73706a007e03c52a2273dbcf430239a9d45a8aebb3113c72296dd220b",
     "retrieved_date": "2026-10-11",
     "evidence_grade": "B",
     "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
@@ -985,5 +1209,171 @@
     "retrieved_date": "2026-10-11",
     "evidence_grade": "B",
     "uncertainty": "Grade A identifies retail-source evidence, not a verified complete native specimen; see packet-specific validation limits."
+  },
+  {
+    "id": "NX-LIVE-JOINT12",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "4d3026e0bbe90f2eb1505c107b1c74498c051549",
+    "license": "Existing project license; research only",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/4d3026e0bbe90f2eb1505c107b1c74498c051549/include/Legality/Gen12JointMoveEvidence.h",
+    "source_path": "include/Legality/Gen12JointMoveEvidence.h",
+    "symbol": "classify",
+    "matching_lines": [
+      34
+    ],
+    "line_range": [
+      1,
+      51
+    ],
+    "sha256": "8d46d664ebdf844043b425a36afaece3274ff27dedae9a5bde7a4857cb4288a3",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Pinned source inspection; pending PR status recorded separately. Upstream .NET breeding tests were not executed here."
+  },
+  {
+    "id": "NX-LIVE-JOINT3",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "4d3026e0bbe90f2eb1505c107b1c74498c051549",
+    "license": "Existing project license; research only",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/4d3026e0bbe90f2eb1505c107b1c74498c051549/include/Legality/Gen3JointMoveEvidence.h",
+    "source_path": "include/Legality/Gen3JointMoveEvidence.h",
+    "symbol": "classify",
+    "matching_lines": [
+      40
+    ],
+    "line_range": [
+      1,
+      76
+    ],
+    "sha256": "6aeab553ad5cd0c397b3909dcab495a3cddf60a56359d93e2543abd70be20781",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Pinned source inspection; pending PR status recorded separately. Upstream .NET breeding tests were not executed here."
+  },
+  {
+    "id": "NX-LIVE-JOINT4",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "4d3026e0bbe90f2eb1505c107b1c74498c051549",
+    "license": "Existing project license; research only",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/4d3026e0bbe90f2eb1505c107b1c74498c051549/include/Legality/Gen4JointMoveEvidence.h",
+    "source_path": "include/Legality/Gen4JointMoveEvidence.h",
+    "symbol": "classify",
+    "matching_lines": [
+      36
+    ],
+    "line_range": [
+      1,
+      73
+    ],
+    "sha256": "a8ee22ff2b401a83504148658498b3f7af2af333ceee3365199de4a7d4e82b31",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Pinned source inspection; pending PR status recorded separately. Upstream .NET breeding tests were not executed here."
+  },
+  {
+    "id": "NX-LIVE-PALPARK",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "4d3026e0bbe90f2eb1505c107b1c74498c051549",
+    "license": "Existing project license; research only",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/4d3026e0bbe90f2eb1505c107b1c74498c051549/include/Legality/Gen34PalParkMoves.h",
+    "source_path": "include/Legality/Gen34PalParkMoves.h",
+    "symbol": "classify",
+    "matching_lines": [
+      22,
+      57,
+      126
+    ],
+    "line_range": [
+      1,
+      162
+    ],
+    "sha256": "69e7f3bf782993c950898d8f8dd3e0adb3d24311ea9a20d3e8cf352def9c2ff7",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Pinned source inspection; pending PR status recorded separately. Upstream .NET breeding tests were not executed here."
+  },
+  {
+    "id": "NX-LIVE-PALPARK-SPECIES",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "4d3026e0bbe90f2eb1505c107b1c74498c051549",
+    "license": "Existing project license; research only",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/4d3026e0bbe90f2eb1505c107b1c74498c051549/include/Legality/Gen34PalParkSpecies.h",
+    "source_path": "include/Legality/Gen34PalParkSpecies.h",
+    "symbol": "classify",
+    "matching_lines": [
+      38
+    ],
+    "line_range": [
+      1,
+      59
+    ],
+    "sha256": "34aad4d235a22ee9e83e88cf90c4dc1ab498d8a8934b16711c5cd84e2f281def",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Pinned source inspection; pending PR status recorded separately. Upstream .NET breeding tests were not executed here."
+  },
+  {
+    "id": "NX-PENDING-EMERALD",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "b12f4225ae6af9eeb4aa4db9766adc10d69bc51b",
+    "license": "Existing project license; research only",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/b12f4225ae6af9eeb4aa4db9766adc10d69bc51b/include/Legality/Gen3EmeraldLevelUpEvidence.h",
+    "source_path": "include/Legality/Gen3EmeraldLevelUpEvidence.h",
+    "symbol": "firstLevelAtOrBefore",
+    "matching_lines": [
+      17
+    ],
+    "line_range": [
+      1,
+      35
+    ],
+    "sha256": "3d8bd54b5a85963b4bd4c63d4aba223d89228da7a03ddafe127f45c4cb3f962f",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Pinned source inspection; pending PR status recorded separately. Upstream .NET breeding tests were not executed here."
+  },
+  {
+    "id": "NX-PENDING-EGG4",
+    "repository": "GlitchedZeus/PokeBank-NX",
+    "revision": "79a5bad43c56cc09643d41ab6d8972af4d640d1e",
+    "license": "Existing project license; research only",
+    "url": "https://github.com/GlitchedZeus/PokeBank-NX/blob/79a5bad43c56cc09643d41ab6d8972af4d640d1e/include/Legality/Gen4EggMoveFamilyEvidence.h",
+    "source_path": "include/Legality/Gen4EggMoveFamilyEvidence.h",
+    "symbol": "classify",
+    "matching_lines": [
+      18,
+      33,
+      39,
+      41,
+      43
+    ],
+    "line_range": [
+      1,
+      49
+    ],
+    "sha256": "841e708a5c0fa44eb7d080ffceafff7a95fbe11450150f0fc75be521287004d5",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Pinned source inspection; pending PR status recorded separately. Upstream .NET breeding tests were not executed here."
+  },
+  {
+    "id": "PK-BREED-TESTS",
+    "repository": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "license": "GPL-3.0 reference only",
+    "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/Tests/PKHeX.Core.Tests/Legality/BreedTests.cs",
+    "source_path": "Tests/PKHeX.Core.Tests/Legality/BreedTests.cs",
+    "symbol": "VerifyBreed",
+    "matching_lines": [
+      35
+    ],
+    "line_range": [
+      1,
+      88
+    ],
+    "sha256": "220d39e42f3f9426e81f75c55f373b67dac86d236a1594424d485bd2a7885686",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "B",
+    "uncertainty": "Pinned source inspection; pending PR status recorded separately. Upstream .NET breeding tests were not executed here."
   }
 ]

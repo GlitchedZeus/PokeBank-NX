@@ -1,0 +1,12 @@
+{
+  "nx_revision": "b12f4225ae6af9eeb4aa4db9766adc10d69bc51b",
+  "nx_path": "include/Legality/Gen3EmeraldLevelUpData.inc",
+  "nx_sha256": "979ee8c4abce8bc911b039611a9924ecb1d169b87db56e439e959540b50685aa",
+  "pkhex_revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+  "reference_path": "PKHeX.Core/Resources/byte/levelup/lvlmove_e.pkl",
+  "reference_sha256": "2b27c5365c46e08dbb168048fe2f13699a3a0ca70d061b25ecb596462d4504cc",
+  "species_compared": 386,
+  "ordered_pairs_compared": 3947,
+  "mismatches": [],
+  "scope": "Cross-source consistency, not independent retail execution or full acquisition feasibility; reference provenance may overlap."
+}

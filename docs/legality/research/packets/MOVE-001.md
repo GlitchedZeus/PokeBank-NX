@@ -10,6 +10,10 @@ Evidence confidence: **B**, subject to the precise scope below.
 
 `src/Legality/Legality.cpp:1507–1592` invokes exact-game compatibility pools. Gen III passes the current four moves as `sourceMoves`, so an otherwise unknown in-range current move classifies Preserved; Gen IV passes `existingSourceMove=true`, with the same fallback. Both issue warnings, not a proven impossibility verdict. `Gen34EggMoveEvidence::classify` walks one ancestor chain and reports individual egg membership at analyzer lines 1133–1148. Neither API receives level, encounter candidate, ordered evolution timing, or parent history. This is **Implemented but incomplete**, not an absent move feature. Existing `tests/test_gen34_egg_moves.cpp` proves table/ancestor queries, not four-slot historical satisfiability.
 
+## Live development reconciliation
+
+Accepted source freeze advanced to `4d3026e0`; four-slot game-family coverage and guarded retained Gen III paths are now implemented. Pending #247 adds full Emerald level-up method evidence and #249 adds Gen IV egg-family evidence. These are not complete acquisition histories. See [live reconciliation](../LIVE_DEVELOPMENT_RECONCILIATION.md) for exact hashes, boundaries and the independent Emerald comparison. The baseline description above is historical.
+
 ## Authoritative sources
 
 - **NX-ANALYZE**: [src/Legality/Legality.cpp](https://github.com/GlitchedZeus/PokeBank-NX/blob/fecfbca9b0323578fd423f5d90486ddb2d0da72e/src/Legality/Legality.cpp); `Report analyze`; grade B.

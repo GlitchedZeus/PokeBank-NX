@@ -10,6 +10,10 @@ Evidence confidence: **B**, subject to the precise scope below.
 
 `Gen4TransferEvidence` already classifies persistent Pal Park fields, including source-free native paths accepted before this audit. The Gen IV move pool includes only Gen IV direct/transfer membership, so it cannot itself prove retained Gen III tutor/TM/event histories. Do not redevelop the accepted Pal Park marker classifier.
 
+## Live development reconciliation
+
+Accepted source freeze advanced to `4d3026e0`; four-slot game-family coverage and guarded retained Gen III paths are now implemented. Pending #247 adds full Emerald level-up method evidence and #249 adds Gen IV egg-family evidence. These are not complete acquisition histories. See [live reconciliation](../LIVE_DEVELOPMENT_RECONCILIATION.md) for exact hashes, boundaries and the independent Emerald comparison. The baseline description above is historical.
+
 ## Authoritative sources
 
 - **NX-TRANSFER**: [include/Legality/Gen4TransferEvidence.h](https://github.com/GlitchedZeus/PokeBank-NX/blob/fecfbca9b0323578fd423f5d90486ddb2d0da72e/include/Legality/Gen4TransferEvidence.h); `namespace`; grade B.

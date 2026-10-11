@@ -71,3 +71,9 @@ Independent source confirmation is strongest for the inspected Crystal/Emerald/P
 ## License and reuse restrictions
 
 This packet is independently written implementation guidance. Linked PKHeX implementation is GPLv3 reference material. Retail decompilations and extracted game resources have unresolved reuse rights: **LICENSE REVIEW REQUIRED** before copying code/data into production. Research harnesses read external source locally; no retail function bodies or binary datasets are committed here. Synthetic vectors are not preserved original Pokémon.
+
+## Live work and upstream Gen II regression examples
+
+Pending #249 adds retained-origin Gen IV egg-family reporting; see [live reconciliation](../LIVE_DEVELOPMENT_RECONCILIATION.md). Do not duplicate this informational path. Ordered egg construction and parent/chain feasibility remain separate.
+
+Pinned PKHeX `Tests/PKHeX.Core.Tests/Legality/BreedTests.cs` (`PK-BREED-TESTS`) supplies these exact ordered Gen II expectations: Gold Bulbasaur `[Tackle, Growl]` valid, Silver Igglybuff `[FeintAttack, Pound, Curse, ZapCannon]` valid, Crystal Igglybuff `[FeintAttack, Pound, Flamethrower, Sing]` valid, Crystal Igglybuff `[Charm, DefenseCurl, Sing, Flamethrower]` invalid push-out order, and Gold Bulbasaur `[Growl, Tackle]` invalid base-move ordering. Zero-fill remaining slots. These are upstream algorithm-level expectations, **not executed .NET tests here and not native specimens**. Retain that distinction when porting fixtures. Hatched Pokémon may reorder/learn/delete moves; do not apply ordinary unhatched ordering indiscriminately.

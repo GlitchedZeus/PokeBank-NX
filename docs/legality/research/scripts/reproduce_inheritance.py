@@ -5,6 +5,11 @@ Usage: python reproduce_inheritance.py /absolute/path/to/research-sources
 """
 import json, pathlib, subprocess, sys, tempfile
 ROOT=pathlib.Path(sys.argv[1]).resolve()
+# Refuse silent source drift against the recorded audit revisions.
+manifest=json.loads((pathlib.Path(__file__).resolve().parents[1]/'evidence/repositories.json').read_text())
+for repo in ['pokeemerald','pokeruby','pokefirered']:
+    actual=subprocess.check_output(['git','-C',str(ROOT/repo),'rev-parse','HEAD'],text=True).strip()
+    assert actual==manifest[repo]['revision'], ('source revision mismatch',repo,actual)
 OUT=pathlib.Path(__file__).resolve().parents[1]/'evidence'
 
 def function(text,name):

@@ -1,0 +1,87 @@
+{
+  "retrieved_utc": "2026-10-11T06:02:18.674254+00:00",
+  "accepted": "98a7b627a2e343945c660d6b31383b3c1914e6f2",
+  "main": "f79f005ce9c6d47a5ee2b0c4056f29b7e88e2598",
+  "pulls": [
+    {
+      "number": 222,
+      "title": "Legality: Ranger Manaphy PGT and PID evidence for detached Gen IV PK4",
+      "state": "closed",
+      "draft": true,
+      "merged": true,
+      "head": "feature/legality-gen4-sourcefree-ranger-manaphy-20261011",
+      "sha": "cc0868021dddd5563525671d04d1224fe1e5bb72",
+      "base": "feature/legality-engine-gen1-4-20260929"
+    },
+    {
+      "number": 223,
+      "title": "Legality: detached PK4 WC4/PCD event templates and evolved histories",
+      "state": "closed",
+      "draft": true,
+      "merged": false,
+      "head": "feature/legality-gen4-sourcefree-wc4-events-20261011",
+      "sha": "7b65baaa03a69385d3f0a6905c86b74dc851538a",
+      "base": "feature/legality-gen4-sourcefree-ranger-manaphy-20261011"
+    },
+    {
+      "number": 224,
+      "title": "Legality: reconcile Gen I\u2013IV parity ledger through accepted #221",
+      "state": "closed",
+      "draft": true,
+      "merged": false,
+      "head": "docs/legality-sourcefree-parity-checkpoint-20261011",
+      "sha": "87b2fa73b62e804238158e026e282f2e69c16344",
+      "base": "feature/legality-gen4-sourcefree-wc4-events-20261011"
+    },
+    {
+      "number": 225,
+      "title": "Legality: source-free PK3 original-GBA wild capture compatibility",
+      "state": "closed",
+      "draft": true,
+      "merged": false,
+      "head": "feature/legality-gen3-detached-wild-evidence-20261011",
+      "sha": "98a7b627a2e343945c660d6b31383b3c1914e6f2",
+      "base": "docs/legality-sourcefree-parity-checkpoint-20261011"
+    },
+    {
+      "number": 226,
+      "title": "Legality: source-free native PK3 original-GBA move acquisition evidence",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "head": "feature/legality-sourcefree-pk3-move-acquisition-20261011",
+      "sha": "6fb8c9baf90c34b0e7a05c0b77a3deeb1f617265",
+      "base": "feature/legality-gen3-detached-wild-evidence-20261011"
+    },
+    {
+      "number": 227,
+      "title": "Legality: source-free PK4 original-retail and cross-game move evidence",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "head": "feature/legality-sourcefree-pk4-gen4-move-acquisition-20261011",
+      "sha": "a1eea80bdd1bdd611cf1d528adb807524d8b6716",
+      "base": "feature/legality-sourcefree-pk3-move-acquisition-20261011"
+    },
+    {
+      "number": 228,
+      "title": "Legality: Pal Park PK4 retained Gen III move compatibility with transfer guards",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "head": "feature/legality-sourcefree-pk4-palpark-move-history-20261011",
+      "sha": "3df1de8316d14ab0e2b3405655e88880834092d4",
+      "base": "feature/legality-sourcefree-pk4-gen4-move-acquisition-20261011"
+    },
+    {
+      "number": 229,
+      "title": "Legality: source-free native PK1/PK2 move compatibility across RBY/GSC",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "head": "feature/legality-sourcefree-pk12-move-compatibility-20261011",
+      "sha": "14baf42c03acd36915b90b5f70761a89055fbdd9",
+      "base": "feature/legality-sourcefree-pk4-palpark-move-history-20261011"
+    }
+  ]
+}

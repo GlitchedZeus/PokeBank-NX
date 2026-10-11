@@ -1,0 +1,16 @@
+[
+  {
+    "test": "test_gen34_ball_domain_analyzer",
+    "exit_code": 0,
+    "status": "PASS",
+    "output": "",
+    "scope": "existing accepted synthetic native-format fixtures; not new preserved retail specimens"
+  },
+  {
+    "test": "test_gen4_bcc_multiretry_native_pk4",
+    "exit_code": 0,
+    "status": "PASS",
+    "output": "",
+    "scope": "existing accepted synthetic native-format fixtures; not new preserved retail specimens"
+  }
+]
