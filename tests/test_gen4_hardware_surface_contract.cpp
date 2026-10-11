@@ -195,6 +195,9 @@ int main() {
     const auto itemsPanel = read("src/UI/Panels/ItemsPanel.cpp");
     contains(itemsPanel, "ClassicMachineArtwork::artKey(");
     contains(itemsPanel, "fb.drawSpriteStaticContained(nx,");
+    contains(surface, "ItemPickerArtwork::drawNativeItem(");
+    contains(itemArtwork, "ClassicMachineArtwork::artKey(game, itemId)");
+    contains(spriteRuntime, "Never claim an untyped TM/HM is a Normal-type machine");
     const auto boxPanel = read("src/UI/Panels/BoxPokemonPanel.cpp");
     const auto gen3Picker = read("src/UI/Gen3SharedPokemonSurface.inc");
     const auto gen2Held = read("include/UI/Gen2HeldItemPicker.h");
@@ -263,9 +266,9 @@ int main() {
     contains(surface, "state.itemAddPickerActive");
     contains(surface, "Gen4::gen4BagChoices(staged->layout()");
     contains(surface, "staged->stageBagAdd(");
-    contains(surface, "ItemPickerArtwork::draw(fb,x+w-31,yy+3,32,name)");
+    contains(surface, "ItemPickerArtwork::drawNativeItem(fb,x+w-31,yy+3,32,");
     contains(surface, "Gen IV item added to staged workspace ONLY (x1)");
-    contains(surface, "ItemPickerArtwork::draw(fb,x+w-38,y+65,36,itemName)");
+    contains(surface, "ItemPickerArtwork::drawNativeItem(fb,x+w-38,y+65,36,");
     const auto removeGuardAt=surface.find("if(state.itemRemoveConfirmActive) {");
     const auto quantityEntryAt=surface.find("if(!state.itemQuantityActive) {",removeGuardAt);
     assert(removeGuardAt!=std::string::npos && quantityEntryAt>removeGuardAt);
