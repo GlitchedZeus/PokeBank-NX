@@ -196,8 +196,6 @@ int main() {
     contains(itemsPanel, "ClassicMachineArtwork::artKey(");
     contains(itemsPanel, "fb.drawSpriteStaticContained(nx,");
     contains(surface, "ItemPickerArtwork::drawNativeItem(");
-    contains(itemArtwork, "ClassicMachineArtwork::artKey(game, itemId)");
-    contains(spriteRuntime, "Never claim an untyped TM/HM is a Normal-type machine");
     const auto boxPanel = read("src/UI/Panels/BoxPokemonPanel.cpp");
     const auto gen3Picker = read("src/UI/Gen3SharedPokemonSurface.inc");
     const auto gen2Held = read("include/UI/Gen2HeldItemPicker.h");
@@ -208,6 +206,8 @@ int main() {
     const auto movePickerModel = read("include/UI/MovePickerPresentation.h");
     const auto itemArtwork = read("include/UI/ItemPickerArtwork.h");
     const auto spriteRuntime = read("src/UI/SpriteManager.cpp");
+    contains(itemArtwork, "ClassicMachineArtwork::artKey(game, itemId)");
+    contains(spriteRuntime, "Never claim an untyped TM/HM is a Normal-type machine");
     const auto spriteGenerator = read("tools/gen_item_sprites.py");
     const auto recover = read("tools/recover_workspace.py");
     const auto assetGate = read("tools/check_device_assets.py");
