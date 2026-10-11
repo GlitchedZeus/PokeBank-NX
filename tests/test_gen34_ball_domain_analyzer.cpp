@@ -542,6 +542,48 @@ int main() {
     assert(hasInvalidText(pk4RealBad,
         "Ball id 25 cannot exist in Generation 4"));
 
+    // Native PK3 carries a stored original Ruby game byte independently
+    // from the current physical save source. Ruby Route 101 Poochyena
+    // #261, map 16, level2 is a pinned original-GBA wild slot.
+    constexpr auto gen3DetachedWild=
+        "Source-free native PK3 met location/level matches a pinned Generation III wild encounter for the stored original GBA game";
+    auto rubyPooch=gen3WithBall(4);
+    rubyPooch.setSpecies(261);
+    rubyPooch.setOriginGame(2); // Ruby
+    rubyPooch.setMetLocation(16);
+    rubyPooch.setMetLevel(2);
+    rubyPooch.refreshChecksum();
+    assert(hasInfo(Legality::analyze(rubyPooch,Enums::GameVersion::FRLG),
+                   gen3DetachedWild));
+    auto rubyWrongMap=gen3WithBall(4);
+    rubyWrongMap.setSpecies(261);
+    rubyWrongMap.setOriginGame(2);
+    rubyWrongMap.setMetLocation(20);
+    rubyWrongMap.setMetLevel(2);
+    assert(!hasInfo(Legality::analyze(rubyWrongMap,Enums::GameVersion::FRLG),
+                    gen3DetachedWild));
+    auto fireRedWrongOrigin=gen3WithBall(4);
+    fireRedWrongOrigin.setSpecies(261);
+    fireRedWrongOrigin.setOriginGame(4);
+    fireRedWrongOrigin.setMetLocation(16);
+    fireRedWrongOrigin.setMetLevel(2);
+    assert(!hasInfo(Legality::analyze(fireRedWrongOrigin,Enums::GameVersion::FRLG),
+                    gen3DetachedWild));
+    auto rubyWrongLevel=gen3WithBall(4);
+    rubyWrongLevel.setSpecies(261);
+    rubyWrongLevel.setOriginGame(2);
+    rubyWrongLevel.setMetLocation(16);
+    rubyWrongLevel.setMetLevel(50);
+    assert(!hasInfo(Legality::analyze(rubyWrongLevel,Enums::GameVersion::FRLG),
+                    gen3DetachedWild));
+    auto rubyUnknownOrigin=gen3WithBall(4);
+    rubyUnknownOrigin.setSpecies(261);
+    rubyUnknownOrigin.setOriginGame(0);
+    rubyUnknownOrigin.setMetLocation(16);
+    rubyUnknownOrigin.setMetLevel(2);
+    assert(!hasInfo(Legality::analyze(rubyUnknownOrigin,Enums::GameVersion::FRLG),
+                    gen3DetachedWild));
+
     // Source-free known native PK3/PK4 formats have generation-specific
     // species/move ceilings regardless of their exact save identity.
     const auto g3Known=Legality::analyze(gen3WithBall(4),Enums::GameVersion::FRLG);

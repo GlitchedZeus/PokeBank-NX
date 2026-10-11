@@ -1969,6 +1969,45 @@ namespace Legality {
             }
         }
 
+        // ---- L3: detached native PK3 wild capture compatibility ----
+        // A PK3 record stores its original GBA game/version even after
+        // trading into another Gen III game or detaching from a save.
+        // Only source-backed wildcard encounters in the pinned subset
+        // yield INFO-positive possible capture; unknown location/game,
+        // transfer, egg and unmatched history stay unresolved. An exact
+        // physical source game is NEVER manufactured from this evidence.
+        if (!sourceProfile &&
+            Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 3 &&
+            !pk.isEgg() && pk.metLocation()!=0 && pk.metLevel()!=0) {
+            const auto originalGba=Gen4Origin::exactGen3GameId(pk.originGame());
+            if (!originalGba.empty()) {
+                const auto choices =
+                    PokeVault::Integration::EncounterGuardrails::
+                    forGameSpeciesWithGen3Provenance(originalGba,species);
+                for (const auto& choice : choices) {
+                    using Method=PokeVault::Integration::EncounterGuardrails::Method;
+                    const auto method=choice.encounter.method;
+                    const bool wildMethod=
+                        method==Method::Grass || method==Method::Surf ||
+                        method==Method::OldRod || method==Method::GoodRod ||
+                        method==Method::SuperRod || method==Method::RockSmash;
+                    if (!wildMethod || choice.encounter.location!=pk.metLocation() ||
+                        !choice.encounter.containsLevel(pk.metLevel()) ||
+                        (choice.evolved && choice.minimumEvolutionLevel!=0 &&
+                         pk.level()<choice.minimumEvolutionLevel))
+                        continue;
+                    std::string detail=
+                        "Source-free native PK3 met location/level matches a pinned Generation III wild encounter for the stored original GBA game; capture and competing provenance remain unresolved";
+                    if (choice.evolved)
+                        detail += " via pre-evolution species " +
+                            std::to_string(choice.originalEncounterSpecies);
+                    add(r,Severity::Info,std::move(detail),
+                        CheckIdentifier::Encounter);
+                    break;
+                }
+            }
+        }
+
         // ---- L2: gender vs the species gender ratio (255 genderless / 254 female-only / 0 male-only) ----
         if (!sourceProfile || exactGeneration >= 2) {
             const uint8_t g = pk.gender();
