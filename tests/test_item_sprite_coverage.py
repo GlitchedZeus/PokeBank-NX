@@ -16,7 +16,13 @@ G2 = (ROOT / "src/Integration/Gen2/Gen2ReadOnlyInventory.cpp").read_text(encodin
 KEYS = (ROOT / "include/UI/ItemSpriteKey.h").read_text(encoding="utf-8")
 ART = set((ROOT / "tools/pinned_item_sprite_names.txt").read_text(encoding="utf-8").splitlines())
 ART = {name for name in ART if name and not name.startswith("#")}
-EXTRAS = {"itemfinder", "classic-mail-envelope"}
+EXTRAS = {"itemfinder", "classic-mail-envelope", "berserk-gene"}
+# True native Gen II per-item icons did not exist for these unused/historic
+# items. They are custom illustrations, separate from exact-source pixels.
+CUSTOM_GSC = {
+    "silver-leaf", "gold-leaf", "pink-bow", "polkadot-bow",
+    "gs-ball", "egg-ticket", "normal-box", "gorgeous-box", "brick-piece"
+}
 GEN2_MAIL_ART = {
     "bluesky-mail", "eon-mail", "flower-mail", "liteblue-mail",
     "lovely-mail", "mirage-mail", "morph-mail", "music-mail",
@@ -71,10 +77,10 @@ for conditions, art in re.findall(r'if \(([^)\n]+)\) return "([^"]+)";', KEYS):
         assert source not in aliases or aliases[source] == art, source
         aliases[source] = art
 assert aliases and len(aliases) >= 15
-assert all(dst in ART or dst in GEN2_MAIL_ART for dst in aliases.values()), (
+assert all(dst in ART or dst in GEN2_MAIL_ART or dst in CUSTOM_GSC for dst in aliases.values()), (
     "ItemSpriteKey alias has neither pinned art nor a verified supplemental source",
     {src: dst for src, dst in aliases.items()
-     if dst not in ART and dst not in GEN2_MAIL_ART})
+     if dst not in ART and dst not in GEN2_MAIL_ART and dst not in CUSTOM_GSC})
 
 gen2_base = re.search(r'kBaseNames\{([\s\S]*?)\n\};', G2)
 assert gen2_base
@@ -105,7 +111,8 @@ def audit(gen: str, entries: dict[int, str], ids: set[int]) -> list[tuple[int, s
     unresolved = []
     match = 0
     machines = 0
-    generic_mail = 0
+    mail_motifs = 0
+    custom_icons = 0
     proxy = 0
     eligible = 0
     for item_id in sorted(ids):
@@ -121,13 +128,15 @@ def audit(gen: str, entries: dict[int, str], ids: set[int]) -> list[tuple[int, s
         eligible += 1
         key = art_key(name)
         if normalized(name) in HISTORICAL_PROXIES: proxy += 1
-        elif key in GEN2_MAIL_ART: generic_mail += 1
+        elif key in GEN2_MAIL_ART: mail_motifs += 1
+        elif key in CUSTOM_GSC: custom_icons += 1
         elif key in ART: match += 1
         elif re.fullmatch(r"(?:tm|hm)\d+", key) and "tm-normal" in ART:
             machines += 1
         else: unresolved.append((item_id, name, key))
     print(f"{gen}: {eligible} eligible item identities, {match} exact artwork,"
-          f" {machines} generic machine discs, {generic_mail} generic mail envelopes,"
+          f" {machines} machine discs (type-resolved at runtime),"
+          f" {mail_motifs} original Crystal motifs, {custom_icons} new custom GSC icons,"
           f" {proxy} labelled historical proxies,"
           f" {len(unresolved)} no verified sprite")
     for item_id, name, key in unresolved:
@@ -174,7 +183,7 @@ for name, expected in {
     "Air Mail": "air-mail", "Orange Mail": "orange-mail",
 }.items():
     assert art_key(name) == expected, (name, art_key(name), expected)
-    assert expected in ART or expected in GEN2_MAIL_ART or expected.startswith(("tm", "hm"))
+    assert expected in ART or expected in GEN2_MAIL_ART or expected in CUSTOM_GSC or expected.startswith(("tm", "hm"))
 
 assert all('"' + key + '"' in (ROOT / "tools/gen_item_sprites.py").read_text(encoding="utf-8") for key in GEN2_MAIL_ART)
 assert 'ItemSpriteKey::isGen2Mail(key)' in (ROOT / "src/UI/SpriteManager.cpp").read_text(encoding="utf-8")
@@ -182,5 +191,14 @@ assert 'ItemSpriteKey::isGen2Mail(key)' in (ROOT / "src/UI/SpriteManager.cpp").r
 sprite_loader = (ROOT / "src/UI/SpriteManager.cpp").read_text(encoding="utf-8")
 assert "return sprite ? sprite : fallback();" in sprite_loader
 assert "itemSpriteCache.emplace(key, sprite); // unique owned allocation or miss" in sprite_loader
+# Prove all originally missing sprites now have real image sources.
+generator = (ROOT / "tools/gen_item_sprites.py").read_text(encoding="utf-8")
+custom_src = (ROOT / "tools/render_classic_item_icons.py").read_text(encoding="utf-8")
+for name in CUSTOM_GSC:
+    assert f'"{name}"' in custom_src
+assert "berserk-gene" in generator and "iberserk_gene.png" in generator
+assert "render_classic_icons()" in generator
+assert "ClassicMachineArtwork::artKey(" in (ROOT / "src/UI/Panels/ItemsPanel.cpp").read_text(encoding="utf-8")
+assert all(not value for value in unresolved.values()), unresolved
 assert len(g1) >= 80 and len(g3) >= 370 and len(g4) >= 530
 print("Complete generation catalog coverage audit: PASS (remaining unavailable art reported)")
