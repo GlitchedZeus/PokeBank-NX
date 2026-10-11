@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import hashlib
 import unicodedata
+import urllib.parse
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -38,6 +40,26 @@ EXTRA_EXACT_ICONS = {
         "https://raw.githubusercontent.com/smogon/sprites/"
         + SMOGON_REF + "/src/minisprites/items/imail.png"
     ),
+}
+
+# Generation II Mail uses ten unique 160x144 stationery BACKGROUNDS,
+# not Gen III/IV 24px bag minisprites. Bulbagarden Archives file pages:
+# https://archives.bulbagarden.net/wiki/Category:Mail
+# Each file's original /media/upload/a/ab/Filename.png location is the
+# documented MediaWiki MD5 filename directory. No artwork substitutions.
+# This is optional supplemental art: the pinned Smogon generic envelope is
+# the honest fallback if the Archives are temporarily unavailable in CI.
+GEN2_MAIL_SOURCES = {
+    "bluesky-mail": "Bluesky_Mail.png",
+    "eon-mail": "Eon_Mail.png",
+    "flower-mail": "Flower_Mail.png",
+    "liteblue-mail": "Liteblue_Mail.png",
+    "lovely-mail": "Lovely_Mail.png",
+    "mirage-mail": "Mirage_Mail.png",
+    "morph-mail": "Morph_Mail.png",
+    "music-mail": "Music_Mail.png",
+    "portraitmail": "Portraitmail.png",
+    "surf-mail": "Surf_Mail.png",
 }
 
 REQUIRED_BALLS = (
@@ -157,6 +179,34 @@ def fetch_extra(name: str, url: str, force: bool) -> str:
     return "fetched"
 
 
+
+def fetch_gen2_mail(key: str, filename: str, force: bool) -> str:
+    """Recover a distinct, correctly attributed Gen II mail background."""
+    target = OUT / (key + ".png")
+    if not force and validated(target):
+        return "cached"
+    digest = hashlib.md5(filename.encode("ascii")).hexdigest()
+    url = ("https://archives.bulbagarden.net/media/upload/"
+           + digest[:1] + "/" + digest[:2] + "/" + urllib.parse.quote(filename))
+    try:
+        request = urllib.request.Request(
+            url, headers={"User-Agent": "PokeBank-NX-mail-sprite-recovery/1.0"})
+        with urllib.request.urlopen(request, timeout=15) as response:
+            payload = response.read()
+        if not payload.startswith(bytes((137, 80, 78, 71, 13, 10, 26, 10))):
+            return "unavailable/not-png"
+        temporary = target.with_suffix(".png.incomplete")
+        temporary.write_bytes(payload)
+        ok, reason, dimensions = validate_png(temporary)
+        if not ok or tuple(dimensions) != (160, 144):
+            temporary.unlink(missing_ok=True)
+            return "unavailable/invalid-image"
+        temporary.replace(target)
+        return "fetched"
+    except (OSError, urllib.error.URLError, TimeoutError) as error:
+        return "unavailable/" + type(error).__name__
+
+
 def verify_required(include_classic: bool = False) -> None:
     missing = [name for name in REQUIRED_BALLS if not validated(OUT / (name + ".png"))]
     if missing:
@@ -195,6 +245,12 @@ def main() -> int:
             for name, url in EXTRA_EXACT_ICONS.items()
         }
         print(f"Extra pinned exact item images (Smogon {SMOGON_REF[:12]}): {extras}")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+            mail_status = dict(zip(
+                GEN2_MAIL_SOURCES,
+                pool.map(lambda pair: fetch_gen2_mail(pair[0], pair[1], options.force),
+                         GEN2_MAIL_SOURCES.items())))
+        print(f"Generation II original Mail art (Bulbagarden Archives): {mail_status}")
     verify_required(include_classic=not options.required_only)
     return 0
 

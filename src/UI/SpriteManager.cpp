@@ -199,6 +199,13 @@ namespace UI {
         if (cached != itemSpriteCache.end()) return cached->second;
 
         Sprite* sprite = loadSprite("sprites/items/" + key + ".png");
+        if (!sprite && ItemSpriteKey::isGen2Mail(key)) {
+            // Preserve unique original Gen II stationery when packaged. If a
+            // source archive is temporarily unreachable at build time, a
+            // neutral envelope is preferable to a blank icon; never borrow
+            // another Mail type's bag sprite.
+            sprite = getItemSprite("classic-mail-envelope");
+        }
         if (!sprite && ItemSpriteKey::isTM(key)) {
             // Pinned Pokémon artwork exposes type-based discs but no numbered
             // TM image.  Use the neutral gray disc graphic, not a guessed type.

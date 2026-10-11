@@ -17,6 +17,11 @@ KEYS = (ROOT / "include/UI/ItemSpriteKey.h").read_text(encoding="utf-8")
 ART = set((ROOT / "tools/pinned_item_sprite_names.txt").read_text(encoding="utf-8").splitlines())
 ART = {name for name in ART if name and not name.startswith("#")}
 EXTRAS = {"itemfinder", "classic-mail-envelope"}
+GEN2_MAIL_ART = {
+    "bluesky-mail", "eon-mail", "flower-mail", "liteblue-mail",
+    "lovely-mail", "mirage-mail", "morph-mail", "music-mail",
+    "portraitmail", "surf-mail",
+}
 ART |= EXTRAS
 
 def table(name: str) -> dict[int, str]:
@@ -86,7 +91,7 @@ def audit(gen: str, entries: dict[int, str], ids: set[int]) -> list[tuple[int, s
         if name in ("", "???", "(None)", "NONE", "TERU-SAMA"): continue
         eligible += 1
         key = art_key(name)
-        if key == "classic-mail-envelope": generic_mail += 1
+        if key in GEN2_MAIL_ART: generic_mail += 1
         elif key in ART: match += 1
         elif re.fullmatch(r"(?:tm|hm)\d+", key) and "tm-normal" in ART:
             machines += 1
@@ -118,15 +123,17 @@ for name, expected in {
     "Itemfinder": "itemfinder", "TM27": "tm27", "HM01": "hm01",
     "DeepSeaTooth": "deep-sea-tooth", "NeverMeltIce": "never-melt-ice",
     "Leek": "stick", "Upgrade": "up-grade",
-    "Flower Mail": "classic-mail-envelope",
-    "Blue Sky Mail": "classic-mail-envelope",
-    "Lite Blue Mail": "classic-mail-envelope",
-    "Portrait Mail": "classic-mail-envelope",
-    "Surf Mail": "classic-mail-envelope",
+    "Flower Mail": "flower-mail",
+    "Blue Sky Mail": "bluesky-mail",
+    "Lite Blue Mail": "liteblue-mail",
+    "Portrait Mail": "portraitmail",
+    "Surf Mail": "surf-mail",
     "Air Mail": "air-mail", "Orange Mail": "orange-mail",
 }.items():
     assert art_key(name) == expected, (name, art_key(name), expected)
-    assert expected in ART or expected.startswith(("tm", "hm"))
+    assert expected in ART or expected in GEN2_MAIL_ART or expected.startswith(("tm", "hm"))
 
+assert all('"' + key + '"' in (ROOT / "tools/gen_item_sprites.py").read_text(encoding="utf-8") for key in GEN2_MAIL_ART)
+assert 'ItemSpriteKey::isGen2Mail(key)' in (ROOT / "src/UI/SpriteManager.cpp").read_text(encoding="utf-8")
 assert len(g1) >= 80 and len(g3) >= 370 and len(g4) >= 530
 print("Complete generation catalog coverage audit: PASS (remaining unavailable art reported)")
