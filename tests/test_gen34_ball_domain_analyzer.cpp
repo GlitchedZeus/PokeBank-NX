@@ -341,7 +341,10 @@ int main() {
     g3NonEgg.setMove(0,57); // Surf is not a Bulbasaur egg move.
     assert(!hasInfo(Legality::analyze(g3NonEgg,Enums::GameVersion::FRLG),
                     "direct egg move"));
-    auto unknownG3=g3Egg;
+    // PK3 is intentionally non-copyable; construct another native record
+    // and retain only the tested egg move when varying source identity.
+    auto unknownG3=gen3WithBall(4);
+    unknownG3.setMove(0,80);
     unknownG3.setOriginGame(0);
     assert(!hasInfo(Legality::analyze(unknownG3,Enums::GameVersion::FRLG),
                     "direct egg move"));
