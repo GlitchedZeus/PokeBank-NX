@@ -39,10 +39,10 @@ HISTORICAL_PROXIES = {
     "bitter-berry", "miracle-berry", "gold-berry",
 }
 
-# Original Gen II mail art is recovered from Bulbagarden Archives separately.
-# These exact stationery backgrounds are OPTIONAL at package time: the
-# deterministic generic envelope is used if Archives rejects CI downloads.
-# Do not count these keys as bundled PokeAPI or Smogon art.
+# Original full-sized Gen II mail art is preferred from the Archives.
+# If Archives rejects the CI download, pinned ORIGINAL Crystal mail graphics
+# and palettes are assembled into 160x144 reconstructed stationery. Never
+# count these as exact ROM screenshots or pinned PokeAPI 24px bag images.
 GENERATOR = (ROOT / "tools/gen_item_sprites.py").read_text(encoding="utf-8")
 source_block = GENERATOR.split("GEN2_MAIL_SOURCES = {", 1)[1].split("}", 1)[0]
 source_keys = set(re.findall(r'^\s*"([a-z0-9-]+)":\s*"[^"]+\.png",?\s*$', source_block, re.M))
@@ -136,7 +136,7 @@ def audit(gen: str, entries: dict[int, str], ids: set[int]) -> list[tuple[int, s
         else: unresolved.append((item_id, name, key))
     print(f"{gen}: {eligible} eligible item identities, {match} exact artwork,"
           f" {machines} machine discs (type-resolved at runtime),"
-          f" {mail_motifs} original Crystal motifs, {custom_icons} new custom GSC icons,"
+          f" {mail_motifs} Crystal-source stationery, {custom_icons} new custom GSC icons,"
           f" {proxy} labelled historical proxies,"
           f" {len(unresolved)} no verified sprite")
     for item_id, name, key in unresolved:
@@ -198,6 +198,18 @@ for name in CUSTOM_GSC:
     assert f'"{name}"' in custom_src
 assert "berserk-gene" in generator and "iberserk_gene.png" in generator
 assert "render_classic_icons()" in generator
+mail_renderer = (ROOT / "tools/render_gen2_mail_stationery.py").read_text(encoding="utf-8")
+assert "render_unavailable_exact_mail(unavailable)" in generator
+assert "tuple(dims) != (160, 144)" in generator
+assert "GEN2_MAIL_SOURCES" in generator
+for key in GEN2_MAIL_ART:
+    assert f'"{key}"' in mail_renderer
+items_panel = (ROOT / "src/UI/Panels/ItemsPanel.cpp").read_text(encoding="utf-8")
+assert "if (selected && gscSource && ItemSpriteKey::isGen2Mail(normalized))" in items_panel
+assert "art->width == 160 && art->height == 144" in items_panel
+assert "SpriteManager::getItemSprite(selectedGscMail)" in items_panel
+assert "return getItemSprite(\"tm-normal\")" not in sprite_loader
+
 assert "ClassicMachineArtwork::artKey(" in (ROOT / "src/UI/Panels/ItemsPanel.cpp").read_text(encoding="utf-8")
 assert all(not value for value in unresolved.values()), unresolved
 assert len(g1) >= 80 and len(g3) >= 370 and len(g4) >= 530
