@@ -14,6 +14,11 @@ struct UnifiedWorkspaceState {
     Mode lastMode = Mode::None;
     Unified::Focus focus{};
     std::size_t detailsFocus = 0;
+    // Stable row viewport: drag moves the content, not the semantic focus.
+    // Otherwise the older scrollWindow(focusedRow) snaps to its old page,
+    // making Held Item and Crystal metadata painful to reach by touch.
+    TouchScrollState detailsTouchScroll;
+    TouchPickerViewport detailsViewport;
     bool crystal = false;
     bool progressionEditor = false;
     int progressionRow = 0;
@@ -37,6 +42,8 @@ UnifiedWorkspaceState& unifiedStateFor(const TrainerViewScreen& screen) {
     } else if (state.lastMode != mode) {
         state.focus = {};
         state.detailsFocus = 0;
+        state.detailsTouchScroll.reset();
+        state.detailsViewport.reset();
         state.progressionEditor = false;
         state.progressionRow = 0;
         state.lastMode = mode;
@@ -49,6 +56,8 @@ void resetUnifiedFocus(TrainerViewScreen& screen) {
     auto& unified = unifiedStateFor(screen);
     unified.focus = {};
     unified.detailsFocus = 0;
+    unified.detailsTouchScroll.reset();
+    unified.detailsViewport.reset();
     unified.progressionEditor = false;
     unified.progressionRow = 0;
     unified.moveEditor = false;
@@ -450,6 +459,29 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
     return true;
 }
 
+// Shared Gen II DETAILS uses true clipped finger scrolling. Gestures do not
+// move a focus cursor; a clean tap on a visible row explicitly selects it.
+int updateUnifiedDetailsTouch(TrainerViewScreen& screen, UnifiedWorkspaceState& unified,
+                              const TouchInput& touch, uint64_t down) {
+    constexpr int kRowsVisible = 8, kRowHeight = 38;
+    const auto geometry = Unified::geometry720p();
+    const int contentY = geometry.y + 74;
+    const int x = geometry.x + 18 + 8;
+    const int y = contentY + 224;
+    const int width = 300 - 16;
+    const int count = unified.crystal ? 13 : 9;
+    unified.detailsViewport.ensure(unified.focus.row, count, kRowsVisible);
+    const int maximum = TouchPickerViewport::maxFirst(count, kRowsVisible);
+    unified.detailsTouchScroll.updateVertical(
+        touch, x, y, width, kRowsVisible * kRowHeight, kRowHeight,
+        unified.detailsViewport.firstRow, maximum + 1);
+    if (down & (HidNpadButton_Up | HidNpadButton_Down |
+                HidNpadButton_L | HidNpadButton_R))
+        unified.detailsTouchScroll.stop();
+    const int hit = screen.touchedButtonId(touch);
+    return hit >= 1700 && hit < 1700 + count ? hit - 1700 : -1;
+}
+
 bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                                  int stickX, int stickY, const TouchInput& touch) {
     auto& state = stateFor(screen);
@@ -457,6 +489,9 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
     auto& unified = unifiedStateFor(screen);
 
     if (state.mode == Mode::View) {
+        const int touchedDetail = updateUnifiedDetailsTouch(screen, unified, touch, down);
+        if (touchedDetail >= 0)
+            unified.focus = {Unified::Panel::Details, static_cast<uint8_t>(touchedDetail), 0};
         if (PokeBank::UIModel::passiveViewAction(down & HidNpadButton_B, screen.touchedButtonId(touch)) ==
             PokeBank::UIModel::PassiveViewAction::Back) {
             closeToActions(screen);
@@ -479,6 +514,10 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         if (nav & HidNpadButton_Right)
             unified.focus = Unified::passiveViewMoveColumn(Unified::Generation::Gen2, unified.focus, 1, unified.crystal);
         unified.detailsFocus = Unified::detailsScrollFocus(unified.focus, unified.detailsFocus);
+        if (nav & (HidNpadButton_Up | HidNpadButton_Down) ||
+            down & (HidNpadButton_L | HidNpadButton_R))
+            unified.detailsViewport.reveal(unified.focus.row,
+                                           unified.crystal ? 13 : 9, 8);
         return true; // A/Y/X never mutate a View session.
     }
 
@@ -488,6 +527,14 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
     if (state.confirmExit) return handleConfirm(screen, state, down);
     if (handleProgressionEditor(screen, down, held, stickX, stickY)) return true;
     if (handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY)) return true;
+
+    const int touchedDetail = updateUnifiedDetailsTouch(screen, unified, touch, down);
+    if (touchedDetail >= 0) {
+        unified.focus = {Unified::Panel::Details, static_cast<uint8_t>(touchedDetail), 0};
+        unified.detailsFocus = static_cast<std::size_t>(touchedDetail);
+        mirrorPickerFocus(state, unified.focus);
+        return activateUnifiedField(screen, state, unified.focus);
+    }
 
     const uint64_t nav = screen.controllerNavigation.apply(
         down, held, stickX, stickY,
@@ -501,6 +548,10 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
 
     unified.focus = Unified::normalizeMoveRowFocus(Unified::Generation::Gen2, unified.focus, unified.crystal);
     unified.detailsFocus = Unified::detailsScrollFocus(unified.focus, unified.detailsFocus);
+    if (nav & (HidNpadButton_Up | HidNpadButton_Down) ||
+        down & (HidNpadButton_L | HidNpadButton_R))
+        unified.detailsViewport.reveal(unified.focus.row,
+                                       unified.crystal ? 13 : 9, 8);
 
     if (down & HidNpadButton_Y) {
         randomizeDVs(state);
@@ -632,7 +683,8 @@ void drawUnifiedMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Edit / Apply"}, {"B", "Cancel"}});
 }
 
-void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWorkspaceState& unified,
+void drawUnifiedDetails(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state,
+                        UnifiedWorkspaceState& unified,
                         int x, int y, int w, int h, bool passive) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
     fb.drawText(x + 14, y + 10, "DETAILS",
@@ -675,22 +727,31 @@ void drawUnifiedDetails(PKSEFramebuffer& fb, const State& state, const UnifiedWo
         rows.push_back({"OT gender", Gen2Native::crystalOtGenderChoiceText(displayedOtGender)});
     }
 
-    const auto window = Unified::scrollWindow(rows.size(), 8, unified.detailsFocus);
-    for (std::size_t i = 0; i < window.count; ++i) {
-        const std::size_t row = window.first + i;
-        const int yy = y + 224 + static_cast<int>(i) * 38;
+    constexpr int visible = 8, rowHeight = 38;
+    const int count = static_cast<int>(rows.size());
+    unified.detailsViewport.ensure(unified.focus.row, count, visible);
+    const int first = unified.detailsViewport.firstRow;
+    const int top = y + 224;
+    const int offset = unified.detailsTouchScroll.offset();
+    fb.setClipRect(x + 8, top, w - 16, visible * rowHeight);
+    for (int row = std::max(0, first - 1); row < std::min(count, first + visible + 1); ++row) {
+        const int yy = top + (row - first) * rowHeight + offset;
         const bool selected = unified.focus.panel == Unified::Panel::Details && unified.focus.row == row;
         if (selected) {
             const auto cell = Unified::cellFocus(unified.focus);
             fb.drawRoundedRect(x + cell.x, yy + 2, cell.width, 30, 6, Colors::Accent, 2);
         }
-        fb.drawText(x + 18, yy + 7, rows[row].first, selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
-        fb.drawText(x + 108, yy + 7, rows[row].second,
+        fb.drawText(x + 18, yy + 7, rows[static_cast<std::size_t>(row)].first,
+                    selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 108, yy + 7, rows[static_cast<std::size_t>(row)].second,
                     Colors::Text, TextStyle::Caption);
+        appendClippedTouchButton(screen.touchButtons, 1700 + row,
+            x + 8, yy, w - 16, rowHeight - 2,
+            x + 8, top, w - 16, visible * rowHeight);
     }
+    fb.clearClip();
     SharedPokemonShell::drawVerticalScrollIndicator(
-        fb, x + w - 10, y + 222, std::max(0, h - 262),
-        rows.size(), 8, window.first);
+        fb, x + w - 10, top, visible * rowHeight, rows.size(), visible, first);
 }
 
 void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
@@ -791,7 +852,7 @@ void drawUnifiedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const int leftX = g.x + 18, leftW = 300;
     const int midX = leftX + leftW + 14, midW = 398;
     const int rightX = midX + midW + 14, rightW = g.x + g.width - 18 - rightX;
-    drawUnifiedDetails(fb, state, unified, leftX, contentY, leftW, contentH, view);
+    drawUnifiedDetails(screen, fb, state, unified, leftX, contentY, leftW, contentH, view);
     drawUnifiedValues(fb, state, unified, midX, contentY, midW, contentH, view);
     drawUnifiedMoves(fb, screen, state, unified, rightX, contentY, rightW, contentH, view);
 
