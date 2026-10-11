@@ -1,4 +1,5 @@
 #include "Legality/Gen34EggMoveEvidence.h"
+#include "Legality/Gen4EggMoveFamilyEvidence.h"
 
 #include <cassert>
 #include <iostream>
@@ -46,6 +47,24 @@ int main() {
     assert(!speciesHasEggMoves("unknown", 1));
     assert(!isEggMove("platinum_nds", 494, 80));
     assert(!isEggMove("platinum_nds", 1, 468));
+
+    // Gen IV egg-move family source cannot be inferred from the current
+    // physical save. HGSS Bulbasaur Sweet Scent #124 was not a D/P/Pt
+    // egg move; Petal Dance #80 is shared. All conclusions are INFO-only.
+    namespace Families=Legality::Gen4EggMoveFamily;
+    const auto dp=Families::classify("diamond_nds",1,{80,124,0,0});
+    assert(dp.hasKnownOrigin && dp.storedMoves==2);
+    assert(dp.originFamilyCandidates==1);
+    assert(dp.otherFamilyOnlyCandidates==1);
+    assert(dp.unmodeled==0);
+    const auto hg=Families::classify("heartgold_nds",1,{80,124,0,0});
+    assert(hg.originFamilyCandidates==2 && hg.otherFamilyOnlyCandidates==0);
+    const auto missing=Families::classify("unknown",1,{80,124,0,0});
+    assert(!missing.hasKnownOrigin && missing.storedMoves==0);
+    const auto eventUnknown=Families::classify("diamond_nds",1,{57,468,0,0});
+    assert(eventUnknown.unmodeled==2 && eventUnknown.originFamilyCandidates==0);
+    const auto evolved=Families::classify("diamond_nds",2,{80,124,0,0});
+    assert(evolved.originFamilyCandidates==1 && evolved.otherFamilyOnlyCandidates==1);
 
     std::cout << "Gen III/IV egg-move legality evidence: PASS\n";
 }
