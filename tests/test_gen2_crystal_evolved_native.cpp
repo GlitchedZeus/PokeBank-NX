@@ -134,6 +134,46 @@ int main() {
     assert(!hasInfo(sourcefreeEgg,potentialGen1));
     assert(!hasInfo(sourcefreeCaught,potentialGen1));
     assert(!hasInfo(report(25,20,0,false,"crystal_gbc",33),potentialGen1));
+    // Conditional historic staging is NOT proof of a Time Capsule visit.
+    // It states only what must have happened IF a valid Gen I visit did.
+    namespace TimeCapsule=Legality::Gen12TimeCapsule;
+    static_assert(TimeCapsule::classifyConditionalStage(
+        25,false,0,{33,166,251,0}).possibleGen1Ancestor);
+    static_assert(TimeCapsule::classifyConditionalStage(
+        25,false,0,{33,166,251,0}).gen2MoveCount==2);
+    static_assert(!TimeCapsule::classifyConditionalStage(
+        25,false,0,{33,166,251,0}).laterEvolutionRequired);
+    static_assert(TimeCapsule::classifyConditionalStage(
+        169,false,0,{33,0,0,0}).laterEvolutionRequired);
+    static_assert(TimeCapsule::classifyConditionalStage(
+        169,false,0,{33,166,0,0}).gen2MoveCount==1);
+    static_assert(!TimeCapsule::classifyConditionalStage(
+        152,false,0,{166,0,0,0}).possibleGen1Ancestor);
+    static_assert(!TimeCapsule::classifyConditionalStage(
+        25,true,0,{166,0,0,0}).possibleGen1Ancestor);
+    static_assert(!TimeCapsule::classifyConditionalStage(
+        25,false,1,{166,0,0,0}).possibleGen1Ancestor);
+    static_assert(TimeCapsule::classifyConditionalStage(
+        25,false,0,{252,0,0,0}).gen2MoveCount==0);
+
+    constexpr auto laterMove=
+        "Conditional Time Capsule history: if this PK2 descended from Generation I, 1 current move(s) introduced in Generation II";
+    constexpr auto laterEvolution=
+        "Conditional Time Capsule history: this species evolved into a Generation II-only evolution";
+    assert(hasInfo(sourcefreeMove,laterMove));
+    assert(!hasInfo(sourcefreeCanTrade,laterMove));
+    assert(hasInfo(sourcefreeEvolved,laterEvolution));
+    assert(!hasInfo(sourcefreeCanTrade,laterEvolution));
+    assert(!hasInfo(sourcefreeGen2Only,laterMove));
+    assert(!hasInfo(sourcefreeGen2Only,laterEvolution));
+    assert(!hasInfo(sourcefreeEgg,laterMove));
+    assert(!hasInfo(sourcefreeCaught,laterEvolution));
+    const auto bothStages=report(169,40,0,false,"",166);
+    assert(hasInfo(bothStages,laterMove));
+    assert(hasInfo(bothStages,laterEvolution));
+    assert(!hasInfo(report(25,20,0,false,"crystal_gbc",166),laterMove));
+    assert(!hasInfo(report(169,40,0,false,"crystal_gbc",33),laterEvolution));
+    assert(!hasInfo(report(25,20,0,false,"",252),laterMove));
     assert(!hasInfo(sourcefreeCaught,"pinned Crystal wild encounter"));
     assert(!hasInfo(sourcefreeCaught,"pinned Generation II static/gift encounter"));
 

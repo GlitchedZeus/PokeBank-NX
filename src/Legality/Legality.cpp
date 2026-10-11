@@ -845,6 +845,20 @@ namespace Legality {
                 add(r,Severity::Info,
                     "Source-free native PK2 may descend from a Generation I ancestor; no original cartridge, Time Capsule trade or evolution sequence is proven",
                     CheckIdentifier::Transfer);
+                const auto stage=Gen12TimeCapsule::classifyConditionalStage(
+                    gen2.speciesID(),gen2.isEgg(),gen2.caughtData(),moves);
+                if(stage.gen2MoveCount) {
+                    add(r,Severity::Info,
+                        "Conditional Time Capsule history: if this PK2 descended from Generation I, " +
+                        std::to_string(stage.gen2MoveCount) +
+                        " current move(s) introduced in Generation II were acquired after its hypothetical final return; no trade or acquisition path is proven",
+                        CheckIdentifier::Moves);
+                }
+                if(stage.laterEvolutionRequired) {
+                    add(r,Severity::Info,
+                        "Conditional Time Capsule history: this species evolved into a Generation II-only evolution after its hypothetical final return from Generation I; no historical trade or evolution route is proven",
+                        CheckIdentifier::Transfer);
+                }
             }
             switch (Gen12TimeCapsule::classifyCurrentTrade(
                     gen2.speciesID(),gen2.isEgg(),moves)) {

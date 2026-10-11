@@ -36,6 +36,31 @@ constexpr bool couldOriginateGen1(uint16_t species, bool isEgg, uint16_t caughtD
     return !isEgg && caughtData == 0 && canVisitGen1Species(species);
 }
 
+// This is a *conditional* history witness, only when the native PK2
+// structurally permits a possible Gen I ancestor. PK2 does not prove a
+// Time Capsule visit. Moves #166..251 cannot have been held while in Gen I;
+// a species introduced as a Gen II evolution also cannot have evolved
+// until after its hypothetical final return. Unsupported move IDs cannot
+// be interpreted as positive learning-stage evidence.
+struct ConditionalStage {
+    bool possibleGen1Ancestor=false;
+    bool laterEvolutionRequired=false;
+    uint8_t gen2MoveCount=0;
+};
+
+constexpr ConditionalStage classifyConditionalStage(
+    uint16_t species,bool isEgg,uint16_t caughtData,
+    const std::array<uint16_t,4>& moves) noexcept {
+    if(!couldOriginateGen1(species,isEgg,caughtData)) return {};
+    ConditionalStage evidence{};
+    evidence.possibleGen1Ancestor=true;
+    evidence.laterEvolutionRequired=isGen2EvolutionOfGen1Species(species);
+    for(const uint16_t move:moves)
+        if(move>=166 && move<=251)
+            ++evidence.gen2MoveCount;
+    return evidence;
+}
+
 // PKHeX GBRestrictions / Time Capsule gate: the Gen I move ceiling
 // is #165, Struggle. Distinguish *current* eligibility from possible
 // *historical* origin. Evolution or a new move learned after returning
