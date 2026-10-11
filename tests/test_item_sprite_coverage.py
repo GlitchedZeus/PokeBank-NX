@@ -75,11 +75,14 @@ def audit(gen: str, entries: dict[int, str], ids: set[int]) -> list[tuple[int, s
     eligible = 0
     for item_id in sorted(ids):
         name = entries.get(item_id, "")
-        if name in ("", "???", "(None)", "NONE", "TERU-SAMA"): continue
         if gen == "Gen I" and 196 <= item_id <= 250:
             name = "HM%02d" % (item_id - 195) if item_id <= 200 else "TM%02d" % (item_id - 200)
         if gen == "Gen II" and item_id >= 191:
-            name = "TM" + str(item_id) # marker only; actual number is catalog-order-dependent
+            machines = raw_ids("kG2Machines")
+            if item_id in machines:
+                ordinal = machines.index(item_id)
+                name = "TM%02d" % (ordinal + 1) if ordinal < 50 else "HM%02d" % (ordinal - 49)
+        if name in ("", "???", "(None)", "NONE", "TERU-SAMA"): continue
         eligible += 1
         key = art_key(name)
         if key in ART: match += 1
