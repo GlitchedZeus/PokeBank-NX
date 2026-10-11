@@ -629,6 +629,25 @@ int main() {
     assert(!hasInfo(Legality::analyze(
         rubyTutor,Enums::GameVersion::FRLG,"ruby_gba"),pk3Other));
 
+    // Original-retail game move compatibility can also be recovered
+    // without a source save from an encrypted PK4's stored game code.
+    // PokeAPI-pinned Bulbasaur pools: Tackle 33 directly in Diamond;
+    // move 173 in Platinum/HGSS, not Diamond's direct pool.
+    constexpr auto pk4Direct="Source-free PK4 move is in the audited direct move pool";
+    constexpr auto pk4Other="Source-free PK4 move is compatible with another Generation IV game's audited move pool";
+    assert(hasInfo(analyzeGen4Ball(4,false,1,33,10),pk4Direct));
+    const auto dpCrossGame=analyzeGen4Ball(4,false,1,173,10);
+    assert(hasInfo(dpCrossGame,pk4Other));
+    assert(!hasInfo(dpCrossGame,pk4Direct));
+    assert(hasInfo(analyzeGen4Ball(4,false,1,173,12),pk4Direct));
+    const auto noOriginal=analyzeGen4Ball(4,false,1,173,0);
+    assert(!hasInfo(noOriginal,pk4Direct));
+    assert(!hasInfo(noOriginal,pk4Other));
+    const auto exactDiamond=analyzeGen4Ball(
+        4,false,1,173,10,"diamond_nds");
+    assert(!hasInfo(exactDiamond,pk4Other));
+    assert(!hasInfo(exactDiamond,pk4Direct));
+
     // Source-free known native PK3/PK4 formats have generation-specific
     // species/move ceilings regardless of their exact save identity.
     const auto g3Known=Legality::analyze(gen3WithBall(4),Enums::GameVersion::FRLG);

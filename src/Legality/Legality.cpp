@@ -1619,6 +1619,39 @@ namespace Legality {
                     // are not exclusive-proof sources: never hard Invalid.
                 }
             }
+        } else if (!sourceProfile &&
+                   Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
+                   Gen4Origin::isNativeRetailGen4(pk.originGame())) {
+            // Detached PK4 keeps its original retail game. The pinned
+            // PokeAPI-derived Gen IV level-up/egg/tutor/machine source
+            // pools can prove COMPATIBILITY with a direct original-game
+            // move, or availability in a *different* Gen IV game.
+            // Neither is a reconstructed acquisition/transfer history.
+            const auto retainedRetail=
+                Gen4Origin::exactRetailGameId(pk.originGame());
+            using Availability=PokeVault::Integration::Gen4MoveCompatibility::Availability;
+            for (int i=0;i<4;++i) {
+                const uint16_t moveId=pk.move(i);
+                if (moveId==0 || moveId>467)continue;
+                const auto available=
+                    PokeVault::Integration::Gen4MoveCompatibility::classify(
+                        retainedRetail,species,pk.form(),moveId,true);
+                if (available==Availability::Direct) {
+                    add(r,Severity::Info,
+                        "Source-free PK4 move is in the audited direct move pool for its stored original Generation IV game: " +
+                        std::string(Names::getMoveName(moveId)) +
+                        "; historical acquisition remains unresolved",
+                        CheckIdentifier::Moves);
+                } else if (available==Availability::Transfer) {
+                    add(r,Severity::Info,
+                        "Source-free PK4 move is compatible with another Generation IV game's audited move pool: " +
+                        std::string(Names::getMoveName(moveId)) +
+                        "; historical trading and acquisition remain unresolved",
+                        CheckIdentifier::Moves);
+                }
+                // Retained unknown or event-exclusive moves are never
+                // hard Invalid without historical encounter evidence.
+            }
         } else if (Pokemon::getLearnableBits(species, pk.form(), originGroup) != nullptr) {
             for (int i = 0; i < 4; ++i) {
                 const uint16_t moveId = pk.move(i);
