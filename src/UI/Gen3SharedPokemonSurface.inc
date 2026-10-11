@@ -1443,7 +1443,11 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         SharedHeldItemPickerPresentation::drawGrid(
             fb, x, y, state.pickerValues, state.pickerRow,
             [&](uint16_t value) { return pickerValueLabel(state, value); },
-            [](uint16_t value) { return Names::getItemNameG3(value); },
+            [&](uint16_t value) {
+                const auto disc = UI::ClassicMachineArtwork::artKey(
+                    screen.trainer.getGameGroup(), value);
+                return disc.empty() ? Names::getItemNameG3(value) : disc;
+            },
             state.pickerViewport.firstRow, state.pickerScroll.offset());
         const int gridX = x + HeldItemGrid::gridInsetX;
         const int gridY = y + HeldItemGrid::gridInsetY;
