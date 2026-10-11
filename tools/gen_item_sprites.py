@@ -21,6 +21,18 @@ NAMES = ROOT / "src" / "Names" / "ItemNames.cpp"
 MANIFEST = ROOT / "tools" / "pinned_item_sprite_names.txt"
 PINNED_REF = "8dfa3d97e953caaafaafd4963eff7621811af08e"
 BASE_URL = f"https://raw.githubusercontent.com/PokeAPI/sprites/{PINNED_REF}/sprites/items"
+# An exact Itemfinder icon is missing from the PokeAPI snapshot. Smogon's
+# separately pinned minisprite actually depicts the Itemfinder. Do not call
+# the later Dowsing Machine a Gen I/II Itemfinder.
+# Item graphics belong to Nintendo / Game Freak / The Pokémon Company.
+SMOGON_REF = "bad55c7b7e7292f459366505460d41dcab08d4cd"
+EXTRA_EXACT_ICONS = {
+    "itemfinder": (
+        "https://raw.githubusercontent.com/smogon/sprites/"
+        + SMOGON_REF + "/src/minisprites/otheritems/iitemfinder.png"
+    ),
+}
+
 REQUIRED_BALLS = (
     "master-ball", "ultra-ball", "great-ball", "poke-ball",
     "safari-ball", "net-ball", "dive-ball", "nest-ball",
@@ -32,6 +44,7 @@ REQUIRED_BALLS = (
 REQUIRED_CLASSIC = (
     "poke-doll", "bright-powder", "up-grade", "red-apricorn",
     "air-mail", "flame-mail", "tm-normal", "tm-fire", "hm01",
+    "itemfinder",
 )
 
 
@@ -117,6 +130,26 @@ def fetch(name: str, force: bool) -> str:
     return "fetched"
 
 
+def fetch_extra(name: str, url: str, force: bool) -> str:
+    target = OUT / (name + ".png")
+    if not force and validated(target):
+        return "cached"
+    request = urllib.request.Request(
+        url, headers={"User-Agent": "PokeBank-NX-pinned-exact-item-sprites"},
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        payload = response.read()
+    if not payload.startswith(bytes((137, 80, 78, 71, 13, 10, 26, 10))):
+        raise RuntimeError("Pinned supplemental art is not PNG: " + name)
+    temporary = target.with_suffix(".png.incomplete")
+    temporary.write_bytes(payload)
+    if not validated(temporary):
+        temporary.unlink(missing_ok=True)
+        raise RuntimeError("Pinned supplemental item PNG invalid: " + name)
+    temporary.replace(target)
+    return "fetched"
+
+
 def verify_required(include_classic: bool = False) -> None:
     missing = [name for name in REQUIRED_BALLS if not validated(OUT / (name + ".png"))]
     if missing:
@@ -149,6 +182,12 @@ def main() -> int:
         for result in pool.map(lambda name: fetch(name, options.force), sorted(names)):
             results[result] += 1
     print(f"Item sprite recovery from pinned PokeAPI {PINNED_REF[:12]}: {results}")
+    if not options.required_only:
+        extras = {
+            name: fetch_extra(name, url, options.force)
+            for name, url in EXTRA_EXACT_ICONS.items()
+        }
+        print(f"Extra pinned exact item images (Smogon {SMOGON_REF[:12]}): {extras}")
     verify_required(include_classic=not options.required_only)
     return 0
 
