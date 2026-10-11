@@ -105,23 +105,28 @@ int main() {
     assert(!hasText(rubyUnknown, "Language id 0 cannot exist"));
     assert(!hasText(rubyUnknown, "Invalid language id (0)"));
 
-    // Pinned PKHeX GetMaxLanguageID: Gen IV tops out at Korean (8).
-    // The concrete record here remains PK3 deliberately: exactGeneration is a source-context
-    // property, so this proves the central analyzer dispatch rather than a format accessor.
+    // This deliberately contradictory Platinum source label on a PK3
+    // must not override the true Gen III storage format. The real
+    // encrypted PK4 examples below independently verify Gen IV Korean 8.
     auto gen4Bad = makeCandidate(9);
     const auto platinumBad = Legality::analyze(
         gen4Bad, Enums::GameVersion::FRLG, "platinum_nds");
     assert(platinumBad.hasInvalid());
-    assert(hasText(platinumBad, "Language id 9 cannot exist in Generation 4"));
+    assert(hasText(platinumBad, "Exact source-game label conflicts"));
+    assert(hasText(platinumBad, "Language id 9 cannot exist in Generation 3"));
+    assert(!hasText(platinumBad, "Language id 9 cannot exist in Generation 4"));
 
     auto gen4Good = makeCandidate(8);
     const auto platinumGood = Legality::analyze(
         gen4Good, Enums::GameVersion::FRLG, "platinum_nds");
+    // Language 8 exists in PK4 but cannot occur in a native PK3.
+    assert(hasText(platinumGood, "Language id 8 cannot exist in Generation 3"));
     assert(!hasText(platinumGood, "Language id 8 cannot exist in Generation 4"));
 
     auto gen4Unknown = makeCandidate(0);
     const auto platinumUnknown = Legality::analyze(
         gen4Unknown, Enums::GameVersion::FRLG, "platinum_nds");
+    assert(hasText(platinumUnknown, "Exact source-game label conflicts"));
     assert(!hasText(platinumUnknown, "Language id 0 cannot exist"));
     assert(!hasText(platinumUnknown, "Invalid language id (0)"));
 
