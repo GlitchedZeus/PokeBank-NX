@@ -163,7 +163,18 @@ require_all("include/UI/BackupSelectionScreen.h", "int backupFirstRow = 0;")
 if "firstVisibleRow(" in read("src/UI/BackupSelectionScreen.cpp"):
     raise AssertionError("Backup Selection: stale selection-centered scroll helper returned")
 
+require_all("src/UI/Gen2UnifiedPokemonWorkspace.inc",
+            "TouchPickerViewport detailsViewport;", "TouchScrollState detailsTouchScroll;",
+            "detailsTouchScroll.updateVertical(", "appendClippedTouchButton(screen.touchButtons, 1700 + row",
+            "const int touchedDetail = updateUnifiedDetailsTouch")
 chrome = read("include/UI/ScreenChrome.h")
+require_all("include/UI/ScreenChrome.h",
+            "constexpr int kNavBarH      = 56;",
+            "inline bool touchPressedRect(",
+            "withAlpha(Colors::FocusBorder, 92)",
+            "touchPressedRect(bx, by, bw, bh)")
+require_all("src/UI/Panels/ItemsPanel.cpp",
+            "prevPressed = touchPressedRect(", "nextPressed = touchPressedRect(")
 for glyph in ("+", "-", "L", "R", "ZL", "ZR", "Left", "Right", "Up", "Down"):
     if f'btn == "{glyph}"' not in chrome:
         raise AssertionError(f"ScreenChrome: missing tappable controller glyph mapping for {glyph}")
