@@ -187,6 +187,27 @@ require(chrome, "include/UI/ScreenChrome.h",
         "g_touchGlyphHits.push_back(hit);",
         "inline uint64_t navTouchButton(const TouchInput& touch)")
 
+# Gen I's Species picker overlays a fully rendered three-panel workspace.
+# That workspace registers IDs 5000+ for DETAILS/STATS/MOVES; every such hitbox
+# must be discarded before the modal registers only its 3000+/4000+ picker rows.
+# Both foundation input overloads must also prioritize the active picker even
+# while the underlying mode remains Edit/AddDraft.
+foundation = read("src/UI/Gen1PokemonEditorOverlayFoundation.inc")
+gate = "if (state.picker != UX2Picker::None || !foundationMainMode(state.mode))"
+assert foundation.count(gate) == 2, "Gen I must prioritize modal input for touch and controller"
+hardware = read("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc")
+modal = hardware.split("void drawFoundationPicker(", 1)[1].split(
+    "// Final Gen I presentation pass.", 1)[0]
+assert modal.index("drawFullscreenGen1Workspace(screen, fb);") < modal.index(
+    "if (!foundationPickerActive(screen))") < modal.index(
+    "screen.touchButtons.clear();") < modal.index(
+    "ux3DrawPicker(screen, fb,"), "Gen I must publish only modal touch hitboxes"
+compositor = read("src/UI/TrainerViewScreenCompositeOverlay.cpp")
+dispatch = compositor.split("void TrainerViewScreen::update(", 1)[1].split(
+    "void TrainerViewScreen::draw(", 1)[0]
+assert dispatch.index("Gen1PokemonEditor::foundationPickerActive(*this)") < dispatch.index(
+    "Gen1PokemonEditor::handleInputUX(*this"), "Picker must own input before background editor"
+
 print("touch modal/list contract: PASS")
 
 # Backup Delete is a destructive confirmation: a finger merely resting on

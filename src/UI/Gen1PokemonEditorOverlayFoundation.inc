@@ -653,7 +653,9 @@ uint64_t foundationDirectTouchInput(TrainerViewScreen& screen, uint64_t down, co
 bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int stickX, int stickY) {
     if (!isGen1SourceUX(screen)) return false;
     auto& state = ux2StateFor(screen);
-    if (!foundationMainMode(state.mode))
+    // An active picker owns all input even while the underlying fullscreen editor
+    // remains in Edit/AddDraft mode; never route touch or A to its hidden fields.
+    if (state.picker != UX2Picker::None || !foundationMainMode(state.mode))
         return handleInputUXCleanup3(screen, down, held, stickX, stickY);
 
     auto& foundation = foundationStateFor(screen);
@@ -668,7 +670,9 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int 
                    const TouchInput& touch) {
     if (!isGen1SourceUX(screen)) return false;
     auto& state = ux2StateFor(screen);
-    if (!foundationMainMode(state.mode))
+    // An active picker owns all input even while the underlying fullscreen editor
+    // remains in Edit/AddDraft mode; never route touch or A to its hidden fields.
+    if (state.picker != UX2Picker::None || !foundationMainMode(state.mode))
         return handleInputUXCleanup3(screen, down, held, stickX, stickY, touch);
 
     auto& foundation = foundationStateFor(screen);
