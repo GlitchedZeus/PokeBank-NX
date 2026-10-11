@@ -147,6 +147,12 @@ for name, expected in {
     "Lite Blue Mail": "liteblue-mail",
     "Portrait Mail": "portraitmail",
     "Surf Mail": "surf-mail",
+    # Source-backed Gen IV key-item identities (index 433/434/436/450/
+    # 453/464/482/483). Never equate unrelated generational item IDs.
+    "Guidebook": "journal", "Sticker Case": "seal-case",
+    "Sticker Bag": "seal-bag", "Bike": "bicycle",
+    "Lunar Feather": "lunar-wing", "Secret Medicine": "secret-potion",
+    "Silver Feather": "silver-wing", "Rainbow Feather": "rainbow-wing",
     "Air Mail": "air-mail", "Orange Mail": "orange-mail",
 }.items():
     assert art_key(name) == expected, (name, art_key(name), expected)
