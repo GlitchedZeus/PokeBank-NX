@@ -337,6 +337,49 @@ bool beginGen3(TrainerViewScreen& screen, CarryState& state, int box,
     return true;
 }
 
+// Gen IV shares the same Y tap/hold/release and touch-drag selection as
+// Gens I-III. Its native 0x88-byte PK4 records are NOT moved by pickup:
+// one atomic staged transaction happens only after Y confirms the drop.
+bool beginGen4(TrainerViewScreen& screen, CarryState& state, int box, int anchorSlot,
+               const std::vector<std::size_t>& slots) {
+    auto& trainer = static_cast<PokeVault::Legacy::Gen4ReadOnlyTrainer&>(screen.trainer);
+    auto* editor = trainer.stagedPokemon();
+    if (!editor) {
+        screen.postStatus("Generation IV staged Pokemon editing is unavailable", 280);
+        clearTransientSelection(screen, state);
+        return true;
+    }
+    std::vector<CarriedVisual> visuals;
+    std::string error;
+    for (auto slot : slots) {
+        auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(box), slot, &error);
+        if (!pokemon) {
+            screen.postStatus(error.empty() ? "Invalid Gen IV selection" : error, 280);
+            clearTransientSelection(screen, state);
+            return true;
+        }
+        const uint32_t pid = pokemon->pid();
+        const bool shiny = ((pid & 0xffffu) ^ (pid >> 16) ^
+                            pokemon->tid() ^ pokemon->sid()) < 8;
+        visuals.push_back({pokemon->species(), pokemon->form(), shiny});
+    }
+    if (visuals.empty()) {
+        screen.postStatus("The selected rectangle contains no Pokemon", 220);
+        clearTransientSelection(screen, state);
+        return true;
+    }
+    state.active = true;
+    state.generation = CarryGeneration::Gen4;
+    state.sourceBox = box;
+    state.sourceSlot = anchorSlot;
+    state.gen4SourceSlots = slots;
+    state.visuals = std::move(visuals);
+    clearTransientSelection(screen, state);
+    setLegacyHoldingPresentation(screen, true);
+    screen.postStatus("Gen IV Pokemon picked up - Y places, B cancels", 240);
+    return true;
+}
+
 bool beginSelectedGroup(TrainerViewScreen& screen, CarryState& state) {
     const int capacity = classicCapacity(screen);
     const auto rectangle = Multi::rectangleSlots(state.selectionAnchor, state.selectionCursor, capacity);
@@ -344,7 +387,29 @@ bool beginSelectedGroup(TrainerViewScreen& screen, CarryState& state) {
     std::vector<std::size_t> slots;
     if (isGen1(screen)) slots = occupiedSelectionGen1(screen, state.selectionBox, rectangle, visuals);
     else if (isGen2(screen)) slots = occupiedSelectionGen2(screen, state.selectionBox, rectangle, visuals);
-    else {
+    else if (isGen4(screen)) {
+        auto& trainer = static_cast<PokeVault::Legacy::Gen4ReadOnlyTrainer&>(screen.trainer);
+        auto* editor = trainer.stagedPokemon();
+        if (!editor) {
+            clearTransientSelection(screen, state);
+            screen.postStatus("Gen IV staged workspace unavailable", 240);
+            return true;
+        }
+        for (std::size_t i = 0; i < rectangle.count; ++i) {
+            std::string error;
+            const int slot = rectangle[i];
+            auto pokemon = editor->boxedPokemon(
+                static_cast<std::size_t>(state.selectionBox),
+                static_cast<std::size_t>(slot), &error);
+            if (pokemon) slots.push_back(static_cast<std::size_t>(slot));
+            else if (error != "selected Gen IV box slot is empty") {
+                clearTransientSelection(screen, state);
+                screen.postStatus(error.empty() ? "Gen IV box slot failed validation" : error, 320);
+                return true;
+            }
+        }
+        return beginGen4(screen, state, state.selectionBox, state.selectionAnchor, slots);
+    } else {
         auto& trainer = static_cast<PokeVault::Legacy::FRLGReadOnlyTrainer&>(screen.trainer);
         if (auto* editor = trainer.stagedPokemon()) {
             for (std::size_t i = 0; i < rectangle.count; ++i) {
@@ -718,6 +783,8 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         if (isGen1(screen)) return beginGen1(screen, state, box, slot);
         if (isGen2(screen)) return beginGen2(screen, state, box, slot);
         if (isGen3(screen)) return beginGen3(screen, state, box, {static_cast<std::size_t>(slot)});
+        if (isGen4(screen)) return beginGen4(screen, state, box, slot,
+                                            {static_cast<std::size_t>(slot)});
         return false;
     }
 
