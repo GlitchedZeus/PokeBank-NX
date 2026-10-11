@@ -935,7 +935,11 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
         state.pickerRow = ItemPickerSort::reorder(
             state.pickerValues, state.pickerNativeValues,
             state.pickerSort, state.pickerRow,
-            [&](uint16_t id) { return pickerValueLabel(screen, state, id); });
+            [&](uint16_t id) {
+                return id == 0 ? std::string("(none)") :
+                    Names::machineDisplayLabel(bridge(screen).sourceSave().rawFamily(), id,
+                                               Names::getItemName(id));
+            });
         state.pickerScroll.stop();
         state.pickerViewport.reset();
         state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
