@@ -65,6 +65,7 @@
 #include "Legality/Gen34EggState.h"
 #include "Legality/Gen34EggBallEvidence.h"
 #include "Legality/Gen34EggMoveEvidence.h"
+#include "Legality/Gen4EggMoveFamilyEvidence.h"
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
 #include "Legality/Gen3JointMoveEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
@@ -1206,6 +1207,32 @@ namespace Legality {
                     detail += " (ancestor species " +
                               std::to_string(eggMove.sourceSpecies) + ")";
                 add(r, Severity::Info, std::move(detail), CheckIdentifier::Egg);
+            }
+            // A native PK4 egg-location or still-unhatched flag can prove
+            // egg origin, but the original RETAIL Gen IV game is obtained
+            // from the retained origin code, not the current save container.
+            // Egg-move pools are positive possibilities only; a move in a
+            // later family does not prove a breeding method or illegal egg.
+            if(eggFormatGeneration==4 && eggState.eggOrigin &&
+               !eggState.invalid() &&
+               Gen4Origin::isNativeRetailGen4(pk.originGame())) {
+                const auto joint=Gen4EggMoveFamily::classify(
+                    Gen4Origin::exactRetailGameId(pk.originGame()),species,
+                    {pk.move(0),pk.move(1),pk.move(2),pk.move(3)});
+                if(joint.originFamilyCandidates)
+                    add(r,Severity::Info,
+                        "Gen IV egg-origin four-slot evidence: " +
+                        std::to_string(joint.originFamilyCandidates) +
+                        " move(s) match an audited egg-move pool in the stored original retail game's family; parent combination and acquisition history remain unresolved",
+                        CheckIdentifier::Egg);
+                if(joint.otherFamilyOnlyCandidates)
+                    add(r,Severity::Info,
+                        "Gen IV egg-origin four-slot evidence: " +
+                        std::to_string(joint.otherFamilyOnlyCandidates) +
+                        " move(s) match an audited different Gen IV egg-move family but not the stored original game's family; event and breeding provenance remain unresolved",
+                        CheckIdentifier::Egg);
+                // Unmodeled slots never imply Illegal. This is a positive
+                // compatibility bound, not a complete simultaneous-pair proof.
             }
         }
 

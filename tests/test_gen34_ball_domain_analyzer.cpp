@@ -111,6 +111,35 @@ Legality::Report analyzeGen4Ball(uint8_t ball, bool exactSource = true,
         : Legality::analyze(view, Enums::GameVersion::PT);
 }
 
+Legality::Report analyzeNativeGen4EggMoveFamilies(
+        uint8_t originVersion,uint16_t first,uint16_t second,
+        bool exactSource=false,bool realEggOrigin=true) {
+    // Real encrypted native PK4 -> read-only parser -> production analysis.
+    std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
+    wr32(raw,0x00,0x12345678u);
+    wr16(raw,0x08,1); // Bulbasaur
+    wr16(raw,0x0C,12345);
+    wr16(raw,0x0E,54321);
+    wr32(raw,0x10,135);
+    wr16(raw,0x28,first);
+    wr16(raw,0x2A,second);
+    raw[0x17]=std::byte{2};
+    raw[0x5F]=static_cast<std::byte>(originVersion);
+    raw[0x83]=std::byte{4};
+    if(realEggOrigin) {
+        wr16(raw,0x44,2000);
+        wr32(raw,0x38,0x40000000u);
+    }
+    const auto enc=Encryption::encryptArray4(raw);
+    Pokemon::Pokemon4ReadOnly stored(enc,Enums::GameVersion::PT);
+    assert(stored.valid() && stored.checksumValid());
+    assert(stored.originVersion()==originVersion);
+    Pokemon::Pokemon4ReadOnlyView view(stored);
+    return exactSource
+        ? Legality::analyze(view,Enums::GameVersion::PT,"platinum_nds")
+        : Legality::analyze(view,Enums::GameVersion::PT);
+}
+
 Legality::Report analyzeSourceFreeNativeGen4Moves(
         uint8_t originalVersion,uint16_t species,
         uint16_t first,uint16_t second) {
@@ -1068,6 +1097,28 @@ int main() {
         15,85,363,false,true,true,false),gcFree));
     assert(!hasText(analyzeDetachedPalParkMoves(2,85,363),gcFree));
     assert(!hasText(analyzeDetachedPalParkMoves(10,85,363),gcFree));
+    // Stored original game, NOT current Platinum save, controls which
+    // egg-move family is an original-family compatibility candidate.
+    constexpr auto sourceEggFamily="Gen IV egg-origin four-slot evidence:";
+    const auto diamondEgg=analyzeNativeGen4EggMoveFamilies(10,80,124);
+    assert(hasInfo(diamondEgg,
+        "1 move(s) match an audited egg-move pool in the stored original retail game's family"));
+    assert(hasInfo(diamondEgg,
+        "1 move(s) match an audited different Gen IV egg-move family"));
+    const auto hgssEgg=analyzeNativeGen4EggMoveFamilies(7,80,124);
+    assert(hasInfo(hgssEgg,
+        "2 move(s) match an audited egg-move pool in the stored original retail game's family"));
+    assert(!hasInfo(hgssEgg,
+        "different Gen IV egg-move family"));
+    assert(hasInfo(analyzeNativeGen4EggMoveFamilies(10,80,124,true),
+        "different Gen IV egg-move family"));
+    assert(!hasText(analyzeNativeGen4EggMoveFamilies(10,80,124,false,false),
+        sourceEggFamily));
+    assert(!hasText(analyzeNativeGen4EggMoveFamilies(2,80,124),
+        sourceEggFamily));
+    assert(!hasText(analyzeNativeGen4EggMoveFamilies(10,57,0),
+        sourceEggFamily));
+
     // Pal Park retains the source generation after legitimate in-game
     // evolution. National species >386 alone is NOT an invalid Gen III
     // provenance claim: Magneton #82 -> Magnezone #462 and Porygon2
