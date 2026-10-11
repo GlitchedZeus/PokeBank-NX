@@ -14,7 +14,20 @@ It is intentionally conservative. A similarly named source file is not enough to
 
 The engine's semantic safety rule remains unchanged: **unknown, unsupported, or unreconstructable history is unresolved / Incomplete, not Invalid.** `Invalid` requires source-backed evidence that the represented Pokémon is impossible.
 
-## Latest accepted checkpoint (2026-10-11; through #248)
+## Latest verified accepted checkpoint (2026-10-11; through #261)
+
+**Authoritative isolated Gen I–IV legality HEAD**: `a0285476acd61f10ca186bcaa5e9ca725c4066ed`. Umbrella PR #103 is OPEN / DRAFT / **NOT merged into MAIN**. This is the accepted state of the legality lane, *not* a release of the editor.
+
+- **Accepted and exact-head verified:** #255–#258 (candidate-specific moves, Pal Park HM chronology, ordinary Gen III/IV egg FIFO methods, Gen IV native contest-ribbon rank prefixes), then #259 (24 retail Gen III ordinary-daycare IV inheritance stage vectors), #260 (candidate-local Time Capsule/Pal Park chronology and reversible six-draw Gen III IV stage), and #261 (strict immutable native PK4 nickname and OT raw source fields). Each of #255–#261 was accepted only after correct-head identity, clean/full host tests, focused RSE save-open regression and ASan/UBSan, using non-force expected-SHA fast-forward.
+- **NOT YET ACCEPTED, pending complete combined CI:** consolidated [#266](https://github.com/GlitchedZeus/PokeBank-NX/pull/266) — same-father four-slot egg construction, one event-card move history, exact PK4 ribbon words and conditional event ribbon masks, known parent-pair eligibility and Gen II→Gen I→Gen II directional acquisition with immutable native PK2 bridge. The separate draft #262–#265 heads are part of the full forward-only ancestry, but **no descendant run substitutes for each required exact combined head check**.
+- **NEXT CONSOLIDATED DRAFT, NOT ACCEPTED:** [#268](https://github.com/GlitchedZeus/PokeBank-NX/pull/268), stacked on #266: correlate *one* Gen III father/mother pair across both inherited moves and inherited IVs, reject malformed supplied IV stages, combine one Gen IV original event across moves/ribbons/native original text only with independently verified archive digests, and forbid fabricated second event/egg origins or Gen II-only retained moves after a verified Time Capsule crossing. Its inputs are currently conditional, historical evidence; **not** inferred from PK1–PK4 automatically. Exact-head all-gates CI mandatory.
+- **Research remains separate:** [#252](https://github.com/GlitchedZeus/PokeBank-NX/pull/252) is source-pinned research and fixture specs; not all source assertions became shipping verifier logic. Old ancestor PRs are closed administratively only on demonstrated accepted ancestry. Unreconciled diverged PRs are left intact.
+
+**Remaining verified comparison:** The **21 verifier families** in this ledger continue to be **20 Partial, 1 Implemented reporting contract only**. This is not a measured percentage of PKHeX parity. The accepted engine still lacks complete *source-attested* combined four-move acquisitions, real parents and game-specific breeding eligibility histories, event source raw payloads/receipts, full historical RNG/PID distributions, many exact OT/trash/language exceptions and exhaustive transfer method histories. One synthetic matching history is not proof of a real retail source; no rejected conditional history is a global Invalid.
+
+**Safety gates:** Original source saves and staged Pokémon remain immutable, unknown remains Incomplete/Unresolved, and no automatic fixing, emulator write permissions, Gen V, Master Vault or Product UI/touch work is authorized in this isolated legality lane. Preserve all newer commits, no reset/rebase/force-push and never merge #103 to MAIN without explicit owner permission.
+
+## Previous accepted checkpoint (2026-10-11; through #248)
 
 **Accepted isolated legality HEAD:** `06eda48b4ea366dcd062cfd34602af8aee32c11c` on 2026-10-11. This is NOT MAIN. Umbrella #103 remains OPEN / DRAFT / NOT MERGED.
 
