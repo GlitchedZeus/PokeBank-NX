@@ -67,6 +67,7 @@ constexpr ConditionalStage classifyConditionalStage(
 // to Gen II does not disprove an earlier Gen I ancestor.
 enum class CurrentTrade : uint8_t {
     Compatible, EggNotTradeable, SpeciesNotInGen1, MoveNotInGen1,
+    InvalidGen2MoveId,
 };
 
 constexpr CurrentTrade classifyCurrentTrade(
@@ -75,6 +76,11 @@ constexpr CurrentTrade classifyCurrentTrade(
     if (isEgg) return CurrentTrade::EggNotTradeable;
     if (species == 0 || species > 151)
         return CurrentTrade::SpeciesNotInGen1;
+    // Move IDs outside the native Gen II ceiling are structurally invalid,
+    // NOT newly introduced legitimate Gen II moves. Do not infer a possible
+    // post-Time-Capsule learning path from a malformed byte.
+    for (const uint16_t move : moves)
+        if (move > 251) return CurrentTrade::InvalidGen2MoveId;
     for (const uint16_t move : moves)
         if (move > 165) return CurrentTrade::MoveNotInGen1;
     return CurrentTrade::Compatible;

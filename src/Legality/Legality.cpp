@@ -722,6 +722,11 @@ namespace Legality {
                         "Current PK2 moves cannot currently enter the Time Capsule because a move was introduced after Gen I; prior Gen I origin is not disproved",
                         CheckIdentifier::Transfer);
                     break;
+                case Gen12TimeCapsule::CurrentTrade::InvalidGen2MoveId:
+                    add(r, Severity::Info,
+                        "Current PK2 Time Capsule trade is blocked by a move ID outside the Generation II format; no legal Gen II acquisition stage is inferred",
+                        CheckIdentifier::Transfer);
+                    break;
             }
 
             if (Gen2Static::matches(
@@ -880,6 +885,11 @@ namespace Legality {
                 case Gen12TimeCapsule::CurrentTrade::MoveNotInGen1:
                     add(r, Severity::Info,
                         "Current PK2 moves cannot currently enter the Time Capsule because a move was introduced after Gen I; prior Gen I origin is not disproved",
+                        CheckIdentifier::Transfer);
+                    break;
+                case Gen12TimeCapsule::CurrentTrade::InvalidGen2MoveId:
+                    add(r, Severity::Info,
+                        "Current PK2 Time Capsule trade is blocked by a move ID outside the Generation II format; no legal Gen II acquisition stage is inferred",
                         CheckIdentifier::Transfer);
                     break;
             }

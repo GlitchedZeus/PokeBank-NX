@@ -174,6 +174,13 @@ int main() {
     assert(!hasInfo(report(25,20,0,false,"crystal_gbc",166),laterMove));
     assert(!hasInfo(report(169,40,0,false,"crystal_gbc",33),laterEvolution));
     assert(!hasInfo(report(25,20,0,false,"",252),laterMove));
+    const auto malformedTimeCapsule=report(25,20,0,false,"",252);
+    assert(hasInfo(malformedTimeCapsule,
+        "Current PK2 Time Capsule trade is blocked by a move ID outside the Generation II format"));
+    assert(!hasInfo(malformedTimeCapsule,
+        "moves cannot currently enter the Time Capsule because a move was introduced after Gen I"));
+    assert(hasInfo(report(25,20,0,false,"crystal_gbc",252),
+        "Current PK2 Time Capsule trade is blocked by a move ID outside the Generation II format"));
     assert(!hasInfo(sourcefreeCaught,"pinned Crystal wild encounter"));
     assert(!hasInfo(sourcefreeCaught,"pinned Generation II static/gift encounter"));
 

@@ -30,6 +30,9 @@ int main() {
     constexpr std::array<uint16_t,4> gen2Move{85,166,0,0};
     assert(classifyCurrentTrade(25,false,gen1Moves)==CurrentTrade::Compatible);
     assert(classifyCurrentTrade(25,false,gen2Move)==CurrentTrade::MoveNotInGen1);
+    assert(classifyCurrentTrade(25,false,{252,0,0,0})==CurrentTrade::InvalidGen2MoveId);
+    assert(classifyCurrentTrade(25,false,{166,252,0,0})==CurrentTrade::InvalidGen2MoveId);
+    assert(!canCurrentlyTradeToGen1(25,false,{252,0,0,0}));
     assert(classifyCurrentTrade(169,false,gen1Moves)==CurrentTrade::SpeciesNotInGen1);
     assert(classifyCurrentTrade(152,false,gen1Moves)==CurrentTrade::SpeciesNotInGen1);
     assert(classifyCurrentTrade(25,true,gen1Moves)==CurrentTrade::EggNotTradeable);
