@@ -7,7 +7,8 @@ constexpr H::Input pair{
     "firered_gba",1,1001,1002,true,
     {33,45,0,0},{80,345,15,33},{33,45,0,0},
     {false,false,true,false},{false,false,false,true},
-    true,false,{80,345,15,33}
+    true,false,{80,345,15,33},
+    1,1,H::PairProof::IndependentlyCompatible
 };
 constexpr auto sameFather=H::evaluate(pair);
 static_assert(sameFather.status==H::Status::CandidateCompatible);
@@ -50,6 +51,8 @@ static_assert(rubyWithGen4OnlyMove.status==H::Status::CandidateMismatch);
 constexpr auto volt=[] {
     H::Input p{};p.game="emerald_gba";p.species=172;
     p.fatherId=1;p.motherId=2;p.snapshotsKnown=true;
+    p.fatherSpecies=25;p.motherSpecies=25;
+    p.pairProof=H::PairProof::IndependentlyCompatible;
     p.base={84,204,0,0};p.lightBallKnown=true;p.lightBall=true;
     p.observed={84,204,344,0};return H::evaluate(p);
 }();
@@ -57,10 +60,42 @@ static_assert(volt.status==H::Status::CandidateCompatible);
 constexpr auto unknownLight=[] {
     H::Input p{};p.game="emerald_gba";p.species=172;
     p.fatherId=1;p.motherId=2;p.snapshotsKnown=true;
+    p.fatherSpecies=25;p.motherSpecies=25;
+    p.pairProof=H::PairProof::IndependentlyCompatible;
     p.base={84,204,0,0};p.observed={84,204,0,0};
     return H::evaluate(p);
 }();
 static_assert(unknownLight.status==H::Status::UnknownLightBall);
+constexpr auto missingEligibility=[]{
+    auto p=pair;p.pairProof=H::PairProof::Unknown;
+    return H::evaluate(p);
+}();
+static_assert(missingEligibility.status==H::Status::UnknownPairEligibility);
+constexpr auto explicitlyIncompatible=[]{
+    auto p=pair;p.pairProof=H::PairProof::IndependentlyIncompatible;
+    return H::evaluate(p);
+}();
+static_assert(explicitlyIncompatible.status==H::Status::CandidateMismatch);
+constexpr auto missingParentSpecies=[]{
+    auto p=pair;p.fatherSpecies=0;
+    return H::evaluate(p);
+}();
+static_assert(missingParentSpecies.status==H::Status::UnknownPairEligibility);
+constexpr auto impossibleGen3Baby=[]{
+    auto p=pair;p.species=387;return H::evaluate(p);
+}();
+static_assert(impossibleGen3Baby.status==H::Status::Unsupported);
+constexpr auto impossibleGen3Father=[]{
+    auto p=pair;p.fatherSpecies=493;return H::evaluate(p);
+}();
+static_assert(impossibleGen3Father.status==H::Status::UnknownPairEligibility);
+constexpr auto gen4ParentRange=[]{
+    auto p=pair;p.game="diamond_nds";
+    p.fatherSpecies=493;p.motherSpecies=493;
+    return H::evaluate(p);
+}();
+static_assert(gen4ParentRange.status!=H::Status::UnknownPairEligibility);
+
 int main() {
     assert(sameFather.status==H::Status::CandidateCompatible);
     assert(different.status==H::Status::CandidateMismatch);
