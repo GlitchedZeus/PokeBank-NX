@@ -122,9 +122,10 @@ inline std::string gscArtKey(std::uint16_t itemId) {
     for (std::size_t i = 0; i < Gen2MachineItemIDs.size(); ++i) {
         if (itemId != Gen2MachineItemIDs[i]) continue;
         const auto type = Gen2MachineArtTypes[i];
-        return type
-            ? std::string(i >= 50 ? "hm-" : "tm-") + typeName(type)
-            : std::string{};
+        // TM03 (Curse) was type ??? in GSC. Give it a separate neutral
+        // disc, not a misleading Normal-type icon or an empty artwork slot.
+        if (!type) return i < 50 ? "tm-unknown" : "hm-unknown";
+        return std::string(i >= 50 ? "hm-" : "tm-") + typeName(type);
     }
     return {};
 }
