@@ -810,6 +810,13 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         screen.creator.keepConfirmActive || screen.details.discardConfirmActive ||
         screen.gen3ConvertConfirmActive || screen.lgpeTransferConfirmActive) return false;
 
+    // The header arrows publish negative touch IDs. Route their presses through
+    // this exact-game category model instead of the inherited two-category RBY
+    // screen, which cannot navigate Medicines/Balls/Key Items/TMs/PC correctly.
+    using CategoryTouch = PokeBank::UIModel::InventoryCategoryTouch;
+    if (touchId == CategoryTouch::PreviousId) down |= HidNpadButton_L;
+    if (touchId == CategoryTouch::NextId) down |= HidNpadButton_R;
+
     std::optional<PokeBank::UIModel::ClassicInventoryInput> input;
     if (down & HidNpadButton_A) input = PokeBank::UIModel::ClassicInventoryInput::A;
     else if (down & HidNpadButton_X) input = PokeBank::UIModel::ClassicInventoryInput::X;
