@@ -943,6 +943,31 @@ int main() {
     assert(!hasText(analyzeDetachedPalParkMoves(0,85,363),
                     stagePrefix));
 
+    // GameCube origin code 15 can be retained through Pal Park via
+    // an *unspecified* intermediary GBA save. Only the universal PK3
+    // move-ID ceiling survives. No named Ruby/Emerald/FRLG move pool.
+    using Legality::Gen34PalParkMoves::postMigrationMoveIds;
+    static_assert(postMigrationMoveIds({85,363,467,0})==2);
+    static_assert(postMigrationMoveIds({85,354,468,0})==0);
+    static_assert(postMigrationMoveIds({0,0,0,0})==0);
+    constexpr auto gcFree="Source-free GameCube-origin Pal Park PK4 move-stage evidence:";
+    constexpr auto gcExact="Exact-source GameCube-origin Pal Park PK4 move-stage evidence:";
+    const auto gamecubeFree=analyzeDetachedPalParkMoves(15,85,363);
+    assert(hasInfo(gamecubeFree,gcFree));
+    assert(!hasText(gamecubeFree,"Source-free Pal Park PK4 joint history bound:"));
+    assert(!hasText(gamecubeFree,"original GBA game's move pool"));
+    const auto gamecubeExact=analyzeDetachedPalParkMoves(15,85,363,true);
+    assert(hasInfo(gamecubeExact,gcExact));
+    assert(!hasText(gamecubeExact,gcFree));
+    assert(!hasText(analyzeDetachedPalParkMoves(15,85,468),gcFree));
+    assert(!hasText(analyzeDetachedPalParkMoves(15,85,354),gcFree));
+    assert(!hasText(analyzeDetachedPalParkMoves(15,85,363,false,false),gcFree));
+    assert(!hasText(analyzeDetachedPalParkMoves(
+        15,85,363,false,true,false,true),gcFree));
+    assert(!hasText(analyzeDetachedPalParkMoves(
+        15,85,363,false,true,true,false),gcFree));
+    assert(!hasText(analyzeDetachedPalParkMoves(2,85,363),gcFree));
+    assert(!hasText(analyzeDetachedPalParkMoves(10,85,363),gcFree));
     // Pal Park retains the source generation after legitimate in-game
     // evolution. National species >386 alone is NOT an invalid Gen III
     // provenance claim: Magneton #82 -> Magnezone #462 and Porygon2

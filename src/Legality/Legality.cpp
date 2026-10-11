@@ -1693,6 +1693,24 @@ namespace Legality {
                     }
                 }
             }
+            // GameCube-origin PK4s reach Gen IV through a GBA save, but
+            // origin code 15 does NOT preserve which GBA title carried them.
+            // Never invent a GBA original-game move pool from this byte.
+            if (Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
+                Gen4Origin::kind(pk.originGame()) ==
+                    Gen4Origin::Kind::Gen3GameCube &&
+                Gen34PalParkMoves::verifiedTransferFields(
+                    pk.gen4MetLocationDP(),pk.gen4MetLocationExtended(),
+                    pk.gen4BallDPPt(),pk.gen4BallHGSS(),pk.isEgg())) {
+                const uint8_t later=Gen34PalParkMoves::postMigrationMoveIds(
+                    {pk.move(0),pk.move(1),pk.move(2),pk.move(3)});
+                if(later)
+                    add(r,Severity::Info,
+                        "Exact-source GameCube-origin Pal Park PK4 move-stage evidence: " +
+                        std::to_string(later) +
+                        " Gen IV move ID(s) require acquisition after migration; intervening GBA game and learning method are not identifiable",
+                        CheckIdentifier::Moves);
+            }
         } else if (!sourceProfile &&
                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 3 &&
                    !Gen4Origin::exactGen3GameId(pk.originGame()).empty()) {
@@ -1812,6 +1830,23 @@ namespace Legality {
                 // An unmodeled slot suppresses joint evidence, never marks
                 // the Pokemon Invalid, nor implies a fake transfer event.
             }
+        } else if (!sourceProfile &&
+                   Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
+                   Gen4Origin::kind(pk.originGame()) ==
+                       Gen4Origin::Kind::Gen3GameCube &&
+                   Gen34PalParkMoves::verifiedTransferFields(
+                       pk.gen4MetLocationDP(),pk.gen4MetLocationExtended(),
+                       pk.gen4BallDPPt(),pk.gen4BallHGSS(),pk.isEgg())) {
+            // A retained Colosseum/XD origin is not proof of any particular
+            // GBA game, GameCube event, tutor, trade or transfer route.
+            const uint8_t later=Gen34PalParkMoves::postMigrationMoveIds(
+                {pk.move(0),pk.move(1),pk.move(2),pk.move(3)});
+            if(later)
+                add(r,Severity::Info,
+                    "Source-free GameCube-origin Pal Park PK4 move-stage evidence: " +
+                    std::to_string(later) +
+                    " Gen IV move ID(s) require acquisition after migration; intervening GBA game and learning method are not identifiable",
+                    CheckIdentifier::Moves);
         } else if (!sourceProfile &&
                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
                    Gen4Origin::isNativeRetailGen4(pk.originGame())) {

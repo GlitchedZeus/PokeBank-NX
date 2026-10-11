@@ -26,6 +26,18 @@ constexpr bool verifiedTransferFields(
            Gen4Transfer::validPalParkBallFields(e,ballDPPt,ballHGSS);
 }
 
+// GameCube origin code 15 does not carry a named original GBA version.
+// The format-specific Generation III move ceiling is still a universal
+// stage constraint for a structurally valid Pal Park PK4. Count *only*
+// IDs that can be stored in Gen IV, never treat invalid IDs as learning.
+constexpr uint8_t postMigrationMoveIds(
+        const std::array<uint16_t,4>& moves) noexcept {
+    uint8_t count=0;
+    for(const uint16_t move:moves)
+        if(move>354 && move<=467)++count;
+    return count;
+}
+
 struct Result {
     uint8_t storedMoves=0;
     uint8_t originalGbaCompatible=0;
