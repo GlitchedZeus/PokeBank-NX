@@ -5,6 +5,7 @@
 #include "Legality/Gen3ShedinjaEvolutionMoveEvidence.h"
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
+#include "Legality/Gen34OrdinaryEggMoveConstruction.h"
 #include "Legality/Gen4JointMoveEvidence.h"
 #include "Legality/Gen34PalParkMoves.h"
 #include "Legality/Gen34PalParkHMHistory.h"
@@ -974,6 +975,72 @@ int main() {
     emeraldJoint.refreshChecksum();
     assert(!hasInfo(Legality::analyze(
         emeraldJoint,Enums::GameVersion::FRLG),jointEmeraldText));
+
+    // BREED-001: construct ordered III/IV ordinary eggs from explicitly
+    // hypothetical already-compatible parents, never infer parent identity
+    // from observed child move membership. Duplicates are suppressed and
+    // overflow drops the oldest move, without sorting the move IDs.
+    namespace OrdinaryEgg=Legality::Gen34OrdinaryEggMoveConstruction;
+    constexpr auto basePichu=OrdinaryEgg::Input{
+        "emerald_gba",172,{84,204,0,0},{},{},{},true,false};
+    constexpr auto baseEgg=OrdinaryEgg::construct(basePichu);
+    static_assert(baseEgg.matches({84,204,0,0}));
+    constexpr auto voltEgg=OrdinaryEgg::construct(OrdinaryEgg::Input{
+        "emerald_gba",172,{84,204,0,0},{},{},{},true,true});
+    static_assert(voltEgg.matches({84,204,344,0}));
+    static_assert(!voltEgg.matches({344,84,204,0}));
+    constexpr auto noVoltRuby=OrdinaryEgg::construct(OrdinaryEgg::Input{
+        "ruby_gba",172,{84,204,0,0},{},{},{},true,true});
+    static_assert(noVoltRuby.matches({84,204,0,0}));
+    constexpr auto gen4Volt=OrdinaryEgg::construct(OrdinaryEgg::Input{
+        "platinum_nds",172,{84,204,0,0},{},{},{},true,true});
+    static_assert(gen4Volt.matches({84,204,344,0}));
+    constexpr auto parentalUnknown=OrdinaryEgg::construct(
+        OrdinaryEgg::Input{"emerald_gba",172,{84,204,0,0}});
+    static_assert(parentalUnknown.status==
+        OrdinaryEgg::Status::UnknownLightBallState);
+    constexpr auto shiftedEgg=OrdinaryEgg::construct(OrdinaryEgg::Input{
+        "emerald_gba",25,{1,2,3,4},{5,6,0,0},{6,7,0,0},
+        {8,8,0,0},true,false});
+    static_assert(shiftedEgg.matches({5,6,7,8}));
+    constexpr auto absentGame=OrdinaryEgg::construct(
+        OrdinaryEgg::Input{"unknown",172,{84,204,0,0}});
+    static_assert(absentGame.status==OrdinaryEgg::Status::UnsupportedGame);
+
+    // Actual native PK3 -> immutable production analyzer route:
+    // retained Emerald origin plus consistent unhatched met-level-0 field.
+    constexpr auto ordinaryText="Emerald Pichu ordinary egg construction:";
+    auto pichuEgg=gen3WithBall(4);
+    pichuEgg.setSpecies(172);
+    pichuEgg.setOriginGame(3);
+    pichuEgg.setMetLevel(0);
+    pichuEgg.setEgg(true);
+    pichuEgg.setMove(0,84);
+    pichuEgg.setMove(1,204);
+    pichuEgg.setMove(2,344);
+    pichuEgg.refreshChecksum();
+    assert(hasInfo(Legality::analyze(
+        pichuEgg,Enums::GameVersion::FRLG),ordinaryText));
+    assert(!hasInvalidText(Legality::analyze(
+        pichuEgg,Enums::GameVersion::FRLG),ordinaryText));
+    pichuEgg.setMove(0,344);
+    pichuEgg.setMove(1,84);
+    pichuEgg.setMove(2,204);
+    pichuEgg.refreshChecksum();
+    assert(!hasInfo(Legality::analyze(
+        pichuEgg,Enums::GameVersion::FRLG),ordinaryText));
+    pichuEgg.setMove(0,84);
+    pichuEgg.setMove(1,204);
+    pichuEgg.setMove(2,344);
+    pichuEgg.setEgg(false); // Hatched can reorder and relearn moves.
+    pichuEgg.refreshChecksum();
+    assert(!hasInfo(Legality::analyze(
+        pichuEgg,Enums::GameVersion::FRLG),ordinaryText));
+    pichuEgg.setEgg(true);
+    pichuEgg.setOriginGame(2); // Ruby was before Volt Tackle breeding.
+    pichuEgg.refreshChecksum();
+    assert(!hasInfo(Legality::analyze(
+        pichuEgg,Enums::GameVersion::FRLG),ordinaryText));
 
     // Source-free known native PK3/PK4 formats have generation-specific
     // species/move ceilings regardless of their exact save identity.

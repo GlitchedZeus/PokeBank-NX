@@ -65,6 +65,7 @@
 #include "Legality/Gen34EggState.h"
 #include "Legality/Gen34EggBallEvidence.h"
 #include "Legality/Gen34EggMoveEvidence.h"
+#include "Legality/Gen34OrdinaryEggMoveConstruction.h"
 #include "Legality/Gen4EggMoveFamilyEvidence.h"
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
@@ -1213,6 +1214,33 @@ namespace Legality {
                         "Native Generation III/IV egg origin has a compatible Poke Ball; ball inheritance is unavailable before Generation VI and alternative gift/transfer provenance remains incomplete",
                         CheckIdentifier::Items);
                 }
+            }
+
+            // BREED-001: this native unhatched Emerald Pichu may match
+            // a conditional ordinary daycare constructor with only its
+            // two audited base moves and optional Light Ball Volt Tackle.
+            // Empty inherited-parent move sets are a HYPOTHESIS: the
+            // parents/event source are not encoded in the PK3. No failure
+            // to match this narrow candidate is global Invalid.
+            if(eggFormatGeneration==3 && !eggState.invalid() &&
+               pk.isEgg() && species==172 && !sourceFormatMismatch &&
+               Gen4Origin::exactGen3GameId(pk.originGame())=="emerald_gba") {
+                Gen34OrdinaryEggMoveConstruction::Input egg{};
+                egg.gameId="emerald_gba";
+                egg.species=172;
+                egg.baseMoves={84,204,0,0}; // Thunder Shock, Charm.
+                egg.lightBallStateKnown=true;
+                const std::array<uint16_t,4> stored{
+                    pk.move(0),pk.move(1),pk.move(2),pk.move(3)};
+                const auto plain=
+                    Gen34OrdinaryEggMoveConstruction::construct(egg);
+                egg.eligibleParentHeldLightBall=true;
+                const auto lightBall=
+                    Gen34OrdinaryEggMoveConstruction::construct(egg);
+                if(plain.matches(stored) || lightBall.matches(stored))
+                    add(r,Severity::Info,
+                        "Emerald Pichu ordinary egg construction: the native unhatched move order matches a conditional base-move or Light Ball Volt Tackle daycare hypothesis; real parents, event alternatives and earlier egg acquisition remain unresolved",
+                        CheckIdentifier::Egg);
             }
 
             if (eggFormatGeneration == 4 && eggState.eggOrigin &&
