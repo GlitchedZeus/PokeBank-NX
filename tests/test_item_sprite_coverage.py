@@ -198,6 +198,8 @@ for name in CUSTOM_GSC:
     assert f'"{name}"' in custom_src
 assert "berserk-gene" in generator and "iberserk_gene.png" in generator
 assert "render_classic_icons()" in generator
+assert '"tm-unknown"' in custom_src
+assert "Gen2MachineArtTypes" in (ROOT / "include/UI/ClassicMachineArtwork.h").read_text(encoding="utf-8")
 mail_renderer = (ROOT / "tools/render_gen2_mail_stationery.py").read_text(encoding="utf-8")
 assert "render_unavailable_exact_mail(remaining)" in generator
 assert "recover_real_mail_sheet(unavailable)" in generator
