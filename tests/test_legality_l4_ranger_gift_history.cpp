@@ -45,7 +45,9 @@ int main() {
     auto hatched=egg;hatched.observed.isEgg=false;
     hatched.observed.metLocation=1;
     auto s=source;s.hatchGameHistoryKnown=true;s.hatchGameVersion=10;
-    assert(R::evaluate(true,hatched,s).status==Status::ConditionalGiftCandidate);
+    const auto directHatched=R::evaluate(true,hatched,s);
+    assert(directHatched.status==Status::ConditionalGiftCandidate);
+    assert(directHatched.hatch==Legality::Gen4Hatch::HatchResult::ValidForOrigin);
     assert(R::evaluate(true,hatched,source).status==Status::UnknownHatchGame);
     hatched.observed.metLocation=0;
     assert(R::evaluate(true,hatched,s).status==Status::CandidateHatchLocationMismatch);

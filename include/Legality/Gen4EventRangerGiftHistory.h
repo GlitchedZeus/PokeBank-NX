@@ -77,6 +77,10 @@ constexpr Result evaluate(bool nativeAvailable,const Input& in,
                                       source.hatchGameVersion)) {
                 out.status=Status::CandidateHatchLocationMismatch;return out;
             }
+            // Ordinary-egg check sees Ranger's special origin 3001 as
+            // outside its bounded table; replace that intermediate
+            // classification after the Ranger-specific proof succeeds.
+            out.hatch=Hatch::HatchResult::ValidForOrigin;
         } else if(out.hatch==Hatch::HatchResult::UnknownOrigin) {
             out.status=Status::UnknownHatchGame;return out;
         } else if(out.hatch==Hatch::HatchResult::InvalidKnownOrigin) {
