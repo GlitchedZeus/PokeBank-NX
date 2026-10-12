@@ -93,6 +93,13 @@ echo "L4 Ranger native storage field contract (196861 exhaustive cases)"
 "$compiler" "${base[@]}" tests/fixtures/legality_l4_ranger_storage_ball.cpp \
     -o "$scratch/l4_ranger_storage_ball"
 "$scratch/l4_ranger_storage_ball"
+# Original historical manifest tags are untrusted data. Exercise every raw
+# generation/action byte and permitted route combination independently of
+# the 28 registered C++ suites.
+echo "L4 C++ historical domain compile: 70,144 boundary cases"
+"$compiler" "${base[@]}" tests/fixtures/legality_l4_historical_domain.cpp \
+    -o "$scratch/l4_historical_domain"
+"$scratch/l4_historical_domain"
 for name in "${header_only[@]}"; do
     echo "L4 C++ compile: $name"
     "$compiler" "${base[@]}" "tests/$name.cpp" -o "$scratch/$name"
