@@ -120,4 +120,15 @@ assert "titleSelected=true;" not in selector
 require(trainer, "Gen5ReadOnlyTrainer::rebuildPresentation(")
 assert "fwrite(" not in trainer and "ofstream(" not in trainer
 
+# The candidate serializer may only build an app-owned byte array; no provider
+# write, Inject Save or generic source mutation is licensed by this milestone.
+candidate = read("include/Integration/Gen5/Gen5StagedSaveCandidate.h")
+require(candidate, "verifyStagedReview(change, &reviewError)",
+        "Gen5ReadOnlySave::parse(output.bytes, source.exactGameId()",
+        "output.bytes.assign(original.begin(), original.end());",
+        "Gen V export modified bytes outside verified PK5 and CRC ranges",
+        "const auto selection = source.selectedBackupPartition()")
+for forbidden in ("fwrite(", "ofstream", "std::filesystem", "injectSave("):
+    assert forbidden not in candidate, f"Gen V candidate must not write sources: {forbidden}"
+
 print("Gen V read-only shared UI guard contracts: PASS")

@@ -9,6 +9,7 @@
 #include "Integration/Gen5/Gen5SharedPokemonSession.h"
 #include "Integration/Gen5/Gen5SharedEditorBridge.h"
 #include "Integration/Gen5/Gen5SharedReview.h"
+#include "Integration/Gen5/Gen5StagedSaveCandidate.h"
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Games/GameIdentity.h"
@@ -480,6 +481,68 @@ int main() {
         assert(!workspace.stageBox(0,29,G::StagedPokemon5Record::Field::EV,0,300,&error));
         assert(!workspace.stageBox(0,1,G::StagedPokemon5Record::Field::Nature,0,1,&error));
         assert(workspace.changedRecordCount()==2);
+        // Full-SAV candidate is produced ONLY in app-owned memory; it must
+        // retain all retail block checksums, the exact game and all other bytes.
+        const auto exported=G::buildStagedSaveCandidate(workspace,&error);
+        assert(exported && error.empty() && exported->changedRecords==2);
+        assert(exported->bytes.size()==sav.size());
+        assert(exported->selectedCopyOffset==parsed->selectedCopyOffset());
+        assert(exported->exactGameId==id);
+        assert(exported->bytes!=sav);
+        const auto reread=G::Gen5ReadOnlySave::parse(exported->bytes,id,&error,
+            G::SaveCopySelection::Primary);
+        assert(reread && error.empty() && reread->family()==family);
+        assert(reread->partyPokemon(0)->nature()==12);
+        assert(reread->boxPokemon(0,0)->friendship()==255);
+        assert(reread->boxPokemon(0,0)->ivs()[5]==31);
+        assert(reread->partyPokemon(0)->partyLevel()==50);
+        assert(reread->trainer().rawName==parsed->trainer().rawName);
+        assert(reread->dexProgress().seen==parsed->dexProgress().seen);
+        const size_t copySize=family==G::SaveFamily::BlackWhite
+            ? L::BlackWhiteCopySize:L::Black2White2CopySize;
+        assert(std::equal(exported->bytes.begin()+static_cast<std::ptrdiff_t>(copySize),
+                          exported->bytes.end(),
+                          sav.begin()+static_cast<std::ptrdiff_t>(copySize)));
+        assert(std::equal(parsed->sourceBytes().begin(),
+                          parsed->sourceBytes().end(),sav.begin()));
+        // A two-copy source whose backup is intentionally different must
+        // preserve the PRIMARY unmodified when the owner chose Backup.
+        auto dual=make(family,version);
+        const auto backupImage=make(family,version,copySize);
+        std::copy(backupImage.begin()+static_cast<std::ptrdiff_t>(copySize),
+                  backupImage.begin()+static_cast<std::ptrdiff_t>(2*copySize),
+                  dual.begin()+static_cast<std::ptrdiff_t>(copySize));
+        dual[copySize+0x19400+0x26]=12;
+        if(family==G::SaveFamily::BlackWhite)stamp(dual,copySize,L::BlackWhite);
+        else stamp(dual,copySize,L::Black2White2);
+        assert(!G::Gen5ReadOnlySave::parse(dual,id,&error)); // ambiguous freshness
+        const auto selectedBackup=G::Gen5ReadOnlySave::parse(
+            dual,id,&error,G::SaveCopySelection::Backup);
+        assert(selectedBackup && selectedBackup->selectedBackupPartition());
+        G::Gen5StagedPokemonWorkspace backupWorkspace(*selectedBackup);
+        assert(backupWorkspace.stageParty(
+            0,G::StagedPokemon5Record::Field::Nature,0,18,&error));
+        const auto backupExport=G::buildStagedSaveCandidate(backupWorkspace,&error);
+        assert(backupExport && backupExport->changedRecords==1);
+        assert(backupExport->selectedCopyOffset==copySize);
+        assert(std::equal(dual.begin(),
+                          dual.begin()+static_cast<std::ptrdiff_t>(copySize),
+                          backupExport->bytes.begin()));
+        assert(std::equal(dual.begin()+static_cast<std::ptrdiff_t>(2*copySize),
+                          dual.end(),
+                          backupExport->bytes.begin()+static_cast<std::ptrdiff_t>(2*copySize)));
+        const auto backupParsed=G::Gen5ReadOnlySave::parse(backupExport->bytes,id,
+            &error,G::SaveCopySelection::Backup);
+        assert(backupParsed && backupParsed->selectedBackupPartition());
+        assert(backupParsed->partyPokemon(0)->nature()==18);
+        assert(G::Gen5ReadOnlySave::parse(backupExport->bytes,id,&error,
+            G::SaveCopySelection::Primary)->partyPokemon(0)->nature()!=18);
+        assert(std::equal(dual.begin(),dual.end(),
+                          selectedBackup->sourceBytes().begin()));
+        // No edits means NO candidate, avoiding a misleading exported SAV.
+        backupWorkspace.discardAll();
+        assert(!G::buildStagedSaveCandidate(backupWorkspace,&error));
+        assert(!error.empty());
         const auto pending=workspace.pendingReview();
         assert(pending.size()==2);
         for(const auto& change:pending) {
