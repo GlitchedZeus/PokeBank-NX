@@ -53,6 +53,8 @@ header_only=(
     test_legality_l4_historical_event_path
     test_legality_l4_clock_receipt_history
     test_legality_l4_historical_adversarial
+    test_legality_l4_stage5_coordinator_join
+    test_legality_l4_stage5_lane_reconciliation
 )
 native=(
     test_legality_l4_native_pk4_projection
@@ -99,14 +101,24 @@ echo "L4 C++ native PK3 compile: test_legality_l4_gen3_palpark_metadata_bridge"
     src/Encryption/Encryption3FRLG.cpp \
     -o "$scratch/test_legality_l4_gen3_palpark_metadata_bridge"
 "$scratch/test_legality_l4_gen3_palpark_metadata_bridge"
+echo "L4 C++ native PK3 compile: test_legality_l4_stage5_native_pk3_join"
+"$compiler" "${base[@]}" "${pk3_flags[@]}" \
+    tests/test_legality_l4_stage5_native_pk3_join.cpp \
+    src/Encryption/Encryption3FRLG.cpp \
+    -o "$scratch/test_legality_l4_stage5_native_pk3_join"
+"$scratch/test_legality_l4_stage5_native_pk3_join"
 echo "L4 Python frozen original-source projection integrity audit"
 python3 tools/legality_l4_projection_audit.py
 python3 -m unittest discover -v -s tests -p 'test_legality_l4_projection_audit.py'
 python3 -m unittest discover -v -s tests -p 'test_legality_l4_l5_q07_join.py'
+python3 -m unittest discover -v -s tests -p 'test_legality_l4_stage5_source_rights.py'
 # L5's independent Q07 document is NOT on the L4 branch. When coordinator
 # supplies its exact separately fetched copy, verify all 247 cross-lane
 # identities and the source-projection Git blob digest without merging.
 if [[ -n "${L4_L5_Q07_JSON:-}" ]]; then
     python3 tools/legality_l4_l5_q07_join.py --l5-q07 "$L4_L5_Q07_JSON"
 fi
-echo "L4 all 25 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
+if [[ -n "${L4_L5_Q08_JSON:-}" ]]; then
+    python3 tools/legality_l4_stage5_source_rights.py --l5-q08 "$L4_L5_Q08_JSON"
+fi
+echo "L4 all 28 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
