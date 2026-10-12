@@ -139,6 +139,36 @@ void testRetailDaycareSlotOrdering() {
                     Legality::Gen34SameParentEggHistory::Status::CandidateCompatible);
                 assert(out.status==H::Status::KnownCandidateConsistent);
                 assert(out.ivs==G::CandidateCheck::Matched);
+                if(G::family(game)==G::Family::Emerald) {
+                    namespace B=Legality::Gen34BreedingPairEligibility;
+                    B::Parent dad{101,1,1,2,B::Gender::Male,1,true,true,true};
+                    B::Parent mom{202,1,1,2,B::Gender::Female,2,true,true,true};
+                    B::Input attested{};
+                    attested.game=game;
+                    attested.slot0=fatherSlot==0?dad:mom;
+                    attested.slot1=fatherSlot==0?mom:dad;
+                    attested.depositOrderIndependentlyVerified=true;
+                    auto unproven=in;
+                    unproven.moveHistory.pairProof=
+                        Legality::Gen34SameParentEggHistory::PairProof::Unknown;
+                    unproven.daycareSlotOrderIndependentlyVerified=false;
+                    unproven.daycareSlot0ParentId=0;
+                    unproven.daycareSlot1ParentId=0;
+                    assert(H::evaluateFromAttestedDaycare(unproven,attested).status==
+                           H::Status::KnownCandidateConsistent);
+                    auto unknownDeposit=attested;
+                    unknownDeposit.depositOrderIndependentlyVerified=false;
+                    assert(H::evaluateFromAttestedDaycare(unproven,unknownDeposit).status==
+                           H::Status::UnknownDaycareSlotOrder);
+                    auto unknownPersonal=attested;
+                    unknownPersonal.slot0.personalDataIndependentlyVerified=false;
+                    assert(H::evaluateFromAttestedDaycare(unproven,unknownPersonal).status==
+                           H::Status::UnknownPairEligibility);
+                    auto inconsistent=attested;
+                    inconsistent.slot0.eggGroup1=15; // Undiscovered
+                    assert(H::evaluateFromAttestedDaycare(unproven,inconsistent).status==
+                           H::Status::MoveCandidateContradicted);
+                }
                 // Without independent order we cannot claim either a
                 // match or an impossibility, even with both parent IVs.
                 auto unknown=in;

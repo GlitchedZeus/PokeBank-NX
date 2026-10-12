@@ -6,6 +6,7 @@
 // A mismatch excludes THIS history only, never a Pokemon globally.
 #include "Legality/Gen34SameParentEggHistory.h"
 #include "Legality/Gen3EggIVInheritanceStage.h"
+#include "Legality/Gen34BreedingPairEligibility.h"
 #include <array>
 #include <cstdint>
 
@@ -127,5 +128,20 @@ constexpr Result evaluate(const Input& in) noexcept {
             out.status=Status::UnsupportedGame;break;
     }
     return out;
+}
+// Joint conditional source binding: derive donor roles and physical IV
+// slots from the SAME independently supplied daycare pair, never a
+// caller-assumed father-first ordering or prefilled pair compatibility.
+constexpr Result evaluateFromAttestedDaycare(
+        const Input& candidate,
+        const Gen34BreedingPairEligibility::Input& attested) noexcept {
+    Input derived=candidate;
+    const auto pair=Gen34BreedingPairEligibility::evaluate(attested);
+    derived.moveHistory.pairProof=Gen34BreedingPairEligibility::proofFor(
+        pair,candidate.moveHistory.fatherId,candidate.moveHistory.motherId);
+    derived.daycareSlotOrderIndependentlyVerified=pair.depositOrderKnown;
+    derived.daycareSlot0ParentId=pair.slot0Id;
+    derived.daycareSlot1ParentId=pair.slot1Id;
+    return evaluate(derived);
 }
 } // namespace Legality::Gen3JointEggCandidateEvidence
