@@ -553,6 +553,17 @@ gen2_review = gen2_hardware.split("if (shared.provenanceActive)", 1)[-1]
 assert "if (touch.justTouchedDown() || touch.justTapped())" not in gen2_review
 assert "pointInRect(touch.startX(), touch.startY()," in gen2_review
 assert "pointInRect(touch.x(), touch.y()," in gen2_review
+# The Gen II final repaint scrolls Details independently of controller
+# focus. Never hit-test a stale focus-centred row window before the real
+# clipped 1700+row targets handle the same tap.
+gen2_hardware_direct = gen2_hardware.split(
+    "bool focusUnifiedTouchPoint(", 1)[1].split("void handleUnifiedTouch(", 1)[0]
+assert "Unified::scrollWindow" not in gen2_hardware_direct
+assert "1700" not in gen2_hardware_direct  # native hit IDs own Details
+gen2_details_input = read("src/UI/Gen2UnifiedPokemonWorkspace.inc")
+assert "hit >= 1700 && hit < 1700 + count ? hit - 1700 : -1" in gen2_details_input
+assert "if (touchedDetail >= 0) {" in gen2_details_input
+assert "activateUnifiedField(screen, state, unified.focus)" in gen2_details_input
 require_all("src/UI/Gen2HardwareWorkspaceFix.inc",
             "const bool started = focusUnifiedTouchPoint(",
             "screen, touch.startX(), touch.startY(), false, down",

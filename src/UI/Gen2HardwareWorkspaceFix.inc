@@ -119,21 +119,17 @@ bool focusUnifiedTouchPoint(TrainerViewScreen& screen, int px, int py, bool acti
     // centered workspace geometry. Hit-test exactly that 1280x720 Switch surface.
     const SharedPokemonShell::Geometry geometry(1280, 720, kNavBarH);
     const int contentY = geometry.y;
-    const int leftX = geometry.leftX, leftW = geometry.leftW;
     const int midX = geometry.midX, midW = geometry.midW;
     const int rightX = geometry.rightX, rightW = geometry.rightW;
 
-    const std::size_t detailCount = unified.crystal ? 13u : 9u;
-    const auto window = Unified::scrollWindow(detailCount, 8, unified.detailsFocus);
-    for (std::size_t i = 0; i < window.count; ++i) {
-        const int yy = contentY + 224 + static_cast<int>(i) * 38;
-        if (!pointInRect(px, py, leftX + 8, yy + 1, leftW - 36, 34)) continue;
-        const auto row = static_cast<uint8_t>(window.first + i);
-        unified.focus = {Unified::Panel::Details, row, 0};
-        unified.detailsFocus = Unified::detailsScrollFocus(unified.focus, unified.detailsFocus);
-        if (activate && state.mode != Mode::View) down |= HidNpadButton_A;
-        return true;
-    }
+    // Do not hit-test DETAILS through the obsolete focus-centred scrollWindow.
+    // The final hardware repaint draws from detailsViewport.firstRow plus
+    // detailsTouchScroll.offset(), not detailsFocus. The existing clipped
+    // 1700+row targets in drawUnifiedDetails()/updateUnifiedDetailsTouch()
+    // are the single source of truth for visible Details taps (including
+    // Crystal's bottom Held Item and encounter rows). This helper handles
+    // the Stats/Moves cells and its child dialogs only.
+
 
     for (int row = 0; row < 5; ++row) {
         const int yy = contentY + 70 + row * 34;

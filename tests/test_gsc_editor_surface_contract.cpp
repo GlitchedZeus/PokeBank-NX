@@ -186,6 +186,14 @@ int main() {
     assert(unified.find("std::array<std::pair<std::string, std::string>, 2> capabilityRows") != std::string::npos);
     assert(unified.find("Encounter legality: Not checked") != std::string::npos);
     assert(unified.find("const int first = unified.detailsViewport.firstRow") != std::string::npos);
+    // Touching a visually scrolled Details row must not invoke the old
+    // independently recalculated focus-centred hit test. The 1700+ row
+    // targets published by the actual clipped render own selection.
+    const auto oldHardwareFocus = workspaceFix.substr(
+        workspaceFix.find("bool focusUnifiedTouchPoint("),
+        workspaceFix.find("void handleUnifiedTouch(") - workspaceFix.find("bool focusUnifiedTouchPoint("));
+    assert(oldHardwareFocus.find("Unified::scrollWindow") == std::string::npos);
+    assert(unified.find("hit >= 1700 && hit < 1700 + count ? hit - 1700 : -1") != std::string::npos);
     assert(unified.find("fb.setClipRect(x + 8, top, w - 16, visible * rowHeight)") != std::string::npos);
     // The final Gen II repaint now uses a touch-aware pixel-offset viewport but
     // still renders an eight-row clipped window over the semantic Details list.
