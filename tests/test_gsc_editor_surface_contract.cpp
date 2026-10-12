@@ -127,12 +127,15 @@ int main() {
 
     assert(shared.find("caps.hasLegalityProvenance = true") != std::string::npos);
     assert(shared.find("SharedEditor::actionLabel(action)") != std::string::npos);
-    assert(parity.find("SharedEditor::actionMenuGeometry()") != std::string::npos);
+    assert(parity.find("NarrowPokemonMenu::classic(") != std::string::npos);
     const auto actionsDraw = parity.substr(parity.find("void drawParityGen2Actions"),
         parity.find("void drawParityGen2Review") - parity.find("void drawParityGen2Actions"));
     assert(actionsDraw.find("screen.drawLegacyBase(fb)") != std::string::npos);
     assert(actionsDraw.find("screen.drawGSCOverlay(fb)") == std::string::npos);
-    assert(actionsDraw.find("drawPanelSurface(fb, x, y, w, h, false, 18)") != std::string::npos);
+    assert(actionsDraw.find("drawNarrowPokemonActions(fb, screen.touchButtons") != std::string::npos);
+    const auto narrow = read("include/UI/NarrowPokemonActionMenu.h");
+    assert(narrow.find("int width = 440") != std::string::npos);
+    assert(narrow.find("Add to Master Vault") != std::string::npos);
     assert(actionsDraw.find("fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2)") == std::string::npos);
     // The composite wrapper must not paint the legacy staged-editor Accent shell first.
     const auto ownsFrame = parity.substr(parity.find("bool finalGen2SurfaceOwnsFrame"),
