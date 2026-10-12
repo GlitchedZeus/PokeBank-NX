@@ -52,6 +52,7 @@ constexpr bool localContradiction(J::Status s) noexcept {
         case J::Status::IncoherentMoveSnapshot:
         case J::Status::IncoherentSharedStage:
         case J::Status::MoveCandidateContradicted:
+        case J::Status::IVNecessaryPatternContradicted:
         case J::Status::IVCandidateContradicted:
             return true;
         default:return false;

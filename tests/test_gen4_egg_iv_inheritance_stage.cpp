@@ -1,9 +1,11 @@
 #include "Legality/Gen4EggIVInheritanceStage.h"
+#include "Legality/Gen4EggIVStructuralBounds.h"
 #include <array>
 #include <cassert>
 #include <cstdint>
 #include <iostream>
 namespace G=Legality::Gen4EggIVInheritanceStage;
+namespace S=Legality::Gen4EggIVStructuralBounds;
 struct Fixture {
     const char* game;uint32_t entry,final;uint16_t item0,item1;uint8_t count;
     std::array<uint8_t,6> initial,slot0,slot1,child;
@@ -218,9 +220,92 @@ int main() {
             assert(G::verifyKnownFinalStage(unknownItems)==G::CandidateCheck::Matched);
             if(r.distinctInheritedStats<3)++platinumRepeated;
         }
+        // A known, fully replayed retail stage MUST pass our weaker
+        // seed-independent necessary-domain test, for all 138 pinned
+        // Platinum/HGSS C/Python cross-checked fixture vectors.
+        S::Input structural{};
+        structural.game=fixture.game;
+        structural.physicalSlot0=fixture.slot0;
+        structural.physicalSlot1=fixture.slot1;
+        structural.observedChild=fixture.child;
+        structural.heldItem0=fixture.item0;
+        structural.heldItem1=fixture.item1;
+        structural.historicalParentIVsIndependentlyVerified=true;
+        structural.historicalPhysicalOrderIndependentlyVerified=true;
+        structural.originalChildIVsIndependentlyVerified=true;
+        structural.heldItemsAtIVStageIndependentlyVerified=true;
+        auto bound=S::evaluate(structural);
+        assert(bound.status==S::Status::NecessaryPatternNotExcluded);
+        assert(bound.matchingStatCount>=
+               bound.guaranteedMinimumDistinctStats);
+        auto noSeedOrItems=structural;
+        noSeedOrItems.heldItemsAtIVStageIndependentlyVerified=false;
+        if(G::family(fixture.game)==G::Family::Platinum) {
+            assert(S::evaluate(noSeedOrItems).status==
+                   S::Status::NecessaryPatternNotExcluded);
+        } else {
+            assert(S::evaluate(noSeedOrItems).status==
+                   S::Status::UnknownHeldItemHistory);
+        }
         ++matched;
     }
     assert(matched==138 && platinumRepeated>0 && hgssFour>0 && hgssFive>0);
+    // Complete necessary-domain negative and Unknown guards, without
+    // claiming to reproduce the original parent/child RNG stage.
+    S::Input edge{};
+    edge.game="platinum_nds";
+    edge.historicalParentIVsIndependentlyVerified=true;
+    edge.historicalPhysicalOrderIndependentlyVerified=true;
+    edge.originalChildIVsIndependentlyVerified=true;
+    edge.heldItemsAtIVStageIndependentlyVerified=true;
+    edge.physicalSlot0={0,0,0,0,0,0};
+    edge.physicalSlot1={1,1,1,1,1,1};
+    edge.observedChild={2,2,2,2,2,2};
+    assert(S::evaluate(edge).status==S::Status::CandidateContradiction);
+    auto plOne=edge;plOne.observedChild[0]=0;
+    assert(S::evaluate(plOne).status==S::Status::NecessaryPatternNotExcluded);
+    auto hgss=edge;hgss.game="heartgold_nds";
+    assert(S::evaluate(hgss).status==S::Status::CandidateContradiction);
+    auto onlyTwo=hgss;onlyTwo.observedChild={0,1,2,2,2,2};
+    assert(S::evaluate(onlyTwo).status==S::Status::CandidateContradiction);
+    auto three=hgss;three.observedChild={0,1,0,2,2,2};
+    assert(S::evaluate(three).status==S::Status::NecessaryPatternNotExcluded);
+    auto unknownPower=three;unknownPower.heldItemsAtIVStageIndependentlyVerified=false;
+    assert(S::evaluate(unknownPower).status==S::Status::UnknownHeldItemHistory);
+    // Three-distinct-stat impossibility does not require Power item data.
+    unknownPower.observedChild=onlyTwo.observedChild;
+    assert(S::evaluate(unknownPower).status==S::Status::CandidateContradiction);
+    // Forced slot 0 holds Weight: child HP matches ONLY slot 1.
+    // The other five child stats still match some parental IV, but
+    // the forced donor makes this exact historical pair impossible.
+    auto weight=hgss;
+    weight.physicalSlot0={5,10,10,10,10,10};
+    weight.physicalSlot1={7,20,20,20,20,20};
+    weight.observedChild={7,10,10,10,10,10};
+    weight.heldItem0=294;
+    assert(S::evaluate(weight).status==S::Status::CandidateContradiction);
+    // Same child with Weight on physical slot 1 is not excluded.
+    auto otherHolder=weight;otherHolder.heldItem0=0;otherHolder.heldItem1=294;
+    assert(S::evaluate(otherHolder).status==S::Status::NecessaryPatternNotExcluded);
+    // Two holders: either donor can be selected, never automatically
+    // both. No parity attestation means retain both possibilities.
+    auto twoPower=weight;twoPower.heldItem1=289;
+    assert(S::evaluate(twoPower).status==S::Status::CandidateContradiction);
+    twoPower.observedChild[1]=20;
+    assert(S::evaluate(twoPower).status==S::Status::NecessaryPatternNotExcluded);
+    auto absentParent=three;
+    absentParent.historicalParentIVsIndependentlyVerified=false;
+    assert(S::evaluate(absentParent).status==S::Status::UnknownHistoricalParents);
+    auto absentOrder=three;absentOrder.historicalPhysicalOrderIndependentlyVerified=false;
+    assert(S::evaluate(absentOrder).status==S::Status::UnknownPhysicalSlots);
+    auto absentChild=three;absentChild.originalChildIVsIndependentlyVerified=false;
+    assert(S::evaluate(absentChild).status==S::Status::UnknownOriginalChildIVs);
+    auto malformed=three;malformed.physicalSlot1[3]=32;
+    assert(S::evaluate(malformed).status==S::Status::MalformedIVDomain);
+    malformed=three;malformed.observedChild[4]=255;
+    assert(S::evaluate(malformed).status==S::Status::MalformedIVDomain);
+    auto diamond=three;diamond.game="diamond_nds";
+    assert(S::evaluate(diamond).status==S::Status::UnsupportedGame);
     constexpr std::array<uint8_t,6> zero{};
     constexpr std::array<uint8_t,6> bad{32,0,0,0,0,0};
     assert(G::replay("heartgold_nds",0,bad,zero,zero,0,0).status==

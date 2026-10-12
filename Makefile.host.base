@@ -875,10 +875,10 @@ host-clean:
 	rm -rf $(HOST_BUILD)
 
 # RNG-003: bounded Gen IV retail ordinary daycare IV-stage forward/inverse checks.
-$(HOST_BUILD)/test_gen4_egg_iv_inheritance_stage: tests/test_gen4_egg_iv_inheritance_stage.cpp include/Legality/Gen4EggIVInheritanceStage.h
+$(HOST_BUILD)/test_gen4_egg_iv_inheritance_stage: tests/test_gen4_egg_iv_inheritance_stage.cpp include/Legality/Gen4EggIVInheritanceStage.h include/Legality/Gen4EggIVStructuralBounds.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_egg_iv_inheritance_stage.cpp -o $@
 
-$(HOST_BUILD)/test_gen4_egg_iv_inheritance_stage_sanitize: tests/test_gen4_egg_iv_inheritance_stage.cpp include/Legality/Gen4EggIVInheritanceStage.h
+$(HOST_BUILD)/test_gen4_egg_iv_inheritance_stage_sanitize: tests/test_gen4_egg_iv_inheritance_stage.cpp include/Legality/Gen4EggIVInheritanceStage.h include/Legality/Gen4EggIVStructuralBounds.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_egg_iv_inheritance_stage.cpp -o $@
