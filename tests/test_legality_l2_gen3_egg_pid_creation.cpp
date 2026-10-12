@@ -165,6 +165,60 @@ int main() {
         }
         ++checks;
     }
+    // Original source pair eligibility is a necessary constraint even if
+    // the caller has set the independent "eligible" flag to true. Otherwise
+    // a matching RNG transcript could launder two males, two females or
+    // genderless non-Ditto parents into a conditional egg PID match.
+    // Validate positive Ditto (either slot, including genderless partner)
+    // against all five independently selected retail source families.
+    for(const char* game:{"ruby_gba","sapphire_gba","emerald_gba",
+                          "firered_gba","leafgreen_gba"}) {
+        for(uint32_t seed=0;seed<256;++seed) {
+            auto original=ordinary(game,seed,seed^0xdeadbeefu,
+                                   static_cast<uint16_t>(seed));
+            setObserved(original,H::evaluate(original).finalPersonality);
+            assert(H::evaluate(original).status==
+                   H::Status::ConditionallyMatchedOriginalEggPID);
+            ++checks;
+            for(uint8_t sex:{uint8_t{0},uint8_t{1},uint8_t{2}}) {
+                auto bad=original;
+                bad.physicalSlots[0].gender=sex;
+                bad.physicalSlots[1].gender=sex;
+                assert(H::evaluate(bad).status==
+                       H::Status::IncompatibleOriginalDaycarePair);
+                ++checks;
+            }
+            for(uint8_t slot=0;slot<2;++slot) {
+                auto bad=original;
+                bad.physicalSlots[slot].gender=2;
+                assert(H::evaluate(bad).status==
+                       H::Status::IncompatibleOriginalDaycarePair);
+                ++checks;
+                bad=original;
+                bad.physicalSlots[slot].species=132;
+                bad.physicalSlots[slot].gender=2;
+                const auto good=H::evaluate(bad);
+                assert(good.status==H::Status::ConditionallyMatchedOriginalEggPID);
+                assert(good.finalPersonality==original.originalUnhatchedEggPID);
+                ++checks;
+                bad.physicalSlots[slot].gender=0;
+                assert(H::evaluate(bad).status==H::Status::UnknownParentSnapshots);
+                ++checks;
+            }
+            auto bothDitto=original;
+            for(auto& parent:bothDitto.physicalSlots) {
+                parent.species=132;
+                parent.gender=2;
+            }
+            assert(H::evaluate(bothDitto).status==
+                   H::Status::IncompatibleOriginalDaycarePair);
+            ++checks;
+            auto restored=original;
+            restored.originalUnhatchedEggPID^=1u;
+            assert(H::evaluate(restored).status==H::Status::OriginalEggPIDContradicted);
+            ++checks;
+        }
+    }
     // Record identity may be source Gen III, not an unspecified later egg.
     auto outside=ordinary("emerald_gba",0,0);
     outside.game="platinum_nds";
