@@ -45,20 +45,20 @@ int main(){
     // and exact original replay outputs are fixed, NOT generated expectations.
     {
         auto n=witness("heartgold_nds",0,0);
-        assert(n.observedChild==std::array<uint8_t,6>({7,3,17,9,12,0}));
+        assert((n.observedChild==std::array<uint8_t,6>({7,3,17,9,12,0})));
         assert(n.histories[0].finalRNGState==0xE2CCA5EEu);
         assert(H::evaluate(n).status==H::Status::ConditionalHistoryMatched);
         auto one=witness("soulsilver_nds",294,0);
-        assert(one.observedChild==std::array<uint8_t,6>({7,24,6,9,27,15}));
+        assert((one.observedChild==std::array<uint8_t,6>({7,24,6,9,27,15})));
         assert(one.histories[0].finalRNGState==0x31B0DDE4u);
         auto reverse=witness("heartgold_nds",0,294);
-        assert(reverse.observedChild==std::array<uint8_t,6>({13,24,6,9,27,15}));
+        assert((reverse.observedChild==std::array<uint8_t,6>({13,24,6,9,27,15})));
         auto same=witness("heartgold_nds",294,294);
-        assert(same.observedChild==std::array<uint8_t,6>({13,3,17,9,12,0}));
+        assert((same.observedChild==std::array<uint8_t,6>({13,3,17,9,12,0})));
         assert(same.histories[0].finalRNGState==0x8E425287u);
         assert(IV::drawsFor(IV::Family::HeartGoldSoulSilver,294,294)==5);
         auto diff=witness("heartgold_nds",294,289);
-        assert(diff.observedChild==std::array<uint8_t,6>({0,24,17,9,12,0}));
+        assert((diff.observedChild==std::array<uint8_t,6>({0,24,17,9,12,0})));
         assert(H::evaluate(one).status==H::Status::ConditionalHistoryMatched);
         assert(H::evaluate(reverse).status==H::Status::ConditionalHistoryMatched);
         assert(H::evaluate(same).status==H::Status::ConditionalHistoryMatched);
