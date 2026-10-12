@@ -13,7 +13,7 @@ enum class Status : uint8_t {
     UnknownOriginalGame, UnknownOriginalScene, UnknownOriginalNative,
     UnknownRecipientHistory, UnknownPurificationHistory,
     CandidateNativeOriginContradicted, CandidateNativeIdentityContradicted,
-    ConditionalGameCubeOriginHistory
+    ConditionalGameCubeOriginHistory, UnknownMalformedNativeIvs
 };
 struct NativeFields {
     uint32_t personality=0,originalTrainerId=0;
@@ -48,10 +48,19 @@ constexpr Result evaluate(const Candidate& c) noexcept {
     if(!c.originalGameIndependentlyAttested || !recognizedGame(c.originalGame))return {};
     if(!c.originalSceneIndependentlyAttested || !recognizedRoute(c.originalRoute))
         return {Status::UnknownOriginalScene};
+    // Colosseum is the originating bonus-disc / Mt Battle reward source;
+    // XD never becomes the original disc just because native origin is GBA.
+    if(c.originalRoute==Route::BonusDiscReward &&
+       c.originalGame!=Game::Colosseum)
+        return {Status::UnknownOriginalScene};
     if(!c.native.checksumAndDecryptionVerified ||
        !c.originalCapturedPidSpeciesOtIndependentlyAttested ||
        c.originalSpecies==0 || c.originalSpecies>386)
         return {Status::UnknownOriginalNative};
+    // Five-bit native IVs are a strict PK3 domain. A damaged encrypted
+    // record is missing reliable evidence, not a negative historical route.
+    for(uint8_t iv:c.native.ivs)
+        if(iv>31)return {Status::UnknownMalformedNativeIvs};
     if(c.originalRoute==Route::ShadowPurified &&
        !c.originalPurificationIndependentlyAttested)
         return {Status::UnknownPurificationHistory};
