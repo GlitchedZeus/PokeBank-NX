@@ -56,6 +56,11 @@ inline Result evaluate(const Input& in) noexcept {
        in.slot0->empty()||in.slot1->empty()||in.originalEgg->empty()) {
         out.status=Status::InvalidNativeRecord;return out;
     }
+    // A daycare pair must contain two distinct non-egg parent snapshots.
+    // Invalid proposed history is not a global Pokémon verdict.
+    if(in.slot0==in.slot1 || in.slot0->isEgg() || in.slot1->isEgg()) {
+        out.status=Status::UnknownParentSnapshot;return out;
+    }
     if(!in.containingSourceGameIndependentlyVerified ||
        in.slot0->sourceGroup()!=group || in.slot1->sourceGroup()!=group ||
        in.originalEgg->sourceGroup()!=group) {
