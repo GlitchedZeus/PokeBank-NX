@@ -111,44 +111,20 @@ void drawParityGen2Actions(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     std::string error;
     const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
                                                static_cast<std::size_t>(legacy.pokemonSlot), error);
-    const auto actions = SharedEditor::actionsForSlot(static_cast<bool>(pokemon), gen2ActionCapabilities());
-    legacy.pokemonRow = std::clamp(legacy.pokemonRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
+    const auto actions = SharedEditor::actionsForSlot(
+        static_cast<bool>(pokemon), gen2ActionCapabilities(),
+        !editor->pendingChanges().empty());
+    legacy.pokemonRow = std::clamp(
+        legacy.pokemonRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
 
-    // Match the accepted Gen I action-sheet geometry exactly.
-    const int w = pokemon ? 650 : 560;
-    const int h = pokemon ? 500 : 350;
-    const int x = (1280 - w) / 2;
-    const int y = (672 - h) / 2;
-    const auto geometry = SharedEditor::actionMenuGeometry();
-    // Action sheets are overlays on the live box browser, never standalone black screens.
-    // Gen I/Yellow is the canonical presentation for every classic generation.
-    //
-    // IMPORTANT: drawGSCOverlay() also paints the legacy staged-editor shell while
-    // editorOverlayState.active is true. Pokemon Actions/Empty Slot are themselves
-    // final surfaces, so using that wrapper here layered the old 860x610 Accent
-    // frame underneath this neutral action sheet on real hardware.
+    // Keep the live box as background; the narrow modal owns every foreground
+    // hitbox. All active rows retain the exact Gen II staged command indices.
     screen.drawLegacyBase(fb);
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
-    drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 24, y + 18, pokemon ? "Pokemon Actions" : "Empty Slot", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52,
-        "Box " + std::to_string(legacy.pokemonBox + 1) + " / Slot " +
-        std::to_string(legacy.pokemonSlot + 1) + "  •  staged copy only",
-        Colors::TextDim, TextStyle::Caption);
-
-    // Hide the inherited box hit targets while this modal is active; only
-    // the foreground native action rows own touches.
-    screen.touchButtons.clear();
-    int rowY = y + geometry.rowStart;
-    for (std::size_t i = 0; i < actions.count; ++i) {
-        screen.touchButtons.push_back({31600 + static_cast<int>(i),
-                                      x + 22, rowY, w - 44, geometry.rowHeight});
-        const bool selected = static_cast<int>(i) == legacy.pokemonRow;
-        drawNativeActionRow(fb, x + 22, rowY, w - 44, geometry.rowHeight,
-                            SharedEditor::actionLabel(actions[i]), selected);
-        rowY += geometry.rowStep;
-    }
-    fb.drawText(x + 24, y + h - 38, "Original source is immutable", Colors::Accent, TextStyle::Caption);
+    const auto model = PokeBank::UIModel::NarrowPokemonMenu::classic(
+        actions, static_cast<bool>(pokemon));
+    drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow,
+                            pokemon ? "Pokemon Actions" : "Empty Slot",
+                            "GEN II / READ-ONLY SOURCE", 31600);
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Back"}});
 }
 
