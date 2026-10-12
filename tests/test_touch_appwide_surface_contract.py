@@ -543,6 +543,18 @@ for picker_path in ("src/UI/Gen2HardwarePickerFix.inc",
         raise AssertionError(f"{picker_path}: picker selection may change on drag contact")
     require_all(picker_path, "screen.touchedButtonId(touch)",
                 "down |= HidNpadButton_A;")
+# Passive Gen II View uses the same clipped Details viewport, not a
+# second focus-centred hit test. It must update motion on every touch frame.
+passive_input = read("src/UI/ClassicReleaseActionFix.inc").split(
+    "bool handlePassiveViewTouch(", 1)[1].split("} // namespace", 1)[0]
+assert "Unified::scrollWindow" not in passive_input
+assert "touch.justTouchedDown()" not in passive_input
+assert "unified.detailsTouchScroll.updateVertical(" in passive_input
+assert "unified.detailsViewport.firstRow, maxFirst + 1" in passive_input
+assert "tapped >= 1700 && tapped < 1700 + detailCount" in passive_input
+assert "touch.justReleased() && touch.dragged()" in passive_input
+assert "const int next = std::clamp(current" not in passive_input
+
 # Contact-only navigation changes the selection before a swipe can be
 # classified. Gen II foreground panels now obey the same completed-tap rule.
 gen2_hardware = read("src/UI/Gen2HardwareWorkspaceFix.inc")

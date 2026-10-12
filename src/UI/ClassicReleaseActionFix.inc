@@ -213,14 +213,13 @@ bool confirmRelease(TrainerViewScreen& screen) {
 
 bool handlePassiveViewTouch(TrainerViewScreen& screen, const TouchInput& touch) {
     if (!parityPassiveDetailsTarget(screen)) return false;
-    if (!touch.justTouchedDown() && !touch.justTapped() &&
-        !(touch.justReleased() && touch.dragged())) return false;
-
+    // This surface owns a real clipped Details viewport. Process every
+    // touch frame (not just contact/release edges) so pixel scrolling and
+    // controlled inertial motion remain smooth in passive Gen II View.
     auto& unified = unifiedStateFor(screen);
     unified.crystal = screen.sourceGameId == "crystal_gbc";
     const SharedPokemonShell::Geometry geometry(1280, 720, kNavBarH);
     const int contentY = geometry.y, contentH = geometry.h;
-    const int leftX = geometry.leftX, leftW = geometry.leftW;
     const int midX = geometry.midX, midW = geometry.midW;
     const int rightX = geometry.rightX, rightW = geometry.rightW;
 
@@ -228,16 +227,9 @@ bool handlePassiveViewTouch(TrainerViewScreen& screen, const TouchInput& touch) 
         return px >= x && px < x + w && py >= y && py < y + h;
     };
     auto focusPoint = [&](int px, int py) {
-        const std::size_t detailCount = unified.crystal ? 13u : 9u;
-        const auto window = Unified::scrollWindow(detailCount, 8, unified.detailsFocus);
-        for (std::size_t i = 0; i < window.count; ++i) {
-            const int yy = contentY + 224 + static_cast<int>(i) * 38;
-            if (!inside(px, py, leftX + 8, yy + 1, leftW - 36, 34)) continue;
-            unified.focus = {Unified::Panel::Details, static_cast<uint8_t>(window.first + i), 0};
-            unified.detailsFocus = Unified::detailsScrollFocus(unified.focus, unified.detailsFocus);
-            return true;
-        }
-
+        // Visible Details hit IDs are published by drawUnifiedDetails after
+        // applying the independent firstRow and pixel offset. Never infer a
+        // second focus-centred row window here: it becomes stale after swipes.
         for (int row = 0; row < 5; ++row) {
             const int yy = contentY + 70 + row * 34;
             for (int col = 0; col < 2; ++col) {
@@ -269,25 +261,40 @@ bool handlePassiveViewTouch(TrainerViewScreen& screen, const TouchInput& touch) 
         return false;
     };
 
-    if (touch.justReleased() && touch.dragged()) {
-        const int viewportY = contentY + 216;
-        const int viewportBottom = contentY + contentH - 34;
-        if (!inside(touch.startX(), touch.startY(), leftX + 8, viewportY,
-                    leftW - 16, std::max(0, viewportBottom - viewportY))) return false;
-        const int detailCount = unified.crystal ? 13 : 9;
-        const int distance = touch.deltaY() < 0 ? -touch.deltaY() : touch.deltaY();
-        const int steps = std::max(1, distance / 38);
-        const int current = unified.focus.panel == Unified::Panel::Details
-            ? static_cast<int>(unified.focus.row) : unified.detailsFocus;
-        const int next = std::clamp(current + (touch.deltaY() < 0 ? steps : -steps),
-                                    0, detailCount - 1);
-        unified.focus = {Unified::Panel::Details, static_cast<uint8_t>(next), 0};
-        unified.detailsFocus = Unified::detailsScrollFocus(unified.focus, unified.detailsFocus);
-        return true;
+    constexpr int visible = 8;
+    const int detailCount = unified.crystal ? 13 : 9;
+    unified.detailsViewport.ensure(unified.focus.row, detailCount, visible);
+    const int maxFirst = TouchPickerViewport::maxFirst(detailCount, visible);
+    if (maxFirst > 0 && unified.detailsTouchW > 0 && unified.detailsTouchH > 0) {
+        unified.detailsTouchScroll.updateVertical(
+            touch, unified.detailsTouchX, unified.detailsTouchY,
+            unified.detailsTouchW, unified.detailsTouchH, 38,
+            unified.detailsViewport.firstRow, maxFirst + 1);
+    } else {
+        unified.detailsTouchScroll.stop();
     }
 
-    if (touch.justTouchedDown()) return focusPoint(touch.x(), touch.y());
-    if (touch.justTapped()) return focusPoint(touch.startX(), touch.startY());
+    // Every visible Details row has a clipped 1700+ ID. Same-target release
+    // protects adjacent rows; a scrolling swipe cannot activate one.
+    if (touch.justTapped()) {
+        const int tapped = screen.touchedButtonId(touch);
+        if (tapped >= 1700 && tapped < 1700 + detailCount) {
+            unified.focus = {Unified::Panel::Details,
+                             static_cast<uint8_t>(tapped - 1700), 0};
+            unified.detailsFocus = Unified::detailsScrollFocus(unified.focus, unified.detailsFocus);
+            return true;
+        }
+        // The Stats/Moves hardware cells are not Details list rows.
+        return focusPoint(touch.startX(), touch.startY());
+    }
+    if (touch.justReleased() && touch.dragged()) {
+        // The scrolling viewport has already processed this release.
+        // Never advance the semantic selection again on drag completion.
+        return unified.detailsTouchW > 0 &&
+               inside(touch.startX(), touch.startY(),
+                      unified.detailsTouchX, unified.detailsTouchY,
+                      unified.detailsTouchW, unified.detailsTouchH);
+    }
     return false;
 }
 

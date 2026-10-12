@@ -21,6 +21,16 @@ int main() {
     const auto trainerPage = readFile("src/UI/Gen2TrainerSessionOverlay.inc");
     const auto pickerFix = readFile("src/UI/Gen2HardwarePickerFix.inc");
     const auto workspaceFix = readFile("src/UI/Gen2HardwareWorkspaceFix.inc");
+    const auto passiveReleaseTouch = readFile("src/UI/ClassicReleaseActionFix.inc");
+    const auto passiveBegin = passiveReleaseTouch.find("bool handlePassiveViewTouch(");
+    const auto passiveEnd = passiveReleaseTouch.find("} // namespace", passiveBegin);
+    assert(passiveBegin != std::string::npos && passiveEnd > passiveBegin);
+    const auto passiveTouch = passiveReleaseTouch.substr(passiveBegin, passiveEnd - passiveBegin);
+    assert(passiveTouch.find("Unified::scrollWindow") == std::string::npos);
+    assert(passiveTouch.find("unified.detailsTouchScroll.updateVertical(") != std::string::npos);
+    assert(passiveTouch.find("tapped >= 1700 && tapped < 1700 + detailCount") != std::string::npos);
+    assert(passiveTouch.find("touch.justTouchedDown()") == std::string::npos);
+
     const auto finalFix = readFile("src/UI/Gen2HardwareFinalFix.inc");
     const auto legacyOverlay = readFile("src/UI/TrainerViewScreenGSCOverlay.inc");
     assert(legacyOverlay.find("const u64 heldButtons = padGetButtons(&pad)") != std::string::npos);
