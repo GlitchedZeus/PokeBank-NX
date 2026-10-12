@@ -2116,9 +2116,12 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
         return true;
     }
     if (activation == Shared::BoxActivation::Add) {
-        return beginCreate(screen,
+        // Consume X even if validation rejects the staged Create. Otherwise
+        // the old source-writable base creator sees the same X input.
+        (void)beginCreate(screen,
             inBoxes ? screen.selectedBoxIndex : screen.stSaveBox,
             inBoxes ? screen.selectedItemIndex : screen.stSaveSlot);
+        return true;
     }
     return false;
 }
