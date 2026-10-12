@@ -28,7 +28,7 @@ This **does not execute the production analyzer** and cannot certify original-re
 
 **New executable audit gate.**
 
-tools/audit_legality_l5_invalid_site_gate.py strips comments/string literals, classifies explicit and dynamic add(r,...) emissions and checks the two native capability guards. The current coordinator source was independently scanned with the equivalent expressions through connected GitHub data: 226 explicit, 37 Invalid, zero unclassified, F3/F4 present. The newly committed Python CLI itself is PENDING execution on a full checkout.
+tools/audit_legality_l5_invalid_site_gate.py strips comments/string literals, classifies explicit and dynamic add(r,...) emissions and checks the two native capability guards. The current coordinator source was independently scanned with the equivalent expressions through connected GitHub data: 226 explicit, 37 Invalid, zero unclassified, F3/F4 present. The exact committed Python CLI blob 1e0df5ad81460d82292c3041ac2ddbe3bc9f4590 was independently byte-verified using local git hash-object, and its --self-test plus Python bytecode compilation PASSED. Its --source scan on the full production checkout is PENDING; the connected-source equivalent scan above was executed.
 
 Run it with:
 
