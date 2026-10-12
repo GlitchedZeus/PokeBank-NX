@@ -577,6 +577,19 @@ inline constexpr std::array<uint16_t,4015> kFireRedLeafGreenPacked{
   23059, 25756, 30965, 33480, 38463, 785, 605, 2716, 5249, 7950, 10334, 13087, 15516, 17958, 20728, 23362, 
   25953, 555, 547, 2661, 5220, 7962, 10431, 12894, 15649, 18254, 18053, 20585, 23394, 25668, 25843
 };
+// Original pret/pokefirered@c75f352, src/data/pokemon/level_up_learnsets.h
+// uses #if FIRERED / #elif LEAFGREEN for Deoxys. The 4015-row common
+// FRLG table above contains the 14-offer LeafGreen (Defense Forme) row.
+// FireRed (Attack Forme) has 12 different offers. Keep both original
+// cartridge identities; borrowing LeafGreen for FireRed gives false
+// contradictions and false consistent witnesses.
+inline constexpr std::array<uint16_t,12> kFireRedDeoxysPacked{{
+  555, 547, 2661, 5220, 7949, 10468, 12894, 15636,
+  18242, 20672, 23394, 25663
+}};
+static_assert(kFireRedDeoxysPacked[4]==(15u<<9 | 269u)); // Taunt, not Knock Off
+static_assert(kFireRedDeoxysPacked[7]==(30u<<9 | 276u)); // Superpower
+
 static_assert(kRubySapphireOffsets[1]==0 && kRubySapphireOffsets[387]==kRubySapphirePacked.size());
 static_assert(kFireRedLeafGreenOffsets[1]==0 && kFireRedLeafGreenOffsets[387]==kFireRedLeafGreenPacked.size());
 static_assert(kRubySapphirePacked[kRubySapphireOffsets[290]]==522);
