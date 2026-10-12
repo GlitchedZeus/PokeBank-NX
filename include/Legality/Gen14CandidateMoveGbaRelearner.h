@@ -1,11 +1,13 @@
 #pragma once
-// L3 M07/M12: ORIGINAL Emerald/FRLG GetMoveRelearnerMoves source behavior.
-// Sources pinned: pret/pokeemerald@5eff78649e7170a877b961ef0b3da13b81a16038
+// L3 M07/M12: original GBA level-up-move relearner menu source behavior.
+// Sources pinned: pret/pokeruby@63a8cbf0016b351a4e68f7036fa0b77e23d2f2c1,
+// src/pokemon_3.c GetMoveTutorMoves (Ruby/Sapphire);
+// pret/pokeemerald@5eff78649e7170a877b961ef0b3da13b81a16038
 // and pret/pokefirered@c75f352304d529f6ba92d4f74b9cf8b5c3810788,
 // src/pokemon.c GetMoveRelearnerMoves. Exactly versioned species table,
 // ordered deduplication, exclude known/currently unavailable higher-level moves.
 // Source visit, access and actual player teaching are caller-attested, NEVER
-// inferred from a detached PK3. R/S original method not yet pinned => Unknown.
+// inferred from a detached PK3. All five games independently source-pinned.
 #include "Legality/Gen14CandidateMoveGbaLevelUpTimeline.h"
 #include <array>
 #include <cstdint>
@@ -34,8 +36,7 @@ struct Result {
     uint8_t offerCount=0, skippedKnown=0, skippedDuplicate=0, skippedHighLevel=0;
 };
 constexpr bool sourceSupported(Game game,uint16_t species) noexcept {
-    return (game==Game::Emerald || game==Game::FireRed || game==Game::LeafGreen)
-        && L::supported(game,species);
+    return C::generation(game)==3 && L::supported(game,species);
 }
 constexpr Result evaluate(const Input& in) noexcept {
     Result out{};
@@ -82,7 +83,8 @@ constexpr Result evaluate(const Input& in) noexcept {
         Status::CandidateConsistent:Status::CandidateContradicted;
     return out;
 }
-static_assert(!sourceSupported(Game::Ruby,1));
+static_assert(sourceSupported(Game::Ruby,1));
+static_assert(sourceSupported(Game::Sapphire,4));
 static_assert(sourceSupported(Game::Emerald,386));
 static_assert(sourceSupported(Game::LeafGreen,4));
 static_assert(!sourceSupported(Game::FireRed,133));
