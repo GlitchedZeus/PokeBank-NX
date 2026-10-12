@@ -162,7 +162,11 @@ constexpr Result evaluate(const Input& in) noexcept {
     // PID history must be separately original-source attested. This does
     // not assume the IV stage RNG state equals PID collection-time RNG.
     out.pid=PID::evaluate(in.pid);
-    if(out.pid.status==PID::Status::OriginalEggPIDContradicted) {
+    if(out.pid.status==PID::Status::OriginalEggPIDContradicted ||
+       out.pid.status==PID::Status::OriginalPendingPayloadContradicted ||
+       out.pid.status==PID::Status::OriginalCollectionPayloadContradicted) {
+        // An attested original-acquisition contradiction excludes this
+        // proposed source route only; other parent histories may survive.
         out.status=Status::OriginalPIDCandidateContradicted;return out;
     }
     if(out.pid.status!=PID::Status::ConditionallyMatchedOriginalEggPID) {
