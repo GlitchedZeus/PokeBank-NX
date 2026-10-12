@@ -30,6 +30,8 @@ struct Input {
     Game arrivalGame=Game::Unknown,observedGame=Game::Unknown;
     uint8_t arrivalLevel=0,observedLevel=0;
     uint16_t species=0;
+    uint8_t nativeForm=0; // Explicit Platinum Deoxys base form only.
+    bool nativeFormVerified=false;
     std::array<uint16_t,4> recordedDeparture{},recordedArrival{},observedMoves{};
     bool samePokemonThroughTransferVerified=false;
     bool preTransferSnapshotVerified=false;
@@ -79,6 +81,7 @@ template<class Gba,class Native> constexpr Result evaluate(const Input& in) noex
        !validGame(in.observedGame)||!in.species||in.species>386||
        !in.arrivalLevel||in.observedLevel<in.arrivalLevel||
        in.observedLevel>100||in.count>in.steps.size()||
+       (in.species==386 && (!in.nativeFormVerified || in.nativeForm!=0))||
        !validSlots(in.recordedDeparture,354)||
        !validSlots(in.recordedArrival,467)||
        !validSlots(in.observedMoves,467))return out;
