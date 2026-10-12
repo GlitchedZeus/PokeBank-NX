@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <utility>
 namespace W=Legality::Gen3DistributionWitnessEvidence;
 using F=W::Family;using M=W::Mechanism;using H=W::History;using S=W::Status;using SS=W::SourceStatus;
 constexpr W::OriginalCandidate attested(F f=F::Wishmaker,M m=M::PokemonGift) {
@@ -187,7 +188,7 @@ int main() {
      h.receivingGbaVersionIndependentlyVerified=true;
      h.receivingGbaVersion=1;
      h.gameCubeOriginalIndependentlyVerified=true;
-     h.originalGameCubeVersion=W::OriginalSource::Colosseum;
+     h.originalGameCubeVersion=W::OriginalSource::ColosseumBonusDisc;
      h.gameCubeToGbaDeliveryIndependentlyVerified=true;
      h.originalGameFontEncodingIndependentlyVerified=true;
      h.originalEventMovesHistoryIndependentlyVerified=true;
@@ -227,22 +228,37 @@ int main() {
          auto familyCandidate=a;
          familyCandidate.family=static_cast<W::Family>(family);
          const auto result=W::evaluateOriginalHistory(x,familyCandidate,h);
-         const bool eligible=family==1u || family==2u || family==8u;
+         const bool eligible=family==1u;
          assert((result.status==W::JoinedStatus::ConditionalCandidate)==eligible);
          if(eligible)++conditionalGcFamilies;
          ++routeDomain;
      }
-     assert(routeDomain==256 && conditionalGcFamilies==3);
+     assert(routeDomain==256 && conditionalGcFamilies==1);
      for(unsigned original=0;original<256;++original) {
          auto sourceCandidate=a;
          sourceCandidate.originalSource=static_cast<W::OriginalSource>(original);
          const auto result=W::evaluateOriginalHistory(x,sourceCandidate,h);
          assert((result.status==W::JoinedStatus::ConditionalCandidate)==
-                (original==static_cast<unsigned>(W::OriginalSource::Colosseum)));
+                (original==static_cast<unsigned>(W::OriginalSource::ColosseumBonusDisc)));
          assert(!result.globallyInvalid && !result.authenticated);
          ++routeDomain;
      }
      assert(routeDomain==512);
+     // Exact independently identified media distinguish the bonus disc,
+     // Pokémon Channel and Colosseum/XD native gift route. Cross-wiring
+     // their documented families cannot become conditional.
+     for(auto pair:{std::pair{W::Family::Channel,W::OriginalSource::PokemonChannel},
+                    std::pair{W::Family::GameCubeGift,W::OriginalSource::XD},
+                    std::pair{W::Family::GameCubeGift,W::OriginalSource::Colosseum}}) {
+         auto source=a;source.family=pair.first;
+         source.originalSource=pair.second;
+         auto route=h;route.originalGameCubeVersion=pair.second;
+         assert(W::evaluateOriginalHistory(x,source,route).status==
+                W::JoinedStatus::ConditionalCandidate);
+         route.originalGameCubeVersion=W::OriginalSource::ColosseumBonusDisc;
+         assert(W::evaluateOriginalHistory(x,source,route).status==
+                W::JoinedStatus::UnknownRoute);
+     }
      h.gameCubeOriginalIndependentlyVerified=false;
      assert(W::evaluateOriginalHistory(x,a,h).status==
             W::JoinedStatus::UnknownRoute);

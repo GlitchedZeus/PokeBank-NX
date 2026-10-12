@@ -17,7 +17,8 @@ enum class Mechanism : uint8_t {
     Unknown, PokemonGift, InGameEncounter, ServiceOnly, ShadowEncounter
 };
 enum class OriginalSource : uint8_t {
-    Unknown, Ruby, Sapphire, Emerald, FireRed, LeafGreen, Colosseum, XD
+    Unknown, Ruby, Sapphire, Emerald, FireRed, LeafGreen, Colosseum, XD,
+    ColosseumBonusDisc, PokemonChannel
 };
 enum class History : uint8_t {
     Unknown, IndependentlyVerifiedUnchanged, IndependentlyVerifiedFinal
@@ -226,7 +227,9 @@ constexpr bool gbaVersion(uint8_t v) noexcept {
     return v>=1 && v<=5;
 }
 constexpr bool originalGameCube(OriginalSource g) noexcept {
-    return g==OriginalSource::Colosseum || g==OriginalSource::XD;
+    return g==OriginalSource::Colosseum || g==OriginalSource::XD ||
+           g==OriginalSource::ColosseumBonusDisc ||
+           g==OriginalSource::PokemonChannel;
 }
 constexpr JoinedResult evaluateOriginalHistory(
     const Native& native,const OriginalCandidate& source,
@@ -249,9 +252,13 @@ constexpr JoinedResult evaluateOriginalHistory(
        (!history.gameCubeOriginalIndependentlyVerified ||
         !originalGameCube(history.originalGameCubeVersion) ||
         source.originalSource!=history.originalGameCubeVersion ||
-        (source.family!=Family::Wishmaker &&
-         source.family!=Family::Channel &&
-         source.family!=Family::GameCubeGift) ||
+        !((source.family==Family::Wishmaker &&
+           source.originalSource==OriginalSource::ColosseumBonusDisc) ||
+          (source.family==Family::Channel &&
+           source.originalSource==OriginalSource::PokemonChannel) ||
+          (source.family==Family::GameCubeGift &&
+           (source.originalSource==OriginalSource::Colosseum ||
+            source.originalSource==OriginalSource::XD))) ||
         !history.gameCubeToGbaDeliveryIndependentlyVerified))return out;
     if(history.route!=TransferRoute::GameCubeToGba &&
        history.route!=TransferRoute::GbaLocal)return out;

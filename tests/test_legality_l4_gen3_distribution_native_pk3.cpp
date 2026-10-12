@@ -85,12 +85,12 @@ int main() {
         transfer.receivingGbaVersionIndependentlyVerified=true;
         transfer.receivingGbaVersion=n.originGame;
         transfer.gameCubeOriginalIndependentlyVerified=true;
-        transfer.originalGameCubeVersion=W::OriginalSource::Colosseum;
+        transfer.originalGameCubeVersion=W::OriginalSource::PokemonChannel;
         transfer.gameCubeToGbaDeliveryIndependentlyVerified=true;
         transfer.originalGameFontEncodingIndependentlyVerified=true;
         transfer.originalEventMovesHistoryIndependentlyVerified=true;
         auto gcCandidate=c;
-        gcCandidate.originalSource=W::OriginalSource::Colosseum;
+        gcCandidate.originalSource=W::OriginalSource::PokemonChannel;
         gcCandidate.family=W::Family::Channel;
         gcCandidate.individualHistoricalReceiptKnown=true; // simulated
         auto historical=W::evaluateOriginalHistory(n,gcCandidate,transfer);
