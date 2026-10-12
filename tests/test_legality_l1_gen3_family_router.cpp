@@ -51,6 +51,11 @@ int main() {
     c.channelOtGender=0;
     assert(F::evaluate(c).status==Status::CandidateUnresolved);
     c.channelOtGender=1;
+    auto alienChannel=c;
+    alienChannel.originalGame=F::Game::FireRed;
+    assert(F::evaluate(alienChannel).status==Status::UnsupportedOriginalMethod);
+    alienChannel=c;alienChannel.originalGame=F::Game::Sapphire;
+    assert(F::evaluate(alienChannel).status==Status::UnsupportedOriginalMethod);
     c.family=F::Family::BacdEvent;
     c.pid=0x67DBFC33u;c.ivs={12,25,27,30,2,31};
     c.tid=40122;c.sid=45819;

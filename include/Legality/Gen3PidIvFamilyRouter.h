@@ -79,7 +79,14 @@ constexpr Result evaluate(const Candidate& c) noexcept {
                 Status::CandidateUnresolved};
     }
     case Family::ChannelGift: {
-        if(!gba(c.originalGame))return {Status::UnsupportedOriginalMethod};
+        // The native Channel gift remains an R/S recipient; the separately
+        // persisted Channel origin bit must identify the SAME exact game.
+        if(c.originalGame!=Game::Ruby&&c.originalGame!=Game::Sapphire)
+            return {Status::UnsupportedOriginalMethod};
+        const uint8_t gameBit=c.originalGame==Game::Ruby?2u:1u;
+        if(c.channelStageIndependentlyAttested &&
+           c.channelOriginGame!=gameBit)
+            return {Status::UnsupportedOriginalMethod};
         if(!c.originalTrainerIndependentlyAttested ||
            !c.channelStageIndependentlyAttested)
             return {Status::UnknownOriginalTrainer};
