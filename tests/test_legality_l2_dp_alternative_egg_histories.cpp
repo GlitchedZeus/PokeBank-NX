@@ -127,7 +127,13 @@ int main(){
         auto noId=x;noId.alternatives[0].routeIdentity=0;
         assert(A::evaluate(noId).status==A::Status::MissingOrDuplicateCandidateIdentity);
         dup.alternatives[0].independentlyAttestedHypothesis=false;
-        assert(A::evaluate(dup).status==A::Status::MissingOrDuplicateCandidateIdentity);
+        // Two archive rows can collide; a separately attested,
+        // coherent PID+IV route AFTER a discredited sibling must survive.
+        dup=x;dup.count=2;dup.alternatives[1]=dup.alternatives[0];
+        dup.alternatives[0].independentlyAttestedHypothesis=false;
+        const auto lateMatch=A::evaluate(dup);
+        assert(lateMatch.status==A::Status::OneConditionallyConsistentHistory);
+        assert(lateMatch.consistent==1 && lateMatch.unverified>=1);
         noId.count=2;noId.alternatives[1]=x.alternatives[0];
         noId.alternatives[1].routeIdentity=2;
         assert(A::evaluate(noId).status==A::Status::OneConditionallyConsistentHistory);
