@@ -61,15 +61,17 @@ int main() {
         assert(DP::evaluate(noStone).lcConsumed==0);
         auto noNature=known;noNature.parents[0].pidIndependentlyVerified=false;
         assert(DP::evaluate(noNature).status==DP::Status::UnknownParentNature);
-        // Original double-Ditto selection is faithfully gated by a
-        // separately supplied hypothetical eligible pair (not a claim
-        // that two Ditto can produce a retail egg).
+        // A two-Ditto branch exists in retail control flow, but two
+        // Ditto cannot be an eligible ordinary daycare pair (BREED-003).
+        // An inconsistent positive pair attestation cannot bypass this.
         constexpr std::array<uint32_t,1> single{32};
         auto doubleDitto=base(single,game);
         doubleDitto.parents[0]={132,2,7,0,true};
         doubleDitto.parents[1]={132,2,32,229,true};
-        doubleDitto.originalUnhatchedEggPid=32;
-        assert(DP::evaluate(doubleDitto).status==DP::Status::ConditionalOriginalEggPIDMatched);
+        assert(DP::evaluate(doubleDitto).status==DP::Status::IncompatibleDaycarePair);
+        auto noDonor=base(single,game);
+        noDonor.parents[0].gender=0;
+        assert(DP::evaluate(noDonor).status==DP::Status::IncompatibleDaycarePair);
         // No missing/contradictory provenance may become a global Invalid.
         auto noPair=known;noPair.originalDaycarePairEligibilityVerified=false;
         assert(DP::evaluate(noPair).status==DP::Status::UnknownEligibleDaycarePair);
