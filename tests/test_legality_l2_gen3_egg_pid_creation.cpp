@@ -201,6 +201,27 @@ int main() {
             ++checks;
         }
     }
+    // Generation IV species IDs can appear in later descendants, but cannot
+    // be original *Gen III* daycare parent snapshots. A fabricated out-of-
+    // generation parent must remain Unknown, even when the RNG transcript,
+    // original PID and claimed eligibility otherwise match perfectly.
+    for(const char* game:{"ruby_gba","sapphire_gba","emerald_gba",
+                          "firered_gba","leafgreen_gba"}) {
+        auto valid=ordinary(game,0,0);
+        setObserved(valid,H::evaluate(valid).finalPersonality);
+        assert(H::evaluate(valid).status==H::Status::ConditionallyMatchedOriginalEggPID);
+        ++checks;
+        for(unsigned slot=0;slot<2;++slot) {
+            for(uint16_t species:std::array<uint16_t,3>{387,493,65535}) {
+                auto outOfGeneration=valid;
+                outOfGeneration.physicalSlots[slot].species=species;
+                const auto verdict=H::evaluate(outOfGeneration);
+                assert(verdict.status==H::Status::UnknownParentSnapshots);
+                assert(verdict.status!=H::Status::OriginalEggPIDContradicted);
+                ++checks;
+            }
+        }
+    }
     std::cout<<"L2 B07 Gen III source-game egg PID/Everstone: "
              <<checks<<" seeded and fixed cases plus Unknown controls PASS\n";
 }
