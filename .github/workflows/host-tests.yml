@@ -149,6 +149,10 @@ jobs:
               python3 tools/audit_legality_l5_native_codec.py --source-pin --sanitize
               make -f Makefile.host -f tools/audit_legality_l5_ev_probe.mk l5-ev-fixed
               make -f Makefile.host -f tools/audit_legality_l5_ev_probe.mk l5-ev-fixed-sanitize
+              # Coordinator F3/F4: exercise REAL native PK1/PK2 source-free
+              # analyzer gates, normal and ASan/UBSan, on this same commit.
+              make -f Makefile.host -f tools/audit_legality_l5_pk12_probe.mk l5-pk12-fixed
+              make -f Makefile.host -f tools/audit_legality_l5_pk12_probe.mk l5-pk12-fixed-sanitize
               ;;
             *)
               echo "Unknown legality lane: $LANE" >&2
