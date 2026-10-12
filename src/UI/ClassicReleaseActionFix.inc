@@ -35,16 +35,8 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
         const auto actions = PokeBank::UIModel::Gen1Editor::actionsForSlot(static_cast<bool>(pokemon));
         const int rows = static_cast<int>(actions.count);
         if (rows <= 0) return true;
-        if (touch.justTouchedDown()) {
-            for (const auto& hit : screen.touchButtons) {
-                if (hit.id < 300 || hit.id >= 300 + rows) continue;
-                if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
-                    touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
-                    state.row = hit.id - 300;
-                    break;
-                }
-            }
-        }
+        // Contact can still become a swipe. Only a completed same-target
+        // tap may change the focused action and synthesize A.
         const int touchedAction = screen.touchedButtonId(touch);
         if (touchedAction >= 300 && touchedAction < 300 + rows) {
             state.row = touchedAction - 300;
@@ -331,16 +323,8 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
         occupied, releaseActionCapabilities());
     if (actions.count == 0) return true;
 
-    if (touch.justTouchedDown()) {
-        for (const auto& hit : screen.touchButtons) {
-            if (hit.id < 500 || hit.id >= 500 + static_cast<int>(actions.count)) continue;
-            if (touch.x() >= hit.x && touch.x() < hit.x + hit.w &&
-                touch.y() >= hit.y && touch.y() < hit.y + hit.h) {
-                legacy.pokemonRow = hit.id - 500;
-                break;
-            }
-        }
-    }
+    // Gen II matches Gen I, III and IV: never shift the action cursor on
+    // finger-down, which might turn into a drag across menu entries.
     const int touchedAction = screen.touchedButtonId(touch);
     if (touchedAction >= 500 && touchedAction < 500 + static_cast<int>(actions.count)) {
         legacy.pokemonRow = touchedAction - 500;

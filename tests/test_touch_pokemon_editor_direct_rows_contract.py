@@ -41,16 +41,29 @@ assert "focusId(tapped, true);" in gen1_foundation
 
 classic_actions = read("src/UI/ClassicReleaseActionFix.inc")
 require(classic_actions, "src/UI/ClassicReleaseActionFix.inc",
-        "hit.id < 300 || hit.id >= 300 + rows",
         "touchedAction >= 300 && touchedAction < 300 + rows",
         "screen.touchButtons.push_back({300 + static_cast<int>(i)",
         "screen.touchButtons.push_back({398",
         "screen.touchButtons.push_back({399",
-        "hit.id < 500 || hit.id >= 500 + static_cast<int>(actions.count)",
         "touchedAction >= 500 && touchedAction < 500 + static_cast<int>(actions.count)",
         "screen.touchButtons.push_back({500 + static_cast<int>(i)",
         "screen.touchButtons.push_back({498",
         "screen.touchButtons.push_back({499")
+
+# Both classic action menus must preserve cursor memory until a
+# release-confirmed tap or controller movement. Their grey rows are inert.
+for start, end, field in (
+    ("if (state.mode == UX2Mode::Actions)", "if (state.mode == UX2Mode::RemoveConfirm)", "state.row"),
+    ("if (confirm.active) {", "bool drawReleaseActionSurface", "legacy.pokemonRow"),
+):
+    # Gen II scope starts after its own handleReleaseActionInput overload.
+    source = classic_actions if field == "state.row" else classic_actions.split(
+        "namespace UI::Gen2PokemonEditor", 1)[1]
+    modal = source.split(start, 1)[1].split(end, 1)[0]
+    assert "touch.justTouchedDown()" not in modal, (
+        f"{field}: provisional contact must not select a menu action"
+    )
+    assert "screen.touchedButtonId(touch)" in modal
 
 gen2 = read("src/UI/Gen2PokemonPickerOverlay.inc")
 # A contact may become a swipe, so changing the Gen II choice on touch-down

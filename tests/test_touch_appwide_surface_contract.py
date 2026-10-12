@@ -134,6 +134,14 @@ if "state.optionsRow = touchId; down |= HidNpadButton_A;" not in inventory_dispa
     raise AssertionError("Classic Inventory: completed options tap must activate its row")
 require_all("src/UI/ClassicInventoryOverlay.cpp",
             "state.pickerRow = touchId;", "state.reviewRow = touchId;")
+# Gen I/II native action menus must wait until touch release too. A drag
+# across enabled/disabled choices cannot change the focused command.
+legacy_actions = read("src/UI/ClassicReleaseActionFix.inc")
+assert "hit.id < 300 || hit.id >= 300 + rows" not in legacy_actions
+assert "hit.id < 500 || hit.id >= 500 + static_cast<int>(actions.count)" not in legacy_actions
+assert "touchedAction >= 300 && touchedAction < 300 + rows" in legacy_actions
+assert "touchedAction >= 500 && touchedAction < 500 + static_cast<int>(actions.count)" in legacy_actions
+
 # Gen III/IV action sheets must clear backdrop hitboxes AFTER the box has been
 # drawn, not just before. Otherwise old box targets win first-match hit tests.
 for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurface.inc"):
