@@ -67,6 +67,18 @@ for name in "${native[@]}"; do
         -o "$scratch/$name"
     "$scratch/$name"
 done
+# Strict native encrypted PK3 boundary. Gen III Encryption3FRLG.cpp uses
+# GCC-specific diagnostic pragmas; Clang needs only this local suppression.
+pk3_flags=()
+if [[ "$compiler" == *clang* ]]; then
+    pk3_flags+=( -Wno-unknown-warning-option )
+fi
+echo "L4 C++ native PK3 compile: test_legality_l4_native_pk3_text"
+"$compiler" "${base[@]}" "${pk3_flags[@]}" \
+    tests/test_legality_l4_native_pk3_text.cpp \
+    src/Encryption/Encryption3FRLG.cpp \
+    -o "$scratch/test_legality_l4_native_pk3_text"
+"$scratch/test_legality_l4_native_pk3_text"
 echo "L4 Python frozen original-source projection integrity audit"
 python3 tools/legality_l4_projection_audit.py
 python3 -m unittest discover -v -s tests -p 'test_legality_l4_projection_audit.py'
@@ -77,4 +89,4 @@ python3 -m unittest discover -v -s tests -p 'test_legality_l4_l5_q07_join.py'
 if [[ -n "${L4_L5_Q07_JSON:-}" ]]; then
     python3 tools/legality_l4_l5_q07_join.py --l5-q07 "$L4_L5_Q07_JSON"
 fi
-echo "L4 all 14 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
+echo "L4 all 15 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
