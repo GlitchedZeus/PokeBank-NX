@@ -39,6 +39,7 @@ trap 'rm -rf -- "$tmp"' EXIT
 # plus the SAME production link dependencies as Makefile.host.gen4's
 # GEN4_MUTABLE_SOURCES target. There is no mock/encrypted-PK4 substitution.
 pk4_sources=(
+    src/Pokemon/Pokemon4Mutable.cpp
     src/Pokemon/Pokemon4ReadOnly.cpp
     src/Pokemon/PersonalRecord4.cpp
     src/Pokemon/PersonalInfo4DP.cpp
