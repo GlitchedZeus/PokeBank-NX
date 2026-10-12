@@ -115,4 +115,31 @@ static_assert(L::offerAt(C::Game::Ruby,1,2).move==73);
 static_assert(L::offerAt(C::Game::Ruby,1,3).move==22);
 static_assert(L::offerAt(C::Game::Ruby,1,10).level==46);
 static_assert(!L::supported(C::Game::Ruby,133));
+// These source-scoped tests compile in the already registered host suite
+// through the owned Gen14CandidateMoveHistory.h include path, independent
+// of coordinator registration of the standalone L3 runner.
+constexpr Input smoke(bool includeRequiredOffer) noexcept {
+    Input in{};
+    auto& p=in.path;
+    p.candidateId=901;p.species=1;p.origin=C::Game::Ruby;
+    p.initialLevel=5;p.observedLevel=7;
+    p.initialMoves={33,45,0,0};p.observedMoves=p.initialMoves;
+    p.initialSnapshotVerified=true;p.samePokemonAndSpeciesVerified=true;
+    p.fullChronologyVerified=true;
+    if(includeRequiredOffer) {
+        p.stepCount=1;p.observedMoves={33,45,73,0};
+        p.steps[0]={C::Game::Ruby,7,C::Action::Learn,
+                    C::Method::LevelUp,73,2,true,C::Game::Ruby};
+    }
+    in.uninterruptedSameSpeciesGameStageVerified=true;
+    in.allOfferedLevelUpDecisionsRecorded=true;
+    return in;
+}
+static_assert(C::evaluate(smoke(false).path).status==Status::CandidateConsistent);
+static_assert(evaluate(smoke(false)).status==Status::CandidateContradicted);
+static_assert(evaluate(smoke(true)).status==Status::CandidateConsistent);
+static_assert([]{auto a=smoke(true);
+    a.allOfferedLevelUpDecisionsRecorded=false;
+    return evaluate(a).status==Status::Unresolved;}());
+
 } // namespace Legality::Gen14CandidateMoveJointAcquisition
