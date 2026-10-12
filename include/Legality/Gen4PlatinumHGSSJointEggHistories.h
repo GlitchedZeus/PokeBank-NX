@@ -24,6 +24,10 @@ struct Candidate {
     bool originalSourceHistoryIndependentlyAttested=false;
     bool fullyAttestedForCandidateLocalExclusion=false;
     bool originalHeldItemsSameAcrossStagesIndependentlyVerified=false;
+    // Original IV donor snapshots, not inferred from the child PK4.
+    bool originalIVParentIdentityIndependentlyVerified=false;
+    uint64_t ivPhysicalSlot0SnapshotId=0,ivPhysicalSlot1SnapshotId=0;
+    uint64_t originalIVEventToken=0;
     PID::Input pid{};
     IV::KnownFinalStage iv{};
 };
@@ -78,6 +82,10 @@ constexpr Result evaluate(const Input& in) noexcept {
         if(!c.originalDaycarePairIdentity ||
            !c.originalSourceHistoryIndependentlyAttested ||
            !c.originalHeldItemsSameAcrossStagesIndependentlyVerified ||
+           !c.originalIVParentIdentityIndependentlyVerified ||
+           c.originalIVEventToken!=in.originalEggEventIdentity ||
+           c.ivPhysicalSlot0SnapshotId!=p.parents[0].snapshotId ||
+           c.ivPhysicalSlot1SnapshotId!=p.parents[1].snapshotId ||
            p.game!=in.game || v.game!=in.game ||
            p.originalEggEventId!=in.originalEggEventIdentity ||
            p.parentStageToken!=in.originalEggEventIdentity ||
