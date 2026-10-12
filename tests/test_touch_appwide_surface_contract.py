@@ -174,6 +174,13 @@ require_all("src/UI/Gen4SharedPokemonSurface.inc",
             "if (boxEntry && touch.justTapped())", "screen.selectedItemIndex = tapped;",
             "beginActions(screen);",
             "if (partyEntry && touch.justTapped())", "screen.selectedPartyIndex = tapped - 6200;")
+gen4_source = read("src/UI/Gen4SharedPokemonSurface.inc")
+gen4_box_tap = gen4_source.split("if (boxEntry && touch.justTapped())", 1)[1].split(
+    "if (partyEntry && touch.justTapped())", 1)[0]
+assert "beginActions(screen);" in gen4_box_tap
+assert "if (selectedOccupied(screen))" not in gen4_box_tap
+assert "PokeBank::UIModel::Gen4BoxTouchActions::selectsTappedBoxSlot" in gen4_box_tap
+
 # The header arrows must use the Gen I–III exact-game category catalog, not the
 # old two-pocket RBY inherited category counter.
 require_all("src/UI/ClassicInventoryOverlay.cpp",
