@@ -370,6 +370,35 @@ void discoveryContracts() {
     fileFixture(dsv,malformed);
     assert(!G::inspectSourceFile(dsv,"DraStic").ready());
 
+    // File-count limits alone do not bound readdir, sorting, or allocations:
+    // an emulator folder can contain thousands of unrelated ROM/temp files.
+    // Total directory ENTRIES (even non-.sav files) and directory traversal
+    // must be independently budgeted, with a visible incomplete-scan flag.
+    const std::string flood=dir+"/many_unrelated_entries";
+    assert(::mkdir(flood.c_str(),0700)==0);
+    std::vector<std::string> junkFiles;
+    for(int i=0;i<12;++i) {
+        const auto path=flood+"/unrelated_"+std::to_string(i)+".txt";
+        fileFixture(path,std::vector<uint8_t>{1});
+        junkFiles.push_back(path);
+    }
+    const std::array<G::DiscoveryRoot,1> floodRoots{{{flood,"RetroArch",0}}};
+    const auto budgeted=G::discoverSources(floodRoots,G::DiscoveryLimits{32,4,8});
+    assert(budgeted.limitReached);
+    assert(budgeted.directoriesExamined==1);
+    assert(budgeted.entriesExamined==4);
+    assert(budgeted.filesExamined==0 && budgeted.instances.empty());
+    // Exhaustion of a separate total-directory budget must not scan
+    // the second root silently or misreport an exhaustive source list.
+    const std::array<G::DiscoveryRoot,2> twoRoots{{{dir,"RetroArch",0},
+                                                    {flood,"RetroArch",0}}};
+    const auto directoryBudget=G::discoverSources(
+        twoRoots,G::DiscoveryLimits{32,4096,1});
+    assert(directoryBudget.limitReached);
+    assert(directoryBudget.directoriesExamined==1);
+    for(const auto& path:junkFiles)assert(std::remove(path.c_str())==0);
+    assert(::rmdir(flood.c_str())==0);
+
     assert(std::remove((database+".bak").c_str())==0);
     assert(std::remove(database.c_str())==0);
     assert(std::remove(badDatabase.c_str())==0);

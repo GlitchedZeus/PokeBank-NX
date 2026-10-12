@@ -2237,6 +2237,8 @@ namespace UI {
         } else {
             gen5Notice=std::to_string(gen5Instances.size())+
                 " validated read-only save instance(s).";
+            if(discovered.limitReached)
+                gen5Notice+=" Scan limit reached; list may be incomplete.";
             overlay=Overlay::Gen5Candidates;
         }
         gen5CandidateIndex=0;

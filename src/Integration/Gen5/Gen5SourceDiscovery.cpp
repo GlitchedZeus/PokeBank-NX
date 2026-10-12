@@ -161,11 +161,23 @@ void scan(const DiscoveryRoot& root,const std::string& dir,size_t depth,ScanStat
     if(s.result.limitReached || depth>root.maxDepth ||
        !safeScanRoot(dir) || !safeDirectory(dir,&dirSt)) return;
     if(!s.visitedDirs.insert(identityFor(dirSt,dir)).second)return;
+    if(s.result.directoriesExamined>=s.limits.maxDirectories) {
+        s.result.limitReached=true;
+        return;
+    }
     DIR* d=::opendir(dir.c_str()); if(!d)return;
+    ++s.result.directoriesExamined;
     std::vector<std::string> names;
+    bool entryLimitReached=false;
     while(const dirent* item=::readdir(d)) {
         std::string name(item->d_name);
-        if(name!="." && name!="..") names.push_back(std::move(name));
+        if(name=="." || name=="..")continue;
+        if(s.result.entriesExamined>=s.limits.maxEntries) {
+            entryLimitReached=true;
+            break;
+        }
+        ++s.result.entriesExamined;
+        names.push_back(std::move(name));
     }
     ::closedir(d);
     std::sort(names.begin(),names.end());
@@ -206,6 +218,10 @@ void scan(const DiscoveryRoot& root,const std::string& dir,size_t depth,ScanStat
            extension(file)==".dsv" || extension(file)==".dss")
             s.result.instances.push_back(std::move(row));
     }
+    // Process all names already enumerated under the hard memory cap, then
+    // report incomplete discovery rather than pretending this catalog is
+    // exhaustive. Subdirectory scans may have hit another limit first.
+    if(entryLimitReached)s.result.limitReached=true;
 }
 } // namespace
 
@@ -412,6 +428,8 @@ DiscoveryResult discoverSources(std::span<const DiscoveryRoot> roots,
                                 DiscoveryLimits limits) {
     ScanState state;
     state.limits.maxFiles=std::min<size_t>(limits.maxFiles,4096);
+    state.limits.maxEntries=std::min<size_t>(limits.maxEntries,32768);
+    state.limits.maxDirectories=std::min<size_t>(limits.maxDirectories,512);
     for(const auto& r:roots) {
         if(state.result.limitReached)break;
         // Cap recursion even when an untrusted caller supplies a huge maxDepth.

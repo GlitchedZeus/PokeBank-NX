@@ -149,6 +149,18 @@ require(games, '"CHOOSE COPY"', "SaveCopySelection::Automatic",
         "if (!separateGen5Copy &&")
 
 
+# A bounded source discovery can produce a useful partial list; the UI
+# must clearly report that its search is incomplete even when rows exist.
+discovery_header = read("include/Integration/Gen5/Gen5SourceDiscovery.h")
+require(discovery_header, "size_t maxEntries = 4096;",
+        "size_t maxDirectories = 128;",
+        "size_t entriesExamined = 0;",
+        "size_t directoriesExamined = 0;")
+require(discovery, "entryLimitReached", "s.result.entriesExamined",
+        "s.result.directoriesExamined", "limits.maxEntries,32768",
+        "limits.maxDirectories,512")
+require(games, 'gen5Notice+=" Scan limit reached; list may be incomplete."')
+
 # The display bridge must draw from validated staged PK5, never serialize SAV5.
 require(trainer, "Gen5ReadOnlyTrainer::rebuildPresentation(")
 assert "fwrite(" not in trainer and "ofstream(" not in trainer

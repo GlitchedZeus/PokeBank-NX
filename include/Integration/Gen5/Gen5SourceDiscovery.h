@@ -21,10 +21,17 @@ struct DiscoveryRoot {
 };
 struct DiscoveryLimits {
     size_t maxFiles = 256;
+    // Also bound directory enumeration (including unrelated files). A large
+    // RetroArch save directory must never allocate/sort millions of names
+    // merely because only the first 256 valid save files are parsed.
+    size_t maxEntries = 4096;
+    size_t maxDirectories = 128;
 };
 struct DiscoveryResult {
     std::vector<Source::SaveInstance> instances;
     size_t filesExamined = 0;
+    size_t entriesExamined = 0;
+    size_t directoriesExamined = 0;
     bool limitReached = false;
 };
 
