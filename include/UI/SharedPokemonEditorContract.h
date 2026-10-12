@@ -351,6 +351,39 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
                 return FieldAccess::Hidden;
         }
     }
+    if (generation == Generation::Gen5) {
+        // Only source-backed PK5 transactions have writable UI targets.
+        // Other native PK5 fields are display-only until their coupled
+        // format semantics and staged mutations have been audited.
+        switch (field) {
+            case FieldIdentity::Friendship:
+            case FieldIdentity::IV:
+            case FieldIdentity::EV:
+            case FieldIdentity::Nature:
+                return FieldAccess::Editable;
+            case FieldIdentity::Species:
+            case FieldIdentity::Nickname:
+            case FieldIdentity::Form:
+            case FieldIdentity::Gender:
+            case FieldIdentity::Shiny:
+            case FieldIdentity::Language:
+            case FieldIdentity::Level:
+            case FieldIdentity::Experience:
+            case FieldIdentity::Ability:
+            case FieldIdentity::HeldItem:
+            case FieldIdentity::CalculatedStats:
+            case FieldIdentity::TrainerId:
+            case FieldIdentity::SecretId:
+            case FieldIdentity::PersonalityId:
+            case FieldIdentity::OriginGame:
+            case FieldIdentity::MoveCompatibility:
+            case FieldIdentity::EncounterLegality:
+            case FieldIdentity::Provenance:
+                return FieldAccess::ReadOnly;
+            default:
+                return FieldAccess::Hidden;
+        }
+    }
     return FieldAccess::Hidden;
 }
 

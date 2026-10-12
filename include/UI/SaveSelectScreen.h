@@ -18,6 +18,7 @@
 #include "Legacy/FRLGSourceBrowser.h"
 #include "Legacy/LegacySourceBindings.h"
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
+#include "Integration/Gen5/Gen5SourceDiscovery.h"
 
 namespace UI {
     // JKSV-style combined user + title picker. Shows the selected user's avatar + name at the top
@@ -32,6 +33,7 @@ namespace UI {
             SwitchTitle,
             RetroArchFRLG,
             Gen4AssignedFile,
+            Gen5AssignedFile,
         };
 
         enum class OpenIntent { Default, Items, Backups };
@@ -195,7 +197,7 @@ namespace UI {
         int hubFeatureIndex = -1;
         enum class Overlay { None, Options, Help, OpenFailure, GamesDrawer, ProfilePicker, GameWorkspace,
                              LegacyInstances, LegacyAssignment, LegacyDetails, Gen4Setup,
-                             Gen4Candidates, GameFilePicker };
+                             Gen4Candidates, Gen5Setup, Gen5Candidates, GameFilePicker };
         Overlay overlay = Overlay::None;
         Overlay helpReturnOverlay = Overlay::None;
         // Touch motion is surface-local. These markers let one centralized fence clear residual
@@ -240,6 +242,15 @@ namespace UI {
         // consumes the same provider-neutral SaveInstance rows used by Gen I-III.
         std::vector<PokeVault::Integration::Gen4::SourceCandidate> gen4Candidates;
         std::vector<PokeVault::Source::SaveInstance> gen4Instances;
+
+        // Isolated Gen V preview-only Game Sources; original SAV stays immutable.
+        std::string gen5TargetGameId;
+        std::string gen5Notice;
+        bool gen5SetupFromGamesDrawer = false;
+        std::vector<PokeVault::Source::SaveInstance> gen5Instances;
+        int gen5SetupIndex = 0;
+        int gen5CandidateIndex = 0;
+        int gen5CandidateScroll = 0;
         int gen4SetupIndex = 0;
         int gen4CandidateIndex = 0;
         int gen4CandidateScroll = 0;
@@ -268,6 +279,7 @@ namespace UI {
         void loadUsers();
         void loadLegacySources(const PokeVault::Legacy::FRLGDiscoveryResult& legacySources);
         void loadGen4Cards();
+        void loadGen5Cards();
         void rebuildUnassignedLegacySources();
         bool assignCurrentLegacySource();
         [[nodiscard]] std::string currentProfileIdentity() const;
@@ -305,6 +317,12 @@ namespace UI {
         void chooseGen4ManualFile();
         bool unassignCurrentGen4Game();
         void selectAssignedGen4Title();
+        void openGen5Setup(const std::string& gameId, std::string notice = {},
+                           bool returnToGamesDrawer = false);
+        void discoverGen5Candidates();
+        bool assignGen5Candidate(const PokeVault::Source::SaveInstance& chosen);
+        void chooseGen5ManualFile();
+        bool unassignCurrentGen5Game();
 
         const UserEntry* currentUser() const;
         int titleColumns() const;      // grid columns for the current user's title count (<= 5)

@@ -25,6 +25,8 @@
 #include "Legacy/FRLGSourceBrowser.h"
 #include "Legacy/Gen4ReadOnlyTrainer.h"
 #include "Integration/Gen4/Gen4AssignedSource.h"
+#include "Legacy/Gen5ReadOnlyTrainer.h"
+#include "Integration/Gen5/Gen5AssignedSource.h"
 
 using namespace Utils;
 using namespace Trainer;
@@ -209,6 +211,17 @@ namespace UI {
                                             selectScreen.getSelectedGameId(),
                                             selectScreen.getOpenIntent(), error))
                             logErrorToFile("Generation IV assigned source refused open", error.c_str());
+                    } else if (selectScreen.getSelectedSourceKind() ==
+                               SaveSelectScreen::SelectedSourceKind::Gen5AssignedFile) {
+                        std::string error;
+                        if (!handleGen5View(selectScreen.getSelectedUser(),
+                                            selectScreen.getSelectedGameId(),
+                                            selectScreen.getOpenIntent(), error)) {
+                            logErrorToFile("Generation V read-only source refused open", error.c_str());
+                            selectScreen.reportOpenFailure(error);
+                            fb.startFade();
+                            continue;
+                        }
                     } else {
                         if (selectScreen.getOpenIntent() == SaveSelectScreen::OpenIntent::Items) {
                             handleItemsQuickOpen(selectScreen.getSelectedUser(),
@@ -483,6 +496,63 @@ namespace UI {
         if (trainerScreen.hasRequestedExit()) running = false;
         return true;
     }
+    bool UIManager::handleGen5View(
+        AccountUid userUid, const std::string& gameId,
+        SaveSelectScreen::OpenIntent intent, std::string& error) {
+        error.clear();
+        const auto* identity=PokeVault::Games::findGame(gameId);
+        if (!identity || identity->platform!=PokeVault::Games::Platform::NintendoDS ||
+            identity->dataGeneration!=5 ||
+            identity->support!=PokeVault::Games::SourceSupport::Planned ||
+            intent!=SaveSelectScreen::OpenIntent::Default) {
+            error="Generation V supports validated read-only Trainer/Party/Boxes browsing only";
+            return false;
+        }
+
+        // Re-validate the precise persisted assignment on every Open. The
+        // preview's earlier successful check is never a security capability.
+        auto opened=PokeVault::Integration::Gen5::openAssignedSource(
+            legacySourceBindings,profileIdentity(userUid),gameId);
+        if (!opened.ready() || !opened.save ||
+            opened.instance.gameId!=gameId || !opened.instance.readOnly()) {
+            error=opened.diagnostic.empty()
+                ? "Generation V source changed or failed strict validation"
+                : opened.diagnostic;
+            return false;
+        }
+        auto trainer=PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*opened.save,gameId,error);
+        if (!trainer) {
+            if (error.empty())error="Generation V read-only presentation failed";
+            return false;
+        }
+        const std::string sourcePath=opened.source.binding.sourcePath;
+        logInfoToFile("Opening assigned Generation V source read-only",sourcePath.c_str());
+        TrainerViewScreen trainerScreen(
+            *trainer,"Pokemon "+std::string(identity->title),sourcePath,0,userUid,
+            PokeVault::Safety::SourceKind::ExternalLegacy,gameId,
+            opened.source.binding.sourceType);
+        // Gen5SharedReadOnlySurface intercepts ALL Gen V input before the
+        // inherited source/bank/Items/editor/save handlers. Only shared
+        // passive Party/Boxes/Trainer browsing is available at this stage.
+        trainerScreen.selectedMode=TrainerViewScreen::ViewMode::Party;
+        trainerScreen.detailViewActive=true;
+        fb.startFade();
+        while (appletMainLoop() && running && !trainerScreen.shouldExit() &&
+               !trainerScreen.hasRequestedExit()) {
+            padUpdate(&pad);
+            touch.update();
+            keyboardBackdrop=&trainerScreen;
+            trainerScreen.update(pad,touch);
+            if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit())break;
+            trainerScreen.draw(fb);
+            fb.drawFadeOverlay();
+            fb.flush();
+        }
+        keyboardBackdrop=nullptr;
+        if (trainerScreen.hasRequestedExit())running=false;
+        return true;
+    }
+
     bool UIManager::handleGen4View(
         AccountUid userUid, const std::string& gameId,
         SaveSelectScreen::OpenIntent intent, std::string& error) {

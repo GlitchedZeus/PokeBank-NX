@@ -61,6 +61,8 @@ namespace UI {
                                   SaveSelectScreen::OpenIntent intent, std::string& error);
         bool handleGen4View(AccountUid userUid, const std::string& gameId,
                             SaveSelectScreen::OpenIntent intent, std::string& error);
+        bool handleGen5View(AccountUid userUid, const std::string& gameId,
+                            SaveSelectScreen::OpenIntent intent, std::string& error);
     };
 }
 

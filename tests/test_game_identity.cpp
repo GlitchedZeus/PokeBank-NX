@@ -8,7 +8,7 @@ using namespace PokeVault::Games;
 
 int main() {
     const auto games = allGameDescriptors();
-    assert(games.size() == 28);
+    assert(games.size() == 32);
 
     std::set<std::string> ids;
     std::set<uint64_t> switchIds;
@@ -40,6 +40,10 @@ int main() {
     const auto* platinum = findGame("platinum_nds");
     const auto* heartGold = findGame("heartgold_nds");
     const auto* soulSilver = findGame("soulsilver_nds");
+    const auto* black = findGame("black_nds");
+    const auto* white = findGame("white_nds");
+    const auto* black2 = findGame("black2_nds");
+    const auto* white2 = findGame("white2_nds");
     const auto* fireRedSwitch = findGame("firered_switch");
     const auto* leafGreenGba = findGame("leafgreen_gba");
     const auto* leafGreenSwitch = findGame("leafgreen_switch");
@@ -69,6 +73,16 @@ int main() {
     assert(platinum->platform == Platform::NintendoDS && platinum->support == SourceSupport::ReadOnly);
     assert(heartGold->platform == Platform::NintendoDS && heartGold->support == SourceSupport::ReadOnly);
     assert(soulSilver->platform == Platform::NintendoDS && soulSilver->support == SourceSupport::ReadOnly);
+    assert(black && white && black2 && white2);
+    for (const auto* game : {black, white, black2, white2}) {
+        assert(game->platform == Platform::NintendoDS);
+        assert(game->dataGeneration == 5);
+        assert(game->support == SourceSupport::Planned); // No premature save/edit routes.
+        assert(game->switchTitleId == 0);
+        assert(legacyPlatformAbbreviation(game->id).empty());
+        assert(gameCardArtworkPath(game->id).empty()); // No invented art asset.
+        assert(gameRegionBackdropKey(game->id) == "unova");
+    }
     assert(fireRedSwitch->platform == Platform::NintendoSwitch);
     assert(platformName(Platform::GameBoy) == "Game Boy");
     assert(platformName(Platform::GameBoyColor) == "Game Boy Color");
