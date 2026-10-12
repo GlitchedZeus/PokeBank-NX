@@ -126,15 +126,48 @@ int main(){
         assert(rescuedDuplicate.consistent==1 && rescuedDuplicate.unverified==1);
         auto noId=x;noId.alternatives[0].routeIdentity=0;
         assert(A::evaluate(noId).status==A::Status::MissingOrDuplicateCandidateIdentity);
-        dup.alternatives[0].independentlyAttestedHypothesis=false;
-        assert(A::evaluate(dup).status==A::Status::MissingOrDuplicateCandidateIdentity);
-        // Two archive rows can collide; a separately attested,
-        // coherent PID+IV route AFTER a discredited sibling must survive.
-        dup=x;dup.count=2;dup.alternatives[1]=dup.alternatives[0];
+        // A duplicate with a separately attested matching row is a
+        // conditional POSITIVE, independent of row order. It is not
+        // MissingOrDuplicateCandidateIdentity simply because its first
+        // row lacks attestation (the old CI assertion was contradictory).
         dup.alternatives[0].independentlyAttestedHypothesis=false;
         const auto lateMatch=A::evaluate(dup);
         assert(lateMatch.status==A::Status::OneConditionallyConsistentHistory);
         assert(lateMatch.consistent==1 && lateMatch.unverified>=1);
+        auto earlyMatch=dup;
+        earlyMatch.alternatives[0]=dup.alternatives[1];
+        earlyMatch.alternatives[1]=dup.alternatives[0];
+        const auto early=A::evaluate(earlyMatch);
+        assert(early.status==A::Status::OneConditionallyConsistentHistory);
+        assert(early.consistent==1 && early.unverified>=1);
+        // Neither order of two malformed duplicate archive rows proves
+        // a daycare contradiction. With no matching witness, stay Unknown.
+        auto malformedOnly=dup;
+        malformedOnly.alternatives[1]=malformedOnly.alternatives[0];
+        const auto noMatch=A::evaluate(malformedOnly);
+        assert(noMatch.status==A::Status::MissingOrDuplicateCandidateIdentity);
+        assert(noMatch.consistent==0 && noMatch.unverified>=1);
+        // An independently attested but contradicted first history cannot
+        // hide a later matching history with a colliding route identity.
+        auto collision=x;
+        collision.count=2;
+        collision.alternatives[0]=wrongPID.alternatives[0];
+        collision.alternatives[1]=x.alternatives[0];
+        const auto contradictedFirst=A::evaluate(collision);
+        assert(contradictedFirst.status==A::Status::OneConditionallyConsistentHistory);
+        assert(contradictedFirst.consistent==1 && contradictedFirst.unverified>=1);
+        collision.alternatives[0]=x.alternatives[0];
+        collision.alternatives[1]=wrongPID.alternatives[0];
+        const auto contradictedLast=A::evaluate(collision);
+        assert(contradictedLast.status==A::Status::OneConditionallyConsistentHistory);
+        assert(contradictedLast.consistent==1 && contradictedLast.unverified>=1);
+        // Two independently attested but duplicate contradictory witnesses
+        // cannot be treated as an exhaustive independent negative universe.
+        collision.alternatives[0]=wrongPID.alternatives[0];
+        collision.alternatives[1]=wrongPID.alternatives[0];
+        const auto negativeDuplicates=A::evaluate(collision);
+        assert(negativeDuplicates.status==A::Status::MissingOrDuplicateCandidateIdentity);
+        assert(negativeDuplicates.consistent==0 && negativeDuplicates.unverified>=1);
         noId.count=2;noId.alternatives[1]=x.alternatives[0];
         noId.alternatives[1].routeIdentity=2;
         assert(A::evaluate(noId).status==A::Status::OneConditionallyConsistentHistory);
