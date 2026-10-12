@@ -117,6 +117,26 @@ static_assert([]{auto p=bulba(G::Crystal,10);p.species=155;
     p.initialMoves={33,43,0,0};p.observedMoves={33,43,108,0};
     p.stepCount=1;p.steps[0]={G::Crystal,6,A::OfferLearn,108,2,0,true};
     return H::evaluate(p).status==S::CandidateConsistent;}());
+// The independently pinned Charmander RBY offers also replay as one
+// coherent specimen; the same moves cannot be credited at invented levels.
+constexpr H::Path charmander() {
+    auto p=bulba(G::Yellow,15);p.species=4;p.initialLevel=8;
+    p.initialMoves={10,45,0,0};p.observedMoves={10,45,52,43};
+    p.stepCount=2;
+    p.steps[0]={G::Yellow,9,A::OfferLearn,52,2,0,true};
+    p.steps[1]={G::Yellow,15,A::OfferLearn,43,3,0,true};
+    return p;
+}
+static_assert(H::evaluate(charmander()).status==S::CandidateConsistent);
+static_assert([]{auto p=charmander();p.steps[0].level=10;
+    return H::evaluate(p).status==S::CandidateContradicted;}());
+static_assert([]{auto p=charmander();p.steps[1].move=52;
+    return H::evaluate(p).status==S::CandidateContradicted;}());
+static_assert([]{auto p=redOrder();p.steps[1].slot=0;
+    p.observedMoves={38,45,73,0};
+    return H::evaluate(p).status==S::CandidateContradicted;}());
+static_assert([]{auto p=capsule();p.steps[1].actionSourceVerified=false;
+    return H::evaluate(p).status==S::Unknown;}());
 static_assert([]{auto p=capsule();p.originalSnapshotVerified=false;
     return H::evaluate(p).status==S::Unknown;}());
 static_assert([]{auto p=capsule();p.species=169;
