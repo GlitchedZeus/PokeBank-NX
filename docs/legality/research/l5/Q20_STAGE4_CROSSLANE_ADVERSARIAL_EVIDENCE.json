@@ -1,0 +1,116 @@
+{
+  "schema": "L5_STAGE4_CROSSLANE_NATIVE_EXECUTION_V1",
+  "date": "2026-10-12",
+  "repo": "GlitchedZeus/PokeBank-NX",
+  "pr": 294,
+  "start_head": "46d93abca236251a3955a864dae22e327edae164",
+  "lanes": [
+    {
+      "lane": "L1",
+      "branch": "feature/legality-l1-encounters-rng-20261012",
+      "head_at_start": "7a972afec0f2382c79cec6c13cf4044215e1d710",
+      "source": "include/Legality/Gen4HgssOriginalTreeStage.h",
+      "source_git_blob": "9c767ede360d503baa5831db3ce9c6eff04c9441",
+      "test": "tests/fixtures/legality_l5_stage4_l1_tree_adversarial.cpp",
+      "test_git_blob": "d21f366d1a0f54b31557ba4b96447a617d66787e",
+      "assertions_per_execution": 635893,
+      "candidate_matching": 39729,
+      "candidate_local_contradictions": 39729,
+      "missing_original_source_unknown": 347760,
+      "empty_tree_candidates": 9951,
+      "scope": "actual source-attested original HGSS headbutt-tree group helper; not full capture RNG"
+    },
+    {
+      "lane": "L2",
+      "branch": "feature/legality-l2-breeding-20261012",
+      "head_at_start": "4bd51f0b1cdd879bf6f1a8217d246ebc91bb4a15",
+      "source": "include/Legality/Gen4DiamondPearlEggIVStage.h",
+      "source_git_blob": "6b1d2a7bc2299fe7780deba849caf033fa2ff0f5",
+      "test": "tests/fixtures/legality_l5_stage4_l2_egg_iv_adversarial.cpp",
+      "test_git_blob": "a553326572f742cabbe5ec4bc8baeeea1f85c5aa",
+      "assertions_per_execution": 327683,
+      "conditional_matches": 16384,
+      "candidate_local_contradictions": 32600,
+      "missing_original_stage_unknown": 81920,
+      "repeated_inherited_indices": 7624,
+      "alternative_seed_same_final_ivs": 168,
+      "scope": "actual original D/P IV-replay stage; not parental PID/egg method completeness"
+    },
+    {
+      "lane": "L3",
+      "branch": "feature/legality-l3-moves-transfer-20261012",
+      "head_at_start": "76de17be98914329d0b55017dd8c3a5d1d9d85e0",
+      "sources": [
+        {
+          "path": "include/Legality/Gen14CandidateMoveGbaStarterTables.h",
+          "blob": "c60d5594d92bae65b8e4d1f46e2dbede27227a40"
+        },
+        {
+          "path": "include/Legality/Gen14CandidateMoveGbaNinjaTables.h",
+          "blob": "ed5510aedd2440bfd7d6bd6e29650d5d2ebbe4dd"
+        }
+      ],
+      "test": "tests/fixtures/legality_l5_stage4_l3_move_source_adversarial.cpp",
+      "test_git_blob": "59442ec6de0add4fdd1fea98aa98221ce5f65e72",
+      "assertions_per_execution": 885145,
+      "source_row_matches": 149,
+      "original_game_local_differences": 4,
+      "absent_level_unknown": 382674,
+      "scope": "actual version-pinned Gen III starter/Nincada/Ninjask/Shedinja source-level offer tables; no same-individual four-move acquisition proof"
+    },
+    {
+      "lane": "L4",
+      "branch": "feature/legality-l4-events-meta-20261012",
+      "head_at_start": "85a9856fe6d326b6dddad6152ecfd6751539c25e",
+      "source": "include/Legality/Gen4EventClockReceiptEvidence.h",
+      "source_git_blob": "1d9bef10b28ca58d54f0539eb74712be37d4ab71",
+      "test": "tests/fixtures/legality_l5_stage4_l4_clock_adversarial.cpp",
+      "test_git_blob": "61c4f16a94bf53ef11d455ae1ec44cb421f2210e",
+      "assertions_per_execution": 828165,
+      "candidate_local_outside_window": 93259,
+      "malformed_native_dates_unknown": 24770,
+      "scope": "actual L4 historical clock receipt decision; missing original DS clock attestation cannot become Invalid"
+    }
+  ],
+  "execution": {
+    "runner": "tools/audit_legality_l5_stage4_crosslane.py",
+    "runner_blob": "25d9f80800d28e570db94b72ecb1544e32a76c99",
+    "actual_local_reconstructed_source_blobs_verified": true,
+    "isolated_temp_header_overlay": true,
+    "complete_reconciled_repository": false,
+    "compiler_modes": [
+      "g++ 14.2 C++20 O2 Werror",
+      "g++ 14.2 C++20 O1 ASan/UBSan",
+      "clang++ 17 C++20 O2 Werror"
+    ],
+    "four_helpers_each_mode_passed": true,
+    "total_independently_checked_assertions_per_mode": 2676886,
+    "distinct_executed_binaries": 12,
+    "normal_test_binaries": 8,
+    "sanitized_test_binaries": 4,
+    "runner_self_test": "PASS",
+    "edited_header_negative_control": "PASS fail closed with non-zero exit",
+    "actual_helper_header_source_compiled": true,
+    "actual_full_legality_analyzer_executed": false,
+    "original_retail_test_assets": 0,
+    "global_invalid_or_authenticity_certificates": 0,
+    "full_pkhex_parity_cells": 0
+  },
+  "qa_finding": {
+    "id": "L5-S4-COLLISION-168",
+    "severity": "test assumption corrected, not confirmed production defect",
+    "observation": "168 of 16,384 original D/P seed/variant controls had a distinct replay initial seed but an identical final six-IV tuple; a negative test assuming every different seed is impossible would falsely fail.",
+    "resolution": "Test explicitly computes the alternative replay; accepts matching final IVs as a separate locally compatible route, while requiring mismatches to remain candidate-specific contradictions.",
+    "production_change_needed": false
+  },
+  "status": "LOCAL_FOUR_LANE_HELPER_SUITES_PASS_NOT_INTEGRATION_OR_RETAIL_CERTIFICATION",
+  "coordinator_blockers": [
+    "Runner must be replayed against four full exact lane checkouts and then any accepted integrated versions; byte drift must be reviewed",
+    "Full L3 joint same-individual four-move chronology and all alternative histories still require original receipts",
+    "Original L4 archive license, original event receipt, and mutable DS clock attestation remain unverified",
+    "Original L2 parent/egg PID physical-deposit identity and full parental branches not certified",
+    "No Stage4 modification to coordinator-owned production or shared CI",
+    "PR #298 integration L2 failure (latest checked workflow 38296998403) needs correction",
+    "Stage5 336-cell release matrix remains unproven and must stay blocked"
+  ]
+}
