@@ -88,7 +88,39 @@ int main(){
   auto alt=s;alt.originalSafariContextKnown=false;
   assert(H::evaluate(alt).status==S::UnknownOriginalStage);++unknown;
  }
- assert(accepted==33*128+4);
+ // Exercise BOTH Emerald Synchronize success and failure predicates. The
+ // nature-stage seed is independently witnessed and is not assumed adjacent
+ // to the slot/level RNG stages (there may be intervening retail calls).
+ unsigned syncSuccess=0,syncFailure=0;
+ for(uint32_t seed=0;seed<1024;++seed){
+  H::Stage st{};st.exactOriginalGame=W::Game::Emerald;
+  st.exactGroupIndex=15; // Route110 grass source
+  st.originalLead=H::Lead::Synchronize;
+  st.preSlotSeed=seed*12367u+19u;st.preNatureSeed=seed*9743u+31u;
+  st.originalSyncNature=static_cast<uint8_t>((seed*7)%25);
+  st.originalGameAndGroupAttested=st.originalSlotSeedAttested=true;
+  st.originalNatureSeedAttested=st.originalSlotAndLevelAttested=true;
+  st.originalLeadAttested=st.originalNatureAttested=true;
+  st.originalSyncNatureAttested=true;
+  st.originalSafariContextKnown=st.originalSafariPokeblockPathRuledOut=true;
+  const auto& g=W::kGroups[st.exactGroupIndex];
+  const auto sl=H::next(st.preSlotSeed);
+  st.attestedSlot=H::slotFromRoll(g.method,st.rod,H::sample(sl));
+  const auto row=W::decode(g,st.attestedSlot);
+  const auto lv=H::next(sl);
+  st.attestedLevel=static_cast<uint8_t>(row.minLevel+(H::sample(lv)%(row.maxLevel-row.minLevel+1)));
+  uint32_t nat=H::next(st.preNatureSeed);
+  const bool succeeded=(H::sample(nat)%2==0);
+  if(succeeded){st.attestedNature=st.originalSyncNature;++syncSuccess;}
+  else{nat=H::next(nat);st.attestedNature=static_cast<uint8_t>(H::sample(nat)%25);++syncFailure;}
+  assert(H::evaluate(st).status==S::StageOnlyCompatibleHistoryUnverified);++accepted;
+  auto bad=st;bad.attestedNature=static_cast<uint8_t>((st.attestedNature+1)%25);
+  assert(H::evaluate(bad).status==S::CandidateNatureContradicted);++negative;
+  bad=st;bad.originalSyncNatureAttested=false;
+  assert(H::evaluate(bad).status==S::UnknownOriginalLead);++unknown;
+ }
+ assert(syncSuccess>0&&syncFailure>0);
+ assert(accepted==33*128+4+1024);
  std::cout<<"L1 Gen3 source-attested original slot/level/nature RNG "<<accepted
           <<" positives, "<<negative<<" local negatives, "<<unknown<<" unknowns: PASS\n";
 }
