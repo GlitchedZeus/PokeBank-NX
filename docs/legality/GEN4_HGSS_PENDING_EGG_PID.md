@@ -25,6 +25,12 @@ Parent PIDs are needed only when the Everstone gate succeeds. The caller must st
 
 HGSS applies international-language ARNG transformations later in `SetBreedEggStats`, at collection. This helper deliberately does **not** compare its pending result directly to the final encrypted PK4 PID or infer language history. Pending zero values are faithfully replayed as source-stage outputs; downstream daycare state handling and whole-egg feasibility remain separate. Parent eligibility, lineage, final PID transformation, IV generation and native history linkage are outside this stage.
 
+## Final Masuda PID transform
+
+`Gen4HGSSMasudaPidTransform.h` models the later `SetBreedEggStats` collection-time transform as a separate pure stage. When the two source-attested physical parent language bytes differ and the pending PID is not shiny for the source-attested trainer ID, it applies `PRandom(pid) = pid * 0x6C078965 + 1` up to four times, retaining the first shiny result or the fourth non-shiny result. Equal language bytes and an already-shiny pending PID retain the PID without a PRandom call.
+
+The helper requires collection-time language and trainer-ID evidence and compares an explicitly supplied final PID. It does not treat a derived current PK4 language or trainer field as historical proof, and it does not reconstruct the pending PID or connect the creation and collection snapshots by itself. Its permanent normal and ASan/UBSan tests cover equal/different languages, already-shiny and four-failed-retry paths, both HGSS titles, mismatch, and unavailable inputs. This stage must be joined with the pending PID helper only after an external witness proves the same daycare/collection history.
+
 ## Independent verification
 
 `python tools/check_hgss_pending_egg_pid.py /path/to/pokeheartgold` requires the exact pinned checkout. It reads original source through Git objects, extracts the two unchanged retail functions into a temporary compiler input, supplies explicit accessor/RNG-stream stubs and compares against the compiled implementation. It checks pending PID, final LCRNG state, LCRNG call count and MT consumption.

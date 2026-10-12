@@ -154,6 +154,7 @@ HOST_TESTS += $(HOST_BUILD)/test_gen14_candidate_move_history
 HOST_TESTS += $(HOST_BUILD)/test_gen3_egg_iv_inheritance_stage
 HOST_TESTS += $(HOST_BUILD)/test_gen3_joint_egg_candidate
 HOST_TESTS += $(HOST_BUILD)/test_gen4_hgss_pending_egg_pid
+HOST_TESTS += $(HOST_BUILD)/test_gen4_hgss_masuda_pid_transform
 HOST_TESTS += $(HOST_BUILD)/test_gen4_egg_iv_inheritance_stage
 HOST_TESTS += $(HOST_BUILD)/test_gen3_emerald_levelup_timeline
 HOST_TESTS += $(HOST_BUILD)/test_gen14_candidate_set_coverage
@@ -169,6 +170,7 @@ HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen14_candidate_set_coverage_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_emerald_levelup_timeline_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_joint_egg_candidate_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_hgss_pending_egg_pid_sanitize
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_hgss_masuda_pid_transform_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_egg_iv_inheritance_stage_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen34_same_parent_egg_history
 HOST_TESTS += $(HOST_BUILD)/test_gen4_event_joint_move_history
@@ -411,6 +413,14 @@ $(HOST_BUILD)/test_gen3_egg_iv_inheritance_stage: tests/test_gen3_egg_iv_inherit
 $(HOST_BUILD)/test_gen3_egg_iv_inheritance_stage_sanitize: tests/test_gen3_egg_iv_inheritance_stage.cpp include/Legality/Gen3EggIVInheritanceStage.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_egg_iv_inheritance_stage.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_hgss_masuda_pid_transform: tests/test_gen4_hgss_masuda_pid_transform.cpp include/Legality/Gen4HGSSMasudaPidTransform.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_hgss_masuda_pid_transform.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_hgss_masuda_pid_transform_sanitize: tests/test_gen4_hgss_masuda_pid_transform.cpp include/Legality/Gen4HGSSMasudaPidTransform.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_hgss_masuda_pid_transform.cpp -o $@
 
 $(HOST_BUILD)/test_gen14_candidate_move_history: tests/test_gen14_candidate_move_history.cpp include/Legality/Gen14CandidateMoveHistory.h
 	@mkdir -p $(HOST_BUILD)
