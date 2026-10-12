@@ -28,7 +28,8 @@ class IntegrationAuditRunnerTests(unittest.TestCase):
         gates = AUDIT.plan("audit", "a" * 40)
         self.assertEqual([gate.name for gate in gates], [
             "stage1-l2-baseline", "stage2-native", "stage2-native-sanitize",
-            "stage3-cross-lane", "stage3-cross-lane-sanitize"])
+            "stage3-cross-lane", "stage3-cross-lane-sanitize",
+            "stage4-native", "stage4-native-sanitize"])
         self.assertTrue(all(gate.environment["ASAN_OPTIONS"].startswith("detect_leaks=0")
                             for gate in gates))
         self.assertEqual(len(AUDIT.plan("l5", "b" * 40)), 11)
