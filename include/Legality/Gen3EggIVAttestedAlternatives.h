@@ -69,19 +69,22 @@ constexpr Result evaluate(const Input& in) noexcept {
     if(!IV::validIVs(in.originalUnhatchedEggIVs)){
         out.status=Status::InvalidObservedIVDomain;return out;
     }
-    // A duplicate or zero route is not an independent enumeration.
-    for(uint8_t i=0;i<in.count;++i){
-        if(!in.alternatives[i].routeIdentity){
-            out.status=Status::MissingOrDuplicateRouteIdentity;return out;
-        }
-        for(uint8_t j=0;j<i;++j)
-            if(in.alternatives[i].routeIdentity==in.alternatives[j].routeIdentity){
-                out.status=Status::MissingOrDuplicateRouteIdentity;return out;
-            }
-    }
+    // Ignore duplicate/zero historical route identities for matching
+    // and count them unresolved for exhaustion. They cannot conceal a
+    // different, independently sourced *matching* original parent history.
+    bool malformedRouteIdentity=false;
     for(uint8_t i=0;i<in.count;++i){
         const Route& route=in.alternatives[i];
         ++out.considered;
+        bool unique=route.routeIdentity!=0;
+        for(uint8_t j=0;j<i;++j)
+            if(route.routeIdentity==in.alternatives[j].routeIdentity)
+                unique=false;
+        if(!unique){
+            malformedRouteIdentity=true;
+            ++out.unverified;
+            continue;
+        }
         // Physical deposited slots must be the SAME original pair whose
         // parent IVs are being replayed. Never silently swap father/mother
         // because the child's IVs happened to match a different order.
@@ -116,6 +119,8 @@ constexpr Result evaluate(const Input& in) noexcept {
         ++out.unresolved;
     }
     if(out.consistent)out.status=Status::OneConditionallyConsistentStage;
+    else if(malformedRouteIdentity)
+        out.status=Status::MissingOrDuplicateRouteIdentity;
     else if(out.unverified)out.status=Status::UnknownCandidateProvenance;
     else if(out.unresolved)out.status=Status::UnresolvedStageHistory;
     else if(!in.allOriginalIVStageHypothesesIndependentlyEnumerated)
