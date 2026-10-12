@@ -15,6 +15,7 @@ on:
       - include/Legality/Gen3Distribution*
       - include/Legality/Gen4*Event*
       - include/Legality/Gen4MysteryGift*
+      - include/Legality/Gen4OriginalCardRecipient*
       - include/Legality/Gen4ContestRibbon*
       - tools/legality_l4_*
       - docs/legality/l4/**

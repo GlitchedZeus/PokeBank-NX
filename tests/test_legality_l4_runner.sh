@@ -107,6 +107,12 @@ echo "L4 Stage 2 original Gen I/II distribution join: 786432 source masks"
 "$compiler" "${base[@]}" tests/fixtures/legality_l4_stage2_gen12_join.cpp \
     -o "$scratch/l4_stage2_gen12_join"
 "$scratch/l4_stage2_gen12_join"
+# Gen IV Stage 4 original-card, recipient-save, receipt and Ranger gating.
+# Supplement to the unchanged 28 registered suites; no CI bypass.
+echo "L4 Stage 4 original PCD/PGT recipient evidence"
+"$compiler" "${base[@]}" tests/fixtures/legality_l4_stage4_card_recipient.cpp \
+    -o "$scratch/l4_stage4_card_recipient"
+"$scratch/l4_stage4_card_recipient"
 for name in "${header_only[@]}"; do
     echo "L4 C++ compile: $name"
     "$compiler" "${base[@]}" "tests/$name.cpp" -o "$scratch/$name"
