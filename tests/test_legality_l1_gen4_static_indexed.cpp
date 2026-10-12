@@ -90,6 +90,8 @@ int main(){
                 assert(H::evaluate(missing).status==Status::UnknownOriginalPidOrigin);
                 wrong=c;wrong.historicalPidOrigin=H::PidOrigin::Pokewalker;
                 assert(H::evaluate(wrong).status==Status::CandidatePidFamilyContradicted);
+                wrong=c;wrong.historicalPidOrigin=static_cast<H::PidOrigin>(255u);
+                assert(H::evaluate(wrong).status==Status::UnknownOriginalPidOrigin);
             }
         }
     }

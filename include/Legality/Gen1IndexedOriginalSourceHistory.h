@@ -15,7 +15,8 @@ enum class Kind : uint8_t { Static, InGameTrade };
 enum class Status : uint8_t {
     UnknownOriginalGame, UnknownOriginalSource, UnknownOriginalRow,
     UnknownEvolutionChain, UnknownTradeOT, UnknownTradebackHistory,
-    UnknownOriginalCatchRate, ForeignGameRowNotEvidence,
+    UnknownOriginalCatchRate, UnknownEncounterKind, UnknownCurrentSpecies,
+    UnknownLaterGenerationEvolution, ForeignGameRowNotEvidence,
     CandidateOriginalSpeciesContradicted, CandidateOriginalLevelContradicted,
     CandidateEvolutionContradicted, CandidateOriginalCatchRateContradicted,
     ConditionalOriginalSource
@@ -61,6 +62,8 @@ inline Result evaluate(const Candidate& c) noexcept {
     if(!c.originalGameIndependentlyAttested ||
        !Gen1Encounter::gameMaskForId(c.exactOriginalGame))
         return {};
+    if(c.kind!=Kind::Static && c.kind!=Kind::InGameTrade)
+        return {Status::UnknownEncounterKind};
     if(!c.originalSourceRowIndependentlyAttested)
         return {Status::UnknownOriginalRow};
     const uint8_t mask=Gen1Encounter::gameMaskForId(c.exactOriginalGame);
@@ -97,6 +100,14 @@ inline Result evaluate(const Candidate& c) noexcept {
         return {Status::CandidateOriginalSpeciesContradicted,species,minimum};
     if(c.originalLevel<minimum)
         return {Status::CandidateOriginalLevelContradicted,species,minimum};
+    // This helper only has the Gen I (1..151) evolution graph. An
+    // acquisition in R/B/Y that later evolved through Gen II+ can be
+    // legitimate (Scyther->Scizor, Porygon->Porygon2, Eevee->Espeon).
+    // Never turn that unmodeled history into a candidate contradiction.
+    if(c.presentSpecies==0)
+        return {Status::UnknownCurrentSpecies,species,minimum};
+    if(c.presentSpecies>151)
+        return {Status::UnknownLaterGenerationEvolution,species,minimum};
     if(c.presentSpecies!=species && !c.originalEvolutionChainIndependentlyAttested)
         return {Status::UnknownEvolutionChain,species,minimum};
     if(!possibleOriginalEvolution(species,c.presentSpecies))

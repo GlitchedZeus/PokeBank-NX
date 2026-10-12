@@ -1,4 +1,5 @@
 #include "Legality/Gen1IndexedOriginalSourceHistory.h"
+#include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -97,10 +98,48 @@ int main(){
     assert(H::evaluate(rateHistory).status==Status::UnknownTradebackHistory);
     rateHistory.timeCapsuleHistoryIndependentlyAttested=false;
     assert(H::evaluate(rateHistory).status==Status::CandidateOriginalLevelContradicted);
+    // Corrupted encounter-kind enums cannot fabricate a source-trade hit.
+    auto invalidKind=trade;
+    invalidKind.kind=static_cast<H::Kind>(255u);
+    assert(H::evaluate(invalidKind).status==Status::UnknownEncounterKind);
     // Distinct Eevee branches cannot evolve into each other even when
     // a numeric species interval or stage-offset heuristic would include them.
     static_assert(H::possibleOriginalEvolution(133,135));
     static_assert(!H::possibleOriginalEvolution(134,135));
+    // Genuine R/B/Y original acquisitions can later evolve in G/S/C.
+    // PK1's Gen I-only evolution graph has no right to reject them:
+    // Scyther->Scizor, Porygon->Porygon2, Eevee->Espeon/Umbreon.
+    constexpr std::array<std::array<uint16_t,3>,4> later{{
+        {{6,123,212}},{{27,137,233}},{{25,133,196}},{{25,133,197}}
+    }};
+    for(const auto& f:later){
+        H::Candidate evolved{};
+        evolved.kind=H::Kind::Static;
+        evolved.exactOriginalGame="red_gb";
+        evolved.originalRowIndex=f[0];
+        evolved.originalSpecies=f[1];
+        evolved.presentSpecies=f[2];
+        evolved.originalLevel=Legality::Gen1Encounter::kStaticEntries[f[0]].minimumLevel;
+        evolved.originalCatchRate=Legality::Gen1CatchRate::expectedRate("red_gb",f[1]);
+        evolved.originalGameIndependentlyAttested=true;
+        evolved.originalSourceRowIndependentlyAttested=true;
+        evolved.originalEvolutionChainIndependentlyAttested=true;
+        evolved.originalCatchRateIndependentlyAttested=true;
+        assert(H::evaluate(evolved).status==Status::UnknownLaterGenerationEvolution);
+        evolved.presentSpecies=0;
+        assert(H::evaluate(evolved).status==Status::UnknownCurrentSpecies);
+    }
+    // Ordinary witnessed Eevee->Jolteon remains a compatible Gen I line.
+    H::Candidate eevee{};
+    eevee.exactOriginalGame="red_gb";eevee.originalRowIndex=25;
+    eevee.originalSpecies=133;eevee.presentSpecies=135;
+    eevee.originalLevel=25;
+    eevee.originalCatchRate=Legality::Gen1CatchRate::expectedRate("red_gb",133);
+    eevee.originalGameIndependentlyAttested=true;
+    eevee.originalSourceRowIndependentlyAttested=true;
+    eevee.originalEvolutionChainIndependentlyAttested=true;
+    eevee.originalCatchRateIndependentlyAttested=true;
+    assert(H::evaluate(eevee).status==Status::ConditionalOriginalSource);
     assert(checked>=70u);
     std::cout<<"L1 E02/E03 exact RBY original static/trade rows: PASS\n";
 }

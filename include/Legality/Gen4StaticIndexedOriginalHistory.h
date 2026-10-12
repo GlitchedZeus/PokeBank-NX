@@ -45,6 +45,15 @@ struct Result {
     bool originalGiftEgg=false;
     bool originalRoamer=false;
 };
+constexpr bool recognizedPidOrigin(PidOrigin origin) noexcept {
+    switch(origin) {
+        case PidOrigin::OrdinaryMethod1:
+        case PidOrigin::CuteCharm:
+        case PidOrigin::ChainShiny:
+        case PidOrigin::Pokewalker:return true;
+        default:return false;
+    }
+}
 constexpr bool categoryAccepts(Gen4Static::PidCategory cat,PidOrigin origin) noexcept {
     using C=Gen4Static::PidCategory;
     switch(cat) {
@@ -111,7 +120,8 @@ inline Result evaluate(const Candidate& c) noexcept {
         category,egg,roam
     };
     if(!c.originalPidFamilyIndependentlyAttested ||
-       c.historicalPidOrigin==PidOrigin::Unknown)
+       !recognizedPidOrigin(c.historicalPidOrigin) ||
+       category==S::PidCategory::None)
         return {Status::UnknownOriginalPidOrigin,category,egg,roam};
     if(!categoryAccepts(category,c.historicalPidOrigin))
         return {Status::CandidatePidFamilyContradicted,category,egg,roam};
