@@ -45,7 +45,7 @@ inline Snapshot fromVerifiedPK1(const PokeVault::Integration::Gen1::PokemonRecor
     s.species=r.species;s.level=r.level;
     for(std::uint8_t i=0;i<4;++i)s.moves[i]=r.moves[i];
     s.structurallyUsable=r.species>=1 && r.species<=151 &&
-        r.level>=1 && r.level<=100 && H::validSlots(s.moves,165);
+        r.level>=1 && r.level<=100 && s.moves[0]!=0 && H::validSlots(s.moves,165);
     return s;
 }
 inline Snapshot fromVerifiedPK2(const PokeVault::Integration::Gen2::PokemonRecord& r,
@@ -57,7 +57,7 @@ inline Snapshot fromVerifiedPK2(const PokeVault::Integration::Gen2::PokemonRecor
     s.species=r.species;s.level=r.level;s.isEgg=r.isEgg;
     for(std::uint8_t i=0;i<4;++i)s.moves[i]=r.moves[i];
     s.structurallyUsable=!r.isEgg && r.species>=1 && r.species<=251 &&
-        r.level>=1 && r.level<=100 && H::validSlots(s.moves,251);
+        r.level>=1 && r.level<=100 && s.moves[0]!=0 && H::validSlots(s.moves,251);
     return s;
 }
 inline H::Path emptyWitnessSkeleton(std::uint32_t candidateId,
