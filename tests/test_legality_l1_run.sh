@@ -69,6 +69,8 @@ suites=(
   test_legality_l1_stage4_gc_source_adapter
   test_legality_l1_stage5_acquisition
   test_legality_l1_stage5_family_adapter
+  test_legality_l1_stage6_cross_origin
+  test_legality_l1_stage6_source_adapter
 )
 profiles=(host sanitize)
 if [[ -n "${L1_PROFILE:-}" ]]; then
