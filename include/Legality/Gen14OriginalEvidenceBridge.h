@@ -5,6 +5,7 @@
 // No enum has a mapping to global Invalid, and no dispatcher infers provenance.
 #include "Legality/Gen1OriginalWildFishingStage.h"
 #include "Legality/Gen2OriginalFishingStage.h"
+#include "Legality/Gen2OriginalNpcTradeStage.h"
 #include "Legality/Gen2OriginalTreeContestStage.h"
 #include "Legality/Gen2OriginalSwarmStage.h"
 #include "Legality/Gen2OriginalRoamerRouteStage.h"
@@ -26,6 +27,7 @@ enum class Class : uint8_t { Unknown, CandidateLocalContradiction, SourceOnly,
                               RngStageOnly, ConditionalNative };
 namespace G1=Gen1OriginalWildFishingStage;
 namespace F2=Gen2OriginalFishingStage;
+namespace NPC2=Gen2OriginalNpcTradeStage;
 namespace T2=Gen2OriginalTreeContestStage;
 namespace S2=Gen2OriginalSwarmStage;
 namespace R2=Gen2OriginalRoamerRouteStage;
@@ -55,6 +57,22 @@ constexpr Class classify(F2::Status s) noexcept {
     case S::CandidateRodContradicted:case S::CandidateDayNightContradicted:
     case S::CandidateSwarmContradicted:case S::CandidateSpeciesContradicted:
     case S::CandidateLevelContradicted:return Class::CandidateLocalContradiction;
+    default:return Class::Unknown;
+  }
+}
+// NPC table matches are deliberately SourceOnly: the pinned 11 rows do
+// not contain enough original nickname/OT release evidence to authenticate
+// a complete in-game trade or any later transferred descendant.
+constexpr Class classify(NPC2::Status s) noexcept {
+  using S=NPC2::Status;
+  switch(s){
+    case S::ConditionalOriginalTradeTemplateOnly:return Class::SourceOnly;
+    case S::CandidateOriginalSpeciesContradicted:
+    case S::CandidateMinimumLevelContradicted:
+    case S::CandidateFixedTrainerContradicted:
+    case S::CandidateFixedDVsContradicted:
+    case S::CandidateCaughtDataContradicted:
+      return Class::CandidateLocalContradiction;
     default:return Class::Unknown;
   }
 }
