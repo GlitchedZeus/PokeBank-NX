@@ -18,8 +18,11 @@ void w32(std::vector<std::byte>& p,size_t off,uint32_t value) {
     w16(p,off+2,static_cast<uint16_t>(value>>16));
 }
 std::vector<std::byte> native(uint32_t pid,uint16_t presentItem,
-        std::array<uint8_t,6> ivs,bool egg,uint8_t gender) {
-    std::vector<std::byte> p(Encryption::SIZE_STORED4,std::byte{0});
+        std::array<uint8_t,6> ivs,bool egg,uint8_t gender,
+        bool partyRecord=false) {
+    std::vector<std::byte> p(
+        partyRecord?Encryption::SIZE_PARTY4:Encryption::SIZE_STORED4,
+        std::byte{0});
     w32(p,0,pid);
     w16(p,8,25); // original valid Pikachu records
     w16(p,10,presentItem);
@@ -85,6 +88,22 @@ int main() {
     assert(good.pid.status==PID::Status::ConditionalOriginalEggPIDMatched);
     assert(good.pid.pendingPid==32 && good.pid.originalFinalPid==32);
     assert(good.pid.mtConsumed==3 && good.pid.everstoneDonor==0);
+    // The native source can be a stored (136-byte) or party (236-byte)
+    // encrypted original egg; neither format implies creation-time items.
+    auto partyEggRaw=native(32,0,stage.child,true,0,true);
+    const auto copyPartyEgg=partyEggRaw;
+    Pokemon::Pokemon4ReadOnly partyEgg(partyEggRaw,Enums::GameVersion::DP);
+    assert(partyEgg.valid() && partyEgg.isParty() && partyEgg.isEgg());
+    auto partyWitness=in;partyWitness.originalEgg=&partyEgg;
+    assert(N::evaluate(partyWitness).status==N::Status::BothConditionalStagesMatched);
+    assert(partyEggRaw==copyPartyEgg);
+    // Two possible original held-item histories can refer to exactly
+    // the same encrypted original child. A contradicting Everstone-free
+    // transcript rules out only THAT hypothetical original stage.
+    auto otherItems=in;otherItems.pid.parents[0].heldItem=0;
+    const auto otherResult=N::evaluate(otherItems);
+    assert(otherResult.status==N::Status::LocalCandidateContradiction);
+    assert(N::evaluate(in).status==N::Status::BothConditionalStagesMatched);
     // Same native original child but a contradictory PROPOSED IV seed.
     auto wrongIV=in;wrongIV.iv.finalSeed^=0x1111u;
     assert(N::evaluate(wrongIV).status==N::Status::LocalCandidateContradiction);
