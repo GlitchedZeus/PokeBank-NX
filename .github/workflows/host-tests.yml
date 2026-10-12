@@ -7,6 +7,13 @@ on:
       - feature/pokebank-playable
   pull_request:
 
+# Repeated coordinator/lane commits otherwise queue old SHA runs which
+# cannot certify the latest PR application. Keep only the newest run per
+# PR (or push ref) for THIS workflow; different PRs remain independent.
+concurrency:
+  group: host-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
