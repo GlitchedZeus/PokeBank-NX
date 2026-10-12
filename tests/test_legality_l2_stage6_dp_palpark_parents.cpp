@@ -1,10 +1,7 @@
 // Reuse independently attested original DP PID/IV/Move source witness.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wreturn-type"
-#define main l2_stage6_original_dp_fixture
+#define LEGALITY_L2_IMPORT_STAGE5_FIXTURE 1
 #include "test_legality_l2_stage5_dp_joint_routes.cpp"
-#undef main
-#pragma GCC diagnostic pop
+#undef LEGALITY_L2_IMPORT_STAGE5_FIXTURE
 namespace Lineage6=Legality::Gen34OriginalParentLineage;
 namespace Route6=Legality::Gen34OriginalSameRouteProof;
 void attachMigration(J::Input& x,unsigned index){
