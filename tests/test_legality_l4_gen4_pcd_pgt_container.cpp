@@ -157,6 +157,38 @@ int main() {
     assert(C::attest(projected,converted)==C::ArchiveStatus::ConditionalOriginalSource);
     converted.grade=C::ArchiveGrade::OriginalPCD;
     assert(C::attest(projected,converted)==C::ArchiveStatus::ConditionalOriginalSource);
+    // The same absent conversion provenance must be quarantined on an
+    // isolated PGT. A standalone PGT supplies NO original WC4 card identity.
+    std::vector<std::byte> isolated(C::PGTSize);
+    w16(isolated,0,static_cast<uint16_t>(C::GiftType::Pokemon));
+    const auto isolatedProjection=C::inspect(isolated);
+    assert(isolatedProjection.status==C::Status::StructuralPGT);
+    assert(!isolatedProjection.cardIdPresent);
+    for(unsigned mask=0;mask<16;++mask) {
+        auto c=converted;c.grade=C::ArchiveGrade::ConvertedOriginal;
+        c.originalArchiveDigestIndependentlyVerified=(mask&1u)!=0;
+        c.originalToConvertedChainIndependentlyVerified=(mask&2u)!=0;
+        c.originalFieldsPreservedIndependentlyVerified=(mask&4u)!=0;
+        if(!(mask&8u))c.originalArchiveDigest={};
+        assert(C::attest(isolatedProjection,c)==
+               (mask==15u?C::ArchiveStatus::ConditionalOriginalSource:
+                           C::ArchiveStatus::UnknownConversionHistory));
+        ++conversionStates;
+    }
+    // The source-grade claim is not a substitute for the other attested
+    // release and individual recipient-history requirements.
+    auto dropped=converted;dropped.grade=C::ArchiveGrade::ConvertedOriginal;
+    dropped.originalToConvertedChainIndependentlyVerified=true;
+    dropped.originalArchiveDigestIndependentlyVerified=true;
+    dropped.originalFieldsPreservedIndependentlyVerified=true;
+    dropped.recipientHistoryIndependentlyKnown=false;
+    assert(C::attest(projected,dropped)==C::ArchiveStatus::UnknownReceipt);
+    dropped=converted;dropped.grade=C::ArchiveGrade::ConvertedOriginal;
+    dropped.originalToConvertedChainIndependentlyVerified=true;
+    dropped.originalArchiveDigestIndependentlyVerified=true;
+    dropped.originalFieldsPreservedIndependentlyVerified=true;
+    dropped.releasedIndependentlyCorroborated=false;
+    assert(C::attest(isolatedProjection,dropped)==C::ArchiveStatus::UnknownRelease);
     auto a=verified();a.grade=C::ArchiveGrade::OriginalPGT;
     assert(C::attest(projected,a)==C::ArchiveStatus::UnknownSource);
     auto gift=pgt;w16(gift,0,1);
