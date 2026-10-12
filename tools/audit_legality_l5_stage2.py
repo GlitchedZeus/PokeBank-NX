@@ -20,7 +20,7 @@ ROOT=Path(__file__).resolve().parents[1]
 PRODUCTION="include/Legality/Gen12TimeCapsuleEvidence.h"
 FIXTURE="tests/fixtures/legality_l5_stage2_gen12_native_history_fuzz.cpp"
 SOURCE_BLOB="4be5eda0dac2f43e886024d2febc07d9639abc18"
-FIXTURE_BLOB="b1995adc2b475c687f95e097544a1e1bf1f28b0f"
+FIXTURE_BLOB="bf110896cbea4c0632f41ac11bd2247064c77e74"
 EXPECTED=re.compile(r"^L5 Stage2 exact production Gen I/II Time Capsule helper: 1507328 PASS; source-capable species=162; conditional later-move=3088; malformed move inputs=15499 \(not retail histories\)\n?$")
 
 def blob(path: Path) -> str:
