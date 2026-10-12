@@ -37,7 +37,7 @@ bool sourceConflict(const Legality::Report& report) {
     return false;
 }
 PokeVault::Integration::Gen2::PokemonRecord specimen(
-    uint16_t species, bool egg, uint16_t statExp) {
+    uint16_t species, bool egg, uint16_t statExp, size_t slot) {
     PokeVault::Integration::Gen2::PokemonRecord rec{};
     rec.species = species;
     rec.level = 5;
@@ -49,7 +49,7 @@ PokeVault::Integration::Gen2::PokemonRecord specimen(
     rec.originalTrainer = "L5";
     rec.nickname = "REFERENCE";
     rec.dvs[1] = 15;
-    rec.statExperience = {statExp,0,0,0,0};
+    rec.statExperience[slot] = statExp;
     rec.rawBodySize = rec.rawBody.size();
     return rec;
 }
@@ -68,12 +68,18 @@ int main(int argc, char** argv) {
     for (uint16_t species : {1u,29u,81u,201u})
         for (uint16_t value : {0u,1u,2560u,25600u,65535u})
             for (bool egg : {false,true})
-                for (size_t source=0;source<sources.size();++source) {
-                    const auto record = specimen(species,egg,value);
+                for (size_t source=0;source<sources.size();++source)
+                  for (size_t statSlot=0;statSlot<5;++statSlot) {
+                    const auto record = specimen(species,egg,value,statSlot);
                     const Pokemon::Pokemon2ReadOnly pk(record);
                     const auto originalBody = pk.strictRecord().rawBody;
                     assert(pk.isEgg() == egg);
-                    assert(pk.statExpHP() == value);
+                    const std::array<uint16_t,5> fields = {
+                        pk.statExpHP(),pk.statExpATK(),pk.statExpDEF(),
+                        pk.statExpSPE(),pk.statExpSpecial()
+                    };
+                    for (size_t i=0;i<fields.size();++i)
+                        assert(fields[i] == (i == statSlot ? value : 0));
                     assert(pk.evHP() == 0); // Neutral modern EV getter: the gap.
                     const auto report=Legality::analyze(
                         pk, pk.getGameGroup(), sources[source]);
@@ -85,8 +91,8 @@ int main(int argc, char** argv) {
                     ++contexts;
                     if (egg && value != 0) ++eggNonzero;
                 }
-    assert(contexts == 200 && eggNonzero == 80);
-    std::cout << "L5 actual native PK2 stat-experience egg analyzer: "
+    assert(contexts == 1000 && eggNonzero == 400);
+    std::cout << "L5 actual native PK2 five-field stat-experience egg analyzer: "
               << contexts << " synthetic contexts, " << eggNonzero
               << " reference egg-invalid candidates, "
               << (afterFix ? "post-fix" : "current baseline") << " PASS\n";
