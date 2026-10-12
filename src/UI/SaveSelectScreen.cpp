@@ -3962,11 +3962,10 @@ namespace UI {
                     (static_cast<int>(u->titles.size()) + cols - 1) / cols;
                 gamesDrawerScroll = std::clamp(
                     gamesDrawerScroll, 0, std::max(0, totalRows - visibleRows));
-                const int selectedRow = gamesDrawerIndex / cols;
-                if (selectedRow < gamesDrawerScroll)
-                    gamesDrawerScroll = selectedRow;
-                else if (selectedRow >= gamesDrawerScroll + visibleRows)
-                    gamesDrawerScroll = selectedRow - visibleRows + 1;
+                // Do not recenter to controller focus in draw(): a finger may be
+                // scrolling to games beyond the selected row. The controller
+                // handler keeps keyboard focus visible only when it actually
+                // changes selection.
             } else {
                 gamesDrawerIndex = 0;
                 gamesDrawerScroll = 0;
