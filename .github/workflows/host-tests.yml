@@ -164,6 +164,11 @@ jobs:
               # analyzer gates, normal and ASan/UBSan, on this same commit.
               make -f Makefile.host -f tools/audit_legality_l5_pk12_probe.mk l5-pk12-fixed
               make -f Makefile.host -f tools/audit_legality_l5_pk12_probe.mk l5-pk12-fixed-sanitize
+              # F5: Native Gen II read-only stat experience differs from
+              # the deliberately neutral modern EV compatibility getters.
+              # Exercise all five original 16-bit stats with real analyzer.
+              make -f Makefile.host -f tools/audit_legality_l5_stage3_pk2_probe.mk l5-pk2-egg-fixed
+              make -f Makefile.host -f tools/audit_legality_l5_stage3_pk2_probe.mk l5-pk2-egg-fixed-sanitize
               ;;
             *)
               echo "Unknown legality lane: $LANE" >&2
