@@ -19,7 +19,8 @@ void w32(std::vector<std::byte>& p,size_t off,uint32_t value) {
 }
 std::vector<std::byte> native(uint32_t pid,uint16_t presentItem,
         std::array<uint8_t,6> ivs,bool egg,uint8_t gender,
-        bool partyRecord=false) {
+        bool partyRecord=false,
+        std::array<uint16_t,4> moves={}) {
     std::vector<std::byte> p(
         partyRecord?Encryption::SIZE_PARTY4:Encryption::SIZE_STORED4,
         std::byte{0});
@@ -29,6 +30,7 @@ std::vector<std::byte> native(uint32_t pid,uint16_t presentItem,
     uint32_t packed=egg?(1u<<30):0;
     for(unsigned i=0;i<6;++i)packed|=static_cast<uint32_t>(ivs[i])<<(i*5);
     w32(p,0x38,packed);
+    for(size_t i=0;i<moves.size();++i)w16(p,0x28+2*i,moves[i]);
     p[0x40]=static_cast<std::byte>(gender<<1);
     p[0x17]=std::byte{2};
     p[0x5F]=std::byte{10}; // Diamond, original-version identity.
@@ -88,6 +90,78 @@ int main() {
     assert(good.pid.status==PID::Status::ConditionalOriginalEggPIDMatched);
     assert(good.pid.pendingPid==32 && good.pid.originalFinalPid==32);
     assert(good.pid.mtConsumed==3 && good.pid.everstoneDonor==0);
+    // Independent original-moves evidence must agree with THE SAME
+    // immutable encrypted PK4 parent and egg records as PID and IV.
+    // No game-specific original TM compatibility is synthesized here.
+    constexpr std::array<uint16_t,4> moves{33,45,98,57};
+    auto m0raw=native(7,0,slot0,false,1,false,moves);
+    auto m1raw=native(11,0,slot1,false,0,false,moves);
+    auto eggMovesRaw=native(32,0,stage.child,true,0,false,moves);
+    const auto m0Copy=m0raw,m1Copy=m1raw,eggMoveCopy=eggMovesRaw;
+    Pokemon::Pokemon4ReadOnly m0(m0raw,Enums::GameVersion::DP);
+    Pokemon::Pokemon4ReadOnly m1(m1raw,Enums::GameVersion::DP);
+    Pokemon::Pokemon4ReadOnly eggMoves(eggMovesRaw,Enums::GameVersion::DP);
+    assert(m0.moves()==moves && m1.moves()==moves && eggMoves.moves()==moves);
+    auto three=in;
+    three.physicalSlot0=&m0;three.physicalSlot1=&m1;
+    three.originalEgg=&eggMoves;
+    three.originalMoveHistorySupplied=true;
+    auto& m=three.moves;
+    m.game=three.game;
+    m.originalEggEventIdentity=three.parentStageToken;
+    m.originalParentStageIdentity=three.parentStageToken;
+    m.originalPhysicalPairIdentity=0xBEEFB001u;
+    m.sharedOriginalEventIndependentlyAttested=true;
+    m.physicalDepositOrderIndependentlyAttested=true;
+    m.physicalSlots[0]={101,25,1,moves,true,true};
+    m.physicalSlots[1]={202,25,0,moves,true,true};
+    m.fatherPhysicalSlot=1;m.fatherRoleIndependentlyAttested=true;
+    m.originalEggSpecies=25;
+    m.originalUnhatchedEggIdentityIndependentlyAttested=true;
+    m.originalUnhatchedEggMovesIndependentlyAttested=true;
+    m.originalUnhatchedEggMoves=moves;
+    m.base={33,45,0,0};m.paternalEgg={98,0,0,0};
+    m.paternalMachine={57,0,0,0};m.mutualLevel={33,0,0,0};
+    m.originalBaseMovesIndependentlyAttested=true;
+    m.paternalEggMethodIndependentlyAttested=true;
+    m.paternalMachineMethodIndependentlyAttested=true;
+    m.mutualLevelMethodIndependentlyAttested=true;
+    m.originalCreationItemHistoryIndependentlyAttested=true;
+    const auto all=N::evaluate(three);
+    assert(all.status==N::Status::AllThreeConditionalStagesMatched);
+    assert(all.iv==IV::Check::Matched);
+    assert(all.pid.status==PID::Status::ConditionalOriginalEggPIDMatched);
+    assert(all.moves.status==
+           Legality::Gen4DiamondPearlEggMoveStage::Status::ConditionalMoveHistoryMatched);
+    auto partyMovesRaw=native(32,0,stage.child,true,0,true,moves);
+    Pokemon::Pokemon4ReadOnly partyMoves(partyMovesRaw,Enums::GameVersion::DP);
+    const auto partyCopy=partyMovesRaw;
+    auto sameParty=three;sameParty.originalEgg=&partyMoves;
+    assert(N::evaluate(sameParty).status==N::Status::AllThreeConditionalStagesMatched);
+    assert(partyMovesRaw==partyCopy);
+    auto noOriginalMethod=three;
+    noOriginalMethod.moves.paternalMachineMethodIndependentlyAttested=false;
+    assert(N::evaluate(noOriginalMethod).status==N::Status::StageHistoryUnresolved);
+    auto wrongMachine=three;wrongMachine.moves.paternalMachine={33,0,0,0};
+    assert(N::evaluate(wrongMachine).status==N::Status::LocalCandidateContradiction);
+    auto forgedMachine=three;forgedMachine.moves.paternalMachine={99,0,0,0};
+    assert(N::evaluate(forgedMachine).status==N::Status::StageHistoryUnresolved);
+    auto missingPair=three;missingPair.moves.originalPhysicalPairIdentity=0;
+    assert(N::evaluate(missingPair).status==N::Status::StageHistoryUnresolved);
+    auto missingParent=three;
+    missingParent.moves.physicalSlots[0].originalSnapshotIndependentlyAttested=false;
+    assert(N::evaluate(missingParent).status==N::Status::StageHistoryUnresolved);
+    auto crossedEvent=three;crossedEvent.moves.originalParentStageIdentity++;
+    assert(N::evaluate(crossedEvent).status==N::Status::IncoherentNativeMoveSnapshots);
+    auto swappedFather=three;swappedFather.moves.fatherPhysicalSlot=0;
+    assert(N::evaluate(swappedFather).status==N::Status::StageHistoryUnresolved);
+    auto crossedMoves=three;crossedMoves.moves.originalUnhatchedEggMoves[0]++;
+    assert(N::evaluate(crossedMoves).status==N::Status::IncoherentNativeMoveSnapshots);
+    auto crossedParent=three;crossedParent.moves.physicalSlots[1].originalMoves[0]++;
+    assert(N::evaluate(crossedParent).status==N::Status::IncoherentNativeMoveSnapshots);
+    auto unmodified=three;unmodified.originalMoveHistorySupplied=false;
+    assert(N::evaluate(unmodified).status==N::Status::BothConditionalStagesMatched);
+    assert(m0raw==m0Copy && m1raw==m1Copy && eggMovesRaw==eggMoveCopy);
     // The native source can be a stored (136-byte) or party (236-byte)
     // encrypted original egg; neither format implies creation-time items.
     auto partyEggRaw=native(32,0,stage.child,true,0,true);
