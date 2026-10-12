@@ -133,6 +133,7 @@ int main(){
         assert(duplicateWithMatch.status==H::Status::ConditionalHistoryMatched);
         assert(duplicateWithMatch.matched==1 && duplicateWithMatch.unknown==1);
         twice.histories[0].independentSourceAttestation=false;
+        assert(H::evaluate(twice).status==H::Status::MissingOrDuplicateRouteIdentity);
         // A colliding source ID cannot conceal a valid later route.
         twice=known;twice.count=2;twice.histories[1]=twice.histories[0];
         twice.histories[0].finalRNGState^=0x101u;
