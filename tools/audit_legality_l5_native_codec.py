@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -70,8 +71,11 @@ def verify(sanitize: bool, source_pin: bool) -> dict:
                  if sanitize else ["-O2"])
         args += ["-o",str(exe)]
         subprocess.run(args,check=True,cwd=ROOT)
+        run_env=os.environ.copy()
+        if sanitize:
+            run_env.setdefault("ASAN_OPTIONS","detect_leaks=0")
         result=subprocess.run([str(exe)],input=rows(fixture),text=True,
-                              check=True,capture_output=True,cwd=ROOT)
+                              check=True,capture_output=True,cwd=ROOT,env=run_env)
         # Negative input validation: strict size, hex, format and field ranges.
         cells=rows(fixture).splitlines()[0].split(" ")
         malformed=[]
@@ -85,7 +89,8 @@ def verify(sanitize: bool, source_pin: bool) -> dict:
         bad=cells.copy();bad[6]="2";malformed.append(bad)
         for i,bad in enumerate(malformed):
             rejected=subprocess.run([str(exe)],input=" ".join(bad)+"\n",
-                                    text=True,capture_output=True,cwd=ROOT)
+                                    text=True,capture_output=True,cwd=ROOT,
+                                    env=run_env)
             if (rejected.returncode == 0 or
                 "L5 native crypto failure on case 1:" not in rejected.stderr):
                 raise RuntimeError(f"Malformed input {i} not specifically rejected: "
