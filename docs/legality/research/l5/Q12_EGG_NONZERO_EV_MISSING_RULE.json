@@ -1,0 +1,123 @@
+{
+  "schema": "L5_Q12_UNHATCHED_EGG_EV_SOURCE_GAP_V1",
+  "catalog": [
+    "Q12",
+    "Q18"
+  ],
+  "accepted_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+  "nx_analyzer_sha": "b1d02d6620e8fffca2cf71874b786d44108e193f",
+  "nx_egg_state_header_sha": "bc88c5d140146874dda4685575bf2c2f4ff0021f",
+  "pkhex_pinned_revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+  "pkhex_effort_verifier_sha": "86c9bc6ea0361821df86e1473788c228ce7506a0",
+  "source_proof": {
+    "pkhex_has_egg_early_exit": true,
+    "nx_ev_section_has_no_egg_guard": true,
+    "nx_egg_helper_has_no_ev_parameter": true,
+    "nx_ev_loop_has_only_hardcap_and_total": true
+  },
+  "scope": "Inspected direct EV verifier section and Gen34EggState helper. NX has no direct egg-EV rejection here, while pinned PKHeX does. End-to-end whole native PK3/PK4 test still pending.",
+  "risk": "MISSING_INVALID_RULE_NOT_PROVEN_FALSE_NO_PROBLEMS_FOUND",
+  "reason": "A current unhatched Gen III/IV egg with nonzero recorded EV can pass this specific NX EV section while pinned PKHeX rejects it. Other independent NX checks and incomplete verdict may still report findings.",
+  "controls": [
+    {
+      "gen": 3,
+      "egg": true,
+      "ev": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pkhex_egg_ev_invalid": false,
+      "nx_ev_section_invalid": false
+    },
+    {
+      "gen": 3,
+      "egg": true,
+      "ev": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pkhex_egg_ev_invalid": true,
+      "nx_ev_section_invalid": false
+    },
+    {
+      "gen": 3,
+      "egg": true,
+      "ev": [
+        100,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pkhex_egg_ev_invalid": true,
+      "nx_ev_section_invalid": false
+    },
+    {
+      "gen": 4,
+      "egg": true,
+      "ev": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pkhex_egg_ev_invalid": false,
+      "nx_ev_section_invalid": false
+    },
+    {
+      "gen": 4,
+      "egg": true,
+      "ev": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pkhex_egg_ev_invalid": true,
+      "nx_ev_section_invalid": false
+    },
+    {
+      "gen": 4,
+      "egg": true,
+      "ev": [
+        255,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pkhex_egg_ev_invalid": true,
+      "nx_ev_section_invalid": true,
+      "notes": "NX incorrect 252 hard cap incidentally flags 255; does not establish correct egg-specific rule"
+    },
+    {
+      "gen": 4,
+      "egg": false,
+      "ev": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pkhex_egg_ev_invalid": false,
+      "nx_ev_section_invalid": false
+    }
+  ],
+  "next_action": "Coordinator/MAIN implement explicit format Gen III/IV unhatched egg nonzero EV check with native encrypted PK3/PK4 fixtures and cross-check with PKHeX; do not replace original IV/breeding-stage history with assumptions."
+}

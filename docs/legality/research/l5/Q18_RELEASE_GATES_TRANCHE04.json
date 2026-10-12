@@ -1,0 +1,106 @@
+{
+  "schema": "L5_Q18_RELEASE_GATES_TRANCHE04_V1",
+  "scope": "Release-readiness audit for Gen I-IV full legality parity, not an automatic blocker to merging a research-only draft after its own CI.",
+  "anchor": {
+    "accepted_legality": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+    "pkhex": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "source_research": "fc0225e6351af62365f29200300323e38f52c8fe"
+  },
+  "release_ready": false,
+  "proven_source_semantic_deltas": 2,
+  "proven_original_whole_pokemon_bad_verdict_cases": 0,
+  "gate_rows": [
+    {
+      "id": "G01-source-pins",
+      "state": "RESEARCH_VERIFIED_NOT_RETAIL_PROVEN",
+      "proof": "Q02 79/79 source file SHA-256s; 78/78 configured symbols; Crystal symbol located separately",
+      "blocked_on": "Source pins do not authenticate commercial ROM identity, historical stage receipt or reuse license"
+    },
+    {
+      "id": "G02-source-verifier",
+      "state": "BLOCKED",
+      "proof": "Q12 EV 253-255 source-rule contradiction + 131072 bounded replay cases",
+      "blocked_on": "Coordinator fix and exact-head native PK3/PK4 positive controls"
+    },
+    {
+      "id": "G03-egg-ev",
+      "state": "BLOCKED",
+      "proof": "Q12 PKHeX unhatched egg nonzero EV check absent in examined NX egg/EV path",
+      "blocked_on": "Coordinator add unhatched egg EV rule and native negative controls"
+    },
+    {
+      "id": "G04-invalid-emit-review",
+      "state": "BLOCKED",
+      "proof": "Q18 36 source-level Invalid emit sites; one rule-level false Invalid verified; no site proven exhaustiveness-sound per game",
+      "blocked_on": "Actual runtime reachability and field/candidate-exhaustiveness verification"
+    },
+    {
+      "id": "G05-original-encounters",
+      "state": "BLOCKED",
+      "proof": "Q06 46 category buckets / 20147 generated rows from research snapshot",
+      "blocked_on": "Complete original retail slot/area/method/condition multiset with duplicates preserved"
+    },
+    {
+      "id": "G06-move-acquisition",
+      "state": "BLOCKED",
+      "proof": "Q05 indexes 1930 game-species original ordered level-up table facts; 60 cross-game differences",
+      "blocked_on": "TM/HM/tutor/relearner/egg/event chronological four-slot proofs for each historical source"
+    },
+    {
+      "id": "G07-breeding-original",
+      "state": "BLOCKED",
+      "proof": "Q04 Diamond/Pearl ASM lines pinned and stage conditional fixtures",
+      "blocked_on": "Original ARM binary attestation/differential plus parent-held item/MT and paired archived native records"
+    },
+    {
+      "id": "G08-original-event",
+      "state": "BLOCKED",
+      "proof": "Q07 247 indexed projections; zero originally authenticated archive payloads",
+      "blocked_on": "Original archive item-level hash/release region/language/OT raw text/ribbons/source receipt"
+    },
+    {
+      "id": "G09-paired-source-provenance",
+      "state": "BLOCKED",
+      "proof": "Q10 22 source-pair requests; 0 authentic original paired native histories",
+      "blocked_on": "Explicit consent, initial/after native files and independently recorded original stage"
+    },
+    {
+      "id": "G10-reference-behavior",
+      "state": "BLOCKED",
+      "proof": "Q03 305 PKHeX lexical method declarations / Q14 200 NX lexical call occurrences",
+      "blocked_on": "Reference differential runtime method x exact-game test and branch-history proof"
+    },
+    {
+      "id": "G11-parity-scoreboard",
+      "state": "BLOCKED",
+      "proof": "Q17 336 group/family cells; 26 not native and 310 potentially applicable; 0 certified full parity cells",
+      "blocked_on": "Per-cell original native reference cases with executable true/false/unknown and proven denominator; no invented percentage"
+    },
+    {
+      "id": "G12-nx-ci",
+      "state": "BLOCKED",
+      "proof": "Latest observed L5 GH Actions queued, earlier exact-head identity check skipped",
+      "blocked_on": "Coordinator forward reconcile to zero-behind accepted and complete SHA identity/host/RSE/ASan/UBSan/L5 native CI"
+    },
+    {
+      "id": "G13-third-party-rights",
+      "state": "BLOCKED_FOR_IMPORT",
+      "proof": "Q08 14 license/use records, no source code/event binary imported by L5",
+      "blocked_on": "Case-specific commercial original and GPL/AGPL reuse compatibility/permission before data import"
+    },
+    {
+      "id": "G14-synthetic-conservatism",
+      "state": "SOURCE_SCOPE_TESTED_ONLY",
+      "proof": "Q12 131072 arithmetic rule differential cases; Q16 65536 candidate-scope trials; no full native analyzer",
+      "blocked_on": "Run exact-head native PK1-4 strict ingress, fuzz plus original grounded three-way reference differential"
+    }
+  ],
+  "dispositions": {
+    "research_PR_merge": "Coordinator must run accepted-head exact CI; the release gate alone does not force research PR to remain unmerged",
+    "full_engine_pkhex_parity": "NOT_VERIFIED",
+    "main_branch_merge": "NOT_AUTHORIZED_BY_THIS_LANE",
+    "hard_invalid_from_missing_history": "PROHIBITED",
+    "no_source_save_mutation": true,
+    "gen5_and_master_vault": "OUT_OF_SCOPE"
+  }
+}

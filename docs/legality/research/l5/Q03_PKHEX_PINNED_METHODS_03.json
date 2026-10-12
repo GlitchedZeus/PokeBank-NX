@@ -1,0 +1,517 @@
+{
+  "snapshot": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+  "start": 22,
+  "count": 9,
+  "not_full_pkhex_call_graph": true,
+  "rows": [
+    {
+      "id": "PK-SOURCE2Stadium",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource2Stadium.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "GetCanLearn",
+      "method_declarations": [
+        {
+          "line": 10,
+          "identifier": "new"
+        },
+        {
+          "line": 11,
+          "identifier": "GetBinaryResource"
+        },
+        {
+          "line": 17,
+          "identifier": "InvalidOperationException"
+        },
+        {
+          "line": 18,
+          "identifier": "InvalidOperationException"
+        },
+        {
+          "line": 19,
+          "identifier": "GetIsEggMove"
+        },
+        {
+          "line": 20,
+          "identifier": "GetEggMoves"
+        },
+        {
+          "line": 21,
+          "identifier": "IsSpeciesInGame"
+        },
+        {
+          "line": 22,
+          "identifier": "GetLearnsetStadium"
+        },
+        {
+          "line": 24,
+          "identifier": "GetCanLearn"
+        },
+        {
+          "line": 29,
+          "identifier": "GetCanRelearn"
+        },
+        {
+          "line": 44,
+          "identifier": "GetAllMoves"
+        }
+      ],
+      "method_count": 11,
+      "if_condition_lines": 7,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-SOURCE3RS",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource3RS.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "GetCanLearn",
+      "method_declarations": [
+        {
+          "line": 14,
+          "identifier": "new"
+        },
+        {
+          "line": 16,
+          "identifier": "GetBinaryResource"
+        },
+        {
+          "line": 24,
+          "identifier": "GetLearnset"
+        },
+        {
+          "line": 26,
+          "identifier": "NotNullWhen"
+        },
+        {
+          "line": 35,
+          "identifier": "GetIsEggMove"
+        },
+        {
+          "line": 44,
+          "identifier": "GetEggMoves"
+        },
+        {
+          "line": 52,
+          "identifier": "GetCanLearn"
+        },
+        {
+          "line": 75,
+          "identifier": "GetIsTutor"
+        },
+        {
+          "line": 90,
+          "identifier": "GetIsTM"
+        },
+        {
+          "line": 98,
+          "identifier": "GetIsHM"
+        },
+        {
+          "line": 106,
+          "identifier": "GetAllMoves"
+        }
+      ],
+      "method_count": 11,
+      "if_condition_lines": 23,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-SOURCE3E",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource3E.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "GetCanLearn",
+      "method_declarations": [
+        {
+          "line": 14,
+          "identifier": "new"
+        },
+        {
+          "line": 16,
+          "identifier": "GetBinaryResource"
+        },
+        {
+          "line": 24,
+          "identifier": "GetLearnset"
+        },
+        {
+          "line": 27,
+          "identifier": "NotNullWhen"
+        },
+        {
+          "line": 36,
+          "identifier": "GetIsEggMove"
+        },
+        {
+          "line": 45,
+          "identifier": "GetEggMoves"
+        },
+        {
+          "line": 53,
+          "identifier": "GetCanLearn"
+        },
+        {
+          "line": 76,
+          "identifier": "GetIsSpecialTutor"
+        },
+        {
+          "line": 85,
+          "identifier": "GetIsTM"
+        },
+        {
+          "line": 93,
+          "identifier": "GetIsHM"
+        },
+        {
+          "line": 101,
+          "identifier": "GetAllMoves"
+        },
+        {
+          "line": 148,
+          "identifier": "GetIsTutorFRLG"
+        },
+        {
+          "line": 157,
+          "identifier": "GetAllTutorMovesFRLG"
+        }
+      ],
+      "method_count": 13,
+      "if_condition_lines": 22,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-SOURCE3FR",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource3FR.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "GetCanLearn",
+      "method_declarations": [
+        {
+          "line": 14,
+          "identifier": "new"
+        },
+        {
+          "line": 16,
+          "identifier": "GetBinaryResource"
+        },
+        {
+          "line": 24,
+          "identifier": "GetLearnset"
+        },
+        {
+          "line": 27,
+          "identifier": "NotNullWhen"
+        },
+        {
+          "line": 36,
+          "identifier": "GetIsEggMove"
+        },
+        {
+          "line": 45,
+          "identifier": "GetEggMoves"
+        },
+        {
+          "line": 53,
+          "identifier": "GetCanLearn"
+        },
+        {
+          "line": 76,
+          "identifier": "GetIsTutor"
+        },
+        {
+          "line": 84,
+          "identifier": "GetIsTM"
+        },
+        {
+          "line": 92,
+          "identifier": "GetIsHM"
+        },
+        {
+          "line": 100,
+          "identifier": "GetAllMoves"
+        }
+      ],
+      "method_count": 11,
+      "if_condition_lines": 21,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-SOURCE3LG",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource3LG.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "GetCanLearn",
+      "method_declarations": [
+        {
+          "line": 14,
+          "identifier": "new"
+        },
+        {
+          "line": 16,
+          "identifier": "GetBinaryResource"
+        },
+        {
+          "line": 24,
+          "identifier": "GetLearnset"
+        },
+        {
+          "line": 27,
+          "identifier": "NotNullWhen"
+        },
+        {
+          "line": 36,
+          "identifier": "GetIsEggMove"
+        },
+        {
+          "line": 45,
+          "identifier": "GetEggMoves"
+        },
+        {
+          "line": 53,
+          "identifier": "GetCanLearn"
+        },
+        {
+          "line": 76,
+          "identifier": "GetIsTutor"
+        },
+        {
+          "line": 84,
+          "identifier": "GetIsTM"
+        },
+        {
+          "line": 92,
+          "identifier": "GetIsHM"
+        },
+        {
+          "line": 100,
+          "identifier": "GetAllMoves"
+        }
+      ],
+      "method_count": 11,
+      "if_condition_lines": 21,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-SOURCE4DP",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource4DP.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "GetCanLearn",
+      "method_declarations": [
+        {
+          "line": 14,
+          "identifier": "new"
+        },
+        {
+          "line": 16,
+          "identifier": "GetBinaryResource"
+        },
+        {
+          "line": 24,
+          "identifier": "GetFormIndex"
+        },
+        {
+          "line": 26,
+          "identifier": "NotNullWhen"
+        },
+        {
+          "line": 35,
+          "identifier": "GetIsEggMove"
+        },
+        {
+          "line": 44,
+          "identifier": "GetEggMoves"
+        },
+        {
+          "line": 52,
+          "identifier": "GetCanLearn"
+        },
+        {
+          "line": 78,
+          "identifier": "GetIsTypeTutor"
+        },
+        {
+          "line": 87,
+          "identifier": "GetIsSpecialTutor"
+        },
+        {
+          "line": 95,
+          "identifier": "GetIsTM"
+        },
+        {
+          "line": 101,
+          "identifier": "GetIsHM"
+        },
+        {
+          "line": 107,
+          "identifier": "GetAllMoves"
+        }
+      ],
+      "method_count": 12,
+      "if_condition_lines": 17,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-SOURCE4Pt",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource4Pt.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "GetCanLearn",
+      "method_declarations": [
+        {
+          "line": 14,
+          "identifier": "new"
+        },
+        {
+          "line": 16,
+          "identifier": "GetBinaryResource"
+        },
+        {
+          "line": 23,
+          "identifier": "GetFormIndex"
+        },
+        {
+          "line": 25,
+          "identifier": "NotNullWhen"
+        },
+        {
+          "line": 34,
+          "identifier": "GetIsEggMove"
+        },
+        {
+          "line": 43,
+          "identifier": "GetEggMoves"
+        },
+        {
+          "line": 51,
+          "identifier": "GetCanLearn"
+        },
+        {
+          "line": 93,
+          "identifier": "GetIsTypeTutor"
+        },
+        {
+          "line": 102,
+          "identifier": "GetIsSpecialTutor"
+        },
+        {
+          "line": 110,
+          "identifier": "GetIsTM"
+        },
+        {
+          "line": 116,
+          "identifier": "GetIsHM"
+        },
+        {
+          "line": 122,
+          "identifier": "GetAllMoves"
+        }
+      ],
+      "method_count": 12,
+      "if_condition_lines": 21,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-SOURCE4HGSS",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource4HGSS.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "GetCanLearn",
+      "method_declarations": [
+        {
+          "line": 14,
+          "identifier": "new"
+        },
+        {
+          "line": 16,
+          "identifier": "GetBinaryResource"
+        },
+        {
+          "line": 17,
+          "identifier": "GetBinaryResource"
+        },
+        {
+          "line": 24,
+          "identifier": "GetFormIndex"
+        },
+        {
+          "line": 26,
+          "identifier": "NotNullWhen"
+        },
+        {
+          "line": 35,
+          "identifier": "GetIsEggMove"
+        },
+        {
+          "line": 44,
+          "identifier": "GetEggMoves"
+        },
+        {
+          "line": 52,
+          "identifier": "GetCanLearn"
+        },
+        {
+          "line": 94,
+          "identifier": "GetIsTypeTutor"
+        },
+        {
+          "line": 103,
+          "identifier": "GetIsSpecialTutor"
+        },
+        {
+          "line": 111,
+          "identifier": "GetIsTM"
+        },
+        {
+          "line": 117,
+          "identifier": "GetIsHM"
+        },
+        {
+          "line": 123,
+          "identifier": "GetAllMoves"
+        }
+      ],
+      "method_count": 13,
+      "if_condition_lines": 25,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-BREED-TESTS",
+      "path": "Tests/PKHeX.Core.Tests/Legality/BreedTests.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "VerifyBreed",
+      "method_declarations": [
+        {
+          "line": 16,
+          "identifier": "GetMoves"
+        },
+        {
+          "line": 35,
+          "identifier": "VerifyBreed"
+        },
+        {
+          "line": 55,
+          "identifier": "CheckBad"
+        },
+        {
+          "line": 69,
+          "identifier": "CheckFix"
+        }
+      ],
+      "method_count": 4,
+      "if_condition_lines": 1,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    }
+  ]
+}
