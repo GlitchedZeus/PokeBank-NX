@@ -6,6 +6,7 @@
 // Test success: 348 PASS (336 round-trips, 12 checksum negatives).
 #include "Encryption/Encryption3FRLG.h"
 #include "Encryption/Encryption4.h"
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
