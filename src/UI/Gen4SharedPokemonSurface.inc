@@ -1457,11 +1457,24 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
     if (actionDown >= 41600 && actionDown < 41600 + static_cast<int>(actions.count)) state.actionRow = actionDown - 41600;
     const int actionTap = screen.touchedButtonId(touch);
     if (actionTap >= 41600 && actionTap < 41600 + static_cast<int>(actions.count)) { state.actionRow = actionTap - 41600; down |= HidNpadButton_A; }
-    if (down & HidNpadButton_Up)
-        state.actionRow = (state.actionRow - 1 + static_cast<int>(actions.count)) %
-                          static_cast<int>(actions.count);
-    if (down & HidNpadButton_Down)
-        state.actionRow = (state.actionRow + 1) % static_cast<int>(actions.count);
+    // Real disabled options are greyed and not focusable with A or touch.
+    // Controller navigation advances through *enabled* staged commands only.
+    if (!actions[static_cast<std::size_t>(state.actionRow)].enabled)
+        for (int i = 0; i < static_cast<int>(actions.count); ++i)
+            if (actions[static_cast<std::size_t>(i)].enabled) {
+                state.actionRow = i;
+                break;
+            }
+    const int direction = (down & HidNpadButton_Up) ? -1 :
+                          (down & HidNpadButton_Down) ? 1 : 0;
+    if (direction != 0) {
+        for (int step = 0; step < static_cast<int>(actions.count); ++step) {
+            const int next = (state.actionRow + direction + static_cast<int>(actions.count)) %
+                             static_cast<int>(actions.count);
+            state.actionRow = next;
+            if (actions[static_cast<std::size_t>(next)].enabled) break;
+        }
+    }
     if (down & HidNpadButton_B) {
         state.actions = false;
         return true;
@@ -2107,46 +2120,60 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
 
 
 
+PokeBank::UIModel::NarrowPokemonMenu::Model narrowGen4Actions(
+    const MenuActionSet& actions, bool occupied) {
+    namespace Narrow = PokeBank::UIModel::NarrowPokemonMenu;
+    const auto native = [&](MenuAction action) {
+        for (int i = 0; i < static_cast<int>(actions.count); ++i)
+            if (actions[static_cast<std::size_t>(i)].action == action &&
+                actions[static_cast<std::size_t>(i)].enabled)
+                return i;
+        return -1;
+    };
+    const auto exists = [&](MenuAction action) {
+        for (int i = 0; i < static_cast<int>(actions.count); ++i)
+            if (actions[static_cast<std::size_t>(i)].action == action) return true;
+        return false;
+    };
+    Narrow::Model model{};
+    if (!occupied) {
+        if (exists(MenuAction::Add)) model.append("Add Pokemon", native(MenuAction::Add));
+        if (exists(MenuAction::Review))
+            model.append("Review Pending Changes", native(MenuAction::Review));
+        model.append("Cancel", native(MenuAction::Close));
+        return model;
+    }
+    model.append("View Pokemon", native(MenuAction::View));
+    model.append("Add to Master Vault");
+    model.append("Add to Bank...");
+    model.append("Transfer to Game...");
+    model.append("Edit", native(MenuAction::Edit));
+    if (exists(MenuAction::MovePokemon))
+        model.append("Move Pokemon", native(MenuAction::MovePokemon));
+    model.append("Clone", native(MenuAction::Clone));
+    if (exists(MenuAction::Release))
+        model.append("Release", native(MenuAction::Release));
+    model.append("Make Shiny");
+    model.append("Legality & Provenance", native(MenuAction::Legality));
+    if (exists(MenuAction::Review))
+        model.append("Review Pending Changes", native(MenuAction::Review));
+    model.append("Cancel", native(MenuAction::Close));
+    return model;
+}
+
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
-    screen.touchButtons.clear();
     std::string error;
     const bool occupied = selectedRecord(screen, state, error).has_value();
     auto* staged = editor(screen);
     const auto actions = gen4Actions(
         state, occupied, staged != nullptr, staged && staged->hasChanges());
-
     screen.drawGSCOverlay(fb);
-    // Background box and party cards cannot intercept foreground action taps.
-    screen.touchButtons.clear();
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0,0,0,105));
-    const auto geometry = Shared::actionMenuGeometry();
-    constexpr int w = 560;
-    const int h = geometry.rowStart +
-                  static_cast<int>(actions.count) * geometry.rowStep + 62;
-    const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - kNavBarH - h) / 2;
-    drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 24, y + 18, occupied ? "Pokemon Actions" : "Empty Slot",
-                Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52,
-                std::string(gameName(screen.sourceGameId)) + " • " +
-                (state.target == TargetKind::Party
-                    ? "Party / Slot " + std::to_string(state.slot + 1)
-                    : "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1)),
-                Colors::TextDim, TextStyle::Caption);
-    int yy = y + geometry.rowStart;
-    for (size_t i = 0; i < actions.count; ++i) {
-        const bool selected = static_cast<int>(i) == state.actionRow;
-        screen.touchButtons.push_back({41600 + static_cast<int>(i), x + 22, yy, w - 44, geometry.rowHeight});
-        const auto& entry = actions[i];
-        drawNativeActionRow(fb, x + 22, yy, w - 44, geometry.rowHeight,
-                            entry.label, selected, entry.enabled);
-        yy += geometry.rowStep;
-    }
-    fb.drawText(x + 24, y + h - 34,
-                editor(screen) ? "Edits target app-owned staged bytes; source immutable"
-                               : "View only — staged editor unavailable for this source",
-                Colors::Accent, TextStyle::Caption);
+    // The old narrow popup is a presentation-only projection: touch hitboxes
+    // carry exactly the enabled staged Gen IV native index used by A.
+    const auto model = narrowGen4Actions(actions, occupied);
+    drawNarrowPokemonActions(fb, screen.touchButtons, model, state.actionRow,
+                            occupied ? "Pokemon Actions" : "Empty Slot",
+                            "GEN IV / READ-ONLY SOURCE", 41600);
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
 }
 
