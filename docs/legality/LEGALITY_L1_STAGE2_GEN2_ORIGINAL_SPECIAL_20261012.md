@@ -9,6 +9,7 @@ Only isolated L1 original-source evidence headers, executable L1 test units, thi
 - Gold/Silver original-source disassembly: [pret/pokegold at `ef0201d8daf47e8b3ea1518eacf890f37d4cd5e8`](https://github.com/pret/pokegold/tree/ef0201d8daf47e8b3ea1518eacf890f37d4cd5e8).
 - Crystal original-source disassembly: [pret/pokecrystal at `3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6`](https://github.com/pret/pokecrystal/tree/3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6).
 - Directly checked exact `data/wild/fish.asm`, `treemon_maps.asm`, `treemons.asm`, `bug_contest_mons.asm`, `swarm_grass.asm`, `swarm_water.asm`, and `roammon_maps.asm` in **both** pinned repositories where present.
+- **Independent machine replay of source data**: parsed all 13 original `fishgroup` macros, all 22 `TimeFishGroups` substitutions, and 145 physical fish rows directly from pinned original ASM (not the C++ matcher); exact row-by-row comparison against the committed C++ source table returned **145/145 matches, zero mismatches**. Gold and Crystal pinned `fish.asm` contents are byte-identical (7,767 bytes each).
 - Important observed source differences: Gold/Silver Route 29 and Route 43 Headbutt use Canyon, while Crystal uses Route and Lake; Gold/Silver Forest lists depend on version; Crystal does not provide the Gold/Silver Mount Mortar Marill surfing swarm. Original Route 38 Gold/Silver Snubbull swarms have different species choices, including night differences. Bug Contest terminator `-1,VENOMOTH,30,40` is **not** an encounter slot.
 
 ## Four substantial additions
