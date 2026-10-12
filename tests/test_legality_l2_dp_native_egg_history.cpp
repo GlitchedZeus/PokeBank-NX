@@ -113,6 +113,8 @@ int main() {
     m.originalPhysicalPairIdentity=0xBEEFB001u;
     m.sharedOriginalEventIndependentlyAttested=true;
     m.physicalDepositOrderIndependentlyAttested=true;
+    m.originalDaycarePairEligibilityIndependentlyAttested=true;
+    m.eligibleOriginalDaycarePair=true;
     m.physicalSlots[0]={101,25,1,moves,true,true};
     m.physicalSlots[1]={202,25,0,moves,true,true};
     m.fatherPhysicalSlot=1;m.fatherRoleIndependentlyAttested=true;
