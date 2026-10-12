@@ -871,28 +871,49 @@ void ux2DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         Colors::TextDim, TextStyle::Caption);
 }
 
-void ux2DrawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
+// Resolve each visual item to the existing Gen I action index. The older
+// narrow menu's unavailable source-transfer options stay visibly greyed out.
+template <typename ActionList>
+PokeBank::UIModel::NarrowPokemonMenu::Model ux2NarrowActions(
+    const ActionList& actions, bool occupied) {
+    namespace Narrow = PokeBank::UIModel::NarrowPokemonMenu;
+    const auto native = [&](UX::Action command) {
+        for (int i = 0; i < static_cast<int>(actions.count); ++i)
+            if (actions[static_cast<std::size_t>(i)] == command) return i;
+        return -1;
+    };
+    Narrow::Model model{};
+    if (!occupied) {
+        model.append("Add Pokemon", native(UX::Action::AddPokemon));
+        const int review = native(UX::Action::ReviewPendingChanges);
+        if (review >= 0) model.append("Review Pending Changes", review);
+        model.append("Cancel", native(UX::Action::Cancel));
+        return model;
+    }
+    model.append("View Pokemon", native(UX::Action::View));
+    model.append("Add to Master Vault");
+    model.append("Add to Bank...");
+    model.append("Transfer to Game...");
+    model.append("Edit", native(UX::Action::Edit));
+    model.append("Clone", native(UX::Action::Clone));
+    model.append("Release", native(UX::Action::Remove));
+    model.append("Make Shiny");
+    model.append("Legality & Provenance", native(UX::Action::LegalityProvenance));
+    const int review = native(UX::Action::ReviewPendingChanges);
+    if (review >= 0) model.append("Review Pending Changes", review);
+    model.append("Cancel", native(UX::Action::Cancel));
+    return model;
+}
+
+void ux2DrawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int, int, int, int) {
     auto& state = ux2StateFor(screen);
     std::string error;
     const auto pokemon = ux2SelectedPokemon(screen, error);
     const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon), hasPending(screen));
-    fb.drawText(x + 24, y + 18, pokemon ? "Pokemon Actions" : "Empty Slot", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52,
-        "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1) + "  •  staged copy only",
-        Colors::TextDim, TextStyle::Caption);
-    static constexpr const char* names[] = {
-        "View", "Edit", "Clone", "Remove", "Legality & Provenance",
-        "Add Pokemon", "Review Pending Changes", "Cancel",
-    };
-    int rowY = y + 86;
-    for (std::size_t i = 0; i < actions.count; ++i) {
-        const int idx = static_cast<int>(actions[i]);
-        const bool selected = static_cast<int>(i) == state.row;
-        drawNativeActionRow(fb, x + 22, rowY, w - 44, 42, names[idx], selected);
-        screen.touchButtons.push_back({1000 + static_cast<int>(i), x + 22, rowY, w - 44, 42});
-        rowY += 46;
-    }
-    fb.drawText(x + 24, y + h - 38, "Original source is immutable", Colors::Accent, TextStyle::Caption);
+    const auto model = ux2NarrowActions(actions, static_cast<bool>(pokemon));
+    drawNarrowPokemonActions(fb, screen.touchButtons, model, state.row,
+                            pokemon ? "Pokemon Actions" : "Empty Slot",
+                            "GEN I / READ-ONLY SOURCE", 1000);
 }
 
 void ux2DrawFiveStatLabels(PKSEFramebuffer& fb, int x, int y, const std::array<uint16_t,5>& stats) {
@@ -1141,8 +1162,10 @@ void ux2DialogGeometry(TrainerViewScreen& screen, int& x, int& y, int& w, int& h
             std::string error;
             const auto p = ux2SelectedPokemon(screen, error);
             const auto actions = UX::actionsForSlot(static_cast<bool>(p), hasPending(screen));
-            w = p ? 650 : 560;
-            h = 86 + static_cast<int>(actions.count) * 46 + 62;
+            const auto model = ux2NarrowActions(actions, static_cast<bool>(p));
+            const auto geometry = PokeBank::UIModel::NarrowPokemonMenu::geometry(model.count);
+            w = geometry.width;
+            h = geometry.height;
             break;
         }
         case UX2Mode::RemoveConfirm: w = 620; h = 230; break;
