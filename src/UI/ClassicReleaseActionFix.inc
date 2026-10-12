@@ -56,7 +56,12 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
         const int touched = screen.touchedButtonId(touch);
         if (touched == 398) down |= HidNpadButton_B;
         else if (touched == 399) down |= HidNpadButton_Y;
-        if (down & HidNpadButton_B) { state.mode = UX2Mode::Actions; state.row = 0; return true; }
+        if (down & HidNpadButton_B) {
+            // Cancel returns to the focused Release command, not row zero.
+            state.mode = UX2Mode::Actions;
+            screen.controllerNavigation.reset();
+            return true;
+        }
         if (down & HidNpadButton_Y) ux2StageRemove(screen);
         return true;
     }

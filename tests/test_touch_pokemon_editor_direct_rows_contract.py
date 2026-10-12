@@ -277,3 +277,15 @@ gen3_review = read("src/UI/Gen3SharedPokemonSurface.inc").split(
     "bool handleReview(", 1)[1].split("bool handleReleaseConfirm(", 1)[0]
 assert gen3_review.count("state.actions = true;") == 2
 assert gen3_review.count("screen.controllerNavigation.reset();") == 2
+
+# Cancelling Release restores the original focused action in Gen I/III
+# (matching Gen II/IV); B cannot leak into the restored popup.
+gen1_confirm = classic_actions.split("if (state.mode == UX2Mode::RemoveConfirm)", 1)[1].split(
+    "bool drawReleaseActionSurface(", 1)[0]
+assert "state.mode = UX2Mode::Actions;" in gen1_confirm
+assert "state.row = 0;" not in gen1_confirm
+assert "screen.controllerNavigation.reset();" in gen1_confirm
+gen3_confirm = read("src/UI/Gen3SharedPokemonSurface.inc").split(
+    "bool handleReleaseConfirm(", 1)[1].split("std::string surfaceContext(", 1)[0]
+assert "state.actions = true;" in gen3_confirm
+assert "screen.controllerNavigation.reset();" in gen3_confirm

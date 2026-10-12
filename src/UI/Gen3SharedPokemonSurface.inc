@@ -1381,6 +1381,7 @@ bool handleReleaseConfirm(TrainerViewScreen& screen, State& state, u64 down) {
     if (down & HidNpadButton_B) {
         state.confirmRelease = false;
         state.actions = true;
+        screen.controllerNavigation.reset();
         return true;
     }
     // A never stages a destructive edit. Release requires an explicit
