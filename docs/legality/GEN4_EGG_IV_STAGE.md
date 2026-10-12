@@ -38,3 +38,15 @@ Algorithm independently implemented from the verified research packet [RNG-003](
 - Full host/RSE and platform builds are not claimed locally; this isolated checkout lacks the optional vendor submodule files. Normal PR CI remains required before acceptance. No accepted branch or main movement is part of this change.
 
 Build the focused normal and sanitizer targets with `make -f Makefile.host HOST_BUILD=/tmp/nx-gen4-egg-test /tmp/nx-gen4-egg-test/test_gen4_egg_iv_inheritance_stage /tmp/nx-gen4-egg-test/test_gen4_egg_iv_inheritance_stage_sanitize`, then run each executable. Full host and sanitizer suites include these targets automatically.
+
+## Joint move/IV/item candidate
+
+`Gen4JointEggCandidateEvidence.h` connects this stage helper to the existing `Gen34SameParentEggHistory`. Its input uses two **ordered physical daycare parent snapshots**, whose nonzero distinct IDs must match the move-father/mother IDs in either order. Independently attested move/IV collection-stage tokens must be nonzero and equal. Parent eligibility remains the existing externally verified `PairProof`; this does not duplicate PR #272's eligibility work.
+
+For Pichu, the move pass derives Light Ball presence from these same parents' known held items (Gen IV Light Ball ID 236). It deliberately ignores an independent `moves.lightBall` claim. This prevents a plausible move pass with a Light Ball from being combined with an unrelated Power-item IV hypothesis. Platinum can replay non-Pichu IVs without item snapshots, but Pichu's conditional move construction still needs item knowledge. Other species retain their existing move behavior.
+
+The result separates incoherent parent IDs/order/stages, malformed move/IV input, unknown histories, move-candidate mismatch and IV-candidate mismatch. Detailed existing move/IV results remain available. A consistent result means the supplied conditional construction matches, not that source history was recovered or the child is globally legal. The caller is still responsible for authenticating encounter, personal data, base moves, method facts, parents, items and stage evidence. No detached analyzer path invents those inputs.
+
+Permanent tests exercise all 138 retail-verified IV fixtures in both father/mother role orderings (276 combinations), fixed-output negative controls, alien/duplicate/missing IDs, absent or mismatched stage attestation, malformed moves and IVs, unknown input fields, and coherent Light Ball plus Power-item histories. Swapping only the two held items preserves the Light Ball move possibility but contradicts the fixed IV donor fixture. Normal and ASan/UBSan targets pass; the same environment-specific LeakSanitizer limitation noted above applies.
+
+Targets: `test_gen4_joint_egg_candidate` and `test_gen4_joint_egg_candidate_sanitize`, included in permanent host/sanitizer suites. This addition changes no Gen III bridge and no analyzer verdict.
