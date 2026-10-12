@@ -37,7 +37,7 @@ public:
     }
     // Closed: grab only physical right edge. Open: grab header, lip or tiles.
     bool arm(bool visible, int startX, int startY, int screenW, int contentBottom) noexcept {
-        const int left = visible ? screenW - Width : screenW - EdgeCapture;
+        const int left = visible ? screenW - Width + offset_ : screenW - EdgeCapture;
         armed_ = screenW > Width && startX >= left && startX < screenW &&
                  startY >= 64 && startY < contentBottom;
         dragging_ = false;

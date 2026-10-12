@@ -20,9 +20,9 @@ int main() {
     assert(m.track(960, 185) && m.offset() == 180);
     assert(m.release(960, 185)); settle(m);
     assert(m.interactive()); // short pull snaps open
-    assert(m.arm(true, 1000, 210, 1280, 664));
-    assert(m.track(1320, 210) && m.offset() == 320);
-    assert(m.release(1320, 210)); settle(m);
+    assert(m.arm(true, 900, 210, 1280, 664));
+    assert(m.track(1200, 210) && m.offset() == 300);
+    assert(m.release(1200, 210)); settle(m);
     assert(m.fullyClosed());
     m.snapOpen();
     assert(m.arm(true, 950, 260, 1280, 664));
@@ -32,8 +32,9 @@ int main() {
     assert(!m.arm(false, 1270, 690, 1280, 664)); // footer
     m.snapClosed(); m.openAnimated(); m.advance();
     const int mid = m.offset();
-    assert(m.arm(true, 1000, 210, 1280, 664));
-    assert(m.track(1070, 210) && m.offset() == mid + 70);
-    assert(m.release(1070, 210)); settle(m);
+    assert(!m.arm(true, 1000, 210, 1280, 664)); // behind card
+    assert(m.arm(true, 1190, 210, 1280, 664));
+    assert(m.track(1260, 210) && m.offset() == mid + 70);
+    assert(m.release(1260, 210)); settle(m);
     std::cout << "quick_games_drawer_motion PASS\n";
 }
