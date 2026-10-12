@@ -90,6 +90,8 @@ struct State {
     int slot = 0;
     Shared::Focus focus{};
     int detailsFocus = 0;
+    TouchScrollState detailsTouchScroll;
+    TouchPickerViewport detailsViewport;
     SessionModel::Session session{};
 
     bool valuePicker = false;
@@ -252,6 +254,8 @@ bool selectedOccupied(TrainerViewScreen& screen) {
 void resetWorkspaceFocus(State& state) noexcept {
     state.focus = {Shared::Panel::Details, 0, 0};
     state.detailsFocus = 0;
+    state.detailsTouchScroll.reset();
+    state.detailsViewport.reset();
     state.valuePicker = false;
     state.pickerTarget = PickerTarget::None;
     state.pickerValues.clear();
@@ -1288,6 +1292,17 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
 
     const bool passive = state.session.mode == SessionModel::Mode::View;
     const auto panelBefore = state.focus.panel;
+    constexpr int visibleDetailRows = 8;
+    const SharedPokemonShell::Geometry detailGeometry(1280, 720, kNavBarH);
+    state.detailsViewport.ensure(state.detailsFocus, 16, visibleDetailRows);
+    state.detailsTouchScroll.updateVertical(
+        touch, detailGeometry.leftX + 8, detailGeometry.y + 216,
+        detailGeometry.leftW - 16, visibleDetailRows * 38, 38,
+        state.detailsViewport.firstRow,
+        TouchPickerViewport::maxFirst(16, visibleDetailRows) + 1);
+    if (down & (HidNpadButton_Up | HidNpadButton_Down |
+                HidNpadButton_L | HidNpadButton_R))
+        state.detailsTouchScroll.stop();
     int verticalDirection = 0;
     if (down & HidNpadButton_L)
         state.focus = passive ? Shared::passiveViewSwitchPanel(Shared::Generation::Gen4, state.focus, -1)
@@ -1319,6 +1334,9 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
                                state.focus.panel != panelBefore);
     state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);
     state.detailsFocus = std::clamp(state.detailsFocus, 0, 15);
+    if (down & (HidNpadButton_Up | HidNpadButton_Down |
+                HidNpadButton_L | HidNpadButton_R))
+        state.detailsViewport.reveal(state.detailsFocus, 16, visibleDetailRows);
 
     auto applyDirectFocus = [&](int id) {
         if (id >= 41000 && id < 41016) {
@@ -1333,20 +1351,16 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
         if (id >= 41300 && id < 41304) { state.focus = {Shared::Panel::Moves, static_cast<uint8_t>(id - 41300), 0}; return true; }
         return false;
     };
-    applyDirectFocus(screen.touchedButtonDownId(touch));
+    // Touch-down is provisional: do not jump focus while a finger is still
+    // dragging through DETAILS/STATS/MOVES. Only a completed tap can select.
     const int pressedRow = screen.touchedButtonId(touch);
     if (applyDirectFocus(pressedRow) && state.session.editable()) down |= HidNpadButton_A;
     if (pressedRow == 41015 && passive && state.session.working &&
         state.session.working->formCount() <= 1)
         screen.postStatus("This Gen IV Pokémon has only its default form", 135);
     if (touch.justReleased() && touch.dragged()) {
-        const int sx = touch.startX(), sy = touch.startY();
         const int dx = touch.deltaX(), dy = touch.deltaY();
-        if (sx >= 24 && sx < 324 && sy >= 300 && std::abs(dy) >= 28) {
-            const int steps = std::max(1, std::abs(dy) / 38);
-            state.detailsFocus = std::clamp(state.detailsFocus + (dy < 0 ? steps : -steps), 0, 15);
-            state.focus = {Shared::Panel::Details, static_cast<uint8_t>(state.detailsFocus), 0};
-        } else if (std::abs(dx) >= 96 && std::abs(dx) > std::abs(dy)) {
+        if (std::abs(dx) >= 96 && std::abs(dx) > std::abs(dy)) {
             state.focus = passive
                 ? Shared::passiveViewSwitchPanel(Shared::Generation::Gen4, state.focus, dx < 0 ? 1 : -1)
                 : Shared::switchPanel(Shared::Generation::Gen4, state.focus, dx < 0 ? 1 : -1);
@@ -1887,12 +1901,13 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     constexpr int detailRowStep = 38;
     const int detailViewportY = g.y + 216;
     const int detailViewportH = std::max(0, g.y + g.h - 40 - detailViewportY);
-    const auto detailVisual = liveVerticalListVisual(
-        state.detailsFocus, static_cast<int>(detailLabels.size()), detailRowStep,
-        g.leftX + 8, detailViewportY, g.leftW - 16, detailViewportH);
+    state.detailsViewport.ensure(state.detailsFocus, static_cast<int>(detailLabels.size()),
+                                 static_cast<int>(detailVisibleRows));
+    const int firstDetailRow = state.detailsViewport.firstRow;
+    const int detailPixelOffset = state.detailsTouchScroll.offset();
     SharedPokemonShell::drawScrollableDetails(
         fb, g.leftX, g.y, g.leftW, g.h, detailLabels.size(),
-        static_cast<std::size_t>(detailVisual.index),
+        static_cast<std::size_t>(state.detailsFocus),
         state.focus.panel == Shared::Panel::Details,
         [](size_t row) { return detailLabels[row]; },
         [&](size_t row) {
@@ -1901,15 +1916,15 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
                 return std::string("Default (fixed)");
             return detailValue(*raw, view, static_cast<int>(row));
         },
-        detailVisual.offset);
+        detailPixelOffset, firstDetailRow);
     {
-        const auto window = Shared::scrollWindow(
-            detailLabels.size(), detailVisibleRows, static_cast<std::size_t>(detailVisual.index));
-        for (std::size_t i = 0; i < window.count; ++i) {
-            const int row = static_cast<int>(window.first + i);
-            const int yy = g.y + 224 + static_cast<int>(i) * detailRowStep + detailVisual.offset;
-            if (yy + 32 > detailViewportY && yy < detailViewportY + detailViewportH)
-                screen.touchButtons.push_back({41000 + row, g.leftX + 8, yy + 2, g.leftW - 36, 30});
+        for (int row = std::max(0, firstDetailRow - 1);
+             row < std::min(static_cast<int>(detailLabels.size()),
+                            firstDetailRow + static_cast<int>(detailVisibleRows) + 1); ++row) {
+            const int yy = g.y + 224 + (row - firstDetailRow) * detailRowStep + detailPixelOffset;
+            appendClippedTouchButton(screen.touchButtons, 41000 + row,
+                g.leftX + 8, yy + 2, g.leftW - 36, 30,
+                g.leftX + 8, detailViewportY, g.leftW - 16, detailViewportH);
         }
     }
 
