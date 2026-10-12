@@ -81,6 +81,26 @@ int main() {
     different=f.pcd;w16(different,C::PCDCompatibility,0x40);
     assert(C::inspectPair(different,f.pgt).status==C::Status::PairedPayloadMatches);
     assert(J::evaluate(true,C::inspectPair(different,f.pgt),f.source,f.receipt).status==S::CandidateCardMismatch);
+    // Card-only metadata is NOT covered by gift-body equivalence. Exhaust
+    // 65,536 synthetic card ID/compatibility combinations sharing the same
+    // PGT: exactly one matches this independently pinned archive/recipient.
+    uint64_t cardIdentities=0,identityMatches=0;
+    for(unsigned id=0;id<256;++id)
+    for(unsigned compatibility=0;compatibility<256;++compatibility) {
+        auto c=f.pcd;
+        w16(c,C::PCDCardId,static_cast<uint16_t>(id+256));
+        w16(c,C::PCDCompatibility,static_cast<uint16_t>(compatibility));
+        const auto paired=C::inspectPair(c,f.pgt);
+        assert(paired.status==C::Status::PairedPayloadMatches);
+        const auto r=J::evaluate(true,paired,f.source,f.receipt);
+        const bool exact=id+256==321 && compatibility==0x30;
+        assert((r.status==S::ConditionalCandidate)==exact);
+        if(!exact)assert(r.status==S::CandidateCardMismatch);
+        assert(!r.authenticated && !r.globallyInvalid);
+        if(exact)++identityMatches;
+        ++cardIdentities;
+    }
+    assert(cardIdentities==65536 && identityMatches==1);
     auto wrongPair=f.pgt;wrongPair[0x44]^=std::byte{1};
     assert(J::evaluate(true,C::inspectPair(f.pcd,wrongPair),f.source,f.receipt).status==S::UnknownContainer);
     // Every independently attested source/save/recipient proof gate must be
@@ -179,5 +199,6 @@ int main() {
     std::cout<<"L4 Stage4 original PCD/PGT recipient witness: "<<cardMasks
              <<" source masks, "<<recipientMasks<<" recipient masks, "
              <<clockMasks<<" clock masks, "<<mutated
-             <<" paired-body mutations: PASS\n";
+             <<" paired-body mutations, "<<cardIdentities
+             <<" card-identity ambiguities: PASS\n";
 }
