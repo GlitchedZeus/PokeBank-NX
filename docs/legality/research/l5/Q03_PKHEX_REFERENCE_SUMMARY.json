@@ -1,0 +1,170 @@
+{
+  "catalog_id": "Q03",
+  "pinned_pkhex_sha": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+  "verified_pinned_files": 31,
+  "lexical_method_declarations": 305,
+  "branch_guard_lines": 646,
+  "switch_lines": 0,
+  "case_labels": 0,
+  "accepted_legality_callsite_entries": 200,
+  "claims_full_pkhex_call_graph": false,
+  "claims_all_methods_wired": false,
+  "methods": [
+    {
+      "id": "PK-LICENSE",
+      "path": "LICENSE",
+      "methods": 0
+    },
+    {
+      "id": "PK-METHODK",
+      "path": "PKHeX.Core/Legality/RNG/ClassicEra/Gen4/GenerateMethodK.cs",
+      "methods": 3
+    },
+    {
+      "id": "PK-METHODJ",
+      "path": "PKHeX.Core/Legality/RNG/ClassicEra/Gen4/GenerateMethodJ.cs",
+      "methods": 3
+    },
+    {
+      "id": "PK-HISTORY",
+      "path": "PKHeX.Core/Legality/LearnSource/Verify/LearnVerifierHistory.cs",
+      "methods": 8
+    },
+    {
+      "id": "PK-BREED",
+      "path": "PKHeX.Core/Legality/Breeding.cs",
+      "methods": 11
+    },
+    {
+      "id": "PK-TRASH",
+      "path": "PKHeX.Core/Legality/Verifiers/TrashByteVerifier.cs",
+      "methods": 12
+    },
+    {
+      "id": "PK-RIBBON",
+      "path": "PKHeX.Core/Legality/Verifiers/Ribbons/RibbonVerifierUnique4.cs",
+      "methods": 7
+    },
+    {
+      "id": "PK-RIBRULE",
+      "path": "PKHeX.Core/Legality/Verifiers/Ribbons/RibbonRules.cs",
+      "methods": 24
+    },
+    {
+      "id": "PK-METHOD",
+      "path": "PKHeX.Core/Legality/RNG/MethodFinder.cs",
+      "methods": 21
+    },
+    {
+      "id": "PK-LEARNREADER",
+      "path": "PKHeX.Core/Legality/Learnset/LearnsetReader.cs",
+      "methods": 3
+    },
+    {
+      "id": "PK-BIN",
+      "path": "PKHeX.Core/Legality/Assets/BinLinkerAccessor16.cs",
+      "methods": 8
+    },
+    {
+      "id": "PK-GROUP1",
+      "path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroup1.cs",
+      "methods": 16
+    },
+    {
+      "id": "PK-GROUP2",
+      "path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroup2.cs",
+      "methods": 12
+    },
+    {
+      "id": "PK-GROUP3",
+      "path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroup3.cs",
+      "methods": 11
+    },
+    {
+      "id": "PK-GROUP4",
+      "path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroup4.cs",
+      "methods": 11
+    },
+    {
+      "id": "PK-EGGMOVE2",
+      "path": "PKHeX.Core/Legality/Moves/Breeding/MoveBreed2.cs",
+      "methods": 6
+    },
+    {
+      "id": "PK-EGGMOVE3",
+      "path": "PKHeX.Core/Legality/Moves/Breeding/MoveBreed3.cs",
+      "methods": 5
+    },
+    {
+      "id": "PK-EGGMOVE4",
+      "path": "PKHeX.Core/Legality/Moves/Breeding/MoveBreed4.cs",
+      "methods": 5
+    },
+    {
+      "id": "PK-SOURCE1RB",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource1RB.cs",
+      "methods": 9
+    },
+    {
+      "id": "PK-SOURCE1YW",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource1YW.cs",
+      "methods": 9
+    },
+    {
+      "id": "PK-SOURCE2GS",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource2GS.cs",
+      "methods": 11
+    },
+    {
+      "id": "PK-SOURCE2C",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource2C.cs",
+      "methods": 12
+    },
+    {
+      "id": "PK-SOURCE2Stadium",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource2Stadium.cs",
+      "methods": 11
+    },
+    {
+      "id": "PK-SOURCE3RS",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource3RS.cs",
+      "methods": 11
+    },
+    {
+      "id": "PK-SOURCE3E",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource3E.cs",
+      "methods": 13
+    },
+    {
+      "id": "PK-SOURCE3FR",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource3FR.cs",
+      "methods": 11
+    },
+    {
+      "id": "PK-SOURCE3LG",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource3LG.cs",
+      "methods": 11
+    },
+    {
+      "id": "PK-SOURCE4DP",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource4DP.cs",
+      "methods": 12
+    },
+    {
+      "id": "PK-SOURCE4Pt",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource4Pt.cs",
+      "methods": 12
+    },
+    {
+      "id": "PK-SOURCE4HGSS",
+      "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource4HGSS.cs",
+      "methods": 13
+    },
+    {
+      "id": "PK-BREED-TESTS",
+      "path": "Tests/PKHeX.Core.Tests/Legality/BreedTests.cs",
+      "methods": 4
+    }
+  ],
+  "required_followup": "AST-based dispatch and transitive invocations, exact version-condition evaluation and source-linked runtime regression, not lexical-only declarations"
+}
