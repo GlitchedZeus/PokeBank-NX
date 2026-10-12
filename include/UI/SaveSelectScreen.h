@@ -12,6 +12,7 @@
 #include "UI/UIScreen.h"
 #include "UI/NavigationRepeat.h"
 #include "UI/TouchScroll.h"
+#include "UI/QuickGamesDrawerMotion.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/GameLaunchModel.h"
 #include "Legacy/FRLGSourceBrowser.h"
@@ -185,6 +186,7 @@ namespace UI {
         int gamesDrawerIndex = 0;
         int gamesDrawerScroll = 0;
         TouchScrollState gamesDrawerTouchScroll;
+        PokeBank::UIModel::QuickGamesDrawerMotion quickDrawerMotion;
         int profilePickerIndex = 0;
         int profilePickerScroll = 0; // independent visible first row; never scroll the focus index
         TouchScrollState profileTouchScroll;
