@@ -2561,8 +2561,11 @@ namespace UI {
                 gamesDrawerTouchScroll.stop();
                 return; // Release only settles the card, never selects a game.
             }
-            if (touch.justTouchedDown() && quickDrawerMotion.armed())
-                return; // Selection waits until a real tap, not finger-down.
+            if (touch.justTouchedDown() && quickDrawerMotion.armed() &&
+                overlay == Overlay::None)
+                return; // Closed edge belongs to drawer, not the Home controls.
+            // Once Quick Games is visible, do NOT consume finger-down: the
+            // vertical tile scroller needs this event to capture the gesture.
         }
 
         // Activate only a target containing both the contact origin and release point.
@@ -2588,7 +2591,7 @@ namespace UI {
                 for (const auto& r : overlayRects) {
                     if (!(tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h)) continue;
                     switch (overlay) {
-                        case Overlay::GamesDrawer: gamesDrawerIndex = r.idx; break;
+                        case Overlay::GamesDrawer: break; // Touch scroll may follow; select only on a clean tap.
                         case Overlay::ProfilePicker: profilePickerIndex = r.idx; break;
                         case Overlay::GameWorkspace: gameWorkspaceIndex = r.idx; break;
                         case Overlay::GameFilePicker: launchFileIndex = r.idx; break;

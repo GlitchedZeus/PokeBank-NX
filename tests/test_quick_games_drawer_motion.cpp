@@ -27,7 +27,19 @@ int main() {
     m.snapOpen();
     assert(m.arm(true, 950, 260, 1280, 664));
     assert(!m.track(960, 410)); // vertical list scroll not hijacked
-    assert(!m.release(960, 410) && m.offset() == 0);
+    assert(!m.track(960, 410)); // vertical intention locks the list gesture
+    assert(!m.track(1250, 420)); // a curved scroll cannot turn into drawer drag
+    assert(!m.release(1250, 420) && m.offset() == 0);
+    // A new contact can still grab the card horizontally.
+    assert(m.arm(true, 950, 260, 1280, 664));
+    assert(m.track(1210, 260) && m.offset() == 260);
+    assert(m.release(1210, 260)); settle(m);
+    assert(m.fullyClosed());
+    m.snapOpen();
+    // Stationary finger-down and a small wobble must still be a tap, not a drag.
+    assert(m.arm(true, 950, 260, 1280, 664));
+    assert(!m.track(956, 265));
+    assert(!m.release(956, 265) && m.interactive());
     assert(!m.arm(false, 850, 120, 1280, 664)); // outside physical edge
     assert(!m.arm(false, 1270, 690, 1280, 664)); // footer
     m.snapClosed(); m.openAnimated(); m.advance();

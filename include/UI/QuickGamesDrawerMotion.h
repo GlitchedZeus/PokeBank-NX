@@ -19,19 +19,19 @@ public:
     }
     void snapOpen() noexcept {
         offset_ = target_ = 0;
-        armed_ = dragging_ = settling_ = false;
+        armed_ = dragging_ = settling_ = verticalLocked_ = false;
     }
     void snapClosed() noexcept {
         offset_ = target_ = Width;
-        armed_ = dragging_ = settling_ = false;
+        armed_ = dragging_ = settling_ = verticalLocked_ = false;
     }
     void openAnimated() noexcept {
-        armed_ = dragging_ = false;
+        armed_ = dragging_ = verticalLocked_ = false;
         target_ = 0;
         settling_ = offset_ != target_;
     }
     void closeAnimated() noexcept {
-        armed_ = dragging_ = false;
+        armed_ = dragging_ = verticalLocked_ = false;
         target_ = Width;
         settling_ = offset_ != target_;
     }
@@ -40,7 +40,7 @@ public:
         const int left = visible ? screenW - Width + offset_ : screenW - EdgeCapture;
         armed_ = screenW > Width && startX >= left && startX < screenW &&
                  startY >= 64 && startY < contentBottom;
-        dragging_ = false;
+        dragging_ = verticalLocked_ = false;
         if (armed_) {
             initialX_ = startX;
             initialY_ = startY;
@@ -52,10 +52,16 @@ public:
         return armed_;
     }
     bool track(int x, int y) noexcept {
-        if (!armed_) return false;
+        if (!armed_ || verticalLocked_) return false;
         const int dx = x - initialX_;
         const int dy = y - initialY_;
         if (!dragging_) {
+            // Once a vertical list gesture is established it owns this entire
+            // finger contact, even if the user curves sideways later.
+            if (std::abs(dy) >= 14 && std::abs(dy) > std::abs(dx)) {
+                verticalLocked_ = true;
+                return false;
+            }
             if (std::abs(dx) < 14 || std::abs(dx) * 4 <= std::abs(dy) * 5)
                 return false;
             if ((initialOffset_ == Width && dx > 0) ||
@@ -80,7 +86,7 @@ public:
             target_ = resumeTarget_;
             settling_ = offset_ != target_;
         }
-        armed_ = dragging_ = false;
+        armed_ = dragging_ = verticalLocked_ = false;
         (void)y;
         return handled;
     }
@@ -102,6 +108,7 @@ private:
     int initialY_ = 0;
     bool armed_ = false;
     bool dragging_ = false;
+    bool verticalLocked_ = false;
     bool settling_ = false;
 };
 } // namespace PokeBank::UIModel

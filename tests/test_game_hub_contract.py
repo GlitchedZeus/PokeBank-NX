@@ -694,6 +694,19 @@ require("const int selectedRow = gamesDrawerIndex / cols;" not in drawer_draw_se
         "gamesDrawerTouchScroll.updateVertical(" in drawer_update and
         "if (selectedRow < gamesDrawerScroll)" in drawer_update,
         "Quick Games must preserve vertical finger scroll and only track focus on controller navigation")
+# A drawer drag must not swallow finger-down in the already-open tile list:
+# TouchScrollState requires that event to arm vertical gestures.
+drawer_gesture = source.split("// Quick Games is a card attached", 1)[1].split(
+    "// Activate only a target", 1)[0]
+require("if (touch.justTouchedDown() && quickDrawerMotion.armed() &&" in drawer_gesture and
+        "overlay == Overlay::None)" in drawer_gesture and
+        "verticalLocked_" in motion,
+        "Quick Games must pass open-drawer touch-down to vertical scroll and lock gesture ownership")
+drawer_down = source.split("if (touch.justTouchedDown()) {", 1)[1].split(
+    "if (touch.justTapped()) {", 1)[0]
+require("case Overlay::GamesDrawer: break;" in drawer_down and
+        "case Overlay::GamesDrawer: gamesDrawerIndex = r.idx;" not in drawer_down,
+        "Quick Games must not retarget the selected game before a drag resolves as a clean tap")
 portrait = source[source.index("void drawTrainerPortrait("):source.index("// Approved product-home layout")]
 require("drawPanelSurface(" not in portrait and "fb.drawImageScaled(" in portrait,
         "Trainer cutouts must reveal region artwork on all game cards")
