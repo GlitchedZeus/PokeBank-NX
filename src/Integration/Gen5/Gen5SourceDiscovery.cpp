@@ -186,6 +186,20 @@ void scan(const DiscoveryRoot& root,const std::string& dir,size_t depth,ScanStat
         }
         ++s.result.filesExamined;
         auto row=inspectSourceFile(file,root.providerLabel);
+        // A Gen V cartridge has two complete checksum copies. When both
+        // validate but differ, presenting neither makes a legitimate file
+        // inaccessible; silently choosing either loses source identity.
+        // Expose two explicitly labeled read-only choices for ONE file.
+        if (!row.ready() &&
+            row.diagnostic.find("two valid but different")!=std::string::npos) {
+            for (const auto choice : {SaveCopySelection::Primary,
+                                       SaveCopySelection::Backup}) {
+                auto candidate=inspectSourceFile(file,root.providerLabel,{},choice);
+                if (candidate.ready())
+                    s.result.instances.push_back(std::move(candidate));
+            }
+            continue;
+        }
         // RetroArch can contain saves from other generations: hide unrelated
         // raw payloads, but retain actionable .dsv/.dss diagnostics.
         if(row.ready() || root.providerLabel!="RetroArch" ||
@@ -308,6 +322,8 @@ Source::SaveInstance inspectSourceFile(const std::string& path,
     row.contentFingerprint=sha256Hex(bytes);
     row.sourceIdentity=pathIdentity(path,&st,row.contentFingerprint);
     row.containerType=container;
+    row.sourceVariant=copy==SaveCopySelection::Primary?"gen5-copy-0-primary":
+                      copy==SaveCopySelection::Backup?"gen5-copy-1-backup":"";
     row.partyCount=save->partyCount();
     row.trainerName=displayTrainerName(save->trainer().rawName).value_or("");
     row.sourceLabel=std::string("Gen V / ")+
@@ -336,6 +352,23 @@ ReadOnlyProbe reopenValidatedSource(const Source::SaveInstance& selected,
     out.instance.diagnostic="source revalidation failed";
     if(!selected.ready() || selected.generation!=5 || !isExactGen5Id(selected.gameId))
         return out;
+    // The explicit copy is pinned in the chosen Save Instance. A later
+    // generic reopen must not silently fall back to a different copy.
+    SaveCopySelection pinned=SaveCopySelection::Automatic;
+    if(selected.sourceVariant=="gen5-copy-0-primary")
+        pinned=SaveCopySelection::Primary;
+    else if(selected.sourceVariant=="gen5-copy-1-backup")
+        pinned=SaveCopySelection::Backup;
+    else if(!selected.sourceVariant.empty()) {
+        out.instance.diagnostic="unsupported Gen V source copy identity";
+        return out;
+    }
+    if(selection!=SaveCopySelection::Automatic &&
+       pinned!=SaveCopySelection::Automatic && selection!=pinned) {
+        out.instance.diagnostic="Gen V copy choice conflicts with validated Save Instance";
+        return out;
+    }
+    if(pinned!=SaveCopySelection::Automatic)selection=pinned;
     const auto fresh=inspectSourceFile(selected.path(),selected.providerLabel,
                                       selected.gameId,selection);
     if(!Source::sameValidatedSnapshot(selected,fresh) ||
@@ -361,6 +394,7 @@ ReadOnlyProbe reopenValidatedSource(const Source::SaveInstance& selected,
         out.instance.modifiedTime=selected.modifiedTime;
         out.instance.contentFingerprint=selected.contentFingerprint;
         out.instance.containerType=selected.containerType;
+        out.instance.sourceVariant=selected.sourceVariant;
         out.instance.label=selected.label;
         out.instance.kind=selected.kind;
         out.instance.sourceLabel=selected.sourceLabel;

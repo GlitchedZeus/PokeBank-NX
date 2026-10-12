@@ -314,12 +314,37 @@ void discoveryContracts() {
     stamp(twoCopies,L::BlackWhiteCopySize,L::BlackWhite);
     fileFixture(black,twoCopies);
     assert(!G::inspectSourceFile(black,"RetroArch").ready());
+    // Discovery must display both independently validated copies without
+    // silently choosing their freshness or scanning the same file twice.
+    const std::array<G::DiscoveryRoot,1> dualRoots{{{dir,"RetroArch",0}}};
+    const auto dualDiscovery=G::discoverSources(dualRoots,{32});
+    size_t shownCopies=0;
+    for(const auto& entry:dualDiscovery.instances)
+        if(entry.sourcePath==black) {
+            assert(entry.ready() && entry.readOnly());
+            assert(entry.sourceVariant=="gen5-copy-0-primary" ||
+                   entry.sourceVariant=="gen5-copy-1-backup");
+            ++shownCopies;
+        }
+    assert(shownCopies==2);
     const auto first=G::inspectSourceFile(
         black,"RetroArch",{},G::SaveCopySelection::Primary);
     const auto second=G::inspectSourceFile(
         black,"RetroArch",{},G::SaveCopySelection::Backup);
     assert(first.ready() && second.ready());
+    assert(first.sourceVariant=="gen5-copy-0-primary" &&
+           second.sourceVariant=="gen5-copy-1-backup");
+    assert(first.sourceIdentity==second.sourceIdentity &&
+           first.physicalIdentity==second.physicalIdentity);
     assert(first.gameId==second.gameId && first.gameId=="black_nds");
+    const std::array<PokeVault::Source::SaveInstance,2> twoSelections{{first,second}};
+    const auto catalogWithCopies=G::forGameAndProfile(
+        twoSelections,restored,"profile-one","black_nds");
+    assert(catalogWithCopies.rows.size()==2);
+    assert(catalogWithCopies.rows[0].sourceVariant=="gen5-copy-0-primary");
+    assert(catalogWithCopies.rows[1].sourceVariant=="gen5-copy-1-backup");
+    assert(catalogWithCopies.rows[0].claimedProfile=="profile-one" &&
+           catalogWithCopies.rows[1].claimedProfile=="profile-one");
     assert(first.sourceLabel.find("Primary copy")!=std::string::npos);
     assert(second.sourceLabel.find("Backup copy")!=std::string::npos);
     const auto openedPrimary=G::reopenValidatedSource(first,G::SaveCopySelection::Primary);
@@ -327,9 +352,18 @@ void discoveryContracts() {
     assert(openedPrimary.ready() && openedBackup.ready());
     assert(openedPrimary.save->trainer().rawName==u"NX");
     assert(openedBackup.save->trainer().rawName==u"NZ");
-    assert(!G::reopenValidatedSource(first).ready()); // No automatic guessing.
+    // Reopening an explicitly chosen row must preserve that exact copy,
+    // even when the ordinary caller passes Automatic. There is no guess:
+    // its saved sourceVariant was selected by the user and revalidated.
+    assert(G::reopenValidatedSource(first).ready());
+    assert(G::reopenValidatedSource(second).ready());
     assert(!G::reopenValidatedSource(second,G::SaveCopySelection::Primary).ready());
     assert(!G::reopenValidatedSource(first,G::SaveCopySelection::Backup).ready());
+    assert(G::openAssignedSource(
+        restored,"profile-one","black_nds",G::SaveCopySelection::Primary).ready());
+    assert(G::openAssignedSource(
+        restored,"profile-one","black_nds",G::SaveCopySelection::Backup).ready());
+    assert(!G::openAssignedSource(restored,"profile-one","black_nds").ready());
     // A DSV with a malformed padding/version/footer is unsupported.
     auto malformed=dsvFixture(whiteRaw);
     malformed[whiteRaw.size()+7]=1;

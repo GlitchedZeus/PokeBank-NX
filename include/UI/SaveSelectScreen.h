@@ -88,6 +88,9 @@ namespace UI {
         const std::string& getSelectedTitleName() const { return selectedTitleName; }
         const std::string& getSelectedGameId() const { return selectedGameId; }
         SelectedSourceKind getSelectedSourceKind() const { return selectedSourceKind; }
+        PokeVault::Integration::Gen5::SaveCopySelection getSelectedGen5Copy() const {
+            return selectedGen5Copy;
+        }
         size_t getSelectedLegacySourceIndex() const { return selectedLegacySourceIndex; }
         OpenIntent getOpenIntent() const { return openIntent; }
 
@@ -214,6 +217,10 @@ namespace UI {
         std::string selectedTitleName;
         std::string selectedGameId;
         SelectedSourceKind selectedSourceKind = SelectedSourceKind::None;
+        // Ephemeral, exact-session selection; never guessed from file mtime
+        // and never grants emulator/source write authority.
+        PokeVault::Integration::Gen5::SaveCopySelection selectedGen5Copy =
+            PokeVault::Integration::Gen5::SaveCopySelection::Automatic;
         size_t selectedLegacySourceIndex = 0;
         PokeVault::Legacy::FRLGDiscoveryResult* legacyCatalog = nullptr;
         PokeVault::Legacy::LegacySourceBindings* legacyBindings = nullptr;

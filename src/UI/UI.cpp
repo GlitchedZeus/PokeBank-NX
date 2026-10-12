@@ -216,7 +216,8 @@ namespace UI {
                         std::string error;
                         if (!handleGen5View(selectScreen.getSelectedUser(),
                                             selectScreen.getSelectedGameId(),
-                                            selectScreen.getOpenIntent(), error)) {
+                                            selectScreen.getOpenIntent(),
+                                            selectScreen.getSelectedGen5Copy(), error)) {
                             logErrorToFile("Generation V read-only source refused open", error.c_str());
                             selectScreen.reportOpenFailure(error);
                             fb.startFade();
@@ -498,7 +499,9 @@ namespace UI {
     }
     bool UIManager::handleGen5View(
         AccountUid userUid, const std::string& gameId,
-        SaveSelectScreen::OpenIntent intent, std::string& error) {
+        SaveSelectScreen::OpenIntent intent,
+        PokeVault::Integration::Gen5::SaveCopySelection selectedCopy,
+        std::string& error) {
         error.clear();
         const auto* identity=PokeVault::Games::findGame(gameId);
         if (!identity || identity->platform!=PokeVault::Games::Platform::NintendoDS ||
@@ -512,7 +515,7 @@ namespace UI {
         // Re-validate the precise persisted assignment on every Open. The
         // preview's earlier successful check is never a security capability.
         auto opened=PokeVault::Integration::Gen5::openAssignedSource(
-            legacySourceBindings,profileIdentity(userUid),gameId);
+            legacySourceBindings,profileIdentity(userUid),gameId,selectedCopy);
         if (!opened.ready() || !opened.save ||
             opened.instance.gameId!=gameId || !opened.instance.readOnly()) {
             error=opened.diagnostic.empty()

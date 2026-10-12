@@ -116,6 +116,35 @@ selector = games.split("if (selected.sourceKind == SelectedSourceKind::Gen5Assig
 selector = selector.split("if (selected.sourceKind == SelectedSourceKind::Gen4AssignedFile)", 1)[0]
 assert "discoverGen5Candidates();" in selector
 assert "titleSelected=true;" not in selector
+# The same physical Gen V SAV may contain two valid, different retail
+# copies. The user must choose Primary/Backup explicitly; selection must
+# survive discovery, source assignment and the final exact-game reopen.
+discovery = read("src/Integration/Gen5/Gen5SourceDiscovery.cpp")
+instance = read("include/Source/SaveInstance.h")
+selector_header = read("include/UI/SaveSelectScreen.h")
+ui_header = read("include/UI/UI.h")
+require(instance, "std::string sourceVariant;",
+        "existing.sourceVariant != instance.sourceVariant",
+        "shown.sourceVariant == fresh.sourceVariant")
+require(discovery, 'row.diagnostic.find("two valid but different")',
+        "SaveCopySelection::Primary",
+        "SaveCopySelection::Backup",
+        'selected.sourceVariant=="gen5-copy-0-primary"',
+        'selected.sourceVariant=="gen5-copy-1-backup"',
+        "Gen V copy choice conflicts with validated Save Instance")
+require(games, "gen5Instances=catalog.rows;",
+        'chosen.sourceVariant=="gen5-copy-0-primary"',
+        'chosen.sourceVariant=="gen5-copy-1-backup"',
+        "selectedGen5Copy=", "gen5CandidateScroll=0;")
+require(selector_header, "getSelectedGen5Copy() const",
+        "SaveCopySelection selectedGen5Copy")
+require(ui_header, "SaveCopySelection selectedCopy")
+require(manager, "selectScreen.getSelectedGen5Copy()",
+        "legacySourceBindings,profileIdentity(userUid),gameId,selectedCopy")
+# A file with two different checksum-valid copies cannot open through an
+# automatic persisted assignment that does not record which copy was chosen.
+require(games, '"CHOOSE COPY"', "SaveCopySelection::Automatic")
+
 # The display bridge must draw from validated staged PK5, never serialize SAV5.
 require(trainer, "Gen5ReadOnlyTrainer::rebuildPresentation(")
 assert "fwrite(" not in trainer and "ofstream(" not in trainer

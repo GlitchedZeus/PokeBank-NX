@@ -1031,7 +1031,9 @@ namespace UI {
                             card.dexSeen=preview->dexSeen;
                             card.dexCaught=preview->dexCaught;
                             card.dexTotal=preview->dexTotal;
-                        } else card.sourceLabel="RELINK SAVE";
+                        } else card.sourceLabel=
+                            opened.diagnostic.find("two valid but different")!=std::string::npos
+                                ? "CHOOSE COPY" : "RELINK SAVE";
                     } else if(source.status==PokeVault::Legacy::AssignedFileStatus::Missing)
                         card.sourceLabel="MISSING";
                     else if(source.status==PokeVault::Legacy::AssignedFileStatus::Unreadable)
@@ -2172,6 +2174,7 @@ namespace UI {
     void SaveSelectScreen::openGen5Setup(
         const std::string& gameId,std::string notice,bool returnToGamesDrawer) {
         gen5TargetGameId=gameId;
+        selectedGen5Copy=PokeVault::Integration::Gen5::SaveCopySelection::Automatic;
         gen5Notice=std::move(notice);
         gen5SetupFromGamesDrawer=returnToGamesDrawer;
         gen5Instances.clear();
@@ -2194,8 +2197,22 @@ namespace UI {
                 auto old=PokeVault::Integration::Gen5::inspectSourceFile(
                     assigned.binding.sourcePath,assigned.binding.sourceType,
                     gen5TargetGameId);
-                if(old.ready() && old.sourceIdentity==assigned.sourceIdentity)
+                if(old.ready() && old.sourceIdentity==assigned.sourceIdentity) {
                     rows.push_back(std::move(old));
+                } else if(old.diagnostic.find("two valid but different")!=std::string::npos) {
+                    // A manually assigned path outside emulator roots may
+                    // still contain two individually valid but distinct copies.
+                    for(const auto copy:{
+                            PokeVault::Integration::Gen5::SaveCopySelection::Primary,
+                            PokeVault::Integration::Gen5::SaveCopySelection::Backup}) {
+                        auto separate=PokeVault::Integration::Gen5::inspectSourceFile(
+                            assigned.binding.sourcePath,assigned.binding.sourceType,
+                            gen5TargetGameId,copy);
+                        if(separate.ready() &&
+                           separate.sourceIdentity==assigned.sourceIdentity)
+                            rows.push_back(std::move(separate));
+                    }
+                }
             }
         }
         if(!legacyBindings) {
@@ -2223,7 +2240,10 @@ namespace UI {
     bool SaveSelectScreen::assignGen5Candidate(
         const PokeVault::Source::SaveInstance& chosen) {
         if(!legacyBindings || !chosen.ready() ||
-           chosen.gameId!=gen5TargetGameId || !chosen.readOnly())return false;
+           chosen.gameId!=gen5TargetGameId || !chosen.readOnly() ||
+           (chosen.sourceVariant!="" &&
+            chosen.sourceVariant!="gen5-copy-0-primary" &&
+            chosen.sourceVariant!="gen5-copy-1-backup"))return false;
         const auto profile=currentProfileIdentity();
         if(profile.empty())return false;
 
@@ -2282,6 +2302,11 @@ namespace UI {
         selectedTitleName=selectedUser->titles[static_cast<size_t>(titleIndex)].name;
         selectedGameId=cardId;
         selectedSourceKind=SelectedSourceKind::Gen5AssignedFile;
+        selectedGen5Copy=chosen.sourceVariant=="gen5-copy-0-primary"
+            ? PokeVault::Integration::Gen5::SaveCopySelection::Primary
+            : chosen.sourceVariant=="gen5-copy-1-backup"
+                ? PokeVault::Integration::Gen5::SaveCopySelection::Backup
+                : PokeVault::Integration::Gen5::SaveCopySelection::Automatic;
         titleSelected=true;
         gen5SetupFromGamesDrawer=false;
         overlay=Overlay::None;
@@ -2296,6 +2321,31 @@ namespace UI {
         if(!chosen.accepted)return;
         auto row=PokeVault::Integration::Gen5::inspectSourceFile(
             chosen.text,"Manual",gen5TargetGameId);
+        if(!row.ready() &&
+           row.diagnostic.find("two valid but different")!=std::string::npos &&
+           legacyBindings) {
+            // Never assume that either valid copy is the newest. Display
+            // both in the ordinary chooser, with independent strict parsing
+            // and the same profile/physical-source claim protections.
+            std::vector<PokeVault::Source::SaveInstance> alternatives;
+            for(const auto copy:{
+                    PokeVault::Integration::Gen5::SaveCopySelection::Primary,
+                    PokeVault::Integration::Gen5::SaveCopySelection::Backup}) {
+                auto candidate=PokeVault::Integration::Gen5::inspectSourceFile(
+                    chosen.text,"Manual",gen5TargetGameId,copy);
+                if(candidate.ready())alternatives.push_back(std::move(candidate));
+            }
+            const auto catalog=PokeVault::Integration::Gen5::forGameAndProfile(
+                alternatives,*legacyBindings,currentProfileIdentity(),gen5TargetGameId);
+            if(!catalog.rows.empty()) {
+                gen5Instances=catalog.rows;
+                gen5CandidateIndex=0;
+                gen5CandidateScroll=0;
+                gen5Notice="Select the exact Primary or Backup copy; neither is assumed newest.";
+                overlay=Overlay::Gen5Candidates;
+                return;
+            }
+        }
         if(!row.ready()) {
             gen5Notice=row.diagnostic.empty()?
                 "That file is not a validated save for this Gen V title.":row.diagnostic;
