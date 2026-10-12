@@ -219,6 +219,30 @@ int main() {
      local.nativeOriginVersionPreservedIndependentlyVerified=true;
      assert(W::evaluateOriginalHistory(x,a,local).status==
             W::JoinedStatus::UnknownRoute);
+     // Exhaust all possible serialized source-family and GameCube-origin
+     // tags. A future/unsupported family must not silently become a
+     // GameCube distribution on account of plausible OT and event moves.
+     unsigned routeDomain=0,conditionalGcFamilies=0;
+     for(unsigned family=0;family<256;++family) {
+         auto familyCandidate=a;
+         familyCandidate.family=static_cast<W::Family>(family);
+         const auto result=W::evaluateOriginalHistory(x,familyCandidate,h);
+         const bool eligible=family==1u || family==2u || family==8u;
+         assert((result.status==W::JoinedStatus::ConditionalCandidate)==eligible);
+         if(eligible)++conditionalGcFamilies;
+         ++routeDomain;
+     }
+     assert(routeDomain==256 && conditionalGcFamilies==3);
+     for(unsigned original=0;original<256;++original) {
+         auto sourceCandidate=a;
+         sourceCandidate.originalSource=static_cast<W::OriginalSource>(original);
+         const auto result=W::evaluateOriginalHistory(x,sourceCandidate,h);
+         assert((result.status==W::JoinedStatus::ConditionalCandidate)==
+                (original==static_cast<unsigned>(W::OriginalSource::Colosseum)));
+         assert(!result.globallyInvalid && !result.authenticated);
+         ++routeDomain;
+     }
+     assert(routeDomain==512);
      h.gameCubeOriginalIndependentlyVerified=false;
      assert(W::evaluateOriginalHistory(x,a,h).status==
             W::JoinedStatus::UnknownRoute);
