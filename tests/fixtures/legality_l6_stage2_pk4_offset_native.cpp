@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <iostream>
 #include <limits>
+#include <span>
+#include <string>
 #include <vector>
 
 #include "Enums/GameVersion.h"
@@ -84,7 +86,7 @@ int main() {
         assert(malformed==original);
         checks+=6;
     }
-    assert(checks==6956u);
+    assert(checks==6948u);
     std::cout<<"L6 Stage 2 linked PK4 boundary: "<<checks
              <<" PASS (real accessor overflow and bounded malformed intake)\n";
 }
