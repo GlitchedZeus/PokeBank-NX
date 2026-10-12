@@ -211,6 +211,66 @@ int main() {
             }
         }
     }
+    // Physical original pair gender rules cannot be overridden by a
+    // claimed eligible flag. Exhaust ordinary opposite-sex pairs and Ditto
+    // in either deposited slot, including one genderless non-Ditto mate.
+    constexpr std::array<uint32_t,1> onePending{32u};
+    for(const char* game:{"diamond_nds","pearl_nds"}) {
+        for(unsigned trialNo=0;trialNo<512;++trialNo) {
+            auto source=base(onePending,game);
+            source.parents[0].heldItem=0;
+            source.originalCollectionTrainerId=trialNo;
+            source.originalUnhatchedEggPid=32u;
+            source.originalParentLanguages={2,2};
+            assert(DP::evaluate(source).status==
+                   DP::Status::ConditionalOriginalEggPIDMatched);
+            ++checks;
+            for(uint8_t gender:{uint8_t{0},uint8_t{1},uint8_t{2}}) {
+                auto impossible=source;
+                impossible.parents[0].gender=gender;
+                impossible.parents[1].gender=gender;
+                assert(DP::evaluate(impossible).status==DP::Status::IncompatibleDaycarePair);
+                ++checks;
+            }
+            auto reversed=source;
+            reversed.parents[0].gender=0;
+            reversed.parents[1].gender=1;
+            assert(DP::evaluate(reversed).status==
+                   DP::Status::ConditionalOriginalEggPIDMatched);
+            ++checks;
+            for(uint8_t slot=0;slot<2;++slot) {
+                auto impossible=source;
+                impossible.parents[slot].gender=2;
+                assert(DP::evaluate(impossible).status==
+                       DP::Status::IncompatibleDaycarePair);
+                ++checks;
+                auto ditto=source;
+                ditto.parents[slot].species=132;
+                ditto.parents[slot].gender=2;
+                // A genderless non-Ditto partner must be a species which
+                // can genuinely have that gender in the source generation.
+                if(slot==0) {ditto.parents[1].species=81;ditto.parents[1].gender=2;}
+                const auto valid=DP::evaluate(ditto);
+                assert(valid.status==DP::Status::ConditionalOriginalEggPIDMatched);
+                assert(valid.originalFinalPid==32u);
+                ++checks;
+                ditto.parents[slot].gender=0;
+                assert(DP::evaluate(ditto).status==
+                       DP::Status::UnknownParentCreationSnapshots);
+                ++checks;
+            }
+            auto bothDitto=source;
+            for(auto& parent:bothDitto.parents) {
+                parent.species=132;parent.gender=2;
+            }
+            assert(DP::evaluate(bothDitto).status==DP::Status::IncompatibleDaycarePair);
+            ++checks;
+            auto wrongEgg=source;
+            wrongEgg.originalUnhatchedEggPid=33u;
+            assert(DP::evaluate(wrongEgg).status==DP::Status::OriginalEggPIDContradicted);
+            ++checks;
+        }
+    }
     auto wrongGame=base(accepted,"platinum_nds");
     assert(DP::evaluate(wrongGame).status==DP::Status::UnsupportedGame);
     std::cout<<"L2 B13 original Diamond/Pearl PID history: "<<checks+7

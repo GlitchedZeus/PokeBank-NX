@@ -100,6 +100,21 @@ constexpr Result evaluate(const Input& in) noexcept {
             out.status=Status::UnknownParentCreationSnapshots;return out;
         }
     }
+    // The original daycare eligibility witness must agree with verified
+    // parent gender roles. Ditto is genderless in source snapshots; unlike
+    // two non-Ditto parents, its partner may be genderless or either sex.
+    // Incompatibility here rejects only the proposed original pair.
+    const bool ditto0=in.parents[0].species==132u;
+    const bool ditto1=in.parents[1].species==132u;
+    if((ditto0 && in.parents[0].gender!=2u) ||
+       (ditto1 && in.parents[1].gender!=2u)) {
+        out.status=Status::UnknownParentCreationSnapshots;return out;
+    }
+    const bool opposite=(in.parents[0].gender==0u && in.parents[1].gender==1u) ||
+                        (in.parents[0].gender==1u && in.parents[1].gender==0u);
+    if((ditto0 && ditto1) || (!ditto0 && !ditto1 && !opposite)) {
+        out.status=Status::IncompatibleDaycarePair;return out;
+    }
     if(!in.originalDaycareSlotOrderVerified) {
         out.status=Status::UnknownPhysicalSlotOrder;return out;
     }
