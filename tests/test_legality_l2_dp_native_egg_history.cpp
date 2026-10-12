@@ -38,7 +38,7 @@ int main() {
     constexpr std::array<uint8_t,6> slot1{13,24,3,14,25,4};
     constexpr std::array<uint32_t,3> mt{0,1,32};
     const auto stage=IV::replay("diamond_nds",0,base,slot0,slot1);
-    assert(stage.child==std::array<uint8_t,6>({7,3,6,22,12,0}));
+    assert((stage.child==std::array<uint8_t,6>({7,3,6,22,12,0})));
     assert(stage.finalSeed==0xE2CCA5EEu);
     // Present items are deliberately zero. Original Everstone is supplied
     // only as separately attested parent creation-time history.
