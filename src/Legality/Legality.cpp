@@ -1623,13 +1623,35 @@ namespace Legality {
                     " -- Awakening Values are its stat training, and these bytes affect nothing");
             }
         } else {
-            // Everywhere else: <=252 per stat, <=510 total.
-            for (int i = 0; i < 6; ++i) {
-                if (ev[i] > 252)
-                    add(r, Severity::Invalid, std::string(statName(i)) + " EV over 252 (" + std::to_string(ev[i]) + ")");
+            // Gen III/IV have byte-wide EV fields: 253..255 can arise in
+            // retail play. The 252 per-stat training cap starts in Gen VI,
+            // so imposing it on native PK3/PK4 produces false Invalid.
+            // Use the *verified native format*, never a claimed source-game
+            // label, for these format-level bounds.
+            const bool legacyByteEvs = nativeFormatGeneration == 3 ||
+                                       nativeFormatGeneration == 4;
+            if (!legacyByteEvs) {
+                for (int i = 0; i < 6; ++i) {
+                    if (ev[i] > 252)
+                        add(r, Severity::Invalid,
+                            std::string(statName(i)) + " EV over 252 (" +
+                            std::to_string(ev[i]) + ")");
+                }
             }
             if (evTotal > 510)
-                add(r, Severity::Invalid, "EV total over 510 (" + std::to_string(evTotal) + ")");
+                add(r, Severity::Invalid,
+                    "EV total over 510 (" + std::to_string(evTotal) + ")");
+
+            // Unlike a hatched Pokemon, a currently unhatched native PK3/PK4
+            // cannot acquire EVs in retail play. This directly observed
+            // stored-state invariant is independent of unknown parents,
+            // historical egg RNG, and whether the source-game label is known.
+            if (legacyByteEvs && pk.isEgg() && evTotal != 0) {
+                add(r, Severity::Invalid,
+                    "Unhatched Generation III/IV egg has nonzero EVs (" +
+                    std::to_string(evTotal) + ")",
+                    CheckIdentifier::Egg);
+            }
         }
 
         // ---- L1: AVs (Let's Go only, <=200 each) ----
