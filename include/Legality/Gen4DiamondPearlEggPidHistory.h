@@ -96,7 +96,7 @@ constexpr Result evaluate(const Input& in) noexcept {
     // historical gender or empty source species. Treat unverifiable
     // parent metadata as Unknown rather than finding a matching PID.
     for(const auto& p:in.parents) {
-        if(p.species==0 || p.gender>2) {
+        if(p.species==0 || p.species>493 || p.gender>2) {
             out.status=Status::UnknownParentCreationSnapshots;return out;
         }
     }
