@@ -9,6 +9,7 @@
 #include "Legality/Gen34PostPalParkLearning.h"
 #include "Legality/Gen34EmeraldPalParkCompleteHistory.h"
 #include "Legality/Gen34EmeraldPalParkCandidateUniverse.h"
+#include "Legality/Gen4WildSourceLinkedHistory.h"
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen34OrdinaryEggMoveConstruction.h"
 #include "Legality/Gen4NativeBreedingParentEvidence.h"
@@ -1788,6 +1789,180 @@ int main() {
             nativeLater.originalEncryptedBytes().end());
         assert(std::equal(before.begin(),before.end(),
                           nativeLater.originalEncryptedBytes().begin()));
+    }
+
+    // ENCOUNTER-004 / RNG-004: one independently sourced original DPPt
+    // wild row, exact slot and normal Method J seed, bound to an
+    // *immutable encrypted source PK4*. The original in-game encounter
+    // chronology and lead are explicit hypothetical independent witnesses,
+    // never inferred from a detached PK4 file.
+    {
+        namespace W=Legality::Gen4Wild;
+        namespace H=Legality::Gen4WildSourceLinkedHistory;
+        namespace R=Legality::Gen4WildRng;
+        namespace G=Legality::Gen3PidIv::Detail;
+        const auto findGrass=[&](W::Game game,uint8_t slot) {
+            for(std::size_t i=0;i<std::size(W::kPackedGen4WildEncounters);++i) {
+                const auto row=W::kPackedGen4WildEncounters[i];
+                if(W::game(row)==game && W::method(row)==0 &&
+                   W::slot(row)==slot && W::form(row)==0 &&
+                   W::levelMatches(row,5))return i;
+            }
+            return std::size(W::kPackedGen4WildEncounters);
+        };
+        const auto ptIndex=findGrass(W::Game::Platinum,6);
+        const auto hgIndex=findGrass(W::Game::HeartGold,4);
+        assert(ptIndex<std::size(W::kPackedGen4WildEncounters));
+        assert(hgIndex<std::size(W::kPackedGen4WildEncounters));
+        const auto ptRow=W::kPackedGen4WildEncounters[ptIndex];
+        const auto hgRow=W::kPackedGen4WildEncounters[hgIndex];
+        const auto ivsFor=[](uint32_t origin) {
+            uint32_t state=G::next2(origin);
+            state=G::next(state);
+            const uint16_t first=static_cast<uint16_t>(state>>16)&0x7FFFu;
+            state=G::next(state);
+            const uint16_t second=static_cast<uint16_t>(state>>16)&0x7FFFu;
+            return std::array<uint8_t,6>{
+                static_cast<uint8_t>(first&31u),
+                static_cast<uint8_t>((first>>5)&31u),
+                static_cast<uint8_t>((first>>10)&31u),
+                static_cast<uint8_t>(second&31u),
+                static_cast<uint8_t>((second>>5)&31u),
+                static_cast<uint8_t>((second>>10)&31u)
+            };
+        };
+        const auto originalSeed=0x469FB838u;
+        const auto originalPid=R::sequentialPid(originalSeed);
+        const auto originalIVs=ivsFor(originalSeed);
+        assert(Legality::Gen4PidIv::analyze(originalPid,originalIVs).originSeed==
+               originalSeed);
+        auto ptRaw=rawLater;
+        wr32(ptRaw,0x00,originalPid);
+        wr16(ptRaw,0x08,W::species(ptRow));
+        wr32(ptRaw,0x38,packIV(originalIVs));
+        Pokemon::Pokemon4ReadOnly ptWild(
+            Encryption::encryptArray4(ptRaw),Enums::GameVersion::PT);
+        assert(ptWild.valid() && !ptWild.isEgg());
+        H::Observation original{};
+        original.exactOriginalGame="platinum_nds";
+        original.originalSpecies=W::species(ptRow);
+        original.originalLocation=W::location(ptRow);
+        original.originalLevel=5;
+        original.originalForm=0;
+        original.originalTrainerId32=ptWild.id32();
+        original.pid=originalPid;original.ivs=originalIVs;
+        original.originalWildSourceIndependentlyVerified=true;
+        original.originalSpeciesAndFormIndependentlyVerified=true;
+        original.originalLocationAndLevelIndependentlyVerified=true;
+        original.originalTrainerIdIndependentlyVerified=true;
+        original.originalPidIvSnapshotIndependentlyVerified=true;
+        original.originalMethodOneFamilyIndependentlyVerified=true;
+        H::Candidate source{};
+        source.routeIdentity=0x445501u;
+        source.originalRowIndex=ptIndex;
+        source.rowIdentityIndependentlyAttested=true;
+        source.historicalLead=H::Lead::NoLead;
+        source.originalLeadIndependentlyAttested=true;
+        H::NativeWitness witness{&ptWild,true,true,true};
+        const auto joined=H::evaluateNative(original,source,witness);
+        assert(joined.status==H::Status::KnownConditionalWildHistory);
+        assert(joined.matchedSlot==6 && joined.methodOneSeedMatched);
+        assert(joined.reconstructedPrePidSeed==originalSeed);
+        assert(joined.rng.method==R::Method::MethodJNoLead);
+        auto wrongLevel=original;wrongLevel.originalLevel=100;
+        assert(H::evaluateNative(wrongLevel,source,witness).status==
+               H::Status::CandidateEncounterContradicted);
+        auto wrongGame=original;wrongGame.exactOriginalGame="soulsilver_nds";
+        assert(H::evaluate(wrongGame,source).status==
+               H::Status::IncoherentCandidateRow);
+        auto unknownOrigin=original;
+        unknownOrigin.originalMethodOneFamilyIndependentlyVerified=false;
+        assert(H::evaluateNative(unknownOrigin,source,witness).status==
+               H::Status::UnknownOriginalRngFamily);
+        auto unknownLead=source;unknownLead.originalLeadIndependentlyAttested=false;
+        assert(H::evaluateNative(original,unknownLead,witness).status==
+               H::Status::UnknownLeadHistory);
+        auto unknownRow=source;unknownRow.rowIdentityIndependentlyAttested=false;
+        assert(H::evaluateNative(original,unknownRow,witness).status==
+               H::Status::UnknownOriginalEncounterStage);
+        auto badIV=original;badIV.ivs[0]=32;
+        assert(H::evaluate(badIV,source).status==H::Status::MalformedIVDomain);
+        auto wrongPid=original;wrongPid.pid^=0x01000000u;
+        assert(H::evaluateNative(wrongPid,source,witness).status==
+               H::Status::IncoherentNativeRecord);
+        auto lostStage=witness;lostStage.sameCreatureAndPidIvStageIndependentlyVerified=false;
+        assert(H::evaluateNative(original,source,lostStage).status==
+               H::Status::UnknownOriginalEncounterStage);
+        auto lostSource=witness;lostSource.nativeSaveSourceIndependentlyVerified=false;
+        assert(H::evaluateNative(original,source,lostSource).status==
+               H::Status::UnknownNativeSource);
+        // Full candidate universe: one real conditional Method J original,
+        // one contradicted slot/level, one historically unverified route.
+        H::UniverseInput candidates{};
+        candidates.observation=original;candidates.native=witness;
+        candidates.count=3;
+        for(uint8_t i=0;i<3;++i) {
+            candidates.alternatives[i].candidate=source;
+            candidates.alternatives[i].candidate.routeIdentity=101u+i;
+            candidates.alternatives[i].alternativeHistoricallyGrounded=true;
+            candidates.alternatives[i].completeNegativeMethodCoverageIndependentlyVerified=true;
+        }
+        candidates.alternatives[1].candidate.originalRowIndex=hgIndex;
+        candidates.alternatives[2].alternativeHistoricallyGrounded=false;
+        auto mixed=H::evaluateUniverse(candidates);
+        assert(mixed.status==H::UniverseStatus::OneConditionalWildRoute);
+        assert(mixed.compatible==1 && mixed.contradicted==1 && mixed.unverified==1);
+        auto exhausted=candidates;
+        exhausted.alternatives[0].candidate.originalRowIndex=hgIndex;
+        exhausted.alternatives[2].candidate.originalRowIndex=hgIndex;
+        exhausted.alternatives[2].alternativeHistoricallyGrounded=true;
+        assert(H::evaluateUniverse(exhausted).status==
+               H::UniverseStatus::UnknownCompleteEnumeration);
+        exhausted.originalWildUniverseIndependentlyExhaustivelyEnumerated=true;
+        auto complete=H::evaluateUniverse(exhausted);
+        assert(complete.status==H::UniverseStatus::AllAttestedWildRoutesContradicted);
+        assert(complete.contradicted==3);
+        auto incomplete=exhausted;
+        incomplete.alternatives[1].completeNegativeMethodCoverageIndependentlyVerified=false;
+        assert(H::evaluateUniverse(incomplete).status==
+               H::UniverseStatus::UnknownNegativeMethodCoverage);
+        auto duplicated=exhausted;
+        duplicated.alternatives[1].candidate.routeIdentity=101u;
+        assert(H::evaluateUniverse(duplicated).status==
+               H::UniverseStatus::UnknownRouteIdentity);
+        auto missingRoot=exhausted;missingRoot.native.record=nullptr;
+        assert(H::evaluateUniverse(missingRoot).status==H::UniverseStatus::UnknownRoot);
+        auto tooMany=exhausted;tooMany.count=9;
+        assert(H::evaluateUniverse(tooMany).status==
+               H::UniverseStatus::CapacityExceededUnknown);
+        // HGSS Method K: same row-level/native pipeline, but a DIFFERENT
+        // LCRNG nature- and slot-selection algorithm from Method J.
+        const auto kSeed=0x0000000Du;
+        const auto kPid=R::sequentialPid(kSeed);
+        const auto kIVs=ivsFor(kSeed);
+        auto hgRaw=rawLater;
+        wr32(hgRaw,0x00,kPid);
+        wr16(hgRaw,0x08,W::species(hgRow));
+        wr32(hgRaw,0x38,packIV(kIVs));
+        Pokemon::Pokemon4ReadOnly hgWild(
+            Encryption::encryptArray4(hgRaw),Enums::GameVersion::HGSS);
+        assert(hgWild.valid() && !hgWild.isEgg());
+        auto hgOriginal=original;
+        hgOriginal.exactOriginalGame="heartgold_nds";
+        hgOriginal.originalSpecies=W::species(hgRow);
+        hgOriginal.originalLocation=W::location(hgRow);
+        hgOriginal.originalTrainerId32=hgWild.id32();
+        hgOriginal.pid=kPid;hgOriginal.ivs=kIVs;
+        auto hgCandidate=source;hgCandidate.originalRowIndex=hgIndex;
+        const auto hgResult=H::evaluateNative(
+            hgOriginal,hgCandidate,{&hgWild,true,true,true});
+        assert(hgResult.status==H::Status::KnownConditionalWildHistory);
+        assert(hgResult.rng.method==R::Method::MethodKNoLead);
+        const auto before=std::vector<std::byte>(
+            ptWild.originalEncryptedBytes().begin(),
+            ptWild.originalEncryptedBytes().end());
+        assert(std::equal(before.begin(),before.end(),
+                          ptWild.originalEncryptedBytes().begin()));
     }
 
     // Calling the full analyzer by itself must not imply a witnessed
