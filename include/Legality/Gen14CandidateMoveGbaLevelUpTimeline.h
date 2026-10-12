@@ -172,6 +172,37 @@ constexpr Result evaluate(const Input& in) noexcept {
         Status::CandidateConsistent:Status::CandidateContradicted;
     return out;
 }
+// At compile time, verify that the accepted full Emerald generated table
+// and the independently source-pinned RS starter rows really agree for all
+// nine evolved/original forms. The retail FRLG variant is intentionally NOT
+// asserted equal for Charmander, Charmeleon and Charizard.
+constexpr bool starterFamilySourceParity() noexcept {
+    for(uint16_t species=1;species<=9;++species) {
+        const auto count=offerCount(Game::Ruby,species);
+        if(!count || count!=offerCount(Game::Sapphire,species) ||
+           count!=offerCount(Game::Emerald,species))return false;
+        for(uint16_t index=0;index<count;++index) {
+            const Offer rs=offerAt(Game::Ruby,species,index);
+            const Offer sap=offerAt(Game::Sapphire,species,index);
+            const Offer em=offerAt(Game::Emerald,species,index);
+            if(rs.level!=sap.level || rs.move!=sap.move ||
+               rs.level!=em.level || rs.move!=em.move)return false;
+        }
+        const auto frCount=offerCount(Game::FireRed,species);
+        if(frCount!=offerCount(Game::LeafGreen,species))return false;
+        for(uint16_t index=0;index<frCount;++index) {
+            const Offer fr=offerAt(Game::FireRed,species,index);
+            const Offer lg=offerAt(Game::LeafGreen,species,index);
+            if(fr.level!=lg.level || fr.move!=lg.move)return false;
+            if(species!=4 && species!=5 && species!=6) {
+                const Offer rs=offerAt(Game::Ruby,species,index);
+                if(fr.level!=rs.level || fr.move!=rs.move)return false;
+            }
+        }
+    }
+    return true;
+}
+static_assert(starterFamilySourceParity());
 static_assert(offerCount(Game::Emerald,1)==11);
 static_assert(offerAt(Game::Ruby,4,3).move==108);
 static_assert(offerAt(Game::FireRed,4,3).move==232);
