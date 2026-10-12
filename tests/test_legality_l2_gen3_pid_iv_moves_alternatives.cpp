@@ -114,6 +114,7 @@ int main() {
         x=fixture(game,42);x.originalEggMovesIndependentlyVerified=false;
         assert(A::evaluate(x).status==A::Status::UnknownOriginalEgg);
         x=fixture(game,42);x.alternatives[0].routeIdentity=0;
+        assert(A::evaluate(x).status==A::Status::DuplicateOrMissingRoute);
         // An independently attested matching history may appear AFTER
         // a contradictory hypothesis with the very same archive ID.
         // Order cannot manufacture a false-negative candidate universe.
