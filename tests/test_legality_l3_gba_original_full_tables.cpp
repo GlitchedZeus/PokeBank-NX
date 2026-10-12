@@ -17,7 +17,7 @@ constexpr uint16_t frlgCount(uint16_t sp){
     return D::kFireRedLeafGreenOffsets[sp+1]-D::kFireRedLeafGreenOffsets[sp];
 }
 static_assert(D::kRubySapphirePacked.size()==3947);
-static_assert(D::kFireRedLeafGreenPacked.size()==4015);
+static_assert(D::kFireRedLeafGreenPacked.size()==4013);
 static_assert(rubyCount(1)==11 && frlgCount(1)==11);
 static_assert(ruby(4,3)==(13u<<9 | 108u));
 static_assert(frlg(4,3)==(13u<<9 | 232u));
@@ -29,6 +29,14 @@ static_assert(rubyCount(252)==11 && frlgCount(252)==11);
 static_assert(ruby(252,0)==(1u<<9 | 1u)); // Treecko Pound, not internal species #277
 static_assert(ruby(386,0)==(1u<<9 | 43u)); // Deoxys Leer
 static_assert(frlg(386,0)==(1u<<9 | 43u));
+static_assert(frlgCount(51)==13);
+static_assert(frlg(51,1)==(1u<<9 | 28u)); // LeafGreen Sand-Attack
+static_assert(frlg(51,2)==(1u<<9 | 10u)); // LeafGreen Scratch
+constexpr std::array<uint16_t,13> kOriginalFireRedDugtrio{{
+    673,522,540,557,2605,4830,8795,10906,12989,13640,
+    19619,26201,32858
+}};
+static_assert(D::kFireRedDugtrioPacked==kOriginalFireRedDugtrio);
 static_assert(rubyCount(386)==12 && frlgCount(386)==14);
 // Independently transcribed original #if FIRERED Deoxys (Attack Forme)
 // rather than the common generated table's #elif LEAFGREEN (Defense Forme).
@@ -83,7 +91,9 @@ int main() {
     }
     for(uint16_t i=0;i<kOriginalFireRedDeoxys.size();++i)
         assert(D::kFireRedDeoxysPacked[i]==kOriginalFireRedDeoxys[i]);
-    assert(rubyEntries==3947 && frlgEntries==4015);
+    for(uint16_t i=0;i<kOriginalFireRedDugtrio.size();++i)
+        assert(D::kFireRedDugtrioPacked[i]==kOriginalFireRedDugtrio[i]);
+    assert(rubyEntries==3947 && frlgEntries==4013);
     assert(maxRuby==17 && maxFrlg==18);
     assert(differingSpecies==60 && identicalSpecies==326);
     assert(sameLevelPairs>100);
