@@ -19,6 +19,7 @@ constexpr E::GiftRow hypothetical(E::Game game = E::Game::Gold,
     x.originalRowIndependentlyVerified = true;
     x.originalDistributionAttested = true;
     x.originalReceiptKnown = true;
+    x.levelRule = kind == E::Kind::NPCTrade ? E::LevelRule::OfferedTradeLevel : E::LevelRule::Fixed;
     x.species = known<uint16_t>(25);
     x.level = known<uint8_t>(10);
     x.trainerId = known<uint16_t>(43121);
@@ -44,6 +45,7 @@ constexpr E::RouteWitness unchanged() {
     h.trainerNameHistory = E::History::Unchanged;
     h.nicknameHistory = E::History::Unchanged;
     h.moveHistory = E::History::Unchanged;
+    h.offeredTradeLevel = known<uint8_t>(10);
     h.timeCapsule = E::Crossing::NoCrossingVerified;
     return h;
 }
@@ -66,6 +68,7 @@ int main() {
         x.originalDistributionAttested = (mask & 4u) != 0;
         x.originalReceiptKnown = (mask & 8u) != 0;
         x.kind = E::Kind::StadiumGift;
+        x.levelRule = E::LevelRule::Fixed;
         auto y = o; y.trainerId.value++;
         auto r = E::evaluate(x, y, h);
         assert(r.disposition == (mask == 15 ? D::CandidateContradicted : D::Unknown));
@@ -76,6 +79,13 @@ int main() {
     assert(result.disposition == D::CandidateContradicted && (result.contradicted & E::TrainerId));
     o=observed(); o.level.value=9;
     assert(E::evaluate(s,o,h).contradicted & E::Level);
+    o=observed(); h=unchanged(); h.offeredTradeLevel.known=false;
+    assert(E::evaluate(s,o,h).disposition == D::Unknown);
+    h.offeredTradeLevel=known<uint8_t>(12);
+    assert(E::evaluate(s,o,h).contradicted & E::Level);
+    s.levelRule=E::LevelRule::Fixed; // invalid assumption: NPC trade level is offered-mon level
+    assert(E::evaluate(s,o,h).disposition == D::Unknown);
+    s=hypothetical();
     o=observed(); o.level.known=false;
     assert(E::evaluate(s,o,h).disposition == D::Unknown);
     o=observed(); o.species.value=26;
