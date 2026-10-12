@@ -148,6 +148,7 @@ require_all("src/UI/Gen2SharedPokemonSurface.inc",
 # the inherited generic action sheet cannot edit or clone staged Pokémon.
 require_all("src/UI/Gen3SharedPokemonSurface.inc",
             "if (touch.justTapped()) {", "screen.selectedItemIndex = tapped;",
+            "if (!editor(screen)) return false;",
             "if (selectedOccupied(screen)) beginActions(screen);")
 require_all("src/UI/Gen4SharedPokemonSurface.inc",
             "if (boxEntry && touch.justTapped())", "screen.selectedItemIndex = tapped;",
