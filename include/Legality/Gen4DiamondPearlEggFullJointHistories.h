@@ -81,6 +81,14 @@ constexpr Result evaluate(const Input& in) noexcept {
            !m.physicalDepositOrderIndependentlyAttested ||
            !m.sharedOriginalEventIndependentlyAttested ||
            !m.originalUnhatchedEggIdentityIndependentlyAttested ||
+           // When a full original source witness is supplied, independently
+           // named move-parent snapshots MUST match the same ordered pair,
+           // not just species/gender and an opaque pair token.
+           (c.pid.originalParentWitness.supplied &&
+            (m.physicalSlots[0].snapshotIdentity!=
+                 c.pid.originalParentWitness.physicalSlots[0].snapshotIdentity ||
+             m.physicalSlots[1].snapshotIdentity!=
+                 c.pid.originalParentWitness.physicalSlots[1].snapshotIdentity)) ||
            m.physicalSlots[0].species!=c.pid.parents[0].species ||
            m.physicalSlots[1].species!=c.pid.parents[1].species ||
            m.physicalSlots[0].gender!=c.pid.parents[0].gender ||
