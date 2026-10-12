@@ -16,7 +16,7 @@ namespace Pin=Gen4PlatinumPinnedMachines;
 using Status=Joint::Status;
 struct PlatinumSource {
     static constexpr bool supported(Joint::Game game,uint16_t species) noexcept {
-        return game==Joint::Game::Platinum && G4::row(species)!=nullptr;
+        return game==Joint::Game::Platinum && G4::rowIndex(species)<G4::kRows.size();
     }
     static constexpr uint16_t offerCount(Joint::Game game,uint16_t species) noexcept {
         return supported(game,species)?G4::offerCount(species):0;
