@@ -160,7 +160,7 @@ def selftest()->None:
         try:parse_response(changed,'PKHEX_CORE',case)
         except RuntimeError:pass
         else:raise AssertionError('invalid runtime receipt accepted')
-    print('L5 Stage4 runner: 13 corrupted-attestation/live-receipt controls rejected')
+    print('L5 Stage4 runner: 13 attestation/live-receipt controls (11 rejected, 2 accepted) PASS')
 
 
 def main()->int:
