@@ -181,6 +181,20 @@ for rel, entry in (
     assert "beginActions(screen);" in code, f"{rel}: empty cell tap must open Actions"
     assert "if (selectedOccupied(screen)) beginActions(screen);" not in code
 
+# Native Items routing must not get trapped when the current game category is
+# empty or absent from the parsed trainer.items vector. Finger-down on a row
+# may become a scroll, so it cannot change semantic selection either.
+native_items = read("src/UI/TrainerViewScreenBase.inc").split(
+    "// Shared ItemsPanel header hitboxes navigate pockets by touch,", 1)[1].split(
+    "// Handle detail view navigation for Boxes mode", 1)[0]
+assert native_items.index("const int categoryDirection =") < native_items.index(
+    "} else if (selectedCategory >= 0 &&")
+assert "categoryCount = static_cast<int>(PokeVault::Integration::Gen4::BagPocketCount)" in native_items
+assert "selectedCategory = (normalized + categoryCount + categoryDirection)" in native_items
+assert "selectedItemIndex = itemDown;" not in native_items
+assert "int itemTap = touchedButtonId(touch);" in native_items
+assert "touch.justReleased() && touch.dragged()" in native_items
+
 # The header arrows must use the Gen I–III exact-game category catalog, not the
 # old two-pocket RBY inherited category counter.
 require_all("src/UI/ClassicInventoryOverlay.cpp",

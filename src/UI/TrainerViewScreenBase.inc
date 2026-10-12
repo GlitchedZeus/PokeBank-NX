@@ -4245,8 +4245,45 @@ namespace UI {
                         || ((kDown & HidNpadButton_L) && PokeBank::UIModel::inventoryAction(InventoryInput::L) == action)
                         || ((kDown & HidNpadButton_R) && PokeBank::UIModel::inventoryAction(InventoryInput::R) == action);
                 };
-                // Get current pouch size for bounds checking
-                if (selectedCategory >= 0 && selectedCategory < static_cast<int>(trainer.items.size())) {
+                // Navigate native pocket tabs independently of item-list validity.
+                // Strictly decoded bags may have empty/unavailable pockets: routing L/R
+                // inside the current-pouch guard strands the arrows in that case.
+                const int categoryDirection =
+                    inventoryActionPressed(PokeBank::UIModel::InventoryAction::PreviousCategory) ? -1 :
+                    inventoryActionPressed(PokeBank::UIModel::InventoryAction::NextCategory) ? 1 : 0;
+                if (categoryDirection != 0) {
+                    int categoryCount = 0;
+                    switch (trainer.getGameGroup()) {
+                        case GameVersion::ZA: categoryCount = POUCH_COUNT9_LZA; break;
+                        case GameVersion::SV: categoryCount = POUCH_COUNT9_SV; break;
+                        case GameVersion::PLA: categoryCount = POUCH_COUNT8_LA; break;
+                        case GameVersion::DP:
+                        case GameVersion::PT:
+                        case GameVersion::HGSS:
+                            categoryCount = static_cast<int>(PokeVault::Integration::Gen4::BagPocketCount);
+                            break;
+                        case GameVersion::BDSP: categoryCount = POUCH_COUNT8BDSP; break;
+                        case GameVersion::SWSH:
+                            categoryCount = static_cast<int>(Trainer::PouchType8SWSH::Count);
+                            break;
+                        case GameVersion::GG: categoryCount = POUCH_COUNT7_LGPE; break;
+                        case GameVersion::FRLG: categoryCount = POUCH_COUNT3_FRLG; break;
+                        case GameVersion::RBY:
+                            categoryCount = static_cast<int>(
+                                PokeVault::Integration::Gen1::kInventoryCategoryCount);
+                            break;
+                        default: break; // Gen II/III have their own exact-game inventory router.
+                    }
+                    if (categoryCount > 0) {
+                        const int normalized = ((selectedCategory % categoryCount) +
+                                                categoryCount) % categoryCount;
+                        selectedCategory = (normalized + categoryCount + categoryDirection) %
+                                           categoryCount;
+                        selectedItemIndex = 0;
+                        currentPage = 0;
+                    }
+                } else if (selectedCategory >= 0 &&
+                           selectedCategory < static_cast<int>(trainer.items.size())) {
                     const auto& pouch = trainer.items[selectedCategory];
                     // Navigate/edit only the visible items (count > 0); selectedItemIndex indexes
                     // this filtered view, mapped back to the raw pouch via visible[...] on edit.
@@ -4271,13 +4308,9 @@ namespace UI {
                         currentPage = 0;
                     }
 
-                    // Touch: contact focuses the item; release edits it. A vertical drag
-                    // scrolls/browses without opening the row underneath.
-                    int itemDown = touchedButtonDownId(touch);
-                    if (itemDown >= 0 && itemDown < totalItems) {
-                        selectedItemIndex = itemDown;
-                        currentPage = selectedItemIndex / itemsPerPage;
-                    }
+                    // Touch-down is provisional: a finger may drag to browse.
+                    // Keep the prior semantic selection until a confirmed tap or
+                    // a deliberate vertical swipe completes; neither may edit on down.
                     // Only vertical drags that START on a displayed item may move its selection.
                     // In particular, an empty pouch must never become index -1 after a swipe,
                     // and dragging the neighboring categories/header must not move this list.
@@ -4383,133 +4416,7 @@ namespace UI {
                         return;
                     }
 
-                    // L/R to change categories (but not when in edit dialog)
-                    if (inventoryActionPressed(PokeBank::UIModel::InventoryAction::PreviousCategory)) {
-                        switch(trainer.getGameGroup()) {
-                            case GameVersion::ZA: {
-                                selectedCategory = (selectedCategory - 1 + POUCH_COUNT9_LZA) % POUCH_COUNT9_LZA;
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            case GameVersion::SV: {
-                                selectedCategory = (selectedCategory - 1 + POUCH_COUNT9_SV) % POUCH_COUNT9_SV;
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            case GameVersion::PLA: {
-                                selectedCategory = (selectedCategory - 1 + POUCH_COUNT8_LA) % POUCH_COUNT8_LA;
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            case GameVersion::DP:
-                            case GameVersion::PT:
-                            case GameVersion::HGSS: {
-                                constexpr int count = static_cast<int>(PokeVault::Integration::Gen4::BagPocketCount);
-                                selectedCategory = (selectedCategory + count - 1) % count;
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            case GameVersion::BDSP: {
-                                selectedCategory = (selectedCategory - 1 + POUCH_COUNT8BDSP) % POUCH_COUNT8BDSP;
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            case GameVersion::SWSH: {
-                                selectedCategory = (selectedCategory - 1 + static_cast<int>(Trainer::PouchType8SWSH::Count)) % static_cast<int>(Trainer::PouchType8SWSH::Count);
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            case GameVersion::GG: {
-                                selectedCategory = (selectedCategory - 1 + POUCH_COUNT7_LGPE) % POUCH_COUNT7_LGPE;
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            case GameVersion::FRLG: {
-                                selectedCategory = (selectedCategory - 1 + POUCH_COUNT3_FRLG) % POUCH_COUNT3_FRLG;
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            case GameVersion::RBY: {
-                                constexpr int count = static_cast<int>(PokeVault::Integration::Gen1::kInventoryCategoryCount);
-                                selectedCategory = (selectedCategory - 1 + count) % count;
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            default: break;
-                        }
-                    }
-                    if (inventoryActionPressed(PokeBank::UIModel::InventoryAction::NextCategory)) {
-                        switch(trainer.getGameGroup()) {
-                            case GameVersion::ZA: {
-                                selectedCategory = (selectedCategory + 1) % POUCH_COUNT9_LZA;
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            case GameVersion::SV: {
-                                selectedCategory = (selectedCategory + 1) % POUCH_COUNT9_SV;
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            case GameVersion::PLA: {
-                                selectedCategory = (selectedCategory + 1) % POUCH_COUNT8_LA;
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            case GameVersion::DP:
-                            case GameVersion::PT:
-                            case GameVersion::HGSS: {
-                                constexpr int count = static_cast<int>(PokeVault::Integration::Gen4::BagPocketCount);
-                                selectedCategory = (selectedCategory + 1) % count;
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            case GameVersion::BDSP: {
-                                selectedCategory = (selectedCategory + 1) % POUCH_COUNT8BDSP;
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            case GameVersion::SWSH: {
-                                selectedCategory = (selectedCategory + 1) % static_cast<int>(Trainer::PouchType8SWSH::Count);
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            case GameVersion::GG: {
-                                selectedCategory = (selectedCategory + 1) % POUCH_COUNT7_LGPE;
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            case GameVersion::FRLG: {
-                                selectedCategory = (selectedCategory + 1) % POUCH_COUNT3_FRLG;
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            case GameVersion::RBY: {
-                                constexpr int count = static_cast<int>(PokeVault::Integration::Gen1::kInventoryCategoryCount);
-                                selectedCategory = (selectedCategory + 1) % count;
-                                currentPage = 0;
-                                selectedItemIndex = 0;
-                                break;
-                            }
-                            default: break;
-                        }
-                    }
+                    // Pocket L/R is handled above independently of pouch contents.
                 }
             }
 

@@ -406,6 +406,12 @@ int main() {
     contains(surface, "bridge(screen).stagedPokemonUnavailableReason()");
     contains(baseUi, "const bool gen4Staged = group == Enums::GameVersion::DP");
     contains(baseUi, "A: Actions  |  X: Add  |  B: Back");
+    // Native bag category arrows must work even when the current pocket
+    // has no decoded items; swipes must not preselect on touch-down.
+    contains(baseUi, "const int categoryDirection =");
+    contains(baseUi, "categoryCount = static_cast<int>(PokeVault::Integration::Gen4::BagPocketCount)");
+    contains(baseUi, "selectedCategory = (normalized + categoryCount + categoryDirection)");
+    assert(baseUi.find("selectedItemIndex = itemDown;") == std::string::npos);
     contains(boxPanel, "? \"A / tap: Actions\" : \"A / tap: Edit\"");
     contains(surface, "add(MenuAction::Clone, \"Clone\", stagedAvailable);");
     contains(surface, "add(MenuAction::Release, \"Release\", stagedAvailable);");
