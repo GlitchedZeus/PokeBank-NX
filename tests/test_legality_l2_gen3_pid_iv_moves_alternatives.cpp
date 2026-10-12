@@ -90,15 +90,17 @@ int main() {
             // source-stage replay; a fabricated egg PID stays Unverified.
             assert(A::evaluate(denied).status==A::Status::UnverifiedCandidateProvenance);
             denied=x;
-            denied.alternatives[0].history.moveAndIV.moveHistory.father={80,345,0,0};
-            // If those particular inherited egg moves are independently
-            // verified and don't match observed, this ONE candidate falls.
+            denied.alternatives[0].history.moveAndIV.moveHistory.father={15,0,0,0};
+            denied.alternatives[0].history.moveAndIV.moveHistory.verifiedMachine=
+                {true,false,false,false};
+            // One separately attested inherited TM move unconditionally
+            // changes this exact four-slot history. The original observed
+            // move bytes remain unchanged; no parent/egg projection forgery.
             const auto local=A::evaluate(denied);
-            assert(local.status==A::Status::AllAttestedOrdinaryDaycareRoutesContradicted ||
-                   local.status==A::Status::OneConditionallyConsistentHistory);
+            assert(local.status==A::Status::AllAttestedOrdinaryDaycareRoutesContradicted);
+            assert(local.contradicted==1 && !local.consistent);
             denied.allOrdinaryDaycareAlternativesIndependentlyEnumerated=false;
-            if(local.status==A::Status::AllAttestedOrdinaryDaycareRoutesContradicted)
-                assert(A::evaluate(denied).status==A::Status::UnknownAlternativeEnumeration);
+            assert(A::evaluate(denied).status==A::Status::UnknownAlternativeEnumeration);
             // New independent source stage restores a viable explanation
             // even when another individually described history disagrees.
             denied.count=2;denied.alternatives[1]=x.alternatives[0];
@@ -129,9 +131,10 @@ int main() {
         assert(A::evaluate(x).status==A::Status::UnverifiedCandidateProvenance);
         x=fixture(game,42);x.alternatives[0].thisCandidateMethodEvidenceFullyAttested=false;
         x.alternatives[0].history.moveAndIV.moveHistory.observed={33,45,0,0};
-        x.alternatives[0].history.moveAndIV.moveHistory.father={80,345,0,0};
-        assert(A::evaluate(x).status==A::Status::UnresolvedCandidateHistory ||
-               A::evaluate(x).status==A::Status::OneConditionallyConsistentHistory);
+        x.alternatives[0].history.moveAndIV.moveHistory.father={15,0,0,0};
+        x.alternatives[0].history.moveAndIV.moveHistory.verifiedMachine=
+            {true,false,false,false};
+        assert(A::evaluate(x).status==A::Status::UnresolvedCandidateHistory);
         x=fixture(game,42);x.count=9;
         assert(A::evaluate(x).status==A::Status::CapacityExceededUnknown);
         x=fixture(game,42);x.count=0;
