@@ -2039,8 +2039,9 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
         const int slots = static_cast<int>(screen.trainer.getSlotsPerBox());
         if (tapped >= 0 && tapped < slots) {
             screen.selectedItemIndex = tapped;
+            if (!editor(screen)) return false; // Read-only source: preserve base View fallback.
             if (selectedOccupied(screen)) beginActions(screen);
-            return true; // Empty slot: focus only; X remains the explicit Add path.
+            return true; // Empty staged slot: focus only; X remains explicit Add.
         }
     }
     const bool occupied = selectedOccupied(screen);
