@@ -724,6 +724,18 @@ int main() {
         assert(ui.surface()==G::Gen5SharedScreenState::Surface::ConfirmExit);
         ui.reviewFromExit(localUiWorkspace);
         assert(ui.surface()==G::Gen5SharedScreenState::Surface::Review);
+        // Export is explicit and confirms separately from both Review and
+        // Discard All. It never silently drops in-memory staged records.
+        assert(ui.requestExport(localUiWorkspace));
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::ConfirmExport);
+        assert(!ui.requestExport(localUiWorkspace));
+        assert(!ui.back()); // B cancels export; edits survive.
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Review);
+        assert(localUiWorkspace.hasChanges());
+        assert(ui.requestExport(localUiWorkspace));
+        ui.finishExport(); // Simulate a verified completed app-owned export.
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Review);
+        assert(localUiWorkspace.hasChanges());
         ui.requestDiscardAll();
         assert(ui.surface()==G::Gen5SharedScreenState::Surface::ConfirmDiscardAll);
         assert(!ui.back()); // Cancel never discards staged changes.

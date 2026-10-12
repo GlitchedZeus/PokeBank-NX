@@ -23,7 +23,7 @@ public:
     using Field=Shared::FieldIdentity;
     enum class Surface : uint8_t {
         Browse, Actions, View, Edit, ConfirmDraft, Review,
-        ConfirmDiscardAll, ConfirmExit
+        ConfirmDiscardAll, ConfirmExport, ConfirmExit
     };
     struct EditableRow { Field field; size_t stat; const char* label; uint32_t maximum; };
     static constexpr std::array<EditableRow,14> kEditableRows{{
@@ -203,6 +203,7 @@ public:
             surface_=Surface::Browse;
         else if(surface_==Surface::ConfirmDraft)continueEditing();
         else if(surface_==Surface::ConfirmDiscardAll)surface_=Surface::Review;
+        else if(surface_==Surface::ConfirmExport)surface_=Surface::Review;
         else if(surface_==Surface::ConfirmExit)surface_=Surface::Browse;
         return false;
     }
@@ -223,6 +224,17 @@ public:
         if(surface_!=Surface::Browse)return false;
         if(workspace.hasChanges()) {surface_=Surface::ConfirmExit;return false;}
         return true;
+    }
+    // The export confirmation is separate from staging and leaves all
+    // reviewed bytes intact. A cannot publish, and failed I/O retains
+    // the confirmation until the user cancels or retries with Y.
+    [[nodiscard]] bool requestExport(const Workspace& workspace) noexcept {
+        if(surface_!=Surface::Review || !workspace.hasChanges())return false;
+        surface_=Surface::ConfirmExport;
+        return true;
+    }
+    void finishExport() noexcept {
+        if(surface_==Surface::ConfirmExport)surface_=Surface::Review;
     }
     void requestDiscardAll() noexcept {
         if(surface_==Surface::Review)surface_=Surface::ConfirmDiscardAll;

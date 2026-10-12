@@ -6,6 +6,10 @@
 // actions; native bank, source-writing and unsupported mutation routes remain barred.
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Integration/Gen5/Gen5SharedReview.h"
+#include "Integration/Gen5/Gen5WorkingCopyExport.h"
+#include "Integration/Gen5/Gen5SourceDiscovery.h"
+#include "Utils/PokeBankPaths.h"
+#include "Utils/FileUtilities.h"
 #include "Legacy/Gen5ReadOnlyTrainer.h"
 #include "Pokemon/Pokemon5ReadOnlyView.h"
 
@@ -162,11 +166,50 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             return true;
         case Surface::Review:
             if(keys&HidNpadButton_B)state.back();
+            else if(keys&HidNpadButton_X) {
+                if(!state.requestExport(staged))
+                    screen.postStatus("Gen V needs verified staged changes to export",300);
+            }
             else if(keys&HidNpadButton_Y)state.requestDiscardAll();
             else if(keys&(HidNpadButton_Left|HidNpadButton_Up|
                          HidNpadButton_L))state.moveReviewPage(-1,staged);
             else if(keys&(HidNpadButton_Right|HidNpadButton_Down|
                          HidNpadButton_R))state.moveReviewPage(1,staged);
+            return true;
+        case Surface::ConfirmExport:
+            if(keys&HidNpadButton_B) {
+                state.back();
+            } else if(keys&HidNpadButton_Y) {
+                // Re-read the exact physical source in read-only mode before
+                // serializing an app-owned backup and edited working copy.
+                // Candidate construction separately rejects ANY baseline
+                // byte change, including the unselected retail save copy.
+                std::vector<uint8_t> observed;
+                std::string error,container;
+                if(!PokeVault::Integration::Gen5::readNormalizedSourceReadOnly(
+                       screen.backupDir,observed,error,&container)) {
+                    screen.postStatus("Gen V export blocked: "+error,400);
+                    return true;
+                }
+                PokeVault::Integration::Gen5::WorkingCopyExportRequest request;
+                request.profileIdentity=PokeBank::Paths::accountUidHex(screen.userUid);
+                request.timestamp=Utils::getTimestamp();
+                request.sourcePath=screen.backupDir;
+                request.observedSourceBytes=observed;
+#ifdef POKEVAULT_GIT_COMMIT
+                request.applicationSha=POKEVAULT_GIT_COMMIT;
+#endif
+                const auto result=
+                    PokeVault::Integration::Gen5::publishGen5WorkingCopy(staged,request);
+                if(!result.success) {
+                    screen.postStatus("Gen V export blocked: "+result.error,480);
+                    return true;
+                }
+                state.finishExport();
+                screen.postStatus("Verified app-owned Gen V copy: "+result.directory+
+                                  " (original SAV5 unchanged)",480);
+                screen.controllerNavigation.reset();
+            }
             return true;
         case Surface::ConfirmDiscardAll:
             if(keys&HidNpadButton_B)state.back();
@@ -400,7 +443,8 @@ void drawReview(TrainerViewScreen& screen,PKSEFramebuffer& fb,
     }
     fb.drawText(x+24,y+h-31,"No Create, Clone, source writes or inferred legality",
                 Colors::TextDim,TextStyle::Caption);
-    drawNavBar(fb,{{"L/R","Review Pages"},{"B","Back"},{"Y","Discard All..."}});
+    drawNavBar(fb,{{"L/R","Review Pages"},{"X","Export Working Copy"},
+                   {"Y","Discard All..."},{"B","Back"}});
 }
 void drawDecision(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                   std::string title,std::string message,
@@ -481,14 +525,19 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
                 "Choose Keep Staged, Discard Draft, or Continue Editing.",
                 {{"A","Keep Staged"},{"Y","Discard Draft"},{"B","Keep Editing"}});
             return true;
+        case Surface::ConfirmExport:
+            drawDecision(screen,fb,"Export Verified Generation V Working Copy?",
+                "Creates an untouched backup + edited SAV5 under PokeBank NX/exports/gen5.",
+                {{"Y","Export Copy"},{"B","Cancel"}});
+            return true;
         case Surface::ConfirmDiscardAll:
             drawDecision(screen,fb,"Discard All Staged Changes?",
                 "Y permanently clears app-memory edits; SAV5 stays unchanged.",
                 {{"Y","Confirm Discard"},{"B","Cancel"}});
             return true;
         case Surface::ConfirmExit:
-            drawDecision(screen,fb,"Staged Changes Are Not Saved",
-                "Exit requires discarding app-memory PK5 changes. Review or continue.",
+            drawDecision(screen,fb,"Staged Changes Remain In Memory",
+                "Exit discards in-memory edits. Exported working copies remain safe.",
                 {{"Y","Discard & Exit"},{"X","Review"},{"B","Continue"}});
             return true;
         case Surface::Browse:break;

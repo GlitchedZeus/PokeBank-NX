@@ -279,6 +279,36 @@ require(working_tests, "WorkingCopyFailurePoint::AfterBackup",
         "EMULATOR_SAVE_WRITE=DISABLED",
         "INJECT_SAVE=DISABLED")
 
+# Review -> ConfirmExport is the only Gen V working-copy output action.
+# It performs a fresh read-only source normalization, requires explicit Y,
+# preserves staged edits on failure/success, and NEVER invokes inherited save.
+screen_state = read("include/Integration/Gen5/Gen5SharedScreenState.h")
+require(screen_state, "ConfirmExport", "requestExport(const Workspace& workspace)",
+        "surface_=Surface::ConfirmExport;",
+        "if(surface_==Surface::ConfirmExport)surface_=Surface::Review;")
+require(surface, "state.requestExport(staged)",
+        "case Surface::ConfirmExport:",
+        "if(keys&HidNpadButton_B)", "else if(keys&HidNpadButton_Y)",
+        "readNormalizedSourceReadOnly(",
+        "publishGen5WorkingCopy(staged,request)",
+        "state.finishExport();",
+        "WorkingCopyExportRequest request;",
+        "accountUidHex(screen.userUid)",
+        "request.observedSourceBytes=observed;",
+        "Export Verified Generation V Working Copy?",
+        "Export Working Copy",
+        "original SAV5 unchanged")
+# Prohibit accidental write routing through the unguarded Trainer surface.
+assert "saveChanges(" not in surface and "saveToSource(" not in surface
+assert "injectSave(" not in surface and "openItemsShortcut(" not in surface
+assert "openStorageEditor(" not in surface
+assert surface.index("state.requestExport(staged)") < surface.index("case Surface::ConfirmExport:")
+require(read("tests/test_gen5_readonly_save.cpp"),
+        "assert(ui.requestExport(localUiWorkspace));",
+        "Surface::ConfirmExport",
+        "ui.finishExport();",
+        "assert(localUiWorkspace.hasChanges());")
+
 # The candidate serializer may only build an app-owned byte array; no provider
 # write, Inject Save or generic source mutation is licensed by this milestone.
 candidate = read("include/Integration/Gen5/Gen5StagedSaveCandidate.h")
