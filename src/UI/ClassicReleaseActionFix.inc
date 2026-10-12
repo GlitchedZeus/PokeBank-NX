@@ -103,9 +103,11 @@ bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
     const auto model = PokeBank::UIModel::NarrowPokemonMenu::gen1(
         actions, static_cast<bool>(pokemon));
+    const std::string title = pokemon
+        ? std::string(Names::getSpeciesName(pokemon->species)) : "Empty Slot";
     drawNarrowPokemonActions(fb, screen.touchButtons, model, state.row,
-                            pokemon ? "Pokemon Actions" : "Empty Slot",
-                            "GEN I / READ-ONLY SOURCE", 300);
+                            title,
+                            screen.legacyProviderLabel() + " GB SOURCE / READ ONLY", 300);
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Back"}});
     return true;
 }
@@ -430,9 +432,11 @@ bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     // sheet, or a 650px legacy popup hides the correct narrow grey/yellow menu.
     const auto model = PokeBank::UIModel::NarrowPokemonMenu::classic(
         actions, static_cast<bool>(pokemon));
+    const std::string title = pokemon
+        ? std::string(Names::getSpeciesName(pokemon->species)) : "Empty Slot";
     drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow,
-                            pokemon ? "Pokemon Actions" : "Empty Slot",
-                            "GEN II / READ-ONLY SOURCE", 500);
+                            title,
+                            screen.legacyProviderLabel() + " GBC SOURCE / READ ONLY", 500);
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Back"}});
     return true;
 }
