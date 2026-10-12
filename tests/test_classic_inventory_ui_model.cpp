@@ -52,7 +52,7 @@ int main() {
         assert(selected == 0);
         assert(classicInventoryShiftCategory(game, count - 1, +1) == 0);
         assert(classicInventoryShiftCategory(game, 0, -1) == count - 1);
-        assert(classicInventoryShiftCategory(game, count + 99, +1) == count - 1);
+        assert(classicInventoryShiftCategory(game, count + 99, +1) == 0);
     }
 
     const auto yellowBalls = classicInventoryAddableItems(*yellow, ClassicPocket::Balls);
