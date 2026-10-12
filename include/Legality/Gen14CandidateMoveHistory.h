@@ -239,3 +239,4 @@ constexpr Result evaluate(const Candidate& candidate,
 #include "Legality/Gen14CandidateMoveChronology.h"
 #include "Legality/Gen14CandidateMoveGbaLevelUpTimeline.h"
 #include "Legality/Gen14CandidateMoveMachineEvidence.h"
+#include "Legality/Gen14CandidateMovePalParkJointStage.h"
