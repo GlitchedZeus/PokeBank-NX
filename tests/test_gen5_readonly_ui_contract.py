@@ -309,6 +309,17 @@ require(read("tests/test_gen5_readonly_save.cpp"),
         "ui.finishExport();",
         "assert(localUiWorkspace.hasChanges());")
 
+# The no-account "Pokemon Saves" profile has a stable all-zero UID
+# identity in the existing provider-neutral assignments. The exporter must
+# use that same isolated namespace, not silently reject offline profiles.
+require(surface, "if(request.profileIdentity.empty())",
+        "request.profileIdentity=std::string(32,'0');")
+require(working_cpp, "All-zero is PokeBank NX's deliberate offline",
+        "return true;")
+require(working_tests, "req.profileIdentity=std::string(31,'0');",
+        "req.profileIdentity=std::string(32,'0');",
+        "verifyOnDisk(offline.directory+")
+
 # The candidate serializer may only build an app-owned byte array; no provider
 # write, Inject Save or generic source mutation is licensed by this milestone.
 candidate = read("include/Integration/Gen5/Gen5StagedSaveCandidate.h")

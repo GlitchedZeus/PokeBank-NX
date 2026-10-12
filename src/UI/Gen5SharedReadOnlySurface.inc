@@ -193,6 +193,11 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                 }
                 PokeVault::Integration::Gen5::WorkingCopyExportRequest request;
                 request.profileIdentity=PokeBank::Paths::accountUidHex(screen.userUid);
+                // AccountUid{0,0} is the existing offline "Pokemon Saves"
+                // source profile. Use that same explicit identity instead
+                // of failing an otherwise validated external save export.
+                if(request.profileIdentity.empty())
+                    request.profileIdentity=std::string(32,'0');
                 request.timestamp=Utils::getTimestamp();
                 request.sourcePath=screen.backupDir;
                 request.observedSourceBytes=observed;

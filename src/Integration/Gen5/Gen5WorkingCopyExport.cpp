@@ -38,12 +38,12 @@ bool ensuredDirectory(const std::string& path,std::string& error) {
 }
 bool validProfile(std::string_view profile) noexcept {
     if(profile.size()!=32)return false;
-    bool nonzero=false;
-    for(const char c:profile) {
+    // All-zero is PokeBank NX's deliberate offline "Pokemon Saves"
+    // profile identity, not a missing/empty identity. Its exports still
+    // occupy a separate account-000... namespace and never touch sources.
+    for(const char c:profile)
         if(!((c>='0' && c<='9') || (c>='a' && c<='f')))return false;
-        nonzero|=c!='0';
-    }
-    return nonzero;
+    return true;
 }
 bool safeEvidence(std::string_view value) noexcept {
     return value.find('\n')==std::string_view::npos &&

@@ -254,8 +254,19 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
         req.observedSourceBytes=stale;
         assert(!G::publishGen5WorkingCopy(ws,req).success);
         req.observedSourceBytes=input;
-        req.profileIdentity="00000000000000000000000000000000";
-        assert(!G::publishGen5WorkingCopy(ws,req).success);
+        req.profileIdentity=std::string(31,'0');
+        assert(!G::publishGen5WorkingCopy(ws,req).success); // malformed UID
+        // The existing offline "Pokemon Saves" profile is exactly zero UID.
+        // It has a distinct owned export directory, never a source overwrite.
+        req.profileIdentity=std::string(32,'0');
+        const auto offline=G::publishGen5WorkingCopy(ws,req);
+        assert(offline.success);
+        verifyOnDisk(offline.directory+"/original_backup.sav",input);
+        verifyOnDisk(offline.directory+"/edited.sav",out->bytes);
+        cleanupPublished(offline.directory);
+        const std::string offlineDir=exportRoot+
+            "/account-00000000000000000000000000000000";
+        assert(::rmdir(offlineDir.c_str())==0);
         const std::string profileDir=exportRoot+
             "/account-00000000000000000000000000000001";
         verifyOnDisk(sourcePath,input); // Still unchanged after every fault injection.
