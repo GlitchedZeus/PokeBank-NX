@@ -38,15 +38,14 @@ inline constexpr std::array<Offer,11> kSquirtle{{
     {1,33},{4,39},{7,145},{10,110},{13,55},{18,44},
     {23,229},{28,182},{33,240},{40,130},{47,56}
 }};
-inline constexpr std::array<Offer,12> kWartortle{{
+inline constexpr std::array<Offer,13> kWartortle{{
     {1,33},{1,39},{1,145},{4,39},{7,145},{10,110},
     {13,55},{19,44},{25,229},{31,182},{37,240},{45,130},
-    // The source row also includes Hydro Pump (53/56): kept below.
+    {53,56}
 }};
-inline constexpr std::array<Offer,13> kBlastoise{{
+inline constexpr std::array<Offer,14> kBlastoise{{
     {1,33},{1,39},{1,145},{1,110},{4,39},{7,145},
     {10,110},{13,55},{19,44},{25,229},{31,182},
-    {42,240},{55,130}
-    // Hydro Pump at level 68 is separately appended in the corrected table.
+    {42,240},{55,130},{68,56}
 }};
 } // namespace Legality::Gen14CandidateMoveGbaStarterTables
