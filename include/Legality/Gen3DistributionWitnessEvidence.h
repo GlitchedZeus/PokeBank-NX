@@ -131,9 +131,20 @@ constexpr bool compatible(Family family, Mechanism mechanism) noexcept {
     }
     return false;
 }
+constexpr bool originalSourceRecognized(OriginalSource origin) noexcept {
+    switch(origin) {
+    case OriginalSource::Ruby: case OriginalSource::Sapphire:
+    case OriginalSource::Emerald: case OriginalSource::FireRed:
+    case OriginalSource::LeafGreen: case OriginalSource::Colosseum:
+    case OriginalSource::XD: case OriginalSource::ColosseumBonusDisc:
+    case OriginalSource::PokemonChannel: return true;
+    case OriginalSource::Unknown: return false;
+    }
+    return false; // malformed/future source enum cannot authenticate a row
+}
 constexpr SourceStatus sourceStatus(const OriginalCandidate& c) noexcept {
     if(c.family==Family::Unknown || c.mechanism==Mechanism::Unknown ||
-       c.originalSource==OriginalSource::Unknown ||
+       !originalSourceRecognized(c.originalSource) ||
        !c.exactRouteIndependentlyVerified)return SourceStatus::UnknownSource;
     if(!compatible(c.family,c.mechanism))return SourceStatus::RouteContradicted;
     if(!c.originalArchiveIndependentlyAuthenticated)return SourceStatus::UntrustedArchive;
@@ -166,7 +177,7 @@ constexpr Result evaluate(const Native& n,const OriginalCandidate& c) noexcept {
     if(!c.originalTemplateIndependentlyAttested || !c.originalArchiveIndependentlyAuthenticated ||
        !c.originalPayloadDigestVerified || !c.historicalReleaseIndependentlyCorroborated ||
        !c.exactRouteIndependentlyVerified ||
-       c.originalSource==OriginalSource::Unknown ||
+       !originalSourceRecognized(c.originalSource) ||
        c.family==Family::Unknown || c.mechanism==Mechanism::Unknown ||
        !compatible(c.family,c.mechanism) ||
        c.originalPayloadSha256==std::array<std::byte,32>{}) {
@@ -296,6 +307,9 @@ constexpr JoinedResult evaluateOriginalHistory(
 static_assert(!originalGameCube(OriginalSource::Ruby));
 static_assert(originalGameCube(OriginalSource::XD));
 static_assert(!JoinedResult{}.globallyInvalid);
+static_assert(!originalSourceRecognized(static_cast<OriginalSource>(255)));
+static_assert(originalSourceRecognized(OriginalSource::ColosseumBonusDisc));
+static_assert(originalSourceRecognized(OriginalSource::PokemonChannel));
 static_assert(FIELD_COUNT==16);
 static_assert(!compatible(Family::BerryFix,Mechanism::PokemonGift));
 static_assert(compatible(Family::BerryFix,Mechanism::ServiceOnly));

@@ -78,6 +78,26 @@ int main() {
         ++sourceStates;
     }
     assert(sourceStates==11u*5u*8u*64u);
+    // An out-of-domain serialized source-version tag must be Unknown,
+    // never positive evidence or a candidate exclusion from a fake row.
+    // This includes the now-distinct original Bonus Disc and Channel media.
+    unsigned sourceTags=0;
+    for(unsigned code=0;code<256;++code) {
+        auto a=c;
+        a.originalSource=static_cast<W::OriginalSource>(code);
+        auto altered=n;altered.ids.tid^=1;
+        const auto verdict=W::evaluate(altered,a);
+        const bool recognized=code>=1 && code<=9;
+        assert((verdict.source==SS::ConditionalSource)==recognized);
+        if(!recognized) {
+            assert(verdict.mismatchMask==0);
+            assert(verdict.conditionalMatchMask==0);
+            assert(verdict.unknownMask==65535u);
+        }
+        assert(!verdict.globallyInvalid && !verdict.authenticated);
+        ++sourceTags;
+    }
+    assert(sourceTags==256u);
     // A reconstructed or digest-less alleged archive cannot validate values.
     {auto a=c;a.originalArchiveIndependentlyAuthenticated=false;
         assert(W::evaluate(n,a).source==SS::UntrustedArchive);
