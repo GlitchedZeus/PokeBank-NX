@@ -11,6 +11,7 @@
 #include "Legality/Gen34EmeraldPalParkCandidateUniverse.h"
 #include "Legality/Gen4WildSourceLinkedHistory.h"
 #include "Legality/Gen4PlatinumEggPidStage.h"
+#include "Legality/Gen4PlatinumCompleteEggHistory.h"
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen34OrdinaryEggMoveConstruction.h"
 #include "Legality/Gen4NativeBreedingParentEvidence.h"
@@ -741,6 +742,79 @@ void testGen4JointNativeParentMoveIvHistories() {
                 };
                 const auto complete=J::evaluateWithNativeEgg(in,childHistory);
                 assert(complete.status==J::Status::KnownCandidateConsistent);
+                // BREED-005: combine one ORIGINAL Platinum PID creation
+                // with the exact SAME immutable parents and child as the
+                // independently source-attested move+IV retail stage.
+                // This must never splice histories from unrelated eggs.
+                if(IV::family(game)==IV::Family::Platinum) {
+                    namespace Full=Legality::Gen4PlatinumCompleteEggHistory;
+                    namespace EggPid=Legality::Gen4PlatinumEggPidStage;
+                    Full::Input entire{};
+                    entire.moveAndIV=in;
+                    entire.originalEgg=childHistory;
+                    entire.allStagesSameOriginalDaycareIndependentlyVerified=true;
+                    auto& pid=entire.originalPid;
+                    pid.game=game;
+                    pid.physicalSlot0=&slot0;
+                    pid.physicalSlot1=&slot1;
+                    pid.originalUnhatchedEgg=&child;
+                    pid.parentPairToken=in.nativePairStageToken;
+                    pid.mtCreationToken=in.nativePairStageToken;
+                    pid.eggCreationToken=in.nativePairStageToken;
+                    pid.parentSnapshotsIndependentlyVerified=true;
+                    pid.parentalItemHistoryIndependentlyVerified=true;
+                    pid.physicalDaycareOrderIndependentlyVerified=true;
+                    pid.pairCompatibilityIndependentlyVerified=true;
+                    pid.originalEggSourceIndependentlyVerified=true;
+                    pid.originalEggPidUnchangedIndependentlyVerified=true;
+                    pid.originalDaycareTrainerIdIndependentlyVerified=true;
+                    pid.originalDaycareTrainerId32=child.id32();
+                    pid.parentsLanguageHistoryIndependentlyVerified=true;
+                    pid.consecutiveMTOutputsIndependentlyVerified=true;
+                    pid.exactConsumedMTCountIndependentlyVerified=true;
+                    pid.mtCount=1;pid.mtDraws[0]=child.pid();
+                    const auto joined=Full::evaluate(entire);
+                    assert(joined.status==Full::Status::KnownConditionalCombinedHistory);
+                    assert(joined.pid.consumedMTDraws==1);
+                    auto missingRecord=entire;
+                    missingRecord.allStagesSameOriginalDaycareIndependentlyVerified=false;
+                    assert(Full::evaluate(missingRecord).status==
+                           Full::Status::UnknownOriginalWitness);
+                    auto movedStage=entire;
+                    movedStage.originalPid.eggCreationToken^=0x10u;
+                    assert(Full::evaluate(movedStage).status==
+                           Full::Status::IncoherentSharedStage);
+                    auto wrongPidStage=entire;
+                    wrongPidStage.originalPid.mtDraws[0]^=1u;
+                    assert(Full::evaluate(wrongPidStage).status==
+                           Full::Status::ContradictedPidHistory);
+                    auto absentMT=entire;
+                    absentMT.originalPid.consecutiveMTOutputsIndependentlyVerified=false;
+                    assert(Full::evaluate(absentMT).status==
+                           Full::Status::UnknownPidHistory);
+                    auto wrongMoveIV=entire;
+                    wrongMoveIV.moveAndIV.knownFinalRNGState^=16u;
+                    assert(Full::evaluate(wrongMoveIV).status==
+                           Full::Status::ContradictedMoveIvHistory);
+                    auto wrongSourceParent=entire;
+                    wrongSourceParent.originalPid.physicalSlot0=&slot1;
+                    assert(Full::evaluate(wrongSourceParent).status==
+                           Full::Status::IncoherentOriginalParent);
+                    auto borrowedEgg=entire;
+                    auto rawBorrowed=childRaw;
+                    wr32(rawBorrowed,0x00,0xA0B1C2D3u);
+                    Pokemon::Pokemon4ReadOnly otherEgg(
+                        Encryption::encryptArray4(rawBorrowed),group);
+                    assert(otherEgg.valid() && otherEgg.isEgg());
+                    borrowedEgg.originalPid.originalUnhatchedEgg=&otherEgg;
+                    assert(Full::evaluate(borrowedEgg).status==
+                           Full::Status::IncoherentOriginalEgg);
+                    const auto preserved=std::vector<std::byte>(
+                        child.originalEncryptedBytes().begin(),
+                        child.originalEncryptedBytes().end());
+                    assert(std::equal(preserved.begin(),preserved.end(),
+                                      child.originalEncryptedBytes().begin()));
+                }
                 // BREED-004: evaluate alternate attested histories for the
                 // SAME original unhatched encrypted child, never union moves
                 // or IVs from different candidate parents.
