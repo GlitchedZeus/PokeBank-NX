@@ -7,6 +7,9 @@
 #include "Legality/Gen4NatureReversalEvidence.h"
 #include <cstdint>
 namespace Legality::Gen4NatureReversalReplay {
+// A caller may request a longer history than 128, but must not cause an
+// unbounded 32-bit loop. Exhaustion at this implementation cap is Unknown.
+inline constexpr uint32_t kMaximumReplayPairs=4096u;
 enum class Method : uint8_t { Unknown, J, K };
 enum class Status : uint8_t {
     UnknownHistoricalStage, UnsupportedMethod, InvalidTargetNature,
@@ -46,7 +49,9 @@ constexpr Result replay(const Candidate& c) noexcept {
         half%25u : half/0x0A3Eu;
     if(nature!=c.targetNature)
         return {Status::AttestedStagePidContradicted};
-    for(uint32_t i=0;i<c.maxPidPairs;++i) {
+    const uint32_t budget=c.maxPidPairs<kMaximumReplayPairs ?
+        c.maxPidPairs:kMaximumReplayPairs;
+    for(uint32_t i=0;i<budget;++i) {
         const uint32_t before=state;
         state=Gen3PidIv::Detail::next(state);
         const uint32_t lo=state>>16;
@@ -58,6 +63,6 @@ constexpr Result replay(const Candidate& c) noexcept {
                     Status::AttestedStagePidContradicted,
                 i,i+1u,pid,before};
     }
-    return {Status::SearchExhausted,c.maxPidPairs,c.maxPidPairs};
+    return {Status::SearchExhausted,budget,budget};
 }
 } // namespace Legality::Gen4NatureReversalReplay

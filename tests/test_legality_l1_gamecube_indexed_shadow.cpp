@@ -33,6 +33,9 @@ int main(){
     assert(C::kEntries[1].teamSet==
         static_cast<uint8_t>(Legality::Gen3ColoShadowTeamLock::TeamSet::First));
     assert(S::evaluate(bayleef).status==Status::ConditionalShadowHistory);
+    auto enormous=colo;enormous.teamSearchBudget=UINT32_MAX;
+    assert(S::evaluate(enormous).status==Status::ConditionalShadowHistory);
+    static_assert(S::kMaximumTeamIterations==16384u);
     auto bounded=colo;bounded.teamSearchBudget=1;
     assert(S::evaluate(bounded).status==Status::BoundedTeamSearchUnknown);
     auto wrong=colo;wrong.originalFateful=true; // XD field on Colosseum

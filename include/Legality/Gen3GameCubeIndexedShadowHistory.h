@@ -12,6 +12,9 @@
 #include <cstddef>
 #include <cstdint>
 namespace Legality::Gen3GameCubeIndexedShadowHistory {
+// Retain a strict local resource cap even for caller-supplied budgets.
+// This is NOT a claim that all retail CPU team histories fit the cap.
+inline constexpr uint32_t kMaximumTeamIterations=16384u;
 enum class Game : uint8_t { Unknown, Colosseum, XD };
 enum class Status : uint8_t {
     UnknownOriginalGame, UnknownOriginalSource, UnknownPhysicalRow,
@@ -51,6 +54,8 @@ inline Result evaluate(const Candidate& c) {
         return {Status::UnknownOriginalStage};
     if(!Gen3PidIv::validStoredIVs(c.originalIVs))
         return {Status::UnknownOriginalStage};
+    const uint32_t budget=c.teamSearchBudget<kMaximumTeamIterations ?
+        c.teamSearchBudget:kMaximumTeamIterations;
 
     if(c.originalGame==Game::Colosseum) {
         if(c.originalRowIndex>=Gen3ColoShadowEncounter::kEntries.size())
@@ -66,7 +71,7 @@ inline Result evaluate(const Candidate& c) {
         if(!rng.matched)return {Status::CandidatePidIvContradicted,row.shadowIndex};
         const auto lock=Gen3ColoShadowTeamLock::validate(
             Gen3ColoShadowEncounter::teamSet(row),
-            rng.originSeed,c.teamSearchBudget);
+            rng.originSeed,budget);
         if(lock==Gen3ColoShadowTeamLock::Result::SearchLimit)
             return {Status::BoundedTeamSearchUnknown,row.shadowIndex,rng.originSeed};
         if(lock!=Gen3ColoShadowTeamLock::Result::Matched)
@@ -104,7 +109,7 @@ inline Result evaluate(const Candidate& c) {
                 Status::CandidatePidIvContradicted,row.index};
     const auto lock=Gen3XdShadowTeamLock::validateXd(
         row.index,rng.originSeed,c.originalTid,c.originalSid,
-        c.teamSearchBudget);
+        budget);
     if(lock==Gen3XdShadowTeamLock::Result::SearchLimit)
         return {Status::BoundedTeamSearchUnknown,row.index,rng.originSeed,
                 rng.antiShiny()};
