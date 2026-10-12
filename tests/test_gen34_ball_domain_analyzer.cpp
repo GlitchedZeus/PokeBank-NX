@@ -8,6 +8,7 @@
 #include "Legality/Gen3EmeraldPalParkJointPath.h"
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen34OrdinaryEggMoveConstruction.h"
+#include "Legality/Gen4NativeBreedingParentEvidence.h"
 #include "Legality/Gen4ContestRibbonEvidence.h"
 #include "Legality/Gen4RawTextEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
@@ -522,7 +523,120 @@ Legality::Report analyzeDetachedPcd(uint16_t species=25,
     return Legality::analyze(view,Enums::GameVersion::DP);
 }
 
+
+void testGen4NativeBreedingParentSnapshots() {
+    // Real encrypted native PK4 -> strict checksum reader -> immutable
+    // parent projection -> independently attested conditional daycare pair.
+    // Parent *histories* and group source rows remain explicit attestations.
+    namespace N=Legality::Gen4NativeBreedingParentEvidence;
+    namespace B=Legality::Gen34BreedingPairEligibility;
+    const auto makeRaw=[](uint32_t id,uint8_t storedGender,bool egg) {
+        std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
+        wr32(raw,0x00,0x12345678u);
+        wr16(raw,0x08,1); // native Bulbasaur record
+        wr32(raw,0x0C,id); // complete source OT ID
+        wr32(raw,0x10,135);
+        raw[0x40]=static_cast<std::byte>(storedGender<<1);
+        raw[0x5F]=std::byte{12}; // original Platinum; valid later HGSS trade
+        if(egg)wr32(raw,0x38,0x40000000u);
+        return Encryption::encryptArray4(raw);
+    };
+    const auto femaleBytes=makeRaw(0xAAAA2222u,1,false);
+    const auto maleBytes=makeRaw(0xBBBB2222u,0,false);
+    for(const auto game:{"platinum_nds","heartgold_nds","soulsilver_nds"}) {
+        const auto group=N::requiredGroup(game);
+        Pokemon::Pokemon4ReadOnly female(femaleBytes,group);
+        Pokemon::Pokemon4ReadOnly male(maleBytes,group);
+        assert(female.valid() && male.valid());
+        assert(female.gender()==1 && male.gender()==0);
+        assert(female.id32()==0xAAAA2222u && male.id32()==0xBBBB2222u);
+        const auto beforeFemale=female.originalEncryptedBytes();
+        const std::vector<std::byte> untouched(beforeFemale.begin(),beforeFemale.end());
+        N::ParentWitness fw{&female,101,true,true,{game,1,0,1,7,true}};
+        N::ParentWitness mw{&male,202,true,true,{game,1,0,1,7,true}};
+        for(bool swapped:{false,true}) {
+            N::Input in{};
+            in.game=game;
+            in.slot0=swapped?mw:fw;
+            in.slot1=swapped?fw:mw;
+            in.orderedPairStageIndependentlyVerified=true;
+            const auto out=N::evaluate(in);
+            assert(out.status==N::Status::Projected && out.pairEvaluated);
+            assert(out.eligibility.status==B::Status::Compatible);
+            assert(out.eligibility.scoreKnown &&
+                   out.eligibility.compatibilityScore==70);
+            assert(out.eligibility.fatherId==202 &&
+                   out.eligibility.motherId==101);
+            assert(out.eligibility.slot0Id==(swapped?202u:101u));
+            assert(out.eligibility.slot1Id==(swapped?101u:202u));
+            assert(out.evaluatedInput.slot0.fullOTId==
+                   (swapped?0xBBBB2222u:0xAAAA2222u));
+            assert(std::equal(untouched.begin(),untouched.end(),
+                              female.originalEncryptedBytes().begin()));
+            auto noGroup=in;
+            noGroup.slot0.eggGroups.independentlyVerified=false;
+            assert(N::evaluate(noGroup).status==
+                   N::Status::UnknownEggGroupResource);
+            auto alienGroup=in;
+            alienGroup.slot0.eggGroups.species=25;
+            assert(N::evaluate(alienGroup).status==
+                   N::Status::EggGroupIdentityMismatch);
+            auto wrongGame=in;
+            wrongGame.slot0.eggGroups.game="diamond_nds";
+            assert(N::evaluate(wrongGame).status==
+                   N::Status::EggGroupIdentityMismatch);
+            auto wrongForm=in;
+            wrongForm.slot0.eggGroups.form=1;
+            assert(N::evaluate(wrongForm).status==
+                   N::Status::EggGroupIdentityMismatch);
+            auto noSnapshot=in;
+            noSnapshot.slot0.stageSnapshotIndependentlyVerified=false;
+            assert(N::evaluate(noSnapshot).status==
+                   N::Status::UnknownHistoricalStage);
+            auto missingSlotEvidence=in;
+            missingSlotEvidence.orderedPairStageIndependentlyVerified=false;
+            auto uncertain=N::evaluate(missingSlotEvidence);
+            assert(uncertain.status==N::Status::UnknownHistoricalStage);
+            assert(!uncertain.pairEvaluated);
+            auto dup=in;
+            dup.slot0.snapshotId=dup.slot1.snapshotId;
+            auto duplicated=N::evaluate(dup);
+            assert(duplicated.pairEvaluated &&
+                   duplicated.eligibility.status==B::Status::IncoherentParents);
+            auto noSource=in;
+            noSource.slot0.nativeSourceGameIndependentlyVerified=false;
+            assert(N::evaluate(noSource).status==N::Status::UnknownNativeSource);
+        }
+        // The retained record may be imported from Platinum into HGSS.
+        // The historical breeding *container* is the independently
+        // attested current-game source, not inferred from originVersion.
+        assert(female.originVersion()==12);
+        if(group==Enums::GameVersion::HGSS)assert(female.sourceGroup()==group);
+        auto eggBytes=makeRaw(0xAAAA2222u,1,true);
+        Pokemon::Pokemon4ReadOnly egg(eggBytes,group);
+        auto eggWitness=fw;eggWitness.native=&egg;
+        assert(N::project(game,eggWitness).status==N::Status::EggOrEmptyRecord);
+        auto damaged=femaleBytes;damaged[6]^=std::byte{0x01};
+        Pokemon::Pokemon4ReadOnly bad(damaged,group);
+        assert(!bad.checksumValid());
+        auto badWitness=fw;badWitness.native=&bad;
+        assert(N::project(game,badWitness).status==N::Status::InvalidNativeRecord);
+        const auto gender3=makeRaw(0xAAAA2222u,3,false);
+        Pokemon::Pokemon4ReadOnly unknownGender(gender3,group);
+        assert(unknownGender.valid());
+        auto sexUnknown=fw;sexUnknown.native=&unknownGender;
+        assert(N::project(game,sexUnknown).status==N::Status::UnknownNativeGender);
+        // A wrong game-family personal table cannot become positive.
+        Pokemon::Pokemon4ReadOnly wrongFamily(femaleBytes,Enums::GameVersion::DP);
+        auto wrongSource=fw;wrongSource.native=&wrongFamily;
+        assert(N::project(game,wrongSource).status==N::Status::UnknownNativeSource);
+    }
+    N::Input noGame{};noGame.game="diamond_nds";
+    assert(N::evaluate(noGame).status==N::Status::UnsupportedGame);
+}
+
 int main() {
+    testGen4NativeBreedingParentSnapshots();
     // Source-free exact-origin NPC trade proof: all native encrypted PK4
     // identity fields must match a pinned Diamond template. Wrong PID,
     // original retail game, language, or IV breaks only the positive
