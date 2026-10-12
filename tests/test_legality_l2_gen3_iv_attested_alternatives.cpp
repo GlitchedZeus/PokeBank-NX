@@ -128,9 +128,16 @@ int main() {
         auto malformedParent=x;malformedParent.alternatives[0].physicalSlot1OriginalIVs[2]=32;
         assert(A::evaluate(malformedParent).status==A::Status::UnresolvedStageHistory);
         auto duplicate=x;duplicate.count=2;duplicate.alternatives[1]=duplicate.alternatives[0];
+        const auto rescuedDuplicate=A::evaluate(duplicate);
+        assert(rescuedDuplicate.status==A::Status::OneConditionallyConsistentStage);
+        assert(rescuedDuplicate.consistent==1 && rescuedDuplicate.unverified==1);
+        duplicate.alternatives[0].originalDaycareStageIndependentlyVerified=false;
         assert(A::evaluate(duplicate).status==A::Status::MissingOrDuplicateRouteIdentity);
         auto missingID=x;missingID.alternatives[0].routeIdentity=0;
         assert(A::evaluate(missingID).status==A::Status::MissingOrDuplicateRouteIdentity);
+        missingID.count=2;missingID.alternatives[1]=x.alternatives[0];
+        missingID.alternatives[1].routeIdentity=2;
+        assert(A::evaluate(missingID).status==A::Status::OneConditionallyConsistentStage);
         auto tooMany=x;tooMany.count=17;
         assert(A::evaluate(tooMany).status==A::Status::CapacityExceededUnknown);
         auto empty=x;empty.count=0;
