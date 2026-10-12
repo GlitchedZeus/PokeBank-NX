@@ -402,7 +402,15 @@ int main() {
     contains(surface, "beginCreate(screen)");
     contains(surface, "Gen4BoxTouchActions::selectsTappedBoxSlot(");
     contains(surface, "screen.selectedItemIndex = tapped;");
-    contains(surface, "if (selectedOccupied(screen)) beginActions(screen);");
+    // Both occupied and empty box taps now open the same narrow menu as A.
+    // The previously occupied-only touch conditional must stay gone.
+    contains(surface, "if (boxEntry && touch.justTapped())");
+    const auto boxTapStart = surface.find("if (boxEntry && touch.justTapped())");
+    const auto partyTapStart = surface.find("if (partyEntry && touch.justTapped())", boxTapStart);
+    assert(boxTapStart != std::string::npos && partyTapStart > boxTapStart);
+    const auto boxTapRoute = surface.substr(boxTapStart, partyTapStart - boxTapStart);
+    assert(boxTapRoute.find("beginActions(screen);") != std::string::npos);
+    assert(boxTapRoute.find("if (selectedOccupied(screen))") == std::string::npos);
     contains(surface, "screen.touchedButtonId(touch)");
     contains(surface, "bridge(screen).stagedPokemonUnavailableReason()");
     contains(baseUi, "const bool gen4Staged = group == Enums::GameVersion::DP");
