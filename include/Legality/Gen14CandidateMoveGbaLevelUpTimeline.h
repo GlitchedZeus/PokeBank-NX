@@ -90,6 +90,8 @@ constexpr Offer offerAt(Game game,uint16_t species,uint16_t index) noexcept {
             Source::kRubySapphireOffsets[species]+index];
     else if(game==Game::FireRed && species==386)
         packed=Source::kFireRedDeoxysPacked[index];
+    else if(game==Game::FireRed && species==51)
+        packed=Source::kFireRedDugtrioPacked[index];
     else
         packed=Source::kFireRedLeafGreenPacked[
             Source::kFireRedLeafGreenOffsets[species]+index];
@@ -225,6 +227,12 @@ static_assert(offerCount(Game::Ruby,290)==10);
 static_assert(offerAt(Game::Ruby,290,0).move==10);
 static_assert(offerAt(Game::FireRed,290,0).move==10);
 static_assert(offerCount(Game::Ruby,386)==12);
+static_assert(offerCount(Game::FireRed,51)==13);
+static_assert(offerCount(Game::LeafGreen,51)==13);
+static_assert(offerAt(Game::FireRed,51,1).move==10); // Scratch before Sand-Attack
+static_assert(offerAt(Game::FireRed,51,2).move==28);
+static_assert(offerAt(Game::LeafGreen,51,1).move==28); // Opposite original order
+static_assert(offerAt(Game::LeafGreen,51,2).move==10);
 static_assert(offerCount(Game::FireRed,386)==12);
 static_assert(offerCount(Game::LeafGreen,386)==14);
 static_assert(offerAt(Game::FireRed,386,4).move==269); // original FireRed Taunt
