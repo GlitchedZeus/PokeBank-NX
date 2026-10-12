@@ -247,7 +247,9 @@ int main() {
                 auto ditto=source;
                 ditto.parents[slot].species=132;
                 ditto.parents[slot].gender=2;
-                if(slot==0) ditto.parents[1].gender=2;
+                // A genderless non-Ditto partner must be a species which
+                // can genuinely have that gender in the source generation.
+                if(slot==0) {ditto.parents[1].species=81;ditto.parents[1].gender=2;}
                 const auto valid=DP::evaluate(ditto);
                 assert(valid.status==DP::Status::ConditionalOriginalEggPIDMatched);
                 assert(valid.originalFinalPid==32u);
