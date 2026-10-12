@@ -131,6 +131,37 @@ int main() {
         d=x;d.physicalSlots[0].independentlyAttestedOTId=false;
         r=R::evaluate(d);
         assert(r.status==R::Status::ConditionallyCompatiblePair && !r.scoreKnown);
+        // Both original Ditto personal egg groups AND its gender ratio
+        // must be source-coherent. A forged parent must not become a
+        // compatible local candidate or a global negative for this egg.
+        auto corrupt=x;
+        corrupt.physicalSlots[0].eggGroup2=13; // Pikachu falsely claims Ditto
+        assert(R::evaluate(corrupt).status==R::Status::UnknownPersonalData);
+        corrupt=x;
+        corrupt.physicalSlots[1].species=132;
+        corrupt.physicalSlots[1].eggGroup1=13; // second Ditto group missing
+        assert(R::evaluate(corrupt).status==R::Status::UnknownPersonalData);
+        corrupt.physicalSlots[1].eggGroup2=13;
+        corrupt.physicalSlots[1].genderRatio=127; // Ditto cannot be sexed
+        assert(R::evaluate(corrupt).status==R::Status::UnknownPersonalData);
+        corrupt.physicalSlots[1].genderRatio=255; // legitimate female + Ditto
+        const auto restoredDitto=R::evaluate(corrupt);
+        assert(restoredDitto.status==R::Status::ConditionallyCompatiblePair);
+        assert(restoredDitto.originalMotherSnapshot==101 &&
+               restoredDitto.originalFatherSnapshot==202);
+        const auto corruptedPID=pid(game,corrupt);
+        assert(P::evaluate(corruptedPID).status==
+               P::Status::OriginalEggPIDContradicted ||
+               P::evaluate(corruptedPID).status==
+               P::Status::ConditionallyMatchedOriginalEggPID);
+        // The Gen III retained-egg PID replay must refuse the identical
+        // pair when its original personal evidence is subsequently forged.
+        auto poisoned=corruptedPID;
+        poisoned.originalRetailPair.physicalSlots[1].genderRatio=127;
+        assert(P::evaluate(poisoned).status==P::Status::UnknownOriginalParentPair);
+        poisoned=corruptedPID;
+        poisoned.originalRetailPair.physicalSlots[0].eggGroup2=13;
+        assert(P::evaluate(poisoned).status==P::Status::UnknownOriginalParentPair);
         // Explicitly join a source-attested pair into the original-stage
         // Gen III PID replay; no fabricated source parent from an egg PID.
         auto p=pid(game,x);
@@ -181,7 +212,7 @@ int main() {
         p=pid(game,x);p.ordinaryDaycarePairEligible=false;
         assert(P::evaluate(p).status==P::Status::IncompatibleOriginalDaycarePair);
         // Native PID snapshot remains untouched after all evaluations.
-        checks+=36;
+        checks+=43;
     }
     auto unsupported=base("diamond_nds");
     assert(R::evaluate(unsupported).status==R::Status::UnsupportedGame);

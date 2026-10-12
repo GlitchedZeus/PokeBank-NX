@@ -7,6 +7,7 @@
 // A historical RNG, pair or creation-time held item cannot be recovered
 // merely from one detached native PK3. Contradictions are candidate-local.
 #include "Legality/Gen3RetailDaycarePairHistory.h"
+#include "Legality/Gen34OriginalDaycareRoles.h"
 #include <array>
 #include <cstdint>
 #include <string_view>
@@ -108,23 +109,15 @@ constexpr Result evaluate(const Input& in) noexcept {
     if(a.snapshotIdentity==b.snapshotIdentity) {
         out.status=Status::UnknownParentSnapshots;return out;
     }
-    // A separately supplied "eligible" bit cannot override the original
-    // source pair's physical gender roles. Without Ditto, an ordinary egg
-    // requires a male and a female; Ditto may pair with a male, female, or
-    // genderless non-Ditto. This tests only a necessary retail condition,
-    // not egg-group compatibility or authentic historical provenance.
-    const bool ditto0=a.species==132u, ditto1=b.species==132u;
-    // Even a malformed two-Ditto snapshot still establishes that no
-    // ordinary two-Ditto egg route exists, as in the earlier regression.
-    if(ditto0 && ditto1) {
-        out.status=Status::IncompatibleOriginalDaycarePair;return out;
-    }
-    if((ditto0 && a.gender!=2u) || (ditto1 && b.gender!=2u)) {
+    // The source role classifier applies only NECESSARY original
+    // pair constraints. Egg-group compatibility and actual parents still
+    // require independent source evidence, never child-PK3 inference.
+    const auto roles=Gen34OriginalDaycareRoles::evaluate(
+        {a.species,a.gender},{b.species,b.gender},386u);
+    if(roles==Gen34OriginalDaycareRoles::Status::UnknownOriginalMetadata) {
         out.status=Status::UnknownParentSnapshots;return out;
     }
-    const bool opposite=(a.gender==0u && b.gender==1u) ||
-                        (a.gender==1u && b.gender==0u);
-    if(!ditto0 && !ditto1 && !opposite) {
+    if(roles==Gen34OriginalDaycareRoles::Status::IncompatibleOrdinaryPair) {
         out.status=Status::IncompatibleOriginalDaycarePair;return out;
     }
     if(!in.originalCreationStageIndependentlyVerified ||

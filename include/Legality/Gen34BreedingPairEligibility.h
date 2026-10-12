@@ -4,6 +4,7 @@
 // from independently verified version-correct snapshots. This is not a
 // reconstructed breeding history from the offspring's native PK3/PK4.
 #include "Legality/Gen34SameParentEggHistory.h"
+#include "Legality/Gen34OriginalPersonalSnapshotGuard.h"
 #include <cstdint>
 #include <string_view>
 
@@ -79,8 +80,24 @@ constexpr Result evaluate(const Input& in) noexcept {
        !b.personalDataIndependentlyVerified ||
        !validGroup(a.eggGroup1) || !validGroup(b.eggGroup1) ||
        (a.eggGroup2 && !validGroup(a.eggGroup2)) ||
-       (b.eggGroup2 && !validGroup(b.eggGroup2))) {
+       (b.eggGroup2 && !validGroup(b.eggGroup2)) ||
+       !Gen34OriginalPersonalSnapshotGuard::coherentDittoGroups(
+           a.species,a.eggGroup1,a.eggGroup2) ||
+       !Gen34OriginalPersonalSnapshotGuard::coherentDittoGroups(
+           b.species,b.eggGroup1,b.eggGroup2)) {
         out.status=Status::UnknownPersonalData;return out;
+    }
+    // Verified but invalid source gender codes are missing evidence, not
+    // compatible parent roles. A Ditto's source gender is always genderless.
+    if((a.genderIndependentlyVerified &&
+        (!Gen34OriginalPersonalSnapshotGuard::validKnownGender(
+             static_cast<uint8_t>(a.gender)) ||
+         (a.species==132u && a.gender!=Gender::Genderless))) ||
+       (b.genderIndependentlyVerified &&
+        (!Gen34OriginalPersonalSnapshotGuard::validKnownGender(
+             static_cast<uint8_t>(b.gender)) ||
+         (b.species==132u && b.gender!=Gender::Genderless)))) {
+        out.status=Status::UnknownGender;return out;
     }
     // Retail first-group terminal cases; do not infer source personal data.
     constexpr uint8_t ditto=13, undiscovered=15;
