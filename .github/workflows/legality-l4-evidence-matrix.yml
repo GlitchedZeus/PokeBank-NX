@@ -8,7 +8,9 @@ on:
     paths:
       - .github/workflows/legality-l4-evidence-matrix.yml
       - tests/test_legality_l4_*
+      - tests/fixtures/legality_l4_*
       - include/Legality/Gen14Event*
+      - include/Legality/Gen14OriginalCurrentChain*
       - include/Legality/Gen12Gift*
       - include/Legality/Gen12OriginalDistribution*
       - include/Legality/Gen3*Event*

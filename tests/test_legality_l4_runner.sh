@@ -113,6 +113,13 @@ echo "L4 Stage 4 original PCD/PGT recipient evidence"
 "$compiler" "${base[@]}" tests/fixtures/legality_l4_stage4_card_recipient.cpp \
     -o "$scratch/l4_stage4_card_recipient"
 "$scratch/l4_stage4_card_recipient"
+# Stage 5: hash-bound original-to-current records, native field domains,
+# independent intermediate snapshots, Pal Park and Time Capsule proofs.
+# Adds a standalone fixture without altering the 28 registered suites.
+echo "L4 Stage 5 original-to-current bounded lineage"
+"$compiler" "${base[@]}" tests/fixtures/legality_l4_stage5_original_current_chain.cpp \
+    -o "$scratch/l4_stage5_original_current_chain"
+"$scratch/l4_stage5_original_current_chain"
 for name in "${header_only[@]}"; do
     echo "L4 C++ compile: $name"
     "$compiler" "${base[@]}" "tests/$name.cpp" -o "$scratch/$name"
