@@ -205,6 +205,7 @@ int main() {
     // cell sprites are drawn. Never erase an already painted icon with a
     // late opaque rectangle (the accepted G1-III carry already looks empty).
     const auto carryPresentation = read("include/UI/ClassicPackedMovePresentation.h");
+    const auto boxPanel = read("src/UI/Panels/BoxPokemonPanel.cpp");
     contains(carryPresentation, "bool hidesGen4CarriedSource(");
     contains(classicMove, "bool hidesGen4CarriedSource(const TrainerViewScreen& screen, int box, int slot)");
     contains(classicMove, "state.active && state.generation == CarryGeneration::Gen4");
@@ -242,7 +243,6 @@ int main() {
     contains(itemsPanel, "ClassicMachineArtwork::artKey(");
     contains(itemsPanel, "fb.drawSpriteStaticContained(nx,");
     contains(surface, "ItemPickerArtwork::drawNativeItem(");
-    const auto boxPanel = read("src/UI/Panels/BoxPokemonPanel.cpp");
     const auto gen3Picker = read("src/UI/Gen3SharedPokemonSurface.inc");
     const auto gen2Held = read("include/UI/Gen2HeldItemPicker.h");
     const auto gen2Editor = read("src/UI/Gen2PokemonEditorFoundation.inc");
