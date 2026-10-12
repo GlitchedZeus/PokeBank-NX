@@ -167,6 +167,17 @@ require_all("src/UI/Gen2UnifiedPokemonWorkspace.inc",
             "TouchPickerViewport detailsViewport;", "TouchScrollState detailsTouchScroll;",
             "detailsTouchScroll.updateVertical(", "appendClippedTouchButton(screen.touchButtons, 1700 + row",
             "const int touchedDetail = updateUnifiedDetailsTouch")
+# Scrolling away from a controller-selected detail must not make A edit
+# a hidden field. Gen II–IV reveal the semantic cursor first without mutation.
+require_all("src/UI/Gen2UnifiedPokemonWorkspace.inc",
+            "!unified.detailsViewport.containsSelection(",
+            "Focused field brought into view; press A again")
+require_all("src/UI/Gen3SharedPokemonSurface.inc",
+            "!state.detailsViewport.containsSelection(",
+            "Focused field brought into view; press A again")
+require_all("src/UI/Gen4SharedPokemonSurface.inc",
+            "!state.detailsViewport.containsSelection(",
+            "Focused field brought into view; press A again")
 chrome = read("include/UI/ScreenChrome.h")
 require_all("include/UI/ScreenChrome.h",
             "constexpr int kNavBarH      = 56;",
