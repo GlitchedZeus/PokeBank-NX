@@ -116,9 +116,15 @@ inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int 
     const int viewportH = std::max(0, viewportBottom - viewportY);
     fb.drawFilledRect(x + 8, viewportY, w - 16, viewportH, Colors::Panel);
     fb.setClipRect(x + 8, viewportY, w - 16, viewportH);
-    for (std::size_t i = 0; i < window.count; ++i) {
-        const auto row = window.first + i;
-        const int yy = y + 224 + static_cast<int>(i) * 38 + pixelOffset;
+    // Keep one extra row on either side of a live finger drag to avoid
+    // displaying a blank strip at each 38px boundary.
+    const int start = independentFirstRow >= 0 ? -1 : 0;
+    const int end = static_cast<int>(window.count) + (independentFirstRow >= 0 ? 1 : 0);
+    for (int i = start; i < end; ++i) {
+        const int rowIndex = static_cast<int>(window.first) + i;
+        if (rowIndex < 0 || rowIndex >= static_cast<int>(total)) continue;
+        const auto row = static_cast<std::size_t>(rowIndex);
+        const int yy = y + 224 + i * 38 + pixelOffset;
         const bool selected = focused && row == focus;
         if (selected)
             fb.drawRoundedRect(x + 8, yy + 2, std::max(0, w - 36), 30, 6, Colors::FocusBorder, 2);
