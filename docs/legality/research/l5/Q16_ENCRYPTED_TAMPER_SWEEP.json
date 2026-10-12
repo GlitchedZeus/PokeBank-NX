@@ -1,0 +1,63 @@
+{
+  "schema": "L5_Q16_ENCRYPTED_SINGLE_BIT_TAMPER_SWEEP_V1",
+  "catalog": [
+    "Q16",
+    "Q12",
+    "Q15",
+    "Q18"
+  ],
+  "fixture": {
+    "path": "tests/fixtures/legality_l5_native_ev_vectors.json",
+    "git_blob_sha": "2252161521120c1db34b2700bdceeaf2d0859ffa",
+    "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+    "provenance": "synthetic original L5 authored ciphertext; zero retail saves/ROMs/events"
+  },
+  "execution": {
+    "status": "PASS",
+    "executor": "independent JS byte decoder executed in research tool with exact GitHub-connected fixture payload",
+    "gen3_valid_native_records": 144,
+    "gen4_valid_native_records": 192,
+    "checksummed_valid_base_records": 336,
+    "checksum_invalid_base_controls": 12,
+    "gen3_data_bytes_tested_each": 48,
+    "gen4_data_bytes_tested_each": 128,
+    "bit_positions_per_byte": 8,
+    "gen3_mutations": 55296,
+    "gen4_mutations": 196608,
+    "total_exact_single_bit_ciphertext_mutations": 251904,
+    "unexpectedly_checksum_accepted": 0,
+    "observed_duration_ms": 5653,
+    "raw_source_bytes_modified": false,
+    "all_mutants_constructed_in_memory": true
+  },
+  "algorithm": {
+    "pk3": "XOR every 32-bit encrypted payload word with PID^OTID, unshuffle by PID%24, compare canonical 48-byte checksum",
+    "pk4": "decrypt 16-bit checksum-seeded LCG ciphertext words, unshuffle 32-state table by PID>>13, check 128-byte canonical checksum and sanity",
+    "fault_model": "Flip exactly one bit in the encrypted DATA payload region without updating stored checksum; does not include header corruption, paired/multibit modifications or deliberately recomputed checksums",
+    "limitations": [
+      "Independent decoder follows the source algorithm but is NOT compiled/linked accepted C++",
+      "251904 rejected cases do not prove robust behavior for all combinations of multiple-bit corruption",
+      "No actual Pokémon legality validity, acquisition history, original source, ROM, event distribution or PKHeX parity tested",
+      "Actual accepted crypt code must be compiled and executed under both normal/sanitized modes on an exact-head checkout"
+    ]
+  },
+  "production_native_harness": {
+    "source_path": "tests/fixtures/legality_l5_native_codec_batch.cpp",
+    "runner_path": "tools/audit_legality_l5_native_codec.py",
+    "single_bit_mutations_expected": 251904,
+    "malformed_inputs_expected": 8,
+    "expected_outputs": "348 clean/corrupt cases plus 251904 in-memory tamper failures",
+    "actual_production_crypto_executed_in_current_turn": false,
+    "host_ci_exact_head_verified": false,
+    "reproduction": [
+      "python3 tools/audit_legality_l5_native_codec.py --source-pin",
+      "python3 tools/audit_legality_l5_native_codec.py --source-pin --sanitize"
+    ]
+  },
+  "signoff": {
+    "research_corruption_byte_model": "PASS",
+    "production_crypto": "NOT_RUN",
+    "production_full_legality": "NOT_RUN",
+    "source_retail_parity": "NOT_CLAIMED"
+  }
+}
