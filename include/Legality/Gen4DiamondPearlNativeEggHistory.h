@@ -133,7 +133,15 @@ inline Result evaluate(const Input& in) noexcept {
            m.physicalSlots[0].originalMoves!=p0.moves() ||
            m.physicalSlots[1].originalMoves!=p1.moves() ||
            m.originalEggSpecies!=child.species() ||
-           m.originalUnhatchedEggMoves!=child.moves()) {
+           m.originalUnhatchedEggMoves!=child.moves() ||
+           (m.originalDaycarePairEligibilityIndependentlyAttested &&
+            pid.originalDaycarePairEligibilityVerified &&
+            m.eligibleOriginalDaycarePair!=pid.eligibleOrdinaryDaycarePair) ||
+           (m.originalEggSpecies==172 &&
+            m.originalCreationItemHistoryIndependentlyAttested &&
+            pid.creationTimeItemsIndependentlyVerified &&
+            m.originalEligibleLightBallHolder!=
+              (pid.parents[0].heldItem==236 || pid.parents[1].heldItem==236))) {
             out.status=Status::IncoherentNativeMoveSnapshots;return out;
         }
         // Native records are still NOT proof of original chronology:
