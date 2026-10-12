@@ -127,6 +127,7 @@ int main(){
         auto noId=x;noId.alternatives[0].routeIdentity=0;
         assert(A::evaluate(noId).status==A::Status::MissingOrDuplicateCandidateIdentity);
         dup.alternatives[0].independentlyAttestedHypothesis=false;
+        assert(A::evaluate(dup).status==A::Status::MissingOrDuplicateCandidateIdentity);
         // Two archive rows can collide; a separately attested,
         // coherent PID+IV route AFTER a discredited sibling must survive.
         dup=x;dup.count=2;dup.alternatives[1]=dup.alternatives[0];
