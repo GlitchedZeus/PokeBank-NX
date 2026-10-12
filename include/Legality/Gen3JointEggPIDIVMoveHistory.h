@@ -20,7 +20,8 @@ enum class Status : uint8_t {
     UnknownOriginalPairEvidence, IncoherentPhysicalParentPair,
     IncoherentHistoricalDonorRoles, IncoherentOriginalEggSpecies,
     UnknownOriginalMoveEvidence, UnknownOriginalPIDHistory,
-    UnknownOriginalIVHistory, OriginalMoveCandidateContradicted,
+    UnknownOriginalIVHistory, MalformedOriginalIVCandidate,
+    OriginalMoveCandidateContradicted,
     OriginalIVCandidateContradicted, OriginalPIDCandidateContradicted,
     AllThreeStagesConditionallyMatched
 };
@@ -142,7 +143,20 @@ constexpr Result evaluate(const Input& in) noexcept {
         case MoveIV::Status::IVCandidateContradicted:
             out.status=Status::OriginalIVCandidateContradicted;return out;
         case MoveIV::Status::KnownCandidateConsistent:break;
-        default:
+        case MoveIV::Status::UnknownMoveParentHistory:
+        case MoveIV::Status::UnknownLightBall:
+            out.status=Status::UnknownOriginalMoveEvidence;return out;
+        case MoveIV::Status::UnknownPairEligibility:
+        case MoveIV::Status::UnknownIVParentSnapshot:
+        case MoveIV::Status::UnknownDaycareSlotOrder:
+        case MoveIV::Status::IncoherentParentWitness:
+        case MoveIV::Status::IncoherentDaycareSlotOrder:
+            out.status=Status::UnknownOriginalPairEvidence;return out;
+        case MoveIV::Status::InvalidIVCandidateInput:
+            out.status=Status::MalformedOriginalIVCandidate;return out;
+        case MoveIV::Status::UnknownIVRNGHistory:
+        case MoveIV::Status::UnknownSharedParentStage:
+        case MoveIV::Status::IncoherentParentStage:
             out.status=Status::UnknownOriginalIVHistory;return out;
     }
     // PID history must be separately original-source attested. This does
