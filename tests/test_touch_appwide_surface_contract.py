@@ -868,3 +868,18 @@ assert "if (stagedStorageSave && touch.justTapped())" in entry
 assert "const int first = saveSlotHit(touch.startX(), touch.startY());" in storage_route
 assert "first == saveSlotHit(touch.x(), touch.y())" in storage_route
 assert "down |= HidNpadButton_A;" in storage_route
+
+# Gen IV source cells must appear empty WHILE Y is carrying them. Drawing
+# a blank rectangle over a completed box grid is not equivalent to hiding
+# the source during rendering and left its Summary on the original PK4.
+carry_model = read("src/UI/ClassicPackedMoveOverlay.inc")
+box_panel = read("src/UI/Panels/BoxPokemonPanel.cpp")
+carry_header = read("include/UI/ClassicPackedMovePresentation.h")
+assert "hidesGen4CarriedSource" in carry_header
+assert "state.active && state.generation == CarryGeneration::Gen4" in carry_model
+assert "state.sourceBox == box" in carry_model
+assert "state.gen4SourceSlots.begin(), state.gen4SourceSlots.end()" in carry_model
+assert "const bool carriedSource = ClassicPackedMove::hidesGen4CarriedSource(" in box_panel
+assert "const bool empty = grabbed || carriedSource || !pokemon" in box_panel
+assert "!ClassicPackedMove::hidesGen4CarriedSource(" in box_panel
+assert "fb.drawFilledRoundedRect(button.x + 2, button.y + 2," not in carry_model

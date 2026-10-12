@@ -200,6 +200,20 @@ int main() {
     contains(classicMove, "editor != state.gen4StagedOwner");
     contains(classicMove, "state.gen4SourceSlots.size() != state.gen4PickupRecords.size()");
     contains(classicMove, "state.gen4PickupRecords[i].begin()");
+    // Gen IV pickup preserves PK4 bytes until Y, so render the carried
+    // source as empty in BOTH the icon grid and selected Summary before any
+    // cell sprites are drawn. Never erase an already painted icon with a
+    // late opaque rectangle (the accepted G1-III carry already looks empty).
+    const auto carryPresentation = read("include/UI/ClassicPackedMovePresentation.h");
+    const auto boxPanel = read("src/UI/Panels/BoxPokemonPanel.cpp");
+    contains(carryPresentation, "bool hidesGen4CarriedSource(");
+    contains(classicMove, "bool hidesGen4CarriedSource(const TrainerViewScreen& screen, int box, int slot)");
+    contains(classicMove, "state.active && state.generation == CarryGeneration::Gen4");
+    contains(classicMove, "state.gen4SourceSlots.begin(), state.gen4SourceSlots.end()");
+    contains(boxPanel, "const bool carriedSource = ClassicPackedMove::hidesGen4CarriedSource(");
+    contains(boxPanel, "const bool empty = grabbed || carriedSource || !pokemon");
+    contains(boxPanel, "!ClassicPackedMove::hidesGen4CarriedSource(");
+    assert(classicMove.find("fb.drawFilledRoundedRect(button.x + 2, button.y + 2,") == std::string::npos);
     contains(classicMove, "Gen IV carried Pokemon changed; no move staged");
     // The immutable carry snapshot is checked BEFORE candidate edits; a
     // stale record/session must never be used as a fresh source by slot ID.

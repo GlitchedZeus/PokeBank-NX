@@ -4,6 +4,7 @@
 #include "Legacy/FRLGReadOnlyTrainer.h"
 #include "Legacy/Gen4ReadOnlyTrainer.h"
 #include "UI/ClassicPackedMultiSelect.h"
+#include "UI/ClassicPackedMovePresentation.h"
 #include "UI/SpriteManager.h"
 
 #include <algorithm>
@@ -787,6 +788,17 @@ void drawVisual(PKSEFramebuffer& fb, const CarriedVisual& visual, int cx, int cy
 
 } // namespace
 
+bool hidesGen4CarriedSource(const TrainerViewScreen& screen, int box, int slot) {
+    if (!isGen4(screen) || slot < 0 || box < 0) return false;
+    // Shared carry state is owned by this overlay. Query it strictly for
+    // presentation: never mutate the PK4 records on pickup/cursor navigation.
+    const auto& state = stateFor(const_cast<TrainerViewScreen&>(screen));
+    return state.active && state.generation == CarryGeneration::Gen4 &&
+           state.sourceBox == box &&
+           std::find(state.gen4SourceSlots.begin(), state.gen4SourceSlots.end(),
+                     static_cast<std::size_t>(slot)) != state.gen4SourceSlots.end();
+}
+
 bool beginGen4FromAction(TrainerViewScreen& screen, int box, int slot) {
     if (!isGen4(screen) || box < 0 || box >= 18 || slot < 0 || slot >= 30)
         return false;
@@ -969,21 +981,10 @@ void draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     if (state.active && screen.selectedMode == TrainerViewScreen::ViewMode::Boxes &&
         screen.detailViewActive && screen.selectedItemIndex >= 0) {
-        // Gens I-III visibly lift their source sprites while carried. Gen IV
-        // defers its native PK4 transaction until Y places, so mask those
-        // source cells in the rendered box instead of altering staged data
-        // before confirmation. This is presentation-only and reversible.
-        if (state.generation == CarryGeneration::Gen4 &&
-            screen.selectedBoxIndex == state.sourceBox) {
-            for (const auto& button : screen.touchButtons) {
-                if (button.id < 0 || button.id >= 30) continue;
-                if (std::find(state.gen4SourceSlots.begin(), state.gen4SourceSlots.end(),
-                              static_cast<std::size_t>(button.id)) == state.gen4SourceSlots.end())
-                    continue;
-                fb.drawFilledRoundedRect(button.x + 2, button.y + 2,
-                    button.w - 4, button.h - 4, 9, Colors::Panel);
-            }
-        }
+        // The box renderer already hides Gen IV pickup source slots and the
+        // Summary record via hidesGen4CarriedSource(). Never paint opaque
+        // rectangles over a finished grid: those erased the disc/border and
+        // could leave visually inconsistent cells during a Y carry.
         const auto* cell = selectedCell(screen);
         if (!cell) return;
         const int cx = cell->x + cell->w / 2;

@@ -4,6 +4,7 @@
 #include <string>
 
 #include "UI/Panels/BoxPokemonPanel.h"
+#include "UI/ClassicPackedMovePresentation.h"
 #include "UI/Panels/CarriedSprite.h"   // drawLiftedMon -- shared with the bank
 #include "UI/TrainerViewScreen.h"
 #include "UI/Common.h"
@@ -150,7 +151,13 @@ namespace Panels {
             std::string speciesName = pokemon ? std::string(pokemon->species()) : "";
             // A grabbed slot renders empty: its occupant is drawn riding the cursor instead, so
             // showing it here too would put the same Pokemon on screen twice.
-            const bool empty = grabbed || !pokemon || speciesName == "None" || speciesName == "Empty" ||
+            // Gen IV defers PK4 changes until the validated Y drop, unlike
+            // Gen III's temporary staged extraction. Visually treat each
+            // carried source as empty without altering the original record.
+            const bool carriedSource = ClassicPackedMove::hidesGen4CarriedSource(
+                screen, screen.selectedBoxIndex, slotIndex);
+            const bool empty = grabbed || carriedSource || !pokemon ||
+                               speciesName == "None" || speciesName == "Empty" ||
                                pokemon->speciesID() == 0;
 
             // Disc: occupied a touch lighter than empty for subtle depth.
@@ -224,7 +231,9 @@ namespace Panels {
         const Pokemon::Pokemon* p = nullptr;
         if (screen.detailViewActive &&
             screen.selectedBoxIndex >= 0 && screen.selectedBoxIndex < static_cast<int>(screen.trainer.boxes.size()) &&
-            screen.selectedItemIndex >= 0 && screen.selectedItemIndex < static_cast<int>(screen.trainer.getSlotsPerBox())) {
+            screen.selectedItemIndex >= 0 && screen.selectedItemIndex < static_cast<int>(screen.trainer.getSlotsPerBox()) &&
+            !ClassicPackedMove::hidesGen4CarriedSource(
+                screen, screen.selectedBoxIndex, screen.selectedItemIndex)) {
             const auto& mon = screen.trainer.boxes[screen.selectedBoxIndex][screen.selectedItemIndex];
             if (mon && mon->speciesID() != 0) p = mon.get();
         }
