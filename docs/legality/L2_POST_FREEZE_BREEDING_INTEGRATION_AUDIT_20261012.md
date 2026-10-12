@@ -54,3 +54,22 @@ Each independent nonzero, first-seen route is evaluated as before. Duplicated/ze
 - L5 primary-source gaps: 0 fully original-retail binary/region certified game-family parity cells per Q17; no immutable original paired daycare parents, egg, PID/IV RNG transcript, held-item chronology or complete acquisition-path enumerations; licensing and provenance reviews not signed off. **Keep unsupported/ambiguous histories `Incomplete` / `Unknown`, never whole-Pokémon `Invalid`.**
 
 **Disposition:** L2 post-freeze improvement is **source-review ready; new combined-head CI still required**. No further feature expansion until coordinator integrates this batch.
+
+
+## Follow-up: order-independent duplicate-ID rescue (second validation pass)
+
+After the initial patch, the archived-route audit identified a **second** candidate false-exclusion: when an attested contradictory original-stage proposal appeared **before** a separately attested matching proposal with the **same nonzero route ID**, the first-seen-only deduplication logic skipped the later match. This makes the candidate result order-dependent, even though the later independently supported original parent/egg history could explain the observed child.
+
+All four L2-owned helpers now:
+
+1. Reject a **zero ID** as Unknown, not an independently provable original egg history.
+2. Treat a later *duplicate* ID as unverified for historical route completeness, and **never count its negative stage mismatch** toward exhaustive rejection.
+3. If another route with the same ID **already conditionally matched**, skip the duplicate so a repeated positive is not double-counted.
+4. Otherwise independently assess the later proposed stage's positive condition against the original source and observed egg; a later attested match **rescues the candidate set** despite the earlier contradiction.
+5. If no matching route exists, preserve `MissingOrDuplicate...` (Unknown/provenance) and **never promote candidate exhaustion to whole-Pokémon Invalid**.
+
+A further four existing L2 test programs now assert **both history orders** and no fabricated exhaustive rejection. This is a *bounded candidate-discovery correction*, not evidence that any test fixture came from an authentic retail egg.
+
+**Execution caveat remains:** the last fully green all-11 L2 **normal and ASan/UBSan** run is the *frozen* integrated SHA `c91b53e84ef75669049d159616894ec68cd4b0dd`. The latest L2-only branch includes these post-freeze changes and **does not have an L2-specific exact-head CI run yet**. The branch's ordinary Host Tests job does not invoke `test_legality_l2_run_all.sh`. Coordinator must carry this **entire post-freeze L2 diff** into a *new* combined candidate and rerun the 11-program matrix plus full host/RSE/sanitizers. Do not cite the prior green SHA as validation of the changed test sources.
+
+The accepted Platinum-only `Gen4PlatinumEggPidStage::evaluateUniverse` duplicate-ID early rejection remains **coordinator/accepted owner territory**. No L2 edit or inference of a global Invalid from that possible masking issue.
