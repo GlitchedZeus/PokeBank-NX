@@ -9,6 +9,7 @@
 #include "UI/TrainerViewScreen.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/ScreenChrome.h"
 #include "Trainer/Trainer.h"
 #include "Trainer/Inventory9LZA.h"
 #include "Trainer/Inventory9SV.h"
