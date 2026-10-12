@@ -15,6 +15,9 @@
 #include <cstdint>
 #include <iostream>
 #include <string_view>
+#ifdef NDEBUG
+#error "L5 Stage2 native analyzer checks require enabled assertions"
+#endif
 
 namespace Trainer {
 const char* getSpeciesName(uint16_t id) { return Names::getSpeciesName(id); }
