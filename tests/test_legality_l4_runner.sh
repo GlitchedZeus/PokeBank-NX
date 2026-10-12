@@ -50,6 +50,7 @@ native=(
     test_legality_l4_ranger_gift_history
     test_legality_l4_event_date_history
     test_legality_l4_ball_history
+    test_legality_l4_other_metadata
 )
 for name in "${header_only[@]}"; do
     echo "L4 C++ compile: $name"
@@ -62,4 +63,4 @@ for name in "${native[@]}"; do
         -o "$scratch/$name"
     "$scratch/$name"
 done
-echo "L4 all 9 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
+echo "L4 all 10 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
