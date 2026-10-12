@@ -1,0 +1,63 @@
+name: Gen V-IX Legality Foundation (Exact Head)
+
+on:
+  pull_request:
+    paths:
+      - 'include/Legality/Gen59FormatDomainEvidence.h'
+      - 'include/Legality/Gen56NativeEnvelopeEvidence.h'
+      - 'tests/test_legality_gen59_native_foundation.cpp'
+      - 'src/Legality/Legality.cpp'
+      - 'tools/audit_legality_gen59_wiring.py'
+      - '.github/workflows/legality-gen5-9-foundation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gen59-foundation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-foundation:
+    name: Native domain & bounds / ${{ matrix.compiler }} / normal + sanitizers
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: ['g++', 'clang++']
+    steps:
+      - name: Checkout actual head, not synthetic PR merge
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify exact checkout SHA
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          git diff --check
+          ${{ matrix.compiler }} --version
+      - name: Compile and execute native format and transport contracts
+        env:
+          CXX: ${{ matrix.compiler }}
+          ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d include/Enums
+          python3 tools/audit_legality_gen59_wiring.py --source-root .
+          mkdir -p /tmp/pbnx-gen59
+          "$CXX" -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror -Iinclude \
+            tests/test_legality_gen59_native_foundation.cpp -o /tmp/pbnx-gen59/domain
+          /tmp/pbnx-gen59/domain
+          "$CXX" -std=c++20 -O1 -g -Wall -Wextra -Wpedantic -Werror \
+            -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude \
+            tests/test_legality_gen59_native_foundation.cpp -o /tmp/pbnx-gen59/domain-san
+          /tmp/pbnx-gen59/domain-san
+          git diff --check
