@@ -44,8 +44,8 @@ SURFACES = {
     ),
     "Classic inventory": (
         "src/UI/ClassicInventoryOverlay.cpp",
-        ("touch.justTouchedDown()", "pickerScroll.updateVertical(",
-         "reviewScroll.updateVertical(", "touchedButtonId(touch)"),
+        ("pickerScroll.updateVertical(", "reviewScroll.updateVertical(",
+         "touchedButtonId(touch)"),
     ),
     "Packed move selection": (
         "src/UI/ClassicPackedMoveOverlay.inc",

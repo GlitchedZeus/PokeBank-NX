@@ -29,7 +29,10 @@ int main() {
                   InventoryCategoryTouch::RightInset);
     static_assert(InventoryCategoryTouch::topY(80, 46) == 83);
     static_assert(InventoryCategoryTouch::Width >= 52);
-    static_assert(InventoryCategoryTouch::Gap >= 20);
+    static_assert(InventoryCategoryTouch::Gap >= 36);
+    static_assert(InventoryCategoryTouch::nextX(244, 1024) -
+                  (InventoryCategoryTouch::previousX(244, 1024) +
+                   InventoryCategoryTouch::Width) >= 36);
     static_assert(InventoryCategoryTouch::Height <= 46);
 
     constexpr auto occupied = inventoryActionAvailability(true, true, true, true);

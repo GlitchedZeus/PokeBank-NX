@@ -68,7 +68,9 @@ struct InventoryCategoryTouch {
     static constexpr int NextId = -21;
     static constexpr int Width = 56;
     static constexpr int Height = 40;
-    static constexpr int Gap = 24;
+    // Leave a full finger-width buffer between touch targets: adjacent
+    // category arrows must not feel like one small two-state toggle.
+    static constexpr int Gap = 40;
     static constexpr int RightInset = 20;
 
     [[nodiscard]] static constexpr int previousX(int panelX, int panelWidth) noexcept {

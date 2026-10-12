@@ -37,7 +37,7 @@ require(items_panel, "src/UI/Panels/ItemsPanel.cpp",
 category_contract = read("include/UI/InventoryUIContract.h")
 require(category_contract, "include/UI/InventoryUIContract.h",
         "struct InventoryCategoryTouch", "PreviousId = -20",
-        "NextId = -21")
+        "NextId = -21", "static constexpr int Gap = 40;")
 
 base = read("src/UI/TrainerViewScreenBase.inc")
 require(base, "src/UI/TrainerViewScreenBase.inc",
