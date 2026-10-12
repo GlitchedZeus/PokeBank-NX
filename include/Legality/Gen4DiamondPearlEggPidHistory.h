@@ -9,6 +9,7 @@
 // This requires independent ORIGINAL-stage snapshots, consecutive MT
 // outputs and same-event identity; never infer them from a detached egg.
 #include "Legality/Gen34OriginalDaycareRoles.h"
+#include "Legality/Gen4DiamondPearlOriginalParentWitness.h"
 #include <array>
 #include <cstdint>
 #include <span>
@@ -23,7 +24,8 @@ enum class Status : uint8_t {
     UnknownMTTranscript, IncompleteMTTranscript, MalformedMTTranscript,
     MTConsumptionContradicted, UnknownCollectionLanguages,
     UnknownCollectionTrainer, UnknownOriginalChildPID,
-    OriginalEggPIDContradicted, ConditionalOriginalEggPIDMatched
+    OriginalEggPIDContradicted, ConditionalOriginalEggPIDMatched,
+    UnknownOriginalParentWitness, IncoherentOriginalParentWitness
 };
 struct Parent {
     uint16_t species=0;
@@ -57,6 +59,7 @@ struct Input {
     uint32_t originalCollectionTrainerId=0; // full TID/SID.
     bool originalUnhatchedEggPidIndependentlyVerified=false;
     uint32_t originalUnhatchedEggPid=0;
+    Gen4DiamondPearlOriginalParentWitness::Input originalParentWitness{};
 };
 struct Result {
     Status status=Status::UnknownEligibleDaycarePair;
@@ -66,6 +69,8 @@ struct Result {
     uint8_t lcConsumed=0,internationalRerolls=0;
     int8_t everstoneDonor=-1;
     bool everstoneNatureProcced=false,retailMTFallback=false;
+    Gen4DiamondPearlOriginalParentWitness::Status originalParentWitnessStatus=
+        Gen4DiamondPearlOriginalParentWitness::Status::NotSupplied;
 };
 constexpr bool supports(std::string_view game) noexcept {
     return game=="diamond_nds"||game=="pearl_nds";
@@ -127,6 +132,27 @@ constexpr Result evaluate(const Input& in) noexcept {
     if(in.parentStageToken!=in.mtStageToken ||
        in.parentStageToken!=in.collectionStageToken) {
         out.status=Status::IncoherentSourceStage;return out;
+    }
+    // Require optional *source* parent identities, creation-held items,
+    // and collection languages to agree with this original stage. An
+    // archived parent from another event is not an egg-PID contradiction.
+    namespace Witness=Gen4DiamondPearlOriginalParentWitness;
+    out.originalParentWitnessStatus=Witness::evaluate(
+        in.originalParentWitness,{
+            in.parentStageToken,0u,
+            {in.parents[0].species,in.parents[1].species},
+            {in.parents[0].gender,in.parents[1].gender},
+            {in.parents[0].pid,in.parents[1].pid},
+            {in.parents[0].pidIndependentlyVerified,
+             in.parents[1].pidIndependentlyVerified},
+            {in.parents[0].heldItem,in.parents[1].heldItem},
+            in.originalParentLanguages});
+    if(out.originalParentWitnessStatus==Witness::Status::UnknownSourceEvidence) {
+        out.status=Status::UnknownOriginalParentWitness;return out;
+    }
+    if(out.originalParentWitnessStatus==Witness::Status::IncoherentPairOrEvent ||
+       out.originalParentWitnessStatus==Witness::Status::IncoherentOriginalSnapshots) {
+        out.status=Status::IncoherentOriginalParentWitness;return out;
     }
     uint32_t rng=in.creationLCRNGState;
     // ov05_021EC8A8: latest female seen (if any), then Ditto takes
