@@ -195,6 +195,91 @@ constexpr Result evaluate(const Native& n,const OriginalCandidate& c) noexcept {
     }
     return out;
 }
+// Historical original-to-observed PK3 source join. Encrypted/validated
+// native fields are observations, NOT proofs of a GameCube disc transfer,
+// exact original source, receipt or original game-font encoding.
+enum class TransferRoute : uint8_t { Unknown, GbaLocal, GameCubeToGba };
+enum class JoinedStatus : uint8_t {
+    UnknownNative, UnknownOriginalSource, UnknownRoute,
+    UnknownEncodingOrMoveHistory, CandidateExcluded, ConditionalCandidate
+};
+struct TransferHistory {
+    TransferRoute route=TransferRoute::Unknown;
+    bool originalToNativeRecordIndependentlyLinked=false;
+    bool receivingGbaVersionIndependentlyVerified=false;
+    uint8_t receivingGbaVersion=0;
+    bool nativeOriginVersionPreservedIndependentlyVerified=false;
+    bool gameCubeOriginalIndependentlyVerified=false;
+    OriginalSource originalGameCubeVersion=OriginalSource::Unknown;
+    bool gameCubeToGbaDeliveryIndependentlyVerified=false;
+    bool originalGameFontEncodingIndependentlyVerified=false;
+    bool originalEventMovesHistoryIndependentlyVerified=false;
+};
+struct JoinedResult {
+    JoinedStatus status=JoinedStatus::UnknownNative;
+    Result fields{};
+    uint32_t excluded=0, unknown=0;
+    bool authenticated=false;
+    bool globallyInvalid=false;
+};
+constexpr bool gbaVersion(uint8_t v) noexcept {
+    return v>=1 && v<=5;
+}
+constexpr bool originalGameCube(OriginalSource g) noexcept {
+    return g==OriginalSource::Colosseum || g==OriginalSource::XD;
+}
+constexpr JoinedResult evaluateOriginalHistory(
+    const Native& native,const OriginalCandidate& source,
+    const TransferHistory& history) noexcept {
+    JoinedResult out{};
+    if(!native.available)return out;
+    out.status=JoinedStatus::UnknownOriginalSource;
+    // Do not promote unsupported/unreleased distributions or a missing
+    // individually attested receipt to a source candidate.
+    if(sourceStatus(source)!=SourceStatus::ConditionalSource)return out;
+    out.status=JoinedStatus::UnknownRoute;
+    if(!history.originalToNativeRecordIndependentlyLinked ||
+       !history.receivingGbaVersionIndependentlyVerified ||
+       !gbaVersion(history.receivingGbaVersion))return out;
+    if(history.route==TransferRoute::GameCubeToGba &&
+       (!history.gameCubeOriginalIndependentlyVerified ||
+        !originalGameCube(history.originalGameCubeVersion) ||
+        !history.gameCubeToGbaDeliveryIndependentlyVerified))return out;
+    if(history.route!=TransferRoute::GameCubeToGba &&
+       history.route!=TransferRoute::GbaLocal)return out;
+    // A GameCube-origin Pokémon may retain a GC-origin version after a
+    // documented transfer to a GBA game. Never equate that origin marker
+    // with the recipient edition in the GC route.
+    if(history.route==TransferRoute::GbaLocal) {
+        if(!history.nativeOriginVersionPreservedIndependentlyVerified ||
+           native.originGame!=history.receivingGbaVersion)return out;
+    }
+    out.fields=evaluate(native,source);
+    out.excluded=out.fields.mismatchMask;
+    out.unknown=out.fields.unknownMask;
+    // A language conversion or uncertain OT/name charset cannot establish
+    // a candidate-specific native-byte contradiction. The source's
+    // language and text histories remain separate from decoded Unicode.
+    constexpr uint32_t originalText=(1u<<static_cast<unsigned>(Field::Language)) |
+        (1u<<static_cast<unsigned>(Field::Nickname)) |
+        (1u<<static_cast<unsigned>(Field::OTName));
+    if(!history.originalGameFontEncodingIndependentlyVerified) {
+        out.unknown|=originalText;
+        out.excluded&=~originalText;
+    }
+    constexpr uint32_t originalMoves=(1u<<static_cast<unsigned>(Field::Moves));
+    if(!history.originalEventMovesHistoryIndependentlyVerified) {
+        out.unknown|=originalMoves;
+        out.excluded&=~originalMoves;
+    }
+    out.status=out.excluded?JoinedStatus::CandidateExcluded:
+        out.unknown?JoinedStatus::UnknownEncodingOrMoveHistory:
+        JoinedStatus::ConditionalCandidate;
+    return out;
+}
+static_assert(!originalGameCube(OriginalSource::Ruby));
+static_assert(originalGameCube(OriginalSource::XD));
+static_assert(!JoinedResult{}.globallyInvalid);
 static_assert(FIELD_COUNT==16);
 static_assert(!compatible(Family::BerryFix,Mechanism::PokemonGift));
 static_assert(compatible(Family::BerryFix,Mechanism::ServiceOnly));

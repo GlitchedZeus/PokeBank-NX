@@ -174,6 +174,63 @@ int main() {
         r=W::evaluate(changed,a);
         assert(r.mismatchMask==0);
         assert((r.unknownMask&((1u<<6)|(1u<<11)))==((1u<<6)|(1u<<11)));}
+    // The original receiver title, original GC source, source digest,
+    // original trainer encoding and event move history are independent facts.
+    // A Pokémon from a documented GameCube transfer can retain a GC-origin
+    // game value while the receiving GBA version is Sapphire/Ruby.
+    {auto a=c;a.originalSource=W::OriginalSource::Colosseum;
+     auto x=n;x.originGame=15;
+     a.originGame.original=15;
+     W::TransferHistory h{};
+     h.route=W::TransferRoute::GameCubeToGba;
+     h.originalToNativeRecordIndependentlyLinked=true;
+     h.receivingGbaVersionIndependentlyVerified=true;
+     h.receivingGbaVersion=1;
+     h.gameCubeOriginalIndependentlyVerified=true;
+     h.originalGameCubeVersion=W::OriginalSource::Colosseum;
+     h.gameCubeToGbaDeliveryIndependentlyVerified=true;
+     h.originalGameFontEncodingIndependentlyVerified=true;
+     h.originalEventMovesHistoryIndependentlyVerified=true;
+     const auto positive=W::evaluateOriginalHistory(x,a,h);
+     assert(positive.status==W::JoinedStatus::ConditionalCandidate);
+     assert(!positive.authenticated && !positive.globallyInvalid);
+     for(unsigned mask=0;mask<32;++mask) {
+         auto sparse=h;
+         sparse.originalToNativeRecordIndependentlyLinked=bool(mask&1u);
+         sparse.receivingGbaVersionIndependentlyVerified=bool(mask&2u);
+         sparse.gameCubeOriginalIndependentlyVerified=bool(mask&4u);
+         sparse.gameCubeToGbaDeliveryIndependentlyVerified=bool(mask&8u);
+         sparse.originalGameFontEncodingIndependentlyVerified=bool(mask&16u);
+         const auto result=W::evaluateOriginalHistory(x,a,sparse);
+         assert((result.status==W::JoinedStatus::ConditionalCandidate)==
+                (mask==31u));
+         assert(!result.globallyInvalid);
+     }
+     h.gameCubeOriginalIndependentlyVerified=false;
+     assert(W::evaluateOriginalHistory(x,a,h).status==
+            W::JoinedStatus::UnknownRoute);
+     h.gameCubeOriginalIndependentlyVerified=true;
+     h.originalGameFontEncodingIndependentlyVerified=false;
+     auto raw=W::evaluateOriginalHistory(x,a,h);
+     assert((raw.unknown&((1u<<4)|(1u<<5)|(1u<<6)))!=0);
+     assert(raw.excluded==0);
+     h.originalGameFontEncodingIndependentlyVerified=true;
+     h.originalEventMovesHistoryIndependentlyVerified=false;
+     auto moves=W::evaluateOriginalHistory(x,a,h);
+     assert(moves.status==W::JoinedStatus::UnknownEncodingOrMoveHistory);
+     h.originalEventMovesHistoryIndependentlyVerified=true;
+     auto tampered=x;tampered.moves[0]^=1;
+     auto contradiction=W::evaluateOriginalHistory(tampered,a,h);
+     assert(contradiction.status==W::JoinedStatus::CandidateExcluded);
+     assert(contradiction.excluded==(1u<<11));
+     h.originalToNativeRecordIndependentlyLinked=false;
+     assert(W::evaluateOriginalHistory(tampered,a,h).status==
+            W::JoinedStatus::UnknownRoute);
+     // An uncorroborated release may not use this stricter source join.
+     h.originalToNativeRecordIndependentlyLinked=true;
+     a.historicalReleaseIndependentlyCorroborated=false;
+     assert(W::evaluateOriginalHistory(tampered,a,h).status==
+            W::JoinedStatus::UnknownOriginalSource);}
     // An unavailable native record cannot establish field contradictions.
     {auto x=n;x.available=false;auto r=W::evaluate(x,c);
         assert(!r.nativeAvailable && r.mismatchMask==0 && !r.globallyInvalid);}
