@@ -173,6 +173,14 @@ jobs:
               # helper executes GCC+Clang, normal+sanitizer on exact blobs.
               python3 tools/audit_legality_l5_stage2.py --self-test
               python3 tools/audit_legality_l5_stage2.py --timeout 600
+              # Stage 3: actual ORIGINAL PK3/PK4 native production codecs.
+              # Exact blob validation, deterministic mutation, GCC/Clang
+              # normal and ASan/UBSan. Does NOT certify retail parity.
+              python3 tools/audit_legality_l5_stage3_native_fuzz.py --self-test
+              python3 tools/audit_legality_l5_stage3_native_fuzz.py --timeout 900
+              # Separate full-checkout entity layer (not just codec model).
+              make -f Makefile.host -f tools/audit_legality_l5_stage3_entity_integration.mk l5-stage3-native-entities
+              make -f Makefile.host -f tools/audit_legality_l5_stage3_entity_integration.mk l5-stage3-native-entities-sanitize
               # Coordinator has F3/F4/F5 fixed. Run the L5 native matrix
               # in AFTER-F5 mode, never its intentional pre-fix baseline.
               make -f Makefile.host -f tools/audit_legality_l5_stage2_native.mk l5-stage2-after-f5
