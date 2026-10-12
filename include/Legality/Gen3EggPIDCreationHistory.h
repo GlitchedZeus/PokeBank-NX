@@ -65,7 +65,9 @@ struct Result {
     uint32_t finalPendingLCRNGState=0,finalCollectionLCRNGState=0;
     uint32_t finalSecondRNGState=0;
     uint16_t originalNatureAttempts=0;
-    uint8_t pendingRNGDraws=0,collectionRNGDraws=0;
+    // Emerald can draw 2401 full PID candidates, plus Everstone coin.
+    uint16_t pendingRNGDraws=0;
+    uint8_t collectionRNGDraws=0;
     int8_t originalEverstoneDonor=-1;
     bool natureInheritanceActivated=false,natureSearchExhausted=false;
 };
