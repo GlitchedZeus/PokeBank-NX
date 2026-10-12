@@ -813,8 +813,14 @@ for entry_body in (gen3_entry, gen4_entry):
     assert "touch.justTapped()" in entry_body
     assert "screen.touchedButtonId(touch)" in entry_body
     assert "beginActions(screen);" in entry_body
-assert "if (inBoxes && touch.justTapped())" in gen3_entry
-assert "if (boxEntry && touch.justTapped())" in gen4_entry
+# A tap after focusing the box header (-1) still opens Actions: test the
+# real target-first path and restoring the cursor on a blocked/modal gesture.
+for body in (gen3_entry, gen4_entry):
+    assert "screen.detailViewActive && touch.justTapped()" in body
+    assert "const int previous = screen.selectedItemIndex;" in body
+    assert "screen.selectedItemIndex = tapped;" in body
+    assert "if (boxEntrySurface(screen)) {" in body
+    assert "screen.selectedItemIndex = previous;" in body
 assert "if (!partyEntry && !boxEntry && !storageEntry) return false;" in gen4_entry
 assert "if (!inBoxes && !storageEntrySurface(screen)) return false;" in gen3_entry
 
