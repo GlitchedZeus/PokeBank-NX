@@ -840,9 +840,9 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
 
     if (action == PokeBank::UIModel::ClassicInventoryAction::PreviousCategory ||
         action == PokeBank::UIModel::ClassicInventoryAction::NextCategory) {
-        const int count = static_cast<int>(PokeBank::UIModel::classicInventoryCategories(game).size());
         const int delta = action == PokeBank::UIModel::ClassicInventoryAction::PreviousCategory ? -1 : 1;
-        screen.selectedCategory = (screen.selectedCategory + delta + count) % count;
+        screen.selectedCategory = PokeBank::UIModel::classicInventoryShiftCategory(
+            game, screen.selectedCategory, delta);
         screen.selectedItemIndex = 0;
         screen.currentPage = 0;
         return true;
