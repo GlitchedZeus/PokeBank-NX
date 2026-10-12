@@ -7,6 +7,8 @@
 #include "Legality/Gen4WildRngCorrelation.h"
 #include "Legality/Gen4NatureReversalReplay.h"
 #include "Legality/Gen4PidIvCorrelation.h"
+#include "Legality/Gen4OriginEvidence.h"
+#include "Pokemon/Pokemon4ReadOnly.h"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -15,6 +17,7 @@ namespace Legality::Gen4WildSpecialStageEvidence {
 enum class Status : uint8_t {
     UnknownOriginalSource,UnknownOriginalRow,UnknownCaptureTimeContext,
     UnknownLeadOrRngFamily,UnknownOriginalNatureStage,
+    UnknownNativeSnapshot,UnknownNativeSource,IncoherentNativeRecord,
     CandidateRowContradicted,CandidatePidIvContradicted,BoundedCandidateUnresolved,
     KnownConditionalSpecialEncounter
 };
@@ -90,5 +93,33 @@ inline Result evaluate(const Candidate& c) noexcept {
     if(!result.matched())
         return {Status::BoundedCandidateUnresolved,method};
     return {Status::KnownConditionalSpecialEncounter,method,result.method};
+}
+// Native (checksum-validated, immutable, encrypted original PK4) stage join.
+// Even this is *conditional* on an independently established original-save
+// identity and original capture stage: the current file cannot prove either.
+struct NativeWitness {
+    const Pokemon::Pokemon4ReadOnly* record=nullptr;
+    bool independentlyVerifiedOriginalNativeSave=false;
+    bool independentlyVerifiedSameCapturedCreature=false;
+};
+inline Result evaluateNative(const Candidate& c,
+                             const NativeWitness& witness) noexcept {
+    if(!witness.record || !witness.independentlyVerifiedSameCapturedCreature)
+        return {Status::UnknownNativeSnapshot};
+    const auto& native=*witness.record;
+    if(!native.valid() || native.empty() || native.isEgg())
+        return {Status::IncoherentNativeRecord};
+    if(!witness.independentlyVerifiedOriginalNativeSave ||
+       native.sourceGroup()!=Enums::GameVersion::HGSS ||
+       Gen4Origin::exactRetailGameId(native.originVersion())!=c.exactGame)
+        return {Status::UnknownNativeSource};
+    // Original-game/location/met-stage must be independent: native fields
+    // are consistency checks rather than invented source provenance.
+    if(native.pid()!=c.pid || native.species()!=c.originalSpecies ||
+       native.form()!=c.originalForm || native.ivs()!=c.originalIVs ||
+       native.metLevel()!=c.originalLevel ||
+       native.metLocationDP()!=c.originalLocation)
+        return {Status::IncoherentNativeRecord};
+    return evaluate(c);
 }
 } // namespace Legality::Gen4WildSpecialStageEvidence
