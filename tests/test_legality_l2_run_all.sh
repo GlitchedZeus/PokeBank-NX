@@ -56,6 +56,7 @@ pk4_sources=(
 )
 tests=(
     test_legality_l2_dp_alternative_egg_histories
+    test_legality_l2_dp_move_stage
     test_legality_l2_dp_egg_iv
     test_legality_l2_dp_egg_pid
     test_legality_l2_dp_native_egg_history
@@ -64,10 +65,17 @@ tests=(
     test_legality_l2_gen3_joint_egg_pid_iv
     test_legality_l2_gen3_joint_pid_iv_moves
     test_legality_l2_gen3_pid_iv_moves_alternatives
+    test_legality_l2_gen3_retail_daycare_pair
+    test_legality_l2_gen4_pt_hgss_pid
+    test_legality_l2_gen4_pt_hgss_joint
+    test_legality_l2_gen4_pt_hgss_move_stage
+    test_legality_l2_gen4_pt_hgss_full_moves
     test_legality_l2_gen4_iv_candidate_set
     test_legality_l2_gen4_native_iv_history
 )
 passed=0
+attempted=0
+failures=()
 for test in "${tests[@]}"; do
     if [[ -n "$filter" && "$test" != *"$filter"* ]]; then
         continue
@@ -75,6 +83,13 @@ for test in "${tests[@]}"; do
     source_file="$root/tests/$test.cpp"
     if [[ ! -f "$source_file" ]]; then
         echo "L2 ERROR: expected test missing: $source_file" >&2
+        exit 2
+    fi
+    # Files API transport failures must never be mistaken for committed
+    # C++ test sources. Fail before compiler execution and surface the
+    # corrupted branch artifact instead of reporting a sanitizer failure.
+    if ! head -n 2 "$source_file" | grep -Eq '^[[:space:]]*#include[[:space:]]'; then
+        echo "L2 ERROR: test does not contain valid C++ source prologue: $source_file" >&2
         exit 2
     fi
     sources=("$source_file")
@@ -89,6 +104,7 @@ for test in "${tests[@]}"; do
         done
     fi
     for mode in $modes; do
+        attempted=$((attempted+1))
         flags=(-std=c++20 -Wall -Wextra -Wpedantic -Werror
                -Wno-unused-parameter -I"$root/include")
         if [[ "$mode" == sanitizers ]]; then
@@ -98,20 +114,36 @@ for test in "${tests[@]}"; do
         fi
         dest="$tmp/$test-$mode"
         echo "L2 compile: $test [$mode] using $cxx"
-        "$cxx" "${flags[@]}" "${sources[@]}" -o "$dest"
+        if ! "$cxx" "${flags[@]}" "${sources[@]}" -o "$dest"; then
+            echo "L2 FAIL compile: $test [$mode]" >&2
+            failures+=("$test:$mode:compile")
+            continue
+        fi
         echo "L2 run: $test [$mode]"
         if [[ "$mode" == sanitizers ]]; then
-            ASAN_OPTIONS=halt_on_error=1:detect_leaks=1 \
-            UBSAN_OPTIONS=halt_on_error=1 \
-                "$dest"
+            if ASAN_OPTIONS=halt_on_error=1:detect_leaks=1 \
+               UBSAN_OPTIONS=halt_on_error=1 "$dest"; then
+                passed=$((passed+1))
+                echo "L2 PASS: $test [$mode]"
+            else
+                echo "L2 FAIL runtime: $test [$mode]" >&2
+                failures+=("$test:$mode:runtime")
+            fi
+        elif "$dest"; then
+            passed=$((passed+1))
+            echo "L2 PASS: $test [$mode]"
         else
-            "$dest"
+            echo "L2 FAIL runtime: $test [$mode]" >&2
+            failures+=("$test:$mode:runtime")
         fi
-        passed=$((passed+1))
     done
 done
-if (( passed==0 )); then
+if (( attempted==0 )); then
     echo "L2 ERROR: no test matched filter: $filter" >&2
     exit 2
 fi
-echo "L2 complete: $passed exact-checked-out-source standalone test executions passed."
+echo "L2 complete: $passed/$attempted exact-checked-out-source standalone test executions passed."
+if (( ${#failures[@]}>0 )); then
+    printf 'L2 FAILED EXECUTIONS: %s\n' "${failures[@]}" >&2
+    exit 1
+fi

@@ -142,6 +142,56 @@ int main() {
     early.originalParentLanguages={1,2};
     assert(DP::evaluate(early).internationalRerolls==0);
     assert(DP::evaluate(early).status==DP::Status::ConditionalOriginalEggPIDMatched);
+    // Original D/P international collection reroll witnesses. These
+    // fixed 32-bit outputs and counts independently encode the source
+    // PRandom recurrence and early-stop shiny condition; no unverified
+    // original parent language is silently copied from the native child.
+    struct LanguageWitness {
+        uint32_t pending,originalTrainer,expected;
+        uint8_t rerolls;
+    };
+    constexpr std::array<LanguageWitness,9> languageWitnesses{{
+        {0u,0u,0u,0u},
+        {0u,0x00000020u,0xDBFFE6DCu,4u},
+        {1u,0u,1u,0u},
+        {1u,0x00000020u,0xDE85D0CDu,4u},
+        {32u,0u,0x2CBD24FCu,4u},
+        {32u,0x00000020u,32u,0u},
+        {0x12345678u,0x12345678u,0x12345678u,0u},
+        {0x12345678u,0u,0x7E5085D4u,4u},
+        {0xDEADBEEFu,0u,0xB0832CDBu,4u}
+    }};
+    unsigned languageChecks=0;
+    for(const char* game:{"diamond_nds","pearl_nds"}) {
+        for(const auto& witness:languageWitnesses) {
+            const std::array<uint32_t,1> observedMT{witness.pending};
+            auto candidate=base(observedMT,game);
+            candidate.parents[0].heldItem=0;
+            candidate.originalParentLanguages={1,2};
+            candidate.originalCollectionTrainerId=witness.originalTrainer;
+            candidate.originalUnhatchedEggPid=witness.expected;
+            const auto result=DP::evaluate(candidate);
+            assert(result.status==DP::Status::ConditionalOriginalEggPIDMatched);
+            assert(result.pendingPid==witness.pending);
+            assert(result.originalFinalPid==witness.expected);
+            assert(result.internationalRerolls==witness.rerolls);
+            // No Masuda/international reroll when original languages
+            // agree, even for an original PID not shiny to this trainer.
+            candidate.originalParentLanguages={2,2};
+            candidate.originalUnhatchedEggPid=witness.pending;
+            const auto domestic=DP::evaluate(candidate);
+            assert(domestic.status==DP::Status::ConditionalOriginalEggPIDMatched);
+            assert(domestic.originalFinalPid==witness.pending);
+            assert(domestic.internationalRerolls==0);
+            candidate.originalParentLanguagesIndependentlyVerified=false;
+            assert(DP::evaluate(candidate).status==DP::Status::UnknownCollectionLanguages);
+            candidate.originalParentLanguagesIndependentlyVerified=true;
+            candidate.originalCollectionTrainerIdIndependentlyVerified=false;
+            assert(DP::evaluate(candidate).status==DP::Status::UnknownCollectionTrainer);
+            ++languageChecks;
+        }
+    }
+    assert(languageChecks==18);
     auto wrongGame=base(accepted,"platinum_nds");
     assert(DP::evaluate(wrongGame).status==DP::Status::UnsupportedGame);
     std::cout<<"L2 B13 original Diamond/Pearl PID history: "<<checks+7
