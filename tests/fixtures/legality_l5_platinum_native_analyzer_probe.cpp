@@ -40,7 +40,8 @@ Legality::Report probe(uint16_t species,uint8_t origin,
     const std::array<uint16_t,4>& moves,uint32_t experience,
     Enums::GameVersion saveGroup=Enums::GameVersion::PT,
     std::string_view sourceLabel="platinum_nds",
-    bool egg=false,uint8_t form=0,bool palPark=false) {
+    bool egg=false,uint8_t form=0,bool palPark=false,
+    bool wrongSplit=false,bool invalidBall=false) {
     std::vector<std::byte> plain(Encryption::SIZE_STORED4,std::byte{0});
     wr32(plain,0x00,0x12345678u);
     wr16(plain,0x08,species);
@@ -57,10 +58,10 @@ Legality::Report probe(uint16_t species,uint8_t origin,
     plain[0x40]=static_cast<std::byte>(form<<3);
     plain[0x5F]=static_cast<std::byte>(origin);
     if(palPark) {
-        wr16(plain,0x46,0x37); // Pt/HGSS Pal Park split-field marker
+        wr16(plain,0x46,wrongSplit?0x36:0x37); // Pt/HGSS Pal Park split-field marker
         wr16(plain,0x80,0x37);
     }
-    plain[0x83]=std::byte{4};
+    plain[0x83]=invalidBall?std::byte{0}:std::byte{4};
     plain[0x84]=std::byte{5};
     const auto ciphertext=Encryption::encryptArray4(plain);
     const auto original=ciphertext;
@@ -134,6 +135,17 @@ int main() {
     const auto cubeOrigin=probe(1,15,{73,0,0,0},10000,
         Enums::GameVersion::PT,"platinum_nds",false,0,true);
     assert(!info(cubeOrigin,"Pal Park original"));
+    // Split transfer fields and original Gen III Ball must both match.
+    // A lone 0x37 marker cannot certify a Pal Park transfer.
+    const auto badSplit=probe(1,2,{73,0,0,0},10000,
+        Enums::GameVersion::PT,"platinum_nds",false,0,true,true);
+    assert(!info(badSplit,"Pal Park original ruby_gba level-up source opportunity:"));
+    const auto badBall=probe(1,2,{73,0,0,0},10000,
+        Enums::GameVersion::PT,"platinum_nds",false,0,true,false,true);
+    assert(!info(badBall,"Pal Park original ruby_gba level-up source opportunity:"));
+    const auto migrantEgg=probe(1,2,{73,0,0,0},10000,
+        Enums::GameVersion::PT,"platinum_nds",true,0,true);
+    assert(!info(migrantEgg,"Pal Park original ruby_gba level-up source opportunity:"));
     const auto migratedUnmodeled=probe(387,2,{73,0,0,0},10000,
         Enums::GameVersion::PT,"platinum_nds",false,0,true);
     assert(!info(migratedUnmodeled,"Pal Park original ruby_gba level-up source opportunity:"));
@@ -154,5 +166,5 @@ int main() {
         "Pal Park original ruby_gba level-up source opportunity:"));
 
 
-    std::cout<<"L3 production Platinum and Pal Park native encrypted PK4 16-context INFO gate PASS\\n";
+    std::cout<<"L3 production Platinum and Pal Park native encrypted PK4 19-context INFO gate PASS\\n";
 }
