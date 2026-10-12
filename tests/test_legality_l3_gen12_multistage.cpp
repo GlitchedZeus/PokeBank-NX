@@ -27,6 +27,10 @@ constexpr H::Path redEvolve() {
 }
 static_assert(H::evaluate(redEvolve()).status==S::CandidateConsistent);
 static_assert(H::evaluate(redEvolve()).evolutions==1);
+static_assert([]{auto p=redEvolve();p.initialMoves={0,0,0,0};
+    return H::evaluate(p).status==S::Unknown;}());
+static_assert([]{auto p=redEvolve();p.observedMoves={0,0,0,0};
+    return H::evaluate(p).status==S::Unknown;}());
 static_assert([]{auto p=redEvolve();p.steps[2].move=73;
     return H::evaluate(p).status==S::Unknown;}());
 static_assert([]{auto p=redEvolve();p.steps[2].slot=2;
