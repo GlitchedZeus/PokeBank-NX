@@ -30,6 +30,7 @@ static void attest(J::Input& input,unsigned index){
             input.original.originalEggEventIdentity,input.originalEggSnapshotId,
             c.ivPhysicalParentPairIdentity,101,202,229,0};
 }
+#ifndef LEGALITY_L2_IMPORT_STAGE5_FIXTURE
 int main(){
     unsigned checks=0;
     for(const char* game:{"diamond_nds","pearl_nds"})
@@ -73,3 +74,4 @@ int main(){
     assert(checks==16384);
     std::cout<<"L2 Stage5 DP same-route integration: "<<checks<<" PASS\n";
 }
+#endif // LEGALITY_L2_IMPORT_STAGE5_FIXTURE
