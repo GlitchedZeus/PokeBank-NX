@@ -1869,49 +1869,20 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
 }
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
-    screen.touchButtons.clear();
     auto* staged = editor(screen);
     if (!staged) return;
     std::string error;
     const bool occupied = staged->boxedPokemon(static_cast<std::size_t>(state.box),
                                                 static_cast<std::size_t>(state.slot), error).has_value();
-    const auto actions = Shared::actionsForSlot(occupied, {true, true, true}, !staged->pendingChanges().empty());
-
-    // Match the accepted Gen I/Yellow box action sheet: keep the box visible,
-    // dim it, then draw one compact neutral modal on top.
+    const auto actions = Shared::actionsForSlot(
+        occupied, {true, true, true}, !staged->pendingChanges().empty());
     screen.drawGSCOverlay(fb);
-    // The backdrop may republish box-cell hitboxes. The active modal must
-    // own every tap, including row taps over the dimmed Pokémon grid.
-    screen.touchButtons.clear();
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 105));
-    const int w = occupied ? 650 : 560;
-    const auto geometry = Shared::actionMenuGeometry();
-    const int h = geometry.rowStart +
-                  static_cast<int>(actions.count) * geometry.rowStep + 62;
-    const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - kNavBarH - h) / 2;
-    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
-    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
-    fb.drawText(x + 24, y + 18, occupied ? "Pokemon Actions" : "Empty Slot",
-                Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52,
-        Context::contextLine("Box " + std::to_string(state.box + 1) + " / Slot " +
-                             std::to_string(state.slot + 1),
-                             screen.sourceGameId, Context::SurfaceMode::ViewReadOnly),
-        Colors::TextDim, TextStyle::Caption);
-
-    int rowY = y + geometry.rowStart;
-    for (std::size_t i = 0; i < actions.count; ++i) {
-        const bool selected = static_cast<int>(i) == state.actionRow;
-        screen.touchButtons.push_back({31600 + static_cast<int>(i), x + 22, rowY, w - 44, geometry.rowHeight});
-        const auto action = actions[i];
-        const char* label = action == Shared::Action::Remove ? "Release" : Shared::actionLabel(action);
-        drawNativeActionRow(fb, x + 22, rowY, w - 44, geometry.rowHeight,
-                            label, selected);
-        rowY += geometry.rowStep;
-    }
-    fb.drawText(x + 24, y + h - 38, "Original source is immutable",
-                Colors::Accent, TextStyle::Caption);
+    // One narrow, greyed-out menu for touch and A. Underlying box hitboxes
+    // are replaced by enabled native command IDs only.
+    const auto model = PokeBank::UIModel::NarrowPokemonMenu::classic(actions, occupied);
+    drawNarrowPokemonActions(fb, screen.touchButtons, model, state.actionRow,
+                            occupied ? "Pokemon Actions" : "Empty Slot",
+                            "GEN III / READ-ONLY SOURCE", 31600);
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
 }
 
