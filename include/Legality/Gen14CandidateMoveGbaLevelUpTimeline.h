@@ -2,7 +2,7 @@
 // L3 M06 / M12: exact ordered level-up offers within ONE verified, unchanged
 // GBA species/game stage. All 386 Emerald national species are drawn from the
 // accepted pinned source table. Ruby/Sapphire and FR/LG are conservatively
-// limited to nine independently transcribed source-verified species; an
+// limited to twelve independently transcribed source-verified species; an
 // unmodeled species is UNKNOWN, not an impossible move history.
 // Original source revisions: pokeruby@63a8cbf0016b351a4e68f7036fa0b77e23d2f2c1,
 // pokeemerald@5eff78649e7170a877b961ef0b3da13b81a16038,
@@ -11,6 +11,7 @@
 #include "Legality/Gen14CandidateMoveChronology.h"
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
 #include "Legality/Gen14CandidateMoveGbaStarterTables.h"
+#include "Legality/Gen14CandidateMoveGbaNinjaTables.h"
 #include <array>
 #include <cstdint>
 
@@ -62,7 +63,7 @@ inline constexpr std::array<Offer,10> kCharmanderFrlg{{
 constexpr bool supported(Game game,uint16_t species) noexcept {
     if(C::generation(game)!=3 || !species || species>386)return false;
     if(game==Game::Emerald)return true;
-    return species>=1 && species<=9;
+    return (species>=1 && species<=9) || (species>=290 && species<=292);
 }
 constexpr uint16_t offerCount(Game game,uint16_t species) noexcept {
     if(!supported(game,species))return 0;
@@ -81,6 +82,9 @@ constexpr uint16_t offerCount(Game game,uint16_t species) noexcept {
     case 7:return static_cast<uint16_t>(Gen14CandidateMoveGbaStarterTables::kSquirtle.size());
     case 8:return static_cast<uint16_t>(Gen14CandidateMoveGbaStarterTables::kWartortle.size());
     case 9:return static_cast<uint16_t>(Gen14CandidateMoveGbaStarterTables::kBlastoise.size());
+    case 290:return static_cast<uint16_t>(Gen14CandidateMoveGbaNinjaTables::kNincada.size());
+    case 291:return static_cast<uint16_t>(Gen14CandidateMoveGbaNinjaTables::kNinjask.size());
+    case 292:return static_cast<uint16_t>(Gen14CandidateMoveGbaNinjaTables::kShedinja.size());
     default:return 0;
     }
 }
@@ -105,6 +109,9 @@ constexpr Offer offerAt(Game game,uint16_t species,uint16_t index) noexcept {
     case 7:offer=S::kSquirtle[index];break;
     case 8:offer=S::kWartortle[index];break;
     case 9:offer=S::kBlastoise[index];break;
+    case 290:{const auto x=Gen14CandidateMoveGbaNinjaTables::kNincada[index];return {x.level,x.move};}
+    case 291:{const auto x=Gen14CandidateMoveGbaNinjaTables::kNinjask[index];return {x.level,x.move};}
+    case 292:{const auto x=Gen14CandidateMoveGbaNinjaTables::kShedinja[index];return {x.level,x.move};}
     default:return {};
     }
     return {offer.level,offer.move};
@@ -203,6 +210,22 @@ constexpr bool starterFamilySourceParity() noexcept {
     return true;
 }
 static_assert(starterFamilySourceParity());
+// Same 35 original level-up entries across all five GBA games.
+constexpr bool ninjaFamilySourceParity() noexcept {
+    for(uint16_t species=290;species<=292;++species) {
+        const uint16_t count=offerCount(Game::Emerald,species);
+        if(count!=offerCount(Game::Ruby,species))return false;
+        for(uint16_t i=0;i<count;++i) {
+            const Offer em=offerAt(Game::Emerald,species,i);
+            for(const Game game:{Game::Ruby,Game::Sapphire,Game::FireRed,Game::LeafGreen}) {
+                const Offer local=offerAt(game,species,i);
+                if(local.level!=em.level || local.move!=em.move)return false;
+            }
+        }
+    }
+    return true;
+}
+static_assert(ninjaFamilySourceParity());
 static_assert(offerCount(Game::Emerald,1)==11);
 static_assert(offerAt(Game::Ruby,4,3).move==108);
 static_assert(offerAt(Game::FireRed,4,3).move==232);
