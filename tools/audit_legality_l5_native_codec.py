@@ -72,7 +72,25 @@ def verify(sanitize: bool, source_pin: bool) -> dict:
         subprocess.run(args,check=True,cwd=ROOT)
         result=subprocess.run([str(exe)],input=rows(fixture),text=True,
                               check=True,capture_output=True,cwd=ROOT)
-    if "348 PASS (336 native byte roundtrips, 12 corrupted checksum rejects)" not in result.stdout:
+        # Negative input validation: strict size, hex, format and field ranges.
+        example=fixture["fixtures"][0]
+        cells=rows({"fixtures":[example],"corrupt_controls":[]}).strip().split(" ")
+        malformed=[]
+        bad=cells.copy();bad[8]=bad[8][:-2];malformed.append(bad)
+        bad=cells.copy();bad[8]=bad[8]+"00";malformed.append(bad)
+        bad=cells.copy();bad[8]=bad[8][:-1]+"z";malformed.append(bad)
+        bad=cells.copy();bad[1]="7";malformed.append(bad)
+        bad=cells.copy();bad[5]="256";malformed.append(bad)
+        bad=cells.copy();bad[3]="4294967296";malformed.append(bad)
+        bad=cells.copy();bad[4]="24";malformed.append(bad)
+        bad=cells.copy();bad[6]="2";malformed.append(bad)
+        for i,bad in enumerate(malformed):
+            rejected=subprocess.run([str(exe)],input=" ".join(bad)+"\\n",
+                                    text=True,capture_output=True,cwd=ROOT)
+            if rejected.returncode == 0:
+                raise RuntimeError(f"Malformed input case {i} accepted by native tool")
+    if ("348 PASS (336 native byte roundtrips, 12 corrupted checksum rejects, " +
+            "251904 single-bit data corruptions rejected)") not in result.stdout:
         raise RuntimeError("Compiled executable did not attest all 348 rows: "+
                            result.stdout+" STDERR "+result.stderr)
     return {"status":"PASS","input":"synthetic native PK3/PK4, no retail authenticity",
@@ -80,6 +98,8 @@ def verify(sanitize: bool, source_pin: bool) -> dict:
             "true_production_crypto_code_executed":True,
             "actual_legality_analyzer_executed":False,
             "total":348,"roundtrips":336,"expected_rejects":12,
+            "single_bit_ciphertext_mutations_rejected":251904,
+            "malformed_input_cases_rejected":8,
             "message":result.stdout.strip()}
 
 def main() -> None:
