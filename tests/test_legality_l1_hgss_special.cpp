@@ -1,4 +1,5 @@
 #include "Legality/Gen4WildSpecialStageEvidence.h"
+#include "Legality/Gen4WildSourceLinkedHistory.h"
 #include "Encryption/Encryption4.h"
 #include <array>
 #include <algorithm>
@@ -131,6 +132,27 @@ int main(){
                 corrupted,Enums::GameVersion::HGSS);
             assert(S::evaluateNative(c,{&badChecksum,true,true}).status==
                    St::UnknownMalformedNativeRecord);
+            // Missing bytes, corrupt ciphertext and empty slots are not
+            // evidence that the independently alleged wild route failed.
+            Pokemon::Pokemon4ReadOnly shortNative(
+                std::vector<std::byte>(Encryption::SIZE_STORED4-1,std::byte{0}),
+                Enums::GameVersion::HGSS);
+            assert(S::evaluateNative(c,{&shortNative,true,true}).status==
+                   St::UnknownMalformedNativeRecord);
+            std::vector<std::byte> zero(Encryption::SIZE_STORED4,std::byte{0});
+            Pokemon::Pokemon4ReadOnly emptyNative(zero,Enums::GameVersion::HGSS);
+            assert(emptyNative.valid() && emptyNative.empty());
+            assert(S::evaluateNative(c,{&emptyNative,true,true}).status==
+                   St::UnknownNativeSnapshot);
+            namespace Linked=Legality::Gen4WildSourceLinkedHistory;
+            Linked::Observation linkedObservation{};
+            Linked::Candidate linkedCandidate{};
+            assert(Linked::evaluateNative(linkedObservation,linkedCandidate,
+                {&badChecksum,true,true,true}).status==
+                   Linked::Status::UnknownMalformedNativeRecord);
+            assert(Linked::evaluateNative(linkedObservation,linkedCandidate,
+                {&emptyNative,true,true,true}).status==
+                   Linked::Status::UnknownOriginalEncounterStage);
             assert(std::equal(untouched.begin(),untouched.end(),
                               native.originalEncryptedBytes().begin()));
             auto bad=c;bad.originalSpecies=0;
