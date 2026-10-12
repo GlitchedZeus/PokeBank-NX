@@ -43,7 +43,20 @@ int main(){
         Legality::Gen3MethodHOriginalStage::Status::UnsupportedLeadHistory)
         ==Kind::UnknownOriginalHistory);
     static_assert(U::map(
+        Legality::Gen3GameCubeOriginalFixedHistory::Status::ConditionalOriginalFixedHistory)
+        ==Kind::ConditionalOriginalHistory);
+    static_assert(U::map(
+        Legality::Gen3GameCubeOriginalFixedHistory::Status::CandidateOriginalPidIvContradicted)
+        ==Kind::CandidateLocalContradiction);
+    static_assert(U::map(
+        Legality::Gen3GameCubeOriginalFixedHistory::Status::UnknownRecipientSave)
+        ==Kind::UnknownOriginalHistory);
+    static_assert(U::map(
+        Legality::Gen3GameCubeOriginalFixedHistory::Status::BoundedOriginalRngUnresolved)
+        ==Kind::UnknownOriginalHistory);
+    static_assert(U::map(
         Legality::Gen3OriginalRoamerStage::Status::ConditionalOriginalRoamerHistory)
+        ==Kind::ConditionalOriginalHistory);
         ==Kind::ConditionalOriginalHistory);
     static_assert(U::map(
         Legality::Gen3OriginalRoamerStage::Status::CandidateOriginalPidIvContradicted)

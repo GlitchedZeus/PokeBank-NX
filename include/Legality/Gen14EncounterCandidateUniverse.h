@@ -15,6 +15,7 @@
 #include "Legality/Gen4NatureReversalReplay.h"
 #include "Legality/Gen4WildSourceLinkedHistory.h"
 #include "Legality/Gen3OriginalRoamerStage.h"
+#include "Legality/Gen3GameCubeOriginalFixedHistory.h"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -25,7 +26,8 @@ enum class Family : uint8_t {
     Gen3Safari, Gen3GameCubeShadow, Gen4SinnohWild,
     Gen4StaticGiftRoamer, Gen4HgssSpecial,
     Gen3EmeraldMethodH, Gen3PidIvOnly, Gen4WildSourceLinked,
-    Gen4NatureStageOnly, Gen3OriginalRoamer, Count
+    Gen4NatureStageOnly, Gen3OriginalRoamer,
+    Gen3GameCubeFixedGiftTrade, Count
 };
 enum class EvidenceKind : uint8_t {
     UnknownOriginalHistory, CandidateLocalContradiction,
@@ -152,6 +154,17 @@ constexpr EvidenceKind map(Gen4WildSpecialStageEvidence::Status s) noexcept {
 }
 // RNG correlation or a nature-reversal frame is one stage, NOT an
 // original encounter row. Promote it only to template/stage compatibility.
+constexpr EvidenceKind map(Gen3GameCubeOriginalFixedHistory::Status s) noexcept {
+    namespace H=Gen3GameCubeOriginalFixedHistory;
+    if(s==H::Status::ConditionalOriginalFixedHistory)
+        return EvidenceKind::ConditionalOriginalHistory;
+    switch(s) {
+        case H::Status::CandidateOriginalIdentityContradicted:
+        case H::Status::CandidateOriginalPidIvContradicted:
+            return EvidenceKind::CandidateLocalContradiction;
+        default: return EvidenceKind::UnknownOriginalHistory;
+    }
+}
 constexpr EvidenceKind map(Gen3OriginalRoamerStage::Status s) noexcept {
     using S=Gen3OriginalRoamerStage::Status;
     if(s==S::ConditionalOriginalRoamerHistory)
