@@ -64,7 +64,8 @@ int main() {
     assert(drawing.find("fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2)") == std::string::npos);
     assert(drawing.find("drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow") != std::string::npos);
     assert(drawing.find("NarrowPokemonMenu::classic(") != std::string::npos);
-    assert(drawing.find("GEN II / READ-ONLY SOURCE") != std::string::npos);
+    assert(drawing.find("screen.legacyProviderLabel() + \" GBC SOURCE / READ ONLY\"") != std::string::npos);
+    assert(drawing.find("Names::getSpeciesName(pokemon->species)") != std::string::npos);
     assert(drawing.find("drawPanelSurface(fb, x, y, w, h, false, 18)") != std::string::npos); // confirmation only
     assert(drawing.find("fb.drawSelectionHighlight(x + 22, rowY, w - 44, geometry.rowHeight)") == std::string::npos);
     const auto input = gen2Release.substr(gen2Release.find("bool handleReleaseActionInput"));

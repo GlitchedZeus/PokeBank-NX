@@ -50,8 +50,8 @@ for needle in (
     assert needle in narrow_gen1, f"Gen I narrow menu: {needle}"
 assert 'const auto model = PokeBank::UIModel::NarrowPokemonMenu::gen1(' in classic_actions
 assert 'const auto model = PokeBank::UIModel::NarrowPokemonMenu::classic(' in classic_actions
-assert '"GEN I / READ-ONLY SOURCE", 300' in classic_actions
-assert '"GEN II / READ-ONLY SOURCE", 500' in classic_actions
+assert 'screen.legacyProviderLabel() + " GB SOURCE / READ ONLY", 300' in classic_actions
+assert 'screen.legacyProviderLabel() + " GBC SOURCE / READ ONLY", 500' in classic_actions
 assert "const int w = pokemon ? 650 : 560;" not in classic_actions
 
 require(classic_actions, "src/UI/ClassicReleaseActionFix.inc",
