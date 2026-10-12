@@ -203,7 +203,8 @@ namespace UI {
         int hubFeatureIndex = -1;
         enum class Overlay { None, Options, Help, OpenFailure, GamesDrawer, ProfilePicker, GameWorkspace,
                              LegacyInstances, LegacyAssignment, LegacyDetails, Gen4Setup,
-                             Gen4Candidates, Gen5Setup, Gen5Candidates, GameFilePicker };
+                             Gen4Candidates, Gen5Setup, Gen5UnassignConfirm,
+                             Gen5Candidates, GameFilePicker };
         Overlay overlay = Overlay::None;
         Overlay helpReturnOverlay = Overlay::None;
         // Touch motion is surface-local. These markers let one centralized fence clear residual
@@ -264,6 +265,7 @@ namespace UI {
         int gen5SetupIndex = 0;
         int gen5CandidateIndex = 0;
         int gen5CandidateScroll = 0;
+        TouchScrollState gen5CandidateTouchScroll;
         int gen4SetupIndex = 0;
         int gen4CandidateIndex = 0;
         int gen4CandidateScroll = 0;

@@ -47,7 +47,7 @@ require(
     "drawVerifiedSummary(screen,fb,&view",
     "return true;",
     "All inherited generic storage/bank/source mutation routes stay barred.",
-    "(void)touch;",
+    "screen.touchedButtonId(touch);",
 )
 # Passive PK5 View must not invoke the legacy all-generation legality report.
 # Unknown/unsupported Gen V history is unresolved, not hard-invalid.
@@ -182,6 +182,68 @@ require(discovery, "entryLimitReached", "s.result.entriesExamined",
         "s.result.directoriesExamined", "limits.maxEntries,32768",
         "limits.maxDirectories,512")
 require(games, 'gen5Notice+=" Scan limit reached; list may be incomplete."')
+
+# Generation V source selection now follows the already accepted Gen IV
+# touch contract: a clean release inside the same clipped visible row may
+# choose a save, while a vertical drag only scrolls the viewport. Touch does
+# not bypass source assignment, fingerprint selection or strict revalidation.
+require(selector_header, "TouchScrollState gen5CandidateTouchScroll;",
+        "Gen5UnassignConfirm")
+require(games, "gen5CandidateTouchScroll.updateVertical(",
+        "gen5CandidateTouchScroll.offset()",
+        "gen5CandidateTouchScroll.reset();",
+        "gen5CandidateTouchScroll.stop();",
+        "case Overlay::Gen5Candidates: gen5CandidateIndex = idx;",
+        "case Overlay::Gen5Candidates: gen5CandidateIndex = r.idx;",
+        "pushViewportHit(overlayRects,x+24,touchY,w-48,rowH-6,i,",
+        "touch.justTapped()", "const int maxFirst=std::max(0,count-visibleRows);")
+gen5_input = games.split("if (overlay == Overlay::Gen5Candidates) {", 1)[1]
+gen5_input = gen5_input.split("if (overlay == Overlay::Gen4Setup)", 1)[0]
+assert "gen5CandidateTouchScroll.updateVertical(" in gen5_input
+assert "assignGen5Candidate(gen5Instances[" in gen5_input
+assert "if(kDown & (HidNpadButton_Up|HidNpadButton_Down))" in gen5_input
+gen5_draw = games.split("overlay == Overlay::Gen5Candidates && u)", 1)[1]
+gen5_draw = gen5_draw.split("overlay == Overlay::Gen4Setup && u)", 1)[0]
+assert "pushViewportHit(overlayRects,x+24,touchY" in gen5_draw
+assert "gen5CandidateTouchScroll.offset()" in gen5_draw
+
+# Forgetting a remembered source is a metadata mutation and cannot be
+# performed by A or a single tap. Y in a separate confirmation is required;
+# there are still no original SAV writes anywhere on the Gen V route.
+gen5_setup = games.split("if (overlay == Overlay::Gen5Setup) {", 1)[1]
+gen5_setup = gen5_setup.split("if (overlay == Overlay::Gen5Candidates)", 1)[0]
+assert "gen5SetupIndex==2)overlay=Overlay::Gen5UnassignConfirm;" in gen5_setup
+assert "gen5SetupIndex==2)unassignCurrentGen5Game()" not in gen5_setup
+require(games, "if (overlay == Overlay::Gen5UnassignConfirm)",
+        "else if(kDown & HidNpadButton_Y)unassignCurrentGen5Game();",
+        "Original save files remain untouched.")
+assert "Editor pending." not in games
+
+# Touch-to-Edit is deliberately limited to the same in-memory four-field
+# transaction model as the controller. Source, bank, Create and unsupported
+# inherited action menus remain unreachable. Target IDs and hitboxes are
+# generation-owned and come from the actual drawn modal rows.
+require(surface, "kGen5ActionTouchBase=77000",
+        "kGen5FieldTouchBase=77100",
+        "kGen5DecreaseTouchBase=77200",
+        "kGen5IncreaseTouchBase=77300",
+        "kGen5PartyTouchBase=77400",
+        "screen.touchedButtonId(touch)",
+        "screen.touchButtons.push_back(",
+        "down|=HidNpadButton_A;",
+        "down|=HidNpadButton_Left;",
+        "down|=HidNpadButton_Right;",
+        "screen.selectedPartyIndex=tap-kGen5PartyTouchBase;",
+        "kGen5ActionTouchBase+static_cast<int>(i)",
+        "kGen5FieldTouchBase+static_cast<int>(index)",
+        "kGen5DecreaseTouchBase+static_cast<int>(index)",
+        "kGen5IncreaseTouchBase+static_cast<int>(index)")
+assert "openPokemonActionSheet(" not in surface
+assert "touch.justTouchedDown()" not in surface
+# The hitboxes must not override controller-confirmation or app-memory
+# discard guards; there is no Y mapping for touch and no implicit Keep.
+assert "state.confirmDiscardAndExit(staged)" in surface
+assert "state.discardAllWithPresentation(staged," in surface
 
 # The display bridge must draw from validated staged PK5, never serialize SAV5.
 require(trainer, "Gen5ReadOnlyTrainer::rebuildPresentation(")

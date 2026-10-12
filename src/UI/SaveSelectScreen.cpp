@@ -2193,6 +2193,7 @@ namespace UI {
 
     void SaveSelectScreen::discoverGen5Candidates() {
         gen5Instances.clear();
+        gen5CandidateTouchScroll.stop();
         const auto discovered=PokeVault::Integration::Gen5::discoverKnownSources();
         std::vector<PokeVault::Source::SaveInstance> rows=discovered.instances;
         // Preserve exact manually assigned paths outside known emulator roots,
@@ -2833,6 +2834,7 @@ namespace UI {
         legacyInstanceTouchScroll.reset();
         legacyAssignmentTouchScroll.reset();
         gen4CandidateTouchScroll.reset();
+        gen5CandidateTouchScroll.reset();
         classicGamesTouchScroll.reset();
 
         // Entry to a fresh profile modal starts with the chosen user visible.
@@ -2930,6 +2932,8 @@ namespace UI {
                         case Overlay::LegacyAssignment: legacyAssignmentIndex = r.idx; break;
                         case Overlay::Gen4Setup: gen4SetupIndex = r.idx; break;
                         case Overlay::Gen4Candidates: gen4CandidateIndex = r.idx; break;
+                        case Overlay::Gen5Candidates: gen5CandidateIndex = r.idx; break;
+                        case Overlay::Gen5Setup: gen5SetupIndex = r.idx; break;
                         case Overlay::Options: optionsIndex = r.idx; break;
                         default: break;
                     }
@@ -2957,6 +2961,8 @@ namespace UI {
                         case Overlay::LegacyAssignment: legacyAssignmentIndex = idx; break;
                         case Overlay::Gen4Setup: gen4SetupIndex = idx; break;
                         case Overlay::Gen4Candidates: gen4CandidateIndex = idx; break;
+                        case Overlay::Gen5Candidates: gen5CandidateIndex = idx; break;
+                        case Overlay::Gen5Setup: gen5SetupIndex = idx; break;
                         case Overlay::Options: optionsIndex = idx; break;
                         default: activate = false; break;
                     }
@@ -3231,6 +3237,14 @@ namespace UI {
             if (kDown & HidNpadButton_A) assignCurrentLegacySource();
             return;
         }
+        if (overlay == Overlay::Gen5UnassignConfirm) {
+            // A or a touch tap must never silently forget a profile binding.
+            // Only an explicit Y confirmation removes app-owned assignment
+            // metadata; the original emulator save is never modified.
+            if(kDown & HidNpadButton_B)overlay=Overlay::Gen5Setup;
+            else if(kDown & HidNpadButton_Y)unassignCurrentGen5Game();
+            return;
+        }
         if (overlay == Overlay::Gen5Setup) {
             if(kDown & HidNpadButton_B) {
                 overlay=gen5SetupFromGamesDrawer?Overlay::GamesDrawer:Overlay::None;
@@ -3242,7 +3256,7 @@ namespace UI {
             if(kDown & HidNpadButton_A) {
                 if(gen5SetupIndex==0)discoverGen5Candidates();
                 else if(gen5SetupIndex==1)chooseGen5ManualFile();
-                else if(gen5SetupIndex==2)unassignCurrentGen5Game();
+                else if(gen5SetupIndex==2)overlay=Overlay::Gen5UnassignConfirm;
                 else {
                     overlay=gen5SetupFromGamesDrawer?Overlay::GamesDrawer:Overlay::None;
                     gen5SetupFromGamesDrawer=false;
@@ -3252,27 +3266,48 @@ namespace UI {
         }
         if (overlay == Overlay::Gen5Candidates) {
             const int count=static_cast<int>(gen5Instances.size());
+            constexpr int w=900,h=540,rowH=76,visibleRows=5;
+            const int x=(1280-w)/2,y=(720-h)/2;
+            const int maxFirst=std::max(0,count-visibleRows);
+            gen5CandidateScroll=std::clamp(gen5CandidateScroll,0,maxFirst);
+            if(maxFirst>0)
+                gen5CandidateTouchScroll.updateVertical(
+                    touch,x+24,y+108,w-48,visibleRows*rowH,
+                    rowH,gen5CandidateScroll,maxFirst+1);
+            else gen5CandidateTouchScroll.stop();
             if(kDown & HidNpadButton_B) {
+                gen5CandidateTouchScroll.stop();
                 overlay=gen5SetupFromGamesDrawer?Overlay::GamesDrawer:Overlay::None;
                 gen5SetupFromGamesDrawer=false;
                 return;
             }
-            if(kDown & HidNpadButton_X) {discoverGen5Candidates();return;}
+            if(kDown & HidNpadButton_X) {
+                gen5CandidateTouchScroll.stop();
+                discoverGen5Candidates();
+                return;
+            }
             if(kDown & HidNpadButton_Y) {
+                gen5CandidateTouchScroll.stop();
                 openGen5Setup(gen5TargetGameId,"Choose or repair a Gen V read-only source.",
                               gen5SetupFromGamesDrawer);
                 return;
             }
             if(count==0) {overlay=Overlay::Gen5Setup;return;}
+            if(kDown & (HidNpadButton_Up|HidNpadButton_Down))
+                gen5CandidateTouchScroll.stop();
             if(kDown & HidNpadButton_Up)
                 gen5CandidateIndex=(gen5CandidateIndex-1+count)%count;
             if(kDown & HidNpadButton_Down)
                 gen5CandidateIndex=(gen5CandidateIndex+1)%count;
-            constexpr int visibleRows=5;
-            if(gen5CandidateIndex<gen5CandidateScroll)
-                gen5CandidateScroll=gen5CandidateIndex;
-            else if(gen5CandidateIndex>=gen5CandidateScroll+visibleRows)
-                gen5CandidateScroll=gen5CandidateIndex-visibleRows+1;
+            // A release-confirmed tap on a clipped visible row updates focus
+            // and routes through the SAME strict assign/reopen path as A.
+            // Never snap a finger-scrolled viewport back to stale focus.
+            if(kDown & (HidNpadButton_Up|HidNpadButton_Down)) {
+                if(gen5CandidateIndex<gen5CandidateScroll)
+                    gen5CandidateScroll=gen5CandidateIndex;
+                else if(gen5CandidateIndex>=gen5CandidateScroll+visibleRows)
+                    gen5CandidateScroll=gen5CandidateIndex-visibleRows+1;
+            }
             if(kDown & HidNpadButton_A)
                 assignGen5Candidate(gen5Instances[static_cast<size_t>(gen5CandidateIndex)]);
             return;
@@ -4803,12 +4838,12 @@ namespace UI {
             drawModalSurface(fb,x,y,w,h);
             const auto* game=PokeVault::Games::findGame(gen5TargetGameId);
             const std::string title=game?std::string(game->title):"Generation V";
-            fb.drawText(x+28,y+18,"NINTENDO DS / GEN V PREVIEW / READ ONLY",
+            fb.drawText(x+28,y+18,"NINTENDO DS / GEN V SAVE SOURCES / READ ONLY",
                         Colors::Accent,TextStyle::Caption);
             fb.drawText(x+28,y+44,"Pokémon "+title,
                         Colors::TextPrimary,TextStyle::Heading);
             fb.drawText(x+28,y+76,
-                        "Choose a save for trainer, Pokédex and party preview. Editor pending.",
+                        "Browse and stage PK5 fields in memory. Original saves stay unchanged.",
                         Colors::TextSecondary,TextStyle::Caption);
             const std::string rows[4]={
                 "Refresh Known Emulator Saves","Choose Save File Manually",
@@ -4817,6 +4852,7 @@ namespace UI {
             int ry=y+112;
             for(int i=0;i<4;++i) {
                 drawFocusedCard(fb,x+24,ry,w-48,rowH-8,i==gen5SetupIndex,10);
+                overlayRects.push_back({x+24,ry,w-48,rowH-8,i});
                 fb.drawText(x+44,ry+15,rows[i],i==gen5SetupIndex?
                     Colors::TextPrimary:Colors::TextSecondary);
                 ry+=rowH;
@@ -4825,6 +4861,21 @@ namespace UI {
                 fb.drawText(x+28,y+h-42,gen5Notice.substr(0,105),
                             Colors::TextMuted,TextStyle::Caption);
             drawNavBar(fb,{{"D-pad/Stick","Choose"},{"A","Select"},{"B","Back"}});
+        } else if (overlay == Overlay::Gen5UnassignConfirm && u) {
+            constexpr int w=760,h=270;
+            const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-h)/2;
+            drawModalSurface(fb,x,y,w,h);
+            fb.drawText(x+28,y+22,"FORGET GENERATION V SOURCE ASSIGNMENT?",
+                        Colors::TextPrimary,TextStyle::Heading);
+            fb.drawText(x+28,y+86,
+                        "This clears the remembered profile/game file link only.",
+                        Colors::TextSecondary,TextStyle::Body);
+            fb.drawText(x+28,y+124,"Original save files remain untouched.",
+                        Colors::Accent,TextStyle::Body);
+            fb.drawText(x+28,y+165,
+                        "Y: Confirm forgetting link     B: Keep assignment",
+                        Colors::TextPrimary,TextStyle::Body);
+            drawNavBar(fb,{{"Y","Confirm Forget"},{"B","Keep Assignment"}});
         } else if (overlay == Overlay::Gen5Candidates && u) {
             constexpr int w=900,h=540,rowH=76,visibleRows=5;
             const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-h)/2;
@@ -4838,8 +4889,18 @@ namespace UI {
             fb.drawText(x+28,y+76,
                         "Select validated save for preview. The original file stays unchanged.",
                         Colors::TextSecondary,TextStyle::Caption);
+            const int first=gen5CandidateScroll;
+            const int liveOffset=gen5CandidateTouchScroll.offset();
             drawSaveInstanceRows(fb,gen5Instances,gen5CandidateIndex,
-                                 gen5CandidateScroll,x,y+108,w,rowH,visibleRows,false);
+                                 first,x,y+108,w,rowH,visibleRows,false,liveOffset);
+            const int drawFirst=std::max(0,first-1);
+            const int drawLast=std::min<int>(static_cast<int>(gen5Instances.size()),
+                                              first+visibleRows+1);
+            for(int i=drawFirst;i<drawLast;++i) {
+                const int touchY=y+108+(i-first)*rowH+liveOffset;
+                pushViewportHit(overlayRects,x+24,touchY,w-48,rowH-6,i,
+                                x+24,y+108,w-48,visibleRows*rowH);
+            }
             if(!gen5Notice.empty())
                 fb.drawText(x+28,y+h-34,gen5Notice.substr(0,95),
                             Colors::TextMuted,TextStyle::Caption);

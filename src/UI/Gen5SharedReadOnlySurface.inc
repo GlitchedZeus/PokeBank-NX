@@ -2,7 +2,8 @@
 // renderer. View, four-field staged Edit and Review are in app memory only.
 // This layer owns EVERY Gen V controller frame: inherited Storage/Bank, Items,
 // source-save dialogs, Create and generic mutation handlers are unreachable.
-// Touch remains inert in this isolated lane until its separate safety review.
+// Touch targets are isolated to verified read-only and four-field staged
+// actions; native bank, source-writing and unsupported mutation routes remain barred.
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Integration/Gen5/Gen5SharedReview.h"
 #include "Legacy/Gen5ReadOnlyTrainer.h"
@@ -19,6 +20,13 @@ using ScreenState=PokeVault::Integration::Gen5::Gen5SharedScreenState;
 using Surface=ScreenState::Surface;
 using Slot=ScreenState::Slot;
 using Region=PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace::Region;
+// Screen-local ids never overlap inherited Trainer/Storage touch actions.
+// Every tap is release-confirmed by touchedButtonId(), not touch-down.
+constexpr int kGen5ActionTouchBase=77000;
+constexpr int kGen5FieldTouchBase=77100;
+constexpr int kGen5DecreaseTouchBase=77200;
+constexpr int kGen5IncreaseTouchBase=77300;
+constexpr int kGen5PartyTouchBase=77400;
 
 PokeVault::Legacy::Gen5ReadOnlyTrainer& nativeTrainer(TrainerViewScreen& screen) {
     return static_cast<PokeVault::Legacy::Gen5ReadOnlyTrainer&>(screen.trainer);
@@ -56,7 +64,6 @@ void keepDraft(TrainerViewScreen& screen) {
 
 bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                  int stickX,int stickY,const TouchInput& touch) {
-    (void)touch;
     if(!isGen5Source(screen))return false;
 
     // Refuse all inherited controls on a mismatched Trainer type/family.
@@ -75,6 +82,37 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
     auto& staged=trainer.stagedPokemon();
     auto& state=trainer.sharedScreen();
     if(screen.storageStatusFrames>0)--screen.storageStatusFrames;
+    // Consume only Gen V-owned touch hitboxes published by the last frame.
+    // Never forward a tap to inherited bank/source/create handlers.
+    const int tap=screen.touchedButtonId(touch);
+    if(state.surface()==Surface::Actions) {
+        const auto actions=state.availableActions(staged);
+        if(tap>=kGen5ActionTouchBase &&
+           tap<kGen5ActionTouchBase+static_cast<int>(actions.count)) {
+            const int row=tap-kGen5ActionTouchBase;
+            state.moveAction(row-state.actionRow(),staged);
+            down|=HidNpadButton_A;
+        }
+    } else if(state.surface()==Surface::Edit) {
+        constexpr int fieldCount=static_cast<int>(ScreenState::kEditableRows.size());
+        if(tap>=kGen5FieldTouchBase && tap<kGen5FieldTouchBase+fieldCount)
+            state.moveField(tap-kGen5FieldTouchBase-state.fieldRow());
+        else if(tap>=kGen5DecreaseTouchBase &&
+                tap<kGen5DecreaseTouchBase+fieldCount) {
+            state.moveField(tap-kGen5DecreaseTouchBase-state.fieldRow());
+            down|=HidNpadButton_Left;
+        } else if(tap>=kGen5IncreaseTouchBase &&
+                  tap<kGen5IncreaseTouchBase+fieldCount) {
+            state.moveField(tap-kGen5IncreaseTouchBase-state.fieldRow());
+            down|=HidNpadButton_Right;
+        }
+    } else if(state.surface()==Surface::Browse &&
+              screen.selectedMode==TrainerViewScreen::ViewMode::Party &&
+              tap>=kGen5PartyTouchBase &&
+              tap<kGen5PartyTouchBase+static_cast<int>(screen.trainer.getPartySize())) {
+        screen.selectedPartyIndex=tap-kGen5PartyTouchBase;
+        down|=HidNpadButton_A;
+    }
     const u64 keys=screen.controllerNavigation.apply(
         down,held,stickX,stickY,
         HidNpadButton_Up,HidNpadButton_Down,
@@ -284,6 +322,9 @@ void drawActions(TrainerViewScreen& screen,PKSEFramebuffer& fb,
         const int yy=y+geometry.rowStart+static_cast<int>(i)*geometry.rowStep;
         if(static_cast<int>(i)==state.actionRow())
             fb.drawSelectionHighlight(x+22,yy,w-44,geometry.rowHeight);
+        screen.touchButtons.push_back(
+            {kGen5ActionTouchBase+static_cast<int>(i),
+             x+22,yy,w-44,geometry.rowHeight});
         fb.drawText(x+38,yy+9,
             PokeBank::UIModel::SharedPokemonEditor::actionLabel(choices[i]),
             static_cast<int>(i)==state.actionRow()?Colors::Text:Colors::TextSecondary,
@@ -394,9 +435,19 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
         const int yy=y+65+static_cast<int>(i)*52;
         if(static_cast<int>(index)==state.fieldRow())
             fb.drawSelectionHighlight(x+12,yy,w-24,46);
+        // Touch selects the row; only the explicit +/- hitboxes can change
+        // an in-memory PK5 value. No implicit Keep, Discard or source write.
+        screen.touchButtons.push_back(
+            {kGen5FieldTouchBase+static_cast<int>(index),x+14,yy,279,46});
+        screen.touchButtons.push_back(
+            {kGen5DecreaseTouchBase+static_cast<int>(index),x+308,yy+3,36,40});
+        screen.touchButtons.push_back(
+            {kGen5IncreaseTouchBase+static_cast<int>(index),x+418,yy+3,36,40});
         const std::string value=std::to_string(ScreenState::fieldValue(*current,row));
         fb.drawText(x+26,yy+11,row.label,Colors::TextSecondary,TextStyle::Body);
+        fb.drawText(x+315,yy+11,"-",Colors::Accent,TextStyle::Body);
         fb.drawText(x+355,yy+11,value,Colors::Text,TextStyle::Body);
+        fb.drawText(x+429,yy+11,"+",Colors::Accent,TextStyle::Body);
     }
     fb.drawText(x+22,y+h-33,"Nature / Friendship / IVs / EVs ONLY",
                 Colors::Accent,TextStyle::Caption);
@@ -443,6 +494,25 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         case Surface::Browse:break;
     }
     screen.drawGSCOverlay(fb);
+    if(screen.selectedMode==TrainerViewScreen::ViewMode::Party) {
+        // Match the established two-column Party panel hit geometry, but
+        // route through Gen V's own guarded Actions instead of the base sheet.
+        constexpr int x=LEFT_PANEL_X,y=CONTENT_PANEL_Y;
+        constexpr int gutter=16,slotGap=12;
+        const int width=fb.getWidth()-x;
+        const int top=y+58;
+        const int colW=(width-3*gutter)/2;
+        const int slotH=(CONTENT_PANEL_HEIGHT-(top-y)-2*slotGap-gutter)/3;
+        const int size=static_cast<int>(screen.trainer.getPartySize());
+        for(int i=0;i<std::min(size,6);++i) {
+            const int column=i>=3?1:0;
+            const int row=i>=3?i-3:i;
+            screen.touchButtons.push_back({
+                kGen5PartyTouchBase+i,
+                x+gutter+column*(colW+gutter),
+                top+row*(slotH+slotGap),colW,slotH});
+        }
+    }
     if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes)
         drawNavBar(fb,{{"D-pad/Stick","Navigate"},{"L/R","Box"},
                        {"A","Actions"},{"X","Party"},{"Y","Trainer"},{"B","Exit"}});
