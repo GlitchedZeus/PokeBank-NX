@@ -27,6 +27,7 @@ printf 'L3 source HEAD: %s\n' "$(git rev-parse HEAD 2>/dev/null || printf 'unava
 BUILD="$(mktemp -d "${TMPDIR:-/tmp}/pokebank-l3-XXXXXXXX")"
 trap 'rm -rf "$BUILD"' EXIT
 SUITES=(
+    test_legality_l3_gen12_multistage
     test_legality_l3_original_source_digest
     test_legality_l3_original_source_fingerprints
     test_legality_l3_gen12_joint_chronology
@@ -61,4 +62,4 @@ for suite in "${SUITES[@]}"; do
         UBSAN_OPTIONS="${UBSAN_OPTIONS:-halt_on_error=1}" \
         "$BUILD/${suite}_sanitize"
 done
-echo 'L3 PASS: all nineteen native C++20 suites and nineteen ASan/UBSan executions (full accepted Emerald source)'
+echo 'L3 PASS: all twenty native C++20 suites and twenty ASan/UBSan executions (full accepted Emerald source)'
