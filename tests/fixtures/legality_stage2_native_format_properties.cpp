@@ -8,6 +8,7 @@
 #include "Pokemon/Pokemon4ReadOnly.h"
 #include "Pokemon/Pokemon3FRLG.h"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
