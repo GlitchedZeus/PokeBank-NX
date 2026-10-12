@@ -6,6 +6,7 @@
 // No Pokémon/save writes and no global Invalid or Legal result.
 #include "Legality/Gen3OriginalWildSourceStage.h"
 #include "Legality/Gen3OriginalWildRngWitness.h"
+#include "Legality/Gen3OriginalCaptureRouteLedger.h"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -94,7 +95,7 @@ inline Result evaluate(const Candidate& c) noexcept {
     return out;
 }
 
-inline constexpr std::size_t kMaxCandidates=32;
+inline constexpr std::size_t kMaxCandidates=Gen3OriginalCaptureRouteLedger::kCapacity;
 enum class UniverseStatus : uint8_t {
     UnknownOriginalRoot, UnknownCapacity, UnknownDuplicateCaptureWitness,
     UnknownUnresolvedHistories, ProvidedRoutesLocallyContradictedOnly,
@@ -112,46 +113,45 @@ struct UniverseResult {
 inline UniverseResult evaluateUniverse(
     uint64_t root,bool rootIndependentlyAttested,
     std::span<const Hypothesis> hypotheses) noexcept {
-    UniverseResult out{};
-    if(!root || !rootIndependentlyAttested)return out;
-    if(hypotheses.size()>kMaxCandidates) {
-        out.status=UniverseStatus::UnknownCapacity;
-        return out;
-    }
-    if(hypotheses.empty()) {
-        out.status=UniverseStatus::UnknownUnresolvedHistories;
-        return out;
-    }
-    // A route id must belong to exactly one original physical capture.
-    // Reused or missing IDs are contaminated historical source packets.
+    namespace L=Gen3OriginalCaptureRouteLedger;
+    if(hypotheses.size()>kMaxCandidates)
+        return {UniverseStatus::UnknownCapacity};
+    std::array<L::Receipt,kMaxCandidates> receipts{};
     for(std::size_t i=0;i<hypotheses.size();++i) {
-        if(!hypotheses[i].independentlyIdentifiedRoute ||
-           !hypotheses[i].candidate.physicalCaptureIdentity ||
-           hypotheses[i].candidate.physicalCaptureIdentity!=root) {
-            out.status=UniverseStatus::UnknownDuplicateCaptureWitness;
-            return out;
-        }
-        for(std::size_t j=0;j<i;++j) {
-            if(hypotheses[j].independentlyIdentifiedRoute==
-               hypotheses[i].independentlyIdentifiedRoute) {
-                out.status=UniverseStatus::UnknownDuplicateCaptureWitness;
-                return out;
-            }
-        }
+        const auto& h=hypotheses[i];
+        const auto checked=evaluate(h.candidate);
+        L::Evidence evidence=L::Evidence::Missing;
+        if(checked.status==Status::ConditionalSourceAndStageOnly)
+            evidence=L::Evidence::SourceStageCompatible;
+        else if(checked.status==Status::CandidateOriginalSourceContradicted ||
+                checked.status==Status::CandidateOriginalRngContradicted)
+            evidence=L::Evidence::CandidateContradicted;
+        receipts[i]={h.candidate.physicalCaptureIdentity,
+                     h.candidate.originalSaveIdentity,
+                     h.independentlyIdentifiedRoute,evidence,
+                     h.candidate.originalCaptureIdentityIndependentlyAttested &&
+                     h.candidate.sourceAndRngBelongToSameCaptureIndependentlyAttested};
     }
-    for(const auto& h:hypotheses) {
-        const auto r=evaluate(h.candidate);
-        if(r.status==Status::ConditionalSourceAndStageOnly)++out.compatible;
-        else if(r.status==Status::CandidateOriginalSourceContradicted ||
-                r.status==Status::CandidateOriginalRngContradicted)
-            ++out.locallyContradicted;
-        else ++out.unresolved;
+    const auto audit=L::reconcile(root,rootIndependentlyAttested,
+        std::span<const L::Receipt>(receipts.data(),hypotheses.size()));
+    UniverseResult out{};
+    out.compatible=audit.compatible;
+    out.locallyContradicted=audit.contradicted;
+    out.unresolved=audit.unresolved;
+    switch(audit.outcome) {
+        case L::Outcome::UnknownRoot:
+            out.status=UniverseStatus::UnknownOriginalRoot;break;
+        case L::Outcome::UnknownCapacity:
+            out.status=UniverseStatus::UnknownCapacity;break;
+        case L::Outcome::UnknownDuplicateOrForeignRoute:
+            out.status=UniverseStatus::UnknownDuplicateCaptureWitness;break;
+        case L::Outcome::UnknownAlternateAcquisition:
+            out.status=UniverseStatus::UnknownUnresolvedHistories;break;
+        case L::Outcome::OnlyProvidedRoutesContradicted:
+            out.status=UniverseStatus::ProvidedRoutesLocallyContradictedOnly;break;
+        case L::Outcome::OneConditionalCaptureRoute:
+            out.status=UniverseStatus::OneConditionalSameCaptureRoute;break;
     }
-    if(out.compatible)out.status=UniverseStatus::OneConditionalSameCaptureRoute;
-    else if(out.unresolved)out.status=UniverseStatus::UnknownUnresolvedHistories;
-    else out.status=UniverseStatus::ProvidedRoutesLocallyContradictedOnly;
-    // Even ALL supplied routes contradicted does not establish exhaustive
-    // original encounter alternatives, let alone full Pokémon legality.
     return out;
 }
 } // namespace Legality::Gen3OriginalWildJointHistory
