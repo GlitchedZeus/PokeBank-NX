@@ -137,7 +137,8 @@ constexpr Result evaluate(const Input& in) noexcept {
 static_assert(L::offerAt(C::Game::Ruby,1,2).move==73);
 static_assert(L::offerAt(C::Game::Ruby,1,3).move==22);
 static_assert(L::offerAt(C::Game::Ruby,1,10).level==46);
-static_assert(!L::supported(C::Game::Ruby,133));
+static_assert(L::supported(C::Game::Ruby,133));
+static_assert(L::offerAt(C::Game::Ruby,133,0).move==33);
 // These source-scoped tests compile in the already registered host suite
 // through the owned Gen14CandidateMoveHistory.h include path, independent
 // of coordinator registration of the standalone L3 runner.
