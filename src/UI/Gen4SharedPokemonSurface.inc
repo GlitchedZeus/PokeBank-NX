@@ -2116,6 +2116,8 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
         state, occupied, staged != nullptr, staged && staged->hasChanges());
 
     screen.drawGSCOverlay(fb);
+    // Background box and party cards cannot intercept foreground action taps.
+    screen.touchButtons.clear();
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0,0,0,105));
     const auto geometry = Shared::actionMenuGeometry();
     constexpr int w = 560;
