@@ -141,7 +141,13 @@ constexpr Result evaluate(const Input& in) noexcept {
             }
             if(matched!=1)return out;
         }
-        if(i>edge && step.action==C::Action::Learn) {
+        // A native level-up Decline/AlreadyKnown or deletion changes the
+        // claimed chronology too. None is source-free just because it
+        // leaves the final four move IDs unchanged.
+        if(i>edge && (step.action==C::Action::Learn ||
+                      step.action==C::Action::Decline ||
+                      step.action==C::Action::AlreadyKnown ||
+                      step.action==C::Action::DeleteMove)) {
             uint8_t matched=0;
             for(uint8_t j=0;j<in.laterMethodCount;++j) {
                 const auto& witness=in.laterMethods[j];
