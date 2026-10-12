@@ -158,6 +158,10 @@ int main() {
     contains(surface, "GEN III DATA"); contains(surface, "Colors::Panel");
     contains(surface, "SharedPokemonShell::drawScrollableDetails");
     contains(shell, "scrollWindow(total, visibleRows, focus)");
+    contains(shell, "independentFirstRow >= 0");
+    contains(shell, "window.first = std::min<std::size_t>(");
+    contains(surface, "state.detailsTouchScroll.updateVertical(");
+    contains(surface, "detailPixelOffset, firstDetailRow");
     contains(shell, "visibleRows = 8");
     contains(shell, "labelWidth + 28");
     contains(shell, "fitDetailsText");
