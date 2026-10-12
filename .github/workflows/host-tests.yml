@@ -181,6 +181,10 @@ jobs:
               # Exercise all five original 16-bit stats with real analyzer.
               make -f Makefile.host -f tools/audit_legality_l5_stage3_pk2_probe.mk l5-pk2-egg-fixed
               make -f Makefile.host -f tools/audit_legality_l5_stage3_pk2_probe.mk l5-pk2-egg-fixed-sanitize
+              # Native encrypted PK4 proves L3 original Platinum INFO methods
+              # actually reach Legality::analyze and cannot leak to DP/Pal Park.
+              make -f Makefile.host -f tools/audit_legality_l5_platinum_native_probe.mk l5-platinum-native
+              make -f Makefile.host -f tools/audit_legality_l5_platinum_native_probe.mk l5-platinum-native-sanitize
               ;;
             *)
               echo "Unknown legality lane: $LANE" >&2
