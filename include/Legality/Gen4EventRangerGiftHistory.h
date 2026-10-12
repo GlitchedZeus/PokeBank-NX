@@ -5,6 +5,7 @@
 // A matching native egg is NOT proof of real Ranger distribution receipt.
 // Any unresolved recipient/origin history stays Unknown, NEVER global Invalid.
 #include "Legality/Gen4RangerManaphy.h"
+#include "Legality/Gen4RangerStorageBallEvidence.h"
 #include "Legality/Gen4HatchLocationEvidence.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
 #include <array>
@@ -125,16 +126,22 @@ inline Result evaluateNative(const Pokemon::Pokemon4ReadOnly& pokemon,
     // formats, not competing magnitude-based readings of one Ball ID.
     // An unused/stale HGSS byte must never exclude a valid DPPt candidate.
     // Likewise a stale DPPt byte cannot override the active HGSS field.
-    const auto storage=pokemon.sourceGroup();
-    if(storage!=Enums::GameVersion::DP && storage!=Enums::GameVersion::PT &&
-       storage!=Enums::GameVersion::HGSS) {
+    const auto group=pokemon.sourceGroup();
+    const auto storage=group==Enums::GameVersion::DP ||
+                       group==Enums::GameVersion::PT
+        ? Gen4RangerStorageBallEvidence::Storage::DPPt
+        : group==Enums::GameVersion::HGSS
+            ? Gen4RangerStorageBallEvidence::Storage::HGSS
+            : Gen4RangerStorageBallEvidence::Storage::Unknown;
+    const auto selected=Gen4RangerStorageBallEvidence::select(
+        storage,pokemon.ballDPPt(),pokemon.ballHGSS());
+    if(!selected.storageKnown) {
         Result out{};
         out.status=source.rangerGiftOriginIndependentlyAttested
             ? Status::UnknownSourceGame : Status::UnknownOriginalGift;
         return out;
     }
-    gift.ball=storage==Enums::GameVersion::HGSS
-        ? pokemon.ballHGSS():pokemon.ballDPPt();
+    gift.ball=selected.ball;
     gift.fateful=pokemon.fatefulEncounter();
     return evaluate(true,{
         gift,pokemon.pid(),pokemon.ivs(),pokemon.originVersion(),
