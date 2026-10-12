@@ -18,9 +18,9 @@ static_assert(E::classify(given(G::Ruby,M::TM,10,92))==S::CandidateContradicted)
 static_assert(E::classify(given(G::FireRed,M::HM,1,57))==S::CandidateContradicted);
 static_assert(E::classify(given(G::Platinum,M::HM,1,15))==S::Unresolved);
 static_assert([]{auto s=given(G::Ruby,M::TM,6,92);s.nationalSpecies=4;
-    return E::classify(s)==S::Unresolved;}());
+    return E::classify(s)==S::CandidateCompatible;}());
 static_assert([]{auto s=given(G::Ruby,M::TM,50,92);
-    return E::classify(s)==S::Unresolved;}());
+    return E::classify(s)==S::CandidateContradicted;}());
 static_assert([]{auto s=given(G::Ruby,M::TM,6,92);s.itemIdentityVerified=false;
     return E::classify(s)==S::Unresolved;}());
 static_assert([]{auto s=given(G::Ruby,M::TM,6,92);s.samePokemonAndGameVerified=false;
@@ -61,6 +61,18 @@ static_assert([]{
     }
     return true;
 }());
+
+// Full original source includes all 386 National species and 58 machine
+// numbers: missing proof remains Unknown, but a verified noncompatible
+// species/item witness contradicts only this specific route.
+static_assert([]{auto s=given(G::Ruby,M::TM,6,92);s.nationalSpecies=387;
+    return E::classify(s)==S::Unresolved;}());
+static_assert([]{auto s=given(G::FireRed,M::TM,6,92);s.nationalSpecies=0;
+    return E::classify(s)==S::Unresolved;}());
+static_assert([]{auto s=given(G::FireRed,M::TM,6,92);s.machineNumber=0;
+    return E::classify(s)==S::Unresolved;}());
+static_assert([]{auto s=given(G::FireRed,M::HM,8,127);s.nationalSpecies=133;
+    return E::classify(s)==S::CandidateContradicted;}());
 int main(){
     for(G g:{G::Ruby,G::Sapphire,G::Emerald,G::FireRed,G::LeafGreen}) {
         assert(E::classify(given(g,M::TM,6,92))==S::CandidateCompatible);

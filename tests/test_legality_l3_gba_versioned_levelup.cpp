@@ -63,6 +63,7 @@ static_assert(L::evaluate(charmander(G::Ruby,232)).status==S::CandidateContradic
 static_assert([]{auto a=charmander(G::FireRed,232);a.initialSnapshotVerified=false;
     return L::evaluate(a).status==S::Unresolved;}());
 static_assert([]{auto a=charmander(G::Ruby,108);a.nationalSpecies=133;
+    a.sameSpeciesAndGameContinuityVerified=false;
     return L::evaluate(a).status==S::Unresolved;}());
 
 constexpr L::Input bulbasaurDecline(){
@@ -91,6 +92,96 @@ static_assert(L::evaluate(emerRepeat()).status==S::CandidateConsistent);
 static_assert([]{auto a=emerRepeat();a.steps[0].decision=D::AutoLearn;
     return L::evaluate(a).status==S::CandidateContradicted;}());
 
+
+// Stage 2 original-source expansion: the same National species can have
+// different *ordered* offers in RSE and FRLG. These candidate histories
+// depend on explicit original game and complete original snapshots.
+constexpr L::Input gastly(G game,uint16_t offered) {
+    L::Input a{};a.game=game;a.nationalSpecies=92;
+    a.initialLevel=12;a.observedLevel=13;
+    a.initialMoves={95,122,180,0};
+    a.observedMoves={95,122,180,offered};
+    a.initialSnapshotVerified=true;
+    a.sameSpeciesAndGameContinuityVerified=true;
+    a.noOtherMoveChangesVerified=true;
+    a.allPlayerOfferDecisionsVerified=true;
+    a.stepCount=1;a.steps[0]={13,offered,D::AutoLearn,3};
+    return a;
+}
+static_assert(L::evaluate(gastly(G::Ruby,212)).status==S::CandidateConsistent);
+static_assert(L::evaluate(gastly(G::Sapphire,212)).status==S::CandidateConsistent);
+static_assert(L::evaluate(gastly(G::FireRed,174)).status==S::CandidateConsistent);
+static_assert(L::evaluate(gastly(G::LeafGreen,174)).status==S::CandidateConsistent);
+static_assert(L::evaluate(gastly(G::Ruby,174)).status==S::CandidateContradicted);
+static_assert(L::evaluate(gastly(G::LeafGreen,212)).status==S::CandidateContradicted);
+static_assert([]{auto x=gastly(G::FireRed,174);
+    x.sameSpeciesAndGameContinuityVerified=false;
+    return L::evaluate(x).status==S::Unresolved;}());
+static_assert([]{auto x=gastly(G::Ruby,212);
+    x.initialSnapshotVerified=false;
+    return L::evaluate(x).status==S::Unresolved;}());
+// Eevee was entirely absent from the earlier Ruby/FRLG twelve-species
+// table; its retail lv8 Sand-Attack offer can now be replayed directly.
+constexpr L::Input eevee(G game) {
+    L::Input x{};x.game=game;x.nationalSpecies=133;
+    x.initialLevel=7;x.observedLevel=8;
+    x.initialMoves={33,39,270,0};x.observedMoves={33,39,270,28};
+    x.initialSnapshotVerified=true;
+    x.sameSpeciesAndGameContinuityVerified=true;
+    x.noOtherMoveChangesVerified=true;
+    x.allPlayerOfferDecisionsVerified=true;
+    x.stepCount=1;x.steps[0]={8,28,D::AutoLearn,3};
+    return x;
+}
+static_assert(L::evaluate(eevee(G::Ruby)).status==S::CandidateConsistent);
+static_assert(L::evaluate(eevee(G::LeafGreen)).status==S::CandidateConsistent);
+static_assert([]{auto x=eevee(G::Ruby);x.steps[0].offeredMove=270;
+    return L::evaluate(x).status==S::CandidateContradicted;}());
+static_assert(L::offerCount(G::Ruby,290)==10); // Nincada, not internal species 290
+static_assert(L::offerAt(G::Ruby,290,0).move==10);
+static_assert(L::offerAt(G::FireRed,386,0).move==43);
+
+// The original pret/pokefirered Deoxys learnset is conditional on FIRERED
+// versus LEAFGREEN. No combined FRLG offer table is valid for this species.
+// All four existing slots and one independently witnessed replacement are
+// required; a missing or guessed origin must never produce Invalid.
+constexpr L::Input deoxys(G game,uint16_t offered) {
+    L::Input x{};x.game=game;x.nationalSpecies=386;
+    x.initialLevel=14;x.observedLevel=15;
+    x.initialMoves={43,35,101,100}; // Leer, Wrap, Night Shade, Teleport
+    x.observedMoves={offered,35,101,100};
+    x.initialSnapshotVerified=true;
+    x.sameSpeciesAndGameContinuityVerified=true;
+    x.noOtherMoveChangesVerified=true;
+    x.allPlayerOfferDecisionsVerified=true;
+    x.stepCount=1;x.steps[0]={15,offered,D::ReplaceSlot,0};return x;
+}
+// The original #if FIRERED / #elif LEAFGREEN Dugtrio branch changes
+// SAME-LEVEL offer order. Merging both branches once produced two invented
+// level-1 prompts, so check exact counts AND indices for both cartridges.
+static_assert(L::offerCount(G::FireRed,51)==13);
+static_assert(L::offerCount(G::LeafGreen,51)==13);
+static_assert(L::offerAt(G::FireRed,51,0).move==161);
+static_assert(L::offerAt(G::LeafGreen,51,0).move==161);
+static_assert(L::offerAt(G::FireRed,51,1).move==10);
+static_assert(L::offerAt(G::FireRed,51,2).move==28);
+static_assert(L::offerAt(G::LeafGreen,51,1).move==28);
+static_assert(L::offerAt(G::LeafGreen,51,2).move==10);
+static_assert(L::offerAt(G::FireRed,51,3).move==45);
+static_assert(L::offerAt(G::LeafGreen,51,3).move==45);
+static_assert(L::offerCount(G::FireRed,386)==12);
+static_assert(L::offerCount(G::LeafGreen,386)==14);
+static_assert(L::offerAt(G::FireRed,386,4).move==269); // Taunt
+static_assert(L::offerAt(G::LeafGreen,386,4).move==282); // Knock Off
+static_assert(L::evaluate(deoxys(G::FireRed,269)).status==S::CandidateConsistent);
+static_assert(L::evaluate(deoxys(G::LeafGreen,282)).status==S::CandidateConsistent);
+static_assert(L::evaluate(deoxys(G::FireRed,282)).status==S::CandidateContradicted);
+static_assert(L::evaluate(deoxys(G::LeafGreen,269)).status==S::CandidateContradicted);
+static_assert([]{auto x=deoxys(G::FireRed,269);x.sameSpeciesAndGameContinuityVerified=false;
+    return L::evaluate(x).status==S::Unresolved;}());
+static_assert([]{auto x=deoxys(G::LeafGreen,282);x.initialSnapshotVerified=false;
+    return L::evaluate(x).status==S::Unresolved;}());
+
 // The accepted Emerald table has full 386-species National Dex coverage.
 void exerciseAllEmerald() {
     uint32_t entries=0;uint8_t peak=0;
@@ -109,7 +200,14 @@ void exerciseAllEmerald() {
         }
     }
     assert(entries==3947 && peak==17);
-    assert(!L::supported(G::Ruby,386));
-    assert(!L::supported(G::LeafGreen,386));
+    assert(L::supported(G::Ruby,386));
+    assert(L::supported(G::LeafGreen,386));
 }
-int main(){exerciseAllEmerald();std::cout<<"L3 pinned GBA ordered level-up four-slot replay: PASS\n";}
+int main(){
+    exerciseAllEmerald();
+    assert(L::evaluate(deoxys(G::FireRed,269)).status==S::CandidateConsistent);
+    assert(L::evaluate(deoxys(G::LeafGreen,282)).status==S::CandidateConsistent);
+    assert(L::evaluate(deoxys(G::FireRed,282)).status==S::CandidateContradicted);
+    assert(L::evaluate(deoxys(G::LeafGreen,269)).status==S::CandidateContradicted);
+    std::cout<<"L3 pinned GBA ordered level-up four-slot replay: PASS\n";
+}
