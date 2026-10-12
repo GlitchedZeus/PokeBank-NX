@@ -45,10 +45,19 @@ constexpr Result evaluate(N::Format format,const N::Result& native,
     return {Status::UnknownSpecimenIdentity};
  if(!nativeGeneration(format)||nativeGeneration(format)!=route.presentGeneration)
     return {Status::UnknownForeignNativeFormat};
- if(native.species!=route.presentSpecies) {
-    return {Status::CandidateLocalNativeMismatch};
- }
  const auto custody=C::evaluate(route).status;
+ // A foreign, unproven or otherwise missing original custody receipt must
+ // not generate a purported negative just because its claimed present
+ // species differs from a valid current PKM.
+ if(custody!=C::Status::LocalOriginalSourceContradiction &&
+    custody!=C::Status::LocalTransitionContradiction &&
+    custody!=C::Status::LocalPresentMismatch &&
+    custody!=C::Status::ConditionalSourceAndCustodyOnly &&
+    custody!=C::Status::ConditionalOriginalStageAndCustodyOnly)
+    return {Status::UnknownOriginalCustody,native.species};
+ if(native.species!=route.presentSpecies) {
+    return {Status::CandidateLocalNativeMismatch,native.species};
+ }
  if(custody==C::Status::LocalOriginalSourceContradiction ||
     custody==C::Status::LocalTransitionContradiction ||
     custody==C::Status::LocalPresentMismatch)
