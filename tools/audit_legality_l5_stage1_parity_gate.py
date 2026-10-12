@@ -39,7 +39,7 @@ EXPECTED = {(g, f) for g in GROUPS for f in FAMILIES}
 
 def git_blob_sha(file: Path) -> str:
     content = file.read_bytes()
-    return hashlib.sha1(b"blob " + str(len(content)).encode("ascii") + b"\\0" + content).hexdigest()
+    return hashlib.sha1(b"blob " + str(len(content)).encode("ascii") + b"\0" + content).hexdigest()
 
 
 def load(root: Path = DATA) -> tuple[list[dict], dict, dict]:
