@@ -25,7 +25,7 @@ PINS = {
     CRYPT4: "406935761713db95ae738398b65ba0a37d4cf97b",
 }
 EXPECTED = {
-    MODEL: "L5 Stage2 native-format adversarial MODEL PASS 1056464 assertions",
+    MODEL: "L5 Stage2 native-format adversarial MODEL PASS 1057328 assertions",
     NATIVE: "L5 Stage2 ACTUAL production PK3/PK4 codec PASS",
 }
 
