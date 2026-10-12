@@ -58,6 +58,40 @@ static Answer inspect(int gen,std::span<const uint8_t> b,uint8_t marker,std::str
  a.result=a.conflict||source.empty()||sourceGen(source)==0?Result::UnknownSource:Result::PlausibleNative;
  return a;
 }
+// PokeList headers are not tightly packed past the first sentinel: stale
+// species after the immediate terminator are legitimate, not list entries.
+// The Gen I model deliberately recognizes only two pinned internal IDs.
+static bool listHeader(std::span<const uint8_t> h,size_t capacity,int gen){
+ if(h.size()<capacity+2)return false;
+ const size_t count=h[0];if(count>capacity)return false;
+ if(h[1+count]!=0xff)return false;
+ for(size_t i=0;i<count;i++){
+  const uint8_t v=h[1+i];
+  if(gen==1){if(v!=153&&v!=173)return false;}
+  else if(v==0||v==0xff)return false;
+ }
+ return true;
+}
+static void testListHeaders(){
+ for(int gen:{1,2})for(size_t cap:{6u,20u,30u})
+  for(size_t count=0;count<=cap;count++){
+   Bytes h(cap+2,173);h[0]=uint8_t(count);
+   for(size_t i=0;i<count;i++)h[1+i]=uint8_t(gen==1?153:1);
+   h[1+count]=0xff;
+   CHECK(listHeader(h,cap,gen));
+   CHECK(listHeader(h,cap+1,gen)==false); // truncation/cap mismatch
+   if(count){
+    auto bad=h;bad[1]=0;CHECK(!listHeader(bad,cap,gen));
+    bad=h;bad[1]=0xff;CHECK(!listHeader(bad,cap,gen));
+    if(gen==2){bad=h;bad[1]=0xfd;CHECK(listHeader(bad,cap,gen));}
+   }
+   auto corrupt=h;corrupt[1+count]=0;
+   CHECK(!listHeader(corrupt,cap,gen));
+   // Stale values after the first 0xff terminator do not invalidate.
+   if(count<cap){auto stale=h;stale[2+count]=0;CHECK(listHeader(stale,cap,gen));}
+   auto huge=h;huge[0]=uint8_t(cap+1);CHECK(!listHeader(huge,cap,gen));
+  }
+}
 static Bytes specimen(int gen,bool party){
  Bytes b(gen==1?(party?44:33):gen==2?(party?48:32):gen==3?(party?100:80):(party?236:136),0);
  if(gen==1){b[0]=153;b[party?0x21:0x03]=5;b[0x1b]=0x12;b[0x1c]=0x34;b[0x1d]=0xc1;}
@@ -68,6 +102,7 @@ static Bytes specimen(int gen,bool party){
 static std::string_view matching(int g){return g==1?"red_gb":g==2?"gold_gbc":g==3?"ruby_gba":"platinum_nds";}
 static std::string_view wrong(int g){return g==1?"platinum_nds":g==2?"firered_gba":g==3?"red_gb":"gold_gbc";}
 int main(){
+ testListHeaders();
  for(int gen=1;gen<=4;gen++)for(bool party:{false,true}){
   const auto base=specimen(gen,party);const auto immutable=base;
   const uint8_t marker=gen==1?153:1;
