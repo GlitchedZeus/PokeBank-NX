@@ -4,6 +4,7 @@
 // Read-only conditional evidence; no detached PK3/PK4 can attest history.
 #include <array>
 #include <cstdint>
+#include <string_view>
 namespace Legality::Gen34OriginalSameRouteProof {
 enum class Game : uint8_t {
     Unknown, Ruby, Sapphire, Emerald, FireRed, LeafGreen,
@@ -36,6 +37,23 @@ struct Expected {
     bool itemsKnown=false;
     uint16_t held0=0,held1=0;
 };
+// Explicit original-game ID mapping: a Gen III or IV PID witness
+// cannot be joined to a different retail game's IV/move transcript.
+constexpr Game gameFor(std::string_view game) noexcept {
+    return game=="ruby_gba"?Game::Ruby:
+           game=="sapphire_gba"?Game::Sapphire:
+           game=="emerald_gba"?Game::Emerald:
+           game=="firered_gba"?Game::FireRed:
+           game=="leafgreen_gba"?Game::LeafGreen:
+           game=="diamond_nds"?Game::Diamond:
+           game=="pearl_nds"?Game::Pearl:
+           game=="platinum_nds"?Game::Platinum:
+           game=="heartgold_nds"?Game::HeartGold:
+           game=="soulsilver_nds"?Game::SoulSilver:Game::Unknown;
+}
+static_assert(gameFor("heartgold_nds")==Game::HeartGold);
+static_assert(gameFor("leafgreen_gba")==Game::LeafGreen);
+static_assert(gameFor("white_nds")==Game::Unknown);
 constexpr bool supported(Game game) noexcept {
     return game>=Game::Ruby && game<=Game::SoulSilver;
 }
