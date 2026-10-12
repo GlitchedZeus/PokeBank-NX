@@ -12,6 +12,7 @@ enum class Game : uint8_t { Unknown, Red, Blue, Yellow, Gold, Silver, Crystal };
 enum class Kind : uint8_t { Unknown, Static, Gift, NPCTrade, StadiumGift, PCNYGift };
 enum class History : uint8_t { Unknown, Unchanged, IndependentlyVerifiedChange };
 enum class Crossing : uint8_t { Unknown, NoCrossingVerified, SnapshotVerified };
+enum class LevelRule : uint8_t { Unknown, Fixed, OfferedTradeLevel };
 enum class Disposition : uint8_t { Unknown, CandidateContradicted, ConditionalCandidate };
 enum Field : uint32_t {
     Source = 1u << 0, Species = 1u << 1, Level = 1u << 2,
@@ -35,6 +36,7 @@ struct GiftRow {
     bool originalDistributionAttested = false; // only for event families
     bool originalReceiptKnown = false; // not inferable from an extracted PKM
     Datum<uint16_t> species;
+    LevelRule levelRule = LevelRule::Unknown;
     Datum<uint8_t> level;
     Datum<uint16_t> trainerId;
     Datum<Name> trainerName;
@@ -59,6 +61,7 @@ struct RouteWitness {
     History nicknameHistory = History::Unknown;
     History moveHistory = History::Unknown;
     Datum<Moves4> independentlyVerifiedFinalMoves;
+    Datum<uint8_t> offeredTradeLevel; // original NPC trade input, not a fixed gift level
     Crossing timeCapsule = Crossing::Unknown;
     // Exact party snapshot at the documented crossing, not current moves.
     Datum<uint16_t> crossingSpecies;
@@ -111,7 +114,9 @@ constexpr Result evaluate(const GiftRow& source, const Observation& observed,
         !source.originalMechanicIndependentlyVerified ||
         !source.originalRowIndependentlyVerified ||
         !source.species.known || !validNativeSpecies(source.game, source.species.value) ||
-        !source.level.known || !validLevel(source.level.value) ||
+        (source.level.known && !validLevel(source.level.value)) ||
+        (source.kind == Kind::NPCTrade ? source.levelRule != LevelRule::OfferedTradeLevel
+                                       : source.levelRule == LevelRule::OfferedTradeLevel) ||
         (requiresDistributionProof(source.kind) &&
          (!source.originalDistributionAttested || !source.originalReceiptKnown))) {
         unknown(Source);
@@ -139,10 +144,16 @@ constexpr Result evaluate(const GiftRow& source, const Observation& observed,
                 route.independentlyVerifiedEvolutionEndpoint.value != observed.species.value)) {
         unknown(Species);
     }
-    if (!source.level.known || !observed.level.known ||
-        !validLevel(source.level.value) || !validLevel(observed.level.value))
+    Datum<uint8_t> originLevel{};
+    if (source.levelRule == LevelRule::Fixed && source.kind != Kind::NPCTrade)
+        originLevel = source.level;
+    else if (source.levelRule == LevelRule::OfferedTradeLevel &&
+             source.kind == Kind::NPCTrade)
+        originLevel = route.offeredTradeLevel;
+    if (!originLevel.known || !observed.level.known ||
+        !validLevel(originLevel.value) || !validLevel(observed.level.value))
         unknown(Level);
-    else if (observed.level.value < source.level.value)
+    else if (observed.level.value < originLevel.value)
         reject(Level); // original retail levels do not normally decrease
     if (!source.trainerId.known || !observed.trainerId.known)
         unknown(TrainerId);
