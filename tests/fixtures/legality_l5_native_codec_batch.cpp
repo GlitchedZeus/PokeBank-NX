@@ -41,7 +41,44 @@ bool decodeHex(const std::string& hex, std::vector<std::byte>& out) {
     }
     return true;
 }
-bool process(const std::string& line, bool& wasValid, std::string& error) {
+// Exhaustively mutate every ciphertext data bit, leaving the stored checksum
+// untouched. All such single-bit mutations must be quarantined on read.
+// PK3: 48 bytes * 8 bits; PK4: 128 bytes * 8 bits per synthetic specimen.
+bool quarantineEveryDataBit(const std::vector<std::byte>& original, int gen,
+                            size_t& tamperCount, std::string& error) {
+    const size_t begin=(gen==3 ? 0x20u : 0x08u);
+    for (size_t pos=begin;pos<original.size();++pos) {
+        for (unsigned bit=0;bit<8u;++bit) {
+            auto mutated=original;
+            mutated[pos]^=static_cast<std::byte>(1u<<bit);
+            std::vector<std::byte> decoded;
+            if (gen==3) {
+                std::unique_ptr<std::byte[]> output(
+                    Encryption::decryptArray3FRLG(std::span<const std::byte>(mutated)));
+                if (!output) {error="tampered PK3 returned null";return false;}
+                decoded.assign(output.get(),output.get()+mutated.size());
+            } else {
+                decoded=Encryption::decryptArray4(std::span<const std::byte>(mutated));
+            }
+            if (decoded.size()!=mutated.size()) {
+                error="tampered decryption wrong size";return false;
+            }
+            const std::span<const std::byte> plain(decoded);
+            const uint16_t stored=rd16(plain,gen==3?0x1cu:0x06u);
+            const uint16_t calculated=gen==3
+                ? Encryption::checksum3FRLG(plain)
+                : Encryption::checksum4(plain);
+            if (stored==calculated) {
+                error="single-bit encrypted data corruption escaped checksum quarantine";
+                return false;
+            }
+            ++tamperCount;
+        }
+    }
+    return true;
+}
+bool process(const std::string& line, bool& wasValid, std::string& error,
+             size_t& tamperCount) {
     std::istringstream input(line);
     std::string id, hex, excess;
     int gen=0,valid=0,shuffle=0,ev=0,egg=0,checksum=0;
@@ -118,17 +155,18 @@ bool process(const std::string& line, bool& wasValid, std::string& error) {
     } else if (Encryption::encryptArray4(d)!=raw) {
         error="PK4 byte-for-byte native roundtrip failed";return false;
     }
+    if (!quarantineEveryDataBit(raw,gen,tamperCount,error))return false;
     wasValid=true;
     return true;
 }
 }
 int main() {
     std::string line;
-    size_t total=0,valid=0,corrupted=0;
+    size_t total=0,valid=0,corrupted=0,tamperCount=0;
     while (std::getline(std::cin,line)) {
         if (line.empty()) continue;
         std::string error;bool isValid=false;
-        if (!process(line,isValid,error)) {
+        if (!process(line,isValid,error,tamperCount)) {
             std::cerr<<"L5 native crypto failure on case "<<total+1<<": "
                      <<error<<"\n";
             return 1;
@@ -136,12 +174,13 @@ int main() {
         ++total;
         if (isValid) ++valid; else ++corrupted;
     }
-    if (total!=348 || valid!=336 || corrupted!=12) {
+    if (total!=348 || valid!=336 || corrupted!=12 || tamperCount!=251904u) {
         std::cerr<<"L5 native crypto unexpected corpus counts: "<<total
-                 <<" / "<<valid<<" / "<<corrupted<<"\n";
+                 <<" / "<<valid<<" / "<<corrupted<<" / "<<tamperCount<<"\n";
         return 1;
     }
     std::cout<<"L5 production crypto: "<<total
              <<" PASS ("<<valid<<" native byte roundtrips, "
-             <<corrupted<<" corrupted checksum rejects)\n";
+             <<corrupted<<" corrupted checksum rejects, "<<tamperCount
+             <<" single-bit data corruptions rejected)\n";
 }
