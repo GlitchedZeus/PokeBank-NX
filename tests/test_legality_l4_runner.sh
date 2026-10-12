@@ -66,6 +66,27 @@ native=(
     test_legality_l4_trainer_identity
     test_legality_l4_gen4_mystery_gift_native
 )
+# L4 discovery/registration parity: no newly added test may silently miss
+# normal or sanitizer execution. Duplicates are also exposed by the diff.
+registered=(
+    "${header_only[@]}" "${native[@]}"
+    test_legality_l4_native_pk3_text
+    test_legality_l4_gen3_distribution_native_pk3
+    test_legality_l4_gen3_palpark_metadata_bridge
+    test_legality_l4_stage5_native_pk3_join
+)
+mapfile -t discovered < <(
+    find tests -maxdepth 1 -type f -name 'test_legality_l4_*.cpp' -printf '%f\n' |
+        sed 's/\.cpp$//' | LC_ALL=C sort
+)
+if [[ "${#discovered[@]}" -ne 28 || "${#registered[@]}" -ne 28 ]] ||
+    ! diff -u <(printf '%s\n' "${discovered[@]}") \
+               <(printf '%s\n' "${registered[@]}" | LC_ALL=C sort); then
+    echo "L4 registry mismatch: ${#discovered[@]} discovered / ${#registered[@]} registered; expected 28" >&2
+    exit 3
+fi
+echo "L4 discovery/registration parity: 28/28 C++ suites"
+
 for name in "${header_only[@]}"; do
     echo "L4 C++ compile: $name"
     "$compiler" "${base[@]}" "tests/$name.cpp" -o "$scratch/$name"
