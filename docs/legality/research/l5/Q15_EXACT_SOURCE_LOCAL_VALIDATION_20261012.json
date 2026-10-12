@@ -1,0 +1,107 @@
+{
+  "schema": "L5_EXACT_COMMITTED_SOURCE_LOCAL_VALIDATION_FREEZE_V1",
+  "repository": "GlitchedZeus/PokeBank-NX",
+  "branch": "audit/legality-l5-research-qa-20261012",
+  "anchored_pr": 294,
+  "l5_source_head_at_validation": "ccd27dd7845e13872174fd609d9a3cdc91d7f393",
+  "accepted_legal_head_at_validation": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+  "validation_date": "2026-10-12",
+  "method": "Retrieve exact GitHub Git blob content, reconstruct locally byte-for-byte and compare git hash-object to GitHub SHA before compiling. Runs executed on isolated Linux container; this is not a full checkout or an exact-head CI job.",
+  "environment": {
+    "compiler_gcc": "g++ -std=c++20",
+    "compiler_clang": "clang++ -std=c++20",
+    "flags_normal": "-O2 -Wall -Wextra -Wpedantic -Werror",
+    "flags_sanitized": "-O1 -fsanitize=address,undefined -fno-omit-frame-pointer -Wall -Wextra -Wpedantic -Werror",
+    "asan_options": "detect_leaks=0"
+  },
+  "tests": [
+    {
+      "path": "tests/fixtures/legality_l5_ev_cap_reference_diff.cpp",
+      "git_blob": "50487f7baa20fbdb368acb5df98cf9926877a728",
+      "verified_blob": true,
+      "gcc_normal": "PASS",
+      "gcc_asan_ubsan": "PASS",
+      "clang_normal": "PASS",
+      "observed_output": "L5 Q12 source-contract EV differential: 131072 bounded cases, 3054 NX-hardcap/PKHeX-reference disagreements (NOT whole-Pokemon validity)",
+      "scope": "Only independent pinned rule model; not full NX or PKHeX"
+    },
+    {
+      "path": "tests/fixtures/legality_l5_source_gate_triad.cpp",
+      "git_blob": "33dc0efe6fdd1dc5ee115c22761a4eb9a81a0db8",
+      "verified_blob": true,
+      "gcc_normal": "PASS",
+      "gcc_asan_ubsan": "PASS",
+      "clang_normal": "PASS",
+      "observed_output": "L5 Q04/Q05/Q07 native source-scope 14 assertions: PASS",
+      "scope": "Independent source-local condition contract, not retail ARM or event authenticity"
+    },
+    {
+      "path": "tests/fixtures/legality_l5_witness_bound_fuzz.cpp",
+      "git_blob": "d8b0c6a352602102012cd1a611d97de38e1faf23",
+      "verified_blob": true,
+      "gcc_normal": "PASS",
+      "gcc_asan_ubsan": "PASS",
+      "clang_normal": "PASS",
+      "observed_output": "L5 Q16: 24 scoped assertions plus 65536 deterministic candidate trials PASS (24576/28672/12288 compatible/contradicted-one/unknown)",
+      "scope": "Synthetic candidate hypothesis contract; no production parser"
+    },
+    {
+      "path": "tools/audit_legality_l5_ci_gate.py",
+      "git_blob": "9703236600e8644110b48da11d85213de838702e",
+      "verified_blob": true,
+      "python_selftest": "PASS_26_SYNTHETIC_CASES",
+      "current_live_ci_evidence": "CORRECTLY_BLOCKED_EXIT_1",
+      "observed_blockers": [
+        "Behind accepted by two commits",
+        "Actions status queued, not successful completed",
+        "Shared exact-head identity step omitted for L5 branch",
+        "Standalone native/sanitizer full repo evidence absent",
+        "Licensing sign-off absent"
+      ]
+    }
+  ],
+  "cross_turn_independent_bytes_check": {
+    "fixture_path": "tests/fixtures/legality_l5_native_ev_vectors.json",
+    "fixture_git_blob": "2252161521120c1db34b2700bdceeaf2d0859ffa",
+    "synthetic_valid": 336,
+    "synthetic_corrupt": 12,
+    "data_bit_mutations": 251904,
+    "unexpected_checksum_valid": 0,
+    "scope": "Previous tranche independent JS byte model, not compiled accepted native codec; NOT rerun in this freeze session"
+  },
+  "not_executed": [
+    {
+      "path": "tests/fixtures/legality_l5_native_encounters.cpp",
+      "reason": "Requires accepted generated source data includes and a full repository checkout with the original headers"
+    },
+    {
+      "path": "tests/fixtures/legality_l5_native_codec_batch.cpp",
+      "runner": "tools/audit_legality_l5_native_codec.py",
+      "reason": "Compiling against complete exact committed project and injecting all original encrypted fixture bytes not established in isolated container; no PASS claim"
+    },
+    {
+      "path": "tests/fixtures/legality_l5_ev_native_analyzer_probe.cpp",
+      "runner": "tools/audit_legality_l5_ev_probe.mk",
+      "reason": "Requires accepted production Legality.cpp and full linker dependencies; current F1/F2 defects intentionally expected in --baseline, --after-fix blocked until coordinator fixes"
+    },
+    {
+      "path": "tools/audit_legality_l5_inventory.py, major2.py, major3.py, ev_differential.py, release_gate.py, native_ev_vectors.py",
+      "reason": "Full workspace plus pinned source/cache dependencies not locally mounted; previously audited manifests not a substitute for new exact-head execution"
+    },
+    {
+      "path": ".github/workflows/host-tests.yml full host/RSE/ASan/UBSan",
+      "reason": "Latest L5 GitHub Actions queued; SHA identity guard excludes audit/legality-l5-* branch and workflow does not run L5 standalone tests"
+    }
+  ],
+  "scoreboard": {
+    "byte_verified_committed_native_cpp_files_executed": 3,
+    "compiler_runs_passed": 9,
+    "python_exact_source_selftest_runs": 1,
+    "expected_live_gate_blocks": 1,
+    "all_full_repo_native_test_passed": false,
+    "all_ci_approved": false,
+    "pkhex_full_parity_proven": false,
+    "source_original_retail_proven": false
+  },
+  "policy": "Unverified original history remains Incomplete/Unknown; never claim global Invalid from isolated candidate contradiction or synthetic data"
+}
