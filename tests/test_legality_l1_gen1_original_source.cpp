@@ -27,15 +27,30 @@ int main(){
             c.originalCatchRate=Legality::Gen1CatchRate::expectedRate(id,row.species);
             c.originalGameIndependentlyAttested=true;
             c.originalSourceRowIndependentlyAttested=true;
+            c.originalSpeciesIndependentlyAttested=true;
+            c.originalLevelIndependentlyAttested=true;
             c.originalCatchRateIndependentlyAttested=true;
             assert(H::evaluate(c).status==Status::ConditionalOriginalSource);
             auto missing=c;missing.originalSourceRowIndependentlyAttested=false;
             assert(H::evaluate(missing).status==Status::UnknownOriginalRow);
             missing=c;missing.originalCatchRateIndependentlyAttested=false;
             assert(H::evaluate(missing).status==Status::UnknownOriginalCatchRate);
-            auto bad=c;bad.originalSpecies=0;
+            missing=c;missing.originalSpeciesIndependentlyAttested=false;
+            assert(H::evaluate(missing).status==Status::UnknownOriginalSpecies);
+            missing=c;missing.originalLevelIndependentlyAttested=false;
+            assert(H::evaluate(missing).status==Status::UnknownOriginalLevel);
+            missing=c;missing.originalSpecies=0;
+            assert(H::evaluate(missing).status==Status::UnknownOriginalSpecies);
+            missing=c;missing.originalLevel=0;
+            assert(H::evaluate(missing).status==Status::UnknownOriginalLevel);
+            missing=c;missing.originalLevel=101;
+            assert(H::evaluate(missing).status==Status::UnknownOriginalLevel);
+            missing=c;missing.noTimeCapsuleHistoryIndependentlyAttested=true;
+            missing.timeCapsuleHistoryIndependentlyAttested=true;
+            assert(H::evaluate(missing).status==Status::UnknownTradebackHistory);
+            auto bad=c;bad.originalSpecies=static_cast<uint16_t>(row.species==1u?2u:1u);
             assert(H::evaluate(bad).status==Status::CandidateOriginalSpeciesContradicted);
-            bad=c;bad.originalLevel=0;
+            bad=c;bad.originalLevel=1;
             assert(H::evaluate(bad).status==Status::CandidateOriginalLevelContradicted);
             bad=c;bad.originalCatchRate^=1u;
             assert(H::evaluate(bad).status==
@@ -53,6 +68,8 @@ int main(){
         c.originalCatchRate=Legality::Gen1CatchRate::expectedRate(id,row.species);
         c.originalGameIndependentlyAttested=true;
         c.originalSourceRowIndependentlyAttested=true;
+            c.originalSpeciesIndependentlyAttested=true;
+            c.originalLevelIndependentlyAttested=true;
         c.originalTradeOTIndependentlyAttested=true;
         c.noTimeCapsuleHistoryIndependentlyAttested=true;
         c.originalCatchRateIndependentlyAttested=true;
@@ -61,6 +78,10 @@ int main(){
         assert(H::evaluate(unknown).status==Status::UnknownTradeOT);
         unknown=c;unknown.noTimeCapsuleHistoryIndependentlyAttested=false;
         assert(H::evaluate(unknown).status==Status::UnknownTradebackHistory);
+        unknown=c;unknown.originalSpeciesIndependentlyAttested=false;
+        assert(H::evaluate(unknown).status==Status::UnknownOriginalSpecies);
+        unknown=c;unknown.originalLevelIndependentlyAttested=false;
+        assert(H::evaluate(unknown).status==Status::UnknownOriginalLevel);
         ++checked;
     }
     // Yellow-only Surfing Pikachu encounter row must not claim native R/B.
@@ -70,6 +91,8 @@ int main(){
     yellow.originalCatchRate=Legality::Gen1CatchRate::expectedRate("yellow_gb",25);
     yellow.originalGameIndependentlyAttested=true;
     yellow.originalSourceRowIndependentlyAttested=true;
+            yellow.originalSpeciesIndependentlyAttested=true;
+            yellow.originalLevelIndependentlyAttested=true;
     yellow.originalCatchRateIndependentlyAttested=true;
     assert(H::evaluate(yellow).status==Status::ConditionalOriginalSource);
     yellow.exactOriginalGame="blue_gb";
@@ -83,6 +106,8 @@ int main(){
     trade.originalCatchRate=Legality::Gen1CatchRate::expectedRate("yellow_gb",67);
     trade.originalGameIndependentlyAttested=true;
     trade.originalSourceRowIndependentlyAttested=true;
+            trade.originalSpeciesIndependentlyAttested=true;
+            trade.originalLevelIndependentlyAttested=true;
     trade.originalTradeOTIndependentlyAttested=true;
     trade.noTimeCapsuleHistoryIndependentlyAttested=true;
     trade.originalCatchRateIndependentlyAttested=true;
@@ -123,6 +148,8 @@ int main(){
         evolved.originalCatchRate=Legality::Gen1CatchRate::expectedRate("red_gb",f[1]);
         evolved.originalGameIndependentlyAttested=true;
         evolved.originalSourceRowIndependentlyAttested=true;
+            evolved.originalSpeciesIndependentlyAttested=true;
+            evolved.originalLevelIndependentlyAttested=true;
         evolved.originalEvolutionChainIndependentlyAttested=true;
         evolved.originalCatchRateIndependentlyAttested=true;
         assert(H::evaluate(evolved).status==Status::UnknownLaterGenerationEvolution);
@@ -137,6 +164,8 @@ int main(){
     eevee.originalCatchRate=Legality::Gen1CatchRate::expectedRate("red_gb",133);
     eevee.originalGameIndependentlyAttested=true;
     eevee.originalSourceRowIndependentlyAttested=true;
+            eevee.originalSpeciesIndependentlyAttested=true;
+            eevee.originalLevelIndependentlyAttested=true;
     eevee.originalEvolutionChainIndependentlyAttested=true;
     eevee.originalCatchRateIndependentlyAttested=true;
     assert(H::evaluate(eevee).status==Status::ConditionalOriginalSource);
