@@ -63,6 +63,7 @@ static_assert(L::evaluate(charmander(G::Ruby,232)).status==S::CandidateContradic
 static_assert([]{auto a=charmander(G::FireRed,232);a.initialSnapshotVerified=false;
     return L::evaluate(a).status==S::Unresolved;}());
 static_assert([]{auto a=charmander(G::Ruby,108);a.nationalSpecies=133;
+    a.sameSpeciesAndGameContinuityVerified=false;
     return L::evaluate(a).status==S::Unresolved;}());
 
 constexpr L::Input bulbasaurDecline(){
@@ -109,7 +110,7 @@ void exerciseAllEmerald() {
         }
     }
     assert(entries==3947 && peak==17);
-    assert(!L::supported(G::Ruby,386));
-    assert(!L::supported(G::LeafGreen,386));
+    assert(L::supported(G::Ruby,386));
+    assert(L::supported(G::LeafGreen,386));
 }
 int main(){exerciseAllEmerald();std::cout<<"L3 pinned GBA ordered level-up four-slot replay: PASS\n";}
