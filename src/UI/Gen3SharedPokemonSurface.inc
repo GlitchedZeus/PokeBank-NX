@@ -166,6 +166,19 @@ bool boxEntrySurface(const TrainerViewScreen& screen) noexcept {
            !screen.currentlySelecting;
 }
 
+// This is a GAME-SAVE Storage pane only. Bank pane actions remain owned by
+// the bank model and cannot use the staged native PC Pokemon editor.
+bool storageEntrySurface(const TrainerViewScreen& screen) noexcept {
+    return isGen3Gba(screen) &&
+        screen.selectedMode == TrainerViewScreen::ViewMode::Storage &&
+        screen.detailViewActive && screen.storageFocusPane == 0 &&
+        screen.stSaveBox >= 0 && screen.stSaveBox < static_cast<int>(screen.trainer.getBoxCount()) &&
+        screen.stSaveSlot >= 0 && screen.stSaveSlot < static_cast<int>(screen.trainer.getSlotsPerBox()) &&
+        !screen.helpOverlayActive && !screen.details.active && !screen.actionSheet.isOpen() &&
+        !screen.saveConfirmActive && !screen.pickerActive && !screen.itemEditDialogActive &&
+        !screen.carrying() && !screen.currentlySelecting;
+}
+
 bool selectedRecord(TrainerViewScreen& screen, Gen3::StagedPokemonRecord& record,
                     std::string& error) {
     auto* staged = editor(screen);
@@ -183,13 +196,15 @@ bool selectedRecord(TrainerViewScreen& screen, Gen3::StagedPokemonRecord& record
 }
 
 bool selectedOccupied(TrainerViewScreen& screen) {
-    if (!boxEntrySurface(screen)) return false;
+    if (!boxEntrySurface(screen) && !storageEntrySurface(screen)) return false;
     auto* staged = editor(screen);
     if (!staged) return false;
     std::string error;
+    const bool storage = storageEntrySurface(screen);
     return staged->boxedPokemon(
-        static_cast<std::size_t>(screen.selectedBoxIndex),
-        static_cast<std::size_t>(screen.selectedItemIndex), error).has_value();
+        static_cast<std::size_t>(storage ? screen.stSaveBox : screen.selectedBoxIndex),
+        static_cast<std::size_t>(storage ? screen.stSaveSlot : screen.selectedItemIndex),
+        error).has_value();
 }
 
 void resetWorkspaceFocus(State& state) noexcept {
@@ -222,8 +237,9 @@ void beginActions(TrainerViewScreen& screen) {
     state.pickerTarget = PickerTarget::None;
     state.pickerValues.clear();
     state.actionRow = 0;
-    state.box = screen.selectedBoxIndex;
-    state.slot = screen.selectedItemIndex;
+    const bool storage = storageEntrySurface(screen);
+    state.box = storage ? screen.stSaveBox : screen.selectedBoxIndex;
+    state.slot = storage ? screen.stSaveSlot : screen.selectedItemIndex;
     screen.controllerNavigation.reset();
 }
 
@@ -2007,11 +2023,12 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     if (handleWorkspace(screen, state, navigated, touch)) return true;
     if (handleActions(screen, state, navigated, touch)) return true;
 
-    if (!boxEntrySurface(screen)) return false;
+    const bool inBoxes = boxEntrySurface(screen);
+    if (!inBoxes && !storageEntrySurface(screen)) return false;
     // A and a release-confirmed finger tap must enter the same native Gen III
     // action model. Do this BEFORE the inherited box input can open its old
     // generic sheet with disabled Edit/Clone actions for a staged GBA source.
-    if (touch.justTapped()) {
+    if (inBoxes && touch.justTapped()) {
         const int tapped = screen.touchedButtonId(touch);
         const int slots = static_cast<int>(screen.trainer.getSlotsPerBox());
         if (tapped >= 0 && tapped < slots) {
@@ -2031,7 +2048,9 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
         return true;
     }
     if (activation == Shared::BoxActivation::Add) {
-        return beginCreate(screen, screen.selectedBoxIndex, screen.selectedItemIndex);
+        return beginCreate(screen,
+            inBoxes ? screen.selectedBoxIndex : screen.stSaveBox,
+            inBoxes ? screen.selectedItemIndex : screen.stSaveSlot);
     }
     return false;
 }

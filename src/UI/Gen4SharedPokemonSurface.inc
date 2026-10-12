@@ -177,6 +177,18 @@ bool boxEntrySurface(const TrainerViewScreen& screen) noexcept {
            !screen.currentlySelecting;
 }
 
+// Staged game-save PC only; never intercept the app-owned Bank side.
+bool storageEntrySurface(const TrainerViewScreen& screen) noexcept {
+    return isGen4Nds(screen) &&
+        screen.selectedMode == TrainerViewScreen::ViewMode::Storage &&
+        screen.detailViewActive && screen.storageFocusPane == 0 &&
+        screen.stSaveBox >= 0 && screen.stSaveBox < 18 &&
+        screen.stSaveSlot >= 0 && screen.stSaveSlot < 30 &&
+        !screen.helpOverlayActive && !screen.details.active && !screen.actionSheet.isOpen() &&
+        !screen.saveConfirmActive && !screen.pickerActive && !screen.itemEditDialogActive &&
+        !screen.carrying() && !screen.currentlySelecting;
+}
+
 bool partyEntrySurface(const TrainerViewScreen& screen) noexcept {
     return isGen4Nds(screen) &&
            screen.selectedMode == TrainerViewScreen::ViewMode::Party &&
@@ -246,8 +258,11 @@ bool selectedOccupied(TrainerViewScreen& screen) {
     std::string error;
     if (partyEntrySurface(screen))
         return partyRecord(screen, screen.selectedPartyIndex, error).has_value();
-    if (boxEntrySurface(screen))
-        return boxRecord(screen, screen.selectedBoxIndex, screen.selectedItemIndex, error).has_value();
+    if (boxEntrySurface(screen) || storageEntrySurface(screen)) {
+        const bool storage = storageEntrySurface(screen);
+        return boxRecord(screen, storage ? screen.stSaveBox : screen.selectedBoxIndex,
+                         storage ? screen.stSaveSlot : screen.selectedItemIndex, error).has_value();
+    }
     return false;
 }
 
@@ -275,8 +290,9 @@ void beginActions(TrainerViewScreen& screen) {
         state.slot = screen.selectedPartyIndex;
     } else {
         state.target = TargetKind::Box;
-        state.box = screen.selectedBoxIndex;
-        state.slot = screen.selectedItemIndex;
+        const bool storage = storageEntrySurface(screen);
+        state.box = storage ? screen.stSaveBox : screen.selectedBoxIndex;
+        state.slot = storage ? screen.stSaveSlot : screen.selectedItemIndex;
     }
     screen.controllerNavigation.reset();
 }
@@ -2724,7 +2740,8 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
 
     const bool partyEntry = partyEntrySurface(screen);
     const bool boxEntry = boxEntrySurface(screen);
-    if (!partyEntry && !boxEntry) return false;
+    const bool storageEntry = storageEntrySurface(screen);
+    if (!partyEntry && !boxEntry && !storageEntry) return false;
 
     // Claim a completed box-cell tap before the inherited legacy sheet can
     // take it. Whether that cell is empty or occupied, it enters the native
@@ -2752,7 +2769,7 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
 
 
     if (navigated & HidNpadButton_A) {
-        if (partyEntry || boxEntry) beginActions(screen);
+        if (partyEntry || boxEntry || storageEntry) beginActions(screen);
         return true;
     }
     if ((navigated & HidNpadButton_X) && boxEntry && !selectedOccupied(screen)) {
