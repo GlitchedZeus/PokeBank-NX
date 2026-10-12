@@ -5,6 +5,7 @@
 // candidate history and never implies a global Invalid Pokémon.
 #include "Legality/Gen4NativeBreedingParentEvidence.h"
 #include "Legality/Gen4EggIVInheritanceStage.h"
+#include "Legality/Gen4EggIVStructuralBounds.h"
 #include "Legality/Gen34SameParentEggHistory.h"
 #include <array>
 #include <cstdint>
@@ -14,6 +15,7 @@ namespace Native=Gen4NativeBreedingParentEvidence;
 namespace Pair=Gen34BreedingPairEligibility;
 namespace Move=Gen34SameParentEggHistory;
 namespace IV=Gen4EggIVInheritanceStage;
+namespace Bounds=Gen4EggIVStructuralBounds;
 enum class Status : uint8_t {
     UnsupportedGame, UnknownNativeParentEvidence, UnknownNativeEggRecord,
     IncoherentNativeEggRecord, UnknownPairEligibility,
@@ -21,7 +23,8 @@ enum class Status : uint8_t {
     IncoherentMoveSnapshot, UnknownSharedStage, IncoherentSharedStage,
     UnknownInitialChildIVs, UnknownObservedChildIVs,
     UnknownPowerItemHistory, UnknownFinalRNGState, MalformedIVDomain,
-    MoveCandidateContradicted, IVCandidateContradicted, KnownCandidateConsistent
+    MoveCandidateContradicted, IVNecessaryPatternContradicted,
+    IVCandidateContradicted, KnownCandidateConsistent
 };
 struct Input {
     Native::Input parents{};
@@ -44,6 +47,7 @@ struct Result {
     Native::Result parents{};
     Move::Result moves{};
     IV::CandidateCheck ivs=IV::CandidateCheck::UnknownParents;
+    Bounds::Result necessaryIVs{};
 };
 inline Result evaluate(const Input& in) noexcept {
     Result out{};
@@ -114,15 +118,45 @@ inline Result evaluate(const Input& in) noexcept {
             out.status=Status::MoveCandidateContradicted;return out;
         case Move::Status::CandidateCompatible:break;
     }
-    if(!in.initialChildIVsIndependentlyVerified) {
-        out.status=Status::UnknownInitialChildIVs;return out;
-    }
     if(!in.observedChildIVsIndependentlyVerified) {
         out.status=Status::UnknownObservedChildIVs;return out;
     }
-    if(IV::family(game)==IV::Family::HeartGoldSoulSilver &&
-       !in.heldItemsAtStageIndependentlyVerified) {
-        out.status=Status::UnknownPowerItemHistory;return out;
+    // Necessary inheritance constraints require historical source-linked
+    // native parent IVs + original child IVs, but NOT a known initial
+    // random-IV roll or retained RNG seed. Distinct HGSS inherited stats
+    // and independently sourced Power-item donors can exclude a candidate.
+    // Passing is only NOT EXCLUDED, never proof of an actual RNG history.
+    Bounds::Input bound{};
+    bound.game=game;
+    bound.physicalSlot0=slot0.ivs();
+    bound.physicalSlot1=slot1.ivs();
+    bound.observedChild=in.observedChildIVs;
+    bound.heldItem0=slot0.heldItem();
+    bound.heldItem1=slot1.heldItem();
+    bound.historicalParentIVsIndependentlyVerified=true;
+    bound.historicalPhysicalOrderIndependentlyVerified=true;
+    bound.originalChildIVsIndependentlyVerified=true;
+    bound.heldItemsAtIVStageIndependentlyVerified=
+        in.heldItemsAtStageIndependentlyVerified;
+    out.necessaryIVs=Bounds::evaluate(bound);
+    switch(out.necessaryIVs.status) {
+        case Bounds::Status::CandidateContradiction:
+            out.status=Status::IVNecessaryPatternContradicted;return out;
+        case Bounds::Status::MalformedIVDomain:
+            out.status=Status::MalformedIVDomain;return out;
+        case Bounds::Status::UnknownHeldItemHistory:
+            out.status=Status::UnknownPowerItemHistory;return out;
+        case Bounds::Status::NecessaryPatternNotExcluded:break;
+        case Bounds::Status::UnsupportedGame:
+            out.status=Status::UnsupportedGame;return out;
+        case Bounds::Status::UnknownOriginalChildIVs:
+            out.status=Status::UnknownObservedChildIVs;return out;
+        case Bounds::Status::UnknownPhysicalSlots:
+        case Bounds::Status::UnknownHistoricalParents:
+            out.status=Status::UnknownNativeParentEvidence;return out;
+    }
+    if(!in.initialChildIVsIndependentlyVerified) {
+        out.status=Status::UnknownInitialChildIVs;return out;
     }
     if(!in.finalRNGStateIndependentlyVerified) {
         out.status=Status::UnknownFinalRNGState;return out;
