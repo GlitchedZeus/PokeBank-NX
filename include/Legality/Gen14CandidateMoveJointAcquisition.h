@@ -190,5 +190,21 @@ static_assert([]{auto a=smokeInterleaved(false);
     a.machines[0].numberedItem.itemIdentityVerified=false;
     return evaluate(a).status==Status::Unresolved;}());
 
+// Regression: a Bulbasaur retail machine row must not "verify" another
+// Pokemon's identical item/move/level teaching. The generic slot replay
+// succeeds, but the species-bound source record is not this species.
+static_assert([]{auto a=smokeInterleaved(false);
+    auto& p=a.path;
+    p.species=4;p.initialLevel=70;p.observedLevel=70;
+    p.initialMoves={10,45,52,108};
+    p.observedMoves={10,45,92,108};
+    p.stepCount=1;
+    p.steps[0]={C::Game::Ruby,70,C::Action::Learn,
+                C::Method::TM,92,2,true,C::Game::Ruby};
+    a.machines[0].stepIndex=0;
+    return C::evaluate(p).status==Status::CandidateConsistent &&
+           evaluate(a).status==Status::Unresolved;
+}());
+
 
 } // namespace Legality::Gen14CandidateMoveJointAcquisition
