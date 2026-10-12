@@ -75,15 +75,18 @@ static_assert([]{auto p=replayTrade();p.steps[2].method=M::Tutor;
     p.steps[2].evidenceVerified=false;
     return L::evaluate(p).status==S::Unresolved;}());
 
+// Cut (15), unlike Surf, is a Bulbasaur HM-compatible move in both
+// pinned RS/FRLG TMHM tables; migration still requires deletion and
+// independently evidenced Gen IV HM teaching after arrival.
 constexpr L::Path palpark() {
-    auto p=fullSlots();p.observedMoves={33,45,92,57};p.stepCount=3;
+    auto p=fullSlots();p.observedMoves={33,45,92,15};p.stepCount=3;
     p.steps[1]={Game::Platinum,42,A::PalPark,M::LevelUp,0,0,true,Game::Unknown};
-    p.steps[2]={Game::Platinum,44,A::Learn,M::HM,57,3,true,Game::Platinum};
+    p.steps[2]={Game::Platinum,44,A::Learn,M::HM,15,3,true,Game::Platinum};
     return p;
 }
 static_assert(L::evaluate(palpark()).status==S::CandidateConsistent);
 static_assert(L::evaluate(palpark()).transferred);
-static_assert([]{auto p=palpark();p.initialMoves={33,57,73,22};
+static_assert([]{auto p=palpark();p.initialMoves={33,15,73,22};
     return L::evaluate(p).status==S::CandidateContradicted;}());
 static_assert([]{auto p=palpark();p.steps[2].game=Game::Ruby;
     return L::evaluate(p).status==S::Unresolved;}());
@@ -94,10 +97,12 @@ static_assert([]{auto p=palpark();p.steps[1].evidenceVerified=false;
 static_assert([]{auto p=palpark();p.steps[2].methodSource=Game::Diamond;
     return L::evaluate(p).status==S::Unresolved;}());
 
+// Leech Seed (73) is an actual Ruby Bulbasaur level-7 move, unlike TM
+// Toxic: the proposed Move Reminder method concerns a past level-up move.
 constexpr L::Path relearn() {
-    auto p=fullSlots();p.observedMoves={33,45,22,92};p.stepCount=2;
+    auto p=fullSlots();p.observedMoves={33,45,22,73};p.stepCount=2;
     p.steps[0]={Game::Ruby,41,A::DeleteMove,M::LevelUp,0,2,true,Game::Unknown};
-    p.steps[1]={Game::Ruby,43,A::Learn,M::Reminder,92,3,true,Game::Ruby};
+    p.steps[1]={Game::Ruby,43,A::Learn,M::Reminder,73,3,true,Game::Ruby};
     return p;
 }
 static_assert(L::evaluate(relearn()).status==S::CandidateConsistent);
@@ -124,7 +129,7 @@ static_assert([]{auto p=lateOffer();p.steps[0].action=A::AlreadyKnown;
 
 constexpr L::Paths branches=[] {
     L::Paths p{};p.count=2;p.allCandidateHistoriesEnumerated=true;
-    p.alternatives[0]=palpark();p.alternatives[0].initialMoves={33,57,73,22};
+    p.alternatives[0]=palpark();p.alternatives[0].initialMoves={33,15,73,22};
     p.alternatives[1]=palpark();return p;
 }();
 static_assert(L::evaluate(branches).status==S::CandidateConsistent);
