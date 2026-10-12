@@ -579,6 +579,17 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         return true;
     }
     if (!(down & HidNpadButton_A)) return true;
+    // A following a swipe must never activate an off-screen Held Item or
+    // another previously selected field. Reveal it without editing first.
+    if (unified.focus.panel == Unified::Panel::Details &&
+        !unified.detailsViewport.containsSelection(
+            unified.focus.row, unified.crystal ? 13 : 9, 8)) {
+        unified.detailsTouchScroll.stop();
+        unified.detailsViewport.reveal(
+            unified.focus.row, unified.crystal ? 13 : 9, 8);
+        screen.postStatus("Focused field brought into view; press A again", 200);
+        return true;
+    }
 
     mirrorPickerFocus(state, unified.focus);
     if (!activateUnifiedField(screen, state, unified.focus))
