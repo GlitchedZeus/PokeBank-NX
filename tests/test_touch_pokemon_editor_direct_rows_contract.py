@@ -40,13 +40,27 @@ assert "touchedButtonDownId(touch)" not in gen1_foundation
 assert "focusId(tapped, true);" in gen1_foundation
 
 classic_actions = read("src/UI/ClassicReleaseActionFix.inc")
+narrow_gen1 = read("include/UI/NarrowPokemonActionMenu.h")
+for needle in (
+    "constexpr Model gen1(", 'result.append("Add to Master Vault");',
+    'result.append("Add to Bank...");', 'result.append("Transfer to Game...");',
+    'result.append("Make Shiny");', 'result.append("Release", index(A::Remove));',
+    'result.append("Review Pending Changes", review);',
+):
+    assert needle in narrow_gen1, f"Gen I narrow menu: {needle}"
+assert 'const auto model = PokeBank::UIModel::NarrowPokemonMenu::gen1(' in classic_actions
+assert 'const auto model = PokeBank::UIModel::NarrowPokemonMenu::classic(' in classic_actions
+assert '"GEN I / READ-ONLY SOURCE", 300' in classic_actions
+assert '"GEN II / READ-ONLY SOURCE", 500' in classic_actions
+assert "const int w = pokemon ? 650 : 560;" not in classic_actions
+
 require(classic_actions, "src/UI/ClassicReleaseActionFix.inc",
         "touchedAction >= 300 && touchedAction < 300 + rows",
-        "screen.touchButtons.push_back({300 + static_cast<int>(i)",
+        "drawNarrowPokemonActions(fb, screen.touchButtons, model, state.row",
         "screen.touchButtons.push_back({398",
         "screen.touchButtons.push_back({399",
         "touchedAction >= 500 && touchedAction < 500 + static_cast<int>(actions.count)",
-        "screen.touchButtons.push_back({500 + static_cast<int>(i)",
+        "drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow",
         "screen.touchButtons.push_back({498",
         "screen.touchButtons.push_back({499")
 

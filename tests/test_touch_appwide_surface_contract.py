@@ -151,6 +151,21 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurf
     assert actions.index("screen.drawGSCOverlay(fb);") < actions.index(
         "drawNarrowPokemonActions(fb, screen.touchButtons, model",
         actions.index("screen.drawGSCOverlay(fb);"))
+# These are the *actual* Gen I/II drawing paths called before the parity
+# renderer; they must use the narrow 440px model and real native touch IDs.
+legacy_draw = read("src/UI/ClassicReleaseActionFix.inc")
+gen1_popup = legacy_draw.split("bool drawReleaseActionSurface(", 1)[1].split(
+    "namespace UI::Gen2PokemonEditor", 1)[0]
+gen2_popup = legacy_draw.split("namespace UI::Gen2PokemonEditor", 1)[1].split(
+    "bool drawReleaseActionSurface(", 1)[1]
+assert "drawNarrowPokemonActions(fb, screen.touchButtons, model, state.row" in gen1_popup
+assert "drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow" in gen2_popup
+assert '"GEN I / READ-ONLY SOURCE", 300' in gen1_popup
+assert '"GEN II / READ-ONLY SOURCE", 500' in gen2_popup
+assert "const int w = pokemon ? 650 : 560;" not in gen2_popup
+assert "releaseActionCapabilities(),\n        !editor->pendingChanges().empty()" in gen2_popup
+assert "staged && !staged->pendingChanges().empty()" in gen1_popup
+
 # Shared narrow popup clears the dimmed background's touch targets before
 # publishing only enabled native command IDs; disabled placeholders are inert.
 require_all("include/UI/ScreenChrome.h",
