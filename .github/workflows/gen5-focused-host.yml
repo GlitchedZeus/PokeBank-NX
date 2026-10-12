@@ -58,7 +58,7 @@ jobs:
       - name: Build and run focused Gen V host contracts
         run: |
           set -euo pipefail
-          for bin in test_gen5_pk5_readonly test_gen5_readonly_save; do
+          for bin in test_gen5_pk5_readonly test_gen5_readonly_save test_gen5_staged_save_candidate; do
             make -f Makefile.host "build-host/$bin"
             "./build-host/$bin"
           done
@@ -67,7 +67,7 @@ jobs:
       - name: Run focused ASan and UBSan contracts
         run: |
           set -euo pipefail
-          for bin in test_gen5_pk5_readonly_sanitize test_gen5_readonly_save_sanitize; do
+          for bin in test_gen5_pk5_readonly_sanitize test_gen5_readonly_save_sanitize test_gen5_staged_save_candidate_sanitize; do
             make -f Makefile.host "build-host/$bin"
             "./build-host/$bin"
           done
