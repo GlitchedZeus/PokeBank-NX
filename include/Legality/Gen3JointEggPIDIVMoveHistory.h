@@ -8,6 +8,7 @@
 #include "Legality/Gen3JointEggCandidateEvidence.h"
 #include "Legality/Gen3EggPIDCreationHistory.h"
 #include "Legality/Gen34OriginalSameRouteProof.h"
+#include "Legality/Gen34OriginalParentLineage.h"
 #include <array>
 #include <cstdint>
 
@@ -43,6 +44,7 @@ struct Input {
     bool originalPairIdentityIndependentlyAttested=false;
     bool creationHeldItemsIndependentlyAttested=false;
     std::array<uint16_t,2> originalCreationHeldItems{};
+    Gen34OriginalParentLineage::Input originalParentLineage{};
 };
 struct Result {
     Status status=Status::UnknownOriginalEggEvidence;
@@ -50,6 +52,8 @@ struct Result {
     PID::Result pid{};
     Gen34OriginalSameRouteProof::Status sameRouteCheck=
         Gen34OriginalSameRouteProof::Status::NotSupplied;
+    Gen34OriginalParentLineage::Status lineageStatus=
+        Gen34OriginalParentLineage::Status::NotSupplied;
 };
 constexpr Result evaluate(const Input& in) noexcept {
     Result out{};
@@ -165,6 +169,20 @@ constexpr Result evaluate(const Input& in) noexcept {
             slot0.snapshotIdentity,slot1.snapshotIdentity,true,
             in.originalCreationHeldItems[0],in.originalCreationHeldItems[1]});
         if(out.sameRouteCheck!=Route::Status::ConditionallySameRoute){
+            out.status=Status::UnknownOriginalPairEvidence;return out;
+        }
+    }
+    // Stage 6: independently preserved traded/evolved/migrated histories
+    // must terminate at these exact ORIGINAL deposited biological parents.
+    // Custody/descendant metadata cannot be deduced from modern child PK3.
+    if(in.originalParentLineage.supplied) {
+        namespace Lineage=Gen34OriginalParentLineage;
+        const auto source=Lineage::evaluate(in.originalParentLineage,{
+            Gen34OriginalSameRouteProof::gameFor(game),
+            {slot0.snapshotIdentity,slot1.snapshotIdentity},
+            {slot0.species,slot1.species}});
+        out.lineageStatus=source.status;
+        if(source.status!=Lineage::Status::ConditionallyReplayed){
             out.status=Status::UnknownOriginalPairEvidence;return out;
         }
     }
