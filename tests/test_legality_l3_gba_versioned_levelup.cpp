@@ -156,6 +156,19 @@ constexpr L::Input deoxys(G game,uint16_t offered) {
     x.allPlayerOfferDecisionsVerified=true;
     x.stepCount=1;x.steps[0]={15,offered,D::ReplaceSlot,0};return x;
 }
+// The original #if FIRERED / #elif LEAFGREEN Dugtrio branch changes
+// SAME-LEVEL offer order. Merging both branches once produced two invented
+// level-1 prompts, so check exact counts AND indices for both cartridges.
+static_assert(L::offerCount(G::FireRed,51)==13);
+static_assert(L::offerCount(G::LeafGreen,51)==13);
+static_assert(L::offerAt(G::FireRed,51,0).move==161);
+static_assert(L::offerAt(G::LeafGreen,51,0).move==161);
+static_assert(L::offerAt(G::FireRed,51,1).move==10);
+static_assert(L::offerAt(G::FireRed,51,2).move==28);
+static_assert(L::offerAt(G::LeafGreen,51,1).move==28);
+static_assert(L::offerAt(G::LeafGreen,51,2).move==10);
+static_assert(L::offerAt(G::FireRed,51,3).move==45);
+static_assert(L::offerAt(G::LeafGreen,51,3).move==45);
 static_assert(L::offerCount(G::FireRed,386)==12);
 static_assert(L::offerCount(G::LeafGreen,386)==14);
 static_assert(L::offerAt(G::FireRed,386,4).move==269); // Taunt
