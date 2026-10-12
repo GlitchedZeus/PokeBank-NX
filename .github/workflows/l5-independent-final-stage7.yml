@@ -35,7 +35,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "${{ github.sha }}"
           test "$(git -C _l5_stage7_coordinator rev-parse HEAD)" = "ad9c1c859f94c0321a5d17489c72b0e7dbb9f440"
           test "$(git hash-object _l5_stage7_coordinator/src/Legality/Legality.cpp)" = "4ac8a0dc0badb8211eb105811eb3fa9f928e36e4"
-          test "$(git hash-object tools/audit_legality_l5_stage7_final.py)" = "d950b8ae5478904a2b33aef5ff8d3d24ec5169da"
+          test "$(git hash-object tools/audit_legality_l5_stage7_final.py)" = "e5445f0aebf169c7dc77b480dd61ce0b59cf9c2d"
           test "$(git hash-object tools/audit_legality_l5_stage7_verdict_model.h)" = "477548009e0e67e6784a6d5d16a113d26ebc9341"
           test "$(git hash-object tests/fixtures/legality_l5_stage7_verdict_fuzz.cpp)" = "c2c8ac0c0053e7c106ad9e014cbcf3df515ab0d0"
           git diff --check
