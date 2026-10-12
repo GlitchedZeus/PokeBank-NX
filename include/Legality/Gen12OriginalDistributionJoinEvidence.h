@@ -34,6 +34,11 @@ struct Candidate {
     bool archiveRowLinkIndependentlyVerified=false;
     bool archiveRowOriginalDigestIndependentlyVerified=false;
     Digest archiveRowOriginalDigest{};
+    // A converted copy is not the original archive. Both distinct digests
+    // and an independently checked transformation chain must be attested.
+    bool convertedOriginalChainIndependentlyVerified=false;
+    bool convertedPayloadDigestIndependentlyVerified=false;
+    Digest convertedPayloadDigest{};
 };
 struct Result {
     Status status=Status::UnknownSource;
@@ -77,6 +82,12 @@ constexpr Result evaluate(const Gift::Observation& native,
             out.status=Status::UnknownArchiveIdentity;return out;
         }
         out.sourceIdentityAgreed=true;
+        if(candidate.archive.grade==Archive::ArchiveGrade::OriginalConvertedAuthenticated &&
+           (!candidate.convertedOriginalChainIndependentlyVerified ||
+            !candidate.convertedPayloadDigestIndependentlyVerified ||
+            !Archive::digestNonzero(candidate.convertedPayloadDigest))) {
+            out.status=Status::UnknownArchiveProof;return out;
+        }
         out.archive=Archive::evaluate(candidate.archive);
         if(out.archive.status!=Archive::Status::ConditionalOriginalSource) {
             out.status=Status::UnknownArchiveProof;return out;

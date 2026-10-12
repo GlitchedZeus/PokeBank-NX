@@ -82,13 +82,32 @@ int main() {
         c.original.originalMechanicIndependentlyVerified=(mask&128)!=0;
         const auto r=J::evaluate(observed(static_cast<G::Game>(edition)),c);
         const bool compatible=kind==4 || edition>=4;
-        const bool expected=compatible && (grade==1 || grade==2) && mask==255;
+        const bool expected=compatible && grade==1 && mask==255;
         assert((r.status==S::ConditionalCandidate)==expected);
         assert(!r.authenticated && !r.globallyInvalid);
         assert(!r.copyrightedPayloadEmbeddingPermitted);
         ++cases;
     }
     assert(cases==786432);
+    // Converted archives are separately pinned to the original: verifying
+    // only the copied file digest or only a claimed conversion is insufficient.
+    unsigned convertedMasks=0;
+    for(unsigned mask=0;mask<16;++mask) {
+        auto c=candidate();c.archive.grade=A::ArchiveGrade::OriginalConvertedAuthenticated;
+        c.convertedOriginalChainIndependentlyVerified=(mask&1u)!=0;
+        c.convertedPayloadDigestIndependentlyVerified=(mask&2u)!=0;
+        c.convertedPayloadDigest[0]=(mask&4u)?std::byte{0x92}:std::byte{0};
+        if(mask&8u)c.archive.originalPayloadSha256[0]=std::byte{0x93};
+        const auto r=J::evaluate(observed(),c);
+        const bool sameOriginalDigest=(mask&8u)==0;
+        const bool expected=mask==7u;
+        assert((r.status==S::ConditionalCandidate)==expected);
+        if(!sameOriginalDigest)
+            assert(r.status==S::UnknownArchiveIdentity);
+        assert(!r.authenticated && !r.globallyInvalid);
+        ++convertedMasks;
+    }
+    assert(convertedMasks==16u);
     // PCNY does not exist in Gen I. No mismatched unrelated archive family
     // can be promoted merely because it shares species/TID/numeric digest.
     auto p=candidate(G::Game::Red,G::Kind::PCNYGift);
