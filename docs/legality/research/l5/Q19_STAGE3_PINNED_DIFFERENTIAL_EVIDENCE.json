@@ -1,0 +1,194 @@
+{
+  "schema": "L5_STAGE3_PINNED_METHOD_SCOPED_DIFFERENTIAL_V1",
+  "created": "2026-10-12",
+  "scope": "Independently implemented selected rule behavior only; neither whole-Pokemon PKHeX executable parity nor authentic retail evidence.",
+  "pkhex": {
+    "repo": "kwsch/PKHeX",
+    "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "method_sources": [
+      {
+        "path": "PKHeX.Core/Legality/Verifiers/EffortValueVerifier.cs",
+        "blob": "86c9bc6ea0361821df86e1473788c228ce7506a0",
+        "facts": [
+          "unhatched nonzero EV total -> Invalid",
+          "Gen III/IV EV byte cap not 252",
+          "total >510 -> Invalid",
+          "non-vitamin EV gain at attested encounter level 100 -> Invalid",
+          "unchanged base EXP plus non-vitamin EVs -> Invalid subject to exact encounter match"
+        ]
+      },
+      {
+        "path": "PKHeX.Core/PKM/Util/EffortValues.cs",
+        "blob": "5904496c4e60df3eb421bdf4c387f9df08f130ad",
+        "facts": [
+          "Max255 in Gen III–V",
+          "Max252 in Gen VI onward",
+          "Max510 total",
+          "GB vitamin increment 2560 and max25600",
+          "Gen III/IV vitamin increment 10 and max100"
+        ]
+      },
+      {
+        "path": "PKHeX.Core/PKM/PKM.cs",
+        "blob": "b6ac182fa32d60804a87752df0a80d554c30f574",
+        "facts": [
+          "EVTotal sums 6 exposed EV getters"
+        ]
+      },
+      {
+        "path": "PKHeX.Core/PKM/PK1.cs",
+        "blob": "a4b692ae7045afb9d11ea3a3b6e25b94c0c4de8b",
+        "facts": [
+          "Five Gen I stat experience values from native 16-bit fields"
+        ]
+      },
+      {
+        "path": "PKHeX.Core/PKM/PK2.cs",
+        "blob": "fe6fea5c5a2ff82f2ace7ba9af289348c16a0df0",
+        "facts": [
+          "Gen II 16-bit stat experience at offsets 0x0B,0x0D,0x0F,0x11,0x13"
+        ]
+      },
+      {
+        "path": "PKHeX.Core/PKM/Shared/GBPKM.cs",
+        "blob": "4e09e9f209c58c53de4437be1a876be57faf9ab0",
+        "facts": [
+          "Special Attack and Defense expose same old stat-experience value"
+        ]
+      },
+      {
+        "path": "PKHeX.Core/PKM/Shared/G3PKM.cs",
+        "blob": "1042c3edef50b4f2d16b164c56ef2a3461befc9f",
+        "facts": [
+          "G3 max EV per stat is 255"
+        ]
+      },
+      {
+        "path": "PKHeX.Core/PKM/Shared/G4PKM.cs",
+        "blob": "c42aad87ec573ee59377db28a110a6403163de0c",
+        "facts": [
+          "G4 max EV per stat is 255"
+        ]
+      }
+    ]
+  },
+  "nx": {
+    "repo": "GlitchedZeus/PokeBank-NX",
+    "integration_head_at_inspection": "2e9dbc0136ebdd8e4a00e335b171c48da5fdfdfc",
+    "source_blobs": [
+      {
+        "path": "src/Legality/Legality.cpp",
+        "blob": "2ee1624de1520630c54d69599834c8e29d589ffb",
+        "lines": [
+          1597,
+          1651
+        ],
+        "observed": "Current EV reads modern getters, checks total >510 and native Gen III/IV unhatched EVs; no Gen I/II stat-experience check was present in source review."
+      },
+      {
+        "path": "include/Pokemon/Pokemon2ReadOnly.h",
+        "blob": "5950c26ce1b5baca3b7a5c03679bbd2af2f0ca48",
+        "lines": [
+          51,
+          92,
+          120
+        ],
+        "observed": "Modern evHP returns neutral 0 while true statExpHP remains exposed; isEgg reflects record.isEgg."
+      },
+      {
+        "path": "src/Integration/Gen2/Gen2ReadOnlySave.cpp",
+        "blob": "b4988bbf4e2a9bbda03ecf38bcc5cb9a762ec2bb",
+        "lines": [
+          176,
+          185,
+          202
+        ],
+        "observed": "PK2 parser recognizes 0xFD egg slot marker and retains native 16-bit stat experience."
+      }
+    ]
+  },
+  "native_model": {
+    "path": "tests/fixtures/legality_l5_reference_differential.cpp",
+    "git_blob": "ba484cdcc4f454b7b54a99255b125b9a12ed663a",
+    "expected_comparisons": 655450,
+    "expected_assertions": 655466,
+    "run_evidence": [
+      {
+        "compiler": "GCC O2 C++20 -Werror",
+        "result": "PASS"
+      },
+      {
+        "compiler": "GCC O1 C++20 -Werror ASan+UBSan",
+        "result": "PASS"
+      },
+      {
+        "compiler": "Clang O2 C++20 -Werror",
+        "result": "PASS"
+      }
+    ],
+    "accounting": {
+      "agreement": 131860,
+      "reference_rule_gap_in_narrow_nx_model": 392746,
+      "unresolved_history": 130844
+    },
+    "note": "Counts are synthetic method-parameter classifications, not distinct production bugs, actual PKHeX calls, or retail certificates."
+  },
+  "native_production_probe": {
+    "path": "tests/fixtures/legality_l5_pk2_egg_stat_exp_analyzer_probe.cpp",
+    "makefile": "tools/audit_legality_l5_stage3_pk2_probe.mk",
+    "scenarios": 200,
+    "potential_reference_egg_invalid_cases": 80,
+    "actual_analyzer_normal": "NOT_EXECUTED",
+    "actual_analyzer_sanitizer": "NOT_EXECUTED"
+  },
+  "priority_finding": {
+    "id": "L5-F5-CANDIDATE",
+    "classification": "SOURCE_BACKED_BEHAVIORAL_DISCREPANCY_PENDING_FULL_ANALYZER_REPRO",
+    "generation": 2,
+    "synthetic_native_input": {
+      "species": 1,
+      "storage": "PK2",
+      "egg_list_marker": "0xFD",
+      "is_egg": true,
+      "level": 5,
+      "stat_experience": [
+        2560,
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_contexts": [
+        "",
+        "gold_gbc",
+        "crystal_gbc",
+        "firered_gba",
+        "unknown_unrecognized"
+      ]
+    },
+    "expected_pinned_reference": "Egg with nonzero EVTotal (native PK2 stat experience) emits Invalid",
+    "observed_current_nx_source": "PK2 wrapper returns modern EV getters as zero; analyzer Gen III/IV egg EV gate omits Gen II; no stat-experience field accessed in analyzer source",
+    "production_full_analyzer_execution": false,
+    "owner_of_fix": "coordinator",
+    "requirements": [
+      "Execute 200-context synthetic PK2 real analyzer on baseline normal and sanitizer",
+      "If confirmed, coordinator implements native PK2 stat-exp egg rule without editing original saves",
+      "Verify non-eggs and zero-stat-exp eggs remain unaffected; do not infer encounter authenticity"
+    ]
+  },
+  "separation": {
+    "source_data_difference": "Exact encounter/template sources or native source IDs differ",
+    "verdict_severity": "Local warning vs hard Invalid after scope aligned",
+    "format_parsing": "Different native checksum/size/extraction and strict parser outcome",
+    "hypothetical_history": "Missing encounter, parent, transfer or acquisition alternatives must be Unknown/Incomplete",
+    "whole_pokemon": "No full original retail legality verdict determined by this model",
+    "diagnostic_order": "Both sides hard-Invalid but different applicable check identifiers/order; not a verdict-severity discrepancy"
+  },
+  "release": {
+    "authentic_paired_original_sources": 0,
+    "pkhex_full_game_family_certificates": 0,
+    "read_only": true,
+    "redistributed_pkhex_code": false,
+    "ready": false
+  }
+}
