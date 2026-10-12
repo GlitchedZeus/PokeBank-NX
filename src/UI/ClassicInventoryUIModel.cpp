@@ -38,6 +38,14 @@ std::span<const ClassicPocket> classicInventoryCategories(ClassicGame game) noex
     return kGen3Categories;
 }
 
+int classicInventoryShiftCategory(ClassicGame game, int current, int delta) noexcept {
+    const int count = static_cast<int>(classicInventoryCategories(game).size());
+    if (count <= 0) return 0;
+    const int start = std::clamp(current, 0, count - 1);
+    const int step = ((delta % count) + count) % count;
+    return (start + step) % count;
+}
+
 std::optional<ClassicPocket> classicInventoryPocketAt(ClassicGame game, int category) noexcept {
     const auto categories = classicInventoryCategories(game);
     if (category < 0 || category >= static_cast<int>(categories.size())) return std::nullopt;
