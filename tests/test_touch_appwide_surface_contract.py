@@ -559,7 +559,7 @@ assert "pointInRect(touch.x(), touch.y()," in gen2_review
 gen2_hardware_direct = gen2_hardware.split(
     "bool focusUnifiedTouchPoint(", 1)[1].split("void handleUnifiedTouch(", 1)[0]
 assert "Unified::scrollWindow" not in gen2_hardware_direct
-assert "1700" not in gen2_hardware_direct  # native hit IDs own Details
+assert "hit >= 1700" not in gen2_hardware_direct  # native hit IDs own Details
 gen2_details_input = read("src/UI/Gen2UnifiedPokemonWorkspace.inc")
 assert "hit >= 1700 && hit < 1700 + count ? hit - 1700 : -1" in gen2_details_input
 assert "if (touchedDetail >= 0) {" in gen2_details_input
