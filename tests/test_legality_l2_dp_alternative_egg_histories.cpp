@@ -79,6 +79,8 @@ J::Input joint(const A::Input& original){
         original.alternatives[0].ivPhysicalParentPairIdentity;
     m.sharedOriginalEventIndependentlyAttested=true;
     m.physicalDepositOrderIndependentlyAttested=true;
+    m.originalDaycarePairEligibilityIndependentlyAttested=true;
+    m.eligibleOriginalDaycarePair=true;
     m.physicalSlots[0]={101,25,1,{33,45,98,57},true,true};
     m.physicalSlots[1]={202,25,0,{33,45,98,57},true,true};
     m.fatherPhysicalSlot=1;m.fatherRoleIndependentlyAttested=true;
