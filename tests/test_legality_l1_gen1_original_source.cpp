@@ -1,4 +1,5 @@
 #include "Legality/Gen1IndexedOriginalSourceHistory.h"
+#include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -114,7 +115,7 @@ int main(){
         evolved.originalRowIndex=f[0];
         evolved.originalSpecies=f[1];
         evolved.presentSpecies=f[2];
-        evolved.originalLevel=H::Gen1Encounter::kStaticEntries[f[0]].minimumLevel;
+        evolved.originalLevel=Legality::Gen1Encounter::kStaticEntries[f[0]].minimumLevel;
         evolved.originalCatchRate=Legality::Gen1CatchRate::expectedRate("red_gb",f[1]);
         evolved.originalGameIndependentlyAttested=true;
         evolved.originalSourceRowIndependentlyAttested=true;
