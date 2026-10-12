@@ -1453,8 +1453,7 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
     state.actionRow = std::clamp(
         state.actionRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
     if (actions.count == 0) return true;
-    const int actionDown = screen.touchedButtonDownId(touch);
-    if (actionDown >= 41600 && actionDown < 41600 + static_cast<int>(actions.count)) state.actionRow = actionDown - 41600;
+    // Touch-down can become a swipe; do not steal the selected action row.
     const int actionTap = screen.touchedButtonId(touch);
     if (actionTap >= 41600 && actionTap < 41600 + static_cast<int>(actions.count)) { state.actionRow = actionTap - 41600; down |= HidNpadButton_A; }
     // Real disabled options are greyed and not focusable with A or touch.
@@ -2736,15 +2735,16 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
         const int slots = static_cast<int>(screen.trainer.getSlotsPerBox());
         if (PokeBank::UIModel::Gen4BoxTouchActions::selectsTappedBoxSlot(tapped, slots)) {
             screen.selectedItemIndex = tapped;
-            // A on an occupied box slot already enters this exact staged menu.
-            // A tap does too, including when tapping a different Pokémon.
-            if (selectedOccupied(screen)) beginActions(screen);
-            return true; // Unoccupied slot: focus only, X is explicit Add.
+            // Match A and Gen I-II: empty and occupied slots enter the SAME
+            // staged actions menu. Empty Add remains a separate explicit action.
+            beginActions(screen);
+            return true;
         }
     }
     if (partyEntry && touch.justTapped()) {
         const int tapped = screen.touchedButtonId(touch);
-        if (tapped >= 6200 && tapped < 6206) {
+        if (tapped >= 6200 && tapped < 6206 &&
+            tapped - 6200 < static_cast<int>(screen.trainer.getPartySize())) {
             screen.selectedPartyIndex = tapped - 6200;
             beginActions(screen);
             return true;

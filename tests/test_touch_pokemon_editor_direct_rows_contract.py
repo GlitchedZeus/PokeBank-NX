@@ -98,7 +98,6 @@ require(gen3, "src/UI/Gen3SharedPokemonSurface.inc",
         "state.pickerRow = touchTap - 4000;",
         "appendClippedTouchButton(screen.touchButtons, 4000 + i",
         "screen.touchButtons.push_back({31500 + speciesStart + i",
-        "actionDown >= 31600 && actionDown < 31600 + static_cast<int>(actions.count)",
         "actionTap >= 31600 && actionTap < 31600 + static_cast<int>(actions.count)",
         "drawNarrowPokemonActions(fb, screen.touchButtons, model, state.actionRow",
         "state.reviewScroll = std::clamp",
@@ -135,7 +134,6 @@ require(gen4, "src/UI/Gen4SharedPokemonSurface.inc",
         "screen.touchButtons.push_back({41100 + row",
         "screen.touchButtons.push_back({41120 + row",
         "screen.touchButtons.push_back({41300 + row",
-        "actionDown >= 41600 && actionDown < 41600 + static_cast<int>(actions.count)",
         "actionTap >= 41600 && actionTap < 41600 + static_cast<int>(actions.count)",
         "drawNarrowPokemonActions(fb, screen.touchButtons, model, state.actionRow",
         "state.detailsTouchScroll.updateVertical(",
@@ -163,6 +161,21 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurf
     ):
         assert expected in src, f"{rel}: picker hitbox viewport mismatch: {expected}"
 
+
+# Action sheets may receive an exploratory finger-down that turns into a drag.
+# Neither action selection nor A activation may change before a completed tap.
+gen1_actions = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc").split(
+    "} else if (state.mode == UX2Mode::Actions) {", 1)[1].split(
+    "} else if (state.mode == UX2Mode::LevelExpEditor", 1)[0]
+assert "selectedId(1000, static_cast<int>(actions.count), pressed)" not in gen1_actions
+assert "selectedId(1000, static_cast<int>(actions.count), tapped)" in gen1_actions
+for rel, following in (
+    ("src/UI/Gen3SharedPokemonSurface.inc", "bool handleReview("),
+    ("src/UI/Gen4SharedPokemonSurface.inc", "bool handleReleaseConfirm("),
+):
+    actions = read(rel).split("bool handleActions(", 1)[1].split(following, 1)[0]
+    assert "touchedButtonDownId(touch)" not in actions, f"{rel}: contact changed action focus"
+    assert "touchedButtonId(touch)" in actions, f"{rel}: missing release-confirmed tap"
 
 # Fixed action/move dialogs are fully visible. They should remain direct-tap/controller surfaces,
 # not pretend scroll views whose release position silently changes focus.

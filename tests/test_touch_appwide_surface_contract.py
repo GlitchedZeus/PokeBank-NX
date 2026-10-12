@@ -163,11 +163,24 @@ require_all("src/UI/Gen2SharedPokemonSurface.inc",
 require_all("src/UI/Gen3SharedPokemonSurface.inc",
             "if (touch.justTapped()) {", "screen.selectedItemIndex = tapped;",
             "if (!editor(screen)) return false;",
-            "if (selectedOccupied(screen)) beginActions(screen);")
+            "beginActions(screen);")
 require_all("src/UI/Gen4SharedPokemonSurface.inc",
             "if (boxEntry && touch.justTapped())", "screen.selectedItemIndex = tapped;",
-            "if (selectedOccupied(screen)) beginActions(screen);",
-            "if (partyEntry && touch.justTapped())", "screen.selectedPartyIndex = tapped - 6200;")
+            "beginActions(screen);",
+            "if (partyEntry && touch.justTapped())", "screen.selectedPartyIndex = tapped - 6200;",
+            "tapped - 6200 < static_cast<int>(screen.trainer.getPartySize())")
+
+# Empty box cells must enter the same guarded action popup as A, never
+# silently focus only or stage Add on the first tap.
+for rel, entry in (
+    ("src/UI/Gen3SharedPokemonSurface.inc", "if (touch.justTapped()) {"),
+    ("src/UI/Gen4SharedPokemonSurface.inc", "if (boxEntry && touch.justTapped()) {"),
+):
+    code = read(rel).rsplit(entry, 1)[1].split("if (partyEntry && touch.justTapped())", 1)[0].split(
+        "const bool occupied = selectedOccupied(screen);", 1)[0]
+    assert "beginActions(screen);" in code, f"{rel}: empty cell tap must open Actions"
+    assert "if (selectedOccupied(screen)) beginActions(screen);" not in code
+
 # The header arrows must use the Gen I–III exact-game category catalog, not the
 # old two-pocket RBY inherited category counter.
 require_all("src/UI/ClassicInventoryOverlay.cpp",

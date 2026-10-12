@@ -1280,9 +1280,7 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
     if (actions.count == 0) return true;
     state.actionRow = std::clamp(
         state.actionRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
-    const int actionDown = screen.touchedButtonDownId(touch);
-    if (actionDown >= 31600 && actionDown < 31600 + static_cast<int>(actions.count))
-        state.actionRow = actionDown - 31600;
+    // A contact is not a selection. Preserve focus if the finger swipes away.
     const int actionTap = screen.touchedButtonId(touch);
     if (actionTap >= 31600 && actionTap < 31600 + static_cast<int>(actions.count)) {
         state.actionRow = actionTap - 31600; down |= HidNpadButton_A;
@@ -2014,8 +2012,10 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
         if (tapped >= 0 && tapped < slots) {
             screen.selectedItemIndex = tapped;
             if (!editor(screen)) return false; // Read-only source: preserve base View fallback.
-            if (selectedOccupied(screen)) beginActions(screen);
-            return true; // Empty staged slot: focus only; X remains explicit Add.
+            // Empty and occupied cells both use the same guarded A/Actions path.
+            // Add still requires a deliberate second activation inside the menu.
+            beginActions(screen);
+            return true;
         }
     }
     const bool occupied = selectedOccupied(screen);

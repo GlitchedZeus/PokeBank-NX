@@ -797,9 +797,9 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
         std::string error;
         const auto pokemon = ux2SelectedPokemon(screen, error);
         const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon), hasPending(screen));
-        int row = selectedId(1000, static_cast<int>(actions.count), pressed);
-        if (row >= 0) state.row = row;
-        row = selectedId(1000, static_cast<int>(actions.count), tapped);
+        // A finger-down may become a swipe; only its completed tap can
+        // change the active command or synthesize A.
+        const int row = selectedId(1000, static_cast<int>(actions.count), tapped);
         if (row >= 0) { state.row = row; down |= HidNpadButton_A; }
     } else if (state.mode == UX2Mode::LevelExpEditor || state.mode == UX2Mode::MoveEditor ||
                state.mode == UX2Mode::DVEditor || state.mode == UX2Mode::StatExpEditor) {

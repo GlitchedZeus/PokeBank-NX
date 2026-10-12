@@ -25,6 +25,8 @@ struct Model {
             rows[static_cast<std::size_t>(count++)] = {label, nativeIndex};
     }
     [[nodiscard]] constexpr int visualIndex(int nativeIndex) const noexcept {
+        // -1 is the disabled-row sentinel, never a selectable native action.
+        if (nativeIndex < 0) return -1;
         for (int i = 0; i < count; ++i)
             if (rows[static_cast<std::size_t>(i)].nativeIndex == nativeIndex)
                 return i;
@@ -101,6 +103,9 @@ struct Geometry {
 }
 
 static_assert(geometry(12).height <= 720 - 56);
+static_assert(classic(
+    SharedPokemonEditor::actionsForSlot(true, {true, true, true}, true), true
+).visualIndex(-1) == -1);
 static_assert(geometry(9).rowHeight >= 54);
 static_assert(geometry(2).width == 440);
 static_assert(classic(
