@@ -300,8 +300,9 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     clampSourceBoxSelection(*this);
 
     // Storage's legacy touch path fires A on first contact. For the GAME SAVE
-    // pane in Gen I-IV, hold contact until an intentional same-cell tap has
-    // completed, then route A through the genuine generation editor. Do not
+    // pane in Gen I-IV, wait for the completed same-cell tap and route A
+    // through the genuine generation editor. TouchInput::justPressed() is
+    // ALREADY a release-confirmed tap; it is NOT a finger-down edge. Do not
     // touch the separate Bank pane or interfere with drag/multi/carry input.
     const bool stagedStorageSave = detailViewActive && selectedMode == ViewMode::Storage &&
         !helpOverlayActive && !details.active && !actionSheet.isOpen() &&
@@ -321,7 +322,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
          (Gen2PokemonEditor::isGSC(*this) && stagedEditor(*this) != nullptr) ||
          Gen3SharedEditorSurface::isGen3Gba(*this) ||
          Gen4SharedEditorSurface::isGen4Nds(*this));
-    if (stagedStorageSave && (touch.justPressed() || touch.justTapped())) {
+    if (stagedStorageSave && touch.justTapped()) {
         const auto saveSlotHit = [&](int x, int y) -> int {
             for (const auto& target : storageTouchTargets) {
                 if (target.pane != 0 || target.box != stSaveBox ||
@@ -333,15 +334,13 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
             }
             return -1;
         };
-        if (touch.justPressed() && saveSlotHit(touch.x(), touch.y()) >= 0)
-            return; // Never let the old Storage menu open on touch-down.
-        if (touch.justTapped()) {
-            const int first = saveSlotHit(touch.startX(), touch.startY());
-            if (first >= 0 && first == saveSlotHit(touch.x(), touch.y())) {
-                storageFocusPane = 0;
-                stSaveSlot = first;
-                down |= HidNpadButton_A;
-            }
+        const int first = saveSlotHit(touch.startX(), touch.startY());
+        if (first >= 0 && first == saveSlotHit(touch.x(), touch.y())) {
+            storageFocusPane = 0;
+            stSaveSlot = first;
+            down |= HidNpadButton_A;
+            // The generation's staged Actions handler below owns this A.
+            // Its true return prevents the old storage/menu handler firing.
         }
     }
 

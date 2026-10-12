@@ -765,8 +765,8 @@ for token in (
     "selectedMode == ViewMode::Storage",
     "target.pane != 0 || target.box != stSaveBox",
     "target.slot >= static_cast<int>(trainer.getSlotsPerBox())",
-    "touch.justPressed() && saveSlotHit(touch.x(), touch.y()) >= 0",
-    "touch.justTapped()",
+    "if (stagedStorageSave && touch.justTapped())",
+    "const int first = saveSlotHit(touch.startX(), touch.startY());",
     "first == saveSlotHit(touch.x(), touch.y())",
     "storageFocusPane = 0;",
     "stSaveSlot = first;",
@@ -854,3 +854,17 @@ assert "screen.openActionSheetTargetDetails(true);" in gen3_readonly
 assert "screen.actionSheet.close();" in gen3_readonly
 assert "if (!editor(screen)) return false; // Read-only source" not in gen3_readonly
 assert "Gen3SharedEditorSurface::isGen3Gba(*this) ||" in composite
+
+# Regression: TouchInput::justPressed is a CLEAN RELEASE, not finger-down.
+# The previous fast-return incorrectly swallowed every valid Storage tap.
+touch_api = read("include/UI/TouchInput.h")
+assert "bool justPressed() const { return justReleased() && !dragged(); }" in touch_api
+assert "bool justTapped() const { return justPressed(); }" in touch_api
+storage_route = entry.split("const bool stagedStorageSave =", 1)[1].split(
+    "ClassicPackedMove::handleInput(", 1)[0]
+assert "touch.justTouchedDown()" not in storage_route
+assert "if (touch.justPressed() && saveSlotHit(" not in storage_route
+assert "if (stagedStorageSave && touch.justTapped())" in entry
+assert "const int first = saveSlotHit(touch.startX(), touch.startY());" in storage_route
+assert "first == saveSlotHit(touch.x(), touch.y())" in storage_route
+assert "down |= HidNpadButton_A;" in storage_route
