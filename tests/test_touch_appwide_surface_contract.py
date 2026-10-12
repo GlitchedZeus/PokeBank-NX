@@ -148,8 +148,9 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurf
 require_all("include/UI/ScreenChrome.h",
             "buttons.clear();", "if (row.enabled())",
             "touchIdBase + row.nativeIndex")
-# A single tap on an occupied Pokémon must open the same real staged action
-# surface across Gen I–IV. Native Gen II actions also publish direct row hitboxes.
+# A clean tap on an OCCUPIED OR EMPTY Pokémon box slot must open the same
+# genuine native action menu as A. Gen III/IV must never just focus empty slots
+# while A exposes Add/Cancel. Native Gen II rows also publish real hitboxes.
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
             "screen.selectedItemIndex = target;", "input |= HidNpadButton_A;")
 require_all("src/UI/Gen2SharedSurfaceParity.inc",
