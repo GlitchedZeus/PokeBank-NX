@@ -1973,6 +1973,69 @@ int main() {
             hgOriginal,hgCandidate,{&hgWild,true,true,true});
         assert(hgResult.status==H::Status::KnownConditionalWildHistory);
         assert(hgResult.rng.method==R::Method::MethodKNoLead);
+        // Cross-game native-source matrix: ALL five original Gen IV
+        // wild-game resource sets, including both ordinary no-lead
+        // and source-verified Synchronize frame classes (Method J/K).
+        // Each row and PID/IV uses the source-game table, not a
+        // species or slot borrowed from a sibling version.
+        struct GameCase {
+            W::Game game;
+            const char* id;
+            Enums::GameVersion saveGroup;
+            uint32_t noLeadSeed,syncSeed;
+            uint8_t noLeadSlot,syncSlot;
+            R::Method expectedNormal,expectedSync;
+        };
+        constexpr std::array<GameCase,5> cases{{
+            {W::Game::Diamond,"diamond_nds",Enums::GameVersion::DP,
+             0x469FB838u,0u,6u,0u,R::Method::MethodJNoLead,R::Method::MethodJSynchronize},
+            {W::Game::Pearl,"pearl_nds",Enums::GameVersion::DP,
+             0x469FB838u,0u,6u,0u,R::Method::MethodJNoLead,R::Method::MethodJSynchronize},
+            {W::Game::Platinum,"platinum_nds",Enums::GameVersion::PT,
+             0x469FB838u,0u,6u,0u,R::Method::MethodJNoLead,R::Method::MethodJSynchronize},
+            {W::Game::HeartGold,"heartgold_nds",Enums::GameVersion::HGSS,
+             0x0000000Du,1u,4u,1u,R::Method::MethodKNoLead,R::Method::MethodKSynchronize},
+            {W::Game::SoulSilver,"soulsilver_nds",Enums::GameVersion::HGSS,
+             0x0000000Du,1u,4u,1u,R::Method::MethodKNoLead,R::Method::MethodKSynchronize}
+        }};
+        unsigned sourceRoutesProved=0;
+        for(const auto& variant:cases) {
+            for(unsigned isSync=0;isSync<2;++isSync) {
+                const uint8_t slot=isSync?variant.syncSlot:variant.noLeadSlot;
+                const auto rowIndex=findGrass(variant.game,slot);
+                assert(rowIndex<std::size(W::kPackedGen4WildEncounters));
+                const auto row=W::kPackedGen4WildEncounters[rowIndex];
+                const auto seed=isSync?variant.syncSeed:variant.noLeadSeed;
+                const auto pid=R::sequentialPid(seed);
+                const auto ivs=ivsFor(seed);
+                assert(Legality::Gen4PidIv::analyze(pid,ivs).originSeed==seed);
+                auto nativeRaw=rawLater;
+                wr32(nativeRaw,0x00,pid);
+                wr16(nativeRaw,0x08,W::species(row));
+                wr32(nativeRaw,0x38,packIV(ivs));
+                Pokemon::Pokemon4ReadOnly nativeWild(
+                    Encryption::encryptArray4(nativeRaw),variant.saveGroup);
+                assert(nativeWild.valid() && !nativeWild.isEgg());
+                auto snapshot=original;
+                snapshot.exactOriginalGame=variant.id;
+                snapshot.originalSpecies=W::species(row);
+                snapshot.originalLocation=W::location(row);
+                snapshot.originalTrainerId32=nativeWild.id32();
+                snapshot.pid=pid;snapshot.ivs=ivs;
+                H::Candidate historical=source;
+                historical.originalRowIndex=rowIndex;
+                historical.historicalLead=isSync?
+                    H::Lead::Synchronize:H::Lead::NoLead;
+                const auto candidate=H::evaluateNative(
+                    snapshot,historical,{&nativeWild,true,true,true});
+                assert(candidate.status==H::Status::KnownConditionalWildHistory);
+                assert(candidate.rng.method==(isSync?variant.expectedSync:
+                    variant.expectedNormal));
+                assert(candidate.matchedSlot==slot);
+                ++sourceRoutesProved;
+            }
+        }
+        assert(sourceRoutesProved==10);
         const auto before=std::vector<std::byte>(
             ptWild.originalEncryptedBytes().begin(),
             ptWild.originalEncryptedBytes().end());
