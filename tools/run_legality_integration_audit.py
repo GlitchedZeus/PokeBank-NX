@@ -65,7 +65,9 @@ PROGRAMS: dict[str, tuple[str, ...]] = {
               "legality_l6_stage1_l2_duplicate_route_contract",
               "legality_l6_stage2_bounds_contract",
               "legality_l6_stage2_pk4_offset_native",
-              "legality_l6_stage4_gate_ledger"),
+              "legality_l6_stage4_gate_ledger",
+              "legality_l6_stage5_joint_history",
+              "legality_l6_stage5_native_analyzer"),
 }
 RUNNERS = {"l1": "tests/test_legality_l1_run.sh", "l2": "tests/test_legality_l2_run_all.sh",
            "l3": "tests/test_legality_l3_run_all.sh", "l4": "tests/test_legality_l4_runner.sh",
@@ -120,6 +122,8 @@ def plan(suite: str, sha: str) -> list[Gate]:
             Gate("stage3-cross-lane-sanitize", ["python3", "tools/audit_legality_stage3_cross_lane.py", "--sanitize"], {}, RUNNERS["audit"]),
             Gate("stage4-native", ["python3", "tools/audit_legality_stage4_gate_ledger.py", "--normal"], {}, RUNNERS["audit"]),
             Gate("stage4-native-sanitize", ["python3", "tools/audit_legality_stage4_gate_ledger.py", "--sanitize"], {}, RUNNERS["audit"]),
+            Gate("stage5-joint-normal", ["python3", "tools/audit_legality_l6_stage5.py", "--compiler", "g++", "--normal"], {}, RUNNERS["audit"]),
+            Gate("stage5-joint-sanitize", ["python3", "tools/audit_legality_l6_stage5.py", "--compiler", "g++", "--sanitize"], {}, RUNNERS["audit"]),
         ],
     }
     selected = tuple(groups) if suite == "all" else (suite,)
