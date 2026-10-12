@@ -134,9 +134,25 @@ int main() {
     const auto cubeOrigin=probe(1,15,{73,0,0,0},10000,
         Enums::GameVersion::PT,"platinum_nds",false,0,true);
     assert(!info(cubeOrigin,"Pal Park original"));
-    const auto migratedUnmodeled=probe(152,2,{73,0,0,0},10000,
+    const auto migratedUnmodeled=probe(387,2,{73,0,0,0},10000,
         Enums::GameVersion::PT,"platinum_nds",false,0,true);
     assert(!info(migratedUnmodeled,"Pal Park original ruby_gba level-up source opportunity:"));
 
-    std::cout<<"L3 production Platinum and Pal Park native encrypted PK4 13-context INFO gate PASS\\n";
+    // The ORIGINAL GBA version matters: Charmander Metal Claw (#232)
+    // is an original FireRed level-13 offer, not a Ruby level-13 offer.
+    const auto retainedFireRed=probe(4,4,{232,0,0,0},10000,
+        Enums::GameVersion::PT,"platinum_nds",false,0,true);
+    assert(info(retainedFireRed,
+        "Pal Park original firered_gba level-up source opportunity:"));
+    const auto retainedRuby=probe(4,2,{232,0,0,0},10000,
+        Enums::GameVersion::PT,"platinum_nds",false,0,true);
+    assert(!info(retainedRuby,
+        "Pal Park original ruby_gba level-up source opportunity:"));
+    const auto rubySmokescreen=probe(4,2,{108,0,0,0},10000,
+        Enums::GameVersion::PT,"platinum_nds",false,0,true);
+    assert(info(rubySmokescreen,
+        "Pal Park original ruby_gba level-up source opportunity:"));
+
+
+    std::cout<<"L3 production Platinum and Pal Park native encrypted PK4 16-context INFO gate PASS\\n";
 }
