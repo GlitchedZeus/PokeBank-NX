@@ -27,6 +27,8 @@ PINNED_PKHEX = {
         "5904496c4e60df3eb421bdf4c387f9df08f130ad",
     "PKHeX.Core/PKM/PK2.cs":
         "fe6fea5c5a2ff82f2ace7ba9af289348c16a0df0",
+    "PKHeX.Core/PKM/PKM.cs":
+        "b6ac182fa32d60804a87752df0a80d554c30f574",
     "PKHeX.Core/PKM/PK1.cs":
         "a4b692ae7045afb9d11ea3a3b6e25b94c0c4de8b",
     "PKHeX.Core/PKM/Shared/GBPKM.cs":
