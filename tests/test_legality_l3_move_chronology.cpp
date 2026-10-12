@@ -1,4 +1,4 @@
-#include "Legality/Gen14CandidateMoveChronology.h"
+#include "Legality/Gen14CandidateMoveJointAcquisition.h"
 #include <cassert>
 #include <iostream>
 namespace L=Legality::Gen14CandidateMoveChronology;
@@ -167,7 +167,112 @@ static_assert([]{auto p=branches;p.alternatives[1]=p.alternatives[0];
     return L::evaluate(p).status==S::Unresolved;}());
 static_assert([]{auto p=branches;p.alternatives[1].candidateId=999;
     return L::evaluate(p).status==S::Unresolved;}());
+// Integration gate: all target moves are individually GBA-source compatible,
+// but their stated time/slot sequence may be impossible. This test does NOT
+// attempt to exclude different evolution/trade/egg/event/transfer histories.
+namespace J=Legality::Gen14CandidateMoveJointAcquisition;
+namespace ME=Legality::Gen14CandidateMoveMachineEvidence;
+constexpr J::Input jointBulbasaur() {
+    J::Input in{};in.path=rubyBulbasaur();
+    in.uninterruptedSameSpeciesGameStageVerified=true;
+    in.allOfferedLevelUpDecisionsRecorded=true;
+    return in;
+}
+static_assert(L::evaluate(jointBulbasaur().path).status==S::CandidateConsistent);
+static_assert(J::evaluate(jointBulbasaur()).status==S::CandidateConsistent);
+constexpr J::Input skippedMandatoryOffers() {
+    auto in=jointBulbasaur();
+    in.path.observedMoves={33,45,92,237};
+    // Individually both Toxic and Hidden Power are Bulbasaur GBA TMs,
+    // but their acquisition cannot replace the lv7/lv10 forced offers
+    // without an observed decline/replacement decision.
+    in.path.steps[0]={Game::Ruby,7,A::Learn,M::TM,92,2,true,Game::Ruby};
+    in.path.steps[1]={Game::Ruby,10,A::Learn,M::TM,237,3,true,Game::Ruby};
+    in.machineCount=2;
+    in.machines[0]={0,{Game::Ruby,1,ME::Machine::TM,6,92,true,true}};
+    in.machines[1]={1,{Game::Ruby,1,ME::Machine::TM,10,237,true,true}};
+    return in;
+}
+static_assert(L::evaluate(skippedMandatoryOffers().path).status==S::CandidateConsistent);
+static_assert(J::evaluate(skippedMandatoryOffers()).status==S::CandidateContradicted);
+constexpr J::Input jointFourMoves() {
+    auto in=jointBulbasaur();
+    auto& p=in.path;p.initialLevel=40;p.observedLevel=46;
+    p.initialMoves={33,45,73,22};
+    p.observedMoves={92,237,15,76};
+    p.stepCount=4;
+    p.steps[0]={Game::Ruby,41,A::Learn,M::TM,92,0,true,Game::Ruby};
+    p.steps[1]={Game::Ruby,43,A::Learn,M::TM,237,1,true,Game::Ruby};
+    p.steps[2]={Game::Ruby,44,A::Learn,M::HM,15,2,true,Game::Ruby};
+    p.steps[3]={Game::Ruby,46,A::Learn,M::LevelUp,76,3,true,Game::Ruby};
+    in.machineCount=3;
+    in.machines[0]={0,{Game::Ruby,1,ME::Machine::TM,6,92,true,true}};
+    in.machines[1]={1,{Game::Ruby,1,ME::Machine::TM,10,237,true,true}};
+    in.machines[2]={2,{Game::Ruby,1,ME::Machine::HM,1,15,true,true}};
+    return in;
+}
+static_assert(J::evaluate(jointFourMoves()).status==S::CandidateConsistent);
+static_assert(J::evaluate(jointFourMoves()).requiredOffers==1);
+static_assert(J::evaluate(jointFourMoves()).verifiedMachines==3);
+static_assert([]{auto a=jointFourMoves();
+    a.path.steps[2].level=46;
+    return L::evaluate(a.path).status==S::CandidateConsistent &&
+           J::evaluate(a).status==S::CandidateContradicted;}());
+// An independently attested item number mismatch contradicts only this
+// route; an absent receipt makes this candidate Unknown, not Invalid.
+static_assert([]{auto a=jointFourMoves();
+    a.machines[0].numberedItem.machineNumber=10;
+    return J::evaluate(a).status==S::CandidateContradicted;}());
+static_assert([]{auto a=jointFourMoves();a.machineCount=2;
+    return J::evaluate(a).status==S::Unresolved;}());
+static_assert([]{auto a=jointFourMoves();a.machineCount=4;
+    a.machines[3]=a.machines[2];
+    return J::evaluate(a).status==S::Unresolved;}());
+static_assert([]{auto a=jointFourMoves();
+    a.allOfferedLevelUpDecisionsRecorded=false;
+    return J::evaluate(a).status==S::Unresolved;}());
+static_assert([]{auto a=jointFourMoves();
+    a.uninterruptedSameSpeciesGameStageVerified=false;
+    return J::evaluate(a).status==S::Unresolved;}());
+// A reminder or tutor route may be legal but needs its own method witness:
+// do not incorrectly reject it just because this joint check is narrower.
+static_assert([]{auto a=jointFourMoves();
+    a.path.initialLevel=40;a.path.observedLevel=45;
+    a.path.initialMoves={33,45,22,77};
+    a.path.observedMoves={33,45,22,73};
+    a.path.stepCount=1;
+    a.path.steps[0]={Game::Ruby,43,A::Learn,M::Reminder,73,3,true,Game::Ruby};
+    a.machineCount=0;
+    return L::evaluate(a.path).status==S::CandidateConsistent &&
+           J::evaluate(a).status==S::Unresolved;}());
+static_assert([]{auto a=jointBulbasaur();
+    a.path.origin=Game::Ruby;a.path.species=133;
+    return J::evaluate(a).status==S::Unresolved;}());
+static_assert([]{auto a=jointBulbasaur();
+    a.path.samePokemonAndSpeciesVerified=false;
+    return J::evaluate(a).status==S::Unresolved;}());
+static_assert([]{auto a=jointBulbasaur();
+    a.path.stepCount=3;
+    a.path.steps[2]={Game::Emerald,10,A::VisitGame,M::LevelUp,0,0,true,Game::Unknown};
+    return L::evaluate(a.path).status==S::CandidateConsistent &&
+           J::evaluate(a).status==S::Unresolved;}());
+static_assert([]{auto a=jointBulbasaur();
+    a.path.stepCount=3;
+    a.path.steps[2]={Game::Diamond,10,A::PalPark,M::LevelUp,0,0,true,Game::Unknown};
+    return L::evaluate(a.path).status==S::CandidateConsistent &&
+           J::evaluate(a).status==S::Unresolved;}());
+// The previous four-slot-only candidate can be "consistent" without any
+// source-offer action; source order independently disproves this particular
+// claimed complete history, not any unenumerated alternative.
+static_assert([]{auto a=jointFourMoves();
+    a.path.observedMoves=a.path.initialMoves;
+    a.path.stepCount=0;a.machineCount=0;
+    return L::evaluate(a.path).status==S::CandidateConsistent &&
+           J::evaluate(a).status==S::CandidateContradicted;}());
+
 int main() {
+    assert(J::evaluate(jointFourMoves()).status==S::CandidateConsistent);
+    assert(J::evaluate(skippedMandatoryOffers()).status==S::CandidateContradicted);
     assert(L::evaluate(replayTrade()).visits==1);
     assert(L::evaluate(palpark()).visits==1);
     std::cout<<"L3 candidate GBA / Gen IV four-slot chronology: PASS\n";
