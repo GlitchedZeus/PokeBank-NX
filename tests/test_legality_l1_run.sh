@@ -49,6 +49,10 @@ suites=(
   test_legality_l1_stage4_honey
   test_legality_l1_stage4_method_jk
   test_legality_l1_stage4_native_pk3_pk4
+  test_legality_l1_stage5_status_bridge
+  test_legality_l1_stage5_ledger
+  test_legality_l1_stage5_permutations
+  test_legality_l1_stage5_real_sources
   test_legality_l1_original_candidate_universe
   test_legality_l1_gen3_original_roamers
   test_legality_l1_gen3_wild_catalog
