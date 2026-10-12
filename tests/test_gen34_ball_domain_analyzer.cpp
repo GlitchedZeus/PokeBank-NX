@@ -810,6 +810,20 @@ void testGen4JointNativeParentMoveIvHistories() {
                 wrongChildStage.alternatives[1].originalEgg.originalEggStageToken=0x9F33u;
                 assert(U::evaluate(wrongChildStage).status==
                        U::Status::AllAttestedDaycareHistoriesContradicted);
+                // RNG-stage seed and initial random-IV record are LOST;
+                // the source-attested parents and original child can still
+                // exclude impossible NECESSARY inherited-stat patterns.
+                auto noSeedImpossible=in;
+                const auto iv0=slot0.ivs(),iv1=slot1.ivs();
+                for(uint8_t stat=0;stat<6;++stat) {
+                    uint8_t fresh=0;
+                    while(fresh==iv0[stat]||fresh==iv1[stat])++fresh;
+                    noSeedImpossible.observedChildIVs[stat]=fresh;
+                }
+                noSeedImpossible.finalRNGStateIndependentlyVerified=false;
+                noSeedImpossible.initialChildIVsIndependentlyVerified=false;
+                auto necessaryOnly=J::evaluate(noSeedImpossible);
+                assert(necessaryOnly.status==J::Status::IVNecessaryPatternContradicted);
                 // Exact immutable original unhatched PK4 with all six IVs
                 // inconsistent with EVERY claimed historical parent stat.
                 // Even without initial rolls or a final RNG seed, this
@@ -916,20 +930,6 @@ void testGen4JointNativeParentMoveIvHistories() {
                 assert(good.parents.eligibility.slot1Id==(reversed?101u:202u));
                 assert(good.necessaryIVs.status==
                     Legality::Gen4EggIVStructuralBounds::Status::NecessaryPatternNotExcluded);
-                // RNG-stage seed and initial random-IV record are LOST;
-                // the source-attested parents and original child can still
-                // exclude impossible NECESSARY inherited-stat patterns.
-                auto noSeedImpossible=in;
-                const auto iv0=slot0.ivs(),iv1=slot1.ivs();
-                for(uint8_t stat=0;stat<6;++stat) {
-                    uint8_t fresh=0;
-                    while(fresh==iv0[stat]||fresh==iv1[stat])++fresh;
-                    noSeedImpossible.observedChildIVs[stat]=fresh;
-                }
-                noSeedImpossible.finalRNGStateIndependentlyVerified=false;
-                noSeedImpossible.initialChildIVsIndependentlyVerified=false;
-                auto necessaryOnly=J::evaluate(noSeedImpossible);
-                assert(necessaryOnly.status==J::Status::IVNecessaryPatternContradicted);
                 auto unknownSourceChild=noSeedImpossible;
                 unknownSourceChild.observedChildIVsIndependentlyVerified=false;
                 assert(J::evaluate(unknownSourceChild).status==
