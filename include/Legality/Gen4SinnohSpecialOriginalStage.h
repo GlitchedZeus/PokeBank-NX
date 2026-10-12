@@ -61,7 +61,10 @@ inline Result evaluate(const Candidate& c) noexcept {
     if(!c.originalCaptureStageIndependentlyAttested)
         return {Status::UnknownOriginalCaptureStage,slot,radar,munchlax};
     if(!c.originalPathIndependentlyAttested ||
-       c.originalPath==Path::Unknown)
+       (c.originalPath!=Path::OrdinaryWild &&
+        c.originalPath!=Path::HoneyTree &&
+        c.originalPath!=Path::RadarWild &&
+        c.originalPath!=Path::RadarChainShiny))
         return {Status::UnknownOriginalPath,slot,radar,munchlax};
     if(c.originalSpecies!=W::species(row) ||
        !W::formMatches(W::form(row),c.originalForm))

@@ -82,11 +82,13 @@ inline Result evaluate(const Candidate& c) noexcept {
         nativeMask=row.nativeGameMask;
         if(!c.originalTradeOTIndependentlyAttested)
             return {Status::UnknownTradeOT,species,minimum};
-        if(!c.noTimeCapsuleHistoryIndependentlyAttested &&
-           !c.timeCapsuleHistoryIndependentlyAttested)
+        // "Definitely never traded back" and "definitely traded back"
+        // are mutually exclusive source histories. Conflicting witness
+        // flags are not permission to pick a stricter source level.
+        if(c.noTimeCapsuleHistoryIndependentlyAttested ==
+           c.timeCapsuleHistoryIndependentlyAttested)
             return {Status::UnknownTradebackHistory,species,minimum};
-        if(c.timeCapsuleHistoryIndependentlyAttested &&
-           !c.noTimeCapsuleHistoryIndependentlyAttested)
+        if(c.timeCapsuleHistoryIndependentlyAttested)
             minimum=row.minimumLevelAfterTradeback;
     }
     if((nativeMask&mask)==0)

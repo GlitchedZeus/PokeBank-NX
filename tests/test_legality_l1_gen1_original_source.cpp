@@ -94,6 +94,8 @@ int main(){
     rateHistory.timeCapsuleHistoryIndependentlyAttested=true;
     assert(H::evaluate(rateHistory).status==Status::ConditionalOriginalSource);
     rateHistory.noTimeCapsuleHistoryIndependentlyAttested=true;
+    assert(H::evaluate(rateHistory).status==Status::UnknownTradebackHistory);
+    rateHistory.timeCapsuleHistoryIndependentlyAttested=false;
     assert(H::evaluate(rateHistory).status==Status::CandidateOriginalLevelContradicted);
     // Distinct Eevee branches cannot evolve into each other even when
     // a numeric species interval or stage-offset heuristic would include them.

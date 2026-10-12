@@ -67,6 +67,8 @@ int main() {
             assert(S::evaluate(missing).status==Status::UnknownOriginalRow);
             missing=c;missing.originalPathIndependentlyAttested=false;
             assert(S::evaluate(missing).status==Status::UnknownOriginalPath);
+            missing=c;missing.originalPath=static_cast<S::Path>(255u);
+            assert(S::evaluate(missing).status==Status::UnknownOriginalPath);
             auto wrong=c;wrong.originalSpecies=0;
             assert(S::evaluate(wrong).status==
                    Status::CandidateOriginalSpeciesOrFormContradicted);
