@@ -30,7 +30,7 @@ New `Gen4DiamondPearlEggIVStage.h` matches the original assembly control flow an
 
 Original `ov05_021EC8A8`, lines **529–610**:
 
-- Identify female candidate from original gender snapshots; if Ditto is present, the Ditto donor wins. An internally represented two-Ditto path draws an `LCRandom` and takes slot1 if the high16 output is strictly less than `0x7FFF`, else slot0. This does not legalize a two-Ditto parent pair: actual pair eligibility must be independently attested.
+- Identify female candidate from original gender snapshots; if Ditto is present, the Ditto donor wins. The assembly contains an otherwise unreachable two-Ditto selection path, but **independent original daycare eligibility rejects two Ditto**, so the conditional engine explicitly rejects that pair even when a caller incorrectly asserts eligibility. No speculative two-Ditto egg history can be reported compatible.
 - Selected donor must hold original creation-time Everstone, item **229**. A separate `LCRandom` high16 roll less than `0x7FFF` activates nature inheritance; equality `0x7FFF` does not. A present-day parent's held item cannot establish the original donation.
 
 Original `ov05_021EC944`, lines **612–652**:
@@ -46,7 +46,7 @@ Original `ov05_Daycare_CreateEgg`, lines **1482–1530**:
 
 New `Gen4DiamondPearlEggPidHistory.h` preserves these stages and requires original parent snapshots, eligible ordinary daycare pair, original physical deposit order, original held items, source time/event identity shared across parent/MT/collection witnesses, true LCRNG entry state, consecutive exact MT output transcript, original language and trainer-ID values, and original unhatched egg PID. Candidate-local statuses distinguish conditional PID match, mismatch, consumed-count contradiction and genuinely missing information.
 
-Tests `test_legality_l2_dp_egg_pid.cpp` include both games, the strict 0x7FFE/0x7FFF boundary, female/Ditto donor selection, one-MT PID, multiple rejected PIDs, 2400/2401 boundary and fallback, original 1812433253 PRandom international four-reroll path, initial shiny skip, differing trainer/languages unavailable, time token mismatch and candidate-local negatives.
+Tests `test_legality_l2_dp_egg_pid.cpp` include both games, the strict 0x7FFE/0x7FFF boundary, female/Ditto donor selection, rejected double-Ditto/no-valid-donor pair hypotheses, one-MT PID, multiple rejected PIDs, 2400/2401 boundary and fallback, original 1812433253 PRandom international four-reroll path, initial shiny skip, differing trainer/languages unavailable, time token mismatch and candidate-local negatives.
 
 ## B12 + B13 same original immutable native egg
 
