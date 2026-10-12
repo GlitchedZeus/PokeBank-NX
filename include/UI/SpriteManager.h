@@ -48,6 +48,11 @@ namespace UI {
         static Sprite* getTypeSprite(uint8_t typeId);
 
         static bool typeSpriteExists(uint8_t typeId);
+        // Exact, name-keyed item artwork (ball and held-item pickers). The
+        // loader uses only pre-bundled ROMFS PNGs; no device network access.
+        // Missing art stays missing, never substituted with another item.
+        static Sprite* getItemSprite(const std::string& itemName);
+
 
         // Called just before a sprite's pixel buffer is freed. The renderer caches the texture it
         // built from that buffer under the buffer's ADDRESS, so it has to drop it in step: a later
@@ -83,6 +88,7 @@ namespace UI {
 
         // Type sprite cache: key = type ID
         static std::map<uint8_t, Sprite*> typeSpriteCache;
+        static std::map<std::string, Sprite*> itemSpriteCache;
 
         static bool initialized;
 

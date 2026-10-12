@@ -90,7 +90,8 @@ inline std::string fitDetailsText(PKSEFramebuffer& fb, const std::string& text, 
 // Shared inline rows keep label and value on one baseline with a full-row focus outline.
 template <class Label, class Value>
 inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int h,
-    std::size_t total, std::size_t focus, bool focused, Label label, Value value) {
+    std::size_t total, std::size_t focus, bool focused, Label label, Value value,
+    int pixelOffset = 0, int independentFirstRow = -1) {
     constexpr std::size_t visibleRows = 8;
     // Keep one value column across scrolling windows, sized for the real field labels.
     int labelWidth = 0;
@@ -100,7 +101,14 @@ inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int 
         labelWidth = std::max(labelWidth, width);
     }
     const int valueInset = std::max(112, std::min(labelWidth + 28, w - 100));
-    const auto window = PokeBank::UIModel::SharedPokemonEditor::scrollWindow(total, visibleRows, focus);
+    auto window = PokeBank::UIModel::SharedPokemonEditor::scrollWindow(total, visibleRows, focus);
+    if (independentFirstRow >= 0 && total > visibleRows) {
+        // Finger scrolling changes the viewport, not which field is selected.
+        // Controller navigation can separately reveal the selected field.
+        window.first = std::min<std::size_t>(
+            static_cast<std::size_t>(independentFirstRow), total - visibleRows);
+        window.count = visibleRows;
+    }
     // Scrolling owns one clipped row viewport. Clear it before painting the next window so
     // an older set of rows can never ghost underneath the current focus position.
     const int viewportY = y + 216;
@@ -108,9 +116,15 @@ inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int 
     const int viewportH = std::max(0, viewportBottom - viewportY);
     fb.drawFilledRect(x + 8, viewportY, w - 16, viewportH, Colors::Panel);
     fb.setClipRect(x + 8, viewportY, w - 16, viewportH);
-    for (std::size_t i = 0; i < window.count; ++i) {
-        const auto row = window.first + i;
-        const int yy = y + 224 + static_cast<int>(i) * 38;
+    // Keep one extra row on either side of a live finger drag to avoid
+    // displaying a blank strip at each 38px boundary.
+    const int start = independentFirstRow >= 0 ? -1 : 0;
+    const int end = static_cast<int>(window.count) + (independentFirstRow >= 0 ? 1 : 0);
+    for (int i = start; i < end; ++i) {
+        const int rowIndex = static_cast<int>(window.first) + i;
+        if (rowIndex < 0 || rowIndex >= static_cast<int>(total)) continue;
+        const auto row = static_cast<std::size_t>(rowIndex);
+        const int yy = y + 224 + i * 38 + pixelOffset;
         const bool selected = focused && row == focus;
         if (selected)
             fb.drawRoundedRect(x + 8, yy + 2, std::max(0, w - 36), 30, 6, Colors::FocusBorder, 2);

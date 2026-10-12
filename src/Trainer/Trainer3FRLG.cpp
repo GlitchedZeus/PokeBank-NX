@@ -13,6 +13,7 @@
 #include <cstring>
 
 #include "Trainer/Trainer3FRLG.h"
+#include "Integration/Gen3/Gen3SaveValidation.h"
 #include "Pokemon/Gen3PartyRecord.h"
 #include "Enums/LanguageID.h"
 #include "Utils/Gen3Text.h"        // the Gen 3 character set, shared with Pokemon3FRLG + Convert
@@ -83,7 +84,7 @@ namespace Trainer {
         }
     }
 
-    Trainer3FRLG::Trainer3FRLG(std::vector<uint8_t> data, std::string fileName)
+    Trainer3FRLG::Trainer3FRLG(std::vector<uint8_t> data, std::string fileName, bool previewOnly)
         : Trainer(std::vector<Block>{}), saveData(std::move(data)), m_fileName(std::move(fileName))
     {
         // Always leave the containers in a consistent shape, even for a bad save.
@@ -103,41 +104,46 @@ namespace Trainer {
         }
         parseTrainer();
         parseParty();
+        // Product Home only needs identity + active party. Parsing all 420 box slots on the UI
+        // input thread made L/R appear frozen on the native Switch FRLG wrappers. Full editor opens
+        // keep the default path and still parse boxes, names and inventory.
+        if (previewOnly) return;
         parseBoxes();
         parseBoxNames();
         parseItems();
     }
 
     void Trainer3FRLG::selectActiveSlot() {
-        auto slotCounter = [&](size_t base) -> uint32_t {
-            for (size_t s = 0; s < FRLG_SECTORS; ++s) {
-                const size_t off = base + s * FRLG_SECTOR_SIZE;
-                if (readUInt16LittleEndian(&saveData[off + 0xFF4]) == 0)
-                    return readUInt32LittleEndian(&saveData[off + 0xFFC]);
-            }
-            return 0;
+        using namespace PokeVault::Integration::Gen3;
+        const auto bytes = std::span<const uint8_t>(saveData.data(), saveData.size());
+        const Detail::SlotValidation slots[2] = {
+            Detail::validateSlot(bytes, 0),
+            Detail::validateSlot(bytes, 1),
         };
-        const uint32_t ca = slotCounter(FRLG_SLOT_A);
-        const uint32_t cb = slotCounter(FRLG_SLOT_B);
-        // An unwritten slot's counter is 0xFFFFFFFF (erased sentinel) and must lose; otherwise greater wins.
-        bool aWins;
-        if (ca == 0xFFFFFFFFu && cb != 0xFFFFFFFFu) aWins = false;
-        else if (cb == 0xFFFFFFFFu && ca != 0xFFFFFFFFu) aWins = true;
-        else aWins = (ca >= cb);
-        m_slotBase = aWins ? FRLG_SLOT_A : FRLG_SLOT_B;
-
-        // Resolve the rotated sector table: m_sectorOfs[id] = absolute offset of the sector carrying id.
-        bool seen[FRLG_SECTORS] = {false};
-        int found = 0;
-        for (size_t s = 0; s < FRLG_SECTORS; ++s) {
-            const size_t off = m_slotBase + s * FRLG_SECTOR_SIZE;
-            const uint16_t id = readUInt16LittleEndian(&saveData[off + 0xFF4]);
-            if (id < FRLG_SECTORS && !seen[id]) { m_sectorOfs[id] = off; seen[id] = true; ++found; }
+        if (!slots[0].valid && !slots[1].valid) {
+            m_valid = false;
+            logErrorToFile("FRLG save has no checksum-valid rotating slot");
+            return;
         }
-        m_valid = (found == static_cast<int>(FRLG_SECTORS));
 
-        char buf[128];
-        snprintf(buf, sizeof(buf), "FRLG active slot @0x%05zX (counter A=%u B=%u)", m_slotBase, ca, cb);
+        const uint8_t active = Detail::selectActiveSlot(slots);
+        const auto& selected = slots[active];
+        if (!selected.valid ||
+            Detail::detectFamily(bytes, selected) != Detail::SaveFamily::FireRedLeafGreen) {
+            m_valid = false;
+            logErrorToFile("FRLG save active slot does not match the FireRed/LeafGreen layout");
+            return;
+        }
+
+        m_slotBase = Detail::kSlotBases[active];
+        for (size_t id = 0; id < FRLG_SECTORS; ++id)
+            m_sectorOfs[id] = selected.logicalSectorOffsets[id];
+        m_valid = true;
+
+        char buf[160];
+        snprintf(buf, sizeof(buf),
+                 "FRLG active checksum-valid slot @0x%05zX (slot=%u counter=%u)",
+                 m_slotBase, static_cast<unsigned>(active), selected.counter);
         logInfoToFile(buf);
     }
 

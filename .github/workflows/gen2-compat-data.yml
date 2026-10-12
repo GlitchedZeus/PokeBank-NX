@@ -1,13 +1,9 @@
-name: Gen II Compatibility Data
+name: HISTORICAL / MANUAL — Gen II Compatibility Data
 
+
+# Frozen evidence workflow retained for reproducibility. It must never auto-run on current development.
 on:
-  pull_request:
-    branches:
-      - feature/pokebank-playable
-    types: [opened, synchronize, reopened]
-    paths:
-      - tools/gen_gen2_move_compatibility.py
-      - .github/workflows/gen2-compat-data.yml
+  workflow_dispatch:
 
 permissions:
   contents: write

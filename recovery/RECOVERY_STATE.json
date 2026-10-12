@@ -1,8 +1,10 @@
 {
   "schema": 1,
-  "updated": "2026-09-10",
+  "updated": "2026-09-29",
   "repository": "GlitchedZeus/PokeBank-NX",
-  "branch": "feature/pokebank-playable",
+  "historical_snapshot_branch": "feature/pokebank-playable",
+  "repository_visibility": "public",
+  "publishing_policy": "Historical snapshot provenance is immutable evidence. Re-fetch live GitHub state and publish any regenerated recovery snapshot only through the current reviewed branch/PR; never push recovery output directly to the historical feature branch.",
   "application_source": "b38c48c6c1d7266895a33f02fbe78e56bd4e094d",
   "application_source_message": "gen1: finish native and trainer view integration",
   "historical_full_visual_baseline": {
@@ -44,7 +46,7 @@
       "NotoSansSymbols2.ttf"
     ],
     "output": "romfs/fonts",
-    "note": "SIL OFL fonts; recovery script uses the project URLs until the complete private GitHub RomFS snapshot is committed."
+    "note": "SIL OFL fonts; recovery script uses the project URLs when the committed RomFS snapshot is unavailable."
   },
   "game_cards": {
     "tracked_source": "assets/game_cards",

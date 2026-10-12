@@ -41,18 +41,26 @@ namespace Trainer {
 
         // Decode from 16-byte block at given item ID
         static InventoryItem9SV fromBytes(uint16_t itemId, const uint8_t* data) {
-            InventoryItem9SV item;
+            InventoryItem9SV item{};
+            const auto read32 = [](const uint8_t* p) noexcept -> uint32_t {
+                return static_cast<uint32_t>(p[0])
+                     | (static_cast<uint32_t>(p[1]) << 8)
+                     | (static_cast<uint32_t>(p[2]) << 16)
+                     | (static_cast<uint32_t>(p[3]) << 24);
+            };
 
             // Bytes 0-3: Pouch ID
-            item.pouchId = (data[0]) | (data[1] << 8) | (data[2] << 16) | (data[3] << 24);
-            // Bytes 4-7: Count (signed int32)
-            item.count = (data[4]) | (data[5] << 8) | (data[6] << 16) | (data[7] << 24);
-            // Bytes 8-11: Flags
-            item.flags = (data[8]) | (data[9] << 8) | (data[10] << 16) | (data[11] << 24);
+            item.pouchId = read32(data);
+            // Bytes 4-7: Count (native int32; UI stores the non-negative low 16-bit quantity)
+            const uint32_t nativeCount = read32(data + 4);
+            item.count = static_cast<uint16_t>(nativeCount);
+            // Bytes 8-11: Flags. Preserve the base fields before the derived record is sliced into
+            // Trainer::items; bit 0 = NEW, bit 1 = FAVORITE.
+            item.flags = read32(data + 8);
+            item.isNew = (item.flags & 0x01u) != 0;
+            item.isFavorite = (item.flags & 0x02u) != 0;
 
             item.itemId = itemId;
-            item.count = static_cast<uint16_t>(item.count);
-
             return item;
         }
     };

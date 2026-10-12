@@ -1,7 +1,10 @@
 #pragma once
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "UI/SharedHeldItemPicker.h"
+#include "UI/SharedHeldItemPickerPresentation.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/ItemPickerArtwork.h"
+#include "UI/ClassicMachineArtwork.h"
 #include "UI/Common.h"
 #include <vector>
 
@@ -12,7 +15,7 @@ inline constexpr int pageSize = SharedHeldItemPicker::pageSize;
 inline int initialIndex(const std::vector<uint8_t>& items, uint8_t current) {
     return SharedHeldItemPicker::initialIndex(items, current);
 }
-constexpr int move(int index, int count, int dx, int dy, int pages = 0) noexcept {
+inline int move(int index, int count, int dx, int dy, int pages = 0) noexcept {
     return SharedHeldItemPicker::move(index, count, dx, dy, pages);
 }
 inline std::string itemName(uint8_t item) {
@@ -21,21 +24,35 @@ inline std::string itemName(uint8_t item) {
     using namespace PokeVault::Inventory;
     return displayItemName(ClassicGame::Gold, ClassicPocket::PCItems, item);
 }
+
+// The display label includes the move for readability (e.g. "TM27 — Return"),
+// but the pinned item sprite is named "tm27.png", not "tm27-return.png".
+// Never convert a Gen II item number into a Gen III/IV item number.
+inline std::string spriteName(uint8_t item) {
+    const std::string disc = UI::ClassicMachineArtwork::gscArtKey(item);
+    if (!disc.empty()) return disc;
+    std::string name = itemName(item);
+    const std::string key = UI::ItemSpriteKey::slug(name);
+    if (UI::ItemSpriteKey::isGen2Mail(key))
+        return "gsc-mail-icon-" + key;
+    if (name.size() > 2 && ((name[0] == 'T' && name[1] == 'M') ||
+                            (name[0] == 'H' && name[1] == 'M'))) {
+        const std::size_t end = name.find(' ');
+        if (end != std::string::npos && end > 2) name.resize(end);
+    }
+    return name;
+}
 }
 
 namespace UI::Gen2HeldItemPickerPresentation {
-inline void drawList(PKSEFramebuffer& fb, int x, int y, int width,
-                     const std::vector<uint8_t>& items, int selected) {
+inline void drawList(PKSEFramebuffer& fb, int panelX, int panelY,
+                     const std::vector<uint8_t>& items, int selected,
+                     int firstVisibleRow = -1, int scrollOffset = 0) {
     namespace Model = PokeBank::UIModel::Gen2HeldItemPicker;
-    const int first = selected / Model::pageSize * Model::pageSize;
-    const int last = std::min(static_cast<int>(items.size()), first + Model::pageSize);
-    const int cellWidth = width / Model::columns;
-    for (int i = first; i < last; ++i) {
-        const int cellX = x + (i - first) % Model::columns * cellWidth;
-        const int cellY = y + (i - first) / Model::columns * 32;
-        if (i == selected) fb.drawRoundedRect(cellX, cellY, cellWidth - 12, 30, 6, Colors::FocusBorder, 2);
-        fb.drawText(cellX + 10, cellY + 6, Model::itemName(items[static_cast<std::size_t>(i)]),
-                    Colors::Text, TextStyle::Caption);
-    }
+    // True Gen II item IDs and display names; shared Gen III grid geometry.
+    SharedHeldItemPickerPresentation::drawGrid(
+        fb, panelX, panelY, items, selected,
+        [](uint8_t item) { return Model::itemName(item); },
+        [](uint8_t item) { return Model::spriteName(item); }, firstVisibleRow, scrollOffset);
 }
 }

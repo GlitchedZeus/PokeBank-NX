@@ -1,9 +1,8 @@
-name: Preserve verified RomFS recovery snapshot
+name: HISTORICAL / MANUAL — Preserve verified RomFS recovery snapshot
 
+
+# Frozen evidence workflow retained for reproducibility. It must never auto-run on current development.
 on:
-  push:
-    branches: [feature/pokebank-playable]
-    paths: [.github/workflows/recovery-snapshot.yml]
   workflow_dispatch:
 
 permissions:

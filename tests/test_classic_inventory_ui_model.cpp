@@ -33,6 +33,27 @@ int main() {
     assert(classicInventoryCategories(*emerald).size() == 6);
     assert(classicInventoryPocketAt(*emerald, 4) == ClassicPocket::Berries);
     assert(classicInventoryCategories(*firered).size() == 6);
+    // Hardware regression: arrow taps must reach every displayed pocket.
+    // Gen I and III have six categories, Gen II has five; the inherited
+    // RBY decoder's two raw pockets must never be used to wrap these tabs.
+    for (const auto game : {*yellow, *gold, *emerald, *firered}) {
+        const int count = static_cast<int>(classicInventoryCategories(game).size());
+        int selected = 0;
+        for (int i = 0; i < count; ++i) {
+            assert(selected == i);
+            assert(classicInventoryPocketAt(game, selected).has_value());
+            selected = classicInventoryShiftCategory(game, selected, +1);
+        }
+        assert(selected == 0);
+        for (int i = 0; i < count; ++i) {
+            selected = classicInventoryShiftCategory(game, selected, -1);
+            assert(selected == (count - 1 - i));
+        }
+        assert(selected == 0);
+        assert(classicInventoryShiftCategory(game, count - 1, +1) == 0);
+        assert(classicInventoryShiftCategory(game, 0, -1) == count - 1);
+        assert(classicInventoryShiftCategory(game, count + 99, +1) == 0);
+    }
 
     const auto yellowBalls = classicInventoryAddableItems(*yellow, ClassicPocket::Balls);
     assert(std::find(yellowBalls.begin(), yellowBalls.end(), 4) != yellowBalls.end());

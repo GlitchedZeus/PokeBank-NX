@@ -1,0 +1,60 @@
+name: One-time focused Product Home hardware recovery
+
+on:
+  push:
+    branches:
+      - feature/gen4-full-editor-20260928
+    paths:
+      - tools/product_hardware_recovery_20261005_trigger.txt
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/gen4-full-editor-20260928
+          fetch-depth: 0
+
+      - name: Verify rejected candidate ancestry
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 36653ffbf97965187e572ccf63c7f05b215b812c HEAD
+
+      - name: Apply focused hardware recovery
+        run: |
+          set -euo pipefail
+          python3 tools/apply_focused_product_recovery_20261005.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tests/test_game_hub_contract.py')
+          s = p.read_text(encoding='utf-8')
+          old = '''require("if (!classicGamesActive) refreshHubPreview();" in set_user_block,
+                  "profile switching inside full Games must not rebuild the hidden Product Home preview")'''
+          new = '''require("if (!classicGamesActive) refreshHubPreview(false);" in set_user_block,
+                  "profile switching inside full Games must not rebuild the hidden Product Home preview")'''
+          if s.count(old) != 1:
+              raise SystemExit('setUser guarded-preview contract anchor changed')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
+          git diff --check
+
+      - name: Run focused contracts
+        run: |
+          set -euo pipefail
+          python3 tests/test_game_hub_contract.py
+          python3 tests/test_product_performance_contract.py
+          python3 tests/test_ci_repository_safety_contract.py
+          python3 tests/test_engineering_authority_contract.py
+
+      - name: Commit focused source fix
+        run: |
+          set -euo pipefail
+          git config user.name GlitchedZeus
+          git config user.email user91746@protonmail.com
+          git add include/UI/SaveSelectScreen.h src/UI/SaveSelectScreen.cpp src/UI/UI.cpp src/UI/GameLauncher.cpp tests/test_game_hub_contract.py
+          git commit -m "fix(ui): restore Main Card data without freeze regressions"
+          git push origin HEAD:feature/gen4-full-editor-20260928

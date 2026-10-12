@@ -1,0 +1,87 @@
+name: One-time Quick Games A freeze fix
+
+on:
+  push:
+    branches:
+      - feature/gen4-full-editor-20260928
+    paths:
+      - tools/quick_games_freeze_fix_20261005_trigger.txt
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/gen4-full-editor-20260928
+          fetch-depth: 0
+
+      - name: Verify rejected hardware candidate ancestry
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor adc92fd0b917fa32d0bf90efc98f11b3c2117c68 HEAD
+
+      - name: Patch Quick Games A to cached selection only
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          source_path = Path('src/UI/SaveSelectScreen.cpp')
+          source = source_path.read_text(encoding='utf-8')
+          old = '''                if (kDown & HidNpadButton_A) {
+                    titleIndex = gamesDrawerIndex;
+                    scrollSelectionIntoView();
+                    refreshHubPreview();
+                    overlay = Overlay::None;
+                }
+'''
+          new = '''                if (kDown & HidNpadButton_A) {
+                    titleIndex = gamesDrawerIndex;
+                    scrollSelectionIntoView();
+                    // Quick Games is selection-only. Never mount/reparse a save or resolve launch
+                    // content on the A-button input frame; explicit Open/Launch owns that I/O.
+                    refreshHubSelectionFromCache();
+                    overlay = Overlay::None;
+                }
+'''
+          if source.count(old) != 1:
+              raise SystemExit('Quick Games A-handler anchor changed; refusing to guess')
+          source_path.write_text(source.replace(old, new, 1), encoding='utf-8')
+
+          test_path = Path('tests/test_game_hub_contract.py')
+          test = test_path.read_text(encoding='utf-8')
+          anchor = '''require("if (kDown & (HidNpadButton_B | HidNpadButton_Y))" not in drawer_update and
+        "// B is the only close/back control" in drawer_update and
+        "fb.drawFilledRect(x, 0, 2, h, Colors::FocusBorder);" not in drawer_draw,
+        "Quick Games Y must be inert, B-only close, and the colored drawer edge stripe must stay removed")
+'''
+          addition = anchor + '''require("refreshHubSelectionFromCache();" in drawer_update and
+        "refreshHubPreview();" not in drawer_update,
+        "Quick Games A must only change cached selection and must never perform synchronous save/launch I/O")
+'''
+          if test.count(anchor) != 1:
+              raise SystemExit('Quick Games contract anchor changed; refusing to guess')
+          test_path.write_text(test.replace(anchor, addition, 1), encoding='utf-8')
+          PY
+          git diff --check
+
+      - name: Run focused UI and repository contracts
+        run: |
+          set -euo pipefail
+          python3 tests/test_game_hub_contract.py
+          python3 tests/test_product_performance_contract.py
+          python3 tests/test_ci_repository_safety_contract.py
+          python3 tests/test_engineering_authority_contract.py
+
+      - name: Commit freeze fix
+        run: |
+          set -euo pipefail
+          git config user.name GlitchedZeus
+          git config user.email user91746@protonmail.com
+          git add src/UI/SaveSelectScreen.cpp tests/test_game_hub_contract.py
+          git commit -m "fix(ui): keep Quick Games selection off save I/O"
+          git push origin HEAD:feature/gen4-full-editor-20260928

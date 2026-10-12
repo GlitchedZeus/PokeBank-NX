@@ -72,7 +72,8 @@ namespace Trainer {
         // `fileName` is the save's on-disk basename in the backup dir (e.g. "FireRed_e.sav"); it is
         // reused verbatim when writing back, so we round-trip whatever name we loaded rather than
         // leaving a second save beside it under a name of our own choosing.
-        explicit Trainer3FRLG(std::vector<uint8_t> data, std::string fileName);
+        explicit Trainer3FRLG(std::vector<uint8_t> data, std::string fileName,
+                              bool previewOnly = false);
 
         void updatePartyBlock() override;
         void updateBoxBlock() override;

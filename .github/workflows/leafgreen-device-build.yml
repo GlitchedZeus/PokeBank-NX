@@ -1,9 +1,8 @@
-name: RBY final physical-retest build
+name: HISTORICAL / MANUAL — RBY final physical-retest build
 
+
+# Frozen evidence workflow retained for reproducibility. It must never auto-run on current development.
 on:
-  push:
-    branches: [feature/pokebank-playable]
-    paths: [.github/workflows/leafgreen-device-build.yml]
   workflow_dispatch:
 
 permissions:

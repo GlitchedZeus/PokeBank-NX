@@ -1,16 +1,39 @@
 #include "Integration/Gen4/Gen4ExactFormatEditorProvider.h"
+#include "UI/Gen4BoxTouchActions.h"
+#include "Integration/Gen4/Gen4MoveCompatibility.h"
+#include "Integration/Gen4/Gen4BagCatalog.h"
 #include "Legacy/Gen4ReadOnlyTrainer.h"
+#include "Enums/Ball.h"
+#include "Enums/LanguageID.h"
+#include "Names/ItemNames.h"
+#include "Names/MachineDisplay.h"
+#include "Names/Gen4HeldItemCatalog.h"
+#include "Names/LocationNames.h"
 #include "Names/MoveInfo.h"
 #include "Names/MoveNames.h"
+#include "Names/MovePresence.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Pokemon4ReadOnlyView.h"
+#include "Pokemon/PersonalInfo4HGSS.h"
 #include "Trainer/Trainer.h"
 #include "UI/ClassicGameContext.h"
 #include "UI/Common.h"
 #include "UI/Dialogs/DialogFrame.h"
 #include "UI/Gen4SharedPokemonSession.h"
+#include "UI/MovePickerPresentation.h"
+#include "UI/MovePickerRowUI.h"
+#include "UI/NaturePickerLayout.h"
+#include "UI/ItemPickerArtwork.h"
+#include "UI/ItemPickerSort.h"
+#include "UI/Gen4BoxMoveNavigation.h"
+#include "UI/Gen4DataPresentation.h"
+#include "UI/Gen4ItemListWindow.h"
 #include "UI/ScreenChrome.h"
 #include "UI/SharedPokemonEditorContract.h"
+#include "UI/SharedHeldItemPicker.h"
+#include "UI/SharedHeldItemPickerPresentation.h"
+#include "UI/SharedSpeciesPicker.h"
+#include "UI/TouchScroll.h"
 #include "UI/SharedPokemonShell.h"
 #include "Utils/Keyboard.h"
 #include "Utils/StringHelpers.h"
@@ -18,6 +41,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <cstdlib>
 #include <optional>
 #include <string>
 #include <utility>
@@ -27,33 +51,75 @@ namespace UI::Gen4SharedEditorSurface {
 namespace {
 
 namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+namespace HeldItemGrid = PokeBank::UIModel::SharedHeldItemPicker;
 namespace SessionModel = PokeBank::UIModel::Gen4SharedEditor;
 namespace Context = PokeBank::UIModel::ClassicGameContext;
 namespace Gen4 = PokeVault::Integration::Gen4;
+namespace MoveUI = PokeBank::UIModel::MovePickerPresentation;
 
-enum class PickerTarget : uint8_t { None, Nature, Ability };
+enum class PickerTarget : uint8_t {
+    None, Species, HeldItem, Language, Ball, MetLocation, Pokerus, Form, Move, Nature, Ability
+};
 enum class TargetKind : uint8_t { Box, Party };
+
+enum class MenuAction : uint8_t {
+    View, AddMasterVault, AddBank, TransferGame, Edit, MovePokemon, Clone, MakeShiny,
+    Legality, Release, Add, Review, Close
+};
+struct MenuActionEntry {
+    MenuAction action = MenuAction::Close;
+    const char* label = "Cancel";
+    bool enabled = true;
+};
+struct MenuActionSet {
+    std::array<MenuActionEntry, 12> values{};
+    size_t count = 0;
+    const MenuActionEntry& operator[](size_t index) const noexcept { return values[index]; }
+};
 
 struct State {
     const TrainerViewScreen* owner = nullptr;
     bool actions = false;
     bool review = false;
+    bool legality = false;
+    bool confirmRelease = false;
+    bool speciesPreviewShiny = false;
     int actionRow = 0;
     TargetKind target = TargetKind::Box;
     int box = 0;
     int slot = 0;
     Shared::Focus focus{};
     int detailsFocus = 0;
+    TouchScrollState detailsTouchScroll;
+    TouchPickerViewport detailsViewport;
     SessionModel::Session session{};
 
     bool valuePicker = false;
     PickerTarget pickerTarget = PickerTarget::None;
     int pickerRow = 0;
+    TouchScrollState pickerScroll;
+    TouchPickerViewport pickerViewport;
     std::vector<uint16_t> pickerValues;
+    std::vector<uint16_t> pickerNativeValues;
+    ItemPickerSort::Mode pickerSort = ItemPickerSort::Mode::Native;
+
+    // Use the same native Switch keypad as Gen I-III, never an in-app stepper.
+    bool itemAddPickerActive = false;
+    int itemAddPocket = 0;
+    int itemAddIndex = 0;
+    std::vector<uint16_t> itemAddChoices;
+    std::vector<uint16_t> itemAddNativeChoices;
+    ItemPickerSort::Mode itemAddSort = ItemPickerSort::Mode::Native;
+    bool itemRemoveConfirmActive = false;
+    int itemRemovePocket = 0;
+    int itemRemoveVisibleRow = 0;
+    uint16_t itemRemoveId = 0;
+    uint16_t itemRemoveCount = 0;
 
     bool moveEditor = false;
     int moveEditorSlot = 0;
     int moveEditorRow = 0;
+    uint16_t moveBaseline = 0;
     uint8_t movePpBaseline = 0;
     uint8_t movePpUpsBaseline = 0;
 };
@@ -89,8 +155,9 @@ bool workspaceActive(const State& state) noexcept {
 bool ownsFrameImpl(const TrainerViewScreen& screen) noexcept {
     if (!isGen4Nds(screen)) return false;
     const auto& state = stateFor(screen);
-    return state.actions || state.review || state.valuePicker || state.moveEditor ||
-           workspaceActive(state);
+    return state.actions || state.review || state.legality || state.confirmRelease ||
+           state.itemRemoveConfirmActive || state.itemAddPickerActive ||
+           state.valuePicker || state.moveEditor || workspaceActive(state);
 }
 
 bool boxEntrySurface(const TrainerViewScreen& screen) noexcept {
@@ -187,9 +254,12 @@ bool selectedOccupied(TrainerViewScreen& screen) {
 void resetWorkspaceFocus(State& state) noexcept {
     state.focus = {Shared::Panel::Details, 0, 0};
     state.detailsFocus = 0;
+    state.detailsTouchScroll.reset();
+    state.detailsViewport.reset();
     state.valuePicker = false;
     state.pickerTarget = PickerTarget::None;
     state.pickerValues.clear();
+    state.speciesPreviewShiny = false;
     state.moveEditor = false;
     state.moveEditorRow = 0;
 }
@@ -286,10 +356,13 @@ bool keepWorkspace(TrainerViewScreen& screen) {
         return false;
     }
     std::string error;
-    const bool kept = state.target == TargetKind::Party
-        ? state.session.keepParty(*staged, static_cast<size_t>(state.slot), error)
-        : state.session.keep(*staged, static_cast<size_t>(state.box),
-                             static_cast<size_t>(state.slot), error);
+    const bool kept = state.session.creating()
+        ? state.session.keepCreate(*staged, static_cast<size_t>(state.box),
+                                   static_cast<size_t>(state.slot), error)
+        : state.target == TargetKind::Party
+            ? state.session.keepParty(*staged, static_cast<size_t>(state.slot), error)
+            : state.session.keep(*staged, static_cast<size_t>(state.box),
+                                 static_cast<size_t>(state.slot), error);
     if (!kept) {
         screen.postStatus(error.empty() ? "Generation IV staged edit failed" : error, 360);
         return false;
@@ -338,15 +411,54 @@ const char* gameName(std::string_view id) noexcept {
     return "Generation IV";
 }
 
-constexpr std::array<const char*, 15> detailLabels{{
-    "Species", "Nickname", "Level", "Experience", "OT", "Trainer ID", "SID",
-    "Held Item", "Friendship", "Language", "Origin", "Ball",
-    "Met Level", "Met Location", "Pokerus"
-}};
-
-bool detailEditable(int row) noexcept {
-    return row == 1 || row == 2 || row == 3 || row == 8 || row == 12;
+std::string gen4FormLabel(uint16_t species, uint8_t form) {
+    if (species == 201) {
+        if (form < 26) return std::string(1, static_cast<char>('A' + form));
+        if (form == 26) return "!";
+        if (form == 27) return "?";
+    }
+    if (species == 172)
+        return form == 0 ? "Normal" : form == 1 ? "Spiky-eared" : "Form " + std::to_string(form);
+    if (species == 412 || species == 413 || species == 414) {
+        constexpr std::array<const char*,3> names{{"Plant", "Sandy", "Trash"}};
+        if (form < names.size()) return names[form];
+    }
+    if (species == 421) {
+        constexpr std::array<const char*,2> names{{"Overcast", "Sunshine"}};
+        if (form < names.size()) return names[form];
+    }
+    if (species == 422 || species == 423) {
+        constexpr std::array<const char*,2> names{{"West", "East"}};
+        if (form < names.size()) return names[form];
+    }
+    if (species == 479) {
+        constexpr std::array<const char*,6> names{{"Normal", "Heat", "Wash", "Frost", "Fan", "Mow"}};
+        if (form < names.size()) return names[form];
+    }
+    if (species == 487) {
+        constexpr std::array<const char*,2> names{{"Altered", "Origin"}};
+        if (form < names.size()) return names[form];
+    }
+    if (species == 492) {
+        constexpr std::array<const char*,2> names{{"Land", "Sky"}};
+        if (form < names.size()) return names[form];
+    }
+    if (species == 493) {
+        constexpr std::array<const char*,18> names{{
+            "Normal", "Fighting", "Flying", "Poison", "Ground", "Rock", "Bug", "Ghost",
+            "Steel", "??? (unused)", "Fire", "Water", "Grass", "Electric", "Psychic",
+            "Ice", "Dragon", "Dark"
+        }};
+        if (form < names.size()) return names[form];
+    }
+    return form == 0 ? "Default" : "Form " + std::to_string(form);
 }
+
+constexpr std::array<const char*, 16> detailLabels{{
+    "Species", "Nickname", "Level", "Experience", "OT", "Trainer ID",
+    "SID (read-only)", "Held Item", "Friendship", "Language", "Origin (read-only)", "Ball",
+    "Met Level", "Met Location", "Pokerus", "Form"
+}};
 
 bool variableGenderSpecies(const Pokemon::Pokemon4ReadOnly& p) noexcept {
     const uint8_t ratio = p.personal().genderRatio;
@@ -355,6 +467,52 @@ bool variableGenderSpecies(const Pokemon::Pokemon4ReadOnly& p) noexcept {
 
 bool dualAbilitySpecies(const Pokemon::Pokemon4ReadOnly& p) noexcept {
     return p.personal().ability2 != 0 && p.personal().ability2 != p.personal().ability1;
+}
+
+bool nativeGen4Origin(const Pokemon::Pokemon4ReadOnly& p) noexcept {
+    const auto originGroup = Enums::getGameGroup(
+        static_cast<Enums::GameVersion>(p.originVersion()));
+    return originGroup == Enums::GameVersion::DP ||
+           originGroup == Enums::GameVersion::PT ||
+           originGroup == Enums::GameVersion::HGSS;
+}
+
+bool hasAlternateValidForm(const State& state) {
+    if (!state.session.working) return false;
+    const uint8_t current = state.session.working->form();
+    const uint8_t count = state.session.working->formCount();
+    for (uint8_t form = 0; form < count; ++form) {
+        if (form == current) continue;
+        auto probe = *state.session.working;
+        if (probe.setForm(form)) return true;
+    }
+    return false;
+}
+
+bool detailEditable(const State& state, int row,
+                    const Pokemon::Pokemon4ReadOnly& p) {
+    if (!state.session.editable()) return false;
+    switch (row) {
+        case 0:  // Species
+        case 1:  // Nickname
+        case 2:  // Level
+        case 3:  // Experience
+        case 4:  // Original Trainer
+        case 5:  // Trainer ID
+        case 7:  // Held Item
+        case 8:  // Friendship
+        case 9:  // Language
+        case 12: // Met Level
+        case 14: // Pokerus
+            return true;
+        case 11: // Ball
+        case 13: // Met Location
+            return nativeGen4Origin(p);
+        case 15: // Form
+            return hasAlternateValidForm(state);
+        default:
+            return false; // SID/Origin stay visible but are not controls.
+    }
 }
 
 bool pidLinkedRowEditable(const State& state, int row,
@@ -372,15 +530,16 @@ void normalizeEditableFocus(State& state, const Pokemon::Pokemon4ReadOnly& p,
     if (!state.session.editable()) return;
 
     if (state.focus.panel == Shared::Panel::Details) {
-        if (detailEditable(state.focus.row)) return;
+        state.focus.column = 0;
+        if (detailEditable(state, state.focus.row, p)) return;
+
         int row = state.focus.row;
         const int direction = verticalDirection < 0 ? -1 : 1;
         for (int step = 0; step < static_cast<int>(detailLabels.size()); ++step) {
             row = (row + direction + static_cast<int>(detailLabels.size())) %
                   static_cast<int>(detailLabels.size());
-            if (detailEditable(row)) {
+            if (detailEditable(state, row, p)) {
                 state.focus.row = static_cast<uint8_t>(row);
-                state.focus.column = 0;
                 return;
             }
         }
@@ -392,6 +551,7 @@ void normalizeEditableFocus(State& state, const Pokemon::Pokemon4ReadOnly& p,
             if (state.focus.column > 1) state.focus.column = 1;
             return;
         }
+
         state.focus.column = 0;
         if (pidLinkedRowEditable(state, state.focus.row, p)) return;
 
@@ -430,14 +590,23 @@ std::string detailValue(const Pokemon::Pokemon4ReadOnly& p,
         }
         case 5: return std::to_string(p.tid());
         case 6: return std::to_string(p.sid());
-        case 7: return "Item #" + std::to_string(p.heldItem()) + " (read-only)";
+        case 7: return p.heldItem() == 0 ? "(none)" : Names::getItemName(p.heldItem());
         case 8: return std::to_string(p.friendship());
         case 9: return Enums::getLanguageName(p.language());
         case 10: return Enums::getOriginGameName(p.originVersion());
         case 11: return Enums::getBallName(view.ball());
         case 12: return std::to_string(p.metLevel());
-        case 13: return "ID " + std::to_string(view.metLocation()) + " (read-only)";
-        case 14: return std::to_string(p.pokerusState()) + " (read-only)";
+        case 13: {
+            const char* name = Names::getMetLocationName(p.originVersion(), view.metLocation());
+            return name && name[0] ? std::string(name)
+                                  : "ID " + std::to_string(view.metLocation());
+        }
+        case 14: {
+            const uint8_t pk = p.pokerusState();
+            return pk == 0 ? "None" : (pk & 0x0Fu) == 0 ? "Cured" : "Infected";
+        }
+        case 15:
+            return gen4FormLabel(p.species(), p.form());
         default: return {};
     }
 }
@@ -458,8 +627,210 @@ int moveMaxPP(uint16_t move, uint8_t ppUps, Enums::GameVersion group) {
     return base <= 0 ? 0 : base * (5 + std::min<int>(ppUps, 3)) / 5;
 }
 
+void openSpeciesPicker(TrainerViewScreen& screen, State& state) {
+    state.valuePicker = true;
+    state.pickerScroll.reset();
+    state.pickerViewport.reset();
+    state.pickerTarget = PickerTarget::Species;
+    state.pickerValues.clear();
+    for (uint16_t species = 1; species <= 493; ++species)
+        state.pickerValues.push_back(species);
+    const uint16_t current = state.session.working ? state.session.working->species() : 1;
+    const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
+    state.pickerRow = it == state.pickerValues.end()
+        ? 0 : static_cast<int>(std::distance(state.pickerValues.begin(), it));
+    state.speciesPreviewShiny =
+        state.session.working ? state.session.working->shiny() : false;
+    screen.controllerNavigation.reset();
+}
+
+bool beginCreate(TrainerViewScreen& screen) {
+    auto& state = stateFor(screen);
+    auto* staged = editor(screen);
+    if (state.target != TargetKind::Box) {
+        screen.postStatus("Generation IV Create is supported only in empty PC box slots", 300);
+        return false;
+    }
+    if (!staged) {
+        const auto& why = bridge(screen).stagedPokemonUnavailableReason();
+        screen.postStatus(why.empty()
+            ? "Generation IV Create requires a validated app-owned staged workspace" : why, 420);
+        return false;
+    }
+    std::string error;
+    auto draft = staged->createBoxDraft(
+        static_cast<size_t>(state.box), static_cast<size_t>(state.slot), 1, &error);
+    if (!draft) {
+        screen.postStatus(error.empty() ? "Could not start Generation IV Create draft" : error, 360);
+        return false;
+    }
+    if (!state.session.beginCreate(std::move(*draft), error)) {
+        screen.postStatus(error.empty() ? "Could not start Generation IV Create session" : error, 360);
+        return false;
+    }
+    state.actions = false;
+    state.review = false;
+    resetWorkspaceFocus(state);
+    state.focus = {Shared::Panel::Details, 0, 0};
+    // Match Gen I-III: Create opens the shared editor first. Species is edited
+    // explicitly from the focused Species row rather than forcing a picker modal.
+    return true;
+}
+
+void openHeldItemPicker(TrainerViewScreen& screen, State& state) {
+    state.valuePicker = true;
+    state.pickerScroll.reset();
+    state.pickerViewport.reset();
+    state.pickerTarget = PickerTarget::HeldItem;
+    state.pickerValues.clear();
+    state.pickerValues.push_back(0);
+    const auto group = bridge(screen).sourceSave().rawFamily();
+    const size_t count = Names::getItemCount();
+    const uint16_t maximum = Names::gen4MaximumHeldItemId(group);
+    for (uint16_t item = 1; item < count && item <= maximum; ++item)
+        if (Names::isGen4HeldItemPresent(item, group))
+            state.pickerValues.push_back(item);
+    state.pickerNativeValues = state.pickerValues;
+    state.pickerSort = ItemPickerSort::Mode::Native;
+    const uint16_t current = state.session.working ? state.session.working->heldItem() : 0;
+    const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
+    state.pickerRow = it == state.pickerValues.end() ? 0 :
+        static_cast<int>(std::distance(state.pickerValues.begin(), it));
+    screen.controllerNavigation.reset();
+}
+
+void openLanguagePicker(TrainerViewScreen& screen, State& state) {
+    state.valuePicker = true;
+    state.pickerScroll.reset();
+    state.pickerViewport.reset();
+    state.pickerTarget = PickerTarget::Language;
+    state.pickerValues.clear();
+    const auto group = bridge(screen).sourceSave().rawFamily();
+    for (uint16_t language = 1; language <= 8; ++language)
+        if (Enums::groupHasLanguage(group, static_cast<uint8_t>(language)))
+            state.pickerValues.push_back(language);
+    const uint16_t current = state.session.working ? state.session.working->language() : 2;
+    const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
+    state.pickerRow = it == state.pickerValues.end() ? 0 :
+        static_cast<int>(std::distance(state.pickerValues.begin(), it));
+    screen.controllerNavigation.reset();
+}
+
+void openBallPicker(TrainerViewScreen& screen, State& state,
+                    const Pokemon::Pokemon4ReadOnly& record) {
+    const auto originGroup = Enums::getGameGroup(
+        static_cast<Enums::GameVersion>(record.originVersion()));
+    if (originGroup != Enums::GameVersion::DP &&
+        originGroup != Enums::GameVersion::PT &&
+        originGroup != Enums::GameVersion::HGSS) {
+        screen.postStatus(
+            "Ball editing is read-only for transferred non-Gen-IV origins", 300);
+        return;
+    }
+
+    state.valuePicker = true;
+    state.pickerScroll.reset();
+    state.pickerViewport.reset();
+    state.pickerTarget = PickerTarget::Ball;
+    state.pickerValues.clear();
+    for (const auto ball : Enums::getBallList(originGroup))
+        state.pickerValues.push_back(ball);
+    const uint16_t current = state.session.working ? state.session.working->ball() : 4;
+    const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
+    state.pickerRow = it == state.pickerValues.end() ? 0 :
+        static_cast<int>(std::distance(state.pickerValues.begin(), it));
+    screen.controllerNavigation.reset();
+}
+
+void openMetLocationPicker(TrainerViewScreen& screen, State& state,
+                           const Pokemon::Pokemon4ReadOnly& record) {
+    const auto originGroup = Enums::getGameGroup(
+        static_cast<Enums::GameVersion>(record.originVersion()));
+    if (originGroup != Enums::GameVersion::DP &&
+        originGroup != Enums::GameVersion::PT &&
+        originGroup != Enums::GameVersion::HGSS) {
+        screen.postStatus(
+            "Met Location editing is read-only for transferred non-Gen-IV origins", 300);
+        return;
+    }
+    state.valuePicker = true;
+    state.pickerScroll.reset();
+    state.pickerViewport.reset();
+    state.pickerTarget = PickerTarget::MetLocation;
+    state.pickerValues.clear();
+    const auto table = Names::getLocationTable(record.originVersion());
+    for (size_t id = 0; id < table.count && id <= 0xFFFFu; ++id)
+        if (table.names && table.names[id] && table.names[id][0] != '\0' &&
+            Names::isGen4NativeMetLocation(
+                record.originVersion(), static_cast<uint16_t>(id)))
+            state.pickerValues.push_back(static_cast<uint16_t>(id));
+    Pokemon::Pokemon4ReadOnlyView view(record);
+    const uint16_t current = view.metLocation();
+    const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
+    state.pickerRow = it == state.pickerValues.end() ? 0 :
+        static_cast<int>(std::distance(state.pickerValues.begin(), it));
+    screen.controllerNavigation.reset();
+}
+
+void openPokerusPicker(TrainerViewScreen& screen, State& state) {
+    state.valuePicker = true;
+    state.pickerScroll.reset();
+    state.pickerViewport.reset();
+    state.pickerTarget = PickerTarget::Pokerus;
+    state.pickerValues = {0x00, 0x10, 0x11};
+    const uint8_t current = state.session.working ? state.session.working->pokerus() : 0;
+    if (current == 0) state.pickerRow = 0;
+    else if ((current & 0x0Fu) == 0) state.pickerRow = 1;
+    else state.pickerRow = 2;
+    screen.controllerNavigation.reset();
+}
+
+void openFormPicker(TrainerViewScreen& screen, State& state) {
+    if (!state.session.working) return;
+    const uint8_t count = state.session.working->formCount();
+    state.pickerValues.clear();
+    for (uint16_t form = 0; form < count; ++form) {
+        auto probe = *state.session.working;
+        if (probe.setForm(static_cast<uint8_t>(form)))
+            state.pickerValues.push_back(form);
+    }
+    if (state.pickerValues.size() <= 1) {
+        screen.postStatus("This Pokémon has no alternate Form valid for this Generation IV slot", 300);
+        return;
+    }
+    state.valuePicker = true;
+    state.pickerScroll.reset();
+    state.pickerViewport.reset();
+    state.pickerTarget = PickerTarget::Form;
+    const uint8_t current = state.session.working->form();
+    const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
+    state.pickerRow = it == state.pickerValues.end()
+        ? 0 : static_cast<int>(std::distance(state.pickerValues.begin(), it));
+    screen.controllerNavigation.reset();
+}
+
+
+void openMovePicker(TrainerViewScreen& screen, State& state) {
+    if (!state.session.working) return;
+    state.valuePicker = true;
+    state.pickerScroll.reset();
+    state.pickerViewport.reset();
+    state.pickerTarget = PickerTarget::Move;
+    state.pickerValues = PokeVault::Integration::Gen4MoveCompatibility::selectableMoves(
+        screen.sourceGameId, state.session.working->species(),
+        state.session.working->form(), state.session.working->moves());
+    const uint16_t current =
+        state.session.working->moves()[static_cast<size_t>(state.moveEditorSlot)];
+    const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
+    state.pickerRow = it == state.pickerValues.end() ? 0 :
+        static_cast<int>(std::distance(state.pickerValues.begin(), it));
+    screen.controllerNavigation.reset();
+}
+
 void openNaturePicker(TrainerViewScreen& screen, State& state) {
     state.valuePicker = true;
+    state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.pickerTarget = PickerTarget::Nature;
     state.pickerValues.clear();
     for (uint16_t i = 0; i < 25; ++i) state.pickerValues.push_back(i);
@@ -474,25 +845,144 @@ void openAbilityPicker(TrainerViewScreen& screen, State& state,
         return;
     }
     state.valuePicker = true;
+    state.pickerScroll.reset();
+    state.pickerViewport.reset();
     state.pickerTarget = PickerTarget::Ability;
     state.pickerValues = {0, 1};
     state.pickerRow = state.session.working ? state.session.working->abilitySlot() : 0;
     screen.controllerNavigation.reset();
 }
 
-bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down) {
+bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.valuePicker) return false;
-    if (state.pickerValues.empty()) {
+    const int count = static_cast<int>(state.pickerValues.size());
+    const bool gridPicker = state.pickerTarget == PickerTarget::HeldItem;
+    const int columns = gridPicker ? HeldItemGrid::columns : 1;
+    const int compactCount = std::max(0, count);
+    const bool nature = state.pickerTarget == PickerTarget::Nature;
+    const auto natureLayout = PokeBank::UIModel::NaturePickerLayout::forChoices(compactCount);
+    const bool compact = state.pickerTarget == PickerTarget::Language ||
+        state.pickerTarget == PickerTarget::Ball ||
+        state.pickerTarget == PickerTarget::MetLocation ||
+        nature || state.pickerTarget == PickerTarget::Ability ||
+        state.pickerTarget == PickerTarget::Pokerus;
+    const int visibleRows = gridPicker ? HeldItemGrid::rows
+        : state.pickerTarget == PickerTarget::Move ? MoveUI::compactPickerLayout().visibleRows
+        : nature ? natureLayout.visibleRows
+        : compact ? std::min(8, compactCount) : 10;
+    if (state.pickerTarget != PickerTarget::Species)
+        state.pickerViewport.ensure(state.pickerRow, count, visibleRows, columns);
+    const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows, columns);
+    // The Species modal owns its own gesture. Other pickers scroll only when overflowing.
+    if (count > 0 && (state.pickerTarget == PickerTarget::Species || maxFirstRow > 0)) {
+        if (state.pickerTarget == PickerTarget::Species) {
+            const int dy = touch.deltaY();
+            if (touch.justReleased() && touch.dragged() &&
+                SharedSpeciesPicker::gestureStartedInList(touch.startX(), touch.startY()) &&
+                std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
+                const int steps = std::max(1, std::abs(dy) / 43);
+                state.pickerRow = std::clamp(
+                    state.pickerRow + (dy < 0 ? steps : -steps), 0, count - 1);
+            }
+        } else if (state.pickerTarget == PickerTarget::HeldItem) {
+  constexpr int pickerW = HeldItemGrid::modalWidth;
+  constexpr int pickerH = HeldItemGrid::modalHeight;
+  constexpr int rowStep = HeldItemGrid::rowPitch;
+  const int px = (1280 - pickerW) / 2;
+  const int py = (720 - kNavBarH - pickerH) / 2;
+  state.pickerScroll.updateVertical(
+      touch, px + HeldItemGrid::gridInsetX, py + HeldItemGrid::gridInsetY - 3,
+      pickerW - 2 * HeldItemGrid::gridInsetX,
+      HeldItemGrid::rows * rowStep, rowStep,
+      state.pickerViewport.firstRow, maxFirstRow + 1);
+        } else if (state.pickerTarget == PickerTarget::Move) {
+  constexpr auto pickerLayout = MoveUI::compactPickerLayout();
+  const int px = (1280 - pickerLayout.width) / 2;
+  const int py = (720 - kNavBarH - pickerLayout.height) / 2;
+  state.pickerScroll.updateVertical(
+      touch, px + 24, py + pickerLayout.rowStart,
+      pickerLayout.width - 48,
+      pickerLayout.visibleRows * pickerLayout.rowStep,
+      pickerLayout.rowStep, state.pickerViewport.firstRow, maxFirstRow + 1);
+        } else {
+  const int pickerW = nature ? natureLayout.width : compact ? 640 : 680;
+  const int pickerH = nature ? natureLayout.height : compact ? 125 + visibleRows * 42 : 560;
+  const int rowStep = nature ? natureLayout.rowStep : 42;
+  const int px = (1280 - pickerW) / 2;
+  const int py = (720 - kNavBarH - pickerH) / 2;
+  state.pickerScroll.updateVertical(
+      touch, px + 22, py + 86, pickerW - 44,
+      visibleRows * rowStep, rowStep, state.pickerViewport.firstRow, maxFirstRow + 1);
+        }
+    }
+    if (maxFirstRow == 0)
+        state.pickerScroll.stop();
+    const int touchDown = screen.touchedButtonDownId(touch);
+    if (touchDown >= 6000 && touchDown < 6000 + count) state.pickerRow = touchDown - 6000;
+    const int touchTap = screen.touchedButtonId(touch);
+    if (touchTap >= 6000 && touchTap < 6000 + count) {
+        state.pickerRow = touchTap - 6000;
+        down |= HidNpadButton_A;
+    }
+    if (count <= 0) {
         state.valuePicker = false;
         return true;
     }
-    if (down & HidNpadButton_Up)
-        state.pickerRow = (state.pickerRow - 1 + static_cast<int>(state.pickerValues.size())) %
-                          static_cast<int>(state.pickerValues.size());
-    if (down & HidNpadButton_Down)
-        state.pickerRow = (state.pickerRow + 1) %
-                          static_cast<int>(state.pickerValues.size());
+    if (gridPicker && (down & HidNpadButton_X)) {
+        state.pickerSort = ItemPickerSort::next(state.pickerSort);
+        state.pickerRow = ItemPickerSort::reorder(
+            state.pickerValues, state.pickerNativeValues,
+            state.pickerSort, state.pickerRow,
+            [&](uint16_t id) {
+                return id == 0 ? std::string("(none)") :
+                    Names::machineDisplayLabel(bridge(screen).sourceSave().rawFamily(), id,
+                                               Names::getItemName(id));
+            });
+        state.pickerScroll.stop();
+        state.pickerViewport.reset();
+        state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
+        return true;
+    }
+    if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R | HidNpadButton_ZL | HidNpadButton_ZR))
+        state.pickerScroll.stop();
+    if (state.pickerTarget == PickerTarget::HeldItem) {
+        if (down & HidNpadButton_Up)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, -1);
+        if (down & HidNpadButton_Down)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, 1);
+        if (down & HidNpadButton_Left)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, -1, 0);
+        if (down & HidNpadButton_Right)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 1, 0);
+        if (down & HidNpadButton_L)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, 0, -1);
+        if (down & HidNpadButton_R)
+            state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, 0, 1);
+    } else {
+        if (down & HidNpadButton_Up)
+            state.pickerRow = (state.pickerRow - 1 + count) % count;
+        if (down & HidNpadButton_Down)
+            state.pickerRow = (state.pickerRow + 1) % count;
+        if (down & (HidNpadButton_Left | HidNpadButton_L))
+            state.pickerRow = std::max(0, state.pickerRow - 10);
+        if (down & (HidNpadButton_Right | HidNpadButton_R))
+            state.pickerRow = std::min(count - 1, state.pickerRow + 10);
+        if (down & HidNpadButton_ZL)
+            state.pickerRow = std::max(0, state.pickerRow - 50);
+        if (down & HidNpadButton_ZR)
+            state.pickerRow = std::min(count - 1, state.pickerRow + 50);
+    }
+    if (state.pickerTarget != PickerTarget::Species &&
+        (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left |
+                 HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R |
+                 HidNpadButton_ZL | HidNpadButton_ZR)))
+        state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
+    if (state.pickerTarget == PickerTarget::Species && (down & HidNpadButton_Y)) {
+        state.speciesPreviewShiny = !state.speciesPreviewShiny;
+        return true;
+    }
     if (down & HidNpadButton_B) {
+        state.pickerScroll.stop();
         state.valuePicker = false;
         state.pickerTarget = PickerTarget::None;
         screen.controllerNavigation.reset();
@@ -500,15 +990,61 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down) {
     }
     if (!(down & HidNpadButton_A) || !state.session.working) return true;
 
+    // Species uses its own modal gesture. In other pickers the highlighted controller
+    // choice can be off-screen after a finger scroll; A reveals rather than accepting it unseen.
+    if (state.pickerTarget != PickerTarget::Species &&
+        !state.pickerViewport.containsSelection(
+            state.pickerRow, count, visibleRows, columns)) {
+        state.pickerScroll.stop();
+        state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
+        screen.postStatus("Focused choice brought into view; press A again or tap a visible row", 220);
+        return true;
+    }
+
+    state.pickerScroll.stop();
     const uint16_t value = state.pickerValues[static_cast<size_t>(state.pickerRow)];
     bool ok = false;
-    if (state.pickerTarget == PickerTarget::Nature)
+    if (state.pickerTarget == PickerTarget::Species) {
+        const auto before = state.session.working->encryptedBytes();
+        ok = state.session.working->setSpecies(value);
+        if (ok && state.session.working->shiny() != state.speciesPreviewShiny)
+            ok = state.session.working->setShiny(state.speciesPreviewShiny);
+        if (!ok) {
+            auto restored = Pokemon::Pokemon4Mutable::fromEncrypted(
+                before, bridge(screen).sourceSave().rawFamily());
+            if (restored) state.session.working = std::move(*restored);
+            screen.postStatus(
+                "Could not reconcile Species/Shiny while preserving PID-linked traits",
+                360);
+            return true;
+        }
+    } else if (state.pickerTarget == PickerTarget::HeldItem) {
+        ok = state.session.working->setHeldItem(value);
+    } else if (state.pickerTarget == PickerTarget::Language) {
+        ok = state.session.working->setLanguage(static_cast<uint8_t>(value));
+    } else if (state.pickerTarget == PickerTarget::Ball) {
+        ok = state.session.working->setBall(static_cast<uint8_t>(value));
+    } else if (state.pickerTarget == PickerTarget::MetLocation) {
+        ok = state.session.working->setMetLocation(value);
+    } else if (state.pickerTarget == PickerTarget::Form) {
+        ok = state.session.working->setForm(static_cast<uint8_t>(value));
+    } else if (state.pickerTarget == PickerTarget::Pokerus) {
+        const auto mode = value == 0x10
+            ? Pokemon::PokerusMode::Cured
+            : value == 0x11 ? Pokemon::PokerusMode::Infected
+                            : Pokemon::PokerusMode::None;
+        ok = state.session.working->setPokerusMode(mode);
+    } else if (state.pickerTarget == PickerTarget::Move) {
+        const size_t slot = static_cast<size_t>(state.moveEditorSlot);
+        ok = state.session.working->setMove(slot, value);
+    } else if (state.pickerTarget == PickerTarget::Nature) {
         ok = state.session.working->setNature(static_cast<uint8_t>(value));
-    else if (state.pickerTarget == PickerTarget::Ability)
+    } else if (state.pickerTarget == PickerTarget::Ability) {
         ok = state.session.working->setAbilitySlot(static_cast<uint8_t>(value));
+    }
 
     if (!ok) {
-        screen.postStatus("Could not preserve the other PID-linked Generation IV traits", 300);
+        screen.postStatus("Could not apply that Generation IV draft choice safely", 300);
         return true;
     }
     state.valuePicker = false;
@@ -521,7 +1057,8 @@ void openMoveEditor(TrainerViewScreen& screen, State& state, int slot) {
     if (!state.session.working || slot < 0 || slot >= 4) return;
     state.moveEditor = true;
     state.moveEditorSlot = slot;
-    state.moveEditorRow = 1; // Move itself stays read-only in G4-03; start on PP.
+    state.moveEditorRow = 0; // Shared move editor opens on the Move row; PP/PP Ups stay contextual.
+    state.moveBaseline = state.session.working->moves()[static_cast<size_t>(slot)];
     state.movePpBaseline = state.session.working->pp()[static_cast<size_t>(slot)];
     state.movePpUpsBaseline = state.session.working->ppUps()[static_cast<size_t>(slot)];
     screen.controllerNavigation.reset();
@@ -530,15 +1067,20 @@ void openMoveEditor(TrainerViewScreen& screen, State& state, int slot) {
 void cancelMoveEditor(State& state) {
     if (state.session.working && state.moveEditorSlot >= 0 && state.moveEditorSlot < 4) {
         const auto slot = static_cast<size_t>(state.moveEditorSlot);
-        state.session.working->setPP(slot, state.movePpBaseline);
+        state.session.working->setMove(slot, state.moveBaseline);
         state.session.working->setPPUps(slot, state.movePpUpsBaseline);
+        state.session.working->setPP(slot, state.movePpBaseline);
     }
     state.moveEditor = false;
     state.moveEditorRow = 0;
 }
 
-bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down) {
+bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.moveEditor || !state.session.working) return false;
+    const int moveDown = screen.touchedButtonDownId(touch);
+    if (moveDown >= 41400 && moveDown < 41405) state.moveEditorRow = moveDown - 41400;
+    const int moveTap = screen.touchedButtonId(touch);
+    if (moveTap >= 41400 && moveTap < 41405) { state.moveEditorRow = moveTap - 41400; down |= HidNpadButton_A; }
     if (down & HidNpadButton_Up) state.moveEditorRow = (state.moveEditorRow + 4) % 5;
     if (down & HidNpadButton_Down) state.moveEditorRow = (state.moveEditorRow + 1) % 5;
     if (down & HidNpadButton_B) {
@@ -551,10 +1093,10 @@ bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down) {
     const auto slot = static_cast<size_t>(state.moveEditorSlot);
     const auto move = state.session.working->moves()[slot];
     if (state.moveEditorRow == 0) {
-        screen.postStatus("Move selection stays read-only until exact Gen IV learnsets are pinned", 300);
+        openMovePicker(screen, state);
     } else if (state.moveEditorRow == 1) {
         if (move == 0) {
-            screen.postStatus("Choose a move in a later milestone before editing PP", 240);
+            screen.postStatus("Choose a move before editing PP", 240);
         } else {
             const int maximum = moveMaxPP(
                 move, state.session.working->ppUps()[slot],
@@ -593,6 +1135,10 @@ bool editDetail(TrainerViewScreen& screen, State& state, int row,
                 const Pokemon::Pokemon4ReadOnly& p) {
     if (!state.session.working) return false;
     auto& mon = *state.session.working;
+    if (row == 0) {
+        openSpeciesPicker(screen, state);
+        return true;
+    }
     if (row == 1) {
         const auto current = Utils::utf16ToUtf8(mon.nickname());
         const auto result = Utils::promptText(
@@ -616,14 +1162,54 @@ bool editDetail(TrainerViewScreen& screen, State& state, int row,
             screen.postStatus("Generation IV EXP edit was refused", 240);
         return true;
     }
+    if (row == 4) {
+        const auto current = Utils::utf16ToUtf8(p.originalTrainerName());
+        const auto r = Utils::promptText(
+            "Original Trainer", "1-7 Generation IV characters", current, 7);
+        if (r.accepted &&
+            !mon.setOriginalTrainerName(Utils::utf8ToUtf16(r.text)))
+            screen.postStatus("That OT name cannot be represented by this Generation IV save", 300);
+        return true;
+    }
+    if (row == 5) {
+        const auto r = Utils::promptNumber("Trainer ID", mon.tid(), 0, 65535);
+        if (r.accepted && !mon.setTID(static_cast<uint16_t>(r.value)))
+            screen.postStatus(
+                "Could not change Trainer ID while preserving PID-linked traits", 360);
+        return true;
+    }
+    if (row == 7) {
+        openHeldItemPicker(screen, state);
+        return true;
+    }
     if (row == 8) {
         const auto r = Utils::promptNumber("Friendship", mon.friendship(), 0, 255);
         if (r.accepted) mon.setFriendship(static_cast<uint8_t>(r.value));
         return true;
     }
+    if (row == 9) {
+        openLanguagePicker(screen, state);
+        return true;
+    }
+    if (row == 11) {
+        openBallPicker(screen, state, p);
+        return true;
+    }
     if (row == 12) {
         const auto r = Utils::promptNumber("Met Level", mon.metLevel(), 0, 100);
         if (r.accepted) mon.setMetLevel(static_cast<uint8_t>(r.value));
+        return true;
+    }
+    if (row == 13) {
+        openMetLocationPicker(screen, state, p);
+        return true;
+    }
+    if (row == 14) {
+        openPokerusPicker(screen, state);
+        return true;
+    }
+    if (row == 15) {
+        openFormPicker(screen, state);
         return true;
     }
     return false;
@@ -671,10 +1257,10 @@ bool editStatCell(TrainerViewScreen& screen, State& state,
     return false;
 }
 
-bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
+bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!workspaceActive(state)) return false;
-    if (handleValuePicker(screen, state, down)) return true;
-    if (handleMoveEditor(screen, state, down)) return true;
+    if (handleValuePicker(screen, state, down, touch)) return true;
+    if (handleMoveEditor(screen, state, down, touch)) return true;
     if (!state.session.working) {
         state.session.close();
         return true;
@@ -694,7 +1280,7 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
         }
         if (down & HidNpadButton_Y) {
             state.session.discardDraft();
-            screen.postStatus("Generation IV Edit session discarded; staged/source bytes unchanged", 300);
+            screen.postStatus("Gen IV draft cancelled; original source remains unchanged", 120);
             return true;
         }
         if (down & HidNpadButton_B) {
@@ -706,6 +1292,17 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
 
     const bool passive = state.session.mode == SessionModel::Mode::View;
     const auto panelBefore = state.focus.panel;
+    constexpr int visibleDetailRows = 8;
+    const SharedPokemonShell::Geometry detailGeometry(1280, 720, kNavBarH);
+    state.detailsViewport.ensure(state.detailsFocus, 16, visibleDetailRows);
+    state.detailsTouchScroll.updateVertical(
+        touch, detailGeometry.leftX + 8, detailGeometry.y + 216,
+        detailGeometry.leftW - 16, visibleDetailRows * 38, 38,
+        state.detailsViewport.firstRow,
+        TouchPickerViewport::maxFirst(16, visibleDetailRows) + 1);
+    if (down & (HidNpadButton_Up | HidNpadButton_Down |
+                HidNpadButton_L | HidNpadButton_R))
+        state.detailsTouchScroll.stop();
     int verticalDirection = 0;
     if (down & HidNpadButton_L)
         state.focus = passive ? Shared::passiveViewSwitchPanel(Shared::Generation::Gen4, state.focus, -1)
@@ -736,7 +1333,40 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
         normalizeEditableFocus(state, *record, verticalDirection,
                                state.focus.panel != panelBefore);
     state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);
-    state.detailsFocus = std::clamp(state.detailsFocus, 0, 14);
+    state.detailsFocus = std::clamp(state.detailsFocus, 0, 15);
+    if (down & (HidNpadButton_Up | HidNpadButton_Down |
+                HidNpadButton_L | HidNpadButton_R))
+        state.detailsViewport.reveal(state.detailsFocus, 16, visibleDetailRows);
+
+    auto applyDirectFocus = [&](int id) {
+        if (id >= 41000 && id < 41016) {
+            const int row = id - 41000;
+            state.focus = {Shared::Panel::Details, static_cast<uint8_t>(row), 0};
+            state.detailsFocus = row;
+            return true;
+        }
+        if (id >= 41100 && id < 41106) { state.focus = {Shared::Panel::Values, static_cast<uint8_t>(id - 41100), 0}; return true; }
+        if (id >= 41120 && id < 41126) { state.focus = {Shared::Panel::Values, static_cast<uint8_t>(id - 41120), 1}; return true; }
+        if (id >= 41206 && id <= 41210) { state.focus = {Shared::Panel::Values, static_cast<uint8_t>(id - 41200), 0}; return true; }
+        if (id >= 41300 && id < 41304) { state.focus = {Shared::Panel::Moves, static_cast<uint8_t>(id - 41300), 0}; return true; }
+        return false;
+    };
+    // Touch-down is provisional: do not jump focus while a finger is still
+    // dragging through DETAILS/STATS/MOVES. Only a completed tap can select.
+    const int pressedRow = screen.touchedButtonId(touch);
+    if (applyDirectFocus(pressedRow) && state.session.editable()) down |= HidNpadButton_A;
+    if (pressedRow == 41015 && passive && state.session.working &&
+        state.session.working->formCount() <= 1)
+        screen.postStatus("This Gen IV Pokémon has only its default form", 135);
+    if (touch.justReleased() && touch.dragged()) {
+        const int dx = touch.deltaX(), dy = touch.deltaY();
+        if (std::abs(dx) >= 96 && std::abs(dx) > std::abs(dy)) {
+            state.focus = passive
+                ? Shared::passiveViewSwitchPanel(Shared::Generation::Gen4, state.focus, dx < 0 ? 1 : -1)
+                : Shared::switchPanel(Shared::Generation::Gen4, state.focus, dx < 0 ? 1 : -1);
+            state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);
+        }
+    }
 
     if (down & HidNpadButton_B) {
         state.session.back();
@@ -746,35 +1376,87 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down) {
         keepWorkspace(screen);
         return true;
     }
+    if ((down & HidNpadButton_A) && passive &&
+        state.focus.panel == Shared::Panel::Details && state.focus.row == 15 &&
+        state.session.working && state.session.working->formCount() <= 1)
+        screen.postStatus("This Gen IV Pokémon has only its default form", 135);
     if (!(down & HidNpadButton_A) || !state.session.editable()) return true;
+    if (state.focus.panel == Shared::Panel::Details &&
+        !state.detailsViewport.containsSelection(state.focus.row, 16, 8)) {
+        state.detailsTouchScroll.stop();
+        state.detailsViewport.reveal(state.focus.row, 16, 8);
+        screen.postStatus("Focused field brought into view; press A again", 200);
+        return true;
+    }
 
-    if (state.focus.panel == Shared::Panel::Details)
-        editDetail(screen, state, state.focus.row, *record);
-    else if (state.focus.panel == Shared::Panel::Values)
-        editStatCell(screen, state, *record);
-    else
+    if (state.focus.panel == Shared::Panel::Details) {
+        if (!editDetail(screen, state, state.focus.row, *record))
+            screen.postStatus("This Generation IV field is visible but read-only in the current G4-04 slice", 300);
+    } else if (state.focus.panel == Shared::Panel::Values) {
+        if (!editStatCell(screen, state, *record))
+            screen.postStatus("This Generation IV value is read-only", 240);
+    } else {
         openMoveEditor(screen, state, state.focus.row);
+    }
     return true;
 }
 
-Shared::ActionSet gen4Actions(bool occupied) {
-    Shared::ActionSet result{};
+MenuActionSet gen4Actions(const State& state, bool occupied, bool stagedAvailable,
+                          bool hasPendingChanges) {
+    MenuActionSet result{};
+    const auto add = [&](MenuAction action, const char* label, bool enabled = true) {
+        result.values[result.count++] = {action, label, enabled};
+    };
+
     if (!occupied) {
-        result.values[result.count++] = Shared::Action::Close;
+        if (state.target == TargetKind::Box)
+            add(MenuAction::Add, "Add Pokemon", stagedAvailable);
+        if (hasPendingChanges) add(MenuAction::Review, "Review Pending Changes", true);
+        add(MenuAction::Close, "Cancel", true);
         return result;
     }
-    result.values[result.count++] = Shared::Action::View;
-    result.values[result.count++] = Shared::Action::Edit;
-    result.values[result.count++] = Shared::Action::Review;
-    result.values[result.count++] = Shared::Action::Close;
+
+    if (state.target == TargetKind::Party) {
+        // Match the established Gen I-III Party action vocabulary. Rows whose
+        // architecture is intentionally locked stay visible but disabled.
+        add(MenuAction::View, "View Pokemon", true);
+        add(MenuAction::AddMasterVault, "Add to Master Vault", false);
+        add(MenuAction::AddBank, "Add to Bank...", false);
+        add(MenuAction::TransferGame, "Transfer to Game...", false);
+        add(MenuAction::Edit, "Edit", stagedAvailable);
+        add(MenuAction::Clone, "Clone", false);
+        add(MenuAction::MakeShiny, "Make Shiny", false);
+        add(MenuAction::Legality, "Legality & Provenance", true);
+        if (hasPendingChanges) add(MenuAction::Review, "Review Pending Changes", true);
+        add(MenuAction::Close, "Cancel", true);
+        return result;
+    }
+
+    add(MenuAction::View, "View", true);
+    add(MenuAction::Edit, "Edit", stagedAvailable);
+    add(MenuAction::MovePokemon, "Move Pokemon", stagedAvailable);
+    add(MenuAction::Clone, "Clone", stagedAvailable);
+    add(MenuAction::Release, "Release", stagedAvailable);
+    add(MenuAction::Legality, "Legality & Provenance", true);
+    if (hasPendingChanges) add(MenuAction::Review, "Review Pending Changes", true);
+    add(MenuAction::Close, "Cancel", true);
     return result;
 }
 
-bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {
+bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.actions) return false;
     std::string error;
     const bool occupied = selectedRecord(screen, state, error).has_value();
-    const auto actions = gen4Actions(occupied);
+    auto* staged = editor(screen);
+    const auto actions = gen4Actions(
+        state, occupied, staged != nullptr, staged && staged->hasChanges());
+    state.actionRow = std::clamp(
+        state.actionRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
+    if (actions.count == 0) return true;
+    const int actionDown = screen.touchedButtonDownId(touch);
+    if (actionDown >= 41600 && actionDown < 41600 + static_cast<int>(actions.count)) state.actionRow = actionDown - 41600;
+    const int actionTap = screen.touchedButtonId(touch);
+    if (actionTap >= 41600 && actionTap < 41600 + static_cast<int>(actions.count)) { state.actionRow = actionTap - 41600; down |= HidNpadButton_A; }
     if (down & HidNpadButton_Up)
         state.actionRow = (state.actionRow - 1 + static_cast<int>(actions.count)) %
                           static_cast<int>(actions.count);
@@ -786,23 +1468,111 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down) {
     }
     if (!(down & HidNpadButton_A)) return true;
 
-    switch (actions[static_cast<size_t>(state.actionRow)]) {
-        case Shared::Action::View:
+    const auto entry = actions[static_cast<size_t>(state.actionRow)];
+    if (!entry.enabled) {
+        if (entry.action == MenuAction::Add) {
+            const auto& why = bridge(screen).stagedPokemonUnavailableReason();
+            screen.postStatus(why.empty()
+                ? "Gen IV Add needs a strictly validated staged save" : why, 420);
+            return true;
+        }
+        switch (entry.action) {
+            case MenuAction::AddMasterVault:
+                screen.postStatus("Master Vault is intentionally not started", 300);
+                break;
+            case MenuAction::AddBank:
+                screen.postStatus("Party-to-Bank transfer remains locked in this Gen IV slice", 300);
+                break;
+            case MenuAction::TransferGame:
+                screen.postStatus("Live source writes remain hard disabled", 300);
+                break;
+            case MenuAction::Clone:
+                screen.postStatus("Party Clone is not enabled yet; Box Clone is staged and available", 300);
+                break;
+            case MenuAction::MakeShiny:
+                screen.postStatus("Use Edit > Shiny for the staged Gen IV Pokemon", 300);
+                break;
+            default:
+                screen.postStatus("This Generation IV action is not enabled", 240);
+                break;
+        }
+        return true;
+    }
+
+    switch (entry.action) {
+        case MenuAction::View:
             beginViewOrEdit(screen, SessionModel::Mode::View);
             break;
-        case Shared::Action::Edit:
+        case MenuAction::Edit:
             beginViewOrEdit(screen, SessionModel::Mode::Edit);
             break;
-        case Shared::Action::Review:
+        case MenuAction::MovePokemon:
+            // This menu shortcut enters the SAME hold-Y picker and carried
+            // visual as Gens I-III, rather than a second native move handler.
+            state.actions = false;
+            if (!ClassicPackedMove::beginGen4FromAction(screen, state.box, state.slot))
+                screen.postStatus("Gen IV move could not start", 260);
+            break;
+        case MenuAction::Add:
+            beginCreate(screen);
+            break;
+        case MenuAction::Clone: {
+            if (!staged || state.target != TargetKind::Box) break;
+            const auto box = Utils::promptNumber("Clone to Gen IV Box", state.box + 1, 1, 18);
+            if (!box.accepted) break;
+            const auto slot = Utils::promptNumber("Clone to Slot", state.slot + 1, 1, 30);
+            if (!slot.accepted) break;
+            if (!staged->stageCloneBoxPokemon(
+                    static_cast<size_t>(state.box), static_cast<size_t>(state.slot),
+                    static_cast<size_t>(box.value - 1), static_cast<size_t>(slot.value - 1),
+                    &error)) {
+                screen.postStatus(error.empty() ? "Generation IV Clone failed" : error, 360);
+            } else if (refreshPresentation(screen)) {
+                screen.postStatus("Generation IV Clone staged; external source unchanged", 300);
+            }
+            break;
+        }
+        case MenuAction::Release:
+            state.actions = false;
+            state.confirmRelease = true;
+            break;
+        case MenuAction::Legality:
+            state.actions = false;
+            state.legality = true;
+            break;
+        case MenuAction::Review:
             state.actions = false;
             state.review = true;
             break;
-        case Shared::Action::Close:
+        case MenuAction::Close:
             state.actions = false;
             break;
         default:
             break;
     }
+    return true;
+}
+
+bool handleReleaseConfirm(TrainerViewScreen& screen, State& state, u64 down) {
+    if (!state.confirmRelease) return false;
+    if (down & HidNpadButton_B) {
+        state.confirmRelease = false;
+        state.actions = true;
+        screen.controllerNavigation.reset();
+        return true;
+    }
+    if (!(down & HidNpadButton_A)) return true;
+    auto* staged = editor(screen);
+    std::string error;
+    if (!staged || state.target != TargetKind::Box ||
+        !staged->stageReleaseBoxPokemon(
+            static_cast<size_t>(state.box), static_cast<size_t>(state.slot), &error)) {
+        screen.postStatus(error.empty() ? "Generation IV Release failed" : error, 360);
+    } else if (refreshPresentation(screen)) {
+        screen.postStatus("Generation IV Release staged; external source unchanged", 300);
+    }
+    state.confirmRelease = false;
+    state.actions = false;
     return true;
 }
 
@@ -828,38 +1598,236 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
     return true;
 }
 
+std::string gen4DexLabel(uint16_t value) {
+    std::string number = std::to_string(value);
+    while (number.size() < 3) number = "0" + number;
+    return "#" + number + "  " + Names::getSpeciesName(value);
+}
+
+std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
+                             uint16_t value) {
+    if (state.pickerTarget == PickerTarget::Species)
+        return gen4DexLabel(value);
+    if (state.pickerTarget == PickerTarget::HeldItem)
+        return value == 0 ? "(none)" :
+            Names::machineDisplayLabel(bridge(screen).sourceSave().rawFamily(), value,
+                                       Names::getItemName(value));
+    if (state.pickerTarget == PickerTarget::Language)
+        return Enums::getLanguageName(static_cast<uint8_t>(value));
+    if (state.pickerTarget == PickerTarget::Ball)
+        return Enums::getBallName(static_cast<uint8_t>(value));
+    if (state.pickerTarget == PickerTarget::MetLocation) {
+        const auto preview = workingRecord(state, bridge(screen).sourceSave().rawFamily());
+        const char* name = preview
+            ? Names::getMetLocationName(preview->originVersion(), value) : "";
+        std::string label = name && name[0] ? std::string(name)
+                                            : "Location " + std::to_string(value);
+        if (preview)
+            label += "  |  Met Lv. " + std::to_string(preview->metLevel());
+        return label;
+    }
+    if (state.pickerTarget == PickerTarget::Pokerus)
+        return value == 0 ? "None" : value == 0x10 ? "Cured" : "Infected";
+    if (state.pickerTarget == PickerTarget::Form) {
+        const uint16_t species = state.session.working ? state.session.working->species() : 0;
+        return gen4FormLabel(species, static_cast<uint8_t>(value));
+    }
+    if (state.pickerTarget == PickerTarget::Move)
+        return MoveUI::rowLabel(value, bridge(screen).sourceSave().rawFamily());
+    if (state.pickerTarget == PickerTarget::Nature)
+        return Trainer::getNatureName(static_cast<uint8_t>(value));
+    if (state.session.working) {
+        const uint16_t abilityId =
+            state.session.working->abilityForSlot(static_cast<uint8_t>(value));
+        return abilityId == 0
+            ? "Ability Slot " + std::to_string(value + 1)
+            : std::string(Trainer::getAbilityName(abilityId)) +
+                " (Slot " + std::to_string(value + 1) + ")";
+    }
+    return {};
+}
+
+const char* pickerTitle(PickerTarget target) noexcept {
+    switch (target) {
+        case PickerTarget::Species: return "Choose Species";
+        case PickerTarget::HeldItem: return "Choose Held Item";
+        case PickerTarget::Language: return "Choose Language";
+        case PickerTarget::Ball: return "Choose Ball";
+        case PickerTarget::MetLocation: return "Choose Met Location";
+        case PickerTarget::Pokerus: return "Choose Pokérus";
+        case PickerTarget::Form: return "Choose Form";
+        case PickerTarget::Move: return "Choose Move";
+        case PickerTarget::Nature: return "Choose Nature";
+        case PickerTarget::Ability: return "Choose Ability";
+        default: return "Choose Value";
+    }
+}
+
 void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
-    constexpr int w = 650, h = 520;
+    if (!state.valuePicker || state.pickerValues.empty()) return;
+    screen.touchButtons.clear();
+    const bool heldItems = state.pickerTarget == PickerTarget::HeldItem;
+    const bool movePicker = state.pickerTarget == PickerTarget::Move;
+    const bool speciesPicker = state.pickerTarget == PickerTarget::Species;
+    constexpr auto moveLayout = MoveUI::compactPickerLayout();
+    const int totalChoices=static_cast<int>(state.pickerValues.size());
+    const bool compactChoices=state.pickerTarget == PickerTarget::Language ||
+        state.pickerTarget == PickerTarget::Ball ||
+        state.pickerTarget == PickerTarget::MetLocation ||
+        state.pickerTarget == PickerTarget::Nature ||
+        state.pickerTarget == PickerTarget::Ability ||
+        state.pickerTarget == PickerTarget::Pokerus;
+    const bool naturePicker=state.pickerTarget==PickerTarget::Nature;
+    const auto natureLayout=PokeBank::UIModel::NaturePickerLayout::forChoices(totalChoices);
+    const int visibleChoices=naturePicker ? natureLayout.visibleRows :
+        compactChoices ? std::min(8,totalChoices) : 10;
+    const int w = heldItems ? HeldItemGrid::modalWidth : movePicker ? moveLayout.width :
+        speciesPicker ? 760 : naturePicker ? natureLayout.width :
+        compactChoices ? 640 : 680;
+    const int h = heldItems ? HeldItemGrid::modalHeight : movePicker ? moveLayout.height :
+        speciesPicker ? 560 : naturePicker ? natureLayout.height :
+        compactChoices ? 125 + visibleChoices * 42 : 560;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - kNavBarH - h) / 2;
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0,0,0,130));
-    drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 24, y + 18,
-        state.pickerTarget == PickerTarget::Nature ? "Choose Nature" : "Choose Ability",
-        Colors::Text, TextStyle::Heading);
-    const int first = std::max(0, state.pickerRow - 5);
-    const int count = std::min<int>(10, static_cast<int>(state.pickerValues.size()) - first);
-    for (int i = 0; i < count; ++i) {
-        const int index = first + i;
-        const int yy = y + 72 + i * 40;
-        const bool selected = index == state.pickerRow;
-        if (selected) fb.drawSelectionHighlight(x + 22, yy, w - 44, 34);
-        const auto value = state.pickerValues[static_cast<size_t>(index)];
-        std::string label;
-        if (state.pickerTarget == PickerTarget::Nature)
-            label = Trainer::getNatureName(static_cast<uint8_t>(value));
-        else if (state.session.working) {
-            const uint16_t abilityId =
-                state.session.working->abilityForSlot(static_cast<uint8_t>(value));
-            label = abilityId == 0
-                ? "Ability Slot " + std::to_string(value + 1)
-                : std::string(Trainer::getAbilityName(abilityId)) +
-                    " (Slot " + std::to_string(value + 1) + ")";
+
+    // Match the accepted Gen I-III picker family: neutral dialog chrome,
+    // theme focus only on the active row/cell, and one authoritative footer.
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Color(0, 0, 0, 165));
+    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
+
+    if (speciesPicker) {
+        const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
+        const bool previewShiny = state.speciesPreviewShiny;
+        const uint16_t species =
+            state.pickerValues[static_cast<size_t>(state.pickerRow)];
+        const auto& speciesPersonal = Pokemon::getPersonalInfo4HGSS(species, 0);
+        const std::array<uint8_t, 2> previewTypes{
+            SharedSpeciesPicker::canonicalToClassicType(speciesPersonal.type1),
+            SharedSpeciesPicker::canonicalToClassicType(speciesPersonal.type2)};
+        constexpr int visibleSpecies = 9;
+        const int speciesStart = std::clamp(static_cast<int>(species) - visibleSpecies / 2,
+                                            1, 493 - visibleSpecies + 1);
+        for (int i = 0; i < visibleSpecies; ++i) {
+            const uint16_t value = static_cast<uint16_t>(speciesStart + i);
+            const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), value);
+            if (it != state.pickerValues.end())
+                screen.touchButtons.push_back({6000 + static_cast<int>(std::distance(state.pickerValues.begin(), it)),
+                                               modal.x + 20, modal.y + 84 + i * 43, 560, 39});
         }
-        fb.drawText(x + 38, yy + 7, label,
-                    selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
+        SharedSpeciesPicker::drawContent(
+            fb, modal.x, modal.y, species, 493, previewShiny,
+            [](uint16_t value) {
+                return gen4DexLabel(value);
+            },
+            [](uint16_t value) {
+                return gen4DexLabel(value);
+            },
+            &latestTouchGesture(), true, previewTypes);
+        drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
+                        {"ZL/ZR", "Jump"}, {"Y", "Normal/Shiny"},
+                        {"A", "Choose"}, {"B", "Cancel"}});
+        return;
     }
-    drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"A", "Choose"}, {"B", "Cancel"}});
+
+    if (movePicker) {
+        fb.drawText(x + 24, y + 18, "Move — Generation IV", Colors::Text, TextStyle::Heading);
+        fb.drawText(x + 24, y + 52,
+                    "Empty + compatible moves only • exact Gen IV Acc / Pwr / PP",
+                    Colors::TextDim, TextStyle::Caption);
+        const int count = static_cast<int>(state.pickerValues.size());
+        constexpr int visible = moveLayout.visibleRows;
+        const int first = state.pickerViewport.firstRow;
+        const int last = std::min(count, first + visible);
+        const int viewportTop = y + moveLayout.rowStart;
+        fb.setClipRect(x + 24, viewportTop, w - 48, visible * moveLayout.rowStep);
+        for (int i = first; i < last; ++i) {
+            const int yy = viewportTop + (i - first) * moveLayout.rowStep + state.pickerScroll.offset();
+            appendClippedTouchButton(screen.touchButtons, 6000 + i,
+                x + 24, yy, w - 48, moveLayout.highlightHeight,
+                x + 24, viewportTop, w - 48, visible * moveLayout.rowStep);
+            const bool selected = i == state.pickerRow;
+            if (selected)
+                fb.drawSelectionHighlight(x + 24, yy, w - 48, moveLayout.highlightHeight);
+            const auto value = state.pickerValues[static_cast<size_t>(i)];
+            MovePickerRowUI::draw(fb,x+40,yy+4,value,
+                                  bridge(screen).sourceSave().rawFamily());
+        }
+        fb.clearClip();
+        drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
+                        {"ZL/ZR", "Jump"}, {"A", "Select"}, {"B", "Cancel"}});
+        return;
+    }
+
+    const int count = static_cast<int>(state.pickerValues.size());
+    if (heldItems) {
+        SharedHeldItemPickerPresentation::drawHeading(
+            fb, x, y, "Held Item — Generation IV", state.pickerRow, count);
+        fb.drawText(x + w - 250, y + 55,
+                    std::string("Sort: ") + ItemPickerSort::label(state.pickerSort),
+                    Colors::TextDim, TextStyle::Caption);
+        SharedHeldItemPickerPresentation::drawGrid(
+            fb, x, y, state.pickerValues, state.pickerRow,
+            [&](uint16_t value) { return pickerValueLabel(screen, state, value); },
+            [&](uint16_t value) {
+                const auto disc = UI::ClassicMachineArtwork::artKey(
+                    screen.trainer.getGameGroup(), value);
+                return disc.empty() ? Names::getItemName(value) : disc;
+            },
+            state.pickerViewport.firstRow, state.pickerScroll.offset());
+        const int gridX = x + HeldItemGrid::gridInsetX;
+        const int gridY = y + HeldItemGrid::gridInsetY;
+        const int cellHeight = HeldItemGrid::rowPitch;
+        const int cellW = (w - 2 * HeldItemGrid::gridInsetX) / HeldItemGrid::columns;
+        const int firstRow = state.pickerViewport.firstRow;
+        const int firstVisibleItem = state.pickerViewport.firstRow * HeldItemGrid::columns + 1;
+        const int lastVisibleItem = std::min(count,
+            firstVisibleItem + HeldItemGrid::pageSize - 1);
+        (void)lastVisibleItem;
+        for (int i = std::max(0, (firstRow - 1) * HeldItemGrid::columns);
+             i < std::min(count, (firstRow + HeldItemGrid::rows + 1) * HeldItemGrid::columns); ++i) {
+            const int offset = i - firstRow * HeldItemGrid::columns;
+            const int cellX = gridX + offset % HeldItemGrid::columns * cellW;
+            const int cellY = gridY + offset / HeldItemGrid::columns * cellHeight + state.pickerScroll.offset();
+            appendClippedTouchButton(screen.touchButtons, 6000 + i,
+                cellX, cellY - 3, cellW - 10, cellHeight - 4,
+                gridX, gridY - 3, w - 44, HeldItemGrid::rows * cellHeight);
+        }
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
+                        {"A", "Choose"}, {"B", "Cancel"}, {"X", "Sort"}});
+        return;
+    }
+    fb.drawText(x + 28, y + 20, pickerTitle(state.pickerTarget),
+                Colors::Text, TextStyle::Heading);
+
+    fb.drawText(x + 28, y + 55,
+                std::to_string(state.pickerRow + 1) + " / " +
+                    std::to_string(state.pickerValues.size()),
+                Colors::TextDim, TextStyle::Caption);
+    const int visible = compactChoices ? visibleChoices : 10;
+    const int first = state.pickerViewport.firstRow;
+    const int last = std::min(count, first + visible);
+    const int rowStep = naturePicker ? natureLayout.rowStep : 42;
+    const int viewportTop = y + 90;
+    fb.setClipRect(x + 22, viewportTop - 4, w - 44, visible * rowStep);
+    for (int i = first; i < last; ++i) {
+        const int yy = viewportTop + (i - first) * rowStep + state.pickerScroll.offset();
+        appendClippedTouchButton(screen.touchButtons, 6000 + i,
+            x + 22, yy - 4, w - 44, naturePicker ? natureLayout.highlightHeight : 38,
+            x + 22, viewportTop - 4, w - 44, visible * rowStep);
+        const bool selected = i == state.pickerRow;
+        if (selected) fb.drawSelectionHighlight(x + 22, yy - 4, w - 44,
+            naturePicker ? natureLayout.highlightHeight : 38);
+        const auto value = state.pickerValues[static_cast<size_t>(i)];
+        fb.drawText(x + 38, yy + 7, pickerValueLabel(screen, state, value),
+                    Colors::Text, TextStyle::Body);
+        if(state.pickerTarget == PickerTarget::Ball)
+            ItemPickerArtwork::draw(fb, x + w - 35, yy, 32,
+                                    Enums::getBallName(static_cast<uint8_t>(value)));
+    }
+    fb.clearClip();
+    drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
+                    {"ZL/ZR", "Jump"}, {"A", "Choose"}, {"B", "Cancel"}});
 }
 
 void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
@@ -874,10 +1842,10 @@ void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state
     fb.drawText(x + 24, y + 18, "Move " + std::to_string(state.moveEditorSlot + 1),
                 Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
-                "Same shared contextual editor • move choice read-only in G4-03",
+                "Gen IV move compatibility • event/encounter legality is not fully checked",
                 Colors::TextDim, TextStyle::Caption);
     const std::array<std::pair<std::string,std::string>,5> rows{{
-        {"Move", move == 0 ? "Empty" : std::string(Names::getMoveName(move)) + " (read-only)"},
+        {"Move", move == 0 ? "Empty" : std::string(Names::getMoveName(move))},
         {"PP", std::to_string(state.session.working->pp()[slot]) + "/" +
                std::to_string(moveMaxPP(
                    move, state.session.working->ppUps()[slot],
@@ -889,6 +1857,7 @@ void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state
     for (int i = 0; i < 5; ++i) {
         const int yy = y + 88 + i * 48;
         const bool selected = i == state.moveEditorRow;
+        screen.touchButtons.push_back({41400 + i, x + 22, yy, w - 44, 42});
         if (selected) fb.drawSelectionHighlight(x + 22, yy, w - 44, 42);
         fb.drawText(x + 38, yy + 10, rows[static_cast<size_t>(i)].first,
                     selected ? Colors::Text : Colors::TextDim);
@@ -906,8 +1875,11 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     if (!raw) return;
     Pokemon::Pokemon4ReadOnlyView view(*raw);
 
-    const auto mode = state.session.mode == SessionModel::Mode::Edit
-        ? Context::SurfaceMode::EditStaged : Context::SurfaceMode::ViewReadOnly;
+    const auto mode = state.session.mode == SessionModel::Mode::Create
+        ? Context::SurfaceMode::CreateDraft
+        : state.session.mode == SessionModel::Mode::Edit
+            ? Context::SurfaceMode::EditStaged
+            : Context::SurfaceMode::ViewReadOnly;
     SharedPokemonShell::drawChrome(
         fb, raw->species(), Utils::utf16ToUtf8(raw->nickname()), view.level(),
         raw->gender(), view.isShiny(raw->id32(), {}), mode,
@@ -932,11 +1904,36 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
             typeX += width + 8;
         }
     }
+    constexpr std::size_t detailVisibleRows = 8;
+    constexpr int detailRowStep = 38;
+    const int detailViewportY = g.y + 216;
+    const int detailViewportH = std::max(0, g.y + g.h - 40 - detailViewportY);
+    state.detailsViewport.ensure(state.detailsFocus, static_cast<int>(detailLabels.size()),
+                                 static_cast<int>(detailVisibleRows));
+    const int firstDetailRow = state.detailsViewport.firstRow;
+    const int detailPixelOffset = state.detailsTouchScroll.offset();
     SharedPokemonShell::drawScrollableDetails(
-        fb, g.leftX, g.y, g.leftW, g.h, detailLabels.size(), state.detailsFocus,
+        fb, g.leftX, g.y, g.leftW, g.h, detailLabels.size(),
+        static_cast<std::size_t>(state.detailsFocus),
         state.focus.panel == Shared::Panel::Details,
         [](size_t row) { return detailLabels[row]; },
-        [&](size_t row) { return detailValue(*raw, view, static_cast<int>(row)); });
+        [&](size_t row) {
+            if (row == 15 && state.session.working &&
+                state.session.working->formCount() <= 1)
+                return std::string("Default (fixed)");
+            return detailValue(*raw, view, static_cast<int>(row));
+        },
+        detailPixelOffset, firstDetailRow);
+    {
+        for (int row = std::max(0, firstDetailRow - 1);
+             row < std::min(static_cast<int>(detailLabels.size()),
+                            firstDetailRow + static_cast<int>(detailVisibleRows) + 1); ++row) {
+            const int yy = g.y + 224 + (row - firstDetailRow) * detailRowStep + detailPixelOffset;
+            appendClippedTouchButton(screen.touchButtons, 41000 + row,
+                g.leftX + 8, yy + 2, g.leftW - 36, 30,
+                g.leftX + 8, detailViewportY, g.leftW - 16, detailViewportH);
+        }
+    }
 
     drawPanel(fb, g.midX, g.y, g.midW, g.h, "STATS");
     fb.drawText(g.midX + 126, g.y + 50, "IV", Colors::TextDim, TextStyle::Caption);
@@ -950,6 +1947,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     for (int row = 0; row < 6; ++row) {
         const int yy = g.y + 78 + row * 40;
         const bool selected = state.focus.panel == Shared::Panel::Values && state.focus.row == row;
+        screen.touchButtons.push_back({41100 + row, g.midX + 112, yy - 5, 62, 30});
+        screen.touchButtons.push_back({41120 + row, g.midX + 176, yy - 5, 70, 30});
         if (selected) {
             const auto cell = Shared::cellFocusFor(Shared::Generation::Gen4, state.focus);
             drawFocus(fb, g.midX + cell.x, yy - 5, cell.width, 30, true);
@@ -967,7 +1966,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         {"Gender", genderText(raw->gender())},
         {"Shiny", view.isShiny(raw->id32(), {}) ? "Yes" : "No"},
         {"Ability", Trainer::getAbilityName(raw->ability())},
-        {"PID (read-only)", std::to_string(raw->pid())},
+        {"PID", std::to_string(raw->pid())},
     }};
     for (int i = 0; i < 5; ++i) {
         const int row = i + 6;
@@ -976,6 +1975,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         const bool selected = state.focus.panel == Shared::Panel::Values &&
                               state.focus.row == row &&
                               (state.session.mode == SessionModel::Mode::View || editable);
+        screen.touchButtons.push_back({41200 + row, g.midX + 8, yy - 5, g.midW - 16, 29});
         drawFocus(fb, g.midX + 8, yy - 5, g.midW - 16, 29, selected);
         fb.drawText(g.midX + 18, yy, derived[static_cast<size_t>(i)].first,
                     selected ? Colors::SelectedText : editable ? Colors::TextDim : Colors::TextSecondary,
@@ -984,6 +1984,11 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         if (i == 1 && editable && !selected) valueColor = genderValueColor(raw->gender());
         fb.drawText(g.midX + 130, yy, derived[static_cast<size_t>(i)].second,
                     valueColor, TextStyle::Caption);
+        // Keep the PID status on its own subordinate line, so the 10-digit
+        // value never overlaps the label in the compact shared middle panel.
+        if (i == 4)
+            fb.drawText(g.midX + 18, yy + 15, "read-only",
+                        Colors::TextDim, TextStyle::Caption);
     }
 
     drawPanel(fb, g.rightX, g.y, g.rightW, g.h, "MOVES");
@@ -992,6 +1997,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     for (int row = 0; row < 4; ++row) {
         const int yy = g.y + 62 + row * 32;
         const bool selected = state.focus.panel == Shared::Panel::Moves && state.focus.row == row;
+        screen.touchButtons.push_back({41300 + row, g.rightX + 8, yy - 5, g.rightW - 16, 32});
         if (selected) {
             const auto cell = Shared::moveRowFocus(g.rightW);
             drawFocus(fb, g.rightX + cell.x, yy - 5, cell.width, 32, true);
@@ -1003,11 +2009,49 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
                     Colors::Text, TextStyle::Caption);
         fb.drawText(g.rightX + 242, yy, std::to_string(raw->ppUps()[static_cast<size_t>(row)]),
                     Colors::Text, TextStyle::Caption);
+
+        bool existingSource = false;
+        if (!state.session.baselineEncrypted.empty()) {
+            Pokemon::Pokemon4ReadOnly baseline(state.session.baselineEncrypted,
+                                               bridge(screen).sourceSave().rawFamily());
+            if (baseline.valid()) {
+                for (const uint16_t sourceMove : baseline.moves())
+                    if (sourceMove != 0 && sourceMove == move) existingSource = true;
+            }
+        }
+        const auto descriptor =
+            PokeVault::Integration::Gen4EditorProvider::descriptorForSource(
+                screen.sourceGameId, editor(screen) != nullptr);
+        auto result = PokeBank::UIModel::ExactFormatEditor::MoveCompatibilityResult::Invalid;
+        if (move != 0 && descriptor)
+            result = descriptor->moves.evaluate(
+                {screen.sourceGameId, raw->species(), raw->form(), move, existingSource});
+        const char* status = move == 0 ? "-" : "Invalid";
+        Color statusColor = move == 0 ? Colors::TextDim : Colors::Error;
+        using MoveResult = PokeBank::UIModel::ExactFormatEditor::MoveCompatibilityResult;
+        if (move != 0 && result == MoveResult::Compatible) {
+            status = "OK";
+            statusColor = Colors::Success;
+        } else if (result == MoveResult::PreserveExisting) {
+            status = "Preserved";
+            statusColor = Colors::Warning;
+        } else if (result == MoveResult::Unsupported) {
+            status = "Transfer";
+            statusColor = Colors::Warning;
+        }
+        int sw = 0, sh = 0;
+        fb.measureText(status, sw, sh, TextStyle::Caption);
+        fb.drawText(g.rightX + g.rightW - 18 - sw, yy, status,
+                    statusColor, TextStyle::Caption);
     }
     fb.drawText(g.rightX + 18, g.y + 205,
-                "Move selection: READ ONLY in G4-03", Colors::TextDim, TextStyle::Caption);
+                state.session.editable() ? "A: choose compatible Gen IV move"
+                                         : "Move compatibility: checked",
+                state.session.editable() ? Colors::Success : Colors::TextDim,
+                TextStyle::Caption);
     fb.drawText(g.rightX + 18, g.y + 226,
-                "A edits PP / PP Ups contextually", Colors::TextDim, TextStyle::Caption);
+                "OK = native   Transfer/Preserved = warning",
+                Colors::TextDim, TextStyle::Caption);
 
     struct DataRow { std::string label, value; };
     const std::vector<DataRow> rows{
@@ -1015,9 +2059,20 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         {"Origin", Enums::getOriginGameName(raw->originVersion())},
         {"Language", Enums::getLanguageName(raw->language())},
         {"Ball", Enums::getBallName(view.ball())},
-        {"Met", "ID " + std::to_string(view.metLocation()) + " / Lv. " + std::to_string(raw->metLevel())},
-        {"Source", "IMMUTABLE"},
-        {"Create", "Deferred until Edit passes"}
+        {"Met", [&] {
+            const uint16_t location = view.metLocation();
+            const char* sourceName = Names::getMetLocationName(raw->originVersion(), location);
+            const std::string label = location == 0 ? "(not recorded)"
+                : (sourceName && sourceName[0]) ? std::string(sourceName)
+                : "Unknown (ID " + std::to_string(location) + ")";
+            return label + " / Lv. " + std::to_string(raw->metLevel());
+        }()},
+        {"Friendship", std::to_string(raw->friendship())},
+        {"Pokérus", PokeBank::UIModel::Gen4DataPresentation::pokerus(raw->pokerusState())},
+        {"Fateful", raw->fatefulEncounter() ? "Yes" : "No"},
+        {"Egg status", raw->isEgg() ? "Unhatched" : "Not egg"},
+        {"OT gender", raw->originalTrainerGender() == 0 ? "Male" : "Female"},
+        {"PC markings", PokeBank::UIModel::Gen4DataPresentation::markings(raw->markings())}
     };
     SharedPokemonShell::drawDataAndGraph(
         fb, g.rightX, g.y + 244, g.rightW, g.h - 256, "GEN IV DATA", rows, stats);
@@ -1026,34 +2081,48 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}});
     else
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"X", "Keep"}, {"B", "Exit"}});
+                        {"X", state.session.creating() ? "Add" : "Keep"}, {"B", "Exit"}});
 
     if (state.session.confirmExit) {
         constexpr int w = 560, h = 226;
         const int x = (fb.getWidth() - w) / 2;
         const int y = (fb.getHeight() - h) / 2;
         const int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, "Unsaved changes", Colors::Orange);
-        fb.drawText(x + 28, cy, "This Pokémon has unsaved changes.", Colors::Text);
+        fb.drawText(x + 28, cy,
+                    state.session.creating() ? "This new Pokémon draft has not been added."
+                                             : "This Pokémon has unsaved changes.",
+                    Colors::Text);
         fb.drawText(x + 28, cy + 34, "Discard loses them; Back keeps editing.",
                     Colors::TextDim, TextStyle::Caption);
         const int cbw = 160, cbh = TouchTargetMin, cby = y + h - cbh - 18;
         drawGlyphButton(fb, x + 24, cby, cbw, cbh, "B", "Back", Colors::PanelAlt);
         drawGlyphButton(fb, x + (w - cbw) / 2, cby, cbw, cbh, "Y", "Discard", Colors::PanelAlt);
-        drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Save", Colors::PanelAlt);
+        drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A",
+                        state.session.creating() ? "Add" : "Save", Colors::PanelAlt);
     }
 
-    if (state.valuePicker) drawValuePicker(screen, fb, state);
     if (state.moveEditor) drawMoveEditor(screen, fb, state);
+    if (state.valuePicker) drawValuePicker(screen, fb, state);
 }
 
+
+
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
+    screen.touchButtons.clear();
     std::string error;
     const bool occupied = selectedRecord(screen, state, error).has_value();
-    const auto actions = gen4Actions(occupied);
+    auto* staged = editor(screen);
+    const auto actions = gen4Actions(
+        state, occupied, staged != nullptr, staged && staged->hasChanges());
 
     screen.drawGSCOverlay(fb);
+    // Background box and party cards cannot intercept foreground action taps.
+    screen.touchButtons.clear();
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0,0,0,105));
-    const int w = 650, h = occupied ? 360 : 220;
+    const auto geometry = Shared::actionMenuGeometry();
+    constexpr int w = 560;
+    const int h = geometry.rowStart +
+                  static_cast<int>(actions.count) * geometry.rowStep + 62;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - kNavBarH - h) / 2;
     drawPanelSurface(fb, x, y, w, h, false, 18);
@@ -1065,13 +2134,13 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
                     ? "Party / Slot " + std::to_string(state.slot + 1)
                     : "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1)),
                 Colors::TextDim, TextStyle::Caption);
-    const auto geometry = Shared::actionMenuGeometry();
     int yy = y + geometry.rowStart;
     for (size_t i = 0; i < actions.count; ++i) {
         const bool selected = static_cast<int>(i) == state.actionRow;
-        if (selected) fb.drawSelectionHighlight(x + 22, yy, w - 44, geometry.rowHeight);
-        fb.drawText(x + 38, yy + 10, Shared::actionLabel(actions[i]),
-                    selected ? Colors::Text : Colors::TextDim);
+        screen.touchButtons.push_back({41600 + static_cast<int>(i), x + 22, yy, w - 44, geometry.rowHeight});
+        const auto& entry = actions[i];
+        drawNativeActionRow(fb, x + 22, yy, w - 44, geometry.rowHeight,
+                            entry.label, selected, entry.enabled);
         yy += geometry.rowStep;
     }
     fb.drawText(x + 24, y + h - 34,
@@ -1097,12 +2166,497 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                         : "Original source remains the current baseline",
                 Colors::TextDim, TextStyle::Caption);
     fb.drawText(44, 270, "Original emulator source: HARD READ ONLY", Colors::Accent);
-    fb.drawText(44, 308, "Create / Release / Clone remain deferred; Party + Box Edit use staged bytes",
+    fb.drawText(44, 308, "Create/Edit/Box Clone/Release use staged bytes only; source remains immutable",
                 Colors::TextDim, TextStyle::Caption);
     if (changed)
         drawNavBar(fb, {{"Y", "Discard All Staged"}, {"B", "Back"}});
     else
         drawNavBar(fb, {{"B", "Back"}});
+}
+
+void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
+    screen.drawGSCOverlay(fb);
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 120));
+    constexpr int x = 210, y = 82, w = 860, h = 500;
+    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
+    fb.drawText(x + 24, y + 18, "Legality & Provenance", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 24, y + 52,
+                "Exact Gen IV structural + move guardrails • encounter legality remains advisory",
+                Colors::TextDim, TextStyle::Caption);
+
+    std::string error;
+    auto record = selectedRecord(screen, state, error);
+    if (!record) {
+        fb.drawText(x + 34, y + 110, error.empty() ? "No valid Pokemon selected" : error,
+                    Colors::Warning, TextStyle::Body);
+        drawNavBar(fb, {{"B", "Back"}});
+        return;
+    }
+
+    fb.drawText(x + 34, y + 104, "Exact source", Colors::TextDim);
+    fb.drawText(x + 250, y + 104, gameName(screen.sourceGameId), Colors::Text);
+    fb.drawText(x + 34, y + 142, "PK4 structure", Colors::TextDim);
+    fb.drawText(x + 250, y + 142, record->valid() ? "PASS" : "INVALID",
+                record->valid() ? Colors::Success : Colors::Error);
+    fb.drawText(x + 34, y + 180, "Source mutation", Colors::TextDim);
+    fb.drawText(x + 250, y + 180, "HARD DISABLED", Colors::Accent);
+    fb.drawText(x + 34, y + 218, "Encounter legality", Colors::TextDim);
+    fb.drawText(x + 250, y + 218, "Not fully audited", Colors::Warning);
+
+    int rowY = y + 270;
+    const auto moves = record->moves();
+    for (size_t i = 0; i < moves.size(); ++i) {
+        const uint16_t move = moves[i];
+        const auto availability = PokeVault::Integration::Gen4MoveCompatibility::classify(
+            screen.sourceGameId, record->species(), record->form(), move, true);
+        const char* status = "Invalid";
+        Color color = Colors::Error;
+        using A = PokeVault::Integration::Gen4MoveCompatibility::Availability;
+        if (move == 0) {
+            status = "Empty";
+            color = Colors::TextDim;
+        } else if (availability == A::Direct) {
+            status = "OK";
+            color = Colors::Success;
+        } else if (availability == A::Transfer) {
+            status = "Transfer";
+            color = Colors::Warning;
+        } else if (availability == A::Preserved) {
+            status = "Preserved";
+            color = Colors::Warning;
+        }
+        const std::string moveName = move == 0 ? "Empty" : Names::getMoveName(move);
+        fb.drawText(x + 34, rowY, "Move " + std::to_string(i + 1), Colors::TextDim,
+                    TextStyle::Caption);
+        fb.drawText(x + 150, rowY, moveName, Colors::Text, TextStyle::Caption);
+        fb.drawText(x + 650, rowY, status, color, TextStyle::Caption);
+        rowY += 36;
+    }
+    drawNavBar(fb, {{"B", "Back"}});
+}
+
+void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
+    screen.drawGSCOverlay(fb);
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 120));
+    constexpr int w = 760, h = 260;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - kNavBarH - h) / 2;
+    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
+    fb.drawText(x + 34, y + 30, "Release this Pokemon?", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 34, y + 88,
+                "Box " + std::to_string(state.box + 1) +
+                    " / Slot " + std::to_string(state.slot + 1),
+                Colors::TextDim, TextStyle::Body);
+    fb.drawText(x + 34, y + 130, "This removes it only from the app-owned staged copy.",
+                Colors::Text, TextStyle::Body);
+    fb.drawText(x + 34, y + 166, "The original DraStic/emulator save is never written.",
+                Colors::TextDim, TextStyle::Caption);
+    drawNavBar(fb, {{"A", "Confirm Release"}, {"B", "Cancel"}});
+}
+
+bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
+                        u64 held,int stickX,int stickY,const TouchInput& touch) {
+    const bool itemsScreen=screen.detailViewActive &&
+        screen.selectedMode==TrainerViewScreen::ViewMode::Items;
+    if(state.itemAddPickerActive) {
+        u64 keys=screen.controllerNavigation.apply(
+            down,held,stickX,stickY,
+            HidNpadButton_Up,HidNpadButton_Down,
+            HidNpadButton_Left,HidNpadButton_Right);
+        if(keys&HidNpadButton_B) {
+            state.itemAddPickerActive=false;
+            state.itemAddChoices.clear();
+            screen.controllerNavigation.reset();
+            return true;
+        }
+        const int size=static_cast<int>(state.itemAddChoices.size());
+        if(size<=0) {
+            state.itemAddPickerActive=false;
+            return true;
+        }
+        // Match the drawn nine-row foreground list. A clean tap chooses an
+        // item and opens the same quantity keyboard as controller A. Swipes
+        // move the selected window without triggering any staged mutation.
+        constexpr int panelW=780,panelH=532,rowH=43;
+        const int panelX=(1280-panelW)/2;
+        const int panelY=(720-kNavBarH-panelH)/2;
+        const int top=panelY+88,left=panelX+18,right=panelX+panelW-18;
+        const auto onList=[&](int x,int y) {
+            return x>=left && x<right && y>=top && y<top+9*rowH;
+        };
+        if(touch.justReleased() && touch.dragged()) {
+            const int dy=touch.deltaY();
+            if(onList(touch.startX(),touch.startY()) &&
+               std::abs(dy)>=24 && std::abs(dy)>std::abs(touch.deltaX())) {
+                const int rows=std::max(1,std::abs(dy)/rowH);
+                state.itemAddIndex=std::clamp(
+                    state.itemAddIndex+(dy<0?rows:-rows),0,size-1);
+            }
+            return true;
+        }
+        if(touch.justTapped() &&
+           onList(touch.startX(),touch.startY()) &&
+           onList(touch.x(),touch.y())) {
+            const int startRow=(touch.startY()-top)/rowH;
+            const int endRow=(touch.y()-top)/rowH;
+            const int first=PokeBank::UIModel::Gen4ItemListWindow::first(
+                state.itemAddIndex,size,9);
+            const int selected=first+endRow;
+            if(startRow==endRow && selected<size) {
+                state.itemAddIndex=selected;
+                keys|=HidNpadButton_A;
+            }
+        }
+        if(down&HidNpadButton_X) {
+            state.itemAddSort = ItemPickerSort::next(state.itemAddSort);
+            state.itemAddIndex = ItemPickerSort::reorder(
+                state.itemAddChoices, state.itemAddNativeChoices,
+                state.itemAddSort, state.itemAddIndex,
+                [&](uint16_t id) {
+                    return Names::machineDisplayLabel(
+                        screen.trainer.getGameGroup(), id, Names::getItemName(id));
+                });
+            return true;
+        }
+        if(keys&HidNpadButton_Up)
+            state.itemAddIndex=(state.itemAddIndex+size-1)%size;
+        if(keys&HidNpadButton_Down)
+            state.itemAddIndex=(state.itemAddIndex+1)%size;
+        if(keys&(HidNpadButton_L|HidNpadButton_Left))
+            state.itemAddIndex=std::max(0,state.itemAddIndex-9);
+        if(keys&(HidNpadButton_R|HidNpadButton_Right))
+            state.itemAddIndex=std::min(size-1,state.itemAddIndex+9);
+        if(keys&HidNpadButton_ZL)
+            state.itemAddIndex=std::max(0,state.itemAddIndex-45);
+        if(keys&HidNpadButton_ZR)
+            state.itemAddIndex=std::min(size-1,state.itemAddIndex+45);
+        if(!(keys&HidNpadButton_A))return true;
+        if(!itemsScreen || screen.selectedCategory!=state.itemAddPocket) {
+            screen.postStatus("Gen IV Add pocket changed; cancelled",280);
+            state.itemAddPickerActive=false;
+            return true;
+        }
+        auto* staged=editor(screen);
+        if(!staged) {
+            screen.postStatus("Gen IV Add requires a verified staged workspace",280);
+            state.itemAddPickerActive=false;
+            return true;
+        }
+        const uint16_t id=state.itemAddChoices[static_cast<size_t>(state.itemAddIndex)];
+        const uint16_t limit=Gen4::gen4BagMaxQuantity(
+            static_cast<size_t>(state.itemAddPocket),id);
+        if(!limit || !Gen4::gen4BagItemAllowed(
+                staged->layout(),static_cast<size_t>(state.itemAddPocket),id)) {
+            screen.postStatus("Gen IV item invalid in selected native pocket",300);
+            return true;
+        }
+        const auto r=Utils::promptNumber(
+            "Add "+Names::machineDisplayLabel(
+                screen.trainer.getGameGroup(),id,Names::getItemName(id)),
+            1,1,static_cast<int>(limit));
+        screen.controllerNavigation.reset();
+        if(!r.accepted)return true; // Cancel is byte-for-byte inert.
+        if(r.value<1 || r.value>static_cast<int>(limit)) {
+            screen.postStatus("Gen IV item quantity outside native limits",300);
+            return true;
+        }
+        if(!screen.detailViewActive ||
+           screen.selectedMode!=TrainerViewScreen::ViewMode::Items ||
+           screen.selectedCategory!=state.itemAddPocket) {
+            screen.postStatus("Gen IV pocket changed; add cancelled",280);
+            return true;
+        }
+        auto* current=editor(screen);
+        if(!current) {
+            screen.postStatus("Gen IV staged workspace unavailable",280);
+            return true;
+        }
+        auto backup=*current;
+        std::string error;
+        if(!current->stageBagAdd(static_cast<size_t>(state.itemAddPocket),
+                                 id,static_cast<uint16_t>(r.value),&error)) {
+            screen.postStatus(error,300);
+            return true;
+        }
+        if(!bridge(screen).refreshStagedPokemonPresentation(error)) {
+            *current=std::move(backup);
+            std::string restored;
+            (void)bridge(screen).refreshStagedPokemonPresentation(restored);
+            screen.postStatus("Gen IV Add refresh failed; previous stage retained: "+error,360);
+            return true;
+        }
+        state.itemAddPickerActive=false;
+        state.itemAddChoices.clear();
+        const auto visible=screen.visibleItemIndices();
+        const auto& pouch=screen.trainer.items[static_cast<size_t>(state.itemAddPocket)];
+        for(size_t i=0;i<visible.size();++i)
+            if(pouch[static_cast<size_t>(visible[i])].itemId==id) {
+                screen.selectedItemIndex=static_cast<int>(i);
+                screen.currentPage=screen.selectedItemIndex/8;
+                break;
+            }
+        screen.controllerNavigation.reset();
+        screen.postStatus("Gen IV item added to staged workspace ONLY (x"+
+                          std::to_string(r.value)+")",280);
+        return true;
+    }
+    if(state.itemRemoveConfirmActive) {
+        // Deliberate Y->Y two-press removal with a separate confirmation frame.
+        // A never removes; B always cancels without touching a staged byte.
+        if(down&HidNpadButton_B) {
+            state.itemRemoveConfirmActive=false;
+            screen.controllerNavigation.reset();
+            return true;
+        }
+        if(!(down&HidNpadButton_Y))return true;
+        const int pocket=state.itemRemovePocket;
+        const int index=state.itemRemoveVisibleRow;
+        if(!itemsScreen || screen.selectedCategory!=pocket ||
+           screen.selectedItemIndex!=index ||
+           pocket<0 || pocket>=static_cast<int>(screen.trainer.items.size())) {
+            state.itemRemoveConfirmActive=false;
+            screen.postStatus("Gen IV item selection changed; remove cancelled",300);
+            return true;
+        }
+        const auto visible=screen.visibleItemIndices();
+        if(index<0 || index>=static_cast<int>(visible.size())) {
+            state.itemRemoveConfirmActive=false;
+            screen.postStatus("Gen IV item no longer exists; remove cancelled",300);
+            return true;
+        }
+        const auto& item=screen.trainer.items[static_cast<size_t>(pocket)]
+                                     [static_cast<size_t>(visible[static_cast<size_t>(index)])];
+        if(item.itemId!=state.itemRemoveId || item.count!=state.itemRemoveCount) {
+            state.itemRemoveConfirmActive=false;
+            screen.postStatus("Gen IV item identity/count changed; remove cancelled",300);
+            return true;
+        }
+        auto* staged=editor(screen);
+        if(!staged) {
+            state.itemRemoveConfirmActive=false;
+            screen.postStatus("Gen IV staged item removal is unavailable",300);
+            return true;
+        }
+        auto backup=*staged;
+        std::string error;
+        if(!staged->stageBagRemove(static_cast<size_t>(pocket),
+                                   static_cast<size_t>(index),&error)) {
+            screen.postStatus(error,300);
+            return true;
+        }
+        if(!bridge(screen).refreshStagedPokemonPresentation(error)) {
+            *staged=std::move(backup);
+            std::string restored;
+            (void)bridge(screen).refreshStagedPokemonPresentation(restored);
+            screen.postStatus("Gen IV item remove refresh failed; staged item retained: "+error,360);
+            return true;
+        }
+        state.itemRemoveConfirmActive=false;
+        const auto remaining=screen.visibleItemIndices().size();
+        screen.selectedItemIndex=remaining?
+            std::min(screen.selectedItemIndex,static_cast<int>(remaining)-1):0;
+        screen.controllerNavigation.reset();
+        screen.postStatus("Gen IV item removed from staged workspace ONLY",300);
+        return true;
+    }
+    {
+        // Forward controller movement and B/Exit to the shared Items panel.
+        // Only A on an occupied, validated native stack opens an app-memory
+        // draft. A must NEVER perform a destructive removal or source write.
+        if(!itemsScreen || !(down&(HidNpadButton_A|HidNpadButton_Y|HidNpadButton_X)) ||
+           screen.helpOverlayActive || screen.itemEditDialogActive ||
+           screen.saveConfirmActive || screen.pickerActive ||
+           screen.actionSheet.isOpen())return false;
+        const int pocket=screen.selectedCategory;
+        if(down&HidNpadButton_X) {
+            auto* staged=editor(screen);
+            if(!staged || pocket<0 || pocket>=static_cast<int>(Gen4::BagPocketCount) ||
+               pocket>=static_cast<int>(screen.trainer.items.size()) ||
+               !Gen4::decodeReadOnlyBag(bridge(screen).sourceSave())) {
+                screen.postStatus("Gen IV Add requires a validated native source bag",300);
+                return true;
+            }
+            const auto candidates=Gen4::gen4BagChoices(staged->layout(),
+                                                       static_cast<size_t>(pocket));
+            const auto& existing=screen.trainer.items[static_cast<size_t>(pocket)];
+            state.itemAddChoices.clear();
+            for(const uint16_t id:candidates) {
+                const bool present=std::any_of(existing.begin(),existing.end(),
+                    [id](const auto& item){return item.itemId==id && item.count>0;});
+                if(!present)state.itemAddChoices.push_back(id);
+            }
+            if(state.itemAddChoices.empty()) {
+                screen.postStatus("No supported new Gen IV item IDs in this pocket",280);
+                return true;
+            }
+            state.itemAddPickerActive=true;
+            state.itemAddPocket=pocket;
+            state.itemAddNativeChoices=state.itemAddChoices;
+            state.itemAddSort=ItemPickerSort::Mode::Native;
+            state.itemAddIndex=0;
+            screen.controllerNavigation.reset();
+            return true;
+        }
+        const int visible=screen.selectedItemIndex;
+        if(pocket<0 || pocket>=static_cast<int>(screen.trainer.items.size())) {
+            screen.postStatus("No validated Gen IV item pocket is selected",220);
+            return true;
+        }
+        const auto indices=screen.visibleItemIndices();
+        if(visible<0 || visible>=static_cast<int>(indices.size())) {
+            screen.postStatus("Choose an existing Gen IV item; X adds a new staged stack",220);
+            return true;
+        }
+        const int raw=indices[static_cast<size_t>(visible)];
+        if(raw<0 || raw>=static_cast<int>(screen.trainer.items[pocket].size())) {
+            screen.postStatus("Gen IV selected item is no longer in the visible pocket",220);
+            return true;
+        }
+        const auto& item=screen.trainer.items[pocket][static_cast<size_t>(raw)];
+        if(item.itemId==0 || item.count==0 || item.count>999) {
+            screen.postStatus("Gen IV item stack is empty or invalid; X adds a staged item",240);
+            return true;
+        }
+        auto* staged=editor(screen);
+        if(!staged) {
+            screen.postStatus("Gen IV inventory source remains read-only; staged workspace unavailable",240);
+            return true;
+        }
+        if(!Gen4::gen4BagItemAllowed(staged->layout(),static_cast<size_t>(pocket),item.itemId)) {
+            screen.postStatus("Gen IV item is not in this title's verified native pocket catalog",300);
+            return true;
+        }
+        if(down&HidNpadButton_Y) {
+            state.itemRemoveConfirmActive=true;
+            state.itemRemovePocket=pocket;
+            state.itemRemoveVisibleRow=visible;
+            state.itemRemoveId=item.itemId;
+            state.itemRemoveCount=item.count;
+            screen.controllerNavigation.reset();
+            return true;
+        }
+        const uint16_t limit=Gen4::gen4BagMaxQuantity(
+            static_cast<size_t>(pocket),item.itemId);
+        if(!limit || item.count>limit) {
+            screen.postStatus("Gen IV item quantity outside native limits",300);
+            return true;
+        }
+        const uint16_t originalId=item.itemId;
+        const uint16_t originalCount=item.count;
+        const auto r=Utils::promptNumber(
+            "Edit "+Names::machineDisplayLabel(
+                screen.trainer.getGameGroup(),originalId,Names::getItemName(originalId)),
+            static_cast<int>(originalCount),1,static_cast<int>(limit));
+        screen.controllerNavigation.reset();
+        if(!r.accepted)return true; // Cancel cannot mutate the stage.
+        if(r.value<1 || r.value>static_cast<int>(limit)) {
+            screen.postStatus("Gen IV item quantity outside native limits",300);
+            return true;
+        }
+        if(r.value==originalCount)return true;
+        if(!screen.detailViewActive ||
+           screen.selectedMode!=TrainerViewScreen::ViewMode::Items ||
+           screen.selectedCategory!=pocket || screen.selectedItemIndex!=visible) {
+            screen.postStatus("Gen IV selection changed; quantity edit cancelled",280);
+            return true;
+        }
+        const auto freshIndices=screen.visibleItemIndices();
+        if(visible<0 || visible>=static_cast<int>(freshIndices.size())) {
+            screen.postStatus("Gen IV selected item no longer available",280);
+            return true;
+        }
+        const int freshRaw=freshIndices[static_cast<size_t>(visible)];
+        const auto& currentPocket=screen.trainer.items[static_cast<size_t>(pocket)];
+        if(freshRaw<0 || freshRaw>=static_cast<int>(currentPocket.size()) ||
+           currentPocket[static_cast<size_t>(freshRaw)].itemId!=originalId ||
+           currentPocket[static_cast<size_t>(freshRaw)].count!=originalCount) {
+            screen.postStatus("Gen IV item identity changed; edit cancelled",280);
+            return true;
+        }
+        auto* current=editor(screen);
+        if(!current) {
+            screen.postStatus("Gen IV staged workspace unavailable",280);
+            return true;
+        }
+        auto backup=*current;
+        std::string error;
+        if(!current->stageBagQuantity(
+            static_cast<size_t>(pocket),static_cast<size_t>(visible),
+            static_cast<uint16_t>(r.value),&error)) {
+            screen.postStatus(error,300);
+            return true;
+        }
+        if(!bridge(screen).refreshStagedPokemonPresentation(error)) {
+            *current=std::move(backup);
+            std::string restored;
+            (void)bridge(screen).refreshStagedPokemonPresentation(restored);
+            screen.postStatus("Gen IV item refresh failed; previous stage retained: "+error,360);
+            return true;
+        }
+        screen.postStatus("Gen IV item quantity staged; emulator source unchanged",300);
+        return true;
+    }
+    // D-pad/stick movement and B remain owned by the underlying Items panel.
+    return false;
+}
+
+void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
+    screen.drawGSCOverlay(fb);
+    const int w=780,h=532,x=(fb.getWidth()-w)/2;
+    const int y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,160));
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
+    fb.drawText(x+24,y+17,"Add Item - Generation IV",Colors::Text,TextStyle::Heading);
+    fb.drawText(x+24,y+53,
+        std::string(Gen4::bagPocketName(static_cast<size_t>(state.itemAddPocket)))+
+        "  |  Sort: "+ItemPickerSort::label(state.itemAddSort),Colors::TextSecondary,TextStyle::Caption);
+    const int count=static_cast<int>(state.itemAddChoices.size());
+    const int start=PokeBank::UIModel::Gen4ItemListWindow::first(
+        state.itemAddIndex,count,9);
+    for(int row=0;row<9 && start+row<count;++row) {
+        const int index=start+row;
+        const int yy=y+88+row*43;
+        const auto id=state.itemAddChoices[static_cast<size_t>(index)];
+        const std::string name=Names::machineDisplayLabel(
+            screen.trainer.getGameGroup(), id, Names::getItemName(id));
+        if(index==state.itemAddIndex)
+            fb.drawSelectionHighlight(x+18,yy,w-36,38);
+        fb.drawText(x+32,yy+9,name,Colors::Text,TextStyle::Body);
+        ItemPickerArtwork::drawNativeItem(fb,x+w-31,yy+3,32,
+                                        screen.trainer.getGameGroup(), id, name);
+    }
+    fb.drawText(x+24,y+h-38,
+        std::to_string(state.itemAddIndex+1)+" / "+std::to_string(count)+
+        "  |  A opens numeric quantity keypad",
+        Colors::Accent,TextStyle::Caption);
+    drawNavBar(fb,{{"D-pad/Stick","Choose"},{"L/R","Page"},
+                   {"A","Set Quantity"},{"B","Cancel"},{"X","Sort"}});
+}
+
+void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
+    screen.drawGSCOverlay(fb);
+    const int w=625,h=244,x=(fb.getWidth()-w)/2;
+    const int y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,160));
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1);
+    fb.drawText(x+24,y+20,"Remove Gen IV Item?",Colors::Text,TextStyle::Heading);
+    const std::string itemName=Names::getItemName(state.itemRemoveId);
+    fb.drawText(x+24,y+69,
+        itemName+"  |  Count "+std::to_string(state.itemRemoveCount),
+        Colors::Text,TextStyle::Body);
+    ItemPickerArtwork::drawNativeItem(fb,x+w-38,y+65,36,
+                                    screen.trainer.getGameGroup(), state.itemRemoveId, itemName);
+    fb.drawText(x+24,y+113,
+        "Only the app-owned staged copy changes. Original source is immutable.",
+        Colors::TextSecondary,TextStyle::Caption);
+    fb.drawText(x+24,y+163,
+        "Removal is irreversible within this draft until Discard Changes.",
+        Colors::Accent,TextStyle::Caption);
+    drawNavBar(fb,{{"Y","Confirm Remove"},{"B","Cancel"}});
 }
 
 } // namespace
@@ -1113,13 +2667,14 @@ bool ownsFrame(const TrainerViewScreen& screen) noexcept {
 
 bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
                  int stickX, int stickY, const TouchInput& touch) {
-    (void)touch;
     if (!isGen4Nds(screen)) return false;
 
     beginPassiveView(screen);
     auto& state = stateFor(screen);
+    if(handleItemQuantity(screen,state,down,held,stickX,stickY,touch))return true;
     const bool ownsNavigation =
-        state.actions || state.review || state.valuePicker || state.moveEditor || workspaceActive(state);
+        state.actions || state.review || state.legality || state.confirmRelease ||
+        state.valuePicker || state.moveEditor || workspaceActive(state);
     const u64 navigated = ownsNavigation
         ? screen.controllerNavigation.apply(
               down, held, stickX, stickY,
@@ -1127,21 +2682,58 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
               HidNpadButton_Left, HidNpadButton_Right)
         : down;
 
+    if (state.legality) {
+        if (navigated & HidNpadButton_B) {
+            state.legality = false;
+            state.actions = true;
+            screen.controllerNavigation.reset();
+        }
+        return true;
+    }
+    if (handleReleaseConfirm(screen, state, navigated)) return true;
     if (handleReview(screen, state, navigated)) return true;
-    if (handleWorkspace(screen, state, navigated)) return true;
-    if (handleActions(screen, state, navigated)) return true;
+    if (handleWorkspace(screen, state, navigated, touch)) return true;
+    if (handleActions(screen, state, navigated, touch)) return true;
 
     const bool partyEntry = partyEntrySurface(screen);
     const bool boxEntry = boxEntrySurface(screen);
     if (!partyEntry && !boxEntry) return false;
+
+    // The base box view translates a second tap into A only *after* this
+    // interceptor returns. Gen IV must claim that tap here, otherwise the
+    // legacy creator runs into the immutable-source guard instead of opening
+    // the native staged Add action. A first tap on another slot still goes to
+    // base cursor navigation; box arrows and the header are never hijacked.
+    if (boxEntry && touch.justTapped()) {
+        const int tapped = screen.touchedButtonId(touch);
+        const int slots = static_cast<int>(screen.trainer.getSlotsPerBox());
+        if (PokeBank::UIModel::Gen4BoxTouchActions::selectsTappedBoxSlot(tapped, slots)) {
+            screen.selectedItemIndex = tapped;
+            // A on an occupied box slot already enters this exact staged menu.
+            // A tap does too, including when tapping a different Pokémon.
+            if (selectedOccupied(screen)) beginActions(screen);
+            return true; // Unoccupied slot: focus only, X is explicit Add.
+        }
+    }
+    if (partyEntry && touch.justTapped()) {
+        const int tapped = screen.touchedButtonId(touch);
+        if (tapped >= 6200 && tapped < 6206) {
+            screen.selectedPartyIndex = tapped - 6200;
+            beginActions(screen);
+            return true;
+        }
+    }
+
+
     if (navigated & HidNpadButton_A) {
-        if (selectedOccupied(screen)) beginActions(screen);
-        else if (boxEntry)
-            screen.postStatus("Generation IV Create follows after Edit hardware acceptance", 300);
+        if (partyEntry || boxEntry) beginActions(screen);
         return true;
     }
-    if ((navigated & HidNpadButton_X) && boxEntry) {
-        screen.postStatus("Generation IV Create is not enabled in the Edit milestone", 300);
+    if ((navigated & HidNpadButton_X) && boxEntry && !selectedOccupied(screen)) {
+        beginActions(screen);
+        auto& createState = stateFor(screen);
+        createState.actionRow = 0; // Add
+        beginCreate(screen);
         return true;
     }
     return false;
@@ -1150,7 +2742,11 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
 bool draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!ownsFrameImpl(screen)) return false;
     auto& state = stateFor(screen);
-    if (state.review) drawReview(screen, fb);
+    if (state.itemAddPickerActive)drawItemAddPicker(screen,fb,state);
+    else if (state.itemRemoveConfirmActive)drawItemRemoveConfirm(screen,fb,state);
+    else if (state.confirmRelease) drawReleaseConfirm(screen, fb, state);
+    else if (state.legality) drawLegality(screen, fb, state);
+    else if (state.review) drawReview(screen, fb);
     else if (workspaceActive(state)) drawWorkspace(screen, fb, state);
     else if (state.actions) drawActions(screen, fb, state);
     return true;

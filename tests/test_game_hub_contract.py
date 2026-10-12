@@ -1,0 +1,668 @@
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+source = (ROOT / "src/UI/SaveSelectScreen.cpp").read_text(encoding="utf-8")
+launcher_source = (ROOT / "src/UI/GameLauncher.cpp").read_text(encoding="utf-8")
+launcher_header = (ROOT / "include/UI/GameLauncher.h").read_text(encoding="utf-8")
+main_source = (ROOT / "src/main.cpp").read_text(encoding="utf-8")
+root_makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+return_host_source = (ROOT / "runtime/return_host/source/main.c").read_text(encoding="utf-8")
+return_host_license = (ROOT / "runtime/return_host/LICENSE.nx-hbloader.txt").read_text(encoding="utf-8")
+header = (ROOT / "include/UI/SaveSelectScreen.h").read_text(encoding="utf-8")
+ui_manager = (ROOT / "src/UI/UI.cpp").read_text(encoding="utf-8")
+shell_source = (ROOT / "src/UI/AppShellScreen.cpp").read_text(encoding="utf-8")
+system_icons = (ROOT / "src/UI/SystemIcons.cpp").read_text(encoding="utf-8")
+product_art_fetch = (ROOT / "tools/fetch_product_art.py").read_text(encoding="utf-8")
+product_workflow = (ROOT / ".github/workflows/product-ui-native.yml").read_text(encoding="utf-8")
+gen4_workflow = (ROOT / ".github/workflows/gen4-shared-editor-candidate.yml").read_text(encoding="utf-8")
+framebuffer = (ROOT / "src/UI/PKSEFramebuffer.cpp").read_text(encoding="utf-8")
+game_identity = (ROOT / "src/Games/GameIdentity.cpp").read_text(encoding="utf-8")
+trainer3_header = (ROOT / "include/Trainer/Trainer3FRLG.h").read_text(encoding="utf-8")
+trainer3_source = (ROOT / "src/Trainer/Trainer3FRLG.cpp").read_text(encoding="utf-8")
+save_reader = (ROOT / "src/Save/GetSaveFileContents.cpp").read_text(encoding="utf-8")
+sc_validation = (ROOT / "include/Save/SCReadValidation.h").read_text(encoding="utf-8")
+sc_runtime_validation = (ROOT / "tests/test_sc_read_validation.cpp").read_text(encoding="utf-8")
+pla_read_validation = (ROOT / "tests/test_pla_read_validation.cpp").read_text(encoding="utf-8")
+
+def require(cond: bool, message: str) -> None:
+    if not cond:
+        raise SystemExit(message)
+
+# Approved product-home hierarchy.
+require('"MASTER VAULT"' in source, "product home must expose Master Vault")
+require('"POKÉDEX"' in source, "product home must expose Pokédex")
+require('"PARTY"' in source, "product home must expose the real party strip")
+require('"A", "OPEN"' in source, "selected-game card must expose the Open action")
+require('"ZR", launchLabel' in source,
+        "selected-game card must expose the dynamic Launch / Link Game File action")
+require('{"Games", "Banks", "Items", "Search", "More"}' in source,
+        "persistent dock must expose Games/Banks/Items/Search/More without a duplicate Settings slot")
+require("hubDockFocused" in source and "hubFeatureIndex" in source and "activateHubDock" in source,
+        "approved home destinations must be controller-focusable, not decorative")
+require("HidNpadButton_L" in source and "HidNpadButton_R" in source,
+        "L/R must switch the selected game")
+require("refreshHubSelectionFromCache" in header and "refreshHubSelectionFromCache" in source,
+        "Product Home must have an explicit cached-only game-selection refresh")
+lr_start = source.index("// L/R changes the selected game from anywhere on Product Home")
+lr_end = source.index("if (headerActionIndex >= 0)", lr_start)
+lr_block = source[lr_start:lr_end]
+require("refreshHubPreview(false);" in lr_block and "resolveGameLaunch" not in lr_block,
+        "Product Home L/R must restore real trainer/dex/party data without launch discovery")
+cache_start = source.index("void SaveSelectScreen::refreshHubSelectionFromCache()")
+cache_end = source.index("void SaveSelectScreen::refreshHubPreview(bool resolveLaunchTarget)", cache_start)
+cache_block = source[cache_start:cache_end]
+for forbidden in ("resolveGameLaunch", "fsdevMountSaveData", "openAssignedSource",
+                  "readTrainerInfoFRLG", "discoverConfiguredLegacySaves"):
+    require(forbidden not in cache_block,
+            f"cached Product Home selection refresh must not perform I/O: {forbidden}")
+launch_start = source.index("bool SaveSelectScreen::launchCurrentTitle()")
+launch_end = source.index("void SaveSelectScreen::openGen4Setup", launch_start)
+launch_block = source[launch_start:launch_end]
+require("refreshHubPreview();" in launch_block and
+        launch_block.index("refreshHubPreview();") < launch_block.index("launchDescriptor.state"),
+        "explicit Launch must resolve the exact target before using launchDescriptor")
+require('readTrainerInfoFRLG("pbpreview:", true)' in source,
+        "Product Home native FRLG preview must use the lightweight parser")
+require("bool previewOnly = false" in trainer3_header and "if (previewOnly) return;" in trainer3_source,
+        "FRLG parser must keep a lightweight trainer+party presentation mode")
+require("group == GameVersion::FRLG" in save_reader and
+        "readTrainerInfoFRLG(backupDir, true)" in save_reader,
+        "FRLG common open preflight must validate the active sector table before full parsing")
+require('"Pokédex Progress"' in source and
+        "previewDexSeen" in source and "previewDexCaught" in source and
+        '"   •   Owned "' in source,
+        "selected-game card must show real parsed Pokédex Seen/Owned progress when supported")
+require("parsed.pokedexProgress()" in source and
+        "previewDexSeen = dex.seen;" in source and
+        "previewDexCaught = dex.caught;" in source and
+        "previewDexTotal = dex.total;" in source,
+        "installed Switch titles must populate Product Home from the trainer's authoritative Pokédex reader")
+for dex_reader in (
+    "src/Trainer/Trainer7LGPE.cpp",
+    "src/Trainer/Trainer8BDSP.cpp",
+    "src/Trainer/Trainer8SWSH.cpp",
+    "src/Trainer/Trainer8LA.cpp",
+    "src/Trainer/Trainer9SV.cpp",
+):
+    require("pokedexProgress() const" in (ROOT / dex_reader).read_text(encoding="utf-8"),
+            f"missing authoritative Pokédex progress reader: {dex_reader}")
+require('"Trainer"' in source,
+        "selected-game card must expose trainer information")
+require("PROFILE_AVATAR" in source and "SystemIcons::userIcon" in source,
+        "product header must expose the current profile identity")
+require("trainerPortraitForGame" in source and "drawTrainerPortrait" in source,
+        "Product Home must use the grounded trainer portrait model")
+for trainer in ("Brendan", "May", "Red", "Leaf", "Lucas", "Dawn", "Ethan", "Lyra", "Kris"):
+    require(f'"{trainer}"' in source, f"trainer portrait mapping is missing {trainer}")
+require("trainerGenderKnown" in header and "previewTrainerGenderKnown" in header,
+        "trainer portraits must distinguish proven gender from unknown appearance")
+require("opened.save->trainer().gender" in source,
+        "Gen IV portrait identity must use the parsed save gender")
+
+# Safe preview and launch boundaries remain unchanged.
+require("requestGameLaunch" in source, "launch shortcut must route through the shared launcher")
+require('fsdevMountSaveData("pbpreview"' in source,
+        "native party preview must use an explicit read-only preview mount boundary")
+require('fsdevUnmountDevice("pbpreview")' in source,
+        "native party preview must always leave the preview mount")
+require("fsdevCommitDevice" not in source,
+        "product-home preview must never commit a live source save")
+require("restoreBackupToTitle" not in source,
+        "product-home preview must never restore/inject a save")
+require("PartyPreviewSlot" in header, "party preview model must remain explicit")
+require(source.count('"Current save party"') >= 3,
+        "every successfully parsed save family must present the Product Home party as the current save party")
+for developer_party_copy in (
+    '"Validated read-only source party"',
+    '"Remembered read-only source party"',
+    '"Party preview source no longer validates."',
+    '"Party preview source is stale."',
+):
+    require(developer_party_copy not in source,
+            f"Product Home PARTY must not expose internal source diagnostics: {developer_party_copy}")
+require('partyPreviewStatus = "Party preview unavailable.";' in source,
+        "native preview failures must stay product-facing instead of printing SC parser diagnostics in PARTY")
+require('if (gameId == "firered_switch") return "firered_gba";' in source and
+        'if (gameId == "leafgreen_switch") return "leafgreen_gba";' in source,
+        "HOME forwarders must map save identity to the real GBA release")
+require("installed.legacyInstances = card->instances;" in source and
+        "installed.sourceLabel = card->sourceLabel;" in source,
+        "FireRed/LeafGreen forwarder cards must attach the validated profile GBA source")
+require("source.gameId != forwarderSaveGameId" in source and
+        "this->selectedGameId = std::string(forwarderSaveGameId);" in source and
+        "selectedSourceKind = SelectedSourceKind::RetroArchFRLG;" in source,
+        "forwarder preview/open must consume the GBA save while retaining Switch launch identity")
+require(source.index("!forwarderSaveGameId.empty()") < source.index('fsdevMountSaveData("pbpreview"'),
+        "forwarder preview must bypass the forwarder's native Switch savedata mount")
+require("SWSH_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error" in sc_validation,
+        "SWSH Current Box must validate its native one-byte SC value")
+require("findRequiredPayload" in sc_validation and
+        "block.data.size() < minimumSize" in sc_validation,
+        "native SC payload preflight must follow trainer key+payload geometry without over-constraining wrapper type")
+require(sc_validation.count("GEN9_CURRENT_BOX, Enums::SCTypeCode::Byte, 1, error") == 2,
+        "SV and Z-A Current Box must validate their native one-byte SC values")
+require("SWSH_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error" not in sc_validation and
+        "GEN9_CURRENT_BOX, Enums::SCTypeCode::UInt32, 4, error" not in sc_validation,
+        "Current Box preflight must reject stale four-byte scalar assumptions")
+require("makeSWSH()" in sc_runtime_validation and
+        "makeSV()" in sc_runtime_validation and
+        "makeZA()" in sc_runtime_validation and
+        "SCTypeCode::Byte" in sc_runtime_validation and
+        "key=0x017C3CBB" in sc_runtime_validation,
+        "native SC Current Box root-cause regression must execute for SWSH, SV and Z-A")
+require(pla_read_validation.count("CURRENT_BOX, SCTypeCode::Byte") == 3 and
+        "wrongCurrentBoxSC[6].type = SCTypeCode::UInt32;" in pla_read_validation and
+        "wrongCurrentBoxSC[6].data.resize(4);" in pla_read_validation,
+        "shared SC fixtures must accept one-byte Current Box and explicitly reject the stale four-byte scalar")
+
+# Product Home, not the retired dashboard, is the app root.
+require("const auto destination = handleSaveSelection();" in ui_manager,
+        "approved Games/product-home screen must be the app root")
+require("selectScreen.resumeAfterEditor();" in ui_manager,
+        "editor exit must reuse Product Home instead of rebuilding the whole save catalog")
+require("shell.hasOverlay()" in ui_manager,
+        "secondary destinations must return directly to product home")
+require("Dest::MasterVault" in ui_manager and "Dest::Pokedex" in ui_manager,
+        "right-side feature cards must route through the secondary shell")
+require("Dest::Banks" in ui_manager and "Dest::Search" in ui_manager and "Dest::Settings" in ui_manager,
+        "secondary destinations and the Product Home Settings gear must route through the shell")
+
+# In-app launch linking remains app-owned and path-safe.
+require("GameFilePicker" in header and "Overlay::GameFilePicker" in source,
+        "product home must retain the in-app game-file browser")
+require("saveGameLaunchBinding" in source,
+        "Link Game File must persist app-owned launch metadata")
+require('"Y", "Up Folder"' in source,
+        "game-file browser must support controller folder navigation")
+require("promptText(" not in source[source.find("openGameFilePicker"):source.find("openGen4Setup")],
+        "launch linking must not require typing a raw SD path")
+
+launcher = (ROOT / "src/UI/GameLauncher.cpp").read_text(encoding="utf-8")
+require("The fifth field must consume the rest of the row" in launcher,
+        "launch binding parser must reject extra fields")
+require("result.launcherPath = defaultLauncherPath" in launcher,
+        "stored launch metadata must not choose an arbitrary launcher NRO")
+require("result.corePath = defaultRetroArchCore" in launcher,
+        "stored launch metadata must not choose an arbitrary RetroArch core")
+
+# Hardware safety: normal RetroArch startup must use the direct core + ROM handoff that was
+# device-proven before the nested return-host regression. Keep the return-host infrastructure
+# packaged for future lifecycle work, but never place it on the critical startup path until its
+# hbloader reimplementation is independently hardware-proven.
+require("setGameLaunchReturnPath(std::string_view path)" in launcher_header and
+        "UI::setGameLaunchReturnPath(argv[0]);" in main_source and
+        "int main(int argc, char** argv)" in main_source,
+        "dormant return-host research must retain the exact PokeBank NRO return target")
+retro_start = launcher_source.index("if (descriptor.backend == GameLaunchBackend::RetroArch)")
+retro_end = launcher_source.index("if (descriptor.backend == GameLaunchBackend::HomebrewNro)", retro_start)
+retro_launch = launcher_source[retro_start:retro_end]
+require("envSetNextLoad(target.c_str(), argv.c_str())" in retro_launch and
+        "prepareRetroArchReturnHost" not in retro_launch and
+        "envSetNextLoad(returnHostPath.c_str(), argv.c_str())" not in retro_launch,
+        "hardware-critical RetroArch startup must chain directly to the resolved core + ROM")
+require("RETURN_HOST_DIR := $(CURDIR)/runtime/return_host" in root_makefile and
+        "$(BUILD): return-host" in root_makefile and
+        "romfs/runtime/PokeBankReturnHost.nro" in root_makefile,
+        "the native build must package the exact return host inside PokeBank RomFS")
+require("EntryType_NextLoadPath" in return_host_source and
+        "nroEntrypointTrampoline" in return_host_source and
+        "envSetNextLoad(g_returnPath, returnArgv)" in return_host_source and
+        r"g_nextNroPath[0] == '\0'" in return_host_source,
+        "the return host must honor RetroArch child chaining and reload PokeBank only after normal final return")
+require("Copyright 2017-2018 nx-hbloader Authors" in return_host_license and
+        "Permission to use, copy, modify" in return_host_license,
+        "nx-hbloader-derived return-host code must retain its permissive upstream notice")
+require("familyPrefix" in launcher and "const StoredLaunchBinding* unique = nullptr;" in launcher and
+        "if (unique) return false;" in launcher and "regularFile(stored.contentPath)" in launcher,
+        "launch binding compatibility must recover exactly one valid old source identity and fail closed on ambiguity")
+
+# Developer-dashboard language and the rejected Trade dock must not return to Product Home.
+require('"QUICK ACCESS"' not in source,
+        "approved Product Home must not restore the old Quick Access sub-dock")
+require('"Trade is not implemented yet."' not in source,
+        "approved dock must not restore the rejected Trade destination")
+
+# Secondary destinations stay inside the approved product shell rather than developer-style modals.
+require("overlay = Overlay::Settings;" in shell_source,
+        "Diagnostics Back must return to Settings")
+require("constexpr int x = 24, y = 78, w = 1232, h = 548;" in shell_source,
+        "Banks/Search/Pokédex must use the wide product destination surface")
+require('"Coming Soon — no save data was changed."' in shell_source,
+        "future destinations must use product-facing unavailable copy")
+require("if (gameFocused)" in source and "Colors::Info, 3" in source,
+        "selected game OPEN action must carry the approved teal/cyan focus treatment")
+
+# Pokémon identity and future navigation.
+require('"UI/SpriteManager.h"' in source and "SpriteManager::getIconSprite" in source,
+        "Product Home party must use the existing Pokémon sprite pipeline")
+require("containSprite" in source,
+        "party sprites must preserve aspect ratio")
+require("MainMenuDestination::More" in source and "Dest::More" in ui_manager,
+        "More must be a real routed product destination")
+require("drawProductHelpOverlay" in source and
+        '"Games opens the full artwork browser. Profile and Settings use the top-right controls."' in source and
+        '"Open the quick right-side artwork browser"' in source,
+        "Product Home Help must explain the full Games browser, Y quick drawer, Profile and Settings")
+activate_start = source.index("void SaveSelectScreen::activateHubDock()")
+activate_end = source.index("void SaveSelectScreen::activateGameWorkspace()", activate_start)
+dock_activation = source[activate_start:activate_end]
+require("classicGamesActive = true;" in dock_activation and
+        "overlay = Overlay::GamesDrawer;" not in dock_activation and
+        "overlay = Overlay::GameWorkspace;" not in dock_activation,
+        "Games must open the restored full-screen artwork browser")
+require('"Pokémon Games"' in source and "CLASSIC_ICON" in source and
+        "SystemIcons::gameCardIcon" in source and
+        "CLASSIC_MAX_COLS = 6" in source and
+        "constexpr int avatarSize = 44;" in source,
+        "the restored Games browser must use the PKSE-style six-column artwork grid with compact top-right profile control")
+classic_draw = source[source.index("if (classicGamesActive) {", source.index("void SaveSelectScreen::draw(")):
+                      source.index("drawAppBackdrop(fb);", source.index("void SaveSelectScreen::draw("))]
+require("scrollClassicSelectionIntoView();" in classic_draw and "std::clamp(titleIndex" in classic_draw,
+        "the full Games artwork browser must normalize selection/scroll immediately after save/source changes")
+require('drawProductTitleBar(fb, "Pokémon Games")' in source and
+        'drawTitleBar(fb, "Pokémon Games")' not in source,
+        "the full Games browser must use clean product chrome so profile controls cannot overlap safety diagnostics")
+require('{"X","Save / Source"}' in source and '{"Y","Sort"}' in source and
+        '{"+","Favorite"}' in source,
+        "the full Games browser footer must expose source assignment, sort and favorite actions")
+require("GameSortMode::MostPlayed" in source and "GameSortMode::RecentlyPlayed" in source and
+        "GameSortMode::RecentlyAdded" in source and "GameSortMode::Favorites" in source and
+        "gameHubStateFile()" in source,
+        "game ordering/favorites must be persistent and shared by Product Home, Quick Games and full Games")
+require('"Sort: ") + gameSortModeLabel()' in source and
+        '"\\xE2\\x99\\xA5"' in source,
+        "Games surfaces must show the active sort and a small heart for favorites")
+require("gamePlatformSortKey" in source and
+        "case Platform::GameBoy: return 0;" in source and
+        "case Platform::GameBoyColor: return 1;" in source and
+        "case Platform::GameBoyAdvance: return 2;" in source and
+        "case Platform::NintendoDS: return 3;" in source and
+        'if (id.ends_with("_3ds")) return 4;' in source and
+        "case Platform::NintendoSwitch: return 5;" in source and
+        'if (id == "red_gb") return 199602270;' in source and
+        'if (id == "x_3ds") return 201310120;' in source and
+        'if (id == "letsgo_pikachu_switch") return 201811160;' in source and
+        'if (id == "firered_switch") return 202602270;' in source and
+        'if (id == "leafgreen_switch") return 202602271;' in source and
+        'firered_gba" || id == "firered_switch' not in source and
+        'if (ap != bp) return ap < bp;' in source and
+        'if (ad != bd) return ad < bd;' in source and
+        '"lets_go_pikachu_switch"' not in source,
+        "Release Date sort must be platform-first GB/GBC/GBA/DS/3DS/Switch, then oldest-to-newest")
+require("Horizontal movement never spills into" in source and
+        "Six-column browser navigation is spatial" in source and
+        "col + 1 < cols" in source and
+        "nextRow < classicCount" in source,
+        "Quick Games and full Games must use row-bounded spatial grid navigation")
+require("Color(3, 10, 24, 104)" in source and
+        "const Color heroText(248, 251, 255, 255);" in source and
+        "titleFavorite(*u, title)" in source and
+        'fb.drawSymbol(heartX, heartY, "\\xE2\\x99\\xA5"' in source,
+        "Product Home must keep region text readable and show the selected game's favorite heart")
+require('std::string("Order: ") + gameSortModeLabel()' in source,
+        "Product Home must show the active game order so L/R navigation never looks random")
+require('{"+", "Current Game"}' in source,
+        "Plus must open Current Game tools")
+require("+: Settings" not in source and '{"+" , "Settings"}' not in source and '{"+" , "Settings"}' not in shell_source,
+        "Plus must never be a Settings shortcut")
+require("HidNpadButton_ZL" not in source,
+        "Product Home must not retain the old ZL profile shortcut")
+require("kind == GameLaunchProviderKind::DraStic" in launcher and
+        '"sdmc:/switch/drastic/games"' in launcher and
+        '"sdmc:/switch/drastic/roms"' in launcher and
+        '"sdmc:/roms/nds"' in launcher and
+        "gameLaunchCandidateStemMatches" in launcher and
+        "providerKindForSourcePath" in launcher and
+        "Direct selected-ROM handoff is not supported by this DraStic build." not in launcher,
+        "DraStic launch must infer its provider from bounded source paths, tolerate save/ROM basename differences and still require a unique match")
+require("descriptor.state != GameLaunchState::LauncherOnly" in launcher,
+        "launcher-only fallbacks must never receive a falsely linked ROM argument")
+require("GameLaunchProviderKind::MelonDS" in launcher,
+        "melonDS provider-aware direct content launch support must remain present")
+require("OpenIntent::Items" in source and "hubDockIndex == 2" in source,
+        "Backpack/Items must replace the old Backups root slot")
+require("selectCurrentTitleForItems" in source and
+        "sameValidatedSnapshot" in source and
+        "openAssignedSource" in source,
+        "Backpack must revalidate the already-selected source without opening a chooser")
+require("headerRects.push_back" in source and
+        "drawHubDockIcon(fb, 5, settingsX, settingsY, PROFILE_AVATAR, settingsFocused)" in source and
+        '{"Games", "Banks", "Items", "Search", "More"}' in source,
+        "Product Home must render one selectable header Settings gear and no dock Settings")
+require("The right-side feature cards are stacked" in source and
+        "The round-logo strip behaves like an ordinary horizontal control row." in source and
+        "if (hubDockIndex == 0 || hubDockIndex == 3)" in source and
+        "else if (hubDockIndex > 0)" in source and "--hubDockIndex;" in source and
+        "if (hubDockIndex < 4) ++hubDockIndex;" in source and
+        "headerActionIndex = 0;" in source,
+        "Product Home right-side focus must keep header reachability, move one logo at a time, and let Search-Left return to the hero")
+require("constexpr int featureH = 132;" in source and
+        "const int navY = dexY + featureH + 20;" in source and
+        "constexpr int buttonD = 74;" in source and
+        "focused ? withAlpha(Colors::Info, 46) : Colors::PanelAlt" in source,
+        "Vault/Pokédex must use larger stacked cards while Games/Banks/Items/Search/More stay lower round logos")
+require('drawNavBar(fb, {{"L/R", "Change Game"}, {"A", "Open"}, {"Y", "Quick Games"}' in source,
+        "Product Home footer must expose Y Quick Games without repeating ZR Launch")
+require("ProfilePicker" in header and "profilePickerIndex" in source and
+        "setUser(profilePickerIndex)" in source and
+        '"SWITCH PROFILE"' in source and '"Choose Profile"' in source and '"CURRENT"' in source,
+        "the profile avatar must open the centered professional profile chooser")
+require("profileRadius = 10" in source and "pickerAvatarRadius = 12" in source and
+        "avatarRadius = 10" in source,
+        "profile pictures must use rounded-square frames instead of circular framing")
+require("GamesDrawer" in header and '"QUICK GAMES"' in source and
+        "constexpr int cols = 3;" in source and "constexpr int visibleRows = 3;" in source and
+        "constexpr int w = 520;" in source and
+        "gamesDrawerIndex = std::clamp(" in source and
+        "gamesDrawerScroll = std::clamp(" in source and
+        "gameCardHasSpecificArtwork" in source and '"1 save"' in source and '" saves"' in source and
+        '{"Y", "Close"}' not in source and '{"X", "Save / Source"}' in source,
+        "Y Quick Games must be a three-row/three-column artwork-first browser with save counts and no Y-close hint")
+drawer_update_start = source.index("if (overlay == Overlay::GamesDrawer)", source.index("void SaveSelectScreen::update"))
+drawer_update_end = source.index("if (overlay == Overlay::ProfilePicker)", drawer_update_start)
+drawer_update = source[drawer_update_start:drawer_update_end]
+drawer_draw_start = source.index("if (overlay == Overlay::GamesDrawer)", source.index("void SaveSelectScreen::draw("))
+drawer_draw_end = source.index("} else if (overlay == Overlay::ProfilePicker)", drawer_draw_start)
+drawer_draw = source[drawer_draw_start:drawer_draw_end]
+require("if (kDown & (HidNpadButton_B | HidNpadButton_Y))" not in drawer_update and
+        "// B is the only close/back control" in drawer_update and
+        "fb.drawFilledRect(x, 0, 2, h, Colors::FocusBorder);" not in drawer_draw,
+        "Quick Games Y must be inert, B-only close, and the colored drawer edge stripe must stay removed")
+require('"X: Save / Source   •   B: Close"' not in drawer_draw,
+        "Quick Games must rely on the footer for controls instead of repeating X/B instructions inside the drawer")
+require("refreshHubSelectionFromCache();" in drawer_update and
+        "refreshHubPreview(false);" in drawer_update and
+        "refreshHubPreview();" not in drawer_update,
+        "Quick Games A must hydrate selected save presentation without launch discovery")
+require("installedGameForwarderTitle(gameId)" not in launcher_source[launcher_source.find("if (kind == GameLaunchProviderKind::RetroArch)"):launcher_source.find("if (kind == GameLaunchProviderKind::MGBA")],
+        "RetroArch explicit launch must not block on a console-wide HOME forwarder scan")
+require("retroArchContentExists" in launcher_source and "retroArchPhysicalContentPath" in launcher_source,
+        "RetroArch launch path must validate archive-member content through its physical archive")
+require("openSaveSourceForCurrentTitle(true, false)" in source and
+        "openSaveSourceForCurrentTitle(false, true)" in source and
+        "Overlay::LegacyAssignment" in source and
+        "gen4SetupFromClassicGames" in source,
+        "Quick Games and the full Games browser must both expose X Save/Source assignment without forcing an editor open")
+require("gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None" in source and
+        "gen4SetupFromGamesDrawer = false;" in source and
+        "gen4SetupFromClassicGames = false;" in source,
+        "Gen IV source setup must return cleanly to whichever Games surface launched it")
+require('kSettingsCategories' in shell_source and
+        '"Look", "System", "Data", "Update", "Developer", "Info"' in shell_source and
+        '"User", "Look"' not in shell_source and '"Profile", "Switch User"' not in shell_source,
+        "Settings must omit the non-functional User category and keep the useful two-pane categories")
+require("settingsCategoryFocused" in shell_source and "settingsOptionCount" in shell_source,
+        "Settings must keep independent category/option focus")
+require('"Left/Right", "Pane"' in shell_source,
+        "Settings footer must explain two-pane navigation")
+require('"Source Save Protection", "LOCKED"' in shell_source and
+        '"Update Support", "Coming Soon"' in shell_source,
+        "Settings must expose truthful Data and Update states without fake backends")
+require('"Mystery Gifts"' in shell_source and '"Clone Lineage"' in shell_source,
+        "More screen must reserve truthful future-feature modules")
+
+require("handleDefaultQuickOpen" in ui_manager and "backupSaveData" in ui_manager and
+        "SaveSelectScreen::OpenIntent::Backups" in ui_manager,
+        "normal Switch Open must auto-create a protected backup/working copy while Backups stays explicit")
+require("reportOpenFailure" in header and
+        "selectScreen.reportOpenFailure(error);" in ui_manager and
+        "bool UIManager::handleDefaultQuickOpen" in ui_manager,
+        "native Product Home Open failures must surface the validation reason instead of silently returning to the card")
+require("Overlay::OpenFailure" in source and
+        '"SAVE NOT OPENED"' in source and
+        "Technical details were written to diagnostics." in source and
+        "Native SC layout preflight failed" in save_reader and
+        "Native SC open preflight failed" in save_reader,
+        "failed native Open must show an explicit safe modal while SC details stay in diagnostics")
+require("Backups" in header and source.count("openIntent = OpenIntent::Backups;") == 1,
+        "Current Game -> Backups must be the only normal route into backup history")
+require("handleItemsQuickOpen" in ui_manager and "backupSaveData" in ui_manager,
+        "Switch Backpack quick-open must create the normal protected backup before Items")
+require("if (kDown & HidNpadButton_Plus) {\n        overlay = Overlay::Settings;" not in shell_source,
+        "secondary menus must not expose a Plus-to-Settings shortcut")
+home_menu = (ROOT / "src/UI/Panels/HomeMenuPanel.cpp").read_text(encoding="utf-8")
+trainer_base = (ROOT / "src/UI/TrainerViewScreenBase.inc").read_text(encoding="utf-8")
+trainer_header = (ROOT / "include/UI/TrainerViewScreenBase.h").read_text(encoding="utf-8")
+save_confirm = (ROOT / "src/UI/Dialogs/SaveConfirmDialog.cpp").read_text(encoding="utf-8")
+require("itemsShortcutActive = true;" in trainer_header and
+        "selectedMode == ViewMode::Items && itemsShortcutActive" in trainer_base and
+        "Product Home -> Items has a dedicated escape-safe contract" in trainer_base and
+        "A: Save Working Copy & Home" in trainer_base and
+        "Y: Discard & Home" in trainer_base and
+        "B: Keep Editing" in trainer_base and
+        "if (!goBack) exitAfterSave = false;" in trainer_base and
+        '"Save Copy & Home"' in save_confirm and
+        '"Discard & Home"' in save_confirm and
+        '"Keep Editing"' in save_confirm,
+        "dirty Product Home Items must always offer save-working-copy, discard-to-home and keep-editing without trapping the user")
+require('{ "Settings", "S", 5 }' not in home_menu and
+        'Icon icons[2]' in home_menu,
+        "loaded-game home must not expose a Settings icon")
+plus_start = trainer_base.index("// Product Home owns Settings and the Current Game tools menu.")
+plus_end = trainer_base.index("// Reusable value picker", plus_start)
+require("selectedMode = ViewMode::Settings" not in trainer_base[plus_start:plus_end],
+        "loaded-game Plus handling must not open Settings")
+require("if (!shell.hasOverlay()) break;" in ui_manager,
+        "closing a secondary shell must not draw the retired shell for one stale frame")
+require("!selectScreen.hasSelectedTitle() && !selectScreen.shouldExit()" in ui_manager and
+        "if (selectScreen.shouldExit()) break;" in ui_manager,
+        "Product Home must stop drawing immediately after selection or exit")
+require("!backupScreen.shouldExit() && !backupScreen.hasSelectedBackup()" in ui_manager and
+        "if (backupScreen.shouldExit()) break;" in ui_manager,
+        "backup chooser must stop drawing immediately after selection or exit")
+require(ui_manager.count(
+            "if (trainerScreen.shouldExit() || trainerScreen.hasRequestedExit()) break;") >= 3,
+        "trainer/game loops must retire before draw on every supported source path")
+require("partySpriteH = 82" in source and
+        "partySpriteBottom = 80" in source and
+        "rect.y = slotY + partySpriteBottom - rect.height" in source and
+        "fb.measureText(name, nw, nh, TextStyle::Body);" in source and
+        "name, Colors::TextPrimary, TextStyle::Body" in source and
+        "slotY + 101" in source and
+        "level, Colors::TextSecondary, TextStyle::Caption" in source and
+        "drawShinyMark(sx + slotW - 19, slotY + 6, 13" in source,
+        "Product Home party must use larger bottom-aligned sprites, 20px names, secondary levels and a reserved shiny corner")
+
+require("gameRegionBackdropKey(title.gameId)" in source and
+        "SystemIcons::regionBackdrop(regionKey)" in source and
+        "regionH = 270" in source and
+        "Color(5, 14, 30, 40)" in source,
+        "selected-game Product Home card must support a visible region-scene backdrop with a readability scrim")
+region_loader = system_icons[system_icons.index("const IconImage& SystemIcons::regionBackdrop"):
+                             system_icons.index("const IconImage& SystemIcons::trainerPortrait")]
+require('"brilliant_diamond_switch"' in game_identity and
+        '"shining_pearl_switch"' in game_identity and
+        'return "sinnoh";' in game_identity and
+        '"romfs:/region_backdrops/" + key + ".png"' in region_loader and
+        "makeSinnohBackdrop()" not in region_loader and
+        "real region backdrop not packaged" in region_loader,
+        "region heroes must use real packaged artwork only and never substitute generated Sinnoh scenery")
+
+require("17.0f,  // Caption / secondary information" in framebuffer and
+        "20.0f,  // Body / normal labels" in framebuffer and
+        "28.0f,  // Heading" in framebuffer and
+        "32.0f,  // Title" in framebuffer and
+        "style == TextStyle::Body" in framebuffer and "x + 0.30f" in framebuffer,
+        "handheld typography must use the readable 17/20/28/32 Nunito scale with a medium body-weight pass")
+
+require("SystemIcons::trainerPortrait" in source and "portrait.assetKey" in source,
+        "trainer presentation must load optional real portrait artwork when packaged")
+require("branch-romfs-overrides" in product_workflow and
+        "kanto johto hoenn sinnoh unova kalos alola galar hisui paldea" in product_workflow and
+        'test -s "romfs/trainer_portraits/$f.png"' in product_workflow and
+        "'romfs/trainer_portraits/**'" in product_workflow and
+        "'romfs/region_backdrops/**'" in product_workflow and
+        "exact PNG bytes are missing from final NRO RomFS" in product_workflow and
+        "region backdrop runtime path is missing from final NRO" in product_workflow,
+        "Product UI native packaging must preserve and verify trainer/region presentation payload in the final NRO")
+require("branch-romfs-overrides" in gen4_workflow and
+        "kanto johto hoenn sinnoh unova kalos alola galar hisui paldea" in gen4_workflow and
+        'test -s "application/romfs/trainer_portraits/$f.png"' in gen4_workflow and
+        "'romfs/trainer_portraits/**'" in gen4_workflow and
+        "'romfs/region_backdrops/**'" in gen4_workflow and
+        "exact PNG bytes are missing from final NRO RomFS" in gen4_workflow and
+        "region backdrop runtime path is missing from final NRO" in gen4_workflow,
+        "Gen IV candidate packaging must preserve and verify trainer/region presentation payload in the final NRO")
+require('"romfs:/trainer_portraits/" + key + ".png"' in system_icons and
+        "trainerPortraitFromAtlas" not in system_icons and
+        "real trainer portrait missing or invalid" in system_icons,
+        "trainer portraits must load individual real PNG assets and never depend on the corrupted atlas")
+for portrait_key in ("red", "leaf", "gold", "kris", "brendan", "may",
+                     "lucas", "dawn", "ethan", "lyra", "chase", "elaine",
+                     "victor", "gloria", "rei", "akari", "florian", "juliana",
+                     "paxton", "harmony"):
+    require(f'"{portrait_key}.png"' in product_art_fetch,
+            f"hardware product-art fetch must include trainer asset: {portrait_key}")
+for region_key in ("kanto.png", "johto.png", "hoenn.png", "sinnoh.png",
+                   "unova.png", "kalos.png", "alola.png", "galar.png"):
+    require(f'"{region_key}"' in product_art_fetch,
+            f"hardware product-art preflight must preserve branch-owned region artwork: {region_key}")
+for region_key in ("hisui.png", "paldea.png"):
+    require(f'"{region_key}"' in product_art_fetch,
+            f"hardware product-art fetch must add real later-region artwork: {region_key}")
+require("REGION_URLS" in product_art_fetch and
+        "raw.githubusercontent.com/pokeclicker/pokeclicker/a3062f11fdcf4c22e6a9a7d4747e5bb6614f44ab/src/assets/images/hisui.png" in product_art_fetch and
+        "raw.githubusercontent.com/pokeclicker/pokeclicker/a3062f11fdcf4c22e6a9a7d4747e5bb6614f44ab/src/assets/images/paldea.png" in product_art_fetch and
+        "never generates fake scenery" in product_art_fetch,
+        "Hisui and Paldea must use fixed real-region map assets while supplied Kanto-Galar art stays branch-owned")
+require("truncated PNG chunk" in product_art_fetch and "PNG has no complete IEND" in product_art_fetch,
+        "product-art preflight must reject structurally truncated PNGs before packaging")
+require('"red"' in source and '"leaf"' in source and '"dawn"' in source and
+        '"lucas"' in source and '"ethan"' in source and '"lyra"' in source and
+        '"chase"' in source and '"elaine"' in source and '"victor"' in source and
+        '"gloria"' in source and '"rei"' in source and '"akari"' in source and
+        '"florian"' in source and '"juliana"' in source and '"paxton"' in source and
+        '"harmony"' in source,
+        "trainer portrait mapping must cover classic and supported Switch protagonists")
+require("productSourceLabel" in source and '"System save"' in source and '"Linked save"' in source and
+        '"Choose save"' in source and '"Needs attention"' in source,
+        "Product Home must translate raw source-state diagnostics into consumer-facing labels")
+require('Truthful fallback: a Poké Ball identity badge' in source and
+        'fake "character portrait"' in source,
+        "missing trainer art must fall back to a truthful Poké Ball identity, never fake human art")
+require('"Pokémon storage"' in source and '"Transfer & lineage"' in source and
+        '"Species & forms"' in source and '"Research & collection"' in source,
+        "compact Vault and Pokédex cards must retain distinct Pokémon-specific identities")
+require("padGetButtonsDown(&pad)" in source and
+        "padGetButtons(&pad) & HidNpadButton_A" not in source,
+        "action buttons must remain edge-triggered while held input is reserved for navigation repeat")
+require('"Multiple saves exist. Open Source / Game File once to choose the exact save."' in source and
+        '"That save changed since discovery. Review the refreshed save list."' in source and
+        "legacySnapshotStillCurrent" in source,
+        "ambiguous or changed legacy sources must fail closed without rescanning every provider")
+require("preferGameSourceAndSave(" in source and "preferredLegacySourceIndex(" in source,
+        "choosing one of multiple classic saves must persist and reuse the exact source identity")
+require('users.front().name = "Game Sources";' not in source and
+        '"Re-link it from Game Sources."' not in source and
+        'Re-link it from Source / Game File.' in source and
+        '"Game Sources  /  v"' not in source and
+        '"Manage Game Sources"' not in source and '"Pokémon Games"' in source,
+        "reachable Games copy must use the consumer-facing Pokémon Games presentation")
+
+select_start = source.index("void SaveSelectScreen::selectCurrentTitle()")
+select_end = source.index("void SaveSelectScreen::selectCurrentTitleForItems()", select_start)
+stable_open = source[select_start:select_end]
+require("const TitleEntry selected =" in stable_open and
+        "const std::string selectedGameId = selected.gameId;" in stable_open,
+        "game open must snapshot stable game identity before validating the exact source")
+require("shown.sourceIndex >= legacyCatalog->sources.size()" in stable_open and
+        "cachedSource.gameId == selectedGameId" in stable_open and
+        "cachedSource.normalizedPath == shown.normalizedPath" in stable_open and
+        "cachedSource.contentFingerprint == shown.contentFingerprint" in stable_open and
+        "legacySnapshotStillCurrent(shown)" in stable_open and
+        "discoverConfiguredLegacySaves()" not in stable_open,
+        "legacy open must validate only the exact cached source and avoid full provider rediscovery")
+require("profileIdentity" in header and "sourceIdentity" in header and "sourceKind" in header and
+        "titleId" in header and "currentSourceIdentity()" in header,
+        "Product Home navigation state must retain stable profile/game/source identity rather than numeric indices alone")
+constructor_start = source.index("SaveSelectScreen::SaveSelectScreen(")
+constructor_end = source.index("void SaveSelectScreen::loadLegacySources", constructor_start)
+constructor_block = source[constructor_start:constructor_end]
+require("resumeState->profileIdentity" in constructor_block and
+        "title.gameId != resumeState->gameId" in constructor_block and
+        "assigned.sourceIdentity == resumeState->sourceIdentity" in constructor_block and
+        "if (!restoredTitle)" in constructor_block,
+        "Product Home resume must restore exact stable identity first and fall back to an index only when it disappeared")
+require("openAssignedSource" in stable_open and "discoverGen4Candidates();" not in stable_open,
+        "remembered Gen IV saves must open the exact assigned game directly instead of re-entering the candidate grid")
+
+# Full Games navigation is a presentation-only path. Moving focus must never mount/reopen/parse
+# saves; Product Home refreshes the expensive trainer/party preview only when B leaves the browser.
+update_start = source.index("void SaveSelectScreen::update")
+classic_runtime = source.index("if (classicGamesActive)", update_start)
+root_runtime = source.index("// Games is now the app root", classic_runtime)
+classic_runtime_block = source[classic_runtime:root_runtime]
+require("if (userIndex == beforeUser && titleIndex != beforeTitle)" in classic_runtime_block and
+        "scrollClassicSelectionIntoView();" in classic_runtime_block,
+        "Classic grid movement must update only grid selection/scroll state")
+selection_change_start = classic_runtime_block.index(
+    "if (userIndex == beforeUser && titleIndex != beforeTitle)")
+selection_change_end = classic_runtime_block.index("}", selection_change_start)
+require("refreshHubPreview();" not in classic_runtime_block[selection_change_start:selection_change_end],
+        "Classic grid focus changes must not perform expensive save preview parsing")
+require("classicGamesActive = false;" in classic_runtime_block and
+        "refreshHubPreview(false);" in classic_runtime_block[
+            classic_runtime_block.index("if (kDown & HidNpadButton_B)"):
+            classic_runtime_block.index("if (kDown & HidNpadButton_Minus)")],
+        "leaving full Games must refresh the selected Product Home preview exactly at the boundary")
+require("selectCurrentTitle();\n                    // Do not mount/reparse" in classic_runtime_block and
+        "return;" in classic_runtime_block,
+        "A-open must hand off immediately instead of doing another heavy preview refresh")
+
+activate_start = source.index("void SaveSelectScreen::activateHubDock()")
+activate_end = source.index("void SaveSelectScreen::openSaveSourceForCurrentTitle", activate_start)
+activate_block = source[activate_start:activate_end]
+require("Warm only game-card artwork" in activate_block and
+        "SystemIcons::gameCardIcon" in activate_block,
+        "full Games must prewarm artwork caches before interactive scrolling")
+set_user_start = source.index("void SaveSelectScreen::setUser")
+set_user_end = source.index("void SaveSelectScreen::refreshHubPreview", set_user_start)
+set_user_block = source[set_user_start:set_user_end]
+require("if (!classicGamesActive) refreshHubPreview(false);" in set_user_block,
+        "profile switching inside full Games must not rebuild the hidden Product Home preview")
+
+# Hardware-regression contracts added after the 941ac9d7 failure report.
+draw_start = source.index("void SaveSelectScreen::draw(PKSEFramebuffer& fb)")
+draw_block = source[draw_start:]
+require("Blocking overlays are shared by Product Home and the classic artwork browser." in draw_block and
+        "if (overlay == Overlay::GameFilePicker)" in draw_block,
+        "classic Games launch/source overlays must render above the classic surface instead of becoming invisible input blockers")
+require("stbi_failure_reason()" in system_icons and
+        "real trainer portrait missing or invalid" in system_icons,
+        "trainer portrait runtime decode failures must leave hardware-useful diagnostics")
+require("gameLaunchBindingFamilyPrefix" in (ROOT / "include/UI/GameLaunchModel.h").read_text(encoding="utf-8"),
+        "launch model must expose the stable profile+game binding family used for compatibility lookup")
+
+# Hardware regression: Games is assignment-first; trainer art belongs to Product Home/workspace.
+classic_fn = source[source.index("void SaveSelectScreen::drawClassicGameSources"):
+                    source.index("void SaveSelectScreen::draw(PKSEFramebuffer&", source.index("void SaveSelectScreen::drawClassicGameSources"))]
+require("drawTrainerPortrait" not in classic_fn,
+        "full Games assignment browser must not render trainer portraits")
+require("focused ? Colors::Info : Colors::TextSecondary" in source and
+        ": i == 0 ? Colors::Info" not in source,
+        "Games/Banks/Items/Search/More must turn blue only when focused")
+require("Color(5, 14, 30, 40)" in source and "Color(3, 10, 24, 104)" in source,
+        "Product Home region artwork must remain visible under lighter glass")
+require("return beginLaunchLinkForCurrentTitle();" not in source and
+        "Direct launch could not resolve this game's ROM" in source,
+        "ZR Launch must never become an automatic ROM-file browser")
+require("const std::string& target = descriptor.corePath.empty()" in launcher and
+        "result.corePath = defaultRetroArchCore" in launcher and
+        "result.launcherPath = result.corePath;" in launcher and
+        'argv += " -L " + quoted(descriptor.corePath)' not in launcher,
+        "RetroArch games must preserve exact direct-core identity without frontend fallback")
+require("installedGameForwarderTitle" in launcher and
+        '"Launch the installed HOME forwarder for this exact game."' in launcher,
+        "emulator games must prefer an already-installed exact-game HOME forwarder")
+require("configuredDraSticLibraryRoots" in launcher and
+        '"sdmc:/switch/drastic/launcher.ini"' in launcher,
+        "DraStic launch must consume configured SD library roots")
+
+require("drawTrainerPortrait" not in classic_draw,
+        "the PKSE/full Games browser must not show trainer portraits")
+require("installedForwarderNameMatches" in launcher and 'gameId == "platinum_nds"' in launcher and
+        'gameId == "emerald_gba"' in launcher,
+        "installed HOME forwarders must be matched by exact release identity before emulator fallback")
+require("Choose a validated save to assign to this profile." in source and
+        "entry.gameId != game.gameId" in source,
+        "Games X must offer unassigned saves for the selected game/profile")

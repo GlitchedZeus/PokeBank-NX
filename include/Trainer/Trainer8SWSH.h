@@ -151,7 +151,8 @@ namespace Trainer {
          */
         void updateItemBlock() override;
         void updateTrainerInfoBlock() override;
-        void updatePokedexBlock() override;      // Galar / Armor / Crown Zukan blocks
+        void updatePokedexBlock() override;
+        PokedexProgress pokedexProgress() const override;      // Galar / Armor / Crown Zukan blocks
 
         /**
          * Creates a species-0, checksum-valid blank PK8 entity (mirrors updateBoxBlock()'s

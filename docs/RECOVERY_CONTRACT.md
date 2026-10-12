@@ -1,5 +1,8 @@
 # PokeBank NX — Recovery Contract
 
+> **CURRENT AUTHORITY OVERRIDE (2026-09-29):** Recovery is branch-agnostic. First read `docs/ENGINEERING_AUTHORITY.md` and re-fetch live GitHub. Use the currently authorized/pushed lane as the source of truth; references below to `feature/pokebank-playable`, a private repository, or an old production branch are historical recovery context and must not override live state.
+
+
 Last updated: 2026-09-10
 
 ## The rule

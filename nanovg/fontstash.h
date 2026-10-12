@@ -999,9 +999,11 @@ int fonsGetFontByName(FONScontext* s, const char* name)
 static FONSglyph* fons__allocGlyph(FONSfont* font)
 {
 	if (font->nglyphs+1 > font->cglyphs) {
-		font->cglyphs = font->cglyphs == 0 ? 8 : font->cglyphs * 2;
-		font->glyphs = (FONSglyph*)realloc(font->glyphs, sizeof(FONSglyph) * font->cglyphs);
-		if (font->glyphs == NULL) return NULL;
+		int newCapacity = font->cglyphs == 0 ? 8 : font->cglyphs * 2;
+		FONSglyph* newGlyphs = (FONSglyph*)realloc(font->glyphs, sizeof(FONSglyph) * newCapacity);
+		if (newGlyphs == NULL) return NULL;
+		font->glyphs = newGlyphs;
+		font->cglyphs = newCapacity;
 	}
 	font->nglyphs++;
 	return &font->glyphs[font->nglyphs-1];
@@ -1148,6 +1150,7 @@ static FONSglyph* fons__getGlyph(FONScontext* stash, FONSfont* font, unsigned in
 	// Init glyph.
 	if (glyph == NULL) {
 		glyph = fons__allocGlyph(font);
+		if (glyph == NULL) return NULL;
 		glyph->codepoint = codepoint;
 		glyph->size = isize;
 		glyph->blur = iblur;
@@ -1744,23 +1747,30 @@ int fonsExpandAtlas(FONScontext* stash, int width, int height)
 int fonsResetAtlas(FONScontext* stash, int width, int height)
 {
 	int i, j;
+	unsigned char* newTexData;
 	if (stash == NULL) return 0;
 
-	// Flush pending glyphs.
+	// PokeBank NX hardening (AUDIT-044): allocate before mutating renderer/atlas state.
+	// realloc failure leaves the existing CPU atlas allocation and all dimensions intact.
+	newTexData = (unsigned char*)realloc(stash->texData, width * height);
+	if (newTexData == NULL) return 0;
+
+	// Flush pending glyphs only after the CPU allocation is known to be available.
 	fons__flush(stash);
 
-	// Create new texture
+	// Create/resize the renderer texture. If this fails, the enlarged CPU allocation is still
+	// safe to use with the old dimensions; no atlas metadata has been reset yet.
 	if (stash->params.renderResize != NULL) {
-		if (stash->params.renderResize(stash->params.userPtr, width, height) == 0)
+		if (stash->params.renderResize(stash->params.userPtr, width, height) == 0) {
+			stash->texData = newTexData;
 			return 0;
+		}
 	}
 
-	// Reset atlas
-	fons__atlasReset(stash->atlas, width, height);
+	stash->texData = newTexData;
 
-	// Clear texture data.
-	stash->texData = (unsigned char*)realloc(stash->texData, width * height);
-	if (stash->texData == NULL) return 0;
+	// Reset atlas only after both allocation boundaries succeeded.
+	fons__atlasReset(stash->atlas, width, height);
 	memset(stash->texData, 0, width * height);
 
 	// Reset dirty rect

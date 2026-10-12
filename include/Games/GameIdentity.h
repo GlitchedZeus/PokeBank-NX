@@ -43,6 +43,9 @@ namespace PokeVault::Games {
     // Empty means the shared game-card renderer should use its safe fallback. Paths are stable,
     // release/platform-specific RomFS assets rather than display-name guesses.
     std::string_view gameCardArtworkPath(std::string_view id) noexcept;
+    // Region identity used by Product Home hero backdrops. Empty means no region scene yet.
+    // The key is semantic (kanto/johto/hoenn/sinnoh/...) so art can be replaced independently.
+    std::string_view gameRegionBackdropKey(std::string_view id) noexcept;
 }
 
 #endif

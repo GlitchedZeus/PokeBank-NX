@@ -216,6 +216,18 @@ ifneq ($(ROMFS),)
 	export NROFLAGS += --romfsdir=$(CURDIR)/$(ROMFS)
 endif
 
+# The RetroArch return host is a tiny PokeBank-owned nested NRO loader. Build it first and
+# embed it in the main RomFS so the runtime can install an exact matching helper atomically.
+RETURN_HOST_DIR := $(CURDIR)/runtime/return_host
+RETURN_HOST_NRO := $(RETURN_HOST_DIR)/PokeBankReturnHost.nro
+RETURN_HOST_ROMFS := $(CURDIR)/romfs/runtime/PokeBankReturnHost.nro
+
+.PHONY: return-host
+return-host:
+	@$(MAKE) --no-print-directory -C $(RETURN_HOST_DIR)
+	@mkdir -p "$(dir $(RETURN_HOST_ROMFS))"
+	@cp -f "$(RETURN_HOST_NRO)" "$(RETURN_HOST_ROMFS)"
+
 # Default target when you just run 'make'. Only builds.
 default: game-card-art $(BUILD)
 
@@ -338,13 +350,15 @@ native-ui-check:
 	@mkdir -p $(BUILD)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile TrainerViewScreenCompositeOverlay.o ClassicInventoryOverlay.o
 
-$(BUILD):
+$(BUILD): return-host
 	@[ -d $@ ] || mkdir -p $@
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile all
 
 #---------------------------------------------------------------------------------
 clean:
 	@printf "clean ...\n"
+	@$(MAKE) --no-print-directory -C runtime/return_host clean || true
+	@rm -f romfs/runtime/PokeBankReturnHost.nro
 ifeq ($(strip $(APP_JSON)),)
 	@rm -fr $(BUILD) $(TARGET).nro $(TARGET).nacp $(TARGET).elf $(TARGET).lst
 else

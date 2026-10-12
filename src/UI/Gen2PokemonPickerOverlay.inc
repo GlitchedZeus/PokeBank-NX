@@ -3,6 +3,8 @@
 // overlay model; the Gen2PokemonSession changes only when A explicitly applies a selected value.
 
 #include "UI/Gen2PokemonPickerModel.h"
+#include "UI/MovePickerPresentation.h"
+#include "UI/TouchScroll.h"
 #include "Utils/Keyboard.h"
 
 namespace UI::Gen2PokemonEditor {
@@ -11,10 +13,15 @@ namespace {
 namespace Gen2Picker = PokeBank::UIModel::Gen2PokemonPicker;
 namespace Gen2Native = PokeBank::UIModel::Gen2Native;
 namespace Encounter = PokeVault::Integration::EncounterGuardrails;
+namespace MoveUI = PokeBank::UIModel::MovePickerPresentation;
 
 struct PickerOverlayState {
     const TrainerViewScreen* owner = nullptr;
     Gen2Picker::Model model;
+    TouchScrollState scroll;
+    TouchScrollState moveScroll;
+    TouchPickerViewport moveViewport;
+    TouchPickerViewport locationViewport;
 };
 
 PickerOverlayState& pickerStateFor(const TrainerViewScreen& screen) {
@@ -28,6 +35,10 @@ PickerOverlayState& pickerStateFor(const TrainerViewScreen& screen) {
 
 void closePicker(TrainerViewScreen& screen, PickerOverlayState& picker) {
     picker.model.close();
+    picker.scroll.reset();
+    picker.moveScroll.reset();
+    picker.moveViewport.reset();
+    picker.locationViewport.reset();
     screen.controllerNavigation.reset();
 }
 
@@ -42,6 +53,10 @@ bool openPickerForFocusedField(TrainerViewScreen& screen, State& state,
     } else {
         return false;
     }
+    picker.scroll.reset();
+    picker.moveScroll.reset();
+    picker.moveViewport.reset();
+    picker.locationViewport.reset();
     screen.controllerNavigation.reset();
     return true;
 }
@@ -98,6 +113,7 @@ bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlaySta
 }
 
 const char* movePickerStatus(const TrainerViewScreen& screen, const State& state, uint16_t move) {
+    if (move == 0) return "Empty";
     const auto game = Rules::exactGameFromSourceId(screen.sourceGameId);
     if (game && Gen2::MoveCompatibility::canLearnMove(*game, state.working.species, move)) return "Compatible";
     const auto slot = pickerStateFor(screen).model.moveSlot;
@@ -110,6 +126,7 @@ const char* movePickerStatus(const TrainerViewScreen& screen, const State& state
 Color movePickerStatusColor(const char* status) {
     const std::string value(status);
     if (value == "Compatible") return Colors::Success;
+    if (value == "Empty") return Colors::TextDim;
     if (value == "Unusual preserved") return Colors::Warning;
     return Colors::Error;
 }
@@ -120,13 +137,20 @@ void drawPickerRow(PKSEFramebuffer& fb, int x, int y, int w, const std::string& 
         fb.drawFilledRoundedRect(x, y - 5, w, 30, 8, Colors::SurfaceSelected);
         fb.drawRoundedRect(x, y - 5, w, 30, 8, Colors::FocusBorder, 1);
     }
-    fb.drawText(x + 12, y, text, selected ? Colors::Accent : textColor, TextStyle::Caption);
+    fb.drawText(x + 12, y, text, selected ? Colors::SelectedText : textColor, TextStyle::Caption);
 }
 
 void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state,
                     const Gen2Picker::Model& model) {
+    screen.touchButtons.clear();
+    auto& overlay = pickerStateFor(screen);
     if (model.kind == Gen2Picker::Kind::Species) {
         const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
+        const int speciesStart = std::clamp(model.speciesChoice() - 9 / 2, 1, 251 - 9 + 1);
+        for (int i = 0; i < 9; ++i)
+            screen.touchButtons.push_back({2000 + speciesStart + i,
+                                           modal.x + 20, modal.y + 84 + i * 43,
+                                           560, 39});
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, model.speciesChoice(), 251, model.previewShiny,
             [](uint16_t species) {
@@ -134,12 +158,14 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
                 std::snprintf(prefix, sizeof(prefix), "%03u - ", static_cast<unsigned>(species));
                 return std::string(prefix) + Names::getSpeciesName(species);
             },
-            [](uint16_t species) { return std::to_string(species) + " - " + Names::getSpeciesName(species); });
+            [](uint16_t species) { return std::to_string(species) + " - " + Names::getSpeciesName(species); },
+            &latestTouchGesture());
         drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"L/R", "Page"}, {"Y", "Normal/Shiny"}, {"A", "Select"}, {"B", "Cancel"}});
         return;
     }
     const int W = fb.getWidth(), H = fb.getHeight();
-    constexpr int panelW = 760, panelH = 568;
+    constexpr int panelH = 568;
+    const int panelW = model.kind == Gen2Picker::Kind::Move ? 1080 : 760;
     const int x = (W - panelW) / 2, y = (H - panelH) / 2;
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 165));
     drawPanelSurface(fb, x, y, panelW, panelH, false, 18);
@@ -149,17 +175,28 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
     fb.drawText(x + 24, y + 18, location ? "Met location — Crystal" : species ? "Species — Generation II" : "Move — Generation II",
                 Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
-                location ? "Species-valid Crystal encounters • time shown when relevant • Met Level defaults to encounter minimum" : species ? "#001–#251 • browsing does not change the staged Pokemon"
-                        : "Empty + moves 1–251 • compatibility shown for this exact game",
+                location ? "Drag naturally to browse Crystal encounters • tap to choose" : species ? "#001–#251 • browsing does not change the staged Pokemon"
+                        : "Drag naturally to browse • exact Gen II Acc / Pwr / PP • compatibility at right",
                 Colors::TextDim, TextStyle::Caption);
 
     const int count = location ? model.locationCount() : species ? 251 : 252;
     constexpr int visible = 13;
-    const int first = std::clamp(model.index - visible / 2, 0, std::max(0, count - visible));
-    const int last = std::min(count, first + visible);
-    for (int i = first; i < last; ++i) {
-        const int yy = y + 88 + (i - first) * 33;
+    constexpr int rowStep = 33;
+    if (location)
+        overlay.locationViewport.ensure(model.index, count, visible);
+    const int first = location ? overlay.locationViewport.firstRow :
+        std::clamp(model.index - visible / 2, 0, std::max(0, count - visible));
+    const int liveOffset = overlay.scroll.offset();
+    const int firstDraw = std::max(0, first - 1);
+    const int lastDraw = std::min(count, first + visible + 1);
+    const int listY = y + 88;
+    fb.setClipRect(x + 20, listY - 5, panelW - 40, visible * rowStep + 8);
+    for (int i = firstDraw; i < lastDraw; ++i) {
+        const int yy = listY + (i - first) * rowStep + liveOffset;
         const bool selected = i == model.index;
+        appendClippedTouchButton(
+            screen.touchButtons, 2000 + i, x + 20, yy - 5, panelW - 40, 30,
+            x + 20, listY - 5, panelW - 40, visible * rowStep + 8);
         if (location) {
             const auto& encounter = model.encounterChoices[static_cast<std::size_t>(i)];
             std::string label = std::string(Gen2Native::crystalCaughtLocationName(
@@ -179,7 +216,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
                           "#" + number + "  " + Names::getSpeciesName(dex), selected);
         } else {
             const uint16_t move = static_cast<uint16_t>(i);
-            const std::string name = move == 0 ? "Empty" : std::string(Names::getMoveName(move));
+            const auto name = MoveUI::rowLabel(move, Enums::GameVersion::GSC);
             drawPickerRow(fb, x + 20, yy, panelW - 40, name, selected);
             const char* status = movePickerStatus(screen, state, move);
             int sw = 0, sh = 0;
@@ -187,6 +224,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
             fb.drawText(x + panelW - 34 - sw, yy, status, movePickerStatusColor(status), TextStyle::Caption);
         }
     }
+    fb.clearClip();
     drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"}, {"A", "Select"}, {"B", "Cancel"}});
 }
 
@@ -206,15 +244,69 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
             return true;
         }
         if (picker.model.active()) picker.model.close();
+        picker.scroll.reset();
+        picker.moveScroll.reset();
+        picker.moveViewport.reset();
+        picker.locationViewport.reset();
         return false;
     }
     if (state.mode == Mode::None) {
         if (picker.model.active()) picker.model.close();
+        picker.scroll.reset();
+        picker.moveScroll.reset();
+        picker.moveViewport.reset();
+        picker.locationViewport.reset();
         return false;
     }
 
     if (!picker.model.active())
         return openPickerForFocusedField(screen, state, picker, down);
+
+    const int pickerCount = picker.model.kind == Gen2Picker::Kind::Species
+        ? 251 : picker.model.kind == Gen2Picker::Kind::Location ? picker.model.locationCount() : 252;
+    if (picker.model.kind == Gen2Picker::Kind::Species) {
+        // The shared Species renderer follows the finger pixel-for-pixel while held. Commit the
+        // semantic preview cursor only on release so the gesture cannot accidentally activate A.
+        const int dy = touch.deltaY();
+        if (touch.justReleased() && touch.dragged() &&
+            SharedSpeciesPicker::gestureStartedInList(touch.startX(), touch.startY()) &&
+            std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
+            const int steps = std::max(1, std::abs(dy) / 43);
+            picker.model.stepList(dy < 0 ? steps : -steps);
+        }
+    } else {
+        constexpr int panelH = 568;
+        const int panelW = picker.model.kind == Gen2Picker::Kind::Move ? 1080 : 760;
+        const int x = (1280 - panelW) / 2;
+        const int y = (720 - panelH) / 2;
+        if (picker.model.kind == Gen2Picker::Kind::Location) {
+            constexpr int visible = 13;
+            picker.locationViewport.ensure(picker.model.index, pickerCount, visible);
+            const int maxFirst = TouchPickerViewport::maxFirst(pickerCount, visible);
+            if (maxFirst > 0)
+                picker.scroll.updateVertical(
+                    touch, x + 20, y + 83, panelW - 40, visible * 33 + 10, 33,
+                    picker.locationViewport.firstRow, maxFirst + 1);
+            else picker.scroll.stop();
+        } else {
+            picker.scroll.updateVertical(touch, x + 20, y + 83, panelW - 40, 13 * 33 + 10,
+                                         33, picker.model.index, pickerCount);
+        }
+    }
+
+    // Species target IDs encode the 1-based National Dex; Location/Move IDs are 0-based.
+    // Reject unrelated modal button IDs rather than clamping them to the last choice.
+    const bool speciesIds = picker.model.kind == Gen2Picker::Kind::Species;
+    const int firstTouchId = speciesIds ? 2001 : 2000;
+    const int endTouchId = 2000 + pickerCount + (speciesIds ? 1 : 0);
+    int touchTap = screen.touchedButtonId(touch);
+    if (touchTap >= firstTouchId && touchTap < endTouchId) {
+        if (picker.model.kind == Gen2Picker::Kind::Species)
+            picker.model.index = std::clamp(touchTap - 2000, 1, 251) - 1;
+        else
+            picker.model.index = std::clamp(touchTap - 2000, 0, std::max(0, pickerCount - 1));
+        down |= HidNpadButton_A;
+    }
 
     const uint64_t nav = screen.controllerNavigation.apply(
         down, held, stickX, stickY,
@@ -227,18 +319,31 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
 
     if (picker.model.kind == Gen2Picker::Kind::Species ||
         picker.model.kind == Gen2Picker::Kind::Move || picker.model.kind == Gen2Picker::Kind::Location) {
-        if (nav & HidNpadButton_Up) picker.model.stepList(-1);
-        if (nav & HidNpadButton_Down) picker.model.stepList(1);
+        if (nav & HidNpadButton_Up) { picker.scroll.stop(); picker.model.stepList(-1); }
+        if (nav & HidNpadButton_Down) { picker.scroll.stop(); picker.model.stepList(1); }
         if (picker.model.kind == Gen2Picker::Kind::Species) {
-            if ((down & HidNpadButton_L) || (nav & HidNpadButton_Left)) picker.model.stepList(-10);
-            if ((down & HidNpadButton_R) || (nav & HidNpadButton_Right)) picker.model.stepList(10);
+            if ((down & HidNpadButton_L) || (nav & HidNpadButton_Left)) { picker.scroll.stop(); picker.model.stepList(-10); }
+            if ((down & HidNpadButton_R) || (nav & HidNpadButton_Right)) { picker.scroll.stop(); picker.model.stepList(10); }
             if (down & HidNpadButton_Y) picker.model.previewShiny = !picker.model.previewShiny;
         } else {
-            if (nav & HidNpadButton_Left) picker.model.stepList(-10);
-            if (nav & HidNpadButton_Right) picker.model.stepList(10);
+            if (nav & HidNpadButton_Left) { picker.scroll.stop(); picker.model.stepList(-10); }
+            if (nav & HidNpadButton_Right) { picker.scroll.stop(); picker.model.stepList(10); }
         }
     }
 
+    if (picker.model.kind == Gen2Picker::Kind::Location) {
+        constexpr int visible = 13;
+        if (nav & (HidNpadButton_Up | HidNpadButton_Down |
+                   HidNpadButton_Left | HidNpadButton_Right))
+            picker.locationViewport.reveal(picker.model.index, pickerCount, visible);
+        if ((down & HidNpadButton_A) &&
+            !picker.locationViewport.containsSelection(picker.model.index, pickerCount, visible)) {
+            picker.scroll.stop();
+            picker.locationViewport.reveal(picker.model.index, pickerCount, visible);
+            screen.postStatus("Focused encounter brought into view; press A again or tap a visible row", 220);
+            return true;
+        }
+    }
     if (down & HidNpadButton_A) applyPickerChoice(screen, state, picker);
     return true;
 }

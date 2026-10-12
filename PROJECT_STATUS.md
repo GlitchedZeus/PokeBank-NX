@@ -1,179 +1,120 @@
 # PokeBank NX Project Status
 
-Last updated: 2026-09-20
+Last updated: **2026-09-29**
 
-For the shortest recovery handoff, read `CURRENT_STATUS.md` and `docs/NEXT_SESSION_PLAN.md`.
+For exact active head and CI status, read `CURRENT_STATUS.md` first.
 
 ## Project identity
 
-```text
-Product: PokeBank NX
-Version: 0.1.0-alpha
-Repository: GlitchedZeus/PokeBank-NX
-Production branch: feature/pokebank-playable
-Accepted milestone merge commit: e0815da5c1a167827a07ed1dfd50d49db2136aa3
-Accepted source checkpoint: c24859ce17d33040685ea19b9aff068ba378d8ae
-Accepted source tree: 88d2ad46d57346df346453698ee11792f7df4f1f
-PR #74: MERGED
-Issue #71: COMPLETE
-PR #75: MERGED
-Issue #71 merge commit: fb0f3c6573eac12d2350253d5c225dae8fc02277
-Writable remote: origin
-Upstream/reference: kiasta/PKSE
-Active development PR: #77 — Generation III: extend the shared Pokemon editor
-Active development branch: feature/gen3-shared-pokemon-editor-20260919
-PR #77 state: OPEN / DRAFT / NOT MERGED
-Last observed PR #77 head: be030f31690cfbedaa1fc5763bd23fbfebd112eb (observation only; always re-fetch)
-```
+- Product: **PokeBank NX**
+- Repository: `GlitchedZeus/PokeBank-NX`
+- Platform: Nintendo Switch homebrew
+- Current state: active alpha
+- Active MAIN implementation lane: **PR #92**
+- PR #100 Product UI polish: **content integrated into PR #92; PR #100 closed**
+- PR #92 remains **OPEN / DRAFT / NOT MERGED**
 
-`DEVICE ACCEPTED` is reserved for an exact artifact physically tested and accepted by the owner.
+GitHub is authoritative. Checkpoint SHAs document evidence; they are never instructions to move a branch backward.
 
 ## Headline
 
-- **Issue #71 universal editor / reuse architecture freeze: COMPLETE.**
-- PR #75 is merged; `docs/ISSUE71_UNIVERSAL_EDITOR_REUSE_FREEZE.md` is now the architecture authority for future editor generations.
-- **Gen I/II packed move + multi-select milestone: DEVICE ACCEPTED.**
-- PR #74 is merged into `feature/pokebank-playable`.
-- Red/Blue/Yellow and Gold/Silver/Crystal source boxes present their native 20 valid slots.
-- PokeBank-owned Legacy Storage remains 30 slots per box.
-- Gen I/II staged Y movement, Y-hold rectangular multi-select, packed group movement, Release, and fullscreen View/Edit/Create are hardware accepted.
-- The Gen II empty-slot action-sheet/fullscreen ownership bug is physically confirmed fixed.
-- Original source saves remain immutable and every live source-write path remains HARD DISABLED.
-- **Generation III development is ACTIVE in PR #77.** Do not create another Gen III branch or restart from an older checkpoint.
-- PR #77 is in an active hardware-fix/retest cycle and is **NOT DEVICE ACCEPTED** unless the owner explicitly accepts an exact Actions-built NRO for an exact SHA.
-- The PR #77 head is intentionally treated as dynamic. Every recovery session must re-fetch GitHub before using a recorded SHA.
-- Production remains `feature/pokebank-playable`; PR #77 has not been merged.
+PokeBank NX has passed its original Gen I–III foundation stage.
 
-## Exact hardware-accepted checkpoint
+Today the project has:
 
-```text
-Milestone: Gen I/II packed move + multi-select
-Status: DEVICE ACCEPTED
-Physical result: PASS / NO BUGS FOUND
-Accepted source: c24859ce17d33040685ea19b9aff068ba378d8ae
-Accepted tree: 88d2ad46d57346df346453698ee11792f7df4f1f
-Accepted parent: 99aacea1d9c5bd392b1eb779d175e49d3f99179c
-Accepted NRO: PokeBank-NX-Gen1-UX4-Retest-c24859ce.nro
-Accepted NRO size: 161681137 bytes
-Accepted NRO SHA-256: 0eeef3c4752fc52240332567bf3919099271be4985fda346da26d66018fff82f
-Accepted Actions workflow: Gen I Cleanup3 Candidate Gate
-Accepted Actions run: 35316216883
-Accepted artifact: Gen1-UX4-Retest-Candidate
-Accepted artifact ID: 10535653625
-Accepted artifact digest: sha256:15c9a98c37c05f7ce4427791b33968faa43e0a9cb7442e57eb0a8b537ef0f6c1
-Merge commit: e0815da5c1a167827a07ed1dfd50d49db2136aa3
-```
+- hardware-accepted Gen I–III shared editor workflows;
+- a real staged Gen IV Party/Box editor with Create and field parity work;
+- provider-aware Gen IV source discovery/assignment;
+- the modern Product Home integrated into the MAIN Gen IV lane;
+- real Party sprite presentation;
+- real Gen I–IV Pokédex progress plumbing;
+- Gen IV trainer-name propagation;
+- game-appropriate trainer portraits driven by proven game/gender data;
+- Classic Game Sources;
+- cursor-memory infrastructure;
+- Backpack/Items quick navigation through the existing safe open flow;
+- compact quick Items/Settings controls;
+- a two-pane Settings screen with remembered cursor state.
 
-The independent Gen II candidate pipeline produced the same application NRO SHA-256, so the accepted application binary identity is unambiguous.
+The next milestone is **one combined Gen I–IV + Product UI NRO** for real Switch testing.
 
-## Accepted milestone behavior
+## Active MAIN lane
 
-### Generation I — Red / Blue / Yellow
+PR #92
+Branch: `feature/gen4-full-editor-20260928`
 
-DEVICE ACCEPTED:
+Last verified head:
+`710cf37a33ba7a9f29b09953c5d8aa224268e4fd`
 
-- native 20-slot source-box presentation;
-- PokeBank Legacy Storage remains 30 slots;
-- empty-slot Add Pokemon;
-- fullscreen View / Edit / Create;
-- A-button Actions;
-- Release behind A -> Actions -> Release -> explicit confirmation;
-- Y tap single packed move;
-- Y hold rectangular multi-select;
-- same-box and cross-box packed movement;
-- deterministic selected/group ordering;
-- atomic destination-capacity rejection;
-- B exact staged restore;
-- controller behavior and fullscreen surface ownership.
+At the time of this update, Product UI Native #61 and Gen IV Shared Editor Candidate Gate #137 are green on the exact head. Host Tests #1701 is still running.
 
-### Generation II — Gold / Silver / Crystal
+## Generation status
 
-DEVICE ACCEPTED:
+### Gen I — accepted
 
-- native 20-slot source-box presentation;
-- PokeBank Legacy Storage remains 30 slots;
-- empty-slot Add Pokemon immediately opens Create;
-- Review Pending Changes opens Review rather than exposing a hidden Create workspace;
-- no action sheet remains on top of View/Edit/Create;
-- fullscreen View / Edit / Create;
-- A-button Actions;
-- Release behind A -> Actions -> Release -> explicit confirmation;
-- Y tap single packed move;
-- Y hold rectangular multi-select;
-- same-box and cross-box packed movement;
-- deterministic selected/group ordering;
-- atomic destination-capacity rejection;
-- B exact staged restore;
-- controller behavior and fullscreen surface ownership.
+Red / Blue / Yellow read, inventory and shared Pokémon editor workflows are hardware accepted.
 
-## Previously accepted baselines
+### Gen II — accepted
 
-These historical milestones remain accepted and must not be rewritten as untested:
+Gold / Silver / Crystal read, inventory and shared Pokémon editor workflows are hardware accepted.
 
-| Milestone | Status |
-|---|---|
-| Red / Blue / Yellow read-only | DEVICE ACCEPTED |
-| Gold / Silver / Crystal read-only | DEVICE ACCEPTED |
-| FireRed / LeafGreen / Ruby / Sapphire / Emerald read-only | DEVICE ACCEPTED |
-| Classic staged Inventory | DEVICE ACCEPTED |
-| Gen I boxed staged Pokemon editor | DEVICE ACCEPTED |
-| Gen I passive View unification | DEVICE ACCEPTED |
-| Gen I/II packed move + multi-select / Release / native source capacity | DEVICE ACCEPTED |
+### Gen III — accepted
 
-Generation II read semantics remain:
+Ruby / Sapphire / Emerald / FireRed / LeafGreen read, inventory and shared Pokémon editor workflows are hardware accepted.
 
-```text
-Gold Trainer gender: Male
-Silver Trainer gender: Male
-Crystal Trainer gender: save-derived
-Gen II SID: N/A — does not exist
-```
+### Gen IV — active
 
-Historical Gen I editor acceptance evidence remains valid:
+Diamond / Pearl / Platinum / HeartGold / SoulSilver have a working staged editor foundation.
 
-```text
-Source: 69668bc81629228ef25c1bdada7c7ce1aed9b666
-NRO: PokeBank-NX-Gen1-UX4-Retest-69668bc8.nro
-SHA-256: 3ab11f7ba6938bbab5f7cbbf192d819532ce94f09bc7788a3bb0d8f6217f3763
-```
+The first Party/Box View/Edit milestone is already physically accepted. G4-04 extends that foundation with Create, additional native fields, forms, species mutation, move handling, action parity, and current Product UI integration.
 
-## Permanent safety invariants
+The full G4-04 + Product UI combination is **hardware pending**.
 
-```text
-ORIGINAL SOURCE SAVE: IMMUTABLE
-LIVE INSTALLED-GAME WRITE: HARD DISABLED
-LIVE RETROARCH WRITE: HARD DISABLED
-LIVE OTHER-EMULATOR WRITE: HARD DISABLED
-POKEBANK STAGED EDITING: ALLOWED
-READ ACCEPTANCE DOES NOT AUTHORIZE SOURCE WRITES
-UNKNOWN SAVE VARIANTS: FAIL CLOSED
-```
+## Product experience
 
-The accepted PR #74 milestone does not weaken any source-write lock.
+The intended top-level UX is now stable:
 
-## Continuation boundary
+1. **Product Home** for the selected game, trainer identity, Party, Pokédex progress, Open/Launch and high-level features.
+2. **Classic Game Sources** for users who prefer the familiar direct game grid.
+3. Existing proven Party / Boxes / Trainer / Inventory / editor flows underneath.
+4. Compact access to Backups, Search, future features, Items and Settings.
+5. Two-pane Settings and contextual help.
+6. Remembered navigation state across rebuilt menus.
 
-Production contains the frozen accepted Gen I/II history and remains separate from the active Generation III development line.
+Master Vault and global Pokédex/collection systems may be previewed in the UI but remain non-persistent until their backends are ready.
 
-PR #77 is the **only active Generation III implementation line**:
+## Current technical priorities
 
-```text
-PR: #77 — Generation III: extend the shared Pokemon editor
-Branch: feature/gen3-shared-pokemon-editor-20260919
-State: OPEN / DRAFT / NOT MERGED
-Hardware state: ACTIVE FIX / RETEST CYCLE
-Device acceptance: NOT FROZEN FOR THE CURRENT DYNAMIC HEAD
-```
+Before the next hardware candidate:
 
-The recorded PR head is only an observation. GitHub is authoritative because concurrent hardware-fix work may advance the branch at any time.
+- finish the remaining exact-head Host Tests/sanitizer gate without regressing the already-green native Product UI and Gen IV candidate gates;
+- hardware-check the integrated Gen IV editor, real trainer names/portraits, real Gen I–IV Pokédex progress, Classic Game Sources, cursor memory, Backpack/Items quick entry, and two-pane Settings;
+- verify DraStic/melonDS direct launch handoff using the existing app-owned binding model;
+- keep explicit Link Game File as the fail-closed fallback whenever content identity cannot be proven;
+- ship one exact Actions-built NRO with a recorded artifact ID and SHA-256 for owner hardware testing.
 
-At the beginning of the next development session:
+After hardware acceptance:
 
-1. re-fetch PR #77 and `feature/pokebank-playable` before making any assumption about the current head;
-2. preserve any newer PR #77 head and never reset/rebase backward to a handoff SHA;
-3. continue the same PR #77 / same branch — do not create another Gen III branch and do not start over;
-4. preserve all accepted Gen I/II behavior and every source-write safety invariant above;
-5. do not merge PR #77 until the owner explicitly accepts an exact fully-green Actions-built NRO for an exact SHA;
-6. treat older PR #77 candidates and older handoff SHAs as historical evidence only unless they are still the live GitHub head.
+- full app-wide touch control parity;
+- then Master Vault / Banks and later-generation expansion according to the roadmap.
 
-**GEN III IS ACTIVE IN PR #77 — RE-FETCH THE LIVE HEAD BEFORE CONTINUING.**
+## Safety / scope locks
+
+- original source saves stay immutable;
+- external emulator saves remain read-only;
+- installed-game live writes remain disabled;
+- staged editing remains app-owned;
+- Launch never grants write permission;
+- ambiguous source/content matching fails closed;
+- cross-game True Move remains locked;
+- Gen V is not started;
+- Master Vault persistence is not started;
+- future Inject Save work remains separate.
+
+## Hardware acceptance rule
+
+A feature is not device accepted because CI is green or because a neighboring SHA passed previously.
+
+Acceptance requires the **exact Actions-built NRO** for the exact application commit to be physically tested on a real Switch.
+
+That rule remains in force for the upcoming integrated Gen IV + Product UI candidate.

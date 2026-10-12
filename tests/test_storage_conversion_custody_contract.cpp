@@ -172,7 +172,7 @@ int main() {
     assert(confirm.find("putDownBlock();") != std::string::npos);
 
     // A02 rollback protection must remain present while A03 changes placement.
-    const auto returnBegin = source.find("void TrainerViewScreen::returnHeldToOrigin()");
+    const auto returnBegin = source.find("bool TrainerViewScreen::returnHeldToOrigin()");
     const auto returnEnd = source.find(
         "std::unique_ptr<Pokemon::Pokemon>& TrainerViewScreen::storageSlot", returnBegin);
     assert(returnBegin != std::string::npos);

@@ -1,0 +1,9 @@
+Product Home L/R hardware-freeze fix checkpoint.
+
+Runtime source parent: acdac0125a915dbaa4bf491ea99aff3443458492
+
+The shoulder-button selection path is cached/presentation-only and does not mount or parse saves,
+resolve launch targets, enumerate HOME applications, or scan ROM/source files. Exact launch/save
+validation remains on explicit Open/Launch actions.
+
+DEVICE_ACCEPTED=false until physical Switch retest.

@@ -9,6 +9,7 @@
 #include "UI/TrainerViewScreen.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/ScreenChrome.h"
 #include "Trainer/Trainer.h"
 #include "Trainer/Inventory9LZA.h"
 #include "Trainer/Inventory9SV.h"
@@ -19,6 +20,7 @@
 #include "Trainer/Inventory3FRLG.h"
 #include "Integration/Gen1/Gen1ReadOnlyInventory.h"
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
+#include "Integration/Gen4/Gen4ReadOnlyInventory.h"
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "UI/ClassicInventoryUIModel.h"
 #include "UI/InventoryUIContract.h"
@@ -28,6 +30,9 @@
 #include "Names/TMMoves.h"
 #include "Names/MachineDisplay.h"
 #include "Names/ItemNames.h"
+#include "UI/ClassicMachineArtwork.h"
+#include "UI/ItemSpriteKey.h"
+#include "UI/SpriteManager.h"
 
 using namespace Trainer;
 using namespace Enums;
@@ -78,6 +83,9 @@ namespace Panels {
         else if (gameGroup == GameVersion::BDSP) name = getPouchInfo8BDSP(static_cast<PouchType8BDSP>(category)).name;
         else if (gameGroup == GameVersion::GG)   name = getPouchInfo7LGPE(static_cast<PouchType7LGPE>(category)).name;
         else if (gameGroup == GameVersion::GSC)  name = gscPouchDisplayName(category);
+        else if (gameGroup == GameVersion::DP || gameGroup == GameVersion::PT ||
+                 gameGroup == GameVersion::HGSS)
+            name = PokeVault::Integration::Gen4::bagPocketName(static_cast<size_t>(category));
         else if (gameGroup == GameVersion::RBY)  name = PokeVault::Integration::Gen1::inventoryCategoryName(static_cast<size_t>(category));
         else if (gameGroup == GameVersion::FRLG) name = getPouchInfo3FRLG(static_cast<PouchType3FRLG>(category)).name;
         else                                     name = getPouchInfo8SWSH(static_cast<PouchType8SWSH>(category)).name;
@@ -112,6 +120,30 @@ namespace Panels {
                     std::string("Items - ") + pouchName, Colors::Text, TextStyle::Heading);
 
         screen.touchButtons.clear();
+        // Header category arrows remain available even if this pocket is empty.
+        // Their touch IDs are negative and cannot be confused with item rows.
+        using CategoryTouch = PokeBank::UIModel::InventoryCategoryTouch;
+        const int arrowY = CategoryTouch::topY(y, hH);
+        const int prevX = CategoryTouch::previousX(x, width);
+        const int nextX = CategoryTouch::nextX(x, width);
+        const bool prevPressed = touchPressedRect(prevX, arrowY, CategoryTouch::Width, CategoryTouch::Height);
+        const bool nextPressed = touchPressedRect(nextX, arrowY, CategoryTouch::Width, CategoryTouch::Height);
+        fb.drawFilledRoundedRect(prevX, arrowY, CategoryTouch::Width,
+                                 CategoryTouch::Height, 9,
+                                 prevPressed ? withAlpha(Colors::FocusBorder, 145) : Colors::PanelAlt);
+        fb.drawFilledRoundedRect(nextX, arrowY, CategoryTouch::Width,
+                                 CategoryTouch::Height, 9,
+                                 nextPressed ? withAlpha(Colors::FocusBorder, 145) : Colors::PanelAlt);
+        if (prevPressed) fb.drawRoundedRect(prevX, arrowY, CategoryTouch::Width,
+                                            CategoryTouch::Height, 9, Colors::FocusBorder, 2);
+        if (nextPressed) fb.drawRoundedRect(nextX, arrowY, CategoryTouch::Width,
+                                            CategoryTouch::Height, 9, Colors::FocusBorder, 2);
+        fb.drawText(prevX + 14, arrowY + 3, "<", Colors::Text, TextStyle::Body);
+        fb.drawText(nextX + 14, arrowY + 3, ">", Colors::Text, TextStyle::Body);
+        screen.touchButtons.push_back({CategoryTouch::PreviousId, prevX, arrowY,
+                                       CategoryTouch::Width, CategoryTouch::Height});
+        screen.touchButtons.push_back({CategoryTouch::NextId, nextX, arrowY,
+                                       CategoryTouch::Width, CategoryTouch::Height});
 
         // The strict legacy inventory decoders are optional submodels. A malformed inventory must
         // never turn an otherwise valid read-only save into "Invalid category" or hide its Pokemon.
@@ -134,10 +166,12 @@ namespace Panels {
             return;
         }
         if (gen4Source && screen.trainer.items.empty()) {
-            fb.drawText(x + 24, y + hH + 30, "Inventory unavailable in G4-02", Colors::Text, TextStyle::Body);
-            fb.drawText(x + 24, y + hH + 58, "Generation IV inventory is intentionally deferred in this read-only preview.",
+            fb.drawText(x + 24, y + hH + 30, "Inventory unavailable", Colors::Text, TextStyle::Body);
+            fb.drawText(x + 24, y + hH + 58, "Native Generation IV bag data failed validation.",
                         Colors::TextDim, TextStyle::Caption);
-            fb.drawText(x + 24, y + hH + 82, "Trainer, party, boxes and Pokémon details remain available.",
+            fb.drawText(x + 24, y + hH + 82, "Trainer and Pokemon remain available; invalid bag entries are quarantined.",
+                        Colors::TextDim, TextStyle::Caption);
+            fb.drawText(x + 24, y + hH + 106, "External emulator source remains read-only.",
                         Colors::TextDim, TextStyle::Caption);
             return;
         }
@@ -168,6 +202,7 @@ namespace Panels {
         const int startIdx = screen.currentPage * itemsPerPage;
         const int endIdx = std::min(startIdx + itemsPerPage, total);
         int ry = y + hH + 40;
+        std::string selectedGscMail;
         for (int i = startIdx; i < endIdx; ++i) {
             const InventoryItem& item = pouch[visible[i]];
             const bool selected = screen.detailViewActive && i == screen.selectedItemIndex;
@@ -205,6 +240,39 @@ namespace Panels {
                 }
                 displayName = Names::machineDisplayLabel(gameGroup, item.itemId, baseName);
             }
+            // Both the inventory list and the Held Item picker must display
+            // artwork. Historically this panel drew *no item sprite at all*.
+            // Generation-specific TM/HM types are resolved through the
+            // actual machine -> move table, never by matching raw IDs across
+            // games. Gen II mail resolves to its own original game motif.
+            const auto itemGameGroup = !classicGame ? gameGroup
+                : *classicGame <= PokeVault::Inventory::ClassicGame::Yellow
+                    ? GameVersion::RBY
+                : *classicGame <= PokeVault::Inventory::ClassicGame::Crystal
+                    ? GameVersion::GSC : GameVersion::FRLG;
+            std::string artworkKey = ClassicMachineArtwork::artKey(
+                itemGameGroup, item.itemId);
+            const std::string normalized = ItemSpriteKey::slug(displayName);
+            if (selected && gscSource && ItemSpriteKey::isGen2Mail(normalized))
+                selectedGscMail = normalized;
+            const bool machine = ItemSpriteKey::isTM(normalized) ||
+                                 ItemSpriteKey::isHM(normalized);
+            if (artworkKey.empty() && !machine) {
+                artworkKey = gscSource && ItemSpriteKey::isGen2Mail(normalized)
+                    ? "gsc-mail-icon-" + normalized
+                    : normalized;
+            }
+            if (!artworkKey.empty()) {
+                auto* art = SpriteManager::getItemSprite(artworkKey);
+                if (art && art->data && art->width > 0 && art->height > 0) {
+                    constexpr int iconSize = 38;
+                    fb.drawSpriteStaticContained(nx, ry + (tileH - iconSize) / 2,
+                                                 iconSize, iconSize,
+                                                 art->width, art->height,
+                                                 art->data, art->channels);
+                }
+            }
+            nx += 48;
             fb.drawText(nx, ry + (tileH - fb.lineHeight(TextStyle::Body)) / 2,
                         displayName, nameCol, TextStyle::Body);
 
@@ -214,6 +282,27 @@ namespace Panels {
                         cnt, selected ? Colors::Text : Colors::TextDim, TextStyle::Body);
             screen.touchButtons.push_back({ i, tileX, ry, tileW, tileH });
             ry += rowPitch;
+        }
+
+        // Generation II mail is full 160x144 stationery, not a Gen III/IV
+        // miniature icon. Display the authentic-source artwork at a useful
+        // size only where the HOME-wide Items layout has spare room; never
+        // cover the list or its touch targets.
+        const int previewX = tileX + tileW + 12;
+        if (!selectedGscMail.empty() && previewX + 174 <= x + width - 8) {
+            auto* art = SpriteManager::getItemSprite(selectedGscMail);
+            if (art && art->data && art->width == 160 && art->height == 144) {
+                const int previewY = y + hH + 74;
+                fb.drawFilledRoundedRect(previewX, previewY, 174, 193, 12,
+                                         Colors::PanelAlt);
+                fb.drawText(previewX + 10, previewY + 10, "GSC Mail",
+                            Colors::Text, TextStyle::Caption);
+                fb.drawSpriteStaticContained(previewX + 7, previewY + 33,
+                                             160, 144, art->width, art->height,
+                                             art->data, art->channels);
+                fb.drawText(previewX + 12, previewY + 180, "Stationery",
+                            Colors::TextSecondary, TextStyle::Caption);
+            }
         }
     }
 }

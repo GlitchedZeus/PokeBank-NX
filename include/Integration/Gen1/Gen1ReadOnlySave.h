@@ -74,6 +74,12 @@ struct PokemonRecord {
     std::size_t rawBodySize = 0;
 };
 
+struct DexProgress {
+    uint16_t seen = 0;
+    uint16_t caught = 0;
+    uint16_t total = 0;
+};
+
 struct TrainerRecord {
     std::string name;
     uint16_t trainerId = 0;
@@ -103,6 +109,7 @@ public:
     const std::vector<BoxRecord>& boxes() const noexcept { return boxes_; }
     const Metadata& metadata() const noexcept { return metadata_; }
     std::span<const uint8_t> sourceBytes() const noexcept { return sourceBytes_; }
+    [[nodiscard]] DexProgress dexProgress() const noexcept;
 
 private:
     friend ParseResult parse(std::span<const uint8_t>, SourceGame);

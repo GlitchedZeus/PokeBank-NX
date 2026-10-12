@@ -5,7 +5,8 @@
 #include <cerrno>
 #include <sys/stat.h>
 
-#include "Names/ItemPouches.h"   // getPouchItems -> the add-item picker's per-pouch list
+#include "Names/ItemPouches.h"
+#include "Integration/Gen4/Gen4ReadOnlyInventory.h"   // getPouchItems -> the add-item picker's per-pouch list
 #include "Names/MoveInfo.h"      // getMoveBasePP -> a created/picked move gets real PP, not 0
 #include "Names/MoveNames.h"     // getMoveCount -> scan for a created mon's first legal move
 #include "Names/MovePresence.h"  // isMovePresent -> hide moves a game doesn't have (PKHeX-style filter)
@@ -500,6 +501,16 @@ namespace UI {
             infoRow("Trainer ID", std::to_string(t.TID16));
             if (screen.sourceGameId == "crystal_gbc")
                 infoRow("Gender", t.trainerGender == 0 ? "Male" : t.trainerGender == 1 ? "Female" : "Unknown");
+        } else if (screen.sourceGameId == "diamond_nds" ||
+                   screen.sourceGameId == "pearl_nds" ||
+                   screen.sourceGameId == "platinum_nds" ||
+                   screen.sourceGameId == "heartgold_nds" ||
+                   screen.sourceGameId == "soulsilver_nds") {
+            // Native Gen IV IDs are two separate 16-bit numbers. Do not
+            // mash them into one 'Trainer ID' row or repeat both as 'Full'.
+            infoRow("Gender", t.trainerGender == 0 ? "Male" : "Female");
+            infoRow("Trainer ID", std::to_string(t.TID16));
+            infoRow("Secret ID", std::to_string(t.SID16));
         } else {
             infoRow("Gender", t.trainerGender == 0 ? "Male" : "Female");
             infoRow("Trainer ID", std::to_string(t.TID16) + " / " + std::to_string(t.SID16));
@@ -974,10 +985,10 @@ namespace UI {
     // Put the whole carried block back where it was lifted from. Each cell prefers its own original
     // slot; if something has since filled that slot, it falls back to any empty slot in the origin
     // pane, because a carried Pokemon must never be dropped on the floor.
-    void TrainerViewScreen::returnHeldToOrigin() {
-        if (!carrying()) return;
+    bool TrainerViewScreen::returnHeldToOrigin() {
+        if (!carrying()) return true;
         const int pane = heldPane;
-        if (pane == 1 && !bank) return;
+        if (pane == 1 && !bank) return false;
         const int slots = (pane == 0) ? static_cast<int>(trainer.getSlotsPerBox())
                                       : static_cast<int>(Trainer::Bank::BANK_SLOTS_PER_BOX);
         const int boxCount = (pane == 0) ? static_cast<int>(trainer.getBoxCount())
@@ -1039,7 +1050,7 @@ namespace UI {
 
         if (!returnPlan.complete) {
             postStatus("Could not return the held Pokemon safely - custody retained.", 360);
-            return;
+            return false;
         }
 
         // Every carried Pokemon now has a unique, still-empty destination. The UI is single-threaded,
@@ -1057,6 +1068,7 @@ namespace UI {
             hasUnsavedChanges = crossStoreBaseline.workspaceDirtyBeforePickup;
         carriedCopyMode = false;
         clearCrossStoreMoveBaseline();
+        return true;
     }
 
     // Reference to a storage slot's unique_ptr (pane 0 = save boxes, 1 = bank). Callers must
@@ -1418,7 +1430,12 @@ namespace UI {
         details.selectedField = 0;
         details.legalityOverlay = false;
         details.ribbonOverlay = false;
+        details.legalityScroll = 0;
+        details.ribbonScroll = 0;
         details.discardConfirmActive = false;   // never let it survive to overlay the next page
+        details.leftScroll = 0;
+        details.leftScrollMax = 0;
+        details.leftScrollManual = false;
         details.editSnapshot.clear();
     }
 
@@ -1426,12 +1443,27 @@ namespace UI {
     // preserve on save (PKHeX keeps them positionally), but they shouldn't clutter the UI. This
     // returns the raw indices of the current pouch's items worth showing/editing (count > 0), and
     // is the single source of truth so the panel, navigation, and edit all stay in lockstep.
-    // Returns the id of the touch button under a fresh tap this frame, or -1 if none. Buttons are
-    // captured during the previous frame's draw (only the active overlay populates touchButtons).
-    int TrainerViewScreen::touchedButtonId(const TouchInput& touch) const {
-        if (!touch.justPressed()) return -1;
+    // Touch buttons are captured during the previous frame's draw. Contact is focus-only;
+    // activation is always a clean release so scrolling can never fire the row under the finger.
+    int TrainerViewScreen::touchedButtonDownId(const TouchInput& touch) const {
+        if (!touch.justTouchedDown()) return -1;
         for (const auto& b : touchButtons) {
             if (touch.x() >= b.x && touch.x() < b.x + b.w &&
+                touch.y() >= b.y && touch.y() < b.y + b.h)
+                return b.id;
+        }
+        return -1;
+    }
+
+    int TrainerViewScreen::touchedButtonId(const TouchInput& touch) const {
+        if (!touch.justTapped()) return -1;
+        // A clean release is not sufficient: the finger must also have started on THIS target.
+        // Otherwise a sub-slop movement across neighbouring editor rows can activate a row
+        // that was never touched on contact (including a destructive confirmation button).
+        for (const auto& b : touchButtons) {
+            if (touch.startX() >= b.x && touch.startX() < b.x + b.w &&
+                touch.startY() >= b.y && touch.startY() < b.y + b.h &&
+                touch.x() >= b.x && touch.x() < b.x + b.w &&
                 touch.y() >= b.y && touch.y() < b.y + b.h)
                 return b.id;
         }
@@ -1482,7 +1514,7 @@ namespace UI {
     // empty name means "use the default", and the keyboard starts from the raw stored name (blank by
     // default) rather than from the "Bank N" label.
     void TrainerViewScreen::renameBankBox(int box) {
-        if (!requireMutableWorkspace()) return;
+        if (!requireMutableStoragePane(1, PokeVault::Safety::SourceMutation::Rename)) return;
         if (!bank || box < 0 || box >= static_cast<int>(Trainer::Bank::BANK_BOX_COUNT)) return;
         const std::string current = bank->boxNames[box];
         const Utils::KeyboardResult res =
@@ -1651,6 +1683,11 @@ namespace UI {
             // A new backup becomes the session's working copy, so a second save goes to the same
             // place instead of silently forking another folder off the original.
             backupDir = destDir;
+            if (exitAfterSave) {
+                exitAfterSave = false;
+                itemsShortcutActive = false;
+                goBack = true;
+            }
         } else {
             // A failed save used to be INDISTINGUISHABLE from a successful one.
             postStatus("SAVE FAILED - your changes are still unsaved. Nothing was written.", 480);
@@ -1706,12 +1743,8 @@ namespace UI {
             unique = leaf + "-" + std::to_string(n);
 
         const std::string destDir = gameDir + "/" + unique;
-        if (mkdir(destDir.c_str(), 0777) != 0 && errno != EEXIST) {
-            Utils::logErrorToFile("Failed to create named backup directory", destDir.c_str());
-            return "";
-        }
-        if (!Utils::copyDirectory(backupDir.c_str(), destDir.c_str())) {
-            Utils::logErrorToFile("Failed to seed named backup from", backupDir.c_str());
+        if (!Utils::copyDirectoryTransactional(backupDir.c_str(), destDir.c_str())) {
+            Utils::logErrorToFile("Failed to seed named backup transactionally from", backupDir.c_str());
             return "";
         }
         return destDir;
@@ -1802,7 +1835,7 @@ namespace UI {
 
     // Open the details modal on a storage slot (reuses the Box path for the save pane).
     void TrainerViewScreen::openStorageEditor(int pane, int box, int slot) {
-        if (!requireMutableWorkspace()) return;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::Edit)) return;
         if (pane == 1) {
             details.source = EditSource::Bank;
             details.bankBox = box;
@@ -1814,7 +1847,7 @@ namespace UI {
         }
         details.active = true;
         details.readOnly = false;
-        details.leftScroll = 0;   // start the info column at the top
+        details.leftScroll = 0; details.leftScrollMax = 0; details.leftScrollManual = false;   // start the info column at the top
         details.editing = false;
         details.category = 0;
         details.selectedStat = 0;
@@ -1853,10 +1886,10 @@ namespace UI {
     }
 
     void TrainerViewScreen::openActionSheetTargetDetails(bool readOnly) {
-        readOnly = readOnly || sourceReadOnly();
-        if (!actionSheetTargetPokemon()) return;
-
         const auto& target = actionSheet.target();
+        readOnly = readOnly || !pokemonTargetMutable(
+            target, PokeVault::Safety::SourceMutation::Edit);
+        if (!actionSheetTargetPokemon()) return;
         using PokeVault::UIModel::PokemonLocation;
         if (target.location == PokemonLocation::Party) {
             details.source = EditSource::Party;
@@ -1873,7 +1906,7 @@ namespace UI {
 
         details.active = true;
         details.readOnly = readOnly;
-        details.leftScroll = 0;
+        details.leftScroll = 0; details.leftScrollMax = 0; details.leftScrollManual = false;
         details.editing = false;
         details.category = 0;
         details.selectedStat = 0;
@@ -1926,9 +1959,9 @@ namespace UI {
     // Move mode: lift the slot under the cursor as a 1x1 block. Single and multi carry share one
     // representation, so every later step (drawing, bounds, put-down, B-to-return) is written once.
     void TrainerViewScreen::pickupSingle() {
-        if (!requireMutableWorkspace()) return;
         if (!bank) return;
         const int pane = storageFocusPane;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::DirectMove)) return;
         const int box = (pane == 0) ? stSaveBox : stBankBox;
         const int slot = (pane == 0) ? stSaveSlot : stBankSlot;
         if (slot < 0 || slot >= paneSlots(pane)) return;
@@ -1947,8 +1980,8 @@ namespace UI {
 
     // Multi mode: the first A anchors the rectangle at the cursor, the second grabs it.
     void TrainerViewScreen::pickupMulti() {
-        if (!requireMutableWorkspace()) return;
         const int pane = storageFocusPane;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::DirectMove)) return;
         const int slot = (pane == 0) ? stSaveSlot : stBankSlot;
         if (slot < 0 || slot >= paneSlots(pane)) return;
         if (currentlySelecting) {
@@ -1965,9 +1998,9 @@ namespace UI {
     // Lift (remove = true) or copy (remove = false) every slot inside the anchored rectangle into
     // moveMon, then snap the cursor to the rectangle's top-left so the block sits under the pointer.
     void TrainerViewScreen::grabSelection(bool remove) {
-        if (!requireMutableWorkspace()) return;
         if (!currentlySelecting || !bank) return;
         const int pane = selectPane;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::DirectMove)) return;
         const int box = selectBox;
         const int cols = paneCols(pane);
         const int slots = paneSlots(pane);
@@ -2103,9 +2136,9 @@ namespace UI {
     // conversion route into this save -- stay in the block and stay untouched, so one blocker never
     // strands the rest of the group.
     void TrainerViewScreen::putDownBlock() {
-        if (!requireMutableWorkspace()) return;
         if (!carrying() || !bank) return;
         const int pane = storageFocusPane;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::DirectMove)) return;
         const int box = (pane == 0) ? stSaveBox : stBankBox;
         const int slot = (pane == 0) ? stSaveSlot : stBankSlot;
         const int cols = paneCols(pane);
@@ -2249,7 +2282,7 @@ namespace UI {
     // relocating such a slot would silently repoint a party member at a different Pokemon. The
     // occupant stays exactly where it is and the sort flows around it.
     void TrainerViewScreen::sortStorageBox(int pane, int box) {
-        if (!requireMutableWorkspace()) return;
+        if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::DirectMove)) return;
         const int slots = (pane == 0) ? static_cast<int>(trainer.getSlotsPerBox())
                                       : static_cast<int>(Trainer::Bank::BANK_SLOTS_PER_BOX);
         std::vector<int> freeIdx;                                   // slots the sort may write to
@@ -2283,8 +2316,9 @@ namespace UI {
 
     void TrainerViewScreen::handleStorageInput(u64 kDown) {
         if (!bank) return;
-        if (sourceReadOnly() && (kDown & (HidNpadButton_X | HidNpadButton_Y))) {
-            requireMutableWorkspace();
+        if (storageFocusPane == 0 && sourceReadOnly() &&
+            (kDown & (HidNpadButton_X | HidNpadButton_Y))) {
+            requireMutableStoragePane(0, PokeVault::Safety::SourceMutation::DirectMove);
             kDown &= ~(HidNpadButton_X | HidNpadButton_Y);
         }
 
@@ -2496,7 +2530,7 @@ namespace UI {
 
         // Classic inventory gets first refusal on its own translated controls. This is before global
         // +/- and inherited source-write guards because classic mutations target a staged sidecar.
-        if (ClassicInventory::handleInput(*this, kDown)) return;
+        if (ClassicInventory::handleInput(*this, kDown, touch)) return;
 
         // Let's Go stores its boxes as a GAPLESS list, so anything that vacated a slot last frame
         // left a hole the game can't represent. Re-pack it here rather than at each of the
@@ -2545,31 +2579,44 @@ namespace UI {
         // forever. update() runs every frame in every view, which is what a timer needs.
         if (storageStatusFrames > 0) --storageStatusFrames;
 
-        // Defense in depth: inherited modal flags must never create a writable path in an
-        // installed-source session, including touch/deferred entry points. Browse/View is kept.
+        // Defense in depth: immutable source sessions still block source-owned mutators, but
+        // Bank targets are PokeBank-owned AppOwnedStorage and remain independently mutable.
         if (sourceReadOnly()) {
+            const bool bankDetails = details.active && details.source == EditSource::Bank;
+            const bool bankRelease = releaseConfirmActive &&
+                ((releaseGroup && carrying() && heldPane == 1) ||
+                 (!releaseGroup && releasePane == 1));
+            const bool bankGroupMenu = groupMenuActive && carrying() && heldPane == 1;
+
             // A dirty-session exit confirmation is safe on an immutable source: it does not write
             // the source, it only asks whether to abandon staged app-owned work or keep editing.
-            // All ordinary Save/write dialogs stay blocked.
             const bool exitOnlySaveConfirm = saveConfirmActive && exitingWithUnsavedChanges;
-            const bool blocked = pickerActive || itemEditDialogActive || itemRemoveConfirmActive ||
-                statEdit.dialogActive ||
+            const bool blocked =
+                (pickerActive && !bankDetails) ||
+                itemEditDialogActive || itemRemoveConfirmActive ||
+                (statEdit.dialogActive && !bankDetails) ||
                 PokeBank::UIModel::SharedPokemonEditor::immutableSourceBlocksSaveDialog(
                     saveConfirmActive, exitingWithUnsavedChanges) ||
-                releaseConfirmActive || creator.active || creator.editing || groupMenuActive ||
-                storageExitConfirmActive || gen3ConvertConfirmActive || lgpeTransferConfirmActive;
+                (releaseConfirmActive && !bankRelease) ||
+                creator.active || creator.editing ||
+                (groupMenuActive && !bankGroupMenu) ||
+                gen3ConvertConfirmActive || lgpeTransferConfirmActive;
             if (blocked) {
-                pickerActive = itemEditDialogActive = itemRemoveConfirmActive = false;
-                statEdit.dialogActive = false;
+                if (!bankDetails) {
+                    pickerActive = false;
+                    statEdit.dialogActive = false;
+                }
+                itemEditDialogActive = itemRemoveConfirmActive = false;
                 if (!exitOnlySaveConfirm) saveConfirmActive = false;
-                releaseConfirmActive = false;
+                if (!bankRelease) releaseConfirmActive = false;
                 creator.active = creator.editing = creator.keepConfirmActive = false;
-                groupMenuActive = false;
-                storageExitConfirmActive = gen3ConvertConfirmActive = lgpeTransferConfirmActive = false;
+                if (!bankGroupMenu) groupMenuActive = false;
+                gen3ConvertConfirmActive = lgpeTransferConfirmActive = false;
                 requireMutableWorkspace();
                 return;
             }
-            if (details.active) details.readOnly = true;
+            if (details.active && !bankDetails) details.readOnly = true;
+            // storageExitConfirmActive is Bank persistence only and intentionally remains available.
         }
 
         // A box-name pill was tapped last frame: the header highlight has now been drawn once, so it
@@ -2614,9 +2661,9 @@ namespace UI {
             return;
         }
 
-        // Plus is More / Options. On a Pokémon summary it reports the reserved compatibility action;
-        // while carrying it opens the existing carried-block menu; elsewhere it opens Settings.
-        // None of these paths writes an installed-game save.
+        // Product Home owns Settings and the Current Game tools menu. Inside a loaded game,
+        // Plus remains contextual only for an active carried group or Pokémon summary; it never
+        // opens Settings or creates a second application-level navigation path.
         if (kDown & HidNpadButton_Plus) {
             if (blockingOverlay) return;
             if (carrying()) {
@@ -2628,8 +2675,7 @@ namespace UI {
                 postStatus("Transfer compatibility is not yet supported in this build.", 240);
                 return;
             }
-            selectedMode = ViewMode::Settings;
-            detailViewActive = true;
+            postStatus("Current Game tools are on Product Home. Press B to return.", 240);
             return;
         }
 
@@ -2637,11 +2683,26 @@ namespace UI {
         if (pickerActive) {
             Pokemon::Pokemon* pkPick = detailsTargetPokemon();
             const int count = (pickerCount > 0) ? pickerCount : 1;
-            const int page = 12;
+            const auto pickerViewport =
+                PokeBank::UIModel::InventoryPickerLayout::viewport(1280, 720);
+            const int page = pickerViewport.visibleRows;
 
-            // Touch: tap an option row selects it immediately (button id = option index).
-            int ptb = touchedButtonId(touch);
+            // Native list touch: finger contact moves highlight immediately; a clean release
+            // chooses that exact row. Vertical drags browse the list and never activate a row.
+            const int ptd = touchedButtonDownId(touch);
+            if (ptd >= 0 && ptd < count) pickerSel = ptd;
+            const int ptb = touchedButtonId(touch);
             if (ptb >= 0 && ptb < count) { pickerSel = ptb; kDown |= HidNpadButton_A; }
+            if (touch.justReleased() && touch.dragged() &&
+                pickerViewport.contains(touch.startX(), touch.startY()) &&
+                std::abs(touch.deltaY()) >= 24 &&
+                std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
+                const int dy = touch.deltaY();
+                const int rowH = std::max(1, PokeBank::UIModel::InventoryPickerLayout::RowHeight);
+                const int steps = std::max(1, std::abs(dy) / rowH);
+                if (dy < 0) pickerSel = std::min(count - 1, pickerSel + steps);
+                else if (dy > 0) pickerSel = std::max(0, pickerSel - steps);
+            }
 
             if (kDown & HidNpadButton_Up)                        pickerSel = (pickerSel - 1 + count) % count;
             if (kDown & HidNpadButton_Down)                      pickerSel = (pickerSel + 1) % count;
@@ -2926,6 +2987,51 @@ namespace UI {
         // Handle save confirmation dialog
         if (saveConfirmActive) {
             if (exitingWithUnsavedChanges) {
+                // Product Home -> Items has a dedicated escape-safe contract:
+                // mutable app-owned working copy: A saves that copy + Home, Y discards + Home,
+                // B keeps editing. Immutable external source: A discards + Home, B keeps editing.
+                // Neither discard path writes the live/source save.
+                if (itemsShortcutActive) {
+                    const bool canSaveWorkingCopy = !sourceReadOnly();
+                    const int td = touchedButtonId(touch);
+                    if (td == 0) kDown |= HidNpadButton_B;
+                    else if (canSaveWorkingCopy && td == 1) kDown |= HidNpadButton_Y;
+                    else if ((canSaveWorkingCopy && td == 2) ||
+                             (!canSaveWorkingCopy && td == 1)) kDown |= HidNpadButton_A;
+
+                    if (canSaveWorkingCopy && (kDown & HidNpadButton_A)) {
+                        exitingWithUnsavedChanges = false;
+                        exitingViaPlus = false;
+                        exitAfterSave = true;
+                        performSave(backupDir);
+                        // performSave clears exitAfterSave only on success. A failed working-copy
+                        // save must leave the user in Items, not arm a surprise exit on a later save.
+                        if (!goBack) exitAfterSave = false;
+                        return;
+                    }
+
+                    const bool discardAndHome =
+                        (canSaveWorkingCopy && (kDown & HidNpadButton_Y)) ||
+                        (!canSaveWorkingCopy && (kDown & HidNpadButton_A));
+                    if (discardAndHome) {
+                        saveConfirmActive = false;
+                        exitingWithUnsavedChanges = false;
+                        exitingViaPlus = false;
+                        exitAfterSave = false;
+                        itemsShortcutActive = false;
+                        goBack = true;
+                        return;
+                    }
+
+                    if (kDown & HidNpadButton_B) {
+                        saveConfirmActive = false;
+                        exitingWithUnsavedChanges = false;
+                        exitingViaPlus = false;
+                        exitAfterSave = false;
+                        return;
+                    }
+                    return;
+                }
                 // Exiting with unsaved changes - different button logic
                 // A: Discard changes and exit
                 // B: Cancel exit (stay on screen)
@@ -2963,14 +3069,19 @@ namespace UI {
                 if (kDown & HidNpadButton_Up)   saveDestIndex = (saveDestIndex - 1 + nDest) % nDest;
                 if (kDown & HidNpadButton_Down) saveDestIndex = (saveDestIndex + 1) % nDest;
                 const int td = touchedButtonId(touch);
-                if (td >= 0 && td < nDest) { saveDestIndex = td; kDown |= HidNpadButton_A; }
+                if (td == 90) kDown |= HidNpadButton_B;
+                else if (td == 91) kDown |= HidNpadButton_A;
+                else if (td >= 0 && td < nDest) { saveDestIndex = td; kDown |= HidNpadButton_A; }
                 // The cursor is a ROW; which destination that row means depends on the session.
                 const SaveDest chosenDest = saveDestAt(saveDestIndex);
 
                 if (kDown & HidNpadButton_A) {
                     // A carried Pokemon lives outside both containers — return it before serializing
                     // so it isn't dropped from the save/bank.
-                    returnHeldToOrigin();
+                    if (!returnHeldToOrigin() || carrying()) {
+                        postStatus("Save blocked - held Pokemon custody could not be restored.", 480);
+                        return;
+                    }
 
                     // (The bank has its OWN persistence — it saves on storage-view exit / app exit,
                     // separate from this game-save, since it's a separate entity from the save file.)
@@ -2994,8 +3105,9 @@ namespace UI {
                     return;
                 }
                 if (kDown & HidNpadButton_B) {
-                    // User cancelled save - just close the dialog
+                    // User cancelled save - just close the dialog and stay in the shortcut/view.
                     saveConfirmActive = false;
+                    exitAfterSave = false;
                     return;
                 }
             }
@@ -3216,28 +3328,84 @@ namespace UI {
                 return;
             }
 
-            // Legality overlay (full issue list) intercepts input while open: B or any tap closes it.
+            // Report overlays are real scroll surfaces. A drag scrolls; only B or the explicit
+            // Close target exits, so reading a long report cannot accidentally dismiss it.
             if (details.legalityOverlay) {
-                if ((kDown & HidNpadButton_B) || tb >= 0) details.legalityOverlay = false;
+                if ((kDown & HidNpadButton_B) || tb == 96) {
+                    details.legalityOverlay = false; details.legalityScroll = 0; return;
+                }
+                if (kDown & HidNpadButton_Up)   details.legalityScroll = std::max(0, details.legalityScroll - 1);
+                if (kDown & HidNpadButton_Down) ++details.legalityScroll;
+                if (kDown & HidNpadButton_L)    details.legalityScroll = std::max(0, details.legalityScroll - 8);
+                if (kDown & HidNpadButton_R)    details.legalityScroll += 8;
+                const auto reportViewport =
+                    Modals::reportScrollViewport(1280, 720, 820);
+                if (touch.justReleased() && touch.dragged() &&
+                    reportViewport.contains(touch.startX(), touch.startY()) &&
+                    std::abs(touch.deltaY()) >= 24 &&
+                    std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
+                    const int dy = touch.deltaY();
+                    const int steps = std::max(
+                        1, std::abs(dy) / Modals::ReportScrollViewport::RowHeight);
+                    if (dy < 0) details.legalityScroll += steps;
+                    else if (dy > 0) details.legalityScroll = std::max(0, details.legalityScroll - steps);
+                }
                 return;
             }
-            // Ribbon overlay (full ribbon/mark list) does the same.
             if (details.ribbonOverlay) {
-                if ((kDown & HidNpadButton_B) || tb >= 0) details.ribbonOverlay = false;
+                if ((kDown & HidNpadButton_B) || tb == 96) {
+                    details.ribbonOverlay = false; details.ribbonScroll = 0; return;
+                }
+                if (kDown & HidNpadButton_Up)   details.ribbonScroll = std::max(0, details.ribbonScroll - 1);
+                if (kDown & HidNpadButton_Down) ++details.ribbonScroll;
+                if (kDown & HidNpadButton_L)    details.ribbonScroll = std::max(0, details.ribbonScroll - 8);
+                if (kDown & HidNpadButton_R)    details.ribbonScroll += 8;
+                const auto reportViewport =
+                    Modals::reportScrollViewport(1280, 720, 860);
+                if (touch.justReleased() && touch.dragged() &&
+                    reportViewport.contains(touch.startX(), touch.startY()) &&
+                    std::abs(touch.deltaY()) >= 24 &&
+                    std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
+                    const int dy = touch.deltaY();
+                    const int steps = std::max(
+                        1, std::abs(dy) / Modals::ReportScrollViewport::RowHeight);
+                    if (dy < 0) details.ribbonScroll += steps;
+                    else if (dy > 0) details.ribbonScroll = std::max(0, details.ribbonScroll - steps);
+                }
                 return;
             }
-            // Open the ribbon list: Y, or tapping the Ribbons row (id 94).
+            // Open reports at the top every time.
             if ((kDown & HidNpadButton_Y) || tb == 94) {
+                details.ribbonScroll = 0;
                 details.ribbonOverlay = true;
                 return;
             }
-            // Open the legality issue list: R, or tapping the legality summary (id 95) -- but ONLY
-            // when the mon actually has issues. A clean mon has nothing to show, so the button is
-            // disabled (greyed in the guide) and this does nothing.
             if ((kDown & HidNpadButton_R) || tb == 95) {
-                if (pokemon && !Legality::analyze(*pokemon, pokemon->getGameGroup()).ok())
+                if (pokemon && !Legality::analyze(*pokemon, pokemon->getGameGroup()).ok()) {
+                    details.legalityScroll = 0;
                     details.legalityOverlay = true;
+                }
                 return;
+            }
+
+            // Finger-owned scrolling for content panes. Gen II's native-data card is on the right;
+            // the modern details column is on the left. A drag returns immediately and therefore
+            // never activates whatever row happens to be under the release point.
+            const bool gen2Passive = sourceGameId == "gold_gbc" || sourceGameId == "silver_gbc" ||
+                                     sourceGameId == "crystal_gbc";
+            if (touch.justReleased() && touch.dragged()) {
+                const bool inGen2Data = gen2Passive && touch.startX() >= 796 && touch.startX() < 1016 &&
+                                        touch.startY() >= 393 && touch.startY() < 609;
+                const bool inModernInfo = !gen2Passive && touch.startX() >= 24 && touch.startX() < 454 &&
+                                          touch.startY() >= 276 && touch.startY() < 650;
+                if ((inGen2Data || inModernInfo) &&
+                    std::abs(touch.deltaY()) >= 24 &&
+                    std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
+                    details.leftScroll = std::clamp(
+                        details.leftScroll - touch.deltaY(), 0, std::max(0, details.leftScrollMax));
+                    details.leftScrollManual = true;
+                    return;
+                }
             }
             // View is a genuinely read-only summary. Keep navigation, ribbons, legality, and B/close,
             // but strip every control/touch route that the inherited editor uses to change data.
@@ -3285,7 +3453,11 @@ namespace UI {
                 closeDetailsModal();
                 return;
             }
-            if (tb >= 0 && tb <= 31) { details.selectedField = tb; kDown |= HidNpadButton_A; }
+            if (tb >= 0 && tb <= 31) {
+                details.leftScrollManual = false;
+                details.selectedField = tb;
+                kDown |= HidNpadButton_A;
+            }
 
             // B closes the page. Unsaved edits would be rolled back to the last Save/open snapshot,
             // so ask before throwing them away.
@@ -3301,6 +3473,8 @@ namespace UI {
             // center column (0-9: stats/shiny/nature/gender/level), the moves column (10-14, right panel),
             // and the editable detail column (left panel; ids 15-25, navigated in draw order).
             {
+                if (kDown & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right))
+                    details.leftScrollManual = false;
                 int& f = details.selectedField;
                 // Left-pane editable field ids in DRAW (top-to-bottom) order, built by the modal draw
                 // (PokemonDetailsModal.cpp) so conditional rows (Form, Stat Nature, Pokerus, ...) appear
@@ -3839,12 +4013,15 @@ namespace UI {
                 return;
             }
             if (kDown & HidNpadButton_A) {
-                switch (actionSheet.activate(!sourceReadOnly())) {
+                const bool allowEdit = pokemonTargetMutable(
+                    actionSheet.target(), PokeVault::Safety::SourceMutation::Edit);
+                switch (actionSheet.activate(allowEdit)) {
                     case PokeVault::UIModel::ActionResult::OpenView:
                         openActionSheetTargetDetails(true);
                         break;
                     case PokeVault::UIModel::ActionResult::OpenEditor:
-                        if (!requireMutableWorkspace()) break;
+                        if (!requireMutablePokemonTarget(
+                                actionSheet.target(), PokeVault::Safety::SourceMutation::Edit)) break;
                         openActionSheetTargetDetails(false);
                         break;
                     case PokeVault::UIModel::ActionResult::NotYetSupported:
@@ -3946,6 +4123,22 @@ namespace UI {
         // Handle detail view exit
         if (detailViewActive) {
             if (kDown & HidNpadButton_B) {
+                // Product Home -> Items is a quick action, not a gateway into the old PKSE home.
+                // A dirty shortcut exit owns its own confirmation. Never route through the generic
+                // destination picker: that can leave the user trapped when live/source writes are
+                // intentionally locked. The Items prompt always has a no-write Discard & Home path.
+                if (selectedMode == ViewMode::Items && itemsShortcutActive) {
+                    if (hasUnsavedChanges || trainer.hasStagedChanges()) {
+                        exitingWithUnsavedChanges = true;
+                        exitingViaPlus = false;
+                        exitAfterSave = false;
+                        saveConfirmActive = true;
+                        return;
+                    }
+                    itemsShortcutActive = false;
+                    goBack = true;
+                    return;
+                }
                 if (selectedMode == ViewMode::Storage) {
                     // B unwinds one step: abandon a rectangle being drawn, then put a carried block
                     // back where it came from, then leave the view.
@@ -4036,6 +4229,14 @@ namespace UI {
                     requireMutableWorkspace();
                     kDown &= ~(HidNpadButton_A | HidNpadButton_X | HidNpadButton_Y);
                 }
+                // Shared ItemsPanel header hitboxes navigate pockets by touch,
+                // including an empty native Gen IV bag pocket. Reuse the same
+                // guarded L/R navigation path as the physical controller.
+                const int categoryTouchId = touchedButtonId(touch);
+                if (categoryTouchId == PokeBank::UIModel::InventoryCategoryTouch::PreviousId)
+                    kDown |= HidNpadButton_L;
+                else if (categoryTouchId == PokeBank::UIModel::InventoryCategoryTouch::NextId)
+                    kDown |= HidNpadButton_R;
                 const auto inventoryActionPressed = [&](PokeBank::UIModel::InventoryAction action) {
                     using PokeBank::UIModel::InventoryInput;
                     return ((kDown & HidNpadButton_A) && PokeBank::UIModel::inventoryAction(InventoryInput::A) == action)
@@ -4070,7 +4271,35 @@ namespace UI {
                         currentPage = 0;
                     }
 
-                    // Touch: tap a row to select + edit it.
+                    // Touch: contact focuses the item; release edits it. A vertical drag
+                    // scrolls/browses without opening the row underneath.
+                    int itemDown = touchedButtonDownId(touch);
+                    if (itemDown >= 0 && itemDown < totalItems) {
+                        selectedItemIndex = itemDown;
+                        currentPage = selectedItemIndex / itemsPerPage;
+                    }
+                    // Only vertical drags that START on a displayed item may move its selection.
+                    // In particular, an empty pouch must never become index -1 after a swipe,
+                    // and dragging the neighboring categories/header must not move this list.
+                    if (totalItems > 0 && touch.justReleased() && touch.dragged()) {
+                        const int dy = touch.deltaY();
+                        if (std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
+                            // Only scan the small set of visible row rectangles on drag release,
+                            // rather than rebuilding gesture ownership on every render/update frame.
+                            const bool startedOnItem = std::any_of(
+                                touchButtons.begin(), touchButtons.end(), [&](const auto& hit) {
+                                    return hit.id >= 0 && hit.id < totalItems &&
+                                           touch.startX() >= hit.x && touch.startX() < hit.x + hit.w &&
+                                           touch.startY() >= hit.y && touch.startY() < hit.y + hit.h;
+                                });
+                            if (startedOnItem) {
+                                const int steps = std::max(1, std::abs(dy) / 52);
+                                if (dy < 0) selectedItemIndex = std::min(totalItems - 1, selectedItemIndex + steps);
+                                else selectedItemIndex = std::max(0, selectedItemIndex - steps);
+                                currentPage = selectedItemIndex / itemsPerPage;
+                            }
+                        }
+                    }
                     int itemTap = touchedButtonId(touch);
                     if (itemTap >= 0 && itemTap < totalItems) {
                         selectedItemIndex = itemTap;
@@ -4175,6 +4404,15 @@ namespace UI {
                                 selectedItemIndex = 0;
                                 break;
                             }
+                            case GameVersion::DP:
+                            case GameVersion::PT:
+                            case GameVersion::HGSS: {
+                                constexpr int count = static_cast<int>(PokeVault::Integration::Gen4::BagPocketCount);
+                                selectedCategory = (selectedCategory + count - 1) % count;
+                                currentPage = 0;
+                                selectedItemIndex = 0;
+                                break;
+                            }
                             case GameVersion::BDSP: {
                                 selectedCategory = (selectedCategory - 1 + POUCH_COUNT8BDSP) % POUCH_COUNT8BDSP;
                                 currentPage = 0;
@@ -4225,6 +4463,15 @@ namespace UI {
                             }
                             case GameVersion::PLA: {
                                 selectedCategory = (selectedCategory + 1) % POUCH_COUNT8_LA;
+                                currentPage = 0;
+                                selectedItemIndex = 0;
+                                break;
+                            }
+                            case GameVersion::DP:
+                            case GameVersion::PT:
+                            case GameVersion::HGSS: {
+                                constexpr int count = static_cast<int>(PokeVault::Integration::Gen4::BagPocketCount);
+                                selectedCategory = (selectedCategory + 1) % count;
                                 currentPage = 0;
                                 selectedItemIndex = 0;
                                 break;
@@ -4422,7 +4669,11 @@ namespace UI {
                     if (!requireMutableWorkspace()) return;
                     bool inRange = selectedBoxIndex >= 0 && selectedBoxIndex < static_cast<int>(trainer.boxes.size()) &&
                                    selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(BOX_SLOTS);
-                    bool cursorOccupied = inRange && trainer.boxes[selectedBoxIndex][selectedItemIndex] != nullptr;
+                    bool cursorOccupied = false;
+                    if (inRange) {
+                        const auto& cursorPokemon = trainer.boxes[selectedBoxIndex][selectedItemIndex];
+                        cursorOccupied = cursorPokemon && cursorPokemon->speciesID() != 0;
+                    }
 
                     if (!swapActive) {
                         if (cursorOccupied) {
@@ -4531,7 +4782,9 @@ namespace UI {
                             ? "Debug logging on. Logs are written to sdmc:/switch/PokeBank-NX/logs."
                             : "Debug logging off. No new log files will be written.", 300);
                     }
-                    Utils::saveSettings();   // persist the change to settings.cfg
+                    if (!Utils::saveSettings()) {
+                        postStatus("Couldn't save settings. Your previous settings file was kept.", 360);
+                    }
                 }
             }
 
@@ -4554,8 +4807,8 @@ namespace UI {
         }
 
         // HOME main menu navigation. Pills (0 Pokemon, 1 Party, 2 Storage) are a vertical column;
-        // the icons (3 Items, 4 Trainer, 5 Settings) are a horizontal row below. Up/Down move the
-        // column and step into/out of the row; Left/Right move within the row (matching the layout).
+        // the icons (3 Items, 4 Trainer) are a horizontal row below. Application Settings lives only
+        // on Product Home, so there is no loaded-game Settings destination.
         if (kDown & HidNpadButton_Up) {
             if (homeMenuIndex >= 3)      homeMenuIndex = 2;   // icon row -> Storage pill
             else if (homeMenuIndex > 0)  homeMenuIndex--;     // up the pill column
@@ -4565,35 +4818,33 @@ namespace UI {
             else if (homeMenuIndex == 2) homeMenuIndex = 3;   // Storage pill -> icon row
         }
         if (homeMenuIndex >= 3) {                             // horizontal icon row
-            if (kDown & HidNpadButton_Left)  homeMenuIndex = (homeMenuIndex == 3) ? 5 : homeMenuIndex - 1;
-            if (kDown & HidNpadButton_Right) homeMenuIndex = (homeMenuIndex == 5) ? 3 : homeMenuIndex + 1;
-            kDown &= ~(HidNpadButton_Left | HidNpadButton_Right);  // consume L/R (don't also scroll the box preview)
+            if (kDown & (HidNpadButton_Left | HidNpadButton_Right))
+                homeMenuIndex = homeMenuIndex == 3 ? 4 : 3;
+            kDown &= ~(HidNpadButton_Left | HidNpadButton_Right);
         }
         switch (homeMenuIndex) {
-            case 0: selectedMode = ViewMode::Boxes;    break;
-            case 1: selectedMode = ViewMode::Party;    break;
-            case 2: selectedMode = ViewMode::Storage;  break;
-            case 3: selectedMode = ViewMode::Items;    break;
-            case 4: selectedMode = ViewMode::Trainer;  break;
-            case 5: selectedMode = ViewMode::Settings; break;
+            case 0: selectedMode = ViewMode::Boxes;   break;
+            case 1: selectedMode = ViewMode::Party;   break;
+            case 2: selectedMode = ViewMode::Storage; break;
+            case 3: selectedMode = ViewMode::Items;   break;
+            case 4: selectedMode = ViewMode::Trainer; break;
         }
 
-        // Touch: tapping a menu pill/icon (ids 100-105) focuses it and acts like A.
+        // Touch: tapping a menu pill/icon (ids 100-104) focuses it and acts like A.
         int homeTap = touchedButtonId(touch);
-        if (homeTap >= 100 && homeTap <= 105) {
+        if (homeTap >= 100 && homeTap <= 104) {
             homeMenuIndex = homeTap - 100;
             switch (homeMenuIndex) {
-                case 0: selectedMode = ViewMode::Boxes;    break;
-                case 1: selectedMode = ViewMode::Party;    break;
-                case 2: selectedMode = ViewMode::Storage;  break;
-                case 3: selectedMode = ViewMode::Items;    break;
-                case 4: selectedMode = ViewMode::Trainer;  break;
-                case 5: selectedMode = ViewMode::Settings; break;
+                case 0: selectedMode = ViewMode::Boxes;   break;
+                case 1: selectedMode = ViewMode::Party;   break;
+                case 2: selectedMode = ViewMode::Storage; break;
+                case 3: selectedMode = ViewMode::Items;   break;
+                case 4: selectedMode = ViewMode::Trainer; break;
             }
             kDown |= HidNpadButton_A;
         }
 
-        // A / tap: activate the focused destination (enter the mode, or toggle theme for Settings).
+        // A / tap: activate the focused loaded-game destination.
         if (kDown & HidNpadButton_A) {
             switch (homeMenuIndex) {
                 case 0:  // Pokemon (Boxes)
@@ -4613,9 +4864,6 @@ namespace UI {
                     break;
                 case 4:  // Trainer info
                     detailViewActive = true;
-                    break;
-                case 5:  // Settings screen (auto-backup + theme)
-                    detailViewActive = true; settingsSelectedRow = 0;
                     break;
             }
         }
@@ -4640,6 +4888,15 @@ namespace UI {
                         selectedCategory = (selectedCategory - 1 + POUCH_COUNT8_LA) % POUCH_COUNT8_LA;
                         currentPage = 0;
                         selectedItemIndex = 0;
+                        break;
+                    }
+                    case GameVersion::DP:
+                    case GameVersion::PT:
+                    case GameVersion::HGSS: {
+                        constexpr int count=static_cast<int>(PokeVault::Integration::Gen4::BagPocketCount);
+                        selectedCategory=(selectedCategory+count-1)%count;
+                        currentPage=0;
+                        selectedItemIndex=0;
                         break;
                     }
                     case GameVersion::BDSP: {
@@ -4696,6 +4953,15 @@ namespace UI {
                         selectedItemIndex = 0;
                         break;
                     }
+                    case GameVersion::DP:
+                    case GameVersion::PT:
+                    case GameVersion::HGSS: {
+                        constexpr int count=static_cast<int>(PokeVault::Integration::Gen4::BagPocketCount);
+                        selectedCategory=(selectedCategory+1)%count;
+                        currentPage=0;
+                        selectedItemIndex=0;
+                        break;
+                    }
                     case GameVersion::BDSP: {
                         selectedCategory = (selectedCategory + 1) % POUCH_COUNT8BDSP;
                         currentPage = 0;
@@ -4749,16 +5015,16 @@ namespace UI {
         drawAppBackdrop(fb);
 
         // --- Title bar: the shared chrome, with game name + version + DLC as the subtitle ---
-        const std::string legacyPlatform(PokeVault::Games::legacyPlatformAbbreviation(sourceGameId));
+        // Product-facing source identity belongs in the top bar; native
+        // diagnostic counters (G4 P1/0 B0/0 T0:14, etc.) belong in source
+        // details/logs, not beside the game title on every screen.
         std::string subtitle = legacyReadOnlySource()
-            ? legacyProviderLabel() + " / " +
-                (legacyPlatform.empty() ? std::string("LEGACY") : legacyPlatform) + " / READ ONLY — "
-            : sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY — " : "BACKUP WORKSPACE — ";
-        subtitle += titleName;
-        if (!gameVersion.empty()) {
-            subtitle += "  v" + gameVersion;
-        }
-        if (!trainer.saveRevisionString.empty() && trainer.saveRevisionString != "Base") {
+            ? legacyProviderLabel() + "  •  " + titleName + "  •  Read-only source"
+            : (sourceReadOnly() ? "INSTALLED SOURCE / READ ONLY — "
+                                : "BACKUP WORKSPACE — ") + titleName;
+        if (!gameVersion.empty()) subtitle += "  v" + gameVersion;
+        if (!legacyReadOnlySource() && !trainer.saveRevisionString.empty() &&
+            trainer.saveRevisionString != "Base") {
             subtitle += "  (" + trainer.saveRevisionString + ")";
         }
         drawTitleBar(fb, subtitle);
@@ -4815,7 +5081,13 @@ namespace UI {
         } else if (itemRemoveConfirmActive) {
             instructions = "A: Remove  |  B: Cancel";
         } else if (saveConfirmActive) {
-            instructions = "A: Save Changes  |  B: Cancel";
+            if (exitingWithUnsavedChanges && itemsShortcutActive) {
+                instructions = sourceReadOnly()
+                    ? "A: Discard & Home  |  B: Keep Editing"
+                    : "A: Save Working Copy & Home  |  Y: Discard & Home  |  B: Keep Editing";
+            } else {
+                instructions = "A: Save Changes  |  B: Cancel";
+            }
         } else if (releaseConfirmActive) {
             instructions = "A: Release  |  B: Cancel";
         } else if (details.active) {
@@ -4889,9 +5161,22 @@ namespace UI {
                     if (selectedItemIndex == -1) {
                         instructions = "L/R: Box  |  A: Rename  |  B: Back";
                     } else {
-                        instructions = occ
-                            ? "Arrows: Navigate  |  L/R: Box  |  A: Actions  |  X: Release  |  Y: Grab/Move  |  B: Back"
-                            : "Arrows: Navigate  |  L/R: Box  |  A: Create  |  B: Back";
+                        // Gen IV uses the native staged PC action menu and X-to-Add.
+                        // The inherited Create / Release / Grab hints target the
+                        // legacy mutable save and are misleading on immutable sources.
+                        const auto group = trainer.getGameGroup();
+                        const bool gen4Staged = group == Enums::GameVersion::DP ||
+                            group == Enums::GameVersion::PT ||
+                            group == Enums::GameVersion::HGSS;
+                        if (gen4Staged) {
+                            instructions = occ
+                                ? "Arrows: Navigate  |  L/R: Box  |  A: Actions  |  B: Back"
+                                : "Arrows: Navigate  |  L/R: Box  |  A: Actions  |  X: Add  |  B: Back";
+                        } else {
+                            instructions = occ
+                                ? "Arrows: Navigate  |  L/R: Box  |  A: Actions  |  X: Release  |  Y: Grab/Move  |  B: Back"
+                                : "Arrows: Navigate  |  L/R: Box  |  A: Create  |  B: Back";
+                        }
                     }
                 }
             } else if(selectedMode == ViewMode::Party) { // TODO: There HAS to be a better way of doing this without all of the if/else conditionals... probably will look into this at some point.
@@ -4972,7 +5257,19 @@ namespace UI {
                     canOpen = bank && slot >= 0 && storageSlot(storageFocusPane, box, slot) &&
                         storageSlot(storageFocusPane, box, slot)->speciesID() != 0;
                 }
-                if (canOpen)
+                const bool gen4ItemView =
+                    detailViewActive && selectedMode == ViewMode::Items &&
+                    (sourceGameId=="diamond_nds" || sourceGameId=="pearl_nds" ||
+                     sourceGameId=="platinum_nds" ||
+                     sourceGameId=="heartgold_nds" || sourceGameId=="soulsilver_nds");
+                if(gen4ItemView) {
+                    instructions = "D-pad/Stick: Items  |  L/R: Pocket  |  X: Add Item  |  B: Back";
+                    if(selectedCategory>=0 &&
+                       selectedCategory<static_cast<int>(trainer.items.size()) &&
+                       selectedItemIndex>=0 &&
+                       selectedItemIndex<static_cast<int>(visibleItemIndices().size()))
+                        instructions += "  |  A: Edit Quantity  |  Y: Remove...";
+                } else if (canOpen)
                     instructions += "  |  A: View / Actions";
                 if (detailViewActive && (selectedMode == ViewMode::Boxes || selectedMode == ViewMode::Storage))
                     instructions += "  |  L/R: Box  |  ZL/ZR: Jump";
@@ -4980,12 +5277,13 @@ namespace UI {
             const std::string oldExit = "+: Exit App";
             for (std::size_t pos = instructions.find(oldExit); pos != std::string::npos;
                  pos = instructions.find(oldExit, pos)) {
-                instructions.replace(pos, oldExit.size(),
-                                     details.active ? "+: Compatibility" : "+: Options");
+                if (details.active)
+                    instructions.replace(pos, oldExit.size(), "+: Compatibility");
+                else
+                    instructions.erase(pos, oldExit.size());
             }
-            const bool settingsAlreadyOpen = detailViewActive && selectedMode == ViewMode::Settings;
-            if (!settingsAlreadyOpen && instructions.find("+: ") == std::string::npos)
-                instructions += details.active ? "  |  +: Compatibility" : "  |  +: Options";
+            if (details.active && instructions.find("+: ") == std::string::npos)
+                instructions += "  |  +: Compatibility";
             if (instructions.find("-: ") == std::string::npos)
                 instructions += "  |  -: Help";
         }
@@ -5052,8 +5350,7 @@ namespace UI {
         if (helpOverlayActive) {
             drawInfoOverlay(fb, "Game Browser Controls", {
                 legacyReadOnlySource()
-                    ? legacyProviderLabel() + " " +
-                        (legacyPlatform.empty() ? std::string("LEGACY") : legacyPlatform) + " SOURCE: read-only browsing"
+                    ? legacyProviderLabel() + " SOURCE: read-only browsing"
                     : sourceReadOnly() ? "INSTALLED SOURCE: read-only browsing"
                                        : "BACKUP WORKSPACE: edits affect backup files only",
                 "Legacy Storage is app-owned bank.dat, NOT Master Vault",

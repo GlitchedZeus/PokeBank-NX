@@ -16,6 +16,7 @@ using namespace Utils;
 namespace Encryption {
     void shuffleArray8LA(std::span<const std::byte> data, std::span<std::byte> result, uint32_t shuffleValue)
     {
+        if (data.size() < SIZE_STORED8_LA || result.size() < SIZE_STORED8_LA) return;
         /**
          * Unshuffles the 4 data blocks based on the shuffle value.
          *
@@ -64,6 +65,8 @@ namespace Encryption {
 
     std::byte* decryptArray8LA(std::span<const std::byte> encryptedData)
     {
+        if (encryptedData.size() != SIZE_STORED8_LA &&
+            encryptedData.size() != SIZE_PARTY8_LA) return nullptr;
         /**
          * Main decryption function for Generation 8 Pokemon data.
          *
@@ -106,6 +109,8 @@ namespace Encryption {
 
     std::byte* encryptArray8LA(std::span<const std::byte> decryptedData, uint32_t personalityValue)
     {
+        if (decryptedData.size() != SIZE_STORED8_LA &&
+            decryptedData.size() != SIZE_PARTY8_LA) return nullptr;
         /**
          * Main encryption function for Generation 8 Pokemon data.
          *

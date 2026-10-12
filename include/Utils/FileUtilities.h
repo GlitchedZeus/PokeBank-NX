@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "Utils/NXTypes.h"   // AccountUid/u64; <switch.h> on console. The IMPLEMENTATIONS
@@ -14,6 +15,10 @@ namespace Utils {
     // Returns a new[] allocation (caller uses delete[]), or nullptr with outSize=0.
     uint8_t* readAllBytes(const char* path, size_t* outSize);
     bool copyDirectory(const char* srcPath, const char* destPath);
+    // Copy into a hidden/non-browsable sibling and atomically promote only after the recursive copy
+    // succeeds. Existing destinations (notably Working) are rotated aside until promotion succeeds.
+    bool copyDirectoryTransactional(const char* srcPath, const char* finalPath);
+    bool isBackupTransactionArtifactName(std::string_view name) noexcept;
     bool copyFile(const char* srcPath, const char* destPath);
     bool deleteDirectoryRecursive(const char* path);
     // Copies the current installed save into the selected Switch account + exact-release namespace:

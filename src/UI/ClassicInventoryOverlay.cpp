@@ -14,6 +14,10 @@
 #include "UI/ScreenChrome.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/TrainerViewScreen.h"
+#include "UI/TouchInput.h"
+#include "UI/TouchScroll.h"
+#include "UI/ItemPickerArtwork.h"
+#include "UI/ItemPickerSort.h"
 #include "Utils/FileUtilities.h"
 #include "Utils/Keyboard.h"
 #include "Utils/PokeBankPaths.h"
@@ -60,10 +64,16 @@ struct OverlayState {
     int pickerRow = 0;
     int optionsRow = 0;
     int reviewRow = 0;
+    TouchScrollState pickerScroll;
+    TouchPickerViewport pickerViewport;
+    TouchScrollState reviewScroll;
+    TouchPickerViewport reviewViewport;
     ClassicPocket pendingPocket = ClassicPocket::Items;
     uint16_t pendingItem = 0;
     uint16_t pendingQuantity = 0;
     std::vector<uint16_t> pickerItems;
+    std::vector<uint16_t> pickerNativeItems;
+    ItemPickerSort::Mode pickerSort = ItemPickerSort::Mode::Native;
     std::string lastExportDirectory;
 };
 
@@ -511,7 +521,11 @@ void queueMutationWithWarning(TrainerViewScreen& screen, ClassicGame game, Class
 void openAddPicker(TrainerViewScreen& screen, ClassicGame game, ClassicPocket pocket) {
     auto& state = stateFor(screen);
     state.pickerItems = PokeBank::UIModel::classicInventoryAddableItems(game, pocket);
+    state.pickerNativeItems = state.pickerItems;
+    state.pickerSort = ItemPickerSort::Mode::Native;
     state.pickerRow = 0;
+    state.pickerScroll.reset();
+    state.pickerViewport.reset(); // Initialized from the actual visible rows on first draw/update.
     if (state.pickerItems.empty()) {
         screen.postStatus("No valid addable items exist in this category", 300);
         return;
@@ -590,10 +604,22 @@ bool refreshPresentation(TrainerViewScreen& screen) {
     return true;
 }
 
-bool handleInput(TrainerViewScreen& screen, uint64_t down) {
+bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch) {
     if (!isClassicSource(screen)) return false;
     auto& state = stateFor(screen);
-
+    const int touchId = screen.touchedButtonId(touch);
+    if (touch.justTouchedDown()) {
+        const int tx = touch.x(), ty = touch.y();
+        for (const auto& hit : screen.touchButtons) {
+            if (tx < hit.x || tx >= hit.x + hit.w || ty < hit.y || ty >= hit.y + hit.h) continue;
+            // The picker and read-only review own independent scroll viewports. A
+            // finger landing on a row may become a swipe: leave focus untouched
+            // until the existing release-confirmed row hit resolves below.
+            if (state.optionsActive && hit.id >= 0 && hit.id < 4)
+                state.optionsRow = hit.id;
+            break;
+        }
+    }
     if (!state.presentationInitialized && refreshPresentation(screen)) {
         screen.captureInventorySourceBaseline();
         state.presentationInitialized = true;
@@ -631,16 +657,73 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
 
     if (state.pickerActive) {
         const int count = static_cast<int>(state.pickerItems.size());
-        if (count == 0) { state.pickerActive = false; return true; }
+        constexpr int width = PokeBank::UIModel::ClassicAddItemPickerLayout::Width;
+        const int marginY = PokeBank::UIModel::ClassicAddItemPickerLayout::panelY(720);
+        constexpr int rowH = PokeBank::UIModel::ClassicAddItemPickerLayout::RowHeight;
+        const int x = (1280 - width) / 2;
+        constexpr int height = PokeBank::UIModel::ClassicAddItemPickerLayout::Height;
+        const int listTop = marginY + PokeBank::UIModel::ClassicAddItemPickerLayout::ClassicListTopOffset;
+        const int listBottom = marginY + height - PokeBank::UIModel::ClassicAddItemPickerLayout::BottomInset;
+        const int visibleRows = std::max(1, (listBottom - listTop) / rowH);
+        state.pickerViewport.ensure(state.pickerRow, count, visibleRows);
+        const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows);
+        if (maxFirstRow > 0) {
+            state.pickerScroll.updateVertical(
+                touch, x + 12, listTop, width - 24, listBottom - listTop,
+                rowH, state.pickerViewport.firstRow, maxFirstRow + 1);
+        } else {
+            state.pickerScroll.stop();
+        }
+        if (touchId >= 0 && touchId < count) {
+            state.pickerScroll.stop();
+            state.pickerRow = touchId;
+            down |= HidNpadButton_A;
+        }
+        if (count == 0) { state.pickerScroll.stop(); state.pickerActive = false; return true; }
+        if (down & HidNpadButton_X) {
+            ClassicGame game{};
+            ClassicPocket pocket{};
+            if (currentPocket(screen, game, pocket)) {
+                state.pickerSort = ItemPickerSort::next(state.pickerSort);
+                state.pickerRow = ItemPickerSort::reorder(
+                    state.pickerItems, state.pickerNativeItems,
+                    state.pickerSort, state.pickerRow,
+                    [&](uint16_t id) {
+                        return PokeVault::Inventory::displayItemName(game, pocket, id);
+                    });
+                state.pickerScroll.stop();
+                state.pickerViewport.reset();
+                state.pickerViewport.reveal(state.pickerRow, count, visibleRows);
+            }
+            return true;
+        }
+        if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left |
+                    HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R))
+            state.pickerScroll.stop();
         if (down & HidNpadButton_Up) state.pickerRow = (state.pickerRow - 1 + count) % count;
         if (down & HidNpadButton_Down) state.pickerRow = (state.pickerRow + 1) % count;
-        constexpr int page = PokeBank::UIModel::InventoryPickerLayout::ClassicRowsPerPage;
+        // Use the visible touchscreen viewport for controller page steps, not the older
+        // pre-footer 11-row page constant.
+        const int page = visibleRows;
         if (down & (HidNpadButton_L | HidNpadButton_Left))
             state.pickerRow = std::max(0, state.pickerRow - page);
         if (down & (HidNpadButton_R | HidNpadButton_Right))
             state.pickerRow = std::min(count - 1, state.pickerRow + page);
-        if (down & HidNpadButton_B) { state.pickerActive = false; return true; }
-        if (down & HidNpadButton_A) { selectPickerItem(screen); return true; }
+        if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left |
+                    HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R))
+            state.pickerViewport.reveal(state.pickerRow, count, visibleRows);
+        if (down & HidNpadButton_B) { state.pickerScroll.stop(); state.pickerActive = false; return true; }
+        if (down & HidNpadButton_A) {
+            if (!state.pickerViewport.containsSelection(state.pickerRow, count, visibleRows)) {
+                state.pickerScroll.stop();
+                state.pickerViewport.reveal(state.pickerRow, count, visibleRows);
+                screen.postStatus("Focused item brought into view; press A again or tap a visible row", 220);
+                return true;
+            }
+            state.pickerScroll.stop();
+            selectPickerItem(screen);
+            return true;
+        }
         return true;
     }
 
@@ -652,9 +735,29 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
     if (state.reviewActive) {
         const auto lines = pendingLines(screen);
         const int count = static_cast<int>(lines.size());
+        constexpr int width = 900, y = 66, rowStep = 57, visibleRows = 7;
+        const int x = (1280 - width) / 2;
+        state.reviewViewport.ensure(state.reviewRow, count, visibleRows);
+        const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows);
+        if (maxFirstRow > 0) {
+            state.reviewScroll.updateVertical(
+                touch, x + 30, y + 94, width - 60, visibleRows * rowStep,
+                rowStep, state.reviewViewport.firstRow, maxFirstRow + 1);
+        } else {
+            state.reviewScroll.stop();
+        }
+        if (touchId >= 0 && touchId < count) {
+            state.reviewScroll.stop();
+            state.reviewRow = touchId;
+        }
+        if (down & (HidNpadButton_Up | HidNpadButton_Down))
+            state.reviewScroll.stop();
         if (count > 0 && (down & HidNpadButton_Up)) state.reviewRow = (state.reviewRow - 1 + count) % count;
         if (count > 0 && (down & HidNpadButton_Down)) state.reviewRow = (state.reviewRow + 1) % count;
+        if (down & (HidNpadButton_Up | HidNpadButton_Down))
+            state.reviewViewport.reveal(state.reviewRow, count, visibleRows);
         if (down & HidNpadButton_B) {
+            state.reviewScroll.stop();
             state.reviewActive = false;
             state.optionsActive = true;
         }
@@ -663,6 +766,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
 
     if (state.optionsActive) {
         constexpr int optionCount = 4;
+        if (touchId >= 0 && touchId < optionCount) { state.optionsRow = touchId; down |= HidNpadButton_A; }
         if (down & HidNpadButton_Up) state.optionsRow = (state.optionsRow - 1 + optionCount) % optionCount;
         if (down & HidNpadButton_Down) state.optionsRow = (state.optionsRow + 1) % optionCount;
         if (down & HidNpadButton_B) { state.optionsActive = false; return true; }
@@ -672,6 +776,10 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
                 state.optionsActive = false;
                 state.reviewActive = true;
                 state.reviewRow = 0;
+                state.reviewScroll.reset();
+                state.reviewViewport.reset();
+                state.reviewViewport.ensure(
+                    state.reviewRow, static_cast<int>(pendingLines(screen).size()), 7);
                 break;
             case 1: {
                 std::string error;
@@ -702,6 +810,13 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
         screen.creator.keepConfirmActive || screen.details.discardConfirmActive ||
         screen.gen3ConvertConfirmActive || screen.lgpeTransferConfirmActive) return false;
 
+    // The header arrows publish negative touch IDs. Route their presses through
+    // this exact-game category model instead of the inherited two-category RBY
+    // screen, which cannot navigate Medicines/Balls/Key Items/TMs/PC correctly.
+    using CategoryTouch = PokeBank::UIModel::InventoryCategoryTouch;
+    if (touchId == CategoryTouch::PreviousId) down |= HidNpadButton_L;
+    if (touchId == CategoryTouch::NextId) down |= HidNpadButton_R;
+
     std::optional<PokeBank::UIModel::ClassicInventoryInput> input;
     if (down & HidNpadButton_A) input = PokeBank::UIModel::ClassicInventoryInput::A;
     else if (down & HidNpadButton_X) input = PokeBank::UIModel::ClassicInventoryInput::X;
@@ -725,9 +840,9 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down) {
 
     if (action == PokeBank::UIModel::ClassicInventoryAction::PreviousCategory ||
         action == PokeBank::UIModel::ClassicInventoryAction::NextCategory) {
-        const int count = static_cast<int>(PokeBank::UIModel::classicInventoryCategories(game).size());
         const int delta = action == PokeBank::UIModel::ClassicInventoryAction::PreviousCategory ? -1 : 1;
-        screen.selectedCategory = (screen.selectedCategory + delta + count) % count;
+        screen.selectedCategory = PokeBank::UIModel::classicInventoryShiftCategory(
+            game, screen.selectedCategory, delta);
         screen.selectedItemIndex = 0;
         screen.currentPage = 0;
         return true;
@@ -791,12 +906,19 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
     screen.touchButtons.clear();
     const bool compactPicker = state.pickerActive;
-    const int width = compactPicker ? PokeBank::UIModel::InventoryPickerLayout::Width : 900;
-    const int y = compactPicker ? PokeBank::UIModel::InventoryPickerLayout::VerticalMargin : 66;
-    const int height = compactPicker ? fb.getHeight() - 2 * y : 610;
+    const int width = compactPicker ? PokeBank::UIModel::ClassicAddItemPickerLayout::Width : 900;
+    const int y = compactPicker ? PokeBank::UIModel::ClassicAddItemPickerLayout::panelY(fb.getHeight()) : 66;
+    const int height = compactPicker ? PokeBank::UIModel::ClassicAddItemPickerLayout::Height : 610;
     const int x = (fb.getWidth() - width) / 2;
     const int radius = compactPicker ? 16 : 18;
-    fb.drawSoftShadow(x, y, width, height, radius);
+    if (compactPicker) {
+        // Match Gen IV's modal ownership: dim underlying source Items and
+        // route all new touch controls only to this foreground picker.
+        fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 46,
+                          Color(0, 0, 0, 160));
+    } else {
+        fb.drawSoftShadow(x, y, width, height, radius);
+    }
     fb.drawFilledRoundedRect(x, y, width, height, radius, Colors::Panel);
     fb.drawRoundedRect(x, y, width, height, radius, Colors::Divider, 1);
 
@@ -823,7 +945,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     }
 
     if (state.pickerActive && game && pocket) {
-        constexpr int pad = PokeBank::UIModel::InventoryPickerLayout::HorizontalPadding;
+        constexpr int pad = PokeBank::UIModel::ClassicAddItemPickerLayout::HorizontalPadding;
         fb.drawText(x + pad, y + 16, "Add Item to " + std::string(PokeVault::Inventory::pocketName(*pocket)),
                     Colors::Text, TextStyle::Heading);
         const int count = static_cast<int>(state.pickerItems.size());
@@ -831,26 +953,62 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         int posW = 0, posH = 0;
         fb.measureText(pos, posW, posH, TextStyle::Caption);
         fb.drawText(x + width - pad - posW, y + 22, pos, Colors::TextDim, TextStyle::Caption);
-        fb.drawText(x + pad, y + 54, "Exact game + pocket catalog", Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + pad, y + 54,
+                    std::string("Supported native items | Sort: ") + ItemPickerSort::label(state.pickerSort),
+                    Colors::TextSecondary, TextStyle::Caption);
         fb.drawHDivider(x + pad, y + 76, width - pad * 2);
 
-        const int rowH = PokeBank::UIModel::InventoryPickerLayout::RowHeight;
-        const int listTop = y + PokeBank::UIModel::InventoryPickerLayout::ClassicListTopOffset;
+        const int rowH = PokeBank::UIModel::ClassicAddItemPickerLayout::RowHeight;
+        const int listTop = y + PokeBank::UIModel::ClassicAddItemPickerLayout::ClassicListTopOffset;
         // Controls live in the shared bottom glyph bar now, so the modal can use the old footer space.
-        const int listBottom = y + height - 18;
+        const int listBottom = y + height - PokeBank::UIModel::ClassicAddItemPickerLayout::BottomInset;
         const int visibleRows = std::max(1, (listBottom - listTop) / rowH);
-        const int start = std::clamp(state.pickerRow - visibleRows / 2, 0, std::max(0, count - visibleRows));
-        int rowY = listTop;
-        for (int i = start; i < std::min(count, start + visibleRows); ++i) {
+        state.pickerViewport.ensure(state.pickerRow, count, visibleRows);
+        const int start = state.pickerViewport.firstRow;
+        const int drawFirst = std::max(0, start - 1);
+        const int drawLast = std::min(count, start + visibleRows + 1);
+        const int liveOffset = state.pickerScroll.offset();
+        fb.setClipRect(x + 12, listTop, width - 24, listBottom - listTop);
+        for (int i = drawFirst; i < drawLast; ++i) {
+            const int rowY = listTop + (i - start) * rowH + liveOffset;
             const uint16_t itemId = state.pickerItems[static_cast<std::size_t>(i)];
-            std::string label = PokeVault::Inventory::displayItemName(*game, *pocket, itemId);
+            const std::string artName = PokeVault::Inventory::displayItemName(*game, *pocket, itemId);
+            std::string label = artName;
             if (stagedQuantity(screen, *pocket, itemId) != 0) label += "  (Already in pouch)";
-            drawRow(fb, x + 12, rowY, width - 24, label, i == state.pickerRow, rowH - 4, true);
-            screen.touchButtons.push_back({i, x + 12, rowY, width - 24, rowH - 4});
-            rowY += rowH;
+            // Gen IV visual parity: only focused row has the highlight. The
+            // old full-width blue row cards obscured the foreground contrast.
+            if (i == state.pickerRow)
+                fb.drawSelectionHighlight(x + 18, rowY, width - 36, rowH - 5);
+            fb.drawText(x + 32, rowY + 9, label, Colors::Text, TextStyle::Body);
+            // Native IDs are never interchangeable across generations.
+            // A label like TM43 cannot select art without its actual GBA/GBC
+            // taught move. PC Items uses the same discs as the TM/HM pocket.
+            std::string spriteKey = artName;
+            if (PokeVault::Inventory::classicMachineMove(*game, itemId) != 0) {
+                const auto group = *game <= ClassicGame::Yellow
+                    ? Enums::GameVersion::RBY
+                    : *game <= ClassicGame::Crystal
+                        ? Enums::GameVersion::GSC : Enums::GameVersion::FRLG;
+                spriteKey = ClassicMachineArtwork::artKey(group, itemId);
+            } else if (*game > ClassicGame::Yellow &&
+                       *game <= ClassicGame::Crystal) {
+                const std::string slug = ItemSpriteKey::slug(artName);
+                if (ItemSpriteKey::isGen2Mail(slug))
+                    spriteKey = "gsc-mail-icon-" + slug;
+            }
+            ItemPickerArtwork::draw(fb, x + width - 31, rowY + 3, 32, spriteKey);
+            if (rowY + rowH > listTop && rowY < listBottom)
+                appendClippedTouchButton(screen.touchButtons, i,
+                    x + 12, rowY, width - 24, rowH - 4,
+                    x + 12, listTop, width - 24, listBottom - listTop);
         }
+        fb.clearClip();
+        fb.drawText(x + pad, y + height - 38,
+            std::to_string(state.pickerRow + 1) + " / " + std::to_string(count) +
+            "  |  Choose exact native item (quantity confirmed afterward)",
+            Colors::Accent, TextStyle::Caption);
         drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Add / Select"},
-                        {"B", "Cancel"}, {"L/R", "Page"}});
+                        {"B", "Cancel"}, {"L/R", "Page"}, {"X", "Sort"}});
         return;
     }
 
@@ -882,6 +1040,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         int rowY = y + 94;
         for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
             drawRow(fb, x + 30, rowY, width - 60, rows[static_cast<std::size_t>(i)], i == state.optionsRow);
+            screen.touchButtons.push_back({i, x + 30, rowY, width - 60, 48});
             rowY += 62;
         }
         drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Open"}, {"B", "Close"}});
@@ -898,12 +1057,24 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         } else {
             constexpr int visibleRows = 7;
             const int count = static_cast<int>(lines.size());
-            const int start = std::clamp(state.reviewRow - visibleRows / 2, 0, std::max(0, count - visibleRows));
-            int rowY = y + 94;
-            for (int i = start; i < std::min(count, start + visibleRows); ++i) {
-                drawRow(fb, x + 30, rowY, width - 60, lines[static_cast<std::size_t>(i)], i == state.reviewRow);
-                rowY += 57;
+            state.reviewViewport.ensure(state.reviewRow, count, visibleRows);
+            const int start = state.reviewViewport.firstRow;
+            const int drawFirst = std::max(0, start - 1);
+            const int drawLast = std::min(count, start + visibleRows + 1);
+            const int liveOffset = state.reviewScroll.offset();
+            const int listTop = y + 94;
+            constexpr int rowStep = 57;
+            fb.setClipRect(x + 30, listTop, width - 60, visibleRows * rowStep);
+            for (int i = drawFirst; i < drawLast; ++i) {
+                const int rowY = listTop + (i - start) * rowStep + liveOffset;
+                drawRow(fb, x + 30, rowY, width - 60,
+                        lines[static_cast<std::size_t>(i)], i == state.reviewRow);
+                if (rowY + 48 > listTop && rowY < listTop + visibleRows * rowStep)
+                    appendClippedTouchButton(screen.touchButtons, i,
+                        x + 30, rowY, width - 60, 48,
+                        x + 30, listTop, width - 60, visibleRows * rowStep);
             }
+            fb.clearClip();
         }
         drawNavBar(fb, {{"Up/Down", "Browse"}, {"B", "Back to Options"}});
         if (!state.lastExportDirectory.empty())

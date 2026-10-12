@@ -59,7 +59,8 @@ struct ActionSet {
     }
 };
 
-constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilities = {}) noexcept {
+constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilities = {},
+                                   bool hasPendingChanges = false) noexcept {
     ActionSet result{};
     const auto append = [&result](Action action) constexpr {
         result.values[result.count++] = action;
@@ -67,8 +68,7 @@ constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilitie
 
     if (!occupied) {
         append(Action::Add);
-        append(Action::Review);
-        if (capabilities.hasLegalityProvenance) append(Action::LegalityProvenance);
+        if (hasPendingChanges) append(Action::Review);
         append(Action::Close);
         return result;
     }
@@ -78,7 +78,7 @@ constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilitie
     if (capabilities.canClone) append(Action::Clone);
     if (capabilities.canRemove) append(Action::Remove);
     if (capabilities.hasLegalityProvenance) append(Action::LegalityProvenance);
-    append(Action::Review);
+    if (hasPendingChanges) append(Action::Review);
     append(Action::Close);
     return result;
 }
@@ -313,9 +313,11 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
         // targets only when the exact Gen IV staged provider is present; the provider is
         // responsible for preserving nature/gender/shiny/ability relationships.
         switch (field) {
+            case FieldIdentity::Species:
             case FieldIdentity::Nickname:
             case FieldIdentity::Gender:
             case FieldIdentity::Shiny:
+            case FieldIdentity::Language:
             case FieldIdentity::Level:
             case FieldIdentity::Experience:
             case FieldIdentity::Friendship:
@@ -323,20 +325,15 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::EV:
             case FieldIdentity::Nature:
             case FieldIdentity::Ability:
-            case FieldIdentity::MetLevel:
-                return FieldAccess::Editable;
-            // G4-03 first hardware milestone keeps fields read-only when their exact-game
-            // picker/side-effects are not yet pinned. Known bytes alone are not permission
-            // to present a writable control.
-            case FieldIdentity::Species:
-            case FieldIdentity::Language:
             case FieldIdentity::HeldItem:
             case FieldIdentity::Pokerus:
             case FieldIdentity::Ball:
+            case FieldIdentity::MetLevel:
             case FieldIdentity::MetLocation:
             case FieldIdentity::Form:
             case FieldIdentity::OriginalTrainer:
             case FieldIdentity::TrainerId:
+                return FieldAccess::Editable;
             case FieldIdentity::SecretId:
             case FieldIdentity::PersonalityId:
             case FieldIdentity::OriginGame:
@@ -415,8 +412,10 @@ constexpr Layout layoutFor(Generation generation, bool crystal = false) noexcept
     // capabilities in DETAILS. VALUES stays stat-focused: five DV/Stat Exp rows + Shiny/Gender.
     if (generation == Generation::Gen2)
         return {/*details*/static_cast<uint8_t>(crystal ? 13 : 9), /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
-    if (generation == Generation::Gen3 || generation == Generation::Gen4)
+    if (generation == Generation::Gen3)
         return {/*details*/15, /*values*/11, /*moves*/4, /*stat rows*/6, /*columns*/3};
+    if (generation == Generation::Gen4)
+        return {/*details*/16, /*values*/11, /*moves*/4, /*stat rows*/6, /*columns*/3};
     return {/*details*/6, /*values*/6, /*moves*/4, /*stat rows*/5, /*columns*/3};
 }
 

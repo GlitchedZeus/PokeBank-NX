@@ -10,8 +10,9 @@ namespace Utils {
     // Call once at startup, before any screen draws.
     void loadSettings();
 
-    // Write the current settings back to settings.cfg. Call after a setting changes.
-    void saveSettings();
+    // Write the current settings back to settings.cfg through a verified sibling-file
+    // transaction. Returns false if the old authoritative file could not be preserved/replaced.
+    bool saveSettings();
 }
 
 #endif

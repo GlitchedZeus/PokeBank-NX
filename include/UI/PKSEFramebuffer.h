@@ -53,6 +53,12 @@ namespace UI {
         void setClipRect(int x, int y, int w, int h);
         void clearClip();
 
+        // Scoped NanoVG translation used by direct-manipulation touch surfaces. Call pushTranslation
+        // before drawing a self-contained card/list and popTransform immediately afterwards. This
+        // moves existing absolute-coordinate UI as one visual object without changing hit semantics.
+        void pushTranslation(float dx, float dy);
+        void popTransform();
+
         // --- Higher-level themed helpers ---
         // Encapsulate the current look so panels stay simple and stay consistent when the
         // theme changes. All pull from the active Colors palette.
@@ -75,6 +81,9 @@ namespace UI {
         // filling a size×size box whose top-left is (x,y), so it drops into existing marker
         // rows the same way drawSymbol did. Replaces the old ★ glyph everywhere shiny is shown.
         void drawShinyMark(int x, int y, int size, Color color);
+        // Function-key icons used by the in-app keyboard.
+        void drawBackspaceIcon(int iconX, int iconY, int size, Color color);
+        void drawShiftIcon(int iconX, int iconY, int size, Color color, bool filled);
         // Storage-grid cursor: a wide arrowhead pointing straight down, no shaft. Its POINT lands on
         // (tipX, tipY) with the head above, symmetric about that x. `headHeight` sizes the head --
         // the visible arrow; the mitred outline runs on below it to the point at tipY, adding ~27%
@@ -124,6 +133,8 @@ namespace UI {
         void measureText(const std::string& text, int& outWidth, int& outHeight, TextStyle style = TextStyle::Body);
         // Line height (font ascent+descent) for a style — for consistent vertical spacing.
         int  lineHeight(TextStyle style = TextStyle::Body) const;
+        // Draw-text y coordinate that centers capital letters on a row/badge midpoint.
+        int  textYCenteredOn(int centerY, TextStyle style = TextStyle::Body) const;
 
     private:
         // Lazily build + cache a NanoVG image from a raw sprite pixel buffer, keyed by the buffer

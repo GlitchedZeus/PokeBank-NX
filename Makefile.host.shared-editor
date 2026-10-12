@@ -66,3 +66,41 @@ $(GSC_RENDER_TEST): $(GSC_RENDER_SOURCES)
 $(GSC_RENDER_SANITIZE): $(GSC_RENDER_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GSC_RENDER_SOURCES) -o $@
+
+
+# Shared Gen I-IV move picker presentation: numbered rows plus exact-era
+# Accuracy / Power / base PP metadata from pinned retail-decomp tables.
+MOVE_PICKER_PRESENTATION_SOURCES := tests/test_move_picker_presentation.cpp src/Names/MoveNames.cpp
+MOVE_PICKER_PRESENTATION_TEST := $(HOST_BUILD)/test_move_picker_presentation
+MOVE_PICKER_PRESENTATION_SANITIZE := $(HOST_BUILD)/test_move_picker_presentation_sanitize
+
+HOST_TESTS += $(MOVE_PICKER_PRESENTATION_TEST)
+HOST_SANITIZE_TESTS += $(MOVE_PICKER_PRESENTATION_SANITIZE)
+host-test: $(MOVE_PICKER_PRESENTATION_TEST)
+host-sanitize: $(MOVE_PICKER_PRESENTATION_SANITIZE)
+
+$(MOVE_PICKER_PRESENTATION_TEST): $(MOVE_PICKER_PRESENTATION_SOURCES) include/UI/MovePickerPresentation.h include/Names/MoveBattleStats.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(MOVE_PICKER_PRESENTATION_SOURCES) -o $@
+
+$(MOVE_PICKER_PRESENTATION_SANITIZE): $(MOVE_PICKER_PRESENTATION_SOURCES) include/UI/MovePickerPresentation.h include/Names/MoveBattleStats.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(MOVE_PICKER_PRESENTATION_SOURCES) -o $@
+
+
+# Compact, shared native Nature picker used by Gen III and IV editors.
+NATURE_PICKER_TEST := $(HOST_BUILD)/test_nature_picker_layout
+NATURE_PICKER_SANITIZE := $(HOST_BUILD)/test_nature_picker_layout_sanitize
+
+HOST_TESTS += $(NATURE_PICKER_TEST)
+HOST_SANITIZE_TESTS += $(NATURE_PICKER_SANITIZE)
+host-test: $(NATURE_PICKER_TEST)
+host-sanitize: $(NATURE_PICKER_SANITIZE)
+
+$(NATURE_PICKER_TEST): tests/test_nature_picker_layout.cpp include/UI/NaturePickerLayout.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(NATURE_PICKER_SANITIZE): tests/test_nature_picker_layout.cpp include/UI/NaturePickerLayout.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@

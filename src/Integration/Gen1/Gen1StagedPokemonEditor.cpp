@@ -301,7 +301,12 @@ bool StagedPokemonEditor::revertPokemon(size_t b,size_t s,std::string& error) {
 }
 void StagedPokemonEditor::discard() noexcept {view_=original_;changes_.clear();}
 std::vector<uint8_t> StagedPokemonEditor::finalizedBytes(std::string& error,std::span<const uint8_t> inventory) const {
-    error.clear();std::vector<uint8_t> bytes(stagedBytes().begin(),stagedBytes().end());
+    error.clear();
+    if (packedMove_.active) {
+        error = "Place or cancel carried Pokemon before finalizing the Gen I staged save";
+        return {};
+    }
+    std::vector<uint8_t> bytes(stagedBytes().begin(),stagedBytes().end());
     if(!inventory.empty()) {
         if(inventory.size()!=kRawSaveSize || !parse(inventory,metadata().sourceGame)) {error="Inventory candidate failed identity/layout validation";return {};}
         for(size_t i=0;i<inventory.size();++i) {

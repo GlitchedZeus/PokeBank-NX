@@ -734,7 +734,7 @@ void handleActiveInput(TrainerViewScreen& screen, uint64_t down) {
     if (state.mode == Mode::Actions) {
         std::string error;
         const auto pokemon = selectedPokemon(screen, error);
-        const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon));
+        const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon), hasPending(screen));
         const int rows = static_cast<int>(actions.count);
         if (down & HidNpadButton_Up) state.row = (state.row + rows - 1) % rows;
         if (down & HidNpadButton_Down) state.row = (state.row + 1) % rows;
@@ -951,7 +951,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
     auto& state = stateFor(screen);
     std::string error;
     const auto pokemon = selectedPokemon(screen, error);
-    const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon));
+    const auto actions = UX::actionsForSlot(static_cast<bool>(pokemon), hasPending(screen));
     fb.drawText(x + 26, y + 18, pokemon ? "Generation I Pokemon Actions" : "Generation I Empty Slot",
         Colors::Text, TextStyle::Heading);
     fb.drawText(x + 26, y + 54,

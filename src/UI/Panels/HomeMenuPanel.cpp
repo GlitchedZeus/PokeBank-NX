@@ -78,7 +78,8 @@ namespace Panels {
     }
 
     // Simple vector icons for the menu's circular buttons (no icon assets). `col` = glyph color,
-    // `bg` = the button fill (used to punch holes). kind: 0 Items (bag), 1 Trainer (person), 2 Settings (gear).
+    // `bg` = the button fill (used to punch holes). Product Home owns Settings, so the loaded-game
+    // menu exposes only Items and Trainer here.
     static void drawMenuIcon(PKSEFramebuffer& fb, int cx, int cy, int r, int kind, Color col, Color bg) {
         if (kind == 0) {            // Items: a satchel/bag
             const int bw = 2 * r, bh = 2 * r - 4;
@@ -90,16 +91,6 @@ namespace Panels {
             fb.drawFilledCircle(cx, cy - r / 2, r / 2 - 1, col);                 // head
             const int sw = 2 * r - 6, sh = r + 2;
             fb.drawFilledRoundedRect(cx - sw / 2, cy + 2, sw, sh, sw / 2, col);  // shoulders
-        } else {                    // Settings: a gear
-            const double PI = 3.14159265358979323846;
-            for (int i = 0; i < 8; ++i) {
-                double a = i * PI / 4.0;
-                int tx = cx + static_cast<int>(std::lround(std::cos(a) * (r - 2)));
-                int ty = cy + static_cast<int>(std::lround(std::sin(a) * (r - 2)));
-                fb.drawFilledCircle(tx, ty, 4, col);                            // teeth
-            }
-            fb.drawFilledCircle(cx, cy, r - 6, col);                            // body
-            fb.drawFilledCircle(cx, cy, (r - 6) / 2, bg);                       // hole
         }
     }
 
@@ -150,13 +141,13 @@ namespace Panels {
             py += pillH + pillGap;
         }
 
-        // ---------- Right: circular icon row (Items / Trainer / Settings) ----------
-        struct Icon { const char* label; const char* glyph; int idx; };
-        Icon icons[3] = { { "Items", "I", 3 }, { "Trainer", "T", 4 }, { "Settings", "S", 5 } };
+        // ---------- Right: circular icon row (Items / Trainer) ----------
+        struct Icon { const char* label; int idx; int kind; };
+        Icon icons[2] = { { "Items", 3, 0 }, { "Trainer", 4, 1 } };
         const int iconR = 42;
-        const int slot = rW / 3;
+        const int slot = rW / 2;
         const int iconTop = py + 22;
-        for (int j = 0; j < 3; ++j) {
+        for (int j = 0; j < 2; ++j) {
             const auto& ic = icons[j];
             const int cx = rX + slot * j + slot / 2;
             const int cy = iconTop + iconR;
@@ -165,11 +156,12 @@ namespace Panels {
             fb.drawFilledCircle(cx, cy, iconR, Colors::PanelAlt);
             fb.drawCircle(cx, cy, iconR, focused ? Colors::FocusBorder : Colors::Border, 2);
 
-            drawMenuIcon(fb, cx, cy, iconR - 12, j, Colors::Text,
+            drawMenuIcon(fb, cx, cy, iconR - 12, ic.kind, Colors::Text,
                          Colors::PanelAlt);
 
             int lW, lH; fb.measureText(ic.label, lW, lH, TextStyle::Caption);
-            fb.drawText(cx - lW / 2, cy + iconR + 8, ic.label, focused ? Colors::Text : Colors::TextDim, TextStyle::Caption);
+            fb.drawText(cx - lW / 2, cy + iconR + 8, ic.label,
+                        focused ? Colors::Text : Colors::TextDim, TextStyle::Caption);
 
             screen.touchButtons.push_back({ 100 + ic.idx, cx - iconR, cy - iconR, 2 * iconR, 2 * iconR + 24 });
         }

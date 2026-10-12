@@ -42,10 +42,12 @@ namespace Utils {
 
         // Prepare message schedule
         for (int i = 0; i < 16; i++) {
-            w[i] = (buffer[i * 4] << 24) |
-                (buffer[i * 4 + 1] << 16) |
-                (buffer[i * 4 + 2] << 8) |
-                (buffer[i * 4 + 3]);
+            // uint8_t promotes to signed int in arithmetic expressions. Cast before
+            // shifting so high-bit save bytes never invoke signed left-shift UB.
+            w[i] = (static_cast<uint32_t>(buffer[i * 4]) << 24) |
+                (static_cast<uint32_t>(buffer[i * 4 + 1]) << 16) |
+                (static_cast<uint32_t>(buffer[i * 4 + 2]) << 8) |
+                static_cast<uint32_t>(buffer[i * 4 + 3]);
         }
 
         for (int i = 16; i < 64; i++) {

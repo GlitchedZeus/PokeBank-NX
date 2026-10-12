@@ -23,6 +23,7 @@ namespace {
         size_t footerSize;
         size_t trainerOffset;
         size_t partyOffset;
+        size_t pokedexOffset;
         size_t boxDataOffset;
         size_t boxStride;
         size_t currentBoxOffset;
@@ -33,15 +34,15 @@ namespace {
     Spec specFor(Layout layout) {
         switch (layout) {
             case Layout::DiamondPearl:
-                return {0xC100, 0xC100, 0x121E0, 0x14, 0x64, 0x98,
+                return {0xC100, 0xC100, 0x121E0, 0x14, 0x64, 0x98, 0x12DC,
                         0x4, SINNOH_BOX_STRIDE, 0, 4 + BOX_COUNT * SINNOH_BOX_STRIDE,
                         Enums::GameVersion::DP};
             case Layout::Platinum:
-                return {0xCF2C, 0xCF2C, 0x121E4, 0x14, 0x68, 0xA0,
+                return {0xCF2C, 0xCF2C, 0x121E4, 0x14, 0x68, 0xA0, 0x1328,
                         0x4, SINNOH_BOX_STRIDE, 0, 4 + BOX_COUNT * SINNOH_BOX_STRIDE,
                         Enums::GameVersion::PT};
             case Layout::HeartGoldSoulSilver:
-                return {0xF628, 0xF700, 0x12310, 0x10, 0x64, 0x98,
+                return {0xF628, 0xF700, 0x12310, 0x10, 0x64, 0x98, 0x12B8,
                         0, 0x1000, 0x12000, 0x12008,
                         Enums::GameVersion::HGSS};
         }
@@ -284,6 +285,25 @@ std::optional<Gen4ReadOnlySave> Gen4ReadOnlySave::parse(std::span<const uint8_t>
     }
 
     if (error) error->clear();
+    return out;
+}
+
+
+DexProgress Gen4ReadOnlySave::dexProgress() const noexcept {
+    DexProgress out{};
+    const Spec spec = specFor(layout_);
+    const size_t base = general_.offset + spec.pokedexOffset;
+    // Zukan4: u32 magic, then 0x40 bytes Caught followed by 0x40 bytes Seen.
+    const size_t caught = base + 4;
+    const size_t seen = caught + 0x40;
+    if (seen + 0x40 > source_.size()) return out;
+
+    for (uint16_t species = 1; species <= out.total; ++species) {
+        const uint16_t index = static_cast<uint16_t>(species - 1);
+        const uint8_t mask = static_cast<uint8_t>(1u << (index & 7));
+        if (source_[seen + (index >> 3)] & mask) ++out.seen;
+        if (source_[caught + (index >> 3)] & mask) ++out.caught;
+    }
     return out;
 }
 

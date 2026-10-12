@@ -1,97 +1,122 @@
 # PokeBank NX — Game Support / Verification Matrix
 
-Last updated: 2026-09-14
+Last updated: **2026-09-29**
 
-This matrix separates source/read support, staged editing, and physical acceptance. `DEVICE ACCEPTED` applies only to the exact milestone that was physically tested.
+This matrix separates implemented support from physical device acceptance.
 
-No current adapter is approved for live installed-game or emulator-source writing.
+No current adapter is approved for direct live writing to an installed-game save or emulator source.
 
-## Main current identities
+| Generation | Games | Read / source state | Staged editing state | Device state |
+|---|---|---|---|---|
+| I | Red / Blue / Yellow | RetroArch + validated legacy source model | Shared View / Create / Edit + inventory | **DEVICE ACCEPTED** |
+| II | Gold / Silver / Crystal | RetroArch + validated legacy source model | Shared View / Create / Edit + inventory | **DEVICE ACCEPTED** |
+| III | Ruby / Sapphire / Emerald / FireRed / LeafGreen | RetroArch / provider-aware legacy source model | Shared View / Create / Edit + inventory | **DEVICE ACCEPTED** |
+| IV | Diamond / Pearl / Platinum / HeartGold / SoulSilver | DraStic / melonDS / remembered/manual assignment foundation | Party + Box View/Edit, Create, native field/move/form work | Base milestone accepted; full G4-04 **HARDWARE PENDING** |
+| V | Black / White / Black 2 / White 2 | Not started | Not started | NOT SUPPORTED |
+| 3DS | X/Y, ORAS, SM/USUM | Provider/research planning only | Not started | NOT SUPPORTED |
+| Modern Switch | LGPE, SWSH, BDSP, PLA, SV, Z-A and other tracked identities | validation/source foundation varies by title | production editor/write support not advertised | NOT GENERALLY ACCEPTED |
 
-| Stable ID | Game | Platform | Gen | Source / read state | Pokémon editing state | Device state |
-|---|---|---:|---:|---|---|---|
-| `red_gb` | Red | GB | 1 | RetroArch read engine | boxed staged editor accepted | READ + EDIT DEVICE ACCEPTED |
-| `blue_gb` | Blue | GB | 1 | RetroArch read engine | boxed staged editor accepted | READ + EDIT DEVICE ACCEPTED |
-| `yellow_gb` | Yellow | GB | 1 | RetroArch read engine | boxed staged editor accepted | READ + EDIT DEVICE ACCEPTED |
-| `gold_gbc` | Gold | GBC | 2 | RetroArch read engine | shared staged editor implemented on PR #68 | READ DEVICE ACCEPTED / NEW EDIT UI HARDWARE PENDING |
-| `silver_gbc` | Silver | GBC | 2 | RetroArch read engine | shared staged editor implemented on PR #68 | READ DEVICE ACCEPTED / NEW EDIT UI HARDWARE PENDING |
-| `crystal_gbc` | Crystal | GBC | 2 | RetroArch read engine | shared staged editor implemented on PR #68 | READ DEVICE ACCEPTED / NEW EDIT UI HARDWARE PENDING |
-| `ruby_gba` | Ruby | GBA | 3 | RetroArch read engine | shared Pokémon editor not yet current milestone | READ DEVICE ACCEPTED |
-| `sapphire_gba` | Sapphire | GBA | 3 | RetroArch read engine | shared Pokémon editor not yet current milestone | READ DEVICE ACCEPTED |
-| `emerald_gba` | Emerald | GBA | 3 | RetroArch read engine | shared Pokémon editor not yet current milestone | READ DEVICE ACCEPTED |
-| `firered_gba` | FireRed | GBA | 3 | RetroArch read engine | shared Pokémon editor not yet current milestone | READ DEVICE ACCEPTED |
-| `leafgreen_gba` | LeafGreen | GBA | 3 | RetroArch read engine | shared Pokémon editor not yet current milestone | READ DEVICE ACCEPTED |
-| `firered_switch` | FireRed | Switch | 3 | native source foundation | production validation pending | NOT FULLY ACCEPTED |
-| `leafgreen_switch` | LeafGreen | Switch | 3 | native source foundation | production validation pending | NOT FULLY ACCEPTED |
-| `letsgo_pikachu_switch` | Let's Go, Pikachu! | Switch | 7 | native source foundation | inherited/editor capability exists; production validation pending | PARTIAL SOURCE PATH TESTED |
-| `letsgo_eevee_switch` | Let's Go, Eevee! | Switch | 7 | native source foundation | production validation pending | NOT DEVICE ACCEPTED |
-| `sword_switch` | Sword | Switch | 8 | native source foundation | production validation pending | NOT DEVICE ACCEPTED |
-| `shield_switch` | Shield | Switch | 8 | native source foundation | production validation pending | NOT DEVICE ACCEPTED |
-| `brilliant_diamond_switch` | Brilliant Diamond | Switch | 8 | native source foundation | production validation pending | NOT DEVICE ACCEPTED |
-| `shining_pearl_switch` | Shining Pearl | Switch | 8 | native source foundation | production validation pending | PARTIAL SOURCE PATH TESTED |
-| `legends_arceus_switch` | Legends: Arceus | Switch | 8 | defensive read foundation | production validation pending | PARTIAL PATH TESTED |
-| `scarlet_switch` | Scarlet | Switch | 9 | native source foundation | production validation pending | NOT DEVICE ACCEPTED |
-| `violet_switch` | Violet | Switch | 9 | native source foundation | production validation pending | NOT DEVICE ACCEPTED |
-| `legends_za_switch` | Legends: Z-A | Switch | 9 | native source foundation | production validation pending | PARTIAL PATH TESTED |
+FireRed/LeafGreen GBA and any separately tracked Switch release identities remain distinct game/platform identities.
 
-FireRed/LeafGreen GBA and FireRed/LeafGreen Switch remain deliberately separate identities.
+## Generation I
 
-## Accepted Generation I milestone
+Hardware-accepted current foundation includes:
 
-Read-only RBY is physically accepted, including Trainer, Party, Boxes, Pokémon details, Bag/PC Items, strict save validation, bounded RetroArch discovery, and source immutability.
+- Trainer / Party / Boxes;
+- generation-correct Pokémon data;
+- Bag/PC Items;
+- strict source validation;
+- staged shared View/Create/Edit;
+- exact-game move handling;
+- source immutability.
 
-The boxed staged Pokémon editor is also physically accepted:
+Current integrated development also exposes real per-save Pokédex progress and grounded trainer presentation in the Product Home path. That newer presentation still requires integrated hardware testing.
 
-```text
-source 69668bc81629228ef25c1bdada7c7ce1aed9b666
-NRO PokeBank-NX-Gen1-UX4-Retest-69668bc8.nro
-SHA-256 3ab11f7ba6938bbab5f7cbbf192d819532ce94f09bc7788a3bb0d8f6217f3763
-```
+## Generation II
 
-PR #67 later unified passive Party/Storage/action-sheet View Pokémon and was hardware accepted before merge.
+Hardware-accepted current foundation includes:
 
-## Accepted Generation II read-only milestone
+- Trainer / Party / Boxes;
+- Held Item, Friendship and Pokérus;
+- DVs / Stat Exp;
+- gender/shiny semantics;
+- Crystal-specific native fields;
+- staged shared View/Create/Edit;
+- inventory;
+- source immutability.
 
-Gold, Silver, and Crystal are physically accepted for the legacy read-only path.
+Gold/Silver do not fabricate a modern SID. Crystal-specific data is only shown where the exact format stores it.
 
-Accepted semantics include:
+## Generation III
 
-```text
-Gold Trainer gender: Male
-Silver Trainer gender: Male
-Crystal Trainer gender: save-derived
-Gen II SID: does not exist
-```
+Hardware-accepted current foundation includes:
 
-Party/Boxes/Trainer/Items/PK2 browsing are accepted. This does not imply the new shared PR #68 editor UI is hardware accepted.
+- strict rotating-sector validation;
+- Trainer / Party / Boxes;
+- PK3 browsing/editing;
+- inventory;
+- exact Gen III-native fields;
+- staged shared View/Create/Edit;
+- source immutability.
 
-## Current Generation II editor milestone
+Current integrated development adds real per-save Pokédex progress and game/gender-aware trainer presentation to the Product Home layer.
 
-Focused branch:
+## Generation IV
 
-```text
-feature/gen2-shared-pokemon-editor-20260914
-PR #68 — OPEN / DRAFT / NOT MERGED
-implementation head 43b8563d4177b58ae0f341c1ebd58f86e2ee4fdb
-```
+Supported identities:
 
-Current implementation includes exact-game G/S vs Crystal move compatibility, passive View compatibility, shared Create/Edit, authentic DVs and derived HP DV, six-stat battle presentation, Held Item, Friendship, Pokérus, Crystal caught/met handling, gender/shiny DV semantics, and transactional Edit sessions.
+- Diamond
+- Pearl
+- Platinum
+- HeartGold
+- SoulSilver
 
-Final exact-head host/sanitizer/native/package validation and physical Gold/Silver/Crystal testing are still required.
+Source/provider foundation includes:
 
-## Accepted Generation III GBA milestone
+- DraStic;
+- melonDS;
+- remembered/manual source assignment;
+- fail-closed validation before assignment/open.
 
-FireRed, LeafGreen, Ruby, Sapphire, and Emerald are physically accepted for current legacy read-only support. Strict rotating-sector/signature/counter/checksum validation, Trainer, Party, Boxes, PK3 browsing, inventory, bounded discovery, and source immutability are preserved.
+The first staged Party/Box View/Edit milestone is physically accepted.
 
-## Current safety policy
+Current G4-04 implementation includes:
+
+- Party / Box View/Edit;
+- empty Box Add/Create;
+- native Held Item / Language / Ball / Pokérus / Met Location;
+- native Gen IV move picker with species compatibility;
+- exact base PP and PP Up reset behavior on move replacement;
+- Species mutation and dependent state reconciliation;
+- supported Form editing and exact-game restrictions;
+- editable OT / Trainer ID where currently supported;
+- trainer/origin inspection;
+- strict save reparse/checksum/rollback;
+- external source immutability.
+
+The integrated Product UI carries real Gen IV trainer-name propagation, real Gen IV Pokédex progress, game/gender-aware Lucas/Dawn or Ethan/Lyra presentation where the save proves gender, Classic Game Sources, remembered navigation state, and the safe Backpack/Items shortcut.
+
+The full combined G4-04 + Product UI build is **not yet device accepted**.
+
+## Source and launch policy
+
+Discovery and launching are separate from write authorization.
+
+Current provider-aware work includes RetroArch, DraStic, melonDS and manual/remembered bindings. Game launch metadata is stored by PokeBank NX rather than written into emulator save directories. The UI now reports launch readiness truthfully; direct DraStic/melonDS content handoff still requires final hardware verification.
+
+If a ROM/content target cannot be proven, the UI must request an explicit **Link Game File** rather than infer it from the save path.
+
+## Permanent safety policy
 
 ```text
 installed Switch source       READ ONLY unless separately approved later
-RetroArch / legacy source     READ ONLY unless separately approved later
-staged workspace              separate
+RetroArch / emulator source   READ ONLY unless separately approved later
+staged workspace              app-owned
 live installed save writing   HARD DISABLED
 live emulator-source writing  HARD DISABLED
-true Move                     NOT IMPLEMENTED
+launch permission             DOES NOT GRANT WRITE ACCESS
+ambiguous source/content      FAIL CLOSED
+cross-game True Move          LOCKED
 ```
 
-Malformed/unsupported sources must fail safely and must never be silently repaired or overwritten.
+Malformed or unsupported sources must never be silently repaired, normalized, reassigned, or overwritten.

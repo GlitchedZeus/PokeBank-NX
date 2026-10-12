@@ -156,7 +156,8 @@ namespace Trainer {
          */
         void updateItemBlock() override;
         void updateTrainerInfoBlock() override;   // money / OT name
-        void updatePokedexBlock() override;       // PokedexSave8a: research + statistics entries
+        void updatePokedexBlock() override;
+        PokedexProgress pokedexProgress() const override;       // PokedexSave8a: research + statistics entries
 
         // Fixed-capacity packed pouches (KeyItems 100 / Stored 180 / Recipes 70), and the general
         // Items bag = min(675, SatchelUpgrades + 20). Enables in-pouch item creation for PLA.

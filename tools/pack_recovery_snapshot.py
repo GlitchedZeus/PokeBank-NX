@@ -3,7 +3,7 @@
 
 Run only after `python3 tools/recover_workspace.py` and the asset preflight pass.
 The output is intentionally split below GitHub's single-file size ceiling so the
-private repository can hold a complete recovery snapshot without Git LFS.
+repository can hold a complete recovery snapshot without Git LFS.
 
 Usage:
     python3 tools/pack_recovery_snapshot.py
@@ -100,7 +100,7 @@ def main() -> int:
         "application_source": state.get("application_source"),
         "historical_full_visual_baseline": state.get("historical_full_visual_baseline"),
         "parts": parts,
-        "note": "Commit every part plus this manifest to the private GitHub repository. Recovery prefers this snapshot over network regeneration."
+        "note": "Commit every part plus this manifest on the current reviewed branch/PR. Recovery prefers this snapshot over network regeneration."
     }
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
@@ -111,7 +111,7 @@ def main() -> int:
     print(f"parts: {len(parts)}")
     for part in parts:
         print(f"  {part['name']}  {part['size']}  {part['sha256']}")
-    print("\nNEXT: git add -f recovery/assets_snapshot && commit/push it before calling the session safely saved.")
+    print("\nNEXT: git add -f recovery/assets_snapshot, commit it, then push through the current reviewed branch/PR.")
     return 0
 
 

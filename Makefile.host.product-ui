@@ -1,0 +1,42 @@
+# Product-shell model tests are intentionally header-only: they prove navigation and honest
+# capability classification without pulling libnx/UI rendering into the host suite.
+PRODUCT_UI_TESTS := $(HOST_BUILD)/test_app_shell_model $(HOST_BUILD)/test_organization_preview_model $(HOST_BUILD)/test_game_launch_model
+PRODUCT_UI_SANITIZE_TESTS := $(HOST_BUILD)/test_app_shell_model_sanitize $(HOST_BUILD)/test_organization_preview_model_sanitize $(HOST_BUILD)/test_game_launch_model_sanitize
+
+HOST_TESTS += $(PRODUCT_UI_TESTS)
+HOST_SANITIZE_TESTS += $(PRODUCT_UI_SANITIZE_TESTS)
+
+# This fragment is included after Makefile.host.base defines host-test/host-sanitize. GNU make
+# expands target prerequisites when the rule is parsed, so appending the variables above is not
+# enough to make those late-added binaries build before the base recipe iterates HOST_TESTS.
+# Add explicit prerequisite-only rules here so the global suites compile these tests first.
+host-test: $(PRODUCT_UI_TESTS)
+host-sanitize: $(PRODUCT_UI_SANITIZE_TESTS)
+
+.PHONY: product-ui-test
+product-ui-test: $(PRODUCT_UI_TESTS)
+	@set -e; for test_bin in $(PRODUCT_UI_TESTS); do ./$$test_bin; done
+
+$(HOST_BUILD)/test_app_shell_model: tests/test_app_shell_model.cpp include/UI/AppShellModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_app_shell_model.cpp -o $@
+
+$(HOST_BUILD)/test_app_shell_model_sanitize: tests/test_app_shell_model.cpp include/UI/AppShellModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_app_shell_model.cpp -o $@
+
+$(HOST_BUILD)/test_organization_preview_model: tests/test_organization_preview_model.cpp include/UI/OrganizationPreviewModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_organization_preview_model.cpp -o $@
+
+$(HOST_BUILD)/test_organization_preview_model_sanitize: tests/test_organization_preview_model.cpp include/UI/OrganizationPreviewModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_organization_preview_model.cpp -o $@
+
+$(HOST_BUILD)/test_game_launch_model: tests/test_game_launch_model.cpp include/UI/GameLaunchModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_game_launch_model.cpp -o $@
+
+$(HOST_BUILD)/test_game_launch_model_sanitize: tests/test_game_launch_model.cpp include/UI/GameLaunchModel.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_game_launch_model.cpp -o $@

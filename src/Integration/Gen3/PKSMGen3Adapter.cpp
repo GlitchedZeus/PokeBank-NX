@@ -166,6 +166,15 @@ namespace PokeVault::Integration::Gen3 {
         return impl_->original;
     }
 
+
+    DexProgress ReadOnlySave::dexProgress() const noexcept {
+        DexProgress out{};
+        if (!impl_ || !impl_->core) return out;
+        out.seen = static_cast<uint16_t>(std::clamp(impl_->core->dexSeen(), 0, 386));
+        out.caught = static_cast<uint16_t>(std::clamp(impl_->core->dexCaught(), 0, 386));
+        return out;
+    }
+
     std::vector<PokemonRecord> ReadOnlySave::party() const {
         impl_->enumerationError = SaveError::None;
         std::vector<PokemonRecord> result;

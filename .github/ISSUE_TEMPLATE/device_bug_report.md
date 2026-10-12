@@ -90,7 +90,7 @@ Atmosphère crash report available: yes/no
 ## UI/theme state if relevant
 
 ```text
-Theme: OLED Black / Dark / Light
+Theme (exact name shown in Settings):
 Screen: Select Game / Party / Boxes / Action Sheet / Summary / Help / other
 Focus visible: yes/no
 Bottom hints correct: yes/no

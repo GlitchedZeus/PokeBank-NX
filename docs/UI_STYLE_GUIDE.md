@@ -1,5 +1,8 @@
 # PokeBank NX — Visual UI Style Guide
 
+> **DESIGN REFERENCE, NOT CURRENT SCREEN AUTHORITY:** Keep the visual principles below, but older Select Game/Vault-shell examples are reference material. Current visible ownership/routing is tracked by `docs/UI_OWNERSHIP_STATUS.md`, `docs/ENGINEERING_AUTHORITY.md`, and live source.
+
+
 Status: TARGET VISUAL CONTRACT  
 Last updated: 2026-09-22
 

@@ -693,6 +693,56 @@ namespace Trainer {
         }
     }
 
+    PokedexProgress Trainer7LGPE::pokedexProgress() const
+    {
+        const std::vector<uint8_t>* dex = nullptr;
+        for (const auto& block : blocks) {
+            if (block.key == ZUKAN7_LGPE) { dex = &block.data; break; }
+        }
+        if (!dex || dex->size() < ZUKAN_OFS_LANG) return {};
+
+        PokedexProgress progress{};
+        progress.total = 153; // Kanto 151 + Meltan + Melmetal.
+
+        auto seenBitAnywhere = [&](int bit) {
+            for (int region = 0; region < 4; ++region) {
+                if (getBit(*dex, ZUKAN_OFS_SEEN +
+                                  static_cast<size_t>(region) * ZUKAN_BIT_REGION, bit))
+                    return true;
+            }
+            return false;
+        };
+        auto speciesSeen = [&](uint16_t species) {
+            const int baseBit = static_cast<int>(species) - 1;
+            if (seenBitAnywhere(baseBit)) return true;
+
+            int table = -1;
+            for (int i = 0; i < 32; ++i) {
+                if (GG_FORM_SPECIES[i] == species) { table = i; break; }
+            }
+            if (table < 0) return false;
+            const int first = ggFormBitIndex(species);
+            if (first < 0) return false;
+            for (int form = 1; form < GG_FORM_COUNT[table]; ++form) {
+                const int formBit = LGPE_MAX_SPECIES + first + (form - 1);
+                if (seenBitAnywhere(formBit)) return true;
+            }
+            return false;
+        };
+        auto countSpecies = [&](uint16_t species) {
+            const int baseBit = static_cast<int>(species) - 1;
+            if (speciesSeen(species) || getBit(*dex, ZUKAN_OFS_CAUGHT, baseBit))
+                ++progress.seen;
+            if (getBit(*dex, ZUKAN_OFS_CAUGHT, baseBit))
+                ++progress.caught;
+        };
+
+        for (uint16_t species = 1; species <= 151; ++species) countSpecies(species);
+        countSpecies(808);
+        countSpecies(809);
+        return progress;
+    }
+
     void Trainer7LGPE::updatePokedexBlock()
     {
         std::vector<uint8_t>* dex = nullptr;

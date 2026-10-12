@@ -117,18 +117,11 @@ namespace Trainer {
             // Check if slot has valid Pokemon data (non-zero species)
             // The species ID is at offset 0x08 after decryption, but we can check
             // for an all-zero slot to skip empty slots
-            bool isEmptySlot = true;
-            for (size_t i = 0; i < SIZE_PARTY8_SWSH && i < slotSpan.size(); ++i) {
-                if (slotSpan[i] != std::byte{0}) {
-                    isEmptySlot = false;
-                    break;
-                }
-            }
-
-            if (!isEmptySlot) {
-                // Decrypt and create Pokemon8SWSH object as unique_ptr
-                // Pokemon8SWSH constructor handles decryption automatically
-                party.push_back(std::make_unique<Pokemon8SWSH>(slotSpan));
+            // Native empty slots are encrypted, non-zero records whose decrypted species is 0.
+            // Construct/decrypt first; only logical Pokemon belong in the party vector.
+            auto parsed = std::make_unique<Pokemon8SWSH>(slotSpan);
+            if (parsed->speciesID() != 0) {
+                party.push_back(std::move(parsed));
             }
         }
     }
@@ -234,21 +227,10 @@ namespace Trainer {
                 std::span<const std::byte> slotSpan = blockSpan.subspan(offset, SIZE_PARTY8_SWSH);
 
                 // Check if slot has a Pokemon (non-zero data)
-                bool isEmptySlot = true;
-                for (size_t i = 0; i < SIZE_PARTY8_SWSH && i < slotSpan.size(); ++i) {
-                    if (slotSpan[i] != std::byte{0}) {
-                        isEmptySlot = false;
-                        break;
-                    }
-                }
-
-                if (!isEmptySlot) {
-                    // Decrypt and create Pokemon8SWSH object
-                    boxes[boxIndex][slot] = std::make_unique<Pokemon8SWSH>(slotSpan);
-                } else {
-                    // Empty slot
-                    boxes[boxIndex][slot] = nullptr;
-                }
+                // Native encrypted blanks are non-zero on disk but decrypt to species 0.
+                auto parsed = std::make_unique<Pokemon8SWSH>(slotSpan);
+                boxes[boxIndex][slot] =
+                    parsed->speciesID() != 0 ? std::move(parsed) : nullptr;
             }
         }
     }
@@ -393,9 +375,9 @@ namespace Trainer {
          * party was not.
          *
          * The party-count tail after the six slots (the block is 2068 bytes, not 6*344 = 2064) is
-         * deliberately left untouched: parsePartyBlock treats an encrypted blank as occupied, so
-         * empty slots load as species-0 "ghosts" that inflate party.size(). The save's own count is
-         * authoritative, not party.size(). Same reasoning as Trainer8LA.
+         * deliberately left untouched: the save's own party-count tail remains authoritative.
+         * parsePartyBlock now drops decrypted species-0 blanks from the logical party vector, but
+         * preserving this native count avoids manufacturing count bytes during unrelated edits.
          */
         for (auto& block : blocks) {
             if (block.key == PARTY8_SWSH) {
@@ -677,6 +659,45 @@ namespace Trainer {
             if (language == 0 || language == 6 || language > 10) return -1;
             return (language >= 7) ? language - 2 : language - 1;
         }
+    }
+
+    PokedexProgress Trainer8SWSH::pokedexProgress() const
+    {
+        const std::vector<uint8_t>* galar = nullptr;
+        const std::vector<uint8_t>* armor = nullptr;
+        const std::vector<uint8_t>* crown = nullptr;
+        for (const auto& block : blocks) {
+            if      (block.key == SAVE_REVISION8_SWSH)    galar = &block.data;
+            else if (block.key == SAVE_REVISION8_R1_SWSH) armor = &block.data;
+            else if (block.key == SAVE_REVISION8_R2_SWSH) crown = &block.data;
+        }
+
+        PokedexProgress progress{};
+        auto addDex = [&](const std::vector<uint8_t>* dex, uint16_t count) {
+            if (!dex || dex->size() != static_cast<size_t>(count) * ::Pokemon::SWSH_DEX_ENTRY_SIZE)
+                return;
+            progress.total = static_cast<uint16_t>(progress.total + count);
+            for (uint16_t i = 0; i < count; ++i) {
+                const size_t base = static_cast<size_t>(i) * ::Pokemon::SWSH_DEX_ENTRY_SIZE;
+                bool seen = false;
+                for (size_t b = 0; b < 4 * SWSH_SEEN_REGION; ++b) {
+                    if ((*dex)[base + b] != 0) { seen = true; break; }
+                }
+                const size_t c = base + SWSH_OFS_CAUGHT;
+                const uint32_t flags = static_cast<uint32_t>((*dex)[c])
+                    | (static_cast<uint32_t>((*dex)[c + 1]) << 8)
+                    | (static_cast<uint32_t>((*dex)[c + 2]) << 16)
+                    | (static_cast<uint32_t>((*dex)[c + 3]) << 24);
+                const bool caught = (flags & 1u) != 0;
+                if (seen || caught) ++progress.seen;
+                if (caught) ++progress.caught;
+            }
+        };
+
+        addDex(galar, ::Pokemon::SWSH_DEX_GALAR_COUNT);
+        addDex(armor, ::Pokemon::SWSH_DEX_ARMOR_COUNT);
+        addDex(crown, ::Pokemon::SWSH_DEX_CROWN_COUNT);
+        return progress;
     }
 
     void Trainer8SWSH::updatePokedexBlock()

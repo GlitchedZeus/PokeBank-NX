@@ -13,10 +13,35 @@
 
 namespace Pokemon {
 
+enum class PokerusMode : uint8_t {
+    None = 0,
+    Cured = 1,
+    Infected = 2,
+};
+
+struct Pokemon4CreateDefaults {
+    uint16_t species = 1;
+    uint16_t tid = 0;
+    uint16_t sid = 0;
+    uint8_t language = 2;
+    uint8_t otGender = 0;
+    uint8_t originVersion = 10;
+    uint8_t level = 5;
+    uint8_t ball = 4;
+    uint8_t metLevel = 5;
+    uint16_t metLocation = 0;
+    std::u16string otName;
+};
+
 class Pokemon4Mutable {
 public:
     static std::optional<Pokemon4Mutable> fromEncrypted(
         std::span<const std::byte> encrypted,
+        Enums::GameVersion sourceGroup,
+        std::string* error = nullptr);
+
+    static std::optional<Pokemon4Mutable> createStored(
+        const Pokemon4CreateDefaults& defaults,
         Enums::GameVersion sourceGroup,
         std::string* error = nullptr);
 
@@ -51,7 +76,10 @@ public:
     [[nodiscard]] uint16_t ability() const noexcept;
     [[nodiscard]] uint16_t abilityForSlot(uint8_t slot) const noexcept;
 
+    bool setSpecies(uint16_t value) noexcept;
     bool setNickname(const std::u16string& value) noexcept;
+    bool setOriginalTrainerName(const std::u16string& value) noexcept;
+    bool setTID(uint16_t value) noexcept;
     bool setLevel(uint8_t level) noexcept;
     bool setExperience(uint32_t value) noexcept;
     bool setFriendship(uint8_t value) noexcept;
@@ -63,8 +91,12 @@ public:
     bool setPP(size_t slot, uint8_t pp) noexcept;
     bool setPPUps(size_t slot, uint8_t ppUps) noexcept;
     bool setPokerus(uint8_t value) noexcept;
+    bool setPokerusMode(PokerusMode mode) noexcept;
     bool setBall(uint8_t value) noexcept;
     bool setMetLevel(uint8_t value) noexcept;
+    bool setMetLocation(uint16_t value) noexcept;
+    bool setForm(uint8_t value) noexcept;
+    [[nodiscard]] uint8_t formCount() const noexcept;
 
     // PID-linked edits are transactional. If no candidate satisfies every pinned
     // trait in the bounded search, the PK4 is left byte-identical and false is returned.

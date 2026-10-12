@@ -23,15 +23,18 @@ assert 'opened.source.binding.sourceType' in ui
 select = (root / 'src/UI/SaveSelectScreen.cpp').read_text()
 assert 'Gen4AssignedFile' in select and 'discoverKnownSources' in select
 
-# Gen IV game cards must never auto-open the remembered adapter source. A always enters a
-# validated Save Instances chooser, whose rows retain provider identity for future emulator roots.
+# A remembered Gen IV binding already names the exact source. Product Home may open it directly,
+# but only after revalidating it read-only through openAssignedSource(). Ambiguous/unready bindings
+# still fail closed into setup; the old candidate grid is not re-entered during a normal open.
 current_title = select[select.index('void SaveSelectScreen::selectCurrentTitle()'):
                        select.index('void SaveSelectScreen::selectCurrentLegacyInstance()')]
 gen4_branch = current_title[current_title.index('SelectedSourceKind::Gen4AssignedFile'):]
-gen4_branch = gen4_branch[:gen4_branch.index('selectedUserUid')]
-assert 'discoverGen4Candidates();' in gen4_branch
-assert 'openAssignedSource(' not in gen4_branch
-assert 'titleSelected = true' not in gen4_branch
+assert 'openAssignedSource(' in gen4_branch
+assert 'OpenStatus::Ready' in gen4_branch
+assert 'opened.save' in gen4_branch
+assert 'openGen4Setup(' in gen4_branch
+assert 'discoverGen4Candidates();' not in gen4_branch
+assert 'titleSelected = true' in gen4_branch
 
 discover = select[select.index('void SaveSelectScreen::discoverGen4Candidates()'):
                   select.index('bool SaveSelectScreen::assignGen4Candidate')]
@@ -74,7 +77,11 @@ viewer_header = (root / 'include/UI/TrainerViewScreenBase.h').read_text()
 viewer_impl = (root / 'src/UI/TrainerViewScreenBase.inc').read_text()
 assert 'std::string sourceProviderLabel' in viewer_header
 assert 'legacyProviderLabel()' in viewer_header
-assert 'legacyProviderLabel() + " / "' in viewer_impl
+# The shared source header is now intentionally human-readable. Keep the
+# actual provider and read-only state while excluding internal revision counters.
+assert 'legacyProviderLabel() + "  •  " + titleName + "  •  Read-only source"' in viewer_impl
+assert 'if (!legacyReadOnlySource() && !trainer.saveRevisionString.empty()' in viewer_impl
+assert 'trainer.saveRevisionString != "Base"' in viewer_impl
 bridge = (root / 'src/Pokemon/Pokemon4ReadOnlyView.cpp').read_text()
 assert not re.search(r'\b(fwrite|pwrite|rename|remove|unlink)\s*\(', bridge)
 assert 'clone() const override { return nullptr; }' in (root / 'include/Pokemon/Pokemon4ReadOnlyView.h').read_text()

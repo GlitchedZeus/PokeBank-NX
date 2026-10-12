@@ -200,6 +200,31 @@ int main() {
     aliasReload.applyClaims(instance);
     assert(!PokeVault::Source::visibleToProfile(instance, "niece"));
 
+    // Multiple classic saves stay owned by one profile, but exactly one can be remembered for a
+    // game. Switching the preference must not unclaim the other physical save.
+    PokeVault::Source::SaveInstance classicA;
+    classicA.sourceIdentity = "classic-a";
+    classicA.sourceAliases = {"classic-a-alias"};
+    classicA.gameId = "firered_gba";
+    classicA.validation = PokeVault::Source::ValidationStatus::Ready;
+    PokeVault::Source::SaveInstance classicB;
+    classicB.sourceIdentity = "classic-b";
+    classicB.gameId = "firered_gba";
+    classicB.validation = PokeVault::Source::ValidationStatus::Ready;
+    assert(aliasReload.preferGameSourceAndSave(classicA, "will", "firered_gba"));
+    assert(aliasReload.isPreferredGameSource(classicA, "will", "firered_gba"));
+    assert(!aliasReload.isPreferredGameSource(classicB, "will", "firered_gba"));
+    assert(aliasReload.assignedProfile("classic-a-alias") == "will");
+    assert(aliasReload.preferGameSourceAndSave(classicB, "will", "firered_gba"));
+    assert(!aliasReload.isPreferredGameSource(classicA, "will", "firered_gba"));
+    assert(aliasReload.isPreferredGameSource(classicB, "will", "firered_gba"));
+    assert(aliasReload.assignedProfile("classic-a") == "will");
+    assert(aliasReload.assignedGame("classic-a").empty());
+    LegacySourceBindings preferredReload(aliasDb.string(), ops);
+    assert(preferredReload.load());
+    assert(preferredReload.isPreferredGameSource(classicB, "will", "firered_gba"));
+    assert(!preferredReload.isPreferredGameSource(classicA, "will", "firered_gba"));
+
     // A file alias cannot change its already assigned exact game, even for the same owner.
     const fs::path physical = root / "physical.sav", alternate = root / "alternate.sav";
     write(physical, "immutable source");

@@ -6,9 +6,19 @@
 #include "Pokemon/PersonalInfo4HGSS.h"
 #include "Pokemon/PersonalInfo4PT.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
+#include "Enums/Ball.h"
+#include "Enums/LanguageID.h"
+#include "Names/Gen4HeldItemCatalog.h"
+#include "Names/LocationNames.h"
+#include "Names/MoveInfo.h"
+#include "Names/MovePresence.h"
+#include "Names/NameLanguage.h"
+#include "Names/SpeciesNames.h"
+#include "Utils/StringHelpers.h"
 #include "Utils/Gen4TextCodec.h"
 
 #include <algorithm>
+#include <array>
 #include <utility>
 
 namespace Pokemon {
@@ -32,11 +42,165 @@ uint8_t fixedGender(uint8_t ratio) noexcept {
     return 3;
 }
 
+constexpr std::array<uint16_t, 16> GEN4_ARCEUS_PLATES{{
+    303, 306, 304, 305, 309, 308, 310, 313,
+    298, 299, 301, 300, 307, 302, 311, 312
+}};
+
+uint8_t gen4ArceusFormForItem(uint16_t item) noexcept {
+    for (size_t i = 0; i < GEN4_ARCEUS_PLATES.size(); ++i) {
+        if (GEN4_ARCEUS_PLATES[i] != item) continue;
+        uint8_t form = static_cast<uint8_t>(i + 1);
+        // Gen IV keeps the unused ???-type form at ID 9.
+        if (form >= 9) ++form;
+        return form;
+    }
+    return 0;
+}
+
+uint16_t gen4ArceusItemForForm(uint8_t form) noexcept {
+    if (form == 0 || form == 9) return 0;
+    size_t index = static_cast<size_t>(form - 1);
+    if (form > 9) --index;
+    return index < GEN4_ARCEUS_PLATES.size() ? GEN4_ARCEUS_PLATES[index] : 0;
+}
+
+bool isGen4ArceusPlate(uint16_t item) noexcept {
+    return std::find(GEN4_ARCEUS_PLATES.begin(), GEN4_ARCEUS_PLATES.end(), item) !=
+           GEN4_ARCEUS_PLATES.end();
+}
+
+std::u16string gen4DefaultSpeciesName(uint16_t species, uint8_t language) {
+    const auto nameIndex = Names::languageIndexFor(
+        static_cast<Enums::LanguageID>(language));
+    auto value = Utils::utf8ToUtf16(
+        Names::getSpeciesNameLocalized(species, nameIndex));
+
+    // PKHeX SpeciesName.GetSpeciesNameGeneration(..., 4):
+    // Japanese/Korean keep their native casing; other Gen IV species names are uppercase.
+    if (language == static_cast<uint8_t>(Enums::LanguageID::Japanese) ||
+        language == static_cast<uint8_t>(Enums::LanguageID::Korean))
+        return value;
+
+    for (auto& ch : value) {
+        if (ch >= u'a' && ch <= u'z') ch = static_cast<char16_t>(ch - (u'a' - u'A'));
+        // French Gen IV strips E/I diacritics from default species names.
+        if (language == static_cast<uint8_t>(Enums::LanguageID::French)) {
+            switch (ch) {
+                case u'É': case u'È': case u'Ê': case u'Ë':
+                case u'é': case u'è': case u'ê': case u'ë': ch = u'E'; break;
+                case u'Î': case u'Ï': case u'î': case u'ï': ch = u'I'; break;
+                default: break;
+            }
+        }
+        // Gen III/IV Farfetch'd uses a straight apostrophe.
+        if (ch == u'’') ch = u'\'';
+    }
+    return value;
+}
+
 } // namespace
 
 Pokemon4Mutable::Pokemon4Mutable(std::vector<std::byte> decrypted,
                                  Enums::GameVersion sourceGroup) noexcept
     : decrypted_(std::move(decrypted)), sourceGroup_(sourceGroup), valid_(true) {}
+
+std::optional<Pokemon4Mutable> Pokemon4Mutable::createStored(
+    const Pokemon4CreateDefaults& defaults,
+    Enums::GameVersion sourceGroup,
+    std::string* error) {
+    const auto& personal = personalFor(sourceGroup, defaults.species, 0);
+    if (defaults.species == 0 || defaults.species > 493 || personal.hp == 0) {
+        if (error) *error = "Gen IV Create species is not available in the native personal table";
+        return std::nullopt;
+    }
+    if (!Enums::groupHasLanguage(sourceGroup, defaults.language)) {
+        if (error) *error = "Gen IV Create language is not supported by the target game group";
+        return std::nullopt;
+    }
+    if (defaults.level < 1 || defaults.level > 100 || defaults.metLevel > 100 ||
+        defaults.otGender > 1) {
+        if (error) *error = "Gen IV Create defaults contain an unsupported level/gender value";
+        return std::nullopt;
+    }
+    const auto exactOrigin = static_cast<Enums::GameVersion>(defaults.originVersion);
+    if (Enums::getGameGroup(exactOrigin) != sourceGroup) {
+        if (error) *error = "Gen IV Create origin does not match the exact target save group";
+        return std::nullopt;
+    }
+
+    std::vector<std::byte> bytes(Encryption::SIZE_STORED4, std::byte{0});
+    Pokemon4Mutable result(std::move(bytes), sourceGroup);
+    result.write16(0x08, defaults.species);
+    result.write16(0x0A, 0);
+    result.write16(0x0C, defaults.tid);
+    result.write16(0x0E, defaults.sid);
+    result.write32(0x10, getExpForLevel(defaults.level, personal.growthRate));
+    result.write8(0x14, personal.baseFriendship);
+    result.write8(0x17, defaults.language);
+
+    // Deterministic, non-shiny, ability-slot-0 PID. Create starts from a stable native
+    // baseline; Nature/Gender/Shiny/Ability can then use the same constrained editors as Edit.
+    uint32_t pid = 0x6C078965u ^
+        (static_cast<uint32_t>(defaults.tid) << 16) ^
+        static_cast<uint32_t>(defaults.sid) ^
+        (static_cast<uint32_t>(defaults.species) * 0x45D9F3Bu);
+    bool foundPid = false;
+    for (int i = 0; i < 1000000; ++i) {
+        pid = pid * 0x41C64E6Du + 0x00006073u;
+        if ((pid & 1u) != 0) continue;
+        const uint16_t psv = static_cast<uint16_t>((pid & 0xFFFFu) ^ (pid >> 16));
+        if (static_cast<uint16_t>(defaults.tid ^ defaults.sid ^ psv) < 8u) continue;
+        foundPid = true;
+        break;
+    }
+    if (!foundPid) {
+        if (error) *error = "Gen IV Create could not derive a stable default PID";
+        return std::nullopt;
+    }
+    result.write32(0x00, pid);
+    result.write8(0x15, static_cast<uint8_t>(personal.ability1));
+
+    const uint8_t gender = result.genderForPid(pid);
+    result.write8(0x40, static_cast<uint8_t>((gender & 3u) << 1));
+
+    const auto speciesName =
+        gen4DefaultSpeciesName(defaults.species, defaults.language);
+    if (!result.writeTextPreservingTrash(0x48, 11, 10, speciesName)) {
+        if (error) *error = "Gen IV Create species name is not representable in the target language";
+        return std::nullopt;
+    }
+    if (!result.writeTextPreservingTrash(0x68, 8, 7, defaults.otName)) {
+        if (error) *error = "Gen IV Create OT name is not representable in the target language";
+        return std::nullopt;
+    }
+
+    result.write8(0x5F, defaults.originVersion);
+    result.write8(0x82, 0);
+    if (!result.setBall(defaults.ball) || !result.setMetLevel(defaults.metLevel)) {
+        if (error) *error = "Gen IV Create could not encode default Ball/Met Level";
+        return std::nullopt;
+    }
+    result.write8(0x84, static_cast<uint8_t>(
+        (result.byteAt(0x84) & 0x7Fu) | ((defaults.otGender & 1u) << 7)));
+    if (!result.setMetLocation(defaults.metLocation)) {
+        if (error) *error = "Gen IV Create could not encode default Met Location";
+        return std::nullopt;
+    }
+
+    Pokemon4ReadOnly verify(result.encryptedBytes(), sourceGroup);
+    if (!verify.valid() || verify.empty() || verify.isParty() ||
+        verify.species() != defaults.species ||
+        verify.tid() != defaults.tid || verify.sid() != defaults.sid ||
+        verify.language() != defaults.language ||
+        verify.originVersion() != defaults.originVersion ||
+        verify.originalTrainerGender() != defaults.otGender) {
+        if (error) *error = "Gen IV Create draft failed strict native PK4 verification";
+        return std::nullopt;
+    }
+    if (error) error->clear();
+    return result;
+}
 
 std::optional<Pokemon4Mutable> Pokemon4Mutable::fromEncrypted(
     std::span<const std::byte> encrypted,
@@ -137,13 +301,18 @@ std::array<uint8_t, 4> Pokemon4Mutable::ppUps() const noexcept {
 }
 uint8_t Pokemon4Mutable::pokerus() const noexcept { return byteAt(0x82); }
 uint8_t Pokemon4Mutable::ball() const noexcept {
-    return sourceGroup_ == Enums::GameVersion::HGSS ? byteAt(0x86) : byteAt(0x83);
+    return std::max(byteAt(0x83), byteAt(0x86));
 }
 uint8_t Pokemon4Mutable::metLevel() const noexcept {
     return static_cast<uint8_t>(byteAt(0x84) & 0x7Fu);
 }
 uint8_t Pokemon4Mutable::form() const noexcept {
     return static_cast<uint8_t>(byteAt(0x40) >> 3);
+}
+
+uint8_t Pokemon4Mutable::formCount() const noexcept {
+    if (!valid_) return 0;
+    return personalFor(sourceGroup_, species(), 0).formCount;
 }
 uint8_t Pokemon4Mutable::gender() const noexcept {
     return static_cast<uint8_t>((byteAt(0x40) >> 1) & 3u);
@@ -254,11 +423,144 @@ bool Pokemon4Mutable::writeTextPreservingTrash(
     return true;
 }
 
+bool Pokemon4Mutable::setSpecies(uint16_t value) noexcept {
+    if (!valid_ || value == 0 || value > 493) return false;
+    if (value == species()) return true;
+
+    const auto& target = personalFor(sourceGroup_, value, 0);
+    if (target.hp == 0) return false;
+
+    const auto backup = decrypted_;
+    const uint8_t oldLevel = level();
+    const uint8_t oldNature = nature();
+    const bool oldShiny = shiny();
+    const uint8_t oldGender = gender();
+    const uint8_t oldAbilitySlot = abilitySlot();
+    const bool nicknamed = (u32At(0x38) & 0x80000000u) != 0;
+
+    write16(0x08, value);
+    // A cross-species edit starts at the base form unless a later audited Form action
+    // explicitly selects another native form.
+    write8(0x40, static_cast<uint8_t>(byteAt(0x40) & 0x07u));
+
+    const uint8_t fixed = fixedGender(target.genderRatio);
+    int wantedGender = -1;
+    if (fixed != 3) {
+        wantedGender = fixed;
+    } else if (oldGender <= 1) {
+        wantedGender = oldGender;
+    } else {
+        wantedGender = static_cast<int>(genderForPid(pid()));
+    }
+
+    const bool targetDual =
+        target.ability2 != 0 && target.ability2 != target.ability1;
+    const int wantedAbilityBit = targetDual ? static_cast<int>(oldAbilitySlot) : -1;
+
+    // Preserve Level across growth-rate changes, and preserve Nature/Shiny plus Gender
+    // where the target species permits it. PID search is bounded and rollback-safe.
+    write32(0x10, getExpForLevel(oldLevel, target.growthRate));
+    if (!rerollPid(oldShiny ? 1 : 0, wantedGender, oldNature, wantedAbilityBit)) {
+        decrypted_ = backup;
+        return false;
+    }
+
+    const uint8_t actualGender = genderForPid(pid());
+    write8(0x40, static_cast<uint8_t>(
+        (byteAt(0x40) & 0xF9u) | ((actualGender & 3u) << 1)));
+    const uint8_t slot = targetDual ? static_cast<uint8_t>(pid() & 1u) : 0;
+    const uint16_t abilityId = slot == 0 ? target.ability1 : target.ability2;
+    if (abilityId == 0 || abilityId > 0xFFu) {
+        decrypted_ = backup;
+        return false;
+    }
+    write8(0x15, static_cast<uint8_t>(abilityId));
+
+    // Cross-species edits intentionally start at base Form. Do not carry an item
+    // across the Species change if that item would immediately force a non-base form.
+    if ((value == 487 && heldItem() == 112) ||
+        (value == 493 && isGen4ArceusPlate(heldItem())))
+        write16(0x0A, 0);
+
+    if (!nicknamed) {
+        const auto speciesName = gen4DefaultSpeciesName(value, language());
+        if (!writeTextPreservingTrash(0x48, 11, 10, speciesName)) {
+            decrypted_ = backup;
+            return false;
+        }
+    }
+
+    refreshPartyDerivedData();
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    const uint8_t verifyNature = static_cast<uint8_t>(verify.pid() % 25u);
+    const uint16_t verifyPsv = static_cast<uint16_t>(
+        (verify.pid() & 0xFFFFu) ^ (verify.pid() >> 16));
+    const bool verifyShiny =
+        static_cast<uint16_t>(verify.tid() ^ verify.sid() ^ verifyPsv) < 8u;
+    if (!verify.valid() || verify.empty() || verify.species() != value ||
+        verify.form() != 0 || verifyNature != oldNature ||
+        verifyShiny != oldShiny || verify.gender() != actualGender ||
+        verify.ability() != abilityId) {
+        decrypted_ = backup;
+        return false;
+    }
+    return true;
+}
+
 bool Pokemon4Mutable::setNickname(const std::u16string& value) noexcept {
     if (!writeTextPreservingTrash(0x48, 11, 10, value)) return false;
     // A user-initiated nickname edit is a nickname even when it happens to spell
     // the species name. Preserve the rest of IV32 and set only the native flag.
     write32(0x38, u32At(0x38) | 0x80000000u);
+    return true;
+}
+
+bool Pokemon4Mutable::setOriginalTrainerName(const std::u16string& value) noexcept {
+    if (!valid_) return false;
+    const auto backup = decrypted_;
+    if (!writeTextPreservingTrash(0x68, 8, 7, value)) return false;
+
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    if (!verify.valid() || verify.empty() || verify.originalTrainerName() != value) {
+        decrypted_ = backup;
+        return false;
+    }
+    return true;
+}
+
+bool Pokemon4Mutable::setTID(uint16_t value) noexcept {
+    if (!valid_) return false;
+    if (value == tid()) return true;
+
+    const auto backup = decrypted_;
+    const uint16_t oldSid = sid();
+    const bool oldShiny = shiny();
+    const uint8_t oldNature = nature();
+    const uint8_t oldGender = gender();
+    const uint16_t oldAbility = ability();
+
+    write16(0x0C, value);
+    // Trainer ID participates in Gen IV shininess. Re-roll PID transactionally so
+    // editing OT identity does not silently change Nature/Gender/Shiny/Ability.
+    if (!rerollPid(oldShiny ? 1 : 0, oldGender, oldNature, constrainedAbilityBit())) {
+        decrypted_ = backup;
+        return false;
+    }
+    refreshPartyDerivedData();
+
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    const uint8_t verifyNature = static_cast<uint8_t>(verify.pid() % 25u);
+    const uint16_t verifyPsv = static_cast<uint16_t>(
+        (verify.pid() & 0xFFFFu) ^ (verify.pid() >> 16));
+    const bool verifyShiny =
+        static_cast<uint16_t>(verify.tid() ^ verify.sid() ^ verifyPsv) < 8u;
+    if (!verify.valid() || verify.empty() ||
+        verify.tid() != value || verify.sid() != oldSid ||
+        verifyNature != oldNature || verifyShiny != oldShiny ||
+        verify.gender() != oldGender || verify.ability() != oldAbility) {
+        decrypted_ = backup;
+        return false;
+    }
     return true;
 }
 
@@ -288,13 +590,58 @@ bool Pokemon4Mutable::setFriendship(uint8_t value) noexcept {
 
 bool Pokemon4Mutable::setHeldItem(uint16_t value) noexcept {
     if (!valid_) return false;
+    if (value != 0 && !Names::isGen4HeldItemPresent(value, sourceGroup_)) return false;
+
+    const auto backup = decrypted_;
     write16(0x0A, value);
+
+    // Gen IV stores the current form, but these species must remain coherent with
+    // their held-item driven form rules. Keep both edit directions safe.
+    if (species() == 487) { // Giratina
+        const uint8_t desired = value == 112 ? 1 : 0;
+        if (desired != form() && !setForm(desired)) {
+            decrypted_ = backup;
+            return false;
+        }
+    } else if (species() == 493) { // Arceus
+        const uint8_t desired = gen4ArceusFormForItem(value);
+        if (desired != form() && !setForm(desired)) {
+            decrypted_ = backup;
+            return false;
+        }
+    }
     return true;
 }
 
 bool Pokemon4Mutable::setLanguage(uint8_t value) noexcept {
-    if (!valid_) return false;
+    if (!valid_ || !Enums::groupHasLanguage(sourceGroup_, value)) return false;
+
+    Pokemon4ReadOnly before(encryptedBytes(), sourceGroup_);
+    if (!before.valid() || before.empty()) return false;
+    const bool nicknamed = before.isNicknamed();
+    const auto oldNickname = before.nickname();
+    const auto oldOtName = before.originalTrainerName();
+    const auto backup = decrypted_;
+
     write8(0x17, value);
+    if (!nicknamed) {
+        const auto speciesName = gen4DefaultSpeciesName(species(), value);
+        if (!writeTextPreservingTrash(0x48, 11, 10, speciesName)) {
+            decrypted_ = backup;
+            return false;
+        }
+    }
+
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    if (!verify.valid() || verify.empty() || verify.language() != value ||
+        verify.originalTrainerName() != oldOtName ||
+        verify.isNicknamed() != nicknamed ||
+        (nicknamed && verify.nickname() != oldNickname) ||
+        (!nicknamed &&
+         verify.nickname() != gen4DefaultSpeciesName(species(), value))) {
+        decrypted_ = backup;
+        return false;
+    }
     return true;
 }
 
@@ -311,6 +658,11 @@ bool Pokemon4Mutable::setIV(size_t stat, uint8_t value) noexcept {
 
 bool Pokemon4Mutable::setEV(size_t stat, uint8_t value) noexcept {
     if (!valid_ || stat >= 6) return false;
+    const auto current = evs();
+    uint32_t total = value;
+    for (size_t i = 0; i < current.size(); ++i)
+        if (i != stat) total += current[i];
+    if (total > 510) return false;
     write8(0x18 + stat, value);
     refreshPartyDerivedData();
     return true;
@@ -318,7 +670,22 @@ bool Pokemon4Mutable::setEV(size_t stat, uint8_t value) noexcept {
 
 bool Pokemon4Mutable::setMove(size_t slot, uint16_t move) noexcept {
     if (!valid_ || slot >= 4) return false;
+    // PK4's native move set ends at Shadow Force (467). Keep this structural
+    // boundary local even though the shared presence table also serves later games.
+    if (move > 467) return false;
+    if (move != 0 && !Names::isMovePresent(move, sourceGroup_)) {
+        // Older shared presence tables may not enumerate DP/Pt/HGSS explicitly;
+        // the native Gen IV contiguous range above remains authoritative here.
+        if (sourceGroup_ != Enums::GameVersion::DP &&
+            sourceGroup_ != Enums::GameVersion::PT &&
+            sourceGroup_ != Enums::GameVersion::HGSS)
+            return false;
+    }
     write16(0x28 + slot * 2, move);
+    // A move selection is one coherent edit: clear PP Ups and initialize current PP
+    // from the exact Generation IV base-PP table. Empty slots stay 0/0.
+    write8(0x34 + slot, 0);
+    write8(0x30 + slot, Names::getMoveBasePP(move, sourceGroup_));
     return true;
 }
 
@@ -340,18 +707,129 @@ bool Pokemon4Mutable::setPokerus(uint8_t value) noexcept {
     return true;
 }
 
+bool Pokemon4Mutable::setPokerusMode(PokerusMode mode) noexcept {
+    if (!valid_) return false;
+    const uint8_t old = pokerus();
+    switch (mode) {
+        case PokerusMode::None:
+            return setPokerus(0);
+        case PokerusMode::Cured: {
+            const uint8_t strain =
+                static_cast<uint8_t>((old & 0xF0u) ? (old & 0xF0u) : 0x10u);
+            return setPokerus(strain);
+        }
+        case PokerusMode::Infected: {
+            const uint8_t strain =
+                static_cast<uint8_t>((old & 0xF0u) ? (old & 0xF0u) : 0x10u);
+            const uint8_t days =
+                static_cast<uint8_t>((old & 0x0Fu) ? (old & 0x0Fu) : 1u);
+            return setPokerus(static_cast<uint8_t>(strain | days));
+        }
+        default:
+            return false;
+    }
+}
+
 bool Pokemon4Mutable::setBall(uint8_t value) noexcept {
     if (!valid_) return false;
-    if (sourceGroup_ == Enums::GameVersion::HGSS) write8(0x86, value);
-    else if (sourceGroup_ == Enums::GameVersion::DP || sourceGroup_ == Enums::GameVersion::PT)
+    const auto originGroup = Enums::getGameGroup(
+        static_cast<Enums::GameVersion>(byteAt(0x5F)));
+    if (originGroup != Enums::GameVersion::DP &&
+        originGroup != Enums::GameVersion::PT &&
+        originGroup != Enums::GameVersion::HGSS)
+        return false;
+
+    const auto allowed = Enums::getBallList(originGroup);
+    if (std::find(allowed.begin(), allowed.end(), value) == allowed.end()) return false;
+
+    Pokemon4ReadOnly current(encryptedBytes(), sourceGroup_);
+    if (!current.valid()) return false;
+    if ((originGroup == Enums::GameVersion::DP ||
+         originGroup == Enums::GameVersion::PT) &&
+        current.ballHGSS() != 0)
+        return false;
+    if (originGroup == Enums::GameVersion::HGSS &&
+        current.fatefulEncounter() &&
+        current.eggLocationDP() == 0 && current.eggLocationExtended() == 0)
+        return false;
+
+    const auto backup = decrypted_;
+    if (originGroup == Enums::GameVersion::HGSS) {
+        write8(0x83, value <= 16 ? value : 4);
+        write8(0x86, value);
+    } else {
         write8(0x83, value);
-    else return false;
+        write8(0x86, 0);
+    }
+
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    const uint8_t expectedDPPt =
+        originGroup == Enums::GameVersion::HGSS
+            ? static_cast<uint8_t>(value <= 16 ? value : 4)
+            : value;
+    const uint8_t expectedHGSS =
+        originGroup == Enums::GameVersion::HGSS ? value : 0;
+    if (!verify.valid() || verify.ballDPPt() != expectedDPPt ||
+        verify.ballHGSS() != expectedHGSS) {
+        decrypted_ = backup;
+        return false;
+    }
     return true;
 }
 
 bool Pokemon4Mutable::setMetLevel(uint8_t value) noexcept {
     if (!valid_ || value > 100) return false;
     write8(0x84, static_cast<uint8_t>((byteAt(0x84) & 0x80u) | value));
+    return true;
+}
+
+bool Pokemon4Mutable::setMetLocation(uint16_t value) noexcept {
+    if (!valid_) return false;
+
+    // Met Location is origin metadata. Validate against the Pokémon's exact Gen IV
+    // origin game rather than whichever compatible save currently contains it.
+    const uint8_t origin = byteAt(0x5F);
+    const auto exactOrigin = static_cast<Enums::GameVersion>(origin);
+    const auto originGroup = Enums::getGameGroup(exactOrigin);
+    if (originGroup != Enums::GameVersion::DP &&
+        originGroup != Enums::GameVersion::PT &&
+        originGroup != Enums::GameVersion::HGSS)
+        return false;
+
+    // Zero is the canonical unset value used by a fresh native Create draft.
+    // It is intentionally not offered as an HG/SS map location in the picker,
+    // but the serializer must still be able to encode an unset draft safely.
+    if (value != 0 && !Names::isGen4NativeMetLocation(origin, value)) return false;
+
+    uint16_t dpLocation = value;
+    uint16_t extendedLocation = 0;
+
+    if (exactOrigin == Enums::GameVersion::Pt) {
+        // Platinum mirrors common D/P locations into the extended field. Locations
+        // introduced after D/P use Faraway Place in the legacy field.
+        extendedLocation = value;
+        if (value > 111) dpLocation = 3002;
+    } else if (exactOrigin == Enums::GameVersion::HG ||
+               exactOrigin == Enums::GameVersion::SS) {
+        // HG/SS native locations are extended-only to D/P; legacy games see the
+        // canonical Faraway Place sentinel.
+        dpLocation = 3002;
+        extendedLocation = value;
+    } else if (exactOrigin != Enums::GameVersion::D &&
+               exactOrigin != Enums::GameVersion::P) {
+        return false;
+    }
+
+    const auto backup = decrypted_;
+    write16(0x80, dpLocation);
+    write16(0x46, extendedLocation);
+
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    if (!verify.valid() || verify.metLocationDP() != dpLocation ||
+        verify.metLocationExtended() != extendedLocation) {
+        decrypted_ = backup;
+        return false;
+    }
     return true;
 }
 
@@ -390,6 +868,60 @@ bool Pokemon4Mutable::rerollPid(
         return true;
     }
     return false;
+}
+
+bool Pokemon4Mutable::setForm(uint8_t value) noexcept {
+    if (!valid_) return false;
+    const auto& base = personalFor(sourceGroup_, species(), 0);
+    if (base.hp == 0 || base.formCount == 0 || value >= base.formCount) return false;
+    if (value == form()) return true;
+
+    // Exact Gen IV legality/storage side effects pinned from PKHeX FormVerifier/FormItem.
+    if (species() == 492 && value != 0 && !isParty())
+        return false; // Shaymin Sky Forme cannot persist in a Gen IV PC box.
+
+    uint16_t requiredItem = heldItem();
+    if (species() == 487) { // Giratina Origin <=> Griseous Orb
+        requiredItem = value == 1 ? 112 : (heldItem() == 112 ? 0 : heldItem());
+    } else if (species() == 493) { // Arceus type form <=> exact Plate
+        if (value == 9) return false; // unused ???-type form has no obtainable Plate
+        if (value == 0)
+            requiredItem = isGen4ArceusPlate(heldItem()) ? 0 : heldItem();
+        else {
+            requiredItem = gen4ArceusItemForForm(value);
+            if (requiredItem == 0) return false;
+        }
+    }
+    if (requiredItem != 0 && !Names::isGen4HeldItemPresent(requiredItem, sourceGroup_))
+        return false;
+
+    const auto backup = decrypted_;
+    const uint8_t oldAbilitySlot = abilitySlot();
+    write16(0x0A, requiredItem);
+    write8(0x40, static_cast<uint8_t>((byteAt(0x40) & 0x07u) | (value << 3)));
+
+    const auto& next = personalFor(sourceGroup_, species(), value);
+    if (next.hp == 0) {
+        decrypted_ = backup;
+        return false;
+    }
+
+    const uint16_t nextAbility =
+        oldAbilitySlot == 1 && next.ability2 != 0 ? next.ability2 : next.ability1;
+    if (nextAbility == 0 || nextAbility > 0xFFu) {
+        decrypted_ = backup;
+        return false;
+    }
+    write8(0x15, static_cast<uint8_t>(nextAbility));
+    refreshPartyDerivedData();
+
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    if (!verify.valid() || verify.form() != value || verify.species() != species() ||
+        verify.heldItem() != requiredItem || verify.ability() != nextAbility) {
+        decrypted_ = backup;
+        return false;
+    }
+    return true;
 }
 
 bool Pokemon4Mutable::setNature(uint8_t value) noexcept {

@@ -312,7 +312,11 @@ namespace Panels {
             StatsRadar::drawGen2Labeled(fb, x + 18, cy2 + 4, width - 36,
                 std::min(236, y + height - 36 - (cy2 + 4)),
                 PokeBank::UIModel::Gen2Workspace::battleStats(record));
-        } else if (p->getGameGroup() == Enums::GameVersion::FRLG) {
+        } else if (p->getGameGroup() == Enums::GameVersion::FRLG ||
+                   (exact && exact->identity.generation == Foundation::Generation::Gen4)) {
+            // Gen III+ uses six battle stats. Gen IV used to fall through to the
+            // legacy fixed-255 renderer, collapsing low-level Pokemon to a dot.
+            // Use the accepted local/headroom scale so the shape stays readable.
             const std::array<uint16_t,6> stats{
                 p->statHPMax(), p->statATK(), p->statDEF(),
                 p->statSPE(), p->statSPA(), p->statSPD()
@@ -321,7 +325,7 @@ namespace Panels {
             StatsRadar::drawGen3Labeled(fb, x + 18, cy2 + 4, width - 36, radarH, stats);
             iy = cy2 + radarH + 8;
         } else {
-            // Later formats keep the inherited summary renderer until their shared-editor pass.
+            // Other later formats keep the inherited summary renderer until their shared-editor pass.
             float vals[6] = {
                 static_cast<float>(p->statHPMax()), static_cast<float>(p->statATK()), static_cast<float>(p->statDEF()),
                 static_cast<float>(p->statSPE()),   static_cast<float>(p->statSPD()), static_cast<float>(p->statSPA())
@@ -369,7 +373,8 @@ namespace Panels {
             : std::string("None"));
 
         // Edit hint + whole-panel tap target (opens the editor for the selected slot).
-        const char* hint = "A / tap: Edit";
+        const char* hint = (exact && exact->identity.generation == Foundation::Generation::Gen4)
+            ? "A / tap: Actions" : "A / tap: Edit";
         int hw, hh; fb.measureText(hint, hw, hh, TextStyle::Caption);
         fb.drawText(x + (width - hw) / 2, y + height - 24, hint, Colors::Accent, TextStyle::Caption);
         screen.touchButtons.push_back({ 2000, x, y + headerH, width, height - headerH });

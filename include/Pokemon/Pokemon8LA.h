@@ -67,11 +67,28 @@ namespace Pokemon {
          */
         explicit Pokemon8LA(std::span<const std::byte> raw)
         {
+            const bool stored = raw.size() == SIZE_STORED8_LA;
+            const bool party = raw.size() == SIZE_PARTY8_LA;
+            if (!stored && !party) {
+                inputShapeValid = false;
+                dataSize = SIZE_PARTY8_LA;
+                buffer = new std::byte[dataSize]();
+                data = std::span<std::byte>(buffer, dataSize);
+                return;
+            }
+
             // LA box slots are stored-size (0x168); party slots are party-size (0x178). Always keep a
             // full party-size buffer so the party-stat getters (level/HP at 0x168+) stay in bounds for
             // a stored box mon — the trailing party region just reads as zero for box mons.
             std::byte* dec = decryptArray8LA(raw);
-            const size_t copyN = std::min(raw.size(), static_cast<size_t>(SIZE_PARTY8_LA));
+            if (!dec) {
+                inputShapeValid = false;
+                dataSize = SIZE_PARTY8_LA;
+                buffer = new std::byte[dataSize]();
+                data = std::span<std::byte>(buffer, dataSize);
+                return;
+            }
+            const size_t copyN = raw.size();
             buffer = new std::byte[SIZE_PARTY8_LA]();  // zero-initialized
             for (size_t i = 0; i < copyN; ++i) buffer[i] = dec[i];
             delete[] dec;
@@ -82,7 +99,7 @@ namespace Pokemon {
             // so it's valid even for a box mon) -- otherwise statXXX(), which reads that cache, shows 0
             // for a boxed mon (a created mon's stats vanished after a game round-trip). Display-only:
             // the tail is beyond the stored size and the checksum, so it isn't written back to a box.
-            if (raw.size() < static_cast<size_t>(SIZE_PARTY8_LA)) {
+            if (stored) {
                 const uint16_t keepHP = statHPCurrent();
                 recalculateStats();
                 writeUInt16LittleEndian(reinterpret_cast<uint8_t*>(buffer + 0x92), keepHP);
@@ -840,7 +857,7 @@ namespace Pokemon {
          * @return true if valid, false if data is corrupted
          */
         bool checksumValid() const noexcept override {
-            return checksum() == calculateChecksum();
+            return inputShapeValid && checksum() == calculateChecksum();
         }
 
         // ========================================

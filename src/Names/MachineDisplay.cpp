@@ -46,6 +46,20 @@ MachineDescriptor getMachineDescriptor(Enums::GameVersion game, uint16_t itemId)
             return {};
         }
 
+        case GameVersion::D:
+        case GameVersion::P:
+        case GameVersion::DP:
+        case GameVersion::Pt:
+        case GameVersion::PT:
+        case GameVersion::HG:
+        case GameVersion::SS:
+        case GameVersion::HGSS:
+            if (itemId >= 328 && itemId <= 419)
+                return make(game, itemId, MachineKind::TM, itemId - 327, 2);
+            if (itemId >= 420 && itemId <= 427)
+                return make(game, itemId, MachineKind::HM, itemId - 419, 2);
+            return {};
+
         case GameVersion::FR:
         case GameVersion::LG:
         case GameVersion::FRLG:

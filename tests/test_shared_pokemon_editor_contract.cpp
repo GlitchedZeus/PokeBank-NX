@@ -18,6 +18,14 @@ int main() {
     static_assert(HeldItems::columns == 4);
     static_assert(HeldItems::rows == 10);
     static_assert(HeldItems::pageSize == 40);
+    static_assert(HeldItems::modalWidth == 1040);
+    static_assert(HeldItems::modalHeight == 520);
+    static_assert(HeldItems::gridInsetX == 22);
+    static_assert(HeldItems::gridInsetY == 90);
+    static_assert(HeldItems::rowPitch == 40);
+    static_assert(HeldItems::cellWidth == 249);
+    static_assert(HeldItems::gridInsetY + (HeldItems::rows - 1) * HeldItems::rowPitch +
+                  HeldItems::rowPitch - 4 <= HeldItems::modalHeight);
     static_assert(HeldItems::futureGenerationsUseSharedGrid());
     static_assert(HeldItems::move(0, 240, 1, 0) == 1);
     static_assert(HeldItems::move(0, 240, 0, 1) == 4);
@@ -52,11 +60,14 @@ int main() {
     classicMenu.hasLegalityProvenance = true;
 
     const auto empty = actionsForSlot(false, classicMenu);
-    assert(empty.count == 4);
+    assert(empty.count == 2);
     assert(empty[0] == Action::Add);
-    assert(empty[1] == Action::Review);
-    assert(empty[2] == Action::LegalityProvenance);
-    assert(empty[3] == Action::Close);
+    assert(empty[1] == Action::Close);
+    const auto emptyDirty = actionsForSlot(false, classicMenu, true);
+    assert(emptyDirty.count == 3);
+    assert(emptyDirty[0] == Action::Add);
+    assert(emptyDirty[1] == Action::Review);
+    assert(emptyDirty[2] == Action::Close);
     assert(surfaceForAction(empty[0]) == Surface::CreateDraft);
     assert(std::string(actionLabel(Action::Close)) == "Cancel");
     assert(std::string(actionLabel(Action::LegalityProvenance)) == "Legality & Provenance");
@@ -68,27 +79,33 @@ int main() {
     gen1.canRemove = true;
     gen1.hasLegalityProvenance = true;
     const auto gen1Occupied = actionsForSlot(true, gen1);
-    assert(gen1Occupied.count == 7);
+    assert(gen1Occupied.count == 6);
     assert(gen1Occupied[0] == Action::View);
     assert(gen1Occupied[1] == Action::Edit);
     assert(gen1Occupied[2] == Action::Clone);
     assert(gen1Occupied[3] == Action::Remove);
     assert(gen1Occupied[4] == Action::LegalityProvenance);
-    assert(gen1Occupied[5] == Action::Review);
-    assert(gen1Occupied[6] == Action::Close);
+    assert(gen1Occupied[5] == Action::Close);
+    const auto gen1OccupiedDirty = actionsForSlot(true, gen1, true);
+    assert(gen1OccupiedDirty.count == 7);
+    assert(gen1OccupiedDirty[5] == Action::Review);
+    assert(gen1OccupiedDirty[6] == Action::Close);
 
     ActionCapabilities gen2;
     gen2.canClone = true;
     gen2.canRemove = false;
     gen2.hasLegalityProvenance = true;
     const auto gen2Occupied = actionsForSlot(true, gen2);
-    assert(gen2Occupied.count == 6);
+    assert(gen2Occupied.count == 5);
     assert(gen2Occupied[0] == Action::View);
     assert(gen2Occupied[1] == Action::Edit);
     assert(gen2Occupied[2] == Action::Clone);
     assert(gen2Occupied[3] == Action::LegalityProvenance);
-    assert(gen2Occupied[4] == Action::Review);
-    assert(gen2Occupied[5] == Action::Close);
+    assert(gen2Occupied[4] == Action::Close);
+    const auto gen2OccupiedDirty = actionsForSlot(true, gen2, true);
+    assert(gen2OccupiedDirty.count == 6);
+    assert(gen2OccupiedDirty[4] == Action::Review);
+    assert(gen2OccupiedDirty[5] == Action::Close);
 
     assert(boxActivation(false, true, false) == BoxActivation::Actions);
     assert(boxActivation(true, true, false) == BoxActivation::Actions);
@@ -147,6 +164,11 @@ int main() {
     assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::MetLocation, true) == FieldAccess::Editable);
     assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::MetLevel, true) == FieldAccess::Editable);
     assert(fieldAccessForGeneration(Generation::Gen2, FieldIdentity::OriginalTrainerGender, true) == FieldAccess::Editable);
+
+    assert(fieldAccessForGeneration(Generation::Gen4, FieldIdentity::OriginalTrainer) == FieldAccess::Editable);
+    assert(fieldAccessForGeneration(Generation::Gen4, FieldIdentity::TrainerId) == FieldAccess::Editable);
+    assert(fieldAccessForGeneration(Generation::Gen4, FieldIdentity::SecretId) == FieldAccess::ReadOnly);
+    assert(fieldAccessForGeneration(Generation::Gen4, FieldIdentity::OriginGame) == FieldAccess::ReadOnly);
 
     assert(std::string(statsHeading()) == "STATS");
     assert((moveColumn(Generation::Gen2, {Panel::Details, 4, 0}, 1) == Focus{Panel::Values, 4, 0}));

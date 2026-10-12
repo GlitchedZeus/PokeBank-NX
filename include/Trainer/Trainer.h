@@ -32,6 +32,13 @@ using namespace Utils;
 using namespace Enums;
 
 namespace Trainer {
+    struct PokedexProgress {
+        uint16_t seen = 0;
+        uint16_t caught = 0;
+        uint16_t total = 0;
+        [[nodiscard]] bool available() const noexcept { return total != 0; }
+    };
+
 
     // Pokemon storage constants (common across generations)
     constexpr size_t MAX_PARTY_SLOTS = 6;  // Maximum Pokemon in party
@@ -422,6 +429,9 @@ namespace Trainer {
          * are left exactly as they were rather than half-written.
          */
         virtual void updatePokedexBlock() {}
+        /// Read the game's authoritative Pokédex progress without deriving it from party/boxes.
+        /// Unsupported formats return total=0 so presentation stays truthful.
+        virtual PokedexProgress pokedexProgress() const { return {}; }
 
         /** Longest box name this game accepts, in characters (not bytes). 0 = renaming unsupported. */
         virtual size_t getMaxBoxNameLength() const noexcept { return 0; }

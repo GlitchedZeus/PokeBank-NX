@@ -123,21 +123,33 @@ void redrawGen2DetailsSemantics(PKSEFramebuffer& fb, const State& state,
     // previous rows first, then repaint the same eight-row window used by the shared shell.
     const int viewportY = y + 216;
     const int viewportBottom = y + h - 34;
-    fb.drawFilledRect(x + 8, viewportY, w - 16, viewportBottom - viewportY, Colors::Panel);
-    const auto window = UnifiedContract::scrollWindow(rows.size(), 8, unified.detailsFocus);
-    fb.setClipRect(x + 8, viewportY, w - 16, viewportBottom - viewportY);
+    const int viewportH = std::max(0, viewportBottom - viewportY);
+    constexpr int detailRowStep = 38;
+    // Match the stable clipped touch viewport already used by drawUnifiedDetails.
+    // Re-centring from focus here previously undid every finger-scroll frame.
+    const int detailFirst = std::max(0, unified.detailsViewport.firstRow);
+    const int detailOffset = unified.detailsTouchScroll.offset();
+    fb.drawFilledRect(x + 8, viewportY, w - 16, viewportH, Colors::Panel);
+    const UnifiedContract::ScrollWindow window{
+        static_cast<std::size_t>(detailFirst),
+        std::min<std::size_t>(8, rows.size() - static_cast<std::size_t>(detailFirst)),
+        rows.size() > 8};
+    fb.setClipRect(x + 8, viewportY, w - 16, viewportH);
     for (std::size_t i = 0; i < window.count; ++i) {
         const std::size_t row = window.first + i;
-        const int yy = y + 224 + static_cast<int>(i) * 38;
-        const bool selected = unified.focus.panel == UnifiedContract::Panel::Details && unified.focus.row == row;
+        const int yy = y + 224 + static_cast<int>(i) * detailRowStep + detailOffset;
+        const bool selected =
+            unified.focus.panel == UnifiedContract::Panel::Details &&
+            row == static_cast<std::size_t>(unified.focus.row);
         // Leave a clean gutter between the selection outline and the scrollbar track.
         drawGen2Focus(fb, x + 8, yy + 2, std::max(0, w - 36), 30, selected);
-        fb.drawText(x + 18, yy + 7, rows[row].first, selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, yy + 7, rows[row].first, selected ? Colors::SelectedText : Colors::TextDim,
+                    TextStyle::Caption);
         fb.drawText(x + 108, yy + 7, rows[row].second, Colors::Text, TextStyle::Caption);
     }
     fb.clearClip();
     SharedPokemonShell::drawVerticalScrollIndicator(
-        fb, x + w - 10, viewportY + 6, std::max(0, viewportBottom - viewportY - 12),
+        fb, x + w - 10, viewportY + 6, std::max(0, viewportH - 12),
         rows.size(), 8, window.first);
     fb.drawFilledRect(x + w - 50, y + h - 34, 38, 26, Colors::Panel);
 }
@@ -250,7 +262,7 @@ void drawFullscreenGen2Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     const int midX = geometry.midX, midW = geometry.midW;
     const int rightX = geometry.rightX, rightW = geometry.rightW;
 
-    drawUnifiedDetails(fb, state, unified, leftX, contentY, leftW, contentH, passive);
+    drawUnifiedDetails(screen, fb, state, unified, leftX, contentY, leftW, contentH, passive);
     drawUnifiedValues(fb, state, unified, midX, contentY, midW, contentH, passive);
     drawUnifiedMoves(fb, screen, state, unified, rightX, contentY, rightW, contentH, passive);
     redrawGen2DetailsSemantics(fb, state, unified, leftX, contentY, leftW, contentH, passive);

@@ -55,9 +55,32 @@ namespace Pokemon {
          */
         explicit Pokemon9SV(std::span<const std::byte> raw)
         {
-            // Decrypt the Gen 9 Pokemon data
-            buffer = decryptArray9SV(raw);
-            dataSize = raw.size();
+            const bool stored = raw.size() == SIZE_STORED9_SV;
+            const bool party = raw.size() == SIZE_PARTY9_SV;
+            if (!stored && !party) {
+                inputShapeValid = false;
+                dataSize = SIZE_PARTY9_SV;
+                buffer = new std::byte[dataSize]();
+                data = std::span<std::byte>(buffer, dataSize);
+                return;
+            }
+
+            std::byte* dec = decryptArray9SV(raw);
+            if (!dec) {
+                inputShapeValid = false;
+                dataSize = SIZE_PARTY9_SV;
+                buffer = new std::byte[dataSize]();
+                data = std::span<std::byte>(buffer, dataSize);
+                return;
+            }
+            if (party) {
+                buffer = dec;
+            } else {
+                buffer = new std::byte[SIZE_PARTY9_SV]();
+                for (size_t i = 0; i < raw.size(); ++i) buffer[i] = dec[i];
+                delete[] dec;
+            }
+            dataSize = SIZE_PARTY9_SV;
             data = std::span<std::byte>(buffer, dataSize);
         }
 
@@ -821,7 +844,7 @@ namespace Pokemon {
          * @return true if valid, false if data is corrupted
          */
         bool checksumValid() const noexcept override {
-            return checksum() == calculateChecksum();
+            return inputShapeValid && checksum() == calculateChecksum();
         }
 
         // ========================================

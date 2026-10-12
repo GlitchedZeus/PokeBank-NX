@@ -1,9 +1,8 @@
-name: Inventory Hardware Retest Production Gate
+name: HISTORICAL / MANUAL — Inventory Hardware Retest Production Gate
 
+
+# Frozen evidence workflow retained for reproducibility. It must never auto-run on current development.
 on:
-  push:
-    branches: [feature/pokebank-playable]
-    paths: [.github/workflows/inventory-hardware-retest.yml]
   workflow_dispatch:
 
 permissions:

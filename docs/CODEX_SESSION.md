@@ -1,5 +1,8 @@
 # PokeBank NX — Codex Session Entrypoint
 
+> **HISTORICAL SESSION DISCIPLINE:** This file preserves older session practices but no longer defines the active branch/task authority chain. Start with `docs/ENGINEERING_AUTHORITY.md`, re-fetch GitHub, then use the current task-specific handoff/matrix.
+
+
 > **Codex/internal engineering file.** The root `README.md` is the user's human-facing project dashboard. Do not rewrite it or use it to expand implementation scope unless the user explicitly asks for README work.
 
 ## Authority order

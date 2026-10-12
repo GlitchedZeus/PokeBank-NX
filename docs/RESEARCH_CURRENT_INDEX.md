@@ -1,5 +1,8 @@
 # PokeBank NX — Current Research Router
 
+> **AUTHORITY NOTE (2026-09-29):** Research router only. It does not define the active branch, PR, milestone, or task. Start with `docs/ENGINEERING_AUTHORITY.md` and live GitHub state; older authority-chain wording below is historical.
+
+
 Last updated: 2026-09-09
 
 > **Research/navigation only.** This file does not expand the active coding milestone. `CURRENT_STATUS.md`, `docs/CODEX_SESSION.md`, and `docs/NEXT_CODEX_PROMPT.md` remain authoritative.

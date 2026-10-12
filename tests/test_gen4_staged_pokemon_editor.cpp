@@ -1,5 +1,6 @@
 #include "Encryption/Encryption4.h"
 #include "Integration/Gen4/Gen4ReadOnlySave.h"
+#include "Integration/Gen4/Gen4BagCatalog.h"
 #include "Integration/Gen4/Gen4StagedPokemonEditor.h"
 #include "Pokemon/Pokemon4Mutable.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
@@ -137,6 +138,11 @@ std::vector<uint8_t> makeSave(Layout layout, uint8_t romCode = 7,
         std::fill(save.begin() + static_cast<std::ptrdiff_t>(storage),
                   save.begin() + static_cast<std::ptrdiff_t>(storage + sp.storageSize), 0);
 
+        auto trainerName = Utils::encodeGen4Field(u"Kylie", 8, 7, 2);
+        copy(save, base + sp.trainer, trainerName);
+        w16(save, base + sp.trainer + 0x10, 12150);
+        w16(save, base + sp.trainer + 0x12, 22558);
+        save[base + sp.trainer + 0x18] = 1;
         save[base + sp.trainer + 0x19] = 2;
         save[base + sp.trainer + 0x1C] = romCode;
         save[base + sp.party - 4] = 1;
@@ -191,6 +197,8 @@ void testLayout(Layout layout, uint8_t romCode = 7, bool soulSilver = false) {
     assert(mon->setIV(0, 31));
     assert(mon->setEV(1, 200));
     assert(mon->setNature(static_cast<uint8_t>((beforeNature + 1) % 25)));
+    assert(mon->setMove(0, 105)); // Recover
+    assert(mon->pp()[0] == 10 && mon->ppUps()[0] == 0);
     assert(editor->commitBoxPokemon(0, 0, *mon, &error));
     assert(error.empty());
     assert(editor->hasChanges());
@@ -209,6 +217,9 @@ void testLayout(Layout layout, uint8_t romCode = 7, bool soulSilver = false) {
     assert(parsed->box(0, 0).evs()[1] == 200);
     assert(parsed->box(0, 0).pid() % 25 ==
            static_cast<uint8_t>((beforeNature + 1) % 25));
+    assert(parsed->box(0, 0).moves()[0] == 105);
+    assert(parsed->box(0, 0).pp()[0] == 10);
+    assert(parsed->box(0, 0).ppUps()[0] == 0);
 
     // Party editing uses the same mutable PK4 core but commits a full 0xEC party
     // record into the selected General block, refreshes its CRC and keeps live stats coherent.
@@ -327,6 +338,283 @@ void testMixedPartitionMutationFootprint() {
     }
 }
 
+void testEmptySlotCreateTransaction() {
+    for (const auto layout : {Layout::DiamondPearl, Layout::Platinum,
+                              Layout::HeartGoldSoulSilver}) {
+        auto source = makeSave(layout, 7);
+        const auto original = source;
+        std::string error;
+        auto editor = Gen4StagedPokemonEditor::create(
+            source, layout, gameId(layout), &error);
+        assert(editor && error.empty());
+
+        auto draft = editor->createBoxDraft(0, 1, 393, &error);
+        assert(draft && error.empty());
+        assert(draft->species() == 393);
+        assert(draft->tid() == 12150 && draft->sid() == 22558);
+        assert(draft->language() == 2);
+        assert(editor->stageCreateBoxPokemon(0, 1, *draft, &error));
+        assert(error.empty());
+        assert(source == original);
+
+        auto created = editor->boxedPokemon(0, 1, &error);
+        assert(created && error.empty());
+        assert(created->species() == 393);
+        assert(created->tid() == 12150 && created->sid() == 22558);
+        assert(created->originalTrainerName() == u"Kylie");
+        assert(created->nickname() == u"PIPLUP");
+        assert(!created->isNicknamed());
+        const auto createdBytes = created->originalEncryptedBytes();
+        const auto draftBytes = draft->encryptedBytes();
+        assert(createdBytes.size() == draftBytes.size());
+        assert(std::equal(createdBytes.begin(), createdBytes.end(), draftBytes.begin()));
+
+        // Create must never replace an occupied target.
+        const auto stagedBeforeRefusal = editor->stagedBytes();
+        assert(!editor->createBoxDraft(0, 0, 393, &error));
+        assert(!error.empty());
+        error.clear();
+        assert(!editor->stageCreateBoxPokemon(0, 0, *draft, &error));
+        assert(!error.empty());
+        assert(editor->stagedBytes() == stagedBeforeRefusal);
+
+        const auto finalBytes = editor->finalizedBytes(&error);
+        assert(!finalBytes.empty() && error.empty());
+        auto reparsed = Gen4ReadOnlySave::parse(
+            finalBytes, layout, gameId(layout), &error);
+        assert(reparsed && error.empty());
+        assert(!reparsed->box(0, 1).empty());
+        assert(source == original);
+    }
+}
+
+void testCloneAndReleaseTransactions() {
+    for (const auto layout : {Layout::DiamondPearl, Layout::Platinum,
+                              Layout::HeartGoldSoulSilver}) {
+        auto source = makeSave(layout);
+        const auto original = source;
+        std::string error;
+        auto editor = Gen4StagedPokemonEditor::create(
+            source, layout, gameId(layout), &error);
+        assert(editor && error.empty());
+
+        const auto sourceRecord = editor->boxedPokemon(0, 0, &error);
+        assert(sourceRecord && error.empty());
+        const auto sourceBytes = sourceRecord->originalEncryptedBytes();
+
+        assert(editor->stageCloneBoxPokemon(0, 0, 0, 1, &error));
+        assert(error.empty());
+        assert(editor->hasChanges());
+        assert(source == original);
+
+        const auto clone = editor->boxedPokemon(0, 1, &error);
+        assert(clone && error.empty());
+        assert(std::equal(clone->originalEncryptedBytes().begin(),
+                          clone->originalEncryptedBytes().end(), sourceBytes.begin()));
+
+        // Clone cannot silently overwrite an occupied slot.
+        const auto beforeRefusal = editor->stagedBytes();
+        assert(!editor->stageCloneBoxPokemon(0, 0, 0, 1, &error));
+        assert(!error.empty());
+        assert(editor->stagedBytes() == beforeRefusal);
+        error.clear();
+
+        // Release zeroes only the staged stored-PK4 slot and leaves the clone intact.
+        assert(editor->stageReleaseBoxPokemon(0, 0, &error));
+        assert(error.empty());
+        assert(!editor->boxedPokemon(0, 0, &error));
+        error.clear();
+        const auto cloneAfterRelease = editor->boxedPokemon(0, 1, &error);
+        assert(cloneAfterRelease && error.empty());
+
+        const auto finalBytes = editor->finalizedBytes(&error);
+        assert(!finalBytes.empty() && error.empty());
+        const auto reparsed = Gen4ReadOnlySave::parse(
+            finalBytes, layout, gameId(layout), &error);
+        assert(reparsed && error.empty());
+        assert(reparsed->box(0, 0).valid() && reparsed->box(0, 0).empty());
+        assert(reparsed->box(0, 1).valid() && !reparsed->box(0, 1).empty());
+        assert(source == original);
+
+        editor->discard();
+        assert(!editor->hasChanges());
+        assert(editor->finalizedBytes(&error) == original);
+    }
+}
+
+void testMoveSwapAndCrossBoxTransactions() {
+    auto original = makeSave(Layout::Platinum);
+    auto editor = Gen4StagedPokemonEditor::create(original, Layout::Platinum, "platinum_nds");
+    assert(editor);
+    std::string error;
+    const auto first = editor->boxedPokemon(0, 0, &error);
+    assert(first && error.empty());
+    const auto firstBytes = first->originalEncryptedBytes();
+    const auto untouched = editor->stagedBytes();
+
+    assert(editor->stageMoveBoxPokemon(0, 0, 0, 1, &error) && error.empty());
+    assert(!editor->boxedPokemon(0, 0, &error));
+    const auto moved = editor->boxedPokemon(0, 1, &error);
+    assert(moved && std::equal(moved->originalEncryptedBytes().begin(),
+                               moved->originalEncryptedBytes().end(), firstBytes.begin()));
+    assert(editor->originalBytes() == original);
+    const auto postMove = editor->stagedBytes();
+    assert(!editor->stageMoveBoxPokemon(0, 0, 1, 0, &error));
+    assert(editor->stagedBytes() == postMove);
+    assert(!editor->stageMoveBoxPokemon(0, 1, 18, 0, &error));
+    assert(editor->stagedBytes() == postMove);
+    error.clear();
+
+    // Populate another slot using the already-validated native Create primitive,
+    // then prove occupied-destination swap retains BOTH complete PK4 records.
+    auto draft = editor->createBoxDraft(0, 2, 25, &error);
+    assert(draft && error.empty());
+    assert(editor->stageCreateBoxPokemon(0, 2, *draft, &error));
+    const auto other = editor->boxedPokemon(0, 2, &error);
+    assert(other);
+    const auto otherBytes = other->originalEncryptedBytes();
+    assert(editor->stageMoveBoxPokemon(0, 1, 0, 2, &error) && error.empty());
+    const auto a = editor->boxedPokemon(0, 1, &error);
+    const auto b = editor->boxedPokemon(0, 2, &error);
+    assert(a && b);
+    assert(std::equal(a->originalEncryptedBytes().begin(), a->originalEncryptedBytes().end(), otherBytes.begin()));
+    assert(std::equal(b->originalEncryptedBytes().begin(), b->originalEncryptedBytes().end(), firstBytes.begin()));
+
+    // Cross-box move and cancellation/discard leave original source immutable.
+    assert(editor->stageMoveBoxPokemon(0, 2, 1, 0, &error) && error.empty());
+    assert(!editor->boxedPokemon(0, 2, &error));
+    assert(editor->boxedPokemon(1, 0, &error));
+    assert(editor->originalBytes() == original);
+    editor->discard();
+    assert(editor->stagedBytes() == untouched);
+    assert(!editor->hasChanges());
+}
+
+void testSharedHoldYGroupPlacementAtomicity() {
+    // Gen IV now uses the existing Gen I-III Y-hold shared carrier. Unlike
+    // the packed generations, native PK4 slots are sparse: a carried group
+    // must be prepared on a detached staged editor and published all at once.
+    auto original = makeSave(Layout::Platinum);
+    auto editor = Gen4StagedPokemonEditor::create(
+        original, Layout::Platinum, "platinum_nds");
+    assert(editor);
+    std::string error;
+    auto secondDraft = editor->createBoxDraft(0, 1, 4, &error);
+    assert(secondDraft && error.empty());
+    assert(editor->stageCreateBoxPokemon(0, 1, *secondDraft, &error));
+    const auto baseline = editor->stagedBytes();
+    const auto first = editor->boxedPokemon(0, 0, &error);
+    const auto second = editor->boxedPokemon(0, 1, &error);
+    assert(first && second);
+    const auto firstBytes = first->originalEncryptedBytes();
+    const auto secondBytes = second->originalEncryptedBytes();
+
+    // First placement on the candidate succeeds; if the second placement
+    // fails, throwing away the candidate must preserve every baseline byte.
+    {
+        auto candidate = *editor;
+        assert(candidate.stageMoveBoxPokemon(0, 0, 1, 0, &error));
+        assert(!candidate.stageMoveBoxPokemon(0, 1, 18, 1, &error));
+        assert(editor->stagedBytes() == baseline);
+        assert(editor->boxedPokemon(0, 0, &error));
+        assert(editor->boxedPokemon(0, 1, &error));
+    }
+
+    // Valid nonoverlapping group: preserve the exact encrypted PK4 payloads,
+    // leave the original emulator image untouched, and make both old source
+    // slots empty. This models a single published shared-overlay Y drop.
+    {
+        auto candidate = *editor;
+        assert(candidate.stageMoveBoxPokemon(0, 0, 1, 0, &error));
+        assert(candidate.stageMoveBoxPokemon(0, 1, 1, 1, &error));
+        *editor = std::move(candidate);
+    }
+    const auto movedFirst = editor->boxedPokemon(1, 0, &error);
+    const auto movedSecond = editor->boxedPokemon(1, 1, &error);
+    assert(movedFirst && movedSecond);
+    assert(std::equal(firstBytes.begin(), firstBytes.end(),
+                      movedFirst->originalEncryptedBytes().begin()));
+    assert(std::equal(secondBytes.begin(), secondBytes.end(),
+                      movedSecond->originalEncryptedBytes().begin()));
+    assert(!editor->boxedPokemon(0, 0, &error));
+    assert(!editor->boxedPokemon(0, 1, &error));
+    assert(editor->originalBytes() == original);
+
+    editor->discard();
+    assert(editor->stagedBytes() == original);
+    assert(!editor->hasChanges());
+}
+
+void testGen4BagQuantityBoundsAndSourceImmutability() {
+    // Run against three strict dual-partition retail-layout fixtures, not
+    // only an isolated presenter/source-code string contract. Exercise the
+    // same backend called after numeric-keypad confirmation.
+    namespace Bag = PokeVault::Integration::Gen4;
+    const size_t items = static_cast<size_t>(Bag::BagPocket::Items);
+    const size_t keyItems = static_cast<size_t>(Bag::BagPocket::KeyItems);
+    const size_t machines = static_cast<size_t>(Bag::BagPocket::Machines);
+    for (const auto layout : {Layout::DiamondPearl, Layout::Platinum,
+                              Layout::HeartGoldSoulSilver}) {
+        const auto original = makeSave(layout);
+        std::string error;
+        auto editor = Gen4StagedPokemonEditor::create(
+            original, layout, gameId(layout), &error);
+        assert(editor && error.empty());
+        assert(Bag::gen4BagItemAllowed(layout, items, 68));
+        assert(Bag::gen4BagItemAllowed(layout, keyItems, 434));
+        assert(Bag::gen4BagItemAllowed(layout, machines, 328));
+        assert(Bag::gen4BagItemAllowed(layout, machines, 420));
+        assert(Bag::gen4BagMaxQuantity(items, 68) == 999);
+        assert(Bag::gen4BagMaxQuantity(keyItems, 434) == 1);
+        assert(Bag::gen4BagMaxQuantity(machines, 328) == 99);
+        assert(Bag::gen4BagMaxQuantity(machines, 420) == 1);
+
+        assert(editor->stageBagAdd(items, 68, 777, &error) && error.empty());
+        assert(editor->stageBagAdd(machines, 328, 42, &error) && error.empty());
+        assert(editor->stageBagAdd(machines, 420, 1, &error) && error.empty());
+        assert(editor->stageBagAdd(keyItems, 434, 1, &error) && error.empty());
+
+        // Invalid keyboard-style inputs are byte-for-byte inert. A count of
+        // zero must never be a disguised Delete action.
+        const auto prior = editor->stagedBytes();
+        assert(!editor->stageBagAdd(items, 69, 0, &error));
+        assert(!editor->stageBagAdd(machines, 329, 100, &error));
+        assert(!editor->stageBagAdd(machines, 421, 2, &error));
+        assert(!editor->stageBagAdd(keyItems, 435, 2, &error));
+        assert(!editor->stageBagQuantity(items, 0, 0, &error));
+        assert(!editor->stageBagQuantity(machines, 0, 100, &error));
+        assert(!editor->stageBagQuantity(machines, 1, 2, &error));
+        assert(!editor->stageBagQuantity(keyItems, 0, 2, &error));
+        assert(editor->stagedBytes() == prior);
+        error.clear();
+
+        // Valid edits change ONLY app-owned staging and reparse into exact
+        // native items; the original dual-partition emulator save is intact.
+        assert(editor->stageBagQuantity(items, 0, 900, &error) && error.empty());
+        assert(editor->stageBagQuantity(machines, 0, 99, &error) && error.empty());
+        assert(editor->stageBagQuantity(machines, 1, 1, &error) && error.empty());
+        const auto finished = editor->finalizedBytes(&error);
+        assert(!finished.empty() && error.empty());
+        const auto parsed = Gen4ReadOnlySave::parse(
+            finished, layout, gameId(layout), &error);
+        assert(parsed && error.empty());
+        const auto bag = Bag::decodeReadOnlyBag(*parsed);
+        assert(bag);
+        assert((*bag)[items].size() == 1 && (*bag)[items][0].itemId == 68 &&
+               (*bag)[items][0].count == 900);
+        assert((*bag)[machines].size() == 2);
+        assert((*bag)[machines][0].itemId == 328 &&
+               (*bag)[machines][0].count == 99);
+        assert((*bag)[machines][1].itemId == 420 &&
+               (*bag)[machines][1].count == 1);
+        assert((*bag)[keyItems].size() == 1 &&
+               (*bag)[keyItems][0].count == 1);
+        assert(editor->originalBytes() == original);
+        editor->discard();
+        assert(editor->stagedBytes() == original);
+    }
+}
+
 void testNoOpAndFailureRollback() {
     auto source = makeSave(Layout::Platinum);
     auto editor = Gen4StagedPokemonEditor::create(
@@ -398,6 +686,11 @@ int main() {
     testLayout(Layout::HeartGoldSoulSilver, 7, false);
     testLayout(Layout::HeartGoldSoulSilver, 8, true);
     testMixedPartitionMutationFootprint();
+    testEmptySlotCreateTransaction();
+    testCloneAndReleaseTransactions();
+    testMoveSwapAndCrossBoxTransactions();
+    testSharedHoldYGroupPlacementAtomicity();
+    testGen4BagQuantityBoundsAndSourceImmutability();
     testNoOpAndFailureRollback();
     testShedinjaPartyHpRule();
     testRecoveredAndMismatchRemainReadOnly();

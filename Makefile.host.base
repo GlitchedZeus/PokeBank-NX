@@ -1,15 +1,31 @@
 CXX ?= g++
 CXXFLAGS ?= -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2
 SANITIZE_FLAGS := -fsanitize=address,undefined -fno-omit-frame-pointer -O1
+# Constrained local/sandbox environments may not expose the procfs hooks LeakSanitizer needs.
+# CI overrides this to detect_leaks=1; do not hard-code the CI policy in the recipe.
+ASAN_OPTIONS ?= detect_leaks=0
 
 HOST_BUILD := build-host
 HOST_TESTS := $(HOST_BUILD)/test_game_identity $(HOST_BUILD)/test_write_policy $(HOST_BUILD)/test_action_sheet_model $(HOST_BUILD)/test_theme $(HOST_BUILD)/test_navigation_repeat $(HOST_BUILD)/test_controller_model $(HOST_BUILD)/test_sprite_layout
 HOST_SANITIZE_TESTS := $(HOST_BUILD)/test_game_identity_sanitize $(HOST_BUILD)/test_write_policy_sanitize $(HOST_BUILD)/test_action_sheet_model_sanitize $(HOST_BUILD)/test_theme_sanitize $(HOST_BUILD)/test_navigation_repeat_sanitize $(HOST_BUILD)/test_controller_model_sanitize $(HOST_BUILD)/test_sprite_layout_sanitize
-HOST_TESTS += $(HOST_BUILD)/test_source_mutation_policy $(HOST_BUILD)/test_pla_read_validation \
-	$(HOST_BUILD)/test_gen3_party_record
-HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_source_mutation_policy_sanitize $(HOST_BUILD)/test_pla_read_validation_sanitize \
-	$(HOST_BUILD)/test_gen3_party_record_sanitize
-PLA_TEST_SOURCES := tests/test_pla_read_validation.cpp src/Save/Block.cpp src/Encryption/Encryption.cpp src/Encryption/Encryption8LA.cpp src/Enums/SCTypeCode.cpp src/Utils/HelperUtilities.cpp src/Utils/StringHelpers.cpp src/Utils/SHA256.cpp src/Utils/ReadAllBytes.cpp
+HOST_TESTS += $(HOST_BUILD)/test_source_mutation_policy $(HOST_BUILD)/test_pla_read_validation $(HOST_BUILD)/test_sc_read_validation \
+	$(HOST_BUILD)/test_gen3_party_record $(HOST_BUILD)/test_gen9_my_status_guard $(HOST_BUILD)/test_sha256 \
+	$(HOST_BUILD)/test_pokemon_move_ownership $(HOST_BUILD)/test_frlg_mutable_slot_validation $(HOST_BUILD)/test_lgpe_workspace_geometry $(HOST_BUILD)/test_lgpe_read_validation $(HOST_BUILD)/test_gen9_inventory_decode \
+	$(HOST_BUILD)/test_bank_record_validation $(HOST_BUILD)/test_modern_base_stats_forms $(HOST_BUILD)/test_lgpe_base_stats $(HOST_BUILD)/test_modern_trainer_blank_slots $(HOST_BUILD)/test_atomic_text_file $(HOST_BUILD)/test_settings_persistence_contract $(HOST_BUILD)/test_retroarch_launch_resolution
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_source_mutation_policy_sanitize $(HOST_BUILD)/test_pla_read_validation_sanitize $(HOST_BUILD)/test_sc_read_validation_sanitize \
+	$(HOST_BUILD)/test_gen3_party_record_sanitize $(HOST_BUILD)/test_gen9_my_status_guard_sanitize $(HOST_BUILD)/test_sha256_sanitize \
+	$(HOST_BUILD)/test_pokemon_move_ownership_sanitize $(HOST_BUILD)/test_frlg_mutable_slot_validation_sanitize $(HOST_BUILD)/test_lgpe_workspace_geometry_sanitize $(HOST_BUILD)/test_lgpe_read_validation_sanitize $(HOST_BUILD)/test_gen9_inventory_decode_sanitize \
+	$(HOST_BUILD)/test_bank_record_validation_sanitize $(HOST_BUILD)/test_modern_base_stats_forms_sanitize $(HOST_BUILD)/test_lgpe_base_stats_sanitize $(HOST_BUILD)/test_modern_trainer_blank_slots_sanitize $(HOST_BUILD)/test_atomic_text_file_sanitize $(HOST_BUILD)/test_settings_persistence_contract_sanitize $(HOST_BUILD)/test_retroarch_launch_resolution_sanitize
+PLA_TEST_SOURCES := tests/test_pla_read_validation.cpp src/Save/Block.cpp \
+	src/Encryption/Encryption.cpp src/Encryption/Encryption8LA.cpp \
+	src/Encryption/Encryption8SWSH.cpp src/Encryption/Encryption9SV.cpp src/Encryption/Encryption9LZA.cpp \
+	src/Enums/SCTypeCode.cpp src/Utils/HelperUtilities.cpp src/Utils/StringHelpers.cpp \
+	src/Utils/SHA256.cpp src/Utils/ReadAllBytes.cpp
+SC_READ_VALIDATION_TEST_SOURCES := tests/test_sc_read_validation.cpp src/Save/Block.cpp \
+	src/Encryption/Encryption.cpp src/Encryption/Encryption8SWSH.cpp \
+	src/Encryption/Encryption9SV.cpp src/Encryption/Encryption9LZA.cpp \
+	src/Enums/SCTypeCode.cpp src/Utils/HelperUtilities.cpp src/Utils/StringHelpers.cpp \
+	src/Utils/SHA256.cpp src/Utils/ReadAllBytes.cpp
 PKSM_CORE_ROOT := vendor/PKSM-Core
 PKSM_CORE_SOURCES := $(shell find $(PKSM_CORE_ROOT)/source $(PKSM_CORE_ROOT)/memecrypto -type f \( -name '*.cpp' -o -name '*.c' \) -print)
 PKSM_CORE_INCLUDES := $(shell find $(PKSM_CORE_ROOT)/include $(PKSM_CORE_ROOT)/memecrypto $(PKSM_CORE_ROOT)/pcg-cpp -type d -printf ' -I%p')
@@ -95,7 +111,7 @@ RBY_SOURCE_BROWSER_SOURCES := tests/test_rby_source_browser.cpp \
 RBY_BRIDGE_SOURCES := tests/test_rby_readonly_bridge.cpp \
 	src/Legacy/RBYReadOnlyTrainer.cpp src/Pokemon/Pokemon1ReadOnly.cpp \
 	src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1ReadOnlyInventory.cpp \
-	src/Pokemon/BaseStatsGen89.cpp \
+	src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp \
 	src/Names/SpeciesNames.cpp src/Names/ItemNames.cpp src/Names/NatureNames.cpp \
 	src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
 	$(GEN1_STAGED_INVENTORY_LINK_SOURCES)
@@ -133,9 +149,8 @@ host-test: $(HOST_TESTS)
 	@set -e; for test_bin in $(HOST_TESTS); do ./$$test_bin; done
 
 host-sanitize: $(HOST_SANITIZE_TESTS)
-	# LeakSanitizer cannot inspect /proc under the managed build sandbox. AddressSanitizer and
-	# UndefinedBehaviorSanitizer still run; leak checks remain enabled in unrestricted CI builds.
-	@set -e; for test_bin in $(HOST_SANITIZE_TESTS); do ASAN_OPTIONS=detect_leaks=0 ./$$test_bin; done
+	# Local/sandbox default disables LeakSanitizer; unrestricted CI supplies ASAN_OPTIONS=detect_leaks=1.
+	@set -e; for test_bin in $(HOST_SANITIZE_TESTS); do ASAN_OPTIONS="$(ASAN_OPTIONS)" ./$$test_bin; done
 
 $(HOST_BUILD)/test_classic_inventory_ui_model: $(CLASSIC_UI_MODEL_SOURCES)
 	@mkdir -p $(HOST_BUILD)
@@ -161,6 +176,118 @@ $(HOST_BUILD)/test_gen3_party_record_sanitize: tests/test_gen3_party_record.cpp 
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen3_party_record.cpp -o $@
 
+$(HOST_BUILD)/test_gen9_my_status_guard: tests/test_gen9_my_status_guard.cpp include/Trainer/Gen9MyStatusValidation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen9_my_status_guard.cpp -o $@
+
+$(HOST_BUILD)/test_gen9_my_status_guard_sanitize: tests/test_gen9_my_status_guard.cpp include/Trainer/Gen9MyStatusValidation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen9_my_status_guard.cpp -o $@
+
+$(HOST_BUILD)/test_sha256: tests/test_sha256.cpp src/Utils/SHA256.cpp include/Utils/SHA256.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_sha256.cpp src/Utils/SHA256.cpp -o $@
+
+$(HOST_BUILD)/test_sha256_sanitize: tests/test_sha256.cpp src/Utils/SHA256.cpp include/Utils/SHA256.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_sha256.cpp src/Utils/SHA256.cpp -o $@
+
+$(HOST_BUILD)/test_pokemon_move_ownership: tests/test_pokemon_move_ownership.cpp include/Pokemon/Pokemon.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_pokemon_move_ownership.cpp -o $@
+
+$(HOST_BUILD)/test_pokemon_move_ownership_sanitize: tests/test_pokemon_move_ownership.cpp include/Pokemon/Pokemon.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_pokemon_move_ownership.cpp -o $@
+
+$(HOST_BUILD)/test_frlg_mutable_slot_validation: tests/test_frlg_mutable_slot_validation.cpp include/Integration/Gen3/Gen3SaveValidation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_frlg_mutable_slot_validation.cpp -o $@
+
+$(HOST_BUILD)/test_frlg_mutable_slot_validation_sanitize: tests/test_frlg_mutable_slot_validation.cpp include/Integration/Gen3/Gen3SaveValidation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_frlg_mutable_slot_validation.cpp -o $@
+
+$(HOST_BUILD)/test_lgpe_workspace_geometry: tests/test_lgpe_workspace_geometry.cpp include/Trainer/Trainer7LGPE.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude tests/test_lgpe_workspace_geometry.cpp -o $@
+
+$(HOST_BUILD)/test_lgpe_workspace_geometry_sanitize: tests/test_lgpe_workspace_geometry.cpp include/Trainer/Trainer7LGPE.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude tests/test_lgpe_workspace_geometry.cpp -o $@
+
+$(HOST_BUILD)/test_lgpe_read_validation: tests/test_lgpe_read_validation.cpp include/Save/LGPEReadValidation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_lgpe_read_validation.cpp -o $@
+
+$(HOST_BUILD)/test_lgpe_read_validation_sanitize: tests/test_lgpe_read_validation.cpp include/Save/LGPEReadValidation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_lgpe_read_validation.cpp -o $@
+
+$(HOST_BUILD)/test_gen9_inventory_decode: tests/test_gen9_inventory_decode.cpp include/Trainer/Inventory.h include/Trainer/Inventory9SV.h include/Trainer/Inventory9LZA.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen9_inventory_decode.cpp -o $@
+
+$(HOST_BUILD)/test_gen9_inventory_decode_sanitize: tests/test_gen9_inventory_decode.cpp include/Trainer/Inventory.h include/Trainer/Inventory9SV.h include/Trainer/Inventory9LZA.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen9_inventory_decode.cpp -o $@
+
+$(HOST_BUILD)/test_bank_record_validation: tests/test_bank_record_validation.cpp include/Trainer/BankRecordValidation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_bank_record_validation.cpp -o $@
+
+$(HOST_BUILD)/test_bank_record_validation_sanitize: tests/test_bank_record_validation.cpp include/Trainer/BankRecordValidation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_bank_record_validation.cpp -o $@
+
+$(HOST_BUILD)/test_modern_base_stats_forms: tests/test_modern_base_stats_forms.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_modern_base_stats_forms_sanitize: tests/test_modern_base_stats_forms.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_lgpe_base_stats: tests/test_lgpe_base_stats.cpp src/Pokemon/BaseStatsGen7.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_lgpe_base_stats_sanitize: tests/test_lgpe_base_stats.cpp src/Pokemon/BaseStatsGen7.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_modern_trainer_blank_slots: tests/test_modern_trainer_blank_slots.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_modern_trainer_blank_slots_sanitize: tests/test_modern_trainer_blank_slots.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_atomic_text_file: tests/test_atomic_text_file.cpp include/Utils/AtomicTextFile.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_atomic_text_file.cpp -o $@
+
+$(HOST_BUILD)/test_atomic_text_file_sanitize: tests/test_atomic_text_file.cpp include/Utils/AtomicTextFile.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_atomic_text_file.cpp -o $@
+
+$(HOST_BUILD)/test_settings_persistence_contract: tests/test_settings_persistence_contract.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_settings_persistence_contract.cpp -o $@
+
+$(HOST_BUILD)/test_settings_persistence_contract_sanitize: tests/test_settings_persistence_contract.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_settings_persistence_contract.cpp -o $@
+
+$(HOST_BUILD)/test_retroarch_launch_resolution: tests/test_retroarch_launch_resolution.cpp src/UI/GameLauncher.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_retroarch_launch_resolution_sanitize: tests/test_retroarch_launch_resolution.cpp src/UI/GameLauncher.cpp
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
 $(HOST_BUILD)/test_gen3_legality_context: $(GEN3_LEGALITY_CONTEXT_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) -Iinclude $^ -o $@
@@ -182,6 +309,14 @@ $(HOST_BUILD)/test_pla_read_validation: $(PLA_TEST_SOURCES)
 	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
 
 $(HOST_BUILD)/test_pla_read_validation_sanitize: $(PLA_TEST_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_sc_read_validation: $(SC_READ_VALIDATION_TEST_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_sc_read_validation_sanitize: $(SC_READ_VALIDATION_TEST_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 

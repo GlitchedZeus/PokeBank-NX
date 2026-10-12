@@ -47,6 +47,12 @@ namespace PokeVault::Integration::Gen3 {
         InvalidInventory,
     };
 
+    struct DexProgress {
+        uint16_t seen = 0;
+        uint16_t caught = 0;
+        uint16_t total = 386;
+    };
+
     struct TrainerRecord {
         std::string name;
         uint8_t gender = 0;
@@ -130,6 +136,7 @@ namespace PokeVault::Integration::Gen3 {
         [[nodiscard]] const TrainerRecord& trainer() const noexcept;
         [[nodiscard]] const std::vector<InventoryPouchRecord>& inventory() const noexcept;
         [[nodiscard]] std::span<const uint8_t> sourceBytes() const noexcept;
+        [[nodiscard]] DexProgress dexProgress() const noexcept;
         [[nodiscard]] std::vector<PokemonRecord> party() const;
         [[nodiscard]] std::vector<PokemonRecord> boxes() const;
         [[nodiscard]] SaveError lastEnumerationError() const noexcept;

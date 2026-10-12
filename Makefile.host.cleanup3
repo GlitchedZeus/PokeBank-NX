@@ -89,7 +89,7 @@ $(HOST_BUILD)/test_pokemon_editor_foundation_contract_sanitize: $(POKEMON_EDITOR
 
 # Production Gen I presentation + recording-framebuffer radar regression gates.
 GEN1_SUMMARY_SOURCES := tests/test_gen1_summary_presentation.cpp $(GEN1_POKEMON_COMMON) \
-    src/Pokemon/Pokemon1ReadOnly.cpp src/Pokemon/BaseStatsGen89.cpp \
+    src/Pokemon/Pokemon1ReadOnly.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp \
     src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Names/NatureNames.cpp src/Names/AbilityNames.cpp
 HOST_TESTS += $(HOST_BUILD)/test_gen1_summary_presentation $(HOST_BUILD)/test_gen1_radar_render
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_summary_presentation_sanitize $(HOST_BUILD)/test_gen1_radar_render_sanitize

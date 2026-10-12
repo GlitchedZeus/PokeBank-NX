@@ -1,0 +1,58 @@
+name: One-time audit merge materialize
+
+on:
+  push:
+    branches:
+      - feature/gen4-full-editor-20260928
+    paths:
+      - .github/workflows/one-time-audit-merge-materialize.yml
+
+permissions:
+  contents: read
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/gen4-full-editor-20260928
+          fetch-depth: 0
+
+      - name: Verify inputs and create exact forward merge
+        run: |
+          set -euo pipefail
+          git fetch origin feature/gen4-full-editor-20260928 fix/full-audit-remediation-20260929
+          test "$(git rev-parse origin/feature/gen4-full-editor-20260928)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/fix/full-audit-remediation-20260929)" = "408a56446f9dda611732c8186d6ce4148100d65f"
+          git config user.name GlitchedZeus
+          git config user.email user91746@protonmail.com
+          git merge --no-ff -X ours origin/fix/full-audit-remediation-20260929 \
+            -m "merge(audit): forward-port validated remediation into current MAIN"
+          printf '%s\n' "$(git rev-parse HEAD)" > /tmp/audit-merge-commit.txt
+          printf '%s\n' "$(git rev-parse HEAD^{tree})" > /tmp/audit-merge-tree.txt
+          mkdir -p /tmp/audit-merge-overlap/.github/workflows /tmp/audit-merge-overlap/src/Save /tmp/audit-merge-overlap/src/Trainer /tmp/audit-merge-overlap/src/UI /tmp/audit-merge-overlap/tests
+          cp .github/workflows/product-ui-native.yml /tmp/audit-merge-overlap/.github/workflows/
+          cp src/Save/GetSaveFileContents.cpp /tmp/audit-merge-overlap/src/Save/
+          cp src/Trainer/Trainer3FRLG.cpp /tmp/audit-merge-overlap/src/Trainer/
+          cp src/UI/GameLauncher.cpp /tmp/audit-merge-overlap/src/UI/
+          cp src/UI/SaveSelectScreen.cpp /tmp/audit-merge-overlap/src/UI/
+          cp src/UI/TrainerViewScreenBase.inc /tmp/audit-merge-overlap/src/UI/
+          cp tests/test_v1_polish_contract.py /tmp/audit-merge-overlap/tests/
+          cp /tmp/audit-merge-commit.txt /tmp/audit-merge-overlap/
+          cp /tmp/audit-merge-tree.txt /tmp/audit-merge-overlap/
+          git diff --name-status HEAD^1 HEAD > /tmp/audit-merge-overlap/audit-merge-name-status.txt
+
+      - name: Re-run audit safety contracts
+        run: |
+          set -euo pipefail
+          python3 tests/test_ci_repository_safety_contract.py
+          python3 tests/test_engineering_authority_contract.py
+          python3 tests/test_device_asset_png_validation.py
+          python3 tests/test_generated_species_name_contract.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: audit-forward-merge-overlap
+          path: /tmp/audit-merge-overlap
+          if-no-files-found: error

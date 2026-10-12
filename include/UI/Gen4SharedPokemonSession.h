@@ -15,7 +15,7 @@ namespace PokeBank::UIModel::Gen4SharedEditor {
 
 namespace Gen4 = PokeVault::Integration::Gen4;
 
-enum class Mode : uint8_t { None, View, Edit };
+enum class Mode : uint8_t { None, View, Edit, Create };
 
 struct Session {
     Mode mode = Mode::None;
@@ -27,7 +27,7 @@ struct Session {
                Enums::GameVersion group, Mode next, std::string& error) {
         error.clear();
         if (next != Mode::View && next != Mode::Edit) {
-            error = "Generation IV first milestone supports View/Edit only";
+            error = "Generation IV existing-record session supports View/Edit only";
             return false;
         }
         auto editable = Pokemon::Pokemon4Mutable::fromEncrypted(
@@ -42,10 +42,28 @@ struct Session {
         return true;
     }
 
-    bool editable() const noexcept { return mode == Mode::Edit && working.has_value(); }
+    bool beginCreate(Pokemon::Pokemon4Mutable draft, std::string& error) {
+        error.clear();
+        if (!draft.valid() || draft.isParty()) {
+            error = "Generation IV Create requires a valid stored PK4 draft";
+            return false;
+        }
+        baselineEncrypted.clear(); // Empty native destination is the Create baseline.
+        working = std::move(draft);
+        mode = Mode::Create;
+        confirmExit = false;
+        return true;
+    }
+
+    bool editable() const noexcept {
+        return (mode == Mode::Edit || mode == Mode::Create) && working.has_value();
+    }
+    bool creating() const noexcept { return mode == Mode::Create && working.has_value(); }
 
     bool dirty() const {
-        return editable() && working->encryptedBytes() != baselineEncrypted;
+        if (creating()) return true; // An uncommitted Create draft always needs an explicit decision.
+        return mode == Mode::Edit && working &&
+               working->encryptedBytes() != baselineEncrypted;
     }
 
     bool cycleGender() noexcept {
@@ -87,9 +105,22 @@ struct Session {
         return true;
     }
 
+    bool keepCreate(Gen4::Gen4StagedPokemonEditor& editor,
+                    std::size_t box, std::size_t slot, std::string& error) {
+        if (!creating()) {
+            error = "Generation IV Add is only available for a Create draft";
+            return false;
+        }
+        if (!editor.stageCreateBoxPokemon(box, slot, *working, &error)) return false;
+        close();
+        return true;
+    }
+
     bool back() noexcept {
         using Guard = PokeBank::UIModel::PokemonEditorExitGuard::SessionKind;
-        const Guard kind = mode == Mode::Edit ? Guard::Edit : Guard::View;
+        const Guard kind = mode == Mode::Create ? Guard::Create
+                         : mode == Mode::Edit ? Guard::Edit
+                                              : Guard::View;
         if (PokeBank::UIModel::PokemonEditorExitGuard::requiresConfirmation(kind, dirty())) {
             confirmExit = true;
             return false;

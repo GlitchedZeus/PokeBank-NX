@@ -1,29 +1,8 @@
-name: Gen I Editor Candidate Gate
+name: HISTORICAL / MANUAL — Gen I Editor Candidate Gate
 
+
+# Frozen evidence workflow retained for reproducibility. It must never auto-run on current development.
 on:
-  pull_request:
-    branches: [feature/pokebank-playable]
-    paths:
-      - 'include/UI/Common.h'
-      - 'Makefile.host*'
-      - 'include/Integration/Gen1/**'
-      - 'include/Legacy/RBYReadOnlyTrainer.h'
-      - 'include/UI/Gen1PokemonEditor*'
-      - 'include/UI/StatsRadar.h'
-      - 'include/UI/TrainerViewScreen.h'
-      - 'include/Utils/PokeBankPaths.h'
-      - 'src/Integration/Gen1/**'
-      - 'src/Legacy/RBYReadOnlyTrainer.cpp'
-      - 'src/UI/Gen1PokemonEditorOverlay.cpp'
-      - 'src/UI/Gen1PokemonEditorOverlayUX.inc'
-      - 'src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc'
-      - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
-      - 'src/UI/TrainerViewScreenGSCOverlay.cpp'
-      - 'src/UI/TrainerViewScreenGSCOverlay.inc'
-      - 'tests/test_rby_pokemon_editor.cpp'
-      - 'tests/test_gen1_battle_stats.cpp'
-      - 'tests/test_gen1_pokemon_editor_ui_contract.cpp'
-      - '.github/workflows/gen1-editor-candidate.yml'
   workflow_dispatch:
 
 permissions:

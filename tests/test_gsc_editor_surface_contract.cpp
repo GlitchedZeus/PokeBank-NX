@@ -26,10 +26,12 @@ int main() {
     assert(legacyOverlay.find("const u64 heldButtons = padGetButtons(&pad)") != std::string::npos);
     assert(legacyOverlay.find("const HidAnalogStickState stick = padGetStickPos(&pad, 0)") != std::string::npos);
     assert(legacyOverlay.find("const u64 navigated = controllerNavigation.apply(") != std::string::npos);
-    assert(legacyOverlay.find("handleStagedEditorInput(*this, navigated)") != std::string::npos);
+    assert(legacyOverlay.find("handleStagedEditorInput(*this, navigated, touch)") != std::string::npos);
     const auto picker = readFile("src/UI/Gen2PokemonPickerOverlay.inc");
-    assert(picker.find("(nav & HidNpadButton_Left)) picker.model.stepList(-10)") != std::string::npos);
-    assert(picker.find("(nav & HidNpadButton_Right)) picker.model.stepList(10)") != std::string::npos);
+    // Both paging directions still update selection, but now stop active
+    // touch inertia first so physical controls cannot fight the viewport.
+    assert(picker.find("(nav & HidNpadButton_Left)) { picker.scroll.stop(); picker.model.stepList(-10); }") != std::string::npos);
+    assert(picker.find("(nav & HidNpadButton_Right)) { picker.scroll.stop(); picker.model.stepList(10); }") != std::string::npos);
     const auto pickerModel = readFile("include/UI/Gen2PokemonPickerModel.h");
     const auto nativePresentation = readFile("include/UI/Gen2NativePresentation.h");
     const auto sharedShell = readFile("include/UI/SharedPokemonShell.h");
@@ -60,7 +62,10 @@ int main() {
     assert(closeBody.find("selectedItemIndex") == std::string::npos);
     assert(closeBody.find("stage") == std::string::npos);
     const auto boxBase = readFile("src/UI/TrainerViewScreenBase.inc");
-    assert(boxBase.find("subtitle += titleName") != std::string::npos);
+    // Source identity is now a human-readable provider / game / immutable
+    // status banner; the old debug-style concatenation is intentionally gone.
+    assert(boxBase.find("legacyProviderLabel() + \"  •  \" + titleName + \"  •  Read-only source\"") != std::string::npos);
+    assert(boxBase.find("if (!legacyReadOnlySource() && !trainer.saveRevisionString.empty()") != std::string::npos);
     assert(foundation.find("Gen2HeldItemPicker::initialIndex(state.itemChoices, state.working.heldItem)") != std::string::npos);
     assert(heldItemModel.find("#include \"UI/SharedHeldItemPicker.h\"") != std::string::npos);
     assert(heldItemModel.find("columns = SharedHeldItemPicker::columns") != std::string::npos);
@@ -149,7 +154,9 @@ int main() {
     assert(base.find("constexpr int kEditRows = 2") != std::string::npos);
     assert(unified.find("Unified::statsHeading()") != std::string::npos);
     assert(unified.find("Unified::cellFocus(unified.focus)") != std::string::npos);
-    assert(unified.find("scrollWindow(rows.size(), 8, unified.detailsFocus)") != std::string::npos);
+    assert(unified.find("unified.detailsViewport.ensure(unified.focus.row, count, visible)") != std::string::npos);
+    assert(unified.find("unified.detailsTouchScroll.offset()") != std::string::npos);
+    assert(unified.find("appendClippedTouchButton(screen.touchButtons, 1700 + row") != std::string::npos);
     assert(unified.find("passive ? 0 : unified.detailsFocus") == std::string::npos);
     const auto summary = readFile("src/UI/Panels/BoxPokemonPanel.cpp");
     assert(summary.find("StatsRadar::drawGen2Labeled") != std::string::npos);
@@ -175,8 +182,13 @@ int main() {
     assert(unified.find("{\"Pokerus\", Gen2Native::pokerusText(p.pokerus)}") != std::string::npos);
     assert(unified.find("std::array<std::pair<std::string, std::string>, 2> capabilityRows") != std::string::npos);
     assert(unified.find("Encounter legality: Not checked") != std::string::npos);
-    assert(unified.find("scrollWindow(rows.size(), 8") != std::string::npos);
-    assert(finalFix.find("scrollWindow(rows.size(), 8") != std::string::npos);
+    assert(unified.find("const int first = unified.detailsViewport.firstRow") != std::string::npos);
+    assert(unified.find("fb.setClipRect(x + 8, top, w - 16, visible * rowHeight)") != std::string::npos);
+    // The final Gen II repaint now uses a touch-aware pixel-offset viewport but
+    // still renders an eight-row clipped window over the semantic Details list.
+    assert(finalFix.find("const int detailFirst = std::max(0, unified.detailsViewport.firstRow)") != std::string::npos);
+    assert(finalFix.find("static_cast<std::size_t>(detailFirst)") != std::string::npos);
+    assert(finalFix.find("unified.detailsTouchScroll.offset()") != std::string::npos);
     assert(finalFix.find("viewportY = y + 216") != std::string::npos);
     assert(finalFix.find("fb.clearClip()") != std::string::npos);
     assert(unified.find("\"OT Name\", p.originalTrainer") != std::string::npos);
@@ -232,7 +244,11 @@ int main() {
     // Crystal Met Location is species/exact-game aware; accepting it writes the native
     // location and encounter-minimum caught level rather than an arbitrary landmark.
     assert(pickerModel.find("Encounter::forGameSpecies(sourceGameId, species)") != std::string::npos);
-    assert(picker.find("Species-valid Crystal encounters") != std::string::npos);
+    // The Crystal location picker now announces drag-to-browse behavior. Preserve
+    // actual species-scoped encounters and native minimum-level presentation.
+    assert(picker.find("Drag naturally to browse Crystal encounters") != std::string::npos);
+    assert(picker.find("model.locationCount()") != std::string::npos);
+    assert(picker.find("model.encounterChoices[") != std::string::npos);
     assert(picker.find("encounter->minLevel") != std::string::npos);
     assert(picker.find("Encounter::timeAllowed(*encounter, resolvedMetTime)") != std::string::npos);
     assert(picker.find("drawPokerusPicker") == std::string::npos);
@@ -268,8 +284,27 @@ int main() {
     assert(pickerFix.find("hardwareMoveAllowed") != std::string::npos);
     assert(pickerFix.find("MoveCompatibility::canLearnMove") != std::string::npos);
     assert(pickerFix.find("choices.push_back(0)") != std::string::npos);
-    assert(pickerFix.find("Empty + compatible moves only") != std::string::npos);
+    assert(pickerFix.find("kHardwareMovePickerLayout =") != std::string::npos);
+    assert(pickerFix.find("MovePickerPresentation::compactPickerLayout()") != std::string::npos);
+    assert(pickerFix.find("panelW = kHardwareMovePickerLayout.width") != std::string::npos);
+    assert(pickerFix.find("panelH = kHardwareMovePickerLayout.height") != std::string::npos);
+    assert(pickerFix.find("visible = kHardwareMovePickerLayout.visibleRows") != std::string::npos);
+    assert(pickerFix.find("kHardwareMovePickerLayout.rowStep") != std::string::npos);
+    assert(pickerFix.find("const int first = overlay.moveViewport.firstRow;") != std::string::npos);
+    assert(pickerFix.find("const int liveOffset = overlay.moveScroll.offset();") != std::string::npos);
+    // The shared Gen I-IV row renderer now owns emphasized move typography,
+    // fixed Acc/Pwr/PP columns, and separators (not the Gen II overlay).
+    assert(pickerFix.find("MovePickerRowUI::draw(fb") != std::string::npos);
+    const auto moveRow = readFile("include/UI/MovePickerRowUI.h");
+    assert(moveRow.find("TextStyle::Body") != std::string::npos);
+    assert(pickerFix.find("Empty + compatible moves only • exact Gen II Acc / Pwr / PP") != std::string::npos);
+    // Generation-aware Acc / Pwr / PP now come from the shared move-row
+    // component; old Gen II-only rowLabel string assembly is intentionally gone.
+    assert(pickerFix.find("MovePickerRowUI::draw(fb,x+40,yy+4,move,Enums::GameVersion::GSC)") != std::string::npos);
+    assert(moveRow.find("Names::getMoveBattleStats(move,game)") != std::string::npos);
     assert(pickerFix.find("Needs correction") == std::string::npos);
+    assert(shared.find("!editor->pendingChanges().empty()") != std::string::npos);
+    assert(shared.find("static_cast<int>(actions.count) * geometry.rowStep + 62") != std::string::npos);
 
     // Empty move rows cannot focus PP/Ups and their meaningless numeric cells are hidden.
     assert(workspaceFix.find("normalizeHardwareMoveRowFocus") != std::string::npos);
