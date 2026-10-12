@@ -810,8 +810,10 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurf
 
 # First-tap empty/occupied Boxes paths must enter actions directly rather
 # than requiring a second base-selection tap or manufacturing a new Pokemon.
-gen3_entry = gen3.split("bool handleInput(", 1)[1].split("bool draw(", 1)[0]
-gen4_entry = gen4.split("bool handleInput(", 1)[1].split("bool draw(", 1)[0]
+gen3_entry = read("src/UI/Gen3SharedPokemonSurface.inc").split(
+    "bool handleInput(", 1)[1].split("bool draw(", 1)[0]
+gen4_entry = read("src/UI/Gen4SharedPokemonSurface.inc").split(
+    "bool handleInput(", 1)[1].split("bool draw(", 1)[0]
 for entry_body in (gen3_entry, gen4_entry):
     assert "touch.justTapped()" in entry_body
     assert "screen.touchedButtonId(touch)" in entry_body
