@@ -38,15 +38,17 @@ static_assert([]{auto a=emeraldBulba;a.replacementSlot=4;
 static_assert([]{auto a=emeraldBulba;a.afterMoves={33,45,73,22};
     return R::evaluate(a).status==S::CandidateContradicted;}());
 static_assert([]{auto a=emeraldBulba;a.game=G::Ruby;
-    return R::evaluate(a).status==S::Unresolved;}());
+    return R::evaluate(a).status==S::CandidateConsistent;}());
 static_assert([]{auto a=emeraldBulba;a.game=G::Sapphire;
-    return R::evaluate(a).status==S::Unresolved;}());
+    return R::evaluate(a).status==S::CandidateConsistent;}());
 constexpr auto frlgChar=base(G::FireRed,4,13,{10,45,52,0},232,3,
                              {10,45,52,232});
 static_assert(R::evaluate(frlgChar).status==S::CandidateConsistent);
 static_assert(R::evaluate(frlgChar).offerCount==1);
 static_assert(R::evaluate(frlgChar).offers[0]==232); // FRLG Metal Claw
 static_assert([]{auto a=frlgChar;a.game=G::Emerald;
+    return R::evaluate(a).status==S::CandidateContradicted;}());
+static_assert([]{auto a=frlgChar;a.game=G::Ruby;
     return R::evaluate(a).status==S::CandidateContradicted;}());
 static_assert([]{auto a=frlgChar;a.game=G::LeafGreen;
     return R::evaluate(a).status==S::CandidateConsistent;}());
@@ -69,7 +71,7 @@ static_assert([]{auto a=charizardHeat;a.game=G::Emerald;
     return R::evaluate(a).status==S::CandidateContradicted;}());
 int main(){
     unsigned tested=0;
-    for(G g:{G::Emerald,G::FireRed,G::LeafGreen}) {
+    for(G g:{G::Ruby,G::Sapphire,G::Emerald,G::FireRed,G::LeafGreen}) {
         const auto b=base(g,1,15,{33,45,73,22},77,0,{77,45,73,22});
         assert(R::evaluate(b).status==S::CandidateConsistent);++tested;
     }
@@ -79,6 +81,6 @@ int main(){
         c.selectedMove=108;
         assert(R::evaluate(c).status==S::CandidateContradicted);++tested;
     }
-    assert(tested==7);
-    std::cout<<"L3 pinned Emerald/FRLG Move Relearner exact-game menu+four-slot decisions: PASS\n";
+    assert(tested==9);
+    std::cout<<"L3 pinned RS/E/FRLG Move Relearner exact-game menu+four-slot decisions: PASS\n";
 }
