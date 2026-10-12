@@ -127,7 +127,10 @@ require(candidate, "verifyStagedReview(change, &reviewError)",
         "Gen5ReadOnlySave::parse(output.bytes, source.exactGameId()",
         "output.bytes.assign(original.begin(), original.end());",
         "Gen V export modified bytes outside verified PK5 and CRC ranges",
-        "const auto selection = source.selectedBackupPartition()")
+        "const auto selection = source.selectedBackupPartition()",
+        "buildStagedSaveCandidateForObservedSource(",
+        "Gen V source changed since staging; reopen and revalidate the Save Instance",
+        "std::equal(observedBytes.begin(),observedBytes.end(),baseline.begin())")
 for forbidden in ("fwrite(", "ofstream", "std::filesystem", "injectSave("):
     assert forbidden not in candidate, f"Gen V candidate must not write sources: {forbidden}"
 

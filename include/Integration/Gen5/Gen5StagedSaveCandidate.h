@@ -170,6 +170,38 @@ struct Gen5StagedSaveCandidate {
     return output;
 }
 
+
+// A source may change after its Save Instance was opened (emulator progress,
+// save-state restore, external replacement). Re-read its exact raw bytes and
+// check physical/provider identity separately before this function is called.
+// Never export an old in-memory draft over an unseen newer source.
+// This checks the WHOLE 0x80000 image, including the unselected backup copy.
+[[nodiscard]] inline std::optional<Gen5StagedSaveCandidate>
+buildStagedSaveCandidateForObservedSource(
+    const Gen5StagedPokemonWorkspace& workspace,
+    std::span<const uint8_t> observedBytes,
+    std::string* error = nullptr) {
+    const auto fail = [&](const char* why) -> std::optional<Gen5StagedSaveCandidate> {
+        if (error) *error = why;
+        return std::nullopt;
+    };
+    const auto baseline = workspace.sourceSave().sourceBytes();
+    if (observedBytes.size() != LayoutInfo::FullSaveSize ||
+        baseline.size() != observedBytes.size() ||
+        !std::equal(observedBytes.begin(),observedBytes.end(),baseline.begin()))
+        return fail("Gen V source changed since staging; reopen and revalidate the Save Instance");
+
+    const auto selection = workspace.sourceSave().selectedBackupPartition()
+        ? SaveCopySelection::Backup : SaveCopySelection::Primary;
+    const auto checked = Gen5ReadOnlySave::parse(
+        observedBytes,workspace.sourceSave().exactGameId(),nullptr,selection);
+    if (!checked || checked->family() != workspace.sourceSave().family() ||
+        checked->selectedCopyOffset() != workspace.sourceSave().selectedCopyOffset())
+        return fail("Gen V observed source failed exact-title/copy revalidation");
+
+    return buildStagedSaveCandidate(workspace,error);
+}
+
 } // namespace PokeVault::Integration::Gen5
 
 #endif

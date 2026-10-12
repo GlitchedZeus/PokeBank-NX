@@ -86,6 +86,23 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
         ? L::BlackWhiteCopySize:L::Black2White2CopySize;
     const size_t base=backup?copySize:0;
     assert(out->selectedCopyOffset==base);
+    // Reopened source must match the *entire* observed battery image.
+    // This includes unused regions and the other untouched save copy.
+    const auto checkedExport=G::buildStagedSaveCandidateForObservedSource(
+        ws,std::span<const uint8_t>(input),&error);
+    assert(checkedExport && error.empty());
+    assert(checkedExport->bytes==out->bytes);
+    auto stale=input;
+    stale[0x70000]^=1; // Outside retail selected copy, still a source change.
+    assert(!G::buildStagedSaveCandidateForObservedSource(ws,stale,&error));
+    assert(error.find("changed since staging")!=std::string::npos);
+    stale=input;
+    stale[base+L::PartyOffset+10]^=1; // Inside selected original PK5.
+    assert(!G::buildStagedSaveCandidateForObservedSource(ws,stale,&error));
+    assert(!G::buildStagedSaveCandidateForObservedSource(
+        ws,std::span<const uint8_t>(input.data(),input.size()-1),&error));
+    assert(std::equal(parsed->sourceBytes().begin(),
+                      parsed->sourceBytes().end(),input.begin()));
 
     // Independently calculate every allowed output-byte region. Even a
     // checksum-correct candidate must never change inventories, trainer,
