@@ -18,6 +18,7 @@ namespace Pokemon {
 class Pokemon2ReadOnly final : public Pokemon {
 public:
     static constexpr Enums::GameVersion kReadOnlyGameGroup = Enums::GameVersion::GSC;
+    const Pokemon2ReadOnly* nativePk2ReadOnly() const noexcept override { return this; }
 
     explicit Pokemon2ReadOnly(const PokeVault::Integration::Gen2::PokemonRecord& record);
 
