@@ -100,3 +100,4 @@ constexpr Result evaluate(const Input& in) noexcept {
     return out;
 }
 } // namespace Legality::Audit::L5ReceiptChain
+
