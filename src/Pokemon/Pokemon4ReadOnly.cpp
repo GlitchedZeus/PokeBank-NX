@@ -35,7 +35,13 @@ bool Pokemon4ReadOnly::checksumValid() const noexcept {
 bool Pokemon4ReadOnly::sanityValid() const noexcept { return sizeValid() && sanity() == 0; }
 bool Pokemon4ReadOnly::valid() const noexcept { return sizeValid() && sanityValid() && checksumValid(); }
 bool Pokemon4ReadOnly::isParty() const noexcept { return encrypted_.size() == Encryption::SIZE_PARTY4; }
-bool Pokemon4ReadOnly::empty() const noexcept { return valid() && species() == 0; }
+bool Pokemon4ReadOnly::empty() const noexcept {
+    // A retail empty PK4 slot is exactly zero-filled.  A nonzero record with
+    // species zero can be checksum-valid after corruption or malformed input;
+    // it must not silently disappear from a read-only scan as an empty slot.
+    return valid() && std::all_of(encrypted_.begin(), encrypted_.end(),
+        [](std::byte value) { return value == std::byte{0}; });
+}
 
 uint8_t Pokemon4ReadOnly::byteAt(size_t offset) const noexcept {
     if (offset >= 8 && !valid()) return 0; // Quarantine malformed semantic fields.
