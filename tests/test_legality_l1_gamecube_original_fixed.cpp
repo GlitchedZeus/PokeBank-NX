@@ -6,7 +6,7 @@
 int main(){
     namespace H=Legality::Gen3GameCubeOriginalFixedHistory;
     namespace F=Legality::Gen3GameCubeFixedEncounterEvidence;
-    using S=H::Status;using G=H::Game;using P=F::Policy;
+    using S=H::Status;using G=H::Game;
     static_assert(F::kTemplateCount==14u);
     static_assert(H::originalGameForRow(0)==G::Colosseum);
     static_assert(H::originalGameForRow(2)==G::Colosseum);
