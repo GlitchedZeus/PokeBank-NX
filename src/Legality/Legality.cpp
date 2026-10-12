@@ -618,14 +618,19 @@ namespace Legality {
         // Check the actual immutable native values, independent of provider
         // labels; hatched Gen II Pokemon may naturally have nonzero values.
         if (nativeFormatGeneration == 2 && pk.isEgg()) {
-            const auto& native = static_cast<const Pokemon::Pokemon2ReadOnly&>(pk);
-            if (native.statExpHP() != 0 || native.statExpATK() != 0 ||
-                native.statExpDEF() != 0 || native.statExpSPE() != 0 ||
-                native.statExpSpecial() != 0) {
-                add(r,Severity::Invalid,
-                    "Unhatched native Generation II egg has nonzero stored stat experience",
-                    CheckIdentifier::Egg);
+            std::array<uint16_t, 5> nativeStatExperience{};
+            if (pk.gen2NativeStatExperience(nativeStatExperience)) {
+                bool nonzero = false;
+                for (const uint16_t value : nativeStatExperience)
+                    nonzero |= value != 0;
+                if (nonzero) {
+                    add(r,Severity::Invalid,
+                        "Unhatched native Generation II egg has nonzero stored stat experience",
+                        CheckIdentifier::Egg);
+                }
             }
+            // Another Gen II Pokemon implementation without original PK2
+            // stat-experience capability is Unknown, never cast or rejected.
         }
 
         // MOVE-003: a Shedinja is copied from the freshly evolved
