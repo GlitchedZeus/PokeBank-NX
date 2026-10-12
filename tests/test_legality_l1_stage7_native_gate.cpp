@@ -67,8 +67,8 @@ int main(){
     const uint16_t national=format==N::Format::PK3?
         Pokemon::gen3InternalToNational(static_cast<uint16_t>(species)):
         static_cast<uint16_t>(species);
-    const auto expected=national==0?N::Status::UnknownEmptyRecord:
-       national>(format==N::Format::PK3?386u:493u)?
+    const auto expected=species==0?N::Status::UnknownEmptyRecord:
+       (national==0||national>(format==N::Format::PK3?386u:493u))?
        N::Status::UnknownSpecies:N::Status::NativeSnapshotOnly;
     assert(result.status==expected);
     assert(!result.globalInvalidSupported&&!result.globallyLegalSupported);
