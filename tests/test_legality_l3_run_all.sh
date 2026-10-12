@@ -35,6 +35,7 @@ SUITES=(
     test_legality_l3_joint_evolution_retail
     test_legality_l3_platinum_native_sources
     test_legality_l3_palpark_native_joint
+    test_legality_l3_palpark_platinum_source_joint
     test_legality_l3_palpark_native_retail
     test_legality_l3_move_chronology
     test_legality_l3_gba_versioned_levelup
@@ -58,4 +59,4 @@ for suite in "${SUITES[@]}"; do
         UBSAN_OPTIONS="${UBSAN_OPTIONS:-halt_on_error=1}" \
         "$BUILD/${suite}_sanitize"
 done
-echo 'L3 PASS: all sixteen native C++20 suites and sixteen ASan/UBSan executions (full accepted Emerald source)'
+echo 'L3 PASS: all seventeen native C++20 suites and seventeen ASan/UBSan executions (full accepted Emerald source)'
