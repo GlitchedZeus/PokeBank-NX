@@ -4,6 +4,7 @@
 #include "Legality/Gen4PlatinumHGSSFullEggHistories.h"
 #include "Legality/Gen4PlatinumHGSSOriginalDaycareSource.h"
 #include "Legality/Gen34OriginalDaycareRoles.h"
+#include "Legality/Gen34OriginalSameRouteProof.h"
 namespace Legality::Gen4PlatinumHGSSSourceBoundEggHistories {
 namespace F=Gen4PlatinumHGSSFullEggHistories;
 namespace S=Gen4PlatinumHGSSOriginalDaycareSource;
@@ -13,12 +14,17 @@ struct Input {
     F::Input full{};
     std::array<S::Input,8> archives{};
     bool allArchivesIndependentlyEnumerated=false;
+    // Optional Stage 5 original source archive, never inferred from PK4.
+    uint64_t originalEggSnapshotId=0;
+    bool originalEggSnapshotIndependentlyAttested=false;
+    std::array<Gen34OriginalSameRouteProof::Input,8> sameRouteProofs{};
 };
 struct Result {
     Status status=Status::NoCandidates;
     unsigned char matched=0,contradicted=0,unknown=0,unverified=0;
     std::array<S::Status,8> sourceChecks{};
     std::array<F::Status,8> routeChecks{};
+    std::array<Gen34OriginalSameRouteProof::Status,8> sameRouteChecks{};
 };
 constexpr Result evaluate(const Input& in) noexcept {
     Result out{};
