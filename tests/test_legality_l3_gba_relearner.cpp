@@ -95,8 +95,14 @@ void exerciseAllEmerald() {
             ++sourceEntries;
         }
         const uint16_t chosen=expectedCount?expected[0]:first;
+        // Species with one distinct move (e.g. Unown) must still present
+        // a structurally sound observed snapshot: the selected known move
+        // is rejected because the menu is empty, NOT as malformed slots.
+        const std::array<uint16_t,4> observed=expectedCount?
+            std::array<uint16_t,4>{first,chosen,0,0}:
+            std::array<uint16_t,4>{first,0,0,0};
         const auto a=base(G::Emerald,species,100,{first,0,0,0},
-            chosen,1,{first,chosen,0,0});
+            chosen,1,observed);
         const auto result=R::evaluate(a);
         assert(result.offerCount==expectedCount);
         for(uint8_t i=0;i<expectedCount;++i)
