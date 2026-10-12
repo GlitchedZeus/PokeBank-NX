@@ -683,6 +683,13 @@ require("fb.pushTranslation(static_cast<float>(offset), 0.0f);" in drawer_draw a
         "fb.popTransform(); // Footer does not move with the card." in drawer_draw and
         "if (quickDrawerMotion.interactive())" in drawer_draw,
         "Drawer artwork must move together and disable partial-offset hitboxes")
+# Touch scrolling may temporarily move the selection offscreen; rendering must
+# not forcibly jump back to the focused row on every frame.
+drawer_draw_setup = drawer_draw.split("constexpr int gap = 7;", 1)[0]
+require("const int selectedRow = gamesDrawerIndex / cols;" not in drawer_draw_setup and
+        "gamesDrawerTouchScroll.updateVertical(" in drawer_update and
+        "if (selectedRow < gamesDrawerScroll)" in drawer_update,
+        "Quick Games must preserve vertical finger scroll and only track focus on controller navigation")
 portrait = source[source.index("void drawTrainerPortrait("):source.index("// Approved product-home layout")]
 require("drawPanelSurface(" not in portrait and "fb.drawImageScaled(" in portrait,
         "Trainer cutouts must reveal region artwork on all game cards")
