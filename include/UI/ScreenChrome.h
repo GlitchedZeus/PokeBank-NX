@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdlib>
 #include <initializer_list>
 #include <string>
 #include <vector>
@@ -23,7 +24,7 @@ namespace UI {
 
     constexpr int kChromeRadius = 18;   // curve on the content-facing edge of both bars
     constexpr int kHeaderH      = 64;
-    constexpr int kNavBarH      = 46;
+    constexpr int kNavBarH      = 56;  // whole footer is a real 56px fingertip target
 
     // Product Home selected-game hero geometry. Input capture and draw-time translation must use
     // the exact same rectangle; keeping one source of truth prevents hitbox/render drift.
@@ -249,6 +250,39 @@ namespace UI {
         return buttonGlyph(fb, 0, 0, btn, true);
     }
 
+    // A held fingertip paints a transient pressed state while the input owner
+    // still waits for a release-confirmed tap. This is visual feedback only:
+    // no synthetic A/B or hold-to-repeat actions, no accidental save mutation.
+    inline bool touchPressedRect(int x, int y, int w, int h) noexcept {
+        const auto& finger = latestTouchGesture();
+        if (!finger.down) return false;
+        const int dx = finger.deltaX, dy = finger.deltaY;
+        if (std::abs(dx) > 22 || std::abs(dy) > 22) return false;
+        const int px = finger.startX + dx, py = finger.startY + dy;
+        return finger.startX >= x && finger.startX < x + w &&
+               finger.startY >= y && finger.startY < y + h &&
+               px >= x && px < x + w && py >= y && py < y + h;
+    }
+
+    // All staged Gen I-IV Pokémon action sheets use this single touch-friendly
+    // visual row. Navigation and actual capabilities stay with the native
+    // generation's action model, so no greyed-out placeholder can mutate data.
+    inline void drawNativeActionRow(PKSEFramebuffer& fb, int x, int y, int w, int h,
+                                    const std::string& label, bool selected, bool enabled = true) {
+        const bool pressed = enabled && touchPressedRect(x, y, w, h);
+        fb.drawFilledRoundedRect(x, y, w, h, 10,
+                                 pressed ? withAlpha(Colors::FocusBorder, 125) : Colors::PanelAlt);
+        fb.drawRoundedRect(x, y, w, h, 10,
+                           selected || pressed ? Colors::FocusBorder : Colors::Divider,
+                           selected || pressed ? 2 : 1);
+        const Color disabledColor(Colors::TextDim.r, Colors::TextDim.g, Colors::TextDim.b, 105);
+        const Color color = enabled ? (selected ? Colors::Text : Colors::TextSecondary)
+                                    : disabledColor;
+        int th = 0, tw = 0;
+        fb.measureText(label, tw, th, TextStyle::Body);
+        fb.drawText(x + 16, y + (h - th) / 2, label, color, TextStyle::Body);
+    }
+
     // A pressable button that carries its controller badge ON the button (glyph + label, centred).
     // Geometry is published immediately as well as accumulated for the next footer commit. This is
     // important for modal buttons drawn after a footer: they must still be real direct-touch targets.
@@ -258,8 +292,12 @@ namespace UI {
         const TouchGlyphHit hit{bx, by, bw, bh, glyph};
         g_touchGlyphAccum.push_back(hit);
         g_touchGlyphHits.push_back(hit);
-        fb.drawFilledRoundedRect(bx, by, bw, bh, 8, fill);
-        fb.drawRoundedRect(bx, by, bw, bh, 8, Colors::Border, 1);
+        const bool pressed = touchPressedRect(bx, by, bw, bh);
+        fb.drawFilledRoundedRect(bx, by, bw, bh, 8,
+                                 pressed ? withAlpha(Colors::FocusBorder, 150) : fill);
+        fb.drawRoundedRect(bx, by, bw, bh, 8,
+                           pressed ? Colors::FocusBorder : Colors::Border,
+                           pressed ? 3 : 1);
         const int gw = buttonGlyphWidth(fb, glyph);
         int lw, lh; fb.measureText(label, lw, lh);
         const int gx = bx + (bw - (gw + 10 + lw)) / 2;
@@ -571,6 +609,19 @@ namespace UI {
         int cx = x + std::max(kPadX, (w - (fixed + gap * (n - 1))) / 2);
         for (const Seg& s : segs) {
             const int segX = cx;
+            const int segmentWidth = s.glyphW + (s.glyphW ? kGapGlyph : 0) + s.labelW;
+            // A visible, theme-aware depression under the touched legend
+            // makes the target obvious to medium-sized fingers. Swipe gestures
+            // never acquire this effect or trigger a virtual button.
+            if (s.glyphW && touchPressedRect(segX, cy - TouchTargetMin / 2,
+                                               segmentWidth, TouchTargetMin)) {
+                fb.drawFilledRoundedRect(segX - 5, cy - TouchTargetMin / 2,
+                                         segmentWidth + 10, TouchTargetMin, 11,
+                                         withAlpha(Colors::FocusBorder, 92));
+                fb.drawRoundedRect(segX - 5, cy - TouchTargetMin / 2,
+                                   segmentWidth + 10, TouchTargetMin, 11,
+                                   Colors::FocusBorder, 2);
+            }
             if (s.glyphW) { buttonGlyph(fb, cx, cy, s.btn, false); cx += s.glyphW + kGapGlyph; }
             int tw, th; fb.measureText(s.label, tw, th, TextStyle::Caption);
             fb.drawText(cx, cy - th / 2, s.label, s.glyphW ? Colors::Text : Colors::Accent,

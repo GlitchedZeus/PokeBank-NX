@@ -9,6 +9,7 @@
 #include "UI/TrainerViewScreen.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
+#include "UI/ScreenChrome.h"
 #include "Trainer/Trainer.h"
 #include "Trainer/Inventory9LZA.h"
 #include "Trainer/Inventory9SV.h"
@@ -125,10 +126,18 @@ namespace Panels {
         const int arrowY = CategoryTouch::topY(y, hH);
         const int prevX = CategoryTouch::previousX(x, width);
         const int nextX = CategoryTouch::nextX(x, width);
+        const bool prevPressed = touchPressedRect(prevX, arrowY, CategoryTouch::Width, CategoryTouch::Height);
+        const bool nextPressed = touchPressedRect(nextX, arrowY, CategoryTouch::Width, CategoryTouch::Height);
         fb.drawFilledRoundedRect(prevX, arrowY, CategoryTouch::Width,
-                                 CategoryTouch::Height, 9, Colors::PanelAlt);
+                                 CategoryTouch::Height, 9,
+                                 prevPressed ? withAlpha(Colors::FocusBorder, 145) : Colors::PanelAlt);
         fb.drawFilledRoundedRect(nextX, arrowY, CategoryTouch::Width,
-                                 CategoryTouch::Height, 9, Colors::PanelAlt);
+                                 CategoryTouch::Height, 9,
+                                 nextPressed ? withAlpha(Colors::FocusBorder, 145) : Colors::PanelAlt);
+        if (prevPressed) fb.drawRoundedRect(prevX, arrowY, CategoryTouch::Width,
+                                            CategoryTouch::Height, 9, Colors::FocusBorder, 2);
+        if (nextPressed) fb.drawRoundedRect(nextX, arrowY, CategoryTouch::Width,
+                                            CategoryTouch::Height, 9, Colors::FocusBorder, 2);
         fb.drawText(prevX + 14, arrowY + 3, "<", Colors::Text, TextStyle::Body);
         fb.drawText(nextX + 14, arrowY + 3, ">", Colors::Text, TextStyle::Body);
         screen.touchButtons.push_back({CategoryTouch::PreviousId, prevX, arrowY,

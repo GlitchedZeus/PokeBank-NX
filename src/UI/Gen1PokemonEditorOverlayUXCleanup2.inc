@@ -888,8 +888,7 @@ void ux2DrawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y
     for (std::size_t i = 0; i < actions.count; ++i) {
         const int idx = static_cast<int>(actions[i]);
         const bool selected = static_cast<int>(i) == state.row;
-        if (selected) fb.drawSelectionHighlight(x + 22, rowY, w - 44, 42);
-        fb.drawText(x + 38, rowY + 10, names[idx], selected ? Colors::Text : Colors::TextDim);
+        drawNativeActionRow(fb, x + 22, rowY, w - 44, 42, names[idx], selected);
         screen.touchButtons.push_back({1000 + static_cast<int>(i), x + 22, rowY, w - 44, 42});
         rowY += 46;
     }

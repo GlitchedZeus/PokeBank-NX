@@ -103,7 +103,7 @@ int firstEmptyGen2Slot(Gen2::StagedEditor& editor, int box) {
 }
 
 bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held,
-                         int stickX, int stickY) {
+                         int stickX, int stickY, const TouchInput& touch) {
     auto& legacy = editorOverlayState(screen);
     auto* editor = stagedEditor(screen);
     if (!editor || !legacy.active || legacy.review || !legacy.pokemonActions) return false;
@@ -124,6 +124,13 @@ bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held
         legacy.pokemonRow = (legacy.pokemonRow + 1) % static_cast<int>(actions.count);
     legacy.pokemonRow = std::clamp(legacy.pokemonRow, 0, static_cast<int>(actions.count) - 1);
 
+    // Native Gen II menu rows are directly touchable, not merely controller
+    // hints. Ignore drag releases; a tap commits only its own visible row.
+    const int touched = screen.touchedButtonId(touch);
+    if (touched >= 31600 && touched < 31600 + static_cast<int>(actions.count)) {
+        legacy.pokemonRow = touched - 31600;
+        down |= HidNpadButton_A;
+    }
     if (down & HidNpadButton_B) {
         legacy.active = false;
         legacy.pokemonActions = false;
@@ -300,8 +307,8 @@ void drawSharedActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     int yy = y + geometry.rowStart;
     for (std::size_t i = 0; i < actions.count; ++i) {
         const bool selected = legacy.pokemonRow == static_cast<int>(i);
-        if (selected) fb.drawSelectionHighlight(x + 22, yy, w - 44, geometry.rowHeight);
-        fb.drawText(x + 38, yy + 10, sharedActionLabel(actions[i]), selected ? Colors::Text : Colors::TextDim);
+        drawNativeActionRow(fb, x + 22, yy, w - 44, geometry.rowHeight,
+                            sharedActionLabel(actions[i]), selected);
         yy += geometry.rowStep;
     }
     fb.drawText(x + 24, y + h - 38, "Original source is immutable", Colors::Accent, TextStyle::Caption);
@@ -582,7 +589,7 @@ bool handleSharedSurfaceInput(TrainerViewScreen& screen, uint64_t down, uint64_t
     if (handleSharedProvenance(screen, down)) return true;
     if (handleSharedClone(screen, down)) return true;
     if (handleSharedReview(screen, down, held, stickX, stickY)) return true;
-    if (handleSharedActions(screen, down, held, stickX, stickY)) return true;
+    if (handleSharedActions(screen, down, held, stickX, stickY, touch)) return true;
     auto& state = stateFor(screen);
     if (state.mode == Mode::View) {
         if (PokeBank::UIModel::passiveViewAction(down & HidNpadButton_B, screen.touchedButtonId(touch)) ==

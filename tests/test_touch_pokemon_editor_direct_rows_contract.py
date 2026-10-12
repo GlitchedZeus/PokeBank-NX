@@ -104,8 +104,9 @@ require(gen3, "src/UI/Gen3SharedPokemonSurface.inc",
         "state.reviewScroll = std::clamp",
         "state.reviewTouchScroll.updateVertical(",
         "state.reviewTouchScroll.offset()",
-        "const auto detailVisual = liveVerticalListVisual(",
-        "SharedPokemonShell::drawVerticalScrollIndicator")
+        "state.detailsTouchScroll.updateVertical(",
+        "appendClippedTouchButton(screen.touchButtons, 31000 + row",
+        "detailPixelOffset, firstDetailRow")
 
 # Gen III direct-row focus must reject read-only rows in the helper itself. Returning false is
 # essential: the caller synthesizes A only when direct focus was actually accepted. Passive View
@@ -130,14 +131,15 @@ require(gen4, "src/UI/Gen4SharedPokemonSurface.inc",
         "touchTap >= 6000 && touchTap < 6000 + count",
         "state.pickerRow = touchTap - 6000;",
         "appendClippedTouchButton(screen.touchButtons, 6000 + i",
-        "screen.touchButtons.push_back({41000 + row",
+        "appendClippedTouchButton(screen.touchButtons, 41000 + row",
         "screen.touchButtons.push_back({41100 + row",
         "screen.touchButtons.push_back({41120 + row",
         "screen.touchButtons.push_back({41300 + row",
         "actionDown >= 41600 && actionDown < 41600 + static_cast<int>(actions.count)",
         "actionTap >= 41600 && actionTap < 41600 + static_cast<int>(actions.count)",
         "screen.touchButtons.push_back({41600 + static_cast<int>(i)",
-        "const auto detailVisual = liveVerticalListVisual(",
+        "state.detailsTouchScroll.updateVertical(",
+        "detailPixelOffset, firstDetailRow",
         "state.pickerScroll.updateVertical(")
 
 

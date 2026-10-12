@@ -19,6 +19,9 @@ using PokeVault::Inventory::ClassicPocket;
 [[nodiscard]] std::optional<ClassicGame> classicInventoryGame(std::string_view sourceGameId) noexcept;
 [[nodiscard]] std::span<const ClassicPocket> classicInventoryCategories(ClassicGame game) noexcept;
 [[nodiscard]] std::optional<ClassicPocket> classicInventoryPocketAt(ClassicGame game, int category) noexcept;
+// All category arrows and physical L/R share this exact-game wrap rule.
+[[nodiscard]] int classicInventoryShiftCategory(ClassicGame game, int current,
+                                                int delta) noexcept;
 [[nodiscard]] std::string_view classicInventoryCategoryName(ClassicGame game, int category) noexcept;
 [[nodiscard]] bool classicInventoryQuantityEditable(ClassicGame game, ClassicPocket pocket,
                                                     uint16_t itemId) noexcept;

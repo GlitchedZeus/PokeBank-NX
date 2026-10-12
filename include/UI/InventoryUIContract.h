@@ -66,9 +66,9 @@ struct InventoryActionAvailability {
 struct InventoryCategoryTouch {
     static constexpr int PreviousId = -20;
     static constexpr int NextId = -21;
-    static constexpr int Width = 44;
-    static constexpr int Height = 34;
-    static constexpr int Gap = 12;
+    static constexpr int Width = 56;
+    static constexpr int Height = 40;
+    static constexpr int Gap = 24;
     static constexpr int RightInset = 20;
 
     [[nodiscard]] static constexpr int previousX(int panelX, int panelWidth) noexcept {

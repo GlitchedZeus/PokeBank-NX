@@ -922,7 +922,21 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int 
 
 bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int stickX, int stickY,
                    const TouchInput& touch) {
-    return handleInputUX(screen, ux3DirectTouchInput(screen, down, touch), held, stickX, stickY);
+    uint64_t input = ux3DirectTouchInput(screen, down, touch);
+    // Touch and A must reach the same native staged Pokémon menu. The legacy
+    // box handler otherwise opens the old generic action sheet when the finger
+    // taps an occupied slot, where Edit/Clone incorrectly appear disabled.
+    if (isGen1SourceUX(screen) && ux2StateFor(screen).mode == UX2Mode::Closed &&
+        touch.justTapped()) {
+        const int target = screen.touchedButtonId(touch);
+        if (target >= 0 && target < static_cast<int>(screen.trainer.getSlotsPerBox()) &&
+            screen.detailViewActive && screen.selectedMode == TrainerViewScreen::ViewMode::Boxes) {
+            screen.selectedItemIndex = target;
+            if (entrySurface(screen) && editorAvailable(screen)) input |= HidNpadButton_A;
+            else return false; // No staged editor: let the read-only base View handle the tap.
+        }
+    }
+    return handleInputUX(screen, input, held, stickX, stickY);
 }
 
 bool handleInputUX(TrainerViewScreen& screen, uint64_t down) {

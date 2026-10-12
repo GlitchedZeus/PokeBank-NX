@@ -64,7 +64,7 @@ void drawParityExternalPassiveView(TrainerViewScreen& screen, PKSEFramebuffer& f
     const int midX = leftX + leftW + 14, midW = 398;
     const int rightX = midX + midW + 14, rightW = g.x + g.width - 18 - rightX;
 
-    drawUnifiedDetails(fb, visual, unified, leftX, contentY, leftW, contentH, true);
+    drawUnifiedDetails(screen, fb, visual, unified, leftX, contentY, leftW, contentH, true);
     drawUnifiedValues(fb, visual, unified, midX, contentY, midW, contentH, true);
     drawUnifiedMoves(fb, screen, visual, unified, rightX, contentY, rightW, contentH, true);
 
@@ -136,12 +136,16 @@ void drawParityGen2Actions(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         std::to_string(legacy.pokemonSlot + 1) + "  •  staged copy only",
         Colors::TextDim, TextStyle::Caption);
 
+    // Hide the inherited box hit targets while this modal is active; only
+    // the foreground native action rows own touches.
+    screen.touchButtons.clear();
     int rowY = y + geometry.rowStart;
     for (std::size_t i = 0; i < actions.count; ++i) {
+        screen.touchButtons.push_back({31600 + static_cast<int>(i),
+                                      x + 22, rowY, w - 44, geometry.rowHeight});
         const bool selected = static_cast<int>(i) == legacy.pokemonRow;
-        if (selected) fb.drawSelectionHighlight(x + 22, rowY, w - 44, geometry.rowHeight);
-        fb.drawText(x + 38, rowY + 10, SharedEditor::actionLabel(actions[i]),
-                    selected ? Colors::Text : Colors::TextDim);
+        drawNativeActionRow(fb, x + 22, rowY, w - 44, geometry.rowHeight,
+                            SharedEditor::actionLabel(actions[i]), selected);
         rowY += geometry.rowStep;
     }
     fb.drawText(x + 24, y + h - 38, "Original source is immutable", Colors::Accent, TextStyle::Caption);
@@ -279,6 +283,13 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
     const auto surface = screen.selectedMode == TrainerViewScreen::ViewMode::Boxes ? Access::Surface::Boxes
         : storage && screen.storageFocusPane == 0 ? Access::Surface::StorageSave
         : screen.selectedMode == TrainerViewScreen::ViewMode::Trainer ? Access::Surface::Trainer : Access::Surface::Other;
+    // A box-cell tap selects that exact slot and activates the same staged
+    // Actions surface as A. Do not let the inherited two-tap box handler open
+    // its generic, mostly disabled source-save sheet.
+    const int tappedSlot = touch.justTapped() ? screen.touchedButtonId(touch) : -1;
+    const bool boxTap = surface == Access::Surface::Boxes && screen.detailViewActive &&
+        tappedSlot >= 0 && tappedSlot < static_cast<int>(screen.trainer.getSlotsPerBox());
+    if (boxTap) screen.selectedItemIndex = tappedSlot;
     const int box = storage ? screen.stSaveBox : screen.selectedBoxIndex;
     const int slot = storage ? screen.stSaveSlot : screen.selectedItemIndex;
     const bool validSlot = editor && box >= 0 && slot >= 0 &&
@@ -301,7 +312,7 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         std::string error;
         const bool occupied = editor->boxedPokemon(static_cast<std::size_t>(box), static_cast<std::size_t>(slot), error).has_value();
         const auto activation = SharedEditor::boxActivation(occupied,
-            (down & HidNpadButton_A) != 0, (down & HidNpadButton_X) != 0);
+            (down & HidNpadButton_A) != 0 || boxTap, (down & HidNpadButton_X) != 0);
         if (activation == SharedEditor::BoxActivation::Add) {
             return beginCreate(screen, box);
         }

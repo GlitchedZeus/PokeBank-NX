@@ -810,6 +810,13 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         screen.creator.keepConfirmActive || screen.details.discardConfirmActive ||
         screen.gen3ConvertConfirmActive || screen.lgpeTransferConfirmActive) return false;
 
+    // The header arrows publish negative touch IDs. Route their presses through
+    // this exact-game category model instead of the inherited two-category RBY
+    // screen, which cannot navigate Medicines/Balls/Key Items/TMs/PC correctly.
+    using CategoryTouch = PokeBank::UIModel::InventoryCategoryTouch;
+    if (touchId == CategoryTouch::PreviousId) down |= HidNpadButton_L;
+    if (touchId == CategoryTouch::NextId) down |= HidNpadButton_R;
+
     std::optional<PokeBank::UIModel::ClassicInventoryInput> input;
     if (down & HidNpadButton_A) input = PokeBank::UIModel::ClassicInventoryInput::A;
     else if (down & HidNpadButton_X) input = PokeBank::UIModel::ClassicInventoryInput::X;
@@ -833,9 +840,9 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
 
     if (action == PokeBank::UIModel::ClassicInventoryAction::PreviousCategory ||
         action == PokeBank::UIModel::ClassicInventoryAction::NextCategory) {
-        const int count = static_cast<int>(PokeBank::UIModel::classicInventoryCategories(game).size());
         const int delta = action == PokeBank::UIModel::ClassicInventoryAction::PreviousCategory ? -1 : 1;
-        screen.selectedCategory = (screen.selectedCategory + delta + count) % count;
+        screen.selectedCategory = PokeBank::UIModel::classicInventoryShiftCategory(
+            game, screen.selectedCategory, delta);
         screen.selectedItemIndex = 0;
         screen.currentPage = 0;
         return true;

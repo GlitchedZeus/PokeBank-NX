@@ -134,12 +134,67 @@ if "state.pickerRow = hit.id" in inventory_contact or "state.reviewRow = hit.id"
     raise AssertionError("Classic Inventory: contact must not steal picker/review focus")
 require_all("src/UI/ClassicInventoryOverlay.cpp",
             "state.pickerRow = touchId;", "state.reviewRow = touchId;")
+# Gen III/IV action sheets must clear backdrop hitboxes AFTER the box has been
+# drawn, not just before. Otherwise old box targets win first-match hit tests.
+for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurface.inc"):
+    source = read(rel)
+    actions = source.split("void drawActions(", 1)[1].split("void drawReview(", 1)[0]
+    assert "screen.drawGSCOverlay(fb);" in actions
+    assert actions.index("screen.drawGSCOverlay(fb);") < actions.index(
+        "screen.touchButtons.clear();", actions.index("screen.drawGSCOverlay(fb);"))
+# A single tap on an occupied Pokémon must open the same real staged action
+# surface across Gen I–IV. Native Gen II actions also publish direct row hitboxes.
+require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
+            "screen.selectedItemIndex = target;", "input |= HidNpadButton_A;")
+require_all("src/UI/Gen2SharedSurfaceParity.inc",
+            "screen.selectedItemIndex = tappedSlot;", "|| boxTap",
+            "screen.touchButtons.push_back({31600 + static_cast<int>(i)")
+require_all("src/UI/Gen2SharedPokemonSurface.inc",
+            "const int touched = screen.touchedButtonId(touch);",
+            "legacy.pokemonRow = touched - 31600;")
+# A visible Gen III/IV Pokémon tap must route to the SAME native action sheet as A;
+# the inherited generic action sheet cannot edit or clone staged Pokémon.
+require_all("src/UI/Gen3SharedPokemonSurface.inc",
+            "if (touch.justTapped()) {", "screen.selectedItemIndex = tapped;",
+            "if (!editor(screen)) return false;",
+            "if (selectedOccupied(screen)) beginActions(screen);")
+require_all("src/UI/Gen4SharedPokemonSurface.inc",
+            "if (boxEntry && touch.justTapped())", "screen.selectedItemIndex = tapped;",
+            "if (selectedOccupied(screen)) beginActions(screen);",
+            "if (partyEntry && touch.justTapped())", "screen.selectedPartyIndex = tapped - 6200;")
+# The header arrows must use the Gen I–III exact-game category catalog, not the
+# old two-pocket RBY inherited category counter.
+require_all("src/UI/ClassicInventoryOverlay.cpp",
+            "touchId == CategoryTouch::PreviousId", "touchId == CategoryTouch::NextId",
+            "down |= HidNpadButton_L", "down |= HidNpadButton_R")
 # Backup selection must scroll its viewport, not re-center to its changing selection.
 require_all("include/UI/BackupSelectionScreen.h", "int backupFirstRow = 0;")
 if "firstVisibleRow(" in read("src/UI/BackupSelectionScreen.cpp"):
     raise AssertionError("Backup Selection: stale selection-centered scroll helper returned")
 
+require_all("src/UI/Gen2UnifiedPokemonWorkspace.inc",
+            "TouchPickerViewport detailsViewport;", "TouchScrollState detailsTouchScroll;",
+            "detailsTouchScroll.updateVertical(", "appendClippedTouchButton(screen.touchButtons, 1700 + row",
+            "const int touchedDetail = updateUnifiedDetailsTouch")
+# Scrolling away from a controller-selected detail must not make A edit
+# a hidden field. Gen II–IV reveal the semantic cursor first without mutation.
+require_all("src/UI/Gen2UnifiedPokemonWorkspace.inc",
+            "!unified.detailsViewport.containsSelection(",
+            "Focused field brought into view; press A again")
+require_all("src/UI/Gen3SharedPokemonSurface.inc",
+            "!state.detailsViewport.containsSelection(",
+            "Focused field brought into view; press A again")
+require_all("src/UI/Gen4SharedPokemonSurface.inc",
+            "!state.detailsViewport.containsSelection(",
+            "Focused field brought into view; press A again")
 chrome = read("include/UI/ScreenChrome.h")
+require_all("include/UI/ScreenChrome.h",
+            "constexpr int kNavBarH      = 56;",
+            "inline bool touchPressedRect(",
+            "withAlpha(Colors::FocusBorder, 92)",
+            "touchPressedRect(bx, by, bw, bh)")
+require_all("src/UI/Panels/ItemsPanel.cpp",
+            "prevPressed = touchPressedRect(", "nextPressed = touchPressedRect(")
 for glyph in ("+", "-", "L", "R", "ZL", "ZR", "Left", "Right", "Up", "Down"):
     if f'btn == "{glyph}"' not in chrome:
         raise AssertionError(f"ScreenChrome: missing tappable controller glyph mapping for {glyph}")
@@ -313,11 +368,15 @@ assert report_gestures.count(
 )
 assert report_gestures.count("std::abs(touch.deltaY()) >= 24") == 3
 require_all("include/UI/SharedPokemonShell.h",
-            "int pixelOffset = 0",
-            "static_cast<int>(i) * 38 + pixelOffset")
+            "int pixelOffset = 0, int independentFirstRow = -1",
+            "const int yy = y + 224 + i * 38 + pixelOffset",
+            "independentFirstRow >= 0",
+            "rowIndex < 0 || rowIndex >= static_cast<int>(total)")
 require_all("src/UI/Gen2HardwareFinalFix.inc",
-            "const auto detailVisual = liveVerticalListVisual(",
-            "+ detailVisual.offset")
+            "const int detailFirst = std::max(0, unified.detailsViewport.firstRow);",
+            "const int detailOffset = unified.detailsTouchScroll.offset();",
+            "+ detailOffset;",
+            "static_cast<std::size_t>(unified.focus.row)")
 require_all("src/UI/Gen2PokemonEditorFoundation.inc",
             "int stickX, int stickY, const TouchInput& touch)",
             "return handleInput(screen, down, held, stickX, stickY, noTouch);")
@@ -332,11 +391,15 @@ for dead_macro in ("#define touch kLegacyNoTouch",
     if dead_macro in composite_touch:
         raise AssertionError(f"Composite touch glue regressed to macro adapter: {dead_macro}")
 require_all("src/UI/Gen3SharedPokemonSurface.inc",
-            "const auto detailVisual = liveVerticalListVisual(",
-            "detailVisual.offset")
+            "TouchPickerViewport detailsViewport;", "TouchScrollState detailsTouchScroll;",
+            "state.detailsTouchScroll.updateVertical(",
+            "detailPixelOffset, firstDetailRow",
+            "appendClippedTouchButton(screen.touchButtons, 31000 + row")
 require_all("src/UI/Gen4SharedPokemonSurface.inc",
-            "const auto detailVisual = liveVerticalListVisual(",
-            "detailVisual.offset")
+            "TouchPickerViewport detailsViewport;", "TouchScrollState detailsTouchScroll;",
+            "state.detailsTouchScroll.updateVertical(",
+            "detailPixelOffset, firstDetailRow",
+            "appendClippedTouchButton(screen.touchButtons, 41000 + row")
 require_all("src/UI/SaveSelectScreen.cpp",
             "gamesDrawerTouchScroll.updateVertical(",
             "classicGamesTouchScroll.updateVertical(",
