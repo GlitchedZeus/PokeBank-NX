@@ -53,7 +53,7 @@ SURFACES = {
     ),
     "Release/action surfaces": (
         "src/UI/ClassicReleaseActionFix.inc",
-        ("touchedButtonId(touch)", "touch.justTouchedDown()", "touch.justReleased()"),
+        ("touchedButtonId(touch)", "touch.justTapped()", "touch.justReleased()"),
     ),
     "Save confirmation": (
         "src/UI/Dialogs/SaveConfirmDialog.cpp",
