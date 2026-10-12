@@ -100,7 +100,7 @@ constexpr Result evaluate(const Input& in) noexcept {
     }
     for(const Parent& p:in.physicalSlots) {
         if(!p.originalSnapshotIndependentlyVerified || !p.snapshotIdentity ||
-           p.species==0 || p.gender>2) {
+           p.species==0 || p.species>386 || p.gender>2) {
             out.status=Status::UnknownParentSnapshots;return out;
         }
     }
