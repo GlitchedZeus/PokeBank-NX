@@ -127,6 +127,9 @@ jobs:
           LANE: ${{ matrix.lane }}
           ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+          # L4 on integration head must join real L5 Q07 247-row source JSON,
+          # not just validate the Python fixture test dataset.
+          L4_L5_Q07_JSON: docs/legality/research/l5/Q07_WC4_EVENT_PROVENANCE_JOIN.json
         run: |
           set -euo pipefail
           case "$LANE" in
@@ -144,6 +147,14 @@ jobs:
               L4_SANITIZE=1 bash tests/test_legality_l4_runner.sh
               ;;
             L5)
+              # Independent source-state fixture, compiled from exact tree.
+              g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 \
+                tests/fixtures/legality_l5_gen12_sourcefree_contract.cpp -o /tmp/l5-pk12-source-contract
+              /tmp/l5-pk12-source-contract
+              g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O1 \
+                -fsanitize=address,undefined -fno-omit-frame-pointer \
+                tests/fixtures/legality_l5_gen12_sourcefree_contract.cpp -o /tmp/l5-pk12-source-contract-sanitize
+              /tmp/l5-pk12-source-contract-sanitize
               python3 tools/audit_legality_l5_native_ev_vectors.py --source-root .
               python3 tools/audit_legality_l5_native_codec.py --source-pin
               python3 tools/audit_legality_l5_native_codec.py --source-pin --sanitize
