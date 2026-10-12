@@ -15,7 +15,8 @@ namespace Pair=Gen34BreedingPairEligibility;
 namespace Move=Gen34SameParentEggHistory;
 namespace IV=Gen4EggIVInheritanceStage;
 enum class Status : uint8_t {
-    UnsupportedGame, UnknownNativeParentEvidence, UnknownPairEligibility,
+    UnsupportedGame, UnknownNativeParentEvidence, UnknownNativeEggRecord,
+    IncoherentNativeEggRecord, UnknownPairEligibility,
     CandidatePairIncompatible, UnknownParentMoves, IncoherentParentIdentity,
     IncoherentMoveSnapshot, UnknownSharedStage, IncoherentSharedStage,
     UnknownInitialChildIVs, UnknownObservedChildIVs,
@@ -162,5 +163,37 @@ inline Result evaluate(const Input& in) noexcept {
             out.status=Status::UnknownNativeParentEvidence;break;
     }
     return out;
+}
+// Bind the observed child IVs, four moves and egg species to ONE valid,
+// immutable native encrypted PK4 at the independently attested original
+// UNHATCHED stage. A present-day hatched/evolved record cannot be used as
+// proof of its unhatched moves or a historical collection-time state.
+struct NativeEggWitness {
+    const Pokemon::Pokemon4ReadOnly* record=nullptr;
+    bool originalUnhatchedStageIndependentlyVerified=false;
+    bool containingGameIndependentlyVerified=false;
+};
+inline Result evaluateWithNativeEgg(const Input& in,
+                                     const NativeEggWitness& witness) noexcept {
+    Result out{};
+    if(IV::family(in.parents.game)==IV::Family::Unknown) {
+        out.status=Status::UnsupportedGame;return out;
+    }
+    if(!witness.record || !witness.originalUnhatchedStageIndependentlyVerified ||
+       !witness.containingGameIndependentlyVerified) {
+        out.status=Status::UnknownNativeEggRecord;return out;
+    }
+    const auto& egg=*witness.record;
+    if(!egg.valid() || egg.empty() || !egg.isEgg() ||
+       egg.sourceGroup()!=Native::requiredGroup(in.parents.game)) {
+        out.status=Status::UnknownNativeEggRecord;return out;
+    }
+    if(!in.observedChildIVsIndependentlyVerified ||
+       egg.species()!=in.moveHistory.species ||
+       egg.moves()!=in.moveHistory.observed ||
+       egg.ivs()!=in.observedChildIVs) {
+        out.status=Status::IncoherentNativeEggRecord;return out;
+    }
+    return evaluate(in);
 }
 } // namespace Legality::Gen4JointEggCandidateEvidence

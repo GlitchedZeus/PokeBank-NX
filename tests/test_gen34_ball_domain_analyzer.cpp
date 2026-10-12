@@ -714,6 +714,73 @@ void testGen4JointNativeParentMoveIvHistories() {
                 in.knownFinalRNGState=forward.finalSeed;
                 const auto good=J::evaluate(in);
                 assert(good.status==J::Status::KnownCandidateConsistent);
+                // The actual test-constructed ENCRYPTED UNHATCHED PK4
+                // carries the child species/moves/IVs. The independent
+                // historical attestation is still a caller-supplied proof.
+                std::vector<std::byte> childRaw(Encryption::SIZE_STORED4,std::byte{0});
+                wr32(childRaw,0x00,0x87654321u);
+                wr16(childRaw,0x08,1);
+                wr32(childRaw,0x0C,0xCDEF1234u);
+                wr32(childRaw,0x10,135);
+                wr16(childRaw,0x28,33);
+                wr16(childRaw,0x2A,45);
+                wr32(childRaw,0x38,packIV(in.observedChildIVs)|0x40000000u);
+                childRaw[0x40]=std::byte{0};
+                childRaw[0x5F]=std::byte{12};
+                const auto childBytes=Encryption::encryptArray4(childRaw);
+                Pokemon::Pokemon4ReadOnly child(childBytes,group);
+                assert(child.valid() && child.isEgg());
+                const J::NativeEggWitness childHistory{&child,true,true};
+                const auto complete=J::evaluateWithNativeEgg(in,childHistory);
+                assert(complete.status==J::Status::KnownCandidateConsistent);
+                const auto childBefore=std::vector<std::byte>(
+                    child.originalEncryptedBytes().begin(),
+                    child.originalEncryptedBytes().end());
+                assert(std::equal(childBefore.begin(),childBefore.end(),
+                                  child.originalEncryptedBytes().begin()));
+                auto noHistoricalChild=childHistory;
+                noHistoricalChild.originalUnhatchedStageIndependentlyVerified=false;
+                assert(J::evaluateWithNativeEgg(in,noHistoricalChild).status==
+                       J::Status::UnknownNativeEggRecord);
+                auto missingChild=childHistory;missingChild.record=nullptr;
+                assert(J::evaluateWithNativeEgg(in,missingChild).status==
+                       J::Status::UnknownNativeEggRecord);
+                auto noSourceChild=childHistory;noSourceChild.containingGameIndependentlyVerified=false;
+                assert(J::evaluateWithNativeEgg(in,noSourceChild).status==
+                       J::Status::UnknownNativeEggRecord);
+                auto changedEggMoves=childRaw;wr16(changedEggMoves,0x28,999);
+                Pokemon::Pokemon4ReadOnly eggMovesBad(
+                    Encryption::encryptArray4(changedEggMoves),group);
+                auto movesBadWitness=childHistory;movesBadWitness.record=&eggMovesBad;
+                assert(J::evaluateWithNativeEgg(in,movesBadWitness).status==
+                       J::Status::IncoherentNativeEggRecord);
+                auto alteredEggIV=childRaw;
+                wr32(alteredEggIV,0x38,packIV(initial)|0x40000000u);
+                Pokemon::Pokemon4ReadOnly eggIVBad(
+                    Encryption::encryptArray4(alteredEggIV),group);
+                auto ivBadWitness=childHistory;ivBadWitness.record=&eggIVBad;
+                const auto ivMismatch=J::evaluateWithNativeEgg(in,ivBadWitness);
+                // The altered IV may occasionally equal the observed IV
+                // for a synthetic stage; use a forced alternate first IV
+                // for a guaranteed contradiction below.
+                (void)ivMismatch;
+                auto guaranteedEggIV=childRaw;
+                const auto observedPack=packIV(in.observedChildIVs);
+                const auto changedHP=(in.observedChildIVs[0]+1u)%32u;
+                wr32(guaranteedEggIV,0x38,
+                     ((observedPack&~0x1Fu)|changedHP)|0x40000000u);
+                Pokemon::Pokemon4ReadOnly wrongIvEgg(
+                    Encryption::encryptArray4(guaranteedEggIV),group);
+                ivBadWitness.record=&wrongIvEgg;
+                assert(J::evaluateWithNativeEgg(in,ivBadWitness).status==
+                       J::Status::IncoherentNativeEggRecord);
+                auto noEggFlag=childRaw;
+                wr32(noEggFlag,0x38,packIV(in.observedChildIVs));
+                Pokemon::Pokemon4ReadOnly hatched(
+                    Encryption::encryptArray4(noEggFlag),group);
+                auto nonEggWitness=childHistory;nonEggWitness.record=&hatched;
+                assert(J::evaluateWithNativeEgg(in,nonEggWitness).status==
+                       J::Status::UnknownNativeEggRecord);
                 assert(good.moves.status==
                     Legality::Gen34SameParentEggHistory::Status::CandidateCompatible);
                 assert(good.ivs==IV::CandidateCheck::Matched);
