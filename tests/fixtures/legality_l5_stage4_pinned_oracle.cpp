@@ -132,7 +132,8 @@ void checksEV(Counters& c){
         CHECK(classify(pkhexEffortModel(x),nxAcceptedSourceModel(x))==Diff::BothInvalid);
     }
 }
-constexpr std::array<uint16_t,11> evolved={169,182,186,196,197,199,208,212,230,233,242};
+constexpr std::array<uint16_t,22> evolved={169,182,186,196,197,199,208,212,230,233,242,
+    462,463,464,465,466,467,470,471,474,700,900};
 constexpr bool pkhexGBCanVisit(uint16_t species){
     // In PKHeX GBRestrictions, 0 is accepted by species <=151 expression.
     // PK0 is an empty slot, NOT a valid encounter: evaluate only species>=1.
@@ -146,9 +147,12 @@ void checksHistorical(Counters& c){
         const bool reference=pkhexGBCanVisit(species);
         const bool nx=NX::canVisitGen1Species(species);
         if(species==0){CHECK(reference&&!nx);++c.domain;continue;}
-        CHECK(reference==nx);
+        // PKHeX includes Gen III+ descendants for modern transfer chains.
+        // Native PK2 cannot contain species above 251; preserve that scope.
+        if(species>251){CHECK(!nx);++c.domain;}
+        else CHECK(reference==nx);
         for(bool egg:{false,true})for(uint16_t caught:{uint16_t{0},uint16_t{1},uint16_t{65535}}){
-            const bool eligible=reference&&!egg&&caught==0;
+            const bool eligible=species<=251&&reference&&!egg&&caught==0;
             CHECK(NX::couldOriginateGen1(species,egg,caught)==eligible);
             // PKHeX also excludes Korean saves. NX helper does not have
             // a Korean input parameter; do not claim parity for Korean cases.
@@ -180,7 +184,7 @@ void negativeControls(Counters& c){
     CHECK(classify(Grade::NoContradiction,Grade::NoContradiction)==Diff::BothClean);
     CHECK(c.comparisons==1638410u);
     CHECK(c.trade==720885u);
-    CHECK(c.domain==1);
+    CHECK(c.domain==65285u);
     CHECK(c.historicalUnknown>0&&c.suspect>0&&c.referenceOnly>0&&c.nxOnly>0);
     CHECK(c.clean+c.invalid+c.referenceOnly+c.nxOnly+c.historicalUnknown+c.suspect>=c.comparisons);
 }
