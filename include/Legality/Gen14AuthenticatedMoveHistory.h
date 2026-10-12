@@ -63,6 +63,9 @@ struct BreedingEvidence {
     Game originalGame=Game::Unknown;
     std::uint16_t species=0, move=0;
     std::uint8_t form=0, acquisitionLevel=0;
+    // Origin slot is witnessed already present in the original egg record.
+    bool originMoveClaim=false;
+    std::uint8_t originSlot=0;
     bool originalEggVerified=false, parentsIndependentlyVerified=false;
     bool inheritanceMethodSourceVerified=false, sameEggIndividualVerified=false;
 };
@@ -76,6 +79,9 @@ struct EventEvidence {
     Game originalGame=Game::Unknown;
     std::uint16_t species=0, move=0;
     std::uint8_t form=0, earliestLevel=0, latestLevel=0;
+    // Event gift slots often exist at distribution; no invented later Learn.
+    bool originMoveClaim=false;
+    std::uint8_t originSlot=0;
     bool distributionIndependentlyVerified=false, templateIndependentlyVerified=false;
     bool templateMethodMoveVerified=false, originalEncounterVerified=false;
 };
@@ -208,7 +214,12 @@ constexpr bool evidenceComplete(const History& h) noexcept {
         for(std::uint8_t j=0;j<h.count;++j)if(h.steps[j].action==Action::Learn&&
             h.steps[j].method==Method::InheritedEgg&&
             h.steps[j].crossLaneEvidenceId==e.evidenceId)++matches;
-        if(matches!=1)return false;
+        if(e.originMoveClaim) {
+            if(matches||e.originSlot>=4||e.eggSnapshotId!=h.initial.id||
+               e.originalGame!=h.initial.game||e.species!=h.initial.species||
+               e.form!=h.initial.form||e.move!=h.initial.moves[e.originSlot]||
+               e.acquisitionLevel!=h.initial.level)return false;
+        } else if(matches!=1)return false;
     }
     for(std::uint8_t i=0;i<h.eventCount;++i) {
         const auto& e=h.events[i];
@@ -232,7 +243,13 @@ constexpr bool evidenceComplete(const History& h) noexcept {
         for(std::uint8_t j=0;j<h.count;++j)if(h.steps[j].action==Action::Learn&&
             h.steps[j].method==Method::DistributedEvent&&
             h.steps[j].crossLaneEvidenceId==e.evidenceId)++matches;
-        if(matches!=1)return false;
+        if(e.originMoveClaim) {
+            if(matches||e.originSlot>=4||e.originalSnapshotId!=h.initial.id||
+               e.originalGame!=h.initial.game||e.species!=h.initial.species||
+               e.form!=h.initial.form||e.move!=h.initial.moves[e.originSlot]||
+               h.initial.level<e.earliestLevel||h.initial.level>e.latestLevel)
+                return false;
+        } else if(matches!=1)return false;
     }
     for(std::uint8_t i=0;i<h.count;++i) {
         const auto& s=h.steps[i];

@@ -49,6 +49,35 @@ constexpr H::History validEvent(){
     e.templateMethodMoveVerified=e.originalEncounterVerified=true;
     return h;
 }
+constexpr H::History originEgg() {
+    auto h=base();h.initial.moves={33,45,73,0};h.observed=h.initial;
+    h.breedingCount=1;auto& e=h.breeding[0];
+    e.evidenceId=800;e.eggSnapshotId=h.initial.id;e.motherSnapshotId=555;
+    e.fatherSnapshotId=556;e.individual=h.individual;e.candidate=h.candidate;
+    e.originalGame=h.originalGame;e.species=h.initial.species;e.move=73;
+    e.acquisitionLevel=h.initial.level;e.originMoveClaim=true;e.originSlot=2;
+    e.originalEggVerified=e.parentsIndependentlyVerified=
+      e.inheritanceMethodSourceVerified=e.sameEggIndividualVerified=true;
+    return h;
+}
+constexpr H::History originEvent() {
+    auto h=base(G::Emerald);h.initial.moves={33,45,273,0};h.observed=h.initial;
+    h.eventCount=1;auto& e=h.events[0];
+    e.evidenceId=801;e.distributionId=810;e.templateId=811;
+    e.originalSnapshotId=h.initial.id;e.individual=h.individual;
+    e.candidate=h.candidate;e.originalGame=h.originalGame;
+    e.species=h.initial.species;e.move=273;e.earliestLevel=e.latestLevel=5;
+    e.originMoveClaim=true;e.originSlot=2;
+    e.distributionIndependentlyVerified=e.templateIndependentlyVerified=
+      e.templateMethodMoveVerified=e.originalEncounterVerified=true;
+    return h;
+}
+static_assert(H::evaluate(originEgg()).status==S::CandidateConsistent);
+static_assert(H::evaluate(originEvent()).status==S::CandidateConsistent);
+static_assert([]{auto h=originEgg();h.breeding[0].originSlot=1;
+    return H::evaluate(h).status==S::Unknown;}());
+static_assert([]{auto h=originEvent();h.events[0].originalSnapshotId++;
+    return H::evaluate(h).status==S::Unknown;}());
 static_assert(H::evaluate(validEgg()).status==S::CandidateConsistent);
 static_assert(H::evaluate(validEvent()).status==S::CandidateConsistent);
 static_assert([]{auto h=validEgg();h.breeding[0].parentsIndependentlyVerified=false;
@@ -59,6 +88,10 @@ int main(){
     std::uint64_t checks=0;
     for(unsigned i=0;i<12000;++i){
         auto egg=validEgg();assert(H::evaluate(egg).status==S::CandidateConsistent);++checks;
+        auto oe=originEgg();assert(H::evaluate(oe).status==S::CandidateConsistent);++checks;
+        auto ov=originEvent();assert(H::evaluate(ov).status==S::CandidateConsistent);++checks;
+        oe.breeding[0].originSlot=0;assert(H::evaluate(oe).status==S::Unknown);++checks;
+        ov.events[0].templateId=0;assert(H::evaluate(ov).status==S::Unknown);++checks;
         auto event=validEvent();assert(H::evaluate(event).status==S::CandidateConsistent);++checks;
         auto x=egg;x.breeding[0].species=4;
         assert(H::evaluate(x).status==S::Unknown);++checks;
