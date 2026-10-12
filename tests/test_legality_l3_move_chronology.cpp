@@ -270,6 +270,33 @@ static_assert([]{auto a=jointFourMoves();
     return L::evaluate(a.path).status==S::CandidateConsistent &&
            J::evaluate(a).status==S::CandidateContradicted;}());
 
+// A hypothetical initial move from an independently evidenced egg/event
+// stage may already be known when its source level-up offer occurs. The
+// replay checks the response, not whether a parent/event existed.
+static_assert([]{auto a=jointBulbasaur();
+    a.path.initialMoves={33,45,73,0};
+    a.path.observedMoves={33,45,73,22};
+    a.path.steps[0]={Game::Ruby,7,A::AlreadyKnown,M::LevelUp,73,0,true,Game::Ruby};
+    a.path.steps[1]={Game::Ruby,10,A::Learn,M::LevelUp,22,3,true,Game::Ruby};
+    return J::evaluate(a).status==S::CandidateConsistent;}());
+// Missing original egg/event snapshot is NOT permission to conclude the
+// four moves globally incompatible.
+static_assert([]{auto a=jointBulbasaur();
+    a.path.initialSnapshotVerified=false;
+    return J::evaluate(a).status==S::Unresolved;}());
+// Original staged evolution is a distinct candidate route. It cannot be
+// excluded by an uninterrupted same-species mechanism.
+static_assert([]{auto a=jointBulbasaur();
+    a.path.samePokemonAndSpeciesVerified=false;
+    return J::evaluate(a).status==S::Unresolved;}());
+// A source-complete contradictory path does not exhaust another plausible
+// unverified parent/trade/reminder history with the same candidate identity.
+static_assert([]{auto first=skippedMandatoryOffers();
+    auto other=jointBulbasaur();
+    other.path.initialSnapshotVerified=false;
+    return J::evaluate(first).status==S::CandidateContradicted &&
+           J::evaluate(other).status==S::Unresolved;}());
+
 int main() {
     assert(J::evaluate(jointFourMoves()).status==S::CandidateConsistent);
     assert(J::evaluate(skippedMandatoryOffers()).status==S::CandidateContradicted);
