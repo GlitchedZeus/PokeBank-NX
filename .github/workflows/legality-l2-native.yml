@@ -1,0 +1,42 @@
+name: L2 Breeding Legality (standalone native)
+# Dedicated L2-only branch gate. Does not edit or replace shared host CI.
+on:
+  push:
+    branches:
+      - feature/legality-l2-breeding-20261012
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  l2-full-suite:
+    name: L2 eleven suites ${{ matrix.compiler }} normal + ASan/UBSan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: gcc
+            cxx: g++
+          - compiler: clang
+            cxx: clang++
+    steps:
+      - name: Checkout exact L2 head and source dependencies
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Record exact source and compiler identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Exact source HEAD: $(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          "${{ matrix.cxx }}" --version
+      - name: Run all eleven L2 native programs normally and with ASan/UBSan
+        shell: bash
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: bash tests/test_legality_l2_run_all.sh
