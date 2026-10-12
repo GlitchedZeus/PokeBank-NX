@@ -51,9 +51,35 @@ int main() {
                 ++mutated;
             }
         }
+        // Symmetric full PCD gift-body fault sweep: corrupting the PCD's
+        // embedded PGT must fail just as a standalone-PGT mutation does.
+        // The linked-slot byte is the sole intentional difference.
+        for(std::size_t off=0;off<C::PGTSize;++off) {
+            for(unsigned bit=0;bit<8;++bit) {
+                auto altered=pcd;
+                altered[off]^=static_cast<std::byte>(1u<<bit);
+                const auto outcome=C::inspectPair(altered,pgt);
+                if(off==2) {
+                    assert(outcome.status==C::Status::PairedPayloadMatches);
+                } else {
+                    assert(outcome.status!=C::Status::PairedPayloadMatches);
+                    assert(C::attest(outcome,verified())!=
+                           C::ArchiveStatus::ConditionalOriginalSource);
+                    ++mutated;
+                }
+            }
+        }
+        // Card-only metadata cannot be inferred from an isolated PGT, even
+        // when two cards have the same gift bytes or reused numeric card ID.
+        for(const std::size_t offset:{C::PCDCardId,C::PCDCardId+1u,
+                                       C::PCDCompatibility,C::PCDCompatibility+1u}) {
+            auto changed=pcd;
+            changed[offset]^=std::byte{0x80};
+            assert(C::inspectPair(changed,pgt).status==C::Status::PairedPayloadMatches);
+        }
         ++pairs;
     }
-    assert(pairs==15 && mutated==15*259*8);
+    assert(pairs==15 && mutated==2*15*259*8);
     std::vector<std::byte> card(C::PCDSize),pgt(C::PGTSize);
     w16(card,0,3);w32(card,4,533);
     assert(!C::inspect(card).pgtExtractionAllowed); // Lock Capsule
