@@ -1,4 +1,5 @@
 #include "Pokemon/Pokemon4ReadOnly.h"
+#include "Pokemon/Gen4NativeRecordBoundary.h"
 
 #include "Encryption/Encryption4.h"
 #include "Pokemon/PersonalInfo4DP.h"
@@ -12,7 +13,11 @@ namespace Pokemon {
 
 Pokemon4ReadOnly::Pokemon4ReadOnly(std::span<const std::byte> encrypted,
                                    Enums::GameVersion sourceGroup)
-    : encrypted_(encrypted.begin(), encrypted.end()), sourceGroup_(sourceGroup) {
+    : encrypted_(Gen4NativeRecordBoundary::copyExact(encrypted)), sourceGroup_(sourceGroup) {
+    // An invalid transport length never becomes an owned entity payload.
+    // Previously this copied arbitrary attacker-sized spans before rejecting
+    // the record in sizeValid(), amplifying memory use for malformed inputs.
+    if (encrypted_.empty()) return;
     // Retail Gen IV saves can represent an unused party/box slot as an exact all-zero record.
     // PKHeX/PKSM treat that as a plaintext empty PK4 rather than forcing one crypto pass over it.
     // Preserve that semantics explicitly so empty slots are valid+empty, while every nonzero record
