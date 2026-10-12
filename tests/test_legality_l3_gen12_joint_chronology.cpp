@@ -88,14 +88,21 @@ static_assert([]{auto p=capsule();p.steps[2].game=G::Gold;
     return H::evaluate(p).status==S::Unknown;}());
 static_assert([]{auto p=capsule();p.steps[3].tmNumber=8;
     return H::evaluate(p).status==S::Unknown;}());
-// Direct Gen I -> II visit: new Crystal level-up offer is not the
-// original Red level-up timing, nor proof of an actual trade.
-static_assert([]{auto p=bulba(G::Red,10);p.stepCount=3;
+// A source-attested original Gen I -> Gen II transfer is distinct from
+// same-generation trades and a Gen II -> Gen I -> Gen II round trip.
+constexpr H::Path forward() {
+    auto p=bulba(G::Red,10);p.stepCount=3;
+    p.retailTimeCapsulePolicyVerified=true;
     p.steps[0]={G::Red,7,A::OfferLearn,73,2,0,true};
-    p.steps[1]={G::Crystal,8,A::VisitGame,0,0,0,true};
+    p.steps[1]={G::Crystal,8,A::ToGen2,0,0,0,true};
     p.steps[2]={G::Crystal,10,A::OfferLearn,22,3,0,true};
-    p.observedMoves={33,45,73,22};
-    return H::evaluate(p).status==S::CandidateConsistent;}() == false); // cross-gen requires directional edge
+    p.observedMoves={33,45,73,22};return p;
+}
+static_assert(H::evaluate(forward()).status==S::CandidateConsistent);
+static_assert([]{auto p=forward();p.retailTimeCapsulePolicyVerified=false;
+    return H::evaluate(p).status==S::Unknown;}());
+static_assert([]{auto p=forward();p.steps[1].action=A::VisitGame;
+    return H::evaluate(p).status==S::Unknown;}());
 static_assert([]{auto p=bulba(G::Crystal,10);p.stepCount=2;
     p.steps[0]={G::Crystal,7,A::OfferLearn,73,2,0,true};
     p.steps[1]={G::Crystal,10,A::OfferLearn,22,3,0,true};
