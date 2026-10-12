@@ -52,3 +52,7 @@ python docs/legality/research/scripts/validate_research.py SOURCE_ROOT
 ```
 
 At pinned accepted engine `fe3e3d05`, the first script confirms 48 direct retail-stage agreements and reproduces 24 incorrect candidate-local joint rejections. This is an expected defect reproduction, not a production fix test. The second passes 17,496 original-function/independent-model eligibility comparisons across three retail sources plus 24 Emerald role cases. All copied retail/NX inputs exist only in temporary directories. Python with safe tar extraction filters, a C compiler and C++17 are required. The historical counts above describe the first tranche; the expanded registry has 76 sources and the catalog 143 rows.
+
+## Tranche 3 validation
+
+`python docs/legality/research/scripts/reproduce_gen4_egg_ivs.py SOURCE_ROOT` passes 25,382 original-C/Python stage comparisons and the same number of known-branch inverse checks. It saves 138 detailed cases and full matrix digests. All are synthetic stages with explicit initial child/parent IV stubs, not native egg records. The newest source registry has 79 entries and the catalog 145 rows. See [Tranche 3](TRANCHE_3_GEN4_EGG_RNG.md) for integration and remaining research.

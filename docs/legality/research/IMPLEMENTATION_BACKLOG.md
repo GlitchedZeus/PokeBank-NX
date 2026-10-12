@@ -1,5 +1,8 @@
 # Prioritized engineering handoff
 
+**Latest research:** [Tranche 3 — Gen IV egg-IV stages](TRANCHE_3_GEN4_EGG_RNG.md) adds 25,382 original-source/model comparisons, 138 detailed fixtures and exact HGSS Power-item reversal rules.
+
+
 **Follow-up refresh:** the newer accepted engine is `fe3e3d05`. Read [Tranche 2](TRANCHE_2_ENGINE_REFRESH.md) before acting on the original backlog below. It credits the implemented work and supplies a confirmed parent-slot integration defect plus independently executed eligibility evidence.
 
 

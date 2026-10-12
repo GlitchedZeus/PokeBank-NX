@@ -1,1 +1,1 @@
-{"status": "PASS", "registry_hashes_verified": 76, "csv_rows": {"TEST_VECTOR_MATRIX.csv": 143, "MOVE_HISTORY_EVIDENCE_MATRIX.csv": 30}, "local_links_checked": 90, "tracked_changes_research_only": true}
+{"status": "PASS", "registry_hashes_verified": 79, "csv_rows": {"TEST_VECTOR_MATRIX.csv": 145, "MOVE_HISTORY_EVIDENCE_MATRIX.csv": 30}, "local_links_checked": 101, "tracked_changes_research_only": true}

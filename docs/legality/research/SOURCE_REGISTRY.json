@@ -1569,5 +1569,74 @@
     "retrieved_date": "2026-10-11",
     "evidence_grade": "A",
     "uncertainty": "Retail control-flow harness uses explicit field/gender/lineage stubs; see BREED-002/BREED-003. Current engine source compared at stated revision."
+  },
+  {
+    "id": "HGSS-IV-STAGE",
+    "repository": "pret/pokeheartgold",
+    "revision": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+    "license": "LICENSE REVIEW REQUIRED; retail reference only",
+    "url": "https://github.com/pret/pokeheartgold/blob/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/get_egg.c",
+    "source_path": "src/get_egg.c",
+    "symbol": "InheritIVs",
+    "matching_lines": [
+      38,
+      294,
+      632
+    ],
+    "line_range": [
+      1,
+      1054
+    ],
+    "sha256": "65f7bc5bb30aedea2260cdbc6a80af99da4d5f34f0681828dfd355b4d8bd08b2",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Original IV-stage function compared with independent model; accessor and initial-field stubs. No full native egg or PID pipeline claim."
+  },
+  {
+    "id": "HGSS-POWER-ITEM-IDS",
+    "repository": "pret/pokeheartgold",
+    "revision": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+    "license": "LICENSE REVIEW REQUIRED; retail reference only",
+    "url": "https://github.com/pret/pokeheartgold/blob/9d8b7591f09b65804da2fb2dfd56f320633e0d36/include/constants/items.h",
+    "source_path": "include/constants/items.h",
+    "symbol": "ITEM_POWER_",
+    "matching_lines": [
+      575,
+      593,
+      594,
+      595,
+      596,
+      597,
+      598
+    ],
+    "line_range": [
+      1,
+      1005
+    ],
+    "sha256": "20576a5dc04bd40cb1d212f1dad2de8e0083cf966e9535e3c10baac36cbd7193",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Original IV-stage function compared with independent model; accessor and initial-field stubs. No full native egg or PID pipeline claim."
+  },
+  {
+    "id": "PT-IV-STAGE",
+    "repository": "pret/pokeplatinum",
+    "revision": "637bb186e11b5ce1ee578981311c057498e57126",
+    "license": "LICENSE REVIEW REQUIRED; retail reference only",
+    "url": "https://github.com/pret/pokeplatinum/blob/637bb186e11b5ce1ee578981311c057498e57126/src/overlay005/daycare.c",
+    "source_path": "src/overlay005/daycare.c",
+    "symbol": "Egg_InheritIVs",
+    "matching_lines": [
+      396,
+      766
+    ],
+    "line_range": [
+      1,
+      1214
+    ],
+    "sha256": "88e0fac100a3b25f82208509dd01e98e84ffda945ab5e221d39a976e5aafaf0e",
+    "retrieved_date": "2026-10-11",
+    "evidence_grade": "A",
+    "uncertainty": "Original IV-stage function compared with independent model; accessor and initial-field stubs. No full native egg or PID pipeline claim."
   }
 ]
