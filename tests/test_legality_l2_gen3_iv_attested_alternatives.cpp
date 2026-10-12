@@ -132,6 +132,7 @@ int main() {
         assert(rescuedDuplicate.status==A::Status::OneConditionallyConsistentStage);
         assert(rescuedDuplicate.consistent==1 && rescuedDuplicate.unverified==1);
         duplicate.alternatives[0].originalDaycareStageIndependentlyVerified=false;
+        assert(A::evaluate(duplicate).status==A::Status::MissingOrDuplicateRouteIdentity);
         // Matching candidate follows an earlier contradictory
         // hypothesis carrying the SAME route ID.
         duplicate=x;duplicate.count=2;
