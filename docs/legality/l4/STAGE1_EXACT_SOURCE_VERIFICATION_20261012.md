@@ -127,3 +127,67 @@ for the current HEAD.
 **Stage 1 acceptance remains BLOCKED** pending the full exact-head matrix,
 native PK3/PK4 and Ranger suites, source-projection/rights joins, and a
 coordinator-owned integration rerun after review. No move to Stage 2.
+
+## Ranger active-storage and recipient-provenance correction
+
+**Stage 1 supplementary engineering, exact L4 branch source only.**
+
+The native Ranger reader formerly chose `max(ballDPPt, ballHGSS)` as
+the actual Ball. Those are distinct stored-format fields, NOT competing
+numeric candidates. A DPPt stored Pokémon with Ball 4 and stale HGSS
+Ball 16 would be excluded from the independently attested Ranger source.
+Now `Gen4EventRangerGiftHistory::evaluateNative` selects the DPPt Ball
+for DP/PT save layout and the HGSS Ball for HGSS save layout. Without a
+verified storage layout it returns UnknownSourceGame (or
+UnknownOriginalGift if the gift source itself is unattested) rather
+than candidate structural contradiction. Exact native PK4 encrypted
+fixture coverage for both directions was committed to the existing
+`test_legality_l4_ranger_gift_history.cpp` suite.
+
+A separate historical-provenance defect was corrected: Ranger's RNG
+helper uses `PidEvidence::TradedRecipientUnresolved` when an ARNG
+correlation matches structurally but cannot prove the original
+traded recipient context. Previously `PidResult::matched()` would
+turn that unresolved case into `ConditionalGiftCandidate`. The
+L4 adapter now returns UnknownRecipientHistory for this evidence
+class. The native Ranger suite adds a reconstructed ARNG fixture:
+original Method-1 PID `0x5271E97E`; one forward ARNG step
+`0x07578CB7`; same six synthetic IVs. This is neither an authentic
+Ranger egg nor a distribution receipt.
+
+**Independently run real new source boundary (not a substituted model):**
+`include/Legality/Gen4RangerStorageBallEvidence.h` committed Git blob
+`ff4ad84abce14491feb83490f17a238462fb8667`;
+`tests/fixtures/legality_l4_ranger_storage_ball.cpp` committed blob
+`6adc217749103ed293f0ab01bdf38d5c92ed8873`.
+The local tests were compiled and actually executed as follows:
+
+```sh
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Iinclude -O2 \
+  tests/fixtures/legality_l4_ranger_storage_ball.cpp -o /tmp/l4_ranger
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 /tmp/l4_ranger
+g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Iinclude -O1 -g \
+  -fsanitize=address,undefined -fno-omit-frame-pointer \
+  tests/fixtures/legality_l4_ranger_storage_ball.cpp -o /tmp/l4_ranger
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 /tmp/l4_ranger
+```
+
+The **same two compile/run variants were actually executed with
+`clang++`**, with identical options. All **4/4 PASS**,
+**196,861 assertions per execution**, covering all 65,536 pairs
+of native Ball bytes in each of three layout/unknown modes and
+253 unsupported storage tags. The test is now required by the
+L4-owned runner BEFORE the existing 28 registered C++ suites.
+The existing PCD/PGT and clock tests were also independently
+re-executed (GCC/Clang normal/sanitized, 8/8 PASS) against exactly
+their unchanged previously committed Git blobs. These source tests
+are not proof of a complete native PK4 Ranger integration.
+
+**Still blocked:** the normal + ASan/UBSan GCC/Clang exact-head
+complete checkout 28-suite matrix and host CI are queued.
+The full repository cannot be cloned locally because `github.com`
+DNS resolution fails and direct outbound TCP to GitHub is blocked.
+In particular, do not claim the newly extended
+`test_legality_l4_ranger_gift_history.cpp` has passed a complete
+native PK4 link/build. No master acceptance, no coordinator merge,
+and no original archive or individual recipient authentication.
