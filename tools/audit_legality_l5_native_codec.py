@@ -73,8 +73,7 @@ def verify(sanitize: bool, source_pin: bool) -> dict:
         result=subprocess.run([str(exe)],input=rows(fixture),text=True,
                               check=True,capture_output=True,cwd=ROOT)
         # Negative input validation: strict size, hex, format and field ranges.
-        example=fixture["fixtures"][0]
-        cells=rows({"fixtures":[example],"corrupt_controls":[]}).strip().split(" ")
+        cells=rows(fixture).splitlines()[0].split(" ")
         malformed=[]
         bad=cells.copy();bad[8]=bad[8][:-2];malformed.append(bad)
         bad=cells.copy();bad[8]=bad[8]+"00";malformed.append(bad)
@@ -85,10 +84,12 @@ def verify(sanitize: bool, source_pin: bool) -> dict:
         bad=cells.copy();bad[4]="24";malformed.append(bad)
         bad=cells.copy();bad[6]="2";malformed.append(bad)
         for i,bad in enumerate(malformed):
-            rejected=subprocess.run([str(exe)],input=" ".join(bad)+"\\n",
+            rejected=subprocess.run([str(exe)],input=" ".join(bad)+"\n",
                                     text=True,capture_output=True,cwd=ROOT)
-            if rejected.returncode == 0:
-                raise RuntimeError(f"Malformed input case {i} accepted by native tool")
+            if (rejected.returncode == 0 or
+                "L5 native crypto failure on case 1:" not in rejected.stderr):
+                raise RuntimeError(f"Malformed input {i} not specifically rejected: "
+                                   f"{rejected.stderr!r}")
     if ("348 PASS (336 native byte roundtrips, 12 corrupted checksum rejects, " +
             "251904 single-bit data corruptions rejected)") not in result.stdout:
         raise RuntimeError("Compiled executable did not attest all 348 rows: "+
