@@ -68,6 +68,8 @@ tests=(
     test_legality_l2_gen3_retail_daycare_pair
     test_legality_l2_gen4_pt_hgss_pid
     test_legality_l2_gen4_pt_hgss_joint
+    test_legality_l2_gen4_pt_hgss_move_stage
+    test_legality_l2_gen4_pt_hgss_full_moves
     test_legality_l2_gen4_iv_candidate_set
     test_legality_l2_gen4_native_iv_history
 )
