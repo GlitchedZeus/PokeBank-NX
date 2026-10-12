@@ -372,8 +372,12 @@ require('"X: Save / Source   •   B: Close"' not in drawer_draw,
         "Quick Games must rely on the footer for controls instead of repeating X/B instructions inside the drawer")
 require("refreshHubSelectionFromCache();" in drawer_update and
         "refreshHubPreview(false);" in drawer_update and
-        "refreshHubPreview();" not in drawer_update,
-        "Quick Games A must hydrate selected save presentation without launch discovery")
+        "refreshHubPreview();" not in drawer_update and
+        "quickDrawerMotion.snapClosed();" in drawer_update and
+        "openIntent = OpenIntent::Default;" in drawer_update and
+        "selectCurrentTitle();" in drawer_update and
+        '{"A", "Open"}' in drawer_draw,
+        "Quick Games clean tap/A must open the selected validated game, not merely select the Home card")
 require("installedGameForwarderTitle(gameId)" not in launcher_source[launcher_source.find("if (kind == GameLaunchProviderKind::RetroArch)"):launcher_source.find("if (kind == GameLaunchProviderKind::MGBA")],
         "RetroArch explicit launch must not block on a console-wide HOME forwarder scan")
 require("retroArchContentExists" in launcher_source and "retroArchPhysicalContentPath" in launcher_source,
