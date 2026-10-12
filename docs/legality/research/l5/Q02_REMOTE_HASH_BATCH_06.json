@@ -1,0 +1,88 @@
+{
+  "registry_sha": "fc0225e6351af62365f29200300323e38f52c8fe",
+  "start": 70,
+  "count": 9,
+  "rows": [
+    {
+      "id": "NX-SAME-PARENT-REFRESH",
+      "expected_sha256": "3dcd4219e60645a0dc775d01f8a8dba231c047ceecc3d91b26e04abbb47cbeea",
+      "observed_sha256": "3dcd4219e60645a0dc775d01f8a8dba231c047ceecc3d91b26e04abbb47cbeea",
+      "git_blob_sha": "8df955eda060e74d12aae7d9a8385f4a5581964a",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "NX-TIMELINE-REFRESH",
+      "expected_sha256": "e01d7d65dd998c4bf57eef27b9edfebf8f965c69caf50bf3d918a4357123ec15",
+      "observed_sha256": "e01d7d65dd998c4bf57eef27b9edfebf8f965c69caf50bf3d918a4357123ec15",
+      "git_blob_sha": "976f686cb5af9b0e00b54b08815f7ba6fb63f6b5",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "E-PARENT-ROLES",
+      "expected_sha256": "b20e1aef476abbd91b4882cca5dbe03002a0473c3a963bbadfce9dc7c8984964",
+      "observed_sha256": "b20e1aef476abbd91b4882cca5dbe03002a0473c3a963bbadfce9dc7c8984964",
+      "git_blob_sha": "ef4eaabb531c483187dd30f8b227c26d04d28f47",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "E-PARENT-CONSTANTS",
+      "expected_sha256": "25c2f31cf0b5779b3caa0cca53ca892733748f0310cf3d9d51b4e3a6c20896ea",
+      "observed_sha256": "25c2f31cf0b5779b3caa0cca53ca892733748f0310cf3d9d51b4e3a6c20896ea",
+      "git_blob_sha": "e412d2ab770706c1cb1b813dbe13243eef3b7189",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "PT-PARENT-ELIGIBILITY",
+      "expected_sha256": "88e0fac100a3b25f82208509dd01e98e84ffda945ab5e221d39a976e5aafaf0e",
+      "observed_sha256": "88e0fac100a3b25f82208509dd01e98e84ffda945ab5e221d39a976e5aafaf0e",
+      "git_blob_sha": "9a4c97a09842f696fd07fc822bbe1297c7388eba",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "HGSS-PARENT-ELIGIBILITY",
+      "expected_sha256": "65f7bc5bb30aedea2260cdbc6a80af99da4d5f34f0681828dfd355b4d8bd08b2",
+      "observed_sha256": "65f7bc5bb30aedea2260cdbc6a80af99da4d5f34f0681828dfd355b4d8bd08b2",
+      "git_blob_sha": "3127e0e1010842829cfc34014d4625cf5eef76be",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "HGSS-IV-STAGE",
+      "expected_sha256": "65f7bc5bb30aedea2260cdbc6a80af99da4d5f34f0681828dfd355b4d8bd08b2",
+      "observed_sha256": "65f7bc5bb30aedea2260cdbc6a80af99da4d5f34f0681828dfd355b4d8bd08b2",
+      "git_blob_sha": "3127e0e1010842829cfc34014d4625cf5eef76be",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "HGSS-POWER-ITEM-IDS",
+      "expected_sha256": "20576a5dc04bd40cb1d212f1dad2de8e0083cf966e9535e3c10baac36cbd7193",
+      "observed_sha256": "20576a5dc04bd40cb1d212f1dad2de8e0083cf966e9535e3c10baac36cbd7193",
+      "git_blob_sha": "1464215e7cc735ca1ec630ef76793c3c9fb12128",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "PT-IV-STAGE",
+      "expected_sha256": "88e0fac100a3b25f82208509dd01e98e84ffda945ab5e221d39a976e5aafaf0e",
+      "observed_sha256": "88e0fac100a3b25f82208509dd01e98e84ffda945ab5e221d39a976e5aafaf0e",
+      "git_blob_sha": "9a4c97a09842f696fd07fc822bbe1297c7388eba",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    }
+  ]
+}
