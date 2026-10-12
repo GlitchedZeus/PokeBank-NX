@@ -17,6 +17,7 @@ namespace Legality::Gen4WildSpecialStageEvidence {
 enum class Status : uint8_t {
     UnknownOriginalSource,UnknownOriginalRow,UnknownCaptureTimeContext,
     UnknownLeadOrRngFamily,UnknownOriginalNatureStage,
+    UnknownMalformedOriginalIdentity,
     UnknownNativeSnapshot,UnknownNativeSource,UnknownMalformedNativeRecord,IncoherentNativeRecord,
     CandidateRowContradicted,CandidatePidIvContradicted,BoundedCandidateUnresolved,
     KnownConditionalSpecialEncounter
@@ -71,6 +72,9 @@ inline Result evaluate(const Candidate& c) noexcept {
         return {Status::UnknownLeadOrRngFamily,method};
     if(!c.originalPidIvStageIndependentlyAttested)
         return {Status::UnknownOriginalNatureStage,method};
+    if(c.originalSpecies==0 || c.originalSpecies>493 ||
+       c.originalLevel==0 || c.originalLevel>100)
+        return {Status::UnknownMalformedOriginalIdentity,method};
     if(Gen4Wild::species(row)!=c.originalSpecies ||
        Gen4Wild::location(row)!=c.originalLocation ||
        !Gen4Wild::levelMatches(row,c.originalLevel) ||
