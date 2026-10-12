@@ -2489,6 +2489,13 @@ namespace UI {
             touchScrollClassicGamesActive == classicGamesActive)
             return;
 
+        // Other workflows can return directly to Quick Games. Show it open
+        // unless an ongoing finger drag/Y animation already owns position.
+        if (overlay == Overlay::GamesDrawer && quickDrawerMotion.fullyClosed())
+            quickDrawerMotion.snapOpen();
+        else if (overlay != Overlay::GamesDrawer && !quickDrawerMotion.dragging())
+            quickDrawerMotion.snapClosed();
+
         launchFileTouchScroll.reset();
         gamesDrawerTouchScroll.reset();
         profileTouchScroll.reset();
@@ -2508,6 +2515,11 @@ namespace UI {
 
     void SaveSelectScreen::update(const PadState& pad, const TouchInput& touch) {
         syncTouchScrollSurface();
+        quickDrawerMotion.advance();
+        if (overlay == Overlay::GamesDrawer && quickDrawerMotion.fullyClosed()) {
+            overlay = Overlay::None; // Dismiss only when the sheet is offscreen.
+            syncTouchScrollSurface();
+        }
         // A tap on a nav-bar badge becomes that button's press, so every handler below is
         // reached identically whether the user pressed the button or tapped its on-screen badge.
         const HidAnalogStickState stick = padGetStickPos(&pad, 0);
@@ -2522,6 +2534,35 @@ namespace UI {
                 openFailureMessage.clear();
             }
             return;
+        }
+
+        // Quick Games is a card attached to the user's finger, not a binary
+        // swipe-release toggle. Horizontal movement (including reversal)
+        // controls its actual x position. A vertical motion remains a list
+        // scroll, and a clean tap still chooses the covered game.
+        if (!classicGamesActive &&
+            (overlay == Overlay::None || overlay == Overlay::GamesDrawer)) {
+            if (touch.justTouchedDown())
+                quickDrawerMotion.arm(overlay == Overlay::GamesDrawer,
+                    touch.startX(), touch.startY(), 1280, 720 - kNavBarH);
+            if (touch.isDown() && quickDrawerMotion.track(touch.x(), touch.y())) {
+                if (overlay == Overlay::None) {
+                    const UserEntry* quickUser = currentUser();
+                    const int count = quickUser ? static_cast<int>(quickUser->titles.size()) : 0;
+                    gamesDrawerIndex = count > 0 ? titleIndex : 0;
+                    gamesDrawerScroll = std::max(0, gamesDrawerIndex / 3 - 1);
+                    hubNotice.clear();
+                    overlay = Overlay::GamesDrawer;
+                }
+                gamesDrawerTouchScroll.stop();
+                return; // Never activate a game while the drawer is held.
+            }
+            if (touch.justReleased() && quickDrawerMotion.release(touch.x(), touch.y())) {
+                gamesDrawerTouchScroll.stop();
+                return; // Release only settles the card, never selects a game.
+            }
+            if (touch.justTouchedDown() && quickDrawerMotion.armed())
+                return; // Selection waits until a real tap, not finger-down.
         }
 
         // Activate only a target containing both the contact origin and release point.
@@ -2605,12 +2646,15 @@ namespace UI {
                     visibleRows * (tileH + gap) - gap, tileH + gap,
                     gamesDrawerScroll, maxFirstRow + 1);
             else gamesDrawerTouchScroll.stop();
-            // Product Home owns Y = Open Quick Games. Once open, Y is deliberately inert;
-            // B is the only close/back control so repeated Y presses cannot dismiss the sheet.
+            // Product Home owns Y = Open Quick Games. Once open, Y is
+            // deliberately inert. B is the only close/back control; a touch
+            // drag also closes, but no other button should dismiss the sheet.
             if (kDown & HidNpadButton_B) {
-                overlay = Overlay::None;
+                quickDrawerMotion.closeAnimated();
+                gamesDrawerTouchScroll.stop();
                 return;
             }
+            if (!quickDrawerMotion.interactive()) return;
             if (kDown & HidNpadButton_X) {
                 if (drawerUser && gamesDrawerIndex >= 0 && gamesDrawerIndex < count) {
                     titleIndex = gamesDrawerIndex;
@@ -2657,6 +2701,7 @@ namespace UI {
                     // Keep launch discovery off the A-button frame, but hydrate the selected
                     // game's real trainer/dex/party presentation just like Product Home L/R.
                     refreshHubSelectionFromCache();
+                    quickDrawerMotion.snapClosed();
                     overlay = Overlay::None;
                     refreshHubPreview(false);
                 }
@@ -3155,6 +3200,8 @@ namespace UI {
             gamesDrawerIndex = quickCount > 0 ? titleIndex : 0;
             gamesDrawerScroll = std::max(0, gamesDrawerIndex / 3 - 1);
             hubNotice.clear();
+            quickDrawerMotion.snapClosed();
+            quickDrawerMotion.openAnimated();
             overlay = Overlay::GamesDrawer;
             return;
         }
@@ -3929,10 +3976,16 @@ namespace UI {
             constexpr int tileH = 160;
             const int tileW = (w - margin * 2 - gap * 2) / cols;
 
-            // Full-height right-side sheet. No colored edge stripe: the sheet boundary is
-            // intentionally quiet so it never looks like a cropped/faulty window on hardware.
-            fb.drawFilledRect(0, 0, x, h, Color(0, 0, 0, 92));
-            fb.drawFilledRect(x, 0, w, h, Colors::SurfaceRaised);
+            // Draw the whole sheet (cover tiles + labels + scrollbar)
+            // translated by the actual finger displacement. The home card
+            // remains visible beneath a proportional dim scrim.
+            const int offset = quickDrawerMotion.offset();
+            const int shade = (92 * (w - offset)) / w;
+            fb.drawFilledRect(0, 0, x, h, Color(0, 0, 0,
+                              static_cast<std::uint8_t>(std::clamp(shade, 0, 92))));
+            fb.pushTranslation(static_cast<float>(offset), 0.0f);
+            fb.drawSoftShadow(x - 8, 0, w + 16, h, 20);
+            fb.drawFilledRoundedRect(x, 0, w + 24, h, 20, Colors::SurfaceRaised);
 
             fb.drawText(x + 22, 18, "QUICK GAMES",
                         Colors::Info, TextStyle::Caption);
@@ -3965,8 +4018,11 @@ namespace UI {
                     const auto& title = u->titles[static_cast<size_t>(i)];
 
                     drawFocusedCard(fb, bx, by, tileW, tileH, selected, 14);
-                    pushViewportHit(overlayRects, bx, by, tileW, tileH, i,
-                                    x + margin, gridY, w - margin * 2, gridH);
+                    // Partial/offscreen tiles may never activate by tapping:
+                    // their rendered position differs from logical hitboxes.
+                    if (quickDrawerMotion.interactive())
+                        pushViewportHit(overlayRects, bx, by, tileW, tileH, i,
+                                        x + margin, gridY, w - margin * 2, gridH);
                     if (titleFavorite(*u, title))
                         fb.drawSymbol(bx + 8, by + 6, "\xE2\x99\xA5", Colors::Error, TextStyle::Body);
                     const std::string_view artKey =
@@ -4025,6 +4081,7 @@ namespace UI {
                 fb.drawText(x + 28, 150, "No Pokémon games found for this profile.",
                             Colors::TextMuted, TextStyle::Body);
             }
+            fb.popTransform(); // Footer does not move with the card.
 
             drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Select"},
                             {"X", "Save / Source"}, {"B", "Close"}});
