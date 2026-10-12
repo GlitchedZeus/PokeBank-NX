@@ -132,8 +132,23 @@ int main(){
         const auto duplicateWithMatch=H::evaluate(twice);
         assert(duplicateWithMatch.status==H::Status::ConditionalHistoryMatched);
         assert(duplicateWithMatch.matched==1 && duplicateWithMatch.unknown==1);
+        // An attested matching alternative survives an earlier
+        // unattested row with a duplicate archive identity.
         twice.histories[0].independentSourceAttestation=false;
-        assert(H::evaluate(twice).status==H::Status::MissingOrDuplicateRouteIdentity);
+        const auto attestedLater=H::evaluate(twice);
+        assert(attestedLater.status==H::Status::ConditionalHistoryMatched);
+        assert(attestedLater.matched==1 && attestedLater.unknown>=1);
+        auto attestedEarlier=twice;
+        attestedEarlier.histories[0]=twice.histories[1];
+        attestedEarlier.histories[1]=twice.histories[0];
+        const auto reversedAttestation=H::evaluate(attestedEarlier);
+        assert(reversedAttestation.status==H::Status::ConditionalHistoryMatched);
+        assert(reversedAttestation.matched==1 && reversedAttestation.unknown>=1);
+        auto onlyUnattested=twice;
+        onlyUnattested.histories[1]=onlyUnattested.histories[0];
+        const auto unknownDuplicates=H::evaluate(onlyUnattested);
+        assert(unknownDuplicates.status==H::Status::MissingOrDuplicateRouteIdentity);
+        assert(unknownDuplicates.matched==0 && unknownDuplicates.unknown>=1);
         // A colliding source ID cannot conceal a valid later route.
         twice=known;twice.count=2;twice.histories[1]=twice.histories[0];
         twice.histories[0].finalRNGState^=0x101u;
