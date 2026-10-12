@@ -232,6 +232,9 @@ int main() {
     contains(surface, "SharedPokemonShell::drawChrome");
     contains(surface, "SharedPokemonShell::Geometry");
     contains(surface, "SharedPokemonShell::drawScrollableDetails");
+    contains(surface, "state.detailsTouchScroll.updateVertical(");
+    contains(surface, "appendClippedTouchButton(screen.touchButtons, 41000 + row");
+    contains(surface, "detailPixelOffset, firstDetailRow");
     contains(surface, "SharedPokemonShell::drawDataAndGraph");
     contains(surface, "Shared::normalizeMoveRowFocus(Shared::Generation::Gen4");
     contains(surface, "Shared::moveRowColumn(Shared::Generation::Gen4");
