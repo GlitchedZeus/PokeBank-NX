@@ -231,6 +231,89 @@ void testPk4Properties(unsigned& checks) {
         }
     }
 }
+
+void testPk3WholeFieldBounds(unsigned& checks) {
+    // Real production PK3 adapter: a wrapped size_t must never reach PID
+    // bytes and no write at the box/party boundary may partially mutate data.
+    constexpr size_t max = static_cast<size_t>(-1);
+    for (const size_t size : {Encryption::SIZE_STORED3_FRLG,
+                              Encryption::SIZE_PARTY3_FRLG}) {
+        std::vector<std::byte> plain(size, std::byte{0});
+        put32(plain, 0, 0x1a2b3c4du);
+        put32(plain, 4, 0x76543210u);
+        for (size_t pos = 0x20; pos < 0x50; ++pos)
+            plain[pos] = static_cast<std::byte>((pos * 17u) & 0xffu);
+        put16(plain, 0x1c, Encryption::checksum3FRLG(plain));
+        std::unique_ptr<std::byte[]> encrypted(Encryption::encryptArray3FRLG(plain));
+        assert(encrypted);
+        std::vector<std::byte> source(encrypted.get(), encrypted.get() + size);
+        Pokemon::Pokemon3FRLG entity(source);
+        assert(entity.sizeValid() && entity.checksumValid());
+
+        for (const unsigned width : {2u, 4u}) {
+            const std::array<size_t, 12> offsets{
+                size - 3, size - 2, size - 1, size, size + 1, size + 2,
+                max - 3, max - 2, max - 1, max, size + 40, size + 400};
+            for (const auto offset : offsets) {
+                if (offset <= size && width <= size - offset) continue;
+                const std::vector<std::byte> before(entity.getData().begin(),
+                                                    entity.getData().end());
+                if (width == 2) {
+                    assert(entity.rd16(offset) == 0);
+                    entity.wr16(offset, 0xbeefu);
+                } else {
+                    assert(entity.rd32(offset) == 0);
+                    entity.wr32(offset, 0x1234beefu);
+                }
+                assert(std::equal(before.begin(), before.end(),
+                                  entity.getData().begin()));
+                assert(entity.checksumValid());
+                assert(source == std::vector<std::byte>(encrypted.get(),
+                                                        encrypted.get() + size));
+                ++checks;
+            }
+            for (const size_t offset : {size_t{0}, size - width}) {
+                Pokemon::Pokemon3FRLG writable(source);
+                const std::vector<std::byte> before(writable.getData().begin(),
+                                                    writable.getData().end());
+                if (width == 2) {
+                    writable.wr16(offset, 0x33aau);
+                    assert(writable.rd16(offset) == 0x33aau);
+                } else {
+                    writable.wr32(offset, 0xa15b33aau);
+                    assert(writable.rd32(offset) == 0xa15b33aau);
+                }
+                for (size_t i = 0; i < size; ++i)
+                    if (i < offset || i >= offset + width)
+                        assert(writable.getData()[i] == before[i]);
+                writable.refreshChecksum();
+                assert(writable.checksumValid());
+                auto copy = writable.clone();
+                assert(copy && copy->checksumValid());
+                assert(source == std::vector<std::byte>(encrypted.get(),
+                                                        encrypted.get() + size));
+                ++checks;
+            }
+        }
+    }
+    // Malformed lengths stay quarantined even for wraparound field offsets.
+    for (size_t size = 0; size != Encryption::SIZE_PARTY3_FRLG + 8; ++size) {
+        if (Encryption::validRecordSize3FRLG(size)) continue;
+        std::vector<std::byte> source(size, std::byte{0x71});
+        Pokemon::Pokemon3FRLG malformed(source);
+        const std::vector<std::byte> before(malformed.getData().begin(),
+                                            malformed.getData().end());
+        assert(malformed.rd16(max) == 0 && malformed.rd32(max - 1) == 0);
+        malformed.wr16(max, 0x1234u);
+        malformed.wr32(max - 1, 0x12345678u);
+        assert(std::equal(before.begin(), before.end(),
+                          malformed.getData().begin()));
+        assert(malformed.getDataSize() == 0 && !malformed.clone());
+        assert(std::all_of(source.begin(), source.end(),
+                           [](std::byte b) { return b == std::byte{0x71}; }));
+        ++checks;
+    }
+}
 }
 
 int main() {
@@ -239,7 +322,8 @@ int main() {
     testPk3Codec(checks);
     testPk3EntityBoundaries(checks);
     testPk4Properties(checks);
-    assert(checks == 2139u);
+    testPk3WholeFieldBounds(checks);
+    assert(checks == 2297u);
     std::cout << "Stage 2 native Gen I-IV boundary/property checks: " << checks
               << " PASS (synthetic immutable inputs)\n";
 }
