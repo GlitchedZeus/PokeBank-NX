@@ -149,7 +149,9 @@ static_assert([]{auto a=bulbasaur(G::Ruby);a.evolutions[0].independentlyVerified
 static_assert([]{auto a=bulbasaur(G::Ruby);a.evolutions[0].noExtraMoveMutationOnEvolutionVerified=false;
     return E::evaluate(a).status==S::Unresolved;}());
 static_assert([]{auto a=bulbasaur(G::Ruby);a.phases[1].initialMoves={33,45,73,76};
-    return E::evaluate(a).status==S::Unresolved;}());
+    // Verified no other move mutation: invented carryover is a
+    // contradiction to this exact candidate, not a global Invalid.
+    return E::evaluate(a).status==S::CandidateContradicted;}());
 static_assert([]{auto a=bulbasaur(G::Ruby);a.phases[1].game=G::Emerald;
     return E::evaluate(a).status==S::Unresolved;}());
 static_assert([]{auto a=bulbasaur(G::Ruby);a.phases[0].stepCount=1;
