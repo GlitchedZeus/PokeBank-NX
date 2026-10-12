@@ -42,8 +42,22 @@ int main(){
     ++checked;
   }
   assert(D::evaluate(false,{},{},e).status==D::Status::UnknownNative);
-  e.originalReceiptField=D::Field::Unknown;
-  assert(D::evaluate(true,{2009,4,5},{2009,4,5},e).status==D::Status::UnknownReceiptField);
+  // Unknown and out-of-domain source receipt-field tags must not silently
+  // alias the Met field and yield false candidate contradictions. Exhaust
+  // the entire native uint8 source-tag domain (no actual archive supplied).
+  for(unsigned raw=0;raw<256;++raw){
+    e.originalReceiptField=static_cast<D::Field>(raw);
+    const auto result=D::evaluate(true,{2009,4,5},{2010,1,1},e);
+    if(raw==static_cast<unsigned>(D::Field::Egg))
+      assert(result.status==D::Status::CandidateWithinWindow);
+    else if(raw==static_cast<unsigned>(D::Field::Met))
+      assert(result.status==D::Status::CandidateOutsideWindow);
+    else {
+      assert(result.status==D::Status::UnknownReceiptField);
+      assert(result.field==D::Field::Unknown);
+    }
+    assert(!result.authenticated);
+  }
   std::cout<<"L4 Stage4 calendar: "<<checked<<" byte-date combinations, "
            <<valid<<" valid, 64 clock/receipt masks: PASS\n";
 }

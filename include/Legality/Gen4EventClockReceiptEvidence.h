@@ -44,7 +44,11 @@ constexpr Result evaluate(bool nativeAvailable,Date egg,Date met,const Evidence&
        !valid(source.last) || key(source.first)>key(source.last)) {
         r.status=Status::UnknownReleaseWindow;return r;
     }
-    if(source.originalReceiptField==Field::Unknown) {
+    // A source-supplied enum may originate in an untrusted evidence manifest.
+    // Only the two documented receipt fields can be interpreted. Previously
+    // values 3..255 silently selected Met and could exclude a candidate.
+    if(source.originalReceiptField!=Field::Egg &&
+       source.originalReceiptField!=Field::Met) {
         r.status=Status::UnknownReceiptField;return r;
     }
     r.field=source.originalReceiptField;
