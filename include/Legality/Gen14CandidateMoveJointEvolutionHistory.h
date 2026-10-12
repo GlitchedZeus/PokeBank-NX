@@ -109,7 +109,8 @@ template<class Source> constexpr Result evaluate(const Path& p) noexcept {
            !s.methodReceiptVerified)return out;
         if(s.action==Action::TeachMachine &&
            (!isGen3(s.receiptGame) || !s.receiptSpecies ||
-            !s.machineNumber ||
+            !s.machineNumber || !s.move || s.move>354 ||
+            (s.machine!=Machine::TM && s.machine!=Machine::HM) ||
             (s.machine==Machine::TM && !s.receiptId)))return out;
         if(s.action==Action::DeleteMove && !s.methodReceiptVerified)return out;
         if(s.action==Action::Evolve && !s.targetSpecies)return out;
