@@ -45,33 +45,43 @@ inline constexpr std::array<uint16_t,100> kTutors{
     271, 282, 389, 253, 189, 173, 270, 387, 129, 189, 196, 9, 7, 8, 173, 324, 
     428, 271, 282, 129
 };
+constexpr uint8_t rowIndex(uint16_t species) noexcept {
+    for(uint8_t i=0;i<kRows.size();++i)
+        if(kRows[i].species==species)return i;
+    return static_cast<uint8_t>(kRows.size());
+}
 constexpr const Row* row(uint16_t species) noexcept {
-    for(const auto& r:kRows)if(r.species==species)return &r;
-    return nullptr;
+    const auto idx=rowIndex(species);
+    return idx<kRows.size()? &kRows[idx] : nullptr;
 }
 constexpr uint16_t offerCount(uint16_t species) noexcept {
-    const auto* r=row(species);return r?r->offerCount:0;
+    const auto idx=rowIndex(species);
+    return idx<kRows.size()?kRows[idx].offerCount:0;
 }
 constexpr uint16_t packedOffer(uint16_t species,uint16_t index) noexcept {
-    const auto* r=row(species);
-    return r && index<r->offerCount?kOffers[r->offerStart+index]:0;
+    const auto idx=rowIndex(species);
+    return idx<kRows.size() && index<kRows[idx].offerCount
+        ?kOffers[kRows[idx].offerStart+index]:0;
 }
 constexpr bool machineCompatible(uint16_t species,bool hidden,uint8_t number) noexcept {
-    const auto* r=row(species);
-    if(!r || number==0 || number>(hidden?8:92))return false;
+    const auto idx=rowIndex(species);
+    if(idx>=kRows.size()||number==0||number>(hidden?8:92))return false;
+    const auto& r=kRows[idx];
     const uint8_t bit=hidden?static_cast<uint8_t>(99+number):number-1;
-    return bit<64 ? ((r->tmLow>>(bit))&1u)!=0:
-                    ((r->tmHigh>>(bit-64))&1u)!=0;
+    return bit<64 ? ((r.tmLow>>bit)&1u)!=0:
+                    ((r.tmHigh>>(bit-64))&1u)!=0;
 }
 constexpr bool tutorCompatible(uint16_t species,uint16_t move) noexcept {
-    const auto* r=row(species);if(!r)return false;
-    for(uint16_t i=0;i<r->tutorCount;++i)
-        if(kTutors[r->tutorStart+i]==move)return true;
+    const auto idx=rowIndex(species);
+    if(idx>=kRows.size())return false;
+    const auto& r=kRows[idx];
+    for(uint16_t i=0;i<r.tutorCount;++i)
+        if(kTutors[r.tutorStart+i]==move)return true;
     return false;
 }
 static_assert(offerCount(1)==14 && offerCount(6)==18);
 static_assert((packedOffer(1,0)>>9)==1 && (packedOffer(1,0)&511u)==33);
 static_assert(machineCompatible(1,false,6));
 static_assert(!machineCompatible(1,true,2));
-static_assert(row(386)!=nullptr && row(252)==nullptr);
+static_assert(offerCount(386)>0 && offerCount(252)==0);
 } // namespace Legality::Gen4PlatinumNativeMethodData
