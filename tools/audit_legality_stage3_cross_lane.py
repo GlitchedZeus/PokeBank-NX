@@ -23,11 +23,13 @@ SOURCES = [
     "src/Pokemon/Pokemon4ReadOnly.cpp", "src/Pokemon/Pokemon4ReadOnlyView.cpp", "src/Encryption/Encryption4.cpp",
 ]
 
-def run(sanitize: bool) -> dict[str, object]:
+def run(compiler: str, sanitize: bool) -> dict[str, object]:
     with tempfile.TemporaryDirectory(prefix="pbnx-stage3-cross-lane-") as directory:
         executable = Path(directory) / "cross_lane"
-        command = ["g++", "-std=c++20", "-Wall", "-Wextra", "-Wpedantic", "-Werror",
+        command = [compiler, "-std=c++20", "-Wall", "-Wextra", "-Wpedantic", "-Werror",
                    "-Wno-unused-parameter", "-Iinclude", *SOURCES]
+        if "clang" in Path(compiler).name:
+            command += ["-Wno-unknown-warning-option", "-Wno-unused-function"]
         # Keep this broad production link graph quick enough for a local
         # audit turn; optimization is not part of this correctness contract.
         command += (["-O0", "-g", "-fsanitize=address,undefined", "-fno-omit-frame-pointer"]
@@ -40,7 +42,7 @@ def run(sanitize: bool) -> dict[str, object]:
     expected = "Stage 3 cross-lane contracts: 145 PASS"
     if expected not in result.stdout:
         raise RuntimeError("unexpected Stage 3 output: " + result.stdout + result.stderr)
-    return {"status": "PASS", "sanitized": sanitize, "checks": 145,
+    return {"compiler": compiler, "status": "PASS", "sanitized": sanitize, "checks": 145,
             "actual_production_analyzer_executed": True, "stdout": result.stdout.strip()}
 
 def main() -> None:
@@ -48,9 +50,12 @@ def main() -> None:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--normal", action="store_true")
     mode.add_argument("--sanitize", action="store_true")
+    parser.add_argument("--compiler", default="g++")
     parser.add_argument("--json-out", type=Path)
     args = parser.parse_args()
-    reports = [run(False)] if args.normal else [run(True)] if args.sanitize else [run(False), run(True)]
+    reports = ([run(args.compiler, False)] if args.normal else
+               [run(args.compiler, True)] if args.sanitize else
+               [run(args.compiler, False), run(args.compiler, True)])
     output = json.dumps({"schema": "POKEBANK_NX_STAGE3_CROSS_LANE_V1", "runs": reports},
                         indent=2, sort_keys=True) + "\n"
     print(output)

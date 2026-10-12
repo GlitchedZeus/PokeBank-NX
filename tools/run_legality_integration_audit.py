@@ -81,14 +81,15 @@ def version(command: list[str]) -> str:
         return "unavailable"
 
 
-def plan(suite: str, sha: str) -> list[Gate]:
+def plan(suite: str, sha: str, compiler: str = "g++") -> list[Gate]:
     base = {"ASAN_OPTIONS": "detect_leaks=0:halt_on_error=1",
+            "CXX": compiler,
             "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"}
     l5 = [
-        ["g++", "-std=c++20", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-O2",
+        [compiler, "-std=c++20", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-O2",
          "tests/fixtures/legality_l5_gen12_sourcefree_contract.cpp", "-o", "/tmp/l5-pk12-source-contract"],
         ["/tmp/l5-pk12-source-contract"],
-        ["g++", "-std=c++20", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-O1",
+        [compiler, "-std=c++20", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-O1",
          "-fsanitize=address,undefined", "-fno-omit-frame-pointer",
          "tests/fixtures/legality_l5_gen12_sourcefree_contract.cpp", "-o", "/tmp/l5-pk12-source-contract-sanitize"],
         ["/tmp/l5-pk12-source-contract-sanitize"],
@@ -101,18 +102,18 @@ def plan(suite: str, sha: str) -> list[Gate]:
         ["make", "-f", "Makefile.host", "-f", "tools/audit_legality_l5_pk12_probe.mk", "l5-pk12-fixed-sanitize"],
     ]
     groups = {
-        "l1": [Gate("l1", ["bash", RUNNERS["l1"]], {"L1_EXPECT_SHA": sha}, RUNNERS["l1"])],
-        "l2": [Gate("l2", ["bash", RUNNERS["l2"]], {}, RUNNERS["l2"])],
-        "l3": [Gate("l3", ["bash", RUNNERS["l3"]], {"L3_EXPECTED_EMERALD_BLOB": EMERALD_BLOB}, RUNNERS["l3"])],
-        "l4": [Gate("l4", ["bash", RUNNERS["l4"]], {"L4_L5_Q07_JSON": Q07}, RUNNERS["l4"]),
-               Gate("l4-sanitize", ["bash", RUNNERS["l4"]], {"L4_L5_Q07_JSON": Q07, "L4_SANITIZE": "1"}, RUNNERS["l4"])],
+        "l1": [Gate("l1", ["bash", RUNNERS["l1"]], {"CXX": compiler, "L1_EXPECT_SHA": sha}, RUNNERS["l1"])],
+        "l2": [Gate("l2", ["bash", RUNNERS["l2"]], {"CXX": compiler}, RUNNERS["l2"])],
+        "l3": [Gate("l3", ["bash", RUNNERS["l3"]], {"CXX": compiler, "L3_EXPECTED_EMERALD_BLOB": EMERALD_BLOB}, RUNNERS["l3"])],
+        "l4": [Gate("l4", ["bash", RUNNERS["l4"]], {"CXX": compiler, "L4_L5_Q07_JSON": Q07}, RUNNERS["l4"]),
+               Gate("l4-sanitize", ["bash", RUNNERS["l4"]], {"CXX": compiler, "L4_L5_Q07_JSON": Q07, "L4_SANITIZE": "1"}, RUNNERS["l4"])],
         "l5": [Gate(f"l5-{n + 1}", command, {}, RUNNERS["l5"]) for n, command in enumerate(l5)],
         "audit": [
             Gate("stage1-l2-baseline", ["python3", "tools/audit_l6_stage1_baseline.py"], {}, RUNNERS["audit"]),
-            Gate("stage2-native", ["python3", "tools/audit_legality_stage2_native_formats.py", "--normal"], {}, RUNNERS["audit"]),
-            Gate("stage2-native-sanitize", ["python3", "tools/audit_legality_stage2_native_formats.py", "--sanitize"], {}, RUNNERS["audit"]),
-            Gate("stage3-cross-lane", ["python3", "tools/audit_legality_stage3_cross_lane.py", "--normal"], {}, RUNNERS["audit"]),
-            Gate("stage3-cross-lane-sanitize", ["python3", "tools/audit_legality_stage3_cross_lane.py", "--sanitize"], {}, RUNNERS["audit"]),
+            Gate("stage2-native", ["python3", "tools/audit_legality_stage2_native_formats.py", "--normal", "--compiler", compiler], {}, RUNNERS["audit"]),
+            Gate("stage2-native-sanitize", ["python3", "tools/audit_legality_stage2_native_formats.py", "--sanitize", "--compiler", compiler], {}, RUNNERS["audit"]),
+            Gate("stage3-cross-lane", ["python3", "tools/audit_legality_stage3_cross_lane.py", "--normal", "--compiler", compiler], {}, RUNNERS["audit"]),
+            Gate("stage3-cross-lane-sanitize", ["python3", "tools/audit_legality_stage3_cross_lane.py", "--sanitize", "--compiler", compiler], {}, RUNNERS["audit"]),
         ],
     }
     selected = tuple(groups) if suite == "all" else (suite,)
@@ -171,6 +172,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--suite", choices=("all", "l1", "l2", "l3", "l4", "l5", "audit"), default="all")
     parser.add_argument("--timeout", type=int, default=900, help="per-command timeout in seconds (default: 900)")
+    parser.add_argument("--compiler", default="g++", help="C++ compiler used by lane and native gates (default: g++)")
     parser.add_argument("--expect-head", help="refuse any HEAD other than this full SHA")
     parser.add_argument("--expect-tree", help="refuse any tree other than this full SHA")
     parser.add_argument("--output", type=Path, help="write the JSON summary to this path")
@@ -188,7 +190,7 @@ def main() -> int:
         "branch": git("symbolic-ref", "--short", "-q", "HEAD") or "DETACHED",
         "tracked_checkout_clean": not dirty, "suite": args.suite,
         "required_programs": {name: list(PROGRAMS[name]) for name in selected},
-        "manifest_errors": errors, "compiler": version(["g++", "--version"]),
+        "manifest_errors": errors, "compiler": version([args.compiler, "--version"]),
         "python": version(["python3", "--version"]), "commands": []}
     identity_error = ((args.expect_head is not None and args.expect_head != sha) or
                       (args.expect_tree is not None and args.expect_tree != tree))
@@ -201,7 +203,7 @@ def main() -> int:
     elif args.dry_run:
         result["passed"] = True
     else:
-        gates = plan(args.suite, sha)
+        gates = plan(args.suite, sha, args.compiler)
         for gate in gates:
             print(f"==> {gate.name}: {' '.join(gate.command)}", flush=True)
             row = run_one(gate, args.timeout)
