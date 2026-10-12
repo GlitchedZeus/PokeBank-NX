@@ -65,4 +65,7 @@ for name in "${native[@]}"; do
         -o "$scratch/$name"
     "$scratch/$name"
 done
+echo "L4 Python frozen original-source projection integrity audit"
+python3 tools/legality_l4_projection_audit.py
+python3 -m unittest discover -v -s tests -p 'test_legality_l4_projection_audit.py'
 echo "L4 all 12 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
