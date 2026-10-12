@@ -66,6 +66,9 @@ struct RouteWitness {
     // Exact party snapshot at the documented crossing, not current moves.
     Datum<uint16_t> crossingSpecies;
     Datum<Moves4> crossingMoves;
+    // Red-to-Blue / Gold-to-Crystal moves between retail versions are
+    // independent trade histories, not inferred from game availability.
+    bool sameGenerationEditionTransferIndependentlyVerified = false;
 };
 struct Result {
     Disposition disposition = Disposition::Unknown;
@@ -123,6 +126,12 @@ constexpr Result evaluate(const GiftRow& source, const Observation& observed,
     }
     if (!supportedKind(source.game, source.kind) ||
         (!isGen1(observed.game) && !isGen2(observed.game))) {
+        unknown(Route);
+    } else if (source.game != observed.game &&
+               isGen1(source.game) == isGen1(observed.game) &&
+               !route.sameGenerationEditionTransferIndependentlyVerified) {
+        // Same-generation version changes require a proven transfer chain.
+        // An observed game version cannot prove where a gift was received.
         unknown(Route);
     }
     // Corrupt/unknown native observations cannot be validated by this layer.
