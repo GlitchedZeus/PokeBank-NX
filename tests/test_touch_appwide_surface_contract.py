@@ -747,3 +747,70 @@ if "latestTouchGesture()" in read("include/UI/SharedSpeciesPicker.h"):
     raise AssertionError("SharedSpeciesPicker: renderer must receive touch explicitly, not pull global state")
 
 print(f"touch app-wide surface inventory: PASS ({len(SURFACES)} surface families)")
+
+# Regression for the actual Boxes/Storage first-touch entry path, not only
+# the menu's appearance. Save-side storage uses its own target structure:
+# pressing a cell previously fell into the Bank handler and bypassed the
+# generation's staged Pokemon Actions sheet.
+composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp")
+entry = composite.split("void TrainerViewScreen::update(", 1)[1].split(
+    "void TrainerViewScreen::draw(", 1)[0]
+for token in (
+    "const bool stagedStorageSave =",
+    "selectedMode == ViewMode::Storage",
+    "target.pane != 0 || target.box != stSaveBox",
+    "target.slot >= static_cast<int>(trainer.getSlotsPerBox())",
+    "touch.justPressed() && saveSlotHit(touch.x(), touch.y()) >= 0",
+    "touch.justTapped()",
+    "first == saveSlotHit(touch.x(), touch.y())",
+    "storageFocusPane = 0;",
+    "stSaveSlot = first;",
+    "down |= HidNpadButton_A;",
+):
+    assert token in entry, f"Save-side native Storage touch routing: {token}"
+assert entry.index("const bool stagedStorageSave") < entry.index(
+    "ClassicPackedMove::handleInput(")
+assert entry.index("const bool stagedStorageSave") < entry.index(
+    "updateGSCOverlay(pad, touch)")
+
+gen1_source = read("src/UI/Gen1PokemonEditorOverlayUX.inc")
+gen1_actions = read("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc")
+assert "const bool storageSave = screen.selectedMode == TrainerViewScreen::ViewMode::Storage" in gen1_source
+assert "screen.storageFocusPane == 0 && screen.stSaveBox >= 0 && screen.stSaveSlot >= 0" in gen1_source
+assert "const int box = storage ? screen.stSaveBox : screen.selectedBoxIndex;" in gen1_actions
+assert "const int slot = storage ? screen.stSaveSlot : screen.selectedItemIndex;" in gen1_actions
+assert "state.box = storage ? screen.stSaveBox : screen.selectedBoxIndex;" in gen1_actions
+
+gen2_actions = read("src/UI/Gen2SharedSurfaceParity.inc")
+assert "storage && screen.storageFocusPane == 0 ? Access::Surface::StorageSave" in gen2_actions
+assert "const int box = storage ? screen.stSaveBox : screen.selectedBoxIndex;" in gen2_actions
+assert "const int slot = storage ? screen.stSaveSlot : screen.selectedItemIndex;" in gen2_actions
+
+for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurface.inc"):
+    code = read(rel)
+    assert "bool storageEntrySurface(" in code, rel
+    storage_block = code.split("bool storageEntrySurface(", 1)[1].split("bool ", 1)[0]
+    for token in (
+        "ViewMode::Storage", "storageFocusPane == 0",
+        "stSaveBox >= 0", "stSaveSlot >= 0", "!screen.carrying()",
+        "!screen.currentlySelecting",
+    ):
+        assert token in storage_block, f"{rel} storage ownership: {token}"
+    assert "state.box = storage ? screen.stSaveBox : screen.selectedBoxIndex;" in code
+    assert "state.slot = storage ? screen.stSaveSlot : screen.selectedItemIndex;" in code
+    assert "drawNarrowPokemonActions(fb, screen.touchButtons, model, state.actionRow" in code
+
+# First-tap empty/occupied Boxes paths must enter actions directly rather
+# than requiring a second base-selection tap or manufacturing a new Pokemon.
+gen3_entry = gen3.split("bool handleInput(", 1)[1].split("bool draw(", 1)[0]
+gen4_entry = gen4.split("bool handleInput(", 1)[1].split("bool draw(", 1)[0]
+for entry_body in (gen3_entry, gen4_entry):
+    assert "touch.justTapped()" in entry_body
+    assert "screen.touchedButtonId(touch)" in entry_body
+    assert "beginActions(screen);" in entry_body
+assert "if (inBoxes && touch.justTapped())" in gen3_entry
+assert "if (boxEntry && touch.justTapped())" in gen4_entry
+assert "if (!partyEntry && !boxEntry && !storageEntry) return false;" in gen4_entry
+assert "if (!inBoxes && !storageEntrySurface(screen)) return false;" in gen3_entry
+
+print("all-generation Boxes/Storage native menu entry contract: PASS")
