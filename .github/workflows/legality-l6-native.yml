@@ -4,15 +4,11 @@ on:
   push:
     branches:
       - audit/legality-integration-hardening-20261012
-    paths:
-      - 'include/Pokemon/Pokemon3FRLG.h'
-      - 'src/Pokemon/Pokemon3FRLG.cpp'
-      - 'src/Encryption/**'
-      - 'src/Pokemon/Pokemon4ReadOnly.cpp'
-      - 'tests/fixtures/legality_stage2_native_format_properties.cpp'
-      - 'tools/audit_legality_stage2_native_formats.py'
-      - '.github/workflows/legality-l6-native.yml'
   workflow_dispatch:
+
+concurrency:
+  group: l6-native-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
