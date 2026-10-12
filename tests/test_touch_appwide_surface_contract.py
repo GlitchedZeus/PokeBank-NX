@@ -164,7 +164,12 @@ require_all("src/UI/Gen2SharedPokemonSurface.inc",
 require_all("src/UI/Gen3SharedPokemonSurface.inc",
             "if (touch.justTapped()) {", "screen.selectedItemIndex = tapped;",
             "if (!editor(screen)) return false;",
-            "if (selectedOccupied(screen)) beginActions(screen);")
+            "beginActions(screen);")
+gen3_source = read("src/UI/Gen3SharedPokemonSurface.inc")
+gen3_box_tap = gen3_source.split("if (touch.justTapped()) {")[-1].split("const bool occupied = selectedOccupied(screen);", 1)[0]
+assert "beginActions(screen);" in gen3_box_tap
+assert "if (selectedOccupied(screen))" not in gen3_box_tap
+assert "if (!editor(screen)) return false;" in gen3_box_tap
 require_all("src/UI/Gen4SharedPokemonSurface.inc",
             "if (boxEntry && touch.justTapped())", "screen.selectedItemIndex = tapped;",
             "if (selectedOccupied(screen)) beginActions(screen);",
