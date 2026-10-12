@@ -1,7 +1,7 @@
 // L5 Stage 2: real Legality::analyze regressions on native read-only PK1/PK2.
 // Synthetic specimens only; no authenticated retail histories or save writes.
 // --l5-baseline expects the frozen L5 pre-F3/F4 source predicates and pre-F5.
-// --coordinator expects corrected F3/F4, but still records uncorrected F5.
+// --post-f3f4-pre-f5 tests the intermediate coordinator state.
 // --after-f5 requires the independently reviewed native PK2 egg stat-exp fix.
 #include "Integration/Gen1/Gen1ReadOnlySave.h"
 #include "Integration/Gen2/Gen2ReadOnlySave.h"
@@ -58,7 +58,7 @@ uint16_t statExp(const Pokemon::Pokemon2ReadOnly& pk,unsigned index) {
 int main(int argc,char** argv) {
     if(argc!=2) return 2;
     const std::string_view mode=argv[1];
-    if(mode!="--l5-baseline" && mode!="--coordinator" && mode!="--after-f5")return 2;
+    if(mode!="--l5-baseline" && mode!="--post-f3f4-pre-f5" && mode!="--after-f5")return 2;
     const bool preGuard=mode=="--l5-baseline";
     const bool afterF5=mode=="--after-f5";
     const std::array<std::string_view,5> sources{
