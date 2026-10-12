@@ -8,6 +8,7 @@
 // Independently supplied ORIGINAL parent snapshots only. Never derive a
 // historical deposited pair, OT, personality or egg group from a child PK3.
 // Incompatibility is ONLY candidate-local, never whole-Pokemon Invalid.
+#include "Legality/Gen34OriginalPersonalSnapshotGuard.h"
 #include <array>
 #include <cstdint>
 #include <string_view>
@@ -86,9 +87,17 @@ constexpr Result evaluate(const Input& in) noexcept {
        !b.independentlyAttestedPersonalData ||
        !validGroup(a.eggGroup1) || !validGroup(a.eggGroup2) ||
        !validGroup(b.eggGroup1) || !validGroup(b.eggGroup2) ||
-       // Contradictory claimed personal snapshots are NOT retail proof.
-       (a.species==132)!=(a.eggGroup1==13) ||
-       (b.species==132)!=(b.eggGroup1==13)) {
+       // Both Ditto egg groups and source gender ratio are fixed.
+       // A non-Ditto cannot borrow either Ditto group. The contradiction
+       // is in claimed historical personal data, not the child's legality.
+       !Gen34OriginalPersonalSnapshotGuard::coherentDittoGroups(
+           a.species,a.eggGroup1,a.eggGroup2) ||
+       !Gen34OriginalPersonalSnapshotGuard::coherentDittoGroups(
+           b.species,b.eggGroup1,b.eggGroup2) ||
+       !Gen34OriginalPersonalSnapshotGuard::coherentDittoGenderRatio(
+           a.species,a.genderRatio) ||
+       !Gen34OriginalPersonalSnapshotGuard::coherentDittoGenderRatio(
+           b.species,b.genderRatio)) {
         out.status=Status::UnknownPersonalData;return out;
     }
     // Source-native species ceiling is checked on the original pair,
