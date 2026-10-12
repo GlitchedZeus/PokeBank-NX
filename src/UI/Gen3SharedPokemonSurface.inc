@@ -70,6 +70,8 @@ struct State {
     const TrainerViewScreen* owner = nullptr;
     bool passive = false;
     int detailsFocus = 0;
+    TouchScrollState detailsTouchScroll;
+    TouchPickerViewport detailsViewport;
     bool previewValid = false;
     Gen3::StagedPokemonRecord previewInput{};
     Gen3::StagedPokemonRecord previewRecord{};
@@ -202,6 +204,8 @@ void resetWorkspaceFocus(State& state) noexcept {
     state.moveEditor = false;
     state.moveEditorRow = 0;
     state.detailsFocus = 0;
+    state.detailsTouchScroll.reset();
+    state.detailsViewport.reset();
     state.previewValid = false;
 }
 
@@ -1130,6 +1134,21 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
 
     const auto panelBeforeNavigation = state.focus.panel;
     const bool passiveView = state.session.mode == SessionModel::Mode::View;
+    // Drag scrolls the visible left-side rows without changing the selected
+    // Pokémon field. The old release handler advanced focus by 1–N rows and
+    // skipped Held Item/other fields, especially after a quick swipe.
+    constexpr int visibleDetailRows = 8;
+    const SharedPokemonShell::Geometry detailGeometry(1280, 720, kNavBarH);
+    state.detailsViewport.ensure(state.detailsFocus,
+                                 static_cast<int>(detailLabels.size()), visibleDetailRows);
+    state.detailsTouchScroll.updateVertical(
+        touch, detailGeometry.leftX + 8, detailGeometry.y + 216,
+        detailGeometry.leftW - 16, visibleDetailRows * 38, 38,
+        state.detailsViewport.firstRow,
+        TouchPickerViewport::maxFirst(static_cast<int>(detailLabels.size()), visibleDetailRows) + 1);
+    if (down & (HidNpadButton_Up | HidNpadButton_Down |
+                HidNpadButton_L | HidNpadButton_R))
+        state.detailsTouchScroll.stop();
     int verticalDirection = 0;
     if (down & HidNpadButton_L)
         state.focus = passiveView
@@ -1167,6 +1186,10 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
         normalizeEditableFocus(state, verticalDirection, panelChanged);
     state.detailsFocus = Shared::detailsScrollFocus(state.focus, state.detailsFocus);
     state.detailsFocus = std::min<int>(state.detailsFocus, static_cast<int>(detailLabels.size()) - 1);
+    if (down & (HidNpadButton_Up | HidNpadButton_Down |
+                HidNpadButton_L | HidNpadButton_R))
+        state.detailsViewport.reveal(state.detailsFocus,
+                                     static_cast<int>(detailLabels.size()), visibleDetailRows);
 
     auto applyDirectFocus = [&](int id) {
         if (id >= 31000 && id < 31000 + static_cast<int>(detailLabels.size())) {
@@ -1193,19 +1216,13 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
         }
         return false;
     };
-    const int directDown = screen.touchedButtonDownId(touch);
-    applyDirectFocus(directDown);
+    // A touch-down can still become a swipe. Never retarget semantic focus
+    // before the release confirms a tap inside the same clipped row.
     const int directTap = screen.touchedButtonId(touch);
     if (applyDirectFocus(directTap) && state.session.editable()) down |= HidNpadButton_A;
     if (touch.justReleased() && touch.dragged()) {
-        const int sx = touch.startX(), sy = touch.startY();
         const int dx = touch.deltaX(), dy = touch.deltaY();
-        if (sx >= 24 && sx < 324 && sy >= 300 && std::abs(dy) >= 28) {
-            const int steps = std::max(1, std::abs(dy) / 38);
-            state.detailsFocus = std::clamp(state.detailsFocus + (dy < 0 ? steps : -steps),
-                                             0, static_cast<int>(detailLabels.size()) - 1);
-            state.focus = {Shared::Panel::Details, static_cast<uint8_t>(state.detailsFocus), 0};
-        } else if (std::abs(dx) >= 96 && std::abs(dx) > std::abs(dy)) {
+        if (std::abs(dx) >= 96 && std::abs(dx) > std::abs(dy)) {
             state.focus = passiveView
                 ? Shared::passiveViewSwitchPanel(Shared::Generation::Gen3, state.focus, dx < 0 ? 1 : -1)
                 : Shared::switchPanel(Shared::Generation::Gen3, state.focus, dx < 0 ? 1 : -1);
@@ -1610,23 +1627,26 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     constexpr int detailRowStep = 38;
     const int detailViewportY = y + 216;
     const int detailViewportH = std::max(0, y + h - 40 - detailViewportY);
-    const auto detailVisual = liveVerticalListVisual(
-        state.detailsFocus, static_cast<int>(detailLabels.size()), detailRowStep,
-        leftX + 8, detailViewportY, leftW - 16, detailViewportH);
+    state.detailsViewport.ensure(state.detailsFocus, static_cast<int>(detailLabels.size()),
+                                 static_cast<int>(detailVisibleRows));
+    const int firstDetailRow = state.detailsViewport.firstRow;
+    const int detailPixelOffset = state.detailsTouchScroll.offset();
     SharedPokemonShell::drawScrollableDetails(fb, leftX, y, leftW, h,
-        detailLabels.size(), static_cast<std::size_t>(detailVisual.index),
+        detailLabels.size(), static_cast<std::size_t>(state.detailsFocus),
         state.focus.panel == Shared::Panel::Details,
         [](std::size_t row) { return detailLabels[row]; },
         [&](std::size_t row) { return detailsValue(screen, p, static_cast<int>(row)); },
-        detailVisual.offset);
+        detailPixelOffset, firstDetailRow);
     {
-        const auto window = Shared::scrollWindow(
-            detailLabels.size(), detailVisibleRows, static_cast<std::size_t>(detailVisual.index));
-        for (std::size_t i = 0; i < window.count; ++i) {
-            const int row = static_cast<int>(window.first + i);
-            const int yy = y + 224 + static_cast<int>(i) * detailRowStep + detailVisual.offset;
-            if (yy + 32 > detailViewportY && yy < detailViewportY + detailViewportH)
-                screen.touchButtons.push_back({31000 + row, leftX + 8, yy + 2, leftW - 36, 30});
+        // Hitboxes follow the exact scroll position and are clipped to the
+        // visible list. Never publish hidden rows through the footer.
+        for (int row = std::max(0, firstDetailRow - 1);
+             row < std::min(static_cast<int>(detailLabels.size()),
+                            firstDetailRow + static_cast<int>(detailVisibleRows) + 1); ++row) {
+            const int yy = y + 224 + (row - firstDetailRow) * detailRowStep + detailPixelOffset;
+            appendClippedTouchButton(screen.touchButtons, 31000 + row,
+                leftX + 8, yy + 2, leftW - 36, 30,
+                leftX + 8, detailViewportY, leftW - 16, detailViewportH);
         }
     }
     drawPanel(fb, midX, y, midW, h, "STATS");
