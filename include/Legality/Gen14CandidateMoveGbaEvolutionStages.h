@@ -7,7 +7,7 @@
 //   src/data/pokemon/evolution.h (EVO_LEVEL rows).
 // Per-stage offers are independently checked by GbaLevelUpTimeline.
 // An EVOLUTION is not a second encounter, fresh egg, or move reset.
-// Historical evolution may occur after the minimum level (B cancellation).
+// Historical evolution may occur after the minimum level (B cancellation).\n// Source evolution_scene.c sets evolved species BEFORE MonTryLearningNewMove.
 #include "Legality/Gen14CandidateMoveGbaLevelUpTimeline.h"
 #include <array>
 #include <cstdint>
@@ -24,6 +24,14 @@ struct Evolution {
     uint8_t level=0;
     bool independentlyVerifiedSourceEvolution=false;
     bool noExtraMoveMutationOnEvolutionVerified=false;
+    // Source-pinned GBA evolution scene changes species first, then
+    // MonTryLearningNewMove on the target BEFORE ending the scene.
+    // These are the independently witnessed player choices for offers
+    // at the exact evolution level, not fictional target-species time
+    // before this evolution. (Old five-field fixtures stay compatible.)
+    bool allTargetSpeciesEvolutionOffersVerified=false;
+    std::array<L::Step,8> evolutionOffers{};
+    uint8_t evolutionOfferCount=0;
 };
 struct Input {
     uint32_t candidateId=0;
@@ -79,14 +87,48 @@ constexpr Result evaluate(const Input& in) noexcept {
                edge.toSpecies!=phase.nationalSpecies ||
                edge.level!=prior.observedLevel ||
                edge.level!=phase.initialLevel ||
-               edge.level<minimum ||
-               phase.initialMoves!=out.observedMoves)return out;
-            // The pinned *table* proves an offer exists for the target
-            // at the exact evolution level, but not whether that offer
-            // was actually prompted by the retail evolution service.
-            // Do not silently skip an evolution-on-level move opportunity.
-            if(offersAtLevel(game,phase.nationalSpecies,edge.level))
-                return out;
+               edge.level<minimum)return out;
+            std::array<uint16_t,4> afterEvolution=out.observedMoves;
+            uint8_t offers=0;
+            for(uint16_t j=0;j<L::offerCount(game,phase.nationalSpecies);++j) {
+                const auto offer=L::offerAt(game,phase.nationalSpecies,j);
+                if(offer.level!=edge.level)continue;
+                // If original evolved-species teaching decisions were
+                // erased from history, NEVER assume the offer was skipped.
+                if(!edge.allTargetSpeciesEvolutionOffersVerified ||
+                   offers>=edge.evolutionOfferCount ||
+                   offers>=edge.evolutionOffers.size())return out;
+                const auto step=edge.evolutionOffers[offers++];
+                if(step.level!=offer.level || step.offeredMove!=offer.move) {
+                    out.status=Status::CandidateContradicted;return out;
+                }
+                const bool known=C::contains(afterEvolution,offer.move);
+                const uint8_t open=C::freeSlot(afterEvolution);
+                switch(step.decision) {
+                case L::Decision::AlreadyKnown:
+                    if(!known){out.status=Status::CandidateContradicted;return out;}
+                    break;
+                case L::Decision::AutoLearn:
+                    if(known || open>=4 || step.slot!=open) {
+                        out.status=Status::CandidateContradicted;return out;
+                    }
+                    afterEvolution[open]=offer.move;break;
+                case L::Decision::ReplaceSlot:
+                    if(known || open<4 || step.slot>=4) {
+                        out.status=Status::CandidateContradicted;return out;
+                    }
+                    afterEvolution[step.slot]=offer.move;break;
+                case L::Decision::Decline:
+                    if(known || open<4) {
+                        out.status=Status::CandidateContradicted;return out;
+                    }
+                    break;
+                }
+            }
+            if(offers!=edge.evolutionOfferCount)return out;
+            if(phase.initialMoves!=afterEvolution) {
+                out.status=Status::CandidateContradicted;return out;
+            }
             ++out.verifiedEvolutions;
         }
         const auto stage=L::evaluate(phase);
