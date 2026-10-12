@@ -125,7 +125,11 @@ int main() {
         x=known(game,42,true);x.moveAndIV.moveHistory.snapshotsKnown=false;
         assert(J::evaluate(x).status==J::Status::UnknownOriginalPairEvidence);
         x=known(game,42,true);x.moveAndIV.moveHistory.pairProof=M::PairProof::Unknown;
-        assert(J::evaluate(x).status==J::Status::UnknownOriginalIVHistory);
+        assert(J::evaluate(x).status==J::Status::UnknownOriginalPairEvidence);
+        x=known(game,42,true);x.moveAndIV.initialChildIVs[0]=32;
+        assert(J::evaluate(x).status==J::Status::MalformedOriginalIVCandidate);
+        x=known(game,42,true);x.moveAndIV.moveParentStageToken=0;
+        assert(J::evaluate(x).status==J::Status::UnknownOriginalDaycareEvent);
         // The source's father role can be non-male in the Ditto case.
         x=known(game,42,true);
         x.pid.physicalSlots[0].species=132;
@@ -147,7 +151,7 @@ int main() {
         x.pid.physicalSlots[0].gender=0;
         x.moveAndIV.moveHistory.motherSpecies=132;
         assert(J::evaluate(x).status==J::Status::AllThreeStagesConditionallyMatched);
-        controls+=13;
+        controls+=15;
     }
     auto bad=known("ruby_gba",0,true);bad.moveAndIV.moveHistory.game="platinum_nds";
     assert(J::evaluate(bad).status==J::Status::UnsupportedGame);
