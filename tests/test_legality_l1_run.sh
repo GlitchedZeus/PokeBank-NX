@@ -59,6 +59,7 @@ suites=(
   test_legality_l1_gen3_wild_rng
   test_legality_l1_gen3_roamer_frame
   test_legality_l1_gamecube_original_fixed
+  test_legality_l1_stage1_production_crypto
 )
 for profile in host sanitize; do
   if [[ "$profile" == host ]]; then
@@ -70,6 +71,9 @@ for profile in host sanitize; do
     sources=("tests/$suite.cpp")
     if [[ "$suite" == test_legality_l1_hgss_special ]]; then
       sources+=("${native[@]}")
+    fi
+    if [[ "$suite" == test_legality_l1_stage1_production_crypto ]]; then
+      sources+=(src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp)
     fi
     target="$build_dir/$suite-$profile"
     echo "L1: compile $suite [$profile]"
