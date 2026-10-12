@@ -50,6 +50,9 @@ header_only=(
     test_legality_l4_gen3_distribution_matrix
     test_legality_l4_gen4_pcd_pgt_container
     test_legality_l4_gen4_mystery_gift_histories
+    test_legality_l4_historical_event_path
+    test_legality_l4_clock_receipt_history
+    test_legality_l4_historical_adversarial
 )
 native=(
     test_legality_l4_native_pk4_projection
@@ -90,6 +93,12 @@ echo "L4 C++ native PK3 compile: test_legality_l4_gen3_distribution_native_pk3"
     src/Encryption/Encryption3FRLG.cpp \
     -o "$scratch/test_legality_l4_gen3_distribution_native_pk3"
 "$scratch/test_legality_l4_gen3_distribution_native_pk3"
+echo "L4 C++ native PK3 compile: test_legality_l4_gen3_palpark_metadata_bridge"
+"$compiler" "${base[@]}" "${pk3_flags[@]}" \
+    tests/test_legality_l4_gen3_palpark_metadata_bridge.cpp \
+    src/Encryption/Encryption3FRLG.cpp \
+    -o "$scratch/test_legality_l4_gen3_palpark_metadata_bridge"
+"$scratch/test_legality_l4_gen3_palpark_metadata_bridge"
 echo "L4 Python frozen original-source projection integrity audit"
 python3 tools/legality_l4_projection_audit.py
 python3 -m unittest discover -v -s tests -p 'test_legality_l4_projection_audit.py'
@@ -100,4 +109,4 @@ python3 -m unittest discover -v -s tests -p 'test_legality_l4_l5_q07_join.py'
 if [[ -n "${L4_L5_Q07_JSON:-}" ]]; then
     python3 tools/legality_l4_l5_q07_join.py --l5-q07 "$L4_L5_Q07_JSON"
 fi
-echo "L4 all 21 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
+echo "L4 all 25 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
