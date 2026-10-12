@@ -610,7 +610,7 @@ bool isGen1SourceUX(const TrainerViewScreen& screen) noexcept {
 
 uint64_t foundationDirectTouchInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch) {
     auto& foundation = foundationStateFor(screen);
-    const int pressed = screen.touchedButtonDownId(touch);
+    // No provisional field focus: a finger may turn into a scroll gesture.
     const int tapped = screen.touchedButtonId(touch);
     auto focusId = [&](int id, bool activate) {
         if (id >= 5000 && id < 5006) {
@@ -645,7 +645,6 @@ uint64_t foundationDirectTouchInput(TrainerViewScreen& screen, uint64_t down, co
         else if (tapped == 5902) down |= HidNpadButton_A;
         return down;
     }
-    focusId(pressed, false);
     focusId(tapped, true);
     return down;
 }

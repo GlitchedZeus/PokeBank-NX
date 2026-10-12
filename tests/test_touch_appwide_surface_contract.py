@@ -96,13 +96,12 @@ SURFACES = {
     ),
     "Gen I editor overlay": (
         "src/UI/Gen1PokemonEditorOverlayFoundation.inc",
-        ("foundationDirectTouchInput", "touchedButtonDownId(touch)",
-         "touchedButtonId(touch)"),
+        ("foundationDirectTouchInput", "touchedButtonId(touch)"),
     ),
     "Gen II editor": (
         "src/UI/Gen2HardwareWorkspaceFix.inc",
         ("handleUnifiedTouch", "focusUnifiedTouchPoint",
-         "touch.justTouchedDown()", "touch.justTapped()"),
+         "touch.justReleased() && touch.dragged()", "touch.justTapped()"),
     ),
     "Gen III editor": (
         "src/UI/Gen3SharedPokemonSurface.inc",
@@ -542,6 +541,16 @@ for picker_path in ("src/UI/Gen2HardwarePickerFix.inc",
         raise AssertionError(f"{picker_path}: picker selection may change on drag contact")
     require_all(picker_path, "screen.touchedButtonId(touch)",
                 "down |= HidNpadButton_A;")
+# Contact-only navigation changes the selection before a swipe can be
+# classified. Gen II foreground panels now obey the same completed-tap rule.
+gen2_hardware = read("src/UI/Gen2HardwareWorkspaceFix.inc")
+gen2_unified = gen2_hardware.split("void handleUnifiedTouch(", 1)[1].split(
+    "void handleParityTouch(", 1)[0]
+assert "if (touch.justTouchedDown())" not in gen2_unified
+gen2_review = gen2_hardware.split("if (shared.provenanceActive)", 1)[-1]
+assert "if (touch.justTouchedDown() || touch.justTapped())" not in gen2_review
+assert "pointInRect(touch.startX(), touch.startY()," in gen2_review
+assert "pointInRect(touch.x(), touch.y()," in gen2_review
 require_all("src/UI/Gen2HardwareWorkspaceFix.inc",
             "const bool started = focusUnifiedTouchPoint(",
             "screen, touch.startX(), touch.startY(), false, down",

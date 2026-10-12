@@ -176,9 +176,8 @@ void handleUnifiedTouch(TrainerViewScreen& screen, const TouchInput& touch, uint
     if (state.mode == Mode::None) return;
     if (state.itemPicker || state.confirmExit || pickerStateFor(screen).model.active()) return;
 
-    if (touch.justTouchedDown())
-        focusUnifiedTouchPoint(screen, touch.x(), touch.y(), false, down);
-
+    // Keep Details/Stats/Moves focus intact until release resolves the actual
+    // tap. Contact alone can still turn into a long Details-panel swipe.
     // Once TouchInput classifies a gesture as a drag it can never become a tap again. Vertical
     // drags beginning in DETAILS therefore browse/scroll without activating the row under release.
     if (touch.justReleased() && touch.dragged() && !unified.moveEditor && !unified.progressionEditor) {
@@ -288,12 +287,15 @@ void handleParityTouch(TrainerViewScreen& screen, const TouchInput& touch, uint6
         constexpr int y = (672 - h) / 2;
         const int first = std::clamp(legacy.reviewRow - 4, 0, std::max(0, changeCount - 9));
         const int last = std::min(changeCount, first + 9);
-        if (touch.justTouchedDown() || touch.justTapped()) {
-            const int px = touch.justTouchedDown() ? touch.x() : touch.startX();
-            const int py = touch.justTouchedDown() ? touch.y() : touch.startY();
+        if (touch.justTapped()) {
             for (int i = first; i < last; ++i) {
                 const int rowY = y + 88 + (i - first) * 45;
-                if (!pointInRect(px, py, x + 22, rowY, w - 44, 42)) continue;
+                // Same-target requirement: even a sub-threshold wobble must
+                // not select the neighbouring pending change.
+                if (!pointInRect(touch.startX(), touch.startY(),
+                                 x + 22, rowY, w - 44, 42) ||
+                    !pointInRect(touch.x(), touch.y(),
+                                 x + 22, rowY, w - 44, 42)) continue;
                 legacy.reviewRow = i;
                 break;
             }

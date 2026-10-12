@@ -34,6 +34,10 @@ require(gen1_input, "src/UI/Gen1PokemonEditorOverlayFoundation.inc",
         "if (tapped == 5900) down |= HidNpadButton_B;",
         "else if (tapped == 5901) down |= HidNpadButton_Y;",
         "else if (tapped == 5902) down |= HidNpadButton_A;")
+gen1_foundation = gen1_input.split("uint64_t foundationDirectTouchInput(", 1)[1].split(
+    "bool handleInputUX(", 1)[0]
+assert "touchedButtonDownId(touch)" not in gen1_foundation
+assert "focusId(tapped, true);" in gen1_foundation
 
 classic_actions = read("src/UI/ClassicReleaseActionFix.inc")
 require(classic_actions, "src/UI/ClassicReleaseActionFix.inc",
