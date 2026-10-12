@@ -140,7 +140,24 @@ constexpr Result evaluate(const Input& in,const Expected& e) noexcept {
     else if(out.parentChecks[0]==Status::ContradictedOriginalRoute ||
             out.parentChecks[1]==Status::ContradictedOriginalRoute)
         out.status=Status::ContradictedOriginalRoute;
-    else out.status=Status::ConditionallyReplayed;
+    else {
+        // Two physical daycare slots cannot represent the SAME archived
+        // biological individual disguised by two independent custody paths.
+        // Compare independently attested source snapshots within the same
+        // source-game namespace, including intermediate trade/evolution IDs.
+        const auto& left=in.physicalSlots[0];
+        const auto& right=in.physicalSlots[1];
+        bool alias=false;
+        for(std::uint8_t a=0;a<=left.transitions;++a) {
+            const auto& l=a==0?left.originalOrigin:left.history[a-1].after;
+            for(std::uint8_t b=0;b<=right.transitions;++b) {
+                const auto& r=b==0?right.originalOrigin:right.history[b-1].after;
+                if(l.identity==r.identity && l.game==r.game)alias=true;
+            }
+        }
+        out.status=alias?Status::CrossedBiologicalIdentity:
+                         Status::ConditionallyReplayed;
+    }
     return out;
 }
 static_assert(evaluate({},{}).status==Status::NotSupplied);
