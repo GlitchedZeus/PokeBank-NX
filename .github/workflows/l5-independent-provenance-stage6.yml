@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "${{ github.sha }}"
           git diff --check
-          test "$(git hash-object tools/audit_legality_l5_stage6_provenance.py)" = "f1119cbf37a42ca4faea520d2afeb3708b6148a3"
+          test "$(git hash-object tools/audit_legality_l5_stage6_provenance.py)" = "54202cd21b28bc7284ff3677bb349bc9b352cd97"
           test "$(git hash-object tools/audit_legality_l5_stage6_receipt_chain.h)" = "63a8beff9f5b2bcca86d83eb9575b59789015229"
           test "$(git hash-object tests/fixtures/legality_l5_stage6_receipt_chain_fuzz.cpp)" = "d07351f551cdb51afc59bcdd4e7e22fe09c31cb4"
       - name: Execute manifest and chain tampering negative controls
