@@ -45,6 +45,22 @@ constexpr Result evaluate(const Input& in) noexcept {
     if(!in.uninterruptedSameSpeciesGameStageVerified ||
        !in.allOfferedLevelUpDecisionsRecorded ||
        !L::supported(p.origin,p.species))return out;
+    // Unsupported alternative route types MUST be classified before the
+    // generic four-slot replay. Otherwise an unrelated tentative trade,
+    // Pal Park, reminder, tutor or move deletion could generate a local
+    // contradiction which this narrower same-game verifier has no
+    // source authority to assert. These paths require their own packets.
+    for(uint8_t i=0;i<p.stepCount;++i) {
+        const auto& step=p.steps[i];
+        if(step.action==C::Action::VisitGame ||
+           step.action==C::Action::PalPark ||
+           step.action==C::Action::DeleteMove ||
+           (step.action==C::Action::Learn &&
+            step.method!=C::Method::LevelUp &&
+            step.method!=C::Method::TM &&
+            step.method!=C::Method::HM))
+            return out;
+    }
     // Stage evidence is checked FIRST. Never convert absent source into
     // a contradiction even if a different guessed history fails.
     out.fourSlot=C::evaluate(p);
