@@ -23,6 +23,7 @@ common=(-std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -Iincl
 # through the production checksum + read-only Pokemon4 parser.
 native=(
   src/Pokemon/Pokemon4ReadOnly.cpp
+  src/Pokemon/PersonalRecord4.cpp
   src/Pokemon/PersonalInfo4DP.cpp
   src/Pokemon/PersonalInfo4PT.cpp
   src/Pokemon/PersonalInfo4HGSS.cpp
