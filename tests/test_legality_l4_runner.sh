@@ -44,6 +44,7 @@ header_only=(
     test_legality_l4_contest_history
     test_legality_l4_event_text_history
     test_legality_l4_gen3_raw_text
+    test_legality_l4_attestation_matrix
 )
 native=(
     test_legality_l4_native_pk4_projection
@@ -75,4 +76,4 @@ python3 -m unittest discover -v -s tests -p 'test_legality_l4_l5_q07_join.py'
 if [[ -n "${L4_L5_Q07_JSON:-}" ]]; then
     python3 tools/legality_l4_l5_q07_join.py --l5-q07 "$L4_L5_Q07_JSON"
 fi
-echo "L4 all 12 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
+echo "L4 all 13 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
