@@ -18,6 +18,7 @@ import argparse
 from collections import Counter
 import copy
 import csv
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -34,6 +35,11 @@ GROUPS = {"RB": 1, "Y": 1, "GS": 2, "C": 2,
           "D": 4, "P": 4, "Pt": 4, "HG": 4, "SS": 4}
 FAMILIES = set(range(1, 22))
 EXPECTED = {(g, f) for g in GROUPS for f in FAMILIES}
+
+
+def git_blob_sha(file: Path) -> str:
+    content = file.read_bytes()
+    return hashlib.sha1(b"blob " + str(len(content)).encode("ascii") + b"\\0" + content).hexdigest()
 
 
 def load(root: Path = DATA) -> tuple[list[dict], dict, dict]:
@@ -268,6 +274,11 @@ def main() -> int:
         self_test(matrix, old, new)
         return 0
     result = validate(matrix, old, new, args.current_integration_head)
+    original_blob = git_blob_sha(DATA / FILES[1])
+    if new.get("l5_original_scoreboard_blob") != original_blob:
+        result["failures"].append("SOURCE_BLOB_CHANGED_WITHOUT_REATTESTATION")
+        result["manifest_integrity"] = "FAIL"
+    result["observed_scoreboard_blob"] = original_blob
     encoded = json.dumps(result, sort_keys=True, indent=2) + "\n"
     print(encoded, end="")
     if args.report:
