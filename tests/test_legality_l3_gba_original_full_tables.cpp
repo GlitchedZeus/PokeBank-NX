@@ -30,6 +30,16 @@ static_assert(ruby(252,0)==(1u<<9 | 1u)); // Treecko Pound, not internal species
 static_assert(ruby(386,0)==(1u<<9 | 43u)); // Deoxys Leer
 static_assert(frlg(386,0)==(1u<<9 | 43u));
 static_assert(rubyCount(386)==12 && frlgCount(386)==14);
+// Independently transcribed original #if FIRERED Deoxys (Attack Forme)
+// rather than the common generated table's #elif LEAFGREEN (Defense Forme).
+constexpr std::array<uint16_t,12> kOriginalFireRedDeoxys{{
+    555,547,2661,5220,7949,10468,12894,15636,
+    18242,20672,23394,25663
+}};
+static_assert(D::kFireRedDeoxysPacked==kOriginalFireRedDeoxys);
+static_assert(D::kFireRedDeoxysPacked.size()==12);
+static_assert(D::kFireRedDeoxysPacked[4]!=frlg(386,4));
+static_assert(D::kFireRedDeoxysPacked[7]!=frlg(386,7));
 static_assert(rubyCount(92)==9 && frlgCount(92)==12); // Gastly retail variant
 static_assert(ruby(92,3)==(13u<<9 | 212u));
 static_assert(frlg(92,3)==(13u<<9 | 174u));
@@ -71,6 +81,8 @@ int main() {
         if(!same)++differingSpecies;
         else ++identicalSpecies;
     }
+    for(uint16_t i=0;i<kOriginalFireRedDeoxys.size();++i)
+        assert(D::kFireRedDeoxysPacked[i]==kOriginalFireRedDeoxys[i]);
     assert(rubyEntries==3947 && frlgEntries==4015);
     assert(maxRuby==17 && maxFrlg==18);
     assert(differingSpecies==60 && identicalSpecies==326);
