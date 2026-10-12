@@ -40,6 +40,31 @@ static_assert(L::evaluate(gbaFive(Game::LeafGreen)).status==S::CandidateConsiste
 
 // Synthetic verified snapshots at lv40: Bulbasaur has no mandatory
 // level-up offers between 40 and 45 in the pinned GBA tables.
+// Distinct original retail source tables: at level 13 Charmander gets
+// Smokescreen (108) in R/S/E but Metal Claw (232) in FR/LG. An independently
+// attested level-up method must not be applied across those versions.
+constexpr L::Path charmander(Game g,uint16_t move) {
+    L::Path p{};p.candidateId=704;p.species=4;p.origin=g;
+    p.initialLevel=12;p.observedLevel=13;
+    p.initialMoves={10,45,52,0};p.observedMoves={10,45,52,move};
+    p.initialSnapshotVerified=true;p.samePokemonAndSpeciesVerified=true;
+    p.fullChronologyVerified=true;p.stepCount=1;
+    p.steps[0]={g,13,A::Learn,M::LevelUp,move,3,true,g};
+    return p;
+}
+static_assert(L::evaluate(charmander(Game::Ruby,108)).status==S::CandidateConsistent);
+static_assert(L::evaluate(charmander(Game::Sapphire,108)).status==S::CandidateConsistent);
+static_assert(L::evaluate(charmander(Game::Emerald,108)).status==S::CandidateConsistent);
+static_assert(L::evaluate(charmander(Game::FireRed,232)).status==S::CandidateConsistent);
+static_assert(L::evaluate(charmander(Game::LeafGreen,232)).status==S::CandidateConsistent);
+static_assert(L::evaluate(charmander(Game::Ruby,232)).status==S::CandidateContradicted);
+static_assert(L::evaluate(charmander(Game::FireRed,108)).status==S::CandidateContradicted);
+static_assert([]{auto p=charmander(Game::FireRed,232);
+    p.steps[0].evidenceVerified=false;
+    return L::evaluate(p).status==S::Unresolved;}());
+static_assert(L::sourcePinnedLevelOffer(Game::Ruby,133,13,108)==
+    L::PinnedOffer::Unmodeled); // Other species not falsely rejected.
+
 constexpr L::Path fullSlots() {
     auto p=ruby;p.initialLevel=40;p.observedLevel=45;
     p.initialMoves={33,45,73,22};
