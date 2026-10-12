@@ -1,4 +1,5 @@
 #include "UI/SharedPokemonEditorContract.h"
+#include "UI/NarrowPokemonActionMenu.h"
 #include "UI/Gen4BoxTouchActions.h"
 #include "UI/Gen4BoxMoveNavigation.h"
 #include "UI/ClassicPackedMultiSelect.h"
@@ -29,6 +30,26 @@ void contains(const std::string& text, const char* needle) {
 
 int main() {
     namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+    namespace Narrow = PokeBank::UIModel::NarrowPokemonMenu;
+    // Behavior-level contract: the older popup is narrow and never makes a
+    // disabled transfer command available through touch or controller A.
+    constexpr auto actions = Shared::actionsForSlot(true, {true, true, true}, true);
+    constexpr auto rendered = Narrow::classic(actions, true);
+    static_assert(rendered.count == 11);
+    static_assert(rendered.rows[0].nativeIndex == 0);
+    static_assert(rendered.rows[1].nativeIndex == -1);
+    static_assert(rendered.rows[2].nativeIndex == -1);
+    static_assert(rendered.rows[3].nativeIndex == -1);
+    static_assert(rendered.rows[4].nativeIndex == 1);
+    static_assert(rendered.rows[5].nativeIndex == 2);
+    static_assert(rendered.rows[6].nativeIndex == 3);
+    static_assert(rendered.rows[7].nativeIndex == -1);
+    static_assert(rendered.rows[8].nativeIndex == 4);
+    static_assert(rendered.rows[9].nativeIndex == 5);
+    static_assert(rendered.rows[10].nativeIndex == 6);
+    static_assert(Narrow::geometry(12).width == 440);
+    static_assert(Narrow::geometry(12).height <= 720 - 56);
+    static_assert(Narrow::geometry(9).rowHeight >= 54);
     static_assert(Shared::genderUsesInlineToggle(Shared::Generation::Gen4));
     static_assert(!Shared::genderOpensDedicatedPicker(Shared::Generation::Gen4));
 
@@ -468,15 +489,14 @@ int main() {
     contains(surface, "moveLayout.rowStep");
     contains(surface, "Held Item — Generation IV");
     contains(surface, "Names::machineDisplayLabel(bridge(screen).sourceSave().rawFamily()");
-    contains(surface, "constexpr int w = 560;");
+    const auto narrow = read("include/UI/NarrowPokemonActionMenu.h");
+    contains(narrow, "int width = 440");
     assert(surface.find("const int w = occupied ? 650 : 560;") == std::string::npos);
     contains(surface, "NarrowPokemonMenu::Model narrowGen4Actions(");
     contains(surface, "drawNarrowPokemonActions(fb, screen.touchButtons, model");
     contains(surface, "state.target == TargetKind::Party");
     contains(surface, "Master Vault is intentionally not started");
     contains(surface, "if (actions[static_cast<std::size_t>(next)].enabled) break;");
-    const auto narrow = read("include/UI/NarrowPokemonActionMenu.h");
-    contains(narrow, "int width = 440");
     contains(narrow, "constexpr Geometry geometry(");
     const auto chrome = read("include/UI/ScreenChrome.h");
     contains(chrome, "const Color disabledColor(");
