@@ -102,7 +102,8 @@ template<class Gba,class Native> constexpr Result evaluate(const Input& in) noex
                (!s.machineNumber||!Native::machineKnown(s.game,s.hidden,s.machineNumber)||
                (!s.hidden && !s.itemReceipt)))return out;
         }
-        if(s.action==Action::DeleteMove && !s.methodSourceVerified)return out;
+        if(s.action==Action::DeleteMove &&
+           (!s.methodSourceVerified || !s.move || s.move>467))return out;
     }
     const auto pre=Pre::evaluate<Gba>(in.departure);
     if(pre.status==Pre::Status::Unresolved)return out;
@@ -134,6 +135,11 @@ template<class Gba,class Native> constexpr Result evaluate(const Input& in) noex
     for(uint8_t i=0;i<in.count;++i) {
         const auto& s=in.steps[i];
         if(s.level<level)return out;
+        // A level gained in an unmodeled destination may have offered moves.
+        // Even a separately witnessed delete/visit cannot prove that the
+        // intervening four-slot chronology is complete. Do not skip those
+        // unknown offers and certify the retained moves as consistent.
+        if(s.level>level && !Native::supported(game,in.species))return out;
         const bool offer=s.action==Action::OfferLearn||
                          s.action==Action::OfferDecline||
                          s.action==Action::OfferKnown;
