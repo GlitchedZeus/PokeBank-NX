@@ -15,7 +15,8 @@ enum class Kind : uint8_t { Static, InGameTrade };
 enum class Status : uint8_t {
     UnknownOriginalGame, UnknownOriginalSource, UnknownOriginalRow,
     UnknownEvolutionChain, UnknownTradeOT, UnknownTradebackHistory,
-    UnknownOriginalCatchRate, UnknownEncounterKind, UnknownCurrentSpecies,
+    UnknownOriginalCatchRate, UnknownOriginalSpecies, UnknownOriginalLevel,
+    UnknownEncounterKind, UnknownCurrentSpecies,
     UnknownLaterGenerationEvolution, ForeignGameRowNotEvidence,
     CandidateOriginalSpeciesContradicted, CandidateOriginalLevelContradicted,
     CandidateEvolutionContradicted, CandidateOriginalCatchRateContradicted,
@@ -34,6 +35,8 @@ struct Candidate {
     // from a detached PK1's container version or its current species.
     bool originalGameIndependentlyAttested=false;
     bool originalSourceRowIndependentlyAttested=false;
+    bool originalSpeciesIndependentlyAttested=false;
+    bool originalLevelIndependentlyAttested=false;
     bool originalEvolutionChainIndependentlyAttested=false;
     bool originalTradeOTIndependentlyAttested=false;
     bool originalCatchRateIndependentlyAttested=false;
@@ -94,8 +97,19 @@ inline Result evaluate(const Candidate& c) noexcept {
         if(c.timeCapsuleHistoryIndependentlyAttested)
             minimum=row.minimumLevelAfterTradeback;
     }
+    if(c.noTimeCapsuleHistoryIndependentlyAttested &&
+       c.timeCapsuleHistoryIndependentlyAttested)
+        return {Status::UnknownTradebackHistory,species,minimum};
     if((nativeMask&mask)==0)
         return {Status::ForeignGameRowNotEvidence,species,minimum};
+    // Numeric defaults, corrupt source records and detached PK1 guesses are
+    // not independently witnessed original acquisition species or levels.
+    if(!c.originalSpeciesIndependentlyAttested ||
+       c.originalSpecies==0 || c.originalSpecies>151)
+        return {Status::UnknownOriginalSpecies,species,minimum};
+    if(!c.originalLevelIndependentlyAttested ||
+       c.originalLevel==0 || c.originalLevel>100)
+        return {Status::UnknownOriginalLevel,species,minimum};
     if(c.originalSpecies!=species)
         return {Status::CandidateOriginalSpeciesContradicted,species,minimum};
     if(c.originalLevel<minimum)

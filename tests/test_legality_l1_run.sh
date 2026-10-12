@@ -37,14 +37,38 @@ suites=(
   test_legality_l1_safari_indexed_original
   test_legality_l1_gamecube_indexed_shadow
   test_legality_l1_gen1_original_source
+  test_legality_l1_gen1_wild_fishing
   test_legality_l1_gen2_original_source
+  test_legality_l1_gen2_fishing
+  test_legality_l1_gen2_tree_contest
+  test_legality_l1_gen2_swarms
+  test_legality_l1_gen2_roamer_routes
   test_legality_l1_gen4_static_indexed
   test_legality_l1_gen4_sinnoh_special
+  test_legality_l1_stage4_hgss_tree
+  test_legality_l1_stage4_honey
+  test_legality_l1_stage4_method_jk
+  test_legality_l1_stage4_native_pk3_pk4
+  test_legality_l1_stage5_status_bridge
+  test_legality_l1_stage5_ledger
+  test_legality_l1_stage5_permutations
+  test_legality_l1_stage5_real_sources
   test_legality_l1_original_candidate_universe
   test_legality_l1_gen3_original_roamers
+  test_legality_l1_gen3_wild_catalog
+  test_legality_l1_gen3_wild_rng
+  test_legality_l1_gen3_roamer_frame
   test_legality_l1_gamecube_original_fixed
+  test_legality_l1_stage1_production_crypto
 )
-for profile in host sanitize; do
+profiles=(host sanitize)
+if [[ -n "${L1_PROFILE:-}" ]]; then
+  case "$L1_PROFILE" in
+    host|sanitize) profiles=("$L1_PROFILE") ;;
+    *) printf 'L1: invalid L1_PROFILE=%s (expected host or sanitize)\n' "$L1_PROFILE" >&2; exit 2 ;;
+  esac
+fi
+for profile in "${profiles[@]}"; do
   if [[ "$profile" == host ]]; then
     flags=(-O2)
   else
@@ -54,6 +78,9 @@ for profile in host sanitize; do
     sources=("tests/$suite.cpp")
     if [[ "$suite" == test_legality_l1_hgss_special ]]; then
       sources+=("${native[@]}")
+    fi
+    if [[ "$suite" == test_legality_l1_stage1_production_crypto ]]; then
+      sources+=(src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp)
     fi
     target="$build_dir/$suite-$profile"
     echo "L1: compile $suite [$profile]"
@@ -66,4 +93,4 @@ for profile in host sanitize; do
     fi
   done
 done
-echo "L1: all ${#suites[@]} native host and ASan/UBSan suites PASS at $application_sha"
+echo "L1: all ${#suites[@]} native suites PASS for profiles ${profiles[*]} at $application_sha"
