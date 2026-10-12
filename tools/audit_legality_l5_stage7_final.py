@@ -183,6 +183,38 @@ def validate(q01:list[dict],base:dict,integrated:dict,risk:dict,gates:dict,
                         'NO_ATTESTED_ORIGINAL_EVENT_ARCHIVES',
                         'NO_AUTHORIZED_THIRD_PARTY_PAYLOAD_REUSE']}
 
+
+FROZEN_SNAPSHOT='Q21_STAGE7_FROZEN_DASHBOARD_336_38.json'
+FROZEN_BLOB='15f4ba61ca069d87f6cd7a7c65e9da3fa044d9fb'
+def verify_frozen_snapshot(report:dict)->None:
+    """Cross-check the separate read-only GitHub source observation."""
+    file=DATA/FROZEN_SNAPSHOT
+    verify(file,FROZEN_BLOB)
+    frozen=json.loads(file.read_text(encoding='utf8'))
+    require(frozen.get('schema')=='L5_STAGE7_FROZEN_SOURCE_OBSERVATION_336_38_V1',
+            'FROZEN_SCHEMA')
+    src=frozen.get('source_refs',{})
+    require(src.get('current_coordinator')==COORDINATOR_HEAD and
+            src.get('current_coordinator_cpp_git_blob')==COORDINATOR_SOURCE_BLOB,
+            'FROZEN_COORDINATOR_DRIFT')
+    require(frozen.get('release_state')=='BLOCKED','FROZEN_FALSE_RELEASE')
+    metrics=frozen.get('metrics',{})
+    require(metrics.get('total')==336 and
+            metrics.get('potentially_applicable')==310 and
+            metrics.get('not_native')==26 and
+            metrics.get('certified_full_retail_pkhex_parity')==0,
+            'FROZEN_SCORE_DRIFT')
+    rows=frozen.get('cells',[])
+    require(len(rows)==len(report['cell_rows'])==336,'FROZEN_ROWS')
+    for i,(observed,now) in enumerate(zip(rows,report['cell_rows'])):
+        for key in ('game_group','generation','family_id','family_name',
+                    'native_applicability','historical_source_grade'):
+            require(observed.get(key)==now.get(key),f'FROZEN_CELL_DRIFT:{i}:{key}')
+        require(observed.get('certified') is False,'FROZEN_FAKE_CERTIFICATE')
+    require(frozen.get('current_invalid_lexical_site_lines')==
+            [r['line'] for r in report['current_invalid_emissions']],
+            'FROZEN_INVALID_SITE_DRIFT')
+
 def selftest()->None:
     m={'game_group_id':'RB','family_id':'1','family_name':'Structural','generation':'1',
        'local_applicability':'potentially_applicable'}
@@ -245,6 +277,7 @@ def main()->int:
     src=args.coordinator_root/'src/Legality/Legality.cpp'
     verify(src,COORDINATOR_SOURCE_BLOB)
     result=validate(*load_originals(),src.read_text(encoding='utf8'))
+    verify_frozen_snapshot(result)
     payload=json.dumps(result,indent=2,sort_keys=True)+'\n'
     print(payload,end='')
     if args.json_out:args.json_out.write_text(payload,encoding='utf8')
