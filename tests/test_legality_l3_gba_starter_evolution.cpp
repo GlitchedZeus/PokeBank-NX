@@ -68,7 +68,7 @@ constexpr E::Input charmander(G game,bool delayEvolution){
     x.phases[1]=stage(game,5,16,evolutionLevel,
                       {10,45,52,offered},{10,45,52,offered});
     x.phases[1].stepCount=3;
-    x.phases[1].steps[0]={20,frlg?108u:99u,D::Decline,0};
+    x.phases[1].steps[0]={20,static_cast<uint16_t>(frlg?108u:99u),D::Decline,0};
     x.phases[1].steps[1]={27,184,D::Decline,0};
     x.phases[1].steps[2]={34,53,D::Decline,0};
     x.evolutions[1]={5,6,evolutionLevel,true,true};
@@ -125,7 +125,7 @@ int main(){
     constexpr std::array<G,5> sources{
         G::Ruby,G::Sapphire,G::Emerald,G::FireRed,G::LeafGreen};
     for(const auto game:sources) {
-        for(const auto chain:{bulbasaur(game),squirtle(game),
+        for(const auto& chain:{bulbasaur(game),squirtle(game),
                               charmander(game,true)}) {
             const auto result=E::evaluate(chain);
             assert(result.status==S::CandidateConsistent);
