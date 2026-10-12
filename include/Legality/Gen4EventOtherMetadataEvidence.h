@@ -45,13 +45,13 @@ struct Result {
     FieldStatus form=FieldStatus::UnknownNative;
     FieldStatus nature=FieldStatus::UnknownNative;
     bool nativePresent=false;
-    bool anyContradiction() const noexcept {
+    constexpr bool anyContradiction() const noexcept {
         return item==FieldStatus::CandidateContradicted ||
                ability==FieldStatus::CandidateContradicted ||
                form==FieldStatus::CandidateContradicted ||
                nature==FieldStatus::CandidateContradicted;
     }
-    bool allConditionalMatches() const noexcept {
+    constexpr bool allConditionalMatches() const noexcept {
         return nativePresent &&
                item==FieldStatus::CandidateCompatible &&
                ability==FieldStatus::CandidateCompatible &&
