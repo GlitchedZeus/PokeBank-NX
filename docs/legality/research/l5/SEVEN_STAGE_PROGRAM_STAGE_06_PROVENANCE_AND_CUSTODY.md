@@ -84,7 +84,7 @@ is recorded as a catalog identity, not as an original receipt.
 4. `.github/workflows/l5-independent-provenance-stage6.yml`:
    exact-head fail-closed L5-only CI; verifies original compiled C++
    fixture Git blobs and actual 247-row local repository JSON/CSV
-   manifests, all 31 synthetic tamper checks, compiler/sanitizer matrix
+   manifests, all 31 controls (29 tamper rejections and 2 positive baselines), compiler/sanitizer matrix
    and explicit no-source-save-mutation requirements.
 
 ## Exactly executed local tests
@@ -96,7 +96,7 @@ are now committed to L5:
 - `tests/fixtures/legality_l5_stage6_receipt_chain_fuzz.cpp`:
   `d07351f551cdb51afc59bcdd4e7e22fe09c31cb4`
 - `tools/audit_legality_l5_stage6_provenance.py`:
-  `f1119cbf37a42ca4faea520d2afeb3708b6148a3`
+  `54202cd21b28bc7284ff3677bb349bc9b352cd97`
 
 | Executed command family | Status | Checks |
 |---|---|---:|
@@ -104,7 +104,7 @@ are now committed to L5:
 | GCC 14.2 O1 -g -fsanitize=address,undefined | PASS | 930,275 |
 | Clang 17 C++20 O2, strict Werror | PASS | 930,275 |
 | Clang 17 O1 -g -fsanitize=address,undefined | PASS | 930,275 |
-| Python 3 validator --self-test | PASS | 31 negative/attestation controls |
+| Python 3 validator --self-test | PASS | 31 controls (29 tamper rejections, 2 accepted positives) |
 | Python py_compile | PASS | Syntax |
 | GCC -DNDEBUG negative build | Expected compile rejection | Assertions preserved |
 
