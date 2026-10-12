@@ -43,6 +43,7 @@ header_only=(
     test_legality_l4_unified_event_source
     test_legality_l4_contest_history
     test_legality_l4_event_text_history
+    test_legality_l4_gen3_raw_text
 )
 native=(
     test_legality_l4_native_pk4_projection
@@ -63,4 +64,4 @@ for name in "${native[@]}"; do
         -o "$scratch/$name"
     "$scratch/$name"
 done
-echo "L4 all 10 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
+echo "L4 all 11 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
