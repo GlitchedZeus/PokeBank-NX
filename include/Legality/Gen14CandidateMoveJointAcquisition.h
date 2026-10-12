@@ -108,6 +108,13 @@ constexpr Result evaluate(const Input& in) noexcept {
         for(uint8_t j=0;j<in.machineCount;++j) {
             if(in.machines[j].stepIndex!=i)continue;
             ++matching;used[j]=true;
+            // A source-backed TM/HM row is species-specific evidence.
+            // Matching the item and move is not sufficient if its
+            // independently attested species differs from this Pokemon.
+            // Do not transmute Bulbasaur's pinned machines into proof for
+            // a Charmander, traded sibling or evolved-stage specimen.
+            if(in.machines[j].numberedItem.nationalSpecies!=p.species)
+                return out; // Inconsistent witness => Unknown.
             const auto item=M::classifyChronologyStep(
                 in.machines[j].numberedItem,step);
             if(item==M::Status::CandidateContradicted) {
