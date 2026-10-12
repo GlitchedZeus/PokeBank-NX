@@ -609,6 +609,23 @@ namespace Legality {
                 CheckIdentifier::SourceGame);
         }
 
+        // F5: Gen II native PK2 stores five 16-bit stat-experience fields,
+        // not Generation III/IV EVs. The read-only wrapper deliberately
+        // reports zero for modern EV getters. An *unhatched* original Gen II
+        // egg cannot have gained stat experience through battle or vitamins.
+        // Check the actual immutable native values, independent of provider
+        // labels; hatched Gen II Pokemon may naturally have nonzero values.
+        if (nativeFormatGeneration == 2 && pk.isEgg()) {
+            const auto& native = static_cast<const Pokemon::Pokemon2ReadOnly&>(pk);
+            if (native.statExpHP() != 0 || native.statExpATK() != 0 ||
+                native.statExpDEF() != 0 || native.statExpSPE() != 0 ||
+                native.statExpSpecial() != 0) {
+                add(r,Severity::Invalid,
+                    "Unhatched native Generation II egg has nonzero stored stat experience",
+                    CheckIdentifier::Egg);
+            }
+        }
+
         // MOVE-003: a Shedinja is copied from the freshly evolved
         // Ninjask at ONE ordinary Emerald evolution level. The later
         // existence of both moves in Ninjask's lifelong learnset does not
