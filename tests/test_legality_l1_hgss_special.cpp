@@ -45,6 +45,22 @@ int main(){
             bool found=false;
             for(uint32_t seed=0;seed<4096 && !found;++seed){
                 c.prePidSeed=seed;c.pid=R::sequentialPid(seed);
+                uint32_t state=seed;
+                state=Legality::Gen3PidIv::Detail::next(state);
+                state=Legality::Gen3PidIv::Detail::next(state);
+                state=Legality::Gen3PidIv::Detail::next(state);
+                const uint16_t a=static_cast<uint16_t>((state>>16)&0x7FFFu);
+                state=Legality::Gen3PidIv::Detail::next(state);
+                const uint16_t b=static_cast<uint16_t>((state>>16)&0x7FFFu);
+                c.originalIVs={
+                    static_cast<uint8_t>(a&31u),
+                    static_cast<uint8_t>((a>>5)&31u),
+                    static_cast<uint8_t>((a>>10)&31u),
+                    static_cast<uint8_t>(b&31u),
+                    static_cast<uint8_t>((b>>5)&31u),
+                    static_cast<uint8_t>((b>>10)&31u)};
+                const auto pidiv=Legality::Gen4PidIv::analyze(c.pid,c.originalIVs);
+                if(!pidiv.matched()||pidiv.originSeed!=seed)continue;
                 for(uint32_t level=W::minLevel(row);level<=W::maxLevel(row);++level){
                     c.originalLevel=static_cast<uint8_t>(level);
                     if(!R::matchNoLeadRow(
@@ -59,6 +75,10 @@ int main(){
             assert(found && "pinned HGSS source row must admit a no-lead test seed");
             auto bad=c;bad.originalSpecies=0;
             assert(S::evaluate(bad).status==St::CandidateRowContradicted);
+            bad=c;bad.originalIVs[0]=static_cast<uint8_t>((bad.originalIVs[0]+1u)%32u);
+            assert(S::evaluate(bad).status==St::CandidatePidIvContradicted);
+            bad=c;bad.pid^=1u;
+            assert(S::evaluate(bad).status==St::CandidatePidIvContradicted);
             auto missing=c;missing.captureTimeAreaAndMethodConditionsIndependentlyAttested=false;
             assert(S::evaluate(missing).status==St::UnknownCaptureTimeContext);
             missing=c;missing.originalNoLeadAndMethodKIndependentlyAttested=false;

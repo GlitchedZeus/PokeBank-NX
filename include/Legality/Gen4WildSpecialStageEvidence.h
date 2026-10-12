@@ -6,6 +6,8 @@
 #include "Legality/Gen4WildEncounter.h"
 #include "Legality/Gen4WildRngCorrelation.h"
 #include "Legality/Gen4NatureReversalReplay.h"
+#include "Legality/Gen4PidIvCorrelation.h"
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
@@ -13,7 +15,7 @@ namespace Legality::Gen4WildSpecialStageEvidence {
 enum class Status : uint8_t {
     UnknownOriginalSource,UnknownOriginalRow,UnknownCaptureTimeContext,
     UnknownLeadOrRngFamily,UnknownOriginalNatureStage,
-    CandidateRowContradicted,BoundedCandidateUnresolved,
+    CandidateRowContradicted,CandidatePidIvContradicted,BoundedCandidateUnresolved,
     KnownConditionalSpecialEncounter
 };
 enum class Category : uint8_t {
@@ -33,6 +35,7 @@ struct Candidate {
     uint16_t originalSpecies=0,originalLocation=0;
     uint8_t originalLevel=0,originalForm=0;
     uint32_t pid=0,prePidSeed=0;
+    std::array<uint8_t,6> originalIVs{};
     bool originalWildSourceIndependentlyAttested=false;
     bool originalRowIndependentlyAttested=false;
     bool captureTimeAreaAndMethodConditionsIndependentlyAttested=false;
@@ -70,6 +73,15 @@ inline Result evaluate(const Candidate& c) noexcept {
        !Gen4Wild::levelMatches(row,c.originalLevel) ||
        !Gen4Wild::formMatches(Gen4Wild::form(row),c.originalForm))
         return {Status::CandidateRowContradicted,method};
+    // One original Method-1 seed must generate the SAME stored PID and IVs.
+    // A matching slot/nature alone is not an attested captured specimen.
+    if(!Gen3PidIv::validStoredIVs(c.originalIVs))
+        return {Status::UnknownOriginalNatureStage,method};
+    if(Gen4WildRng::sequentialPid(c.prePidSeed)!=c.pid)
+        return {Status::CandidatePidIvContradicted,method};
+    const auto pidiv=Gen4PidIv::analyze(c.pid,c.originalIVs);
+    if(!pidiv.matched() || pidiv.originSeed!=c.prePidSeed)
+        return {Status::CandidatePidIvContradicted,method};
     auto result=Gen4WildRng::matchNoLeadRow(
         true,row,c.prePidSeed,c.pid,c.originalLevel);
     if(!result.matched())
