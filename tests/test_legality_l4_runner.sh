@@ -46,6 +46,15 @@ header_only=(
     test_legality_l4_gen3_raw_text
     test_legality_l4_attestation_matrix
     test_legality_l4_gen1_3_event_sources
+    test_legality_l4_gen12_gift_history
+    test_legality_l4_gen3_distribution_matrix
+    test_legality_l4_gen4_pcd_pgt_container
+    test_legality_l4_gen4_mystery_gift_histories
+    test_legality_l4_historical_event_path
+    test_legality_l4_clock_receipt_history
+    test_legality_l4_historical_adversarial
+    test_legality_l4_stage5_coordinator_join
+    test_legality_l4_stage5_lane_reconciliation
 )
 native=(
     test_legality_l4_native_pk4_projection
@@ -55,7 +64,29 @@ native=(
     test_legality_l4_ball_history
     test_legality_l4_other_metadata
     test_legality_l4_trainer_identity
+    test_legality_l4_gen4_mystery_gift_native
 )
+# L4 discovery/registration parity: no newly added test may silently miss
+# normal or sanitizer execution. Duplicates are also exposed by the diff.
+registered=(
+    "${header_only[@]}" "${native[@]}"
+    test_legality_l4_native_pk3_text
+    test_legality_l4_gen3_distribution_native_pk3
+    test_legality_l4_gen3_palpark_metadata_bridge
+    test_legality_l4_stage5_native_pk3_join
+)
+mapfile -t discovered < <(
+    find tests -maxdepth 1 -type f -name 'test_legality_l4_*.cpp' -printf '%f\n' |
+        sed 's/\.cpp$//' | LC_ALL=C sort
+)
+if [[ "${#discovered[@]}" -ne 28 || "${#registered[@]}" -ne 28 ]] ||
+    ! diff -u <(printf '%s\n' "${discovered[@]}") \
+               <(printf '%s\n' "${registered[@]}" | LC_ALL=C sort); then
+    echo "L4 registry mismatch: ${#discovered[@]} discovered / ${#registered[@]} registered; expected 28" >&2
+    exit 3
+fi
+echo "L4 discovery/registration parity: 28/28 C++ suites"
+
 for name in "${header_only[@]}"; do
     echo "L4 C++ compile: $name"
     "$compiler" "${base[@]}" "tests/$name.cpp" -o "$scratch/$name"
@@ -79,14 +110,36 @@ echo "L4 C++ native PK3 compile: test_legality_l4_native_pk3_text"
     src/Encryption/Encryption3FRLG.cpp \
     -o "$scratch/test_legality_l4_native_pk3_text"
 "$scratch/test_legality_l4_native_pk3_text"
+echo "L4 C++ native PK3 compile: test_legality_l4_gen3_distribution_native_pk3"
+"$compiler" "${base[@]}" "${pk3_flags[@]}" \
+    tests/test_legality_l4_gen3_distribution_native_pk3.cpp \
+    src/Encryption/Encryption3FRLG.cpp \
+    -o "$scratch/test_legality_l4_gen3_distribution_native_pk3"
+"$scratch/test_legality_l4_gen3_distribution_native_pk3"
+echo "L4 C++ native PK3 compile: test_legality_l4_gen3_palpark_metadata_bridge"
+"$compiler" "${base[@]}" "${pk3_flags[@]}" \
+    tests/test_legality_l4_gen3_palpark_metadata_bridge.cpp \
+    src/Encryption/Encryption3FRLG.cpp \
+    -o "$scratch/test_legality_l4_gen3_palpark_metadata_bridge"
+"$scratch/test_legality_l4_gen3_palpark_metadata_bridge"
+echo "L4 C++ native PK3 compile: test_legality_l4_stage5_native_pk3_join"
+"$compiler" "${base[@]}" "${pk3_flags[@]}" \
+    tests/test_legality_l4_stage5_native_pk3_join.cpp \
+    src/Encryption/Encryption3FRLG.cpp \
+    -o "$scratch/test_legality_l4_stage5_native_pk3_join"
+"$scratch/test_legality_l4_stage5_native_pk3_join"
 echo "L4 Python frozen original-source projection integrity audit"
 python3 tools/legality_l4_projection_audit.py
 python3 -m unittest discover -v -s tests -p 'test_legality_l4_projection_audit.py'
 python3 -m unittest discover -v -s tests -p 'test_legality_l4_l5_q07_join.py'
+python3 -m unittest discover -v -s tests -p 'test_legality_l4_stage5_source_rights.py'
 # L5's independent Q07 document is NOT on the L4 branch. When coordinator
 # supplies its exact separately fetched copy, verify all 247 cross-lane
 # identities and the source-projection Git blob digest without merging.
 if [[ -n "${L4_L5_Q07_JSON:-}" ]]; then
     python3 tools/legality_l4_l5_q07_join.py --l5-q07 "$L4_L5_Q07_JSON"
 fi
-echo "L4 all 15 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
+if [[ -n "${L4_L5_Q08_JSON:-}" ]]; then
+    python3 tools/legality_l4_stage5_source_rights.py --l5-q08 "$L4_L5_Q08_JSON"
+fi
+echo "L4 all 28 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
