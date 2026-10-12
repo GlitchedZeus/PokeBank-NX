@@ -11,6 +11,7 @@
 #include "Legality/Gen34OrdinaryEggMoveConstruction.h"
 #include "Legality/Gen4NativeBreedingParentEvidence.h"
 #include "Legality/Gen4JointEggCandidateEvidence.h"
+#include "Legality/Gen4EggCandidateUniverse.h"
 #include "Legality/Gen4ContestRibbonEvidence.h"
 #include "Legality/Gen4RawTextEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
@@ -736,6 +737,86 @@ void testGen4JointNativeParentMoveIvHistories() {
                 };
                 const auto complete=J::evaluateWithNativeEgg(in,childHistory);
                 assert(complete.status==J::Status::KnownCandidateConsistent);
+                // BREED-004: evaluate alternate attested histories for the
+                // SAME original unhatched encrypted child, never union moves
+                // or IVs from different candidate parents.
+                namespace U=Legality::Gen4EggCandidateUniverse;
+                U::Input universe{};
+                universe.game=game;
+                universe.originalUnhatchedEgg=&child;
+                universe.originalEggSourceIndependentlyVerified=true;
+                universe.count=3;
+                for(uint8_t k=0;k<universe.count;++k) {
+                    auto& route=universe.alternatives[k];
+                    route.routeIdentity=1000u+k;
+                    route.hypothesisIndependentlyGrounded=true;
+                    route.fullCandidateMethodCoverageIndependentlyVerified=true;
+                    route.history=in;
+                    route.originalEgg=childHistory;
+                }
+                // Alternative #1 has incompatible final RNG evidence;
+                // alternative #2 has a genuinely UNKNOWN final state.
+                universe.alternatives[1].history.knownFinalRNGState^=1u;
+                universe.alternatives[2].history.finalRNGStateIndependentlyVerified=false;
+                auto setResult=U::evaluate(universe);
+                assert(setResult.status==U::Status::OneConditionalHistory);
+                assert(setResult.consistent==1 && setResult.contradicted==1 &&
+                       setResult.unresolved==1);
+                // A completed negative candidate set is scoped to the
+                // independently enumerated DAYCARE alternatives only.
+                auto exhaustedSet=universe;
+                exhaustedSet.alternatives[0].history.knownFinalRNGState^=2u;
+                exhaustedSet.alternatives[2].history.knownFinalRNGState^=4u;
+                exhaustedSet.alternatives[2].history.finalRNGStateIndependentlyVerified=true;
+                assert(U::evaluate(exhaustedSet).status==
+                       U::Status::UnknownCandidateEnumeration);
+                exhaustedSet.allDaycareHypothesesIndependentlyEnumerated=true;
+                auto exhausted=U::evaluate(exhaustedSet);
+                assert(exhausted.status==U::Status::AllAttestedDaycareHistoriesContradicted);
+                assert(exhausted.contradicted==3 && exhausted.consistent==0);
+                auto lostHistory=exhaustedSet;
+                lostHistory.alternatives[1].fullCandidateMethodCoverageIndependentlyVerified=false;
+                assert(U::evaluate(lostHistory).status==U::Status::UnknownCandidateEvidence);
+                auto lostProvenance=exhaustedSet;
+                lostProvenance.alternatives[1].hypothesisIndependentlyGrounded=false;
+                assert(U::evaluate(lostProvenance).status==U::Status::UnknownCandidateProvenance);
+                auto duplicateRoute=exhaustedSet;
+                duplicateRoute.alternatives[1].routeIdentity=
+                    duplicateRoute.alternatives[0].routeIdentity;
+                assert(U::evaluate(duplicateRoute).status==U::Status::UnknownCandidateIdentity);
+                auto missingRoute=exhaustedSet;
+                missingRoute.alternatives[1].routeIdentity=0;
+                assert(U::evaluate(missingRoute).status==U::Status::UnknownCandidateIdentity);
+                auto missingChild=exhaustedSet;
+                missingChild.originalUnhatchedEgg=nullptr;
+                assert(U::evaluate(missingChild).status==U::Status::UnknownOriginalEggSource);
+                auto unauthenticatedChild=exhaustedSet;
+                unauthenticatedChild.originalEggSourceIndependentlyVerified=false;
+                assert(U::evaluate(unauthenticatedChild).status==U::Status::UnknownOriginalEggSource);
+                auto alienSource=exhaustedSet;
+                alienSource.alternatives[1].history.parents.game="diamond_nds";
+                assert(U::evaluate(alienSource).status==U::Status::UnknownCandidateProvenance);
+                auto borrowedChild=exhaustedSet;
+                auto foreignRaw=childRaw;wr16(foreignRaw,0x08,25);
+                Pokemon::Pokemon4ReadOnly foreignChild(
+                    Encryption::encryptArray4(foreignRaw),group);
+                assert(foreignChild.valid() && foreignChild.isEgg());
+                borrowedChild.alternatives[1].originalEgg.record=&foreignChild;
+                assert(U::evaluate(borrowedChild).status==U::Status::UnknownCandidateProvenance);
+                auto noChildStage=exhaustedSet;
+                noChildStage.alternatives[1].originalEgg.originalEggStageToken=0;
+                assert(U::evaluate(noChildStage).status==U::Status::UnknownCandidateEvidence);
+                auto wrongChildStage=exhaustedSet;
+                wrongChildStage.alternatives[1].originalEgg.originalEggStageToken=0x9F33u;
+                assert(U::evaluate(wrongChildStage).status==
+                       U::Status::AllAttestedDaycareHistoriesContradicted);
+                auto unsupportedUniverse=exhaustedSet;
+                unsupportedUniverse.game="diamond_nds";
+                assert(U::evaluate(unsupportedUniverse).status==U::Status::UnsupportedGame);
+                auto overCapacity=exhaustedSet;overCapacity.count=9;
+                assert(U::evaluate(overCapacity).status==U::Status::CapacityExceededUnknown);
+                auto none=exhaustedSet;none.count=0;
+                assert(U::evaluate(none).status==U::Status::NoCandidates);
                 auto noChildIVProvenance=in;
                 noChildIVProvenance.observedChildIVsIndependentlyVerified=false;
                 assert(J::evaluateWithNativeEgg(noChildIVProvenance,childHistory).status==
