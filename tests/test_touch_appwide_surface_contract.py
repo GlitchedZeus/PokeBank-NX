@@ -369,11 +369,15 @@ for dead_macro in ("#define touch kLegacyNoTouch",
     if dead_macro in composite_touch:
         raise AssertionError(f"Composite touch glue regressed to macro adapter: {dead_macro}")
 require_all("src/UI/Gen3SharedPokemonSurface.inc",
-            "const auto detailVisual = liveVerticalListVisual(",
-            "detailVisual.offset")
+            "TouchPickerViewport detailsViewport;", "TouchScrollState detailsTouchScroll;",
+            "state.detailsTouchScroll.updateVertical(",
+            "detailPixelOffset, firstDetailRow",
+            "appendClippedTouchButton(screen.touchButtons, 31000 + row")
 require_all("src/UI/Gen4SharedPokemonSurface.inc",
-            "const auto detailVisual = liveVerticalListVisual(",
-            "detailVisual.offset")
+            "TouchPickerViewport detailsViewport;", "TouchScrollState detailsTouchScroll;",
+            "state.detailsTouchScroll.updateVertical(",
+            "detailPixelOffset, firstDetailRow",
+            "appendClippedTouchButton(screen.touchButtons, 41000 + row")
 require_all("src/UI/SaveSelectScreen.cpp",
             "gamesDrawerTouchScroll.updateVertical(",
             "classicGamesTouchScroll.updateVertical(",
