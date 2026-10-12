@@ -49,8 +49,10 @@ constexpr bool validGroup(uint8_t group) noexcept {
     return group>=1 && group<=15;
 }
 constexpr bool shareGroup(const Parent& a,const Parent& b) noexcept {
-    return a.eggGroup1==b.eggGroup1 || a.eggGroup1==b.eggGroup2 ||
-           a.eggGroup2==b.eggGroup1 || a.eggGroup2==b.eggGroup2;
+    return a.eggGroup1==b.eggGroup1 ||
+           (b.eggGroup2 && a.eggGroup1==b.eggGroup2) ||
+           (a.eggGroup2 && a.eggGroup2==b.eggGroup1) ||
+           (a.eggGroup2 && b.eggGroup2 && a.eggGroup2==b.eggGroup2);
 }
 constexpr Result evaluate(const Input& in) noexcept {
     Result out{};
@@ -62,6 +64,12 @@ constexpr Result evaluate(const Input& in) noexcept {
     if(!a.snapshotId || !b.snapshotId || !a.species || !b.species) return out;
     if(a.snapshotId==b.snapshotId) {
         out.status=Status::IncoherentParents;return out;
+    }
+    // Version-specific native parent species ceiling. A known impossible
+    // source-species pair contradicts this candidate, not the child.
+    const uint16_t maxSpecies=in.game=="emerald_gba"?386u:493u;
+    if(a.species>maxSpecies || b.species>maxSpecies) {
+        out.status=Status::Incompatible;out.scoreKnown=true;return out;
     }
     out.depositOrderKnown=in.depositOrderIndependentlyVerified;
     if(out.depositOrderKnown) {

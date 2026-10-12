@@ -253,6 +253,11 @@ void testBreedingEligibilityAndRoles() {
             in.slot1=male;in.slot1.eggGroup1=2;
             in.slot0.eggGroup1=1;in.slot0.eggGroup2=2;
             assert(B::evaluate(in).status==B::Status::Compatible); // group 2
+            in.slot0.eggGroup2=0;in.slot1.eggGroup2=0;
+            assert(B::evaluate(in).status==B::Status::Incompatible);
+            in.slot0=female;in.slot1=male;
+            in.slot0.species=500;
+            assert(B::evaluate(in).status==B::Status::Incompatible);
         }
     }
     B::Input unsupported{};
