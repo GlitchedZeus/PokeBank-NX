@@ -114,12 +114,17 @@ constexpr Result evaluate(const Input& in) noexcept {
     // genderless non-Ditto. This tests only a necessary retail condition,
     // not egg-group compatibility or authentic historical provenance.
     const bool ditto0=a.species==132u, ditto1=b.species==132u;
+    // Even a malformed two-Ditto snapshot still establishes that no
+    // ordinary two-Ditto egg route exists, as in the earlier regression.
+    if(ditto0 && ditto1) {
+        out.status=Status::IncompatibleOriginalDaycarePair;return out;
+    }
     if((ditto0 && a.gender!=2u) || (ditto1 && b.gender!=2u)) {
         out.status=Status::UnknownParentSnapshots;return out;
     }
     const bool opposite=(a.gender==0u && b.gender==1u) ||
                         (a.gender==1u && b.gender==0u);
-    if((ditto0 && ditto1) || (!ditto0 && !ditto1 && !opposite)) {
+    if(!ditto0 && !ditto1 && !opposite) {
         out.status=Status::IncompatibleOriginalDaycarePair;return out;
     }
     if(!in.originalCreationStageIndependentlyVerified ||
