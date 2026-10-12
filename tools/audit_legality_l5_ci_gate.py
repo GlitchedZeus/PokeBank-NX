@@ -48,7 +48,11 @@ def gate(x: dict[str, Any]) -> dict[str, Any]:
             continue
         if job.get("status") != "completed" or job.get("conclusion") != "success":
             reasons.append("At least one required workflow job not completed successfully")
-        for s in job.get("steps", []):
+        job_steps = job.get("steps")
+        if not isinstance(job_steps, list):
+            reasons.append("Missing or malformed step list in job evidence")
+            continue
+        for s in job_steps:
             if isinstance(s, dict) and s.get("name") in steps:
                 steps[s["name"]].add(str(s.get("conclusion")))
     for name, observed in steps.items():
