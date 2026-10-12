@@ -1,0 +1,118 @@
+#pragma once
+// L3 M06/M07/M12: verify ONE full same-species, same-cartridge history
+// against source-ordered level-up *and* numbered machine acquisitions.
+// Four individually obtainable moves do not prove one feasible sequence.
+// Positive/contradicted results refer solely to this witnessed candidate;
+// unmodeled egg, event, tutor, reminder, evolution, trade or Gen IV routes
+// remain UNRESOLVED, never a global Invalid judgment.
+// Sources: pinned pokeruby@63a8cbf, pokeemerald@5eff786,
+// pokefirered@c75f352; accepted Gen3EmeraldLevelUpData.inc.
+#include "Legality/Gen14CandidateMoveGbaLevelUpTimeline.h"
+#include "Legality/Gen14CandidateMoveMachineEvidence.h"
+#include <array>
+#include <cstdint>
+
+namespace Legality::Gen14CandidateMoveJointAcquisition {
+namespace C=Gen14CandidateMoveChronology;
+namespace L=Gen3GbaVersionedLevelUpTimeline;
+namespace M=Gen14CandidateMoveMachineEvidence;
+using Status=C::Status;
+struct MachineWitness {
+    uint8_t stepIndex=0;
+    M::Stage numberedItem{};
+};
+struct Input {
+    C::Path path{};
+    // The witness is for an uninterrupted species/game/level-up stage;
+    // any game visit, evolution, egg, event or unrecorded service calls
+    // must be analyzed as a separate candidate, never silently excluded.
+    bool uninterruptedSameSpeciesGameStageVerified=false;
+    bool allOfferedLevelUpDecisionsRecorded=false;
+    std::array<MachineWitness,32> machines{};
+    uint8_t machineCount=0;
+};
+struct Result {
+    Status status=Status::Unresolved;
+    uint8_t requiredOffers=0, verifiedMachines=0;
+    C::Result fourSlot{};
+};
+constexpr Result evaluate(const Input& in) noexcept {
+    Result out{};
+    const auto& p=in.path;
+    if(C::generation(p.origin)!=3 || !p.species || p.species>386 ||
+       p.stepCount>p.steps.size() || in.machineCount>in.machines.size())
+        return out;
+    if(!in.uninterruptedSameSpeciesGameStageVerified ||
+       !in.allOfferedLevelUpDecisionsRecorded ||
+       !L::supported(p.origin,p.species))return out;
+    // Stage evidence is checked FIRST. Never convert absent source into
+    // a contradiction even if a different guessed history fails.
+    out.fourSlot=C::evaluate(p);
+    if(out.fourSlot.status!=Status::CandidateConsistent) {
+        out.status=out.fourSlot.status;return out;
+    }
+    uint16_t next=0;
+    const uint16_t count=L::offerCount(p.origin,p.species);
+    while(next<count && L::offerAt(p.origin,p.species,next).level<=p.initialLevel)
+        ++next;
+    std::array<bool,32> used{};
+    for(uint8_t i=0;i<p.stepCount;++i) {
+        const auto& step=p.steps[i];
+        // Trades, Pal Park, evolving, egg inheritance and event routes need
+        // separate joint witnesses; absence of a modeled edge is Unknown.
+        if(step.action==C::Action::VisitGame ||
+           step.action==C::Action::PalPark)return out;
+        if(step.game!=p.origin)return out;
+        const bool levelOffer=step.method==C::Method::LevelUp &&
+            (step.action==C::Action::Learn ||
+             step.action==C::Action::Decline ||
+             step.action==C::Action::AlreadyKnown);
+        if(levelOffer) {
+            if(next>=count) {
+                out.status=Status::CandidateContradicted;return out;
+            }
+            const auto source=L::offerAt(p.origin,p.species,next);
+            // Each evolution-stage offer is indivisible and ordered;
+            // a fake lv45 SolarBeam or a skipped lv7 Leech Seed can
+            // look compatible in a species-wide single-move pool.
+            if(source.level!=step.level || source.move!=step.move) {
+                out.status=Status::CandidateContradicted;return out;
+            }
+            ++next;++out.requiredOffers;continue;
+        }
+        // A source level-up offer at/before the present stage cannot be
+        // silently bypassed by subsequently teaching a machine move.
+        if(next<count && L::offerAt(p.origin,p.species,next).level<=step.level) {
+            out.status=Status::CandidateContradicted;return out;
+        }
+        if(step.action!=C::Action::Learn ||
+           (step.method!=C::Method::TM && step.method!=C::Method::HM))
+            return out; // Reminder, tutor, deletion: other evidence packets
+        uint8_t matching=0;
+        for(uint8_t j=0;j<in.machineCount;++j) {
+            if(in.machines[j].stepIndex!=i)continue;
+            ++matching;used[j]=true;
+            const auto item=M::classifyChronologyStep(
+                in.machines[j].numberedItem,step);
+            if(item==M::Status::CandidateContradicted) {
+                out.status=Status::CandidateContradicted;return out;
+            }
+            if(item!=M::Status::CandidateCompatible)return out;
+        }
+        if(matching!=1)return out;
+        ++out.verifiedMachines;
+    }
+    // No unrecorded final offer, and no extra/cross-candidate item receipt
+    // used to manufacture joint method evidence.
+    if(next<count && L::offerAt(p.origin,p.species,next).level<=p.observedLevel) {
+        out.status=Status::CandidateContradicted;return out;
+    }
+    for(uint8_t i=0;i<in.machineCount;++i)if(!used[i])return out;
+    out.status=Status::CandidateConsistent;
+    return out;
+}
+static_assert(L::offerAt(C::Game::Ruby,1,2).move==73);
+static_assert(L::offerAt(C::Game::Ruby,1,3).move==22);
+static_assert(L::offerAt(C::Game::Ruby,1,10).level==46);
+static_assert(!L::supported(C::Game::Ruby,133));
+} // namespace Legality::Gen14CandidateMoveJointAcquisition
