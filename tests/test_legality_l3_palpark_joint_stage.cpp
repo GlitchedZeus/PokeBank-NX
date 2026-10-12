@@ -93,6 +93,15 @@ static_assert([]{auto a=withNativeHm(true);
 
 static_assert(J::evaluate(withNativeHm(true)).status==S::CandidateConsistent);
 static_assert(J::evaluate(withNativeHm(true)).verifiedNativeMethods==1);
+static_assert([]{auto a=withNativeHm(true);
+    a.path.stepCount=4;
+    a.path.steps[3]={G::Platinum,20,A::DeleteMove,T::LevelUp,0,3,true,G::Unknown};
+    a.path.observedMoves={33,45,92,0};
+    a.laterMethodCount=2;
+    a.laterMethods[1]={3,G::Platinum,T::LevelUp,0,20,72,true};
+    const auto result=J::evaluate(a);
+    return result.status==S::CandidateConsistent && result.verifiedNativeMethods==2;
+}());
 static_assert([]{auto a=withNativeHm(true);a.laterMethods[0].independentlyVerified=false;
     return J::evaluate(a).status==S::Unresolved;}());
 static_assert([]{auto a=withNativeHm(true);a.laterMethods[0].independentSourceRecord=0;
