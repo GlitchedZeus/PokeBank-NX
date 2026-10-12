@@ -318,7 +318,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
          Gen1PokemonEditor::ux2StateFor(*this).mode ==
              decltype(Gen1PokemonEditor::ux2StateFor(*this).mode)::Closed) &&
         ((Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::editorAvailable(*this)) ||
-         (Gen2PokemonEditor::isGSC(*this) && Gen2PokemonEditor::stagedEditor(*this) != nullptr) ||
+         (Gen2PokemonEditor::isGSC(*this) && stagedEditor(*this) != nullptr) ||
          Gen3SharedEditorSurface::isGen3Gba(*this) ||
          Gen4SharedEditorSurface::isGen4Nds(*this));
     if (stagedStorageSave && (touch.justPressed() || touch.justTapped())) {
