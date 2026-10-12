@@ -160,8 +160,8 @@ gen2_popup = legacy_draw.split("namespace UI::Gen2PokemonEditor", 1)[1].split(
     "bool drawReleaseActionSurface(", 1)[1]
 assert "drawNarrowPokemonActions(fb, screen.touchButtons, model, state.row" in gen1_popup
 assert "drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow" in gen2_popup
-assert '"GEN I / READ-ONLY SOURCE", 300' in gen1_popup
-assert '"GEN II / READ-ONLY SOURCE", 500' in gen2_popup
+assert 'screen.legacyProviderLabel() + " GB SOURCE / READ ONLY", 300' in gen1_popup
+assert 'screen.legacyProviderLabel() + " GBC SOURCE / READ ONLY", 500' in gen2_popup
 assert "const int w = pokemon ? 650 : 560;" not in gen2_popup
 assert "releaseActionCapabilities(),\n        !editor->pendingChanges().empty()" in gen2_popup
 assert "staged && !staged->pendingChanges().empty()" in gen1_popup
