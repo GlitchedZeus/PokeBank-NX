@@ -60,19 +60,22 @@ constexpr Result evaluate(const Input& in) noexcept {
        !Gen3EggIVInheritanceStage::validIVs(in.originalEggIVs)) {
         out.status=Status::UnknownOriginalEgg;return out;
     }
-    for(uint8_t i=0;i<in.count;++i) {
-        if(!in.alternatives[i].routeIdentity) {
-            out.status=Status::DuplicateOrMissingRoute;return out;
-        }
-        for(uint8_t j=0;j<i;++j)
-            if(in.alternatives[i].routeIdentity==
-               in.alternatives[j].routeIdentity) {
-                out.status=Status::DuplicateOrMissingRoute;return out;
-            }
-    }
+    // A malformed second archive route must not erase an independently
+    // attested matching first route. But an incomplete/duplicate route must
+    // NEVER count towards exhaustive contradiction of all originals.
+    bool malformedRouteIdentity=false;
     for(uint8_t i=0;i<in.count;++i) {
         const Route& r=in.alternatives[i];
         ++out.considered;
+        bool unique=r.routeIdentity!=0;
+        for(uint8_t j=0;j<i;++j)
+            if(r.routeIdentity==in.alternatives[j].routeIdentity)
+                unique=false;
+        if(!unique) {
+            malformedRouteIdentity=true;
+            ++out.unverified;
+            continue;
+        }
         const auto& x=r.history;
         if(!r.originalSourceHistoryIndependentlyAttested ||
            r.claimedOriginalEggIdentity!=in.originalEggIdentity ||
@@ -100,6 +103,7 @@ constexpr Result evaluate(const Input& in) noexcept {
         ++out.unresolved;
     }
     if(out.consistent)out.status=Status::OneConditionallyConsistentHistory;
+    else if(malformedRouteIdentity)out.status=Status::DuplicateOrMissingRoute;
     else if(out.unverified)out.status=Status::UnverifiedCandidateProvenance;
     else if(out.unresolved)out.status=Status::UnresolvedCandidateHistory;
     else if(!in.allOrdinaryDaycareAlternativesIndependentlyEnumerated)
