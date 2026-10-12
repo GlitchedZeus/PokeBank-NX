@@ -1,6 +1,7 @@
 #pragma once
 
 #include "UI/SharedPokemonEditorContract.h"
+#include "UI/Gen1PokemonEditorUIContract.h"
 
 #include <array>
 #include <cstddef>
@@ -101,6 +102,45 @@ struct Geometry {
     result.append("Cancel", classicIndex(native, A::Close));
     return result;
 }
+
+// Map the older Gen I action enum onto the same narrow, greyed-out visual
+// model, retaining the original native index for each enabled command.
+[[nodiscard]] constexpr Model gen1(
+    const Gen1Editor::ActionSet& native, bool occupied) noexcept {
+    using A = Gen1Editor::Action;
+    const auto index = [&](A action) constexpr noexcept {
+        for (int i = 0; i < static_cast<int>(native.count); ++i)
+            if (native[static_cast<std::size_t>(i)] == action) return i;
+        return -1;
+    };
+    Model result{};
+    if (!occupied) {
+        result.append("Add Pokemon", index(A::AddPokemon));
+        const int review = index(A::ReviewPendingChanges);
+        if (review >= 0) result.append("Review Pending Changes", review);
+        result.append("Cancel", index(A::Cancel));
+        return result;
+    }
+    result.append("View Pokemon", index(A::View));
+    result.append("Add to Master Vault");
+    result.append("Add to Bank...");
+    result.append("Transfer to Game...");
+    result.append("Edit", index(A::Edit));
+    result.append("Clone", index(A::Clone));
+    result.append("Release", index(A::Remove));
+    result.append("Make Shiny");
+    result.append("Legality & Provenance", index(A::LegalityProvenance));
+    const int review = index(A::ReviewPendingChanges);
+    if (review >= 0) result.append("Review Pending Changes", review);
+    result.append("Cancel", index(A::Cancel));
+    return result;
+}
+
+static_assert(gen1(Gen1Editor::actionsForSlot(true), true).count == 10);
+static_assert(gen1(Gen1Editor::actionsForSlot(true, true), true).count == 11);
+static_assert(gen1(Gen1Editor::actionsForSlot(false), false).count == 2);
+static_assert(gen1(Gen1Editor::actionsForSlot(false, true), false).count == 3);
+static_assert(gen1(Gen1Editor::actionsForSlot(true), true).visualIndex(-1) == -1);
 
 static_assert(geometry(12).height <= 720 - 56);
 static_assert(classic(
