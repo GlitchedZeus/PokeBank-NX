@@ -11,6 +11,7 @@ an executed Legality::analyze or authentic historical PKHeX parity.
 from __future__ import annotations
 import argparse
 from collections import Counter
+import hashlib
 import json
 from pathlib import Path
 import struct
@@ -92,7 +93,25 @@ def inspect(rec: dict, valid: bool) -> None:
     assert rec["expected_whole_native_legality"]=="UNDETERMINED"
     assert u16(decoded,0x20 if gen==3 else 8)==1
 
-def audit(path: Path=PATH) -> dict:
+def check_source_pins(root: Path, source_blobs: dict) -> dict:
+    mapped = {
+        "PK3": "src/Encryption/Encryption3FRLG.cpp",
+        "PK4": "src/Encryption/Encryption4.cpp",
+        "shuffle": "include/Encryption/Encryption.h",
+        "PK3wrapper": "include/Pokemon/Pokemon3FRLG.h",
+        "PK4wrapper": "src/Pokemon/Pokemon4ReadOnly.cpp",
+    }
+    for key, rel in mapped.items():
+        payload = (root / rel).read_bytes()
+        git_blob = hashlib.sha1(
+            b"blob " + str(len(payload)).encode("ascii") + b"\0" + payload
+        ).hexdigest()
+        if git_blob != source_blobs[key]:
+            raise AssertionError(f"Native codec/source drift for {key}: {rel}; "
+                                 f"expected {source_blobs[key]}, saw {git_blob}")
+    return {"source_files_with_exact_pinned_git_blobs":len(mapped)}
+
+def audit(path: Path=PATH, source_root: Path | None=None) -> dict:
     obj=json.loads(path.read_text(encoding="utf-8"))
     assert obj["schema"]=="L5_Q09_SYNTHETIC_NATIVE_EV_FIXTURE_SET_V1"
     assert obj["provenance_grade"]=="synthetic_native_format_nonretail"
@@ -115,7 +134,10 @@ def audit(path: Path=PATH) -> dict:
     for gen in (3,4):
         assert {x["ev_hp"] for x in good if x["generation"]==gen}=={0,1,252,253,254,255}
         assert {x["is_egg"] for x in good if x["generation"]==gen}=={False,True}
-    return {"schema":"L5_Q09_NATIVE_FORMAT_VERIFICATION_V1",
+    pins = check_source_pins(source_root, obj["source_blobs"]) if source_root else {
+        "source_files_with_exact_pinned_git_blobs": "NOT_CHECKED"}
+    return {"source_pins":pins,
+            "schema":"L5_Q09_NATIVE_FORMAT_VERIFICATION_V1",
             "status":"PASS","valid_records":len(good),"corrupted_rejected":len(bad),
             "pk3_shuffle_coverage":24,"pk4_shuffle_coverage":32,
             "scope":"synthetic native-format integrity only",
@@ -125,9 +147,10 @@ def audit(path: Path=PATH) -> dict:
 def main() -> None:
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--fixture",type=Path,default=PATH)
+    parser.add_argument("--source-root",type=Path)
     parser.add_argument("--json-out",type=Path)
     args=parser.parse_args()
-    result=audit(args.fixture)
+    result=audit(args.fixture,args.source_root)
     summary=json.dumps(result,indent=2,sort_keys=True)+"\n"
     print(summary)
     if args.json_out:
