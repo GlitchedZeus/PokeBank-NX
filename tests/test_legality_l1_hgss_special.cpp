@@ -46,37 +46,38 @@ int main(){
             c.originalSpecies=W::species(row);
             c.originalLocation=W::location(row);
             c.originalForm=W::form(row)>=30?0:W::form(row);
-            bool found=false;
-            for(uint32_t seed=0;seed<4096 && !found;++seed){
-                c.prePidSeed=seed;c.pid=R::sequentialPid(seed);
-                uint32_t state=seed;
-                state=Legality::Gen3PidIv::Detail::next(state);
-                state=Legality::Gen3PidIv::Detail::next(state);
-                state=Legality::Gen3PidIv::Detail::next(state);
-                const uint16_t a=static_cast<uint16_t>((state>>16)&0x7FFFu);
-                state=Legality::Gen3PidIv::Detail::next(state);
-                const uint16_t b=static_cast<uint16_t>((state>>16)&0x7FFFu);
-                c.originalIVs={
-                    static_cast<uint8_t>(a&31u),
-                    static_cast<uint8_t>((a>>5)&31u),
-                    static_cast<uint8_t>((a>>10)&31u),
-                    static_cast<uint8_t>(b&31u),
-                    static_cast<uint8_t>((b>>5)&31u),
-                    static_cast<uint8_t>((b>>10)&31u)};
-                const auto pidiv=Legality::Gen4PidIv::analyze(c.pid,c.originalIVs);
-                if(!pidiv.matched()||pidiv.originSeed!=seed)continue;
-                for(uint32_t level=W::minLevel(row);level<=W::maxLevel(row);++level){
-                    c.originalLevel=static_cast<uint8_t>(level);
-                    if(!R::matchNoLeadRow(
-                            true,row,seed,c.pid,c.originalLevel).matched())
-                        continue;
-                    const auto pass=S::evaluate(c);
-                    assert(pass.status==St::KnownConditionalSpecialEncounter);
-                    assert(pass.matchedRng!=R::Method::None);
-                    found=true;break;
-                }
-            }
-            assert(found && "pinned HGSS source row must admit a no-lead test seed");
+            // Fixed independent Method-K source-vector controls, not a search
+            // that asks the matcher under test to construct its own witness.
+            // Indices 0..4: Good Rod, Rock Smash, Headbutt, Contest, Safari.
+            constexpr std::array<uint32_t,5> seeds{13u,12u,17u,8u,8u};
+            constexpr std::array<uint8_t,5> levels{20u,26u,5u,14u,15u};
+            c.prePidSeed=seeds[k];
+            c.pid=R::sequentialPid(seeds[k]);
+            c.originalLevel=levels[k];
+            assert(W::levelMatches(row,c.originalLevel));
+            uint32_t state=seeds[k];
+            state=Legality::Gen3PidIv::Detail::next(state);
+            state=Legality::Gen3PidIv::Detail::next(state);
+            state=Legality::Gen3PidIv::Detail::next(state);
+            const uint16_t a=static_cast<uint16_t>((state>>16)&0x7FFFu);
+            state=Legality::Gen3PidIv::Detail::next(state);
+            const uint16_t b=static_cast<uint16_t>((state>>16)&0x7FFFu);
+            c.originalIVs={
+                static_cast<uint8_t>(a&31u),
+                static_cast<uint8_t>((a>>5)&31u),
+                static_cast<uint8_t>((a>>10)&31u),
+                static_cast<uint8_t>(b&31u),
+                static_cast<uint8_t>((b>>5)&31u),
+                static_cast<uint8_t>((b>>10)&31u)};
+            const auto pidiv=Legality::Gen4PidIv::analyze(c.pid,c.originalIVs);
+            assert(pidiv.matched() && pidiv.originSeed==seeds[k]);
+            const auto frame=R::matchNoLeadRow(
+                true,row,c.prePidSeed,c.pid,c.originalLevel);
+            assert(frame.matched());
+            const auto pass=S::evaluate(c);
+            assert(pass.status==St::KnownConditionalSpecialEncounter);
+            assert(pass.matchedRng==frame.method);
+
             // A real encrypted PK4 storage format/reader, with original
             // source-game byte, native species, location, level, PID and IVs.
             // Capture history remains synthetic and independently supplied.

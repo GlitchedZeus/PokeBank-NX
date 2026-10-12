@@ -20,6 +20,20 @@
 
 **E15:** `Gen4NatureReversalReplay.h` replays **forward from an independently attested pre-nature RNG state**, using Method J's division and Method K's modulo nature, and bounded generated PID pairs. Explicit `SearchExhausted` is not an impossible history. Frozen RNG-002 HGSS vector: initial state `0x00000012`, nature 20, 129 rejected pairs, retained PID `0xEA0705DB`, accepted pre-PID state `0xE0D14A4F`. The legacy 128 reverse-window search exhausts; a 130-pair forward/reverse witness succeeds. This does not yet retroactively extend every existing row matcher; coordinator owns shared integration decisions.
 
+## E13 fixed Method K source-vector matrix
+
+The ten E13 native-PK4 tests now use **fixed, independently reconstructed original-stage inputs**, not a brute-force search whose own target matcher selects the answer. Frozen row-index ordering is Good Rod, Rock Smash, Headbutt, Bug Catching Contest, Safari, with no-lead Method K and separately asserted original capture-time conditions:
+
+| Category | HG original row | SS original row | Pre-PID seed | Captured level | PID |
+|---|---:|---:|---:|---:|---|
+| Good Rod | 9302 | 15159 | `0x0000000D` | 20 | `0xCBC05712` |
+| Rock Smash | 9271 | 15104 | `0x0000000C` | 26 | `0x091D154C` |
+| Headbutt | 8495 | 14337 | `0x00000011` | 5 | `0xD64A5E2B` |
+| Bug Contest | 8477 | 14299 | `0x00000008` | 14 | `0xFE930E32` |
+| Safari | 8605 | 14438 | `0x00000008` | 15 | `0xFE930E32` |
+
+Source of rows: pinned accepted `Gen4WildEncounterData.inc`, built from `PKHeX@6501f0...` HG/SS resource tables. Independently replayed Method K RNG state, original slot/level/activation and normal Method-1 IV words against these **ten exact rows** using a separate JS implementation; **10/10 matched**. That is an original-game-specific algorithmic check, NOT an execution of newly committed C++ tests, nor evidence that any actual retail specimen was historically caught under the stated conditions. Real source conditions remain independently attested fields.
+
 ## Coverage, evidence grade, and caveats
 
 - Four new read-only headers; four independent native C++ translation-unit suites `tests/test_legality_l1_*.cpp`; E13 suite additionally constructs ten checksum-valid encrypted PK4 snapshots, one per original game x five special categories (synthetic historical stage, not archival catches).
