@@ -8,6 +8,7 @@
 #include "Legality/Gen4EventJointMoveHistory.h"
 #include "Legality/Gen4EventRibbonCandidate.h"
 #include "Legality/Gen4RawTextEvidence.h"
+#include "Legality/Gen4EventTemplateAudit.h"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -120,6 +121,67 @@ constexpr Result evaluate(const Input& in) noexcept {
         out.status=Status::IncoherentArchiveProvenance;return out;
     }
     out.status=Status::KnownConditionalCandidate;
+    return out;
+}
+
+// V07/V08/V10/V11: opt-in original-archive-gated joint event evaluation.
+// Does NOT change the legacy hypothetical candidate API or Legality.cpp.
+// A source row is selected by projected INDEX, because 219/247 rows use
+// card IDs shared with other event templates. A card ID is NOT a source key.
+enum class AttestedStatus : uint8_t {
+    UnknownArchive, UntrustedArchive, UnknownRelease,
+    UnknownOriginalFields, IncoherentArchive, IdentityMismatch,
+    UnresolvedCandidate, CandidateContradicted, ConditionalWitness
+};
+struct AttestedResult {
+    AttestedStatus status=AttestedStatus::UnknownArchive;
+    Gen4EventArchiveAttestation::Result provenance{};
+    Result candidate{};
+};
+constexpr AttestedResult evaluateAttested(
+    const Input& in,
+    const Gen4EventArchiveAttestation::Source& source) noexcept {
+    namespace Archive=Gen4EventArchiveAttestation;
+    namespace Audit=Gen4EventTemplateAudit;
+    AttestedResult out{};
+    if(source.projectionIndex>=Audit::kCount) return out;
+    const auto& t=Gen4EventTemplate::kGen4EventTemplates[source.projectionIndex];
+    if(source.cardId!=t.cardId || source.species!=t.species ||
+       in.moves.claimedCardId!=t.cardId ||
+       !(Gen4EventTemplate::matches(t,in.moves.stored) ||
+         Gen4EventTemplate::matchesEvolved(t,in.moves.stored))) {
+        out.status=AttestedStatus::IdentityMismatch;return out;
+    }
+    out.provenance=Archive::evaluate(source,Audit::kCount,t.cardId,t.species);
+    switch(out.provenance.status) {
+    case Archive::Status::UnknownProjection:
+    case Archive::Status::UnknownArchive:
+        out.status=AttestedStatus::UnknownArchive;return out;
+    case Archive::Status::IdentityMismatch:
+        out.status=AttestedStatus::IdentityMismatch;return out;
+    case Archive::Status::NonOriginalArchive:
+        out.status=AttestedStatus::UntrustedArchive;return out;
+    case Archive::Status::UnknownRelease:
+        out.status=AttestedStatus::UnknownRelease;return out;
+    case Archive::Status::MissingField:
+        out.status=AttestedStatus::UnknownOriginalFields;return out;
+    case Archive::Status::IncoherentFieldPayload:
+        out.status=AttestedStatus::IncoherentArchive;return out;
+    case Archive::Status::ConditionalOriginalWitness:break;
+    }
+    // The source digest must be the SAME ORIGINAL archive bytes used for
+    // all three independently projected field families, not a dataset hash.
+    if(in.moveSourceArchiveSha256!=source.originalPayloadSha256 ||
+       in.ribbonSourceArchiveSha256!=source.originalPayloadSha256 ||
+       in.rawTextSourceArchiveSha256!=source.originalPayloadSha256) {
+        out.status=AttestedStatus::IncoherentArchive;return out;
+    }
+    out.candidate=evaluate(in);
+    if(out.candidate.status==Status::KnownConditionalCandidate)
+        out.status=AttestedStatus::ConditionalWitness;
+    else if(out.candidate.status==Status::CandidateContradicted)
+        out.status=AttestedStatus::CandidateContradicted;
+    else out.status=AttestedStatus::UnresolvedCandidate;
     return out;
 }
 } // namespace Legality::Gen4UnifiedEventCandidateEvidence
