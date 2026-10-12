@@ -64,6 +64,7 @@ PROGRAMS: dict[str, tuple[str, ...]] = {
     "audit": ("legality_stage2_native_format_properties", "legality_stage3_cross_lane_contracts",
               "legality_l6_stage1_l2_duplicate_route_contract",
               "legality_l6_stage2_bounds_contract",
+              "legality_l6_stage2_joint_headers",
               "legality_l6_stage2_pk4_offset_native",
               "legality_l6_stage4_gate_ledger",
               "legality_l6_stage5_joint_history",
