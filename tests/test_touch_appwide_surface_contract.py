@@ -184,8 +184,10 @@ require_all("src/UI/Gen2SharedPokemonSurface.inc",
 # A visible Gen III/IV Pokémon tap must route to the SAME native action sheet as A;
 # the inherited generic action sheet cannot edit or clone staged Pokémon.
 require_all("src/UI/Gen3SharedPokemonSurface.inc",
-            "if (touch.justTapped()) {", "screen.selectedItemIndex = tapped;",
-            "if (!editor(screen)) return false;",
+            "screen.detailViewActive && touch.justTapped()) {",
+            "const int tapped = screen.touchedButtonId(touch);",
+            "screen.selectedItemIndex = tapped;",
+            "if (boxEntrySurface(screen)) {",
             "beginActions(screen);")
 require_all("src/UI/Gen4SharedPokemonSurface.inc",
             "if (boxEntry && touch.justTapped())", "screen.selectedItemIndex = tapped;",
@@ -196,7 +198,7 @@ require_all("src/UI/Gen4SharedPokemonSurface.inc",
 # Empty box cells must enter the same guarded action popup as A, never
 # silently focus only or stage Add on the first tap.
 for rel, entry in (
-    ("src/UI/Gen3SharedPokemonSurface.inc", "if (touch.justTapped()) {"),
+    ("src/UI/Gen3SharedPokemonSurface.inc", "screen.detailViewActive && touch.justTapped()) {"),
     ("src/UI/Gen4SharedPokemonSurface.inc", "if (boxEntry && touch.justTapped()) {"),
 ):
     code = read(rel).rsplit(entry, 1)[1].split("if (partyEntry && touch.justTapped())", 1)[0].split(
