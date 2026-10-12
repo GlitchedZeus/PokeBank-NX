@@ -2091,23 +2091,24 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     if (handleWorkspace(screen, state, navigated, touch)) return true;
     if (handleActions(screen, state, navigated, touch)) return true;
 
-    const bool inBoxes = boxEntrySurface(screen);
-    if (!inBoxes && !storageEntrySurface(screen)) return false;
-    // A and a release-confirmed finger tap must enter the same native Gen III
-    // action model. Do this BEFORE the inherited box input can open its old
-    // generic sheet with disabled Edit/Clone actions for a staged GBA source.
-    if (inBoxes && touch.justTapped()) {
+    // A completed cell tap must work even when the previous focus is the
+    // box-name header (-1). Validate locks after assigning the touched slot.
+    if (screen.selectedMode == TrainerViewScreen::ViewMode::Boxes &&
+        screen.detailViewActive && touch.justTapped()) {
         const int tapped = screen.touchedButtonId(touch);
         const int slots = static_cast<int>(screen.trainer.getSlotsPerBox());
         if (tapped >= 0 && tapped < slots) {
+            const int previous = screen.selectedItemIndex;
             screen.selectedItemIndex = tapped;
-            // Empty and occupied cells both open the same narrow popup.
-            // Without an editor it displays safe greyed-out Add/Edit actions.
-            // Add still requires a deliberate second activation inside the menu.
-            beginActions(screen);
-            return true;
+            if (boxEntrySurface(screen)) {
+                beginActions(screen);
+                return true;
+            }
+            screen.selectedItemIndex = previous;
         }
     }
+    const bool inBoxes = boxEntrySurface(screen);
+    if (!inBoxes && !storageEntrySurface(screen)) return false;
     const bool occupied = selectedOccupied(screen);
     const auto activation = Shared::boxActivation(
         occupied, (down & HidNpadButton_A) != 0, (down & HidNpadButton_X) != 0);
