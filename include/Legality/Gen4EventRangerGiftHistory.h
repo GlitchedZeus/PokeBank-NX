@@ -99,6 +99,12 @@ constexpr Result evaluate(bool nativeAvailable,const Input& in,
     out.rng=Ranger::analyzePidIv(in.observed,in.pid,in.ivs,
                                 source.originalRecipientTid,
                                 source.originalRecipientSid);
+    // An ARNG-compatible PID with an UNRESOLVED traded recipient is
+    // evidence of an RNG class, not a verified individual gift history.
+    // Never upgrade this historical ambiguity to ConditionalGiftCandidate.
+    if(out.rng.evidence==Ranger::PidEvidence::TradedRecipientUnresolved) {
+        out.status=Status::UnknownRecipientHistory;return out;
+    }
     out.status=out.rng.matched()
         ? Status::ConditionalGiftCandidate : Status::CandidatePidIvMismatch;
     return out;
@@ -115,8 +121,20 @@ inline Result evaluateNative(const Pokemon::Pokemon4ReadOnly& pokemon,
         ? pokemon.eggLocationExtended():pokemon.eggLocationDP();
     gift.metLocation=pokemon.metLocationExtended()!=0
         ? pokemon.metLocationExtended():pokemon.metLocationDP();
-    gift.ball=pokemon.ballDPPt()>pokemon.ballHGSS()
-        ? pokemon.ballDPPt():pokemon.ballHGSS();
+    // The two PK4 Ball bytes belong to DIFFERENT native storage
+    // formats, not competing magnitude-based readings of one Ball ID.
+    // An unused/stale HGSS byte must never exclude a valid DPPt candidate.
+    // Likewise a stale DPPt byte cannot override the active HGSS field.
+    const auto storage=pokemon.sourceGroup();
+    if(storage!=Enums::GameVersion::DP && storage!=Enums::GameVersion::PT &&
+       storage!=Enums::GameVersion::HGSS) {
+        Result out{};
+        out.status=source.rangerGiftOriginIndependentlyAttested
+            ? Status::UnknownSourceGame : Status::UnknownOriginalGift;
+        return out;
+    }
+    gift.ball=storage==Enums::GameVersion::HGSS
+        ? pokemon.ballHGSS():pokemon.ballDPPt();
     gift.fateful=pokemon.fatefulEncounter();
     return evaluate(true,{
         gift,pokemon.pid(),pokemon.ivs(),pokemon.originVersion(),

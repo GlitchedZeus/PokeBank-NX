@@ -50,6 +50,24 @@ int main() {
     assert(R::evaluate(true,badOrigin,source).status==Status::UnknownSourceGame);
     auto invalidPID=egg;invalidPID.pid=0x12345678u;
     assert(R::evaluate(true,invalidPID,source).status==Status::CandidatePidIvMismatch);
+    // One ARNG step from the documented Method-1 fixture changes its
+    // PID without changing IVs. The reverse routine can recognize a
+    // traded-recipient RNG class but NOT establish its historic TID/SID.
+    auto unresolved=egg;
+    unresolved.observed.isEgg=false;
+    unresolved.observed.eggLocation=G::LocationLinkTrade4;
+    unresolved.observed.metLocation=1;
+    unresolved.pid=0x07578CB7u; // (0x5271E97E * 0x6C078965 + 1) mod 2^32
+    auto independentlyHatched=source;
+    independentlyHatched.hatchGameHistoryKnown=true;
+    independentlyHatched.hatchGameVersion=10;
+    assert(G::analyzePidIv(unresolved.observed,unresolved.pid,
+                           unresolved.ivs,12345,54321).evidence==
+           G::PidEvidence::TradedRecipientUnresolved);
+    const auto unresolvedHistory=R::evaluate(true,unresolved,independentlyHatched);
+    assert(unresolvedHistory.status==Status::UnknownRecipientHistory);
+    assert(unresolvedHistory.rng.evidence==
+           G::PidEvidence::TradedRecipientUnresolved);
     auto hatched=egg;hatched.observed.isEgg=false;
     hatched.observed.metLocation=1;
     auto s=source;s.hatchGameHistoryKnown=true;s.hatchGameVersion=10;
@@ -77,6 +95,27 @@ int main() {
         record.originalEncryptedBytes().begin(),record.originalEncryptedBytes().end());
     assert(R::evaluateNative(record,source).status==Status::ConditionalGiftCandidate);
     assert(R::evaluateNative(record).status==Status::UnknownOriginalGift);
+    // Native PK4 Ball fields are format-specific, not a numeric maximum.
+    // D/P record: stale HGSS byte 16 cannot overwrite the active Ball 4.
+    auto staleHgss=bytes;staleHgss[0x86]=std::byte{16};
+    w16(staleHgss,0x06,Encryption::checksum4(staleHgss));
+    const auto mismatchedFields=Encryption::encryptArray4(staleHgss);
+    Pokemon::Pokemon4ReadOnly diamond(mismatchedFields,Enums::GameVersion::DP);
+    Pokemon::Pokemon4ReadOnly heartgold(mismatchedFields,Enums::GameVersion::HGSS);
+    assert(R::evaluateNative(diamond,source).status==Status::ConditionalGiftCandidate);
+    assert(R::evaluateNative(heartgold,source).status==Status::CandidateStructuralMismatch);
+    // HGSS record: stale DPPt byte 16 cannot overwrite its active Ball 4.
+    auto staleDp=bytes;staleDp[0x83]=std::byte{16};staleDp[0x86]=std::byte{4};
+    w16(staleDp,0x06,Encryption::checksum4(staleDp));
+    Pokemon::Pokemon4ReadOnly heartgoldValid(
+        Encryption::encryptArray4(staleDp),Enums::GameVersion::HGSS);
+    assert(R::evaluateNative(heartgoldValid,source).status==Status::ConditionalGiftCandidate);
+    Pokemon::Pokemon4ReadOnly unknownStorage(
+        mismatchedFields,Enums::GameVersion::Invalid);
+    assert(R::evaluateNative(unknownStorage,source).status==Status::UnknownSourceGame);
+    assert(R::evaluateNative(unknownStorage).status==Status::UnknownOriginalGift);
+    assert(diamond.originalEncryptedBytes().size()==Encryption::SIZE_STORED4);
+
     auto corrupt=encrypted;corrupt[0x32]^=std::byte{0x21};
     Pokemon::Pokemon4ReadOnly broken(corrupt,Enums::GameVersion::DP);
     assert(R::evaluateNative(broken,source).status==Status::UnavailableNative);
