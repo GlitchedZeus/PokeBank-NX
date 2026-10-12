@@ -82,15 +82,23 @@ int main(){
                 assert(H::wild(missing).status==Status::UnknownOriginalContest);
             }
             auto wrong=c;wrong.originalSpecies=0;
+            assert(H::wild(wrong).status==Status::UnknownOriginalSpecies);
+            wrong=c;wrong.originalSpecies=252;
+            assert(H::wild(wrong).status==Status::UnknownOriginalSpecies);
+            wrong=c;wrong.originalSpecies=static_cast<uint16_t>(W::species(row)==1u?2u:1u);
             assert(H::wild(wrong).status==Status::CandidateSpeciesContradicted);
             wrong=c;wrong.originalLocation=0;
             assert(H::wild(wrong).status==Status::CandidateLocationContradicted);
             wrong=c;wrong.originalLevel=0;
-            assert(H::wild(wrong).status==Status::CandidateLevelContradicted);
+            assert(H::wild(wrong).status==Status::UnknownOriginalLevel);
+            wrong=c;wrong.originalLevel=101;
+            assert(H::wild(wrong).status==Status::UnknownOriginalLevel);
             wrong=c;wrong.originalMethod=15;
+            assert(H::wild(wrong).status==Status::UnknownOriginalMethod);
+            wrong=c;wrong.originalMethod=static_cast<uint8_t>((kind+1u)%9u);
             assert(H::wild(wrong).status==Status::CandidateMethodContradicted);
             wrong=c;wrong.originalTime=0xFFu;
-            assert(H::wild(wrong).status==Status::CandidateTimeContradicted);
+            assert(H::wild(wrong).status==Status::UnknownOriginalTime);
             if(mask!=0u){
                 wrong=c;
                 for(uint8_t t=0;t<4;++t){
