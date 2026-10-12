@@ -159,6 +159,8 @@ jobs:
               # Latest L5 research must be executable and source-pinned
               # on this *combined exact* tree. They are helper/storage
               # controls, never stand-ins for original retail parity.
+              # Do not confuse new source helpers with live analyzer wiring.
+              python3 tools/audit_legality_prod_wiring_contract.py --self-test --source-root .
               python3 tools/audit_legality_l5_stage1_parity_gate.py --self-test
               python3 tools/audit_legality_l5_stage1_parity_gate.py --verify-manifests --current-integration-head "$INTEGRATION_EXACT_SHA"
               python3 tools/audit_legality_l5_invalid_site_gate.py --self-test
