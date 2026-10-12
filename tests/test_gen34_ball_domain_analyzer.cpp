@@ -735,6 +735,10 @@ void testGen4JointNativeParentMoveIvHistories() {
                 };
                 const auto complete=J::evaluateWithNativeEgg(in,childHistory);
                 assert(complete.status==J::Status::KnownCandidateConsistent);
+                auto noChildIVProvenance=in;
+                noChildIVProvenance.observedChildIVsIndependentlyVerified=false;
+                assert(J::evaluateWithNativeEgg(noChildIVProvenance,childHistory).status==
+                       J::Status::UnknownObservedChildIVs);
                 const auto childBefore=std::vector<std::byte>(
                     child.originalEncryptedBytes().begin(),
                     child.originalEncryptedBytes().end());

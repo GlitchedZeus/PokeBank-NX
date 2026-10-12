@@ -197,8 +197,10 @@ inline Result evaluateWithNativeEgg(const Input& in,
        egg.sourceGroup()!=Native::requiredGroup(in.parents.game)) {
         out.status=Status::UnknownNativeEggRecord;return out;
     }
-    if(!in.observedChildIVsIndependentlyVerified ||
-       egg.species()!=in.moveHistory.species ||
+    if(!in.observedChildIVsIndependentlyVerified) {
+        out.status=Status::UnknownObservedChildIVs;return out;
+    }
+    if(egg.species()!=in.moveHistory.species ||
        egg.moves()!=in.moveHistory.observed ||
        egg.ivs()!=in.observedChildIVs) {
         out.status=Status::IncoherentNativeEggRecord;return out;
