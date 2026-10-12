@@ -67,14 +67,24 @@ constexpr Result evaluate(const Input& in) noexcept {
     for(uint8_t i=0;i<in.count;++i) {
         const Route& r=in.alternatives[i];
         ++out.considered;
-        bool unique=r.routeIdentity!=0;
-        for(uint8_t j=0;j<i;++j)
-            if(r.routeIdentity==in.alternatives[j].routeIdentity)
-                unique=false;
-        if(!unique) {
+        if(!r.routeIdentity) {
             malformedRouteIdentity=true;
             ++out.unverified;
             continue;
+        }
+        bool repeated=false,priorMatch=false;
+        for(uint8_t j=0;j<i;++j)
+            if(r.routeIdentity==in.alternatives[j].routeIdentity) {
+                repeated=true;
+                if(out.stageChecks[j]==Joint::Status::AllThreeStagesConditionallyMatched)
+                    priorMatch=true;
+            }
+        if(repeated) {
+            malformedRouteIdentity=true;
+            ++out.unverified;
+            // Preserve one witness per identity; if the first entry is
+            // contradictory, still inspect a later source-attested match.
+            if(priorMatch)continue;
         }
         const auto& x=r.history;
         if(!r.originalSourceHistoryIndependentlyAttested ||
@@ -93,6 +103,7 @@ constexpr Result evaluate(const Input& in) noexcept {
         if(verdict.status==Joint::Status::AllThreeStagesConditionallyMatched) {
             ++out.consistent;continue;
         }
+        if(repeated)continue; // a duplicate cannot establish an exclusion
         const bool localContradiction=
             verdict.status==Joint::Status::OriginalMoveCandidateContradicted ||
             verdict.status==Joint::Status::OriginalIVCandidateContradicted ||
