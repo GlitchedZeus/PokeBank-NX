@@ -3981,7 +3981,7 @@ namespace UI {
             // remains visible beneath a proportional dim scrim.
             const int offset = quickDrawerMotion.offset();
             const int shade = (92 * (w - offset)) / w;
-            fb.drawFilledRect(0, 0, x, h, Color(0, 0, 0,
+            fb.drawFilledRect(0, 0, fb.getWidth(), h, Color(0, 0, 0,
                               static_cast<std::uint8_t>(std::clamp(shade, 0, 92))));
             fb.pushTranslation(static_cast<float>(offset), 0.0f);
             fb.drawSoftShadow(x - 8, 0, w + 16, h, 20);
