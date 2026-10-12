@@ -1,0 +1,133 @@
+{
+  "registry_sha": "fc0225e6351af62365f29200300323e38f52c8fe",
+  "start": 14,
+  "count": 14,
+  "rows": [
+    {
+      "id": "NX-TRANSFER",
+      "expected_sha256": "e2c6c7b7ddaa0e6ffddda26882dcc847f8b153b0dce871f314c597091820cf85",
+      "observed_sha256": "00501d4da9f40a33ea885c9e09fb24d24ab8aec00e202e7bc681cd5323581704",
+      "git_blob_sha": "69ddebecb174a888b56d3ad098a1eb37c1ab4f17",
+      "sha256_match": false,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "HG-PID",
+      "expected_sha256": "6924639b76ff3c05fc6100c76d1af167c4e043e3867965fec5f7605d412fb1eb",
+      "observed_sha256": "061159f3cd8c6da0b42a861fd829e599f9d8e6dd779d6eaa207bad2acbcbb463",
+      "git_blob_sha": "6127956d12e380033c08b1fce1e707d16b601c1a",
+      "sha256_match": false,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "HG-ENCOUNTER",
+      "expected_sha256": "a91dad88736b55698c9d06485c98167b48b732f81469c75234327cb5d9dc1c18",
+      "observed_sha256": "5111b3e52d61946d88b1e57d59702565ac06a3a4eb41728901a2c2205dd214f9",
+      "git_blob_sha": "9585cfd83940a05f9145a73628e9872458c36ab2",
+      "sha256_match": false,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "PK-METHODK",
+      "expected_sha256": "2e6b44f9ce9b5005d0eb63e775eb490734f39595230de3563855889151ff18e9",
+      "observed_sha256": "2995ad0f099525fd2178ad46a1e3c1fec08cfaeb9ba47a111a671630a6a00cba",
+      "git_blob_sha": "dd5b777bd5b901325c4621df1634b234af8af304",
+      "sha256_match": false,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "PK-METHODJ",
+      "expected_sha256": "febc61e73706a007e03c52a2273dbcf430239a9d45a8aebb3113c72296dd220b",
+      "observed_sha256": "2a1c5aed4d3e03019e4d8f053163305b3399a275e9b84935043a1110ceb34bb0",
+      "git_blob_sha": "e5598f64cff6656aedcb53357221aba738791c63",
+      "sha256_match": false,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "NX-RNG4",
+      "expected_sha256": "6f2533e23fa6c1ab38434d7504d51bcde3fc20348e70973a874fbb926306a827",
+      "observed_sha256": "aedb2a8978df69ef91b8d3036dddbeb22e1cafd5d724f9d1cdf37e359374d98c",
+      "git_blob_sha": "3c6ed6284dbed15eecd61305ba19d54ccc67cdd0",
+      "sha256_match": false,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "PK-HISTORY",
+      "expected_sha256": "af681aab46f3804a6bfde0f9c269474f5c7fdb1e30fac3693e382b1ff190208e",
+      "observed_sha256": "ae09688375269d8500e66522f273b934591b27f34ae07d1f5913cc113ac02db6",
+      "git_blob_sha": "e522961c1e35d95b11f557fc8ad84317ca4939c4",
+      "sha256_match": false,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "PK-BREED",
+      "expected_sha256": "605de22e8eac51091601c2c7424141ad1157093537e096631e3fa7302a700e61",
+      "observed_sha256": "68a6f7397d26479d29e69784f8a02f02d6fc274e89798eae479addba155fe0db",
+      "git_blob_sha": "a4889d7704b3a7b4aac64318c6bf085378e3420e",
+      "sha256_match": false,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "PK-TRASH",
+      "expected_sha256": "c525f7ece6c88e3c9b1ce8287fb0060ff6902ba8d2e5aac1c14a0a3b9305c1d5",
+      "observed_sha256": "505c4514480e1256a5f84ee6897fe4e431eb4b9551a09329c5f3bf822870bef4",
+      "git_blob_sha": "96acebf0abf01a69d8b2cd25a20282aa8cfff23c",
+      "sha256_match": false,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "PK-RIBBON",
+      "expected_sha256": "f9416c61d012b73b7c5a5cc05d63e7a43d6070cdd3204a51c99ffbc1792b3e81",
+      "observed_sha256": "94b97d34617f1d40120c754efe00321bfe1d640b5a498d94427139e8569766eb",
+      "git_blob_sha": "090de89eab8c1cacadb3020906ea67e36fcd6340",
+      "sha256_match": false,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "PK-RIBRULE",
+      "expected_sha256": "0886ef60382dec8fa559f1a7807c711c99d65900b27a1345388a13ea3417d80e",
+      "observed_sha256": "9e265cc2af6b47dbd22a29a798f70d5e5e8439a3edc6110cfd6bb0ae5971943f",
+      "git_blob_sha": "aaf8eeaa601efe513fc069dbf8b5cdf33c21ff14",
+      "sha256_match": false,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "PK-METHOD",
+      "expected_sha256": "fde60f5c562d1f48534859adc26be52b9c67753ffaffc3d85a4e95ae1a3d44ef",
+      "observed_sha256": "4d2896894e6e092c83506c1cfecad070d0e7253029edb4c2d9d9bdeca7d3c71b",
+      "git_blob_sha": "1f50c6be1db66fc900ee32ff5fe970decefc411c",
+      "sha256_match": false,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "PK-LEARNREADER",
+      "expected_sha256": "845c051fa9f538b7d19473cf28b0d330067f694304c0e67dd46f6e9e99e342f7",
+      "observed_sha256": "50ace2cf7c5aca0b779cb5a44585b598181ac90e7e6aeddfc5a5de87b9fcc729",
+      "git_blob_sha": "b8cc18764b09ea8765359823974361b422904d29",
+      "sha256_match": false,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "PK-BIN",
+      "expected_sha256": "2353665981a406cc7f4d81c46e48a2d3f30eb4f6b92a890a4dc6e731ac0d812a",
+      "observed_sha256": "eff3d543c26d454018e2145e1003f7c885a908ffd9973b6d4fc8280a541ccda7",
+      "git_blob_sha": "40cff4875949fd42caedbb6adf1dfe19f02ec03d",
+      "sha256_match": false,
+      "symbol_match": true,
+      "error": null
+    }
+  ]
+}
