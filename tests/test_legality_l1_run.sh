@@ -74,6 +74,7 @@ suites=(
   test_legality_l1_stage7_native_gate
   test_legality_l1_stage7_parser_linked
   test_legality_l1_stage7_custody_authority
+  test_legality_l1_stage7_production_bridge
 )
 profiles=(host sanitize)
 if [[ -n "${L1_PROFILE:-}" ]]; then
