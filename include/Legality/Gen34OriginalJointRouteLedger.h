@@ -67,8 +67,15 @@ constexpr Result evaluate(const Input& in) noexcept {
         }
         bool missing=false,contradicted=false;
         for(const auto v:c.stageVerdicts) {
-            missing|=v==Verdict::Unknown;
-            contradicted|=v==Verdict::Contradicted;
+            // Do not interpret forged or truncated enum bytes as Matched.
+            // Unknown is conservative; malformed values are NOT negative
+            // evidence even when a caller claims exhaustive coverage.
+            if(v!=Verdict::Unknown && v!=Verdict::Matched &&
+               v!=Verdict::Contradicted)missing=true;
+            else {
+                missing|=v==Verdict::Unknown;
+                contradicted|=v==Verdict::Contradicted;
+            }
         }
         if(!missing && !contradicted){++out.matched;continue;}
         // Duplicated archive records and partially attested methods can
