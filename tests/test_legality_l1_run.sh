@@ -22,6 +22,8 @@ suites=(
   test_legality_l1_gen3_family_router
   test_legality_l1_hgss_special
   test_legality_l1_gen4_nature_replay
+  test_legality_l1_safari_indexed_original
+  test_legality_l1_gamecube_indexed_shadow
 )
 for profile in host sanitize; do
   if [[ "$profile" == host ]]; then
