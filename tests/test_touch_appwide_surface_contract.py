@@ -134,6 +134,14 @@ if "state.pickerRow = hit.id" in inventory_contact or "state.reviewRow = hit.id"
     raise AssertionError("Classic Inventory: contact must not steal picker/review focus")
 require_all("src/UI/ClassicInventoryOverlay.cpp",
             "state.pickerRow = touchId;", "state.reviewRow = touchId;")
+# Gen III/IV action sheets must clear backdrop hitboxes AFTER the box has been
+# drawn, not just before. Otherwise old box targets win first-match hit tests.
+for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurface.inc"):
+    source = read(rel)
+    actions = source.split("void drawActions(", 1)[1].split("void drawReview(", 1)[0]
+    assert "screen.drawGSCOverlay(fb);" in actions
+    assert actions.index("screen.drawGSCOverlay(fb);") < actions.index(
+        "screen.touchButtons.clear();", actions.index("screen.drawGSCOverlay(fb);"))
 # A single tap on an occupied Pokémon must open the same real staged action
 # surface across Gen I–IV. Native Gen II actions also publish direct row hitboxes.
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
