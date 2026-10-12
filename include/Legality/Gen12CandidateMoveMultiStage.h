@@ -178,6 +178,7 @@ constexpr Result evaluate(const Path& path) noexcept {
        path.stepCount>path.steps.size()||
        !supported(path.originalGame,path.initialSpecies)||
        !supported(path.observedGame,path.observedSpecies)||
+       !path.initialMoves[0]||!path.observedMoves[0]||
        !validSlots(path.initialMoves,generation(path.originalGame)==1?165:251)||
        !validSlots(path.observedMoves,generation(path.observedGame)==1?165:251))return out;
     // Preflight ALL methods so that a future unsupported egg, tutor, reminder,
