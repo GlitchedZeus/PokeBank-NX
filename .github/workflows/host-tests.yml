@@ -93,3 +93,65 @@ jobs:
 
       - name: Run ASan and UBSan tests
         run: make -f Makefile.host host-sanitize
+
+# Coordinator-owned integration gate: ordinary host tests do not
+  # automatically run standalone lane tests. Require exact PR head here.
+  legality-parallel-validation:
+    name: Legality lane ${{ matrix.lane }} (native + sanitizers)
+    if: ${{ github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'integration/legality-') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [L1, L2, L3, L4, L5]
+    steps:
+      - name: Checkout exact integration head
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Verify exact integration identity and source inputs
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          echo "APPLICATION_SHA=$EXPECTED_SHA"
+          echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
+          g++ --version
+          python3 --version
+      - name: Execute every standalone suite (normal and ASan/UBSan)
+        env:
+          LANE: ${{ matrix.lane }}
+          ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: |
+          set -euo pipefail
+          case "$LANE" in
+            L1)
+              bash tests/test_legality_l1_run.sh
+              ;;
+            L2)
+              bash tests/test_legality_l2_run_all.sh
+              ;;
+            L3)
+              L3_EXPECTED_EMERALD_BLOB=3e53c1c951876a26cace5dde060cc9ff2c35d0a7 bash tests/test_legality_l3_run_all.sh
+              ;;
+            L4)
+              bash tests/test_legality_l4_runner.sh
+              L4_SANITIZE=1 bash tests/test_legality_l4_runner.sh
+              ;;
+            L5)
+              python3 tools/audit_legality_l5_native_ev_vectors.py --source-root .
+              python3 tools/audit_legality_l5_native_codec.py --source-pin
+              python3 tools/audit_legality_l5_native_codec.py --source-pin --sanitize
+              make -f Makefile.host -f tools/audit_legality_l5_ev_probe.mk l5-ev-fixed
+              make -f Makefile.host -f tools/audit_legality_l5_ev_probe.mk l5-ev-fixed-sanitize
+              ;;
+            *)
+              echo "Unknown legality lane: $LANE" >&2
+              exit 2
+              ;;
+          esac
