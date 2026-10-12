@@ -7,6 +7,7 @@
 // stage models are composed, not duplicated or edited here.
 #include "Legality/Gen3JointEggCandidateEvidence.h"
 #include "Legality/Gen3EggPIDCreationHistory.h"
+#include "Legality/Gen34OriginalSameRouteProof.h"
 #include <array>
 #include <cstdint>
 
@@ -35,11 +36,20 @@ struct Input {
     bool originalUnhatchedEggMovesIndependentlyVerified=false;
     bool moveAndPIDSameParentSnapshotsIndependentlyVerified=false;
     bool moveAndPIDSamePhysicalPairIndependentlyVerified=false;
+    // Opt-in original four-stage source archive, never inferred from PK3.
+    Gen34OriginalSameRouteProof::Input sameRouteProof{};
+    uint64_t originalEggSnapshotId=0,originalPhysicalPairIdentity=0;
+    bool originalEggSnapshotIndependentlyAttested=false;
+    bool originalPairIdentityIndependentlyAttested=false;
+    bool creationHeldItemsIndependentlyAttested=false;
+    std::array<uint16_t,2> originalCreationHeldItems{};
 };
 struct Result {
     Status status=Status::UnknownOriginalEggEvidence;
     MoveIV::Result moveAndIV{};
     PID::Result pid{};
+    Gen34OriginalSameRouteProof::Status sameRouteCheck=
+        Gen34OriginalSameRouteProof::Status::NotSupplied;
 };
 constexpr Result evaluate(const Input& in) noexcept {
     Result out{};
