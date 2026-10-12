@@ -157,5 +157,31 @@ static_assert(evaluate(smoke(true)).status==Status::CandidateConsistent);
 static_assert([]{auto a=smoke(true);
     a.allOfferedLevelUpDecisionsRecorded=false;
     return evaluate(a).status==Status::Unresolved;}());
+// Compile a real source-numbered TM into the SAME ordered history; moving
+// that TM ahead of the mandatory level-up is not a valid alternative even
+// though both final moves are individually permitted for Bulbasaur.
+constexpr Input smokeInterleaved(bool skipLevelOffer) noexcept {
+    Input a=smoke(true);auto& p=a.path;
+    if(skipLevelOffer) {
+        p.stepCount=1;
+        p.observedMoves={33,45,92,0};
+        p.steps[0]={C::Game::Ruby,7,C::Action::Learn,
+                    C::Method::TM,92,2,true,C::Game::Ruby};
+        a.machines[0]={0,{C::Game::Ruby,1,M::Machine::TM,6,92,true,true}};
+    } else {
+        p.stepCount=2;p.observedMoves={33,45,73,92};
+        p.steps[1]={C::Game::Ruby,7,C::Action::Learn,
+                    C::Method::TM,92,3,true,C::Game::Ruby};
+        a.machines[0]={1,{C::Game::Ruby,1,M::Machine::TM,6,92,true,true}};
+    }
+    a.machineCount=1;return a;
+}
+static_assert(evaluate(smokeInterleaved(false)).status==Status::CandidateConsistent);
+static_assert(C::evaluate(smokeInterleaved(true).path).status==Status::CandidateConsistent);
+static_assert(evaluate(smokeInterleaved(true)).status==Status::CandidateContradicted);
+static_assert([]{auto a=smokeInterleaved(false);
+    a.machines[0].numberedItem.itemIdentityVerified=false;
+    return evaluate(a).status==Status::Unresolved;}());
+
 
 } // namespace Legality::Gen14CandidateMoveJointAcquisition
