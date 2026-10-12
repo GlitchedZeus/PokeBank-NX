@@ -190,8 +190,10 @@ require_all("src/UI/Gen3SharedPokemonSurface.inc",
             "if (boxEntrySurface(screen)) {",
             "beginActions(screen);")
 require_all("src/UI/Gen4SharedPokemonSurface.inc",
-            "if (boxEntry && touch.justTapped())", "screen.selectedItemIndex = tapped;",
-            "beginActions(screen);",
+            "screen.detailViewActive && touch.justTapped()) {",
+            "Gen4BoxTouchActions::selectsTappedBoxSlot(tapped, slots)",
+            "screen.selectedItemIndex = tapped;",
+            "if (boxEntrySurface(screen)) {", "beginActions(screen);",
             "if (partyEntry && touch.justTapped())", "screen.selectedPartyIndex = tapped - 6200;",
             "tapped - 6200 < static_cast<int>(screen.trainer.getPartySize())")
 
@@ -199,7 +201,7 @@ require_all("src/UI/Gen4SharedPokemonSurface.inc",
 # silently focus only or stage Add on the first tap.
 for rel, entry in (
     ("src/UI/Gen3SharedPokemonSurface.inc", "screen.detailViewActive && touch.justTapped()) {"),
-    ("src/UI/Gen4SharedPokemonSurface.inc", "if (boxEntry && touch.justTapped()) {"),
+    ("src/UI/Gen4SharedPokemonSurface.inc", "screen.detailViewActive && touch.justTapped()) {"),
 ):
     code = read(rel).rsplit(entry, 1)[1].split("if (partyEntry && touch.justTapped())", 1)[0].split(
         "const bool occupied = selectedOccupied(screen);", 1)[0]
