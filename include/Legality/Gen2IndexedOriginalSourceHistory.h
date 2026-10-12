@@ -18,7 +18,8 @@ enum class Status : uint8_t {
     UnknownOriginalRoamer, UnknownOriginalEggState, UnknownOriginalShiny,
     ForeignGameRowNotEvidence, CandidateSpeciesContradicted,
     CandidateLocationContradicted, CandidateLevelContradicted,
-    CandidateTimeContradicted, CandidateEggContradicted,
+    CandidateMethodContradicted, CandidateTimeContradicted,
+    CandidateEggContradicted,
     CandidateShinyContradicted, ConditionalOriginalSource
 };
 
@@ -81,6 +82,8 @@ inline Result wild(const Candidate& c) noexcept {
     if(c.originalLevel<W::minLevel(row) || c.originalLevel>W::maxLevel(row))
         return {Status::CandidateLevelContradicted,method,W::slot(row)};
     if(c.originalMethod!=method)
+        return {Status::CandidateMethodContradicted,method,W::slot(row)};
+    if(c.originalTime>3u)
         return {Status::CandidateTimeContradicted,method,W::slot(row)};
     if(!W::timeAllows(W::timeMask(row),c.originalTime))
         return {Status::CandidateTimeContradicted,method,W::slot(row)};

@@ -72,7 +72,20 @@ int main(){
             wrong=c;wrong.originalLevel=0;
             assert(H::wild(wrong).status==Status::CandidateLevelContradicted);
             wrong=c;wrong.originalMethod=15;
+            assert(H::wild(wrong).status==Status::CandidateMethodContradicted);
+            wrong=c;wrong.originalTime=0xFFu;
             assert(H::wild(wrong).status==Status::CandidateTimeContradicted);
+            if(mask!=0u){
+                wrong=c;
+                for(uint8_t t=0;t<4;++t){
+                    if(!W::timeAllows(mask,t)){
+                        wrong.originalTime=t;
+                        break;
+                    }
+                }
+                if(wrong.originalTime!=c.originalTime)
+                    assert(H::wild(wrong).status==Status::CandidateTimeContradicted);
+            }
             if(game==2){
                 wrong=c;wrong.originalCrystalCaughtData^=0x0100;
                 assert(H::wild(wrong).status==Status::CandidateTimeContradicted);
