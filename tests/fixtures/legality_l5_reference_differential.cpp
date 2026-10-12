@@ -57,7 +57,7 @@ constexpr Judgement reference(const Input& x) noexcept {
     if (sumEV(x) > 510) return {Grade::Invalid, Rule::Total510};
     if (x.generation == 3 || x.generation == 4) {
         if (!withinVitamin34(x)) {
-            if (!x.encounterKnown) return {Grade::UnknownHistory, Rule::None};
+            if (!x.sourceKnown || !x.encounterKnown) return {Grade::UnknownHistory, Rule::None};
             if (x.encounterAt100) return {Grade::Invalid, Rule::EVGain100};
             if (x.unchangedEXP) return {Grade::Invalid, Rule::EVGainEXP};
         }
@@ -173,6 +173,9 @@ void classificationNegativeControls() {
     REQUIRE((Grade::FormatRejected!=Grade::Invalid));
     // A known source label by itself does not complete an original route.
     x.nativeStructureGood=true;x.sourceKnown=false;x.encounterKnown=false;
+    REQUIRE(compare(x).category==Delta::UnresolvedHistory);
+    // A proposed encounter candidate without attested source cannot be a global verdict.
+    x.encounterKnown=true;x.encounterAt100=true;
     REQUIRE(compare(x).category==Delta::UnresolvedHistory);
 }
 }
