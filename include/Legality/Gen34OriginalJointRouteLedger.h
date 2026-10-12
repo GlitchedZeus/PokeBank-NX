@@ -60,7 +60,7 @@ constexpr Result evaluate(const Input& in) noexcept {
             out.lineageChecks[i]=Lineage::evaluate(c.originalParentLineage,{
                 c.originalIdentity.game,
                 {c.originalIdentity.slot0Id,c.originalIdentity.slot1Id},
-                c.depositedSpecies});
+                c.depositedSpecies}).status;
             if(out.lineageChecks[i]!=Lineage::Status::ConditionallyReplayed){
                 ++out.unverified;continue;
             }
