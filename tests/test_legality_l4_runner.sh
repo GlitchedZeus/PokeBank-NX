@@ -126,6 +126,13 @@ echo "L4 Stage 6 Q07/Q08 research versus copyright/receipt boundary"
 "$compiler" "${base[@]}" tests/fixtures/legality_l4_stage6_rights_boundary.cpp \
     -o "$scratch/l4_stage6_rights_boundary"
 "$scratch/l4_stage6_rights_boundary"
+# Final L4 Stage 7 gate: independently link original source archive,
+# original PKM, each historical record and the final native observation.
+# A rights/research match never grants global legality or payload copying.
+echo "L4 Stage 7 complete candidate-local PK1-PK4 provenance gate"
+"$compiler" "${base[@]}" tests/fixtures/legality_l4_stage7_final_provenance.cpp \
+    -o "$scratch/l4_stage7_final_provenance"
+"$scratch/l4_stage7_final_provenance"
 for name in "${header_only[@]}"; do
     echo "L4 C++ compile: $name"
     "$compiler" "${base[@]}" "tests/$name.cpp" -o "$scratch/$name"
