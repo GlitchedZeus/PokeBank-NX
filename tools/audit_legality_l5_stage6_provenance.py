@@ -281,7 +281,7 @@ def selftest()->None:
  try:receipt_chain(packet,'0'*64)
  except ValueError:pass
  else:raise AssertionError('forged external trust anchor accepted')
- print('L5 Stage6 manifest/chain-of-custody self-test PASS: 31 unsafe promotions/tamper controls rejected, no original data')
+ print('L5 Stage6 manifest/chain-of-custody self-test PASS: 31 controls PASS (29 forged/tampered rejected; 2 synthetic baselines accepted)')
 
 def main():
  parser=argparse.ArgumentParser(description=__doc__)
