@@ -285,6 +285,8 @@ int main() {
     auto unrelated = bulbasaurWithSwordsDance();
     const Pokemon::Pokemon& genericNative = unrelated;
     std::array<uint16_t,5> unavailable{1,1,1,1,1};
+    assert(genericNative.nativePk1ReadOnly()==nullptr);
+    assert(genericNative.nativePk2ReadOnly()==nullptr);
     assert(!genericNative.gen2NativeStatExperience(unavailable));
     assert(unavailable == std::array<uint16_t,5>{});
     auto p = bulbasaurWithSwordsDance();
