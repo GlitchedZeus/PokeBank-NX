@@ -28,6 +28,8 @@ BUILD="$(mktemp -d "${TMPDIR:-/tmp}/pokebank-l3-XXXXXXXX")"
 trap 'rm -rf "$BUILD"' EXIT
 SUITES=(
     test_legality_l3_gen12_joint_chronology
+    test_legality_l3_gba_original_full_tables
+    test_legality_l3_gba_original_machine_tables
     test_legality_l3_move_chronology
     test_legality_l3_gba_versioned_levelup
     test_legality_l3_gba_starter_evolution
@@ -50,4 +52,4 @@ for suite in "${SUITES[@]}"; do
         UBSAN_OPTIONS="${UBSAN_OPTIONS:-halt_on_error=1}" \
         "$BUILD/${suite}_sanitize"
 done
-echo 'L3 PASS: all eight native C++20 suites and eight ASan/UBSan executions (full accepted Emerald source)'
+echo 'L3 PASS: all ten native C++20 suites and ten ASan/UBSan executions (full accepted Emerald source)'
