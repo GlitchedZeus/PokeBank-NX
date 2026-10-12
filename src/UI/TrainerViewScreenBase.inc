@@ -2687,10 +2687,9 @@ namespace UI {
                 PokeBank::UIModel::InventoryPickerLayout::viewport(1280, 720);
             const int page = pickerViewport.visibleRows;
 
-            // Native list touch: finger contact moves highlight immediately; a clean release
-            // chooses that exact row. Vertical drags browse the list and never activate a row.
-            const int ptd = touchedButtonDownId(touch);
-            if (ptd >= 0 && ptd < count) pickerSel = ptd;
+            // Native list uses the same staged-picker contract as Gen I-IV:
+            // contact may turn into a swipe, so it cannot retarget the choice
+            // before release. A completed same-row tap selects and confirms.
             const int ptb = touchedButtonId(touch);
             if (ptb >= 0 && ptb < count) { pickerSel = ptb; kDown |= HidNpadButton_A; }
             if (touch.justReleased() && touch.dragged() &&

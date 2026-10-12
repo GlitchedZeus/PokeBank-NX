@@ -93,6 +93,12 @@ require(base_picker, "src/UI/TrainerViewScreenBase.inc",
         "pickerViewport.contains(touch.startX(), touch.startY())")
 if "const int page = 12;" in base_picker:
     raise AssertionError("shared picker: page jump must derive from the visible touch viewport")
+native_picker = base_picker.split("if (pickerActive) {", 1)[1].split(
+    "// Creator: a Species pick in create mode", 1)[0]
+assert "const int ptb = touchedButtonId(touch);" in native_picker
+assert "const int ptd = touchedButtonDownId(touch);" not in native_picker
+assert "if (ptd >= 0 && ptd < count) pickerSel = ptd;" not in native_picker
+assert "touch.justReleased() && touch.dragged()" in native_picker
 report_contract = read("include/UI/Modals/PokemonDetailsModal.h")
 require(report_contract, "include/UI/Modals/PokemonDetailsModal.h",
         "struct ReportScrollViewport",

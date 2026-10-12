@@ -126,10 +126,12 @@ for name, (rel, needles) in SURFACES.items():
 # Inventory row focus must stay stable on touch-down; only a completed tap
 # may select an item/review line. Otherwise a swipe changes highlighted rows.
 inventory_input = read("src/UI/ClassicInventoryOverlay.cpp")
-inventory_contact = inventory_input.split("if (touch.justTouchedDown()) {", 1)[1].split(
-    "if (!state.presentationInitialized", 1)[0]
-if "state.pickerRow = hit.id" in inventory_contact or "state.reviewRow = hit.id" in inventory_contact:
-    raise AssertionError("Classic Inventory: contact must not steal picker/review focus")
+inventory_dispatch = inventory_input.split("bool handleInput(", 1)[1].split(
+    "void drawOverlay(", 1)[0]
+if "touch.justTouchedDown()" in inventory_dispatch:
+    raise AssertionError("Classic Inventory: Options/picker/review cannot focus on contact")
+if "state.optionsRow = touchId; down |= HidNpadButton_A;" not in inventory_dispatch:
+    raise AssertionError("Classic Inventory: completed options tap must activate its row")
 require_all("src/UI/ClassicInventoryOverlay.cpp",
             "state.pickerRow = touchId;", "state.reviewRow = touchId;")
 # Gen III/IV action sheets must clear backdrop hitboxes AFTER the box has been

@@ -608,18 +608,9 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
     if (!isClassicSource(screen)) return false;
     auto& state = stateFor(screen);
     const int touchId = screen.touchedButtonId(touch);
-    if (touch.justTouchedDown()) {
-        const int tx = touch.x(), ty = touch.y();
-        for (const auto& hit : screen.touchButtons) {
-            if (tx < hit.x || tx >= hit.x + hit.w || ty < hit.y || ty >= hit.y + hit.h) continue;
-            // The picker and read-only review own independent scroll viewports. A
-            // finger landing on a row may become a swipe: leave focus untouched
-            // until the existing release-confirmed row hit resolves below.
-            if (state.optionsActive && hit.id >= 0 && hit.id < 4)
-                state.optionsRow = hit.id;
-            break;
-        }
-    }
+    // Inventory actions, review, and Add Item keep their semantic focus until
+    // a release-confirmed same-target tap. A finger landing on Options may
+    // still become a swipe without silently changing the highlighted action.
     if (!state.presentationInitialized && refreshPresentation(screen)) {
         screen.captureInventorySourceBaseline();
         state.presentationInitialized = true;
