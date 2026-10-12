@@ -64,7 +64,6 @@ assert "std::clamp(touchTap - 2000, 1, 251);" not in gen2
 
 gen2_item = read("src/UI/Gen2PokemonEditorFoundation.inc")
 require(gen2_item, "src/UI/Gen2PokemonEditorFoundation.inc",
-        "screen.touchedButtonDownId(touch)",
         "screen.touchedButtonId(touch)",
         "state.itemChoiceIndex = touchTap - 3000;",
         "state.itemScroll.updateVertical(",
@@ -76,14 +75,13 @@ require(gen2_item, "src/UI/Gen2PokemonEditorFoundation.inc",
         "const int firstRow = state.itemViewport.firstRow;",
         "appendClippedTouchButton(screen.touchButtons, 3000 + i")
 
-# Finger-down may focus an item, but must not cancel the very same scrolling
-# gesture that updateVertical just captured for a row-starting swipe.
-gen2_contact = gen2_item.split("const int touchDown = screen.touchedButtonDownId(touch);", 1)[1].split(
-    "const int touchTap = screen.touchedButtonId(touch);", 1)[0]
-assert "state.itemChoiceIndex = touchDown - 3000;" in gen2_contact
-assert "state.itemScroll.stop()" not in gen2_contact, (
-    "Gen II picker: touch-down focus must preserve the active drag capture"
-)
+# A provisional contact in the Gen II held-item grid must not move the
+# choice, even if the finger began on an item and later turned into a swipe.
+gen2_contact = gen2_item.split("bool handleItemPicker(", 1)[1].split(
+    "bool handleConfirm(", 1)[0]
+assert "touchedButtonDownId(touch)" not in gen2_contact
+assert "state.itemChoiceIndex = touchTap - 3000;" in gen2_contact
+assert "state.itemScroll.updateVertical(" in gen2_contact
 
 gen3 = read("src/UI/Gen3SharedPokemonSurface.inc")
 for token in (

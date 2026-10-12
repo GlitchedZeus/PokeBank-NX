@@ -106,15 +106,14 @@ SURFACES = {
     ),
     "Gen III editor": (
         "src/UI/Gen3SharedPokemonSurface.inc",
-        ("handleWorkspace", "touchedButtonDownId(touch)",
-         "touchedButtonId(touch)", "pickerScroll.updateVertical(",
+        ("handleWorkspace", "touchedButtonId(touch)", "pickerScroll.updateVertical(",
          "pickerScroll.offset()", "reviewTouchScroll.updateVertical(",
          "reviewTouchScroll.offset()"),
     ),
     "Gen IV editor / party & storage views": (
         "src/UI/Gen4SharedPokemonSurface.inc",
         ("partyEntrySurface", "boxEntrySurface", "handleWorkspace",
-         "touchedButtonDownId(touch)", "touchedButtonId(touch)",
+         "touchedButtonId(touch)",
          "pickerScroll.updateVertical(", "pickerScroll.offset()"),
     ),
 }
