@@ -51,7 +51,9 @@ bool hasInvalidWith(const Legality::Report& r,std::string_view term1,
     }
     return false;
 }
-Legality::Report pk3Probe(uint8_t value,bool egg,bool exactSource) {
+Legality::Report pk3Probe(uint8_t value,bool egg,bool exactSource,
+                          uint8_t secondEV=0,uint8_t thirdEV=0,
+                          bool mismatchedSource=false) {
     std::array<std::byte,80> encrypted{};
     Pokemon::Pokemon3FRLG pk{std::span<const std::byte>(encrypted)};
     pk.setPID(0x12345678u);
@@ -67,6 +69,8 @@ Legality::Report pk3Probe(uint8_t value,bool egg,bool exactSource) {
     pk.setEgg(egg);
     if(egg)pk.setMetLevel(0);
     pk.setEV(0,value);
+    pk.setEV(1,secondEV);
+    pk.setEV(2,thirdEV);
     pk.refreshChecksum();
     assert(pk.evHP()==value && pk.isEgg()==egg && pk.checksumValid());
     // clone() performs native PK3 canonical shuffle+XOR encryption and then
@@ -75,12 +79,16 @@ Legality::Report pk3Probe(uint8_t value,bool egg,bool exactSource) {
     // encrypted-native PK3 data, not only the canonical mutator workspace.
     const auto roundTripped = pk.clone();
     assert(roundTripped && roundTripped->checksumValid());
-    assert(roundTripped->evHP()==value && roundTripped->isEgg()==egg);
-    return exactSource
-      ? Legality::analyze(*roundTripped,Enums::GameVersion::FRLG,"firered_gba")
+    assert(roundTripped->evHP()==value && roundTripped->evATK()==secondEV &&
+           roundTripped->evDEF()==thirdEV && roundTripped->isEgg()==egg);
+    return (exactSource||mismatchedSource)
+      ? Legality::analyze(*roundTripped,Enums::GameVersion::FRLG,
+                          mismatchedSource?"platinum_nds":"firered_gba")
       : Legality::analyze(*roundTripped,Enums::GameVersion::FRLG);
 }
-Legality::Report pk4Probe(uint8_t value,bool egg,bool exactSource) {
+Legality::Report pk4Probe(uint8_t value,bool egg,bool exactSource,
+                          uint8_t secondEV=0,uint8_t thirdEV=0,
+                          bool mismatchedSource=false) {
     std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
     wr32(raw,0x00,0x12345678u);
     wr16(raw,0x08,1); // Bulbasaur
@@ -90,6 +98,8 @@ Legality::Report pk4Probe(uint8_t value,bool egg,bool exactSource) {
     raw[0x15]=std::byte{65}; // Overgrow
     raw[0x17]=std::byte{2};
     raw[0x18]=static_cast<std::byte>(value);
+    raw[0x19]=static_cast<std::byte>(secondEV);
+    raw[0x1a]=static_cast<std::byte>(thirdEV);
     raw[0x5f]=std::byte{12}; // Platinum
     raw[0x83]=std::byte{4};
     if(egg) {
@@ -100,10 +110,12 @@ Legality::Report pk4Probe(uint8_t value,bool egg,bool exactSource) {
     const auto encrypted=Encryption::encryptArray4(raw);
     Pokemon::Pokemon4ReadOnly source(encrypted,Enums::GameVersion::PT);
     assert(source.valid() && source.checksumValid() && !source.empty());
-    assert(source.evs()[0]==value && source.isEgg()==egg);
+    assert(source.evs()[0]==value && source.evs()[1]==secondEV &&
+           source.evs()[2]==thirdEV && source.isEgg()==egg);
     Pokemon::Pokemon4ReadOnlyView view(source);
-    return exactSource
-      ? Legality::analyze(view,Enums::GameVersion::PT,"platinum_nds")
+    return (exactSource||mismatchedSource)
+      ? Legality::analyze(view,Enums::GameVersion::PT,
+                          mismatchedSource?"firered_gba":"platinum_nds")
       : Legality::analyze(view,Enums::GameVersion::PT);
 }
 }
@@ -138,7 +150,44 @@ int main(int argc,char** argv) {
             ++assertions;
         }
     }
-    assert(assertions==36);
+    // F1/F2 follow-up: preserve the 510 combined cap even when each native
+    // PK3/PK4 byte is allowed to reach 255; 511 must still be Invalid.
+    // A currently unhatched 510-EV specimen has the separate egg finding.
+    // Conflicting source labels must not override the verified native format.
+    if(!baseline) {
+        for(bool exactSource:{false,true})for(int gen:{3,4}) {
+            for(int extra:{0,1}) {
+                const auto r=gen==3
+                    ? pk3Probe(255,false,exactSource,255,static_cast<uint8_t>(extra))
+                    : pk4Probe(255,false,exactSource,255,static_cast<uint8_t>(extra));
+                assert(hasInvalidWith(r,"ev total over 510")== (extra==1));
+                assert(!hasInvalidWith(r,"ev over 252"));
+                ++assertions;
+            }
+            const auto egg=gen==3
+                ? pk3Probe(255,true,exactSource,255)
+                : pk4Probe(255,true,exactSource,255);
+            assert(!hasInvalidWith(egg,"ev total over 510"));
+            assert(!hasInvalidWith(egg,"ev over 252"));
+            assert(hasInvalidWith(egg,"egg","ev"));
+            ++assertions;
+        }
+        for(int gen:{3,4})for(bool egg:{false,true}) {
+            const auto r=gen==3
+                ? pk3Probe(255,egg,false,0,0,true)
+                : pk4Probe(255,egg,false,0,0,true);
+            assert(!hasInvalidWith(r,"ev over 252"));
+            assert(hasInvalidWith(r,"egg","ev")==egg);
+            bool sourceWarning=false;
+            for(const auto& issue:r.issues)
+                if(issue.severity==Legality::Severity::Warning &&
+                   issue.text.find("source-game label conflicts")!=std::string::npos)
+                    sourceWarning=true;
+            assert(sourceWarning);
+            ++assertions;
+        }
+    }
+    assert(assertions==(baseline?36:52));
     std::cout<<"L5 Q12 strict native PK3/PK4 analyzer EV probe: "
              <<assertions<<" checks, "
              <<(baseline?"baseline expected mismatch":"corrected acceptance")
