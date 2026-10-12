@@ -787,9 +787,9 @@ void testGen4JointNativeParentMoveIvHistories() {
                 auto missingRoute=exhaustedSet;
                 missingRoute.alternatives[1].routeIdentity=0;
                 assert(U::evaluate(missingRoute).status==U::Status::UnknownCandidateIdentity);
-                auto missingChild=exhaustedSet;
-                missingChild.originalUnhatchedEgg=nullptr;
-                assert(U::evaluate(missingChild).status==U::Status::UnknownOriginalEggSource);
+                auto missingUniverseEgg=exhaustedSet;
+                missingUniverseEgg.originalUnhatchedEgg=nullptr;
+                assert(U::evaluate(missingUniverseEgg).status==U::Status::UnknownOriginalEggSource);
                 auto unauthenticatedChild=exhaustedSet;
                 unauthenticatedChild.originalEggSourceIndependentlyVerified=false;
                 assert(U::evaluate(unauthenticatedChild).status==U::Status::UnknownOriginalEggSource);
