@@ -18,9 +18,11 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 HEADER_TEST = "tests/fixtures/legality_l6_stage2_bounds_contract.cpp"
+JOINT_TEST = "tests/fixtures/legality_l6_stage2_joint_headers.cpp"
 FULL_TEST = "tests/fixtures/legality_l6_stage2_pk4_offset_native.cpp"
 STAGE2 = "tools/audit_legality_stage2_native_formats.py"
 EXPECTED = {"header": ("L6 Stage 2 production bounds", 644426),
+            "joint": ("L6 Stage 2 joint production headers", 11800),
             "linked": ("L6 Stage 2 linked PK4 boundary", 6948)}
 
 
@@ -60,10 +62,10 @@ def invoke(argv: list[str], timeout: int, env: dict[str, str] | None = None) -> 
 
 def run(compiler: str, sanitize: bool, kind: str, location: Path,
         timeout: int) -> dict:
-    test = HEADER_TEST if kind == "header" else FULL_TEST
+    test = HEADER_TEST if kind == "header" else JOINT_TEST if kind == "joint" else FULL_TEST
     if not (ROOT / test).is_file():
         raise FileNotFoundError(ROOT / test)
-    sources = [HEADER_TEST] if kind == "header" else full_sources()
+    sources = [test] if kind in ("header", "joint") else full_sources()
     for path in sources:
         if not (ROOT / path).is_file():
             raise FileNotFoundError(ROOT / path)
@@ -107,13 +109,13 @@ def main() -> int:
                 except RuntimeError:
                     continue
                 raise AssertionError("spoofed native attestation accepted")
-        print("L6 Stage 2 native runner self-test: 8 controls PASS")
+        print("L6 Stage 2 native runner self-test: 12 controls PASS")
         return 0
     if args.expect_head:
         actual = invoke(["git", "rev-parse", "HEAD"], 15).strip()
         if actual != args.expect_head:
             raise RuntimeError("exact HEAD mismatch: expected " + args.expect_head + " got " + actual)
-    kinds = ("header",) if args.header_only else ("header", "linked")
+    kinds = ("header", "joint") if args.header_only else ("header", "joint", "linked")
     results = []
     with tempfile.TemporaryDirectory(prefix="l6-stage2-bounds-") as temporary:
         for kind in kinds:
@@ -124,7 +126,7 @@ def main() -> int:
             "production_linked": not args.header_only,
             "actual_full_repository_built": not args.header_only,
             "full_integration_release_ready": False,
-            "runs": results, "passed": len(results) == (4 if args.header_only else 8)}
+            "runs": results, "passed": len(results) == (8 if args.header_only else 12)}
     output = json.dumps(data, indent=2, sort_keys=True) + "\n"
     print(output, end="")
     if args.json_out:
