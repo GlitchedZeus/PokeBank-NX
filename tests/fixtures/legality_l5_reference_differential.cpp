@@ -9,9 +9,9 @@
 
 namespace {
 enum class Rule : uint8_t { None, EggEV, Total510, GBStats, EVGain100, EVGainEXP };
-enum class Grade : uint8_t { NoContradiction, Invalid, UnknownHistory, FormatRejected };
+enum class Grade : uint8_t { NoContradiction, Invalid, UnknownHistory, FormatRejected, Warning };
 enum class Delta : uint8_t { Agreement, ReferenceMissingInNX, NXOverstates,
-                             UnresolvedHistory, ParserMismatch, SeverityMismatch };
+                             UnresolvedHistory, ParserMismatch, SeverityMismatch, SourceDataDifference };
 struct Input {
     int generation = 3;
     bool egg = false;
@@ -89,6 +89,21 @@ constexpr Classification compare(const Input& x) noexcept {
         return {Delta::NXOverstates,ref,nx};
     return {Delta::SeverityMismatch,ref,nx};
 }
+// Independent differential observation taxonomy, including failures impossible
+// to represent through the same local parser/model instance.
+constexpr Delta classifyObservation(Grade expected, Grade actual,
+                                    bool sameParser, bool sameSourceData,
+                                    bool sourceHistoryAttested) noexcept {
+    if (!sameParser) return Delta::ParserMismatch;
+    if (!sameSourceData) return Delta::SourceDataDifference;
+    if (!sourceHistoryAttested) return Delta::UnresolvedHistory;
+    if (expected==actual) return Delta::Agreement;
+    if (expected==Grade::Invalid && actual==Grade::NoContradiction)
+        return Delta::ReferenceMissingInNX;
+    if (expected==Grade::NoContradiction && actual==Grade::Invalid)
+        return Delta::NXOverstates;
+    return Delta::SeverityMismatch;
+}
 void evaluate(const Input& x, Delta expected) {
     const auto got=compare(x);
     ++comparisons;
@@ -100,6 +115,7 @@ void evaluate(const Input& x, Delta expected) {
         case Delta::ParserMismatch:++parser;break;
         case Delta::SeverityMismatch:++sev;break;
         case Delta::NXOverstates:break;
+        case Delta::SourceDataDifference:break;
     }
 }
 void directed() {
@@ -162,6 +178,12 @@ void exhaustive() {
     }
 }
 void classificationNegativeControls() {
+    REQUIRE(classifyObservation(Grade::Invalid,Grade::NoContradiction,false,true,true)==Delta::ParserMismatch);
+    REQUIRE(classifyObservation(Grade::Invalid,Grade::NoContradiction,true,false,true)==Delta::SourceDataDifference);
+    REQUIRE(classifyObservation(Grade::Invalid,Grade::NoContradiction,true,true,false)==Delta::UnresolvedHistory);
+    REQUIRE(classifyObservation(Grade::Invalid,Grade::NoContradiction,true,true,true)==Delta::ReferenceMissingInNX);
+    REQUIRE(classifyObservation(Grade::NoContradiction,Grade::Invalid,true,true,true)==Delta::NXOverstates);
+    REQUIRE(classifyObservation(Grade::Warning,Grade::Invalid,true,true,true)==Delta::SeverityMismatch);
     Input x; x.generation=3; x.ev={253,0,0,0,0,0};
     REQUIRE(compare(x).category==Delta::UnresolvedHistory);
     // Demonstrate that missing encounter data must never be treated as a hard contradiction.
