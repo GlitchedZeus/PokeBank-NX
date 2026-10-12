@@ -40,7 +40,7 @@ struct Geometry {
     int width = 440;
     int headerHeight = 78;
     int rowHeight = 54;
-    int bottomHeight = 22;
+    int bottomHeight = 34;
     int height = 0;
     int x = 0;
     int y = 0;
@@ -56,7 +56,7 @@ struct Geometry {
                                           int screenH = 720, int footerH = 56) noexcept {
     Geometry g{};
     g.rowHeight = actionCount <= 9 ? 54 : actionCount == 10 ? 52 :
-                  actionCount == 11 ? 48 : 46;
+                  actionCount == 11 ? 48 : 44;
     g.height = g.headerHeight + actionCount * g.rowHeight + g.bottomHeight;
     g.x = (screenW - g.width) / 2;
     g.y = (screenH - footerH - g.height) / 2;
