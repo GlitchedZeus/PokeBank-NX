@@ -15,6 +15,7 @@ enum class Status : uint8_t {
     UnsupportedGame, UnknownOriginalEgg, UnknownOriginalParents,
     UnknownSharedDaycareEvent, IncoherentSharedDaycareEvent,
     UnknownPhysicalParentRoles, IncoherentPhysicalParentRoles,
+    UnknownOriginalPairEligibility, IncompatibleOriginalPair,
     UnknownOriginalMoveMethods, IncoherentMethodWitness,
     UnknownCreationItems, ConditionalMoveHistoryMatched,
     LocalMoveHistoryContradiction
@@ -34,6 +35,8 @@ struct Input {
     uint64_t originalPhysicalPairIdentity=0;
     bool sharedOriginalEventIndependentlyAttested=false;
     bool physicalDepositOrderIndependentlyAttested=false;
+    bool originalDaycarePairEligibilityIndependentlyAttested=false;
+    bool eligibleOriginalDaycarePair=false;
     std::array<Parent,2> physicalSlots{};
     uint8_t fatherPhysicalSlot=0;
     bool fatherRoleIndependentlyAttested=false;
@@ -101,6 +104,12 @@ constexpr Result evaluate(const Input& in) noexcept {
        !validMoves(in.physicalSlots[0].originalMoves) ||
        !validMoves(in.physicalSlots[1].originalMoves)) {
         out.status=Status::UnknownOriginalParents;return out;
+    }
+    if(!in.originalDaycarePairEligibilityIndependentlyAttested){
+        out.status=Status::UnknownOriginalPairEligibility;return out;
+    }
+    if(!in.eligibleOriginalDaycarePair){
+        out.status=Status::IncompatibleOriginalPair;return out;
     }
     if(!in.fatherRoleIndependentlyAttested || in.fatherPhysicalSlot>1){
         out.status=Status::UnknownPhysicalParentRoles;return out;
