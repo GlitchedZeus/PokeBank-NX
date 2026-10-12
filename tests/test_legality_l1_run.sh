@@ -47,6 +47,9 @@ suites=(
   test_legality_l1_gen4_sinnoh_special
   test_legality_l1_original_candidate_universe
   test_legality_l1_gen3_original_roamers
+  test_legality_l1_gen3_wild_catalog
+  test_legality_l1_gen3_wild_rng
+  test_legality_l1_gen3_roamer_frame
   test_legality_l1_gamecube_original_fixed
 )
 for profile in host sanitize; do
