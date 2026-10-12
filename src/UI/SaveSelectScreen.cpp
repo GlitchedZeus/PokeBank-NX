@@ -2698,12 +2698,17 @@ namespace UI {
                     gamesDrawerTouchScroll.stop();
                     titleIndex = gamesDrawerIndex;
                     scrollSelectionIntoView();
-                    // Keep launch discovery off the A-button frame, but hydrate the selected
-                    // game's real trainer/dex/party presentation just like Product Home L/R.
+                    // A clean tap/A opens the selected game's validated editor,
+                    // just like choosing it in the full Games artwork browser.
+                    // The live drag handler consumes movement/release first, so
+                    // this cannot trigger while moving the drawer.
                     refreshHubSelectionFromCache();
                     quickDrawerMotion.snapClosed();
                     overlay = Overlay::None;
                     refreshHubPreview(false);
+                    openIntent = OpenIntent::Default;
+                    selectCurrentTitle();
+                    return;
                 }
             }
             return;
@@ -4082,7 +4087,7 @@ namespace UI {
             }
             fb.popTransform(); // Footer does not move with the card.
 
-            drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Select"},
+            drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Open"},
                             {"X", "Save / Source"}, {"B", "Close"}});
         } else if (overlay == Overlay::ProfilePicker) {
             constexpr int w = 780;
