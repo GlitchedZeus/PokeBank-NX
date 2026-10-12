@@ -1,6 +1,7 @@
 #include "UI/ClassicInventoryUIModel.h"
 
 #include <array>
+#include <algorithm>
 
 namespace PokeBank::UIModel {
 namespace {
