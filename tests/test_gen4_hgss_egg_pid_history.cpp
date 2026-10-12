@@ -35,6 +35,8 @@ int main() {
     check([](auto& x){x.creation.creationStageVerified=false;},H::Status::CreationStageNotReplayed);
     check([](auto& x){x.collection.parentLanguagesAtCollectionVerified=false;},H::Status::UnknownCollectionStage);
     check([](auto& x){x.collection.trainerIdAtCollectionVerified=false;},H::Status::UnknownCollectionStage);
+    check([](auto& x){x.collection.game="soulsilver_nds";},H::Status::IncoherentGame);
+    check([](auto& x){x.collection.game="platinum_nds";},H::Status::IncoherentGame);
     check([](auto& x){x.creationEggEventToken=0;},H::Status::UnknownEggEventIdentity);
     check([](auto& x){x.collectionEggEventToken=0xCAFE;},H::Status::IncoherentEggEvent);
     check([](auto& x){++x.collection.pendingPid;},H::Status::IncoherentPendingPid);

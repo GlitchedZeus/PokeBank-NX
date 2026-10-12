@@ -10,7 +10,7 @@ namespace Creation=Gen4HGSSPendingEggPid;
 namespace Collection=Gen4HGSSMasudaPidTransform;
 enum class Status : uint8_t {
     CreationStageNotReplayed, UnknownCollectionStage,
-    UnknownEggEventIdentity, IncoherentEggEvent,
+    IncoherentGame, UnknownEggEventIdentity, IncoherentEggEvent,
     IncoherentPendingPid, ReplayedFinalPid, CandidatePidContradicted
 };
 struct Input {
@@ -32,6 +32,11 @@ constexpr Result replay(const Input& in) noexcept {
     Result out{};
     out.creation=Creation::replay(in.creation);
     if(!creationReplayed(out.creation.status))return out;
+    // The second helper is only meaningful for the same original HGSS
+    // cartridge family that created the pending daycare PID.
+    if(in.creation.game!=in.collection.game) {
+        out.status=Status::IncoherentGame;return out;
+    }
     if(!in.collection.parentLanguagesAtCollectionVerified ||
        !in.collection.trainerIdAtCollectionVerified) {
         out.status=Status::UnknownCollectionStage;return out;
