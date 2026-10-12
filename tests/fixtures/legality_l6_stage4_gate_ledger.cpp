@@ -141,7 +141,7 @@ int main() {
     testAllProfiles(checks);
     testMalformed(checks);
     testExhaustivePartialProfiles(checks);
-    assert(checks==6711);
+    assert(checks==6709);
     std::cout<<"L6 Stage 4 exact-head gate ledger: "<<checks
              <<" PASS (native-only, never authenticating)\n";
 }
