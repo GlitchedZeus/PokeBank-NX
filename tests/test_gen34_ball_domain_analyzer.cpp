@@ -1812,6 +1812,15 @@ int main() {
         };
         const auto ptIndex=findGrass(W::Game::Platinum,6);
         const auto hgIndex=findGrass(W::Game::HeartGold,4);
+        std::size_t ptAlternative=std::size(W::kPackedGen4WildEncounters);
+        for(std::size_t i=0;i<std::size(W::kPackedGen4WildEncounters);++i) {
+            const auto row=W::kPackedGen4WildEncounters[i];
+            if(W::game(row)==W::Game::Platinum &&
+               W::species(row)!=W::species(W::kPackedGen4WildEncounters[ptIndex])) {
+                ptAlternative=i;break;
+            }
+        }
+        assert(ptAlternative<std::size(W::kPackedGen4WildEncounters));
         assert(ptIndex<std::size(W::kPackedGen4WildEncounters));
         assert(hgIndex<std::size(W::kPackedGen4WildEncounters));
         const auto ptRow=W::kPackedGen4WildEncounters[ptIndex];
@@ -1907,14 +1916,14 @@ int main() {
             candidates.alternatives[i].alternativeHistoricallyGrounded=true;
             candidates.alternatives[i].completeNegativeMethodCoverageIndependentlyVerified=true;
         }
-        candidates.alternatives[1].candidate.originalRowIndex=hgIndex;
+        candidates.alternatives[1].candidate.originalRowIndex=ptAlternative;
         candidates.alternatives[2].alternativeHistoricallyGrounded=false;
         auto mixed=H::evaluateUniverse(candidates);
         assert(mixed.status==H::UniverseStatus::OneConditionalWildRoute);
         assert(mixed.compatible==1 && mixed.contradicted==1 && mixed.unverified==1);
         auto exhausted=candidates;
-        exhausted.alternatives[0].candidate.originalRowIndex=hgIndex;
-        exhausted.alternatives[2].candidate.originalRowIndex=hgIndex;
+        exhausted.alternatives[0].candidate.originalRowIndex=ptAlternative;
+        exhausted.alternatives[2].candidate.originalRowIndex=ptAlternative;
         exhausted.alternatives[2].alternativeHistoricallyGrounded=true;
         assert(H::evaluateUniverse(exhausted).status==
                H::UniverseStatus::UnknownCompleteEnumeration);
@@ -1930,6 +1939,12 @@ int main() {
         duplicated.alternatives[1].candidate.routeIdentity=101u;
         assert(H::evaluateUniverse(duplicated).status==
                H::UniverseStatus::UnknownRouteIdentity);
+        // A forged cross-game route row is an UNKNOWN provenance hole,
+        // not a defeated real Platinum wild candidate.
+        auto alienRow=exhausted;
+        alienRow.alternatives[0].candidate.originalRowIndex=hgIndex;
+        assert(H::evaluateUniverse(alienRow).status==
+               H::UniverseStatus::UnknownAlternativeProvenance);
         auto missingRoot=exhausted;missingRoot.native.record=nullptr;
         assert(H::evaluateUniverse(missingRoot).status==H::UniverseStatus::UnknownRoot);
         auto tooMany=exhausted;tooMany.count=9;

@@ -202,8 +202,7 @@ struct UniverseResult {
 constexpr bool localContradiction(Status s) noexcept {
     return s==Status::CandidateEncounterContradicted ||
            s==Status::CandidatePidIvContradicted ||
-           s==Status::CandidateRngContradicted ||
-           s==Status::IncoherentCandidateRow;
+           s==Status::CandidateRngContradicted;
 }
 inline UniverseResult evaluateUniverse(const UniverseInput& u) noexcept {
     UniverseResult out{};
@@ -234,6 +233,15 @@ inline UniverseResult evaluateUniverse(const UniverseInput& u) noexcept {
         }
         const auto result=evaluateNative(u.observation,alt.candidate,u.native);
         out.individual[i]=result.status;
+        // A borrowed/out-of-range/cross-game encounter row is not a
+        // source-grounded negative history, even with a forged method
+        // coverage flag. Never count missing/alien rows as exhausted.
+        if(result.status==Status::IncoherentCandidateRow ||
+           result.status==Status::IncoherentNativeRecord ||
+           result.status==Status::UnknownNativeSource ||
+           result.status==Status::UnknownOriginalSource) {
+            ++out.unverified;continue;
+        }
         if(result.status==Status::KnownConditionalWildHistory) {
             ++out.compatible;continue;
         }
