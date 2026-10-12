@@ -15,6 +15,7 @@ namespace Legality::Gen2IndexedOriginalSourceHistory {
 enum class Status : uint8_t {
     UnknownOriginalGame, UnknownOriginalRow, UnknownCaptureStage,
     UnknownOriginalMethod, UnknownOriginalTime,
+    UnknownOriginalSpecies, UnknownOriginalLevel,
     UnknownOriginalTree, UnknownOriginalContest,
     UnknownOriginalRoamer, UnknownOriginalEggState, UnknownOriginalShiny,
     ForeignGameRowNotEvidence, CandidateSpeciesContradicted,
@@ -71,8 +72,20 @@ inline Result wild(const Candidate& c) noexcept {
         return {Status::ForeignGameRowNotEvidence};
     if(!c.originalCaptureStageIndependentlyAttested)
         return {Status::UnknownCaptureStage};
-    if(!c.originalMethodIndependentlyAttested)
+    // Missing or out-of-domain decoded acquisition fields are not negative
+    // encounter evidence. A locally mismatched *valid* species or level can
+    // contradict this one row only after the input itself is coherent.
+    if(!c.originalMethodIndependentlyAttested || c.originalMethod>8u)
         return {Status::UnknownOriginalMethod};
+    if(c.originalSpecies==0 || c.originalSpecies>251)
+        return {Status::UnknownOriginalSpecies};
+    if(c.originalLevel==0 || c.originalLevel>100)
+        return {Status::UnknownOriginalLevel};
+    if((c.originalTimeIndependentlyAttested && c.originalTime>3u) ||
+       (game==W::Game::Crystal &&
+        c.originalCrystalCaughtDataIndependentlyAttested &&
+        ((c.originalCrystalCaughtData>>14)&3u)>3u))
+        return {Status::UnknownOriginalTime};
     const auto method=W::type(row);
     if(method==6u || method==7u) {
         if(!c.originalTreeEligibilityIndependentlyAttested)
@@ -99,8 +112,7 @@ inline Result wild(const Candidate& c) noexcept {
     const uint8_t actualTime=c.originalTimeIndependentlyAttested ?
         c.originalTime : crystalCaughtTime ?
         static_cast<uint8_t>((c.originalCrystalCaughtData>>14)&3u) : 0u;
-    if((hasOriginalTime && actualTime>3u) ||
-       (hasOriginalTime && !W::timeAllows(W::timeMask(row),actualTime)))
+    if(hasOriginalTime && !W::timeAllows(W::timeMask(row),actualTime))
         return {Status::CandidateTimeContradicted,method,W::slot(row)};
     if(crystalCaughtTime) {
         const uint16_t d=c.originalCrystalCaughtData;
