@@ -228,3 +228,25 @@ for rel, forbidden in (
             raise AssertionError(f"{rel}: non-overflowing fixed menu regained swipe-selection: {token}")
 
 print("touch Pokémon editor direct-row/action contract: PASS")
+
+// Release requires an explicit Y in every generation. Choosing the Release
+// row with A only OPENS confirmation: A inside that modal must be inert.
+const_release = read("src/UI/ClassicReleaseActionFix.inc")
+for hit in ("touched == 399) down |= HidNpadButton_Y", "touched == 499) down |= HidNpadButton_Y",
+            "if (down & HidNpadButton_Y) ux2StageRemove(screen);",
+            "if (down & HidNpadButton_Y) return confirmRelease(screen);"):
+    assert hit in const_release, f"Classic release: missing Y-only guard {hit}"
+assert "touched == 399) down |= HidNpadButton_A" not in const_release
+assert "touched == 499) down |= HidNpadButton_A" not in const_release
+assert const_release.count('drawGlyphButton(fb, confirmX, by, bw, bh, "Y", "Release");') == 2
+assert const_release.count('{{"Y", "Confirm Release"}, {"B", "Cancel"}}') == 2
+for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurface.inc"):
+    relsrc = read(rel)
+    body = relsrc.split("bool handleReleaseConfirm(", 1)[1].split("bool handleReview(", 1)[0] if "Gen4" in rel else relsrc.split("bool handleReleaseConfirm(", 1)[1].split("std::string surfaceContext(", 1)[0]
+    assert "if (!(down & HidNpadButton_Y)) return true;" in body, f"{rel}: Y-only confirmation missing"
+    assert "if (!(down & HidNpadButton_A)) return true;" not in body, f"{rel}: A must not release"
+    assert '{{"Y", "Confirm Release"}, {"B", "Cancel"}}' in relsrc
+gen3_review = read("src/UI/Gen3SharedPokemonSurface.inc").split(
+    "bool handleReview(", 1)[1].split("bool handleReleaseConfirm(", 1)[0]
+assert gen3_review.count("state.actions = true;") == 2
+assert gen3_review.count("screen.controllerNavigation.reset();") == 2

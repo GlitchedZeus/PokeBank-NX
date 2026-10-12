@@ -74,9 +74,9 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
     if (state.mode == UX2Mode::RemoveConfirm) {
         const int touched = screen.touchedButtonId(touch);
         if (touched == 398) down |= HidNpadButton_B;
-        else if (touched == 399) down |= HidNpadButton_A;
+        else if (touched == 399) down |= HidNpadButton_Y;
         if (down & HidNpadButton_B) { state.mode = UX2Mode::Actions; state.row = 0; return true; }
-        if (down & HidNpadButton_A) ux2StageRemove(screen);
+        if (down & HidNpadButton_Y) ux2StageRemove(screen);
         return true;
     }
     return false;
@@ -101,9 +101,9 @@ bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         const int confirmX = x + w - bw - 22, cancelX = confirmX - bw - 16;
         drawGlyphButton(fb, cancelX, by, bw, bh, "B", "Cancel");
         screen.touchButtons.push_back({398, cancelX, by, bw, bh});
-        drawGlyphButton(fb, confirmX, by, bw, bh, "A", "Release");
+        drawGlyphButton(fb, confirmX, by, bw, bh, "Y", "Release");
         screen.touchButtons.push_back({399, confirmX, by, bw, bh});
-        drawNavBar(fb, {{"A", "Confirm Release"}, {"B", "Cancel"}});
+        drawNavBar(fb, {{"Y", "Confirm Release"}, {"B", "Cancel"}});
         return true;
     }
 
@@ -306,13 +306,13 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
     if (confirm.active) {
         const int touched = screen.touchedButtonId(touch);
         if (touched == 498) down |= HidNpadButton_B;
-        else if (touched == 499) down |= HidNpadButton_A;
+        else if (touched == 499) down |= HidNpadButton_Y;
         if (down & HidNpadButton_B) {
             confirm.active = false;
             screen.controllerNavigation.reset();
             return true;
         }
-        if (down & HidNpadButton_A) return confirmRelease(screen);
+        if (down & HidNpadButton_Y) return confirmRelease(screen);
         return true;
     }
 
@@ -438,9 +438,9 @@ bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         const int confirmX = x + w - bw - 22, cancelX = confirmX - bw - 16;
         drawGlyphButton(fb, cancelX, by, bw, bh, "B", "Cancel");
         screen.touchButtons.push_back({498, cancelX, by, bw, bh});
-        drawGlyphButton(fb, confirmX, by, bw, bh, "A", "Release");
+        drawGlyphButton(fb, confirmX, by, bw, bh, "Y", "Release");
         screen.touchButtons.push_back({499, confirmX, by, bw, bh});
-        drawNavBar(fb, {{"A", "Confirm Release"}, {"B", "Cancel"}});
+        drawNavBar(fb, {{"Y", "Confirm Release"}, {"B", "Cancel"}});
         return true;
     }
 

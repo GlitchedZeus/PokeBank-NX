@@ -1359,6 +1359,8 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
     if (down & HidNpadButton_B) {
         state.reviewTouchScroll.reset();
         state.review = false;
+        state.actions = true; // Restore the same popup and focused Review command.
+        screen.controllerNavigation.reset();
         return true;
     }
     if (down & HidNpadButton_Y) {
@@ -1366,6 +1368,8 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         staged->discard();
         refreshPresentation(screen);
         state.review = false;
+        state.actions = true; // Match Gen IV: Review exits back to Actions, not the box.
+        screen.controllerNavigation.reset();
         screen.postStatus("Generation III staged changes discarded; original save never changed", 360);
         return true;
     }
@@ -1379,7 +1383,9 @@ bool handleReleaseConfirm(TrainerViewScreen& screen, State& state, u64 down) {
         state.actions = true;
         return true;
     }
-    if (!(down & HidNpadButton_A)) return true;
+    // A never stages a destructive edit. Release requires an explicit
+    // second-step Y confirmation; B always returns to Actions unchanged.
+    if (!(down & HidNpadButton_Y)) return true;
     auto* staged = editor(screen);
     if (!staged) return true;
     std::string error;
@@ -1938,7 +1944,7 @@ void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& s
                 Colors::Text, TextStyle::Body);
     fb.drawText(x + 34, y + 166, "The original source save is never written.",
                 Colors::TextDim, TextStyle::Caption);
-    drawNavBar(fb, {{"A", "Confirm Release"}, {"B", "Cancel"}});
+    drawNavBar(fb, {{"Y", "Confirm Release"}, {"B", "Cancel"}});
 }
 
 } // namespace
