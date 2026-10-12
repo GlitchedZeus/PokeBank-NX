@@ -68,6 +68,8 @@ constexpr Status checkParent(const Parent& p,const Expected& e,
        !Route::supported(p.deposited.game) ||
        !p.originalOrigin.species || !p.deposited.species ||
        p.originalOrigin.species>493 || p.deposited.species>493 ||
+       (gen3(p.originalOrigin.game) && p.originalOrigin.species>386) ||
+       (gen3(p.deposited.game) && p.deposited.species>386) ||
        p.transitions>p.history.size())
         return Status::UnknownOriginalHistory;
     Snapshot current=p.originalOrigin;
@@ -84,7 +86,8 @@ constexpr Status checkParent(const Parent& p,const Expected& e,
            t.before.species!=current.species)
             return Status::CrossedBiologicalIdentity;
         if(!t.after.identity || !Route::supported(t.after.game) ||
-           !t.after.species || t.after.species>493)
+           !t.after.species || t.after.species>493 ||
+           (gen3(t.after.game) && t.after.species>386))
             return Status::UnknownOriginalHistory;
         if(t.kind==TransitionKind::Trade) {
             // Trade alone changes custody/game, never biological species.
@@ -102,7 +105,7 @@ constexpr Status checkParent(const Parent& p,const Expected& e,
             if(!gen3(current.game) || !gen4(t.after.game) ||
                current.species>386 || t.after.species!=current.species)
                 return Status::ContradictedOriginalRoute;
-        }
+        }else return Status::UnknownOriginalHistory;
         current=t.after;
         sequence=t.originalSequence;
     }
