@@ -36,6 +36,30 @@ int main(){
     static_assert(U::map(
         Legality::Gen4WildSpecialStageEvidence::Status::KnownConditionalSpecialEncounter)
         ==Kind::ConditionalOriginalHistory);
+    static_assert(U::map(
+        Legality::Gen3MethodHOriginalStage::Status::KnownConditionalEmeraldSafariHistory)
+        ==Kind::ConditionalOriginalHistory);
+    static_assert(U::map(
+        Legality::Gen3MethodHOriginalStage::Status::UnsupportedLeadHistory)
+        ==Kind::UnknownOriginalHistory);
+    static_assert(U::map(
+        Legality::Gen3PidIvFamilyRouter::Status::ConditionalRngCorrelation)
+        ==Kind::OriginalTemplateCompatible);
+    static_assert(U::map(
+        Legality::Gen3PidIvFamilyRouter::Status::SearchBoundExhausted)
+        ==Kind::UnknownOriginalHistory);
+    static_assert(U::map(
+        Legality::Gen4NatureReversalReplay::Status::AttestedStageMatched)
+        ==Kind::OriginalTemplateCompatible);
+    static_assert(U::map(
+        Legality::Gen4NatureReversalReplay::Status::SearchExhausted)
+        ==Kind::UnknownOriginalHistory);
+    static_assert(U::map(
+        Legality::Gen4WildSourceLinkedHistory::Status::KnownConditionalWildHistory)
+        ==Kind::ConditionalOriginalHistory);
+    static_assert(U::map(
+        Legality::Gen4WildSourceLinkedHistory::Status::UnknownLeadHistory)
+        ==Kind::UnknownOriginalHistory);
     constexpr std::array<U::Candidate,4> mixed{{
         {Family::Gen1StaticTrade,Kind::CandidateLocalContradiction,true},
         {Family::Gen2Wild,Kind::UnknownOriginalHistory,true},

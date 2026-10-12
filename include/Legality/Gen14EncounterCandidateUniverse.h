@@ -10,6 +10,10 @@
 #include "Legality/Gen4SinnohSpecialOriginalStage.h"
 #include "Legality/Gen4StaticIndexedOriginalHistory.h"
 #include "Legality/Gen4WildSpecialStageEvidence.h"
+#include "Legality/Gen3MethodHOriginalStage.h"
+#include "Legality/Gen3PidIvFamilyRouter.h"
+#include "Legality/Gen4NatureReversalReplay.h"
+#include "Legality/Gen4WildSourceLinkedHistory.h"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -18,7 +22,9 @@ namespace Legality::Gen14EncounterCandidateUniverse {
 enum class Family : uint8_t {
     Gen1StaticTrade, Gen2Wild, Gen2StaticGift,
     Gen3Safari, Gen3GameCubeShadow, Gen4SinnohWild,
-    Gen4StaticGiftRoamer, Gen4HgssSpecial, Count
+    Gen4StaticGiftRoamer, Gen4HgssSpecial,
+    Gen3EmeraldMethodH, Gen3PidIvOnly, Gen4WildSourceLinked,
+    Gen4NatureStageOnly, Count
 };
 enum class EvidenceKind : uint8_t {
     UnknownOriginalHistory, CandidateLocalContradiction,
@@ -142,6 +148,42 @@ constexpr EvidenceKind map(Gen4WildSpecialStageEvidence::Status s) noexcept {
             return EvidenceKind::CandidateLocalContradiction;
         default: return EvidenceKind::UnknownOriginalHistory;
     }
+}
+// RNG correlation or a nature-reversal frame is one stage, NOT an
+// original encounter row. Promote it only to template/stage compatibility.
+constexpr EvidenceKind map(Gen3PidIvFamilyRouter::Status s) noexcept {
+    return s==Gen3PidIvFamilyRouter::Status::ConditionalRngCorrelation ?
+        EvidenceKind::OriginalTemplateCompatible :
+        EvidenceKind::UnknownOriginalHistory;
+}
+constexpr EvidenceKind map(Gen4NatureReversalReplay::Status s) noexcept {
+    using S=Gen4NatureReversalReplay::Status;
+    if(s==S::AttestedStageMatched)
+        return EvidenceKind::OriginalTemplateCompatible;
+    if(s==S::AttestedStagePidContradicted)
+        return EvidenceKind::CandidateLocalContradiction;
+    return EvidenceKind::UnknownOriginalHistory;
+}
+constexpr EvidenceKind map(Gen3MethodHOriginalStage::Status s) noexcept {
+    using S=Gen3MethodHOriginalStage::Status;
+    if(s==S::KnownConditionalEmeraldSafariHistory)
+        return EvidenceKind::ConditionalOriginalHistory;
+    if(s==S::CandidateRowContradicted ||
+       s==S::CandidatePidIvContradicted)
+        return EvidenceKind::CandidateLocalContradiction;
+    return EvidenceKind::UnknownOriginalHistory;
+}
+constexpr EvidenceKind map(Gen4WildSourceLinkedHistory::Status s) noexcept {
+    using S=Gen4WildSourceLinkedHistory::Status;
+    if(s==S::KnownConditionalWildHistory)
+        return EvidenceKind::ConditionalOriginalHistory;
+    if(s==S::CandidateEncounterContradicted ||
+       s==S::CandidatePidIvContradicted ||
+       s==S::CandidateRngContradicted ||
+       s==S::IncoherentCandidateRow ||
+       s==S::IncoherentNativeRecord)
+        return EvidenceKind::CandidateLocalContradiction;
+    return EvidenceKind::UnknownOriginalHistory;
 }
 constexpr Summary summarize(std::span<const Candidate> candidates) noexcept {
     Summary out{};
