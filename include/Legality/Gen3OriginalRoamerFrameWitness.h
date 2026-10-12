@@ -46,7 +46,7 @@ constexpr Result evaluate(const Frame& c) noexcept {
  if(species==0)return {Status::UnknownOriginalSelection};
  const bool truncated=c.exactGame!=W::Game::Emerald;
  if(!c.originalPrePidFrameAttested)return {Status::UnknownOriginalCaptureFrame,species,truncated};
- if(!c.originalSpeciesAttested || c.originalSpecies==0)return {Status::UnknownOriginalSpecies,species,truncated};
+ if(!c.originalSpeciesAttested || c.originalSpecies==0 || c.originalSpecies>386)return {Status::UnknownOriginalSpecies,species,truncated};
  if(!c.originalIvsAttested)return {Status::UnknownOriginalIvs,species,truncated};
  for(auto iv:c.originalIVs)if(iv>31)return {Status::UnknownOriginalIvs,species,truncated};
  if(c.originalSpecies!=species)return {Status::CandidateSpeciesContradicted,species,truncated};

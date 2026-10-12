@@ -74,6 +74,16 @@ int main(){
         }
         auto wrong=c;wrong.originalSpecies^=1u;
         assert(R::evaluate(wrong).status==S::CandidateOriginalSpeciesContradicted);
+        wrong=c;wrong.originalSpecies=0;
+        assert(R::evaluate(wrong).status==S::UnknownOriginalSpecies);
+        wrong=c;wrong.originalSpecies=65535;
+        assert(R::evaluate(wrong).status==S::UnknownOriginalSpecies);
+        wrong=c;wrong.originalLevel=0;
+        assert(R::evaluate(wrong).status==S::UnknownOriginalLevel);
+        wrong=c;wrong.originalLevel=101;
+        assert(R::evaluate(wrong).status==S::UnknownOriginalLevel);
+        wrong=c;wrong.originalGame=static_cast<G>(255);
+        assert(R::evaluate(wrong).status==S::UnknownOriginalGame);
         wrong=c;wrong.originalLevel++;
         assert(R::evaluate(wrong).status==S::CandidateOriginalLevelContradicted);
         wrong=c;wrong.originalMapGroup=8;

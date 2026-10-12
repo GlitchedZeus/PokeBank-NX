@@ -81,10 +81,7 @@ inline Result wild(const Candidate& c) noexcept {
         return {Status::UnknownOriginalSpecies};
     if(c.originalLevel==0 || c.originalLevel>100)
         return {Status::UnknownOriginalLevel};
-    if((c.originalTimeIndependentlyAttested && c.originalTime>3u) ||
-       (game==W::Game::Crystal &&
-        c.originalCrystalCaughtDataIndependentlyAttested &&
-        ((c.originalCrystalCaughtData>>14)&3u)>3u))
+    if(c.originalTimeIndependentlyAttested && c.originalTime>3u)
         return {Status::UnknownOriginalTime};
     const auto method=W::type(row);
     if(method==6u || method==7u) {

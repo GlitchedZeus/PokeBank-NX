@@ -36,6 +36,10 @@ int main(){
    assert(r.truncated==(f.exactGame!=W::Game::Emerald));++positives;
    auto x=f;x.originalSpecies^=1u;
    assert(H::evaluate(x).status==S::CandidateSpeciesContradicted);++negatives;
+   x=f;x.originalSpecies=0;
+   assert(H::evaluate(x).status==S::UnknownOriginalSpecies);++unknown;
+   x=f;x.originalSpecies=65535;
+   assert(H::evaluate(x).status==S::UnknownOriginalSpecies);++unknown;
    x=f;x.originalPid^=1u;
    assert(H::evaluate(x).status==S::CandidatePidContradicted);++negatives;
    x=f;x.originalIVs[0]^=1u;

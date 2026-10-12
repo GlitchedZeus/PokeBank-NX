@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   l1-native:
-    name: L1 exact-head ${{ matrix.profile }} (31 suites)
+    name: L1 exact-head ${{ matrix.profile }} (35 suites)
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
@@ -37,7 +37,7 @@ jobs:
           echo "L1_EXACT_TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
           g++ --version
           bash -n tests/test_legality_l1_run.sh
-          test "$(grep -Ec '^  test_legality_l1_' tests/test_legality_l1_run.sh)" -eq 31
+          test "$(grep -Ec '^  test_legality_l1_' tests/test_legality_l1_run.sh)" -eq 35
 
       - name: Execute all 31 L1 native suites under ${{ matrix.profile }}
         env:

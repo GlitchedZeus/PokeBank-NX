@@ -17,6 +17,10 @@ void cover(Status positive,Status negative){
 int main(){
  cover(G1::Status::SourceSlotCompatibleRateAndHistoryUnverified,G1::Status::CandidateOriginalLevelContradicted);
  cover(F2::Status::SourceSlotCompatibleWorldAndRngUnverified,F2::Status::CandidateRodContradicted);
+ cover(NPC2::Status::ConditionalOriginalTradeTemplateOnly,NPC2::Status::CandidateFixedDVsContradicted);
+ static_assert(map(NPC2::Status::ConditionalOriginalTradeTemplateOnly)==Class::SourceOnly);
+ static_assert(map(NPC2::Status::UnknownLaterEvolutionOrTimeCapsule)==Class::Unknown);
+ static_assert(map(NPC2::Status::UnknownOriginalCaughtData)==Class::Unknown);
  cover(T2::Status::SourceRowCompatibleHistoryUnverified,T2::Status::CandidateRarityContradicted);
  cover(S2::Status::SourceSwarmRowCompatibleOriginalWorldUnverified,S2::Status::CandidateMapContradicted);
  cover(R2::Status::ConditionalSourceTransitionOnly,R2::Status::CandidateOriginalTransitionContradicted);
@@ -36,5 +40,5 @@ int main(){
  static_assert(map(GC3::Status::ConditionalGameCubeOriginHistory)==Class::ConditionalNative);
  static_assert(map(JK4::Status::ConditionalOriginalJkNatureStage)==Class::RngStageOnly);
  static_assert(map(Honey4::Status::ConditionalOriginalHoneyHistory)==Class::SourceOnly);
- std::cout<<"L1 S5 all 12 source status adapters and 1536 invalid status controls: PASS\n";
+ std::cout<<"L1 S5 all 13 source status adapters and 1664 invalid status controls: PASS\n";
 }

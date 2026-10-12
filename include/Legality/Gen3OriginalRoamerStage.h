@@ -21,6 +21,7 @@ enum class Status : uint8_t {
     UnknownOriginalGame,UnknownOriginalRoamerActivation,
     UnknownOriginalRoamerSelection,UnknownOriginalRoute,
     UnknownOriginalPidIvStage,MalformedOriginalIvs,
+    UnknownOriginalSpecies,UnknownOriginalLevel,
     CandidateOriginalSpeciesContradicted,
     CandidateOriginalLevelContradicted,
     CandidateOriginalRouteContradicted,
@@ -100,7 +101,7 @@ constexpr uint32_t packedIv2(const std::array<uint8_t,6>& iv) noexcept {
 }
 inline Result evaluate(const Candidate& c) noexcept {
     if(!c.originalGameIndependentlyAttested ||
-       c.originalGame==Game::Unknown)return {};
+       (!isRse(c.originalGame) && !isFrlg(c.originalGame)))return {};
     if(!c.originalRoamerActivationIndependentlyAttested)
         return {Status::UnknownOriginalRoamerActivation};
     if((c.originalGame==Game::Emerald ||
@@ -118,6 +119,10 @@ inline Result evaluate(const Candidate& c) noexcept {
         return {Status::UnknownOriginalPidIvStage,expected,level,0,truncated};
     if(!Gen3PidIv::validStoredIVs(c.originalIVs))
         return {Status::MalformedOriginalIvs,expected,level,0,truncated};
+    if(c.originalSpecies==0 || c.originalSpecies>386)
+        return {Status::UnknownOriginalSpecies,expected,level,0,truncated};
+    if(c.originalLevel==0 || c.originalLevel>100)
+        return {Status::UnknownOriginalLevel,expected,level,0,truncated};
     if(c.originalSpecies!=expected)
         return {Status::CandidateOriginalSpeciesContradicted,expected,level,0,truncated};
     if(c.originalLevel!=level)

@@ -79,6 +79,17 @@ constexpr std::size_t slotCount(const Group& group) noexcept { return group.pack
 constexpr Rod requiredRod(std::size_t physicalSlot) noexcept {
     return physicalSlot<2?Rod::Old:physicalSlot<5?Rod::Good:physicalSlot<10?Rod::Super:Rod::Unknown;
 }
+constexpr bool validMethod(Method m) noexcept {
+    return m==Method::Grass || m==Method::Surf ||
+           m==Method::RockSmash || m==Method::Fishing;
+}
+constexpr bool validRod(Rod r) noexcept {
+    return r==Rod::Old || r==Rod::Good || r==Rod::Super;
+}
+constexpr bool knownSourceSpecies(std::string_view value) noexcept {
+    for(auto species:kSpecies) if(species==value)return true;
+    return false;
+}
 struct Candidate {
     Game originalGame=Game::Unknown;
     std::size_t exactGroupIndex=0,physicalSlot=0;
@@ -103,13 +114,17 @@ constexpr Result evaluate(const Candidate& c) noexcept {
     if(row.speciesIndex>=kSpecies.size() || row.minLevel==0 || row.minLevel>row.maxLevel)
         return {Status::UnknownOriginalSource};
     if(group.game!=c.originalGame)return {Status::ForeignSource,row};
-    if(!c.originalMapAndMethodAttested || c.originalMap.empty() || c.originalMethod==Method::Unknown)
+    if(!c.originalMapAndMethodAttested || c.originalMap.empty() ||
+       !validMethod(c.originalMethod))
         return {Status::UnknownOriginalSource,row};
-    if(!c.originalSpeciesAttested || c.originalSpecies.empty())
+    // A corrupted/unsupported source-species symbol is not a *different*
+    // independently verified species. Only two valid physical-row species
+    // can establish a local candidate mismatch.
+    if(!c.originalSpeciesAttested || !knownSourceSpecies(c.originalSpecies))
         return {Status::UnknownOriginalIdentity,row};
     if(!c.originalLevelAttested || c.originalLevel==0 || c.originalLevel>100)
         return {Status::UnknownOriginalLevel,row};
-    if(group.method==Method::Fishing && (!c.originalRodAttested || c.originalRod==Rod::Unknown))
+    if(group.method==Method::Fishing && (!c.originalRodAttested || !validRod(c.originalRod)))
         return {Status::UnknownOriginalRod,row};
     if(c.originalMap!=group.map)return {Status::UnknownOriginalSource,row}; // unmodeled map may have other valid origins
     if(c.originalMethod!=group.method)return {Status::CandidateMethodContradicted,row};
