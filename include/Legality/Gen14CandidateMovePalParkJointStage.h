@@ -30,6 +30,10 @@ struct LaterMethodWitness {
     // A method-specific *original retail* packet, not a species pool.
     uint32_t independentSourceRecord=0;
     bool independentlyVerified=false;
+    // This witness must attest the same native species at this stage.
+    // A source entry for a *different* Pokemon cannot certify this move,
+    // even when level, game, move and method happen to coincide.
+    uint16_t sourceNationalSpecies=0;
 };
 struct Input {
     C::Path path{};
@@ -166,6 +170,7 @@ constexpr Result evaluate(const Input& in) noexcept {
                     step.methodSource==Game::Unknown:
                     step.methodSource==step.game;
                 if(!witness.independentlyVerified || !witness.independentSourceRecord ||
+                   witness.sourceNationalSpecies!=in.path.species ||
                    witness.sourceGame!=step.game || witness.method!=step.method ||
                    witness.move!=step.move || witness.level!=step.level ||
                    !step.evidenceVerified || !sourceBound)return out;
