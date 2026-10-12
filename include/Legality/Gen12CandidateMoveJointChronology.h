@@ -12,7 +12,7 @@ namespace Legality::Gen12CandidateMoveJointChronology {
 enum class Game : uint8_t { Unknown, Red, Blue, Yellow, Gold, Silver, Crystal };
 enum class Action : uint8_t {
     OfferLearn, OfferDecline, OfferAlreadyKnown, TeachTM,
-    VisitGame, ToGen1, ReturnToGen2
+    VisitGame, ToGen2, ToGen1, ReturnToGen2
 };
 enum class Status : uint8_t { Unknown, CandidateConsistent, CandidateContradicted };
 struct Offer { uint8_t level; uint16_t move; };
@@ -130,6 +130,8 @@ constexpr Result evaluate(const Path& p) noexcept {
         if(!s.actionSourceVerified || !supported(s.game,p.species))return out;
         if(s.action==Action::TeachTM &&
            !(p.species==1 && pinnedBulbasaurTM(s.game,s.tmNumber)))return out;
+        if(s.action==Action::ToGen2 &&
+           (!p.retailTimeCapsulePolicyVerified || p.species>151))return out;
         if(s.action==Action::ToGen1 &&
            (!p.retailTimeCapsulePolicyVerified ||
             p.speciesAtGen1Entry!=p.species || p.species>151))return out;
@@ -185,6 +187,10 @@ constexpr Result evaluate(const Path& p) noexcept {
                 return out;
             if(s.action==Action::VisitGame) {
                 if(s.game==current || generation(s.game)!=generation(current))return out;
+            } else if(s.action==Action::ToGen2) {
+                if(generation(current)!=1 || generation(s.game)!=2 ||
+                   !p.retailTimeCapsulePolicyVerified || p.species>151)
+                    return out;
             } else if(s.action==Action::ToGen1) {
                 if(generation(current)!=2 || generation(s.game)!=1 ||
                    returnGame!=Game::Unknown)return out;
