@@ -1,10 +1,16 @@
 #include "Integration/Gen5/Gen5StagedSaveCandidate.h"
+#include "Integration/Gen5/Gen5WorkingCopyExport.h"
 
 #include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cerrno>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <iostream>
 #include <span>
 #include <string>
@@ -157,6 +163,109 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     auto damaged=out->bytes;
     damaged[base+L::PartyOffset+10]^=0x80;
     assert(!G::Gen5ReadOnlySave::parse(damaged,game,&error,selected));
+    // Exercise real app-owned working-copy export on one native fixture
+    // per BW/B2W2 family and selected-copy location. All writes must be
+    // confined to a disposable host directory; the emulator source remains
+    // intact. Fault injection exercises atomic publication/cleanup.
+    if ((pid>>13)==0) {
+        char pattern[]="/tmp/pokebank_gen5_working_copy_XXXXXX";
+        const char* root=::mkdtemp(pattern);
+        assert(root);
+        const std::string exportRoot(root);
+        const std::string sourcePath=exportRoot+"/original_source.sav";
+        FILE* original=std::fopen(sourcePath.c_str(),"wb");
+        assert(original);
+        assert(std::fwrite(input.data(),1,input.size(),original)==input.size());
+        assert(std::fclose(original)==0);
+        G::WorkingCopyExportRequest req;
+        req.rootDirectory=exportRoot;
+        req.profileIdentity="00000000000000000000000000000001";
+        req.timestamp="20261012_221500";
+        req.sourcePath=sourcePath;
+        req.applicationSha="host-synthetic-test";
+        req.observedSourceBytes=input;
+        assert(!G::publishGen5WorkingCopy(
+            G::Gen5StagedPokemonWorkspace(*parsed),req).success);
+        const auto exported=G::publishGen5WorkingCopy(ws,req);
+        assert(exported.success && exported.error.empty());
+        assert(exported.changedRecords==2);
+        assert(exported.sourceSha256.size()==64 &&
+               exported.editedSha256.size()==64 &&
+               exported.sourceSha256!=exported.editedSha256);
+        const auto verifyOnDisk=[&](const std::string& path,
+                                     const std::vector<uint8_t>& expected) {
+            FILE* file=std::fopen(path.c_str(),"rb");
+            assert(file);
+            std::vector<uint8_t> readback(expected.size(),0);
+            assert(std::fread(readback.data(),1,readback.size(),file)==readback.size());
+            assert(std::fgetc(file)==EOF);
+            assert(std::fclose(file)==0);
+            assert(readback==expected);
+        };
+        verifyOnDisk(exported.directory+"/original_backup.sav",input);
+        verifyOnDisk(exported.directory+"/edited.sav",out->bytes);
+        verifyOnDisk(sourcePath,input); // Physical source was never opened for write.
+        {
+            FILE* manifest=std::fopen(
+                (exported.directory+"/EXPORT_MANIFEST.txt").c_str(),"rb");
+            assert(manifest);
+            char text[4096]{};
+            const size_t n=std::fread(text,1,sizeof(text)-1,manifest);
+            assert(std::fclose(manifest)==0 && n>0);
+            const std::string manifestText(text,n);
+            assert(manifestText.find("EMULATOR_SAVE_WRITE=DISABLED")!=std::string::npos);
+            assert(manifestText.find("INJECT_SAVE=DISABLED")!=std::string::npos);
+            assert(manifestText.find(exported.sourceSha256)!=std::string::npos);
+            assert(manifestText.find(exported.editedSha256)!=std::string::npos);
+        }
+        auto second=G::publishGen5WorkingCopy(ws,req);
+        assert(second.success && second.directory!=exported.directory);
+        verifyOnDisk(exported.directory+"/original_backup.sav",input);
+        const auto cleanupPublished=[&](const std::string& dir) {
+            assert(std::remove((dir+"/original_backup.sav").c_str())==0);
+            assert(std::remove((dir+"/edited.sav").c_str())==0);
+            assert(std::remove((dir+"/EXPORT_MANIFEST.txt").c_str())==0);
+            assert(::rmdir(dir.c_str())==0);
+        };
+        cleanupPublished(exported.directory);
+        cleanupPublished(second.directory);
+        const std::array<G::WorkingCopyFailurePoint,4> failures{
+            G::WorkingCopyFailurePoint::AfterBackup,
+            G::WorkingCopyFailurePoint::AfterEdited,
+            G::WorkingCopyFailurePoint::AfterReadback,
+            G::WorkingCopyFailurePoint::AfterManifest};
+        for(size_t i=0;i<failures.size();++i) {
+            req.timestamp="20261012_22150"+std::to_string(i);
+            req.failurePoint=failures[i];
+            const auto failed=G::publishGen5WorkingCopy(ws,req);
+            assert(!failed.success && !failed.error.empty());
+            const std::string path=exportRoot+"/account-"+req.profileIdentity+
+                "/"+std::string(game)+"_"+req.timestamp;
+            struct stat st{};
+            assert(::lstat(path.c_str(),&st)!=0 && errno==ENOENT);
+            const std::string temporary=exportRoot+"/account-"+req.profileIdentity+
+                "/."+std::string(game)+"_"+req.timestamp+".pending";
+            assert(::lstat(temporary.c_str(),&st)!=0 && errno==ENOENT);
+        }
+        req.failurePoint=G::WorkingCopyFailurePoint::None;
+        req.timestamp="20261012_221520";
+        auto stale=input;
+        stale[0x70000]^=0x80;
+        req.observedSourceBytes=stale;
+        assert(!G::publishGen5WorkingCopy(ws,req).success);
+        req.observedSourceBytes=input;
+        req.profileIdentity="00000000000000000000000000000000";
+        assert(!G::publishGen5WorkingCopy(ws,req).success);
+        const std::string profileDir=exportRoot+
+            "/account-00000000000000000000000000000001";
+        verifyOnDisk(sourcePath,input); // Still unchanged after every fault injection.
+        assert(std::remove(sourcePath.c_str())==0);
+        assert(::rmdir(profileDir.c_str())==0);
+        assert(::rmdir(exportRoot.c_str())==0);
+        // No original bytes or selection state were mutated by export.
+        assert(std::equal(parsed->sourceBytes().begin(),
+                          parsed->sourceBytes().end(),input.begin()));
+    }
     ws.discardAll();
     assert(!ws.hasChanges() && !G::buildStagedSaveCandidate(ws,&error));
 }

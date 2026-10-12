@@ -249,6 +249,36 @@ assert "state.discardAllWithPresentation(staged," in surface
 require(trainer, "Gen5ReadOnlyTrainer::rebuildPresentation(")
 assert "fwrite(" not in trainer and "ofstream(" not in trainer
 
+# Working-copy output is a new app-owned, read-back verified directory,
+# not a physical provider save writer. The native tests exercise every
+# pre-publication failure point and prohibit stale original-image export.
+working_header = read("include/Integration/Gen5/Gen5WorkingCopyExport.h")
+working_cpp = read("src/Integration/Gen5/Gen5WorkingCopyExport.cpp")
+working_tests = read("tests/test_gen5_staged_save_candidate.cpp")
+require(working_header, "publishGen5WorkingCopy(",
+        "observedSourceBytes",
+        "AfterBackup, AfterEdited, AfterReadback, AfterManifest")
+require(working_cpp, "buildStagedSaveCandidateForObservedSource(",
+        'PokeBank::Paths::exportsRoot()+"/gen5"',
+        'root!=fixedRoot',
+        '"original_backup.sav"', '"edited.sav"',
+        '"EXPORT_MANIFEST.txt"', "readExact(backupPath",
+        "readExact(editedPath", "hash(editedReadback)",
+        "Gen5ReadOnlySave::parse(",
+        "cleanTemporary(temporaryPath);",
+        "rename(temporaryPath.c_str(),finalPath.c_str())",
+        "INJECT_SAVE=DISABLED", "EMULATOR_SAVE_WRITE=DISABLED")
+for forbidden in ("std::fopen(request.sourcePath", '::rename(request.sourcePath',
+                  '::remove(request.sourcePath', "injectSave("):
+    assert forbidden not in working_cpp, f"Gen V writer touches original source: {forbidden}"
+require(working_tests, "WorkingCopyFailurePoint::AfterBackup",
+        "WorkingCopyFailurePoint::AfterEdited",
+        "WorkingCopyFailurePoint::AfterReadback",
+        "WorkingCopyFailurePoint::AfterManifest",
+        "stale[0x70000]^=0x80",
+        "EMULATOR_SAVE_WRITE=DISABLED",
+        "INJECT_SAVE=DISABLED")
+
 # The candidate serializer may only build an app-owned byte array; no provider
 # write, Inject Save or generic source mutation is licensed by this milestone.
 candidate = read("include/Integration/Gen5/Gen5StagedSaveCandidate.h")
