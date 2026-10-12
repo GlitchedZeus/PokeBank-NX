@@ -16,6 +16,15 @@ int main(){
         Legality::Gen2IndexedOriginalSourceHistory::Status::CandidateMethodContradicted)
         ==Kind::CandidateLocalContradiction);
     static_assert(U::map(
+        Legality::Gen2IndexedOriginalSourceHistory::Status::UnknownOriginalTime)
+        ==Kind::UnknownOriginalHistory);
+    static_assert(U::map(
+        Legality::Gen1IndexedOriginalSourceHistory::Status::UnknownLaterGenerationEvolution)
+        ==Kind::UnknownOriginalHistory);
+    static_assert(U::map(
+        Legality::Gen1IndexedOriginalSourceHistory::Status::UnknownCurrentSpecies)
+        ==Kind::UnknownOriginalHistory);
+    static_assert(U::map(
         Legality::Gen3SafariIndexedOriginalHistory::Status::ConditionalOriginalSafariHistory)
         ==Kind::ConditionalOriginalHistory);
     static_assert(U::map(

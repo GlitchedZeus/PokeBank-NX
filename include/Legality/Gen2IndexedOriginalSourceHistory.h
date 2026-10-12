@@ -14,7 +14,8 @@ namespace Legality::Gen2IndexedOriginalSourceHistory {
 
 enum class Status : uint8_t {
     UnknownOriginalGame, UnknownOriginalRow, UnknownCaptureStage,
-    UnknownOriginalMethod, UnknownOriginalTree, UnknownOriginalContest,
+    UnknownOriginalMethod, UnknownOriginalTime,
+    UnknownOriginalTree, UnknownOriginalContest,
     UnknownOriginalRoamer, UnknownOriginalEggState, UnknownOriginalShiny,
     ForeignGameRowNotEvidence, CandidateSpeciesContradicted,
     CandidateLocationContradicted, CandidateLevelContradicted,
@@ -37,6 +38,10 @@ struct Candidate {
     bool originalRowIndependentlyAttested=false;
     bool originalCaptureStageIndependentlyAttested=false;
     bool originalMethodIndependentlyAttested=false;
+    // A current clock or implicit zero-initialized time is not historical
+    // proof. Crystal's independently preserved caught-data can supply
+    // the original time when this distinct witness is absent.
+    bool originalTimeIndependentlyAttested=false;
     bool originalTreeEligibilityIndependentlyAttested=false;
     bool originalContestSessionIndependentlyAttested=false;
     bool originalRoamerRouteIndependentlyAttested=false;
@@ -83,14 +88,24 @@ inline Result wild(const Candidate& c) noexcept {
         return {Status::CandidateLevelContradicted,method,W::slot(row)};
     if(c.originalMethod!=method)
         return {Status::CandidateMethodContradicted,method,W::slot(row)};
-    if(c.originalTime>3u)
+    const bool crystalCaughtTime=game==W::Game::Crystal &&
+        c.originalCrystalCaughtDataIndependentlyAttested;
+    const bool hasOriginalTime=c.originalTimeIndependentlyAttested ||
+        crystalCaughtTime;
+    if(W::timeMask(row)!=0u && !hasOriginalTime)
+        return {Status::UnknownOriginalTime,method,W::slot(row)};
+    // If no separately attested clock exists, only Crystal's witnessed
+    // caught-data may supply the time; never trust a default zero.
+    const uint8_t actualTime=c.originalTimeIndependentlyAttested ?
+        c.originalTime : crystalCaughtTime ?
+        static_cast<uint8_t>((c.originalCrystalCaughtData>>14)&3u) : 0u;
+    if((hasOriginalTime && actualTime>3u) ||
+       (hasOriginalTime && !W::timeAllows(W::timeMask(row),actualTime)))
         return {Status::CandidateTimeContradicted,method,W::slot(row)};
-    if(!W::timeAllows(W::timeMask(row),c.originalTime))
-        return {Status::CandidateTimeContradicted,method,W::slot(row)};
-    if(game==W::Game::Crystal &&
-       c.originalCrystalCaughtDataIndependentlyAttested) {
+    if(crystalCaughtTime) {
         const uint16_t d=c.originalCrystalCaughtData;
-        if(((d>>14)&3u)!=c.originalTime ||
+        if((c.originalTimeIndependentlyAttested &&
+            ((d>>14)&3u)!=c.originalTime) ||
            ((d>>8)&0x3Fu)!=c.originalLevel ||
            (d&0x7Fu)!=c.originalLocation)
             return {Status::CandidateTimeContradicted,method,W::slot(row)};

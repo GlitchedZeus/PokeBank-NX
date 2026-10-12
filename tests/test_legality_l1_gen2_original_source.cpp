@@ -35,6 +35,7 @@ int main(){
             c.originalRowIndependentlyAttested=true;
             c.originalCaptureStageIndependentlyAttested=true;
             c.originalMethodIndependentlyAttested=true;
+            c.originalTimeIndependentlyAttested=true;
             c.originalTreeEligibilityIndependentlyAttested=true;
             c.originalContestSessionIndependentlyAttested=true;
             if(game==2){
@@ -57,6 +58,21 @@ int main(){
             assert(H::wild(missing).status==Status::UnknownCaptureStage);
             missing=c;missing.originalMethodIndependentlyAttested=false;
             assert(H::wild(missing).status==Status::UnknownOriginalMethod);
+            // Time-restricted rows must not silently trust default morning.
+            missing=c;missing.originalTimeIndependentlyAttested=false;
+            if(W::timeMask(row)!=0u && game!=2)
+                assert(H::wild(missing).status==Status::UnknownOriginalTime);
+            else
+                assert(H::wild(missing).status==Status::ConditionalOriginalSource);
+            if(game==2 && W::timeMask(row)!=0u){
+                // Crystal caught-data is a separate direct clock witness:
+                // a detached time field is unnecessary if that history is
+                // separately recorded, not simply guessed from today's time.
+                missing.originalTime=3u;
+                assert(H::wild(missing).status==Status::ConditionalOriginalSource);
+                missing.originalCrystalCaughtDataIndependentlyAttested=false;
+                assert(H::wild(missing).status==Status::UnknownOriginalTime);
+            }
             if(kind==6 || kind==7){
                 missing=c;missing.originalTreeEligibilityIndependentlyAttested=false;
                 assert(H::wild(missing).status==Status::UnknownOriginalTree);
