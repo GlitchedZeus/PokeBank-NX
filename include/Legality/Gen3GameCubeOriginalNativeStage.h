@@ -34,9 +34,19 @@ struct Candidate {
     bool originalRecipientSaveIndependentlyAttested=false;
 };
 struct Result { Status status=Status::UnknownOriginalGame; bool recipientOriginIsGba=false; };
+// Enum bytes can originate from decoded archive metadata. A value outside
+// the documented source domain is NOT a witnessed scene or retail game.
+constexpr bool recognizedGame(Game game) noexcept {
+    return game==Game::Colosseum || game==Game::XD;
+}
+constexpr bool recognizedRoute(Route route) noexcept {
+    return route==Route::ShadowPurified ||
+           route==Route::FixedGiftOrTrade ||
+           route==Route::BonusDiscReward;
+}
 constexpr Result evaluate(const Candidate& c) noexcept {
-    if(!c.originalGameIndependentlyAttested || c.originalGame==Game::Unknown)return {};
-    if(!c.originalSceneIndependentlyAttested || c.originalRoute==Route::Unknown)
+    if(!c.originalGameIndependentlyAttested || !recognizedGame(c.originalGame))return {};
+    if(!c.originalSceneIndependentlyAttested || !recognizedRoute(c.originalRoute))
         return {Status::UnknownOriginalScene};
     if(!c.native.checksumAndDecryptionVerified ||
        !c.originalCapturedPidSpeciesOtIndependentlyAttested ||

@@ -60,6 +60,7 @@ suites=(
   test_legality_l1_gen3_roamer_frame
   test_legality_l1_gamecube_original_fixed
   test_legality_l1_stage1_production_crypto
+  test_legality_l1_stage1_gamecube_enum_domains
 )
 profiles=(host sanitize)
 if [[ -n "${L1_PROFILE:-}" ]]; then

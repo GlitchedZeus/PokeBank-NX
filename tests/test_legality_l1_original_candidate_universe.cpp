@@ -46,6 +46,12 @@ int main(){
         Legality::Gen4WildSpecialStageEvidence::Status::BoundedCandidateUnresolved)
         ==Kind::UnknownOriginalHistory);
     static_assert(U::map(
+        Legality::Gen4WildSpecialStageEvidence::Status::UnknownMalformedNativeRecord)
+        ==Kind::UnknownOriginalHistory);
+    static_assert(U::map(
+        Legality::Gen4WildSourceLinkedHistory::Status::UnknownMalformedNativeRecord)
+        ==Kind::UnknownOriginalHistory);
+    static_assert(U::map(
         Legality::Gen4WildSpecialStageEvidence::Status::KnownConditionalSpecialEncounter)
         ==Kind::ConditionalOriginalHistory);
     static_assert(U::map(
