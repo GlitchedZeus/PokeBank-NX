@@ -1,3 +1,7 @@
+// Original Method-1 PID/IV stage seeds 12 and 35 were independently
+// replayed forward through the source LCRNG. Seed 12 yields an Emerald
+// Hoenn-Safari-block grass slot; seed 35 yields a Surf Synchronize slot.
+// These are conditional synthetic histories, not archived retail captures.
 #include "Legality/Gen3MethodHOriginalStage.h"
 #include <cassert>
 #include <cstddef>
@@ -31,9 +35,9 @@ int main() {
     c.originalForm=0;
     c.originalSpecies=43;
     c.originalLevel=29;
-    c.originalPid=0xE97E0000u;
-    c.originalIVs={17,19,20,16,13,12};
-    c.prePidSeed=0;
+    c.originalPid=0x091D154Cu;
+    c.originalIVs={22,2,22,30,15,22};
+    c.prePidSeed=12u;
     c.lead=H::Lead::NoLead;
     c.rowIndex=find(43,29,c.prePidSeed,0,c.lead);
     assert(c.rowIndex<std::size(G::kGen3SafariEntries));
@@ -43,9 +47,9 @@ int main() {
     auto sync=c;
     sync.originalSpecies=54;
     sync.originalLevel=31;
-    sync.originalPid=0x8A3759F1u;
-    sync.originalIVs={6,31,16,13,12,30};
-    sync.prePidSeed=0xE7u;
+    sync.originalPid=0x85B9FE1Du;
+    sync.originalIVs={2,29,24,20,4,15};
+    sync.prePidSeed=35u;
     sync.lead=H::Lead::SynchronizeSuccess;
     sync.rowIndex=find(54,31,sync.prePidSeed,1,sync.lead);
     assert(sync.rowIndex<std::size(G::kGen3SafariEntries));
