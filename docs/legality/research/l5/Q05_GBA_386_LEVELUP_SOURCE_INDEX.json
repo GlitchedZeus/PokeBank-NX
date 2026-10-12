@@ -2037,13 +2037,13 @@
         },
         "firered": {
           "symbol": "sMeowthLevelUpLearnset",
-          "source_line": 688,
+          "source_line": 693,
           "entry_count": 10,
           "ordered_token_sha256": "cf8e105a0441d81f1d78cc02d6eb31238affc497d4055779f5be1e290da9cc18"
         },
         "leafgreen": {
           "symbol": "sMeowthLevelUpLearnset",
-          "source_line": 688,
+          "source_line": 693,
           "entry_count": 10,
           "ordered_token_sha256": "cf8e105a0441d81f1d78cc02d6eb31238affc497d4055779f5be1e290da9cc18"
         }
@@ -2074,13 +2074,13 @@
         },
         "firered": {
           "symbol": "sPersianLevelUpLearnset",
-          "source_line": 702,
+          "source_line": 707,
           "entry_count": 11,
           "ordered_token_sha256": "d9e84b2663bea3f65e055fa71b91525296cd0078778f14284775d6f8a1bfb007"
         },
         "leafgreen": {
           "symbol": "sPersianLevelUpLearnset",
-          "source_line": 702,
+          "source_line": 707,
           "entry_count": 11,
           "ordered_token_sha256": "d9e84b2663bea3f65e055fa71b91525296cd0078778f14284775d6f8a1bfb007"
         }
@@ -2111,13 +2111,13 @@
         },
         "firered": {
           "symbol": "sPsyduckLevelUpLearnset",
-          "source_line": 717,
+          "source_line": 722,
           "entry_count": 9,
           "ordered_token_sha256": "cac0f241229f975e5c245fc68b5301b1052f91ecdf6555415fbff4a3909663e2"
         },
         "leafgreen": {
           "symbol": "sPsyduckLevelUpLearnset",
-          "source_line": 717,
+          "source_line": 722,
           "entry_count": 9,
           "ordered_token_sha256": "cac0f241229f975e5c245fc68b5301b1052f91ecdf6555415fbff4a3909663e2"
         }
@@ -2148,13 +2148,13 @@
         },
         "firered": {
           "symbol": "sGolduckLevelUpLearnset",
-          "source_line": 730,
+          "source_line": 735,
           "entry_count": 11,
           "ordered_token_sha256": "6e003a005409158d7b5468b149c96b15005b8d319c8b645b094d1534f7e7e5f1"
         },
         "leafgreen": {
           "symbol": "sGolduckLevelUpLearnset",
-          "source_line": 730,
+          "source_line": 735,
           "entry_count": 11,
           "ordered_token_sha256": "6e003a005409158d7b5468b149c96b15005b8d319c8b645b094d1534f7e7e5f1"
         }
@@ -2185,13 +2185,13 @@
         },
         "firered": {
           "symbol": "sMankeyLevelUpLearnset",
-          "source_line": 745,
+          "source_line": 750,
           "entry_count": 11,
           "ordered_token_sha256": "9e2a1d5d4c2bfc2a74552144b0da4853e417f3921b59f4ecfb99494085fd9b17"
         },
         "leafgreen": {
           "symbol": "sMankeyLevelUpLearnset",
-          "source_line": 745,
+          "source_line": 750,
           "entry_count": 11,
           "ordered_token_sha256": "9e2a1d5d4c2bfc2a74552144b0da4853e417f3921b59f4ecfb99494085fd9b17"
         }
@@ -2222,13 +2222,13 @@
         },
         "firered": {
           "symbol": "sPrimeapeLevelUpLearnset",
-          "source_line": 760,
+          "source_line": 765,
           "entry_count": 14,
           "ordered_token_sha256": "62c3c5b874b024e3650194bb6babdc52fea8aff4f08b1f13a423d5b5ead8fd49"
         },
         "leafgreen": {
           "symbol": "sPrimeapeLevelUpLearnset",
-          "source_line": 760,
+          "source_line": 765,
           "entry_count": 14,
           "ordered_token_sha256": "62c3c5b874b024e3650194bb6babdc52fea8aff4f08b1f13a423d5b5ead8fd49"
         }
@@ -2259,13 +2259,13 @@
         },
         "firered": {
           "symbol": "sGrowlitheLevelUpLearnset",
-          "source_line": 778,
+          "source_line": 783,
           "entry_count": 10,
           "ordered_token_sha256": "c0a6d2cfc05188ccdaf5ea05819d45139f299117c2638b1e1a91f1d4c1e95275"
         },
         "leafgreen": {
           "symbol": "sGrowlitheLevelUpLearnset",
-          "source_line": 778,
+          "source_line": 783,
           "entry_count": 10,
           "ordered_token_sha256": "c0a6d2cfc05188ccdaf5ea05819d45139f299117c2638b1e1a91f1d4c1e95275"
         }
@@ -2296,13 +2296,13 @@
         },
         "firered": {
           "symbol": "sArcanineLevelUpLearnset",
-          "source_line": 792,
+          "source_line": 797,
           "entry_count": 5,
           "ordered_token_sha256": "530644e313cb7e08d0e304cc184f45edefebd44d14f903c019f989dc0ac372d2"
         },
         "leafgreen": {
           "symbol": "sArcanineLevelUpLearnset",
-          "source_line": 792,
+          "source_line": 797,
           "entry_count": 5,
           "ordered_token_sha256": "530644e313cb7e08d0e304cc184f45edefebd44d14f903c019f989dc0ac372d2"
         }
@@ -2333,13 +2333,13 @@
         },
         "firered": {
           "symbol": "sPoliwagLevelUpLearnset",
-          "source_line": 801,
+          "source_line": 806,
           "entry_count": 8,
           "ordered_token_sha256": "50e426e1e095af9ffda5add7911c3c56db21349cbe03090f051d0c4556d3ac2c"
         },
         "leafgreen": {
           "symbol": "sPoliwagLevelUpLearnset",
-          "source_line": 801,
+          "source_line": 806,
           "entry_count": 8,
           "ordered_token_sha256": "50e426e1e095af9ffda5add7911c3c56db21349cbe03090f051d0c4556d3ac2c"
         }
@@ -2370,13 +2370,13 @@
         },
         "firered": {
           "symbol": "sPoliwhirlLevelUpLearnset",
-          "source_line": 813,
+          "source_line": 818,
           "entry_count": 10,
           "ordered_token_sha256": "8717a97bb89c4c02cde013e08aceac0f07fa1f35c377443e5a2e4f60e3dff290"
         },
         "leafgreen": {
           "symbol": "sPoliwhirlLevelUpLearnset",
-          "source_line": 813,
+          "source_line": 818,
           "entry_count": 10,
           "ordered_token_sha256": "8717a97bb89c4c02cde013e08aceac0f07fa1f35c377443e5a2e4f60e3dff290"
         }
@@ -2407,13 +2407,13 @@
         },
         "firered": {
           "symbol": "sPoliwrathLevelUpLearnset",
-          "source_line": 827,
+          "source_line": 832,
           "entry_count": 6,
           "ordered_token_sha256": "a2d84f3690bde018005f840149ef46ab9fd03734b212849d450f913dfbe9e5ff"
         },
         "leafgreen": {
           "symbol": "sPoliwrathLevelUpLearnset",
-          "source_line": 827,
+          "source_line": 832,
           "entry_count": 6,
           "ordered_token_sha256": "a2d84f3690bde018005f840149ef46ab9fd03734b212849d450f913dfbe9e5ff"
         }
@@ -2444,13 +2444,13 @@
         },
         "firered": {
           "symbol": "sAbraLevelUpLearnset",
-          "source_line": 837,
+          "source_line": 842,
           "entry_count": 1,
           "ordered_token_sha256": "2b4fdea43e77e788bb7fd93c625245c610be38aed637c3ba6ce2ca4cf9139bff"
         },
         "leafgreen": {
           "symbol": "sAbraLevelUpLearnset",
-          "source_line": 837,
+          "source_line": 842,
           "entry_count": 1,
           "ordered_token_sha256": "2b4fdea43e77e788bb7fd93c625245c610be38aed637c3ba6ce2ca4cf9139bff"
         }
@@ -2481,13 +2481,13 @@
         },
         "firered": {
           "symbol": "sKadabraLevelUpLearnset",
-          "source_line": 842,
+          "source_line": 847,
           "entry_count": 12,
           "ordered_token_sha256": "82df3cfc41887d32860db274f0330624f5af7394b89bd9e4e5b45c4bdafba51a"
         },
         "leafgreen": {
           "symbol": "sKadabraLevelUpLearnset",
-          "source_line": 842,
+          "source_line": 847,
           "entry_count": 12,
           "ordered_token_sha256": "82df3cfc41887d32860db274f0330624f5af7394b89bd9e4e5b45c4bdafba51a"
         }
@@ -2518,13 +2518,13 @@
         },
         "firered": {
           "symbol": "sAlakazamLevelUpLearnset",
-          "source_line": 858,
+          "source_line": 863,
           "entry_count": 12,
           "ordered_token_sha256": "af950e23a249a3bc874dbfe1f3efb20c619da167724ef0a78416fb84db8de40f"
         },
         "leafgreen": {
           "symbol": "sAlakazamLevelUpLearnset",
-          "source_line": 858,
+          "source_line": 863,
           "entry_count": 12,
           "ordered_token_sha256": "af950e23a249a3bc874dbfe1f3efb20c619da167724ef0a78416fb84db8de40f"
         }
@@ -2555,13 +2555,13 @@
         },
         "firered": {
           "symbol": "sMachopLevelUpLearnset",
-          "source_line": 874,
+          "source_line": 879,
           "entry_count": 12,
           "ordered_token_sha256": "b6c1c2339f3a5d743e8907e468080621ac0737f74ae896804a120ef99c9199e8"
         },
         "leafgreen": {
           "symbol": "sMachopLevelUpLearnset",
-          "source_line": 874,
+          "source_line": 879,
           "entry_count": 12,
           "ordered_token_sha256": "b6c1c2339f3a5d743e8907e468080621ac0737f74ae896804a120ef99c9199e8"
         }
@@ -2592,13 +2592,13 @@
         },
         "firered": {
           "symbol": "sMachokeLevelUpLearnset",
-          "source_line": 890,
+          "source_line": 895,
           "entry_count": 13,
           "ordered_token_sha256": "51bc79d2d4046a70f154e895bc34686ec8bbc339215593e1d3a0e3c336fcf4b2"
         },
         "leafgreen": {
           "symbol": "sMachokeLevelUpLearnset",
-          "source_line": 890,
+          "source_line": 895,
           "entry_count": 13,
           "ordered_token_sha256": "51bc79d2d4046a70f154e895bc34686ec8bbc339215593e1d3a0e3c336fcf4b2"
         }
@@ -2629,13 +2629,13 @@
         },
         "firered": {
           "symbol": "sMachampLevelUpLearnset",
-          "source_line": 907,
+          "source_line": 912,
           "entry_count": 13,
           "ordered_token_sha256": "51bc79d2d4046a70f154e895bc34686ec8bbc339215593e1d3a0e3c336fcf4b2"
         },
         "leafgreen": {
           "symbol": "sMachampLevelUpLearnset",
-          "source_line": 907,
+          "source_line": 912,
           "entry_count": 13,
           "ordered_token_sha256": "51bc79d2d4046a70f154e895bc34686ec8bbc339215593e1d3a0e3c336fcf4b2"
         }
@@ -2666,13 +2666,13 @@
         },
         "firered": {
           "symbol": "sBellsproutLevelUpLearnset",
-          "source_line": 924,
+          "source_line": 929,
           "entry_count": 10,
           "ordered_token_sha256": "3c32eb7c4da68f5012e0a7bb65e6355ebfbcbddb30b869d2c38057ad5ee739a7"
         },
         "leafgreen": {
           "symbol": "sBellsproutLevelUpLearnset",
-          "source_line": 924,
+          "source_line": 929,
           "entry_count": 10,
           "ordered_token_sha256": "3c32eb7c4da68f5012e0a7bb65e6355ebfbcbddb30b869d2c38057ad5ee739a7"
         }
@@ -2703,13 +2703,13 @@
         },
         "firered": {
           "symbol": "sWeepinbellLevelUpLearnset",
-          "source_line": 938,
+          "source_line": 943,
           "entry_count": 12,
           "ordered_token_sha256": "bbebb0e5e75e9f34c8280bcbdc057c1a82a7d29f5856cd0278e5639747b83d20"
         },
         "leafgreen": {
           "symbol": "sWeepinbellLevelUpLearnset",
-          "source_line": 938,
+          "source_line": 943,
           "entry_count": 12,
           "ordered_token_sha256": "bbebb0e5e75e9f34c8280bcbdc057c1a82a7d29f5856cd0278e5639747b83d20"
         }
@@ -2740,13 +2740,13 @@
         },
         "firered": {
           "symbol": "sVictreebelLevelUpLearnset",
-          "source_line": 954,
+          "source_line": 959,
           "entry_count": 7,
           "ordered_token_sha256": "7fc89e55b40ae95dcbd8eae114a8f37d6e4e45d9b71cacc87c6537981cce03d4"
         },
         "leafgreen": {
           "symbol": "sVictreebelLevelUpLearnset",
-          "source_line": 954,
+          "source_line": 959,
           "entry_count": 7,
           "ordered_token_sha256": "7fc89e55b40ae95dcbd8eae114a8f37d6e4e45d9b71cacc87c6537981cce03d4"
         }
@@ -2777,13 +2777,13 @@
         },
         "firered": {
           "symbol": "sTentacoolLevelUpLearnset",
-          "source_line": 965,
+          "source_line": 970,
           "entry_count": 9,
           "ordered_token_sha256": "368451c89118d5c3c0b33cacc8136544e0ebda54449a9a9e52b41c2dca4e1cba"
         },
         "leafgreen": {
           "symbol": "sTentacoolLevelUpLearnset",
-          "source_line": 965,
+          "source_line": 970,
           "entry_count": 9,
           "ordered_token_sha256": "368451c89118d5c3c0b33cacc8136544e0ebda54449a9a9e52b41c2dca4e1cba"
         }
@@ -2814,13 +2814,13 @@
         },
         "firered": {
           "symbol": "sTentacruelLevelUpLearnset",
-          "source_line": 978,
+          "source_line": 983,
           "entry_count": 11,
           "ordered_token_sha256": "a4f8816f8f87d5fc3e07c6a50a43c729649c5667ec64c6bc9eab2cfabe69ad18"
         },
         "leafgreen": {
           "symbol": "sTentacruelLevelUpLearnset",
-          "source_line": 978,
+          "source_line": 983,
           "entry_count": 11,
           "ordered_token_sha256": "a4f8816f8f87d5fc3e07c6a50a43c729649c5667ec64c6bc9eab2cfabe69ad18"
         }
@@ -2851,13 +2851,13 @@
         },
         "firered": {
           "symbol": "sGeodudeLevelUpLearnset",
-          "source_line": 993,
+          "source_line": 998,
           "entry_count": 11,
           "ordered_token_sha256": "2aebe86c464c844a1120a07a050639a4b5030a19a953828df5437032a7d13b44"
         },
         "leafgreen": {
           "symbol": "sGeodudeLevelUpLearnset",
-          "source_line": 993,
+          "source_line": 998,
           "entry_count": 11,
           "ordered_token_sha256": "2aebe86c464c844a1120a07a050639a4b5030a19a953828df5437032a7d13b44"
         }
@@ -2888,13 +2888,13 @@
         },
         "firered": {
           "symbol": "sGravelerLevelUpLearnset",
-          "source_line": 1008,
+          "source_line": 1013,
           "entry_count": 13,
           "ordered_token_sha256": "133c4daad3cb1400e541033b726aa2f9e4912b8ac5263e7c14118de699e3c8c5"
         },
         "leafgreen": {
           "symbol": "sGravelerLevelUpLearnset",
-          "source_line": 1008,
+          "source_line": 1013,
           "entry_count": 13,
           "ordered_token_sha256": "133c4daad3cb1400e541033b726aa2f9e4912b8ac5263e7c14118de699e3c8c5"
         }
@@ -2925,13 +2925,13 @@
         },
         "firered": {
           "symbol": "sGolemLevelUpLearnset",
-          "source_line": 1025,
+          "source_line": 1030,
           "entry_count": 13,
           "ordered_token_sha256": "133c4daad3cb1400e541033b726aa2f9e4912b8ac5263e7c14118de699e3c8c5"
         },
         "leafgreen": {
           "symbol": "sGolemLevelUpLearnset",
-          "source_line": 1025,
+          "source_line": 1030,
           "entry_count": 13,
           "ordered_token_sha256": "133c4daad3cb1400e541033b726aa2f9e4912b8ac5263e7c14118de699e3c8c5"
         }
@@ -2962,13 +2962,13 @@
         },
         "firered": {
           "symbol": "sPonytaLevelUpLearnset",
-          "source_line": 1042,
+          "source_line": 1047,
           "entry_count": 10,
           "ordered_token_sha256": "605b2ab3c95fbbe68340a8c52b2da3afefbea15fe71d04425ac9fef9f24cb362"
         },
         "leafgreen": {
           "symbol": "sPonytaLevelUpLearnset",
-          "source_line": 1042,
+          "source_line": 1047,
           "entry_count": 10,
           "ordered_token_sha256": "605b2ab3c95fbbe68340a8c52b2da3afefbea15fe71d04425ac9fef9f24cb362"
         }
@@ -2999,13 +2999,13 @@
         },
         "firered": {
           "symbol": "sRapidashLevelUpLearnset",
-          "source_line": 1056,
+          "source_line": 1061,
           "entry_count": 14,
           "ordered_token_sha256": "9e052934b375ff85d9d2fee53436148031252714b0973a7dcdcf05e975e44669"
         },
         "leafgreen": {
           "symbol": "sRapidashLevelUpLearnset",
-          "source_line": 1056,
+          "source_line": 1061,
           "entry_count": 14,
           "ordered_token_sha256": "9e052934b375ff85d9d2fee53436148031252714b0973a7dcdcf05e975e44669"
         }
@@ -3036,13 +3036,13 @@
         },
         "firered": {
           "symbol": "sSlowpokeLevelUpLearnset",
-          "source_line": 1074,
+          "source_line": 1079,
           "entry_count": 11,
           "ordered_token_sha256": "8983ad5ff87188b959b6f3a6dfa75412c7b7c086c8e2c721a17fee3417ae6771"
         },
         "leafgreen": {
           "symbol": "sSlowpokeLevelUpLearnset",
-          "source_line": 1074,
+          "source_line": 1079,
           "entry_count": 11,
           "ordered_token_sha256": "8983ad5ff87188b959b6f3a6dfa75412c7b7c086c8e2c721a17fee3417ae6771"
         }
@@ -3073,13 +3073,13 @@
         },
         "firered": {
           "symbol": "sSlowbroLevelUpLearnset",
-          "source_line": 1089,
+          "source_line": 1094,
           "entry_count": 13,
           "ordered_token_sha256": "3fd38d96c4d296ce805af43678560c6f8cd78f54937234cb2982b6aaa0cb2f22"
         },
         "leafgreen": {
           "symbol": "sSlowbroLevelUpLearnset",
-          "source_line": 1089,
+          "source_line": 1094,
           "entry_count": 13,
           "ordered_token_sha256": "3fd38d96c4d296ce805af43678560c6f8cd78f54937234cb2982b6aaa0cb2f22"
         }
@@ -3110,13 +3110,13 @@
         },
         "firered": {
           "symbol": "sMagnemiteLevelUpLearnset",
-          "source_line": 1106,
+          "source_line": 1111,
           "entry_count": 11,
           "ordered_token_sha256": "86d2ee945bfa612e65cac017294be95acb1280e33e71711de18fb9f80f4279e1"
         },
         "leafgreen": {
           "symbol": "sMagnemiteLevelUpLearnset",
-          "source_line": 1106,
+          "source_line": 1111,
           "entry_count": 11,
           "ordered_token_sha256": "86d2ee945bfa612e65cac017294be95acb1280e33e71711de18fb9f80f4279e1"
         }
@@ -3147,13 +3147,13 @@
         },
         "firered": {
           "symbol": "sMagnetonLevelUpLearnset",
-          "source_line": 1121,
+          "source_line": 1126,
           "entry_count": 13,
           "ordered_token_sha256": "a82c0c058816d54465270522411c640aa1ab8adc6415cb435f809ecbc6dcc3cd"
         },
         "leafgreen": {
           "symbol": "sMagnetonLevelUpLearnset",
-          "source_line": 1121,
+          "source_line": 1126,
           "entry_count": 13,
           "ordered_token_sha256": "a82c0c058816d54465270522411c640aa1ab8adc6415cb435f809ecbc6dcc3cd"
         }
@@ -3184,13 +3184,13 @@
         },
         "firered": {
           "symbol": "sFarfetchdLevelUpLearnset",
-          "source_line": 1138,
+          "source_line": 1143,
           "entry_count": 10,
           "ordered_token_sha256": "e2276ec98f995d4261614b26683e075baf52e153a6be270962b59bf6cec2e702"
         },
         "leafgreen": {
           "symbol": "sFarfetchdLevelUpLearnset",
-          "source_line": 1138,
+          "source_line": 1143,
           "entry_count": 10,
           "ordered_token_sha256": "e2276ec98f995d4261614b26683e075baf52e153a6be270962b59bf6cec2e702"
         }
@@ -3221,13 +3221,13 @@
         },
         "firered": {
           "symbol": "sDoduoLevelUpLearnset",
-          "source_line": 1152,
+          "source_line": 1157,
           "entry_count": 9,
           "ordered_token_sha256": "637e0e2f1afab0471b29832b24c36a97f6d899ea89426fa03639bc969b8604aa"
         },
         "leafgreen": {
           "symbol": "sDoduoLevelUpLearnset",
-          "source_line": 1152,
+          "source_line": 1157,
           "entry_count": 9,
           "ordered_token_sha256": "637e0e2f1afab0471b29832b24c36a97f6d899ea89426fa03639bc969b8604aa"
         }
@@ -3258,13 +3258,13 @@
         },
         "firered": {
           "symbol": "sDodrioLevelUpLearnset",
-          "source_line": 1165,
+          "source_line": 1170,
           "entry_count": 11,
           "ordered_token_sha256": "ae48eed255b7f7eefa7237a0f5617b4310c9dc12c0d70ddca62fc9bf344431d1"
         },
         "leafgreen": {
           "symbol": "sDodrioLevelUpLearnset",
-          "source_line": 1165,
+          "source_line": 1170,
           "entry_count": 11,
           "ordered_token_sha256": "ae48eed255b7f7eefa7237a0f5617b4310c9dc12c0d70ddca62fc9bf344431d1"
         }
@@ -3295,13 +3295,13 @@
         },
         "firered": {
           "symbol": "sSeelLevelUpLearnset",
-          "source_line": 1180,
+          "source_line": 1185,
           "entry_count": 8,
           "ordered_token_sha256": "0c27003c8c2919ed40cd5c7874425a92cdb66f804efa31200b3ab67ff759501c"
         },
         "leafgreen": {
           "symbol": "sSeelLevelUpLearnset",
-          "source_line": 1180,
+          "source_line": 1185,
           "entry_count": 8,
           "ordered_token_sha256": "0c27003c8c2919ed40cd5c7874425a92cdb66f804efa31200b3ab67ff759501c"
         }
@@ -3332,13 +3332,13 @@
         },
         "firered": {
           "symbol": "sDewgongLevelUpLearnset",
-          "source_line": 1192,
+          "source_line": 1197,
           "entry_count": 13,
           "ordered_token_sha256": "25c419355e99edd2e45865c60cbf877857d2e9ac701a917ddd1d0b2ea8a20554"
         },
         "leafgreen": {
           "symbol": "sDewgongLevelUpLearnset",
-          "source_line": 1192,
+          "source_line": 1197,
           "entry_count": 13,
           "ordered_token_sha256": "25c419355e99edd2e45865c60cbf877857d2e9ac701a917ddd1d0b2ea8a20554"
         }
@@ -3369,13 +3369,13 @@
         },
         "firered": {
           "symbol": "sGrimerLevelUpLearnset",
-          "source_line": 1209,
+          "source_line": 1214,
           "entry_count": 10,
           "ordered_token_sha256": "1de2869a8d06c2c06a52b02044c1d71fae5d2c8d7208f3c5862ac004ac0ce183"
         },
         "leafgreen": {
           "symbol": "sGrimerLevelUpLearnset",
-          "source_line": 1209,
+          "source_line": 1214,
           "entry_count": 10,
           "ordered_token_sha256": "1de2869a8d06c2c06a52b02044c1d71fae5d2c8d7208f3c5862ac004ac0ce183"
         }
@@ -3406,13 +3406,13 @@
         },
         "firered": {
           "symbol": "sMukLevelUpLearnset",
-          "source_line": 1223,
+          "source_line": 1228,
           "entry_count": 11,
           "ordered_token_sha256": "a12e1bb56af3ae1994b5f21db5bb9e4c179f0bf8eb6d8de9de69c057f7454255"
         },
         "leafgreen": {
           "symbol": "sMukLevelUpLearnset",
-          "source_line": 1223,
+          "source_line": 1228,
           "entry_count": 11,
           "ordered_token_sha256": "a12e1bb56af3ae1994b5f21db5bb9e4c179f0bf8eb6d8de9de69c057f7454255"
         }
@@ -3443,13 +3443,13 @@
         },
         "firered": {
           "symbol": "sShellderLevelUpLearnset",
-          "source_line": 1238,
+          "source_line": 1243,
           "entry_count": 9,
           "ordered_token_sha256": "d1c85521e6c56e6e927700c9ce65920f977e3b70e70cbf986e92fc3ac2975f64"
         },
         "leafgreen": {
           "symbol": "sShellderLevelUpLearnset",
-          "source_line": 1238,
+          "source_line": 1243,
           "entry_count": 9,
           "ordered_token_sha256": "d1c85521e6c56e6e927700c9ce65920f977e3b70e70cbf986e92fc3ac2975f64"
         }
@@ -3480,13 +3480,13 @@
         },
         "firered": {
           "symbol": "sCloysterLevelUpLearnset",
-          "source_line": 1251,
+          "source_line": 1256,
           "entry_count": 6,
           "ordered_token_sha256": "7d026d514a8dffc9b7c2378e1547109ba5d6e98ab6a6a81a3019a5816606a6ea"
         },
         "leafgreen": {
           "symbol": "sCloysterLevelUpLearnset",
-          "source_line": 1251,
+          "source_line": 1256,
           "entry_count": 6,
           "ordered_token_sha256": "7d026d514a8dffc9b7c2378e1547109ba5d6e98ab6a6a81a3019a5816606a6ea"
         }
@@ -3517,13 +3517,13 @@
         },
         "firered": {
           "symbol": "sGastlyLevelUpLearnset",
-          "source_line": 1261,
+          "source_line": 1266,
           "entry_count": 11,
           "ordered_token_sha256": "52648881ccfa1a36e3fa9de476cc7bff1b101c564bbd4ca62d406a8aaff6ce81"
         },
         "leafgreen": {
           "symbol": "sGastlyLevelUpLearnset",
-          "source_line": 1261,
+          "source_line": 1266,
           "entry_count": 11,
           "ordered_token_sha256": "52648881ccfa1a36e3fa9de476cc7bff1b101c564bbd4ca62d406a8aaff6ce81"
         }
@@ -3554,13 +3554,13 @@
         },
         "firered": {
           "symbol": "sHaunterLevelUpLearnset",
-          "source_line": 1276,
+          "source_line": 1281,
           "entry_count": 13,
           "ordered_token_sha256": "7c2196a643f72d740e48736144a39f844041624e3ad1ced1d2af7d5b1fba9750"
         },
         "leafgreen": {
           "symbol": "sHaunterLevelUpLearnset",
-          "source_line": 1276,
+          "source_line": 1281,
           "entry_count": 13,
           "ordered_token_sha256": "7c2196a643f72d740e48736144a39f844041624e3ad1ced1d2af7d5b1fba9750"
         }
@@ -3591,13 +3591,13 @@
         },
         "firered": {
           "symbol": "sGengarLevelUpLearnset",
-          "source_line": 1293,
+          "source_line": 1298,
           "entry_count": 13,
           "ordered_token_sha256": "7c2196a643f72d740e48736144a39f844041624e3ad1ced1d2af7d5b1fba9750"
         },
         "leafgreen": {
           "symbol": "sGengarLevelUpLearnset",
-          "source_line": 1293,
+          "source_line": 1298,
           "entry_count": 13,
           "ordered_token_sha256": "7c2196a643f72d740e48736144a39f844041624e3ad1ced1d2af7d5b1fba9750"
         }
@@ -3628,13 +3628,13 @@
         },
         "firered": {
           "symbol": "sOnixLevelUpLearnset",
-          "source_line": 1310,
+          "source_line": 1315,
           "entry_count": 12,
           "ordered_token_sha256": "ef74ec3ba158ac742d8858a33f6555e04d0a7b58d75cd9eedb6974332d0dd049"
         },
         "leafgreen": {
           "symbol": "sOnixLevelUpLearnset",
-          "source_line": 1310,
+          "source_line": 1315,
           "entry_count": 12,
           "ordered_token_sha256": "ef74ec3ba158ac742d8858a33f6555e04d0a7b58d75cd9eedb6974332d0dd049"
         }
@@ -3665,13 +3665,13 @@
         },
         "firered": {
           "symbol": "sDrowzeeLevelUpLearnset",
-          "source_line": 1326,
+          "source_line": 1331,
           "entry_count": 11,
           "ordered_token_sha256": "a65dbd0928e11b515f88819d315140e9f8c990fca3c208aadd36bd3419445cc1"
         },
         "leafgreen": {
           "symbol": "sDrowzeeLevelUpLearnset",
-          "source_line": 1326,
+          "source_line": 1331,
           "entry_count": 11,
           "ordered_token_sha256": "a65dbd0928e11b515f88819d315140e9f8c990fca3c208aadd36bd3419445cc1"
         }
@@ -3702,13 +3702,13 @@
         },
         "firered": {
           "symbol": "sHypnoLevelUpLearnset",
-          "source_line": 1341,
+          "source_line": 1346,
           "entry_count": 14,
           "ordered_token_sha256": "9069784d0a6a5cf9cc942ea6dbe6182506b5270ea44c02015a481c5b64648551"
         },
         "leafgreen": {
           "symbol": "sHypnoLevelUpLearnset",
-          "source_line": 1341,
+          "source_line": 1346,
           "entry_count": 14,
           "ordered_token_sha256": "9069784d0a6a5cf9cc942ea6dbe6182506b5270ea44c02015a481c5b64648551"
         }
@@ -3739,13 +3739,13 @@
         },
         "firered": {
           "symbol": "sKrabbyLevelUpLearnset",
-          "source_line": 1359,
+          "source_line": 1364,
           "entry_count": 10,
           "ordered_token_sha256": "402e726a2c62f8bd2482d2fde560453868bc49dfa4dd1170af8fbb33aa2a0c97"
         },
         "leafgreen": {
           "symbol": "sKrabbyLevelUpLearnset",
-          "source_line": 1359,
+          "source_line": 1364,
           "entry_count": 10,
           "ordered_token_sha256": "402e726a2c62f8bd2482d2fde560453868bc49dfa4dd1170af8fbb33aa2a0c97"
         }
@@ -3776,13 +3776,13 @@
         },
         "firered": {
           "symbol": "sKinglerLevelUpLearnset",
-          "source_line": 1373,
+          "source_line": 1378,
           "entry_count": 14,
           "ordered_token_sha256": "ccdea1c2d36fd1ab585ecee4c099936df06a2e43b5aad29fd0c6762054584497"
         },
         "leafgreen": {
           "symbol": "sKinglerLevelUpLearnset",
-          "source_line": 1373,
+          "source_line": 1378,
           "entry_count": 14,
           "ordered_token_sha256": "ccdea1c2d36fd1ab585ecee4c099936df06a2e43b5aad29fd0c6762054584497"
         }
@@ -3813,13 +3813,13 @@
         },
         "firered": {
           "symbol": "sVoltorbLevelUpLearnset",
-          "source_line": 1391,
+          "source_line": 1396,
           "entry_count": 11,
           "ordered_token_sha256": "2904c6c2b530c87fd786bcded5b2435fba8918a99bf5d5a371e7ee389cb9a293"
         },
         "leafgreen": {
           "symbol": "sVoltorbLevelUpLearnset",
-          "source_line": 1391,
+          "source_line": 1396,
           "entry_count": 11,
           "ordered_token_sha256": "2904c6c2b530c87fd786bcded5b2435fba8918a99bf5d5a371e7ee389cb9a293"
         }
@@ -3850,13 +3850,13 @@
         },
         "firered": {
           "symbol": "sElectrodeLevelUpLearnset",
-          "source_line": 1406,
+          "source_line": 1411,
           "entry_count": 13,
           "ordered_token_sha256": "2c08b999443c2dc9d1b4506f8400a994e09e7173630c0450da034fe6c763549f"
         },
         "leafgreen": {
           "symbol": "sElectrodeLevelUpLearnset",
-          "source_line": 1406,
+          "source_line": 1411,
           "entry_count": 13,
           "ordered_token_sha256": "2c08b999443c2dc9d1b4506f8400a994e09e7173630c0450da034fe6c763549f"
         }
@@ -3887,13 +3887,13 @@
         },
         "firered": {
           "symbol": "sExeggcuteLevelUpLearnset",
-          "source_line": 1423,
+          "source_line": 1428,
           "entry_count": 10,
           "ordered_token_sha256": "2d62cf3baee9764820d31f6f35c6092f29c17740f81eeff1d1fde2b578fe1b85"
         },
         "leafgreen": {
           "symbol": "sExeggcuteLevelUpLearnset",
-          "source_line": 1423,
+          "source_line": 1428,
           "entry_count": 10,
           "ordered_token_sha256": "2d62cf3baee9764820d31f6f35c6092f29c17740f81eeff1d1fde2b578fe1b85"
         }
@@ -3924,13 +3924,13 @@
         },
         "firered": {
           "symbol": "sExeggutorLevelUpLearnset",
-          "source_line": 1437,
+          "source_line": 1442,
           "entry_count": 5,
           "ordered_token_sha256": "10233842c4f32c254f386726adb15f15920d631120509b05580db3e95b7f20de"
         },
         "leafgreen": {
           "symbol": "sExeggutorLevelUpLearnset",
-          "source_line": 1437,
+          "source_line": 1442,
           "entry_count": 5,
           "ordered_token_sha256": "10233842c4f32c254f386726adb15f15920d631120509b05580db3e95b7f20de"
         }
@@ -3961,13 +3961,13 @@
         },
         "firered": {
           "symbol": "sCuboneLevelUpLearnset",
-          "source_line": 1446,
+          "source_line": 1451,
           "entry_count": 12,
           "ordered_token_sha256": "33d3402770c47a86e83321d37eb5fd95a735cdd60140d7ce9bd6d84f24bedafc"
         },
         "leafgreen": {
           "symbol": "sCuboneLevelUpLearnset",
-          "source_line": 1446,
+          "source_line": 1451,
           "entry_count": 12,
           "ordered_token_sha256": "33d3402770c47a86e83321d37eb5fd95a735cdd60140d7ce9bd6d84f24bedafc"
         }
@@ -3998,13 +3998,13 @@
         },
         "firered": {
           "symbol": "sMarowakLevelUpLearnset",
-          "source_line": 1462,
+          "source_line": 1467,
           "entry_count": 15,
           "ordered_token_sha256": "05caf6f78566732a212f7937631a61d648c5065f8355faa49e320f6c4ebc60f9"
         },
         "leafgreen": {
           "symbol": "sMarowakLevelUpLearnset",
-          "source_line": 1462,
+          "source_line": 1467,
           "entry_count": 15,
           "ordered_token_sha256": "05caf6f78566732a212f7937631a61d648c5065f8355faa49e320f6c4ebc60f9"
         }
@@ -4035,13 +4035,13 @@
         },
         "firered": {
           "symbol": "sHitmonleeLevelUpLearnset",
-          "source_line": 1481,
+          "source_line": 1486,
           "entry_count": 13,
           "ordered_token_sha256": "daabfd905baaf44af19d0b15ed1f3e68fbc119875eed87d3042cb6f59d882c41"
         },
         "leafgreen": {
           "symbol": "sHitmonleeLevelUpLearnset",
-          "source_line": 1481,
+          "source_line": 1486,
           "entry_count": 13,
           "ordered_token_sha256": "daabfd905baaf44af19d0b15ed1f3e68fbc119875eed87d3042cb6f59d882c41"
         }
@@ -4072,13 +4072,13 @@
         },
         "firered": {
           "symbol": "sHitmonchanLevelUpLearnset",
-          "source_line": 1498,
+          "source_line": 1503,
           "entry_count": 12,
           "ordered_token_sha256": "cd2f72831715b2e5173cb930bb9460ce9d63d7498d2a8c44376344124d30eba7"
         },
         "leafgreen": {
           "symbol": "sHitmonchanLevelUpLearnset",
-          "source_line": 1498,
+          "source_line": 1503,
           "entry_count": 12,
           "ordered_token_sha256": "cd2f72831715b2e5173cb930bb9460ce9d63d7498d2a8c44376344124d30eba7"
         }
@@ -4109,13 +4109,13 @@
         },
         "firered": {
           "symbol": "sLickitungLevelUpLearnset",
-          "source_line": 1514,
+          "source_line": 1519,
           "entry_count": 10,
           "ordered_token_sha256": "7f9b02ccf1a45fa0b1c0638014719c9a380a30174ce6a94e401e68ae0fdcff40"
         },
         "leafgreen": {
           "symbol": "sLickitungLevelUpLearnset",
-          "source_line": 1514,
+          "source_line": 1519,
           "entry_count": 10,
           "ordered_token_sha256": "7f9b02ccf1a45fa0b1c0638014719c9a380a30174ce6a94e401e68ae0fdcff40"
         }
@@ -4146,13 +4146,13 @@
         },
         "firered": {
           "symbol": "sKoffingLevelUpLearnset",
-          "source_line": 1528,
+          "source_line": 1533,
           "entry_count": 10,
           "ordered_token_sha256": "d8e9ac767d034872f6d906f64beeaedd17df1f2087f844a980756d2776c082e0"
         },
         "leafgreen": {
           "symbol": "sKoffingLevelUpLearnset",
-          "source_line": 1528,
+          "source_line": 1533,
           "entry_count": 10,
           "ordered_token_sha256": "d8e9ac767d034872f6d906f64beeaedd17df1f2087f844a980756d2776c082e0"
         }
@@ -4183,13 +4183,13 @@
         },
         "firered": {
           "symbol": "sWeezingLevelUpLearnset",
-          "source_line": 1542,
+          "source_line": 1547,
           "entry_count": 12,
           "ordered_token_sha256": "aea59824e45be8e106ccd082b4b5f051fb9cda9f380ddbd08e5f728a7c718184"
         },
         "leafgreen": {
           "symbol": "sWeezingLevelUpLearnset",
-          "source_line": 1542,
+          "source_line": 1547,
           "entry_count": 12,
           "ordered_token_sha256": "aea59824e45be8e106ccd082b4b5f051fb9cda9f380ddbd08e5f728a7c718184"
         }
@@ -4220,13 +4220,13 @@
         },
         "firered": {
           "symbol": "sRhyhornLevelUpLearnset",
-          "source_line": 1558,
+          "source_line": 1563,
           "entry_count": 10,
           "ordered_token_sha256": "9d85d994fe9512f561c6acce8f0280c612ab8d475545492df88d97287494c1bb"
         },
         "leafgreen": {
           "symbol": "sRhyhornLevelUpLearnset",
-          "source_line": 1558,
+          "source_line": 1563,
           "entry_count": 10,
           "ordered_token_sha256": "9d85d994fe9512f561c6acce8f0280c612ab8d475545492df88d97287494c1bb"
         }
@@ -4257,13 +4257,13 @@
         },
         "firered": {
           "symbol": "sRhydonLevelUpLearnset",
-          "source_line": 1572,
+          "source_line": 1577,
           "entry_count": 12,
           "ordered_token_sha256": "4fff3d65a283138e817837977f1f30d5410a7691b9de3d6e245cc31dcd61a6a3"
         },
         "leafgreen": {
           "symbol": "sRhydonLevelUpLearnset",
-          "source_line": 1572,
+          "source_line": 1577,
           "entry_count": 12,
           "ordered_token_sha256": "4fff3d65a283138e817837977f1f30d5410a7691b9de3d6e245cc31dcd61a6a3"
         }
@@ -4294,13 +4294,13 @@
         },
         "firered": {
           "symbol": "sChanseyLevelUpLearnset",
-          "source_line": 1588,
+          "source_line": 1593,
           "entry_count": 12,
           "ordered_token_sha256": "322985eb9d42494e6b297b52121760b2569e24c67083622a0c2ff6b50bc3b309"
         },
         "leafgreen": {
           "symbol": "sChanseyLevelUpLearnset",
-          "source_line": 1588,
+          "source_line": 1593,
           "entry_count": 12,
           "ordered_token_sha256": "322985eb9d42494e6b297b52121760b2569e24c67083622a0c2ff6b50bc3b309"
         }
@@ -4331,13 +4331,13 @@
         },
         "firered": {
           "symbol": "sTangelaLevelUpLearnset",
-          "source_line": 1604,
+          "source_line": 1609,
           "entry_count": 12,
           "ordered_token_sha256": "02023adb2a9933ce4740910dd680c00a138fb4af56ffb1734a411c5fbb63a9ee"
         },
         "leafgreen": {
           "symbol": "sTangelaLevelUpLearnset",
-          "source_line": 1604,
+          "source_line": 1609,
           "entry_count": 12,
           "ordered_token_sha256": "02023adb2a9933ce4740910dd680c00a138fb4af56ffb1734a411c5fbb63a9ee"
         }
@@ -4368,13 +4368,13 @@
         },
         "firered": {
           "symbol": "sKangaskhanLevelUpLearnset",
-          "source_line": 1620,
+          "source_line": 1625,
           "entry_count": 10,
           "ordered_token_sha256": "fabfab33f3d32665d46a37290fd2b80eaebf32e6fa595a808e6f672c15b1ce6a"
         },
         "leafgreen": {
           "symbol": "sKangaskhanLevelUpLearnset",
-          "source_line": 1620,
+          "source_line": 1625,
           "entry_count": 10,
           "ordered_token_sha256": "fabfab33f3d32665d46a37290fd2b80eaebf32e6fa595a808e6f672c15b1ce6a"
         }
@@ -4405,13 +4405,13 @@
         },
         "firered": {
           "symbol": "sHorseaLevelUpLearnset",
-          "source_line": 1634,
+          "source_line": 1639,
           "entry_count": 8,
           "ordered_token_sha256": "761fcad36e219fdff1c44ffd4c7ebf9bc00245ba576761d192a8600fecf7d80a"
         },
         "leafgreen": {
           "symbol": "sHorseaLevelUpLearnset",
-          "source_line": 1634,
+          "source_line": 1639,
           "entry_count": 8,
           "ordered_token_sha256": "761fcad36e219fdff1c44ffd4c7ebf9bc00245ba576761d192a8600fecf7d80a"
         }
@@ -4442,13 +4442,13 @@
         },
         "firered": {
           "symbol": "sSeadraLevelUpLearnset",
-          "source_line": 1646,
+          "source_line": 1651,
           "entry_count": 11,
           "ordered_token_sha256": "643fa97a54a103c6cae2cf96ff630fcb2d3dbbc132bd94c504e9fdee1a607d20"
         },
         "leafgreen": {
           "symbol": "sSeadraLevelUpLearnset",
-          "source_line": 1646,
+          "source_line": 1651,
           "entry_count": 11,
           "ordered_token_sha256": "643fa97a54a103c6cae2cf96ff630fcb2d3dbbc132bd94c504e9fdee1a607d20"
         }
@@ -4479,13 +4479,13 @@
         },
         "firered": {
           "symbol": "sGoldeenLevelUpLearnset",
-          "source_line": 1661,
+          "source_line": 1666,
           "entry_count": 11,
           "ordered_token_sha256": "5dff293593a0cccbc49020518157aa00ae9bf44db1d8d0fe6b36d3a213217061"
         },
         "leafgreen": {
           "symbol": "sGoldeenLevelUpLearnset",
-          "source_line": 1661,
+          "source_line": 1666,
           "entry_count": 11,
           "ordered_token_sha256": "5dff293593a0cccbc49020518157aa00ae9bf44db1d8d0fe6b36d3a213217061"
         }
@@ -4516,13 +4516,13 @@
         },
         "firered": {
           "symbol": "sSeakingLevelUpLearnset",
-          "source_line": 1676,
+          "source_line": 1681,
           "entry_count": 12,
           "ordered_token_sha256": "b9bf23ec38f931a447cbc8cc4abc0e302d58debe805eb0c5003c41e2e7568d9a"
         },
         "leafgreen": {
           "symbol": "sSeakingLevelUpLearnset",
-          "source_line": 1676,
+          "source_line": 1681,
           "entry_count": 12,
           "ordered_token_sha256": "b9bf23ec38f931a447cbc8cc4abc0e302d58debe805eb0c5003c41e2e7568d9a"
         }
@@ -4553,13 +4553,13 @@
         },
         "firered": {
           "symbol": "sStaryuLevelUpLearnset",
-          "source_line": 1692,
+          "source_line": 1697,
           "entry_count": 12,
           "ordered_token_sha256": "63566641c3c33ed8f6c7a74d7a37599c312c26f9ce9e36a3c6d3eed78d4d1323"
         },
         "leafgreen": {
           "symbol": "sStaryuLevelUpLearnset",
-          "source_line": 1692,
+          "source_line": 1697,
           "entry_count": 12,
           "ordered_token_sha256": "63566641c3c33ed8f6c7a74d7a37599c312c26f9ce9e36a3c6d3eed78d4d1323"
         }
@@ -4590,13 +4590,13 @@
         },
         "firered": {
           "symbol": "sStarmieLevelUpLearnset",
-          "source_line": 1708,
+          "source_line": 1713,
           "entry_count": 5,
           "ordered_token_sha256": "be68bcea8d41a6e44ea78f6198d0bfefefd7b4b7f3757d5181304c3288d4651b"
         },
         "leafgreen": {
           "symbol": "sStarmieLevelUpLearnset",
-          "source_line": 1708,
+          "source_line": 1713,
           "entry_count": 5,
           "ordered_token_sha256": "be68bcea8d41a6e44ea78f6198d0bfefefd7b4b7f3757d5181304c3288d4651b"
         }
@@ -4627,13 +4627,13 @@
         },
         "firered": {
           "symbol": "sMrMimeLevelUpLearnset",
-          "source_line": 1717,
+          "source_line": 1722,
           "entry_count": 16,
           "ordered_token_sha256": "b50e548eab05d25ff675e929453271417ae29f73b357fb4fa427192296a405d0"
         },
         "leafgreen": {
           "symbol": "sMrMimeLevelUpLearnset",
-          "source_line": 1717,
+          "source_line": 1722,
           "entry_count": 16,
           "ordered_token_sha256": "b50e548eab05d25ff675e929453271417ae29f73b357fb4fa427192296a405d0"
         }
@@ -4664,13 +4664,13 @@
         },
         "firered": {
           "symbol": "sScytherLevelUpLearnset",
-          "source_line": 1737,
+          "source_line": 1742,
           "entry_count": 11,
           "ordered_token_sha256": "0a3997e54a3e64a9d52511d993142866357306e41f620abf2053766ec09a28ff"
         },
         "leafgreen": {
           "symbol": "sScytherLevelUpLearnset",
-          "source_line": 1737,
+          "source_line": 1742,
           "entry_count": 11,
           "ordered_token_sha256": "0a3997e54a3e64a9d52511d993142866357306e41f620abf2053766ec09a28ff"
         }
@@ -4701,13 +4701,13 @@
         },
         "firered": {
           "symbol": "sJynxLevelUpLearnset",
-          "source_line": 1752,
+          "source_line": 1757,
           "entry_count": 13,
           "ordered_token_sha256": "64c7ad5671600c0ec831aa6a341e6475f38f6e4e6c073ebc5ecfe230221d2e26"
         },
         "leafgreen": {
           "symbol": "sJynxLevelUpLearnset",
-          "source_line": 1752,
+          "source_line": 1757,
           "entry_count": 13,
           "ordered_token_sha256": "64c7ad5671600c0ec831aa6a341e6475f38f6e4e6c073ebc5ecfe230221d2e26"
         }
@@ -4738,13 +4738,13 @@
         },
         "firered": {
           "symbol": "sElectabuzzLevelUpLearnset",
-          "source_line": 1769,
+          "source_line": 1774,
           "entry_count": 9,
           "ordered_token_sha256": "d47b3901525dd05d21c8148b630d45b249f3cad5bdef54ccf30e9a8e4a085d24"
         },
         "leafgreen": {
           "symbol": "sElectabuzzLevelUpLearnset",
-          "source_line": 1769,
+          "source_line": 1774,
           "entry_count": 9,
           "ordered_token_sha256": "d47b3901525dd05d21c8148b630d45b249f3cad5bdef54ccf30e9a8e4a085d24"
         }
@@ -4775,13 +4775,13 @@
         },
         "firered": {
           "symbol": "sMagmarLevelUpLearnset",
-          "source_line": 1782,
+          "source_line": 1787,
           "entry_count": 12,
           "ordered_token_sha256": "acf71a186953f40367b0a1b21c7526bcc58b7e229cb4ab49114a16114ddefe75"
         },
         "leafgreen": {
           "symbol": "sMagmarLevelUpLearnset",
-          "source_line": 1782,
+          "source_line": 1787,
           "entry_count": 12,
           "ordered_token_sha256": "acf71a186953f40367b0a1b21c7526bcc58b7e229cb4ab49114a16114ddefe75"
         }
@@ -4812,13 +4812,13 @@
         },
         "firered": {
           "symbol": "sPinsirLevelUpLearnset",
-          "source_line": 1798,
+          "source_line": 1803,
           "entry_count": 10,
           "ordered_token_sha256": "bcae01de5280afe81ce1e2dd0647d22ac232f99ad1edc585ec0729f3f53f0c1c"
         },
         "leafgreen": {
           "symbol": "sPinsirLevelUpLearnset",
-          "source_line": 1798,
+          "source_line": 1803,
           "entry_count": 10,
           "ordered_token_sha256": "bcae01de5280afe81ce1e2dd0647d22ac232f99ad1edc585ec0729f3f53f0c1c"
         }
@@ -4849,13 +4849,13 @@
         },
         "firered": {
           "symbol": "sTaurosLevelUpLearnset",
-          "source_line": 1812,
+          "source_line": 1817,
           "entry_count": 10,
           "ordered_token_sha256": "db09ceb27b7f289bbf635c7994742061e1027744a19058e3eb23d2a2969ac396"
         },
         "leafgreen": {
           "symbol": "sTaurosLevelUpLearnset",
-          "source_line": 1812,
+          "source_line": 1817,
           "entry_count": 10,
           "ordered_token_sha256": "db09ceb27b7f289bbf635c7994742061e1027744a19058e3eb23d2a2969ac396"
         }
@@ -4886,13 +4886,13 @@
         },
         "firered": {
           "symbol": "sMagikarpLevelUpLearnset",
-          "source_line": 1826,
+          "source_line": 1831,
           "entry_count": 3,
           "ordered_token_sha256": "f675f5610f96e8de654ebf4e3cd798c451524dcac985829cad3755b00069d160"
         },
         "leafgreen": {
           "symbol": "sMagikarpLevelUpLearnset",
-          "source_line": 1826,
+          "source_line": 1831,
           "entry_count": 3,
           "ordered_token_sha256": "f675f5610f96e8de654ebf4e3cd798c451524dcac985829cad3755b00069d160"
         }
@@ -4923,13 +4923,13 @@
         },
         "firered": {
           "symbol": "sGyaradosLevelUpLearnset",
-          "source_line": 1833,
+          "source_line": 1838,
           "entry_count": 9,
           "ordered_token_sha256": "afe03bb4f5e76af21ef87faedfe0a0f66543b8974e24a12ca1d25a4ae29ddac5"
         },
         "leafgreen": {
           "symbol": "sGyaradosLevelUpLearnset",
-          "source_line": 1833,
+          "source_line": 1838,
           "entry_count": 9,
           "ordered_token_sha256": "afe03bb4f5e76af21ef87faedfe0a0f66543b8974e24a12ca1d25a4ae29ddac5"
         }
@@ -4960,13 +4960,13 @@
         },
         "firered": {
           "symbol": "sLaprasLevelUpLearnset",
-          "source_line": 1846,
+          "source_line": 1851,
           "entry_count": 12,
           "ordered_token_sha256": "0f2bf45f64cd0d64799fdcee7bc3aae82e58688fad6190d54c8bf1bcd68eb485"
         },
         "leafgreen": {
           "symbol": "sLaprasLevelUpLearnset",
-          "source_line": 1846,
+          "source_line": 1851,
           "entry_count": 12,
           "ordered_token_sha256": "0f2bf45f64cd0d64799fdcee7bc3aae82e58688fad6190d54c8bf1bcd68eb485"
         }
@@ -4997,13 +4997,13 @@
         },
         "firered": {
           "symbol": "sDittoLevelUpLearnset",
-          "source_line": 1862,
+          "source_line": 1867,
           "entry_count": 1,
           "ordered_token_sha256": "944e5e67cc53c8c9729a150449326a41c62ea0a01a8dc3fc675ba013ad149e62"
         },
         "leafgreen": {
           "symbol": "sDittoLevelUpLearnset",
-          "source_line": 1862,
+          "source_line": 1867,
           "entry_count": 1,
           "ordered_token_sha256": "944e5e67cc53c8c9729a150449326a41c62ea0a01a8dc3fc675ba013ad149e62"
         }
@@ -5034,13 +5034,13 @@
         },
         "firered": {
           "symbol": "sEeveeLevelUpLearnset",
-          "source_line": 1867,
+          "source_line": 1872,
           "entry_count": 9,
           "ordered_token_sha256": "eaa8235cb03a9957dafe8eee3f7d895880c5b8059f762a8c6f48814f48a83a8e"
         },
         "leafgreen": {
           "symbol": "sEeveeLevelUpLearnset",
-          "source_line": 1867,
+          "source_line": 1872,
           "entry_count": 9,
           "ordered_token_sha256": "eaa8235cb03a9957dafe8eee3f7d895880c5b8059f762a8c6f48814f48a83a8e"
         }
@@ -5071,13 +5071,13 @@
         },
         "firered": {
           "symbol": "sVaporeonLevelUpLearnset",
-          "source_line": 1880,
+          "source_line": 1885,
           "entry_count": 11,
           "ordered_token_sha256": "c2281caded1b590ec2886a4c032892d2a29623dd227e097210d2c3b3f55eda5c"
         },
         "leafgreen": {
           "symbol": "sVaporeonLevelUpLearnset",
-          "source_line": 1880,
+          "source_line": 1885,
           "entry_count": 11,
           "ordered_token_sha256": "c2281caded1b590ec2886a4c032892d2a29623dd227e097210d2c3b3f55eda5c"
         }
@@ -5108,13 +5108,13 @@
         },
         "firered": {
           "symbol": "sJolteonLevelUpLearnset",
-          "source_line": 1895,
+          "source_line": 1900,
           "entry_count": 11,
           "ordered_token_sha256": "e9a6d21131e3b7a1b6c57a08dd5b0cd44ac3074061f90e79f7301604d54f3713"
         },
         "leafgreen": {
           "symbol": "sJolteonLevelUpLearnset",
-          "source_line": 1895,
+          "source_line": 1900,
           "entry_count": 11,
           "ordered_token_sha256": "e9a6d21131e3b7a1b6c57a08dd5b0cd44ac3074061f90e79f7301604d54f3713"
         }
@@ -5145,13 +5145,13 @@
         },
         "firered": {
           "symbol": "sFlareonLevelUpLearnset",
-          "source_line": 1910,
+          "source_line": 1915,
           "entry_count": 11,
           "ordered_token_sha256": "45c650475af12e2ff7d046e8aca0c62738eeb541c00b5a499575882830373c5f"
         },
         "leafgreen": {
           "symbol": "sFlareonLevelUpLearnset",
-          "source_line": 1910,
+          "source_line": 1915,
           "entry_count": 11,
           "ordered_token_sha256": "45c650475af12e2ff7d046e8aca0c62738eeb541c00b5a499575882830373c5f"
         }
@@ -5182,13 +5182,13 @@
         },
         "firered": {
           "symbol": "sPorygonLevelUpLearnset",
-          "source_line": 1925,
+          "source_line": 1930,
           "entry_count": 11,
           "ordered_token_sha256": "226434e8a3c7f61b12db0d2dd54165f1ed7081e920372aa15a566072e483ffc3"
         },
         "leafgreen": {
           "symbol": "sPorygonLevelUpLearnset",
-          "source_line": 1925,
+          "source_line": 1930,
           "entry_count": 11,
           "ordered_token_sha256": "226434e8a3c7f61b12db0d2dd54165f1ed7081e920372aa15a566072e483ffc3"
         }
@@ -5219,13 +5219,13 @@
         },
         "firered": {
           "symbol": "sOmanyteLevelUpLearnset",
-          "source_line": 1940,
+          "source_line": 1945,
           "entry_count": 10,
           "ordered_token_sha256": "bb73dfd894f33ed95931048bf76c23a8f2ff4e9733ad05ddca9964c01834268d"
         },
         "leafgreen": {
           "symbol": "sOmanyteLevelUpLearnset",
-          "source_line": 1940,
+          "source_line": 1945,
           "entry_count": 10,
           "ordered_token_sha256": "bb73dfd894f33ed95931048bf76c23a8f2ff4e9733ad05ddca9964c01834268d"
         }
@@ -5256,13 +5256,13 @@
         },
         "firered": {
           "symbol": "sOmastarLevelUpLearnset",
-          "source_line": 1954,
+          "source_line": 1959,
           "entry_count": 13,
           "ordered_token_sha256": "429dbb9297d5eb85aa49ac34a8ce9ed86ab973f4b720fae4e3bdf25b5dbe0a95"
         },
         "leafgreen": {
           "symbol": "sOmastarLevelUpLearnset",
-          "source_line": 1954,
+          "source_line": 1959,
           "entry_count": 13,
           "ordered_token_sha256": "429dbb9297d5eb85aa49ac34a8ce9ed86ab973f4b720fae4e3bdf25b5dbe0a95"
         }
@@ -5293,13 +5293,13 @@
         },
         "firered": {
           "symbol": "sKabutoLevelUpLearnset",
-          "source_line": 1971,
+          "source_line": 1976,
           "entry_count": 10,
           "ordered_token_sha256": "46059125f320f566693e0e873cb065b3084614b00b7626bbb0885ffba6260497"
         },
         "leafgreen": {
           "symbol": "sKabutoLevelUpLearnset",
-          "source_line": 1971,
+          "source_line": 1976,
           "entry_count": 10,
           "ordered_token_sha256": "46059125f320f566693e0e873cb065b3084614b00b7626bbb0885ffba6260497"
         }
@@ -5330,13 +5330,13 @@
         },
         "firered": {
           "symbol": "sKabutopsLevelUpLearnset",
-          "source_line": 1985,
+          "source_line": 1990,
           "entry_count": 14,
           "ordered_token_sha256": "1715113f353a67bcaaea73c346fd43bdc5e66c13f4d75b5b6eb77b2216a52bc7"
         },
         "leafgreen": {
           "symbol": "sKabutopsLevelUpLearnset",
-          "source_line": 1985,
+          "source_line": 1990,
           "entry_count": 14,
           "ordered_token_sha256": "1715113f353a67bcaaea73c346fd43bdc5e66c13f4d75b5b6eb77b2216a52bc7"
         }
@@ -5367,13 +5367,13 @@
         },
         "firered": {
           "symbol": "sAerodactylLevelUpLearnset",
-          "source_line": 2003,
+          "source_line": 2008,
           "entry_count": 8,
           "ordered_token_sha256": "4189cd807ab7216c47e0c64789c7d051464e4790d962816651d6c6077a11c055"
         },
         "leafgreen": {
           "symbol": "sAerodactylLevelUpLearnset",
-          "source_line": 2003,
+          "source_line": 2008,
           "entry_count": 8,
           "ordered_token_sha256": "4189cd807ab7216c47e0c64789c7d051464e4790d962816651d6c6077a11c055"
         }
@@ -5404,13 +5404,13 @@
         },
         "firered": {
           "symbol": "sSnorlaxLevelUpLearnset",
-          "source_line": 2015,
+          "source_line": 2020,
           "entry_count": 14,
           "ordered_token_sha256": "3dba6f6e94b76d3756fc5d1ab24687ab03da8208bace8e5331767043d59f237a"
         },
         "leafgreen": {
           "symbol": "sSnorlaxLevelUpLearnset",
-          "source_line": 2015,
+          "source_line": 2020,
           "entry_count": 14,
           "ordered_token_sha256": "3dba6f6e94b76d3756fc5d1ab24687ab03da8208bace8e5331767043d59f237a"
         }
@@ -5441,13 +5441,13 @@
         },
         "firered": {
           "symbol": "sArticunoLevelUpLearnset",
-          "source_line": 2033,
+          "source_line": 2038,
           "entry_count": 9,
           "ordered_token_sha256": "5a2662bc202af779755307bdf1d4d2783af2f6f52cfe3c70f5fc0b97a557733b"
         },
         "leafgreen": {
           "symbol": "sArticunoLevelUpLearnset",
-          "source_line": 2033,
+          "source_line": 2038,
           "entry_count": 9,
           "ordered_token_sha256": "5a2662bc202af779755307bdf1d4d2783af2f6f52cfe3c70f5fc0b97a557733b"
         }
@@ -5478,13 +5478,13 @@
         },
         "firered": {
           "symbol": "sZapdosLevelUpLearnset",
-          "source_line": 2046,
+          "source_line": 2051,
           "entry_count": 9,
           "ordered_token_sha256": "1cd64a2ef06a360e32a7b8a8c42498cb2db0e03a25e8d58a16371103c87b1ac6"
         },
         "leafgreen": {
           "symbol": "sZapdosLevelUpLearnset",
-          "source_line": 2046,
+          "source_line": 2051,
           "entry_count": 9,
           "ordered_token_sha256": "1cd64a2ef06a360e32a7b8a8c42498cb2db0e03a25e8d58a16371103c87b1ac6"
         }
@@ -5515,13 +5515,13 @@
         },
         "firered": {
           "symbol": "sMoltresLevelUpLearnset",
-          "source_line": 2059,
+          "source_line": 2064,
           "entry_count": 9,
           "ordered_token_sha256": "65d00543766e062d4905dd6be722ac7ba0ee148b496a259aaddfc3be003e115a"
         },
         "leafgreen": {
           "symbol": "sMoltresLevelUpLearnset",
-          "source_line": 2059,
+          "source_line": 2064,
           "entry_count": 9,
           "ordered_token_sha256": "65d00543766e062d4905dd6be722ac7ba0ee148b496a259aaddfc3be003e115a"
         }
@@ -5552,13 +5552,13 @@
         },
         "firered": {
           "symbol": "sDratiniLevelUpLearnset",
-          "source_line": 2072,
+          "source_line": 2077,
           "entry_count": 10,
           "ordered_token_sha256": "79b523067b49d344c84e67c4e262803fc3f6d76f8fc643b56550592b6cb45e49"
         },
         "leafgreen": {
           "symbol": "sDratiniLevelUpLearnset",
-          "source_line": 2072,
+          "source_line": 2077,
           "entry_count": 10,
           "ordered_token_sha256": "79b523067b49d344c84e67c4e262803fc3f6d76f8fc643b56550592b6cb45e49"
         }
@@ -5589,13 +5589,13 @@
         },
         "firered": {
           "symbol": "sDragonairLevelUpLearnset",
-          "source_line": 2086,
+          "source_line": 2091,
           "entry_count": 12,
           "ordered_token_sha256": "22373a099522bc9de07b3a8671b21d81b570f052744a058b5b842b4af78a3063"
         },
         "leafgreen": {
           "symbol": "sDragonairLevelUpLearnset",
-          "source_line": 2086,
+          "source_line": 2091,
           "entry_count": 12,
           "ordered_token_sha256": "22373a099522bc9de07b3a8671b21d81b570f052744a058b5b842b4af78a3063"
         }
@@ -5626,13 +5626,13 @@
         },
         "firered": {
           "symbol": "sDragoniteLevelUpLearnset",
-          "source_line": 2102,
+          "source_line": 2107,
           "entry_count": 13,
           "ordered_token_sha256": "1c4745e8f4493a285a3251fa85da565fbd78746e79939c1b96ce3a13bd3bce95"
         },
         "leafgreen": {
           "symbol": "sDragoniteLevelUpLearnset",
-          "source_line": 2102,
+          "source_line": 2107,
           "entry_count": 13,
           "ordered_token_sha256": "1c4745e8f4493a285a3251fa85da565fbd78746e79939c1b96ce3a13bd3bce95"
         }
@@ -5663,13 +5663,13 @@
         },
         "firered": {
           "symbol": "sMewtwoLevelUpLearnset",
-          "source_line": 2119,
+          "source_line": 2124,
           "entry_count": 11,
           "ordered_token_sha256": "56259cc1bd99c82be5c8f297d6669bcc78b265452afbf945a60fa275c333580b"
         },
         "leafgreen": {
           "symbol": "sMewtwoLevelUpLearnset",
-          "source_line": 2119,
+          "source_line": 2124,
           "entry_count": 11,
           "ordered_token_sha256": "56259cc1bd99c82be5c8f297d6669bcc78b265452afbf945a60fa275c333580b"
         }
@@ -5700,13 +5700,13 @@
         },
         "firered": {
           "symbol": "sMewLevelUpLearnset",
-          "source_line": 2134,
+          "source_line": 2139,
           "entry_count": 6,
           "ordered_token_sha256": "e7f201fec5113204edb85e090f7262db385965c096a5c30a805f428f2346dda1"
         },
         "leafgreen": {
           "symbol": "sMewLevelUpLearnset",
-          "source_line": 2134,
+          "source_line": 2139,
           "entry_count": 6,
           "ordered_token_sha256": "e7f201fec5113204edb85e090f7262db385965c096a5c30a805f428f2346dda1"
         }
@@ -5737,13 +5737,13 @@
         },
         "firered": {
           "symbol": "sChikoritaLevelUpLearnset",
-          "source_line": 2144,
+          "source_line": 2149,
           "entry_count": 10,
           "ordered_token_sha256": "e612a6a3b27da25e01f41d47e8c7cbf26b38ca9d8054ac79a4b1e5aa86b6d0a2"
         },
         "leafgreen": {
           "symbol": "sChikoritaLevelUpLearnset",
-          "source_line": 2144,
+          "source_line": 2149,
           "entry_count": 10,
           "ordered_token_sha256": "e612a6a3b27da25e01f41d47e8c7cbf26b38ca9d8054ac79a4b1e5aa86b6d0a2"
         }
@@ -5774,13 +5774,13 @@
         },
         "firered": {
           "symbol": "sBayleefLevelUpLearnset",
-          "source_line": 2158,
+          "source_line": 2163,
           "entry_count": 12,
           "ordered_token_sha256": "48c104a5808dcc400e4ebd2d3be7a02bf93eceac72ebb43c5d31167ab1255de0"
         },
         "leafgreen": {
           "symbol": "sBayleefLevelUpLearnset",
-          "source_line": 2158,
+          "source_line": 2163,
           "entry_count": 12,
           "ordered_token_sha256": "48c104a5808dcc400e4ebd2d3be7a02bf93eceac72ebb43c5d31167ab1255de0"
         }
@@ -5811,13 +5811,13 @@
         },
         "firered": {
           "symbol": "sMeganiumLevelUpLearnset",
-          "source_line": 2174,
+          "source_line": 2179,
           "entry_count": 12,
           "ordered_token_sha256": "c08db3fd673689ae75736c8707b4c7817c73449bb3d21b78a62c1c8656ae82d9"
         },
         "leafgreen": {
           "symbol": "sMeganiumLevelUpLearnset",
-          "source_line": 2174,
+          "source_line": 2179,
           "entry_count": 12,
           "ordered_token_sha256": "c08db3fd673689ae75736c8707b4c7817c73449bb3d21b78a62c1c8656ae82d9"
         }
@@ -5848,13 +5848,13 @@
         },
         "firered": {
           "symbol": "sCyndaquilLevelUpLearnset",
-          "source_line": 2190,
+          "source_line": 2195,
           "entry_count": 8,
           "ordered_token_sha256": "53acbc753aaaa5ba8adf19840e0f8421c96dcbc9c682f9b45cb2a18bf29fe8d5"
         },
         "leafgreen": {
           "symbol": "sCyndaquilLevelUpLearnset",
-          "source_line": 2190,
+          "source_line": 2195,
           "entry_count": 8,
           "ordered_token_sha256": "53acbc753aaaa5ba8adf19840e0f8421c96dcbc9c682f9b45cb2a18bf29fe8d5"
         }
@@ -5885,13 +5885,13 @@
         },
         "firered": {
           "symbol": "sQuilavaLevelUpLearnset",
-          "source_line": 2202,
+          "source_line": 2207,
           "entry_count": 9,
           "ordered_token_sha256": "f43e3de3489b9d8e1cc58b4a483000335ac0102f8bd4f88199f70f3fafbd4c89"
         },
         "leafgreen": {
           "symbol": "sQuilavaLevelUpLearnset",
-          "source_line": 2202,
+          "source_line": 2207,
           "entry_count": 9,
           "ordered_token_sha256": "f43e3de3489b9d8e1cc58b4a483000335ac0102f8bd4f88199f70f3fafbd4c89"
         }
@@ -5922,13 +5922,13 @@
         },
         "firered": {
           "symbol": "sTyphlosionLevelUpLearnset",
-          "source_line": 2215,
+          "source_line": 2220,
           "entry_count": 10,
           "ordered_token_sha256": "833c4ecf4d9e9617cf35392abf562a2e05f2663542286da8f4c0928437d87d85"
         },
         "leafgreen": {
           "symbol": "sTyphlosionLevelUpLearnset",
-          "source_line": 2215,
+          "source_line": 2220,
           "entry_count": 10,
           "ordered_token_sha256": "833c4ecf4d9e9617cf35392abf562a2e05f2663542286da8f4c0928437d87d85"
         }
@@ -5959,13 +5959,13 @@
         },
         "firered": {
           "symbol": "sTotodileLevelUpLearnset",
-          "source_line": 2229,
+          "source_line": 2234,
           "entry_count": 9,
           "ordered_token_sha256": "8498f46ccd358de65c6105e9e77adfd1802a1d40dac9f12034a2c2e16741fcef"
         },
         "leafgreen": {
           "symbol": "sTotodileLevelUpLearnset",
-          "source_line": 2229,
+          "source_line": 2234,
           "entry_count": 9,
           "ordered_token_sha256": "8498f46ccd358de65c6105e9e77adfd1802a1d40dac9f12034a2c2e16741fcef"
         }
@@ -5996,13 +5996,13 @@
         },
         "firered": {
           "symbol": "sCroconawLevelUpLearnset",
-          "source_line": 2242,
+          "source_line": 2247,
           "entry_count": 10,
           "ordered_token_sha256": "0db53bd9c5954c2600120e667ba8e74facc3ec7c174add397a3da0442eacf66b"
         },
         "leafgreen": {
           "symbol": "sCroconawLevelUpLearnset",
-          "source_line": 2242,
+          "source_line": 2247,
           "entry_count": 10,
           "ordered_token_sha256": "0db53bd9c5954c2600120e667ba8e74facc3ec7c174add397a3da0442eacf66b"
         }
@@ -6033,13 +6033,13 @@
         },
         "firered": {
           "symbol": "sFeraligatrLevelUpLearnset",
-          "source_line": 2256,
+          "source_line": 2261,
           "entry_count": 11,
           "ordered_token_sha256": "19d464310b58058f14a43ca33bc4b313d0479d0e524200faead312c8e9ab932d"
         },
         "leafgreen": {
           "symbol": "sFeraligatrLevelUpLearnset",
-          "source_line": 2256,
+          "source_line": 2261,
           "entry_count": 11,
           "ordered_token_sha256": "19d464310b58058f14a43ca33bc4b313d0479d0e524200faead312c8e9ab932d"
         }
@@ -6070,13 +6070,13 @@
         },
         "firered": {
           "symbol": "sSentretLevelUpLearnset",
-          "source_line": 2271,
+          "source_line": 2276,
           "entry_count": 9,
           "ordered_token_sha256": "1bbe6277cfd8d4edcae8c5670468f19aa7123898c04f0125159e3a56a27f06bf"
         },
         "leafgreen": {
           "symbol": "sSentretLevelUpLearnset",
-          "source_line": 2271,
+          "source_line": 2276,
           "entry_count": 9,
           "ordered_token_sha256": "1bbe6277cfd8d4edcae8c5670468f19aa7123898c04f0125159e3a56a27f06bf"
         }
@@ -6107,13 +6107,13 @@
         },
         "firered": {
           "symbol": "sFurretLevelUpLearnset",
-          "source_line": 2284,
+          "source_line": 2289,
           "entry_count": 11,
           "ordered_token_sha256": "eaf7161e978846ca40cf26b07f67c8229d1c4b7e904f0c8d32352f08dcd3bc19"
         },
         "leafgreen": {
           "symbol": "sFurretLevelUpLearnset",
-          "source_line": 2284,
+          "source_line": 2289,
           "entry_count": 11,
           "ordered_token_sha256": "eaf7161e978846ca40cf26b07f67c8229d1c4b7e904f0c8d32352f08dcd3bc19"
         }
@@ -6144,13 +6144,13 @@
         },
         "firered": {
           "symbol": "sHoothootLevelUpLearnset",
-          "source_line": 2299,
+          "source_line": 2304,
           "entry_count": 9,
           "ordered_token_sha256": "cbc906d3dae44c75bae673fd0faf783cfcd26790a170f0da083e414945b8f437"
         },
         "leafgreen": {
           "symbol": "sHoothootLevelUpLearnset",
-          "source_line": 2299,
+          "source_line": 2304,
           "entry_count": 9,
           "ordered_token_sha256": "cbc906d3dae44c75bae673fd0faf783cfcd26790a170f0da083e414945b8f437"
         }
@@ -6181,13 +6181,13 @@
         },
         "firered": {
           "symbol": "sNoctowlLevelUpLearnset",
-          "source_line": 2312,
+          "source_line": 2317,
           "entry_count": 11,
           "ordered_token_sha256": "f6e1046d40dfb02f8507cc8d02b13de4134fb3014d8f3559aa0cccb3565328ca"
         },
         "leafgreen": {
           "symbol": "sNoctowlLevelUpLearnset",
-          "source_line": 2312,
+          "source_line": 2317,
           "entry_count": 11,
           "ordered_token_sha256": "f6e1046d40dfb02f8507cc8d02b13de4134fb3014d8f3559aa0cccb3565328ca"
         }
@@ -6218,13 +6218,13 @@
         },
         "firered": {
           "symbol": "sLedybaLevelUpLearnset",
-          "source_line": 2327,
+          "source_line": 2332,
           "entry_count": 10,
           "ordered_token_sha256": "d9073a520fc3a9babe6738f5749d6ca79eb12cc4e1f6cc20bc34bf0082b680df"
         },
         "leafgreen": {
           "symbol": "sLedybaLevelUpLearnset",
-          "source_line": 2327,
+          "source_line": 2332,
           "entry_count": 10,
           "ordered_token_sha256": "d9073a520fc3a9babe6738f5749d6ca79eb12cc4e1f6cc20bc34bf0082b680df"
         }
@@ -6255,13 +6255,13 @@
         },
         "firered": {
           "symbol": "sLedianLevelUpLearnset",
-          "source_line": 2341,
+          "source_line": 2346,
           "entry_count": 11,
           "ordered_token_sha256": "bf4b43145e1a61d0981d3502b58403d6303cfb4e5b552ab7a433c3b4ab47fc01"
         },
         "leafgreen": {
           "symbol": "sLedianLevelUpLearnset",
-          "source_line": 2341,
+          "source_line": 2346,
           "entry_count": 11,
           "ordered_token_sha256": "bf4b43145e1a61d0981d3502b58403d6303cfb4e5b552ab7a433c3b4ab47fc01"
         }
@@ -6292,13 +6292,13 @@
         },
         "firered": {
           "symbol": "sSpinarakLevelUpLearnset",
-          "source_line": 2356,
+          "source_line": 2361,
           "entry_count": 10,
           "ordered_token_sha256": "9859fedd3d9c2bc39f9f5aa70a52234f87b48a02fb4208a288464ded4dc9c732"
         },
         "leafgreen": {
           "symbol": "sSpinarakLevelUpLearnset",
-          "source_line": 2356,
+          "source_line": 2361,
           "entry_count": 10,
           "ordered_token_sha256": "9859fedd3d9c2bc39f9f5aa70a52234f87b48a02fb4208a288464ded4dc9c732"
         }
@@ -6329,13 +6329,13 @@
         },
         "firered": {
           "symbol": "sAriadosLevelUpLearnset",
-          "source_line": 2370,
+          "source_line": 2375,
           "entry_count": 12,
           "ordered_token_sha256": "b4a42b851b4abaf2ff9cbe9e1007eb1e2cd0508c675a9e545064d1b598d27ef9"
         },
         "leafgreen": {
           "symbol": "sAriadosLevelUpLearnset",
-          "source_line": 2370,
+          "source_line": 2375,
           "entry_count": 12,
           "ordered_token_sha256": "b4a42b851b4abaf2ff9cbe9e1007eb1e2cd0508c675a9e545064d1b598d27ef9"
         }
@@ -6366,13 +6366,13 @@
         },
         "firered": {
           "symbol": "sCrobatLevelUpLearnset",
-          "source_line": 2386,
+          "source_line": 2391,
           "entry_count": 13,
           "ordered_token_sha256": "a3eb96f8f9d9f0ef24451d378cc884e626a6c14873215f4159fe75f62054775d"
         },
         "leafgreen": {
           "symbol": "sCrobatLevelUpLearnset",
-          "source_line": 2386,
+          "source_line": 2391,
           "entry_count": 13,
           "ordered_token_sha256": "a3eb96f8f9d9f0ef24451d378cc884e626a6c14873215f4159fe75f62054775d"
         }
@@ -6403,13 +6403,13 @@
         },
         "firered": {
           "symbol": "sChinchouLevelUpLearnset",
-          "source_line": 2403,
+          "source_line": 2408,
           "entry_count": 10,
           "ordered_token_sha256": "74f865e1293402157879de42c1f0cfdff232aecd603e42fbb26374f76c3f3ea2"
         },
         "leafgreen": {
           "symbol": "sChinchouLevelUpLearnset",
-          "source_line": 2403,
+          "source_line": 2408,
           "entry_count": 10,
           "ordered_token_sha256": "74f865e1293402157879de42c1f0cfdff232aecd603e42fbb26374f76c3f3ea2"
         }
@@ -6440,13 +6440,13 @@
         },
         "firered": {
           "symbol": "sLanturnLevelUpLearnset",
-          "source_line": 2417,
+          "source_line": 2422,
           "entry_count": 11,
           "ordered_token_sha256": "55419e6fa5c803c3d315593cd5ef6c1d6895a6308fa28ab04e79f5aa4edc86ce"
         },
         "leafgreen": {
           "symbol": "sLanturnLevelUpLearnset",
-          "source_line": 2417,
+          "source_line": 2422,
           "entry_count": 11,
           "ordered_token_sha256": "55419e6fa5c803c3d315593cd5ef6c1d6895a6308fa28ab04e79f5aa4edc86ce"
         }
@@ -6477,13 +6477,13 @@
         },
         "firered": {
           "symbol": "sPichuLevelUpLearnset",
-          "source_line": 2432,
+          "source_line": 2437,
           "entry_count": 5,
           "ordered_token_sha256": "ceb67bb3982eb211daec03b2e4872b90227fcc95fba210e3d2bd1e90fd403195"
         },
         "leafgreen": {
           "symbol": "sPichuLevelUpLearnset",
-          "source_line": 2432,
+          "source_line": 2437,
           "entry_count": 5,
           "ordered_token_sha256": "ceb67bb3982eb211daec03b2e4872b90227fcc95fba210e3d2bd1e90fd403195"
         }
@@ -6514,13 +6514,13 @@
         },
         "firered": {
           "symbol": "sCleffaLevelUpLearnset",
-          "source_line": 2441,
+          "source_line": 2446,
           "entry_count": 6,
           "ordered_token_sha256": "8ff32fb814834222d3a7e0ee97620762919c6df3bbed8c832d5222f098910c86"
         },
         "leafgreen": {
           "symbol": "sCleffaLevelUpLearnset",
-          "source_line": 2441,
+          "source_line": 2446,
           "entry_count": 6,
           "ordered_token_sha256": "8ff32fb814834222d3a7e0ee97620762919c6df3bbed8c832d5222f098910c86"
         }
@@ -6551,13 +6551,13 @@
         },
         "firered": {
           "symbol": "sIgglybuffLevelUpLearnset",
-          "source_line": 2451,
+          "source_line": 2456,
           "entry_count": 5,
           "ordered_token_sha256": "e4532a55d87d00f6d25e7f67f6d8b8a266f9f779ccbf429a06f3934b78979ec6"
         },
         "leafgreen": {
           "symbol": "sIgglybuffLevelUpLearnset",
-          "source_line": 2451,
+          "source_line": 2456,
           "entry_count": 5,
           "ordered_token_sha256": "e4532a55d87d00f6d25e7f67f6d8b8a266f9f779ccbf429a06f3934b78979ec6"
         }
@@ -6588,13 +6588,13 @@
         },
         "firered": {
           "symbol": "sTogepiLevelUpLearnset",
-          "source_line": 2460,
+          "source_line": 2465,
           "entry_count": 12,
           "ordered_token_sha256": "2403e8e9a1c18574064a9ad4753e2de22b5fa819eff7bb66394cd4ce7c0eafb5"
         },
         "leafgreen": {
           "symbol": "sTogepiLevelUpLearnset",
-          "source_line": 2460,
+          "source_line": 2465,
           "entry_count": 12,
           "ordered_token_sha256": "2403e8e9a1c18574064a9ad4753e2de22b5fa819eff7bb66394cd4ce7c0eafb5"
         }
@@ -6625,13 +6625,13 @@
         },
         "firered": {
           "symbol": "sTogeticLevelUpLearnset",
-          "source_line": 2476,
+          "source_line": 2481,
           "entry_count": 15,
           "ordered_token_sha256": "135a9a193c56fc49ffb8565fc1a3b321382f2014ad43940640a311dec7560425"
         },
         "leafgreen": {
           "symbol": "sTogeticLevelUpLearnset",
-          "source_line": 2476,
+          "source_line": 2481,
           "entry_count": 15,
           "ordered_token_sha256": "135a9a193c56fc49ffb8565fc1a3b321382f2014ad43940640a311dec7560425"
         }
@@ -6662,13 +6662,13 @@
         },
         "firered": {
           "symbol": "sNatuLevelUpLearnset",
-          "source_line": 2495,
+          "source_line": 2500,
           "entry_count": 8,
           "ordered_token_sha256": "924548099a6deb0fba60eef19878c48b9a8b7e056feffeff326f36a0f565d88c"
         },
         "leafgreen": {
           "symbol": "sNatuLevelUpLearnset",
-          "source_line": 2495,
+          "source_line": 2500,
           "entry_count": 8,
           "ordered_token_sha256": "924548099a6deb0fba60eef19878c48b9a8b7e056feffeff326f36a0f565d88c"
         }
@@ -6699,13 +6699,13 @@
         },
         "firered": {
           "symbol": "sXatuLevelUpLearnset",
-          "source_line": 2507,
+          "source_line": 2512,
           "entry_count": 8,
           "ordered_token_sha256": "c55d929353d32b690239e181824fbea619418fcfbed2d71bb177b0c5d0857655"
         },
         "leafgreen": {
           "symbol": "sXatuLevelUpLearnset",
-          "source_line": 2507,
+          "source_line": 2512,
           "entry_count": 8,
           "ordered_token_sha256": "c55d929353d32b690239e181824fbea619418fcfbed2d71bb177b0c5d0857655"
         }
@@ -6736,13 +6736,13 @@
         },
         "firered": {
           "symbol": "sMareepLevelUpLearnset",
-          "source_line": 2519,
+          "source_line": 2524,
           "entry_count": 7,
           "ordered_token_sha256": "fff9ff427abf5d82cf622a28f2ae9afe72293774d49257e6f661da34fd397aa4"
         },
         "leafgreen": {
           "symbol": "sMareepLevelUpLearnset",
-          "source_line": 2519,
+          "source_line": 2524,
           "entry_count": 7,
           "ordered_token_sha256": "fff9ff427abf5d82cf622a28f2ae9afe72293774d49257e6f661da34fd397aa4"
         }
@@ -6773,13 +6773,13 @@
         },
         "firered": {
           "symbol": "sFlaaffyLevelUpLearnset",
-          "source_line": 2530,
+          "source_line": 2535,
           "entry_count": 8,
           "ordered_token_sha256": "c5fdb359a3619a3aad5e2167df8361c06159a5a2d2e27452a782e304d86db2ba"
         },
         "leafgreen": {
           "symbol": "sFlaaffyLevelUpLearnset",
-          "source_line": 2530,
+          "source_line": 2535,
           "entry_count": 8,
           "ordered_token_sha256": "c5fdb359a3619a3aad5e2167df8361c06159a5a2d2e27452a782e304d86db2ba"
         }
@@ -6810,13 +6810,13 @@
         },
         "firered": {
           "symbol": "sAmpharosLevelUpLearnset",
-          "source_line": 2542,
+          "source_line": 2547,
           "entry_count": 10,
           "ordered_token_sha256": "9e6912a0741ea9254a2c75ceb0dacc3790329f83a9e1e2654011810697529a39"
         },
         "leafgreen": {
           "symbol": "sAmpharosLevelUpLearnset",
-          "source_line": 2542,
+          "source_line": 2547,
           "entry_count": 10,
           "ordered_token_sha256": "9e6912a0741ea9254a2c75ceb0dacc3790329f83a9e1e2654011810697529a39"
         }
@@ -6847,13 +6847,13 @@
         },
         "firered": {
           "symbol": "sBellossomLevelUpLearnset",
-          "source_line": 2556,
+          "source_line": 2561,
           "entry_count": 6,
           "ordered_token_sha256": "db164fa677d9e953bd3a744dbef679d4af221449260cd4ed3bce7fc8573faba1"
         },
         "leafgreen": {
           "symbol": "sBellossomLevelUpLearnset",
-          "source_line": 2556,
+          "source_line": 2561,
           "entry_count": 6,
           "ordered_token_sha256": "db164fa677d9e953bd3a744dbef679d4af221449260cd4ed3bce7fc8573faba1"
         }
@@ -6884,13 +6884,13 @@
         },
         "firered": {
           "symbol": "sMarillLevelUpLearnset",
-          "source_line": 2566,
+          "source_line": 2571,
           "entry_count": 9,
           "ordered_token_sha256": "897ffe7041fd16189943087a8e75baf76f642a89d4f34baf81cf263d4a878abc"
         },
         "leafgreen": {
           "symbol": "sMarillLevelUpLearnset",
-          "source_line": 2566,
+          "source_line": 2571,
           "entry_count": 9,
           "ordered_token_sha256": "897ffe7041fd16189943087a8e75baf76f642a89d4f34baf81cf263d4a878abc"
         }
@@ -6921,13 +6921,13 @@
         },
         "firered": {
           "symbol": "sAzumarillLevelUpLearnset",
-          "source_line": 2579,
+          "source_line": 2584,
           "entry_count": 12,
           "ordered_token_sha256": "fa406a71c9d6bd15ef48cfb5300234d3b9c4e5c8a3b3a349eb27ca575dc0278f"
         },
         "leafgreen": {
           "symbol": "sAzumarillLevelUpLearnset",
-          "source_line": 2579,
+          "source_line": 2584,
           "entry_count": 12,
           "ordered_token_sha256": "fa406a71c9d6bd15ef48cfb5300234d3b9c4e5c8a3b3a349eb27ca575dc0278f"
         }
@@ -6958,13 +6958,13 @@
         },
         "firered": {
           "symbol": "sSudowoodoLevelUpLearnset",
-          "source_line": 2595,
+          "source_line": 2600,
           "entry_count": 9,
           "ordered_token_sha256": "0a1385b4c533ede32762b4e251cfac33c4dfc3bb8d8c393d2fdccedbc9025f94"
         },
         "leafgreen": {
           "symbol": "sSudowoodoLevelUpLearnset",
-          "source_line": 2595,
+          "source_line": 2600,
           "entry_count": 9,
           "ordered_token_sha256": "0a1385b4c533ede32762b4e251cfac33c4dfc3bb8d8c393d2fdccedbc9025f94"
         }
@@ -6995,13 +6995,13 @@
         },
         "firered": {
           "symbol": "sPolitoedLevelUpLearnset",
-          "source_line": 2608,
+          "source_line": 2613,
           "entry_count": 6,
           "ordered_token_sha256": "aa8368c11076747f3ad35802afd3dcb3f416ab2de24b6dcc10a3c67dda099678"
         },
         "leafgreen": {
           "symbol": "sPolitoedLevelUpLearnset",
-          "source_line": 2608,
+          "source_line": 2613,
           "entry_count": 6,
           "ordered_token_sha256": "aa8368c11076747f3ad35802afd3dcb3f416ab2de24b6dcc10a3c67dda099678"
         }
@@ -7032,13 +7032,13 @@
         },
         "firered": {
           "symbol": "sHoppipLevelUpLearnset",
-          "source_line": 2618,
+          "source_line": 2623,
           "entry_count": 10,
           "ordered_token_sha256": "7e77a45e96a0258a1b657a76266b888750b1f6f4ff5779dee63afb9dacf10e29"
         },
         "leafgreen": {
           "symbol": "sHoppipLevelUpLearnset",
-          "source_line": 2618,
+          "source_line": 2623,
           "entry_count": 10,
           "ordered_token_sha256": "7e77a45e96a0258a1b657a76266b888750b1f6f4ff5779dee63afb9dacf10e29"
         }
@@ -7069,13 +7069,13 @@
         },
         "firered": {
           "symbol": "sSkiploomLevelUpLearnset",
-          "source_line": 2632,
+          "source_line": 2637,
           "entry_count": 13,
           "ordered_token_sha256": "40625d05ccde451f166398bb1733b016c42ec5047c305be4dd6471e1c50f7740"
         },
         "leafgreen": {
           "symbol": "sSkiploomLevelUpLearnset",
-          "source_line": 2632,
+          "source_line": 2637,
           "entry_count": 13,
           "ordered_token_sha256": "40625d05ccde451f166398bb1733b016c42ec5047c305be4dd6471e1c50f7740"
         }
@@ -7106,13 +7106,13 @@
         },
         "firered": {
           "symbol": "sJumpluffLevelUpLearnset",
-          "source_line": 2649,
+          "source_line": 2654,
           "entry_count": 13,
           "ordered_token_sha256": "2a4d6557139f3e84bc94b5fe25d9db4a4011ec51dc8a0967da338211e66f2fc3"
         },
         "leafgreen": {
           "symbol": "sJumpluffLevelUpLearnset",
-          "source_line": 2649,
+          "source_line": 2654,
           "entry_count": 13,
           "ordered_token_sha256": "2a4d6557139f3e84bc94b5fe25d9db4a4011ec51dc8a0967da338211e66f2fc3"
         }
@@ -7143,13 +7143,13 @@
         },
         "firered": {
           "symbol": "sAipomLevelUpLearnset",
-          "source_line": 2666,
+          "source_line": 2671,
           "entry_count": 10,
           "ordered_token_sha256": "89336571575e9563695877ce5db1b720e64b55a16a6e2e765f5ce713d3bc5b9f"
         },
         "leafgreen": {
           "symbol": "sAipomLevelUpLearnset",
-          "source_line": 2666,
+          "source_line": 2671,
           "entry_count": 10,
           "ordered_token_sha256": "89336571575e9563695877ce5db1b720e64b55a16a6e2e765f5ce713d3bc5b9f"
         }
@@ -7180,13 +7180,13 @@
         },
         "firered": {
           "symbol": "sSunkernLevelUpLearnset",
-          "source_line": 2680,
+          "source_line": 2685,
           "entry_count": 8,
           "ordered_token_sha256": "58deaa1cb8956737a9a54117b3246c2857ee714d076afe77f3188d86b20b33a6"
         },
         "leafgreen": {
           "symbol": "sSunkernLevelUpLearnset",
-          "source_line": 2680,
+          "source_line": 2685,
           "entry_count": 8,
           "ordered_token_sha256": "58deaa1cb8956737a9a54117b3246c2857ee714d076afe77f3188d86b20b33a6"
         }
@@ -7217,13 +7217,13 @@
         },
         "firered": {
           "symbol": "sSunfloraLevelUpLearnset",
-          "source_line": 2692,
+          "source_line": 2697,
           "entry_count": 9,
           "ordered_token_sha256": "814dc87556ba5da92df439dd848f4de2f101e35c255d7d27f8b45b84cfc91c8f"
         },
         "leafgreen": {
           "symbol": "sSunfloraLevelUpLearnset",
-          "source_line": 2692,
+          "source_line": 2697,
           "entry_count": 9,
           "ordered_token_sha256": "814dc87556ba5da92df439dd848f4de2f101e35c255d7d27f8b45b84cfc91c8f"
         }
@@ -7254,13 +7254,13 @@
         },
         "firered": {
           "symbol": "sYanmaLevelUpLearnset",
-          "source_line": 2705,
+          "source_line": 2710,
           "entry_count": 11,
           "ordered_token_sha256": "b604fcc3b7dfa4749ef4c13ab454054a0a701faba530239a4cc3e9a75681da25"
         },
         "leafgreen": {
           "symbol": "sYanmaLevelUpLearnset",
-          "source_line": 2705,
+          "source_line": 2710,
           "entry_count": 11,
           "ordered_token_sha256": "b604fcc3b7dfa4749ef4c13ab454054a0a701faba530239a4cc3e9a75681da25"
         }
@@ -7291,13 +7291,13 @@
         },
         "firered": {
           "symbol": "sWooperLevelUpLearnset",
-          "source_line": 2720,
+          "source_line": 2725,
           "entry_count": 10,
           "ordered_token_sha256": "07afbe12ca4dce3c934b36655bb6c772e094b6438855a8cf2dea655eda1f3478"
         },
         "leafgreen": {
           "symbol": "sWooperLevelUpLearnset",
-          "source_line": 2720,
+          "source_line": 2725,
           "entry_count": 10,
           "ordered_token_sha256": "07afbe12ca4dce3c934b36655bb6c772e094b6438855a8cf2dea655eda1f3478"
         }
@@ -7328,13 +7328,13 @@
         },
         "firered": {
           "symbol": "sQuagsireLevelUpLearnset",
-          "source_line": 2734,
+          "source_line": 2739,
           "entry_count": 10,
           "ordered_token_sha256": "4173e08c290615742aab60a94afc094bfed1c8c3a86dc64c5341f95f181009f9"
         },
         "leafgreen": {
           "symbol": "sQuagsireLevelUpLearnset",
-          "source_line": 2734,
+          "source_line": 2739,
           "entry_count": 10,
           "ordered_token_sha256": "4173e08c290615742aab60a94afc094bfed1c8c3a86dc64c5341f95f181009f9"
         }
@@ -7365,13 +7365,13 @@
         },
         "firered": {
           "symbol": "sEspeonLevelUpLearnset",
-          "source_line": 2748,
+          "source_line": 2753,
           "entry_count": 11,
           "ordered_token_sha256": "a627d60607c44eff1d10f583bb9baa43a41e05a985724f3d0e9143b5c54284b5"
         },
         "leafgreen": {
           "symbol": "sEspeonLevelUpLearnset",
-          "source_line": 2748,
+          "source_line": 2753,
           "entry_count": 11,
           "ordered_token_sha256": "a627d60607c44eff1d10f583bb9baa43a41e05a985724f3d0e9143b5c54284b5"
         }
@@ -7402,13 +7402,13 @@
         },
         "firered": {
           "symbol": "sUmbreonLevelUpLearnset",
-          "source_line": 2763,
+          "source_line": 2768,
           "entry_count": 11,
           "ordered_token_sha256": "2fc21d6734838a778f71980006c48ff49d35c498fecc4b156587c1cbadb8b16b"
         },
         "leafgreen": {
           "symbol": "sUmbreonLevelUpLearnset",
-          "source_line": 2763,
+          "source_line": 2768,
           "entry_count": 11,
           "ordered_token_sha256": "2fc21d6734838a778f71980006c48ff49d35c498fecc4b156587c1cbadb8b16b"
         }
@@ -7439,13 +7439,13 @@
         },
         "firered": {
           "symbol": "sMurkrowLevelUpLearnset",
-          "source_line": 2778,
+          "source_line": 2783,
           "entry_count": 8,
           "ordered_token_sha256": "7389e724b6a17d08b020bbe78f65d726c9365b973b099c442054437780792cf7"
         },
         "leafgreen": {
           "symbol": "sMurkrowLevelUpLearnset",
-          "source_line": 2778,
+          "source_line": 2783,
           "entry_count": 8,
           "ordered_token_sha256": "7389e724b6a17d08b020bbe78f65d726c9365b973b099c442054437780792cf7"
         }
@@ -7476,13 +7476,13 @@
         },
         "firered": {
           "symbol": "sSlowkingLevelUpLearnset",
-          "source_line": 2790,
+          "source_line": 2795,
           "entry_count": 11,
           "ordered_token_sha256": "349668d12323f42b10dbedda1243c7d83f879b8845c0148b044a486429098495"
         },
         "leafgreen": {
           "symbol": "sSlowkingLevelUpLearnset",
-          "source_line": 2790,
+          "source_line": 2795,
           "entry_count": 11,
           "ordered_token_sha256": "349668d12323f42b10dbedda1243c7d83f879b8845c0148b044a486429098495"
         }
@@ -7513,13 +7513,13 @@
         },
         "firered": {
           "symbol": "sMisdreavusLevelUpLearnset",
-          "source_line": 2805,
+          "source_line": 2810,
           "entry_count": 10,
           "ordered_token_sha256": "08869ef1ca7d5b1120dbafac9e6f15d4e40a3016cea7472e36a291611a75444f"
         },
         "leafgreen": {
           "symbol": "sMisdreavusLevelUpLearnset",
-          "source_line": 2805,
+          "source_line": 2810,
           "entry_count": 10,
           "ordered_token_sha256": "08869ef1ca7d5b1120dbafac9e6f15d4e40a3016cea7472e36a291611a75444f"
         }
@@ -7550,13 +7550,13 @@
         },
         "firered": {
           "symbol": "sUnownLevelUpLearnset",
-          "source_line": 2819,
+          "source_line": 2824,
           "entry_count": 1,
           "ordered_token_sha256": "bfbc289dab8dc6f2f1fe556e55fff3da6070363f7fd72aa44090d12025519598"
         },
         "leafgreen": {
           "symbol": "sUnownLevelUpLearnset",
-          "source_line": 2819,
+          "source_line": 2824,
           "entry_count": 1,
           "ordered_token_sha256": "bfbc289dab8dc6f2f1fe556e55fff3da6070363f7fd72aa44090d12025519598"
         }
@@ -7587,13 +7587,13 @@
         },
         "firered": {
           "symbol": "sWobbuffetLevelUpLearnset",
-          "source_line": 2824,
+          "source_line": 2829,
           "entry_count": 4,
           "ordered_token_sha256": "27551aff102dece1e1809802f1e51e4a92fcb1d37e8b0a6305d127217ca95a6e"
         },
         "leafgreen": {
           "symbol": "sWobbuffetLevelUpLearnset",
-          "source_line": 2824,
+          "source_line": 2829,
           "entry_count": 4,
           "ordered_token_sha256": "27551aff102dece1e1809802f1e51e4a92fcb1d37e8b0a6305d127217ca95a6e"
         }
@@ -7624,13 +7624,13 @@
         },
         "firered": {
           "symbol": "sGirafarigLevelUpLearnset",
-          "source_line": 2832,
+          "source_line": 2837,
           "entry_count": 10,
           "ordered_token_sha256": "c2371ad5d282d2f961cbe5036912510bc6671e7cfbb819769f24d1bed27c19eb"
         },
         "leafgreen": {
           "symbol": "sGirafarigLevelUpLearnset",
-          "source_line": 2832,
+          "source_line": 2837,
           "entry_count": 10,
           "ordered_token_sha256": "c2371ad5d282d2f961cbe5036912510bc6671e7cfbb819769f24d1bed27c19eb"
         }
@@ -7661,13 +7661,13 @@
         },
         "firered": {
           "symbol": "sPinecoLevelUpLearnset",
-          "source_line": 2846,
+          "source_line": 2851,
           "entry_count": 9,
           "ordered_token_sha256": "9d063b56a8f2016e49e4beaad82799cd1113095d57009d7b5d14ab6c8a21d1d3"
         },
         "leafgreen": {
           "symbol": "sPinecoLevelUpLearnset",
-          "source_line": 2846,
+          "source_line": 2851,
           "entry_count": 9,
           "ordered_token_sha256": "9d063b56a8f2016e49e4beaad82799cd1113095d57009d7b5d14ab6c8a21d1d3"
         }
@@ -7698,13 +7698,13 @@
         },
         "firered": {
           "symbol": "sForretressLevelUpLearnset",
-          "source_line": 2859,
+          "source_line": 2864,
           "entry_count": 11,
           "ordered_token_sha256": "3a3c4f26dbb1a483b6de1cde0e436b23e6cfa1ae696ae1b1558d7c3585d82bde"
         },
         "leafgreen": {
           "symbol": "sForretressLevelUpLearnset",
-          "source_line": 2859,
+          "source_line": 2864,
           "entry_count": 11,
           "ordered_token_sha256": "3a3c4f26dbb1a483b6de1cde0e436b23e6cfa1ae696ae1b1558d7c3585d82bde"
         }
@@ -7735,13 +7735,13 @@
         },
         "firered": {
           "symbol": "sDunsparceLevelUpLearnset",
-          "source_line": 2874,
+          "source_line": 2879,
           "entry_count": 11,
           "ordered_token_sha256": "98c82ba7a499fc9e59bd80034e3fbbaf39732c9fabbf12bd0d28122e7e7c4d28"
         },
         "leafgreen": {
           "symbol": "sDunsparceLevelUpLearnset",
-          "source_line": 2874,
+          "source_line": 2879,
           "entry_count": 11,
           "ordered_token_sha256": "98c82ba7a499fc9e59bd80034e3fbbaf39732c9fabbf12bd0d28122e7e7c4d28"
         }
@@ -7772,13 +7772,13 @@
         },
         "firered": {
           "symbol": "sGligarLevelUpLearnset",
-          "source_line": 2889,
+          "source_line": 2894,
           "entry_count": 8,
           "ordered_token_sha256": "18991c54a3b406400f526ee322c0e00eedc926bfbe9faaeb0e603a1e54336343"
         },
         "leafgreen": {
           "symbol": "sGligarLevelUpLearnset",
-          "source_line": 2889,
+          "source_line": 2894,
           "entry_count": 8,
           "ordered_token_sha256": "18991c54a3b406400f526ee322c0e00eedc926bfbe9faaeb0e603a1e54336343"
         }
@@ -7809,13 +7809,13 @@
         },
         "firered": {
           "symbol": "sSteelixLevelUpLearnset",
-          "source_line": 2901,
+          "source_line": 2906,
           "entry_count": 12,
           "ordered_token_sha256": "d8971fbe882e0f96f5e94f3c5188bf04e63bb446e0ed83dc1e190ed887e6f150"
         },
         "leafgreen": {
           "symbol": "sSteelixLevelUpLearnset",
-          "source_line": 2901,
+          "source_line": 2906,
           "entry_count": 12,
           "ordered_token_sha256": "d8971fbe882e0f96f5e94f3c5188bf04e63bb446e0ed83dc1e190ed887e6f150"
         }
@@ -7846,13 +7846,13 @@
         },
         "firered": {
           "symbol": "sSnubbullLevelUpLearnset",
-          "source_line": 2917,
+          "source_line": 2922,
           "entry_count": 10,
           "ordered_token_sha256": "ccb76193afac5fe881d1677f5cedc0162cbf9087cb61f67f4e42e7a1d8e92671"
         },
         "leafgreen": {
           "symbol": "sSnubbullLevelUpLearnset",
-          "source_line": 2917,
+          "source_line": 2922,
           "entry_count": 10,
           "ordered_token_sha256": "ccb76193afac5fe881d1677f5cedc0162cbf9087cb61f67f4e42e7a1d8e92671"
         }
@@ -7883,13 +7883,13 @@
         },
         "firered": {
           "symbol": "sGranbullLevelUpLearnset",
-          "source_line": 2931,
+          "source_line": 2936,
           "entry_count": 10,
           "ordered_token_sha256": "7ee0755d1ea6234260b37df3cd6ff3210a6bf0e24e1ce4287db2106a60fc1988"
         },
         "leafgreen": {
           "symbol": "sGranbullLevelUpLearnset",
-          "source_line": 2931,
+          "source_line": 2936,
           "entry_count": 10,
           "ordered_token_sha256": "7ee0755d1ea6234260b37df3cd6ff3210a6bf0e24e1ce4287db2106a60fc1988"
         }
@@ -7920,13 +7920,13 @@
         },
         "firered": {
           "symbol": "sQwilfishLevelUpLearnset",
-          "source_line": 2945,
+          "source_line": 2950,
           "entry_count": 11,
           "ordered_token_sha256": "fbb0ed06766f87085eb9381a6618ca792146307da16032da26d28fc16ede77e4"
         },
         "leafgreen": {
           "symbol": "sQwilfishLevelUpLearnset",
-          "source_line": 2945,
+          "source_line": 2950,
           "entry_count": 11,
           "ordered_token_sha256": "fbb0ed06766f87085eb9381a6618ca792146307da16032da26d28fc16ede77e4"
         }
@@ -7957,13 +7957,13 @@
         },
         "firered": {
           "symbol": "sScizorLevelUpLearnset",
-          "source_line": 2960,
+          "source_line": 2965,
           "entry_count": 11,
           "ordered_token_sha256": "36c734bd1a455fe2e79bba1b2a326bed6e6b0426b3c29625ee6c59af5f5fc308"
         },
         "leafgreen": {
           "symbol": "sScizorLevelUpLearnset",
-          "source_line": 2960,
+          "source_line": 2965,
           "entry_count": 11,
           "ordered_token_sha256": "36c734bd1a455fe2e79bba1b2a326bed6e6b0426b3c29625ee6c59af5f5fc308"
         }
@@ -7994,13 +7994,13 @@
         },
         "firered": {
           "symbol": "sShuckleLevelUpLearnset",
-          "source_line": 2975,
+          "source_line": 2980,
           "entry_count": 7,
           "ordered_token_sha256": "7b3fc33124218847b5242c7f5bc6a060c78870ff064720a163ed3078205783bb"
         },
         "leafgreen": {
           "symbol": "sShuckleLevelUpLearnset",
-          "source_line": 2975,
+          "source_line": 2980,
           "entry_count": 7,
           "ordered_token_sha256": "7b3fc33124218847b5242c7f5bc6a060c78870ff064720a163ed3078205783bb"
         }
@@ -8031,13 +8031,13 @@
         },
         "firered": {
           "symbol": "sHeracrossLevelUpLearnset",
-          "source_line": 2986,
+          "source_line": 2991,
           "entry_count": 10,
           "ordered_token_sha256": "edaa84bae86dd1f8a78352b6120c6eda8625eb5c6febe5a520f34dcb447d2876"
         },
         "leafgreen": {
           "symbol": "sHeracrossLevelUpLearnset",
-          "source_line": 2986,
+          "source_line": 2991,
           "entry_count": 10,
           "ordered_token_sha256": "edaa84bae86dd1f8a78352b6120c6eda8625eb5c6febe5a520f34dcb447d2876"
         }
@@ -8068,13 +8068,13 @@
         },
         "firered": {
           "symbol": "sSneaselLevelUpLearnset",
-          "source_line": 3000,
+          "source_line": 3005,
           "entry_count": 12,
           "ordered_token_sha256": "8b8690b99fefd6b5c41b645fd2c83815c4d1be4ea29b63c7f44a63bc889b3628"
         },
         "leafgreen": {
           "symbol": "sSneaselLevelUpLearnset",
-          "source_line": 3000,
+          "source_line": 3005,
           "entry_count": 12,
           "ordered_token_sha256": "8b8690b99fefd6b5c41b645fd2c83815c4d1be4ea29b63c7f44a63bc889b3628"
         }
@@ -8105,13 +8105,13 @@
         },
         "firered": {
           "symbol": "sTeddiursaLevelUpLearnset",
-          "source_line": 3016,
+          "source_line": 3021,
           "entry_count": 10,
           "ordered_token_sha256": "a6bbeae23054deb45a060d4075de4c0abf680fed5b936367ee1b7c01b4143f60"
         },
         "leafgreen": {
           "symbol": "sTeddiursaLevelUpLearnset",
-          "source_line": 3016,
+          "source_line": 3021,
           "entry_count": 10,
           "ordered_token_sha256": "a6bbeae23054deb45a060d4075de4c0abf680fed5b936367ee1b7c01b4143f60"
         }
@@ -8142,13 +8142,13 @@
         },
         "firered": {
           "symbol": "sUrsaringLevelUpLearnset",
-          "source_line": 3030,
+          "source_line": 3035,
           "entry_count": 12,
           "ordered_token_sha256": "c674f87b87454d481efdeedb0b74e2781329bc391b8035539c8497e1730c16ab"
         },
         "leafgreen": {
           "symbol": "sUrsaringLevelUpLearnset",
-          "source_line": 3030,
+          "source_line": 3035,
           "entry_count": 12,
           "ordered_token_sha256": "c674f87b87454d481efdeedb0b74e2781329bc391b8035539c8497e1730c16ab"
         }
@@ -8179,13 +8179,13 @@
         },
         "firered": {
           "symbol": "sSlugmaLevelUpLearnset",
-          "source_line": 3046,
+          "source_line": 3051,
           "entry_count": 9,
           "ordered_token_sha256": "5587451c3f1588f43fb8c90320a946d3cb2bbe287cafbfad19a3c3ffc3972f28"
         },
         "leafgreen": {
           "symbol": "sSlugmaLevelUpLearnset",
-          "source_line": 3046,
+          "source_line": 3051,
           "entry_count": 9,
           "ordered_token_sha256": "5587451c3f1588f43fb8c90320a946d3cb2bbe287cafbfad19a3c3ffc3972f28"
         }
@@ -8216,13 +8216,13 @@
         },
         "firered": {
           "symbol": "sMagcargoLevelUpLearnset",
-          "source_line": 3059,
+          "source_line": 3064,
           "entry_count": 11,
           "ordered_token_sha256": "61eba3c5d5d6039acd2287fa2bc30725f59f95df8b6262429369759db0816eed"
         },
         "leafgreen": {
           "symbol": "sMagcargoLevelUpLearnset",
-          "source_line": 3059,
+          "source_line": 3064,
           "entry_count": 11,
           "ordered_token_sha256": "61eba3c5d5d6039acd2287fa2bc30725f59f95df8b6262429369759db0816eed"
         }
@@ -8253,13 +8253,13 @@
         },
         "firered": {
           "symbol": "sSwinubLevelUpLearnset",
-          "source_line": 3074,
+          "source_line": 3079,
           "entry_count": 8,
           "ordered_token_sha256": "d3ed168d89e068386db1164f72d621f846ea64473e74c267c401d3f17696ebc3"
         },
         "leafgreen": {
           "symbol": "sSwinubLevelUpLearnset",
-          "source_line": 3074,
+          "source_line": 3079,
           "entry_count": 8,
           "ordered_token_sha256": "d3ed168d89e068386db1164f72d621f846ea64473e74c267c401d3f17696ebc3"
         }
@@ -8290,13 +8290,13 @@
         },
         "firered": {
           "symbol": "sPiloswineLevelUpLearnset",
-          "source_line": 3086,
+          "source_line": 3091,
           "entry_count": 11,
           "ordered_token_sha256": "44ed3d0f706dc15e8acd0a3d4f43eddaba372e9ea33ea187f2569ec85d667b3b"
         },
         "leafgreen": {
           "symbol": "sPiloswineLevelUpLearnset",
-          "source_line": 3086,
+          "source_line": 3091,
           "entry_count": 11,
           "ordered_token_sha256": "44ed3d0f706dc15e8acd0a3d4f43eddaba372e9ea33ea187f2569ec85d667b3b"
         }
@@ -8327,13 +8327,13 @@
         },
         "firered": {
           "symbol": "sCorsolaLevelUpLearnset",
-          "source_line": 3101,
+          "source_line": 3106,
           "entry_count": 10,
           "ordered_token_sha256": "1be22f9b5c67afe0736affc21ca6f24926daedfdcc9d289e47bb2a13be235743"
         },
         "leafgreen": {
           "symbol": "sCorsolaLevelUpLearnset",
-          "source_line": 3101,
+          "source_line": 3106,
           "entry_count": 10,
           "ordered_token_sha256": "1be22f9b5c67afe0736affc21ca6f24926daedfdcc9d289e47bb2a13be235743"
         }
@@ -8364,13 +8364,13 @@
         },
         "firered": {
           "symbol": "sRemoraidLevelUpLearnset",
-          "source_line": 3115,
+          "source_line": 3120,
           "entry_count": 8,
           "ordered_token_sha256": "a7e1db3eda3a478c88167fc6a9ab11767e5751e3c138f2b173f843ffbb2dcd21"
         },
         "leafgreen": {
           "symbol": "sRemoraidLevelUpLearnset",
-          "source_line": 3115,
+          "source_line": 3120,
           "entry_count": 8,
           "ordered_token_sha256": "a7e1db3eda3a478c88167fc6a9ab11767e5751e3c138f2b173f843ffbb2dcd21"
         }
@@ -8401,13 +8401,13 @@
         },
         "firered": {
           "symbol": "sOctilleryLevelUpLearnset",
-          "source_line": 3127,
+          "source_line": 3132,
           "entry_count": 9,
           "ordered_token_sha256": "34b61699804b9fe97bc2c790ce4cb0122e152d25af89f305e3a8b22923d229ad"
         },
         "leafgreen": {
           "symbol": "sOctilleryLevelUpLearnset",
-          "source_line": 3127,
+          "source_line": 3132,
           "entry_count": 9,
           "ordered_token_sha256": "34b61699804b9fe97bc2c790ce4cb0122e152d25af89f305e3a8b22923d229ad"
         }
@@ -8438,13 +8438,13 @@
         },
         "firered": {
           "symbol": "sDelibirdLevelUpLearnset",
-          "source_line": 3140,
+          "source_line": 3145,
           "entry_count": 1,
           "ordered_token_sha256": "09d95662483c96e4dd41cbd2d4983183506e9b6f7f336e2f32447ec06954cd3f"
         },
         "leafgreen": {
           "symbol": "sDelibirdLevelUpLearnset",
-          "source_line": 3140,
+          "source_line": 3145,
           "entry_count": 1,
           "ordered_token_sha256": "09d95662483c96e4dd41cbd2d4983183506e9b6f7f336e2f32447ec06954cd3f"
         }
@@ -8475,13 +8475,13 @@
         },
         "firered": {
           "symbol": "sMantineLevelUpLearnset",
-          "source_line": 3145,
+          "source_line": 3150,
           "entry_count": 9,
           "ordered_token_sha256": "c0e303e93b9497a5496442e6d8aa1cdfe4117a611dde3a7382179dfd72045f25"
         },
         "leafgreen": {
           "symbol": "sMantineLevelUpLearnset",
-          "source_line": 3145,
+          "source_line": 3150,
           "entry_count": 9,
           "ordered_token_sha256": "c0e303e93b9497a5496442e6d8aa1cdfe4117a611dde3a7382179dfd72045f25"
         }
@@ -8512,13 +8512,13 @@
         },
         "firered": {
           "symbol": "sSkarmoryLevelUpLearnset",
-          "source_line": 3158,
+          "source_line": 3163,
           "entry_count": 10,
           "ordered_token_sha256": "add62199c5774979611906778b1757e178dafd340ec4c6109de8dee6a47ce918"
         },
         "leafgreen": {
           "symbol": "sSkarmoryLevelUpLearnset",
-          "source_line": 3158,
+          "source_line": 3163,
           "entry_count": 10,
           "ordered_token_sha256": "add62199c5774979611906778b1757e178dafd340ec4c6109de8dee6a47ce918"
         }
@@ -8549,13 +8549,13 @@
         },
         "firered": {
           "symbol": "sHoundourLevelUpLearnset",
-          "source_line": 3172,
+          "source_line": 3177,
           "entry_count": 10,
           "ordered_token_sha256": "ad5df9e9c0ce816b95e1f50af787336ecb4006046db3f9045e91d59bf27abd78"
         },
         "leafgreen": {
           "symbol": "sHoundourLevelUpLearnset",
-          "source_line": 3172,
+          "source_line": 3177,
           "entry_count": 10,
           "ordered_token_sha256": "ad5df9e9c0ce816b95e1f50af787336ecb4006046db3f9045e91d59bf27abd78"
         }
@@ -8586,13 +8586,13 @@
         },
         "firered": {
           "symbol": "sHoundoomLevelUpLearnset",
-          "source_line": 3186,
+          "source_line": 3191,
           "entry_count": 11,
           "ordered_token_sha256": "9493b867a27b9dd8d554c88bfa84394b90ca3fd72ba9dfd3518a107a6aabb9a2"
         },
         "leafgreen": {
           "symbol": "sHoundoomLevelUpLearnset",
-          "source_line": 3186,
+          "source_line": 3191,
           "entry_count": 11,
           "ordered_token_sha256": "9493b867a27b9dd8d554c88bfa84394b90ca3fd72ba9dfd3518a107a6aabb9a2"
         }
@@ -8623,13 +8623,13 @@
         },
         "firered": {
           "symbol": "sKingdraLevelUpLearnset",
-          "source_line": 3201,
+          "source_line": 3206,
           "entry_count": 11,
           "ordered_token_sha256": "643fa97a54a103c6cae2cf96ff630fcb2d3dbbc132bd94c504e9fdee1a607d20"
         },
         "leafgreen": {
           "symbol": "sKingdraLevelUpLearnset",
-          "source_line": 3201,
+          "source_line": 3206,
           "entry_count": 11,
           "ordered_token_sha256": "643fa97a54a103c6cae2cf96ff630fcb2d3dbbc132bd94c504e9fdee1a607d20"
         }
@@ -8660,13 +8660,13 @@
         },
         "firered": {
           "symbol": "sPhanpyLevelUpLearnset",
-          "source_line": 3216,
+          "source_line": 3221,
           "entry_count": 9,
           "ordered_token_sha256": "313b775bafc4342c21bd0943dd5b9120a0ba8559e3db776b0b9806d175192af9"
         },
         "leafgreen": {
           "symbol": "sPhanpyLevelUpLearnset",
-          "source_line": 3216,
+          "source_line": 3221,
           "entry_count": 9,
           "ordered_token_sha256": "313b775bafc4342c21bd0943dd5b9120a0ba8559e3db776b0b9806d175192af9"
         }
@@ -8697,13 +8697,13 @@
         },
         "firered": {
           "symbol": "sDonphanLevelUpLearnset",
-          "source_line": 3229,
+          "source_line": 3234,
           "entry_count": 9,
           "ordered_token_sha256": "a4d66bd6219378a3dba0025d43edefe8dabf9b5babde6ee23e0f0229c43680f9"
         },
         "leafgreen": {
           "symbol": "sDonphanLevelUpLearnset",
-          "source_line": 3229,
+          "source_line": 3234,
           "entry_count": 9,
           "ordered_token_sha256": "a4d66bd6219378a3dba0025d43edefe8dabf9b5babde6ee23e0f0229c43680f9"
         }
@@ -8734,13 +8734,13 @@
         },
         "firered": {
           "symbol": "sPorygon2LevelUpLearnset",
-          "source_line": 3242,
+          "source_line": 3247,
           "entry_count": 11,
           "ordered_token_sha256": "33599cb951c74dec5bede53db96baf7310ea8952921470445ca7a7b0118097b4"
         },
         "leafgreen": {
           "symbol": "sPorygon2LevelUpLearnset",
-          "source_line": 3242,
+          "source_line": 3247,
           "entry_count": 11,
           "ordered_token_sha256": "33599cb951c74dec5bede53db96baf7310ea8952921470445ca7a7b0118097b4"
         }
@@ -8771,13 +8771,13 @@
         },
         "firered": {
           "symbol": "sStantlerLevelUpLearnset",
-          "source_line": 3257,
+          "source_line": 3262,
           "entry_count": 10,
           "ordered_token_sha256": "c9d2c68de83b07635ae946f4af6859cf546bd0d638250419f2d8baf58d007165"
         },
         "leafgreen": {
           "symbol": "sStantlerLevelUpLearnset",
-          "source_line": 3257,
+          "source_line": 3262,
           "entry_count": 10,
           "ordered_token_sha256": "c9d2c68de83b07635ae946f4af6859cf546bd0d638250419f2d8baf58d007165"
         }
@@ -8808,13 +8808,13 @@
         },
         "firered": {
           "symbol": "sSmeargleLevelUpLearnset",
-          "source_line": 3271,
+          "source_line": 3276,
           "entry_count": 10,
           "ordered_token_sha256": "25dacae3c5d146e69e5444c90675c08093b31cf6b0e1c308906b30c279957645"
         },
         "leafgreen": {
           "symbol": "sSmeargleLevelUpLearnset",
-          "source_line": 3271,
+          "source_line": 3276,
           "entry_count": 10,
           "ordered_token_sha256": "25dacae3c5d146e69e5444c90675c08093b31cf6b0e1c308906b30c279957645"
         }
@@ -8845,13 +8845,13 @@
         },
         "firered": {
           "symbol": "sTyrogueLevelUpLearnset",
-          "source_line": 3285,
+          "source_line": 3290,
           "entry_count": 1,
           "ordered_token_sha256": "46dcdc86094eb3ef148bf5855aca921071f4df9e896c5b138dbc1837961fb6bd"
         },
         "leafgreen": {
           "symbol": "sTyrogueLevelUpLearnset",
-          "source_line": 3285,
+          "source_line": 3290,
           "entry_count": 1,
           "ordered_token_sha256": "46dcdc86094eb3ef148bf5855aca921071f4df9e896c5b138dbc1837961fb6bd"
         }
@@ -8882,13 +8882,13 @@
         },
         "firered": {
           "symbol": "sHitmontopLevelUpLearnset",
-          "source_line": 3290,
+          "source_line": 3295,
           "entry_count": 11,
           "ordered_token_sha256": "98f301ae3897f12759e3267fbb29e152655b35bf5509f95c045e0afbc2f04443"
         },
         "leafgreen": {
           "symbol": "sHitmontopLevelUpLearnset",
-          "source_line": 3290,
+          "source_line": 3295,
           "entry_count": 11,
           "ordered_token_sha256": "98f301ae3897f12759e3267fbb29e152655b35bf5509f95c045e0afbc2f04443"
         }
@@ -8919,13 +8919,13 @@
         },
         "firered": {
           "symbol": "sSmoochumLevelUpLearnset",
-          "source_line": 3305,
+          "source_line": 3310,
           "entry_count": 11,
           "ordered_token_sha256": "ccdcf8b43d5fe27db5d5125d8d44ea3c963ac29b9b0ea3af9d798a53b6710d5a"
         },
         "leafgreen": {
           "symbol": "sSmoochumLevelUpLearnset",
-          "source_line": 3305,
+          "source_line": 3310,
           "entry_count": 11,
           "ordered_token_sha256": "ccdcf8b43d5fe27db5d5125d8d44ea3c963ac29b9b0ea3af9d798a53b6710d5a"
         }
@@ -8956,13 +8956,13 @@
         },
         "firered": {
           "symbol": "sElekidLevelUpLearnset",
-          "source_line": 3320,
+          "source_line": 3325,
           "entry_count": 8,
           "ordered_token_sha256": "03582771681c68ce30fe53223aeb599b88b508fe99ec7730f3c5d23ea825692a"
         },
         "leafgreen": {
           "symbol": "sElekidLevelUpLearnset",
-          "source_line": 3320,
+          "source_line": 3325,
           "entry_count": 8,
           "ordered_token_sha256": "03582771681c68ce30fe53223aeb599b88b508fe99ec7730f3c5d23ea825692a"
         }
@@ -8993,13 +8993,13 @@
         },
         "firered": {
           "symbol": "sMagbyLevelUpLearnset",
-          "source_line": 3332,
+          "source_line": 3337,
           "entry_count": 9,
           "ordered_token_sha256": "fada76750f1bdaa33000969aa20dcfcaf54f957c3de1f63e082a7ac388bfdcb0"
         },
         "leafgreen": {
           "symbol": "sMagbyLevelUpLearnset",
-          "source_line": 3332,
+          "source_line": 3337,
           "entry_count": 9,
           "ordered_token_sha256": "fada76750f1bdaa33000969aa20dcfcaf54f957c3de1f63e082a7ac388bfdcb0"
         }
@@ -9030,13 +9030,13 @@
         },
         "firered": {
           "symbol": "sMiltankLevelUpLearnset",
-          "source_line": 3345,
+          "source_line": 3350,
           "entry_count": 9,
           "ordered_token_sha256": "8b3a530da7e477886494f7ca225d95161ba95444e2453e2af2ba61aaa8a96ace"
         },
         "leafgreen": {
           "symbol": "sMiltankLevelUpLearnset",
-          "source_line": 3345,
+          "source_line": 3350,
           "entry_count": 9,
           "ordered_token_sha256": "8b3a530da7e477886494f7ca225d95161ba95444e2453e2af2ba61aaa8a96ace"
         }
@@ -9067,13 +9067,13 @@
         },
         "firered": {
           "symbol": "sBlisseyLevelUpLearnset",
-          "source_line": 3358,
+          "source_line": 3363,
           "entry_count": 12,
           "ordered_token_sha256": "c5d9686626bf709db49ed0af3a834e43a4855cd830303c9c16d01a6a1f13b9b7"
         },
         "leafgreen": {
           "symbol": "sBlisseyLevelUpLearnset",
-          "source_line": 3358,
+          "source_line": 3363,
           "entry_count": 12,
           "ordered_token_sha256": "c5d9686626bf709db49ed0af3a834e43a4855cd830303c9c16d01a6a1f13b9b7"
         }
@@ -9104,13 +9104,13 @@
         },
         "firered": {
           "symbol": "sRaikouLevelUpLearnset",
-          "source_line": 3374,
+          "source_line": 3379,
           "entry_count": 10,
           "ordered_token_sha256": "2262f22ca2292ce1f5c051791fcf20c75ab1baf1699af5936bedeea2fc52d8a8"
         },
         "leafgreen": {
           "symbol": "sRaikouLevelUpLearnset",
-          "source_line": 3374,
+          "source_line": 3379,
           "entry_count": 10,
           "ordered_token_sha256": "2262f22ca2292ce1f5c051791fcf20c75ab1baf1699af5936bedeea2fc52d8a8"
         }
@@ -9141,13 +9141,13 @@
         },
         "firered": {
           "symbol": "sEnteiLevelUpLearnset",
-          "source_line": 3388,
+          "source_line": 3393,
           "entry_count": 10,
           "ordered_token_sha256": "a5177edc0c8ccc3c8f1c03fe7acbc5f4a660561ce231551bba752b75f04e7c8c"
         },
         "leafgreen": {
           "symbol": "sEnteiLevelUpLearnset",
-          "source_line": 3388,
+          "source_line": 3393,
           "entry_count": 10,
           "ordered_token_sha256": "a5177edc0c8ccc3c8f1c03fe7acbc5f4a660561ce231551bba752b75f04e7c8c"
         }
@@ -9178,13 +9178,13 @@
         },
         "firered": {
           "symbol": "sSuicuneLevelUpLearnset",
-          "source_line": 3402,
+          "source_line": 3407,
           "entry_count": 10,
           "ordered_token_sha256": "adbdda36a1c941d81972cd3c40ba5ea8bb39bd2c8960e17fd6fde61712023436"
         },
         "leafgreen": {
           "symbol": "sSuicuneLevelUpLearnset",
-          "source_line": 3402,
+          "source_line": 3407,
           "entry_count": 10,
           "ordered_token_sha256": "adbdda36a1c941d81972cd3c40ba5ea8bb39bd2c8960e17fd6fde61712023436"
         }
@@ -9215,13 +9215,13 @@
         },
         "firered": {
           "symbol": "sLarvitarLevelUpLearnset",
-          "source_line": 3416,
+          "source_line": 3421,
           "entry_count": 10,
           "ordered_token_sha256": "747d79a4afee8d6bd5f62ecda90af00bc74edc29dec4fb025210f69d721ad4fc"
         },
         "leafgreen": {
           "symbol": "sLarvitarLevelUpLearnset",
-          "source_line": 3416,
+          "source_line": 3421,
           "entry_count": 10,
           "ordered_token_sha256": "747d79a4afee8d6bd5f62ecda90af00bc74edc29dec4fb025210f69d721ad4fc"
         }
@@ -9252,13 +9252,13 @@
         },
         "firered": {
           "symbol": "sPupitarLevelUpLearnset",
-          "source_line": 3430,
+          "source_line": 3435,
           "entry_count": 12,
           "ordered_token_sha256": "d55a8fd7e4010b6c294861ef8b7b71df93c88a073cf46f06ba29dabd64cbd9aa"
         },
         "leafgreen": {
           "symbol": "sPupitarLevelUpLearnset",
-          "source_line": 3430,
+          "source_line": 3435,
           "entry_count": 12,
           "ordered_token_sha256": "d55a8fd7e4010b6c294861ef8b7b71df93c88a073cf46f06ba29dabd64cbd9aa"
         }
@@ -9289,13 +9289,13 @@
         },
         "firered": {
           "symbol": "sTyranitarLevelUpLearnset",
-          "source_line": 3446,
+          "source_line": 3451,
           "entry_count": 12,
           "ordered_token_sha256": "19d2226acaf44ef5e18ec64d5cedba06862112c7902069d2933d47014427aaa4"
         },
         "leafgreen": {
           "symbol": "sTyranitarLevelUpLearnset",
-          "source_line": 3446,
+          "source_line": 3451,
           "entry_count": 12,
           "ordered_token_sha256": "19d2226acaf44ef5e18ec64d5cedba06862112c7902069d2933d47014427aaa4"
         }
@@ -9326,13 +9326,13 @@
         },
         "firered": {
           "symbol": "sLugiaLevelUpLearnset",
-          "source_line": 3462,
+          "source_line": 3467,
           "entry_count": 10,
           "ordered_token_sha256": "b9862d33b789c799cc4c0c44c912a2ce937e7646e42a3e888333f1d41bc4859a"
         },
         "leafgreen": {
           "symbol": "sLugiaLevelUpLearnset",
-          "source_line": 3462,
+          "source_line": 3467,
           "entry_count": 10,
           "ordered_token_sha256": "b9862d33b789c799cc4c0c44c912a2ce937e7646e42a3e888333f1d41bc4859a"
         }
@@ -9363,13 +9363,13 @@
         },
         "firered": {
           "symbol": "sHoOhLevelUpLearnset",
-          "source_line": 3476,
+          "source_line": 3481,
           "entry_count": 10,
           "ordered_token_sha256": "cd37c32ee390335b12b210c70a8fac08a4a1d1bdcd01e7b6892035c49a31f9cb"
         },
         "leafgreen": {
           "symbol": "sHoOhLevelUpLearnset",
-          "source_line": 3476,
+          "source_line": 3481,
           "entry_count": 10,
           "ordered_token_sha256": "cd37c32ee390335b12b210c70a8fac08a4a1d1bdcd01e7b6892035c49a31f9cb"
         }
@@ -9400,13 +9400,13 @@
         },
         "firered": {
           "symbol": "sCelebiLevelUpLearnset",
-          "source_line": 3490,
+          "source_line": 3495,
           "entry_count": 9,
           "ordered_token_sha256": "f74f5d76b74739995eb6bdd8554177aba96822ee43317ae5a90eb4f22106be55"
         },
         "leafgreen": {
           "symbol": "sCelebiLevelUpLearnset",
-          "source_line": 3490,
+          "source_line": 3495,
           "entry_count": 9,
           "ordered_token_sha256": "f74f5d76b74739995eb6bdd8554177aba96822ee43317ae5a90eb4f22106be55"
         }
@@ -9437,13 +9437,13 @@
         },
         "firered": {
           "symbol": "sTreeckoLevelUpLearnset",
-          "source_line": 3628,
+          "source_line": 3633,
           "entry_count": 11,
           "ordered_token_sha256": "76865529e762de92f496e2ecc4b1b4a2e39c8f4740eec2e5d10d8058c560f216"
         },
         "leafgreen": {
           "symbol": "sTreeckoLevelUpLearnset",
-          "source_line": 3628,
+          "source_line": 3633,
           "entry_count": 11,
           "ordered_token_sha256": "76865529e762de92f496e2ecc4b1b4a2e39c8f4740eec2e5d10d8058c560f216"
         }
@@ -9474,13 +9474,13 @@
         },
         "firered": {
           "symbol": "sGrovyleLevelUpLearnset",
-          "source_line": 3643,
+          "source_line": 3648,
           "entry_count": 14,
           "ordered_token_sha256": "0bb9b4548576323858d924f798aba79eb2ade9d75fa19b3beae056661dd83003"
         },
         "leafgreen": {
           "symbol": "sGrovyleLevelUpLearnset",
-          "source_line": 3643,
+          "source_line": 3648,
           "entry_count": 14,
           "ordered_token_sha256": "0bb9b4548576323858d924f798aba79eb2ade9d75fa19b3beae056661dd83003"
         }
@@ -9511,13 +9511,13 @@
         },
         "firered": {
           "symbol": "sSceptileLevelUpLearnset",
-          "source_line": 3661,
+          "source_line": 3666,
           "entry_count": 14,
           "ordered_token_sha256": "5d20b4dd552212d6874077cc2f39dcb246cabc100cf9ce50beb6f621ae9a3cff"
         },
         "leafgreen": {
           "symbol": "sSceptileLevelUpLearnset",
-          "source_line": 3661,
+          "source_line": 3666,
           "entry_count": 14,
           "ordered_token_sha256": "5d20b4dd552212d6874077cc2f39dcb246cabc100cf9ce50beb6f621ae9a3cff"
         }
@@ -9548,13 +9548,13 @@
         },
         "firered": {
           "symbol": "sTorchicLevelUpLearnset",
-          "source_line": 3679,
+          "source_line": 3684,
           "entry_count": 11,
           "ordered_token_sha256": "921e692836ca27035bc27f9a29c72fb0ad1add3b23ed3d79bcc1df8bcdfa163d"
         },
         "leafgreen": {
           "symbol": "sTorchicLevelUpLearnset",
-          "source_line": 3679,
+          "source_line": 3684,
           "entry_count": 11,
           "ordered_token_sha256": "921e692836ca27035bc27f9a29c72fb0ad1add3b23ed3d79bcc1df8bcdfa163d"
         }
@@ -9585,13 +9585,13 @@
         },
         "firered": {
           "symbol": "sCombuskenLevelUpLearnset",
-          "source_line": 3694,
+          "source_line": 3699,
           "entry_count": 14,
           "ordered_token_sha256": "3d89d2abd18b0042e1f41149b8b8cb2ca41ccd9b7cc141905167e6d4b4c7564a"
         },
         "leafgreen": {
           "symbol": "sCombuskenLevelUpLearnset",
-          "source_line": 3694,
+          "source_line": 3699,
           "entry_count": 14,
           "ordered_token_sha256": "3d89d2abd18b0042e1f41149b8b8cb2ca41ccd9b7cc141905167e6d4b4c7564a"
         }
@@ -9622,13 +9622,13 @@
         },
         "firered": {
           "symbol": "sBlazikenLevelUpLearnset",
-          "source_line": 3712,
+          "source_line": 3717,
           "entry_count": 16,
           "ordered_token_sha256": "2289bfac3bfcd931c04fbd353d453ebbff612023b86bc1a44c972d2071907862"
         },
         "leafgreen": {
           "symbol": "sBlazikenLevelUpLearnset",
-          "source_line": 3712,
+          "source_line": 3717,
           "entry_count": 16,
           "ordered_token_sha256": "2289bfac3bfcd931c04fbd353d453ebbff612023b86bc1a44c972d2071907862"
         }
@@ -9659,13 +9659,13 @@
         },
         "firered": {
           "symbol": "sMudkipLevelUpLearnset",
-          "source_line": 3732,
+          "source_line": 3737,
           "entry_count": 12,
           "ordered_token_sha256": "17f18e776a95dccb7476726df9ac538fbe5093addc8e2215f2974e360729431a"
         },
         "leafgreen": {
           "symbol": "sMudkipLevelUpLearnset",
-          "source_line": 3732,
+          "source_line": 3737,
           "entry_count": 12,
           "ordered_token_sha256": "17f18e776a95dccb7476726df9ac538fbe5093addc8e2215f2974e360729431a"
         }
@@ -9696,13 +9696,13 @@
         },
         "firered": {
           "symbol": "sMarshtompLevelUpLearnset",
-          "source_line": 3748,
+          "source_line": 3753,
           "entry_count": 15,
           "ordered_token_sha256": "a8b675d293e2b3f4eb5bc6fc12a08dc6555a6449501a92206b10c4b255225ac6"
         },
         "leafgreen": {
           "symbol": "sMarshtompLevelUpLearnset",
-          "source_line": 3748,
+          "source_line": 3753,
           "entry_count": 15,
           "ordered_token_sha256": "a8b675d293e2b3f4eb5bc6fc12a08dc6555a6449501a92206b10c4b255225ac6"
         }
@@ -9733,13 +9733,13 @@
         },
         "firered": {
           "symbol": "sSwampertLevelUpLearnset",
-          "source_line": 3767,
+          "source_line": 3772,
           "entry_count": 15,
           "ordered_token_sha256": "5a5b8630f490564d26b2912b713ab817566eea23848436092b81137b8fe514c9"
         },
         "leafgreen": {
           "symbol": "sSwampertLevelUpLearnset",
-          "source_line": 3767,
+          "source_line": 3772,
           "entry_count": 15,
           "ordered_token_sha256": "5a5b8630f490564d26b2912b713ab817566eea23848436092b81137b8fe514c9"
         }
@@ -9770,13 +9770,13 @@
         },
         "firered": {
           "symbol": "sPoochyenaLevelUpLearnset",
-          "source_line": 3786,
+          "source_line": 3791,
           "entry_count": 12,
           "ordered_token_sha256": "34e4a75c302de942de9874272fd1c734f83dd6072ac0aaa0562fa6877b4fab18"
         },
         "leafgreen": {
           "symbol": "sPoochyenaLevelUpLearnset",
-          "source_line": 3786,
+          "source_line": 3791,
           "entry_count": 12,
           "ordered_token_sha256": "34e4a75c302de942de9874272fd1c734f83dd6072ac0aaa0562fa6877b4fab18"
         }
@@ -9807,13 +9807,13 @@
         },
         "firered": {
           "symbol": "sMightyenaLevelUpLearnset",
-          "source_line": 3802,
+          "source_line": 3807,
           "entry_count": 15,
           "ordered_token_sha256": "48ce4a173a1e2339a08f7fac5aef609e760282f90f10c3fc58a52ba7c241288f"
         },
         "leafgreen": {
           "symbol": "sMightyenaLevelUpLearnset",
-          "source_line": 3802,
+          "source_line": 3807,
           "entry_count": 15,
           "ordered_token_sha256": "48ce4a173a1e2339a08f7fac5aef609e760282f90f10c3fc58a52ba7c241288f"
         }
@@ -9844,13 +9844,13 @@
         },
         "firered": {
           "symbol": "sZigzagoonLevelUpLearnset",
-          "source_line": 3821,
+          "source_line": 3826,
           "entry_count": 12,
           "ordered_token_sha256": "bf5e34bdaca01f9342478e3f8f198dd51de4465ede641602fa45e8068d7cf324"
         },
         "leafgreen": {
           "symbol": "sZigzagoonLevelUpLearnset",
-          "source_line": 3821,
+          "source_line": 3826,
           "entry_count": 12,
           "ordered_token_sha256": "bf5e34bdaca01f9342478e3f8f198dd51de4465ede641602fa45e8068d7cf324"
         }
@@ -9881,13 +9881,13 @@
         },
         "firered": {
           "symbol": "sLinooneLevelUpLearnset",
-          "source_line": 3837,
+          "source_line": 3842,
           "entry_count": 14,
           "ordered_token_sha256": "28e06e708fa4e3880a0deea762ada4d8ee138e8ce45b6fd1217ba03e2cfa56d3"
         },
         "leafgreen": {
           "symbol": "sLinooneLevelUpLearnset",
-          "source_line": 3837,
+          "source_line": 3842,
           "entry_count": 14,
           "ordered_token_sha256": "28e06e708fa4e3880a0deea762ada4d8ee138e8ce45b6fd1217ba03e2cfa56d3"
         }
@@ -9918,13 +9918,13 @@
         },
         "firered": {
           "symbol": "sWurmpleLevelUpLearnset",
-          "source_line": 3855,
+          "source_line": 3860,
           "entry_count": 3,
           "ordered_token_sha256": "6478a8eaaa73177f5d40a030cc4d5c9339de6d3c93998de033a874bf434a855b"
         },
         "leafgreen": {
           "symbol": "sWurmpleLevelUpLearnset",
-          "source_line": 3855,
+          "source_line": 3860,
           "entry_count": 3,
           "ordered_token_sha256": "6478a8eaaa73177f5d40a030cc4d5c9339de6d3c93998de033a874bf434a855b"
         }
@@ -9955,13 +9955,13 @@
         },
         "firered": {
           "symbol": "sSilcoonLevelUpLearnset",
-          "source_line": 3862,
+          "source_line": 3867,
           "entry_count": 2,
           "ordered_token_sha256": "70a5c03b9788972e8864518f2644d342c8f040f9eaa2828c015f92385d4b6b25"
         },
         "leafgreen": {
           "symbol": "sSilcoonLevelUpLearnset",
-          "source_line": 3862,
+          "source_line": 3867,
           "entry_count": 2,
           "ordered_token_sha256": "70a5c03b9788972e8864518f2644d342c8f040f9eaa2828c015f92385d4b6b25"
         }
@@ -9992,13 +9992,13 @@
         },
         "firered": {
           "symbol": "sBeautiflyLevelUpLearnset",
-          "source_line": 3868,
+          "source_line": 3873,
           "entry_count": 10,
           "ordered_token_sha256": "c4c78cd79e006dc07ae1b3efaf42a2a806e783b18672bfc6d7b711b2db73e968"
         },
         "leafgreen": {
           "symbol": "sBeautiflyLevelUpLearnset",
-          "source_line": 3868,
+          "source_line": 3873,
           "entry_count": 10,
           "ordered_token_sha256": "c4c78cd79e006dc07ae1b3efaf42a2a806e783b18672bfc6d7b711b2db73e968"
         }
@@ -10029,13 +10029,13 @@
         },
         "firered": {
           "symbol": "sCascoonLevelUpLearnset",
-          "source_line": 3882,
+          "source_line": 3887,
           "entry_count": 2,
           "ordered_token_sha256": "70a5c03b9788972e8864518f2644d342c8f040f9eaa2828c015f92385d4b6b25"
         },
         "leafgreen": {
           "symbol": "sCascoonLevelUpLearnset",
-          "source_line": 3882,
+          "source_line": 3887,
           "entry_count": 2,
           "ordered_token_sha256": "70a5c03b9788972e8864518f2644d342c8f040f9eaa2828c015f92385d4b6b25"
         }
@@ -10066,13 +10066,13 @@
         },
         "firered": {
           "symbol": "sDustoxLevelUpLearnset",
-          "source_line": 3888,
+          "source_line": 3893,
           "entry_count": 10,
           "ordered_token_sha256": "16c6cb3ec4c13b07b8749329c4867dbd19783e2331f95f9cc9e186aa6bd253ba"
         },
         "leafgreen": {
           "symbol": "sDustoxLevelUpLearnset",
-          "source_line": 3888,
+          "source_line": 3893,
           "entry_count": 10,
           "ordered_token_sha256": "16c6cb3ec4c13b07b8749329c4867dbd19783e2331f95f9cc9e186aa6bd253ba"
         }
@@ -10103,13 +10103,13 @@
         },
         "firered": {
           "symbol": "sLotadLevelUpLearnset",
-          "source_line": 3902,
+          "source_line": 3907,
           "entry_count": 7,
           "ordered_token_sha256": "49fe1750491e8b106e4933793442e8f1d689c6f065bb30abe3e295d448b6b245"
         },
         "leafgreen": {
           "symbol": "sLotadLevelUpLearnset",
-          "source_line": 3902,
+          "source_line": 3907,
           "entry_count": 7,
           "ordered_token_sha256": "49fe1750491e8b106e4933793442e8f1d689c6f065bb30abe3e295d448b6b245"
         }
@@ -10140,13 +10140,13 @@
         },
         "firered": {
           "symbol": "sLombreLevelUpLearnset",
-          "source_line": 3913,
+          "source_line": 3918,
           "entry_count": 10,
           "ordered_token_sha256": "34cc4f651a791fc57bd2c340656d50dd3bd63e380924beabe9c9578cf07a7b3e"
         },
         "leafgreen": {
           "symbol": "sLombreLevelUpLearnset",
-          "source_line": 3913,
+          "source_line": 3918,
           "entry_count": 10,
           "ordered_token_sha256": "34cc4f651a791fc57bd2c340656d50dd3bd63e380924beabe9c9578cf07a7b3e"
         }
@@ -10177,13 +10177,13 @@
         },
         "firered": {
           "symbol": "sLudicoloLevelUpLearnset",
-          "source_line": 3927,
+          "source_line": 3932,
           "entry_count": 4,
           "ordered_token_sha256": "8f541ccc0e562cdf5acda5566d240827dfb9cb699f8e8caae4939f998203d81a"
         },
         "leafgreen": {
           "symbol": "sLudicoloLevelUpLearnset",
-          "source_line": 3927,
+          "source_line": 3932,
           "entry_count": 4,
           "ordered_token_sha256": "8f541ccc0e562cdf5acda5566d240827dfb9cb699f8e8caae4939f998203d81a"
         }
@@ -10214,13 +10214,13 @@
         },
         "firered": {
           "symbol": "sSeedotLevelUpLearnset",
-          "source_line": 3935,
+          "source_line": 3940,
           "entry_count": 7,
           "ordered_token_sha256": "4e096a838069f87d96bdb50c8351f79e47260cb1ba234de368469757cbb0c6ea"
         },
         "leafgreen": {
           "symbol": "sSeedotLevelUpLearnset",
-          "source_line": 3935,
+          "source_line": 3940,
           "entry_count": 7,
           "ordered_token_sha256": "4e096a838069f87d96bdb50c8351f79e47260cb1ba234de368469757cbb0c6ea"
         }
@@ -10251,13 +10251,13 @@
         },
         "firered": {
           "symbol": "sNuzleafLevelUpLearnset",
-          "source_line": 3946,
+          "source_line": 3951,
           "entry_count": 10,
           "ordered_token_sha256": "2ec216aa27b87a34aa37e0f979624bb98fe9f6f2279a899f65fc8cb6bffd8d1a"
         },
         "leafgreen": {
           "symbol": "sNuzleafLevelUpLearnset",
-          "source_line": 3946,
+          "source_line": 3951,
           "entry_count": 10,
           "ordered_token_sha256": "2ec216aa27b87a34aa37e0f979624bb98fe9f6f2279a899f65fc8cb6bffd8d1a"
         }
@@ -10288,13 +10288,13 @@
         },
         "firered": {
           "symbol": "sShiftryLevelUpLearnset",
-          "source_line": 3960,
+          "source_line": 3965,
           "entry_count": 4,
           "ordered_token_sha256": "9f6423a69d4e178b4339c684b260576f3920c0a217d6837c3b80fe48b0d22eb4"
         },
         "leafgreen": {
           "symbol": "sShiftryLevelUpLearnset",
-          "source_line": 3960,
+          "source_line": 3965,
           "entry_count": 4,
           "ordered_token_sha256": "9f6423a69d4e178b4339c684b260576f3920c0a217d6837c3b80fe48b0d22eb4"
         }
@@ -10325,13 +10325,13 @@
         },
         "firered": {
           "symbol": "sTaillowLevelUpLearnset",
-          "source_line": 4015,
+          "source_line": 4020,
           "entry_count": 9,
           "ordered_token_sha256": "636067afdb331f856962939fa71748f50098cb51e7d8dcf65d0bd629363db65f"
         },
         "leafgreen": {
           "symbol": "sTaillowLevelUpLearnset",
-          "source_line": 4015,
+          "source_line": 4020,
           "entry_count": 9,
           "ordered_token_sha256": "636067afdb331f856962939fa71748f50098cb51e7d8dcf65d0bd629363db65f"
         }
@@ -10362,13 +10362,13 @@
         },
         "firered": {
           "symbol": "sSwellowLevelUpLearnset",
-          "source_line": 4028,
+          "source_line": 4033,
           "entry_count": 11,
           "ordered_token_sha256": "0c0eb760f4e96855b689f35bef8be4fcc6661fe79988a6a1e63ee3b3fd0e3524"
         },
         "leafgreen": {
           "symbol": "sSwellowLevelUpLearnset",
-          "source_line": 4028,
+          "source_line": 4033,
           "entry_count": 11,
           "ordered_token_sha256": "0c0eb760f4e96855b689f35bef8be4fcc6661fe79988a6a1e63ee3b3fd0e3524"
         }
@@ -10399,13 +10399,13 @@
         },
         "firered": {
           "symbol": "sWingullLevelUpLearnset",
-          "source_line": 4090,
+          "source_line": 4095,
           "entry_count": 8,
           "ordered_token_sha256": "33bbdbddaffb5ebf5c97dcc772a21a8419879f4dc1ac947c0751d41964879463"
         },
         "leafgreen": {
           "symbol": "sWingullLevelUpLearnset",
-          "source_line": 4090,
+          "source_line": 4095,
           "entry_count": 8,
           "ordered_token_sha256": "33bbdbddaffb5ebf5c97dcc772a21a8419879f4dc1ac947c0751d41964879463"
         }
@@ -10436,13 +10436,13 @@
         },
         "firered": {
           "symbol": "sPelipperLevelUpLearnset",
-          "source_line": 4102,
+          "source_line": 4107,
           "entry_count": 13,
           "ordered_token_sha256": "c2759e9f008821cf945514c6829c4400bcbb0a7067190a88fd70d5c24a16a42e"
         },
         "leafgreen": {
           "symbol": "sPelipperLevelUpLearnset",
-          "source_line": 4102,
+          "source_line": 4107,
           "entry_count": 13,
           "ordered_token_sha256": "c2759e9f008821cf945514c6829c4400bcbb0a7067190a88fd70d5c24a16a42e"
         }
@@ -10473,13 +10473,13 @@
         },
         "firered": {
           "symbol": "sRaltsLevelUpLearnset",
-          "source_line": 5382,
+          "source_line": 5387,
           "entry_count": 10,
           "ordered_token_sha256": "8886daf5cd9aa2c3cfae7553a6bd98784e18d53e81ea751397f00827d0d6680f"
         },
         "leafgreen": {
           "symbol": "sRaltsLevelUpLearnset",
-          "source_line": 5382,
+          "source_line": 5387,
           "entry_count": 10,
           "ordered_token_sha256": "8886daf5cd9aa2c3cfae7553a6bd98784e18d53e81ea751397f00827d0d6680f"
         }
@@ -10510,13 +10510,13 @@
         },
         "firered": {
           "symbol": "sKirliaLevelUpLearnset",
-          "source_line": 5396,
+          "source_line": 5401,
           "entry_count": 14,
           "ordered_token_sha256": "c97889b1aa63bf7cb5d6379c96c5af2e16efa1ad64ddc231a20a993a952c9be4"
         },
         "leafgreen": {
           "symbol": "sKirliaLevelUpLearnset",
-          "source_line": 5396,
+          "source_line": 5401,
           "entry_count": 14,
           "ordered_token_sha256": "c97889b1aa63bf7cb5d6379c96c5af2e16efa1ad64ddc231a20a993a952c9be4"
         }
@@ -10547,13 +10547,13 @@
         },
         "firered": {
           "symbol": "sGardevoirLevelUpLearnset",
-          "source_line": 5414,
+          "source_line": 5419,
           "entry_count": 13,
           "ordered_token_sha256": "c773f683e4aa955cfe5b97a2fdf76c1928384e80d8d4570c83c99a70efecb65a"
         },
         "leafgreen": {
           "symbol": "sGardevoirLevelUpLearnset",
-          "source_line": 5414,
+          "source_line": 5419,
           "entry_count": 13,
           "ordered_token_sha256": "c773f683e4aa955cfe5b97a2fdf76c1928384e80d8d4570c83c99a70efecb65a"
         }
@@ -10584,13 +10584,13 @@
         },
         "firered": {
           "symbol": "sSurskitLevelUpLearnset",
-          "source_line": 4119,
+          "source_line": 4124,
           "entry_count": 8,
           "ordered_token_sha256": "652cc9568e8dd038983432cf72feba69368a9fecbbffe4a15ed986d1e1e63c56"
         },
         "leafgreen": {
           "symbol": "sSurskitLevelUpLearnset",
-          "source_line": 4119,
+          "source_line": 4124,
           "entry_count": 8,
           "ordered_token_sha256": "652cc9568e8dd038983432cf72feba69368a9fecbbffe4a15ed986d1e1e63c56"
         }
@@ -10621,13 +10621,13 @@
         },
         "firered": {
           "symbol": "sMasquerainLevelUpLearnset",
-          "source_line": 4131,
+          "source_line": 4136,
           "entry_count": 12,
           "ordered_token_sha256": "cbddf61e99fcaf2f79edf0c74e92e25ec652e429c073ea7d6840ed84abb31354"
         },
         "leafgreen": {
           "symbol": "sMasquerainLevelUpLearnset",
-          "source_line": 4131,
+          "source_line": 4136,
           "entry_count": 12,
           "ordered_token_sha256": "cbddf61e99fcaf2f79edf0c74e92e25ec652e429c073ea7d6840ed84abb31354"
         }
@@ -10658,13 +10658,13 @@
         },
         "firered": {
           "symbol": "sShroomishLevelUpLearnset",
-          "source_line": 4043,
+          "source_line": 4048,
           "entry_count": 10,
           "ordered_token_sha256": "bb37072ea0d4e01e48422322516bcfea1ce06ef220ece10b190ae946ab4b1220"
         },
         "leafgreen": {
           "symbol": "sShroomishLevelUpLearnset",
-          "source_line": 4043,
+          "source_line": 4048,
           "entry_count": 10,
           "ordered_token_sha256": "bb37072ea0d4e01e48422322516bcfea1ce06ef220ece10b190ae946ab4b1220"
         }
@@ -10695,13 +10695,13 @@
         },
         "firered": {
           "symbol": "sBreloomLevelUpLearnset",
-          "source_line": 4057,
+          "source_line": 4062,
           "entry_count": 14,
           "ordered_token_sha256": "eaae95e4cd0af07b5f3155b045381179815e4e25703e5b23f60d252648fea3b8"
         },
         "leafgreen": {
           "symbol": "sBreloomLevelUpLearnset",
-          "source_line": 4057,
+          "source_line": 4062,
           "entry_count": 14,
           "ordered_token_sha256": "eaae95e4cd0af07b5f3155b045381179815e4e25703e5b23f60d252648fea3b8"
         }
@@ -10732,13 +10732,13 @@
         },
         "firered": {
           "symbol": "sSlakothLevelUpLearnset",
-          "source_line": 4958,
+          "source_line": 4963,
           "entry_count": 9,
           "ordered_token_sha256": "c387a52c0343dcc9c478313c454ab0975c8e02ff25d1836ed0320631cd2000c2"
         },
         "leafgreen": {
           "symbol": "sSlakothLevelUpLearnset",
-          "source_line": 4958,
+          "source_line": 4963,
           "entry_count": 9,
           "ordered_token_sha256": "c387a52c0343dcc9c478313c454ab0975c8e02ff25d1836ed0320631cd2000c2"
         }
@@ -10769,13 +10769,13 @@
         },
         "firered": {
           "symbol": "sVigorothLevelUpLearnset",
-          "source_line": 4971,
+          "source_line": 4976,
           "entry_count": 12,
           "ordered_token_sha256": "2e1d75b9f9080705f5b07177641ecb19eb3cb0351ff4d0d2290769f0fba8fd0d"
         },
         "leafgreen": {
           "symbol": "sVigorothLevelUpLearnset",
-          "source_line": 4971,
+          "source_line": 4976,
           "entry_count": 12,
           "ordered_token_sha256": "2e1d75b9f9080705f5b07177641ecb19eb3cb0351ff4d0d2290769f0fba8fd0d"
         }
@@ -10806,13 +10806,13 @@
         },
         "firered": {
           "symbol": "sSlakingLevelUpLearnset",
-          "source_line": 4987,
+          "source_line": 4992,
           "entry_count": 12,
           "ordered_token_sha256": "b238d767a9c12405274ff0d0821d2538d79a2768b5c0d0fd787798b99d4d6f8a"
         },
         "leafgreen": {
           "symbol": "sSlakingLevelUpLearnset",
-          "source_line": 4987,
+          "source_line": 4992,
           "entry_count": 12,
           "ordered_token_sha256": "b238d767a9c12405274ff0d0821d2538d79a2768b5c0d0fd787798b99d4d6f8a"
         }
@@ -10843,13 +10843,13 @@
         },
         "firered": {
           "symbol": "sNincadaLevelUpLearnset",
-          "source_line": 3968,
+          "source_line": 3973,
           "entry_count": 10,
           "ordered_token_sha256": "375cb5ab47f6e97d91b972c50b27c5c584b1700b49310e51a8bad0fdcf55dfb6"
         },
         "leafgreen": {
           "symbol": "sNincadaLevelUpLearnset",
-          "source_line": 3968,
+          "source_line": 3973,
           "entry_count": 10,
           "ordered_token_sha256": "375cb5ab47f6e97d91b972c50b27c5c584b1700b49310e51a8bad0fdcf55dfb6"
         }
@@ -10880,13 +10880,13 @@
         },
         "firered": {
           "symbol": "sNinjaskLevelUpLearnset",
-          "source_line": 3982,
+          "source_line": 3987,
           "entry_count": 15,
           "ordered_token_sha256": "d327e904ed64792d44bacf4e42354d10db4a7ef2f192918e6f152db422b9c5b9"
         },
         "leafgreen": {
           "symbol": "sNinjaskLevelUpLearnset",
-          "source_line": 3982,
+          "source_line": 3987,
           "entry_count": 15,
           "ordered_token_sha256": "d327e904ed64792d44bacf4e42354d10db4a7ef2f192918e6f152db422b9c5b9"
         }
@@ -10917,13 +10917,13 @@
         },
         "firered": {
           "symbol": "sShedinjaLevelUpLearnset",
-          "source_line": 4001,
+          "source_line": 4006,
           "entry_count": 10,
           "ordered_token_sha256": "34900bb775ad8ccfc2d1cb1662e66ef3712075286ed2a92668ffec16d258c981"
         },
         "leafgreen": {
           "symbol": "sShedinjaLevelUpLearnset",
-          "source_line": 4001,
+          "source_line": 4006,
           "entry_count": 10,
           "ordered_token_sha256": "34900bb775ad8ccfc2d1cb1662e66ef3712075286ed2a92668ffec16d258c981"
         }
@@ -10954,13 +10954,13 @@
         },
         "firered": {
           "symbol": "sWhismurLevelUpLearnset",
-          "source_line": 5052,
+          "source_line": 5057,
           "entry_count": 11,
           "ordered_token_sha256": "22e8e8958303ebabba32d7d5c57856922212b0f0ddf3a34fef388f3bd41960b8"
         },
         "leafgreen": {
           "symbol": "sWhismurLevelUpLearnset",
-          "source_line": 5052,
+          "source_line": 5057,
           "entry_count": 11,
           "ordered_token_sha256": "22e8e8958303ebabba32d7d5c57856922212b0f0ddf3a34fef388f3bd41960b8"
         }
@@ -10991,13 +10991,13 @@
         },
         "firered": {
           "symbol": "sLoudredLevelUpLearnset",
-          "source_line": 5067,
+          "source_line": 5072,
           "entry_count": 14,
           "ordered_token_sha256": "5f0d4690306ba17e69adefde698a09a2db57119d6a49ef241601568f6f7dcaf4"
         },
         "leafgreen": {
           "symbol": "sLoudredLevelUpLearnset",
-          "source_line": 5067,
+          "source_line": 5072,
           "entry_count": 14,
           "ordered_token_sha256": "5f0d4690306ba17e69adefde698a09a2db57119d6a49ef241601568f6f7dcaf4"
         }
@@ -11028,13 +11028,13 @@
         },
         "firered": {
           "symbol": "sExploudLevelUpLearnset",
-          "source_line": 5085,
+          "source_line": 5090,
           "entry_count": 15,
           "ordered_token_sha256": "31dc39a8148d475edb958d23bd4bb4c27b2186bd6ee1270ee345f349d644aa7a"
         },
         "leafgreen": {
           "symbol": "sExploudLevelUpLearnset",
-          "source_line": 5085,
+          "source_line": 5090,
           "entry_count": 15,
           "ordered_token_sha256": "31dc39a8148d475edb958d23bd4bb4c27b2186bd6ee1270ee345f349d644aa7a"
         }
@@ -11065,13 +11065,13 @@
         },
         "firered": {
           "symbol": "sMakuhitaLevelUpLearnset",
-          "source_line": 4483,
+          "source_line": 4488,
           "entry_count": 13,
           "ordered_token_sha256": "086b22f824ee7e7b4897639b17e31381789a02f93f987b13633fdd8d24805515"
         },
         "leafgreen": {
           "symbol": "sMakuhitaLevelUpLearnset",
-          "source_line": 4483,
+          "source_line": 4488,
           "entry_count": 13,
           "ordered_token_sha256": "086b22f824ee7e7b4897639b17e31381789a02f93f987b13633fdd8d24805515"
         }
@@ -11102,13 +11102,13 @@
         },
         "firered": {
           "symbol": "sHariyamaLevelUpLearnset",
-          "source_line": 4500,
+          "source_line": 4505,
           "entry_count": 15,
           "ordered_token_sha256": "66db80b0b50e93079c020e29693d445fe4914f92f93d69279ca39145aa4ae35c"
         },
         "leafgreen": {
           "symbol": "sHariyamaLevelUpLearnset",
-          "source_line": 4500,
+          "source_line": 4505,
           "entry_count": 15,
           "ordered_token_sha256": "66db80b0b50e93079c020e29693d445fe4914f92f93d69279ca39145aa4ae35c"
         }
@@ -11139,13 +11139,13 @@
         },
         "firered": {
           "symbol": "sAzurillLevelUpLearnset",
-          "source_line": 4734,
+          "source_line": 4739,
           "entry_count": 6,
           "ordered_token_sha256": "c8e40a976350f4bc965588ad1758bb876c9ed24bff5ba77ad23fecced798551a"
         },
         "leafgreen": {
           "symbol": "sAzurillLevelUpLearnset",
-          "source_line": 4734,
+          "source_line": 4739,
           "entry_count": 6,
           "ordered_token_sha256": "c8e40a976350f4bc965588ad1758bb876c9ed24bff5ba77ad23fecced798551a"
         }
@@ -11176,13 +11176,13 @@
         },
         "firered": {
           "symbol": "sNosepassLevelUpLearnset",
-          "source_line": 4257,
+          "source_line": 4262,
           "entry_count": 10,
           "ordered_token_sha256": "ffa6ec40a10830a40ac5c7484b516085f1ea9924a09aade64463bbecc59d3c99"
         },
         "leafgreen": {
           "symbol": "sNosepassLevelUpLearnset",
-          "source_line": 4257,
+          "source_line": 4262,
           "entry_count": 10,
           "ordered_token_sha256": "ffa6ec40a10830a40ac5c7484b516085f1ea9924a09aade64463bbecc59d3c99"
         }
@@ -11213,13 +11213,13 @@
         },
         "firered": {
           "symbol": "sSkittyLevelUpLearnset",
-          "source_line": 4182,
+          "source_line": 4187,
           "entry_count": 12,
           "ordered_token_sha256": "ed5664c9de95b6b27a506fcf0a4b33d1572ffd6383cf05b56556fa001f41390a"
         },
         "leafgreen": {
           "symbol": "sSkittyLevelUpLearnset",
-          "source_line": 4182,
+          "source_line": 4187,
           "entry_count": 12,
           "ordered_token_sha256": "ed5664c9de95b6b27a506fcf0a4b33d1572ffd6383cf05b56556fa001f41390a"
         }
@@ -11250,13 +11250,13 @@
         },
         "firered": {
           "symbol": "sDelcattyLevelUpLearnset",
-          "source_line": 4198,
+          "source_line": 4203,
           "entry_count": 4,
           "ordered_token_sha256": "d82b6dfad52182a16bdb3071a684dfc764088990fbb35e597313d25cef6c1fec"
         },
         "leafgreen": {
           "symbol": "sDelcattyLevelUpLearnset",
-          "source_line": 4198,
+          "source_line": 4203,
           "entry_count": 4,
           "ordered_token_sha256": "d82b6dfad52182a16bdb3071a684dfc764088990fbb35e597313d25cef6c1fec"
         }
@@ -11287,13 +11287,13 @@
         },
         "firered": {
           "symbol": "sSableyeLevelUpLearnset",
-          "source_line": 4287,
+          "source_line": 4292,
           "entry_count": 13,
           "ordered_token_sha256": "79bbcb4778b4492a377238142a5de031a403379d56f3c35541df105d23d69547"
         },
         "leafgreen": {
           "symbol": "sSableyeLevelUpLearnset",
-          "source_line": 4287,
+          "source_line": 4292,
           "entry_count": 13,
           "ordered_token_sha256": "79bbcb4778b4492a377238142a5de031a403379d56f3c35541df105d23d69547"
         }
@@ -11324,13 +11324,13 @@
         },
         "firered": {
           "symbol": "sMawileLevelUpLearnset",
-          "source_line": 4807,
+          "source_line": 4812,
           "entry_count": 12,
           "ordered_token_sha256": "d2ffef77a52a27b8666535d46cacf3efbeb06df22ba1e7a6c103c1cd1ad11cad"
         },
         "leafgreen": {
           "symbol": "sMawileLevelUpLearnset",
-          "source_line": 4807,
+          "source_line": 4812,
           "entry_count": 12,
           "ordered_token_sha256": "d2ffef77a52a27b8666535d46cacf3efbeb06df22ba1e7a6c103c1cd1ad11cad"
         }
@@ -11361,13 +11361,13 @@
         },
         "firered": {
           "symbol": "sAronLevelUpLearnset",
-          "source_line": 5226,
+          "source_line": 5231,
           "entry_count": 12,
           "ordered_token_sha256": "dbbbce0261f2e89874a7dc3ea2316291f0fd1d5496a3232aba6820c149939fbf"
         },
         "leafgreen": {
           "symbol": "sAronLevelUpLearnset",
-          "source_line": 5226,
+          "source_line": 5231,
           "entry_count": 12,
           "ordered_token_sha256": "dbbbce0261f2e89874a7dc3ea2316291f0fd1d5496a3232aba6820c149939fbf"
         }
@@ -11398,13 +11398,13 @@
         },
         "firered": {
           "symbol": "sLaironLevelUpLearnset",
-          "source_line": 5242,
+          "source_line": 5247,
           "entry_count": 15,
           "ordered_token_sha256": "6898987114826c4a0ba57a9a832a445ac35d3255644985b1eae46b4f2cb8cb24"
         },
         "leafgreen": {
           "symbol": "sLaironLevelUpLearnset",
-          "source_line": 5242,
+          "source_line": 5247,
           "entry_count": 15,
           "ordered_token_sha256": "6898987114826c4a0ba57a9a832a445ac35d3255644985b1eae46b4f2cb8cb24"
         }
@@ -11435,13 +11435,13 @@
         },
         "firered": {
           "symbol": "sAggronLevelUpLearnset",
-          "source_line": 5261,
+          "source_line": 5266,
           "entry_count": 15,
           "ordered_token_sha256": "bdeb08fda626251c10d3e0473ce2c6af99a72444ad08ade42d78551b3e7be0ba"
         },
         "leafgreen": {
           "symbol": "sAggronLevelUpLearnset",
-          "source_line": 5261,
+          "source_line": 5266,
           "entry_count": 15,
           "ordered_token_sha256": "bdeb08fda626251c10d3e0473ce2c6af99a72444ad08ade42d78551b3e7be0ba"
         }
@@ -11472,13 +11472,13 @@
         },
         "firered": {
           "symbol": "sMedititeLevelUpLearnset",
-          "source_line": 4823,
+          "source_line": 4828,
           "entry_count": 12,
           "ordered_token_sha256": "83d3d133d23d93891a73e730a0fde3eb434034a1dc8c342dbf34308a294296ab"
         },
         "leafgreen": {
           "symbol": "sMedititeLevelUpLearnset",
-          "source_line": 4823,
+          "source_line": 4828,
           "entry_count": 12,
           "ordered_token_sha256": "83d3d133d23d93891a73e730a0fde3eb434034a1dc8c342dbf34308a294296ab"
         }
@@ -11509,13 +11509,13 @@
         },
         "firered": {
           "symbol": "sMedichamLevelUpLearnset",
-          "source_line": 4839,
+          "source_line": 4844,
           "entry_count": 18,
           "ordered_token_sha256": "0e2010c15a650802690249bfddbd519b77383802c76e7d786b1c6210b1050deb"
         },
         "leafgreen": {
           "symbol": "sMedichamLevelUpLearnset",
-          "source_line": 4839,
+          "source_line": 4844,
           "entry_count": 18,
           "ordered_token_sha256": "0e2010c15a650802690249bfddbd519b77383802c76e7d786b1c6210b1050deb"
         }
@@ -11546,13 +11546,13 @@
         },
         "firered": {
           "symbol": "sElectrikeLevelUpLearnset",
-          "source_line": 4519,
+          "source_line": 4524,
           "entry_count": 11,
           "ordered_token_sha256": "64b2b10d1660b3c8ffed73bf2ef2409a7fde2f79f0b04b468bee80fbaacec830"
         },
         "leafgreen": {
           "symbol": "sElectrikeLevelUpLearnset",
-          "source_line": 4519,
+          "source_line": 4524,
           "entry_count": 11,
           "ordered_token_sha256": "64b2b10d1660b3c8ffed73bf2ef2409a7fde2f79f0b04b468bee80fbaacec830"
         }
@@ -11583,13 +11583,13 @@
         },
         "firered": {
           "symbol": "sManectricLevelUpLearnset",
-          "source_line": 4534,
+          "source_line": 4539,
           "entry_count": 14,
           "ordered_token_sha256": "06dc3cc85d4da645cbbe7891d0a023ea220402dc51a2f789907ff74445792cc0"
         },
         "leafgreen": {
           "symbol": "sManectricLevelUpLearnset",
-          "source_line": 4534,
+          "source_line": 4539,
           "entry_count": 14,
           "ordered_token_sha256": "06dc3cc85d4da645cbbe7891d0a023ea220402dc51a2f789907ff74445792cc0"
         }
@@ -11620,13 +11620,13 @@
         },
         "firered": {
           "symbol": "sPlusleLevelUpLearnset",
-          "source_line": 4777,
+          "source_line": 4782,
           "entry_count": 11,
           "ordered_token_sha256": "5fc89051bb01763b684395ecd7d0da98429aa2775164f5afbb87890e179f2392"
         },
         "leafgreen": {
           "symbol": "sPlusleLevelUpLearnset",
-          "source_line": 4777,
+          "source_line": 4782,
           "entry_count": 11,
           "ordered_token_sha256": "5fc89051bb01763b684395ecd7d0da98429aa2775164f5afbb87890e179f2392"
         }
@@ -11657,13 +11657,13 @@
         },
         "firered": {
           "symbol": "sMinunLevelUpLearnset",
-          "source_line": 4792,
+          "source_line": 4797,
           "entry_count": 11,
           "ordered_token_sha256": "c1856590114d5cefefcbd3f375a323e6403fff476ba89449425366cee359dbc5"
         },
         "leafgreen": {
           "symbol": "sMinunLevelUpLearnset",
-          "source_line": 4792,
+          "source_line": 4797,
           "entry_count": 11,
           "ordered_token_sha256": "c1856590114d5cefefcbd3f375a323e6403fff476ba89449425366cee359dbc5"
         }
@@ -11694,13 +11694,13 @@
         },
         "firered": {
           "symbol": "sVolbeatLevelUpLearnset",
-          "source_line": 5292,
+          "source_line": 5297,
           "entry_count": 10,
           "ordered_token_sha256": "6063ae0dd462f9148a953f53d68a8c9c69f6ee504443656c39c810ce9f21097a"
         },
         "leafgreen": {
           "symbol": "sVolbeatLevelUpLearnset",
-          "source_line": 5292,
+          "source_line": 5297,
           "entry_count": 10,
           "ordered_token_sha256": "6063ae0dd462f9148a953f53d68a8c9c69f6ee504443656c39c810ce9f21097a"
         }
@@ -11731,13 +11731,13 @@
         },
         "firered": {
           "symbol": "sIllumiseLevelUpLearnset",
-          "source_line": 5306,
+          "source_line": 5311,
           "entry_count": 10,
           "ordered_token_sha256": "31eafafd9b0844160e09b6d200aa1ae370523d40ebc795f22eb748cf3705659d"
         },
         "leafgreen": {
           "symbol": "sIllumiseLevelUpLearnset",
-          "source_line": 5306,
+          "source_line": 5311,
           "entry_count": 10,
           "ordered_token_sha256": "31eafafd9b0844160e09b6d200aa1ae370523d40ebc795f22eb748cf3705659d"
         }
@@ -11768,13 +11768,13 @@
         },
         "firered": {
           "symbol": "sRoseliaLevelUpLearnset",
-          "source_line": 4939,
+          "source_line": 4944,
           "entry_count": 15,
           "ordered_token_sha256": "d39d453d374a93782c8c6a1099b6fa44f46bdfdd19ebcf67d03b67534122fad5"
         },
         "leafgreen": {
           "symbol": "sRoseliaLevelUpLearnset",
-          "source_line": 4939,
+          "source_line": 4944,
           "entry_count": 15,
           "ordered_token_sha256": "d39d453d374a93782c8c6a1099b6fa44f46bdfdd19ebcf67d03b67534122fad5"
         }
@@ -11805,13 +11805,13 @@
         },
         "firered": {
           "symbol": "sGulpinLevelUpLearnset",
-          "source_line": 5003,
+          "source_line": 5008,
           "entry_count": 11,
           "ordered_token_sha256": "1e4ad8462e1929685acc5b157e29f7fa54b961bee5cdb867f645f0dd4252419e"
         },
         "leafgreen": {
           "symbol": "sGulpinLevelUpLearnset",
-          "source_line": 5003,
+          "source_line": 5008,
           "entry_count": 11,
           "ordered_token_sha256": "1e4ad8462e1929685acc5b157e29f7fa54b961bee5cdb867f645f0dd4252419e"
         }
@@ -11842,13 +11842,13 @@
         },
         "firered": {
           "symbol": "sSwalotLevelUpLearnset",
-          "source_line": 5018,
+          "source_line": 5023,
           "entry_count": 15,
           "ordered_token_sha256": "66bbf6a5acfebe4ccf0c46b96d88dae4494932cf30011e81842813bc088fd860"
         },
         "leafgreen": {
           "symbol": "sSwalotLevelUpLearnset",
-          "source_line": 5018,
+          "source_line": 5023,
           "entry_count": 15,
           "ordered_token_sha256": "66bbf6a5acfebe4ccf0c46b96d88dae4494932cf30011e81842813bc088fd860"
         }
@@ -11879,13 +11879,13 @@
         },
         "firered": {
           "symbol": "sCarvanhaLevelUpLearnset",
-          "source_line": 4407,
+          "source_line": 4412,
           "entry_count": 10,
           "ordered_token_sha256": "836ddac26908f75a9637caca66103897bad1678c6a2bcee81334558f12466a69"
         },
         "leafgreen": {
           "symbol": "sCarvanhaLevelUpLearnset",
-          "source_line": 4407,
+          "source_line": 4412,
           "entry_count": 10,
           "ordered_token_sha256": "836ddac26908f75a9637caca66103897bad1678c6a2bcee81334558f12466a69"
         }
@@ -11916,13 +11916,13 @@
         },
         "firered": {
           "symbol": "sSharpedoLevelUpLearnset",
-          "source_line": 4421,
+          "source_line": 4426,
           "entry_count": 14,
           "ordered_token_sha256": "2c3af6422edd8e65571cdddbdbd2a7d92fbb3a55e5f7e3d20f9b83c4abf48cf9"
         },
         "leafgreen": {
           "symbol": "sSharpedoLevelUpLearnset",
-          "source_line": 4421,
+          "source_line": 4426,
           "entry_count": 14,
           "ordered_token_sha256": "2c3af6422edd8e65571cdddbdbd2a7d92fbb3a55e5f7e3d20f9b83c4abf48cf9"
         }
@@ -11953,13 +11953,13 @@
         },
         "firered": {
           "symbol": "sWailmerLevelUpLearnset",
-          "source_line": 4147,
+          "source_line": 4152,
           "entry_count": 12,
           "ordered_token_sha256": "f4e4080cdc57567ec49c4c3efb05146775f775d494604ddee093926e65c90054"
         },
         "leafgreen": {
           "symbol": "sWailmerLevelUpLearnset",
-          "source_line": 4147,
+          "source_line": 4152,
           "entry_count": 12,
           "ordered_token_sha256": "f4e4080cdc57567ec49c4c3efb05146775f775d494604ddee093926e65c90054"
         }
@@ -11990,13 +11990,13 @@
         },
         "firered": {
           "symbol": "sWailordLevelUpLearnset",
-          "source_line": 4163,
+          "source_line": 4168,
           "entry_count": 15,
           "ordered_token_sha256": "1846699d3e6640d7bc1f73093e4f677dd771b55360f8fcf4749b5498ebe64098"
         },
         "leafgreen": {
           "symbol": "sWailordLevelUpLearnset",
-          "source_line": 4163,
+          "source_line": 4168,
           "entry_count": 15,
           "ordered_token_sha256": "1846699d3e6640d7bc1f73093e4f677dd771b55360f8fcf4749b5498ebe64098"
         }
@@ -12027,13 +12027,13 @@
         },
         "firered": {
           "symbol": "sNumelLevelUpLearnset",
-          "source_line": 4552,
+          "source_line": 4557,
           "entry_count": 10,
           "ordered_token_sha256": "7b78bac42599756abe900e6c7102f4b5656e24fb97cb0727dc054c281c21e7f2"
         },
         "leafgreen": {
           "symbol": "sNumelLevelUpLearnset",
-          "source_line": 4552,
+          "source_line": 4557,
           "entry_count": 10,
           "ordered_token_sha256": "7b78bac42599756abe900e6c7102f4b5656e24fb97cb0727dc054c281c21e7f2"
         }
@@ -12064,13 +12064,13 @@
         },
         "firered": {
           "symbol": "sCameruptLevelUpLearnset",
-          "source_line": 4566,
+          "source_line": 4571,
           "entry_count": 13,
           "ordered_token_sha256": "3e101063ad5750275637822fafeae94953e3cc78240afd26042f748d36557e63"
         },
         "leafgreen": {
           "symbol": "sCameruptLevelUpLearnset",
-          "source_line": 4566,
+          "source_line": 4571,
           "entry_count": 13,
           "ordered_token_sha256": "3e101063ad5750275637822fafeae94953e3cc78240afd26042f748d36557e63"
         }
@@ -12101,13 +12101,13 @@
         },
         "firered": {
           "symbol": "sTorkoalLevelUpLearnset",
-          "source_line": 4271,
+          "source_line": 4276,
           "entry_count": 12,
           "ordered_token_sha256": "5f574e4edd3e5ac161d0f8ff97a34a1b0e7d49f23e03d71ecbaa92d607dd7ad0"
         },
         "leafgreen": {
           "symbol": "sTorkoalLevelUpLearnset",
-          "source_line": 4271,
+          "source_line": 4276,
           "entry_count": 12,
           "ordered_token_sha256": "5f574e4edd3e5ac161d0f8ff97a34a1b0e7d49f23e03d71ecbaa92d607dd7ad0"
         }
@@ -12138,13 +12138,13 @@
         },
         "firered": {
           "symbol": "sSpoinkLevelUpLearnset",
-          "source_line": 4744,
+          "source_line": 4749,
           "entry_count": 11,
           "ordered_token_sha256": "e3d70a77b7d3422d2dcda9f98c6fbf0fc7b75a337d2bd8a90352817beb821bbb"
         },
         "leafgreen": {
           "symbol": "sSpoinkLevelUpLearnset",
-          "source_line": 4744,
+          "source_line": 4749,
           "entry_count": 11,
           "ordered_token_sha256": "e3d70a77b7d3422d2dcda9f98c6fbf0fc7b75a337d2bd8a90352817beb821bbb"
         }
@@ -12175,13 +12175,13 @@
         },
         "firered": {
           "symbol": "sGrumpigLevelUpLearnset",
-          "source_line": 4759,
+          "source_line": 4764,
           "entry_count": 14,
           "ordered_token_sha256": "b3c957734c0b1a2f8cf9b7bfa7c03a0322d7266c241396836734a847c4b2a5ad"
         },
         "leafgreen": {
           "symbol": "sGrumpigLevelUpLearnset",
-          "source_line": 4759,
+          "source_line": 4764,
           "entry_count": 14,
           "ordered_token_sha256": "b3c957734c0b1a2f8cf9b7bfa7c03a0322d7266c241396836734a847c4b2a5ad"
         }
@@ -12212,13 +12212,13 @@
         },
         "firered": {
           "symbol": "sSpindaLevelUpLearnset",
-          "source_line": 4075,
+          "source_line": 4080,
           "entry_count": 11,
           "ordered_token_sha256": "c50d27dba498a1cbc92d98266a63e92ff63b4621e0b42a98632f3a9f3af796b1"
         },
         "leafgreen": {
           "symbol": "sSpindaLevelUpLearnset",
-          "source_line": 4075,
+          "source_line": 4080,
           "entry_count": 11,
           "ordered_token_sha256": "c50d27dba498a1cbc92d98266a63e92ff63b4621e0b42a98632f3a9f3af796b1"
         }
@@ -12249,13 +12249,13 @@
         },
         "firered": {
           "symbol": "sTrapinchLevelUpLearnset",
-          "source_line": 4439,
+          "source_line": 4444,
           "entry_count": 8,
           "ordered_token_sha256": "e87a16ab590598f7d6b169132ba069bbd0ccf025ce9e1dc4eb658e6f14f2ed99"
         },
         "leafgreen": {
           "symbol": "sTrapinchLevelUpLearnset",
-          "source_line": 4439,
+          "source_line": 4444,
           "entry_count": 8,
           "ordered_token_sha256": "e87a16ab590598f7d6b169132ba069bbd0ccf025ce9e1dc4eb658e6f14f2ed99"
         }
@@ -12286,13 +12286,13 @@
         },
         "firered": {
           "symbol": "sVibravaLevelUpLearnset",
-          "source_line": 4451,
+          "source_line": 4456,
           "entry_count": 12,
           "ordered_token_sha256": "39e044d9e25b2fbe38600796467a8b4e91c4d989048b6902691e2b2411076cfe"
         },
         "leafgreen": {
           "symbol": "sVibravaLevelUpLearnset",
-          "source_line": 4451,
+          "source_line": 4456,
           "entry_count": 12,
           "ordered_token_sha256": "39e044d9e25b2fbe38600796467a8b4e91c4d989048b6902691e2b2411076cfe"
         }
@@ -12323,13 +12323,13 @@
         },
         "firered": {
           "symbol": "sFlygonLevelUpLearnset",
-          "source_line": 4467,
+          "source_line": 4472,
           "entry_count": 12,
           "ordered_token_sha256": "bda1e02a8f58ea0ad3ce637337de9dcd3ed0122e726ab18a4934adf0952ce76a"
         },
         "leafgreen": {
           "symbol": "sFlygonLevelUpLearnset",
-          "source_line": 4467,
+          "source_line": 4472,
           "entry_count": 12,
           "ordered_token_sha256": "bda1e02a8f58ea0ad3ce637337de9dcd3ed0122e726ab18a4934adf0952ce76a"
         }
@@ -12360,13 +12360,13 @@
         },
         "firered": {
           "symbol": "sCacneaLevelUpLearnset",
-          "source_line": 4634,
+          "source_line": 4639,
           "entry_count": 14,
           "ordered_token_sha256": "7feec7e83084038c1b7f403b345d7afcb7707b261a5e7eb76f358d7aa791a3ba"
         },
         "leafgreen": {
           "symbol": "sCacneaLevelUpLearnset",
-          "source_line": 4634,
+          "source_line": 4639,
           "entry_count": 14,
           "ordered_token_sha256": "7feec7e83084038c1b7f403b345d7afcb7707b261a5e7eb76f358d7aa791a3ba"
         }
@@ -12397,13 +12397,13 @@
         },
         "firered": {
           "symbol": "sCacturneLevelUpLearnset",
-          "source_line": 4652,
+          "source_line": 4657,
           "entry_count": 17,
           "ordered_token_sha256": "4f4ea01ac6c399c8f3777a1f3d1f5ad18709a4fea652eaa2a594989c34c3d48b"
         },
         "leafgreen": {
           "symbol": "sCacturneLevelUpLearnset",
-          "source_line": 4652,
+          "source_line": 4657,
           "entry_count": 17,
           "ordered_token_sha256": "4f4ea01ac6c399c8f3777a1f3d1f5ad18709a4fea652eaa2a594989c34c3d48b"
         }
@@ -12434,13 +12434,13 @@
         },
         "firered": {
           "symbol": "sSwabluLevelUpLearnset",
-          "source_line": 4861,
+          "source_line": 4866,
           "entry_count": 11,
           "ordered_token_sha256": "2401bd4ecfce747c5931037cf3ee91cc8f4eb462aa8c8ad144aac8024af62d04"
         },
         "leafgreen": {
           "symbol": "sSwabluLevelUpLearnset",
-          "source_line": 4861,
+          "source_line": 4866,
           "entry_count": 11,
           "ordered_token_sha256": "2401bd4ecfce747c5931037cf3ee91cc8f4eb462aa8c8ad144aac8024af62d04"
         }
@@ -12471,13 +12471,13 @@
         },
         "firered": {
           "symbol": "sAltariaLevelUpLearnset",
-          "source_line": 4876,
+          "source_line": 4881,
           "entry_count": 15,
           "ordered_token_sha256": "c8de807b56195480e603a803bb6d7ca6f86d02d28606b0c9dcd096345198b941"
         },
         "leafgreen": {
           "symbol": "sAltariaLevelUpLearnset",
-          "source_line": 4876,
+          "source_line": 4881,
           "entry_count": 15,
           "ordered_token_sha256": "c8de807b56195480e603a803bb6d7ca6f86d02d28606b0c9dcd096345198b941"
         }
@@ -12508,13 +12508,13 @@
         },
         "firered": {
           "symbol": "sZangooseLevelUpLearnset",
-          "source_line": 5196,
+          "source_line": 5201,
           "entry_count": 11,
           "ordered_token_sha256": "d995f57c97b0a89cb8d5a79d3f8e530047ad45249a0384f545a7e8462ef7a163"
         },
         "leafgreen": {
           "symbol": "sZangooseLevelUpLearnset",
-          "source_line": 5196,
+          "source_line": 5201,
           "entry_count": 11,
           "ordered_token_sha256": "d995f57c97b0a89cb8d5a79d3f8e530047ad45249a0384f545a7e8462ef7a163"
         }
@@ -12545,13 +12545,13 @@
         },
         "firered": {
           "symbol": "sSeviperLevelUpLearnset",
-          "source_line": 5182,
+          "source_line": 5187,
           "entry_count": 10,
           "ordered_token_sha256": "720053b02ebc4431148665b2381c02647c419bfc2a9120d105392b4f77bac0d7"
         },
         "leafgreen": {
           "symbol": "sSeviperLevelUpLearnset",
-          "source_line": 5182,
+          "source_line": 5187,
           "entry_count": 10,
           "ordered_token_sha256": "720053b02ebc4431148665b2381c02647c419bfc2a9120d105392b4f77bac0d7"
         }
@@ -12582,13 +12582,13 @@
         },
         "firered": {
           "symbol": "sLunatoneLevelUpLearnset",
-          "source_line": 4706,
+          "source_line": 4711,
           "entry_count": 10,
           "ordered_token_sha256": "dbdeec9fbe8f7052d23c568e43b8075bb524f12637ad7bb145c30b9e1d4d2d40"
         },
         "leafgreen": {
           "symbol": "sLunatoneLevelUpLearnset",
-          "source_line": 4706,
+          "source_line": 4711,
           "entry_count": 10,
           "ordered_token_sha256": "dbdeec9fbe8f7052d23c568e43b8075bb524f12637ad7bb145c30b9e1d4d2d40"
         }
@@ -12619,13 +12619,13 @@
         },
         "firered": {
           "symbol": "sSolrockLevelUpLearnset",
-          "source_line": 4720,
+          "source_line": 4725,
           "entry_count": 10,
           "ordered_token_sha256": "bd9b27eee5b1f191d57c89fd8d32f9017987e2546f1da936d165d43c0f21c6f0"
         },
         "leafgreen": {
           "symbol": "sSolrockLevelUpLearnset",
-          "source_line": 4720,
+          "source_line": 4725,
           "entry_count": 10,
           "ordered_token_sha256": "bd9b27eee5b1f191d57c89fd8d32f9017987e2546f1da936d165d43c0f21c6f0"
         }
@@ -12656,13 +12656,13 @@
         },
         "firered": {
           "symbol": "sBarboachLevelUpLearnset",
-          "source_line": 4304,
+          "source_line": 4309,
           "entry_count": 11,
           "ordered_token_sha256": "17a78372fd05dd7b566e13f6c32a7eaf4fb668ca268a5e4f5832e9405583184d"
         },
         "leafgreen": {
           "symbol": "sBarboachLevelUpLearnset",
-          "source_line": 4304,
+          "source_line": 4309,
           "entry_count": 11,
           "ordered_token_sha256": "17a78372fd05dd7b566e13f6c32a7eaf4fb668ca268a5e4f5832e9405583184d"
         }
@@ -12693,13 +12693,13 @@
         },
         "firered": {
           "symbol": "sWhiscashLevelUpLearnset",
-          "source_line": 4319,
+          "source_line": 4324,
           "entry_count": 14,
           "ordered_token_sha256": "606467909b57bdb6e302f290a0cb80ea1f300cd95899d98665ee5dca5657c9ec"
         },
         "leafgreen": {
           "symbol": "sWhiscashLevelUpLearnset",
-          "source_line": 4319,
+          "source_line": 4324,
           "entry_count": 14,
           "ordered_token_sha256": "606467909b57bdb6e302f290a0cb80ea1f300cd95899d98665ee5dca5657c9ec"
         }
@@ -12730,13 +12730,13 @@
         },
         "firered": {
           "symbol": "sCorphishLevelUpLearnset",
-          "source_line": 4350,
+          "source_line": 4355,
           "entry_count": 12,
           "ordered_token_sha256": "4f2a97d8dbd3e68512c3826729d52eb99b7ed9f31e973360c54bfd1779f454cb"
         },
         "leafgreen": {
           "symbol": "sCorphishLevelUpLearnset",
-          "source_line": 4350,
+          "source_line": 4355,
           "entry_count": 12,
           "ordered_token_sha256": "4f2a97d8dbd3e68512c3826729d52eb99b7ed9f31e973360c54bfd1779f454cb"
         }
@@ -12767,13 +12767,13 @@
         },
         "firered": {
           "symbol": "sCrawdauntLevelUpLearnset",
-          "source_line": 4366,
+          "source_line": 4371,
           "entry_count": 15,
           "ordered_token_sha256": "4490bfc2efc7680facd2743ab9ff5ce07ad03d45bf4901dd07d231e8b5015b10"
         },
         "leafgreen": {
           "symbol": "sCrawdauntLevelUpLearnset",
-          "source_line": 4366,
+          "source_line": 4371,
           "entry_count": 15,
           "ordered_token_sha256": "4490bfc2efc7680facd2743ab9ff5ce07ad03d45bf4901dd07d231e8b5015b10"
         }
@@ -12804,13 +12804,13 @@
         },
         "firered": {
           "symbol": "sBaltoyLevelUpLearnset",
-          "source_line": 4223,
+          "source_line": 4228,
           "entry_count": 11,
           "ordered_token_sha256": "2e5e438b80dd8d0ee9d417b7052e1314b2e521a5f3564708d7882d072262e094"
         },
         "leafgreen": {
           "symbol": "sBaltoyLevelUpLearnset",
-          "source_line": 4223,
+          "source_line": 4228,
           "entry_count": 11,
           "ordered_token_sha256": "2e5e438b80dd8d0ee9d417b7052e1314b2e521a5f3564708d7882d072262e094"
         }
@@ -12841,13 +12841,13 @@
         },
         "firered": {
           "symbol": "sClaydolLevelUpLearnset",
-          "source_line": 4238,
+          "source_line": 4243,
           "entry_count": 15,
           "ordered_token_sha256": "bb277369b3e7095e609e2221d5f3386a3bc9b3eb90e584729239c65d35804d36"
         },
         "leafgreen": {
           "symbol": "sClaydolLevelUpLearnset",
-          "source_line": 4238,
+          "source_line": 4243,
           "entry_count": 15,
           "ordered_token_sha256": "bb277369b3e7095e609e2221d5f3386a3bc9b3eb90e584729239c65d35804d36"
         }
@@ -12878,13 +12878,13 @@
         },
         "firered": {
           "symbol": "sLileepLevelUpLearnset",
-          "source_line": 5320,
+          "source_line": 5325,
           "entry_count": 10,
           "ordered_token_sha256": "5afcd1b1c4128aa836fb4ab279e016c75a1d96af63ebdf951763be3918cc6ec3"
         },
         "leafgreen": {
           "symbol": "sLileepLevelUpLearnset",
-          "source_line": 5320,
+          "source_line": 5325,
           "entry_count": 10,
           "ordered_token_sha256": "5afcd1b1c4128aa836fb4ab279e016c75a1d96af63ebdf951763be3918cc6ec3"
         }
@@ -12915,13 +12915,13 @@
         },
         "firered": {
           "symbol": "sCradilyLevelUpLearnset",
-          "source_line": 5334,
+          "source_line": 5339,
           "entry_count": 13,
           "ordered_token_sha256": "3471d7b4a351896096609b3eb9153878bd49a9b373f770cf547917326cf0faf6"
         },
         "leafgreen": {
           "symbol": "sCradilyLevelUpLearnset",
-          "source_line": 5334,
+          "source_line": 5339,
           "entry_count": 13,
           "ordered_token_sha256": "3471d7b4a351896096609b3eb9153878bd49a9b373f770cf547917326cf0faf6"
         }
@@ -12952,13 +12952,13 @@
         },
         "firered": {
           "symbol": "sAnorithLevelUpLearnset",
-          "source_line": 5351,
+          "source_line": 5356,
           "entry_count": 10,
           "ordered_token_sha256": "bda8381b343ff94f8edfa24cb1123bdfde7957c1d0d6ed319c4afe2ad53cbc06"
         },
         "leafgreen": {
           "symbol": "sAnorithLevelUpLearnset",
-          "source_line": 5351,
+          "source_line": 5356,
           "entry_count": 10,
           "ordered_token_sha256": "bda8381b343ff94f8edfa24cb1123bdfde7957c1d0d6ed319c4afe2ad53cbc06"
         }
@@ -12989,13 +12989,13 @@
         },
         "firered": {
           "symbol": "sArmaldoLevelUpLearnset",
-          "source_line": 5365,
+          "source_line": 5370,
           "entry_count": 13,
           "ordered_token_sha256": "e00a6768be193780d407d61595ed07e947eb232fee15300cceb214f36c655fea"
         },
         "leafgreen": {
           "symbol": "sArmaldoLevelUpLearnset",
-          "source_line": 5365,
+          "source_line": 5370,
           "entry_count": 13,
           "ordered_token_sha256": "e00a6768be193780d407d61595ed07e947eb232fee15300cceb214f36c655fea"
         }
@@ -13026,13 +13026,13 @@
         },
         "firered": {
           "symbol": "sFeebasLevelUpLearnset",
-          "source_line": 4385,
+          "source_line": 4390,
           "entry_count": 3,
           "ordered_token_sha256": "f675f5610f96e8de654ebf4e3cd798c451524dcac985829cad3755b00069d160"
         },
         "leafgreen": {
           "symbol": "sFeebasLevelUpLearnset",
-          "source_line": 4385,
+          "source_line": 4390,
           "entry_count": 3,
           "ordered_token_sha256": "f675f5610f96e8de654ebf4e3cd798c451524dcac985829cad3755b00069d160"
         }
@@ -13063,13 +13063,13 @@
         },
         "firered": {
           "symbol": "sMiloticLevelUpLearnset",
-          "source_line": 4392,
+          "source_line": 4397,
           "entry_count": 11,
           "ordered_token_sha256": "768aec856c59f7ae91c229e513813052b394fa80939c901d53ac975122ee3875"
         },
         "leafgreen": {
           "symbol": "sMiloticLevelUpLearnset",
-          "source_line": 4392,
+          "source_line": 4397,
           "entry_count": 11,
           "ordered_token_sha256": "768aec856c59f7ae91c229e513813052b394fa80939c901d53ac975122ee3875"
         }
@@ -13100,13 +13100,13 @@
         },
         "firered": {
           "symbol": "sCastformLevelUpLearnset",
-          "source_line": 5280,
+          "source_line": 5285,
           "entry_count": 8,
           "ordered_token_sha256": "fa37f981935162495632fdedb33ce93a3ffc48934a40b4a4a6e846e8730f8009"
         },
         "leafgreen": {
           "symbol": "sCastformLevelUpLearnset",
-          "source_line": 5280,
+          "source_line": 5285,
           "entry_count": 8,
           "ordered_token_sha256": "fa37f981935162495632fdedb33ce93a3ffc48934a40b4a4a6e846e8730f8009"
         }
@@ -13137,13 +13137,13 @@
         },
         "firered": {
           "symbol": "sKecleonLevelUpLearnset",
-          "source_line": 4206,
+          "source_line": 4211,
           "entry_count": 13,
           "ordered_token_sha256": "dd27156a1ec064a008e7bc8f2bdb754861452d9a27c8af24a7ec3bf9f1484ab6"
         },
         "leafgreen": {
           "symbol": "sKecleonLevelUpLearnset",
-          "source_line": 4206,
+          "source_line": 4211,
           "entry_count": 13,
           "ordered_token_sha256": "dd27156a1ec064a008e7bc8f2bdb754861452d9a27c8af24a7ec3bf9f1484ab6"
         }
@@ -13174,13 +13174,13 @@
         },
         "firered": {
           "symbol": "sShuppetLevelUpLearnset",
-          "source_line": 5151,
+          "source_line": 5156,
           "entry_count": 10,
           "ordered_token_sha256": "d2e5efae1253a314553725489fbb59e415fa249329277803cd76c9bc00060871"
         },
         "leafgreen": {
           "symbol": "sShuppetLevelUpLearnset",
-          "source_line": 5151,
+          "source_line": 5156,
           "entry_count": 10,
           "ordered_token_sha256": "d2e5efae1253a314553725489fbb59e415fa249329277803cd76c9bc00060871"
         }
@@ -13211,13 +13211,13 @@
         },
         "firered": {
           "symbol": "sBanetteLevelUpLearnset",
-          "source_line": 5165,
+          "source_line": 5170,
           "entry_count": 13,
           "ordered_token_sha256": "274453a511687ecf345e68bbe6e9c623821cbb3c9ab4d30706117b3bb1f8fad7"
         },
         "leafgreen": {
           "symbol": "sBanetteLevelUpLearnset",
-          "source_line": 5165,
+          "source_line": 5170,
           "entry_count": 13,
           "ordered_token_sha256": "274453a511687ecf345e68bbe6e9c623821cbb3c9ab4d30706117b3bb1f8fad7"
         }
@@ -13248,13 +13248,13 @@
         },
         "firered": {
           "symbol": "sDuskullLevelUpLearnset",
-          "source_line": 4906,
+          "source_line": 4911,
           "entry_count": 11,
           "ordered_token_sha256": "68164c00a529603547ed84e71388f9a95b30efd7dc8a5d7632aedb89defa84eb"
         },
         "leafgreen": {
           "symbol": "sDuskullLevelUpLearnset",
-          "source_line": 4906,
+          "source_line": 4911,
           "entry_count": 11,
           "ordered_token_sha256": "68164c00a529603547ed84e71388f9a95b30efd7dc8a5d7632aedb89defa84eb"
         }
@@ -13285,13 +13285,13 @@
         },
         "firered": {
           "symbol": "sDusclopsLevelUpLearnset",
-          "source_line": 4921,
+          "source_line": 4926,
           "entry_count": 14,
           "ordered_token_sha256": "27af21d597a777f32677ce7fb1e5e0baf4c90e525afc1f82cf5fa0d183d1c3f5"
         },
         "leafgreen": {
           "symbol": "sDusclopsLevelUpLearnset",
-          "source_line": 4921,
+          "source_line": 4926,
           "entry_count": 14,
           "ordered_token_sha256": "27af21d597a777f32677ce7fb1e5e0baf4c90e525afc1f82cf5fa0d183d1c3f5"
         }
@@ -13322,13 +13322,13 @@
         },
         "firered": {
           "symbol": "sTropiusLevelUpLearnset",
-          "source_line": 5037,
+          "source_line": 5042,
           "entry_count": 11,
           "ordered_token_sha256": "972a69f99635f779a43488ce16fd14510c23df333826691673f8ab56aa9a4e1e"
         },
         "leafgreen": {
           "symbol": "sTropiusLevelUpLearnset",
-          "source_line": 5037,
+          "source_line": 5042,
           "entry_count": 11,
           "ordered_token_sha256": "972a69f99635f779a43488ce16fd14510c23df333826691673f8ab56aa9a4e1e"
         }
@@ -13359,13 +13359,13 @@
         },
         "firered": {
           "symbol": "sChimechoLevelUpLearnset",
-          "source_line": 5668,
+          "source_line": 5693,
           "entry_count": 12,
           "ordered_token_sha256": "ddc7a3d87cd64e90e0d29174b7bfe550bf1eae1e27561ba06329062b0c679def"
         },
         "leafgreen": {
           "symbol": "sChimechoLevelUpLearnset",
-          "source_line": 5670,
+          "source_line": 5693,
           "entry_count": 12,
           "ordered_token_sha256": "ddc7a3d87cd64e90e0d29174b7bfe550bf1eae1e27561ba06329062b0c679def"
         }
@@ -13396,13 +13396,13 @@
         },
         "firered": {
           "symbol": "sAbsolLevelUpLearnset",
-          "source_line": 5136,
+          "source_line": 5141,
           "entry_count": 11,
           "ordered_token_sha256": "7b011ac32d4f4b7b34c0c1afba30e05ce775b9debce838f346da775c7adb40a0"
         },
         "leafgreen": {
           "symbol": "sAbsolLevelUpLearnset",
-          "source_line": 5136,
+          "source_line": 5141,
           "entry_count": 11,
           "ordered_token_sha256": "7b011ac32d4f4b7b34c0c1afba30e05ce775b9debce838f346da775c7adb40a0"
         }
@@ -13433,13 +13433,13 @@
         },
         "firered": {
           "symbol": "sWynautLevelUpLearnset",
-          "source_line": 4895,
+          "source_line": 4900,
           "entry_count": 7,
           "ordered_token_sha256": "b9df1d4961b731f2fe23d4471fe52addf8be4baf37b71fcfb87d6940359c828e"
         },
         "leafgreen": {
           "symbol": "sWynautLevelUpLearnset",
-          "source_line": 4895,
+          "source_line": 4900,
           "entry_count": 7,
           "ordered_token_sha256": "b9df1d4961b731f2fe23d4471fe52addf8be4baf37b71fcfb87d6940359c828e"
         }
@@ -13470,13 +13470,13 @@
         },
         "firered": {
           "symbol": "sSnoruntLevelUpLearnset",
-          "source_line": 4673,
+          "source_line": 4678,
           "entry_count": 11,
           "ordered_token_sha256": "c770b191ec43c85554199fcdc1bb1472daf664bbf41ae8f1e0413d291a75b2f8"
         },
         "leafgreen": {
           "symbol": "sSnoruntLevelUpLearnset",
-          "source_line": 4673,
+          "source_line": 4678,
           "entry_count": 11,
           "ordered_token_sha256": "c770b191ec43c85554199fcdc1bb1472daf664bbf41ae8f1e0413d291a75b2f8"
         }
@@ -13507,13 +13507,13 @@
         },
         "firered": {
           "symbol": "sGlalieLevelUpLearnset",
-          "source_line": 4688,
+          "source_line": 4693,
           "entry_count": 14,
           "ordered_token_sha256": "790ee3be978534f3af45eefdd83b41241a87309471436f7b015fa2f6b6be4427"
         },
         "leafgreen": {
           "symbol": "sGlalieLevelUpLearnset",
-          "source_line": 4688,
+          "source_line": 4693,
           "entry_count": 14,
           "ordered_token_sha256": "790ee3be978534f3af45eefdd83b41241a87309471436f7b015fa2f6b6be4427"
         }
@@ -13544,13 +13544,13 @@
         },
         "firered": {
           "symbol": "sSphealLevelUpLearnset",
-          "source_line": 4583,
+          "source_line": 4588,
           "entry_count": 13,
           "ordered_token_sha256": "f8395a899f2363560e70f0e5a0d783dc69ea57526d82198c53d29d9a7651a2f7"
         },
         "leafgreen": {
           "symbol": "sSphealLevelUpLearnset",
-          "source_line": 4583,
+          "source_line": 4588,
           "entry_count": 13,
           "ordered_token_sha256": "f8395a899f2363560e70f0e5a0d783dc69ea57526d82198c53d29d9a7651a2f7"
         }
@@ -13581,13 +13581,13 @@
         },
         "firered": {
           "symbol": "sSealeoLevelUpLearnset",
-          "source_line": 4600,
+          "source_line": 4605,
           "entry_count": 13,
           "ordered_token_sha256": "390549b17de74114debe0a79f0583ba5c8b29e862dc8d2b0bc4d890b7237adce"
         },
         "leafgreen": {
           "symbol": "sSealeoLevelUpLearnset",
-          "source_line": 4600,
+          "source_line": 4605,
           "entry_count": 13,
           "ordered_token_sha256": "390549b17de74114debe0a79f0583ba5c8b29e862dc8d2b0bc4d890b7237adce"
         }
@@ -13618,13 +13618,13 @@
         },
         "firered": {
           "symbol": "sWalreinLevelUpLearnset",
-          "source_line": 4617,
+          "source_line": 4622,
           "entry_count": 13,
           "ordered_token_sha256": "525e6ff5ba4c67565f6922318b0f1c5d70b687021fa1584dd233201b3133a608"
         },
         "leafgreen": {
           "symbol": "sWalreinLevelUpLearnset",
-          "source_line": 4617,
+          "source_line": 4622,
           "entry_count": 13,
           "ordered_token_sha256": "525e6ff5ba4c67565f6922318b0f1c5d70b687021fa1584dd233201b3133a608"
         }
@@ -13655,13 +13655,13 @@
         },
         "firered": {
           "symbol": "sClamperlLevelUpLearnset",
-          "source_line": 5104,
+          "source_line": 5109,
           "entry_count": 4,
           "ordered_token_sha256": "c54b65ca53b554882e8e2c2709f8ca60d969ffc02cc9afbe69fb83eb266059bc"
         },
         "leafgreen": {
           "symbol": "sClamperlLevelUpLearnset",
-          "source_line": 5104,
+          "source_line": 5109,
           "entry_count": 4,
           "ordered_token_sha256": "c54b65ca53b554882e8e2c2709f8ca60d969ffc02cc9afbe69fb83eb266059bc"
         }
@@ -13692,13 +13692,13 @@
         },
         "firered": {
           "symbol": "sHuntailLevelUpLearnset",
-          "source_line": 5112,
+          "source_line": 5117,
           "entry_count": 8,
           "ordered_token_sha256": "fa9a8508ef3c8909dd18d19cd9ff066aac03ffd78724dc5bea6a2ce5dd2d2cf9"
         },
         "leafgreen": {
           "symbol": "sHuntailLevelUpLearnset",
-          "source_line": 5112,
+          "source_line": 5117,
           "entry_count": 8,
           "ordered_token_sha256": "fa9a8508ef3c8909dd18d19cd9ff066aac03ffd78724dc5bea6a2ce5dd2d2cf9"
         }
@@ -13729,13 +13729,13 @@
         },
         "firered": {
           "symbol": "sGorebyssLevelUpLearnset",
-          "source_line": 5124,
+          "source_line": 5129,
           "entry_count": 8,
           "ordered_token_sha256": "2f959361718a4317ec9d14cb44c9a8c2ca76a6a7bd7dc31f171b218f2534d4c0"
         },
         "leafgreen": {
           "symbol": "sGorebyssLevelUpLearnset",
-          "source_line": 5124,
+          "source_line": 5129,
           "entry_count": 8,
           "ordered_token_sha256": "2f959361718a4317ec9d14cb44c9a8c2ca76a6a7bd7dc31f171b218f2534d4c0"
         }
@@ -13766,13 +13766,13 @@
         },
         "firered": {
           "symbol": "sRelicanthLevelUpLearnset",
-          "source_line": 5211,
+          "source_line": 5216,
           "entry_count": 11,
           "ordered_token_sha256": "2c27dabd59a19fd9b0249d9a16baf76b7ef1d52b27790e824b794b099049ec5a"
         },
         "leafgreen": {
           "symbol": "sRelicanthLevelUpLearnset",
-          "source_line": 5211,
+          "source_line": 5216,
           "entry_count": 11,
           "ordered_token_sha256": "2c27dabd59a19fd9b0249d9a16baf76b7ef1d52b27790e824b794b099049ec5a"
         }
@@ -13803,13 +13803,13 @@
         },
         "firered": {
           "symbol": "sLuvdiscLevelUpLearnset",
-          "source_line": 4337,
+          "source_line": 4342,
           "entry_count": 9,
           "ordered_token_sha256": "e0cf56f6f142c08d4f10dc00e49dc0f5318fa3e41eccdc93859e4e5d5b33309a"
         },
         "leafgreen": {
           "symbol": "sLuvdiscLevelUpLearnset",
-          "source_line": 4337,
+          "source_line": 4342,
           "entry_count": 9,
           "ordered_token_sha256": "e0cf56f6f142c08d4f10dc00e49dc0f5318fa3e41eccdc93859e4e5d5b33309a"
         }
@@ -13840,13 +13840,13 @@
         },
         "firered": {
           "symbol": "sBagonLevelUpLearnset",
-          "source_line": 5431,
+          "source_line": 5436,
           "entry_count": 11,
           "ordered_token_sha256": "e966cc91f0157f17ec498e755d7630916ad14fda29842eff12a4d083bf24edf6"
         },
         "leafgreen": {
           "symbol": "sBagonLevelUpLearnset",
-          "source_line": 5431,
+          "source_line": 5436,
           "entry_count": 11,
           "ordered_token_sha256": "e966cc91f0157f17ec498e755d7630916ad14fda29842eff12a4d083bf24edf6"
         }
@@ -13877,13 +13877,13 @@
         },
         "firered": {
           "symbol": "sShelgonLevelUpLearnset",
-          "source_line": 5446,
+          "source_line": 5451,
           "entry_count": 15,
           "ordered_token_sha256": "0be0b07b736bd7de5c1c63cb45c620922f04ee705ab29b9a36f6380b80dd3f4f"
         },
         "leafgreen": {
           "symbol": "sShelgonLevelUpLearnset",
-          "source_line": 5446,
+          "source_line": 5451,
           "entry_count": 15,
           "ordered_token_sha256": "0be0b07b736bd7de5c1c63cb45c620922f04ee705ab29b9a36f6380b80dd3f4f"
         }
@@ -13914,13 +13914,13 @@
         },
         "firered": {
           "symbol": "sSalamenceLevelUpLearnset",
-          "source_line": 5465,
+          "source_line": 5470,
           "entry_count": 16,
           "ordered_token_sha256": "128defa4401de57bc8d45c2b8f544b981f097475dd2b75dc220880543f6c784d"
         },
         "leafgreen": {
           "symbol": "sSalamenceLevelUpLearnset",
-          "source_line": 5465,
+          "source_line": 5470,
           "entry_count": 16,
           "ordered_token_sha256": "128defa4401de57bc8d45c2b8f544b981f097475dd2b75dc220880543f6c784d"
         }
@@ -13951,13 +13951,13 @@
         },
         "firered": {
           "symbol": "sBeldumLevelUpLearnset",
-          "source_line": 5485,
+          "source_line": 5490,
           "entry_count": 1,
           "ordered_token_sha256": "008cc52e9ae17f71bdc998e1503a6f146fcb836533f39596b093d72e3f6bcc6e"
         },
         "leafgreen": {
           "symbol": "sBeldumLevelUpLearnset",
-          "source_line": 5485,
+          "source_line": 5490,
           "entry_count": 1,
           "ordered_token_sha256": "008cc52e9ae17f71bdc998e1503a6f146fcb836533f39596b093d72e3f6bcc6e"
         }
@@ -13988,13 +13988,13 @@
         },
         "firered": {
           "symbol": "sMetangLevelUpLearnset",
-          "source_line": 5490,
+          "source_line": 5495,
           "entry_count": 10,
           "ordered_token_sha256": "707cbc2d2163385122e5b9bc478092bd334701e4c582e00df434ea654d334044"
         },
         "leafgreen": {
           "symbol": "sMetangLevelUpLearnset",
-          "source_line": 5490,
+          "source_line": 5495,
           "entry_count": 10,
           "ordered_token_sha256": "707cbc2d2163385122e5b9bc478092bd334701e4c582e00df434ea654d334044"
         }
@@ -14025,13 +14025,13 @@
         },
         "firered": {
           "symbol": "sMetagrossLevelUpLearnset",
-          "source_line": 5504,
+          "source_line": 5509,
           "entry_count": 13,
           "ordered_token_sha256": "7db5314be38b74ae152cce93a1bf43eff28d729b2d80c3d157d684209484ba36"
         },
         "leafgreen": {
           "symbol": "sMetagrossLevelUpLearnset",
-          "source_line": 5504,
+          "source_line": 5509,
           "entry_count": 13,
           "ordered_token_sha256": "7db5314be38b74ae152cce93a1bf43eff28d729b2d80c3d157d684209484ba36"
         }
@@ -14062,13 +14062,13 @@
         },
         "firered": {
           "symbol": "sRegirockLevelUpLearnset",
-          "source_line": 5521,
+          "source_line": 5526,
           "entry_count": 9,
           "ordered_token_sha256": "5e0a261206fa5dce26312742ebf84439776aec8947304ab35b840d8efc6a6860"
         },
         "leafgreen": {
           "symbol": "sRegirockLevelUpLearnset",
-          "source_line": 5521,
+          "source_line": 5526,
           "entry_count": 9,
           "ordered_token_sha256": "5e0a261206fa5dce26312742ebf84439776aec8947304ab35b840d8efc6a6860"
         }
@@ -14099,13 +14099,13 @@
         },
         "firered": {
           "symbol": "sRegiceLevelUpLearnset",
-          "source_line": 5534,
+          "source_line": 5539,
           "entry_count": 9,
           "ordered_token_sha256": "e3ee50f2cb126140597bae8ca5c71e9a440997d7a05f110e8e5d4d754627c749"
         },
         "leafgreen": {
           "symbol": "sRegiceLevelUpLearnset",
-          "source_line": 5534,
+          "source_line": 5539,
           "entry_count": 9,
           "ordered_token_sha256": "e3ee50f2cb126140597bae8ca5c71e9a440997d7a05f110e8e5d4d754627c749"
         }
@@ -14136,13 +14136,13 @@
         },
         "firered": {
           "symbol": "sRegisteelLevelUpLearnset",
-          "source_line": 5547,
+          "source_line": 5552,
           "entry_count": 10,
           "ordered_token_sha256": "91e5a8768ed803f6818c5ca0b0ac083aec7f3a3ddb3deb662a7ea2caa3732fd6"
         },
         "leafgreen": {
           "symbol": "sRegisteelLevelUpLearnset",
-          "source_line": 5547,
+          "source_line": 5552,
           "entry_count": 10,
           "ordered_token_sha256": "91e5a8768ed803f6818c5ca0b0ac083aec7f3a3ddb3deb662a7ea2caa3732fd6"
         }
@@ -14173,13 +14173,13 @@
         },
         "firered": {
           "symbol": "sLatiasLevelUpLearnset",
-          "source_line": 5606,
+          "source_line": 5611,
           "entry_count": 11,
           "ordered_token_sha256": "f9983a18db07f23408eb694829f132e2432a2aa0e80a15fcf73c3de9053d51c9"
         },
         "leafgreen": {
           "symbol": "sLatiasLevelUpLearnset",
-          "source_line": 5606,
+          "source_line": 5611,
           "entry_count": 11,
           "ordered_token_sha256": "f9983a18db07f23408eb694829f132e2432a2aa0e80a15fcf73c3de9053d51c9"
         }
@@ -14210,13 +14210,13 @@
         },
         "firered": {
           "symbol": "sLatiosLevelUpLearnset",
-          "source_line": 5621,
+          "source_line": 5626,
           "entry_count": 11,
           "ordered_token_sha256": "c8a877aad7b318da46c183eaaabd5094cbebfcc0dd810d527d9fa9c53f5c492b"
         },
         "leafgreen": {
           "symbol": "sLatiosLevelUpLearnset",
-          "source_line": 5621,
+          "source_line": 5626,
           "entry_count": 11,
           "ordered_token_sha256": "c8a877aad7b318da46c183eaaabd5094cbebfcc0dd810d527d9fa9c53f5c492b"
         }
@@ -14247,13 +14247,13 @@
         },
         "firered": {
           "symbol": "sKyogreLevelUpLearnset",
-          "source_line": 5561,
+          "source_line": 5566,
           "entry_count": 11,
           "ordered_token_sha256": "03ffad2961bc2b83066d352793cefb72d3a1ec0c4da0055dc8b3125c3a50bf77"
         },
         "leafgreen": {
           "symbol": "sKyogreLevelUpLearnset",
-          "source_line": 5561,
+          "source_line": 5566,
           "entry_count": 11,
           "ordered_token_sha256": "03ffad2961bc2b83066d352793cefb72d3a1ec0c4da0055dc8b3125c3a50bf77"
         }
@@ -14284,13 +14284,13 @@
         },
         "firered": {
           "symbol": "sGroudonLevelUpLearnset",
-          "source_line": 5576,
+          "source_line": 5581,
           "entry_count": 11,
           "ordered_token_sha256": "f27bcb2ebef3ddd0427f70809ac96c98647b5984c6ed95b66d84bc66e5f2d645"
         },
         "leafgreen": {
           "symbol": "sGroudonLevelUpLearnset",
-          "source_line": 5576,
+          "source_line": 5581,
           "entry_count": 11,
           "ordered_token_sha256": "f27bcb2ebef3ddd0427f70809ac96c98647b5984c6ed95b66d84bc66e5f2d645"
         }
@@ -14321,13 +14321,13 @@
         },
         "firered": {
           "symbol": "sRayquazaLevelUpLearnset",
-          "source_line": 5591,
+          "source_line": 5596,
           "entry_count": 11,
           "ordered_token_sha256": "93ffa27eb024d0aa058516740e88d385fe1fb56f1678cb1c9473c475d696c20f"
         },
         "leafgreen": {
           "symbol": "sRayquazaLevelUpLearnset",
-          "source_line": 5591,
+          "source_line": 5596,
           "entry_count": 11,
           "ordered_token_sha256": "93ffa27eb024d0aa058516740e88d385fe1fb56f1678cb1c9473c475d696c20f"
         }
@@ -14358,13 +14358,13 @@
         },
         "firered": {
           "symbol": "sJirachiLevelUpLearnset",
-          "source_line": 5636,
+          "source_line": 5641,
           "entry_count": 12,
           "ordered_token_sha256": "d31aa93ba8cf5bbbc806cc8c11235017ec9b0d1dbd53f1153853de341e0b0ae7"
         },
         "leafgreen": {
           "symbol": "sJirachiLevelUpLearnset",
-          "source_line": 5636,
+          "source_line": 5641,
           "entry_count": 12,
           "ordered_token_sha256": "d31aa93ba8cf5bbbc806cc8c11235017ec9b0d1dbd53f1153853de341e0b0ae7"
         }
@@ -14395,13 +14395,13 @@
         },
         "firered": {
           "symbol": "sDeoxysLevelUpLearnset",
-          "source_line": 5652,
+          "source_line": 5658,
           "entry_count": 12,
           "ordered_token_sha256": "7eceaba102200721d3ae6cacb362455917dfa07be9bb4dedcac1369db6fa7f8f"
         },
         "leafgreen": {
           "symbol": "sDeoxysLevelUpLearnset",
-          "source_line": 5652,
+          "source_line": 5674,
           "entry_count": 14,
           "ordered_token_sha256": "33d4f55e72a85e6f2384c2120ccc67b6437ccd78e6ba7afb22bb704d447e7deb"
         }
@@ -16036,5 +16036,6 @@
     "cross-game visits",
     "original dumped retail ROM verification",
     "exact national dex mapping in original GameCube sources"
-  ]
+  ],
+  "source_location_note": "source_line refers to the line in exact original unprocessed source file, not a preprocessed temporary string; Deoxys has separate conditional declarations for FireRed vs LeafGreen"
 }
