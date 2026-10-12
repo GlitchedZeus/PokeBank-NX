@@ -68,4 +68,11 @@ done
 echo "L4 Python frozen original-source projection integrity audit"
 python3 tools/legality_l4_projection_audit.py
 python3 -m unittest discover -v -s tests -p 'test_legality_l4_projection_audit.py'
+python3 -m unittest discover -v -s tests -p 'test_legality_l4_l5_q07_join.py'
+# L5's independent Q07 document is NOT on the L4 branch. When coordinator
+# supplies its exact separately fetched copy, verify all 247 cross-lane
+# identities and the source-projection Git blob digest without merging.
+if [[ -n "${L4_L5_Q07_JSON:-}" ]]; then
+    python3 tools/legality_l4_l5_q07_join.py --l5-q07 "$L4_L5_Q07_JSON"
+fi
 echo "L4 all 12 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
