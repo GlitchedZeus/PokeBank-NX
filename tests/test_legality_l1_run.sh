@@ -4,6 +4,17 @@
 # replace the full host and focused RSE CI gates.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+application_sha="$(git rev-parse HEAD)"
+application_tree="$(git rev-parse 'HEAD^{tree}')"
+if [[ -n "${L1_EXPECT_SHA:-}" && "$application_sha" != "$L1_EXPECT_SHA" ]]; then
+  printf 'L1: REFUSING wrong HEAD: expected %s but found %s\n' "$L1_EXPECT_SHA" "$application_sha" >&2
+  exit 2
+fi
+if [[ -n "${L1_EXPECT_TREE:-}" && "$application_tree" != "$L1_EXPECT_TREE" ]]; then
+  printf 'L1: REFUSING wrong tree: expected %s but found %s\n' "$L1_EXPECT_TREE" "$application_tree" >&2
+  exit 2
+fi
+printf 'L1: APPLICATION_SHA=%s TREE_SHA=%s\n' "$application_sha" "$application_tree"
 compiler="${CXX:-g++}"
 build_dir="$(mktemp -d)"
 trap 'rm -rf "$build_dir"' EXIT
@@ -54,4 +65,4 @@ for profile in host sanitize; do
     fi
   done
 done
-echo "L1: all ${#suites[@]} native host and ASan/UBSan suites PASS at $(git rev-parse --short HEAD 2>/dev/null || printf unknown)"
+echo "L1: all ${#suites[@]} native host and ASan/UBSan suites PASS at $application_sha"

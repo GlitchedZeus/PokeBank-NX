@@ -12,7 +12,8 @@ namespace F=Gen3GameCubeFixedEncounterEvidence;
 enum class Game : uint8_t { Unknown, Colosseum, XD };
 enum class Status : uint8_t {
     UnknownOriginalGame, UnknownOriginalRow, UnknownOriginalScene,
-    UnknownOriginalNativeSnapshot, UnknownOriginalTrainerAndText,
+    UnknownOriginalNativeSnapshot, UnknownMalformedOriginalNativeIvs,
+    UnknownOriginalTrainerAndText,
     UnknownRecipientSave, ForeignSourceRowNotEvidence,
     CandidateOriginalIdentityContradicted, CandidateOriginalPidIvContradicted,
     BoundedOriginalRngUnresolved, ConditionalOriginalFixedHistory
@@ -58,6 +59,8 @@ inline Result evaluate(const Candidate& c) noexcept {
         return {Status::UnknownOriginalNativeSnapshot,row.kind,row.policy,gbaRecipient};
     if(!c.originalTrainerAndTextIndependentlyAttested)
         return {Status::UnknownOriginalTrainerAndText,row.kind,row.policy,gbaRecipient};
+    if(!Gen3PidIv::validStoredIVs(c.originalNative.ivs))
+        return {Status::UnknownMalformedOriginalNativeIvs,row.kind,row.policy,gbaRecipient};
     if(gbaRecipient && !c.originalRecipientSaveIndependentlyAttested)
         return {Status::UnknownRecipientSave,row.kind,row.policy,gbaRecipient};
     if(!F::identityMatches(row,c.originalNative))

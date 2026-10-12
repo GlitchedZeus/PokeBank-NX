@@ -109,7 +109,7 @@ int main(){
         other=c;other.originalNative.ball=3;
         assert(H::evaluate(other).status==S::CandidateOriginalIdentityContradicted);
         other=c;other.originalNative.ivs[0]=32u;
-        assert(H::evaluate(other).status==S::CandidateOriginalPidIvContradicted);
+        assert(H::evaluate(other).status==S::UnknownMalformedOriginalNativeIvs);
         other=c;other.originalNative.pid^=1u;
         assert(H::evaluate(other).status==S::CandidateOriginalPidIvContradicted);
     }

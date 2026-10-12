@@ -52,6 +52,9 @@ int main(){
         Legality::Gen3GameCubeOriginalFixedHistory::Status::UnknownRecipientSave)
         ==Kind::UnknownOriginalHistory);
     static_assert(U::map(
+        Legality::Gen3GameCubeOriginalFixedHistory::Status::UnknownMalformedOriginalNativeIvs)
+        ==Kind::UnknownOriginalHistory);
+    static_assert(U::map(
         Legality::Gen3GameCubeOriginalFixedHistory::Status::BoundedOriginalRngUnresolved)
         ==Kind::UnknownOriginalHistory);
     static_assert(U::map(
