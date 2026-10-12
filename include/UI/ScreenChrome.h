@@ -372,8 +372,7 @@ namespace UI {
     inline int g_navSurfaceX = 0;
     inline int g_navSurfaceW = 0;
     inline int g_navContentBottom = 0;
-    inline bool g_quickGamesDrawerSwipe = false;
-    inline uint64_t g_rightEdgeSwipeButton = 0;
+    // Finger-driven Quick Games belongs to the screen, not global nav gestures.
     inline bool g_productHeroDragActive = false;
 
 
@@ -469,36 +468,8 @@ namespace UI {
             }
         }
 
-        // Product Home exposes Y = Quick Games. When that exact action is present, a
-        // deliberate swipe in from the physical right edge maps to the same Y press.
-        // Keeping this semantic registration in the footer means overlays that replace
-        // the footer automatically disable the gesture instead of leaving it live behind them.
-        if (g_rightEdgeSwipeButton != 0 && g_navSurfaceW > 0 && touch.dragged()) {
-            const int dx = touch.x() - touch.startX();
-            const int dy = touch.y() - touch.startY();
-            const int ay = dy < 0 ? -dy : dy;
-            const int rightEdge = g_navSurfaceX + g_navSurfaceW;
-            constexpr int kEdgeCapture = 128;
-            constexpr int kOpenDistance = 120;
-            if (touch.startX() >= rightEdge - kEdgeCapture && touch.startX() < rightEdge &&
-                dx <= -kOpenDistance && -dx > ay * 2)
-                return g_rightEdgeSwipeButton;
-        }
-
-        // Quick Games is a right-side drawer. A deliberate push from its inner edge back toward
-        // the physical right edge closes it through the existing B path. This is intentionally
-        // narrower than normal grid swiping so moving left/right between covers remains easy.
-        if (g_quickGamesDrawerSwipe && g_navSurfaceW > 0 && touch.dragged()) {
-            const int dx = touch.x() - touch.startX();
-            const int dy = touch.y() - touch.startY();
-            const int ay = dy < 0 ? -dy : dy;
-            const int drawerLeft = g_navSurfaceX + g_navSurfaceW - 520;
-            constexpr int kDrawerEdgeCapture = 112;
-            constexpr int kCloseDistance = 120;
-            if (touch.startX() >= drawerLeft && touch.startX() < drawerLeft + kDrawerEdgeCapture &&
-                dx >= kCloseDistance && dx > ay * 2)
-                return HidNpadButton_B;
-        }
+        // QuickGamesDrawerMotion now owns physical edge pulls and closing.
+        // Never map these gestures to a synthetic Y/B release action.
 
         // Product Home is the only whole-content horizontal gesture. Resolve exactly one
         // previous/next game after the visual drag; all list/grid surfaces own their own touch.
@@ -596,8 +567,7 @@ namespace UI {
         g_navSurfaceX = x;
         g_navSurfaceW = w;
         g_navContentBottom = cy - TouchTargetMin / 2 - 8;
-        g_quickGamesDrawerSwipe = false;
-        g_rightEdgeSwipeButton = 0;
+        // Quick Games gesture registration is surface-local.
 
         // Product Home's selected-game hero card is a real touch carousel. Limit capture to that
         // exact card, keep the card physically attached to the finger while held, and resolve one
@@ -608,12 +578,7 @@ namespace UI {
             hint.find("Y: Quick Games") != std::string::npos;
         g_productHeroSwipeRegistered = productHomeHero;
 
-        // Quick Games owns true vertical pixel scrolling and direct tile taps in
-        // SaveSelectScreen. Shared chrome keeps only its deliberate inner-edge close gesture.
-        if (hint.find("D-pad/Stick: Choose") != std::string::npos &&
-            hint.find("X: Save / Source") != std::string::npos &&
-            hint.find("B: Close") != std::string::npos)
-            g_quickGamesDrawerSwipe = true;
+        // Quick Games owns direct horizontal dragging and vertical tile scrolling.
 
         // Full Games, Current Game and all long save/source lists publish direct hitboxes and own
         // any real overflow scrolling themselves. Shared chrome intentionally does not emulate
@@ -688,8 +653,7 @@ namespace UI {
             const uint64_t button = s.glyphW ? navButtonFor(s.btn) : 0;
             if (button) {
                 g_navHits.push_back({segX, hitY, hitW, TouchTargetMin, button});
-                if (s.btn == "Y" && s.label == "Quick Games")
-                    g_rightEdgeSwipeButton = button;
+                // The Y footer button stays active; edge drags do not emulate Y.
             } else if (s.glyphW) {
                 const NavGestureKind kind = navGestureFor(s.btn);
                 if (kind != NavGestureKind::None)

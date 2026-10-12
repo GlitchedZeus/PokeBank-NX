@@ -365,7 +365,7 @@ drawer_draw_start = source.index("if (overlay == Overlay::GamesDrawer)", source.
 drawer_draw_end = source.index("} else if (overlay == Overlay::ProfilePicker)", drawer_draw_start)
 drawer_draw = source[drawer_draw_start:drawer_draw_end]
 require("if (kDown & (HidNpadButton_B | HidNpadButton_Y))" not in drawer_update and
-        "// B is the only close/back control" in drawer_update and
+        "quickDrawerMotion.closeAnimated();" in drawer_update and
         "fb.drawFilledRect(x, 0, 2, h, Colors::FocusBorder);" not in drawer_draw,
         "Quick Games Y must be inert, B-only close, and the colored drawer edge stripe must stay removed")
 require('"X: Save / Source   •   B: Close"' not in drawer_draw,
@@ -666,3 +666,23 @@ require("installedForwarderNameMatches" in launcher and 'gameId == "platinum_nds
 require("Choose a validated save to assign to this profile." in source and
         "entry.gameId != game.gameId" in source,
         "Games X must offer unassigned saves for the selected game/profile")
+
+# Quick Games is a physical card with two-way live dragging. No tile
+# selection is possible until it has settled fully into position.
+motion = (ROOT / "include/UI/QuickGamesDrawerMotion.h").read_text(encoding="utf-8")
+require("initialOffset_ + dx" in motion and "offset_ < Width / 2 ? 0 : Width" in motion and
+        "void advance() noexcept" in motion and "bool arm(bool visible" in motion,
+        "Quick Games must support reversible finger dragging and endpoint settling")
+require("quickDrawerMotion.track(touch.x(), touch.y())" in source and
+        "quickDrawerMotion.release(touch.x(), touch.y())" in source and
+        "quickDrawerMotion.openAnimated();" in source and
+        "quickDrawerMotion.closeAnimated();" in drawer_update and
+        "if (!quickDrawerMotion.interactive()) return;" in drawer_update,
+        "Drawer controls must use live motion without tapping tiles during animation")
+require("fb.pushTranslation(static_cast<float>(offset), 0.0f);" in drawer_draw and
+        "fb.popTransform(); // Footer does not move with the card." in drawer_draw and
+        "if (quickDrawerMotion.interactive())" in drawer_draw,
+        "Drawer artwork must move together and disable partial-offset hitboxes")
+portrait = source[source.index("void drawTrainerPortrait("):source.index("// Approved product-home layout")]
+require("drawPanelSurface(" not in portrait and "fb.drawImageScaled(" in portrait,
+        "Trainer cutouts must reveal region artwork on all game cards")

@@ -284,8 +284,7 @@ require_all("include/UI/ScreenChrome.h",
             "constexpr int kProductHeroW = 720;",
             "constexpr int kProductHeroH = 548;",
             "constexpr int kCarouselCommitDistance = 72",
-            "g_quickGamesDrawerSwipe = true",
-            "Shared chrome keeps only its deliberate inner-edge close gesture.",
+            "Quick Games owns direct horizontal dragging and vertical tile scrolling.",
             "Shared chrome intentionally does not emulate",
             "content D-pad movement for them.")
 chrome = read("include/UI/ScreenChrome.h")
@@ -883,3 +882,26 @@ assert "const bool carriedSource = ClassicPackedMove::hidesGen4CarriedSource(" i
 assert "const bool empty = grabbed || carriedSource || !pokemon" in box_panel
 assert "!ClassicPackedMove::hidesGen4CarriedSource(" in box_panel
 assert "fb.drawFilledRoundedRect(button.x + 2, button.y + 2," not in carry_model
+
+# True direct manipulation replaces synthetic swipe-to-Y/B shortcuts.
+chrome = read("include/UI/ScreenChrome.h")
+assert "g_quickGamesDrawerSwipe" not in chrome
+assert "g_rightEdgeSwipeButton" not in chrome
+drawer = read("include/UI/QuickGamesDrawerMotion.h")
+for token in ("initialOffset_ + dx", "offset_ < Width / 2 ? 0 : Width",
+              "std::abs(dx) * 4 <= std::abs(dy) * 5", "resumeTarget_",
+              "void advance() noexcept"):
+    assert token in drawer, token
+main = read("src/UI/SaveSelectScreen.cpp")
+for token in ("quickDrawerMotion.arm(", "quickDrawerMotion.track(touch.x(), touch.y())",
+              "quickDrawerMotion.release(touch.x(), touch.y())",
+              "fb.pushTranslation(static_cast<float>(offset), 0.0f);",
+              "fb.popTransform(); // Footer does not move with the card.",
+              "quickDrawerMotion.closeAnimated();",
+              "if (quickDrawerMotion.interactive())"):
+    assert token in main, token
+portrait = main.split("void drawTrainerPortrait(", 1)[1].split(
+    "// Approved product-home layout", 1)[0]
+assert "drawPanelSurface(" not in portrait
+assert "SystemIcons::trainerPortrait(portrait.assetKey)" in portrait
+assert "fb.drawImageScaled(" in portrait
