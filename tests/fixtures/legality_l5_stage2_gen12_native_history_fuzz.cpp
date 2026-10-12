@@ -5,6 +5,9 @@
 #include <cassert>
 #include <cstdint>
 #include <iostream>
+#ifdef NDEBUG
+#error "L5 Stage2 checks require enabled assertions"
+#endif
 
 namespace T = Legality::Gen12TimeCapsule;
 namespace {
