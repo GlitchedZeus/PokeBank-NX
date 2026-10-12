@@ -6,6 +6,7 @@
 // illegality; incomplete original or native methods remain Unresolved.
 #include "Legality/Gen14CandidateMoveChronology.h"
 #include "Legality/Gen14CandidateMoveMachineEvidence.h"
+#include "Legality/Gen14CandidateMoveJointAcquisition.h"
 #include "Legality/Gen34PalParkSnapshotTransition.h"
 #include <array>
 #include <cstdint>
@@ -14,6 +15,7 @@
 namespace Legality::Gen14CandidateMovePalParkJointStage {
 namespace C=Gen14CandidateMoveChronology;
 namespace M=Gen14CandidateMoveMachineEvidence;
+namespace J=Gen14CandidateMoveJointAcquisition;
 namespace P=Gen34PalParkSnapshotTransition;
 using Game=C::Game;
 enum class Status : uint8_t { Unresolved, CandidateConsistent, CandidateContradicted, Unsupported };
@@ -30,11 +32,22 @@ struct LaterMethodWitness {
     // A method-specific *original retail* packet, not a species pool.
     uint32_t independentSourceRecord=0;
     bool independentlyVerified=false;
+    // This witness must attest the same native species at this stage.
+    // A source entry for a *different* Pokemon cannot certify this move,
+    // even when level, game, move and method happen to coincide.
+    uint16_t sourceNationalSpecies=0;
 };
 struct Input {
     C::Path path{};
     P::Input crossing{};
     bool sameOriginalPokemonAcrossBothWitnessesVerified=false;
+    // The generic slot replay does not prove ALL obligatory source
+    // level-up offers were processed. Require a separately witnessed
+    // single-cartridge departure chronology before certifying this
+    // joint source→Pal Park history. Trade/Move Deleter routes need
+    // their own source-ordered stage evidence and remain Unknown here.
+    bool sourceOrderedGbaStageVerified=false;
+    bool allSourceGbaLevelUpDecisionsVerified=false;
     std::array<MachineWitness,32> gbaMachines{};
     uint8_t gbaMachineCount=0;
     std::array<LaterMethodWitness,32> laterMethods{};
@@ -131,6 +144,12 @@ constexpr Result evaluate(const Input& in) noexcept {
             for(uint8_t j=0;j<in.gbaMachineCount;++j) {
                 if(in.gbaMachines[j].stepIndex!=i)continue;
                 ++matched;usedGba[j]=true;
+                // A numbered-machine source row must refer to this
+                // *same species* at the pre-Pal-Park teaching stage.
+                // No source-family compatibility row may certify another
+                // Pokemon merely because item, move and game all match.
+                if(in.gbaMachines[j].exactItem.nationalSpecies!=in.path.species)
+                    return out; // Unproven step, not global invalidity.
                 const auto status=M::classifyChronologyStep(
                     in.gbaMachines[j].exactItem,step);
                 if(status==M::Status::CandidateContradicted) {
@@ -160,6 +179,7 @@ constexpr Result evaluate(const Input& in) noexcept {
                     step.methodSource==Game::Unknown:
                     step.methodSource==step.game;
                 if(!witness.independentlyVerified || !witness.independentSourceRecord ||
+                   witness.sourceNationalSpecies!=in.path.species ||
                    witness.sourceGame!=step.game || witness.method!=step.method ||
                    witness.move!=step.move || witness.level!=step.level ||
                    !step.evidenceVerified || !sourceBound)return out;
@@ -170,6 +190,25 @@ constexpr Result evaluate(const Input& in) noexcept {
     }
     for(uint8_t j=0;j<in.gbaMachineCount;++j)if(!usedGba[j])return out;
     for(uint8_t j=0;j<in.laterMethodCount;++j)if(!usedNative[j])return out;
+    // The outbound GBA four slots can match the arrival slots even if
+    // the proposed source chronology skipped a compulsory level-up
+    // learning decision. Independently replay its exact source order,
+    // joined to the SAME already-verified numbered-machine receipts.
+    J::Input ordered{};
+    ordered.path=prefix;
+    ordered.uninterruptedSameSpeciesGameStageVerified=
+        in.sourceOrderedGbaStageVerified;
+    ordered.allOfferedLevelUpDecisionsRecorded=
+        in.allSourceGbaLevelUpDecisionsVerified;
+    ordered.machineCount=in.gbaMachineCount;
+    for(uint8_t i=0;i<in.gbaMachineCount;++i)
+        ordered.machines[i]={in.gbaMachines[i].stepIndex,
+                             in.gbaMachines[i].exactItem};
+    const auto sourceHistory=J::evaluate(ordered);
+    if(sourceHistory.status==C::Status::CandidateContradicted) {
+        out.status=Status::CandidateContradicted;return out;
+    }
+    if(sourceHistory.status!=C::Status::CandidateConsistent)return out;
     const auto after=C::evaluate(in.path);
     out.history=after.status;
     if(after.status==C::Status::CandidateContradicted) {

@@ -11,6 +11,8 @@ constexpr std::array<G,5> nds{{G::Diamond,G::Pearl,G::Platinum,G::HeartGold,G::S
 constexpr J::Input basic(G source,G dest) {
     J::Input a{};
     a.sameOriginalPokemonAcrossBothWitnessesVerified=true;
+    a.sourceOrderedGbaStageVerified=true;
+    a.allSourceGbaLevelUpDecisionsVerified=true;
     auto& p=a.path;
     p.candidateId=2001;p.species=1;p.origin=source;
     p.initialLevel=20;p.observedLevel=20;
@@ -34,6 +36,45 @@ constexpr J::Input basic(G source,G dest) {
 static_assert(J::evaluate(basic(G::Ruby,G::Diamond)).status==S::CandidateConsistent);
 static_assert(J::evaluate(basic(G::LeafGreen,G::SoulSilver)).status==S::CandidateConsistent);
 static_assert(J::evaluate(basic(G::Emerald,G::Platinum)).verifiedGbaMachines==1);
+
+// A matching GBA/Gen IV snapshot is not proof of complete GBA level-up
+// decisions. Absent source-order packet must remain Unknown.
+static_assert([]{auto a=basic(G::Ruby,G::Diamond);
+    a.sourceOrderedGbaStageVerified=false;
+    return J::evaluate(a).status==S::Unresolved;}());
+static_assert([]{auto a=basic(G::Ruby,G::Diamond);
+    a.allSourceGbaLevelUpDecisionsVerified=false;
+    return J::evaluate(a).status==S::Unresolved;}());
+constexpr J::Input omittedGbaOffersBeforePalPark() {
+    auto a=basic(G::Ruby,G::Diamond);
+    a.path.initialLevel=5;
+    a.path.observedLevel=10;
+    a.path.stepCount=3;
+    a.path.observedMoves={33,45,92,237};
+    a.path.steps[0]={G::Ruby,7,A::Learn,T::TM,92,2,true,G::Ruby};
+    a.path.steps[1]={G::Ruby,10,A::Learn,T::TM,237,3,true,G::Ruby};
+    a.path.steps[2]={G::Diamond,10,A::PalPark,T::LevelUp,0,0,true,G::Unknown};
+    a.crossing.outboundGbaMoves={33,45,92,237};
+    a.crossing.immediateNdsMoves=a.crossing.outboundGbaMoves;
+    a.gbaMachineCount=2;
+    a.gbaMachines[0]={0,{G::Ruby,1,M::Machine::TM,6,92,true,true}};
+    a.gbaMachines[1]={1,{G::Ruby,1,M::Machine::TM,10,237,true,true}};
+    return a;
+}
+static_assert(C::evaluate(omittedGbaOffersBeforePalPark().path).status==
+              C::Status::CandidateConsistent);
+static_assert(J::evaluate(omittedGbaOffersBeforePalPark()).status==
+              S::CandidateContradicted);
+
+
+// A transfer path must not borrow Bulbasaur's numbered machine witness
+// to prove source teaching for a different species at the same game/level.
+static_assert([]{auto a=basic(G::Ruby,G::Diamond);
+    a.path.species=4;
+    a.crossing.species=4;
+    return J::evaluate(a).status==S::Unresolved;
+}());
+
 static_assert([]{auto a=basic(G::Ruby,G::Diamond);a.sameOriginalPokemonAcrossBothWitnessesVerified=false;
     return J::evaluate(a).status==S::Unresolved;}());
 static_assert([]{auto a=basic(G::Ruby,G::Diamond);a.crossing.independentlyVerifiedImmediateArrival=false;
@@ -73,7 +114,7 @@ constexpr J::Input withNativeHm(bool nativeAttested) {
     a.path.observedMoves={33,45,92,15};
     if(nativeAttested){
         a.laterMethodCount=1;
-        a.laterMethods[0]={2,G::Platinum,T::HM,15,20,71,true};
+        a.laterMethods[0]={2,G::Platinum,T::HM,15,20,71,true,1};
     }
     return a;
 }
@@ -98,7 +139,7 @@ static_assert([]{auto a=withNativeHm(true);
     a.path.steps[3]={G::Platinum,20,A::DeleteMove,T::LevelUp,0,3,true,G::Unknown};
     a.path.observedMoves={33,45,92,0};
     a.laterMethodCount=2;
-    a.laterMethods[1]={3,G::Platinum,T::LevelUp,0,20,72,true};
+    a.laterMethods[1]={3,G::Platinum,T::LevelUp,0,20,72,true,1};
     const auto result=J::evaluate(a);
     return result.status==S::CandidateConsistent && result.verifiedNativeMethods==2;
 }());
@@ -107,6 +148,12 @@ static_assert([]{auto a=withNativeHm(true);a.laterMethods[0].independentlyVerifi
 static_assert([]{auto a=withNativeHm(true);a.laterMethods[0].independentSourceRecord=0;
     return J::evaluate(a).status==S::Unresolved;}());
 static_assert([]{auto a=withNativeHm(true);a.laterMethods[0].sourceGame=G::HeartGold;
+    return J::evaluate(a).status==S::Unresolved;}());
+static_assert([]{auto a=withNativeHm(true);
+    a.laterMethods[0].sourceNationalSpecies=4; // source packet for another species
+    return J::evaluate(a).status==S::Unresolved;}());
+static_assert([]{auto a=withNativeHm(true);
+    a.laterMethods[0].sourceNationalSpecies=0; // missing original species
     return J::evaluate(a).status==S::Unresolved;}());
 constexpr J::Input beforeTransferHmDeleted() {
     auto a=basic(G::Ruby,G::HeartGold);
@@ -118,7 +165,9 @@ constexpr J::Input beforeTransferHmDeleted() {
     a.gbaMachines[1]={1,{G::Ruby,1,M::Machine::HM,1,15,true,true}};
     return a;
 }
-static_assert(J::evaluate(beforeTransferHmDeleted()).status==S::CandidateConsistent);
+// The old-HM deletion is a potentially legitimate route. It needs a
+// source-ordered Move Deleter-service packet, not a fabricated exclusion.
+static_assert(J::evaluate(beforeTransferHmDeleted()).status==S::Unresolved);
 static_assert(J::evaluate(beforeTransferHmDeleted()).verifiedGbaMachines==2);
 static_assert([]{auto a=beforeTransferHmDeleted();a.path.steps[2].evidenceVerified=false;
     return J::evaluate(a).status==S::Unresolved;}());
@@ -149,7 +198,9 @@ constexpr J::Input changedGbaGame(){
     a.gbaMachines[0]={1,{G::Emerald,1,M::Machine::TM,6,92,true,true}};
     return a;
 }
-static_assert(J::evaluate(changedGbaGame()).status==S::CandidateConsistent);
+// Trade to Emerald before Pal Park may be entirely legitimate, but this
+// single-cartridge ordered-level-up helper cannot certify both visits.
+static_assert(J::evaluate(changedGbaGame()).status==S::Unresolved);
 static_assert([]{auto a=changedGbaGame();a.crossing.sourceGame="ruby_gba";
     return J::evaluate(a).status==S::Unresolved;}());
 int main(){
