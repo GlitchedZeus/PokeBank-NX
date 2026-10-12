@@ -1891,17 +1891,20 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     auto* staged = editor(screen);
     if (!staged) return;
     std::string error;
-    const bool occupied = staged->boxedPokemon(static_cast<std::size_t>(state.box),
-                                                static_cast<std::size_t>(state.slot), error).has_value();
+    const auto pokemon = staged->boxedPokemon(static_cast<std::size_t>(state.box),
+                                               static_cast<std::size_t>(state.slot), error);
+    const bool occupied = pokemon.has_value();
     const auto actions = Shared::actionsForSlot(
         occupied, {true, true, true}, !staged->pendingChanges().empty());
     screen.drawGSCOverlay(fb);
     // One narrow, greyed-out menu for touch and A. Underlying box hitboxes
     // are replaced by enabled native command IDs only.
     const auto model = PokeBank::UIModel::NarrowPokemonMenu::classic(actions, occupied);
+    const std::string title = pokemon
+        ? std::string(Names::getSpeciesName(pokemon->species)) : "Empty Slot";
     drawNarrowPokemonActions(fb, screen.touchButtons, model, state.actionRow,
-                            occupied ? "Pokemon Actions" : "Empty Slot",
-                            "GEN III / READ-ONLY SOURCE", 31600);
+                            title,
+                            screen.legacyProviderLabel() + " GBA SOURCE / READ ONLY", 31600);
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
 }
 

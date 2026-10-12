@@ -2179,7 +2179,8 @@ PokeBank::UIModel::NarrowPokemonMenu::Model narrowGen4Actions(
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     std::string error;
-    const bool occupied = selectedRecord(screen, state, error).has_value();
+    const auto pokemon = selectedRecord(screen, state, error);
+    const bool occupied = pokemon.has_value();
     auto* staged = editor(screen);
     const auto actions = gen4Actions(
         state, occupied, staged != nullptr, staged && staged->hasChanges());
@@ -2187,9 +2188,11 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     // The old narrow popup is a presentation-only projection: touch hitboxes
     // carry exactly the enabled staged Gen IV native index used by A.
     const auto model = narrowGen4Actions(actions, occupied);
+    const std::string title = pokemon
+        ? std::string(Names::getSpeciesName(pokemon->species())) : "Empty Slot";
     drawNarrowPokemonActions(fb, screen.touchButtons, model, state.actionRow,
-                            occupied ? "Pokemon Actions" : "Empty Slot",
-                            "GEN IV / READ-ONLY SOURCE", 41600);
+                            title,
+                            screen.legacyProviderLabel() + " NDS SOURCE / READ ONLY", 41600);
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
 }
 

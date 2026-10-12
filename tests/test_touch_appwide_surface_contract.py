@@ -814,3 +814,18 @@ assert "if (!partyEntry && !boxEntry && !storageEntry) return false;" in gen4_en
 assert "if (!inBoxes && !storageEntrySurface(screen)) return false;" in gen3_entry
 
 print("all-generation Boxes/Storage native menu entry contract: PASS")
+
+# Screenshot parity: all four live narrow action drawers display source
+# provider/format above the selected species, not a generic menu heading.
+for rel, family in (
+    ("src/UI/ClassicReleaseActionFix.inc", " GB SOURCE / READ ONLY"),
+    ("src/UI/Gen2SharedSurfaceParity.inc", " GBC SOURCE / READ ONLY"),
+    ("src/UI/Gen3SharedPokemonSurface.inc", " GBA SOURCE / READ ONLY"),
+    ("src/UI/Gen4SharedPokemonSurface.inc", " NDS SOURCE / READ ONLY"),
+):
+    src = read(rel)
+    assert "screen.legacyProviderLabel()" in src, rel
+    assert family in src, f"{rel}: missing real source caption"
+    assert "Names::getSpeciesName(pokemon->species" in src, rel
+    assert '"Pokemon Actions" : "Empty Slot"' not in src, rel
+assert " GBC SOURCE / READ ONLY" in read("src/UI/ClassicReleaseActionFix.inc")
