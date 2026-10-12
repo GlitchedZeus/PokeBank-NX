@@ -39,6 +39,10 @@ suites=(
   test_legality_l1_gen1_original_source
   test_legality_l1_gen1_wild_fishing
   test_legality_l1_gen2_original_source
+  test_legality_l1_gen2_fishing
+  test_legality_l1_gen2_tree_contest
+  test_legality_l1_gen2_swarms
+  test_legality_l1_gen2_roamer_routes
   test_legality_l1_gen4_static_indexed
   test_legality_l1_gen4_sinnoh_special
   test_legality_l1_original_candidate_universe
