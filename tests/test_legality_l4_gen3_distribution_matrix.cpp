@@ -206,6 +206,19 @@ int main() {
                 (mask==31u));
          assert(!result.globallyInvalid);
      }
+     // The source identity and the claimed GC transfer version must agree.
+     auto wrongSource=a;
+     wrongSource.originalSource=W::OriginalSource::XD;
+     assert(W::evaluateOriginalHistory(x,wrongSource,h).status==
+            W::JoinedStatus::UnknownRoute);
+     wrongSource=a;wrongSource.family=W::Family::Wondercard;
+     assert(W::evaluateOriginalHistory(x,wrongSource,h).status==
+            W::JoinedStatus::UnknownRoute);
+     // A source's original GC provenance is not a direct GBA gift route.
+     auto local=h;local.route=W::TransferRoute::GbaLocal;
+     local.nativeOriginVersionPreservedIndependentlyVerified=true;
+     assert(W::evaluateOriginalHistory(x,a,local).status==
+            W::JoinedStatus::UnknownRoute);
      h.gameCubeOriginalIndependentlyVerified=false;
      assert(W::evaluateOriginalHistory(x,a,h).status==
             W::JoinedStatus::UnknownRoute);

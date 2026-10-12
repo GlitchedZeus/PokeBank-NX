@@ -241,9 +241,17 @@ constexpr JoinedResult evaluateOriginalHistory(
     if(!history.originalToNativeRecordIndependentlyLinked ||
        !history.receivingGbaVersionIndependentlyVerified ||
        !gbaVersion(history.receivingGbaVersion))return out;
+    // GC transfer sources need an independently identified GC family
+    // and the very same original GC version as the source hypothesis.
+    // A standalone GBA Wondercard or service-only Berry Fix must not be
+    // relabeled a GameCube gift using plausible native OT/move bytes.
     if(history.route==TransferRoute::GameCubeToGba &&
        (!history.gameCubeOriginalIndependentlyVerified ||
         !originalGameCube(history.originalGameCubeVersion) ||
+        source.originalSource!=history.originalGameCubeVersion ||
+        (source.family!=Family::Wishmaker &&
+         source.family!=Family::Channel &&
+         source.family!=Family::GameCubeGift) ||
         !history.gameCubeToGbaDeliveryIndependentlyVerified))return out;
     if(history.route!=TransferRoute::GameCubeToGba &&
        history.route!=TransferRoute::GbaLocal)return out;
@@ -251,6 +259,7 @@ constexpr JoinedResult evaluateOriginalHistory(
     // documented transfer to a GBA game. Never equate that origin marker
     // with the recipient edition in the GC route.
     if(history.route==TransferRoute::GbaLocal) {
+        if(originalGameCube(source.originalSource))return out;
         if(!history.nativeOriginVersionPreservedIndependentlyVerified ||
            native.originGame!=history.receivingGbaVersion)return out;
     }

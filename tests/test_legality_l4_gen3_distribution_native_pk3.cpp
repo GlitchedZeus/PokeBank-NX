@@ -91,6 +91,7 @@ int main() {
         transfer.originalEventMovesHistoryIndependentlyVerified=true;
         auto gcCandidate=c;
         gcCandidate.originalSource=W::OriginalSource::Colosseum;
+        gcCandidate.family=W::Family::Channel;
         gcCandidate.individualHistoricalReceiptKnown=true; // simulated
         auto historical=W::evaluateOriginalHistory(n,gcCandidate,transfer);
         assert(historical.status==W::JoinedStatus::ConditionalCandidate);
