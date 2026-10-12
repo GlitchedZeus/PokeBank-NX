@@ -93,6 +93,7 @@ struct Path {
     uint32_t candidateId=0;
     uint16_t species=0;
     Game origin=Game::Unknown;
+    Game observedGame=Game::Unknown; // exact observed cartridge, not inferred
     uint8_t initialLevel=0,observedLevel=0;
     std::array<uint16_t,4> initialMoves{}, observedMoves{};
     bool originalSnapshotVerified=false;
@@ -118,7 +119,8 @@ constexpr Result evaluate(const Path& p) noexcept {
     Result out{};
     if(!p.candidateId || !p.originalSnapshotVerified ||
        !p.samePokemonAndSpeciesVerified || !p.fullVisibleHistoryVerified ||
-       !supported(p.origin,p.species) || !p.initialLevel ||
+       !supported(p.origin,p.species) ||
+       !supported(p.observedGame,p.species) || !p.initialLevel ||
        p.observedLevel<p.initialLevel || p.observedLevel>100 ||
        p.stepCount>p.steps.size() ||
        !structural(p.initialMoves,generation(p.origin)==1?165:251) ||
@@ -209,6 +211,7 @@ constexpr Result evaluate(const Path& p) noexcept {
         }
         level=s.level;
     }
+    if(current!=p.observedGame)return out;
     const auto last=offerAt(current,p.species,cursor);
     if(last.level && last.level<=p.observedLevel)
         {out.status=Status::CandidateContradicted;return out;}
