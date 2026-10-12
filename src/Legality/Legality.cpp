@@ -1663,7 +1663,12 @@ namespace Legality {
         }
 
         // ---- L1/L2: ability slot valid + ability id legal for the species/form ----
-        if (!sourceProfile || exactGeneration >= 3) {
+        // PK1/PK2 have no native ability field. Their read-only wrappers
+        // expose neutral ability id 0, which must not be treated as illegal
+        // merely because the exact source save is unavailable or mislabeled.
+        // Format applicability is independent of historical source identity.
+        if (nativeFormatGeneration != 1 && nativeFormatGeneration != 2 &&
+            (!sourceProfile || exactGeneration >= 3)) {
             const uint8_t an = pk.abilityNumber();
             if (an != 1 && an != 2 && an != 4)
                 add(r, Severity::Warning, "Unusual ability slot (" + std::to_string(an) + ")");
@@ -2624,7 +2629,11 @@ namespace Legality {
         }
 
         // ---- L2: gender vs the species gender ratio (255 genderless / 254 female-only / 0 male-only) ----
-        if (!sourceProfile || exactGeneration >= 2) {
+        // PK1 stores no gender. The neutral wrapper value 2 is absence of a
+        // native field, not evidence that a gendered species is genderless.
+        // PK2's DV-derived gender remains applicable without source context.
+        if (nativeFormatGeneration != 1 &&
+            (!sourceProfile || exactGeneration >= 2)) {
             const uint8_t g = pk.gender();
             if (g > 2)
                 add(r, Severity::Invalid, "Gender value out of range (" + std::to_string(g) + ")");
