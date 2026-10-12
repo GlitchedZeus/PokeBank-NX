@@ -71,6 +71,9 @@ suites=(
   test_legality_l1_stage5_family_adapter
   test_legality_l1_stage6_cross_origin
   test_legality_l1_stage6_source_adapter
+  test_legality_l1_stage7_native_gate
+  test_legality_l1_stage7_parser_linked
+  test_legality_l1_stage7_custody_authority
 )
 profiles=(host sanitize)
 if [[ -n "${L1_PROFILE:-}" ]]; then
@@ -92,6 +95,9 @@ for profile in "${profiles[@]}"; do
     fi
     if [[ "$suite" == test_legality_l1_stage1_production_crypto ]]; then
       sources+=(src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp)
+    fi
+    if [[ "$suite" == test_legality_l1_stage7_parser_linked ]]; then
+      sources+=("${native[@]}" src/Encryption/Encryption3FRLG.cpp)
     fi
     target="$build_dir/$suite-$profile"
     echo "L1: compile $suite [$profile]"
