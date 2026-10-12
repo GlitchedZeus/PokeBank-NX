@@ -65,6 +65,7 @@ suites=(
   test_legality_l1_stage3_route_ledger
   test_legality_l1_stage3_joint_wild
   test_legality_l1_stage3_pidiv_same_capture
+  test_legality_l1_stage4_gc_transfer_history
 )
 profiles=(host sanitize)
 if [[ -n "${L1_PROFILE:-}" ]]; then
