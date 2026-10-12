@@ -163,7 +163,8 @@ constexpr Result evaluate(const Native& n,const OriginalCandidate& c) noexcept {
     out.nativeAvailable=n.available;
     if(!n.available)return out;
     if(!c.originalTemplateIndependentlyAttested || !c.originalArchiveIndependentlyAuthenticated ||
-       !c.originalPayloadDigestVerified || !c.exactRouteIndependentlyVerified ||
+       !c.originalPayloadDigestVerified || !c.historicalReleaseIndependentlyCorroborated ||
+       !c.exactRouteIndependentlyVerified ||
        c.originalSource==OriginalSource::Unknown ||
        c.family==Family::Unknown || c.mechanism==Mechanism::Unknown ||
        !compatible(c.family,c.mechanism) ||
@@ -176,8 +177,10 @@ constexpr Result evaluate(const Native& n,const OriginalCandidate& c) noexcept {
         compare(c.speciesInternal,n.speciesInternal),compare(c.pid,n.pid),
         compare(c.ids,n.ids),compare(c.trainerGender,n.trainerGender),
         c.languageConversionPossible ? Status::UnknownHistory : compare(c.language,n.language),
-        c.nicknameOrOTReencodingPossible ? Status::UnknownHistory : compare(c.nickname,n.nickname),
-        c.nicknameOrOTReencodingPossible ? Status::UnknownHistory : compare(c.otName,n.otName),
+        (c.nicknameOrOTReencodingPossible || c.languageConversionPossible)
+            ? Status::UnknownHistory : compare(c.nickname,n.nickname),
+        (c.nicknameOrOTReencodingPossible || c.languageConversionPossible)
+            ? Status::UnknownHistory : compare(c.otName,n.otName),
         compare(c.originGame,n.originGame),compare(c.metLevel,n.metLevel),
         compare(c.metLocation,n.metLocation),compare(c.ball,n.ball),
         compare(c.moves,n.moves),compare(c.heldItem,n.heldItem),

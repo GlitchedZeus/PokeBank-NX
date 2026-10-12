@@ -141,6 +141,39 @@ int main() {
         auto x=n;x.otName[0]^=std::byte{1};x.nickname[0]^=std::byte{1};x.language^=1;
         auto r=W::evaluate(x,a);
         assert(r.mismatchMask==0 && r.unknownMask==((1u<<4)|(1u<<5)|(1u<<6)));}
+    // A purported distribution with no corroborated historical release
+    // cannot exclude a Pokémon based on claimed archived source fields.
+    // Individual receipt remains independently Unknown, not authenticated.
+    {auto a=c;a.historicalReleaseIndependentlyCorroborated=false;
+        auto tampered=n;tampered.ids.tid^=1;
+        auto r=W::evaluate(tampered,a);
+        assert(r.source==SS::UnknownRelease);
+        assert(r.mismatchMask==0 && r.conditionalMatchMask==0);
+        assert(r.unknownMask==65535u && !r.globallyInvalid);}
+    // A known language conversion means OT and nickname game-font bytes may
+    // be re-encoded too. Their apparent byte mismatch must not cause a
+    // source-specific exclusion without separately verified encoding history.
+    {auto a=c;a.languageConversionPossible=true;
+        auto changed=n;
+        changed.language^=1;
+        changed.nickname[2]^=std::byte{0x80};
+        changed.otName[2]^=std::byte{0x80};
+        const auto r=W::evaluate(changed,a);
+        const uint32_t rawText=(1u<<4)|(1u<<5)|(1u<<6);
+        assert((r.unknownMask&rawText)==rawText);
+        assert((r.mismatchMask&rawText)==0);
+        assert(!r.authenticated && !r.globallyInvalid);}
+    // Distinct native OT and event-move contradictions exclude ONLY the
+    // independently attested distribution candidate.
+    {auto a=c;auto changed=n;
+        changed.otName[0]^=std::byte{1};changed.moves[0]^=1;
+        auto r=W::evaluate(changed,a);
+        assert(r.mismatchMask==((1u<<6)|(1u<<11)));
+        a.moves.history=H::Unknown;
+        a.nicknameOrOTReencodingPossible=true;
+        r=W::evaluate(changed,a);
+        assert(r.mismatchMask==0);
+        assert((r.unknownMask&((1u<<6)|(1u<<11)))==((1u<<6)|(1u<<11)));}
     // An unavailable native record cannot establish field contradictions.
     {auto x=n;x.available=false;auto r=W::evaluate(x,c);
         assert(!r.nativeAvailable && r.mismatchMask==0 && !r.globallyInvalid);}
