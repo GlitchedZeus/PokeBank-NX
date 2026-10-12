@@ -26,7 +26,7 @@ FILES={
  'L2': {'Gen4DiamondPearlEggIVStage.h':'6b1d2a7bc2299fe7780deba849caf033fa2ff0f5'},
  'L3': {'Gen14CandidateMoveGbaStarterTables.h':'c60d5594d92bae65b8e4d1f46e2dbede27227a40',
         'Gen14CandidateMoveGbaNinjaTables.h':'ed5510aedd2440bfd7d6bd6e29650d5d2ebbe4dd'},
- 'L4': {'Gen4EventClockReceiptEvidence.h':'1d9bef10b28ca58d54f0539eb74712be37d4ab71'},
+ 'L4': {'Gen4EventClockReceiptEvidence.h':'69506bbc1b75355991a591415c64312311949e00'},
 }
 FIXTURES={
  'L1': ('legality_l5_stage4_l1_tree_adversarial.cpp',635893),
