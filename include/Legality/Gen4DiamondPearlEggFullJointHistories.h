@@ -7,6 +7,7 @@
 #include "Legality/Gen4DiamondPearlEggAlternativeHistories.h"
 #include "Legality/Gen4DiamondPearlEggMoveStage.h"
 #include "Legality/Gen34OriginalSameRouteProof.h"
+#include "Legality/Gen34OriginalParentLineage.h"
 #include <array>
 #include <cstdint>
 namespace Legality::Gen4DiamondPearlEggFullJointHistories {
@@ -28,6 +29,7 @@ struct Input {
     uint64_t originalEggSnapshotId=0;
     bool originalEggSnapshotIndependentlyAttested=false;
     std::array<Gen34OriginalSameRouteProof::Input,8> sameRouteProofs{};
+    std::array<Gen34OriginalParentLineage::Input,8> originalParentLineages{};
 };
 struct Result {
     Status status=Status::NoCandidates;
@@ -35,6 +37,7 @@ struct Result {
     std::array<Core::Status,8> originalChecks{};
     std::array<Move::Status,8> moveChecks{};
     std::array<Gen34OriginalSameRouteProof::Status,8> sameRouteChecks{};
+    std::array<Gen34OriginalParentLineage::Status,8> lineageChecks{};
 };
 constexpr Result evaluate(const Input& in) noexcept {
     Result out{};
@@ -137,6 +140,25 @@ constexpr Result evaluate(const Input& in) noexcept {
                 witness.physicalSlots[1].snapshotIdentity,true,
                 c.pid.parents[0].heldItem,c.pid.parents[1].heldItem});
             if(out.sameRouteChecks[i]!=Route::Status::ConditionallySameRoute){
+                ++out.unverified;continue;
+            }
+        }
+        // Gen III-origin parents may legally reach a DP daycare after
+        // independently documented Pal Park migration. A crossed lineage
+        // is unverified local provenance, NOT whole-egg Invalid.
+        if(in.originalParentLineages[i].supplied) {
+            namespace Lineage=Gen34OriginalParentLineage;
+            if(!c.pid.originalParentSnapshotsVerified ||
+               !m.physicalSlots[0].originalSnapshotIndependentlyAttested ||
+               !m.physicalSlots[1].originalSnapshotIndependentlyAttested){
+                ++out.unverified;continue;
+            }
+            out.lineageChecks[i]=Lineage::evaluate(in.originalParentLineages[i],{
+                Gen34OriginalSameRouteProof::gameFor(egg.game),
+                {m.physicalSlots[0].snapshotIdentity,
+                 m.physicalSlots[1].snapshotIdentity},
+                {c.pid.parents[0].species,c.pid.parents[1].species}}).status;
+            if(out.lineageChecks[i]!=Lineage::Status::ConditionallyReplayed){
                 ++out.unverified;continue;
             }
         }
