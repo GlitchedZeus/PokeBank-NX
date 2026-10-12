@@ -130,6 +130,34 @@ constexpr B::Input hmRemoved(){
     return a;
 }
 static_assert(B::evaluate<OriginalGba,Platinum>(hmRemoved()).status==S::Consistent);
+// Regression: a verified Move Deleter cannot delete an already-empty slot.
+// Previous replay incorrectly counted this as a valid deletion.
+constexpr B::Input emptyDeletion(){
+    auto a=hmRemoved();a.count=1;
+    a.steps[0]={G::Platinum,20,A::DeleteMove,0,3,false,0,0,true,true};
+    return a;
+}
+static_assert(B::evaluate<OriginalGba,Platinum>(emptyDeletion()).status==S::Unresolved);
+// Regression: post-transfer leveling in Diamond/HGSS is not source-complete.
+// A real deletion or subsequent game visit cannot erase an unknown offer.
+constexpr B::Input unmodeledLevelDeletion(){
+    auto a=base(H::Game::Ruby,G::Diamond);a.observedLevel=21;a.count=1;
+    a.steps[0]={G::Diamond,21,A::DeleteMove,33,0,false,0,0,true,true};
+    a.observedMoves={45,73,22,0};return a;
+}
+static_assert(B::evaluate<OriginalGba,Platinum>(unmodeledLevelDeletion()).status==S::Unresolved);
+constexpr B::Input unmodeledReturnVisit(){
+    auto a=base(H::Game::Ruby,G::Platinum);
+    a.observedLevel=21;a.count=2;
+    a.steps[0]={G::Diamond,20,A::VisitGame,0,0,false,0,0,true,false};
+    a.steps[1]={G::Platinum,21,A::VisitGame,0,0,false,0,0,true,false};
+    return a;
+}
+static_assert(B::evaluate<OriginalGba,Platinum>(unmodeledReturnVisit()).status==S::Unresolved);
+// Same-level visits without leveling remain informationally consistent.
+static_assert([]{auto a=unmodeledReturnVisit();a.observedLevel=20;
+    a.steps[1].level=20;
+    return B::evaluate<OriginalGba,Platinum>(a).status==S::Consistent;}());
 static_assert([]{auto a=hmRemoved();a.departure.steps[0].methodReceiptVerified=false;
     return B::evaluate<OriginalGba,Platinum>(a).status==S::Unresolved;}());
 static_assert([]{auto a=base(H::Game::Ruby,G::Diamond);a.observedLevel=21;
@@ -171,6 +199,9 @@ int main() {
         else {assert(result.status==S::Contradicted);++contradicted;}
         ++mutations;
     }
+    assert((B::evaluate<OriginalGba,Platinum>(emptyDeletion()).status==S::Unresolved));
+    assert((B::evaluate<OriginalGba,Platinum>(unmodeledLevelDeletion()).status==S::Unresolved));
+    assert((B::evaluate<OriginalGba,Platinum>(unmodeledReturnVisit()).status==S::Unresolved));
     assert(accepted==26&&mutations==1868&&contradicted==1867);
     std::cout<<"L3 Stage4 Pal Park 25 routes, 1868 four-slot machine mutations: PASS\n";
 }
