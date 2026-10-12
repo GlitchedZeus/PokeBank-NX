@@ -229,8 +229,8 @@ for rel, forbidden in (
 
 print("touch Pokémon editor direct-row/action contract: PASS")
 
-// Release requires an explicit Y in every generation. Choosing the Release
-// row with A only OPENS confirmation: A inside that modal must be inert.
+# Release requires an explicit Y in every generation. Choosing the Release
+# row with A only OPENS confirmation: A inside that modal must be inert.
 const_release = read("src/UI/ClassicReleaseActionFix.inc")
 for hit in ("touched == 399) down |= HidNpadButton_Y", "touched == 499) down |= HidNpadButton_Y",
             "if (down & HidNpadButton_Y) ux2StageRemove(screen);",
