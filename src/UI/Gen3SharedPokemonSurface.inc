@@ -1880,6 +1880,9 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     // Match the accepted Gen I/Yellow box action sheet: keep the box visible,
     // dim it, then draw one compact neutral modal on top.
     screen.drawGSCOverlay(fb);
+    // The backdrop may republish box-cell hitboxes. The active modal must
+    // own every tap, including row taps over the dimmed Pokémon grid.
+    screen.touchButtons.clear();
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 105));
     const int w = occupied ? 650 : 560;
     const auto geometry = Shared::actionMenuGeometry();
