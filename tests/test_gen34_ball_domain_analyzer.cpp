@@ -7,6 +7,7 @@
 #include "Legality/Gen3EmeraldLevelUpTimeline.h"
 #include "Legality/Gen3EmeraldPalParkJointPath.h"
 #include "Legality/Gen34PostPalParkLearning.h"
+#include "Legality/Gen34EmeraldPalParkCompleteHistory.h"
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen34OrdinaryEggMoveConstruction.h"
 #include "Legality/Gen4NativeBreedingParentEvidence.h"
@@ -1496,6 +1497,103 @@ int main() {
     illegalGbaCarry.crossing.outboundGbaMoves[0]=15;
     assert(Later::evaluate(illegalGbaCarry).status==
            Later::Status::CandidateContradicted);
+
+    // TRANSFER-002: one jointly attested Emerald learning, immediate
+    // migration, 2 independently verified post-arrival teachings, and one
+    // checksum-valid immutable source-observed encrypted Gen IV PK4.
+    // These four fabricated records are intentionally NOT proof of a
+    // real retail history; the independent chronology is supplied.
+    {
+        namespace Full=Legality::Gen34EmeraldPalParkCompleteHistory;
+        Full::Input history{};
+        history.originalAndMigration=paired;
+        history.afterArrival=post;
+        history.nativeObserved=&nativeLater;
+        history.sameCreatureAcrossAllStagesIndependentlyVerified=true;
+        history.sourceGameOfObservedPK4IndependentlyVerified=true;
+        history.observedNativeStageIndependentlyVerified=true;
+        history.transferArrivalToken=0xAABB1122u;
+        history.postArrivalToken=0xAABB1122u;
+        history.postTrainingEndToken=0xC0FFEE01u;
+        history.nativeObservedToken=0xC0FFEE01u;
+        auto complete=Full::evaluate(history);
+        assert(complete.status==Full::Status::KnownConditionalFullPath);
+        assert(complete.nativeObservationCompared);
+        assert(complete.post.appliedMoves==2);
+        auto unknownIdentity=history;
+        unknownIdentity.sameCreatureAcrossAllStagesIndependentlyVerified=false;
+        assert(Full::evaluate(unknownIdentity).status==
+               Full::Status::UnknownSharedCreature);
+        auto noArrival=history;noArrival.transferArrivalToken=0;
+        assert(Full::evaluate(noArrival).status==Full::Status::UnknownArrivalStage);
+        auto wrongArrival=history;wrongArrival.postArrivalToken=42;
+        assert(Full::evaluate(wrongArrival).status==Full::Status::IncoherentArrivalStage);
+        auto wrongCrossing=history;
+        wrongCrossing.afterArrival.crossing.immediateNdsMoves[0]=15;
+        assert(Full::evaluate(wrongCrossing).status==
+               Full::Status::IncoherentMigrationSnapshot);
+        auto lostFinalStage=history;lostFinalStage.nativeObservedToken=0;
+        assert(Full::evaluate(lostFinalStage).status==Full::Status::UnknownObservedStage);
+        auto wrongFinalStage=history;wrongFinalStage.nativeObservedToken^=1;
+        assert(Full::evaluate(wrongFinalStage).status==Full::Status::IncoherentObservedStage);
+        auto missingFinalPK4=history;missingFinalPK4.nativeObserved=nullptr;
+        assert(Full::evaluate(missingFinalPK4).status==Full::Status::UnknownObservedPK4);
+        auto unauthenticatedPK4=history;
+        unauthenticatedPK4.observedNativeStageIndependentlyVerified=false;
+        assert(Full::evaluate(unauthenticatedPK4).status==Full::Status::UnknownObservedPK4);
+        auto unknownNativeSource=history;
+        unknownNativeSource.sourceGameOfObservedPK4IndependentlyVerified=false;
+        assert(Full::evaluate(unknownNativeSource).status==Full::Status::UnknownNativeSource);
+        Pokemon::Pokemon4ReadOnly wrongGroup(encryptedLater,Enums::GameVersion::HGSS);
+        auto swappedGame=history;swappedGame.nativeObserved=&wrongGroup;
+        assert(Full::evaluate(swappedGame).status==Full::Status::UnknownNativeSource);
+        auto inconsistentMoves=history;
+        inconsistentMoves.afterArrival.observedMoves[0]=99;
+        assert(Full::evaluate(inconsistentMoves).status==
+               Full::Status::PostArrivalTrainingContradicted);
+        auto lateUnknownMethod=history;
+        lateUnknownMethod.afterArrival.steps[1].independentlyVerifiedMethod=false;
+        assert(Full::evaluate(lateUnknownMethod).status==
+               Full::Status::UnresolvedPostArrivalTraining);
+        auto corruptedSource=history;
+        corruptedSource.originalAndMigration.sameOriginalSourceSnapshotVerified=false;
+        assert(Full::evaluate(corruptedSource).status==
+               Full::Status::UnresolvedOriginalTraining);
+        auto prohibitedSource=history;
+        prohibitedSource.originalAndMigration.migration.outboundGbaMoves[0]=15;
+        prohibitedSource.afterArrival.crossing.outboundGbaMoves[0]=15;
+        assert(Full::evaluate(prohibitedSource).status==
+               Full::Status::OriginalTrainingContradicted);
+        auto changedNative=rawLater;
+        wr16(changedNative,0x28,99);
+        auto encryptedChanged=Encryption::encryptArray4(changedNative);
+        Pokemon::Pokemon4ReadOnly nativeChanged(encryptedChanged,Enums::GameVersion::PT);
+        assert(nativeChanged.valid() && nativeChanged.checksumValid());
+        auto changedObserved=history;changedObserved.nativeObserved=&nativeChanged;
+        assert(Full::evaluate(changedObserved).status==
+               Full::Status::IncoherentNativePokemon);
+        Pokemon::Pokemon4ReadOnly invalidNative;
+        auto invalidObserved=history;invalidObserved.nativeObserved=&invalidNative;
+        assert(Full::evaluate(invalidObserved).status==
+               Full::Status::UnknownObservedPK4);
+        auto unsupported=history;
+        unsupported.originalAndMigration.migration.destinationGame="unova_nds";
+        unsupported.afterArrival.crossing.destinationGame="unova_nds";
+        assert(Full::evaluate(unsupported).status==
+               Full::Status::UnsupportedDestination);
+        auto notEmerald=history;
+        notEmerald.originalAndMigration.migration.sourceGame="ruby_gba";
+        notEmerald.afterArrival.crossing.sourceGame="ruby_gba";
+        assert(Full::evaluate(notEmerald).status==
+               Full::Status::UnsupportedDestination);
+        // One identity must survive both stages; no magical second
+        // original egg/distribution event or transfer mutation assumed.
+        const auto before=std::vector<std::byte>(
+            nativeLater.originalEncryptedBytes().begin(),
+            nativeLater.originalEncryptedBytes().end());
+        assert(std::equal(before.begin(),before.end(),
+                          nativeLater.originalEncryptedBytes().begin()));
+    }
 
     // Calling the full analyzer by itself must not imply a witnessed
     // historical sequence; no stored PK3 encodes these seven choices.
