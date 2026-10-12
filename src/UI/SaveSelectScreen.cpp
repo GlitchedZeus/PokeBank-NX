@@ -441,8 +441,10 @@ namespace UI {
                              const TrainerPortraitPresentation& portrait,
                              bool showLabel) {
         const Color accent = Colors::Info;
-        drawPanelSurface(fb, x, y, w, h, false, std::min(14, w / 5));
-
+        // Portraits belong directly on top of the game's dimmed region scene.
+        // A solid Panel surface here produced the ugly bluish square around
+        // every trainer and obscured the art. Keep the RGBA sprite and label,
+        // but do not paint any portrait-sized backing rectangle.
         const IconImage& art = SystemIcons::trainerPortrait(portrait.assetKey);
         const int labelReserve = showLabel ? 24 : 4;
         if (art.valid()) {
