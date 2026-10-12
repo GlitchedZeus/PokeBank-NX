@@ -1,0 +1,28 @@
+# L5 — major tranche 01: Q01 Q02 Q03 Q06 Q09
+**Scope:** research-only, no production C++, no shared workflow/Makefile edits. Parent #285, lane #290.
+
+**Accepted head captured before branch creation:** `0dccf2e10289164ad0d065985dcb29f14fd2fb35` (base); research #252 pinned `fc0225e6351af62365f29200300323e38f52c8fe`. Separate unaccepted stacked PRs #283/#284 are not silently counted as accepted. The older 21-family global ledger classifies 20 Partial and one reporting contract Implemented; these do not mean per-game parity.
+
+## Concrete artifacts
+- **Q01**: 336 unique family×16 grouped source-identity cells. The group semantics are explicit (R/B and G/S share reference source rows); every cell preserves family coverage vs per-game missing work. A grouped source is not proof that Red=Blue or Gold=Silver in every mechanic.
+- **Q02**: all 79 frozen registry records snapshotted for reproducible digest/symbol/license validation by `tools/audit_legality_l5_inventory.py --source-cache...`. Four exact-file spot checks (RED-LEVEL, YELLOW-LEVEL, GOLD-BREED and PK-LICENSE) matched SHA-256 and pinned symbols live. **Do not claim 79/79 live revalidated**: connector per-operation limits blocked an exhaustive single-pass fetch; explicit verification status remains unresolved for the other entries. Source hash correctness is not license approval.
+- **Q03**: accepted analyzer lexical direct-call index with exact source line references. Distinguishes `#include`/standalone/test-only helper from directly invoked production helper. A lexical call is not a proof of branch reachability, runtime success, or all PKHeX methods present.
+- **Q06**: 46 Gen IV generated game×method groups and 20,147 generated encounter rows pinned by older research (not asserted unchanged until direct fresh packed-data audit). Preserve full slot/area/rate/form/lead/condition identity; no dedup sets. No original-table exact-game condition multiset verified. `--source-rows` / `--generated-rows` accepts full field-equivalent CSVs and reports duplicate-preserving differences.
+- **Q09**: 12 three-way condition vectors (four original-generation groups × positive / candidate-negative / Unknown) with an *independent* compileable C++ native API test; **not preserved authentic retail Pokémon PK1–PK4 specimens**. The cases exercise data-backed candidate matching and Unknown propagation, not a whole-Pokémon legality verdict.
+
+## Original retail references and exact missing evidence
+- Original Ruby/Emerald/FRLG daycare semantics: `RS-DAYCARE`, `E-DAYCARE`, `FR-DAYCARE`; Gold/Crystal breeding `GOLD-BREED`, `C-BREED`. These cover egg-specific families, not original wild slot completeness.
+- Original HGSS wild RNG/lead routine: `HG-ENCOUNTER` at `pret/pokeheartgold@9d8b7591f09b65804da2fb2dfd56f320633e0d36:src/field/encounter_check.c` symbol `getWildMonNature`. This alone is *not* every HGSS original area/slot/weather/season/special route resource.
+- Original Platinum breeding: `PT-DAYCARE` at `pret/pokeplatinum@637bb186e11b5ce1ee578981311c057498e57126:src/overlay005/daycare.c`; original DP egg-IV corroboration is not sourced by this entry.
+- PKHeX encounter categories exposed through the frozen older NX `Gen4WildEncounter.h` / packed table and pinned PKHeX Method J/K generation; data source extraction provenance must be verified separately from an exact original pret area table.
+- Required Q06 missing **original-game specific source tables** for R/B/Y, G/S/C, R/S/E/FR/LG and D/P/Pt/HG/SS wild methods and *conditions* at exact SHA, with per-row identity and weather/time/swarm/marsh/trees/blocks/lead. Missing exhaustive static/gift/egg/event/transfer alternative sources also prevents a global Invalid from absence of a candidate.
+- Required Q09 missing **consented real native PK1, PK2, PK3 and encrypted PK4 paired origin/receipt/trade/parent cases**; no synthetic fixture can be promoted to authentic historical evidence. Archive placeholder cards and absent parents do not prove impossibility.
+
+## Execution and gates
+From an accepted-tree checkout with these files: `python3 tools/audit_legality_l5_inventory.py --analyzer src/Legality/Legality.cpp --native`.
+For full Q02 content verification: populate a local *read-only* revision/path source cache and supply `--source-cache CACHE`. Hash mismatch is an audit failure, not a legality verdict.
+For Q06 full multiset: `--source-rows ORIGINAL.csv --generated-rows OUTPUT.csv` where both contain all condition-bearing original-stage columns.
+Existing full host, focused RSE, ASan/UBSan gates are coordinator-controlled and must be recorded against **this exact lane head** after PR opens. New test remains separately invoked because this lane cannot alter shared host Makefiles/workflows. Exact-head CI cannot be claimed from a GitHub synthetic PR merge checkout; host workflow's current explicit exact-head filter does not include `audit/legality-l5-`, requiring a coordinator-owned workflow resolution.
+
+### Semantics
+All contradictions here are to **one supplied source candidate**. Unknown or absent history remains Incomplete/unresolved. This tranche makes no global Invalid rule, does not authenticate a detached specimen and does not certify 100% PKHeX parity.
