@@ -40,6 +40,12 @@ constexpr Gate classifyGen4(const H4::Result& evidence,
     Gate out{};
     if(evidence.status==H4::Status::UnavailableNative)return out;
     out.state=LaneState::UnknownSource;
+    // An unvalidated or mismatched PCD/PGT pair can retain decoded type
+    // bytes. Never promote its apparent Pokémon delivery into a positive
+    // source witness (or exclude its unverified source candidate).
+    if(projection.status!=G4::Status::StructuralPGT &&
+       projection.status!=G4::Status::StructuralPCD &&
+       projection.status!=G4::Status::PairedPayloadMatches)return out;
     if(projection.delivery!=G4::Delivery::DirectPokemon &&
        projection.delivery!=G4::Delivery::RangerManaphyEgg) {
         out.state=LaneState::UnsupportedNonGift;return out;

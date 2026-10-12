@@ -37,6 +37,7 @@ int main(){
         ++cases;
     }
     H::Result g4{};G::Projection projection{};
+    projection.status=G::Status::StructuralPCD;
     for(unsigned t=0;t<=15;++t){
         projection.type=static_cast<G::GiftType>(t);
         projection.delivery=G::delivery(projection.type);
@@ -48,7 +49,33 @@ int main(){
         assert(!r.authenticated&&!r.globallyInvalid);
         ++cases;
     }
+    // Never treat a malformed or mismatched card pair's residual type
+    // bytes as a verified Gen IV distribution candidate. Both conditional
+    // positives and negative exclusions need a structurally valid source.
     projection.delivery=G::Delivery::DirectPokemon;
+    for(const auto invalid:{
+        G::Status::MissingOrWrongSize,G::Status::EmptyGift,
+        G::Status::UnknownGiftType,G::Status::PairedPayloadMismatch
+    }) {
+        projection.status=invalid;
+        for(const auto outcome:{
+            H::Status::ConditionalCandidate,H::Status::CandidateContradicted
+        }) {
+            g4.status=outcome;
+            assert(A::classifyGen4(g4,projection).state==A::LaneState::UnknownSource);
+            ++cases;
+        }
+    }
+    for(const auto good:{
+        G::Status::StructuralPGT,G::Status::StructuralPCD,
+        G::Status::PairedPayloadMatches
+    }) {
+        projection.status=good;
+        g4.status=H::Status::ConditionalCandidate;
+        assert(A::classifyGen4(g4,projection).state==A::LaneState::ConditionalEvidence);
+        ++cases;
+    }
+    projection.status=G::Status::StructuralPCD;
     const std::array<H::Status,6> states={
         H::Status::UnavailableNative,H::Status::UnknownOriginalSource,
         H::Status::UnknownRangerReceipt,H::Status::CandidateContradicted,
