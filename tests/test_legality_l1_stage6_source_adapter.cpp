@@ -42,7 +42,7 @@ int main() {
   A::withOriginalSourceEvidence(route(C::Acquisition::NpcTrade,2,2),
      NPC::Status::ConditionalOriginalTradeTemplateOnly),
   A::withOriginalSourceEvidence(route(C::Acquisition::Egg,3,4),
-     G4::Static::Status::ConditionalOriginalGiftEggSourceAwaitingBreedingVerification),
+     G4::map(G4::Static::Status::ConditionalOriginalGiftEggSourceAwaitingBreedingVerification)),
   A::withOriginalSourceEvidence(route(C::Acquisition::Gift,4,3),
      U::EvidenceKind::UnknownOriginalHistory),
   A::withOriginalSourceEvidence(route(C::Acquisition::EventDistribution,5,3),
@@ -50,7 +50,7 @@ int main() {
   A::withOriginalSourceEvidence(route(C::Acquisition::GameCubeShadow,6,3),
      GC::Status::ConditionalGameCubeTransferOnly),
   A::withOriginalSourceEvidence(route(C::Acquisition::Radar,7,4),
-     G4::Sinnoh::Status::UnknownRadarActivation)
+     G4::map(G4::Sinnoh::Status::UnknownRadarActivation))
  }};
  // This is a route-level source check only, never breeding PID/hatch proof.
  // Use the genuine Gen IV static source adapter to avoid fabricating an
