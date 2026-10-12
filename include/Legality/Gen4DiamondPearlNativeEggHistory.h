@@ -4,6 +4,7 @@
 // forgotten provenance. Conditional IV and PID histories remain LOCAL.
 #include "Legality/Gen4DiamondPearlEggIVStage.h"
 #include "Legality/Gen4DiamondPearlEggPidHistory.h"
+#include "Legality/Gen4DiamondPearlEggMoveStage.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
 #include <array>
 #include <cstdint>
@@ -17,7 +18,8 @@ enum class Status : uint8_t {
     UnknownOriginalEggStage, UnknownOriginalParentSnapshots,
     UnknownSourceGame, UnknownSharedEvent,
     IncoherentSharedEvent, StageHistoryUnresolved,
-    LocalCandidateContradiction, BothConditionalStagesMatched
+    LocalCandidateContradiction, BothConditionalStagesMatched,
+    IncoherentNativeMoveSnapshots, AllThreeConditionalStagesMatched
 };
 struct Input {
     std::string_view game{};
@@ -33,11 +35,17 @@ struct Input {
     uint64_t parentStageToken=0,originalEggStageToken=0;
     IV::OriginalStage iv{};
     PID::Input pid{};
+    // Optional original MOVE stage. Native PK4 move fields bind to the
+    // exact attested original-parent/child snapshots; separate method,
+    // egg-stage and creation-item attestations remain mandatory.
+    bool originalMoveHistorySupplied=false;
+    Gen4DiamondPearlEggMoveStage::Input moves{};
 };
 struct Result {
     Status status=Status::MissingNativeSource;
     IV::Check iv=IV::Check::UnknownParentIVs;
     PID::Result pid{};
+    Gen4DiamondPearlEggMoveStage::Result moves{};
 };
 inline Result evaluate(const Input& in) noexcept {
     Result out{};
@@ -112,17 +120,45 @@ inline Result evaluate(const Input& in) noexcept {
     pid.originalUnhatchedEggPidIndependentlyVerified=true;
     pid.originalUnhatchedEggPid=child.pid();
     out.pid=PID::evaluate(pid);
+    namespace Move=Gen4DiamondPearlEggMoveStage;
+    if(in.originalMoveHistorySupplied) {
+        const auto& m=in.moves;
+        if(m.game!=in.game ||
+           m.originalEggEventIdentity!=in.parentStageToken ||
+           m.originalParentStageIdentity!=in.parentStageToken ||
+           m.physicalSlots[0].species!=p0.species() ||
+           m.physicalSlots[1].species!=p1.species() ||
+           m.physicalSlots[0].gender!=p0.gender() ||
+           m.physicalSlots[1].gender!=p1.gender() ||
+           m.physicalSlots[0].originalMoves!=p0.moves() ||
+           m.physicalSlots[1].originalMoves!=p1.moves() ||
+           m.originalEggSpecies!=child.species() ||
+           m.originalUnhatchedEggMoves!=child.moves()) {
+            out.status=Status::IncoherentNativeMoveSnapshots;return out;
+        }
+        // Native records are still NOT proof of original chronology:
+        // evaluate() insists upon independently attested pair identity,
+        // parent roles, four move methods and source creation-time items.
+        out.moves=Move::evaluate(m);
+    }
     const bool ivBad=out.iv==IV::Check::Contradicted;
     const bool pidBad=out.pid.status==PID::Status::OriginalEggPIDContradicted ||
                       out.pid.status==PID::Status::IncompatibleDaycarePair ||
                       out.pid.status==PID::Status::MTConsumptionContradicted;
     // Original candidate-local contradiction does not prove whole PK4
     // impossibility across other unobserved parents, events or transfers.
-    if(ivBad||pidBad)out.status=Status::LocalCandidateContradiction;
+    const bool movesBad=in.originalMoveHistorySupplied &&
+        out.moves.status==Move::Status::LocalMoveHistoryContradiction;
+    if(ivBad||pidBad||movesBad)
+        out.status=Status::LocalCandidateContradiction;
     else if(out.iv==IV::Check::Matched &&
-            out.pid.status==PID::Status::ConditionalOriginalEggPIDMatched)
-        out.status=Status::BothConditionalStagesMatched;
-    else out.status=Status::StageHistoryUnresolved;
+            out.pid.status==PID::Status::ConditionalOriginalEggPIDMatched) {
+        if(!in.originalMoveHistorySupplied)
+            out.status=Status::BothConditionalStagesMatched;
+        else if(out.moves.status==Move::Status::ConditionalMoveHistoryMatched)
+            out.status=Status::AllThreeConditionalStagesMatched;
+        else out.status=Status::StageHistoryUnresolved;
+    } else out.status=Status::StageHistoryUnresolved;
     return out;
 }
 } // namespace Legality::Gen4DiamondPearlNativeEggHistory
