@@ -87,5 +87,5 @@ static_assert(sourceSupported(Game::Ruby,1));
 static_assert(sourceSupported(Game::Sapphire,4));
 static_assert(sourceSupported(Game::Emerald,386));
 static_assert(sourceSupported(Game::LeafGreen,4));
-static_assert(!sourceSupported(Game::FireRed,133));
+static_assert(sourceSupported(Game::FireRed,133));
 } // namespace Legality::Gen14CandidateMoveGbaRelearner
