@@ -76,14 +76,22 @@ constexpr Result evaluate(const Input& in) noexcept {
     for(uint8_t i=0;i<in.count;++i){
         const Route& route=in.alternatives[i];
         ++out.considered;
-        bool unique=route.routeIdentity!=0;
-        for(uint8_t j=0;j<i;++j)
-            if(route.routeIdentity==in.alternatives[j].routeIdentity)
-                unique=false;
-        if(!unique){
+        if(!route.routeIdentity){
             malformedRouteIdentity=true;
             ++out.unverified;
             continue;
+        }
+        bool repeated=false,priorMatch=false;
+        for(uint8_t j=0;j<i;++j)
+            if(route.routeIdentity==in.alternatives[j].routeIdentity){
+                repeated=true;
+                if(out.ivChecks[j]==IV::CandidateCheck::Matched)
+                    priorMatch=true;
+            }
+        if(repeated){
+            malformedRouteIdentity=true;
+            ++out.unverified;
+            if(priorMatch)continue;
         }
         // Physical deposited slots must be the SAME original pair whose
         // parent IVs are being replayed. Never silently swap father/mother
@@ -110,6 +118,7 @@ constexpr Result evaluate(const Input& in) noexcept {
             true);
         out.ivChecks[i]=check;
         if(check==IV::CandidateCheck::Matched){++out.consistent;continue;}
+        if(repeated)continue; // duplicated evidence cannot exclude all routes
         if(check==IV::CandidateCheck::CandidateMismatch &&
            route.candidateMethodFullyAttested){
             ++out.contradicted;continue;
