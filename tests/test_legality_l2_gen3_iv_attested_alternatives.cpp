@@ -131,8 +131,23 @@ int main() {
         const auto rescuedDuplicate=A::evaluate(duplicate);
         assert(rescuedDuplicate.status==A::Status::OneConditionallyConsistentStage);
         assert(rescuedDuplicate.consistent==1 && rescuedDuplicate.unverified==1);
+        // Independently attested matching alternative must survive a
+        // missing-attestation row with the same archive identity.
         duplicate.alternatives[0].originalDaycareStageIndependentlyVerified=false;
-        assert(A::evaluate(duplicate).status==A::Status::MissingOrDuplicateRouteIdentity);
+        const auto laterMatch=A::evaluate(duplicate);
+        assert(laterMatch.status==A::Status::OneConditionallyConsistentStage);
+        assert(laterMatch.consistent==1 && laterMatch.unverified>=1);
+        auto earlierMatch=duplicate;
+        earlierMatch.alternatives[0]=duplicate.alternatives[1];
+        earlierMatch.alternatives[1]=duplicate.alternatives[0];
+        const auto firstMatch=A::evaluate(earlierMatch);
+        assert(firstMatch.status==A::Status::OneConditionallyConsistentStage);
+        assert(firstMatch.consistent==1 && firstMatch.unverified>=1);
+        auto unverifiedOnly=duplicate;
+        unverifiedOnly.alternatives[1]=unverifiedOnly.alternatives[0];
+        const auto missingMatches=A::evaluate(unverifiedOnly);
+        assert(missingMatches.status==A::Status::MissingOrDuplicateRouteIdentity);
+        assert(missingMatches.consistent==0 && missingMatches.unverified>=1);
         // Matching candidate follows an earlier contradictory
         // hypothesis carrying the SAME route ID.
         duplicate=x;duplicate.count=2;
