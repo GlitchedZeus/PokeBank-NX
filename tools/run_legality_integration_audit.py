@@ -148,23 +148,42 @@ def validate_manifest(suite: str) -> list[str]:
     return errors
 
 
+def _captured_text(value: bytes | str | None) -> str:
+    """TimeoutExpired preserves raw bytes even with text=True."""
+    if value is None:
+        return ""
+    return value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value
+
+
 def run_one(gate: Gate, timeout: int) -> dict[str, object]:
     environment = os.environ.copy()
     environment.update(gate.environment)
     started = time.monotonic()
+    launch_error = None
     try:
         completed = subprocess.run(gate.command, cwd=ROOT, text=True, capture_output=True,
-                                 env=environment, timeout=timeout, check=False)
-        code, timed_out, stdout, stderr = completed.returncode, False, completed.stdout, completed.stderr
+                                   env=environment, timeout=timeout, check=False)
+        code, timed_out = completed.returncode, False
+        stdout, stderr = _captured_text(completed.stdout), _captured_text(completed.stderr)
     except subprocess.TimeoutExpired as error:
-        code, timed_out, stdout, stderr = None, True, error.stdout or "", error.stderr or ""
+        code, timed_out = None, True
+        stdout, stderr = _captured_text(error.stdout), _captured_text(error.stderr)
+    except OSError as error:
+        # A missing executable or a denied spawn MUST remain a recorded failed
+        # gate, not an uncaught exception which erases the JSON audit report.
+        code, timed_out = None, False
+        stdout, stderr = "", ""
+        launch_error = f"{type(error).__name__}: {error}"
     seconds = round(time.monotonic() - started, 3)
     if stdout:
         print(stdout, end="" if stdout.endswith("\n") else "\n")
     if stderr:
         print(stderr, end="" if stderr.endswith("\n") else "\n", file=sys.stderr)
+    if launch_error:
+        print(launch_error, file=sys.stderr)
     return {"name": gate.name, "command": gate.command, "returncode": code, "timed_out": timed_out,
-            "passed": code == 0 and not timed_out, "seconds": seconds, "runner": gate.runner}
+            "launch_error": launch_error, "passed": code == 0 and not timed_out and launch_error is None,
+            "seconds": seconds, "runner": gate.runner}
 
 
 def main() -> int:
@@ -199,7 +218,10 @@ def main() -> int:
     elif errors:
         result["error"] = "required suite program or source input omitted"
     elif args.dry_run:
-        result["passed"] = True
+        # Manifest/identity preflight is NOT execution of the native gates.
+        # Preserve a successful CLI preflight return but never emit passed=true.
+        result["dry_run_valid"] = True
+        result["passed"] = False
     else:
         gates = plan(args.suite, sha)
         for gate in gates:
@@ -215,7 +237,7 @@ def main() -> int:
     print(summary)
     if args.output:
         args.output.write_text(summary, encoding="utf-8")
-    return 0 if result["passed"] else 1
+    return 0 if result["passed"] or result.get("dry_run_valid", False) else 1
 
 
 if __name__ == "__main__":
