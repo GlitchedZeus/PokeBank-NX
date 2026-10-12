@@ -69,6 +69,46 @@ def check_registry(cache):
     return {"count": len(data), "grades": dict(Counter(r["evidence_grade"] for r in data)),
             "source_status": dict(results), "blockers": blocked}
 
+def check_remote_batches():
+    """Verify downloaded GitHub exact-pin SHA reports, not retail legitimacy."""
+    registry = json.loads(REGISTRY.read_text(encoding="utf-8"))
+    expected = {record["id"]: record for record in registry}
+    seen = {}
+    for i, count in enumerate((14, 14, 14, 14, 14, 9), 1):
+        path = BASE / f"Q02_REMOTE_HASH_BATCH_{i:02d}.json"
+        batch = json.loads(path.read_text(encoding="utf-8"))
+        assert len(batch["rows"]) == count, path
+        for r in batch["rows"]:
+            assert r["id"] in expected and r["id"] not in seen
+            ref = expected[r["id"]]
+            assert r["sha256_match"] is True, r["id"]
+            assert r["observed_sha256"] == ref["sha256"], r["id"]
+            if ref["symbol"]:
+                assert r["symbol_match"] is True, r["id"]
+            else:
+                assert r["symbol_match"] is None, r["id"]
+            seen[r["id"]] = r
+    assert len(seen) == len(expected) == 79
+    return {"source_hashes_exact_pin_verified": 79,
+            "pinned_symbols_verified": sum(bool(x["symbol"]) for x in registry),
+            "symbol_not_specified": [x["id"] for x in registry if not x["symbol"]],
+            "license_reuse_approved": False, "original_stage_certified": False}
+
+def check_pkhex_method_index():
+    ids = set()
+    count = 0
+    for i, length in enumerate((11, 11, 9), 1):
+        part = json.loads((BASE / f"Q03_PKHEX_PINNED_METHODS_{i:02d}.json").read_text(encoding="utf-8"))
+        assert len(part["rows"]) == length
+        for r in part["rows"]:
+            assert r["id"] not in ids and not r["error"]
+            ids.add(r["id"])
+            assert r["method_count"] == len(r["method_declarations"])
+            count += r["method_count"]
+    assert len(ids) == 31 and count == 305
+    return {"pinned_source_files_inspected": len(ids), "lexical_method_declarations": count,
+            "full_pkhex_call_graph": False, "all_game_conditions_covered": False}
+
 def check_matrix():
     data = rows(MATRIX)
     groups = sorted(set(r["game_group_id"] for r in data))
@@ -157,7 +197,8 @@ def main():
         ap.error("original and generated rows must be supplied together")
     result = {"schema": "l5_audit_v1", "base_sha": BASE_SHA, "research_pin": PIN,
               "Q01": check_matrix(), "Q02": check_registry(args.source_cache),
-              "Q03": check_edges(args.analyzer),
+              "Q02_live": check_remote_batches(), "Q03": check_edges(args.analyzer),
+              "Q03_reference": check_pkhex_method_index(),
               "Q06": check_encounters(args.source_rows, args.generated_rows),
               "Q09": check_fixtures()}
     if args.native:
