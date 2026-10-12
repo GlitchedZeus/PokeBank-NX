@@ -122,11 +122,11 @@ constexpr Result evaluate(const Input& in) noexcept {
             ++dittoCount;
         }
     }
-    if(dittoCount==2) {
-        if(!in.creationLCRNGStateIndependentlyVerified) {
-            out.status=Status::UnknownLCRNGState;return out;
-        }
-        donor=lc(rng,out)<0x7FFFu?1:0;
+    // The original overlay contains a two-Ditto selector path, but
+    // independently pinned breeding eligibility rejects two Ditto. Do
+    // not report a compatible egg from that unreachable pair.
+    if(dittoCount==2 || donor<0) {
+        out.status=Status::IncompatibleDaycarePair;return out;
     }
     if(donor>=0 && in.parents[static_cast<uint8_t>(donor)].heldItem==229) {
         if(!in.creationLCRNGStateIndependentlyVerified) {
