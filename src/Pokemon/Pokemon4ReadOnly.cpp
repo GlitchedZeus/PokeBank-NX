@@ -1,5 +1,6 @@
 #include "Pokemon/Pokemon4ReadOnly.h"
 #include "Pokemon/Gen4NativeRecordBoundary.h"
+#include "Pokemon/NativeRecordBounds.h"
 
 #include "Encryption/Encryption4.h"
 #include "Pokemon/PersonalInfo4DP.h"
@@ -50,14 +51,15 @@ bool Pokemon4ReadOnly::empty() const noexcept {
 
 uint8_t Pokemon4ReadOnly::byteAt(size_t offset) const noexcept {
     if (offset >= 8 && !valid()) return 0; // Quarantine malformed semantic fields.
-    return offset < decrypted_.size() ? static_cast<uint8_t>(decrypted_[offset]) : 0;
+    return NativeRecordBounds::contains(decrypted_.size(), offset) ?
+        static_cast<uint8_t>(decrypted_[offset]) : 0;
 }
 uint16_t Pokemon4ReadOnly::u16At(size_t offset) const noexcept {
-    if (offset + 1 >= decrypted_.size()) return 0;
+    if (!NativeRecordBounds::contains(decrypted_.size(), offset, 2)) return 0;
     return static_cast<uint16_t>(byteAt(offset) | (static_cast<uint16_t>(byteAt(offset + 1)) << 8));
 }
 uint32_t Pokemon4ReadOnly::u32At(size_t offset) const noexcept {
-    if (offset + 3 >= decrypted_.size()) return 0;
+    if (!NativeRecordBounds::contains(decrypted_.size(), offset, 4)) return 0;
     return static_cast<uint32_t>(byteAt(offset)) |
            (static_cast<uint32_t>(byteAt(offset + 1)) << 8) |
            (static_cast<uint32_t>(byteAt(offset + 2)) << 16) |
