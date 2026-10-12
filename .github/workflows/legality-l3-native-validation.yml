@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   l3-original-source-regressions:
-    name: L3 20 suites / ${{ matrix.compiler }} / native + ASan/UBSan
+    name: L3 21 suites / ${{ matrix.compiler }} / native + ASan/UBSan
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -42,7 +42,7 @@ jobs:
           printf 'L3 exact application SHA: %s\n' "$EXPECTED_SHA"
           printf 'L3 tree SHA: %s\n' "$(git rev-parse 'HEAD^{tree}')"
           "$COMPILER" --version
-      - name: Compile and execute all 20 exact-source suites and sanitizers
+      - name: Compile and execute all 21 exact-source suites and sanitizers
         shell: bash
         env:
           CXX: ${{ matrix.compiler }}
