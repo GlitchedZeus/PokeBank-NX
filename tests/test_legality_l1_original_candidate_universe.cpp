@@ -69,7 +69,6 @@ int main(){
     static_assert(U::map(
         Legality::Gen3OriginalRoamerStage::Status::ConditionalOriginalRoamerHistory)
         ==Kind::ConditionalOriginalHistory);
-        ==Kind::ConditionalOriginalHistory);
     static_assert(U::map(
         Legality::Gen3OriginalRoamerStage::Status::CandidateOriginalPidIvContradicted)
         ==Kind::CandidateLocalContradiction);

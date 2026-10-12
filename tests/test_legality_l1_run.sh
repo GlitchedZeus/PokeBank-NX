@@ -26,6 +26,7 @@ native=(
   src/Pokemon/PersonalInfo4DP.cpp
   src/Pokemon/PersonalInfo4PT.cpp
   src/Pokemon/PersonalInfo4HGSS.cpp
+  src/Pokemon/PersonalRecord4.cpp
   src/Encryption/Encryption4.cpp
 )
 suites=(

@@ -79,8 +79,11 @@ int main(){
     wrong=xd;wrong.originalTid=static_cast<uint16_t>(
         (wrong.originalPid>>16) ^ (wrong.originalPid&0xFFFFu) ^ wrong.originalSid);
     assert(S::evaluate(wrong).status==Status::CandidateOriginalIdentityContradicted);
+    // A different independently attested trainer ID can still produce
+    // the same source-backed anti-shiny PID/IV/team witness. Trainer identity
+    // cannot be ruled out just because it differs from another candidate.
     wrong=xd;wrong.originalTid=12346;
-    assert(S::evaluate(wrong).status!=Status::ConditionalShadowHistory);
+    assert(S::evaluate(wrong).status==Status::ConditionalShadowHistory);
     auto missing=xd;missing.originalTrainerIndependentlyAttested=false;
     assert(S::evaluate(missing).status==Status::UnknownOriginalTrainer);
     missing=xd;missing.originalCaptureStageIndependentlyAttested=false;
