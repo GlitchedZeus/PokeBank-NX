@@ -11,7 +11,7 @@ namespace {
 enum class Rule : uint8_t { None, EggEV, Total510, GBStats, EVGain100, EVGainEXP };
 enum class Grade : uint8_t { NoContradiction, Invalid, UnknownHistory, FormatRejected, Warning };
 enum class Delta : uint8_t { Agreement, ReferenceMissingInNX, NXOverstates,
-                             UnresolvedHistory, ParserMismatch, SeverityMismatch, SourceDataDifference };
+                             UnresolvedHistory, ParserMismatch, SeverityMismatch, SourceDataDifference, DiagnosticDifference };
 struct Input {
     int generation = 3;
     bool egg = false;
@@ -87,6 +87,8 @@ constexpr Classification compare(const Input& x) noexcept {
         return {Delta::ReferenceMissingInNX,ref,nx};
     if (nx.grade==Grade::Invalid && ref.grade!=Grade::Invalid)
         return {Delta::NXOverstates,ref,nx};
+    if (ref.grade==Grade::Invalid && nx.grade==Grade::Invalid)
+        return {Delta::DiagnosticDifference,ref,nx};
     return {Delta::SeverityMismatch,ref,nx};
 }
 // Independent differential observation taxonomy, including failures impossible
@@ -116,6 +118,7 @@ void evaluate(const Input& x, Delta expected) {
         case Delta::SeverityMismatch:++sev;break;
         case Delta::NXOverstates:break;
         case Delta::SourceDataDifference:break;
+        case Delta::DiagnosticDifference:break;
     }
 }
 void directed() {
@@ -178,6 +181,8 @@ void exhaustive() {
     }
 }
 void classificationNegativeControls() {
+    { Input egg; egg.egg=true;egg.ev={255,255,1,0,0,0};
+      REQUIRE(compare(egg).category==Delta::DiagnosticDifference); }
     REQUIRE(classifyObservation(Grade::Invalid,Grade::NoContradiction,false,true,true)==Delta::ParserMismatch);
     REQUIRE(classifyObservation(Grade::Invalid,Grade::NoContradiction,true,false,true)==Delta::SourceDataDifference);
     REQUIRE(classifyObservation(Grade::Invalid,Grade::NoContradiction,true,true,false)==Delta::UnresolvedHistory);
