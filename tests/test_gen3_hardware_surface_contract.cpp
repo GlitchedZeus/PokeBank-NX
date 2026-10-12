@@ -249,11 +249,14 @@ int main() {
     const auto actionsBody = surface.substr(actionsBegin, actionsEnd - actionsBegin);
     assert(actionsBody.find("screen.drawGSCOverlay(fb)") != std::string::npos);
     assert(actionsBody.find("Colors::Background") == std::string::npos);
-    assert(actionsBody.find("const int w = occupied ? 650 : 560") != std::string::npos);
-    assert(actionsBody.find("static_cast<int>(actions.count) * geometry.rowStep + 62") != std::string::npos);
+    assert(actionsBody.find("NarrowPokemonMenu::classic(actions, occupied)") != std::string::npos);
+    assert(actionsBody.find("drawNarrowPokemonActions(fb, screen.touchButtons, model") != std::string::npos);
     assert(actionsBody.find("const int h = occupied ? 500 : 350") == std::string::npos);
-    assert(actionsBody.find("Shared::actionMenuGeometry()") != std::string::npos);
-    assert(actionsBody.find("Colors::Divider, 1") != std::string::npos);
+    const auto narrow = read("include/UI/NarrowPokemonActionMenu.h");
+    assert(narrow.find("int width = 440") != std::string::npos);
+    const auto chrome = read("include/UI/ScreenChrome.h");
+    assert(chrome.find("if (row.enabled())") != std::string::npos);
+    assert(chrome.find("buttons.push_back({touchIdBase + row.nativeIndex") != std::string::npos);
     assert(actionsBody.find("Colors::FocusBorder, 2") == std::string::npos);
     assert(actionsBody.find("constexpr int x = 250, y = 72, w = 780, h = 560") == std::string::npos);
     contains(composite, "return !Gen3SharedEditorSurface::ownsFrame(screen)");
