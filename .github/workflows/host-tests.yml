@@ -169,7 +169,15 @@ jobs:
               python3 tools/audit_legality_l5_stage2_native.py --full --source-pin
               python3 tools/audit_legality_l5_stage4_crosslane.py --self-test
               python3 tools/audit_legality_l5_stage4_crosslane.py --l1-root . --l2-root . --l3-root . --l4-root .
-                            python3 tools/audit_legality_l5_native_ev_vectors.py --source-root .
+                            # Latest L5 Stage 2 source-pinned Time Capsule adversarial
+              # helper executes GCC+Clang, normal+sanitizer on exact blobs.
+              python3 tools/audit_legality_l5_stage2.py --self-test
+              python3 tools/audit_legality_l5_stage2.py --timeout 600
+              # Coordinator has F3/F4/F5 fixed. Run the L5 native matrix
+              # in AFTER-F5 mode, never its intentional pre-fix baseline.
+              make -f Makefile.host -f tools/audit_legality_l5_stage2_native.mk l5-stage2-after-f5
+              make -f Makefile.host -f tools/audit_legality_l5_stage2_native.mk -f tools/audit_legality_l5_stage2_integration.mk l5-stage2-after-f5-sanitize
+              python3 tools/audit_legality_l5_native_ev_vectors.py --source-root .
               python3 tools/audit_legality_l5_native_codec.py --source-pin
               python3 tools/audit_legality_l5_native_codec.py --source-pin --sanitize
               make -f Makefile.host -f tools/audit_legality_l5_ev_probe.mk l5-ev-fixed
