@@ -6,6 +6,7 @@
 // Every rejection here is candidate LOCAL, never global Pokemon Invalid.
 #include "Legality/Gen4DiamondPearlEggAlternativeHistories.h"
 #include "Legality/Gen4DiamondPearlEggMoveStage.h"
+#include "Legality/Gen34OriginalSameRouteProof.h"
 #include <array>
 #include <cstdint>
 namespace Legality::Gen4DiamondPearlEggFullJointHistories {
@@ -24,12 +25,16 @@ struct Input {
     // daycare event and physical pair as original.alternatives[i].
     std::array<Move::Input,8> moveHistories{};
     bool allJointDaycareHistoriesIndependentlyEnumerated=false;
+    uint64_t originalEggSnapshotId=0;
+    bool originalEggSnapshotIndependentlyAttested=false;
+    std::array<Gen34OriginalSameRouteProof::Input,8> sameRouteProofs{};
 };
 struct Result {
     Status status=Status::NoCandidates;
     uint8_t considered=0,matched=0,contradicted=0,unknown=0,unverified=0;
     std::array<Core::Status,8> originalChecks{};
     std::array<Move::Status,8> moveChecks{};
+    std::array<Gen34OriginalSameRouteProof::Status,8> sameRouteChecks{};
 };
 constexpr Result evaluate(const Input& in) noexcept {
     Result out{};
