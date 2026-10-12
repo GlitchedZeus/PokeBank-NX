@@ -81,14 +81,22 @@ constexpr Result evaluate(const Input& in) noexcept {
     for(uint8_t i=0;i<in.count;++i) {
         ++out.examined;
         const auto& h=in.histories[i];
-        bool unique=h.routeIdentity!=0;
-        for(uint8_t j=0;j<i;++j)
-            if(h.routeIdentity==in.histories[j].routeIdentity)
-                unique=false;
-        if(!unique) {
+        if(!h.routeIdentity) {
             malformedRouteIdentity=true;
             ++out.unknown;
             continue;
+        }
+        bool repeated=false,priorMatch=false;
+        for(uint8_t j=0;j<i;++j)
+            if(h.routeIdentity==in.histories[j].routeIdentity) {
+                repeated=true;
+                if(out.candidates[j]==IV::CandidateCheck::Matched)
+                    priorMatch=true;
+            }
+        if(repeated) {
+            malformedRouteIdentity=true;
+            ++out.unknown;
+            if(priorMatch)continue;
         }
         if(!h.independentSourceAttestation ||
            !h.stageIdentity ||
@@ -112,6 +120,7 @@ constexpr Result evaluate(const Input& in) noexcept {
         const auto check=IV::verifyKnownFinalStage(known);
         out.candidates[i]=check;
         if(check==IV::CandidateCheck::Matched)++out.matched;
+        else if(repeated)continue; // duplicate mismatch cannot exhaust original routes
         else if(check==IV::CandidateCheck::CandidateMismatch)
             ++out.contradicted;
         else ++out.unknown;
