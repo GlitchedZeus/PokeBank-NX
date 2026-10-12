@@ -1,6 +1,31 @@
 name: PokeBank NX Gen V Focused Host
 
 on:
+  push:
+    branches:
+      - feature/gen5-readonly-foundation-20261008
+    paths:
+      - 'include/Integration/Gen5/**'
+      - 'src/Integration/Gen5/**'
+      - 'include/Pokemon/Pokemon5ReadOnly.h'
+      - 'include/Encryption/Encryption5.h'
+      - 'include/UI/SharedPokemonEditorContract.h'
+      - 'include/UI/ExactSaveCapabilities.h'
+      - 'include/Games/GameIdentity.h'
+      - 'src/Games/GameIdentity.cpp'
+      - 'include/Legacy/LegacySourceBindings.h'
+      - 'src/Legacy/LegacySourceBindings.cpp'
+      - 'include/Source/SaveInstance.h'
+      - 'tests/test_gen5_*.cpp'
+      - 'tests/test_gen5_*.py'
+      - 'src/UI/Gen5SharedReadOnlySurface.inc'
+      - 'src/UI/TrainerViewScreenCompositeOverlay.cpp'
+      - 'src/UI/UI.cpp'
+      - 'include/UI/UI.h'
+      - 'src/UI/SaveSelectScreen.cpp'
+      - 'Makefile.host'
+      - 'Makefile.host.gen5'
+      - '.github/workflows/gen5-focused-host.yml'
   pull_request:
     paths:
       - 'include/Integration/Gen5/**'
