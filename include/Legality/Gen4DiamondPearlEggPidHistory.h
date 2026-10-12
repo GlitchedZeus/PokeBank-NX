@@ -79,12 +79,8 @@ constexpr uint32_t prandom(uint32_t personality) noexcept {
 }
 constexpr bool shiny(uint32_t fullOtId,uint32_t personality) noexcept {
     // Original CalcShininessByOtIdAndPersonality / SHINY_CHECK.
-    return static_cast<uint16_t>(fullOtId) ^
-           static_cast<uint16_t>(fullOtId>>16) ^
-           static_cast<uint16_t>(personality) ^
-           static_cast<uint16_t>(personality>>16)
-           ? (((fullOtId&65535u)^(fullOtId>>16)^(personality&65535u)^(personality>>16))<8u)
-           : true;
+    return ((fullOtId&65535u)^(fullOtId>>16)^
+            (personality&65535u)^(personality>>16))<8u;
 }
 constexpr Result evaluate(const Input& in) noexcept {
     Result out{};
