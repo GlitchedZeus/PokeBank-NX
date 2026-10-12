@@ -697,8 +697,9 @@ namespace Legality {
         }
 
         if (sourceProfile && exactGeneration == 1 &&
-            pk.getGameGroup() == Pokemon::Pokemon1ReadOnly::kReadOnlyGameGroup) {
-            const auto& gen1 = static_cast<const Pokemon::Pokemon1ReadOnly&>(pk);
+            pk.getGameGroup() == Pokemon::Pokemon1ReadOnly::kReadOnlyGameGroup &&
+            pk.nativePk1ReadOnly() != nullptr) {
+            const auto& gen1 = *pk.nativePk1ReadOnly();
             const uint8_t catchRate = gen1.strictRecord().catchRate;
             using Evidence = Gen1CatchRate::Evidence;
             const auto evidence = Gen1CatchRate::classify(
@@ -747,8 +748,9 @@ namespace Legality {
             }
         }
         if (sourceProfile && exactGeneration == 2 &&
-            pk.getGameGroup() == Pokemon::Pokemon2ReadOnly::kReadOnlyGameGroup) {
-            const auto& gen2 = static_cast<const Pokemon::Pokemon2ReadOnly&>(pk);
+            pk.getGameGroup() == Pokemon::Pokemon2ReadOnly::kReadOnlyGameGroup &&
+            pk.nativePk2ReadOnly() != nullptr) {
+            const auto& gen2 = *pk.nativePk2ReadOnly();
             const std::array<uint16_t, 4> moves{
                 gen2.move(0), gen2.move(1), gen2.move(2), gen2.move(3)
             };
@@ -898,8 +900,9 @@ namespace Legality {
         // cannot infer Crystal-only caught data, a trainer or a past
         // trade; keep those exact-source encounter checks above gated.
         if (!sourceProfile &&
-            pk.getGameGroup() == Pokemon::Pokemon2ReadOnly::kReadOnlyGameGroup) {
-            const auto& gen2 = static_cast<const Pokemon::Pokemon2ReadOnly&>(pk);
+            pk.getGameGroup() == Pokemon::Pokemon2ReadOnly::kReadOnlyGameGroup &&
+            pk.nativePk2ReadOnly() != nullptr) {
+            const auto& gen2 = *pk.nativePk2ReadOnly();
             const std::array<uint16_t,4> moves{
                 gen2.move(0),gen2.move(1),gen2.move(2),gen2.move(3)
             };
