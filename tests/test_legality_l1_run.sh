@@ -45,6 +45,10 @@ suites=(
   test_legality_l1_gen2_roamer_routes
   test_legality_l1_gen4_static_indexed
   test_legality_l1_gen4_sinnoh_special
+  test_legality_l1_stage4_hgss_tree
+  test_legality_l1_stage4_honey
+  test_legality_l1_stage4_method_jk
+  test_legality_l1_stage4_native_pk3_pk4
   test_legality_l1_original_candidate_universe
   test_legality_l1_gen3_original_roamers
   test_legality_l1_gen3_wild_catalog
