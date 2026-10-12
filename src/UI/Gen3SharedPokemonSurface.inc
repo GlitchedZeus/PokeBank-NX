@@ -1278,11 +1278,51 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
     return true;
 }
 
+// The screenshot's read-only action sheet is also the fallback for a
+// Generation III source that cannot acquire a validated staged editor.
+// An unavailable workspace must NEVER make an empty-slot tap disappear,
+// and never enable Add/Edit/Release on external source bytes.
+const Pokemon::Pokemon* sourceBoxPokemon(TrainerViewScreen& screen, const State& state) {
+    if (state.box < 0 || state.box >= static_cast<int>(screen.trainer.boxes.size()))
+        return nullptr;
+    const auto& box = screen.trainer.boxes[static_cast<std::size_t>(state.box)];
+    if (state.slot < 0 || state.slot >= static_cast<int>(box.size()))
+        return nullptr;
+    const auto* pokemon = box[static_cast<std::size_t>(state.slot)].get();
+    return pokemon && pokemon->speciesID() != 0 ? pokemon : nullptr;
+}
+
 bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.actions) return false;
     auto* staged = editor(screen);
     if (!staged) {
+        const bool occupied = sourceBoxPokemon(screen, state) != nullptr;
+        const int count = occupied ? 2 : 1; // View/Cancel or Cancel only.
+        state.actionRow = std::clamp(state.actionRow, 0, count - 1);
+        const int tap = screen.touchedButtonId(touch);
+        if (tap >= 31600 && tap < 31600 + count) {
+            state.actionRow = tap - 31600;
+            down |= HidNpadButton_A;
+        }
+        if (down & HidNpadButton_Up)
+            state.actionRow = (state.actionRow + count - 1) % count;
+        if (down & HidNpadButton_Down)
+            state.actionRow = (state.actionRow + 1) % count;
+        if (down & HidNpadButton_B) {
+            state.actions = false;
+            screen.controllerNavigation.reset();
+            return true;
+        }
+        if (!(down & HidNpadButton_A)) return true;
         state.actions = false;
+        if (occupied && state.actionRow == 0) {
+            // Native base View is read-only and does not mutate either save.
+            screen.openPokemonActionSheet({
+                PokeVault::UIModel::PokemonLocation::SaveBox, state.box, state.slot});
+            screen.openActionSheetTargetDetails(true);
+            screen.actionSheet.close();
+        }
+        screen.controllerNavigation.reset();
         return true;
     }
     std::string error;
@@ -1889,7 +1929,32 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     auto* staged = editor(screen);
-    if (!staged) return;
+    if (!staged) {
+        const auto* pokemon = sourceBoxPokemon(screen, state);
+        const bool occupied = pokemon != nullptr;
+        PokeBank::UIModel::NarrowPokemonMenu::Model model{};
+        if (occupied) {
+            model.append("View Pokemon", 0);
+            model.append("Add to Master Vault");
+            model.append("Add to Bank...");
+            model.append("Transfer to Game...");
+            model.append("Edit");
+            model.append("Clone");
+            model.append("Release");
+            model.append("Make Shiny");
+            model.append("Legality & Provenance");
+            model.append("Cancel", 1);
+        } else {
+            model.append("Add Pokemon"); // blocked until a validated staged copy exists
+            model.append("Cancel", 0);
+        }
+        screen.drawGSCOverlay(fb);
+        const std::string title = pokemon ? std::string(pokemon->species()) : "Empty Slot";
+        drawNarrowPokemonActions(fb, screen.touchButtons, model, state.actionRow,
+            title, screen.legacyProviderLabel() + " GBA SOURCE / READ ONLY", 31600);
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
+        return;
+    }
     std::string error;
     const auto pokemon = staged->boxedPokemon(static_cast<std::size_t>(state.box),
                                                static_cast<std::size_t>(state.slot), error);
@@ -2036,8 +2101,8 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
         const int slots = static_cast<int>(screen.trainer.getSlotsPerBox());
         if (tapped >= 0 && tapped < slots) {
             screen.selectedItemIndex = tapped;
-            if (!editor(screen)) return false; // Read-only source: preserve base View fallback.
-            // Empty and occupied cells both use the same guarded A/Actions path.
+            // Empty and occupied cells both open the same narrow popup.
+            // Without an editor it displays safe greyed-out Add/Edit actions.
             // Add still requires a deliberate second activation inside the menu.
             beginActions(screen);
             return true;

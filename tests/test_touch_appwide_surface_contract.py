@@ -834,3 +834,17 @@ for rel, family in (
     assert "Names::getSpeciesName(pokemon->species" in src, rel
     assert '"Pokemon Actions" : "Empty Slot"' not in src, rel
 assert " GBC SOURCE / READ ONLY" in read("src/UI/ClassicReleaseActionFix.inc")
+
+# Gen III's source may be read-only WITHOUT a validated staged workspace.
+# A tap must still show the same screenshot-style narrow Empty Slot menu,
+# but the original save's Add/Edit/Release commands must be disabled.
+gen3_readonly = read("src/UI/Gen3SharedPokemonSurface.inc")
+assert "const Pokemon::Pokemon* sourceBoxPokemon(" in gen3_readonly
+assert "model.append(\"Add Pokemon\"); // blocked" in gen3_readonly
+for disabled in ('model.append("Edit");', 'model.append("Clone");',
+                 'model.append("Release");'):
+    assert disabled in gen3_readonly
+assert "screen.openActionSheetTargetDetails(true);" in gen3_readonly
+assert "screen.actionSheet.close();" in gen3_readonly
+assert "if (!editor(screen)) return false; // Read-only source" not in gen3_readonly
+assert "Gen3SharedEditorSurface::isGen3Gba(*this) ||" in composite
