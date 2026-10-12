@@ -279,6 +279,14 @@ int main() {
     assert(!hasText(wrongOrigin,
         "Safari Ball has a compatible Generation III Safari Zone capture"));
 
+    // F5 capability: a real native Gen III Pokemon cannot masquerade as
+    // Gen II PK2 stat experience merely because a caller supplies a label.
+    // RTTI is disabled on Switch; virtual capability, not a downcast.
+    auto unrelated = bulbasaurWithSwordsDance();
+    const Pokemon::Pokemon& genericNative = unrelated;
+    std::array<uint16_t,5> unavailable{1,1,1,1,1};
+    assert(!genericNative.gen2NativeStatExperience(unavailable));
+    assert(unavailable == std::array<uint16_t,5>{});
     auto p = bulbasaurWithSwordsDance();
 
     // Generated Gen III tables: Swords Dance is not direct for Bulbasaur in Ruby/Sapphire,
