@@ -42,6 +42,7 @@ struct Expected {
     std::array<bool,2> personalitiesIndependentlyVerified{};
     std::array<std::uint16_t,2> creationItems{};
     std::array<std::uint8_t,2> collectionLanguages{};
+    bool collectionLanguagesIndependentlyVerified=false;
 };
 constexpr Status evaluate(const Input& source,const Expected& expected) noexcept {
     if(!source.supplied)return Status::NotSupplied;
@@ -56,6 +57,7 @@ constexpr Status evaluate(const Input& source,const Expected& expected) noexcept
        !source.physicalSlots[1].snapshotIdentity ||
        source.physicalSlots[0].snapshotIdentity==
            source.physicalSlots[1].snapshotIdentity ||
+       !expected.collectionLanguagesIndependentlyVerified ||
        !expected.personalitiesIndependentlyVerified[0] ||
        !expected.personalitiesIndependentlyVerified[1])
         return Status::UnknownSourceEvidence;
