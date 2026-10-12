@@ -84,6 +84,7 @@
 #include "Legality/Gen34LanguageEvidence.h"
 #include "Legality/Gen34BallDomainEvidence.h"
 #include "Legality/Gen34FormatDomainEvidence.h"
+#include "Legality/Gen59FormatDomainEvidence.h"
 #include "Legality/Gen12FormatDomainEvidence.h"
 #include "Legality/Gen4TransferEvidence.h"
 #include "Legality/Gen4ReleaseEvidence.h"
@@ -580,9 +581,11 @@ namespace Legality {
         // Invalid findings from the wrong game generation.
         const uint8_t native12 =
             Gen12FormatDomain::generationFromGroup(pk.getGameGroup());
-        const uint8_t nativeFormatGeneration = native12 != 0
-            ? native12
-            : Gen34FormatDomain::generationFromGroup(pk.getGameGroup());
+        const uint8_t native34 =
+            Gen34FormatDomain::generationFromGroup(pk.getGameGroup());
+        const uint8_t nativeFormatGeneration = native12 != 0 ? native12
+            : native34 != 0 ? native34
+            : Gen59FormatDomain::generationFromGroup(pk.getGameGroup());
         const auto* suppliedSource =
             sourceGameProfile(context.exactSourceGameId);
         const bool sourceFormatMismatch = suppliedSource &&
@@ -607,8 +610,25 @@ namespace Legality {
         if (species == 0) return r;  // empty slot — nothing to validate
         if (sourceFormatMismatch) {
             add(r, Severity::Warning,
-                "Exact source-game label conflicts with the verified native PK1-PK4 storage format; source identity and source-specific encounter legality remain unresolved",
+                "Exact source-game label conflicts with the verified native Pokemon storage format; source identity and source-specific encounter legality remain unresolved",
                 CheckIdentifier::SourceGame);
+        }
+        // Gen VII-IX have existing native entity classes but only partial
+        // legality rules. Never advertise complete historical provenance
+        // just because a modern PKM can be decrypted, parsed and displayed.
+        const auto modern=Gen59FormatDomain::classify(pk.getGameGroup());
+        if (modern.nativeLayoutSupported) {
+            r.coverage.structure=CoverageLevel::Partial;
+            r.coverage.sourceGame=CoverageLevel::None;
+            r.coverage.encounter=CoverageLevel::None;
+            r.coverage.eventGift=CoverageLevel::None;
+            r.coverage.pidRng=CoverageLevel::None;
+            r.coverage.eggBreeding=CoverageLevel::None;
+            r.coverage.transfer=CoverageLevel::None;
+            add(r,Severity::Info,
+                "Generation " + std::to_string(modern.generation) +
+                " native structural validation is partial; original encounters, move acquisition, breeding, events and transfers are not yet exhaustively verified",
+                CheckIdentifier::Structure);
         }
 
         // F5: Gen II native PK2 stores five 16-bit stat-experience fields,
@@ -1564,12 +1584,11 @@ namespace Legality {
             addGen3PidEvidence(r, pk, species);
         }
 
+        // A containing save's caller-supplied group is not proof of the
+        // stored PKM format. Mint/stat nature only exists in native Gen VIII+
+        // implementations, not a relabeled Gen III or IV Pokemon.
         const bool hasStatNature =
-            originGroup == Enums::GameVersion::SWSH ||
-            originGroup == Enums::GameVersion::BDSP ||
-            originGroup == Enums::GameVersion::PLA ||
-            originGroup == Enums::GameVersion::SV ||
-            originGroup == Enums::GameVersion::ZA;
+            Gen59FormatDomain::mintedStatNature(pk.getGameGroup());
 
         // Species/form personal data (abilities / gender ratio / per-game presence) for the L2 checks.
         const Pokemon::PersonalInfo& pi = Pokemon::getPersonalInfo(species, pk.form());
@@ -1581,22 +1600,26 @@ namespace Legality {
 
         // Storage-format ceilings remain verifiable for source-free PK3/PK4
         // bank records. Do not turn an unrecognized format into Invalid.
-        const uint8_t nativeFormatGen =
-            Gen12FormatDomain::generationFromGroup(pk.getGameGroup()) != 0
-                ? Gen12FormatDomain::generationFromGroup(pk.getGameGroup())
-                : Gen34FormatDomain::generationFromGroup(pk.getGameGroup());
+        const uint8_t nativeFormatGen=nativeFormatGeneration;
         const uint8_t speciesMoveGen = sourceProfile
             ? sourceProfile->generation : nativeFormatGen;
-        const uint16_t speciesMax = sourceProfile
+        const uint16_t speciesMax = sourceProfile && !sourceFormatMismatch
             ? sourceProfile->maxSpecies
             : nativeFormatGen<=2
                 ? Gen12FormatDomain::maxSpecies(nativeFormatGen)
-                : Gen34FormatDomain::maxSpecies(nativeFormatGen);
-        const uint16_t moveMax = sourceProfile
+                : nativeFormatGen<=4
+                    ? Gen34FormatDomain::maxSpecies(nativeFormatGen)
+                    : Gen59FormatDomain::maxSpecies(pk.getGameGroup());
+        // Gen V-IX method/move universes are still incomplete. There is no
+        // safe global move-ID ceiling until source-corroborated for each
+        // native title (especially Legends and later DLC).
+        const uint16_t moveMax = sourceProfile && !sourceFormatMismatch
             ? sourceProfile->maxMove
             : nativeFormatGen<=2
                 ? Gen12FormatDomain::maxMove(nativeFormatGen)
-                : Gen34FormatDomain::maxMove(nativeFormatGen);
+                : nativeFormatGen<=4
+                    ? Gen34FormatDomain::maxMove(nativeFormatGen)
+                    : Gen59FormatDomain::maxMove(pk.getGameGroup());
         if (speciesMax && species > speciesMax) {
             add(r, Severity::Invalid,
                 "Species " + std::to_string(species) +
