@@ -1,0 +1,102 @@
+{
+  "schema": "L5_GEN12_SOURCEFREE_FALSE_INVALID_EVIDENCE_V1",
+  "integration_pr": 298,
+  "integrated_sha": "c91b53e84ef75669049d159616894ec68cd4b0dd",
+  "accepted_legality_sha": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+  "pinned_git_blobs": {
+    "src/Legality/Legality.cpp": "a81cf6b878da50cc85837edf2c8c37ea11357d8a",
+    "include/Pokemon/Pokemon1ReadOnly.h": "7fb53e64c3060dc0f111893c56f69ed2ebb32473",
+    "include/Pokemon/Pokemon2ReadOnly.h": "5950c26ce1b5baca3b7a5c03679bbd2af2f0ca48",
+    "include/Pokemon/AbilityInfo.h": "15df4aa5458ca4162b451c1828838bebf04fff3a",
+    "src/Pokemon/AbilityInfo.cpp": "f7fce119be878e03a392c960ed35cf34f59faecf",
+    "include/Legality/Legality.h": "41375645b6695a754ed3d605783546a61ccf1337"
+  },
+  "defects": [
+    {
+      "finding": "L5-F3",
+      "priority": "P0",
+      "classification": "CONFIRMED_SOURCE_FALSE_INVALID",
+      "scope": "All nonempty source-free validated PK1 and PK2 with neutral ability=0",
+      "source_locations": [
+        "include/Pokemon/Pokemon1ReadOnly.h:32",
+        "include/Pokemon/Pokemon2ReadOnly.h:32",
+        "src/Legality/Legality.cpp:1666-1677",
+        "src/Pokemon/AbilityInfo.cpp:27-34"
+      ],
+      "trace": "Missing sourceProfile (or known conflicting-gen source normalized to empty) opens ability check; both native PK1/PK2 wrappers correctly expose ability 0; getAbilityNumberForId(0) returns 0 and isAbilityLegal returns false; unconditional Invalid is emitted despite native format having no abilities",
+      "native_positive_controls": [
+        "PK1 Bulbasaur no exact source",
+        "PK1 Magnemite no exact source",
+        "PK2 Bulbasaur no exact source",
+        "PK2 Magnemite no exact source"
+      ],
+      "native_negative_controls": [
+        "Same PK1/PK2 records with matching red_gb/gold_gbc exact source should not emit ability Invalid",
+        "Native PK3/PK4 ability-mismatch controls must remain Invalid"
+      ],
+      "unknown_source_controls": [
+        "Same PK1/PK2 with conflicting Platinum/FireRed game labels must emit source mismatch Warning, not Ability Invalid"
+      ],
+      "full_native_analyzer_execution": "NOT_YET_RUN",
+      "coordinator_minimal_fix": "Disable ability validation whenever verified native format is PK1 or PK2, regardless of sourceProfile presence; retain applicable modern/PK3/PK4 checks."
+    },
+    {
+      "finding": "L5-F4",
+      "priority": "P0",
+      "classification": "CONFIRMED_SOURCE_FALSE_INVALID",
+      "scope": "Source-free validated PK1 of a gendered species with neutral gender()=2",
+      "source_locations": [
+        "include/Pokemon/Pokemon1ReadOnly.h:36",
+        "src/Legality/Legality.cpp:2627-2647"
+      ],
+      "trace": "PK1 wrapper correctly returns gender=2 because no native gender exists. Missing sourceProfile enters gender check; per-species genderRatio !=255 makes neutral 2 appear as genderless and emits Invalid. Source label red_gb avoids check, so missing evidence paradoxically makes same bytes globally Invalid.",
+      "native_positive_controls": [
+        "PK1 Bulbasaur, source-free",
+        "PK1 Bulbasaur, conflicting platinum_nds label"
+      ],
+      "native_negative_controls": [
+        "PK1 Bulbasaur with red_gb should not emit Gendered species marked genderless",
+        "PK1 Magnemite genderless ratio255 remains compatible",
+        "PK2 Bulbasaur native DV-derived gender must still be validated"
+      ],
+      "full_native_analyzer_execution": "NOT_YET_RUN",
+      "coordinator_minimal_fix": "Skip gender-ratio checks for verified native PK1 irrespective of source label; preserve native PK2/PK3/PK4 gender checks."
+    }
+  ],
+  "standalone_execution": {
+    "file": "tests/fixtures/legality_l5_gen12_sourcefree_contract.cpp",
+    "git_blob": "2cdb7770375476c56d6592ed47801ff966a45c9f",
+    "sha256": "d1664950028fa17dfc0901a92cad4033fccb0c3458bb275116f2c1f543278dd8",
+    "compiler_modes": [
+      "g++ C++20 O2 -Wall -Wextra -Wpedantic -Werror: PASS",
+      "g++ C++20 O1 ASan+UBSan: PASS",
+      "clang++ C++20 O2: PASS"
+    ],
+    "contract_case_states": 18,
+    "scope": "Exact committed standalone C++ reproduces source conditions with synthetic native neutral fields; NOT full production Legality::analyze."
+  },
+  "production_native_probe": {
+    "file": "tests/fixtures/legality_l5_pk12_sourcefree_native_probe.cpp",
+    "make": "tools/audit_legality_l5_pk12_probe.mk",
+    "cases": 12,
+    "normal": "NOT_RUN",
+    "asan_ubsan": "NOT_RUN",
+    "baseline_command": "make -f Makefile.host -f tools/audit_legality_l5_pk12_probe.mk l5-pk12-baseline",
+    "baseline_sanitize_command": "make -f Makefile.host -f tools/audit_legality_l5_pk12_probe.mk l5-pk12-baseline-sanitize",
+    "fixed_command": "make -f Makefile.host -f tools/audit_legality_l5_pk12_probe.mk l5-pk12-fixed",
+    "fixed_sanitize_command": "make -f Makefile.host -f tools/audit_legality_l5_pk12_probe.mk l5-pk12-fixed-sanitize"
+  },
+  "integrated_existing_evidence": {
+    "pr": 298,
+    "workflow": 38287166355,
+    "head": "c91b53e84ef75669049d159616894ec68cd4b0dd",
+    "host": "PASS",
+    "lane_L1_L2_L3_L4_L5": "PASS",
+    "l5_gen34_ev_52_case_normal": "PASS",
+    "l5_gen34_ev_52_case_asan_ubsan": "PASS",
+    "l5_crypto_roundtrip_336_and_bad_12_both_modes": "PASS",
+    "l5_single_bit_251904_both_modes": "PASS",
+    "pk1_pk2_new_cases_included": false
+  },
+  "certainty": "Two source-level counterexamples conclusively follow from exact adapter returns and integrated guard. Actual whole native analyzer repro intentionally not yet certified. No retail-original Pokémon historical authenticity or complete PKHeX parity claimed."
+}
