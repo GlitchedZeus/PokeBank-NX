@@ -1,0 +1,53 @@
+name: L5 Independent Gen III-IV Native Fuzz QA
+
+on:
+  push:
+    branches:
+      - audit/legality-l5-research-qa-20261012
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: l5-stage3-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-stage3:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify immutable source HEAD
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          git diff --check
+          test -z "$(git status --porcelain --untracked-files=no)"
+      - name: Independently verify committed PK3/PK4 crypto source pins and negative controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l5_stage3_native_fuzz.py --self-test
+      - name: Actual original PK3/PK4 codec fuzz, GCC+Clang normal plus sanitizers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l5_stage3_native_fuzz.py --timeout 900
+      - name: Actual PK3/PK4 entity linkage and checksum/header quarantine
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f Makefile.host -f tools/audit_legality_l5_stage3_entities.mk l5-stage3-entity
+          make -f Makefile.host -f tools/audit_legality_l5_stage3_entities.mk l5-stage3-entity-sanitize
+      - name: Reject tracked source mutation by the QA jobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          test -z "$(git status --porcelain --untracked-files=no)"
