@@ -75,22 +75,21 @@ constexpr Result evaluate(const Input& in) noexcept {
        !IV::validIVs(in.physicalSlot1) || !IV::validIVs(in.observedChild)) {
         out.status=Status::MalformedOriginalIVs;return out;
     }
-    // Route identity is checked BEFORE assessing outcomes: duplicated
-    // contradictory hypotheses cannot fabricate an exhaustive exclusion.
-    for(uint8_t i=0;i<in.count;++i) {
-        const auto id=in.histories[i].routeIdentity;
-        if(id==0) {
-            out.status=Status::MissingOrDuplicateRouteIdentity;return out;
-        }
-        for(uint8_t j=0;j<i;++j) {
-            if(id==in.histories[j].routeIdentity) {
-                out.status=Status::MissingOrDuplicateRouteIdentity;return out;
-            }
-        }
-    }
+    // A duplicate cannot establish exhaustive rejection; an otherwise
+    // independently verified matching route still supplies a valid witness.
+    bool malformedRouteIdentity=false;
     for(uint8_t i=0;i<in.count;++i) {
         ++out.examined;
         const auto& h=in.histories[i];
+        bool unique=h.routeIdentity!=0;
+        for(uint8_t j=0;j<i;++j)
+            if(h.routeIdentity==in.histories[j].routeIdentity)
+                unique=false;
+        if(!unique) {
+            malformedRouteIdentity=true;
+            ++out.unknown;
+            continue;
+        }
         if(!h.independentSourceAttestation ||
            !h.stageIdentity ||
            h.stageIdentity!=in.originalStageIdentity) {
@@ -118,6 +117,8 @@ constexpr Result evaluate(const Input& in) noexcept {
         else ++out.unknown;
     }
     if(out.matched)out.status=Status::ConditionalHistoryMatched;
+    else if(malformedRouteIdentity)
+        out.status=Status::MissingOrDuplicateRouteIdentity;
     else if(out.unknown)out.status=Status::UnresolvedCandidateHistory;
     else if(!in.allIVStageHypothesesIndependentlyEnumerated)
         out.status=Status::UnknownHistoryEnumeration;
