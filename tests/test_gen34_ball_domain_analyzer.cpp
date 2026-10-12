@@ -766,7 +766,7 @@ void testGen4JointNativeParentMoveIvHistories() {
                 // independently enumerated DAYCARE alternatives only.
                 auto exhaustedSet=universe;
                 exhaustedSet.alternatives[0].history.knownFinalRNGState^=2u;
-                exhaustedSet.alternatives[2].history.knownFinalRNGState^=4u;
+                exhaustedSet.alternatives[2].history.knownFinalRNGState^=16u;
                 exhaustedSet.alternatives[2].history.finalRNGStateIndependentlyVerified=true;
                 assert(U::evaluate(exhaustedSet).status==
                        U::Status::UnknownCandidateEnumeration);
