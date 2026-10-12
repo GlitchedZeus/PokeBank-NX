@@ -59,10 +59,11 @@ def audit(root: Path) -> dict:
     f5 = segment(production, F5_START, F5_END)
     require_all("PK2 egg production", f5, (
         "nativeFormatGeneration == 2", "pk.isEgg()",
-        "Pokemon::Pokemon2ReadOnly",
-        "statExpHP()", "statExpATK()", "statExpDEF()",
-        "statExpSPE()", "statExpSpecial()",
-        "Severity::Invalid", "CheckIdentifier::Egg"))
+        "pk.gen2NativeStatExperience(nativeStatExperience)",
+        "std::array<uint16_t, 5> nativeStatExperience",
+        "if (nonzero)", "Severity::Invalid", "CheckIdentifier::Egg"))
+    if "static_cast<const Pokemon::Pokemon2ReadOnly&>" in f5:
+        raise ValueError("unsafe Gen II polymorphic downcast reintroduced")
     if f5.count("Severity::Invalid") != 1:
         raise ValueError("F5 native structural Invalid site count drift")
 
