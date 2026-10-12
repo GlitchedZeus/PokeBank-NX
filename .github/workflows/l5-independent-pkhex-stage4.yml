@@ -1,0 +1,74 @@
+name: L5 Independent Pinned PKHeX Differential
+
+on:
+  push:
+    branches:
+      - audit/legality-l5-research-qa-20261012
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: l5-stage4-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pinned-source-differential:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Fetch exact inspected upstream PKHeX reference rules
+        uses: actions/checkout@v4
+        with:
+          repository: kwsch/PKHeX
+          ref: 6501f0ab46e8f8ca048539dbaf8cae8cb104e722
+          path: _l5_stage4_pinned_pkhex
+          persist-credentials: false
+          sparse-checkout: |
+            PKHeX.Core/Legality/Verifiers/EffortValueVerifier.cs
+            PKHeX.Core/PKM/Util/EffortValues.cs
+            PKHeX.Core/Legality/Restrictions/GBRestrictions.cs
+          sparse-checkout-cone-mode: false
+      - name: Enforce SHA and immutable audit-controlled original sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          test "$(git -C _l5_stage4_pinned_pkhex rev-parse HEAD)" = "6501f0ab46e8f8ca048539dbaf8cae8cb104e722"
+          git diff --check
+      - name: Mutation negative controls for attestations and runtime provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l5_stage4_oracle.py --self-test
+      - name: Source-pinned native Gen I-IV differential, GCC/Clang and ASan/UBSan
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l5_stage4_oracle.py \
+            --native-model-root . \
+            --pkhex-root _l5_stage4_pinned_pkhex \
+            --timeout 600 \
+            --json-out /tmp/l5-stage4-method-scoped.json
+          python3 - <<'PY'
+          import json
+          x=json.load(open('/tmp/l5-stage4-method-scoped.json',encoding='utf8'))
+          assert len(x['normal_and_sanitizer_runs'])==4
+          assert x['pkhex_sources_locally_verified']
+          assert x['native_accepted_analyzer_source_locally_verified']
+          assert x['live_pkhex_runtime_executed'] is False
+          assert x['live_nx_legality_analyzer_executed'] is False
+          assert x['release_gate'].startswith('BLOCKED')
+          assert x['certified_full_pkhex_parity_cells']==0
+          PY
+      - name: Preserve immutable tracked source state
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          test -z "$(git status --porcelain --untracked-files=no)"
