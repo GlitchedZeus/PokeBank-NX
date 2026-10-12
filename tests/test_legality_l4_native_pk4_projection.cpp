@@ -1,4 +1,5 @@
 #include "Legality/Gen4EventNativeFieldEvidence.h"
+#include "Legality/Gen4EventArchiveAttestation.h"
 #include "Encryption/Encryption4.h"
 #include "Enums/GameVersion.h"
 #include <array>
