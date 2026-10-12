@@ -48,7 +48,7 @@ OUTPUT = re.compile(
     r"\(method scoped, synthetic, no live PKHeX/full-analyzer execution\)$"
 )
 EXPECTED = dict(total=655450, agree=131860, gaps=392746,
-                unknown=130844, assertions=655459)
+                unknown=130844, assertions=655465)
 
 
 def git_blob(file: Path) -> str:
@@ -103,7 +103,7 @@ def run_native(compiler: str, sanitize: bool, exe: Path) -> dict:
 def self_test() -> None:
     template = ("L5 Stage3 PINNED reference DIFFERENTIAL PASS: 655450 "
                 "compared; agreement=131860, source-scope gaps=392746, "
-                "unresolved histories=130844; assertions=655459 "
+                "unresolved histories=130844; assertions=655465 "
                 "(method scoped, synthetic, no live PKHeX/full-analyzer execution)")
     assert parse_native_output(template) == EXPECTED
     for corrupted in (
