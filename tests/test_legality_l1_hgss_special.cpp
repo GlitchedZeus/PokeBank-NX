@@ -130,7 +130,7 @@ int main(){
             Pokemon::Pokemon4ReadOnly badChecksum(
                 corrupted,Enums::GameVersion::HGSS);
             assert(S::evaluateNative(c,{&badChecksum,true,true}).status==
-                   St::IncoherentNativeRecord);
+                   St::UnknownMalformedNativeRecord);
             assert(std::equal(untouched.begin(),untouched.end(),
                               native.originalEncryptedBytes().begin()));
             auto bad=c;bad.originalSpecies=0;
