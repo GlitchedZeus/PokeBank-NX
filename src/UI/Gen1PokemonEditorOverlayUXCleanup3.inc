@@ -960,7 +960,12 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     screen.touchButtons.clear();
     int x = 0, y = 0, w = 0, h = 0;
     ux3DialogGeometry(screen, x, y, w, h);
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
+    if (state.mode == UX2Mode::Actions) {
+        ux2DrawActions(screen, fb, x, y, w, h);
+        ux3DrawTouchNavBar(fb, state);
+        return; // narrow popup owns its own scrim and panel
+    }
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 105));
     ux2DrawPanel(fb, x, y, w, h);
 
     switch (state.mode) {
