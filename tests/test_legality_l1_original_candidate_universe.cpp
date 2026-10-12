@@ -130,6 +130,45 @@ int main(){
     }};
     static_assert(U::summarize(sourceOnly).outcome==
                   Outcome::SourceTemplateCompatibleHistoryUnproven);
+    // Adversarial alternatives: failed Safari/roamer checks do not rule
+    // out later transfers, an event or an egg route without original
+    // evidence. The family set here is intentionally non-exhaustive.
+    constexpr std::array<U::Candidate,5> alternativeAcquisition{{
+        {Family::Gen3Safari,Kind::CandidateLocalContradiction,true},
+        {Family::Gen3OriginalRoamer,Kind::CandidateLocalContradiction,true},
+        {Family::Gen4StaticGiftRoamer,Kind::OriginalTemplateCompatible,false},
+        {Family::Gen2StaticGift,Kind::UnknownOriginalHistory,true},
+        {Family::Gen4SinnohWild,Kind::CandidateLocalContradiction,true}
+    }};
+    constexpr auto alternative=U::summarize(alternativeAcquisition);
+    static_assert(alternative.outcome==Outcome::UnknownOrMissingOriginalHistories);
+    static_assert(alternative.locallyContradicted==3u);
+    static_assert(alternative.unknown==2u);
+    static_assert(!alternative.globalInvalidSupported);
+    // An unrecognized family or evidence byte may originate in corrupted
+    // external observations. It is never proof of a capture, even if its
+    // boolean witness has accidentally been set true.
+    constexpr std::array<U::Candidate,3> malformed{{
+        {Family::Count,Kind::ConditionalOriginalHistory,true},
+        {static_cast<Family>(255),Kind::CandidateLocalContradiction,true},
+        {Family::Gen1StaticTrade,static_cast<Kind>(255),true}
+    }};
+    constexpr auto malformedResult=U::summarize(malformed);
+    static_assert(malformedResult.outcome==Outcome::UnknownOrMissingOriginalHistories);
+    static_assert(malformedResult.unknown==3u);
+    static_assert(malformedResult.verifiedConditional==0u);
+    static_assert(!malformedResult.globalInvalidSupported);
+    constexpr auto allCandidateFamiliesContradicted=[]{
+        std::array<U::Candidate,static_cast<std::size_t>(Family::Count)> a{};
+        for(std::size_t i=0;i<a.size();++i)
+            a[i]={static_cast<Family>(i),Kind::CandidateLocalContradiction,true};
+        return a;
+    }();
+    constexpr auto allFailed=U::summarize(allCandidateFamiliesContradicted);
+    static_assert(allFailed.locallyContradicted==
+                  static_cast<std::size_t>(Family::Count));
+    static_assert(allFailed.outcome==Outcome::CandidateSetLocallyContradictedOnly);
+    static_assert(!allFailed.globalInvalidSupported);
     constexpr std::array<U::Candidate,0> empty{};
     static_assert(U::summarize(empty).outcome==
                   Outcome::UnknownOrMissingOriginalHistories);

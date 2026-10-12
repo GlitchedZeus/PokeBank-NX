@@ -219,7 +219,11 @@ constexpr Summary summarize(std::span<const Candidate> candidates) noexcept {
     for(const auto& candidate:candidates){
         // A hypothetical field match lacking an original provenance witness
         // has no authority to refute or affirm a retail origin.
-        if(!candidate.originalSourceIndependentlyAttested){
+        // A sentinel/unknown family is not a real original source, and
+        // a corrupt evidence enum must not be allowed to invent a match.
+        if(!candidate.originalSourceIndependentlyAttested ||
+           static_cast<uint8_t>(candidate.family)>=
+               static_cast<uint8_t>(Family::Count)){
             ++out.unknown;
             continue;
         }
@@ -231,6 +235,8 @@ constexpr Summary summarize(std::span<const Candidate> candidates) noexcept {
             case EvidenceKind::CandidateLocalContradiction:
                 ++out.locallyContradicted;break;
             case EvidenceKind::UnknownOriginalHistory:
+                ++out.unknown;break;
+            default:
                 ++out.unknown;break;
         }
     }
