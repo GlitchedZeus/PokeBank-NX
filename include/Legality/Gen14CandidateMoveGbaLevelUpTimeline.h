@@ -73,6 +73,9 @@ constexpr uint16_t offerCount(Game game,uint16_t species) noexcept {
     if(game==Game::Ruby || game==Game::Sapphire)
         return static_cast<uint16_t>(Source::kRubySapphireOffsets[species+1]-
                                      Source::kRubySapphireOffsets[species]);
+    // The original FRLG source compiles a different Deoxys row per title.
+    if(game==Game::FireRed && species==386)
+        return static_cast<uint16_t>(Source::kFireRedDeoxysPacked.size());
     return static_cast<uint16_t>(Source::kFireRedLeafGreenOffsets[species+1]-
                                  Source::kFireRedLeafGreenOffsets[species]);
 }
@@ -85,6 +88,8 @@ constexpr Offer offerAt(Game game,uint16_t species,uint16_t index) noexcept {
     else if(game==Game::Ruby || game==Game::Sapphire)
         packed=Source::kRubySapphirePacked[
             Source::kRubySapphireOffsets[species]+index];
+    else if(game==Game::FireRed && species==386)
+        packed=Source::kFireRedDeoxysPacked[index];
     else
         packed=Source::kFireRedLeafGreenPacked[
             Source::kFireRedLeafGreenOffsets[species]+index];
@@ -220,6 +225,11 @@ static_assert(offerCount(Game::Ruby,290)==10);
 static_assert(offerAt(Game::Ruby,290,0).move==10);
 static_assert(offerAt(Game::FireRed,290,0).move==10);
 static_assert(offerCount(Game::Ruby,386)==12);
-static_assert(offerCount(Game::FireRed,386)==14);
+static_assert(offerCount(Game::FireRed,386)==12);
+static_assert(offerCount(Game::LeafGreen,386)==14);
+static_assert(offerAt(Game::FireRed,386,4).move==269); // original FireRed Taunt
+static_assert(offerAt(Game::LeafGreen,386,4).move==282); // LeafGreen Knock Off
+static_assert(offerAt(Game::FireRed,386,7).move==276); // Superpower
+static_assert(offerAt(Game::LeafGreen,386,7).move==289); // Snatch
 static_assert(supported(Game::Emerald,386));
 } // namespace Legality::Gen3GbaVersionedLevelUpTimeline
