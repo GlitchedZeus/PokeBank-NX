@@ -303,6 +303,9 @@ namespace UI {
         fb.drawFilledRect(g.x + 16, g.y + g.headerHeight - 4,
                           g.width - 32, 2, Colors::Accent);
         buttons.clear();
+        // The original compact grey action sheet uses its own warm yellow
+        // selection outline. Keep global editor navigation teal elsewhere.
+        const Color narrowSelectionBorder = Colors::PartyNumber;
         for (int visual = 0; visual < model.count; ++visual) {
             const auto& row = model.rows[static_cast<std::size_t>(visual)];
             const int yy = g.rowY(visual);
@@ -312,9 +315,9 @@ namespace UI {
             const bool pressed = row.enabled() && touchPressedRect(
                 xx, yy + 2, width, g.rowHeight - 4);
             fb.drawFilledRoundedRect(xx, yy + 3, width, g.rowHeight - 6, 10,
-                pressed ? withAlpha(Colors::FocusBorder, 112) : Colors::Surface);
+                pressed ? withAlpha(narrowSelectionBorder, 112) : Colors::Surface);
             fb.drawRoundedRect(xx, yy + 3, width, g.rowHeight - 6, 10,
-                selected || pressed ? Colors::FocusBorder : Colors::Divider,
+                selected || pressed ? narrowSelectionBorder : Colors::Divider,
                 selected || pressed ? 2 : 1);
             const Color disabledColor(
                 Colors::TextDim.r, Colors::TextDim.g, Colors::TextDim.b, 105);

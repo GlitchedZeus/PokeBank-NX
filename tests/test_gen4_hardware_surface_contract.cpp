@@ -508,6 +508,10 @@ int main() {
     contains(chrome, "const Color disabledColor(");
     contains(chrome, "Colors::TextSecondary");
     contains(chrome, "Colors::TextDim.b, 105");
+    // Preserve the owner's older warm-yellow outline *only* on the narrow
+    // grey action sheet; all other themed focus stays teal.
+    contains(chrome, "const Color narrowSelectionBorder = Colors::PartyNumber;");
+    contains(chrome, "selected || pressed ? narrowSelectionBorder : Colors::Divider");
     contains(surface, "Live source writes remain hard disabled");
     contains(surface, "drawLegality");
     contains(surface, "drawReleaseConfirm");

@@ -2725,11 +2725,9 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     const bool boxEntry = boxEntrySurface(screen);
     if (!partyEntry && !boxEntry) return false;
 
-    // The base box view translates a second tap into A only *after* this
-    // interceptor returns. Gen IV must claim that tap here, otherwise the
-    // legacy creator runs into the immutable-source guard instead of opening
-    // the native staged Add action. A first tap on another slot still goes to
-    // base cursor navigation; box arrows and the header are never hijacked.
+    // Claim a completed box-cell tap before the inherited legacy sheet can
+    // take it. Whether that cell is empty or occupied, it enters the native
+    // staged Actions surface. Header arrows and non-slot controls are inert here.
     if (boxEntry && touch.justTapped()) {
         const int tapped = screen.touchedButtonId(touch);
         const int slots = static_cast<int>(screen.trainer.getSlotsPerBox());
