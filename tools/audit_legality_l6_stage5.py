@@ -24,10 +24,7 @@ def production_sources() -> list[str]:
     spec = importlib.util.spec_from_file_location("l6_stage3_sources", STAGE3)
     if spec is None or spec.loader is None:
         raise RuntimeError("cannot load pinned Stage 3 production source manifest")
-    import sys
-    from types import ModuleType
-    module = ModuleType(spec.name)
-    sys.modules[spec.name] = module
+    module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     sources = list(module.SOURCES)
     if not sources or sources[0] != "tests/fixtures/legality_stage3_cross_lane_contracts.cpp":
