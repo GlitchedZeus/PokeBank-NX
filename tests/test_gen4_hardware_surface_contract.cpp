@@ -30,6 +30,13 @@ void contains(const std::string& text, const char* needle) {
 
 int main() {
     namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+    // The box action policy must not special-case empty touch cells: both
+    // A and tap open Add/Cancel, while only an explicit X starts Create.
+    static_assert(Shared::boxActivation(false, true, false) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(true, true, false) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(false, false, true) == Shared::BoxActivation::Add);
+    static_assert(Shared::boxActivation(true, false, true) == Shared::BoxActivation::None);
+    static_assert(Shared::boxActivation(false, false, false) == Shared::BoxActivation::None);
     namespace Narrow = PokeBank::UIModel::NarrowPokemonMenu;
     // Behavior-level contract: the older popup is narrow and never makes a
     // disabled transfer command available through touch or controller A.
