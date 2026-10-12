@@ -153,6 +153,7 @@ HOST_TESTS += $(HOST_BUILD)/test_gen34_egg_moves
 HOST_TESTS += $(HOST_BUILD)/test_gen14_candidate_move_history
 HOST_TESTS += $(HOST_BUILD)/test_gen3_egg_iv_inheritance_stage
 HOST_TESTS += $(HOST_BUILD)/test_gen3_joint_egg_candidate
+HOST_TESTS += $(HOST_BUILD)/test_gen4_egg_iv_inheritance_stage
 HOST_TESTS += $(HOST_BUILD)/test_gen3_emerald_levelup_timeline
 HOST_TESTS += $(HOST_BUILD)/test_gen14_candidate_set_coverage
 HOST_TESTS += $(HOST_BUILD)/test_gen34_palpark_snapshot
@@ -162,6 +163,7 @@ HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_palpark_snapshot_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen14_candidate_set_coverage_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_emerald_levelup_timeline_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_joint_egg_candidate_sanitize
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_egg_iv_inheritance_stage_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen34_same_parent_egg_history
 HOST_TESTS += $(HOST_BUILD)/test_gen4_event_joint_move_history
 HOST_TESTS += $(HOST_BUILD)/test_gen4_event_ribbon_candidate
@@ -851,3 +853,12 @@ $(HOST_BUILD)/test_sprite_layout_sanitize: tests/test_sprite_layout.cpp
 
 host-clean:
 	rm -rf $(HOST_BUILD)
+
+# RNG-003: bounded Gen IV retail ordinary daycare IV-stage forward/inverse checks.
+$(HOST_BUILD)/test_gen4_egg_iv_inheritance_stage: tests/test_gen4_egg_iv_inheritance_stage.cpp include/Legality/Gen4EggIVInheritanceStage.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_egg_iv_inheritance_stage.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_egg_iv_inheritance_stage_sanitize: tests/test_gen4_egg_iv_inheritance_stage.cpp include/Legality/Gen4EggIVInheritanceStage.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_egg_iv_inheritance_stage.cpp -o $@
