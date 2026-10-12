@@ -29,16 +29,18 @@ inline Snapshot project(const Pokemon::Pokemon4ReadOnly& pokemon) noexcept {
     if (bytes.size()<0x88) return out;
     const uint16_t nativeLocation=pokemon.metLocationExtended()!=0
         ? pokemon.metLocationExtended() : pokemon.metLocationDP();
-    // The historical event projection adds a +3000 location namespace
-    // offset. A malformed stored uint16 must not silently wrap around
-    // into an apparently matching but unrelated template location.
-    if (nativeLocation > 0xffffu - 3000u) return out;
+    // IMPORTANT: PK4 met-location fields are already in the same ID
+    // namespace as Gen4EventTemplateData.inc (including e.g. 3053).
+    // Match the accepted Pokemon4ReadOnlyView::metLocation() and
+    // Legality.cpp Gen4EventTemplate::matchEvolutionLine contract.
+    // Never add 3000: that makes genuine event locations mismatch and
+    // could wrap malformed values into unrelated, plausible IDs.
     const uint8_t ball=pokemon.ballDPPt()>pokemon.ballHGSS()
         ? pokemon.ballDPPt() : pokemon.ballHGSS();
     out.identity={
         pokemon.species(),pokemon.tid(),pokemon.sid(),pokemon.pid(),
         pokemon.metLevel(),
-        static_cast<uint16_t>(nativeLocation+3000u),ball,
+        nativeLocation,ball,
         pokemon.form(),pokemon.gender(),pokemon.language(),
         pokemon.originVersion(),pokemon.originalTrainerGender(),
         pokemon.fatefulEncounter()

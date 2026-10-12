@@ -29,7 +29,7 @@ int main() {
     w32(raw,0x24,1u);w32(raw,0x3c,2u);w32(raw,0x60,4u);
     raw[0x17]=std::byte{1};raw[0x40]=std::byte{1};
     raw[0x5f]=std::byte{7};raw[0x84]=std::byte{40};
-    raw[0x86]=std::byte{16};w16(raw,0x46,53);
+    raw[0x86]=std::byte{16};w16(raw,0x46,3053);
     raw[0x48]=std::byte{0x41};w16(raw,0x4a,0xffffu);
     raw[0x68]=std::byte{0x52};w16(raw,0x6a,0xffffu);
     w16(raw,0x06,Encryption::checksum4(raw));
@@ -78,6 +78,14 @@ int main() {
     assert(compatible.status==B::Status::ConditionalWitness);
     assert(compatible.observed.observedMoves[2]==53);
     assert(compatible.observed.nativeRibbonWords[1]==2u);
+    // Wrong raw met-location must remain wrong; no +3000 laundering.
+    auto wrongMet=raw;
+    w16(wrongMet,0x46,53);
+    w16(wrongMet,0x06,Encryption::checksum4(wrongMet));
+    Pokemon::Pokemon4ReadOnly wrongNative(
+        Encryption::encryptArray4(wrongMet),Enums::GameVersion::HGSS);
+    assert(wrongNative.valid());
+    assert(B::evaluate(wrongNative,claimed,s).status==B::Status::IdentityMismatch);
     // Fake final-stage fields in the caller MUST NOT change the result.
     auto faked=claimed;
     faked.moves.stored.species=25;

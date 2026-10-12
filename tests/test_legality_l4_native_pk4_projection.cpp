@@ -32,7 +32,7 @@ int main() {
     w16(original,0x2c,53);
     w32(original,0x3c,0x00000002u);
     w32(original,0x60,0x00000004u);
-    w16(original,0x46,53); // extended retail met position: 3053
+    w16(original,0x46,3053); // native PK4 already stores event location 3053
     original[0x40]=std::byte{1}; // fateful
     original[0x17]=std::byte{1};
     original[0x5f]=std::byte{7};
@@ -73,16 +73,29 @@ int main() {
     std::array<std::byte,8> shortBytes{};
     Pokemon::Pokemon4ReadOnly truncated(shortBytes,Enums::GameVersion::HGSS);
     assert(!N::project(truncated).available);
-    // Overflowing the +3000 source namespace must never fabricate a
-    // structural event identity from malformed but checksum-valid PK4.
-    auto overflow=original;
-    w16(overflow,0x46,0xffffu);
-    w16(overflow,0x06,Encryption::checksum4(overflow));
-    const auto overflowCiphertext=Encryption::encryptArray4(overflow);
-    Pokemon::Pokemon4ReadOnly overflowEntity(
-        overflowCiphertext,Enums::GameVersion::HGSS);
-    assert(overflowEntity.valid());
-    assert(!N::project(overflowEntity).available);
+    // Exact native met location is required. A "53" must NOT be silently
+    // adjusted by +3000 to impersonate the true event ID 3053.
+    auto differentLocation=original;
+    w16(differentLocation,0x46,53);
+    w16(differentLocation,0x06,Encryption::checksum4(differentLocation));
+    const auto otherCiphertext=Encryption::encryptArray4(differentLocation);
+    Pokemon::Pokemon4ReadOnly other(otherCiphertext,Enums::GameVersion::HGSS);
+    assert(other.valid());
+    const auto otherEvidence=N::project(other);
+    assert(otherEvidence.available);
+    assert(otherEvidence.identity.metLocation==53);
+    assert(!T::matches(T::kGen4EventTemplates[0],otherEvidence.identity));
+    // A malformed but checksum-valid large number is not wrapped into a
+    // seemingly legitimate event number either.
+    auto hugeLocation=original;
+    w16(hugeLocation,0x46,0xffffu);
+    w16(hugeLocation,0x06,Encryption::checksum4(hugeLocation));
+    Pokemon::Pokemon4ReadOnly huge(
+        Encryption::encryptArray4(hugeLocation),Enums::GameVersion::HGSS);
+    assert(huge.valid());
+    const auto hugeEvidence=N::project(huge);
+    assert(hugeEvidence.available && hugeEvidence.identity.metLocation==0xffffu);
+    assert(!T::matches(T::kGen4EventTemplates[0],hugeEvidence.identity));
     const auto after=p.originalEncryptedBytes();
     assert(after.size()==preserved.size());
     for(std::size_t i=0;i<after.size();++i)assert(after[i]==preserved[i]);
