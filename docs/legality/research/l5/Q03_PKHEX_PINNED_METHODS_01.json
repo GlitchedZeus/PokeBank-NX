@@ -1,0 +1,550 @@
+{
+  "snapshot": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+  "start": 0,
+  "count": 11,
+  "not_full_pkhex_call_graph": true,
+  "rows": [
+    {
+      "id": "PK-LICENSE",
+      "path": "LICENSE",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "Version 3",
+      "method_declarations": [],
+      "method_count": 0,
+      "if_condition_lines": 0,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-METHODK",
+      "path": "PKHeX.Core/Legality/RNG/ClassicEra/Gen4/GenerateMethodK.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "SetRandomK",
+      "method_declarations": [
+        {
+          "line": 20,
+          "identifier": "SetRandomK"
+        },
+        {
+          "line": 114,
+          "identifier": "SetFromIVsK"
+        },
+        {
+          "line": 182,
+          "identifier": "GetPIDRegular"
+        }
+      ],
+      "method_count": 3,
+      "if_condition_lines": 24,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-METHODJ",
+      "path": "PKHeX.Core/Legality/RNG/ClassicEra/Gen4/GenerateMethodJ.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "SetRandomJ",
+      "method_declarations": [
+        {
+          "line": 20,
+          "identifier": "SetRandomJ"
+        },
+        {
+          "line": 110,
+          "identifier": "SetFromIVsJ"
+        },
+        {
+          "line": 182,
+          "identifier": "GetPIDRegular"
+        }
+      ],
+      "method_count": 3,
+      "if_condition_lines": 24,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-HISTORY",
+      "path": "PKHeX.Core/Legality/LearnSource/Verify/LearnVerifierHistory.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "MarkAndIterate",
+      "method_declarations": [
+        {
+          "line": 7,
+          "identifier": "Verify"
+        },
+        {
+          "line": 25,
+          "identifier": "MarkAndIterate"
+        },
+        {
+          "line": 51,
+          "identifier": "MarkSpecialMoves"
+        },
+        {
+          "line": 66,
+          "identifier": "Iterate"
+        },
+        {
+          "line": 82,
+          "identifier": "MarkInitialMoves"
+        },
+        {
+          "line": 95,
+          "identifier": "MarkEmptySlots"
+        },
+        {
+          "line": 107,
+          "identifier": "VerifySmeargle"
+        },
+        {
+          "line": 121,
+          "identifier": "MarkRelearnMoves"
+        }
+      ],
+      "method_count": 8,
+      "if_condition_lines": 17,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-BREED",
+      "path": "PKHeX.Core/Legality/Breeding.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "IsValidSpeciesBit34",
+      "method_declarations": [
+        {
+          "line": 13,
+          "identifier": "IsMixedGenderBreed"
+        },
+        {
+          "line": 29,
+          "identifier": "IsGenderSpeciesDetermination"
+        },
+        {
+          "line": 47,
+          "identifier": "IsValidSpeciesBit34"
+        },
+        {
+          "line": 54,
+          "identifier": "GetCanInheritMoves"
+        },
+        {
+          "line": 66,
+          "identifier": "IsSplitBreedNotBabySpecies"
+        },
+        {
+          "line": 82,
+          "identifier": "or"
+        },
+        {
+          "line": 87,
+          "identifier": "IsSplitBreedNotBabySpecies4"
+        },
+        {
+          "line": 107,
+          "identifier": "IsAbleToHatchFromEgg"
+        },
+        {
+          "line": 116,
+          "identifier": "CanHatchAsEgg"
+        },
+        {
+          "line": 136,
+          "identifier": "IsBreedableForm"
+        },
+        {
+          "line": 150,
+          "identifier": "IsAbleToHatchFromEgg"
+        }
+      ],
+      "method_count": 11,
+      "if_condition_lines": 7,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-TRASH",
+      "path": "PKHeX.Core/Legality/Verifiers/TrashByteVerifier.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "VerifyTrashBytesPalPark",
+      "method_declarations": [
+        {
+          "line": 14,
+          "identifier": "Verify"
+        },
+        {
+          "line": 31,
+          "identifier": "VerifyTrashBytesPalPark"
+        },
+        {
+          "line": 47,
+          "identifier": "VerifyTrashBytesPCD"
+        },
+        {
+          "line": 62,
+          "identifier": "VerifyTrashBytesHOME"
+        },
+        {
+          "line": 113,
+          "identifier": "IsTrashCleanContext"
+        },
+        {
+          "line": 118,
+          "identifier": "VerifyTrashNickname"
+        },
+        {
+          "line": 132,
+          "identifier": "VerifyTrashSingle"
+        },
+        {
+          "line": 139,
+          "identifier": "VerifyTrashSpecific"
+        },
+        {
+          "line": 146,
+          "identifier": "VerifyTrashNone"
+        },
+        {
+          "line": 154,
+          "identifier": "VerifyTrashNotEmpty"
+        },
+        {
+          "line": 160,
+          "identifier": "VerifyTrashEmpty"
+        },
+        {
+          "line": 166,
+          "identifier": "GetIdentifier"
+        }
+      ],
+      "method_count": 12,
+      "if_condition_lines": 25,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-RIBBON",
+      "path": "PKHeX.Core/Legality/Verifiers/Ribbons/RibbonVerifierUnique4.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "AddMissingContest4",
+      "method_declarations": [
+        {
+          "line": 10,
+          "identifier": "Parse"
+        },
+        {
+          "line": 27,
+          "identifier": "ParseEgg"
+        },
+        {
+          "line": 35,
+          "identifier": "AddMissingContest3"
+        },
+        {
+          "line": 60,
+          "identifier": "AddMissingContest4"
+        },
+        {
+          "line": 85,
+          "identifier": "FlagAnyAbility"
+        },
+        {
+          "line": 101,
+          "identifier": "FlagAnyContest3"
+        },
+        {
+          "line": 121,
+          "identifier": "FlagAnyContest4"
+        }
+      ],
+      "method_count": 7,
+      "if_condition_lines": 27,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-RIBRULE",
+      "path": "PKHeX.Core/Legality/Verifiers/Ribbons/RibbonRules.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "IsAllowedContest4",
+      "method_declarations": [
+        {
+          "line": 15,
+          "identifier": "IsRibbonValidAlolaChamp"
+        },
+        {
+          "line": 30,
+          "identifier": "IsRibbonValidEffort"
+        },
+        {
+          "line": 47,
+          "identifier": "IsRibbonValidBestFriends"
+        },
+        {
+          "line": 61,
+          "identifier": "IsRibbonValidFootprint"
+        },
+        {
+          "line": 89,
+          "identifier": "IsRibbonValidMasterRank"
+        },
+        {
+          "line": 106,
+          "identifier": "IsRibbonValidMasterRankSWSH"
+        },
+        {
+          "line": 127,
+          "identifier": "IsRibbonValidMasterRankSV"
+        },
+        {
+          "line": 149,
+          "identifier": "IsRibbonValidSuperTraining"
+        },
+        {
+          "line": 162,
+          "identifier": "bits"
+        },
+        {
+          "line": 169,
+          "identifier": "SetSuperTrainSupremelyTrained"
+        },
+        {
+          "line": 174,
+          "identifier": "IsRibbonValidTowerMaster"
+        },
+        {
+          "line": 188,
+          "identifier": "IsRibbonValidWinning"
+        },
+        {
+          "line": 209,
+          "identifier": "IsRibbonValidVictory"
+        },
+        {
+          "line": 219,
+          "identifier": "IsRibbonValidTwinklingStar"
+        },
+        {
+          "line": 235,
+          "identifier": "IsAnyWithoutFootprint8b"
+        },
+        {
+          "line": 311,
+          "identifier": "GetValidRibbonStateNational"
+        },
+        {
+          "line": 333,
+          "identifier": "IsEarthRibbonAllowed"
+        },
+        {
+          "line": 345,
+          "identifier": "GetMaxMemoryCounts"
+        },
+        {
+          "line": 378,
+          "identifier": "IsAllowedContest3"
+        },
+        {
+          "line": 389,
+          "identifier": "IsAllowedContest4"
+        },
+        {
+          "line": 400,
+          "identifier": "IsAllowedContest4"
+        },
+        {
+          "line": 412,
+          "identifier": "Contains"
+        },
+        {
+          "line": 417,
+          "identifier": "IsAllowedBattleFrontier4"
+        },
+        {
+          "line": 428,
+          "identifier": "IsAllowedBattleFrontier"
+        }
+      ],
+      "method_count": 24,
+      "if_condition_lines": 39,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-METHOD",
+      "path": "PKHeX.Core/Legality/RNG/MethodFinder.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "GetLCRNGMatch",
+      "method_declarations": [
+        {
+          "line": 18,
+          "identifier": "Analyze"
+        },
+        {
+          "line": 60,
+          "identifier": "GetModifiedPIDMatch"
+        },
+        {
+          "line": 78,
+          "identifier": "GetModified8BitMatch"
+        },
+        {
+          "line": 85,
+          "identifier": "GetLCRNGMethod1Match"
+        },
+        {
+          "line": 92,
+          "identifier": "GetLCRNGMethod1Match"
+        },
+        {
+          "line": 99,
+          "identifier": "GetLCRNGMethod1Match"
+        },
+        {
+          "line": 106,
+          "identifier": "GetLCRNGMethod1Match"
+        },
+        {
+          "line": 129,
+          "identifier": "GetLCRNGMatch"
+        },
+        {
+          "line": 182,
+          "identifier": "GetLCRNGUnownMatch"
+        },
+        {
+          "line": 234,
+          "identifier": "GetLCRNGRoamerMatch"
+        },
+        {
+          "line": 254,
+          "identifier": "GetXDRNGMatch"
+        },
+        {
+          "line": 304,
+          "identifier": "GetChannelMatch"
+        },
+        {
+          "line": 342,
+          "identifier": "GetMG4Match"
+        },
+        {
+          "line": 380,
+          "identifier": "GetG5MGShinyMatch"
+        },
+        {
+          "line": 397,
+          "identifier": "GetCuteCharmMatch"
+        },
+        {
+          "line": 405,
+          "identifier": "GetChainShinyMatch"
+        },
+        {
+          "line": 508,
+          "identifier": "GetPokewalkerMatch"
+        },
+        {
+          "line": 539,
+          "identifier": "IsAzurillEdgeCaseM"
+        },
+        {
+          "line": 555,
+          "identifier": "GetColoStarterMatch"
+        },
+        {
+          "line": 580,
+          "identifier": "GetNonMatch"
+        },
+        {
+          "line": 587,
+          "identifier": "AnalyzeGB"
+        }
+      ],
+      "method_count": 21,
+      "if_condition_lines": 72,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-LEARNREADER",
+      "path": "PKHeX.Core/Legality/Learnset/LearnsetReader.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "ReadLearnset16",
+      "method_declarations": [
+        {
+          "line": 12,
+          "identifier": "new"
+        },
+        {
+          "line": 18,
+          "identifier": "GetArray"
+        },
+        {
+          "line": 30,
+          "identifier": "ReadLearnset16"
+        }
+      ],
+      "method_count": 3,
+      "if_condition_lines": 2,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    },
+    {
+      "id": "PK-BIN",
+      "path": "PKHeX.Core/Legality/Assets/BinLinkerAccessor16.cs",
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "anchor_symbol": "GetEntry",
+      "method_declarations": [
+        {
+          "line": 24,
+          "identifier": "ReadUInt16LittleEndian"
+        },
+        {
+          "line": 27,
+          "identifier": "GetString"
+        },
+        {
+          "line": 33,
+          "identifier": "GetEntry"
+        },
+        {
+          "line": 35,
+          "identifier": "BinLinkerAccessor16"
+        },
+        {
+          "line": 37,
+          "identifier": "GetEntry"
+        },
+        {
+          "line": 53,
+          "identifier": "Length"
+        },
+        {
+          "line": 63,
+          "identifier": "new"
+        },
+        {
+          "line": 66,
+          "identifier": "Length"
+        }
+      ],
+      "method_count": 8,
+      "if_condition_lines": 0,
+      "switch_lines": 0,
+      "case_lines": 0,
+      "error": null
+    }
+  ]
+}
