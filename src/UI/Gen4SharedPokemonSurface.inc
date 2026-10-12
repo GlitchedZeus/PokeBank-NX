@@ -2744,22 +2744,24 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     const bool partyEntry = partyEntrySurface(screen);
     const bool boxEntry = boxEntrySurface(screen);
     const bool storageEntry = storageEntrySurface(screen);
-    if (!partyEntry && !boxEntry && !storageEntry) return false;
-
-    // Claim a completed box-cell tap before the inherited legacy sheet can
-    // take it. Whether that cell is empty or occupied, it enters the native
-    // staged Actions surface. Header arrows and non-slot controls are inert here.
-    if (boxEntry && touch.justTapped()) {
+    // First-tap Boxes entry must also work from an old header focus (-1).
+    // Resolve tapped native cell, apply the full modal guard, then restore
+    // the cursor if the tap was blocked. Add always requires its menu action.
+    if (screen.selectedMode == TrainerViewScreen::ViewMode::Boxes &&
+        screen.detailViewActive && touch.justTapped()) {
         const int tapped = screen.touchedButtonId(touch);
         const int slots = static_cast<int>(screen.trainer.getSlotsPerBox());
         if (PokeBank::UIModel::Gen4BoxTouchActions::selectsTappedBoxSlot(tapped, slots)) {
+            const int previous = screen.selectedItemIndex;
             screen.selectedItemIndex = tapped;
-            // Match A and Gen I-II: empty and occupied slots enter the SAME
-            // staged actions menu. Empty Add remains a separate explicit action.
-            beginActions(screen);
-            return true;
+            if (boxEntrySurface(screen)) {
+                beginActions(screen);
+                return true;
+            }
+            screen.selectedItemIndex = previous;
         }
     }
+    if (!partyEntry && !boxEntry && !storageEntry) return false;
     if (partyEntry && touch.justTapped()) {
         const int tapped = screen.touchedButtonId(touch);
         if (tapped >= 6200 && tapped < 6206 &&
