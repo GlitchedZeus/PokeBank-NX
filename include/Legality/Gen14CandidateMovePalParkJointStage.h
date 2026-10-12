@@ -131,6 +131,12 @@ constexpr Result evaluate(const Input& in) noexcept {
             for(uint8_t j=0;j<in.gbaMachineCount;++j) {
                 if(in.gbaMachines[j].stepIndex!=i)continue;
                 ++matched;usedGba[j]=true;
+                // A numbered-machine source row must refer to this
+                // *same species* at the pre-Pal-Park teaching stage.
+                // No source-family compatibility row may certify another
+                // Pokemon merely because item, move and game all match.
+                if(in.gbaMachines[j].exactItem.nationalSpecies!=in.path.species)
+                    return out; // Unproven step, not global invalidity.
                 const auto status=M::classifyChronologyStep(
                     in.gbaMachines[j].exactItem,step);
                 if(status==M::Status::CandidateContradicted) {
