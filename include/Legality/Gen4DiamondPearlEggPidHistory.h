@@ -146,7 +146,8 @@ constexpr Result evaluate(const Input& in) noexcept {
             {in.parents[0].pidIndependentlyVerified,
              in.parents[1].pidIndependentlyVerified},
             {in.parents[0].heldItem,in.parents[1].heldItem},
-            in.originalParentLanguages});
+            in.originalParentLanguages,
+            in.originalParentLanguagesIndependentlyVerified});
     if(out.originalParentWitnessStatus==Witness::Status::UnknownSourceEvidence) {
         out.status=Status::UnknownOriginalParentWitness;return out;
     }
