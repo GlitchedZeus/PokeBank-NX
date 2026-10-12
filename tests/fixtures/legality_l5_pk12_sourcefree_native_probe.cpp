@@ -196,7 +196,7 @@ int main(int argc,char** argv) {
         }
     }
     assert(checks==(baseline?12:200));
-    std::cout<<"L5 actual PK1/PK2 source-free native analyzer 12 cases: "
+    std::cout<<"L5 actual PK1/PK2 native analyzer: "
              <<(baseline?"known false-Invalid baseline":"corrected guard")
-             <<" PASS (synthetic records, no retail history)\n";
+             <<" PASS ("<<checks<<" synthetic contexts, no retail history)\n";
 }
