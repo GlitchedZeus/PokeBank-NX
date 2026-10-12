@@ -21,7 +21,7 @@ L2_TEST_FILTER=gen3_joint_pid_iv_moves bash tests/test_legality_l2_run_all.sh
 L2_MODES=normal bash tests/test_legality_l2_run_all.sh
 ```
 
-Runner compiled all 11 tests separately with C++20 `-Wall -Wextra -Wpedantic -Werror`; for native encrypted PK4 fixtures, it links against the **actual** `src/Pokemon/Pokemon4Mutable.cpp`, `Pokemon4ReadOnly.cpp`, `src/Encryption/Encryption4.cpp`, original Gen IV personal-info tables, names and utilities specified by the accepted `GEN4_MUTABLE_SOURCES` host target (rather than stubbed parser/encryption code). It creates a unique temporary directory, removes binaries afterwards, warns on tracked dirty checkout and prints the SHA supplied by `git rev-parse HEAD`. `L2_MODES` defaults to normal **and** ASan/UBSan with leak detection and halt on error.
+The runner is designed to compile all 11 tests separately with C++20 `-Wall -Wextra -Wpedantic -Werror`; for native encrypted PK4 fixtures, it links against the **actual** `src/Pokemon/Pokemon4Mutable.cpp`, `Pokemon4ReadOnly.cpp`, `src/Encryption/Encryption4.cpp`, original Gen IV personal-info tables, names and utilities specified by the accepted `GEN4_MUTABLE_SOURCES` host target (rather than stubbed parser/encryption code). It creates a unique temporary directory, removes binaries afterwards, warns on tracked dirty checkout and prints the SHA supplied by `git rev-parse HEAD`. `L2_MODES` defaults to normal **and** ASan/UBSan with leak detection and halt on error.
 
 **Coordinator must still register targets inside shared host graph** and independently validate full host, focused RSE regression, sanitizers, strict native fixtures, provenance/Unknown and original retail evidence. A standalone runner does not replace those CI gates.
 
