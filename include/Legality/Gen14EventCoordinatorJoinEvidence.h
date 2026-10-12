@@ -71,10 +71,16 @@ constexpr bool nonzero(const Digest& digest) noexcept {
 }
 constexpr bool keyWellFormed(const SourceKey& key) noexcept {
     if(key.family==Family::Unknown||key.species==0)return false;
-    if(key.family==Family::Gen4MysteryGift || key.family==Family::Gen4Ranger)
+    if(key.family==Family::Gen4MysteryGift) {
         // Eleven of the 247 frozen WC4 projections have card ID zero.
         // A zero card ID is NOT a missing source identity; the INDEX matters.
         return key.sourceIndex<247;
+    }
+    if(key.family==Family::Gen4Ranger) {
+        // A Ranger receipt is NOT a WC4/PCD card: it has no WC4 index.
+        // Use an independently sourced nonzero Ranger transfer identity.
+        return key.sourceIndex!=0 && key.cardId==0;
+    }
     // A documented source ID is needed for Gen I-III, not an invented WC4 index.
     return key.sourceIndex!=0;
 }

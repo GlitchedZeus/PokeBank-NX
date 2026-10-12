@@ -74,6 +74,14 @@ int main(){
       f.crossLane.key.cardId=67;
       assert(J::evaluate(f).outcome==J::Outcome::CrossLaneIdentityDrift);
       cases+=2; }
+    { auto f=b;f.original.key={J::Family::Gen4Ranger,1,0,490,7200,58364,10,2};
+      f.crossLane.key=f.original.key;
+      assert(J::evaluate(f).outcome==J::Outcome::ConditionalCandidate);
+      f.original.key.sourceIndex=0;f.crossLane.key=f.original.key;
+      assert(J::evaluate(f).outcome==J::Outcome::UnknownSourceIdentity);
+      f.original.key.sourceIndex=1;f.original.key.cardId=67;f.crossLane.key=f.original.key;
+      assert(J::evaluate(f).outcome==J::Outcome::UnknownSourceIdentity);
+      cases+=3; }
     for(uint32_t i=0;i<32;++i){
         auto f=b;f.crossLane.originalDigest[i]^=std::byte{0x01};
         const auto r=J::evaluate(f);
