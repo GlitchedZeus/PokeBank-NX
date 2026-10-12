@@ -8,6 +8,7 @@
 | --- | --- |
 | Live branch/PR and target | PR #293 draft, still open; author ref matched PR HEAD at audit checkpoint; accepted legality `d29eada5c087e201e00c749703f1a2de3ddfadeb` |
 | Forward-only ancestry | `compare_commits`: **L1 ahead 29, behind 2**, common ancestor `0dccf2e10289164ad0d065985dcb29f14fd2fb35` (before this documentation-only commit). New accepted files: `Gen4PlatinumCompleteEggHistory.h`, `Gen4PlatinumEggPidStage.h`, `GEN4_PLATINUM_DAYCARE_PID_EVIDENCE.md`, and modified `tests/test_gen34_ball_domain_analyzer.cpp`. No L1 file collision; **not yet reconciled**. Coordinator owns forward-preserving merge/validation |
+| Complete PR patch whitespace | GitHub exact-head PR patch inspected: **37 file patches / 3,408 added lines / zero trailing-whitespace violations** at audit; not a native compile gate |
 | L1 standalone tests | **13 C++ source files exist**, all 13 suite names registered in `tests/test_legality_l1_run.sh`; **14/14 direct project headers** found on exact author head; **260 `assert(...)` sites** statically counted across 13 C++ files (some loop over many fixtures). This is source inventory, **not C++ compilation or execution** |
 | Exact runner provenance | Exact `tests/test_legality_l1_run.sh` copied into restricted compiler container; local `git hash-object` `41036003f50f8e4beaaada1d20d2ede27f15f262` **matches** GitHub blob SHA for audit head `c2f46474...`. Ran `bash -n`: **PASS**. In disposable local git fixture, supplied false `L1_EXPECT_SHA` and `L1_EXPECT_TREE`, each correctly refused execution with exit **2** |
 | Independent fixture source check | Bayleef Colosseum physical row 1 has `TeamSet::First` (empty CPU-lock variant). Corrected old unverified `0xCC0DE0A1` to accepted ordinary CXD `PID 0x0985A297 / IV {6,1,0,7,17,7}`. Independently reversed accepted XDRNG sequence and replayed seed `0x00000000` to expected PID and both IV words; **stage verified in independent JS**, **not** full C++ suite |
@@ -32,7 +33,8 @@ git fetch origin --prune
 # Resolve the LIVE PR head from GitHub (do not reuse the audited old SHA).
 git switch --detach <LIVE_L1_PR_293_HEAD_SHA>
 git submodule update --init --recursive
-git diff --check
+# Check entire PR change range against its real merge base (not just worktree):
+git diff --check "$(git merge-base origin/feature/legality-engine-gen1-4-20260929 HEAD)" HEAD
 git rev-parse HEAD
 git rev-parse 'HEAD^{tree}'
 
