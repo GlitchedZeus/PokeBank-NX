@@ -11,6 +11,7 @@ on:
       - tests/fixtures/legality_l4_*
       - include/Legality/Gen14Event*
       - include/Legality/Gen14OriginalCurrentChain*
+      - include/Legality/Gen14OriginalSourceRights*
       - include/Legality/Gen12Gift*
       - include/Legality/Gen12OriginalDistribution*
       - include/Legality/Gen3*Event*

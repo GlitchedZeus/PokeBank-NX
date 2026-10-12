@@ -120,6 +120,12 @@ echo "L4 Stage 5 original-to-current bounded lineage"
 "$compiler" "${base[@]}" tests/fixtures/legality_l4_stage5_original_current_chain.cpp \
     -o "$scratch/l4_stage5_original_current_chain"
 "$scratch/l4_stage5_original_current_chain"
+# Stage 6: fail-closed, source-specific redistribution and L5 research pins.
+# This fixture does not license any retail payload or global legality.
+echo "L4 Stage 6 Q07/Q08 research versus copyright/receipt boundary"
+"$compiler" "${base[@]}" tests/fixtures/legality_l4_stage6_rights_boundary.cpp \
+    -o "$scratch/l4_stage6_rights_boundary"
+"$scratch/l4_stage6_rights_boundary"
 for name in "${header_only[@]}"; do
     echo "L4 C++ compile: $name"
     "$compiler" "${base[@]}" "tests/$name.cpp" -o "$scratch/$name"
