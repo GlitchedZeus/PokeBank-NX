@@ -47,13 +47,16 @@ constexpr Result evaluate(bool nativeAvailable,const Input& in,
                           const SourceEvidence& source={}) noexcept {
     Result out{};
     if(!nativeAvailable)return out;
+    // A Ranger-shaped record is not, by itself, an authenticated Ranger
+    // receipt. Do not exclude a hypothetical source candidate until that
+    // source has been independently identified and attested.
+    if(!source.rangerGiftOriginIndependentlyAttested) {
+        out.status=Status::UnknownOriginalGift;return out;
+    }
     if(!Ranger::matches(in.observed)) {
         out.status=Status::CandidateStructuralMismatch;return out;
     }
     out.candidateStructurallyMatched=true;
-    if(!source.rangerGiftOriginIndependentlyAttested) {
-        out.status=Status::UnknownOriginalGift;return out;
-    }
     // Ranger's original egg gift was initially intended for D/P and later
     // Platinum; avoid assuming an HGSS-origin Ranger redemption mechanism
     // merely from current storage. Other unknown historical routes stay Unknown.

@@ -26,6 +26,8 @@ constexpr auto bad=[] {
     auto c=egg;c.observed.ball=16;return c;
 }();
 static_assert(R::evaluate(true,bad,source).status==Status::CandidateStructuralMismatch);
+static_assert(R::evaluate(true,bad).status==Status::UnknownOriginalGift);
+static_assert(!R::evaluate(true,bad).candidateStructurallyMatched);
 void w16(std::vector<std::byte>& b,std::size_t off,uint16_t value) {
     b[off]=static_cast<std::byte>(value&255u);
     b[off+1]=static_cast<std::byte>(value>>8);
@@ -35,6 +37,12 @@ void w32(std::vector<std::byte>& b,std::size_t off,uint32_t value) {
     w16(b,off+2,static_cast<uint16_t>(value>>16));
 }
 int main() {
+    // Without independent receipt, even a structurally mismatched native
+    // source is Unknown; a candidate-local exclusion needs attestation.
+    auto withheld=source;
+    withheld.rangerGiftOriginIndependentlyAttested=false;
+    assert(R::evaluate(true,bad,withheld).status==Status::UnknownOriginalGift);
+    assert(!R::evaluate(true,bad,withheld).candidateStructurallyMatched);
     auto unknown=source;
     unknown.originalRecipientTrainerKnown=false;
     assert(R::evaluate(true,egg,unknown).status==Status::UnknownRecipientHistory);
