@@ -77,6 +77,10 @@ int main() {
         assert(DP::evaluate(noPair).status==DP::Status::UnknownEligibleDaycarePair);
         auto badPair=known;badPair.eligibleOrdinaryDaycarePair=false;
         assert(DP::evaluate(badPair).status==DP::Status::IncompatibleDaycarePair);
+        auto badGender=known;badGender.parents[0].gender=3;
+        assert(DP::evaluate(badGender).status==DP::Status::UnknownParentCreationSnapshots);
+        auto emptySpecies=known;emptySpecies.parents[1].species=0;
+        assert(DP::evaluate(emptySpecies).status==DP::Status::UnknownParentCreationSnapshots);
         auto noParents=known;noParents.originalParentSnapshotsVerified=false;
         assert(DP::evaluate(noParents).status==DP::Status::UnknownParentCreationSnapshots);
         auto noOrder=known;noOrder.originalDaycareSlotOrderVerified=false;
