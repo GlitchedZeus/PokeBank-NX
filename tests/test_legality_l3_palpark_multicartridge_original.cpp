@@ -148,6 +148,12 @@ int main() {
     assert(O::evaluate(p).status==S::Unknown);++checks;
     p=shedinja();p.transferredCandidateId=2077;
     assert(O::evaluate(p).status==S::Unknown);++checks;
+    auto deoxys=crossing(G::Ruby,N::Platinum,386);
+    deoxys.immediateForm=1; // Unwitnessed/changed form cannot be inferred.
+    assert(O::evaluate(deoxys).status==S::Unknown);++checks;
+    deoxys=crossing(G::Ruby,N::Platinum,386);
+    deoxys.formContinuityVerified=false;
+    assert(O::evaluate(deoxys).status==S::Unknown);++checks;
     std::cout<<"L3 Stage5 source-original 1930 GBA species rows + 111940 machine checks + 25 destinations: "
              <<checks<<" candidate snapshot checks PASS\n";
 }
