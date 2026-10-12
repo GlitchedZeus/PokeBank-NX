@@ -149,6 +149,28 @@ require(games, '"CHOOSE COPY"', "SaveCopySelection::Automatic",
         "if (!separateGen5Copy &&")
 
 
+# A selected physical source is also an EXACT CONTENT SNAPSHOT. Inode and
+# path equivalence alone cannot exclude an in-place emulator save rewrite.
+# Thread the selected normalized fingerprint from the candidate through
+# UIManager to the final twice-validated read-only source opener.
+assigned_h = read("include/Integration/Gen5/Gen5AssignedSource.h")
+assigned_cpp = read("src/Integration/Gen5/Gen5AssignedSource.cpp")
+require(selector_header, "getSelectedGen5Fingerprint() const",
+        "std::string selectedGen5Fingerprint;")
+require(games, "selectedGen5Fingerprint.clear();",
+        "selectedGen5Fingerprint=fresh.instance.contentFingerprint;")
+require(ui_header, "std::string_view selectedFingerprint")
+require(manager, "selectScreen.getSelectedGen5Fingerprint()",
+        "if(selectedFingerprint.empty())",
+        "gameId,selectedCopy,",
+        "selectedFingerprint);")
+require(assigned_h, "std::string_view expectedContentFingerprint = {}")
+require(assigned_cpp, "expectedContentFingerprint",
+        "out.instance.contentFingerprint!=expectedContentFingerprint",
+        "probe.instance.contentFingerprint!=expectedContentFingerprint",
+        "source contents changed after selection",
+        "source contents changed during final revalidation")
+
 # A bounded source discovery can produce a useful partial list; the UI
 # must clearly report that its search is incomplete even when rows exist.
 discovery_header = read("include/Integration/Gen5/Gen5SourceDiscovery.h")

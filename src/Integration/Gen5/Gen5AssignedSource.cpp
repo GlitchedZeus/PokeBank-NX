@@ -22,7 +22,7 @@ AssignedOpenStatus mapUnavailable(Legacy::AssignedFileStatus status) noexcept {
 AssignedSourceReadOnly openAssignedSource(
     const Legacy::LegacySourceBindings& bindings,
     std::string_view profile,std::string_view exactGame,
-    SaveCopySelection copy) {
+    SaveCopySelection copy,std::string_view expectedContentFingerprint) {
     AssignedSourceReadOnly out;
     if(profile.empty() || !isExactGen5Id(exactGame)) {
         out.status=AssignedOpenStatus::AssignmentMismatch;
@@ -60,6 +60,18 @@ AssignedSourceReadOnly openAssignedSource(
         out.diagnostic=out.instance.diagnostic;
         return out;
     }
+    // An emulator may update a save in-place after the user picks it:
+    // inode/path identity is NOT a snapshot. The exact normalized 0x80000
+    // bytes selected in Save Instances must still be current at final Open.
+    // An empty fingerprint is only for read-only passive card previews and
+    // other callers without an explicit in-session source selection.
+    if(!expectedContentFingerprint.empty() &&
+       out.instance.contentFingerprint!=expectedContentFingerprint) {
+        out.status=AssignedOpenStatus::InvalidSave;
+        out.instance.validation=Source::ValidationStatus::Invalid;
+        out.diagnostic="Gen V source contents changed after selection; refresh and choose the Save Instance again";
+        return out;
+    }
     // The persistent assignment references a precise source identity. Never
     // let a replaced path be silently adopted as the old profile's save.
     if(out.instance.sourceIdentity!=out.source.sourceIdentity) {
@@ -74,6 +86,15 @@ AssignedSourceReadOnly openAssignedSource(
     if(!probe.ready()) {
         out.status=AssignedOpenStatus::InvalidSave;
         out.diagnostic=probe.instance.diagnostic;
+        return out;
+    }
+    // Independently re-read before handing the native payload to the UI.
+    // A concurrent write during the second probe must not substitute bytes
+    // even when the file's inode/path were unchanged.
+    if(!expectedContentFingerprint.empty() &&
+       probe.instance.contentFingerprint!=expectedContentFingerprint) {
+        out.status=AssignedOpenStatus::InvalidSave;
+        out.diagnostic="Gen V source contents changed during final revalidation; reselect the Save Instance";
         return out;
     }
     out.instance=probe.instance;

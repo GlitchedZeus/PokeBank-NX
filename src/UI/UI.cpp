@@ -217,7 +217,8 @@ namespace UI {
                         if (!handleGen5View(selectScreen.getSelectedUser(),
                                             selectScreen.getSelectedGameId(),
                                             selectScreen.getOpenIntent(),
-                                            selectScreen.getSelectedGen5Copy(), error)) {
+                                            selectScreen.getSelectedGen5Copy(),
+                                            selectScreen.getSelectedGen5Fingerprint(), error)) {
                             logErrorToFile("Generation V read-only source refused open", error.c_str());
                             selectScreen.reportOpenFailure(error);
                             fb.startFade();
@@ -501,6 +502,7 @@ namespace UI {
         AccountUid userUid, const std::string& gameId,
         SaveSelectScreen::OpenIntent intent,
         PokeVault::Integration::Gen5::SaveCopySelection selectedCopy,
+        std::string_view selectedFingerprint,
         std::string& error) {
         error.clear();
         const auto* identity=PokeVault::Games::findGame(gameId);
@@ -512,10 +514,15 @@ namespace UI {
             return false;
         }
 
-        // Re-validate the precise persisted assignment on every Open. The
-        // preview's earlier successful check is never a security capability.
+        // A Game/Save selection must carry the exact validated payload into
+        // Open; the path/inode can stay the same while an emulator rewrites it.
+        if(selectedFingerprint.empty()) {
+            error="Gen V save snapshot missing; choose a validated Save Instance again";
+            return false;
+        }
         auto opened=PokeVault::Integration::Gen5::openAssignedSource(
-            legacySourceBindings,profileIdentity(userUid),gameId,selectedCopy);
+            legacySourceBindings,profileIdentity(userUid),gameId,selectedCopy,
+            selectedFingerprint);
         if (!opened.ready() || !opened.save ||
             opened.instance.gameId!=gameId || !opened.instance.readOnly()) {
             error=opened.diagnostic.empty()

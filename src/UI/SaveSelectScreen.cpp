@@ -2181,6 +2181,7 @@ namespace UI {
         const std::string& gameId,std::string notice,bool returnToGamesDrawer) {
         gen5TargetGameId=gameId;
         selectedGen5Copy=PokeVault::Integration::Gen5::SaveCopySelection::Automatic;
+        selectedGen5Fingerprint.clear();
         gen5Notice=std::move(notice);
         gen5SetupFromGamesDrawer=returnToGamesDrawer;
         gen5Instances.clear();
@@ -2256,7 +2257,8 @@ namespace UI {
         if(profile.empty())return false;
 
         const auto fresh=PokeVault::Integration::Gen5::reopenValidatedSource(chosen);
-        if(!fresh.ready() || fresh.instance.gameId!=gen5TargetGameId) {
+        if(!fresh.ready() || fresh.instance.gameId!=gen5TargetGameId ||
+           fresh.instance.contentFingerprint.empty()) {
             gen5Notice="Gen V source changed or is ambiguous. Refresh Save Instances.";
             discoverGen5Candidates();
             return false;
@@ -2310,6 +2312,7 @@ namespace UI {
         selectedTitleName=selectedUser->titles[static_cast<size_t>(titleIndex)].name;
         selectedGameId=cardId;
         selectedSourceKind=SelectedSourceKind::Gen5AssignedFile;
+        selectedGen5Fingerprint=fresh.instance.contentFingerprint;
         selectedGen5Copy=chosen.sourceVariant=="gen5-copy-0-primary"
             ? PokeVault::Integration::Gen5::SaveCopySelection::Primary
             : chosen.sourceVariant=="gen5-copy-1-backup"

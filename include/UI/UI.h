@@ -64,6 +64,7 @@ namespace UI {
         bool handleGen5View(AccountUid userUid, const std::string& gameId,
                             SaveSelectScreen::OpenIntent intent,
                             PokeVault::Integration::Gen5::SaveCopySelection selectedCopy,
+                            std::string_view selectedFingerprint,
                             std::string& error);
     };
 }

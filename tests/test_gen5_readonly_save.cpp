@@ -149,6 +149,12 @@ void discoveryContracts() {
     assert(owned.instance.sourceIdentity==probe.sourceIdentity);
     assert(owned.instance.claimedProfile=="profile-one");
     assert(owned.instance.readOnly() && owned.instance.rememberedSource);
+    // Final Open accepts only the exact normalized bytes chosen in Save
+    // Instances, not merely a matching inode/path or game title.
+    assert(G::openAssignedSource(bindings,"profile-one","black_nds",
+        G::SaveCopySelection::Automatic,probe.contentFingerprint).ready());
+    assert(!G::openAssignedSource(bindings,"profile-one","black_nds",
+        G::SaveCopySelection::Automatic,std::string(64,'0')).ready());
     assert(owned.instance.claimedProfile=="profile-one");
     assert(owned.instance.providerId=="retroarch");
     const auto gamePreview=G::previewAssignedGame(owned);
@@ -364,6 +370,28 @@ void discoveryContracts() {
     assert(G::openAssignedSource(
         restored,"profile-one","black_nds",G::SaveCopySelection::Backup).ready());
     assert(!G::openAssignedSource(restored,"profile-one","black_nds").ready());
+    // This is an in-place emulator update, not a replacement path/inode.
+    // Both copies remain checksum-valid; old selection must be refused,
+    // while a newly selected exact snapshot can reopen.
+    assert(G::openAssignedSource(restored,"profile-one","black_nds",
+        G::SaveCopySelection::Primary,first.contentFingerprint).ready());
+    auto rewritten=twoCopies;
+    rewritten[0x19400+6]='R';
+    stamp(rewritten,0,L::BlackWhite);
+    fileFixture(black,rewritten);
+    const auto updated=G::inspectSourceFile(
+        black,"RetroArch",{},G::SaveCopySelection::Primary);
+    assert(updated.ready() && updated.sourceIdentity==first.sourceIdentity);
+    assert(updated.contentFingerprint!=first.contentFingerprint);
+    const auto staleOpen=G::openAssignedSource(restored,"profile-one","black_nds",
+        G::SaveCopySelection::Primary,first.contentFingerprint);
+    assert(!staleOpen.ready());
+    assert(staleOpen.diagnostic.find("source contents changed after selection")!=std::string::npos);
+    assert(G::openAssignedSource(restored,"profile-one","black_nds",
+        G::SaveCopySelection::Primary,updated.contentFingerprint).ready());
+    assert(G::openAssignedSource(restored,"profile-one","black_nds",
+        G::SaveCopySelection::Primary).ready()); // older passive-preview callers
+    fileFixture(black,twoCopies);
     // A DSV with a malformed padding/version/footer is unsupported.
     auto malformed=dsvFixture(whiteRaw);
     malformed[whiteRaw.size()+7]=1;

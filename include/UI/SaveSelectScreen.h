@@ -91,6 +91,9 @@ namespace UI {
         PokeVault::Integration::Gen5::SaveCopySelection getSelectedGen5Copy() const {
             return selectedGen5Copy;
         }
+        const std::string& getSelectedGen5Fingerprint() const {
+            return selectedGen5Fingerprint;
+        }
         size_t getSelectedLegacySourceIndex() const { return selectedLegacySourceIndex; }
         OpenIntent getOpenIntent() const { return openIntent; }
 
@@ -221,6 +224,9 @@ namespace UI {
         // and never grants emulator/source write authority.
         PokeVault::Integration::Gen5::SaveCopySelection selectedGen5Copy =
             PokeVault::Integration::Gen5::SaveCopySelection::Automatic;
+        // Only the normalized exact source bytes selected for THIS editor
+        // open, never a permission token or a remembered game preference.
+        std::string selectedGen5Fingerprint;
         size_t selectedLegacySourceIndex = 0;
         PokeVault::Legacy::FRLGDiscoveryResult* legacyCatalog = nullptr;
         PokeVault::Legacy::LegacySourceBindings* legacyBindings = nullptr;

@@ -34,7 +34,8 @@ struct AssignedSourceReadOnly {
 [[nodiscard]] AssignedSourceReadOnly openAssignedSource(
     const Legacy::LegacySourceBindings& bindings,
     std::string_view profile, std::string_view exactGame,
-    SaveCopySelection copy = SaveCopySelection::Automatic);
+    SaveCopySelection copy = SaveCopySelection::Automatic,
+    std::string_view expectedContentFingerprint = {});
 
 } // namespace PokeVault::Integration::Gen5
 #endif
