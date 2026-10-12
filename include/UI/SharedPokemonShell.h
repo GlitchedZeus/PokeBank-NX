@@ -91,7 +91,7 @@ inline std::string fitDetailsText(PKSEFramebuffer& fb, const std::string& text, 
 template <class Label, class Value>
 inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int h,
     std::size_t total, std::size_t focus, bool focused, Label label, Value value,
-    int pixelOffset = 0) {
+    int pixelOffset = 0, int independentFirstRow = -1) {
     constexpr std::size_t visibleRows = 8;
     // Keep one value column across scrolling windows, sized for the real field labels.
     int labelWidth = 0;
@@ -101,7 +101,14 @@ inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int 
         labelWidth = std::max(labelWidth, width);
     }
     const int valueInset = std::max(112, std::min(labelWidth + 28, w - 100));
-    const auto window = PokeBank::UIModel::SharedPokemonEditor::scrollWindow(total, visibleRows, focus);
+    auto window = PokeBank::UIModel::SharedPokemonEditor::scrollWindow(total, visibleRows, focus);
+    if (independentFirstRow >= 0 && total > visibleRows) {
+        // Finger scrolling changes the viewport, not which field is selected.
+        // Controller navigation can separately reveal the selected field.
+        window.first = std::min<std::size_t>(
+            static_cast<std::size_t>(independentFirstRow), total - visibleRows);
+        window.count = visibleRows;
+    }
     // Scrolling owns one clipped row viewport. Clear it before painting the next window so
     // an older set of rows can never ghost underneath the current focus position.
     const int viewportY = y + 216;
