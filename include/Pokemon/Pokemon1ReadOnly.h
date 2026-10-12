@@ -18,6 +18,7 @@ public:
     // Internal presentation-only tag. This is NOT a stored Pokemon game-version byte; it exists so
     // the no-RTTI Switch build can route validated PK1 wrappers to the Generation I summary UI.
     static constexpr Enums::GameVersion kReadOnlyGameGroup = static_cast<Enums::GameVersion>(71);
+    const Pokemon1ReadOnly* nativePk1ReadOnly() const noexcept override { return this; }
 
     explicit Pokemon1ReadOnly(const PokeVault::Integration::Gen1::PokemonRecord& record);
 
