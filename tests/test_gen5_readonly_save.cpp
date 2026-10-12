@@ -679,7 +679,12 @@ int main() {
                staleActions[1]==GA::Close);
         assert(G::fieldAccess(GF::IV)==GAccess::Editable);
         assert(G::fieldAccess(GF::Nature)==GAccess::Editable);
+        assert(G::fieldAccess(GF::HeldItem)==GAccess::Editable);
+        assert(G::fieldAccess(GF::Ball)==GAccess::Editable);
+        assert(G::fieldAccess(GF::MetLevel)==GAccess::Editable);
+        assert(G::fieldAccess(GF::Ability)!=GAccess::Editable);
         assert(G::fieldAccess(GF::Species)!=GAccess::Editable);
+        static_assert(G::Gen5SharedScreenState::kEditableRows.size()==17);
         assert(G::exactDescriptor("black_nds",true));
         assert(!G::exactDescriptor("platinum_nds",true));
         G::Gen5SharedPokemonSession unsupported;
@@ -719,6 +724,29 @@ int main() {
         assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
         assert(ui.keep(localUiWorkspace,error));
         assert(localUiWorkspace.viewParty(0)->nature()==firstNature+1);
+        assert(localUiWorkspace.hasChanges());
+        // Independent second draft exercises the additional PK5 field
+        // transactions through the real shared-session Keep boundary.
+        assert(ui.openActions(localUiWorkspace,GSlot{GRegion::Party,0,0},error));
+        ui.moveAction(1,localUiWorkspace); // Edit
+        assert(ui.activateSelected(localUiWorkspace,error));
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
+        const auto& rows=G::Gen5SharedScreenState::kEditableRows;
+        assert(rows[2].field==GF::HeldItem && rows[3].field==GF::Ball);
+        assert(rows[4].field==GF::MetLevel);
+        ui.moveField(2);
+        assert(ui.adjustField(1,error));
+        ui.moveField(1);
+        assert(ui.adjustField(1,error));
+        ui.moveField(1);
+        assert(ui.adjustField(1,error));
+        assert(ui.keep(localUiWorkspace,error));
+        assert(localUiWorkspace.viewParty(0)->heldItem()==
+               workspace.viewParty(0)->heldItem()+1);
+        assert(localUiWorkspace.viewParty(0)->ball()==
+               workspace.viewParty(0)->ball()+1);
+        assert(localUiWorkspace.viewParty(0)->metLevel()==
+               workspace.viewParty(0)->metLevel()+1);
         assert(localUiWorkspace.hasChanges());
         assert(!ui.requestExit(localUiWorkspace));
         assert(ui.surface()==G::Gen5SharedScreenState::Surface::ConfirmExit);

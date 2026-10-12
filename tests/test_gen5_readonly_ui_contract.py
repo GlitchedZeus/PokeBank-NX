@@ -219,7 +219,45 @@ require(games, "if (overlay == Overlay::Gen5UnassignConfirm)",
         "Original save files remain untouched.")
 assert "Editor pending." not in games
 
-# Touch-to-Edit is deliberately limited to the same in-memory four-field
+# Gen IV parity tranche: native Gen V Held Item, Ball and Met Level fields
+# must be wired through the SAME draft, Keep, Review and export whitelist.
+# Hidden Ability, Pokerus, PID/gender and original trainer gender are
+# preserved rather than silently regenerated.
+read_pk5 = read("include/Pokemon/Pokemon5ReadOnly.h")
+native_stage = read("include/Integration/Gen5/Gen5StagedPokemonRecord.h")
+native_session = read("include/Integration/Gen5/Gen5SharedPokemonSession.h")
+native_review = read("include/Integration/Gen5/Gen5SharedReview.h")
+native_bridge = read("include/Integration/Gen5/Gen5SharedEditorBridge.h")
+native_screen = read("include/Integration/Gen5/Gen5SharedScreenState.h")
+shared_contract = read("include/UI/SharedPokemonEditorContract.h")
+require(read_pk5, "pokerusState() const", "ball() const",
+        "metLevel() const", "originalTrainerGender() const",
+        "metLocation() const")
+require(native_stage, "Field : uint8_t { Nature, Friendship, IV, EV, HeldItem, Ball, MetLevel }",
+        "case Field::HeldItem:", "case Field::Ball:",
+        "case Field::MetLevel:", "value > 638",
+        "value > 25", "value > 100",
+        "(candidate[0x84] & 0x80) | value")
+require(native_session, "apply(Field::HeldItem,0,after.heldItem())",
+        "apply(Field::Ball,0,after.ball())",
+        "apply(Field::MetLevel,0,after.metLevel())")
+require(native_review, "apply(Field::HeldItem,0,before.heldItem(),after.heldItem())",
+        "apply(Field::Ball,0,before.ball(),after.ball())",
+        "apply(Field::MetLevel,0,before.metLevel(),after.metLevel())",
+        "Gen V pending review includes unrelated PK5 byte changes")
+require(native_bridge, "NativeField::HeldItem,stat,value,error",
+        "NativeField::Ball,stat,value,error",
+        "NativeField::MetLevel,stat,value,error")
+require(native_screen, "std::array<EditableRow,17>",
+        '"Held Item ID",638', '"Ball ID",25', '"Met Level",100',
+        "case Field::HeldItem:return pk.heldItem();",
+        "case Field::Ball:return pk.ball();",
+        "case Field::MetLevel:return pk.metLevel();")
+require(shared_contract, "case FieldIdentity::HeldItem:",
+        "case FieldIdentity::Ball:", "case FieldIdentity::MetLevel:")
+require(surface, "Item / Ball / Met Lv / Nature / Friendship / IVs / EVs")
+
+# Touch-to-Edit is deliberately limited to the same verified native PK5 field
 # transaction model as the controller. Source, bank, Create and unsupported
 # inherited action menus remain unreachable. Target IDs and hitboxes are
 # generation-owned and come from the actual drawn modal rows.

@@ -26,8 +26,11 @@ public:
         ConfirmDiscardAll, ConfirmExport, ConfirmExit
     };
     struct EditableRow { Field field; size_t stat; const char* label; uint32_t maximum; };
-    static constexpr std::array<EditableRow,14> kEditableRows{{
+    static constexpr std::array<EditableRow,17> kEditableRows{{
         {Field::Nature,0,"Nature",24}, {Field::Friendship,0,"Friendship",255},
+        {Field::HeldItem,0,"Held Item ID",638},
+        {Field::Ball,0,"Ball ID",25},
+        {Field::MetLevel,0,"Met Level",100},
         {Field::IV,0,"IV HP",31}, {Field::IV,1,"IV Atk",31},
         {Field::IV,2,"IV Def",31}, {Field::IV,3,"IV Spe",31},
         {Field::IV,4,"IV SpA",31}, {Field::IV,5,"IV SpD",31},
@@ -126,6 +129,9 @@ public:
         switch(row.field) {
             case Field::Nature:return pk.nature();
             case Field::Friendship:return pk.friendship();
+            case Field::HeldItem:return pk.heldItem();
+            case Field::Ball:return pk.ball();
+            case Field::MetLevel:return pk.metLevel();
             case Field::IV:return pk.ivs()[row.stat];
             case Field::EV:return pk.evs()[row.stat];
             default:return 0;

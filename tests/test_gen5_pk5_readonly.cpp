@@ -37,6 +37,9 @@ std::vector<uint8_t> makeRecord(size_t size, uint32_t pid) {
     d[0x41]=3;
     d[0x42]=1;
     d[0x5F]=20;
+    d[0x82]=0x21; // Existing Pokemon: strain 2, 1 contagious day.
+    d[0x83]=4;    // Poke Ball.
+    d[0x84]=0x80 | 45; // Met level, female original trainer.
     if (size == C::PartySize) {
         for (size_t i=0x88;i<size;i++) d[i]=static_cast<uint8_t>(i*7+1);
         d[0x8C]=50; // fill first; then restore the source-backed level field
@@ -76,6 +79,9 @@ int main() {
             assert(entity.gender()==1 && entity.form()==2);
             assert(entity.nature()==3 && entity.hiddenAbility());
             assert(entity.originVersion()==20);
+            assert(entity.pokerusState()==0x21 && entity.pokerusMode()==2);
+            assert(entity.ball()==4 && entity.metLevel()==45);
+            assert(entity.originalTrainerGender()==1);
             assert(std::equal(entity.originalEncryptedBytes().begin(),
                               entity.originalEncryptedBytes().end(),encrypted.begin()));
             auto corrupt=encrypted;
@@ -118,11 +124,17 @@ int main() {
         assert(staged->stage(G5::StagedPokemon5Record::Field::IV,5,31,&error));
         assert(staged->stage(G5::StagedPokemon5Record::Field::EV,0,255,&error));
         assert(staged->stage(G5::StagedPokemon5Record::Field::EV,1,255,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::HeldItem,0,638,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Ball,0,25,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::MetLevel,0,100,&error));
         assert(staged->dirty());
         const auto current=staged->current();
         assert(current.valid() && current.nature()==24 && current.friendship()==255);
         assert(current.ivs()[0]==0 && current.ivs()[5]==31);
         assert(current.evs()[0]==255 && current.evs()[1]==255);
+        assert(current.heldItem()==638 && current.ball()==25);
+        assert(current.metLevel()==100 && current.originalTrainerGender()==1);
+        assert(current.pokerusState()==0x21 && current.hiddenAbility());
         assert(std::equal(staged->originalBytes().begin(),staged->originalBytes().end(),source.begin()));
         const auto beforeInvalid=std::vector<uint8_t>(
             staged->stagedBytes().begin(),staged->stagedBytes().end());
@@ -132,6 +144,10 @@ int main() {
         assert(!staged->stage(G5::StagedPokemon5Record::Field::IV,0,32,&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::EV,2,1,&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::EV,0,256,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::HeldItem,0,639,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::HeldItem,1,25,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Ball,0,26,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MetLevel,0,101,&error));
         assert(std::equal(staged->stagedBytes().begin(),staged->stagedBytes().end(),
                           beforeInvalid.begin()));
         staged->rollback();

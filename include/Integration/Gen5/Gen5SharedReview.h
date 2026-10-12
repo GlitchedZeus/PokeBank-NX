@@ -14,7 +14,7 @@
 namespace PokeVault::Integration::Gen5 {
 
 // Read-only evidence for the one shared Review Pending Changes surface.
-// Independently reconstruct each staged PK5 through ONLY the four authorized
+// Independently reconstruct each staged PK5 through ONLY the explicitly authorized
 // field transactions. An unsupported byte difference produces no verified
 // diff; it is never silently labeled legal or applied to any source SAV5.
 struct VerifiedFieldChange {
@@ -58,7 +58,10 @@ struct VerifiedSlotReview {
         return true;
     };
     if(!apply(Field::Nature,0,before.nature(),after.nature()) ||
-       !apply(Field::Friendship,0,before.friendship(),after.friendship()))
+       !apply(Field::Friendship,0,before.friendship(),after.friendship()) ||
+       !apply(Field::HeldItem,0,before.heldItem(),after.heldItem()) ||
+       !apply(Field::Ball,0,before.ball(),after.ball()) ||
+       !apply(Field::MetLevel,0,before.metLevel(),after.metLevel()))
         return std::nullopt;
     const auto bi=before.ivs(),ai=after.ivs();
     for(size_t i=0;i<6;++i)

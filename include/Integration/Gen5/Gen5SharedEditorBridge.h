@@ -78,7 +78,7 @@ struct SharedEditorSlot {
     return session.begin(workspace,slot.location,mode,error);
 }
 // The existing editor speaks FieldIdentity; the PK5 draft intentionally
-// accepts only these four verified transactions. Do not forward unsupported
+// accepts only these verified native field transactions. Do not forward unsupported
 // UI fields to a generic Pokemon mutator or alter the source save.
 [[nodiscard]] inline bool stageSharedField(
     Gen5SharedPokemonSession& session,Shared::FieldIdentity field,
@@ -93,6 +93,12 @@ struct SharedEditorSlot {
             return session.stage(NativeField::IV,stat,value,error);
         case Shared::FieldIdentity::EV:
             return session.stage(NativeField::EV,stat,value,error);
+        case Shared::FieldIdentity::HeldItem:
+            return session.stage(NativeField::HeldItem,stat,value,error);
+        case Shared::FieldIdentity::Ball:
+            return session.stage(NativeField::Ball,stat,value,error);
+        case Shared::FieldIdentity::MetLevel:
+            return session.stage(NativeField::MetLevel,stat,value,error);
         default:
             error="Gen V shared editor field is not verified for staged editing";
             return false;

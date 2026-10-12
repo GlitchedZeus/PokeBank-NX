@@ -108,6 +108,14 @@ public:
            !apply(Field::Nature,0,after.nature()))return false;
         if(before.friendship()!=after.friendship() &&
            !apply(Field::Friendship,0,after.friendship()))return false;
+        // Gen IV parity tranche: these native PK5 metadata bytes are
+        // independent of PID, gender, ability, and party battle stats.
+        if(before.heldItem()!=after.heldItem() &&
+           !apply(Field::HeldItem,0,after.heldItem()))return false;
+        if(before.ball()!=after.ball() &&
+           !apply(Field::Ball,0,after.ball()))return false;
+        if(before.metLevel()!=after.metLevel() &&
+           !apply(Field::MetLevel,0,after.metLevel()))return false;
 
         const auto beforeIv=before.ivs();
         const auto afterIv=after.ivs();

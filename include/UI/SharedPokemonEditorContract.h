@@ -352,14 +352,17 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
         }
     }
     if (generation == Generation::Gen5) {
-        // Only source-backed PK5 transactions have writable UI targets.
-        // Other native PK5 fields are display-only until their coupled
-        // format semantics and staged mutations have been audited.
+        // Gen IV parity is enabled incrementally by exact native PK5
+        // mutations with deterministic replay and original-SAV protection.
+        // Coupled moves, ability/form and party-stat updates stay locked.
         switch (field) {
             case FieldIdentity::Friendship:
             case FieldIdentity::IV:
             case FieldIdentity::EV:
             case FieldIdentity::Nature:
+            case FieldIdentity::HeldItem:
+            case FieldIdentity::Ball:
+            case FieldIdentity::MetLevel:
                 return FieldAccess::Editable;
             case FieldIdentity::Species:
             case FieldIdentity::Nickname:
@@ -370,7 +373,6 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::Level:
             case FieldIdentity::Experience:
             case FieldIdentity::Ability:
-            case FieldIdentity::HeldItem:
             case FieldIdentity::CalculatedStats:
             case FieldIdentity::TrainerId:
             case FieldIdentity::SecretId:

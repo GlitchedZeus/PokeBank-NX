@@ -47,6 +47,9 @@ static std::vector<uint8_t> fixture(G::SaveFamily family,uint8_t version,
     C::write16(party,8,25);
     C::write16(party,0x0C,4321);
     party[0x8C]=54;
+    party[0x42]=1;       // Gen V hidden-ability flag is untouched.
+    party[0x82]=0x21;    // Native Pokerus strain/days are untouched.
+    party[0x84]=0x80|35; // Female original trainer + met level.
     const auto encrypted=C::encryptCandidate(party);
     assert(encrypted.size()==C::PartySize);
     std::copy(encrypted.begin(),encrypted.end(),
@@ -79,6 +82,9 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     using Field=G::StagedPokemon5Record::Field;
     assert(ws.stageParty(0,Field::Nature,0,22,&error));
     assert(ws.stageParty(0,Field::Friendship,0,128,&error));
+    assert(ws.stageParty(0,Field::Ball,0,25,&error));
+    assert(ws.stageParty(0,Field::MetLevel,0,72,&error));
+    assert(ws.stageBox(0,0,Field::HeldItem,0,638,&error));
     assert(ws.stageBox(0,0,Field::EV,0,252,&error));
     assert(ws.stageBox(0,0,Field::IV,4,31,&error));
     assert(ws.changedRecordCount()==2);
@@ -151,6 +157,12 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     assert(candidate->exactGameId()==game);
     assert(candidate->partyPokemon(0)->nature()==22);
     assert(candidate->partyPokemon(0)->friendship()==128);
+    assert(candidate->partyPokemon(0)->ball()==25);
+    assert(candidate->partyPokemon(0)->metLevel()==72);
+    assert(candidate->partyPokemon(0)->originalTrainerGender()==1);
+    assert(candidate->partyPokemon(0)->pokerusState()==0x21);
+    assert(candidate->partyPokemon(0)->hiddenAbility());
+    assert(candidate->boxPokemon(0,0)->heldItem()==638);
     assert(candidate->partyPokemon(0)->partyLevel()==54);
     assert(candidate->boxPokemon(0,0)->evs()[0]==252);
     assert(candidate->boxPokemon(0,0)->ivs()[4]==31);

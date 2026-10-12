@@ -1,8 +1,8 @@
 // Generation V's guarded adapter for the EXISTING shared Trainer/Party/Boxes
-// renderer. View, four-field staged Edit and Review are in app memory only.
+// renderer. View, verified PK5 staged Edit and Review are in app memory only.
 // This layer owns EVERY Gen V controller frame: inherited Storage/Bank, Items,
 // source-save dialogs, Create and generic mutation handlers are unreachable.
-// Touch targets are isolated to verified read-only and four-field staged
+// Touch targets are isolated to verified read-only and native-field staged
 // actions; native bank, source-writing and unsupported mutation routes remain barred.
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Integration/Gen5/Gen5SharedReview.h"
@@ -498,7 +498,8 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
         fb.drawText(x+355,yy+11,value,Colors::Text,TextStyle::Body);
         fb.drawText(x+429,yy+11,"+",Colors::Accent,TextStyle::Body);
     }
-    fb.drawText(x+22,y+h-33,"Nature / Friendship / IVs / EVs ONLY",
+    fb.drawText(x+22,y+h-33,
+                "Item / Ball / Met Lv / Nature / Friendship / IVs / EVs",
                 Colors::Accent,TextStyle::Caption);
     drawNavBar(fb,{{"Up/Down","Field"},{"Left/Right","Adjust"},
                    {"A","Keep Staged"},{"Y","Discard Draft"},{"B","Back"}});

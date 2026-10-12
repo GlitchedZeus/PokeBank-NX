@@ -18,7 +18,7 @@ namespace PokeVault::Integration::Gen5 {
 // buffers and must pass a decrypt/encrypt/reparse postcondition.
 class StagedPokemon5Record {
 public:
-    enum class Field : uint8_t { Nature, Friendship, IV, EV };
+    enum class Field : uint8_t { Nature, Friendship, IV, EV, HeldItem, Ball, MetLevel };
 
     static std::optional<StagedPokemon5Record> create(
         std::span<const uint8_t> source, std::string* error = nullptr) {
@@ -37,8 +37,10 @@ public:
     [[nodiscard]] Pokemon5ReadOnly current() const { return Pokemon5ReadOnly(staged_); }
     void rollback() noexcept { staged_ = original_; }
 
-    // Field-specific bounded mutation. Move legality, ability/form coupling,
-    // party-stat regeneration and native SAV block writes are NOT implemented.
+    // Field-specific bounded mutation. Item and ball IDs here are native
+    // ranges, NOT a legality promise for an encounter/title. Move legality,
+    // ability/form coupling, party-stat regeneration and native SAV block
+    // writes remain outside this record-only transaction.
     [[nodiscard]] bool stage(Field field, size_t stat, uint32_t value,
                              std::string* error = nullptr) {
         auto fail = [&](const char* msg) {
@@ -82,6 +84,23 @@ public:
                 candidate[0x18+stat] = static_cast<uint8_t>(value);
                 break;
             }
+            case Field::HeldItem:
+                if (stat != 0 || value > 638)
+                    return fail("Gen V held-item ID exceeds supported Generation V range");
+                Crypto::write16(candidate,0x0A,static_cast<uint16_t>(value));
+                break;
+            case Field::Ball:
+                if (stat != 0 || value > 25)
+                    return fail("Gen V ball ID exceeds supported Generation V range");
+                candidate[0x83]=static_cast<uint8_t>(value);
+                break;
+            case Field::MetLevel:
+                if (stat != 0 || value > 100)
+                    return fail("Gen V met level must be in [0,100]");
+                // Preserve the high bit: original trainer gender.
+                candidate[0x84]=static_cast<uint8_t>(
+                    (candidate[0x84] & 0x80) | value);
+                break;
             default:
                 // A corrupted/forged enum is not a noop mutation. It must
                 // never be accepted as a valid native PK5 field transaction.

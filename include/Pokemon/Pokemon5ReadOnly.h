@@ -79,6 +79,17 @@ public:
     [[nodiscard]] uint8_t nature() const noexcept { return at(0x41); }
     [[nodiscard]] bool hiddenAbility() const noexcept { return (at(0x42) & 1) != 0; }
     [[nodiscard]] uint8_t originVersion() const noexcept { return at(0x5F); }
+    // Native PK5 block D (PKHeX PK5.cs): distinct bytes for ball,
+    // Pokerus, and met level; 0x84 bit 7 is OT gender and must survive.
+    [[nodiscard]] uint8_t pokerusState() const noexcept { return at(0x82); }
+    [[nodiscard]] uint8_t pokerusMode() const noexcept {
+        const auto state=pokerusState();
+        return state==0 ? 0 : ((state & 0x0F) ? 2 : 1);
+    }
+    [[nodiscard]] uint8_t ball() const noexcept { return at(0x83); }
+    [[nodiscard]] uint8_t metLevel() const noexcept { return at(0x84) & 0x7F; }
+    [[nodiscard]] uint8_t originalTrainerGender() const noexcept { return at(0x84) >> 7; }
+    [[nodiscard]] uint16_t metLocation() const noexcept { return u16(0x80); }
     [[nodiscard]] bool shiny() const noexcept {
         if (!valid() || empty()) return false;
         const uint32_t value = pid();
