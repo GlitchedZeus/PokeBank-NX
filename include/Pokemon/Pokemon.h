@@ -220,6 +220,18 @@ namespace Pokemon {
         virtual uint8_t evSPA() const noexcept = 0;
         virtual uint8_t evSPD() const noexcept = 0;
 
+        // Native Gen II uses five 16-bit stat-experience fields, NOT EVs.
+        // Optional format capability: default means the original stat-
+        // experience bytes are unavailable, not that the values are zero.
+        // Avoid downcasting a generic Pokemon using only a game-group label:
+        // the Switch build disables RTTI, and derived Pokémon may be staged.
+        virtual bool gen2NativeStatExperience(
+                std::array<uint16_t, 5>& fields) const noexcept {
+            fields = {};
+            return false;
+        }
+
+
         /**
          * Sets an Effort Value for a specific stat.
          * @param statIndex 0=HP, 1=ATK, 2=DEF, 3=SPE, 4=SPA, 5=SPD
