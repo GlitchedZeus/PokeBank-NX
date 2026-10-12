@@ -1,6 +1,9 @@
 name: PokeBank NX Product UI Native
 
 on:
+  push:
+    branches:
+      - feature/gen5-readonly-foundation-20261008
   pull_request:
     branches:
       - integration/gen4-polish-hardware-20260928
@@ -71,6 +74,15 @@ jobs:
           make -f Makefile.host product-ui-test
           python3 tests/test_reachable_ui_consistency.py
           python3 tests/test_game_hub_contract.py
+          # Gen V candidate must satisfy the same independent native PK5
+          # candidate-generation test, not merely compile the Product shell.
+          make -f Makefile.host build-host/test_gen5_pk5_readonly \
+            build-host/test_gen5_readonly_save \
+            build-host/test_gen5_staged_save_candidate
+          ./build-host/test_gen5_pk5_readonly
+          ./build-host/test_gen5_readonly_save
+          ./build-host/test_gen5_staged_save_candidate
+          python3 tests/test_gen5_readonly_ui_contract.py
           echo "APPLICATION_SHA=$EXPECTED_SHA"
           echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
 
