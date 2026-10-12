@@ -97,6 +97,20 @@ LANES: dict[str, Lane] = {
         "legality_stage3_cross_lane_contracts")),
 }
 
+# L5's synthetic EV verifier intentionally binds its result to the exact
+# production codec/wrapper source it exercised.  Surface those receipts during
+# matrix preflight too, so an integration branch cannot reach a misleading
+# partial green before the L5 command reports source drift.
+SOURCE_PINS: dict[str, dict[str, str]] = {
+    "l5": {
+        "src/Encryption/Encryption3FRLG.cpp": "eec27b73a15d6652371ed2e066690ef0fa9fb7ef",
+        "src/Encryption/Encryption4.cpp": "406935761713db95ae738398b65ba0a37d4cf97b",
+        "include/Encryption/Encryption.h": "9eab685b76511d5ea08e0fffdff63529a5824fe6",
+        "include/Pokemon/Pokemon3FRLG.h": "f93b121fb59b08495668161e932b7aa2bbb82588",
+        "src/Pokemon/Pokemon4ReadOnly.cpp": "bc82e07fa737bf5a3fa15533bd77083b0300436a",
+    },
+}
+
 
 def git(*args: str) -> str:
     return subprocess.check_output(["git", *args], cwd=ROOT, text=True).strip()
@@ -114,12 +128,20 @@ def inventory(name: str, lane: Lane) -> dict[str, object]:
     missing_sources = [program for program in lane.programs
                        if not any(path.is_file() for path in candidates(program))]
     missing_registration = [program for program in lane.programs if program not in text]
+    source_pin_mismatches = []
+    for relative, expected in SOURCE_PINS.get(name, {}).items():
+        path = ROOT / relative
+        actual = git("hash-object", relative) if path.is_file() else None
+        if actual != expected:
+            source_pin_mismatches.append({"path": relative, "expected": expected, "actual": actual})
     return {"receipt_ref": lane.receipt_ref, "receipt_sha": lane.receipt_sha,
             "runner": lane.runner, "expected_programs": len(lane.programs),
             "present_sources": len(lane.programs) - len(missing_sources),
             "registered_programs": len(lane.programs) - len(missing_registration),
             "missing_sources": missing_sources, "missing_registration": missing_registration,
-            "ready": runner.is_file() and not missing_sources and not missing_registration}
+            "source_pin_mismatches": source_pin_mismatches,
+            "ready": runner.is_file() and not missing_sources and not missing_registration and
+            not source_pin_mismatches}
 
 
 def preflight() -> dict[str, object]:

@@ -19,7 +19,14 @@ The receipt matrix contains 103 declared programs:
 
 The current coordinator integration head has only 13/11/7/15 L1–L4 programs.
 Preflight consequently reports the 46 missing source/registration entries and
-returns nonzero rather than running a partial matrix or calling it green.
+two L5 source-pin mismatches (`Pokemon3FRLG.h` and `Pokemon4ReadOnly.cpp`),
+then returns nonzero rather than running a partial matrix or calling it green.
+
+The same source drift was confirmed by the real L5 integration runner: its
+first four Clang commands passed, including the ASan/UBSan native contract,
+before its authoritative EV-vector gate stopped on those two stale wrapper
+pins. The L5 receipt branch contains the expected blobs; no L5-owned source
+or fixture is changed here.
 
 Confirmed coordinator-owned Clang blocker: compiling the production analyzer
 under Clang with `-Werror` diagnoses a dangling `std::u16string_view` at

@@ -27,6 +27,9 @@ class Stage2MatrixTests(unittest.TestCase):
         self.assertEqual(report["lanes"]["l2"]["present_sources"], 11)
         self.assertEqual(report["lanes"]["l3"]["present_sources"], 7)
         self.assertEqual(report["lanes"]["l4"]["present_sources"], 15)
+        self.assertEqual(
+            {row["path"] for row in report["lanes"]["l5"]["source_pin_mismatches"]},
+            {"include/Pokemon/Pokemon3FRLG.h", "src/Pokemon/Pokemon4ReadOnly.cpp"})
 
     def test_execution_plan_propagates_compiler_and_identity(self) -> None:
         head = "a" * 40
