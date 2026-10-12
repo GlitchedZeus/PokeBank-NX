@@ -283,35 +283,17 @@ void drawSharedActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     auto* editor = stagedEditor(screen);
     if (!editor) return;
     std::string error;
-    auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
-                                        static_cast<std::size_t>(legacy.pokemonSlot), error);
-    const bool occupied = pokemon.has_value();
-    const auto actions = SharedEditor::actionsForSlot(occupied, gen2ActionCapabilities(), !editor->pendingChanges().empty());
-    legacy.pokemonRow = std::clamp(legacy.pokemonRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
-
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
-    constexpr int w = 780;
-    const auto geometry = SharedEditor::actionMenuGeometry();
-    const int h = geometry.rowStart +
-                  static_cast<int>(actions.count) * geometry.rowStep + 62;
-    const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - 48 - h) / 2;
-    drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 28, y + 20, SharedEditor::titleFor(SharedEditor::Surface::Actions), Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 28, y + 54,
-                "Box " + std::to_string(legacy.pokemonBox + 1) + " / Slot " +
-                std::to_string(legacy.pokemonSlot + 1) + "   •   " + sharedGameName(screen) +
-                "   •   Source save immutable",
-                Colors::TextDim, TextStyle::Caption);
-
-    int yy = y + geometry.rowStart;
-    for (std::size_t i = 0; i < actions.count; ++i) {
-        const bool selected = legacy.pokemonRow == static_cast<int>(i);
-        drawNativeActionRow(fb, x + 22, yy, w - 44, geometry.rowHeight,
-                            sharedActionLabel(actions[i]), selected);
-        yy += geometry.rowStep;
-    }
-    fb.drawText(x + 24, y + h - 38, "Original source is immutable", Colors::Accent, TextStyle::Caption);
+    const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
+                                              static_cast<std::size_t>(legacy.pokemonSlot), error);
+    const auto actions = SharedEditor::actionsForSlot(
+        pokemon.has_value(), gen2ActionCapabilities(), !editor->pendingChanges().empty());
+    legacy.pokemonRow = std::clamp(
+        legacy.pokemonRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
+    const auto model = PokeBank::UIModel::NarrowPokemonMenu::classic(
+        actions, pokemon.has_value());
+    drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow,
+                            pokemon ? "Pokemon Actions" : "Empty Slot",
+                            "GEN II / READ-ONLY SOURCE", 31600);
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
 }
 
