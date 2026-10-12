@@ -14,6 +14,7 @@
 #include "Legality/Gen3PidIvFamilyRouter.h"
 #include "Legality/Gen4NatureReversalReplay.h"
 #include "Legality/Gen4WildSourceLinkedHistory.h"
+#include "Legality/Gen3OriginalRoamerStage.h"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -24,7 +25,7 @@ enum class Family : uint8_t {
     Gen3Safari, Gen3GameCubeShadow, Gen4SinnohWild,
     Gen4StaticGiftRoamer, Gen4HgssSpecial,
     Gen3EmeraldMethodH, Gen3PidIvOnly, Gen4WildSourceLinked,
-    Gen4NatureStageOnly, Count
+    Gen4NatureStageOnly, Gen3OriginalRoamer, Count
 };
 enum class EvidenceKind : uint8_t {
     UnknownOriginalHistory, CandidateLocalContradiction,
@@ -151,6 +152,19 @@ constexpr EvidenceKind map(Gen4WildSpecialStageEvidence::Status s) noexcept {
 }
 // RNG correlation or a nature-reversal frame is one stage, NOT an
 // original encounter row. Promote it only to template/stage compatibility.
+constexpr EvidenceKind map(Gen3OriginalRoamerStage::Status s) noexcept {
+    using S=Gen3OriginalRoamerStage::Status;
+    if(s==S::ConditionalOriginalRoamerHistory)
+        return EvidenceKind::ConditionalOriginalHistory;
+    if(s==S::CandidateOriginalSpeciesContradicted ||
+       s==S::CandidateOriginalLevelContradicted ||
+       s==S::CandidateOriginalRouteContradicted ||
+       s==S::CandidateOriginalPidIvContradicted)
+        return EvidenceKind::CandidateLocalContradiction;
+    // Unknown source/choice/map/seed and malformed original IVs cannot
+    // prove a global negative. The source may have been another version.
+    return EvidenceKind::UnknownOriginalHistory;
+}
 constexpr EvidenceKind map(Gen3PidIvFamilyRouter::Status s) noexcept {
     return s==Gen3PidIvFamilyRouter::Status::ConditionalRngCorrelation ?
         EvidenceKind::OriginalTemplateCompatible :

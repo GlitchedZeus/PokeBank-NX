@@ -43,6 +43,15 @@ int main(){
         Legality::Gen3MethodHOriginalStage::Status::UnsupportedLeadHistory)
         ==Kind::UnknownOriginalHistory);
     static_assert(U::map(
+        Legality::Gen3OriginalRoamerStage::Status::ConditionalOriginalRoamerHistory)
+        ==Kind::ConditionalOriginalHistory);
+    static_assert(U::map(
+        Legality::Gen3OriginalRoamerStage::Status::CandidateOriginalPidIvContradicted)
+        ==Kind::CandidateLocalContradiction);
+    static_assert(U::map(
+        Legality::Gen3OriginalRoamerStage::Status::UnknownOriginalRoamerSelection)
+        ==Kind::UnknownOriginalHistory);
+    static_assert(U::map(
         Legality::Gen3PidIvFamilyRouter::Status::ConditionalRngCorrelation)
         ==Kind::OriginalTemplateCompatible);
     static_assert(U::map(
