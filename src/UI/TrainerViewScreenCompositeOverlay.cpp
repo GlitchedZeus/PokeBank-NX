@@ -291,13 +291,49 @@ bool handleBasePartyTouch(TrainerViewScreen& screen, const TouchInput& touch) {
 } // namespace
 
 void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
-    const u64 down = padGetButtonsDown(&pad) | navTouchButton(touch);
+    u64 down = padGetButtonsDown(&pad) | navTouchButton(touch);
     const u64 held = padGetButtons(&pad);
     const HidAnalogStickState stick = padGetStickPos(&pad, 0);
 
     // Base navigation still uses the shared modern grid geometry. Normalize the source cursor to
     // the adapter's native capacity before any source action/move layer sees it.
     clampSourceBoxSelection(*this);
+
+    // Storage's legacy touch path fires A on first contact. For the GAME SAVE
+    // pane in Gen I-IV, hold contact until an intentional same-cell tap has
+    // completed, then route A through the genuine generation editor. Do not
+    // touch the separate Bank pane or interfere with drag/multi/carry input.
+    const bool stagedStorageSave = detailViewActive && selectedMode == ViewMode::Storage &&
+        !helpOverlayActive && !details.active && !actionSheet.isOpen() &&
+        !saveConfirmActive && !pickerActive && !itemEditDialogActive &&
+        !carrying() && !currentlySelecting &&
+        ((Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::editorAvailable(*this)) ||
+         (Gen2PokemonEditor::isGSC(*this) && Gen2PokemonEditor::stagedEditor(*this) != nullptr) ||
+         (Gen3SharedEditorSurface::isGen3Gba(*this) && Gen3SharedEditorSurface::editor(*this) != nullptr) ||
+         Gen4SharedEditorSurface::isGen4Nds(*this));
+    if (stagedStorageSave && (touch.justPressed() || touch.justTapped())) {
+        const auto saveSlotHit = [&](int x, int y) -> int {
+            for (const auto& target : storageTouchTargets) {
+                if (target.pane != 0 || target.box != stSaveBox ||
+                    target.slot < 0 ||
+                    target.slot >= static_cast<int>(trainer.getSlotsPerBox())) continue;
+                if (x >= target.x && x < target.x + target.w &&
+                    y >= target.y && y < target.y + target.h)
+                    return target.slot;
+            }
+            return -1;
+        };
+        if (touch.justPressed() && saveSlotHit(touch.x(), touch.y()) >= 0)
+            return; // Never let the old Storage menu open on touch-down.
+        if (touch.justTapped()) {
+            const int first = saveSlotHit(touch.startX(), touch.startY());
+            if (first >= 0 && first == saveSlotHit(touch.x(), touch.y())) {
+                storageFocusPane = 0;
+                stSaveSlot = first;
+                down |= HidNpadButton_A;
+            }
+        }
+    }
 
     if (classicPackedMoveLayerAvailable(*this) &&
         ClassicPackedMove::handleInput(*this, down, held, stick.x, stick.y, touch)) return;

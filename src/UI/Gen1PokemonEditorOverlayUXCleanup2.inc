@@ -132,15 +132,18 @@ void ux2OpenActions(TrainerViewScreen& screen) {
         screen.postStatus(why.empty() ? "Generation I boxed editing is unavailable; source remains read-only" : why, 300);
         return;
     }
-    if (screen.selectedBoxIndex < 0 || screen.selectedBoxIndex >= static_cast<int>(screen.trainer.getBoxCount()) ||
-        screen.selectedItemIndex < 0 || screen.selectedItemIndex >= static_cast<int>(screen.trainer.getSlotsPerBox())) {
-        screen.postStatus("Select a Generation I box slot first");
+    const bool storage = screen.selectedMode == TrainerViewScreen::ViewMode::Storage;
+    const int box = storage ? screen.stSaveBox : screen.selectedBoxIndex;
+    const int slot = storage ? screen.stSaveSlot : screen.selectedItemIndex;
+    if (box < 0 || box >= static_cast<int>(screen.trainer.getBoxCount()) ||
+        slot < 0 || slot >= static_cast<int>(screen.trainer.getSlotsPerBox())) {
+        screen.postStatus("Select a Generation I game-save box slot first");
         return;
     }
     ux2ResetTouchMotion(state);
     state.mode = UX2Mode::Actions;
-    state.box = screen.selectedBoxIndex;
-    state.slot = screen.selectedItemIndex;
+    state.box = box;
+    state.slot = slot;
     state.row = 0;
     state.picker = UX2Picker::None;
 }
@@ -1201,8 +1204,9 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down) {
     if (!entrySurface(screen) || !editorAvailable(screen)) return false;
     if (!(down & (HidNpadButton_A | HidNpadButton_X | HidNpadButton_Y))) return false;
 
-    state.box = screen.selectedBoxIndex;
-    state.slot = screen.selectedItemIndex;
+    const bool storage = screen.selectedMode == TrainerViewScreen::ViewMode::Storage;
+    state.box = storage ? screen.stSaveBox : screen.selectedBoxIndex;
+    state.slot = storage ? screen.stSaveSlot : screen.selectedItemIndex;
     state.row = 0;
     state.picker = UX2Picker::None;
     std::string error;

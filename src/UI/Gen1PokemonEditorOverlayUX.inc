@@ -105,8 +105,13 @@ bool editorAvailable(const TrainerViewScreen& screen) noexcept {
 }
 
 bool entrySurface(const TrainerViewScreen& screen) noexcept {
-    return screen.detailViewActive && screen.selectedMode == TrainerViewScreen::ViewMode::Boxes &&
-        screen.selectedItemIndex >= 0 && !screen.helpOverlayActive && !screen.details.active &&
+    const bool box = screen.selectedMode == TrainerViewScreen::ViewMode::Boxes &&
+        screen.selectedItemIndex >= 0;
+    const bool storageSave = screen.selectedMode == TrainerViewScreen::ViewMode::Storage &&
+        screen.storageFocusPane == 0 && screen.stSaveBox >= 0 && screen.stSaveSlot >= 0 &&
+        !screen.carrying() && !screen.currentlySelecting;
+    return screen.detailViewActive && (box || storageSave) &&
+        !screen.helpOverlayActive && !screen.details.active &&
         !screen.actionSheet.isOpen() && !screen.saveConfirmActive && !screen.pickerActive &&
         !screen.itemEditDialogActive;
 }
