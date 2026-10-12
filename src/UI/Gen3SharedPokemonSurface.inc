@@ -1245,6 +1245,15 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
         return true;
     }
     if (!(down & HidNpadButton_A) || !state.session.editable()) return true;
+    if (state.focus.panel == Shared::Panel::Details &&
+        !state.detailsViewport.containsSelection(
+            state.focus.row, static_cast<int>(detailLabels.size()), 8)) {
+        state.detailsTouchScroll.stop();
+        state.detailsViewport.reveal(
+            state.focus.row, static_cast<int>(detailLabels.size()), 8);
+        screen.postStatus("Focused field brought into view; press A again", 200);
+        return true;
+    }
 
     if (state.focus.panel == Shared::Panel::Details)
         editDetail(screen, state, state.focus.row);
