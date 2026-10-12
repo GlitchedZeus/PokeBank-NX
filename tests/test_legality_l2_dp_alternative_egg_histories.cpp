@@ -134,6 +134,29 @@ int main(){
             const auto yes=J::evaluate(one);
             assert(yes.status==J::Status::OneConditionallyConsistentFullHistory);
             assert(yes.matched==1 && !yes.contradicted && !yes.unknown);
+            // Independent original pair-eligibility attestations cannot
+            // disagree between PID creation and four-move inheritance.  The
+            // contradiction is in the supplied source records, not proof
+            // that the egg itself was unobtainable from some other pair.
+            auto contradictorySource=one;
+            contradictorySource.original.alternatives[0].pid.eligibleOrdinaryDaycarePair=false;
+            const auto disagreePID=J::evaluate(contradictorySource);
+            assert(disagreePID.status==J::Status::UnverifiedOriginalParentSources);
+            assert(disagreePID.matched==0 && disagreePID.contradicted==0);
+            contradictorySource=one;
+            contradictorySource.moveHistories[0].eligibleOriginalDaycarePair=false;
+            const auto disagreeMove=J::evaluate(contradictorySource);
+            assert(disagreeMove.status==J::Status::UnverifiedOriginalParentSources);
+            assert(disagreeMove.matched==0 && disagreeMove.contradicted==0);
+            // A separate original route survives an unsupported conflicting
+            // record without joining half-histories from different parents.
+            contradictorySource.original.count=2;
+            contradictorySource.original.alternatives[1]=one.original.alternatives[0];
+            contradictorySource.original.alternatives[1].routeIdentity=2;
+            contradictorySource.moveHistories[1]=one.moveHistories[0];
+            const auto surviving=J::evaluate(contradictorySource);
+            assert(surviving.status==J::Status::OneConditionallyConsistentFullHistory);
+            assert(surviving.matched==1 && surviving.contradicted==0);
             // Two complementary half-truths must NEVER be joined:
             // candidate A matches PID/IV but not four moves; candidate B
             // matches moves but is IV-contradicted for the original egg.
