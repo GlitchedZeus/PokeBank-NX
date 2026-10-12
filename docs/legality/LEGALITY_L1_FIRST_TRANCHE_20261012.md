@@ -28,6 +28,10 @@
 - **Unfinished for full catalog closure:** E07 all Emerald Method H lead and conditional Safari/fishing histories; E11 every GameCube/event/roamer method variant and original event/template feasibility; E13 full historical Safari blocks/time, Bug Contest entry and all lead/slot alternates; E15 complete extended original-stage J/K slot/lead/reversal integration and capture-time proof, including independently preserved original PID/IV, source location and original source save. Do not mark these catalog IDs fully closed or PKHeX-parity.
 - **Coordinator action needed:** register the four new native test translation units in *shared* host Makefiles (L1 cannot change them); reconcile only exact-head all-green lane PR into isolated accepted, re-test combined head. Do not self-merge.
 
+## Standalone exact-head L1 native test runner (no shared Makefile edits)
+
+From a checked-out PR HEAD, run `bash tests/test_legality_l1_run.sh`. The runner compiles **all four** new C++ test units under `-Werror`, then recompiles and runs all four with `-fsanitize=address,undefined`. E13 links production `Pokemon4ReadOnly`, `Encryption4`, and all three Gen IV personal tables to exercise checksum-valid encrypted original HG/SS PK4 fixtures. The build outputs are isolated temporary files and cleaned up. The script cannot itself be executed via the connector; its existence is not a passing result. Coordinator must run it manually/on CI and retain exact-head logs.
+
 ## Test commands (only after coordinator adds owned test targets)
 
 `g++ -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror -Iinclude tests/test_legality_l1_gen3_family_router.cpp -o /tmp/l1-family && /tmp/l1-family`
