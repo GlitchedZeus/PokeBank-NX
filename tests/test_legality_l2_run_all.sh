@@ -69,6 +69,8 @@ tests=(
     test_legality_l2_gen4_native_iv_history
 )
 passed=0
+attempted=0
+failures=()
 for test in "${tests[@]}"; do
     if [[ -n "$filter" && "$test" != *"$filter"* ]]; then
         continue
@@ -90,6 +92,7 @@ for test in "${tests[@]}"; do
         done
     fi
     for mode in $modes; do
+        attempted=$((attempted+1))
         flags=(-std=c++20 -Wall -Wextra -Wpedantic -Werror
                -Wno-unused-parameter -I"$root/include")
         if [[ "$mode" == sanitizers ]]; then
@@ -99,20 +102,36 @@ for test in "${tests[@]}"; do
         fi
         dest="$tmp/$test-$mode"
         echo "L2 compile: $test [$mode] using $cxx"
-        "$cxx" "${flags[@]}" "${sources[@]}" -o "$dest"
+        if ! "$cxx" "${flags[@]}" "${sources[@]}" -o "$dest"; then
+            echo "L2 FAIL compile: $test [$mode]" >&2
+            failures+=("$test:$mode:compile")
+            continue
+        fi
         echo "L2 run: $test [$mode]"
         if [[ "$mode" == sanitizers ]]; then
-            ASAN_OPTIONS=halt_on_error=1:detect_leaks=1 \
-            UBSAN_OPTIONS=halt_on_error=1 \
-                "$dest"
+            if ASAN_OPTIONS=halt_on_error=1:detect_leaks=1 \
+               UBSAN_OPTIONS=halt_on_error=1 "$dest"; then
+                passed=$((passed+1))
+                echo "L2 PASS: $test [$mode]"
+            else
+                echo "L2 FAIL runtime: $test [$mode]" >&2
+                failures+=("$test:$mode:runtime")
+            fi
+        elif "$dest"; then
+            passed=$((passed+1))
+            echo "L2 PASS: $test [$mode]"
         else
-            "$dest"
+            echo "L2 FAIL runtime: $test [$mode]" >&2
+            failures+=("$test:$mode:runtime")
         fi
-        passed=$((passed+1))
     done
 done
-if (( passed==0 )); then
+if (( attempted==0 )); then
     echo "L2 ERROR: no test matched filter: $filter" >&2
     exit 2
 fi
-echo "L2 complete: $passed exact-checked-out-source standalone test executions passed."
+echo "L2 complete: $passed/$attempted exact-checked-out-source standalone test executions passed."
+if (( ${#failures[@]}>0 )); then
+    printf 'L2 FAILED EXECUTIONS: %s\\n' "${failures[@]}" >&2
+    exit 1
+fi
