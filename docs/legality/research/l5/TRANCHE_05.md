@@ -22,7 +22,7 @@ File: `tests/fixtures/legality_l5_native_ev_vectors.json`. **336 checksum-valid 
 
 Each exact synthetic record records a canonical source-game-independent PID/shuffle, EV byte and total, egg/non-egg bit, checksum, raw encrypted hex, source-level NX EV-threshold difference, source-level PKHeX egg rule, and **UNDETERMINED full legality**. Gen III uses the raw 48-byte G/A/E/M block arrangement, 16-bit canonical checksum and 32-bit PID XOR OT key. Gen IV uses four 32-byte shuffled substructures, 16-bit LCG-XOR keystream seeded by checksum, and the 0x88 stored record. No private, authentic retail, copyrighted event or ROM byte content is committed.
 
-**Proof completed:** the generator independently asserted encrypt→decrypt byte-for-byte round trips for all 336 valid records, checksum and EV/egg field recovery, and checksum failure for all 12 corrupt controls. After the JSON was committed, a *separate independent JS decoder* decoded **all 348 exact committed hex payloads** and validated expected checksum outcomes. These are source-scope format tests, **not** a run of NX's strict C++ parser or `Legality::analyze`. The separate Python validator `tools/audit_legality_l5_native_ev_vectors.py` is committed and can reproduce in a checkout; it has not been executed in an exact-HEAD GitHub host job.
+**Proof completed:** the generator independently asserted encrypt→decrypt byte-for-byte round trips for all 336 valid records, checksum and EV/egg field recovery, and checksum failure for all 12 corrupt controls. After the JSON was committed, a *separate independent JS decoder* decoded **all 348 exact committed hex payloads** and validated expected checksum outcomes. These are source-scope format tests, **not** a run of NX's strict C++ parser or `Legality::analyze`. The separate Python validator `tools/audit_legality_l5_native_ev_vectors.py` is committed and can reproduce in a checkout; `--source-root .` also verifies exact Git-blob hashes for five pinned crypto/model files and fails closed if the original native format source drifts; it has not been executed in an exact-HEAD GitHub host job.
 
 Counts: **144 PK3**, **192 PK4**, 168 eggs, 168 non-eggs, **168 encoded records with EV 253–255** (source-rule regression targets). At each shuffle index, both the zero/nonzero and egg-state combinations are represented across the balanced sets. Each corrupt fixture is expected to fail native checksum validation.
 
@@ -35,7 +35,7 @@ Counts: **144 PK3**, **192 PK4**, 168 eggs, 168 non-eggs, **168 encoded records 
 
 ## Exact analyzer differential — coordinator-ready native 36-case probe (UNEXECUTED)
 
-`tests/fixtures/legality_l5_ev_native_analyzer_probe.cpp` constructs *new synthetic* PK3 using the accepted `Pokemon3FRLG` implementation and **encrypted PK4** through `Encryption::encryptArray4`, validates native checksum and EV field reads, and calls `Legality::analyze` directly with both exact-source and no-source contexts. It checks **6 EV values × 2 generations × 2 contexts = 24** cap cases plus **3 egg EV values ×2 generations×2 contexts = 12** egg-status cases. **36 total**.
+`tests/fixtures/legality_l5_ev_native_analyzer_probe.cpp` constructs *new synthetic* PK3 using the accepted `Pokemon3FRLG` implementation, then calls its `clone()` to re-encrypt/re-shuffle and re-decrypt through the native constructor, and independently constructs **encrypted PK4** through `Encryption::encryptArray4`, validates native checksum and EV field reads, and calls `Legality::analyze` directly with both exact-source and no-source contexts. It checks **6 EV values × 2 generations × 2 contexts = 24** cap cases plus **3 egg EV values ×2 generations×2 contexts = 12** egg-status cases. **36 total**.
 
 The two modes test the same production behavior before and after a fix:
 - `--baseline`: requires current NX's *known* cap rejection at EV 253/254/255 and absence of an egg-specific EV Invalid for eggs EV=1/100; this is the expected failing *reference behavior*, not an endorsement.
@@ -46,7 +46,7 @@ An **opt-in sidecar** `tools/audit_legality_l5_ev_probe.mk` reuses the accepted 
 From a **coordinator-approved full checkout with toolchains installed**, run:
 
 ```bash
-python3 tools/audit_legality_l5_native_ev_vectors.py
+python3 tools/audit_legality_l5_native_ev_vectors.py --source-root .
 make -f Makefile.host -f tools/audit_legality_l5_ev_probe.mk l5-ev-baseline
 make -f Makefile.host -f tools/audit_legality_l5_ev_probe.mk l5-ev-baseline-sanitize
 # After coordinator patches and accepts the production EV behavior:
