@@ -78,3 +78,52 @@ They use synthetic data and establish no authentic event provenance.
 Status: **STAGE 1 IN PROGRESS / NOT GREEN.** Next L4 session must inspect the
 exact-head four-job matrix, address real failures forward-only and finish the
 remaining 26 full-checkout C++ suite executions before advancing to Stage 2.
+
+## Converted-original closure and latest exact-source review
+
+**Latest L4 source/test checkpoint:**
+- Header `include/Legality/Gen4MysteryGiftContainerEvidence.h` Git blob
+  `8ca2ddd5c83f3659645d5296075b7caa32bfee3d`.
+- Suite `tests/test_legality_l4_gen4_pcd_pgt_container.cpp` Git blob
+  `8ff310f02a1c4ad1c500c2c3907206a8ed0e04fe`.
+- Clock header `69506bbc1b75355991a591415c64312311949e00`;
+  clock suite `be9316a7d5860167738e8ea32e8bf5bbafd6afd6`.
+
+A separate exact-header regression demonstrated a real conditional-source
+false positive: `ArchiveGrade::ConvertedOriginal` was eligible for
+`ConditionalOriginalSource` using only the converted file's claimed digest.
+There was no independent original archive digest or checked conversion chain.
+That means a later converted PCD/PGT could have been confused with evidence
+for its original historical archive. The corrected C++ gate requires **all**
+of: a separately nonzero and independently verified original archive digest,
+an independently checked original-to-converted transformation history, and
+independently checked preservation of the original fields. Otherwise
+`UnknownConversionHistory`, never global Invalid or authentic.
+
+The existing 448 archival-state masks and 256 grade-tag tests were updated to
+prevent a conditional success solely from `ConvertedOriginal`. Added
+**32 independent conversion-proof masks** (16 PCD + 16 PGT), explicit
+standalone-PGT card-ID absence, and separate UnknownReceipt/UnknownRelease
+negatives. The original symmetric **62,160 PCD/PGT payload mutation**
+checks remain active.
+
+**Actually re-executed locally against byte-verified GitHub source:**
+`g++` 14.2.0 / `clang++` 17, normal `-O2` and instrumented
+`-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer`, each with
+`-std=c++20 -Wall -Wextra -Wpedantic -Werror -Iinclude`.
+For each of
+`tests/test_legality_l4_gen4_pcd_pgt_container.cpp` and
+`tests/test_legality_l4_clock_receipt_history.cpp`, all four combinations
+compiled and ran to completion: **8/8 executions PASS**. The prior unfixed
+conversion witness reproduced an exit 134 assertion failure before correction.
+
+The complete PR checkout is **not** locally available because git remote
+lookup of `github.com` fails DNS; only the two exact GitHub source suites
+above were mirrored. The latest four-job 28-suite exact-head workflow and
+standard host run are queued, and **26 other C++ suites are not verified at
+this updated L4 commit**. Their previously green ancestors are not proof
+for the current HEAD.
+
+**Stage 1 acceptance remains BLOCKED** pending the full exact-head matrix,
+native PK3/PK4 and Ranger suites, source-projection/rights joins, and a
+coordinator-owned integration rerun after review. No move to Stage 2.
