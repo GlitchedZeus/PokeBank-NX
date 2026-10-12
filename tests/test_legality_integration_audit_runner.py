@@ -27,7 +27,7 @@ class IntegrationAuditRunnerTests(unittest.TestCase):
     def test_plan_covers_normal_and_sanitized_regressions(self) -> None:
         gates = AUDIT.plan("audit", "a" * 40)
         self.assertEqual([gate.name for gate in gates], [
-            "stage2-native", "stage2-native-sanitize",
+            "stage1-l2-baseline", "stage2-native", "stage2-native-sanitize",
             "stage3-cross-lane", "stage3-cross-lane-sanitize"])
         self.assertTrue(all(gate.environment["ASAN_OPTIONS"].startswith("detect_leaks=0")
                             for gate in gates))
