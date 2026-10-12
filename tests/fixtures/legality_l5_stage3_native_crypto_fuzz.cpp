@@ -225,6 +225,5 @@ int main(){
     std::cout<<"L5 Stage3 actual PK3/PK4 codec fuzz: "<<s.checks
              <<" PASS; specimens="<<s.specimens<<" single-bit="<<s.flips
              <<" metadata="<<s.mutations<<" lengths="<<s.sizes
-             <<" (synthetic transport, not complete analyzer or retail proof)
-";
+             <<" (synthetic transport, not complete analyzer or retail proof)\n";
 }
