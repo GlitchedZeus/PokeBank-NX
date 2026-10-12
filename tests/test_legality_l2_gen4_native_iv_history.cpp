@@ -42,7 +42,7 @@ int main() {
     const std::array<uint8_t,6> right{13,24,3,14,25,4};
     // HGSS source-verified first-seed single Power Weight vector.
     const auto generated=IV::replay("heartgold_nds",0,initial,left,right,294,0);
-    assert(generated.childIVs==std::array<uint8_t,6>({7,24,6,9,27,15}));
+    assert((generated.childIVs==std::array<uint8_t,6>({7,24,6,9,27,15})));
     assert(generated.finalSeed==0x31B0DDE4u);
     // Deliberately give the retained parent PK4 NO Power item: the
     // proposed collection-time Power item comes only from attestation.
