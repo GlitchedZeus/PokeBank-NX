@@ -133,7 +133,7 @@ int main() {
     assert(actionsDraw.find("screen.drawLegacyBase(fb)") != std::string::npos);
     assert(actionsDraw.find("screen.drawGSCOverlay(fb)") == std::string::npos);
     assert(actionsDraw.find("drawNarrowPokemonActions(fb, screen.touchButtons") != std::string::npos);
-    const auto narrow = read("include/UI/NarrowPokemonActionMenu.h");
+    const auto narrow = readFile("include/UI/NarrowPokemonActionMenu.h");
     assert(narrow.find("int width = 440") != std::string::npos);
     assert(narrow.find("Add to Master Vault") != std::string::npos);
     assert(actionsDraw.find("fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2)") == std::string::npos);
