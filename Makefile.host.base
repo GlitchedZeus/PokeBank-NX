@@ -158,6 +158,10 @@ HOST_TESTS += $(HOST_BUILD)/test_gen3_emerald_levelup_timeline
 HOST_TESTS += $(HOST_BUILD)/test_gen14_candidate_set_coverage
 HOST_TESTS += $(HOST_BUILD)/test_gen34_palpark_snapshot
 HOST_TESTS += $(HOST_BUILD)/test_gen3_emerald_palpark_joint
+HOST_TESTS += $(HOST_BUILD)/test_gen34_post_palpark_learning
+HOST_TESTS += $(HOST_BUILD)/test_gen4_verified_nature_candidate
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_verified_nature_candidate_sanitize
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_post_palpark_learning_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_emerald_palpark_joint_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen34_palpark_snapshot_sanitize
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen14_candidate_set_coverage_sanitize
@@ -341,6 +345,22 @@ $(HOST_BUILD)/test_gen34_same_parent_egg_history: tests/test_gen34_same_parent_e
 $(HOST_BUILD)/test_gen34_same_parent_egg_history_sanitize: tests/test_gen34_same_parent_egg_history.cpp include/Legality/Gen34SameParentEggHistory.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen34_same_parent_egg_history.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_verified_nature_candidate: tests/test_gen4_verified_nature_candidate.cpp include/Legality/Gen4NatureReversalEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen4_verified_nature_candidate.cpp -o $@
+
+$(HOST_BUILD)/test_gen4_verified_nature_candidate_sanitize: tests/test_gen4_verified_nature_candidate.cpp include/Legality/Gen4NatureReversalEvidence.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen4_verified_nature_candidate.cpp -o $@
+
+$(HOST_BUILD)/test_gen34_post_palpark_learning: tests/test_gen34_post_palpark_learning.cpp include/Legality/Gen34PostPalParkLearning.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen34_post_palpark_learning.cpp -o $@
+
+$(HOST_BUILD)/test_gen34_post_palpark_learning_sanitize: tests/test_gen34_post_palpark_learning.cpp include/Legality/Gen34PostPalParkLearning.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen34_post_palpark_learning.cpp -o $@
 
 $(HOST_BUILD)/test_gen3_emerald_palpark_joint: tests/test_gen3_emerald_palpark_joint.cpp include/Legality/Gen3EmeraldPalParkJointPath.h
 	@mkdir -p $(HOST_BUILD)

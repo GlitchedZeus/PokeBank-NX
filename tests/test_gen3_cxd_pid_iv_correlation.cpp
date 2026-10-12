@@ -10,6 +10,13 @@ int main() {
     using Legality::Gen3CxdPidIv::Variant;
     using Legality::Gen3CxdPidIv::analyze;
     using Legality::Gen3CxdPidIv::analyzeWithTrainer;
+    for(uint8_t k=0;k<6;++k) {
+        auto iv=std::array<uint8_t,6>{6,1,0,7,17,7};
+        iv[k]=32;
+        assert(!analyze(0x0985A297u,iv).matched);
+        assert(!analyzeWithTrainer(0x0985A297u,iv,12345,54321).matched);
+    }
+
     namespace EReader = Legality::Gen3ColoEReaderShadowEvidence;
     namespace Fixed = Legality::Gen3GameCubeFixedEncounterEvidence;
     namespace Starter = Legality::Gen3GameCubeStarterCorrelation;
@@ -129,6 +136,17 @@ int main() {
     assert(!Starter::analyzeXdEevee(
         197, 0xC7047D49u, {22, 28, 22, 21, 28, 13},
         starterTid, starterSid).matched);
+
+    // Special starter routes must validate the same six 5-bit IV fields
+    // BEFORE their independent GameCube reverse-RNG reconstruction.
+    for(uint8_t index=0;index<6;++index) {
+        auto iv=std::array<uint8_t,6>{22,28,22,21,28,13};
+        iv[index]=32;
+        assert(!Starter::analyzeColosseum(
+            197,0xC7047D49u,iv,starterTid,starterSid).matched);
+        assert(!Starter::analyzeXdEevee(
+            133,0xC7047D49u,iv,starterTid,starterSid).matched);
+    }
 
     const auto boundedEspeon = Starter::analyzeColosseum(
         196, 0x0D09CC6Fu, {1, 11, 11, 3, 4, 2},

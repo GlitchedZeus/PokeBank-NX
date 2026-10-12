@@ -85,7 +85,8 @@ constexpr Result analyzeColosseum(uint16_t species,
                                   uint16_t tid,
                                   uint16_t sid,
                                   uint32_t rerollLimit = kMaxPidRerolls) noexcept {
-    if (species != 197 && species != 196)
+    if ((species != 197 && species != 196) ||
+        !Gen3PidIv::validStoredIVs(ivs))
         return {};
 
     const uint32_t iv1 = Gen3CxdPidIv::Detail::packIv1(ivs);
@@ -145,7 +146,7 @@ constexpr Result analyzeXdEevee(uint16_t species,
                                 const std::array<uint8_t, 6>& ivs,
                                 uint16_t tid,
                                 uint16_t sid) noexcept {
-    if (species != 133)
+    if (species != 133 || !Gen3PidIv::validStoredIVs(ivs))
         return {};
 
     const uint32_t iv1 = Gen3CxdPidIv::Detail::packIv1(ivs);

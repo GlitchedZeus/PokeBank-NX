@@ -53,6 +53,24 @@ int main() {
     wrongLanguage.language = 2;
     assert(!WcEgg::matches(wrongLanguage, m2));
 
+    // Invalid 5-bit IV inputs must NEVER accidentally reconstruct a
+    // valid retail RNG by spilling into adjacent packed-IV fields.
+    constexpr std::array<uint8_t,6> knownGood{17,19,20,16,13,12};
+    static_assert(Legality::Gen3PidIv::validStoredIVs(knownGood));
+    for(uint8_t slot=0;slot<6;++slot) {
+        auto invalid=knownGood;
+        invalid[slot]=32;
+        assert(!Legality::Gen3PidIv::validStoredIVs(invalid));
+        assert(analyze(0xE97E0000u,invalid).method==Method::None);
+        assert(analyze(0x815549A2u,invalid,true).method==Method::None);
+        assert(Legality::Gen3PidIv::analyzeRoamer(
+            0x84EA0B71u,invalid).method==Method::None);
+        invalid[slot]=255;
+        assert(analyze(0xE97E0000u,invalid).method==Method::None);
+    }
+    // The normal PID/IV and Roamer helpers are candidate witnesses:
+    // Method::None remains unknown, not a global illegality finding.
+
     // One IV changed from the known Method 1 vector: no handheld 1/2/3/4 correlation.
     assert(analyze(0xE97E0000u, {17,19,21,16,13,12}).method == Method::None);
 

@@ -35,4 +35,42 @@ constexpr Result search(uint32_t prePidSeed,uint8_t nature,
     }
     return {Status::SearchExhausted,0,budget};
 }
+// RNG-002: a source-attested pre-PID seed should also reproduce the
+// observed retained PID. A reverse nature rejection match by itself is
+// not enough to identify an actual caught specimen or original RNG frame.
+enum class CandidateStatus : uint8_t {
+    UnknownOriginalStage, InvalidNature, IncompatibleRetainedPid,
+    SearchExhausted, CandidateConsistent
+};
+struct Candidate {
+    bool independentlyKnownPrePidState=false;
+    uint32_t prePidState=0, observedRetainedPid=0;
+    uint8_t targetNature=0;
+    uint16_t pairBudget=128;
+};
+struct CandidateResult {
+    CandidateStatus status=CandidateStatus::UnknownOriginalStage;
+    Result reverse{};
+};
+constexpr uint32_t retainedPidFromStage(uint32_t state) noexcept {
+    state=Gen3PidIv::Detail::next(state);
+    const uint32_t low=state>>16;
+    state=Gen3PidIv::Detail::next(state);
+    return ((state>>16)<<16)|low;
+}
+constexpr CandidateResult verifyKnownCandidate(const Candidate& in) noexcept {
+    if(!in.independentlyKnownPrePidState)return {};
+    if(in.targetNature>=25)
+        return {CandidateStatus::InvalidNature,{}};
+    if(retainedPidFromStage(in.prePidState)!=in.observedRetainedPid ||
+       in.observedRetainedPid%25u!=in.targetNature)
+        return {CandidateStatus::IncompatibleRetainedPid,{}};
+    const auto result=search(in.prePidState,in.targetNature,in.pairBudget);
+    return {
+        result.status==Status::Matched ?
+            CandidateStatus::CandidateConsistent:
+            CandidateStatus::SearchExhausted,
+        result
+    };
+}
 } // namespace Legality::Gen4NatureReversal

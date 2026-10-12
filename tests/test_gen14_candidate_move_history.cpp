@@ -44,6 +44,17 @@ constexpr Witness oldSurf{57,42,Method::TransferRetained,5,70,1,0,0,true};
 constexpr Witness laterSurf{57,42,Method::LaterAcquisition,5,70,3,0,0,true};
 constexpr Witness tooEarlySurf{57,42,Method::LaterAcquisition,5,70,2,0,0,true};
 constexpr Witness oldThunderbolt{85,42,Method::TransferRetained,5,70,1,0,0,true};
+// A new egg hatch or a second original distribution cannot occur on
+// the same creature AFTER its verified Pal Park migration.
+constexpr Witness eggAfterPalPark{85,42,Method::Egg,5,70,3,0,900,true};
+constexpr Witness eventAfterPalPark{85,42,Method::Event,5,70,3,77,0,true};
+constexpr Witness eggBeforePalPark{85,42,Method::Egg,5,70,1,0,900,true};
+static_assert(evaluate(palParkCandidate,{slot(85,eggAfterPalPark),{},{},{}}).status==
+              Status::CandidateContradicted);
+static_assert(evaluate(palParkCandidate,{slot(85,eventAfterPalPark),{},{},{}}).status==
+              Status::CandidateContradicted);
+static_assert(evaluate(palParkCandidate,{slot(85,eggBeforePalPark),{},{},{}}).status==
+              Status::WitnessesCompatible);
 static_assert(evaluate(palParkCandidate,{slot(57,oldSurf),{},{},{}}).status==
               Status::CandidateContradicted);
 static_assert(evaluate(palParkCandidate,{slot(57,laterSurf),{},{},{}}).status==
@@ -145,6 +156,38 @@ static_assert(evaluate(capsule,{alternativeTimeCapsule(),
 static_assert(evaluate(Candidate{42,60,5,false,5,0,2,3,25,true},
                        {slot(166,oldEgg166),{},{},{}}).status==
               Status::Unresolved);
+
+// A malformed hypothetical stored move array must never claim a valid
+// same-history certificate or a fully exhausted encounter contradiction.
+constexpr auto duplicateStoredMoves=evaluate(full,{
+    slot(97,sibling(97,42,38)),slot(97,sibling(97,42,38)),{},{}});
+static_assert(duplicateStoredMoves.status==Status::Unresolved);
+constexpr auto holeInStoredMoves=evaluate(full,{
+    slot(97,sibling(97,42,38)),{},
+    slot(226,tutor(226,42,40)),{}});
+static_assert(holeInStoredMoves.status==Status::Unresolved);
+// Generation-tagged methods cannot treat moves first added in later
+// games as valid existing moves in Gen I/II/III. Unknown game keeps
+// a broad Gen I-IV ceiling, not a fabricated source identity.
+constexpr Candidate gen1Known{42,50,5,true,5,0,0,0,0,false,1};
+constexpr Candidate gen2Known{42,50,5,true,5,0,0,0,0,false,2};
+constexpr Candidate gen3Known{42,50,5,true,5,0,0,0,0,false,3};
+constexpr Candidate gen4Known{42,50,5,true,5,0,0,0,0,false,4};
+static_assert(evaluate(gen1Known,{slot(166,tutor(166,42,40)),{},{},{}})
+              .status==Status::Unresolved);
+static_assert(evaluate(gen2Known,{slot(252,tutor(252,42,40)),{},{},{}})
+              .status==Status::Unresolved);
+static_assert(evaluate(gen3Known,{slot(355,tutor(355,42,40)),{},{},{}})
+              .status==Status::Unresolved);
+static_assert(evaluate(gen4Known,{slot(468,tutor(468,42,40)),{},{},{}})
+              .status==Status::Unresolved);
+static_assert(evaluate(full,{slot(468,tutor(468,42,40)),{},{},{}})
+              .status==Status::Unresolved);
+static_assert(evaluate(gen4Known,{slot(467,tutor(467,42,40)),{},{},{}})
+              .status==Status::WitnessesCompatible);
+constexpr auto intactStoredMoves=evaluate(full,{
+    slot(97,sibling(97,42,38)),slot(226,tutor(226,42,40)),{},{}});
+static_assert(intactStoredMoves.status==Status::WitnessesCompatible);
 
 int main(){
     auto a=evaluate(full,{slot(97,sibling(97,42,38)),slot(226,sibling(226,42,45)),{}, {}});

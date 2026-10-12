@@ -6,6 +6,7 @@
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
 #include "Legality/Gen3EmeraldLevelUpTimeline.h"
 #include "Legality/Gen3EmeraldPalParkJointPath.h"
+#include "Legality/Gen34PostPalParkLearning.h"
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen34OrdinaryEggMoveConstruction.h"
 #include "Legality/Gen4NativeBreedingParentEvidence.h"
@@ -1464,6 +1465,37 @@ int main() {
     notHistoricallyLinked.sameOriginalSourceSnapshotVerified=false;
     assert(EmeraldPark::evaluate(notHistoricallyLinked).status==
            EmeraldPark::Status::UnknownSharedSource);
+
+    // One explicitly hypothetical subsequent encrypted Gen IV PK4
+    // snapshot after migration; retained identity does not prove its history.
+    auto rawLater=rawTransferred;
+    wr16(rawLater,0x28,15);
+    wr16(rawLater,0x2A,92);
+    auto encryptedLater=Encryption::encryptArray4(rawLater);
+    Pokemon::Pokemon4ReadOnly nativeLater(
+        encryptedLater,Enums::GameVersion::PT);
+    assert(nativeLater.valid() && nativeLater.checksumValid());
+    Pokemon::Pokemon4ReadOnlyView laterView(nativeLater);
+    namespace Later=Legality::Gen34PostPalParkLearning;
+    Later::Input post{};
+    post.crossing=paired.migration;
+    post.samePokemonAndGameContinuityVerified=true;
+    post.fullPostArrivalSequenceVerified=true;
+    post.arrivalLevel=32;post.observedLevel=50;
+    post.stepCount=2;
+    post.steps[0]={40,1,15,Later::Method::HiddenMachine,0,true};
+    post.steps[1]={50,2,92,Later::Method::TechnicalMachine,1,true};
+    post.observedMoves={laterView.move(0),laterView.move(1),
+                        laterView.move(2),laterView.move(3)};
+    assert(Later::evaluate(post).status==Later::Status::CandidateConsistent);
+    auto unknownTeaching=post;
+    unknownTeaching.steps[1].independentlyVerifiedMethod=false;
+    assert(Later::evaluate(unknownTeaching).status==
+           Later::Status::UnknownMethodSource);
+    auto illegalGbaCarry=post;
+    illegalGbaCarry.crossing.outboundGbaMoves[0]=15;
+    assert(Later::evaluate(illegalGbaCarry).status==
+           Later::Status::CandidateContradicted);
 
     // Calling the full analyzer by itself must not imply a witnessed
     // historical sequence; no stored PK3 encodes these seven choices.

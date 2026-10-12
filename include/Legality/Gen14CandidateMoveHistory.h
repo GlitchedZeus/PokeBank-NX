@@ -51,6 +51,10 @@ struct Candidate {
     uint8_t verifiedTimeCapsuleReturnStage=0;
     uint16_t speciesAtTimeCapsule=0; // Independently sourced Gen I species
     bool retailTimeCapsulePolicyVerified=false; // Korean/Stadium variants unknown
+    // Destination format generation (1..4), if independently known.
+    // 0 means unknown: still reject >Gen IV move ids, never invent a
+    // narrower source generation from a source-free Pokemon.
+    uint8_t observedGeneration=0;
 };
 struct Result {
     Status status=Status::Unresolved;
@@ -102,6 +106,12 @@ constexpr bool valid(const Candidate& candidate, const Witness& w) noexcept {
     // Pokémon or all alternative events, trades and histories.
     if(candidate.verifiedPalParkStage!=0) {
         if(candidate.verifiedPalParkStage>candidate.finalStage)return false;
+        // The SAME original Pokémon cannot hatch from a second egg
+        // or receive a second one-time origin event after migrating.
+        // Existing inherited/event moves may be retained from BEFORE
+        // the edge, subject to the other transfer restrictions.
+        if((w.method==Method::Egg || w.method==Method::Event) &&
+           w.stage>=candidate.verifiedPalParkStage)return false;
         if(w.method==Method::TransferRetained &&
            Gen34PalParkHMIds::isGen3HM(w.move))return false;
         if(w.method==Method::TransferRetained &&
@@ -179,6 +189,26 @@ constexpr Result evaluate(const Candidate& candidate,
             completeTables=false;
     }
     if(!result.storedSlots) {result.status=Status::Empty;return result;}
+    // A malformed hypothetical current four-slot snapshot (duplicate
+    // move IDs, or a nonzero move after an empty slot) cannot certify
+    // one retail acquisition history. These malformed *inputs* are
+    // Unresolved, NEVER an exhaustive candidate contradiction.
+    uint16_t moveCeiling=467;
+    switch(candidate.observedGeneration) {
+        case 0: case 4: moveCeiling=467;break;
+        case 3:moveCeiling=354;break;
+        case 2:moveCeiling=251;break;
+        case 1:moveCeiling=165;break;
+        default:return result;
+    }
+    bool foundEmpty=false;
+    for(uint8_t i=0;i<slots.size();++i) {
+        if(!slots[i].move){foundEmpty=true;continue;}
+        if(slots[i].move>moveCeiling)return result;
+        if(foundEmpty)return result;
+        for(uint8_t j=0;j<i;++j)
+            if(slots[j].move==slots[i].move)return result;
+    }
     if(!candidate.id || !candidate.currentLevel ||
        candidate.minEncounterLevel>candidate.currentLevel) return result;
     if(candidate.verifiedTimeCapsuleEntryStage!=0) {
