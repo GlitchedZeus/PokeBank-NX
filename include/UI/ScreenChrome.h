@@ -12,6 +12,7 @@
 #include "UI/Common.h"
 #include "UI/ControllerModel.h"
 #include "UI/TouchInput.h"
+#include "UI/NarrowPokemonActionMenu.h"
 
 namespace UI {
     // ---------------------------------------------------------------------------------------------
@@ -281,6 +282,55 @@ namespace UI {
         int th = 0, tw = 0;
         fb.measureText(label, tw, th, TextStyle::Body);
         fb.drawText(x + 16, y + (h - th) / 2, label, color, TextStyle::Body);
+    }
+
+    // The older 440px greyed-out Pokémon popup is the ONE visible action
+    // presentation for all four staged editor generations. This helper is
+    // intentionally draw-only: each enabled row publishes its existing native
+    // action index, so touch and A still reach the same guarded editor command.
+    // Disabled placeholders never acquire a touch target.
+    template <typename TouchButtons>
+    inline void drawNarrowPokemonActions(
+        PKSEFramebuffer& fb, TouchButtons& buttons,
+        const PokeBank::UIModel::NarrowPokemonMenu::Model& model,
+        int selectedNative, const std::string& title,
+        const std::string& context, int touchIdBase) {
+        using namespace PokeBank::UIModel::NarrowPokemonMenu;
+        const auto g = geometry(model.count, fb.getWidth(), fb.getHeight(), kNavBarH);
+        drawModalSurface(fb, g.x, g.y, g.width, g.height, 16);
+        fb.drawText(g.x + 22, g.y + 9, context, Colors::Accent, TextStyle::Caption);
+        fb.drawText(g.x + 22, g.y + 34, title, Colors::TextPrimary, TextStyle::Heading);
+        fb.drawFilledRect(g.x + 16, g.y + g.headerHeight - 4,
+                          g.width - 32, 2, Colors::Accent);
+        buttons.clear();
+        for (int visual = 0; visual < model.count; ++visual) {
+            const auto& row = model.rows[static_cast<std::size_t>(visual)];
+            const int yy = g.rowY(visual);
+            const int xx = g.rowX();
+            const int width = g.rowWidth();
+            const bool selected = row.enabled() && row.nativeIndex == selectedNative;
+            const bool pressed = row.enabled() && touchPressedRect(
+                xx, yy + 2, width, g.rowHeight - 4);
+            fb.drawFilledRoundedRect(xx, yy + 3, width, g.rowHeight - 6, 10,
+                pressed ? withAlpha(Colors::FocusBorder, 112) : Colors::Surface);
+            fb.drawRoundedRect(xx, yy + 3, width, g.rowHeight - 6, 10,
+                selected || pressed ? Colors::FocusBorder : Colors::Divider,
+                selected || pressed ? 2 : 1);
+            const Color disabledColor(
+                Colors::TextDim.r, Colors::TextDim.g, Colors::TextDim.b, 105);
+            const Color ink = row.enabled()
+                ? (selected ? Colors::TextPrimary : Colors::TextSecondary)
+                : disabledColor;
+            int textW = 0, textH = 0;
+            fb.measureText(row.label, textW, textH, TextStyle::Body);
+            fb.drawText(xx + 18, yy + (g.rowHeight - textH) / 2,
+                        row.label, ink, TextStyle::Body);
+            if (row.enabled())
+                buttons.push_back({touchIdBase + row.nativeIndex,
+                                   xx, yy, width, g.rowHeight});
+        }
+        fb.drawText(g.x + 22, g.y + g.height - 25,
+                    "Original source immutable", Colors::Accent, TextStyle::Caption);
     }
 
     // A pressable button that carries its controller badge ON the button (glyph + label, centred).
