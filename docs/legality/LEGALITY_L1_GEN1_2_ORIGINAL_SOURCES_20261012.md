@@ -1,0 +1,23 @@
+# L1 third major encounter tranche — E02 E03 E04 E05
+
+**Evidence level:** independently written original-history contract around EXISTING pinned PKHeX-derived RBY/GSC encounter tables (source grade B); no new wild archive copied, no claim of original pret retail-stage reproduction. The table generator roots were accepted before this work. Retroactively trusting a detached PK1/PK2 field as a proven original capture history is **not** justified. L1 still needs Q06 original-game multiset verification against game-specific original retail tables and consented native save archives.
+
+## E02/E03 Red Blue Yellow original static/trade identity
+
+`Gen1IndexedOriginalSourceHistory.h` requires **exact original title**, indexed original fixed encounter or in-game trade, original species and acquisition level, separately attested original catch rate, independently preserved in-game trade OT and Time Capsule state. This is not the container game. A present-day catch-rate byte can become a Gen II held-item byte and is **not safe to use as a contradiction**. A later evolved species must have an independent evolution chain; Eevee's Vaporeon/Jolteon/Flareon branches are explicitly not each other's ancestors. Yellow-only encounters are not forced into native Red/Blue origins. Unknown OT/tradeback/rate/chain stays Unknown.
+
+`tests/test_legality_l1_gen1_original_source.cpp` runs every one of 31 RBY static source rows against each permitted exact original game and each of 17 RBY in-game trade rows; positive, missing-source, wrong row identity, wrong original level and original catch-rate candidate contradictions, Yellow-only versus Blue negative and original Machoke-to-Machamp tradeback/evolution history (positive vs missing ancestry). This is indexed source-stage evidence only, not original Gen I **wild** (E01), Japanese Blue, Stadium or retrospective global capture legality. Q06 must supply original Gen I grass/water/rod/static/gift/trade source multiset before E01 can be completed.
+
+## E04/E05 Gold Silver Crystal original wild/static identity
+
+`Gen2IndexedOriginalSourceHistory.h` binds a specific row among the accepted **9856 packed GSC wild entries** (Gold 3272, Silver 3272, Crystal 3312) or **107 static/gift rows** (Gold 32, Silver 32, Crystal 43) to one exact source title and original species/location/level/method/time stage. Wild kinds 0–8 are not deduplicated, and original capture-time masks are checked. Headbutt types 6/7 require an **independent tree eligibility witness**, Bug Contest type 8 a captured contest-session witness; exact methods and fishing/rod context are stage-attested instead of inferred. Crystal native caught data is checked *only if independently attested*; Gold/Silver missing caught data is not evidence of impossible capture.
+
+Static/gift checks require original egg status; Crystal's forced-shiny Odd Egg requires independently attested shiny, while a roamers' original route requires a source witness and the accepted route mask. These source-stage checks are only necessary evidence for one selected original candidate, never proof of global Invalid. Other wild/egg/static/trade histories and later transfers remain competing options; no blanket disqualification from a failed one-row check.
+
+`tests/test_legality_l1_gen2_original_source.cpp` fixes 27 indexed source rows (all nine numeric wild method classes × G/S/C) and nine static/egg/roamer rows, with positive, foreign exact game, wrong original species/location/level/method/caught data, missing tree/contest/egg/roaming/shiny original history, and never interpreting absent Gold/Silver caught data as a failure.
+
+## Evidence freeze, status and coordinator acceptance
+
+Reference: pinned PKHeX `6501f0ab46e8f8ca048539dbaf8cae8cb104e722`, `Encounters1` fixed + in-game trade source, `encounter_gold.pkl`, `encounter_silver.pkl`, `encounter_crystal.pkl`, accepted `Gen1EncounterEvidenceData.inc`, `Gen2WildEncounterData.inc`, `Gen2StaticEncounterData.inc`. Frozen PR #252 `ENCOUNTER-001`; retail pret pokered, pokeyellow, pokegold and pokecrystal original multiset / swarm, TID-dependent Headbutt and catch-rate transfer provenance still require Q06 original source proof.
+
+No source save mutations, no detached negative verdict, no event/move/breeding/transfer analyzer edits. New two source headers, two `test_legality_l1_*.cpp` suites; L1-only runner now has **eight** test units for `bash tests/test_legality_l1_run.sh` each at O2/-Werror and ASan/UBSan. **This repo's existing shared Makefile and CI do not yet execute these units; coordinator must run them on exact HEAD and merge only after all full host/RSE/sanitizer tests are green.** Retain all accepted ancestry with fast-forward-only forward reconciliation; MAIN remains untouched.
