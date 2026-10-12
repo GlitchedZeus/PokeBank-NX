@@ -87,6 +87,32 @@ int main() {
     const auto no=N::evaluate(wrongItems);
     assert(no.status==N::Status::Evaluated);
     assert(no.histories.status==H::Status::AllEnumeratedStageHypothesesContradicted);
+    // Legitimately ambiguous archived original-daycare item hypotheses:
+    // one source-backed candidate conflicts, a DIFFERENT original held-
+    // item hypothesis matches, and a duplicate untrusted route exists.
+    // The duplicate must not erase the source-backed native match; it
+    // also cannot contribute to claims of exhaustive contradiction.
+    auto alternatives=in;
+    alternatives.historicalAlternatives.count=3;
+    alternatives.historicalAlternatives.histories[0].physicalSlot0Item=0;
+    alternatives.historicalAlternatives.histories[1]=candidate;
+    alternatives.historicalAlternatives.histories[1].routeIdentity=0x48;
+    alternatives.historicalAlternatives.histories[2]=candidate;
+    alternatives.historicalAlternatives.histories[2].routeIdentity=0x48;
+    const auto mixed=N::evaluate(alternatives);
+    assert(mixed.status==N::Status::Evaluated);
+    assert(mixed.histories.status==H::Status::ConditionalHistoryMatched);
+    assert(mixed.histories.matched==1 && mixed.histories.contradicted==1 &&
+           mixed.histories.unknown==1);
+    alternatives.historicalAlternatives.histories[1].historicalHeldItemsKnown=false;
+    assert(N::evaluate(alternatives).histories.status==
+           H::Status::MissingOrDuplicateRouteIdentity);
+    // Separately attested item histories do not come from whatever
+    // held item a valid present-day native PK4 happens to contain.
+    const auto& originalSourceBytes=egg.originalEncryptedBytes();
+    assert(originalSourceBytes.size()==child.size());
+    for(size_t i=0;i<child.size();++i)
+        assert(originalSourceBytes[i]==child[i]);
     auto unknownItem=in;unknownItem.historicalAlternatives.histories[0].historicalHeldItemsKnown=false;
     assert(N::evaluate(unknownItem).histories.status==H::Status::UnresolvedCandidateHistory);
     auto missingSeed=in;missingSeed.historicalAlternatives.histories[0].finalRNGStateKnown=false;
