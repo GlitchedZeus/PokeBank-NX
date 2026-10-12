@@ -1,0 +1,144 @@
+#include "Legality/Gen4DiamondPearlEggAlternativeHistories.h"
+#include <array>
+#include <cassert>
+#include <cstdint>
+#include <iostream>
+namespace A=Legality::Gen4DiamondPearlEggAlternativeHistories;
+namespace IV=Legality::Gen4DiamondPearlEggIVStage;
+namespace PID=Legality::Gen4DiamondPearlEggPidHistory;
+constexpr std::array<uint8_t,6> initial{0,3,6,9,12,15};
+constexpr std::array<uint8_t,6> parent0{7,12,17,22,27,0};
+constexpr std::array<uint8_t,6> parent1{13,24,3,14,25,4};
+constexpr std::array<uint32_t,3> mt{0,1,32};
+A::Input known(const char* game, uint32_t seed=0){
+    A::Input in{};
+    in.game=game;
+    in.originalEggEventIdentity=0xD1A01234u;
+    in.originalUnhatchedEggIdentityIndependentlyVerified=true;
+    in.originalEggPIDIndependentlyVerified=true;
+    in.originalEggIVsIndependentlyVerified=true;
+    in.originalEggPID=32;
+    const auto replay=IV::replay(game,seed,initial,parent0,parent1);
+    assert(replay.status==IV::Status::Replayed);
+    in.originalEggIVs=replay.child;
+    in.count=1;
+    in.allDaycareStageHypothesesIndependentlyEnumerated=true;
+    auto& c=in.alternatives[0];
+    c.routeIdentity=1;c.originalEggEventIdentity=in.originalEggEventIdentity;
+    c.independentlyAttestedHypothesis=true;
+    c.allMethodsForThisCandidateIndependentlyCovered=true;
+    c.iv.game=game;c.iv.initialChild=initial;
+    c.iv.physicalSlot0=parent0;c.iv.physicalSlot1=parent1;
+    c.iv.originalEggIVs=in.originalEggIVs;
+    c.iv.finalSeed=replay.finalSeed;
+    c.iv.historicalParentIVsVerified=true;
+    c.iv.physicalDepositOrderVerified=true;
+    c.iv.preInheritanceChildIVsVerified=true;
+    c.iv.originalUnhatchedEggIVsVerified=true;
+    c.iv.finalSeedIndependentlyVerified=true;
+    c.pid.game=game;
+    c.pid.originalDaycarePairEligibilityVerified=true;
+    c.pid.eligibleOrdinaryDaycarePair=true;
+    c.pid.originalParentSnapshotsVerified=true;
+    c.pid.originalDaycareSlotOrderVerified=true;
+    c.pid.creationTimeItemsIndependentlyVerified=true;
+    c.pid.parents[0]={25,1,7,229,true};
+    c.pid.parents[1]={25,0,11,0,true};
+    c.pid.creationStageIndependentlyVerified=true;
+    c.pid.collectionStageIndependentlyVerified=true;
+    c.pid.parentStageToken=in.originalEggEventIdentity;
+    c.pid.mtStageToken=in.originalEggEventIdentity;
+    c.pid.collectionStageToken=in.originalEggEventIdentity;
+    c.pid.creationLCRNGStateIndependentlyVerified=true;
+    c.pid.consecutiveMTOutputsIndependentlyVerified=true;
+    c.pid.exactMTConsumptionIndependentlyVerified=true;
+    c.pid.mtOutputs=mt;
+    c.pid.originalParentLanguagesIndependentlyVerified=true;
+    c.pid.originalParentLanguages={2,2};
+    c.pid.originalCollectionTrainerIdIndependentlyVerified=true;
+    c.pid.originalCollectionTrainerId=0;
+    c.pid.originalUnhatchedEggPidIndependentlyVerified=true;
+    c.pid.originalUnhatchedEggPid=32;
+    return in;
+}
+int main(){
+    unsigned cases=0;
+    for(const char* game:{"diamond_nds","pearl_nds"}){
+        // Two independent game tags, several thousand synthetic IV seeds.
+        for(uint32_t seed=0;seed<4096;++seed){
+            auto x=known(game,seed);
+            const auto p=A::evaluate(x);
+            assert(p.status==A::Status::OneConditionallyConsistentHistory);
+            assert(p.consistent==1 && !p.contradicted && !p.unresolved);
+            auto altered=x;
+            // Another purported pair with all six historical IVs different
+            // from the child must contradict this exact local hypothesis.
+            for(size_t i=0;i<6;++i) {
+                const auto opposite=static_cast<uint8_t>((x.originalEggIVs[i]+1u)%32u);
+                altered.alternatives[0].iv.initialChild[i]=opposite;
+                altered.alternatives[0].iv.physicalSlot0[i]=opposite;
+                altered.alternatives[0].iv.physicalSlot1[i]=opposite;
+            }
+            assert(A::evaluate(altered).status==
+                A::Status::AllAttestedDaycareStageHypothesesContradicted);
+            altered.allDaycareStageHypothesesIndependentlyEnumerated=false;
+            assert(A::evaluate(altered).status==A::Status::UnknownHypothesisEnumeration);
+            // A distinct attested alternative can rescue a contradicted
+            // candidate without changing the observed original egg bytes.
+            altered.count=2;
+            altered.alternatives[1]=x.alternatives[0];
+            altered.alternatives[1].routeIdentity=2;
+            assert(A::evaluate(altered).status==A::Status::OneConditionallyConsistentHistory);
+            ++cases;
+        }
+        auto x=known(game);
+        auto wrongPID=x;wrongPID.alternatives[0].pid.originalCollectionTrainerId=1;
+        // Force a distinct bounded MT transcript while preserving child PID.
+        constexpr std::array<uint32_t,1> alteredMT{57};
+        wrongPID.alternatives[0].pid.mtOutputs=alteredMT;
+        assert(A::evaluate(wrongPID).status==
+            A::Status::AllAttestedDaycareStageHypothesesContradicted);
+        auto incomplete=wrongPID;
+        incomplete.alternatives[0].pid.consecutiveMTOutputsIndependentlyVerified=false;
+        incomplete.alternatives[0].iv.finalSeed^=0x111u;
+        incomplete.alternatives[0].allMethodsForThisCandidateIndependentlyCovered=false;
+        assert(A::evaluate(incomplete).status==A::Status::UnresolvedCandidateHistory);
+        auto noHistory=x;noHistory.alternatives[0].independentlyAttestedHypothesis=false;
+        assert(A::evaluate(noHistory).status==A::Status::UnknownCandidateProvenance);
+        auto stageMismatch=x;stageMismatch.alternatives[0].originalEggEventIdentity++;
+        assert(A::evaluate(stageMismatch).status==A::Status::UnknownCandidateProvenance);
+        auto wrongPIDProjection=x;wrongPIDProjection.alternatives[0].pid.originalUnhatchedEggPid=31;
+        assert(A::evaluate(wrongPIDProjection).status==A::Status::UnknownCandidateProvenance);
+        auto wrongIVProjection=x;wrongIVProjection.alternatives[0].iv.originalEggIVs[0]^=1;
+        assert(A::evaluate(wrongIVProjection).status==A::Status::UnknownCandidateProvenance);
+        auto dup=x;dup.count=2;dup.alternatives[1]=dup.alternatives[0];
+        assert(A::evaluate(dup).status==A::Status::MissingOrDuplicateCandidateIdentity);
+        auto noId=x;noId.alternatives[0].routeIdentity=0;
+        assert(A::evaluate(noId).status==A::Status::MissingOrDuplicateCandidateIdentity);
+        auto noEgg=x;noEgg.originalUnhatchedEggIdentityIndependentlyVerified=false;
+        assert(A::evaluate(noEgg).status==A::Status::UnknownOriginalEgg);
+        noEgg=x;noEgg.originalEggIVsIndependentlyVerified=false;
+        assert(A::evaluate(noEgg).status==A::Status::UnknownOriginalEgg);
+        noEgg=x;noEgg.originalEggPIDIndependentlyVerified=false;
+        assert(A::evaluate(noEgg).status==A::Status::UnknownOriginalEgg);
+        auto noSeed=x;noSeed.alternatives[0].iv.finalSeedIndependentlyVerified=false;
+        assert(A::evaluate(noSeed).status==A::Status::UnresolvedCandidateHistory);
+        auto noLang=x;noLang.alternatives[0].pid.originalParentLanguagesIndependentlyVerified=false;
+        assert(A::evaluate(noLang).status==A::Status::UnresolvedCandidateHistory);
+        auto noParent=x;noParent.alternatives[0].iv.historicalParentIVsVerified=false;
+        assert(A::evaluate(noParent).status==A::Status::UnresolvedCandidateHistory);
+        auto noStage=x;noStage.alternatives[0].pid.mtStageToken=0;
+        assert(A::evaluate(noStage).status==A::Status::UnknownCandidateProvenance);
+        auto capacity=x;capacity.count=9;
+        assert(A::evaluate(capacity).status==A::Status::CapacityExceededUnknown);
+        auto empty=x;empty.count=0;
+        assert(A::evaluate(empty).status==A::Status::NoCandidates);
+        cases+=17;
+    }
+    auto unsupported=known("diamond_nds");unsupported.game="platinum_nds";
+    assert(A::evaluate(unsupported).status==A::Status::UnsupportedGame);
+    unsupported.game="heartgold_nds";
+    assert(A::evaluate(unsupported).status==A::Status::UnsupportedGame);
+    std::cout << "L2 B18 bounded DP PID+IV candidate histories: " << cases
+              << " positive/local negative/Unknown combinations PASS\n";
+}
