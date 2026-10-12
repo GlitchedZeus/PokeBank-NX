@@ -38,6 +38,7 @@ static void attest(Bound::Input& input,unsigned index){
            c.pid.parents[0].snapshotId,c.pid.parents[1].snapshotId,
            c.pid.parents[0].heldItem,c.pid.parents[1].heldItem};
 }
+#ifndef LEGALITY_L2_IMPORT_STAGE5_FIXTURE
 int main(){
     unsigned checks=0;
     for(const char* game:{"platinum_nds","heartgold_nds","soulsilver_nds"})
@@ -76,3 +77,4 @@ int main(){
     assert(checks==12288);
     std::cout<<"L2 Stage5 Pt HGSS same-route integration: "<<checks<<" PASS\n";
 }
+#endif // LEGALITY_L2_IMPORT_STAGE5_FIXTURE
