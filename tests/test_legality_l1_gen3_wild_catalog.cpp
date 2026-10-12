@@ -25,7 +25,15 @@ int main(){
             auto wrong=c;wrong.originalGame=static_cast<H::Game>((static_cast<unsigned>(g.game)+1)%5);
             assert(H::evaluate(wrong).status==S::ForeignSource);++unknown;
             wrong=c;wrong.originalSpecies="IMPOSSIBLE_SOURCE_SYMBOL";
+            assert(H::evaluate(wrong).status==S::UnknownOriginalIdentity);++unknown;
+            wrong=c;wrong.originalSpecies=c.originalSpecies=="PIDGEY"?"RATTATA":"PIDGEY";
             assert(H::evaluate(wrong).status==S::CandidateSpeciesContradicted);++local;
+            wrong=c;wrong.originalMethod=static_cast<H::Method>(255u);
+            assert(H::evaluate(wrong).status==S::UnknownOriginalSource);++unknown;
+            if(g.method==H::Method::Fishing) {
+                wrong=c;wrong.originalRod=static_cast<H::Rod>(255u);
+                assert(H::evaluate(wrong).status==S::UnknownOriginalRod);++unknown;
+            }
             wrong=c;wrong.originalLevel=static_cast<uint8_t>(row.maxLevel+1);
             assert(H::evaluate(wrong).status==S::CandidateLevelContradicted);++local;
             wrong=c;wrong.originalMethod=g.method==H::Method::Grass?H::Method::Surf:H::Method::Grass;
