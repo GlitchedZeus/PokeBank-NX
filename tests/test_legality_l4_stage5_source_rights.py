@@ -12,9 +12,13 @@ spec.loader.exec_module(rights)
 BASE={"schema":"L5_Q08_REDISTRIBUTION_GATE_V1","catalog_id":"Q08",
       "not_legal_opinion":True,"project_license_observed":"AGPL-3.0",
       "pkhex_reference_license_observed":"GPL-3.0",
-      "repo_rows":[{"source":f"synthetic_source_{i}","legal_review_complete":False,
+      "repo_rows":[{"source":name,"repository":"synthetic://example", "revision":"synthetic",
+                    "source_license_claim":"review required",
+                    "proposed_usage":"citation_and_digest_only",
+                    "legal_basis_or_grant":"not documented in pinned registry",
+                    "legal_review_complete":False,
                     **{name:"blocked_pending_review" for name in rights.PERMISSIONS}}
-                   for i in range(14)],
+                   for name in sorted(rights.EXPECTED_SOURCES)],
       "dispositions":{**{p:"BLOCKED" for p in rights.DISPOSITIONS},
                       "third_party_research_reference":"allowed_as_unredistributed_reference",
                       "native_original_save_from_user":"consent_and_data_protection_required"}}
@@ -34,6 +38,16 @@ class SourceRights(unittest.TestCase):
                     b["repo_rows"][row][name]="allowed"
                     with self.assertRaisesRegex(ValueError,"no longer blocked"):
                         check(b)
+
+    def test_all_frozen_sources_required_and_no_payload_injection(self):
+        b=copy.deepcopy(BASE)
+        b["repo_rows"].pop(3)
+        with self.assertRaisesRegex(ValueError,"source count"):
+            check(b)
+        b=copy.deepcopy(BASE)
+        b["repo_rows"][0]["binary_payload_hex"]="deadbeef"
+        with self.assertRaisesRegex(ValueError,"schema/payload injection"):
+            check(b)
 
     def test_deleted_or_duplicate_source(self):
         b=copy.deepcopy(BASE);b["repo_rows"][1]["source"]=b["repo_rows"][0]["source"]
