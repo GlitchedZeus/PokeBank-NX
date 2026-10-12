@@ -757,6 +757,11 @@ entry = composite.split("void TrainerViewScreen::update(", 1)[1].split(
     "void TrainerViewScreen::draw(", 1)[0]
 for token in (
     "const bool stagedStorageSave =",
+    "!Gen3SharedEditorSurface::ownsFrame(*this)",
+    "!Gen4SharedEditorSurface::ownsFrame(*this)",
+    "!Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this)",
+    "!editorOverlayState(*this).active",
+    "Gen1PokemonEditor::ux2StateFor(*this).mode ==",
     "selectedMode == ViewMode::Storage",
     "target.pane != 0 || target.box != stSaveBox",
     "target.slot >= static_cast<int>(trainer.getSlotsPerBox())",

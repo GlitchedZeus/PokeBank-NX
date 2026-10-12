@@ -306,7 +306,17 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const bool stagedStorageSave = detailViewActive && selectedMode == ViewMode::Storage &&
         !helpOverlayActive && !details.active && !actionSheet.isOpen() &&
         !saveConfirmActive && !pickerActive && !itemEditDialogActive &&
-        !carrying() && !currentlySelecting &&
+        !carrying() && !currentlySelecting && !releaseConfirmActive &&
+        !groupMenuActive && !editorOverlayState(*this).active &&
+        !Gen3SharedEditorSurface::ownsFrame(*this) &&
+        !Gen4SharedEditorSurface::ownsFrame(*this) &&
+        !Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this) &&
+        !Gen2PokemonEditor::pickerStateFor(*this).model.active() &&
+        !Gen1PokemonEditor::foundationPickerActive(*this) &&
+        !Gen1PokemonEditor::foundationPassiveViewActive(*this) &&
+        (!Gen1PokemonEditor::isGen1SourceUX(*this) ||
+         Gen1PokemonEditor::ux2StateFor(*this).mode ==
+             decltype(Gen1PokemonEditor::ux2StateFor(*this).mode)::Closed) &&
         ((Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::editorAvailable(*this)) ||
          (Gen2PokemonEditor::isGSC(*this) && Gen2PokemonEditor::stagedEditor(*this) != nullptr) ||
          (Gen3SharedEditorSurface::isGen3Gba(*this) && Gen3SharedEditorSurface::editor(*this) != nullptr) ||
