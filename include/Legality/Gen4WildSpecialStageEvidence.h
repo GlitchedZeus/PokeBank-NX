@@ -17,7 +17,7 @@ namespace Legality::Gen4WildSpecialStageEvidence {
 enum class Status : uint8_t {
     UnknownOriginalSource,UnknownOriginalRow,UnknownCaptureTimeContext,
     UnknownLeadOrRngFamily,UnknownOriginalNatureStage,
-    UnknownNativeSnapshot,UnknownNativeSource,IncoherentNativeRecord,
+    UnknownNativeSnapshot,UnknownNativeSource,UnknownMalformedNativeRecord,IncoherentNativeRecord,
     CandidateRowContradicted,CandidatePidIvContradicted,BoundedCandidateUnresolved,
     KnownConditionalSpecialEncounter
 };
@@ -107,8 +107,11 @@ inline Result evaluateNative(const Candidate& c,
     if(!witness.record || !witness.independentlyVerifiedSameCapturedCreature)
         return {Status::UnknownNativeSnapshot};
     const auto& native=*witness.record;
-    if(!native.valid() || native.empty() || native.isEgg())
-        return {Status::IncoherentNativeRecord};
+    // A corrupt or truncated source file is missing reliable native
+    // evidence, not a contradiction of the historical encounter itself.
+    if(!native.valid())return {Status::UnknownMalformedNativeRecord};
+    if(native.empty())return {Status::UnknownNativeSnapshot};
+    if(native.isEgg())return {Status::IncoherentNativeRecord};
     if(!witness.independentlyVerifiedOriginalNativeSave ||
        native.sourceGroup()!=Enums::GameVersion::HGSS ||
        Gen4Origin::exactRetailGameId(native.originVersion())!=c.exactGame)
