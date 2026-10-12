@@ -142,6 +142,32 @@ constexpr Result evaluate(const Input& in) noexcept {
     if(!in.originalUnhatchedEggMovesIndependentlyVerified) {
         out.status=Status::UnknownOriginalMoveEvidence;return out;
     }
+    // Stage 5 opt-in original source attestation: PID, IV, moves and the
+    // creation/collection transcript must refer to the SAME ordered pair,
+    // game, original egg snapshot, held items and daycare event. A missing
+    // or crossed archive remains Unknown, never whole-Pokemon Invalid.
+    namespace Route=Gen34OriginalSameRouteProof;
+    if(in.sameRouteProof.supplied){
+        if(!in.originalEggSnapshotIndependentlyAttested ||
+           !in.originalPairIdentityIndependentlyAttested ||
+           !in.creationHeldItemsIndependentlyAttested ||
+           !slot0.originalHeldItemIndependentlyVerified ||
+           !slot1.originalHeldItemIndependentlyVerified ||
+           (in.originalCreationHeldItems[0]==229u)!=
+               slot0.heldEverstoneAtCreation ||
+           (in.originalCreationHeldItems[1]==229u)!=
+               slot1.heldEverstoneAtCreation){
+            out.status=Status::UnknownOriginalPairEvidence;return out;
+        }
+        out.sameRouteCheck=Route::evaluate(in.sameRouteProof,{
+            Route::gameFor(game),in.originalEggEventIdentity,
+            in.originalEggSnapshotId,in.originalPhysicalPairIdentity,
+            slot0.snapshotIdentity,slot1.snapshotIdentity,true,
+            in.originalCreationHeldItems[0],in.originalCreationHeldItems[1]});
+        if(out.sameRouteCheck!=Route::Status::ConditionallySameRoute){
+            out.status=Status::UnknownOriginalPairEvidence;return out;
+        }
+    }
     // The accepted same-parent move/IV evaluator uses ONE father moveset,
     // the same physical slot mapping and source game's retail IV replay.
     out.moveAndIV=MoveIV::evaluate(joint);
