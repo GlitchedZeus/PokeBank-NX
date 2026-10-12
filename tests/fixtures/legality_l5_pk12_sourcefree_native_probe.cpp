@@ -96,7 +96,106 @@ int main(int argc,char** argv) {
             ++checks;
         }
     }
-    assert(checks==12);
+
+    // Once the coordinator has applied the native-format guards, exercise
+    // source-identity invariance over different DVs/levels, additional
+    // native Gen II gender classes, and deliberately contradictory labels.
+    // These are synthetic native wrappers: no source save is edited.
+    if (!baseline) {
+        const std::array<std::string_view,5> gen1Sources{
+            "", "red_gb", "blue_gb", "platinum_nds", "unrecognized_source"
+        };
+        const std::array<std::string_view,5> gen2Sources{
+            "", "gold_gbc", "crystal_gbc", "firered_gba", "unrecognized_source"
+        };
+        for (uint16_t species : {1u,81u}) {
+            for (uint8_t level : {5u,20u,50u,100u}) {
+                auto rec = pk1Record(species);
+                rec.level = level;
+                const Pokemon::Pokemon1ReadOnly pk(rec);
+                assert(pk.ability()==0 && pk.gender()==2);
+                for (size_t label=0;label<gen1Sources.size();++label) {
+                    const auto report = Legality::analyze(
+                        pk,pk.getGameGroup(),gen1Sources[label]);
+                    assert(!invalid(report,"Ability not legal for this species"));
+                    assert(!invalid(report,"Gendered species marked genderless"));
+                    if (label==3)
+                        assert(warning(report,"source-game label conflicts"));
+                    else
+                        assert(!warning(report,"source-game label conflicts"));
+                    ++checks;
+                }
+            }
+        }
+        // Bulbasaur (mixed), Nidoran F/M and Chansey/Tauros (single-gender),
+        // Magnemite/Unown (genderless). The Gen II wrapper's DV-derived
+        // gender must not be confused with Gen I's absent gender field.
+        for (uint16_t species : {1u,29u,32u,81u,113u,128u,201u}) {
+            for (uint8_t attackDv : {0u,7u,8u,15u}) {
+                auto rec = pk2Record(species);
+                rec.dvs[1] = attackDv;
+                const Pokemon::Pokemon2ReadOnly pk(rec);
+                assert(pk.ability()==0);
+                if (species==29 || species==113) assert(pk.gender()==1);
+                if (species==32 || species==128) assert(pk.gender()==0);
+                if (species==81 || species==201) assert(pk.gender()==2);
+                for (size_t label=0;label<gen2Sources.size();++label) {
+                    const auto report = Legality::analyze(
+                        pk,pk.getGameGroup(),gen2Sources[label]);
+                    assert(!invalid(report,"Ability not legal for this species"));
+                    assert(!invalid(report,"Gendered species marked genderless"));
+                    assert(!invalid(report,"Female-only species set to male"));
+                    assert(!invalid(report,"Male-only species set to female"));
+                    assert(!invalid(report,"Genderless species but a gender is set"));
+                    if (label==3)
+                        assert(warning(report,"source-game label conflicts"));
+                    else
+                        assert(!warning(report,"source-game label conflicts"));
+                    ++checks;
+                }
+            }
+        }
+        // Negative controls: real native Gen I/II move-domain contradictions
+        // must remain Invalid even with absent or wrong-generation labels.
+        for (int gen : {1,2}) for (int label : {0,1,2}) {
+            const std::string_view source = label==0 ? std::string_view{} :
+                label==1 ? (gen==1 ? "red_gb" : "gold_gbc") :
+                           (gen==1 ? "platinum_nds" : "firered_gba");
+            Legality::Report report;
+            if (gen==1) {
+                auto rec=pk1Record(1);
+                rec.moves[0]=200; // Gen II move, above native Gen I 165.
+                const Pokemon::Pokemon1ReadOnly pk(rec);
+                report=Legality::analyze(pk,pk.getGameGroup(),source);
+            } else {
+                auto rec=pk2Record(1);
+                rec.moves[0]=252; // Above native Gen II 251.
+                const Pokemon::Pokemon2ReadOnly pk(rec);
+                report=Legality::analyze(pk,pk.getGameGroup(),source);
+            }
+            assert(invalid(report,"cannot exist in a Generation"));
+            assert(!invalid(report,"Ability not legal for this species"));
+            assert(!invalid(report,"Gendered species marked genderless"));
+            if(label==2) assert(warning(report,"source-game label conflicts"));
+            ++checks;
+        }
+        // A zero-species native slot is empty, not an invalid Pokémon.
+        {
+            auto rec=pk1Record(1);
+            rec.species=0;
+            const Pokemon::Pokemon1ReadOnly pk(rec);
+            assert(Legality::analyze(pk,pk.getGameGroup(),"").issues.empty());
+            ++checks;
+        }
+        {
+            auto rec=pk2Record(1);
+            rec.species=0;
+            const Pokemon::Pokemon2ReadOnly pk(rec);
+            assert(Legality::analyze(pk,pk.getGameGroup(),"").issues.empty());
+            ++checks;
+        }
+    }
+    assert(checks==(baseline?12:200));
     std::cout<<"L5 actual PK1/PK2 source-free native analyzer 12 cases: "
              <<(baseline?"known false-Invalid baseline":"corrected guard")
              <<" PASS (synthetic records, no retail history)\n";
