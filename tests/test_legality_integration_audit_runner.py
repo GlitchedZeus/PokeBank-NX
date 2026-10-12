@@ -28,10 +28,21 @@ class IntegrationAuditRunnerTests(unittest.TestCase):
         gates = AUDIT.plan("audit", "a" * 40)
         self.assertEqual([gate.name for gate in gates], [
             "stage1-l2-baseline", "stage2-native", "stage2-native-sanitize",
-            "stage3-cross-lane", "stage3-cross-lane-sanitize"])
+            "stage2-offset-width", "stage3-cross-lane", "stage3-cross-lane-sanitize",
+            "stage4-native", "stage4-native-sanitize",
+            "stage5-joint-normal", "stage5-joint-sanitize"])
         self.assertTrue(all(gate.environment["ASAN_OPTIONS"].startswith("detect_leaks=0")
                             for gate in gates))
         self.assertEqual(len(AUDIT.plan("l5", "b" * 40)), 11)
+        native_gate = next(g for g in gates if g.name == "stage2-offset-width")
+        self.assertEqual(native_gate.command, [
+            "python3", "tools/audit_l6_stage2_native_bounds.py",
+            "--expect-head", "a" * 40])
+        for filename in ("legality_l6_stage2_bounds_contract",
+                         "legality_l6_stage2_pk4_offset_native",
+                         "legality_l6_stage5_joint_history",
+                         "legality_l6_stage5_native_analyzer"):
+            self.assertTrue(AUDIT.fixture_path(filename).is_file())
 
 
 if __name__ == "__main__":

@@ -51,10 +51,10 @@ def run(compiler: str, sanitize: bool) -> dict[str, object]:
                                 capture_output=True, check=True,
                                 env={"ASAN_OPTIONS": "detect_leaks=0:halt_on_error=1",
                                      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"})
-    expected = "Stage 2 native Gen I-IV boundary/property checks: 2139 PASS"
+    expected = "Stage 2 native Gen I-IV boundary/property checks: 2297 PASS"
     if expected not in result.stdout:
         raise RuntimeError("unexpected property-suite output: " + result.stdout + result.stderr)
-    return {"compiler": compiler, "sanitized": sanitize, "status": "PASS", "checks": 2139,
+    return {"compiler": compiler, "sanitized": sanitize, "status": "PASS", "checks": 2297,
             "production_components": ["Gen1ReadOnlySave", "Gen2ReadOnlySave", "Encryption3FRLG",
                                       "Encryption4", "Pokemon3FRLG", "Pokemon4ReadOnly"],
             "stdout": result.stdout.strip()}
@@ -64,12 +64,12 @@ def main() -> None:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--sanitize", action="store_true", help="run only ASan/UBSan")
     mode.add_argument("--normal", action="store_true", help="run only the optimized native build")
-    parser.add_argument("--compiler", default="g++", help="C++ compiler executable (default: g++)")
     parser.add_argument("--json-out", type=Path)
+    parser.add_argument("--compiler", choices=("g++", "clang++"), default="g++")
     args = parser.parse_args()
-    reports = ([run(args.compiler, True)] if args.sanitize else
-               [run(args.compiler, False)] if args.normal else
-               [run(args.compiler, False), run(args.compiler, True)])
+    reports = ([run(args.compiler, True)] if args.sanitize
+               else [run(args.compiler, False)] if args.normal
+               else [run(args.compiler, False), run(args.compiler, True)])
     output = json.dumps({"schema": "POKEBANK_NX_STAGE2_NATIVE_FORMATS_V1", "runs": reports},
                         indent=2, sort_keys=True) + "\n"
     print(output)

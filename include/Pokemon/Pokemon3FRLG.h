@@ -75,13 +75,33 @@ namespace Pokemon {
         uint8_t  rd8(size_t o)  const noexcept {
             return sizeValid() && o < data.size() ? static_cast<uint8_t>(data[o]) : 0;
         }
-        uint16_t rd16(size_t o) const noexcept { return static_cast<uint16_t>(rd8(o)) | (static_cast<uint16_t>(rd8(o + 1)) << 8); }
-        uint32_t rd32(size_t o) const noexcept { return static_cast<uint32_t>(rd16(o)) | (static_cast<uint32_t>(rd16(o + 2)) << 16); }
-        void wr8(size_t o, uint8_t v)  noexcept {
+        // Validate a whole field without overflowing size_t. In particular,
+        // SIZE_MAX must never wrap into the PID header, and a multi-byte write
+        // crossing a box/party boundary must not partially change the record.
+        [[nodiscard]] bool fieldFits(size_t o, size_t width) const noexcept {
+            return sizeValid() && o <= data.size() && width <= data.size() - o;
+        }
+        uint16_t rd16(size_t o) const noexcept {
+            if (!fieldFits(o, 2)) return 0;
+            return static_cast<uint16_t>(rd8(o)) | (static_cast<uint16_t>(rd8(o + 1)) << 8);
+        }
+        uint32_t rd32(size_t o) const noexcept {
+            if (!fieldFits(o, 4)) return 0;
+            return static_cast<uint32_t>(rd16(o)) | (static_cast<uint32_t>(rd16(o + 2)) << 16);
+        }
+        void wr8(size_t o, uint8_t v) noexcept {
             if (sizeValid() && o < data.size()) data[o] = static_cast<std::byte>(v);
         }
-        void wr16(size_t o, uint16_t v) noexcept { wr8(o, static_cast<uint8_t>(v)); wr8(o + 1, static_cast<uint8_t>(v >> 8)); }
-        void wr32(size_t o, uint32_t v) noexcept { wr16(o, static_cast<uint16_t>(v)); wr16(o + 2, static_cast<uint16_t>(v >> 16)); }
+        void wr16(size_t o, uint16_t v) noexcept {
+            if (!fieldFits(o, 2)) return;
+            wr8(o, static_cast<uint8_t>(v));
+            wr8(o + 1, static_cast<uint8_t>(v >> 8));
+        }
+        void wr32(size_t o, uint32_t v) noexcept {
+            if (!fieldFits(o, 4)) return;
+            wr16(o, static_cast<uint16_t>(v));
+            wr16(o + 2, static_cast<uint16_t>(v >> 16));
+        }
 
         // ---- core identity ----
         uint32_t pid() const noexcept override { return rd32(0x00); }

@@ -62,7 +62,13 @@ PROGRAMS: dict[str, tuple[str, ...]] = {
            "legality_l5_native_ev_vectors", "audit_legality_l5_native_codec",
            "audit_legality_l5_ev_probe", "audit_legality_l5_pk12_probe"),
     "audit": ("legality_stage2_native_format_properties", "legality_stage3_cross_lane_contracts",
-              "legality_l6_stage1_l2_duplicate_route_contract"),
+              "legality_l6_stage1_l2_duplicate_route_contract",
+              "legality_l6_stage2_bounds_contract",
+              "legality_l6_stage2_joint_headers",
+              "legality_l6_stage2_pk4_offset_native",
+              "legality_l6_stage4_gate_ledger",
+              "legality_l6_stage5_joint_history",
+              "legality_l6_stage5_native_analyzer"),
 }
 RUNNERS = {"l1": "tests/test_legality_l1_run.sh", "l2": "tests/test_legality_l2_run_all.sh",
            "l3": "tests/test_legality_l3_run_all.sh", "l4": "tests/test_legality_l4_runner.sh",
@@ -112,8 +118,14 @@ def plan(suite: str, sha: str, compiler: str = "g++") -> list[Gate]:
             Gate("stage1-l2-baseline", ["python3", "tools/audit_l6_stage1_baseline.py"], {}, RUNNERS["audit"]),
             Gate("stage2-native", ["python3", "tools/audit_legality_stage2_native_formats.py", "--normal", "--compiler", compiler], {}, RUNNERS["audit"]),
             Gate("stage2-native-sanitize", ["python3", "tools/audit_legality_stage2_native_formats.py", "--sanitize", "--compiler", compiler], {}, RUNNERS["audit"]),
+            Gate("stage2-offset-width", ["python3", "tools/audit_l6_stage2_native_bounds.py",
+                                          "--expect-head", sha], {}, RUNNERS["audit"]),
             Gate("stage3-cross-lane", ["python3", "tools/audit_legality_stage3_cross_lane.py", "--normal", "--compiler", compiler], {}, RUNNERS["audit"]),
             Gate("stage3-cross-lane-sanitize", ["python3", "tools/audit_legality_stage3_cross_lane.py", "--sanitize", "--compiler", compiler], {}, RUNNERS["audit"]),
+            Gate("stage4-native", ["python3", "tools/audit_legality_stage4_gate_ledger.py", "--normal"], {}, RUNNERS["audit"]),
+            Gate("stage4-native-sanitize", ["python3", "tools/audit_legality_stage4_gate_ledger.py", "--sanitize"], {}, RUNNERS["audit"]),
+            Gate("stage5-joint-normal", ["python3", "tools/audit_legality_l6_stage5.py", "--compiler", "g++", "--normal"], {}, RUNNERS["audit"]),
+            Gate("stage5-joint-sanitize", ["python3", "tools/audit_legality_l6_stage5.py", "--compiler", "g++", "--sanitize"], {}, RUNNERS["audit"]),
         ],
     }
     selected = tuple(groups) if suite == "all" else (suite,)
@@ -149,23 +161,42 @@ def validate_manifest(suite: str) -> list[str]:
     return errors
 
 
+def _captured_text(value: bytes | str | None) -> str:
+    """TimeoutExpired preserves raw bytes even with text=True."""
+    if value is None:
+        return ""
+    return value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value
+
+
 def run_one(gate: Gate, timeout: int) -> dict[str, object]:
     environment = os.environ.copy()
     environment.update(gate.environment)
     started = time.monotonic()
+    launch_error = None
     try:
         completed = subprocess.run(gate.command, cwd=ROOT, text=True, capture_output=True,
-                                 env=environment, timeout=timeout, check=False)
-        code, timed_out, stdout, stderr = completed.returncode, False, completed.stdout, completed.stderr
+                                   env=environment, timeout=timeout, check=False)
+        code, timed_out = completed.returncode, False
+        stdout, stderr = _captured_text(completed.stdout), _captured_text(completed.stderr)
     except subprocess.TimeoutExpired as error:
-        code, timed_out, stdout, stderr = None, True, error.stdout or "", error.stderr or ""
+        code, timed_out = None, True
+        stdout, stderr = _captured_text(error.stdout), _captured_text(error.stderr)
+    except OSError as error:
+        # A missing executable or a denied spawn MUST remain a recorded failed
+        # gate, not an uncaught exception which erases the JSON audit report.
+        code, timed_out = None, False
+        stdout, stderr = "", ""
+        launch_error = f"{type(error).__name__}: {error}"
     seconds = round(time.monotonic() - started, 3)
     if stdout:
         print(stdout, end="" if stdout.endswith("\n") else "\n")
     if stderr:
         print(stderr, end="" if stderr.endswith("\n") else "\n", file=sys.stderr)
+    if launch_error:
+        print(launch_error, file=sys.stderr)
     return {"name": gate.name, "command": gate.command, "returncode": code, "timed_out": timed_out,
-            "passed": code == 0 and not timed_out, "seconds": seconds, "runner": gate.runner}
+            "launch_error": launch_error, "passed": code == 0 and not timed_out and launch_error is None,
+            "seconds": seconds, "runner": gate.runner}
 
 
 def main() -> int:
@@ -201,7 +232,10 @@ def main() -> int:
     elif errors:
         result["error"] = "required suite program or source input omitted"
     elif args.dry_run:
-        result["passed"] = True
+        # Manifest/identity preflight is NOT execution of the native gates.
+        # Preserve a successful CLI preflight return but never emit passed=true.
+        result["dry_run_valid"] = True
+        result["passed"] = False
     else:
         gates = plan(args.suite, sha, args.compiler)
         for gate in gates:
@@ -217,7 +251,7 @@ def main() -> int:
     print(summary)
     if args.output:
         args.output.write_text(summary, encoding="utf-8")
-    return 0 if result["passed"] else 1
+    return 0 if result["passed"] or result.get("dry_run_valid", False) else 1
 
 
 if __name__ == "__main__":
