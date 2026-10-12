@@ -917,8 +917,8 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     }
     if (maxFirstRow == 0)
         state.pickerScroll.stop();
-    const int touchDown = screen.touchedButtonDownId(touch);
-    if (touchDown >= 6000 && touchDown < 6000 + count) state.pickerRow = touchDown - 6000;
+    // Keep semantic focus fixed during picker drags; commit only the
+    // release-confirmed visible row or explicit controller activation.
     const int touchTap = screen.touchedButtonId(touch);
     if (touchTap >= 6000 && touchTap < 6000 + count) {
         state.pickerRow = touchTap - 6000;
@@ -1077,8 +1077,7 @@ void cancelMoveEditor(State& state) {
 
 bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.moveEditor || !state.session.working) return false;
-    const int moveDown = screen.touchedButtonDownId(touch);
-    if (moveDown >= 41400 && moveDown < 41405) state.moveEditorRow = moveDown - 41400;
+    // Move edit rows are selectable only after a completed tap.
     const int moveTap = screen.touchedButtonId(touch);
     if (moveTap >= 41400 && moveTap < 41405) { state.moveEditorRow = moveTap - 41400; down |= HidNpadButton_A; }
     if (down & HidNpadButton_Up) state.moveEditorRow = (state.moveEditorRow + 4) % 5;

@@ -716,7 +716,6 @@ void ux3DrawTouchNavBar(PKSEFramebuffer& fb, const UX2State& state) {
 
 uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch) {
     auto& state = ux2StateFor(screen);
-    const int pressed = screen.touchedButtonDownId(touch);
     const int tapped = screen.touchedButtonId(touch);
     auto selectedId = [&](int base, int limit, int id) -> int {
         return id >= base && id < base + limit ? id - base : -1;
@@ -805,16 +804,15 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
                state.mode == UX2Mode::DVEditor || state.mode == UX2Mode::StatExpEditor) {
         int rowCount = state.mode == UX2Mode::LevelExpEditor ? 4 :
                        state.mode == UX2Mode::MoveEditor ? 5 : 7;
-        int row = selectedId(1100, rowCount, pressed);
-        if (row >= 0) state.subRow = row;
-        row = selectedId(1100, rowCount, tapped);
+        // A stationary contact may still turn into a drag. Select an
+        // editor command only after the same-target tap has completed.
+        const int row = selectedId(1100, rowCount, tapped);
         if (row >= 0) { state.subRow = row; down |= HidNpadButton_A; }
     } else if (state.mode == UX2Mode::CloneDestination) {
         auto* e = editor(screen);
         const int slots = e ? ux2SlotCount(*e, state.cloneBox) : 0;
-        int slot = selectedId(1200, slots, pressed);
-        if (slot >= 0) state.cloneSlot = slot;
-        slot = selectedId(1200, slots, tapped);
+        // Clone destination is not committed or focused on touch-down.
+        const int slot = selectedId(1200, slots, tapped);
         if (slot >= 0) { state.cloneSlot = slot; down |= HidNpadButton_A; }
     } else if (state.mode == UX2Mode::Review) {
         const auto lines = ux3PendingLines(screen);

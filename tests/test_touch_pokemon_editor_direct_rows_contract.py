@@ -93,7 +93,6 @@ for token in (
 ):
     require(gen3, "src/UI/Gen3SharedPokemonSurface.inc", token)
 require(gen3, "src/UI/Gen3SharedPokemonSurface.inc",
-        "touchDown >= 4000 && touchDown < 4000 + count",
         "touchTap >= 4000 && touchTap < 4000 + count",
         "state.pickerRow = touchTap - 4000;",
         "appendClippedTouchButton(screen.touchButtons, 4000 + i",
@@ -106,6 +105,39 @@ require(gen3, "src/UI/Gen3SharedPokemonSurface.inc",
         "state.detailsTouchScroll.updateVertical(",
         "appendClippedTouchButton(screen.touchButtons, 31000 + row",
         "detailPixelOffset, firstDetailRow")
+
+# All fixed dialogs and scrolling pickers must select only after confirmed
+# release: a touch-down may still become a swipe without changing semantic focus.
+gen1_mode = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc").split(
+    "uint64_t ux3DirectTouchInput(", 1)[1].split("void ux3DialogGeometry(", 1)[0]
+assert "touchedButtonDownId(touch)" not in gen1_mode
+for rel, snippets in (
+    ("src/UI/Gen2PokemonEditorFoundation.inc", (
+        "const int touchTap = screen.touchedButtonId(touch);",
+        "state.itemChoiceIndex = touchTap - 3000;",
+    )),
+    ("src/UI/Gen3SharedPokemonSurface.inc", (
+        "const int touchTap = screen.touchedButtonId(touch);",
+        "state.pickerRow = touchTap - 4000;",
+        "const int speciesTap = screen.touchedButtonId(touch);",
+        "const int moveTap = screen.touchedButtonId(touch);",
+    )),
+    ("src/UI/Gen4SharedPokemonSurface.inc", (
+        "const int touchTap = screen.touchedButtonId(touch);",
+        "state.pickerRow = touchTap - 6000;",
+        "const int moveTap = screen.touchedButtonId(touch);",
+    )),
+):
+    code = read(rel)
+    for snippet in snippets:
+        assert snippet in code, f"{rel}: missing release-confirmed selection {snippet}"
+    if rel.endswith("Gen2PokemonEditorFoundation.inc"):
+        sub = code.split("bool handleItemPicker(", 1)[1].split("bool handleConfirm(", 1)[0]
+    elif rel.endswith("Gen3SharedPokemonSurface.inc"):
+        sub = code.split("bool handleValuePicker(", 1)[1].split("bool handleWorkspace(", 1)[0]
+    else:
+        sub = code.split("bool handleValuePicker(", 1)[1].split("bool handleWorkspace(", 1)[0]
+    assert "touchedButtonDownId(touch)" not in sub, f"{rel}: picker focuses on contact"
 
 # Gen III direct-row focus must reject read-only rows in the helper itself. Returning false is
 # essential: the caller synthesizes A only when direct focus was actually accepted. Passive View
@@ -126,7 +158,6 @@ for token in (
 ):
     require(gen4, "src/UI/Gen4SharedPokemonSurface.inc", token)
 require(gen4, "src/UI/Gen4SharedPokemonSurface.inc",
-        "touchDown >= 6000 && touchDown < 6000 + count",
         "touchTap >= 6000 && touchTap < 6000 + count",
         "state.pickerRow = touchTap - 6000;",
         "appendClippedTouchButton(screen.touchButtons, 6000 + i",

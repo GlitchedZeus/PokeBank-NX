@@ -908,8 +908,8 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     }
     if (maxFirstRow == 0)
         state.pickerScroll.stop();
-    const int touchDown = screen.touchedButtonDownId(touch);
-    if (touchDown >= 4000 && touchDown < 4000 + count) state.pickerRow = touchDown - 4000;
+    // Do not retarget on contact: the same finger may scroll the picker.
+    // A release-confirmed tap is the only direct-touch selection.
     const int touchTap = screen.touchedButtonId(touch);
     if (touchTap >= 4000 && touchTap < 4000 + count) {
         state.pickerRow = touchTap - 4000;
@@ -983,9 +983,8 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
 
 bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.speciesPicker) return false;
-    const int speciesDown = screen.touchedButtonDownId(touch);
-    if (speciesDown >= 31500 && speciesDown <= 31500 + 386)
-        state.speciesPreview = static_cast<uint16_t>(speciesDown - 31500);
+    // A species-list swipe must advance from the actual preview, not
+    // a provisional row focused when the finger first landed.
     const int speciesTap = screen.touchedButtonId(touch);
     if (speciesTap >= 31500 && speciesTap <= 31500 + 386) {
         state.speciesPreview = static_cast<uint16_t>(speciesTap - 31500);
@@ -1050,8 +1049,7 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down, cons
 bool handleMoveEditor(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.moveEditor) return false;
     if (state.valuePicker) return false;
-    const int moveDown = screen.touchedButtonDownId(touch);
-    if (moveDown >= 31400 && moveDown < 31405) state.moveEditorRow = moveDown - 31400;
+    // Move editor commands also require a clean completed tap.
     const int moveTap = screen.touchedButtonId(touch);
     if (moveTap >= 31400 && moveTap < 31405) { state.moveEditorRow = moveTap - 31400; down |= HidNpadButton_A; }
     if (down & HidNpadButton_Up) state.moveEditorRow = (state.moveEditorRow + 4) % 5;

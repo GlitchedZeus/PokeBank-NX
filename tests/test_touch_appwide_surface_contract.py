@@ -205,6 +205,16 @@ require_all("include/UI/BackupSelectionScreen.h", "int backupFirstRow = 0;")
 if "firstVisibleRow(" in read("src/UI/BackupSelectionScreen.cpp"):
     raise AssertionError("Backup Selection: stale selection-centered scroll helper returned")
 
+# Picking held items in Gen II-IV must not retarget the semantic cursor on a
+# finger-down that is still eligible to become a vertical list/grid swipe.
+for rel, name, end in (
+    ("src/UI/Gen2PokemonEditorFoundation.inc", "bool handleItemPicker(", "bool handleConfirm("),
+    ("src/UI/Gen3SharedPokemonSurface.inc", "bool handleValuePicker(", "bool handleSpeciesPicker("),
+    ("src/UI/Gen4SharedPokemonSurface.inc", "bool handleValuePicker(", "bool handleMoveEditor("),
+):
+    code = read(rel).split(name, 1)[1].split(end, 1)[0]
+    assert "touchedButtonDownId(touch)" not in code, f"{rel}: picker must wait for release"
+
 require_all("src/UI/Gen2UnifiedPokemonWorkspace.inc",
             "TouchPickerViewport detailsViewport;", "TouchScrollState detailsTouchScroll;",
             "detailsTouchScroll.updateVertical(", "appendClippedTouchButton(screen.touchButtons, 1700 + row",

@@ -544,12 +544,9 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
         state.itemScroll.stop();
     }
 
-    const int touchDown = screen.touchedButtonDownId(touch);
-    if (touchDown >= 3000 && touchDown < 3000 + count) {
-        // Contact only moves focus. Stopping the scroll here would discard the gesture
-        // captured by updateVertical above and make every row-starting drag unscrollable.
-        state.itemChoiceIndex = touchDown - 3000;
-    }
+    // Scrolling and semantic selection are independent. Touch-down is NOT
+    // a choice: it may become a held-item grid drag. Preserve controller focus
+    // until release confirms an actual tap on that choice.
     const int touchTap = screen.touchedButtonId(touch);
     if (touchTap >= 3000 && touchTap < 3000 + count) {
         state.itemScroll.stop();
