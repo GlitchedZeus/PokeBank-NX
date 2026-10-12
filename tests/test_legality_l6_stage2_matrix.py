@@ -17,8 +17,8 @@ SPEC.loader.exec_module(MATRIX)
 class Stage2MatrixTests(unittest.TestCase):
     def test_receipted_native_program_totals(self) -> None:
         self.assertEqual({name: len(lane.programs) for name, lane in MATRIX.LANES.items()}, {
-            "l1": 30, "l2": 17, "l3": 17, "l4": 28, "l5": 8, "audit": 3})
-        self.assertEqual(sum(len(lane.programs) for lane in MATRIX.LANES.values()), 103)
+            "l1": 31, "l2": 17, "l3": 19, "l4": 28, "l5": 8, "audit": 3})
+        self.assertEqual(sum(len(lane.programs) for lane in MATRIX.LANES.values()), 106)
 
     def test_current_checkout_is_honestly_incomplete(self) -> None:
         report = MATRIX.preflight()
@@ -27,6 +27,8 @@ class Stage2MatrixTests(unittest.TestCase):
         self.assertEqual(report["lanes"]["l2"]["present_sources"], 11)
         self.assertEqual(report["lanes"]["l3"]["present_sources"], 7)
         self.assertEqual(report["lanes"]["l4"]["present_sources"], 15)
+        self.assertEqual(sum(len(report["lanes"][name]["missing_sources"])
+                             for name in ("l1", "l2", "l3", "l4")), 49)
         self.assertEqual(
             {row["path"] for row in report["lanes"]["l5"]["source_pin_mismatches"]},
             {"include/Pokemon/Pokemon3FRLG.h", "src/Pokemon/Pokemon4ReadOnly.cpp"})

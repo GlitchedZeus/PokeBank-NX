@@ -2,7 +2,7 @@
 """Fail-closed L6 Stage 2 native legality matrix for a combined checkout.
 
 The receipt-backed program lists are intentionally larger than the historical
-brief where current lane heads have added coverage (30 L1 and 17 L3).  Before
+brief where current lane heads have added coverage (31 L1 and 19 L3).  Before
 executing anything, this tool proves every declared source is present and named
 by its owning runner.  It never calls an incomplete combined checkout green.
 """
@@ -31,7 +31,7 @@ class Lane(NamedTuple):
 
 LANES: dict[str, Lane] = {
     "l1": Lane("origin/feature/legality-l1-encounters-rng-20261012",
-               "075a597146ab2924fb86d3efaa0311eb065fba3c", "tests/test_legality_l1_run.sh", (
+               "36f1f147dbea4a7607ec7440e83ce608147eaa19", "tests/test_legality_l1_run.sh", (
         "test_legality_l1_emerald_methodh", "test_legality_l1_gen3_family_router",
         "test_legality_l1_hgss_special", "test_legality_l1_gen4_nature_replay",
         "test_legality_l1_safari_indexed_original", "test_legality_l1_gamecube_indexed_shadow",
@@ -46,9 +46,10 @@ LANES: dict[str, Lane] = {
         "test_legality_l1_stage5_real_sources", "test_legality_l1_original_candidate_universe",
         "test_legality_l1_gen3_original_roamers", "test_legality_l1_gen3_wild_catalog",
         "test_legality_l1_gen3_wild_rng", "test_legality_l1_gen3_roamer_frame",
-        "test_legality_l1_gamecube_original_fixed", "test_legality_l1_stage1_production_crypto")),
+        "test_legality_l1_gamecube_original_fixed", "test_legality_l1_stage1_production_crypto",
+        "test_legality_l1_stage1_gamecube_enum_domains")),
     "l2": Lane("origin/feature/legality-l2-breeding-20261012",
-               "7e3c0a2a558d489b429795fc22a35cd2dd95fafb", "tests/test_legality_l2_run_all.sh", (
+               "6198ac5dfd867bf756de2458eeee3ae0645fa797", "tests/test_legality_l2_run_all.sh", (
         "test_legality_l2_dp_alternative_egg_histories", "test_legality_l2_dp_move_stage",
         "test_legality_l2_dp_egg_iv", "test_legality_l2_dp_egg_pid",
         "test_legality_l2_dp_native_egg_history", "test_legality_l2_gen3_egg_pid_creation",
@@ -59,7 +60,8 @@ LANES: dict[str, Lane] = {
         "test_legality_l2_gen4_pt_hgss_full_moves", "test_legality_l2_gen4_iv_candidate_set",
         "test_legality_l2_gen4_native_iv_history")),
     "l3": Lane("origin/feature/legality-l3-moves-transfer-20261012",
-               "e9b603c07dc20b75451f84a268bce8fab59e56c5", "tests/test_legality_l3_run_all.sh", (
+               "2de53eb330f09c13c112d5270d36110c26cd33ec", "tests/test_legality_l3_run_all.sh", (
+        "test_legality_l3_original_source_digest", "test_legality_l3_original_source_fingerprints",
         "test_legality_l3_gen12_joint_chronology", "test_legality_l3_gba_original_full_tables",
         "test_legality_l3_gba_original_machine_tables", "test_legality_l3_gba_full_machine_classification",
         "test_legality_l3_joint_evolution_machine", "test_legality_l3_joint_evolution_retail",
@@ -70,7 +72,7 @@ LANES: dict[str, Lane] = {
         "test_legality_l3_machine_methods", "test_legality_l3_gba_relearner",
         "test_legality_l3_palpark_joint_stage")),
     "l4": Lane("origin/feature/legality-l4-events-meta-20261012",
-               "5f7e5b44bedc555c67171e400fc86b347fc6810a", "tests/test_legality_l4_runner.sh", (
+               "3c8c28d597cfc3bc982782ed9ec8ec708a3284ae", "tests/test_legality_l4_runner.sh", (
         "test_legality_l4_archive_projection", "test_legality_l4_unified_event_source",
         "test_legality_l4_contest_history", "test_legality_l4_event_text_history",
         "test_legality_l4_gen3_raw_text", "test_legality_l4_attestation_matrix",
@@ -86,7 +88,7 @@ LANES: dict[str, Lane] = {
         "test_legality_l4_native_pk3_text", "test_legality_l4_gen3_distribution_native_pk3",
         "test_legality_l4_gen3_palpark_metadata_bridge", "test_legality_l4_stage5_native_pk3_join")),
     "l5": Lane("origin/audit/legality-l5-research-qa-20261012",
-               "8cb0bec1eb0dbd62ffdb0f40e4f582a2aeed7042", "tools/run_legality_integration_audit.py", (
+               "6f3e12eff17980d6e0b5857f8b470c2ed50a5033", "tools/run_legality_integration_audit.py", (
         "legality_l5_gen12_sourcefree_contract", "legality_l5_native_codec_batch",
         "legality_l5_ev_native_analyzer_probe", "legality_l5_pk12_sourcefree_native_probe",
         "legality_l5_native_ev_vectors", "audit_legality_l5_native_codec",
