@@ -6,6 +6,7 @@
 #include "Integration/Gen1/Gen1ReadOnlySave.h"
 #include "Integration/Gen2/Gen2ReadOnlySave.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
+#include "Pokemon/Pokemon3FRLG.h"
 
 #include <array>
 #include <cassert>
@@ -124,6 +125,39 @@ void testPk3Codec(unsigned& checks) {
         ++checks;
     }
 }
+void testPk3EntityBoundaries(unsigned& checks) {
+    // The crypto primitive is byte-preserving for arbitrary input by design,
+    // but the mutable PK3 entity is a semantic adapter: only exact box and
+    // party records may expose field values. Exercise every nearby length,
+    // including values which previously allowed fixed-offset access past the
+    // decrypted allocation.
+    for (size_t size = 0; size != Encryption::SIZE_PARTY3_FRLG + 17; ++size) {
+        const bool exact = Encryption::validRecordSize3FRLG(size);
+        std::vector<std::byte> bytes(size, exact ? std::byte{0} : std::byte{0xa5});
+        const auto original = bytes;
+        Pokemon::Pokemon3FRLG entity(bytes);
+        assert(entity.sizeValid() == exact);
+        if (exact) {
+            assert(entity.checksumValid());
+            assert(entity.getData().size() == size);
+        } else {
+            assert(!entity.checksumValid());
+            // Field reads and direct buffer inspection are safe and neutral;
+            // the internal safety span covers the largest party-only offset.
+            assert(entity.pid() == 0 && entity.speciesID() == 0 && entity.move(0) == 0);
+            assert(entity.iv32() == 0 && entity.isFatefulEncounter() == false);
+            assert(entity.getData().size() >= Encryption::SIZE_PARTY3_FRLG);
+            assert(entity.getData()[Encryption::SIZE_PARTY3_FRLG - 1] == std::byte{0});
+            entity.setTID16(77);
+            entity.setMove(0, 33);
+            assert(entity.tid16() == 0 && entity.move(0) == 0);
+        }
+        auto copy = entity.clone();
+        assert(copy && copy->getDataSize() == size && copy->checksumValid() == exact);
+        assert(bytes == original);
+        ++checks;
+    }
+}
 void testPk4Properties(unsigned& checks) {
     uint32_t seed = 0x13579bdfu;
     for (const auto size : {Encryption::SIZE_STORED4, Encryption::SIZE_PARTY4}) {
@@ -194,8 +228,9 @@ int main() {
     unsigned checks = 0;
     testGen12Boundaries(checks);
     testPk3Codec(checks);
+    testPk3EntityBoundaries(checks);
     testPk4Properties(checks);
-    assert(checks == 2021u);
+    assert(checks == 2138u);
     std::cout << "Stage 2 native Gen I-IV boundary/property checks: " << checks
               << " PASS (synthetic immutable inputs)\n";
 }

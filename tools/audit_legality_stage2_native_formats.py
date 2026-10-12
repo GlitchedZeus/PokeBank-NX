@@ -17,6 +17,10 @@ ROOT = Path(__file__).resolve().parents[1]
 TEST = "tests/fixtures/legality_stage2_native_format_properties.cpp"
 SOURCES = [
     TEST, "src/Encryption/Encryption3FRLG.cpp", "src/Encryption/Encryption4.cpp",
+    "src/Pokemon/Pokemon3FRLG.cpp", "src/Pokemon/BaseStatsGen89.cpp",
+    "src/Pokemon/PersonalInfoTable.cpp", "src/Pokemon/Experience.cpp",
+    "src/Names/ItemNames.cpp", "src/Names/SpeciesNames.cpp", "src/Names/NatureNames.cpp",
+    "src/Names/AbilityNames.cpp",
     "src/Pokemon/Pokemon4ReadOnly.cpp", "src/Pokemon/PersonalRecord4.cpp",
     "src/Pokemon/PersonalInfo4DP.cpp", "src/Pokemon/PersonalInfo4PT.cpp",
     "src/Pokemon/PersonalInfo4HGSS.cpp", "src/Integration/Gen1/Gen1ReadOnlySave.cpp",
@@ -28,8 +32,12 @@ def run(sanitize: bool) -> dict[str, object]:
     with tempfile.TemporaryDirectory(prefix="pbnx-stage2-native-") as directory:
         executable = Path(directory) / "native_properties"
         command = ["g++", "-std=c++20", "-Wall", "-Wextra", "-Wpedantic", "-Werror",
+                   "-Wno-unused-parameter",
                    "-Iinclude", *SOURCES]
-        command += (["-O1", "-g", "-fsanitize=address,undefined", "-fno-omit-frame-pointer"]
+        # The production PK3 graph is intentionally broad; O0 keeps the local
+        # sanitizer build inside the bounded audit window without weakening
+        # AddressSanitizer/UndefinedBehaviorSanitizer instrumentation.
+        command += (["-O0", "-g", "-fsanitize=address,undefined", "-fno-omit-frame-pointer"]
                     if sanitize else ["-O2"])
         command += ["-o", str(executable)]
         subprocess.run(command, cwd=ROOT, check=True)
@@ -37,12 +45,12 @@ def run(sanitize: bool) -> dict[str, object]:
                                 capture_output=True, check=True,
                                 env={"ASAN_OPTIONS": "detect_leaks=0:halt_on_error=1",
                                      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"})
-    expected = "Stage 2 native Gen I-IV boundary/property checks: 2021 PASS"
+    expected = "Stage 2 native Gen I-IV boundary/property checks: 2138 PASS"
     if expected not in result.stdout:
         raise RuntimeError("unexpected property-suite output: " + result.stdout + result.stderr)
-    return {"sanitized": sanitize, "status": "PASS", "checks": 2021,
+    return {"sanitized": sanitize, "status": "PASS", "checks": 2138,
             "production_components": ["Gen1ReadOnlySave", "Gen2ReadOnlySave", "Encryption3FRLG",
-                                      "Encryption4", "Pokemon4ReadOnly"],
+                                      "Encryption4", "Pokemon3FRLG", "Pokemon4ReadOnly"],
             "stdout": result.stdout.strip()}
 
 def main() -> None:
