@@ -1,7 +1,12 @@
 // Reuse the real existing L2 production fixture, not a mocked stage.
+// The reused legacy entrypoint lacks an explicit return because C++ main
+// has implicit return 0. Its renamed fixture-only entrypoint does not.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
 #define main l2_previous_full_stage_regression_main
 #include "test_legality_l2_gen4_pt_hgss_full_moves.cpp"
 #undef main
+#pragma GCC diagnostic pop
 #include "Legality/Gen4PlatinumHGSSSourceBoundEggHistories.h"
 namespace Bound=Legality::Gen4PlatinumHGSSSourceBoundEggHistories;
 namespace Archive=Legality::Gen4PlatinumHGSSOriginalDaycareSource;
