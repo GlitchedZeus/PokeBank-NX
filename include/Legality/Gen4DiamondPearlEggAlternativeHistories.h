@@ -70,21 +70,30 @@ constexpr Result evaluate(const Input& in) noexcept {
        !IV::valid(in.originalEggIVs)) {
         out.status=Status::UnknownOriginalEgg;return out;
     }
-    // A repeated/zero archive route cannot be independently exhaustive.
-    // Refuse the WHOLE candidate set before looking at any outcome.
-    for(uint8_t i=0;i<in.count;++i){
-        if(!in.alternatives[i].routeIdentity){
-            out.status=Status::MissingOrDuplicateCandidateIdentity;return out;
-        }
-        for(uint8_t j=0;j<i;++j){
-            if(in.alternatives[i].routeIdentity==in.alternatives[j].routeIdentity){
-                out.status=Status::MissingOrDuplicateCandidateIdentity;return out;
-            }
-        }
-    }
+    // Duplicates cannot prove an exhaustive set, but must not mask a
+    // separately attested consistent original egg history.
+    bool malformedRouteIdentity=false;
     for(uint8_t i=0;i<in.count;++i){
         ++out.considered;
         const auto& c=in.alternatives[i];
+        if(!c.routeIdentity){
+            malformedRouteIdentity=true;
+            ++out.unverified;
+            continue;
+        }
+        bool repeated=false,priorMatch=false;
+        for(uint8_t j=0;j<i;++j)
+            if(c.routeIdentity==in.alternatives[j].routeIdentity){
+                repeated=true;
+                if(out.ivChecks[j]==IV::Check::Matched &&
+                   out.pidChecks[j]==PID::Status::ConditionalOriginalEggPIDMatched)
+                    priorMatch=true;
+            }
+        if(repeated){
+            malformedRouteIdentity=true;
+            ++out.unverified;
+            if(priorMatch)continue;
+        }
         if(!c.independentlyAttestedHypothesis ||
            !c.sharedPhysicalParentPairIndependentlyVerified ||
            !c.ivPhysicalParentPairIdentity ||
@@ -107,6 +116,7 @@ constexpr Result evaluate(const Input& in) noexcept {
            pid.status==PID::Status::ConditionalOriginalEggPIDMatched){
             ++out.consistent;continue;
         }
+        if(repeated)continue; // a duplicate supplies no exhaustive negative evidence
         // These contradictions exclude only this externally attested
         // candidate, never the egg's entire obtainable history.
         const bool impossibleIV=out.ivChecks[i]==IV::Check::Contradicted;
@@ -121,6 +131,8 @@ constexpr Result evaluate(const Input& in) noexcept {
         ++out.unresolved;
     }
     if(out.consistent)out.status=Status::OneConditionallyConsistentHistory;
+    else if(malformedRouteIdentity)
+        out.status=Status::MissingOrDuplicateCandidateIdentity;
     else if(out.unverified)out.status=Status::UnknownCandidateProvenance;
     else if(out.unresolved)out.status=Status::UnresolvedCandidateHistory;
     else if(!in.allDaycareStageHypothesesIndependentlyEnumerated)

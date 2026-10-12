@@ -115,8 +115,33 @@ int main() {
         assert(A::evaluate(x).status==A::Status::UnknownOriginalEgg);
         x=fixture(game,42);x.alternatives[0].routeIdentity=0;
         assert(A::evaluate(x).status==A::Status::DuplicateOrMissingRoute);
+        // An independently attested matching history may appear AFTER
+        // a contradictory hypothesis with the very same archive ID.
+        // Order cannot manufacture a false-negative candidate universe.
+        x=fixture(game,42);x.count=2;
+        x.alternatives[1]=x.alternatives[0];
+        x.alternatives[0].history.moveAndIV.moveHistory.father={15,0,0,0};
+        x.alternatives[0].history.moveAndIV.moveHistory.verifiedMachine=
+            {true,false,false,false};
+        const auto reversed=A::evaluate(x);
+        assert(reversed.status==A::Status::OneConditionallyConsistentHistory);
+        assert(reversed.consistent==1 && reversed.unverified==1);
         x=fixture(game,42);x.count=2;x.alternatives[1]=x.alternatives[0];
+        // A duplicated row is not an independent history, but may not
+        // suppress the first independently sourced matching parent pair.
+        const auto duplicateWithMatch=A::evaluate(x);
+        assert(duplicateWithMatch.status==A::Status::OneConditionallyConsistentHistory);
+        assert(duplicateWithMatch.consistent==1 && duplicateWithMatch.unverified==1);
+        // With no valid matching source route, duplicate/zero identity
+        // cannot fabricate exhaustive rejection.
+        x.alternatives[0].history.moveAndIV.moveHistory.father={15,0,0,0};
+        x.alternatives[0].history.moveAndIV.moveHistory.verifiedMachine=
+            {true,false,false,false};
         assert(A::evaluate(x).status==A::Status::DuplicateOrMissingRoute);
+        x=fixture(game,42);x.count=2;
+        x.alternatives[1]=x.alternatives[0];
+        x.alternatives[0].routeIdentity=0;
+        assert(A::evaluate(x).status==A::Status::OneConditionallyConsistentHistory);
         x=fixture(game,42);x.alternatives[0].originalSourceHistoryIndependentlyAttested=false;
         assert(A::evaluate(x).status==A::Status::UnverifiedCandidateProvenance);
         x=fixture(game,42);x.alternatives[0].claimedOriginalEggIdentity=2;

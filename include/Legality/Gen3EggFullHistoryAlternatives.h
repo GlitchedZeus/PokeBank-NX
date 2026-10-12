@@ -60,19 +60,32 @@ constexpr Result evaluate(const Input& in) noexcept {
        !Gen3EggIVInheritanceStage::validIVs(in.originalEggIVs)) {
         out.status=Status::UnknownOriginalEgg;return out;
     }
-    for(uint8_t i=0;i<in.count;++i) {
-        if(!in.alternatives[i].routeIdentity) {
-            out.status=Status::DuplicateOrMissingRoute;return out;
-        }
-        for(uint8_t j=0;j<i;++j)
-            if(in.alternatives[i].routeIdentity==
-               in.alternatives[j].routeIdentity) {
-                out.status=Status::DuplicateOrMissingRoute;return out;
-            }
-    }
+    // A malformed second archive route must not erase an independently
+    // attested matching first route. But an incomplete/duplicate route must
+    // NEVER count towards exhaustive contradiction of all originals.
+    bool malformedRouteIdentity=false;
     for(uint8_t i=0;i<in.count;++i) {
         const Route& r=in.alternatives[i];
         ++out.considered;
+        if(!r.routeIdentity) {
+            malformedRouteIdentity=true;
+            ++out.unverified;
+            continue;
+        }
+        bool repeated=false,priorMatch=false;
+        for(uint8_t j=0;j<i;++j)
+            if(r.routeIdentity==in.alternatives[j].routeIdentity) {
+                repeated=true;
+                if(out.stageChecks[j]==Joint::Status::AllThreeStagesConditionallyMatched)
+                    priorMatch=true;
+            }
+        if(repeated) {
+            malformedRouteIdentity=true;
+            ++out.unverified;
+            // Preserve one witness per identity; if the first entry is
+            // contradictory, still inspect a later source-attested match.
+            if(priorMatch)continue;
+        }
         const auto& x=r.history;
         if(!r.originalSourceHistoryIndependentlyAttested ||
            r.claimedOriginalEggIdentity!=in.originalEggIdentity ||
@@ -90,6 +103,7 @@ constexpr Result evaluate(const Input& in) noexcept {
         if(verdict.status==Joint::Status::AllThreeStagesConditionallyMatched) {
             ++out.consistent;continue;
         }
+        if(repeated)continue; // a duplicate cannot establish an exclusion
         const bool localContradiction=
             verdict.status==Joint::Status::OriginalMoveCandidateContradicted ||
             verdict.status==Joint::Status::OriginalIVCandidateContradicted ||
@@ -100,6 +114,7 @@ constexpr Result evaluate(const Input& in) noexcept {
         ++out.unresolved;
     }
     if(out.consistent)out.status=Status::OneConditionallyConsistentHistory;
+    else if(malformedRouteIdentity)out.status=Status::DuplicateOrMissingRoute;
     else if(out.unverified)out.status=Status::UnverifiedCandidateProvenance;
     else if(out.unresolved)out.status=Status::UnresolvedCandidateHistory;
     else if(!in.allOrdinaryDaycareAlternativesIndependentlyEnumerated)
