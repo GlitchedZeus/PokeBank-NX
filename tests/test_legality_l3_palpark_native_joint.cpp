@@ -136,6 +136,23 @@ static_assert([]{auto a=base(H::Game::Ruby,G::Diamond);a.observedLevel=21;
     return B::evaluate<OriginalGba,Platinum>(a).status==S::Unresolved;}());
 static_assert([]{auto a=base(H::Game::Ruby,G::Platinum);a.observedLevel=21;
     return B::evaluate<OriginalGba,Platinum>(a).status==S::Contradicted;}());
+// A Gen III HM removed by an independently witnessed Move Deleter may be
+// re-taught from the real Gen IV HM item AFTER Pal Park. It cannot be
+// treated as a Gen III HM illegally carried across the migration edge.
+static_assert([]{auto a=hmRemoved();a.count=1;
+    a.steps[0]={G::Platinum,20,A::Machine,15,3,true,1,0,true,true};
+    a.observedMoves={45,73,22,15};
+    return B::evaluate<OriginalGba,Platinum>(a).status==S::Consistent;}());
+// A real game visit at the same level does not cause fictional level-up
+// prompts in either game. The unmodeled destination cannot verify NEW moves.
+static_assert([]{auto a=base(H::Game::Ruby,G::Platinum);
+    a.count=1;a.steps[0]={G::HeartGold,20,A::VisitGame,0,0,false,0,0,true,false};
+    a.observedGame=G::HeartGold;
+    return B::evaluate<OriginalGba,Platinum>(a).status==S::Consistent;}());
+static_assert([]{auto a=base(H::Game::Ruby,G::Platinum);
+    a.count=2;a.steps[0]={G::HeartGold,20,A::VisitGame,0,0,false,0,0,true,false};
+    a.steps[1]={G::HeartGold,20,A::Machine,92,0,false,6,100,true,true};
+    return B::evaluate<OriginalGba,Platinum>(a).status==S::Unresolved;}());
 int main() {
     uint32_t accepted=0,mutations=0,contradicted=0;
     for(auto origin:gba)for(auto destination:nds){
