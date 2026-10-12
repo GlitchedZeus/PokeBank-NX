@@ -48,6 +48,8 @@ header_only=(
     test_legality_l4_gen1_3_event_sources
     test_legality_l4_gen12_gift_history
     test_legality_l4_gen3_distribution_matrix
+    test_legality_l4_gen4_pcd_pgt_container
+    test_legality_l4_gen4_mystery_gift_histories
 )
 native=(
     test_legality_l4_native_pk4_projection
@@ -57,6 +59,7 @@ native=(
     test_legality_l4_ball_history
     test_legality_l4_other_metadata
     test_legality_l4_trainer_identity
+    test_legality_l4_gen4_mystery_gift_native
 )
 for name in "${header_only[@]}"; do
     echo "L4 C++ compile: $name"
@@ -97,4 +100,4 @@ python3 -m unittest discover -v -s tests -p 'test_legality_l4_l5_q07_join.py'
 if [[ -n "${L4_L5_Q07_JSON:-}" ]]; then
     python3 tools/legality_l4_l5_q07_join.py --l5-q07 "$L4_L5_Q07_JSON"
 fi
-echo "L4 all 18 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
+echo "L4 all 21 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
