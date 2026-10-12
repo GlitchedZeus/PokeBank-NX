@@ -70,6 +70,7 @@
 #include "Legality/Gen34OrdinaryEggMoveConstruction.h"
 #include "Legality/Gen4EggMoveFamilyEvidence.h"
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
+#include "Legality/Gen14CandidateMoveGbaLevelUpTimeline.h"
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen3JointMoveEvidence.h"
 #include "Legality/Gen3ShedinjaEvolutionMoveEvidence.h"
@@ -2171,6 +2172,53 @@ namespace Legality {
                         "trainer decisions, evolution and retention "
                         "are NOT verified",
                         CheckIdentifier::Moves);
+                }
+            }
+        }
+
+
+        // L3 source-exact Ruby/Sapphire and FireRed/LeafGreen original
+        // level-up offers, now executed by the real production analyzer.
+        // Use the IMMUTABLE native PK3 original-game byte, NOT the save-
+        // provider's current game (a traded Pokémon can be in another save).
+        // The complete 386-species original tables establish only a possible
+        // source offer, not observed learning, retention or four-slot history.
+        // Never emit Invalid or imply a move outside this row is impossible.
+        if (!sourceFormatMismatch && !pk.isEgg() &&
+            Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 3 &&
+            species >= 1 && species <= 386) {
+            const auto source = Gen4Origin::exactGen3GameId(pk.originGame());
+            using GbaGame=Gen14CandidateMoveChronology::Game;
+            GbaGame game=GbaGame::Unknown;
+            if (source == "ruby_gba") game=GbaGame::Ruby;
+            else if (source == "sapphire_gba") game=GbaGame::Sapphire;
+            else if (source == "firered_gba") game=GbaGame::FireRed;
+            else if (source == "leafgreen_gba") game=GbaGame::LeafGreen;
+            if (game != GbaGame::Unknown) {
+                const auto offers=Gen3GbaVersionedLevelUpTimeline::offerCount(
+                    game,species);
+                for (int slot=0;slot<4;++slot) {
+                    const uint16_t move=pk.move(slot);
+                    if (!move)continue;
+                    uint8_t first=0;
+                    for (uint16_t i=0;i<offers;++i) {
+                        const auto offer=Gen3GbaVersionedLevelUpTimeline::offerAt(
+                            game,species,i);
+                        if (offer.move==move && offer.level!=0 &&
+                            offer.level<=pk.level() &&
+                            (first==0 || offer.level<first))
+                            first=offer.level;
+                    }
+                    if (first) {
+                        add(r,Severity::Info,
+                            "Original " + std::string(source) +
+                            " native Gen III level-up source: " +
+                            std::string(Names::getMoveName(move)) +
+                            " has an original current-species offer by level " +
+                            std::to_string(first) +
+                            "; historical trainer choices, evolution and simultaneous acquisition remain unverified",
+                            CheckIdentifier::Moves);
+                    }
                 }
             }
         }
