@@ -60,7 +60,10 @@ executions=0
 for compiler in g++ clang++; do
   for mode in normal sanitizers; do
     echo "L2 ACCEPTANCE: head=$head_sha compiler=$compiler mode=$mode"
-    CXX="$compiler" L2_MODES="$mode" bash "$root/tests/test_legality_l2_run_all.sh"
+    # Disable the normal developer subset filter: final acceptance requires
+    # ALL seventeen production-native programs in every compiler/mode pair.
+    CXX="$compiler" L2_MODES="$mode" L2_TEST_FILTER='' \
+        bash "$root/tests/test_legality_l2_run_all.sh"
     flags=(-std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter
            -I"$root/include")
     if [[ "$mode" == sanitizers ]]; then
