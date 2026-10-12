@@ -8,6 +8,7 @@
 #include "Legality/Gen3EmeraldPalParkJointPath.h"
 #include "Legality/Gen34PostPalParkLearning.h"
 #include "Legality/Gen34EmeraldPalParkCompleteHistory.h"
+#include "Legality/Gen34EmeraldPalParkCandidateUniverse.h"
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen34OrdinaryEggMoveConstruction.h"
 #include "Legality/Gen4NativeBreedingParentEvidence.h"
@@ -1520,6 +1521,67 @@ int main() {
         assert(complete.status==Full::Status::KnownConditionalFullPath);
         assert(complete.nativeObservationCompared);
         assert(complete.post.appliedMoves==2);
+        // TRANSFER-002 optional alternative Emerald-route evidence,
+        // all routes targeting ONE immutable final encrypted native PK4.
+        namespace U=Legality::Gen34EmeraldPalParkCandidateUniverse;
+        U::Input routes{};
+        routes.observedNative=&nativeLater;
+        routes.observedNativeSourceIndependentlyVerified=true;
+        routes.count=3;
+        for(uint8_t i=0;i<routes.count;++i) {
+            routes.histories[i].routeIdentity=0x100u+i;
+            routes.histories[i].independentlyGrounded=true;
+            routes.histories[i].allMethodsIndependentlyCovered=true;
+            routes.histories[i].history=history;
+        }
+        routes.histories[1].history.afterArrival.observedMoves[0]=99;
+        routes.histories[2].history.afterArrival.steps[1].independentlyVerifiedMethod=false;
+        auto mixedRoutes=U::evaluate(routes);
+        assert(mixedRoutes.status==U::Status::OneConditionalFullHistory);
+        assert(mixedRoutes.compatible==1 && mixedRoutes.contradicted==1 &&
+               mixedRoutes.unresolved==1);
+        auto exhaustedRoutes=routes;
+        exhaustedRoutes.histories[0].history.afterArrival.observedMoves[0]=96;
+        exhaustedRoutes.histories[2].history.afterArrival.observedMoves[0]=97;
+        exhaustedRoutes.histories[2].history.afterArrival.steps[1].independentlyVerifiedMethod=true;
+        assert(U::evaluate(exhaustedRoutes).status==
+               U::Status::UnknownRouteEnumeration);
+        exhaustedRoutes.allEmeraldPalParkRoutesIndependentlyEnumerated=true;
+        const auto exhausted=U::evaluate(exhaustedRoutes);
+        assert(exhausted.status==U::Status::AllAttestedEmeraldRoutesContradicted);
+        assert(exhausted.contradicted==3 && exhausted.compatible==0);
+        auto partialMethods=exhaustedRoutes;
+        partialMethods.histories[1].allMethodsIndependentlyCovered=false;
+        assert(U::evaluate(partialMethods).status==U::Status::UnknownMethodCoverage);
+        auto missingGrounding=exhaustedRoutes;
+        missingGrounding.histories[2].independentlyGrounded=false;
+        assert(U::evaluate(missingGrounding).status==U::Status::UnknownHistoryProvenance);
+        auto duplicateRoute=exhaustedRoutes;
+        duplicateRoute.histories[1].routeIdentity=duplicateRoute.histories[0].routeIdentity;
+        assert(U::evaluate(duplicateRoute).status==U::Status::UnknownRouteIdentity);
+        auto zeroRoute=exhaustedRoutes;
+        zeroRoute.histories[2].routeIdentity=0;
+        assert(U::evaluate(zeroRoute).status==U::Status::UnknownRouteIdentity);
+        auto absentNative=exhaustedRoutes;absentNative.observedNative=nullptr;
+        assert(U::evaluate(absentNative).status==U::Status::UnknownObservedNativeSource);
+        auto unverifiedNative=exhaustedRoutes;
+        unverifiedNative.observedNativeSourceIndependentlyVerified=false;
+        assert(U::evaluate(unverifiedNative).status==U::Status::UnknownObservedNativeSource);
+        auto detachedRoute=exhaustedRoutes;
+        detachedRoute.histories[0].history.nativeObserved=nullptr;
+        assert(U::evaluate(detachedRoute).status==U::Status::UnknownHistoryProvenance);
+        auto changedRoute=rawLater;
+        wr16(changedRoute,0x28,88);
+        Pokemon::Pokemon4ReadOnly changedRouteNative(
+            Encryption::encryptArray4(changedRoute),Enums::GameVersion::PT);
+        assert(changedRouteNative.valid());
+        auto swappedRoute=exhaustedRoutes;
+        swappedRoute.histories[1].history.nativeObserved=&changedRouteNative;
+        assert(U::evaluate(swappedRoute).status==U::Status::UnknownHistoryProvenance);
+        auto emptySet=exhaustedRoutes;emptySet.count=0;
+        assert(U::evaluate(emptySet).status==U::Status::NoCandidates);
+        auto tooMany=exhaustedRoutes;tooMany.count=9;
+        assert(U::evaluate(tooMany).status==U::Status::CapacityExceededUnknown);
         auto unknownIdentity=history;
         unknownIdentity.sameCreatureAcrossAllStagesIndependentlyVerified=false;
         assert(Full::evaluate(unknownIdentity).status==
