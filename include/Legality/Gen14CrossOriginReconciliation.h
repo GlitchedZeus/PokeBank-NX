@@ -118,7 +118,11 @@ constexpr Result evaluate(const Route& c) noexcept {
     return {Status::LocalOriginalSourceContradiction};
  if(c.evidence==Evidence::BoundedSearchUnknown)
     return {Status::UnknownSearchBound};
- if(c.evidence==Evidence::Unknown)return {Status::UnknownHistoricalWitness};
+ if(c.evidence==Evidence::Unknown ||
+    c.evidence==Evidence::OriginalRngStageOnly)
+    // PID/nature/IV math alone cannot authenticate its alleged wild,
+    // egg, gift or event capture source, even with a custody chain.
+    return {Status::UnknownHistoricalWitness};
  if(!c.currentSpecimenIdentityAndSnapshotIndependentlyAttested||
     !c.presentSave||!speciesInGeneration(c.presentSpecies,c.presentGeneration))
     return {Status::UnknownPresentSnapshot};
