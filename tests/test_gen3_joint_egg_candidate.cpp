@@ -1,4 +1,5 @@
 #include "Legality/Gen3JointEggCandidateEvidence.h"
+#include "Legality/Gen34BreedingPairEligibility.h"
 #include <array>
 #include <cassert>
 #include <iostream>
@@ -167,8 +168,103 @@ void testRetailDaycareSlotOrdering() {
         }
     }
 }
+
+void testBreedingEligibilityAndRoles() {
+    namespace B=Legality::Gen34BreedingPairEligibility;
+    using B::Gender;
+    constexpr std::array<const char*,3> retail{
+        "emerald_gba","platinum_nds","heartgold_nds"
+    };
+    for(const char* game:retail) {
+        for(bool reversed:{false,true}) {
+            B::Input in{};
+            in.game=game;
+            B::Parent female{101,1,1,2,Gender::Female,0x12345678u,true,true,true};
+            B::Parent male{202,1,2,4,Gender::Male,0x87654321u,true,true,true};
+            in.slot0=reversed?male:female;
+            in.slot1=reversed?female:male;
+            in.depositOrderIndependentlyVerified=true;
+            auto r=B::evaluate(in);
+            assert(r.status==B::Status::Compatible);
+            assert(r.scoreKnown && r.compatibilityScore==70);
+            assert(r.donorRolesKnown && r.fatherId==202 && r.motherId==101);
+            assert(r.slot0Id==(reversed?202u:101u));
+            assert(r.slot1Id==(reversed?101u:202u));
+            assert(B::proofFor(r,202,101)==
+                Legality::Gen34SameParentEggHistory::PairProof::IndependentlyCompatible);
+            assert(B::proofFor(r,101,202)==
+                Legality::Gen34SameParentEggHistory::PairProof::Unknown);
+            // Full OT ID comparison: same lower half is NOT same trainer.
+            in.slot0.fullOTId=0xAAAA2222u;
+            in.slot1.fullOTId=0xBBBB2222u;
+            assert(B::evaluate(in).compatibilityScore==70);
+            in.slot1.fullOTId=0xAAAA2222u;
+            assert(B::evaluate(in).compatibilityScore==50);
+            in.slot1.species=2; // different species, shared second group
+            assert(B::evaluate(in).compatibilityScore==20);
+            in.slot1.fullOTId=0xBBBB2222u;
+            assert(B::evaluate(in).compatibilityScore==50);
+            in.slot1.fullOTIdKnown=false;
+            r=B::evaluate(in);
+            assert(r.status==B::Status::Compatible && !r.scoreKnown);
+            // No source-attested version/form group -> Unknown, not Incompatible.
+            auto missing=in;missing.slot0.personalDataIndependentlyVerified=false;
+            assert(B::evaluate(missing).status==B::Status::UnknownPersonalData);
+            auto unknownGender=in;unknownGender.slot0.genderIndependentlyVerified=false;
+            assert(B::evaluate(unknownGender).status==B::Status::UnknownGender);
+            auto unknownOrder=in;unknownOrder.depositOrderIndependentlyVerified=false;
+            r=B::evaluate(unknownOrder);
+            assert(r.status==B::Status::Compatible && !r.depositOrderKnown);
+            auto duplicate=in;duplicate.slot1.snapshotId=duplicate.slot0.snapshotId;
+            assert(B::evaluate(duplicate).status==B::Status::IncoherentParents);
+            // Ditto donor roles are not simply "the male parent" and
+            // never imply that daycare deposit order equals the IV donor role.
+            in.slot0=female;
+            in.slot1={202,132,13,13,Gender::Genderless,0x87654321u,true,true,true};
+            r=B::evaluate(in);
+            assert(r.status==B::Status::Compatible && r.compatibilityScore==50);
+            assert(r.fatherId==202 && r.motherId==101);
+            in.slot0.gender=Gender::Male;
+            r=B::evaluate(in);
+            assert(r.fatherId==101 && r.motherId==202);
+            in.slot0.gender=Gender::Genderless;
+            r=B::evaluate(in);
+            assert(r.fatherId==101 && r.motherId==202);
+            in.slot0.gender=Gender::Unknown;
+            in.slot0.genderIndependentlyVerified=false;
+            r=B::evaluate(in);
+            assert(r.status==B::Status::Compatible && !r.donorRolesKnown);
+            assert(B::proofFor(r,101,202)==
+                   Legality::Gen34SameParentEggHistory::PairProof::Unknown);
+            in.slot0.gender=Gender::Female;
+            in.slot0.genderIndependentlyVerified=true;
+            in.slot0.eggGroup1=15; // Undiscovered
+            assert(B::evaluate(in).status==B::Status::Incompatible);
+            in.slot0.eggGroup1=13;
+            assert(B::evaluate(in).status==B::Status::Incompatible); // Ditto + Ditto
+            in.slot0=female;in.slot1=male;
+            in.slot1.gender=Gender::Female;
+            assert(B::evaluate(in).status==B::Status::Incompatible); // same sex
+            in.slot1.gender=Gender::Genderless;
+            assert(B::evaluate(in).status==B::Status::Incompatible);
+            in.slot1.gender=Gender::Male;
+            in.slot1.eggGroup1=8;in.slot1.eggGroup2=9;
+            assert(B::evaluate(in).status==B::Status::Incompatible); // disjoint
+            in.slot1=male;in.slot1.eggGroup1=2;
+            in.slot0.eggGroup1=1;in.slot0.eggGroup2=2;
+            assert(B::evaluate(in).status==B::Status::Compatible); // group 2
+        }
+    }
+    B::Input unsupported{};
+    unsupported.game="ruby_gba";
+    assert(B::evaluate(unsupported).status==B::Status::UnsupportedGame);
+    B::Input missing{};missing.game="emerald_gba";
+    assert(B::evaluate(missing).status==B::Status::UnknownParents);
+}
+
 int main() {
     runCases();
     testRetailDaycareSlotOrdering();
+    testBreedingEligibilityAndRoles();
     std::cout<<"Gen III same-parent joint egg move plus IV witness: PASS\n";
 }
