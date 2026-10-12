@@ -42,8 +42,44 @@ constexpr bool controls() {
     return true;
 }
 static_assert(controls(), "All source-free PK1/PK2 source-predicate controls must hold");
+// Independent applicability matrix: four immutable native generations x five
+// ratio classes x three reported genders x four source-identity states.
+// This is a pure boundary model, NOT Legality::analyze or retail provenance.
+constexpr bool applicabilityMatrix() {
+    for (int nativeGen : {1,2,3,4}) {
+        for (int ratio : {0,31,127,254,255}) {
+            for (int gender : {0,1,2}) {
+                bool expectedAbility = nativeGen >= 3;
+                bool expectedNeutralGenderInvalid =
+                    nativeGen >= 2 && gender == 2 && ratio != 255;
+                for (int label=0;label<4;++label) {
+                    // Empty, exact recognized, wrong-generation sanitized,
+                    // and unknown unrecognized string, respectively.
+                    Case c{static_cast<uint8_t>(nativeGen),
+                           static_cast<uint8_t>(gender),
+                           static_cast<uint8_t>(ratio),
+                           label==1,static_cast<uint8_t>(label==1?nativeGen:0)};
+                    const auto result=corrected(c);
+                    if (result.falseAbilityInvalid != expectedAbility)
+                        return false;
+                    if (result.falseGenderInvalid != expectedNeutralGenderInvalid)
+                        return false;
+                    if (nativeGen<=2 && result.falseAbilityInvalid)
+                        return false;
+                    if (nativeGen==1 && result.falseGenderInvalid)
+                        return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+static_assert(applicabilityMatrix(),
+              "Native field applicability cannot depend on source labels");
+
 int main() {
     assert(controls());
-    std::cout << "L5 native-generation source-free predicates: 18 case states PASS "
+    assert(applicabilityMatrix());
+    std::cout << "L5 native-generation source-free predicates: 18 legacy + 240 expanded case states PASS "
                  "(PK1 gender and PK1/PK2 ability source-bypass reproduced)\n";
 }
