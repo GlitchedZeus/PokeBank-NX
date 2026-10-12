@@ -27,6 +27,9 @@ A::Input known(const char* game, uint32_t seed=0){
     c.routeIdentity=1;c.originalEggEventIdentity=in.originalEggEventIdentity;
     c.independentlyAttestedHypothesis=true;
     c.allMethodsForThisCandidateIndependentlyCovered=true;
+    c.sharedPhysicalParentPairIndependentlyVerified=true;
+    c.ivPhysicalParentPairIdentity=0xBEEFB001u;
+    c.pidPhysicalParentPairIdentity=0xBEEFB001u;
     c.iv.game=game;c.iv.initialChild=initial;
     c.iv.physicalSlot0=parent0;c.iv.physicalSlot1=parent1;
     c.iv.originalEggIVs=in.originalEggIVs;
@@ -107,6 +110,12 @@ int main(){
         assert(A::evaluate(noHistory).status==A::Status::UnknownCandidateProvenance);
         auto stageMismatch=x;stageMismatch.alternatives[0].originalEggEventIdentity++;
         assert(A::evaluate(stageMismatch).status==A::Status::UnknownCandidateProvenance);
+        auto crossed=x;crossed.alternatives[0].pidPhysicalParentPairIdentity++;
+        assert(A::evaluate(crossed).status==A::Status::UnknownCandidateProvenance);
+        auto noPairProof=x;noPairProof.alternatives[0].sharedPhysicalParentPairIndependentlyVerified=false;
+        assert(A::evaluate(noPairProof).status==A::Status::UnknownCandidateProvenance);
+        auto zeroPair=x;zeroPair.alternatives[0].ivPhysicalParentPairIdentity=0;
+        assert(A::evaluate(zeroPair).status==A::Status::UnknownCandidateProvenance);
         auto wrongPIDProjection=x;wrongPIDProjection.alternatives[0].pid.originalUnhatchedEggPid=31;
         assert(A::evaluate(wrongPIDProjection).status==A::Status::UnknownCandidateProvenance);
         auto wrongIVProjection=x;wrongIVProjection.alternatives[0].iv.originalEggIVs[0]^=1;
@@ -133,7 +142,7 @@ int main(){
         assert(A::evaluate(capacity).status==A::Status::CapacityExceededUnknown);
         auto empty=x;empty.count=0;
         assert(A::evaluate(empty).status==A::Status::NoCandidates);
-        cases+=17;
+        cases+=20;
     }
     auto unsupported=known("diamond_nds");unsupported.game="platinum_nds";
     assert(A::evaluate(unsupported).status==A::Status::UnsupportedGame);
