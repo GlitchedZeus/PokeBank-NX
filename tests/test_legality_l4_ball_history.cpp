@@ -64,6 +64,21 @@ int main() {
     auto result=B::evaluateNative(native,archive);
     assert(result.status==Status::CandidateBallMatch && result.observedBall==16);
     assert(B::evaluateNative(native).status==Status::UnknownOriginalRoute);
+    // Real PK4 origin codes for Ruby/Sapphire/Emerald are 1,2,3.
+    // Verify native adapter maps all three to Gen III, not Unknown.
+    for(uint8_t gbaOrigin=1;gbaOrigin<=3;++gbaOrigin) {
+        auto migrated=raw;
+        migrated[0x5f]=static_cast<std::byte>(gbaOrigin);
+        migrated[0x83]=std::byte{12};
+        migrated[0x86]=std::byte{0};
+        w16(migrated,0x46,0);
+        w16(migrated,0x80,0x37);
+        w16(migrated,0x06,Encryption::checksum4(migrated));
+        Pokemon::Pokemon4ReadOnly nativeMigration(
+            Encryption::encryptArray4(migrated),Enums::GameVersion::DP);
+        assert(nativeMigration.valid());
+        assert(B::evaluateNative(nativeMigration,pal).status==Status::CandidateBallMatch);
+    }
     auto corrupt=cipher;corrupt[0x32]^=std::byte{1};
     Pokemon::Pokemon4ReadOnly invalid(corrupt,Enums::GameVersion::HGSS);
     assert(B::evaluateNative(invalid,archive).status==Status::UnavailableNative);

@@ -109,8 +109,10 @@ inline Result evaluateNative(const Pokemon::Pokemon4ReadOnly& pokemon,
                              const SourceEvidence& source={}) noexcept {
     if(!pokemon.valid() || pokemon.empty())return {};
     const uint8_t origin=pokemon.originVersion();
-    const uint8_t generation=(origin>=4 && origin<=5) ||
-                             (origin>=15 && origin<=15) ? 3 :
+    // Stored PK4 origin IDs 1-5 cover Ruby/Sapphire/Emerald/FR/LG;
+    // 15 is GameCube (Colosseum/XD), which uses the Gen III domain.
+    // Do NOT drop Ruby/Sapphire/Emerald (1-3), the main Pal Park games.
+    const uint8_t generation=((origin>=1 && origin<=5) || origin==15) ? 3 :
                              ((origin==7 || origin==8 || origin==10 ||
                                origin==11 || origin==12) ? 4 : 0);
     return evaluate(true,{
