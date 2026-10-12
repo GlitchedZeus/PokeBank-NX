@@ -151,6 +151,7 @@ int main() {
             assert(mix.compatible==0 && mix.locallyContradicted==2 && mix.unresolved==1);
             passed+=2;
             alternatives[2].candidate.stage.originalLeadAttested=true;
+            alternatives[2].candidate.source=alternatives[1].candidate.source;
             mix=J::evaluateUniverse(12345,true,alternatives);
             assert(mix.status==J::UniverseStatus::ProvidedRoutesLocallyContradictedOnly);
             assert(!mix.globalInvalidSupported && !mix.globallyLegalSupported);
