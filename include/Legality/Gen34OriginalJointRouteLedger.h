@@ -2,6 +2,7 @@
 // L2 Stage 5: bounded original-route conjunction, not an OR of separate
 // positive PID, IV, move and collection candidates. Negatives are LOCAL.
 #include "Legality/Gen34OriginalSameRouteProof.h"
+#include "Legality/Gen34OriginalParentLineage.h"
 #include <array>
 #include <cstdint>
 namespace Legality::Gen34OriginalJointRouteLedger {
@@ -18,6 +19,9 @@ struct Candidate {
     Identity::Expected originalIdentity{};
     std::array<Verdict,4> stageVerdicts{};
     bool allMethodsForThisRouteIndependentlyCovered=false;
+    Gen34OriginalParentLineage::Input originalParentLineage{};
+    bool depositedSpeciesIndependentlyAttested=false;
+    std::array<uint16_t,2> depositedSpecies{};
 };
 struct Input {
     std::array<Candidate,8> routes{};
@@ -28,6 +32,7 @@ struct Result {
     Status status=Status::NoCandidates;
     uint8_t considered=0,matched=0,contradicted=0,unknown=0,unverified=0;
     std::array<Identity::Status,8> identityChecks{};
+    std::array<Gen34OriginalParentLineage::Status,8> lineageChecks{};
 };
 constexpr Result evaluate(const Input& in) noexcept {
     Result out{};
@@ -46,6 +51,19 @@ constexpr Result evaluate(const Input& in) noexcept {
         out.identityChecks[i]=identity;
         if(identity!=Identity::Status::ConditionallySameRoute) {
             ++out.unverified;continue;
+        }
+        if(c.originalParentLineage.supplied){
+            namespace Lineage=Gen34OriginalParentLineage;
+            if(!c.depositedSpeciesIndependentlyAttested){
+                ++out.unverified;continue;
+            }
+            out.lineageChecks[i]=Lineage::evaluate(c.originalParentLineage,{
+                c.originalIdentity.game,
+                {c.originalIdentity.slot0Id,c.originalIdentity.slot1Id},
+                c.depositedSpecies});
+            if(out.lineageChecks[i]!=Lineage::Status::ConditionallyReplayed){
+                ++out.unverified;continue;
+            }
         }
         bool missing=false,contradicted=false;
         for(const auto v:c.stageVerdicts) {
