@@ -80,6 +80,10 @@ int main(int argc, char** argv) {
                     };
                     for (size_t i=0;i<fields.size();++i)
                         assert(fields[i] == (i == statSlot ? value : 0));
+                    const Pokemon::Pokemon& generic = pk;
+                    std::array<uint16_t,5> polymorphic{};
+                    assert(generic.gen2NativeStatExperience(polymorphic));
+                    assert(polymorphic == fields); // RTTI-free virtual dispatch
                     assert(pk.evHP() == 0); // Neutral modern EV getter: the gap.
                     const auto report=Legality::analyze(
                         pk, pk.getGameGroup(), sources[source]);
