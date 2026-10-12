@@ -77,7 +77,18 @@ uint8_t Pokemon4ReadOnlyView::otGender() const noexcept { return source_.origina
 uint8_t Pokemon4ReadOnlyView::otFriendship() const noexcept { return source_.friendship(); }
 uint8_t Pokemon4ReadOnlyView::language() const noexcept { return source_.language(); }
 uint8_t Pokemon4ReadOnlyView::ball() const noexcept {
-    return std::max(source_.ballDPPt(), source_.ballHGSS());
+    // These are separate, format-specific stored bytes: never choose the
+    // numerically larger one. A stale inactive shadow can be nonzero, even
+    // when the visible original Ball belongs to the active native save.
+    switch (source_.sourceGroup()) {
+        case Enums::GameVersion::DP:
+        case Enums::GameVersion::PT:
+            return source_.ballDPPt();
+        case Enums::GameVersion::HGSS:
+            return source_.ballHGSS();
+        default:
+            return 0; // Unknown storage layout, do not fabricate a Ball.
+    }
 }
 uint16_t Pokemon4ReadOnlyView::metLocation() const noexcept {
     // PK4's canonical display value always prefers the Pt/HGSS extended field when
