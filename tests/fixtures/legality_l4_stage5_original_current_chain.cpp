@@ -202,6 +202,11 @@ int main() {
     capsule.input.final=back.after;
     capsule.input.history=std::span<const C::Hop>(capsule.hops.data(),2);
     assert(C::evaluate(capsule.input).status==S::ConditionalCandidate);
+    // Neither PK1 nor PK2 independently stores a Pokémon language byte.
+    // A source manifest pretending to project one must remain Unknown.
+    capsule.input.original.original.known|=P::Language;
+    assert(C::evaluate(capsule.input).status==S::UnknownProjection);
+    capsule.input.original.original.known&=~P::Language;
     // A direct Gen II -> Gen III or Gen I -> Gen IV jump cannot be
     // invented by a source manifest; this does not invalidate the Pokémon.
     back.operation.action=P::Action::PalPark;

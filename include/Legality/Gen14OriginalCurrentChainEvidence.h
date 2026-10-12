@@ -21,12 +21,14 @@ constexpr bool digestNonzero(const Digest& digest) noexcept {
 // Gen I has no native Egg/Item; Gen III has no DS met calendar. Original
 // source-only evidence for unsupported fields must not manufacture a match.
 constexpr uint32_t nativeFields(P::Generation g) noexcept {
-    constexpr uint32_t common=P::Species|P::TrainerIDs|P::Language|
+    constexpr uint32_t common=P::Species|P::TrainerIDs|
         P::MoveSet|P::NicknameRaw|P::OriginalTrainerRaw;
+    // PK1/PK2 native structs do not carry an independent language byte.
+    // Locale needs separate source evidence, never an invented PK1/PK2 field.
     switch(g) {
     case P::Generation::I:return common;
     case P::Generation::II:return common|P::EggState|P::HeldItem;
-    case P::Generation::III:return common|P::OriginalBall|P::OriginVersion|
+    case P::Generation::III:return common|P::Language|P::OriginalBall|P::OriginVersion|
         P::EggState|P::HeldItem|P::Ribbons|P::Fateful|P::Form|P::Ability;
     case P::Generation::IV:return P::kAllFields;
     case P::Generation::Unknown:return 0;
@@ -171,7 +173,8 @@ constexpr Result evaluate(const Input& input) noexcept {
         out.unknown?Status::UnknownRouteOrHistory:Status::ConditionalCandidate;
     return out;
 }
-static_assert((nativeFields(P::Generation::I)&P::OriginalBall)==0);
+static_assert((nativeFields(P::Generation::I)&(P::OriginalBall|P::Language))==0);
+static_assert((nativeFields(P::Generation::II)&P::Language)==0);
 static_assert((nativeFields(P::Generation::II)&P::Ability)==0);
 static_assert((nativeFields(P::Generation::III)&P::MetDate)==0);
 static_assert(nativeFields(P::Generation::IV)==P::kAllFields);
