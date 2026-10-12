@@ -4,7 +4,7 @@
 namespace H=Legality::Gen12CandidateMoveJointChronology;
 using G=H::Game;using A=H::Action;using S=H::Status;
 constexpr H::Path bulba(G g,uint8_t end) {
-    H::Path p{};p.candidateId=913;p.species=1;p.origin=g;
+    H::Path p{};p.candidateId=913;p.species=1;p.origin=g;p.observedGame=g;
     p.initialLevel=5;p.observedLevel=end;
     p.initialMoves={33,45,0,0};p.observedMoves=p.initialMoves;
     p.originalSnapshotVerified=true;p.samePokemonAndSpeciesVerified=true;
@@ -33,10 +33,10 @@ static_assert([]{auto p=redOrder();p.steps[1].tmNumber=40;
 static_assert([]{auto p=redOrder();p.samePokemonAndSpeciesVerified=false;
     return H::evaluate(p).status==S::Unknown;}());
 // Red, Blue and Yellow share this complete Bulbasaur retail table.
-static_assert([]{auto p=redOrder();p.origin=G::Blue;
+static_assert([]{auto p=redOrder();p.origin=G::Blue;p.observedGame=G::Blue;
     for(auto& s:p.steps)if(s.actionSourceVerified)s.game=G::Blue;
     return H::evaluate(p).status==S::CandidateConsistent;}());
-static_assert([]{auto p=redOrder();p.origin=G::Yellow;
+static_assert([]{auto p=redOrder();p.origin=G::Yellow;p.observedGame=G::Yellow;
     for(auto& s:p.steps)if(s.actionSourceVerified)s.game=G::Yellow;
     return H::evaluate(p).status==S::CandidateConsistent;}());
 constexpr H::Path crystalDoubleOffer() {
@@ -54,10 +54,10 @@ static_assert([]{auto p=crystalDoubleOffer();p.stepCount=3;
 static_assert([]{auto p=crystalDoubleOffer();p.steps[3].action=A::OfferLearn;
     p.steps[3].move=79;
     return H::evaluate(p).status==S::CandidateContradicted;}());
-static_assert([]{auto p=crystalDoubleOffer();p.origin=G::Gold;
+static_assert([]{auto p=crystalDoubleOffer();p.origin=G::Gold;p.observedGame=G::Gold;
     for(auto& s:p.steps)if(s.actionSourceVerified)s.game=G::Gold;
     return H::evaluate(p).status==S::CandidateConsistent;}());
-static_assert([]{auto p=crystalDoubleOffer();p.origin=G::Silver;
+static_assert([]{auto p=crystalDoubleOffer();p.origin=G::Silver;p.observedGame=G::Silver;
     for(auto& s:p.steps)if(s.actionSourceVerified)s.game=G::Silver;
     return H::evaluate(p).status==S::CandidateConsistent;}());
 // A Gen II-only move cannot be retained through a verified Gen I entry,
@@ -92,13 +92,15 @@ static_assert([]{auto p=capsule();p.steps[3].tmNumber=8;
 // same-generation trades and a Gen II -> Gen I -> Gen II round trip.
 constexpr H::Path forward() {
     auto p=bulba(G::Red,10);p.stepCount=3;
-    p.retailTimeCapsulePolicyVerified=true;
+    p.retailTimeCapsulePolicyVerified=true;p.observedGame=G::Crystal;
     p.steps[0]={G::Red,7,A::OfferLearn,73,2,0,true};
     p.steps[1]={G::Crystal,8,A::ToGen2,0,0,0,true};
     p.steps[2]={G::Crystal,10,A::OfferLearn,22,3,0,true};
     p.observedMoves={33,45,73,22};return p;
 }
 static_assert(H::evaluate(forward()).status==S::CandidateConsistent);
+static_assert([]{auto p=forward();p.observedGame=G::Red;
+    return H::evaluate(p).status==S::Unknown;}());
 static_assert([]{auto p=forward();p.retailTimeCapsulePolicyVerified=false;
     return H::evaluate(p).status==S::Unknown;}());
 static_assert([]{auto p=forward();p.steps[1].action=A::VisitGame;
