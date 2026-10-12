@@ -15,11 +15,11 @@ Accepted base: d29eada5c087e201e00c749703f1a2de3ddfadeb (the previously read 0dc
 | Source identity | Pinned source path and symbol | Independently checked fact |
 |---|---|---|
 | Ruby/Sapphire | [pokeruby@63a8cbf/src/pokemon_1.c](https://github.com/pret/pokeruby/blob/63a8cbf0016b351a4e68f7036fa0b77e23d2f2c1/src/pokemon_1.c), GiveMoveToBoxMon / MonTryLearningNewMove | ordered moves, four slots, duplicate avoidance |
-| Ruby/Sapphire | [pokeruby level_up_learnsets.h](https://github.com/pret/pokeruby/blob/63a8cbf0016b351a4e68f7036fa0b77e23d2f2c1/src/data/pokemon/level_up_learnsets.h), gBulbasaurLevelUpLearnset | level 7 Leech Seed, 10 Vine Whip, 46 SolarBeam |
+| Ruby/Sapphire | [pokeruby TMHM learnsets](https://github.com/pret/pokeruby/blob/63a8cbf0016b351a4e68f7036fa0b77e23d2f2c1/src/data/pokemon/tmhm_learnsets.h), SPECIES_BULBASAUR | TM06 Toxic, TM10 Hidden Power, HM01 Cut are source-attested compatible machine moves |\n| Ruby/Sapphire | [pokeruby level_up_learnsets.h](https://github.com/pret/pokeruby/blob/63a8cbf0016b351a4e68f7036fa0b77e23d2f2c1/src/data/pokemon/level_up_learnsets.h), gBulbasaurLevelUpLearnset | level 7 Leech Seed, 10 Vine Whip, 46 SolarBeam |
 | Emerald | [pokeemerald@5eff786/src/pokemon.c](https://github.com/pret/pokeemerald/blob/5eff78649e7170a877b961ef0b3da13b81a16038/src/pokemon.c), GiveMoveToBoxMon / MonTryLearningNewMove | four-slot learning; multiple offers per level |
-| Emerald | [pokeemerald level_up_learnsets.h](https://github.com/pret/pokeemerald/blob/5eff78649e7170a877b961ef0b3da13b81a16038/src/data/pokemon/level_up_learnsets.h), sBulbasaurLevelUpLearnset | level 7 Leech Seed, 10 Vine Whip |
+| Emerald | [pokeemerald TMHM learnsets](https://github.com/pret/pokeemerald/blob/5eff78649e7170a877b961ef0b3da13b81a16038/src/data/pokemon/tmhm_learnsets.h), SPECIES_BULBASAUR | independent Emerald machine compatibility for Hidden Power / Toxic / Cut |\n| Emerald | [pokeemerald level_up_learnsets.h](https://github.com/pret/pokeemerald/blob/5eff78649e7170a877b961ef0b3da13b81a16038/src/data/pokemon/level_up_learnsets.h), sBulbasaurLevelUpLearnset | level 7 Leech Seed, 10 Vine Whip |
 | FireRed/LeafGreen | [pokefirered@c75f352/src/pokemon.c](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/src/pokemon.c), GiveMoveToBoxMon / MonTryLearningNewMove | four-slot learning and replacement |
-| FireRed/LeafGreen | [pokefirered level_up_learnsets.h](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/src/data/pokemon/level_up_learnsets.h), sBulbasaurLevelUpLearnset | same examined level 7/10 pair |
+| FireRed/LeafGreen | [pokefirered TMHM learnsets](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/src/data/pokemon/tmhm_learnsets.h), SPECIES_BULBASAUR | Bulbasaur's FireRed/LeafGreen HM01 Cut and TM06 / TM10 compatibility independently confirmed |\n| FireRed/LeafGreen | [pokefirered level_up_learnsets.h](https://github.com/pret/pokefirered/blob/c75f352304d529f6ba92d4f74b9cf8b5c3810788/src/data/pokemon/level_up_learnsets.h), sBulbasaurLevelUpLearnset | same examined level 7/10 pair |
 | Gen I–IV | [research #252 MOVE-001](https://github.com/GlitchedZeus/PokeBank-NX/blob/fc0225e6351af62365f29200300323e38f52c8fe/docs/legality/research/packets/MOVE-001.md) | candidate-level method and history, not pool membership |
 | Gen III→IV | [research #252 TRANSFER-001](https://github.com/GlitchedZeus/PokeBank-NX/blob/fc0225e6351af62365f29200300323e38f52c8fe/docs/legality/research/packets/TRANSFER-001.md) | irreversible Gen III HM transfer exclusion / later Gen IV reacquisition |
 
@@ -27,7 +27,7 @@ All test records are original synthetic conditional histories, **not demonstrate
 
 ## New independent native tests and executable commands
 
-New tests/test_legality_l3_move_chronology.cpp contains positive, candidate-contradiction and Unknown controls spanning 5 GBA source identities, moves with open/full slots, game travel, unverified/wrong-version methods, deletion/reminder, level-46 decision, Pal Park later Surf reacquisition, and candidate alternative aggregation.
+New tests/test_legality_l3_move_chronology.cpp contains positive, candidate-contradiction and Unknown controls spanning 5 GBA source identities, moves with open/full slots, game travel, unverified/wrong-version methods, deletion/reminder, level-46 decision, Pal Park later Cut reacquisition, and candidate alternative aggregation.
 
 Local commands:
     g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Iinclude tests/test_legality_l3_move_chronology.cpp -o /tmp/l3_test && /tmp/l3_test
