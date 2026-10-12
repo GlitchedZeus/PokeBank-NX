@@ -338,7 +338,7 @@ int main() {
             ++acquisitionChecks;
         }
     }
-    assert(acquisitionChecks==56320);
+    assert(acquisitionChecks==61440);
     std::cout<<"L2 B07 Gen III source-game egg PID/Everstone: "
              <<checks<<" seeded and fixed cases plus Unknown controls PASS\n";
 }
