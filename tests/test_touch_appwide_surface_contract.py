@@ -351,8 +351,10 @@ require_all("include/UI/SharedPokemonShell.h",
             "int pixelOffset = 0",
             "static_cast<int>(i) * 38 + pixelOffset")
 require_all("src/UI/Gen2HardwareFinalFix.inc",
-            "const auto detailVisual = liveVerticalListVisual(",
-            "+ detailVisual.offset")
+            "const int detailFirst = std::max(0, unified.detailsViewport.firstRow);",
+            "const int detailOffset = unified.detailsTouchScroll.offset();",
+            "+ detailOffset;",
+            "static_cast<std::size_t>(unified.focus.row)")
 require_all("src/UI/Gen2PokemonEditorFoundation.inc",
             "int stickX, int stickY, const TouchInput& touch)",
             "return handleInput(screen, down, held, stickX, stickY, noTouch);")
