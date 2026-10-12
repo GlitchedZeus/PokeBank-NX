@@ -150,8 +150,38 @@ int main() {
         p=pid(game,x);p.originalUnhatchedEggPID=P::evaluate(p).finalPersonality;
         p.originalRetailPair.physicalSlots[1].personality=0; // both female
         assert(P::evaluate(p).status==P::Status::IncompatibleOriginalDaycarePair);
+        // Direct source-stage replay without a supplied historical pair
+        // remains supported; no parent history is inferred by this fallback.
+        p=pid(game,x);
+        p.originalRetailPairWitnessSupplied=false;
+        p.originalUnhatchedEggPID=P::evaluate(p).finalPersonality;
+        assert(P::evaluate(p).status==P::Status::ConditionallyMatchedOriginalEggPID);
+        // Retained-egg PID with a verified female + Ditto deposited pair.
+        // Emerald's original Everstone nature donor is Ditto regardless
+        // of the female's physical slot or held Everstone.
+        auto pairWithDitto=x;
+        pairWithDitto.physicalSlots[1]={202,132,0,11,13,13,255,true,true,true};
+        p=pid(game,pairWithDitto);
+        p.physicalSlots[0].heldEverstoneAtCreation=true;
+        p.physicalSlots[1].heldEverstoneAtCreation=true;
+        const auto dittoReplay=P::evaluate(p);
+        p.originalUnhatchedEggPID=dittoReplay.finalPersonality;
+        assert(P::evaluate(p).status==P::Status::ConditionallyMatchedOriginalEggPID);
+        if(P::family(game)==P::Family::Emerald) {
+            assert(dittoReplay.originalEverstoneDonor==1);
+            p.physicalSlots[1].originalHeldItemIndependentlyVerified=false;
+            assert(P::evaluate(p).status==P::Status::UnknownCreationItems);
+        } else {
+            // Ruby/Sapphire and FRLG ignore Emerald-only Everstone logic.
+            assert(dittoReplay.originalEverstoneDonor==-1);
+            p.physicalSlots[1].originalHeldItemIndependentlyVerified=false;
+            assert(P::evaluate(p).status==P::Status::ConditionallyMatchedOriginalEggPID);
+        }
+        // No historical pair ever authorizes an impossible daycare route.
+        p=pid(game,x);p.ordinaryDaycarePairEligible=false;
+        assert(P::evaluate(p).status==P::Status::IncompatibleOriginalDaycarePair);
         // Native PID snapshot remains untouched after all evaluations.
-        checks+=31;
+        checks+=36;
     }
     auto unsupported=base("diamond_nds");
     assert(R::evaluate(unsupported).status==R::Status::UnsupportedGame);
