@@ -77,6 +77,9 @@ int main(int argc,char** argv) {
                         record.isEgg=egg;
                         const auto original=record.rawBody;
                         Pokemon::Pokemon2ReadOnly pk(record);
+                        const Pokemon::Pokemon& nativeBase=pk;
+                        assert(nativeBase.nativePk2ReadOnly()==&pk);
+                        assert(nativeBase.nativePk1ReadOnly()==nullptr);
                         assert(pk.isEgg()==egg && statExp(pk,field)==amount);
                         assert(pk.evHP()==0 && pk.evATK()==0 && pk.evDEF()==0 &&
                                pk.evSPE()==0 && pk.evSPA()==0 && pk.evSPD()==0);
@@ -112,6 +115,9 @@ int main(int argc,char** argv) {
                 if(variant==2) rec.moves={166,0,0,0}; // Non-native move
                 if(variant==3) rec.statExperience={65535,0,0,0,0}; // Native Gen I stat exp
                 const Pokemon::Pokemon1ReadOnly pk(rec);
+                const Pokemon::Pokemon& generic=pk;
+                assert(generic.nativePk1ReadOnly()==&pk);
+                assert(generic.nativePk2ReadOnly()==nullptr);
                 report=Legality::analyze(pk,pk.getGameGroup(),source);
             } else {
                 auto rec=specimen2(1);
@@ -120,6 +126,9 @@ int main(int argc,char** argv) {
                 if(variant==2) rec.moves={252,0,0,0};
                 if(variant==3) rec.statExperience={65535,0,0,0,0};
                 const Pokemon::Pokemon2ReadOnly pk(rec);
+                const Pokemon::Pokemon& generic=pk;
+                assert(generic.nativePk2ReadOnly()==&pk);
+                assert(generic.nativePk1ReadOnly()==nullptr);
                 report=Legality::analyze(pk,pk.getGameGroup(),source);
             }
             if(variant==0) assert(report.issues.empty());
