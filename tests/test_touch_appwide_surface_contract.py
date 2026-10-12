@@ -172,7 +172,7 @@ assert "if (selectedOccupied(screen))" not in gen3_box_tap
 assert "if (!editor(screen)) return false;" in gen3_box_tap
 require_all("src/UI/Gen4SharedPokemonSurface.inc",
             "if (boxEntry && touch.justTapped())", "screen.selectedItemIndex = tapped;",
-            "if (selectedOccupied(screen)) beginActions(screen);",
+            "beginActions(screen);",
             "if (partyEntry && touch.justTapped())", "screen.selectedPartyIndex = tapped - 6200;")
 # The header arrows must use the Gen I–III exact-game category catalog, not the
 # old two-pocket RBY inherited category counter.
