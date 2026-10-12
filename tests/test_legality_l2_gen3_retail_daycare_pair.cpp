@@ -139,7 +139,7 @@ int main() {
         p.originalRetailPair.physicalSlots[0].snapshotIdentity++;
         assert(P::evaluate(p).status==P::Status::UnknownOriginalParentPair);
         p=pid(game,x);p.originalUnhatchedEggPID=P::evaluate(p).finalPersonality;
-        p.originalRetailPair.physicalSlots[1].personality++;
+        p.originalRetailPair.physicalSlots[1].personality+=256u;
         assert(P::evaluate(p).status==P::Status::UnknownOriginalParentPair);
         p=pid(game,x);p.originalUnhatchedEggPID=P::evaluate(p).finalPersonality;
         p.originalRetailPair.originalDaycareEventIdentity++;
