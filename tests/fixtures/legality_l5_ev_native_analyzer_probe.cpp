@@ -69,9 +69,16 @@ Legality::Report pk3Probe(uint8_t value,bool egg,bool exactSource) {
     pk.setEV(0,value);
     pk.refreshChecksum();
     assert(pk.evHP()==value && pk.isEgg()==egg && pk.checksumValid());
+    // clone() performs native PK3 canonical shuffle+XOR encryption and then
+    // reconstructs through Pokemon3FRLG's production decryptArray3FRLG path.
+    // The actual legality call below therefore receives round-tripped
+    // encrypted-native PK3 data, not only the canonical mutator workspace.
+    const auto roundTripped = pk.clone();
+    assert(roundTripped && roundTripped->checksumValid());
+    assert(roundTripped->evHP()==value && roundTripped->isEgg()==egg);
     return exactSource
-      ? Legality::analyze(pk,Enums::GameVersion::FRLG,"firered_gba")
-      : Legality::analyze(pk,Enums::GameVersion::FRLG);
+      ? Legality::analyze(*roundTripped,Enums::GameVersion::FRLG,"firered_gba")
+      : Legality::analyze(*roundTripped,Enums::GameVersion::FRLG);
 }
 Legality::Report pk4Probe(uint8_t value,bool egg,bool exactSource) {
     std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
