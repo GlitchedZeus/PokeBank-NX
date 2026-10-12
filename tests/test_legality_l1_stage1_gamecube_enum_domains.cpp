@@ -44,8 +44,9 @@ int main() {
             c.native.originGame=routeByte==3 ? 3 : 15;
             const G::Status expected=
                 (gameByte!=1 && gameByte!=2) ? G::Status::UnknownOriginalGame :
-                (routeByte<1 || routeByte>3) ? G::Status::UnknownOriginalScene :
-                                              G::Status::ConditionalGameCubeOriginHistory;
+                (routeByte<1 || routeByte>3 || (gameByte==2 && routeByte==3)) ?
+                    G::Status::UnknownOriginalScene :
+                    G::Status::ConditionalGameCubeOriginHistory;
             const auto result=G::evaluate(c);
             assert(result.status==expected);
             assert(result.recipientOriginIsGba==
@@ -76,7 +77,7 @@ int main() {
             }
         }
     }
-    assert(knownRoutes==6 && checks==65576);
+    assert(knownRoutes==5 && checks==65569);
     std::cout<<"L1 GameCube source enum domain: "<<checks
              <<" PASS (unknown values never certify original histories)\n";
 }
