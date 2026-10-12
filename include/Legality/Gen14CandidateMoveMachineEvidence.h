@@ -1,7 +1,7 @@
 #pragma once
 // L3 M07/M11: machine-item identity must be bound to an actual source game,
 // not inferred from a species' broad editor move compatibility pool.
-// POSITIVE-ONLY sampled retail evidence. Pinned originals:
+// Source-verified Bulbasaur rows across all five GBA game identities. Pinned originals:
 // pokeruby@63a8cbf, pokeemerald@5eff786, pokefirered@c75f352
 //   src/data/pokemon/tmhm_learnsets.h and include/constants/moves.h
 // Unknown machine/species/Gen IV routes remain Unresolved; all negative
@@ -32,11 +32,33 @@ constexpr Status classify(const Stage& s) noexcept {
     uint16_t expected=0;
     switch(s.machine) {
     case Machine::TM:
-        if(s.machineNumber==6)expected=92;   // TM06 Toxic
-        else if(s.machineNumber==10)expected=237; // TM10 Hidden Power
+        switch(s.machineNumber) {
+        case 6:expected=92;break;   // Toxic
+        case 9:expected=331;break;  // Bullet Seed
+        case 10:expected=237;break; // Hidden Power
+        case 11:expected=241;break; // Sunny Day
+        case 17:expected=182;break; // Protect
+        case 19:expected=202;break; // Giga Drain
+        case 21:expected=218;break; // Frustration
+        case 22:expected=76;break;  // SolarBeam
+        case 27:expected=216;break; // Return
+        case 32:expected=104;break; // Double Team
+        case 36:expected=188;break; // Sludge Bomb
+        case 42:expected=263;break; // Facade
+        case 43:expected=290;break; // Secret Power
+        case 44:expected=156;break; // Rest
+        case 45:expected=213;break; // Attract
+        default:break;
+        }
         break;
     case Machine::HM:
-        if(s.machineNumber==1)expected=15;   // HM01 Cut
+        switch(s.machineNumber) {
+        case 1:expected=15;break;  // Cut
+        case 4:expected=70;break;  // Strength
+        case 5:expected=148;break; // Flash
+        case 6:expected=249;break; // Rock Smash
+        default:break;
+        }
         break;
     default:return Status::Unresolved;
     }
