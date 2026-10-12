@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   l2-full-suite:
-    name: L2 eleven suites ${{ matrix.compiler }} normal + ASan/UBSan
+    name: L2 twelve suites ${{ matrix.compiler }} normal + ASan/UBSan
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -35,7 +35,7 @@ jobs:
           echo "Exact source HEAD: $(git rev-parse HEAD)"
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           "${{ matrix.cxx }}" --version
-      - name: Run all eleven L2 native programs normally and with ASan/UBSan
+      - name: Run all twelve L2 native programs normally and with ASan/UBSan
         shell: bash
         env:
           CXX: ${{ matrix.cxx }}
