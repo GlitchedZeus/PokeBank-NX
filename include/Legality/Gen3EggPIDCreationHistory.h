@@ -6,6 +6,7 @@
 // is NOT retail functionality). RNG: each game's src/random.c.
 // A historical RNG, pair or creation-time held item cannot be recovered
 // merely from one detached native PK3. Contradictions are candidate-local.
+#include "Legality/Gen3RetailDaycarePairHistory.h"
 #include <array>
 #include <cstdint>
 #include <string_view>
@@ -43,6 +44,11 @@ struct Input {
     bool ordinaryDaycarePairEligible=false;
     bool originalPhysicalDepositOrderIndependentlyVerified=false;
     std::array<Parent,2> physicalSlots{};
+    // Optional stronger, independently attested ORIGINAL parent witness.
+    // Detached PK3s cannot synthesize this provenance. Legacy direct
+    // source-stage replay remains available without the opt-in witness.
+    bool originalRetailPairWitnessSupplied=false;
+    Gen3RetailDaycarePairHistory::Input originalRetailPair{};
     bool originalCreationStageIndependentlyVerified=false;
     bool originalCollectionStageIndependentlyVerified=false;
     uint64_t originalParentStageIdentity=0;
@@ -117,6 +123,34 @@ constexpr Result evaluate(const Input& in) noexcept {
     if(in.originalParentStageIdentity!=in.originalCreationStageIdentity ||
        in.originalCreationStageIdentity!=in.originalCollectionStageIdentity) {
         out.status=Status::IncoherentOriginalStage;return out;
+    }
+    if(in.originalRetailPairWitnessSupplied) {
+        namespace R=Gen3RetailDaycarePairHistory;
+        const auto& pair=in.originalRetailPair;
+        if(pair.game!=in.game ||
+           pair.originalDaycareEventIdentity!=in.originalParentStageIdentity) {
+            out.status=Status::IncoherentOriginalStage;return out;
+        }
+        const auto original=R::evaluate(pair);
+        if(original.status==R::Status::IncompatiblePair) {
+            out.status=Status::IncompatibleOriginalDaycarePair;return out;
+        }
+        if(original.status!=R::Status::ConditionallyCompatiblePair ||
+           !original.physicalRolesKnown) {
+            out.status=Status::UnknownOriginalParentPair;return out;
+        }
+        // Do not combine compatibility for one deposited pair with PID
+        // replay for other independently claimed original parents.
+        for(uint8_t i=0;i<2;++i) {
+            const auto& witness=pair.physicalSlots[i];
+            const auto& parent=in.physicalSlots[i];
+            if(parent.snapshotIdentity!=witness.snapshotIdentity ||
+               parent.species!=witness.species ||
+               parent.originalPersonality!=witness.personality ||
+               parent.gender!=static_cast<uint8_t>(R::gender(witness))) {
+                out.status=Status::UnknownOriginalParentPair;return out;
+            }
+        }
     }
     if(!in.pendingLCRNGStateIndependentlyVerified) {
         out.status=Status::UnknownPendingRNG;return out;
