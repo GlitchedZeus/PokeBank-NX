@@ -1,9 +1,9 @@
 #pragma once
 // L3 M06 / M12: exact ordered level-up offers within ONE verified, unchanged
-// GBA species/game stage. All 386 Emerald national species are drawn from the
-// accepted pinned source table. Ruby/Sapphire and FR/LG are conservatively
-// limited to twelve independently transcribed source-verified species; an
-// unmodeled species is UNKNOWN, not an impossible move history.
+// GBA species/game stage. All 386 National Dex species in Emerald use
+// the accepted Emerald table; the full 386 original Ruby/Sapphire and
+// FireRed/LeafGreen records are pinned separately by actual species names.
+// This describes a chosen game/species candidate only, never global Invalid.
 // Original source revisions: pokeruby@63a8cbf0016b351a4e68f7036fa0b77e23d2f2c1,
 // pokeemerald@5eff78649e7170a877b961ef0b3da13b81a16038,
 // pokefirered@c75f352304d529f6ba92d4f74b9cf8b5c3810788.
@@ -12,6 +12,7 @@
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
 #include "Legality/Gen14CandidateMoveGbaStarterTables.h"
 #include "Legality/Gen14CandidateMoveGbaNinjaTables.h"
+#include "Legality/Gen3GbaOriginalVersionedLevelUpData.h"
 #include <array>
 #include <cstdint>
 
@@ -60,61 +61,35 @@ inline constexpr std::array<Offer,10> kCharmanderFrlg{{
     {1,10},{1,45},{7,52},{13,232},{19,108},{25,184},
     {31,53},{37,163},{43,82},{49,83}
 }};
+namespace Source=Gen3GbaOriginalVersionedLevelUpData;
 constexpr bool supported(Game game,uint16_t species) noexcept {
-    if(C::generation(game)!=3 || !species || species>386)return false;
-    if(game==Game::Emerald)return true;
-    return (species>=1 && species<=9) || (species>=290 && species<=292);
+    return C::generation(game)==3 && species>=1 && species<=386;
 }
 constexpr uint16_t offerCount(Game game,uint16_t species) noexcept {
     if(!supported(game,species))return 0;
     if(game==Game::Emerald)
         return static_cast<uint16_t>(Gen3EmeraldLevelUp::kEmeraldLevelOffsets[species+1]
                                      -Gen3EmeraldLevelUp::kEmeraldLevelOffsets[species]);
-    switch(species) {
-    case 1:return static_cast<uint16_t>(kBulbasaur.size());
-    case 2:return static_cast<uint16_t>(Gen14CandidateMoveGbaStarterTables::kIvysaur.size());
-    case 3:return static_cast<uint16_t>(Gen14CandidateMoveGbaStarterTables::kVenusaur.size());
-    case 4:return static_cast<uint16_t>(kCharmanderRse.size());
-    case 5:return static_cast<uint16_t>(Gen14CandidateMoveGbaStarterTables::kCharmeleonRse.size());
-    case 6:return static_cast<uint16_t>((game==Game::FireRed || game==Game::LeafGreen)?
-        Gen14CandidateMoveGbaStarterTables::kCharizardFrlg.size():
-        Gen14CandidateMoveGbaStarterTables::kCharizardRse.size());
-    case 7:return static_cast<uint16_t>(Gen14CandidateMoveGbaStarterTables::kSquirtle.size());
-    case 8:return static_cast<uint16_t>(Gen14CandidateMoveGbaStarterTables::kWartortle.size());
-    case 9:return static_cast<uint16_t>(Gen14CandidateMoveGbaStarterTables::kBlastoise.size());
-    case 290:return static_cast<uint16_t>(Gen14CandidateMoveGbaNinjaTables::kNincada.size());
-    case 291:return static_cast<uint16_t>(Gen14CandidateMoveGbaNinjaTables::kNinjask.size());
-    case 292:return static_cast<uint16_t>(Gen14CandidateMoveGbaNinjaTables::kShedinja.size());
-    default:return 0;
-    }
+    if(game==Game::Ruby || game==Game::Sapphire)
+        return static_cast<uint16_t>(Source::kRubySapphireOffsets[species+1]-
+                                     Source::kRubySapphireOffsets[species]);
+    return static_cast<uint16_t>(Source::kFireRedLeafGreenOffsets[species+1]-
+                                 Source::kFireRedLeafGreenOffsets[species]);
 }
 constexpr Offer offerAt(Game game,uint16_t species,uint16_t index) noexcept {
     if(index>=offerCount(game,species))return {};
-    if(game==Game::Emerald) {
-        const auto packed=Gen3EmeraldLevelUp::kEmeraldPackedLevelMoves[
+    uint16_t packed=0;
+    if(game==Game::Emerald)
+        packed=Gen3EmeraldLevelUp::kEmeraldPackedLevelMoves[
             Gen3EmeraldLevelUp::kEmeraldLevelOffsets[species]+index];
-        return {static_cast<uint8_t>(packed>>9),
-                static_cast<uint16_t>(packed&511u)};
-    }
-    namespace S=Gen14CandidateMoveGbaStarterTables;
-    const bool frlg=game==Game::FireRed || game==Game::LeafGreen;
-    if(species==1)return kBulbasaur[index];
-    if(species==4)return frlg?kCharmanderFrlg[index]:kCharmanderRse[index];
-    S::Offer offer{};
-    switch(species) {
-    case 2:offer=S::kIvysaur[index];break;
-    case 3:offer=S::kVenusaur[index];break;
-    case 5:offer=frlg?S::kCharmeleonFrlg[index]:S::kCharmeleonRse[index];break;
-    case 6:offer=frlg?S::kCharizardFrlg[index]:S::kCharizardRse[index];break;
-    case 7:offer=S::kSquirtle[index];break;
-    case 8:offer=S::kWartortle[index];break;
-    case 9:offer=S::kBlastoise[index];break;
-    case 290:{const auto x=Gen14CandidateMoveGbaNinjaTables::kNincada[index];return {x.level,x.move};}
-    case 291:{const auto x=Gen14CandidateMoveGbaNinjaTables::kNinjask[index];return {x.level,x.move};}
-    case 292:{const auto x=Gen14CandidateMoveGbaNinjaTables::kShedinja[index];return {x.level,x.move};}
-    default:return {};
-    }
-    return {offer.level,offer.move};
+    else if(game==Game::Ruby || game==Game::Sapphire)
+        packed=Source::kRubySapphirePacked[
+            Source::kRubySapphireOffsets[species]+index];
+    else
+        packed=Source::kFireRedLeafGreenPacked[
+            Source::kFireRedLeafGreenOffsets[species]+index];
+    return {static_cast<uint8_t>(packed>>9),
+            static_cast<uint16_t>(packed&511u)};
 }
 constexpr Result evaluate(const Input& in) noexcept {
     Result out{};
@@ -239,6 +214,12 @@ static_assert(offerAt(Game::Sapphire,8,12).move==56); // Hydro Pump
 static_assert(offerAt(Game::FireRed,9,13).level==68);
 static_assert(offerAt(Game::Ruby,5,4).move==108); // Smokescreen
 static_assert(offerAt(Game::LeafGreen,5,4).move==232); // Metal Claw
-static_assert(!supported(Game::Ruby,133));
+static_assert(supported(Game::Ruby,133));
+static_assert(supported(Game::LeafGreen,386));
+static_assert(offerCount(Game::Ruby,290)==10);
+static_assert(offerAt(Game::Ruby,290,0).move==10);
+static_assert(offerAt(Game::FireRed,290,0).move==10);
+static_assert(offerCount(Game::Ruby,386)==12);
+static_assert(offerCount(Game::FireRed,386)==14);
 static_assert(supported(Game::Emerald,386));
 } // namespace Legality::Gen3GbaVersionedLevelUpTimeline
