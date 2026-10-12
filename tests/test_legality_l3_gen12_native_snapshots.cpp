@@ -61,6 +61,13 @@ int main() {
         assert(y.structurallyUsable==(i==0||(i<=251&&i!=33&&i!=45)));
         checks+=2;
     }
+    Gen1::PokemonRecord noMoves{};
+    noMoves.species=1;noMoves.level=5;
+    assert(!N::fromVerifiedPK1(noMoves,Gen1::SourceGame::Red,true).structurallyUsable);
+    Gen2::PokemonRecord noMoves2{};
+    noMoves2.species=1;noMoves2.level=5;
+    assert(!N::fromVerifiedPK2(noMoves2,Gen2::SourceGame::Gold,true).structurallyUsable);
+    checks+=2;
     std::cout<<"L3 native PK1/PK2 source-free candidate boundary: "<<checks
              <<" assertions PASS (no source or parent authenticity inferred)\n";
 }
