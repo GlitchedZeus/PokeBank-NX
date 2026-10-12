@@ -6,7 +6,7 @@
 int main() {
     namespace H=Legality::Gen1OriginalWildFishingStage;
     using S=H::Status;
-    static_assert(H::kVerifiedSlots.size()==46);
+    static_assert(H::kVerifiedSlots.size()==149);
     static_assert(H::kVerifiedSlots[1].species==H::kVerifiedSlots[2].species);
     static_assert(H::kVerifiedSlots[1].physicalSlot!=H::kVerifiedSlots[2].physicalSlot);
     std::size_t positives=0, negatives=0, unknowns=0;
@@ -64,7 +64,7 @@ int main() {
     corrupt.originalMethod=static_cast<H::Method>(255);
     corrupt.originalMethodAttested=true;
     assert(H::evaluate(corrupt).status==S::UnknownOriginalMethod);
-    assert(positives==62); // 20 common RB Route1 + 10 Yellow + 10 Red + 10 Blue + 12 rod
+    assert(positives==268); // 20 common RB Route1 + 10 Yellow + 10 Red + 10 Blue + all RB rods
     assert(negatives==positives*4);
     assert(unknowns>250);
     std::cout<<"L1 Gen I source-pinned original wild/rod: "<<positives
