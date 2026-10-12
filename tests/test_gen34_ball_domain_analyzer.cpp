@@ -1848,7 +1848,7 @@ int main() {
         auto ptRaw=rawLater;
         wr32(ptRaw,0x00,originalPid);
         wr16(ptRaw,0x08,W::species(ptRow));
-        wr32(ptRaw,0x38,packIV(originalIVs));
+        wr32(ptRaw,0x38,Legality::Gen4Trade::packIVs(originalIVs));
         Pokemon::Pokemon4ReadOnly ptWild(
             Encryption::encryptArray4(ptRaw),Enums::GameVersion::PT);
         assert(ptWild.valid() && !ptWild.isEgg());
@@ -1958,7 +1958,7 @@ int main() {
         auto hgRaw=rawLater;
         wr32(hgRaw,0x00,kPid);
         wr16(hgRaw,0x08,W::species(hgRow));
-        wr32(hgRaw,0x38,packIV(kIVs));
+        wr32(hgRaw,0x38,Legality::Gen4Trade::packIVs(kIVs));
         Pokemon::Pokemon4ReadOnly hgWild(
             Encryption::encryptArray4(hgRaw),Enums::GameVersion::HGSS);
         assert(hgWild.valid() && !hgWild.isEgg());
@@ -2012,7 +2012,7 @@ int main() {
                 auto nativeRaw=rawLater;
                 wr32(nativeRaw,0x00,pid);
                 wr16(nativeRaw,0x08,W::species(row));
-                wr32(nativeRaw,0x38,packIV(ivs));
+                wr32(nativeRaw,0x38,Legality::Gen4Trade::packIVs(ivs));
                 Pokemon::Pokemon4ReadOnly nativeWild(
                     Encryption::encryptArray4(nativeRaw),variant.saveGroup);
                 assert(nativeWild.valid() && !nativeWild.isEgg());
