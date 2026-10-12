@@ -28,8 +28,8 @@ int main(){
     auto bayleef=colo;
     bayleef.originalRowIndex=1;bayleef.originalSpecies=153;
     bayleef.originalLocation=3;bayleef.originalLevel=30;
-    bayleef.originalPid=0x0985A297u;
-    bayleef.originalIVs={6,1,0,7,17,7};
+    bayleef.originalPid=0xCC0DE0A1u;
+    bayleef.originalIVs={9,31,12,31,25,22}; // XDRNG seed=0x12345678
     assert(C::kEntries[1].teamSet==
         static_cast<uint8_t>(Legality::Gen3ColoShadowTeamLock::TeamSet::First));
     assert(S::evaluate(bayleef).status==Status::ConditionalShadowHistory);

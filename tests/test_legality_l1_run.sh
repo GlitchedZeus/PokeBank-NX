@@ -47,4 +47,4 @@ for profile in host sanitize; do
     fi
   done
 done
-echo 'L1: all four native host and ASan/UBSan suites PASS'
+echo "L1: all ${#suites[@]} native host and ASan/UBSan suites PASS"
