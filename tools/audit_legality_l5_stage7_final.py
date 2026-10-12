@@ -206,7 +206,10 @@ def verify_frozen_snapshot(report:dict)->None:
             'FROZEN_SCORE_DRIFT')
     rows=frozen.get('cells',[])
     require(len(rows)==len(report['cell_rows'])==336,'FROZEN_ROWS')
-    for i,(observed,now) in enumerate(zip(rows,report['cell_rows'])):
+    indexed={(r['game_group'],r['family_id']):r for r in rows}
+    require(len(indexed)==336,'FROZEN_DUPLICATE_CELL')
+    for i,now in enumerate(report['cell_rows']):
+        observed=indexed.get((now['game_group'],now['family_id']),{})
         for key in ('game_group','generation','family_id','family_name',
                     'native_applicability','historical_source_grade'):
             require(observed.get(key)==now.get(key),f'FROZEN_CELL_DRIFT:{i}:{key}')
