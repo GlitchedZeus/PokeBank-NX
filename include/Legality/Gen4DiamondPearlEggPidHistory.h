@@ -92,6 +92,14 @@ constexpr Result evaluate(const Input& in) noexcept {
     if(!in.originalParentSnapshotsVerified) {
         out.status=Status::UnknownParentCreationSnapshots;return out;
     }
+    // A verified source snapshot cannot contain an out-of-domain
+    // historical gender or empty source species. Treat unverifiable
+    // parent metadata as Unknown rather than finding a matching PID.
+    for(const auto& p:in.parents) {
+        if(p.species==0 || p.gender>2) {
+            out.status=Status::UnknownParentCreationSnapshots;return out;
+        }
+    }
     if(!in.originalDaycareSlotOrderVerified) {
         out.status=Status::UnknownPhysicalSlotOrder;return out;
     }
