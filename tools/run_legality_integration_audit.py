@@ -62,7 +62,8 @@ PROGRAMS: dict[str, tuple[str, ...]] = {
            "legality_l5_native_ev_vectors", "audit_legality_l5_native_codec",
            "audit_legality_l5_ev_probe", "audit_legality_l5_pk12_probe"),
     "audit": ("legality_stage2_native_format_properties", "legality_stage3_cross_lane_contracts",
-              "legality_l6_stage1_l2_duplicate_route_contract"),
+              "legality_l6_stage1_l2_duplicate_route_contract",
+              "legality_l6_stage4_gate_ledger"),
 }
 RUNNERS = {"l1": "tests/test_legality_l1_run.sh", "l2": "tests/test_legality_l2_run_all.sh",
            "l3": "tests/test_legality_l3_run_all.sh", "l4": "tests/test_legality_l4_runner.sh",
@@ -113,6 +114,8 @@ def plan(suite: str, sha: str) -> list[Gate]:
             Gate("stage2-native-sanitize", ["python3", "tools/audit_legality_stage2_native_formats.py", "--sanitize"], {}, RUNNERS["audit"]),
             Gate("stage3-cross-lane", ["python3", "tools/audit_legality_stage3_cross_lane.py", "--normal"], {}, RUNNERS["audit"]),
             Gate("stage3-cross-lane-sanitize", ["python3", "tools/audit_legality_stage3_cross_lane.py", "--sanitize"], {}, RUNNERS["audit"]),
+            Gate("stage4-native", ["python3", "tools/audit_legality_stage4_gate_ledger.py", "--normal"], {}, RUNNERS["audit"]),
+            Gate("stage4-native-sanitize", ["python3", "tools/audit_legality_stage4_gate_ledger.py", "--sanitize"], {}, RUNNERS["audit"]),
         ],
     }
     selected = tuple(groups) if suite == "all" else (suite,)
