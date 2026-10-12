@@ -36,7 +36,7 @@ for profile in host sanitize; do
   if [[ "$profile" == host ]]; then
     flags=(-O2)
   else
-    flags=(-O1 -fsanitize=address,undefined -fno-omit-frame-pointer)
+    flags=(-O1 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
   fi
   for suite in "${suites[@]}"; do
     sources=("tests/$suite.cpp")
@@ -48,10 +48,10 @@ for profile in host sanitize; do
     "$compiler" "${common[@]}" "${flags[@]}" "${sources[@]}" -o "$target"
     echo "L1: run $suite [$profile]"
     if [[ "$profile" == sanitize ]]; then
-      ASAN_OPTIONS=detect_leaks=0 "$target"
+      ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 "$target"
     else
       "$target"
     fi
   done
 done
-echo "L1: all ${#suites[@]} native host and ASan/UBSan suites PASS"
+echo "L1: all ${#suites[@]} native host and ASan/UBSan suites PASS at $(git rev-parse --short HEAD 2>/dev/null || printf unknown)"
