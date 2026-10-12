@@ -111,6 +111,13 @@ constexpr Result evaluate(const Input& input) noexcept {
            (op.mutated & ~P::maskFor(op.action))!=0u) {
             out.status=Status::CandidateRouteExcluded;return out;
         }
+        // Independently attested after-bytes are NOT authorization to mutate
+        // preserved metadata. Only the action's documented mutable fields or
+        // unavoidable raw-text encoding boundaries may install new values.
+        if((op.verifiedAfter.known &
+            ~(op.mutated|P::intrinsicallyReencoded(op.action)))!=0u) {
+            out.status=Status::UnknownProjection;return out;
+        }
         if(!hop.beforeProjectionIndependentlyVerified ||
            !hop.afterProjectionIndependentlyVerified ||
            !hop.before.known || !hop.after.known ||

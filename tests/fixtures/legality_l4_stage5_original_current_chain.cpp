@@ -131,6 +131,14 @@ int main() {
     assert(C::evaluate(driftAfter.input).status==S::UnknownProjection);
     Data driftMutation{};driftMutation.hops[0].operation.mutated|=P::TrainerIDs;
     assert(C::evaluate(driftMutation.input).status==S::CandidateRouteExcluded);
+    // A malicious event manifest cannot claim a trusted post-transfer OT ID
+    // replacement when Pal Park mechanics do not permit changing OT IDs.
+    Data immutableOverride{};
+    immutableOverride.hops[0].operation.verifiedAfter.known|=P::TrainerIDs;
+    immutableOverride.hops[0].operation.verifiedAfter.value[1]=99999;
+    immutableOverride.hops[0].after.value[1]=99999;
+    assert(C::evaluate(immutableOverride.input).status==S::UnknownProjection);
+    assert(!C::evaluate(immutableOverride.input).authenticated);
     // Independent evolution after Pal Park retains the source identity,
     // requires an intermediate record digest, and binds the new species.
     Data evolved{};
