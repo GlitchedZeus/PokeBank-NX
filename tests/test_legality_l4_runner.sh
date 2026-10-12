@@ -47,6 +47,7 @@ header_only=(
     test_legality_l4_attestation_matrix
     test_legality_l4_gen1_3_event_sources
     test_legality_l4_gen12_gift_history
+    test_legality_l4_gen3_distribution_matrix
 )
 native=(
     test_legality_l4_native_pk4_projection
@@ -80,6 +81,12 @@ echo "L4 C++ native PK3 compile: test_legality_l4_native_pk3_text"
     src/Encryption/Encryption3FRLG.cpp \
     -o "$scratch/test_legality_l4_native_pk3_text"
 "$scratch/test_legality_l4_native_pk3_text"
+echo "L4 C++ native PK3 compile: test_legality_l4_gen3_distribution_native_pk3"
+"$compiler" "${base[@]}" "${pk3_flags[@]}" \
+    tests/test_legality_l4_gen3_distribution_native_pk3.cpp \
+    src/Encryption/Encryption3FRLG.cpp \
+    -o "$scratch/test_legality_l4_gen3_distribution_native_pk3"
+"$scratch/test_legality_l4_gen3_distribution_native_pk3"
 echo "L4 Python frozen original-source projection integrity audit"
 python3 tools/legality_l4_projection_audit.py
 python3 -m unittest discover -v -s tests -p 'test_legality_l4_projection_audit.py'
@@ -90,4 +97,4 @@ python3 -m unittest discover -v -s tests -p 'test_legality_l4_l5_q07_join.py'
 if [[ -n "${L4_L5_Q07_JSON:-}" ]]; then
     python3 tools/legality_l4_l5_q07_join.py --l5-q07 "$L4_L5_Q07_JSON"
 fi
-echo "L4 all 16 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
+echo "L4 all 18 source-compiled test programs: PASS (sanitizers=${L4_SANITIZE:-0})"
