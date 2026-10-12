@@ -395,7 +395,13 @@ int main() {
     contains(surface, "beginCreate(screen)");
     contains(surface, "Gen4BoxTouchActions::selectsTappedBoxSlot(");
     contains(surface, "screen.selectedItemIndex = tapped;");
-    contains(surface, "if (selectedOccupied(screen)) beginActions(screen);");
+    // Both occupied and empty native box cells must enter the same guarded
+    // menu as A; Add never stages automatically from the first touch.
+    contains(surface, "screen.selectedItemIndex = tapped;");
+    contains(surface, "beginActions(screen);");
+    assert(surface.find("if (selectedOccupied(screen)) beginActions(screen);") == std::string::npos);
+    // A stale six-party hit target cannot pick an out-of-range party member.
+    contains(surface, "tapped - 6200 < static_cast<int>(screen.trainer.getPartySize())");
     contains(surface, "screen.touchedButtonId(touch)");
     contains(surface, "bridge(screen).stagedPokemonUnavailableReason()");
     contains(baseUi, "const bool gen4Staged = group == Enums::GameVersion::DP");
