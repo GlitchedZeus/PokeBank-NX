@@ -59,6 +59,26 @@ constexpr Result evaluate(const Input& in) noexcept {
            !route.originalSourceHistoryIndependentlyAttested){
             ++out.unverified;continue;
         }
+        // Opt-in Stage 5: bind the original acquisition/PID/IV/move
+        // records to the same actual deposited pair and creation items.
+        // A crossed archive is Unknown and cannot establish a negative.
+        namespace Route=Gen34OriginalSameRouteProof;
+        if(in.sameRouteProofs[i].supplied){
+            if(!in.originalEggSnapshotIndependentlyAttested ||
+               !in.originalEggSnapshotId ||
+               !p.parents[0].creationItemIndependentlyVerified ||
+               !p.parents[1].creationItemIndependentlyVerified){
+                ++out.unverified;continue;
+            }
+            out.sameRouteChecks[i]=Route::evaluate(in.sameRouteProofs[i],{
+                Route::gameFor(h.game),h.originalEggEventIdentity,
+                in.originalEggSnapshotId,route.originalDaycarePairIdentity,
+                p.parents[0].snapshotId,p.parents[1].snapshotId,true,
+                p.parents[0].heldItem,p.parents[1].heldItem});
+            if(out.sameRouteChecks[i]!=Route::Status::ConditionallySameRoute){
+                ++out.unverified;continue;
+            }
+        }
         auto single=in.full;
         single.original.count=1;
         single.original.alternatives[0]=route;
