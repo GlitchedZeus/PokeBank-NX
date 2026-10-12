@@ -31,14 +31,14 @@ The runner is designed to compile all 11 tests separately with C++20 `-Wall -Wex
 |---|---|---|
 | `test_legality_l2_gen3_egg_pid_creation.cpp` | B07 five-game retail PID/Everstone chronology | **PASS, exact Git blob** (GCC normal + GCC ASan/UBSan + Clang normal + Clang ASan/UBSan; **20,508** seeded/fixed controls per run) |
 | `test_legality_l2_gen3_joint_egg_pid_iv.cpp` | B07 same original egg and parent pair PID+IV | **PASS, exact Git blob** (same four compiler/mode combinations; **5,120** seeded histories + **50** provenance/Unknown checks per run) |
-| `test_legality_l2_gen3_iv_attested_alternatives.cpp` | B04/B05/B06/B11/B18 original physical IV alternatives | **NOT verified exact committed test this session** |
-| `test_legality_l2_gen3_joint_pid_iv_moves.cpp` | B08 same parent PID+IV+four-slot move | **NOT verified exact committed test; needs full 397,765-character original egg-move table** |
-| `test_legality_l2_gen3_pid_iv_moves_alternatives.cpp` | B18 triple-stage alternative parent universe | **NOT verified exact committed test; needs full original egg-move table** |
-| `test_legality_l2_dp_egg_iv.cpp` | B12 original DP overlay IV stage | **NOT verified exact committed test this session** |
-| `test_legality_l2_dp_egg_pid.cpp` | B13 original DP pending PID, Everstone and Masuda | **NOT verified exact committed test this session** |
+| `test_legality_l2_gen3_iv_attested_alternatives.cpp` | B04/B05/B06/B11/B18 original physical IV alternatives | **PASS, exact-source GCC/Clang normal + ASan/UBSan; 20,480 seeded cases per execution** |
+| `test_legality_l2_gen3_joint_pid_iv_moves.cpp` | B08 same parent PID+IV+four-slot move | **PASS, exact-source GCC/Clang normal + ASan/UBSan; 2,560 histories + 76 guards; full accepted Gen III egg-move VALUES with a locally regenerated table representation** |
+| `test_legality_l2_gen3_pid_iv_moves_alternatives.cpp` | B18 triple-stage alternative parent universe | **PASS, exact-source GCC/Clang normal + ASan/UBSan; 2,560 histories + 65 guards; same complete Gen III data-value caveat** |
+| `test_legality_l2_dp_egg_iv.cpp` | B12 original DP overlay IV stage | **PASS, exact-source GCC/Clang normal + ASan/UBSan; 8,202 seeded/fixed cases** |
+| `test_legality_l2_dp_egg_pid.cpp` | B13 original DP pending PID, Everstone and Masuda | **PASS, exact-source GCC/Clang normal + ASan/UBSan; 49 source-assembly controls** |
 | `test_legality_l2_dp_native_egg_history.cpp` | B12/B13 native encrypted original PK4 | **NOT verified; requires production PK4 linker sources** |
-| `test_legality_l2_dp_alternative_egg_histories.cpp` | B18 DP bounded original-stage PID+IV alternatives | **NOT verified exact latest committed test this session** |
-| `test_legality_l2_gen4_iv_candidate_set.cpp` | B16 HGSS/Platinum Power-item historical IV hypotheses | **NOT verified exact committed test this session** |
+| `test_legality_l2_dp_alternative_egg_histories.cpp` | B18 DP bounded original-stage PID+IV alternatives | **PASS, exact-source GCC/Clang normal + ASan/UBSan; 8,232 conditional histories** |
+| `test_legality_l2_gen4_iv_candidate_set.cpp` | B16 HGSS/Platinum Power-item historical IV hypotheses | **PASS, exact-source GCC/Clang normal + ASan/UBSan; 12,717 IV-stage hypotheses** |
 | `test_legality_l2_gen4_native_iv_history.cpp` | B16 native encrypted HGSS original parents + egg | **NOT verified; requires production PK4 linker sources** |
 
 **Verifiable executed Git blob identity** (the source files on GitHub and local test files were compared with `git hash-object`):
@@ -48,7 +48,7 @@ The runner is designed to compile all 11 tests separately with C++20 `-Wall -Wex
 - `tests/test_legality_l2_gen3_egg_pid_creation.cpp`: `0ebda9c01b3b5978e2b7c541a3c9f334522e2125`.
 - `tests/test_legality_l2_gen3_joint_egg_pid_iv.cpp`: `d9d577f240e885fcca9710471e1e744150b81e61`.
 
-Executed from the local staged exact-file subset using `g++` and `clang++` (C++20 `-Werror`, O2 normally, O1 -g plus `-fsanitize=address,undefined -fno-omit-frame-pointer` for sanitized); each binary printed PASS and returned success. **Eight executions in total**. The container has no direct DNS access to clone GitHub; this did not yield a full checkout. Do not misrepresent the other nine sources as compiled.
+Executed from the local staged exact-file subset using `g++` and `clang++` (C++20 `-Werror`, O2 normally, O1 -g plus `-fsanitize=address,undefined -fno-omit-frame-pointer` for sanitized); each binary printed PASS and returned success. **36 successful executions across nine exact-blob test suites**. The container has no direct DNS access to clone GitHub; this did not yield a full checkout. Only the two native encrypted-PK4 suites remain unexecuted. The accepted Gen III egg-move dataset was reconstructed with the full original 973 move bits and 184 pre-evolution links, but the local data header bytes differ from the repository's generated 397,765-character file. All other used accepted headers match their Git blobs. For every source/test blob and the precise reconstruction/CI limitations, read [the 9/11 validation report](L2_EXACT_SOURCE_9_OF_11_VALIDATION_20261012.md).
 
 ### Priorities to unblock acceptance
 
