@@ -470,11 +470,14 @@ int main() {
     contains(surface, "Names::machineDisplayLabel(bridge(screen).sourceSave().rawFamily()");
     contains(surface, "constexpr int w = 560;");
     assert(surface.find("const int w = occupied ? 650 : 560;") == std::string::npos);
-    contains(surface, "static_cast<int>(actions.count) * geometry.rowStep + 62");
+    contains(surface, "NarrowPokemonMenu::Model narrowGen4Actions(");
+    contains(surface, "drawNarrowPokemonActions(fb, screen.touchButtons, model");
     contains(surface, "state.target == TargetKind::Party");
     contains(surface, "Master Vault is intentionally not started");
-    contains(surface, "drawNativeActionRow(fb, x + 22, yy, w - 44");
-    contains(surface, "entry.label, selected, entry.enabled");
+    contains(surface, "if (actions[static_cast<std::size_t>(next)].enabled) break;");
+    const auto narrow = read("include/UI/NarrowPokemonActionMenu.h");
+    contains(narrow, "int width = 440");
+    contains(narrow, "constexpr Geometry geometry(");
     const auto chrome = read("include/UI/ScreenChrome.h");
     contains(chrome, "const Color disabledColor(");
     contains(chrome, "Colors::TextSecondary");
