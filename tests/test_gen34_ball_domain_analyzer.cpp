@@ -10,6 +10,7 @@
 #include "Legality/Gen34EmeraldPalParkCompleteHistory.h"
 #include "Legality/Gen34EmeraldPalParkCandidateUniverse.h"
 #include "Legality/Gen4WildSourceLinkedHistory.h"
+#include "Legality/Gen4PlatinumEggPidStage.h"
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen34OrdinaryEggMoveConstruction.h"
 #include "Legality/Gen4NativeBreedingParentEvidence.h"
@@ -2041,6 +2042,202 @@ int main() {
             ptWild.originalEncryptedBytes().end());
         assert(std::equal(before.begin(),before.end(),
                           ptWild.originalEncryptedBytes().begin()));
+    }
+
+    // RNG-005 / BREED-005: source-attested Platinum unhatched daycare
+    // egg PID from MT draw history + selected Everstone nature and
+    // optional four-step international Masuda ARNG. All initial values
+    // below are explicitly SYNTHETIC original-stage witnesses.
+    {
+        namespace PID=Legality::Gen4PlatinumEggPidStage;
+        const auto makeWitness=[&](uint32_t pid,uint16_t item,
+                                   uint8_t gender,bool egg) {
+            auto raw=rawLater;
+            wr32(raw,0x00,pid);
+            wr16(raw,0x08,1); // Bulbasaur
+            wr16(raw,0x0A,item);
+            raw[0x40]=static_cast<std::byte>(gender<<1);
+            wr32(raw,0x38,egg?0x40000000u:0u);
+            return Pokemon::Pokemon4ReadOnly(
+                Encryption::encryptArray4(raw),Enums::GameVersion::PT);
+        };
+        auto female=makeWitness(0x12345678u,PID::kEverstone,1,false);
+        auto male=makeWitness(0x87654321u,0,0,false);
+        auto originalEgg=makeWitness(46u,0,0,true);
+        assert(female.valid() && male.valid() && originalEgg.valid());
+        assert(!female.isEgg() && !male.isEgg() && originalEgg.isEgg());
+        assert(female.gender()==1 && male.gender()==0);
+        assert(female.pid()%25u==21u);
+        PID::Witness stage{};
+        stage.game="platinum_nds";
+        stage.physicalSlot0=&female;stage.physicalSlot1=&male;
+        stage.originalUnhatchedEgg=&originalEgg;
+        stage.parentPairToken=0x51510001u;
+        stage.mtCreationToken=0x51510001u;
+        stage.eggCreationToken=0x51510001u;
+        stage.parentSnapshotsIndependentlyVerified=true;
+        stage.parentalItemHistoryIndependentlyVerified=true;
+        stage.physicalDaycareOrderIndependentlyVerified=true;
+        stage.pairCompatibilityIndependentlyVerified=true;
+        stage.originalEggSourceIndependentlyVerified=true;
+        stage.originalEggPidUnchangedIndependentlyVerified=true;
+        stage.originalDaycareTrainerIdIndependentlyVerified=true;
+        stage.originalDaycareTrainerId32=0;
+        stage.parentsLanguageHistoryIndependentlyVerified=true;
+        stage.creationLCRngRollIndependentlyVerified=true;
+        stage.creationLCRngRoll=0x7FFEu; // Everstone succeeds
+        stage.consecutiveMTOutputsIndependentlyVerified=true;
+        stage.exactConsumedMTCountIndependentlyVerified=true;
+        stage.mtCount=2;stage.mtDraws[0]=7u;stage.mtDraws[1]=46u;
+        const auto good=PID::evaluate(stage);
+        assert(good.status==PID::Status::KnownConditionalPidHistory);
+        assert(good.selectedEverstoneSlot==0 && good.everstoneApplied);
+        assert(good.consumedMTDraws==2 && good.retainedEggPid==46u);
+        // A failing Everstone coin flip MUST use the first MT output,
+        // and the exact >= 0x7FFF threshold is tested at the boundary.
+        auto failedFlip=stage;
+        failedFlip.creationLCRngRoll=0x7FFFu;
+        failedFlip.mtCount=1;
+        auto earlyEgg=makeWitness(7u,0,0,true);
+        failedFlip.originalUnhatchedEgg=&earlyEgg;
+        assert(PID::evaluate(failedFlip).status==
+               PID::Status::KnownConditionalPidHistory);
+        assert(!PID::evaluate(failedFlip).everstoneApplied);
+        auto falseEarly=failedFlip;
+        falseEarly.originalUnhatchedEgg=&originalEgg;
+        assert(PID::evaluate(falseEarly).status==
+               PID::Status::CandidatePidContradicted);
+        // Without an Everstone on the selected female, an unrelated
+        // male-held Everstone does not select the mother's Nature.
+        auto bareFemale=makeWitness(0x12345678u,0,1,false);
+        auto maleStone=makeWitness(0x87654321u,PID::kEverstone,0,false);
+        auto donorCheck=failedFlip;
+        donorCheck.physicalSlot0=&bareFemale;
+        donorCheck.physicalSlot1=&maleStone;
+        donorCheck.creationLCRngRollIndependentlyVerified=false;
+        assert(PID::evaluate(donorCheck).status==
+               PID::Status::KnownConditionalPidHistory);
+        assert(!PID::evaluate(donorCheck).everstoneApplied);
+        // Ditto overrides the female donor in the pinned Platinum routine.
+        auto dittoRaw=rawLater;
+        wr16(dittoRaw,0x08,PID::kDitto);
+        wr16(dittoRaw,0x0A,PID::kEverstone);
+        wr32(dittoRaw,0x00,0x87654321u);
+        dittoRaw[0x40]=std::byte{4};
+        Pokemon::Pokemon4ReadOnly ditto(
+            Encryption::encryptArray4(dittoRaw),Enums::GameVersion::PT);
+        assert(ditto.valid() && ditto.species()==PID::kDitto);
+        auto dittoCase=stage;dittoCase.physicalSlot1=&ditto;
+        dittoCase.mtDraws[0]=7;
+        dittoCase.mtDraws[1]=31; // 31 % 25 == 6, Ditto PID nature
+        auto dittoEgg=makeWitness(31,0,0,true);
+        dittoCase.originalUnhatchedEgg=&dittoEgg;
+        assert(PID::evaluate(dittoCase).status==
+               PID::Status::KnownConditionalPidHistory);
+        assert(PID::evaluate(dittoCase).selectedEverstoneSlot==1);
+        // Four bounded ARNG steps when source-attested parents use
+        // different languages; no ARNG when the initial PID is shiny.
+        constexpr auto international=PID::languageAdjustedPid(46u,0u,true);
+        static_assert(international.steps>0 && international.steps<=4);
+        static_assert(PID::languageAdjustedPid(46u,0u,false).pid==46u);
+        static_assert(PID::languageAdjustedPid(46u,46u,true).steps==0);
+        auto intlEgg=makeWitness(international.pid,0,0,true);
+        auto internationalCase=stage;
+        internationalCase.parentsHaveDifferentLanguages=true;
+        internationalCase.originalUnhatchedEgg=&intlEgg;
+        const auto adjusted=PID::evaluate(internationalCase);
+        assert(adjusted.status==PID::Status::KnownConditionalPidHistory);
+        assert(adjusted.retainedEggPid==international.pid);
+        assert(adjusted.internationalArngSteps==international.steps);
+        auto intlMismatch=stage;intlMismatch.parentsHaveDifferentLanguages=true;
+        assert(PID::evaluate(intlMismatch).status==
+               PID::Status::CandidatePidContradicted);
+        auto alreadyShiny=stage;
+        alreadyShiny.parentsHaveDifferentLanguages=true;
+        alreadyShiny.originalDaycareTrainerId32=46u;
+        assert(PID::evaluate(alreadyShiny).status==
+               PID::Status::KnownConditionalPidHistory);
+        assert(PID::evaluate(alreadyShiny).internationalArngSteps==0);
+        // Explicit uncertainty is NEVER upgraded to an exclusion:
+        // neither the captured original MT sequence nor historical
+        // language/coin-flip history is stored in detached PK4.
+        auto missingMT=stage;missingMT.consecutiveMTOutputsIndependentlyVerified=false;
+        assert(PID::evaluate(missingMT).status==PID::Status::UnknownMTDrawHistory);
+        auto missingCount=stage;missingCount.exactConsumedMTCountIndependentlyVerified=false;
+        assert(PID::evaluate(missingCount).status==PID::Status::UnknownMTDrawHistory);
+        auto missingLanguages=stage;missingLanguages.parentsLanguageHistoryIndependentlyVerified=false;
+        assert(PID::evaluate(missingLanguages).status==
+               PID::Status::UnknownParentLanguageHistory);
+        auto missingCoin=stage;missingCoin.creationLCRngRollIndependentlyVerified=false;
+        assert(PID::evaluate(missingCoin).status==PID::Status::UnknownEverstoneProc);
+        auto unknownParent=stage;unknownParent.parentSnapshotsIndependentlyVerified=false;
+        assert(PID::evaluate(unknownParent).status==PID::Status::UnknownHistoricalParents);
+        auto missingPair=stage;missingPair.pairCompatibilityIndependentlyVerified=false;
+        assert(PID::evaluate(missingPair).status==PID::Status::UnknownPairCompatibility);
+        auto missingEgg=stage;missingEgg.originalEggSourceIndependentlyVerified=false;
+        assert(PID::evaluate(missingEgg).status==PID::Status::UnknownOriginalEgg);
+        auto mismatchedClock=stage;mismatchedClock.eggCreationToken^=1u;
+        assert(PID::evaluate(mismatchedClock).status==
+               PID::Status::IncoherentHistoricalStage);
+        auto noEverstoneNatureFound=stage;
+        noEverstoneNatureFound.mtCount=PID::kHistoryBound;
+        for(auto& value:noEverstoneNatureFound.mtDraws)value=7u;
+        assert(PID::evaluate(noEverstoneNatureFound).status==
+               PID::Status::SearchBoundExceededUnknown);
+        auto unsupportedGame=stage;unsupportedGame.game="heartgold_nds";
+        assert(PID::evaluate(unsupportedGame).status==PID::Status::UnsupportedGame);
+        // Multiple original daycare PID routes MUST share the same
+        // original encrypted egg record and bounded full evidence.
+        PID::UniverseInput paths{};
+        paths.originalEgg=&originalEgg;
+        paths.originalEggSourceIndependentlyVerified=true;
+        paths.count=3;
+        for(uint8_t i=0;i<3;++i) {
+            paths.alternatives[i].identity=100u+i;
+            paths.alternatives[i].sourceIndependentlyGrounded=true;
+            paths.alternatives[i].fullNegativePidMethodCoverageIndependentlyVerified=true;
+            paths.alternatives[i].stage=stage;
+        }
+        paths.alternatives[1].stage.mtDraws[1]=21u;
+        paths.alternatives[2].stage.exactConsumedMTCountIndependentlyVerified=false;
+        const auto mixed=PID::evaluateUniverse(paths);
+        assert(mixed.status==PID::UniverseStatus::OneConditionalPidHistory);
+        assert(mixed.consistent==1 && mixed.contradicted==1 &&
+               mixed.unresolved==1);
+        auto exhausted=paths;
+        exhausted.alternatives[0].stage.mtDraws[1]=21u;
+        exhausted.alternatives[2].stage.mtDraws[1]=21u;
+        exhausted.alternatives[2].stage.exactConsumedMTCountIndependentlyVerified=true;
+        assert(PID::evaluateUniverse(exhausted).status==
+               PID::UniverseStatus::UnknownCandidateEnumeration);
+        exhausted.allPlatinumDaycarePidRoutesIndependentlyEnumerated=true;
+        const auto allNegative=PID::evaluateUniverse(exhausted);
+        assert(allNegative.status==
+               PID::UniverseStatus::AllAttestedPlatinumPidHistoriesContradicted);
+        assert(allNegative.contradicted==3);
+        auto partial=exhausted;
+        partial.alternatives[1].fullNegativePidMethodCoverageIndependentlyVerified=false;
+        assert(PID::evaluateUniverse(partial).status==
+               PID::UniverseStatus::UnknownPidStageEvidence);
+        auto alien=exhausted;
+        alien.alternatives[0].stage.originalUnhatchedEgg=&earlyEgg;
+        assert(PID::evaluateUniverse(alien).status==
+               PID::UniverseStatus::UnknownCandidateProvenance);
+        auto duplicate=exhausted;
+        duplicate.alternatives[1].identity=100u;
+        assert(PID::evaluateUniverse(duplicate).status==
+               PID::UniverseStatus::UnknownCandidateIdentity);
+        auto noRoot=exhausted;noRoot.originalEgg=nullptr;
+        assert(PID::evaluateUniverse(noRoot).status==
+               PID::UniverseStatus::UnknownRootEgg);
+        auto over=exhausted;over.count=9;
+        assert(PID::evaluateUniverse(over).status==
+               PID::UniverseStatus::CapacityExceededUnknown);
+        const auto untouched=std::vector<std::byte>(
+            originalEgg.originalEncryptedBytes().begin(),
+            originalEgg.originalEncryptedBytes().end());
+        assert(std::equal(untouched.begin(),untouched.end(),
+                          originalEgg.originalEncryptedBytes().begin()));
     }
 
     // Calling the full analyzer by itself must not imply a witnessed
