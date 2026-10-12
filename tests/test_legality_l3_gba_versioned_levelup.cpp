@@ -141,6 +141,34 @@ static_assert(L::offerCount(G::Ruby,290)==10); // Nincada, not internal species 
 static_assert(L::offerAt(G::Ruby,290,0).move==10);
 static_assert(L::offerAt(G::FireRed,386,0).move==43);
 
+// The original pret/pokefirered Deoxys learnset is conditional on FIRERED
+// versus LEAFGREEN. No combined FRLG offer table is valid for this species.
+// All four existing slots and one independently witnessed replacement are
+// required; a missing or guessed origin must never produce Invalid.
+constexpr L::Input deoxys(G game,uint16_t offered) {
+    L::Input x{};x.game=game;x.nationalSpecies=386;
+    x.initialLevel=14;x.observedLevel=15;
+    x.initialMoves={43,35,101,100}; // Leer, Wrap, Night Shade, Teleport
+    x.observedMoves={offered,35,101,100};
+    x.initialSnapshotVerified=true;
+    x.sameSpeciesAndGameContinuityVerified=true;
+    x.noOtherMoveChangesVerified=true;
+    x.allPlayerOfferDecisionsVerified=true;
+    x.stepCount=1;x.steps[0]={15,offered,D::ReplaceSlot,0};return x;
+}
+static_assert(L::offerCount(G::FireRed,386)==12);
+static_assert(L::offerCount(G::LeafGreen,386)==14);
+static_assert(L::offerAt(G::FireRed,386,4).move==269); // Taunt
+static_assert(L::offerAt(G::LeafGreen,386,4).move==282); // Knock Off
+static_assert(L::evaluate(deoxys(G::FireRed,269)).status==S::CandidateConsistent);
+static_assert(L::evaluate(deoxys(G::LeafGreen,282)).status==S::CandidateConsistent);
+static_assert(L::evaluate(deoxys(G::FireRed,282)).status==S::CandidateContradicted);
+static_assert(L::evaluate(deoxys(G::LeafGreen,269)).status==S::CandidateContradicted);
+static_assert([]{auto x=deoxys(G::FireRed,269);x.sameSpeciesAndGameContinuityVerified=false;
+    return L::evaluate(x).status==S::Unresolved;}());
+static_assert([]{auto x=deoxys(G::LeafGreen,282);x.initialSnapshotVerified=false;
+    return L::evaluate(x).status==S::Unresolved;}());
+
 // The accepted Emerald table has full 386-species National Dex coverage.
 void exerciseAllEmerald() {
     uint32_t entries=0;uint8_t peak=0;
@@ -162,4 +190,11 @@ void exerciseAllEmerald() {
     assert(L::supported(G::Ruby,386));
     assert(L::supported(G::LeafGreen,386));
 }
-int main(){exerciseAllEmerald();std::cout<<"L3 pinned GBA ordered level-up four-slot replay: PASS\n";}
+int main(){
+    exerciseAllEmerald();
+    assert(L::evaluate(deoxys(G::FireRed,269)).status==S::CandidateConsistent);
+    assert(L::evaluate(deoxys(G::LeafGreen,282)).status==S::CandidateConsistent);
+    assert(L::evaluate(deoxys(G::FireRed,282)).status==S::CandidateContradicted);
+    assert(L::evaluate(deoxys(G::LeafGreen,269)).status==S::CandidateContradicted);
+    std::cout<<"L3 pinned GBA ordered level-up four-slot replay: PASS\n";
+}
