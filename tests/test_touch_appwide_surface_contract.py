@@ -561,12 +561,18 @@ require_all("src/UI/Gen2HardwareWorkspaceFix.inc",
             "startMoveRow == endMoveRow",
             "startProgressionRow == endProgressionRow",
             "if (sameTarget)")
-# Gen II Details/review panels only consume vertical drags. A sideways swipe that crossed
-# touch slop must never become an upward row jump through max(1, abs(dy) / rowH).
+# Gen II Details owns a clipped independent pixel viewport. An old parallel
+# touch handler must not also mutate the selected DETAILS row on drag release.
+# Review retains a separate vertical-only row-browse gesture.
 gen2_workspace_touch = read("src/UI/Gen2HardwareWorkspaceFix.inc")
-if gen2_workspace_touch.count(
-    "std::abs(touch.deltaY()) > std::abs(touch.deltaX())") < 2:
-    raise AssertionError("Gen II details/review: both drag paths need vertical direction gating")
+gen2_unified = gen2_workspace_touch.split("void handleUnifiedTouch(", 1)[1].split(
+    "void handleParityTouch(", 1)[0]
+assert "if (touch.justReleased() && touch.dragged()) return;" in gen2_unified
+assert "unified.focus = {Unified::Panel::Details, static_cast<uint8_t>(next), 0};" not in gen2_unified
+assert gen2_workspace_touch.count(
+    "std::abs(touch.deltaY()) > std::abs(touch.deltaX())") >= 1, (
+    "Gen II review: sideways swipe must not browse pending rows"
+)
 
 gsc_editor = read("src/UI/TrainerViewScreenGSCOverlay.inc")
 require_all("src/UI/TrainerViewScreenGSCOverlay.inc",

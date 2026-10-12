@@ -178,24 +178,11 @@ void handleUnifiedTouch(TrainerViewScreen& screen, const TouchInput& touch, uint
 
     // Keep Details/Stats/Moves focus intact until release resolves the actual
     // tap. Contact alone can still turn into a long Details-panel swipe.
-    // Once TouchInput classifies a gesture as a drag it can never become a tap again. Vertical
-    // drags beginning in DETAILS therefore browse/scroll without activating the row under release.
-    if (touch.justReleased() && touch.dragged() && !unified.moveEditor && !unified.progressionEditor) {
-        const SharedPokemonShell::Geometry geometry(1280, 720, kNavBarH);
-        if (pointInRect(touch.startX(), touch.startY(), geometry.leftX, geometry.y,
-                        geometry.leftW, geometry.h) &&
-            std::abs(touch.deltaY()) >= 24 &&
-            std::abs(touch.deltaY()) > std::abs(touch.deltaX())) {
-            const int detailCount = unified.crystal ? 13 : 9;
-            const int steps = std::max(1, std::abs(touch.deltaY()) / 38);
-            const int direction = touch.deltaY() < 0 ? 1 : -1;
-            const int next = std::clamp(static_cast<int>(unified.focus.row) + direction * steps,
-                                        0, detailCount - 1);
-            unified.focus = {Unified::Panel::Details, static_cast<uint8_t>(next), 0};
-            unified.detailsFocus = Unified::detailsScrollFocus(unified.focus, unified.detailsFocus);
-        }
-        return;
-    }
+    // The shared Gen II Details panel already has its own clipped pixel
+    // viewport (updateUnifiedDetailsTouch). Never ALSO move the semantic
+    // editor focus when that finger scroll ends: the duplicate old handler
+    // skipped rows and could jump past Held Item. A drag is never a tap.
+    if (touch.justReleased() && touch.dragged()) return;
 
     if (touch.justTapped()) {
         // Resolve both contact and release using the SAME visible geometry. Calling the passive
