@@ -23,6 +23,16 @@ int main(){
     colo.originalCaptureStageIndependentlyAttested=true;
     assert(C::kEntries[0].shadowIndex==1);
     assert(S::evaluate(colo).status==Status::ConditionalShadowHistory);
+    // First no-lock Colosseum team: its original source is Bayleef
+    // (a different exact row and level/location than XD's first shadow).
+    auto bayleef=colo;
+    bayleef.originalRowIndex=1;bayleef.originalSpecies=153;
+    bayleef.originalLocation=3;bayleef.originalLevel=30;
+    bayleef.originalPid=0x0985A297u;
+    bayleef.originalIVs={6,1,0,7,17,7};
+    assert(C::kEntries[1].teamSet==
+        static_cast<uint8_t>(Legality::Gen3ColoShadowTeamLock::TeamSet::First));
+    assert(S::evaluate(bayleef).status==Status::ConditionalShadowHistory);
     auto bounded=colo;bounded.teamSearchBudget=1;
     assert(S::evaluate(bounded).status==Status::BoundedTeamSearchUnknown);
     auto wrong=colo;wrong.originalFateful=true; // XD field on Colosseum
@@ -60,6 +70,11 @@ int main(){
     wrong=xd;wrong.originalBall=3;
     assert(S::evaluate(wrong).status==Status::CandidateOriginalIdentityContradicted);
     wrong=xd;wrong.originalFateful=false;
+    assert(S::evaluate(wrong).status==Status::CandidateOriginalIdentityContradicted);
+    // XD shiny anti-check is recomputed from the attested PID and
+    // trainer, not trusted from a caller's boolean.
+    wrong=xd;wrong.originalTid=static_cast<uint16_t>(
+        (wrong.originalPid>>16) ^ (wrong.originalPid&0xFFFFu) ^ wrong.originalSid);
     assert(S::evaluate(wrong).status==Status::CandidateOriginalIdentityContradicted);
     wrong=xd;wrong.originalTid=12346;
     assert(S::evaluate(wrong).status!=Status::ConditionalShadowHistory);

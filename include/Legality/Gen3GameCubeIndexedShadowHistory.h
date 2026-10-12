@@ -90,6 +90,13 @@ inline Result evaluate(const Candidate& c) {
         return {Status::CandidateOriginalIdentityContradicted,row.index};
     if(!c.originalTrainerIndependentlyAttested)
         return {Status::UnknownOriginalTrainer,row.index};
+    // XD's stored PK3 shiny flag is not an independent fact. Recheck
+    // the actual PID against the original attested TID/SID before
+    // permitting a source shadow route (XD shadows were anti-shiny).
+    const uint32_t shinyXor=(c.originalPid>>16) ^
+        (c.originalPid&0xFFFFu) ^ c.originalTid ^ c.originalSid;
+    if(shinyXor<8u)
+        return {Status::CandidateOriginalIdentityContradicted,row.index};
     const auto rng=Gen3CxdPidIv::analyzeWithTrainer(
         c.originalPid,c.originalIVs,c.originalTid,c.originalSid);
     if(!rng.matched)
