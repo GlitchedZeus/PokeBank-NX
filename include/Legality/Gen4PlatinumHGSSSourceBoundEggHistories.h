@@ -5,6 +5,7 @@
 #include "Legality/Gen4PlatinumHGSSOriginalDaycareSource.h"
 #include "Legality/Gen34OriginalDaycareRoles.h"
 #include "Legality/Gen34OriginalSameRouteProof.h"
+#include "Legality/Gen34OriginalParentLineage.h"
 namespace Legality::Gen4PlatinumHGSSSourceBoundEggHistories {
 namespace F=Gen4PlatinumHGSSFullEggHistories;
 namespace S=Gen4PlatinumHGSSOriginalDaycareSource;
@@ -18,6 +19,7 @@ struct Input {
     uint64_t originalEggSnapshotId=0;
     bool originalEggSnapshotIndependentlyAttested=false;
     std::array<Gen34OriginalSameRouteProof::Input,8> sameRouteProofs{};
+    std::array<Gen34OriginalParentLineage::Input,8> originalParentLineages{};
 };
 struct Result {
     Status status=Status::NoCandidates;
@@ -25,6 +27,7 @@ struct Result {
     std::array<S::Status,8> sourceChecks{};
     std::array<F::Status,8> routeChecks{};
     std::array<Gen34OriginalSameRouteProof::Status,8> sameRouteChecks{};
+    std::array<Gen34OriginalParentLineage::Status,8> lineageChecks{};
 };
 constexpr Result evaluate(const Input& in) noexcept {
     Result out{};
@@ -76,6 +79,23 @@ constexpr Result evaluate(const Input& in) noexcept {
                 p.parents[0].snapshotId,p.parents[1].snapshotId,true,
                 p.parents[0].heldItem,p.parents[1].heldItem});
             if(out.sameRouteChecks[i]!=Route::Status::ConditionallySameRoute){
+                ++out.unverified;continue;
+            }
+        }
+        // A transferred/traded/evolved parent history must itself
+        // terminate at this same independently attested original IV/move
+        // deposition. Missing chain evidence stays Unknown.
+        if(in.originalParentLineages[i].supplied){
+            namespace Lineage=Gen34OriginalParentLineage;
+            if(!p.parents[0].originalSnapshotIndependentlyVerified ||
+               !p.parents[1].originalSnapshotIndependentlyVerified){
+                ++out.unverified;continue;
+            }
+            out.lineageChecks[i]=Lineage::evaluate(in.originalParentLineages[i],{
+                Gen34OriginalSameRouteProof::gameFor(h.game),
+                {p.parents[0].snapshotId,p.parents[1].snapshotId},
+                {p.parents[0].species,p.parents[1].species}}).status;
+            if(out.lineageChecks[i]!=Lineage::Status::ConditionallyReplayed){
                 ++out.unverified;continue;
             }
         }
