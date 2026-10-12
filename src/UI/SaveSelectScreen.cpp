@@ -273,7 +273,13 @@ namespace UI {
                 fb.drawText(x + 44, rowY + 8, instance.label,
                             i == selectedIndex ? Colors::TextPrimary : Colors::TextSecondary,
                             TextStyle::Body);
-                if (instance.mostRecentlyModified || showOlderLabel) {
+                // File mtime cannot rank two validated retail copies inside
+                // the same physical Gen V save. Never imply that Primary is
+                // newer merely because its row sorts before Backup.
+                const bool separateGen5Copy =
+                    instance.generation==5 && !instance.sourceVariant.empty();
+                if (!separateGen5Copy &&
+                    (instance.mostRecentlyModified || showOlderLabel)) {
                     const std::string recency = instance.mostRecentlyModified
                         ? "MOST RECENTLY MODIFIED" : "OLDER FILE";
                     int fw = 0, fh = 0;

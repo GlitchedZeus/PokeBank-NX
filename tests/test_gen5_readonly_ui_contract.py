@@ -143,7 +143,11 @@ require(manager, "selectScreen.getSelectedGen5Copy()",
         "legacySourceBindings,profileIdentity(userUid),gameId,selectedCopy")
 # A file with two different checksum-valid copies cannot open through an
 # automatic persisted assignment that does not record which copy was chosen.
-require(games, '"CHOOSE COPY"', "SaveCopySelection::Automatic")
+require(games, '"CHOOSE COPY"', "SaveCopySelection::Automatic",
+        "const bool separateGen5Copy =",
+        "instance.generation==5 && !instance.sourceVariant.empty()",
+        "if (!separateGen5Copy &&")
+
 
 # The display bridge must draw from validated staged PK5, never serialize SAV5.
 require(trainer, "Gen5ReadOnlyTrainer::rebuildPresentation(")
