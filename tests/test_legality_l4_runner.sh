@@ -87,6 +87,12 @@ if [[ "${#discovered[@]}" -ne 28 || "${#registered[@]}" -ne 28 ]] ||
 fi
 echo "L4 discovery/registration parity: 28/28 C++ suites"
 
+# Independent L4-only source boundary contract. This does not replace any
+# of the 28 registered complete-checkout C++ suites.
+echo "L4 Ranger native storage field contract (196861 exhaustive cases)"
+"$compiler" "${base[@]}" tests/fixtures/legality_l4_ranger_storage_ball.cpp \
+    -o "$scratch/l4_ranger_storage_ball"
+"$scratch/l4_ranger_storage_ball"
 for name in "${header_only[@]}"; do
     echo "L4 C++ compile: $name"
     "$compiler" "${base[@]}" "tests/$name.cpp" -o "$scratch/$name"
