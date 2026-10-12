@@ -12,6 +12,8 @@ M::Input base(const char* game="diamond_nds"){
     in.originalPhysicalPairIdentity=0xBEEFB001u;
     in.sharedOriginalEventIndependentlyAttested=true;
     in.physicalDepositOrderIndependentlyAttested=true;
+    in.originalDaycarePairEligibilityIndependentlyAttested=true;
+    in.eligibleOriginalDaycarePair=true;
     in.physicalSlots[0]={101,25,1,{33,45,98,57},true,true};
     in.physicalSlots[1]={202,25,0,{33,45,98,57},true,true};
     in.fatherPhysicalSlot=1;in.fatherRoleIndependentlyAttested=true;
@@ -68,6 +70,10 @@ int main(){
         assert(swap.originalFatherSnapshot==202 && swap.originalMotherSnapshot==101);
         auto incorrectRoles=x;incorrectRoles.fatherPhysicalSlot=0;
         assert(M::evaluate(incorrectRoles).status==M::Status::IncoherentPhysicalParentRoles);
+        auto missingEligibility=x;missingEligibility.originalDaycarePairEligibilityIndependentlyAttested=false;
+        assert(M::evaluate(missingEligibility).status==M::Status::UnknownOriginalPairEligibility);
+        auto incompatible=x;incompatible.eligibleOriginalDaycarePair=false;
+        assert(M::evaluate(incompatible).status==M::Status::IncompatibleOriginalPair);
         auto missingRoles=x;missingRoles.fatherRoleIndependentlyAttested=false;
         assert(M::evaluate(missingRoles).status==M::Status::UnknownPhysicalParentRoles);
         auto sameParent=x;sameParent.physicalSlots[1].snapshotIdentity=101;
