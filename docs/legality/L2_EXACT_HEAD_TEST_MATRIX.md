@@ -36,10 +36,10 @@ The runner is designed to compile all 11 tests separately with C++20 `-Wall -Wex
 | `test_legality_l2_gen3_pid_iv_moves_alternatives.cpp` | B18 triple-stage alternative parent universe | **PASS, exact-source GCC/Clang normal + ASan/UBSan; 2,560 histories + 65 guards; same complete Gen III data-value caveat** |
 | `test_legality_l2_dp_egg_iv.cpp` | B12 original DP overlay IV stage | **PASS, exact-source GCC/Clang normal + ASan/UBSan; 8,202 seeded/fixed cases** |
 | `test_legality_l2_dp_egg_pid.cpp` | B13 original DP pending PID, Everstone and Masuda | **PASS, exact-source GCC/Clang normal + ASan/UBSan; 49 source-assembly controls** |
-| `test_legality_l2_dp_native_egg_history.cpp` | B12/B13 native encrypted original PK4 | **NOT verified; requires production PK4 linker sources** |
+| `test_legality_l2_dp_native_egg_history.cpp` | B12/B13 native encrypted original PK4 | **PASS, exact L2 and production parser/encryption Git blobs under GCC+Clang normal and ASan/UBSan; temporary reduced unrelated declarations/link GC, full host linking pending** |
 | `test_legality_l2_dp_alternative_egg_histories.cpp` | B18 DP bounded original-stage PID+IV alternatives | **PASS, exact-source GCC/Clang normal + ASan/UBSan; 8,232 conditional histories** |
 | `test_legality_l2_gen4_iv_candidate_set.cpp` | B16 HGSS/Platinum Power-item historical IV hypotheses | **PASS, exact-source GCC/Clang normal + ASan/UBSan; 12,717 IV-stage hypotheses** |
-| `test_legality_l2_gen4_native_iv_history.cpp` | B16 native encrypted HGSS original parents + egg | **NOT verified; requires production PK4 linker sources** |
+| `test_legality_l2_gen4_native_iv_history.cpp` | B16 native encrypted HGSS original parents + egg | **PASS, same four exact-native-path compiler/sanitizer executions; complete production translation-unit linker graph pending** |
 
 **Verifiable executed Git blob identity** (the source files on GitHub and local test files were compared with `git hash-object`):
 - `include/Legality/Gen3EggPIDCreationHistory.h`: `69a147b006630fb599702527d85a7b47c83bd783`.
@@ -48,7 +48,7 @@ The runner is designed to compile all 11 tests separately with C++20 `-Wall -Wex
 - `tests/test_legality_l2_gen3_egg_pid_creation.cpp`: `0ebda9c01b3b5978e2b7c541a3c9f334522e2125`.
 - `tests/test_legality_l2_gen3_joint_egg_pid_iv.cpp`: `d9d577f240e885fcca9710471e1e744150b81e61`.
 
-Executed from the local staged exact-file subset using `g++` and `clang++` (C++20 `-Werror`, O2 normally, O1 -g plus `-fsanitize=address,undefined -fno-omit-frame-pointer` for sanitized); each binary printed PASS and returned success. **36 successful executions across nine exact-blob test suites**. The container has no direct DNS access to clone GitHub; this did not yield a full checkout. Only the two native encrypted-PK4 suites remain unexecuted. The accepted Gen III egg-move dataset was reconstructed with the full original 973 move bits and 184 pre-evolution links, but the local data header bytes differ from the repository's generated 397,765-character file. All other used accepted headers match their Git blobs. For every source/test blob and the precise reconstruction/CI limitations, read [the 9/11 validation report](L2_EXACT_SOURCE_9_OF_11_VALIDATION_20261012.md).
+Executed from the local staged exact-file subset using `g++` and `clang++` (C++20 `-Werror`, O2 normally, O1 -g plus `-fsanitize=address,undefined -fno-omit-frame-pointer` for sanitized); each binary printed PASS and returned success. **44 successful executions across eleven exact-blob test suites**. The container has no direct DNS access to clone GitHub; this did not yield a full checkout. Both native encrypted-PK4 suites are also executed; see the explicit temporary unrelated-header/linker limitations in the 11/11 handoff. The accepted Gen III egg-move dataset was reconstructed with the full original 973 move bits and 184 pre-evolution links, but the local data header bytes differ from the repository's generated 397,765-character file. All other used accepted headers match their Git blobs. For every source/test blob and the precise reconstruction/CI limitations, read [the completed 11/11 integration handoff](L2_11_OF_11_VALIDATION_INTEGRATION_HANDOFF_20261012.md) (with the previous [9/11 phase evidence](L2_EXACT_SOURCE_9_OF_11_VALIDATION_20261012.md) retained).
 
 ### Priorities to unblock acceptance
 
