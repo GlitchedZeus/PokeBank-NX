@@ -730,7 +730,9 @@ void testGen4JointNativeParentMoveIvHistories() {
                 const auto childBytes=Encryption::encryptArray4(childRaw);
                 Pokemon::Pokemon4ReadOnly child(childBytes,group);
                 assert(child.valid() && child.isEgg());
-                const J::NativeEggWitness childHistory{&child,true,true};
+                const J::NativeEggWitness childHistory{
+                    &child,true,true,in.nativePairStageToken
+                };
                 const auto complete=J::evaluateWithNativeEgg(in,childHistory);
                 assert(complete.status==J::Status::KnownCandidateConsistent);
                 const auto childBefore=std::vector<std::byte>(
@@ -742,6 +744,14 @@ void testGen4JointNativeParentMoveIvHistories() {
                 noHistoricalChild.originalUnhatchedStageIndependentlyVerified=false;
                 assert(J::evaluateWithNativeEgg(in,noHistoricalChild).status==
                        J::Status::UnknownNativeEggRecord);
+                auto noEggStageId=childHistory;
+                noEggStageId.originalEggStageToken=0;
+                assert(J::evaluateWithNativeEgg(in,noEggStageId).status==
+                       J::Status::UnknownNativeEggRecord);
+                auto mixedEggEvent=childHistory;
+                mixedEggEvent.originalEggStageToken=0xBEEFu;
+                assert(J::evaluateWithNativeEgg(in,mixedEggEvent).status==
+                       J::Status::IncoherentNativeEggRecord);
                 auto missingChild=childHistory;missingChild.record=nullptr;
                 assert(J::evaluateWithNativeEgg(in,missingChild).status==
                        J::Status::UnknownNativeEggRecord);

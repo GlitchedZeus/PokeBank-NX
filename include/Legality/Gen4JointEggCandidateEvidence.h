@@ -172,6 +172,9 @@ struct NativeEggWitness {
     const Pokemon::Pokemon4ReadOnly* record=nullptr;
     bool originalUnhatchedStageIndependentlyVerified=false;
     bool containingGameIndependentlyVerified=false;
+    // This unhatched child must belong to the SAME source-attested
+    // daycare event as the verified parent/move/IV stage.
+    uint64_t originalEggStageToken=0;
 };
 inline Result evaluateWithNativeEgg(const Input& in,
                                      const NativeEggWitness& witness) noexcept {
@@ -182,6 +185,12 @@ inline Result evaluateWithNativeEgg(const Input& in,
     if(!witness.record || !witness.originalUnhatchedStageIndependentlyVerified ||
        !witness.containingGameIndependentlyVerified) {
         out.status=Status::UnknownNativeEggRecord;return out;
+    }
+    if(!witness.originalEggStageToken || !in.nativePairStageToken) {
+        out.status=Status::UnknownNativeEggRecord;return out;
+    }
+    if(witness.originalEggStageToken!=in.nativePairStageToken) {
+        out.status=Status::IncoherentNativeEggRecord;return out;
     }
     const auto& egg=*witness.record;
     if(!egg.valid() || egg.empty() || !egg.isEgg() ||
