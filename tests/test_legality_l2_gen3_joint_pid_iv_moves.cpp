@@ -153,6 +153,34 @@ int main() {
         assert(J::evaluate(x).status==J::Status::AllThreeStagesConditionallyMatched);
         controls+=15;
     }
+    // BREED-001 fixed source-stage move witness already exercised by
+    // accepted test_gen3_joint_egg_candidate: same four actual father
+    // move slots across ordered egg/TM/shared-level passes, FIFO output.
+    // Reuse that accepted independent fixture with B07 original PID and
+    // the same two physically deposited IV donor snapshots.
+    {
+        auto x=known("firered_gba",2,true);
+        auto& m=x.moveAndIV.moveHistory;
+        m.base={33,45,0,0};
+        m.father={80,345,15,33};
+        m.mother={33,45,0,0};
+        m.verifiedMachine={false,false,true,false};
+        m.verifiedSharedLevel={false,false,false,true};
+        m.observed={80,345,15,33};
+        const auto fixed=J::evaluate(x);
+        assert(fixed.status==J::Status::AllThreeStagesConditionallyMatched);
+        assert(fixed.moveAndIV.moves.eggSources==2);
+        assert(fixed.moveAndIV.moves.machineSources==1);
+        assert(fixed.moveAndIV.moves.sharedSources==1);
+        auto changedDad=x;
+        changedDad.moveAndIV.moveHistory.father={80,15,33,0};
+        changedDad.moveAndIV.moveHistory.verifiedMachine={false,true,false,false};
+        changedDad.moveAndIV.moveHistory.verifiedSharedLevel=
+            {false,false,true,false};
+        assert(J::evaluate(changedDad).status==
+               J::Status::OriginalMoveCandidateContradicted);
+        ++controls;
+    }
     auto bad=known("ruby_gba",0,true);bad.moveAndIV.moveHistory.game="platinum_nds";
     assert(J::evaluate(bad).status==J::Status::UnsupportedGame);
     std::cout<<"L2 B08 triple-source Gen III egg witness: "
