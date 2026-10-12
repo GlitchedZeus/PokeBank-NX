@@ -6,6 +6,10 @@ on:
       - feature/legality-l2-breeding-20261012
   workflow_dispatch:
 
+concurrency:
+  group: l2-breeding-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -35,6 +39,26 @@ jobs:
           echo "Exact source HEAD: $(git rev-parse HEAD)"
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           "${{ matrix.cxx }}" --version
+      - name: Test structural source pair guards with both native profiles
+        shell: bash
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          for mode in normal sanitizer; do
+            flags=(-std=c++20 -Wall -Wextra -Wpedantic -Werror -Iinclude)
+            if [[ "$mode" == sanitizer ]]; then
+              flags+=(-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer)
+            else
+              flags+=(-O2)
+            fi
+            "$CXX" "${flags[@]}" tests/fixtures/legality_l2_original_daycare_roles.cpp -o "$tmp/roles"
+            ASAN_OPTIONS=halt_on_error=1:detect_leaks=1 \
+              UBSAN_OPTIONS=halt_on_error=1 "$tmp/roles" |
+              grep -Fx 'L2 source parent role matrix: 12150 checks PASS'
+          done
       - name: Run all seventeen L2 native programs normally and with ASan/UBSan
         shell: bash
         env:
