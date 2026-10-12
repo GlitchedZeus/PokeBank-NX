@@ -25,6 +25,9 @@ int main(){
         Legality::Gen1IndexedOriginalSourceHistory::Status::UnknownCurrentSpecies)
         ==Kind::UnknownOriginalHistory);
     static_assert(U::map(
+        Legality::Gen1IndexedOriginalSourceHistory::Status::UnknownEncounterKind)
+        ==Kind::UnknownOriginalHistory);
+    static_assert(U::map(
         Legality::Gen3SafariIndexedOriginalHistory::Status::ConditionalOriginalSafariHistory)
         ==Kind::ConditionalOriginalHistory);
     static_assert(U::map(

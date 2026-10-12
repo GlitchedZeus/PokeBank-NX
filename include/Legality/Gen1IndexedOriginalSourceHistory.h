@@ -15,7 +15,7 @@ enum class Kind : uint8_t { Static, InGameTrade };
 enum class Status : uint8_t {
     UnknownOriginalGame, UnknownOriginalSource, UnknownOriginalRow,
     UnknownEvolutionChain, UnknownTradeOT, UnknownTradebackHistory,
-    UnknownOriginalCatchRate, UnknownCurrentSpecies,
+    UnknownOriginalCatchRate, UnknownEncounterKind, UnknownCurrentSpecies,
     UnknownLaterGenerationEvolution, ForeignGameRowNotEvidence,
     CandidateOriginalSpeciesContradicted, CandidateOriginalLevelContradicted,
     CandidateEvolutionContradicted, CandidateOriginalCatchRateContradicted,
@@ -62,6 +62,8 @@ inline Result evaluate(const Candidate& c) noexcept {
     if(!c.originalGameIndependentlyAttested ||
        !Gen1Encounter::gameMaskForId(c.exactOriginalGame))
         return {};
+    if(c.kind!=Kind::Static && c.kind!=Kind::InGameTrade)
+        return {Status::UnknownEncounterKind};
     if(!c.originalSourceRowIndependentlyAttested)
         return {Status::UnknownOriginalRow};
     const uint8_t mask=Gen1Encounter::gameMaskForId(c.exactOriginalGame);

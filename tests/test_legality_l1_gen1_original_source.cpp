@@ -98,6 +98,10 @@ int main(){
     assert(H::evaluate(rateHistory).status==Status::UnknownTradebackHistory);
     rateHistory.timeCapsuleHistoryIndependentlyAttested=false;
     assert(H::evaluate(rateHistory).status==Status::CandidateOriginalLevelContradicted);
+    // Corrupted encounter-kind enums cannot fabricate a source-trade hit.
+    auto invalidKind=trade;
+    invalidKind.kind=static_cast<H::Kind>(255u);
+    assert(H::evaluate(invalidKind).status==Status::UnknownEncounterKind);
     // Distinct Eevee branches cannot evolve into each other even when
     // a numeric species interval or stage-offset heuristic would include them.
     static_assert(H::possibleOriginalEvolution(133,135));
