@@ -137,6 +137,7 @@ void testPk3EntityBoundaries(unsigned& checks) {
         const auto original = bytes;
         Pokemon::Pokemon3FRLG entity(bytes);
         assert(entity.sizeValid() == exact);
+        assert(entity.inputSize() == size);
         if (exact) {
             assert(entity.checksumValid());
             assert(entity.getData().size() == size);
@@ -146,17 +147,25 @@ void testPk3EntityBoundaries(unsigned& checks) {
             // the internal safety span covers the largest party-only offset.
             assert(entity.pid() == 0 && entity.speciesID() == 0 && entity.move(0) == 0);
             assert(entity.iv32() == 0 && entity.isFatefulEncounter() == false);
-            assert(entity.getData().size() >= Encryption::SIZE_PARTY3_FRLG);
+            assert(entity.getDataSize() == 0 && entity.getData().size() == Encryption::SIZE_PARTY3_FRLG);
             assert(entity.getData()[Encryption::SIZE_PARTY3_FRLG - 1] == std::byte{0});
             entity.setTID16(77);
             entity.setMove(0, 33);
             assert(entity.tid16() == 0 && entity.move(0) == 0);
         }
         auto copy = entity.clone();
-        assert(copy && copy->getDataSize() == size && copy->checksumValid() == exact);
+        assert(exact ? (copy && copy->getDataSize() == size && copy->checksumValid()) : !copy);
         assert(bytes == original);
         ++checks;
     }
+    // A malformed record must not reserve storage proportional to attacker-
+    // controlled input length, nor let generic entity consumers copy it.
+    std::vector<std::byte> oversized(64 * 1024, std::byte{0xa5});
+    Pokemon::Pokemon3FRLG quarantined(oversized);
+    assert(!quarantined.sizeValid() && quarantined.inputSize() == oversized.size());
+    assert(quarantined.getDataSize() == 0 && quarantined.getData().size() == Encryption::SIZE_PARTY3_FRLG);
+    assert(!quarantined.clone() && quarantined.speciesID() == 0);
+    ++checks;
 }
 void testPk4Properties(unsigned& checks) {
     uint32_t seed = 0x13579bdfu;
@@ -230,7 +239,7 @@ int main() {
     testPk3Codec(checks);
     testPk3EntityBoundaries(checks);
     testPk4Properties(checks);
-    assert(checks == 2138u);
+    assert(checks == 2139u);
     std::cout << "Stage 2 native Gen I-IV boundary/property checks: " << checks
               << " PASS (synthetic immutable inputs)\n";
 }

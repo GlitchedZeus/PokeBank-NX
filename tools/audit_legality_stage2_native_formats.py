@@ -45,10 +45,10 @@ def run(sanitize: bool) -> dict[str, object]:
                                 capture_output=True, check=True,
                                 env={"ASAN_OPTIONS": "detect_leaks=0:halt_on_error=1",
                                      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"})
-    expected = "Stage 2 native Gen I-IV boundary/property checks: 2138 PASS"
+    expected = "Stage 2 native Gen I-IV boundary/property checks: 2139 PASS"
     if expected not in result.stdout:
         raise RuntimeError("unexpected property-suite output: " + result.stdout + result.stderr)
-    return {"sanitized": sanitize, "status": "PASS", "checks": 2138,
+    return {"sanitized": sanitize, "status": "PASS", "checks": 2139,
             "production_components": ["Gen1ReadOnlySave", "Gen2ReadOnlySave", "Encryption3FRLG",
                                       "Encryption4", "Pokemon3FRLG", "Pokemon4ReadOnly"],
             "stdout": result.stdout.strip()}

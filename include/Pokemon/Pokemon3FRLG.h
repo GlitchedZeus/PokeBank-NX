@@ -10,7 +10,6 @@
 #ifndef POKEMON_POKEMON3_FRLG_H
 #define POKEMON_POKEMON3_FRLG_H
 
-#include <algorithm>
 #include <cstdint>
 #include <span>
 #include <string>
@@ -31,18 +30,19 @@ namespace Pokemon {
     class Pokemon3FRLG final : public Pokemon {
     public:
         explicit Pokemon3FRLG(std::span<const std::byte> raw) {
-            dataSize = raw.size();
+            inputSize_ = raw.size();
             if (sizeValid()) {
+                dataSize = inputSize_;
                 buffer = Encryption::decryptArray3FRLG(raw); // decrypt + un-shuffle to canonical G/A/E/M
                 data = std::span<std::byte>(buffer, dataSize);
             } else {
                 // The codec accepts arbitrary spans as a byte-preserving transport
                 // primitive.  This semantic adapter does not: quarantine every
-                // non-PK3 length behind a zeroed party-sized buffer so its fixed
-                // offsets remain safe even when legacy callers inspect it first.
-                const size_t safeSize = std::max(dataSize, Encryption::SIZE_PARTY3_FRLG);
-                buffer = new std::byte[safeSize]();
-                data = std::span<std::byte>(buffer, safeSize);
+                // non-PK3 length behind a fixed, zeroed party-sized buffer. This
+                // makes malformed input bounded even when its source span is huge.
+                dataSize = 0;
+                buffer = new std::byte[Encryption::SIZE_PARTY3_FRLG]();
+                data = std::span<std::byte>(buffer, Encryption::SIZE_PARTY3_FRLG);
             }
         }
         ~Pokemon3FRLG() override = default;
@@ -53,14 +53,9 @@ namespace Pokemon {
 
         std::unique_ptr<Pokemon> clone() const override {
             if (!sizeValid()) {
-                // Preserve the malformed record's length without re-exposing its
-                // bytes as a meaningful PK3 entity.
-                std::byte* invalid = new std::byte[dataSize]();
-                auto c = std::make_unique<Pokemon3FRLG>(
-                    std::span<const std::byte>(invalid, dataSize));
-                c->setSaveLanguage(saveLanguage);
-                delete[] invalid;
-                return c;
+                // There is no safe entity payload to duplicate. Callers that need
+                // raw malformed bytes must keep them at the transport boundary.
+                return nullptr;
             }
             std::byte* enc = Encryption::encryptArray3FRLG(std::span<const std::byte>(data.data(), dataSize));
             auto c = std::make_unique<Pokemon3FRLG>(std::span<const std::byte>(enc, dataSize));
@@ -72,8 +67,9 @@ namespace Pokemon {
         Enums::GameVersion getGameGroup() const noexcept override { return Enums::GameVersion::FRLG; }
 
         [[nodiscard]] bool sizeValid() const noexcept {
-            return Encryption::validRecordSize3FRLG(dataSize);
+            return Encryption::validRecordSize3FRLG(inputSize_);
         }
+        [[nodiscard]] size_t inputSize() const noexcept { return inputSize_; }
 
         // ---- byte helpers (canonical, decrypted buffer) ----
         uint8_t  rd8(size_t o)  const noexcept {
@@ -289,6 +285,10 @@ namespace Pokemon {
 
     private:
         static constexpr const char16_t* EGG_NICKNAME_JAPANESE = u"タマゴ"; // タマゴ
+        // Raw input length is diagnostic-only for malformed spans. dataSize is
+        // zero there so generic Pokemon consumers cannot copy past data's fixed
+        // quarantine allocation.
+        size_t inputSize_ = 0;
         uint8_t saveLanguage = static_cast<uint8_t>(Enums::LanguageID::English);
         // Compute a battle stat (0=HP..5=SPD) from base/IV/EV/level/nature (Gen3 formula).
         uint16_t computeStat(int idx) const noexcept;
