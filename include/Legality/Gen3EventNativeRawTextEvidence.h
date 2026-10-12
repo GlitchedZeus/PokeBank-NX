@@ -32,6 +32,11 @@ inline Result inspectEncrypted(std::span<const std::byte> encrypted,
         (static_cast<uint16_t>(std::to_integer<uint8_t>(canonical[0x1d])) << 8));
     if (stored != Encryption::checksum3FRLG(canonical))
         return {};
+    // A zero-species canonical Growth block is an unused box/party slot,
+    // not native Pokémon text. Even 80 or 100 all-zero bytes have a valid
+    // zero checksum and must not become original-event field evidence.
+    if (canonical[0x20] == std::byte{0} && canonical[0x21] == std::byte{0})
+        return {};
     // Present decrypted game-font bytes are factual; source provenance,
     // renames, changed OT encodings and egg/trade histories are not.
     return Gen3EventRawTextEvidence::inspectVerifiedDecrypted(canonical, true, source);

@@ -51,6 +51,17 @@ int main() {
             assert(yes.nativeLanguage==2 && yes.nickname[2]==std::byte{0x53});
             assert(yes.originalTrainer[2]==std::byte{0x72});
             assert(native==preserved);
+            // Native stored/party unused slots and a crafted checksum-
+            // consistent species-zero record are not Pokémon evidence.
+            std::vector<std::byte> blank(size);
+            assert(!N::inspectEncrypted(blank,source).nativeAvailable);
+            auto speciesZero=decrypted;
+            w16(speciesZero,0x20,0);
+            w16(speciesZero,0x1c,Encryption::checksum3FRLG(speciesZero));
+            std::unique_ptr<std::byte[]> zeroEncoded(
+                Encryption::encryptArray3FRLG(speciesZero));
+            assert(!N::inspectEncrypted(std::span<const std::byte>(
+                zeroEncoded.get(),size),source).nativeAvailable);
             // Changing the nonencrypted raw name is a contradiction of ONE
             // independently asserted unchanged original, not global Invalid.
             auto renamed=native;renamed[0x0a]^=std::byte{1};
