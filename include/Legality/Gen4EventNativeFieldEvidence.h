@@ -29,6 +29,10 @@ inline Snapshot project(const Pokemon::Pokemon4ReadOnly& pokemon) noexcept {
     if (bytes.size()<0x88) return out;
     const uint16_t nativeLocation=pokemon.metLocationExtended()!=0
         ? pokemon.metLocationExtended() : pokemon.metLocationDP();
+    // The historical event projection adds a +3000 location namespace
+    // offset. A malformed stored uint16 must not silently wrap around
+    // into an apparently matching but unrelated template location.
+    if (nativeLocation > 0xffffu - 3000u) return out;
     const uint8_t ball=pokemon.ballDPPt()>pokemon.ballHGSS()
         ? pokemon.ballDPPt() : pokemon.ballHGSS();
     out.identity={

@@ -72,6 +72,16 @@ int main() {
     std::array<std::byte,8> shortBytes{};
     Pokemon::Pokemon4ReadOnly truncated(shortBytes,Enums::GameVersion::HGSS);
     assert(!N::project(truncated).available);
+    // Overflowing the +3000 source namespace must never fabricate a
+    // structural event identity from malformed but checksum-valid PK4.
+    auto overflow=original;
+    w16(overflow,0x46,0xffffu);
+    w16(overflow,0x06,Encryption::checksum4(overflow));
+    const auto overflowCiphertext=Encryption::encryptArray4(overflow);
+    Pokemon::Pokemon4ReadOnly overflowEntity(
+        overflowCiphertext,Enums::GameVersion::HGSS);
+    assert(overflowEntity.valid());
+    assert(!N::project(overflowEntity).available);
     const auto after=p.originalEncryptedBytes();
     assert(after.size()==preserved.size());
     for(std::size_t i=0;i<after.size();++i)assert(after[i]==preserved[i]);
