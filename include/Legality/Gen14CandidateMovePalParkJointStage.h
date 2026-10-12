@@ -153,10 +153,16 @@ constexpr Result evaluate(const Input& in) noexcept {
                 const auto& witness=in.laterMethods[j];
                 if(witness.stepIndex!=i)continue;
                 ++matched;usedNative[j]=true;
+                // Move Deleter is an independently witnessed service, not a
+                // learned-move method. The generic deletion step correctly
+                // carries no methodSource; teaching decisions must carry one.
+                const bool sourceBound=step.action==C::Action::DeleteMove?
+                    step.methodSource==Game::Unknown:
+                    step.methodSource==step.game;
                 if(!witness.independentlyVerified || !witness.independentSourceRecord ||
                    witness.sourceGame!=step.game || witness.method!=step.method ||
                    witness.move!=step.move || witness.level!=step.level ||
-                   !step.evidenceVerified || step.methodSource!=step.game)return out;
+                   !step.evidenceVerified || !sourceBound)return out;
                 ++out.verifiedNativeMethods;
             }
             if(matched!=1)return out;
