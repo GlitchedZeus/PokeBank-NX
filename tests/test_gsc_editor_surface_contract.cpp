@@ -307,7 +307,9 @@ int main() {
     assert(moveRow.find("Names::getMoveBattleStats(move,game)") != std::string::npos);
     assert(pickerFix.find("Needs correction") == std::string::npos);
     assert(shared.find("!editor->pendingChanges().empty()") != std::string::npos);
-    assert(shared.find("static_cast<int>(actions.count) * geometry.rowStep + 62") != std::string::npos);
+    assert(shared.find("drawNarrowPokemonActions(fb, screen.touchButtons, model") != std::string::npos);
+    // Both Gen II rendering routes use the SAME narrow, native-indexed popup.
+    assert(parity.find("drawNarrowPokemonActions(fb, screen.touchButtons, model") != std::string::npos);
 
     // Empty move rows cannot focus PP/Ups and their meaningless numeric cells are hidden.
     assert(workspaceFix.find("normalizeHardwareMoveRowFocus") != std::string::npos);
