@@ -141,14 +141,20 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurf
     actions = source.split("void drawActions(", 1)[1].split("void drawReview(", 1)[0]
     assert "screen.drawGSCOverlay(fb);" in actions
     assert actions.index("screen.drawGSCOverlay(fb);") < actions.index(
-        "screen.touchButtons.clear();", actions.index("screen.drawGSCOverlay(fb);"))
+        "drawNarrowPokemonActions(fb, screen.touchButtons, model",
+        actions.index("screen.drawGSCOverlay(fb);"))
+# Shared narrow popup clears the dimmed background's touch targets before
+# publishing only enabled native command IDs; disabled placeholders are inert.
+require_all("include/UI/ScreenChrome.h",
+            "buttons.clear();", "if (row.enabled())",
+            "touchIdBase + row.nativeIndex")
 # A single tap on an occupied Pokémon must open the same real staged action
 # surface across Gen I–IV. Native Gen II actions also publish direct row hitboxes.
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
             "screen.selectedItemIndex = target;", "input |= HidNpadButton_A;")
 require_all("src/UI/Gen2SharedSurfaceParity.inc",
             "screen.selectedItemIndex = tappedSlot;", "|| boxTap",
-            "screen.touchButtons.push_back({31600 + static_cast<int>(i)")
+            "drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow")
 require_all("src/UI/Gen2SharedPokemonSurface.inc",
             "const int touched = screen.touchedButtonId(touch);",
             "legacy.pokemonRow = touched - 31600;")
