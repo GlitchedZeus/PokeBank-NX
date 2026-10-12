@@ -146,6 +146,12 @@ constexpr ArchiveStatus attest(const Projection& p,
     if(s.grade==ArchiveGrade::Unknown)return ArchiveStatus::UnknownSource;
     if(s.grade==ArchiveGrade::Reconstructed || s.grade==ArchiveGrade::Altered ||
        s.grade==ArchiveGrade::Unreleased)return ArchiveStatus::UntrustedSource;
+    // Reject every unsupported archive-grade tag. Previously values 7..255
+    // could pass the positive proof gate as if they were original sources.
+    if(s.grade!=ArchiveGrade::OriginalPCD &&
+       s.grade!=ArchiveGrade::OriginalPGT &&
+       s.grade!=ArchiveGrade::ConvertedOriginal)
+        return ArchiveStatus::UnknownSource;
     if((p.format==Format::PGT && s.grade==ArchiveGrade::OriginalPCD) ||
        (p.format==Format::PCD && s.grade==ArchiveGrade::OriginalPGT))
         return ArchiveStatus::UnknownSource;

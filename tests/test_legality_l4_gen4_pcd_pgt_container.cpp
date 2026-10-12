@@ -115,6 +115,19 @@ int main() {
         ++archives;
     }
     assert(archives==448);
+    // Exhaust native grade-tag space. A malformed or future archive grade
+    // cannot be promoted merely because accompanying claim flags are true.
+    for(unsigned rawGrade=0;rawGrade<256;++rawGrade) {
+        auto gradeSource=verified();
+        gradeSource.grade=static_cast<C::ArchiveGrade>(rawGrade);
+        const auto status=C::attest(projected,gradeSource);
+        if(rawGrade==1u || rawGrade==3u)
+            assert(status==C::ArchiveStatus::ConditionalOriginalSource);
+        else if(rawGrade>=4u && rawGrade<=6u)
+            assert(status==C::ArchiveStatus::UntrustedSource);
+        else
+            assert(status==C::ArchiveStatus::UnknownSource);
+    }
     auto a=verified();a.grade=C::ArchiveGrade::OriginalPGT;
     assert(C::attest(projected,a)==C::ArchiveStatus::UnknownSource);
     auto gift=pgt;w16(gift,0,1);
