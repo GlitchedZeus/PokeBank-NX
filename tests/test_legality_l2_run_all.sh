@@ -64,6 +64,7 @@ tests=(
     test_legality_l2_gen3_joint_egg_pid_iv
     test_legality_l2_gen3_joint_pid_iv_moves
     test_legality_l2_gen3_pid_iv_moves_alternatives
+    test_legality_l2_gen3_retail_daycare_pair
     test_legality_l2_gen4_iv_candidate_set
     test_legality_l2_gen4_native_iv_history
 )
