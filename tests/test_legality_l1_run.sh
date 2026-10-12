@@ -61,6 +61,7 @@ suites=(
   test_legality_l1_gamecube_original_fixed
   test_legality_l1_stage1_production_crypto
   test_legality_l1_stage1_gamecube_enum_domains
+  test_legality_l1_stage2_npc_trades
 )
 profiles=(host sanitize)
 if [[ -n "${L1_PROFILE:-}" ]]; then
