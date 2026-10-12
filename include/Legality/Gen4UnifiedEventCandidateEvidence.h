@@ -176,7 +176,14 @@ constexpr AttestedResult evaluateAttested(
        in.rawTextSourceArchiveSha256!=source.originalPayloadSha256) {
         out.status=AttestedStatus::IncoherentArchive;return out;
     }
-    out.candidate=evaluate(in);
+    // Force post-evolution PCD nickname evidence to Unknown: PKHeX
+    // TrashByteVerifier.VerifyTrashBytesPCD skips nickname comparison
+    // after source species evolves. A caller's optimistic comparability
+    // flag must not transform legitimate rewritten text into mismatch.
+    auto guarded=in;
+    if(in.moves.stored.species!=t.species)
+        guarded.originalNicknameRawBytesStillComparable=false;
+    out.candidate=evaluate(guarded);
     if(out.candidate.status==Status::KnownConditionalCandidate)
         out.status=AttestedStatus::ConditionalWitness;
     else if(out.candidate.status==Status::CandidateContradicted)

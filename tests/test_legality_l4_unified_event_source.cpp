@@ -65,7 +65,11 @@ int main() {
     auto candidateWrong=in;candidateWrong.observedRibbonWords[1]=0;
     assert(U::evaluateAttested(candidateWrong,s).status==U::AttestedStatus::CandidateContradicted);
     auto moved=in;moved.moves.stored.species=5;
-    assert(U::evaluateAttested(moved,s).status==U::AttestedStatus::ConditionalWitness);
+    assert(U::evaluateAttested(moved,s).status==U::AttestedStatus::UnresolvedCandidate);
+    // A caller who falsely asserts identical bytes after evolution must
+    // never force an event nickname mismatch into a global assertion.
+    moved.rawNickname[6]=std::byte{0x58};
+    assert(U::evaluateAttested(moved,s).status==U::AttestedStatus::UnresolvedCandidate);
     assert(in.moves.stored.species==4 && in.observedRibbonWords[1]==2u);
     std::cout<<"L4 single-row attested event joint candidate: PASS\n";
 }
