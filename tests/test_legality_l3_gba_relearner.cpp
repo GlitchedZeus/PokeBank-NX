@@ -69,7 +69,51 @@ constexpr auto charizardHeat=base(G::FireRed,6,36,{10,45,52,232},257,3,
 static_assert(R::evaluate(charizardHeat).status==S::CandidateConsistent);
 static_assert([]{auto a=charizardHeat;a.game=G::Emerald;
     return R::evaluate(a).status==S::CandidateContradicted;}());
-int main(){
+// Exhaustive production-data regression. The accepted Emerald resource has 386
+// original species, 3,947 packed source offers; execute this only against the
+// FULL accepted table, never a 12-species local source-subset mock.
+void exerciseAllEmerald() {
+    namespace L=Legality::Gen3GbaVersionedLevelUpTimeline;
+    unsigned speciesChecked=0, sourceEntries=0, offersChecked=0;
+    for(uint16_t species=1;species<=386;++species) {
+        const auto count=L::offerCount(G::Emerald,species);
+        assert(count>=1 && count<=24);
+        const auto first=L::offerAt(G::Emerald,species,0).move;
+        assert(first>=1 && first<=354);
+        std::array<bool,355> seen{};
+        seen[first]=true;
+        std::array<uint16_t,32> expected{};
+        uint8_t expectedCount=0;
+        for(uint16_t j=0;j<count;++j) {
+            const auto offer=L::offerAt(G::Emerald,species,j);
+            assert(offer.move>=1 && offer.move<=354);
+            assert(offer.level>=1 && offer.level<=100);
+            if(!seen[offer.move]) {
+                seen[offer.move]=true;
+                expected[expectedCount++]=offer.move;
+            }
+            ++sourceEntries;
+        }
+        const uint16_t chosen=expectedCount?expected[0]:first;
+        const auto a=base(G::Emerald,species,100,{first,0,0,0},
+            chosen,1,{first,chosen,0,0});
+        const auto result=R::evaluate(a);
+        assert(result.offerCount==expectedCount);
+        for(uint8_t i=0;i<expectedCount;++i)
+            assert(result.offers[i]==expected[i]);
+        if(expectedCount) {
+            assert(result.status==S::CandidateConsistent);
+            ++offersChecked;
+        } else {
+            assert(result.status==S::CandidateContradicted);
+        }
+        ++speciesChecked;
+    }
+    assert(speciesChecked==386 && sourceEntries==3947 && offersChecked>0);
+}
+int main(int argc,char** argv){
+    const bool sampledOnly=argc>1 && argv[1][0]=='-';
+    if(!sampledOnly)exerciseAllEmerald();
     unsigned tested=0;
     for(G g:{G::Ruby,G::Sapphire,G::Emerald,G::FireRed,G::LeafGreen}) {
         const auto b=base(g,1,15,{33,45,73,22},77,0,{77,45,73,22});
