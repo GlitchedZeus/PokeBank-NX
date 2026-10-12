@@ -18,7 +18,7 @@ retail PKHeX certificate. Changes stay within L5-owned `tools/` and `docs/`.
 
 At L5 `d01e1de`, GitHub compare with accepted: 96 commits ahead,
 2 behind, 83 changed paths and **zero outside L5 ownership**.
-No coordinator/accepted/MMAIN edits, no rebase, reset, merge or force-push.
+No coordinator/accepted/MAIN edits, no rebase, reset, merge or force-push.
 
 The latest **observed** L5 exact-head workflow
 [#38307234720](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38307234720)
@@ -68,7 +68,7 @@ source-free-defect cells. The Git blob of the original Q17 file is
 `ba31eece267abc10c5d75774d2d8adf3a36503f1` and matches the
 archived integration manifest pin.
 
-**Important stale-head negative control:** archived Q17 integration evidence
+The same live remote Q01/Q17 inputs were independently subjected to **17\nmutated-manifest negative controls** in the connected verification session.\nAll 17 were rejected (duplicates, missing cells, wrong generation/family,\nsource SHA drift, fabricated full parity or originals, run spoofing, unearned\ntest credit, lost defect trace and score inflation); the unmodified\n336-cell baseline passed. This was an independently executed JavaScript\nintegrity replay, **not** execution of the newly committed Python gate.\n\n**Important stale-head negative control:** archived Q17 integration evidence
 is for `c91b53e84ef75669049d159616894ec68cd4b0dd`, **not** current
 coordinator `2e9dbc0136ebdd8e4a00e335b171c48da5fdfdfc`.
 It is historical source-scope evidence, never a current-head pass.
