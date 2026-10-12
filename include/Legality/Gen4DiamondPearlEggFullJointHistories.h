@@ -120,6 +120,26 @@ constexpr Result evaluate(const Input& in) noexcept {
               c.pid.parents[1].heldItem==236)){
             ++out.unverified;continue;
         }
+        namespace Route=Gen34OriginalSameRouteProof;
+        if(in.sameRouteProofs[i].supplied){
+            const auto& witness=c.pid.originalParentWitness;
+            if(!in.originalEggSnapshotIndependentlyAttested ||
+               !in.originalEggSnapshotId ||
+               !witness.supplied ||
+               !witness.originalParentSnapshotsIndependentlyVerified ||
+               !c.pid.creationTimeItemsIndependentlyVerified){
+                ++out.unverified;continue;
+            }
+            out.sameRouteChecks[i]=Route::evaluate(in.sameRouteProofs[i],{
+                Route::gameFor(egg.game),egg.originalEggEventIdentity,
+                in.originalEggSnapshotId,c.ivPhysicalParentPairIdentity,
+                witness.physicalSlots[0].snapshotIdentity,
+                witness.physicalSlots[1].snapshotIdentity,true,
+                c.pid.parents[0].heldItem,c.pid.parents[1].heldItem});
+            if(out.sameRouteChecks[i]!=Route::Status::ConditionallySameRoute){
+                ++out.unverified;continue;
+            }
+        }
         auto one=egg;
         one.count=1;
         one.alternatives[0]=c;
