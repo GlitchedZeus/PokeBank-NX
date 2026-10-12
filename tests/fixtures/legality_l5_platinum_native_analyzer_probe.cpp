@@ -56,7 +56,11 @@ Legality::Report probe(uint16_t species,uint8_t origin,
     wr32(plain,0x38,egg?0x40000000u:0u);
     plain[0x40]=static_cast<std::byte>(form<<3);
     plain[0x5F]=static_cast<std::byte>(origin);
-    if(palPark) {\n        wr16(plain,0x46,0x37); // Pt/HGSS Pal Park split-field marker\n        wr16(plain,0x80,0x37);\n    }\n    plain[0x83]=std::byte{4};
+    if(palPark) {
+        wr16(plain,0x46,0x37); // Pt/HGSS Pal Park split-field marker
+        wr16(plain,0x80,0x37);
+    }
+    plain[0x83]=std::byte{4};
     plain[0x84]=std::byte{5};
     const auto ciphertext=Encryption::encryptArray4(plain);
     const auto original=ciphertext;
