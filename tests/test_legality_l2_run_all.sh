@@ -85,6 +85,13 @@ for test in "${tests[@]}"; do
         echo "L2 ERROR: expected test missing: $source_file" >&2
         exit 2
     fi
+    # Files API transport failures must never be mistaken for committed
+    # C++ test sources. Fail before compiler execution and surface the
+    # corrupted branch artifact instead of reporting a sanitizer failure.
+    if ! head -n 2 "$source_file" | grep -Eq '^[[:space:]]*#include[[:space:]]'; then
+        echo "L2 ERROR: test does not contain valid C++ source prologue: $source_file" >&2
+        exit 2
+    fi
     sources=("$source_file")
     if [[ "$test" == test_legality_l2_dp_native_egg_history ||
           "$test" == test_legality_l2_gen4_native_iv_history ]]; then
