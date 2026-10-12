@@ -1,0 +1,27 @@
+[
+  {
+    "test": "test_gen34_egg_moves",
+    "status": "PASS",
+    "detail": "Gen III/IV egg-move legality evidence: PASS\n"
+  },
+  {
+    "test": "test_gen34_egg_state",
+    "status": "PASS",
+    "detail": "Gen III/IV egg-state legality evidence: PASS\n"
+  },
+  {
+    "test": "test_gen4_bcc_pid_nature_rejection",
+    "status": "PASS",
+    "detail": "Gen IV HGSS BCC 1/2 PID nature-rejection loops: PASS\n"
+  },
+  {
+    "test": "test_gen4_event_template",
+    "status": "PASS",
+    "detail": "Gen IV WC4 direct event-template evidence: PASS\n"
+  },
+  {
+    "test": "test_gen4_transfer_evidence",
+    "status": "PASS",
+    "detail": "Gen III -> IV Pal Park transfer evidence: PASS\n"
+  }
+]

@@ -1,0 +1,167 @@
+{
+  "retrieved_utc": "2026-10-11T05:47:02.907262+00:00",
+  "pulls": [
+    {
+      "number": 103,
+      "title": "Legality engine: Gen I-IV exact-game analysis foundation",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "html_url": "https://github.com/GlitchedZeus/PokeBank-NX/pull/103",
+      "head": "feature/legality-engine-gen1-4-20260929",
+      "sha": "cc0868021dddd5563525671d04d1224fe1e5bb72",
+      "base": "feature/gen4-full-editor-20260928",
+      "runs": [
+        {
+          "id": 38114396180,
+          "name": "PokeBank NX Host Tests",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "cc0868021dddd5563525671d04d1224fe1e5bb72"
+        }
+      ]
+    },
+    {
+      "number": 222,
+      "title": "Legality: Ranger Manaphy PGT and PID evidence for detached Gen IV PK4",
+      "state": "closed",
+      "draft": true,
+      "merged": true,
+      "html_url": "https://github.com/GlitchedZeus/PokeBank-NX/pull/222",
+      "head": "feature/legality-gen4-sourcefree-ranger-manaphy-20261011",
+      "sha": "cc0868021dddd5563525671d04d1224fe1e5bb72",
+      "base": "feature/legality-engine-gen1-4-20260929",
+      "runs": [
+        {
+          "id": 38114396180,
+          "name": "PokeBank NX Host Tests",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "cc0868021dddd5563525671d04d1224fe1e5bb72"
+        }
+      ]
+    },
+    {
+      "number": 223,
+      "title": "Legality: detached PK4 WC4/PCD event templates and evolved histories",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "html_url": "https://github.com/GlitchedZeus/PokeBank-NX/pull/223",
+      "head": "feature/legality-gen4-sourcefree-wc4-events-20261011",
+      "sha": "7b65baaa03a69385d3f0a6905c86b74dc851538a",
+      "base": "feature/legality-gen4-sourcefree-ranger-manaphy-20261011",
+      "runs": [
+        {
+          "id": 38114504613,
+          "name": "PokeBank NX Host Tests",
+          "status": "in_progress",
+          "conclusion": null,
+          "head_sha": "7b65baaa03a69385d3f0a6905c86b74dc851538a"
+        }
+      ]
+    },
+    {
+      "number": 224,
+      "title": "Legality: reconcile Gen I\u2013IV parity ledger through accepted #221",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "html_url": "https://github.com/GlitchedZeus/PokeBank-NX/pull/224",
+      "head": "docs/legality-sourcefree-parity-checkpoint-20261011",
+      "sha": "87b2fa73b62e804238158e026e282f2e69c16344",
+      "base": "feature/legality-gen4-sourcefree-wc4-events-20261011",
+      "runs": [
+        {
+          "id": 38114586635,
+          "name": "PokeBank NX Host Tests",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "87b2fa73b62e804238158e026e282f2e69c16344"
+        }
+      ]
+    },
+    {
+      "number": 225,
+      "title": "Legality: source-free PK3 original-GBA wild capture compatibility",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "html_url": "https://github.com/GlitchedZeus/PokeBank-NX/pull/225",
+      "head": "feature/legality-gen3-detached-wild-evidence-20261011",
+      "sha": "98a7b627a2e343945c660d6b31383b3c1914e6f2",
+      "base": "docs/legality-sourcefree-parity-checkpoint-20261011",
+      "runs": [
+        {
+          "id": 38114811570,
+          "name": "PokeBank NX Host Tests",
+          "status": "in_progress",
+          "conclusion": null,
+          "head_sha": "98a7b627a2e343945c660d6b31383b3c1914e6f2"
+        }
+      ]
+    }
+  ],
+  "open_pull_requests": [
+    {
+      "number": 225,
+      "title": "Legality: source-free PK3 original-GBA wild capture compatibility",
+      "head": "98a7b627a2e343945c660d6b31383b3c1914e6f2"
+    },
+    {
+      "number": 224,
+      "title": "Legality: reconcile Gen I\u2013IV parity ledger through accepted #221",
+      "head": "87b2fa73b62e804238158e026e282f2e69c16344"
+    },
+    {
+      "number": 223,
+      "title": "Legality: detached PK4 WC4/PCD event templates and evolved histories",
+      "head": "7b65baaa03a69385d3f0a6905c86b74dc851538a"
+    },
+    {
+      "number": 208,
+      "title": "WIP: Integrate Gen I\u2013IV touch controls and hardware UI parity on MAIN baseline",
+      "head": "ecb7945f9470b6f42ad7df12ecf100d4f55667ae"
+    },
+    {
+      "number": 163,
+      "title": "G5-01: read-only PK5 format foundation (BW/B2W2 lane)",
+      "head": "6e1829aa94aea063b59c92f52ce84c3d32ac2da8"
+    },
+    {
+      "number": 146,
+      "title": "Legality: pin Gen III-IV language domain evidence",
+      "head": "22af43f19a76ca13556ed50904cd21e4868441b9"
+    },
+    {
+      "number": 144,
+      "title": "Legality: add Gen I-IV PKHeX parity ledger",
+      "head": "b450bf25dbcd63047cfcfd85ab8a45d69b602498"
+    },
+    {
+      "number": 143,
+      "title": "Legality: integrate rerolled BCC Synchronize failures centrally",
+      "head": "90816ca57ffa918359b01e7f8cc994c8e57af6a1"
+    },
+    {
+      "number": 142,
+      "title": "Legality: prove rerolled HGSS Bug Contest Synchronize failures",
+      "head": "2b776c693535662813a5856bd08b819233f65b1f"
+    },
+    {
+      "number": 122,
+      "title": "UI: complete touch-control parity",
+      "head": "36c0d1d62f6142fc9de8e646aa05017d5b16b0b5"
+    },
+    {
+      "number": 103,
+      "title": "Legality engine: Gen I-IV exact-game analysis foundation",
+      "head": "cc0868021dddd5563525671d04d1224fe1e5bb72"
+    },
+    {
+      "number": 92,
+      "title": "G4-04: complete Gen IV shared editor \u2014 Create + field parity",
+      "head": "948a9695f1348417a4499681683ecbbee82b0deb"
+    }
+  ]
+}
