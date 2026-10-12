@@ -20,6 +20,7 @@ enum class Status : uint8_t {
     CandidateIdentityContradicted, CandidateCaptureStageContradicted,
     CandidateEggStageContradicted, CandidateBallContradicted,
     CandidateTemplateConstraintsContradicted, CandidatePidFamilyContradicted,
+    ConditionalOriginalGiftEggSourceAwaitingBreedingVerification,
     ConditionalOriginalStaticHistory
 };
 struct Candidate {
@@ -102,6 +103,13 @@ inline Result evaluate(const Candidate& c) noexcept {
     if(!S::constraintsMatch(row,c.originalGender,c.originalNature,
                             c.originalShiny,c.originalFateful))
         return {Status::CandidateTemplateConstraintsContradicted,category,egg,roam};
+    // A gift egg uses the dedicated historical egg-PID/inheritance stages.
+    // Do NOT silently route a verified egg template into Method 1 wild.
+    // L2 is the owner of the missing egg RNG proof.
+    if(egg)return {
+        Status::ConditionalOriginalGiftEggSourceAwaitingBreedingVerification,
+        category,egg,roam
+    };
     if(!c.originalPidFamilyIndependentlyAttested ||
        c.historicalPidOrigin==PidOrigin::Unknown)
         return {Status::UnknownOriginalPidOrigin,category,egg,roam};
