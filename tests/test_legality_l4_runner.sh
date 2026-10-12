@@ -100,6 +100,13 @@ echo "L4 C++ historical domain compile: 70,144 boundary cases"
 "$compiler" "${base[@]}" tests/fixtures/legality_l4_historical_domain.cpp \
     -o "$scratch/l4_historical_domain"
 "$scratch/l4_historical_domain"
+# Stage 2: one archive-origin family is not equivalent to a received gift.
+# Exercise source digests, exact edition proof, original font evidence,
+# Stadium/PCNY distribution and Time Capsule histories before all 28 suites.
+echo "L4 Stage 2 original Gen I/II distribution join: 786432 source masks"
+"$compiler" "${base[@]}" tests/fixtures/legality_l4_stage2_gen12_join.cpp \
+    -o "$scratch/l4_stage2_gen12_join"
+"$scratch/l4_stage2_gen12_join"
 for name in "${header_only[@]}"; do
     echo "L4 C++ compile: $name"
     "$compiler" "${base[@]}" "tests/$name.cpp" -o "$scratch/$name"

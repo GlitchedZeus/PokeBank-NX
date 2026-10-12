@@ -10,6 +10,7 @@ on:
       - tests/test_legality_l4_*
       - include/Legality/Gen14Event*
       - include/Legality/Gen12Gift*
+      - include/Legality/Gen12OriginalDistribution*
       - include/Legality/Gen3*Event*
       - include/Legality/Gen3Distribution*
       - include/Legality/Gen4*Event*
