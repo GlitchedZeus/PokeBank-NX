@@ -2243,6 +2243,57 @@ namespace Legality {
         }
 
 
+        // Source-pinned Gen III level-up evidence can also describe a
+        // POSSIBLE pre-Pal-Park method for a later native PK4. The native
+        // preserved GBA original-game byte and BOTH split Pal Park location
+        // and original Gen III Ball fields must be consistent. Current
+        // PK4 level and species cannot prove original level/species or
+        // retention; this is an informational source opportunity only.
+        if (!sourceFormatMismatch && !pk.isEgg() &&
+            Gen34FormatDomain::generationFromGroup(pk.getGameGroup())==4 &&
+            Gen4Origin::kind(pk.originGame())==
+                Gen4Origin::Kind::Gen3Handheld &&
+            species>=1 && species<=386 &&
+            Gen34PalParkMoves::verifiedTransferFields(
+                pk.gen4MetLocationDP(),pk.gen4MetLocationExtended(),
+                pk.gen4BallDPPt(),pk.gen4BallHGSS(),pk.isEgg())) {
+            const auto original=Gen4Origin::exactGen3GameId(pk.originGame());
+            using GbaGame=Gen14CandidateMoveChronology::Game;
+            GbaGame game=GbaGame::Unknown;
+            if(original=="ruby_gba")game=GbaGame::Ruby;
+            else if(original=="sapphire_gba")game=GbaGame::Sapphire;
+            else if(original=="emerald_gba")game=GbaGame::Emerald;
+            else if(original=="firered_gba")game=GbaGame::FireRed;
+            else if(original=="leafgreen_gba")game=GbaGame::LeafGreen;
+            if(game!=GbaGame::Unknown) {
+                const auto offers=Gen3GbaVersionedLevelUpTimeline::offerCount(
+                    game,species);
+                for(int slot=0;slot<4;++slot) {
+                    const uint16_t move=pk.move(slot);
+                    if(move==0 || move>354)continue;
+                    uint8_t earliest=0;
+                    for(uint16_t i=0;i<offers;++i) {
+                        const auto entry=Gen3GbaVersionedLevelUpTimeline::offerAt(
+                            game,species,i);
+                        if(entry.move==move && entry.level!=0 &&
+                           entry.level<=pk.level() &&
+                           (earliest==0 || entry.level<earliest))
+                            earliest=entry.level;
+                    }
+                    if(earliest) {
+                        add(r,Severity::Info,
+                            "Pal Park original " + std::string(original) +
+                            " level-up source opportunity: " +
+                            std::string(Names::getMoveName(move)) +
+                            " appears in the source table for the current species by level " +
+                            std::to_string(earliest) +
+                            "; original species/level, pre-migration retention and later acquisition remain unverified",
+                            CheckIdentifier::Moves);
+                    }
+                }
+            }
+        }
+
         // L3 exact ORIGINAL Platinum direct-method candidates: this
         // deliberately limited source-pinned sample covers twelve species,
         // 174 level-up offers and known tutors/TM-HMs, NOT all Gen IV.
