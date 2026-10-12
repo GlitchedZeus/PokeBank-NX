@@ -37,6 +37,7 @@ suites=(
   test_legality_l1_safari_indexed_original
   test_legality_l1_gamecube_indexed_shadow
   test_legality_l1_gen1_original_source
+  test_legality_l1_gen1_wild_fishing
   test_legality_l1_gen2_original_source
   test_legality_l1_gen4_static_indexed
   test_legality_l1_gen4_sinnoh_special
