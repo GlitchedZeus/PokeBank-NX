@@ -11,7 +11,7 @@ static_assert(M::kPinned.size()==12);
 static_assert(L::offerCount(1)==14 && L::offerCount(6)==18);
 static_assert((L::packedOffer(1,8)>>9)==21);
 static_assert((L::packedOffer(1,8)&511u)==230);
-static_assert(L::row(386)!=nullptr && L::row(152)==nullptr);
+static_assert(L::offerCount(386)>0 && L::offerCount(152)==0);
 static_assert(M::exactMove(false,53,412));
 static_assert(M::exactMove(true,2,19));
 static_assert(!M::known(false,1));
