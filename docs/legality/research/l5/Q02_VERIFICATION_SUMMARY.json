@@ -123,5 +123,18 @@
     "HGSS-IV-STAGE",
     "HGSS-POWER-ITEM-IDS",
     "PT-IV-STAGE"
-  ]
+  ],
+  "supplemental_source_symbol": {
+    "registry_record": "C-TIMECAPSULE",
+    "frozen_registry_symbol": "",
+    "source_file": "pret/pokecrystal@3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6:engine/link/time_capsule.asm",
+    "localized_symbol": "ValidateOTTrademon",
+    "line": 3,
+    "other_related_symbols": [
+      "CheckAnyOtherAliveMonsForTrade:67",
+      "PlaceTradePartnerNamesAndParty:103"
+    ],
+    "evidence_note": "Q02_TIMECAPSULE_SYMBOL_LOCALIZATION.md",
+    "limitation": "not exhaustive Time Capsule source authorization"
+  }
 }

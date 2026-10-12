@@ -11,6 +11,7 @@ from collections import Counter
 import csv
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -171,16 +172,21 @@ def check_fixtures():
     return {"synthetic_native_conditions": len(data),
             "kinds": dict(Counter(r["kind"] for r in data)), "authenticated_retail_specimens": 0}
 
-def native_test():
+def native_test(sanitize=False):
     compiler = shutil.which("g++")
     if not compiler:
         return {"status": "NOT_RUN", "reason": "g++ missing"}
     with tempfile.TemporaryDirectory(prefix="l5-native-") as temp:
         executable = Path(temp) / "l5_encounters"
+        flags = (["-O1", "-fsanitize=address,undefined", "-fno-omit-frame-pointer"]
+                 if sanitize else ["-O2"])
         subprocess.run([compiler, "-std=c++20", "-Wall", "-Wextra", "-Wpedantic",
-                        "-Werror", "-O2", "-I" + str(ROOT / "include"),
+                        "-Werror", *flags, "-I" + str(ROOT / "include"),
                         str(NATIVE), "-o", str(executable)], cwd=ROOT, check=True)
-        result = subprocess.run([str(executable)], cwd=ROOT, capture_output=True,
+        env = os.environ.copy()
+        if sanitize:
+            env.setdefault("ASAN_OPTIONS", "detect_leaks=0")
+        result = subprocess.run([str(executable)], cwd=ROOT, env=env, capture_output=True,
                                 text=True, check=True)
     return {"status": "PASS", "stdout": result.stdout.strip()}
 
@@ -191,6 +197,7 @@ def main():
     ap.add_argument("--source-rows", type=Path, help="external pinned original full encounter rows CSV")
     ap.add_argument("--generated-rows", type=Path, help="generated complete-identity encounter rows CSV")
     ap.add_argument("--native", action="store_true", help="compile and execute independent new C++ fixture")
+    ap.add_argument("--native-sanitize", action="store_true", help="run L5 native fixture with ASan/UBSan (no shared CI changes)")
     ap.add_argument("--json-out", type=Path, help="optional audit output, never modifies source saves")
     args = ap.parse_args()
     if bool(args.source_rows) != bool(args.generated_rows):
@@ -203,6 +210,8 @@ def main():
               "Q09": check_fixtures()}
     if args.native:
         result["native"] = native_test()
+    if args.native_sanitize:
+        result["native_asan_ubsan"] = native_test(sanitize=True)
     message = json.dumps(result, indent=2, sort_keys=True)
     print(message)
     if args.json_out:
