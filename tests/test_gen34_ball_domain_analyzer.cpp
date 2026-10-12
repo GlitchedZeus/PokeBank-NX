@@ -9,6 +9,7 @@
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen34OrdinaryEggMoveConstruction.h"
 #include "Legality/Gen4NativeBreedingParentEvidence.h"
+#include "Legality/Gen4JointEggCandidateEvidence.h"
 #include "Legality/Gen4ContestRibbonEvidence.h"
 #include "Legality/Gen4RawTextEvidence.h"
 #include "Legality/Gen4JointMoveEvidence.h"
@@ -635,7 +636,144 @@ void testGen4NativeBreedingParentSnapshots() {
     assert(N::evaluate(noGame).status==N::Status::UnsupportedGame);
 }
 
+
+void testGen4JointNativeParentMoveIvHistories() {
+    // BR-003 / RNG-003: checksum-valid actual encrypted PK4 parent readers
+    // feed ONE source-attested move/IV history, not a union of donors.
+    namespace J=Legality::Gen4JointEggCandidateEvidence;
+    namespace N=Legality::Gen4NativeBreedingParentEvidence;
+    namespace IV=Legality::Gen4EggIVInheritanceStage;
+    constexpr std::array<uint8_t,6> initial{0,3,6,9,12,15};
+    constexpr std::array<uint8_t,6> fivs{7,12,17,22,27,0};
+    constexpr std::array<uint8_t,6> mivs{13,24,3,14,25,4};
+    const auto packIV=[](const std::array<uint8_t,6>& a) {
+        uint32_t bits=0;
+        for(uint32_t k=0;k<6;++k)bits|=uint32_t(a[k])<<(k*5u);
+        return bits;
+    };
+    const auto makeParent=[&](uint32_t id,uint8_t gender,
+                              const std::array<uint8_t,6>& ivs,uint16_t item) {
+        std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
+        wr32(raw,0x00,0x12345678u);
+        wr16(raw,0x08,1); // Bulbasaur, valid source-game personal row
+        wr16(raw,0x0A,item);
+        wr32(raw,0x0C,id);
+        wr32(raw,0x10,135);
+        wr32(raw,0x38,packIV(ivs));
+        raw[0x40]=static_cast<std::byte>(gender<<1);
+        raw[0x5F]=std::byte{12}; // origin history != daycare container
+        return Encryption::encryptArray4(raw);
+    };
+    constexpr std::array<std::array<uint16_t,2>,5> held{{
+        {{0,0}},{{294,0}},{{0,294}},{{294,294}},{{294,289}}
+    }};
+    unsigned consistent=0;
+    for(const char* game:{"platinum_nds","heartgold_nds","soulsilver_nds"}) {
+        for(bool reversed:{false,true}) {
+            for(const auto& items:held) {
+                // Held items belong to physical slots. Role and slot
+                // identity can invert without changing move donor roles.
+                const auto femaleBytes=makeParent(0xAAAA2222u,1,mivs,
+                    reversed?items[0]:items[1]);
+                const auto maleBytes=makeParent(0xBBBB2222u,0,fivs,
+                    reversed?items[1]:items[0]);
+                const auto group=N::requiredGroup(game);
+                Pokemon::Pokemon4ReadOnly female(femaleBytes,group);
+                Pokemon::Pokemon4ReadOnly male(maleBytes,group);
+                assert(female.valid() && male.valid());
+                const auto& slot0=reversed?male:female;
+                const auto& slot1=reversed?female:male;
+                J::Input in{};
+                in.parents.game=game;
+                in.parents.slot0={&slot0,reversed?202u:101u,true,true,
+                                  {game,1,0,1,7,true}};
+                in.parents.slot1={&slot1,reversed?101u:202u,true,true,
+                                  {game,1,0,1,7,true}};
+                in.parents.orderedPairStageIndependentlyVerified=true;
+                auto& m=in.moveHistory;
+                m.game=game;m.species=1;
+                m.fatherId=202;m.motherId=101;
+                m.snapshotsKnown=true;m.fatherSpecies=1;m.motherSpecies=1;
+                m.base={33,45,0,0};m.observed=m.base;
+                m.father=male.moves();m.mother=female.moves();
+                m.lightBallKnown=true;
+                in.sharedStageIndependentlyVerified=true;
+                in.nativePairStageToken=0x7711;
+                in.moveParentStageToken=0x7711;
+                in.ivParentStageToken=0x7711;
+                in.initialChildIVs=initial;
+                in.initialChildIVsIndependentlyVerified=true;
+                in.observedChildIVsIndependentlyVerified=true;
+                in.heldItemsAtStageIndependentlyVerified=true;
+                in.finalRNGStateIndependentlyVerified=true;
+                const auto forward=IV::replay(game,0,initial,
+                    slot0.ivs(),slot1.ivs(),
+                    slot0.heldItem(),slot1.heldItem());
+                assert(forward.status==IV::Status::ReplayedStage);
+                in.observedChildIVs=forward.childIVs;
+                in.knownFinalRNGState=forward.finalSeed;
+                const auto good=J::evaluate(in);
+                assert(good.status==J::Status::KnownCandidateConsistent);
+                assert(good.moves.status==
+                    Legality::Gen34SameParentEggHistory::Status::CandidateCompatible);
+                assert(good.ivs==IV::CandidateCheck::Matched);
+                assert(good.parents.eligibility.fatherId==202 &&
+                       good.parents.eligibility.motherId==101);
+                assert(good.parents.eligibility.slot0Id==(reversed?202u:101u));
+                assert(good.parents.eligibility.slot1Id==(reversed?101u:202u));
+                if(IV::family(game)==IV::Family::HeartGoldSoulSilver) {
+                    const unsigned powers=(IV::powerStat(items[0])>=0)+
+                        (IV::powerStat(items[1])>=0);
+                    assert(forward.drawCount==(powers==2?5u:powers==1?4u:6u));
+                } else assert(forward.drawCount==6);
+                ++consistent;
+                auto badRole=in;badRole.moveHistory.fatherId=101;
+                assert(J::evaluate(badRole).status==J::Status::IncoherentParentIdentity);
+                auto staleMove=in;staleMove.moveHistory.father[0]=999;
+                assert(J::evaluate(staleMove).status==J::Status::IncoherentMoveSnapshot);
+                auto diffStage=in;diffStage.ivParentStageToken=0x9977;
+                assert(J::evaluate(diffStage).status==J::Status::IncoherentSharedStage);
+                auto noStage=in;noStage.sharedStageIndependentlyVerified=false;
+                assert(J::evaluate(noStage).status==J::Status::UnknownSharedStage);
+                auto unknownParent=in;unknownParent.parents.slot0.stageSnapshotIndependentlyVerified=false;
+                assert(J::evaluate(unknownParent).status==J::Status::UnknownNativeParentEvidence);
+                auto missingOrder=in;missingOrder.parents.orderedPairStageIndependentlyVerified=false;
+                assert(J::evaluate(missingOrder).status==J::Status::UnknownNativeParentEvidence);
+                auto wrongEggGroup=in;wrongEggGroup.parents.slot0.eggGroups.species=25;
+                assert(J::evaluate(wrongEggGroup).status==J::Status::UnknownNativeParentEvidence);
+                auto absentChild=in;absentChild.initialChildIVsIndependentlyVerified=false;
+                assert(J::evaluate(absentChild).status==J::Status::UnknownInitialChildIVs);
+                auto missingObserved=in;missingObserved.observedChildIVsIndependentlyVerified=false;
+                assert(J::evaluate(missingObserved).status==J::Status::UnknownObservedChildIVs);
+                auto noSeed=in;noSeed.finalRNGStateIndependentlyVerified=false;
+                assert(J::evaluate(noSeed).status==J::Status::UnknownFinalRNGState);
+                auto noItems=in;noItems.heldItemsAtStageIndependentlyVerified=false;
+                assert(J::evaluate(noItems).status==
+                    (IV::family(game)==IV::Family::Platinum?
+                     J::Status::KnownCandidateConsistent:J::Status::UnknownPowerItemHistory));
+                auto contradiction=in;
+                contradiction.observedChildIVs[0]=32;
+                assert(J::evaluate(contradiction).status==J::Status::MalformedIVDomain);
+                auto changedObservation=in;
+                changedObservation.observedChildIVs[0]=
+                    static_cast<uint8_t>(changedObservation.observedChildIVs[0]==31?30:31);
+                assert(J::evaluate(changedObservation).status==J::Status::IVCandidateContradicted);
+                auto incompatible=in;
+                incompatible.parents.slot0.eggGroups.group1=15;
+                assert(J::evaluate(incompatible).status==J::Status::CandidatePairIncompatible);
+                auto badMove=in;badMove.moveHistory.observed={1,2,3,4};
+                assert(J::evaluate(badMove).status==J::Status::MoveCandidateContradicted);
+            }
+        }
+    }
+    assert(consistent==30);
+    // No invented DP Gen IV inheritance algorithm.
+    J::Input unknown{};unknown.parents.game="diamond_nds";
+    assert(J::evaluate(unknown).status==J::Status::UnsupportedGame);
+}
+
 int main() {
+    testGen4JointNativeParentMoveIvHistories();
     testGen4NativeBreedingParentSnapshots();
     // Source-free exact-origin NPC trade proof: all native encrypted PK4
     // identity fields must match a pinned Diamond template. Wrong PID,
