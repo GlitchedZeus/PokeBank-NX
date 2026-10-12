@@ -933,7 +933,7 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int 
             screen.detailViewActive && screen.selectedMode == TrainerViewScreen::ViewMode::Boxes) {
             screen.selectedItemIndex = target;
             if (entrySurface(screen) && editorAvailable(screen)) input |= HidNpadButton_A;
-            else return true; // A non-editable slot may still be focused safely.
+            else return false; // No staged editor: let the read-only base View handle the tap.
         }
     }
     return handleInputUX(screen, input, held, stickX, stickY);
