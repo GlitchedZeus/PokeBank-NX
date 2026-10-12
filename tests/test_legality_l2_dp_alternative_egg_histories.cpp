@@ -1,4 +1,5 @@
 #include "Legality/Gen4DiamondPearlEggAlternativeHistories.h"
+#include "Legality/Gen4DiamondPearlEggFullJointHistories.h"
 #include <array>
 #include <cassert>
 #include <cstdint>
@@ -6,6 +7,8 @@
 namespace A=Legality::Gen4DiamondPearlEggAlternativeHistories;
 namespace IV=Legality::Gen4DiamondPearlEggIVStage;
 namespace PID=Legality::Gen4DiamondPearlEggPidHistory;
+namespace J=Legality::Gen4DiamondPearlEggFullJointHistories;
+namespace M=Legality::Gen4DiamondPearlEggMoveStage;
 constexpr std::array<uint8_t,6> initial{0,3,6,9,12,15};
 constexpr std::array<uint8_t,6> parent0{7,12,17,22,27,0};
 constexpr std::array<uint8_t,6> parent1{13,24,3,14,25,4};
@@ -64,6 +67,34 @@ A::Input known(const char* game, uint32_t seed=0){
     c.pid.originalUnhatchedEggPid=32;
     return in;
 }
+J::Input joint(const A::Input& original){
+    J::Input out{};
+    out.original=original;
+    out.allJointDaycareHistoriesIndependentlyEnumerated=true;
+    auto& m=out.moveHistories[0];
+    m.game=original.game;
+    m.originalEggEventIdentity=original.originalEggEventIdentity;
+    m.originalParentStageIdentity=original.originalEggEventIdentity;
+    m.originalPhysicalPairIdentity=
+        original.alternatives[0].ivPhysicalParentPairIdentity;
+    m.sharedOriginalEventIndependentlyAttested=true;
+    m.physicalDepositOrderIndependentlyAttested=true;
+    m.physicalSlots[0]={101,25,1,{33,45,98,57},true,true};
+    m.physicalSlots[1]={202,25,0,{33,45,98,57},true,true};
+    m.fatherPhysicalSlot=1;m.fatherRoleIndependentlyAttested=true;
+    m.originalEggSpecies=25;
+    m.originalUnhatchedEggIdentityIndependentlyAttested=true;
+    m.originalUnhatchedEggMovesIndependentlyAttested=true;
+    m.originalUnhatchedEggMoves={33,45,98,57};
+    m.base={33,45,0,0};m.paternalEgg={98,0,0,0};
+    m.paternalMachine={57,0,0,0};m.mutualLevel={33,0,0,0};
+    m.originalBaseMovesIndependentlyAttested=true;
+    m.paternalEggMethodIndependentlyAttested=true;
+    m.paternalMachineMethodIndependentlyAttested=true;
+    m.mutualLevelMethodIndependentlyAttested=true;
+    m.originalCreationItemHistoryIndependentlyAttested=true;
+    return out;
+}
 int main(){
     unsigned cases=0;
     for(const char* game:{"diamond_nds","pearl_nds"}){
@@ -94,6 +125,79 @@ int main(){
             assert(A::evaluate(altered).status==A::Status::OneConditionallyConsistentHistory);
             ++cases;
         }
+        // Independent source-backed PID/IV replayers and four-slot move
+        // constructor must agree on the SAME daycare parent history.
+        for(uint32_t seed=0;seed<1024;++seed){
+            auto one=joint(known(game,seed));
+            const auto yes=J::evaluate(one);
+            assert(yes.status==J::Status::OneConditionallyConsistentFullHistory);
+            assert(yes.matched==1 && !yes.contradicted && !yes.unknown);
+            // Two complementary half-truths must NEVER be joined:
+            // candidate A matches PID/IV but not four moves; candidate B
+            // matches moves but is IV-contradicted for the original egg.
+            auto crossed=one;
+            crossed.original.count=2;
+            crossed.original.alternatives[1]=crossed.original.alternatives[0];
+            crossed.original.alternatives[1].routeIdentity=2;
+            crossed.moveHistories[1]=crossed.moveHistories[0];
+            crossed.moveHistories[0].originalUnhatchedEggMoves[0]^=1;
+            auto& impossible=crossed.original.alternatives[1].iv;
+            for(size_t i=0;i<6;++i){
+                impossible.initialChild[i]=31;
+                impossible.physicalSlot0[i]=31;
+                impossible.physicalSlot1[i]=31;
+            }
+            const auto separate=J::evaluate(crossed);
+            assert(separate.status==
+                   J::Status::AllEnumeratedLocalDaycareHistoriesContradicted);
+            assert(separate.matched==0 && separate.contradicted==2);
+            crossed.allJointDaycareHistoriesIndependentlyEnumerated=false;
+            assert(J::evaluate(crossed).status==J::Status::UnknownJointEnumeration);
+            // Restore a complete, independently attested matching route.
+            crossed.moveHistories[1]=one.moveHistories[0];
+            crossed.original.alternatives[1]=one.original.alternatives[0];
+            crossed.original.alternatives[1].routeIdentity=2;
+            assert(J::evaluate(crossed).status==
+                   J::Status::OneConditionallyConsistentFullHistory);
+            // Matching route in either position survives unrelated noise.
+            auto reversed=crossed;
+            const auto oldRoute=reversed.original.alternatives[0];
+            reversed.original.alternatives[0]=reversed.original.alternatives[1];
+            reversed.original.alternatives[1]=oldRoute;
+            const auto oldMoves=reversed.moveHistories[0];
+            reversed.moveHistories[0]=reversed.moveHistories[1];
+            reversed.moveHistories[1]=oldMoves;
+            assert(J::evaluate(reversed).status==
+                   J::Status::OneConditionallyConsistentFullHistory);
+            // Archive collision with a later coherent history survives;
+            // duplicated contradictory rows cannot prove exhaustive lack.
+            crossed.original.alternatives[1].routeIdentity=1;
+            assert(J::evaluate(crossed).status==
+                   J::Status::OneConditionallyConsistentFullHistory);
+            crossed.moveHistories[1]=crossed.moveHistories[0];
+            assert(J::evaluate(crossed).status==
+                   J::Status::UnknownOrContradictoryRouteIdentity);
+        }
+        auto one=joint(known(game));
+        auto wrongPair=one;
+        wrongPair.moveHistories[0].originalPhysicalPairIdentity++;
+        assert(J::evaluate(wrongPair).status==J::Status::UnverifiedOriginalParentSources);
+        auto wrongGender=one;
+        wrongGender.moveHistories[0].physicalSlots[1].gender=1;
+        assert(J::evaluate(wrongGender).status==J::Status::UnverifiedOriginalParentSources);
+        auto pichu=one;
+        pichu.moveHistories[0].originalEggSpecies=172;
+        pichu.moveHistories[0].originalUnhatchedEggMoves={45,98,57,344};
+        pichu.moveHistories[0].originalEligibleLightBallHolder=true;
+        pichu.original.alternatives[0].pid.parents[1].heldItem=236;
+        assert(J::evaluate(pichu).status==
+               J::Status::OneConditionallyConsistentFullHistory);
+        pichu.original.alternatives[0].pid.parents[1].heldItem=0;
+        assert(J::evaluate(pichu).status==J::Status::UnverifiedOriginalParentSources);
+        one.original.count=0;
+        assert(J::evaluate(one).status==J::Status::NoCandidates);
+        one=joint(known(game));one.original.count=9;
+        assert(J::evaluate(one).status==J::Status::CapacityExceededUnknown);
         auto x=known(game);
         auto wrongPID=x;wrongPID.alternatives[0].pid.originalCollectionTrainerId=1;
         // Force a distinct bounded MT transcript while preserving child PID.
