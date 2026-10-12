@@ -83,6 +83,53 @@ static_assert(E::evaluate(bulbasaur(G::Emerald)).status==S::CandidateConsistent)
 static_assert(E::evaluate(bulbasaur(G::LeafGreen)).verifiedEvolutions==2);
 static_assert(E::evaluate(squirtle(G::FireRed)).status==S::CandidateConsistent);
 static_assert(E::evaluate(squirtle(G::Sapphire)).finalSpecies==9);
+
+// Original pinned pret GBA evolution scene: species changes before the
+// evolved form's level-up move teaching. An independently verified level-36
+// Charizard decision therefore can be replayed without inventing a
+// Charmeleon history before it evolved.
+constexpr E::Input charizardAt36(G game,bool learned){
+    auto a=charmander(game,false);
+    const uint16_t old=game==G::FireRed || game==G::LeafGreen?232u:108u;
+    auto& edge=a.evolutions[1];
+    edge.allTargetSpeciesEvolutionOffersVerified=true;
+    edge.evolutionOfferCount=1;
+    edge.evolutionOffers[0]={36,17,learned?D::ReplaceSlot:D::Decline,2};
+    if(learned) {
+        a.phases[2].initialMoves={10,45,17,old};
+        a.phases[2].observedMoves=a.phases[2].initialMoves;
+    }
+    return a;
+}
+static_assert(E::evaluate(charizardAt36(G::Ruby,true)).status==S::CandidateConsistent);
+static_assert(E::evaluate(charizardAt36(G::LeafGreen,true)).status==S::CandidateConsistent);
+static_assert(E::evaluate(charizardAt36(G::Emerald,false)).status==S::CandidateConsistent);
+static_assert(E::evaluate(charizardAt36(G::FireRed,false)).status==S::CandidateConsistent);
+static_assert([]{auto a=charizardAt36(G::Ruby,true);
+    a.evolutions[1].allTargetSpeciesEvolutionOffersVerified=false;
+    return E::evaluate(a).status==S::Unresolved;}());
+static_assert([]{auto a=charizardAt36(G::Ruby,true);
+    a.evolutions[1].evolutionOfferCount=0;
+    return E::evaluate(a).status==S::Unresolved;}());
+static_assert([]{auto a=charizardAt36(G::Ruby,true);
+    a.evolutions[1].evolutionOffers[0].offeredMove=97;
+    return E::evaluate(a).status==S::CandidateContradicted;}());
+static_assert([]{auto a=charizardAt36(G::Ruby,true);
+    a.evolutions[1].evolutionOffers[0].decision=D::AutoLearn;
+    return E::evaluate(a).status==S::CandidateContradicted;}());
+static_assert([]{auto a=charizardAt36(G::Ruby,true);
+    a.evolutions[1].evolutionOffers[0].slot=5;
+    return E::evaluate(a).status==S::CandidateContradicted;}());
+static_assert([]{auto a=charizardAt36(G::Ruby,true);
+    a.evolutions[1].evolutionOffers[0].level=37;
+    return E::evaluate(a).status==S::CandidateContradicted;}());
+static_assert([]{auto a=charizardAt36(G::Ruby,true);
+    a.phases[2].initialMoves={10,45,52,108};
+    return E::evaluate(a).status==S::CandidateContradicted;}());
+static_assert([]{auto a=charizardAt36(G::Ruby,false);
+    a.evolutions[1].evolutionOffers[0].decision=D::AlreadyKnown;
+    return E::evaluate(a).status==S::CandidateContradicted;}());
+
 static_assert(E::evaluate(charmander(G::Ruby,true)).status==S::CandidateConsistent);
 static_assert(E::evaluate(charmander(G::FireRed,true)).status==S::CandidateConsistent);
 static_assert(E::evaluate(charmander(G::FireRed,false)).status==S::Unresolved);
@@ -133,6 +180,8 @@ int main(){
                    result.verifiedEvolutions==2);
         }
         assert(E::evaluate(charmander(game,false)).status==S::Unresolved);
+        assert(E::evaluate(charizardAt36(game,true)).status==S::CandidateConsistent);
+        assert(E::evaluate(charizardAt36(game,false)).status==S::CandidateConsistent);
     }
     std::cout<<"L3 source-pinned five-game Kanto starter evolution histories: PASS\n";
 }
