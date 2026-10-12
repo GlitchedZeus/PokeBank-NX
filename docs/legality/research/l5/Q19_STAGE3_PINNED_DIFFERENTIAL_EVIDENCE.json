@@ -109,9 +109,9 @@
   },
   "native_model": {
     "path": "tests/fixtures/legality_l5_reference_differential.cpp",
-    "git_blob": "812f8409e436dc147f0cd472b42d2226d05560c4",
+    "git_blob": "ba484cdcc4f454b7b54a99255b125b9a12ed663a",
     "expected_comparisons": 655450,
-    "expected_assertions": 655465,
+    "expected_assertions": 655466,
     "run_evidence": [
       {
         "compiler": "GCC O2 C++20 -Werror",
@@ -181,7 +181,8 @@
     "verdict_severity": "Local warning vs hard Invalid after scope aligned",
     "format_parsing": "Different native checksum/size/extraction and strict parser outcome",
     "hypothetical_history": "Missing encounter, parent, transfer or acquisition alternatives must be Unknown/Incomplete",
-    "whole_pokemon": "No full original retail legality verdict determined by this model"
+    "whole_pokemon": "No full original retail legality verdict determined by this model",
+    "diagnostic_order": "Both sides hard-Invalid but different applicable check identifiers/order; not a verdict-severity discrepancy"
   },
   "release": {
     "authentic_paired_original_sources": 0,
