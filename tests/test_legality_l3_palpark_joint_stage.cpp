@@ -82,7 +82,7 @@ constexpr J::Input withNativeHm(bool nativeAttested) {
     a.path.observedMoves={33,45,92,15};
     if(nativeAttested){
         a.laterMethodCount=1;
-        a.laterMethods[0]={2,G::Platinum,T::HM,15,20,71,true};
+        a.laterMethods[0]={2,G::Platinum,T::HM,15,20,71,true,1};
     }
     return a;
 }
@@ -107,7 +107,7 @@ static_assert([]{auto a=withNativeHm(true);
     a.path.steps[3]={G::Platinum,20,A::DeleteMove,T::LevelUp,0,3,true,G::Unknown};
     a.path.observedMoves={33,45,92,0};
     a.laterMethodCount=2;
-    a.laterMethods[1]={3,G::Platinum,T::LevelUp,0,20,72,true};
+    a.laterMethods[1]={3,G::Platinum,T::LevelUp,0,20,72,true,1};
     const auto result=J::evaluate(a);
     return result.status==S::CandidateConsistent && result.verifiedNativeMethods==2;
 }());
@@ -116,6 +116,12 @@ static_assert([]{auto a=withNativeHm(true);a.laterMethods[0].independentlyVerifi
 static_assert([]{auto a=withNativeHm(true);a.laterMethods[0].independentSourceRecord=0;
     return J::evaluate(a).status==S::Unresolved;}());
 static_assert([]{auto a=withNativeHm(true);a.laterMethods[0].sourceGame=G::HeartGold;
+    return J::evaluate(a).status==S::Unresolved;}());
+static_assert([]{auto a=withNativeHm(true);
+    a.laterMethods[0].sourceNationalSpecies=4; // source packet for another species
+    return J::evaluate(a).status==S::Unresolved;}());
+static_assert([]{auto a=withNativeHm(true);
+    a.laterMethods[0].sourceNationalSpecies=0; // missing original species
     return J::evaluate(a).status==S::Unresolved;}());
 constexpr J::Input beforeTransferHmDeleted() {
     auto a=basic(G::Ruby,G::HeartGold);
