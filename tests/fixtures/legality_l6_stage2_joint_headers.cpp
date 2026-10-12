@@ -31,6 +31,5 @@ int main() {
     assert(Gen4NativeRecordBoundary::copyExact(oversized).empty());
     ++checks;
     assert(checks==11800u);
-    std::cout<<"L6 Stage 2 joint production headers: "<<checks
-             <<" PASS (PK4 intake and field range)\n";
+    std::cout<<"L6 Stage 2 joint production headers: "<<checks<<" PASS (PK4 intake and field range)\n";
 }
