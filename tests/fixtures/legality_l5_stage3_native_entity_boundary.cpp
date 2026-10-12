@@ -5,6 +5,8 @@
 #include "Encryption/Encryption4.h"
 #include "Pokemon/Pokemon3FRLG.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
+#include "Names/ItemNames.h"
+#include "Names/SpeciesNames.h"
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -15,6 +17,10 @@
 #ifdef NDEBUG
 #error "Native entity QA assertions must be enabled"
 #endif
+namespace Trainer {
+const char* getSpeciesName(uint16_t id) {return Names::getSpeciesName(id);}
+const char* getItemName(uint16_t id) {return Names::getItemName(id);}
+}
 namespace {
 using Bytes=std::vector<std::byte>;
 void put16(Bytes& b,size_t offset,uint16_t v){
@@ -105,6 +111,7 @@ int main(){
     unsigned checks=0;
     test3(checks);
     test4(checks);
+    assert(checks==8921u);
     std::cout<<"L5 Stage3 actual PK3/PK4 entity quarantine: "<<checks
              <<" PASS (synthetic; full-checkout production linkage)\n";
 }
