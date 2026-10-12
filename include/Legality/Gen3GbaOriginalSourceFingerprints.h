@@ -88,7 +88,7 @@ inline constexpr std::array<std::uint64_t,387> kRuby{{
     0x3786dd037cad2ee7ULL, 0xd6e409d4bcef9dd4ULL, 0x0fb0f35b49c77ccbULL, 0xbbdefbf9ae00af48ULL, 0x6db346632b4db6c9ULL,
     0x8c2d88e18ef0b14cULL, 0x784996e3cb464338ULL, 0x2df9ca7c6ddfb600ULL, 0x695226b6aff3aa21ULL, 0x4fa041e2684730f5ULL,
     0x2c9265036fcefff1ULL, 0xf9b39f7bfd301688ULL
-};
+}};
 inline constexpr std::array<std::uint64_t,387> kEmerald{{
     0x0000000000000000ULL, 0x0738c167bf798326ULL, 0x5499ef84180fb4ffULL, 0xc842532419eb88fdULL, 0x7ec04da98649b1dcULL,
     0xeeebb35183439748ULL, 0x6fd110d5407bd8a6ULL, 0x31178df2d2688b42ULL, 0xdd87ab6bf3bf2f63ULL, 0xa9f42d951cbc4eddULL,
@@ -168,7 +168,7 @@ inline constexpr std::array<std::uint64_t,387> kEmerald{{
     0x3786dd037cad2ee7ULL, 0xd6e409d4bcef9dd4ULL, 0x0fb0f35b49c77ccbULL, 0xbbdefbf9ae00af48ULL, 0x6db346632b4db6c9ULL,
     0x8c2d88e18ef0b14cULL, 0x784996e3cb464338ULL, 0x2df9ca7c6ddfb600ULL, 0x695226b6aff3aa21ULL, 0x4fa041e2684730f5ULL,
     0x2c9265036fcefff1ULL, 0xb9929c7a92fd73c1ULL
-};
+}};
 inline constexpr std::array<std::uint64_t,387> kFireRed{{
     0x0000000000000000ULL, 0x0738c167bf798326ULL, 0x5499ef84180fb4ffULL, 0xc842532419eb88fdULL, 0xda7cb715714241f7ULL,
     0xf78cd6c960e26387ULL, 0xe5cbb76a6b859bc2ULL, 0x31178df2d2688b42ULL, 0xdd87ab6bf3bf2f63ULL, 0xa9f42d951cbc4eddULL,
@@ -248,7 +248,7 @@ inline constexpr std::array<std::uint64_t,387> kFireRed{{
     0x3786dd037cad2ee7ULL, 0xd6e409d4bcef9dd4ULL, 0x0fb0f35b49c77ccbULL, 0xbbdefbf9ae00af48ULL, 0x6db346632b4db6c9ULL,
     0x8c2d88e18ef0b14cULL, 0x784996e3cb464338ULL, 0x2df9ca7c6ddfb600ULL, 0x695226b6aff3aa21ULL, 0x4fa041e2684730f5ULL,
     0x2c9265036fcefff1ULL, 0x48e410e5de0acd67ULL
-};
+}};
 inline constexpr std::array<std::uint64_t,387> kLeafGreen{{
     0x0000000000000000ULL, 0x0738c167bf798326ULL, 0x5499ef84180fb4ffULL, 0xc842532419eb88fdULL, 0xda7cb715714241f7ULL,
     0xf78cd6c960e26387ULL, 0xe5cbb76a6b859bc2ULL, 0x31178df2d2688b42ULL, 0xdd87ab6bf3bf2f63ULL, 0xa9f42d951cbc4eddULL,
@@ -328,7 +328,7 @@ inline constexpr std::array<std::uint64_t,387> kLeafGreen{{
     0x3786dd037cad2ee7ULL, 0xd6e409d4bcef9dd4ULL, 0x0fb0f35b49c77ccbULL, 0xbbdefbf9ae00af48ULL, 0x6db346632b4db6c9ULL,
     0x8c2d88e18ef0b14cULL, 0x784996e3cb464338ULL, 0x2df9ca7c6ddfb600ULL, 0x695226b6aff3aa21ULL, 0x4fa041e2684730f5ULL,
     0x2c9265036fcefff1ULL, 0xdad86ebb700d24aaULL
-};
+}};
 inline constexpr std::uint32_t kRubyOffers=3947;
 inline constexpr std::uint32_t kEmeraldOffers=3947;
 inline constexpr std::uint32_t kFireRedOffers=4011;
