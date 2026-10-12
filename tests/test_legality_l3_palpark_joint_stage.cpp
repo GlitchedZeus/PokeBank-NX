@@ -75,6 +75,19 @@ constexpr J::Input withNativeHm(bool nativeAttested) {
     return a;
 }
 static_assert(J::evaluate(withNativeHm(false)).status==S::Unresolved);
+static_assert([]{auto a=basic(G::Ruby,G::Platinum);
+    a.path.stepCount=3;
+    a.path.steps[2]={G::Platinum,20,A::AlreadyKnown,T::LevelUp,92,0,true,G::Platinum};
+    return J::evaluate(a).status==S::Unresolved;}());
+static_assert([]{auto a=withNativeHm(true);
+    a.path.stepCount=4;
+    a.path.steps[3]={G::Platinum,20,A::Decline,T::LevelUp,76,0,true,G::Platinum};
+    return J::evaluate(a).status==S::Unresolved;}());
+static_assert([]{auto a=withNativeHm(true);
+    a.path.stepCount=4;
+    a.path.steps[3]={G::Platinum,20,A::DeleteMove,T::LevelUp,0,3,true,G::Unknown};
+    return J::evaluate(a).status==S::Unresolved;}());
+
 static_assert(J::evaluate(withNativeHm(true)).status==S::CandidateConsistent);
 static_assert(J::evaluate(withNativeHm(true)).verifiedNativeMethods==1);
 static_assert([]{auto a=withNativeHm(true);a.laterMethods[0].independentlyVerified=false;
