@@ -148,8 +148,9 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurf
 require_all("include/UI/ScreenChrome.h",
             "buttons.clear();", "if (row.enabled())",
             "touchIdBase + row.nativeIndex")
-# A single tap on an occupied Pokémon must open the same real staged action
-# surface across Gen I–IV. Native Gen II actions also publish direct row hitboxes.
+# A clean tap on an OCCUPIED OR EMPTY Pokémon box slot must open the same
+# genuine native action menu as A. Gen III/IV must never just focus empty slots
+# while A exposes Add/Cancel. Native Gen II rows also publish real hitboxes.
 require_all("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
             "screen.selectedItemIndex = target;", "input |= HidNpadButton_A;")
 require_all("src/UI/Gen2SharedSurfaceParity.inc",
@@ -163,11 +164,23 @@ require_all("src/UI/Gen2SharedPokemonSurface.inc",
 require_all("src/UI/Gen3SharedPokemonSurface.inc",
             "if (touch.justTapped()) {", "screen.selectedItemIndex = tapped;",
             "if (!editor(screen)) return false;",
-            "if (selectedOccupied(screen)) beginActions(screen);")
+            "beginActions(screen);")
+gen3_source = read("src/UI/Gen3SharedPokemonSurface.inc")
+gen3_box_tap = gen3_source.split("if (touch.justTapped()) {")[-1].split("const bool occupied = selectedOccupied(screen);", 1)[0]
+assert "beginActions(screen);" in gen3_box_tap
+assert "if (selectedOccupied(screen))" not in gen3_box_tap
+assert "if (!editor(screen)) return false;" in gen3_box_tap
 require_all("src/UI/Gen4SharedPokemonSurface.inc",
             "if (boxEntry && touch.justTapped())", "screen.selectedItemIndex = tapped;",
-            "if (selectedOccupied(screen)) beginActions(screen);",
+            "beginActions(screen);",
             "if (partyEntry && touch.justTapped())", "screen.selectedPartyIndex = tapped - 6200;")
+gen4_source = read("src/UI/Gen4SharedPokemonSurface.inc")
+gen4_box_tap = gen4_source.split("if (boxEntry && touch.justTapped())", 1)[1].split(
+    "if (partyEntry && touch.justTapped())", 1)[0]
+assert "beginActions(screen);" in gen4_box_tap
+assert "if (selectedOccupied(screen))" not in gen4_box_tap
+assert "PokeBank::UIModel::Gen4BoxTouchActions::selectsTappedBoxSlot" in gen4_box_tap
+
 # The header arrows must use the Gen I–III exact-game category catalog, not the
 # old two-pocket RBY inherited category counter.
 require_all("src/UI/ClassicInventoryOverlay.cpp",

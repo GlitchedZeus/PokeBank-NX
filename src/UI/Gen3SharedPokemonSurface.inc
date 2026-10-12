@@ -2013,9 +2013,12 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
         const int slots = static_cast<int>(screen.trainer.getSlotsPerBox());
         if (tapped >= 0 && tapped < slots) {
             screen.selectedItemIndex = tapped;
-            if (!editor(screen)) return false; // Read-only source: preserve base View fallback.
-            if (selectedOccupied(screen)) beginActions(screen);
-            return true; // Empty staged slot: focus only; X remains explicit Add.
+            if (!editor(screen)) return false; // No staged editor: retain safe base View fallback.
+            // Empty slots are actions too: A and a release-confirmed tap must
+            // both open the same narrow Add/Cancel menu. X stays a direct Add
+            // shortcut; tapping a slot never creates a Pokémon by itself.
+            beginActions(screen);
+            return true;
         }
     }
     const bool occupied = selectedOccupied(screen);

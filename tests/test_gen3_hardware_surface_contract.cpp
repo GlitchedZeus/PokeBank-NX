@@ -19,6 +19,13 @@ void contains(const std::string& text, const char* needle) {
 }
 int main() {
     namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+    // Both empty and occupied slots must open Actions with A OR a clean tap.
+    // X remains the explicit shortcut to begin a new staged draft.
+    static_assert(Shared::boxActivation(false, true, false) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(true, true, false) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(false, false, true) == Shared::BoxActivation::Add);
+    static_assert(Shared::boxActivation(true, false, true) == Shared::BoxActivation::None);
+    static_assert(Shared::boxActivation(false, false, false) == Shared::BoxActivation::None);
     namespace Multi = PokeBank::UIModel::ClassicPackedMove;
     constexpr UI::SharedPokemonShell::Geometry geometry(1280, 720, 46);
     namespace HeldItems = PokeBank::UIModel::SharedHeldItemPicker;

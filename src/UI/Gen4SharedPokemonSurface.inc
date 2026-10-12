@@ -2736,10 +2736,12 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
         const int slots = static_cast<int>(screen.trainer.getSlotsPerBox());
         if (PokeBank::UIModel::Gen4BoxTouchActions::selectsTappedBoxSlot(tapped, slots)) {
             screen.selectedItemIndex = tapped;
-            // A on an occupied box slot already enters this exact staged menu.
-            // A tap does too, including when tapping a different Pokémon.
-            if (selectedOccupied(screen)) beginActions(screen);
-            return true; // Unoccupied slot: focus only, X is explicit Add.
+            // Occupied AND empty slots open the same narrow native menu
+            // whether selected by A or a clean touch tap. A tap may open
+            // Add/Cancel, but never creates a Pokémon without a further
+            // explicit selection; X remains the direct Add shortcut.
+            beginActions(screen);
+            return true;
         }
     }
     if (partyEntry && touch.justTapped()) {
