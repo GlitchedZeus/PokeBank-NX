@@ -56,6 +56,23 @@ def audit(root: Path) -> dict:
     egg = contents[PK2_PROBE]
     native = contents[PK4_PROBE]
 
+    # The native read-only type is established through an explicit virtual
+    # pointer capability, never a broad saved-game enum or C-style cast.
+    for forbidden in (
+        "static_cast<const Pokemon::Pokemon1ReadOnly&>(pk)",
+        "static_cast<const Pokemon::Pokemon2ReadOnly&>(pk)",
+        "reinterpret_cast<const Pokemon::Pokemon1ReadOnly&>(pk)",
+        "reinterpret_cast<const Pokemon::Pokemon2ReadOnly&>(pk)",
+    ):
+        if forbidden in production:
+            raise ValueError("unsafe typed adapter downcast reintroduced: " + forbidden)
+    require_all("typed native adapters", production, (
+        "pk.nativePk1ReadOnly() != nullptr",
+        "pk.nativePk2ReadOnly() != nullptr",
+        "*pk.nativePk1ReadOnly()",
+        "*pk.nativePk2ReadOnly()",
+    ))
+
     f5 = segment(production, F5_START, F5_END)
     require_all("PK2 egg production", f5, (
         "nativeFormatGeneration == 2", "pk.isEgg()",
