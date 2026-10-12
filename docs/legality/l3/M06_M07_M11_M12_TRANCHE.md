@@ -173,3 +173,24 @@ The original three revisions' src/data/pokemon/level_up_learnsets.h, src/data/po
 ### Residual gates
 
 Catalog M06/M07/M08/M11/M12/M13 remains **PARTIAL**; M17 original Pal Park rule unchanged. L5 still owns original per-version source coverage for other species, legal provenance/licensing of source data, source-stage real native paired saves, later tutor/event/transfer Shedinja paths and exhaustiveness evidence. No shared analyzer or shared workflow/Makefile modifications, no save mutation, no Gen V, no self-merge, and no hard Invalid from hypothetical candidate-local contradictions.
+
+
+## Major tranche 6 — source-pinned five-GBA Move Relearner menu (2026-10-12)
+
+**M07/M12 substantial read-only production** under L3-owned include/Legality/Gen14CandidateMoveGbaRelearner.h; new native tests/test_legality_l3_gba_relearner.cpp. Existing move-pool membership was not proof a move was offered in the game's actual Move Relearner menu.
+
+**Three pinned original method sources independently verified:**
+
+- pret/pokeruby@63a8cbf0016b351a4e68f7036fa0b77e23d2f2c1, src/pokemon_3.c **GetMoveTutorMoves**: despite this early decompilation function name, it reads the Pokémon's four known move slots, its actual species/level and the original species-specific level-up learnset to build the same historical relearner-menu options for Ruby/Sapphire.
+- pret/pokeemerald@5eff78649e7170a877b961ef0b3da13b81a16038, src/pokemon.c **GetMoveRelearnerMoves**: equivalent routine for Emerald.
+- pret/pokefirered@c75f352304d529f6ba92d4f74b9cf8b5c3810788, src/pokemon.c **GetMoveRelearnerMoves**: original FRLG versioned method.
+
+All three original functions enumerate source-level moves at/below current level; suppress any move already known in the four slots; suppress duplicate entries in their ordered menus. This is not equivalent to compatibility or acquisition. The new helper reconstructs that exact menu from the L3 game-specific source tables, requires a separately attested original candidate ID, exact source game, stage level, original Pokémon/species, service access and witnessed player choice, then replays the chosen move into the first free slot or a source-attested full-slot replacement. A mismatched selected move or resulting four slots is **only a local candidate contradiction**; no source service or visited-game evidence, unmodeled species, malformed slots or unproven selected action remain Unresolved. No global Invalid and no writes.
+
+Source-specific learnsets: Emerald uses the **accepted full 386-species, 3,947-entry** source. For Ruby/Sapphire/FRLG the earlier L3 source-corroborated **12 National Dex species** are supported; other original species remain Unknown even though the generic relearner mechanism is independently source verified.
+
+**Tests:** new standalone includes all five games, Ruby/Sapphire/Emerald versus FRLG Charmander move difference, Bulbasaur lv15 dual-menu offers, Ivysaur duplicate low-level Growl suppressed, Blastoise and FRLG Charizard Heat Wave, higher-level moves hidden, already-known moves excluded, first free slot vs replacement, absent access/decision/snapshot Unknown, incorrect after state contradiction. Both the **exact GitHub source and exact native test blob SHA** were separately compared to local files, compiled C++20 -Werror and executed under normal and ASan/UBSan: **PASS** with the explicitly labeled 12-species-only Emerald fixture.
+
+An **additional production-only full-data sweep** in the same committed test loops all 386 accepted Emerald species and 3,947 source entries, computes the expected ordered/deduplicated menu independently, and asserts that the resulting four-slot teaching and menu match. This sweep runs by default in the standalone main when coordinator registers it. **It has NOT been executed in the local subset-only container** (local compilation/execution explicitly used the --sampled flag to skip it); full exact-head CI must run against the actual accepted Emerald source. The owned Gen14CandidateMoveHistory.h includes the helper's compile-time smoke, but not standalone main execution.
+
+**Coordinator gate:** register **seven** standalone tests/test_legality_l3_* binaries in shared Makefile.host (coordinator-only, not edited by L3), then full exact-head host, focused RSE, ASan+UBSan, integrated/combined tree and original-source licensing review. M06/M07/M08/M11/M12/M13 remain PARTIAL, M17 Pal Park HM boundary unchanged. The detached PK3 cannot prove actual teacher, payments, visited games or parent/transfer history from move ID compatibility alone.
