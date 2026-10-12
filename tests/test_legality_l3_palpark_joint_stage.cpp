@@ -34,6 +34,15 @@ constexpr J::Input basic(G source,G dest) {
 static_assert(J::evaluate(basic(G::Ruby,G::Diamond)).status==S::CandidateConsistent);
 static_assert(J::evaluate(basic(G::LeafGreen,G::SoulSilver)).status==S::CandidateConsistent);
 static_assert(J::evaluate(basic(G::Emerald,G::Platinum)).verifiedGbaMachines==1);
+
+// A transfer path must not borrow Bulbasaur's numbered machine witness
+// to prove source teaching for a different species at the same game/level.
+static_assert([]{auto a=basic(G::Ruby,G::Diamond);
+    a.path.species=4;
+    a.crossing.species=4;
+    return J::evaluate(a).status==S::Unresolved;
+}());
+
 static_assert([]{auto a=basic(G::Ruby,G::Diamond);a.sameOriginalPokemonAcrossBothWitnessesVerified=false;
     return J::evaluate(a).status==S::Unresolved;}());
 static_assert([]{auto a=basic(G::Ruby,G::Diamond);a.crossing.independentlyVerifiedImmediateArrival=false;
