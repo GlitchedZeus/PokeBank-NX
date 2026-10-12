@@ -15,7 +15,8 @@ namespace IV=Gen3EggIVInheritanceStage;
 enum class Status : uint8_t {
     UnsupportedGame, UnknownMoveParentHistory, UnknownPairEligibility,
     UnknownLightBall, IncoherentParentWitness,
-    UnknownIVParentSnapshot, UnknownIVRNGHistory,
+    UnknownIVParentSnapshot, UnknownDaycareSlotOrder,
+    IncoherentDaycareSlotOrder, UnknownIVRNGHistory,
     UnknownSharedParentStage, IncoherentParentStage,
     InvalidIVCandidateInput, MoveCandidateContradicted,
     IVCandidateContradicted, KnownCandidateConsistent
@@ -28,6 +29,11 @@ struct Parent {
 struct Input {
     Move::Input moveHistory{};
     Parent father{},mother{};
+    // BREED-002: physical deposited daycare slots are NOT the move-parent
+    // father/mother roles. These IDs and their order require independent
+    // source-stage attestation; a detached PK3 cannot reconstruct them.
+    bool daycareSlotOrderIndependentlyVerified=false;
+    uint32_t daycareSlot0ParentId=0, daycareSlot1ParentId=0;
     // A shared father/mother ID is not enough if the two descriptions
     // refer to DIFFERENT historical parent moveset/IV snapshots.
     // Explicit source-attested stage tokens cannot be recovered from PK3.
@@ -82,14 +88,32 @@ constexpr Result evaluate(const Input& in) noexcept {
     if(in.moveParentStageToken!=in.ivParentStageToken) {
         out.status=Status::IncoherentParentStage;return out;
     }
+    if(!in.daycareSlotOrderIndependentlyVerified ||
+       !in.daycareSlot0ParentId || !in.daycareSlot1ParentId) {
+        out.status=Status::UnknownDaycareSlotOrder;return out;
+    }
+    // Both physical slots must refer to the SAME independently attested
+    // parent snapshots used by move inheritance. Do not guess or swap
+    // the father/mother roles to make an IV observation fit.
+    const bool fatherFirst=in.daycareSlot0ParentId==in.father.id &&
+                           in.daycareSlot1ParentId==in.mother.id;
+    const bool motherFirst=in.daycareSlot0ParentId==in.mother.id &&
+                           in.daycareSlot1ParentId==in.father.id;
+    if(in.daycareSlot0ParentId==in.daycareSlot1ParentId ||
+       (!fatherFirst && !motherFirst)) {
+        out.status=Status::IncoherentDaycareSlotOrder;return out;
+    }
     if(!in.independentlyKnownFinalIVStageState) {
         out.status=Status::UnknownIVRNGHistory;return out;
     }
+    const auto& physicalSlot0=fatherFirst ? in.father.originalIVs
+                                          : in.mother.originalIVs;
+    const auto& physicalSlot1=fatherFirst ? in.mother.originalIVs
+                                          : in.father.originalIVs;
     out.ivs=IV::verifyKnownStage(game,in.finalIVStageRNGState,
                                  in.observedUnhatchedIVs,
                                  in.initialChildIVs,
-                                 in.father.originalIVs,
-                                 in.mother.originalIVs,true);
+                                 physicalSlot0,physicalSlot1,true);
     switch(out.ivs) {
         case IV::CandidateCheck::Matched:
             out.status=Status::KnownCandidateConsistent;break;

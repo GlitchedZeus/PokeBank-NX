@@ -11,3 +11,9 @@ Host and sanitizer tests cover same-parent moves/IVs, switched father and mother
 ## Parent-pair timestamp / snapshot coupling
 
 Parent IDs alone can accidentally combine a father's moveset from one time with an incompatible earlier/later original IV snapshot. The joint checker now requires an **independently attested nonzero shared parent-stage token** for both evidence inputs. Missing stage linkage is Unknown; mismatched stage tokens mark the asserted joint witness incoherent. Tokens are hypothetical supplied provenance, **not** stored native PK3 fields or newly inferred historical proof.
+
+## BREED-002 physical daycare deposit order (2026-10-11)
+
+The joint helper now requires an independently verified mapping of daycare **slot 0** and **slot 1** to the already verified parent IDs, rather than silently treating the move-donor father as physical slot 0. Unknown or missing deposit order returns `UnknownDaycareSlotOrder`; duplicated, alien or contradictory IDs return `IncoherentDaycareSlotOrder` for that proposed history. Source-attested reversed deposit order is valid and preserves the original father/mother move inheritance roles.
+
+The regression checks 24 source-cross-checked Gen III six-draw IV stage vectors (Emerald, Ruby, FireRed) with both possible role placements, plus explicit missing, duplicate and alien slot mappings: 48 positive conditional joint histories, 48 each of four negative/unknown controls. This is **not** proof that real parent identities or a final RNG state can be reconstructed from a detached PK3, and no new global Invalid decision is connected to this helper.
