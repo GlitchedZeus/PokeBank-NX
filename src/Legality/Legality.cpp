@@ -71,6 +71,8 @@
 #include "Legality/Gen4EggMoveFamilyEvidence.h"
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
 #include "Legality/Gen14CandidateMoveGbaLevelUpTimeline.h"
+#include "Legality/Gen4PlatinumNativeMethodData.h"
+#include "Legality/Gen4PlatinumPinnedMachines.h"
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen3JointMoveEvidence.h"
 #include "Legality/Gen3ShedinjaEvolutionMoveEvidence.h"
@@ -2235,6 +2237,67 @@ namespace Legality {
                             std::to_string(first) +
                             "; historical trainer choices, evolution and simultaneous acquisition remain unverified",
                             CheckIdentifier::Moves);
+                    }
+                }
+            }
+        }
+
+
+        // L3 exact ORIGINAL Platinum direct-method candidates: this
+        // deliberately limited source-pinned sample covers twelve species,
+        // 174 level-up offers and known tutors/TM-HMs, NOT all Gen IV.
+        // Native PK4 original-game identity survives intra-Gen IV trading.
+        // Do not infer a missing teacher, item receipt, original egg event,
+        // retained four-slot order or impossibility from an absent method.
+        if (!sourceFormatMismatch && !pk.isEgg() &&
+            Gen34FormatDomain::generationFromGroup(pk.getGameGroup())==4 &&
+            Gen4Origin::exactRetailGameId(pk.originGame())=="platinum_nds" &&
+            (species!=386 || pk.form()==0) &&
+            Gen4PlatinumNativeMethodData::row(species)!=nullptr) {
+            for(int slot=0;slot<4;++slot) {
+                const uint16_t move=pk.move(slot);
+                if(!move)continue;
+                uint8_t earliest=0;
+                const auto count=Gen4PlatinumNativeMethodData::offerCount(species);
+                for(uint16_t i=0;i<count;++i) {
+                    const auto packed=
+                        Gen4PlatinumNativeMethodData::packedOffer(species,i);
+                    const auto level=static_cast<uint8_t>(packed>>9);
+                    if ((packed & 511u)==move && level!=0 &&
+                        level<=pk.level() &&
+                        (earliest==0 || level<earliest))
+                        earliest=level;
+                }
+                if(earliest) {
+                    add(r,Severity::Info,
+                        "Original Platinum native level-up method: " +
+                        std::string(Names::getMoveName(move)) +
+                        " is offered by the current species by level " +
+                        std::to_string(earliest) +
+                        "; original trainer choices, retention and earlier evolution remain unverified",
+                        CheckIdentifier::Moves);
+                }
+                if(Gen4PlatinumNativeMethodData::tutorCompatible(
+                    species,move)) {
+                    add(r,Severity::Info,
+                        "Original Platinum native tutor method: " +
+                        std::string(Names::getMoveName(move)) +
+                        " is compatible with the pinned species source; actual tutor receipt and joint move history remain unverified",
+                        CheckIdentifier::Moves);
+                }
+                for(const auto& machine:Gen4PlatinumPinnedMachines::kPinned) {
+                    if(machine.move==move &&
+                       Gen4PlatinumPinnedMachines::compatible(
+                           species,machine.hidden,machine.number,move)) {
+                        add(r,Severity::Info,
+                            "Original Platinum native TM/HM method: " +
+                            std::string(Names::getMoveName(move)) +
+                            " is compatible with pinned machine " +
+                            std::string(machine.hidden?"HM":"TM") +
+                            std::to_string(machine.number) +
+                            "; actual acquisition/teaching receipt remains unverified",
+                            CheckIdentifier::Moves);
+                        break;
                     }
                 }
             }
