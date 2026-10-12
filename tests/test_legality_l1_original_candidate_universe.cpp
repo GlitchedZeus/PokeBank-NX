@@ -1,0 +1,100 @@
+#include "Legality/Gen14EncounterCandidateUniverse.h"
+#include <array>
+#include <cassert>
+#include <cstdint>
+#include <iostream>
+int main(){
+    namespace U=Legality::Gen14EncounterCandidateUniverse;
+    using Kind=U::EvidenceKind;using Outcome=U::Outcome;using Family=U::Family;
+    // Compile-time source-helper status contracts. In particular, bounded
+    // search exhaustion, alternate exact game and unsupported stages cannot
+    // be smuggled into a globally Invalid outcome.
+    static_assert(U::map(
+        Legality::Gen1IndexedOriginalSourceHistory::Status::ConditionalOriginalSource)
+        ==Kind::OriginalTemplateCompatible);
+    static_assert(U::map(
+        Legality::Gen2IndexedOriginalSourceHistory::Status::CandidateMethodContradicted)
+        ==Kind::CandidateLocalContradiction);
+    static_assert(U::map(
+        Legality::Gen3SafariIndexedOriginalHistory::Status::ConditionalOriginalSafariHistory)
+        ==Kind::ConditionalOriginalHistory);
+    static_assert(U::map(
+        Legality::Gen3SafariIndexedOriginalHistory::Status::ForeignRowNotEvidence)
+        ==Kind::UnknownOriginalHistory);
+    static_assert(U::map(
+        Legality::Gen3GameCubeIndexedShadowHistory::Status::BoundedTeamSearchUnknown)
+        ==Kind::UnknownOriginalHistory);
+    static_assert(U::map(
+        Legality::Gen4SinnohSpecialOriginalStage::Status::ConditionalRadarSourceAwaitingPidReplay)
+        ==Kind::OriginalTemplateCompatible);
+    static_assert(U::map(
+        Legality::Gen4StaticIndexedOriginalHistory::Status::ConditionalOriginalGiftEggSourceAwaitingBreedingVerification)
+        ==Kind::OriginalTemplateCompatible);
+    static_assert(U::map(
+        Legality::Gen4WildSpecialStageEvidence::Status::BoundedCandidateUnresolved)
+        ==Kind::UnknownOriginalHistory);
+    static_assert(U::map(
+        Legality::Gen4WildSpecialStageEvidence::Status::KnownConditionalSpecialEncounter)
+        ==Kind::ConditionalOriginalHistory);
+    constexpr std::array<U::Candidate,4> mixed{{
+        {Family::Gen1StaticTrade,Kind::CandidateLocalContradiction,true},
+        {Family::Gen2Wild,Kind::UnknownOriginalHistory,true},
+        {Family::Gen3Safari,Kind::OriginalTemplateCompatible,true},
+        {Family::Gen4HgssSpecial,Kind::ConditionalOriginalHistory,true}
+    }};
+    constexpr auto mix=U::summarize(mixed);
+    static_assert(mix.outcome==Outcome::SourceAttestedConditionalHistory);
+    static_assert(mix.verifiedConditional==1u && mix.sourceTemplateOnly==1u);
+    static_assert(!mix.globalInvalidSupported);
+    constexpr std::array<U::Candidate,2> noAlternative{{
+        {Family::Gen3GameCubeShadow,Kind::CandidateLocalContradiction,true},
+        {Family::Gen4StaticGiftRoamer,Kind::CandidateLocalContradiction,true}
+    }};
+    constexpr auto local=U::summarize(noAlternative);
+    static_assert(local.outcome==Outcome::CandidateSetLocallyContradictedOnly);
+    static_assert(local.locallyContradicted==2u);
+    static_assert(!local.globalInvalidSupported);
+    constexpr std::array<U::Candidate,2> exhausted{{
+        {Family::Gen4HgssSpecial,Kind::CandidateLocalContradiction,true},
+        {Family::Gen3GameCubeShadow,Kind::UnknownOriginalHistory,true}
+    }};
+    static_assert(U::summarize(exhausted).outcome==
+                  Outcome::UnknownOrMissingOriginalHistories);
+    constexpr std::array<U::Candidate,1> unverified{{
+        {Family::Gen4SinnohWild,Kind::ConditionalOriginalHistory,false}
+    }};
+    static_assert(U::summarize(unverified).outcome==
+                  Outcome::UnknownOrMissingOriginalHistories);
+    // A source-only attested wild Honey/Radar or gifted egg path must not
+    // be presented as proof of full RNG legality.
+    constexpr std::array<U::Candidate,2> sourceOnly{{
+        {Family::Gen4SinnohWild,Kind::OriginalTemplateCompatible,true},
+        {Family::Gen4StaticGiftRoamer,Kind::OriginalTemplateCompatible,true}
+    }};
+    static_assert(U::summarize(sourceOnly).outcome==
+                  Outcome::SourceTemplateCompatibleHistoryUnproven);
+    constexpr std::array<U::Candidate,0> empty{};
+    static_assert(U::summarize(empty).outcome==
+                  Outcome::UnknownOrMissingOriginalHistories);
+    // Same extracted source family can have two competing physical rows:
+    // one locally contradictory and another unknown => NOT global Invalid.
+    std::array<U::Candidate,2> duplicate{{
+        {Family::Gen3Safari,Kind::CandidateLocalContradiction,true},
+        {Family::Gen3Safari,Kind::UnknownOriginalHistory,true}
+    }};
+    assert(U::summarize(duplicate).outcome==
+           Outcome::UnknownOrMissingOriginalHistories);
+    duplicate[1].evidence=Kind::ConditionalOriginalHistory;
+    assert(U::summarize(duplicate).outcome==
+           Outcome::SourceAttestedConditionalHistory);
+    for(auto evidence:{
+        Kind::UnknownOriginalHistory,Kind::CandidateLocalContradiction,
+        Kind::OriginalTemplateCompatible,Kind::ConditionalOriginalHistory
+    }){
+        const std::array<U::Candidate,1> one{{
+            {Family::Gen4HgssSpecial,evidence,true}
+        }};
+        assert(!U::summarize(one).globalInvalidSupported);
+    }
+    std::cout<<"L1 E17/E18 original encounter candidate universe never global Invalid: PASS\n";
+}

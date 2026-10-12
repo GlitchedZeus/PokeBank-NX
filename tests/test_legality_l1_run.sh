@@ -28,6 +28,7 @@ suites=(
   test_legality_l1_gen2_original_source
   test_legality_l1_gen4_static_indexed
   test_legality_l1_gen4_sinnoh_special
+  test_legality_l1_original_candidate_universe
 )
 for profile in host sanitize; do
   if [[ "$profile" == host ]]; then
