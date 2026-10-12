@@ -56,6 +56,7 @@ pk4_sources=(
 )
 tests=(
     test_legality_l2_dp_alternative_egg_histories
+    test_legality_l2_dp_move_stage
     test_legality_l2_dp_egg_iv
     test_legality_l2_dp_egg_pid
     test_legality_l2_dp_native_egg_history
@@ -132,6 +133,6 @@ if (( attempted==0 )); then
 fi
 echo "L2 complete: $passed/$attempted exact-checked-out-source standalone test executions passed."
 if (( ${#failures[@]}>0 )); then
-    printf 'L2 FAILED EXECUTIONS: %s\\n' "${failures[@]}" >&2
+    printf 'L2 FAILED EXECUTIONS: %s\n' "${failures[@]}" >&2
     exit 1
 fi
