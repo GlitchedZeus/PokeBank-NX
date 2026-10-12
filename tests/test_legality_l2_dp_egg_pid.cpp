@@ -192,6 +192,25 @@ int main() {
         }
     }
     assert(languageChecks==18);
+    // Out-of-generation parent IDs are not source-attested D/P deposited
+    // parents, even with a completely matching historical MT transcript.
+    // Reject the unverified source metadata; never manufacture a PID match
+    // or a candidate contradiction from such a record.
+    for(const char* game:{"diamond_nds","pearl_nds"}) {
+        auto valid=base(trial,game);
+        assert(DP::evaluate(valid).status==DP::Status::ConditionalOriginalEggPIDMatched);
+        ++checks;
+        for(unsigned slot=0;slot<2;++slot) {
+            for(uint16_t species:std::array<uint16_t,3>{494,65535,0}) {
+                auto impossible=valid;
+                impossible.parents[slot].species=species;
+                const auto verdict=DP::evaluate(impossible);
+                assert(verdict.status==DP::Status::UnknownParentCreationSnapshots);
+                assert(verdict.status!=DP::Status::OriginalEggPIDContradicted);
+                ++checks;
+            }
+        }
+    }
     auto wrongGame=base(accepted,"platinum_nds");
     assert(DP::evaluate(wrongGame).status==DP::Status::UnsupportedGame);
     std::cout<<"L2 B13 original Diamond/Pearl PID history: "<<checks+7

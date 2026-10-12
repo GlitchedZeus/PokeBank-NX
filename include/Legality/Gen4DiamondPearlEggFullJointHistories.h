@@ -87,6 +87,15 @@ constexpr Result evaluate(const Input& in) noexcept {
            m.physicalSlots[1].gender!=c.pid.parents[1].gender) {
             ++out.unverified;continue;
         }
+        // PID creation and move inheritance must describe the SAME
+        // original daycare pair.  An independently verified eligibility
+        // claim cannot be true at one stage and false at the other.  This
+        // evidence conflict is Unknown, NOT an exhaustive local contradiction.
+        if(m.originalDaycarePairEligibilityIndependentlyAttested &&
+           c.pid.originalDaycarePairEligibilityVerified &&
+           m.eligibleOriginalDaycarePair != c.pid.eligibleOrdinaryDaycarePair){
+            ++out.unverified;continue;
+        }
         // Original DP Light Ball is ITEM_LIGHT_BALL=236; items refer to
         // verified creation-stage holders, NEVER current native PK4.
         // An incompatible source assertion is Unknown, not global Invalid.
