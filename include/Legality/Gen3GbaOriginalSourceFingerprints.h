@@ -6,24 +6,9 @@
 // Generator: original National Dex species IDs + MOVE constants, branching
 // #if FIRERED / #elif LEAFGREEN as an exclusive original cartridge switch.
 // 64-bit FNV1a encodes LE u16 species, count, then every ordered packed move.
+#include "Legality/Gen3GbaOriginalSourceDigest.h"
 #include <array>
-#include <cstdint>
 namespace Legality::Gen3GbaOriginalSourceFingerprints {
-inline constexpr std::uint64_t kOffset=14695981039346656037ULL;
-inline constexpr std::uint64_t kPrime=1099511628211ULL;
-constexpr std::uint64_t appendByte(std::uint64_t h,std::uint8_t b) noexcept {
-    return (h^b)*kPrime;
-}
-constexpr std::uint64_t appendWord(std::uint64_t h,std::uint16_t v) noexcept {
-    return appendByte(appendByte(h,static_cast<std::uint8_t>(v)),
-                      static_cast<std::uint8_t>(v>>8));
-}
-template<class Lookup>
-constexpr std::uint64_t fingerprint(std::uint16_t species,std::uint16_t count,Lookup lookup) noexcept {
-    auto h=appendWord(appendWord(kOffset,species),count);
-    for(std::uint16_t i=0;i<count;++i)h=appendWord(h,lookup(i));
-    return h;
-}
 inline constexpr std::array<std::uint64_t,387> kRuby{{
     0x0000000000000000ULL, 0x0738c167bf798326ULL, 0x5499ef84180fb4ffULL, 0xc842532419eb88fdULL, 0x7ec04da98649b1dcULL,
     0xeeebb35183439748ULL, 0x6fd110d5407bd8a6ULL, 0x31178df2d2688b42ULL, 0xdd87ab6bf3bf2f63ULL, 0xa9f42d951cbc4eddULL,
