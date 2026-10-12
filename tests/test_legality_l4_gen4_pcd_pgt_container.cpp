@@ -110,7 +110,7 @@ int main() {
         a.recipientHistoryIndependentlyKnown=(mask&16u)!=0;
         if(!(mask&32u))a.sourceDigest={};
         const auto actual=C::attest(projected,a);
-        const bool expected=(grade==1u||grade==3u) && mask==63u;
+        const bool expected=grade==1u && mask==63u;
         assert((actual==C::ArchiveStatus::ConditionalOriginalSource)==expected);
         ++archives;
     }
@@ -121,18 +121,48 @@ int main() {
         auto gradeSource=verified();
         gradeSource.grade=static_cast<C::ArchiveGrade>(rawGrade);
         const auto status=C::attest(projected,gradeSource);
-        if(rawGrade==1u || rawGrade==3u)
+        if(rawGrade==1u)
             assert(status==C::ArchiveStatus::ConditionalOriginalSource);
         else if(rawGrade>=4u && rawGrade<=6u)
             assert(status==C::ArchiveStatus::UntrustedSource);
+        else if(rawGrade==3u)
+            assert(status==C::ArchiveStatus::UnknownConversionHistory);
         else
             assert(status==C::ArchiveStatus::UnknownSource);
     }
+    // Converted original is never authenticated by its converted digest
+    // alone. Independently pin ORIGINAL archive digest, transformation chain
+    // and field preservation; exhaust every missing-proof combination.
+    unsigned conversionStates=0;
+    for(unsigned mask=0;mask<16;++mask) {
+        auto converted=verified();
+        converted.grade=C::ArchiveGrade::ConvertedOriginal;
+        converted.originalArchiveDigest[0]=std::byte{0x32};
+        converted.originalArchiveDigestIndependentlyVerified=(mask&1u)!=0;
+        converted.originalToConvertedChainIndependentlyVerified=(mask&2u)!=0;
+        converted.originalFieldsPreservedIndependentlyVerified=(mask&4u)!=0;
+        if(!(mask&8u))converted.originalArchiveDigest={};
+        const auto status=C::attest(projected,converted);
+        assert(status==(mask==15u ? C::ArchiveStatus::ConditionalOriginalSource :
+                                     C::ArchiveStatus::UnknownConversionHistory));
+        ++conversionStates;
+    }
+    // Source-file type compatibility still matters with complete conversion
+    // history. Paired bytes alone do not identify a recipient or archive.
+    auto converted=verified();converted.grade=C::ArchiveGrade::ConvertedOriginal;
+    converted.originalArchiveDigest[0]=std::byte{0x32};
+    converted.originalArchiveDigestIndependentlyVerified=true;
+    converted.originalToConvertedChainIndependentlyVerified=true;
+    converted.originalFieldsPreservedIndependentlyVerified=true;
+    assert(C::attest(projected,converted)==C::ArchiveStatus::ConditionalOriginalSource);
+    converted.grade=C::ArchiveGrade::OriginalPCD;
+    assert(C::attest(projected,converted)==C::ArchiveStatus::ConditionalOriginalSource);
     auto a=verified();a.grade=C::ArchiveGrade::OriginalPGT;
     assert(C::attest(projected,a)==C::ArchiveStatus::UnknownSource);
     auto gift=pgt;w16(gift,0,1);
     a=verified();a.grade=C::ArchiveGrade::OriginalPGT;
     assert(C::attest(C::inspect(gift),a)==C::ArchiveStatus::ConditionalOriginalSource);
     std::cout<<"L4 Gen IV PCD/PGT: "<<pairs<<" delivery families, "<<mutated
-             <<" bitwise pair negatives, "<<archives<<" provenance states: PASS\n";
+             <<" bitwise pair negatives, "<<archives<<" provenance states, "
+             <<conversionStates<<" conversion-proof states: PASS\n";
 }

@@ -122,7 +122,7 @@ enum class ArchiveGrade : uint8_t { Unknown, OriginalPCD, OriginalPGT,
     ConvertedOriginal, Reconstructed, Altered, Unreleased };
 enum class ArchiveStatus : uint8_t { UnknownSource, UntrustedSource,
     UnknownDigest, UnknownRelease, UnknownReceipt,
-    ConditionalOriginalSource };
+    ConditionalOriginalSource, UnknownConversionHistory };
 using Digest=std::array<std::byte,32>;
 struct Attestation {
     ArchiveGrade grade=ArchiveGrade::Unknown;
@@ -132,6 +132,12 @@ struct Attestation {
     bool originalFieldsIndependentlyExtracted=false;
     bool releasedIndependentlyCorroborated=false;
     bool recipientHistoryIndependentlyKnown=false;
+    // Converted archives are two evidence objects, not one. A checksum of a
+    // rewritten PCD/PGT cannot prove which original archive was transformed.
+    Digest originalArchiveDigest{};
+    bool originalArchiveDigestIndependentlyVerified=false;
+    bool originalToConvertedChainIndependentlyVerified=false;
+    bool originalFieldsPreservedIndependentlyVerified=false;
 };
 constexpr bool nonzero(const Digest& d) noexcept {
     for(auto b:d)if(b!=std::byte{0})return true;
@@ -157,6 +163,15 @@ constexpr ArchiveStatus attest(const Projection& p,
         return ArchiveStatus::UnknownSource;
     if(!s.digestIndependentlyVerified || !nonzero(s.sourceDigest) ||
        !s.originalFieldsIndependentlyExtracted)return ArchiveStatus::UnknownDigest;
+    // A converted file's own verified digest is insufficient to trace the
+    // claimed retail original. Never silently upgrade a converted card without
+    // its original digest, independent transformation, and field preservation.
+    if(s.grade==ArchiveGrade::ConvertedOriginal &&
+       (!s.originalArchiveDigestIndependentlyVerified ||
+        !nonzero(s.originalArchiveDigest) ||
+        !s.originalToConvertedChainIndependentlyVerified ||
+        !s.originalFieldsPreservedIndependentlyVerified))
+        return ArchiveStatus::UnknownConversionHistory;
     if(!s.releasedIndependentlyCorroborated)return ArchiveStatus::UnknownRelease;
     if(!s.recipientHistoryIndependentlyKnown)return ArchiveStatus::UnknownReceipt;
     return ArchiveStatus::ConditionalOriginalSource;
