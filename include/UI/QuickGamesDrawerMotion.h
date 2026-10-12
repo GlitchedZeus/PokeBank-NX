@@ -13,7 +13,7 @@ public:
     bool dragging() const noexcept { return dragging_; }
     bool armed() const noexcept { return armed_; }
     bool settling() const noexcept { return settling_; }
-    bool interactive() const noexcept { return offset_ == 0 && !armed_ && !settling_; }
+    bool interactive() const noexcept { return offset_ == 0 && !dragging_ && !settling_; }
     bool fullyClosed() const noexcept {
         return offset_ == Width && target_ == Width && !armed_ && !settling_;
     }
@@ -45,6 +45,7 @@ public:
             initialX_ = startX;
             initialY_ = startY;
             initialOffset_ = offset_;
+            resumeTarget_ = target_;
             settling_ = false;
             target_ = offset_;
         }
@@ -73,6 +74,11 @@ public:
             offset_ = std::clamp(initialOffset_ + x - initialX_, 0, Width);
             target_ = offset_ < Width / 2 ? 0 : Width;
             settling_ = offset_ != target_;
+        } else {
+            // A tap/vertical scroll interrupting an automatic animation must
+            // not leave the drawer frozen halfway across the screen.
+            target_ = resumeTarget_;
+            settling_ = offset_ != target_;
         }
         armed_ = dragging_ = false;
         (void)y;
@@ -91,6 +97,7 @@ private:
     int offset_ = Width;
     int target_ = Width;
     int initialOffset_ = Width;
+    int resumeTarget_ = Width;
     int initialX_ = 0;
     int initialY_ = 0;
     bool armed_ = false;
