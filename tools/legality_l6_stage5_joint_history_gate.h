@@ -66,12 +66,9 @@ constexpr Result evaluate(const Input& in) noexcept {
         if (!first)
             continue;
         ++out.authenticatedDistinctRoutes;
-        if (!r.routeIdentity || r.pokemonIdentity != in.pokemonIdentity ||
-            !r.completeSamePokemonHistory || !(r.requiredLanes & 15u) ||
-            (r.requiredLanes & ~15u)) {
-            ++out.incomplete;
-            continue;
-        }
+        // Compare every authenticated packet before accepting a selected
+        // representative. Otherwise, a malformed earlier duplicate can
+        // hide a conflicting later packet and make reversal change the gate.
         for (uint8_t j = static_cast<uint8_t>(i + 1); j < in.count; ++j) {
             const Route& another = in.routes[j];
             if (another.independentlyAuthenticated &&
@@ -82,6 +79,12 @@ constexpr Result evaluate(const Input& in) noexcept {
         }
         if (conflict) {
             ++out.duplicateConflicts;
+            ++out.incomplete;
+            continue;
+        }
+        if (!r.routeIdentity || r.pokemonIdentity != in.pokemonIdentity ||
+            !r.completeSamePokemonHistory || !(r.requiredLanes & 15u) ||
+            (r.requiredLanes & ~15u)) {
             ++out.incomplete;
             continue;
         }
