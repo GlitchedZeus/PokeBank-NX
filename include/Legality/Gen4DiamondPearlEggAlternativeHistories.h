@@ -27,6 +27,12 @@ struct Candidate {
     uint64_t originalEggEventIdentity=0;
     bool independentlyAttestedHypothesis=false;
     bool allMethodsForThisCandidateIndependentlyCovered=false;
+    // Distinct IV donors and PID/nature/language parents cannot be mixed
+    // merely by asserting a common event token; independently attest the
+    // exact same physical deposited pair across BOTH stage witnesses.
+    bool sharedPhysicalParentPairIndependentlyVerified=false;
+    uint64_t ivPhysicalParentPairIdentity=0;
+    uint64_t pidPhysicalParentPairIdentity=0;
     IV::OriginalStage iv{};
     PID::Input pid{};
 };
@@ -80,6 +86,9 @@ constexpr Result evaluate(const Input& in) noexcept {
         ++out.considered;
         const auto& c=in.alternatives[i];
         if(!c.independentlyAttestedHypothesis ||
+           !c.sharedPhysicalParentPairIndependentlyVerified ||
+           !c.ivPhysicalParentPairIdentity ||
+           c.ivPhysicalParentPairIdentity!=c.pidPhysicalParentPairIdentity ||
            c.originalEggEventIdentity!=in.originalEggEventIdentity ||
            c.iv.game!=in.game || c.pid.game!=in.game ||
            c.pid.parentStageToken!=in.originalEggEventIdentity ||
