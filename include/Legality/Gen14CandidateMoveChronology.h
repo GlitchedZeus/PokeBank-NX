@@ -25,6 +25,27 @@ constexpr uint8_t generation(Game game) noexcept {
     default: return 0;
     }
 }
+// A deliberately small, independently source-attested level-up sample,
+// NOT a full 386-species table. Unlisted facts may be verified by another
+// upstream packet; they are never treated as contradictions merely for
+// being absent here. A contradictory *sampled* level-up offer disproves
+// only the explicitly claimed source game/level method.
+enum class PinnedOffer : uint8_t { Unmodeled, Matches, Contradicts };
+constexpr PinnedOffer sourcePinnedLevelOffer(Game game,uint16_t species,
+                                             uint8_t level,uint16_t move) noexcept {
+    if(generation(game)!=3 || !move)return PinnedOffer::Unmodeled;
+    if(species==1) { // Bulbasaur: same sampled levels in RS/E/FRLG.
+        if(level==7)return move==73?PinnedOffer::Matches:PinnedOffer::Contradicts;
+        if(level==10)return move==22?PinnedOffer::Matches:PinnedOffer::Contradicts;
+        if(level==46)return move==76?PinnedOffer::Matches:PinnedOffer::Contradicts;
+    }
+    if(species==4 && level==13) { // Charmander: FRLG is different from RSE.
+        const bool frlg=game==Game::FireRed || game==Game::LeafGreen;
+        return move==(frlg?232u:108u)
+            ?PinnedOffer::Matches:PinnedOffer::Contradicts;
+    }
+    return PinnedOffer::Unmodeled;
+}
 enum class Method : uint8_t {
     LevelUp, TM, HM, Tutor, Reminder
 };
@@ -157,6 +178,11 @@ constexpr Result evaluate(const Path& path) noexcept {
         if(step.game!=current || step.methodSource!=current ||
            !teachingMethod(step.method) || !step.move ||
            step.move>(gen==3?354u:467u))return result;
+        if(step.method==Method::LevelUp &&
+           sourcePinnedLevelOffer(current,path.species,step.level,step.move)==
+               PinnedOffer::Contradicts) {
+            result.status=Status::CandidateContradicted;return result;
+        }
         const bool known=contains(result.rebuilt,step.move);
         const uint8_t open=freeSlot(result.rebuilt);
         if(step.action==Action::AlreadyKnown) {
@@ -220,4 +246,8 @@ static_assert(generation(Game::Ruby)==3 && generation(Game::LeafGreen)==3);
 static_assert(generation(Game::Platinum)==4 && generation(Game::SoulSilver)==4);
 static_assert(structural({33,45,0,0},354));
 static_assert(!structural({33,0,45,0},354));
+static_assert(sourcePinnedLevelOffer(Game::Ruby,4,13,108)==PinnedOffer::Matches);
+static_assert(sourcePinnedLevelOffer(Game::FireRed,4,13,232)==PinnedOffer::Matches);
+static_assert(sourcePinnedLevelOffer(Game::Emerald,4,13,232)==PinnedOffer::Contradicts);
+static_assert(sourcePinnedLevelOffer(Game::Platinum,4,13,108)==PinnedOffer::Unmodeled);
 } // namespace Legality::Gen14CandidateMoveChronology
