@@ -292,6 +292,56 @@ int main() {
     const auto fireRed = Legality::analyze(p, Enums::GameVersion::FRLG, "firered_gba");
     assert(!hasText(fireRed, "not native to this exact Gen III game"));
 
+    // L3 complete ORIGINAL Ruby/Sapphire/FRLG level-up data must reach
+    // the actual Legality::analyze production report on native encrypted PK3.
+    // Original-game byte is retained even if this Ruby Pokemon is currently
+    // being inspected inside a different (FireRed) source save.
+    auto rubyOffer=bulbasaurWithSwordsDance();
+    rubyOffer.setMove(0,73); // Leech Seed: original Bulbasaur offer at lv7
+    rubyOffer.refreshChecksum();
+    const auto rubyOfferReport=Legality::analyze(
+        rubyOffer, Enums::GameVersion::FRLG, "firered_gba");
+    assert(hasText(rubyOfferReport,
+        "Original ruby_gba native Gen III level-up source:"));
+    assert(!hasText(rubyOfferReport,
+        "Original firered_gba native Gen III level-up source:"));
+
+    // Level opportunity is bounded by the native CURRENT level: no
+    // synthetic positive when the source offer has not yet occurred.
+    rubyOffer.setLevel(5);
+    rubyOffer.refreshChecksum();
+    const auto early=Legality::analyze(
+        rubyOffer, Enums::GameVersion::FRLG, "ruby_gba");
+    assert(!hasText(early,
+        "Original ruby_gba native Gen III level-up source:"));
+
+    // Same game/version-specific original table, different eligible species.
+    auto frlgOffer=bulbasaurWithSwordsDance();
+    frlgOffer.setSpecies(4); // Charmander, original FRLG lv13 Metal Claw
+    frlgOffer.setOriginGame(4); // FireRed
+    frlgOffer.setLevel(13);
+    frlgOffer.setMove(0,232);
+    frlgOffer.refreshChecksum();
+    const auto fr=Legality::analyze(
+        frlgOffer, Enums::GameVersion::FRLG, "ruby_gba");
+    assert(hasText(fr,
+        "Original firered_gba native Gen III level-up source:"));
+    frlgOffer.setOriginGame(5); // LeafGreen, same original level opportunity
+    frlgOffer.refreshChecksum();
+    const auto lg=Legality::analyze(
+        frlgOffer, Enums::GameVersion::FRLG, "leafgreen_gba");
+    assert(hasText(lg,
+        "Original leafgreen_gba native Gen III level-up source:"));
+
+    // GameCube origin does not inherit any of the GBA original-game tables.
+    rubyOffer.setOriginGame(15);
+    rubyOffer.setLevel(10);
+    rubyOffer.refreshChecksum();
+    const auto cube=Legality::analyze(
+        rubyOffer, Enums::GameVersion::FRLG, "ruby_gba");
+    assert(!hasText(cube,
+        "native Gen III level-up source:"));
+
     // A later-generation move id stored in a PK3 must fail the exact-format ceiling even if
     // the global move-name table knows that id.
     p.setMove(1, 467);
