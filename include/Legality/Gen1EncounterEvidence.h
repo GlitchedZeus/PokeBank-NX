@@ -2,6 +2,7 @@
 
 #include "Legality/Gen1CatchRateEvidence.h"
 #include "Legality/Gen1PretAcquisitionStage.h"
+#include "Legality/Gen1PretEvolutionStage.h"
 
 #include <array>
 #include <cstdint>
@@ -78,12 +79,12 @@ constexpr uint8_t gameMaskForId(std::string_view id) noexcept {
 }
 
 constexpr bool canDescendFrom(uint16_t currentSpecies, uint16_t originalSpecies) noexcept {
-    if (currentSpecies == 0 || currentSpecies > 151 ||
-        originalSpecies == 0 || originalSpecies > currentSpecies)
-        return false;
-    const uint16_t base = static_cast<uint16_t>(
-        currentSpecies - Gen1CatchRate::evolutionStage(currentSpecies));
-    return originalSpecies >= base && originalSpecies <= currentSpecies;
+    // Exact R/B/Y original evolution edges, NOT contiguous National Dex
+    // numbers or the Gen I catch-rate family stage-offset shortcut.
+    // Source-game acquisition and actual evolution still need witnesses.
+    return Gen1PretEvolutionStage::reachable(originalSpecies,currentSpecies,1) ||
+           Gen1PretEvolutionStage::reachable(originalSpecies,currentSpecies,2) ||
+           Gen1PretEvolutionStage::reachable(originalSpecies,currentSpecies,4);
 }
 
 constexpr bool rateMatchesTemplate(uint8_t nativeMask, uint16_t originalSpecies,
