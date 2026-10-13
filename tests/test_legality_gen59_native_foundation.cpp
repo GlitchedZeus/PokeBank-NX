@@ -73,7 +73,7 @@ void testOriginalGameIdentifiers(uint64_t& checks) {
     };
     for(const auto& row:cases) {
         assert(static_cast<int>(row.original)==row.id);
-        assert(G::getGameGroup(row.original)==row.family);
+        assert(Enums::getGameGroup(row.original)==row.family);
         assert(D::classify(row.family).kind==D::Kind::Unknown);
         assert(!D::supportedNativeLayout(row.family));
         ++checks;
