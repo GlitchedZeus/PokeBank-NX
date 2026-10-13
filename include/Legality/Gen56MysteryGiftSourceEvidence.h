@@ -76,6 +76,12 @@ constexpr Projection inspect(Bytes data) noexcept {
 }
 struct Source {
     bool originalIndividualFileIdentified=false;
+    // SHA-256 of the precise serialized gift (including WC6Full wrapper),
+    // checked by the upstream ingest before this structure is populated.
+    bool exactSerializedBytesIndependentlyBoundToDigest=false;
+    bool originalFormatAndCardIdIndependentlyPinned=false;
+    Format originalFormat=Format::Unknown;
+    uint16_t originalCardId=0;
     bool originalArchiveDigestIndependentlyVerified=false;
     Digest originalArchiveSha256{};
     bool historicallyReleasedIndependentlyCorroborated=false;
@@ -117,6 +123,9 @@ constexpr Result evaluate(const Projection& gift,const Source& s,const Native& n
     if(gift.state!=State::PokemonProjection)return result;
     result.status=Finding::UnknownSource;
     if(!s.originalIndividualFileIdentified ||
+       !s.exactSerializedBytesIndependentlyBoundToDigest ||
+       !s.originalFormatAndCardIdIndependentlyPinned ||
+       s.originalFormat!=gift.format || s.originalCardId!=gift.card ||
        !s.originalArchiveDigestIndependentlyVerified ||
        !nonzero(s.originalArchiveSha256) ||
        !s.exactSourceRowLinkedToCardIndependentlyVerified ||
