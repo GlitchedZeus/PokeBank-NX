@@ -971,13 +971,15 @@ namespace Legality {
                 r.coverage.pidRng = CoverageLevel::Partial;
                 r.coverage.eggBreeding = CoverageLevel::Partial;
             }
-            // Gen I/III containers cannot carry an earlier-generation entity history.
-            // Gen II Time Capsule history is only partially recoverable from PK1/PK2 data.
-            if (exactGeneration == 1 || exactGeneration == 3)
-                r.coverage.transfer = CoverageLevel::Complete;
-            else if (exactGeneration == 2)
+            // Native PK1 can contain a Pokemon traded back through the
+            // Generation II Time Capsule. A Red/Blue/Yellow save label does
+            // not record its prior Gen II trainer/move/item history, even
+            // when that current container label is known exactly. Never
+            // claim Complete transfer coverage on a detached Gen I PK1.
+            // Gen II's Time Capsule evidence likewise remains partial.
+            if (exactGeneration == 1 || exactGeneration == 2)
                 r.coverage.transfer = CoverageLevel::Partial;
-            else if (exactGeneration == 4)
+            else if (exactGeneration == 3 || exactGeneration == 4)
                 r.coverage.transfer = CoverageLevel::Complete;
         }
 

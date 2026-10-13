@@ -64,6 +64,11 @@ int main(){
                        pk.statExpDEF()==1 && pk.statExpSPE()==32768 &&
                        pk.statExpSpecial()==65534);
                 const auto report=Legality::analyze(pk,pk.getGameGroup(),source);
+                // A known current R/B/Y save still cannot attest Time
+                // Capsule or Gen II tradeback origins of a detached PK1.
+                // Source-free/mismatched PK1 must stay equally incomplete.
+                assert(report.coverage.transfer==Legality::CoverageLevel::Partial);
+                assert(report.verdict()!=Legality::Verdict::NoProblemsFound);
                 assert(!has(report,Legality::Severity::Invalid,
                             "Ability not legal for this species"));
                 assert(!has(report,Legality::Severity::Invalid,
