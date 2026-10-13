@@ -89,7 +89,7 @@ void test4(unsigned& checks){
             const auto before=altered;
             Pokemon::Pokemon4ReadOnly rejected(altered,Enums::GameVersion::PT);
             assert(!rejected.valid() && !rejected.empty());
-            assert(rejected.species()==0 && rejected.moves()==std::array<uint16_t,4>{});
+            assert((rejected.species()==0 && rejected.moves()==std::array<uint16_t,4>{}));
             assert(altered==before);
             checks+=4;
         }
