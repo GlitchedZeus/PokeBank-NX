@@ -1,0 +1,70 @@
+# L4-owned, PR #292-only native evidence verification.
+# Does not modify the shared host workflow, production analyzer or other lanes.
+name: L4 Event Metadata Exact-Head Verification
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    paths:
+      - .github/workflows/legality-l4-evidence-matrix.yml
+      - tests/test_legality_l4_*
+      - tests/fixtures/legality_l4_*
+      - include/Legality/Gen14Event*
+      - include/Legality/Gen14OriginalCurrentChain*
+      - include/Legality/Gen14OriginalSourceRights*
+      - include/Legality/Gen14FinalProvenanceGate*
+      - include/Legality/Gen56MysteryGiftSource*
+      - include/Legality/Gen1OriginalGiftNative*
+      - include/Legality/Gen1OriginalNPCTrade*
+      - include/Legality/Gen1OriginalIndividual*
+      - include/Legality/Gen1NativeRawRecordWitness*
+      - include/Legality/Gen12Gift*
+      - include/Legality/Gen12OriginalDistribution*
+      - include/Legality/Gen3*Event*
+      - include/Legality/Gen3Distribution*
+      - include/Legality/Gen4*Event*
+      - include/Legality/Gen4MysteryGift*
+      - include/Legality/Gen4OriginalCardRecipient*
+      - include/Legality/Gen4ContestRibbon*
+      - tools/legality_l4_*
+      - docs/legality/l4/**
+
+permissions:
+  contents: read
+
+jobs:
+  l4-native-matrix:
+    if: github.event.pull_request.number == 292
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+        sanitize: ['0', '1']
+    name: "L4 ${{ matrix.compiler }} / sanitizer=${{ matrix.sanitize }}"
+    steps:
+      - name: Checkout exact application SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          submodules: recursive
+          persist-credentials: false
+      - name: Confirm source identity and compiler
+        shell: bash
+        env:
+          EXPECTED: ${{ github.event.pull_request.head.sha }}
+          CXX: ${{ matrix.compiler }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED"
+          echo "HEAD=$EXPECTED"
+          echo "TREE=$(git rev-parse 'HEAD^{tree}')"
+          "$CXX" --version
+      - name: Compile and execute all 28 L4 C++ suites and Python audits
+        shell: bash
+        env:
+          L4_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+          L4_SANITIZE: ${{ matrix.sanitize }}
+          CXX: ${{ matrix.compiler }}
+        run: bash tests/test_legality_l4_runner.sh

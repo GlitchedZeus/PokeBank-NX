@@ -1,0 +1,28 @@
+# L4 Stage 4 — Original Gen I–IV event metadata and historical route evidence
+
+**Scope:** informational, read-only, candidate-local, independent of production `Legality.cpp`. No PCD/PGT, ROM, retail distribution or original save bytes imported. A matching source template or PKM history cannot authenticate possession of a distribution. An unmatched or unknown history can never establish global `Invalid`.
+
+## Implementation
+
+- `Gen14HistoricalEventPathEvidence.h` connects an *independently attested* original metadata snapshot to at most 16 independently verified historical transitions. Allowed operations: trade, evolution, hatch, Pal Park III→IV, I↔II Time Capsule, move replacement, rename, contest, held-item edit and clock change. Operations do not grant blanket permission to rewrite an original OT ID, original Ball, source game ID or fateful flag. Unwitnessed and non-exhaustive histories are Unknown; changed fields require actual independently verified after-stage values. Evolution, hatch and Pal Park automatically discard bytewise raw text/date comparability unless independently verified successor bytes are supplied. Observations with **no independently known fields** cannot produce a conditional match. All statuses are scoped to exactly one proposed historical route.
+- `Gen4EventClockReceiptEvidence.h` treats PK4 date bytes as DS-clock calendar values rather than secure timestamps. Calendar bounds (year 2000–2255), leap days, independent original source release dates, independently identified egg/met receipt field, complete hatch history, clock accuracy at receipt and no later date rewrite are individually required before a candidate release-window comparison. Later rewrites and unsupported clocks are Unknown, not false Invalid.
+- `Gen3EventPalParkMetadataBridge.h` uses the existing Stage 2 *strict decrypted and checksum-validated native encrypted PK3 reader* as the actual source-side observation. The bridge requires independently verified matching of the PK3 to the claimed PK4, an exhaustive transfer history, and independently established original event identity. It does **not** reinterpret Gen III internal species as a National Dex number (a known cross-gen false-Invalid risk); an independently verified National Dex conversion must be supplied to compare final species. Original Ball, original TID/SID and GBA origin are preserved logically; raw PK3 byte strings are automatically Unknown after Pal Park unless their exact post-transfer encodings are independently verified. The PK4 observation and DP/HGSS split-ball storage still need separate native validation by the existing L4 Gen IV field and ball helpers.
+
+## Actual regression program executions
+
+Four tests compiled and executed in GCC and Clang C++20, **normal O2 and ASan/UBSan O1**, `-Wall -Wextra -Wpedantic -Werror`, no production code modifications. 16/16 focused executions PASS.
+
+| Program | Executable adversarial coverage |
+| --- | --- |
+| `test_legality_l4_historical_event_path.cpp` | All 32,768 15-field mismatch masks, 120 operation/field accept/reject cases, partial/unverified route, Pal Park invalid route, original Ball and OT identity retention, 16-step cap |
+| `test_legality_l4_clock_receipt_history.cpp` | 118,272 combinations of native byte-representable calendar values including 93,502 real dates, 64 independent source/clock/hatch masks, leap/invalid month/calendar and missing-original-source Unknown |
+| `test_legality_l4_historical_adversarial.cpp` | 120 mixed field/step states, 2-step independently verified move→contest changes, missing post-mutation proof, I↔II and forbidden direct I→IV route, no-observation Unknown |
+| `test_legality_l4_gen3_palpark_metadata_bridge.cpp` | Real original XOR/shuffle encrypted PK3, all 24 permutations × 80- and 100-byte sizes (48), source identity/receipt/History Unknown, 192 candidate/invalid native negatives, immutable cipher input |
+
+The native PK3 regression links the exact `src/Encryption/Encryption3FRLG.cpp` Git blob `eec27b73a15d6652371ed2e066690ef0fa9fb7ef`, original code verified against GitHub. In the isolated host build, only the unused save-layer parent `Encryption/Encryption.h` was replaced with a declaration-only build stub; neither the PK3 encryptor nor its analyzer was stubbed. Complete repository test execution and exact combined L4 normal/sanitizer CI remain pending.
+
+## Original mechanics, limits, and integration
+
+Pinned original repo semantics: `Pokemon3FRLG.h` stores origin/level/Ball together at canonical PK3 `0x46` and Gen III internal species at `0x20`; the project `SpeciesConverter3.h` documents nonuniform internal→National conversion. `Pokemon4ReadOnly.h` validates native encrypted PK4 and surfaces distinct DP/Pt/HGSS Ball/locations; existing `Gen4EventBallHistoryEvidence.h` and `Gen4TransferEvidence.h` remain authoritative for real Pal Park split fields. `Gen4EventDateHistoryEvidence.h` reads original PK4 egg/met bytes at `0x78..0x7D` and requires independent receipt clock history, separately from an original release window. Historical source provenance is **not** derivable from native PKM bytes.
+
+The new APIs do not replace accepted L1–L5 legality, nor assert source authenticity or the right to redistribute original events. Stage 5 integration should first perform exact Git blob comparison and run the now 25-program standalone runner normally and under ASan/UBSan against the **full** repository, including the previously unexecuted Stage 3 native PK4 test; verify L5 Q07/Q08 evidence; and allow only Unknown/Incomplete/candidate-local informational connections after coordinator review. No direct production Invalid/Valid call edge authorized.
