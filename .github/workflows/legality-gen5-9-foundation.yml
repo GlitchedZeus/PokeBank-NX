@@ -20,6 +20,8 @@ on:
       - 'tools/compare_legality_pk5_oracle.py'
       - 'include/Legality/Gen6NativePK6Evidence.h'
       - 'tests/test_legality_gen6_native_pk6.cpp'
+      - 'tests/test_legality_gen6_native_report.cpp'
+      - 'src/Legality/Gen6RecordAnalysis.cpp'
       - 'docs/legality/research/pkhex/PKHEX_USER_ARCHIVE_SOURCE_MAP.json'
       - 'src/Legality/Legality.cpp'
       - 'tools/audit_legality_gen59_wiring.py'
@@ -93,6 +95,15 @@ jobs:
             -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude \
             tests/test_legality_gen6_native_pk6.cpp -o /tmp/pbnx-gen59/native-pk6-san
           /tmp/pbnx-gen59/native-pk6-san
+          "$CXX" -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror -Iinclude \
+            src/Legality/Gen6RecordAnalysis.cpp tests/test_legality_gen6_native_report.cpp \
+            -o /tmp/pbnx-gen59/report-pk6
+          /tmp/pbnx-gen59/report-pk6
+          "$CXX" -std=c++20 -O1 -g -Wall -Wextra -Wpedantic -Werror \
+            -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude \
+            src/Legality/Gen6RecordAnalysis.cpp tests/test_legality_gen6_native_report.cpp \
+            -o /tmp/pbnx-gen59/report-pk6-san
+          /tmp/pbnx-gen59/report-pk6-san
           git diff --check
 
   pkhex-host-oracle:

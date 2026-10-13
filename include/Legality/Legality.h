@@ -122,6 +122,11 @@ namespace Legality {
     // certifies encounter, trainer, move or transfer history.
     Report analyzePk5Record(std::span<const uint8_t> encrypted);
 
+    // Validated standalone Gen VI PK6 structural/field report. Ciphertext
+    // selection is explicit; guessed decoding cannot authenticate history.
+    // Does not modify source buffers or imply source save-write authority.
+    Report analyzePk6Record(std::span<const uint8_t> raw, bool encrypted);
+
     /// Analyze a decrypted Pokemon and return its legality issues (informational).
     /// originGroup = the save's format group (Trainer::getGameGroup()). Returns an
     /// empty report for an empty slot (species 0).
