@@ -16,6 +16,7 @@ enum class Status : std::uint8_t {
 };
 struct Battle {
     std::uint64_t originalEventId=0;
+    std::uint64_t originalMonotonicEventSequence=0;
     G::SourceGame originalGame=G::SourceGame::Red;
     std::uint16_t defeatedNationalSpecies=0;
     bool originalDefeatIndependentlyAttested=false;
