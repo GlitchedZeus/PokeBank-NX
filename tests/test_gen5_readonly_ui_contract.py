@@ -304,7 +304,7 @@ require(surface, "void drawLocationPicker(", "case Surface::LocationPicker:",
         "kGen5LocationTouchBase=78000", "Names::getMetLocationName(",
         "Utils::promptNumber(", "state.stageFieldValue(",
         "state.acceptLocationPicker(error)", "state.cancelLocationPicker()",
-        "TID/SID changed in draft; shiny status may change")
+        "Gen V value changed in local draft; source unchanged")
 
 # Gen V form, ability-slot and gender use distinct PKHeX BW/B2W2
 # personal data; never borrow Gen IX abilities or accept an invented form.
@@ -317,7 +317,7 @@ require(personal, "std::array<Personal5,668> NativePersonalBW",
         "base.formIndex==0", "bool b2w2")
 require(native_stage, "case Field::Form:", "case Field::AbilitySlot:",
         "case Field::Gender:", "genderAllowed5(", "normalizedGender5(",
-        "Gen V party form changes requiring stat regeneration are locked",
+        "Party battle stats are regenerated after the native identity",
         "Gen V ability would change shininess")
 require(native_bridge, "NativeField::Form,stat,value,error",
         "NativeField::AbilitySlot,stat,value,error",
