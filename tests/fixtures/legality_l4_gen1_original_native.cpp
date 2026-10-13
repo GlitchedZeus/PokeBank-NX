@@ -80,6 +80,21 @@ struct Fixture {
         source.names.originalEncodingIndependentlyReconciled=true;
         source.names.rawOT=name('T');
         source.names.rawNickname=c.original.nickname.value;
+        // Synthetic individually-attested digests, NEVER real archival proofs.
+        auto& i=source.individual;
+        i.preciseSourceRecordIndexIndependentlyVerified=true;i.originalRecordIndex=7;
+        i.distributionArchiveSha256IndependentlyVerified=true;
+        i.distributionArchiveSha256=c.archive.originalPayloadSha256;
+        i.originalPK1RecordSha256IndependentlyVerified=true;
+        i.originalPK1RecordSha256[0]=std::byte{0x31};
+        i.nativePK1RecordSha256IndependentlyVerified=true;
+        i.nativePK1RecordSha256[0]=std::byte{0x32};
+        i.originalRecordBytesIndependentlyVerified=true;
+        i.nativeRecordBytesIndependentlyVerified=true;
+        i.originalToCurrentSameIndividualIndependentlyVerified=true;
+        i.historicalOperationsExhaustivelyAttested=true;
+        i.originalGameFontNameBytesIndependentlyIncluded=true;
+        i.nativeGameFontNameBytesIndependentlyIncluded=true;
         source.catchHistory.originalAcquisitionRateIndependentlyAttested=true;
         source.catchHistory.originallyObservedRate=45;
         source.catchHistory.originalBytePreservedThroughCompleteHistory=true;
@@ -99,6 +114,12 @@ int main() {
       x.native.moves[0]=1;x.native.level=0;assert(x.run().status==S::UnknownNative);
       x.native.level=20;x.native.dvs[1]=16;assert(x.run().status==S::UnknownNative);
       x.native.dvs[1]=15;x.native.ppUps[1]=4;assert(x.run().status==S::UnknownNative);}
+    {auto x=f;x.source.individual.originalToCurrentSameIndividualIndependentlyVerified=false;
+      x.native.trainerId++;assert(x.run().status==S::UnknownOriginalIndividual && !x.run().contradicted);}
+    {auto x=f;x.source.individual.nativePK1RecordSha256={};
+      assert(x.run().status==S::UnknownOriginalIndividual);}
+    {auto x=f;x.source.individual.originalGameFontNameBytesIndependentlyIncluded=false;
+      assert(x.run().status==S::UnknownOriginalIndividual);}
     {auto x=f;x.source.originalAcquisitionContextIndependentlyVerified=false;
       x.native.trainerId++;assert(x.run().status==S::UnknownSource&&!x.run().contradicted);}
     {auto x=f;x.source.originalIndividualRecordLinkedToNativeIndependentlyVerified=false;
@@ -168,11 +189,26 @@ int main() {
       x.source.originalCartridgeScriptIndependentlyPinned=false;
       x.source.originalStadiumMediaMechanismIndependentlyPinned=true;
       assert(x.run().status==S::ConditionalCandidate);
+      x.source.individual.distributionArchiveSha256[1]=std::byte{0x42};
+      assert(x.run().status==S::UnknownOriginalIndividual);
+      x.source.individual.distributionArchiveSha256[1]=std::byte{0};
       x.source.hypothesis.archive.grade=A::ArchiveGrade::ReconstructedOrPlaceholder;
       assert(x.run().status==S::UnknownHistoricalRoute);
       x.source.hypothesis.archive.grade=A::ArchiveGrade::OriginalAuthenticated;
       x.source.hypothesis.archive.originalPayloadSha256[0]=std::byte{0x10};
-      assert(x.run().status==S::UnknownHistoricalRoute);}
+      assert(x.run().status==S::UnknownOriginalIndividual);}
+    { auto first=f.source;first.hypothesis.original.trainerId.value++;
+      const std::array<L::Source,2> alternatives{first,f.source};
+      const auto all=L::evaluateAll(f.native,true,alternatives);
+      assert(all.conditional==1 && all.excluded==1 && !all.globallyInvalid);
+      const std::array<L::Source,2> onlyExcluded{first,first};
+      const auto excluded=L::evaluateAll(f.native,true,onlyExcluded);
+      assert(excluded.group==Legality::Gen1OriginalIndividualEvidence::Group::AllProvidedExcluded);
+      assert(!excluded.globallyInvalid);
+      auto uncertain=first;uncertain.individual.historicalOperationsExhaustivelyAttested=false;
+      const std::array<L::Source,2> incomplete{first,uncertain};
+      assert(L::evaluateAll(f.native,true,incomplete).unknown==1);
+    }
     uint64_t masks=0;
     for(unsigned mask=0;mask<524288;++mask){auto x=f;
       x.source.originalCartridgeScriptIndependentlyPinned=(mask&1)!=0;

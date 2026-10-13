@@ -6,6 +6,7 @@
 #include "Legality/Gen1CatchRateEvidence.h"
 #include "Legality/Gen1OriginalGiftNativePreflight.h"
 #include "Legality/Gen1OriginalNPCTradeMetadata.h"
+#include "Legality/Gen1OriginalIndividualEvidence.h"
 #include <array>
 #include <cstdint>
 #include <span>
@@ -18,7 +19,8 @@ enum class SourceClass : uint8_t { Unknown, OriginalCartridgeMechanic,
     OriginalStadiumMedia, ModernUnverifiedListing };
 enum class Status : uint8_t { UnknownNative, UnknownSource, UnknownCartridgeVersion,
     UnknownOriginalNPCTrade, UnknownOriginalNameBytes, UnknownHistoricalRoute,
-    UnknownCatchRateHistory, CandidateExcluded, ConditionalCandidate };
+    UnknownCatchRateHistory, CandidateExcluded, ConditionalCandidate,
+    UnknownOriginalIndividual };
 enum Field : uint32_t { CatchRate=1u<<20, NPCTradeInput=1u<<21 };
 struct NameWitness {
     // Source native save's original game-font name bytes, separately extracted
@@ -59,6 +61,7 @@ struct Source {
     G::Game originalSaveEdition=G::Game::Unknown;
     NameWitness names{};
     CatchHistory catchHistory{};
+    Gen1OriginalIndividualEvidence::Link individual{};
 };
 struct Result {
     Status status=Status::UnknownNative;
@@ -96,6 +99,19 @@ constexpr Result evaluate(const NativeRecord& native,bool independentlyValidated
        (row.kind==G::Kind::StadiumGift)!=
            (source.classification==SourceClass::OriginalStadiumMedia)) {
         result.status=Status::UnknownSource;return result;
+    }
+    // An independently identified source row is distinct from its original
+    // individual's PK1 record and from the final native PK1 record. All three
+    // source/record digests and the exhaustive lineage are necessary to make
+    // a candidate-specific comparison, not sufficient to authenticate a gift.
+    if(Gen1OriginalIndividualEvidence::evaluate(source.individual)!=
+       Gen1OriginalIndividualEvidence::Bound::ConditionalIndividual) {
+        result.status=Status::UnknownOriginalIndividual;return result;
+    }
+    if(row.kind==G::Kind::StadiumGift &&
+       !Gen1OriginalIndividualEvidence::archiveIdentityMatches(
+           source.individual,hypothesis.archive.originalPayloadSha256)) {
+        result.status=Status::UnknownOriginalIndividual;return result;
     }
     result.status=Status::UnknownCartridgeVersion;
     if(!source.sourceSaveEditionIndependentlyVerified ||
@@ -184,6 +200,25 @@ constexpr Result evaluate(const NativeRecord& native,bool independentlyValidated
     else if(result.missing)result.status=Status::UnknownCatchRateHistory;
     else result.status=Status::ConditionalCandidate;
     return result;
+}
+// A finite list of independently supplied historical candidates cannot
+// prove exhaustion of all real R/B/Y gift, trade, source and transfer paths.
+// In particular ALL provided candidates excluded does NOT mean globally Invalid.
+template<class NativeRecord>
+constexpr Gen1OriginalIndividualEvidence::Counts evaluateAll(
+    const NativeRecord& native, bool independentlyValidated,
+    std::span<const Source> sources) noexcept {
+    namespace I=Gen1OriginalIndividualEvidence;
+    if(sources.empty() || sources.size()>I::kMaxCandidates)return {};
+    std::array<I::Verdict,I::kMaxCandidates> verdicts{};
+    for(size_t i=0;i<sources.size();++i) {
+        const auto result=evaluate(native,independentlyValidated,sources[i]);
+        verdicts[i]=result.status==Status::ConditionalCandidate?
+            I::Verdict::ConditionalCandidate:
+            result.status==Status::CandidateExcluded?
+            I::Verdict::CandidateExcluded:I::Verdict::Unknown;
+    }
+    return I::summarize(std::span<const I::Verdict>(verdicts.data(),sources.size()));
 }
 static_assert(!originalGen1Kind(G::Kind::PCNYGift));
 static_assert(!Result{}.authenticated && !Result{}.globallyInvalid);
