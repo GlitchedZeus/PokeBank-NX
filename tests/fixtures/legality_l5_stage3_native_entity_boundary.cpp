@@ -44,10 +44,13 @@ Bytes pk4(uint32_t pid,bool party,bool egg){
 }
 void test3(unsigned& checks){
     for(bool party:{false,true}){
+        std::array<bool,24> visited{};
         for(uint32_t seed=0;seed!=256;++seed){
             const size_t size=party?Encryption::SIZE_PARTY3_FRLG:Encryption::SIZE_STORED3_FRLG;
             Bytes plain(size,std::byte{0});
-            put32(plain,0,seed*25u);
+            const uint32_t pid=seed*25u;
+            visited[pid%24u]=true;
+            put32(plain,0,pid);
             put32(plain,4,0x00aacfcfu);
             put16(plain,0x20,1); // internal Bulbasaur
             put16(plain,0x2c,33);
@@ -70,11 +73,17 @@ void test3(unsigned& checks){
             assert(flagged.speciesID()==1 && raw==saved);
             checks+=8;
         }
+        // Gen III's PID % 24 covers all permutation table entries.
+        for(bool hit:visited){assert(hit);++checks;}
     }
 }
 void test4(unsigned& checks){
-    for(bool party:{false,true})for(uint32_t seed=0;seed!=256;++seed){
-        const auto encrypted=pk4(seed*25u+1u,party,seed%2!=0);
+    for(bool party:{false,true}){
+      std::array<bool,32> visited{};
+      for(uint32_t seed=0;seed!=256;++seed){
+        const uint32_t pid=seed*0x2001u+1u;
+        visited[(pid>>13)&31u]=true;
+        const auto encrypted=pk4(pid,party,seed%2!=0);
         const auto original=encrypted;
         Pokemon::Pokemon4ReadOnly good(encrypted,Enums::GameVersion::PT);
         assert(good.valid() && !good.empty());
@@ -95,6 +104,10 @@ void test4(unsigned& checks){
         }
         assert(encrypted==original);
         checks+=8;
+      }
+      // Gen IV shuffles by PID bits 13-17, not PID % 24.
+      // Cover all 32 selector indices in both stored and party PK4.
+      for(bool hit:visited){assert(hit);++checks;}
     }
     for(size_t size=0;size<Encryption::SIZE_PARTY4+9;++size){
         if(Encryption::validRecordSize4(size))continue;
@@ -173,7 +186,7 @@ int main(){
     test3(checks);
     test4(checks);
     test4Quarantine(checks);
-    assert(checks==17198u);
+    assert(checks==17310u);
     std::cout<<"L5 Stage3 actual PK3/PK4 entity quarantine: "<<checks
              <<" PASS (synthetic; full-checkout production linkage)\n";
 }
