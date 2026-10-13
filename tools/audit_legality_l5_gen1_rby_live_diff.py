@@ -81,6 +81,9 @@ def evaluate(cases:list[dict],oracle:dict[str,dict],accepted:dict[str,dict],
         # NX's read-only PK1 has no native gender and neutral ability=0.
         # Compare emitted verifier defects and REAL DVs, never numeric
         # convenience values as if Gen I stored these modern fields.
+        for native in (a,c):
+            check(native.get("move_domain_invalid")== (v["move"]==200),
+                  "GEN1_NATIVE_MOVE_DOMAIN_FALSE_INVALID_OR_FALSE_NEGATIVE:"+ident)
         for field in ("ability_invalid","gender_invalid"):
             if a[field]!=p[field]:
                 accepted_old[field]+=1
