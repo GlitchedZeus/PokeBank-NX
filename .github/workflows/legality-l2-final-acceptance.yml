@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   full-original-source-acceptance:
-    name: Full original-source 164-execution acceptance
+    name: Full original-source 168-execution acceptance
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
