@@ -17,3 +17,19 @@ l5-gen1-rby: $(L5_G1_BUILD)
 	./$(L5_G1_BUILD) --$(L5_G1_VARIANT)
 l5-gen1-rby-san: $(L5_G1_SAN_BUILD)
 	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 ./$(L5_G1_SAN_BUILD) --$(L5_G1_VARIANT)
+
+# Coordinator-only cross-generation retained checks; do not change source logic.
+L5_G1_GEN2_SOURCE := ../tests/fixtures/legality_l5_pk12_sourcefree_native_probe.cpp
+L5_G1_GEN2_BUILD := $(HOST_BUILD)/l5_gen2_4_neighbor_guard
+L5_G1_GEN2_SAN_BUILD := $(HOST_BUILD)/l5_gen2_4_neighbor_guard_san
+.PHONY: l5-gen2-4-guard l5-gen2-4-guard-san
+$(L5_G1_GEN2_BUILD): $(L5_G1_GEN2_SOURCE) $(L5_G1_QA_GRAPH)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(L5_G1_GEN2_SOURCE) $(L5_G1_QA_GRAPH) -o $@
+$(L5_G1_GEN2_SAN_BUILD): $(L5_G1_GEN2_SOURCE) $(L5_G1_QA_GRAPH)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(L5_G1_GEN2_SOURCE) $(L5_G1_QA_GRAPH) -o $@
+l5-gen2-4-guard: $(L5_G1_GEN2_BUILD)
+	./$(L5_G1_GEN2_BUILD) --after-fix
+l5-gen2-4-guard-san: $(L5_G1_GEN2_SAN_BUILD)
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 ./$(L5_G1_GEN2_SAN_BUILD) --after-fix
