@@ -270,8 +270,8 @@ require(read("Makefile.host.gen5"),
         "host-test: $(GEN5_BOX_TOUCH_TEST)",
         "host-sanitize: $(GEN5_BOX_TOUCH_SANITIZE)")
 require(read(".github/workflows/gen5-focused-host.yml"),
-        "test_gen5_create_integration test_gen5_box_touch; do",
-        "test_gen5_create_integration_sanitize test_gen5_box_touch_sanitize; do")
+        "test_gen5_create_integration test_gen5_box_touch test_gen5_create_input_rules; do",
+        "test_gen5_create_integration_sanitize test_gen5_box_touch_sanitize test_gen5_create_input_rules_sanitize; do")
 
 # Shared Gen V action-screen Undo is limited to app-owned Box Clone,
 # Remove and Create transactions; never reach generic storage/save handlers.
@@ -942,4 +942,5 @@ require(read("tests/test_gen5_readonly_save.cpp"),
 
 require(games, "void SaveSelectScreen::closeGen5Setup()", "gen5SetupReturnCandidates=sameTarget;")
 require(games, "instance.generation==5 && instance.rememberedSource", '"REMEMBERED / "')
+require(games, "focusedGen5Game=focused.gameId;", "user->titles[i].gameId==focusedGen5Game")
 print("Gen V read-only shared UI guard contracts: PASS")

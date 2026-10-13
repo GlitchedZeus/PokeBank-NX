@@ -679,6 +679,14 @@ void persistentCopyAssignmentContracts() {
         const auto preview=G::previewAssignedGame(opened);
         assert(preview && preview->exactGameId==ids[g]);
         assert(preview->backupCopySelected==(p==0));
+        std::string trainerError;
+        const auto trainer=B::Gen5ReadOnlyTrainer::create(*opened.save,ids[g],trainerError);
+        assert(trainer && trainerError.empty() && trainer->sourceGameId()==ids[g]);
+        assert(trainer->sourceSave().selectedBackupPartition()==(p==0));
+        assert(trainer->sourceSave().trainer().rawName==(p==0?u"NY":u"NX"));
+        assert(trainer->getBoxCount()==24 && trainer->getSlotsPerBox()==30);
+        assert(trainer->getPartySize()==1 && trainer->party[0]->speciesID()==25);
+        assert(trainer->boxes[0][0]->speciesID()==133 && !trainer->hasStagedChanges());
         assert(G::openAssignedSource(reloaded,profiles[p],ids[g],
             G::SaveCopySelection::Automatic,selected[i].contentFingerprint).ready());
         assert(!G::openAssignedSource(reloaded,profiles[p],ids[g],

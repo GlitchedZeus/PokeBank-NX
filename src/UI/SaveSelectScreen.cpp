@@ -1010,6 +1010,13 @@ namespace UI {
     void SaveSelectScreen::loadGen5Cards() {
         // Gen V uses the existing shared editor's validated staged-PK5 surface.
         // The exact game cards cannot open generic writers or mutate SAV5 files.
+        std::string focusedGen5Game;
+        if(const auto* user=currentUser(); user && titleIndex>=0 &&
+           titleIndex<static_cast<int>(user->titles.size())) {
+            const auto& focused=user->titles[static_cast<size_t>(titleIndex)];
+            if(focused.sourceKind==SelectedSourceKind::Gen5AssignedFile)
+                focusedGen5Game=focused.gameId;
+        }
         for(auto& user:users) {
             user.titles.erase(std::remove_if(user.titles.begin(),user.titles.end(),
                 [](const auto& title) {
@@ -1058,6 +1065,16 @@ namespace UI {
             }
         }
         sortGamesPreservingSelection();
+        // Sorting cannot capture the old identity after its card was erased.
+        // Restore by exact game, including Forget and assignment reloads.
+        if(!focusedGen5Game.empty())if(const auto* user=currentUser())
+            for(size_t i=0;i<user->titles.size();++i)
+                if(user->titles[i].sourceKind==SelectedSourceKind::Gen5AssignedFile &&
+                   user->titles[i].gameId==focusedGen5Game) {
+                    titleIndex=static_cast<int>(i);
+                    gamesDrawerIndex=titleIndex;
+                    break;
+                }
     }
 
     void SaveSelectScreen::rebuildUnassignedLegacySources() {
