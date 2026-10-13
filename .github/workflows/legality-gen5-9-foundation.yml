@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'include/Legality/Gen59FormatDomainEvidence.h'
+      - 'include/Enums/GameVersion.h'
       - 'include/Legality/Gen56NativeEnvelopeEvidence.h'
       - 'tests/test_legality_gen59_native_foundation.cpp'
       - 'src/Legality/Legality.cpp'
