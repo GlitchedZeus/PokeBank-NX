@@ -92,6 +92,105 @@ static void exercise(uint32_t version, bool backup, uint32_t species) {
     CHECK(removed);
     CHECK(G::Gen5ReadOnlySave::parse(removed->bytes,id,&error,selection)->boxPokemon(0,0)->empty());
     CHECK(input==immutable);
+    // Full native Create -> isolated empty Box -> shared Review -> full SAV5
+    // working-copy candidate. Unlike synthetic occupied fixtures above, this
+    // proves the app-owned workspace accepts only an explicit request and
+    // verifies all source/provenance/CRC boundaries for an actual new slot.
+    workspace.discardAll();
+    CHECK(!workspace.hasChanges());
+    CHECK(workspace.createInEmptyBox(r,0,1,&error));
+    CHECK(workspace.hasChanges() && workspace.changedRecordCount()==1);
+    CHECK(workspace.viewBox(0,1)->species()==species);
+    CHECK(workspace.viewBox(0,1)->pid()==*r.pid);
+    const auto createChanges=workspace.pendingReview();
+    CHECK(createChanges.size()==1);
+    using Kind=G::Gen5StagedPokemonWorkspace::ChangeKind;
+    CHECK(createChanges[0].kind==Kind::CreateBox);
+    CHECK(createChanges[0].createRequest && *createChanges[0].createRequest==r);
+    CHECK(createChanges[0].before.size()==C::StoredSize);
+    CHECK(std::all_of(createChanges[0].before.begin(),
+                      createChanges[0].before.end(),[](uint8_t b){return b==0;}));
+    const auto checkedCreate=G::verifyStagedReview(createChanges.front(),&error);
+    CHECK(checkedCreate && checkedCreate->fields.size()==1);
+    CHECK(checkedCreate->fields[0].field==Field::CreateBox);
+    CHECK(checkedCreate->fields[0].after==species);
+    const auto createdCandidate=G::buildStagedSaveCandidate(workspace,&error);
+    CHECK(createdCandidate && createdCandidate->changedRecords==1);
+    const auto createdObserved=G::buildStagedSaveCandidateForObservedSource(
+        workspace,std::span<const uint8_t>(immutable),&error);
+    CHECK(createdObserved && createdObserved->bytes==createdCandidate->bytes);
+    const auto createdFull=G::Gen5ReadOnlySave::parse(
+        createdCandidate->bytes,id,&error,selection);
+    CHECK(createdFull);
+    CHECK(createdFull->boxPokemon(0,1)->valid());
+    CHECK(createdFull->boxPokemon(0,1)->species()==species);
+    CHECK(createdFull->boxPokemon(0,1)->pid()==*r.pid);
+    CHECK(createdFull->boxPokemon(0,1)->originVersion()==version);
+    CHECK(createdFull->boxPokemon(0,0)->originalEncryptedBytes().size()==C::StoredSize);
+    CHECK(createdCandidate->bytes!=input);
+    CHECK(std::equal(input.begin(),input.end(),
+                     workspace.sourceSave().sourceBytes().begin()));
+    // Native candidate must not change a different save copy, trainer, party,
+    // any other boxed PK5, or arbitrary metadata: only Box[0][1] plus its
+    // actual owner and terminal CRC mirrors can differ.
+    std::vector<bool> createAllowed(input.size(),false);
+    const size_t targetOffset=base+L::BoxOffset+C::StoredSize;
+    for(size_t i=0;i<C::StoredSize;++i)createAllowed[targetOffset+i]=true;
+    bool foundOwner=false;
+    for(size_t i=0;i+1<blocks.size();++i) {
+        const auto& block=blocks[i];
+        if(L::BoxOffset+C::StoredSize>=block.offset &&
+           L::BoxOffset+2*C::StoredSize<=block.offset+block.length) {
+            foundOwner=true;
+            for(size_t x:{size_t{block.checksumOffset},size_t{block.mirrorOffset}}) {
+                createAllowed[base+x]=true;
+                createAllowed[base+x+1]=true;
+            }
+        }
+    }
+    CHECK(foundOwner);
+    for(size_t x:{size_t{blocks.back().checksumOffset},
+                  size_t{blocks.back().mirrorOffset}}) {
+        createAllowed[base+x]=true;createAllowed[base+x+1]=true;
+    }
+    for(size_t i=0;i<input.size();++i)
+        if(!createAllowed[i])CHECK(createdCandidate->bytes[i]==input[i]);
+    // Duplicate Create, occupied slot, wrong game/family, wrong geometry,
+    // absent metadata, and unknown unsupported histories all fail closed.
+    CHECK(!workspace.createInEmptyBox(r,0,1,&error));
+    CHECK(!workspace.createInEmptyBox(r,0,0,&error));
+    CHECK(!workspace.createInEmptyBox(r,24,0,&error));
+    CHECK(!workspace.createInEmptyBox(r,0,30,&error));
+    auto mismatchedCreate=r;
+    mismatchedCreate.game=static_cast<G::CreateGame5>(version==20?21:20);
+    CHECK(!workspace.createInEmptyBox(mismatchedCreate,0,2,&error));
+    mismatchedCreate=r;
+    mismatchedCreate.encounter.kind=G::CreateHistory5::Unspecified;
+    CHECK(!workspace.createInEmptyBox(mismatchedCreate,0,2,&error));
+    CHECK(workspace.viewBox(0,2)->valid() && workspace.viewBox(0,2)->empty());
+    CHECK(workspace.changedRecordCount()==1);
+    auto forgedCreate=createChanges.front();
+    CHECK(forgedCreate.createRequest);
+    forgedCreate.createRequest->pid=0x223300ff;
+    CHECK(!G::verifyStagedReview(forgedCreate,&error));
+    forgedCreate=createChanges.front();
+    forgedCreate.createRequest.reset();
+    CHECK(!G::verifyStagedReview(forgedCreate,&error));
+    forgedCreate=createChanges.front();
+    forgedCreate.after[30]^=1;
+    CHECK(!G::verifyStagedReview(forgedCreate,&error));
+    forgedCreate=createChanges.front();
+    forgedCreate.kind=Kind::CloneBox;
+    CHECK(!G::verifyStagedReview(forgedCreate,&error));
+    // Undo and discard can never alter the original validated save.
+    CHECK(workspace.undoBoxReplacement(0,1));
+    CHECK(!workspace.hasChanges());
+    CHECK(workspace.viewBox(0,1)->empty());
+    CHECK(workspace.createInEmptyBox(r,0,1,&error));
+    workspace.discardAll();
+    CHECK(!workspace.hasChanges());
+    CHECK(workspace.viewBox(0,1)->empty());
+    CHECK(input==immutable);
     // Create must not masquerade as FieldEdit or CloneBox for an empty slot.
     auto unauthorized=forged;
     unauthorized.location={Region::Box,0,1};

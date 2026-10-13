@@ -3,6 +3,7 @@
 
 #include "Integration/Gen5/Gen5ReadOnlySave.h"
 #include "Integration/Gen5/Gen5StagedPokemonRecord.h"
+#include "Integration/Gen5/Gen5NativeCreate.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -38,7 +39,7 @@ public:
         return s.region==Region::Party ? (s.box==0 && s.slot<6) :
                s.region==Region::Box && s.box<24 && s.slot<30;
     }
-    enum class ChangeKind : uint8_t { FieldEdit, CloneBox, RemoveBox };
+    enum class ChangeKind : uint8_t { FieldEdit, CloneBox, RemoveBox, CreateBox };
     struct PendingChange {
         Slot location;
         std::vector<uint8_t> before;
@@ -47,6 +48,7 @@ public:
         ChangeKind kind = ChangeKind::FieldEdit;
         Slot cloneSource{};
         std::vector<uint8_t> cloneSourceOriginal;
+        std::optional<CreateRequest5> createRequest;
     };
 
     explicit Gen5StagedPokemonWorkspace(const Gen5ReadOnlySave& validated)
@@ -131,6 +133,43 @@ public:
         if(error)error->clear();
         return true;
     }
+    // Backend of the EXISTING shared Create action: app-memory only and
+    // strictly to a physically empty boxed PK5 slot. All native attributes
+    // are supplied explicitly by the caller and independently validated.
+    [[nodiscard]] bool createInEmptyBox(const CreateRequest5& request,
+                                        size_t box,size_t slot,
+                                        std::string* error=nullptr) {
+        const Slot target{Region::Box,box,slot};
+        const auto fail=[&](std::string_view why) {
+            if(error)*error=std::string(why);
+            return false;
+        };
+        if(!emptyCloneDestination(box,slot))
+            return fail("Gen V Create requires a verified unchanged empty box slot");
+        const auto game=source_.exactGameId();
+        const uint32_t native=game=="white_nds"?20:
+            game=="black_nds"?21:
+            game=="white2_nds"?22:
+            game=="black2_nds"?23:0;
+        if(native==0 || static_cast<uint32_t>(request.game)!=native ||
+           request.format!=CreateFormat5::Boxed)
+            return fail("Gen V Create game and boxed format must match selected SAV5");
+        const auto result=createNative5(request);
+        if(!result)return fail(result.validation.message);
+        const Pokemon5ReadOnly checked(result.encrypted);
+        if(!checked.valid() || checked.empty() || checked.partyRecord() ||
+           checked.originVersion()!=native || checked.species()!=request.species)
+            return fail("Gen V Create failed exact-title boxed PK5 verification");
+        BoxReplacement replacement;
+        replacement.kind=ChangeKind::CreateBox;
+        replacement.after=result.encrypted;
+        replacement.createRequest=request;
+        if(!boxReplacements_.emplace(target,std::move(replacement)).second)
+            return fail("Gen V Create destination changed during staging");
+        if(error)error->clear();
+        return true;
+    }
+
     // A boxed removal is an app-owned all-zero PK5 replacement only.
     // Party removal and party compaction are explicitly unsupported.
     [[nodiscard]] bool removeBox(size_t box,size_t slot,
@@ -196,7 +235,7 @@ public:
             out.push_back({slot,
                 {record.originalBytes().begin(),record.originalBytes().end()},
                 {record.stagedBytes().begin(),record.stagedBytes().end()},
-                black2White2(),ChangeKind::FieldEdit,{}, {}});
+                black2White2(),ChangeKind::FieldEdit,{}, {},std::nullopt});
         }
         for(const auto& [slot,replacement]:boxReplacements_) {
             const auto original=sourceSlot(slot);
@@ -205,7 +244,8 @@ public:
                 {original->originalEncryptedBytes().begin(),
                  original->originalEncryptedBytes().end()},
                 replacement.after,black2White2(),replacement.kind,
-                replacement.cloneSource,replacement.cloneSourceOriginal});
+                replacement.cloneSource,replacement.cloneSourceOriginal,
+                replacement.createRequest});
         }
         return out;
     }
@@ -217,6 +257,7 @@ private:
         std::vector<uint8_t> after;
         Slot cloneSource{};
         std::vector<uint8_t> cloneSourceOriginal;
+        std::optional<CreateRequest5> createRequest;
     };
     [[nodiscard]] std::optional<Pokemon5ReadOnly> sourceSlot(const Slot& s) const {
         if(!canonicalSlot(s))return std::nullopt;

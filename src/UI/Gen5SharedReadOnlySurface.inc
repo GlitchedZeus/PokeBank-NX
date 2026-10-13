@@ -686,6 +686,7 @@ std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedField
         case Field::Level:name="Level";break;
         case Field::Experience:name="Experience";break;
         case Field::Species:name="Species";break;
+        case Field::CreateBox:name="Create in Box";break;
         case Field::CloneBox:name="Clone to Box";break;
         case Field::RemoveBox:name="Remove from Box";break;
         case Field::NicknameText:name="Nickname";break;

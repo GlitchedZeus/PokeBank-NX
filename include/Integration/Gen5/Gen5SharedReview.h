@@ -52,7 +52,22 @@ struct VerifiedSlotReview {
         const Pokemon5ReadOnly afterBox(std::span<const uint8_t>(change.after));
         VerifiedSlotReview result;
         result.location=change.location;
-        if(change.kind==Kind::RemoveBox) {
+        if(change.kind==Kind::CreateBox) {
+            if(!change.createRequest ||
+               !change.cloneSourceOriginal.empty() ||
+               !beforeBox.valid() || !beforeBox.empty() ||
+               !std::all_of(change.before.begin(),change.before.end(),
+                    [](uint8_t byte){return byte==0;}) ||
+               !afterBox.valid() || afterBox.empty() || afterBox.partyRecord())
+                return fail("Gen V Create needs an empty original and explicit native request");
+            const auto rebuilt=createNative5(*change.createRequest);
+            if(!rebuilt || rebuilt.encrypted!=change.after ||
+               afterBox.originVersion()!=static_cast<uint32_t>(change.createRequest->game))
+                return fail("Gen V Create is not a deterministic native boxed PK5");
+            result.fields.push_back({Field::CreateBox,0,0,afterBox.species()});
+        } else if(change.kind==Kind::RemoveBox) {
+            if(change.createRequest)
+                return fail("Gen V Remove carried an unrelated creation request");
             if(!beforeBox.valid() || beforeBox.empty() ||
                !afterBox.valid() || !afterBox.empty() ||
                !std::all_of(change.after.begin(),change.after.end(),
@@ -61,7 +76,7 @@ struct VerifiedSlotReview {
                 return fail("Gen V removal must blank exactly one occupied box PK5");
             result.fields.push_back({Field::RemoveBox,0,beforeBox.species(),0});
         } else if(change.kind==Kind::CloneBox) {
-            if(!beforeBox.valid() || !beforeBox.empty() ||
+            if(change.createRequest || !beforeBox.valid() || !beforeBox.empty() ||
                !std::all_of(change.before.begin(),change.before.end(),
                             [](uint8_t byte){return byte==0;}) ||
                !afterBox.valid() || afterBox.empty() ||
@@ -84,6 +99,8 @@ struct VerifiedSlotReview {
         if(error)error->clear();
         return result;
     }
+    if(change.createRequest || !change.cloneSourceOriginal.empty())
+        return fail("Gen V field edit contained unrelated create or clone metadata");
     const Pokemon5ReadOnly before(std::span<const uint8_t>(change.before));
     const Pokemon5ReadOnly after(std::span<const uint8_t>(change.after));
     if(!before.valid() || before.empty() || !after.valid() || after.empty() ||

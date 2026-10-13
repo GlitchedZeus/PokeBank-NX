@@ -85,12 +85,26 @@ struct Gen5StagedSaveCandidate {
             : source.boxPokemon(change.location.box, change.location.slot);
         if (!sourceRecord || !sourceRecord->valid() ||
             (change.kind!=Gen5StagedPokemonWorkspace::ChangeKind::CloneBox &&
+             change.kind!=Gen5StagedPokemonWorkspace::ChangeKind::CreateBox &&
              sourceRecord->empty()))
             return fail("Gen V export source slot is absent or invalid");
         const auto bytes = sourceRecord->originalEncryptedBytes();
         if (bytes.size() != change.before.size() ||
             !std::equal(bytes.begin(), bytes.end(), change.before.begin()))
             return fail("Gen V export source slot differs from the staged baseline");
+        if(change.kind==Gen5StagedPokemonWorkspace::ChangeKind::CreateBox) {
+            const auto& request=change.createRequest;
+            if(!request ||
+               static_cast<uint32_t>(request->game)!=source.trainer().gameVersion ||
+               request->format!=CreateFormat5::Boxed ||
+               !sourceRecord->empty() ||
+               !std::all_of(bytes.begin(),bytes.end(),
+                            [](uint8_t b){return b==0;}))
+                return fail("Gen V Create requires exact-title source and empty baseline");
+            const auto created=createNative5(*request);
+            if(!created || created.encrypted!=change.after)
+                return fail("Gen V exported Create did not reverify native request");
+        }
         if(change.kind==Gen5StagedPokemonWorkspace::ChangeKind::CloneBox) {
             const auto& id=change.cloneSource;
             if(!Gen5StagedPokemonWorkspace::canonicalSlot(id))

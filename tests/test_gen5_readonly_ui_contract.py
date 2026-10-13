@@ -270,6 +270,38 @@ require(read(".github/workflows/gen5-focused-host.yml"),
         "test_gen5_create_integration test_gen5_box_touch; do",
         "test_gen5_create_integration_sanitize test_gen5_box_touch_sanitize; do")
 
+# Native PK5 creation must enter the SAME app-owned workspace/Review/export
+# pipeline, never get a separate per-generation save writer or editor shell.
+created_workspace=read("include/Integration/Gen5/Gen5StagedPokemonWorkspace.h")
+created_review=read("include/Integration/Gen5/Gen5SharedReview.h")
+created_export=read("include/Integration/Gen5/Gen5StagedSaveCandidate.h")
+created_factory=read("include/Integration/Gen5/Gen5NativeCreate.h")
+require(created_workspace,
+        "CreateBox", "createInEmptyBox(",
+        "emptyCloneDestination(box,slot)",
+        "createNative5(request)",
+        "replacement.createRequest=request",
+        "std::optional<CreateRequest5> createRequest")
+require(created_review,
+        "change.kind==Kind::CreateBox",
+        "change.createRequest",
+        "createNative5(*change.createRequest)",
+        "rebuilt.encrypted!=change.after")
+require(created_export,
+        "Gen5StagedPokemonWorkspace::ChangeKind::CreateBox",
+        "request->game)!=source.trainer().gameVersion",
+        "created.encrypted!=change.after")
+require(created_factory,
+        "CreateResult5 createNative5(",
+        "Crypto::encryptCandidate(plain)")
+create_suite=read("tests/test_gen5_create_integration.cpp")
+require(create_suite,
+        "workspace.createInEmptyBox(r,0,1,&error)",
+        "checkedCreate->fields[0].field==Field::CreateBox",
+        "buildStagedSaveCandidateForObservedSource(",
+        "workspace.undoBoxReplacement(0,1)",
+        "CHECK(input==immutable)")
+
 # Gen V reuses the already-shared staged editor, not a second Create/Edit UI.
 # Game cards and the source picker must not claim the editor is unavailable.
 require(games,
