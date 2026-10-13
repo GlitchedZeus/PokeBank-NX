@@ -33,6 +33,14 @@ namespace Encryption {
     constexpr size_t SIZE_BLOCK3_FRLG  = 0x0C;   // 12  bytes per substructure
     constexpr size_t BLOCK_COUNT3_FRLG = 4;      // Growth / Attacks / EVs / Misc
 
+    /// PK3 semantic records are exactly either a boxed or a party record.
+    /// The encrypt/decrypt helpers intentionally preserve arbitrary byte spans
+    /// for transport callers; entity adapters must use this before interpreting
+    /// field offsets.
+    constexpr bool validRecordSize3FRLG(size_t size) noexcept {
+        return size == SIZE_STORED3_FRLG || size == SIZE_PARTY3_FRLG;
+    }
+
     /**
      * Decrypts a raw PK3 record: XOR-decrypts the 0x20-0x4F block, then un-shuffles the four
      * substructures into canonical G/A/E/M order. Returns a newly-allocated buffer of the same
