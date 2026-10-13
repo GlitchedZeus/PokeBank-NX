@@ -108,6 +108,24 @@ jobs:
           _l5_gen1_coordinator/build-host/l5_gen1_rby_coordinator_san --coordinator > /tmp/l5-gen1-coordinator-sanitized.jsonl
           test "$(wc -l < /tmp/l5-gen1-coordinator-sanitized.jsonl)" = 72
           cmp /tmp/l5-gen1-coordinator.jsonl /tmp/l5-gen1-coordinator-sanitized.jsonl
+      - name: Execute EXISTING L5 PK1/PK2 baseline and after-fix targets normal plus ASan/UBSan
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The original make targets are exercised unchanged; only the QA
+          # fixture path is parameterized for the separate coordinator tree.
+          make -C _l5_gen1_accepted -f Makefile.host -f ../tools/audit_legality_l5_pk12_probe.mk \
+            L5_PK12_FIXTURE=../tests/fixtures/legality_l5_pk12_sourcefree_native_probe.cpp \
+            l5-pk12-baseline
+          make -C _l5_gen1_accepted -f Makefile.host -f ../tools/audit_legality_l5_pk12_probe.mk \
+            L5_PK12_FIXTURE=../tests/fixtures/legality_l5_pk12_sourcefree_native_probe.cpp \
+            l5-pk12-baseline-sanitize
+          make -C _l5_gen1_coordinator -f Makefile.host -f ../tools/audit_legality_l5_pk12_probe.mk \
+            L5_PK12_FIXTURE=../tests/fixtures/legality_l5_pk12_sourcefree_native_probe.cpp \
+            l5-pk12-fixed
+          make -C _l5_gen1_coordinator -f Makefile.host -f ../tools/audit_legality_l5_pk12_probe.mk \
+            L5_PK12_FIXTURE=../tests/fixtures/legality_l5_pk12_sourcefree_native_probe.cpp \
+            l5-pk12-fixed-sanitize
       - name: Execute true three-engine differential and adversarial protocol checks
         shell: bash
         run: |
