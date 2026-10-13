@@ -8,6 +8,7 @@
 #include <cctype>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -118,6 +119,21 @@ public:
     [[nodiscard]] bool black2White2() const noexcept { return black2White2_; }
     [[nodiscard]] size_t reviewPage() const noexcept { return reviewPage_; }
     [[nodiscard]] size_t cloneDestinationIndex() const noexcept { return cloneDestinationIndex_; }
+    // The shared Add wizard retains accepted input only in this Trainer
+    // session. Rejecting a native field or presentation need not make the
+    // player enter all previous PK5 values again.
+    [[nodiscard]] const std::optional<CreateRequest5>& pendingCreateInput()
+        const noexcept { return pendingCreateInput_; }
+    [[nodiscard]] bool rememberCreateInput(const Workspace& workspace,
+                                            const CreateRequest5& request) {
+        if(surface_!=Surface::ConfirmCreateBox ||
+           target_.region!=Workspace::Region::Box ||
+           !workspace.emptyCloneDestination(target_.box,target_.slot) ||
+           static_cast<uint32_t>(request.game)!=workspace.sourceSave().trainer().gameVersion ||
+           request.format!=CreateFormat5::Boxed)return false;
+        pendingCreateInput_=request;
+        return true;
+    }
     [[nodiscard]] bool cloneDestinationAllowed(const Workspace& workspace) const {
         return cloneDestinationIndex_<720 &&
             workspace.emptyCloneDestination(cloneDestinationIndex_/30,
@@ -185,6 +201,7 @@ public:
                 error="Gen V Add requires an unchanged empty native box slot";
                 return false;
             }
+            pendingCreateInput_.reset();
             surface_=Surface::ConfirmCreateBox;
             error.clear();
             return true;
@@ -317,11 +334,13 @@ public:
             if(error.empty())error="Gen V Add presentation failed; stage rolled back";
             return false;
         }
+        pendingCreateInput_.reset();
         surface_=Surface::Browse;
         error.clear();
         return true;
     }
     void cancelBoxAction() noexcept {
+        if(surface_==Surface::ConfirmCreateBox)pendingCreateInput_.reset();
         if(surface_==Surface::CloneDestination ||
            surface_==Surface::ConfirmRemoveBox ||
            surface_==Surface::ConfirmCreateBox)surface_=Surface::Actions;
@@ -870,6 +889,7 @@ private:
     size_t reviewPage_=0;
     size_t cloneDestinationIndex_=0;
     Gen5SharedPokemonSession draft_;
+    std::optional<CreateRequest5> pendingCreateInput_;
 };
 
 } // namespace PokeVault::Integration::Gen5

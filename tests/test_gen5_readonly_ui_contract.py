@@ -365,6 +365,28 @@ require(read("tests/test_gen5_create_input_rules.cpp"),
         "G::createMoveChoiceAllowed5(",
         "G::createRemainingEVMax5(")
 
+# Prompt retries are local to the selected Trainer/box and cannot become
+# implicit source-save changes or leak across a new Create/cancel session.
+require(read("include/Integration/Gen5/Gen5SharedScreenState.h"),
+        "pendingCreateInput()",
+        "rememberCreateInput(",
+        "pendingCreateInput_=request",
+        "pendingCreateInput_.reset()")
+require(surface,
+        "state.pendingCreateInput().value_or(",
+        "state.rememberCreateInput(ws,request)",
+        "dest>=static_cast<uint32_t>(minimum)",
+        "out.empty()?initial:out",
+        "request.pid=(pidHigh<<16)|pidLow",
+        "G::CreateTrainer5& ot=*request.trainer")
+require(read("tests/test_gen5_create_integration.cpp"),
+        "addScreen.pendingCreateInput()",
+        "addScreen.rememberCreateInput(workspace,r)",
+        "wrongDraft.game=")
+require(read("tests/test_gen5_readonly_save.cpp"),
+        "partialCreate.nickname=\"LOCALONLY\"",
+        "assert(!addMenu.pendingCreateInput())")
+
 # The existing Gen I-IV Add Pokemon command must now be reachable from
 # a validated empty Gen V box cell, collect explicit native fields with the
 # same on-device keyboard, and stage only after confirm + preview refresh.
