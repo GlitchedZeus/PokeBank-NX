@@ -46,6 +46,18 @@ int main(){
         auto x=box;x.dvs[i]^=0x1u;
         assert(L::evaluate(x,fresh).status==L::Status::InvalidNativeRecord);++assertions;
     }
+    for(unsigned i=1;i<5;++i){
+        auto invalidDV=box;invalidDV.dvs[i]=16;
+        assert(L::evaluate(invalidDV,fresh).status==L::Status::InvalidNativeRecord);
+        ++assertions;
+        invalidDV=box;invalidDV.dvs[i]=255;
+        assert(L::evaluate(invalidDV,fresh).status==L::Status::InvalidNativeRecord);
+        ++assertions;
+    }
+    // Five 16-bit Stat Experience values of 65535 are fully valid;
+    // there is no sixth Special Defense EV in the native record.
+    assert(L::evaluate(box,fresh).status==L::Status::ConditionalNativeFields);
+    ++assertions;
     for(unsigned i=0;i<4;++i){
         auto x=box;x.ppUps[i]=static_cast<std::uint8_t>(4u);
         assert(L::evaluate(x,fresh).status==L::Status::InvalidNativeRecord);++assertions;
