@@ -69,7 +69,7 @@ jobs:
           test "$(git hash-object tools/audit_legality_l5_gen1_rby_protocol_negative.py)" = 1a01b9585cc23ea733626874c41116c9b1137dc8
           test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_vector_integrity.cpp)" = 925bf4b680c403b07d5da98bfe19dbb23f57882a
           test "$(git hash-object tests/fixtures/legality_l5_gen1_original_pk1_raw_offsets.cpp)" = 4ef984298867d2acd4866b7039dd988a5c60309d
-          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_real_save_pipeline.cpp)" = 0e699f5404ce30bc092803dd899914b9bbfef0d4
+          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_real_save_pipeline.cpp)" = f5121e05104753d41bc993ac2bb896ed19543a56
           git diff --check
       - name: Execute all 65,536 original Gen I DV patterns and Stat Experience boundaries GCC and Clang normal plus ASan/UBSan
         shell: bash
