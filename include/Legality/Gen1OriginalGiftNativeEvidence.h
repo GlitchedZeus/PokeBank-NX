@@ -41,6 +41,7 @@ struct Source {
     J::Candidate hypothesis{};  // includes pinned original distribution archives
     SourceClass classification=SourceClass::Unknown;
     bool originalCartridgeScriptIndependentlyPinned=false;
+    bool originalStadiumMediaMechanismIndependentlyPinned=false;
     // A historical acquisition record must link this original gift/trade
     // to this individual, not merely document a possible game mechanic.
     bool originalAcquisitionContextIndependentlyVerified=false;
@@ -86,7 +87,10 @@ constexpr Result evaluate(const NativeRecord& native,bool independentlyValidated
     if(!G::isGen1(row.game) || !originalGen1Kind(row.kind) ||
        source.classification==SourceClass::ModernUnverifiedListing ||
        source.classification==SourceClass::Unknown ||
-       !source.originalCartridgeScriptIndependentlyPinned ||
+       !Gen1OriginalGiftNativePreflight::verifiedOriginalMechanism(
+           row.kind==G::Kind::StadiumGift,
+           source.originalCartridgeScriptIndependentlyPinned,
+           source.originalStadiumMediaMechanismIndependentlyPinned) ||
        !source.originalAcquisitionContextIndependentlyVerified ||
        !source.originalIndividualRecordLinkedToNativeIndependentlyVerified ||
        (row.kind==G::Kind::StadiumGift)!=

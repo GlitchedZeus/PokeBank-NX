@@ -6,6 +6,11 @@
 namespace N=Legality::Gen1OriginalGiftNativePreflight;
 int main() {
     using S=N::RateStatus;
+    for(unsigned tag=0;tag<8;++tag) {
+        const bool stadium=bool(tag&1),cart=bool(tag&2),media=bool(tag&4);
+        assert(N::verifiedOriginalMechanism(stadium,cart,media)==
+               (stadium?media:cart));
+    }
     N::RateHistory h{};
     uint64_t checked=0;
     for(unsigned value=0;value<=255;++value)

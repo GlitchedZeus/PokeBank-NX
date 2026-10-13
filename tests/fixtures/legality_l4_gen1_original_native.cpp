@@ -61,7 +61,8 @@ struct Fixture {
         c.archiveRowOriginalDigest=c.archive.originalPayloadSha256;
         source.classification=kind==G::Kind::StadiumGift?
           L::SourceClass::OriginalStadiumMedia:L::SourceClass::OriginalCartridgeMechanic;
-        source.originalCartridgeScriptIndependentlyPinned=true;
+        source.originalCartridgeScriptIndependentlyPinned=kind!=G::Kind::StadiumGift;
+        source.originalStadiumMediaMechanismIndependentlyPinned=kind==G::Kind::StadiumGift;
         source.originalAcquisitionContextIndependentlyVerified=true;
         source.originalIndividualRecordLinkedToNativeIndependentlyVerified=true;
         source.exactOriginalNPCTradeRowIndependentlyPinned=true;
@@ -160,6 +161,12 @@ int main() {
       x.native.species=151;
       assert(x.run().status==S::UnknownOriginalNPCTrade);}
     {auto x=Fixture{G::Game::Red,G::Kind::StadiumGift};
+      assert(x.run().status==S::ConditionalCandidate);
+      x.source.originalStadiumMediaMechanismIndependentlyPinned=false;
+      x.source.originalCartridgeScriptIndependentlyPinned=true;
+      assert(x.run().status==S::UnknownSource);
+      x.source.originalCartridgeScriptIndependentlyPinned=false;
+      x.source.originalStadiumMediaMechanismIndependentlyPinned=true;
       assert(x.run().status==S::ConditionalCandidate);
       x.source.hypothesis.archive.grade=A::ArchiveGrade::ReconstructedOrPlaceholder;
       assert(x.run().status==S::UnknownHistoricalRoute);

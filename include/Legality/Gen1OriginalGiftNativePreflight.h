@@ -6,6 +6,16 @@
 namespace Legality::Gen1OriginalGiftNativePreflight {
 enum class RateStatus:uint8_t { Unknown, OriginalRateMatches,
     OriginalRateContradicted, TradebackItemMatches, TradebackItemContradicted };
+// Original Stadium media attestation is not a Red/Blue/Yellow cartridge
+// script pin. Mixing them would make real Stadium candidates unprovable or
+// let a pinned game script falsely attest a separate distribution channel.
+constexpr bool verifiedOriginalMechanism(bool stadiumGift,
+    bool cartridgeScriptIndependentlyPinned,
+    bool stadiumMediaMechanismIndependentlyPinned) noexcept {
+    return stadiumGift ? stadiumMediaMechanismIndependentlyPinned
+                       : cartridgeScriptIndependentlyPinned;
+}
+
 struct RateHistory {
     bool originalAcquisitionByteIndependentlyAttested=false;
     uint8_t originalAcquisitionByte=0;
