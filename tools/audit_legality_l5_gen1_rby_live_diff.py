@@ -138,7 +138,7 @@ def selftest()->None:
        "species":1,"move":33,"dv16":65535,"ability_invalid":False,
        "gender_invalid":False,**dv_values(65535)}
     a={**p,"engine":"POKEBANK_NX_ANALYZER","execution_mode":"actual_production_pk1",
-       "ability_invalid":True,"gender_invalid":True}
+       "ability_invalid":True,"gender_invalid":True,"move_domain_invalid":False}
     c={**a,"ability_invalid":False,"gender_invalid":False}
     # The small partial input fails closed before claiming runtime parity.
     try:evaluate([v],{"x":p},{"x":a},{"x":c})
