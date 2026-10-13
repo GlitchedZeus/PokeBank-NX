@@ -39,12 +39,29 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/audit_legality_l5_stage3_native_fuzz.py --timeout 900
-      - name: Actual PK3/PK4 entity linkage and checksum/header quarantine
+      - name: Actual linked PK3/PK4 entities GCC and Clang optimized / ASan+UBSan
         shell: bash
         run: |
           set -euo pipefail
-          make -f Makefile.host -f tools/audit_legality_l5_stage3_entities.mk l5-stage3-entity
-          make -f Makefile.host -f tools/audit_legality_l5_stage3_entities.mk l5-stage3-entity-sanitize
+          expected="L5 Stage3 actual PK3/PK4 entity quarantine: 17198 PASS (synthetic; full-checkout production linkage)"
+          for compiler in g++ clang++; do
+            if [ "$compiler" = "clang++" ]; then
+              variant=-clang
+            else
+              variant=-gcc
+            fi
+            for mode in optimized sanitized; do
+              if [ "$mode" = sanitized ]; then
+                target=l5-stage3-entity-sanitize
+              else
+                target=l5-stage3-entity
+              fi
+              log="/tmp/l5-stage3-entity-${compiler}-${mode}.log"
+              make -f Makefile.host -f tools/audit_legality_l5_stage3_entities.mk \
+                CXX="$compiler" L5_STAGE3_ENTITY_VARIANT="$variant" "$target" | tee "$log"
+              grep -Fx "$expected" "$log"
+            done
+          done
       - name: Reject tracked source mutation by the QA jobs
         shell: bash
         run: |
