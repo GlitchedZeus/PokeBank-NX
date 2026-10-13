@@ -55,6 +55,11 @@ pk4_sources=(
     src/Utils/HelperUtilities.cpp
 )
 tests=(
+    test_legality_l2_gen1_native_dv_stat
+    test_legality_l2_gen1_native_record_adversarial
+    test_legality_l2_gen1_native_exp_growth
+    test_legality_l2_gen1_original_stat_exp_battles
+    test_legality_l2_gen1_stat_exp_math_boundaries
     test_legality_l2_dp_alternative_egg_histories
     test_legality_l2_dp_move_stage
     test_legality_l2_dp_egg_iv
@@ -93,6 +98,31 @@ for test in "${tests[@]}"; do
         exit 2
     fi
     sources=("$source_file")
+    if [[ "$test" == test_legality_l2_gen1_native_dv_stat ||
+          "$test" == test_legality_l2_gen1_native_record_adversarial ||
+          "$test" == test_legality_l2_gen1_native_exp_growth ]]; then
+        sources+=(
+            "$root/src/Legality/Gen1NativeDVStatEvidence.cpp"
+            "$root/src/Legality/Gen1NativeExperienceEvidence.cpp"
+            "$root/src/Pokemon/Experience.cpp"
+            "$root/src/Integration/Gen1/Gen1BattleStats.cpp"
+            "$root/src/Integration/Gen1/Gen1StagedPokemonEditor.cpp"
+            "$root/src/Integration/Gen1/Gen1ReadOnlySave.cpp"
+        )
+    fi
+    if [[ "$test" == test_legality_l2_gen1_stat_exp_math_boundaries ]]; then
+        sources+=(
+            "$root/src/Integration/Gen1/Gen1BattleStats.cpp"
+            "$root/src/Integration/Gen1/Gen1StagedPokemonEditor.cpp"
+            "$root/src/Integration/Gen1/Gen1ReadOnlySave.cpp"
+        )
+    fi
+    if [[ "$test" == test_legality_l2_gen1_original_stat_exp_battles ]]; then
+        sources+=(
+            "$root/src/Legality/Gen1OriginalStatExpBattleHistory.cpp"
+            "$root/src/Integration/Gen1/Gen1ReadOnlySave.cpp"
+        )
+    fi
     if [[ "$test" == test_legality_l2_dp_native_egg_history ||
           "$test" == test_legality_l2_gen4_native_iv_history ]]; then
         for src in "${pk4_sources[@]}"; do
@@ -107,6 +137,18 @@ for test in "${tests[@]}"; do
         attempted=$((attempted+1))
         flags=(-std=c++20 -Wall -Wextra -Wpedantic -Werror
                -Wno-unused-parameter -I"$root/include")
+        # The shared original Gen I personal-data include also declares
+        # kBasePP; battle-stat-only TUs intentionally never reference it.
+        # Clang diagnoses this single shared constexpr under -Werror.
+        if [[ "$test" == test_legality_l2_gen1_* ]]; then
+            flags+=(-Wno-unused-const-variable)
+        fi
+        if [[ "$test" == test_legality_l2_gen1_native_dv_stat ||
+              "$test" == test_legality_l2_gen1_native_record_adversarial ||
+              "$test" == test_legality_l2_gen1_native_exp_growth ||
+              "$test" == test_legality_l2_gen1_stat_exp_math_boundaries ]]; then
+            flags+=(-ffunction-sections -fdata-sections -Wl,--gc-sections)
+        fi
         if [[ "$mode" == sanitizers ]]; then
             flags+=(-g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer)
         else

@@ -20,7 +20,14 @@ enum class Status : uint8_t {
     UnknownLaterGenerationEvolution, ForeignGameRowNotEvidence,
     CandidateOriginalSpeciesContradicted, CandidateOriginalLevelContradicted,
     CandidateEvolutionContradicted, CandidateOriginalCatchRateContradicted,
-    ConditionalOriginalSource
+    ConditionalOriginalSource,
+    UnknownOriginalMap, UnknownOriginalRequest, UnknownOriginalTradeReceipt,
+    UnknownUnreachableNpcTrade, CandidateOriginalMapContradicted,
+    CandidateOriginalRequestContradicted, UnknownOriginalFossilReceipt,
+    ConditionalPretStaticSceneOnly,
+    ConditionalPretNpcTradeOfferOnly,
+    CandidateOriginalFossilMismatch, UnknownOriginalSubmittedLevel,
+    UnknownOriginalReceivedLevel, CandidateOriginalTradeLevelMismatch
 };
 
 struct Candidate {
@@ -56,8 +63,8 @@ struct Result {
 constexpr bool possibleOriginalEvolution(uint16_t source,uint16_t current) noexcept {
     if(source==current && source!=0 && source<=151)return true;
     if(source==0 || current==0 || current>151)return false;
-    // Eevee's three evolutions are siblings, never one another's parents.
-    if(current>=134 && current<=136)return source==133;
+    // Original retail source graph handles Eevee branches and every
+    // two-stage family without the numeric-neighbor false-positive risk.
     return Gen1Encounter::canDescendFrom(current,source);
 }
 
@@ -137,4 +144,118 @@ inline Result evaluate(const Candidate& c) noexcept {
             c.timeCapsuleHistoryIndependentlyAttested};
 }
 
+// Pret ROM-native scene and trade row identities. Separate index namespaces
+// from PKHeX kStaticEntries/kTradeEntries: prior indexes remain unchanged.
+enum class PretFossilItem : uint8_t { Unverified, Dome, Helix, OldAmber };
+// Original Cinnabar Lab source: DOME_FOSSIL->KABUTO,
+// HELIX_FOSSIL->OMANYTE, OLD_AMBER->AERODACTYL.
+// Player receipts, original items and history remain separate witnesses.
+constexpr PretFossilItem sourceFossilForSpecies(uint16_t species) noexcept {
+    switch(species) {
+    case 140:return PretFossilItem::Dome;
+    case 138:return PretFossilItem::Helix;
+    case 142:return PretFossilItem::OldAmber;
+    default:return PretFossilItem::Unverified;
+    }
+}
+struct PretStaticCandidate {
+    std::string_view originalGame{};
+    std::size_t originalSceneIndex=0;
+    std::string_view originalMap{};
+    uint16_t originalSpecies=0;
+    uint8_t originalLevel=0;
+    bool originalGameIndependentlyAttested=false;
+    bool originalSceneIndependentlyAttested=false;
+    bool originalMapIndependentlyAttested=false;
+    bool originalSpeciesIndependentlyAttested=false;
+    bool originalLevelIndependentlyAttested=false;
+    bool originalFossilIdentityIndependentlyAttested=false;
+    PretFossilItem originalFossilItem=PretFossilItem::Unverified;
+};
+struct PretTradeCandidate {
+    std::string_view originalGame{};
+    uint8_t originalOfferIndex=0;
+    uint16_t requestedSpecies=0, receivedSpecies=0;
+    bool originalGameIndependentlyAttested=false;
+    bool originalOfferIndexIndependentlyAttested=false;
+    bool originalRequestedSpeciesIndependentlyAttested=false;
+    bool originalReceivedSpeciesIndependentlyAttested=false;
+    bool originalNpcTrainerIndependentlyAttested=false;
+    bool originalTransactionIndependentlyAttested=false;
+    uint8_t originalSubmittedLevel=0;
+    uint8_t originalReceivedLevel=0;
+    bool originalSubmittedLevelIndependentlyAttested=false;
+    bool originalReceivedLevelIndependentlyAttested=false;
+};
+constexpr Result evaluatePretStatic(const PretStaticCandidate& c) noexcept {
+    const uint8_t mask=Gen1Encounter::gameMaskForId(c.originalGame);
+    if(!mask||!c.originalGameIndependentlyAttested)return {};
+    if(!c.originalSceneIndependentlyAttested ||
+       c.originalSceneIndex>=Gen1Encounter::kPretStaticSources.size())
+       return {Status::UnknownOriginalRow};
+    const auto& row=Gen1Encounter::kPretStaticSources[c.originalSceneIndex];
+    if((row.gameMask&mask)==0)
+       return {Status::ForeignGameRowNotEvidence,row.species,row.level};
+    if(!c.originalMapIndependentlyAttested||c.originalMap.empty())
+       return {Status::UnknownOriginalMap,row.species,row.level};
+    if(!c.originalSpeciesIndependentlyAttested||
+       c.originalSpecies==0||c.originalSpecies>151)
+       return {Status::UnknownOriginalSpecies,row.species,row.level};
+    if(!c.originalLevelIndependentlyAttested||
+       !c.originalLevel||c.originalLevel>100)
+       return {Status::UnknownOriginalLevel,row.species,row.level};
+    if(c.originalMap!=row.originalMap)
+       return {Status::CandidateOriginalMapContradicted,row.species,row.level};
+    if(c.originalSpecies!=row.species)
+       return {Status::CandidateOriginalSpeciesContradicted,row.species,row.level};
+    if(c.originalLevel!=row.level)
+       return {Status::CandidateOriginalLevelContradicted,row.species,row.level};
+    if(row.originalMap=="CinnabarLabFossilRoom") {
+       if(!c.originalFossilIdentityIndependentlyAttested ||
+          c.originalFossilItem==PretFossilItem::Unverified)
+         return {Status::UnknownOriginalFossilReceipt,row.species,row.level};
+       if(c.originalFossilItem!=sourceFossilForSpecies(row.species))
+         return {Status::CandidateOriginalFossilMismatch,row.species,row.level};
+    }
+    return {Status::ConditionalPretStaticSceneOnly,row.species,row.level};
+}
+constexpr Result evaluatePretNpcTrade(const PretTradeCandidate& c) noexcept {
+    const uint8_t mask=Gen1Encounter::gameMaskForId(c.originalGame);
+    if(!mask||!c.originalGameIndependentlyAttested)return {};
+    if(!c.originalOfferIndexIndependentlyAttested)
+       return {Status::UnknownOriginalRow};
+    const auto* row=Gen1Encounter::originalPretTrade(mask,c.originalOfferIndex);
+    if(!row)return {Status::UnknownOriginalRow};
+    // Four ROM-stored offers are not reachable in the retail game.
+    if(!row->reachable)
+       return {Status::UnknownUnreachableNpcTrade,row->receivedSpecies};
+    if(!c.originalRequestedSpeciesIndependentlyAttested||
+       c.requestedSpecies==0||c.requestedSpecies>151)
+       return {Status::UnknownOriginalRequest,row->receivedSpecies};
+    if(!c.originalReceivedSpeciesIndependentlyAttested||
+       c.receivedSpecies==0||c.receivedSpecies>151)
+       return {Status::UnknownOriginalSpecies,row->receivedSpecies};
+    if(c.requestedSpecies!=row->requestedSpecies)
+       return {Status::CandidateOriginalRequestContradicted,row->receivedSpecies};
+    if(c.receivedSpecies!=row->receivedSpecies)
+       return {Status::CandidateOriginalSpeciesContradicted,row->receivedSpecies};
+    if(!c.originalNpcTrainerIndependentlyAttested)
+       return {Status::UnknownTradeOT,row->receivedSpecies};
+    if(!c.originalTransactionIndependentlyAttested)
+       return {Status::UnknownOriginalTradeReceipt,row->receivedSpecies};
+    // Original pret engine/events/in_game_trades.asm copies the donated
+    // party monster's level to wCurEnemyLevel and then uses it to create
+    // the received NPC species. The offer table contains no fixed level.
+    if(!c.originalSubmittedLevelIndependentlyAttested ||
+       !c.originalSubmittedLevel || c.originalSubmittedLevel>100)
+       return {Status::UnknownOriginalSubmittedLevel,row->receivedSpecies};
+    if(!c.originalReceivedLevelIndependentlyAttested ||
+       !c.originalReceivedLevel || c.originalReceivedLevel>100)
+       return {Status::UnknownOriginalReceivedLevel,row->receivedSpecies};
+    if(c.originalSubmittedLevel!=c.originalReceivedLevel)
+       return {Status::CandidateOriginalTradeLevelMismatch,row->receivedSpecies};
+    // Matching the ROM offer cannot verify original DV/OT or subsequent
+    // tradebacks, catch-rate mutations or later evolutions.
+    return {Status::ConditionalPretNpcTradeOfferOnly,row->receivedSpecies};
+}
 } // namespace Legality::Gen1IndexedOriginalSourceHistory

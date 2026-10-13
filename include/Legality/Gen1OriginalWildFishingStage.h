@@ -5,7 +5,10 @@
 //   data/wild/maps/Route1.asm, ViridianForest.asm, data/wild/super_rod.asm
 // pret/pokeyellow@e89ead154b9968aa50eed9328ff2b38b6c194382
 //   data/wild/maps/Route1.asm
-// No Yellow fishing, other maps, Good/Old Rod, or catch RNG is asserted.
+// The original 149-slot namespace is preserved. Expanded source-pinned
+// physical R/B/Y tables, all three rods and the original wild roll live
+// in independent additional namespaces. Source witnesses never prove PK1.
+#include "Legality/Gen1PretWildRollStage.h"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -18,7 +21,9 @@ enum class Status : uint8_t {
     UnknownOriginalMethod, UnknownOriginalSpecies, UnknownOriginalLevel,
     ForeignGameRowNotEvidence, CandidateOriginalMapContradicted,
     CandidateOriginalMethodContradicted, CandidateOriginalSpeciesContradicted,
-    CandidateOriginalLevelContradicted, SourceSlotCompatibleRateAndHistoryUnverified
+    CandidateOriginalLevelContradicted, SourceSlotCompatibleRateAndHistoryUnverified,
+    UnknownMapApplicabilityForGlobalRod,
+    UnknownOriginalFishingInit, CandidateOriginalFishingInitContradicted
 };
 struct Slot {
     uint8_t gameMask;  // Red 1, Blue 2, Yellow 4
@@ -179,6 +184,71 @@ inline constexpr std::array<Slot, 149> kVerifiedSlots{{
     {3, "CeruleanCave1F", Method::SuperRod, 2, 99, 23},
     {3, "CeruleanCave1F", Method::SuperRod, 3, 117, 23},
 }};
+// Expanded source-pinned Red/Blue/Yellow archive. kVerifiedSlots and its
+// existing 149 indices remain untouched. kPret* is a NEW index namespace.
+struct PretSlot {
+    uint8_t gameMask;
+    std::string_view map;
+    Method method;
+    uint8_t physicalSlot;
+    uint16_t species;
+    uint8_t level;
+    uint8_t encounterRate;
+};
+#include "Legality/Gen1PretWildRB0.inc"
+#include "Legality/Gen1PretWildRB1.inc"
+#include "Legality/Gen1PretWildRB2.inc"
+#include "Legality/Gen1PretWildRB3.inc"
+#include "Legality/Gen1PretWildYellow0.inc"
+#include "Legality/Gen1PretWildYellow1.inc"
+#include "Legality/Gen1PretWildYellow2.inc"
+#include "Legality/Gen1PretWildYellow3.inc"
+#include "Legality/Gen1PretFishing.inc"
+inline constexpr std::size_t kPretSlotCount =
+    kPretRB0.size()+
+    kPretRB1.size()+
+    kPretRB2.size()+
+    kPretRB3.size()+
+    kPretYellow0.size()+
+    kPretYellow1.size()+
+    kPretYellow2.size()+
+    kPretYellow3.size()+
+    kPretFishing.size();
+constexpr const PretSlot* pretSlot(std::size_t index) noexcept {
+    if(index<kPretRB0.size())return &kPretRB0[index];
+    index-=kPretRB0.size();
+    if(index<kPretRB1.size())return &kPretRB1[index];
+    index-=kPretRB1.size();
+    if(index<kPretRB2.size())return &kPretRB2[index];
+    index-=kPretRB2.size();
+    if(index<kPretRB3.size())return &kPretRB3[index];
+    index-=kPretRB3.size();
+    if(index<kPretYellow0.size())return &kPretYellow0[index];
+    index-=kPretYellow0.size();
+    if(index<kPretYellow1.size())return &kPretYellow1[index];
+    index-=kPretYellow1.size();
+    if(index<kPretYellow2.size())return &kPretYellow2[index];
+    index-=kPretYellow2.size();
+    if(index<kPretYellow3.size())return &kPretYellow3[index];
+    index-=kPretYellow3.size();
+    if(index<kPretFishing.size())return &kPretFishing[index];
+    index-=kPretFishing.size();
+    return nullptr;
+}
+static_assert(kPretSlotCount==1512);
+// Original wild grass/surf slots are probability-weighted at 8-bit
+// resolution; each map/method table sums to 256. Rod sources instead
+// use their own scripts and must NOT inherit these wild-slot odds.
+constexpr uint8_t pretWildSlotWeight(std::size_t index) noexcept {
+    const PretSlot* source=pretSlot(index);
+    if(!source)return 0;
+    if((source->method!=Method::Grass&&source->method!=Method::Surf) ||
+       source->physicalSlot>=Gen1PretWildRollStage::kSlotWeight.size())
+       return 0;
+    return Gen1PretWildRollStage::kSlotWeight[source->physicalSlot];
+}
+static_assert(kVerifiedSlots.size()==149);
+
 struct Candidate {
     std::string_view originalGame{};
     std::size_t originalSourceIndex=0;
@@ -225,5 +295,99 @@ constexpr Result evaluate(const Candidate& c) noexcept {
     if(c.originalLevel!=row.level)
         return {Status::CandidateOriginalLevelContradicted,row.species};
     return {Status::SourceSlotCompatibleRateAndHistoryUnverified,row.species};
+}
+// Candidate result for the NEW pret source-index namespace; never a
+// whole-Pokemon legal/invalid verdict. Global rod entries cannot certify map
+// eligibility without an independently sourced fishable-map witness.
+constexpr Result evaluatePret(const Candidate& c) noexcept {
+    const uint8_t game=gameMask(c.originalGame);
+    if(!c.originalGameAttested||!game)return {};
+    if(!c.originalSourceSlotAttested)return {Status::UnknownOriginalSourceRow};
+    const PretSlot* row=pretSlot(c.originalSourceIndex);
+    if(!row)return {Status::UnknownOriginalSourceRow};
+    if((game&row->gameMask)==0)
+        return {Status::ForeignGameRowNotEvidence,row->species};
+    if(!c.originalMapAttested||c.originalMap.empty())
+        return {Status::UnknownOriginalMap,row->species};
+    if(!c.originalMethodAttested||
+       (c.originalMethod!=Method::Grass&&c.originalMethod!=Method::Surf&&
+        c.originalMethod!=Method::OldRod&&c.originalMethod!=Method::GoodRod&&
+        c.originalMethod!=Method::SuperRod))
+        return {Status::UnknownOriginalMethod,row->species};
+    if(!c.originalSpeciesAttested||c.originalSpecies==0||c.originalSpecies>151)
+        return {Status::UnknownOriginalSpecies,row->species};
+    if(!c.originalLevelAttested||c.originalLevel==0||c.originalLevel>100)
+        return {Status::UnknownOriginalLevel,row->species};
+    if(row->map!="*"&&c.originalMap!=row->map)
+        return {Status::CandidateOriginalMapContradicted,row->species};
+    if(c.originalMethod!=row->method)
+        return {Status::CandidateOriginalMethodContradicted,row->species};
+    if(c.originalSpecies!=row->species)
+        return {Status::CandidateOriginalSpeciesContradicted,row->species};
+    if(c.originalLevel!=row->level)
+        return {Status::CandidateOriginalLevelContradicted,row->species};
+    if(row->map=="*")
+        return {Status::UnknownMapApplicabilityForGlobalRod,row->species};
+    return {Status::SourceSlotCompatibleRateAndHistoryUnverified,row->species};
+}
+// Source: pret/pokered@af519899719f0754965776faac0e836a3b906e6d
+// engine/items/item_effects.asm [c4ce13de6fb6c7036e94e20b845dd6c5ade8951e]
+// and pret/pokeyellow@e89ead154b9968aa50eed9328ff2b38b6c194382
+// engine/items/item_effects.asm [a6bdf857b15f73609c15f2f22511ea816eb2fd7f].
+// FishingInit gates rod use on source physical scene state including facing
+// water/shore tile and not being in battle. Source table is insufficient to
+// certify a particular original map could be fished at that time.
+struct OriginalFishingInit {
+    bool originalInitOutcomeIndependentlyAttested=false;
+    bool originalFishingInitPassed=false;
+};
+constexpr Result evaluatePretFishingInit(const Candidate& c,
+                                         OriginalFishingInit fishing) noexcept {
+    const auto source=evaluatePret(c);
+    const PretSlot* row=pretSlot(c.originalSourceIndex);
+    if(source.status!=Status::UnknownMapApplicabilityForGlobalRod &&
+       source.status!=Status::SourceSlotCompatibleRateAndHistoryUnverified)
+        return source;
+    if(!row || (row->method!=Method::OldRod && row->method!=Method::GoodRod &&
+                row->method!=Method::SuperRod))
+        return source; // Ordinary grass and surf are not rod-init stages.
+    if(!fishing.originalInitOutcomeIndependentlyAttested)
+        return {Status::UnknownOriginalFishingInit,source.sourceSpecies};
+    if(!fishing.originalFishingInitPassed)
+        return {Status::CandidateOriginalFishingInitContradicted,source.sourceSpecies};
+    // Original FishingInit passed, but acquisition-time RNG/rods, event
+    // history and original save bytes have not been independently verified.
+    return {Status::SourceSlotCompatibleRateAndHistoryUnverified,source.sourceSpecies};
+}
+// Optional, independently witnessed original R/B/Y RNG-physical-slot join.
+// The 1,512 pret source rows retain their historical physical slot ordinals;
+// roll/half-block tile context is never fabricated from a detached PK1.
+// A source-row contradiction and a wild-roll contradiction are two distinct
+// candidate-local stages; neither one authorizes whole-Pokemon Invalid.
+struct PretWildRollJoined {
+    Status originalSourceStatus=Status::UnknownOriginalSourceRow;
+    Gen1PretWildRollStage::Result originalRoll{};
+    bool globalInvalidSupported=false,globallyLegalSupported=false;
+};
+constexpr PretWildRollJoined evaluatePretWildRoll(
+    const Candidate& c,Gen1PretWildRollStage::OriginalScene scene) noexcept {
+    const auto source=evaluatePret(c);
+    PretWildRollJoined result{};
+    result.originalSourceStatus=source.status;
+    if(source.status!=Status::SourceSlotCompatibleRateAndHistoryUnverified)
+        return result;
+    const auto* row=pretSlot(c.originalSourceIndex);
+    if(!row|| (row->method!=Method::Grass&&row->method!=Method::Surf))
+        return result;
+    // Each attestation is intentionally separate. The original source row
+    // cannot attest an original random value, facing tile, or repel state.
+    if(scene.game!=c.originalGame)return result;
+    scene.originalExpectedPhysicalSlot=row->physicalSlot;
+    scene.originalExpectedMethod=row->method==Method::Grass?
+        Gen1PretWildRollStage::Method::Grass:Gen1PretWildRollStage::Method::Surf;
+    scene.originalSourceLevel=c.originalLevel;
+    scene.originalSourceLevelIndependentlyAttested=c.originalLevelAttested;
+    result.originalRoll=Gen1PretWildRollStage::evaluate(scene);
+    return result;
 }
 } // namespace Legality::Gen1OriginalWildFishingStage
