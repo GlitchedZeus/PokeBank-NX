@@ -18,6 +18,8 @@ on:
       - 'tools/legality_pkhex_oracle/**'
       - 'tools/legality_gen5_oracle_vectors.cpp'
       - 'tools/compare_legality_pk5_oracle.py'
+      - 'include/Legality/Gen6NativePK6Evidence.h'
+      - 'tests/test_legality_gen6_native_pk6.cpp'
       - 'docs/legality/research/pkhex/PKHEX_USER_ARCHIVE_SOURCE_MAP.json'
       - 'src/Legality/Legality.cpp'
       - 'tools/audit_legality_gen59_wiring.py'
@@ -84,6 +86,13 @@ jobs:
             src/Legality/Gen5RecordAnalysis.cpp tests/test_legality_gen5_product_reader_bridge.cpp \
             -o /tmp/pbnx-gen59/product-pk5-san
           /tmp/pbnx-gen59/product-pk5-san
+          "$CXX" -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror -Iinclude \
+            tests/test_legality_gen6_native_pk6.cpp -o /tmp/pbnx-gen59/native-pk6
+          /tmp/pbnx-gen59/native-pk6
+          "$CXX" -std=c++20 -O1 -g -Wall -Wextra -Wpedantic -Werror \
+            -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude \
+            tests/test_legality_gen6_native_pk6.cpp -o /tmp/pbnx-gen59/native-pk6-san
+          /tmp/pbnx-gen59/native-pk6-san
           git diff --check
 
   pkhex-host-oracle:
