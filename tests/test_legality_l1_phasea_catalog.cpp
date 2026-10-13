@@ -59,7 +59,7 @@ int main(){
       missing=e;missing.originalLevel=0;
       assert(L::evaluate(r,missing).status==L::Status::UnknownOriginalLevel);
       ++unknown;
-      if(r.flags&1u){
+      if((r.flags&1u)&&!(r.flags&2u)&&!(r.flags&16u)){
         missing=e;missing.originalMetLocationIndependentlyAttested=false;
         assert(L::evaluate(r,missing).status==L::Status::UnknownOriginalLocation);
         ++unknown;
@@ -103,6 +103,8 @@ int main(){
  assert(w&&w->species==644&&w->level==50&&w->location==45);
  assert(L::row(S::Table::StaticX,0)->species==716);
  assert(L::row(S::Table::StaticY,0)->species==717);
+ assert((L::row(S::Table::StaticB,2)->flags&16u)!=0);
+ assert((L::row(S::Table::StaticW,2)->flags&16u)!=0);
  assert(L::row(S::Table::Encounter_BW,0)->species==495);
  assert(L::row(S::Table::Encounter_BW,0)->location==4);
  assert(L::row(S::Table::Encounter_B2W2_Regular,0)->location==117);
