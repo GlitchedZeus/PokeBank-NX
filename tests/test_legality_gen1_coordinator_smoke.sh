@@ -31,6 +31,7 @@ suites=(
   tests/test_legality_l3_gen1_all_species_joint.cpp
   tests/test_legality_l3_gen1_original_all_machines.cpp
   tests/test_legality_l3_gen1_all_species_machine_chronology.cpp
+  tests/test_legality_gen1_editor_original_machines_subset.cpp
   tests/fixtures/legality_l4_gen1_preflight.cpp
   tests/fixtures/legality_l4_gen1_npc_metadata.cpp
   tests/fixtures/legality_l4_gen1_individual_chain.cpp
