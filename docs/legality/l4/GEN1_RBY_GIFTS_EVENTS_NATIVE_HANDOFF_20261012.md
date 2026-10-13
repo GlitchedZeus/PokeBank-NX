@@ -222,3 +222,133 @@ save demonstrating randomized trainer ID and offered-mon level, no
 original Japanese-family trade-table parity, no independently verified
 full Time Capsule history, and no globally exhaustive distribution
 source catalog. Missing original receipts MUST remain Unknown.
+
+
+## Major October 13 continuation — original PK1 individual identity, candidate-set safety
+
+**Engineering commit refs (forward-only, L4 PR #292 only):**
+- `0783bf5494f7671b883a92e3d161ed1c9592e40d` — three-object
+  original-source/PK1 identity binding and bounded candidate aggregation.
+- `39a25b224a703bad53f19da5fa3739634f30feb8` — strict 256-tag
+  source-family validation for cartridge vs independently authenticated
+  Stadium source media.
+
+### Source evidence and new security boundaries
+
+Original Red/Blue disassembly:
+`pret/pokered@af519899719f0754965776faac0e836a3b906e6d`;
+original Yellow disassembly:
+`pret/pokeyellow@e89ead154b9968aa50eed9328ff2b38b6c194382`.
+These sources document retail NPC trade script rows and the randomized
+OT ID behavior, **not** proof of a particular individual's acquisition.
+The original Gen I/II L4 archive and raw-name join remains reused,
+not copied or replaced; L1 continues to own wild/fishing/static slots.
+
+New standalone `Gen1OriginalIndividualEvidence.h` requires independent
+identification of **three separate evidence objects**:
+(1) original distribution source archive SHA-256 and exact original source
+record index; (2) the historical original PK1 record SHA-256 including
+its original game-font OT/nickname bytes; and (3) current native PK1
+record SHA-256 including current original game-font fields.
+A distinct same-individual historical continuity attestation and
+complete intervening transformation history are required even if the
+two PK1 hashes happen to match. The caller must independently compute
+and verify the source hashes; supplied flags are **claims**, not
+cryptographic authentication performed by the helper.
+
+For Gen I Stadium gift candidates, original source archive identity
+must also exactly agree with the existing independent L4 distribution
+archive digest. One unrelated signed archive cannot validate another
+candidate with the same species or trainer ID.
+
+The native L4 `Gen1OriginalGiftNativeEvidence.h` now gates
+gift/NPC/Stadium comparisons on the individual record evidence before
+making any negative claims. Its new `evaluateAll` accepts at most
+128 candidate histories, explicitly counts source-dependent Unknown,
+excluded and conditional candidates, and never outputs a global
+Legal/Invalid verdict—even when *all supplied* alternatives are
+excluded. Unknown/malformed status values cannot create a positive or
+invalid verdict.
+
+Untrusted serialized origin-family tags are now checked against only
+the exact supported values: original cartridge script (1) or original
+Stadium media (2). Unknown value 0, modern listing 3, and all other
+numeric tags (4 through 255) remain Unknown, not a gift source.
+
+**No Gen I-native ribbons, ability, gender, nature, held-item property,
+breeding or modern-generation fields were added.**
+
+### Precise tests executed locally
+
+Three standalone exact-blob-matched C++ tests, each compiled and
+executed using GCC and Clang, both normal `-O2` and ASan+UBSan
+`-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer`,
+`-std=c++20 -Wall -Wextra -Wpedantic -Werror`:
+
+1. `legality_l4_gen1_preflight.cpp` — 65,536 byte-by-byte original
+   capture versus Time Capsule tradeback comparisons, 4,096 move/DV
+   boundaries, source-family labels 0..255 and PP Up edge values.
+2. `legality_l4_gen1_npc_metadata.cpp` — 65,536 serialized English
+   R/B/Yellow edition/row labels, source-script fixed nicknames and
+   reachable versus unused gift rows.
+3. **New** `legality_l4_gen1_individual_chain.cpp` — 4,096 independent
+   archive/original/current-record/same-individual evidence masks,
+   65,536 pairs of valid/malformed candidate statuses, original/current
+   PK1 SHA identity mismatch, archive mismatch, missing original raw
+   strings, and more-than-128-candidate overflow protection.
+
+**12/12 actual focused compiler and sanitizer executions PASS** with
+no sanitizer findings; Git hash-object for each of those exact source
+files matched the committed source blob.
+
+Exact changed production blob pins:
+- `Gen1OriginalIndividualEvidence.h`
+  `9ea043740c09052723f2e3754d064dbbefda5955`
+- `Gen1OriginalGiftNativePreflight.h`
+  `b5a42d488dd3c219bc720dc2abdbeba10956e510`
+- `Gen1OriginalGiftNativeEvidence.h`
+  `bb3e3b9d053b04ed722dfc09cdb5a565e287b235`
+- `legality_l4_gen1_individual_chain.cpp`
+  `f03cf4a71ccc46361a4e229b8f75f50caa097494`
+- `legality_l4_gen1_preflight.cpp`
+  `ff22ea01a361b96047197894af3cc0460cf02dbb`
+- `legality_l4_gen1_original_native.cpp`
+  `71636bfa22eee0777943e4fd3dda3951daf7a6a4`
+
+Exact-source local test log:
+`/mnt/data/l4-gen1/major-session-2026-10-13-tests.log`.
+
+### Acceptance is blocked; do not merge
+
+The user-requested full suite commands were **actually attempted** from
+the partial local workspace:
+
+```bash
+bash tests/test_legality_l4_runner.sh
+L4_SANITIZE=1 bash tests/test_legality_l4_runner.sh
+```
+
+Both returned exit **127**, as the runner is not present; a complete
+GitHub checkout cannot be cloned because the shell cannot resolve
+`github.com`. This does NOT validate the 28-suite native L4 runner.
+
+The modified `legality_l4_gen1_original_native.cpp` real dependency
+integration fixture is registered and expanded to test malformed source
+families, individual digest/history mismatches, Stadium archive drift,
+and multi-source Unknown. It has **not executed locally against
+the actual Gen I reader, L4 original distribution join, or complete
+checkout**. Coordinator must run L4 normal and ASan/UBSan with both
+GCC and Clang on the exact new HEAD, inspect every compiler result
+and rerun independent original-source checks before acceptance.
+No user-owned game saves or Pokémon were modified.
+
+**Outstanding historical gaps:** authentic Stadium distribution archive,
+actual individual receipt/transfer chain, native original and final
+PK1 full-record SHA-256 including game-font OT/nickname bytes, English
+vs Japanese NPC script parity, randomized OTID receipt witnesses,
+actual original Gen I catch-rate history and verified Time Capsule
+record transitions. Synthetic positive fixtures are NOT historical proof.
+
+**Status:** major additional L4 original-source and native identity
+engineering delivered; full-checkout acceptance BLOCKED; other lanes
+and production legality analyzer remain untouched.
