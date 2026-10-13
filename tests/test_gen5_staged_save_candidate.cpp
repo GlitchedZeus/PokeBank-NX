@@ -387,6 +387,43 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     assert(!boxOps.hasChanges());
     assert(boxOps.viewBox(0,0)->species()==133);
     assert(boxOps.viewBox(0,1)->empty());
+    // Box-to-box exact copy uses the original 136-byte encrypted PK5,
+    // never a party truncation and never an unrelated occupied target.
+    G::Gen5StagedPokemonWorkspace boxClone(*parsed);
+    assert(boxClone.cloneToEmptyBox({Region::Box,0,0},0,2,&error));
+    assert(boxClone.viewBox(0,2)->species()==133);
+    assert(boxClone.viewBox(0,2)->pid()==parsed->boxPokemon(0,0)->pid());
+    assert(!boxClone.cloneToEmptyBox({Region::Box,0,2},0,3,&error));
+    const auto boxedCandidate=G::buildStagedSaveCandidate(boxClone,&error);
+    assert(boxedCandidate && boxedCandidate->changedRecords==1);
+    const auto boxedParsed=G::Gen5ReadOnlySave::parse(
+        boxedCandidate->bytes,game,&error,selected);
+    assert(boxedParsed && boxedParsed->boxPokemon(0,2)->species()==133);
+    assert(boxedParsed->boxPokemon(0,0)->species()==133);
+    auto stale=input;
+    stale.back()^=0x80;
+    assert(!G::buildStagedSaveCandidateForObservedSource(boxClone,stale,&error));
+    assert(G::buildStagedSaveCandidateForObservedSource(boxClone,input,&error));
+    assert(boxClone.undoBoxReplacement(0,2));
+    assert(!boxClone.hasChanges());
+    // A species-zero record can still hold data. It is *not* a physically
+    // empty slot and must never be silently overwritten by Clone.
+    auto contaminated=input;
+    std::vector<uint8_t> ghost(C::StoredSize,0);
+    C::write16(ghost,0x0A,1);
+    const auto ghostEncrypted=C::encryptCandidate(ghost);
+    std::copy(ghostEncrypted.begin(),ghostEncrypted.end(),
+        contaminated.begin()+static_cast<std::ptrdiff_t>(
+            base+L::BoxOffset+C::StoredSize));
+    stamp(std::span<uint8_t>(contaminated).subspan(base,copySize),blocks);
+    const auto ghostSave=G::Gen5ReadOnlySave::parse(
+        contaminated,game,&error,selected);
+    assert(ghostSave && ghostSave->boxPokemon(0,1)->valid() &&
+           ghostSave->boxPokemon(0,1)->empty());
+    G::Gen5StagedPokemonWorkspace ghostOps(*ghostSave);
+    assert(!ghostOps.emptyCloneDestination(0,1));
+    assert(!ghostOps.cloneToEmptyBox({Region::Party,0,0},0,1,&error));
+    assert(!ghostOps.hasChanges());
     ws.discardAll();
     assert(!ws.hasChanges() && !G::buildStagedSaveCandidate(ws,&error));
 }

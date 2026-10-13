@@ -629,7 +629,11 @@ require(read("tests/test_gen5_staged_save_candidate.cpp"),
         "boxOps.removeBox(",
         "boxOps.undoBoxReplacement(",
         "verifyStagedReview(change,&error)",
-        "operations->changedRecords==2")
+        "operations->changedRecords==2",
+        "boxClone.cloneToEmptyBox({Region::Box,0,0},0,2",
+        "ghostOps.emptyCloneDestination(0,1)",
+        "boxClone.undoBoxReplacement(0,2)",
+        "buildStagedSaveCandidateForObservedSource(boxClone,stale")
 require(read("tests/test_gen5_readonly_save.cpp"),
         "actionUi.activate(ops,Action::Clone,error)",
         "actionUi.activate(ops,Action::Remove,error)",
