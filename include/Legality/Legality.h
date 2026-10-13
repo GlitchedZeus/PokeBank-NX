@@ -16,6 +16,7 @@
 #define LEGALITY_LEGALITY_H
 
 #include <cstdint>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -115,6 +116,20 @@ namespace Legality {
 
     /// Preferred context-aware API for the Gen I-IV legality engine.
     Report analyze(const Pokemon::Pokemon& pk, const Context& context);
+
+    // Detached, source-immutable Gen V structural analyzer. Uses the identical
+    // PK5 crypto and reader from the Product Gen V lane (PR #300). It never
+    // certifies encounter, trainer, move or transfer history.
+    Report analyzePk5Record(std::span<const uint8_t> encrypted);
+
+    // Validated standalone Gen VI PK6 structural/field report. Ciphertext
+    // selection is explicit; guessed decoding cannot authenticate history.
+    // Does not modify source buffers or imply source save-write authority.
+    Report analyzePk6Record(std::span<const uint8_t> raw, bool encrypted);
+
+    // Ultra Sun/Moon PK7 structural analysis. PK7 is not Let's Go PB7.
+    // Never infer original-game provenance from detached entity bytes.
+    Report analyzePk7Record(std::span<const uint8_t> raw, bool encrypted);
 
     /// Analyze a decrypted Pokemon and return its legality issues (informational).
     /// originGroup = the save's format group (Trainer::getGameGroup()). Returns an

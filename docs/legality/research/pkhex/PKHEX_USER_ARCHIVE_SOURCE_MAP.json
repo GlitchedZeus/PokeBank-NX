@@ -1,0 +1,158 @@
+{
+  "schema": "POKEBANK_PKHEX_SOURCE_REFERENCE_PIN_V1",
+  "archive_filename": "PKHeX-master.zip",
+  "archive_sha256": "b90420f2dc1bceeadde318601f194a819b049af893e4318243786f04047abd9b",
+  "archive_git_commit": "UNVERIFIED_ZIP_HAS_NO_GIT_METADATA",
+  "core_target_framework": "net10.0",
+  "source_license": "GPL-3.0-or-later",
+  "host_repository": "https://github.com/kwsch/PKHeX",
+  "purpose": "Host oracle, source/algorithm reuse, native data port provenance; NOT a working Switch NRO engine",
+  "verified_with_uploaded_zip": true,
+  "files": [
+    {
+      "path": "PKHeX.Core/Legality/LegalityAnalysis.cs",
+      "sha256": "d9ca4c14e2e2d267d0fee6d93d5f6161e01865742214292f506ac2f13e0b42ba",
+      "lane": "core-analysis"
+    },
+    {
+      "path": "PKHeX.Core/Legality/Structures/LegalInfo.cs",
+      "sha256": "6ee6818067817938fd42636e4615aa7c2e314981685356521cda278c0e363a1e",
+      "lane": "core-analysis"
+    },
+    {
+      "path": "PKHeX.Core/Legality/Encounters/Generator/ByGeneration/EncounterGenerator5.cs",
+      "sha256": "cae4866450951cfaa78c1f75e31ef99d7d2dabfa6aac544b9695d5daa7b59bf9",
+      "lane": "L1"
+    },
+    {
+      "path": "PKHeX.Core/Legality/Encounters/Generator/ByGeneration/EncounterGenerator6.cs",
+      "sha256": "ce04375f3b148553b1900d0996ef6a79fbbe31ce0e6d31a0b3a8f0688d49f03e",
+      "lane": "L1"
+    },
+    {
+      "path": "PKHeX.Core/Legality/Encounters/Generator/ByGeneration/EncounterGenerator7.cs",
+      "sha256": "ba1106017ce9f4d5fb39d9b72b0511be32befe372e2068bf0533271eedf42958",
+      "lane": "L1"
+    },
+    {
+      "path": "PKHeX.Core/Legality/Encounters/Generator/ByGeneration/EncounterGenerator7GG.cs",
+      "sha256": "cf6ec429e9092dc75dfa305b12fa7d3f92d31e8eccddbdafe5e5f912d20630cc",
+      "lane": "L1"
+    },
+    {
+      "path": "PKHeX.Core/Legality/Encounters/Generator/ByGeneration/EncounterGenerator8.cs",
+      "sha256": "f3091a4dba2e37769ee77a0a86ab3fc8b75abd6ba5620edc0db2712123a6879f",
+      "lane": "L1"
+    },
+    {
+      "path": "PKHeX.Core/Legality/Encounters/Generator/ByGeneration/EncounterGenerator8a.cs",
+      "sha256": "2bb10098cea0fc21ff23994971e80c1334a21ae6823005e6b6335f315936f798",
+      "lane": "L1"
+    },
+    {
+      "path": "PKHeX.Core/Legality/Encounters/Generator/ByGeneration/EncounterGenerator8b.cs",
+      "sha256": "3dd1471c36b6afa62f0f3a37185437383406d9b227be599321c87b0eeeefe23f",
+      "lane": "L1"
+    },
+    {
+      "path": "PKHeX.Core/Legality/Encounters/Generator/ByGeneration/EncounterGenerator9.cs",
+      "sha256": "47ae21a9e4d4b6d887c94f11c8a9033316cff505f6fb106d49284c8e5060095c",
+      "lane": "L1"
+    },
+    {
+      "path": "PKHeX.Core/Legality/Encounters/Generator/ByGeneration/EncounterGenerator9a.cs",
+      "sha256": "8724b3a7ff25674920b4b30c77deb7fe067f40747a609de0d98feb8a1ae42603",
+      "lane": "L1"
+    },
+    {
+      "path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroup5.cs",
+      "sha256": "70558e4544c4608a6dbf1664e850e490a7ae65cc2e26f293b969d59acaa0f7aa",
+      "lane": "L3"
+    },
+    {
+      "path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroup6.cs",
+      "sha256": "3fdcefcda79955d6cfcea90965a1dae758020edabb532f3b02593362207786a9",
+      "lane": "L3"
+    },
+    {
+      "path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroup7.cs",
+      "sha256": "7f84e1fe13b378b79269d90c2926811d1b8a8e67535be18224cecf7f4b432a64",
+      "lane": "L3"
+    },
+    {
+      "path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroup8.cs",
+      "sha256": "4d9dfc359e3cf973d62552eda9181c473a376e455cb74ecc96b75849e675b06c",
+      "lane": "L3"
+    },
+    {
+      "path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroup9.cs",
+      "sha256": "7de58ede811773a3d443157ee508c754d84db4b81e7aff65076d144e18dc93d7",
+      "lane": "L3"
+    },
+    {
+      "path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroup9a.cs",
+      "sha256": "e0e603409308bd0d1b59e6073b48dd2ff4d6af27ca0ee4f77b977131a21a50a3",
+      "lane": "L3"
+    },
+    {
+      "path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroupHOME.cs",
+      "sha256": "7fe5674e87be8450649f01ee4a33f843c406977c3d77aacf2b23c6747a2c2aa4",
+      "lane": "L3"
+    },
+    {
+      "path": "PKHeX.Core/Legality/Breeding.cs",
+      "sha256": "605de22e8eac51091601c2c7424141ad1157093537e096631e3fa7302a700e61",
+      "lane": "L2"
+    },
+    {
+      "path": "PKHeX.Core/Legality/Verifiers/TransferVerifier.cs",
+      "sha256": "0d2f13baf3debabaf8afa432719cc4012192b0bc6984df1b2db27b771680ba98",
+      "lane": "L3"
+    },
+    {
+      "path": "PKHeX.Core/Legality/Verifiers/Ball/BallVerifier.cs",
+      "sha256": "1d89b1abb82bccfff320f3bc6d5902581edae781e63eed3aa0d5bcb8839979fb",
+      "lane": "L4"
+    },
+    {
+      "path": "PKHeX.Core/Legality/Encounters/Verifiers/MysteryGiftVerifier.cs",
+      "sha256": "e45c19aa4f49675c41e76f74416457dc29a8cd7ab470b5776bc350808e5ee870",
+      "lane": "L4"
+    },
+    {
+      "path": "PKHeX.Core/Legality/Verifiers/Ability/AbilityVerifier.cs",
+      "sha256": "1f3fa95759acfec89885d20bfd89a01dc63f2b579095de7816538f42b80bbbdb",
+      "lane": "L2"
+    },
+    {
+      "path": "PKHeX.Core/PKM/PK5.cs",
+      "sha256": "f34a608897d7efb0484223fb77a32bb87175a171478484c3be8b7fb74885afe7",
+      "lane": "PK5-Product-oracle"
+    },
+    {
+      "path": "PKHeX.Core/PKM/PK6.cs",
+      "sha256": "3e769d63938e6113583f3b2261702172ac579d6fa0594eb77b9b4b8b2da07aca",
+      "lane": "Gen6-native"
+    },
+    {
+      "path": "PKHeX.Core/PKM/PK7.cs",
+      "sha256": "f0b6b792b1a64c0b3a26f0b9f5448794a10be05257aead22911df3ccdafb987e",
+      "lane": "Gen7-native"
+    },
+    {
+      "path": "PKHeX.Core/PKM/PK8.cs",
+      "sha256": "403e3cf22b8b68dbd1bb0853b345a5ff0c17b33e72ca038a775b43ab0ee251d4",
+      "lane": "Gen8-native"
+    },
+    {
+      "path": "PKHeX.Core/PKM/PK9.cs",
+      "sha256": "be5dcfd984d27a6d437bedfb6059d9f39a5a7279656508954876afea0a093cf3",
+      "lane": "Gen9-native"
+    },
+    {
+      "path": "PKHeX.Core/PKM/PA9.cs",
+      "sha256": "2cf275a602484efa79eb26676e24c60dd2de2ccbca3cfc338aae68d69184d593",
+      "lane": "Gen9a-native"
+    }
+  ]
+}
