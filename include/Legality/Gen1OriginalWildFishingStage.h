@@ -19,7 +19,8 @@ enum class Status : uint8_t {
     ForeignGameRowNotEvidence, CandidateOriginalMapContradicted,
     CandidateOriginalMethodContradicted, CandidateOriginalSpeciesContradicted,
     CandidateOriginalLevelContradicted, SourceSlotCompatibleRateAndHistoryUnverified,
-    UnknownMapApplicabilityForGlobalRod
+    UnknownMapApplicabilityForGlobalRod,
+    UnknownOriginalFishingInit, CandidateOriginalFishingInitContradicted
 };
 struct Slot {
     uint8_t gameMask;  // Red 1, Blue 2, Yellow 4
@@ -314,5 +315,34 @@ constexpr Result evaluatePret(const Candidate& c) noexcept {
     if(row->map=="*")
         return {Status::UnknownMapApplicabilityForGlobalRod,row->species};
     return {Status::SourceSlotCompatibleRateAndHistoryUnverified,row->species};
+}
+// Source: pret/pokered@af519899719f0754965776faac0e836a3b906e6d
+// engine/items/item_effects.asm [c4ce13de6fb6c7036e94e20b845dd6c5ade8951e]
+// and pret/pokeyellow@e89ead154b9968aa50eed9328ff2b38b6c194382
+// engine/items/item_effects.asm [a6bdf857b15f73609c15f2f22511ea816eb2fd7f].
+// FishingInit gates rod use on source physical scene state including facing
+// water/shore tile and not being in battle. Source table is insufficient to
+// certify a particular original map could be fished at that time.
+struct OriginalFishingInit {
+    bool originalInitOutcomeIndependentlyAttested=false;
+    bool originalFishingInitPassed=false;
+};
+constexpr Result evaluatePretFishingInit(const Candidate& c,
+                                         OriginalFishingInit fishing) noexcept {
+    const auto source=evaluatePret(c);
+    const PretSlot* row=pretSlot(c.originalSourceIndex);
+    if(source.status!=Status::UnknownMapApplicabilityForGlobalRod &&
+       source.status!=Status::SourceSlotCompatibleRateAndHistoryUnverified)
+        return source;
+    if(!row || (row->method!=Method::OldRod && row->method!=Method::GoodRod &&
+                row->method!=Method::SuperRod))
+        return source; // Ordinary grass and surf are not rod-init stages.
+    if(!fishing.originalInitOutcomeIndependentlyAttested)
+        return {Status::UnknownOriginalFishingInit,source.sourceSpecies};
+    if(!fishing.originalFishingInitPassed)
+        return {Status::CandidateOriginalFishingInitContradicted,source.sourceSpecies};
+    // Original FishingInit passed, but acquisition-time RNG/rods, event
+    // history and original save bytes have not been independently verified.
+    return {Status::SourceSlotCompatibleRateAndHistoryUnverified,source.sourceSpecies};
 }
 } // namespace Legality::Gen1OriginalWildFishingStage
