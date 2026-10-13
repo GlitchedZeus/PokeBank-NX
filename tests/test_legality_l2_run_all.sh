@@ -55,6 +55,8 @@ pk4_sources=(
     src/Utils/HelperUtilities.cpp
 )
 tests=(
+    test_legality_l2_gen1_native_dv_stat
+    test_legality_l2_gen1_native_record_adversarial
     test_legality_l2_dp_alternative_egg_histories
     test_legality_l2_dp_move_stage
     test_legality_l2_dp_egg_iv
@@ -93,6 +95,14 @@ for test in "${tests[@]}"; do
         exit 2
     fi
     sources=("$source_file")
+    if [[ "$test" == test_legality_l2_gen1_native_dv_stat ||
+          "$test" == test_legality_l2_gen1_native_record_adversarial ]]; then
+        sources+=(
+            "$root/src/Legality/Gen1NativeDVStatEvidence.cpp"
+            "$root/src/Integration/Gen1/Gen1BattleStats.cpp"
+            "$root/src/Integration/Gen1/Gen1ReadOnlySave.cpp"
+        )
+    fi
     if [[ "$test" == test_legality_l2_dp_native_egg_history ||
           "$test" == test_legality_l2_gen4_native_iv_history ]]; then
         for src in "${pk4_sources[@]}"; do
