@@ -61,6 +61,25 @@ void testDomains(uint64_t& checks) {
         ++checks;
     }
 }
+void testOriginalGameIdentifiers(uint64_t& checks) {
+    using G=Enums::GameVersion;
+    const struct {G original;G family;int id;} cases[] = {
+        {G::W,G::BW,20},{G::B,G::BW,21},
+        {G::W2,G::B2W2,22},{G::B2,G::B2W2,23},
+        {G::X,G::XY,24},{G::Y,G::XY,25},
+        {G::AS,G::ORAS,26},{G::OR,G::ORAS,27},
+        {G::SN,G::SM,30},{G::MN,G::SM,31},
+        {G::US,G::USUM,32},{G::UM,G::USUM,33}
+    };
+    for(const auto& row:cases) {
+        assert(static_cast<int>(row.original)==row.id);
+        assert(G::getGameGroup(row.original)==row.family);
+        assert(D::classify(row.family).kind==D::Kind::Unknown);
+        assert(!D::supportedNativeLayout(row.family));
+        ++checks;
+    }
+}
+
 void testEnvelopes(uint64_t& checks) {
     std::array<std::byte,301> raw{};
     raw[0]=std::byte{0x78};raw[1]=std::byte{0x56};
@@ -112,8 +131,9 @@ void testEnvelopes(uint64_t& checks) {
 int main() {
     uint64_t checks=0;
     testDomains(checks);
+    testOriginalGameIdentifiers(checks);
     testEnvelopes(checks);
-    assert(checks==14u*1106u+11u+302u+4u);
+    assert(checks==14u*1106u+11u+12u+302u+4u);
     std::cout<<"Gen V-IX native foundation: "<<checks
              <<" exact format and bounded transport assertions PASS; "
              <<"no native PK5/PK6 decoder or original-history certification\n";
