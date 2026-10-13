@@ -393,6 +393,10 @@ require(read("tests/test_gen5_readonly_save.cpp"),
 # The existing Gen I-IV Add Pokemon command must now be reachable from
 # a validated empty Gen V box cell, collect explicit native fields with the
 # same on-device keyboard, and stage only after confirm + preview refresh.
+# Reusable shared editor source aliases must be bound before the early
+# native Create/Clone action contracts that inspect them.
+native_bridge = read("include/Integration/Gen5/Gen5SharedEditorBridge.h")
+native_screen = read("include/Integration/Gen5/Gen5SharedScreenState.h")
 require(native_bridge,
         "workspace.emptyCloneDestination(slot.location.box,slot.location.slot)",
         "append(Shared::Action::Add)")
@@ -427,6 +431,30 @@ require(read("tests/test_gen5_readonly_save.cpp"),
         "Surface::ConfirmCreateBox",
         "partyActions[i]!=GA::Add")
 
+# Native Create and Clone become editable in the SAME shared View/Edit
+# session, retaining independently reconstructable origin certificates.
+require(read("include/Integration/Gen5/Gen5StagedPokemonWorkspace.h"),
+        "replacement.replacementOriginal=encrypted",
+        "replacement.replacementOriginal=result.encrypted",
+        "replacement.replacementOriginal",
+        "edit->stage(field,stat,value,error)",
+        "edit->stageName(nickname,name,error)")
+require(read("include/Integration/Gen5/Gen5SharedReview.h"),
+        "fieldsOnly.kind=Kind::FieldEdit",
+        "fieldsOnly.before=change.replacementOriginal",
+        "verifyStagedReview(fieldsOnly,error)",
+        "result.fields.insert(result.fields.end()")
+require(native_bridge,
+        "append(Shared::Action::Edit)",
+        "workspace.originalOccupied(slot.location)")
+require(read("tests/test_gen5_create_integration.cpp"),
+        "editCreated.activate(workspace,Action::Edit,error)",
+        "nativeEdit.keep(workspace,error)",
+        "changedCreate[0].replacementOriginal==created.encrypted")
+require(read("tests/test_gen5_staged_save_candidate.cpp"),
+        "boxOps.stageBox(0,1,Field::Friendship,0,199,&error)",
+        "boxedVerified->fields.size()==2")
+
 # Native PK5 creation must enter the SAME app-owned workspace/Review/export
 # pipeline, never get a separate per-generation save writer or editor shell.
 created_workspace=read("include/Integration/Gen5/Gen5StagedPokemonWorkspace.h")
@@ -443,11 +471,11 @@ require(created_review,
         "change.kind==Kind::CreateBox",
         "change.createRequest",
         "createNative5(*change.createRequest)",
-        "rebuilt.encrypted!=change.after")
+        "rebuilt.encrypted!=change.replacementOriginal")
 require(created_export,
         "Gen5StagedPokemonWorkspace::ChangeKind::CreateBox",
         "request->game)!=source.trainer().gameVersion",
-        "created.encrypted!=change.after")
+        "created.encrypted!=change.replacementOriginal")
 require(created_factory,
         "CreateResult5 createNative5(",
         "Crypto::encryptCandidate(plain)")
@@ -463,6 +491,7 @@ require(create_suite,
 # Game cards and the source picker must not claim the editor is unavailable.
 require(games,
         "Choose a validated Gen V Save Instance; source stays read-only.",
+        "Gen V cached party; choose Save Instances to open.",
         "Open the shared staged editor. The original save stays unchanged.",
         '"A","Open Editor"',
         "Review or change this Gen V profile/save assignment.")
@@ -481,8 +510,7 @@ read_pk5 = read("include/Pokemon/Pokemon5ReadOnly.h")
 native_stage = read("include/Integration/Gen5/Gen5StagedPokemonRecord.h")
 native_session = read("include/Integration/Gen5/Gen5SharedPokemonSession.h")
 native_review = read("include/Integration/Gen5/Gen5SharedReview.h")
-native_bridge = read("include/Integration/Gen5/Gen5SharedEditorBridge.h")
-native_screen = read("include/Integration/Gen5/Gen5SharedScreenState.h")
+
 shared_contract = read("include/UI/SharedPokemonEditorContract.h")
 require(read_pk5, "pokerusState() const", "ball() const",
         "metLevel() const", "originalTrainerGender() const",
@@ -853,7 +881,7 @@ require(box_workspace,
         "pending_.clear();boxReplacements_.clear();")
 require(native_review,"ChangeKind::FieldEdit",
         "Field::CloneBox","Field::RemoveBox",
-        "Crypto::encryptCandidate(d)!=change.after",
+        "Crypto::encryptCandidate(d)!=change.replacementOriginal",
         "Gen V removal must blank exactly one occupied box PK5")
 require(candidate,
         "Gen V export clone source identity is not canonical",

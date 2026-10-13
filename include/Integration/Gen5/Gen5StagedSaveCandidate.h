@@ -102,8 +102,8 @@ struct Gen5StagedSaveCandidate {
                             [](uint8_t b){return b==0;}))
                 return fail("Gen V Create requires exact-title source and empty baseline");
             const auto created=createNative5(*request);
-            if(!created || created.encrypted!=change.after)
-                return fail("Gen V exported Create did not reverify native request");
+            if(!created || created.encrypted!=change.replacementOriginal)
+                return fail("Gen V exported Create did not reverify native baseline");
         }
         if(change.kind==Gen5StagedPokemonWorkspace::ChangeKind::CloneBox) {
             const auto& id=change.cloneSource;

@@ -224,6 +224,48 @@ static void exercise(uint32_t version, bool backup, uint32_t species) {
     forgedCreate=createChanges.front();
     forgedCreate.kind=Kind::CloneBox;
     CHECK(!G::verifyStagedReview(forgedCreate,&error));
+    // Edit a just-created PK5 through the EXISTING shared session, preserving
+    // the original Create request and its exact encrypted PK5 certificate.
+    G::Gen5SharedScreenState editCreated;
+    CHECK(editCreated.openActions(workspace,{Region::Box,0,1},error));
+    auto actions=editCreated.availableActions(workspace);
+    bool foundEdit=false;
+    for(size_t i=0;i<actions.count;++i)
+        if(actions[i]==Action::Edit)foundEdit=true;
+    CHECK(foundEdit);
+    CHECK(editCreated.activate(workspace,Action::Edit,error));
+    CHECK(editCreated.isEditing());
+    G::Gen5SharedPokemonSession nativeEdit;
+    CHECK(nativeEdit.begin(workspace,{Region::Box,0,1},
+        G::Gen5SharedPokemonSession::Mode::Edit,error));
+    CHECK(nativeEdit.stage(Field::Friendship,0,150,error));
+    CHECK(nativeEdit.stageName(Field::NicknameText,"EDITCREAT",error));
+    CHECK(nativeEdit.keep(workspace,error));
+    CHECK(workspace.changedRecordCount()==1);
+    CHECK(workspace.viewBox(0,1)->friendship()==150);
+    const auto changedCreate=workspace.pendingReview();
+    CHECK(changedCreate.size()==1 && changedCreate[0].kind==Kind::CreateBox);
+    CHECK(changedCreate[0].replacementOriginal==created.encrypted);
+    CHECK(changedCreate[0].createRequest &&
+          *changedCreate[0].createRequest==r);
+    const auto changedVerified=G::verifyStagedReview(changedCreate[0],&error);
+    CHECK(changedVerified && changedVerified->fields.size()==3);
+    CHECK(changedVerified->fields[0].field==Field::CreateBox);
+    const auto changedImage=G::buildStagedSaveCandidateForObservedSource(
+        workspace,std::span<const uint8_t>(immutable),&error);
+    CHECK(changedImage && changedImage->changedRecords==1);
+    const auto changedSave=G::Gen5ReadOnlySave::parse(
+        changedImage->bytes,id,&error,selection);
+    CHECK(changedSave && changedSave->boxPokemon(0,1)->friendship()==150);
+    CHECK(changedSave->boxPokemon(0,1)->heldItem()==638);
+    CHECK(std::equal(immutable.begin(),immutable.end(),
+                     workspace.sourceSave().sourceBytes().begin()));
+    auto forgedEditedCreate=changedCreate.front();
+    forgedEditedCreate.replacementOriginal[0]^=1;
+    CHECK(!G::verifyStagedReview(forgedEditedCreate,&error));
+    forgedEditedCreate=changedCreate.front();
+    forgedEditedCreate.after[52]^=1;
+    CHECK(!G::verifyStagedReview(forgedEditedCreate,&error));
     // The SAME shared Pokémon action screen can undo the newly staged
     // native Create independently, without discarding other pending work.
     G::Gen5SharedScreenState createUi;
