@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Legality/Gen1CatchRateEvidence.h"
+#include "Legality/Gen1PretAcquisitionStage.h"
 
 #include <array>
 #include <cstdint>
@@ -53,6 +54,11 @@ struct PretStaticEntry {
 #include "Legality/Gen1PretStaticGifts.inc"
 static_assert(kPretTradeOffers.size()==20);
 static_assert(kPretStaticSources.size()==20);
+// Separate authoritative original Game Corner physical vendor slot namespace.
+// These are historical source offers, NOT proof of original redemption.
+using PretGameCornerEntry=Gen1PretAcquisitionStage::PretGameCornerEntry;
+inline constexpr const auto& kPretGameCornerOffers=Gen1PretAcquisitionStage::kPretGameCornerOffers;
+static_assert(kPretGameCornerOffers.size()==18);
 constexpr const PretTradeEntry* originalPretTrade(uint8_t mask,
                                                   uint8_t sourceIndex) noexcept {
     if(mask!=1&&mask!=2&&mask!=4)return nullptr;
