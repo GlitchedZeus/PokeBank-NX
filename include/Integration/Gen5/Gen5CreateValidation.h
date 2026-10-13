@@ -4,6 +4,7 @@
 #include "Integration/Gen5/Gen5Progression.h"
 #include "Integration/Gen5/Gen5MovePP.h"
 #include "Integration/Gen5/Gen5EncounterLocations.h"
+#include "Integration/Gen5/Gen5CreateInputRules.h"
 
 #include <array>
 #include <optional>
@@ -80,11 +81,16 @@ inline bool createAscii5(std::string_view text, size_t max) noexcept {
 }
 inline bool createDate5(const CreateEncounter5& e) noexcept {
     if (e.year < 2000 || e.year > 2099 || e.month < 1 || e.month > 12) return false;
-    constexpr std::array<uint32_t, 12> days{31,28,31,30,31,30,31,31,30,31,30,31};
-    const uint32_t limit = days[e.month - 1] + (e.month == 2 && e.year % 4 == 0 ? 1 : 0);
+    const uint32_t limit=createLastCalendarDay5(e.year,e.month);
     return e.day >= 1 && e.day <= limit;
 }
 
+[[nodiscard]] constexpr bool createFormNeedsUnsupportedHandling5(
+    uint32_t species,uint32_t form) noexcept {
+    return form!=0 && (species==351 || species==421 || species==487 ||
+           species==492 || species==493 || species==555 || species==648 ||
+           species==649);
+}
 [[nodiscard]] inline CreateValidation5 validateCreate5(const CreateRequest5& r) {
     using E = CreateError5;
     if (r.format != CreateFormat5::Boxed)
@@ -94,11 +100,10 @@ inline bool createDate5(const CreateEncounter5& e) noexcept {
     const auto p = personal5(r.species, r.form, version >= 22);
     if (!p || !p.info->hp || p.info->growthRate > 5)
         return {E::SpeciesForm, "Species/form has no exact native personal data in this title"};
-    // This foundation has no held-item or battle-state initialization. Keep
+    // Item identifiers are stored natively, but item-dependent form-change
+    // transitions and battle-state/reversion handling are not implemented. Keep
     // dependent forms gated rather than constructing a misleading combination.
-    if (r.form && (r.species == 351 || r.species == 421 || r.species == 487 ||
-                   r.species == 492 || r.species == 493 || r.species == 555 ||
-                   r.species == 648 || r.species == 649))
+    if (createFormNeedsUnsupportedHandling5(r.species,r.form))
         return {E::SpeciesForm, "This form needs unsupported item, battle or reversion handling"};
     if (r.level < 1 || r.level > 100) return {E::Level, "Level must be 1..100"};
     if (r.nature > 24) return {E::Nature, "Nature must be 0..24"};
@@ -114,7 +119,7 @@ inline bool createDate5(const CreateEncounter5& e) noexcept {
     if (!r.trainer || r.trainer->tid > 65535 || r.trainer->sid > 65535 || r.trainer->gender > 1)
         return {E::Trainer, "Explicit native TID, SID and OT gender are required"};
     const auto language = r.trainer->language;
-    if (language != 2 && language != 3 && language != 4 && language != 5 && language != 7)
+    if (!createLanguageAllowed5(language))
         return {E::Language, "Create currently supports ASCII text in Western-language records only"};
     if (!createAscii5(r.nickname, 10) || !createAscii5(r.trainer->name, 7))
         return {E::Text, "Supply ASCII nickname (1..10) and OT name (1..7); no truncation or substitution"};

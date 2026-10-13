@@ -115,9 +115,24 @@ bool promptNativeBoxCreate(TrainerViewScreen& screen,std::string& error) {
        !ask("Add Pokemon - Level",5,1,100,request.level) ||
        !ask("Add Pokemon - Nature (0-24)",0,0,24,request.nature))
         return false;
-    const auto personal=G::personal5(request.species,0,version>=22);
+    const auto basePersonal=G::personal5(request.species,0,version>=22);
+    if(!basePersonal) {
+        error="This species is unavailable in selected BW/B2W2 personal data";
+        return false;
+    }
+    if(basePersonal.info->formCount>1) {
+        if(!ask("Add Pokemon - Native Form (0=Base)",0,0,
+                std::min(31,static_cast<int>(basePersonal.info->formCount)-1),
+                request.form))
+            return false;
+        if(G::createFormNeedsUnsupportedHandling5(request.species,request.form)) {
+            error="This form requires unsupported item or battle-state handling";
+            return false;
+        }
+    }
+    const auto personal=G::personal5(request.species,request.form,version>=22);
     if(!personal) {
-        error="This species is unavailable in the selected BW/B2W2 data";
+        error="Requested form has no exact native Gen V personal data";
         return false;
     }
     // Two explicit native 16-bit words support every 32-bit PID, including
@@ -128,9 +143,15 @@ bool promptNativeBoxCreate(TrainerViewScreen& screen,std::string& error) {
         return false;
     request.pid=(pidHigh<<16)|pidLow;
     request.gender=G::createGenderForPID5(personal.info->genderRatio,*request.pid);
-    if(!ask("Add Pokemon - Ability Slot (0 / 1 / Hidden 2)",
-            static_cast<int>(pidHigh&1u),0,2,request.abilitySlot))
-        return false;
+    for(;;) {
+        if(!ask("Add Pokemon - Ability Slot (0 / 1 / Hidden 2)",
+                static_cast<int>(pidHigh&1u),0,2,request.abilitySlot))
+            return false;
+        if(G::abilityForSlot5(*personal.info,request.abilitySlot)!=0 &&
+           (request.abilitySlot==2 ||
+            request.abilitySlot==((*request.pid>>16)&1u)))break;
+        screen.postStatus("Ability slot unavailable or conflicts with PID",240);
+    }
     if(!askText("Add Pokemon - Nickname","1-10 native ASCII characters",
                 "",10,request.nickname))
         return false;
@@ -148,26 +169,69 @@ bool promptNativeBoxCreate(TrainerViewScreen& screen,std::string& error) {
        !ask("Add Pokemon - OT Secret ID",sourceTrainer.sid,
             0,65535,ot.sid) ||
        !ask("Add Pokemon - OT Gender (0 Male, 1 Female)",
-            sourceTrainer.gender<=1?sourceTrainer.gender:0,0,1,ot.gender) ||
-       !ask("Add Pokemon - Language (2,3,4,5,7)",
-            sourceTrainer.language>=2 && sourceTrainer.language<=7
-                ? sourceTrainer.language:2,2,7,ot.language))
+            sourceTrainer.gender<=1?sourceTrainer.gender:0,0,1,ot.gender))
         return false;
+    for(;;) {
+        if(!ask("Add Pokemon - Language (2,3,4,5,7)",
+                G::createLanguageAllowed5(sourceTrainer.language)
+                  ? sourceTrainer.language:2,2,7,ot.language))
+            return false;
+        if(G::createLanguageAllowed5(ot.language))break;
+        screen.postStatus("Language must be 2, 3, 4, 5 or 7",240);
+    }
     request.trainer=std::move(ot);
     request.encounter.kind=G::CreateHistory5::CallerSuppliedNative;
-    if(!ask("Add Pokemon - Native Met Location ID (1-153)",
-            1,1,153,request.encounter.location) ||
-       !ask("Add Pokemon - Met Level",static_cast<int>(request.level),
+    // The numeric location range is sparse. Reprompt on an unavailable ID
+    // immediately rather than abandoning 30 completed prompts at the end.
+    for(;;) {
+        if(!ask("Add Pokemon - Native Met Location ID (1-153)",
+                1,1,153,request.encounter.location))
+            return false;
+        if(G::isNativeMetLocation5(request.encounter.location))break;
+        screen.postStatus("Unknown native Gen V met location; choose another",250);
+    }
+    if(!ask("Add Pokemon - Met Level",static_cast<int>(request.level),
             1,static_cast<int>(request.level),request.encounter.level) ||
        !ask("Add Pokemon - Ball ID",4,1,25,request.encounter.ball) ||
        !ask("Add Pokemon - Met Year",2026,2000,2099,request.encounter.year) ||
-       !ask("Add Pokemon - Met Month",1,1,12,request.encounter.month) ||
-       !ask("Add Pokemon - Met Day",1,1,31,request.encounter.day))
+       !ask("Add Pokemon - Met Month",1,1,12,request.encounter.month))
         return false;
+    const auto maximumDay=G::createLastCalendarDay5(
+        request.encounter.year,request.encounter.month);
+    if(maximumDay==0 ||
+       !ask("Add Pokemon - Met Day",1,1,
+            static_cast<int>(maximumDay),request.encounter.day))
+        return false;
+    std::array<uint32_t,4> chosenMoves{};
     for(size_t i=0;i<request.moves.size();++i) {
-        if(!ask("Add Pokemon - Move "+std::to_string(i+1)+" ID (0 empty)",
-                i==0?1:0,i==0?1:0,559,request.moves[i].id))
+        // A previously empty slot means all remaining slots stay empty.
+        if(i>0 && chosenMoves[i-1]==0)break;
+        for(;;) {
+            uint32_t id=0;
+            if(!ask("Add Pokemon - Move "+std::to_string(i+1)+" ID (0 empty)",
+                    i==0?1:0,i==0?1:0,559,id))
+                return false;
+            if(G::createMoveChoiceAllowed5(chosenMoves,i,id) &&
+               (id==0 || G::validNativeMove5(id))) {
+                chosenMoves[i]=id;
+                request.moves[i].id=id;
+                break;
+            }
+            screen.postStatus("Choose a unique, contiguous native move",240);
+        }
+        if(chosenMoves[i]==0)break;
+        const uint32_t basePP=G::basePP5(chosenMoves[i]);
+        const int maxUps=basePP==1?0:3;
+        if(maxUps!=0 &&
+           !ask("Add Pokemon - Move "+std::to_string(i+1)+" PP Ups",
+                0,0,maxUps,request.moves[i].ppUps))
             return false;
+        const uint32_t maxPP=G::maxPP5(chosenMoves[i],request.moves[i].ppUps);
+        uint32_t currentPP=maxPP;
+        if(!ask("Add Pokemon - Move "+std::to_string(i+1)+" Current PP",
+                static_cast<int>(maxPP),0,static_cast<int>(maxPP),currentPP))
+            return false;
+        request.moves[i].pp=currentPP;
     }
     constexpr const char* stats[6]={"HP","Attack","Defense",
                                      "Speed","Sp. Attack","Sp. Defense"};
@@ -176,9 +240,12 @@ bool promptNativeBoxCreate(TrainerViewScreen& screen,std::string& error) {
                 request.ivs[i]))
             return false;
     }
-    // EVs are explicit, including a legitimate zero distribution.
+    // Bound each stat to the remaining 510-point budget. This avoids a
+    // frustrating final Create rejection after all the other prompts.
     for(size_t i=0;i<6;++i) {
-        if(!ask("Add Pokemon - "+std::string(stats[i])+" EV",0,0,255,
+        const int maximum=static_cast<int>(
+            G::createRemainingEVMax5(request.evs,i));
+        if(!ask("Add Pokemon - "+std::string(stats[i])+" EV",0,0,maximum,
                 request.evs[i]))
             return false;
     }
