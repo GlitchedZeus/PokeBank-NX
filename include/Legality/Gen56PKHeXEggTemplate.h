@@ -56,6 +56,23 @@ constexpr bool speciesDeterminedByGender(std::uint16_t species) noexcept {
     // Breeding.IsGenderSpeciesDetermination (Gen III–VI relevant subset).
     return species==29 || species==32 || species==313 || species==314;
 }
+// Breeding.IsAbleToHatchFromEgg, Gen V/VI subset (species <= 721).
+// Phione (489) is hatchable, Manaphy (490) is not.
+constexpr bool canHatchAsEgg(std::uint16_t species) noexcept {
+    switch(species){
+        case 132: case 144: case 145: case 146: case 150: case 151:
+        case 201: case 243: case 244: case 245: case 249: case 250: case 251:
+        case 377: case 378: case 379: case 380: case 381: case 382:
+        case 383: case 384: case 385: case 386:
+        case 480: case 481: case 482: case 483: case 484: case 485:
+        case 486: case 487: case 488: case 490: case 491: case 492: case 493:
+        case 494: case 638: case 639: case 640: case 641: case 642:
+        case 643: case 644: case 645: case 646: case 647: case 648: case 649:
+        case 716: case 717: case 718: case 719: case 720: case 721:
+            return false;
+        default: return true;
+    }
+}
 constexpr bool validSpecies(Game game,std::uint16_t species) noexcept {
     const auto gen=generation(game);
     return species!=0 && (gen==5?species<=649:gen==6?species<=721:false);
@@ -78,6 +95,10 @@ constexpr Result evaluate(const Claim& c) noexcept {
     if(!validSpecies(c.originGame,c.originalEggSpecies)) {result.status=Status::Unsupported;return result;}
     if(c.form>31 || (c.originalAbilityNumber!=1 && c.originalAbilityNumber!=2 && c.originalAbilityNumber!=4)) {
         result.status=Status::IncompleteEvidence;return result;
+    }
+    if(!canHatchAsEgg(c.originalEggSpecies)) {
+        if(c.originalEggSourceIndependentlyAttested)result.status=Status::LocalContradiction;
+        return result;
     }
     result.hiddenPossible=gen==5?isHiddenPossible5(c.originalEggSpecies):
                                      isHiddenPossible6(c.originalEggSpecies,c.form);
