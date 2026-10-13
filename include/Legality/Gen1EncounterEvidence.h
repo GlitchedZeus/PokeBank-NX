@@ -2,6 +2,7 @@
 
 #include "Legality/Gen1CatchRateEvidence.h"
 #include "Legality/Gen1PretAcquisitionStage.h"
+#include "Legality/Gen1PretGiftEventStage.h"
 #include "Legality/Gen1PretEvolutionStage.h"
 
 #include <array>
@@ -60,6 +61,9 @@ static_assert(kPretStaticSources.size()==20);
 using PretGameCornerEntry=Gen1PretAcquisitionStage::PretGameCornerEntry;
 inline constexpr const auto& kPretGameCornerOffers=Gen1PretAcquisitionStage::kPretGameCornerOffers;
 static_assert(kPretGameCornerOffers.size()==18);
+// Version-specific original scripted gifts need receipt, event and scene witnesses.
+inline constexpr const auto& kPretScriptedGiftScenes=Gen1PretGiftEventStage::kScenes;
+static_assert(kPretScriptedGiftScenes.size()==5);
 constexpr const PretTradeEntry* originalPretTrade(uint8_t mask,
                                                   uint8_t sourceIndex) noexcept {
     if(mask!=1&&mask!=2&&mask!=4)return nullptr;
