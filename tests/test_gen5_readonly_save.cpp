@@ -488,6 +488,8 @@ int main() {
         assert(presented->getPartySize()==1 && presented->party.size()==1);
         assert(presented->party[0] && presented->party[0]->speciesID()==25);
         assert(presented->party[0]->level()==50);
+        assert(presented->party[0]->baseHP()==35);
+        assert(presented->party[0]->baseATK()==55);
         assert(presented->party[0]->nature()==0);
         assert(presented->party[0]->getData().empty());
         assert(!presented->party[0]->clone());
@@ -496,7 +498,11 @@ int main() {
                                                 Enums::GameVersion::B2W2));
         assert(presented->boxes.size()==24 && presented->boxes[0][0]);
         assert(presented->boxes[0][0]->speciesID()==133);
-        assert(presented->boxes[0][0]->level()==0);
+        assert(presented->boxes[0][0]->level()==1);
+        assert(presented->boxes[0][0]->baseHP()==55);
+        assert(presented->boxes[0][0]->baseATK()==55);
+        assert(presented->boxes[0][0]->baseSPD()==65);
+        assert(presented->boxes[0][0]->statHPMax()==0);
         assert(!presented->boxes[0][1]);
         assert(presented->trainerName=="NX" && presented->TID16==12345);
         assert(!presented->hasStagedChanges());

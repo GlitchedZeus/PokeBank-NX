@@ -535,4 +535,14 @@ require(read("tests/test_gen5_pk5_readonly.cpp"),
 require(read("tests/test_gen5_readonly_save.cpp"),
         'ui.stageNameValue("NXPIKA",error)',
         'ui.stageNameValue("NXT",error)')
+view=read("include/Pokemon/Pokemon5ReadOnlyView.h")
+require(view,"const PokeVault::Integration::Gen5::Personal5* nativePersonal()",
+        "sourceGroup_==Enums::GameVersion::B2W2",
+        "levelForExperience5(", "experienceForLevel5(",
+        "uint8_t baseHP() const noexcept override",
+        "p?p->hp:0", "p?p->spd:0")
+require(read("tests/test_gen5_readonly_save.cpp"),
+        "presented->boxes[0][0]->level()==1",
+        "presented->boxes[0][0]->baseHP()==55",
+        "presented->boxes[0][0]->statHPMax()==0")
 print("Gen V read-only shared UI guard contracts: PASS")

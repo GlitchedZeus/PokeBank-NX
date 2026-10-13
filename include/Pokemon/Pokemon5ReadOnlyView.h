@@ -3,6 +3,7 @@
 
 #include "Pokemon/Pokemon.h"
 #include "Pokemon/Pokemon5ReadOnly.h"
+#include "Integration/Gen5/Gen5Progression.h"
 #include "Names/SpeciesNames.h"
 
 #include <cstddef>
@@ -38,10 +39,20 @@ public:
     uint8_t nature() const noexcept override { return source_.nature(); }
     uint8_t statNature() const noexcept override { return nature(); }
     uint8_t level() const noexcept override {
-        // Native boxed PK5 has no current level. Do not invent a growth
-        // curve or silently display level 1 for a boxed Pokemon.
-        const uint8_t value=source_.partyLevel();
-        return value>=1 && value<=100 ? value : 0;
+        if(!source_.valid() || source_.empty())return 0;
+        // Party PK5 has an explicit battle level. Boxed PK5 has EXP only:
+        // derive its display level from the selected BW/B2W2 personal table.
+        if(source_.partyRecord()) {
+            const uint8_t value=source_.partyLevel();
+            return value>=1 && value<=100 ? value : 0;
+        }
+        const auto* p=nativePersonal();
+        if(!p || p->growthRate>5 ||
+           source_.experience()>
+              PokeVault::Integration::Gen5::experienceForLevel5(p->growthRate,100))
+            return 0;
+        return PokeVault::Integration::Gen5::levelForExperience5(
+            p->growthRate,source_.experience());
     }
     uint8_t gender() const noexcept override { return source_.gender(); }
     const char* genderSymbol() const noexcept override {
@@ -96,14 +107,14 @@ public:
     bool isFatefulEncounter() const noexcept override { return (at(0x40)&1)!=0; }
     std::u16string otName() const override { return nativeString(0x68,8); }
 
-    // A boxed Gen V record does not store current battle stats. These remain
-    // unavailable until a format-correct Gen V personal-data/stat model ships.
-    uint8_t baseHP() const noexcept override { return 0; }
-    uint8_t baseATK() const noexcept override { return 0; }
-    uint8_t baseDEF() const noexcept override { return 0; }
-    uint8_t baseSPE() const noexcept override { return 0; }
-    uint8_t baseSPA() const noexcept override { return 0; }
-    uint8_t baseSPD() const noexcept override { return 0; }
+    // Exact native BW/B2W2 base stats are now available for both party
+    // and boxed Pokémon; boxed *battle* stats remain unavailable.
+    uint8_t baseHP() const noexcept override { const auto* p=nativePersonal();return p?p->hp:0; }
+    uint8_t baseATK() const noexcept override { const auto* p=nativePersonal();return p?p->atk:0; }
+    uint8_t baseDEF() const noexcept override { const auto* p=nativePersonal();return p?p->def:0; }
+    uint8_t baseSPE() const noexcept override { const auto* p=nativePersonal();return p?p->spe:0; }
+    uint8_t baseSPA() const noexcept override { const auto* p=nativePersonal();return p?p->spa:0; }
+    uint8_t baseSPD() const noexcept override { const auto* p=nativePersonal();return p?p->spd:0; }
 
     uint16_t statHPCurrent() const noexcept override { return partyStat(0x8E); }
     uint16_t statHPMax() const noexcept override { return partyStat(0x90); }
@@ -134,6 +145,12 @@ public:
     std::unique_ptr<Pokemon> clone() const override { return nullptr; }
 
 private:
+    [[nodiscard]] const PokeVault::Integration::Gen5::Personal5* nativePersonal() const noexcept {
+        if(!source_.valid() || source_.empty())return nullptr;
+        return PokeVault::Integration::Gen5::personal5(
+            source_.species(),source_.form(),
+            sourceGroup_==Enums::GameVersion::B2W2).info;
+    }
     [[nodiscard]] uint8_t at(size_t n) const noexcept {
         const auto b=source_.decodedBytes();
         return source_.valid() && n<b.size() ? b[n] : 0;
