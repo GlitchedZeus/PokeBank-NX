@@ -4,7 +4,8 @@
 # make -f Makefile.host -f tools/audit_legality_l5_pk12_probe.mk l5-pk12-baseline-sanitize
 # After coordinator fixes production native-generation predicates:
 # make -f Makefile.host -f tools/audit_legality_l5_pk12_probe.mk l5-pk12-fixed
-L5_PK12_NATIVE := tests/fixtures/legality_l5_pk12_sourcefree_native_probe.cpp \
+L5_PK12_FIXTURE ?= tests/fixtures/legality_l5_pk12_sourcefree_native_probe.cpp
+L5_PK12_NATIVE := $(L5_PK12_FIXTURE) \
  $(filter-out tests/test_gen34_ball_domain_analyzer.cpp,$(GEN34_BALL_ANALYZER_SOURCES))
 L5_PK12_EXE := $(HOST_BUILD)/legality_l5_pk12_sourcefree
 L5_PK12_SAN := $(HOST_BUILD)/legality_l5_pk12_sourcefree_sanitize
