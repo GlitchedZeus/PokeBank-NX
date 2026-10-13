@@ -133,6 +133,12 @@ echo "L4 Stage 7 complete candidate-local PK1-PK4 provenance gate"
 "$compiler" "${base[@]}" tests/fixtures/legality_l4_stage7_final_provenance.cpp \
     -o "$scratch/l4_stage7_final_provenance"
 "$scratch/l4_stage7_final_provenance"
+# L4 Gen V/VI Phase A: PKHeX-layout PGF, WC6/WC6Full, source receipt,
+# restriction witness and egg-ball boundaries. No duplicate PK5 decoder.
+echo "L4 Phase A Gen V/VI PGF/WC6 gift projection and receipt evidence"
+"$compiler" "${base[@]}" tests/fixtures/legality_l4_gen56_gift_source.cpp \
+    -o "$scratch/l4_gen56_gift_source"
+"$scratch/l4_gen56_gift_source"
 for name in "${header_only[@]}"; do
     echo "L4 C++ compile: $name"
     "$compiler" "${base[@]}" "tests/$name.cpp" -o "$scratch/$name"

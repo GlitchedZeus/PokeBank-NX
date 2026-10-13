@@ -13,6 +13,7 @@ on:
       - include/Legality/Gen14OriginalCurrentChain*
       - include/Legality/Gen14OriginalSourceRights*
       - include/Legality/Gen14FinalProvenanceGate*
+      - include/Legality/Gen56MysteryGiftSource*
       - include/Legality/Gen12Gift*
       - include/Legality/Gen12OriginalDistribution*
       - include/Legality/Gen3*Event*
