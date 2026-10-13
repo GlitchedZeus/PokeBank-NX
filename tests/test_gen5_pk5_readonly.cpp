@@ -33,7 +33,7 @@ std::vector<uint8_t> makeRecord(size_t size, uint32_t pid) {
     d[0x30]=15;
     d[0x34]=1;
     set32(d,0x38,31 | (30u << 5) | (29u << 10));
-    d[0x40]=static_cast<uint8_t>((1 << 1) | (2 << 3));
+    d[0x40]=static_cast<uint8_t>(1 << 1); // valid native Pikachu form 0
     d[0x41]=3;
     d[0x42]=1;
     d[0x5F]=20;
@@ -96,7 +96,7 @@ int main() {
             assert(entity.evs()[0]==31 && entity.moves()[0]==85);
             assert(entity.pp()[0]==15 && entity.ppUps()[0]==1);
             assert(entity.ivs()[0]==31 && entity.ivs()[1]==30);
-            assert(entity.gender()==1 && entity.form()==2);
+            assert(entity.gender()==1 && entity.form()==0);
             assert(entity.nature()==3 && entity.hiddenAbility());
             assert(entity.originVersion()==20);
             assert(entity.pokerusState()==0x21 && entity.pokerusMode()==2);
@@ -186,7 +186,7 @@ int main() {
         assert(current.heldItem()==638 && current.ball()==25);
         assert(current.metLevel()==100 && current.originalTrainerGender()==0);
         assert(current.tid()==65535 && current.sid()==0);
-        assert(current.fatefulEncounter() && current.gender()==1 && current.form()==2);
+        assert(current.fatefulEncounter() && current.gender()==1 && current.form()==0);
         assert(current.metLocation()==30001);
         assert(current.pokerusState()==0x20 && current.pokerusMode()==1 &&
                current.hiddenAbility());
@@ -317,6 +317,19 @@ int main() {
             } else assert(edit->current().form()==0);
             assert(!edit->stage(G5::StagedPokemon5Record::Field::Gender,0,1));
         }
+    }
+    // A structurally readable but impossible source form cannot supply
+    // exact BW/B2W2 stats or growth data for party recalculation.
+    {
+        auto invalid=makeRecord(C::PartySize,0x12345678);
+        invalid[0x40]|=uint8_t{2<<3}; // Pikachu form 2 does not exist
+        const auto raw=C::encryptCandidate(invalid);
+        auto edit=G5::StagedPokemon5Record::create(raw);
+        assert(edit);
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Level,0,50));
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Nature,0,1));
+        assert(std::equal(edit->stagedBytes().begin(),edit->stagedBytes().end(),
+                          raw.begin()));
     }
     const auto invalidEntity = std::vector<uint8_t>(C::StoredSize,0);
     assert(!G5::StagedPokemon5Record::create(invalidEntity).has_value());
