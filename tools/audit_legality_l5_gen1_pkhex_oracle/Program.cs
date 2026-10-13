@@ -63,6 +63,7 @@ foreach (var value in cases)
         id, source = value.GetProperty("source").GetString(), original_source = "RBY_VERSION_UNKNOWN",
         execution_mode = "actual_original_pkhex_core",
         species = originalSpecies, move = originalMove, dv16 = originalDV,
+        level = pk.Stat_Level, experience = pk.EXP,
         dv_hp = pk.IV_HP, dv_attack = pk.IV_ATK, dv_defense = pk.IV_DEF,
         dv_speed = pk.IV_SPE, dv_special = pk.IV_SPA,
         stat_exp_hp = pk.EV_HP, stat_exp_attack = pk.EV_ATK,

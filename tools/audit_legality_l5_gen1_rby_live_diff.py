@@ -7,6 +7,7 @@ The built-in self-test verifies data integrity only and MUST NOT count as parity
 from __future__ import annotations
 import argparse
 from collections import Counter
+from itertools import product
 import hashlib
 import json
 from pathlib import Path
@@ -19,12 +20,26 @@ DATA="L5_GEN1_RBY_NATIVE_VECTORS_V1"
 def check(cond:bool,code:str)->None:
     if not cond:raise ValueError(code)
 
+def strict_json_loads(payload:str)->dict:
+    """Reject duplicate keys and nonfinite numbers before evidence comparison."""
+    def unique(pairs:list[tuple[str,object]])->dict:
+        result={}
+        for key,value in pairs:
+            check(key not in result,"DUPLICATE_JSON_KEY:"+key)
+            result[key]=value
+        return result
+    def reject_constant(value:str)->None:
+        raise ValueError("NONFINITE_JSON_NUMBER:"+value)
+    return json.loads(payload,object_pairs_hook=unique,parse_constant=reject_constant)
+
 def load_vectors(path:Path)->list[dict]:
-    data=json.loads(path.read_text(encoding="utf8"))
+    data=strict_json_loads(path.read_text(encoding="utf8"))
     check(data.get("schema")==DATA,"VECTOR_SCHEMA")
     rows=data.get("cases",[])
     check(len(rows)==72,"VECTOR_72_EXPECTED")
     ids=set()
+    tuples=set()
+    sources=("", "red_gb", "blue_gb", "yellow_gb", "platinum_nds", "unknown_source")
     for row in rows:
         ident=row.get("id")
         check(isinstance(ident,str) and ident not in ids,"DUPLICATE_VECTOR")
@@ -40,22 +55,30 @@ def load_vectors(path:Path)->list[dict]:
                               "stat_exp_speed","stat_exp_special")):
             check(row.get(k)==ordered[(shift+i)%5],"DISTINCT_NATIVE_STAT_EXP_PATTERN:"+k)
         check(row["stat_exp_hp"]==row["stat_experience"],"HP_STAT_EXP_ALIAS")
-        check(row["source"] in ("","red_gb","blue_gb","yellow_gb",
-                                 "platinum_nds","unknown_source"),"VECTOR_SOURCE")
+        check(row["source"] in sources,"VECTOR_SOURCE")
+        identity=(row["species"],row["move"],row["dv16"],row["source"])
+        check(identity not in tuples,"DUPLICATE_VECTOR_CASE_TUPLE")
+        tuples.add(identity)
+    check(tuples==set(product((1,81),(33,200),(0,0x5555,0xffff),sources)),
+          "VECTOR_CARTESIAN_COVERAGE")
     return rows
 
-def read_jsonl(path:Path,engine:str)->dict[str,dict]:
+def read_jsonl(path:Path,engine:str,variant:str|None=None)->dict[str,dict]:
     result={}
     text=path.read_text(encoding="utf8").strip()
     for line in text.splitlines():
-        row=json.loads(line)
+        row=strict_json_loads(line)
         check(row.get("schema")==SCHEMA,"OBS_SCHEMA")
         check(row.get("engine")==engine,"OBS_ENGINE")
         check(row.get("execution_mode")==("actual_original_pkhex_core"
               if engine=="PKHEX_CORE" else "actual_production_pk1"),"OBS_NOT_LIVE")
         check(row.get("original_retail_history_authenticated") is False,
               "ORIGINAL_FABRICATION")
+        if engine=="POKEBANK_NX_ANALYZER":
+            check(variant in ("baseline","coordinator"),"EXPECTED_VARIANT_MISSING")
+            check(row.get("nx_variant")==variant,"EXECUTION_VARIANT_MISMATCH")
         if engine=="PKHEX_CORE":
+            check(variant is None,"ORACLE_HAS_FAKE_VARIANT")
             check(row.get("pkhex_revision")==PIN,"ORACLE_REVISION")
             check(row.get("original_source")=="RBY_VERSION_UNKNOWN",
                   "PKHEX_MISCLAIMED_ORIGINAL_VERSION")
@@ -76,15 +99,29 @@ def evaluate(cases:list[dict],oracle:dict[str,dict],accepted:dict[str,dict],
     keys={r["id"] for r in cases}
     check(keys==set(oracle)==set(accepted)==set(coordinator),"ID_OR_VECTOR_MISMATCH")
     mismatches=[];accepted_old=Counter()
+    context_matrix={source:{"vectors":0,"accepted_f3":0,"accepted_f4":0,
+                            "coordinator_f3":0,"coordinator_f4":0}
+                    for source in ("","red_gb","blue_gb","yellow_gb",
+                                   "platinum_nds","unknown_source")}
     for v in cases:
         ident=v["id"]
         p,a,c=oracle[ident],accepted[ident],coordinator[ident]
+        check(a.get("nx_variant")=="baseline" and
+              c.get("nx_variant")=="coordinator",
+              "ACCEPTED_COORDINATOR_EXECUTION_SWAP:"+ident)
+        context_matrix[v["source"]]["vectors"]+=1
+        context_matrix[v["source"]]["accepted_f3"]+=int(a.get("ability_invalid") is True)
+        context_matrix[v["source"]]["accepted_f4"]+=int(a.get("gender_invalid") is True)
+        context_matrix[v["source"]]["coordinator_f3"]+=int(c.get("ability_invalid") is True)
+        context_matrix[v["source"]]["coordinator_f4"]+=int(c.get("gender_invalid") is True)
         check(p.get("parsed") is True,"ORIGINAL_PKHEX_ANALYSIS_NOT_COMPLETED:"+ident)
         check(p.get("pk1_ability")==-1,"PKHEX_GEN1_ABSENT_ABILITY_CONTRACT:"+ident)
         check(p.get("pk1_gender") in (0,1,2),"PKHEX_GB_DERIVED_GENDER_DOMAIN:"+ident)
         for record in (p,a,c):
-            for field in ("species","move","dv16","source"):
+            for field in ("species","move","dv16","source","level","experience"):
                 check(record.get(field)==v[field],"INPUT_DRIFT:"+ident+":"+field)
+            check(type(record.get("level")) is int and type(record.get("experience")) is int,
+                  "INPUT_NUMBER_TYPE_DRIFT:"+ident)
             for field,expected in dv_values(v["dv16"]).items():
                 check(record.get(field)==expected,"DV_ORIGINAL_DISAGREEMENT:"+ident+":"+field)
             for field in ("stat_exp_hp","stat_exp_attack","stat_exp_defense",
@@ -124,6 +161,8 @@ def evaluate(cases:list[dict],oracle:dict[str,dict],accepted:dict[str,dict],
             # No claim that source label alone proves the original encounter.
             check(v["expected_source_context"]!="Authenticated",
                   "ORIGINAL_SOURCE_CERTIFICATE_FABRICATED")
+    check(all(values["vectors"]==12 for values in context_matrix.values()),
+          "SOURCE_CONTEXT_COVERAGE_INCOMPLETE")
     check(accepted_old["ability_invalid"]>=12,"NO_ABILITY_BASELINE_DIFF")
     check(accepted_old["gender_invalid"]>=6,"NO_GENDER_BASELINE_DIFF")
     return {
@@ -139,6 +178,9 @@ def evaluate(cases:list[dict],oracle:dict[str,dict],accepted:dict[str,dict],
       "stat_experience_native_boundaries":[0,32768,65535],
       "pkhex_global_legal_comparison":"NOT_CLAIMED_SYNTHETIC_CONTEXT_INCOMPLETE",
       "accepted_baseline_mismatch_samples":mismatches,
+      "defect_disagreements_by_source_context":context_matrix,
+      "all_source_context_vector_counts_verified":all(
+          values["vectors"]==12 for values in context_matrix.values()),
       "remaining_scope":"encounter/moves/gifts/trades/version-specific original histories",
       "release_gate":"BLOCKED",
     }
@@ -148,7 +190,7 @@ def selftest()->None:
        "experience":135,"stat_experience":65535,"stat_exp_hp":65535,
        "stat_exp_attack":0,"stat_exp_defense":1,"stat_exp_speed":32768,
        "stat_exp_special":65534,
-       "source":"","expected_source_context":"Unknown"}
+       "source":"","level":5,"experience":135,"expected_source_context":"Unknown"}
     check(dv_values(0)==dict(dv_hp=0,dv_attack=0,dv_defense=0,
                              dv_speed=0,dv_special=0),"DV_ZERO")
     check(dv_values(65535)==dict(dv_hp=15,dv_attack=15,dv_defense=15,
@@ -158,14 +200,15 @@ def selftest()->None:
     p={"schema":SCHEMA,"engine":"PKHEX_CORE","execution_mode":"actual_original_pkhex_core",
        "pkhex_revision":PIN,"original_source":"RBY_VERSION_UNKNOWN",
        "original_retail_history_authenticated":False,"id":"x","source":"",
-       "species":1,"move":33,"dv16":65535,"ability_invalid":False,
+       "species":1,"move":33,"dv16":65535,"level":5,"experience":135,
+       "ability_invalid":False,
        "gender_invalid":False,"parsed":True,"pk1_ability":-1,"pk1_gender":0,
        **{name:v[name] for name in ("stat_exp_hp","stat_exp_attack","stat_exp_defense",
                                    "stat_exp_speed","stat_exp_special")},**dv_values(65535)}
     a={**p,"engine":"POKEBANK_NX_ANALYZER","execution_mode":"actual_production_pk1",
-       "ability_invalid":True,"gender_invalid":True,"move_domain_invalid":False,
-       "modern_ev_invalid":False}
-    c={**a,"ability_invalid":False,"gender_invalid":False}
+       "nx_variant":"baseline","ability_invalid":True,"gender_invalid":True,
+       "move_domain_invalid":False,"modern_ev_invalid":False}
+    c={**a,"nx_variant":"coordinator","ability_invalid":False,"gender_invalid":False}
     # The small partial input fails closed before claiming runtime parity.
     try:evaluate([v],{"x":p},{"x":a},{"x":c})
     except ValueError as ex:check(str(ex)=="NO_ABILITY_BASELINE_DIFF","SELFTEST_WRONG_BLOCKER")
@@ -188,8 +231,8 @@ def main()->int:
                args.coordinator_output)),"REQUIRES_ALL_THREE_EXECUTED_ENGINES")
     vectors=load_vectors(args.vectors)
     result=evaluate(vectors,read_jsonl(args.pkhex_output,"PKHEX_CORE"),
-                    read_jsonl(args.accepted_output,"POKEBANK_NX_ANALYZER"),
-                    read_jsonl(args.coordinator_output,"POKEBANK_NX_ANALYZER"))
+                    read_jsonl(args.accepted_output,"POKEBANK_NX_ANALYZER","baseline"),
+                    read_jsonl(args.coordinator_output,"POKEBANK_NX_ANALYZER","coordinator"))
     payload=json.dumps(result,sort_keys=True,indent=2)+"\n"
     print(payload,end="")
     if args.json_out:args.json_out.write_text(payload,encoding="utf8")

@@ -61,11 +61,12 @@ jobs:
           test "$(git hash-object tests/fixtures/legality_l5_gen1_all_151_sourcefree_native.cpp)" = 02711fccd0b5f0342c5dbe259bafaed5c003046e
           test "$(git hash-object _l5_gen1_pkhex/PKHeX.Core/PKM/PK1.cs)" = a4b692ae7045afb9d11ea3a3b6e25b94c0c4de8b
           test "$(git hash-object _l5_gen1_pkhex/PKHeX.Core/Legality/LegalityAnalysis.cs)" = b7f5ca8534e426ad3bf1d30de6f7f7ca57544f3c
-          test "$(git hash-object tools/audit_legality_l5_gen1_pkhex_oracle/Program.cs)" = 9c5b0ee8998e18b43c401615fbb4a94061ec6737
-          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_actual_native.cpp)" = 336a05b6d383ce1cb2804d5d761ac4580cb94c76
+          test "$(git hash-object tools/audit_legality_l5_gen1_pkhex_oracle/Program.cs)" = 6cb93000fcc3cf2198e8d399c49b426bbf973621
+          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_actual_native.cpp)" = 13322f81d139eb62eef7653ffd1ec4fd1ec5a713
           test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_oracle_cases.json)" = 3f65ffe0d00219db94cc65804112bc615d4efbb0
           test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_oracle_cases.inc)" = 7b449e587d2ace8a6ca319d1ca35f20a7a71241e
-          test "$(git hash-object tools/audit_legality_l5_gen1_rby_live_diff.py)" = a920fb8f1ddf3d1ef51e8838abc2cb6d78a0ea1a
+          test "$(git hash-object tools/audit_legality_l5_gen1_rby_live_diff.py)" = a7ece158f3c54ba11513eb511dc81ca934421c0e
+          test "$(git hash-object tools/audit_legality_l5_gen1_rby_protocol_negative.py)" = 1a01b9585cc23ea733626874c41116c9b1137dc8
           test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_vector_integrity.cpp)" = 925bf4b680c403b07d5da98bfe19dbb23f57882a
           git diff --check
       - name: Execute all 65,536 original Gen I DV patterns and Stat Experience boundaries GCC and Clang normal plus ASan/UBSan
@@ -166,6 +167,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/audit_legality_l5_gen1_rby_live_diff.py --self-test
+          python3 -m unittest discover -s tools -p 'audit_legality_l5_gen1_rby_protocol_negative.py' -v
           python3 tools/audit_legality_l5_gen1_rby_live_diff.py \
             --vectors tests/fixtures/legality_l5_gen1_rby_oracle_cases.json \
             --pkhex-output /tmp/l5-gen1-original-pkhex.jsonl \
