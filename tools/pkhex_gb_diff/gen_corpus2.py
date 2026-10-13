@@ -1,0 +1,442 @@
+#!/usr/bin/env python3
+"""Generate a corpus of raw Gen II party records for the PKHeX differential test.
+
+Each output line is one Pokemon exactly as a Gold/Silver/Crystal save stores it:
+
+    <id> <kind> <japanese 0|1> <48-byte party body hex> <OT name hex> <nickname hex> <egg 0|1>
+
+Like gen_corpus.py (Gen I), it mixes Pokemon built the way the games build them
+(wild slots with and without Crystal met data, statics, in-game trades, event
+gifts, daycare eggs, Odd Eggs, Gen I Pokemon brought over by the Time Capsule),
+then levelled, evolved and taught TMs, with deliberately broken variants and
+random records. Nothing here decides legality; run.sh compares PKHeX's verdict
+with PokeBank NX's on the same bytes.
+
+Usage:
+    python3 tools/pkhex_gb_diff/gen_corpus2.py --pkhex PKHEX --pokered POKERED \
+        [--count 20000] [--seed 1] > corpus2.txt
+"""
+
+import argparse
+import random
+import re
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+sys.path.insert(0, str(HERE))
+import gen_gb_legality_data as gen  # noqa: E402
+import gen_corpus as g1  # noqa: E402
+
+GD, SI, C = gen.GD, gen.SI, gen.C
+TERMINATOR = 0x50
+TEXT = {c: 0x80 + i for i, c in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZ")}
+TEXT.update({c: 0xA0 + i for i, c in enumerate("abcdefghijklmnopqrstuvwxyz")})
+TEXT[" "] = 0x7F
+NO_HATCH = {132, 144, 145, 146, 150, 151, 201, 243, 244, 245, 249, 250, 251}  # Breeding.IsAbleToHatchFromEgg
+HEADBUTT = (6, 7)
+TREE_LOCATIONS = [2, 4, 5, 8, 11, 12, 14, 15, 18, 20, 21, 25, 26, 34, 37, 38, 39, 91, 92]
+TREES = [0x3FF3FF, 0x0FF3FF, 0x3FE3FF, 0x3EE3FF, 0x2403FF, 0x37F3FF, 0x3FF3FF, 0x0013FE, 0x2613FF, 0x3FF3FF,
+         0x2B93FF, 0x3FF3FF, 0x1843FF, 0x3FF3FF, 0x3FF3FF, 0x3FF3FF, 0x2FF3FF, 0x2001FF, 0x2BB3FF]
+ROAM = [2, 4, 5, 8, 11, 15, 18, 20, 21, 25, 26, 34, 37, 39, 43, 45]
+
+
+def text(s, length):
+    out = [TEXT[c] for c in s if c in TEXT][:length - 1]
+    out.append(TERMINATOR)
+    return bytes(out + [TERMINATOR] * (length - len(out)))
+
+
+def tree_ok(location, stype, tid):
+    if location not in TREE_LOCATIONS:
+        return False
+    perm = TREES[TREE_LOCATIONS.index(location)]
+    bit = tid % 10 + (0 if stype == 6 else 12)
+    return (perm >> bit) & 1 == 1
+
+
+class Data:
+    def __init__(self, pkhex, pokered):
+        core = pkhex / "PKHeX.Core"
+        res = core / "Resources"
+        self.g1 = g1.Data(pkhex, pokered)
+        self.personal = gen.read_personal2(res / "byte/personal/personal_c")
+        self.learn = {False: gen.read_learnsets(res / "byte/levelup/lvlmove_gs.pkl", b"gs"),
+                      True: gen.read_learnsets(res / "byte/levelup/lvlmove_c.pkl", b"c\0")}
+        self.eggs = {False: gen.read_move_lists(res / "byte/eggmove/eggmove_gs.pkl", b"gs"),
+                     True: gen.read_move_lists(res / "byte/eggmove/eggmove_c.pkl", b"c\0")}
+        for table in self.eggs.values():
+            table.extend([] for _ in range(252 - len(table)))
+        self.evos = gen.read_evolutions(res / "byte/evolve/evos_g2.pkl", b"g2")
+        self.pre = {}
+        for frm, entries in enumerate(self.evos):
+            for _t, _a, to, _f, _lv in entries:
+                self.pre.setdefault(to, frm)
+        self.wild = []
+        for fname, v in (("encounter_gold.pkl", GD), ("encounter_silver.pkl", SI),
+                         ("encounter_crystal.pkl", C)):
+            for s in gen.read_areas(res / "legality/wild/Gen2" / fname, b"g2", 2):
+                self.wild.append(s + (v,))  # species, min, max, type, location, time, version
+        self.wild = list(dict.fromkeys(self.wild))  # same slot in several areas: keep one
+        enc2 = (core / "Legality/Encounters/Data/Gen2/Encounters2.cs").read_text(encoding="utf-8")
+        self.statics = []
+        for name in ("StaticGSC", "StaticGS", "StaticGD", "StaticSI", "StaticC", "StaticOddEggC"):
+            self.statics.extend(gen.parse_static2(enc2, name))
+        self.trades = gen.parse_trade2(enc2)
+        self.trade_names = gen.read_text_lines(res / "legality/gen2/text_tradegsc_en.txt")
+        raw = res.joinpath("legality/mgdb/event2.pkl").read_bytes()
+        self.gifts = [raw[i:i + 12] for i in range(0, len(raw), 12)]
+        header = (HERE.parent.parent / "include/Legality/GBLegalityData.h").read_text()
+        body = re.search(r"kMachineMoves2\[57\] = \{(.*?)\};", header, re.S).group(1)
+        self.machines = [int(x) for x in re.findall(r"\d+", body)]
+        self.tutors = [53, 85, 58]
+        self.pp = gen.read_pp(core, "MoveInfo2.cs")
+        self.held = sorted(set(gen.cs_numbers(self._items(core), "General") +
+                               gen.cs_numbers(self._items(core), "Balls") +
+                               gen.cs_numbers(self._items(core), "Machine")[:50]))
+
+    @staticmethod
+    def _items(core):
+        path = core / "Saves/Storage/Items/ItemStorage2.cs"
+        if not path.exists():
+            path = next(core.rglob("ItemStorage2.cs"))
+        return path.read_text(encoding="utf-8")
+
+    def tms(self, species, crystal):
+        bits = self.personal[species]["tm"]
+        out = [self.machines[i] for i in range(57) if bits[i >> 3] & (1 << (i & 7))]
+        if crystal:
+            out += [self.tutors[i] for i in range(3) if bits[(57 + i) >> 3] & (1 << ((57 + i) & 7))]
+        return out
+
+    def base(self, species):
+        while species in self.pre:
+            species = self.pre[species]
+        return species
+
+
+class Mon:
+    def __init__(self, species, level, moves, crystal):
+        self.species, self.level, self.moves = species, level, list(moves)
+        self.crystal = crystal
+        self.item = 0
+        self.dvs = None
+        self.tid = None
+        self.ot, self.nick = "GOLD", "MON"
+        self.caught = 0
+        self.egg = False
+        self.friendship = 70
+        self.exp = None
+        self.pp = None  # list of (pp, ups); filled in by finish() unless a defect sets it
+
+
+def encounter_moves(d, species, level, crystal):
+    moves = []
+    for lv, mv in d.learn[crystal][species]:
+        if lv > level:
+            break
+        if mv in moves:
+            continue
+        if len(moves) == 4:
+            moves.pop(0)
+        moves.append(mv)
+    return moves
+
+
+def caught(time, level, otg, location):
+    return (time << 14) | ((level & 0x3F) << 8) | (otg << 7) | (location & 0x7F)
+
+
+def grow(d, mon, target, rng):
+    while mon.level < target:
+        mon.level += 1
+        for lv, mv in d.learn[mon.crystal][mon.species]:
+            if lv == mon.level:
+                g1.learn(mon, mv, rng)
+        for etype, _arg, to, _f, lv in d.evos[mon.species]:
+            if etype in (4, 9, 10, 11) and mon.level >= lv and rng.random() < 0.85:
+                mon.species = to
+                break
+            if etype in (1, 2, 3, 5, 6, 8) and rng.random() < 0.04:
+                mon.species = to
+                break
+    if rng.random() < 0.4:
+        options = d.tms(mon.species, mon.crystal)
+        for _ in range(rng.randrange(1, 3)):
+            if options:
+                g1.learn(mon, rng.choice(options), rng)
+    if rng.random() < 0.3:
+        mon.item = rng.choice(d.held)
+
+
+def finish(d, mon, rng):
+    p = d.personal[mon.species]
+    if mon.dvs is None:
+        mon.dvs = [rng.randrange(16) for _ in range(4)]
+    if mon.tid is None:
+        mon.tid = rng.randrange(65536)
+    atk, df, spe, spc = mon.dvs
+    hp_dv = ((atk & 1) << 3) | ((df & 1) << 2) | ((spe & 1) << 1) | (spc & 1)
+    body = bytearray(48)
+    body[0] = mon.species
+    body[1] = mon.item
+    for i, m in enumerate((mon.moves + [0, 0, 0, 0])[:4]):
+        body[2 + i] = m
+    body[6:8] = mon.tid.to_bytes(2, "big")
+    exp = mon.exp if mon.exp is not None else g1.exp_for(p["growth"], mon.level)
+    body[8:11] = exp.to_bytes(3, "big")
+    body[21] = (atk << 4) | df
+    body[22] = (spe << 4) | spc
+    moves = (mon.moves + [0, 0, 0, 0])[:4]
+    if mon.pp is None:
+        mon.pp = []
+        for m in moves:
+            if mon.egg:
+                mon.pp.append((d.pp[m], 0))
+                continue
+            ups = 0 if m in (0, 166) or rng.random() < 0.5 else rng.randrange(4)
+            top = d.pp[m] + ups * min(7, d.pp[m] // 5)
+            mon.pp.append((rng.choice((top, rng.randint(0, top))), ups))
+    for i, (pp, ups) in enumerate(mon.pp):
+        body[23 + i] = (ups << 6) | pp
+    body[27] = mon.friendship
+    body[29:31] = mon.caught.to_bytes(2, "big")
+    body[31] = mon.level
+    stats = p["stats"]  # HP ATK DEF SPE SPA SPD
+    hp = g1.stat(stats[0], hp_dv, mon.level, True)
+    body[34:36] = hp.to_bytes(2, "big")
+    body[36:38] = hp.to_bytes(2, "big")
+    for i, (b, dv) in enumerate(((stats[1], atk), (stats[2], df), (stats[3], spe), (stats[4], spc), (stats[5], spc))):
+        body[38 + i * 2:40 + i * 2] = g1.stat(b, dv, mon.level, False).to_bytes(2, "big")
+    return body, text(mon.ot, 11), text("EGG" if mon.egg else mon.nick, 11)
+
+
+def met_time(slot_time, rng):
+    allowed = [t for t in (1, 2, 3) if slot_time == 0 or (slot_time >> t) & 1]
+    return rng.choice(allowed)
+
+
+def wild_mon(d, rng, slot):
+    species, lmin, lmax, stype, location, time, v = slot
+    crystal = v == C
+    level = rng.randint(lmin, lmax)
+    mon = Mon(species, level, encounter_moves(d, species, level, crystal), crystal)
+    if stype in HEADBUTT:
+        tid = rng.randrange(65536)
+        for _ in range(50):
+            if tree_ok(location, stype, tid):
+                break
+            tid = rng.randrange(65536)
+        mon.tid = tid
+    if crystal:
+        otg = rng.randrange(2)
+        mon.caught = caught(met_time(time, rng), level, otg, location)
+    return mon
+
+
+def egg_mon(d, rng, hatched):
+    while True:
+        species = rng.randrange(1, 252)
+        if species not in NO_HATCH and d.base(species) == species:
+            break
+    crystal = rng.random() < 0.5
+    mon = Mon(species, 5, encounter_moves(d, species, 5, crystal), crystal)
+    pool = [m for m in d.eggs[crystal][species] if m and m not in mon.moves]
+    for _ in range(rng.randrange(0, 3)):
+        if pool:
+            g1.learn(mon, rng.choice(pool), rng)
+    if hatched:
+        mon.friendship = 120
+        if crystal:
+            mon.caught = caught(rng.randint(1, 3), 1, rng.randrange(2), rng.randint(1, 95))
+    else:
+        mon.egg = True
+        mon.friendship = rng.randint(1, max(1, d.personal[species]["hatch"]))
+    return mon
+
+
+def static_mon(d, rng, s):
+    crystal = bool(s["version"] & C) and (s["version"] == C or rng.random() < 0.5)
+    level = s["level"]
+    moves = list(s["moves"]) if s["moves"] else encounter_moves(d, s["species"], level, crystal)
+    mon = Mon(s["species"], level, moves, crystal)
+    if s["dvs"]:
+        hp, atk, df, spe, spa, _spd = s["dvs"]
+        mon.dvs = [atk, df, spe, spa]
+    elif s["shinyAlways"]:
+        mon.dvs = [rng.choice((2, 3, 6, 7, 10, 11, 14, 15)), 10, 10, 10]
+    if s["egg"]:
+        odd = bool(s["moves"])
+        if rng.random() < 0.5:
+            mon.egg = True
+            mon.friendship = rng.randint(1, 20 if odd else d.personal[s["species"]]["hatch"])
+            if odd:
+                mon.exp = 125
+                mon.ot = "ODD"
+        else:
+            mon.friendship = 120
+            if crystal:
+                mon.caught = caught(rng.randint(1, 3), 1, rng.randrange(2), rng.randint(1, 95))
+        return mon
+    if crystal:
+        roamer = s["species"] in (243, 244, 245) and s["location"] != 23
+        location = rng.choice(ROAM) if roamer else s["location"]
+        mon.caught = caught(rng.randint(1, 3), level, rng.randrange(2), location)
+    return mon
+
+
+def trade_mon(d, rng, t, variant):
+    crystal = rng.random() < 0.5
+    mon = Mon(t["species"], t["level"], encounter_moves(d, t["species"], t["level"], crystal), crystal)
+    if t["dvs"]:
+        hp, atk, df, spe, spa, _spd = t["dvs"]
+        mon.dvs = [atk, df, spe, spa]
+        mon.tid = t["tid"]
+    mon.nick = d.trade_names[t["index"]] if variant != "trade2-wrong-nick" else "NOTRADE"
+    mon.ot = d.trade_names[t["index"] + 11] if variant != "trade2-wrong-ot" else "WRONG"
+    if crystal:
+        mon.caught = caught(0, 0, t["otGender"] if t["dvs"] else 0, 126)
+    return mon
+
+
+def gift_mon(d, rng, g):
+    species, level, m1, m2, m3, m4, location, current, shiny, egg, language, trainer = g
+    mon = Mon(species, max(level, current), [m for m in (m1, m2, m3, m4) if m], location != 0)
+    if shiny:
+        mon.dvs = [rng.choice((2, 3, 6, 7, 10, 11, 14, 15)), 10, 10, 10]
+    if trainer == 2:
+        mon.ot, mon.tid = "Stadium", 2000
+    elif trainer == 3:
+        mon.ot, mon.tid = rng.choice(("Stadion", "Stade", "Stadio", "Estadio")), 2001
+    elif trainer == 4:
+        mon.ot, mon.tid = rng.choice(("PCNYa", "PCNYb", "PCNYc", "PCNYd")), rng.randrange(10, 200)
+    if egg and rng.random() < 0.5:
+        mon.egg = True
+        mon.level = 5
+        mon.friendship = rng.randint(1, 10)
+        return mon
+    if location != 0:
+        mon.caught = caught(0, 1 if egg else level, 0, 0 if egg else location)
+        if egg:
+            mon.caught = caught(rng.randint(1, 3), 1, 0, rng.randint(1, 95))
+    return mon
+
+
+def time_capsule_mon(d, rng):
+    """A Gen I Pokemon (moves learned in Red/Blue/Yellow) moved to Gen II."""
+    species, lmin, lmax, v = rng.choice(d.g1.wild)
+    while v == g1.BU:
+        species, lmin, lmax, v = rng.choice(d.g1.wild)
+    yellow = v == g1.YW
+    level = rng.randint(lmin, lmax)
+    m1 = g1.Mon(species, level, g1.encounter_moves(d.g1, species, level, yellow),
+                d.g1.personal[yellow][species]["catch"], yellow)
+    g1.grow(d.g1, m1, min(100, level + rng.randrange(0, 40)), rng)
+    mon = Mon(m1.species, m1.level, m1.moves, rng.random() < 0.5)
+    if rng.random() < 0.5:
+        grow(d, mon, min(100, mon.level + rng.randrange(0, 20)), rng)
+    return mon
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--pkhex", required=True, type=Path)
+    ap.add_argument("--pokered", required=True, type=Path)
+    ap.add_argument("--count", type=int, default=20000)
+    ap.add_argument("--seed", type=int, default=1)
+    args = ap.parse_args()
+    d = Data(args.pkhex, args.pokered)
+    rng = random.Random(args.seed)
+    out = sys.stdout
+    made = 0
+
+    def emit(kind, mon):
+        nonlocal made
+        body, ot, nick = finish(d, mon, rng)
+        out.write(f"{made} {kind} 0 {body.hex()} {ot.hex()} {nick.hex()} {int(mon.egg)}\n")
+        made += 1
+
+    for slot in d.wild:
+        emit("wild2", wild_mon(d, rng, slot))
+    for s in d.statics:
+        emit("static2", static_mon(d, rng, s))
+    for t in d.trades:
+        for variant in ("trade2", "trade2-wrong-ot", "trade2-wrong-nick"):
+            emit(variant, trade_mon(d, rng, t, variant))
+    for g in d.gifts:
+        if g[10] == 1 or g[11] == 1:  # Japanese-only distributions need Japanese text
+            continue
+        emit("gift2", gift_mon(d, rng, g))
+
+    while made < args.count:
+        roll = rng.random()
+        if roll < 0.30:
+            mon = wild_mon(d, rng, rng.choice(d.wild))
+            grow(d, mon, min(100, mon.level + rng.randrange(0, 60)), rng)
+            emit("grown2", mon)
+        elif roll < 0.40:
+            hatched = rng.random() < 0.7
+            mon = egg_mon(d, rng, hatched)
+            if hatched and rng.random() < 0.7:
+                grow(d, mon, min(100, 5 + rng.randrange(0, 50)), rng)
+            emit("egg2" if not mon.egg else "egg2-unhatched", mon)
+        elif roll < 0.48:
+            mon = static_mon(d, rng, rng.choice(d.statics))
+            if not mon.egg:
+                grow(d, mon, min(100, mon.level + rng.randrange(0, 40)), rng)
+            emit("grown-static2", mon)
+        elif roll < 0.58:
+            emit("time-capsule", time_capsule_mon(d, rng))
+        elif roll < 0.88:
+            mon = wild_mon(d, rng, rng.choice(d.wild))
+            grow(d, mon, min(100, mon.level + rng.randrange(0, 40)), rng)
+            defect = rng.choice(("move", "level", "item", "caught", "wipe", "time", "otgender",
+                                 "egg-cycles", "egg-item", "pp", "egg-pp", "egg-moves"))
+            if defect == "move":
+                mon.moves[rng.randrange(len(mon.moves))] = rng.randint(1, 251)
+                mon.moves = list(dict.fromkeys(mon.moves))
+            elif defect == "level":
+                mon.level = rng.randint(2, 100)
+            elif defect == "item":
+                mon.item = rng.randrange(256)
+            elif defect == "caught":
+                mon.caught = rng.randrange(65536)
+            elif defect == "wipe":
+                mon.caught = 0
+            elif defect == "time":
+                mon.caught = (mon.caught & 0x3FFF) | (rng.randrange(4) << 14)
+            elif defect == "otgender":
+                mon.caught ^= 0x80
+            elif defect == "pp":
+                moves = (mon.moves + [0, 0, 0, 0])[:4]
+                mon.pp = [(rng.randrange(64), rng.randrange(4)) for _ in moves]
+            elif defect in ("egg-cycles", "egg-item", "egg-pp", "egg-moves"):
+                mon = egg_mon(d, rng, False)
+                if defect == "egg-cycles":
+                    mon.friendship = rng.choice((0, d.personal[mon.species]["hatch"] + 1, 255))
+                elif defect == "egg-item":
+                    mon.item = rng.choice(d.held)
+                elif defect == "egg-pp":
+                    mon.pp = [(d.pp[m] if rng.random() < 0.5 else rng.randrange(64), rng.randrange(2))
+                              for m in (mon.moves + [0, 0, 0, 0])[:4]]
+                else:  # shuffle the order, or add a level-up move the egg cannot know yet
+                    if rng.random() < 0.5:
+                        rng.shuffle(mon.moves)
+                    else:
+                        later = [mv for lv, mv in d.learn[mon.crystal][mon.species] if lv > 5]
+                        if later:
+                            g1.learn(mon, rng.choice(later), rng)
+            emit("defect2-" + defect, mon)
+        else:
+            species = rng.randint(1, 251)
+            moves = list(dict.fromkeys(rng.randint(1, 251) for _ in range(rng.randint(1, 4))))
+            mon = Mon(species, rng.randint(2, 100), moves, rng.random() < 0.5)
+            mon.item = rng.choice((0, rng.choice(d.held), rng.randrange(256)))
+            if rng.random() < 0.5:
+                mon.caught = rng.randrange(65536)
+            emit("random2", mon)
+
+
+if __name__ == "__main__":
+    main()

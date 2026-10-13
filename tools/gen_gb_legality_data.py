@@ -249,6 +249,15 @@ def parse_static2(source, name):
     return out
 
 
+def cs_numbers(source, name):
+    """Numbers of a `Name => [ ... ];` C# span, comments removed."""
+    m = re.search(rf"\b{name}\s*=>\s*\[(.*?)\];", source, re.S)
+    if not m:
+        die(f"cannot find C# span {name}")
+    body = "\n".join(line.split("//", 1)[0] for line in m.group(1).splitlines())
+    return [int(x) for x in re.findall(r"\d+", body)]
+
+
 def parse_trade2(source):
     body = cs_array(source, "TradeGift_GSC")
     out = []
@@ -264,6 +273,15 @@ def parse_trade2(source):
             "dvs": tuple(int(x) for x in dvs.group(1).split(",")) if dvs else None,
         })
     return out
+
+
+def read_pp(core, name):
+    """Base PP per move id from PKHeX.Core/Moves/MoveInfoN.cs."""
+    src = (core / "Moves" / name).read_text(encoding="utf-8")
+    m = re.search(r"PP\s*=>\s*\[(.*?)\];", src, re.S)
+    if not m:
+        die(f"cannot find the PP table in {name}")
+    return [int(x) for x in re.findall(r"\d+", m.group(1))]
 
 
 # --------------------------------------------------------------------------- emit helpers
@@ -369,6 +387,15 @@ def main():
         statics2.extend(parse_static2(enc2, name))
     trades2 = parse_trade2(enc2)
 
+    items2 = (core / "Saves/Storage/Items/ItemStorage2.cs")
+    if not items2.exists():
+        items2 = next(core.rglob("ItemStorage2.cs"))
+    items_src = items2.read_text(encoding="utf-8")
+    held2 = sorted(set(cs_numbers(items_src, "General") + cs_numbers(items_src, "Balls") +
+                       cs_numbers(items_src, "Machine")[:50]))
+
+    pp1, pp2 = read_pp(core, "MoveInfo1.cs"), read_pp(core, "MoveInfo2.cs")
+
     names1 = {lang: read_text_lines(res / f"legality/gen1/text_traderby_{code}.txt")
               for lang, code in LANG_CODES.items() if code != "ko"}
     names2 = {lang: read_text_lines(res / f"legality/gen2/text_tradegsc_{code}.txt")
@@ -386,7 +413,12 @@ def main():
     assert len(statics2) == 58 and len(trades2) == 11, (len(statics2), len(trades2))
     assert len(gifts1) * 8 == len(gift1) and len(gifts2) * 12 == len(gift2)
     assert len(stadium2) == 252, len(stadium2)
+    assert len(cs_numbers(items_src, "Balls")) == 11 and len(cs_numbers(items_src, "Machine")) == 57
+    assert 1 in held2 and 191 in held2 and 240 in held2       # Master Ball, TM01, TM50
+    assert 7 not in held2 and 243 not in held2               # Bicycle (key item), HM01
     assert names2[2][0] == "ROCKY" and len(names2[2]) == 22, names2[2][:2]
+    assert len(pp1) == 166 and len(pp2) == 252, (len(pp1), len(pp2))
+    assert pp1[1] == pp2[1] == 35 and pp1[165] == 10 and pp2[165] == 1 and pp2[251] == 10  # Pound, Struggle, Beat Up
 
     out = []
     w = out.append
@@ -494,6 +526,16 @@ def main():
     w(f"const uint16_t kStadium2RelearnIndex[{len(idx)}] = {{\n{arr(idx)}\n}};\n")
     body = ",\n".join(f"    {{{lv}, {mv}, {src}}}" for lv, mv, src in flat)
     w(f"const Stadium2Move kStadium2Relearn[{len(flat)}] = {{\n{body}\n}};\n\n")
+
+    bits = [0] * 32
+    for item in held2:
+        bits[item >> 3] |= 1 << (item & 7)
+    w(f"// Gen II items a Pokemon can hold: PKHeX ItemStorage2 General + Balls + TM01-TM50.\n")
+    w(f"const uint8_t kHeldItems2[32] = {{\n{arr(bits)}\n}};\n\n")
+
+    w("// Base PP per move (PKHeX MoveInfo1.PP / MoveInfo2.PP).\n")
+    w(f"const uint8_t kMovePP1[{len(pp1)}] = {{\n{arr(pp1)}\n}};\n")
+    w(f"const uint8_t kMovePP2[{len(pp2)}] = {{\n{arr(pp2)}\n}};\n\n")
 
     names(names1, "kTradeNames1")
     names(names2, "kTradeNames2")

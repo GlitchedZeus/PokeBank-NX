@@ -142,6 +142,9 @@ namespace Legality {
                 case GB::Area::CatchRate: return CheckIdentifier::Encounter;
                 case GB::Area::Types:     return CheckIdentifier::Structure;
                 case GB::Area::Trainer:   return CheckIdentifier::Trainer;
+                case GB::Area::HeldItem:  return CheckIdentifier::Misc;
+                case GB::Area::Egg:       return CheckIdentifier::Misc;
+                case GB::Area::MetData:   return CheckIdentifier::Encounter;
             }
             return CheckIdentifier::Misc;
         }
@@ -203,8 +206,11 @@ namespace Legality {
                 GB::Entity1 e;
                 e.species = static_cast<uint8_t>(species);
                 e.level = rec.level;
-                for (int i = 0; i < 4; ++i)
+                for (int i = 0; i < 4; ++i) {
                     e.moves[i] = rec.moves[static_cast<std::size_t>(i)];
+                    e.pp[i] = rec.pp[static_cast<std::size_t>(i)];
+                    e.ppUps[i] = rec.ppUps[static_cast<std::size_t>(i)];
+                }
                 e.catchRate = rec.catchRate;
                 e.type1 = rec.type1;
                 e.type2 = rec.type2;

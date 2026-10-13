@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Compare PKHeX and PokeBank NX verdicts on the same Gen I corpus.
+"""Compare PKHeX and PokeBank NX verdicts on the same Gen I or Gen II corpus.
 
 Usage: compare.py CORPUS PKHEX_OUT POKEBANK_OUT [--show N]
 Prints an agreement table per corpus kind and the first N disagreements of each
-direction, with both programs' explanations. Exits 1 if any verdict differs.
+direction, with both programs' explanations. Exits 1 if any verdict differs, if
+either program skipped a corpus record, or if either printed a record the corpus
+does not have.
 """
 
 import argparse
@@ -38,6 +40,8 @@ def main():
         parts = line.split()
         kinds[parts[0]] = parts[1]
     pk, pb = load(args.pkhex), load(args.pokebank)
+    missing = [k for k in kinds if k not in pk or k not in pb]
+    extra = sorted((set(pk) | set(pb)) - set(kinds))
     table = collections.defaultdict(collections.Counter)
     diffs = collections.defaultdict(list)
     for key, kind in kinds.items():
@@ -67,7 +71,11 @@ def main():
         print(f"\n== {label}: {len(items)}")
         for key, kind, a, b in items[:args.show]:
             print(f"  #{key} [{kind}]\n     PKHeX:    {a}\n     PokeBank: {b}")
-    raise SystemExit(1 if any(k != ("known",) for k in diffs) else 0)
+    if missing or extra:
+        print(f"\n== Corpus accounting: {len(missing)} records without both verdicts, "
+              f"{len(extra)} verdicts for unknown records (first: {(missing + extra)[:5]})")
+    print(f"\naccounted for {n}/{len(kinds)} corpus records")
+    raise SystemExit(1 if missing or extra or any(k != ("known",) for k in diffs) else 0)
 
 
 if __name__ == "__main__":

@@ -7,6 +7,11 @@
  *   move history   EvolutionChain.GetEvolutionChainsAllGens (forward Evolve ranges)
  *   move sources   LearnGroup1/LearnGroup2, LearnSource1RB/1YW/2GS/2C/2Stadium
  *   catch rate     GBRestrictions + MiscG1Verifier
+ *   Gen II extras  ItemVerifier, EggStateLegality, LevelVerifier.VerifyG1, MiscG1Verifier (met time)
+ *
+ * PK1 and PK2 share one search: a Gen I Pokemon may have come from Gen II through the
+ * Time Capsule and a Gen II Pokemon from Gen I, so both generations' encounters and move
+ * sources are tried, in the order PKHeX's EncounterGenerator12 and LearnGroup1/2 use.
  */
 
 #include "Legality/GBLegality.h"
@@ -14,6 +19,7 @@
 
 #include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
+#include "Pokemon/Experience.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -30,10 +36,18 @@ constexpr uint8_t kMinWildLevel = 2;   // lowest level any GB encounter yields
 constexpr uint8_t kEggLevel = 5;       // Gen II eggs hatch at level 5
 constexpr uint8_t kMaxStages = 4;      // longest GB chain is baby -> 3 stages
 
-constexpr uint8_t kSpeciesPikachu = 25, kSpeciesRaichu = 26, kSpeciesKadabra = 64;
+constexpr uint8_t kMaxSpecies2 = 251;
+constexpr uint8_t kMaxMove2 = 251;
+
+constexpr uint8_t kSpeciesPikachu = 25, kSpeciesRaichu = 26;
 constexpr uint8_t kSpeciesMagnemite = 81, kSpeciesMagneton = 82, kSpeciesDitto = 132;
 constexpr uint8_t kSpeciesPorygon = 137, kSpeciesDragonite = 149, kSpeciesPsyduck = 54;
+constexpr uint8_t kSpeciesCelebi = 251;
 constexpr uint8_t kMoveSurf = 57, kMoveDizzyPunch = 146;
+constexpr uint8_t kLocationLinkTrade2 = 126;  // Gen II met location for NPC trades
+constexpr uint32_t kOddEggExp = 125;
+constexpr uint8_t kSpeciesSmeargle = 235;
+constexpr uint8_t kMoveSketch = 166;
 constexpr uint8_t kRateLightBall = 163, kRateNormalBox = 167, kRateGorgeousBox = 168;
 constexpr uint8_t kTypeSteel = 9;
 
@@ -49,6 +63,19 @@ constexpr uint8_t kCatchRateIsHeldItem[32] = {
     0xF7, 0xFF, 0xFF, 0xEF, 0xFF, 0xFF, 0x07, 0x00,
 };
 bool isHeldItemRate(uint8_t rate) { return bit(kCatchRateIsHeldItem, rate); }
+
+bool isHoldableGen2(uint8_t item) { return item == 0 || bit(kHeldItems2, item); }
+
+// GBRestrictions.CanVisitGen1: Gen I species, or Gen II evolutions of them.
+bool canVisitGen1(uint8_t species) {
+    switch (species) {
+        case 169: case 182: case 186: case 196: case 197: case 199: case 208: case 212: case 230:
+        case 233: case 242:
+            return true;
+        default:
+            return species <= kMaxSpecies1;
+    }
+}
 
 std::string speciesName(uint8_t species) { return Names::getSpeciesName(species); }
 std::string moveName(uint8_t move) { return Names::getMoveName(move); }
@@ -284,7 +311,8 @@ struct Chain {
 
 /// EncounterOrigin.GetOriginChain12: devolve from the current species, keeping the
 /// highest level each earlier form can have held and the lowest it must have reached.
-Chain originChain(uint8_t species, uint8_t level, bool gen2) {
+/// `levelMin` is the lowest level the Pokemon can have been met at.
+Chain originChain(uint8_t species, uint8_t level, bool gen2, uint8_t levelMin = kMinWildLevel) {
     Chain c;
     c.stage[0].species = species;
     c.stage[0].max = level;
@@ -295,8 +323,8 @@ Chain originChain(uint8_t species, uint8_t level, bool gen2) {
             break;
         const uint8_t curMax = c.stage[c.count - 1].max;
         const bool levelUp = isLevelUpMethod(link->method);
-        if (levelUp) {  // EvolutionMethod.Check with levelMin = 2
-            if (curMax < link->level || (link->level == 0 && curMax < 2) || curMax < kMinWildLevel + 1)
+        if (levelUp) {  // EvolutionMethod.Check
+            if (curMax < link->level || (link->level == 0 && curMax < 2) || curMax < levelMin + 1)
                 break;
         }
         Stage pre;
@@ -307,7 +335,6 @@ Chain originChain(uint8_t species, uint8_t level, bool gen2) {
         c.stage[c.count++] = pre;
     }
     // EvolutionUtil.CleanDevolve: minimum levels trickle up from the earliest form.
-    uint8_t levelMin = kMinWildLevel;
     for (int i = c.count - 1; i >= 0; --i) {
         Stage& s = c.stage[i];
         const uint8_t evolveAt = s.evoLevel;
@@ -340,6 +367,29 @@ bool historyFrom(const Chain& origin, int encIndex, uint8_t encLevel, uint8_t cu
     return true;
 }
 
+
+// ---------------------------------------------------------------- the Pokemon being checked
+
+/// PK1 and PK2 fields in one place; `format` says which apply.
+struct Subject {
+    uint8_t format = 1;
+    uint8_t species = 0, level = 0;
+    std::array<uint8_t, 4> moves{};
+    std::array<uint8_t, 4> dvs{};           // ATK DEF SPE SPC
+    uint16_t tid = 0;
+    bool tradeTrainer = false;
+    std::string otName, nickname;
+    Language language = Language::Unknown;
+    // PK1 only
+    uint8_t catchRate = 0, type1 = 0, type2 = 0;
+    // PK2 only
+    uint8_t heldItem = 0, friendship = 0;
+    uint32_t exp = 0;
+    bool egg = false;
+    bool caught = false;                    // Crystal met data present
+    uint8_t metLevel = 0, metLocation = 0, metTime = 0, otGender = 0;
+};
+
 // ---------------------------------------------------------------- encounters
 
 struct Candidate {
@@ -352,7 +402,9 @@ struct Candidate {
     bool bred = false;                    // daycare egg: egg moves and inherited moves apply
     bool stadiumGift = false;             // Gen I Stadium gift (catch rate is a gift box)
     bool trade1 = false;
-    bool starterPikachu = false;
+    bool gift2 = false;                   // Gen II event distribution
+    bool oddEgg = false;
+    uint8_t eggCycles = 0;                // fixed hatch cycles of a gift egg (0 = species')
     bool partial = false;                 // matched, but trainer/nickname/catch rate disagree
     std::string partialReason;
 };
@@ -368,6 +420,52 @@ bool nameMatches(const TradeName* table, std::size_t count, uint8_t index, const
             return true;
     }
     return false;
+}
+
+/// Languages (bit per PKHeX LanguageID) in which `name` is entry `index` of the table.
+uint32_t nameLanguages(const TradeName* table, std::size_t count, uint8_t index, const std::string& name,
+                       Language lang) {
+    uint32_t mask = 0;
+    for (std::size_t i = 0; i < count; ++i) {
+        const TradeName& t = table[i];
+        if (t.index != index || name != t.name)
+            continue;
+        const bool jp = t.language == 1;
+        if (lang == Language::Unknown || (lang == Language::Japanese) == jp)
+            mask |= 1u << t.language;
+    }
+    return mask;
+}
+
+// EncounterSlot2.IsTreeAvailable: the headbutt trees a trainer ID can shake, per area.
+bool isTreeAvailable(uint8_t location, uint8_t slotType, uint16_t tid) {
+    static constexpr uint8_t kTreeLocations[] = {2,  4,  5,  8,  11, 12, 14, 15, 18, 20,
+                                                 21, 25, 26, 34, 37, 38, 39, 91, 92};
+    static constexpr uint32_t kTrees[] = {
+        0x3FF3FF, 0x0FF3FF, 0x3FE3FF, 0x3EE3FF, 0x2403FF, 0x37F3FF, 0x3FF3FF, 0x0013FE, 0x2613FF, 0x3FF3FF,
+        0x2B93FF, 0x3FF3FF, 0x1843FF, 0x3FF3FF, 0x3FF3FF, 0x3FF3FF, 0x2FF3FF, 0x2001FF, 0x2BB3FF,
+    };
+    static_assert(std::size(kTreeLocations) == std::size(kTrees));
+    for (std::size_t i = 0; i < std::size(kTreeLocations); ++i) {
+        if (kTreeLocations[i] != location)
+            continue;
+        const int pivot = tid % 10;
+        const int bit = slotType == static_cast<uint8_t>(SlotType2::Headbutt) ? pivot : pivot + 12;
+        return ((kTrees[i] >> bit) & 1) != 0;
+    }
+    return false;
+}
+
+bool isHeadbutt(uint8_t slotType) {
+    return slotType == static_cast<uint8_t>(SlotType2::Headbutt) ||
+           slotType == static_cast<uint8_t>(SlotType2::HeadbuttSpecial);
+}
+
+/// EncounterStatic2.DetectOddEggLanguage: the fixed trainer names of an unhatched Odd Egg.
+bool isOddEggTrainer(const std::string& ot, Language lang) {
+    if (lang == Language::Japanese)
+        return ot == "なぞナゾ" || ot == "なぞ";
+    return ot == "ODD" || ot == "BIZAR" || ot == "Strano" || ot == "Kurios" || ot == "Raro";
 }
 
 // ---------------------------------------------------------------- move verification
@@ -441,13 +539,7 @@ Learn canLearn2(uint8_t species, uint8_t move, const Stage& s, bool crystal, boo
 
 struct MoveCheck {
     std::array<MoveResult, 4> result{};
-    bool anyGen2 = false;
-    bool allValid() const {
-        for (const MoveResult& r : result)
-            if (!r.valid())
-                return false;
-        return true;
-    }
+    bool anyGen1 = false, anyGen2 = false;
 };
 
 void markInitial(MoveCheck& mc, const std::array<uint8_t, 4>& current, const std::array<uint8_t, 4>& initial,
@@ -461,30 +553,34 @@ void markInitial(MoveCheck& mc, const std::array<uint8_t, 4>& current, const std
     }
 }
 
-/// LearnGroup1.Check (+ LearnGroup2.Check when the Pokemon can have visited Gen II).
-MoveCheck checkMoves(const Entity1& pk, const Candidate& enc, const Chain& hist1, const Chain& hist2,
-                     bool gen2Visit) {
-    MoveCheck mc;
-    const std::array<uint8_t, 4>& current = pk.moves;
-    for (int i = 0; i < 4; ++i)
-        if (current[i] == 0)
-            mc.result[i] = {Source::Initial, 0, 0, 0};  // empty slots are judged separately
+bool allValid(const MoveCheck& mc) {
+    for (const MoveResult& r : mc.result)
+        if (!r.valid())
+            return false;
+    return true;
+}
 
-    // --- Gen I: encounter moves, then each history stage (Yellow first, then R/B).
-    std::array<uint8_t, 4> initial1{};
-    if (enc.generation == 1) {
-        // LearnGroup1.GetEncounterMoves: Yellow data for Yellow and all-version encounters.
-        initial1 = enc.hasFixedMoves ? enc.fixedMoves
-                                     : gen1EncounterMoves(enc.species, enc.level, hasYellow(enc.versions));
-        markInitial(mc, current, initial1, 1);
-    }
+/// Moves the encounter itself gives (LearnGroup1/2.GetEncounterMoves).
+std::array<uint8_t, 4> initialMoves(const Candidate& enc) {
+    if (enc.hasFixedMoves)
+        return enc.fixedMoves;
+    if (enc.generation == 1)  // Yellow data for Yellow and all-version encounters
+        return gen1EncounterMoves(enc.species, enc.level, hasYellow(enc.versions));
+    const bool crystal = (enc.versions & Crystal) != 0;
+    // Eggs: Learnset.GetBaseEggMoves -- the last four moves known at the hatch level.
+    return gen2EncounterMoves(enc.species, enc.egg ? kEggLevel : enc.level, crystal);
+}
+
+/// LearnGroup1.Check: Gen I encounter moves, then each Gen I form (Yellow, then R/B).
+void checkGen1Sources(MoveCheck& mc, const std::array<uint8_t, 4>& current, const Candidate& enc,
+                      const Chain& hist1) {
+    if (enc.generation == 1)
+        markInitial(mc, current, initialMoves(enc), 1);
     for (int stage = 0; stage < hist1.count; ++stage) {
         const Stage& s = hist1.stage[stage];
-        if (s.species > kMaxSpecies1)
-            continue;
         for (int i = 3; i >= 0; --i) {
             MoveResult& entry = mc.result[i];
-            if (current[i] == 0 || (entry.valid() && entry.generation != 1 && entry.generation != 2))
+            if (current[i] == 0)
                 continue;
             for (bool yellow : {true, false}) {
                 const Learn chk = canLearn1(s.species, current[i], s, yellow);
@@ -495,132 +591,156 @@ MoveCheck checkMoves(const Entity1& pk, const Candidate& enc, const Chain& hist1
             }
         }
     }
+}
 
-    // --- Gen II, when it is reachable (encounter there, or Time Capsule trip possible).
-    if (gen2Visit) {
-        bool all = true;
-        for (const MoveResult& r : mc.result)
-            all &= r.valid();
-        if (!all) {
-            std::array<uint8_t, 4> initial2{};
-            if (enc.generation == 2) {
-                const bool crystal = (enc.versions & Crystal) != 0;
-                initial2 = enc.hasFixedMoves ? enc.fixedMoves
-                                             : (enc.egg ? std::array<uint8_t, 4>{}
-                                                        : gen2EncounterMoves(enc.species, enc.level, crystal));
-                if (enc.egg && !enc.hasFixedMoves) {
-                    // Learnset.GetBaseEggMoves: last four moves known at the hatch level.
-                    initial2 = gen2EncounterMoves(enc.species, kEggLevel, crystal);
-                }
-                markInitial(mc, current, initial2, 2);
+/// LearnGroup2.Check: Gen II encounter moves, each Gen II form (G/S, Crystal, Stadium 2's
+/// reminder), and egg / inherited moves for daycare eggs.
+void checkGen2Sources(MoveCheck& mc, const std::array<uint8_t, 4>& current, const Candidate& enc,
+                      const Chain& hist2) {
+    if (enc.generation == 2)
+        markInitial(mc, current, initialMoves(enc), 2);
+    for (int stage = 0; stage < hist2.count; ++stage) {
+        const Stage& s = hist2.stage[stage];
+        const bool encounterStage = stage == hist2.count - 1;
+        for (int i = 3; i >= 0; --i) {
+            MoveResult& entry = mc.result[i];
+            if (current[i] == 0 || entry.valid())
+                continue;
+            Learn chk = canLearn2(s.species, current[i], s, false, !encounterStage);
+            if (chk.source == Source::None)
+                chk = canLearn2(s.species, current[i], s, true, !encounterStage);
+            if (chk.source == Source::None) {
+                const uint8_t lv = stadiumRelearnLevel(s.species, current[i], s.max);
+                if (lv != 0)
+                    chk = {Source::Relearn, lv};
             }
-            for (int stage = 0; stage < hist2.count; ++stage) {
-                const Stage& s = hist2.stage[stage];
-                const bool encounterStage = stage == hist2.count - 1;
-                for (int i = 3; i >= 0; --i) {
-                    MoveResult& entry = mc.result[i];
-                    if (current[i] == 0 || entry.valid())
-                        continue;
-                    Learn chk = canLearn2(s.species, current[i], s, false, !encounterStage);
-                    if (chk.source == Source::None)
-                        chk = canLearn2(s.species, current[i], s, true, !encounterStage);
-                    if (chk.source == Source::None) {
-                        const uint8_t lv = stadiumRelearnLevel(s.species, current[i], s.max);
-                        if (lv != 0)
-                            chk = {Source::Relearn, lv};
-                    }
-                    if (chk.source != Source::None && preferable(entry, chk, stage))
-                        entry = {chk.source, 2, static_cast<uint8_t>(stage), chk.level};
-                }
-            }
-            if (enc.bred) {  // LearnGroup2: only EncounterEgg2, never gift or event eggs
-                const bool crystal = (enc.versions & Crystal) != 0;
-                const uint8_t baby = enc.species;
-                const uint8_t ratio = kPersonalC[baby].genderRatio;
-                const bool inherit = (ratio != 0 && ratio != 255) || baby == 29 || baby == 32;
-                for (int i = 3; i >= 0; --i) {
-                    MoveResult& entry = mc.result[i];
-                    if (current[i] == 0 || entry.valid())
-                        continue;
-                    if (eggMove(crystal, baby, current[i]))
-                        entry = {Source::Egg, 2, 0, 0};
-                    else if (inherit && learnLevel(crystal ? Env::C : Env::GS, baby, current[i]) != 0)
-                        entry = {Source::Inherit, 2, 0, 0};
-                }
+            if (chk.source != Source::None && preferable(entry, chk, stage))
+                entry = {chk.source, 2, static_cast<uint8_t>(stage), chk.level};
+        }
+    }
+    if (enc.bred) {  // only EncounterEgg2, never gift or event eggs
+        const bool crystal = (enc.versions & Crystal) != 0;
+        const uint8_t baby = enc.species;
+        const uint8_t ratio = kPersonalC[baby].genderRatio;
+        const bool inherit = (ratio != 0 && ratio != 255) || baby == 29 || baby == 32;
+        for (int i = 3; i >= 0; --i) {
+            MoveResult& entry = mc.result[i];
+            if (current[i] == 0 || entry.valid())
+                continue;
+            if (eggMove(crystal, baby, current[i]))
+                entry = {Source::Egg, 2, 0, 0};
+            else if (inherit && learnLevel(crystal ? Env::C : Env::GS, baby, current[i]) != 0)
+                entry = {Source::Inherit, 2, 0, 0};
+        }
+    }
+}
+
+/// Gen I's move bookkeeping rules: no move deleter, no relearner.
+void flagGen1Bookkeeping(MoveCheck& mc, const std::array<uint8_t, 4>& current, const Candidate& enc,
+                         const Chain& hist1, bool emptySlots) {
+    const std::array<uint8_t, 4> initial1 = enc.generation == 1 ? initialMoves(enc) : std::array<uint8_t, 4>{};
+    if (emptySlots && enc.generation == 1) {
+        // LearnGroup1.FlagFishyMoveSlots: without a Gen II move deleter, a move slot can
+        // only be empty if the Pokemon never knew that many moves.
+        int missing = 0;
+        for (uint8_t m : initial1) {
+            if (m == 0)
+                break;
+            missing += std::find(current.begin(), current.end(), m) == current.end();
+        }
+        for (int i = 0; i < 4 && missing > 0; ++i) {
+            if (current[i] == 0) {
+                mc.result[i].source = Source::EmptySlotInvalid;
+                --missing;
             }
         }
     }
-    for (const MoveResult& r : mc.result)
-        mc.anyGen2 |= r.valid() && r.generation == 2;
-
-    if (enc.generation == 1 && !gen2Visit) {
-        // LearnGroup1.FlagFishyMoveSlots: without a Gen II move deleter, a move slot can
-        // only be empty if the Pokemon never knew that many moves.
-        int empty = 0;
-        for (uint8_t m : current)
-            empty += m == 0;
-        if (empty != 0) {
-            int missing = 0;
-            for (uint8_t m : initial1) {
-                if (m == 0)
-                    break;
-                missing += std::find(current.begin(), current.end(), m) == current.end();
-            }
-            for (int i = 0; i < 4 && missing > 0; ++i) {
-                if (current[i] == 0) {
-                    mc.result[i].source = Source::EmptySlotInvalid;
-                    --missing;
-                }
+    // A pre-evolution cannot learn a move at a higher level than a move its evolved
+    // form learned by level-up: it evolved after that level, and Gen I has no move
+    // relearner. (PKHeX's LearnGroup1.FlagEvolutionSlots states this rule, but its
+    // GetPrevious fall-through means it never runs for PK1 files.)
+    // Only a contradiction under EVERY way of learning both moves counts: each move's
+    // options are its encounter/TM/tutor sources (no timing) and every in-range
+    // level-up listing at every form, in Red/Blue and Yellow.
+    struct Option { bool timed; int stage; uint8_t level; };
+    auto options = [&](uint8_t move) {
+        std::vector<Option> out;
+        if (std::find(initial1.begin(), initial1.end(), move) != initial1.end())
+            out.push_back({false, 0, 0});
+        for (int stage = 0; stage < hist1.count; ++stage) {
+            const Stage& s = hist1.stage[stage];
+            for (bool yellow : {true, false}) {
+                if (tm1(s.species, yellow, move) ||
+                    (move == kMoveSurf && (s.species == kSpeciesPikachu || s.species == kSpeciesRaichu)))
+                    out.push_back({false, stage, 0});
+                const LevelSpan span = levelUp(yellow ? Env::Y : Env::RB, s.species);
+                for (const LevelMove* p = span.begin; p != span.end; ++p)
+                    if (p->move == move && p->level >= s.min && p->level <= s.max)
+                        out.push_back({true, stage, p->level});
             }
         }
-        // A pre-evolution cannot learn a move at a higher level than a move its evolved
-        // form learned by level-up: it evolved after that level, and Gen I has no move
-        // relearner. (PKHeX's LearnGroup1.FlagEvolutionSlots states this rule, but its
-        // GetPrevious fall-through means it never runs for PK1 files.)
-        // Only a contradiction under EVERY way of learning both moves counts: each move's
-        // options are its encounter/TM/tutor sources (no timing) and every in-range
-        // level-up listing at every form, in Red/Blue and Yellow.
-        struct Option { bool timed; int stage; uint8_t level; };
-        auto options = [&](uint8_t move) {
-            std::vector<Option> out;
-            if (std::find(initial1.begin(), initial1.end(), move) != initial1.end())
-                out.push_back({false, 0, 0});
-            for (int stage = 0; stage < hist1.count; ++stage) {
-                const Stage& s = hist1.stage[stage];
-                for (bool yellow : {true, false}) {
-                    if (tm1(s.species, yellow, move) ||
-                        (move == kMoveSurf && (s.species == kSpeciesPikachu || s.species == kSpeciesRaichu)))
-                        out.push_back({false, stage, 0});
-                    const LevelSpan span = levelUp(yellow ? Env::Y : Env::RB, s.species);
-                    for (const LevelMove* p = span.begin; p != span.end; ++p)
-                        if (p->move == move && p->level >= s.min && p->level <= s.max)
-                            out.push_back({true, stage, p->level});
-                }
-            }
-            return out;
-        };
-        auto conflict = [](const Option& a, const Option& b) {
-            // b learned by an earlier form (higher history index) after a's level.
-            return a.timed && b.timed && b.stage > a.stage && b.level > a.level;
-        };
-        for (int i = 0; i < 4; ++i) {
-            if (current[i] == 0 || !mc.result[i].valid() || mc.result[i].generation != 1)
+        return out;
+    };
+    auto conflict = [](const Option& a, const Option& b) {
+        // b learned by an earlier form (higher history index) after a's level.
+        return a.timed && b.timed && b.stage > a.stage && b.level > a.level;
+    };
+    for (int i = 0; i < 4; ++i) {
+        if (current[i] == 0 || !mc.result[i].valid() || mc.result[i].generation != 1)
+            continue;
+        const std::vector<Option> optA = options(current[i]);
+        for (int j = 0; j < 4; ++j) {
+            if (j == i || current[j] == 0 || !mc.result[j].valid() || mc.result[j].generation != 1)
                 continue;
-            const std::vector<Option> optA = options(current[i]);
-            for (int j = 0; j < 4; ++j) {
-                if (j == i || current[j] == 0 || !mc.result[j].valid())
-                    continue;
-                const std::vector<Option> optB = options(current[j]);
-                bool always = !optA.empty() && !optB.empty();
-                for (const Option& a : optA)
-                    for (const Option& b : optB)
-                        always &= conflict(a, b);
-                if (always) {
-                    mc.result[i].source = Source::EvolutionOrderInvalid;
-                    break;
-                }
+            const std::vector<Option> optB = options(current[j]);
+            bool always = !optA.empty() && !optB.empty();
+            for (const Option& a : optA)
+                for (const Option& b : optB)
+                    always &= conflict(a, b);
+            if (always) {
+                mc.result[i].source = Source::EvolutionOrderInvalid;
+                break;
             }
         }
+    }
+}
+
+/// LearnVerifier over the groups a Pokemon of this format passes through: the current
+/// generation first, then the other one when the history allows a Time Capsule trip.
+MoveCheck checkMoves(const Subject& pk, const Candidate& enc, const Chain& hist1, const Chain& hist2,
+                     bool otherGenerationReachable) {
+    MoveCheck mc;
+    const std::array<uint8_t, 4>& current = pk.moves;
+    for (int i = 0; i < 4; ++i)
+        if (current[i] == 0)
+            mc.result[i] = {Source::Initial, 0, 0, 0};  // empty slots are judged separately
+
+    if (pk.format == 1) {
+        checkGen1Sources(mc, current, enc, hist1);
+        if (otherGenerationReachable && !allValid(mc))
+            checkGen2Sources(mc, current, enc, hist2);
+        if (!otherGenerationReachable)
+            flagGen1Bookkeeping(mc, current, enc, hist1, true);
+    } else {
+        checkGen2Sources(mc, current, enc, hist2);
+        if (otherGenerationReachable && !allValid(mc)) {
+            // LearnGroup2: a trip to Gen I needs every move to exist there; a Gen II-only
+            // move must be re-learnable afterwards, so encounter and egg moves above Gen I's
+            // range cannot survive it.
+            for (int i = 0; i < 4; ++i) {
+                MoveResult& r = mc.result[i];
+                if (current[i] > kMaxMove1 && r.valid() &&
+                    (r.source == Source::Initial || r.source == Source::Egg || r.source == Source::Inherit))
+                    r = {};
+            }
+            checkGen1Sources(mc, current, enc, hist1);
+            // LearnGroup1.GetPrevious is null for PK2, so the evolution-order rule applies.
+            flagGen1Bookkeeping(mc, current, enc, hist1, false);
+        }
+    }
+    for (const MoveResult& r : mc.result) {
+        mc.anyGen1 |= r.valid() && r.generation == 1;
+        mc.anyGen2 |= r.valid() && r.generation == 2;
     }
     return mc;
 }
@@ -638,7 +758,7 @@ bool catchRateMatchesEncounter(const Candidate& enc, uint8_t rate) {
 }
 
 /// MiscG1Verifier.VerifyMiscG1CatchRate; returns an empty string when valid.
-std::string catchRateProblem(const Entity1& pk, const Candidate& enc, bool anyGen2Move) {
+std::string catchRateProblem(const Subject& pk, const Candidate& enc, bool anyGen2Move) {
     const uint8_t rate = pk.catchRate;
     TimeCapsule eval;
     if (enc.generation == 2) {
@@ -678,7 +798,7 @@ std::string catchRateProblem(const Entity1& pk, const Candidate& enc, bool anyGe
 }
 
 /// GBRestrictions.GetTradebackStatusRBY: can this PK1 have come from / visited Gen II?
-bool gen2Possible(const Entity1& pk, const Chain& chain1) {
+bool gen2Possible(const Subject& pk, const Chain& chain1) {
     const uint8_t rate = pk.catchRate;
     if (rate == 0)
         return true;
@@ -700,7 +820,7 @@ bool gen2Possible(const Entity1& pk, const Chain& chain1) {
 
 bool gen1TypeExists(uint8_t t) { return t <= 8 || (t >= 0x14 && t <= 0x1A); }
 
-std::string typeProblem(const Entity1& pk) {
+std::string typeProblem(const Subject& pk) {
     const Personal1& p = kPersonalRB[pk.species];
     if (pk.species == kSpeciesPorygon) {
         // Conversion can give Porygon any type combination a Gen I species has.
@@ -724,10 +844,36 @@ std::string typeProblem(const Entity1& pk) {
 
 // ---------------------------------------------------------------- candidate generation
 
-void addIf(std::vector<Candidate>& out, const Candidate& c) { out.push_back(c); }
+/// History restricted to one generation's species (EvolutionUtil.SetHistory): skip leading
+/// forms the game does not have, then keep the contiguous run it does.
+Chain presentIn(const Chain& hist, uint8_t maxSpecies) {
+    Chain out;
+    int i = 0;
+    while (i < hist.count && hist.stage[i].species > maxSpecies)
+        ++i;
+    for (; i < hist.count && hist.stage[i].species <= maxSpecies; ++i)
+        out.stage[out.count++] = hist.stage[i];
+    return out;
+}
 
-std::vector<Candidate> gen1Candidates(const Entity1& pk, const Chain& chain) {
+void addWild(std::vector<Candidate>& out, const WildSlot& w, uint8_t generation, uint8_t level) {
+    for (const Candidate& o : out)
+        if (o.kind == EncounterKind::Wild && o.species == w.species && o.versions == w.version &&
+            o.level <= level)
+            return;
+    Candidate c;
+    c.kind = EncounterKind::Wild;
+    c.generation = generation;
+    c.species = w.species;
+    c.level = level;
+    c.versions = w.version;
+    c.slotType = w.type;
+    out.push_back(c);
+}
+
+std::vector<Candidate> gen1Candidates(const Subject& pk, const Chain& chain) {
     std::vector<Candidate> out;
+    const bool pk1 = pk.format == 1;
     const bool maybeJapanese = pk.language != Language::International;
     const bool maybeInternational = pk.language != Language::Japanese;
 
@@ -757,7 +903,7 @@ std::vector<Candidate> gen1Candidates(const Entity1& pk, const Chain& chain) {
             c.partialReason = "In-game trade " + speciesName(t.species) +
                               " must keep its fixed nickname";
         }
-        addIf(out, c);
+        out.push_back(c);
     }
 
     // Static encounters, gifts and Game Corner prizes.
@@ -774,19 +920,21 @@ std::vector<Candidate> gen1Candidates(const Entity1& pk, const Chain& chain) {
         c.species = s.species;
         c.level = s.level;
         c.versions = s.version;
-        c.starterPikachu = s.version == Yellow && s.species == kSpeciesPikachu && s.level == 5;
-        const uint8_t rate = pk.catchRate;
-        const bool rateOk = isHeldItemRate(rate) ||
-                            (c.starterPikachu ? rate == kRateLightBall
-                                              : rateMatchesEncounter(s.species, s.version, rate));
-        if (!rateOk) {
-            c.partial = true;
-            c.partialReason = "Catch rate does not match the " + speciesName(s.species) + " encounter";
+        if (pk1) {
+            const bool starterPikachu = s.version == Yellow && s.species == kSpeciesPikachu && s.level == 5;
+            const uint8_t rate = pk.catchRate;
+            const bool rateOk = isHeldItemRate(rate) ||
+                                (starterPikachu ? rate == kRateLightBall
+                                                : rateMatchesEncounter(s.species, s.version, rate));
+            if (!rateOk) {
+                c.partial = true;
+                c.partialReason = "Catch rate does not match the " + speciesName(s.species) + " encounter";
+            }
         }
-        addIf(out, c);
+        out.push_back(c);
     }
 
-    // Wild slots: lowest level per (species, version) is all the search needs.
+    // Wild slots: the lowest level per (species, version) is all the search needs.
     for (std::size_t i = 0; i < kWildSlotCount; ++i) {
         const WildSlot& w = kWildSlots[i];
         if (!isGen1Version(w.version))
@@ -796,23 +944,12 @@ std::vector<Candidate> gen1Candidates(const Entity1& pk, const Chain& chain) {
             continue;
         if (w.version == BlueJP && !maybeJapanese)
             continue;
-        const uint8_t expect = personal1(w.species, w.version == Yellow).catchRate;
-        if (pk.catchRate != expect && !isHeldItemRate(pk.catchRate))
-            continue;
-        bool seen = false;
-        for (const Candidate& o : out)
-            seen |= o.kind == EncounterKind::Wild && o.species == w.species && o.versions == w.version &&
-                    o.level <= w.minLevel;
-        if (seen)
-            continue;
-        Candidate c;
-        c.kind = EncounterKind::Wild;
-        c.generation = 1;
-        c.species = w.species;
-        c.level = w.minLevel;
-        c.versions = w.version;
-        c.slotType = w.type;
-        addIf(out, c);
+        if (pk1) {
+            const uint8_t expect = personal1(w.species, w.version == Yellow).catchRate;
+            if (pk.catchRate != expect && !isHeldItemRate(pk.catchRate))
+                continue;
+        }
+        addWild(out, w, 1, w.minLevel);
     }
 
     // GB-era event gifts (Stadium gifts, Mew tours).
@@ -847,27 +984,68 @@ std::vector<Candidate> gen1Candidates(const Entity1& pk, const Chain& chain) {
         c.stadiumGift = g.trainer == 2;
         c.hasFixedMoves = true;
         c.fixedMoves = {g.moves[0], g.moves[1], g.moves[2], g.moves[3]};
-        const uint8_t rate = pk.catchRate;
-        bool rateOk = isHeldItemRate(rate);
-        if (!rateOk) {
-            if (c.stadiumGift)
-                rateOk = g.species == kSpeciesPsyduck ? rate == kRateGorgeousBox
-                                                      : (rate == kRateNormalBox || rate == kRateGorgeousBox);
-            else
-                rateOk = rate == kPersonalRB[g.species].catchRate;
+        if (pk1) {
+            const uint8_t rate = pk.catchRate;
+            bool rateOk = isHeldItemRate(rate);
+            if (!rateOk) {
+                if (c.stadiumGift)
+                    rateOk = g.species == kSpeciesPsyduck ? rate == kRateGorgeousBox
+                                                          : (rate == kRateNormalBox || rate == kRateGorgeousBox);
+                else
+                    rateOk = rate == kPersonalRB[g.species].catchRate;
+            }
+            if (!rateOk) {
+                c.partial = true;
+                c.partialReason = "Catch rate does not match the " + speciesName(g.species) + " event gift";
+            }
         }
-        if (!rateOk) {
-            c.partial = true;
-            c.partialReason = "Catch rate does not match the " + speciesName(g.species) + " event gift";
-        }
-        addIf(out, c);
+        out.push_back(c);
     }
     return out;
 }
 
-std::vector<Candidate> gen2Candidates(const Entity1& pk, const Chain& chain) {
+/// Breeding.IsAbleToHatchFromEgg for Gen I/II species.
+bool canHatch(uint8_t species) {
+    switch (species) {
+        case kSpeciesDitto: case 144: case 145: case 146: case 150: case 151:  // Ditto, birds, Mewtwo, Mew
+        case 201: case 243: case 244: case 245: case 249: case 250: case 251:  // Unown, beasts, Lugia, Ho-Oh, Celebi
+            return false;
+        default:
+            return true;
+    }
+}
+
+// Roaming beasts can be met on Johto routes 29-46 except 40 and 41 (EncounterStatic2).
+bool isRoamLocation(uint8_t location) {
+    constexpr uint64_t kRoam = 0b10'1000'1010'0100'0000'0110'0011'0100'1000'1001'0011'0100ULL;
+    return location <= 45 && ((kRoam >> location) & 1) != 0;
+}
+
+/// EncounterStatic2 / EncounterGift2.IsMatchEggLocationInternal for a PK2.
+bool matchEggLocation(const Subject& pk, bool encounterIsEgg) {
+    if (pk.format != 2)
+        return true;
+    if (pk.egg) {
+        if (!encounterIsEgg)
+            return false;
+        return !(pk.metLocation != 0 && pk.metLevel != 0);
+    }
+    if (pk.metLevel == 0 && pk.metLocation != 0)
+        return false;
+    if (pk.metLevel == 1)
+        return true;
+    return !(pk.metLocation == 0 && pk.metLevel != 0);
+}
+
+std::vector<Candidate> gen2Candidates(const Subject& pk, const Chain& chain) {
     std::vector<Candidate> out;
+    const bool pk2 = pk.format == 2;
     const bool maybeJapanese = pk.language != Language::International;
+    const bool hasMet = pk2 && pk.caught;
+    // EncounterEnumerator2: a Crystal origin keeps its met data unless a Time Capsule trip
+    // wiped it, which only species that can visit Gen I can have taken.
+    const bool crystalOk = !pk2 || pk.caught || canVisitGen1(chain.stage[0].species);
+    const bool gsOk = !(hasMet || (pk2 && pk.caught && pk.otGender == 1));
 
     for (std::size_t i = 0; i < kTrades2Count; ++i) {
         const Trade2& t = kTrades2[i];
@@ -876,29 +1054,33 @@ std::vector<Candidate> gen2Candidates(const Entity1& pk, const Chain& chain) {
             continue;
         if (t.dvs[0] != 255 && (!fixedDVsMatch(t.dvs, pk.dvs) || pk.tid != t.tid))
             continue;
+        if (hasMet && (pk.metLocation != kLocationLinkTrade2 || pk.metLevel != 0 ||
+                       (t.dvs[0] != 255 && pk.otGender != t.otGender)))
+            continue;
         Candidate c;
         c.kind = EncounterKind::Trade;
         c.generation = 2;
         c.species = t.species;
         c.level = t.level;
         c.versions = Gold | Silver | Crystal;
-        const bool nickOk = nameMatches(kTradeNames2, kTradeNames2Count, t.nameIndex, pk.nickname, pk.language);
-        const bool otOk = nameMatches(kTradeNames2, kTradeNames2Count, static_cast<uint8_t>(t.nameIndex + 11),
-                                      pk.otName, pk.language);
-        if (!nickOk || !otOk) {
+        // EncounterTrade2.DetectLanguage: nickname and trainer must agree on one language.
+        const uint32_t nickLangs = nameLanguages(kTradeNames2, kTradeNames2Count, t.nameIndex, pk.nickname,
+                                                 pk.language);
+        const uint32_t otLangs = nameLanguages(kTradeNames2, kTradeNames2Count,
+                                               static_cast<uint8_t>(t.nameIndex + 11), pk.otName, pk.language);
+        if ((nickLangs & otLangs) == 0) {
             c.partial = true;
             c.partialReason = "In-game trade " + speciesName(t.species) +
                               " must keep its fixed trainer name and nickname";
         }
-        addIf(out, c);
+        out.push_back(c);
     }
 
-    // Eggs: the earliest form must be able to hatch, at level 5.
+    // Daycare eggs: the earliest form must be able to hatch, at level 5.
     {
         const Stage& lowest = chain.stage[chain.count - 1];
         const uint8_t baby = lowest.species;
-        const bool hatchable = baby != kSpeciesDitto && baby != 144 && baby != 145 && baby != 146 &&
-                               baby != 150 && baby != 151 && baby != 201 && !(baby >= 243 && baby <= 251);
+        const bool hatchable = canHatch(baby);
         const bool base = preEvolution(true, baby) == nullptr;
         if (hatchable && base && lowest.min <= kEggLevel && kEggLevel <= lowest.max) {
             for (uint8_t v : {static_cast<uint8_t>(Gold | Silver), static_cast<uint8_t>(Crystal)}) {
@@ -910,59 +1092,86 @@ std::vector<Candidate> gen2Candidates(const Entity1& pk, const Chain& chain) {
                 c.versions = v;
                 c.egg = true;
                 c.bred = true;
-                addIf(out, c);
+                out.push_back(c);
             }
         }
     }
 
     for (std::size_t i = 0; i < kStatics2Count; ++i) {
         const Static2& s = kStatics2[i];
+        const bool oddEgg = s.egg && s.moves[0] != 0;
+        // EncounterEnumerator2 offers the Odd Eggs before (and regardless of) its Crystal gate.
+        if (s.version == Crystal && !crystalOk && !oddEgg)
+            continue;
+        if ((s.version == Gold || s.version == Silver || s.version == (Gold | Silver)) && !gsOk)
+            continue;
         const int idx = chain.indexOf(s.species);
         if (idx < 0 || chain.stage[idx].max < s.level)
             continue;
         if (s.shinyAlways && !isShinyDVs(pk.dvs))
             continue;
-        if (s.shinyNever && isShinyDVs(pk.dvs))
+        if (s.dvs[0] != 255 && s.shinyNever && isShinyDVs(pk.dvs))
             continue;
         if (!fixedDVsMatch(s.dvs, pk.dvs))
             continue;
-        const bool oddEgg = s.egg && s.moves[0] != 0;
-        if (oddEgg && std::find(pk.moves.begin(), pk.moves.end(), kMoveDizzyPunch) == pk.moves.end())
+        if (oddEgg) {
+            if (std::find(pk.moves.begin(), pk.moves.end(), kMoveDizzyPunch) == pk.moves.end())
+                continue;
+            // An unhatched Odd Egg keeps its fixed EXP and trainer.
+            if (pk2 && pk.egg && (pk.exp != kOddEggExp || pk.otGender != 0 || !isOddEggTrainer(pk.otName, pk.language)))
+                continue;
+        }
+        if (!matchEggLocation(pk, s.egg))
             continue;
+        if (hasMet) {
+            const bool roamer = s.species == 243 || s.species == 244 || (s.species == 245 && s.location != 23);
+            if (!s.egg) {
+                if (roamer ? !isRoamLocation(pk.metLocation) : s.location != pk.metLocation)
+                    continue;
+            }
+            if (pk.metLevel != (s.egg ? 1 : s.level))
+                continue;
+        } else if (pk2 && !s.egg && s.species == kSpeciesCelebi && (s.version & Crystal) != 0) {
+            continue;  // Crystal met data cannot be wiped from Celebi
+        }
         Candidate c;
         c.kind = s.egg ? EncounterKind::Egg : EncounterKind::Static;
         c.generation = 2;
         c.species = s.species;
         c.level = s.level;
         c.versions = s.version;
+        c.egg = s.egg;
+        c.oddEgg = oddEgg;
+        c.eggCycles = oddEgg ? 20 : 0;
         if (s.moves[0] != 0) {
             c.hasFixedMoves = true;
             c.fixedMoves = {s.moves[0], s.moves[1], s.moves[2], s.moves[3]};
         }
-        addIf(out, c);
+        out.push_back(c);
     }
 
     for (std::size_t i = 0; i < kWildSlotCount; ++i) {
         const WildSlot& w = kWildSlots[i];
         if (isGen1Version(w.version))
             continue;
+        if (w.version == Crystal ? !crystalOk : !gsOk)
+            continue;
         const int idx = chain.indexOf(w.species);
-        if (idx < 0 || w.minLevel > chain.stage[idx].max)
+        if (idx < 0)
             continue;
-        bool seen = false;
-        for (const Candidate& o : out)
-            seen |= o.kind == EncounterKind::Wild && o.species == w.species && o.versions == w.version &&
-                    o.level <= w.minLevel;
-        if (seen)
+        uint8_t level = w.minLevel;
+        if (hasMet) {
+            // Met data pins the area, the level within the slot and the time of day.
+            const bool timeOk = w.time == 0 || ((w.time >> pk.metTime) & 1) != 0;
+            if (w.location != pk.metLocation || pk.metLevel < w.minLevel || pk.metLevel > w.maxLevel || !timeOk)
+                continue;
+            level = pk.metLevel;
+        }
+        if (level > chain.stage[idx].max)
             continue;
-        Candidate c;
-        c.kind = EncounterKind::Wild;
-        c.generation = 2;
-        c.species = w.species;
-        c.level = w.minLevel;
-        c.versions = w.version;
-        c.slotType = w.type;
-        addIf(out, c);
+        if (isHeadbutt(w.type) && !isTreeAvailable(w.location, w.type, pk.tid))
+            continue;  // PKHeX defers these and then flags them; no tree means no encounter
+        addWild(out, w, 2, level);
     }
 
     for (std::size_t i = 0; i < kGifts2Count; ++i) {
@@ -980,7 +1189,20 @@ std::vector<Candidate> gen2Candidates(const Entity1& pk, const Chain& chain) {
             continue;
         if (g.currentLevel != 0 && g.currentLevel > pk.level)
             continue;
-        if (!g.egg) {
+        if (!matchEggLocation(pk, g.egg != 0))
+            continue;
+        if (pk2 && pk.egg && pk.friendship > 10)  // event eggs were sent with 10 hatch cycles
+            continue;
+        if (pk2 && !(g.egg && !pk.egg)) {
+            // EncounterGift2.IsMatchLocation (Crystal-format gifts carry a location).
+            if (g.location != 0 && hasMet && g.location != pk.metLocation)
+                continue;
+            if (g.location != 0 && !hasMet && pk.species == kSpeciesCelebi)
+                continue;
+        }
+        if (hasMet && pk.metLevel != (g.egg ? 1 : g.level))  // EncounterGift2.IsMatchLevel
+            continue;
+        if (!g.egg || pk.egg) {
             if (g.trainer == 4) {  // Pokemon Center New York
                 if (pk.otName != "PCNYa" && pk.otName != "PCNYb" && pk.otName != "PCNYc" && pk.otName != "PCNYd")
                     continue;
@@ -999,13 +1221,186 @@ std::vector<Candidate> gen2Candidates(const Entity1& pk, const Chain& chain) {
         c.generation = 2;
         c.species = g.species;
         c.level = g.level;
-        c.versions = Gold | Silver | Crystal;
+        c.versions = static_cast<uint8_t>(g.location != 0 ? Crystal : (Gold | Silver));
         c.egg = g.egg != 0;
+        c.gift2 = true;
+        c.eggCycles = g.egg ? 10 : 0;
         c.hasFixedMoves = true;
         c.fixedMoves = {g.moves[0], g.moves[1], g.moves[2], g.moves[3]};
-        addIf(out, c);
+        out.push_back(c);
     }
     return out;
+}
+
+// ---------------------------------------------------------------- unhatched eggs and Smeargle (Gen II)
+
+/// Learnset.GetBaseEggMoves: the last four level-up entries at or below the hatch level.
+int baseEggMoves(uint8_t species, bool crystal, std::array<uint8_t, 4>& out) {
+    const LevelSpan span = levelUp(crystal ? Env::C : Env::GS, species);
+    int count = 0;
+    for (const LevelMove* p = span.begin; p != span.end && p->level <= kEggLevel; ++p)
+        ++count;
+    const int start = count > 4 ? count - 4 : 0;
+    count -= start;
+    for (int i = 0; i < count; ++i)
+        out[i] = span.begin[start + i].move;
+    return count;
+}
+
+enum EggSource : uint8_t { EggNone, EggBase, EggFatherEgg, EggFatherTM, EggParentLevelUp, EggTutor, EggSourceMax };
+
+struct BreedInfo {
+    std::array<uint8_t, 4> moves{};
+    std::array<uint8_t, 4> actual{};    // chosen source per slot
+    std::array<uint8_t, 4> possible{};  // bitmask of EggSource per slot
+    std::array<uint8_t, 4> base{};
+    int baseCount = 0;
+};
+
+// MoveBreed2.VerifyBaseMoves: the leading base moves are the tail of the base list, in order.
+bool verifyBaseMoves(const BreedInfo& b) {
+    int count = 0;
+    while (count < 4 && b.actual[count] == EggBase)
+        ++count;
+    if (b.baseCount < count)
+        return false;
+    if (b.moves[3] == 0 && count != b.baseCount)
+        return false;
+    for (int i = count - 1, j = b.baseCount - 1; i >= 0; --i, --j)
+        if (b.moves[i] != b.base[j])
+            return false;
+    if (b.baseCount == count)
+        return true;
+    // A pushed-out base move can only come back after enough non-base moves.
+    for (int i = count; i < 4; ++i) {
+        if ((b.possible[i] & (1 << EggBase)) == 0)
+            continue;
+        int baseIndex = -1;
+        for (int j = 0; j < b.baseCount; ++j)
+            if (b.base[j] == b.moves[i]) {
+                baseIndex = j;
+                break;
+            }
+        const int min = 4 - b.baseCount + baseIndex;
+        if (i < min + count)
+            return false;
+    }
+    return true;
+}
+
+// MoveBreed2.RecurseMovesForOrigin
+bool recurseOrigins(BreedInfo& b, int start, uint8_t type) {
+    int i = start;
+    do {
+        if (type != EggBase && recurseOrigins(b, i, EggBase))
+            return true;
+        int flag = 1 << EggBase;
+        if (type != EggBase)
+            flag = ~flag;
+        const uint8_t permit = b.possible[i];
+        if ((permit & flag) == 0)
+            return false;
+        if (type == EggBase) {
+            b.actual[i] = EggBase;
+        } else {
+            uint8_t first = EggFatherEgg;
+            while (first < EggSourceMax && (permit & (1 << first)) == 0)
+                ++first;
+            b.actual[i] = first;
+        }
+    } while (--i >= 0);
+    return verifyBaseMoves(b);
+}
+
+/// MoveBreed2.Validate: can a daycare egg hold exactly these moves, in this order?
+bool validateBreed2(uint8_t species, bool crystal, const std::array<uint8_t, 4>& moves) {
+    int count = 0;
+    while (count < 4 && moves[count] != 0)
+        ++count;
+    if (count == 0)
+        return false;
+    BreedInfo b;
+    b.moves = moves;
+    b.baseCount = baseEggMoves(species, crystal, b.base);
+    const uint8_t ratio = kPersonalC[species].genderRatio;
+    const bool inherit = (ratio != 0 && ratio != 255) || species == 29 || species == 32;
+    const Env env = crystal ? Env::C : Env::GS;
+    for (int i = 0; i < count; ++i) {
+        const uint8_t move = moves[i];
+        if (std::find(b.base.begin(), b.base.begin() + b.baseCount, move) != b.base.begin() + b.baseCount)
+            b.possible[i] |= 1 << EggBase;
+        if (inherit && learnLevel(env, species, move) != 0)
+            b.possible[i] |= 1 << EggParentLevelUp;
+        if (eggMove(crystal, species, move))
+            b.possible[i] |= 1 << EggFatherEgg;
+        if (tm2(species, crystal, move))
+            b.possible[i] |= 1 << EggFatherTM;
+        if (crystal && tutorC(species, move))
+            b.possible[i] |= 1 << EggTutor;
+    }
+    return recurseOrigins(b, count - 1, EggSourceMax);
+}
+
+/// LearnVerifierEgg: an unhatched egg knows exactly what it was created with.
+std::string eggMovesProblem(const std::array<uint8_t, 4>& moves, uint8_t species, const std::array<uint8_t, 4>& fixed,
+                            bool hasFixed, bool bred, bool crystal) {
+    for (int i = 0; i < 4; ++i)
+        for (int j = 0; j < i; ++j)
+            if (moves[i] != 0 && moves[i] == moves[j])
+                return "An egg cannot know the same move twice";
+    if (bred)
+        return validateBreed2(species, crystal, moves)
+                   ? std::string()
+                   : "No daycare pairing gives an egg these moves in this order";
+    std::array<uint8_t, 4> expect{};
+    if (hasFixed && fixed[0] != 0)
+        expect = fixed;
+    else
+        baseEggMoves(species, crystal, expect);
+    return moves == expect ? std::string() : "A gift egg knows only the moves it was given with";
+}
+
+/// MoveInfo.IsSketchValid for Gen II.
+bool isSketchable2(uint8_t move) {
+    switch (move) {
+        case 0: case 102: case 118: case 119: case 120: case 144: case 153: case 165: case 214:
+            return false;  // Mimic, Metronome, Mirror Move, Self-Destruct, Transform, Explosion, Struggle, Sleep Talk
+        default:
+            return move <= kMaxMove2;
+    }
+}
+
+// ---------------------------------------------------------------- PP
+
+uint8_t basePP(uint8_t format, uint8_t move) {
+    if (format == 1)
+        return move <= kMaxMove1 ? kMovePP1[move] : 0;
+    return move <= kMaxMove2 ? kMovePP2[move] : 0;
+}
+
+uint8_t maxPP(uint8_t format, uint8_t move, uint8_t ppUps) {  // GBPKM.GetMovePP
+    const uint8_t pp = basePP(format, move);
+    return static_cast<uint8_t>(pp + ppUps * std::min(7, pp / 5));
+}
+
+/// MovePPVerifier for GB formats.
+std::string ppProblem(uint8_t format, const std::array<uint8_t, 4>& moves, const std::array<uint8_t, 4>& pp,
+                      const std::array<uint8_t, 4>& ups, bool egg) {
+    for (int i = 0; i < 4; ++i) {
+        const std::string slot = "Move slot " + std::to_string(i + 1);
+        if (egg) {
+            if (ups[i] != 0)
+                return "An egg cannot have PP Ups";
+            if (pp[i] != basePP(format, moves[i]))
+                return slot + ": an egg's moves have their full base PP";
+            continue;
+        }
+        if (ups[i] != 0 && (moves[i] == 0 || moves[i] == kMoveSketch))
+            return slot + " has PP Ups that cannot be applied";
+        if (pp[i] > maxPP(format, moves[i], ups[i]))
+            return slot + " has more PP than the move allows";
+    }
+    return {};
 }
 
 // ---------------------------------------------------------------- evaluation
@@ -1016,33 +1411,48 @@ struct Evaluation {
     bool timeCapsule = false;
 };
 
-Evaluation evaluate(const Entity1& pk, const Candidate& enc, const Chain& chain1, const Chain& chain2,
-                    bool tradebackPossible) {
+Evaluation evaluate(const Subject& pk, const Candidate& enc, const Chain& chain, bool otherGeneration) {
     Evaluation ev;
     ev.enc = enc;
-    const Chain& origin = enc.generation == 1 ? chain1 : chain2;
-    const int idx = origin.indexOf(enc.species);
+    const int idx = chain.indexOf(enc.species);
 
     Chain hist;
-    if (idx < 0 || !historyFrom(origin, idx, enc.level, pk.level, hist)) {
+    if (idx < 0 || !historyFrom(chain, idx, enc.level, pk.level, hist)) {
         ev.problems.push_back({Area::Encounter, speciesName(enc.species) + " met at level " +
                                                     std::to_string(enc.level) + " cannot become " +
                                                     speciesName(pk.species) + " by level " +
                                                     std::to_string(pk.level)});
         return ev;
     }
+    const Chain hist1 = presentIn(hist, kMaxSpecies1);
+    const Chain& hist2 = hist;
 
-    // Gen I history keeps only the forms that exist in Gen I (SetHistory with RB).
-    Chain hist1;
-    for (int i = 0; i < hist.count; ++i) {
-        if (hist.stage[i].species > kMaxSpecies1)
-            break;
-        hist1.stage[hist1.count++] = hist.stage[i];
+    // Can the moves also come from the other generation? PK1: through Gen II when the
+    // encounter was there or the catch-rate byte is a Gen II item. PK2: through Gen I when
+    // the encounter was there or a form of it existed in Gen I.
+    bool reachable;
+    if (pk.format == 1)
+        reachable = enc.generation == 2 || (otherGeneration && isHeldItemRate(pk.catchRate));
+    else
+        reachable = enc.generation == 1 || hist1.count != 0;
+    MoveCheck mc;
+    if (pk.format == 2 && pk.egg) {
+        // LearnVerifierEgg: the moveset is judged as a whole, in order.
+        const std::string eggMoves = eggMovesProblem(pk.moves, enc.species, enc.fixedMoves, enc.hasFixedMoves,
+                                                     enc.bred, (enc.versions & Crystal) != 0);
+        if (!eggMoves.empty())
+            ev.problems.push_back({Area::Moves, eggMoves});
+        for (MoveResult& r : mc.result)
+            r = {Source::Initial, 2, 0, 0};
+    } else if (enc.species == kSpeciesSmeargle) {
+        // LearnVerifierHistory.VerifySmeargle: Sketch copies nearly anything.
+        for (int i = 0; i < 4; ++i)
+            mc.result[i] = pk.moves[i] == 0 || isSketchable2(pk.moves[i]) ? MoveResult{Source::Initial, 2, 0, 0}
+                                                                         : MoveResult{};
+    } else {
+        mc = checkMoves(pk, enc, hist1, hist2, reachable);
     }
-
-    const bool gen2Visit = enc.generation == 2 || (tradebackPossible && isHeldItemRate(pk.catchRate));
-    const MoveCheck mc = checkMoves(pk, enc, hist1, hist, gen2Visit);
-    ev.timeCapsule = enc.generation == 2 || mc.anyGen2;
+    ev.timeCapsule = enc.generation != pk.format || (pk.format == 1 ? mc.anyGen2 : mc.anyGen1);
 
     for (int i = 0; i < 4; ++i) {
         const uint8_t move = pk.moves[i];
@@ -1065,12 +1475,46 @@ Evaluation evaluate(const Entity1& pk, const Candidate& enc, const Chain& chain1
     if (pk.tradeTrainer && !(enc.kind == EncounterKind::Trade && enc.generation == 1))
         ev.problems.push_back({Area::Trainer, "The in-game-trade trainer marker only appears on Pokemon "
                                               "received in a Red/Blue/Yellow in-game trade"});
-    if (mc.anyGen2 && !isHeldItemRate(pk.catchRate))
-        ev.problems.push_back({Area::CatchRate, "A move only learnable in Gold/Silver/Crystal needs a Time "
-                                                "Capsule trip, but the catch rate byte is not a Gen II item"});
-    const std::string rate = catchRateProblem(pk, enc, mc.anyGen2);
-    if (!rate.empty())
-        ev.problems.push_back({Area::CatchRate, rate});
+
+    if (pk.format == 1) {
+        if (mc.anyGen2 && !isHeldItemRate(pk.catchRate))
+            ev.problems.push_back({Area::CatchRate, "A move only learnable in Gold/Silver/Crystal needs a "
+                                                    "Time Capsule trip, but the catch rate byte is not a Gen II "
+                                                    "item"});
+        const std::string rate = catchRateProblem(pk, enc, mc.anyGen2);
+        if (!rate.empty())
+            ev.problems.push_back({Area::CatchRate, rate});
+    } else {
+        // EncounterVerifier.VerifyEncounterEgg2 / VerifyUnhatchedEgg2: Crystal records eggs at
+        // met level 1, with no location until they hatch.
+        if (enc.egg && pk.caught) {
+            if (pk.metLevel != 1)
+                ev.problems.push_back({Area::MetData, "Crystal records a hatched egg at met level 1"});
+            else if (pk.egg ? pk.metLocation != 0 : pk.metLocation > 95)
+                ev.problems.push_back({Area::MetData, "Crystal egg met location is not possible"});
+        }
+        // TrainerNameVerifier.VerifyOTGB: Gen I and non-egg event Pokemon have a male OT.
+        if (pk.caught && pk.otGender == 1 && (enc.generation == 1 || (enc.gift2 && !enc.egg)))
+            ev.problems.push_back({Area::Trainer, "This origin cannot have a female original trainer"});
+        // MiscG1Verifier: Crystal records the time of day, except for gifts and trades.
+        if (pk.caught) {
+            const bool fixedTime = (enc.gift2 && (!enc.egg || pk.egg)) ||
+                                   (enc.kind == EncounterKind::Trade && enc.generation == 2);
+            const bool timeOk = fixedTime ? pk.metTime == 0 : (pk.metTime >= 1 && pk.metTime <= 3);
+            if (!timeOk)
+                ev.problems.push_back({Area::MetData, "Crystal met time of day does not fit this origin"});
+        }
+        // EggStateLegality.GetIsEggHatchCyclesValid: 1 .. the encounter's hatch cycles.
+        if (pk.egg) {
+            const uint8_t maxCycles = enc.eggCycles != 0 ? enc.eggCycles : kPersonalC[pk.species].hatchCycles;
+            if (pk.friendship < 1 || pk.friendship > maxCycles)
+                ev.problems.push_back({Area::Egg, "Egg hatch counter is outside 1-" + std::to_string(maxCycles)});
+            const uint32_t expect = enc.oddEgg ? kOddEggExp
+                                               : Pokemon::getExpForLevel(kEggLevel, Pokemon::getGrowthRate(pk.species));
+            if (pk.exp != expect)
+                ev.problems.push_back({Area::Egg, "An unhatched egg has exactly " + std::to_string(expect) + " EXP"});
+        }
+    }
     return ev;
 }
 
@@ -1103,6 +1547,83 @@ std::string versionsText(uint8_t v) {
     return out;
 }
 
+Result search(const Subject& pk, const Chain& chainOwn, const Chain& chainOther, bool otherGeneration,
+              const std::vector<Problem>& extra) {
+    Result res;
+    std::vector<Candidate> candidates;
+    if (pk.format == 1) {
+        candidates = gen1Candidates(pk, chainOwn);
+        if (otherGeneration) {
+            std::vector<Candidate> more = gen2Candidates(pk, chainOther);
+            candidates.insert(candidates.end(), more.begin(), more.end());
+        }
+    } else {
+        // EncounterGenerator12: Gen I origins for PK2 come through the same chain.
+        candidates = gen2Candidates(pk, chainOwn);
+        if (otherGeneration) {
+            std::vector<Candidate> more = gen1Candidates(pk, chainOwn);
+            candidates.insert(candidates.end(), more.begin(), more.end());
+        }
+    }
+
+    bool haveBest = false;
+    Evaluation best;
+    for (const Candidate& c : candidates) {
+        const Chain& chain = pk.format == 1 ? (c.generation == 1 ? chainOwn : chainOther) : chainOwn;
+        Evaluation ev = evaluate(pk, c, chain, otherGeneration);
+        if (ev.problems.empty()) {
+            res.status = extra.empty() ? Status::Legal : Status::Illegal;
+            res.origin = {c.kind, c.generation, c.species, c.level, c.versions, c.slotType};
+            res.timeCapsule = ev.timeCapsule;
+            res.problems = extra;
+            return res;
+        }
+        if (!haveBest || ev.problems.size() < best.problems.size()) {
+            best = std::move(ev);
+            haveBest = true;
+        }
+    }
+
+    res.status = Status::Illegal;
+    if (!haveBest) {
+        const char* games = pk.format == 1
+            ? (otherGeneration ? "Red/Blue/Yellow or Gold/Silver/Crystal" : "Red/Blue/Yellow")
+            : (otherGeneration ? "Gold/Silver/Crystal or Red/Blue/Yellow" : "Gold/Silver/Crystal");
+        res.problems.push_back({Area::Encounter, std::string("No ") + games + " encounter can produce " +
+                                                     speciesName(pk.species) + " at level " +
+                                                     std::to_string(pk.level) +
+                                                     (pk.caught ? " with this Crystal met data" : "")});
+    } else {
+        const Candidate& c = best.enc;
+        res.origin = {c.kind, c.generation, c.species, c.level, c.versions, c.slotType};
+        res.timeCapsule = best.timeCapsule;
+        res.problems = std::move(best.problems);
+    }
+    res.problems.insert(res.problems.end(), extra.begin(), extra.end());
+    return res;
+}
+
+/// Shared format checks; returns a problem when the record cannot be searched at all.
+bool movesWellFormed(const std::array<uint8_t, 4>& moves, uint8_t maxMove, const char* gen, Result& res) {
+    for (uint8_t m : moves) {
+        if (m > maxMove) {
+            res.problems.push_back({Area::Moves, "Move id " + std::to_string(m) + " does not exist in " + gen});
+            return false;
+        }
+    }
+    if (moves[0] == 0) {
+        res.problems.push_back({Area::Moves, "A Pokemon always knows at least one move"});
+        return false;
+    }
+    for (int i = 1; i < 4; ++i) {
+        if (moves[i] != 0 && moves[i - 1] == 0) {
+            res.problems.push_back({Area::Moves, "Moves are not packed: an empty slot comes before a move"});
+            return false;
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 std::string describe(const Origin& o) {
@@ -1126,79 +1647,107 @@ std::string describe(const Origin& o) {
     return out;
 }
 
-Result checkGen1(const Entity1& pk) {
+Result checkGen1(const Entity1& e) {
     Result res;
-    if (pk.species == 0 || pk.species > kMaxSpecies1) {
+    if (e.species == 0 || e.species > kMaxSpecies1) {
         res.problems.push_back({Area::Encounter, "Species does not exist in Gen I"});
         return res;
     }
-    if (pk.level < 1 || pk.level > 100) {
+    if (e.level < 1 || e.level > 100) {
         res.problems.push_back({Area::Encounter, "Level is outside 1-100"});
         return res;
     }
-    for (uint8_t m : pk.moves) {
-        if (m > kMaxMove1) {
-            res.problems.push_back({Area::Moves, "Move id " + std::to_string(m) + " does not exist in Gen I"});
-            return res;
-        }
-    }
-    if (pk.moves[0] == 0) {
-        res.problems.push_back({Area::Moves, "A Pokemon always knows at least one move"});
+    if (!movesWellFormed(e.moves, kMaxMove1, "Gen I", res))
         return res;
-    }
-    for (int i = 1; i < 4; ++i) {
-        if (pk.moves[i] != 0 && pk.moves[i - 1] == 0) {
-            res.problems.push_back({Area::Moves, "Moves are not packed: an empty slot comes before a move"});
-            return res;
-        }
-    }
+
+    Subject pk;
+    pk.format = 1;
+    pk.species = e.species;
+    pk.level = e.level;
+    pk.moves = e.moves;
+    pk.dvs = e.dvs;
+    pk.tid = e.tid;
+    pk.tradeTrainer = e.tradeTrainer;
+    pk.otName = e.otName;
+    pk.nickname = e.nickname;
+    pk.language = e.language;
+    pk.catchRate = e.catchRate;
+    pk.type1 = e.type1;
+    pk.type2 = e.type2;
+
+    // Problems that do not depend on the origin.
+    std::vector<Problem> extra;
+    if (const std::string types = typeProblem(pk); !types.empty())
+        extra.push_back({Area::Types, types});
+    if (const std::string pp = ppProblem(1, e.moves, e.pp, e.ppUps, false); !pp.empty())
+        extra.push_back({Area::Moves, pp});
 
     const Chain chain1 = originChain(pk.species, pk.level, false);
     const Chain chain2 = originChain(pk.species, pk.level, true);
-    const bool tradeback = gen2Possible(pk, chain1);
+    return search(pk, chain1, chain2, gen2Possible(pk, chain1), extra);
+}
 
-    std::vector<Candidate> candidates = gen1Candidates(pk, chain1);
-    if (tradeback) {
-        std::vector<Candidate> more = gen2Candidates(pk, chain2);
-        candidates.insert(candidates.end(), more.begin(), more.end());
+Result checkGen2(const Entity2& e) {
+    Result res;
+    if (e.species == 0 || e.species > kMaxSpecies2) {
+        res.problems.push_back({Area::Encounter, "Species does not exist in Gen II"});
+        return res;
     }
-
-    const std::string types = typeProblem(pk);
-
-    bool haveBest = false;
-    Evaluation best;
-    for (const Candidate& c : candidates) {
-        Evaluation ev = evaluate(pk, c, chain1, chain2, tradeback);
-        if (ev.problems.empty()) {
-            res.status = types.empty() ? Status::Legal : Status::Illegal;
-            res.origin = {c.kind, c.generation, c.species, c.level, c.versions, c.slotType};
-            res.timeCapsule = ev.timeCapsule;
-            if (!types.empty())
-                res.problems.push_back({Area::Types, types});
-            return res;
-        }
-        if (!haveBest || ev.problems.size() < best.problems.size()) {
-            best = std::move(ev);
-            haveBest = true;
-        }
+    if (e.level < 1 || e.level > 100) {
+        res.problems.push_back({Area::Encounter, "Level is outside 1-100"});
+        return res;
     }
+    if (!movesWellFormed(e.moves, kMaxMove2, "Gen II", res))
+        return res;
 
-    res.status = Status::Illegal;
-    if (!haveBest) {
-        res.problems.push_back({Area::Encounter,
-                                "No " + std::string(tradeback ? "Red/Blue/Yellow or Gold/Silver/Crystal"
-                                                              : "Red/Blue/Yellow") +
-                                    " encounter can produce " + speciesName(pk.species) + " at level " +
-                                    std::to_string(pk.level)});
+    Subject pk;
+    pk.format = 2;
+    pk.species = e.species;
+    pk.level = e.level;
+    pk.moves = e.moves;
+    pk.dvs = e.dvs;
+    pk.tid = e.tid;
+    pk.tradeTrainer = e.tradeTrainer;
+    pk.otName = e.otName;
+    pk.nickname = e.nickname;
+    pk.language = e.language;
+    pk.heldItem = e.heldItem;
+    pk.friendship = e.friendship;
+    pk.exp = e.exp;
+    pk.egg = e.isEgg;
+    pk.caught = e.caughtData != 0;
+    pk.metTime = static_cast<uint8_t>((e.caughtData >> 14) & 3);
+    pk.metLevel = static_cast<uint8_t>((e.caughtData >> 8) & 0x3F);
+    pk.otGender = static_cast<uint8_t>((e.caughtData >> 7) & 1);
+    pk.metLocation = static_cast<uint8_t>(e.caughtData & 0x7F);
+
+    // Problems that do not depend on the origin.
+    std::vector<Problem> extra;
+    if (pk.egg && pk.heldItem != 0)
+        extra.push_back({Area::HeldItem, "An egg cannot hold an item"});
+    else if (!isHoldableGen2(pk.heldItem))
+        extra.push_back({Area::HeldItem, "Held item " + std::to_string(pk.heldItem) +
+                                             " cannot be held in Gold/Silver/Crystal"});
+    if (pk.egg && pk.level != kEggLevel)
+        extra.push_back({Area::Egg, "An unhatched egg is always level 5"});
+    if (pk.metLocation != 0 && !pk.egg && pk.level < pk.metLevel)
+        extra.push_back({Area::MetData, "Level is below the Crystal met level"});
+    if (const std::string pp = ppProblem(2, e.moves, e.pp, e.ppUps, pk.egg); !pp.empty())
+        extra.push_back({Area::Moves, pp});
+
+    // EncounterOrigin.GetMinMaxGB: eggs are level 5, Crystal-met Pokemon start at their met level.
+    const uint8_t levelMin = pk.egg ? kEggLevel : (pk.caught ? pk.metLevel : kMinWildLevel);
+    Chain chain;
+    if (pk.egg) {
+        chain.stage[0] = {pk.species, pk.level, pk.level, 0, 0};
+        chain.count = 1;
     } else {
-        const Candidate& c = best.enc;
-        res.origin = {c.kind, c.generation, c.species, c.level, c.versions, c.slotType};
-        res.timeCapsule = best.timeCapsule;
-        res.problems = std::move(best.problems);
+        chain = originChain(pk.species, pk.level, true, levelMin);
     }
-    if (!types.empty())
-        res.problems.push_back({Area::Types, types});
-    return res;
+    // GBRestrictions.CanOriginateGen1: no Korean games, no eggs, no Crystal met data, and a
+    // species that could have been in Gen I.
+    const bool fromGen1 = !pk.egg && !pk.caught && canVisitGen1(pk.species);
+    return search(pk, chain, chain, fromGen1, extra);
 }
 
 } // namespace Legality::GB

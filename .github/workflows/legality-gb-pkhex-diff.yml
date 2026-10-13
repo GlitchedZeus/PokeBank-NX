@@ -1,9 +1,11 @@
-name: Gen I legality vs PKHeX
+name: Gen I/II legality vs PKHeX
 
-# Differential test: generate tens of thousands of Gen I Pokemon (natural encounters,
-# grown and evolved ones, deliberately broken ones, random records), then compare
-# PokeBank NX's verdict on every one with PKHeX.Core's. Also rebuilds the generated
-# Gen I/II tables and checks them against the pret disassemblies.
+# Differential test: generate tens of thousands of Gen I (PK1) and Gen II (PK2) Pokemon
+# (natural encounters, eggs, gifts, trades, Time Capsule transfers, grown and evolved
+# ones, deliberately broken ones, random records), then compare PokeBank NX's verdict
+# on every one with PKHeX.Core's. Every corpus record must get a verdict from both.
+# Also rebuilds the generated Gen I/II tables and checks them against the pret
+# disassemblies.
 
 on:
   pull_request:
@@ -11,6 +13,7 @@ on:
       - 'src/Legality/**'
       - 'include/Legality/GB*'
       - 'src/Integration/Gen1/**'
+      - 'src/Integration/Gen2/Gen2ReadOnlySave.cpp'
       - 'tools/gen_gb_legality_data.py'
       - 'tools/verify_gb_legality_data.py'
       - 'tools/pkhex_gb_diff/**'
@@ -67,8 +70,14 @@ jobs:
       - name: Tables agree with the pret disassemblies
         run: python3 -I tools/verify_gb_legality_data.py --pkhex _ref/PKHeX --pokered _ref/pokered --pokeyellow _ref/pokeyellow
 
-      - name: Verdicts agree with PKHeX (3 x 50,000 Pokemon)
+      - name: PK1 verdicts agree with PKHeX (3 x 50,000 Pokemon)
         run: |
           for seed in 1 2 3; do
-            tools/pkhex_gb_diff/run.sh _ref/PKHeX _ref/pokered 50000 "$seed"
+            tools/pkhex_gb_diff/run.sh _ref/PKHeX _ref/pokered 50000 "$seed" 1
+          done
+
+      - name: PK2 verdicts agree with PKHeX (3 x 50,000 Pokemon)
+        run: |
+          for seed in 1 2 3; do
+            tools/pkhex_gb_diff/run.sh _ref/PKHeX _ref/pokered 50000 "$seed" 2
           done

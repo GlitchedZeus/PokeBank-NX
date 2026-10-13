@@ -31,6 +31,8 @@ namespace Legality::GB {
         uint8_t species = 0;                // National Dex number
         uint8_t level = 0;
         std::array<uint8_t, 4> moves{};
+        std::array<uint8_t, 4> pp{};        // current PP per move slot
+        std::array<uint8_t, 4> ppUps{};
         uint8_t catchRate = 0;              // byte 0x07; a Gen II held item after a Time Capsule trip
         uint8_t type1 = 0, type2 = 0;       // stored type bytes (Gen I type ids)
         std::array<uint8_t, 4> dvs{};       // ATK DEF SPE SPC
@@ -38,6 +40,26 @@ namespace Legality::GB {
         bool tradeTrainer = false;          // OT is the in-game-trade marker
         std::string otName;                 // decoded; compared against event OTs
         std::string nickname;               // decoded; compared against trade nicknames
+        Language language = Language::Unknown;
+    };
+
+    /// The fields of a native PK2 that the origin search reads.
+    struct Entity2 {
+        uint8_t species = 0;                // National Dex number
+        uint8_t level = 0;
+        std::array<uint8_t, 4> moves{};
+        std::array<uint8_t, 4> pp{};        // current PP per move slot
+        std::array<uint8_t, 4> ppUps{};
+        uint8_t heldItem = 0;
+        std::array<uint8_t, 4> dvs{};       // ATK DEF SPE SPC
+        uint16_t tid = 0;
+        uint32_t exp = 0;
+        uint8_t friendship = 0;             // egg hatch counter while unhatched
+        bool isEgg = false;
+        uint16_t caughtData = 0;            // Crystal met data; 0 when absent or wiped
+        bool tradeTrainer = false;          // OT is the Gen I in-game-trade marker
+        std::string otName;
+        std::string nickname;
         Language language = Language::Unknown;
     };
 
@@ -54,7 +76,7 @@ namespace Legality::GB {
 
     enum class Status : uint8_t { Legal, Illegal };
 
-    enum class Area : uint8_t { Encounter, Moves, CatchRate, Types, Trainer };
+    enum class Area : uint8_t { Encounter, Moves, CatchRate, Types, Trainer, HeldItem, Egg, MetData };
 
     struct Problem {
         Area area;
@@ -69,6 +91,7 @@ namespace Legality::GB {
     };
 
     Result checkGen1(const Entity1& pk);
+    Result checkGen2(const Entity2& pk);
 
     /// "wild Rattata in Red/Blue (level 2+)" style description for reports.
     std::string describe(const Origin& origin);

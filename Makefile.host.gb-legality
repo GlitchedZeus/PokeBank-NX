@@ -13,3 +13,19 @@ $(HOST_BUILD)/test_gb_legality_gen1: $(GB_LEGALITY_GEN1_SOURCES)
 $(HOST_BUILD)/test_gb_legality_gen1_sanitize: $(GB_LEGALITY_GEN1_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+
+# Gen II origin search (GB::checkGen2) on PK2 records with PKHeX verdicts.
+GB_LEGALITY_GEN2_SOURCES := tests/test_gb_legality_gen2.cpp src/Legality/GBLegality.cpp \
+	src/Legality/GBLegalityData.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp \
+	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
+	src/Pokemon/Experience.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gb_legality_gen2
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gb_legality_gen2_sanitize
+
+$(HOST_BUILD)/test_gb_legality_gen2: $(GB_LEGALITY_GEN2_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gb_legality_gen2_sanitize: $(GB_LEGALITY_GEN2_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@

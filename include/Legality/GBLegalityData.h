@@ -155,6 +155,9 @@ namespace Legality::GBData {
     extern const Trade2 kTrades2[];
     extern const std::size_t kTrades2Count;
 
+    extern const uint8_t kHeldItems2[32];   // bit set of Gen II item ids a Pokemon can hold
+    extern const uint8_t kMovePP1[166];     // base PP per move id in Gen I
+    extern const uint8_t kMovePP2[252];     // base PP per move id in Gen II (differs only for Struggle)
     extern const Gift2 kGifts2[];
     extern const std::size_t kGifts2Count;
     extern const uint16_t kStadium2RelearnIndex[253];
