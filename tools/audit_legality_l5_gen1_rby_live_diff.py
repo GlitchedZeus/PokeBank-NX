@@ -33,6 +33,13 @@ def load_vectors(path:Path)->list[dict]:
         check(row["dv16"] in (0,0x5555,0xffff),"VECTOR_DVS")
         check(row.get("stat_experience") in (0,32768,65535),"GEN1_STAT_EXP_DOMAIN")
         check(row["stat_experience"]=={0:0,0x5555:32768,0xffff:65535}[row["dv16"]],"STAT_EXP_PATTERN_DRIFT")
+        check(row["experience"]==(135 if row["species"]==1 else 125),"NATIVE_LEVEL5_EXP_DRIFT")
+        ordered=[0,1,32768,65534,65535]
+        shift={0:0,0x5555:2,0xffff:4}[row["dv16"]]
+        for i,k in enumerate(("stat_exp_hp","stat_exp_attack","stat_exp_defense",
+                              "stat_exp_speed","stat_exp_special")):
+            check(row.get(k)==ordered[(shift+i)%5],"DISTINCT_NATIVE_STAT_EXP_PATTERN:"+k)
+        check(row["stat_exp_hp"]==row["stat_experience"],"HP_STAT_EXP_ALIAS")
         check(row["source"] in ("","red_gb","blue_gb","yellow_gb",
                                  "platinum_nds","unknown_source"),"VECTOR_SOURCE")
     return rows
@@ -82,7 +89,7 @@ def evaluate(cases:list[dict],oracle:dict[str,dict],accepted:dict[str,dict],
                 check(record.get(field)==expected,"DV_ORIGINAL_DISAGREEMENT:"+ident+":"+field)
             for field in ("stat_exp_hp","stat_exp_attack","stat_exp_defense",
                           "stat_exp_speed","stat_exp_special"):
-                check(record.get(field)==v["stat_experience"],
+                check(record.get(field)==v[field],
                       "GEN1_16BIT_STAT_EXP_ORIGINAL_DISAGREEMENT:"+ident+":"+field)
             check(type(record.get("ability_invalid")) is bool,"ABILITY_BOOL")
             check(type(record.get("gender_invalid")) is bool,"GENDER_BOOL")
@@ -138,7 +145,9 @@ def evaluate(cases:list[dict],oracle:dict[str,dict],accepted:dict[str,dict],
 
 def selftest()->None:
     v={"id":"x","species":1,"level":5,"move":33,"dv16":0xffff,
-       "experience":125,"stat_experience":65535,
+       "experience":135,"stat_experience":65535,"stat_exp_hp":65535,
+       "stat_exp_attack":0,"stat_exp_defense":1,"stat_exp_speed":32768,
+       "stat_exp_special":65534,
        "source":"","expected_source_context":"Unknown"}
     check(dv_values(0)==dict(dv_hp=0,dv_attack=0,dv_defense=0,
                              dv_speed=0,dv_special=0),"DV_ZERO")
@@ -151,8 +160,8 @@ def selftest()->None:
        "original_retail_history_authenticated":False,"id":"x","source":"",
        "species":1,"move":33,"dv16":65535,"ability_invalid":False,
        "gender_invalid":False,"parsed":True,"pk1_ability":-1,"pk1_gender":0,
-       **{name:65535 for name in ("stat_exp_hp","stat_exp_attack","stat_exp_defense",
-                                  "stat_exp_speed","stat_exp_special")},**dv_values(65535)}
+       **{name:v[name] for name in ("stat_exp_hp","stat_exp_attack","stat_exp_defense",
+                                   "stat_exp_speed","stat_exp_special")},**dv_values(65535)}
     a={**p,"engine":"POKEBANK_NX_ANALYZER","execution_mode":"actual_production_pk1",
        "ability_invalid":True,"gender_invalid":True,"move_domain_invalid":False,
        "modern_ev_invalid":False}
