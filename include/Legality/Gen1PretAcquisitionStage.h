@@ -92,4 +92,44 @@ static_assert(offer(2,0,0)->species==63 && offer(2,0,0)->level==6);
 static_assert(offer(4,0,0)->species==63 && offer(4,0,0)->level==15);
 static_assert(offer(1,1,2)->coinPrice==9999);
 static_assert(offer(2,1,2)->coinPrice==6500);
+// Only the ORIGINAL Yellow Oak-lab starter scene sets the Gen I PK1
+// catch-rate byte to Gen II's Light Ball ID ($a3). This is not a native
+// Gen I held-item slot. pret/pokeyellow:
+// scripts/OaksLab.asm @ b935d922bd6fd9223ded3a43d4a4fac8ef163c74
+// constants/item_constants.asm @ 06f60a8b8f3886113b2486be51eaf73dc9e9d349
+// A later Time Capsule can overwrite this byte. The modern detached
+// Pokémon's observed byte does NOT attest the original acquisition byte.
+inline constexpr uint8_t kYellowStarterOriginalCatchByte=0xA3u;
+enum class YellowStarterStatus : uint8_t {
+ UnknownOriginalGame,UnknownOriginalGiftScene,UnknownOriginalCatchByte,
+ CandidateLocalCatchByteMismatch,ConditionalOriginalYellowStarterByteOnly
+};
+struct YellowStarterWitness {
+ std::string_view originalGame{};
+ uint16_t originalSpecies=0;
+ uint8_t originalLevel=0;
+ uint8_t originalCatchByte=0;
+ bool originalGameIndependentlyAttested=false;
+ bool originalGiftSceneIndependentlyAttested=false;
+ bool originalCatchByteIndependentlyAttested=false;
+};
+struct YellowStarterResult {
+ YellowStarterStatus status=YellowStarterStatus::UnknownOriginalGame;
+ bool globallyLegalSupported=false,globalInvalidSupported=false;
+};
+constexpr YellowStarterResult evaluateYellowStarterByte(
+ const YellowStarterWitness& c) noexcept {
+ if(!c.originalGameIndependentlyAttested ||
+    c.originalGame!="yellow_gb")
+    return {};
+ if(!c.originalGiftSceneIndependentlyAttested ||
+    c.originalSpecies!=25 || c.originalLevel!=5)
+    return {YellowStarterStatus::UnknownOriginalGiftScene};
+ if(!c.originalCatchByteIndependentlyAttested)
+    return {YellowStarterStatus::UnknownOriginalCatchByte};
+ if(c.originalCatchByte!=kYellowStarterOriginalCatchByte)
+    return {YellowStarterStatus::CandidateLocalCatchByteMismatch};
+ return {YellowStarterStatus::ConditionalOriginalYellowStarterByteOnly};
+}
+static_assert(kYellowStarterOriginalCatchByte==163);
 } // namespace Legality::Gen1PretAcquisitionStage
