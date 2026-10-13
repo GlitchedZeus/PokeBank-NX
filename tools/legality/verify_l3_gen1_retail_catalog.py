@@ -87,9 +87,9 @@ def parse(root: pathlib.Path, pin: str, expected_blob: str):
             level = int(level_text)
             assert 1 <= level <= 100
             levelups[species].append((level, moves[move_name]))
-        # Stable level order, NOT assembly text order (Yellow Primeape has
-        # level 46 listed before its level 45 Screech entry).
-        levelups[species].sort(key=lambda entry: entry[0])
+        # Keep *raw source order* for the byte-for-byte encoded catalog.
+        # Its constexpr decoder applies stable acquisition-level ordering;
+        # Yellow Primeape's level-46/45 assembly anomaly is tested there.
         for method, x, y, dest in re.findall(
                 r"^\s*db\s+(EVOLVE_(?:LEVEL|ITEM|TRADE))\s*,\s*"
                 r"([A-Z0-9_]+)\s*,\s*([A-Z0-9_]+)(?:\s*,\s*([A-Z0-9_]+))?",
