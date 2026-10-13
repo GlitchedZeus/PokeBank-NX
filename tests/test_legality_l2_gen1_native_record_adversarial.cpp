@@ -1,3 +1,4 @@
+#include <cassert>
 // Exact 0x21 boxed and 0x2C party PK1 payloads, not Gen III PKM.
 #define main l2_gen1_dv_source_matrix_entry
 #include "test_legality_l2_gen1_native_dv_stat.cpp"
