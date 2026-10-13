@@ -91,3 +91,40 @@ $(GEN5_EXPORT_TEST): $(GEN5_EXPORT_INPUTS)
 $(GEN5_EXPORT_SANITIZE): $(GEN5_EXPORT_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_staged_save_candidate.cpp src/Integration/Gen5/Gen5WorkingCopyExport.cpp src/Utils/SHA256.cpp -o $@
+
+# Codex independently tested native PK5 Create foundation. These tests create
+# app-owned boxed records only; they do not enable staged Create, Inject or
+# source/emulator save writes. Preserve native exact-title provenance gates.
+GEN5_CREATE_TEST := $(HOST_BUILD)/test_gen5_native_create
+GEN5_CREATE_SANITIZE := $(HOST_BUILD)/test_gen5_native_create_sanitize
+GEN5_CREATE_INTEGRATION_TEST := $(HOST_BUILD)/test_gen5_create_integration
+GEN5_CREATE_INTEGRATION_SANITIZE := $(HOST_BUILD)/test_gen5_create_integration_sanitize
+GEN5_CREATE_INPUTS := include/Integration/Gen5/Gen5NativeCreate.h \
+    include/Integration/Gen5/Gen5CreateValidation.h \
+    include/Integration/Gen5/Gen5Progression.h \
+    include/Integration/Gen5/Gen5MovePP.h \
+    include/Integration/Gen5/Gen5StagedPokemonRecord.h \
+    include/Integration/Gen5/Gen5StagedSaveCandidate.h \
+    include/Integration/Gen5/Gen5SharedReview.h \
+    include/Pokemon/Pokemon5ReadOnly.h include/Encryption/Encryption5.h
+
+HOST_TESTS += $(GEN5_CREATE_TEST) $(GEN5_CREATE_INTEGRATION_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_CREATE_SANITIZE) $(GEN5_CREATE_INTEGRATION_SANITIZE)
+host-test: $(GEN5_CREATE_TEST) $(GEN5_CREATE_INTEGRATION_TEST)
+host-sanitize: $(GEN5_CREATE_SANITIZE) $(GEN5_CREATE_INTEGRATION_SANITIZE)
+
+$(GEN5_CREATE_TEST): tests/test_gen5_native_create.cpp $(GEN5_CREATE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_native_create.cpp -o $@
+
+$(GEN5_CREATE_SANITIZE): tests/test_gen5_native_create.cpp $(GEN5_CREATE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_native_create.cpp -o $@
+
+$(GEN5_CREATE_INTEGRATION_TEST): tests/test_gen5_create_integration.cpp $(GEN5_CREATE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_create_integration.cpp -o $@
+
+$(GEN5_CREATE_INTEGRATION_SANITIZE): tests/test_gen5_create_integration.cpp $(GEN5_CREATE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_create_integration.cpp -o $@
