@@ -487,7 +487,7 @@ require(create_suite,
 # Gen V reuses the already-shared staged editor, not a second Create/Edit UI.
 # Game cards and the source picker must not claim the editor is unavailable.
 require(games,
-        "Gen V: open Save Instances for the shared staged editor.",
+        "Gen V cached party; choose Save Instances to open.",
         "Open the shared staged editor. The original save stays unchanged.",
         '"A","Open Editor"',
         "Review or change this Gen V profile/save assignment.")
