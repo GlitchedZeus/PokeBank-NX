@@ -3,8 +3,11 @@
 // data/wild/super_rod.asm blob 7b3b64078a7df916ac940341ce4e58dd4600c298
 // GoodRodMons: shared pokered/pokeyellow data/wild/good_rod.asm
 // blob 700a551627a15b31d2473cbc118a48d78898602d
+// Old Rod MAGIKARP level 5 is read from both original item effect scripts:
+// pokered engine/items/item_effects.asm c4ce13de6fb6c7036e94e20b845dd6c5ade8951e
+// pokeyellow engine/items/item_effects.asm a6bdf857b15f73609c15f2f22511ea816eb2fd7f
 // '*' is GAME-GLOBAL; unknown whether the rod is usable on this map.
-inline constexpr std::array<PretSlot, 126> kPretFishing{{
+inline constexpr std::array<PretSlot, 127> kPretFishing{{
  {4,"PalletTown",Method::SuperRod,0,120,10,0},
  {4,"PalletTown",Method::SuperRod,1,72,10,0},
  {4,"PalletTown",Method::SuperRod,2,120,5,0},
@@ -129,6 +132,7 @@ inline constexpr std::array<PretSlot, 126> kPretFishing{{
  {4,"CeruleanCaveB1F",Method::SuperRod,1,119,40,0},
  {4,"CeruleanCaveB1F",Method::SuperRod,2,119,50,0},
  {4,"CeruleanCaveB1F",Method::SuperRod,3,119,60,0},
+ {7,"*",Method::OldRod,0,129,5,0},
  {7,"*",Method::GoodRod,0,118,10,0},
  {7,"*",Method::GoodRod,1,60,10,0},
 }};
