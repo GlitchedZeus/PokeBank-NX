@@ -17,6 +17,7 @@ on:
       - include/Legality/Gen1OriginalGiftNative*
       - include/Legality/Gen1OriginalNPCTrade*
       - include/Legality/Gen1OriginalIndividual*
+      - include/Legality/Gen1NativeRawRecordWitness*
       - include/Legality/Gen12Gift*
       - include/Legality/Gen12OriginalDistribution*
       - include/Legality/Gen3*Event*

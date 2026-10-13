@@ -11,13 +11,46 @@ namespace A=J::Archive;
 using PK1=PokeVault::Integration::Gen1::PokemonRecord;
 template<class T> constexpr G::Datum<T> yes(T v){return {true,v};}
 constexpr G::Name name(uint8_t a) {G::Name n{};n[0]=a;n[1]=0x50;return n;}
+// Synthetic fixture body mirrors the already-pinned strict PK1 reader.
+// A test mutation to a decoded field must also update the raw bytes if it
+// represents a genuinely parsed save. Unaltered raw bytes are a separate
+// malformed/native-parser-drift test and MUST return UnknownNative.
+PK1 withConsistentRaw(PK1 native) {
+    native.partyRecord=true;
+    native.rawBodySize=44;
+    auto& b=native.rawBody;
+    b={};
+    const auto big=[](auto& bytes, size_t pos, uint16_t x) {
+        bytes[pos]=static_cast<uint8_t>(x>>8);
+        bytes[pos+1]=static_cast<uint8_t>(x);
+    };
+    b[0]=native.rawSpecies;
+    big(b,1,native.currentHP);
+    b[4]=native.status;b[5]=native.type1;b[6]=native.type2;
+    b[7]=native.catchRate;
+    for(size_t i=0;i<4;++i)b[8+i]=native.moves[i];
+    big(b,0x0c,native.trainerId);
+    b[0x0e]=static_cast<uint8_t>(native.experience>>16);
+    b[0x0f]=static_cast<uint8_t>(native.experience>>8);
+    b[0x10]=static_cast<uint8_t>(native.experience);
+    for(size_t i=0;i<5;++i)big(b,0x11+i*2,native.statExperience[i]);
+    big(b,0x1b,static_cast<uint16_t>((native.dvs[1]<<12) |
+         (native.dvs[2]<<8) | (native.dvs[3]<<4) | native.dvs[4]));
+    for(size_t i=0;i<4;++i)b[0x1d+i]=static_cast<uint8_t>(
+        (native.ppUps[i]<<6)|native.pp[i]);
+    b[0x21]=native.level;
+    big(b,0x22,native.maxHP);big(b,0x24,native.attack);
+    big(b,0x26,native.defense);big(b,0x28,native.speed);
+    big(b,0x2a,native.special);
+    return native;
+}
 struct Fixture {
     PK1 native{};
     L::Source source{};
     Fixture(G::Game edition=G::Game::Red,G::Kind kind=G::Kind::NPCTrade) {
         native.rawSpecies=84; // storage raw ID is not interpreted by this evidence layer
         native.species=30;native.level=20;native.trainerId=17389;
-        native.catchRate=45;native.moves={1,2,3,0};native.dvs={0,15,10,7,12};
+        native.catchRate=45;native.moves={1,2,3,0};native.dvs={10,15,10,7,12};
         native.ppUps={0,0,0,0};native.originalTrainer="trainer display only";
         native.nickname="nickname display only";native.rawBodySize=44;
         auto& c=source.hypothesis;
@@ -98,8 +131,9 @@ struct Fixture {
         source.catchHistory.originalAcquisitionRateIndependentlyAttested=true;
         source.catchHistory.originallyObservedRate=45;
         source.catchHistory.originalBytePreservedThroughCompleteHistory=true;
+        native=withConsistentRaw(native);
     }
-    L::Result run()const {return L::evaluate(native,true,source);}
+    L::Result run()const {return L::evaluate(withConsistentRaw(native),true,source);}
 };
 int main() {
     using S=L::Status;
@@ -108,6 +142,14 @@ int main() {
     assert(!f.run().globallyInvalid&&!f.run().authenticated);
     assert(!f.run().payloadEmbeddingPermitted);
     assert(L::evaluate(f.native,false,f.source).status==S::UnknownNative);
+    {auto drift=f;drift.native.rawBody[7]^=1;
+      assert(L::evaluate(drift.native,true,drift.source).status==S::UnknownNative);
+      assert(!L::evaluate(drift.native,true,drift.source).globallyInvalid);}
+    {auto drift=f;drift.native.rawBodySize=33;
+      assert(L::evaluate(drift.native,true,drift.source).status==S::UnknownNative);}
+    {auto drift=f;drift.native.ppUps[1]=1;
+      assert(L::evaluate(drift.native,true,drift.source).status==S::UnknownNative);}
+
     {auto x=f;x.native.species=0;assert(x.run().status==S::UnknownNative);
       x.native.species=152;assert(x.run().status==S::UnknownNative);
       x.native.species=30;x.native.moves[0]=166;assert(x.run().status==S::UnknownNative);
