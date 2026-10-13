@@ -132,6 +132,34 @@ int main() {
     const G5::Pokemon5ReadOnly pidChanged(raw);
     assert(pidChanged.sizeValid());
     assert(pidChanged.pid() != 0x12345678u || !pidChanged.valid());
+    // A compatible exact-native species change preserves PID, OT, EXP,
+    // moves, form and gender, while updating only native species/ability
+    // and recomputing a party cache. Impossible conversions fail closed.
+    for(const size_t size : {C::StoredSize,C::PartySize}) {
+        const auto old=C::encryptCandidate(makeRecord(size,0x13579BDF));
+        std::string error;
+        auto edit=G5::StagedPokemon5Record::create(old,&error);
+        assert(edit && error.empty());
+        const auto before=edit->current();
+        const auto oldMoves=before.moves();
+        const auto oldExp=before.experience();
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Species,0,0,&error));
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Species,0,650,&error));
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Species,0,1,&error));
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Species,0,32,&error));
+        assert(!edit->dirty());
+        assert(edit->stage(G5::StagedPokemon5Record::Field::Species,0,26,&error));
+        const auto raichu=edit->current();
+        assert(raichu.valid() && raichu.species()==26);
+        assert(raichu.pid()==before.pid() && raichu.gender()==before.gender());
+        assert(raichu.moves()==oldMoves && raichu.experience()==oldExp);
+        assert(raichu.ability()==31 && raichu.form()==0); // Hidden Lightning Rod
+        assert(std::equal(old.begin(),old.end(),edit->originalBytes().begin()));
+        if(size==C::PartySize) {
+            assert(C::read16(raichu.decodedBytes(),0x90)>0);
+            assert(raichu.partyLevel()==before.partyLevel());
+        }
+    }
     // App-owned entity mutation is atomic and never touches external saves.
     for (const size_t size : {C::StoredSize, C::PartySize}) {
         const auto source=C::encryptCandidate(makeRecord(size,0x13579BDF));

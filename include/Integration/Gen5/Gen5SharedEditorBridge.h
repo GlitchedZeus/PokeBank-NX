@@ -85,6 +85,8 @@ struct SharedEditorSlot {
     size_t stat,uint32_t value,std::string& error) {
     using NativeField=StagedPokemon5Record::Field;
     switch(field) {
+        case Shared::FieldIdentity::Species:
+            return session.stage(NativeField::Species,stat,value,error);
         case Shared::FieldIdentity::Nature:
             return session.stage(NativeField::Nature,stat,value,error);
         case Shared::FieldIdentity::Level:

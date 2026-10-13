@@ -138,6 +138,11 @@ public:
         };
         if(!replayName(true) || !replayName(false))return false;
 
+        // Species must precede EXP, form, ability and stat replay. The
+        // original PID/OT/history/moves are never regenerated or guessed.
+        if(before.species()!=after.species() &&
+           !apply(Field::Species,0,after.species()))return false;
+
         if(before.nature()!=after.nature() &&
            !apply(Field::Nature,0,after.nature()))return false;
         if(before.friendship()!=after.friendship() &&

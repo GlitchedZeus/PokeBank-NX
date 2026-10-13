@@ -248,7 +248,7 @@ require(native_review, "apply(Field::HeldItem,0,before.heldItem(),after.heldItem
 require(native_bridge, "NativeField::HeldItem,stat,value,error",
         "NativeField::Ball,stat,value,error",
         "NativeField::MetLevel,stat,value,error")
-require(native_screen, "std::array<EditableRow,42>",
+require(native_screen, "std::array<EditableRow,43>",
         '"Held Item ID",638', '"Ball ID",25', '"Met Level",100',
         "case Field::HeldItem:return pk.heldItem();",
         "case Field::Ball:return pk.ball();",
@@ -291,7 +291,7 @@ require(native_bridge, "NativeField::TrainerId,stat,value,error",
         "NativeField::Pokerus,stat,value,error",
         "NativeField::FatefulEncounter,stat,value,error",
         "NativeField::MetLocation,stat,value,error")
-require(native_screen, "std::array<EditableRow,42>",
+require(native_screen, "std::array<EditableRow,43>",
         '"Trainer ID",65535', '"Secret ID",65535',
         '"OT Gender",1', '"Pokerus",2', '"Met Location",65535',
         '"Fateful",1',
@@ -342,7 +342,7 @@ require(shared_contract, "case FieldIdentity::Form:",
         "case FieldIdentity::Gender:", "case FieldIdentity::Ability:")
 require(read("tests/test_gen5_readonly_save.cpp"),
         "ui.openIdentityPicker(error)", "ui.acceptIdentityPicker(error)",
-        "kEditableRows.size()==42")
+        "kEditableRows.size()==43")
 require(read("tests/test_gen5_pk5_readonly.cpp"),
         "G5::NativePersonalBW.size()==668", "G5::NativePersonalB2W2.size()==709",
         "G5::personal5(386,1,false)", "Field::AbilitySlot")
@@ -368,7 +368,7 @@ require(native_bridge, "NativeField::Move,stat,value,error",
         "NativeField::MovePPUps,stat,value,error")
 require(native_screen, "Surface::MovePicker", "openMovePicker(",
         "movePickerCursor(", "acceptMovePicker(", "cancelMovePicker()",
-        "std::array<EditableRow,42>", "Field::Move:return pk.moves()[row.stat]",
+        "std::array<EditableRow,43>", "Field::Move:return pk.moves()[row.stat]",
         "Field::MovePPUps:return pk.ppUps()[row.stat]",
         "Field::MovePP:return pk.pp()[row.stat]")
 require(surface, "case Surface::MovePicker:", "drawMovePicker(",
@@ -508,6 +508,30 @@ require(native_session,"Field::Experience","experienceForLevel5(")
 require(read("include/Integration/Gen5/Gen5SharedReview.h"),"Field::Experience",
         "experienceForLevel5(")
 require(surface,"Generation V Level","Generation V Experience")
+# Species changes must use exact native personal data and never reroll PID.
+require(native_stage,"case Field::Species:","value>649",
+        "target.info->growthRate!=personal.info->growthRate",
+        "genderAllowed5(target.info->genderRatio,gender)",
+        "candidate[0x15]=ability;",
+        "field==Field::Species || field==Field::Nature")
+require(native_session,"apply(Field::Species,0,after.species())")
+require(native_review,"Field::Species,0,before.species(),after.species()")
+require(native_bridge,"NativeField::Species,stat,value,error")
+require(native_screen,'{Field::Species,0,"Species Dex ID",649}',
+        "case Field::Species:return pk.species();")
+require(surface,"Generation V Species Dex ID (native-compatible only)",
+        "case Field::Species:name")
+require(read("tests/test_gen5_pk5_readonly.cpp"),
+        "Field::Species,0,26","Field::Species,0,32")
+require(read("tests/test_gen5_readonly_save.cpp"),
+        "ui.stageFieldValue(26,error)",
+        "localUiWorkspace.viewParty(0)->species()==26")
+# Duplicate switch labels are an immediate native C++ compile failure.
+gen5_access=shared_contract.split("if (generation == Generation::Gen5) {",1)[1]
+gen5_access=gen5_access.split("return FieldAccess::Hidden;\n}",1)[0]
+assert gen5_access.count("case FieldIdentity::Nickname:")==1
+assert gen5_access.count("case FieldIdentity::Species:")==1
+
 # Native text editing stays on the strict PK5 writer whitelist.
 native_text=read("include/Integration/Gen5/Gen5NativeText.h")
 require(native_text,"asciiName5(","encodeAsciiName5(",
@@ -520,7 +544,7 @@ require(native_session,"stageName(Field field,std::string_view name",
         "stagePartyName(","stageBoxName(","replayName(true)")
 require(native_review,"candidate->stageName(nickname,*name,error)",
         "Field::NicknameText","Field::OriginalTrainerText")
-require(native_screen,"std::array<EditableRow,42>",
+require(native_screen,"std::array<EditableRow,43>",
         '{Field::Nickname,0,"Nickname",10}',
         '{Field::OriginalTrainer,0,"OT Name",7}',
         "stageNameValue(")

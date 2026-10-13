@@ -690,6 +690,7 @@ int main() {
         assert(G::fieldAccess(GF::MetLevel)==GAccess::Editable);
         assert(G::fieldAccess(GF::Level)==GAccess::Editable);
         assert(G::fieldAccess(GF::Experience)==GAccess::Editable);
+        assert(G::fieldAccess(GF::Species)==GAccess::Editable);
         assert(G::fieldAccess(GF::Nickname)==GAccess::Editable);
         assert(G::fieldAccess(GF::OriginalTrainer)==GAccess::Editable);
         assert(G::fieldAccess(GF::Ability)==GAccess::Editable);
@@ -699,7 +700,7 @@ int main() {
         assert(G::fieldAccess(GF::Move)==GAccess::Editable);
         assert(G::fieldAccess(GF::MovePP)==GAccess::Editable);
         assert(G::fieldAccess(GF::MovePPUps)==GAccess::Editable);
-        static_assert(G::Gen5SharedScreenState::kEditableRows.size()==42);
+        static_assert(G::Gen5SharedScreenState::kEditableRows.size()==43);
         assert(G::fieldAccess(GF::TrainerId)==GAccess::Editable);
         assert(G::fieldAccess(GF::SecretId)==GAccess::Editable);
         assert(G::fieldAccess(GF::OriginalTrainerGender)==GAccess::Editable);
@@ -756,7 +757,8 @@ int main() {
         assert(rows[38].field==GF::Level &&
                rows[39].field==GF::Experience &&
                rows[40].field==GF::Nickname &&
-               rows[41].field==GF::OriginalTrainer);
+               rows[41].field==GF::OriginalTrainer &&
+               rows[42].field==GF::Species);
         assert(rows[2].field==GF::HeldItem && rows[3].field==GF::Ball);
         assert(rows[4].field==GF::MetLevel);
         ui.moveField(2);
@@ -900,9 +902,15 @@ int main() {
         ui.moveField(1);
         assert(rows[41].field==GF::OriginalTrainer);
         assert(ui.stageNameValue("NXT",error));
+        ui.moveField(1);
+        assert(rows[42].field==GF::Species);
+        assert(!ui.stageFieldValue(1,error)); // Different EXP growth curve.
+        assert(ui.stageFieldValue(26,error)); // Pikachu -> Raichu.
+        assert(ui.draft().current()->species()==26);
         assert(ui.keep(localUiWorkspace,error));
         assert(localUiWorkspace.viewParty(0)->hiddenAbility());
         assert(localUiWorkspace.viewParty(0)->gender()==1);
+        assert(localUiWorkspace.viewParty(0)->species()==26);
         assert(G::asciiName5(localUiWorkspace.viewParty(0)->decodedBytes(),true)=="NXPIKA");
         assert(G::asciiName5(localUiWorkspace.viewParty(0)->decodedBytes(),false)=="NXT");
         const auto identityChanges=localUiWorkspace.pendingReview();

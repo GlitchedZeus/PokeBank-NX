@@ -27,7 +27,7 @@ public:
         ConfirmDiscardAll, ConfirmExport, ConfirmExit
     };
     struct EditableRow { Field field; size_t stat; const char* label; uint32_t maximum; };
-    static constexpr std::array<EditableRow,42> kEditableRows{{
+    static constexpr std::array<EditableRow,43> kEditableRows{{
         {Field::Nature,0,"Nature",24}, {Field::Friendship,0,"Friendship",255},
         {Field::HeldItem,0,"Held Item ID",638},
         {Field::Ball,0,"Ball ID",25},
@@ -62,7 +62,8 @@ public:
         {Field::Level,0,"Level",100},
         {Field::Experience,0,"Experience",1640000},
         {Field::Nickname,0,"Nickname",10},
-        {Field::OriginalTrainer,0,"OT Name",7}
+        {Field::OriginalTrainer,0,"OT Name",7},
+        {Field::Species,0,"Species Dex ID",649}
     }};
 
     [[nodiscard]] Surface surface() const noexcept { return surface_; }
@@ -337,6 +338,7 @@ public:
                                               const EditableRow& row,
                                               bool black2White2=false) noexcept {
         switch(row.field) {
+            case Field::Species:return pk.species();
             case Field::Level: {
                 const auto info=personal5(pk.species(),pk.form(),black2White2);
                                 return pk.partyRecord()?pk.partyLevel():
@@ -379,7 +381,8 @@ public:
         const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
         if(row.field==Field::Move || row.field==Field::MetLocation ||
            row.field==Field::Ability || row.field==Field::Form || row.field==Field::Gender ||
-           row.field==Field::Nickname || row.field==Field::OriginalTrainer) {
+           row.field==Field::Nickname || row.field==Field::OriginalTrainer ||
+           row.field==Field::Species) {
             error="Press A to choose a verified Generation V picker value";
             return false;
         }

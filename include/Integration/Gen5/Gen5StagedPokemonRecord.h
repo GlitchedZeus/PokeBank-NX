@@ -26,7 +26,7 @@ class StagedPokemon5Record {
 public:
     enum class Field : uint8_t { Nature, Friendship, IV, EV, HeldItem, Ball, MetLevel,
                                 Move, MovePP, MovePPUps, TrainerId, SecretId, OriginalTrainerGender,
-                                Pokerus, MetLocation, FatefulEncounter, Form, AbilitySlot, Gender, Level, Experience, NicknameText, OriginalTrainerText };
+                                Pokerus, MetLocation, FatefulEncounter, Form, AbilitySlot, Gender, Level, Experience, NicknameText, OriginalTrainerText, Species };
 
     static std::optional<StagedPokemon5Record> create(
         std::span<const uint8_t> source, std::string* error = nullptr,
@@ -93,6 +93,34 @@ public:
         const uint8_t sourceForm=static_cast<uint8_t>(candidate[0x40]>>3);
         const auto personal=personal5(species,sourceForm,black2White2_);
         switch (field) {
+            case Field::Species: {
+                // No silent PID rerolls, species-specific form remapping,
+                // gender overrides, EXP curve changes, or imported mechanics.
+                // These belong to dedicated verified transactions, not to a
+                // blind Pokémon ID replacement.
+                if(stat!=0 || value<1 || value>649 || !personal)
+                    return fail("Gen V species requires a native 1..649 identity");
+                if(value==species)break;
+                if(sourceForm!=0)
+                    return fail("Gen V species changes require base form; select Form 0 first");
+                const auto target=personal5(value,0,black2White2_);
+                if(!target || personal.info->growthRate>5 ||
+                   target.info->growthRate!=personal.info->growthRate)
+                    return fail("Gen V target species must share the source EXP growth group");
+                const auto gender=static_cast<uint8_t>((candidate[0x40]>>1)&3);
+                if(!genderAllowed5(target.info->genderRatio,gender))
+                    return fail("Gen V target species cannot preserve this Pokémon gender");
+                const uint8_t slot=(candidate[0x42]&1)?2:
+                    static_cast<uint8_t>((Crypto::read32(candidate,0)>>16)&1);
+                const uint8_t ability=abilityForSlot5(*target.info,slot);
+                if(ability==0)
+                    return fail("Gen V target species has no corresponding ability slot");
+                // No changes to nickname, met history, moves, PID, EXP,
+                // EV/IV or OT. Such details may need later legality review.
+                Crypto::write16(candidate,0x08,static_cast<uint16_t>(value));
+                candidate[0x15]=ability;
+                break;
+            }
             case Field::Form: {
                 if(stat!=0 || value>31)
                     return fail("Gen V form is outside the native 5-bit range");
@@ -159,25 +187,24 @@ public:
                     (candidate[0x40]&~uint8_t{6}) | (value<<1));
                 break;
             }
-            case Field::Level:
+            case Field::Level: {
                 if(stat!=0 || value<1 || value>100 || !personal ||
                    personal.info->growthRate>5)
                     return fail("Gen V level requires exact personal growth and 1..100");
-                if(Crypto::read32(candidate,0x10)==
-                   experienceForLevel5(personal.info->growthRate,value))
-                    break;
-                Crypto::write16(candidate,0x10,static_cast<uint16_t>(
-                    experienceForLevel5(personal.info->growthRate,value)));
-                Crypto::write16(candidate,0x12,static_cast<uint16_t>(
-                    experienceForLevel5(personal.info->growthRate,value)>>16));
+                const uint32_t desired=experienceForLevel5(personal.info->growthRate,value);
+                Crypto::write16(candidate,0x10,static_cast<uint16_t>(desired));
+                Crypto::write16(candidate,0x12,static_cast<uint16_t>(desired>>16));
+                // A pre-existing party level cache can disagree with stored EXP.
+                // Repair it in the same guarded transaction even when EXP
+                // already equals the exact threshold.
                 if(candidate.size()==Crypto::PartySize)
                     candidate[0x8C]=static_cast<uint8_t>(value);
                 break;
+            }
             case Field::Experience:
                 if(stat!=0 || !personal || personal.info->growthRate>5 ||
                    value>experienceForLevel5(personal.info->growthRate,100))
                     return fail("Gen V EXP exceeds this species' native level-100 limit");
-                if(Crypto::read32(candidate,0x10)==value)break;
                 Crypto::write16(candidate,0x10,static_cast<uint16_t>(value));
                 Crypto::write16(candidate,0x12,static_cast<uint16_t>(value>>16));
                 if(candidate.size()==Crypto::PartySize)
@@ -332,7 +359,7 @@ public:
         // Stat-dependent native edits must never leave stale party battle
         // caches: HP/current HP, stats and level are part of the PK5 extension.
         // Recalculate only when a meaningful stat-related byte changed.
-        const bool statEdit=field==Field::Nature || field==Field::IV ||
+        const bool statEdit=field==Field::Species || field==Field::Nature || field==Field::IV ||
             field==Field::EV || field==Field::Form ||
             field==Field::Level || field==Field::Experience;
         if(statEdit && candidate.size()==Crypto::PartySize &&

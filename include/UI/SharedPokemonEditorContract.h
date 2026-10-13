@@ -358,8 +358,9 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
     if (generation == Generation::Gen5) {
         // Gen IV parity is enabled incrementally by exact native PK5
         // mutations with deterministic replay and original-SAV protection.
-        // Coupled moves, ability/form and party-stat updates stay locked.
+        // All edits require native guarded PK5 staged transactions; source saves remain immutable.
         switch (field) {
+            case FieldIdentity::Species:
             case FieldIdentity::Level:
             case FieldIdentity::Experience:
             case FieldIdentity::Friendship:
@@ -384,8 +385,6 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::MetLocation:
             case FieldIdentity::FatefulEncounter:
                 return FieldAccess::Editable;
-            case FieldIdentity::Species:
-            case FieldIdentity::Nickname:
             case FieldIdentity::Shiny:
             case FieldIdentity::Language:
             case FieldIdentity::CalculatedStats:

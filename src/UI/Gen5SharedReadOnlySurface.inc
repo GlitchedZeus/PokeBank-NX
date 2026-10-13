@@ -117,6 +117,7 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                    field==ScreenState::Field::SecretId ||
                    field==ScreenState::Field::Level ||
                    field==ScreenState::Field::Experience ||
+                   field==ScreenState::Field::Species ||
                    field==ScreenState::Field::Nickname ||
                    field==ScreenState::Field::OriginalTrainer ||
                    field==ScreenState::Field::Ability ||
@@ -236,7 +237,8 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                     } else if(row.field==ScreenState::Field::TrainerId ||
                               row.field==ScreenState::Field::SecretId ||
                               row.field==ScreenState::Field::Level ||
-                              row.field==ScreenState::Field::Experience) {
+                              row.field==ScreenState::Field::Experience ||
+                              row.field==ScreenState::Field::Species) {
                         const auto current=state.draft().current();
                         if(current) {
                             const auto old=ScreenState::fieldValue(*current,row,state.black2White2());
@@ -250,16 +252,21 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                             const int maximum=expField?static_cast<int>(
                                 PokeVault::Integration::Gen5::experienceForLevel5(
                                     info.info->growthRate,100)):
+                                row.field==ScreenState::Field::Species?649:
                                 row.field==ScreenState::Field::Level?100:65535;
                             const char* label=row.field==ScreenState::Field::TrainerId
                                 ? "Generation V Trainer ID":
                                 row.field==ScreenState::Field::SecretId
                                 ? "Generation V Secret ID":
                                 row.field==ScreenState::Field::Level
-                                ? "Generation V Level":"Generation V Experience";
+                                ? "Generation V Level":
+                                row.field==ScreenState::Field::Species
+                                ? "Generation V Species Dex ID (native-compatible only)":
+                                  "Generation V Experience";
                             const auto result=Utils::promptNumber(
                                 label,static_cast<int>(old),
-                                row.field==ScreenState::Field::Level?1:0,maximum);
+                                (row.field==ScreenState::Field::Level ||
+                                 row.field==ScreenState::Field::Species)?1:0,maximum);
                             if(result.accepted) {
                                 std::string error;
                                 if(!state.stageFieldValue(
@@ -560,6 +567,7 @@ std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedField
         case Field::Nature:name="Nature";break;
         case Field::Level:name="Level";break;
         case Field::Experience:name="Experience";break;
+        case Field::Species:name="Species";break;
         case Field::NicknameText:name="Nickname";break;
         case Field::OriginalTrainerText:name="OT Name";break;
         case Field::Friendship:name="Friendship";break;
@@ -679,6 +687,7 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
            row.field!=ScreenState::Field::SecretId &&
            row.field!=ScreenState::Field::Level &&
            row.field!=ScreenState::Field::Experience &&
+           row.field!=ScreenState::Field::Species &&
            row.field!=ScreenState::Field::Nickname &&
            row.field!=ScreenState::Field::OriginalTrainer &&
            row.field!=ScreenState::Field::Ability &&
@@ -710,6 +719,7 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
            row.field==ScreenState::Field::SecretId ||
            row.field==ScreenState::Field::Level ||
            row.field==ScreenState::Field::Experience ||
+           row.field==ScreenState::Field::Species ||
            row.field==ScreenState::Field::Nickname ||
            row.field==ScreenState::Field::OriginalTrainer ||
            row.field==ScreenState::Field::Ability ||
@@ -720,6 +730,7 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                 row.field==ScreenState::Field::SecretId ||
                 row.field==ScreenState::Field::Level ||
                 row.field==ScreenState::Field::Experience ||
+                row.field==ScreenState::Field::Species ||
                 row.field==ScreenState::Field::Nickname ||
                 row.field==ScreenState::Field::OriginalTrainer?"A Edit":"A Pick",
                 Colors::Accent,TextStyle::Body);

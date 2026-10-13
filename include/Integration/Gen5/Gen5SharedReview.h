@@ -73,6 +73,8 @@ struct VerifiedSlotReview {
     };
     if(!replayName(true) || !replayName(false))
         return fail("Gen V pending review includes invalid native text changes");
+    if(!apply(Field::Species,0,before.species(),after.species()))
+        return std::nullopt;
     if(!apply(Field::Nature,0,before.nature(),after.nature()) ||
        !apply(Field::Friendship,0,before.friendship(),after.friendship()) ||
        !apply(Field::HeldItem,0,before.heldItem(),after.heldItem()) ||
