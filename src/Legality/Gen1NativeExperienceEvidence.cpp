@@ -43,6 +43,12 @@ Result evaluate(const Gen1::PokemonRecord& r,Source source) noexcept {
                                 out.personalGrowthRate);
     out.levelFromExperience=
         Pokemon::getLevelFromExp(r.experience,out.personalGrowthRate);
+    // The shared experience helper deliberately clamps all values above
+    // the level-100 threshold to 100. That clamp alone is NOT evidence
+    // that an arbitrary oversaturated 24-bit EXP value arose naturally.
+    if(storedLevel==100 && r.experience>out.minimumExperienceAtLevel){
+        out.status=Status::UnknownOriginalProgression;return out;
+    }
     if(r.experience<out.minimumExperienceAtLevel ||
        r.experience>=out.exclusiveExperienceAtNextLevel ||
        out.levelFromExperience!=storedLevel) {
