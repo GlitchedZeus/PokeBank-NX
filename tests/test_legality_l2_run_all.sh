@@ -100,6 +100,7 @@ for test in "${tests[@]}"; do
         sources+=(
             "$root/src/Legality/Gen1NativeDVStatEvidence.cpp"
             "$root/src/Integration/Gen1/Gen1BattleStats.cpp"
+            "$root/src/Integration/Gen1/Gen1StagedPokemonEditor.cpp"
             "$root/src/Integration/Gen1/Gen1ReadOnlySave.cpp"
         )
     fi
@@ -117,6 +118,10 @@ for test in "${tests[@]}"; do
         attempted=$((attempted+1))
         flags=(-std=c++20 -Wall -Wextra -Wpedantic -Werror
                -Wno-unused-parameter -I"$root/include")
+        if [[ "$test" == test_legality_l2_gen1_native_dv_stat ||
+              "$test" == test_legality_l2_gen1_native_record_adversarial ]]; then
+            flags+=(-ffunction-sections -fdata-sections -Wl,--gc-sections)
+        fi
         if [[ "$mode" == sanitizers ]]; then
             flags+=(-g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer)
         else
