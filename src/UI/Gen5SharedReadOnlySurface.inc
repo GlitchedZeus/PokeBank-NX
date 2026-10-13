@@ -213,7 +213,17 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             if(keys&HidNpadButton_Up)state.moveAction(-1,staged);
             if(keys&HidNpadButton_Down)state.moveAction(1,staged);
             if(keys&HidNpadButton_B)state.back();
-            if(keys&HidNpadButton_A) {
+            else if(keys&HidNpadButton_Y) {
+                std::string error;
+                if(!state.undoSelectedBoxReplacement(staged,
+                   [&](std::string& why) {
+                       return trainer.refreshStagedPokemonPresentation(why);
+                   },error))
+                    screen.postStatus(error,300);
+                else screen.postStatus(
+                    "Selected staged box operation undone; original SAV5 unchanged",260);
+                screen.controllerNavigation.reset();
+            } else if(keys&HidNpadButton_A) {
                 std::string error;
                 if(!state.activateSelected(staged,error))
                     screen.postStatus(error,300);
@@ -590,7 +600,7 @@ void drawVerifiedSummary(TrainerViewScreen& screen,PKSEFramebuffer& fb,
     fb.drawText(x+26,y+22,"Generation V - Verified PK5 Summary",
                 Colors::Text,TextStyle::Heading);
     fb.drawText(x+26,y+60,editDraft ? "App-memory draft ONLY - not written to the emulator SAV5"
-                          : "Passive View - source SAV5 unchanged - legality unresolved",
+                          : "Verified PK5 View - original SAV5 unchanged",
                 Colors::Accent,TextStyle::Caption);
     const std::string species=std::string(p->species());
     fb.drawText(x+30,y+106,species+"  #"+std::to_string(p->speciesID()),
@@ -667,10 +677,16 @@ void drawActions(TrainerViewScreen& screen,PKSEFramebuffer& fb,
             static_cast<int>(i)==state.actionRow()?Colors::Text:Colors::TextSecondary,
             TextStyle::Body);
     }
+    const bool canUndo=state.selectedBoxUndoAvailable(workspace);
     fb.drawText(x+26,y+h-30,
-        "View / verified PK5 edit only; source SAV5 remains untouched",
+        canUndo ? "Y undoes only this staged slot; original SAV5 unchanged"
+                : "Verified app-memory PK5 actions; source SAV5 unchanged",
         Colors::Accent,TextStyle::Caption);
-    drawNavBar(fb,{{"D-pad/Stick","Choose"},{"A","Select"},{"B","Cancel"}});
+    if(canUndo)
+        drawNavBar(fb,{{"D-pad/Stick","Choose"},{"A","Select"},
+                       {"Y","Undo This Slot"},{"B","Cancel"}});
+    else
+        drawNavBar(fb,{{"D-pad/Stick","Choose"},{"A","Select"},{"B","Cancel"}});
 }
 const char* reviewedStatName(size_t stat) noexcept {
     constexpr const char* names[]={"HP","Atk","Def","Spe","SpA","SpD"};

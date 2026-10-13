@@ -270,6 +270,29 @@ require(read(".github/workflows/gen5-focused-host.yml"),
         "test_gen5_create_integration test_gen5_box_touch; do",
         "test_gen5_create_integration_sanitize test_gen5_box_touch_sanitize; do")
 
+# Shared Gen V action-screen Undo is limited to app-owned Box Clone,
+# Remove and Create transactions; never reach generic storage/save handlers.
+require(read("include/Integration/Gen5/Gen5SharedScreenState.h"),
+        "selectedBoxUndoAvailable(",
+        "undoSelectedBoxReplacement(",
+        "ws.undoBoxReplacement(",
+        "ws=std::move(snapshot)",
+        "surface_=Surface::Browse")
+require(surface,
+        "state.undoSelectedBoxReplacement(staged",
+        "state.selectedBoxUndoAvailable(workspace)",
+        '"Y","Undo This Slot"')
+undo_tests=read("tests/test_gen5_readonly_save.cpp")
+require(undo_tests,
+        "actionUi.selectedBoxUndoAvailable(ops)",
+        "actionUi.undoSelectedBoxReplacement(",
+        "Forced presentation failure for Undo regression")
+create_undo_tests=read("tests/test_gen5_create_integration.cpp")
+require(create_undo_tests,
+        "createUi.selectedBoxUndoAvailable(workspace)",
+        "createUi.undoSelectedBoxReplacement(workspace",
+        "Create Undo presentation failure")
+
 # Native PK5 creation must enter the SAME app-owned workspace/Review/export
 # pipeline, never get a separate per-generation save writer or editor shell.
 created_workspace=read("include/Integration/Gen5/Gen5StagedPokemonWorkspace.h")

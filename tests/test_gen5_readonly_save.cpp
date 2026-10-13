@@ -776,6 +776,33 @@ int main() {
             assert(output && output->changedRecords==2);
             assert(std::equal(parsed->sourceBytes().begin(),
                               parsed->sourceBytes().end(),sav.begin()));
+            // Existing action screen Y undoes only the selected staged Box
+            // transaction. Rejected view refresh must restore exact bytes.
+            assert(actionUi.openActions(ops,Slot{Region::Box,0,1},error));
+            assert(actionUi.selectedBoxUndoAvailable(ops));
+            assert(!actionUi.undoSelectedBoxReplacement(
+                ops,[&](std::string& why) {
+                    why="Forced presentation failure for Undo regression";
+                    return false;
+                },error));
+            assert(actionUi.surface()==G::Gen5SharedScreenState::Surface::Actions);
+            assert(ops.viewBox(0,1)->species()==25);
+            assert(ops.changedRecordCount()==2);
+            assert(actionUi.undoSelectedBoxReplacement(
+                ops,[&](std::string&){return true;},error));
+            assert(actionUi.surface()==G::Gen5SharedScreenState::Surface::Browse);
+            assert(ops.viewBox(0,1)->empty() && ops.changedRecordCount()==1);
+            assert(actionUi.openActions(ops,Slot{Region::Box,0,0},error));
+            assert(actionUi.selectedBoxUndoAvailable(ops));
+            assert(actionUi.undoSelectedBoxReplacement(
+                ops,[&](std::string&){return true;},error));
+            assert(ops.viewBox(0,0)->species()==133 && !ops.hasChanges());
+            assert(actionUi.openActions(ops,Slot{Region::Box,0,0},error));
+            assert(!actionUi.selectedBoxUndoAvailable(ops));
+            assert(!actionUi.undoSelectedBoxReplacement(
+                ops,[&](std::string&){return true;},error));
+            assert(!ops.hasChanges());
+            assert(!actionUi.back());
             ops.discardAll();
             assert(!ops.hasChanges() && ops.viewBox(0,0)->species()==133);
         }

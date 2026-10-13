@@ -1,5 +1,6 @@
 #include "Integration/Gen5/Gen5NativeCreate.h"
 #include "Integration/Gen5/Gen5SharedPokemonSession.h"
+#include "Integration/Gen5/Gen5SharedScreenState.h"
 #include "Integration/Gen5/Gen5StagedSaveCandidate.h"
 
 #include <cstdlib>
@@ -182,6 +183,24 @@ static void exercise(uint32_t version, bool backup, uint32_t species) {
     forgedCreate=createChanges.front();
     forgedCreate.kind=Kind::CloneBox;
     CHECK(!G::verifyStagedReview(forgedCreate,&error));
+    // The SAME shared Pokémon action screen can undo the newly staged
+    // native Create independently, without discarding other pending work.
+    G::Gen5SharedScreenState createUi;
+    CHECK(createUi.openActions(workspace,{Region::Box,0,1},error));
+    CHECK(createUi.selectedBoxUndoAvailable(workspace));
+    CHECK(!createUi.undoSelectedBoxReplacement(workspace,
+        [&](std::string& why) {
+            why="Create Undo presentation failure";
+            return false;
+        },error));
+    CHECK(createUi.selectedBoxUndoAvailable(workspace));
+    CHECK(workspace.changedRecordCount()==1);
+    CHECK(createUi.undoSelectedBoxReplacement(workspace,
+        [&](std::string&){return true;},error));
+    CHECK(workspace.viewBox(0,1)->empty());
+    CHECK(!workspace.hasChanges());
+    CHECK(!createUi.selectedBoxUndoAvailable(workspace));
+    CHECK(workspace.createInEmptyBox(r,0,1,&error));
     // Undo and discard can never alter the original validated save.
     CHECK(workspace.undoBoxReplacement(0,1));
     CHECK(!workspace.hasChanges());

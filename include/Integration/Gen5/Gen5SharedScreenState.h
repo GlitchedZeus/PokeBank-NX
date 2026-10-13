@@ -197,7 +197,7 @@ public:
             black2White2_=workspace.black2White2();
             return true;
         }
-        error="Generation V has no Create, Clone, Remove or automatic fix";
+        error="Unsupported shared Gen V operation; original source remains unchanged";
         return false;
     }
     [[nodiscard]] bool activateSelected(const Workspace& workspace,std::string& error) {
@@ -248,6 +248,37 @@ public:
         if(!std::forward<Refresh>(refresh)(error)) {
             workspace=std::move(snapshot);
             if(error.empty())error="Gen V remove presentation rejected; stage rolled back";
+            return false;
+        }
+        surface_=Surface::Browse;
+        error.clear();
+        return true;
+    }
+    // Undo only the selected app-owned Clone / Remove / Create operation.
+    // This uses the existing shared Actions screen (Y), not a new editor or
+    // generic source mutation path. Failed presentation rolls back atomically.
+    [[nodiscard]] bool selectedBoxUndoAvailable(const Workspace& ws) const noexcept {
+        return surface_==Surface::Actions &&
+            target_.region==Workspace::Region::Box &&
+            Workspace::canonicalSlot(target_) &&
+            ws.isBoxReplacement(target_.box,target_.slot);
+    }
+    template<class Refresh>
+    [[nodiscard]] bool undoSelectedBoxReplacement(Workspace& ws,
+                                                   Refresh&& refresh,
+                                                   std::string& error) {
+        if(!selectedBoxUndoAvailable(ws)) {
+            error="Gen V Undo requires one selected staged box operation";
+            return false;
+        }
+        Workspace snapshot=ws;
+        if(!ws.undoBoxReplacement(target_.box,target_.slot)) {
+            error="Gen V box operation was already cleared";
+            return false;
+        }
+        if(!std::forward<Refresh>(refresh)(error)) {
+            ws=std::move(snapshot);
+            if(error.empty())error="Gen V Undo presentation failed; stage restored";
             return false;
         }
         surface_=Surface::Browse;
