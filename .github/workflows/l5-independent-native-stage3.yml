@@ -1,0 +1,72 @@
+name: L5 Independent Gen III-IV Native Fuzz QA
+
+on:
+  push:
+    branches:
+      - audit/legality-l5-research-qa-20261012
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: l5-stage3-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-stage3:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          submodules: recursive
+          persist-credentials: false
+      - name: Verify immutable source HEAD
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          test "$(git hash-object tests/fixtures/legality_l5_stage3_native_entity_boundary.cpp)" = "a0135799e4e30318e118f3767ffd8b5af684d751"
+          git diff --check
+          test -z "$(git status --porcelain --untracked-files=no)"
+      - name: Independently verify committed PK3/PK4 crypto source pins and negative controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l5_stage3_native_fuzz.py --self-test
+      - name: Actual original PK3/PK4 codec fuzz, GCC+Clang normal plus sanitizers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l5_stage3_native_fuzz.py --timeout 900
+      - name: Actual linked PK3/PK4 entities GCC and Clang optimized / ASan+UBSan
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="L5 Stage3 actual PK3/PK4 entity quarantine: 17310 PASS (synthetic; full-checkout production linkage)"
+          for compiler in g++ clang++; do
+            if [ "$compiler" = "clang++" ]; then
+              variant=-clang
+            else
+              variant=-gcc
+            fi
+            for mode in optimized sanitized; do
+              if [ "$mode" = sanitized ]; then
+                target=l5-stage3-entity-sanitize
+              else
+                target=l5-stage3-entity
+              fi
+              log="/tmp/l5-stage3-entity-${compiler}-${mode}.log"
+              make -f Makefile.host -f tools/audit_legality_l5_stage3_entities.mk \
+                CXX="$compiler" L5_STAGE3_ENTITY_VARIANT="$variant" "$target" | tee "$log"
+              grep -Fx "$expected" "$log"
+            done
+          done
+      - name: Reject tracked source mutation by the QA jobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          test -z "$(git status --porcelain --untracked-files=no)"

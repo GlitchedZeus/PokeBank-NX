@@ -1,0 +1,505 @@
+{
+  "schema": "L5_Q12_EV_253_255_PRODUCTION_REFERENCE_DIFFERENTIAL_V1",
+  "catalog": [
+    "Q12",
+    "Q14",
+    "Q18"
+  ],
+  "status": "CONFIRMED_SOURCE_SEMANTIC_DISAGREEMENT_NOT_EXECUTED_WHOLE_NATIVE_PK3_PK4_ANALYZER",
+  "severity": "false_Invalid risk for supported 253-255 Gen III-IV per-stat EVs",
+  "source_pins": {
+    "nx_repository": "GlitchedZeus/PokeBank-NX",
+    "nx_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+    "nx_path": "src/Legality/Legality.cpp",
+    "nx_git_blob_sha": "b1d02d6620e8fffca2cf71874b786d44108e193f",
+    "nx_lines": [
+      1625,
+      1633
+    ],
+    "pkhex_repository": "kwsch/PKHeX",
+    "pkhex_revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "pkhex_verifier_path": "PKHeX.Core/Legality/Verifiers/EffortValueVerifier.cs",
+    "pkhex_verifier_blob_sha": "86c9bc6ea0361821df86e1473788c228ce7506a0",
+    "pkhex_limits_path": "PKHeX.Core/PKM/Util/EffortValues.cs",
+    "pkhex_limits_blob_sha": "5904496c4e60df3eb421bdf4c387f9df08f130ad",
+    "pkhex_g3_path": "PKHeX.Core/PKM/Shared/G3PKM.cs",
+    "pkhex_g3_blob_sha": "1042c3edef50b4f2d16b164c56ef2a3461befc9f",
+    "pkhex_g4_path": "PKHeX.Core/PKM/Shared/G4PKM.cs",
+    "pkhex_g4_blob_sha": "c42aad87ec573ee59377db28a110a6403163de0c"
+  },
+  "source_semantics": {
+    "nx_per_stat_invalid_if_greater_than": 252,
+    "nx_has_no_generation_guard_here": true,
+    "pkhex_gen3_4_max_ev_per_stat": 255,
+    "pkhex_gen6_onward_hard_limit": 252,
+    "gen3_4_total_limit": 510,
+    "pkhex_encounter_history_checks_may_still_invalidate_specific_original_creature": true,
+    "read_only_no_code_copying": true
+  },
+  "source_anchors": [
+    {
+      "label": "NX hardcap",
+      "verified": true,
+      "path": "src/Legality/Legality.cpp:1628-29"
+    },
+    {
+      "label": "NX total",
+      "verified": true,
+      "path": "src/Legality/Legality.cpp:1631-32"
+    },
+    {
+      "label": "PK only G6 hardcap",
+      "verified": true,
+      "path": "PKHeX.Core/Legality/Verifiers/EffortValueVerifier.cs:42"
+    },
+    {
+      "label": "PK G3/4 context branch",
+      "verified": true,
+      "path": "PKHeX.Core/Legality/Verifiers/EffortValueVerifier.cs:44"
+    },
+    {
+      "label": "PK max255 def",
+      "verified": true,
+      "path": "PKHeX.Core/PKM/Util/EffortValues.cs:15"
+    },
+    {
+      "label": "PK G3 max",
+      "verified": true,
+      "path": "PKHeX.Core/PKM/Shared/G3PKM.cs:24"
+    },
+    {
+      "label": "PK G4 max",
+      "verified": true,
+      "path": "PKHeX.Core/PKM/Shared/G4PKM.cs:25"
+    }
+  ],
+  "scope_bounded_sweep": {
+    "degrees_of_freedom": "two EV stats vary from 0 through 255, other four fixed zero; both per-stat byte domain; total <=510 automatically",
+    "combinations_per_generation": 65536,
+    "diff_combinations_per_generation": 1527,
+    "generations": [
+      3,
+      4
+    ],
+    "all_combinations": 131072,
+    "all_delta_combinations": 3054,
+    "sweep_executed_as_native_analyzer": false
+  },
+  "fixture_vectors": [
+    {
+      "gen": 3,
+      "evs": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 0,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": false,
+      "delta": "NO_HARDCAP_DIFF",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 3,
+      "evs": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 1,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": false,
+      "delta": "NO_HARDCAP_DIFF",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 3,
+      "evs": [
+        100,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 100,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": false,
+      "delta": "NO_HARDCAP_DIFF",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 3,
+      "evs": [
+        251,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 251,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": false,
+      "delta": "NO_HARDCAP_DIFF",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 3,
+      "evs": [
+        252,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 252,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": false,
+      "delta": "NO_HARDCAP_DIFF",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 3,
+      "evs": [
+        253,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 253,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": true,
+      "delta": "NX_FALSE_INVALID_HARDCAP",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 3,
+      "evs": [
+        254,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 254,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": true,
+      "delta": "NX_FALSE_INVALID_HARDCAP",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 3,
+      "evs": [
+        255,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 255,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": true,
+      "delta": "NX_FALSE_INVALID_HARDCAP",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 4,
+      "evs": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 0,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": false,
+      "delta": "NO_HARDCAP_DIFF",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 4,
+      "evs": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 1,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": false,
+      "delta": "NO_HARDCAP_DIFF",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 4,
+      "evs": [
+        100,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 100,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": false,
+      "delta": "NO_HARDCAP_DIFF",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 4,
+      "evs": [
+        251,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 251,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": false,
+      "delta": "NO_HARDCAP_DIFF",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 4,
+      "evs": [
+        252,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 252,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": false,
+      "delta": "NO_HARDCAP_DIFF",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 4,
+      "evs": [
+        253,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 253,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": true,
+      "delta": "NX_FALSE_INVALID_HARDCAP",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 4,
+      "evs": [
+        254,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 254,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": true,
+      "delta": "NX_FALSE_INVALID_HARDCAP",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 4,
+      "evs": [
+        255,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 255,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": true,
+      "delta": "NX_FALSE_INVALID_HARDCAP",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 3,
+      "evs": [
+        253,
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 255,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": true,
+      "delta": "NX_FALSE_INVALID_HARDCAP",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 3,
+      "evs": [
+        254,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 255,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": true,
+      "delta": "NX_FALSE_INVALID_HARDCAP",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 3,
+      "evs": [
+        255,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 255,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": true,
+      "delta": "NX_FALSE_INVALID_HARDCAP",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 3,
+      "evs": [
+        255,
+        255,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 510,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": true,
+      "delta": "NX_FALSE_INVALID_HARDCAP",
+      "whole_creature_legality": "PKHeX MAY STILL APPLY CONTEXT-SPECIFIC EV GAIN HISTORY"
+    },
+    {
+      "gen": 4,
+      "evs": [
+        253,
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 255,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": true,
+      "delta": "NX_FALSE_INVALID_HARDCAP",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 4,
+      "evs": [
+        254,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 255,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": true,
+      "delta": "NX_FALSE_INVALID_HARDCAP",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 4,
+      "evs": [
+        255,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 255,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": true,
+      "delta": "NX_FALSE_INVALID_HARDCAP",
+      "whole_creature_legality": "NOT_DETERMINED_BY_EV_CAP_ALONE"
+    },
+    {
+      "gen": 4,
+      "evs": [
+        255,
+        255,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 510,
+      "original_field_max_compatible": true,
+      "pkhex_format_specific_hardcap_reject": false,
+      "nx_emits_ev_over252_invalid": true,
+      "delta": "NX_FALSE_INVALID_HARDCAP",
+      "whole_creature_legality": "PKHeX MAY STILL APPLY CONTEXT-SPECIFIC EV GAIN HISTORY"
+    }
+  ],
+  "positive_local_case": "Gen III or Gen IV Pokémon whose fully sourced training supports EV=253,254 or 255; independent provenance and encounter stage still necessary",
+  "repro_commands": [
+    "python3 tools/audit_legality_l5_ev_differential.py --source-root . --json-out Q12_diff.json",
+    "python3 tools/audit_legality_l5_ev_differential.py --self-test"
+  ],
+  "other_relevant_missing_rule": "Pinned EffortValueVerifier invalidates nonzero EVs on an unhatched egg at lines 16-21, whereas NX inspected EV section 1596-1632 does not have an equivalent egg EV-only branch. Full analyzer call graph and native fixture still needed before certifying second discrepancy.",
+  "suggested_owner_fix": "Coordinator/main engine: in the non-LGPE EV section use generation-aware hard limit (format/native Gen III-IV 255, modern formats 252); preserve sum<=510; add positive boundary controls 252/253/254/255 and invalid 510+; retain source-context-dependent egg/training verifiers; do not change production from L5."
+}

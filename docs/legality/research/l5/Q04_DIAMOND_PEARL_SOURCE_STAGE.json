@@ -1,0 +1,106 @@
+{
+  "schema": "L5_Q04_DP_SOURCE_ATTESTATION_V1",
+  "catalog_id": "Q04",
+  "source": {
+    "repository": "pret/pokediamond",
+    "revision": "b623abef1b4dfe204ca50aab42447ac00c134290",
+    "source_path": "arm9/overlays/05/asm/ov05_021EC458.s",
+    "git_blob_sha": "e084c052388870e0d3e984379b1bb23e1a911790",
+    "sha256_utf8": "c1749189ad1fd6a170f4327e15037aaad38b38dd76529bb4318c99ffab1c52ca",
+    "lines": 2939
+  },
+  "rng_support": {
+    "source_path": "arm9/src/math_util.c",
+    "git_blob_sha": "fba1e3e01d4296abc3a53611340044922e32c633",
+    "sha256_utf8": "0bdd083ca239c0ead6b96aa732b8d5a0226b9ea85a34b03b1240fcb481eb39b8",
+    "caveat": "RNG definitions/callers require exact ARM instruction-level oracle for independently executed original retail comparison"
+  },
+  "source_symbols": [
+    {
+      "symbol": "ov05_021EC8A8",
+      "source_line_first": 529,
+      "source_line_last": 610,
+      "claim": "Either/female Everstone selection and strict <0x7FFF gate",
+      "symbol_found": true
+    },
+    {
+      "symbol": "ov05_021EC944",
+      "source_line_first": 612,
+      "source_line_last": 652,
+      "claim": "MT pending PID nature search bounded at 2,401 attempts",
+      "symbol_found": true
+    },
+    {
+      "symbol": "ov05_021EC99C",
+      "source_line_first": 654,
+      "source_line_last": 685,
+      "claim": "Original incorrect-removal helper",
+      "symbol_found": true
+    },
+    {
+      "symbol": "ov05_021EC9D4",
+      "source_line_first": 688,
+      "source_line_last": 832,
+      "claim": "6 LCRandom IV-stage draws; donor order retained",
+      "symbol_found": true
+    },
+    {
+      "symbol": "ov05_Daycare_CreateEgg",
+      "source_line_first": 1482,
+      "source_line_last": 1530,
+      "claim": "Language detection and at most four PRandom PID transforms",
+      "symbol_found": true
+    }
+  ],
+  "retail_game_applies": [
+    "Diamond",
+    "Pearl"
+  ],
+  "binary_correspondence": {
+    "diamond": "unverified",
+    "pearl": "unverified",
+    "region_variants": "unverified",
+    "arm_assembly_executed": "no",
+    "native_pair_history": "unavailable"
+  },
+  "candidate_vectors": [
+    {
+      "id": "DP-PID-P1",
+      "kind": "positive",
+      "input": "known parental Everstone stage; LCRandom output 0x7FFE",
+      "expected": "source branch below 0x7FFF accepts Everstone threshold, other parent history not established"
+    },
+    {
+      "id": "DP-PID-N1",
+      "kind": "candidate_negative",
+      "input": "known parental stage; LCRandom output exactly 0x7FFF; claimed less-than success",
+      "expected": "claim contradicts this retail branch only"
+    },
+    {
+      "id": "DP-PID-U1",
+      "kind": "Unknown",
+      "input": "no original parents/Everstone held-item receipt",
+      "expected": "Unknown; do not infer original egg history"
+    },
+    {
+      "id": "DP-IV-P1",
+      "kind": "positive",
+      "input": "hypothetical original LCRNG + six draws and deposited slot-order witness",
+      "expected": "source-scope replay may be compatible, requires original-stage inputs"
+    },
+    {
+      "id": "DP-IV-N1",
+      "kind": "candidate_negative",
+      "input": "source witness claims 4 draws in DP IV stage",
+      "expected": "candidate contradiction to original assembly's 3 selected indices + 3 donors"
+    },
+    {
+      "id": "DP-IV-U1",
+      "kind": "Unknown",
+      "input": "detached PK4 with missing original seed/parent order",
+      "expected": "Unknown, not impossible"
+    }
+  ],
+  "next_gate": "Run instruction-level oracle/actual retail ARM stage, verify Diamond/Pearl binary revisions and regional identity, pair original parents/MT transcript/native egg; do not ship copied ARM bodies",
+  "license_status": "reference only; original ROM/decompilation reuse review required"
+}

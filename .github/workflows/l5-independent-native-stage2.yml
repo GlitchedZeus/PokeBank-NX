@@ -1,0 +1,62 @@
+name: L5 Independent Native Gen I-II QA
+
+on:
+  push:
+    branches:
+      - audit/legality-l5-research-qa-20261012
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: l5-stage2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  l5-stage2:
+    name: Exact-head L5 native analyzer plus ASan/UBSan
+    runs-on: ubuntu-22.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          submodules: recursive
+          persist-credentials: false
+      - name: Verify exact immutable checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          git diff --check
+          test -z "$(git status --porcelain --untracked-files=no)"
+      - name: Verify exact-source independent native contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l5_stage2.py --self-test
+          python3 tools/audit_legality_l5_stage2.py --timeout 600
+      - name: Run actual PK1/PK2 Legality analyzer baseline and sanitizers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l5_stage2.py --native-analyzer --timeout 900
+      - name: Link real PK1/PK2 wrappers and reproduce source-free F3/F4 baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f Makefile.host -f tools/audit_legality_l5_pk12_probe.mk l5-pk12-baseline \
+            | tee /tmp/l5-pk12-sourcefree-normal.log
+          grep -Fx "L5 actual PK1/PK2 native analyzer: known false-Invalid baseline PASS (12 synthetic contexts, no retail history)" \
+            /tmp/l5-pk12-sourcefree-normal.log
+          make -f Makefile.host -f tools/audit_legality_l5_pk12_probe.mk l5-pk12-baseline-sanitize \
+            | tee /tmp/l5-pk12-sourcefree-sanitized.log
+          grep -Fx "L5 actual PK1/PK2 native analyzer: known false-Invalid baseline PASS (12 synthetic contexts, no retail history)" \
+            /tmp/l5-pk12-sourcefree-sanitized.log
+      - name: Recheck source changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          test -z "$(git status --porcelain --untracked-files=no)"

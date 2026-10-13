@@ -1,0 +1,125 @@
+name: L5 Final Stage 7 Fail-Closed Dashboard
+
+on:
+  push:
+    branches:
+      - audit/legality-l5-research-qa-20261012
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: l5-stage7-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-gate-and-invalid-inventory:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: GlitchedZeus/PokeBank-NX
+          ref: ad9c1c859f94c0321a5d17489c72b0e7dbb9f440
+          path: _l5_stage7_coordinator
+          persist-credentials: false
+      - name: Check L5 and coordinator immutable identities and QA fixture blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          test "$(git -C _l5_stage7_coordinator rev-parse HEAD)" = "ad9c1c859f94c0321a5d17489c72b0e7dbb9f440"
+          test "$(git hash-object _l5_stage7_coordinator/src/Legality/Legality.cpp)" = "4ac8a0dc0badb8211eb105811eb3fa9f928e36e4"
+          test "$(git hash-object tools/audit_legality_l5_stage7_final.py)" = "e5445f0aebf169c7dc77b480dd61ce0b59cf9c2d"
+          test "$(git hash-object tools/audit_legality_l5_stage7_verdict_model.h)" = "477548009e0e67e6784a6d5d16a113d26ebc9341"
+          test "$(git hash-object tests/fixtures/legality_l5_stage7_verdict_fuzz.cpp)" = "c2c8ac0c0053e7c106ad9e014cbcf3df515ab0d0"
+          git diff --check
+      - name: Execute evidence-promotion and parser negative controls
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/audit_legality_l5_stage7_final.py
+          python3 tools/audit_legality_l5_stage7_final.py --self-test
+      - name: Build reproducible 336-cell evidence dashboard and 38-site current source audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l5_stage7_final.py \
+            --coordinator-root _l5_stage7_coordinator \
+            --current-coordinator-head ad9c1c859f94c0321a5d17489c72b0e7dbb9f440 \
+            --verify-manifests \
+            --json-out /tmp/l5-stage7-dashboard.json \
+            --csv-out /tmp/l5-stage7-336-cells.csv
+          python3 - <<'PY'
+          import csv, json
+          with open('/tmp/l5-stage7-dashboard.json', encoding='utf8') as f:
+              result=json.load(f)
+          with open('/tmp/l5-stage7-336-cells.csv', encoding='utf8', newline='') as f:
+              cells=list(csv.DictReader(f))
+          assert result['release_state']=='BLOCKED'
+          assert result['manifest_structure']=='PASS_SOURCE_PINNED'
+          assert len(cells)==336
+          assert len(result['cell_rows'])==336
+          assert result['native_applicable']==310
+          assert result['not_native']==26
+          assert result['historical_invalid_sites']==37
+          assert result['current_coordinator_direct_invalid_sites']==38
+          assert len(result['current_invalid_emissions'])==38
+          assert result['full_pkhex_retail_parity_cells']==0
+          assert result['authenticated_original_history_cells']==0
+          assert result['exact_game_retail_native_parity_certified']==0
+          assert result['site_certified_original_route_verdicts']==0
+          assert len(result['prior_14_release_gates'])==14
+          assert result['blockers']
+          assert all(c['certified'] is False for c in result['cell_rows'])
+          PY
+      - name: Run GCC and Clang optimized plus ASan/UBSan evidence lattice
+        shell: bash
+        run: |
+          set -euo pipefail
+          for cc in g++ clang++; do
+            for mode in optimized sanitized; do
+              if [ "$mode" = sanitized ]; then
+                flags="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer"
+              else
+                flags="-O2"
+              fi
+              # shellcheck disable=SC2086
+              "$cc" -std=c++20 -Wall -Wextra -Wpedantic -Werror $flags -I . \
+                tests/fixtures/legality_l5_stage7_verdict_fuzz.cpp \
+                -o "/tmp/l5-stage7-${cc}-${mode}"
+              ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 \
+              UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+                "/tmp/l5-stage7-${cc}-${mode}" | tee "/tmp/l5-stage7-${cc}-${mode}.txt"
+              grep -Fx "L5 Stage7 evidence lattice PASS 1980354 assertions (independent QA only, release blocked)" \
+                "/tmp/l5-stage7-${cc}-${mode}.txt"
+            done
+          done
+      - name: Assertions-disabled build must fail
+        shell: bash
+        run: |
+          set -euo pipefail
+          if g++ -std=c++20 -DNDEBUG -O2 -I . \
+            tests/fixtures/legality_l5_stage7_verdict_fuzz.cpp \
+            -o /tmp/l5-stage7-invalid-assertions-disabled; then
+            echo "UNSAFE: assertions-disabled build accepted"
+            exit 1
+          fi
+      - name: Preserve coordinator and L5 tracked sources
+        run: |
+          set -euo pipefail
+          git diff --check
+          test -z "$(git status --porcelain --untracked-files=no)"
+          test -z "$(git -C _l5_stage7_coordinator status --porcelain --untracked-files=no)"
+      - name: Archive blocked audit evidence, never an approval certificate
+        uses: actions/upload-artifact@v4
+        with:
+          name: l5-stage7-blocked-evidence-${{ github.sha }}
+          path: |
+            /tmp/l5-stage7-dashboard.json
+            /tmp/l5-stage7-336-cells.csv
+          retention-days: 30
