@@ -65,7 +65,7 @@ jobs:
           test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_actual_native.cpp)" = 13322f81d139eb62eef7653ffd1ec4fd1ec5a713
           test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_oracle_cases.json)" = 3f65ffe0d00219db94cc65804112bc615d4efbb0
           test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_oracle_cases.inc)" = 7b449e587d2ace8a6ca319d1ca35f20a7a71241e
-          test "$(git hash-object tools/audit_legality_l5_gen1_rby_live_diff.py)" = a7ece158f3c54ba11513eb511dc81ca934421c0e
+          test "$(git hash-object tools/audit_legality_l5_gen1_rby_live_diff.py)" = a3e7edd28c6a4173552788fea63bc3aa872a8c41
           test "$(git hash-object tools/audit_legality_l5_gen1_rby_protocol_negative.py)" = 1a01b9585cc23ea733626874c41116c9b1137dc8
           test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_vector_integrity.cpp)" = 925bf4b680c403b07d5da98bfe19dbb23f57882a
           git diff --check

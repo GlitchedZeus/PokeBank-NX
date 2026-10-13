@@ -190,7 +190,7 @@ def selftest()->None:
        "experience":135,"stat_experience":65535,"stat_exp_hp":65535,
        "stat_exp_attack":0,"stat_exp_defense":1,"stat_exp_speed":32768,
        "stat_exp_special":65534,
-       "source":"","level":5,"experience":135,"expected_source_context":"Unknown"}
+       "source":"","expected_source_context":"Unknown"}
     check(dv_values(0)==dict(dv_hp=0,dv_attack=0,dv_defense=0,
                              dv_speed=0,dv_special=0),"DV_ZERO")
     check(dv_values(65535)==dict(dv_hp=15,dv_attack=15,dv_defense=15,
@@ -211,7 +211,7 @@ def selftest()->None:
     c={**a,"nx_variant":"coordinator","ability_invalid":False,"gender_invalid":False}
     # The small partial input fails closed before claiming runtime parity.
     try:evaluate([v],{"x":p},{"x":a},{"x":c})
-    except ValueError as ex:check(str(ex)=="NO_ABILITY_BASELINE_DIFF","SELFTEST_WRONG_BLOCKER")
+    except ValueError as ex:check(str(ex)=="SOURCE_CONTEXT_COVERAGE_INCOMPLETE","SELFTEST_WRONG_BLOCKER")
     else:raise AssertionError("Partial runtime sample accidentally certified")
     # A single source-only canned response is explicitly rejected by protocol.
     check(p["execution_mode"]!="source_modeled","SELFTEST_CANNED")
