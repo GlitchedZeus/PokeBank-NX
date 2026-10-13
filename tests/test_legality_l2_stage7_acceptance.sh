@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# L2 final gate: exact immutable checkout, full existing 20-suite matrix,
+# L2 final gate: exact immutable checkout, full existing 22-suite matrix,
 # every separately attested 7-stage fixture, source-linked integration and
 # GCC/Clang normal + ASan/UBSan. NO synthetic checkout accepted.
 set -euo pipefail
@@ -61,7 +61,7 @@ for compiler in g++ clang++; do
   for mode in normal sanitizers; do
     echo "L2 ACCEPTANCE: head=$head_sha compiler=$compiler mode=$mode"
     # Disable the normal developer subset filter: final acceptance requires
-    # ALL twenty production-native programs in every compiler/mode pair.
+    # ALL twenty-two production-native programs in every compiler/mode pair.
     CXX="$compiler" L2_MODES="$mode" L2_TEST_FILTER='' \
         bash "$root/tests/test_legality_l2_run_all.sh"
     flags=(-std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter
@@ -84,4 +84,4 @@ for compiler in g++ clang++; do
   done
 done
 [[ "$executions" -eq 76 ]] || fail "only $executions of 76 extra source programs executed"
-echo "L2 STAGE7 ACCEPTANCE PASSED: exact head=$head_sha; 80 native + 76 extra = 156 GCC/Clang normal and ASan/UBSan program executions"
+echo "L2 STAGE7 ACCEPTANCE PASSED: exact head=$head_sha; 88 native + 76 extra = 164 GCC/Clang normal and ASan/UBSan program executions"
