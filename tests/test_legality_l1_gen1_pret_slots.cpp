@@ -29,7 +29,7 @@ static std::size_t find(std::string_view map,H::Method method,unsigned slot,
 }
 int main(){
  static_assert(H::kVerifiedSlots.size()==149);
- static_assert(H::kPretSlotCount==1511);
+ static_assert(H::kPretSlotCount==1512);
  using Status=H::Status;
  std::uint64_t positive=0,negative=0,unknown=0,foreign=0;
  for(std::size_t i=0;i<H::kPretSlotCount;++i) {
