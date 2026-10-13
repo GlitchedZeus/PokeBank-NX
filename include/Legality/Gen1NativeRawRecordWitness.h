@@ -78,5 +78,38 @@ constexpr NameStatus compareRawListNames(std::span<const uint8_t> ot,
             return NameStatus::Mismatch;
     return NameStatus::BytesMatch;
 }
+// Exact read-only Gen I PokeList slot layout from Gen1ReadOnlySave.cpp.
+// The caller separately attests source-save identity and the slot's
+// association to this individual. This routine cannot infer a gift receipt.
+constexpr NameStatus compareOriginalListSlot(std::span<const uint8_t> save,
+    std::size_t listOffset, std::size_t capacity, std::size_t slot,
+    uint8_t expectedRawSpecies, bool party, std::size_t nameLength,
+    std::span<const uint8_t> expectedBody,
+    std::span<const uint8_t> expectedOT,
+    std::span<const uint8_t> expectedNickname,
+    bool sameSaveAndIndividualIndependentlyVerified) noexcept {
+    if(!sameSaveAndIndividualIndependentlyVerified || capacity==0 || capacity>30 ||
+       slot>=capacity || (nameLength!=6 && nameLength!=11) ||
+       listOffset>save.size())return NameStatus::UnknownSourceBytes;
+    const std::size_t bodySize=party?44:33;
+    const std::size_t footprint=capacity+2+capacity*(bodySize+2*nameLength);
+    if(footprint>save.size()-listOffset || expectedBody.size()!=bodySize ||
+       expectedOT.size()!=nameLength || expectedNickname.size()!=nameLength)
+        return NameStatus::UnknownSourceBytes;
+    const auto count=save[listOffset];
+    if(count>capacity || slot>=count || save[listOffset+1+count]!=0xFF)
+        return NameStatus::UnknownSourceBytes;
+    const auto marker=save[listOffset+1+slot];
+    if(marker==0 || marker==0xFF || marker!=expectedRawSpecies)
+        return NameStatus::Mismatch;
+    const std::size_t bodyStart=listOffset+capacity+2;
+    const std::size_t otStart=bodyStart+capacity*bodySize;
+    const std::size_t nickStart=otStart+capacity*nameLength;
+    for(std::size_t i=0;i<bodySize;++i)
+        if(save[bodyStart+slot*bodySize+i]!=expectedBody[i])return NameStatus::Mismatch;
+    return compareRawListNames(save.subspan(otStart+slot*nameLength,nameLength),
+        save.subspan(nickStart+slot*nameLength,nameLength),
+        expectedOT,expectedNickname,true);
+}
 static_assert(!Result{}.globallyInvalid);
 } // namespace Legality::Gen1NativeRawRecordWitness

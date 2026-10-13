@@ -76,5 +76,54 @@ int main(){
     assert(W::compareRawListNames(japanese,japanese,japanese,japanese,true)==W::NameStatus::BytesMatch);
     std::array<uint8_t,10> bad{};
     assert(W::compareRawListNames(bad,bad,bad,bad,true)==W::NameStatus::UnknownSourceBytes);
-    std::cout<<"L4 Gen I raw PK1 party/box decode and name-source witness: "<<pairs<<" pair checks PASS\n";
+    unsigned sourceSlots=0;
+    for(const bool party:{false,true})for(const unsigned nameLen:{6u,11u}) {
+        const auto n=specimen(party);
+        const size_t bodySize=party?44:33;
+        const size_t capacity=party?6:20;
+        const size_t start=23;
+        std::array<uint8_t,2048> save{};
+        save[start]=1;
+        save[start+1]=n.rawSpecies;
+        save[start+2]=0xFF;
+        const size_t bodyStart=start+capacity+2;
+        const size_t otStart=bodyStart+capacity*bodySize;
+        const size_t nickStart=otStart+capacity*nameLen;
+        for(size_t i=0;i<bodySize;++i)save[bodyStart+i]=n.rawBody[i];
+        std::array<uint8_t,11> ot{},nick{};
+        ot.fill(0x50);nick.fill(0x50);ot[0]=0x93;nick[0]=0x80;
+        for(size_t i=0;i<nameLen;++i) {
+            save[otStart+i]=ot[i];save[nickStart+i]=nick[i];
+        }
+        const auto good=[&](std::span<const uint8_t> bytes, bool proof=true) {
+            return W::compareOriginalListSlot(bytes,start,capacity,0,n.rawSpecies,
+                party,nameLen,std::span<const uint8_t>(n.rawBody.data(),bodySize),
+                std::span<const uint8_t>(ot.data(),nameLen),
+                std::span<const uint8_t>(nick.data(),nameLen),proof);
+        };
+        assert(good(save)==W::NameStatus::BytesMatch);
+        assert(good(save,false)==W::NameStatus::UnknownSourceBytes);
+        for(size_t k=0;k<save.size();++k) {
+            // Fuzz the caller-supplied bounds, including SIZE_MAX.
+            auto ret=W::compareOriginalListSlot(save,k,capacity,0,n.rawSpecies,
+                party,nameLen,std::span<const uint8_t>(n.rawBody.data(),bodySize),
+                std::span<const uint8_t>(ot.data(),nameLen),
+                std::span<const uint8_t>(nick.data(),nameLen),true);
+            assert((ret==W::NameStatus::BytesMatch)==(k==start));
+            ++sourceSlots;
+        }
+        auto corrupt=save;corrupt[bodyStart+7]^=1;
+        assert(good(corrupt)==W::NameStatus::Mismatch);
+        corrupt=save;corrupt[otStart]^=1;
+        assert(good(corrupt)==W::NameStatus::Mismatch);
+        corrupt=save;corrupt[start+2]=0;
+        assert(good(corrupt)==W::NameStatus::UnknownSourceBytes);
+        corrupt=save;corrupt[start]=31;
+        assert(good(corrupt)==W::NameStatus::UnknownSourceBytes);
+    }
+    std::array<uint8_t,1> tiny{};
+    assert(W::compareOriginalListSlot(tiny,static_cast<size_t>(-1),30,0,1,
+        false,11,tiny,tiny,tiny,true)==W::NameStatus::UnknownSourceBytes);
+    std::cout<<"L4 Gen I raw PK1 party/box decode and name-source witness: "<<pairs
+        <<" name-pairs, "<<sourceSlots<<" bounded original-list probes PASS\n";
 }
