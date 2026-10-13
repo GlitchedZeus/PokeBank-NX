@@ -143,7 +143,7 @@ public:
     [[nodiscard]] const Gen5SharedPokemonSession& draft() const noexcept { return draft_; }
     [[nodiscard]] bool isEditing() const noexcept { return surface_==Surface::Edit; }
 
-    [[nodiscard]] bool openActions(const Workspace& workspace,Slot slot,
+    [[nodiscard]] bool openActions(const Workspace& /*workspace*/,Slot slot,
                                     std::string& error) {
         if(surface_!=Surface::Browse || !Workspace::canonicalSlot(slot)) {
             error="Gen V action selection requires an idle, canonical PK5 slot";
