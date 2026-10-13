@@ -1,5 +1,7 @@
 // Reads gen_corpus.py (PK1) / gen_corpus2.py (PK2) lines on stdin and prints PokeBank NX's
 // verdict for each, in the same shape as the PKHeX oracle: <id> VALID|INVALID <origin> ; <problems>
+// UNCERTAIN marks a record whose every origin was excluded only by a rule PokeBank NX does not
+// treat as definitive (see GB::Status::Uncertain); compare.py audits those separately.
 #include "Integration/Gen1/Gen1ReadOnlySave.h"
 #include "Integration/Gen2/Gen2ReadOnlySave.h"
 #include "Legality/GBLegality.h"
@@ -10,6 +12,15 @@
 #include <vector>
 
 namespace {
+uint16_t be16(const std::vector<uint8_t>& b, std::size_t at) {
+    return static_cast<uint16_t>((b[at] << 8) | b[at + 1]);
+}
+
+const char* verdict(Legality::GB::Status s) {
+    using Legality::GB::Status;
+    return s == Status::Legal ? " VALID " : s == Status::Uncertain ? " UNCERTAIN " : " INVALID ";
+}
+
 std::vector<uint8_t> hex(const std::string& s) {
     std::vector<uint8_t> out;
     for (std::size_t i = 0; i + 1 < s.size(); i += 2)
@@ -33,9 +44,12 @@ Legality::GB::Result checkPk2(const std::vector<uint8_t>& body, const std::vecto
     }
     e.tid = static_cast<uint16_t>((body[6] << 8) | body[7]);
     e.exp = (static_cast<uint32_t>(body[8]) << 16) | (body[9] << 8) | body[10];
+    for (std::size_t i = 0; i < 5; ++i)
+        e.statExp[i] = be16(body, 11 + i * 2);
     e.dvs = {static_cast<uint8_t>(body[21] >> 4), static_cast<uint8_t>(body[21] & 15),
              static_cast<uint8_t>(body[22] >> 4), static_cast<uint8_t>(body[22] & 15)};
     e.friendship = body[27];
+    e.pokerus = body[28];
     e.caughtData = static_cast<uint16_t>((body[29] << 8) | body[30]);
     e.level = body[31];
     e.isEgg = egg;
@@ -59,7 +73,7 @@ int main() {
         const auto body = hex(bodyHex), ot = hex(otHex), nick = hex(nickHex);
         if (body.size() == 48) {
             const GB::Result r = checkPk2(body, ot, nick, jp == "1", eggFlag == "1");
-            std::cout << id << (r.status == GB::Status::Legal ? " VALID " : " INVALID ") << GB::describe(r.origin)
+            std::cout << id << verdict(r.status) << GB::describe(r.origin)
                       << (r.timeCapsule ? " [time capsule]" : "") << " ;";
             for (const auto& p : r.problems)
                 std::cout << " | " << p.text;
@@ -79,6 +93,8 @@ int main() {
             e.ppUps[i] = body[0x1D + i] >> 6;
         }
         e.tid = static_cast<uint16_t>((body[0x0C] << 8) | body[0x0D]);
+        for (std::size_t i = 0; i < 5; ++i)
+            e.statExp[i] = be16(body, 0x11 + i * 2);
         e.dvs = {static_cast<uint8_t>(body[0x1B] >> 4), static_cast<uint8_t>(body[0x1B] & 15),
                  static_cast<uint8_t>(body[0x1C] >> 4), static_cast<uint8_t>(body[0x1C] & 15)};
         e.tradeTrainer = ot[0] == 0x5D;
@@ -86,7 +102,7 @@ int main() {
         e.nickname = decodeGen1String(nick, region);
         e.language = jp == "1" ? GB::Language::Japanese : GB::Language::International;
         const GB::Result r = GB::checkGen1(e);
-        std::cout << id << (r.status == GB::Status::Legal ? " VALID " : " INVALID ") << GB::describe(r.origin)
+        std::cout << id << verdict(r.status) << GB::describe(r.origin)
                   << (r.timeCapsule ? " [time capsule]" : "") << " ;";
         for (const auto& p : r.problems)
             std::cout << " | " << p.text;

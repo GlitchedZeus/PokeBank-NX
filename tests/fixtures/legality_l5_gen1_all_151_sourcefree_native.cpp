@@ -64,11 +64,16 @@ int main(){
                        pk.statExpDEF()==1 && pk.statExpSPE()==32768 &&
                        pk.statExpSpecial()==65534);
                 const auto report=Legality::analyze(pk,pk.getGameGroup(),source);
-                // A known current R/B/Y save still cannot attest Time
-                // Capsule or Gen II tradeback origins of a detached PK1.
-                // Source-free/mismatched PK1 must stay equally incomplete.
-                assert(report.coverage.transfer==Legality::CoverageLevel::Partial);
-                assert(report.verdict()!=Legality::Verdict::NoProblemsFound);
+                // Stat experience 65535/0/1/32768/65534 can only come from
+                // battles, and a battle raises all five stats, so the zero is
+                // impossible whatever the source label, origin or Time
+                // Capsule history. Pinned PKHeX 6501f0ab reports the same rule
+                // (EVs:EffortShouldBeZero) on all 302 of these records. The
+                // report must therefore be a definite Invalid: never "No
+                // problems found", and not merely incomplete either.
+                assert(report.verdict()==Legality::Verdict::Invalid);
+                assert(has(report,Legality::Severity::Invalid,
+                           "Stat experience from battles raises every stat"));
                 assert(!has(report,Legality::Severity::Invalid,
                             "Ability not legal for this species"));
                 assert(!has(report,Legality::Severity::Invalid,

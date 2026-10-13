@@ -6,16 +6,23 @@ Prints an agreement table per corpus kind and the first N disagreements of each
 direction, with both programs' explanations. Exits 1 if any verdict differs, if
 either program skipped a corpus record, or if either printed a record the corpus
 does not have.
+
+PokeBank NX may also answer UNCERTAIN: every origin was excluded, but only by a rule
+it does not treat as definitive. Those records are counted in their own columns, and
+each one must cite a reason from UNCERTAIN_REASONS; any other UNCERTAIN fails.
 """
 
 import argparse
 import collections
 
-# PokeBank NX checks that PKHeX states but never reaches for PK1 files. A difference
-# whose PokeBank explanation contains one of these is reported, not counted as a failure.
-KNOWN_STRICTER = (
-    # LearnGroup1.FlagEvolutionSlots: unreachable for PK1 because GetPrevious never returns null.
+# The only rules PokeBank NX reports as not definitive (Problem::definitive == false).
+UNCERTAIN_REASONS = (
+    # LearnGroup1.FlagEvolutionSlots: PKHeX states the rule but never reaches it for PK1,
+    # because GetPrevious never returns null, so no independent implementation checks it.
     "pre-evolution could not still have been at",
+    # Mew and Celebi: no recorded distribution matches, and the GB-era event list is not
+    # known to be complete. PKHeX answers INVALID here.
+    "was only distributed at events",
 )
 
 
@@ -50,22 +57,31 @@ def main():
             table[kind]["missing"] += 1
             continue
         table[kind][(a[0], b[0])] += 1
-        if a[0] != b[0]:
-            known = a[0] == "VALID" and any(k in b[1] for k in KNOWN_STRICTER)
-            diffs[("known",) if known else (a[0], b[0])].append((key, kind, a[1], b[1]))
+        if b[0] == "UNCERTAIN":
+            known = any(k in b[1] for k in UNCERTAIN_REASONS)
+            diffs[("uncertain", a[0]) if known else ("unexplained",)].append((key, kind, a[1], b[1]))
+        elif a[0] != b[0]:
+            diffs[(a[0], b[0])].append((key, kind, a[1], b[1]))
     total = collections.Counter()
-    print(f"{'kind':18} {'both valid':>10} {'both invalid':>13} {'PKHeX only valid':>17} {'ours only valid':>16}")
+    print(f"{'kind':18} {'both valid':>10} {'both invalid':>13} {'PKHeX only valid':>17} {'ours only valid':>16}"
+          f" {'uncertain':>10}")
     for kind in sorted(table):
         c = table[kind]
         total.update(c)
         print(f"{kind:18} {c[('VALID', 'VALID')]:10} {c[('INVALID', 'INVALID')]:13} "
-              f"{c[('VALID', 'INVALID')]:17} {c[('INVALID', 'VALID')]:16}")
+              f"{c[('VALID', 'INVALID')]:17} {c[('INVALID', 'VALID')]:16} "
+              f"{c[('VALID', 'UNCERTAIN')] + c[('INVALID', 'UNCERTAIN')]:10}")
     agree = total[("VALID", "VALID")] + total[("INVALID", "INVALID")]
+    uncertain = total[("VALID", "UNCERTAIN")] + total[("INVALID", "UNCERTAIN")]
     n = sum(v for k, v in total.items() if k != "missing")
-    print(f"\nagreement {agree}/{n} = {100.0 * agree / max(n, 1):.2f}%  "
+    decided = n - uncertain
+    print(f"\nagreement {agree}/{decided} decided records = {100.0 * agree / max(decided, 1):.2f}%  "
           f"(PKHeX-only-valid {total[('VALID', 'INVALID')]}, ours-only-valid {total[('INVALID', 'VALID')]})")
+    print(f"uncertain {uncertain}/{n} (PKHeX VALID {total[('VALID', 'UNCERTAIN')]}, "
+          f"PKHeX INVALID {total[('INVALID', 'UNCERTAIN')]})")
     for direction, items in diffs.items():
-        label = ("Known: PokeBank enforces a rule PKHeX skips for PK1" if direction == ("known",) else
+        label = (f"Uncertain, PKHeX {direction[1]}" if direction[0] == "uncertain" else
+                 "UNCERTAIN without a known reason" if direction == ("unexplained",) else
                  "PKHeX VALID, PokeBank INVALID" if direction == ("VALID", "INVALID") else
                  "PKHeX INVALID, PokeBank VALID")
         print(f"\n== {label}: {len(items)}")
@@ -75,7 +91,7 @@ def main():
         print(f"\n== Corpus accounting: {len(missing)} records without both verdicts, "
               f"{len(extra)} verdicts for unknown records (first: {(missing + extra)[:5]})")
     print(f"\naccounted for {n}/{len(kinds)} corpus records")
-    raise SystemExit(1 if missing or extra or any(k != ("known",) for k in diffs) else 0)
+    raise SystemExit(1 if missing or extra or any(k[0] != "uncertain" for k in diffs) else 0)
 
 
 if __name__ == "__main__":

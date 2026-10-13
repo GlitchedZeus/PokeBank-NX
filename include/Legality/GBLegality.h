@@ -36,6 +36,7 @@ namespace Legality::GB {
         uint8_t catchRate = 0;              // byte 0x07; a Gen II held item after a Time Capsule trip
         uint8_t type1 = 0, type2 = 0;       // stored type bytes (Gen I type ids)
         std::array<uint8_t, 4> dvs{};       // ATK DEF SPE SPC
+        std::array<uint16_t, 5> statExp{};  // HP ATK DEF SPE SPC
         uint16_t tid = 0;
         bool tradeTrainer = false;          // OT is the in-game-trade marker
         std::string otName;                 // decoded; compared against event OTs
@@ -52,6 +53,8 @@ namespace Legality::GB {
         std::array<uint8_t, 4> ppUps{};
         uint8_t heldItem = 0;
         std::array<uint8_t, 4> dvs{};       // ATK DEF SPE SPC
+        std::array<uint16_t, 5> statExp{};  // HP ATK DEF SPE SPC
+        uint8_t pokerus = 0;                // strain << 4 | days
         uint16_t tid = 0;
         uint32_t exp = 0;
         uint8_t friendship = 0;             // egg hatch counter while unhatched
@@ -74,13 +77,20 @@ namespace Legality::GB {
         uint8_t slotType = 0;               // GBData::SlotType1/2 for wild encounters
     };
 
-    enum class Status : uint8_t { Legal, Illegal };
+    /// Legal: a legitimate origin exists and every check passed.
+    /// Illegal: every possible origin is excluded by a definitive rule, or a
+    /// definitive format rule fails.
+    /// Uncertain: no origin was confirmed, but what rules them out is not
+    /// definitive (a rule PKHeX does not apply, or an event catalog that is
+    /// not known to be complete). Report as incomplete, never as Invalid.
+    enum class Status : uint8_t { Legal, Illegal, Uncertain };
 
-    enum class Area : uint8_t { Encounter, Moves, CatchRate, Types, Trainer, HeldItem, Egg, MetData };
+    enum class Area : uint8_t { Encounter, Moves, CatchRate, Types, Trainer, HeldItem, Egg, MetData, Stats, Misc };
 
     struct Problem {
         Area area;
         std::string text;
+        bool definitive = true;             // false: not enough on its own to call the Pokemon illegal
     };
 
     struct Result {
@@ -92,6 +102,12 @@ namespace Legality::GB {
 
     Result checkGen1(const Entity1& pk);
     Result checkGen2(const Entity2& pk);
+
+    /// The rules that hold whatever the origin and whatever else is wrong with the record
+    /// (stat experience, Pokerus, an empty nickname). checkGen1/checkGen2 already include
+    /// them; this is for callers that cannot run the origin search on a malformed record.
+    std::vector<Problem> formatProblems(const Entity1& pk);
+    std::vector<Problem> formatProblems(const Entity2& pk);
 
     /// "wild Rattata in Red/Blue (level 2+)" style description for reports.
     std::string describe(const Origin& origin);

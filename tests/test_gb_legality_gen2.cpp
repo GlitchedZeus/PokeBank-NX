@@ -5,6 +5,10 @@
 // with the verdict PKHeX.Core gave it under GB cartridge-era settings. The differential
 // harness (tools/pkhex_gb_diff/run.sh ... 2) checks the same thing on 150,000 records;
 // these keep a sample of every corpus kind in the ordinary host suite.
+//
+// Cases named "...-uncertain-..." are Mew/Celebi records that match no recorded
+// distribution. PKHeX calls them invalid; PokeBank NX answers Uncertain, with only
+// non-definitive problems, because the GB-era event list is not known to be complete.
 
 #include "Integration/Gen2/Gen2ReadOnlySave.h"
 #include "Legality/GBLegality.h"
@@ -102,6 +106,31 @@ const Case kCases[] = {
     {"wild2-6002", "1500402d2b002b0a0003e800000000000000000000a61d5a23440046004aab0a0000001c001c0013000c0013000d000d", "868e8b8350505050505050", "8c8e8d5050505050505050", false, false},  // PKHeX: EncounterSlot2:21:C:10
     {"wild2-2358", "3f006400000098d60007f3000000000000000000001c7a14000000460000000f000000230023000b000d002200270018", "868e8b8350505050505050", "8c8e8d5050505050505050", false, true},  // PKHeX: EncounterStatic1:63:RB:6
     {"wild2-5003", "29008d30000063e90001570000000000000000000043ee0f0500004600c78a07000000170017000b000a000e000b000c", "868e8b8350505050505050", "8c8e8d5050505050505050", false, true},  // PKHeX: EncounterSlot2:41:C:7
+    {"defect2-ot-long-7324", "0c166acf4e4ff319001331c61652fdc98602ab330c7391a40f0b82460000001100000034003400160017001f00200020", "8a848992888a8e50505050", "8c8e8d5050505050505050", false, true},  // PKHeX: EncounterSlot1:11:RD:7
+    {"defect2-ot-long-7394", "a2000a6f629c905c00d658480dd2374e6c411b611a9bc623281e0046000000260000007900790045003e0052002b0033", "8785899397838b97955050", "8c8e8d5050505050505050", false, false},  // PKHeX: EncounterEgg2:161:GS:5
+    {"defect2-ot-long-7424", "4c00cd58995948a5030d3f000000000000000000003f539cd80207460000003b000000b500b5008a00b0004000490055", "8e888e9282948d50505050", "8c8e8d5050505050505050", false, true},  // PKHeX: EncounterSlot1:74:RD:8
+    {"defect2-ot-long-7509", "3e0003f022aa3b2c04946c70592a07bf5e7702f74f0fafd0050f054600000043000000cc00cc00760098007000760091", "988e96928b92848d505050", "8c8e8d5050505050505050", false, false},  // PKHeX: EncounterSlot1:60:RD:10
+    {"defect2-ot-empty-7333", "1400212762e4aaa101cb9100000000000000000000140cb11e0c14467100003100000078007800550043006400410055", "5050505050505050505050", "8c8e8d5050505050505050", false, false},  // PKHeX: EncounterSlot1:19:RD:3
+    {"defect2-ot-empty-7349", "332f1ca3de5bfdda013693000000000000000000002d590fcf1b0a460000002b000000590059004b003b007000370048", "5050505050505050505050", "8c8e8d5050505050505050", false, false},  // PKHeX: EncounterSlot1:50:RD:18
+    {"defect2-pokerus-7340", "bc004e4fcf218efe00193a0139d1567b52b24e5e054351aad80f62469a8484150000003900390019001b002800180020", "868e8b8350505050505050", "8c8e8d5050505050505050", false, false},  // PKHeX: EncounterSlot2:187:C:4
+    {"defect2-pokerus-7377", "4e003f2d2781c6690163f51e001e00320064000a0029ef04281e8f466546572d0000007600760060004c0070005a005a", "868e8b8350505050505050", "8c8e8d5050505050505050", false, false},  // PKHeX: EncounterSlot2:77:C:6
+    {"defect2-pokerus-7714", "beca9a271ce211f800546032000a00140064006400e3418b0580a6467000001e0000004c004c00370027003a001d0026", "868e8b8350505050505050", "8c8e8d5050505050505050", false, true},  // PKHeX: EncounterEgg2:190:GS:5
+    {"defect2-pokerus-8440", "a9008d30116db04400e7b700000000000000000000a3a2cee023424651000027000000760076005300450072003d0044", "868e8b8350505050505050", "8c8e8d5050505050505050", false, true},  // PKHeX: EncounterSlot1:41:RD:8
+    {"defect2-nick-empty-7345", "49ac84333d23750100e3d0000000000000000000001e9b031e149c46000000240000006f006f0038003d005300460063", "868e8b8350505050505050", "5050505050505050505050", false, false},  // PKHeX: EncounterSlot1:72:RD:15
+    {"defect2-nick-empty-7391", "a400245fc140196500b6403c0064005a000a0064004f6d0114281c46004aa624000000790079002b0033003b00450053", "868e8b8350505050505050", "5050505050505050505050", false, false},  // PKHeX: EncounterSlot2:163:C:10
+    {"grown2-7346", "21002b287418e25800698d728deb5f8f98a855c37bc6451e23051e4640000020000000510051003a002d0031002b002b", "868e8b8350505050505050", "8c8e8d5050505050505050", false, true},  // PKHeX: EncounterStatic1:33:RB:17
+    {"grown2-7353", "4c00786acd9938d70ad67a3200140032001e003c00289b4049d2044673000058000000f400f400ca00f700640079008a", "868e8b8350505050505050", "8c8e8d5050505050505050", false, true},  // PKHeX: EncounterSlot1:74:RD:8
+    {"grown2-9852", "1600402d811fb45500fa000a005000500046004600c19db126589246614aa0280000006b006b00560039005c00400040", "868e8b8350505050505050", "8c8e8d5050505050505050", false, false},  // PKHeX: EncounterSlot2:21:C:10
+    {"grown2-13358", "be008a2761e28f260281cf931dcf3dda172cfcc6ec9fcd031eaa2846208a2b3b00000095009500620057007700430055", "868e8b8350505050505050", "8c8e8d5050505050505050", false, false},  // PKHeX: EncounterSlot2:190:C:10
+    {"defect2-statexp-7350", "4ea36153247e59ac073db80000328b65f239f97bf72c0c1e0f13054600acae4e000000bd00bd00a4008400a800940094", "868e8b8350505050505050", "8c8e8d5050505050505050", false, false},  // PKHeX: EncounterSlot2:78:C:44
+    {"defect2-statexp-7381", "82b49621af3facaa08b52a129b05e7fba55dc700000a90286a0002460000004d000000ec00ec00c5008e008f0061009f", "868e8b8350505050505050", "8c8e8d5050505050505050", false, false},  // PKHeX: EncounterStatic1:129:RBY:5
+    {"defect2-egg-statexp-7389", "b300212d2455e87b000087a7fadb55896c2f811f0b6fa92328140f06000000050000001500150009000a0009000c000a", "868e8b8350505050505050", "8486865050505050505050", true, false},  // PKHeX: EncounterEgg2:179:GS:5
+    {"defect2-egg-statexp-7492", "b90058660000621c00007d0000000000000000000001eb0f0a00000b00000005000000160016000f001000090009000c", "868e8b8350505050505050", "8486865050505050505050", true, true},  // PKHeX: EncounterEgg2:185:GS:5
+    {"defect2-egg-statexp-7577", "8a00846e3e30912e00007d1e00280000003c000a009e07232814140700000005000000130013000900100008000e000b", "868e8b8350505050505050", "8486865050505050505050", true, false},  // PKHeX: EncounterEgg2:138:GS:5
+    {"defect2-egg-statexp-7758", "7f000baf1f006cd600009c000000000000000000002c901e0f1400110000000500000015001500110010000e000a000c", "868e8b8350505050505050", "8486865050505050505050", true, true},  // PKHeX: EncounterEgg2:127:GS:5
+    {"random2-uncertain-7540", "976cafdc3c00e40a030d3f86bbf5690b88a1d6898774f7529c1400462200003b000000c700c70083007f008c00830083", "868e8b8350505050505050", "8c8e8d5050505050505050", false, false},  // PKHeX: EncounterInvalid:151:GSC:0; PokeBank NX: uncertain (unrecorded event)
+    {"random2-uncertain-8344", "9700dbd0000048b209b8072ed938625f52ffe41d5a419240090000468000005500000113011300b500b000be00b200b2", "868e8b8350505050505050", "8c8e8d5050505050505050", false, false},  // PKHeX: EncounterInvalid:151:GSC:0; PokeBank NX: uncertain (unrecorded event)
+    {"random2-uncertain-9130", "97bae91300005fed030d3f807326d3ca2f23e0f8a2337005d8000046321e633b000000cb00cb007e007e0083007b007b", "868e8b8350505050505050", "8c8e8d5050505050505050", false, false},  // PKHeX: EncounterInvalid:151:GSC:30; PokeBank NX: uncertain (unrecorded event)
 };
 
 std::vector<uint8_t> hex(const char* s) {
@@ -125,9 +154,12 @@ Legality::GB::Result check(const Case& c) {
     }
     e.tid = static_cast<uint16_t>((body[6] << 8) | body[7]);
     e.exp = (static_cast<uint32_t>(body[8]) << 16) | (body[9] << 8) | body[10];
+    for (std::size_t i = 0; i < 5; ++i)
+        e.statExp[i] = static_cast<uint16_t>((body[11 + i * 2] << 8) | body[12 + i * 2]);
     e.dvs = {static_cast<uint8_t>(body[21] >> 4), static_cast<uint8_t>(body[21] & 15),
              static_cast<uint8_t>(body[22] >> 4), static_cast<uint8_t>(body[22] & 15)};
     e.friendship = body[27];
+    e.pokerus = body[28];
     e.caughtData = static_cast<uint16_t>((body[29] << 8) | body[30]);
     e.level = body[31];
     e.isEgg = c.egg;
@@ -146,6 +178,18 @@ int main() {
         const Legality::GB::Result r = check(c);
         const bool valid = r.status == Legality::GB::Status::Legal;
         ++checks;
+        if (std::string(c.name).find("-uncertain-") != std::string::npos) {
+            bool definitive = false;
+            for (const auto& p : r.problems)
+                definitive |= p.definitive;
+            if (r.status != Legality::GB::Status::Uncertain || definitive || r.problems.empty() || c.pkhexValid) {
+                ++failures;
+                std::fprintf(stderr, "FAIL %s: expected Uncertain with only non-definitive problems\n", c.name);
+                for (const auto& p : r.problems)
+                    std::fprintf(stderr, "    %s\n", p.text.c_str());
+            }
+            continue;
+        }
         if (valid != c.pkhexValid) {
             ++failures;
             std::fprintf(stderr, "FAIL %s: PKHeX %s, PokeBank %s (%s)\n", c.name,

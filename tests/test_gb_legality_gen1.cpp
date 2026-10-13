@@ -1,9 +1,17 @@
 // Gen I legality through the production analyzer, on raw PK1 party records.
 //
 // Every expected verdict below is what PKHeX.Core (kwsch/PKHeX@6501f0ab, GB cartridge-era
-// settings) reports for the same bytes; tools/pkhex_gb_diff reproduces them. The one
-// deliberate difference is marked: PKHeX does not compare level with EXP for Gen I,
-// while the games keep them in step (battle, Rare Candy and Day Care all recompute).
+// settings) reports for the same bytes; tools/pkhex_gb_diff reproduces them. The deliberate
+// differences are marked:
+//  - PKHeX does not compare level with EXP for Gen I, while the games keep them in step
+//    (battle, Rare Candy and Day Care all recompute).
+//  - Where every origin is excluded only by a rule PokeBank NX does not treat as definitive,
+//    the report is Incomplete with a warning instead of a verdict either way: a Mew that
+//    matches no recorded distribution, even one carrying a tour trainer name (PKHeX:
+//    invalid; the event list is not known to be complete, and the in-game Mew glitch,
+//    which PKHeX does not model, gives any trainer and DVs), and the Gen I evolution-order
+//    move rule (PKHeX: valid; it never applies the
+//    rule to PK1, so no independent implementation checks it).
 #include "Integration/Gen1/Gen1ReadOnlySave.h"
 #include "Legality/Legality.h"
 #include "Names/ItemNames.h"
@@ -57,6 +65,18 @@ const Case kCases[] = {
     {"pikachu-gen2-tm-thunderpunch", "5400301400171700542d56093039001f40000000000000000000009abc00000000140030001e0015002d001d", "8092875050505050505050", "8c8e8d5050505050505050", true},
     {"pikachu-gen2-tm-no-item", "54003014001717be542d56093039001f40000000000000000000009abc00000000140030001e0015002d001d", "8092875050505050505050", "8c8e8d5050505050505050", false},
     {"level-exp-mismatch", "a5000f03000000ff212700003039001388000000000000000000009abc0000000003000f0008000700090007", "8092875050505050505050", "8c8e8d5050505050505050", true},
+    {"rattata-statexp-battle", "a5000f03000000ff21270000303900001b0205050a0003004dea609abc0000000003000f0008000700090007", "8092875050505050505050", "8c8e8d5050505050505050", true},
+    {"rattata-statexp-vitamins", "a5000f03000000ff21270000303900001b640000000a00000000009abc0000000003000f0008000700090007", "8092875050505050505050", "8c8e8d5050505050505050", true},
+    {"rattata-statexp-one-zero", "a5000f03000000ff21270000303900001b0205050a0000004dea609abc0000000003000f0008000700090007", "8092875050505050505050", "8c8e8d5050505050505050", false},
+    {"rattata-statexp-eleven-vitamins", "a5000f03000000ff21270000303900001b6e0000000000000000009abc0000000003000f0008000700090007", "8092875050505050505050", "8c8e8d5050505050505050", false},
+    {"rattata-ot-seven-letters", "a5000f03000000ff21270000303900001b000000000000000000009abc0000000003000f0008000700090007", "8081828384858650505050", "8c8e8d5050505050505050", true},
+    {"rattata-ot-eight-letters", "a5000f03000000ff21270000303900001b000000000000000000009abc0000000003000f0008000700090007", "8081828384858687505050", "8c8e8d5050505050505050", false},
+    {"rattata-ot-empty", "a5000f03000000ff21270000303900001b000000000000000000009abc0000000003000f0008000700090007", "5050505050505050505050", "8c8e8d5050505050505050", false},
+    {"rattata-nickname-empty", "a5000f03000000ff21270000303900001b000000000000000000009abc0000000003000f0008000700090007", "8092875050505050505050", "5050505050505050505050", false},
+    {"mew-unrecorded-event", "150019050018182d01000000303900008700000000000000000000a1c5000000000500190010000f0010000f", "8092875050505050505050", "8c8e8d5050505050505050", false},
+    {"mew-unrecorded-event-bad-catch-rate", "150019050018180601000000303900008700000000000000000000a1c5000000000500190010000f0010000f", "8092875050505050505050", "8c8e8d5050505050505050", false},
+    {"mew-unrecorded-event-ot-too-long", "150019050018182d01000000303900008700000000000000000000a1c5000000000500190010000f0010000f", "8081828384858687888950", "8c8e8d5050505050505050", false},
+    {"exeggutor-stomp-after-poisonpowder", "0a00b6380016185a8c17734debdf035980f205cc52224bafe33ddb36c5000000003800b60072006a00500096", "8092875050505050505050", "8c8e8d5050505050505050", true},
 };
 
 std::vector<uint8_t> hex(const std::string& s) {
@@ -84,9 +104,12 @@ Pokemon::Pokemon1ReadOnly decode(const Case& c) {
     for (int i = 0; i < 4; ++i) {
         r.moves[i] = b[8 + i];
         r.pp[i] = b[0x1D + i] & 0x3F;
+        r.ppUps[i] = b[0x1D + i] >> 6;
     }
     r.trainerId = be16(b, 0x0C);
     r.experience = (static_cast<uint32_t>(b[0x0E]) << 16) | (b[0x0F] << 8) | b[0x10];
+    for (std::size_t i = 0; i < 5; ++i)
+        r.statExperience[i] = be16(b, 0x11 + i * 2);
     const uint16_t dv = be16(b, 0x1B);
     const uint8_t atk = dv >> 12, def = (dv >> 8) & 15, spe = (dv >> 4) & 15, spc = dv & 15;
     r.dvs = {static_cast<uint8_t>(((atk & 1) << 3) | ((def & 1) << 2) | ((spe & 1) << 1) | (spc & 1)),
@@ -101,10 +124,22 @@ Pokemon::Pokemon1ReadOnly decode(const Case& c) {
     r.rawBodySize = b.size();
     return Pokemon::Pokemon1ReadOnly(r);
 }
+
+bool hasSeverity(const Legality::Report& report, Legality::Severity severity) {
+    for (const auto& i : report.issues)
+        if (i.severity == severity)
+            return true;
+    return false;
+}
+
+bool uncertainCase(const std::string& name) {
+    return name == "mew-unrecorded-event" || name == "mew-wrong-dvs" ||
+           name == "exeggutor-stomp-after-poisonpowder";
+}
 }  // namespace
 
 int main() {
-    int checked = 0;
+    int checked = 0, incomplete = 0;
     for (const Case& c : kCases) {
         const auto pk = decode(c);
         // The Gen I verdict cannot depend on which save the Pokemon currently sits in.
@@ -112,6 +147,20 @@ int main() {
             const auto report = Legality::analyze(pk, Enums::GameVersion::RBY, label);
             const auto verdict = report.verdict();
             const std::string name = c.name;
+            if (uncertainCase(name)) {
+                // Neither verdict is proven: warnings, no Invalid, and an unfinished origin check.
+                if (verdict != Legality::Verdict::Incomplete || hasSeverity(report, Legality::Severity::Invalid) ||
+                    !hasSeverity(report, Legality::Severity::Warning) ||
+                    report.coverage.encounter != Legality::CoverageLevel::Partial) {
+                    std::cerr << "MISMATCH " << c.name << " [" << label << "]: expected Incomplete\n";
+                    for (const auto& i : report.issues)
+                        std::cerr << "    " << static_cast<int>(i.severity) << " " << i.text << "\n";
+                    return 1;
+                }
+                ++checked;
+                ++incomplete;
+                continue;
+            }
             // Deliberately stricter than PKHeX: level must match EXP.
             const bool expectValid = name == "level-exp-mismatch" ? false : c.pkhexValid;
             if ((verdict == Legality::Verdict::NoProblemsFound) != expectValid ||
@@ -125,6 +174,7 @@ int main() {
             ++checked;
         }
     }
-    std::cout << "Gen I legality vs PKHeX verdicts: " << checked << " checks PASS\n";
+    std::cout << "Gen I legality vs PKHeX verdicts: " << checked << " checks PASS (" << incomplete
+              << " deliberately Incomplete)\n";
     return 0;
 }

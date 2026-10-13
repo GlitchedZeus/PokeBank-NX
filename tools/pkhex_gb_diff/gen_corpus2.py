@@ -129,6 +129,8 @@ class Mon:
         self.friendship = 70
         self.exp = None
         self.pp = None  # list of (pp, ups); filled in by finish() unless a defect sets it
+        self.statexp = [0] * 5
+        self.pokerus = 0
 
 
 def encounter_moves(d, species, level, crystal):
@@ -168,6 +170,16 @@ def grow(d, mon, target, rng):
                 g1.learn(mon, rng.choice(options), rng)
     if rng.random() < 0.3:
         mon.item = rng.choice(d.held)
+    if rng.random() < 0.6:
+        mon.statexp = g1.stat_exp(rng)
+    if rng.random() < 0.15:
+        mon.pokerus = pokerus(rng)
+
+
+def pokerus(rng):
+    """A Pokerus byte the games can produce: strain 0-8, then at most (strain & 3) + 1 days."""
+    strain = rng.randint(0, 8)
+    return (strain << 4) | rng.randint(0, (strain & 3) + 1)
 
 
 def finish(d, mon, rng):
@@ -186,6 +198,8 @@ def finish(d, mon, rng):
     body[6:8] = mon.tid.to_bytes(2, "big")
     exp = mon.exp if mon.exp is not None else g1.exp_for(p["growth"], mon.level)
     body[8:11] = exp.to_bytes(3, "big")
+    for i, value in enumerate(mon.statexp):  # HP ATK DEF SPE SPC
+        body[11 + i * 2:13 + i * 2] = value.to_bytes(2, "big")
     body[21] = (atk << 4) | df
     body[22] = (spe << 4) | spc
     moves = (mon.moves + [0, 0, 0, 0])[:4]
@@ -201,6 +215,7 @@ def finish(d, mon, rng):
     for i, (pp, ups) in enumerate(mon.pp):
         body[23 + i] = (ups << 6) | pp
     body[27] = mon.friendship
+    body[28] = mon.pokerus
     body[29:31] = mon.caught.to_bytes(2, "big")
     body[31] = mon.level
     stats = p["stats"]  # HP ATK DEF SPE SPA SPD
@@ -392,7 +407,8 @@ def main():
             mon = wild_mon(d, rng, rng.choice(d.wild))
             grow(d, mon, min(100, mon.level + rng.randrange(0, 40)), rng)
             defect = rng.choice(("move", "level", "item", "caught", "wipe", "time", "otgender",
-                                 "egg-cycles", "egg-item", "pp", "egg-pp", "egg-moves"))
+                                 "egg-cycles", "egg-item", "pp", "egg-pp", "egg-moves",
+                                 "statexp", "egg-statexp", "pokerus", "ot-long", "ot-empty", "nick-empty"))
             if defect == "move":
                 mon.moves[rng.randrange(len(mon.moves))] = rng.randint(1, 251)
                 mon.moves = list(dict.fromkeys(mon.moves))
@@ -408,12 +424,24 @@ def main():
                 mon.caught = (mon.caught & 0x3FFF) | (rng.randrange(4) << 14)
             elif defect == "otgender":
                 mon.caught ^= 0x80
+            elif defect == "statexp":
+                mon.statexp = g1.stat_exp_defect(rng)
+            elif defect == "pokerus":
+                mon.pokerus = rng.randrange(256)
+            elif defect == "ot-long":  # seven letters is the limit; seven is still fine
+                mon.ot = g1.letters(rng, rng.randint(7, 10))
+            elif defect == "ot-empty":
+                mon.ot = ""
+            elif defect == "nick-empty":
+                mon.nick = ""
             elif defect == "pp":
                 moves = (mon.moves + [0, 0, 0, 0])[:4]
                 mon.pp = [(rng.randrange(64), rng.randrange(4)) for _ in moves]
-            elif defect in ("egg-cycles", "egg-item", "egg-pp", "egg-moves"):
+            elif defect in ("egg-cycles", "egg-item", "egg-pp", "egg-moves", "egg-statexp"):
                 mon = egg_mon(d, rng, False)
-                if defect == "egg-cycles":
+                if defect == "egg-statexp":  # vitamins cannot be used on an egg either
+                    mon.statexp = rng.choice((g1.stat_exp(rng), [2560 * rng.randint(1, 10)] + [0] * 4))
+                elif defect == "egg-cycles":
                     mon.friendship = rng.choice((0, d.personal[mon.species]["hatch"] + 1, 255))
                 elif defect == "egg-item":
                     mon.item = rng.choice(d.held)
@@ -435,6 +463,8 @@ def main():
             mon.item = rng.choice((0, rng.choice(d.held), rng.randrange(256)))
             if rng.random() < 0.5:
                 mon.caught = rng.randrange(65536)
+            mon.statexp = rng.choice((g1.stat_exp(rng), [rng.randrange(65536) for _ in range(5)]))
+            mon.pokerus = rng.choice((0, pokerus(rng), rng.randrange(256)))
             emit("random2", mon)
 
 

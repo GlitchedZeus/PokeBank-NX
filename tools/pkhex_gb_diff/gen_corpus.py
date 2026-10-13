@@ -7,8 +7,8 @@ Each output line is one Pokemon exactly as a Red/Blue/Yellow save stores it:
 
 The corpus mixes Pokemon built the way the games build them (wild/static/trade
 encounters, then levelled up, evolved and taught TMs) with deliberately broken
-variants (wrong move, level, catch rate or types, renamed trade Pokemon) and
-fully random records, so both "should be legal" and "should be illegal" paths
+variants (wrong move, level, catch rate, types or stat experience, renamed trade
+Pokemon, over-long or empty names) and fully random records, so both "should be legal" and "should be illegal" paths
 are exercised. Nothing here decides legality; tools/pkhex_gb_diff/run.sh feeds
 the same bytes to PKHeX and to PokeBank NX and compares their verdicts.
 
@@ -64,6 +64,32 @@ def exp_for(growth, level):
     return max(0, e) if level > 1 else 0
 
 
+def stat_exp(rng):
+    """Stat experience a trained Pokemon can carry: none, vitamins only (2560 each, ten
+    at most), or battles, which add the defeated Pokemon's base stats to all five."""
+    roll = rng.random()
+    if roll < 0.35:
+        return [0] * 5
+    if roll < 0.6:
+        return [2560 * rng.randint(0, 10) for _ in range(5)]
+    return [rng.randint(1, 65535) for _ in range(5)]
+
+
+def stat_exp_defect(rng):
+    """Stat experience no Pokemon can have: battle-gained values with one stat still zero."""
+    if rng.random() < 0.5:  # more than ten vitamins' worth in one stat, nothing elsewhere
+        values = [0] * 5
+        values[rng.randrange(5)] = 2560 * rng.randint(11, 25)
+        return values
+    values = [rng.randint(1, 65535) for _ in range(5)]
+    values[rng.randrange(5)] = 0
+    return values
+
+
+def letters(rng, n):
+    return "".join(rng.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ") for _ in range(n))
+
+
 def stat(base, dv, level, is_hp):
     value = ((base + dv) * 2 * level) // 100
     return value + level + 10 if is_hp else value + 5
@@ -112,7 +138,8 @@ class Mon:
         self.types = None
         self.dvs = None
         self.tid = None
-        self.ot, self.nick, self.trade_ot = "ASH", "", False
+        self.ot, self.nick, self.trade_ot = "ASH", "MON", False
+        self.statexp = [0] * 5
 
 
 def learn(mon, move, rng):
@@ -150,6 +177,8 @@ def grow(d, mon, target, rng):
             if etype in (5, 8) and rng.random() < 0.05:
                 mon.species = to
                 break
+    if rng.random() < 0.6:
+        mon.statexp = stat_exp(rng)
     if rng.random() < 0.4:
         options = d.tms(mon.species, mon.yellow)
         for _ in range(rng.randrange(1, 3)):
@@ -179,6 +208,8 @@ def finish(d, mon, rng, japanese):
         body[8 + i] = m
     body[0x0C:0x0E] = mon.tid.to_bytes(2, "big")
     body[0x0E:0x11] = exp_for(p["growth"], mon.level).to_bytes(3, "big")
+    for i, value in enumerate(mon.statexp):  # HP ATK DEF SPE SPC
+        body[0x11 + i * 2:0x13 + i * 2] = value.to_bytes(2, "big")
     body[0x1B:0x1D] = ((atk << 12) | (df << 8) | (spe << 4) | spc).to_bytes(2, "big")
     body[0x21] = mon.level
     body[0x22:0x24] = hp.to_bytes(2, "big")
@@ -186,7 +217,7 @@ def finish(d, mon, rng, japanese):
         body[0x24 + i * 2:0x26 + i * 2] = stat(b, dv, mon.level, False).to_bytes(2, "big")
     length = 6 if japanese else 11
     ot = bytes([TRADE_OT, TERMINATOR] + [TERMINATOR] * (length - 2)) if mon.trade_ot else gb_text(mon.ot, length)
-    nick = gb_text(mon.nick or "MON", length)
+    nick = gb_text(mon.nick, length)
     return body, ot, nick
 
 
@@ -271,7 +302,8 @@ def main():
             mon = Mon(species, level, encounter_moves(d, species, level, yellow),
                       personal_catch(species, yellow), yellow)
             grow(d, mon, min(100, level + rng.randrange(0, 40)), rng)
-            defect = rng.choice(("move", "level", "catch", "catch-item", "types", "drop-move"))
+            defect = rng.choice(("move", "level", "catch", "catch-item", "types", "drop-move",
+                                 "statexp", "ot-long", "ot-empty", "nick-empty"))
             if defect == "move":
                 mon.moves[rng.randrange(len(mon.moves))] = rng.randint(1, 165)
                 mon.moves = list(dict.fromkeys(mon.moves))
@@ -286,12 +318,22 @@ def main():
                              rng.choice((0, 1, 2, 3, 4, 5, 7, 8, 20, 21, 22, 23, 24, 25, 26)))
             elif defect == "drop-move" and len(mon.moves) > 1:
                 mon.moves.pop()
+            elif defect == "statexp":
+                mon.statexp = stat_exp_defect(rng)
+            elif defect == "ot-long":  # seven letters is the limit; seven is still fine
+                mon.ot = letters(rng, rng.randint(7, 10))
+            elif defect == "ot-empty":
+                mon.ot = ""
+            elif defect == "nick-empty":
+                mon.nick = ""
             emit("defect-" + defect, mon)
         else:  # fully random
             species = rng.randint(1, 151)
             moves = list(dict.fromkeys(rng.randint(1, 165) for _ in range(rng.randint(1, 4))))
             catch = rng.choice((personal_catch(species, False), rng.randrange(256), rng.choice(HELD_RATES)))
-            emit("random", Mon(species, rng.randint(2, 100), moves, catch, False))
+            mon = Mon(species, rng.randint(2, 100), moves, catch, False)
+            mon.statexp = rng.choice((stat_exp(rng), [rng.randrange(65536) for _ in range(5)]))
+            emit("random", mon)
 
 
 if __name__ == "__main__":

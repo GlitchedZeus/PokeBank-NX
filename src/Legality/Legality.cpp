@@ -145,13 +145,18 @@ namespace Legality {
                 case GB::Area::HeldItem:  return CheckIdentifier::Misc;
                 case GB::Area::Egg:       return CheckIdentifier::Misc;
                 case GB::Area::MetData:   return CheckIdentifier::Encounter;
+                case GB::Area::Stats:     return CheckIdentifier::Stats;
+                case GB::Area::Misc:      return CheckIdentifier::Misc;
             }
             return CheckIdentifier::Misc;
         }
 
         /// Native PK1: format checks, then the Gen I/II origin search in GBLegality.
-        /// Every applicable category is covered, so a Pokemon with a legitimate origin
-        /// and no other problem reads "No problems found".
+        /// A Pokemon with a legitimate origin and no other problem reads "No problems
+        /// found"; that is evidence the Pokemon is possible, not proof of where it came
+        /// from. Invalid needs a definitive rule; when only unverified rules or an
+        /// incomplete event catalog stand against every origin, the report stays
+        /// Incomplete with warnings.
         Report analyzeNativeGen1(const Pokemon::Pokemon& pk, const Pokemon::Pokemon1ReadOnly& gen1,
                                  bool sourceFormatMismatch) {
             Report r;
@@ -202,8 +207,16 @@ namespace Legality {
                 add(r, Severity::Invalid, "Original trainer name is empty", CheckIdentifier::Trainer);
             }
 
-            if (structural) {
-                GB::Entity1 e;
+            bool uncertain = false;
+            GB::Entity1 e;
+            e.statExp = rec.statExperience;
+            e.otName = rec.originalTrainer;
+            e.nickname = rec.nickname;
+            std::vector<GB::Problem> problems;
+            if (!structural) {
+                // The origin search cannot run, but the rules that hold for any origin still do.
+                problems = GB::formatProblems(e);
+            } else {
                 e.species = static_cast<uint8_t>(species);
                 e.level = rec.level;
                 for (int i = 0; i < 4; ++i) {
@@ -217,8 +230,6 @@ namespace Legality {
                 e.dvs = {rec.dvs[1], rec.dvs[2], rec.dvs[3], rec.dvs[4]};
                 e.tid = rec.trainerId;
                 e.tradeTrainer = rec.originalTrainer == "*";
-                e.otName = rec.originalTrainer;
-                e.nickname = rec.nickname;
                 e.language = gen1Language(rec.originalTrainer, rec.nickname);
                 const GB::Result origin = GB::checkGen1(e);
                 if (origin.status == GB::Status::Legal) {
@@ -229,9 +240,24 @@ namespace Legality {
                             "This history needs a trip through the Gen II Time Capsule",
                             CheckIdentifier::Transfer);
                     }
+                    add(r, Severity::Info,
+                        "A legitimate origin exists; that does not prove where this Pokemon actually came from",
+                        CheckIdentifier::Origin);
                 }
-                for (const auto& problem : origin.problems)
+                problems = origin.problems;
+            }
+            for (const auto& problem : problems) {
+                bool duplicate = false;
+                for (const auto& issue : r.issues)
+                    duplicate |= issue.text == problem.text;
+                if (duplicate)
+                    continue;
+                if (problem.definitive) {
                     add(r, Severity::Invalid, problem.text, gbIdentifier(problem.area));
+                } else {
+                    add(r, Severity::Warning, problem.text, gbIdentifier(problem.area));
+                    uncertain = true;
+                }
             }
 
             r.coverage.structure = CoverageLevel::Complete;
@@ -243,6 +269,12 @@ namespace Legality {
             r.coverage.pidRng = CoverageLevel::Complete;     // Gen I has no PID/RNG correlation
             r.coverage.eggBreeding = CoverageLevel::Complete; // Gen II eggs are part of the search
             r.coverage.transfer = CoverageLevel::Complete;    // Time Capsule histories are searched
+            if (uncertain) {
+                // An unverified rule or an incomplete event list was all that excluded
+                // the origins: the origin check is not finished.
+                r.coverage.encounter = CoverageLevel::Partial;
+                r.coverage.eventGift = CoverageLevel::Partial;
+            }
             return r;
         }
 

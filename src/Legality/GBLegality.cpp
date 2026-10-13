@@ -1370,6 +1370,58 @@ bool isSketchable2(uint8_t move) {
     }
 }
 
+// ---------------------------------------------------------------- stat experience, Pokerus, names
+
+constexpr uint16_t kVitaminBoost = 2560;          // EffortValues.VitaminBoost12
+constexpr uint16_t kMaxVitamins = 10 * 2560;      // EffortValues.MaxVitamins12
+
+/// EffortValueVerifier.VerifyEVsGB: stat experience that vitamins cannot explain came
+/// from defeated Pokemon, and each of those raises every stat, so none can be zero.
+std::string statExpProblem(const std::array<uint16_t, 5>& statExp, bool egg) {
+    bool any = false, battle = false, zero = false;
+    for (uint16_t v : statExp) {
+        any |= v != 0;
+        battle |= v > kMaxVitamins || v % kVitaminBoost != 0;
+        zero |= v == 0;
+    }
+    if (egg)
+        return any ? "An egg has no stat experience" : std::string();
+    if (battle && zero)
+        return "Stat experience from battles raises every stat, but one is still zero";
+    return {};
+}
+
+/// MiscPokerusVerifier (Gen II): strain 0-8, days 0-(strain % 4 + 1).
+std::string pokerusProblem(uint8_t pokerus) {
+    const int strain = pokerus >> 4, days = pokerus & 15;
+    if (strain > 8)
+        return "Pokerus strain " + std::to_string(strain) + " does not exist in Gen II";
+    if (days > (strain & 3) + 1)
+        return "Pokerus lasts at most " + std::to_string((strain & 3) + 1) + " days for this strain";
+    return {};
+}
+
+std::size_t codePoints(const std::string& s) {
+    std::size_t n = 0;
+    for (unsigned char c : s)
+        n += (c & 0xC0) != 0x80;
+    return n;
+}
+
+/// TrainerNameVerifier.VerifyGBOTWithinBounds: the naming screen allows 7 characters,
+/// 5 in Japanese.
+std::string trainerNameProblem(const Subject& pk) {
+    if (pk.tradeTrainer)
+        return {};  // the in-game-trade marker; judged with the trade encounters
+    const std::size_t length = codePoints(pk.otName);
+    if (length == 0)
+        return "Original trainer name is empty";
+    const std::size_t limit = pk.language == Language::Japanese ? 5 : 7;
+    if (length > limit)
+        return "Original trainer name is longer than " + std::to_string(limit) + " characters";
+    return {};
+}
+
 // ---------------------------------------------------------------- PP
 
 uint8_t basePP(uint8_t format, uint8_t move) {
@@ -1462,8 +1514,11 @@ Evaluation evaluate(const Subject& pk, const Candidate& enc, const Chain& chain,
                                                     " is empty, but a Gen I Pokemon cannot forget the moves it "
                                                     "started with"});
         } else if (r.source == Source::EvolutionOrderInvalid) {
+            // Real Gen I behavior (no move relearner), but PKHeX never applies it to PK1,
+            // so it has not been checked against an independent implementation.
             ev.problems.push_back({Area::Moves, moveName(move) + " was learned at a level its pre-evolution "
-                                                                 "could not still have been at"});
+                                                                 "could not still have been at",
+                                   false});
         } else if (!r.valid()) {
             ev.problems.push_back({Area::Moves, speciesName(pk.species) + " cannot learn " + moveName(move) +
                                                     " from this origin"});
@@ -1472,6 +1527,12 @@ Evaluation evaluate(const Subject& pk, const Candidate& enc, const Chain& chain,
     if (enc.partial)
         ev.problems.push_back({enc.kind == EncounterKind::Trade ? Area::Trainer : Area::CatchRate,
                                enc.partialReason});
+    // TrainerNameVerifier.VerifyOTGB: in-game trades carry a fixed trainer and are
+    // checked by the trade match itself.
+    if (enc.kind != EncounterKind::Trade) {
+        if (const std::string ot = trainerNameProblem(pk); !ot.empty())
+            ev.problems.push_back({Area::Trainer, ot});
+    }
     if (pk.tradeTrainer && !(enc.kind == EncounterKind::Trade && enc.generation == 1))
         ev.problems.push_back({Area::Trainer, "The in-game-trade trainer marker only appears on Pokemon "
                                               "received in a Red/Blue/Yellow in-game trade"});
@@ -1547,6 +1608,35 @@ std::string versionsText(uint8_t v) {
     return out;
 }
 
+/// True when no form in the chain can come from a wild slot, static or gift encounter,
+/// in-game trade or daycare egg in either generation, but some form has a recorded event.
+bool eventOnly(const Chain& chain) {
+    bool event = false;
+    for (int i = 0; i < chain.count; ++i) {
+        const uint8_t species = chain.stage[i].species;
+        for (std::size_t j = 0; j < kWildSlotCount; ++j)
+            if (kWildSlots[j].species == species)
+                return false;
+        for (std::size_t j = 0; j < kStatics1Count; ++j)
+            if (kStatics1[j].species == species)
+                return false;
+        for (std::size_t j = 0; j < kStatics2Count; ++j)
+            if (kStatics2[j].species == species)
+                return false;
+        for (std::size_t j = 0; j < kTrades1Count; ++j)
+            if (kTrades1[j].species == species)
+                return false;
+        for (std::size_t j = 0; j < kTrades2Count; ++j)
+            if (kTrades2[j].species == species)
+                return false;
+        for (std::size_t j = 0; j < kGifts1Count; ++j)
+            event |= kGifts1[j].species == species;
+        for (std::size_t j = 0; j < kGifts2Count; ++j)
+            event |= kGifts2[j].species == species;
+    }
+    return event && chain.count != 0 && !canHatch(chain.stage[chain.count - 1].species);
+}
+
 Result search(const Subject& pk, const Chain& chainOwn, const Chain& chainOther, bool otherGeneration,
               const std::vector<Problem>& extra) {
     Result res;
@@ -1566,7 +1656,11 @@ Result search(const Subject& pk, const Chain& chainOwn, const Chain& chainOther,
         }
     }
 
-    bool haveBest = false;
+    // Only a definitive problem rules a candidate out for certain.
+    const auto definitive = [](const std::vector<Problem>& problems) {
+        return std::any_of(problems.begin(), problems.end(), [](const Problem& p) { return p.definitive; });
+    };
+    bool haveBest = false, bestTentative = false;
     Evaluation best;
     for (const Candidate& c : candidates) {
         const Chain& chain = pk.format == 1 ? (c.generation == 1 ? chainOwn : chainOther) : chainOwn;
@@ -1578,27 +1672,69 @@ Result search(const Subject& pk, const Chain& chainOwn, const Chain& chainOther,
             res.problems = extra;
             return res;
         }
-        if (!haveBest || ev.problems.size() < best.problems.size()) {
+        // Prefer a candidate that only unverified rules exclude: it may still be the origin.
+        const bool tentative = !definitive(ev.problems);
+        if (!haveBest || (tentative && !bestTentative) ||
+            (tentative == bestTentative && ev.problems.size() < best.problems.size())) {
             best = std::move(ev);
+            bestTentative = tentative;
             haveBest = true;
         }
     }
 
     res.status = Status::Illegal;
+    if (haveBest && bestTentative) {
+        res.status = Status::Uncertain;
+    } else if (eventOnly(chainOwn)) {
+        // Mew and Celebi exist only through distributions. None of the recorded ones
+        // matches, but the list of GB-era distributions is not known to be complete
+        // (e.g. Japanese Crystal's GS Ball Celebi is only modelled for Virtual Console),
+        // and Red/Blue/Yellow's Mew glitch, which PKHeX does not model, catches a Mew
+        // with the player's own trainer data.
+        res.status = Status::Uncertain;
+        res.problems.push_back({Area::Encounter, speciesName(pk.species) +
+                                                     " was only distributed at events; no recorded distribution "
+                                                     "matches this one, and the event list is not known to be "
+                                                     "complete",
+                                false});
+        // Whichever distribution it was, the game that made the Pokemon copied the
+        // species' own catch rate (pokered _AddPartyMon), and only a Gen II held item
+        // replaces it; and its trainer was named on the games' own naming screen.
+        // Neither depends on the event list.
+        bool rateOk = pk.format != 1 || isHeldItemRate(pk.catchRate);
+        for (int i = 0; i < chainOwn.count && !rateOk; ++i)
+            rateOk = rateMatchesEither(pk.catchRate, chainOwn.stage[i].species);
+        if (!rateOk) {
+            res.status = Status::Illegal;
+            res.problems.push_back({Area::CatchRate, "Catch rate " + std::to_string(pk.catchRate) +
+                                                         " does not match " + speciesName(pk.species) +
+                                                         " and is not a Gen II held item, whatever event it "
+                                                         "came from"});
+        }
+        if (const std::string ot = trainerNameProblem(pk); !ot.empty()) {
+            res.status = Status::Illegal;
+            res.problems.push_back({Area::Trainer, ot});
+        }
+        haveBest = false;
+    }
     if (!haveBest) {
-        const char* games = pk.format == 1
-            ? (otherGeneration ? "Red/Blue/Yellow or Gold/Silver/Crystal" : "Red/Blue/Yellow")
-            : (otherGeneration ? "Gold/Silver/Crystal or Red/Blue/Yellow" : "Gold/Silver/Crystal");
-        res.problems.push_back({Area::Encounter, std::string("No ") + games + " encounter can produce " +
-                                                     speciesName(pk.species) + " at level " +
-                                                     std::to_string(pk.level) +
-                                                     (pk.caught ? " with this Crystal met data" : "")});
+        if (res.problems.empty()) {
+            const char* games = pk.format == 1
+                ? (otherGeneration ? "Red/Blue/Yellow or Gold/Silver/Crystal" : "Red/Blue/Yellow")
+                : (otherGeneration ? "Gold/Silver/Crystal or Red/Blue/Yellow" : "Gold/Silver/Crystal");
+            res.problems.push_back({Area::Encounter, std::string("No ") + games + " encounter can produce " +
+                                                         speciesName(pk.species) + " at level " +
+                                                         std::to_string(pk.level) +
+                                                         (pk.caught ? " with this Crystal met data" : "")});
+        }
     } else {
         const Candidate& c = best.enc;
         res.origin = {c.kind, c.generation, c.species, c.level, c.versions, c.slotType};
         res.timeCapsule = best.timeCapsule;
         res.problems = std::move(best.problems);
     }
+    if (!extra.empty())
+        res.status = Status::Illegal;
     res.problems.insert(res.problems.end(), extra.begin(), extra.end());
     return res;
 }
@@ -1647,18 +1783,43 @@ std::string describe(const Origin& o) {
     return out;
 }
 
+std::vector<Problem> formatProblems(const Entity1& e) {
+    std::vector<Problem> out;
+    if (const std::string stats = statExpProblem(e.statExp, false); !stats.empty())
+        out.push_back({Area::Stats, stats});
+    if (e.nickname.empty())
+        out.push_back({Area::Trainer, "Nickname is empty"});
+    return out;
+}
+
+std::vector<Problem> formatProblems(const Entity2& e) {
+    std::vector<Problem> out;
+    if (const std::string stats = statExpProblem(e.statExp, e.isEgg); !stats.empty())
+        out.push_back({Area::Stats, stats});
+    if (const std::string pokerus = pokerusProblem(e.pokerus); !pokerus.empty())
+        out.push_back({Area::Misc, pokerus});
+    if (e.nickname.empty())
+        out.push_back({Area::Trainer, "Nickname is empty"});
+    return out;
+}
+
 Result checkGen1(const Entity1& e) {
     Result res;
+    const auto unsearchable = [&](Result& r) {
+        const std::vector<Problem> format = formatProblems(e);
+        r.problems.insert(r.problems.end(), format.begin(), format.end());
+        return r;
+    };
     if (e.species == 0 || e.species > kMaxSpecies1) {
         res.problems.push_back({Area::Encounter, "Species does not exist in Gen I"});
-        return res;
+        return unsearchable(res);
     }
     if (e.level < 1 || e.level > 100) {
         res.problems.push_back({Area::Encounter, "Level is outside 1-100"});
-        return res;
+        return unsearchable(res);
     }
     if (!movesWellFormed(e.moves, kMaxMove1, "Gen I", res))
-        return res;
+        return unsearchable(res);
 
     Subject pk;
     pk.format = 1;
@@ -1681,6 +1842,8 @@ Result checkGen1(const Entity1& e) {
         extra.push_back({Area::Types, types});
     if (const std::string pp = ppProblem(1, e.moves, e.pp, e.ppUps, false); !pp.empty())
         extra.push_back({Area::Moves, pp});
+    const std::vector<Problem> format = formatProblems(e);
+    extra.insert(extra.end(), format.begin(), format.end());
 
     const Chain chain1 = originChain(pk.species, pk.level, false);
     const Chain chain2 = originChain(pk.species, pk.level, true);
@@ -1689,16 +1852,21 @@ Result checkGen1(const Entity1& e) {
 
 Result checkGen2(const Entity2& e) {
     Result res;
+    const auto unsearchable = [&](Result& r) {
+        const std::vector<Problem> format = formatProblems(e);
+        r.problems.insert(r.problems.end(), format.begin(), format.end());
+        return r;
+    };
     if (e.species == 0 || e.species > kMaxSpecies2) {
         res.problems.push_back({Area::Encounter, "Species does not exist in Gen II"});
-        return res;
+        return unsearchable(res);
     }
     if (e.level < 1 || e.level > 100) {
         res.problems.push_back({Area::Encounter, "Level is outside 1-100"});
-        return res;
+        return unsearchable(res);
     }
     if (!movesWellFormed(e.moves, kMaxMove2, "Gen II", res))
-        return res;
+        return unsearchable(res);
 
     Subject pk;
     pk.format = 2;
@@ -1734,6 +1902,8 @@ Result checkGen2(const Entity2& e) {
         extra.push_back({Area::MetData, "Level is below the Crystal met level"});
     if (const std::string pp = ppProblem(2, e.moves, e.pp, e.ppUps, pk.egg); !pp.empty())
         extra.push_back({Area::Moves, pp});
+    const std::vector<Problem> format = formatProblems(e);
+    extra.insert(extra.end(), format.begin(), format.end());
 
     // EncounterOrigin.GetMinMaxGB: eggs are level 5, Crystal-met Pokemon start at their met level.
     const uint8_t levelMin = pk.egg ? kEggLevel : (pk.caught ? pk.metLevel : kMinWildLevel);
