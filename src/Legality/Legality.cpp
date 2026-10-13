@@ -1594,7 +1594,18 @@ namespace Legality {
         const Pokemon::PersonalInfo& pi = Pokemon::getPersonalInfo(species, pk.form());
 
         // ---- L1: species id known (name-table sentinel = "Unknown") ----
-        if (std::string(Trainer::getSpeciesName(species)) == "Unknown")
+        // Name/personal tables may lag a new Switch title or DLC revision.
+        // Unsupported catalog entries do NOT prove modern native PKM bytes
+        // impossible. The format-specific independent ceiling below remains
+        // available for actual bounded structural contradictions.
+        const bool unresolvedModernSpecies = modern.nativeLayoutSupported &&
+            std::string(Trainer::getSpeciesName(species)) == "Unknown";
+        if (unresolvedModernSpecies)
+            add(r, Severity::Warning,
+                "Species id " + std::to_string(species) +
+                " is not indexed by this build's modern species catalog; per-species legality remains unresolved",
+                CheckIdentifier::Species);
+        else if (std::string(Trainer::getSpeciesName(species)) == "Unknown")
             add(r, Severity::Invalid, "Unknown species id " + std::to_string(species),
                 CheckIdentifier::Species);
 
@@ -1719,6 +1730,7 @@ namespace Legality {
         // merely because the exact source save is unavailable or mislabeled.
         // Format applicability is independent of historical source identity.
         if (nativeFormatGeneration != 1 && nativeFormatGeneration != 2 &&
+            !unresolvedModernSpecies &&
             (!sourceProfile || exactGeneration >= 3)) {
             const uint8_t an = pk.abilityNumber();
             if (an != 1 && an != 2 && an != 4)
@@ -2842,7 +2854,7 @@ namespace Legality {
         // PK1 stores no gender. The neutral wrapper value 2 is absence of a
         // native field, not evidence that a gendered species is genderless.
         // PK2's DV-derived gender remains applicable without source context.
-        if (nativeFormatGeneration != 1 &&
+        if (nativeFormatGeneration != 1 && !unresolvedModernSpecies &&
             (!sourceProfile || exactGeneration >= 2)) {
             const uint8_t g = pk.gender();
             if (g > 2)
@@ -2873,7 +2885,8 @@ namespace Legality {
         // ---- L2: species/form is obtainable in this game (per the personal presence bitmask) ----
         {
             const uint8_t bit = presenceBit(originGroup);
-            if (bit != 0 && (pi.presence & bit) == 0)
+            if (bit != 0 && !unresolvedModernSpecies &&
+                (pi.presence & bit) == 0)
                 add(r, Severity::Invalid, "Species/form not obtainable in this game");
         }
 
