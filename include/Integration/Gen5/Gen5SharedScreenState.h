@@ -15,8 +15,8 @@
 namespace PokeVault::Integration::Gen5 {
 
 // Session-local control model for the ONE shared Trainer/Party/Boxes screen.
-// It owns only app-memory PK5 drafts. No SAV5 writer, Bank, Create, Inject,
-// physical filesystem mutation, or unknown Gen V legality interpretation.
+// It owns app-memory PK5 drafts and the existing shared Add action.
+// No SAV5 writer, Bank/Inject or physical source-file mutation authority.
 class Gen5SharedScreenState {
 public:
     using Workspace=Gen5StagedPokemonWorkspace;
@@ -24,7 +24,7 @@ public:
     using Action=Shared::Action;
     using Field=Shared::FieldIdentity;
     enum class Surface : uint8_t {
-        Browse, Actions, View, Edit, MovePicker, LocationPicker, IdentityPicker, SpeciesPicker, NaturePicker, CloneDestination, ConfirmRemoveBox, ConfirmDraft, Review,
+        Browse, Actions, View, Edit, MovePicker, LocationPicker, IdentityPicker, SpeciesPicker, NaturePicker, CloneDestination, ConfirmRemoveBox, ConfirmCreateBox, ConfirmDraft, Review,
         ConfirmDiscardAll, ConfirmExport, ConfirmExit
     };
     struct EditableRow { Field field; size_t stat; const char* label; uint32_t maximum; };
@@ -179,6 +179,16 @@ public:
             error.clear();
             return true;
         }
+        if(action==Action::Add) {
+            if(target_.region!=Workspace::Region::Box ||
+               !workspace.emptyCloneDestination(target_.box,target_.slot)) {
+                error="Gen V Add requires an unchanged empty native box slot";
+                return false;
+            }
+            surface_=Surface::ConfirmCreateBox;
+            error.clear();
+            return true;
+        }
         if(action==Action::Remove) {
             if(target_.region!=Workspace::Region::Box ||
                !workspace.originalOccupied(target_)) {
@@ -285,9 +295,36 @@ public:
         error.clear();
         return true;
     }
+    // No native game or encounter fields are guessed by the state machine;
+    // the shared Add wizard passes a fully explicit request to this atomic
+    // stage+presentation boundary. User may cancel without a source mutation.
+    template<class Refresh>
+    [[nodiscard]] bool confirmCreateBox(Workspace& ws,
+                                         const CreateRequest5& request,
+                                         Refresh&& refresh,
+                                         std::string& error) {
+        if(surface_!=Surface::ConfirmCreateBox ||
+           target_.region!=Workspace::Region::Box ||
+           !ws.emptyCloneDestination(target_.box,target_.slot)) {
+            error="Gen V Add confirmation requires the original empty box slot";
+            return false;
+        }
+        Workspace snapshot=ws;
+        if(!ws.createInEmptyBox(request,target_.box,target_.slot,&error))
+            return false;
+        if(!std::forward<Refresh>(refresh)(error)) {
+            ws=std::move(snapshot);
+            if(error.empty())error="Gen V Add presentation failed; stage rolled back";
+            return false;
+        }
+        surface_=Surface::Browse;
+        error.clear();
+        return true;
+    }
     void cancelBoxAction() noexcept {
         if(surface_==Surface::CloneDestination ||
-           surface_==Surface::ConfirmRemoveBox)surface_=Surface::Actions;
+           surface_==Surface::ConfirmRemoveBox ||
+           surface_==Surface::ConfirmCreateBox)surface_=Surface::Actions;
     }
     void moveReviewPage(int delta,const Workspace& workspace) noexcept {
         if(surface_!=Surface::Review)return;
@@ -706,7 +743,8 @@ public:
             return false;
         }
         if(surface_==Surface::CloneDestination ||
-           surface_==Surface::ConfirmRemoveBox) {
+           surface_==Surface::ConfirmRemoveBox ||
+           surface_==Surface::ConfirmCreateBox) {
             cancelBoxAction();
             return false;
         }

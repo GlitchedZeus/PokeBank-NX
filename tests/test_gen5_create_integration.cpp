@@ -99,7 +99,34 @@ static void exercise(uint32_t version, bool backup, uint32_t species) {
     // verifies all source/provenance/CRC boundaries for an actual new slot.
     workspace.discardAll();
     CHECK(!workspace.hasChanges());
-    CHECK(workspace.createInEmptyBox(r,0,1,&error));
+    // Exact SAME shared Add menu as other gens. No implicit Create from
+    // focus, no party insertion, no source-file writer.
+    using Action=PokeBank::UIModel::SharedPokemonEditor::Action;
+    using Surface=G::Gen5SharedScreenState::Surface;
+    G::Gen5SharedScreenState addScreen;
+    CHECK(addScreen.openActions(workspace,{Region::Box,0,1},error));
+    const auto options=addScreen.availableActions(workspace);
+    CHECK(options.count==2 && options[0]==Action::Add &&
+          options[1]==Action::Close);
+    CHECK(addScreen.activate(workspace,Action::Add,error));
+    CHECK(addScreen.surface()==Surface::ConfirmCreateBox);
+    // Transactional rollback if shared box preview cannot refresh.
+    CHECK(!addScreen.confirmCreateBox(workspace,r,
+        [&](std::string& why) {
+            why="Simulated shared editor presentation failure";
+            return false;
+        },error));
+    CHECK(addScreen.surface()==Surface::ConfirmCreateBox);
+    CHECK(!workspace.hasChanges() && workspace.viewBox(0,1)->empty());
+    // Invalid cross-title request never stages a record.
+    auto otherTitle=r;
+    otherTitle.game=static_cast<G::CreateGame5>(version==20?21:20);
+    CHECK(!addScreen.confirmCreateBox(workspace,otherTitle,
+        [&](std::string&){return true;},error));
+    CHECK(!workspace.hasChanges());
+    CHECK(addScreen.confirmCreateBox(workspace,r,
+        [&](std::string&){return true;},error));
+    CHECK(addScreen.surface()==Surface::Browse);
     CHECK(workspace.hasChanges() && workspace.changedRecordCount()==1);
     CHECK(workspace.viewBox(0,1)->species()==species);
     CHECK(workspace.viewBox(0,1)->pid()==*r.pid);

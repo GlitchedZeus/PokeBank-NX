@@ -35,14 +35,19 @@ struct SharedEditorSlot {
 [[nodiscard]] inline Shared::ActionSet actions(
     const Gen5StagedPokemonWorkspace& workspace,
     const SharedEditorSlot& slot) {
-    // Unknown/empty slots do not expose Add, Clone or Remove. The only
-    // actionable PK5 editing path is an occupied, strictly validated slot.
+    // The existing shared Add action is available only for a physically
+    // zero-filled, checksum-validated EMPTY box cell. Party append, invalid
+    // slots and already-staged replacements cannot fabricate Add authority.
     Shared::ActionSet result{};
     const auto append=[&](Shared::Action action) {
         result.values[result.count++]=action;
     };
     // Re-read the live workspace; cached picker flags never grant edit access.
     const auto live=selectedSlot(workspace,slot.location);
+    if(live.validated && !live.occupied &&
+       slot.location.region==Gen5StagedPokemonWorkspace::Region::Box &&
+       workspace.emptyCloneDestination(slot.location.box,slot.location.slot))
+        append(Shared::Action::Add);
     if(live.validated && live.occupied) {
         append(Shared::Action::View);
         // A newly staged clone may be viewed but is not yet eligible for

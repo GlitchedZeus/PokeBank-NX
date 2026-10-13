@@ -1,7 +1,7 @@
 // Generation V's guarded adapter for the EXISTING shared Trainer/Party/Boxes
-// renderer. View, verified PK5 staged Edit and Review are in app memory only.
-// This layer owns EVERY Gen V controller frame: inherited Storage/Bank, Items,
-// source-save dialogs, Create and generic mutation handlers are unreachable.
+// renderer. View, verified PK5 staged Edit/Review, and shared empty-box Add
+// are in app memory only. Gen V never calls the inherited source-save writer,
+// Storage/Bank, Items or generic uncontrolled mutation handlers.
 // Touch targets are isolated to verified read-only and native-field staged
 // actions; native bank, source-writing and unsupported mutation routes remain barred.
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
@@ -74,6 +74,126 @@ void keepDraft(TrainerViewScreen& screen) {
     }
     screen.postStatus("PK5 draft kept in app memory only; emulator save unchanged",300);
     screen.controllerNavigation.reset();
+}
+// Reuse the SAME keyboard and shared Add action used by earlier generations.
+// Prompts are explicit; no PIDs, OT identity or encounter histories are
+// invented from filenames. Cancel at any step leaves the source and stage intact.
+bool promptNativeBoxCreate(TrainerViewScreen& screen,std::string& error) {
+    namespace G=PokeVault::Integration::Gen5;
+    auto& trainer=nativeTrainer(screen);
+    auto& ws=trainer.stagedPokemon();
+    auto& state=trainer.sharedScreen();
+    if(state.surface()!=Surface::ConfirmCreateBox ||
+       state.target().region!=Region::Box ||
+       !ws.emptyCloneDestination(state.target().box,state.target().slot)) {
+        error="Shared Gen V Add needs a verified empty native box";
+        return false;
+    }
+    const uint32_t version=ws.sourceSave().trainer().gameVersion;
+    if(version<20 || version>23) {
+        error="Gen V Add exact game identity is invalid";
+        return false;
+    }
+    G::CreateRequest5 request;
+    request.game=static_cast<G::CreateGame5>(version);
+    request.format=G::CreateFormat5::Boxed;
+    auto ask=[&](const std::string& title,int initial,
+                 int minimum,int maximum,uint32_t& dest) {
+        const auto result=Utils::promptNumber(title,initial,minimum,maximum);
+        if(!result.accepted)return false;
+        dest=static_cast<uint32_t>(result.value);
+        return true;
+    };
+    auto askText=[&](const std::string& title,const std::string& tip,
+                     const std::string& initial,size_t max,std::string& out) {
+        const auto result=Utils::promptText(title,tip,initial,max);
+        if(!result.accepted)return false;
+        out=result.text;
+        return true;
+    };
+    if(!ask("Add Pokemon - National Dex Species",25,1,649,request.species) ||
+       !ask("Add Pokemon - Level",5,1,100,request.level) ||
+       !ask("Add Pokemon - Nature (0-24)",0,0,24,request.nature))
+        return false;
+    const auto personal=G::personal5(request.species,0,version>=22);
+    if(!personal) {
+        error="This species is unavailable in the selected BW/B2W2 data";
+        return false;
+    }
+    // Two explicit native 16-bit words support every 32-bit PID, including
+    // values exceeding signed int, while reusing the established keypad.
+    uint32_t pidLow=0,pidHigh=0;
+    if(!ask("Add Pokemon - PID lower 16 bits",1,0,65535,pidLow) ||
+       !ask("Add Pokemon - PID upper 16 bits",0,0,65535,pidHigh))
+        return false;
+    request.pid=(pidHigh<<16)|pidLow;
+    request.gender=G::createGenderForPID5(personal.info->genderRatio,*request.pid);
+    if(!ask("Add Pokemon - Ability Slot (0 / 1 / Hidden 2)",
+            static_cast<int>(pidHigh&1u),0,2,request.abilitySlot))
+        return false;
+    if(!askText("Add Pokemon - Nickname","1-10 native ASCII characters",
+                "",10,request.nickname))
+        return false;
+    const auto sourceTrainer=ws.sourceSave().trainer();
+    std::string otDefault;
+    for(const char16_t ch:sourceTrainer.rawName) {
+        if(ch<0x20 || ch>0x7e) {otDefault.clear();break;}
+        otDefault.push_back(static_cast<char>(ch));
+    }
+    G::CreateTrainer5 ot;
+    if(!askText("Add Pokemon - Original Trainer Name",
+                "1-7 native ASCII characters",otDefault,7,ot.name) ||
+       !ask("Add Pokemon - OT Trainer ID",sourceTrainer.tid,
+            0,65535,ot.tid) ||
+       !ask("Add Pokemon - OT Secret ID",sourceTrainer.sid,
+            0,65535,ot.sid) ||
+       !ask("Add Pokemon - OT Gender (0 Male, 1 Female)",
+            sourceTrainer.gender<=1?sourceTrainer.gender:0,0,1,ot.gender) ||
+       !ask("Add Pokemon - Language (2,3,4,5,7)",
+            sourceTrainer.language>=2 && sourceTrainer.language<=7
+                ? sourceTrainer.language:2,2,7,ot.language))
+        return false;
+    request.trainer=std::move(ot);
+    request.encounter.kind=G::CreateHistory5::CallerSuppliedNative;
+    if(!ask("Add Pokemon - Native Met Location ID (1-153)",
+            1,1,153,request.encounter.location) ||
+       !ask("Add Pokemon - Met Level",static_cast<int>(request.level),
+            1,static_cast<int>(request.level),request.encounter.level) ||
+       !ask("Add Pokemon - Ball ID",4,1,25,request.encounter.ball) ||
+       !ask("Add Pokemon - Met Year",2026,2000,2099,request.encounter.year) ||
+       !ask("Add Pokemon - Met Month",1,1,12,request.encounter.month) ||
+       !ask("Add Pokemon - Met Day",1,1,31,request.encounter.day))
+        return false;
+    for(size_t i=0;i<request.moves.size();++i) {
+        if(!ask("Add Pokemon - Move "+std::to_string(i+1)+" ID (0 empty)",
+                i==0?1:0,i==0?1:0,559,request.moves[i].id))
+            return false;
+    }
+    constexpr const char* stats[6]={"HP","Attack","Defense",
+                                     "Speed","Sp. Attack","Sp. Defense"};
+    for(size_t i=0;i<6;++i) {
+        if(!ask("Add Pokemon - "+std::string(stats[i])+" IV",15,0,31,
+                request.ivs[i]))
+            return false;
+    }
+    // EVs are explicit, including a legitimate zero distribution.
+    for(size_t i=0;i<6;++i) {
+        if(!ask("Add Pokemon - "+std::string(stats[i])+" EV",0,0,255,
+                request.evs[i]))
+            return false;
+    }
+    if(!ask("Add Pokemon - Friendship",70,0,255,request.friendship))
+        return false;
+    const auto checked=G::validateCreate5(request);
+    if(!checked) {
+        error=std::string(checked.message);
+        return false;
+    }
+    // The complete Create transaction is staged only if native PK5 creation
+    // and the existing shared-screen visual refresh BOTH succeed.
+    return state.confirmCreateBox(ws,request,[&](std::string& why) {
+        return trainer.refreshStagedPokemonPresentation(why);
+    },error);
 }
 } // namespace
 
@@ -246,6 +366,18 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                     screen.postStatus(error,320);
                 else screen.postStatus(
                     "Gen V cloned to empty staged box slot; source SAV5 unchanged",260);
+            }
+            return true;
+        case Surface::ConfirmCreateBox:
+            if(keys&HidNpadButton_B)state.cancelBoxAction();
+            else if(keys&HidNpadButton_Y) {
+                std::string error;
+                if(!promptNativeBoxCreate(screen,error)) {
+                    if(error.empty())state.cancelBoxAction();
+                    else screen.postStatus(error,360);
+                } else screen.postStatus(
+                    "Pokemon added to staged box; source SAV5 unchanged",300);
+                screen.controllerNavigation.reset();
             }
             return true;
         case Surface::ConfirmRemoveBox:
@@ -1174,6 +1306,11 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
             drawNavBar(fb,{{"B","Back"},{"","Verified PK5 View"}});
             return true;
         }
+        case Surface::ConfirmCreateBox:
+            drawDecision(screen,fb,"Add Pokemon To This Empty Gen V Box Slot?",
+                "Y enters native trainer/PID/moves/history fields. B cancels; SAV5 untouched.",
+                {{"Y","Enter Create Fields"},{"B","Cancel"}});
+            return true;
         case Surface::ConfirmRemoveBox:
             drawDecision(screen,fb,"Remove Boxed Pokemon From Staged Copy?",
                 "Requires Y confirmation; source SAV5 and backups stay intact.",

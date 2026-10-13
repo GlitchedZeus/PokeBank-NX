@@ -925,8 +925,34 @@ int main() {
         auto staleSlot=nativeParty;
         staleSlot.location={G::Gen5StagedPokemonWorkspace::Region::Box,0,1};
         const auto staleActions=G::actions(workspace,staleSlot);
-        assert(staleActions.count==2 && staleActions[0]==GA::Review &&
-               staleActions[1]==GA::Close);
+        // Empty verified cells use the very same shared Add/Review/Cancel
+        // menu as Gen I-IV, not an invented Gen V-only Create UI.
+        assert(staleActions.count==3 && staleActions[0]==GA::Add &&
+               staleActions[1]==GA::Review && staleActions[2]==GA::Close);
+        // No Add permission for unverified/occupied/party slots. The
+        // existing shared action model never receives a write handle.
+        G::Gen5StagedPokemonWorkspace emptyActions(*parsed);
+        G::Gen5SharedScreenState addMenu;
+        assert(addMenu.openActions(emptyActions,
+            {G::Gen5StagedPokemonWorkspace::Region::Box,0,1},error));
+        assert(addMenu.availableActions(emptyActions)[0]==GA::Add);
+        assert(addMenu.activate(emptyActions,GA::Add,error));
+        assert(addMenu.surface()==G::Gen5SharedScreenState::Surface::ConfirmCreateBox);
+        assert(!addMenu.back()); // Cancel never changes the staged workspace.
+        assert(addMenu.surface()==G::Gen5SharedScreenState::Surface::Actions);
+        assert(!emptyActions.hasChanges());
+        assert(!addMenu.activate(emptyActions,GA::Remove,error));
+        assert(!emptyActions.hasChanges());
+        assert(!addMenu.back());
+        assert(addMenu.surface()==G::Gen5SharedScreenState::Surface::Browse);
+        assert(addMenu.openActions(emptyActions,
+            {G::Gen5StagedPokemonWorkspace::Region::Party,0,0},error));
+        const auto partyActions=addMenu.availableActions(emptyActions);
+        for(size_t i=0;i<partyActions.count;++i)
+            assert(partyActions[i]!=GA::Add);
+        assert(!addMenu.activate(emptyActions,GA::Add,error));
+        assert(!emptyActions.hasChanges());
+        assert(!addMenu.back());
         assert(G::fieldAccess(GF::IV)==GAccess::Editable);
         assert(G::fieldAccess(GF::Nature)==GAccess::Editable);
         assert(G::fieldAccess(GF::HeldItem)==GAccess::Editable);
