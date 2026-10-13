@@ -524,7 +524,7 @@ require(surface,"Generation V Species Dex ID (native-compatible only)",
 require(read("tests/test_gen5_pk5_readonly.cpp"),
         "Field::Species,0,26","Field::Species,0,32")
 require(read("tests/test_gen5_readonly_save.cpp"),
-        "ui.stageFieldValue(26,error)",
+        "assert(ui.acceptSpeciesPicker(error));",
         "localUiWorkspace.viewParty(0)->species()==26")
 # Duplicate switch labels are an immediate native C++ compile failure.
 gen5_access=shared_contract.split("if (generation == Generation::Gen5) {",1)[1]

@@ -10,7 +10,6 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
-#include <string_view>
 #include <utility>
 
 namespace PokeVault::Integration::Gen5 {
