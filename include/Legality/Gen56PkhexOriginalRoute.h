@@ -122,7 +122,10 @@ constexpr Result evaluate(const P::Row& r, const SourceEvidence& e) noexcept {
     return {Status::CandidateLocalSpeciesMismatch,r.sourceIndex};
  if(r.level!=e.originalLevel)
     return {Status::CandidateLocalLevelMismatch,r.sourceIndex};
- if(r.flags&1u){
+ // Gen V roaming sources match a roaming area, not the literal table
+ // value. Gift eggs can later be hatched/traded; their eventual native
+ // met location is not the egg's original gift acquisition location.
+ if((r.flags&1u)&&!(r.flags&2u)&&!(r.flags&16u)){
     if(!e.originalMetLocationIndependentlyAttested)
        return {Status::UnknownOriginalLocation,r.sourceIndex};
     if(e.originalMetLocation!=r.location)
