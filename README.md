@@ -72,8 +72,8 @@ The table below separates features that have passed physical Switch testing from
 | Gen IV — D/P/Pt/HG/SS | ✅ Accepted foundation | Staged editor and integrated Product Home passed on NRO `0760334f`; newer Items and picker work still needs its own testing |
 | Product Home & launching | ✅ Accepted checkpoint | Quick Games, trainer/Party previews, keyboard/numpad, tested legacy/DS launch flows and Quit & Return on `0760334f` |
 | Touch & action menus | 🚧 Active polish | Integrated touch foundation on application PR #92; narrow action menu and Gen III/IV touch/A parity fixes remain separate drafts |
-| Gen I–IV legality | 🔬 Active development | Read-only analyzer with substantial accepted evidence and five parallel work lanes; not PKHeX parity |
-| Gen V | 🧪 Experimental branch | Read-only PK5/save foundation in PR #163; not part of an accepted product workflow |
+| Gen I–IV legality | 🔬 Active development | Read-only analyzer with substantial draft evidence; five lanes now switching to a **Gen I-first completion sprint**; not PKHeX parity |
+| Gen V | 🧪 Experimental branch | Earlier PK5 foundation [#163](https://github.com/GlitchedZeus/PokeBank-NX/pull/163) plus newer separate Product [#300](https://github.com/GlitchedZeus/PokeBank-NX/pull/300) and legality [#301](https://github.com/GlitchedZeus/PokeBank-NX/pull/301) drafts; no new device/release acceptance implied |
 | Master Vault / Banks | ⏳ Planned | Visual entry points exist; persistent storage is not enabled |
 | Direct source writeback | 🔒 Locked | No general write/inject permission for installed games or emulator sources |
 
@@ -220,6 +220,12 @@ On October 12, development moved to a [90-package master inventory](https://gith
 
 These are active **draft development/research PRs**, not five features already shipped in an NRO. The central legality branch remains isolated from the Product UI and default branch while exact-head tests and integration are completed. The 90 packages are a working inventory, **not** a percentage of PKHeX coverage.
 
+### Gen I-first legality development
+
+The five independent specialists are being redirected to **Red/Blue/Yellow legality first**, followed by Gen II, Gen III and so on. They stay parallel **by discipline** (L1 encounters, L2 Gen I DV/Stat Experience mechanics, L3 move chronology, L4 events/metadata, L5 independent QA), rather than independently finishing different generations. **Gen I has no breeding, native abilities, natures, or gender**; those are not missing Gen I features to simulate. The [five copy-ready Gen I lane prompts and exact test commands](docs/legality/GEN1_FIRST_SPRINT_HANDOFF_20261012.md) define the new working contract.
+
+[Gen I–IV reconciliation #298](https://github.com/GlitchedZeus/PokeBank-NX/pull/298) and [Gen V–IX foundation #301](https://github.com/GlitchedZeus/PokeBank-NX/pull/301) remain **open draft branches**, not merged into the app or accepted legality baseline. The experimental PK5/PK6/PK7 structural analyzers and PKHeX.Core host oracle are groundwork, **not completed legality for Gen V–VII**. Original PKHeX source pins have been checked, but whole-Pokémon historical parity, current-head CI and independent QA are still separate acceptance gates. All later-generation work remains preserved on GitHub while the team focuses on Gen I.
+
 > [!CAUTION]
 > Legality analysis is **read-only**. It does not fix or rewrite a Pokémon, authorize save injection, or claim PKHeX-level completeness. Unknown original history, unsupported mechanics and an exhausted search remain **Incomplete**, not automatically Invalid.
 
@@ -249,7 +255,10 @@ The five legality lanes also produce standalone native and source-research tests
 | [#103 — read-only legality](https://github.com/GlitchedZeus/PokeBank-NX/pull/103) | **Open/draft.** Accepted isolated checkpoint `d29eada5` includes source-linked Platinum breeding and earlier Gen I–IV evidence; not merged into Product UI or default `main` |
 | [#284 — HGSS egg PID](https://github.com/GlitchedZeus/PokeBank-NX/pull/284) | Separate source-attested breeding candidate with exact-head CI; draft until integrated |
 | [#291 — master legality plan](https://github.com/GlitchedZeus/PokeBank-NX/pull/291) | 90 tracked packages and five parallel ownership lanes; planning work, not an engine release |
-| [#163 — experimental Gen V](https://github.com/GlitchedZeus/PokeBank-NX/pull/163) | Read-only PK5/save foundation; separate open draft, no full Gen V editor/hardware claim |
+| [#163 — experimental Gen V](https://github.com/GlitchedZeus/PokeBank-NX/pull/163) | Earlier read-only PK5/save foundation; not a released Gen V editor |
+| [#298 — Gen I–IV legality coordinator](https://github.com/GlitchedZeus/PokeBank-NX/pull/298) | **Open/draft.** Forward-only reconciliation of five specialty lanes; Gen I-first focus and exact-head acceptance outstanding |
+| [#301 — Gen V–IX legality groundwork](https://github.com/GlitchedZeus/PokeBank-NX/pull/301) | **Open/draft.** Product-compatible PK5, standalone PK6/PK7 structural analyzers and PKHeX.Core oracle groundwork; historical legality incomplete |
+| [#300 — Gen V Product candidate](https://github.com/GlitchedZeus/PokeBank-NX/pull/300) | **Open/draft.** Separately progressing Gen V application/editor candidate; no hardware approval or mainline merge asserted |
 | [#101 — forensic remediation](https://github.com/GlitchedZeus/PokeBank-NX/pull/101) | Integrated into PR #92 development history; audit evidence retained |
 
 These links are development checkpoints, not a list of released features. GitHub and the exact tested NRO remain authoritative.
@@ -311,7 +320,7 @@ PokeBank NX has a working Gen I–IV foundation. The next job is to finish and v
 
 1. **Finish Gen I–IV hardware polish.** Complete the editor, Items, compact action menus, touch/A parity and game/source navigation on one exact integrated build. Preserve the owner-tested launch and Quit & Return behavior.
 2. **Complete touch-only workflows.** Verify controller/touch coexistence, modal scrolling, keyboard/numpad, storage and editor pickers on real Switch hardware.
-3. **Advance legality in parallel.** Integrate source-backed Gen I–IV work from the five independent lanes, register their tests in shared CI and grow the authentic golden fixture corpus before promising PKHeX parity.
+3. **Finish legality one generation at a time.** Focus all five specialist lanes on Gen I first (in parallel by discipline), reconcile into isolated draft coordinator #298 only after exact-head native + full host + sanitizers + independent QA, then move through Gen II onward. Preserve existing Gen V–IX work as future foundations; do not promise PKHeX parity from code counts.
 4. **Broaden save/provider support carefully.** Keep the Gen V PK5 foundation and later DS/3DS/modern Switch adapters experimental until each earns its own parser, UI and hardware acceptance.
 5. **Build the collection layer.** Master Vault, named Banks, provenance, search and Living Dex workflows are future product milestones, not active persistence today.
 6. **Introduce controlled source transactions only when ready.** Individual source adapters must prove backup, fingerprint, validation, readback and recovery before any write feature can be approved.
@@ -343,7 +352,9 @@ This README is a guide to the project, not a live commit ledger. The detailed wo
 - [v1.0 Roadmap](docs/V1_ROADMAP.md) — product milestones;
 - [UI Ownership Status](docs/UI_OWNERSHIP_STATUS.md) — product screen ownership and remaining work;
 - [Application PR #92](https://github.com/GlitchedZeus/PokeBank-NX/pull/92) — active Gen I–IV editor/Product Home development;
-- [Legality PR #103](https://github.com/GlitchedZeus/PokeBank-NX/pull/103) and [master worklist PR #291](https://github.com/GlitchedZeus/PokeBank-NX/pull/291) — isolated legality engine and five coordinated development lanes.
+- [Legality PR #103](https://github.com/GlitchedZeus/PokeBank-NX/pull/103) and [master worklist PR #291](https://github.com/GlitchedZeus/PokeBank-NX/pull/291) — isolated legality engine and five coordinated development lanes;
+- [Gen I-first sprint handoff](docs/legality/GEN1_FIRST_SPRINT_HANDOFF_20261012.md) — five copy-ready specialist assignments, owned code paths and native test gates;
+- [Gen I–IV legality coordinator #298](https://github.com/GlitchedZeus/PokeBank-NX/pull/298) and [Gen V–IX groundwork #301](https://github.com/GlitchedZeus/PokeBank-NX/pull/301) — separate unmerged draft engineering checkpoints.
 
 **Status note:** historical docs may still name an older SHA or pending hardware candidate. Prefer the live linked PRs and recorded exact device acceptance over a stale date in a status file.
 
