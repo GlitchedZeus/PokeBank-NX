@@ -58,7 +58,7 @@ struct Row {
  uint8_t form;
  uint8_t shinyPolicy; // 0 unpinned, 1 never shiny, 2 always shiny
  uint8_t flawlessIVs;
- uint8_t flags; // bit0 location, bit1 egg location, bit2 form, bit3 ORAS cosplay dynamic
+ uint8_t flags; // bit0 literal location, bit1 egg, bit2 form, bit3 cosplay, bit4 roaming
 };
 inline constexpr std::array<SourceTable,21> kTables{{
  {Table::Encounter_BW,"Encounter_BW",3,SourceKind::StaticOrGift,31},
@@ -117,10 +117,10 @@ inline constexpr std::array<Row,278> kRows{{
  {Table::Encounter_BW,30,571,25,72,0,3,0,1,0,1},
  {Table::StaticB,0,643,50,45,0,2,0,1,0,1},
  {Table::StaticB,1,643,50,39,0,2,0,1,0,1},
- {Table::StaticB,2,641,40,25,0,2,0,0,0,1},
+ {Table::StaticB,2,641,40,25,0,2,0,0,0,17},
  {Table::StaticW,0,644,50,45,0,1,0,1,0,1},
  {Table::StaticW,1,644,50,39,0,1,0,1,0,1},
- {Table::StaticW,2,642,40,25,0,1,0,0,0,1},
+ {Table::StaticW,2,642,40,25,0,1,0,0,0,17},
  {Table::TradeGift_BW,0,587,30,0,0,3,0,0,0,0},
  {Table::TradeGift_BW,1,479,60,0,0,3,0,0,0,0},
  {Table::TradeGift_BW,2,446,60,0,0,3,0,0,0,0},
