@@ -143,12 +143,12 @@ jobs:
               # shellcheck disable=SC2086
               "$compiler" -std=c++20 -Wall -Wextra -Wpedantic -Werror -DL5_FIXTURE_ONLY \
                 $flags tests/fixtures/legality_l5_gen1_rby_real_save_pipeline.cpp \
-                -o "/tmp/l5_rby_save_generator_$compiler_$mode"
+                -o "/tmp/l5_rby_save_generator_${compiler}_${mode}"
               ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 \
               UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
-                "/tmp/l5_rby_save_generator_$compiler_$mode" \
-                | tee "/tmp/l5_rby_save_generator_$compiler_$mode.log"
-              grep -Fx "$expected" "/tmp/l5_rby_save_generator_$compiler_$mode.log"
+                "/tmp/l5_rby_save_generator_${compiler}_${mode}" \
+                | tee "/tmp/l5_rby_save_generator_${compiler}_${mode}.log"
+              grep -Fx "$expected" "/tmp/l5_rby_save_generator_${compiler}_${mode}.log"
             done
           done
           if g++ -std=c++20 -DL5_FIXTURE_ONLY -DNDEBUG -c \
