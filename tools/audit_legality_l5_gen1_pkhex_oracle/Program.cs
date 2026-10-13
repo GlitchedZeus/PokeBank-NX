@@ -26,6 +26,7 @@ foreach (var value in cases)
     var move = value.GetProperty("move").GetUInt16();
     var dv = value.GetProperty("dv16").GetUInt16();
     var experience = value.GetProperty("experience").GetUInt32();
+    var statExperience = value.GetProperty("stat_experience").GetUInt16();
     if (species is < 1 or > 151 || level is < 1 or > 100 || move > 255)
         throw new InvalidDataException("Out of bounded PK1 vector domain");
     // PK1's native binary lacks the originating game name. The source label
@@ -35,6 +36,8 @@ foreach (var value in cases)
         Species = species, Stat_Level = level, EXP = experience,
         TID16 = 1234, Move1 = move, Move1_PP = move == 0 ? 0 : 35,
         DV16 = dv, OriginalTrainerName = "L5",
+        EV_HP = statExperience, EV_ATK = statExperience, EV_DEF = statExperience,
+        EV_SPE = statExperience, EV_SPC = statExperience,
     };
     pk.SetNotNicknamed(2);
     var originalSpecies = pk.Species;
@@ -56,6 +59,9 @@ foreach (var value in cases)
         species = originalSpecies, move = originalMove, dv16 = originalDV,
         dv_hp = pk.IV_HP, dv_attack = pk.IV_ATK, dv_defense = pk.IV_DEF,
         dv_speed = pk.IV_SPE, dv_special = pk.IV_SPA,
+        stat_exp_hp = pk.EV_HP, stat_exp_attack = pk.EV_ATK,
+        stat_exp_defense = pk.EV_DEF, stat_exp_speed = pk.EV_SPE,
+        stat_exp_special = pk.EV_SPC,
         pk1_ability = pk.Ability, pk1_gender = pk.Gender,
         ability_invalid = abilityInvalid, gender_invalid = genderInvalid,
         parsed = analysis.Parsed, pkhex_global_valid = analysis.Valid,
