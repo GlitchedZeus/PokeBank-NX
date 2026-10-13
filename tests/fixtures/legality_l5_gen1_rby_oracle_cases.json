@@ -10,10 +10,15 @@
       "level": 5,
       "move": 33,
       "dv16": 0,
-      "experience": 125,
+      "experience": 135,
       "source": "",
       "expected_source_context": "Unknown",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-002",
@@ -21,10 +26,15 @@
       "level": 5,
       "move": 33,
       "dv16": 0,
-      "experience": 125,
+      "experience": 135,
       "source": "red_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-003",
@@ -32,10 +42,15 @@
       "level": 5,
       "move": 33,
       "dv16": 0,
-      "experience": 125,
+      "experience": 135,
       "source": "blue_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-004",
@@ -43,10 +58,15 @@
       "level": 5,
       "move": 33,
       "dv16": 0,
-      "experience": 125,
+      "experience": 135,
       "source": "yellow_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-005",
@@ -54,10 +74,15 @@
       "level": 5,
       "move": 33,
       "dv16": 0,
-      "experience": 125,
+      "experience": 135,
       "source": "platinum_nds",
       "expected_source_context": "Conflicting",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-006",
@@ -65,10 +90,15 @@
       "level": 5,
       "move": 33,
       "dv16": 0,
-      "experience": 125,
+      "experience": 135,
       "source": "unknown_source",
       "expected_source_context": "Unknown",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-007",
@@ -76,10 +106,15 @@
       "level": 5,
       "move": 200,
       "dv16": 0,
-      "experience": 125,
+      "experience": 135,
       "source": "",
       "expected_source_context": "Unknown",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-008",
@@ -87,10 +122,15 @@
       "level": 5,
       "move": 200,
       "dv16": 0,
-      "experience": 125,
+      "experience": 135,
       "source": "red_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-009",
@@ -98,10 +138,15 @@
       "level": 5,
       "move": 200,
       "dv16": 0,
-      "experience": 125,
+      "experience": 135,
       "source": "blue_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-010",
@@ -109,10 +154,15 @@
       "level": 5,
       "move": 200,
       "dv16": 0,
-      "experience": 125,
+      "experience": 135,
       "source": "yellow_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-011",
@@ -120,10 +170,15 @@
       "level": 5,
       "move": 200,
       "dv16": 0,
-      "experience": 125,
+      "experience": 135,
       "source": "platinum_nds",
       "expected_source_context": "Conflicting",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-012",
@@ -131,10 +186,15 @@
       "level": 5,
       "move": 200,
       "dv16": 0,
-      "experience": 125,
+      "experience": 135,
       "source": "unknown_source",
       "expected_source_context": "Unknown",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-013",
@@ -142,10 +202,15 @@
       "level": 5,
       "move": 33,
       "dv16": 65535,
-      "experience": 125,
+      "experience": 135,
       "source": "",
       "expected_source_context": "Unknown",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-014",
@@ -153,10 +218,15 @@
       "level": 5,
       "move": 33,
       "dv16": 65535,
-      "experience": 125,
+      "experience": 135,
       "source": "red_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-015",
@@ -164,10 +234,15 @@
       "level": 5,
       "move": 33,
       "dv16": 65535,
-      "experience": 125,
+      "experience": 135,
       "source": "blue_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-016",
@@ -175,10 +250,15 @@
       "level": 5,
       "move": 33,
       "dv16": 65535,
-      "experience": 125,
+      "experience": 135,
       "source": "yellow_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-017",
@@ -186,10 +266,15 @@
       "level": 5,
       "move": 33,
       "dv16": 65535,
-      "experience": 125,
+      "experience": 135,
       "source": "platinum_nds",
       "expected_source_context": "Conflicting",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-018",
@@ -197,10 +282,15 @@
       "level": 5,
       "move": 33,
       "dv16": 65535,
-      "experience": 125,
+      "experience": 135,
       "source": "unknown_source",
       "expected_source_context": "Unknown",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-019",
@@ -208,10 +298,15 @@
       "level": 5,
       "move": 200,
       "dv16": 65535,
-      "experience": 125,
+      "experience": 135,
       "source": "",
       "expected_source_context": "Unknown",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-020",
@@ -219,10 +314,15 @@
       "level": 5,
       "move": 200,
       "dv16": 65535,
-      "experience": 125,
+      "experience": 135,
       "source": "red_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-021",
@@ -230,10 +330,15 @@
       "level": 5,
       "move": 200,
       "dv16": 65535,
-      "experience": 125,
+      "experience": 135,
       "source": "blue_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-022",
@@ -241,10 +346,15 @@
       "level": 5,
       "move": 200,
       "dv16": 65535,
-      "experience": 125,
+      "experience": 135,
       "source": "yellow_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-023",
@@ -252,10 +362,15 @@
       "level": 5,
       "move": 200,
       "dv16": 65535,
-      "experience": 125,
+      "experience": 135,
       "source": "platinum_nds",
       "expected_source_context": "Conflicting",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-024",
@@ -263,10 +378,15 @@
       "level": 5,
       "move": 200,
       "dv16": 65535,
-      "experience": 125,
+      "experience": 135,
       "source": "unknown_source",
       "expected_source_context": "Unknown",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-025",
@@ -274,10 +394,15 @@
       "level": 5,
       "move": 33,
       "dv16": 21845,
-      "experience": 125,
+      "experience": 135,
       "source": "",
       "expected_source_context": "Unknown",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-026",
@@ -285,10 +410,15 @@
       "level": 5,
       "move": 33,
       "dv16": 21845,
-      "experience": 125,
+      "experience": 135,
       "source": "red_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-027",
@@ -296,10 +426,15 @@
       "level": 5,
       "move": 33,
       "dv16": 21845,
-      "experience": 125,
+      "experience": 135,
       "source": "blue_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-028",
@@ -307,10 +442,15 @@
       "level": 5,
       "move": 33,
       "dv16": 21845,
-      "experience": 125,
+      "experience": 135,
       "source": "yellow_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-029",
@@ -318,10 +458,15 @@
       "level": 5,
       "move": 33,
       "dv16": 21845,
-      "experience": 125,
+      "experience": 135,
       "source": "platinum_nds",
       "expected_source_context": "Conflicting",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-030",
@@ -329,10 +474,15 @@
       "level": 5,
       "move": 33,
       "dv16": 21845,
-      "experience": 125,
+      "experience": 135,
       "source": "unknown_source",
       "expected_source_context": "Unknown",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-031",
@@ -340,10 +490,15 @@
       "level": 5,
       "move": 200,
       "dv16": 21845,
-      "experience": 125,
+      "experience": 135,
       "source": "",
       "expected_source_context": "Unknown",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-032",
@@ -351,10 +506,15 @@
       "level": 5,
       "move": 200,
       "dv16": 21845,
-      "experience": 125,
+      "experience": 135,
       "source": "red_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-033",
@@ -362,10 +522,15 @@
       "level": 5,
       "move": 200,
       "dv16": 21845,
-      "experience": 125,
+      "experience": 135,
       "source": "blue_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-034",
@@ -373,10 +538,15 @@
       "level": 5,
       "move": 200,
       "dv16": 21845,
-      "experience": 125,
+      "experience": 135,
       "source": "yellow_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-035",
@@ -384,10 +554,15 @@
       "level": 5,
       "move": 200,
       "dv16": 21845,
-      "experience": 125,
+      "experience": 135,
       "source": "platinum_nds",
       "expected_source_context": "Conflicting",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-036",
@@ -395,10 +570,15 @@
       "level": 5,
       "move": 200,
       "dv16": 21845,
-      "experience": 125,
+      "experience": 135,
       "source": "unknown_source",
       "expected_source_context": "Unknown",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-037",
@@ -409,7 +589,12 @@
       "experience": 125,
       "source": "",
       "expected_source_context": "Unknown",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-038",
@@ -420,7 +605,12 @@
       "experience": 125,
       "source": "red_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-039",
@@ -431,7 +621,12 @@
       "experience": 125,
       "source": "blue_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-040",
@@ -442,7 +637,12 @@
       "experience": 125,
       "source": "yellow_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-041",
@@ -453,7 +653,12 @@
       "experience": 125,
       "source": "platinum_nds",
       "expected_source_context": "Conflicting",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-042",
@@ -464,7 +669,12 @@
       "experience": 125,
       "source": "unknown_source",
       "expected_source_context": "Unknown",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-043",
@@ -475,7 +685,12 @@
       "experience": 125,
       "source": "",
       "expected_source_context": "Unknown",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-044",
@@ -486,7 +701,12 @@
       "experience": 125,
       "source": "red_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-045",
@@ -497,7 +717,12 @@
       "experience": 125,
       "source": "blue_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-046",
@@ -508,7 +733,12 @@
       "experience": 125,
       "source": "yellow_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-047",
@@ -519,7 +749,12 @@
       "experience": 125,
       "source": "platinum_nds",
       "expected_source_context": "Conflicting",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-048",
@@ -530,7 +765,12 @@
       "experience": 125,
       "source": "unknown_source",
       "expected_source_context": "Unknown",
-      "stat_experience": 0
+      "stat_experience": 0,
+      "stat_exp_hp": 0,
+      "stat_exp_attack": 1,
+      "stat_exp_defense": 32768,
+      "stat_exp_speed": 65534,
+      "stat_exp_special": 65535
     },
     {
       "id": "G1RBY-049",
@@ -541,7 +781,12 @@
       "experience": 125,
       "source": "",
       "expected_source_context": "Unknown",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-050",
@@ -552,7 +797,12 @@
       "experience": 125,
       "source": "red_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-051",
@@ -563,7 +813,12 @@
       "experience": 125,
       "source": "blue_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-052",
@@ -574,7 +829,12 @@
       "experience": 125,
       "source": "yellow_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-053",
@@ -585,7 +845,12 @@
       "experience": 125,
       "source": "platinum_nds",
       "expected_source_context": "Conflicting",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-054",
@@ -596,7 +861,12 @@
       "experience": 125,
       "source": "unknown_source",
       "expected_source_context": "Unknown",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-055",
@@ -607,7 +877,12 @@
       "experience": 125,
       "source": "",
       "expected_source_context": "Unknown",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-056",
@@ -618,7 +893,12 @@
       "experience": 125,
       "source": "red_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-057",
@@ -629,7 +909,12 @@
       "experience": 125,
       "source": "blue_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-058",
@@ -640,7 +925,12 @@
       "experience": 125,
       "source": "yellow_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-059",
@@ -651,7 +941,12 @@
       "experience": 125,
       "source": "platinum_nds",
       "expected_source_context": "Conflicting",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-060",
@@ -662,7 +957,12 @@
       "experience": 125,
       "source": "unknown_source",
       "expected_source_context": "Unknown",
-      "stat_experience": 65535
+      "stat_experience": 65535,
+      "stat_exp_hp": 65535,
+      "stat_exp_attack": 0,
+      "stat_exp_defense": 1,
+      "stat_exp_speed": 32768,
+      "stat_exp_special": 65534
     },
     {
       "id": "G1RBY-061",
@@ -673,7 +973,12 @@
       "experience": 125,
       "source": "",
       "expected_source_context": "Unknown",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-062",
@@ -684,7 +989,12 @@
       "experience": 125,
       "source": "red_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-063",
@@ -695,7 +1005,12 @@
       "experience": 125,
       "source": "blue_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-064",
@@ -706,7 +1021,12 @@
       "experience": 125,
       "source": "yellow_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-065",
@@ -717,7 +1037,12 @@
       "experience": 125,
       "source": "platinum_nds",
       "expected_source_context": "Conflicting",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-066",
@@ -728,7 +1053,12 @@
       "experience": 125,
       "source": "unknown_source",
       "expected_source_context": "Unknown",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-067",
@@ -739,7 +1069,12 @@
       "experience": 125,
       "source": "",
       "expected_source_context": "Unknown",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-068",
@@ -750,7 +1085,12 @@
       "experience": 125,
       "source": "red_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-069",
@@ -761,7 +1101,12 @@
       "experience": 125,
       "source": "blue_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-070",
@@ -772,7 +1117,12 @@
       "experience": 125,
       "source": "yellow_gb",
       "expected_source_context": "CandidateOnly",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-071",
@@ -783,7 +1133,12 @@
       "experience": 125,
       "source": "platinum_nds",
       "expected_source_context": "Conflicting",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     },
     {
       "id": "G1RBY-072",
@@ -794,8 +1149,13 @@
       "experience": 125,
       "source": "unknown_source",
       "expected_source_context": "Unknown",
-      "stat_experience": 32768
+      "stat_experience": 32768,
+      "stat_exp_hp": 32768,
+      "stat_exp_attack": 65534,
+      "stat_exp_defense": 65535,
+      "stat_exp_speed": 0,
+      "stat_exp_special": 1
     }
   ],
-  "source_field_contract": "Gen I native 16-bit stat-experience, five independent original fields; no modern EV reinterpretation"
+  "source_field_contract": "Gen I five independent big-endian 16-bit Stat Experience fields: rotated 0,1,32768,65534,65535, distinct values detect swapped/aliased fields. EXP reflects level 5 species growth."
 }
