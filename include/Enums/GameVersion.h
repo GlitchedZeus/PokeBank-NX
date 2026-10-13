@@ -25,6 +25,12 @@ namespace Enums {
         P = 11,
         Pt = 12,
 
+        // Gen V/VI and 3DS Gen VII original game Version bytes.
+        // Source-game identity does not imply implemented save decoding.
+        W = 20, B = 21, W2 = 22, B2 = 23,
+        X = 24, Y = 25, AS = 26, OR = 27,
+        SN = 30, MN = 31, US = 32, UM = 33,
+
         // Nintendo Switch
         GP = 42, // Pokemon: Let's Go, Pikachu!
         GE = 43, // Pokemon: Let's Go, Eevee!
@@ -53,6 +59,12 @@ namespace Enums {
         DP = 77,   // Pokemon Diamond/Pearl NDS save-layout group
         PT = 78,   // Pokemon Platinum NDS save-layout group
         HGSS = 79, // Pokemon HeartGold/SoulSilver NDS save-layout group
+        BW = 80,   // Black/White native PK5 group, reader pending
+        B2W2 = 81, // Black 2/White 2 native PK5 group, reader pending
+        XY = 82,   // X/Y native PK6 group, reader pending
+        ORAS = 83, // Omega Ruby/Alpha Sapphire PK6 group, reader pending
+        SM = 87,   // Sun/Moon 3DS PK7 group, reader pending
+        USUM = 88, // Ultra Sun/Ultra Moon 3DS PK7 group, reader pending
 
         // Generational Groupings
         Gen7B = 84,
@@ -126,6 +138,25 @@ namespace Enums {
             case GameVersion::SS:
                 return GameVersion::HGSS;
 
+            case GameVersion::B:
+            case GameVersion::W:
+                return GameVersion::BW;
+            case GameVersion::B2:
+            case GameVersion::W2:
+                return GameVersion::B2W2;
+            case GameVersion::X:
+            case GameVersion::Y:
+                return GameVersion::XY;
+            case GameVersion::OR:
+            case GameVersion::AS:
+                return GameVersion::ORAS;
+            case GameVersion::SN:
+            case GameVersion::MN:
+                return GameVersion::SM;
+            case GameVersion::US:
+            case GameVersion::UM:
+                return GameVersion::USUM;
+
             case GameVersion::GP:
             case GameVersion::GE:
                 return GameVersion::GG;  // Let's Go group
@@ -174,6 +205,24 @@ namespace Enums {
             case GameVersion::GSC: return "Gold/Silver/Crystal";
             case GameVersion::RBY: return "Red/Blue/Yellow";
             case GameVersion::FRLG: return "FireRed/LeafGreen";
+            case GameVersion::W: return "White";
+            case GameVersion::B: return "Black";
+            case GameVersion::W2: return "White 2";
+            case GameVersion::B2: return "Black 2";
+            case GameVersion::X: return "X";
+            case GameVersion::Y: return "Y";
+            case GameVersion::AS: return "Alpha Sapphire";
+            case GameVersion::OR: return "Omega Ruby";
+            case GameVersion::SN: return "Sun";
+            case GameVersion::MN: return "Moon";
+            case GameVersion::US: return "Ultra Sun";
+            case GameVersion::UM: return "Ultra Moon";
+            case GameVersion::BW: return "Black/White";
+            case GameVersion::B2W2: return "Black 2/White 2";
+            case GameVersion::XY: return "X/Y";
+            case GameVersion::ORAS: return "Omega Ruby/Alpha Sapphire";
+            case GameVersion::SM: return "Sun/Moon";
+            case GameVersion::USUM: return "Ultra Sun/Ultra Moon";
             case GameVersion::GP: return "Let's Go Pikachu";
             case GameVersion::GE: return "Let's Go Eevee";
             case GameVersion::SW: return "Sword";
