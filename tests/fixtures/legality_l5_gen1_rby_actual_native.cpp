@@ -44,11 +44,11 @@ int main(int argc,char** argv){
         record.rawSpecies=c.species==1?153:173;
         record.level=static_cast<uint8_t>(c.level);
         record.experience=c.experience;
-        record.statExperience={static_cast<uint16_t>(c.stat_experience),
-            static_cast<uint16_t>(c.stat_experience),
-            static_cast<uint16_t>(c.stat_experience),
-            static_cast<uint16_t>(c.stat_experience),
-            static_cast<uint16_t>(c.stat_experience)};
+        record.statExperience={static_cast<uint16_t>(c.stat_exp_hp),
+            static_cast<uint16_t>(c.stat_exp_attack),
+            static_cast<uint16_t>(c.stat_exp_defense),
+            static_cast<uint16_t>(c.stat_exp_speed),
+            static_cast<uint16_t>(c.stat_exp_special)};
         record.trainerId=1234;
         record.catchRate=c.species==1?45:190;
         record.moves={static_cast<uint8_t>(c.move),0,0,0};
@@ -71,11 +71,12 @@ int main(int argc,char** argv){
                pk.dvSPE()==speed && pk.dvSpecial()==special);
         assert(pk.ability()==0 && pk.gender()==2);
         assert(pk.ivHP()==0 && pk.evHP()==0); // neutral *modern* compatibility getters
-        assert(pk.statExpHP()==c.stat_experience &&
-               pk.statExpATK()==c.stat_experience &&
-               pk.statExpDEF()==c.stat_experience &&
-               pk.statExpSPE()==c.stat_experience &&
-               pk.statExpSpecial()==c.stat_experience);
+        assert(pk.statExpHP()==c.stat_exp_hp &&
+               pk.statExpATK()==c.stat_exp_attack &&
+               pk.statExpDEF()==c.stat_exp_defense &&
+               pk.statExpSPE()==c.stat_exp_speed &&
+               pk.statExpSpecial()==c.stat_exp_special);
+        assert(pk.exp()==c.experience);
         auto result=Legality::analyze(pk,pk.getGameGroup(),c.source);
         const bool moveDomain=invalid(result,"cannot exist in a Generation");
         assert(moveDomain==(c.move==200));
