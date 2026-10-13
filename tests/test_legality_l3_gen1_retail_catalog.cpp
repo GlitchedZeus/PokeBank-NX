@@ -1,0 +1,5 @@
+#include "Legality/Gen1RbyRetailPackedCatalog.h"
+#include <cassert>
+#include <iostream>
+namespace R=Legality::Gen1RbyRetailPackedCatalog;
+int main(){std::uint32_t checks=0;for(auto g:{R::Game::Red,R::Game::Blue,R::Game::Yellow}){for(int s=1;s<=151;++s){auto c=R::offerCount(g,s);std::uint8_t previous=0;for(int i=0;i<c;++i){auto x=R::offerAt(g,s,i);if(!(x.level>=previous&&x.level>0&&x.level<=100&&x.move>0&&x.move<=165)){std::cerr<<"BAD GAME "<<(int)g<<" SP "<<s<<" i "<<i<<" lvl "<<(int)x.level<<" prev "<<(int)previous<<" move "<<x.move<<"\n"; return 1;}previous=x.level;checks+=5;}assert(R::offerAt(g,s,c).move==0);++checks;}}for(int s=1;s<=151;++s){for(int i=0;i<R::evolutionCount(s);++i){auto e=R::evolutionAt(s,i);assert(e.target>0&&e.target<=151&&e.kind>=1&&e.kind<=3);checks+=3;}}assert(R::offerCount(R::Game::Blue,133)==4);assert(R::offerCount(R::Game::Yellow,133)==6);assert(R::offerCount(R::Game::Red,10)==0);assert(R::offerCount(R::Game::Yellow,11)==1);std::cout<<"L3 all-151 original RBY/Y source: "<<checks<<" checked fields PASS\n";}

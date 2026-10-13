@@ -234,3 +234,16 @@ constexpr Result evaluate(const Candidate& candidate,
     return result;
 }
 } // namespace Legality::Gen14CandidateMoveHistory
+// L3: keep new chronology helpers in the existing exact-head host compile
+// graph without modifying coordinator-owned Makefiles or central analyzer.
+#include "Legality/Gen14CandidateMoveChronology.h"
+#include "Legality/Gen14CandidateMoveGbaLevelUpTimeline.h"
+#include "Legality/Gen14CandidateMoveMachineEvidence.h"
+#include "Legality/Gen14CandidateMovePalParkJointStage.h"
+#include "Legality/Gen14CandidateMoveGbaEvolutionStages.h"
+#include "Legality/Gen14CandidateMoveShedinjaCopyStage.h"
+#include "Legality/Gen14CandidateMoveGbaRelearner.h"
+#include "Legality/Gen14CandidateMoveJointAcquisition.h"
+#include "Legality/Gen12CandidateMoveJointChronology.h"
+#include "Legality/Gen14CandidateMoveJointEvolutionRetail.h"
+#include "Legality/Gen14CandidateMovePalParkNativeRetail.h"

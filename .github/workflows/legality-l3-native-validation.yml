@@ -1,0 +1,56 @@
+name: Legality L3 exact-head native validation
+
+on:
+  pull_request:
+    paths:
+      - 'include/Legality/Gen12CandidateMove*.h'
+      - 'include/Legality/Gen3GbaJoint*.h'
+      - 'include/Legality/Gen3GbaExceptional*.h'
+      - 'include/Legality/Gen34PalParkMultiCartridge*.h'
+      - 'include/Legality/Gen4NativeOriginal*.h'
+      - 'include/Legality/Gen14CandidateMove*.h'
+      - 'include/Legality/Gen3GbaOriginal*.h'
+      - 'include/Legality/Gen4Platinum*.h'
+      - 'tests/test_legality_l3_*.cpp'
+      - 'tests/test_legality_l3_run_all.sh'
+      - '.github/workflows/legality-l3-native-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  l3-original-source-regressions:
+    name: L3 29 suites / ${{ matrix.compiler }} / native + ASan/UBSan
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+    steps:
+      - name: Checkout exact PR head with original data
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          submodules: recursive
+          persist-credentials: false
+      - name: Verify immutable checkout and toolchain
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          COMPILER: ${{ matrix.compiler }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          printf 'L3 exact application SHA: %s\n' "$EXPECTED_SHA"
+          printf 'L3 tree SHA: %s\n' "$(git rev-parse 'HEAD^{tree}')"
+          "$COMPILER" --version
+      - name: Compile and execute all 29 exact-source suites and sanitizers
+        shell: bash
+        env:
+          CXX: ${{ matrix.compiler }}
+          L3_EXPECTED_EMERALD_BLOB: 3e53c1c951876a26cace5dde060cc9ff2c35d0a7
+          ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1
+        run: bash tests/test_legality_l3_run_all.sh

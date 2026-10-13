@@ -1,0 +1,39 @@
+# L3 Major Stage 3 — joint four-slot history through original Gen III evolution and machines
+
+**Lane:** [PR #296](https://github.com/GlitchedZeus/PokeBank-NX/pull/296), `feature/legality-l3-moves-transfer-20261012`. Scope is candidate-scoped informational move witnesses only. **No** production `Legality.cpp`, accepted branch, PR #298, shared CI/Makefiles, emulator writes, original save edits, merge, reset, or force-push.
+
+## Original source verification
+
+- `pret/pokeruby@63a8cbf0016b351a4e68f7036fa0b77e23d2f2c1`: `src/evolution_scene.c` stages the evolved Pokémon species and recalculates stats **before** `MonTryLearningNewMove` tries its post-evolution level offer. Separately pinned `src/data/pokemon/level_up_learnsets.h`, `tmhm_learnsets.h`.
+- `pret/pokefirered@c75f352304d529f6ba92d4f74b9cf8b5c3810788`: independently verified `EVOSTATE_TRY_LEARN_MOVE` follows the evolved-species scene and the source's versioned original offers, including the Charizard lv36 Wing Attack and Charmander lv13 Metal Claw differences.
+- `pret/pokeemerald@5eff78649e7170a877b961ef0b3da13b81a16038`: independently checked same post-evolution species-before-move teaching ordering, with Emerald's original learnsets.
+- Accepted L3 Stage 2 full source evidence: **386 original national species**, 3,947 ordered Ruby/Sapphire level-up rows, 4,015 original FRLG rows and all 58 source-numbered GBA TM/HM methods. The new retail adapter uses those existing exact tables, not a new editor move pool or invented whole-species dataset.
+
+## Substantial implementation
+
+**`Gen14CandidateMoveJointEvolutionHistory.h`** introduces a bounded, no-heap candidate-specific same-Pokémon replay that composes physical four slots, all source-offered level-up decisions, actual TM/HM item identifiers, ordered method learning, overwrite decisions, Level/Species/Game identity, original evolution transitions, post-evolution target-species offers and a verified move deletion event. Source evidence is injected via a provider so independent test fixtures cannot masquerade as complete retail universes. Kanto starters' **six exact original level-based evolution edges** are deliberately supported; stone/trade/other forms must stay Unresolved without a source-backed evolution edge.
+
+- Source offer decisions are mandatory, including **two distinct level-15 offers** in the same level; incompatible move methods cannot jump ahead of an unprocessed offer.
+- A Charmeleon must receive any original old-species offers before its evolution; **Charizard is the source species** when Wing Attack is offered on evolving at level 36. Delaying evolution to level 37 cannot fabricate a missed level-36 target offer.
+- Machine receipts are bound to *this candidate, this stage's original species and exact visited game*, machine kind, number and native move ID. Every TM requires a **nonzero, individually verified single-use item receipt ID**; the same receipt cannot be reused, although independently evidenced separate copies remain possible. An HM item witness does not get consumed.
+- Original machine compatibility is a necessary condition, not proof of ownership or actual teaching. The original Source reports that Charizard can learn HM02 Fly while Charmeleon cannot; a hypothetical pre-evolution Fly action is therefore contradictory *only to that method history*.
+- Verified cross-game visits do not cause fictional retroactive level-up offers. A `Move Deleter` event shifts physical slots and requires an explicit independent service witness.
+- Missing snapshots, evolving/trading provenance, unsupported event/breeding/reminder/tutor/transfer routes, absent item receipts, foreign-species receipts or unknown alternatives produce **Unresolved**, not a global Invalid decision. Only caller-proven **exhaustive** alternative sets can combine candidate-local contradictions into an exhaustive candidate-path contradiction, never an exhaustive Pokémon encounter-legality claim.
+
+**`Gen14CandidateMoveJointEvolutionRetail.h`** binds the solver to existing original `Gen3GbaVersionedLevelUpTimeline` and `Gen14CandidateMoveMachineEvidence` source methods for Ruby, Sapphire, Emerald, FireRed and LeafGreen. The existing L3-owned `Gen14CandidateMoveHistory.h` now includes this adapter to compile it in the existing host header graph. No coordinator-controlled code is modified.
+
+## Native regression tests
+
+- `tests/test_legality_l3_joint_evolution_machine.cpp`: **54 compile-time assertions** + runtime assertions; source-backed complete sampled original Kanto starter stage tables and the exact committed original complete 386-species RSE/FRLG TM/HM bitmap. Positive five-game evolution + item paths, source-specific version visits, simultaneous level offers, no omitted offers, no skipped Wing Attack on late evolution, foreign/duplicate/missing TM receipts, slot conflicts, optional source-confirmed Move Deleter, missing alternative source and candidate-local negative versus Unknown aggregation.
+- Deterministic full move/slot mutation matrix: `4 × 354 = 1,416` combinations against one **same-specimen** history, of which **1 remains candidate-consistent**, **1,415 contradict that route**. They are not asserted to be exhaustive original species histories.
+- **Actual exact locally compiled source** after final change: GCC strict C++20 `-O2` **PASS**; Clang strict C++20 `-O2` **PASS**; GCC `-O1 -g -fsanitize=address,undefined` **PASS**; Clang same sanitizer flags **PASS**. All four executions printed `PASS`, using `-Wall -Wextra -Wpedantic -Werror`. GitHub blob hashes matched the tested local header `cb383b5711734d395e012b9c4fda0c92fa0b2980`, test `ea87cb495f3895dd5c2b19121295af4a1fc13d42`, and original Stage 2 machine table `e3f8933789499997bf10b869e97f8c8e52b62d62`.
+- `tests/test_legality_l3_joint_evolution_retail.cpp`: additional native source-complete five-game retail adapter positive and candidate-negative cases. The L3-owned `tests/test_legality_l3_run_all.sh` registers this and the independent Stage 3 provider test: **13** normal C++20 suites and **13** ASan/UBSan suites, still guarded on the *full accepted 3,947-entry Emerald source file*.
+
+**Honest validation boundary:** The local standalone core/provider-machine tests **passed**, but the new full-table retail adapter suite, the entire **13+13** committed-source runner, host test graph and GitHub Actions are **not yet verified as passed**. The constrained runtime cannot fetch the exact full accepted Emerald dataset or perform a full checkout via Git; a source fixture, adapter stub, or JS source audit must **not** be counted as execution of those exact full repository C++ programs. Run the committed L3 runner on an exact Git checkout with the full accepted Emerald file and verify the CI checkout SHA before any integration decision.
+
+## Remaining blockers and continuing Stage 4–5
+
+1. Confirm full latest-head native + sanitizer runner, PR Actions, and original dataset pin; reconcile failing strict/static checks if any.
+2. Broaden beyond original Kanto starter level evolution edges to *source-verified* Gen III evolution methods and complete cross-game move-service chronology; original specimen timing and teaching receipts remain typically erased.
+3. Stage 4: Pal Park source/receiving identity, Gen III HM deletion, Gen IV tutor/TM/HM/relearner provenance, version transitions and alternative joint histories. Events, special tutors, breeding and parent routes remain **Unknown** without independent evidence.
+4. Stage 5: actual native PK1–PK4 positive, candidate-negative and Unknown fixture corpus, exact source/provenance audit and informational-only coordinator integration plan. Only coordinator may modify production analyzer or shared CI; L3 must not self-merge or promote a contradicted *hypothetical path* to specimen Invalid.
