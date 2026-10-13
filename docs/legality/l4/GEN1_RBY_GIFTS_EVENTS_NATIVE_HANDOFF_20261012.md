@@ -141,3 +141,84 @@ coordinator merge, accepted branch or MAIN edits occurred.
 
 **Engineering implementation and standalone tested source: DELIVERED.
 Full original-repository native acceptance: BLOCKED.**
+
+
+## Gen I continuation — stronger provenance boundary (October 12, 2026)
+
+This continuation advances the source-bound evidence, not the accepted
+global legality analyzer. Final tested source state before this handoff:
+`6190f2f704f3ade16b4fe2aa8f3f1b73502d6596`.
+
+1. **Original acquisition and record continuity:** The native join
+   now requires two separate independent claims:
+   `originalAcquisitionContextIndependentlyVerified` and
+   `originalIndividualRecordLinkedToNativeIndependentlyVerified`.
+   A plausible ROM gift row or modern event listing without the exact
+   individual's acquisition and source-to-record history returns Unknown
+   before it may compare an OT ID or announce a candidate contradiction.
+2. **Pin original English NPC nicknames to original scripts:** All
+   twenty original English Red/Blue and Yellow NPC trade rows now carry
+   their script nickname. A bounded `encodeEnglishNickname` constructs
+   the original 11-byte international game-font nickname (A–Z codes
+   0x80..0x99, terminated and padded with 0x50). Only independently
+   attested correct-encoding rows can be compared to a raw native name.
+   Malformed, unrecognised locale, or a mismatched claimed original
+   nickname remain UnknownOriginalNPCTrade—not a positive provenance
+   or an invented global Invalid. The original trainer's randomized
+   OT ID still requires a separate individual receipt.
+3. **Time Capsule return items:** The standalone native catch-rate
+   evaluator now requires an independently verified Gen II held-item
+   interpretation as well as the crossing snapshot, source receipt and
+   returned item witness. The native join checks the byte using the
+   existing PKHeX-sourced `Gen1CatchRate::isPossibleTimeCapsuleHeldItem`
+   table. Unknown transformations do not become falsely conclusive.
+4. **Independent Stadium media attestation:** Original Stadium gifts
+   use a dedicated source-media mechanism witness. Verifying a Red/
+   Blue/Yellow cartridge script alone is not proof of a separately
+   distributed Stadium gift. This boundary is source-gated and has
+   focused regression coverage.
+
+### Exact tested source Git object hashes
+
+- `Gen1OriginalNPCTradeMetadata.h`:
+  `7793e87fa6e23dcb324bcd1ce170d8f8eef7256c`
+- `Gen1OriginalGiftNativePreflight.h`:
+  `e33a3ee6d6f9c8474bde625acaf63bb889cf3828`
+- `Gen1OriginalGiftNativeEvidence.h`:
+  `21ab6529e148a1aa34c7ec1fd8e2211778c0792d`
+- `legality_l4_gen1_preflight.cpp`:
+  `6f93dbab514d159b7cfb51b1c298f7de4cdef704`
+- `legality_l4_gen1_npc_metadata.cpp`:
+  `5c92503757cff0b9197dafda44a322fb82564160`
+- `legality_l4_gen1_original_native.cpp`:
+  `c433370e3b81bd75717b8ccdbd140a654f9e0e2d`
+
+The **two self-contained exact-source fixtures executed 8/8**:
+GCC and Clang normal -O2, GCC and Clang -O1 ASan/UBSan, strict
+C++20 and -Werror, no finding. Original catch-rate byte and tradeback
+test: 65,536 byte comparisons plus 4,096 native move/DV checks.
+Original NPC test: 65,536 edition/index tags, 16 reachable English
+trades and 4 unused English script rows, original script nicknames,
+encoded raw name boundaries. Source mechanism tests explicitly reject
+using cartridge-script proof in place of Stadium-media proof.
+
+**Not executed:** `legality_l4_gen1_original_native.cpp` now includes
+524,288 independent evidence-gate combinations plus missing acquisition,
+unsupported nickname, cross-edition, Stadium and tradeback negatives.
+It remains registered in the L4 runner but cannot be claimed green.
+
+Both requested full commands were actually attempted in the isolated
+folder and yielded `bash: tests/test_legality_l4_runner.sh:
+No such file or directory`. This runtime has no complete checkout;
+`git ls-remote` fails DNS. No 28-suite L4, full ASan/UBSan,
+native integration or GitHub Actions check may be marked passed based
+on those failures. Re-fetch this exact PR HEAD and run from the
+actual full repository with both GCC and Clang before coordinator
+acceptance; do not merge or change other lanes.
+
+Remaining Gen I provenance: no archival Stadium source payload and
+individual receipt authenticated, no source-linked original NPC trade
+save demonstrating randomized trainer ID and offered-mon level, no
+original Japanese-family trade-table parity, no independently verified
+full Time Capsule history, and no globally exhaustive distribution
+source catalog. Missing original receipts MUST remain Unknown.
