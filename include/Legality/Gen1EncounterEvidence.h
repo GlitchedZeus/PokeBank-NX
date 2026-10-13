@@ -52,7 +52,7 @@ struct PretStaticEntry {
 #include "Legality/Gen1PretTrades.inc"
 #include "Legality/Gen1PretStaticGifts.inc"
 static_assert(kPretTradeOffers.size()==20);
-static_assert(kPretStaticSources.size()==9);
+static_assert(kPretStaticSources.size()==20);
 constexpr const PretTradeEntry* originalPretTrade(uint8_t mask,
                                                   uint8_t sourceIndex) noexcept {
     if(mask!=1&&mask!=2&&mask!=4)return nullptr;
