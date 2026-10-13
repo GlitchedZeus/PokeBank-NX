@@ -60,6 +60,23 @@ Result evaluate(const G1::PokemonRecord& r,SourceContext source) noexcept {
     if(level==0 || !source.nativeLevelHistoryIndependentlyVerified){
         out.status=Status::UnknownLevelContext;return out;
     }
+    // Source-backed EXP/level proof is strictly opt-in: an archived
+    // box level, post-tradeback body or a stale party record does not
+    // establish the original retail level-up chronology on its own.
+    if(source.originalExperienceProgressionIndependentlyVerified){
+        out.experienceEvidence=Gen1NativeExperience::evaluate(r,{
+            source.strictPK1SourceIndependentlyVerified,
+            source.originalSpeciesGrowthSourceIndependentlyVerified,
+            source.originalExperienceProgressionIndependentlyVerified});
+        if(out.experienceEvidence.status==
+           Gen1NativeExperience::Status::ContradictedAttestedOriginalProgression){
+            out.status=Status::ContradictedAttestedLevelExperience;return out;
+        }
+        if(out.experienceEvidence.status!=
+           Gen1NativeExperience::Status::ConditionalLevelExperienceMatch){
+            out.status=Status::UnknownLevelContext;return out;
+        }
+    }
     out.calculated=G1::StagedPokemonEditor::calculateBattleStats(
         r.species,level,out.storedDVs,out.statExperience);
     if(out.calculated.hp==0){
