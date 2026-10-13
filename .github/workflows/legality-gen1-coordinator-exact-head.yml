@@ -1,0 +1,53 @@
+name: Gen I RBY Coordinator Exact-Head Native Checks
+on:
+  pull_request:
+    paths:
+      - 'include/Legality/**'
+      - 'src/Legality/**'
+      - 'src/Integration/Gen1/**'
+      - 'tests/test_legality_l1_gen1_*'
+      - 'tests/test_legality_l2_gen1_*'
+      - 'tests/test_legality_l3_*'
+      - 'tests/test_legality_gen1_*'
+      - 'tests/fixtures/legality_l4_gen1_*'
+      - 'tests/fixtures/legality_l5_gen1_*'
+      - 'tools/legality/**'
+      - '.github/workflows/legality-gen1-coordinator-exact-head.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gen1-smoke:
+    name: Gen I exact head / ${{ matrix.compiler }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Exact SHA identity
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          git diff --check
+          bash -n tests/test_legality_gen1_coordinator_smoke.sh
+          bash -n tests/test_legality_l3_run_all.sh
+          python3 tools/legality/verify_gen1_suite_registry.py --self-test
+          python3 tools/legality/verify_gen1_suite_registry.py
+      - name: Native source evidence normal and sanitizer
+        env:
+          CXX: ${{ matrix.compiler }}
+          ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: |
+          set -euo pipefail
+          GEN1_SANITIZE=0 bash tests/test_legality_gen1_coordinator_smoke.sh
+          GEN1_SANITIZE=1 bash tests/test_legality_gen1_coordinator_smoke.sh
+          git diff --check

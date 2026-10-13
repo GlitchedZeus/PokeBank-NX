@@ -22,7 +22,7 @@ enum class Status : uint8_t {
     UnsupportedGame, UnknownOriginalSource, UnknownOriginalSpecies,
     UnknownOriginalEncounterStage, UnknownLeadHistory,
     UnknownOriginalRngFamily, MalformedIVDomain,
-    IncoherentNativeRecord, UnknownNativeSource,
+    IncoherentNativeRecord, UnknownNativeSource, UnknownMalformedNativeRecord,
     IncoherentCandidateRow, CandidateEncounterContradicted,
     CandidatePidIvContradicted, CandidateRngContradicted,
     KnownConditionalWildHistory
@@ -163,7 +163,11 @@ inline Result evaluateNative(const Observation& o,const Candidate& c,
        !w.sameCreatureAndPidIvStageIndependentlyVerified)
         return {Status::UnknownOriginalEncounterStage};
     const auto& n=*w.record;
-    if(!n.valid() || n.empty() || n.isEgg())return {Status::IncoherentNativeRecord};
+    // Damaged encrypted bytes cannot contradict a legitimate alternate
+    // original encounter; only a validated, attested egg is locally wrong.
+    if(!n.valid())return {Status::UnknownMalformedNativeRecord};
+    if(n.empty())return {Status::UnknownOriginalEncounterStage};
+    if(n.isEgg())return {Status::IncoherentNativeRecord};
     if(!w.nativeSaveSourceIndependentlyVerified ||
        n.sourceGroup()!=requiredSourceGroup(o.exactOriginalGame))
         return {Status::UnknownNativeSource};

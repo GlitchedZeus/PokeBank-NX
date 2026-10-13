@@ -1,0 +1,19 @@
+{
+  "schema": "L5_Q15_OBSERVED_CI_BLOCKER_SNAPSHOT_V1",
+  "catalog": "Q15",
+  "purpose": "Illustrative observed state and honest fail-closed proof gap; not full Action job export. Use updated evidence only when sourced from GitHub.",
+  "expected_pr_head": "ae9de9711e54770d88246fce76fb62331a83958b",
+  "observed_run_head_sha": "ae9de9711e54770d88246fce76fb62331a83958b",
+  "run_id": 38209870818,
+  "run_url": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38209870818",
+  "run_status": "queued",
+  "run_conclusion": null,
+  "accepted_head": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+  "accepted_behind_count": 2,
+  "independent_l5_native": "not_run_on_exact_gh_head",
+  "independent_l5_sanitized": "not_run_on_exact_gh_head",
+  "original_source_license_review": "pending",
+  "jobs": [],
+  "local_source_scope_q16_result": "65536 test trials plus 24 static tests compiled and executed in separate local C++ normal and sanitized source-equivalent builds; does not establish exact GitHub HEAD build",
+  "note": "Historical prior host tests may pass but exact PR checkout verification is skipped for audit/legality-l5 branch name. No attested exact-head green and no approval."
+}

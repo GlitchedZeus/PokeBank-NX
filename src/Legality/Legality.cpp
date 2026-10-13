@@ -70,6 +70,9 @@
 #include "Legality/Gen34OrdinaryEggMoveConstruction.h"
 #include "Legality/Gen4EggMoveFamilyEvidence.h"
 #include "Legality/Gen3EmeraldLevelUpEvidence.h"
+#include "Legality/Gen14CandidateMoveGbaLevelUpTimeline.h"
+#include "Legality/Gen4PlatinumNativeMethodData.h"
+#include "Legality/Gen4PlatinumPinnedMachines.h"
 #include "Legality/Gen3EmeraldCandidateMoveEvidence.h"
 #include "Legality/Gen3JointMoveEvidence.h"
 #include "Legality/Gen3ShedinjaEvolutionMoveEvidence.h"
@@ -608,6 +611,28 @@ namespace Legality {
                 CheckIdentifier::SourceGame);
         }
 
+        // F5: Gen II native PK2 stores five 16-bit stat-experience fields,
+        // not Generation III/IV EVs. The read-only wrapper deliberately
+        // reports zero for modern EV getters. An *unhatched* original Gen II
+        // egg cannot have gained stat experience through battle or vitamins.
+        // Check the actual immutable native values, independent of provider
+        // labels; hatched Gen II Pokemon may naturally have nonzero values.
+        if (nativeFormatGeneration == 2 && pk.isEgg()) {
+            std::array<uint16_t, 5> nativeStatExperience{};
+            if (pk.gen2NativeStatExperience(nativeStatExperience)) {
+                bool nonzero = false;
+                for (const uint16_t value : nativeStatExperience)
+                    nonzero |= value != 0;
+                if (nonzero) {
+                    add(r,Severity::Invalid,
+                        "Unhatched native Generation II egg has nonzero stored stat experience",
+                        CheckIdentifier::Egg);
+                }
+            }
+            // Another Gen II Pokemon implementation without original PK2
+            // stat-experience capability is Unknown, never cast or rejected.
+        }
+
         // MOVE-003: a Shedinja is copied from the freshly evolved
         // Ninjask at ONE ordinary Emerald evolution level. The later
         // existence of both moves in Ninjask's lifelong learnset does not
@@ -672,8 +697,9 @@ namespace Legality {
         }
 
         if (sourceProfile && exactGeneration == 1 &&
-            pk.getGameGroup() == Pokemon::Pokemon1ReadOnly::kReadOnlyGameGroup) {
-            const auto& gen1 = static_cast<const Pokemon::Pokemon1ReadOnly&>(pk);
+            pk.getGameGroup() == Pokemon::Pokemon1ReadOnly::kReadOnlyGameGroup &&
+            pk.nativePk1ReadOnly() != nullptr) {
+            const auto& gen1 = *pk.nativePk1ReadOnly();
             const uint8_t catchRate = gen1.strictRecord().catchRate;
             using Evidence = Gen1CatchRate::Evidence;
             const auto evidence = Gen1CatchRate::classify(
@@ -722,8 +748,9 @@ namespace Legality {
             }
         }
         if (sourceProfile && exactGeneration == 2 &&
-            pk.getGameGroup() == Pokemon::Pokemon2ReadOnly::kReadOnlyGameGroup) {
-            const auto& gen2 = static_cast<const Pokemon::Pokemon2ReadOnly&>(pk);
+            pk.getGameGroup() == Pokemon::Pokemon2ReadOnly::kReadOnlyGameGroup &&
+            pk.nativePk2ReadOnly() != nullptr) {
+            const auto& gen2 = *pk.nativePk2ReadOnly();
             const std::array<uint16_t, 4> moves{
                 gen2.move(0), gen2.move(1), gen2.move(2), gen2.move(3)
             };
@@ -873,8 +900,9 @@ namespace Legality {
         // cannot infer Crystal-only caught data, a trainer or a past
         // trade; keep those exact-source encounter checks above gated.
         if (!sourceProfile &&
-            pk.getGameGroup() == Pokemon::Pokemon2ReadOnly::kReadOnlyGameGroup) {
-            const auto& gen2 = static_cast<const Pokemon::Pokemon2ReadOnly&>(pk);
+            pk.getGameGroup() == Pokemon::Pokemon2ReadOnly::kReadOnlyGameGroup &&
+            pk.nativePk2ReadOnly() != nullptr) {
+            const auto& gen2 = *pk.nativePk2ReadOnly();
             const std::array<uint16_t,4> moves{
                 gen2.move(0),gen2.move(1),gen2.move(2),gen2.move(3)
             };
@@ -943,13 +971,15 @@ namespace Legality {
                 r.coverage.pidRng = CoverageLevel::Partial;
                 r.coverage.eggBreeding = CoverageLevel::Partial;
             }
-            // Gen I/III containers cannot carry an earlier-generation entity history.
-            // Gen II Time Capsule history is only partially recoverable from PK1/PK2 data.
-            if (exactGeneration == 1 || exactGeneration == 3)
-                r.coverage.transfer = CoverageLevel::Complete;
-            else if (exactGeneration == 2)
+            // Native PK1 can contain a Pokemon traded back through the
+            // Generation II Time Capsule. A Red/Blue/Yellow save label does
+            // not record its prior Gen II trainer/move/item history, even
+            // when that current container label is known exactly. Never
+            // claim Complete transfer coverage on a detached Gen I PK1.
+            // Gen II's Time Capsule evidence likewise remains partial.
+            if (exactGeneration == 1 || exactGeneration == 2)
                 r.coverage.transfer = CoverageLevel::Partial;
-            else if (exactGeneration == 4)
+            else if (exactGeneration == 3 || exactGeneration == 4)
                 r.coverage.transfer = CoverageLevel::Complete;
         }
 
@@ -1623,13 +1653,35 @@ namespace Legality {
                     " -- Awakening Values are its stat training, and these bytes affect nothing");
             }
         } else {
-            // Everywhere else: <=252 per stat, <=510 total.
-            for (int i = 0; i < 6; ++i) {
-                if (ev[i] > 252)
-                    add(r, Severity::Invalid, std::string(statName(i)) + " EV over 252 (" + std::to_string(ev[i]) + ")");
+            // Gen III/IV have byte-wide EV fields: 253..255 can arise in
+            // retail play. The 252 per-stat training cap starts in Gen VI,
+            // so imposing it on native PK3/PK4 produces false Invalid.
+            // Use the *verified native format*, never a claimed source-game
+            // label, for these format-level bounds.
+            const bool legacyByteEvs = nativeFormatGeneration == 3 ||
+                                       nativeFormatGeneration == 4;
+            if (!legacyByteEvs) {
+                for (int i = 0; i < 6; ++i) {
+                    if (ev[i] > 252)
+                        add(r, Severity::Invalid,
+                            std::string(statName(i)) + " EV over 252 (" +
+                            std::to_string(ev[i]) + ")");
+                }
             }
             if (evTotal > 510)
-                add(r, Severity::Invalid, "EV total over 510 (" + std::to_string(evTotal) + ")");
+                add(r, Severity::Invalid,
+                    "EV total over 510 (" + std::to_string(evTotal) + ")");
+
+            // Unlike a hatched Pokemon, a currently unhatched native PK3/PK4
+            // cannot acquire EVs in retail play. This directly observed
+            // stored-state invariant is independent of unknown parents,
+            // historical egg RNG, and whether the source-game label is known.
+            if (legacyByteEvs && pk.isEgg() && evTotal != 0) {
+                add(r, Severity::Invalid,
+                    "Unhatched Generation III/IV egg has nonzero EVs (" +
+                    std::to_string(evTotal) + ")",
+                    CheckIdentifier::Egg);
+            }
         }
 
         // ---- L1: AVs (Let's Go only, <=200 each) ----
@@ -1641,7 +1693,12 @@ namespace Legality {
         }
 
         // ---- L1/L2: ability slot valid + ability id legal for the species/form ----
-        if (!sourceProfile || exactGeneration >= 3) {
+        // PK1/PK2 have no native ability field. Their read-only wrappers
+        // expose neutral ability id 0, which must not be treated as illegal
+        // merely because the exact source save is unavailable or mislabeled.
+        // Format applicability is independent of historical source identity.
+        if (nativeFormatGeneration != 1 && nativeFormatGeneration != 2 &&
+            (!sourceProfile || exactGeneration >= 3)) {
             const uint8_t an = pk.abilityNumber();
             if (an != 1 && an != 2 && an != 4)
                 add(r, Severity::Warning, "Unusual ability slot (" + std::to_string(an) + ")");
@@ -2148,6 +2205,165 @@ namespace Legality {
             }
         }
 
+
+        // L3 source-exact Ruby/Sapphire and FireRed/LeafGreen original
+        // level-up offers, now executed by the real production analyzer.
+        // Use the IMMUTABLE native PK3 original-game byte, NOT the save-
+        // provider's current game (a traded Pokémon can be in another save).
+        // The complete 386-species original tables establish only a possible
+        // source offer, not observed learning, retention or four-slot history.
+        // Never emit Invalid or imply a move outside this row is impossible.
+        if (!sourceFormatMismatch && !pk.isEgg() &&
+            Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 3 &&
+            species >= 1 && species <= 386) {
+            const auto source = Gen4Origin::exactGen3GameId(pk.originGame());
+            using GbaGame=Gen14CandidateMoveChronology::Game;
+            GbaGame game=GbaGame::Unknown;
+            if (source == "ruby_gba") game=GbaGame::Ruby;
+            else if (source == "sapphire_gba") game=GbaGame::Sapphire;
+            else if (source == "firered_gba") game=GbaGame::FireRed;
+            else if (source == "leafgreen_gba") game=GbaGame::LeafGreen;
+            if (game != GbaGame::Unknown) {
+                const auto offers=Gen3GbaVersionedLevelUpTimeline::offerCount(
+                    game,species);
+                for (int slot=0;slot<4;++slot) {
+                    const uint16_t move=pk.move(slot);
+                    if (!move)continue;
+                    uint8_t first=0;
+                    for (uint16_t i=0;i<offers;++i) {
+                        const auto offer=Gen3GbaVersionedLevelUpTimeline::offerAt(
+                            game,species,i);
+                        if (offer.move==move && offer.level!=0 &&
+                            offer.level<=pk.level() &&
+                            (first==0 || offer.level<first))
+                            first=offer.level;
+                    }
+                    if (first) {
+                        add(r,Severity::Info,
+                            "Original " + std::string(source) +
+                            " native Gen III level-up source: " +
+                            std::string(Names::getMoveName(move)) +
+                            " has an original current-species offer by level " +
+                            std::to_string(first) +
+                            "; historical trainer choices, evolution and simultaneous acquisition remain unverified",
+                            CheckIdentifier::Moves);
+                    }
+                }
+            }
+        }
+
+
+        // Source-pinned Gen III level-up evidence can also describe a
+        // POSSIBLE pre-Pal-Park method for a later native PK4. The native
+        // preserved GBA original-game byte and BOTH split Pal Park location
+        // and original Gen III Ball fields must be consistent. Current
+        // PK4 level and species cannot prove original level/species or
+        // retention; this is an informational source opportunity only.
+        if (!sourceFormatMismatch && !pk.isEgg() &&
+            Gen34FormatDomain::generationFromGroup(pk.getGameGroup())==4 &&
+            Gen4Origin::kind(pk.originGame())==
+                Gen4Origin::Kind::Gen3Handheld &&
+            species>=1 && species<=386 &&
+            Gen34PalParkMoves::verifiedTransferFields(
+                pk.gen4MetLocationDP(),pk.gen4MetLocationExtended(),
+                pk.gen4BallDPPt(),pk.gen4BallHGSS(),pk.isEgg())) {
+            const auto original=Gen4Origin::exactGen3GameId(pk.originGame());
+            using GbaGame=Gen14CandidateMoveChronology::Game;
+            GbaGame game=GbaGame::Unknown;
+            if(original=="ruby_gba")game=GbaGame::Ruby;
+            else if(original=="sapphire_gba")game=GbaGame::Sapphire;
+            else if(original=="emerald_gba")game=GbaGame::Emerald;
+            else if(original=="firered_gba")game=GbaGame::FireRed;
+            else if(original=="leafgreen_gba")game=GbaGame::LeafGreen;
+            if(game!=GbaGame::Unknown) {
+                const auto offers=Gen3GbaVersionedLevelUpTimeline::offerCount(
+                    game,species);
+                for(int slot=0;slot<4;++slot) {
+                    const uint16_t move=pk.move(slot);
+                    if(move==0 || move>354)continue;
+                    uint8_t earliest=0;
+                    for(uint16_t i=0;i<offers;++i) {
+                        const auto entry=Gen3GbaVersionedLevelUpTimeline::offerAt(
+                            game,species,i);
+                        if(entry.move==move && entry.level!=0 &&
+                           entry.level<=pk.level() &&
+                           (earliest==0 || entry.level<earliest))
+                            earliest=entry.level;
+                    }
+                    if(earliest) {
+                        add(r,Severity::Info,
+                            "Pal Park original " + std::string(original) +
+                            " level-up source opportunity: " +
+                            std::string(Names::getMoveName(move)) +
+                            " appears in the source table for the current species by level " +
+                            std::to_string(earliest) +
+                            "; original species/level, pre-migration retention and later acquisition remain unverified",
+                            CheckIdentifier::Moves);
+                    }
+                }
+            }
+        }
+
+        // L3 exact ORIGINAL Platinum direct-method candidates: this
+        // deliberately limited source-pinned sample covers twelve species,
+        // 174 level-up offers and known tutors/TM-HMs, NOT all Gen IV.
+        // Native PK4 original-game identity survives intra-Gen IV trading.
+        // Do not infer a missing teacher, item receipt, original egg event,
+        // retained four-slot order or impossibility from an absent method.
+        if (!sourceFormatMismatch && !pk.isEgg() &&
+            Gen34FormatDomain::generationFromGroup(pk.getGameGroup())==4 &&
+            Gen4Origin::exactRetailGameId(pk.originGame())=="platinum_nds" &&
+            (species!=386 || pk.form()==0) &&
+            Gen4PlatinumNativeMethodData::row(species)!=nullptr) {
+            for(int slot=0;slot<4;++slot) {
+                const uint16_t move=pk.move(slot);
+                if(!move)continue;
+                uint8_t earliest=0;
+                const auto count=Gen4PlatinumNativeMethodData::offerCount(species);
+                for(uint16_t i=0;i<count;++i) {
+                    const auto packed=
+                        Gen4PlatinumNativeMethodData::packedOffer(species,i);
+                    const auto level=static_cast<uint8_t>(packed>>9);
+                    if ((packed & 511u)==move && level!=0 &&
+                        level<=pk.level() &&
+                        (earliest==0 || level<earliest))
+                        earliest=level;
+                }
+                if(earliest) {
+                    add(r,Severity::Info,
+                        "Original Platinum native level-up method: " +
+                        std::string(Names::getMoveName(move)) +
+                        " is offered by the current species by level " +
+                        std::to_string(earliest) +
+                        "; original trainer choices, retention and earlier evolution remain unverified",
+                        CheckIdentifier::Moves);
+                }
+                if(Gen4PlatinumNativeMethodData::tutorCompatible(
+                    species,move)) {
+                    add(r,Severity::Info,
+                        "Original Platinum native tutor method: " +
+                        std::string(Names::getMoveName(move)) +
+                        " is compatible with the pinned species source; actual tutor receipt and joint move history remain unverified",
+                        CheckIdentifier::Moves);
+                }
+                for(const auto& machine:Gen4PlatinumPinnedMachines::kPinned) {
+                    if(machine.move==move &&
+                       Gen4PlatinumPinnedMachines::compatible(
+                           species,machine.hidden,machine.number,move)) {
+                        add(r,Severity::Info,
+                            "Original Platinum native TM/HM method: " +
+                            std::string(Names::getMoveName(move)) +
+                            " is compatible with pinned machine " +
+                            std::string(machine.hidden?"HM":"TM") +
+                            std::to_string(machine.number) +
+                            "; actual acquisition/teaching receipt remains unverified",
+                            CheckIdentifier::Moves);
+                        break;
+                    }
+                }
+            }
+        }
+
         // META-001/EVENT-001: raw native PK4 text is an independent
         // capability from decoded OT/nickname Unicode. It is only
         // positive evidence that terminator and any trailing raw words
@@ -2602,7 +2818,11 @@ namespace Legality {
         }
 
         // ---- L2: gender vs the species gender ratio (255 genderless / 254 female-only / 0 male-only) ----
-        if (!sourceProfile || exactGeneration >= 2) {
+        // PK1 stores no gender. The neutral wrapper value 2 is absence of a
+        // native field, not evidence that a gendered species is genderless.
+        // PK2's DV-derived gender remains applicable without source context.
+        if (nativeFormatGeneration != 1 &&
+            (!sourceProfile || exactGeneration >= 2)) {
             const uint8_t g = pk.gender();
             if (g > 2)
                 add(r, Severity::Invalid, "Gender value out of range (" + std::to_string(g) + ")");

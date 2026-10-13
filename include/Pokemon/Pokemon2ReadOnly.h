@@ -18,6 +18,7 @@ namespace Pokemon {
 class Pokemon2ReadOnly final : public Pokemon {
 public:
     static constexpr Enums::GameVersion kReadOnlyGameGroup = Enums::GameVersion::GSC;
+    const Pokemon2ReadOnly* nativePk2ReadOnly() const noexcept override { return this; }
 
     explicit Pokemon2ReadOnly(const PokeVault::Integration::Gen2::PokemonRecord& record);
 
@@ -122,6 +123,12 @@ public:
     uint16_t statExpDEF() const noexcept { return record_.statExperience[2]; }
     uint16_t statExpSPE() const noexcept { return record_.statExperience[3]; }
     uint16_t statExpSpecial() const noexcept { return record_.statExperience[4]; }
+    bool gen2NativeStatExperience(
+            std::array<uint16_t, 5>& fields) const noexcept override {
+        fields = record_.statExperience;
+        return true;
+    }
+
     uint8_t statusByte() const noexcept { return record_.status; }
     uint8_t pokerusByte() const noexcept { return record_.pokerus; }
     uint16_t caughtData() const noexcept { return record_.caughtData; }

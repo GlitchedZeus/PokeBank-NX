@@ -1,0 +1,983 @@
+{
+  "schema": "L5_Q13_NATIVE_CAPABILITY_MATRIX_V1",
+  "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+  "catalog_id": "Q13",
+  "scope": "API/source-grounded information availability, not native paired original-save or PKHeX behavioral parity",
+  "semantics": "Do not equate a neutral base/wrapper getter value with an actually stored and known value. Current stored evidence is not a time machine: original parents, encounter lead, event receipt and visits remain unobservable without external proof.",
+  "field_families": 24,
+  "gen_families": 4,
+  "cell_count": 96,
+  "states": {
+    "not_in_native_format": 26,
+    "native_stored": 31,
+    "derived_from_native": 3,
+    "context_only": 6,
+    "limited_format": 2,
+    "decoded_current": 8,
+    "retail_stage_unobservable": 19,
+    "not_applicable": 1
+  },
+  "original_retail_specimens_verified": 0,
+  "rows": [
+    {
+      "generation": "I",
+      "field": "pid",
+      "capability": "not_in_native_format",
+      "evidence": "PK1 compatibility pid() returns 0, not a stored 32-bit PID",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 38,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "pid",
+      "capability": "not_in_native_format",
+      "evidence": "PK2 compatibility pid() returns 0, not stored",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 40,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "pid",
+      "capability": "native_stored",
+      "evidence": "PK3 stored 32-bit PID",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 62,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "pid",
+      "capability": "native_stored",
+      "evidence": "PK4 stored 32-bit PID",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 32,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "nature",
+      "capability": "not_in_native_format",
+      "evidence": "No native Gen I nature; adapter returns neutral 0",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 33,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "nature",
+      "capability": "not_in_native_format",
+      "evidence": "No native Gen II nature; adapter returns neutral 0",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 33,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "nature",
+      "capability": "derived_from_native",
+      "evidence": "Computed as PID modulo 25, not a separate stored nature",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 73,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "nature",
+      "capability": "derived_from_native",
+      "evidence": "Gen IV nature determined by stored PID, not proof of encounter-generation RNG history",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 32,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "modern_ivs",
+      "capability": "not_in_native_format",
+      "evidence": "Six modern 0–31 IV getters return 0; actual DVs elsewhere",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 41,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "modern_ivs",
+      "capability": "not_in_native_format",
+      "evidence": "Six modern IV getters return 0; actual DVs elsewhere",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 43,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "modern_ivs",
+      "capability": "native_stored",
+      "evidence": "Six individual 0–31 IV fields represented in PK3",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 121,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "modern_ivs",
+      "capability": "native_stored",
+      "evidence": "PK4 contains six current IVs and raw iv32",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 51,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "dv",
+      "capability": "native_stored",
+      "evidence": "Gen I 4-bit DVs exposed through dvATK/DEF/SPE/Special and derived HP",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 107,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "dv",
+      "capability": "native_stored",
+      "evidence": "Gen II DVs exposed through format-specific accessors",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 115,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "dv",
+      "capability": "not_in_native_format",
+      "evidence": "Modern Gen III stores IVs, not old DVs",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 121,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "dv",
+      "capability": "not_in_native_format",
+      "evidence": "Modern Gen IV stores IVs, not old DVs",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 51,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "ev",
+      "capability": "not_in_native_format",
+      "evidence": "EV getters are neutral zero; stat experience is distinct",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 49,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "ev",
+      "capability": "not_in_native_format",
+      "evidence": "EV getters are neutral zero; stat experience is distinct",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 50,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "ev",
+      "capability": "native_stored",
+      "evidence": "PK3 EV fields are present",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 138,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "ev",
+      "capability": "native_stored",
+      "evidence": "PK4 EV fields are present",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 47,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "stat_experience",
+      "capability": "native_stored",
+      "evidence": "Gen I stat experience 16-bit entries",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 112,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "stat_experience",
+      "capability": "native_stored",
+      "evidence": "Gen II stat experience 16-bit entries",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 120,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "stat_experience",
+      "capability": "not_in_native_format",
+      "evidence": "Old stat experience replaced by EVs",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 138,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "stat_experience",
+      "capability": "not_in_native_format",
+      "evidence": "Old stat experience not stored",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 47,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "ability",
+      "capability": "not_in_native_format",
+      "evidence": "No ability, adapter returns zero",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 32,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "ability",
+      "capability": "not_in_native_format",
+      "evidence": "No ability, adapter returns zero",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 32,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "ability",
+      "capability": "derived_from_native",
+      "evidence": "PK3 persists ability selector bit; resolved ability is derived using species mapping",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 82,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "ability",
+      "capability": "native_stored",
+      "evidence": "PK4 stores current ability ID",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 43,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "current_four_moves",
+      "capability": "native_stored",
+      "evidence": "Four present move slots and PP",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 58,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "current_four_moves",
+      "capability": "native_stored",
+      "evidence": "Four present move slots and PP",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 59,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "current_four_moves",
+      "capability": "native_stored",
+      "evidence": "Four current move slots; no acquisition history attached",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 102,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "current_four_moves",
+      "capability": "native_stored",
+      "evidence": "Four current move slots; no timeline attached",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 48,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "held_item",
+      "capability": "not_in_native_format",
+      "evidence": "Gen I native Pokémon has no held-item slot; adapter 0",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 24,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "held_item",
+      "capability": "native_stored",
+      "evidence": "Gen II native current held item recorded; historical items unknown",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 27,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "held_item",
+      "capability": "native_stored",
+      "evidence": "PK3 current held item recorded; past item at egg creation absent",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 146,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "held_item",
+      "capability": "native_stored",
+      "evidence": "PK4 current held item recorded; does not identify parent-held Power items",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 36,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "origin_game",
+      "capability": "context_only",
+      "evidence": "No native Version byte; display wrapper has presentation-only generation tag",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 18,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "origin_game",
+      "capability": "context_only",
+      "evidence": "No native Version byte; game/save source supplied by context",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 22,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "origin_game",
+      "capability": "native_stored",
+      "evidence": "PK3 has origin Version metadata but current source container and trade history are distinct",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 146,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "origin_game",
+      "capability": "native_stored",
+      "evidence": "PK4 native originVersion byte; not equal to guaranteed exact source game history",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 59,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "exact_save_provider",
+      "capability": "context_only",
+      "evidence": "Provider/storage identity from validated save, not PK1 payload",
+      "source_path": "include/Legality/LegalityContext.h",
+      "source_line": 23,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "exact_save_provider",
+      "capability": "context_only",
+      "evidence": "Provider/storage identity from validated save, not PK2 payload",
+      "source_path": "include/Legality/LegalityContext.h",
+      "source_line": 23,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "exact_save_provider",
+      "capability": "context_only",
+      "evidence": "Provider/storage identity cannot be inferred from PK3 origin byte alone",
+      "source_path": "include/Legality/LegalityContext.h",
+      "source_line": 23,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "exact_save_provider",
+      "capability": "context_only",
+      "evidence": "Provider/storage identity cannot be inferred from PK4 origin byte alone",
+      "source_path": "include/Legality/LegalityContext.h",
+      "source_line": 23,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "met_location",
+      "capability": "not_in_native_format",
+      "evidence": "Gen I PK1 has no modern met location proof",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 25,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "met_location",
+      "capability": "limited_format",
+      "evidence": "Gen II Crystal has bounded caughtData, Gold/Silver cannot be treated as equivalent",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 126,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "met_location",
+      "capability": "native_stored",
+      "evidence": "PK3 met data is stored but may have been transformed by trade/transfer",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 146,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "met_location",
+      "capability": "native_stored",
+      "evidence": "PK4 has DP and extended location fields; Pal Park transforms provenance",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 60,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "crystal_caught_data",
+      "capability": "not_in_native_format",
+      "evidence": "Crystal caughtData is not a Gen I field",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 25,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "crystal_caught_data",
+      "capability": "limited_format",
+      "evidence": "caughtData bytes accessible; do not infer Crystal provenance for Gold/Silver",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 126,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "crystal_caught_data",
+      "capability": "not_in_native_format",
+      "evidence": "Not a PK3 field",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 146,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "crystal_caught_data",
+      "capability": "not_in_native_format",
+      "evidence": "Not a PK4 field",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 60,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "egg_flag",
+      "capability": "not_in_native_format",
+      "evidence": "PK1 no eggs; isEgg() false is a format property",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 88,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "egg_flag",
+      "capability": "native_stored",
+      "evidence": "PK2 egg flag is stored",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 92,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "egg_flag",
+      "capability": "native_stored",
+      "evidence": "PK3 egg-state bit stored",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 175,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "egg_flag",
+      "capability": "native_stored",
+      "evidence": "PK4 egg flag stored; parent history absent",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 53,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "stored_checksum",
+      "capability": "not_in_native_format",
+      "evidence": "Adapter checksumValid() true despite no modern stored per-Pokémon checksum",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 95,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "stored_checksum",
+      "capability": "not_in_native_format",
+      "evidence": "Adapter checksumValid() true despite no modern per-Pokémon checksum",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 103,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "stored_checksum",
+      "capability": "native_stored",
+      "evidence": "PK3 checksum stored and independently recalculated",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 215,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "stored_checksum",
+      "capability": "native_stored",
+      "evidence": "PK4 checksum and calculatedChecksum available",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 34,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "current_ot_text",
+      "capability": "decoded_current",
+      "evidence": "Adapter exposes current decoded OT name; raw prior encode/changes not attested",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 70,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "current_ot_text",
+      "capability": "decoded_current",
+      "evidence": "Adapter exposes current decoded OT name; historic trade changes not attested",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 71,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "current_ot_text",
+      "capability": "decoded_current",
+      "evidence": "PK3 OT chars decoded from native current bytes; original event OT history not certified",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 98,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "current_ot_text",
+      "capability": "decoded_current",
+      "evidence": "PK4 exposes decoded current OT name and raw decrypted data; original event PCD OT not retained",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 60,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "current_nickname_text",
+      "capability": "decoded_current",
+      "evidence": "Adapter decodes current nickname; no historic nickname proof",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 26,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "current_nickname_text",
+      "capability": "decoded_current",
+      "evidence": "Adapter decodes current nickname; no historic nickname proof",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 26,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "current_nickname_text",
+      "capability": "decoded_current",
+      "evidence": "PK3 stores native text bytes and decoded current nickname; prior evolution text not guaranteed",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 94,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "current_nickname_text",
+      "capability": "decoded_current",
+      "evidence": "PK4 decrypted bytes preserve current nickname encoding; gift source bytes not proven",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 58,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "ribbons",
+      "capability": "not_in_native_format",
+      "evidence": "Gen I record does not encode ribbon words",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 88,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "ribbons",
+      "capability": "not_in_native_format",
+      "evidence": "Gen II PK2 record does not encode ribbon words",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 91,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "ribbons",
+      "capability": "native_stored",
+      "evidence": "Gen III supports selected event/ribbon bits but no original awarding history",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 179,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "ribbons",
+      "capability": "native_stored",
+      "evidence": "PK4 exposes three current ribbon words; original distribution ribbon payload unproven",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 45,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "fateful_flag",
+      "capability": "not_in_native_format",
+      "evidence": "No native stored Gen III/IV fateful flag",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 88,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "fateful_flag",
+      "capability": "not_in_native_format",
+      "evidence": "No Gen III/IV-style fateful bit in native PK2",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 92,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "fateful_flag",
+      "capability": "native_stored",
+      "evidence": "Gen III event/fateful bit stored, but receipt unreconstructable",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 179,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "fateful_flag",
+      "capability": "native_stored",
+      "evidence": "Gen IV fatefulEncounter bit stored, but original release not authenticated",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 55,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "encounter_capture_conditions",
+      "capability": "retail_stage_unobservable",
+      "evidence": "Encounter slot, lead and complete capture-time history not contained in current PK1",
+      "source_path": "include/Legality/LegalityContext.h",
+      "source_line": 23,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "encounter_capture_conditions",
+      "capability": "retail_stage_unobservable",
+      "evidence": "Crystal caught metadata not entire route-time RNG and lead history",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 126,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "encounter_capture_conditions",
+      "capability": "retail_stage_unobservable",
+      "evidence": "PK3 does not persist lead, frame, weather, rod, original Safari area selection proof",
+      "source_path": "include/Legality/LegalityContext.h",
+      "source_line": 23,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "encounter_capture_conditions",
+      "capability": "retail_stage_unobservable",
+      "evidence": "PK4 does not persist original lead, Honey Tree tree ID and source time proof",
+      "source_path": "include/Legality/LegalityContext.h",
+      "source_line": 23,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "original_breeding_parents",
+      "capability": "not_applicable",
+      "evidence": "Native Gen I has no breeding mechanism",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 88,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "original_breeding_parents",
+      "capability": "retail_stage_unobservable",
+      "evidence": "PK2 egg lacks retained original parent creatures, deposit order and moves",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 92,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "original_breeding_parents",
+      "capability": "retail_stage_unobservable",
+      "evidence": "PK3 egg lacks full original father/mother move history, IV stage seeds and item chronology",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 175,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "original_breeding_parents",
+      "capability": "retail_stage_unobservable",
+      "evidence": "PK4 egg lacks deposited original parents, held Power-item receipt, MT stream",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 53,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "historical_moves_and_game_visits",
+      "capability": "retail_stage_unobservable",
+      "evidence": "Current slots do not prove previous tradebacks or move deletions",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 58,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "historical_moves_and_game_visits",
+      "capability": "retail_stage_unobservable",
+      "evidence": "Current moves do not prove Time Capsule timeline and deleted moves",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 59,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "historical_moves_and_game_visits",
+      "capability": "retail_stage_unobservable",
+      "evidence": "Current moves do not prove TM/HM/tutor relearn and game-visit path",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 102,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "historical_moves_and_game_visits",
+      "capability": "retail_stage_unobservable",
+      "evidence": "Current moves do not prove retained Gen III move vs later Gen IV relearnt history",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 48,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "original_event_archive",
+      "capability": "retail_stage_unobservable",
+      "evidence": "No authentic original archive payload/receipt embedded",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 26,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "original_event_archive",
+      "capability": "retail_stage_unobservable",
+      "evidence": "No original event archive payload/receipt embedded",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 26,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "original_event_archive",
+      "capability": "retail_stage_unobservable",
+      "evidence": "PK3 event flag/text not proof of original distribution",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 179,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "original_event_archive",
+      "capability": "retail_stage_unobservable",
+      "evidence": "PK4 fateful/template match not proof of original event archive/receipt",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 55,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "I",
+      "field": "source_partner_trainer_id",
+      "capability": "retail_stage_unobservable",
+      "evidence": "Current TID is not a full trade provenance record",
+      "source_path": "include/Pokemon/Pokemon1ReadOnly.h",
+      "source_line": 71,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "II",
+      "field": "source_partner_trainer_id",
+      "capability": "retail_stage_unobservable",
+      "evidence": "Current TID and caught data do not prove original partner histories",
+      "source_path": "include/Pokemon/Pokemon2ReadOnly.h",
+      "source_line": 72,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "III",
+      "field": "source_partner_trainer_id",
+      "capability": "retail_stage_unobservable",
+      "evidence": "Current TID/SID not authenticated against past egg parents or trade partners",
+      "source_path": "include/Pokemon/Pokemon3FRLG.h",
+      "source_line": 146,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    },
+    {
+      "generation": "IV",
+      "field": "source_partner_trainer_id",
+      "capability": "retail_stage_unobservable",
+      "evidence": "Current TID/SID not necessarily capture-time Honey Tree trainer ID",
+      "source_path": "include/Pokemon/Pokemon4ReadOnly.h",
+      "source_line": 38,
+      "source_revision": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+      "asserted_original_capture_history": false
+    }
+  ]
+}

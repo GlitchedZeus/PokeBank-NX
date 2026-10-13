@@ -1,0 +1,133 @@
+{
+  "registry_sha": "fc0225e6351af62365f29200300323e38f52c8fe",
+  "start": 28,
+  "count": 14,
+  "rows": [
+    {
+      "id": "E-DAYCARE",
+      "expected_sha256": "b20e1aef476abbd91b4882cca5dbe03002a0473c3a963bbadfce9dc7c8984964",
+      "observed_sha256": "b20e1aef476abbd91b4882cca5dbe03002a0473c3a963bbadfce9dc7c8984964",
+      "git_blob_sha": "ef4eaabb531c483187dd30f8b227c26d04d28f47",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "E-EVO",
+      "expected_sha256": "6ea3c720517bbecf7ba7379929ddeccb139bd841eeb8a5d1e0042fe5869019dd",
+      "observed_sha256": "6ea3c720517bbecf7ba7379929ddeccb139bd841eeb8a5d1e0042fe5869019dd",
+      "git_blob_sha": "0c13e7938a26fc946e323140b10d0ce23ae740f0",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "E-LEVEL",
+      "expected_sha256": "a7569a51e3bb0ca4f094830c76c6db45a692c7ed64db21e59bc76a90237599e0",
+      "observed_sha256": "a7569a51e3bb0ca4f094830c76c6db45a692c7ed64db21e59bc76a90237599e0",
+      "git_blob_sha": "212b969a70e0dd454be2be71615f59496388bfb2",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "E-RNG",
+      "expected_sha256": "566ab9be0a0840b31465faf3df5c529445a9c6d08959fd4f7f1f0ec7e637c941",
+      "observed_sha256": "566ab9be0a0840b31465faf3df5c529445a9c6d08959fd4f7f1f0ec7e637c941",
+      "git_blob_sha": "ba7aeccc1a03867f09777ee7af701c5f3a069934",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "RS-DAYCARE",
+      "expected_sha256": "f4aafb22b8d55f5fe90c930fb84a5c4c468e6bf590d34a1eceddc304c676eb63",
+      "observed_sha256": "f4aafb22b8d55f5fe90c930fb84a5c4c468e6bf590d34a1eceddc304c676eb63",
+      "git_blob_sha": "ec89f89a15b18cf36328ed8d03229a869a9b0f35",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "FR-DAYCARE",
+      "expected_sha256": "3509b363c4cadd7bb9de83fe288b49a8decc76d53d8b600c81b557ba052173ba",
+      "observed_sha256": "3509b363c4cadd7bb9de83fe288b49a8decc76d53d8b600c81b557ba052173ba",
+      "git_blob_sha": "efa5a951e7ecca5ba6c22d17ca9dfe86a0284d07",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "C-BREED",
+      "expected_sha256": "6a4a2537eab3aa245abbc04e3809ab8804b6f1b91a3b2a23c2acad6b918f7e29",
+      "observed_sha256": "6a4a2537eab3aa245abbc04e3809ab8804b6f1b91a3b2a23c2acad6b918f7e29",
+      "git_blob_sha": "5de0c8bae4cb85ee91da547ebbbfc5033deef2c2",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "C-DAYCARE",
+      "expected_sha256": "53e6f1de756c6f5cedd28035cdcfe8e43dc6d00c7929b2066cce98ec077220db",
+      "observed_sha256": "53e6f1de756c6f5cedd28035cdcfe8e43dc6d00c7929b2066cce98ec077220db",
+      "git_blob_sha": "ec386185f4acbdb1a44b38e66ce20696cee751e9",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "C-TIMECAPSULE",
+      "expected_sha256": "bb5fa2bdba1260aa7e17cd40887cf246a7c05400495ad6490ef1001237b50e1f",
+      "observed_sha256": "bb5fa2bdba1260aa7e17cd40887cf246a7c05400495ad6490ef1001237b50e1f",
+      "git_blob_sha": "fe31d7f3fcddc7d39c4b8f90df8e1abc89f41edb",
+      "sha256_match": true,
+      "symbol_match": null,
+      "error": null
+    },
+    {
+      "id": "PT-DAYCARE",
+      "expected_sha256": "88e0fac100a3b25f82208509dd01e98e84ffda945ab5e221d39a976e5aafaf0e",
+      "observed_sha256": "88e0fac100a3b25f82208509dd01e98e84ffda945ab5e221d39a976e5aafaf0e",
+      "git_blob_sha": "9a4c97a09842f696fd07fc822bbe1297c7388eba",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "HG-DAYCARE",
+      "expected_sha256": "65f7bc5bb30aedea2260cdbc6a80af99da4d5f34f0681828dfd355b4d8bd08b2",
+      "observed_sha256": "65f7bc5bb30aedea2260cdbc6a80af99da4d5f34f0681828dfd355b4d8bd08b2",
+      "git_blob_sha": "3127e0e1010842829cfc34014d4625cf5eef76be",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "HG-LANGUAGE",
+      "expected_sha256": "077948145972cbad55c28f835d4a61d59b75fd9ffb5d50fe358606a7feb30375",
+      "observed_sha256": "077948145972cbad55c28f835d4a61d59b75fd9ffb5d50fe358606a7feb30375",
+      "git_blob_sha": "9860db357309ddfd249ff6351695f57feaebf2f8",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "PK-GROUP1",
+      "expected_sha256": "976c429c49c2efca26b943820e93b5a39d86689b9329383a554ce22cb69317e5",
+      "observed_sha256": "976c429c49c2efca26b943820e93b5a39d86689b9329383a554ce22cb69317e5",
+      "git_blob_sha": "4752a9ead331745c83c0483d25ca4bb355867f18",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    },
+    {
+      "id": "PK-GROUP2",
+      "expected_sha256": "1b3d5f55c28b321c5c1e3edc7363c3e4a6ebc827d35f7f574df98a3eae11f971",
+      "observed_sha256": "1b3d5f55c28b321c5c1e3edc7363c3e4a6ebc827d35f7f574df98a3eae11f971",
+      "git_blob_sha": "46abc4e2f758affa1c452e3bc2b145ce8b0998f4",
+      "sha256_match": true,
+      "symbol_match": true,
+      "error": null
+    }
+  ]
+}

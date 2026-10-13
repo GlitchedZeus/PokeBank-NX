@@ -1,0 +1,174 @@
+#include "Legality/Gen1IndexedOriginalSourceHistory.h"
+#include <array>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <iostream>
+int main(){
+    namespace H=Legality::Gen1IndexedOriginalSourceHistory;
+    namespace E=Legality::Gen1Encounter;
+    using Status=H::Status;
+    static_assert(E::kStaticEntries.size()==31);
+    static_assert(E::kTradeEntries.size()==17);
+    std::size_t checked=0;
+    // Every original exact R/B/Y source row is checked in a title actually
+    // containing it, with distinct original/current species and the original
+    // acquisition catch-rate byte (not today's mutable PK1 byte).
+    for(std::size_t i=0;i<E::kStaticEntries.size();++i){
+        const auto& row=E::kStaticEntries[i];
+        for(int game=0;game<3;++game){
+            const auto mask=static_cast<uint8_t>(1u<<game);
+            if((row.nativeGameMask&mask)==0)continue;
+            const char* id=game==0?"red_gb":game==1?"blue_gb":"yellow_gb";
+            H::Candidate c{};
+            c.kind=H::Kind::Static;c.exactOriginalGame=id;
+            c.originalRowIndex=i;c.originalSpecies=row.species;
+            c.presentSpecies=row.species;c.originalLevel=row.minimumLevel;
+            c.originalCatchRate=Legality::Gen1CatchRate::expectedRate(id,row.species);
+            c.originalGameIndependentlyAttested=true;
+            c.originalSourceRowIndependentlyAttested=true;
+            c.originalSpeciesIndependentlyAttested=true;
+            c.originalLevelIndependentlyAttested=true;
+            c.originalCatchRateIndependentlyAttested=true;
+            assert(H::evaluate(c).status==Status::ConditionalOriginalSource);
+            auto missing=c;missing.originalSourceRowIndependentlyAttested=false;
+            assert(H::evaluate(missing).status==Status::UnknownOriginalRow);
+            missing=c;missing.originalCatchRateIndependentlyAttested=false;
+            assert(H::evaluate(missing).status==Status::UnknownOriginalCatchRate);
+            missing=c;missing.originalSpeciesIndependentlyAttested=false;
+            assert(H::evaluate(missing).status==Status::UnknownOriginalSpecies);
+            missing=c;missing.originalLevelIndependentlyAttested=false;
+            assert(H::evaluate(missing).status==Status::UnknownOriginalLevel);
+            missing=c;missing.originalSpecies=0;
+            assert(H::evaluate(missing).status==Status::UnknownOriginalSpecies);
+            missing=c;missing.originalLevel=0;
+            assert(H::evaluate(missing).status==Status::UnknownOriginalLevel);
+            missing=c;missing.originalLevel=101;
+            assert(H::evaluate(missing).status==Status::UnknownOriginalLevel);
+            missing=c;missing.noTimeCapsuleHistoryIndependentlyAttested=true;
+            missing.timeCapsuleHistoryIndependentlyAttested=true;
+            assert(H::evaluate(missing).status==Status::UnknownTradebackHistory);
+            auto bad=c;bad.originalSpecies=static_cast<uint16_t>(row.species==1u?2u:1u);
+            assert(H::evaluate(bad).status==Status::CandidateOriginalSpeciesContradicted);
+            bad=c;bad.originalLevel=1;
+            assert(H::evaluate(bad).status==Status::CandidateOriginalLevelContradicted);
+            bad=c;bad.originalCatchRate^=1u;
+            assert(H::evaluate(bad).status==
+                Status::CandidateOriginalCatchRateContradicted);
+            ++checked;
+        }
+    }
+    for(std::size_t i=0;i<E::kTradeEntries.size();++i){
+        const auto& row=E::kTradeEntries[i];
+        const char* id=(row.nativeGameMask&1u)?"red_gb":"yellow_gb";
+        H::Candidate c{};
+        c.kind=H::Kind::InGameTrade;c.exactOriginalGame=id;
+        c.originalRowIndex=i;c.originalSpecies=row.species;
+        c.presentSpecies=row.species;c.originalLevel=row.minimumLevelRBY;
+        c.originalCatchRate=Legality::Gen1CatchRate::expectedRate(id,row.species);
+        c.originalGameIndependentlyAttested=true;
+        c.originalSourceRowIndependentlyAttested=true;
+            c.originalSpeciesIndependentlyAttested=true;
+            c.originalLevelIndependentlyAttested=true;
+        c.originalTradeOTIndependentlyAttested=true;
+        c.noTimeCapsuleHistoryIndependentlyAttested=true;
+        c.originalCatchRateIndependentlyAttested=true;
+        assert(H::evaluate(c).status==Status::ConditionalOriginalSource);
+        auto unknown=c;unknown.originalTradeOTIndependentlyAttested=false;
+        assert(H::evaluate(unknown).status==Status::UnknownTradeOT);
+        unknown=c;unknown.noTimeCapsuleHistoryIndependentlyAttested=false;
+        assert(H::evaluate(unknown).status==Status::UnknownTradebackHistory);
+        unknown=c;unknown.originalSpeciesIndependentlyAttested=false;
+        assert(H::evaluate(unknown).status==Status::UnknownOriginalSpecies);
+        unknown=c;unknown.originalLevelIndependentlyAttested=false;
+        assert(H::evaluate(unknown).status==Status::UnknownOriginalLevel);
+        ++checked;
+    }
+    // Yellow-only Surfing Pikachu encounter row must not claim native R/B.
+    H::Candidate yellow{};
+    yellow.exactOriginalGame="yellow_gb";yellow.originalRowIndex=28;
+    yellow.originalSpecies=25;yellow.presentSpecies=25;yellow.originalLevel=5;
+    yellow.originalCatchRate=Legality::Gen1CatchRate::expectedRate("yellow_gb",25);
+    yellow.originalGameIndependentlyAttested=true;
+    yellow.originalSourceRowIndependentlyAttested=true;
+            yellow.originalSpeciesIndependentlyAttested=true;
+            yellow.originalLevelIndependentlyAttested=true;
+    yellow.originalCatchRateIndependentlyAttested=true;
+    assert(H::evaluate(yellow).status==Status::ConditionalOriginalSource);
+    yellow.exactOriginalGame="blue_gb";
+    assert(H::evaluate(yellow).status==Status::ForeignGameRowNotEvidence);
+    // Versioned Yellow Machoke original in-game trade can evolve to Machamp;
+    // a detached Machamp alone cannot attest the original trade/evolution.
+    H::Candidate trade{};
+    trade.kind=H::Kind::InGameTrade;trade.exactOriginalGame="yellow_gb";
+    trade.originalRowIndex=11;trade.originalSpecies=67;
+    trade.presentSpecies=68;trade.originalLevel=16;
+    trade.originalCatchRate=Legality::Gen1CatchRate::expectedRate("yellow_gb",67);
+    trade.originalGameIndependentlyAttested=true;
+    trade.originalSourceRowIndependentlyAttested=true;
+            trade.originalSpeciesIndependentlyAttested=true;
+            trade.originalLevelIndependentlyAttested=true;
+    trade.originalTradeOTIndependentlyAttested=true;
+    trade.noTimeCapsuleHistoryIndependentlyAttested=true;
+    trade.originalCatchRateIndependentlyAttested=true;
+    assert(H::evaluate(trade).status==Status::UnknownEvolutionChain);
+    trade.originalEvolutionChainIndependentlyAttested=true;
+    assert(H::evaluate(trade).status==Status::ConditionalOriginalSource);
+    auto rateHistory=trade;
+    rateHistory.originalLevel=5;
+    rateHistory.noTimeCapsuleHistoryIndependentlyAttested=false;
+    rateHistory.timeCapsuleHistoryIndependentlyAttested=true;
+    assert(H::evaluate(rateHistory).status==Status::ConditionalOriginalSource);
+    rateHistory.noTimeCapsuleHistoryIndependentlyAttested=true;
+    assert(H::evaluate(rateHistory).status==Status::UnknownTradebackHistory);
+    rateHistory.timeCapsuleHistoryIndependentlyAttested=false;
+    assert(H::evaluate(rateHistory).status==Status::CandidateOriginalLevelContradicted);
+    // Corrupted encounter-kind enums cannot fabricate a source-trade hit.
+    auto invalidKind=trade;
+    invalidKind.kind=static_cast<H::Kind>(255u);
+    assert(H::evaluate(invalidKind).status==Status::UnknownEncounterKind);
+    // Distinct Eevee branches cannot evolve into each other even when
+    // a numeric species interval or stage-offset heuristic would include them.
+    static_assert(H::possibleOriginalEvolution(133,135));
+    static_assert(!H::possibleOriginalEvolution(134,135));
+    // Genuine R/B/Y original acquisitions can later evolve in G/S/C.
+    // PK1's Gen I-only evolution graph has no right to reject them:
+    // Scyther->Scizor, Porygon->Porygon2, Eevee->Espeon/Umbreon.
+    constexpr std::array<std::array<uint16_t,3>,4> later{{
+        {{6,123,212}},{{27,137,233}},{{25,133,196}},{{25,133,197}}
+    }};
+    for(const auto& f:later){
+        H::Candidate evolved{};
+        evolved.kind=H::Kind::Static;
+        evolved.exactOriginalGame="red_gb";
+        evolved.originalRowIndex=f[0];
+        evolved.originalSpecies=f[1];
+        evolved.presentSpecies=f[2];
+        evolved.originalLevel=Legality::Gen1Encounter::kStaticEntries[f[0]].minimumLevel;
+        evolved.originalCatchRate=Legality::Gen1CatchRate::expectedRate("red_gb",f[1]);
+        evolved.originalGameIndependentlyAttested=true;
+        evolved.originalSourceRowIndependentlyAttested=true;
+            evolved.originalSpeciesIndependentlyAttested=true;
+            evolved.originalLevelIndependentlyAttested=true;
+        evolved.originalEvolutionChainIndependentlyAttested=true;
+        evolved.originalCatchRateIndependentlyAttested=true;
+        assert(H::evaluate(evolved).status==Status::UnknownLaterGenerationEvolution);
+        evolved.presentSpecies=0;
+        assert(H::evaluate(evolved).status==Status::UnknownCurrentSpecies);
+    }
+    // Ordinary witnessed Eevee->Jolteon remains a compatible Gen I line.
+    H::Candidate eevee{};
+    eevee.exactOriginalGame="red_gb";eevee.originalRowIndex=25;
+    eevee.originalSpecies=133;eevee.presentSpecies=135;
+    eevee.originalLevel=25;
+    eevee.originalCatchRate=Legality::Gen1CatchRate::expectedRate("red_gb",133);
+    eevee.originalGameIndependentlyAttested=true;
+    eevee.originalSourceRowIndependentlyAttested=true;
+            eevee.originalSpeciesIndependentlyAttested=true;
+            eevee.originalLevelIndependentlyAttested=true;
+    eevee.originalEvolutionChainIndependentlyAttested=true;
+    eevee.originalCatchRateIndependentlyAttested=true;
+    assert(H::evaluate(eevee).status==Status::ConditionalOriginalSource);
+    assert(checked>=70u);
+    std::cout<<"L1 E02/E03 exact RBY original static/trade rows: PASS\n";
+}

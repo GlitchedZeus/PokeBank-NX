@@ -22,6 +22,11 @@
 #include "Enums/GameVersion.h"
 
 namespace Pokemon {
+    // Safe polymorphic format capabilities: RTTI is disabled in the Switch
+    // toolchain. Returning a correctly typed native view avoids relying on
+    // a broad generation/game-group label as a runtime type discriminator.
+    class Pokemon1ReadOnly;
+    class Pokemon2ReadOnly;
     /**
      * PKM - Abstract base class for Pokemon entity data
      *
@@ -219,6 +224,25 @@ namespace Pokemon {
         virtual uint8_t evSPE() const noexcept = 0;
         virtual uint8_t evSPA() const noexcept = 0;
         virtual uint8_t evSPD() const noexcept = 0;
+
+        // Native Gen II uses five 16-bit stat-experience fields, NOT EVs.
+        // Optional format capability: default means the original stat-
+        // experience bytes are unavailable, not that the values are zero.
+        // Avoid downcasting a generic Pokemon using only a game-group label:
+        // the Switch build disables RTTI, and derived Pokémon may be staged.
+        virtual const Pokemon1ReadOnly* nativePk1ReadOnly() const noexcept {
+            return nullptr;
+        }
+        virtual const Pokemon2ReadOnly* nativePk2ReadOnly() const noexcept {
+            return nullptr;
+        }
+
+        virtual bool gen2NativeStatExperience(
+                std::array<uint16_t, 5>& fields) const noexcept {
+            fields = {};
+            return false;
+        }
+
 
         /**
          * Sets an Effort Value for a specific stat.

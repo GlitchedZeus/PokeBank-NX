@@ -7,6 +7,13 @@ on:
       - feature/pokebank-playable
   pull_request:
 
+# Repeated coordinator/lane commits otherwise queue old SHA runs which
+# cannot certify the latest PR application. Keep only the newest run per
+# PR (or push ref) for THIS workflow; different PRs remain independent.
+concurrency:
+  group: host-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -93,3 +100,119 @@ jobs:
 
       - name: Run ASan and UBSan tests
         run: make -f Makefile.host host-sanitize
+
+# Coordinator-owned integration gate: ordinary host tests do not
+  # automatically run standalone lane tests. Require exact PR head here.
+  legality-parallel-validation:
+    name: Legality lane ${{ matrix.lane }} (native + sanitizers)
+    if: ${{ github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'integration/legality-') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [L1, L2, L3, L4, L5]
+    steps:
+      - name: Checkout exact integration head
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Verify exact integration identity and source inputs
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          echo "APPLICATION_SHA=$EXPECTED_SHA"
+          echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
+          g++ --version
+          python3 --version
+      - name: Execute every standalone suite (normal and ASan/UBSan)
+        env:
+          LANE: ${{ matrix.lane }}
+          INTEGRATION_EXACT_SHA: ${{ github.event.pull_request.head.sha }}
+          ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+          # L4 on integration head must join real L5 Q07 247-row source JSON,
+          # not just validate the Python fixture test dataset.
+          L4_L5_Q07_JSON: docs/legality/research/l5/Q07_WC4_EVENT_PROVENANCE_JOIN.json
+        run: |
+          set -euo pipefail
+          case "$LANE" in
+            L1)
+              bash tests/test_legality_l1_run.sh
+              ;;
+            L2)
+              bash tests/test_legality_l2_run_all.sh
+              ;;
+            L3)
+              L3_EXPECTED_EMERALD_BLOB=3e53c1c951876a26cace5dde060cc9ff2c35d0a7 bash tests/test_legality_l3_run_all.sh
+              ;;
+            L4)
+              bash tests/test_legality_l4_runner.sh
+              L4_SANITIZE=1 bash tests/test_legality_l4_runner.sh
+              ;;
+            L5)
+              # Independent source-state fixture, compiled from exact tree.
+              g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 \
+                tests/fixtures/legality_l5_gen12_sourcefree_contract.cpp -o /tmp/l5-pk12-source-contract
+              /tmp/l5-pk12-source-contract
+              g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O1 \
+                -fsanitize=address,undefined -fno-omit-frame-pointer \
+                tests/fixtures/legality_l5_gen12_sourcefree_contract.cpp -o /tmp/l5-pk12-source-contract-sanitize
+              /tmp/l5-pk12-source-contract-sanitize
+              # Latest L5 research must be executable and source-pinned
+              # on this *combined exact* tree. They are helper/storage
+              # controls, never stand-ins for original retail parity.
+              # Do not confuse new source helpers with live analyzer wiring.
+              python3 tools/audit_legality_prod_wiring_contract.py --self-test --source-root .
+              python3 tools/audit_legality_l5_stage1_parity_gate.py --self-test
+              python3 tools/audit_legality_l5_stage1_parity_gate.py --verify-manifests --current-integration-head "$INTEGRATION_EXACT_SHA"
+              python3 tools/audit_legality_l5_invalid_site_gate.py --self-test
+              # F5 introduces one separately audited direct Invalid site.
+              python3 tools/audit_legality_l5_invalid_site_gate.py --source src/Legality/Legality.cpp --expected-invalid 38 --require-f3-f4
+              python3 tools/audit_legality_l5_stage2_native.py --full --source-pin
+              python3 tools/audit_legality_l5_stage4_crosslane.py --self-test
+              python3 tools/audit_legality_l5_stage4_crosslane.py --l1-root . --l2-root . --l3-root . --l4-root .
+                            # Latest L5 Stage 2 source-pinned Time Capsule adversarial
+              # helper executes GCC+Clang, normal+sanitizer on exact blobs.
+              python3 tools/audit_legality_l5_stage2.py --self-test
+              python3 tools/audit_legality_l5_stage2.py --timeout 600
+              # Stage 3: actual ORIGINAL PK3/PK4 native production codecs.
+              # Exact blob validation, deterministic mutation, GCC/Clang
+              # normal and ASan/UBSan. Does NOT certify retail parity.
+              python3 tools/audit_legality_l5_stage3_native_fuzz.py --self-test
+              python3 tools/audit_legality_l5_stage3_native_fuzz.py --timeout 900
+              # Separate full-checkout entity layer (not just codec model).
+              make -f Makefile.host -f tools/audit_legality_l5_stage3_entity_integration.mk l5-stage3-native-entities
+              make -f Makefile.host -f tools/audit_legality_l5_stage3_entity_integration.mk l5-stage3-native-entities-sanitize
+              # Coordinator has F3/F4/F5 fixed. Run the L5 native matrix
+              # in AFTER-F5 mode, never its intentional pre-fix baseline.
+              make -f Makefile.host -f tools/audit_legality_l5_stage2_native.mk l5-stage2-after-f5
+              make -f Makefile.host -f tools/audit_legality_l5_stage2_native.mk -f tools/audit_legality_l5_stage2_integration.mk l5-stage2-after-f5-sanitize
+              python3 tools/audit_legality_l5_native_ev_vectors.py --source-root .
+              python3 tools/audit_legality_l5_native_codec.py --source-pin
+              python3 tools/audit_legality_l5_native_codec.py --source-pin --sanitize
+              make -f Makefile.host -f tools/audit_legality_l5_ev_probe.mk l5-ev-fixed
+              make -f Makefile.host -f tools/audit_legality_l5_ev_probe.mk l5-ev-fixed-sanitize
+              # Coordinator F3/F4: exercise REAL native PK1/PK2 source-free
+              # analyzer gates, normal and ASan/UBSan, on this same commit.
+              make -f Makefile.host -f tools/audit_legality_l5_pk12_probe.mk l5-pk12-fixed
+              make -f Makefile.host -f tools/audit_legality_l5_pk12_probe.mk l5-pk12-fixed-sanitize
+              # F5: Native Gen II read-only stat experience differs from
+              # the deliberately neutral modern EV compatibility getters.
+              # Exercise all five original 16-bit stats with real analyzer.
+              make -f Makefile.host -f tools/audit_legality_l5_stage3_pk2_probe.mk l5-pk2-egg-fixed
+              make -f Makefile.host -f tools/audit_legality_l5_stage3_pk2_probe.mk l5-pk2-egg-fixed-sanitize
+              # Native encrypted PK4 proves L3 original Platinum INFO methods
+              # actually reach Legality::analyze and cannot leak to DP/Pal Park.
+              make -f Makefile.host -f tools/audit_legality_l5_platinum_native_probe.mk l5-platinum-native
+              make -f Makefile.host -f tools/audit_legality_l5_platinum_native_probe.mk l5-platinum-native-sanitize
+              ;;
+            *)
+              echo "Unknown legality lane: $LANE" >&2
+              exit 2
+              ;;
+          esac

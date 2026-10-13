@@ -3,6 +3,7 @@
 #include "Legality/Gen4PidIvCorrelation.h"
 #include "Legality/Gen4WildRngCorrelation.h"
 #include "Legality/Gen4LeadReportingEvidence.h"
+#include "Legality/Gen4RangerStorageBallEvidence.h"
 #include "Legality/Legality.h"
 #include "Names/ItemNames.h"
 #include "Names/SpeciesNames.h"
@@ -92,6 +93,42 @@ Legality::Report analyzeNativeHgss(
 
 int main() {
     using namespace Legality;
+    // The SAME encrypted original PK4 can sit in D/P, Platinum or HGSS.
+    // Each native format reads its own stored Ball byte, NOT max(DP,HGSS).
+    // L4's provenance helper must agree with the live Pokemon view.
+    for (const auto pair : {std::array<uint8_t,2>{4,24},
+                            std::array<uint8_t,2>{24,4},
+                            std::array<uint8_t,2>{4,0},
+                            std::array<uint8_t,2>{0,24}}) {
+        std::vector<std::byte> plain(Encryption::SIZE_STORED4,std::byte{0});
+        wr32(plain,0,0x12345678u);
+        wr16(plain,0x08,1); // native Bulbasaur, no source testimony
+        plain[0x83]=static_cast<std::byte>(pair[0]);
+        plain[0x86]=static_cast<std::byte>(pair[1]);
+        const auto encrypted=Encryption::encryptArray4(plain);
+        const auto immutable=encrypted;
+        for(const auto group : {Enums::GameVersion::DP,
+                                Enums::GameVersion::PT,
+                                Enums::GameVersion::HGSS,
+                                Enums::GameVersion::Invalid}) {
+            Pokemon::Pokemon4ReadOnly native(encrypted,group);
+            assert(native.valid());
+            Pokemon::Pokemon4ReadOnlyView view(native);
+            const auto storage=group==Enums::GameVersion::DP ||
+                               group==Enums::GameVersion::PT
+                ? Gen4RangerStorageBallEvidence::Storage::DPPt
+                : group==Enums::GameVersion::HGSS
+                    ? Gen4RangerStorageBallEvidence::Storage::HGSS
+                    : Gen4RangerStorageBallEvidence::Storage::Unknown;
+            const auto evidence=Gen4RangerStorageBallEvidence::select(
+                storage,pair[0],pair[1]);
+            assert(view.ball()==(evidence.storageKnown?evidence.ball:0));
+            assert(view.gen4BallDPPt()==pair[0]);
+            assert(view.gen4BallHGSS()==pair[1]);
+            assert(encrypted==immutable);
+        }
+    }
+
     constexpr uint64_t kRealRow=0x64D80412139E0EULL;
     static_assert(Gen4Wild::game(kRealRow) == Gen4Wild::Game::HeartGold);
     static_assert(Gen4Wild::species(kRealRow) == 14);
