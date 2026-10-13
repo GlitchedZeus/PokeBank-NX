@@ -390,6 +390,10 @@ require(read("tests/test_gen5_readonly_save.cpp"),
 # The existing Gen I-IV Add Pokemon command must now be reachable from
 # a validated empty Gen V box cell, collect explicit native fields with the
 # same on-device keyboard, and stage only after confirm + preview refresh.
+# Reusable shared editor source aliases must be bound before the early
+# native Create/Clone action contracts that inspect them.
+native_bridge = read("include/Integration/Gen5/Gen5SharedEditorBridge.h")
+native_screen = read("include/Integration/Gen5/Gen5SharedScreenState.h")
 require(native_bridge,
         "workspace.emptyCloneDestination(slot.location.box,slot.location.slot)",
         "append(Shared::Action::Add)")
@@ -502,8 +506,7 @@ read_pk5 = read("include/Pokemon/Pokemon5ReadOnly.h")
 native_stage = read("include/Integration/Gen5/Gen5StagedPokemonRecord.h")
 native_session = read("include/Integration/Gen5/Gen5SharedPokemonSession.h")
 native_review = read("include/Integration/Gen5/Gen5SharedReview.h")
-native_bridge = read("include/Integration/Gen5/Gen5SharedEditorBridge.h")
-native_screen = read("include/Integration/Gen5/Gen5SharedScreenState.h")
+
 shared_contract = read("include/UI/SharedPokemonEditorContract.h")
 require(read_pk5, "pokerusState() const", "ball() const",
         "metLevel() const", "originalTrainerGender() const",
