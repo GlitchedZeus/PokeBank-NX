@@ -29,7 +29,40 @@ struct Match {
     uint8_t minimumLevel = 0;
 };
 
+// Independently pinned original pret ROM tables retain the original offer
+// ordinal and unreachable NPC entries, instead of merging by final species.
+struct PretTradeEntry {
+    uint8_t gameMask;
+    uint8_t originalOfferIndex;
+    uint16_t requestedSpecies;
+    uint16_t receivedSpecies;
+    bool reachable;
+    std::string_view nickname;
+};
+enum class PretStaticKind : uint8_t { OverworldBattle, Gift };
+struct PretStaticEntry {
+    uint8_t gameMask;
+    std::string_view originalMap;
+    uint8_t sceneIndex;
+    uint16_t species;
+    uint8_t level;
+    PretStaticKind kind;
+};
 #include "Legality/Gen1EncounterEvidenceData.inc"
+#include "Legality/Gen1PretTrades.inc"
+#include "Legality/Gen1PretStaticGifts.inc"
+static_assert(kPretTradeOffers.size()==20);
+static_assert(kPretStaticSources.size()==9);
+constexpr const PretTradeEntry* originalPretTrade(uint8_t mask,
+                                                  uint8_t sourceIndex) noexcept {
+    if(mask!=1&&mask!=2&&mask!=4)return nullptr;
+    for(const auto& row:kPretTradeOffers) {
+        if((row.gameMask&mask)!=0 && row.originalOfferIndex==sourceIndex)
+            return &row;
+    }
+    return nullptr;
+}
+
 
 constexpr uint8_t gameMaskForId(std::string_view id) noexcept {
     if (id == "red_gb") return 0x01;
