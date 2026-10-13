@@ -1,0 +1,15 @@
+# Gen I/II origin search (src/Legality/GBLegality.cpp) through the production analyzer.
+# Expected verdicts come from PKHeX; tools/pkhex_gb_diff/run.sh reproduces them at scale.
+GB_LEGALITY_GEN1_SOURCES := tests/test_gb_legality_gen1.cpp \
+	$(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES)) \
+	src/Integration/Gen1/Gen1ReadOnlySave.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gb_legality_gen1
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gb_legality_gen1_sanitize
+
+$(HOST_BUILD)/test_gb_legality_gen1: $(GB_LEGALITY_GEN1_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gb_legality_gen1_sanitize: $(GB_LEGALITY_GEN1_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $^ -o $@

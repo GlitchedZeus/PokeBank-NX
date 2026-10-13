@@ -9,6 +9,7 @@
  */
 
 #include "Legality/Legality.h"
+#include "Legality/GBLegality.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen2/Gen2MoveCompatibility.h"
@@ -120,6 +121,125 @@ namespace Legality {
             static const char* const kNames[6] = { "HP", "Atk", "Def", "Spe", "SpA", "SpD" };
             return kNames[i];
         }
+        // Gen I names decode Japanese text to kana and international text to Latin letters,
+        // so the decoded bytes tell the two layouts apart; anything else stays unknown.
+        GB::Language gen1Language(const std::string& ot, const std::string& nickname) {
+            for (const std::string* text : {&ot, &nickname}) {
+                for (unsigned char c : *text) {
+                    if (c == 0xE3)
+                        return GB::Language::Japanese;   // UTF-8 lead byte of kana
+                    if (c >= 'A' && c <= 'Z')
+                        return GB::Language::International;
+                }
+            }
+            return GB::Language::Unknown;
+        }
+
+        CheckIdentifier gbIdentifier(GB::Area area) {
+            switch (area) {
+                case GB::Area::Encounter: return CheckIdentifier::Encounter;
+                case GB::Area::Moves:     return CheckIdentifier::Moves;
+                case GB::Area::CatchRate: return CheckIdentifier::Encounter;
+                case GB::Area::Types:     return CheckIdentifier::Structure;
+                case GB::Area::Trainer:   return CheckIdentifier::Trainer;
+            }
+            return CheckIdentifier::Misc;
+        }
+
+        /// Native PK1: format checks, then the Gen I/II origin search in GBLegality.
+        /// Every applicable category is covered, so a Pokemon with a legitimate origin
+        /// and no other problem reads "No problems found".
+        Report analyzeNativeGen1(const Pokemon::Pokemon& pk, const Pokemon::Pokemon1ReadOnly& gen1,
+                                 bool sourceFormatMismatch) {
+            Report r;
+            const auto& rec = gen1.strictRecord();
+            const uint16_t species = pk.speciesID();
+            if (sourceFormatMismatch) {
+                add(r, Severity::Warning,
+                    "Exact source-game label conflicts with the verified native PK1-PK4 storage format; source identity and source-specific encounter legality remain unresolved",
+                    CheckIdentifier::SourceGame);
+            }
+
+            bool structural = true;
+            if (species < 1 || species > 151) {
+                add(r, Severity::Invalid,
+                    "Species " + std::to_string(species) +
+                    " cannot exist in a Generation 1 save (maximum species id 151)",
+                    CheckIdentifier::SourceGame);
+                structural = false;
+            }
+            for (int slot = 0; slot < 4; ++slot) {
+                const uint16_t moveId = pk.move(slot);
+                if (moveId > 165) {
+                    add(r, Severity::Invalid,
+                        "Move id " + std::to_string(moveId) +
+                        " cannot exist in a Generation 1 save (maximum move id 165)",
+                        CheckIdentifier::Moves);
+                    structural = false;
+                }
+                for (int other = slot + 1; other < 4; ++other) {
+                    if (moveId != 0 && moveId == pk.move(other)) {
+                        add(r, Severity::Invalid,
+                            "Duplicate move: " + std::string(Names::getMoveName(moveId)),
+                            CheckIdentifier::Moves);
+                        structural = false;
+                    }
+                }
+            }
+            if (structural) {
+                const uint8_t expLevel = Pokemon::getLevelFromExp(pk.exp(), Pokemon::getGrowthRate(species));
+                if (pk.level() != expLevel) {
+                    add(r, Severity::Invalid,
+                        "Level " + std::to_string(pk.level()) + " does not match EXP (expected " +
+                            std::to_string(expLevel) + ")",
+                        CheckIdentifier::Stats);
+                }
+            }
+            if (rec.originalTrainer.empty()) {
+                add(r, Severity::Invalid, "Original trainer name is empty", CheckIdentifier::Trainer);
+            }
+
+            if (structural) {
+                GB::Entity1 e;
+                e.species = static_cast<uint8_t>(species);
+                e.level = rec.level;
+                for (int i = 0; i < 4; ++i)
+                    e.moves[i] = rec.moves[static_cast<std::size_t>(i)];
+                e.catchRate = rec.catchRate;
+                e.type1 = rec.type1;
+                e.type2 = rec.type2;
+                e.dvs = {rec.dvs[1], rec.dvs[2], rec.dvs[3], rec.dvs[4]};
+                e.tid = rec.trainerId;
+                e.tradeTrainer = rec.originalTrainer == "*";
+                e.otName = rec.originalTrainer;
+                e.nickname = rec.nickname;
+                e.language = gen1Language(rec.originalTrainer, rec.nickname);
+                const GB::Result origin = GB::checkGen1(e);
+                if (origin.status == GB::Status::Legal) {
+                    add(r, Severity::Info, "Possible origin: " + GB::describe(origin.origin),
+                        CheckIdentifier::Encounter);
+                    if (origin.timeCapsule) {
+                        add(r, Severity::Info,
+                            "This history needs a trip through the Gen II Time Capsule",
+                            CheckIdentifier::Transfer);
+                    }
+                }
+                for (const auto& problem : origin.problems)
+                    add(r, Severity::Invalid, problem.text, gbIdentifier(problem.area));
+            }
+
+            r.coverage.structure = CoverageLevel::Complete;
+            r.coverage.sourceGame = CoverageLevel::Complete;
+            r.coverage.internal = CoverageLevel::Complete;
+            r.coverage.moves = CoverageLevel::Complete;
+            r.coverage.encounter = CoverageLevel::Complete;
+            r.coverage.eventGift = CoverageLevel::Complete;
+            r.coverage.pidRng = CoverageLevel::Complete;     // Gen I has no PID/RNG correlation
+            r.coverage.eggBreeding = CoverageLevel::Complete; // Gen II eggs are part of the search
+            r.coverage.transfer = CoverageLevel::Complete;    // Time Capsule histories are searched
+            return r;
+        }
+
         // Personal-table presence bit for a game group (0 if the group has no bit).
         uint8_t presenceBit(Enums::GameVersion g) {
             switch (g) {
@@ -605,6 +725,8 @@ namespace Legality {
         const bool hasExactGen3Source = exactGen3Source(exactSourceGameId, gen3Source);
         const uint16_t species = pk.speciesID();
         if (species == 0) return r;  // empty slot — nothing to validate
+        if (const auto* gen1 = pk.nativePk1ReadOnly())
+            return analyzeNativeGen1(pk, *gen1, sourceFormatMismatch);
         if (sourceFormatMismatch) {
             add(r, Severity::Warning,
                 "Exact source-game label conflicts with the verified native PK1-PK4 storage format; source identity and source-specific encounter legality remain unresolved",

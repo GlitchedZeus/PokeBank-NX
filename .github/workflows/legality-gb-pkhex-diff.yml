@@ -1,0 +1,74 @@
+name: Gen I legality vs PKHeX
+
+# Differential test: generate tens of thousands of Gen I Pokemon (natural encounters,
+# grown and evolved ones, deliberately broken ones, random records), then compare
+# PokeBank NX's verdict on every one with PKHeX.Core's. Also rebuilds the generated
+# Gen I/II tables and checks them against the pret disassemblies.
+
+on:
+  pull_request:
+    paths:
+      - 'src/Legality/**'
+      - 'include/Legality/GB*'
+      - 'src/Integration/Gen1/**'
+      - 'tools/gen_gb_legality_data.py'
+      - 'tools/verify_gb_legality_data.py'
+      - 'tools/pkhex_gb_diff/**'
+      - '.github/workflows/legality-gb-pkhex-diff.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: legality-gb-pkhex-diff-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PKHEX_SHA: 6501f0ab46e8f8ca048539dbaf8cae8cb104e722
+  POKERED_SHA: af519899719f0754965776faac0e836a3b906e6d
+  POKEYELLOW_SHA: e89ead154b9968aa50eed9328ff2b38b6c194382
+
+jobs:
+  diff:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: kwsch/PKHeX
+          ref: ${{ env.PKHEX_SHA }}
+          path: _ref/PKHeX
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: pret/pokered
+          ref: ${{ env.POKERED_SHA }}
+          path: _ref/pokered
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: pret/pokeyellow
+          ref: ${{ env.POKEYELLOW_SHA }}
+          path: _ref/pokeyellow
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Generated tables are up to date
+        run: |
+          python3 -I tools/gen_gb_legality_data.py --pkhex _ref/PKHeX
+          git diff --exit-code -- src/Legality/GBLegalityData.cpp
+
+      - name: Tables agree with the pret disassemblies
+        run: python3 -I tools/verify_gb_legality_data.py --pkhex _ref/PKHeX --pokered _ref/pokered --pokeyellow _ref/pokeyellow
+
+      - name: Verdicts agree with PKHeX (3 x 50,000 Pokemon)
+        run: |
+          for seed in 1 2 3; do
+            tools/pkhex_gb_diff/run.sh _ref/PKHeX _ref/pokered 50000 "$seed"
+          done
