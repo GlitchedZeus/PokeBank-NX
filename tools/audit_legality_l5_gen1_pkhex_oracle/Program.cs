@@ -51,9 +51,11 @@ foreach (var value in cases)
     {
         schema = "L5_GEN1_LIVE_RUNTIME_RESULT_V1", engine = "PKHEX_CORE",
         pkhex_revision = "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
-        id, original_source = "RBY_VERSION_UNKNOWN",
+        id, source = value.GetProperty("source").GetString(), original_source = "RBY_VERSION_UNKNOWN",
         execution_mode = "actual_original_pkhex_core",
         species = originalSpecies, move = originalMove, dv16 = originalDV,
+        dv_hp = pk.IV_HP, dv_attack = pk.IV_ATK, dv_defense = pk.IV_DEF,
+        dv_speed = pk.IV_SPE, dv_special = pk.IV_SPA,
         pk1_ability = pk.Ability, pk1_gender = pk.Gender,
         ability_invalid = abilityInvalid, gender_invalid = genderInvalid,
         parsed = analysis.Parsed, pkhex_global_valid = analysis.Valid,
