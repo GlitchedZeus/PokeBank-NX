@@ -55,18 +55,18 @@ jobs:
           test "$(git hash-object _l5_gen1_coordinator/src/Legality/Legality.cpp)" = 4ac8a0dc0badb8211eb105811eb3fa9f928e36e4
           test "$(git hash-object _l5_gen1_pkhex/PKHeX.Core/PKM/PK1.cs)" = a4b692ae7045afb9d11ea3a3b6e25b94c0c4de8b
           test "$(git hash-object _l5_gen1_pkhex/PKHeX.Core/Legality/LegalityAnalysis.cs)" = b7f5ca8534e426ad3bf1d30de6f7f7ca57544f3c
-          test "$(git hash-object tools/audit_legality_l5_gen1_pkhex_oracle/Program.cs)" = e8388dbd6ea5af76a13fbcc8196b845a816cbcb1
-          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_actual_native.cpp)" = 21354148ab627c4b6b4328a1ce0f5bb23ff69dac
-          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_oracle_cases.json)" = 84d3a458c2ee841a7bc354e0b10188e67205c16f
-          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_oracle_cases.inc)" = 0febf0eea3dd3f26ed89e35848c0488d38ceacaf
-          test "$(git hash-object tools/audit_legality_l5_gen1_rby_live_diff.py)" = 3eb49f6b31efa334ec7d5f2d2506a26c00d4d338
-          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_vector_integrity.cpp)" = aebd9cadd0f6c66e44d2ec5e648afc7264a3b118
+          test "$(git hash-object tools/audit_legality_l5_gen1_pkhex_oracle/Program.cs)" = 9c5b0ee8998e18b43c401615fbb4a94061ec6737
+          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_actual_native.cpp)" = 336a05b6d383ce1cb2804d5d761ac4580cb94c76
+          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_oracle_cases.json)" = 3f65ffe0d00219db94cc65804112bc615d4efbb0
+          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_oracle_cases.inc)" = 7b449e587d2ace8a6ca319d1ca35f20a7a71241e
+          test "$(git hash-object tools/audit_legality_l5_gen1_rby_live_diff.py)" = a920fb8f1ddf3d1ef51e8838abc2cb6d78a0ea1a
+          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_vector_integrity.cpp)" = 925bf4b680c403b07d5da98bfe19dbb23f57882a
           git diff --check
       - name: Execute all 65,536 original Gen I DV patterns and Stat Experience boundaries GCC and Clang normal plus ASan/UBSan
         shell: bash
         run: |
           set -euo pipefail
-          expected="L5 Gen I raw 65,536 DV patterns x 3 Stat Experience boundaries PASS 1376993 independent assertions; 72 exact source-neutral vectors (NOT PKHeX runtime)"
+          expected="L5 Gen I raw 65,536 DV patterns x 3 Stat Experience boundaries PASS 1377425 independent assertions; 72 exact source-neutral vectors (NOT PKHeX runtime)"
           for compiler in g++ clang++; do
             for mode in optimized sanitized; do
               if [ "$mode" = sanitized ]; then
