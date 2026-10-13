@@ -5,7 +5,9 @@
 //   data/wild/maps/Route1.asm, ViridianForest.asm, data/wild/super_rod.asm
 // pret/pokeyellow@e89ead154b9968aa50eed9328ff2b38b6c194382
 //   data/wild/maps/Route1.asm
-// No Yellow fishing, other maps, Good/Old Rod, or catch RNG is asserted.
+// The original 149-slot namespace is preserved. Expanded source-pinned
+// physical R/B/Y tables, all three rods and the original wild roll live
+// in independent additional namespaces. Source witnesses never prove PK1.
 #include "Legality/Gen1PretWildRollStage.h"
 #include <array>
 #include <cstddef>
@@ -234,6 +236,17 @@ constexpr const PretSlot* pretSlot(std::size_t index) noexcept {
     return nullptr;
 }
 static_assert(kPretSlotCount==1512);
+// Original wild grass/surf slots are probability-weighted at 8-bit
+// resolution; each map/method table sums to 256. Rod sources instead
+// use their own scripts and must NOT inherit these wild-slot odds.
+constexpr uint8_t pretWildSlotWeight(std::size_t index) noexcept {
+    const PretSlot* source=pretSlot(index);
+    if(!source)return 0;
+    if((source->method!=Method::Grass&&source->method!=Method::Surf) ||
+       source->physicalSlot>=Gen1PretWildRollStage::kSlotWeight.size())
+       return 0;
+    return Gen1PretWildRollStage::kSlotWeight[source->physicalSlot];
+}
 static_assert(kVerifiedSlots.size()==149);
 
 struct Candidate {
