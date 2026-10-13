@@ -48,3 +48,66 @@ See `Q23_GEN1_RBY_21_CELL_COVERAGE.json` for **3 retail versions × 7 legality c
 Source-researched versus independently executed native verdicts are separate. All 21 rows are **Blocked/Unknown** for complete original game-history parity. Even an exact output match on 72 synthetic PK1 cases does not distinguish a real Red capture from Blue or Yellow: Gen I PK1 has no original-game version field (`PK1.Version == GameVersion.RBY`). Version-specific slots, TM/HM chronology, original gifts, NPC trades and 3-way Time Capsule histories need independently authenticated original game/source, encounter time, training choices, and candidate exhaustiveness.
 
 **No production `Legality.cpp` edits, writes to original saves, coordinator/main merges, or third-party PKHeX binaries vendored into the project.** GPLv3 PKHeX reference is downloaded as separate exact-version test-only checkout.
+
+## Major L5 continuation — independent Stat Experience and all-151 native regression
+
+Following the original 72-vector baseline, L5 added actual native-format
+field-boundary testing and comprehensive *source-independent* Gen I species
+coverage, without changing coordinator production legality code.
+
+- **Verified directly via local GCC 14.2 and Clang 17 compilers:** four C++20
+  variants with `-Wall -Wextra -Wpedantic -Werror` (optimized and
+  ASan/UBSan for both), each **PASS 1,377,425 assertions**. Overall
+  **5,509,700 executed native-format assertions**, zero observed sanitizer
+  diagnostics. The `-DNDEBUG` compilation was intentionally rejected.
+- **Exactly executed source:** `tests/fixtures/legality_l5_gen1_rby_vector_integrity.cpp`
+  original committed Git blob `925bf4b680c403b07d5da98bfe19dbb23f57882a`.
+  Locally reconstructed original vector files were verified byte-identical
+  to the GitHub blobs, not retyped approximations:
+  - `legality_l5_gen1_rby_oracle_cases.json`:
+    `3f65ffe0d00219db94cc65804112bc615d4efbb0`.
+  - `legality_l5_gen1_rby_oracle_cases.inc`:
+    `7b449e587d2ace8a6ca319d1ca35f20a7a71241e`.
+- The 72 native vectors now exercise **all five independent PK1 stat experience
+  fields** with deliberately rotated distinct values `0,1,32768,65534,65535`,
+  not five aliased copies. Each is checked through the actual original
+  `PKHeX.Core/PKM/PK1.cs` `EV_HP/ATK/DEF/SPE/SPC` properties **when that
+  executable runs**, and actual `Pokemon1ReadOnly` native
+  `statExpHP/ATK/DEF/SPE/Special` getters **when NX CI executes**. Gen I
+  Stat Experience has 16-bit bounds; modern 252/510 EV restrictions must
+  never be applied. No native abilities, gender field, nature, held item
+  or breeding information is inferred.
+- Species growth-sensitive synthetic level-5 EXP fields are `135` for
+  Bulbasaur and `125` for Magnemite, reducing unrelated level-verifier
+  noise in the real oracle.
+- **New full-native coordinator regression not locally runnable:**
+  `tests/fixtures/legality_l5_gen1_all_151_sourcefree_native.cpp`.
+  Source-map inspection on original coordinator
+  `src/Integration/Gen1/Gen1ReadOnlySave.cpp`, Git blob
+  `a2445a20a2ede222a2b14e56f87305ef3263484e`, confirmed a
+  **complete unique inverse mapping of all 151 species** from 256 native
+  internal IDs. The L5-only production-linked QA binary requires
+  **1,812 cases** (151 species × 6 exact/unknown/mismatched source labels
+  × 2 native move states) for correct Gen I no-ability/gender treatment,
+  native Gen I move ID 200 Invalid, no modern-EV false Invalid, and explicit
+  source mismatch warning. Normal and ASan/UBSan are mandated.
+  This was **committed to CI**, not executed or passed in the local container.
+
+### Execution/acceptance accounting
+
+| Evidence | Actually executed? | Scope |
+|---|---|---|
+| GCC optimized, GCC ASan/UBSan, Clang optimized, Clang ASan/UBSan | **YES, PASS** | 5,509,700 standalone native DV+Stat Experience assertions |
+| Original game internal species map, 151 unique IDs | **YES, source table inspected** | Complete static 256-entry mapping, not linked analyzer |
+| Fixed `uint8_t` native move narrowing under GCC/Clang strict compilation | **YES** | Reproduced compile failure and passing corrected cast |
+| Original .NET 10 PKHeX.Core host, 72 paired vectors | **NOT YET VERIFIED** | Must finish exact-head Actions job |
+| Actual accepted NX + coordinator PK1 `Legality::analyze` normal/ASan | **NOT YET VERIFIED** | Must finish exact-head Actions job |
+| Coordinator all-151 species × six source contexts × two move classes | **NOT YET VERIFIED** | Must finish exact-head Actions job |
+| Gen II-IV linked side-effect controls | **NOT YET VERIFIED** | Must finish exact-head Actions job |
+
+The prior source-reviewed F3/F4 findings do **not** become newly confirmed
+runtime results because this local machine lacks a full GitHub checkout
+and .NET 10. Any pending, queued, skipped, cancelled or failing CI gate
+remains **BLOCKED**, not Passed. Full original PKHeX R/B/Y method parity
+also requires independently authenticated original game/source context,
+valid multi-move and trade histories and full event/archive witnesses.
