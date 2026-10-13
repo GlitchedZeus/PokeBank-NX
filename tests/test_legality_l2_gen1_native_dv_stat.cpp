@@ -100,4 +100,5 @@ int main(){
     assert(L::evaluate(unsure,{true,false,false,false}).status==L::Status::UnknownLevelContext);
     verified+=4;
     std::cout<<"L2 Gen I native DVs and Stat Experience: "<<verified<<" PASS\n";
+    return 0;
 }
