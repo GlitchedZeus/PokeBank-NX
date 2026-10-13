@@ -101,8 +101,15 @@ public:
                 if(stat!=0 || value<1 || value>649 || !personal)
                     return fail("Gen V species requires a native 1..649 identity");
                 if(value==species)break;
-                if(sourceForm!=0)
-                    return fail("Gen V species changes require base form; select Form 0 first");
+                const auto originalDecoded=Crypto::decrypt(original_);
+                if(sourceForm!=0 || originalDecoded.size()!=candidate.size() ||
+                   (originalDecoded[0x40]>>3)!=0)
+                    return fail("Gen V species requires a base-form original PK5");
+                // The natural species name would cease to match. Require
+                // an explicit nickname transaction first so we never leave
+                // stale unnicknamed metadata or silently rewrite OT names.
+                if((Crypto::read32(candidate,0x38)&0x80000000u)==0)
+                    return fail("Name this Pokemon before changing species; no automatic rename");
                 const auto target=personal5(value,0,black2White2_);
                 if(!target || personal.info->growthRate>5 ||
                    target.info->growthRate!=personal.info->growthRate)

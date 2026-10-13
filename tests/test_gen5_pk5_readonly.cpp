@@ -148,6 +148,10 @@ int main() {
         assert(!edit->stage(G5::StagedPokemon5Record::Field::Species,0,1,&error));
         assert(!edit->stage(G5::StagedPokemon5Record::Field::Species,0,32,&error));
         assert(!edit->dirty());
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Species,0,26,&error));
+        // Explicit nickname first; native species replacement never auto-
+        // converts a historic unnicknamed species name to a false identity.
+        assert(edit->stageName(true,"SPARK",&error));
         assert(edit->stage(G5::StagedPokemon5Record::Field::Species,0,26,&error));
         const auto raichu=edit->current();
         assert(raichu.valid() && raichu.species()==26);

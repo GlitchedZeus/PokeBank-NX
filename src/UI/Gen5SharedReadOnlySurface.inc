@@ -13,6 +13,7 @@
 #include "Legacy/Gen5ReadOnlyTrainer.h"
 #include "Pokemon/Pokemon5ReadOnlyView.h"
 #include "Names/MoveNames.h"
+#include "Names/SpeciesNames.h"
 #include "Names/LocationNames.h"
 #include "Utils/Keyboard.h"
 
@@ -37,6 +38,7 @@ constexpr int kGen5PartyTouchBase=77400;
 constexpr int kGen5MovePickerTouchBase=77500;
 constexpr int kGen5LocationTouchBase=78000;
 constexpr int kGen5IdentityTouchBase=78500;
+constexpr int kGen5SpeciesTouchBase=78600;
 
 PokeVault::Legacy::Gen5ReadOnlyTrainer& nativeTrainer(TrainerViewScreen& screen) {
     return static_cast<PokeVault::Legacy::Gen5ReadOnlyTrainer&>(screen.trainer);
@@ -155,6 +157,12 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
         state.moveIdentityCursor(tap-kGen5IdentityTouchBase-
                                  static_cast<int>(state.identitySelection()));
         down|=HidNpadButton_A;
+    } else if(state.surface()==Surface::SpeciesPicker &&
+              tap>=kGen5SpeciesTouchBase &&
+              tap<kGen5SpeciesTouchBase+static_cast<int>(state.speciesChoiceCount())) {
+        state.moveSpeciesCursor(tap-kGen5SpeciesTouchBase-
+                                static_cast<int>(state.speciesChoiceIndex()));
+        down|=HidNpadButton_A;
     } else if(state.surface()==Surface::Browse &&
               screen.selectedMode==TrainerViewScreen::ViewMode::Party &&
               tap>=kGen5PartyTouchBase &&
@@ -213,6 +221,9 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                               row.field==ScreenState::Field::Gender) {
                         std::string error;
                         if(!state.openIdentityPicker(error))screen.postStatus(error,300);
+                    } else if(row.field==ScreenState::Field::Species) {
+                        std::string error;
+                        if(!state.openSpeciesPicker(error))screen.postStatus(error,300);
                     } else if(row.field==ScreenState::Field::Nickname ||
                               row.field==ScreenState::Field::OriginalTrainer) {
                         const auto current=state.draft().current();
@@ -309,6 +320,28 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             else if(keys&HidNpadButton_A) {
                 std::string error;
                 if(!state.acceptLocationPicker(error))screen.postStatus(error,300);
+            }
+            return true;
+        case Surface::SpeciesPicker:
+            if(keys&HidNpadButton_Up)state.moveSpeciesCursor(-1);
+            if(keys&HidNpadButton_Down)state.moveSpeciesCursor(1);
+            if(keys&HidNpadButton_Left)state.moveSpeciesCursor(-8);
+            if(keys&HidNpadButton_Right)state.moveSpeciesCursor(8);
+            if(keys&HidNpadButton_ZL)state.moveSpeciesCursor(-40);
+            if(keys&HidNpadButton_ZR)state.moveSpeciesCursor(40);
+            if(keys&HidNpadButton_B)state.cancelSpeciesPicker();
+            else if(keys&HidNpadButton_X) {
+                const auto result=Utils::promptText(
+                    "Generation V Species Search","Filter national Dex names",
+                    std::string(state.speciesSearch()),32);
+                if(result.accepted)
+                    state.filterSpecies(result.text,[](uint16_t id) {
+                        return Names::getSpeciesName(id);
+                    });
+                screen.controllerNavigation.reset();
+            } else if(keys&HidNpadButton_A) {
+                std::string error;
+                if(!state.acceptSpeciesPicker(error))screen.postStatus(error,300);
             }
             return true;
         case Surface::IdentityPicker:
@@ -706,6 +739,8 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
             value=current->originalTrainerGender()==0?"Male":"Female";
         else if(row.field==ScreenState::Field::FatefulEncounter)
             value=current->fatefulEncounter()?"Yes":"No";
+        else if(row.field==ScreenState::Field::Species)
+            value=Names::getSpeciesName(current->species());
         else if(row.field==ScreenState::Field::Nickname ||
                 row.field==ScreenState::Field::OriginalTrainer) {
             const auto name=PokeVault::Integration::Gen5::asciiName5(
@@ -825,6 +860,55 @@ void drawLocationPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,
     drawNavBar(fb,{{"D-pad/Stick","Browse"},{"ZL/ZR","Jump 40"},
                    {"A","Choose Location"},{"B","Cancel"}});
 }
+// Native Gen V named species browser. No legality inference and no
+// mutation until an explicit confirmed pick reaches the guarded PK5 draft.
+void drawSpeciesPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,
+                       const ScreenState& state) {
+    dimShared(screen,fb);
+    constexpr int w=870,h=570;
+    const int x=(fb.getWidth()-w)/2;
+    const int y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::Border,1);
+    fb.drawText(x+24,y+15,"Gen V Species - National Dex",
+                Colors::Text,TextStyle::Heading);
+    fb.drawText(x+24,y+58,
+        "Exact BW/B2W2 identity compatibility; move/encounter legality not checked",
+        Colors::Accent,TextStyle::Caption);
+    fb.drawText(x+24,y+81,
+        "Search: "+(state.speciesSearch().empty()?std::string("All 649"):
+                    std::string(state.speciesSearch()))+
+        "   |   "+std::to_string(state.speciesChoiceCount())+" matches",
+        Colors::TextSecondary,TextStyle::Caption);
+    const auto visible=PokeBank::UIModel::SharedPokemonEditor::scrollWindow(
+        state.speciesChoiceCount(),9,state.speciesChoiceIndex());
+    for(size_t i=0;i<visible.count;++i) {
+        const size_t index=visible.first+i;
+        const uint16_t id=state.speciesChoiceId(index);
+        const bool allowed=state.speciesChoiceAllowed(id);
+        const int yy=y+112+static_cast<int>(i)*42;
+        if(index==state.speciesChoiceIndex())
+            fb.drawSelectionHighlight(x+14,yy,w-28,38);
+        if(allowed)
+            screen.touchButtons.push_back({
+                kGen5SpeciesTouchBase+static_cast<int>(index),
+                x+16,yy,w-32,38});
+        fb.drawText(x+28,yy+8,
+            std::to_string(id)+" - "+Names::getSpeciesName(id),
+            allowed?Colors::Text:Colors::TextDim,TextStyle::Body);
+        fb.drawText(x+w-160,yy+11,
+            allowed?"Compatible":"Unavailable",
+            allowed?Colors::Accent:Colors::TextDim,TextStyle::Caption);
+    }
+    if(state.speciesChoiceCount()==0)
+        fb.drawText(x+26,y+180,"No matching Generation V species",
+                    Colors::TextSecondary,TextStyle::Body);
+    fb.drawText(x+24,y+h-39,
+        "Only compatible base forms, growth groups, gender and ability slots",
+        Colors::TextDim,TextStyle::Caption);
+    drawNavBar(fb,{{"Up/Down","Browse"},{"ZL/ZR","Jump 40"},
+                   {"X","Search"},{"A","Choose"},{"B","Cancel"}});
+}
 // Exact BW/B2W2 personal table; no encounter legality or original SAV write.
 void drawIdentityPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                         const ScreenState& state) {
@@ -891,6 +975,7 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         case Surface::MovePicker:drawMovePicker(screen,fb,state);return true;
         case Surface::LocationPicker:drawLocationPicker(screen,fb,state);return true;
         case Surface::IdentityPicker:drawIdentityPicker(screen,fb,state);return true;
+        case Surface::SpeciesPicker:drawSpeciesPicker(screen,fb,state);return true;
         case Surface::View: {
             const auto current=state.draft().current();
             screen.drawGSCOverlay(fb);

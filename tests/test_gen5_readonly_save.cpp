@@ -904,9 +904,39 @@ int main() {
         assert(ui.stageNameValue("NXT",error));
         ui.moveField(1);
         assert(rows[42].field==GF::Species);
-        assert(!ui.stageFieldValue(1,error)); // Different EXP growth curve.
-        assert(ui.stageFieldValue(26,error)); // Pikachu -> Raichu.
+        // Exact-native named picker preserves the local draft until A.
+        assert(ui.openSpeciesPicker(error));
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::SpeciesPicker);
+        assert(ui.speciesChoiceCount()==649);
+        assert(ui.chosenSpeciesId()==25);
+        assert(ui.speciesChoiceAllowed(26));
+        assert(!ui.speciesChoiceAllowed(1)); // Different growth group.
+        assert(!ui.speciesChoiceAllowed(650));
+        ui.moveSpeciesCursor(1);
+        assert(ui.chosenSpeciesId()==26);
+        ui.cancelSpeciesPicker();
+        assert(ui.draft().current()->species()==25); // No mutation on B.
+        assert(ui.openSpeciesPicker(error));
+        ui.filterSpecies("rAi",[](uint16_t id)->const char* {
+            return id==26?"Raichu":"Other";
+        });
+        assert(ui.speciesSearch()=="rAi");
+        assert(ui.speciesChoiceCount()==1);
+        assert(ui.chosenSpeciesId()==26);
+        ui.filterSpecies("Not a Pokemon",[](uint16_t)->const char* {
+            return "Other";
+        });
+        assert(ui.speciesChoiceCount()==0);
+        assert(!ui.acceptSpeciesPicker(error)); // Never choose an absent match.
+        assert(ui.draft().current()->species()==25);
+        ui.filterSpecies("rAi",[](uint16_t id)->const char* {
+            return id==26?"Raichu":"Other";
+        });
+        assert(ui.speciesChoiceCount()==1);
+        assert(ui.acceptSpeciesPicker(error));
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
         assert(ui.draft().current()->species()==26);
+        assert(!ui.stageFieldValue(1,error)); // Growth differs: fail closed.
         assert(ui.keep(localUiWorkspace,error));
         assert(localUiWorkspace.viewParty(0)->hiddenAbility());
         assert(localUiWorkspace.viewParty(0)->gender()==1);

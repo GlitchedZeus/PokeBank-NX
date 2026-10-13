@@ -532,6 +532,33 @@ gen5_access=gen5_access.split("return FieldAccess::Hidden;\n}",1)[0]
 assert gen5_access.count("case FieldIdentity::Nickname:")==1
 assert gen5_access.count("case FieldIdentity::Species:")==1
 
+# Species name browsing is a modal, not a write path. Search/cancel
+# cannot alter a draft; A uses the same guarded native species transaction.
+require(native_screen,
+        "Surface::SpeciesPicker", "openSpeciesPicker(",
+        "moveSpeciesCursor(", "filterSpecies(",
+        "chosenSpeciesId()", "speciesChoiceAllowed(",
+        "acceptSpeciesPicker(", "cancelSpeciesPicker()",
+        "kEditableRows[static_cast<size_t>(fieldRow_)].field!=Field::Species",
+        "current->form()!=0",
+        "source.info->growthRate!=target.info->growthRate")
+require(surface,"kGen5SpeciesTouchBase=78600",
+        "case Surface::SpeciesPicker:",
+        "drawSpeciesPicker(screen,fb,state)",
+        "Utils::promptText(", "Filter national Dex names",
+        "Names::getSpeciesName(id)",
+        "state.acceptSpeciesPicker(error)",
+        "state.cancelSpeciesPicker()",
+        "Only compatible base forms, growth groups, gender and ability slots")
+require(native_stage,
+        "Name this Pokemon before changing species",
+        "(originalDecoded[0x40]>>3)!=0")
+require(read("tests/test_gen5_readonly_save.cpp"),
+        "assert(ui.speciesChoiceCount()==649);",
+        'ui.filterSpecies("rAi"',
+        "assert(ui.speciesChoiceCount()==1);",
+        "ui.cancelSpeciesPicker();",
+        "assert(ui.acceptSpeciesPicker(error));")
 # Native text editing stays on the strict PK5 writer whitelist.
 native_text=read("include/Integration/Gen5/Gen5NativeText.h")
 require(native_text,"asciiName5(","encodeAsciiName5(",

@@ -5,9 +5,11 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <string_view>
 #include <utility>
 
@@ -23,7 +25,7 @@ public:
     using Action=Shared::Action;
     using Field=Shared::FieldIdentity;
     enum class Surface : uint8_t {
-        Browse, Actions, View, Edit, MovePicker, LocationPicker, IdentityPicker, ConfirmDraft, Review,
+        Browse, Actions, View, Edit, MovePicker, LocationPicker, IdentityPicker, SpeciesPicker, ConfirmDraft, Review,
         ConfirmDiscardAll, ConfirmExport, ConfirmExit
     };
     struct EditableRow { Field field; size_t stat; const char* label; uint32_t maximum; };
@@ -73,6 +75,34 @@ public:
     [[nodiscard]] uint16_t movePickerSelection() const noexcept { return movePickerSelection_; }
     [[nodiscard]] size_t locationPickerIndex() const noexcept { return locationPickerIndex_; }
     [[nodiscard]] uint32_t identitySelection() const noexcept { return identitySelection_; }
+    [[nodiscard]] size_t speciesChoiceCount() const noexcept { return speciesCount_; }
+    [[nodiscard]] size_t speciesChoiceIndex() const noexcept { return speciesIndex_; }
+    [[nodiscard]] std::string_view speciesSearch() const noexcept { return speciesSearch_; }
+    [[nodiscard]] uint16_t speciesChoiceId(size_t index) const noexcept {
+        return index<speciesCount_?speciesResults_[index]:0;
+    }
+    [[nodiscard]] uint16_t chosenSpeciesId() const noexcept {
+        return speciesChoiceId(speciesIndex_);
+    }
+    [[nodiscard]] bool speciesChoiceAllowed(uint32_t species) const noexcept {
+        const auto current=draft_.current();
+        if(!current || !current->valid() || current->empty() ||
+           current->form()!=0 || species<1 || species>649)return false;
+        if(species==current->species())return true;
+        // Do not carry an unnicknamed old species name into a new
+        // identity: require a user-confirmed nickname edit first.
+        if((Crypto::read32(current->decodedBytes(),0x38)&0x80000000u)==0)
+            return false;
+        const auto source=personal5(current->species(),0,black2White2_);
+        const auto target=personal5(species,0,black2White2_);
+        if(!source || !target || source.info->growthRate>5 ||
+           source.info->growthRate!=target.info->growthRate ||
+           !genderAllowed5(target.info->genderRatio,current->gender()))
+            return false;
+        const uint8_t slot=current->hiddenAbility()?2:
+            static_cast<uint8_t>((current->pid()>>16)&1);
+        return abilityForSlot5(*target.info,slot)!=0;
+    }
     [[nodiscard]] bool black2White2() const noexcept { return black2White2_; }
     [[nodiscard]] size_t reviewPage() const noexcept { return reviewPage_; }
     static constexpr size_t kReviewPageSize = 4;
@@ -239,6 +269,75 @@ public:
     }
     void cancelLocationPicker() noexcept {
         if(surface_==Surface::LocationPicker)surface_=Surface::Edit;
+    }
+    // Species chooser is a navigation-only modal until explicit A. The
+    // existing native same-growth/identity transaction is the authority.
+    // Do not conflate a compatible byte-level edit with encounter legality.
+    [[nodiscard]] bool openSpeciesPicker(std::string& error) {
+        if(surface_!=Surface::Edit || !draft_.editable() ||
+           kEditableRows[static_cast<size_t>(fieldRow_)].field!=Field::Species) {
+            error="Gen V species picker requires the Species field in Edit";
+            return false;
+        }
+        const auto current=draft_.current();
+        if(!current || !current->valid() || current->empty()) {
+            error="Gen V species picker requires a valid occupied PK5";
+            return false;
+        }
+        speciesSearch_.clear();
+        speciesCount_=649;
+        for(size_t i=0;i<speciesCount_;++i)
+            speciesResults_[i]=static_cast<uint16_t>(i+1);
+        speciesIndex_=current->species()-1;
+        surface_=Surface::SpeciesPicker;
+        error.clear();
+        return true;
+    }
+    // Search uses a caller-provided species name lookup, so the native
+    // state model stays independent of UI string tables and linking.
+    template<class NameLookup>
+    void filterSpecies(std::string_view query,NameLookup&& lookup) {
+        if(surface_!=Surface::SpeciesPicker)return;
+        if(query.size()>32)return; // bounded search input
+        const uint16_t previous=chosenSpeciesId();
+        speciesSearch_=std::string(query);
+        speciesCount_=0;
+        speciesIndex_=0;
+        for(uint32_t id=1;id<=649;++id) {
+            const char* const name=lookup(static_cast<uint16_t>(id));
+            if(!name || !containsAsciiCaseInsensitive(name,query))continue;
+            speciesResults_[speciesCount_++]=static_cast<uint16_t>(id);
+        }
+        for(size_t i=0;i<speciesCount_;++i)
+            if(speciesResults_[i]==previous) {
+                speciesIndex_=i;
+                break;
+            }
+    }
+    void moveSpeciesCursor(int delta) noexcept {
+        if(surface_!=Surface::SpeciesPicker || speciesCount_==0)return;
+        speciesIndex_=static_cast<size_t>(std::clamp(
+            static_cast<int>(speciesIndex_)+delta,0,
+            static_cast<int>(speciesCount_-1)));
+    }
+    [[nodiscard]] bool acceptSpeciesPicker(std::string& error) {
+        const uint16_t species=chosenSpeciesId();
+        if(surface_!=Surface::SpeciesPicker || !draft_.editable() ||
+           !speciesChoiceAllowed(species)) {
+            error="Gen V species cannot preserve this PK5 identity and growth group";
+            return false;
+        }
+        if(!stageSharedField(draft_,Field::Species,0,species,error))return false;
+        speciesSearch_.clear();
+        surface_=Surface::Edit;
+        error.clear();
+        return true;
+    }
+    void cancelSpeciesPicker() noexcept {
+        if(surface_==Surface::SpeciesPicker) {
+            speciesSearch_.clear();
+            surface_=Surface::Edit;
+        }
     }
     [[nodiscard]] bool openIdentityPicker(std::string& error) {
         if(surface_!=Surface::Edit || !draft_.editable() ||
@@ -449,6 +548,10 @@ public:
             cancelIdentityPicker();
             return false;
         }
+        if(surface_==Surface::SpeciesPicker) {
+            cancelSpeciesPicker();
+            return false;
+        }
         if(surface_==Surface::View || surface_==Surface::Edit) {
             if(draft_.back()) {surface_=Surface::Browse;return true;}
             surface_=Surface::ConfirmDraft;
@@ -536,12 +639,35 @@ public:
     }
 
 private:
+    [[nodiscard]] static bool containsAsciiCaseInsensitive(
+        std::string_view source,std::string_view query) noexcept {
+        if(query.empty())return true;
+        if(query.size()>source.size())return false;
+        const auto lower=[](unsigned char c) {
+            return c>='A' && c<='Z' ? static_cast<unsigned char>(c+32) : c;
+        };
+        for(size_t i=0;i+query.size()<=source.size();++i) {
+            bool equal=true;
+            for(size_t j=0;j<query.size();++j)
+                if(lower(static_cast<unsigned char>(source[i+j]))!=
+                   lower(static_cast<unsigned char>(query[j]))) {
+                    equal=false;
+                    break;
+                }
+            if(equal)return true;
+        }
+        return false;
+    }
     Surface surface_=Surface::Browse;
     Slot target_{};
     int actionRow_=0;
     int fieldRow_=0;
     uint16_t movePickerSelection_=0;
     uint32_t identitySelection_=0;
+    std::array<uint16_t,649> speciesResults_{};
+    size_t speciesCount_=0;
+    size_t speciesIndex_=0;
+    std::string speciesSearch_;
     bool black2White2_=false;
     size_t locationPickerIndex_=0;
     size_t reviewPage_=0;
