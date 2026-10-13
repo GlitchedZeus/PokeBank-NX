@@ -63,7 +63,7 @@ void checkSourceIndependentVectors() {
         CHECK(ids.emplace(c.id).second);
         CHECK(c.species==1u || c.species==81u);
         CHECK(c.move==33u || c.move==200u);
-        CHECK(c.level==5u && c.experience==125u);
+        CHECK(c.level==5u && c.experience==(c.species==1u?135u:125u));
         const int speciesIndex=c.species==1u?0:1;
         const int moveIndex=c.move==33u?0:1;
         ++species[speciesIndex];++moves[moveIndex];
@@ -72,6 +72,13 @@ void checkSourceIndependentVectors() {
         ++dvPatterns[dvIndex];
         const unsigned expectedStatExp=c.dv16==0u?0u:c.dv16==21845u?32768u:65535u;
         CHECK(c.stat_experience==expectedStatExp);
+        const std::array<unsigned,5> values{c.stat_exp_hp,c.stat_exp_attack,
+            c.stat_exp_defense,c.stat_exp_speed,c.stat_exp_special};
+        constexpr std::array<unsigned,5> distinct{0u,1u,32768u,65534u,65535u};
+        const int shift=dvIndex==0?0:dvIndex==1?2:4;
+        for(unsigned i=0;i<5;++i)
+            CHECK(values[i]==distinct[(shift+i)%5]);
+        CHECK(c.stat_exp_hp==c.stat_experience);
         ++statExpPatterns[expectedStatExp==0u?0:expectedStatExp==32768u?1:2];
         CHECK(hpDV(c.dv16)==(c.dv16==0u?0u:15u));
         CHECK(encodeBE16(c.stat_experience)==c.stat_experience);
