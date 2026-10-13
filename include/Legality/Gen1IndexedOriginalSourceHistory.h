@@ -23,7 +23,8 @@ enum class Status : uint8_t {
     ConditionalOriginalSource,
     UnknownOriginalMap, UnknownOriginalRequest, UnknownOriginalTradeReceipt,
     UnknownUnreachableNpcTrade, CandidateOriginalMapContradicted,
-    CandidateOriginalRequestContradicted, ConditionalPretStaticSceneOnly,
+    CandidateOriginalRequestContradicted, UnknownOriginalFossilReceipt,
+    ConditionalPretStaticSceneOnly,
     ConditionalPretNpcTradeOfferOnly
 };
 
