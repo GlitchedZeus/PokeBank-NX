@@ -43,6 +43,9 @@ profile, provider and exact game ID. Do not paste private trainer IDs.
 | Staged edit | For a **disposable** save, change a supported PK5 field and Keep | App-owned staged workspace changes; source emulator save still unchanged |
 | Review | Open Review after editing | Only verified staged fields are shown; Cancel/Discard does not touch source |
 | Controller | D-pad, left stick, A/B, touch, long lists | Same selection and scrolling semantics; no double activation |
+| Box touch | Open Boxes; tap a different cell, then tap the same cell | First tap focuses the selected slot; second tap opens the guarded shared Pokémon Actions |
+| Box arrows | Tap the existing left/right box arrows; use L/R and ZL/ZR | Arrows and L/R step one box; ZL/ZR jump five, wrapping correctly at Box 1/24 |
+| Unsupported touch | Touch a box-name header or Storage/Bank-facing control | No native save writes, generic rename, storage mutation, or crash |
 | Home artwork | Game cards and return navigation | Wrong game/artwork must not be substituted; missing Gen V cover artwork should be reported separately |
 
 ## Source-integrity proof

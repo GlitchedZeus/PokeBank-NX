@@ -440,6 +440,168 @@ void discoveryContracts() {
     assert(::rmdir(dir.c_str())==0);
 }
 
+// Real profile/game assignment exercise for the first Gen V hardware NRO.
+// Uses the same permanent bindings, strict file reopening and Save Instances
+// catalog as Product Home, without any source save writes by production code.
+void fourTitleProfileAssignmentContracts() {
+    char pattern[]="/tmp/pokebank_gen5_profiles_XXXXXX";
+    const char* temp=::mkdtemp(pattern);
+    assert(temp);
+    const std::string dir=temp;
+    const std::string db=dir+"/assigned-profiles";
+    struct Case {
+        const char* id;
+        const char* profile;
+        const char* file;
+        G::SaveFamily family;
+        uint8_t version;
+        const char* provider;
+        bool wrapped;
+        bool twoCopies;
+    };
+    const std::array<Case,4> games{{
+        {"black_nds","profile-a","black.sav",G::SaveFamily::BlackWhite,21,
+            "RetroArch",false,false},
+        {"white_nds","profile-b","white.dsv",G::SaveFamily::BlackWhite,20,
+            "DraStic",true,false},
+        {"black2_nds","profile-a","black2.srm",G::SaveFamily::Black2White2,23,
+            "melonDS",false,false},
+        {"white2_nds","profile-b","white2.sav",G::SaveFamily::Black2White2,22,
+            "Manual",false,true}
+    }};
+    struct Entry {
+        std::string path;
+        std::vector<uint8_t> disk;
+        PokeVault::Source::SaveInstance chosen;
+        G::SaveCopySelection selection;
+    };
+    std::array<Entry,4> entries{};
+    std::vector<PokeVault::Source::SaveInstance> discoveries;
+    PokeVault::Legacy::LegacySourceBindings bindings(db);
+    assert(bindings.load());
+    for(size_t i=0;i<games.size();++i) {
+        const auto& g=games[i];
+        const size_t copySize=g.family==G::SaveFamily::BlackWhite?
+            L::BlackWhiteCopySize:L::Black2White2CopySize;
+        auto sav=make(g.family,g.version);
+        if(g.twoCopies) {
+            auto second=make(g.family,g.version,copySize);
+            // Two complete, individually valid copies with different source
+            // state; no heuristic may guess which was played most recently.
+            second[copySize+0x19400+6]='Y';
+            if(g.family==G::SaveFamily::BlackWhite)
+                stamp(second,copySize,L::BlackWhite);
+            else stamp(second,copySize,L::Black2White2);
+            std::copy(second.begin()+static_cast<std::ptrdiff_t>(copySize),
+                      second.begin()+static_cast<std::ptrdiff_t>(2*copySize),
+                      sav.begin()+static_cast<std::ptrdiff_t>(copySize));
+        }
+        auto& entry=entries[i];
+        entry.path=dir+"/"+g.file;
+        entry.disk=g.wrapped?dsvFixture(sav):sav;
+        fileFixture(entry.path,entry.disk);
+        if(g.twoCopies) {
+            assert(!G::inspectSourceFile(entry.path,g.provider,g.id).ready());
+            auto primary=G::inspectSourceFile(entry.path,g.provider,g.id,
+                G::SaveCopySelection::Primary);
+            auto backup=G::inspectSourceFile(entry.path,g.provider,g.id,
+                G::SaveCopySelection::Backup);
+            assert(primary.ready() && backup.ready());
+            assert(primary.sourceIdentity==backup.sourceIdentity);
+            assert(primary.physicalIdentity==backup.physicalIdentity);
+            assert(primary.sourceVariant=="gen5-copy-0-primary");
+            assert(backup.sourceVariant=="gen5-copy-1-backup");
+            discoveries.push_back(primary);
+            discoveries.push_back(backup);
+            entry.chosen=backup;
+            entry.selection=G::SaveCopySelection::Backup;
+        } else {
+            entry.chosen=G::inspectSourceFile(entry.path,g.provider,g.id);
+            entry.selection=G::SaveCopySelection::Automatic;
+            assert(entry.chosen.ready());
+            discoveries.push_back(entry.chosen);
+        }
+        const auto& source=entry.chosen;
+        assert(source.ready() && source.readOnly() && source.gameId==g.id);
+        assert(source.providerLabel==g.provider && !source.sourceIdentity.empty());
+        assert(bindings.replaceFileAssignmentAndSave(source.sourceIdentity,
+            {g.profile,g.id,entry.path,g.provider,
+             g.family==G::SaveFamily::BlackWhite?"BW":"B2W2"}));
+        const auto selected=G::openAssignedSource(bindings,g.profile,g.id,
+            entry.selection,source.contentFingerprint);
+        assert(selected.ready() && selected.instance.gameId==g.id);
+        assert(selected.instance.sourceIdentity==source.sourceIdentity);
+        assert(selected.instance.contentFingerprint==source.contentFingerprint);
+        assert(selected.instance.providerLabel==g.provider);
+        assert(selected.instance.readOnly() && selected.save);
+        assert(selected.save->selectedBackupPartition()==g.twoCopies);
+        assert(selected.save->trainer().rawName==
+               (g.twoCopies?u"NY":u"NX"));
+        assert(!G::openAssignedSource(bindings,
+            std::string(g.profile)=="profile-a"?"profile-b":"profile-a",
+            g.id).ready());
+        // The exact title remains authoritative even for identical-size raw
+        // files. A source assigned to Black must never open for White.
+        const char* wrong=i==0?"white_nds":
+            i==1?"black_nds":i==2?"white2_nds":"black2_nds";
+        const auto wrongTitle=G::inspectSourceFile(entry.path,g.provider,wrong,
+            entry.selection);
+        assert(!wrongTitle.ready() &&
+               wrongTitle.validation==
+                   PokeVault::Source::ValidationStatus::AssignmentMismatch);
+    }
+    PokeVault::Legacy::LegacySourceBindings restored(db);
+    assert(restored.load()); // Persistent user profile associations survive restart.
+    for(size_t i=0;i<games.size();++i) {
+        const auto& g=games[i];
+        const auto& entry=entries[i];
+        const auto opened=G::openAssignedSource(restored,g.profile,g.id,
+            entry.selection,entry.chosen.contentFingerprint);
+        assert(opened.ready() && opened.instance.claimedProfile==g.profile);
+        const auto catalog=G::forGameAndProfile(discoveries,restored,g.profile,g.id);
+        assert(catalog.validQuery && catalog.rows.size()==(g.twoCopies?2u:1u));
+        for(const auto& row:catalog.rows) {
+            assert(row.gameId==g.id && row.claimedProfile==g.profile);
+            assert(row.readOnly() && row.ready());
+        }
+        const auto other=G::forGameAndProfile(discoveries,restored,
+            std::string(g.profile)=="profile-a"?"profile-b":"profile-a",g.id);
+        assert(other.validQuery && other.rows.empty());
+    }
+    // The selected White 2 copy is a session choice, not a permanent guess.
+    const auto& dual=entries[3];
+    assert(!G::openAssignedSource(restored,"profile-b","white2_nds",
+        G::SaveCopySelection::Automatic,dual.chosen.contentFingerprint).ready());
+    const auto primary=G::openAssignedSource(restored,"profile-b","white2_nds",
+        G::SaveCopySelection::Primary,dual.chosen.contentFingerprint);
+    const auto backup=G::openAssignedSource(restored,"profile-b","white2_nds",
+        G::SaveCopySelection::Backup,dual.chosen.contentFingerprint);
+    assert(primary.ready() && backup.ready());
+    assert(primary.save->trainer().rawName==u"NX");
+    assert(backup.save->trainer().rawName==u"NY");
+    // Same physical source changed after the selection: the original
+    // fingerprint cannot authorize an unrelated/newer read.
+    auto changed=make(G::SaveFamily::BlackWhite,21);
+    changed[0x19400+6]='Z';
+    stamp(changed,0,L::BlackWhite);
+    fileFixture(entries[0].path,changed);
+    assert(!G::openAssignedSource(restored,"profile-a","black_nds",
+        G::SaveCopySelection::Automatic,
+        entries[0].chosen.contentFingerprint).ready());
+    assert(G::openAssignedSource(restored,"profile-a","black_nds").ready());
+    // Restore test fixture; a real emulator's original files are never
+    // mutated by the application nor by this host-only test.
+    fileFixture(entries[0].path,entries[0].disk);
+    assert(G::openAssignedSource(restored,"profile-a","black_nds",
+        G::SaveCopySelection::Automatic,
+        entries[0].chosen.contentFingerprint).ready());
+    for(const auto& entry:entries)assert(std::remove(entry.path.c_str())==0);
+    assert(std::remove(db.c_str())==0);
+    (void)std::remove((db+".bak").c_str());
+    (void)std::remove((db+".tmp").c_str());
+    assert(::rmdir(dir.c_str())==0);
+}
+
 int main() {
     for(const auto& [family,version,id] :
         {std::tuple{G::SaveFamily::BlackWhite,uint8_t{20},"white_nds"},
@@ -1252,5 +1414,6 @@ int main() {
     assert(!G::Gen5ReadOnlySave::parse(empty));
     assert(!G::Gen5ReadOnlySave::parse(std::span<const uint8_t>(empty.data(),0x40000)));
     discoveryContracts();
+    fourTitleProfileAssignmentContracts();
     std::cout<<"Gen V strict BW/B2W2 save reader synthetic contracts PASS\n";
 }

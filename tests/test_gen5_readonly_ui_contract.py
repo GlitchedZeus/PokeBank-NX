@@ -214,6 +214,45 @@ gen5_setup = games.split("if (overlay == Overlay::Gen5Setup) {", 1)[1]
 gen5_setup = gen5_setup.split("if (overlay == Overlay::Gen5Candidates)", 1)[0]
 assert "gen5SetupIndex==2)overlay=Overlay::Gen5UnassignConfirm;" in gen5_setup
 assert "gen5SetupIndex==2)unassignCurrentGen5Game()" not in gen5_setup
+# Four native titles, profile-isolated assignments, and the existing
+# shared 6x5 Box grid are exercised by executable host fixtures.
+assignment=read("tests/test_gen5_readonly_save.cpp")
+require(assignment,
+        "void fourTitleProfileAssignmentContracts()",
+        "fourTitleProfileAssignmentContracts();",
+        '"black_nds","profile-a"',
+        '"white_nds","profile-b"',
+        '"black2_nds","profile-a"',
+        '"white2_nds","profile-b"',
+        "replaceFileAssignmentAndSave(source.sourceIdentity",
+        "G::forGameAndProfile(discoveries,restored",
+        "G::SaveCopySelection::Primary",
+        "G::SaveCopySelection::Backup")
+box_model=read("include/Integration/Gen5/Gen5BoxTouchNavigation.h")
+require(box_model,
+        "enum class BoxTouchKind5",
+        "decodeGen5BoxTouch(",
+        "hitId==1000","hitId==1001","hitId==2000",
+        "BoxTouchKind5::Ignore","advanceGen5BoxIndex(")
+require(surface,
+        "Gen5BoxTouchNavigation.h",
+        "decodeGen5BoxTouch(",
+        "case TouchKind::FocusSlot:",
+        "case TouchKind::OpenSlot:",
+        "case TouchKind::Ignore:",
+        "advanceGen5BoxIndex(")
+require(read("tests/test_gen5_box_touch.cpp"),
+        "for(int selected=-1;selected<30;++selected)",
+        "1002,1003,1100,2001,77000,80000",
+        "G::advanceGen5BoxIndex(index,count,delta)")
+require(read("Makefile.host.gen5"),
+        "GEN5_BOX_TOUCH_TEST :=","GEN5_BOX_TOUCH_SANITIZE :=",
+        "host-test: $(GEN5_BOX_TOUCH_TEST)",
+        "host-sanitize: $(GEN5_BOX_TOUCH_SANITIZE)")
+require(read(".github/workflows/gen5-focused-host.yml"),
+        "test_gen5_create_integration test_gen5_box_touch; do",
+        "test_gen5_create_integration_sanitize test_gen5_box_touch_sanitize; do")
+
 # Gen V reuses the already-shared staged editor, not a second Create/Edit UI.
 # Game cards and the source picker must not claim the editor is unavailable.
 require(games,

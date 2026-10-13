@@ -5,6 +5,7 @@
 // Touch targets are isolated to verified read-only and native-field staged
 // actions; native bank, source-writing and unsupported mutation routes remain barred.
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
+#include "Integration/Gen5/Gen5BoxTouchNavigation.h"
 #include "Integration/Gen5/Gen5SharedReview.h"
 #include "Integration/Gen5/Gen5WorkingCopyExport.h"
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
@@ -182,6 +183,25 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
               tap<kGen5PartyTouchBase+static_cast<int>(screen.trainer.getPartySize())) {
         screen.selectedPartyIndex=tap-kGen5PartyTouchBase;
         down|=HidNpadButton_A;
+    } else if(state.surface()==Surface::Browse &&
+              screen.selectedMode==TrainerViewScreen::ViewMode::Boxes) {
+        // Decode only the existing box panel's native hit IDs. All other
+        // inherited storage, header-rename and source-write hits stay inert.
+        const auto boxTouch=PokeVault::Integration::Gen5::decodeGen5BoxTouch(
+            tap,screen.selectedItemIndex,
+            static_cast<int>(screen.trainer.getSlotsPerBox()));
+        using TouchKind=PokeVault::Integration::Gen5::BoxTouchKind5;
+        switch(boxTouch.kind) {
+            case TouchKind::PreviousBox:down|=HidNpadButton_L;break;
+            case TouchKind::NextBox:down|=HidNpadButton_R;break;
+            case TouchKind::FocusSlot:
+                screen.selectedItemIndex=boxTouch.slot;break;
+            case TouchKind::OpenSlot:
+                screen.selectedItemIndex=boxTouch.slot;
+                down|=HidNpadButton_A;break;
+            case TouchKind::OpenSummary:down|=HidNpadButton_A;break;
+            case TouchKind::Ignore:break;
+        }
     }
     const u64 keys=screen.controllerNavigation.apply(
         down,held,stickX,stickY,
@@ -537,6 +557,12 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             screen.selectedBoxIndex=(screen.selectedBoxIndex+count-1)%count;
         if(keys&HidNpadButton_R)
             screen.selectedBoxIndex=(screen.selectedBoxIndex+1)%count;
+        if(keys&HidNpadButton_ZL)
+            screen.selectedBoxIndex=PokeVault::Integration::Gen5::advanceGen5BoxIndex(
+                screen.selectedBoxIndex,count,-5);
+        if(keys&HidNpadButton_ZR)
+            screen.selectedBoxIndex=PokeVault::Integration::Gen5::advanceGen5BoxIndex(
+                screen.selectedBoxIndex,count,5);
         if(keys&HidNpadButton_Up)
             screen.selectedItemIndex=(screen.selectedItemIndex+capacity-columns)%capacity;
         if(keys&HidNpadButton_Down)
@@ -1179,8 +1205,9 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         }
     }
     if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes)
-        drawNavBar(fb,{{"D-pad/Stick","Navigate"},{"L/R","Box"},
-                       {"A","Actions"},{"X","Party"},{"Y","Trainer"},{"B","Exit"}});
+        drawNavBar(fb,{{"D-pad","Navigate"},{"L/R","Box"},
+                       {"ZL/ZR","Jump 5"},{"A","Actions"},
+                       {"X/Y","Party/Trainer"},{"B","Exit"}});
     else if(screen.selectedMode==TrainerViewScreen::ViewMode::Trainer)
         drawNavBar(fb,{{"X","Party"},{"B","Exit"},{"","Gen V / Read-only Trainer"}});
     else

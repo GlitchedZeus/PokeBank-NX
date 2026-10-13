@@ -128,3 +128,20 @@ $(GEN5_CREATE_INTEGRATION_TEST): tests/test_gen5_create_integration.cpp $(GEN5_C
 $(GEN5_CREATE_INTEGRATION_SANITIZE): tests/test_gen5_create_integration.cpp $(GEN5_CREATE_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_create_integration.cpp -o $@
+
+# Host-only native Gen V box-grid touch, controller focus, and safety guard.
+GEN5_BOX_TOUCH_TEST := $(HOST_BUILD)/test_gen5_box_touch
+GEN5_BOX_TOUCH_SANITIZE := $(HOST_BUILD)/test_gen5_box_touch_sanitize
+GEN5_BOX_TOUCH_INPUTS := tests/test_gen5_box_touch.cpp include/Integration/Gen5/Gen5BoxTouchNavigation.h
+HOST_TESTS += $(GEN5_BOX_TOUCH_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_BOX_TOUCH_SANITIZE)
+host-test: $(GEN5_BOX_TOUCH_TEST)
+host-sanitize: $(GEN5_BOX_TOUCH_SANITIZE)
+
+$(GEN5_BOX_TOUCH_TEST): $(GEN5_BOX_TOUCH_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_box_touch.cpp -o $@
+
+$(GEN5_BOX_TOUCH_SANITIZE): $(GEN5_BOX_TOUCH_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_box_touch.cpp -o $@
