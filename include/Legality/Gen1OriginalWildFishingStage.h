@@ -18,7 +18,8 @@ enum class Status : uint8_t {
     UnknownOriginalMethod, UnknownOriginalSpecies, UnknownOriginalLevel,
     ForeignGameRowNotEvidence, CandidateOriginalMapContradicted,
     CandidateOriginalMethodContradicted, CandidateOriginalSpeciesContradicted,
-    CandidateOriginalLevelContradicted, SourceSlotCompatibleRateAndHistoryUnverified
+    CandidateOriginalLevelContradicted, SourceSlotCompatibleRateAndHistoryUnverified,
+    UnknownMapApplicabilityForGlobalRod
 };
 struct Slot {
     uint8_t gameMask;  // Red 1, Blue 2, Yellow 4
@@ -179,6 +180,60 @@ inline constexpr std::array<Slot, 149> kVerifiedSlots{{
     {3, "CeruleanCave1F", Method::SuperRod, 2, 99, 23},
     {3, "CeruleanCave1F", Method::SuperRod, 3, 117, 23},
 }};
+// Expanded source-pinned Red/Blue/Yellow archive. kVerifiedSlots and its
+// existing 149 indices remain untouched. kPret* is a NEW index namespace.
+struct PretSlot {
+    uint8_t gameMask;
+    std::string_view map;
+    Method method;
+    uint8_t physicalSlot;
+    uint16_t species;
+    uint8_t level;
+    uint8_t encounterRate;
+};
+#include "Legality/Gen1PretWildRB0.inc"
+#include "Legality/Gen1PretWildRB1.inc"
+#include "Legality/Gen1PretWildRB2.inc"
+#include "Legality/Gen1PretWildRB3.inc"
+#include "Legality/Gen1PretWildYellow0.inc"
+#include "Legality/Gen1PretWildYellow1.inc"
+#include "Legality/Gen1PretWildYellow2.inc"
+#include "Legality/Gen1PretWildYellow3.inc"
+#include "Legality/Gen1PretFishing.inc"
+inline constexpr std::size_t kPretSlotCount =
+    kPretRB0.size()+
+    kPretRB1.size()+
+    kPretRB2.size()+
+    kPretRB3.size()+
+    kPretYellow0.size()+
+    kPretYellow1.size()+
+    kPretYellow2.size()+
+    kPretYellow3.size()+
+    kPretFishing.size();
+constexpr const PretSlot* pretSlot(std::size_t index) noexcept {
+    if(index<kPretRB0.size())return &kPretRB0[index];
+    index-=kPretRB0.size();
+    if(index<kPretRB1.size())return &kPretRB1[index];
+    index-=kPretRB1.size();
+    if(index<kPretRB2.size())return &kPretRB2[index];
+    index-=kPretRB2.size();
+    if(index<kPretRB3.size())return &kPretRB3[index];
+    index-=kPretRB3.size();
+    if(index<kPretYellow0.size())return &kPretYellow0[index];
+    index-=kPretYellow0.size();
+    if(index<kPretYellow1.size())return &kPretYellow1[index];
+    index-=kPretYellow1.size();
+    if(index<kPretYellow2.size())return &kPretYellow2[index];
+    index-=kPretYellow2.size();
+    if(index<kPretYellow3.size())return &kPretYellow3[index];
+    index-=kPretYellow3.size();
+    if(index<kPretFishing.size())return &kPretFishing[index];
+    index-=kPretFishing.size();
+    return nullptr;
+}
+static_assert(kPretSlotCount==1511);
+static_assert(kVerifiedSlots.size()==149);
+
 struct Candidate {
     std::string_view originalGame{};
     std::size_t originalSourceIndex=0;
@@ -225,5 +280,39 @@ constexpr Result evaluate(const Candidate& c) noexcept {
     if(c.originalLevel!=row.level)
         return {Status::CandidateOriginalLevelContradicted,row.species};
     return {Status::SourceSlotCompatibleRateAndHistoryUnverified,row.species};
+}
+// Candidate result for the NEW pret source-index namespace; never a
+// whole-Pokemon legal/invalid verdict. Global rod entries cannot certify map
+// eligibility without an independently sourced fishable-map witness.
+constexpr Result evaluatePret(const Candidate& c) noexcept {
+    const uint8_t game=gameMask(c.originalGame);
+    if(!c.originalGameAttested||!game)return {};
+    if(!c.originalSourceSlotAttested)return {Status::UnknownOriginalSourceRow};
+    const PretSlot* row=pretSlot(c.originalSourceIndex);
+    if(!row)return {Status::UnknownOriginalSourceRow};
+    if((game&row->gameMask)==0)
+        return {Status::ForeignGameRowNotEvidence,row->species};
+    if(!c.originalMapAttested||c.originalMap.empty())
+        return {Status::UnknownOriginalMap,row->species};
+    if(!c.originalMethodAttested||
+       (c.originalMethod!=Method::Grass&&c.originalMethod!=Method::Surf&&
+        c.originalMethod!=Method::OldRod&&c.originalMethod!=Method::GoodRod&&
+        c.originalMethod!=Method::SuperRod))
+        return {Status::UnknownOriginalMethod,row->species};
+    if(!c.originalSpeciesAttested||c.originalSpecies==0||c.originalSpecies>151)
+        return {Status::UnknownOriginalSpecies,row->species};
+    if(!c.originalLevelAttested||c.originalLevel==0||c.originalLevel>100)
+        return {Status::UnknownOriginalLevel,row->species};
+    if(row->map!="*"&&c.originalMap!=row->map)
+        return {Status::CandidateOriginalMapContradicted,row->species};
+    if(c.originalMethod!=row->method)
+        return {Status::CandidateOriginalMethodContradicted,row->species};
+    if(c.originalSpecies!=row->species)
+        return {Status::CandidateOriginalSpeciesContradicted,row->species};
+    if(c.originalLevel!=row->level)
+        return {Status::CandidateOriginalLevelContradicted,row->species};
+    if(row->map=="*")
+        return {Status::UnknownMapApplicabilityForGlobalRod,row->species};
+    return {Status::SourceSlotCompatibleRateAndHistoryUnverified,row->species};
 }
 } // namespace Legality::Gen1OriginalWildFishingStage
