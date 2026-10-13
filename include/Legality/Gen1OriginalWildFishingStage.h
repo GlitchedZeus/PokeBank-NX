@@ -6,6 +6,7 @@
 // pret/pokeyellow@e89ead154b9968aa50eed9328ff2b38b6c194382
 //   data/wild/maps/Route1.asm
 // No Yellow fishing, other maps, Good/Old Rod, or catch RNG is asserted.
+#include "Legality/Gen1PretWildRollStage.h"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -344,5 +345,36 @@ constexpr Result evaluatePretFishingInit(const Candidate& c,
     // Original FishingInit passed, but acquisition-time RNG/rods, event
     // history and original save bytes have not been independently verified.
     return {Status::SourceSlotCompatibleRateAndHistoryUnverified,source.sourceSpecies};
+}
+// Optional, independently witnessed original R/B/Y RNG-physical-slot join.
+// The 1,512 pret source rows retain their historical physical slot ordinals;
+// roll/half-block tile context is never fabricated from a detached PK1.
+// A source-row contradiction and a wild-roll contradiction are two distinct
+// candidate-local stages; neither one authorizes whole-Pokemon Invalid.
+struct PretWildRollJoined {
+    Status originalSourceStatus=Status::UnknownOriginalSourceRow;
+    Gen1PretWildRollStage::Result originalRoll{};
+    bool globalInvalidSupported=false,globallyLegalSupported=false;
+};
+constexpr PretWildRollJoined evaluatePretWildRoll(
+    const Candidate& c,Gen1PretWildRollStage::OriginalScene scene) noexcept {
+    const auto source=evaluatePret(c);
+    PretWildRollJoined result{};
+    result.originalSourceStatus=source.status;
+    if(source.status!=Status::SourceSlotCompatibleRateAndHistoryUnverified)
+        return result;
+    const auto* row=pretSlot(c.originalSourceIndex);
+    if(!row|| (row->method!=Method::Grass&&row->method!=Method::Surf))
+        return result;
+    // Each attestation is intentionally separate. The original source row
+    // cannot attest an original random value, facing tile, or repel state.
+    if(scene.game!=c.originalGame)return result;
+    scene.originalExpectedPhysicalSlot=row->physicalSlot;
+    scene.originalExpectedMethod=row->method==Method::Grass?
+        Gen1PretWildRollStage::Method::Grass:Gen1PretWildRollStage::Method::Surf;
+    scene.originalSourceLevel=c.originalLevel;
+    scene.originalSourceLevelIndependentlyAttested=c.originalLevelAttested;
+    result.originalRoll=Gen1PretWildRollStage::evaluate(scene);
+    return result;
 }
 } // namespace Legality::Gen1OriginalWildFishingStage
