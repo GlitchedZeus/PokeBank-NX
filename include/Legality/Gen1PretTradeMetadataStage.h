@@ -77,7 +77,7 @@ constexpr Result evaluate(const OriginalOffer& row,
     return {Status::UnknownOriginalPostTradeEvolution,row.receivedSpecies};
  const uint16_t expected=originalImmediateSpecies(game,
      row.originalOfferIndex,row.receivedSpecies,
-     couldEvolve && w.originalTradeEvolutionAttested &&
+     couldEvolve && w.originalPostTradeEvolutionAttested &&
                   w.originalTradeEvolutionCompleted);
  if(w.originalPostTradeSpecies!=expected)
     return {Status::CandidateLocalReceivedSpeciesMismatch,
