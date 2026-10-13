@@ -4,6 +4,7 @@
 // never be excluded by this subset. Tradeback mutates the catch-rate byte;
 // container game, original game and trade/evolution history are distinct.
 #include "Legality/Gen1EncounterEvidence.h"
+#include "Legality/Gen1PretTradeMetadataStage.h"
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
@@ -27,7 +28,8 @@ enum class Status : uint8_t {
     ConditionalPretStaticSceneOnly,
     ConditionalPretNpcTradeOfferOnly,
     CandidateOriginalFossilMismatch, UnknownOriginalSubmittedLevel,
-    UnknownOriginalReceivedLevel, CandidateOriginalTradeLevelMismatch
+    UnknownOriginalReceivedLevel, CandidateOriginalTradeLevelMismatch,
+    UnknownOriginalPostTradeEvolution
 };
 
 struct Candidate {
@@ -186,6 +188,8 @@ struct PretTradeCandidate {
     uint8_t originalReceivedLevel=0;
     bool originalSubmittedLevelIndependentlyAttested=false;
     bool originalReceivedLevelIndependentlyAttested=false;
+    bool originalPostTradeEvolutionIndependentlyAttested=false;
+    bool originalPostTradeEvolutionCompleted=false;
 };
 constexpr Result evaluatePretStatic(const PretStaticCandidate& c) noexcept {
     const uint8_t mask=Gen1Encounter::gameMaskForId(c.originalGame);
@@ -237,8 +241,18 @@ constexpr Result evaluatePretNpcTrade(const PretTradeCandidate& c) noexcept {
        return {Status::UnknownOriginalSpecies,row->receivedSpecies};
     if(c.requestedSpecies!=row->requestedSpecies)
        return {Status::CandidateOriginalRequestContradicted,row->receivedSpecies};
-    if(c.receivedSpecies!=row->receivedSpecies)
-       return {Status::CandidateOriginalSpeciesContradicted,row->receivedSpecies};
+    if(c.receivedSpecies!=row->receivedSpecies) {
+       // Original Yellow game performs in-game trade-evolution after
+       // receipt. Slot 9 Cubone -> Machoke can yield Machamp #68.
+       const bool yellowMachamp=(mask==4 && c.originalOfferIndex==9 &&
+           row->receivedSpecies==67 && c.receivedSpecies==68);
+       if(!yellowMachamp)
+           return {Status::CandidateOriginalSpeciesContradicted,row->receivedSpecies};
+       if(!c.originalPostTradeEvolutionIndependentlyAttested)
+           return {Status::UnknownOriginalPostTradeEvolution,row->receivedSpecies};
+       if(!c.originalPostTradeEvolutionCompleted)
+           return {Status::CandidateOriginalSpeciesContradicted,row->receivedSpecies};
+    }
     if(!c.originalNpcTrainerIndependentlyAttested)
        return {Status::UnknownTradeOT,row->receivedSpecies};
     if(!c.originalTransactionIndependentlyAttested)
@@ -257,5 +271,16 @@ constexpr Result evaluatePretNpcTrade(const PretTradeCandidate& c) noexcept {
     // Matching the ROM offer cannot verify original DV/OT or subsequent
     // tradebacks, catch-rate mutations or later evolutions.
     return {Status::ConditionalPretNpcTradeOfferOnly,row->receivedSpecies};
+}
+// Additional source-owned English nickname + "<TRAINER>" OT evidence.
+// This never asserts a fixed original OTID: the native engine Random()
+// assigns it during actual NPC-trade animation. Stage-level witnesses are
+// separate from modern/current save observations and nicknames can change.
+constexpr Gen1PretTradeMetadataStage::Result evaluatePretNpcTradeMetadata(
+    const Gen1PretTradeMetadataStage::Witness& c) noexcept {
+    const uint8_t mask=Gen1Encounter::gameMaskForId(c.originalGame);
+    const auto* row=Gen1Encounter::originalPretTrade(mask,c.originalOfferIndex);
+    if(!row)return {};
+    return Gen1PretTradeMetadataStage::evaluate(*row,c);
 }
 } // namespace Legality::Gen1IndexedOriginalSourceHistory
