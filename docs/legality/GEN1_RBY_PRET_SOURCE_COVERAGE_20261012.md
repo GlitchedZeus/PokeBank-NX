@@ -74,3 +74,48 @@ From exact GitHub-blob-verified six files, the **actual committed** C++20 source
 - `tests/test_legality_l1_run.sh` is configured for **53 distinct suites** × host/sanitize = **106 required repository executions**. Attempted locally from a partial mirror: fails before tests because the actual full checkout and runner file are unavailable. `git ls-remote` still fails `Could not resolve host: github.com`. No claims that unexecuted 106 tests passed. GH exact-head CI and full host runs must be checked and accepted separately.
 
 **Open gaps:** full Gen I original script event flag coverage and source acquisition records, genuine original save evidence, all historical fishing action context, Game Corner and NPC transaction receipts, Original-PKHeX.Core host differential encounter behavior and source-specific encounter RNG remain incomplete. Source graph membership, exact Game Corner offers, and byte compatibility are **narrow conditional checks** only.
+
+
+## Major follow-on: scripted gift gates and native random physical-slot selection (2026-10-13)
+
+**Pinned retail source:** same immutable `pret/pokered@af519899719f0754965776faac0e836a3b906e6d` and `pret/pokeyellow@e89ead154b9968aa50eed9328ff2b38b6c194382`; no unverified modern event database promoted to original-game proof.
+
+### Exact one-time scripted gifts
+
+`include/Legality/Gen1PretGiftEventStage.h` supplies five acquisition scenes in a separate L1 original scene namespace. These supplement rather than replace the existing twenty static/gift records:
+
+| Original acquisition scene | Game source | Native record | Distinguishing original acquisition condition |
+|---|---|---|---|
+| Mt. Moon Pokémon Center salesman | R/B/Y | Magikarp #129, level 5 | BCD `500` purchase, `EVENT_BOUGHT_MAGIKARP`, successful `GivePokemon` |
+| Celadon Mansion rooftop | R/B/Y | Eevee #133, level 25 | Original one-time Poké Ball object hidden after a successful gift |
+| Cerulean Melanie | Yellow | Bulbasaur #1, level 10 | Pikachu friendship `wPikachuHappiness >= 147`, `EVENT_GOT_BULBASAUR_IN_CERULEAN` |
+| Route 24 Damian | Yellow | Charmander #4, level 10 | One-time gift `EVENT_54F` |
+| Vermilion Officer Jenny | Yellow | Squirtle #7, level 10 | Thunder Badge bit at acquisition, `EVENT_GOT_SQUIRTLE_FROM_OFFICER_JENNY` |
+
+The original (R/B) Magikarp source is `scripts/MtMoonPokecenter.asm` Git blob `da3d3bc5fbd07130f6a6c4da686b3e0eaa024b93`. The original Yellow script is `scripts/MtMoonPokecenter_2.asm` Git blob `ba5650a235b40c8c9bd41afba72448b3a7b465a3`. Yellow's Bulbasaur, Charmander and Squirtle scripts are respectively `8b8095e012a6f6e38e2313907228a966ecd11c31`, `8e2931ba5cde850e53a3e7a7e265ff15462fc724` and `c6cd9478558dc212e88bb4a6a5339eb4ff154237`.
+
+Original flag states, 500 Pokédollar payment, Pikachu happiness and Thunder Badge are **acquisition-time** witnesses. A modern save containing them is NOT proof they existed at original acquisition. Every mismatch applies to the singled-out route, and missing historical prerequisites/receipt return Unknown rather than global Invalid.
+
+### Exact ten-slot Gen I wild probability and version-specific original half-block semantics
+
+`include/Legality/Gen1PretWildRollStage.h` is a read-only independent witness for original hRandomAdd (rate gate), original hRandomSub (slot selector), independently observed original tile, movement and repel context. Both version families' original `data/wild/probabilities.asm` are byte-identical Git blob `6896d93704230993297625f23837631b7da4adf0`; the physical-slot **out-of-256** distribution is:
+
+| Original physical slot | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Weight / 256 | 51 | 51 | 39 | 25 | 25 | 25 | 13 | 13 | 11 | 3 |
+
+Original Red/Blue `engine/battle/wild_encounters.asm` blob `b5cf9f518e9b03ce6122c1c8eea2193d6f500be0` compares bottom-right half-block tile (9,9) to grass/water for **encounter triggering**. Original Yellow corresponding blob `9fe0c96c16ee897608709eeb6ce006058af4e6f8` uses **bottom-left (8,9)**. Both select the physical grass versus water Pokémon table by **bottom-left**, explaining original R/B east-shore behavior that Yellow avoids. Indoor non-FOREST fallback, encounter-rate byte, original repel and party-lead-level constraints are also modeled at the candidate stage.
+
+`Gen1OriginalWildFishingStage.h` now exports `pretWildSlotWeight(index)` and the `evaluatePretWildRoll` join. It checks the prior 1,512-row physical source identity before comparing the original roll and tile witnesses, preserving all legacy 149 source indices. The encounter odds **do not apply to rods**; three global rods and 124 Yellow Super Rod rows are kept separate. No 8-bit original RNG state is reconstructed from present-day Pokémon fields.
+
+**Independent source-data audit executed** on all nine current generated GitHub files: 1,275 Grass rows, 110 Surf rows, and 127 rod rows. Exactly **179 physical version/map/method grass-water tables** (58 Red, 58 Blue, 63 Yellow) have ten unique slots each, with an exact probability sum of **256/256 per table**, zero collisions. `test_legality_l1_gen1_pret_slot_weights.cpp` formalizes this as a new C++ regression for exact-head CI; this particular new test is NOT locally compiled, since its 1,512-row original checkout is unavailable.
+
+### Actually executed tests
+
+The current exact GitHub Git blobs for both NEW independently compiled C++ suites were mounted byte-for-byte in a local source mirror and confirmed with `git hash-object`, then run with GCC 14.2 and Clang 17, host `-O2 -Wall -Wextra -Wpedantic -Werror` and `-O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer` (ASan/UBSan):
+- `test_legality_l1_gen1_pret_gift_event.cpp`: **4/4 PASS**, each run prints **136 conditional, 202 candidate-local and 65,604 missing-history/selector scenarios**. This includes all 256 original Pikachu happiness values and 65,536 scene-selection adversarial combinations.
+- `test_legality_l1_gen1_pret_wild_roll.cpp`: **4/4 PASS**, each run prints **4,048 positive, 2,117 candidate-local and 68,609 Unknown/selector scenarios**. It covers all 256 original slot rolls in R/B/Y, left-shore versus Yellow, indoor non-FOREST, witnessed Repel, and 65,536 malformed game/RNG combinations.
+- Also **reran** 8 earlier unchanged exact-blob native Game Corner and 72-edge evolution binaries under normal and ASan/UBSan (GCC/Clang) with all PASS. This counts as eight new compiled/regression runs + eight previously compiled regression reruns; do not represent the latter as new compilation.
+- Full native matrix is now **56 distinct L1 suites × host + ASan/UBSan = 112 exact-head executions required**, plus shared host/RSE gates. `bash tests/test_legality_l1_run.sh` attempted; no local full checkout so runner absent, and external `git ls-remote` still reports GitHub DNS failure. Full acceptance **BLOCKED** pending exact-head CI or real full repository checkout.
+
+**Remaining scope:** real acquisition-time original saves, complete one-time events/gift conditions, retail RNG seed/frame reconstruction, historical fishing eligible-map proofs and item/event originals, authentic PKHeX.Core differential oracle. Original stage matches are intentionally conditional; no broad Legal or Invalid claims.
