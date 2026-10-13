@@ -12,7 +12,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-002",
@@ -22,7 +23,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "red_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-003",
@@ -32,7 +34,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "blue_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-004",
@@ -42,7 +45,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "yellow_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-005",
@@ -52,7 +56,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "platinum_nds",
-      "expected_source_context": "Conflicting"
+      "expected_source_context": "Conflicting",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-006",
@@ -62,7 +67,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "unknown_source",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-007",
@@ -72,7 +78,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-008",
@@ -82,7 +89,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "red_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-009",
@@ -92,7 +100,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "blue_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-010",
@@ -102,7 +111,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "yellow_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-011",
@@ -112,7 +122,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "platinum_nds",
-      "expected_source_context": "Conflicting"
+      "expected_source_context": "Conflicting",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-012",
@@ -122,7 +133,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "unknown_source",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-013",
@@ -132,7 +144,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-014",
@@ -142,7 +155,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "red_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-015",
@@ -152,7 +166,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "blue_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-016",
@@ -162,7 +177,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "yellow_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-017",
@@ -172,7 +188,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "platinum_nds",
-      "expected_source_context": "Conflicting"
+      "expected_source_context": "Conflicting",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-018",
@@ -182,7 +199,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "unknown_source",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-019",
@@ -192,7 +210,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-020",
@@ -202,7 +221,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "red_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-021",
@@ -212,7 +232,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "blue_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-022",
@@ -222,7 +243,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "yellow_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-023",
@@ -232,7 +254,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "platinum_nds",
-      "expected_source_context": "Conflicting"
+      "expected_source_context": "Conflicting",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-024",
@@ -242,7 +265,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "unknown_source",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-025",
@@ -252,7 +276,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-026",
@@ -262,7 +287,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "red_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-027",
@@ -272,7 +298,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "blue_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-028",
@@ -282,7 +309,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "yellow_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-029",
@@ -292,7 +320,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "platinum_nds",
-      "expected_source_context": "Conflicting"
+      "expected_source_context": "Conflicting",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-030",
@@ -302,7 +331,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "unknown_source",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-031",
@@ -312,7 +342,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-032",
@@ -322,7 +353,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "red_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-033",
@@ -332,7 +364,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "blue_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-034",
@@ -342,7 +375,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "yellow_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-035",
@@ -352,7 +386,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "platinum_nds",
-      "expected_source_context": "Conflicting"
+      "expected_source_context": "Conflicting",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-036",
@@ -362,7 +397,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "unknown_source",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-037",
@@ -372,7 +408,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-038",
@@ -382,7 +419,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "red_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-039",
@@ -392,7 +430,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "blue_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-040",
@@ -402,7 +441,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "yellow_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-041",
@@ -412,7 +452,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "platinum_nds",
-      "expected_source_context": "Conflicting"
+      "expected_source_context": "Conflicting",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-042",
@@ -422,7 +463,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "unknown_source",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-043",
@@ -432,7 +474,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-044",
@@ -442,7 +485,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "red_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-045",
@@ -452,7 +496,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "blue_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-046",
@@ -462,7 +507,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "yellow_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-047",
@@ -472,7 +518,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "platinum_nds",
-      "expected_source_context": "Conflicting"
+      "expected_source_context": "Conflicting",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-048",
@@ -482,7 +529,8 @@
       "dv16": 0,
       "experience": 125,
       "source": "unknown_source",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 0
     },
     {
       "id": "G1RBY-049",
@@ -492,7 +540,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-050",
@@ -502,7 +551,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "red_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-051",
@@ -512,7 +562,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "blue_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-052",
@@ -522,7 +573,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "yellow_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-053",
@@ -532,7 +584,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "platinum_nds",
-      "expected_source_context": "Conflicting"
+      "expected_source_context": "Conflicting",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-054",
@@ -542,7 +595,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "unknown_source",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-055",
@@ -552,7 +606,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-056",
@@ -562,7 +617,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "red_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-057",
@@ -572,7 +628,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "blue_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-058",
@@ -582,7 +639,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "yellow_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-059",
@@ -592,7 +650,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "platinum_nds",
-      "expected_source_context": "Conflicting"
+      "expected_source_context": "Conflicting",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-060",
@@ -602,7 +661,8 @@
       "dv16": 65535,
       "experience": 125,
       "source": "unknown_source",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 65535
     },
     {
       "id": "G1RBY-061",
@@ -612,7 +672,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-062",
@@ -622,7 +683,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "red_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-063",
@@ -632,7 +694,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "blue_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-064",
@@ -642,7 +705,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "yellow_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-065",
@@ -652,7 +716,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "platinum_nds",
-      "expected_source_context": "Conflicting"
+      "expected_source_context": "Conflicting",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-066",
@@ -662,7 +727,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "unknown_source",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-067",
@@ -672,7 +738,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-068",
@@ -682,7 +749,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "red_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-069",
@@ -692,7 +760,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "blue_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-070",
@@ -702,7 +771,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "yellow_gb",
-      "expected_source_context": "CandidateOnly"
+      "expected_source_context": "CandidateOnly",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-071",
@@ -712,7 +782,8 @@
       "dv16": 21845,
       "experience": 125,
       "source": "platinum_nds",
-      "expected_source_context": "Conflicting"
+      "expected_source_context": "Conflicting",
+      "stat_experience": 32768
     },
     {
       "id": "G1RBY-072",
@@ -722,7 +793,9 @@
       "dv16": 21845,
       "experience": 125,
       "source": "unknown_source",
-      "expected_source_context": "Unknown"
+      "expected_source_context": "Unknown",
+      "stat_experience": 32768
     }
-  ]
+  ],
+  "source_field_contract": "Gen I native 16-bit stat-experience, five independent original fields; no modern EV reinterpretation"
 }
