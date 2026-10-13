@@ -1,0 +1,147 @@
+name: L5 Gen I RBY Real PKHeX Core Differential
+
+on:
+  push:
+    branches:
+      - audit/legality-l5-research-qa-20261012
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: l5-gen1-real-pkhex-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  actual-original-pkhex-and-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Checkout exact accepted original NX analyzer
+        uses: actions/checkout@v4
+        with:
+          repository: GlitchedZeus/PokeBank-NX
+          ref: d29eada5c087e201e00c749703f1a2de3ddfadeb
+          path: _l5_gen1_accepted
+          persist-credentials: false
+      - name: Checkout exact coordinator with native-format guards
+        uses: actions/checkout@v4
+        with:
+          repository: GlitchedZeus/PokeBank-NX
+          ref: ad9c1c859f94c0321a5d17489c72b0e7dbb9f440
+          path: _l5_gen1_coordinator
+          persist-credentials: false
+      - name: Checkout authentic original PKHeX.Core pin
+        uses: actions/checkout@v4
+        with:
+          repository: kwsch/PKHeX
+          ref: 6501f0ab46e8f8ca048539dbaf8cae8cb104e722
+          path: _l5_gen1_pkhex
+          persist-credentials: false
+      - name: Verify immutable branch heads and source hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          test "$(git -C _l5_gen1_accepted rev-parse HEAD)" = d29eada5c087e201e00c749703f1a2de3ddfadeb
+          test "$(git -C _l5_gen1_coordinator rev-parse HEAD)" = ad9c1c859f94c0321a5d17489c72b0e7dbb9f440
+          test "$(git -C _l5_gen1_pkhex rev-parse HEAD)" = 6501f0ab46e8f8ca048539dbaf8cae8cb104e722
+          test "$(git hash-object _l5_gen1_accepted/src/Legality/Legality.cpp)" = b1d02d6620e8fffca2cf71874b786d44108e193f
+          test "$(git hash-object _l5_gen1_coordinator/src/Legality/Legality.cpp)" = 4ac8a0dc0badb8211eb105811eb3fa9f928e36e4
+          test "$(git hash-object _l5_gen1_pkhex/PKHeX.Core/PKM/PK1.cs)" = a4b692ae7045afb9d11ea3a3b6e25b94c0c4de8b
+          test "$(git hash-object _l5_gen1_pkhex/PKHeX.Core/Legality/LegalityAnalysis.cs)" = b7f5ca8534e426ad3bf1d30de6f7f7ca57544f3c
+          test -f tests/fixtures/legality_l5_gen1_rby_oracle_cases.json
+          git diff --check
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Build actual original PKHeX.Core .NET 10 executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet --info
+          dotnet build tools/audit_legality_l5_gen1_pkhex_oracle/L5Gen1PKHeXOracle.csproj --configuration Release
+      - name: Execute pinned PKHeX.Core PK1 LegalityAnalysis 72 synthetic vectors
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet tools/audit_legality_l5_gen1_pkhex_oracle/bin/Release/net10.0/L5Gen1PKHeXOracle.dll \
+            tests/fixtures/legality_l5_gen1_rby_oracle_cases.json \
+            > /tmp/l5-gen1-original-pkhex.jsonl
+          test "$(wc -l < /tmp/l5-gen1-original-pkhex.jsonl)" = 72
+      - name: Build and run actual accepted NX source-free F3/F4 controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -C _l5_gen1_accepted -f Makefile.host -f ../tools/audit_legality_l5_gen1_rby_native.mk \
+            CXX=g++ L5_G1_VARIANT=baseline build-host/l5_gen1_rby_baseline
+          _l5_gen1_accepted/build-host/l5_gen1_rby_baseline --baseline > /tmp/l5-gen1-accepted.jsonl
+          test "$(wc -l < /tmp/l5-gen1-accepted.jsonl)" = 72
+          make -C _l5_gen1_accepted -f Makefile.host -f ../tools/audit_legality_l5_gen1_rby_native.mk \
+            CXX=g++ L5_G1_VARIANT=baseline build-host/l5_gen1_rby_baseline_san
+          ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 \
+          UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+          _l5_gen1_accepted/build-host/l5_gen1_rby_baseline_san --baseline > /tmp/l5-gen1-accepted-sanitized.jsonl
+          test "$(wc -l < /tmp/l5-gen1-accepted-sanitized.jsonl)" = 72
+          cmp /tmp/l5-gen1-accepted.jsonl /tmp/l5-gen1-accepted-sanitized.jsonl
+      - name: Build and run actual corrected coordinator PK1 source-free controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -C _l5_gen1_coordinator -f Makefile.host -f ../tools/audit_legality_l5_gen1_rby_native.mk \
+            CXX=g++ L5_G1_VARIANT=coordinator build-host/l5_gen1_rby_coordinator
+          _l5_gen1_coordinator/build-host/l5_gen1_rby_coordinator --coordinator > /tmp/l5-gen1-coordinator.jsonl
+          test "$(wc -l < /tmp/l5-gen1-coordinator.jsonl)" = 72
+          make -C _l5_gen1_coordinator -f Makefile.host -f ../tools/audit_legality_l5_gen1_rby_native.mk \
+            CXX=g++ L5_G1_VARIANT=coordinator build-host/l5_gen1_rby_coordinator_san
+          ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 \
+          UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+          _l5_gen1_coordinator/build-host/l5_gen1_rby_coordinator_san --coordinator > /tmp/l5-gen1-coordinator-sanitized.jsonl
+          test "$(wc -l < /tmp/l5-gen1-coordinator-sanitized.jsonl)" = 72
+          cmp /tmp/l5-gen1-coordinator.jsonl /tmp/l5-gen1-coordinator-sanitized.jsonl
+      - name: Execute true three-engine differential and adversarial protocol checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l5_gen1_rby_live_diff.py --self-test
+          python3 tools/audit_legality_l5_gen1_rby_live_diff.py \
+            --vectors tests/fixtures/legality_l5_gen1_rby_oracle_cases.json \
+            --pkhex-output /tmp/l5-gen1-original-pkhex.jsonl \
+            --accepted-output /tmp/l5-gen1-accepted.jsonl \
+            --coordinator-output /tmp/l5-gen1-coordinator.jsonl \
+            --json-out /tmp/l5-gen1-runtime-differential.json
+      - name: Guard Gen II native DV/gender and Gen III-IV production analyzer
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -C _l5_gen1_coordinator -f Makefile.host -f ../tools/audit_legality_l5_gen1_rby_native.mk l5-gen2-4-guard
+          make -C _l5_gen1_coordinator -f Makefile.host -f ../tools/audit_legality_l5_gen1_rby_native.mk l5-gen2-4-guard-san
+          make -C _l5_gen1_coordinator -f Makefile.host build-host/test_gen34_ball_domain_analyzer
+          _l5_gen1_coordinator/build-host/test_gen34_ball_domain_analyzer
+          make -C _l5_gen1_coordinator -f Makefile.host build-host/test_gen34_ball_domain_analyzer_sanitize
+          ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 \
+          UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+            _l5_gen1_coordinator/build-host/test_gen34_ball_domain_analyzer_sanitize
+      - name: Assert all original tracked sources remain unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          for folder in . _l5_gen1_accepted _l5_gen1_coordinator _l5_gen1_pkhex; do
+            test -z "$(git -C "$folder" status --porcelain --untracked-files=no)"
+          done
+          git diff --check
+      - name: Publish research-scoped actual-runtime comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: l5-gen1-real-pkhex-differential-${{ github.sha }}
+          path: |
+            /tmp/l5-gen1-*-*.jsonl
+            /tmp/l5-gen1-runtime-differential.json
+          if-no-files-found: ignore
+          retention-days: 14
