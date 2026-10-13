@@ -352,3 +352,94 @@ record transitions. Synthetic positive fixtures are NOT historical proof.
 **Status:** major additional L4 original-source and native identity
 engineering delivered; full-checkout acceptance BLOCKED; other lanes
 and production legality analyzer remain untouched.
+
+
+## October 13 major session — read-only raw PK1 and original PokeList provenance
+
+**Engineering heads:** `667274c889b57611803e3f1494ddc6e0f53f5ba9`
+(raw-record gate), `103a32f41a44213d6b473c65afa153f16d4ea295`
+(original source-slot check), and `bb6d9dd4b214371464a6f6677291fe684a4adc67`
+(native-type executable fixture).
+
+The new `Gen1NativeRawRecordWitness.h` is a read-only metadata
+consistency gate for the **actual strict Gen I `PokemonRecord`**:
+boxed raw records must be exactly **33 bytes**, party records exactly
+**44 bytes**. It independently cross-checks the source species marker,
+HP, status, type bytes, catch-rate/tradeback byte, four moves,
+original Trainer ID, 24-bit experience, five 16-bit stat-experience
+values, 4-bit DVs including derived HP DV, move PP/PP Ups, level,
+and all five party-only battle stats. Body mismatch/short/overlong data
+returns UnknownNative **before** the original gift/trade evidence layer
+compares original source-specific fields. A consistency failure is NOT
+a global Invalid and cannot modify an original save.
+
+Original game-font OT and nickname bytes are **not stored inside**
+`PokemonRecord.rawBody`. The new bounded `compareOriginalListSlot`
+therefore checks their independent read-only source list positions
+following the exact Gen I parser layout:
+`bodyStart = listOffset + capacity + 2`,
+`otStart = bodyStart + capacity*bodySize`,
+`nickStart = otStart + capacity*nameLength`.
+It checks the list count/sentinel, same-slot species marker, complete
+body and raw names for **international 11-byte and Japanese 6-byte
+name formats**, rejects malformed capacities and out-of-range offsets,
+and requires an independently attested same-save and individual link.
+The helper is NOT an event-receipt oracle and is not called for wild
+encounter enumeration (L1-owned).
+
+**Pinned native source evidence, fetched from GitHub before editing:**
+`include/Integration/Gen1/Gen1ReadOnlySave.h`, Git blob
+`d52f60cd861b48cab4d577dd702607c72e970a15`;
+`src/Integration/Gen1/Gen1ReadOnlySave.cpp`, Git blob
+`a2445a20a2ede222a2b14e56f87305ef3263484e`.
+The local test header was recreated and its exact Git blob matched
+`d52f60cd...`; the real parser .cpp was inspected by live GitHub
+connector, but full compiled/linkable source was not downloaded.
+The test fixture no longer uses a placeholder record type: it instantiates
+the actual source-linked `PokeVault::Integration::Gen1::PokemonRecord`.
+
+**Exact finished source/test Git hashes:**
+
+- `Gen1NativeRawRecordWitness.h`:
+  `d1665327c9c9c63e14bfe8edc478d3246c0b008d`.
+- `legality_l4_gen1_raw_record_witness.cpp`:
+  `a58f82af8fc06c45e09b7ab2580beb01b0720724`.
+- `Gen1OriginalGiftNativeEvidence.h`:
+  `ef3b258de8ac92d3c5336c0f0de924b22f64dfd8`.
+- `legality_l4_gen1_original_native.cpp`:
+  `2190dfdca348360a6c900608a2c73c4db4ec7751`.
+
+**Actually executed on these final source blobs:**
+four focused test programs with GCC and Clang C++20 normal (`-O2`)
+and ASan/UBSan (`-O1 -g -fsanitize=address,undefined`), strict
+`-Wall -Wextra -Wpedantic -Werror`: **16/16 PASS, no sanitizer
+findings**. Among them the new actual-native-type fixture verifies
+both raw-body lengths, individual-bit mutations of decoded source bytes,
+65,536 raw name pairs, 8,192 original-list offset probes, malformed
+list counts/sentinels and offset overflow; plus the existing 65,536
+Time Capsule byte combinations, 65,536 Red/Blue/Yellow trade table tags
+and 4,096 original-individual identity proof masks.
+Exact local execution log:
+`/mnt/data/l4-gen1/major-session-native-verified-final-2026-10-13.log`.
+All new sources and tests were compared against committed blob hashes.
+
+**Critical blocked gates:** Both user-requested full runner commands
+(`bash tests/test_legality_l4_runner.sh` and
+`L4_SANITIZE=1 bash tests/test_legality_l4_runner.sh`) were actually
+attempted from the isolated workspace and exited 127 because the
+complete checkout and runner script were absent; `git ls-remote`
+still fails `Could not resolve host: github.com`. The standalone
+native-`PokemonRecord` raw test is NOT the full 28-suite L4 runner,
+and `legality_l4_gen1_original_native.cpp` (524,288 proof
+combinations) still has not compiled against its full real Gen I/II
+distribution dependencies in the local environment. Acceptance remains
+**BLOCKED** until the exact-head GitHub Actions/complete checkout
+normal+ASan/UBSan matrices, Python tests and native join pass.
+
+Remaining historical gaps: original Stadium distribution and authentic
+per-individual receipts, complete acquisition/transfer lineage and
+original/current Pokémon source digests, verified native save-slot
+identities for genuine users, Japanese trade-source history and the
+actual Time Capsule return-item chain. No global Valid/Invalid claims,
+wild encounter data ownership transfer, original save writes, coordinator
+merge, accepted-branch or MAIN modification occurred.
