@@ -7,6 +7,12 @@ on:
       - 'include/Enums/GameVersion.h'
       - 'include/Legality/Gen56NativeEnvelopeEvidence.h'
       - 'tests/test_legality_gen59_native_foundation.cpp'
+      - 'tests/test_legality_gen5_product_reader_bridge.cpp'
+      - 'src/Legality/Gen5RecordAnalysis.cpp'
+      - 'include/Legality/Gen5ProductNativeEvidence.h'
+      - 'include/Pokemon/Pokemon5ReadOnly.h'
+      - 'include/Encryption/Encryption5.h'
+      - 'include/Legality/Legality.h'
       - 'src/Legality/Legality.cpp'
       - 'tools/audit_legality_gen59_wiring.py'
       - '.github/workflows/legality-gen5-9-foundation.yml'
@@ -61,4 +67,13 @@ jobs:
             -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude \
             tests/test_legality_gen59_native_foundation.cpp -o /tmp/pbnx-gen59/domain-san
           /tmp/pbnx-gen59/domain-san
+          "$CXX" -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror -Iinclude \
+            src/Legality/Gen5RecordAnalysis.cpp tests/test_legality_gen5_product_reader_bridge.cpp \
+            -o /tmp/pbnx-gen59/product-pk5
+          /tmp/pbnx-gen59/product-pk5
+          "$CXX" -std=c++20 -O1 -g -Wall -Wextra -Wpedantic -Werror \
+            -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude \
+            src/Legality/Gen5RecordAnalysis.cpp tests/test_legality_gen5_product_reader_bridge.cpp \
+            -o /tmp/pbnx-gen59/product-pk5-san
+          /tmp/pbnx-gen59/product-pk5-san
           git diff --check
