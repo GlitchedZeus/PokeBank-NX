@@ -559,6 +559,23 @@ require(read("tests/test_gen5_readonly_save.cpp"),
         "assert(ui.speciesChoiceCount()==1);",
         "ui.cancelSpeciesPicker();",
         "assert(ui.acceptSpeciesPicker(error));")
+# The 25 exact native Nature IDs have named UI choices and a reversible
+# separate picker; the A action cannot commit a source save.
+require(native_screen,"Surface::NaturePicker",
+        "std::array<std::string_view,25> kNatureNames",
+        "openNaturePicker(", "moveNatureCursor(",
+        "acceptNaturePicker(", "cancelNaturePicker()")
+require(surface,"kGen5NatureTouchBase=79500",
+        "case Surface::NaturePicker:",
+        "drawNaturePicker(screen,fb,state)",
+        "state.acceptNaturePicker(error)",
+        "state.cancelNaturePicker()",
+        "ScreenState::natureName(current->nature())")
+require(read("tests/test_gen5_readonly_save.cpp"),
+        'natureName(12)=="Serious"',
+        "assert(ui.openNaturePicker(error));",
+        "assert(ui.natureSelection()==24);",
+        "assert(ui.acceptNaturePicker(error));")
 # Native text editing stays on the strict PK5 writer whitelist.
 native_text=read("include/Integration/Gen5/Gen5NativeText.h")
 require(native_text,"asciiName5(","encodeAsciiName5(",

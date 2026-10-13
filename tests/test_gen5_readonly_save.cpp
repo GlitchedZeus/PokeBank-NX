@@ -761,6 +761,24 @@ int main() {
                rows[42].field==GF::Species);
         assert(rows[2].field==GF::HeldItem && rows[3].field==GF::Ball);
         assert(rows[4].field==GF::MetLevel);
+        static_assert(G::Gen5SharedScreenState::natureName(0)=="Hardy");
+        static_assert(G::Gen5SharedScreenState::natureName(12)=="Serious");
+        static_assert(G::Gen5SharedScreenState::natureName(24)=="Quirky");
+        const auto sourceNature=ui.draft().current()->nature();
+        assert(ui.openNaturePicker(error));
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::NaturePicker);
+        assert(ui.natureSelection()==sourceNature);
+        ui.moveNatureCursor(30); // Bounded 24, never wraps.
+        assert(ui.natureSelection()==24);
+        assert(!ui.back()); // Cancel is lossless and keeps Edit cursor.
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
+        assert(ui.draft().current()->nature()==sourceNature);
+        assert(ui.openNaturePicker(error));
+        ui.moveNatureCursor(12-static_cast<int>(sourceNature));
+        assert(ui.natureSelection()==12);
+        assert(ui.acceptNaturePicker(error));
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
+        assert(ui.draft().current()->nature()==12);
         ui.moveField(2);
         assert(ui.adjustField(1,error));
         ui.moveField(1);

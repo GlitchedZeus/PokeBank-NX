@@ -39,6 +39,7 @@ constexpr int kGen5MovePickerTouchBase=77500;
 constexpr int kGen5LocationTouchBase=78000;
 constexpr int kGen5IdentityTouchBase=78500;
 constexpr int kGen5SpeciesTouchBase=78600;
+constexpr int kGen5NatureTouchBase=79500;
 
 PokeVault::Legacy::Gen5ReadOnlyTrainer& nativeTrainer(TrainerViewScreen& screen) {
     return static_cast<PokeVault::Legacy::Gen5ReadOnlyTrainer&>(screen.trainer);
@@ -113,7 +114,8 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             state.moveField(chosen-state.fieldRow());
             if(alreadyFocused) {
                 const auto field=ScreenState::kEditableRows[static_cast<size_t>(chosen)].field;
-                if(field==ScreenState::Field::Move ||
+                if(field==ScreenState::Field::Nature ||
+                   field==ScreenState::Field::Move ||
                    field==ScreenState::Field::MetLocation ||
                    field==ScreenState::Field::TrainerId ||
                    field==ScreenState::Field::SecretId ||
@@ -162,6 +164,11 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
               tap<kGen5SpeciesTouchBase+static_cast<int>(state.speciesChoiceCount())) {
         state.moveSpeciesCursor(tap-kGen5SpeciesTouchBase-
                                 static_cast<int>(state.speciesChoiceIndex()));
+        down|=HidNpadButton_A;
+    } else if(state.surface()==Surface::NaturePicker &&
+              tap>=kGen5NatureTouchBase && tap<kGen5NatureTouchBase+25) {
+        state.moveNatureCursor(tap-kGen5NatureTouchBase-
+                               static_cast<int>(state.natureSelection()));
         down|=HidNpadButton_A;
     } else if(state.surface()==Surface::Browse &&
               screen.selectedMode==TrainerViewScreen::ViewMode::Party &&
@@ -221,6 +228,9 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                               row.field==ScreenState::Field::Gender) {
                         std::string error;
                         if(!state.openIdentityPicker(error))screen.postStatus(error,300);
+                    } else if(row.field==ScreenState::Field::Nature) {
+                        std::string error;
+                        if(!state.openNaturePicker(error))screen.postStatus(error,300);
                     } else if(row.field==ScreenState::Field::Species) {
                         std::string error;
                         if(!state.openSpeciesPicker(error))screen.postStatus(error,300);
@@ -320,6 +330,19 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             else if(keys&HidNpadButton_A) {
                 std::string error;
                 if(!state.acceptLocationPicker(error))screen.postStatus(error,300);
+            }
+            return true;
+        case Surface::NaturePicker:
+            if(keys&HidNpadButton_Up)state.moveNatureCursor(-1);
+            if(keys&HidNpadButton_Down)state.moveNatureCursor(1);
+            if(keys&HidNpadButton_Left)state.moveNatureCursor(-5);
+            if(keys&HidNpadButton_Right)state.moveNatureCursor(5);
+            if(keys&HidNpadButton_ZL)state.moveNatureCursor(-10);
+            if(keys&HidNpadButton_ZR)state.moveNatureCursor(10);
+            if(keys&HidNpadButton_B)state.cancelNaturePicker();
+            else if(keys&HidNpadButton_A) {
+                std::string error;
+                if(!state.acceptNaturePicker(error))screen.postStatus(error,300);
             }
             return true;
         case Surface::SpeciesPicker:
@@ -714,7 +737,8 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
         // an in-memory PK5 value. No implicit Keep, Discard or source write.
         screen.touchButtons.push_back(
             {kGen5FieldTouchBase+static_cast<int>(index),x+14,yy,279,46});
-        if(row.field!=ScreenState::Field::Move &&
+        if(row.field!=ScreenState::Field::Nature &&
+           row.field!=ScreenState::Field::Move &&
            row.field!=ScreenState::Field::MetLocation &&
            row.field!=ScreenState::Field::TrainerId &&
            row.field!=ScreenState::Field::SecretId &&
@@ -732,6 +756,8 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                 {kGen5IncreaseTouchBase+static_cast<int>(index),x+418,yy+3,36,40});
         }
         std::string value=std::to_string(ScreenState::fieldValue(*current,row,state.black2White2()));
+        if(row.field==ScreenState::Field::Nature)
+            value=std::string(ScreenState::natureName(current->nature()));
         if(row.field==ScreenState::Field::Pokerus)
             value=current->pokerusMode()==0?"None":
                   current->pokerusMode()==1?"Cured":"Infected";
@@ -748,7 +774,8 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
             value=name?*name:"(native glyphs)";
         }
         fb.drawText(x+26,yy+11,row.label,Colors::TextSecondary,TextStyle::Body);
-        if(row.field==ScreenState::Field::Move ||
+        if(row.field==ScreenState::Field::Nature ||
+           row.field==ScreenState::Field::Move ||
            row.field==ScreenState::Field::MetLocation ||
            row.field==ScreenState::Field::TrainerId ||
            row.field==ScreenState::Field::SecretId ||
@@ -859,6 +886,43 @@ void drawLocationPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,
         Colors::TextDim,TextStyle::Caption);
     drawNavBar(fb,{{"D-pad/Stick","Browse"},{"ZL/ZR","Jump 40"},
                    {"A","Choose Location"},{"B","Cancel"}});
+}
+// Compact native Nature picker (25 Gen III+ indices), read-only until A.
+void drawNaturePicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,
+                      const ScreenState& state) {
+    dimShared(screen,fb);
+    constexpr int w=680,h=525;
+    const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRoundedRect(x,y,w,h,16,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,16,Colors::Border,1);
+    fb.drawText(x+24,y+16,"Generation V Nature",
+                Colors::Text,TextStyle::Heading);
+    fb.drawText(x+24,y+54,
+        "Native 25-nature stat modifiers; changes stay in PK5 draft",
+        Colors::Accent,TextStyle::Caption);
+    const auto visible=PokeBank::UIModel::SharedPokemonEditor::scrollWindow(
+        ScreenState::kNatureNames.size(),8,state.natureSelection());
+    constexpr const char* stat[5]={"Atk","Def","Spe","SpA","SpD"};
+    for(size_t i=0;i<visible.count;++i) {
+        const uint32_t id=static_cast<uint32_t>(visible.first+i);
+        const int yy=y+96+static_cast<int>(i)*44;
+        if(id==state.natureSelection())
+            fb.drawSelectionHighlight(x+12,yy,w-24,40);
+        screen.touchButtons.push_back({
+            kGen5NatureTouchBase+static_cast<int>(id),x+14,yy,w-28,40});
+        const unsigned up=id/5,down=id%5;
+        const std::string effect=up==down?"Neutral":
+            std::string("+")+stat[up]+" / -"+stat[down];
+        fb.drawText(x+28,yy+8,
+            std::to_string(id)+" - "+std::string(ScreenState::natureName(id)),
+            Colors::Text,TextStyle::Body);
+        fb.drawText(x+w-204,yy+10,effect,
+                    Colors::TextSecondary,TextStyle::Caption);
+    }
+    fb.drawText(x+24,y+h-39,
+        "A stages a Nature change; B preserves the active PK5 draft",
+        Colors::TextDim,TextStyle::Caption);
+    drawNavBar(fb,{{"D-pad/Stick","Browse"},{"A","Choose"},{"B","Cancel"}});
 }
 // Native Gen V named species browser. No legality inference and no
 // mutation until an explicit confirmed pick reaches the guarded PK5 draft.
@@ -976,6 +1040,7 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         case Surface::LocationPicker:drawLocationPicker(screen,fb,state);return true;
         case Surface::IdentityPicker:drawIdentityPicker(screen,fb,state);return true;
         case Surface::SpeciesPicker:drawSpeciesPicker(screen,fb,state);return true;
+        case Surface::NaturePicker:drawNaturePicker(screen,fb,state);return true;
         case Surface::View: {
             const auto current=state.draft().current();
             screen.drawGSCOverlay(fb);

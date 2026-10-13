@@ -24,7 +24,7 @@ public:
     using Action=Shared::Action;
     using Field=Shared::FieldIdentity;
     enum class Surface : uint8_t {
-        Browse, Actions, View, Edit, MovePicker, LocationPicker, IdentityPicker, SpeciesPicker, ConfirmDraft, Review,
+        Browse, Actions, View, Edit, MovePicker, LocationPicker, IdentityPicker, SpeciesPicker, NaturePicker, ConfirmDraft, Review,
         ConfirmDiscardAll, ConfirmExport, ConfirmExit
     };
     struct EditableRow { Field field; size_t stat; const char* label; uint32_t maximum; };
@@ -72,6 +72,18 @@ public:
     [[nodiscard]] int actionRow() const noexcept { return actionRow_; }
     [[nodiscard]] int fieldRow() const noexcept { return fieldRow_; }
     [[nodiscard]] uint16_t movePickerSelection() const noexcept { return movePickerSelection_; }
+    // PK5's 25 nature IDs follow the Gen III+ 5x5 battle-stat grid.
+    static constexpr std::array<std::string_view,25> kNatureNames{{
+        "Hardy","Lonely","Brave","Adamant","Naughty",
+        "Bold","Docile","Relaxed","Impish","Lax",
+        "Timid","Hasty","Serious","Jolly","Naive",
+        "Modest","Mild","Quiet","Bashful","Rash",
+        "Calm","Gentle","Sassy","Careful","Quirky"
+    }};
+    [[nodiscard]] uint8_t natureSelection() const noexcept { return natureSelection_; }
+    [[nodiscard]] static constexpr std::string_view natureName(uint32_t id) noexcept {
+        return id<kNatureNames.size()?kNatureNames[id]:std::string_view{};
+    }
     [[nodiscard]] size_t locationPickerIndex() const noexcept { return locationPickerIndex_; }
     [[nodiscard]] uint32_t identitySelection() const noexcept { return identitySelection_; }
     [[nodiscard]] size_t speciesChoiceCount() const noexcept { return speciesCount_; }
@@ -184,6 +196,38 @@ public:
         if(surface_!=Surface::Edit)return;
         constexpr int count=static_cast<int>(kEditableRows.size());
         fieldRow_=(fieldRow_+delta%count+count)%count;
+    }
+    [[nodiscard]] bool openNaturePicker(std::string& error) {
+        if(surface_!=Surface::Edit || !draft_.editable() ||
+           kEditableRows[static_cast<size_t>(fieldRow_)].field!=Field::Nature) {
+            error="Gen V nature picker requires an Edit draft's Nature field";
+            return false;
+        }
+        const auto current=draft_.current();
+        if(!current || !current->valid() || current->nature()>24) {
+            error="Gen V nature picker requires a validated PK5 nature";
+            return false;
+        }
+        natureSelection_=current->nature();
+        surface_=Surface::NaturePicker;
+        error.clear();
+        return true;
+    }
+    void moveNatureCursor(int delta) noexcept {
+        if(surface_!=Surface::NaturePicker)return;
+        natureSelection_=static_cast<uint8_t>(std::clamp(
+            static_cast<int>(natureSelection_)+delta,0,24));
+    }
+    [[nodiscard]] bool acceptNaturePicker(std::string& error) {
+        if(surface_!=Surface::NaturePicker || !draft_.editable() ||
+           !stageSharedField(draft_,Field::Nature,0,natureSelection_,error))
+            return false;
+        surface_=Surface::Edit;
+        error.clear();
+        return true;
+    }
+    void cancelNaturePicker() noexcept {
+        if(surface_==Surface::NaturePicker)surface_=Surface::Edit;
     }
     // The Move Picker is local to the existing shared PK5 draft. It never
     // stages a selection until A confirms the target. B is lossless and
@@ -551,6 +595,10 @@ public:
             cancelSpeciesPicker();
             return false;
         }
+        if(surface_==Surface::NaturePicker) {
+            cancelNaturePicker();
+            return false;
+        }
         if(surface_==Surface::View || surface_==Surface::Edit) {
             if(draft_.back()) {surface_=Surface::Browse;return true;}
             surface_=Surface::ConfirmDraft;
@@ -662,6 +710,7 @@ private:
     int actionRow_=0;
     int fieldRow_=0;
     uint16_t movePickerSelection_=0;
+    uint8_t natureSelection_=0;
     uint32_t identitySelection_=0;
     std::array<uint16_t,649> speciesResults_{};
     size_t speciesCount_=0;
