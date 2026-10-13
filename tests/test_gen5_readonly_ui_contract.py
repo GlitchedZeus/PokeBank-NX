@@ -233,7 +233,7 @@ shared_contract = read("include/UI/SharedPokemonEditorContract.h")
 require(read_pk5, "pokerusState() const", "ball() const",
         "metLevel() const", "originalTrainerGender() const",
         "metLocation() const")
-require(native_stage, "Field : uint8_t { Nature, Friendship, IV, EV, HeldItem, Ball, MetLevel }",
+require(native_stage, "Field : uint8_t { Nature, Friendship, IV, EV, HeldItem, Ball, MetLevel,",
         "case Field::HeldItem:", "case Field::Ball:",
         "case Field::MetLevel:", "value > 638",
         "value > 25", "value > 100",
@@ -248,7 +248,7 @@ require(native_review, "apply(Field::HeldItem,0,before.heldItem(),after.heldItem
 require(native_bridge, "NativeField::HeldItem,stat,value,error",
         "NativeField::Ball,stat,value,error",
         "NativeField::MetLevel,stat,value,error")
-require(native_screen, "std::array<EditableRow,35>",
+require(native_screen, "std::array<EditableRow,38>",
         '"Held Item ID",638', '"Ball ID",25', '"Met Level",100',
         "case Field::HeldItem:return pk.heldItem();",
         "case Field::Ball:return pk.ball();",
@@ -291,7 +291,7 @@ require(native_bridge, "NativeField::TrainerId,stat,value,error",
         "NativeField::Pokerus,stat,value,error",
         "NativeField::FatefulEncounter,stat,value,error",
         "NativeField::MetLocation,stat,value,error")
-require(native_screen, "std::array<EditableRow,35>",
+require(native_screen, "std::array<EditableRow,38>",
         '"Trainer ID",65535', '"Secret ID",65535',
         '"OT Gender",1', '"Pokerus",2', '"Met Location",65535',
         '"Fateful",1',
@@ -305,6 +305,47 @@ require(surface, "void drawLocationPicker(", "case Surface::LocationPicker:",
         "Utils::promptNumber(", "state.stageFieldValue(",
         "state.acceptLocationPicker(error)", "state.cancelLocationPicker()",
         "TID/SID changed in draft; shiny status may change")
+
+# Gen V form, ability-slot and gender use distinct PKHeX BW/B2W2
+# personal data; never borrow Gen IX abilities or accept an invented form.
+personal = read("include/Integration/Gen5/Gen5PersonalData.h")
+require(personal, "std::array<Personal5,668> NativePersonalBW",
+        "std::array<Personal5,709> NativePersonalB2W2",
+        "personal_bw blob de1a0654e8540a5c7e5c8b5e6448db50bb6d8c55",
+        "personal_b2w2 blob 9236ad139126af222e915650dbda70d6df897399",
+        "personal5(", "abilityForSlot5(", "genderAllowed5(",
+        "base.formIndex==0", "black2White2")
+require(native_stage, "case Field::Form:", "case Field::AbilitySlot:",
+        "case Field::Gender:", "genderAllowed5(", "normalizedGender5(",
+        "Gen V party form changes requiring stat regeneration are locked",
+        "Gen V ability would change shininess")
+require(native_bridge, "NativeField::Form,stat,value,error",
+        "NativeField::AbilitySlot,stat,value,error",
+        "NativeField::Gender,stat,value,error")
+require(native_session, "Field::Form,0,after.form()",
+        "Field::AbilitySlot,0,slot5(after)",
+        "Field::Gender,0,after.gender()")
+require(native_review, "Field::Form,0,before.form(),after.form()",
+        "Field::AbilitySlot,0,slot5(before),slot5(after)",
+        "Field::Gender,0,before.gender(),after.gender()")
+require(native_screen, "IdentityPicker", "openIdentityPicker(",
+        "acceptIdentityPicker(", "cancelIdentityPicker()",
+        "identityChoiceAllowed(", "identityChoiceCount()",
+        '"Ability Slot",2', '"Form",31', '"Gender",2')
+require(surface, "void drawIdentityPicker(",
+        "case Surface::IdentityPicker:",
+        "kGen5IdentityTouchBase=78500",
+        "state.openIdentityPicker(error)",
+        "state.acceptIdentityPicker(error)", "state.cancelIdentityPicker()",
+        "personal5(current->species(),current->form(),state.black2White2())")
+require(shared_contract, "case FieldIdentity::Form:",
+        "case FieldIdentity::Gender:", "case FieldIdentity::Ability:")
+require(read("tests/test_gen5_readonly_save.cpp"),
+        "ui.openIdentityPicker(error)", "ui.acceptIdentityPicker(error)",
+        "kEditableRows.size()==38")
+require(read("tests/test_gen5_pk5_readonly.cpp"),
+        "G5::NativePersonalBW.size()==668", "G5::NativePersonalB2W2.size()==709",
+        "G5::personal5(386,1,false)", "Field::AbilitySlot")
 
 # Native Gen V move data is pinned to PKHeX MoveInfo5 (560 PP values).
 # The controller/touch picker is a sub-surface of the same guarded Edit draft,
@@ -327,7 +368,7 @@ require(native_bridge, "NativeField::Move,stat,value,error",
         "NativeField::MovePPUps,stat,value,error")
 require(native_screen, "Surface::MovePicker", "openMovePicker(",
         "movePickerCursor(", "acceptMovePicker(", "cancelMovePicker()",
-        "std::array<EditableRow,35>", "Field::Move:return pk.moves()[row.stat]",
+        "std::array<EditableRow,38>", "Field::Move:return pk.moves()[row.stat]",
         "Field::MovePPUps:return pk.ppUps()[row.stat]",
         "Field::MovePP:return pk.pp()[row.stat]")
 require(surface, "case Surface::MovePicker:", "drawMovePicker(",

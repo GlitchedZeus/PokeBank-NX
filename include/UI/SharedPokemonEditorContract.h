@@ -366,6 +366,9 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::Nature:
             case FieldIdentity::HeldItem:
             case FieldIdentity::Ball:
+            case FieldIdentity::Form:
+            case FieldIdentity::Gender:
+            case FieldIdentity::Ability:
             case FieldIdentity::MetLevel:
             case FieldIdentity::Move:
             case FieldIdentity::MovePP:
@@ -379,13 +382,10 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
                 return FieldAccess::Editable;
             case FieldIdentity::Species:
             case FieldIdentity::Nickname:
-            case FieldIdentity::Form:
-            case FieldIdentity::Gender:
             case FieldIdentity::Shiny:
             case FieldIdentity::Language:
             case FieldIdentity::Level:
             case FieldIdentity::Experience:
-            case FieldIdentity::Ability:
             case FieldIdentity::CalculatedStats:
             case FieldIdentity::PersonalityId:
             case FieldIdentity::OriginGame:

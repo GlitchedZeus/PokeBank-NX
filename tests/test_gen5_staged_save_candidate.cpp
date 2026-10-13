@@ -94,6 +94,9 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     assert(ws.stageParty(0,Field::MovePPUps,0,3,&error));
     assert(ws.stageParty(0,Field::MovePP,0,4,&error));
     assert(ws.stageBox(0,0,Field::HeldItem,0,638,&error));
+    assert(ws.stageBox(0,0,Field::AbilitySlot,0,2,&error));
+    assert(ws.stageBox(0,0,Field::Gender,0,1,&error));
+    assert(!ws.stageBox(0,0,Field::Form,0,1,&error)); // Eevee form 0 only
     assert(ws.stageBox(0,0,Field::Move,1,85,&error));
     assert(ws.stageBox(0,0,Field::EV,0,252,&error));
     assert(ws.stageBox(0,0,Field::IV,4,31,&error));
@@ -181,6 +184,10 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     assert(candidate->partyPokemon(0)->ppUps()[0]==3);
     assert(candidate->partyPokemon(0)->pp()[0]==4);
     assert(candidate->boxPokemon(0,0)->heldItem()==638);
+    assert(candidate->boxPokemon(0,0)->hiddenAbility());
+    assert(candidate->boxPokemon(0,0)->ability()==107);
+    assert(candidate->boxPokemon(0,0)->gender()==1);
+    assert(candidate->boxPokemon(0,0)->form()==0);
     assert(candidate->boxPokemon(0,0)->moves()[1]==85);
     assert(candidate->boxPokemon(0,0)->ppUps()[1]==0);
     assert(candidate->boxPokemon(0,0)->pp()[1]==15);

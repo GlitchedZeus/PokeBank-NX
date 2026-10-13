@@ -4,6 +4,7 @@
 #include "Pokemon/Pokemon5ReadOnly.h"
 #include "Integration/Gen5/Gen5MovePP.h"
 #include "Integration/Gen5/Gen5EncounterLocations.h"
+#include "Integration/Gen5/Gen5PersonalData.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -22,17 +23,19 @@ class StagedPokemon5Record {
 public:
     enum class Field : uint8_t { Nature, Friendship, IV, EV, HeldItem, Ball, MetLevel,
                                 Move, MovePP, MovePPUps, TrainerId, SecretId, OriginalTrainerGender,
-                                Pokerus, MetLocation, FatefulEncounter };
+                                Pokerus, MetLocation, FatefulEncounter, Form, AbilitySlot, Gender };
 
     static std::optional<StagedPokemon5Record> create(
-        std::span<const uint8_t> source, std::string* error = nullptr) {
+        std::span<const uint8_t> source, std::string* error = nullptr,
+        bool black2White2 = false) {
         const Pokemon5ReadOnly parsed(source);
         if (!parsed.valid() || parsed.empty()) {
             if (error) *error = "Gen V edit requires a valid occupied PK5 record";
             return std::nullopt;
         }
         if (error) error->clear();
-        return StagedPokemon5Record(std::vector<uint8_t>(source.begin(), source.end()));
+        return StagedPokemon5Record(std::vector<uint8_t>(source.begin(), source.end()),
+                                    black2White2);
     }
 
     [[nodiscard]] std::span<const uint8_t> originalBytes() const noexcept { return original_; }
@@ -43,7 +46,7 @@ public:
 
     // Field-specific bounded mutation. Item and ball IDs here are native
     // ranges, NOT a legality promise for an encounter/title. Move legality,
-    // ability/form coupling, party-stat regeneration and native SAV block
+    // species replacement, party-stat regeneration and native SAV block
     // writes remain outside this record-only transaction.
     [[nodiscard]] bool stage(Field field, size_t stat, uint32_t value,
                              std::string* error = nullptr) {
@@ -55,7 +58,87 @@ public:
         if (!Crypto::recordSizeValid(candidate.size()))
             return fail("Gen V staged source has invalid PK5 size");
 
+        // Identical encrypted PK5 layout in BW and B2W2, but native
+        // Personal tables (abilities/forms/base stats) differ. Never use a
+        // modern Gen IX personal table for Gen V identity mutations.
+        const uint16_t species=Crypto::read16(candidate,0x08);
+        const uint8_t sourceForm=static_cast<uint8_t>(candidate[0x40]>>3);
+        const auto personal=personal5(species,sourceForm,black2White2_);
         switch (field) {
+            case Field::Form: {
+                if(stat!=0 || value>31)
+                    return fail("Gen V form is outside the native 5-bit range");
+                const auto next=personal5(species,value,black2White2_);
+                if(!personal || !next)
+                    return fail("Gen V form does not exist in this exact BW/B2W2 title");
+                if(value==sourceForm)break;
+                // Party extensions cache battle stats. Don't change base
+                // stats until per-generation party regeneration is built.
+                if(candidate.size()==Crypto::PartySize &&
+                   (personal.info->hp!=next.info->hp ||
+                    personal.info->atk!=next.info->atk ||
+                    personal.info->def!=next.info->def ||
+                    personal.info->spe!=next.info->spe ||
+                    personal.info->spa!=next.info->spa ||
+                    personal.info->spd!=next.info->spd))
+                    return fail("Gen V party form changes requiring stat regeneration are locked");
+                const uint8_t currentSlot=(candidate[0x42]&1)?2:
+                    static_cast<uint8_t>((Crypto::read32(candidate,0)>>16)&1);
+                const uint8_t chosen=abilityForSlot5(*next.info,currentSlot);
+                // Keep the same PID and selected ability slot where possible.
+                // An unusual existing ability is reconciled to the target
+                // native form without silently rerolling PID/shininess.
+                const uint8_t targetSlot=(chosen==0)
+                    ? static_cast<uint8_t>((Crypto::read32(candidate,0)>>16)&1)
+                    : currentSlot;
+                const uint8_t targetAbility=abilityForSlot5(*next.info,targetSlot);
+                if(targetAbility==0)
+                    return fail("Gen V target form has no supported native ability");
+                candidate[0x40]=static_cast<uint8_t>(
+                    (candidate[0x40]&0x07) | (value<<3));
+                candidate[0x15]=targetAbility;
+                candidate[0x42]=static_cast<uint8_t>(
+                    (candidate[0x42]&~uint8_t{1}) | (targetSlot==2?1:0));
+                const uint8_t gender=static_cast<uint8_t>((candidate[0x40]>>1)&3);
+                const auto nextGender=normalizedGender5(next.info->genderRatio,gender);
+                candidate[0x40]=static_cast<uint8_t>(
+                    (candidate[0x40]&~uint8_t{6}) | (nextGender<<1));
+                break;
+            }
+            case Field::AbilitySlot: {
+                if(stat!=0 || value>2 || !personal)
+                    return fail("Gen V ability requires an exact native form and slot 0..2");
+                const uint8_t ability=abilityForSlot5(*personal.info,value);
+                if(ability==0)
+                    return fail("Gen V selected ability slot is not present for this form");
+                const uint32_t beforePID=Crypto::read32(candidate,0);
+                const uint32_t newPID=value==2?beforePID:
+                    ((beforePID&~(1u<<16))|(value<<16));
+                // Changing the PID ability bit must not silently change shiny
+                // status or hidden/coupled game metadata.
+                const uint16_t tid=Crypto::read16(candidate,0x0C);
+                const uint16_t sid=Crypto::read16(candidate,0x0E);
+                auto shiny=[&](uint32_t pid) {
+                    return (tid^sid^static_cast<uint16_t>(pid)^
+                            static_cast<uint16_t>(pid>>16))<8;
+                };
+                if(shiny(beforePID)!=shiny(newPID))
+                    return fail("Gen V ability would change shininess; keep existing PID");
+                Crypto::write16(candidate,0,static_cast<uint16_t>(newPID));
+                Crypto::write16(candidate,2,static_cast<uint16_t>(newPID>>16));
+                candidate[0x15]=ability;
+                candidate[0x42]=static_cast<uint8_t>(
+                    (candidate[0x42]&~uint8_t{1})|(value==2?1:0));
+                break;
+            }
+            case Field::Gender: {
+                if(stat!=0 || value>2 || !personal ||
+                   !genderAllowed5(personal.info->genderRatio,value))
+                    return fail("Gen V gender is incompatible with this form's native ratio");
+                candidate[0x40]=static_cast<uint8_t>(
+                    (candidate[0x40]&~uint8_t{6}) | (value<<1));
+                break;
+            }
             case Field::Nature:
                 if (stat != 0 || value > 24)
                     return fail("Gen V nature index must be in [0,24]");
@@ -220,11 +303,13 @@ public:
     }
 
 private:
-    explicit StagedPokemon5Record(std::vector<uint8_t> source)
-        : original_(source), staged_(std::move(source)) {}
+    explicit StagedPokemon5Record(std::vector<uint8_t> source,bool black2White2)
+        : original_(source), staged_(std::move(source)),
+          black2White2_(black2White2) {}
 
     std::vector<uint8_t> original_;
     std::vector<uint8_t> staged_;
+    bool black2White2_=false;
 };
 
 } // namespace PokeVault::Integration::Gen5

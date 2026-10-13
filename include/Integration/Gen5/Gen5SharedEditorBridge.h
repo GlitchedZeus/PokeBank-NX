@@ -117,6 +117,12 @@ struct SharedEditorSlot {
             return session.stage(NativeField::MetLocation,stat,value,error);
         case Shared::FieldIdentity::FatefulEncounter:
             return session.stage(NativeField::FatefulEncounter,stat,value,error);
+        case Shared::FieldIdentity::Form:
+            return session.stage(NativeField::Form,stat,value,error);
+        case Shared::FieldIdentity::Ability:
+            return session.stage(NativeField::AbilitySlot,stat,value,error);
+        case Shared::FieldIdentity::Gender:
+            return session.stage(NativeField::Gender,stat,value,error);
         default:
             error="Gen V shared editor field is not verified for staged editing";
             return false;

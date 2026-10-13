@@ -22,11 +22,11 @@ public:
     using Action=Shared::Action;
     using Field=Shared::FieldIdentity;
     enum class Surface : uint8_t {
-        Browse, Actions, View, Edit, MovePicker, LocationPicker, ConfirmDraft, Review,
+        Browse, Actions, View, Edit, MovePicker, LocationPicker, IdentityPicker, ConfirmDraft, Review,
         ConfirmDiscardAll, ConfirmExport, ConfirmExit
     };
     struct EditableRow { Field field; size_t stat; const char* label; uint32_t maximum; };
-    static constexpr std::array<EditableRow,35> kEditableRows{{
+    static constexpr std::array<EditableRow,38> kEditableRows{{
         {Field::Nature,0,"Nature",24}, {Field::Friendship,0,"Friendship",255},
         {Field::HeldItem,0,"Held Item ID",638},
         {Field::Ball,0,"Ball ID",25},
@@ -54,7 +54,10 @@ public:
         {Field::IV,4,"IV SpA",31}, {Field::IV,5,"IV SpD",31},
         {Field::EV,0,"EV HP",255}, {Field::EV,1,"EV Atk",255},
         {Field::EV,2,"EV Def",255}, {Field::EV,3,"EV Spe",255},
-        {Field::EV,4,"EV SpA",255}, {Field::EV,5,"EV SpD",255}
+        {Field::EV,4,"EV SpA",255}, {Field::EV,5,"EV SpD",255},
+        {Field::Ability,0,"Ability Slot",2},
+        {Field::Form,0,"Form",31},
+        {Field::Gender,0,"Gender",2}
     }};
 
     [[nodiscard]] Surface surface() const noexcept { return surface_; }
@@ -63,6 +66,8 @@ public:
     [[nodiscard]] int fieldRow() const noexcept { return fieldRow_; }
     [[nodiscard]] uint16_t movePickerSelection() const noexcept { return movePickerSelection_; }
     [[nodiscard]] size_t locationPickerIndex() const noexcept { return locationPickerIndex_; }
+    [[nodiscard]] uint32_t identitySelection() const noexcept { return identitySelection_; }
+    [[nodiscard]] bool black2White2() const noexcept { return black2White2_; }
     [[nodiscard]] size_t reviewPage() const noexcept { return reviewPage_; }
     static constexpr size_t kReviewPageSize = 4;
     [[nodiscard]] const Gen5SharedPokemonSession& draft() const noexcept { return draft_; }
@@ -115,6 +120,7 @@ public:
                 return false;
             surface_=action==Action::View?Surface::View:Surface::Edit;
             fieldRow_=0;
+            black2White2_=workspace.black2White2();
             return true;
         }
         error="Generation V has no Create, Clone, Remove or automatic fix";
@@ -228,6 +234,77 @@ public:
     void cancelLocationPicker() noexcept {
         if(surface_==Surface::LocationPicker)surface_=Surface::Edit;
     }
+    [[nodiscard]] bool openIdentityPicker(std::string& error) {
+        if(surface_!=Surface::Edit || !draft_.editable() ||
+           fieldRow_<0 || static_cast<size_t>(fieldRow_)>=kEditableRows.size()) {
+            error="Gen V identity picker requires an Edit draft";
+            return false;
+        }
+        const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
+        if(row.field!=Field::Form && row.field!=Field::Ability &&
+           row.field!=Field::Gender) {
+            error="Gen V picker requires Form, Ability or Gender";
+            return false;
+        }
+        const auto current=draft_.current();
+        if(!current || !current->valid() ||
+           !personal5(current->species(),current->form(),black2White2_)) {
+            error="Gen V has no verified native identity for this Pokemon";
+            return false;
+        }
+        identitySelection_=fieldValue(*current,row);
+        surface_=Surface::IdentityPicker;
+        error.clear();
+        return true;
+    }
+    [[nodiscard]] size_t identityChoiceCount() const noexcept {
+        const auto current=draft_.current();
+        if(!current || fieldRow_<0 || static_cast<size_t>(fieldRow_)>=kEditableRows.size())return 0;
+        const auto info=personal5(current->species(),current->form(),black2White2_);
+        if(!info)return 0;
+        const auto field=kEditableRows[static_cast<size_t>(fieldRow_)].field;
+        return field==Field::Form?info.forms:
+               field==Field::Ability?3:field==Field::Gender?3:0;
+    }
+    [[nodiscard]] bool identityChoiceAllowed(uint32_t value) const noexcept {
+        const auto current=draft_.current();
+        if(!current)return false;
+        const auto info=personal5(current->species(),current->form(),black2White2_);
+        if(!info)return false;
+        const auto field=kEditableRows[static_cast<size_t>(fieldRow_)].field;
+        if(field==Field::Form)
+            return value<info.forms &&
+                   static_cast<bool>(personal5(current->species(),value,black2White2_));
+        if(field==Field::Ability)
+            return value<3 && abilityForSlot5(*info.info,value)!=0;
+        if(field==Field::Gender)
+            return genderAllowed5(info.info->genderRatio,value);
+        return false;
+    }
+    void moveIdentityCursor(int delta) noexcept {
+        if(surface_!=Surface::IdentityPicker)return;
+        const auto count=identityChoiceCount();
+        if(!count)return;
+        const int value=std::clamp(static_cast<int>(identitySelection_)+delta,
+                                   0,static_cast<int>(count)-1);
+        identitySelection_=static_cast<uint32_t>(value);
+    }
+    [[nodiscard]] bool acceptIdentityPicker(std::string& error) {
+        if(surface_!=Surface::IdentityPicker || !draft_.editable() ||
+           !identityChoiceAllowed(identitySelection_)) {
+            error="Gen V identity choice is unavailable for this species/form";
+            return false;
+        }
+        const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
+        if(!stageSharedField(draft_,row.field,row.stat,identitySelection_,error))
+            return false;
+        surface_=Surface::Edit;
+        error.clear();
+        return true;
+    }
+    void cancelIdentityPicker() noexcept {
+        if(surface_==Surface::IdentityPicker)surface_=Surface::Edit;
+    }
     [[nodiscard]] bool stageFieldValue(uint32_t value,std::string& error) {
         if(surface_!=Surface::Edit || !draft_.editable()) {
             error="Gen V has no editable draft";
@@ -235,6 +312,7 @@ public:
         }
         const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
         if(row.field==Field::Move || row.field==Field::MetLocation ||
+           row.field==Field::Ability || row.field==Field::Form || row.field==Field::Gender ||
            value>row.maximum) {
             error="Use the verified native picker or remain within this field's range";
             return false;
@@ -255,6 +333,9 @@ public:
             case Field::Pokerus:return pk.pokerusMode();
             case Field::MetLocation:return pk.metLocation();
             case Field::FatefulEncounter:return pk.fatefulEncounter()?1:0;
+            case Field::Form:return pk.form();
+            case Field::Gender:return pk.gender();
+            case Field::Ability:return pk.hiddenAbility()?2:((pk.pid()>>16)&1);
             case Field::Move:return pk.moves()[row.stat];
             case Field::MovePPUps:return pk.ppUps()[row.stat];
             case Field::MovePP:return pk.pp()[row.stat];
@@ -274,7 +355,8 @@ public:
             return false;
         }
         const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
-        if(row.field==Field::Move || row.field==Field::MetLocation) {
+        if(row.field==Field::Move || row.field==Field::MetLocation ||
+           row.field==Field::Ability || row.field==Field::Form || row.field==Field::Gender) {
             error="Press A to choose a verified Generation V picker value";
             return false;
         }
@@ -335,6 +417,10 @@ public:
         }
         if(surface_==Surface::LocationPicker) {
             cancelLocationPicker();
+            return false;
+        }
+        if(surface_==Surface::IdentityPicker) {
+            cancelIdentityPicker();
             return false;
         }
         if(surface_==Surface::View || surface_==Surface::Edit) {
@@ -429,6 +515,8 @@ private:
     int actionRow_=0;
     int fieldRow_=0;
     uint16_t movePickerSelection_=0;
+    uint32_t identitySelection_=0;
+    bool black2White2_=false;
     size_t locationPickerIndex_=0;
     size_t reviewPage_=0;
     Gen5SharedPokemonSession draft_;

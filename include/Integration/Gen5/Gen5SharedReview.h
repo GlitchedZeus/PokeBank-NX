@@ -47,7 +47,7 @@ struct VerifiedSlotReview {
         return fail("Gen V pending review contains unvalidated or wrong-format PK5");
     }
     auto candidate=StagedPokemon5Record::create(
-        std::span<const uint8_t>(change.before),error);
+        std::span<const uint8_t>(change.before),error,change.black2White2);
     if(!candidate)return std::nullopt;
     VerifiedSlotReview result;
     result.location=change.location;
@@ -70,6 +70,19 @@ struct VerifiedSlotReview {
               after.fatefulEncounter()?1:0) ||
        !apply(Field::Pokerus,0,before.pokerusMode(),after.pokerusMode()) ||
        !apply(Field::MetLocation,0,before.metLocation(),after.metLocation()))
+        return std::nullopt;
+    if(!apply(Field::Form,0,before.form(),after.form()))
+        return std::nullopt;
+    const auto slot5=[](const Pokemon5ReadOnly& p)->uint32_t {
+        return p.hiddenAbility()?2u:((p.pid()>>16)&1u);
+    };
+    if(before.ability()!=after.ability() ||
+       before.hiddenAbility()!=after.hiddenAbility() ||
+       slot5(before)!=slot5(after)) {
+        if(!apply(Field::AbilitySlot,0,slot5(before),slot5(after)))
+            return std::nullopt;
+    }
+    if(!apply(Field::Gender,0,before.gender(),after.gender()))
         return std::nullopt;
     const auto bi=before.ivs(),ai=after.ivs();
     for(size_t i=0;i<6;++i)

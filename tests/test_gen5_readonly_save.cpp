@@ -682,12 +682,14 @@ int main() {
         assert(G::fieldAccess(GF::HeldItem)==GAccess::Editable);
         assert(G::fieldAccess(GF::Ball)==GAccess::Editable);
         assert(G::fieldAccess(GF::MetLevel)==GAccess::Editable);
-        assert(G::fieldAccess(GF::Ability)!=GAccess::Editable);
+        assert(G::fieldAccess(GF::Ability)==GAccess::Editable);
+        assert(G::fieldAccess(GF::Form)==GAccess::Editable);
+        assert(G::fieldAccess(GF::Gender)==GAccess::Editable);
         assert(G::fieldAccess(GF::Species)!=GAccess::Editable);
         assert(G::fieldAccess(GF::Move)==GAccess::Editable);
         assert(G::fieldAccess(GF::MovePP)==GAccess::Editable);
         assert(G::fieldAccess(GF::MovePPUps)==GAccess::Editable);
-        static_assert(G::Gen5SharedScreenState::kEditableRows.size()==35);
+        static_assert(G::Gen5SharedScreenState::kEditableRows.size()==38);
         assert(G::fieldAccess(GF::TrainerId)==GAccess::Editable);
         assert(G::fieldAccess(GF::SecretId)==GAccess::Editable);
         assert(G::fieldAccess(GF::OriginalTrainerGender)==GAccess::Editable);
@@ -845,6 +847,45 @@ int main() {
             }
         }
         assert(sawIdentity && sawLocation && sawFateful);
+        // Exact BW identity picker is part of the same staged editor;
+        // cancelled choices cannot mutate the current local draft.
+        assert(ui.openActions(localUiWorkspace,GSlot{GRegion::Party,0,0},error));
+        ui.moveAction(1,localUiWorkspace);
+        assert(ui.activateSelected(localUiWorkspace,error));
+        ui.moveField(35);
+        assert(rows[35].field==GF::Ability &&
+               rows[36].field==GF::Form && rows[37].field==GF::Gender);
+        assert(ui.openIdentityPicker(error));
+        assert(ui.identityChoiceCount()==3);
+        ui.moveIdentityCursor(2);
+        assert(ui.identitySelection()==2);
+        assert(!ui.back()); // Cancels without changing hidden ability.
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
+        assert(!ui.draft().current()->hiddenAbility());
+        assert(ui.openIdentityPicker(error));
+        ui.moveIdentityCursor(2);
+        assert(ui.acceptIdentityPicker(error));
+        assert(ui.draft().current()->hiddenAbility());
+        assert(ui.draft().current()->ability()==31);
+        ui.moveField(1);
+        assert(ui.openIdentityPicker(error));
+        assert(ui.identityChoiceCount()==1); // Pikachu has only base form.
+        assert(!ui.identityChoiceAllowed(1));
+        assert(!ui.back());
+        ui.moveField(1);
+        assert(ui.openIdentityPicker(error));
+        assert(ui.identityChoiceCount()==3);
+        assert(!ui.identityChoiceAllowed(2)); // Pikachu isn't genderless.
+        ui.moveIdentityCursor(1);
+        assert(ui.acceptIdentityPicker(error));
+        assert(ui.draft().current()->gender()==1);
+        assert(ui.keep(localUiWorkspace,error));
+        assert(localUiWorkspace.viewParty(0)->hiddenAbility());
+        assert(localUiWorkspace.viewParty(0)->gender()==1);
+        const auto identityChanges=localUiWorkspace.pendingReview();
+        assert(!identityChanges.empty());
+        assert(G::verifyStagedReview(identityChanges.front(),&error));
+        assert(error.empty());
         assert(!ui.requestExit(localUiWorkspace));
         assert(ui.surface()==G::Gen5SharedScreenState::Surface::ConfirmExit);
         ui.reviewFromExit(localUiWorkspace);

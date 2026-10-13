@@ -208,6 +208,69 @@ int main() {
         assert(!staged->dirty());
         assert(std::equal(staged->stagedBytes().begin(),staged->stagedBytes().end(),source.begin()));
     }
+    // Pinned PKHeX BW vs B2W2 personal rows, including shared-form entries.
+    static_assert(G5::NativePersonalBW.size()==668);
+    static_assert(G5::NativePersonalB2W2.size()==709);
+    static_assert(G5::personal5(25,0,false).info->ability1==9);
+    static_assert(G5::personal5(25,0,true).info->abilityHidden==31);
+    static_assert(G5::personal5(201,27,false).info==
+                  G5::personal5(201,0,false).info);
+    static_assert(G5::personal5(386,1,false).info->atk==180);
+    static_assert(G5::personal5(646,2,true).info);
+    static_assert(!G5::personal5(646,2,false).info);
+    static_assert(!G5::personal5(650,0,true).info);
+    // Gender-locked examples (Tauros male, Chansey female, Magnemite genderless).
+    static_assert(G5::personal5(128,0,false).info->genderRatio==0);
+    static_assert(G5::personal5(113,0,false).info->genderRatio==254);
+    static_assert(G5::personal5(81,0,false).info->genderRatio==255);
+    for(const bool b2w2:{false,true}) {
+        auto plain=makeRecord(C::StoredSize,0x1379BDF0);
+        C::write16(plain,8,25);
+        plain[0x40]=0; // native Pikachu, form 0 / male
+        plain[0x42]=0; // normal ability
+        const auto raw=C::encryptCandidate(plain);
+        std::string error;
+        auto edit=G5::StagedPokemon5Record::create(raw,&error,b2w2);
+        assert(edit);
+        const auto originalShiny=edit->current().shiny();
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Form,0,1,&error));
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Gender,0,2,&error));
+        assert(edit->stage(G5::StagedPokemon5Record::Field::Gender,0,1,&error));
+        assert(edit->current().gender()==1);
+        assert(edit->stage(G5::StagedPokemon5Record::Field::AbilitySlot,0,2,&error));
+        assert(edit->current().ability()==31 && edit->current().hiddenAbility());
+        assert(edit->current().shiny()==originalShiny);
+        assert(edit->stage(G5::StagedPokemon5Record::Field::AbilitySlot,0,0,&error));
+        assert(edit->current().ability()==9 && !edit->current().hiddenAbility());
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::AbilitySlot,0,3,&error));
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Gender,1,1,&error));
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Form,0,32,&error));
+        assert(std::equal(edit->originalBytes().begin(),edit->originalBytes().end(),
+                          raw.begin()));
+    }
+    // Form-only changes are allowed for boxes, but changes in native base
+    // stats are refused for party records until party stat regeneration lands.
+    for(const bool b2w2:{false,true}) {
+        for(const size_t size:{C::StoredSize,C::PartySize}) {
+            auto form=makeRecord(size,0x1379BDF0);
+            C::write16(form,8,386); // Deoxys 0..3, nonidentical base stats
+            form[0x40]=0x04; // genderless, form 0
+            form[0x42]=0;
+            form[0x15]=46; // Pressure
+            auto edit=G5::StagedPokemon5Record::create(
+                C::encryptCandidate(form),nullptr,b2w2);
+            assert(edit);
+            const bool changed=edit->stage(G5::StagedPokemon5Record::Field::Form,
+                                           0,1);
+            assert(changed==(size==C::StoredSize));
+            if(changed) {
+                assert(edit->current().form()==1);
+                assert(edit->current().gender()==2);
+                assert(edit->current().valid());
+            } else assert(edit->current().form()==0);
+            assert(!edit->stage(G5::StagedPokemon5Record::Field::Gender,0,1));
+        }
+    }
     const auto invalidEntity = std::vector<uint8_t>(C::StoredSize,0);
     assert(!G5::StagedPokemon5Record::create(invalidEntity).has_value());
     std::cout << "Gen V PK5 read-only record/crypto contracts PASS (32 shuffles, boxed/party, corruption)\n";

@@ -5,7 +5,8 @@ GEN5_PK5_INPUTS := tests/test_gen5_pk5_readonly.cpp \
     include/Encryption/Encryption5.h include/Pokemon/Pokemon5ReadOnly.h \
     include/Integration/Gen5/Gen5StagedPokemonRecord.h \
     include/Integration/Gen5/Gen5MovePP.h \
-    include/Integration/Gen5/Gen5EncounterLocations.h
+    include/Integration/Gen5/Gen5EncounterLocations.h \
+    include/Integration/Gen5/Gen5PersonalData.h
 
 HOST_TESTS += $(GEN5_PK5_TEST)
 HOST_SANITIZE_TESTS += $(GEN5_PK5_SANITIZE)
@@ -73,6 +74,7 @@ GEN5_EXPORT_INPUTS := tests/test_gen5_staged_save_candidate.cpp \
     include/Integration/Gen5/Gen5StagedPokemonWorkspace.h \
     include/Integration/Gen5/Gen5ReadOnlySave.h \
     include/Integration/Gen5/Gen5SaveBlockLayout.h \
+    include/Integration/Gen5/Gen5PersonalData.h \
     include/Encryption/Encryption5.h include/Pokemon/Pokemon5ReadOnly.h
 
 HOST_TESTS += $(GEN5_EXPORT_TEST)

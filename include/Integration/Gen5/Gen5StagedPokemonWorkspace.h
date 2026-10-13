@@ -41,12 +41,16 @@ public:
         Slot location;
         std::vector<uint8_t> before;
         std::vector<uint8_t> after;
+        bool black2White2 = false;
     };
 
     explicit Gen5StagedPokemonWorkspace(const Gen5ReadOnlySave& validated)
         : source_(validated) {}
 
     [[nodiscard]] const Gen5ReadOnlySave& sourceSave() const noexcept { return source_; }
+    [[nodiscard]] bool black2White2() const noexcept {
+        return source_.exactGameId()=="black2_nds" || source_.exactGameId()=="white2_nds";
+    }
 
     [[nodiscard]] bool hasChanges() const noexcept {
         for(const auto& pair:pending_)if(pair.second.dirty())return true;
@@ -79,7 +83,8 @@ public:
             if(!record.dirty())continue;
             out.push_back({slot,
                 {record.originalBytes().begin(),record.originalBytes().end()},
-                {record.stagedBytes().begin(),record.stagedBytes().end()}});
+                {record.stagedBytes().begin(),record.stagedBytes().end()},
+                black2White2()});
         }
         return out;
     }
@@ -118,7 +123,7 @@ private:
             if(error)*error="Gen V slot is absent, empty, or invalid; no edit allowed";
             return false;
         }
-        auto edit=StagedPokemon5Record::create(old->originalEncryptedBytes(),error);
+        auto edit=StagedPokemon5Record::create(old->originalEncryptedBytes(),error,black2White2());
         if(!edit)return false;
         if(!edit->stage(field,stat,value,error))return false;
         if(edit->dirty())pending_.emplace(location,std::move(*edit));

@@ -43,7 +43,8 @@ public:
             error="Gen V session requires an occupied, valid party/box slot";
             return false;
         }
-        auto draft=StagedPokemon5Record::create(record->originalEncryptedBytes(),&error);
+        auto draft=StagedPokemon5Record::create(record->originalEncryptedBytes(),&error,
+                                                  workspace.black2White2());
         if(!draft)return false;
         baseline_={record->originalEncryptedBytes().begin(),
                    record->originalEncryptedBytes().end()};
@@ -131,6 +132,21 @@ public:
            !apply(Field::Pokerus,0,after.pokerusMode()))return false;
         if(before.metLocation()!=after.metLocation() &&
            !apply(Field::MetLocation,0,after.metLocation()))return false;
+
+        // Apply native form first (it may reconcile the form-specific
+        // ability and forced gender), then choose exact ability slot/gender.
+        // Keep and independent Review must use identical ordering.
+        if(before.form()!=after.form() && !apply(Field::Form,0,after.form()))
+            return false;
+        const auto slot5=[](const Pokemon5ReadOnly& p)->uint32_t {
+            return p.hiddenAbility()?2u:((p.pid()>>16)&1u);
+        };
+        if((before.ability()!=after.ability() ||
+            before.hiddenAbility()!=after.hiddenAbility() ||
+            slot5(before)!=slot5(after)) &&
+           !apply(Field::AbilitySlot,0,slot5(after)))return false;
+        if(before.gender()!=after.gender() &&
+           !apply(Field::Gender,0,after.gender()))return false;
 
         const auto beforeIv=before.ivs();
         const auto afterIv=after.ivs();

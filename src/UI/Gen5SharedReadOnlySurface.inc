@@ -36,6 +36,7 @@ constexpr int kGen5IncreaseTouchBase=77300;
 constexpr int kGen5PartyTouchBase=77400;
 constexpr int kGen5MovePickerTouchBase=77500;
 constexpr int kGen5LocationTouchBase=78000;
+constexpr int kGen5IdentityTouchBase=78500;
 
 PokeVault::Legacy::Gen5ReadOnlyTrainer& nativeTrainer(TrainerViewScreen& screen) {
     return static_cast<PokeVault::Legacy::Gen5ReadOnlyTrainer&>(screen.trainer);
@@ -113,7 +114,10 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                 if(field==ScreenState::Field::Move ||
                    field==ScreenState::Field::MetLocation ||
                    field==ScreenState::Field::TrainerId ||
-                   field==ScreenState::Field::SecretId)
+                   field==ScreenState::Field::SecretId ||
+                   field==ScreenState::Field::Ability ||
+                   field==ScreenState::Field::Form ||
+                   field==ScreenState::Field::Gender)
                     down|=HidNpadButton_A;
             }
         }
@@ -139,6 +143,12 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                     PokeVault::Integration::Gen5::NativeMetLocations5.size())) {
         state.moveLocationCursor(tap-kGen5LocationTouchBase-
                                  static_cast<int>(state.locationPickerIndex()));
+        down|=HidNpadButton_A;
+    } else if(state.surface()==Surface::IdentityPicker &&
+              tap>=kGen5IdentityTouchBase &&
+              tap<kGen5IdentityTouchBase+static_cast<int>(state.identityChoiceCount())) {
+        state.moveIdentityCursor(tap-kGen5IdentityTouchBase-
+                                 static_cast<int>(state.identitySelection()));
         down|=HidNpadButton_A;
     } else if(state.surface()==Surface::Browse &&
               screen.selectedMode==TrainerViewScreen::ViewMode::Party &&
@@ -193,6 +203,11 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                     if(row.field==ScreenState::Field::MetLocation) {
                         std::string error;
                         if(!state.openLocationPicker(error))screen.postStatus(error,300);
+                    } else if(row.field==ScreenState::Field::Ability ||
+                              row.field==ScreenState::Field::Form ||
+                              row.field==ScreenState::Field::Gender) {
+                        std::string error;
+                        if(!state.openIdentityPicker(error))screen.postStatus(error,300);
                     } else if(row.field==ScreenState::Field::TrainerId ||
                               row.field==ScreenState::Field::SecretId) {
                         const auto current=state.draft().current();
@@ -244,6 +259,17 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             else if(keys&HidNpadButton_A) {
                 std::string error;
                 if(!state.acceptLocationPicker(error))screen.postStatus(error,300);
+            }
+            return true;
+        case Surface::IdentityPicker:
+            if(keys&HidNpadButton_Up)state.moveIdentityCursor(-1);
+            if(keys&HidNpadButton_Down)state.moveIdentityCursor(1);
+            if(keys&HidNpadButton_Left)state.moveIdentityCursor(-8);
+            if(keys&HidNpadButton_Right)state.moveIdentityCursor(8);
+            if(keys&HidNpadButton_B)state.cancelIdentityPicker();
+            else if(keys&HidNpadButton_A) {
+                std::string error;
+                if(!state.acceptIdentityPicker(error))screen.postStatus(error,300);
             }
             return true;
         case Surface::ConfirmDraft:
@@ -499,6 +525,9 @@ std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedField
         case Field::Pokerus:name="Pokerus";break;
         case Field::MetLocation:name="Met Location";break;
         case Field::FatefulEncounter:name="Fateful";break;
+        case Field::Form:name="Form";break;
+        case Field::AbilitySlot:name="Ability Slot";break;
+        case Field::Gender:name="Gender";break;
         case Field::Move:name="Move "+std::to_string(c.stat+1);break;
         case Field::MovePPUps:name="PP Ups "+std::to_string(c.stat+1);break;
         case Field::MovePP:name="PP "+std::to_string(c.stat+1);break;
@@ -598,7 +627,10 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
         if(row.field!=ScreenState::Field::Move &&
            row.field!=ScreenState::Field::MetLocation &&
            row.field!=ScreenState::Field::TrainerId &&
-           row.field!=ScreenState::Field::SecretId) {
+           row.field!=ScreenState::Field::SecretId &&
+           row.field!=ScreenState::Field::Ability &&
+           row.field!=ScreenState::Field::Form &&
+           row.field!=ScreenState::Field::Gender) {
             screen.touchButtons.push_back(
                 {kGen5DecreaseTouchBase+static_cast<int>(index),x+308,yy+3,36,40});
             screen.touchButtons.push_back(
@@ -616,7 +648,10 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
         if(row.field==ScreenState::Field::Move ||
            row.field==ScreenState::Field::MetLocation ||
            row.field==ScreenState::Field::TrainerId ||
-           row.field==ScreenState::Field::SecretId) {
+           row.field==ScreenState::Field::SecretId ||
+           row.field==ScreenState::Field::Ability ||
+           row.field==ScreenState::Field::Form ||
+           row.field==ScreenState::Field::Gender) {
             fb.drawText(x+315,yy+11,
                 row.field==ScreenState::Field::TrainerId ||
                 row.field==ScreenState::Field::SecretId?"A Edit":"A Pick",
@@ -712,6 +747,57 @@ void drawLocationPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,
     drawNavBar(fb,{{"D-pad/Stick","Browse"},{"ZL/ZR","Jump 40"},
                    {"A","Choose Location"},{"B","Cancel"}});
 }
+// Exact BW/B2W2 personal table; no encounter legality or original SAV write.
+void drawIdentityPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,
+                        const ScreenState& state) {
+    dimShared(screen,fb);
+    constexpr int w=840,h=520;
+    const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::Border,1);
+    const auto& field=ScreenState::kEditableRows[static_cast<size_t>(state.fieldRow())];
+    const auto current=state.draft().current();
+    if(!current)return;
+    const auto personal=PokeVault::Integration::Gen5::personal5(
+        current->species(),current->form(),state.black2White2());
+    if(!personal)return;
+    const auto f=field.field;
+    const char* title=f==ScreenState::Field::Ability?"Native Ability":
+                      f==ScreenState::Field::Form?"Native Form":"Native Gender";
+    fb.drawText(x+24,y+18,std::string("Gen V - ")+title,
+                Colors::Text,TextStyle::Heading);
+    fb.drawText(x+24,y+56,
+        "Exact BW/B2W2 personal data; legality and encounters separate",
+        Colors::Accent,TextStyle::Caption);
+    const auto visible=PokeBank::UIModel::SharedPokemonEditor::scrollWindow(
+        state.identityChoiceCount(),8,static_cast<size_t>(state.identitySelection()));
+    for(size_t i=0;i<visible.count;++i) {
+        const uint32_t value=static_cast<uint32_t>(visible.first+i);
+        const int yy=y+100+static_cast<int>(i)*43;
+        const bool available=state.identityChoiceAllowed(value);
+        if(value==state.identitySelection())
+            fb.drawSelectionHighlight(x+14,yy,w-28,39);
+        if(available)screen.touchButtons.push_back({
+            kGen5IdentityTouchBase+static_cast<int>(value),
+            x+16,yy,w-32,39});
+        std::string label;
+        if(f==ScreenState::Field::Ability)
+            label=std::string(value==2?"Hidden ability":"Ability slot ")+
+                  (value==2?"":std::to_string(value+1))+
+                  " / ID "+std::to_string(
+                      PokeVault::Integration::Gen5::abilityForSlot5(*personal.info,value));
+        else if(f==ScreenState::Field::Form)
+            label="Form "+std::to_string(value);
+        else label=value==0?"Male":value==1?"Female":"Genderless";
+        if(!available)label+=" (unavailable)";
+        fb.drawText(x+30,yy+8,label,
+            available?Colors::Text:Colors::TextDim,TextStyle::Body);
+    }
+    fb.drawText(x+24,y+h-45,
+        "A stages in memory; B preserves the current PK5 draft",
+        Colors::TextDim,TextStyle::Caption);
+    drawNavBar(fb,{{"Up/Down","Choose"},{"A","Stage Choice"},{"B","Cancel"}});
+}
 bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     if(!isGen5Source(screen))return false;
     auto& trainer=nativeTrainer(screen);
@@ -726,6 +812,7 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         case Surface::Edit:drawEdit(screen,fb,state);return true;
         case Surface::MovePicker:drawMovePicker(screen,fb,state);return true;
         case Surface::LocationPicker:drawLocationPicker(screen,fb,state);return true;
+        case Surface::IdentityPicker:drawIdentityPicker(screen,fb,state);return true;
         case Surface::View: {
             const auto current=state.draft().current();
             screen.drawGSCOverlay(fb);
