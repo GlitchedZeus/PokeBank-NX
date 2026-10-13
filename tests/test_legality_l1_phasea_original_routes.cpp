@@ -89,6 +89,21 @@ int main(){
  spec.originalIVs.fill(31);
  assert(L::evaluate(*item,spec).status==L::Status::SourceTemplateOnly);
  checks+=4;
+ // Gen V original Tornadus/Thundurus are roaming sources, so matching
+ // the literal placeholder location (25) is not required or certified.
+ auto roamer=L::row(Table::StaticB,2);
+ assert(roamer&&(roamer->flags&16u));
+ auto roamerWitness=get(Game::B,641,40,999);
+ assert(L::evaluate(*roamer,roamerWitness).status==L::Status::SourceTemplateOnly);
+ checks+=2;
+ // Gen V/VI gift egg hatch locations are separately witnessed histories.
+ auto eggRow=L::row(Table::Encounter_BW,16);
+ assert(eggRow && (eggRow->flags&2u));
+ auto eggWitness=get(Game::W,eggRow->species,eggRow->level,999);
+ eggWitness.originalEggLocation=eggRow->eggLocation;
+ eggWitness.originalEggLocationIndependentlyAttested=true;
+ assert(L::evaluate(*eggRow,eggWitness).status==L::Status::SourceTemplateOnly);
+ checks+=2;
  // ORAS Cosplay Pikachu location is dynamic; do NOT certify exact met map.
  spec=get(Game::OR,25,20,999);
  spec.originalForm=1;spec.originalFormIndependentlyAttested=true;
