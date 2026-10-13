@@ -132,6 +132,18 @@ struct SharedEditorSlot {
             return false;
     }
 }
+[[nodiscard]] inline bool stageSharedName(
+    Gen5SharedPokemonSession& session,Shared::FieldIdentity field,
+    std::string_view name,std::string& error) {
+    if(field==Shared::FieldIdentity::Nickname)
+        return session.stageName(StagedPokemon5Record::Field::NicknameText,
+                                 name,error);
+    if(field==Shared::FieldIdentity::OriginalTrainer)
+        return session.stageName(StagedPokemon5Record::Field::OriginalTrainerText,
+                                 name,error);
+    error="Gen V text field is unsupported";
+    return false;
+}
 [[nodiscard]] inline std::optional<
     PokeBank::UIModel::ExactFormatEditor::ExactFormatEditorDescriptor>
 exactDescriptor(std::string_view gameId,bool hasValidatedWorkspace) {

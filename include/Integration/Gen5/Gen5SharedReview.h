@@ -57,6 +57,22 @@ struct VerifiedSlotReview {
         result.fields.push_back({field,stat,from,to});
         return true;
     };
+    const auto replayName=[&](bool nickname)->bool {
+        const auto oldBytes=before.decodedBytes(),newBytes=after.decodedBytes();
+        const bool flagChange=nickname &&
+            ((Crypto::read32(oldBytes,0x38)^Crypto::read32(newBytes,0x38))&
+             0x80000000u);
+        if(!nativeNameBytesDiffer5(oldBytes,newBytes,nickname) && !flagChange)
+            return true;
+        const auto name=asciiName5(newBytes,nickname);
+        if(!name || name->empty() ||
+           !candidate->stageName(nickname,*name,error))return false;
+        result.fields.push_back({nickname?Field::NicknameText:
+            Field::OriginalTrainerText,0,0,1});
+        return true;
+    };
+    if(!replayName(true) || !replayName(false))
+        return fail("Gen V pending review includes invalid native text changes");
     if(!apply(Field::Nature,0,before.nature(),after.nature()) ||
        !apply(Field::Friendship,0,before.friendship(),after.friendship()) ||
        !apply(Field::HeldItem,0,before.heldItem(),after.heldItem()) ||

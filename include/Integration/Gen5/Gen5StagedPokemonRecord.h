@@ -6,12 +6,14 @@
 #include "Integration/Gen5/Gen5EncounterLocations.h"
 #include "Integration/Gen5/Gen5PersonalData.h"
 #include "Integration/Gen5/Gen5Progression.h"
+#include "Integration/Gen5/Gen5NativeText.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -24,7 +26,7 @@ class StagedPokemon5Record {
 public:
     enum class Field : uint8_t { Nature, Friendship, IV, EV, HeldItem, Ball, MetLevel,
                                 Move, MovePP, MovePPUps, TrainerId, SecretId, OriginalTrainerGender,
-                                Pokerus, MetLocation, FatefulEncounter, Form, AbilitySlot, Gender, Level, Experience };
+                                Pokerus, MetLocation, FatefulEncounter, Form, AbilitySlot, Gender, Level, Experience, NicknameText, OriginalTrainerText };
 
     static std::optional<StagedPokemon5Record> create(
         std::span<const uint8_t> source, std::string* error = nullptr,
@@ -44,6 +46,30 @@ public:
     [[nodiscard]] bool dirty() const noexcept { return staged_ != original_; }
     [[nodiscard]] Pokemon5ReadOnly current() const { return Pokemon5ReadOnly(staged_); }
     void rollback() noexcept { staged_ = original_; }
+
+    // Atomic native Gen V name transaction. Unsupported glyphs are never
+    // silently converted, and the input PK5/source bytes are untouched.
+    [[nodiscard]] bool stageName(bool nickname,std::string_view name,
+                                 std::string* error=nullptr) {
+        auto fail=[&](const char* reason) {
+            if(error)*error=reason;
+            return false;
+        };
+        auto decoded=Crypto::decrypt(staged_);
+        if(!Crypto::recordSizeValid(decoded.size()) ||
+           !encodeAsciiName5(decoded,nickname,name))
+            return fail("Gen V text must be 1..10 nickname / 1..7 OT ASCII characters");
+        const auto encrypted=Crypto::encryptCandidate(decoded);
+        const Pokemon5ReadOnly checked(encrypted);
+        if(!checked.valid() || checked.empty())
+            return fail("Gen V native name failed strict PK5 validation");
+        Crypto::write16(decoded,6,Crypto::checksum(decoded));
+        if(Crypto::decrypt(encrypted)!=decoded)
+            return fail("Gen V native text altered unrelated PK5 fields");
+        staged_=encrypted;
+        if(error)error->clear();
+        return true;
+    }
 
     // Field-specific bounded mutation. Item and ball IDs here are native
     // ranges, NOT a legality promise for an encounter/title. Move legality,

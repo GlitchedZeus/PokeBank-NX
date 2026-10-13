@@ -10,6 +10,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -76,6 +77,16 @@ public:
         return working_->stage(field,stat,value,&error);
     }
 
+    [[nodiscard]] bool stageName(Field field,std::string_view name,
+                                 std::string& error) {
+        if(!editable() ||
+           (field!=Field::NicknameText && field!=Field::OriginalTrainerText)) {
+            error="Gen V name editing requires a verified Edit draft";
+            return false;
+        }
+        return working_->stageName(field==Field::NicknameText,name,&error);
+    }
+
     // Backend Keep is a single atomic workspace update. The final PK5 must
     // match exactly the draft's encrypted bytes; an unexpected native-field
     // difference or concurrent slot change aborts the entire transaction.
@@ -104,6 +115,28 @@ public:
                 return tentative.stageParty(location_.slot,field,stat,value,&error);
             return tentative.stageBox(location_.box,location_.slot,field,stat,value,&error);
         };
+
+        // Name changes use only exact-width native UTF-16 ASCII transactions.
+        // Keep replays through the workspace's field whitelist, then validates
+        // the complete encrypted PK5 against the original local draft.
+        const auto replayName=[&](bool nickname)->bool {
+            const auto oldBytes=before.decodedBytes(),newBytes=after.decodedBytes();
+            const bool flagChange=nickname &&
+                ((Crypto::read32(oldBytes,0x38)^Crypto::read32(newBytes,0x38))&
+                 0x80000000u);
+            if(!nativeNameBytesDiffer5(oldBytes,newBytes,nickname) && !flagChange)
+                return true;
+            const auto value=asciiName5(newBytes,nickname);
+            if(!value || value->empty()) {
+                error="Gen V modified name is not representable in native ASCII";
+                return false;
+            }
+            if(location_.region==Region::Party)
+                return tentative.stagePartyName(location_.slot,nickname,*value,&error);
+            return tentative.stageBoxName(location_.box,location_.slot,
+                                         nickname,*value,&error);
+        };
+        if(!replayName(true) || !replayName(false))return false;
 
         if(before.nature()!=after.nature() &&
            !apply(Field::Nature,0,after.nature()))return false;

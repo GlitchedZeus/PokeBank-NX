@@ -684,6 +684,8 @@ int main() {
         assert(G::fieldAccess(GF::MetLevel)==GAccess::Editable);
         assert(G::fieldAccess(GF::Level)==GAccess::Editable);
         assert(G::fieldAccess(GF::Experience)==GAccess::Editable);
+        assert(G::fieldAccess(GF::Nickname)==GAccess::Editable);
+        assert(G::fieldAccess(GF::OriginalTrainer)==GAccess::Editable);
         assert(G::fieldAccess(GF::Ability)==GAccess::Editable);
         assert(G::fieldAccess(GF::Form)==GAccess::Editable);
         assert(G::fieldAccess(GF::Gender)==GAccess::Editable);
@@ -691,7 +693,7 @@ int main() {
         assert(G::fieldAccess(GF::Move)==GAccess::Editable);
         assert(G::fieldAccess(GF::MovePP)==GAccess::Editable);
         assert(G::fieldAccess(GF::MovePPUps)==GAccess::Editable);
-        static_assert(G::Gen5SharedScreenState::kEditableRows.size()==40);
+        static_assert(G::Gen5SharedScreenState::kEditableRows.size()==42);
         assert(G::fieldAccess(GF::TrainerId)==GAccess::Editable);
         assert(G::fieldAccess(GF::SecretId)==GAccess::Editable);
         assert(G::fieldAccess(GF::OriginalTrainerGender)==GAccess::Editable);
@@ -746,7 +748,9 @@ int main() {
         assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
         const auto& rows=G::Gen5SharedScreenState::kEditableRows;
         assert(rows[38].field==GF::Level &&
-               rows[39].field==GF::Experience);
+               rows[39].field==GF::Experience &&
+               rows[40].field==GF::Nickname &&
+               rows[41].field==GF::OriginalTrainer);
         assert(rows[2].field==GF::HeldItem && rows[3].field==GF::Ball);
         assert(rows[4].field==GF::MetLevel);
         ui.moveField(2);
@@ -883,9 +887,18 @@ int main() {
         ui.moveIdentityCursor(1);
         assert(ui.acceptIdentityPicker(error));
         assert(ui.draft().current()->gender()==1);
+        ui.moveField(3); // Nickname follows Gender/Level/EXP.
+        assert(rows[40].field==GF::Nickname);
+        assert(!ui.stageNameValue("INVALID NAME LONG",error));
+        assert(ui.stageNameValue("NXPIKA",error));
+        ui.moveField(1);
+        assert(rows[41].field==GF::OriginalTrainer);
+        assert(ui.stageNameValue("NXT",error));
         assert(ui.keep(localUiWorkspace,error));
         assert(localUiWorkspace.viewParty(0)->hiddenAbility());
         assert(localUiWorkspace.viewParty(0)->gender()==1);
+        assert(G::asciiName5(localUiWorkspace.viewParty(0)->decodedBytes(),true)=="NXPIKA");
+        assert(G::asciiName5(localUiWorkspace.viewParty(0)->decodedBytes(),false)=="NXT");
         const auto identityChanges=localUiWorkspace.pendingReview();
         assert(!identityChanges.empty());
         assert(G::verifyStagedReview(identityChanges.front(),&error));

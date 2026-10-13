@@ -138,6 +138,12 @@ int main() {
         std::string error;
         auto staged=G5::StagedPokemon5Record::create(source,&error);
         assert(staged && !staged->dirty());
+        assert(staged->stageName(true,"PIKA NX",&error));
+        assert(staged->stageName(false,"ASH",&error));
+        const auto names=staged->current();
+        assert(G5::asciiName5(names.decodedBytes(),true)=="PIKA NX");
+        assert(G5::asciiName5(names.decodedBytes(),false)=="ASH");
+        assert((C::read32(names.decodedBytes(),0x38)&0x80000000u)!=0);
         assert(staged->stage(G5::StagedPokemon5Record::Field::Level,0,50,&error));
         assert(staged->current().experience()==125000);
         if(size==C::PartySize) {
@@ -197,6 +203,10 @@ int main() {
         assert(std::equal(staged->originalBytes().begin(),staged->originalBytes().end(),source.begin()));
         const auto beforeInvalid=std::vector<uint8_t>(
             staged->stagedBytes().begin(),staged->stagedBytes().end());
+        assert(!staged->stageName(true,"",&error));
+        assert(!staged->stageName(true,"TOO MANY TEXT",&error));
+        assert(!staged->stageName(false,"TOO LONG",&error));
+        assert(!staged->stageName(true,"Pikaché",&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::Level,0,0,&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::Level,0,101,&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::Experience,0,1000001,&error));

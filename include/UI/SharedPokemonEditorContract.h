@@ -366,6 +366,8 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::IV:
             case FieldIdentity::EV:
             case FieldIdentity::Nature:
+            case FieldIdentity::Nickname:
+            case FieldIdentity::OriginalTrainer:
             case FieldIdentity::HeldItem:
             case FieldIdentity::Ball:
             case FieldIdentity::Form:

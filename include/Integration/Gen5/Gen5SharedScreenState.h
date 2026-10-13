@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace PokeVault::Integration::Gen5 {
@@ -26,7 +27,7 @@ public:
         ConfirmDiscardAll, ConfirmExport, ConfirmExit
     };
     struct EditableRow { Field field; size_t stat; const char* label; uint32_t maximum; };
-    static constexpr std::array<EditableRow,40> kEditableRows{{
+    static constexpr std::array<EditableRow,42> kEditableRows{{
         {Field::Nature,0,"Nature",24}, {Field::Friendship,0,"Friendship",255},
         {Field::HeldItem,0,"Held Item ID",638},
         {Field::Ball,0,"Ball ID",25},
@@ -59,7 +60,9 @@ public:
         {Field::Form,0,"Form",31},
         {Field::Gender,0,"Gender",2},
         {Field::Level,0,"Level",100},
-        {Field::Experience,0,"Experience",1640000}
+        {Field::Experience,0,"Experience",1640000},
+        {Field::Nickname,0,"Nickname",10},
+        {Field::OriginalTrainer,0,"OT Name",7}
     }};
 
     [[nodiscard]] Surface surface() const noexcept { return surface_; }
@@ -307,6 +310,14 @@ public:
     void cancelIdentityPicker() noexcept {
         if(surface_==Surface::IdentityPicker)surface_=Surface::Edit;
     }
+    [[nodiscard]] bool stageNameValue(std::string_view name,std::string& error) {
+        if(surface_!=Surface::Edit || !draft_.editable()) {
+            error="Gen V has no editable native text draft";
+            return false;
+        }
+        const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
+        return stageSharedName(draft_,row.field,name,error);
+    }
     [[nodiscard]] bool stageFieldValue(uint32_t value,std::string& error) {
         if(surface_!=Surface::Edit || !draft_.editable()) {
             error="Gen V has no editable draft";
@@ -315,6 +326,7 @@ public:
         const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
         if(row.field==Field::Move || row.field==Field::MetLocation ||
            row.field==Field::Ability || row.field==Field::Form || row.field==Field::Gender ||
+           row.field==Field::Nickname || row.field==Field::OriginalTrainer ||
            value>row.maximum) {
             error="Use the verified native picker or remain within this field's range";
             return false;
@@ -366,7 +378,8 @@ public:
         }
         const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
         if(row.field==Field::Move || row.field==Field::MetLocation ||
-           row.field==Field::Ability || row.field==Field::Form || row.field==Field::Gender) {
+           row.field==Field::Ability || row.field==Field::Form || row.field==Field::Gender ||
+           row.field==Field::Nickname || row.field==Field::OriginalTrainer) {
             error="Press A to choose a verified Generation V picker value";
             return false;
         }

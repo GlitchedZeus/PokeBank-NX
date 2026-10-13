@@ -117,6 +117,8 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                    field==ScreenState::Field::SecretId ||
                    field==ScreenState::Field::Level ||
                    field==ScreenState::Field::Experience ||
+                   field==ScreenState::Field::Nickname ||
+                   field==ScreenState::Field::OriginalTrainer ||
                    field==ScreenState::Field::Ability ||
                    field==ScreenState::Field::Form ||
                    field==ScreenState::Field::Gender)
@@ -210,6 +212,27 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                               row.field==ScreenState::Field::Gender) {
                         std::string error;
                         if(!state.openIdentityPicker(error))screen.postStatus(error,300);
+                    } else if(row.field==ScreenState::Field::Nickname ||
+                              row.field==ScreenState::Field::OriginalTrainer) {
+                        const auto current=state.draft().current();
+                        if(current) {
+                            const bool nickname=row.field==ScreenState::Field::Nickname;
+                            const auto original=PokeVault::Integration::Gen5::asciiName5(
+                                current->decodedBytes(),nickname);
+                            const auto input=Utils::promptText(
+                                nickname?"Generation V Nickname":"Generation V OT Name",
+                                "ASCII only - no unsupported glyph conversion",
+                                original?*original:std::string{},
+                                nickname?10:7);
+                            if(input.accepted) {
+                                std::string error;
+                                if(!state.stageNameValue(input.text,error))
+                                    screen.postStatus(error,360);
+                                else screen.postStatus(
+                                    "Native PK5 text staged; original SAV5 unchanged",260);
+                            }
+                            screen.controllerNavigation.reset();
+                        }
                     } else if(row.field==ScreenState::Field::TrainerId ||
                               row.field==ScreenState::Field::SecretId ||
                               row.field==ScreenState::Field::Level ||
@@ -530,11 +553,15 @@ const char* reviewedStatName(size_t stat) noexcept {
 }
 std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedFieldChange& c) {
     using Field=PokeVault::Integration::Gen5::StagedPokemon5Record::Field;
+    if(c.field==Field::NicknameText)return "Nickname changed";
+    if(c.field==Field::OriginalTrainerText)return "OT Name changed";
     std::string name;
     switch(c.field) {
         case Field::Nature:name="Nature";break;
         case Field::Level:name="Level";break;
         case Field::Experience:name="Experience";break;
+        case Field::NicknameText:name="Nickname";break;
+        case Field::OriginalTrainerText:name="OT Name";break;
         case Field::Friendship:name="Friendship";break;
         case Field::IV:name=std::string("IV ")+reviewedStatName(c.stat);break;
         case Field::EV:name=std::string("EV ")+reviewedStatName(c.stat);break;
@@ -652,6 +679,8 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
            row.field!=ScreenState::Field::SecretId &&
            row.field!=ScreenState::Field::Level &&
            row.field!=ScreenState::Field::Experience &&
+           row.field!=ScreenState::Field::Nickname &&
+           row.field!=ScreenState::Field::OriginalTrainer &&
            row.field!=ScreenState::Field::Ability &&
            row.field!=ScreenState::Field::Form &&
            row.field!=ScreenState::Field::Gender) {
@@ -668,6 +697,12 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
             value=current->originalTrainerGender()==0?"Male":"Female";
         else if(row.field==ScreenState::Field::FatefulEncounter)
             value=current->fatefulEncounter()?"Yes":"No";
+        else if(row.field==ScreenState::Field::Nickname ||
+                row.field==ScreenState::Field::OriginalTrainer) {
+            const auto name=PokeVault::Integration::Gen5::asciiName5(
+                current->decodedBytes(),row.field==ScreenState::Field::Nickname);
+            value=name?*name:"(native glyphs)";
+        }
         fb.drawText(x+26,yy+11,row.label,Colors::TextSecondary,TextStyle::Body);
         if(row.field==ScreenState::Field::Move ||
            row.field==ScreenState::Field::MetLocation ||
@@ -675,6 +710,8 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
            row.field==ScreenState::Field::SecretId ||
            row.field==ScreenState::Field::Level ||
            row.field==ScreenState::Field::Experience ||
+           row.field==ScreenState::Field::Nickname ||
+           row.field==ScreenState::Field::OriginalTrainer ||
            row.field==ScreenState::Field::Ability ||
            row.field==ScreenState::Field::Form ||
            row.field==ScreenState::Field::Gender) {
@@ -682,7 +719,9 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                 row.field==ScreenState::Field::TrainerId ||
                 row.field==ScreenState::Field::SecretId ||
                 row.field==ScreenState::Field::Level ||
-                row.field==ScreenState::Field::Experience?"A Edit":"A Pick",
+                row.field==ScreenState::Field::Experience ||
+                row.field==ScreenState::Field::Nickname ||
+                row.field==ScreenState::Field::OriginalTrainer?"A Edit":"A Pick",
                 Colors::Accent,TextStyle::Body);
             fb.drawText(x+398,yy+11,value,Colors::Text,TextStyle::Body);
         } else {

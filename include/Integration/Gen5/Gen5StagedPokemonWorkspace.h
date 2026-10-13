@@ -10,6 +10,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -71,6 +72,15 @@ public:
         return stageSlot({Region::Box,box,slot},field,stat,value,error);
     }
 
+    [[nodiscard]] bool stagePartyName(size_t slot,bool nickname,
+                                     std::string_view name,std::string* error=nullptr) {
+        return stageNameSlot({Region::Party,0,slot},nickname,name,error);
+    }
+    [[nodiscard]] bool stageBoxName(size_t box,size_t slot,bool nickname,
+                                   std::string_view name,std::string* error=nullptr) {
+        return stageNameSlot({Region::Box,box,slot},nickname,name,error);
+    }
+
     [[nodiscard]] std::optional<Pokemon5ReadOnly> viewParty(size_t slot) const {
         return view({Region::Party,0,slot});
     }
@@ -126,6 +136,31 @@ private:
         auto edit=StagedPokemon5Record::create(old->originalEncryptedBytes(),error,black2White2());
         if(!edit)return false;
         if(!edit->stage(field,stat,value,error))return false;
+        if(edit->dirty())pending_.emplace(location,std::move(*edit));
+        if(error)error->clear();
+        return true;
+    }
+
+    bool stageNameSlot(const Slot& location,bool nickname,
+                       std::string_view name,std::string* error) {
+        if(!canonicalSlot(location)) {
+            if(error)*error="Gen V native name slot identity is invalid";
+            return false;
+        }
+        const auto it=pending_.find(location);
+        if(it!=pending_.end()) {
+            const bool ok=it->second.stageName(nickname,name,error);
+            if(ok && !it->second.dirty())pending_.erase(it);
+            return ok;
+        }
+        const auto old=sourceSlot(location);
+        if(!old || !old->valid() || old->empty()) {
+            if(error)*error="Gen V name target absent, empty or invalid";
+            return false;
+        }
+        auto edit=StagedPokemon5Record::create(
+            old->originalEncryptedBytes(),error,black2White2());
+        if(!edit || !edit->stageName(nickname,name,error))return false;
         if(edit->dirty())pending_.emplace(location,std::move(*edit));
         if(error)error->clear();
         return true;
