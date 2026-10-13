@@ -25,6 +25,9 @@ manager = read("src/UI/UI.cpp")
 manager_header = read("include/UI/UI.h")
 games = read("src/UI/SaveSelectScreen.cpp")
 trainer = read("src/Legacy/Gen5ReadOnlyTrainer.cpp")
+# These are used by the Create contracts before the field contracts below.
+native_bridge = read("include/Integration/Gen5/Gen5SharedEditorBridge.h")
+native_screen = read("include/Integration/Gen5/Gen5SharedScreenState.h")
 
 require(
     surface,
@@ -106,7 +109,7 @@ require(
     "if (selected.sourceKind == SelectedSourceKind::Gen5AssignedFile)",
     "openGen5Setup(selectedGameId,",
     "discoverGen5Candidates();",
-    "reopenValidatedSource(chosen)",
+    "PokeVault::Integration::Gen5::assignValidatedSource(",
     "selectedSourceKind=SelectedSourceKind::Gen5AssignedFile;",
     "titleSelected=true;",
 )
@@ -158,7 +161,7 @@ assigned_cpp = read("src/Integration/Gen5/Gen5AssignedSource.cpp")
 require(selector_header, "getSelectedGen5Fingerprint() const",
         "std::string selectedGen5Fingerprint;")
 require(games, "selectedGen5Fingerprint.clear();",
-        "selectedGen5Fingerprint=fresh.instance.contentFingerprint;")
+        "selectedGen5Fingerprint=assigned.instance.contentFingerprint;")
 require(ui_header, "std::string_view selectedFingerprint")
 require(manager, "selectScreen.getSelectedGen5Fingerprint()",
         "if(selectedFingerprint.empty())",
@@ -403,7 +406,7 @@ require(create_suite,
 # Gen V reuses the already-shared staged editor, not a second Create/Edit UI.
 # Game cards and the source picker must not claim the editor is unavailable.
 require(games,
-        "Gen V: open Save Instances for the shared staged editor.",
+        "Choose a validated Gen V Save Instance; source stays read-only.",
         "Open the shared staged editor. The original save stays unchanged.",
         '"A","Open Editor"',
         "Review or change this Gen V profile/save assignment.")
@@ -783,7 +786,7 @@ require(read("tests/test_gen5_readonly_save.cpp"),
 # SAV5 review/reparse. Y, never A, stages destructive boxed removal.
 box_workspace=read("include/Integration/Gen5/Gen5StagedPokemonWorkspace.h")
 require(box_workspace,
-        "enum class ChangeKind : uint8_t { FieldEdit, CloneBox, RemoveBox }",
+        "enum class ChangeKind : uint8_t { FieldEdit, CloneBox, RemoveBox, CreateBox }",
         "cloneToEmptyBox(Slot from,size_t box,size_t slot",
         "removeBox(size_t box,size_t slot",
         "undoBoxReplacement(size_t box,size_t slot)",
@@ -871,4 +874,16 @@ require(read("tests/test_gen5_readonly_save.cpp"),
         "presented->boxes[0][0]->level()==1",
         "presented->boxes[0][0]->baseHP()==55",
         "presented->boxes[0][0]->statHPMax()==0")
+
+# Assignment is an executable backend transaction shared with production UI.
+require(assigned_cpp, "SourceAssignmentResult assignValidatedSource(",
+        "reopenValidatedSource(selected)", "binding.sourceVariant=checked.sourceVariant;",
+        "binding.physicalIdentity=checked.physicalIdentity;", "copy=persisted;")
+require(games, "captureSourceFocus(", "restoreSourceFocus(",
+        "remembered.binding.sourcePath,240", "gen5Notice=assigned.diagnostic;")
+require(read("tests/test_gen5_readonly_save.cpp"),
+        "persistentCopyAssignmentContracts();", "sourceSelectionFocusContracts();")
+
+require(games, "void SaveSelectScreen::closeGen5Setup()", "gen5SetupReturnCandidates=sameTarget;")
+require(games, "instance.generation==5 && instance.rememberedSource", '"REMEMBERED / "')
 print("Gen V read-only shared UI guard contracts: PASS")

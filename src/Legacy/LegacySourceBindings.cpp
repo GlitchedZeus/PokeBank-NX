@@ -16,6 +16,17 @@ extern "C" Result fsdevGetLastResult(void) __attribute__((weak));
 namespace PokeVault::Legacy {
     namespace {
         using Owners = std::unordered_map<std::string, BindingRecord>;
+        bool validSourceExtension(const BindingRecord& binding) {
+            if (binding.sourceVariant.empty()) return binding.physicalIdentity.empty();
+            const bool bw = binding.gameIdentity == "black_nds" || binding.gameIdentity == "white_nds";
+            const bool sequel = binding.gameIdentity == "black2_nds" || binding.gameIdentity == "white2_nds";
+            return !binding.sourcePath.empty() &&
+                ((bw && binding.expectedRawFamily == "BW") ||
+                 (sequel && binding.expectedRawFamily == "B2W2")) &&
+                (binding.sourceVariant == "gen5-copy-0-primary" ||
+                 binding.sourceVariant == "gen5-copy-1-backup") &&
+                binding.physicalIdentity.find('\0') == std::string::npos;
+        }
         constexpr const char* Header = "# PokeBank NX legacy source bindings v1\n";
         enum class ReadStatus { Missing, Valid, Invalid };
         char hexDigit(unsigned value) noexcept {
@@ -91,17 +102,23 @@ namespace PokeVault::Legacy {
                     fields.push_back(std::move(field));
                     if (tab == std::string_view::npos) break;
                     start = tab + 1;
-                } while (fields.size() <= 6);
-                if (!decoded || (fields.size() != 2 && fields.size() != 3 && fields.size() != 6)) {
+                } while (fields.size() <= 8);
+                if (!decoded || (fields.size() != 2 && fields.size() != 3 &&
+                                 fields.size() != 6 && fields.size() != 7 && fields.size() != 8)) {
                     owners.clear(); errno = EILSEQ; return ReadStatus::Invalid;
                 }
                 BindingRecord binding;
                 binding.profileIdentity = fields[1];
                 if (fields.size() >= 3) binding.gameIdentity = fields[2];
-                if (fields.size() == 6) {
+                if (fields.size() >= 6) {
                     binding.sourcePath = fields[3];
                     binding.sourceType = fields[4];
                     binding.expectedRawFamily = fields[5];
+                }
+                if (fields.size() >= 7) binding.sourceVariant = fields[6];
+                if (fields.size() == 8) binding.physicalIdentity = fields[7];
+                if (!validSourceExtension(binding)) {
+                    owners.clear(); errno = EILSEQ; return ReadStatus::Invalid;
                 }
                 if (!owners.emplace(fields[0], std::move(binding)).second) {
                     owners.clear(); errno = EILSEQ; return ReadStatus::Invalid;
@@ -123,6 +140,11 @@ namespace PokeVault::Legacy {
                 if (!binding.sourcePath.empty())
                     bytes += "\t" + hexEncode(binding.sourcePath) + "\t" +
                         hexEncode(binding.sourceType) + "\t" + hexEncode(binding.expectedRawFamily);
+                if (!binding.sourceVariant.empty()) {
+                    bytes += "\t" + hexEncode(binding.sourceVariant);
+                    if (!binding.physicalIdentity.empty())
+                        bytes += "\t" + hexEncode(binding.physicalIdentity);
+                }
                 bytes += "\n";
             }
             return bytes;
@@ -294,7 +316,8 @@ namespace PokeVault::Legacy {
             return !value.empty() && value.find('\0') == std::string_view::npos;
         };
         if (!safe(source) || !safe(binding.profileIdentity) || !safe(binding.gameIdentity) ||
-            !safe(binding.sourcePath) || !safe(binding.sourceType) || !safe(binding.expectedRawFamily)) {
+            !safe(binding.sourcePath) || !safe(binding.sourceType) || !safe(binding.expectedRawFamily) ||
+            !validSourceExtension(binding)) {
             errno = EINVAL; return fail("assign-file");
         }
         // Metadata transaction paths must never alias an assigned source save.
@@ -323,7 +346,7 @@ namespace PokeVault::Legacy {
         };
         if (!safe(sourceIdentity) || !safe(binding.profileIdentity) ||
             !safe(binding.gameIdentity) || !safe(binding.sourcePath) ||
-            !safe(binding.sourceType) || !safe(binding.expectedRawFamily)) {
+            !safe(binding.sourceType) || !safe(binding.expectedRawFamily) || !validSourceExtension(binding)) {
             errno = EINVAL;
             return fail("replace-file-assignment");
         }
@@ -332,6 +355,7 @@ namespace PokeVault::Legacy {
         selected.sourceIdentity = sourceIdentity;
         selected.sourcePath = binding.sourcePath;
         selected.gameId = binding.gameIdentity;
+        selected.physicalIdentity = binding.physicalIdentity;
         applyClaims(selected);
         if (!Source::visibleToProfile(selected, binding.profileIdentity)) {
             errno = EEXIST; return fail("replace-file-assignment-conflict");
@@ -377,6 +401,10 @@ namespace PokeVault::Legacy {
         for (const auto& [identity, binding] : owners_) {
             bool matches = identity == instance.sourceIdentity ||
                 std::find(instance.sourceAliases.begin(), instance.sourceAliases.end(), identity) != instance.sourceAliases.end();
+            // A moved Gen V file keeps its physical ownership even while the
+            // old bound path is missing. This is ownership, never auto-relink.
+            matches |= !binding.physicalIdentity.empty() &&
+                binding.physicalIdentity == instance.physicalIdentity;
             if (!binding.sourcePath.empty()) {
                 struct stat bound{};
                 matches |= binding.sourcePath == instance.path() || (exists &&

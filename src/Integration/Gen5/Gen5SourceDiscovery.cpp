@@ -1,6 +1,7 @@
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
 
 #include "Utils/SHA256.h"
+#include "Games/GameIdentity.h"
 
 #include <algorithm>
 #include <array>
@@ -338,8 +339,10 @@ Source::SaveInstance inspectSourceFile(const std::string& path,
     row.contentFingerprint=sha256Hex(bytes);
     row.sourceIdentity=pathIdentity(path,&st,row.contentFingerprint);
     row.containerType=container;
-    row.sourceVariant=copy==SaveCopySelection::Primary?"gen5-copy-0-primary":
-                      copy==SaveCopySelection::Backup?"gen5-copy-1-backup":"";
+    // Even Automatic must pin the actually validated partition. Otherwise a
+    // later corruption could silently reopen the other copy of the same file.
+    row.sourceVariant=save->selectedBackupPartition()?"gen5-copy-1-backup":
+                      "gen5-copy-0-primary";
     row.partyCount=save->partyCount();
     row.trainerName=displayTrainerName(save->trainer().rawName).value_or("");
     row.sourceLabel=std::string("Gen V / ")+
@@ -354,7 +357,11 @@ Source::SaveInstance inspectSourceFile(const std::string& path,
             std::to_string(save->diagnostics().invalidBoxRecords);
     if(!assignedExactGame.empty() && row.gameId!=assignedExactGame) {
         row.validation=Source::ValidationStatus::AssignmentMismatch;
-        row.diagnostic="internal game version differs from requested exact game";
+        const auto* actual=Games::findGame(row.gameId);
+        const auto* expected=Games::findGame(assignedExactGame);
+        row.diagnostic="Save is Pokemon "+(actual?std::string(actual->title):row.gameId)+
+            "; choose a save for Pokemon "+
+            (expected?std::string(expected->title):std::string(assignedExactGame));
     }
     return row;
 }

@@ -54,6 +54,11 @@ struct GameSourceCatalog {
             continue;
         }
         row.rememberedSource=bindings.isPreferredGameSource(row,profile,exactGame);
+        if(row.rememberedSource) {
+            const auto assigned=bindings.resolveFileForGame(profile,exactGame);
+            if(!assigned.binding.sourceVariant.empty())
+                row.rememberedSource=row.sourceVariant==assigned.binding.sourceVariant;
+        }
         out.rows.push_back(std::move(row));
     }
     Source::sortNewestFirst(out.rows);

@@ -3,6 +3,7 @@
 #include "Pokemon/Pokemon5ReadOnlyView.h"
 #include "Integration/Gen5/Gen5SaveInstanceAdapter.h"
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
+#include "Integration/Gen5/Gen5SourceSelection.h"
 #include "Integration/Gen5/Gen5AssignedSource.h"
 #include "Integration/Gen5/Gen5GameSourceCatalog.h"
 #include "Integration/Gen5/Gen5GameCardPreview.h"
@@ -19,6 +20,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <fstream>
+#include <filesystem>
+#include <iterator>
+#include <cerrno>
 #include <array>
 #include <cstdio>
 #include <cstdlib>
@@ -600,6 +605,261 @@ void fourTitleProfileAssignmentContracts() {
     (void)std::remove((db+".bak").c_str());
     (void)std::remove((db+".tmp").c_str());
     assert(::rmdir(dir.c_str())==0);
+}
+
+namespace {
+std::string gen5BindingFault;
+int gen5FailBindingCheckpoint(const char* stage) {
+    if(gen5BindingFault==stage) {errno=EIO;return -1;}
+    return 0;
+}
+std::vector<uint8_t> diskBytes(const std::string& path) {
+    std::ifstream in(path,std::ios::binary);
+    assert(in);
+    return {std::istreambuf_iterator<char>(in),std::istreambuf_iterator<char>()};
+}
+}
+void persistentCopyAssignmentContracts() {
+    namespace S=PokeVault::Source;
+    namespace B=PokeVault::Legacy;
+    char pattern[]="/tmp/pokebank_gen5_copy_assignment_XXXXXX";
+    assert(::mkdtemp(pattern));
+    const std::string dir=pattern,db=dir+"/bindings";
+    const std::array<std::string,2> profiles{std::string(32,'0'),std::string(32,'1')};
+    const std::array<const char*,4> ids{"black_nds","white_nds","black2_nds","white2_nds"};
+    const std::array<uint8_t,4> versions{21,20,23,22};
+    const std::array<const char*,4> providers{"RetroArch","DraStic","melonDS","Manual"};
+    std::array<std::string,8> paths;
+    std::array<std::vector<uint8_t>,8> originals;
+    std::array<S::SaveInstance,8> selected;
+    std::vector<S::SaveInstance> allRows;
+    B::LegacySourceBindings bindings(db,{nullptr,gen5FailBindingCheckpoint});
+    assert(bindings.load());
+    for(size_t p=0;p<profiles.size();++p)for(size_t g=0;g<ids.size();++g) {
+        const size_t i=p*4+g;
+        const auto family=g<2?G::SaveFamily::BlackWhite:G::SaveFamily::Black2White2;
+        const size_t copySize=g<2?L::BlackWhiteCopySize:L::Black2White2CopySize;
+        auto raw=make(family,versions[g]);
+        auto second=make(family,versions[g],copySize);
+        second[copySize+0x19400+6]='Y';
+        if(g<2)stamp(second,copySize,L::BlackWhite);
+        else stamp(second,copySize,L::Black2White2);
+        std::copy(second.begin()+static_cast<std::ptrdiff_t>(copySize),
+            second.begin()+static_cast<std::ptrdiff_t>(2*copySize),
+            raw.begin()+static_cast<std::ptrdiff_t>(copySize));
+        paths[i]=dir+"/"+std::to_string(i)+(g==1?".dsv":g==0?".srm":".sav");
+        originals[i]=g==1?dsvFixture(raw):raw;
+        fileFixture(paths[i],originals[i]);
+        assert(!G::inspectSourceFile(paths[i],providers[g],ids[g]).ready());
+        auto primary=G::inspectSourceFile(paths[i],providers[g],ids[g],G::SaveCopySelection::Primary);
+        auto backup=G::inspectSourceFile(paths[i],providers[g],ids[g],G::SaveCopySelection::Backup);
+        assert(primary.ready() && backup.ready());
+        selected[i]=p==0?backup:primary;
+        allRows.push_back(primary);
+        allRows.push_back(backup);
+        const auto assignment=G::assignValidatedSource(bindings,selected[i],profiles[p],ids[g]);
+        assert(assignment.success && assignment.instance.rememberedSource);
+        assert(assignment.instance.claimedProfile==profiles[p]);
+        const auto saved=bindings.resolveFileForGame(profiles[p],ids[g]);
+        assert(saved.binding.sourceVariant==selected[i].sourceVariant);
+        assert(saved.binding.physicalIdentity==selected[i].physicalIdentity);
+        assert(diskBytes(paths[i])==originals[i]);
+    }
+    B::LegacySourceBindings reloaded(db);
+    assert(reloaded.load() && reloaded.size()==8);
+    for(size_t p=0;p<profiles.size();++p)for(size_t g=0;g<ids.size();++g) {
+        const size_t i=p*4+g;
+        // No session enum is passed: restart and preview must retain the exact
+        // explicitly chosen copy, not an inferred primary/newer partition.
+        const auto opened=G::openAssignedSource(reloaded,profiles[p],ids[g]);
+        assert(opened.ready() && opened.save->exactGameId()==ids[g]);
+        assert(opened.instance.claimedProfile==profiles[p]);
+        assert(opened.instance.sourceVariant==selected[i].sourceVariant);
+        assert(opened.save->trainer().rawName==(p==0?u"NY":u"NX"));
+        const auto preview=G::previewAssignedGame(opened);
+        assert(preview && preview->exactGameId==ids[g]);
+        assert(preview->backupCopySelected==(p==0));
+        assert(G::openAssignedSource(reloaded,profiles[p],ids[g],
+            G::SaveCopySelection::Automatic,selected[i].contentFingerprint).ready());
+        assert(!G::openAssignedSource(reloaded,profiles[p],ids[g],
+            p==0?G::SaveCopySelection::Primary:G::SaveCopySelection::Backup).ready());
+        const auto catalog=G::forGameAndProfile(allRows,reloaded,profiles[p],ids[g]);
+        assert(catalog.rows.size()==2 && catalog.ownedByOtherProfile==2);
+        assert(std::count_if(catalog.rows.begin(),catalog.rows.end(),
+            [](const auto& row){return row.rememberedSource;})==1);
+        for(const auto& row:catalog.rows)
+            assert(row.rememberedSource==(row.sourceVariant==selected[i].sourceVariant));
+        // Same-family wrong-title and cross-profile reassignment fail without
+        // changing the database or source bytes.
+        const auto beforeDb=diskBytes(db);
+        assert(!G::assignValidatedSource(bindings,selected[i],profiles[p],ids[g^1]).success);
+        assert(!G::assignValidatedSource(bindings,selected[i],profiles[1-p],ids[g]).success);
+        assert(diskBytes(db)==beforeDb && diskBytes(paths[i])==originals[i]);
+    }
+    // Every persistence stage must retain BOTH the previous in-memory copy
+    // choice and the old disk database when explicitly changing the choice.
+    auto primary=G::inspectSourceFile(paths[0],providers[0],ids[0],G::SaveCopySelection::Primary);
+    const auto beforeDb=diskBytes(db);
+    for(const char* stage:{"write-temp","validate-temp","retire-backup",
+                          "old-to-backup","temp-to-target","validate-target"}) {
+        gen5BindingFault=stage;
+        const auto failed=G::assignValidatedSource(bindings,primary,profiles[0],ids[0]);
+        assert(!failed.success && !failed.diagnostic.empty());
+        assert(bindings.resolveFileForGame(profiles[0],ids[0]).binding.sourceVariant==
+               "gen5-copy-1-backup");
+        assert(diskBytes(db)==beforeDb);
+        B::LegacySourceBindings afterFailure(db);
+        assert(afterFailure.load());
+        const auto reopen=G::openAssignedSource(afterFailure,profiles[0],ids[0]);
+        assert(reopen.ready() && reopen.save->selectedBackupPartition());
+        assert(diskBytes(paths[0])==originals[0]);
+    }
+    gen5BindingFault.clear();
+    assert(G::assignValidatedSource(bindings,primary,profiles[0],ids[0]).success);
+    assert(G::openAssignedSource(bindings,profiles[0],ids[0]).save->selectedPartition()==0);
+    // Both copies were valid. Corrupt only the chosen primary; a valid backup
+    // must NEVER silently become the remembered editor/preview source.
+    auto damaged=originals[0];
+    damaged[0x19400+6]^=1;
+    fileFixture(paths[0],damaged);
+    assert(G::inspectSourceFile(paths[0],providers[0],ids[0]).ready());
+    assert(!G::reopenValidatedSource(primary).ready());
+    assert(!G::openAssignedSource(bindings,profiles[0],ids[0]).ready());
+    assert(!G::assignValidatedSource(bindings,primary,profiles[0],ids[0]).success);
+    assert(diskBytes(paths[0])==damaged);
+    auto backup=G::inspectSourceFile(paths[0],providers[0],ids[0],G::SaveCopySelection::Backup);
+    assert(G::assignValidatedSource(bindings,backup,profiles[0],ids[0]).success);
+    assert(G::openAssignedSource(bindings,profiles[0],ids[0]).save->selectedBackupPartition());
+    fileFixture(paths[0],originals[0]);
+    // In-place valid rewrites invalidate the selected snapshot even with an
+    // unchanged inode and exact title, preserving assignment and disk bytes.
+    auto stale=originals[0];
+    stale[0x19400+6]='Z';
+    stamp(stale,0,L::BlackWhite);
+    fileFixture(paths[0],stale);
+    const auto metadata=diskBytes(db);
+    assert(!G::assignValidatedSource(bindings,selected[0],profiles[0],ids[0]).success);
+    assert(!G::openAssignedSource(bindings,profiles[0],ids[0],
+        G::SaveCopySelection::Backup,selected[0].contentFingerprint).ready());
+    assert(diskBytes(db)==metadata && diskBytes(paths[0])==stale);
+    fileFixture(paths[0],originals[0]);
+    // Missing paths must not substitute discovered saves. A rename preserves
+    // physical ownership, so only the original profile may explicitly relink.
+    const std::string moved=dir+"/moved.srm";
+    assert(std::rename(paths[0].c_str(),moved.c_str())==0);
+    assert(G::openAssignedSource(bindings,profiles[0],ids[0]).status==G::AssignedOpenStatus::Missing);
+    auto movedRow=G::inspectSourceFile(moved,"Manual",ids[0],G::SaveCopySelection::Backup);
+    assert(movedRow.ready() && movedRow.sourceIdentity!=selected[0].sourceIdentity);
+    B::LegacySourceBindings movedReload(db);
+    assert(movedReload.load());
+    auto claimed=movedRow;
+    movedReload.applyClaims(claimed);
+    assert(claimed.claimedProfile==profiles[0]);
+    assert(!G::assignValidatedSource(movedReload,movedRow,profiles[1],ids[0]).success);
+    assert(G::assignValidatedSource(bindings,movedRow,profiles[0],ids[0]).success);
+    assert(G::openAssignedSource(bindings,profiles[0],ids[0]).ready());
+    assert(diskBytes(moved)==originals[0]);
+    paths[0]=moved;
+    // Alias discovery is deduplicated within one variant, preserving two
+    // primary/backup choices and all profile claims.
+    const std::string alias=dir+"/alias.sav";
+    assert(::link(moved.c_str(),alias.c_str())==0);
+    auto aliasRow=G::inspectSourceFile(alias,"melonDS",ids[0],G::SaveCopySelection::Backup);
+    std::vector<S::SaveInstance> aliases{movedRow,aliasRow};
+    const auto ownedAliases=G::forGameAndProfile(aliases,bindings,profiles[0],ids[0]);
+    assert(ownedAliases.rows.size()==1 && ownedAliases.rows[0].rememberedSource);
+    assert(G::forGameAndProfile(aliases,bindings,profiles[1],ids[0]).rows.empty());
+    assert(std::remove(alias.c_str())==0);
+    // All four titles reject corrupted raw payloads, unsupported wrappers,
+    // and mismatched assignments without persisting failed metadata.
+    const auto stableMetadata=diskBytes(db);
+    for(size_t g=0;g<ids.size();++g) {
+        const std::string bad=dir+"/bad.dsv";
+        auto wrapped=originals[g];
+        wrapped.resize(L::FullSaveSize+41);
+        fileFixture(bad,wrapped);
+        auto row=G::inspectSourceFile(bad,"Manual",ids[g]);
+        assert(!row.ready());
+        assert(!G::assignValidatedSource(bindings,row,profiles[0],ids[g]).success);
+        fileFixture(bad,std::vector<uint8_t>(L::FullSaveSize,0));
+        row=G::inspectSourceFile(bad,"Manual",ids[g]);
+        assert(!row.ready());
+        assert(!G::assignValidatedSource(bindings,row,profiles[0],ids[g]).success);
+        assert(diskBytes(db)==stableMetadata);
+        assert(std::remove(bad.c_str())==0);
+    }
+    // Automatic discovery with ONLY a valid backup still records the actual
+    // partition. Later native copy changes cannot silently switch the editor.
+    const std::string singlePath=dir+"/single.sav";
+    auto single=make(G::SaveFamily::BlackWhite,21,L::BlackWhiteCopySize);
+    fileFixture(singlePath,single);
+    const auto automatic=G::inspectSourceFile(singlePath,"Manual",ids[0]);
+    assert(automatic.ready() && automatic.sourceVariant=="gen5-copy-1-backup");
+    assert(G::assignValidatedSource(bindings,automatic,profiles[0],ids[0]).success);
+    B::LegacySourceBindings singleReload(db);
+    assert(singleReload.load());
+    assert(G::openAssignedSource(singleReload,profiles[0],ids[0]).save->selectedBackupPartition());
+    const auto newPrimary=make(G::SaveFamily::BlackWhite,21);
+    std::copy(newPrimary.begin(),newPrimary.begin()+static_cast<std::ptrdiff_t>(L::BlackWhiteCopySize),
+              single.begin());
+    single[L::BlackWhiteCopySize+0x19400+6]='Y';
+    stamp(single,L::BlackWhiteCopySize,L::BlackWhite);
+    fileFixture(singlePath,single);
+    assert(!G::inspectSourceFile(singlePath,"Manual",ids[0]).ready());
+    assert(G::openAssignedSource(singleReload,profiles[0],ids[0]).save->selectedBackupPartition());
+    assert(!G::openAssignedSource(singleReload,profiles[0],ids[0],
+        G::SaveCopySelection::Automatic,automatic.contentFingerprint).ready());
+    single[L::BlackWhiteCopySize+0x19400+6]^=1; // Chosen backup now fails CRC.
+    fileFixture(singlePath,single);
+    assert(G::inspectSourceFile(singlePath,"Manual",ids[0]).ready());
+    assert(!G::openAssignedSource(singleReload,profiles[0],ids[0]).ready());
+    assert(diskBytes(singlePath)==single);
+    assert(std::remove(singlePath.c_str())==0);
+    // Unsupported extensions cannot create metadata the loader later rejects.
+    auto malformed=bindings.resolveFileForGame(profiles[0],ids[0]).binding;
+    const auto validMetadata=diskBytes(db);
+    malformed.sourceVariant="gen5-copy-newest";
+    assert(!bindings.replaceFileAssignmentAndSave("bad-copy",malformed));
+    malformed.sourceVariant="gen5-copy-0-primary";
+    malformed.gameIdentity="diamond_nds";
+    malformed.expectedRawFamily="dp";
+    assert(!bindings.replaceFileAssignmentAndSave("wrong-generation",malformed));
+    assert(diskBytes(db)==validMetadata);
+    for(size_t i=0;i<paths.size();++i) {
+        assert(diskBytes(paths[i])==originals[i]);
+        assert(std::remove(paths[i].c_str())==0);
+    }
+    std::filesystem::remove_all(dir);
+    std::cout<<"Gen V persistent copies: 4 titles x 2 profiles, rollback, relink, isolation and immutability PASS\n";
+}
+
+void sourceSelectionFocusContracts() {
+    using PokeVault::Source::SaveInstance;
+    std::vector<SaveInstance> rows(12);
+    for(size_t i=0;i<rows.size();++i) {
+        rows[i].gameId="black_nds";
+        rows[i].physicalIdentity="physical-"+std::to_string(i);
+        rows[i].sourceVariant="gen5-copy-0-primary";
+    }
+    rows[10].physicalIdentity=rows[9].physicalIdentity;
+    rows[10].sourceVariant="gen5-copy-1-backup";
+    rows[10].rememberedSource=true;
+    int index=0,scroll=0;
+    G::restoreSourceFocus(rows,{},index,scroll);
+    assert(index==10 && scroll==6);
+    const auto key=G::captureSourceFocus(rows,index);
+    scroll=2; // Finger viewport can differ from controller focus.
+    std::reverse(rows.begin(),rows.end());
+    G::restoreSourceFocus(rows,key,index,scroll);
+    assert(index==1 && scroll==2 && rows[1].sourceVariant=="gen5-copy-1-backup");
+    rows.erase(rows.begin()+1);
+    G::restoreSourceFocus(rows,key,index,scroll);
+    assert(index==0 && scroll==0); // Missing remembered choice, bounded fallback.
+    rows.clear();
+    G::restoreSourceFocus(rows,key,index,scroll);
+    assert(index==0 && scroll==0);
+    assert(G::captureSourceFocus(rows,99).physicalIdentity.empty());
+    assert(G::captureSourceFocus(rows,-1).physicalIdentity.empty());
 }
 
 int main() {
@@ -1468,5 +1728,7 @@ int main() {
     assert(!G::Gen5ReadOnlySave::parse(std::span<const uint8_t>(empty.data(),0x40000)));
     discoveryContracts();
     fourTitleProfileAssignmentContracts();
+    persistentCopyAssignmentContracts();
+    sourceSelectionFocusContracts();
     std::cout<<"Gen V strict BW/B2W2 save reader synthetic contracts PASS\n";
 }

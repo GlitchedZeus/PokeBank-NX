@@ -266,6 +266,7 @@ namespace UI {
         std::string gen5TargetGameId;
         std::string gen5Notice;
         bool gen5SetupFromGamesDrawer = false;
+        bool gen5SetupReturnCandidates = false;
         std::vector<PokeVault::Source::SaveInstance> gen5Instances;
         int gen5SetupIndex = 0;
         int gen5CandidateIndex = 0;
@@ -340,6 +341,7 @@ namespace UI {
         void openGen5Setup(const std::string& gameId, std::string notice = {},
                            bool returnToGamesDrawer = false);
         void discoverGen5Candidates();
+        void closeGen5Setup();
         bool assignGen5Candidate(const PokeVault::Source::SaveInstance& chosen);
         void chooseGen5ManualFile();
         bool unassignCurrentGen5Game();
