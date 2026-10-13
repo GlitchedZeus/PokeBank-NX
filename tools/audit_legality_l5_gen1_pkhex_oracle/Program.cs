@@ -27,6 +27,12 @@ foreach (var value in cases)
     var dv = value.GetProperty("dv16").GetUInt16();
     var experience = value.GetProperty("experience").GetUInt32();
     var statExperience = value.GetProperty("stat_experience").GetUInt16();
+    var statExpHP = value.GetProperty("stat_exp_hp").GetUInt16();
+    var statExpAttack = value.GetProperty("stat_exp_attack").GetUInt16();
+    var statExpDefense = value.GetProperty("stat_exp_defense").GetUInt16();
+    var statExpSpeed = value.GetProperty("stat_exp_speed").GetUInt16();
+    var statExpSpecial = value.GetProperty("stat_exp_special").GetUInt16();
+    if (statExpHP != statExperience) throw new InvalidDataException("Stat Experience HP alias mismatch");
     if (species is < 1 or > 151 || level is < 1 or > 100 || move > 255)
         throw new InvalidDataException("Out of bounded PK1 vector domain");
     // PK1's native binary lacks the originating game name. The source label
@@ -36,8 +42,8 @@ foreach (var value in cases)
         Species = species, Stat_Level = level, EXP = experience,
         TID16 = 1234, Move1 = move, Move1_PP = move == 0 ? 0 : 35,
         DV16 = dv, OriginalTrainerName = "L5",
-        EV_HP = statExperience, EV_ATK = statExperience, EV_DEF = statExperience,
-        EV_SPE = statExperience, EV_SPC = statExperience,
+        EV_HP = statExpHP, EV_ATK = statExpAttack, EV_DEF = statExpDefense,
+        EV_SPE = statExpSpeed, EV_SPC = statExpSpecial,
     };
     pk.SetNotNicknamed(2);
     var originalSpecies = pk.Species;
