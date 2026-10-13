@@ -60,7 +60,21 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "L1 original candidate universe not exhaustively authenticated; missing capture-time game and slot evidence"
+      "blocker": "L1 original candidate universe not exhaustively authenticated; missing capture-time game and slot evidence",
+      "pinned_original_reference_ids": [
+        "PK-SOURCE1RB"
+      ],
+      "pinned_original_source_references": [
+        {
+          "id": "PK-SOURCE1RB",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource1RB.cs",
+          "sha256": "1dbb8733be56fc11778c92bf02d1bae1c1e1d025ac846b86179b5352fc426e4f",
+          "evidence_grade": "B"
+        }
+      ],
+      "reference_limits": "Exact file digest supports research source identity only; not authenticated retail encounter history or a live version-specific PKHeX oracle result"
     },
     {
       "game": "Red",
@@ -76,7 +90,48 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "original learning order, forgotten moves, TM/HM use and post-capture trade decisions not authenticated"
+      "blocker": "original learning order, forgotten moves, TM/HM use and post-capture trade decisions not authenticated",
+      "pinned_original_reference_ids": [
+        "RED-LEVEL",
+        "PK-SOURCE1RB",
+        "PK-GROUP1",
+        "PK-HISTORY"
+      ],
+      "pinned_original_source_references": [
+        {
+          "id": "RED-LEVEL",
+          "repo": "pret/pokered",
+          "commit": "af519899719f0754965776faac0e836a3b906e6d",
+          "path": "data/pokemon/evos_moves.asm",
+          "sha256": "1a4c475c47134440a4a4e54265314638d8c6953da558d7d6a7b7f7bc206c2f30",
+          "evidence_grade": "A"
+        },
+        {
+          "id": "PK-SOURCE1RB",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource1RB.cs",
+          "sha256": "1dbb8733be56fc11778c92bf02d1bae1c1e1d025ac846b86179b5352fc426e4f",
+          "evidence_grade": "B"
+        },
+        {
+          "id": "PK-GROUP1",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroup1.cs",
+          "sha256": "976c429c49c2efca26b943820e93b5a39d86689b9329383a554ce22cb69317e5",
+          "evidence_grade": "B"
+        },
+        {
+          "id": "PK-HISTORY",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Verify/LearnVerifierHistory.cs",
+          "sha256": "af681aab46f3804a6bfde0f9c269474f5c7fdb1e30fac3693e382b1ff190208e",
+          "evidence_grade": "B"
+        }
+      ],
+      "reference_limits": "Exact file digest supports research source identity only; not authenticated retail encounter history or a live version-specific PKHeX oracle result"
     },
     {
       "game": "Red",
@@ -92,7 +147,10 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "72 synthetic directly paired runtime vectors staged; no complete original save/stat development witness"
+      "blocker": "72 synthetic directly paired runtime vectors staged; no complete original save/stat development witness",
+      "pinned_original_reference_ids": [],
+      "pinned_original_source_references": [],
+      "reference_limits": "No independent game-specific archived original-source method witness established in this row"
     },
     {
       "game": "Red",
@@ -108,7 +166,21 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "no authenticated original event/gift receipt or release/game/language proof"
+      "blocker": "no authenticated original event/gift receipt or release/game/language proof",
+      "pinned_original_reference_ids": [
+        "PK-SOURCE1RB"
+      ],
+      "pinned_original_source_references": [
+        {
+          "id": "PK-SOURCE1RB",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource1RB.cs",
+          "sha256": "1dbb8733be56fc11778c92bf02d1bae1c1e1d025ac846b86179b5352fc426e4f",
+          "evidence_grade": "B"
+        }
+      ],
+      "reference_limits": "Exact file digest supports research source identity only; not authenticated retail encounter history or a live version-specific PKHeX oracle result"
     },
     {
       "game": "Red",
@@ -124,7 +196,30 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "no paired before-and-after traded native PK1/PK2 original save witness"
+      "blocker": "no paired before-and-after traded native PK1/PK2 original save witness",
+      "pinned_original_reference_ids": [
+        "PK-SOURCE1RB",
+        "PK-HISTORY"
+      ],
+      "pinned_original_source_references": [
+        {
+          "id": "PK-SOURCE1RB",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource1RB.cs",
+          "sha256": "1dbb8733be56fc11778c92bf02d1bae1c1e1d025ac846b86179b5352fc426e4f",
+          "evidence_grade": "B"
+        },
+        {
+          "id": "PK-HISTORY",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Verify/LearnVerifierHistory.cs",
+          "sha256": "af681aab46f3804a6bfde0f9c269474f5c7fdb1e30fac3693e382b1ff190208e",
+          "evidence_grade": "B"
+        }
+      ],
+      "reference_limits": "Exact file digest supports research source identity only; not authenticated retail encounter history or a live version-specific PKHeX oracle result"
     },
     {
       "game": "Red",
@@ -140,7 +235,10 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "PKHeX PK1.Version==RBY; game-version differentiation needs explicit authenticated original source context"
+      "blocker": "PKHeX PK1.Version==RBY; game-version differentiation needs explicit authenticated original source context",
+      "pinned_original_reference_ids": [],
+      "pinned_original_source_references": [],
+      "reference_limits": "No independent game-specific archived original-source method witness established in this row"
     },
     {
       "game": "Red",
@@ -156,7 +254,10 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "accepted baseline F3/F4 source predicates confirmed; coordinator source guarded; runtime comparisons pending current exact-head CI"
+      "blocker": "accepted baseline F3/F4 source predicates confirmed; coordinator source guarded; runtime comparisons pending current exact-head CI",
+      "pinned_original_reference_ids": [],
+      "pinned_original_source_references": [],
+      "reference_limits": "No independent game-specific archived original-source method witness established in this row"
     },
     {
       "game": "Blue",
@@ -172,7 +273,21 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "L1 original candidate universe not exhaustively authenticated; missing capture-time game and slot evidence"
+      "blocker": "L1 original candidate universe not exhaustively authenticated; missing capture-time game and slot evidence",
+      "pinned_original_reference_ids": [
+        "PK-SOURCE1RB"
+      ],
+      "pinned_original_source_references": [
+        {
+          "id": "PK-SOURCE1RB",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource1RB.cs",
+          "sha256": "1dbb8733be56fc11778c92bf02d1bae1c1e1d025ac846b86179b5352fc426e4f",
+          "evidence_grade": "B"
+        }
+      ],
+      "reference_limits": "Exact file digest supports research source identity only; not authenticated retail encounter history or a live version-specific PKHeX oracle result"
     },
     {
       "game": "Blue",
@@ -188,7 +303,48 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "original learning order, forgotten moves, TM/HM use and post-capture trade decisions not authenticated"
+      "blocker": "original learning order, forgotten moves, TM/HM use and post-capture trade decisions not authenticated",
+      "pinned_original_reference_ids": [
+        "RED-LEVEL",
+        "PK-SOURCE1RB",
+        "PK-GROUP1",
+        "PK-HISTORY"
+      ],
+      "pinned_original_source_references": [
+        {
+          "id": "RED-LEVEL",
+          "repo": "pret/pokered",
+          "commit": "af519899719f0754965776faac0e836a3b906e6d",
+          "path": "data/pokemon/evos_moves.asm",
+          "sha256": "1a4c475c47134440a4a4e54265314638d8c6953da558d7d6a7b7f7bc206c2f30",
+          "evidence_grade": "A"
+        },
+        {
+          "id": "PK-SOURCE1RB",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource1RB.cs",
+          "sha256": "1dbb8733be56fc11778c92bf02d1bae1c1e1d025ac846b86179b5352fc426e4f",
+          "evidence_grade": "B"
+        },
+        {
+          "id": "PK-GROUP1",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroup1.cs",
+          "sha256": "976c429c49c2efca26b943820e93b5a39d86689b9329383a554ce22cb69317e5",
+          "evidence_grade": "B"
+        },
+        {
+          "id": "PK-HISTORY",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Verify/LearnVerifierHistory.cs",
+          "sha256": "af681aab46f3804a6bfde0f9c269474f5c7fdb1e30fac3693e382b1ff190208e",
+          "evidence_grade": "B"
+        }
+      ],
+      "reference_limits": "Exact file digest supports research source identity only; not authenticated retail encounter history or a live version-specific PKHeX oracle result"
     },
     {
       "game": "Blue",
@@ -204,7 +360,10 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "72 synthetic directly paired runtime vectors staged; no complete original save/stat development witness"
+      "blocker": "72 synthetic directly paired runtime vectors staged; no complete original save/stat development witness",
+      "pinned_original_reference_ids": [],
+      "pinned_original_source_references": [],
+      "reference_limits": "No independent game-specific archived original-source method witness established in this row"
     },
     {
       "game": "Blue",
@@ -220,7 +379,21 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "no authenticated original event/gift receipt or release/game/language proof"
+      "blocker": "no authenticated original event/gift receipt or release/game/language proof",
+      "pinned_original_reference_ids": [
+        "PK-SOURCE1RB"
+      ],
+      "pinned_original_source_references": [
+        {
+          "id": "PK-SOURCE1RB",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource1RB.cs",
+          "sha256": "1dbb8733be56fc11778c92bf02d1bae1c1e1d025ac846b86179b5352fc426e4f",
+          "evidence_grade": "B"
+        }
+      ],
+      "reference_limits": "Exact file digest supports research source identity only; not authenticated retail encounter history or a live version-specific PKHeX oracle result"
     },
     {
       "game": "Blue",
@@ -236,7 +409,30 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "no paired before-and-after traded native PK1/PK2 original save witness"
+      "blocker": "no paired before-and-after traded native PK1/PK2 original save witness",
+      "pinned_original_reference_ids": [
+        "PK-SOURCE1RB",
+        "PK-HISTORY"
+      ],
+      "pinned_original_source_references": [
+        {
+          "id": "PK-SOURCE1RB",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource1RB.cs",
+          "sha256": "1dbb8733be56fc11778c92bf02d1bae1c1e1d025ac846b86179b5352fc426e4f",
+          "evidence_grade": "B"
+        },
+        {
+          "id": "PK-HISTORY",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Verify/LearnVerifierHistory.cs",
+          "sha256": "af681aab46f3804a6bfde0f9c269474f5c7fdb1e30fac3693e382b1ff190208e",
+          "evidence_grade": "B"
+        }
+      ],
+      "reference_limits": "Exact file digest supports research source identity only; not authenticated retail encounter history or a live version-specific PKHeX oracle result"
     },
     {
       "game": "Blue",
@@ -252,7 +448,10 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "PKHeX PK1.Version==RBY; game-version differentiation needs explicit authenticated original source context"
+      "blocker": "PKHeX PK1.Version==RBY; game-version differentiation needs explicit authenticated original source context",
+      "pinned_original_reference_ids": [],
+      "pinned_original_source_references": [],
+      "reference_limits": "No independent game-specific archived original-source method witness established in this row"
     },
     {
       "game": "Blue",
@@ -268,7 +467,10 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "accepted baseline F3/F4 source predicates confirmed; coordinator source guarded; runtime comparisons pending current exact-head CI"
+      "blocker": "accepted baseline F3/F4 source predicates confirmed; coordinator source guarded; runtime comparisons pending current exact-head CI",
+      "pinned_original_reference_ids": [],
+      "pinned_original_source_references": [],
+      "reference_limits": "No independent game-specific archived original-source method witness established in this row"
     },
     {
       "game": "Yellow",
@@ -284,7 +486,21 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "L1 original candidate universe not exhaustively authenticated; missing capture-time game and slot evidence"
+      "blocker": "L1 original candidate universe not exhaustively authenticated; missing capture-time game and slot evidence",
+      "pinned_original_reference_ids": [
+        "PK-SOURCE1YW"
+      ],
+      "pinned_original_source_references": [
+        {
+          "id": "PK-SOURCE1YW",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource1YW.cs",
+          "sha256": "15afd4db47640f1b8feead415eb00a7aea3d1b85814895987838a542d2e441f6",
+          "evidence_grade": "B"
+        }
+      ],
+      "reference_limits": "Exact file digest supports research source identity only; not authenticated retail encounter history or a live version-specific PKHeX oracle result"
     },
     {
       "game": "Yellow",
@@ -300,7 +516,48 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "original learning order, forgotten moves, TM/HM use and post-capture trade decisions not authenticated"
+      "blocker": "original learning order, forgotten moves, TM/HM use and post-capture trade decisions not authenticated",
+      "pinned_original_reference_ids": [
+        "YELLOW-LEVEL",
+        "PK-SOURCE1YW",
+        "PK-GROUP1",
+        "PK-HISTORY"
+      ],
+      "pinned_original_source_references": [
+        {
+          "id": "YELLOW-LEVEL",
+          "repo": "pret/pokeyellow",
+          "commit": "e89ead154b9968aa50eed9328ff2b38b6c194382",
+          "path": "data/pokemon/evos_moves.asm",
+          "sha256": "7e72c0e034ce7f895d604cf0d3cd9f4ada2f3312ed75c57fa23c16a70d55b0ef",
+          "evidence_grade": "A"
+        },
+        {
+          "id": "PK-SOURCE1YW",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource1YW.cs",
+          "sha256": "15afd4db47640f1b8feead415eb00a7aea3d1b85814895987838a542d2e441f6",
+          "evidence_grade": "B"
+        },
+        {
+          "id": "PK-GROUP1",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Group/LearnGroup1.cs",
+          "sha256": "976c429c49c2efca26b943820e93b5a39d86689b9329383a554ce22cb69317e5",
+          "evidence_grade": "B"
+        },
+        {
+          "id": "PK-HISTORY",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Verify/LearnVerifierHistory.cs",
+          "sha256": "af681aab46f3804a6bfde0f9c269474f5c7fdb1e30fac3693e382b1ff190208e",
+          "evidence_grade": "B"
+        }
+      ],
+      "reference_limits": "Exact file digest supports research source identity only; not authenticated retail encounter history or a live version-specific PKHeX oracle result"
     },
     {
       "game": "Yellow",
@@ -316,7 +573,10 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "72 synthetic directly paired runtime vectors staged; no complete original save/stat development witness"
+      "blocker": "72 synthetic directly paired runtime vectors staged; no complete original save/stat development witness",
+      "pinned_original_reference_ids": [],
+      "pinned_original_source_references": [],
+      "reference_limits": "No independent game-specific archived original-source method witness established in this row"
     },
     {
       "game": "Yellow",
@@ -332,7 +592,21 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "no authenticated original event/gift receipt or release/game/language proof"
+      "blocker": "no authenticated original event/gift receipt or release/game/language proof",
+      "pinned_original_reference_ids": [
+        "PK-SOURCE1YW"
+      ],
+      "pinned_original_source_references": [
+        {
+          "id": "PK-SOURCE1YW",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource1YW.cs",
+          "sha256": "15afd4db47640f1b8feead415eb00a7aea3d1b85814895987838a542d2e441f6",
+          "evidence_grade": "B"
+        }
+      ],
+      "reference_limits": "Exact file digest supports research source identity only; not authenticated retail encounter history or a live version-specific PKHeX oracle result"
     },
     {
       "game": "Yellow",
@@ -348,7 +622,30 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "no paired before-and-after traded native PK1/PK2 original save witness"
+      "blocker": "no paired before-and-after traded native PK1/PK2 original save witness",
+      "pinned_original_reference_ids": [
+        "PK-SOURCE1YW",
+        "PK-HISTORY"
+      ],
+      "pinned_original_source_references": [
+        {
+          "id": "PK-SOURCE1YW",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource1YW.cs",
+          "sha256": "15afd4db47640f1b8feead415eb00a7aea3d1b85814895987838a542d2e441f6",
+          "evidence_grade": "B"
+        },
+        {
+          "id": "PK-HISTORY",
+          "repo": "kwsch/PKHeX",
+          "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+          "path": "PKHeX.Core/Legality/LearnSource/Verify/LearnVerifierHistory.cs",
+          "sha256": "af681aab46f3804a6bfde0f9c269474f5c7fdb1e30fac3693e382b1ff190208e",
+          "evidence_grade": "B"
+        }
+      ],
+      "reference_limits": "Exact file digest supports research source identity only; not authenticated retail encounter history or a live version-specific PKHeX oracle result"
     },
     {
       "game": "Yellow",
@@ -364,7 +661,10 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "PKHeX PK1.Version==RBY; game-version differentiation needs explicit authenticated original source context"
+      "blocker": "PKHeX PK1.Version==RBY; game-version differentiation needs explicit authenticated original source context",
+      "pinned_original_reference_ids": [],
+      "pinned_original_source_references": [],
+      "reference_limits": "No independent game-specific archived original-source method witness established in this row"
     },
     {
       "game": "Yellow",
@@ -380,8 +680,26 @@
       "external_original_version_authenticated": false,
       "whole_pokemon_legality": "Unknown/Incomplete unless separately attested",
       "acceptance": "BLOCKED",
-      "blocker": "accepted baseline F3/F4 source predicates confirmed; coordinator source guarded; runtime comparisons pending current exact-head CI"
+      "blocker": "accepted baseline F3/F4 source predicates confirmed; coordinator source guarded; runtime comparisons pending current exact-head CI",
+      "pinned_original_reference_ids": [],
+      "pinned_original_source_references": [],
+      "reference_limits": "No independent game-specific archived original-source method witness established in this row"
     }
   ],
-  "release_ready": false
+  "release_ready": false,
+  "research_registry_git_blob": "f3bbc1152dcb778196c11a246da940258e2f5367",
+  "original_game_reference_summary": {
+    "Red": {
+      "retail_decomp": "pret/pokered@af519899719f0754965776faac0e836a3b906e6d",
+      "pkhex_learn_source": "PK-SOURCE1RB"
+    },
+    "Blue": {
+      "retail_decomp": "pret/pokered@af519899719f0754965776faac0e836a3b906e6d",
+      "pkhex_learn_source": "PK-SOURCE1RB"
+    },
+    "Yellow": {
+      "retail_decomp": "pret/pokeyellow@e89ead154b9968aa50eed9328ff2b38b6c194382",
+      "pkhex_learn_source": "PK-SOURCE1YW"
+    }
+  }
 }
