@@ -29,6 +29,13 @@ all other lanes were kept unchanged.
   release, individual recipient save/receipt and one-to-one source-to-
   current identity, plus whether the compared fields survived historical
   transformations. Missing any proof remains Unknown, not Invalid.
+- For a WC6Full, the actual source-pinned PKHeX
+  `WC6.CanBeReceivedByVersion` mask is applied to a **separately
+  attested original receiving game** (X/Y/Alpha Sapphire/Omega Ruby,
+  bit indexes 0–3), never to the Pokémon's possibly different later
+  game. Its `RestrictLanguage` is an exact single-language value,
+  different from the hash-keyed `mgrestrict` language flags. Missing
+  original recipient edition leaves the version gate Unknown.
 - PKHeX's hash-keyed `mgrestrict5.pkl` / `mgrestrict6.pkl` are **not
   embedded**. Only independently pinned language/console-region
   restriction bits may yield source-local mismatch; otherwise this is
@@ -79,15 +86,15 @@ PR-only four-way workflow path filters include its C++ fixture and
 `Gen56MysteryGiftSourceEvidence.h`.
 
 Final exact tested Git blob hashes:
-- Header: `d017ec4930c2182447fbfe19f7452c3d5614c082`
-- Fixture: `4a0ad982caa488ddaca010404eae53badbe792e0`
+- Header: `b3f2e60fab8f7fc9b4d7f3b9aa01e003c4fe7396`
+- Fixture: `9858132e60cb9639b4e31363fda21628ffaa21e3`
 
 **4/4 focused programs PASS**: GCC and Clang C++20, each normal
 `-O2` and ASan/UBSan `-O1 -g -fsanitize=address,undefined
 -fno-omit-frame-pointer`, strict warnings including `-Werror`.
 Checks: 16,384 independently attested source/receipt gating combinations;
 65,536 language mask variants; 65,536 claimed original card IDs;
-256 card-type labels; 256 Ball IDs; malformed/truncated WC6Full and
+256 card-type labels; 256 Ball IDs; all 64 WC6Full version-mask/receiving-edition combinations; malformed/truncated WC6Full and
 PGF; exact WC6Full wrapper offsets; zero species; unspecified Ball;
 conditional source mismatch and unknown historical transfers.
 No sanitizer finding and no retail-source fixture. Tested bytes'
