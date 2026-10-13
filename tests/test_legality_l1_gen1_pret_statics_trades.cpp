@@ -10,7 +10,7 @@ int main(){
  static_assert(E::kStaticEntries.size()==31);
  static_assert(E::kTradeEntries.size()==17);
  static_assert(E::kPretTradeOffers.size()==20);
- static_assert(E::kPretStaticSources.size()==9);
+ static_assert(E::kPretStaticSources.size()==20);
  std::uint64_t compatible=0,negative=0,unknown=0;
  for(std::size_t i=0;i<E::kPretStaticSources.size();++i) {
     const auto& r=E::kPretStaticSources[i];
@@ -23,7 +23,18 @@ int main(){
       c.originalMapIndependentlyAttested=true;
       c.originalSpeciesIndependentlyAttested=true;
       c.originalLevelIndependentlyAttested=true;
+      c.originalFossilIdentityIndependentlyAttested=true;
+      const auto gameMask=E::gameMaskForId(game);
+      if((r.gameMask&gameMask)==0){
+        assert(H::evaluatePretStatic(c).status==Status::ForeignGameRowNotEvidence);
+        ++unknown;continue;
+      }
       assert(H::evaluatePretStatic(c).status==Status::ConditionalPretStaticSceneOnly);
+      if(r.originalMap=="CinnabarLabFossilRoom"){
+         auto noFossil=c;noFossil.originalFossilIdentityIndependentlyAttested=false;
+         assert(H::evaluatePretStatic(noFossil).status==Status::UnknownOriginalFossilReceipt);
+         ++unknown;
+      }
       ++compatible;
       auto n=c;n.originalSceneIndependentlyAttested=false;
       assert(H::evaluatePretStatic(n).status==Status::UnknownOriginalRow);
@@ -51,6 +62,15 @@ int main(){
  assert(E::kPretStaticSources[6].species==131);
  assert(E::kPretStaticSources[7].species==106);
  assert(E::kPretStaticSources[8].species==107);
+ assert(E::kPretStaticSources[9].species==133);
+ assert(E::kPretStaticSources[10].species==1);
+ assert(E::kPretStaticSources[13].species==25);
+ assert(E::kPretStaticSources[14].species==1);
+ assert(E::kPretStaticSources[15].species==4);
+ assert(E::kPretStaticSources[16].species==7);
+ assert(E::kPretStaticSources[17].species==138);
+ assert(E::kPretStaticSources[18].species==140);
+ assert(E::kPretStaticSources[19].species==142);
  for(const auto& offer:E::kPretTradeOffers){
     for(unsigned g=0;g<3;++g){
       const char* title=g==0?"red_gb":g==1?"blue_gb":"yellow_gb";
