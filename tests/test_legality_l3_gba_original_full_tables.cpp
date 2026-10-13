@@ -48,7 +48,7 @@ static_assert(D::kFireRedDeoxysPacked==kOriginalFireRedDeoxys);
 static_assert(D::kFireRedDeoxysPacked.size()==12);
 static_assert(D::kFireRedDeoxysPacked[4]!=frlg(386,4));
 static_assert(D::kFireRedDeoxysPacked[7]!=frlg(386,7));
-static_assert(rubyCount(92)==9 && frlgCount(92)==12); // Gastly retail variant
+static_assert(rubyCount(92)==9 && frlgCount(92)==11); // original pret/pokefirered Gastly source has 11 offers
 static_assert(ruby(92,3)==(13u<<9 | 212u));
 static_assert(frlg(92,3)==(13u<<9 | 174u));
 static_assert(rubyCount(133)==9 && frlgCount(133)==9); // Eevee stays grounded

@@ -93,6 +93,12 @@ echo "L4 Ranger native storage field contract (196861 exhaustive cases)"
 "$compiler" "${base[@]}" tests/fixtures/legality_l4_ranger_storage_ball.cpp \
     -o "$scratch/l4_ranger_storage_ball"
 "$scratch/l4_ranger_storage_ball"
+# Gen I native source-linked gift/trade provenance tests (not whole legality).
+echo "L4 new Gen I native provenance fixtures"
+for fixture in legality_l4_gen1_preflight legality_l4_gen1_npc_metadata legality_l4_gen1_individual_chain legality_l4_gen1_original_native; do
+    "$compiler" "${base[@]}" "tests/fixtures/$fixture.cpp" -o "$scratch/$fixture"
+    "$scratch/$fixture"
+done
 for name in "${header_only[@]}"; do
     echo "L4 C++ compile: $name"
     "$compiler" "${base[@]}" "tests/$name.cpp" -o "$scratch/$name"

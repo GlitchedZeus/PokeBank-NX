@@ -65,6 +65,15 @@ suites=(
   test_legality_l1_stage3_route_ledger
   test_legality_l1_stage3_joint_wild
   test_legality_l1_stage3_pidiv_same_capture
+  test_legality_l1_gen1_pret_slots
+  test_legality_l1_gen1_pret_statics_trades
+  test_legality_l1_gen1_pret_prizes
+  test_legality_l1_gen1_pret_rod_init
+  test_legality_l1_gen1_pret_evolution
+  test_legality_l1_gen1_pret_gift_event
+  test_legality_l1_gen1_pret_wild_roll
+  test_legality_l1_gen1_pret_slot_weights
+  test_legality_l1_gen1_pret_fishing_roll
 )
 profiles=(host sanitize)
 if [[ -n "${L1_PROFILE:-}" ]]; then
