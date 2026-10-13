@@ -40,6 +40,16 @@ int main(){
  s.restrictionRowIndependentlyVerified=true;s.giftHashMatchedRestrictionRowIndependentlyVerified=true;
  G::Native n{};n.validated=true;n.tid=123;n.sid=456;n.species=25;n.origin=20;n.language=2;n.ball=16;
  assert(G::evaluate(p,s,n).status==G::Finding::ConditionalCandidate);
+ {auto x=p;x.ball=0;auto r=G::evaluate(x,s,n);
+ assert(r.contradiction==0 && (r.unknown&G::Ball));}
+ {auto x=n;x.origin=24;auto r=G::evaluate(w,s,x);
+ assert(r.contradiction==0 && r.status==G::Finding::ConditionalCandidate);
+ x.origin=25;r=G::evaluate(w,s,x);
+ assert((r.contradiction&G::Version)!=0 && r.status==G::Finding::CandidateExcluded);
+ assert(!r.globallyInvalid);}
+ {auto x=n;x.tid=999;auto e=p;e.egg=1;
+ assert((G::evaluate(e,s,x).contradiction&G::Trainer)==0);}
+
  {auto x=s;x.originalValuesPreservedToObservedIndependentlyVerified=false;
  n.species=26;assert(G::evaluate(p,x,n).status==G::Finding::UnknownHistoricalChange);n.species=25;}
  {auto x=s;x.originalArchiveDigestIndependentlyVerified=false;
@@ -70,6 +80,7 @@ int main(){
  assert((x==G::EggBall::CompatibleDefault)==(ball==4));
  auto y=G::checkEggBall(6,uint8_t(ball),true);
  assert((y==G::EggBall::CandidateMismatch)==(ball==1||ball==16));
- assert(G::checkEggBall(6,uint8_t(ball),false)==G::EggBall::Unknown);}
+ assert(G::checkEggBall(6,uint8_t(ball),false)==G::EggBall::Unknown);
+ assert(G::checkEggBall(5,uint8_t(ball),false)==G::EggBall::Unknown);}
  std::cout<<"Gen V/VI PGF/WC6/WC6Full source evidence: "<<gates<<" proof masks, 65536 language masks, "<<malformed<<" card-type tags, 256 ball identities PASS\n";
 }

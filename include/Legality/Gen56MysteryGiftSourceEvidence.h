@@ -136,7 +136,7 @@ constexpr Result evaluate(const Projection& gift,const Source& s,const Native& n
     else if(!gift.origin)result.unknown|=Version;
     if(gift.language && gift.language!=native.language)result.contradiction|=Language;
     else if(!gift.language)result.unknown|=Language;
-    if(s.eventBallIdentityIndependentlyVerified) {
+    if(s.eventBallIdentityIndependentlyVerified && gift.ball!=0) {
         if(gift.ball!=native.ball)result.contradiction|=Ball;
     } else result.unknown|=Ball;
     if(s.eventRibbonIdentityIndependentlyVerified) {
@@ -165,10 +165,11 @@ constexpr Result evaluate(const Projection& gift,const Source& s,const Native& n
     return result;
 }
 // PKHeX.Core/Legality/Verifiers/Ball/BallVerifier.cs:
-// no pre-Gen6 egg-ball inheritance; Gen6 eggs cannot inherit Master/Cherish.
+// bred eggs: no pre-Gen6 inheritance; Gen6 cannot inherit Master/Cherish.
+// Do NOT apply to PGF/WC6 event eggs: they are not bred encounters.
 enum class EggBall:uint8_t { Unknown, CandidateMismatch, NeedsGen6SpeciesAbilityOracle, CompatibleDefault };
-constexpr EggBall checkEggBall(uint8_t generation,uint8_t ball,bool independentlyEggSource) noexcept {
-    if(!independentlyEggSource)return EggBall::Unknown;
+constexpr EggBall checkEggBall(uint8_t generation,uint8_t ball,bool independentlyBreedingEggEncounter) noexcept {
+    if(!independentlyBreedingEggEncounter)return EggBall::Unknown;
     if(generation==5)return ball==4?EggBall::CompatibleDefault:EggBall::CandidateMismatch;
     if(generation==6) {
         if(ball==1||ball==16)return EggBall::CandidateMismatch; // Master, Cherish
