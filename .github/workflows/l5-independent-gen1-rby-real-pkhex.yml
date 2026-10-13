@@ -28,6 +28,7 @@ jobs:
           repository: GlitchedZeus/PokeBank-NX
           ref: d29eada5c087e201e00c749703f1a2de3ddfadeb
           path: _l5_gen1_accepted
+          submodules: recursive
           persist-credentials: false
       - name: Checkout exact coordinator with native-format guards
         uses: actions/checkout@v4
@@ -35,6 +36,7 @@ jobs:
           repository: GlitchedZeus/PokeBank-NX
           ref: ad9c1c859f94c0321a5d17489c72b0e7dbb9f440
           path: _l5_gen1_coordinator
+          submodules: recursive
           persist-credentials: false
       - name: Checkout authentic original PKHeX.Core pin
         uses: actions/checkout@v4
@@ -50,6 +52,8 @@ jobs:
           test "$(git rev-parse HEAD)" = "${{ github.sha }}"
           test "$(git -C _l5_gen1_accepted rev-parse HEAD)" = d29eada5c087e201e00c749703f1a2de3ddfadeb
           test "$(git -C _l5_gen1_coordinator rev-parse HEAD)" = ad9c1c859f94c0321a5d17489c72b0e7dbb9f440
+          test "$(git -C _l5_gen1_accepted/vendor/PKSM-Core rev-parse HEAD)" = aa22d7a4f87c0351baf7da5962ba5acd01039a7c
+          test "$(git -C _l5_gen1_coordinator/vendor/PKSM-Core rev-parse HEAD)" = aa22d7a4f87c0351baf7da5962ba5acd01039a7c
           test "$(git -C _l5_gen1_pkhex rev-parse HEAD)" = 6501f0ab46e8f8ca048539dbaf8cae8cb104e722
           test "$(git hash-object _l5_gen1_accepted/src/Legality/Legality.cpp)" = b1d02d6620e8fffca2cf71874b786d44108e193f
           test "$(git hash-object _l5_gen1_coordinator/src/Legality/Legality.cpp)" = 4ac8a0dc0badb8211eb105811eb3fa9f928e36e4
