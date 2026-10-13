@@ -137,6 +137,12 @@ for test in "${tests[@]}"; do
         attempted=$((attempted+1))
         flags=(-std=c++20 -Wall -Wextra -Wpedantic -Werror
                -Wno-unused-parameter -I"$root/include")
+        # The shared original Gen I personal-data include also declares
+        # kBasePP; battle-stat-only TUs intentionally never reference it.
+        # Clang diagnoses this single shared constexpr under -Werror.
+        if [[ "$test" == test_legality_l2_gen1_* ]]; then
+            flags+=(-Wno-unused-const-variable)
+        fi
         if [[ "$test" == test_legality_l2_gen1_native_dv_stat ||
               "$test" == test_legality_l2_gen1_native_record_adversarial ||
               "$test" == test_legality_l2_gen1_native_exp_growth ||
