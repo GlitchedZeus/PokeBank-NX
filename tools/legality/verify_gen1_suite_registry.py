@@ -10,17 +10,62 @@ import tempfile
 FOCUSED = Path('tests/test_legality_gen1_coordinator_smoke.sh')
 L3 = Path('tests/test_legality_l3_run_all.sh')
 REGISTRIES = ((FOCUSED, 'suites', 22), (L3, 'SUITES', 29))
-MANDATORY = {
-    'tests/test_legality_l1_gen1_pret_slots.cpp',
-    'tests/test_legality_l1_gen1_pret_trade_metadata.cpp',
-    'tests/test_legality_l3_gen1_all_species_joint.cpp',
-    'tests/test_legality_l3_gen1_original_all_machines.cpp',
-    'tests/test_legality_l3_gen1_all_species_machine_chronology.cpp',
-    'tests/test_legality_gen1_editor_original_machines_subset.cpp',
+REQUIRED_FOCUSED = frozenset({
+    'tests/fixtures/legality_l4_gen1_individual_chain.cpp',
+    'tests/fixtures/legality_l4_gen1_npc_metadata.cpp',
     'tests/fixtures/legality_l4_gen1_original_native.cpp',
+    'tests/fixtures/legality_l4_gen1_preflight.cpp',
     'tests/fixtures/legality_l4_gen1_raw_record_witness.cpp',
     'tests/fixtures/legality_l5_gen1_rby_vector_integrity.cpp',
-}
+    'tests/test_legality_gen1_editor_original_machines_subset.cpp',
+    'tests/test_legality_l1_gen1_pret_evolution.cpp',
+    'tests/test_legality_l1_gen1_pret_fishing_roll.cpp',
+    'tests/test_legality_l1_gen1_pret_gift_event.cpp',
+    'tests/test_legality_l1_gen1_pret_prizes.cpp',
+    'tests/test_legality_l1_gen1_pret_rod_init.cpp',
+    'tests/test_legality_l1_gen1_pret_slot_weights.cpp',
+    'tests/test_legality_l1_gen1_pret_slots.cpp',
+    'tests/test_legality_l1_gen1_pret_statics_trades.cpp',
+    'tests/test_legality_l1_gen1_pret_trade_metadata.cpp',
+    'tests/test_legality_l1_gen1_pret_wild_roll.cpp',
+    'tests/test_legality_l3_gen1_all_species_joint.cpp',
+    'tests/test_legality_l3_gen1_all_species_machine_chronology.cpp',
+    'tests/test_legality_l3_gen1_original_all_machines.cpp',
+    'tests/test_legality_l3_gen1_rby_original_joint.cpp',
+    'tests/test_legality_l3_gen1_retail_catalog.cpp',
+})
+
+REQUIRED_L3 = frozenset({
+    'tests/test_legality_gen1_editor_original_machines_subset.cpp',
+    'tests/test_legality_l3_gba_full_machine_classification.cpp',
+    'tests/test_legality_l3_gba_original_full_tables.cpp',
+    'tests/test_legality_l3_gba_original_machine_tables.cpp',
+    'tests/test_legality_l3_gba_relearner.cpp',
+    'tests/test_legality_l3_gba_starter_evolution.cpp',
+    'tests/test_legality_l3_gba_versioned_levelup.cpp',
+    'tests/test_legality_l3_gen12_joint_chronology.cpp',
+    'tests/test_legality_l3_gen12_multistage.cpp',
+    'tests/test_legality_l3_gen12_native_snapshots.cpp',
+    'tests/test_legality_l3_gen1_all_species_joint.cpp',
+    'tests/test_legality_l3_gen1_all_species_machine_chronology.cpp',
+    'tests/test_legality_l3_gen1_original_all_machines.cpp',
+    'tests/test_legality_l3_gen1_rby_original_joint.cpp',
+    'tests/test_legality_l3_gen1_retail_catalog.cpp',
+    'tests/test_legality_l3_gen3_joint_core.cpp',
+    'tests/test_legality_l3_gen3_joint_native.cpp',
+    'tests/test_legality_l3_joint_evolution_machine.cpp',
+    'tests/test_legality_l3_joint_evolution_retail.cpp',
+    'tests/test_legality_l3_machine_methods.cpp',
+    'tests/test_legality_l3_move_chronology.cpp',
+    'tests/test_legality_l3_original_source_digest.cpp',
+    'tests/test_legality_l3_original_source_fingerprints.cpp',
+    'tests/test_legality_l3_palpark_joint_stage.cpp',
+    'tests/test_legality_l3_palpark_native_joint.cpp',
+    'tests/test_legality_l3_palpark_native_retail.cpp',
+    'tests/test_legality_l3_palpark_platinum_source_joint.cpp',
+    'tests/test_legality_l3_platinum_native_sources.cpp',
+    'tests/test_legality_l3_shedinja_copy.cpp',
+})
 
 
 class RegistryError(ValueError):
@@ -61,15 +106,17 @@ def verify(root: Path) -> dict[str, int]:
             require((root / file).is_file(), f'{relative}: missing source: {file}')
             sources.add(file)
         require(len(sources) == len(entries), f'{relative}: aliases/duplicate source paths')
+        require('-UNDEBUG' in text, f'{relative}: active assertions (-UNDEBUG) missing')
         require('-Werror' in text and '-fsanitize=address,undefined' in text,
                 f'{relative}: missing warnings-as-errors or ASan/UBSan gate')
         require('-O2' in text and '-O1' in text,
                 f'{relative}: missing native normal/sanitize build modes')
         require('set -euo pipefail' in text, f'{relative}: failures may be ignored')
+        baseline = REQUIRED_FOCUSED if array == 'suites' else REQUIRED_L3
+        require(baseline.issubset(sources),
+                f'{relative}: lost required baseline suite(s): '
+                + ', '.join(sorted(baseline - sources)))
         sets[array] = sources
-    require(MANDATORY.issubset(sets['suites']),
-            'focused RBY smoke lost required original-source/QA category: '
-            + ', '.join(sorted(MANDATORY - sets['suites'])))
     require(sets['suites'].intersection(sets['SUITES']) >= {
         'tests/test_legality_l3_gen1_all_species_joint.cpp',
         'tests/test_legality_l3_gen1_all_species_machine_chronology.cpp',
@@ -83,14 +130,8 @@ def self_test() -> None:
     with tempfile.TemporaryDirectory(prefix='pbnx-gen1-reg-') as tmp:
         root = Path(tmp)
         (root / 'tests/fixtures').mkdir(parents=True)
-        focused = [f'tests/fixture_{i:02d}.cpp' for i in range(22)]
-        focused = sorted(MANDATORY) + focused[:13]
-        other = [f'tests/l3_native_{i:02d}.cpp' for i in range(29)]
-        other[:3] = sorted({
-            'tests/test_legality_l3_gen1_all_species_joint.cpp',
-            'tests/test_legality_l3_gen1_original_all_machines.cpp',
-            'tests/test_legality_l3_gen1_all_species_machine_chronology.cpp',
-        })
+        focused = sorted(REQUIRED_FOCUSED)
+        other = sorted(REQUIRED_L3)
         for item in focused + other:
             p = root / item
             p.parent.mkdir(parents=True, exist_ok=True)
@@ -99,10 +140,10 @@ def self_test() -> None:
             paths = [x.removeprefix('tests/').removesuffix('.cpp') if nested else x for x in entries]
             return ('#!/bin/bash\nset -euo pipefail\n'
                     + f'{array}=(\n' + ''.join(f'    {name}\n' for name in paths)
-                    + ')\nflags=(-O2 -O1 -Werror -fsanitize=address,undefined)\n')
+                    + ')\nflags=(-O2 -O1 -UNDEBUG -Werror -fsanitize=address,undefined)\n')
         (root / FOCUSED).write_text(script('suites', focused))
         (root / L3).write_text(script('SUITES', other, nested=True))
-        assert verify(root) == {'focused': 22, 'l3': 29, 'distinct_sources': 48}
+        assert verify(root) == {'focused': 22, 'l3': 29, 'distinct_sources': len(set(focused) | set(other))}
         src = root / FOCUSED
         original = src.read_text()
         def bad(replacement: str, diagnostic: str) -> None:
@@ -119,15 +160,13 @@ def self_test() -> None:
         bad(original.replace(focused[0], 'tests/not_present.cpp'), 'missing source')
         bad(original.replace('-fsanitize=address,undefined', ''), 'ASan/UBSan')
         bad(original.replace('set -euo pipefail', 'set -eu'), 'failures may be ignored')
+        bad(original.replace('-UNDEBUG', ''), 'active assertions')
         bad(original.replace(focused[0], '$(printf injected)'), 'command substitution')
-        src.write_text(original.replace('tests/test_legality_l3_gen1_original_all_machines.cpp',
-                                        'tests/l3_native_28.cpp'))
-        try:
-            verify(root)
-            raise AssertionError('required original RBY category removal escaped')
-        except RegistryError as exc:
-            assert 'required original-source' in str(exc)
-    print('Gen I exact-head suite registry self-test: positive, duplicates, drops, '
+        replacement = root / 'tests/registry_replacement.cpp'
+        replacement.write_text('// injected but valid source name\\n')
+        bad(original.replace('tests/test_legality_l1_gen1_pret_wild_roll.cpp',
+                             'tests/registry_replacement.cpp'), 'lost required baseline')
+    print('Gen I exact-head suite registry self-test: full-baseline preservation, duplicates, drops, '
           'missing files, sanitizer, fail-fast, injection and mandatory categories: PASS')
 
 

@@ -57,7 +57,7 @@ SUITES=(
     test_legality_l3_gen1_all_species_machine_chronology
     test_legality_gen1_editor_original_machines_subset
 )
-FLAGS=(-std=c++20 -Wall -Wextra -Wpedantic -Werror -Iinclude)
+FLAGS=(-std=c++20 -Wall -Wextra -Wpedantic -Werror -UNDEBUG -Iinclude)
 for suite in "${SUITES[@]}"; do
     source="tests/${suite}.cpp"
     [[ -f "$source" ]] || { echo "L3 BLOCKED: missing $source" >&2; exit 2; }

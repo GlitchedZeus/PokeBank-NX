@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 compiler="${CXX:-g++}"
 mode="${GEN1_SANITIZE:-0}"
 [[ "$mode" == 0 || "$mode" == 1 ]] || exit 2
-flags=(-std=c++20 -Wall -Wextra -Wpedantic -Werror -Iinclude)
+flags=(-std=c++20 -Wall -Wextra -Wpedantic -Werror -UNDEBUG -Iinclude)
 if [[ "$mode" == 1 ]]; then
   flags+=(-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer)
   export ASAN_OPTIONS="${ASAN_OPTIONS:-detect_leaks=0:halt_on_error=1}"
