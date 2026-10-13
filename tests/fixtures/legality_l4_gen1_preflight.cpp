@@ -6,6 +6,10 @@
 namespace N=Legality::Gen1OriginalGiftNativePreflight;
 int main() {
     using S=N::RateStatus;
+    for(unsigned tag=0;tag<256;++tag) {
+        assert(N::supportedOriginalSourceFamily(static_cast<uint8_t>(tag),false)==(tag==1));
+        assert(N::supportedOriginalSourceFamily(static_cast<uint8_t>(tag),true)==(tag==2));
+    }
     for(unsigned tag=0;tag<8;++tag) {
         const bool stadium=bool(tag&1),cart=bool(tag&2),media=bool(tag&4);
         assert(N::verifiedOriginalMechanism(stadium,cart,media)==

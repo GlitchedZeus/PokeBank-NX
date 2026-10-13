@@ -120,6 +120,14 @@ int main() {
       assert(x.run().status==S::UnknownOriginalIndividual);}
     {auto x=f;x.source.individual.originalGameFontNameBytesIndependentlyIncluded=false;
       assert(x.run().status==S::UnknownOriginalIndividual);}
+    for(unsigned tag=0;tag<256;++tag){auto x=f;
+      x.source.classification=static_cast<L::SourceClass>(tag);
+      assert(x.run().status==(tag==1?S::ConditionalCandidate:S::UnknownSource));
+      assert(!x.run().globallyInvalid);}
+    for(unsigned tag=0;tag<256;++tag){auto x=Fixture{G::Game::Red,G::Kind::StadiumGift};
+      x.source.classification=static_cast<L::SourceClass>(tag);
+      assert(x.run().status==(tag==2?S::ConditionalCandidate:S::UnknownSource));
+      assert(!x.run().globallyInvalid);}
     {auto x=f;x.source.originalAcquisitionContextIndependentlyVerified=false;
       x.native.trainerId++;assert(x.run().status==S::UnknownSource&&!x.run().contradicted);}
     {auto x=f;x.source.originalIndividualRecordLinkedToNativeIndependentlyVerified=false;

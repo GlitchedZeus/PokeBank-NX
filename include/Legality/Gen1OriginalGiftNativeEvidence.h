@@ -88,16 +88,15 @@ constexpr Result evaluate(const NativeRecord& native,bool independentlyValidated
     const auto& hypothesis=source.hypothesis;
     const auto& row=hypothesis.original;
     if(!G::isGen1(row.game) || !originalGen1Kind(row.kind) ||
-       source.classification==SourceClass::ModernUnverifiedListing ||
-       source.classification==SourceClass::Unknown ||
+       !Gen1OriginalGiftNativePreflight::supportedOriginalSourceFamily(
+           static_cast<uint8_t>(source.classification),
+           row.kind==G::Kind::StadiumGift) ||
        !Gen1OriginalGiftNativePreflight::verifiedOriginalMechanism(
            row.kind==G::Kind::StadiumGift,
            source.originalCartridgeScriptIndependentlyPinned,
            source.originalStadiumMediaMechanismIndependentlyPinned) ||
        !source.originalAcquisitionContextIndependentlyVerified ||
-       !source.originalIndividualRecordLinkedToNativeIndependentlyVerified ||
-       (row.kind==G::Kind::StadiumGift)!=
-           (source.classification==SourceClass::OriginalStadiumMedia)) {
+       !source.originalIndividualRecordLinkedToNativeIndependentlyVerified) {
         result.status=Status::UnknownSource;return result;
     }
     // An independently identified source row is distinct from its original

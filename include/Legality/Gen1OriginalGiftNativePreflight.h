@@ -9,6 +9,13 @@ enum class RateStatus:uint8_t { Unknown, OriginalRateMatches,
 // Original Stadium media attestation is not a Red/Blue/Yellow cartridge
 // script pin. Mixing them would make real Stadium candidates unprovable or
 // let a pinned game script falsely attest a separate distribution channel.
+// Serialized origin-family tags are untrusted. An unknown value must not
+// impersonate a native cartridge script or a separate Stadium medium.
+// SourceClass encoding: Unknown=0, Cartridge=1, Stadium=2, Listing=3.
+constexpr bool supportedOriginalSourceFamily(uint8_t sourceTag,
+    bool stadiumGift) noexcept {
+    return stadiumGift ? sourceTag==2 : sourceTag==1;
+}
 constexpr bool verifiedOriginalMechanism(bool stadiumGift,
     bool cartridgeScriptIndependentlyPinned,
     bool stadiumMediaMechanismIndependentlyPinned) noexcept {
