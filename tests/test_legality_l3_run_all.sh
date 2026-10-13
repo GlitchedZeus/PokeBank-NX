@@ -58,6 +58,9 @@ SUITES=(
     test_legality_l3_palpark_joint_stage
     test_legality_l3_authenticated_crosslane
     test_legality_l3_authenticated_multigen
+    test_legality_l3_gen56_pkhex_machines
+    test_legality_l3_gen56_joint_transfer
+    test_legality_l3_gen56_native_joint_methods
 )
 FLAGS=(-std=c++20 -Wall -Wextra -Wpedantic -Werror -Iinclude)
 for suite in "${SUITES[@]}"; do
@@ -73,4 +76,4 @@ for suite in "${SUITES[@]}"; do
         UBSAN_OPTIONS="${UBSAN_OPTIONS:-halt_on_error=1}" \
         "$BUILD/${suite}_sanitize"
 done
-echo 'L3 PASS: all thirty-one native C++20 suites and thirty-one ASan/UBSan executions (full accepted Emerald source)'
+echo 'L3 PASS: all thirty-four native C++20 suites and thirty-four ASan/UBSan executions (full accepted Emerald source)'
