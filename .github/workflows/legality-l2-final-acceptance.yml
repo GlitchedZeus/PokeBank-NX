@@ -1,0 +1,43 @@
+name: L2 Stage 7 Final Breeding Legality Acceptance
+# Full exact-head repository validation; never substitute standalone
+# properties for production-linked native test executions.
+on:
+  push:
+    branches:
+      - feature/legality-l2-breeding-20261012
+  workflow_dispatch:
+
+concurrency:
+  group: l2-stage7-acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  full-original-source-acceptance:
+    name: Full original-source 172-execution acceptance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Checkout exact L2 head with actual submodule sources
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Record immutable head and compilers
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git status --short
+          g++ --version
+          clang++ --version
+      - name: Run all seven L2 stages and production acceptance
+        shell: bash
+        env:
+          ASAN_OPTIONS: halt_on_error=1:detect_leaks=1
+          UBSAN_OPTIONS: halt_on_error=1
+        run: |
+          set -euo pipefail
+          bash tests/test_legality_l2_stage7_acceptance.sh
