@@ -1,0 +1,49 @@
+name: L1 original encounters and RNG native matrix
+
+# Lane-isolated checks only: do not alter the shared host workflow or other
+# legality lanes. Push checkout is the exact authored commit, not a PR merge.
+on:
+  push:
+    branches:
+      - feature/legality-l1-encounters-rng-20261012
+
+permissions:
+  contents: read
+
+jobs:
+  l1-native:
+    name: L1 exact-head ${{ matrix.profile }} (58 suites)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [host, sanitize]
+    steps:
+      - name: Checkout exact L1 application head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Verify exact application, build tools and complete runner
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          echo "L1_EXACT_APPLICATION_SHA=$(git rev-parse HEAD)"
+          echo "L1_EXACT_TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
+          g++ --version
+          bash -n tests/test_legality_l1_run.sh
+          test "$(grep -Ec '^  test_legality_l1_' tests/test_legality_l1_run.sh)" -eq 58
+
+      - name: Execute all 58 L1 native suites under ${{ matrix.profile }}
+        env:
+          L1_EXPECT_SHA: ${{ github.sha }}
+          L1_PROFILE: ${{ matrix.profile }}
+        run: |
+          set -euo pipefail
+          export L1_EXPECT_TREE="$(git rev-parse 'HEAD^{tree}')"
+          bash tests/test_legality_l1_run.sh
