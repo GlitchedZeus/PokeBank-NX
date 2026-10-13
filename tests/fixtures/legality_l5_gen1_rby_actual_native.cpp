@@ -67,6 +67,8 @@ int main(int argc,char** argv){
         assert(pk.ability()==0 && pk.gender()==2);
         assert(pk.ivHP()==0 && pk.evHP()==0); // neutral *modern* compatibility getters
         auto result=Legality::analyze(pk,pk.getGameGroup(),c.source);
+        const bool moveDomain=invalid(result,"cannot exist in a Generation");
+        assert(moveDomain==(c.move==200));
         const bool ability=invalid(result,"Ability not legal for this species");
         const bool gender=invalid(result,"Gendered species marked genderless");
         // The source-free baseline reproduces F3 for any nonempty PK1 and
@@ -91,6 +93,7 @@ int main(int argc,char** argv){
           "\"dv_hp\":"<<hp<<",\"dv_attack\":"<<attack<<","
           "\"dv_defense\":"<<defense<<",\"dv_speed\":"<<speed<<","
           "\"dv_special\":"<<special<<","
+          "\"move_domain_invalid\":"<<(moveDomain?"true":"false")<<","
           "\"ability_invalid\":"<<(ability?"true":"false")<<","
           "\"gender_invalid\":"<<(gender?"true":"false")<<","
           "\"source_conflict_warning\":"
