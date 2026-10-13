@@ -50,18 +50,15 @@ struct SharedEditorSlot {
         append(Shared::Action::Add);
     if(live.validated && live.occupied) {
         append(Shared::Action::View);
-        // A newly staged clone may be viewed but is not yet eligible for
-        // a separate editor session or source-slot mutation.
-        if(slot.location.region!=Gen5StagedPokemonWorkspace::Region::Box ||
-           !workspace.isBoxReplacement(slot.location.box,slot.location.slot)) {
-            append(Shared::Action::Edit);
-            if(workspace.originalOccupied(slot.location) &&
-               workspace.firstEmptyCloneDestination()<720)
-                append(Shared::Action::Clone);
-            if(slot.location.region==Gen5StagedPokemonWorkspace::Region::Box &&
-               workspace.originalOccupied(slot.location))
-                append(Shared::Action::Remove);
-        }
+        // Native Create/Clone results use the SAME shared Edit surface.
+        // Only app-owned PK5 fields can be staged, never source-save writes.
+        append(Shared::Action::Edit);
+        if(workspace.originalOccupied(slot.location) &&
+           workspace.firstEmptyCloneDestination()<720)
+            append(Shared::Action::Clone);
+        if(slot.location.region==Gen5StagedPokemonWorkspace::Region::Box &&
+           workspace.originalOccupied(slot.location))
+            append(Shared::Action::Remove);
     }
     if(workspace.hasChanges())append(Shared::Action::Review);
     append(Shared::Action::Close);

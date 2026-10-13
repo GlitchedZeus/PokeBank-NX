@@ -337,7 +337,11 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     assert(boxOps.viewBox(0,1)->species()==25);
     assert(boxOps.viewBox(0,1)->pid()==parsed->partyPokemon(0)->pid());
     assert(!boxOps.viewBox(0,1)->partyRecord());
-    assert(!boxOps.stageBox(0,1,Field::Nature,0,3,&error));
+    // A staged native clone remains editable through the SAME field model;
+    // its immutable party-source certificate must survive each extra edit.
+    assert(boxOps.stageBox(0,1,Field::Friendship,0,199,&error));
+    assert(boxOps.stageBoxName(0,1,true,"CLONE",&error));
+    assert(boxOps.viewBox(0,1)->friendship()==199);
     assert(!boxOps.removeBox(0,1,&error)); // Cannot remove newly staged clone.
     assert(boxOps.removeBox(0,0,&error));
     assert(!boxOps.removeBox(0,0,&error));
@@ -347,8 +351,11 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     bool sawClone=false,sawRemove=false;
     for(const auto& change:boxOps.pendingReview()) {
         const auto verified=G::verifyStagedReview(change,&error);
-        assert(verified && verified->fields.size()==1);
+        assert(verified && !verified->fields.empty());
         if(change.kind==G::Gen5StagedPokemonWorkspace::ChangeKind::CloneBox) {
+            assert(verified->fields.size()==3);
+            assert(verified->fields[1].field==Field::NicknameText);
+            assert(verified->fields[2].field==Field::Friendship);
             sawClone=true;
             assert(change.location.box==0 && change.location.slot==1);
             assert(verified->fields[0].field==Field::CloneBox);
@@ -356,11 +363,15 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
             forged.cloneSourceOriginal[0]^=0x1;
             assert(!G::verifyStagedReview(forged,&error));
             forged=change;
+            forged.replacementOriginal[8]^=0x1;
+            assert(!G::verifyStagedReview(forged,&error));
+            forged=change;
             forged.after[8]^=0x1;
             assert(!G::verifyStagedReview(forged,&error));
         } else {
             sawRemove=true;
             assert(change.kind==G::Gen5StagedPokemonWorkspace::ChangeKind::RemoveBox);
+            assert(verified->fields.size()==1);
             assert(verified->fields[0].field==Field::RemoveBox);
             auto forged=change;
             forged.after[10]=1;
@@ -374,6 +385,7 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
         &error,selected);
     assert(checked && checked->boxPokemon(0,0)->empty());
     assert(checked->boxPokemon(0,1)->species()==25);
+    assert(checked->boxPokemon(0,1)->friendship()==199);
     assert(checked->boxPokemon(0,1)->pid()==parsed->partyPokemon(0)->pid());
     assert(checked->partyPokemon(0)->species()==25);
     assert(std::equal(parsed->sourceBytes().begin(),
@@ -393,11 +405,17 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     assert(boxClone.viewBox(0,2)->species()==133);
     assert(boxClone.viewBox(0,2)->pid()==parsed->boxPokemon(0,0)->pid());
     assert(!boxClone.cloneToEmptyBox({Region::Box,0,2},0,3,&error));
+    assert(boxClone.stageBox(0,2,Field::Friendship,0,180,&error));
+    const auto boxedReview=boxClone.pendingReview();
+    assert(boxedReview.size()==1 && boxedReview[0].replacementOriginal.size()==136);
+    const auto boxedVerified=G::verifyStagedReview(boxedReview.front(),&error);
+    assert(boxedVerified && boxedVerified->fields.size()==2);
     const auto boxedCandidate=G::buildStagedSaveCandidate(boxClone,&error);
     assert(boxedCandidate && boxedCandidate->changedRecords==1);
     const auto boxedParsed=G::Gen5ReadOnlySave::parse(
         boxedCandidate->bytes,game,&error,selected);
     assert(boxedParsed && boxedParsed->boxPokemon(0,2)->species()==133);
+    assert(boxedParsed->boxPokemon(0,2)->friendship()==180);
     assert(boxedParsed->boxPokemon(0,0)->species()==133);
     auto staleClone=input;
     staleClone.back()^=0x80;

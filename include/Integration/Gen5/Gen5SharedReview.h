@@ -61,9 +61,9 @@ struct VerifiedSlotReview {
                !afterBox.valid() || afterBox.empty() || afterBox.partyRecord())
                 return fail("Gen V Create needs an empty original and explicit native request");
             const auto rebuilt=createNative5(*change.createRequest);
-            if(!rebuilt || rebuilt.encrypted!=change.after ||
+            if(!rebuilt || rebuilt.encrypted!=change.replacementOriginal ||
                afterBox.originVersion()!=static_cast<uint32_t>(change.createRequest->game))
-                return fail("Gen V Create is not a deterministic native boxed PK5");
+                return fail("Gen V Create certificate disagrees with the native PK5 baseline");
             result.fields.push_back({Field::CreateBox,0,0,afterBox.species()});
         } else if(change.kind==Kind::RemoveBox) {
             if(change.createRequest)
@@ -92,15 +92,37 @@ struct VerifiedSlotReview {
                 return fail("Gen V clone source certificate is not native PK5");
             auto d=Crypto::decrypt(change.cloneSourceOriginal);
             d.resize(Crypto::StoredSize);
-            if(Crypto::encryptCandidate(d)!=change.after)
-                return fail("Gen V clone does not match exact encrypted source snapshot");
+            if(Crypto::encryptCandidate(d)!=change.replacementOriginal)
+                return fail("Gen V clone certificate differs from exact source snapshot");
             result.fields.push_back({Field::CloneBox,0,0,afterBox.species()});
         } else return fail("Gen V review box-operation kind is unknown");
+        // A newly cloned/created Pokemon can be edited through the SAME
+        // shared field model. Keep its immutable origin certificate, then
+        // independently replay every additional field from that baseline.
+        if(change.kind==Kind::CreateBox || change.kind==Kind::CloneBox) {
+            if(change.replacementOriginal.size()!=Crypto::StoredSize)
+                return fail("Gen V box operation lacks native baseline");
+            if(change.after!=change.replacementOriginal) {
+                auto fieldsOnly=change;
+                fieldsOnly.kind=Kind::FieldEdit;
+                fieldsOnly.before=change.replacementOriginal;
+                fieldsOnly.cloneSourceOriginal.clear();
+                fieldsOnly.createRequest.reset();
+                fieldsOnly.replacementOriginal.clear();
+                const auto verified=verifyStagedReview(fieldsOnly,error);
+                if(!verified)
+                    return fail("Gen V staged box edits failed independent field replay");
+                result.fields.insert(result.fields.end(),
+                    verified->fields.begin(),verified->fields.end());
+            }
+        } else if(!change.replacementOriginal.empty())
+            return fail("Gen V Remove carried unrelated native box baseline");
         if(error)error->clear();
         return result;
     }
-    if(change.createRequest || !change.cloneSourceOriginal.empty())
-        return fail("Gen V field edit contained unrelated create or clone metadata");
+    if(change.createRequest || !change.cloneSourceOriginal.empty() ||
+       !change.replacementOriginal.empty())
+        return fail("Gen V field edit contained unrelated Create/Clone evidence");
     const Pokemon5ReadOnly before(std::span<const uint8_t>(change.before));
     const Pokemon5ReadOnly after(std::span<const uint8_t>(change.after));
     if(!before.valid() || before.empty() || !after.valid() || after.empty() ||

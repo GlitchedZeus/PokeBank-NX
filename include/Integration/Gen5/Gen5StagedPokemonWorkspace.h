@@ -49,6 +49,7 @@ public:
         Slot cloneSource{};
         std::vector<uint8_t> cloneSourceOriginal;
         std::optional<CreateRequest5> createRequest;
+        std::vector<uint8_t> replacementOriginal;
     };
 
     explicit Gen5StagedPokemonWorkspace(const Gen5ReadOnlySave& validated)
@@ -125,6 +126,7 @@ public:
         BoxReplacement replacement;
         replacement.kind=ChangeKind::CloneBox;
         replacement.after=encrypted;
+        replacement.replacementOriginal=encrypted;
         replacement.cloneSource=from;
         replacement.cloneSourceOriginal.assign(
             original->originalEncryptedBytes().begin(),
@@ -163,6 +165,7 @@ public:
         BoxReplacement replacement;
         replacement.kind=ChangeKind::CreateBox;
         replacement.after=result.encrypted;
+        replacement.replacementOriginal=result.encrypted;
         replacement.createRequest=request;
         if(!boxReplacements_.emplace(target,std::move(replacement)).second)
             return fail("Gen V Create destination changed during staging");
@@ -245,7 +248,7 @@ public:
                  original->originalEncryptedBytes().end()},
                 replacement.after,black2White2(),replacement.kind,
                 replacement.cloneSource,replacement.cloneSourceOriginal,
-                replacement.createRequest});
+                replacement.createRequest,replacement.replacementOriginal});
         }
         return out;
     }
@@ -258,6 +261,7 @@ private:
         Slot cloneSource{};
         std::vector<uint8_t> cloneSourceOriginal;
         std::optional<CreateRequest5> createRequest;
+        std::vector<uint8_t> replacementOriginal;
     };
     [[nodiscard]] std::optional<Pokemon5ReadOnly> sourceSlot(const Slot& s) const {
         if(!canonicalSlot(s))return std::nullopt;
@@ -279,9 +283,23 @@ private:
     }
     bool stageSlot(const Slot& location,StagedPokemon5Record::Field field,
                    size_t stat,uint32_t value,std::string* error) {
-        if(!canonicalSlot(location) || boxReplacements_.count(location)) {
-            if(error)*error="Gen V staged slot identity is invalid or replaced";
+        if(!canonicalSlot(location)) {
+            if(error)*error="Gen V staged slot identity is invalid";
             return false;
+        }
+        const auto replacement=boxReplacements_.find(location);
+        if(replacement!=boxReplacements_.end()) {
+            if(replacement->second.kind==ChangeKind::RemoveBox) {
+                if(error)*error="Gen V removed slot cannot be edited";
+                return false;
+            }
+            auto edit=StagedPokemon5Record::create(
+                replacement->second.after,error,black2White2());
+            if(!edit || !edit->stage(field,stat,value,error))return false;
+            replacement->second.after.assign(
+                edit->stagedBytes().begin(),edit->stagedBytes().end());
+            if(error)error->clear();
+            return true;
         }
         const auto it=pending_.find(location);
         if(it!=pending_.end()) {
@@ -304,9 +322,23 @@ private:
 
     bool stageNameSlot(const Slot& location,bool nickname,
                        std::string_view name,std::string* error) {
-        if(!canonicalSlot(location) || boxReplacements_.count(location)) {
-            if(error)*error="Gen V native name slot identity is invalid or replaced";
+        if(!canonicalSlot(location)) {
+            if(error)*error="Gen V native name slot identity is invalid";
             return false;
+        }
+        const auto replacement=boxReplacements_.find(location);
+        if(replacement!=boxReplacements_.end()) {
+            if(replacement->second.kind==ChangeKind::RemoveBox) {
+                if(error)*error="Gen V removed slot cannot be renamed";
+                return false;
+            }
+            auto edit=StagedPokemon5Record::create(
+                replacement->second.after,error,black2White2());
+            if(!edit || !edit->stageName(nickname,name,error))return false;
+            replacement->second.after.assign(
+                edit->stagedBytes().begin(),edit->stagedBytes().end());
+            if(error)error->clear();
+            return true;
         }
         const auto it=pending_.find(location);
         if(it!=pending_.end()) {
