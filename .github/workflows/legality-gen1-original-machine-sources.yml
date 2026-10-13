@@ -1,0 +1,41 @@
+name: Gen I Original RBY TM/HM Source Parity
+on:
+  pull_request:
+    paths:
+      - 'include/Legality/Gen1OriginalMachineTables.h'
+      - 'include/Legality/Gen1RbyOriginalJointHistory.h'
+      - 'docs/legality/research/l3/GEN1_RBY_MACHINE_SOURCE_BLOBS.json'
+      - 'tools/legality/verify_gen1_original_machines.py'
+      - '.github/workflows/legality-gen1-original-machine-sources.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  machine-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: pret/pokered
+          ref: af519899719f0754965776faac0e836a3b906e6d
+          path: _original_pokered
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: pret/pokeyellow
+          ref: e89ead154b9968aa50eed9328ff2b38b6c194382
+          path: _original_pokeyellow
+          persist-credentials: false
+      - name: Verify immutable original RBY machine tables
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          python3 tools/legality/verify_gen1_original_machines.py --pokered _original_pokered --pokeyellow _original_pokeyellow
+          git diff --check

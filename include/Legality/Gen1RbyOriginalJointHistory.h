@@ -5,6 +5,7 @@
 // Original Pikachu/Raichu base stats: blob 4a7f5e8067a31d5aceb91e602a64baf9bd309e8c.
 // Source facts are not evidence of a player's history. Hypothetical contradiction
 // is never global illegality. TM/HM source identity requires external receipts.
+#include "Legality/Gen1OriginalMachineTables.h"
 #include <array>
 #include <cstdint>
 namespace Legality::Gen1RbyOriginalJointHistory {
@@ -37,15 +38,14 @@ constexpr std::uint8_t freeSlot(const std::array<std::uint16_t,4>& a){for(std::u
 constexpr bool has(const std::array<std::uint16_t,4>& a,std::uint16_t m){for(auto v:a)if(v==m)return true;return false;}
 // These exact move-to-item identities and species compatibility must both be
 // source attested. Full machine coverage for all 151 species is NOT asserted.
+// Compatibility is source-attested for all 151 species, not an individual
+// trainer's machine receipt. Missing historical custody still yields Unknown.
 constexpr std::uint16_t sourceMachine(Game g,std::uint16_t species,Method method,std::uint8_t number){
- if(!known(g))return 0;
- if(species==25||species==26){
-   if(method==Method::HM&&number==5)return 148; // Flash
-   if(method==Method::TM){switch(number){case 6:return 92;case 8:return 34;case 10:return 38;case 24:return 85;case 25:return 87;case 45:return 86;default:return 0;}}
- }
- if(species==1 && method==Method::TM){if(number==6)return 92;if(number==8)return 34;if(number==10)return 38;}
- return 0;
+ if(!known(g)||method==Method::None)return 0;
+ return Gen1OriginalMachineTables::moveFor(static_cast<std::uint8_t>(g),species,
+         method==Method::HM,number);
 }
+
 struct Step {
  Game game=Game::Unknown;std::uint8_t level=0;Action action=Action::OfferLearn;
  std::uint16_t move=0;std::uint8_t slot=0;Method method=Method::None;
