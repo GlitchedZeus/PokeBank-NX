@@ -139,6 +139,13 @@ echo "L4 Phase A Gen V/VI PGF/WC6 gift projection and receipt evidence"
 "$compiler" "${base[@]}" tests/fixtures/legality_l4_gen56_gift_source.cpp \
     -o "$scratch/l4_gen56_gift_source"
 "$scratch/l4_gen56_gift_source"
+# L4 Gen I (English R/B/Y) source-linked event, NPC exchange, name and
+# Time Capsule catch-rate evidence. Not L1 encounter-table ownership.
+echo "L4 Gen I original game source and native record checks"
+for fixture in legality_l4_gen1_preflight legality_l4_gen1_npc_metadata legality_l4_gen1_original_native; do
+    "$compiler" "${base[@]}" "tests/fixtures/$fixture.cpp" -o "$scratch/$fixture"
+    "$scratch/$fixture"
+done
 for name in "${header_only[@]}"; do
     echo "L4 C++ compile: $name"
     "$compiler" "${base[@]}" "tests/$name.cpp" -o "$scratch/$name"

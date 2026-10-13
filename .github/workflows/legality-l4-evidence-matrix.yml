@@ -14,6 +14,8 @@ on:
       - include/Legality/Gen14OriginalSourceRights*
       - include/Legality/Gen14FinalProvenanceGate*
       - include/Legality/Gen56MysteryGiftSource*
+      - include/Legality/Gen1OriginalGiftNative*
+      - include/Legality/Gen1OriginalNPCTrade*
       - include/Legality/Gen12Gift*
       - include/Legality/Gen12OriginalDistribution*
       - include/Legality/Gen3*Event*
