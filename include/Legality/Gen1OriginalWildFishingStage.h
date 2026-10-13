@@ -231,7 +231,7 @@ constexpr const PretSlot* pretSlot(std::size_t index) noexcept {
     index-=kPretFishing.size();
     return nullptr;
 }
-static_assert(kPretSlotCount==1511);
+static_assert(kPretSlotCount==1512);
 static_assert(kVerifiedSlots.size()==149);
 
 struct Candidate {
