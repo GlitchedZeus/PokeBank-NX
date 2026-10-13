@@ -288,7 +288,7 @@ int main() {
     assert(genericNative.nativePk1ReadOnly()==nullptr);
     assert(genericNative.nativePk2ReadOnly()==nullptr);
     assert(!genericNative.gen2NativeStatExperience(unavailable));
-    assert(unavailable == std::array<uint16_t,5>{});
+    assert((unavailable == std::array<uint16_t,5>{}));
     auto p = bulbasaurWithSwordsDance();
 
     // Generated Gen III tables: Swords Dance is not direct for Bulbasaur in Ruby/Sapphire,
