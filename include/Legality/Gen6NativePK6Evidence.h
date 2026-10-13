@@ -67,8 +67,11 @@ inline void xorWords(std::span<std::uint8_t> bytes,std::uint32_t seed) noexcept 
     }
 }
 // Return value is evidence about this byte sequence, not global legality.
-inline Evidence inspect(std::span<const std::uint8_t> input,
-                        bool encrypted) noexcept {
+// Internal shared Gen VI/VII envelope. Only generation-specific named wrappers
+// should select a species bound. Not evidence of acquisition or origin.
+inline Evidence inspectWithSpeciesCeiling(std::span<const std::uint8_t> input,
+                                          bool encrypted,
+                                          std::uint16_t ceiling) noexcept {
     Evidence out{};
     const std::size_t length=input.size();
     if(length!=StoredBytes && length!=PartyBytes)return out;
@@ -99,7 +102,7 @@ inline Evidence inspect(std::span<const std::uint8_t> input,
     out.checksumVerified=true;
     out.species=read16(decoded,8);
     if(!out.species) {out.status=Status::EmptySlot;return out;}
-    if(out.species>SpeciesCeiling) {out.status=Status::InvalidSpecies;return out;}
+    if(out.species>ceiling) {out.status=Status::InvalidSpecies;return out;}
     out.pid=read32(decoded,0x18);
     out.nature=decoded[0x1c];
     if(out.nature>24) {out.status=Status::InvalidNature;return out;}
@@ -111,6 +114,10 @@ inline Evidence inspect(std::span<const std::uint8_t> input,
     if(out.evTotal>510) {out.status=Status::InvalidEVTotal;return out;}
     out.status=Status::Parsed;
     return out;
+}
+inline Evidence inspect(std::span<const std::uint8_t> input,
+                        bool encrypted) noexcept {
+    return inspectWithSpeciesCeiling(input,encrypted,SpeciesCeiling);
 }
 static_assert(BlockPosition[0][0]==0);
 static_assert(BlockPosition[23][0]==3);

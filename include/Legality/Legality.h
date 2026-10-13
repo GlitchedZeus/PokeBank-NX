@@ -127,6 +127,10 @@ namespace Legality {
     // Does not modify source buffers or imply source save-write authority.
     Report analyzePk6Record(std::span<const uint8_t> raw, bool encrypted);
 
+    // Ultra Sun/Moon PK7 structural analysis. PK7 is not Let's Go PB7.
+    // Never infer original-game provenance from detached entity bytes.
+    Report analyzePk7Record(std::span<const uint8_t> raw, bool encrypted);
+
     /// Analyze a decrypted Pokemon and return its legality issues (informational).
     /// originGroup = the save's format group (Trainer::getGameGroup()). Returns an
     /// empty report for an empty slot (species 0).
