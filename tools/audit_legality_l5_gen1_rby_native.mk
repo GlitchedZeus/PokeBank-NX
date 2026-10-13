@@ -33,3 +33,23 @@ l5-gen2-4-guard: $(L5_G1_GEN2_BUILD)
 	./$(L5_G1_GEN2_BUILD) --after-fix
 l5-gen2-4-guard-san: $(L5_G1_GEN2_SAN_BUILD)
 	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 ./$(L5_G1_GEN2_SAN_BUILD) --after-fix
+
+# A new independence gate for all original Gen I National Dex species.
+# Use actual Gen1ReadOnlySave.cpp for exact internal ID mapping; remove any
+# earlier graph appearance before appending to prevent duplicate definitions.
+L5_G1_ALLDEX_CPP := ../tests/fixtures/legality_l5_gen1_all_151_sourcefree_native.cpp
+L5_G1_ALLDEX_GRAPH := $(filter-out tests/test_gen34_ball_domain_analyzer.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp,$(GEN34_BALL_ANALYZER_SOURCES)) \
+ src/Integration/Gen1/Gen1ReadOnlySave.cpp
+L5_G1_ALLDEX_NORMAL := $(HOST_BUILD)/l5_gen1_all_151_sourcefree
+L5_G1_ALLDEX_SAN := $(HOST_BUILD)/l5_gen1_all_151_sourcefree_san
+.PHONY: l5-gen1-all151 l5-gen1-all151-san
+$(L5_G1_ALLDEX_NORMAL): $(L5_G1_ALLDEX_CPP) $(L5_G1_ALLDEX_GRAPH)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(L5_G1_ALLDEX_CPP) $(L5_G1_ALLDEX_GRAPH) -o $@
+$(L5_G1_ALLDEX_SAN): $(L5_G1_ALLDEX_CPP) $(L5_G1_ALLDEX_GRAPH)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(L5_G1_ALLDEX_CPP) $(L5_G1_ALLDEX_GRAPH) -o $@
+l5-gen1-all151: $(L5_G1_ALLDEX_NORMAL)
+	./$(L5_G1_ALLDEX_NORMAL)
+l5-gen1-all151-san: $(L5_G1_ALLDEX_SAN)
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 ./$(L5_G1_ALLDEX_SAN)
