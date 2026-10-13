@@ -684,7 +684,10 @@ int main() {
         assert(G::fieldAccess(GF::MetLevel)==GAccess::Editable);
         assert(G::fieldAccess(GF::Ability)!=GAccess::Editable);
         assert(G::fieldAccess(GF::Species)!=GAccess::Editable);
-        static_assert(G::Gen5SharedScreenState::kEditableRows.size()==17);
+        assert(G::fieldAccess(GF::Move)==GAccess::Editable);
+        assert(G::fieldAccess(GF::MovePP)==GAccess::Editable);
+        assert(G::fieldAccess(GF::MovePPUps)==GAccess::Editable);
+        static_assert(G::Gen5SharedScreenState::kEditableRows.size()==29);
         assert(G::exactDescriptor("black_nds",true));
         assert(!G::exactDescriptor("platinum_nds",true));
         G::Gen5SharedPokemonSession unsupported;
@@ -748,6 +751,47 @@ int main() {
         assert(localUiWorkspace.viewParty(0)->metLevel()==
                workspace.viewParty(0)->metLevel()+1);
         assert(localUiWorkspace.hasChanges());
+        // A source-backed Move Picker belongs to the SAME draft/editor.
+        // A cancelled picker cannot accidentally Keep or mutate the stage.
+        assert(ui.openActions(localUiWorkspace,GSlot{GRegion::Party,0,0},error));
+        ui.moveAction(1,localUiWorkspace);
+        assert(ui.activateSelected(localUiWorkspace,error));
+        ui.moveField(5);
+        assert(G::Gen5SharedScreenState::kEditableRows[5].field==GF::Move);
+        assert(ui.openMovePicker(error));
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::MovePicker);
+        ui.movePickerCursor(559);
+        assert(ui.movePickerSelection()==559);
+        assert(!ui.back());
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
+        assert(ui.openMovePicker(error));
+        ui.movePickerCursor(559);
+        assert(ui.acceptMovePicker(error));
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
+        assert(ui.draft().current()->moves()[0]==559);
+        assert(ui.draft().current()->pp()[0]==5);
+        assert(ui.draft().current()->ppUps()[0]==0);
+        ui.moveField(4); // PP Ups 1
+        assert(ui.adjustField(1,error));
+        assert(ui.draft().current()->pp()[0]==6);
+        ui.moveField(4); // current PP 1
+        assert(ui.adjustField(-1,error));
+        assert(ui.draft().current()->pp()[0]==5);
+        assert(ui.keep(localUiWorkspace,error));
+        assert(localUiWorkspace.viewParty(0)->moves()[0]==559);
+        assert(localUiWorkspace.viewParty(0)->ppUps()[0]==1);
+        assert(localUiWorkspace.viewParty(0)->pp()[0]==5);
+        const auto moveReview=localUiWorkspace.pendingReview();
+        assert(!moveReview.empty());
+        const auto verifiedMoves=G::verifyStagedReview(moveReview.front(),&error);
+        assert(verifiedMoves && error.empty());
+        bool sawMove=false,sawPPUps=false,sawPP=false;
+        for(const auto& f:verifiedMoves->fields) {
+            if(f.field==GField::Move && f.stat==0)sawMove=true;
+            if(f.field==GField::MovePPUps && f.stat==0)sawPPUps=true;
+            if(f.field==GField::MovePP && f.stat==0)sawPP=true;
+        }
+        assert(sawMove && sawPPUps && sawPP);
         assert(!ui.requestExit(localUiWorkspace));
         assert(ui.surface()==G::Gen5SharedScreenState::Surface::ConfirmExit);
         ui.reviewFromExit(localUiWorkspace);

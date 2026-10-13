@@ -84,7 +84,11 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     assert(ws.stageParty(0,Field::Friendship,0,128,&error));
     assert(ws.stageParty(0,Field::Ball,0,25,&error));
     assert(ws.stageParty(0,Field::MetLevel,0,72,&error));
+    assert(ws.stageParty(0,Field::Move,0,559,&error));
+    assert(ws.stageParty(0,Field::MovePPUps,0,3,&error));
+    assert(ws.stageParty(0,Field::MovePP,0,4,&error));
     assert(ws.stageBox(0,0,Field::HeldItem,0,638,&error));
+    assert(ws.stageBox(0,0,Field::Move,1,85,&error));
     assert(ws.stageBox(0,0,Field::EV,0,252,&error));
     assert(ws.stageBox(0,0,Field::IV,4,31,&error));
     assert(ws.changedRecordCount()==2);
@@ -162,7 +166,13 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     assert(candidate->partyPokemon(0)->originalTrainerGender()==1);
     assert(candidate->partyPokemon(0)->pokerusState()==0x21);
     assert(candidate->partyPokemon(0)->hiddenAbility());
+    assert(candidate->partyPokemon(0)->moves()[0]==559);
+    assert(candidate->partyPokemon(0)->ppUps()[0]==3);
+    assert(candidate->partyPokemon(0)->pp()[0]==4);
     assert(candidate->boxPokemon(0,0)->heldItem()==638);
+    assert(candidate->boxPokemon(0,0)->moves()[1]==85);
+    assert(candidate->boxPokemon(0,0)->ppUps()[1]==0);
+    assert(candidate->boxPokemon(0,0)->pp()[1]==15);
     assert(candidate->partyPokemon(0)->partyLevel()==54);
     assert(candidate->boxPokemon(0,0)->evs()[0]==252);
     assert(candidate->boxPokemon(0,0)->ivs()[4]==31);

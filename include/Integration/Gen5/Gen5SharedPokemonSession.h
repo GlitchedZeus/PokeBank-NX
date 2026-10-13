@@ -131,6 +131,23 @@ public:
         for(size_t i=0;i<6;++i)
             if(afterEv[i]>beforeEv[i] && !apply(Field::EV,i,afterEv[i]))return false;
 
+        // Moves are coupled to per-slot PP and PP-Ups. Apply move
+        // selections first (native base-PP reset), then PP-Ups (native
+        // max-PP refresh), and current PP LAST. The resulting exact PK5
+        // encrypted bytes must match the local draft, or Keep fails atomically.
+        const auto beforeMoves=before.moves(), afterMoves=after.moves();
+        const auto beforeUps=before.ppUps(), afterUps=after.ppUps();
+        const auto beforePP=before.pp(), afterPP=after.pp();
+        for(size_t i=0;i<4;++i)
+            if(beforeMoves[i]!=afterMoves[i] &&
+               !apply(Field::Move,i,afterMoves[i]))return false;
+        for(size_t i=0;i<4;++i)
+            if(beforeUps[i]!=afterUps[i] &&
+               !apply(Field::MovePPUps,i,afterUps[i]))return false;
+        for(size_t i=0;i<4;++i)
+            if(beforePP[i]!=afterPP[i] &&
+               !apply(Field::MovePP,i,afterPP[i]))return false;
+
         const auto result=readSlot(tentative,location_);
         if(!result || !sameBytes(result->originalEncryptedBytes(),working_->stagedBytes())) {
             error="Gen V Keep changed unrelated PK5 fields or failed deterministic round-trip";

@@ -2,6 +2,7 @@
 #define POKEBANK_GEN5_STAGED_RECORD_H
 
 #include "Pokemon/Pokemon5ReadOnly.h"
+#include "Integration/Gen5/Gen5MovePP.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -18,7 +19,8 @@ namespace PokeVault::Integration::Gen5 {
 // buffers and must pass a decrypt/encrypt/reparse postcondition.
 class StagedPokemon5Record {
 public:
-    enum class Field : uint8_t { Nature, Friendship, IV, EV, HeldItem, Ball, MetLevel };
+    enum class Field : uint8_t { Nature, Friendship, IV, EV, HeldItem, Ball, MetLevel,
+                                Move, MovePP, MovePPUps };
 
     static std::optional<StagedPokemon5Record> create(
         std::span<const uint8_t> source, std::string* error = nullptr) {
@@ -101,6 +103,43 @@ public:
                 candidate[0x84]=static_cast<uint8_t>(
                     (candidate[0x84] & 0x80) | value);
                 break;
+            case Field::Move: {
+                if(stat>=4 || !validNativeMove5(value))
+                    return fail("Gen V move ID/slot outside the native BW/B2W2 range");
+                const size_t offset=0x28+stat*2;
+                const uint16_t prior=Crypto::read16(candidate,offset);
+                if(prior!=value) {
+                    Crypto::write16(candidate,offset,static_cast<uint16_t>(value));
+                    // Selecting a different move resets only its own PP/PP Ups,
+                    // using the pinned Gen V PP table, never modern fallback.
+                    candidate[0x30+stat]=basePP5(value);
+                    candidate[0x34+stat]=0;
+                }
+                break;
+            }
+            case Field::MovePPUps: {
+                if(stat>=4 || value>3)
+                    return fail("Gen V PP Ups require a native slot and 0..3 uses");
+                const uint16_t move=Crypto::read16(candidate,0x28+stat*2);
+                if(!validNativeMove5(move) || (move==0 && value!=0))
+                    return fail("Gen V PP Ups cannot be applied to an absent/unknown move");
+                if(candidate[0x34+stat]!=value) {
+                    candidate[0x34+stat]=static_cast<uint8_t>(value);
+                    candidate[0x30+stat]=maxPP5(move,value);
+                }
+                break;
+            }
+            case Field::MovePP: {
+                if(stat>=4 || value>255)
+                    return fail("Gen V move PP requires a native slot and byte range");
+                const uint16_t move=Crypto::read16(candidate,0x28+stat*2);
+                const uint8_t ups=candidate[0x34+stat];
+                if(!validNativeMove5(move) || ups>3 ||
+                   value>maxPP5(move,ups))
+                    return fail("Gen V current PP exceeds the move's native PP maximum");
+                candidate[0x30+stat]=static_cast<uint8_t>(value);
+                break;
+            }
             default:
                 // A corrupted/forged enum is not a noop mutation. It must
                 // never be accepted as a valid native PK5 field transaction.

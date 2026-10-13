@@ -248,14 +248,44 @@ require(native_review, "apply(Field::HeldItem,0,before.heldItem(),after.heldItem
 require(native_bridge, "NativeField::HeldItem,stat,value,error",
         "NativeField::Ball,stat,value,error",
         "NativeField::MetLevel,stat,value,error")
-require(native_screen, "std::array<EditableRow,17>",
+require(native_screen, "std::array<EditableRow,29>",
         '"Held Item ID",638', '"Ball ID",25', '"Met Level",100',
         "case Field::HeldItem:return pk.heldItem();",
         "case Field::Ball:return pk.ball();",
         "case Field::MetLevel:return pk.metLevel();")
 require(shared_contract, "case FieldIdentity::HeldItem:",
         "case FieldIdentity::Ball:", "case FieldIdentity::MetLevel:")
-require(surface, "Item / Ball / Met Lv / Nature / Friendship / IVs / EVs")
+require(surface, "Moves & PP: A picks moves / D-pad edits other fields")
+
+# Native Gen V move data is pinned to PKHeX MoveInfo5 (560 PP values).
+# The controller/touch picker is a sub-surface of the same guarded Edit draft,
+# never a generic source write or an inferred species learnability checker.
+move_pp = read("include/Integration/Gen5/Gen5MovePP.h")
+require(move_pp, "std::array<uint8_t,560>",
+        "MaxNativeMove5 = 559", "basePP5(", "maxPP5(",
+        "MoveInfo5.cs", "66ef5983a5d349efa2dd615f2926a1b1ee97306e")
+require(native_stage, "case Field::Move:", "case Field::MovePP:",
+        "case Field::MovePPUps:", "candidate[0x30+stat]=basePP5(value);",
+        "candidate[0x34+stat]=0;", "value>maxPP5(move,ups)")
+require(native_session, "Field::Move,i,afterMoves[i]",
+        "Field::MovePPUps,i,afterUps[i]",
+        "Field::MovePP,i,afterPP[i]")
+require(native_review, "Field::Move,i,beforeMoves[i],afterMoves[i]",
+        "Field::MovePPUps,i,beforeUps[i],afterUps[i]",
+        "Field::MovePP,i,beforePP[i],afterPP[i]")
+require(native_bridge, "NativeField::Move,stat,value,error",
+        "NativeField::MovePP,stat,value,error",
+        "NativeField::MovePPUps,stat,value,error")
+require(native_screen, "Surface::MovePicker", "openMovePicker(",
+        "movePickerCursor(", "acceptMovePicker(", "cancelMovePicker()",
+        "std::array<EditableRow,29>", "Field::Move:return pk.moves()[row.stat]",
+        "Field::MovePPUps:return pk.ppUps()[row.stat]",
+        "Field::MovePP:return pk.pp()[row.stat]")
+require(surface, "case Surface::MovePicker:", "drawMovePicker(",
+        "kGen5MovePickerTouchBase=77500",
+        "Names::getMoveName(id)", "basePP5(id)",
+        "state.acceptMovePicker(error)", "state.cancelMovePicker()",
+        "species learnability is not yet evaluated")
 
 # Touch-to-Edit is deliberately limited to the same verified native PK5 field
 # transaction model as the controller. Source, bank, Create and unsupported
@@ -309,6 +339,7 @@ require(working_cpp, "buildStagedSaveCandidateForObservedSource(",
 for forbidden in ("std::fopen(request.sourcePath", '::rename(request.sourcePath',
                   '::remove(request.sourcePath', "injectSave("):
     assert forbidden not in working_cpp, f"Gen V writer touches original source: {forbidden}"
+require(working_tests, "Field::MovePPUps,0,3", "Field::MovePP,0,4")
 require(working_tests, "WorkingCopyFailurePoint::AfterBackup",
         "WorkingCopyFailurePoint::AfterEdited",
         "WorkingCopyFailurePoint::AfterReadback",

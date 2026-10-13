@@ -12,6 +12,7 @@
 #include "Utils/FileUtilities.h"
 #include "Legacy/Gen5ReadOnlyTrainer.h"
 #include "Pokemon/Pokemon5ReadOnlyView.h"
+#include "Names/MoveNames.h"
 
 namespace UI::Gen5SharedReadOnlySurface {
 namespace {
@@ -31,6 +32,7 @@ constexpr int kGen5FieldTouchBase=77100;
 constexpr int kGen5DecreaseTouchBase=77200;
 constexpr int kGen5IncreaseTouchBase=77300;
 constexpr int kGen5PartyTouchBase=77400;
+constexpr int kGen5MovePickerTouchBase=77500;
 
 PokeVault::Legacy::Gen5ReadOnlyTrainer& nativeTrainer(TrainerViewScreen& screen) {
     return static_cast<PokeVault::Legacy::Gen5ReadOnlyTrainer&>(screen.trainer);
@@ -99,8 +101,14 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
         }
     } else if(state.surface()==Surface::Edit) {
         constexpr int fieldCount=static_cast<int>(ScreenState::kEditableRows.size());
-        if(tap>=kGen5FieldTouchBase && tap<kGen5FieldTouchBase+fieldCount)
-            state.moveField(tap-kGen5FieldTouchBase-state.fieldRow());
+        if(tap>=kGen5FieldTouchBase && tap<kGen5FieldTouchBase+fieldCount) {
+            const int chosen=tap-kGen5FieldTouchBase;
+            const bool alreadyFocused=chosen==state.fieldRow();
+            state.moveField(chosen-state.fieldRow());
+            if(alreadyFocused && ScreenState::kEditableRows[static_cast<size_t>(chosen)].field==
+                                    ScreenState::Field::Move)
+                down|=HidNpadButton_A;
+        }
         else if(tap>=kGen5DecreaseTouchBase &&
                 tap<kGen5DecreaseTouchBase+fieldCount) {
             state.moveField(tap-kGen5DecreaseTouchBase-state.fieldRow());
@@ -110,6 +118,13 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             state.moveField(tap-kGen5IncreaseTouchBase-state.fieldRow());
             down|=HidNpadButton_Right;
         }
+    } else if(state.surface()==Surface::MovePicker &&
+              tap>=kGen5MovePickerTouchBase &&
+              tap<kGen5MovePickerTouchBase+static_cast<int>(
+                  PokeVault::Integration::Gen5::MaxNativeMove5)+1) {
+        state.movePickerCursor(tap-kGen5MovePickerTouchBase-
+                               static_cast<int>(state.movePickerSelection()));
+        down|=HidNpadButton_A;
     } else if(state.surface()==Surface::Browse &&
               screen.selectedMode==TrainerViewScreen::ViewMode::Party &&
               tap>=kGen5PartyTouchBase &&
@@ -152,11 +167,29 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                 if(!state.adjustField(delta,error))
                     screen.postStatus(error,180);
             }
-            if(keys&HidNpadButton_A)keepDraft(screen);
-            else if(keys&HidNpadButton_Y) {
+            if(keys&HidNpadButton_A) {
+                if(ScreenState::kEditableRows[static_cast<size_t>(state.fieldRow())].field==
+                       ScreenState::Field::Move) {
+                    std::string error;
+                    if(!state.openMovePicker(error))screen.postStatus(error,300);
+                } else keepDraft(screen);
+            } else if(keys&HidNpadButton_Y) {
                 state.discardDraft();
                 screen.postStatus("Local Gen V draft discarded; staged edits preserved",220);
             } else if(keys&HidNpadButton_B)state.back();
+            return true;
+        case Surface::MovePicker:
+            if(keys&HidNpadButton_Up)state.movePickerCursor(-1);
+            if(keys&HidNpadButton_Down)state.movePickerCursor(1);
+            if(keys&HidNpadButton_Left)state.movePickerCursor(-8);
+            if(keys&HidNpadButton_Right)state.movePickerCursor(8);
+            if(keys&HidNpadButton_ZL)state.movePickerCursor(-40);
+            if(keys&HidNpadButton_ZR)state.movePickerCursor(40);
+            if(keys&HidNpadButton_B)state.cancelMovePicker();
+            else if(keys&HidNpadButton_A) {
+                std::string error;
+                if(!state.acceptMovePicker(error))screen.postStatus(error,300);
+            }
             return true;
         case Surface::ConfirmDraft:
             // A may Keep, but never destroys a staged draft or external source.
@@ -339,7 +372,8 @@ void drawVerifiedSummary(TrainerViewScreen& screen,PKSEFramebuffer& fb,
         Colors::Text,TextStyle::Body);
     for(int i=0;i<4;++i) {
         fb.drawText(x+30+(i%2)*435,y+375+(i/2)*43,
-            "Move "+std::to_string(i+1)+": #"+std::to_string(p->move(i))+
+            "Move "+std::to_string(i+1)+": "+
+            std::string(Names::getMoveName(p->move(i)))+
             "  PP "+std::to_string(p->movePP(i)),
             Colors::TextSecondary,TextStyle::Body);
     }
@@ -379,7 +413,7 @@ void drawActions(TrainerViewScreen& screen,PKSEFramebuffer& fb,
             TextStyle::Body);
     }
     fb.drawText(x+26,y+h-30,
-        "View / staged 4-field Edit only; no source SAV5 writes",
+        "View / verified PK5 edit only; source SAV5 remains untouched",
         Colors::Accent,TextStyle::Caption);
     drawNavBar(fb,{{"D-pad/Stick","Choose"},{"A","Select"},{"B","Cancel"}});
 }
@@ -395,6 +429,12 @@ std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedField
         case Field::Friendship:name="Friendship";break;
         case Field::IV:name=std::string("IV ")+reviewedStatName(c.stat);break;
         case Field::EV:name=std::string("EV ")+reviewedStatName(c.stat);break;
+        case Field::HeldItem:name="Held Item";break;
+        case Field::Ball:name="Ball";break;
+        case Field::MetLevel:name="Met Level";break;
+        case Field::Move:name="Move "+std::to_string(c.stat+1);break;
+        case Field::MovePPUps:name="PP Ups "+std::to_string(c.stat+1);break;
+        case Field::MovePP:name="PP "+std::to_string(c.stat+1);break;
         default:name="Unsupported";break;
     }
     return name+": "+std::to_string(c.before)+" -> "+std::to_string(c.after);
@@ -488,21 +528,67 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
         // an in-memory PK5 value. No implicit Keep, Discard or source write.
         screen.touchButtons.push_back(
             {kGen5FieldTouchBase+static_cast<int>(index),x+14,yy,279,46});
-        screen.touchButtons.push_back(
-            {kGen5DecreaseTouchBase+static_cast<int>(index),x+308,yy+3,36,40});
-        screen.touchButtons.push_back(
-            {kGen5IncreaseTouchBase+static_cast<int>(index),x+418,yy+3,36,40});
+        if(row.field!=ScreenState::Field::Move) {
+            screen.touchButtons.push_back(
+                {kGen5DecreaseTouchBase+static_cast<int>(index),x+308,yy+3,36,40});
+            screen.touchButtons.push_back(
+                {kGen5IncreaseTouchBase+static_cast<int>(index),x+418,yy+3,36,40});
+        }
         const std::string value=std::to_string(ScreenState::fieldValue(*current,row));
         fb.drawText(x+26,yy+11,row.label,Colors::TextSecondary,TextStyle::Body);
-        fb.drawText(x+315,yy+11,"-",Colors::Accent,TextStyle::Body);
-        fb.drawText(x+355,yy+11,value,Colors::Text,TextStyle::Body);
-        fb.drawText(x+429,yy+11,"+",Colors::Accent,TextStyle::Body);
+        if(row.field==ScreenState::Field::Move) {
+            fb.drawText(x+315,yy+11,"A Pick",Colors::Accent,TextStyle::Body);
+            fb.drawText(x+398,yy+11,value,Colors::Text,TextStyle::Body);
+        } else {
+            fb.drawText(x+315,yy+11,"-",Colors::Accent,TextStyle::Body);
+            fb.drawText(x+355,yy+11,value,Colors::Text,TextStyle::Body);
+            fb.drawText(x+429,yy+11,"+",Colors::Accent,TextStyle::Body);
+        }
     }
     fb.drawText(x+22,y+h-33,
-                "Item / Ball / Met Lv / Nature / Friendship / IVs / EVs",
+                "Moves & PP: A picks moves / D-pad edits other fields",
                 Colors::Accent,TextStyle::Caption);
     drawNavBar(fb,{{"Up/Down","Field"},{"Left/Right","Adjust"},
-                   {"A","Keep Staged"},{"Y","Discard Draft"},{"B","Back"}});
+                   {"A","Pick Move / Keep"},{"Y","Discard Draft"},{"B","Back"}});
+}
+// Guarded BW/B2W2 move picker inside the existing shared Trainer shell.
+// A checked selection resets only this move's native PP and PP Ups; a
+// picker's appearance never asserts that the species can learn the move.
+void drawMovePicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,
+                    const ScreenState& state) {
+    dimShared(screen,fb);
+    constexpr int w=840,h=560;
+    const int x=(fb.getWidth()-w)/2;
+    const int y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::Border,1);
+    fb.drawText(x+22,y+16,"Generation V Move Picker",Colors::Text,TextStyle::Heading);
+    fb.drawText(x+22,y+56,
+        "BW / B2W2 moves 000-559; species learnability is not yet evaluated",
+        Colors::Accent,TextStyle::Caption);
+    const auto visible=PokeBank::UIModel::SharedPokemonEditor::scrollWindow(
+        static_cast<size_t>(PokeVault::Integration::Gen5::MaxNativeMove5)+1,
+        9,static_cast<size_t>(state.movePickerSelection()));
+    for(size_t i=0;i<visible.count;++i) {
+        const auto id=static_cast<uint16_t>(visible.first+i);
+        const int yy=y+100+static_cast<int>(i)*43;
+        if(id==state.movePickerSelection())
+            fb.drawSelectionHighlight(x+14,yy,w-28,39);
+        screen.touchButtons.push_back(
+            {kGen5MovePickerTouchBase+static_cast<int>(id),x+15,yy,w-30,39});
+        const auto name=id==0?"Empty move slot":Names::getMoveName(id);
+        fb.drawText(x+28,yy+7,
+            std::to_string(id)+" - "+std::string(name),
+            Colors::Text,TextStyle::Body);
+        fb.drawText(x+w-150,yy+12,
+            "PP "+std::to_string(PokeVault::Integration::Gen5::basePP5(id)),
+            Colors::TextSecondary,TextStyle::Caption);
+    }
+    fb.drawText(x+22,y+h-45,
+        "Choosing a move resets only its own PP / PP Ups",
+        Colors::TextDim,TextStyle::Caption);
+    drawNavBar(fb,{{"D-pad/Stick","Browse"},{"ZL/ZR","Jump 40"},
+                   {"A","Choose Move"},{"B","Cancel"}});
 }
 bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     if(!isGen5Source(screen))return false;
@@ -516,6 +602,7 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         case Surface::Actions:drawActions(screen,fb,state,staged);return true;
         case Surface::Review:drawReview(screen,fb,state,staged);return true;
         case Surface::Edit:drawEdit(screen,fb,state);return true;
+        case Surface::MovePicker:drawMovePicker(screen,fb,state);return true;
         case Surface::View: {
             const auto current=state.draft().current();
             screen.drawGSCOverlay(fb);

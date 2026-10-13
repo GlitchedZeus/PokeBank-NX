@@ -22,15 +22,27 @@ public:
     using Action=Shared::Action;
     using Field=Shared::FieldIdentity;
     enum class Surface : uint8_t {
-        Browse, Actions, View, Edit, ConfirmDraft, Review,
+        Browse, Actions, View, Edit, MovePicker, ConfirmDraft, Review,
         ConfirmDiscardAll, ConfirmExport, ConfirmExit
     };
     struct EditableRow { Field field; size_t stat; const char* label; uint32_t maximum; };
-    static constexpr std::array<EditableRow,17> kEditableRows{{
+    static constexpr std::array<EditableRow,29> kEditableRows{{
         {Field::Nature,0,"Nature",24}, {Field::Friendship,0,"Friendship",255},
         {Field::HeldItem,0,"Held Item ID",638},
         {Field::Ball,0,"Ball ID",25},
         {Field::MetLevel,0,"Met Level",100},
+        {Field::Move,0,"Move 1",MaxNativeMove5},
+        {Field::Move,1,"Move 2",MaxNativeMove5},
+        {Field::Move,2,"Move 3",MaxNativeMove5},
+        {Field::Move,3,"Move 4",MaxNativeMove5},
+        {Field::MovePPUps,0,"PP Ups 1",3},
+        {Field::MovePPUps,1,"PP Ups 2",3},
+        {Field::MovePPUps,2,"PP Ups 3",3},
+        {Field::MovePPUps,3,"PP Ups 4",3},
+        {Field::MovePP,0,"PP 1",64},
+        {Field::MovePP,1,"PP 2",64},
+        {Field::MovePP,2,"PP 3",64},
+        {Field::MovePP,3,"PP 4",64},
         {Field::IV,0,"IV HP",31}, {Field::IV,1,"IV Atk",31},
         {Field::IV,2,"IV Def",31}, {Field::IV,3,"IV Spe",31},
         {Field::IV,4,"IV SpA",31}, {Field::IV,5,"IV SpD",31},
@@ -43,6 +55,7 @@ public:
     [[nodiscard]] const Slot& target() const noexcept { return target_; }
     [[nodiscard]] int actionRow() const noexcept { return actionRow_; }
     [[nodiscard]] int fieldRow() const noexcept { return fieldRow_; }
+    [[nodiscard]] uint16_t movePickerSelection() const noexcept { return movePickerSelection_; }
     [[nodiscard]] size_t reviewPage() const noexcept { return reviewPage_; }
     static constexpr size_t kReviewPageSize = 4;
     [[nodiscard]] const Gen5SharedPokemonSession& draft() const noexcept { return draft_; }
@@ -124,6 +137,49 @@ public:
         constexpr int count=static_cast<int>(kEditableRows.size());
         fieldRow_=(fieldRow_+delta%count+count)%count;
     }
+    // The Move Picker is local to the existing shared PK5 draft. It never
+    // stages a selection until A confirms the target. B is lossless and
+    // returns to the previously selected Move row.
+    [[nodiscard]] bool openMovePicker(std::string& error) {
+        if(surface_!=Surface::Edit || !draft_.editable() ||
+           fieldRow_<0 || static_cast<size_t>(fieldRow_)>=kEditableRows.size() ||
+           kEditableRows[static_cast<size_t>(fieldRow_)].field!=Field::Move) {
+            error="Gen V move picker requires a selected Move row in Edit";
+            return false;
+        }
+        const auto current=draft_.current();
+        if(!current || !current->valid()) {
+            error="Gen V move picker requires a valid PK5 draft";
+            return false;
+        }
+        const auto id=current->moves()[kEditableRows[static_cast<size_t>(fieldRow_)].stat];
+        movePickerSelection_=validNativeMove5(id)?id:0;
+        surface_=Surface::MovePicker;
+        error.clear();
+        return true;
+    }
+    void movePickerCursor(int delta) noexcept {
+        if(surface_!=Surface::MovePicker)return;
+        const int next=std::clamp(static_cast<int>(movePickerSelection_)+delta,
+                                  0,static_cast<int>(MaxNativeMove5));
+        movePickerSelection_=static_cast<uint16_t>(next);
+    }
+    [[nodiscard]] bool acceptMovePicker(std::string& error) {
+        if(surface_!=Surface::MovePicker || !draft_.editable()) {
+            error="Gen V picker has no active Edit draft";
+            return false;
+        }
+        const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
+        if(row.field!=Field::Move ||
+           !stageSharedField(draft_,Field::Move,row.stat,movePickerSelection_,error))
+            return false;
+        surface_=Surface::Edit;
+        error.clear();
+        return true;
+    }
+    void cancelMovePicker() noexcept {
+        if(surface_==Surface::MovePicker)surface_=Surface::Edit;
+    }
     [[nodiscard]] static uint32_t fieldValue(const Pokemon5ReadOnly& pk,
                                               const EditableRow& row) noexcept {
         switch(row.field) {
@@ -132,6 +188,9 @@ public:
             case Field::HeldItem:return pk.heldItem();
             case Field::Ball:return pk.ball();
             case Field::MetLevel:return pk.metLevel();
+            case Field::Move:return pk.moves()[row.stat];
+            case Field::MovePPUps:return pk.ppUps()[row.stat];
+            case Field::MovePP:return pk.pp()[row.stat];
             case Field::IV:return pk.ivs()[row.stat];
             case Field::EV:return pk.evs()[row.stat];
             default:return 0;
@@ -148,6 +207,10 @@ public:
             return false;
         }
         const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
+        if(row.field==Field::Move) {
+            error="Press A to choose a Generation V move by name";
+            return false;
+        }
         const int64_t value=static_cast<int64_t>(fieldValue(*current,row))+delta;
         // No modulo wrapping; failed EV totals and range errors preserve
         // the full draft instead of introducing invalid intermediate states.
@@ -200,6 +263,10 @@ public:
     }
     // B never loses a dirty local draft. User must explicitly Keep or Discard.
     [[nodiscard]] bool back() noexcept {
+        if(surface_==Surface::MovePicker) {
+            cancelMovePicker();
+            return false;
+        }
         if(surface_==Surface::View || surface_==Surface::Edit) {
             if(draft_.back()) {surface_=Surface::Browse;return true;}
             surface_=Surface::ConfirmDraft;
@@ -291,6 +358,7 @@ private:
     Slot target_{};
     int actionRow_=0;
     int fieldRow_=0;
+    uint16_t movePickerSelection_=0;
     size_t reviewPage_=0;
     Gen5SharedPokemonSession draft_;
 };

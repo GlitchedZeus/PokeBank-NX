@@ -210,6 +210,9 @@ enum class FieldIdentity : uint8_t {
     EncounterLegality,
     Provenance,
     OriginalTrainerGender,
+    Move,
+    MovePP,
+    MovePPUps,
 };
 
 enum class FieldAccess : uint8_t { Hidden, Derived, ReadOnly, Editable };
@@ -363,6 +366,9 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::HeldItem:
             case FieldIdentity::Ball:
             case FieldIdentity::MetLevel:
+            case FieldIdentity::Move:
+            case FieldIdentity::MovePP:
+            case FieldIdentity::MovePPUps:
                 return FieldAccess::Editable;
             case FieldIdentity::Species:
             case FieldIdentity::Nickname:

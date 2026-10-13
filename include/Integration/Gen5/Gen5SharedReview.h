@@ -75,6 +75,19 @@ struct VerifiedSlotReview {
     for(size_t i=0;i<6;++i)
         if(ae[i]>be[i] && !apply(Field::EV,i,be[i],ae[i]))
             return std::nullopt;
+    const auto beforeMoves=before.moves(), afterMoves=after.moves();
+    const auto beforeUps=before.ppUps(), afterUps=after.ppUps();
+    const auto beforePP=before.pp(), afterPP=after.pp();
+    // Deterministic native coupling order must mirror Session::keep().
+    for(size_t i=0;i<4;++i)
+        if(!apply(Field::Move,i,beforeMoves[i],afterMoves[i]))
+            return std::nullopt;
+    for(size_t i=0;i<4;++i)
+        if(!apply(Field::MovePPUps,i,beforeUps[i],afterUps[i]))
+            return std::nullopt;
+    for(size_t i=0;i<4;++i)
+        if(!apply(Field::MovePP,i,beforePP[i],afterPP[i]))
+            return std::nullopt;
     if(result.fields.empty())
         return fail("Gen V pending review contains no verified field changes");
     const auto replay=candidate->stagedBytes();

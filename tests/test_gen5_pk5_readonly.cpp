@@ -48,6 +48,12 @@ std::vector<uint8_t> makeRecord(size_t size, uint32_t pid) {
 }
 int main() {
     static_assert(C::StoredSize == 0x88);
+    static_assert(G5::NativeMovePP5.size()==560);
+    static_assert(G5::basePP5(0)==0);
+    static_assert(G5::basePP5(1)==35);
+    static_assert(G5::basePP5(559)==5);
+    static_assert(G5::maxPP5(1,3)==56);
+    static_assert(!G5::validNativeMove5(560));
     static_assert(C::PartySize == 0xDC);
     // Independent hand-calculated checksum sum for this sparse record.
     auto single = makeRecord(C::StoredSize, 0x12345678);
@@ -127,6 +133,14 @@ int main() {
         assert(staged->stage(G5::StagedPokemon5Record::Field::HeldItem,0,638,&error));
         assert(staged->stage(G5::StagedPokemon5Record::Field::Ball,0,25,&error));
         assert(staged->stage(G5::StagedPokemon5Record::Field::MetLevel,0,100,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Move,0,559,&error));
+        assert(staged->current().moves()[0]==559);
+        assert(staged->current().pp()[0]==5);
+        assert(staged->current().ppUps()[0]==0);
+        assert(staged->stage(G5::StagedPokemon5Record::Field::MovePPUps,0,3,&error));
+        assert(staged->current().pp()[0]==8);
+        assert(staged->current().ppUps()[0]==3);
+        assert(staged->stage(G5::StagedPokemon5Record::Field::MovePP,0,4,&error));
         assert(staged->dirty());
         const auto current=staged->current();
         assert(current.valid() && current.nature()==24 && current.friendship()==255);
@@ -135,6 +149,10 @@ int main() {
         assert(current.heldItem()==638 && current.ball()==25);
         assert(current.metLevel()==100 && current.originalTrainerGender()==1);
         assert(current.pokerusState()==0x21 && current.hiddenAbility());
+        assert(current.moves()[0]==559 && current.pp()[0]==4 &&
+               current.ppUps()[0]==3);
+        assert(current.moves()[1]==0 && current.pp()[1]==0);
+        assert(current.moves()[2]==0 && current.moves()[3]==0);
         assert(std::equal(staged->originalBytes().begin(),staged->originalBytes().end(),source.begin()));
         const auto beforeInvalid=std::vector<uint8_t>(
             staged->stagedBytes().begin(),staged->stagedBytes().end());
@@ -148,6 +166,13 @@ int main() {
         assert(!staged->stage(G5::StagedPokemon5Record::Field::HeldItem,1,25,&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::Ball,0,26,&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::MetLevel,0,101,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Move,0,560,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Move,4,85,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MovePPUps,0,4,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MovePP,0,9,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MovePP,4,1,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MovePPUps,1,1,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MovePP,1,1,&error));
         assert(std::equal(staged->stagedBytes().begin(),staged->stagedBytes().end(),
                           beforeInvalid.begin()));
         staged->rollback();
