@@ -32,6 +32,7 @@ struct CreateResult5 {
     };
     put32(0, *r.pid);
     Crypto::write16(plain, 0x08, static_cast<uint16_t>(r.species));
+    Crypto::write16(plain, 0x0A, static_cast<uint16_t>(r.heldItem));
     Crypto::write16(plain, 0x0C, static_cast<uint16_t>(r.trainer->tid));
     Crypto::write16(plain, 0x0E, static_cast<uint16_t>(r.trainer->sid));
     put32(0x10, createExperience5(p.info->growthRate, r.level));

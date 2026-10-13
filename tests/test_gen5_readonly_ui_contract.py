@@ -314,6 +314,23 @@ require(manager,
         "Gen5::openAssignedSource(",
         "selectScreen.getSelectedGen5Fingerprint()")
 
+# Native held items belong to the same Gen I-IV Create and Edit model.
+# The new box record encodes the native item ID, not an invented provenance.
+require(read("include/Integration/Gen5/Gen5CreateValidation.h"),
+        "heldItem = 0",
+        "if (r.heldItem > 638)",
+        "CreateError5")
+require(read("include/Integration/Gen5/Gen5NativeCreate.h"),
+        "Crypto::write16(plain, 0x0A, static_cast<uint16_t>(r.heldItem))")
+require(surface,"Add Pokemon - Held Item ID (0=None)")
+require(read("tests/test_gen5_native_create.cpp"),
+        "withItem.heldItem=638",
+        "r.heldItem=639",
+        "p.heldItem() == r.heldItem")
+require(read("tests/test_gen5_create_integration.cpp"),
+        "r.heldItem=638",
+        "createdFull->boxPokemon(0,1)->heldItem()==638")
+
 # The existing Gen I-IV Add Pokemon command must now be reachable from
 # a validated empty Gen V box cell, collect explicit native fields with the
 # same on-device keyboard, and stage only after confirm + preview refresh.

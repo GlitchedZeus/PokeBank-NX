@@ -182,7 +182,8 @@ bool promptNativeBoxCreate(TrainerViewScreen& screen,std::string& error) {
                 request.evs[i]))
             return false;
     }
-    if(!ask("Add Pokemon - Friendship",70,0,255,request.friendship))
+    if(!ask("Add Pokemon - Friendship",70,0,255,request.friendship) ||
+       !ask("Add Pokemon - Held Item ID (0=None)",0,0,638,request.heldItem))
         return false;
     const auto checked=G::validateCreate5(request);
     if(!checked) {

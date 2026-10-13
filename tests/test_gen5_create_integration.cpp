@@ -26,7 +26,7 @@ static void exercise(uint32_t version, bool backup, uint32_t species) {
     const auto selection = backup ? G::SaveCopySelection::Backup : G::SaveCopySelection::Primary;
     G::CreateRequest5 r;
     r.game = static_cast<G::CreateGame5>(version); r.species=species; r.level=70;
-    r.nature=3; r.gender=0; r.abilitySlot=0; r.pid=0x123400ff; r.friendship=70;
+    r.nature=3; r.gender=0; r.abilitySlot=0; r.pid=0x123400ff; r.friendship=70; r.heldItem=638;
     r.trainer=G::CreateTrainer5{100,200,0,2,"TEST"}; r.nickname="CREATED";
     r.encounter={G::CreateHistory5::CallerSuppliedNative,1,1,4,2024,1,1};
     r.moves[0]={1,0,std::nullopt};
@@ -153,6 +153,7 @@ static void exercise(uint32_t version, bool backup, uint32_t species) {
     CHECK(createdFull->boxPokemon(0,1)->valid());
     CHECK(createdFull->boxPokemon(0,1)->species()==species);
     CHECK(createdFull->boxPokemon(0,1)->pid()==*r.pid);
+    CHECK(createdFull->boxPokemon(0,1)->heldItem()==638);
     CHECK(createdFull->boxPokemon(0,1)->originVersion()==version);
     CHECK(createdFull->boxPokemon(0,0)->originalEncryptedBytes().size()==C::StoredSize);
     CHECK(createdCandidate->bytes!=input);

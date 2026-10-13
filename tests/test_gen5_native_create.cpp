@@ -64,6 +64,7 @@ static G::CreateResult5 succeeds(const G::CreateRequest5& r) {
     CHECK(p.valid() && p.sanityValid() && p.checksumValid() && !p.empty() && !p.partyRecord());
     CHECK(p.species() == r.species && p.form() == r.form && p.pid() == *r.pid);
     CHECK(p.nature() == r.nature && p.friendship() == r.friendship);
+    CHECK(p.heldItem() == r.heldItem && C::read16(d,0x0a) == r.heldItem);
     CHECK(p.gender() == r.gender && p.hiddenAbility() == (r.abilitySlot == 2));
     const auto personal = G::personal5(r.species,r.form,static_cast<uint32_t>(r.game) >= 22);
     CHECK(p.ability() == G::abilityForSlot5(*personal.info,r.abilitySlot));
@@ -75,13 +76,13 @@ static G::CreateResult5 succeeds(const G::CreateRequest5& r) {
     CHECK(d[0x7b] == r.encounter.year - 2000 && d[0x7c] == r.encounter.month && d[0x7d] == r.encounter.day);
     CHECK(G::asciiName5(d,true) == r.nickname && G::asciiName5(d,false) == r.trainer->name);
     CHECK((C::read32(d,0x38) >> 30) == 2); // nickname true, egg false
-    CHECK(!p.egg() && !p.fatefulEncounter() && !p.heldItem() && !p.pokerusState());
+    CHECK(!p.egg() && !p.fatefulEncounter() && !p.pokerusState());
     for (size_t i = 0; i < 6; ++i) CHECK(p.ivs()[i] == r.ivs[i] && p.evs()[i] == r.evs[i]);
     for (size_t i = 0; i < 4; ++i) {
         CHECK(p.moves()[i] == r.moves[i].id && p.ppUps()[i] == r.moves[i].ppUps);
         CHECK(p.pp()[i] == r.moves[i].pp.value_or(G::maxPP5(r.moves[i].id,r.moves[i].ppUps)));
     }
-    for (size_t pos : {4,5,0x0a,0x0b,0x16,0x43,0x44,0x45,0x46,0x47,0x5e,
+    for (size_t pos : {4,5,0x16,0x43,0x44,0x45,0x46,0x47,0x5e,
                        0x60,0x61,0x62,0x63,0x64,0x65,0x66,0x67,0x78,0x79,0x7a,0x7e,0x7f,0x85,0x86,0x87}) CHECK(d[pos] == 0);
     for (size_t i = 0x1e; i < 0x28; ++i) CHECK(d[i] == 0);
     for (size_t i = 0x3c; i < 0x40; ++i) CHECK(d[i] == 0);
@@ -176,6 +177,8 @@ static void negative() {
     bad([](auto& r){r.evs={255,255,1,0,0,0};},E::EV);
     bad([](auto& r){r.evs.fill(UINT32_MAX);},E::EV);
     bad([](auto& r){r.friendship=256;},E::Friendship);
+    bad([](auto& r){r.heldItem=639;},E::HeldItem);
+    bad([](auto& r){r.heldItem=UINT32_MAX;},E::HeldItem);
     bad([](auto& r){r.trainer.reset();},E::Trainer);
     bad([](auto& r){r.trainer->tid=65536;},E::Trainer);
     bad([](auto& r){r.trainer->sid=65536;},E::Trainer);
@@ -213,6 +216,8 @@ static void negative() {
     bad([](auto& r){r.encounter.ball=26;},E::History);
     auto valid = request(); valid.moves={G::CreateMove5{1,3,56},G::CreateMove5{85,1,0},G::CreateMove5{559,0,5},G::CreateMove5{33,2,std::nullopt}};
     succeeds(valid);
+    auto withItem=request(); withItem.heldItem=638;
+    succeeds(withItem);
     auto damaged = succeeds(request()).encrypted;
     damaged[8] ^= 1;
     CHECK(!G::Pokemon5ReadOnly(damaged).valid());

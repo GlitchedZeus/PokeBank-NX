@@ -16,7 +16,7 @@ enum class CreateGame5 : uint32_t { Unspecified, White = 20, Black = 21, White2 
 enum class CreateFormat5 { Boxed, Party };
 enum class CreateHistory5 { Unspecified, CallerSuppliedNative, Egg, Event, Transfer };
 enum class CreateError5 {
-    None, Format, Game, SpeciesForm, Level, Nature, IV, EV, Friendship,
+    None, Format, Game, SpeciesForm, Level, Nature, IV, EV, Friendship, HeldItem,
     Trainer, Language, Text, PID, Gender, Ability, Moves, History, Verification
 };
 struct CreateTrainer5 {
@@ -41,7 +41,7 @@ struct CreateRequest5 {
     CreateGame5 game = CreateGame5::Unspecified;
     CreateFormat5 format = CreateFormat5::Boxed;
     uint32_t species = 0, form = 0, level = 0, nature = 25;
-    uint32_t gender = 3, abilitySlot = 3, friendship = 256;
+    uint32_t gender = 3, abilitySlot = 3, friendship = 256, heldItem = 0;
     std::optional<uint32_t> pid;
     std::optional<CreateTrainer5> trainer;
     CreateEncounter5 encounter;
@@ -110,6 +110,7 @@ inline bool createDate5(const CreateEncounter5& e) noexcept {
     }
     if (totalEV > 510) return {E::EV, "Total EVs must not exceed 510"};
     if (r.friendship > 255) return {E::Friendship, "Supply friendship in 0..255"};
+    if (r.heldItem > 638) return {E::HeldItem, "Native Gen V held item ID must be 0..638"};
     if (!r.trainer || r.trainer->tid > 65535 || r.trainer->sid > 65535 || r.trainer->gender > 1)
         return {E::Trainer, "Explicit native TID, SID and OT gender are required"};
     const auto language = r.trainer->language;
