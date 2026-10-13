@@ -40,12 +40,14 @@ jobs:
           tests=(
             tests/test_legality_l2_gen1_native_dv_stat.cpp
             tests/test_legality_l2_gen1_native_record_adversarial.cpp
+            tests/test_legality_l2_gen1_native_exp_growth.cpp
             tests/test_gen1_battle_stats.cpp
           )
           sources=(
             src/Integration/Gen1/Gen1BattleStats.cpp
             src/Integration/Gen1/Gen1StagedPokemonEditor.cpp
             src/Integration/Gen1/Gen1ReadOnlySave.cpp
+            src/Pokemon/Experience.cpp
           )
           for mode in normal sanitizer; do
             flags=(-std=c++20 -Wall -Wextra -Wpedantic -Werror
@@ -60,7 +62,8 @@ jobs:
               bin="$tmp/$(basename "$file" .cpp)-$mode"
               inputs=("$file" "${sources[@]}")
               if [[ "$file" != tests/test_gen1_battle_stats.cpp ]]; then
-                inputs+=(src/Legality/Gen1NativeDVStatEvidence.cpp)
+                inputs+=(src/Legality/Gen1NativeDVStatEvidence.cpp
+                         src/Legality/Gen1NativeExperienceEvidence.cpp)
               fi
               "$CXX" "${flags[@]}" "${inputs[@]}" -o "$bin"
               ASAN_OPTIONS=halt_on_error=1:detect_leaks=1 \
