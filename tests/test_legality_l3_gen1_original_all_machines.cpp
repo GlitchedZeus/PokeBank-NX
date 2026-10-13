@@ -33,6 +33,14 @@ int main(){
  }
  assert(changed==8);
  assert(rbCount==3037 && yCount==3043);
+ // Invalid wire/enumeration values can NEVER inherit TM compatibility.
+ // All 253 unrecognized Method bytes must return unsupported/Unknown.
+ for(unsigned raw=3;raw<=255;++raw)
+   for(unsigned game=1;game<=3;++game){
+     assert(H::sourceMachine(static_cast<H::Game>(game),25,
+            static_cast<H::Method>(raw),24)==0);
+     cases+=1;
+   }
  for(unsigned species=0;species<=152;++species){
    for(unsigned game=0;game<=5;++game){
      auto g=static_cast<H::Game>(game);

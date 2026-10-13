@@ -41,7 +41,7 @@ constexpr bool has(const std::array<std::uint16_t,4>& a,std::uint16_t m){for(aut
 // Compatibility is source-attested for all 151 species, not an individual
 // trainer's machine receipt. Missing historical custody still yields Unknown.
 constexpr std::uint16_t sourceMachine(Game g,std::uint16_t species,Method method,std::uint8_t number){
- if(!known(g)||method==Method::None)return 0;
+ if(!known(g)||(method!=Method::TM&&method!=Method::HM))return 0;
  return Gen1OriginalMachineTables::moveFor(static_cast<std::uint8_t>(g),species,
          method==Method::HM,number);
 }
