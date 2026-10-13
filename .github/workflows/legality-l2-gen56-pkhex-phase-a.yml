@@ -1,0 +1,94 @@
+name: L2 Gen V VI PKHeX First Breeding Phase A
+on:
+  push:
+    branches:
+      - feature/legality-l2-breeding-20261012
+  workflow_dispatch:
+
+concurrency:
+  group: l2-gen56-phase-a-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  native-and-original-csharp:
+    name: PKHeX original CSharp differential and GCC Clang ASan UBSan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout exact L2 repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Checkout pinned ORIGINAL PKHeX.Core source
+        uses: actions/checkout@v4
+        with:
+          repository: kwsch/PKHeX
+          ref: 66ef5983a5d349efa2dd615f2926a1b1ee97306e
+          path: upstream-pkhex
+          persist-credentials: false
+      - name: Validate source identities and immutable pinned provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C upstream-pkhex rev-parse HEAD)" = 66ef5983a5d349efa2dd615f2926a1b1ee97306e
+          test "$(git -C upstream-pkhex hash-object PKHeX.Core/Legality/Breeding.cs)" = a4889d7704b3a7b4aac64318c6bf085378e3420e
+          test "$(git -C upstream-pkhex hash-object PKHeX.Core/Legality/Verifiers/Ability/AbilityBreedLegality.cs)" = 98c2f5d3695d30da8f5b8663faf149d10adf7afd
+          test "$(git -C upstream-pkhex hash-object PKHeX.Core/Legality/Encounters/Templates/Gen5/EncounterEgg5.cs)" = 704e6ea78a027b652f7348e9063d0f216baa0d75
+          test "$(git -C upstream-pkhex hash-object PKHeX.Core/Legality/Encounters/Templates/Gen6/EncounterEgg6.cs)" = 8f6660e78f8e7f7340a01abf656e4ff92d34ebbe
+      - name: Run source-exact native regression and sanitizer matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir="$(mktemp -d)"
+          echo "L2_TMP=$dir" >> "$GITHUB_ENV"
+          files=(
+            tests/fixtures/legality_l2_gen56_pkhex_egg_permissions.cpp
+            tests/fixtures/legality_l2_gen56_original_histories.cpp
+            tests/fixtures/legality_l2_gen56_pkhex_oracle_export.cpp
+          )
+          for compiler in g++ clang++; do
+            for mode in normal sanitizer; do
+              flags=(-std=c++20 -Wall -Wextra -Wpedantic -Werror -Iinclude)
+              if [[ "$mode" == sanitizer ]]; then
+                flags+=(-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer)
+              else
+                flags+=(-O2)
+              fi
+              for source in "${files[@]}"; do
+                output="$dir/$(basename "$source" .cpp)-$compiler-$mode"
+                "$compiler" "${flags[@]}" "$source" -o "$output"
+                if [[ "$source" == *oracle_export.cpp ]]; then
+                  ASAN_OPTIONS=halt_on_error=1:detect_leaks=1 \
+                    UBSAN_OPTIONS=halt_on_error=1 "$output" > "$dir/native-$compiler-$mode.csv"
+                  test "$(wc -l < "$dir/native-$compiler-$mode.csv")" -eq 9590
+                else
+                  ASAN_OPTIONS=halt_on_error=1:detect_leaks=1 \
+                    UBSAN_OPTIONS=halt_on_error=1 "$output"
+                fi
+              done
+            done
+          done
+          for file in "$dir"/native-*.csv; do
+            cmp -s "$dir/native-g++-normal.csv" "$file"
+          done
+      - name: Install host .NET 10 (not deployed in NRO)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Run unmodified PKHeX.Core assembly as oracle
+        shell: bash
+        env:
+          PKHEX_CORE_PROJECT: ${{ github.workspace }}/upstream-pkhex/PKHeX.Core/PKHeX.Core.csproj
+        run: |
+          set -euo pipefail
+          dotnet build tests/pkhex_oracle_gen56/PKHeX.Gen56.Oracle.csproj -c Release -v quiet
+          dotnet run --no-build --no-restore -c Release \
+            --project tests/pkhex_oracle_gen56/PKHeX.Gen56.Oracle.csproj > "$L2_TMP/pkhex-original.csv"
+          test "$(wc -l < "$L2_TMP/pkhex-original.csv")" -eq 9590
+          diff -u "$L2_TMP/pkhex-original.csv" "$L2_TMP/native-g++-normal.csv"
+          echo "L2 Phase A Gen V/VI original PKHeX.Core differential matched 9590 rows"
