@@ -57,6 +57,7 @@ pk4_sources=(
 tests=(
     test_legality_l2_gen1_native_dv_stat
     test_legality_l2_gen1_native_record_adversarial
+    test_legality_l2_gen1_native_exp_growth
     test_legality_l2_dp_alternative_egg_histories
     test_legality_l2_dp_move_stage
     test_legality_l2_dp_egg_iv
@@ -96,9 +97,12 @@ for test in "${tests[@]}"; do
     fi
     sources=("$source_file")
     if [[ "$test" == test_legality_l2_gen1_native_dv_stat ||
-          "$test" == test_legality_l2_gen1_native_record_adversarial ]]; then
+          "$test" == test_legality_l2_gen1_native_record_adversarial ||
+          "$test" == test_legality_l2_gen1_native_exp_growth ]]; then
         sources+=(
             "$root/src/Legality/Gen1NativeDVStatEvidence.cpp"
+            "$root/src/Legality/Gen1NativeExperienceEvidence.cpp"
+            "$root/src/Pokemon/Experience.cpp"
             "$root/src/Integration/Gen1/Gen1BattleStats.cpp"
             "$root/src/Integration/Gen1/Gen1StagedPokemonEditor.cpp"
             "$root/src/Integration/Gen1/Gen1ReadOnlySave.cpp"
@@ -119,7 +123,8 @@ for test in "${tests[@]}"; do
         flags=(-std=c++20 -Wall -Wextra -Wpedantic -Werror
                -Wno-unused-parameter -I"$root/include")
         if [[ "$test" == test_legality_l2_gen1_native_dv_stat ||
-              "$test" == test_legality_l2_gen1_native_record_adversarial ]]; then
+              "$test" == test_legality_l2_gen1_native_record_adversarial ||
+              "$test" == test_legality_l2_gen1_native_exp_growth ]]; then
             flags+=(-ffunction-sections -fdata-sections -Wl,--gc-sections)
         fi
         if [[ "$mode" == sanitizers ]]; then
