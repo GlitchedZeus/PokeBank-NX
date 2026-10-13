@@ -17,6 +17,9 @@ def git(repo, *args):
     return subprocess.check_output(("git", "-C", str(repo), *args), text=True).strip()
 
 def main():
+    # Required: never allow -O to disable assert-based source verification.
+    if not __debug__:
+        raise RuntimeError("Original source verification cannot run with Python -O")
     cli = argparse.ArgumentParser()
     cli.add_argument("--pokered", type=pathlib.Path, required=True)
     cli.add_argument("--pokeyellow", type=pathlib.Path, required=True)
@@ -42,6 +45,26 @@ def main():
         hms = re.findall(r"^\s*add_hm\s+([A-Z0-9_]+)\b", constants, re.M)
         assert len(tms) == 50 and len(hms) == 5
         original_names = tms + hms
+        move_source = (folder / "constants/move_constants.asm").read_text()
+        move_ids = {}
+        move_index = 0
+        for line in move_source.splitlines():
+            move = re.match(r"^\s*const\s+([A-Z0-9_]+)\b", line)
+            if move:
+                move_ids[move[1]] = move_index
+                move_index += 1
+            elif re.match(r"^\s*const_skip\b", line):
+                move_index += 1
+        assert move_ids["THUNDER_WAVE"] == 86
+        expected_moves = [0] + [move_ids[name] for name in original_names]
+        matched = re.search(
+            r"inline constexpr std::array<std::uint16_t,56> kMoves\{\{([^}]*)\}\};",
+            source,
+        )
+        assert matched, "Missing native TM/HM move mapping"
+        source_moves = [int(v.strip()) for v in matched[1].split(",")]
+        assert expected_moves == source_moves, ("Wrong original TM/HM -> move ID",
+                                                ("redblue", "yellow")[n])
         if not names:
             names = original_names
         assert names == original_names

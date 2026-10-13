@@ -58,3 +58,21 @@ This ledger approves the provenance and original-game source TABLES as
 reviewed evidence in **draft coordinator**, not merge into accepted
 legality #103, main app or 1.0. Historic Unknown/Incomplete stays so.
 Original source saves are immutable; no writes permitted by this work.
+
+## Coordinator regression tranche — complete candidate-machine replay
+
+Added `tests/test_legality_l3_gen1_all_species_machine_chronology.cpp` to
+execute all 151 species × 55 original machines × Red/Blue/Yellow **through
+the actual all-species four-slot candidate evaluator**, not only the packed
+lookup. Each synthetic, *hypothetically attested* source-compatible path
+requires CandidateConsistent; unsupported methods are explicitly Unknown;
+per-supported-method mutants check wrong assigned move, malformed enum,
+missing machine receipt, missing source witness, unknown intervening methods
+and absent original snapshot. Added normal/sanitizer registration to the
+coordinator native smoke and L3 full-runner. These tests are **not** genuine
+historical trainer receipts or original PKHeX parity proof.
+
+Extended source verifier to independently rebuild all 50 original TM and
+five HM **move IDs** from both pinned `move_constants.asm` sources, not just
+machine compatibility bits. Rejected Python `-O` so assertions cannot be
+silently disabled on source validation. Exact-head CI still required.
