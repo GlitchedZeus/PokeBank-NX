@@ -293,6 +293,27 @@ require(create_undo_tests,
         "createUi.undoSelectedBoxReplacement(workspace",
         "Create Undo presentation failure")
 
+# Gen V game card selection must not re-read/parse full SAV5 every time
+# focus changes. The cached preview cannot authorize opening an editor.
+selector_header=read("include/UI/SaveSelectScreen.h")
+require(selector_header,
+        "std::optional<PokeVault::Integration::Gen5::GameCardReadOnlyPreview> gen5Preview;")
+require(games,
+        "card.gen5Preview=*preview;",
+        "const auto& cached=title.gen5Preview;",
+        "const auto& preview=title.gen5Preview;",
+        "Gen V cached party; exact source verified on Open.")
+fast=games.split("void SaveSelectScreen::refreshHubSelectionFromCache()",1)[1]
+fast=fast.split("void SaveSelectScreen::refreshHubPreview(bool resolveLaunchTarget)",1)[0]
+assert "Gen V cached party; exact source verified on Open." in fast
+assert "Gen5::openAssignedSource(" not in fast
+full=games.split("void SaveSelectScreen::refreshHubPreview(bool resolveLaunchTarget)",1)[1]
+full=full.split("void SaveSelectScreen::begin",1)[0] if "void SaveSelectScreen::begin" in full else full
+assert "const auto& preview=title.gen5Preview;" in full
+require(manager,
+        "Gen5::openAssignedSource(",
+        "selectScreen.getSelectedGen5Fingerprint()")
+
 # Native PK5 creation must enter the SAME app-owned workspace/Review/export
 # pipeline, never get a separate per-generation save writer or editor shell.
 created_workspace=read("include/Integration/Gen5/Gen5StagedPokemonWorkspace.h")

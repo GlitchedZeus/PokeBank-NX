@@ -1030,6 +1030,7 @@ namespace UI {
                             *legacyBindings,profile,game.id);
                         const auto preview=PokeVault::Integration::Gen5::previewAssignedGame(opened);
                         if(preview) {
+                            card.gen5Preview=*preview;
                             card.sourceLabel="REMEMBERED";
                             card.trainerName=preview->trainerName;
                             card.trainerGender=preview->trainerGender;
@@ -1450,9 +1451,20 @@ namespace UI {
         if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
             launchDescriptor.state=GameLaunchState::ChooseSource;
             launchDescriptor.detail="Select a Gen V Save Instance to open the shared staged editor.";
-            partyPreviewStatus=title.sourceLabel=="REMEMBERED" ?
-                "Open to choose a validated Gen V Save Instance." :
-                "Choose a Gen V Save Instance to view or stage Pokemon edits.";
+            const auto& cached=title.gen5Preview;
+            if(cached && cached->exactGameId==title.gameId) {
+                for(size_t i=0;i<cached->partyCount && i<partyPreview.size();++i) {
+                    const auto& pk=cached->party[i];
+                    if(!pk.occupied)continue;
+                    auto& slot=partyPreview[i];
+                    slot.species=pk.species;
+                    slot.level=pk.level;
+                    slot.shiny=pk.shiny;
+                    const char* name=Trainer::getSpeciesName(pk.species);
+                    slot.name=name?name:"Unknown";
+                }
+                partyPreviewStatus="Gen V cached party; exact source verified on Open.";
+            } else partyPreviewStatus="Choose a validated Gen V Save Instance.";
         } else if (title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
             title.legacyInstances.size() > 1) {
             launchDescriptor.backend = GameLaunchBackend::HomebrewNro;
@@ -1682,11 +1694,12 @@ namespace UI {
             return;
         }
 
-        if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile && legacyBindings) {
-            const auto opened=PokeVault::Integration::Gen5::openAssignedSource(
-                *legacyBindings,currentProfileIdentity(),title.gameId);
-            const auto preview=PokeVault::Integration::Gen5::previewAssignedGame(opened);
-            if(preview) {
+        if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
+            // Do not reopen and reparse a 0x80000 SAV5 merely because the
+            // user moved focus between game cards. Source validation and
+            // fingerprint checking happen again on explicit Save Instance Open.
+            const auto& preview=title.gen5Preview;
+            if(preview && preview->exactGameId==title.gameId) {
                 previewTrainerName=preview->trainerName;
                 previewTrainerGender=preview->trainerGender;
                 previewTrainerGenderKnown=preview->trainerGenderKnown;
@@ -1697,7 +1710,7 @@ namespace UI {
                     if(preview->party[i].occupied)
                         addParty(i,preview->party[i].species,preview->party[i].level,0,
                                  preview->party[i].shiny);
-                partyPreviewStatus="Gen V: open Save Instances for the shared staged editor.";
+                partyPreviewStatus="Gen V cached party; choose Save Instances to open.";
             } else partyPreviewStatus="Choose a validated Gen V Save Instance.";
             return;
         }

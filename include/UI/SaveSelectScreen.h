@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <vector>
 #include <string>
 
@@ -19,6 +20,7 @@
 #include "Legacy/LegacySourceBindings.h"
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
+#include "Integration/Gen5/Gen5GameCardPreview.h"
 
 namespace UI {
     // JKSV-style combined user + title picker. Shows the selected user's avatar + name at the top
@@ -114,6 +116,9 @@ namespace UI {
             uint16_t dexSeen = 0;
             uint16_t dexCaught = 0;
             uint16_t dexTotal = 0;
+            // App-memory presentation snapshot; session Open always revalidates
+            // the exact save/copy/fingerprint, never trusts this cached data.
+            std::optional<PokeVault::Integration::Gen5::GameCardReadOnlyPreview> gen5Preview;
             std::vector<PokeVault::Legacy::FRLGSaveInstance> legacyInstances;
             SelectedSourceKind sourceKind = SelectedSourceKind::SwitchTitle;
         };
