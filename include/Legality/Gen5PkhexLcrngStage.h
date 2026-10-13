@@ -39,6 +39,8 @@ enum class Status : uint8_t {
 struct Evidence {
  uint64_t originalSaveIdentity=0,originalCreatureIdentity=0,originalSeed=0;
  bool independentlyAttestedPhysicalOriginal=false;
+ bool independentlyAttestedOriginalGame=false;
+ uint8_t originalGameVersion=0; // PKHeX GameVersion: W20 B21 W2=22 B2=23
  bool independentlyAttestedOriginalSeed=false;
  bool independentlyAttestedOriginalPid=false;
  bool independentlyAttestedOriginalTrainer=false;
@@ -55,6 +57,8 @@ struct Result {
  bool globalInvalidSupported=false,globallyLegalSupported=false;
 };
 inline Result evaluate(const Evidence& e) noexcept {
+ if(!e.independentlyAttestedOriginalGame||e.originalGameVersion<20||
+    e.originalGameVersion>23)return {Status::UnknownOriginalGame};
  if(!e.originalSaveIdentity||!e.originalCreatureIdentity||
     !e.independentlyAttestedPhysicalOriginal)
     return {Status::UnknownOriginalCapture};
