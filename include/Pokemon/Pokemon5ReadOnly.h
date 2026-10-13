@@ -74,6 +74,7 @@ public:
                 static_cast<uint8_t>((bits >> 20) & 31), static_cast<uint8_t>((bits >> 25) & 31)};
     }
     [[nodiscard]] bool egg() const noexcept { return (u32(0x38) & 0x40000000u) != 0; }
+    [[nodiscard]] bool fatefulEncounter() const noexcept { return (at(0x40) & 1) != 0; }
     [[nodiscard]] uint8_t gender() const noexcept { return static_cast<uint8_t>((at(0x40) >> 1) & 3); }
     [[nodiscard]] uint8_t form() const noexcept { return at(0x40) >> 3; }
     [[nodiscard]] uint8_t nature() const noexcept { return at(0x41); }

@@ -248,14 +248,63 @@ require(native_review, "apply(Field::HeldItem,0,before.heldItem(),after.heldItem
 require(native_bridge, "NativeField::HeldItem,stat,value,error",
         "NativeField::Ball,stat,value,error",
         "NativeField::MetLevel,stat,value,error")
-require(native_screen, "std::array<EditableRow,29>",
+require(native_screen, "std::array<EditableRow,35>",
         '"Held Item ID",638', '"Ball ID",25', '"Met Level",100',
         "case Field::HeldItem:return pk.heldItem();",
         "case Field::Ball:return pk.ball();",
         "case Field::MetLevel:return pk.metLevel();")
 require(shared_contract, "case FieldIdentity::HeldItem:",
         "case FieldIdentity::Ball:", "case FieldIdentity::MetLevel:")
-require(surface, "Moves & PP: A picks moves / D-pad edits other fields")
+require(surface, "Gen V identity + encounter edits remain staged and reversible")
+
+# Gen V identity/encounter parity is source-backed and independent from
+# future event/encounter legality. Each field flows through exact PK5 stage,
+# atomic Keep, independent Review and verified app-owned SAV export.
+locations = read("include/Integration/Gen5/Gen5EncounterLocations.h")
+require(locations, "Locations5.cs",
+        "std::array<uint16_t,276> NativeMetLocations5",
+        "isNativeMetLocation5(", "locationIndex5(",
+        "30001", "40001", "60003", "!isNativeMetLocation5(138)")
+require(read_pk5, "fatefulEncounter() const", "metLocation() const",
+        "originalTrainerGender() const", "pokerusMode() const")
+require(native_stage, "case Field::TrainerId:",
+        "case Field::SecretId:", "case Field::OriginalTrainerGender:",
+        "case Field::Pokerus:", "case Field::MetLocation:",
+        "case Field::FatefulEncounter:",
+        "Crypto::write16(candidate,0x0C",
+        "Crypto::write16(candidate,0x0E",
+        "(candidate[0x84]&0x7F)",
+        "(candidate[0x40]&~uint8_t{1})",
+        "isNativeMetLocation5(value)", "baselineMode")
+require(native_session, "Field::TrainerId,0,after.tid()",
+        "Field::SecretId,0,after.sid()",
+        "Field::OriginalTrainerGender,0,after.originalTrainerGender()",
+        "Field::Pokerus,0,after.pokerusMode()",
+        "Field::MetLocation,0,after.metLocation()",
+        "Field::FatefulEncounter,0,after.fatefulEncounter()?1:0")
+require(native_review, "Field::TrainerId,0,before.tid(),after.tid()",
+        "Field::SecretId,0,before.sid(),after.sid()",
+        "Field::Pokerus,0,before.pokerusMode(),after.pokerusMode()",
+        "Field::MetLocation,0,before.metLocation(),after.metLocation()")
+require(native_bridge, "NativeField::TrainerId,stat,value,error",
+        "NativeField::SecretId,stat,value,error",
+        "NativeField::Pokerus,stat,value,error",
+        "NativeField::FatefulEncounter,stat,value,error",
+        "NativeField::MetLocation,stat,value,error")
+require(native_screen, "std::array<EditableRow,35>",
+        '"Trainer ID",65535', '"Secret ID",65535',
+        '"OT Gender",1', '"Pokerus",2', '"Met Location",65535',
+        '"Fateful",1',
+        "LocationPicker", "openLocationPicker(", "acceptLocationPicker(",
+        "cancelLocationPicker()", "stageFieldValue(")
+require(shared_contract, "case FieldIdentity::FatefulEncounter:",
+        "case FieldIdentity::TrainerId:",
+        "case FieldIdentity::SecretId:")
+require(surface, "void drawLocationPicker(", "case Surface::LocationPicker:",
+        "kGen5LocationTouchBase=78000", "Names::getMetLocationName(",
+        "Utils::promptNumber(", "state.stageFieldValue(",
+        "state.acceptLocationPicker(error)", "state.cancelLocationPicker()",
+        "TID/SID changed in draft; shiny status may change")
 
 # Native Gen V move data is pinned to PKHeX MoveInfo5 (560 PP values).
 # The controller/touch picker is a sub-surface of the same guarded Edit draft,
@@ -278,7 +327,7 @@ require(native_bridge, "NativeField::Move,stat,value,error",
         "NativeField::MovePPUps,stat,value,error")
 require(native_screen, "Surface::MovePicker", "openMovePicker(",
         "movePickerCursor(", "acceptMovePicker(", "cancelMovePicker()",
-        "std::array<EditableRow,29>", "Field::Move:return pk.moves()[row.stat]",
+        "std::array<EditableRow,35>", "Field::Move:return pk.moves()[row.stat]",
         "Field::MovePPUps:return pk.ppUps()[row.stat]",
         "Field::MovePP:return pk.pp()[row.stat]")
 require(surface, "case Surface::MovePicker:", "drawMovePicker(",

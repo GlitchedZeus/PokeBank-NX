@@ -54,6 +54,12 @@ int main() {
     static_assert(G5::basePP5(559)==5);
     static_assert(G5::maxPP5(1,3)==56);
     static_assert(!G5::validNativeMove5(560));
+    static_assert(G5::NativeMetLocations5.size()==276);
+    static_assert(G5::isNativeMetLocation5(30001));
+    static_assert(G5::isNativeMetLocation5(40001));
+    static_assert(G5::isNativeMetLocation5(60003));
+    static_assert(!G5::isNativeMetLocation5(3));
+    static_assert(!G5::isNativeMetLocation5(138));
     static_assert(C::PartySize == 0xDC);
     // Independent hand-calculated checksum sum for this sparse record.
     auto single = makeRecord(C::StoredSize, 0x12345678);
@@ -133,6 +139,17 @@ int main() {
         assert(staged->stage(G5::StagedPokemon5Record::Field::HeldItem,0,638,&error));
         assert(staged->stage(G5::StagedPokemon5Record::Field::Ball,0,25,&error));
         assert(staged->stage(G5::StagedPokemon5Record::Field::MetLevel,0,100,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::TrainerId,0,65535,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::SecretId,0,0,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::OriginalTrainerGender,0,0,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::FatefulEncounter,0,1,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::MetLocation,0,30001,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Pokerus,0,1,&error));
+        assert(staged->current().pokerusState()==0x20);
+        // Undo infection toggle recovers original strain AND native duration.
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Pokerus,0,2,&error));
+        assert(staged->current().pokerusState()==0x21);
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Pokerus,0,1,&error));
         assert(staged->stage(G5::StagedPokemon5Record::Field::Move,0,559,&error));
         assert(staged->current().moves()[0]==559);
         assert(staged->current().pp()[0]==5);
@@ -147,8 +164,12 @@ int main() {
         assert(current.ivs()[0]==0 && current.ivs()[5]==31);
         assert(current.evs()[0]==255 && current.evs()[1]==255);
         assert(current.heldItem()==638 && current.ball()==25);
-        assert(current.metLevel()==100 && current.originalTrainerGender()==1);
-        assert(current.pokerusState()==0x21 && current.hiddenAbility());
+        assert(current.metLevel()==100 && current.originalTrainerGender()==0);
+        assert(current.tid()==65535 && current.sid()==0);
+        assert(current.fatefulEncounter() && current.gender()==1 && current.form()==2);
+        assert(current.metLocation()==30001);
+        assert(current.pokerusState()==0x20 && current.pokerusMode()==1 &&
+               current.hiddenAbility());
         assert(current.moves()[0]==559 && current.pp()[0]==4 &&
                current.ppUps()[0]==3);
         assert(current.moves()[1]==0 && current.pp()[1]==0);
@@ -166,6 +187,14 @@ int main() {
         assert(!staged->stage(G5::StagedPokemon5Record::Field::HeldItem,1,25,&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::Ball,0,26,&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::MetLevel,0,101,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::TrainerId,0,65536,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::SecretId,1,1,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::OriginalTrainerGender,0,2,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::FatefulEncounter,0,2,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Pokerus,0,3,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MetLocation,0,3,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MetLocation,0,138,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MetLocation,0,65535,&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::Move,0,560,&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::Move,4,85,&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::MovePPUps,0,4,&error));

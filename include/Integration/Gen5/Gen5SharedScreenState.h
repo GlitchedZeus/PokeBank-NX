@@ -22,15 +22,21 @@ public:
     using Action=Shared::Action;
     using Field=Shared::FieldIdentity;
     enum class Surface : uint8_t {
-        Browse, Actions, View, Edit, MovePicker, ConfirmDraft, Review,
+        Browse, Actions, View, Edit, MovePicker, LocationPicker, ConfirmDraft, Review,
         ConfirmDiscardAll, ConfirmExport, ConfirmExit
     };
     struct EditableRow { Field field; size_t stat; const char* label; uint32_t maximum; };
-    static constexpr std::array<EditableRow,29> kEditableRows{{
+    static constexpr std::array<EditableRow,35> kEditableRows{{
         {Field::Nature,0,"Nature",24}, {Field::Friendship,0,"Friendship",255},
         {Field::HeldItem,0,"Held Item ID",638},
         {Field::Ball,0,"Ball ID",25},
         {Field::MetLevel,0,"Met Level",100},
+        {Field::TrainerId,0,"Trainer ID",65535},
+        {Field::SecretId,0,"Secret ID",65535},
+        {Field::OriginalTrainerGender,0,"OT Gender",1},
+        {Field::Pokerus,0,"Pokerus",2},
+        {Field::MetLocation,0,"Met Location",65535},
+        {Field::FatefulEncounter,0,"Fateful",1},
         {Field::Move,0,"Move 1",MaxNativeMove5},
         {Field::Move,1,"Move 2",MaxNativeMove5},
         {Field::Move,2,"Move 3",MaxNativeMove5},
@@ -56,6 +62,7 @@ public:
     [[nodiscard]] int actionRow() const noexcept { return actionRow_; }
     [[nodiscard]] int fieldRow() const noexcept { return fieldRow_; }
     [[nodiscard]] uint16_t movePickerSelection() const noexcept { return movePickerSelection_; }
+    [[nodiscard]] size_t locationPickerIndex() const noexcept { return locationPickerIndex_; }
     [[nodiscard]] size_t reviewPage() const noexcept { return reviewPage_; }
     static constexpr size_t kReviewPageSize = 4;
     [[nodiscard]] const Gen5SharedPokemonSession& draft() const noexcept { return draft_; }
@@ -180,6 +187,60 @@ public:
     void cancelMovePicker() noexcept {
         if(surface_==Surface::MovePicker)surface_=Surface::Edit;
     }
+    // Native source-backed encounter-location chooser. Its selection is
+    // inert until explicit A confirmation; unknown original IDs remain
+    // untouched on cancellation and in read-only views.
+    [[nodiscard]] bool openLocationPicker(std::string& error) {
+        if(surface_!=Surface::Edit || !draft_.editable() ||
+           kEditableRows[static_cast<size_t>(fieldRow_)].field!=Field::MetLocation) {
+            error="Gen V met-location picker requires its Edit field";
+            return false;
+        }
+        const auto current=draft_.current();
+        if(!current || !current->valid()) {
+            error="Gen V location picker has no validated PK5 draft";
+            return false;
+        }
+        const auto index=locationIndex5(current->metLocation());
+        locationPickerIndex_=index==NativeMetLocations5.size()?0:index;
+        surface_=Surface::LocationPicker;
+        error.clear();
+        return true;
+    }
+    void moveLocationCursor(int delta) noexcept {
+        if(surface_!=Surface::LocationPicker)return;
+        const int next=std::clamp(static_cast<int>(locationPickerIndex_)+delta,
+                                  0,static_cast<int>(NativeMetLocations5.size())-1);
+        locationPickerIndex_=static_cast<size_t>(next);
+    }
+    [[nodiscard]] bool acceptLocationPicker(std::string& error) {
+        if(surface_!=Surface::LocationPicker || !draft_.editable()) {
+            error="Gen V location picker has no active draft";
+            return false;
+        }
+        if(!stageSharedField(draft_,Field::MetLocation,0,
+                             NativeMetLocations5[locationPickerIndex_],error))
+            return false;
+        surface_=Surface::Edit;
+        error.clear();
+        return true;
+    }
+    void cancelLocationPicker() noexcept {
+        if(surface_==Surface::LocationPicker)surface_=Surface::Edit;
+    }
+    [[nodiscard]] bool stageFieldValue(uint32_t value,std::string& error) {
+        if(surface_!=Surface::Edit || !draft_.editable()) {
+            error="Gen V has no editable draft";
+            return false;
+        }
+        const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
+        if(row.field==Field::Move || row.field==Field::MetLocation ||
+           value>row.maximum) {
+            error="Use the verified native picker or remain within this field's range";
+            return false;
+        }
+        return stageSharedField(draft_,row.field,row.stat,value,error);
+    }
     [[nodiscard]] static uint32_t fieldValue(const Pokemon5ReadOnly& pk,
                                               const EditableRow& row) noexcept {
         switch(row.field) {
@@ -188,6 +249,12 @@ public:
             case Field::HeldItem:return pk.heldItem();
             case Field::Ball:return pk.ball();
             case Field::MetLevel:return pk.metLevel();
+            case Field::TrainerId:return pk.tid();
+            case Field::SecretId:return pk.sid();
+            case Field::OriginalTrainerGender:return pk.originalTrainerGender();
+            case Field::Pokerus:return pk.pokerusMode();
+            case Field::MetLocation:return pk.metLocation();
+            case Field::FatefulEncounter:return pk.fatefulEncounter()?1:0;
             case Field::Move:return pk.moves()[row.stat];
             case Field::MovePPUps:return pk.ppUps()[row.stat];
             case Field::MovePP:return pk.pp()[row.stat];
@@ -207,8 +274,8 @@ public:
             return false;
         }
         const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
-        if(row.field==Field::Move) {
-            error="Press A to choose a Generation V move by name";
+        if(row.field==Field::Move || row.field==Field::MetLocation) {
+            error="Press A to choose a verified Generation V picker value";
             return false;
         }
         const int64_t value=static_cast<int64_t>(fieldValue(*current,row))+delta;
@@ -218,8 +285,7 @@ public:
             error="Generation V value is outside the native field range";
             return false;
         }
-        return stageSharedField(draft_,row.field,row.stat,
-                                static_cast<uint32_t>(value),error);
+        return stageFieldValue(static_cast<uint32_t>(value),error);
     }
     [[nodiscard]] bool keep(Workspace& workspace,std::string& error) {
         // A on the dirty-draft decision is a real Keep, not a dead action.
@@ -265,6 +331,10 @@ public:
     [[nodiscard]] bool back() noexcept {
         if(surface_==Surface::MovePicker) {
             cancelMovePicker();
+            return false;
+        }
+        if(surface_==Surface::LocationPicker) {
+            cancelLocationPicker();
             return false;
         }
         if(surface_==Surface::View || surface_==Surface::Edit) {
@@ -359,6 +429,7 @@ private:
     int actionRow_=0;
     int fieldRow_=0;
     uint16_t movePickerSelection_=0;
+    size_t locationPickerIndex_=0;
     size_t reviewPage_=0;
     Gen5SharedPokemonSession draft_;
 };

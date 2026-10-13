@@ -687,7 +687,13 @@ int main() {
         assert(G::fieldAccess(GF::Move)==GAccess::Editable);
         assert(G::fieldAccess(GF::MovePP)==GAccess::Editable);
         assert(G::fieldAccess(GF::MovePPUps)==GAccess::Editable);
-        static_assert(G::Gen5SharedScreenState::kEditableRows.size()==29);
+        static_assert(G::Gen5SharedScreenState::kEditableRows.size()==35);
+        assert(G::fieldAccess(GF::TrainerId)==GAccess::Editable);
+        assert(G::fieldAccess(GF::SecretId)==GAccess::Editable);
+        assert(G::fieldAccess(GF::OriginalTrainerGender)==GAccess::Editable);
+        assert(G::fieldAccess(GF::Pokerus)==GAccess::Editable);
+        assert(G::fieldAccess(GF::MetLocation)==GAccess::Editable);
+        assert(G::fieldAccess(GF::FatefulEncounter)==GAccess::Editable);
         assert(G::exactDescriptor("black_nds",true));
         assert(!G::exactDescriptor("platinum_nds",true));
         G::Gen5SharedPokemonSession unsupported;
@@ -756,8 +762,8 @@ int main() {
         assert(ui.openActions(localUiWorkspace,GSlot{GRegion::Party,0,0},error));
         ui.moveAction(1,localUiWorkspace);
         assert(ui.activateSelected(localUiWorkspace,error));
-        ui.moveField(5);
-        assert(G::Gen5SharedScreenState::kEditableRows[5].field==GF::Move);
+        ui.moveField(11);
+        assert(G::Gen5SharedScreenState::kEditableRows[11].field==GF::Move);
         assert(ui.openMovePicker(error));
         assert(ui.surface()==G::Gen5SharedScreenState::Surface::MovePicker);
         ui.movePickerCursor(559);
@@ -792,6 +798,53 @@ int main() {
             if(f.field==GField::MovePP && f.stat==0)sawPP=true;
         }
         assert(sawMove && sawPPUps && sawPP);
+        // Exercise all six new identity/encounter fields in one atomic Keep:
+        // no mutable source access, no implicit trainer/name/PID coupling.
+        assert(ui.openActions(localUiWorkspace,GSlot{GRegion::Party,0,0},error));
+        ui.moveAction(1,localUiWorkspace);
+        assert(ui.activateSelected(localUiWorkspace,error));
+        ui.moveField(5); // Trainer ID, after original met level.
+        assert(G::Gen5SharedScreenState::kEditableRows[5].field==GF::TrainerId);
+        assert(!ui.stageFieldValue(65536,error));
+        assert(ui.stageFieldValue(1111,error));
+        ui.moveField(1); // Secret ID
+        assert(ui.stageFieldValue(2222,error));
+        ui.moveField(1); // original trainer gender
+        assert(ui.adjustField(1,error));
+        ui.moveField(1); // Pokérus None -> Cured, never a raw byte editor
+        assert(ui.adjustField(1,error));
+        ui.moveField(1); // met location
+        assert(ui.openLocationPicker(error));
+        assert(ui.surface()==G::Gen5SharedScreenState::Surface::LocationPicker);
+        ui.moveLocationCursor(1);
+        assert(ui.back()==false); // picker cancel preserves original
+        assert(ui.openLocationPicker(error));
+        ui.moveLocationCursor(1);
+        assert(ui.acceptLocationPicker(error));
+        assert(ui.draft().current()->metLocation()==1);
+        ui.moveField(1); // fateful bit in same byte as gender/form
+        assert(ui.adjustField(1,error));
+        assert(ui.keep(localUiWorkspace,error));
+        const auto identity=localUiWorkspace.viewParty(0);
+        assert(identity && identity->tid()==1111 && identity->sid()==2222);
+        assert(identity->originalTrainerGender()==1);
+        assert(identity->pokerusMode()==1 && identity->pokerusState()==0x10);
+        assert(identity->metLocation()==1 && identity->fatefulEncounter());
+        assert(identity->species()==25 && identity->pid()==workspace.viewParty(0)->pid());
+        assert(identity->ability()==workspace.viewParty(0)->ability());
+        assert(identity->moves()[0]==559);
+        bool sawIdentity=false,sawLocation=false,sawFateful=false;
+        for(const auto& pending:localUiWorkspace.pendingReview()) {
+            const auto verified=G::verifyStagedReview(pending,&error);
+            assert(verified && error.empty());
+            for(const auto& f:verified->fields) {
+                if(f.field==GField::TrainerId || f.field==GField::SecretId)
+                    sawIdentity=true;
+                if(f.field==GField::MetLocation)sawLocation=true;
+                if(f.field==GField::FatefulEncounter)sawFateful=true;
+            }
+        }
+        assert(sawIdentity && sawLocation && sawFateful);
         assert(!ui.requestExit(localUiWorkspace));
         assert(ui.surface()==G::Gen5SharedScreenState::Surface::ConfirmExit);
         ui.reviewFromExit(localUiWorkspace);

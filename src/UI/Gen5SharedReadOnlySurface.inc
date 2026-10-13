@@ -13,6 +13,8 @@
 #include "Legacy/Gen5ReadOnlyTrainer.h"
 #include "Pokemon/Pokemon5ReadOnlyView.h"
 #include "Names/MoveNames.h"
+#include "Names/LocationNames.h"
+#include "Utils/Keyboard.h"
 
 namespace UI::Gen5SharedReadOnlySurface {
 namespace {
@@ -33,6 +35,7 @@ constexpr int kGen5DecreaseTouchBase=77200;
 constexpr int kGen5IncreaseTouchBase=77300;
 constexpr int kGen5PartyTouchBase=77400;
 constexpr int kGen5MovePickerTouchBase=77500;
+constexpr int kGen5LocationTouchBase=78000;
 
 PokeVault::Legacy::Gen5ReadOnlyTrainer& nativeTrainer(TrainerViewScreen& screen) {
     return static_cast<PokeVault::Legacy::Gen5ReadOnlyTrainer&>(screen.trainer);
@@ -105,9 +108,14 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             const int chosen=tap-kGen5FieldTouchBase;
             const bool alreadyFocused=chosen==state.fieldRow();
             state.moveField(chosen-state.fieldRow());
-            if(alreadyFocused && ScreenState::kEditableRows[static_cast<size_t>(chosen)].field==
-                                    ScreenState::Field::Move)
-                down|=HidNpadButton_A;
+            if(alreadyFocused) {
+                const auto field=ScreenState::kEditableRows[static_cast<size_t>(chosen)].field;
+                if(field==ScreenState::Field::Move ||
+                   field==ScreenState::Field::MetLocation ||
+                   field==ScreenState::Field::TrainerId ||
+                   field==ScreenState::Field::SecretId)
+                    down|=HidNpadButton_A;
+            }
         }
         else if(tap>=kGen5DecreaseTouchBase &&
                 tap<kGen5DecreaseTouchBase+fieldCount) {
@@ -124,6 +132,13 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                   PokeVault::Integration::Gen5::MaxNativeMove5)+1) {
         state.movePickerCursor(tap-kGen5MovePickerTouchBase-
                                static_cast<int>(state.movePickerSelection()));
+        down|=HidNpadButton_A;
+    } else if(state.surface()==Surface::LocationPicker &&
+              tap>=kGen5LocationTouchBase &&
+              tap<kGen5LocationTouchBase+static_cast<int>(
+                    PokeVault::Integration::Gen5::NativeMetLocations5.size())) {
+        state.moveLocationCursor(tap-kGen5LocationTouchBase-
+                                 static_cast<int>(state.locationPickerIndex()));
         down|=HidNpadButton_A;
     } else if(state.surface()==Surface::Browse &&
               screen.selectedMode==TrainerViewScreen::ViewMode::Party &&
@@ -172,8 +187,35 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                        ScreenState::Field::Move) {
                     std::string error;
                     if(!state.openMovePicker(error))screen.postStatus(error,300);
-                } else keepDraft(screen);
-            } else if(keys&HidNpadButton_Y) {
+                } else {
+                    const auto& row=ScreenState::kEditableRows[
+                        static_cast<size_t>(state.fieldRow())];
+                    if(row.field==ScreenState::Field::MetLocation) {
+                        std::string error;
+                        if(!state.openLocationPicker(error))screen.postStatus(error,300);
+                    } else if(row.field==ScreenState::Field::TrainerId ||
+                              row.field==ScreenState::Field::SecretId) {
+                        const auto current=state.draft().current();
+                        if(current) {
+                            const auto old=ScreenState::fieldValue(*current,row);
+                            const auto result=Utils::promptNumber(
+                                row.field==ScreenState::Field::TrainerId
+                                    ? "Generation V Trainer ID" : "Generation V Secret ID",
+                                static_cast<int>(old),0,65535);
+                            if(result.accepted) {
+                                std::string error;
+                                if(!state.stageFieldValue(
+                                      static_cast<uint32_t>(result.value),error))
+                                    screen.postStatus(error,300);
+                                else screen.postStatus(
+                                    "TID/SID changed in draft; shiny status may change",260);
+                            }
+                            screen.controllerNavigation.reset();
+                        }
+                    } else keepDraft(screen);
+                }
+            } else if(keys&HidNpadButton_X)keepDraft(screen);
+            else if(keys&HidNpadButton_Y) {
                 state.discardDraft();
                 screen.postStatus("Local Gen V draft discarded; staged edits preserved",220);
             } else if(keys&HidNpadButton_B)state.back();
@@ -189,6 +231,19 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             else if(keys&HidNpadButton_A) {
                 std::string error;
                 if(!state.acceptMovePicker(error))screen.postStatus(error,300);
+            }
+            return true;
+        case Surface::LocationPicker:
+            if(keys&HidNpadButton_Up)state.moveLocationCursor(-1);
+            if(keys&HidNpadButton_Down)state.moveLocationCursor(1);
+            if(keys&HidNpadButton_Left)state.moveLocationCursor(-8);
+            if(keys&HidNpadButton_Right)state.moveLocationCursor(8);
+            if(keys&HidNpadButton_ZL)state.moveLocationCursor(-40);
+            if(keys&HidNpadButton_ZR)state.moveLocationCursor(40);
+            if(keys&HidNpadButton_B)state.cancelLocationPicker();
+            else if(keys&HidNpadButton_A) {
+                std::string error;
+                if(!state.acceptLocationPicker(error))screen.postStatus(error,300);
             }
             return true;
         case Surface::ConfirmDraft:
@@ -377,6 +432,12 @@ void drawVerifiedSummary(TrainerViewScreen& screen,PKSEFramebuffer& fb,
             "  PP "+std::to_string(p->movePP(i)),
             Colors::TextSecondary,TextStyle::Body);
     }
+    fb.drawText(x+30,y+478,
+        "TID "+std::to_string(p->tid16())+
+        " / SID "+std::to_string(p->sid16())+
+        "  |  Met location "+std::to_string(p->metLocation())+
+        "  |  Ball "+std::to_string(p->ball()),
+        Colors::TextSecondary,TextStyle::Caption);
 }
 
 void dimShared(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
@@ -432,6 +493,12 @@ std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedField
         case Field::HeldItem:name="Held Item";break;
         case Field::Ball:name="Ball";break;
         case Field::MetLevel:name="Met Level";break;
+        case Field::TrainerId:name="Trainer ID";break;
+        case Field::SecretId:name="Secret ID";break;
+        case Field::OriginalTrainerGender:name="OT Gender";break;
+        case Field::Pokerus:name="Pokerus";break;
+        case Field::MetLocation:name="Met Location";break;
+        case Field::FatefulEncounter:name="Fateful";break;
         case Field::Move:name="Move "+std::to_string(c.stat+1);break;
         case Field::MovePPUps:name="PP Ups "+std::to_string(c.stat+1);break;
         case Field::MovePP:name="PP "+std::to_string(c.stat+1);break;
@@ -528,16 +595,32 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
         // an in-memory PK5 value. No implicit Keep, Discard or source write.
         screen.touchButtons.push_back(
             {kGen5FieldTouchBase+static_cast<int>(index),x+14,yy,279,46});
-        if(row.field!=ScreenState::Field::Move) {
+        if(row.field!=ScreenState::Field::Move &&
+           row.field!=ScreenState::Field::MetLocation &&
+           row.field!=ScreenState::Field::TrainerId &&
+           row.field!=ScreenState::Field::SecretId) {
             screen.touchButtons.push_back(
                 {kGen5DecreaseTouchBase+static_cast<int>(index),x+308,yy+3,36,40});
             screen.touchButtons.push_back(
                 {kGen5IncreaseTouchBase+static_cast<int>(index),x+418,yy+3,36,40});
         }
-        const std::string value=std::to_string(ScreenState::fieldValue(*current,row));
+        std::string value=std::to_string(ScreenState::fieldValue(*current,row));
+        if(row.field==ScreenState::Field::Pokerus)
+            value=current->pokerusMode()==0?"None":
+                  current->pokerusMode()==1?"Cured":"Infected";
+        else if(row.field==ScreenState::Field::OriginalTrainerGender)
+            value=current->originalTrainerGender()==0?"Male":"Female";
+        else if(row.field==ScreenState::Field::FatefulEncounter)
+            value=current->fatefulEncounter()?"Yes":"No";
         fb.drawText(x+26,yy+11,row.label,Colors::TextSecondary,TextStyle::Body);
-        if(row.field==ScreenState::Field::Move) {
-            fb.drawText(x+315,yy+11,"A Pick",Colors::Accent,TextStyle::Body);
+        if(row.field==ScreenState::Field::Move ||
+           row.field==ScreenState::Field::MetLocation ||
+           row.field==ScreenState::Field::TrainerId ||
+           row.field==ScreenState::Field::SecretId) {
+            fb.drawText(x+315,yy+11,
+                row.field==ScreenState::Field::TrainerId ||
+                row.field==ScreenState::Field::SecretId?"A Edit":"A Pick",
+                Colors::Accent,TextStyle::Body);
             fb.drawText(x+398,yy+11,value,Colors::Text,TextStyle::Body);
         } else {
             fb.drawText(x+315,yy+11,"-",Colors::Accent,TextStyle::Body);
@@ -546,10 +629,10 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
         }
     }
     fb.drawText(x+22,y+h-33,
-                "Moves & PP: A picks moves / D-pad edits other fields",
+                "Gen V identity + encounter edits remain staged and reversible",
                 Colors::Accent,TextStyle::Caption);
     drawNavBar(fb,{{"Up/Down","Field"},{"Left/Right","Adjust"},
-                   {"A","Pick Move / Keep"},{"Y","Discard Draft"},{"B","Back"}});
+                   {"A","Pick / Edit"},{"X","Keep Staged"},{"Y","Discard Draft"},{"B","Back"}});
 }
 // Guarded BW/B2W2 move picker inside the existing shared Trainer shell.
 // A checked selection resets only this move's native PP and PP Ups; a
@@ -590,6 +673,45 @@ void drawMovePicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,
     drawNavBar(fb,{{"D-pad/Stick","Browse"},{"ZL/ZR","Jump 40"},
                    {"A","Choose Move"},{"B","Cancel"}});
 }
+// Native BW/B2W2 location picker. The list itself is format-valid input
+// evidence, NOT proof that the specific Pokemon can originate at that site.
+void drawLocationPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,
+                        const ScreenState& state) {
+    dimShared(screen,fb);
+    constexpr int w=860,h=560;
+    const int x=(fb.getWidth()-w)/2;
+    const int y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,18,Colors::Border,1);
+    fb.drawText(x+22,y+14,"Generation V Encounter Location",
+                Colors::Text,TextStyle::Heading);
+    fb.drawText(x+22,y+56,
+        "276 native location IDs; species encounter legality is not checked",
+        Colors::Accent,TextStyle::Caption);
+    const auto current=state.draft().current();
+    const uint8_t origin=current?current->originVersion():20;
+    const auto visible=PokeBank::UIModel::SharedPokemonEditor::scrollWindow(
+        PokeVault::Integration::Gen5::NativeMetLocations5.size(),9,
+        state.locationPickerIndex());
+    for(size_t i=0;i<visible.count;++i) {
+        const size_t index=visible.first+i;
+        const uint16_t id=PokeVault::Integration::Gen5::NativeMetLocations5[index];
+        const int yy=y+100+static_cast<int>(i)*43;
+        if(index==state.locationPickerIndex())
+            fb.drawSelectionHighlight(x+14,yy,w-28,39);
+        screen.touchButtons.push_back(
+            {kGen5LocationTouchBase+static_cast<int>(index),x+16,yy,w-32,39});
+        const char* label=Names::getMetLocationName(origin,id);
+        const std::string name=label && *label?label:"(source location ID)";
+        fb.drawText(x+28,yy+7,std::to_string(id)+" - "+name,
+                    Colors::Text,TextStyle::Body);
+    }
+    fb.drawText(x+22,y+h-46,
+        "A selects a known Gen V ID; B preserves the original location",
+        Colors::TextDim,TextStyle::Caption);
+    drawNavBar(fb,{{"D-pad/Stick","Browse"},{"ZL/ZR","Jump 40"},
+                   {"A","Choose Location"},{"B","Cancel"}});
+}
 bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     if(!isGen5Source(screen))return false;
     auto& trainer=nativeTrainer(screen);
@@ -603,6 +725,7 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         case Surface::Review:drawReview(screen,fb,state,staged);return true;
         case Surface::Edit:drawEdit(screen,fb,state);return true;
         case Surface::MovePicker:drawMovePicker(screen,fb,state);return true;
+        case Surface::LocationPicker:drawLocationPicker(screen,fb,state);return true;
         case Surface::View: {
             const auto current=state.draft().current();
             screen.drawGSCOverlay(fb);

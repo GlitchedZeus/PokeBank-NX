@@ -61,7 +61,15 @@ struct VerifiedSlotReview {
        !apply(Field::Friendship,0,before.friendship(),after.friendship()) ||
        !apply(Field::HeldItem,0,before.heldItem(),after.heldItem()) ||
        !apply(Field::Ball,0,before.ball(),after.ball()) ||
-       !apply(Field::MetLevel,0,before.metLevel(),after.metLevel()))
+       !apply(Field::MetLevel,0,before.metLevel(),after.metLevel()) ||
+       !apply(Field::TrainerId,0,before.tid(),after.tid()) ||
+       !apply(Field::SecretId,0,before.sid(),after.sid()) ||
+       !apply(Field::OriginalTrainerGender,0,before.originalTrainerGender(),
+              after.originalTrainerGender()) ||
+       !apply(Field::FatefulEncounter,0,before.fatefulEncounter()?1:0,
+              after.fatefulEncounter()?1:0) ||
+       !apply(Field::Pokerus,0,before.pokerusMode(),after.pokerusMode()) ||
+       !apply(Field::MetLocation,0,before.metLocation(),after.metLocation()))
         return std::nullopt;
     const auto bi=before.ivs(),ai=after.ivs();
     for(size_t i=0;i<6;++i)

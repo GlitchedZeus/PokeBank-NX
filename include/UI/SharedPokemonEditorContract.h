@@ -213,6 +213,7 @@ enum class FieldIdentity : uint8_t {
     Move,
     MovePP,
     MovePPUps,
+    FatefulEncounter,
 };
 
 enum class FieldAccess : uint8_t { Hidden, Derived, ReadOnly, Editable };
@@ -369,6 +370,12 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::Move:
             case FieldIdentity::MovePP:
             case FieldIdentity::MovePPUps:
+            case FieldIdentity::TrainerId:
+            case FieldIdentity::SecretId:
+            case FieldIdentity::OriginalTrainerGender:
+            case FieldIdentity::Pokerus:
+            case FieldIdentity::MetLocation:
+            case FieldIdentity::FatefulEncounter:
                 return FieldAccess::Editable;
             case FieldIdentity::Species:
             case FieldIdentity::Nickname:
@@ -380,8 +387,6 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::Experience:
             case FieldIdentity::Ability:
             case FieldIdentity::CalculatedStats:
-            case FieldIdentity::TrainerId:
-            case FieldIdentity::SecretId:
             case FieldIdentity::PersonalityId:
             case FieldIdentity::OriginGame:
             case FieldIdentity::MoveCompatibility:

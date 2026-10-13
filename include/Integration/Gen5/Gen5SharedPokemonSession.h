@@ -116,6 +116,21 @@ public:
            !apply(Field::Ball,0,after.ball()))return false;
         if(before.metLevel()!=after.metLevel() &&
            !apply(Field::MetLevel,0,after.metLevel()))return false;
+        // Identity changes have deliberate game-side consequences: editing
+        // TID/SID can change the displayed shiny calculation, but neither
+        // PID nor any unrelated native PK5 field may be rewritten.
+        if(before.tid()!=after.tid() &&
+           !apply(Field::TrainerId,0,after.tid()))return false;
+        if(before.sid()!=after.sid() &&
+           !apply(Field::SecretId,0,after.sid()))return false;
+        if(before.originalTrainerGender()!=after.originalTrainerGender() &&
+           !apply(Field::OriginalTrainerGender,0,after.originalTrainerGender()))return false;
+        if(before.fatefulEncounter()!=after.fatefulEncounter() &&
+           !apply(Field::FatefulEncounter,0,after.fatefulEncounter()?1:0))return false;
+        if(before.pokerusMode()!=after.pokerusMode() &&
+           !apply(Field::Pokerus,0,after.pokerusMode()))return false;
+        if(before.metLocation()!=after.metLocation() &&
+           !apply(Field::MetLocation,0,after.metLocation()))return false;
 
         const auto beforeIv=before.ivs();
         const auto afterIv=after.ivs();

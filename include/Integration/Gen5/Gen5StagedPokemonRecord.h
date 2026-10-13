@@ -3,6 +3,7 @@
 
 #include "Pokemon/Pokemon5ReadOnly.h"
 #include "Integration/Gen5/Gen5MovePP.h"
+#include "Integration/Gen5/Gen5EncounterLocations.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -20,7 +21,8 @@ namespace PokeVault::Integration::Gen5 {
 class StagedPokemon5Record {
 public:
     enum class Field : uint8_t { Nature, Friendship, IV, EV, HeldItem, Ball, MetLevel,
-                                Move, MovePP, MovePPUps };
+                                Move, MovePP, MovePPUps, TrainerId, SecretId, OriginalTrainerGender,
+                                Pokerus, MetLocation, FatefulEncounter };
 
     static std::optional<StagedPokemon5Record> create(
         std::span<const uint8_t> source, std::string* error = nullptr) {
@@ -103,6 +105,60 @@ public:
                 candidate[0x84]=static_cast<uint8_t>(
                     (candidate[0x84] & 0x80) | value);
                 break;
+            case Field::TrainerId:
+                if(stat!=0 || value>65535)
+                    return fail("Gen V trainer ID exceeds native 16-bit range");
+                Crypto::write16(candidate,0x0C,static_cast<uint16_t>(value));
+                break;
+            case Field::SecretId:
+                if(stat!=0 || value>65535)
+                    return fail("Gen V secret ID exceeds native 16-bit range");
+                Crypto::write16(candidate,0x0E,static_cast<uint16_t>(value));
+                break;
+            case Field::OriginalTrainerGender:
+                if(stat!=0 || value>1)
+                    return fail("Gen V original trainer gender must be male/female");
+                // Met level and OT gender share one byte; never lose level.
+                candidate[0x84]=static_cast<uint8_t>(
+                    (candidate[0x84]&0x7F) | (value<<7));
+                break;
+            case Field::FatefulEncounter:
+                if(stat!=0 || value>1)
+                    return fail("Gen V fateful encounter must be off/on");
+                // Preserve native form and individual gender flags.
+                candidate[0x40]=static_cast<uint8_t>(
+                    (candidate[0x40]&~uint8_t{1}) | value);
+                break;
+            case Field::MetLocation:
+                if(stat!=0 || !isNativeMetLocation5(value))
+                    return fail("Gen V met location not in pinned BW/B2W2 location set");
+                Crypto::write16(candidate,0x80,static_cast<uint16_t>(value));
+                break;
+            case Field::Pokerus: {
+                if(stat!=0 || value>2)
+                    return fail("Gen V Pokerus mode must be None/Cured/Infected");
+                const uint8_t old=candidate[0x82];
+                const auto originalDecoded=Crypto::decrypt(original_);
+                const uint8_t baseline=originalDecoded[0x82];
+                const uint8_t baselineMode=baseline==0?0:((baseline&0x0F)?2:1);
+                const uint8_t mode=old==0?0:((old&0x0F)?2:1);
+                // If a user toggles back to the original mode, restore the
+                // exact original strain and duration. Otherwise a transient
+                // toggle could silently rewrite an unrelated duration even
+                // though the visible value returns to its original state.
+                if(value==baselineMode)candidate[0x82]=baseline;
+                else if(mode!=value) {
+                    if(value==0)candidate[0x82]=0;
+                    else {
+                        // Preserve existing strain; brand-new infections
+                        // receive strain 1, days=1 (within native maximum).
+                        const uint8_t strain=(old&0xF0)?(old&0xF0):0x10;
+                        candidate[0x82]=static_cast<uint8_t>(
+                            strain | (value==2?1:0));
+                    }
+                }
+                break;
+            }
             case Field::Move: {
                 if(stat>=4 || !validNativeMove5(value))
                     return fail("Gen V move ID/slot outside the native BW/B2W2 range");
