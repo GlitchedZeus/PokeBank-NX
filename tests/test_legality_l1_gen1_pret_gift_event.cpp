@@ -106,9 +106,12 @@ int main() {
        else w.game="yellow_gb";
        const auto r=G::evaluate(w);
        assert(!r.globalInvalidSupported&&!r.globallyLegalSupported);
-       assert(r.status==(i<5?(i>=2?S::CandidateLocalForeignGame:
-              i==0?S::ConditionalSourceSceneOnly:S::CandidateLocalMapMismatch):
-              S::UnknownOriginalScene));
+       const bool yellow=(rawGame%3)==2;
+       const S expected=i>=5?S::UnknownOriginalScene:
+          i==0?S::ConditionalSourceSceneOnly:
+          i>=2&&!yellow?S::CandidateLocalForeignGame:
+          S::CandidateLocalMapMismatch;
+       assert(r.status==expected);
        ++unknown;
     }
  }
