@@ -60,7 +60,36 @@ jobs:
           test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_oracle_cases.json)" = 84d3a458c2ee841a7bc354e0b10188e67205c16f
           test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_oracle_cases.inc)" = 0febf0eea3dd3f26ed89e35848c0488d38ceacaf
           test "$(git hash-object tools/audit_legality_l5_gen1_rby_live_diff.py)" = 3eb49f6b31efa334ec7d5f2d2506a26c00d4d338
+          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_vector_integrity.cpp)" = aebd9cadd0f6c66e44d2ec5e648afc7264a3b118
           git diff --check
+      - name: Execute all 65,536 original Gen I DV patterns and Stat Experience boundaries GCC and Clang normal plus ASan/UBSan
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="L5 Gen I raw 65,536 DV patterns x 3 Stat Experience boundaries PASS 1376993 independent assertions; 72 exact source-neutral vectors (NOT PKHeX runtime)"
+          for compiler in g++ clang++; do
+            for mode in optimized sanitized; do
+              if [ "$mode" = sanitized ]; then
+                flags="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer"
+              else
+                flags="-O2"
+              fi
+              # shellcheck disable=SC2086
+              "$compiler" -std=c++20 -Wall -Wextra -Wpedantic -Werror $flags \
+                -Itests/fixtures tests/fixtures/legality_l5_gen1_rby_vector_integrity.cpp \
+                -o "/tmp/l5_gen1_native_input_$(basename "$compiler")_$mode"
+              ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 \
+              UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+                "/tmp/l5_gen1_native_input_$(basename "$compiler")_$mode" \
+                | tee "/tmp/l5_gen1_native_input_$(basename "$compiler")_$mode.log"
+              grep -Fx "$expected" "/tmp/l5_gen1_native_input_$(basename "$compiler")_$mode.log"
+            done
+          done
+          if g++ -std=c++20 -DNDEBUG -Itests/fixtures \
+            tests/fixtures/legality_l5_gen1_rby_vector_integrity.cpp -o /tmp/l5_invalid_disabled_assertions; then
+            echo "UNSAFE: assertions-disabled Gen I integrity fixture was accepted"
+            exit 1
+          fi
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
