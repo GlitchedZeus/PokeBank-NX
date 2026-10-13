@@ -155,6 +155,7 @@ struct PretStaticCandidate {
     bool originalMapIndependentlyAttested=false;
     bool originalSpeciesIndependentlyAttested=false;
     bool originalLevelIndependentlyAttested=false;
+    bool originalFossilIdentityIndependentlyAttested=false;
 };
 struct PretTradeCandidate {
     std::string_view originalGame{};
@@ -190,6 +191,9 @@ constexpr Result evaluatePretStatic(const PretStaticCandidate& c) noexcept {
        return {Status::CandidateOriginalSpeciesContradicted,row.species,row.level};
     if(c.originalLevel!=row.level)
        return {Status::CandidateOriginalLevelContradicted,row.species,row.level};
+    if(row.originalMap=="CinnabarLabFossilRoom" &&
+       !c.originalFossilIdentityIndependentlyAttested)
+       return {Status::UnknownOriginalFossilReceipt,row.species,row.level};
     return {Status::ConditionalPretStaticSceneOnly,row.species,row.level};
 }
 constexpr Result evaluatePretNpcTrade(const PretTradeCandidate& c) noexcept {
