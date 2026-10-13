@@ -24,7 +24,7 @@ namespace PokeVault::Integration::Gen5 {
         case 1:
             if(l<=50)return static_cast<uint32_t>(cube*(100-l)/50);
             if(l<=68)return static_cast<uint32_t>(cube*(150-l)/100);
-            if(l<=98)return static_cast<uint32_t>(cube*(1911-10*l)/1500);
+            if(l<=98)return static_cast<uint32_t>(cube*((1911-10*l)/3)/500);
             return static_cast<uint32_t>(cube*(160-l)/100);
         case 2:
             if(l<=15)return static_cast<uint32_t>(cube*(((l+1)/3)+24)/50);
@@ -101,11 +101,11 @@ static_assert(experienceForLevel5(4,100)==800000);
 static_assert(experienceForLevel5(5,100)==1250000);
 static_assert(experienceForLevel5(1,50)==125000);
 static_assert(experienceForLevel5(1,69)==267406);
-static_assert(experienceForLevel5(1,70)==276915);
-static_assert(experienceForLevel5(1,95)==549291);
-static_assert(experienceForLevel5(1,98)==584166);
-static_assert(levelForExperience5(1,276914)==69);
-static_assert(levelForExperience5(1,276915)==70);
+static_assert(experienceForLevel5(1,70)==276458);
+static_assert(experienceForLevel5(1,95)==548720);
+static_assert(experienceForLevel5(1,98)==583539);
+static_assert(levelForExperience5(1,276457)==69);
+static_assert(levelForExperience5(1,276458)==70);
 static_assert(experienceForLevel5(3,2)==9);
 static_assert(levelForExperience5(0,999999)==99);
 static_assert(levelForExperience5(0,1000000)==100);

@@ -306,7 +306,7 @@ int main() {
     static_assert(G5::personal5(201,27,false).info==
                   G5::personal5(201,0,false).info);
     static_assert(G5::personal5(386,1,false).info->atk==180);
-    static_assert(G5::personal5(646,2,true).info);
+    static_assert(G5::personal5(646,2,true).info->hp==125);
     static_assert(!G5::personal5(646,2,false).info);
     static_assert(!G5::personal5(650,0,true).info);
     // Gender-locked examples (Tauros male, Chansey female, Magnemite genderless).

@@ -466,9 +466,9 @@ int main() {
         assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Friendship));
         assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::IV));
         assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::EV));
-        assert(!stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Species));
-        assert(!stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Ability));
-        assert(!stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::HeldItem));
+        assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Species));
+        assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Ability));
+        assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::HeldItem));
         assert(!stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Shiny));
         assert(!readOnlyDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Nature));
         assert(!stagedDescriptor->source.canWriteOriginalSource());
@@ -1205,8 +1205,6 @@ int main() {
         assert(!G::Gen5ReadOnlySave::parse(wrongFamily,{},&error));
         assert(error.find("disagrees")!=std::string::npos);
         // Valid backup-only copy, primary is invalid.
-        const size_t copySize = family == G::SaveFamily::BlackWhite ?
-            L::BlackWhiteCopySize : L::Black2White2CopySize;
         const auto backup=make(family,version,copySize);
         const auto selected=G::Gen5ReadOnlySave::parse(backup,id,&error);
         assert(selected && selected->selectedBackupPartition());

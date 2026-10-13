@@ -327,7 +327,6 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     // copy changes only one selected retail partition and verified CRCs.
     G::Gen5StagedPokemonWorkspace boxOps(*parsed);
     using Region=G::Gen5StagedPokemonWorkspace::Region;
-    using Slot=G::Gen5StagedPokemonWorkspace::Slot;
     assert(boxOps.firstEmptyCloneDestination()==1);
     assert(!boxOps.cloneToEmptyBox({Region::Party,0,0},0,0,&error));
     assert(!boxOps.cloneToEmptyBox({Region::Party,0,4},0,1,&error));
@@ -400,9 +399,9 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
         boxedCandidate->bytes,game,&error,selected);
     assert(boxedParsed && boxedParsed->boxPokemon(0,2)->species()==133);
     assert(boxedParsed->boxPokemon(0,0)->species()==133);
-    auto stale=input;
-    stale.back()^=0x80;
-    assert(!G::buildStagedSaveCandidateForObservedSource(boxClone,stale,&error));
+    auto staleClone=input;
+    staleClone.back()^=0x80;
+    assert(!G::buildStagedSaveCandidateForObservedSource(boxClone,staleClone,&error));
     assert(G::buildStagedSaveCandidateForObservedSource(boxClone,input,&error));
     assert(boxClone.undoBoxReplacement(0,2));
     assert(!boxClone.hasChanges());

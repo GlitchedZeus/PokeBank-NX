@@ -517,7 +517,7 @@ constexpr uint32_t normalizedGender5(uint8_t ratio,uint32_t old) noexcept {
     if(ratio==254)return 1;
     return old<=1?old:0;
 }
-static_assert(personal5(25,0,false).info && personal5(25,0,true).info);
+static_assert(personal5(25,0,false).info->hp == 35 && personal5(25,0,true).info->hp == 35);
 static_assert(!personal5(650,0,false).info && !personal5(25,31,true).info);
 static_assert(!genderAllowed5(255,1) && genderAllowed5(255,2));
 } // namespace PokeVault::Integration::Gen5
