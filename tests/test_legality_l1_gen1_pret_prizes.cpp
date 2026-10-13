@@ -88,6 +88,41 @@ int main() {
      ++unknown;
    }
  }
+ // Original Yellow Oak Pikachu is an entirely different historical
+ // source: the original 0xA3 catch-rate/item byte is NOT a wild Pikachu
+ // catch rate and is NOT inferred from modern native held-item status.
+ G::YellowStarterWitness starter{};
+ starter.originalGame="yellow_gb";starter.originalSpecies=25;
+ starter.originalLevel=5;starter.originalCatchByte=0xA3;
+ starter.originalGameIndependentlyAttested=true;
+ starter.originalGiftSceneIndependentlyAttested=true;
+ starter.originalCatchByteIndependentlyAttested=true;
+ using Y=G::YellowStarterStatus;
+ assert(G::evaluateYellowStarterByte(starter).status==
+        Y::ConditionalOriginalYellowStarterByteOnly);
+ ++positive;
+ auto missingStarter=starter;missingStarter.originalGiftSceneIndependentlyAttested=false;
+ assert(G::evaluateYellowStarterByte(missingStarter).status==Y::UnknownOriginalGiftScene);
+ missingStarter=starter;missingStarter.originalCatchByteIndependentlyAttested=false;
+ assert(G::evaluateYellowStarterByte(missingStarter).status==Y::UnknownOriginalCatchByte);
+ missingStarter=starter;missingStarter.originalGame="red_gb";
+ assert(G::evaluateYellowStarterByte(missingStarter).status==Y::UnknownOriginalGame);
+ unknown+=3;
+ for(unsigned originalByte=0;originalByte<256;++originalByte){
+    auto special=starter;
+    special.originalCatchByte=static_cast<uint8_t>(originalByte);
+    const auto status=G::evaluateYellowStarterByte(special).status;
+    assert(status==(originalByte==0xA3?
+             Y::ConditionalOriginalYellowStarterByteOnly:
+             Y::CandidateLocalCatchByteMismatch));
+    if(originalByte==0xA3)++positive;else ++negative;
+ }
+ // Current PK1 bytes alone cannot establish this original acquisition.
+ auto laterCapsule=starter;
+ laterCapsule.originalCatchByteIndependentlyAttested=false;
+ laterCapsule.originalCatchByte=0x60;
+ assert(G::evaluateYellowStarterByte(laterCapsule).status==Y::UnknownOriginalCatchByte);
+ ++unknown;
  std::cout<<"L1 pret RBY Game Corner 18 original prize rows, costs, levels, "
           <<positive<<" positive source-only, "<<negative<<" local negative and "
           <<unknown<<" Unknown/bounds assertions PASS\n";
