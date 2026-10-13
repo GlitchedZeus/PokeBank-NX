@@ -10,7 +10,9 @@ Like gen_corpus.py (Gen I), it mixes Pokemon built the way the games build them
 gifts, daycare eggs, Odd Eggs, Gen I Pokemon brought over by the Time Capsule),
 then levelled, evolved and taught TMs, with deliberately broken variants and
 random records. Nothing here decides legality; run.sh compares PKHeX's verdict
-with PokeBank NX's on the same bytes.
+with PokeBank NX's on the same bytes. Japanese records use 6-byte name fields and
+the Japanese character table from PKHeX's StringConverter2, including the
+Japanese-only event gifts and in-game trade names.
 
 Usage:
     python3 tools/pkhex_gb_diff/gen_corpus2.py --pkhex PKHEX --pokered POKERED \
@@ -28,6 +30,7 @@ sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 import gen_gb_legality_data as gen  # noqa: E402
 import gen_corpus as g1  # noqa: E402
+import gb_text as gbtext  # noqa: E402
 
 GD, SI, C = gen.GD, gen.SI, gen.C
 TERMINATOR = 0x50
@@ -85,6 +88,9 @@ class Data:
             self.statics.extend(gen.parse_static2(enc2, name))
         self.trades = gen.parse_trade2(enc2)
         self.trade_names = gen.read_text_lines(res / "legality/gen2/text_tradegsc_en.txt")
+        self.trade_names_ja = gen.read_text_lines(res / "legality/gen2/text_tradegsc_ja.txt")
+        self.jp = gbtext.Encoder(gbtext.read_table(pkhex, 2, "TableJP"))
+        self.jp_names = gbtext.japanese_names(self.jp)
         raw = res.joinpath("legality/mgdb/event2.pkl").read_bytes()
         self.gifts = [raw[i:i + 12] for i in range(0, len(raw), 12)]
         header = (HERE.parent.parent / "include/Legality/GBLegalityData.h").read_text()
@@ -131,6 +137,8 @@ class Mon:
         self.pp = None  # list of (pp, ups); filled in by finish() unless a defect sets it
         self.statexp = [0] * 5
         self.pokerus = 0
+        self.japanese = False
+        self.fill_name = False  # Japanese only: the name fills its field with no terminator
 
 
 def encounter_moves(d, species, level, crystal):
@@ -224,7 +232,21 @@ def finish(d, mon, rng):
     body[36:38] = hp.to_bytes(2, "big")
     for i, (b, dv) in enumerate(((stats[1], atk), (stats[2], df), (stats[3], spe), (stats[4], spc), (stats[5], spc))):
         body[38 + i * 2:40 + i * 2] = g1.stat(b, dv, mon.level, False).to_bytes(2, "big")
+    if mon.japanese:
+        def jp(s):
+            return d.jp.encode(s, 6, terminate=not mon.fill_name or len(s) < 6)
+        return body, jp(mon.ot), jp("タマゴ" if mon.egg else mon.nick)
     return body, text(mon.ot, 11), text("EGG" if mon.egg else mon.nick, 11)
+
+
+def japanize(d, mon, rng):
+    """Make this a Japanese-game Pokemon with a Japanese trainer and nickname."""
+    mon.japanese = True
+    if mon.ot == "ODD":
+        mon.ot = rng.choice(("なぞナゾ", "なぞ"))
+    else:
+        mon.ot = rng.choice(d.jp_names)
+    mon.nick = rng.choice(("ポケモン", "ピカ", "あいぼう", "ゴン"))
 
 
 def met_time(slot_time, rng):
@@ -301,15 +323,18 @@ def static_mon(d, rng, s):
     return mon
 
 
-def trade_mon(d, rng, t, variant):
+def trade_mon(d, rng, t, variant, japanese=False):
     crystal = rng.random() < 0.5
     mon = Mon(t["species"], t["level"], encounter_moves(d, t["species"], t["level"], crystal), crystal)
     if t["dvs"]:
         hp, atk, df, spe, spa, _spd = t["dvs"]
         mon.dvs = [atk, df, spe, spa]
         mon.tid = t["tid"]
-    mon.nick = d.trade_names[t["index"]] if variant != "trade2-wrong-nick" else "NOTRADE"
-    mon.ot = d.trade_names[t["index"] + 11] if variant != "trade2-wrong-ot" else "WRONG"
+    names = d.trade_names_ja if japanese else d.trade_names
+    wrong = "ニセモノ" if japanese else None
+    mon.japanese = japanese
+    mon.nick = names[t["index"]] if variant != "trade2-wrong-nick" else (wrong or "NOTRADE")
+    mon.ot = names[t["index"] + 11] if variant != "trade2-wrong-ot" else (wrong or "WRONG")
     if crystal:
         mon.caught = caught(0, 0, t["otGender"] if t["dvs"] else 0, 126)
     return mon
@@ -320,7 +345,11 @@ def gift_mon(d, rng, g):
     mon = Mon(species, max(level, current), [m for m in (m1, m2, m3, m4) if m], location != 0)
     if shiny:
         mon.dvs = [rng.choice((2, 3, 6, 7, 10, 11, 14, 15)), 10, 10, 10]
-    if trainer == 2:
+    if language == 1:
+        japanize(d, mon, rng)
+    if trainer == 1:
+        mon.ot, mon.tid = "スタジアム", 2000
+    elif trainer == 2:
         mon.ot, mon.tid = "Stadium", 2000
     elif trainer == 3:
         mon.ot, mon.tid = rng.choice(("Stadion", "Stade", "Stadio", "Estadio")), 2001
@@ -338,10 +367,10 @@ def gift_mon(d, rng, g):
     return mon
 
 
-def time_capsule_mon(d, rng):
+def time_capsule_mon(d, rng, japanese=False):
     """A Gen I Pokemon (moves learned in Red/Blue/Yellow) moved to Gen II."""
     species, lmin, lmax, v = rng.choice(d.g1.wild)
-    while v == g1.BU:
+    while v == g1.BU and not japanese:
         species, lmin, lmax, v = rng.choice(d.g1.wild)
     yellow = v == g1.YW
     level = rng.randint(lmin, lmax)
@@ -369,7 +398,7 @@ def main():
     def emit(kind, mon):
         nonlocal made
         body, ot, nick = finish(d, mon, rng)
-        out.write(f"{made} {kind} 0 {body.hex()} {ot.hex()} {nick.hex()} {int(mon.egg)}\n")
+        out.write(f"{made} {kind} {int(mon.japanese)} {body.hex()} {ot.hex()} {nick.hex()} {int(mon.egg)}\n")
         made += 1
 
     for slot in d.wild:
@@ -377,38 +406,46 @@ def main():
     for s in d.statics:
         emit("static2", static_mon(d, rng, s))
     for t in d.trades:
-        for variant in ("trade2", "trade2-wrong-ot", "trade2-wrong-nick"):
-            emit(variant, trade_mon(d, rng, t, variant))
+        for japanese in (False, True):
+            for variant in ("trade2", "trade2-wrong-ot", "trade2-wrong-nick"):
+                emit(variant + ("-jp" if japanese else ""), trade_mon(d, rng, t, variant, japanese))
     for g in d.gifts:
-        if g[10] == 1 or g[11] == 1:  # Japanese-only distributions need Japanese text
-            continue
-        emit("gift2", gift_mon(d, rng, g))
+        emit("gift2-jp" if g[10] == 1 else "gift2", gift_mon(d, rng, g))
+
+    def emit_maybe_jp(kind, mon, japanese):
+        if japanese:
+            japanize(d, mon, rng)
+        emit(kind + ("-jp" if japanese else ""), mon)
 
     while made < args.count:
         roll = rng.random()
+        japanese = rng.random() < 0.25
         if roll < 0.30:
             mon = wild_mon(d, rng, rng.choice(d.wild))
             grow(d, mon, min(100, mon.level + rng.randrange(0, 60)), rng)
-            emit("grown2", mon)
+            emit_maybe_jp("grown2", mon, japanese)
         elif roll < 0.40:
             hatched = rng.random() < 0.7
             mon = egg_mon(d, rng, hatched)
             if hatched and rng.random() < 0.7:
                 grow(d, mon, min(100, 5 + rng.randrange(0, 50)), rng)
-            emit("egg2" if not mon.egg else "egg2-unhatched", mon)
+            emit_maybe_jp("egg2" if not mon.egg else "egg2-unhatched", mon, japanese)
         elif roll < 0.48:
             mon = static_mon(d, rng, rng.choice(d.statics))
             if not mon.egg:
                 grow(d, mon, min(100, mon.level + rng.randrange(0, 40)), rng)
-            emit("grown-static2", mon)
+            emit_maybe_jp("grown-static2", mon, japanese)
         elif roll < 0.58:
-            emit("time-capsule", time_capsule_mon(d, rng))
+            emit_maybe_jp("time-capsule", time_capsule_mon(d, rng, japanese), japanese)
         elif roll < 0.88:
             mon = wild_mon(d, rng, rng.choice(d.wild))
             grow(d, mon, min(100, mon.level + rng.randrange(0, 40)), rng)
             defect = rng.choice(("move", "level", "item", "caught", "wipe", "time", "otgender",
                                  "egg-cycles", "egg-item", "pp", "egg-pp", "egg-moves",
-                                 "statexp", "egg-statexp", "pokerus", "ot-long", "ot-empty", "nick-empty"))
+                                 "statexp", "egg-statexp", "pokerus", "ot-long", "ot-empty", "nick-empty")
+                                + (("nick-long",) if japanese else ()))
+            if japanese:
+                japanize(d, mon, rng)
             if defect == "move":
                 mon.moves[rng.randrange(len(mon.moves))] = rng.randint(1, 251)
                 mon.moves = list(dict.fromkeys(mon.moves))
@@ -428,8 +465,15 @@ def main():
                 mon.statexp = g1.stat_exp_defect(rng)
             elif defect == "pokerus":
                 mon.pokerus = rng.randrange(256)
-            elif defect == "ot-long":  # seven letters is the limit; seven is still fine
-                mon.ot = g1.letters(rng, rng.randint(7, 10))
+            elif defect == "ot-long":  # seven letters (five in Japanese) is the limit
+                if japanese:
+                    mon.ot = "".join(rng.choice("アイウエオカキクケコ") for _ in range(rng.randint(5, 6)))
+                    mon.fill_name = True
+                else:
+                    mon.ot = g1.letters(rng, rng.randint(7, 10))
+            elif defect == "nick-long":  # a Japanese nickname filling all six bytes
+                mon.nick = "".join(rng.choice("アイウエオカキクケコ") for _ in range(rng.randint(5, 6)))
+                mon.fill_name = True
             elif defect == "ot-empty":
                 mon.ot = ""
             elif defect == "nick-empty":
@@ -439,6 +483,8 @@ def main():
                 mon.pp = [(rng.randrange(64), rng.randrange(4)) for _ in moves]
             elif defect in ("egg-cycles", "egg-item", "egg-pp", "egg-moves", "egg-statexp"):
                 mon = egg_mon(d, rng, False)
+                if japanese:
+                    japanize(d, mon, rng)
                 if defect == "egg-statexp":  # vitamins cannot be used on an egg either
                     mon.statexp = rng.choice((g1.stat_exp(rng), [2560 * rng.randint(1, 10)] + [0] * 4))
                 elif defect == "egg-cycles":
@@ -455,7 +501,7 @@ def main():
                         later = [mv for lv, mv in d.learn[mon.crystal][mon.species] if lv > 5]
                         if later:
                             g1.learn(mon, rng.choice(later), rng)
-            emit("defect2-" + defect, mon)
+            emit("defect2-" + defect + ("-jp" if japanese else ""), mon)
         else:
             species = rng.randint(1, 251)
             moves = list(dict.fromkeys(rng.randint(1, 251) for _ in range(rng.randint(1, 4))))
@@ -465,7 +511,7 @@ def main():
                 mon.caught = rng.randrange(65536)
             mon.statexp = rng.choice((g1.stat_exp(rng), [rng.randrange(65536) for _ in range(5)]))
             mon.pokerus = rng.choice((0, pokerus(rng), rng.randrange(256)))
-            emit("random2", mon)
+            emit_maybe_jp("random2", mon, japanese)
 
 
 if __name__ == "__main__":

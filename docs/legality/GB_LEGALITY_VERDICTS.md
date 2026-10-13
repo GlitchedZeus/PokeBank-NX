@@ -4,7 +4,7 @@
 origin a PK1 or PK2 record could have (wild slots, statics and gifts, in-game trades,
 eggs, recorded event distributions, Time Capsule trips both ways) and checks the
 record's moves, levels, catch rate or held item, DVs, met data, PP, stat experience,
-Pokérus and names against that origin. The rules are ported from PKHeX.Core
+Pokérus, trainer name and nickname against that origin. The rules are ported from PKHeX.Core
 (kwsch/PKHeX@6501f0ab, GB cartridge-era settings) and the data comes from the same
 PKHeX resources, cross-checked against pret (pokered/pokeyellow/pokegold/pokecrystal).
 
@@ -30,7 +30,7 @@ There are two non-definitive rules (`Problem::definitive == false`):
    to be complete, and Red/Blue/Yellow's Mew glitch (not modelled by PKHeX) catches a Mew
    with the player's own trainer data. Matching nothing in our tables is therefore not
    proof. Rules that hold whatever the event was (Mew's catch rate, stat experience, PP,
-   names) still make such a record Invalid.
+   trainer name and nickname length) still make such a record Invalid.
 
 ## Evidence
 
@@ -40,13 +40,22 @@ UNCERTAIN verdict without one of the two reasons above, or on a corpus record ei
 side skipped. The corpora contain records built the way the games build them, plus
 deliberate defects (moves, levels, catch rate, types, held items, met data, PP,
 egg data, stat experience, Pokérus, over-long or empty names) and random records.
+About a quarter of the generated records are Japanese: 6-byte name fields encoded
+with the Japanese character tables read from PKHeX's own `StringConverter1/2`
+source, Japanese Blue encounters, Japanese in-game trade names, Japanese Odd Eggs
+and the Japanese-only Gen II event gifts.
 
 Seeds 1–3, 50,000 records each:
 
 | Format | Decided records, agreement with PKHeX | Uncertain |
 |---|---|---|
-| PK1 | 149,852 / 149,852 | 148: 147 Mew (PKHeX INVALID), 1 evolution-order case (PKHeX VALID) |
-| PK2 | 149,931 / 149,931 | 69: Mew or Celebi (PKHeX INVALID) |
+| PK1 | 149,860 / 149,860 | 140: Mew from an unrecorded event (PKHeX INVALID) |
+| PK2 | 149,935 / 149,935 | 65: 34 Mew and 31 Celebi from an unrecorded event (PKHeX INVALID) |
+
+The evolution-order case does not come up in these three seeds. An earlier corpus
+without Japanese records produced one (an Exeggutor that knows Stomp and
+PoisonPowder, PKHeX VALID). That record is kept as a fixed case in
+`tests/test_gb_legality_gen1.cpp`.
 
 `tests/test_gb_legality_gen1.cpp` (through `Legality::analyze`) and
 `tests/test_gb_legality_gen2.cpp` keep PKHeX-verdict samples of every corpus kind
@@ -60,5 +69,6 @@ Deliberate differences from PKHeX:
 
 ## Not covered yet
 
-- Japanese PK1/PK2 records: the corpora use international text only.
+- Korean Gold/Silver and the non-English European languages: the corpora use
+  English and Japanese text only.
 - Gen II in the app: waits on independent verification of the Gen I/II code.

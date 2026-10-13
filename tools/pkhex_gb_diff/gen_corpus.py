@@ -5,6 +5,9 @@ Each output line is one Pokemon exactly as a Red/Blue/Yellow save stores it:
 
     <id> <kind> <japanese 0|1> <44-byte party body hex> <OT name hex> <nickname hex>
 
+Japanese records use 6-byte name fields and the Japanese character table, both read
+from PKHeX's StringConverter1, and may come from Japanese Blue's own encounters.
+
 The corpus mixes Pokemon built the way the games build them (wild/static/trade
 encounters, then levelled up, evolved and taught TMs) with deliberately broken
 variants (wrong move, level, catch rate, types or stat experience, renamed trade
@@ -27,6 +30,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 import gen_gb_legality_data as gen  # noqa: E402
 import verify_gb_legality_data as ver  # noqa: E402
+sys.path.insert(0, str(HERE))
+import gb_text as gbtext  # noqa: E402
 
 RD, GN, BU, YW = gen.RD, gen.GN, gen.BU, gen.YW
 CHARS = {c: 0x80 + i for i, c in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZ")}
@@ -116,6 +121,9 @@ class Data:
         for name in ("TradeGift_RB", "TradeGift_YW", "TradeGift_BU"):
             self.trades.extend(gen.parse_trade1(enc1, name))
         self.trade_names = gen.read_text_lines(res / "legality/gen1/text_traderby_en.txt")
+        self.trade_names_ja = gen.read_text_lines(res / "legality/gen1/text_traderby_ja.txt")
+        self.jp = gbtext.Encoder(gbtext.read_table(pkhex, 1, "TableJP"))
+        self.jp_names = gbtext.japanese_names(self.jp)
         pret = ver.Pret(pokered)
         by_internal = {v: k for k, v in pret.internal.items()}
         self.internal = {}
@@ -140,6 +148,7 @@ class Mon:
         self.tid = None
         self.ot, self.nick, self.trade_ot = "ASH", "MON", False
         self.statexp = [0] * 5
+        self.fill_name = False  # Japanese only: the name fills its field with no terminator
 
 
 def learn(mon, move, rng):
@@ -216,9 +225,21 @@ def finish(d, mon, rng, japanese):
     for i, (b, dv) in enumerate(((stats[1], atk), (stats[2], df), (stats[3], spe), (stats[4], spc))):
         body[0x24 + i * 2:0x26 + i * 2] = stat(b, dv, mon.level, False).to_bytes(2, "big")
     length = 6 if japanese else 11
-    ot = bytes([TRADE_OT, TERMINATOR] + [TERMINATOR] * (length - 2)) if mon.trade_ot else gb_text(mon.ot, length)
-    nick = gb_text(mon.nick, length)
+    if japanese:
+        def text(s):
+            return d.jp.encode(s, length, terminate=not mon.fill_name or len(s) < length)
+    else:
+        def text(s):
+            return gb_text(s, length)
+    ot = bytes([TRADE_OT, TERMINATOR] + [TERMINATOR] * (length - 2)) if mon.trade_ot else text(mon.ot)
+    nick = text(mon.nick)
     return body, ot, nick
+
+
+def japanize(d, mon, rng):
+    """Give a Pokemon a Japanese trainer and nickname (the caller emits it as Japanese)."""
+    mon.ot = rng.choice(d.jp_names)
+    mon.nick = rng.choice(("ポケモン", "ピカ", "あいぼう", "ゴン"))
 
 
 def main():
@@ -244,66 +265,82 @@ def main():
 
     # Every wild slot, as caught.
     for species, lmin, lmax, v in d.wild:
-        if v == BU:
-            continue
         yellow = v == YW
         level = rng.randint(lmin, lmax)
-        emit("wild", Mon(species, level, encounter_moves(d, species, level, yellow),
-                         personal_catch(species, yellow), yellow))
+        mon = Mon(species, level, encounter_moves(d, species, level, yellow), personal_catch(species, yellow), yellow)
+        if v == BU:
+            japanize(d, mon, rng)
+        emit("wild-jp" if v == BU else "wild", mon, v == BU)
 
     # Every static / gift, as received.
     for species, level, v in d.statics:
-        if v == BU:
-            continue
         yellow = v == YW
         catch = 163 if (v == YW and species == 25 and level == 5) else personal_catch(species, yellow)
-        emit("static", Mon(species, level, encounter_moves(d, species, level, yellow), catch, yellow))
+        mon = Mon(species, level, encounter_moves(d, species, level, yellow), catch, yellow)
+        if v == BU:
+            japanize(d, mon, rng)
+        emit("static-jp" if v == BU else "static", mon, v == BU)
 
     # In-game trades with the right and the wrong trainer / nickname.
     for species, v, _rby, gsc, idx, evolve in d.trades:
-        if v == BU or idx >= len(d.trade_names):
-            continue
         yellow = v == YW
-        for variant in ("trade", "trade-wrong-ot", "trade-wrong-nick"):
-            got = species + 1 if evolve else species
-            mon = Mon(got, max(gsc, 5) + rng.randrange(10), [], personal_catch(species, yellow), yellow)
-            mon.moves = encounter_moves(d, species, mon.level, yellow)
-            mon.trade_ot = variant != "trade-wrong-ot"
-            mon.nick = d.trade_names[idx] if variant != "trade-wrong-nick" else "NOTRADE"
-            emit(variant, mon)
+        for japanese in (False, True):
+            names = d.trade_names_ja if japanese else d.trade_names
+            if idx >= len(names) or (v == BU and not japanese):
+                continue
+            for variant in ("trade", "trade-wrong-ot", "trade-wrong-nick"):
+                got = species + 1 if evolve else species
+                mon = Mon(got, max(gsc, 5) + rng.randrange(10), [], personal_catch(species, yellow), yellow)
+                mon.moves = encounter_moves(d, species, mon.level, yellow)
+                mon.trade_ot = variant != "trade-wrong-ot"
+                if japanese:
+                    japanize(d, mon, rng)
+                    mon.nick = names[idx] if variant != "trade-wrong-nick" else "ニセモノ"
+                else:
+                    mon.nick = names[idx] if variant != "trade-wrong-nick" else "NOTRADE"
+                emit(variant + ("-jp" if japanese else ""), mon, japanese)
 
     while made < args.count:
         roll = rng.random()
+        japanese = rng.random() < 0.25
+        jp = "-jp" if japanese else ""
         if roll < 0.45:  # natural growth from a random wild slot
             species, lmin, lmax, v = rng.choice(d.wild)
-            if v == BU:
+            if v == BU and not japanese:
                 continue
             yellow = v == YW
             level = rng.randint(lmin, lmax)
             mon = Mon(species, level, encounter_moves(d, species, level, yellow),
                       personal_catch(species, yellow), yellow)
             grow(d, mon, min(100, level + rng.randrange(0, 60)), rng)
-            emit("grown", mon)
+            if japanese:
+                japanize(d, mon, rng)
+            emit("grown" + jp, mon, japanese)
         elif roll < 0.55:  # natural growth from a static
             species, level, v = rng.choice(d.statics)
-            if v == BU:
+            if v == BU and not japanese:
                 continue
             yellow = v == YW
             mon = Mon(species, level, encounter_moves(d, species, level, yellow),
                       personal_catch(species, yellow), yellow)
             grow(d, mon, min(100, level + rng.randrange(0, 50)), rng)
-            emit("grown-static", mon)
+            if japanese:
+                japanize(d, mon, rng)
+            emit("grown-static" + jp, mon, japanese)
         elif roll < 0.85:  # one deliberate defect on a natural Pokemon
             species, lmin, lmax, v = rng.choice(d.wild)
-            if v == BU:
+            if v == BU and not japanese:
                 continue
             yellow = v == YW
             level = rng.randint(lmin, lmax)
             mon = Mon(species, level, encounter_moves(d, species, level, yellow),
                       personal_catch(species, yellow), yellow)
             grow(d, mon, min(100, level + rng.randrange(0, 40)), rng)
+            if japanese:
+                japanize(d, mon, rng)
             defect = rng.choice(("move", "level", "catch", "catch-item", "types", "drop-move",
-                                 "statexp", "ot-long", "ot-empty", "nick-empty"))
+                                 "statexp", "ot-long", "ot-empty", "nick-empty")
+                                + (("nick-long",) if japanese else ()))
             if defect == "move":
                 mon.moves[rng.randrange(len(mon.moves))] = rng.randint(1, 165)
                 mon.moves = list(dict.fromkeys(mon.moves))
@@ -320,20 +357,29 @@ def main():
                 mon.moves.pop()
             elif defect == "statexp":
                 mon.statexp = stat_exp_defect(rng)
-            elif defect == "ot-long":  # seven letters is the limit; seven is still fine
-                mon.ot = letters(rng, rng.randint(7, 10))
+            elif defect == "ot-long":  # seven letters (five in Japanese) is the limit
+                if japanese:
+                    mon.ot = "".join(rng.choice("アイウエオカキクケコ") for _ in range(rng.randint(5, 6)))
+                    mon.fill_name = True
+                else:
+                    mon.ot = letters(rng, rng.randint(7, 10))
+            elif defect == "nick-long":  # a Japanese nickname filling all six bytes
+                mon.nick = "".join(rng.choice("アイウエオカキクケコ") for _ in range(rng.randint(5, 6)))
+                mon.fill_name = True
             elif defect == "ot-empty":
                 mon.ot = ""
             elif defect == "nick-empty":
                 mon.nick = ""
-            emit("defect-" + defect, mon)
+            emit("defect-" + defect + jp, mon, japanese)
         else:  # fully random
             species = rng.randint(1, 151)
             moves = list(dict.fromkeys(rng.randint(1, 165) for _ in range(rng.randint(1, 4))))
             catch = rng.choice((personal_catch(species, False), rng.randrange(256), rng.choice(HELD_RATES)))
             mon = Mon(species, rng.randint(2, 100), moves, catch, False)
             mon.statexp = rng.choice((stat_exp(rng), [rng.randrange(65536) for _ in range(5)]))
-            emit("random", mon)
+            if japanese:
+                japanize(d, mon, rng)
+            emit("random" + jp, mon, japanese)
 
 
 if __name__ == "__main__":

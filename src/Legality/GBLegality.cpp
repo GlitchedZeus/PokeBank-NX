@@ -1422,6 +1422,17 @@ std::string trainerNameProblem(const Subject& pk) {
     return {};
 }
 
+/// NicknameVerifier (Legal.GetMaxLengthNickname for Gen I/II): the naming screen allows
+/// 10 characters, 5 in Japanese. Eggs and fixed-nickname trades are judged elsewhere.
+std::string nicknameProblem(const Subject& pk) {
+    if (pk.egg)
+        return {};
+    const std::size_t limit = pk.language == Language::Japanese ? 5 : 10;
+    if (codePoints(pk.nickname) > limit)
+        return "Nickname is longer than " + std::to_string(limit) + " characters";
+    return {};
+}
+
 // ---------------------------------------------------------------- PP
 
 uint8_t basePP(uint8_t format, uint8_t move) {
@@ -1527,11 +1538,13 @@ Evaluation evaluate(const Subject& pk, const Candidate& enc, const Chain& chain,
     if (enc.partial)
         ev.problems.push_back({enc.kind == EncounterKind::Trade ? Area::Trainer : Area::CatchRate,
                                enc.partialReason});
-    // TrainerNameVerifier.VerifyOTGB: in-game trades carry a fixed trainer and are
-    // checked by the trade match itself.
+    // TrainerNameVerifier.VerifyOTGB / NicknameVerifier: in-game trades carry a fixed
+    // trainer and nickname and are checked by the trade match itself.
     if (enc.kind != EncounterKind::Trade) {
         if (const std::string ot = trainerNameProblem(pk); !ot.empty())
             ev.problems.push_back({Area::Trainer, ot});
+        if (const std::string nick = nicknameProblem(pk); !nick.empty())
+            ev.problems.push_back({Area::Trainer, nick});
     }
     if (pk.tradeTrainer && !(enc.kind == EncounterKind::Trade && enc.generation == 1))
         ev.problems.push_back({Area::Trainer, "The in-game-trade trainer marker only appears on Pokemon "
@@ -1699,7 +1712,7 @@ Result search(const Subject& pk, const Chain& chainOwn, const Chain& chainOther,
                                 false});
         // Whichever distribution it was, the game that made the Pokemon copied the
         // species' own catch rate (pokered _AddPartyMon), and only a Gen II held item
-        // replaces it; and its trainer was named on the games' own naming screen.
+        // replaces it; and it and its trainer were named on the games' own naming screen.
         // Neither depends on the event list.
         bool rateOk = pk.format != 1 || isHeldItemRate(pk.catchRate);
         for (int i = 0; i < chainOwn.count && !rateOk; ++i)
@@ -1711,9 +1724,11 @@ Result search(const Subject& pk, const Chain& chainOwn, const Chain& chainOther,
                                                          " and is not a Gen II held item, whatever event it "
                                                          "came from"});
         }
-        if (const std::string ot = trainerNameProblem(pk); !ot.empty()) {
+        for (const std::string& name : {trainerNameProblem(pk), nicknameProblem(pk)}) {
+            if (name.empty())
+                continue;
             res.status = Status::Illegal;
-            res.problems.push_back({Area::Trainer, ot});
+            res.problems.push_back({Area::Trainer, name});
         }
         haveBest = false;
     }
