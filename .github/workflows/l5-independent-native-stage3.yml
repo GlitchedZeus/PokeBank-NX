@@ -27,6 +27,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          test "$(git hash-object tests/fixtures/legality_l5_stage3_native_entity_boundary.cpp)" = "a0135799e4e30318e118f3767ffd8b5af684d751"
           git diff --check
           test -z "$(git status --porcelain --untracked-files=no)"
       - name: Independently verify committed PK3/PK4 crypto source pins and negative controls
@@ -43,7 +44,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          expected="L5 Stage3 actual PK3/PK4 entity quarantine: 17198 PASS (synthetic; full-checkout production linkage)"
+          expected="L5 Stage3 actual PK3/PK4 entity quarantine: 17310 PASS (synthetic; full-checkout production linkage)"
           for compiler in g++ clang++; do
             if [ "$compiler" = "clang++" ]; then
               variant=-clang
