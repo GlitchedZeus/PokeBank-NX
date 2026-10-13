@@ -136,6 +136,14 @@ def self_test() -> None:
     tables, rows = extract(example, 3)
     assert len(rows) == 2 and rows[0][:4] == ("Encounter_AO_Regular", 0, 25, 20)
     assert rows[1][-1] == 12
+    roamer = ("internal static readonly EncounterStatic5[] StaticB = ["
+              "new(B) { IsRoaming = true, Species = 641, Level = 40, Location = 25 }, ];")
+    _, rows = extract(roamer, 0)
+    assert rows == [("StaticB", 0, 641, 40, 25, 0, 2, 0, 0, 0, 17)]
+    egg = ("internal static readonly EncounterStatic5[] Encounter_BW = ["
+           "new(BW) { Species = 636, Level = 1, Location = 0, EggLocation = 60003 }, ];")
+    _, rows = extract(egg, 0)
+    assert rows[0][-1] == 3
     print("L1 Phase A PKHeX source parser self-test PASS (not owner archive verification)")
 
 
