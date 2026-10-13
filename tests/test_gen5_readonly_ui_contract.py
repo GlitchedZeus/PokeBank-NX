@@ -314,7 +314,7 @@ require(personal, "std::array<Personal5,668> NativePersonalBW",
         "personal_bw blob de1a0654e8540a5c7e5c8b5e6448db50bb6d8c55",
         "personal_b2w2 blob 9236ad139126af222e915650dbda70d6df897399",
         "personal5(", "abilityForSlot5(", "genderAllowed5(",
-        "base.formIndex==0", "black2White2")
+        "base.formIndex==0", "bool b2w2")
 require(native_stage, "case Field::Form:", "case Field::AbilitySlot:",
         "case Field::Gender:", "genderAllowed5(", "normalizedGender5(",
         "Gen V party form changes requiring stat regeneration are locked",
@@ -337,7 +337,7 @@ require(surface, "void drawIdentityPicker(",
         "kGen5IdentityTouchBase=78500",
         "state.openIdentityPicker(error)",
         "state.acceptIdentityPicker(error)", "state.cancelIdentityPicker()",
-        "personal5(current->species(),current->form(),state.black2White2())")
+        "state.black2White2()", "personal5(")
 require(shared_contract, "case FieldIdentity::Form:",
         "case FieldIdentity::Gender:", "case FieldIdentity::Ability:")
 require(read("tests/test_gen5_readonly_save.cpp"),
