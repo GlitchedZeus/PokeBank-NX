@@ -98,6 +98,11 @@ struct Source {
     bool giftHashMatchedRestrictionRowIndependentlyVerified=false;
     uint16_t allowedLanguages=0;
     uint16_t allowedRegions=0;
+    // WC6Full receiver edition X/Y/AS/OR = indexes 0/1/2/3.
+    // This is the independently verified ORIGINAL recipient, not today's
+    // installed game or current format after a transfer/trade.
+    bool originalRecipientGen6EditionIndependentlyVerified=false;
+    uint8_t originalRecipientGen6EditionIndex=255;
     bool eventBallIdentityIndependentlyVerified=false;
     bool eventRibbonIdentityIndependentlyVerified=false;
 };
@@ -145,6 +150,19 @@ constexpr Result evaluate(const Projection& gift,const Source& s,const Native& n
     else if(!gift.origin)result.unknown|=Version;
     if(gift.language && gift.language!=native.language)result.contradiction|=Language;
     else if(!gift.language)result.unknown|=Language;
+    if(gift.format==Format::WC6Full) {
+        // PKHeX WC6.CanBeReceivedByVersion and IsMatchPartial.
+        // 0 version restriction = unbounded. Nonzero bitmask uses four
+        // original X, Y, AS, OR receiver slots, not the PKM's current game.
+        if(gift.restrictVersion!=0) {
+            if(!s.originalRecipientGen6EditionIndependentlyVerified ||
+               s.originalRecipientGen6EditionIndex>=4)result.unknown|=Version;
+            else if((gift.restrictVersion & (1u<<s.originalRecipientGen6EditionIndex))==0)
+                result.contradiction|=Version;
+        }
+        if(gift.restrictLanguage!=0 && gift.restrictLanguage!=native.language)
+            result.contradiction|=Language;
+    }
     if(s.eventBallIdentityIndependentlyVerified && gift.ball!=0) {
         if(gift.ball!=native.ball)result.contradiction|=Ball;
     } else result.unknown|=Ball;

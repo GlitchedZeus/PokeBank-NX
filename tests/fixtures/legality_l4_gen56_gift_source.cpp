@@ -87,6 +87,36 @@ int main(){
  assert(G::evaluate(p,x,n).status==G::Finding::UnknownSource);}
  {auto x=s;x.exactSerializedBytesIndependentlyBoundToDigest=false;
  assert(G::evaluate(f,x,n).status==G::Finding::UnknownSource);}
+ // Full-wrapper WC6 restrictions are not standalone WC6 restrictions.
+ {auto sw=s;sw.originalFormat=G::Format::WC6Full;
+ auto x=n;x.origin=24;x.language=2;
+ sw.originalRecipientGen6EditionIndependentlyVerified=true;
+ sw.originalRecipientGen6EditionIndex=2; // Alpha Sapphire allowed by 0b1100
+ auto result=G::evaluate(f,sw,x);
+ assert(result.status==G::Finding::CandidateExcluded &&
+        (result.contradiction&G::Language) && !(result.contradiction&G::Version));
+ sw.originalRecipientGen6EditionIndex=0;
+ result=G::evaluate(f,sw,x);
+ assert(result.contradiction&G::Version);
+ sw.originalRecipientGen6EditionIndependentlyVerified=false;
+ result=G::evaluate(f,sw,x);
+ assert(result.unknown&G::Version);
+ auto changed=full;set8(changed,0x1FF,2);
+ sw.originalRecipientGen6EditionIndependentlyVerified=true;
+ unsigned wrapper=0;
+ for(unsigned edition=0;edition<4;++edition)
+ for(unsigned versionMask=0;versionMask<16;++versionMask){
+    auto y=changed;set8(y,0,uint8_t(versionMask));
+    auto gift=G::inspect(y);auto attested=sw;
+    attested.originalRecipientGen6EditionIndex=uint8_t(edition);
+    auto v=G::evaluate(gift,attested,x);
+    const bool allowed=versionMask==0 || ((versionMask>>edition)&1u);
+    assert(((v.contradiction&G::Version)==0)==allowed);
+    assert(!v.globallyInvalid && !v.payloadEmbeddingPermitted);
+    ++wrapper;
+ }
+ assert(wrapper==64);
+ }
  unsigned malformed=0;
  for(unsigned value=0;value<256;++value){auto x=pgf;set8(x,0xB3,uint8_t(value));
  auto result=G::inspect(x); assert((result.state==G::State::PokemonProjection)==(value==1));
