@@ -24,6 +24,7 @@ int main(){
       c.originalSpeciesIndependentlyAttested=true;
       c.originalLevelIndependentlyAttested=true;
       c.originalFossilIdentityIndependentlyAttested=true;
+      c.originalFossilItem=H::sourceFossilForSpecies(r.species);
       const auto gameMask=E::gameMaskForId(game);
       if((r.gameMask&gameMask)==0){
         assert(H::evaluatePretStatic(c).status==Status::ForeignGameRowNotEvidence);
@@ -33,7 +34,15 @@ int main(){
       if(r.originalMap=="CinnabarLabFossilRoom"){
          auto noFossil=c;noFossil.originalFossilIdentityIndependentlyAttested=false;
          assert(H::evaluatePretStatic(noFossil).status==Status::UnknownOriginalFossilReceipt);
-         ++unknown;
+         noFossil=c;
+         noFossil.originalFossilItem=H::PretFossilItem::Unverified;
+         assert(H::evaluatePretStatic(noFossil).status==Status::UnknownOriginalFossilReceipt);
+         auto wrongFossil=c;
+         wrongFossil.originalFossilItem=
+            c.originalFossilItem==H::PretFossilItem::Dome?
+            H::PretFossilItem::Helix:H::PretFossilItem::Dome;
+         assert(H::evaluatePretStatic(wrongFossil).status==Status::CandidateOriginalFossilMismatch);
+         unknown+=2;++negative;
       }
       ++compatible;
       auto n=c;n.originalSceneIndependentlyAttested=false;
@@ -89,6 +98,10 @@ int main(){
       c.originalReceivedSpeciesIndependentlyAttested=true;
       c.originalNpcTrainerIndependentlyAttested=true;
       c.originalTransactionIndependentlyAttested=true;
+      c.originalSubmittedLevel=static_cast<uint8_t>(15+offer.originalOfferIndex);
+      c.originalReceivedLevel=c.originalSubmittedLevel;
+      c.originalSubmittedLevelIndependentlyAttested=true;
+      c.originalReceivedLevelIndependentlyAttested=true;
       if(!offer.reachable){
          assert(H::evaluatePretNpcTrade(c).status==Status::UnknownUnreachableNpcTrade);
          ++unknown;continue;
@@ -105,12 +118,18 @@ int main(){
       assert(H::evaluatePretNpcTrade(n).status==Status::UnknownTradeOT);
       n=c;n.originalTransactionIndependentlyAttested=false;
       assert(H::evaluatePretNpcTrade(n).status==Status::UnknownOriginalTradeReceipt);
-      unknown+=5;
+      n=c;n.originalSubmittedLevelIndependentlyAttested=false;
+      assert(H::evaluatePretNpcTrade(n).status==Status::UnknownOriginalSubmittedLevel);
+      n=c;n.originalReceivedLevelIndependentlyAttested=false;
+      assert(H::evaluatePretNpcTrade(n).status==Status::UnknownOriginalReceivedLevel);
+      unknown+=7;
       auto bad=c;bad.requestedSpecies=static_cast<uint16_t>(offer.requestedSpecies==1?2:1);
       assert(H::evaluatePretNpcTrade(bad).status==Status::CandidateOriginalRequestContradicted);
       bad=c;bad.receivedSpecies=static_cast<uint16_t>(offer.receivedSpecies==1?2:1);
       assert(H::evaluatePretNpcTrade(bad).status==Status::CandidateOriginalSpeciesContradicted);
-      negative+=2;
+      bad=c;bad.originalReceivedLevel+=1;
+      assert(H::evaluatePretNpcTrade(bad).status==Status::CandidateOriginalTradeLevelMismatch);
+      negative+=3;
     }
  }
  // Unused Yellow Mew-for-Mew, Butterfree, Pidgeot offer slots are
