@@ -26,6 +26,9 @@ on:
       - 'src/Legality/Gen7RecordAnalysis.cpp'
       - 'tests/test_legality_gen7_native_pk7.cpp'
       - 'tests/test_legality_gen7_native_report.cpp'
+      - 'tools/legality_gen67_oracle_vectors.cpp'
+      - 'tools/compare_legality_pk67_oracle.py'
+      - 'tests/test_legality_pk67_oracle_compare.py'
       - 'docs/legality/research/pkhex/PKHEX_USER_ARCHIVE_SOURCE_MAP.json'
       - 'src/Legality/Legality.cpp'
       - 'tools/audit_legality_gen59_wiring.py'
@@ -124,10 +127,19 @@ jobs:
             src/Legality/Gen6RecordAnalysis.cpp src/Legality/Gen7RecordAnalysis.cpp \
             tests/test_legality_gen7_native_report.cpp -o /tmp/pbnx-gen59/report-pk7-san
           /tmp/pbnx-gen59/report-pk7-san
+          "$CXX" -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror -Iinclude \
+            tools/legality_gen67_oracle_vectors.cpp -o /tmp/pbnx-gen59/native-pk67-vectors
+          /tmp/pbnx-gen59/native-pk67-vectors > /tmp/pbnx-gen59/pk67-vectors.tsv
+          "$CXX" -std=c++20 -O1 -g -Wall -Wextra -Wpedantic -Werror \
+            -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude \
+            tools/legality_gen67_oracle_vectors.cpp -o /tmp/pbnx-gen59/native-pk67-vectors-san
+          /tmp/pbnx-gen59/native-pk67-vectors-san > /tmp/pbnx-gen59/pk67-vectors-san.tsv
+          cmp /tmp/pbnx-gen59/pk67-vectors.tsv /tmp/pbnx-gen59/pk67-vectors-san.tsv
+          python3 tests/test_legality_pk67_oracle_compare.py /tmp/pbnx-gen59/pk67-vectors.tsv
           git diff --check
 
   pkhex-host-oracle:
-    name: Pinned original PKHeX.Core and native PK5 differential
+    name: Pinned original PKHeX.Core and native PK5/PK6/PK7 differential
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -165,4 +177,14 @@ jobs:
           python3 tools/compare_legality_pk5_oracle.py \
             --vectors /tmp/pbnx-oracle/vectors.tsv \
             --oracle /tmp/pbnx-oracle/oracle.jsonl
+          g++ -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror -Iinclude \
+            tools/legality_gen67_oracle_vectors.cpp -o /tmp/pbnx-oracle/native-pk67-vectors
+          /tmp/pbnx-oracle/native-pk67-vectors > /tmp/pbnx-oracle/vectors-pk67.tsv
+          dotnet run --configuration Release \
+            --project tools/legality_pkhex_oracle/LegalityOracle.csproj \
+            -p:PKHeXSourceRoot="$GITHUB_WORKSPACE/third_party/PKHeX" \
+            -- /tmp/pbnx-oracle/vectors-pk67.tsv > /tmp/pbnx-oracle/oracle-pk67.jsonl
+          python3 tools/compare_legality_pk67_oracle.py \
+            --vectors /tmp/pbnx-oracle/vectors-pk67.tsv \
+            --oracle /tmp/pbnx-oracle/oracle-pk67.jsonl
           git diff --check
