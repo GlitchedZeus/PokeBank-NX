@@ -46,7 +46,7 @@ int main(int argc,char** argv){
         record.experience=c.experience;
         record.trainerId=1234;
         record.catchRate=c.species==1?45:190;
-        record.moves={static_cast<uint16_t>(c.move),0,0,0};
+        record.moves={static_cast<uint8_t>(c.move),0,0,0};
         record.pp={static_cast<uint8_t>(c.move?35:0),0,0,0};
         const unsigned attack=(c.dv16>>12)&15u;
         const unsigned defense=(c.dv16>>8)&15u;
