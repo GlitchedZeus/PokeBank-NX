@@ -62,6 +62,7 @@ struct Fixture {
         source.originalCartridgeScriptIndependentlyPinned=true;
         source.exactOriginalNPCTradeRowIndependentlyPinned=true;
         source.englishRetailTradeTableIndependentlyVerified=true;
+        source.individualRandomNPCTrainerIdReceiptIndependentlyVerified=true;
         source.originalNPCTradeRowIndex=0;
         source.originalOfferedSpeciesIndependentlyVerified=true;
         source.originalOfferedSpecies=33;
@@ -96,12 +97,17 @@ int main() {
       x.native.trainerId++;assert(x.run().status==S::UnknownSource&&!x.run().contradicted);}
     {auto x=f;x.source.sourceSaveEditionIndependentlyVerified=false;
       x.native.trainerId++;assert(x.run().status==S::UnknownCartridgeVersion);}
+    {auto x=f;x.source.individualRandomNPCTrainerIdReceiptIndependentlyVerified=false;
+      x.native.trainerId++;assert(x.run().status==S::UnknownOriginalNPCTrade);}
     {auto x=f;x.source.originalOfferedSpeciesIndependentlyVerified=false;
       assert(x.run().status==S::UnknownOriginalNPCTrade);}
     {auto x=f;x.source.observedOfferedSpecies=34;
       assert(x.run().status==S::CandidateExcluded&&(x.run().contradicted&L::NPCTradeInput));}
     {auto x=f;x.source.names.rawNamesIndependentlyExtractedFromThisRecord=false;
       x.native.trainerId++;assert(x.run().status==S::UnknownHistoricalRoute);}
+    {auto x=f;x.source.names.rawNickname[0]='X';
+      assert(x.run().status==S::CandidateExcluded &&
+             (x.run().contradicted&G::Nickname));}
     {auto x=f;x.native.trainerId++;assert(x.run().status==S::CandidateExcluded);
       assert(x.run().contradicted&G::TrainerId);}
     {auto x=f;x.native.catchRate++;
@@ -134,6 +140,14 @@ int main() {
       assert(x.run().status==S::UnknownHistoricalRoute);
       x.source.hypothesis.route.sameGenerationEditionTransferIndependentlyVerified=true;
       assert(x.run().status==S::ConditionalCandidate);}
+    {auto x=Fixture{G::Game::Red,G::Kind::Gift};
+      assert(x.run().status==S::ConditionalCandidate);}
+    {auto x=Fixture{G::Game::Yellow};
+      x.source.originalNPCTradeRowIndex=4; // unused MEW->MEW/BART row
+      x.source.originalOfferedSpecies=151;x.source.observedOfferedSpecies=151;
+      x.source.hypothesis.original.species=yes<uint16_t>(151);
+      x.native.species=151;
+      assert(x.run().status==S::UnknownOriginalNPCTrade);}
     {auto x=Fixture{G::Game::Red,G::Kind::StadiumGift};
       assert(x.run().status==S::ConditionalCandidate);
       x.source.hypothesis.archive.grade=A::ArchiveGrade::ReconstructedOrPlaceholder;
@@ -142,7 +156,7 @@ int main() {
       x.source.hypothesis.archive.originalPayloadSha256[0]=std::byte{0x10};
       assert(x.run().status==S::UnknownHistoricalRoute);}
     uint64_t masks=0;
-    for(unsigned mask=0;mask<65536;++mask){auto x=f;
+    for(unsigned mask=0;mask<131072;++mask){auto x=f;
       x.source.originalCartridgeScriptIndependentlyPinned=(mask&1)!=0;
       x.source.sourceSaveEditionIndependentlyVerified=(mask&2)!=0;
       x.source.exactOriginalNPCTradeRowIndependentlyPinned=(mask&4)!=0;
@@ -159,8 +173,9 @@ int main() {
       x.source.hypothesis.originalRawCharsetLinkIndependentlyVerified=(mask&8192)!=0;
       x.source.hypothesis.route.offeredTradeLevel.known=(mask&16384)!=0;
       x.source.hypothesis.original.trainerId.known=(mask&32768)!=0;
+      x.source.individualRandomNPCTrainerIdReceiptIndependentlyVerified=(mask&65536)!=0;
       const auto r=x.run();
-      assert((r.status==S::ConditionalCandidate)==(mask==65535));
+      assert((r.status==S::ConditionalCandidate)==(mask==131071));
       assert(!r.authenticated&&!r.globallyInvalid&&!r.payloadEmbeddingPermitted);
       ++masks;
     }

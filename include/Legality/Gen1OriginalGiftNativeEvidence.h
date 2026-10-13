@@ -43,6 +43,8 @@ struct Source {
     bool originalCartridgeScriptIndependentlyPinned=false;
     bool exactOriginalNPCTradeRowIndependentlyPinned=false;
     bool englishRetailTradeTableIndependentlyVerified=false;
+    // Gen I NPC trade OTID is generated from Random; it is NOT in TradeMons.
+    bool individualRandomNPCTrainerIdReceiptIndependentlyVerified=false;
     uint8_t originalNPCTradeRowIndex=255;
     bool originalOfferedSpeciesIndependentlyVerified=false;
     uint16_t originalOfferedSpecies=0;
@@ -96,7 +98,9 @@ constexpr Result evaluate(const NativeRecord& native,bool independentlyValidated
            source.originalOfferedSpecies==0 ||source.originalOfferedSpecies>151 ||
            source.observedOfferedSpecies==0 ||source.observedOfferedSpecies>151 ||
            !hypothesis.route.offeredTradeLevel.known ||
-           !source.englishRetailTradeTableIndependentlyVerified)return result;
+           !source.englishRetailTradeTableIndependentlyVerified ||
+           (row.trainerId.known &&
+            !source.individualRandomNPCTrainerIdReceiptIndependentlyVerified))return result;
         const auto edition=row.game==G::Game::Yellow?
             Gen1OriginalNPCTradeMetadata::Edition::EnglishYellow:
             Gen1OriginalNPCTradeMetadata::Edition::EnglishRedBlue;
