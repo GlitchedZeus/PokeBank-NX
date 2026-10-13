@@ -1198,7 +1198,16 @@ int main() {
         assert(addMenu.availableActions(emptyActions)[0]==GA::Add);
         assert(addMenu.activate(emptyActions,GA::Add,error));
         assert(addMenu.surface()==G::Gen5SharedScreenState::Surface::ConfirmCreateBox);
+        G::CreateRequest5 partialCreate;
+        partialCreate.game=static_cast<G::CreateGame5>(
+            parsed->trainer().gameVersion);
+        partialCreate.species=25;
+        partialCreate.nickname="LOCALONLY";
+        assert(addMenu.rememberCreateInput(emptyActions,partialCreate));
+        assert(addMenu.pendingCreateInput() &&
+               addMenu.pendingCreateInput()->nickname=="LOCALONLY");
         assert(!addMenu.back()); // Cancel never changes the staged workspace.
+        assert(!addMenu.pendingCreateInput()); // No stale personal fields.
         assert(addMenu.surface()==G::Gen5SharedScreenState::Surface::Actions);
         assert(!emptyActions.hasChanges());
         assert(!addMenu.activate(emptyActions,GA::Remove,error));

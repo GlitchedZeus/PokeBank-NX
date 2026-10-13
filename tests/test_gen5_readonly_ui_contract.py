@@ -334,6 +334,62 @@ require(read("tests/test_gen5_create_integration.cpp"),
         "r.heldItem=638",
         "createdFull->boxPokemon(0,1)->heldItem()==638")
 
+# Reject native Create input mistakes at the point of entry rather than
+# collecting a full wizard and then failing after ~30 on-screen prompts.
+input_rules=read("include/Integration/Gen5/Gen5CreateInputRules.h")
+require(input_rules,
+        "createLanguageAllowed5(",
+        "createLastCalendarDay5(",
+        "createMoveChoiceAllowed5(",
+        "createRemainingEVMax5(",
+        "static_assert(!createLanguageAllowed5(6))")
+require(read("include/Integration/Gen5/Gen5CreateValidation.h"),
+        'include "Integration/Gen5/Gen5CreateInputRules.h"',
+        "createFormNeedsUnsupportedHandling5(",
+        "createLanguageAllowed5(language)",
+        "createLastCalendarDay5(e.year,e.month)")
+require(surface,
+        "basePersonal.info->formCount>1",
+        "createFormNeedsUnsupportedHandling5(request.species,request.form)",
+        "G::createLanguageAllowed5(ot.language)",
+        "G::isNativeMetLocation5(request.encounter.location)",
+        "G::createLastCalendarDay5(",
+        "G::createMoveChoiceAllowed5(chosenMoves,i,id)",
+        "G::createRemainingEVMax5(request.evs,i)",
+        "Current PP",
+        "PP Ups")
+require(read("Makefile.host.gen5"),
+        "GEN5_CREATE_INPUT_TEST :=","GEN5_CREATE_INPUT_SANITIZE :=")
+require(read(".github/workflows/gen5-focused-host.yml"),
+        "test_gen5_box_touch test_gen5_create_input_rules; do",
+        "test_gen5_box_touch_sanitize test_gen5_create_input_rules_sanitize; do")
+require(read("tests/test_gen5_create_input_rules.cpp"),
+        "for(uint32_t y=2000;y<=2099;++y)",
+        "G::createMoveChoiceAllowed5(",
+        "G::createRemainingEVMax5(")
+
+# Prompt retries are local to the selected Trainer/box and cannot become
+# implicit source-save changes or leak across a new Create/cancel session.
+require(read("include/Integration/Gen5/Gen5SharedScreenState.h"),
+        "pendingCreateInput()",
+        "rememberCreateInput(",
+        "pendingCreateInput_=request",
+        "pendingCreateInput_.reset()")
+require(surface,
+        "state.pendingCreateInput().value_or(",
+        "state.rememberCreateInput(ws,request)",
+        "dest>=static_cast<uint32_t>(minimum)",
+        "out.empty()?initial:out",
+        "request.pid=(pidHigh<<16)|pidLow",
+        "G::CreateTrainer5& ot=*request.trainer")
+require(read("tests/test_gen5_create_integration.cpp"),
+        "addScreen.pendingCreateInput()",
+        "addScreen.rememberCreateInput(workspace,r)",
+        "wrongDraft.game=")
+require(read("tests/test_gen5_readonly_save.cpp"),
+        "partialCreate.nickname=\"LOCALONLY\"",
+        "assert(!addMenu.pendingCreateInput())")
+
 # The existing Gen I-IV Add Pokemon command must now be reachable from
 # a validated empty Gen V box cell, collect explicit native fields with the
 # same on-device keyboard, and stage only after confirm + preview refresh.

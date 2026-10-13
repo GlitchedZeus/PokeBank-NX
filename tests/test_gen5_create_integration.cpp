@@ -110,6 +110,16 @@ static void exercise(uint32_t version, bool backup, uint32_t species) {
           options[1]==Action::Close);
     CHECK(addScreen.activate(workspace,Action::Add,error));
     CHECK(addScreen.surface()==Surface::ConfirmCreateBox);
+    CHECK(!addScreen.pendingCreateInput());
+    CHECK(addScreen.rememberCreateInput(workspace,r));
+    CHECK(addScreen.pendingCreateInput() &&
+          *addScreen.pendingCreateInput()==r);
+    // A different Black/White game cannot replace the remembered request.
+    auto wrongDraft=r;
+    wrongDraft.game=static_cast<G::CreateGame5>(version==20?21:20);
+    CHECK(!addScreen.rememberCreateInput(workspace,wrongDraft));
+    CHECK(addScreen.pendingCreateInput() &&
+          *addScreen.pendingCreateInput()==r);
     // Transactional rollback if shared box preview cannot refresh.
     CHECK(!addScreen.confirmCreateBox(workspace,r,
         [&](std::string& why) {
@@ -117,6 +127,8 @@ static void exercise(uint32_t version, bool backup, uint32_t species) {
             return false;
         },error));
     CHECK(addScreen.surface()==Surface::ConfirmCreateBox);
+    CHECK(addScreen.pendingCreateInput() &&
+          *addScreen.pendingCreateInput()==r); // Keep retry values.
     CHECK(!workspace.hasChanges() && workspace.viewBox(0,1)->empty());
     // Invalid cross-title request never stages a record.
     auto otherTitle=r;
@@ -127,6 +139,7 @@ static void exercise(uint32_t version, bool backup, uint32_t species) {
     CHECK(addScreen.confirmCreateBox(workspace,r,
         [&](std::string&){return true;},error));
     CHECK(addScreen.surface()==Surface::Browse);
+    CHECK(!addScreen.pendingCreateInput()); // Never retain staged OT/PID.
     CHECK(workspace.hasChanges() && workspace.changedRecordCount()==1);
     CHECK(workspace.viewBox(0,1)->species()==species);
     CHECK(workspace.viewBox(0,1)->pid()==*r.pid);
