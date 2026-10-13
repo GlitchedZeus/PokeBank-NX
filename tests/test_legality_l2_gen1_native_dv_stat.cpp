@@ -59,6 +59,25 @@ int main(){
         assert(result.storedDVs==dvs);
         verified+=3;
     }
+    // Reuse the real PK1 species index and Gen I personal/battle-stat
+    // tables across ALL 151 native species, never a modern base-stat table.
+    unsigned nativeSpecies=0;
+    for(unsigned raw=1;raw<=255;++raw){
+        const auto species=G::gen1InternalToNational(static_cast<std::uint8_t>(raw));
+        if(!species || species>151)continue;
+        ++nativeSpecies;
+        for(auto level:{1u,5u,50u,100u}){
+            auto one=specimen(false,static_cast<std::uint8_t>(level),
+                              {15,0,15,0},{65535,0,65535,0,65535});
+            one.rawSpecies=one.rawBody[0]=static_cast<std::uint8_t>(raw);
+            one.species=species;
+            const auto result=L::evaluate(one,trusted);
+            assert(result.status==L::Status::ConditionalNativeFields);
+            assert(result.calculated.hp!=0);
+            verified+=2;
+        }
+    }
+    assert(nativeSpecies==151);++verified;
     // Every one of the 16 possible HP DV values arises from low-bit flags.
     for(unsigned h=0;h<16;++h){
         std::array<std::uint8_t,4> d{
