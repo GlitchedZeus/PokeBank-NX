@@ -68,7 +68,8 @@ PROGRAMS: dict[str, tuple[str, ...]] = {
               "legality_l6_stage2_pk4_offset_native",
               "legality_l6_stage4_gate_ledger",
               "legality_l6_stage5_joint_history",
-              "legality_l6_stage5_native_analyzer"),
+              "legality_l6_stage5_native_analyzer",
+              "legality_l6_stage6_evidence", "legality_l6_stage6_qualification"),
 }
 RUNNERS = {"l1": "tests/test_legality_l1_run.sh", "l2": "tests/test_legality_l2_run_all.sh",
            "l3": "tests/test_legality_l3_run_all.sh", "l4": "tests/test_legality_l4_runner.sh",
@@ -87,7 +88,8 @@ def version(command: list[str]) -> str:
         return "unavailable"
 
 
-def plan(suite: str, sha: str, compiler: str = "g++") -> list[Gate]:
+def plan(suite: str, sha: str, compiler: str = "g++", tree: str | None = None) -> list[Gate]:
+    tree_args = ["--expect-tree", tree] if tree is not None else []
     base = {"ASAN_OPTIONS": "detect_leaks=0:halt_on_error=1",
             "CXX": compiler,
             "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"}
@@ -122,10 +124,16 @@ def plan(suite: str, sha: str, compiler: str = "g++") -> list[Gate]:
                                           "--expect-head", sha], {}, RUNNERS["audit"]),
             Gate("stage3-cross-lane", ["python3", "tools/audit_legality_stage3_cross_lane.py", "--normal", "--compiler", compiler], {}, RUNNERS["audit"]),
             Gate("stage3-cross-lane-sanitize", ["python3", "tools/audit_legality_stage3_cross_lane.py", "--sanitize", "--compiler", compiler], {}, RUNNERS["audit"]),
-            Gate("stage4-native", ["python3", "tools/audit_legality_stage4_gate_ledger.py", "--normal"], {}, RUNNERS["audit"]),
-            Gate("stage4-native-sanitize", ["python3", "tools/audit_legality_stage4_gate_ledger.py", "--sanitize"], {}, RUNNERS["audit"]),
-            Gate("stage5-joint-normal", ["python3", "tools/audit_legality_l6_stage5.py", "--compiler", "g++", "--normal"], {}, RUNNERS["audit"]),
-            Gate("stage5-joint-sanitize", ["python3", "tools/audit_legality_l6_stage5.py", "--compiler", "g++", "--sanitize"], {}, RUNNERS["audit"]),
+            Gate("stage4-native", ["python3", "tools/audit_legality_stage4_gate_ledger.py", "--normal", "--compiler", compiler], {}, RUNNERS["audit"]),
+            Gate("stage4-native-sanitize", ["python3", "tools/audit_legality_stage4_gate_ledger.py", "--sanitize", "--compiler", compiler], {}, RUNNERS["audit"]),
+            Gate("stage5-joint-normal", ["python3", "tools/audit_legality_l6_stage5.py", "--compiler", compiler, "--normal"], {}, RUNNERS["audit"]),
+            Gate("stage5-joint-sanitize", ["python3", "tools/audit_legality_l6_stage5.py", "--compiler", compiler, "--sanitize"], {}, RUNNERS["audit"]),
+            Gate("stage6-evidence", ["python3", "tools/audit_l6_stage6_evidence.py", "--normal",
+                                       "--compiler", compiler, "--expect-head", sha,
+                                       *tree_args], {}, RUNNERS["audit"]),
+            Gate("stage6-evidence-sanitize", ["python3", "tools/audit_l6_stage6_evidence.py", "--sanitize",
+                                                "--compiler", compiler, "--expect-head", sha,
+                                                *tree_args], {}, RUNNERS["audit"]),
         ],
     }
     selected = tuple(groups) if suite == "all" else (suite,)
@@ -237,7 +245,7 @@ def main() -> int:
         result["dry_run_valid"] = True
         result["passed"] = False
     else:
-        gates = plan(args.suite, sha, args.compiler)
+        gates = plan(args.suite, sha, args.compiler, tree)
         for gate in gates:
             print(f"==> {gate.name}: {' '.join(gate.command)}", flush=True)
             row = run_one(gate, args.timeout)

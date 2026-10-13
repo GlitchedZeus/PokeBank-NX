@@ -17,8 +17,14 @@ SPEC.loader.exec_module(MATRIX)
 class Stage2MatrixTests(unittest.TestCase):
     def test_receipted_native_program_totals(self) -> None:
         self.assertEqual({name: len(lane.programs) for name, lane in MATRIX.LANES.items()}, {
-            "l1": 31, "l2": 17, "l3": 19, "l4": 28, "l5": 8, "audit": 3})
-        self.assertEqual(sum(len(lane.programs) for lane in MATRIX.LANES.values()), 106)
+            "l1": 31, "l2": 17, "l3": 19, "l4": 28, "l5": 8, "audit": 11})
+        self.assertEqual(sum(len(lane.programs) for lane in MATRIX.LANES.values()), 114)
+
+    def test_audit_inventory_matches_execution_manifest(self) -> None:
+        spec = importlib.util.spec_from_file_location("audit", ROOT / "tools/run_legality_integration_audit.py")
+        audit = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(audit)
+        self.assertEqual(set(MATRIX.LANES["audit"].programs), set(audit.PROGRAMS["audit"]))
 
     def test_current_checkout_is_honestly_incomplete(self) -> None:
         report = MATRIX.preflight()

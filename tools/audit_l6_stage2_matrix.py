@@ -96,7 +96,11 @@ LANES: dict[str, Lane] = {
     "audit": Lane("audit/legality-integration-hardening-20261012", "LOCAL",
                   "tools/run_legality_integration_audit.py", (
         "legality_l6_stage1_l2_duplicate_route_contract", "legality_stage2_native_format_properties",
-        "legality_stage3_cross_lane_contracts")),
+        "legality_stage3_cross_lane_contracts", "legality_l6_stage2_bounds_contract",
+        "legality_l6_stage2_joint_headers", "legality_l6_stage2_pk4_offset_native",
+        "legality_l6_stage4_gate_ledger", "legality_l6_stage5_joint_history",
+        "legality_l6_stage5_native_analyzer", "legality_l6_stage6_evidence",
+        "legality_l6_stage6_qualification")),
 }
 
 # L5's synthetic EV verifier intentionally binds its result to the exact

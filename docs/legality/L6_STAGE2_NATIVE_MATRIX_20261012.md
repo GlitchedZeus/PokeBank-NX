@@ -6,7 +6,8 @@ receipts, validates source and runner registration before execution, captures
 exact HEAD/tree identity, records compiler and elapsed command duration, and
 runs GCC or Clang with normal plus ASan/UBSan lane modes after preflight.
 
-The receipt matrix contains 106 declared programs:
+The receipt matrix contains 114 declared programs after registering all
+existing L6 Stage 2/4/5 fixtures and the two Stage 6 fixtures:
 
 | lane | receipt | programs |
 | --- | --- | ---: |
@@ -15,7 +16,7 @@ The receipt matrix contains 106 declared programs:
 | L3 | `2de53eb330f09c13c112d5270d36110c26cd33ec` | 19 |
 | L4 | `3c8c28d597cfc3bc982782ed9ec8ec708a3284ae` | 28 |
 | L5 | `6f3e12eff17980d6e0b5857f8b470c2ed50a5033` | 8 |
-| Codex audit | local branch | 3 |
+| Codex audit | local branch | 11 |
 
 The current coordinator integration head has only 13/11/7/15 L1–L4 programs.
 Preflight consequently reports the 49 missing source/registration entries and

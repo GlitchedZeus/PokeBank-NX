@@ -16,6 +16,17 @@ SPEC.loader.exec_module(AUDIT)
 
 
 class IntegrationAuditRunnerTests(unittest.TestCase):
+    def test_requested_compiler_reaches_later_stage_gates(self) -> None:
+        gates = AUDIT.plan("audit", "a" * 40, "clang++", "b" * 40)
+        for gate in gates:
+            if gate.name.startswith(("stage4-", "stage5-", "stage6-")):
+                self.assertIn("--compiler", gate.command)
+                self.assertIn("clang++", gate.command)
+                self.assertNotIn("g++", gate.command)
+            if gate.name.startswith("stage6-"):
+                self.assertIn("a" * 40, gate.command)
+                self.assertIn("b" * 40, gate.command)
+
     def test_complete_manifest_resolves_all_declared_inputs(self) -> None:
         self.assertEqual(AUDIT.validate_manifest("all"), [])
 
@@ -30,7 +41,8 @@ class IntegrationAuditRunnerTests(unittest.TestCase):
             "stage1-l2-baseline", "stage2-native", "stage2-native-sanitize",
             "stage2-offset-width", "stage3-cross-lane", "stage3-cross-lane-sanitize",
             "stage4-native", "stage4-native-sanitize",
-            "stage5-joint-normal", "stage5-joint-sanitize"])
+            "stage5-joint-normal", "stage5-joint-sanitize",
+            "stage6-evidence", "stage6-evidence-sanitize"])
         self.assertTrue(all(gate.environment["ASAN_OPTIONS"].startswith("detect_leaks=0")
                             for gate in gates))
         self.assertEqual(len(AUDIT.plan("l5", "b" * 40)), 11)
@@ -41,7 +53,8 @@ class IntegrationAuditRunnerTests(unittest.TestCase):
         for filename in ("legality_l6_stage2_bounds_contract",
                          "legality_l6_stage2_pk4_offset_native",
                          "legality_l6_stage5_joint_history",
-                         "legality_l6_stage5_native_analyzer"):
+                         "legality_l6_stage5_native_analyzer",
+                         "legality_l6_stage6_evidence"):
             self.assertTrue(AUDIT.fixture_path(filename).is_file())
 
 
