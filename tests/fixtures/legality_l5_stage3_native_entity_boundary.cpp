@@ -44,10 +44,10 @@ Bytes pk4(uint32_t pid,bool party,bool egg){
 }
 void test3(unsigned& checks){
     for(bool party:{false,true}){
-        for(uint32_t seed=0;seed!=128;++seed){
+        for(uint32_t seed=0;seed!=256;++seed){
             const size_t size=party?Encryption::SIZE_PARTY3_FRLG:Encryption::SIZE_STORED3_FRLG;
             Bytes plain(size,std::byte{0});
-            put32(plain,0,seed*24u);
+            put32(plain,0,seed*25u);
             put32(plain,4,0x00aacfcfu);
             put16(plain,0x20,1); // internal Bulbasaur
             put16(plain,0x2c,33);
@@ -73,8 +73,8 @@ void test3(unsigned& checks){
     }
 }
 void test4(unsigned& checks){
-    for(bool party:{false,true})for(uint32_t seed=0;seed!=128;++seed){
-        const auto encrypted=pk4(seed*0x10101u+1u,party,seed%2!=0);
+    for(bool party:{false,true})for(uint32_t seed=0;seed!=256;++seed){
+        const auto encrypted=pk4(seed*25u+1u,party,seed%2!=0);
         const auto original=encrypted;
         Pokemon::Pokemon4ReadOnly good(encrypted,Enums::GameVersion::PT);
         assert(good.valid() && !good.empty());
@@ -106,12 +106,74 @@ void test4(unsigned& checks){
         checks+=3;
     }
 }
+void test4Quarantine(unsigned& checks){
+    // Encrypted retail-size blank box/party slots are represented by literal
+    // all-zero records. They are valid empty slots, not checksum failures.
+    for(bool party:{false,true}){
+        const size_t size=party?Encryption::SIZE_PARTY4:Encryption::SIZE_STORED4;
+        Bytes zero(size,std::byte{0});
+        Pokemon::Pokemon4ReadOnly blank(zero,Enums::GameVersion::PT);
+        assert(blank.sizeValid() && blank.valid() && blank.empty());
+        assert((blank.moves()==std::array<uint16_t,4>{}));
+        assert(blank.species()==0 && !blank.isEgg());
+        assert(blank.originalEncryptedBytes().size()==size);
+        zero[0]=std::byte{0xa5};
+        assert(blank.valid() && blank.empty());
+        assert(blank.originalEncryptedBytes()[0]==std::byte{0});
+        checks+=6;
+
+        // Exact encrypted source bytes are cloned on construction. Neither
+        // a caller mutation nor a malformed header can expose party fields.
+        Bytes source=pk4(25u,party,false);
+        const Bytes original=source;
+        Pokemon::Pokemon4ReadOnly good(source,Enums::GameVersion::PT);
+        assert(good.valid() && !good.empty() && good.species()==1);
+        source[0]^=std::byte{1};
+        assert(good.valid() && good.species()==1);
+        assert(good.originalEncryptedBytes().size()==original.size());
+        assert(good.originalEncryptedBytes()[0]==original[0]);
+        checks+=3;
+
+        // Sanity, checksum, encrypted identity and encrypted move bits must
+        // all fail closed without changing or repairing the supplied buffer.
+        for(size_t offset:{size_t{4},size_t{6},size_t{8},size_t{0x28}}){
+            auto altered=original;
+            altered[offset]^=std::byte{1};
+            const auto immutable=altered;
+            Pokemon::Pokemon4ReadOnly bad(altered,Enums::GameVersion::PT);
+            assert(!bad.valid() && !bad.empty());
+            assert((bad.moves()==std::array<uint16_t,4>{}));
+            assert((bad.pp()==std::array<uint8_t,4>{}));
+            assert((bad.evs()==std::array<uint8_t,6>{}));
+            assert(bad.species()==0 && bad.heldItem()==0 && !bad.isEgg());
+            assert(bad.nickname().empty() && bad.originalTrainerName().empty());
+            assert(altered==immutable && bad.originalEncryptedBytes().size()==immutable.size());
+            const Bytes copied(bad.originalEncryptedBytes().begin(),
+                               bad.originalEncryptedBytes().end());
+            assert(copied==immutable);
+            checks+=8;
+        }
+        if(party){
+            // Party-only runtime fields are outside the encrypted and
+            // checksummed box payload; editing the input buffer must not
+            // affect the separately instantiated read-only view.
+            auto tail=original;
+            tail[0x8c]^=std::byte{1};
+            Pokemon::Pokemon4ReadOnly partyView(tail,Enums::GameVersion::PT);
+            assert(partyView.valid() && partyView.isParty());
+            assert(partyView.partyLevel()==4);
+            assert(good.partyLevel()==5);
+            checks+=3;
+        }
+    }
+}
 }
 int main(){
     unsigned checks=0;
     test3(checks);
     test4(checks);
-    assert(checks==8921u);
+    test4Quarantine(checks);
+    assert(checks==17198u);
     std::cout<<"L5 Stage3 actual PK3/PK4 entity quarantine: "<<checks
              <<" PASS (synthetic; full-checkout production linkage)\n";
 }
