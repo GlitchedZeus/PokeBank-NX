@@ -13,6 +13,9 @@ on:
       - 'include/Pokemon/Pokemon5ReadOnly.h'
       - 'include/Encryption/Encryption5.h'
       - 'include/Legality/Legality.h'
+      - 'tools/legality_pkhex_source_pin.py'
+      - 'tests/test_legality_pkhex_source_pin.py'
+      - 'docs/legality/research/pkhex/PKHEX_USER_ARCHIVE_SOURCE_MAP.json'
       - 'src/Legality/Legality.cpp'
       - 'tools/audit_legality_gen59_wiring.py'
       - '.github/workflows/legality-gen5-9-foundation.yml'
@@ -59,6 +62,8 @@ jobs:
           set -euo pipefail
           test -d include/Enums
           python3 tools/audit_legality_gen59_wiring.py --source-root .
+          python3 tools/legality_pkhex_source_pin.py --repo-root . --product-only
+          python3 tests/test_legality_pkhex_source_pin.py
           mkdir -p /tmp/pbnx-gen59
           "$CXX" -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror -Iinclude \
             tests/test_legality_gen59_native_foundation.cpp -o /tmp/pbnx-gen59/domain
