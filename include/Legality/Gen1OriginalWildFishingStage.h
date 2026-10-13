@@ -9,6 +9,7 @@
 // physical R/B/Y tables, all three rods and the original wild roll live
 // in independent additional namespaces. Source witnesses never prove PK1.
 #include "Legality/Gen1PretWildRollStage.h"
+#include "Legality/Gen1PretFishingRollStage.h"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -388,6 +389,57 @@ constexpr PretWildRollJoined evaluatePretWildRoll(
     scene.originalSourceLevel=c.originalLevel;
     scene.originalSourceLevelIndependentlyAttested=c.originalLevelAttested;
     result.originalRoll=Gen1PretWildRollStage::evaluate(scene);
+    return result;
+}
+// Combine the independently selected original physical rod source with
+// original FishingInit outcome and the correct per-version RNG algorithm.
+// Existing Red/Blue Super Rod rows live in the UNCHANGED kVerifiedSlots
+// index namespace; Yellow Super Rod/Old/Good are in the 1512-row pret
+// namespace. No connection is inferred between these index namespaces.
+struct PretFishingRollJoined {
+    Status sourceStatus=Status::UnknownOriginalSourceRow;
+    Gen1PretFishingRollStage::Result roll{};
+    bool globallyLegalSupported=false,globalInvalidSupported=false;
+};
+constexpr PretFishingRollJoined evaluatePretFishingRoll(
+    const Candidate& c, OriginalFishingInit fishing,
+    Gen1PretFishingRollStage::Witness random,
+    bool legacyRedBlueSuper=false) noexcept {
+    PretFishingRollJoined result{};
+    const auto source=legacyRedBlueSuper?evaluate(c):evaluatePret(c);
+    result.sourceStatus=source.status;
+    if(source.status!=Status::SourceSlotCompatibleRateAndHistoryUnverified &&
+       source.status!=Status::UnknownMapApplicabilityForGlobalRod)
+        return result;
+    Method method=Method::Grass;
+    uint8_t originalSlot=0;
+    if(legacyRedBlueSuper){
+        if(c.originalSourceIndex>=kVerifiedSlots.size())return result;
+        const auto& row=kVerifiedSlots[c.originalSourceIndex];
+        method=row.method;originalSlot=row.physicalSlot;
+        if(method!=Method::SuperRod || gameMask(c.originalGame)==4)return result;
+    }else{
+        const auto* row=pretSlot(c.originalSourceIndex);
+        if(!row)return result;
+        method=row->method;originalSlot=row->physicalSlot;
+    }
+    if(method!=Method::OldRod&&method!=Method::GoodRod&&
+       method!=Method::SuperRod)return result;
+    if(!fishing.originalInitOutcomeIndependentlyAttested){
+        result.sourceStatus=Status::UnknownOriginalFishingInit;return result;
+    }
+    if(!fishing.originalFishingInitPassed){
+        result.sourceStatus=Status::CandidateOriginalFishingInitContradicted;
+        return result;
+    }
+    // A verified original source row cannot fabricate random draws or
+    // attestation of game, bite, physical slot or source group size.
+    if(random.game!=c.originalGame)return result;
+    random.expectedPhysicalSlot=originalSlot;
+    random.rod=method==Method::OldRod?Gen1PretFishingRollStage::Rod::Old:
+       method==Method::GoodRod?Gen1PretFishingRollStage::Rod::Good:
+                               Gen1PretFishingRollStage::Rod::Super;
+    result.roll=Gen1PretFishingRollStage::evaluate(random);
     return result;
 }
 } // namespace Legality::Gen1OriginalWildFishingStage
