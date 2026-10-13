@@ -111,7 +111,7 @@ def extract(text: str, file_number: int):
                 form = 6
             shiny = 1 if cosplay or re.search(r"\bShiny\s*=\s*Shiny\.Never", body) else (
                 2 if re.search(r"\bShiny\s*=\s*Shiny\.Always", body) else 0)
-            roaming = bool(re.search(r"\\bIsRoaming\\s*=\\s*true", body))
+            roaming = bool(re.search(r"\bIsRoaming\s*=\s*true", body))
             flags = (int(location is not None) |
                      (int(egg is not None) << 1) |
                      (int(form is not None) << 2) |
