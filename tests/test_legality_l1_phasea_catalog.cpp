@@ -28,7 +28,7 @@ int main(){
    assert(r.sourceIndex<S::kTables[id].count);
    assert(r.level>=1&&r.level<=100);
    assert(r.species>=1&&r.species<=(id<13?649:721));
-   assert(r.gameMask!=0&&!(r.gameMask&(r.gameMask-1)) == false || r.gameMask!=0);
+   assert(r.gameMask!=0);
    assert(L::row(r.table,r.sourceIndex)==&r);
    assert(L::tableKind(r.table)==S::kTables[id].kind);
    checks+=7;
