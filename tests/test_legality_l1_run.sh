@@ -84,6 +84,7 @@ suites=(
   test_legality_l1_gen1_pret_rod_init
   test_legality_l1_gen1_pret_evolution
   test_legality_l1_gen1_pret_gift_event
+  test_legality_l1_gen1_pret_wild_roll
 )
 profiles=(host sanitize)
 if [[ -n "${L1_PROFILE:-}" ]]; then
