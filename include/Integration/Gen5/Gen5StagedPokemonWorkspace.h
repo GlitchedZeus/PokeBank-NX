@@ -238,7 +238,7 @@ public:
             out.push_back({slot,
                 {record.originalBytes().begin(),record.originalBytes().end()},
                 {record.stagedBytes().begin(),record.stagedBytes().end()},
-                black2White2(),ChangeKind::FieldEdit,{}, {},std::nullopt});
+                black2White2(),ChangeKind::FieldEdit,{}, {},std::nullopt,{}});
         }
         for(const auto& [slot,replacement]:boxReplacements_) {
             const auto original=sourceSlot(slot);
