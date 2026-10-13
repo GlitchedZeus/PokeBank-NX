@@ -44,6 +44,11 @@ int main(int argc,char** argv){
         record.rawSpecies=c.species==1?153:173;
         record.level=static_cast<uint8_t>(c.level);
         record.experience=c.experience;
+        record.statExperience={static_cast<uint16_t>(c.stat_experience),
+            static_cast<uint16_t>(c.stat_experience),
+            static_cast<uint16_t>(c.stat_experience),
+            static_cast<uint16_t>(c.stat_experience),
+            static_cast<uint16_t>(c.stat_experience)};
         record.trainerId=1234;
         record.catchRate=c.species==1?45:190;
         record.moves={static_cast<uint8_t>(c.move),0,0,0};
@@ -66,9 +71,17 @@ int main(int argc,char** argv){
                pk.dvSPE()==speed && pk.dvSpecial()==special);
         assert(pk.ability()==0 && pk.gender()==2);
         assert(pk.ivHP()==0 && pk.evHP()==0); // neutral *modern* compatibility getters
+        assert(pk.statExpHP()==c.stat_experience &&
+               pk.statExpATK()==c.stat_experience &&
+               pk.statExpDEF()==c.stat_experience &&
+               pk.statExpSPE()==c.stat_experience &&
+               pk.statExpSpecial()==c.stat_experience);
         auto result=Legality::analyze(pk,pk.getGameGroup(),c.source);
         const bool moveDomain=invalid(result,"cannot exist in a Generation");
         assert(moveDomain==(c.move==200));
+        const bool modernEvInvalid=invalid(result,"EV total over 510") ||
+            invalid(result,"EV over 252");
+        assert(!modernEvInvalid); // Gen I has Stat Experience, NOT modern EV fields.
         const bool ability=invalid(result,"Ability not legal for this species");
         const bool gender=invalid(result,"Gendered species marked genderless");
         // The source-free baseline reproduces F3 for any nonempty PK1 and
@@ -93,6 +106,12 @@ int main(int argc,char** argv){
           "\"dv_hp\":"<<hp<<",\"dv_attack\":"<<attack<<","
           "\"dv_defense\":"<<defense<<",\"dv_speed\":"<<speed<<","
           "\"dv_special\":"<<special<<","
+          "\"stat_exp_hp\":"<<pk.statExpHP()<<","
+          "\"stat_exp_attack\":"<<pk.statExpATK()<<","
+          "\"stat_exp_defense\":"<<pk.statExpDEF()<<","
+          "\"stat_exp_speed\":"<<pk.statExpSPE()<<","
+          "\"stat_exp_special\":"<<pk.statExpSpecial()<<","
+          "\"modern_ev_invalid\":"<<(modernEvInvalid?"true":"false")<<","
           "\"move_domain_invalid\":"<<(moveDomain?"true":"false")<<","
           "\"ability_invalid\":"<<(ability?"true":"false")<<","
           "\"gender_invalid\":"<<(gender?"true":"false")<<","
