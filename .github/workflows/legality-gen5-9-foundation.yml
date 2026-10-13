@@ -15,6 +15,9 @@ on:
       - 'include/Legality/Legality.h'
       - 'tools/legality_pkhex_source_pin.py'
       - 'tests/test_legality_pkhex_source_pin.py'
+      - 'tools/legality_pkhex_oracle/**'
+      - 'tools/legality_gen5_oracle_vectors.cpp'
+      - 'tools/compare_legality_pk5_oracle.py'
       - 'docs/legality/research/pkhex/PKHEX_USER_ARCHIVE_SOURCE_MAP.json'
       - 'src/Legality/Legality.cpp'
       - 'tools/audit_legality_gen59_wiring.py'
@@ -81,4 +84,45 @@ jobs:
             src/Legality/Gen5RecordAnalysis.cpp tests/test_legality_gen5_product_reader_bridge.cpp \
             -o /tmp/pbnx-gen59/product-pk5-san
           /tmp/pbnx-gen59/product-pk5-san
+          git diff --check
+
+  pkhex-host-oracle:
+    name: Pinned original PKHeX.Core and native PK5 differential
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact coordinator expansion head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Checkout immutable upstream candidate (verification mandatory)
+        uses: actions/checkout@v4
+        with:
+          repository: kwsch/PKHeX
+          ref: 66ef5983a5d349efa2dd615f2926a1b1ee97306e
+          path: third_party/PKHeX
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Reject source trees that do not match owner's ZIP SHA map
+        run: |
+          set -euo pipefail
+          test "$(git -C third_party/PKHeX rev-parse HEAD)" = 66ef5983a5d349efa2dd615f2926a1b1ee97306e
+          python3 tools/legality_pkhex_source_pin.py --repo-root . --upstream-source-root third_party/PKHeX
+      - name: Differential native Product PK5 against original PKHeX Core
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pbnx-oracle
+          g++ -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror -Iinclude \
+            tools/legality_gen5_oracle_vectors.cpp -o /tmp/pbnx-oracle/native-vectors
+          /tmp/pbnx-oracle/native-vectors > /tmp/pbnx-oracle/vectors.tsv
+          dotnet run --configuration Release \
+            --project tools/legality_pkhex_oracle/LegalityOracle.csproj \
+            -p:PKHeXSourceRoot="$GITHUB_WORKSPACE/third_party/PKHeX" \
+            -- /tmp/pbnx-oracle/vectors.tsv > /tmp/pbnx-oracle/oracle.jsonl
+          python3 tools/compare_legality_pk5_oracle.py \
+            --vectors /tmp/pbnx-oracle/vectors.tsv \
+            --oracle /tmp/pbnx-oracle/oracle.jsonl
           git diff --check

@@ -82,24 +82,39 @@ def verify_archive(archive: Path, manifest: dict) -> dict:
             results[expected_path] = expected_digest
     return results
 
+def verify_source_tree(root: Path, manifest: dict) -> dict:
+    """Reject public revisions that differ from the owner's archived source files."""
+    results = {}
+    for item in manifest['files']:
+        path, expected = item['path'], item['sha256']
+        if not safe_member_name(path) or not re.fullmatch(r'[0-9a-f]{64}', expected):
+            raise ValueError('Malformed pinned source path/digest')
+        actual = file_sha(root / path)
+        if actual != expected:
+            raise ValueError(f'Public PKHeX checkout NOT equivalent to owner archive: {path}')
+        results[path] = actual
+    return results
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--repo-root', type=Path, default=Path('.'))
     parser.add_argument('--manifest', type=Path, default=Path('docs/legality/research/pkhex/PKHEX_USER_ARCHIVE_SOURCE_MAP.json'))
     parser.add_argument('--archive', type=Path)
+    parser.add_argument('--upstream-source-root', type=Path)
     parser.add_argument('--product-only', action='store_true')
     args = parser.parse_args(argv)
-    if args.product_only and args.archive:
-        parser.error('--product-only cannot be combined with --archive')
-    if not args.product_only and args.archive is None:
-        parser.error('PKHeX archive required unless verifying only Product code')
+    if (args.product_only and (args.archive or args.upstream_source_root)) or (args.archive and args.upstream_source_root):
+        parser.error('select exactly one of --product-only, --archive or --upstream-source-root')
+    if not args.product_only and args.archive is None and args.upstream_source_root is None:
+        parser.error('PKHeX archive or pinned upstream source tree required')
     product = verify_product(args.repo_root)
     sources = {}
-    if args.archive is not None:
+    if args.archive is not None or args.upstream_source_root is not None:
         manifest = json.loads((args.repo_root / args.manifest).read_text())
-        sources = verify_archive(args.archive, manifest)
+        sources = verify_archive(args.archive, manifest) if args.archive else verify_source_tree(args.upstream_source_root, manifest)
     print(json.dumps({'product_reader_blobs_verified': product,
                       'pkhex_archive_verified': args.archive is not None,
+                      'pkhex_upstream_source_verified': args.upstream_source_root is not None,
                       'pkhex_source_files_verified': len(sources)}, sort_keys=True))
     return 0
 

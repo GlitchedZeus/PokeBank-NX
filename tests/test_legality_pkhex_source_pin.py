@@ -22,6 +22,17 @@ with tempfile.TemporaryDirectory() as directory:
                    'sha256': hashlib.sha256(b'original source bytes').hexdigest()}],
     }
     assert len(pin.verify_archive(good, manifest)) == 1
+    source_tree = root / 'PKHeX-sources'
+    source_file = source_tree / 'PKHeX.Core/PKM/PK5.cs'
+    source_file.parent.mkdir(parents=True)
+    source_file.write_bytes(b'original source bytes')
+    assert len(pin.verify_source_tree(source_tree, manifest)) == 1
+    source_file.write_bytes(b'altered source')
+    try:
+        pin.verify_source_tree(source_tree, manifest)
+        raise AssertionError('wrong upstream must be rejected')
+    except ValueError:
+        pass
     bad_manifest = {'archive_sha256': manifest['archive_sha256'],
                     'files': [{'path': 'PKHeX.Core/PKM/PK5.cs', 'sha256': '0'*64}]}
     try:
