@@ -41,6 +41,10 @@ struct Source {
     J::Candidate hypothesis{};  // includes pinned original distribution archives
     SourceClass classification=SourceClass::Unknown;
     bool originalCartridgeScriptIndependentlyPinned=false;
+    // A historical acquisition record must link this original gift/trade
+    // to this individual, not merely document a possible game mechanic.
+    bool originalAcquisitionContextIndependentlyVerified=false;
+    bool originalIndividualRecordLinkedToNativeIndependentlyVerified=false;
     bool exactOriginalNPCTradeRowIndependentlyPinned=false;
     bool englishRetailTradeTableIndependentlyVerified=false;
     // Gen I NPC trade OTID is generated from Random; it is NOT in TradeMons.
@@ -83,6 +87,8 @@ constexpr Result evaluate(const NativeRecord& native,bool independentlyValidated
        source.classification==SourceClass::ModernUnverifiedListing ||
        source.classification==SourceClass::Unknown ||
        !source.originalCartridgeScriptIndependentlyPinned ||
+       !source.originalAcquisitionContextIndependentlyVerified ||
+       !source.originalIndividualRecordLinkedToNativeIndependentlyVerified ||
        (row.kind==G::Kind::StadiumGift)!=
            (source.classification==SourceClass::OriginalStadiumMedia)) {
         result.status=Status::UnknownSource;return result;
@@ -108,6 +114,14 @@ constexpr Result evaluate(const NativeRecord& native,bool independentlyValidated
             edition,source.originalNPCTradeRowIndex);
         if(!documented.reachable || documented.offered!=source.originalOfferedSpecies ||
            documented.received!=row.species.value)return result;
+        // A claimed original nickname MUST be the version-specific fixed
+        // retail trade name in the independently attested English charset.
+        // Never substitute a modern listing's Unicode spelling.
+        if(!source.names.originalEncodingIndependentlyReconciled ||
+           !row.nickname.known)return result;
+        const auto scripted=Gen1OriginalNPCTradeMetadata::encodeEnglishNickname(
+            documented.originalNickname);
+        if(!scripted.valid || row.nickname.value!=scripted.bytes)return result;
         if(source.originalOfferedSpecies!=source.observedOfferedSpecies)
             result.contradicted|=NPCTradeInput;
     }
@@ -154,6 +168,7 @@ constexpr Result evaluate(const NativeRecord& native,bool independentlyValidated
             compared.route.crossingMoves.known &&
             G::legalSpeciesAtCrossing(compared.route.crossingSpecies.value) &&
             G::legalMovesAtCrossing(compared.route.crossingMoves.value),
+        Rate::isPossibleTimeCapsuleHeldItem(history.observedTradebackHeldItemByte),
         history.observedTradebackHeldItemByte};
     const auto verdict=Gen1OriginalGiftNativePreflight::compareRate(native.catchRate,rate);
     if(verdict==Gen1OriginalGiftNativePreflight::RateStatus::Unknown)

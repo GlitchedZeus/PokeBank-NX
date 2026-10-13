@@ -33,7 +33,9 @@ struct Fixture {
         // synthetic independently documented individual receipt, not the ROM row.
         c.original.trainerId=yes<uint16_t>(native.trainerId);
         c.original.trainerName=yes(name('T'));
-        c.original.nickname=yes(name('N'));
+        c.original.nickname=yes(
+            Legality::Gen1OriginalNPCTradeMetadata::encodeEnglishNickname(
+                edition==G::Game::Yellow?"GURIO":"TERRY").bytes);
         c.original.moves=yes(G::Moves4{1,2,3,0});
         c.route.speciesHistory=G::History::Unchanged;
         c.route.trainerNameHistory=G::History::Unchanged;
@@ -60,6 +62,8 @@ struct Fixture {
         source.classification=kind==G::Kind::StadiumGift?
           L::SourceClass::OriginalStadiumMedia:L::SourceClass::OriginalCartridgeMechanic;
         source.originalCartridgeScriptIndependentlyPinned=true;
+        source.originalAcquisitionContextIndependentlyVerified=true;
+        source.originalIndividualRecordLinkedToNativeIndependentlyVerified=true;
         source.exactOriginalNPCTradeRowIndependentlyPinned=true;
         source.englishRetailTradeTableIndependentlyVerified=true;
         source.individualRandomNPCTrainerIdReceiptIndependentlyVerified=true;
@@ -73,7 +77,8 @@ struct Fixture {
         source.names.exactOriginalSaveBytesIndependentlyVerified=true;
         source.names.rawNamesIndependentlyExtractedFromThisRecord=true;
         source.names.originalEncodingIndependentlyReconciled=true;
-        source.names.rawOT=name('T');source.names.rawNickname=name('N');
+        source.names.rawOT=name('T');
+        source.names.rawNickname=c.original.nickname.value;
         source.catchHistory.originalAcquisitionRateIndependentlyAttested=true;
         source.catchHistory.originallyObservedRate=45;
         source.catchHistory.originalBytePreservedThroughCompleteHistory=true;
@@ -93,6 +98,12 @@ int main() {
       x.native.moves[0]=1;x.native.level=0;assert(x.run().status==S::UnknownNative);
       x.native.level=20;x.native.dvs[1]=16;assert(x.run().status==S::UnknownNative);
       x.native.dvs[1]=15;x.native.ppUps[1]=4;assert(x.run().status==S::UnknownNative);}
+    {auto x=f;x.source.originalAcquisitionContextIndependentlyVerified=false;
+      x.native.trainerId++;assert(x.run().status==S::UnknownSource&&!x.run().contradicted);}
+    {auto x=f;x.source.originalIndividualRecordLinkedToNativeIndependentlyVerified=false;
+      x.native.trainerId++;assert(x.run().status==S::UnknownSource&&!x.run().contradicted);}
+    {auto x=f;x.source.hypothesis.original.nickname.value[0] ^= 1;
+      assert(x.run().status==S::UnknownOriginalNPCTrade);}
     {auto x=f;x.source.classification=L::SourceClass::ModernUnverifiedListing;
       x.native.trainerId++;assert(x.run().status==S::UnknownSource&&!x.run().contradicted);}
     {auto x=f;x.source.sourceSaveEditionIndependentlyVerified=false;
@@ -156,7 +167,7 @@ int main() {
       x.source.hypothesis.archive.originalPayloadSha256[0]=std::byte{0x10};
       assert(x.run().status==S::UnknownHistoricalRoute);}
     uint64_t masks=0;
-    for(unsigned mask=0;mask<131072;++mask){auto x=f;
+    for(unsigned mask=0;mask<524288;++mask){auto x=f;
       x.source.originalCartridgeScriptIndependentlyPinned=(mask&1)!=0;
       x.source.sourceSaveEditionIndependentlyVerified=(mask&2)!=0;
       x.source.exactOriginalNPCTradeRowIndependentlyPinned=(mask&4)!=0;
@@ -174,8 +185,10 @@ int main() {
       x.source.hypothesis.route.offeredTradeLevel.known=(mask&16384)!=0;
       x.source.hypothesis.original.trainerId.known=(mask&32768)!=0;
       x.source.individualRandomNPCTrainerIdReceiptIndependentlyVerified=(mask&65536)!=0;
+      x.source.originalAcquisitionContextIndependentlyVerified=(mask&131072)!=0;
+      x.source.originalIndividualRecordLinkedToNativeIndependentlyVerified=(mask&262144)!=0;
       const auto r=x.run();
-      assert((r.status==S::ConditionalCandidate)==(mask==131071));
+      assert((r.status==S::ConditionalCandidate)==(mask==524287));
       assert(!r.authenticated&&!r.globallyInvalid&&!r.payloadEmbeddingPermitted);
       ++masks;
     }

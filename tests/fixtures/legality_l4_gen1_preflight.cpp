@@ -20,6 +20,7 @@ int main() {
         h.exhaustiveUnchangedByteHistoryIndependentlyProven=false;
         h.independentReturnItemWitness=true;
         h.actualCrossingSnapshotIndependentlyVerified=true;
+        h.returnByteVerifiedAsGen2HeldItem=true;
         h.returnItemByte=static_cast<uint8_t>(rate);
         assert((N::compareRate(static_cast<uint8_t>(value),h)==S::TradebackItemMatches)==(value==rate));
         h.actualCrossingSnapshotIndependentlyVerified=false;
@@ -27,12 +28,25 @@ int main() {
         ++checked;
     }
     assert(checked==65536);
+    {
+        N::RateHistory forged{};
+        forged.originalAcquisitionByteIndependentlyAttested=true;
+        forged.originalAcquisitionByte=45;
+        forged.independentTimeCapsuleReturnWitness=true;
+        forged.independentReturnItemWitness=true;
+        forged.actualCrossingSnapshotIndependentlyVerified=true;
+        forged.returnItemByte=45;
+        assert(N::compareRate(45,forged)==S::Unknown);
+        forged.returnByteVerifiedAsGen2HeldItem=true;
+        assert(N::compareRate(45,forged)==S::TradebackItemMatches);
+    }
     for(unsigned mask=0;mask<32;++mask) {
         h.originalAcquisitionByteIndependentlyAttested=(mask&1)!=0;
         h.independentTimeCapsuleReturnWitness=(mask&2)!=0;
         h.independentReturnItemWitness=(mask&4)!=0;
         h.actualCrossingSnapshotIndependentlyVerified=(mask&8)!=0;
         h.exhaustiveUnchangedByteHistoryIndependentlyProven=(mask&16)!=0;
+        h.returnByteVerifiedAsGen2HeldItem=true;
         if(!h.originalAcquisitionByteIndependentlyAttested)
             assert(N::compareRate(h.originalAcquisitionByte,h)==S::Unknown);
     }

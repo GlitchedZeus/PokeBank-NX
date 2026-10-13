@@ -13,6 +13,7 @@ struct RateHistory {
     bool independentTimeCapsuleReturnWitness=false;
     bool independentReturnItemWitness=false;
     bool actualCrossingSnapshotIndependentlyVerified=false;
+    bool returnByteVerifiedAsGen2HeldItem=false;
     uint8_t returnItemByte=0;
 };
 constexpr RateStatus compareRate(uint8_t nativeByte,const RateHistory& h) noexcept {
@@ -23,7 +24,8 @@ constexpr RateStatus compareRate(uint8_t nativeByte,const RateHistory& h) noexce
             RateStatus::OriginalRateMatches:RateStatus::OriginalRateContradicted;
     if(h.independentTimeCapsuleReturnWitness &&
        h.independentReturnItemWitness &&
-       h.actualCrossingSnapshotIndependentlyVerified)
+       h.actualCrossingSnapshotIndependentlyVerified &&
+       h.returnByteVerifiedAsGen2HeldItem)
         return nativeByte==h.returnItemByte?
             RateStatus::TradebackItemMatches:RateStatus::TradebackItemContradicted;
     return RateStatus::Unknown;
