@@ -59,6 +59,7 @@ tests=(
     test_legality_l2_gen1_native_record_adversarial
     test_legality_l2_gen1_native_exp_growth
     test_legality_l2_gen1_original_stat_exp_battles
+    test_legality_l2_gen1_stat_exp_math_boundaries
     test_legality_l2_dp_alternative_egg_histories
     test_legality_l2_dp_move_stage
     test_legality_l2_dp_egg_iv
@@ -109,6 +110,13 @@ for test in "${tests[@]}"; do
             "$root/src/Integration/Gen1/Gen1ReadOnlySave.cpp"
         )
     fi
+    if [[ "$test" == test_legality_l2_gen1_stat_exp_math_boundaries ]]; then
+        sources+=(
+            "$root/src/Integration/Gen1/Gen1BattleStats.cpp"
+            "$root/src/Integration/Gen1/Gen1StagedPokemonEditor.cpp"
+            "$root/src/Integration/Gen1/Gen1ReadOnlySave.cpp"
+        )
+    fi
     if [[ "$test" == test_legality_l2_gen1_original_stat_exp_battles ]]; then
         sources+=(
             "$root/src/Legality/Gen1OriginalStatExpBattleHistory.cpp"
@@ -131,7 +139,8 @@ for test in "${tests[@]}"; do
                -Wno-unused-parameter -I"$root/include")
         if [[ "$test" == test_legality_l2_gen1_native_dv_stat ||
               "$test" == test_legality_l2_gen1_native_record_adversarial ||
-              "$test" == test_legality_l2_gen1_native_exp_growth ]]; then
+              "$test" == test_legality_l2_gen1_native_exp_growth ||
+              "$test" == test_legality_l2_gen1_stat_exp_math_boundaries ]]; then
             flags+=(-ffunction-sections -fdata-sections -Wl,--gc-sections)
         fi
         if [[ "$mode" == sanitizers ]]; then
