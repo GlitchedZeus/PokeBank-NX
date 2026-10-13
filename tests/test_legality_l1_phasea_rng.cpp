@@ -9,6 +9,7 @@ static R::Evidence original(uint64_t seed,uint16_t frames,uint32_t pid,bool wild
  e.originalSaveIdentity=0x12345678;e.originalCreatureIdentity=0x87654321;
  e.originalSeed=seed;
  e.independentlyAttestedPhysicalOriginal=true;
+ e.independentlyAttestedOriginalGame=true;e.originalGameVersion=21;
  e.independentlyAttestedOriginalSeed=true;
  e.independentlyAttestedOriginalPid=true;
  e.independentlyAttestedOriginalTrainer=true;
@@ -65,6 +66,12 @@ int main(){
     checked+=4;
  }
  auto missing=original(0,1,0);
+ missing.independentlyAttestedOriginalGame=false;
+ assert(R::evaluate(missing).status==R::Status::UnknownOriginalGame);
+ missing=original(0,1,0);
+ missing.originalGameVersion=27;
+ assert(R::evaluate(missing).status==R::Status::UnknownOriginalGame);
+ missing=original(0,1,0);
  missing.independentlyAttestedPhysicalOriginal=false;
  assert(R::evaluate(missing).status==R::Status::UnknownOriginalCapture);
  missing=original(0,1,0);
@@ -81,7 +88,7 @@ int main(){
  missing.exactOriginalAdvanceIndependentlyAttested=true;
  missing.advance=3;
  assert(R::evaluate(missing).status==R::Status::UnknownSearchBound);
- checked+=6;
+ checked+=8;
  // Historic frame is an independently witnessed bounded candidate; even
  // matching the exact upstream 64-bit raw RNG does not certify source game.
  const uint64_t start=0x123456789ABCDEF0ULL;
