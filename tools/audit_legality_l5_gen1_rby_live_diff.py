@@ -70,6 +70,9 @@ def evaluate(cases:list[dict],oracle:dict[str,dict],accepted:dict[str,dict],
     for v in cases:
         ident=v["id"]
         p,a,c=oracle[ident],accepted[ident],coordinator[ident]
+        check(p.get("parsed") is True,"ORIGINAL_PKHEX_ANALYSIS_NOT_COMPLETED:"+ident)
+        check(p.get("pk1_ability")==-1,"PKHEX_GEN1_ABSENT_ABILITY_CONTRACT:"+ident)
+        check(p.get("pk1_gender") in (0,1,2),"PKHEX_GB_DERIVED_GENDER_DOMAIN:"+ident)
         for record in (p,a,c):
             for field in ("species","move","dv16","source"):
                 check(record.get(field)==v[field],"INPUT_DRIFT:"+ident+":"+field)
@@ -136,7 +139,7 @@ def selftest()->None:
        "pkhex_revision":PIN,"original_source":"RBY_VERSION_UNKNOWN",
        "original_retail_history_authenticated":False,"id":"x","source":"",
        "species":1,"move":33,"dv16":65535,"ability_invalid":False,
-       "gender_invalid":False,**dv_values(65535)}
+       "gender_invalid":False,"parsed":True,"pk1_ability":-1,"pk1_gender":0,**dv_values(65535)}
     a={**p,"engine":"POKEBANK_NX_ANALYZER","execution_mode":"actual_production_pk1",
        "ability_invalid":True,"gender_invalid":True,"move_domain_invalid":False}
     c={**a,"ability_invalid":False,"gender_invalid":False}
