@@ -41,6 +41,12 @@ jobs:
           echo "APPLICATION_SHA=$EXPECTED_SHA"
           echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
 
+      - name: Check isolated Gen V NRO build entrypoint syntax
+        run: |
+          set -euo pipefail
+          test -x tools/build_gen5_smoke_nro.sh
+          bash -n tools/build_gen5_smoke_nro.sh
+
       - name: Checkout permanent recovery snapshot
         uses: actions/checkout@v4
         with:

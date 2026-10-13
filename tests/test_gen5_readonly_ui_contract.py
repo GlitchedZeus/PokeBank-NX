@@ -214,6 +214,23 @@ gen5_setup = games.split("if (overlay == Overlay::Gen5Setup) {", 1)[1]
 gen5_setup = gen5_setup.split("if (overlay == Overlay::Gen5Candidates)", 1)[0]
 assert "gen5SetupIndex==2)overlay=Overlay::Gen5UnassignConfirm;" in gen5_setup
 assert "gen5SetupIndex==2)unassignCurrentGen5Game()" not in gen5_setup
+# Local NRO fallback must be a detached, exact-SHA devkitA64 build.
+# A queued remote runner cannot turn a stale binary into a valid candidate.
+build_sh=read("tools/build_gen5_smoke_nro.sh")
+require(build_sh,
+        'git clone --local --no-hardlinks "$ROOT" "$TMP/work"',
+        'git -C "$WORK" checkout --detach "$EXPECTED"',
+        "git -C \"$WORK\" submodule update --init --recursive",
+        'git -C "$WORK" worktree add --detach',
+        'python3 tools/check_device_assets.py',
+        'test -s PokeBankNX.nro',
+        'sha256sum "$OUT_NRO" > SHA256SUMS.txt',
+        "SOURCE_SAV5_WRITE=DISABLED",
+        "DEVICE_ACCEPTED=false")
+require(read(".github/workflows/native-pr-build.yml"),
+        "bash -n tools/build_gen5_smoke_nro.sh",
+        "test -x tools/build_gen5_smoke_nro.sh")
+
 # Four native titles, profile-isolated assignments, and the existing
 # shared 6x5 Box grid are exercised by executable host fixtures.
 assignment=read("tests/test_gen5_readonly_save.cpp")

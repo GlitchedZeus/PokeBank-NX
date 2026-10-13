@@ -21,6 +21,30 @@ No installed-game save writes or Inject Save are authorized.
 - Keep the previously known-good NRO and full original external saves backed up
   separately. The application does not modify those source saves.
 
+## Alternate exact-head local build (when GitHub Actions is queued)
+
+From a complete Linux checkout with Git, Python 3, host C++ toolchain,
+Make, and Docker (or compatible container runtime) installed:
+
+```sh
+git fetch origin integration/gen5-ui-hardware-candidate-20261012
+git switch integration/gen5-ui-hardware-candidate-20261012
+GEN5_APPLICATION_SHA="$(git rev-parse HEAD)" \
+  bash tools/build_gen5_smoke_nro.sh
+```
+
+The script **clones the committed SHA to a temporary working tree**, initializes
+the recorded submodules, runs focused executable host tests, reconstructs the
+same pinned Product UI RomFS as CI and builds with the same immutable devkitA64
+container image. It preserves the original checkout and never reads or writes
+emulator source files. A successful result is saved under
+`hardware-candidates/gen5-<8-char SHA>/` with `SHA256SUMS.txt` and
+`BUILD_IDENTITY.txt`. The candidate is still **not hardware accepted**.
+
+Do not substitute an NRO from another SHA, skip a failed test, or run an
+incomplete build with missing recovery assets. This procedure requires its
+dependencies and may need network access to initialize submodules/artwork.
+
 ## Console acceptance matrix
 
 Mark each row Pass / Fail / Not tested and record the visible status string,
