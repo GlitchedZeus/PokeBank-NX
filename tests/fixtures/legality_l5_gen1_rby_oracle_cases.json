@@ -1,0 +1,728 @@
+{
+  "schema": "L5_GEN1_RBY_NATIVE_VECTORS_V1",
+  "source_identity": "Gen I PK1 has no original R/B/Y version ID",
+  "synthetic_only": true,
+  "pkhex_revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+  "cases": [
+    {
+      "id": "G1RBY-001",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 0,
+      "experience": 125,
+      "source": "",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-002",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 0,
+      "experience": 125,
+      "source": "red_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-003",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 0,
+      "experience": 125,
+      "source": "blue_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-004",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 0,
+      "experience": 125,
+      "source": "yellow_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-005",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 0,
+      "experience": 125,
+      "source": "platinum_nds",
+      "expected_source_context": "Conflicting"
+    },
+    {
+      "id": "G1RBY-006",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 0,
+      "experience": 125,
+      "source": "unknown_source",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-007",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 0,
+      "experience": 125,
+      "source": "",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-008",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 0,
+      "experience": 125,
+      "source": "red_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-009",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 0,
+      "experience": 125,
+      "source": "blue_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-010",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 0,
+      "experience": 125,
+      "source": "yellow_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-011",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 0,
+      "experience": 125,
+      "source": "platinum_nds",
+      "expected_source_context": "Conflicting"
+    },
+    {
+      "id": "G1RBY-012",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 0,
+      "experience": 125,
+      "source": "unknown_source",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-013",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-014",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "red_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-015",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "blue_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-016",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "yellow_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-017",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "platinum_nds",
+      "expected_source_context": "Conflicting"
+    },
+    {
+      "id": "G1RBY-018",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "unknown_source",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-019",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-020",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "red_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-021",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "blue_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-022",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "yellow_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-023",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "platinum_nds",
+      "expected_source_context": "Conflicting"
+    },
+    {
+      "id": "G1RBY-024",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "unknown_source",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-025",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-026",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "red_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-027",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "blue_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-028",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "yellow_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-029",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "platinum_nds",
+      "expected_source_context": "Conflicting"
+    },
+    {
+      "id": "G1RBY-030",
+      "species": 1,
+      "level": 5,
+      "move": 33,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "unknown_source",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-031",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-032",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "red_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-033",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "blue_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-034",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "yellow_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-035",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "platinum_nds",
+      "expected_source_context": "Conflicting"
+    },
+    {
+      "id": "G1RBY-036",
+      "species": 1,
+      "level": 5,
+      "move": 200,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "unknown_source",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-037",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 0,
+      "experience": 125,
+      "source": "",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-038",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 0,
+      "experience": 125,
+      "source": "red_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-039",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 0,
+      "experience": 125,
+      "source": "blue_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-040",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 0,
+      "experience": 125,
+      "source": "yellow_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-041",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 0,
+      "experience": 125,
+      "source": "platinum_nds",
+      "expected_source_context": "Conflicting"
+    },
+    {
+      "id": "G1RBY-042",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 0,
+      "experience": 125,
+      "source": "unknown_source",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-043",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 0,
+      "experience": 125,
+      "source": "",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-044",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 0,
+      "experience": 125,
+      "source": "red_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-045",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 0,
+      "experience": 125,
+      "source": "blue_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-046",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 0,
+      "experience": 125,
+      "source": "yellow_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-047",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 0,
+      "experience": 125,
+      "source": "platinum_nds",
+      "expected_source_context": "Conflicting"
+    },
+    {
+      "id": "G1RBY-048",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 0,
+      "experience": 125,
+      "source": "unknown_source",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-049",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-050",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "red_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-051",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "blue_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-052",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "yellow_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-053",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "platinum_nds",
+      "expected_source_context": "Conflicting"
+    },
+    {
+      "id": "G1RBY-054",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "unknown_source",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-055",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-056",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "red_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-057",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "blue_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-058",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "yellow_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-059",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "platinum_nds",
+      "expected_source_context": "Conflicting"
+    },
+    {
+      "id": "G1RBY-060",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 65535,
+      "experience": 125,
+      "source": "unknown_source",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-061",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-062",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "red_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-063",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "blue_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-064",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "yellow_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-065",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "platinum_nds",
+      "expected_source_context": "Conflicting"
+    },
+    {
+      "id": "G1RBY-066",
+      "species": 81,
+      "level": 5,
+      "move": 33,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "unknown_source",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-067",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "",
+      "expected_source_context": "Unknown"
+    },
+    {
+      "id": "G1RBY-068",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "red_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-069",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "blue_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-070",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "yellow_gb",
+      "expected_source_context": "CandidateOnly"
+    },
+    {
+      "id": "G1RBY-071",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "platinum_nds",
+      "expected_source_context": "Conflicting"
+    },
+    {
+      "id": "G1RBY-072",
+      "species": 81,
+      "level": 5,
+      "move": 200,
+      "dv16": 21845,
+      "experience": 125,
+      "source": "unknown_source",
+      "expected_source_context": "Unknown"
+    }
+  ]
+}
