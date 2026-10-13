@@ -55,7 +55,11 @@ jobs:
           test "$(git hash-object _l5_gen1_coordinator/src/Legality/Legality.cpp)" = 4ac8a0dc0badb8211eb105811eb3fa9f928e36e4
           test "$(git hash-object _l5_gen1_pkhex/PKHeX.Core/PKM/PK1.cs)" = a4b692ae7045afb9d11ea3a3b6e25b94c0c4de8b
           test "$(git hash-object _l5_gen1_pkhex/PKHeX.Core/Legality/LegalityAnalysis.cs)" = b7f5ca8534e426ad3bf1d30de6f7f7ca57544f3c
-          test -f tests/fixtures/legality_l5_gen1_rby_oracle_cases.json
+          test "$(git hash-object tools/audit_legality_l5_gen1_pkhex_oracle/Program.cs)" = e3c53c19d006b1e61a5549444264243a7ef4d7ba
+          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_actual_native.cpp)" = e92f5c643e0500431b9347b44517d04e1b49ed55
+          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_oracle_cases.json)" = 211346e44e9698bedbf7985fcbb3a75356daa617
+          test "$(git hash-object tests/fixtures/legality_l5_gen1_rby_oracle_cases.inc)" = 7ba8ab60a2f9b98a7c8203911c1ef447e8c68d4d
+          test "$(git hash-object tools/audit_legality_l5_gen1_rby_live_diff.py)" = df61afa4069d8756b46dd1e4ebab51b4e2f2dd4c
           git diff --check
       - uses: actions/setup-dotnet@v4
         with:
