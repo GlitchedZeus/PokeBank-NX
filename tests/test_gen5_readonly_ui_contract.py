@@ -971,4 +971,12 @@ require(read("tests/test_gen5_readonly_save.cpp"),
 require(games, "void SaveSelectScreen::closeGen5Setup()", "gen5SetupReturnCandidates=sameTarget;")
 require(games, "instance.generation==5 && instance.rememberedSource", '"REMEMBERED / "')
 require(games, "focusedGen5Game=focused.gameId;", "user->titles[i].gameId==focusedGen5Game")
+# Shared one-read copy enumeration backs discovery and the manual chooser.
+require(discovery, "inspectSourceChoices(const std::string& path", "state.stopAt=", "remainingRoots",
+        "state.result.rootsExamined", "s.result.unreadableDirectories")
+require(games,"PokeVault::Integration::Gen5::inspectSourceChoices(",
+        "gen5ProfileFocus.remember(","gen5ProfileFocus.gameFor(","drawGen5SourceNotice(fb,gen5Notice",
+        "rows.push_back(choice);", "Some emulator folders could not be read.")
+require(read("tests/test_gen5_readonly_save.cpp"), "boundedProviderDiscoveryContracts();",
+        "snapshotChoiceAndRememberedAliasContracts();", "gen5ProfileFocusAndSdOwnershipContracts();")
 print("Gen V read-only shared UI guard contracts: PASS")

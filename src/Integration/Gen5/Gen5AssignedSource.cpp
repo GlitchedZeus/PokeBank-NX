@@ -38,7 +38,9 @@ SourceAssignmentResult assignValidatedSource(
     auto checked=fresh.instance;
     bindings.applyClaims(checked);
     if(!Source::visibleToProfile(checked,profile)) {
-        out.diagnostic="This save is assigned to another profile or game";
+        out.diagnostic=checked.claimConflict?
+            "Source ownership is ambiguous; repair or forget the stale assignment before selecting this file":
+            "This save is assigned to another profile or game";
         return out;
     }
     Legacy::BindingRecord binding;
@@ -49,6 +51,7 @@ SourceAssignmentResult assignValidatedSource(
     binding.expectedRawFamily=expectedFamily(exactGame);
     binding.sourceVariant=checked.sourceVariant;
     binding.physicalIdentity=checked.physicalIdentity;
+    binding.contentFingerprint=checked.contentFingerprint;
     if(!bindings.replaceFileAssignmentAndSave(checked.sourceIdentity,std::move(binding))) {
         out.diagnostic="Could not remember the Gen V save; previous assignment kept. "+bindings.lastError();
         return out;

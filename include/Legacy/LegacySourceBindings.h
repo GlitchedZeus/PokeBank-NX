@@ -27,6 +27,9 @@ namespace PokeVault::Legacy {
         // two/three/six-column rows retain their existing semantics.
         std::string sourceVariant = {};
         std::string physicalIdentity = {};
+        // Pair persisted physical evidence with the normalized source snapshot
+        // so an inode reused after deletion cannot become another game's owner.
+        std::string contentFingerprint = {};
     };
     enum class AssignedFileStatus { Unassigned, Ambiguous, Missing, Unreadable, Ready };
     struct AssignedFile {

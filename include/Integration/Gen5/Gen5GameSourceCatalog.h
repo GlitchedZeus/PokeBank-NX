@@ -19,6 +19,7 @@ struct GameSourceCatalog {
     size_t wrongGame = 0;
     size_t invalidOrAmbiguous = 0;
     size_t ownedByOtherProfile = 0;
+    size_t ambiguousOwnership = 0;
     bool validQuery = false;
 };
 
@@ -30,12 +31,22 @@ struct GameSourceCatalog {
     GameSourceCatalog out;
     if(profile.empty() || !isExactGen5Id(exactGame))return out;
     out.validQuery=true;
+    const auto assigned=bindings.resolveFileForGame(profile,exactGame);
+    const auto isBoundRow=[&](const Source::SaveInstance& row) {
+        return row.sourceIdentity==assigned.sourceIdentity &&
+            row.path()==assigned.binding.sourcePath &&
+            row.providerLabel==assigned.binding.sourceType;
+    };
 
     // Deduplicate before applying profile ownership: a physical file with
     // multiple path aliases must never expose one unclaimed alias while the
     // other alias is owned by another profile.
     std::vector<Source::SaveInstance> normalized;
-    for(const auto& observed:discovered) {
+    // The actual bound path/provider represents a physical file before its
+    // scanned aliases. A remembered manual source must not silently acquire
+    // a different filename/provider simply because a scanner ran first.
+    for(int priority=0;priority<2;++priority)for(const auto& observed:discovered) {
+        if(isBoundRow(observed)!=(priority==0))continue;
         if(observed.generation!=5 || observed.platformLabel!="Nintendo DS")continue;
         if(!observed.ready()) {++out.invalidOrAmbiguous;continue;}
         if(observed.gameId!=exactGame) {++out.wrongGame;continue;}
@@ -50,12 +61,12 @@ struct GameSourceCatalog {
     for(auto& row:normalized) {
         bindings.applyClaims(row);
         if(!Source::visibleToProfile(row,profile)) {
+            if(row.claimConflict)++out.ambiguousOwnership;
             ++out.ownedByOtherProfile;
             continue;
         }
         row.rememberedSource=bindings.isPreferredGameSource(row,profile,exactGame);
         if(row.rememberedSource) {
-            const auto assigned=bindings.resolveFileForGame(profile,exactGame);
             if(!assigned.binding.sourceVariant.empty())
                 row.rememberedSource=row.sourceVariant==assigned.binding.sourceVariant;
         }

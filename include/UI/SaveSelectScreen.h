@@ -21,6 +21,7 @@
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
 #include "Integration/Gen5/Gen5GameCardPreview.h"
+#include "Integration/Gen5/Gen5SourceSelection.h"
 
 namespace UI {
     // JKSV-style combined user + title picker. Shows the selected user's avatar + name at the top
@@ -272,6 +273,7 @@ namespace UI {
         int gen5CandidateIndex = 0;
         int gen5CandidateScroll = 0;
         TouchScrollState gen5CandidateTouchScroll;
+        PokeVault::Integration::Gen5::ProfileGameFocus gen5ProfileFocus;
         int gen4SetupIndex = 0;
         int gen4CandidateIndex = 0;
         int gen4CandidateScroll = 0;

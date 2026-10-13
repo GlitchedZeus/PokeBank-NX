@@ -4,6 +4,7 @@
 #include "Integration/Gen5/Gen5SaveInstanceAdapter.h"
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
 #include "Integration/Gen5/Gen5SourceSelection.h"
+#include "Integration/Gen5/Gen5SourcePathIdentity.h"
 #include "Integration/Gen5/Gen5AssignedSource.h"
 #include "Integration/Gen5/Gen5GameSourceCatalog.h"
 #include "Integration/Gen5/Gen5GameCardPreview.h"
@@ -249,7 +250,8 @@ void discoveryContracts() {
     assert(blackRows.validQuery && blackRows.rows.size()==1);
     assert(blackRows.rows[0].rememberedSource);
     assert(blackRows.rows[0].sourceAliases.size()==1);
-    assert(blackRows.rows[0].sourceAliases[0]==probe.sourceIdentity);
+    assert(blackRows.rows[0].sourceIdentity==probe.sourceIdentity);
+    assert(blackRows.rows[0].sourceAliases[0]==samePhysical.sourceIdentity);
     assert(blackRows.rows[0].claimedProfile=="profile-one");
     assert(blackRows.rows[0].mostRecentlyModified);
     const auto cannotSeeBlack=G::forGameAndProfile(found,bindings,"other-profile","black_nds");
@@ -663,6 +665,7 @@ void persistentCopyAssignmentContracts() {
         const auto saved=bindings.resolveFileForGame(profiles[p],ids[g]);
         assert(saved.binding.sourceVariant==selected[i].sourceVariant);
         assert(saved.binding.physicalIdentity==selected[i].physicalIdentity);
+        assert(saved.binding.contentFingerprint==selected[i].contentFingerprint);
         assert(diskBytes(paths[i])==originals[i]);
     }
     B::LegacySourceBindings reloaded(db);
@@ -751,6 +754,9 @@ void persistentCopyAssignmentContracts() {
         G::SaveCopySelection::Backup,selected[0].contentFingerprint).ready());
     assert(diskBytes(db)==metadata && diskBytes(paths[0])==stale);
     fileFixture(paths[0],originals[0]);
+    // Explicitly select the restored current snapshot before its later move.
+    const auto beforeMove=G::inspectSourceFile(paths[0],providers[0],ids[0],G::SaveCopySelection::Backup);
+    assert(G::assignValidatedSource(bindings,beforeMove,profiles[0],ids[0]).success);
     // Missing paths must not substitute discovered saves. A rename preserves
     // physical ownership, so only the original profile may explicitly relink.
     const std::string moved=dir+"/moved.srm";
@@ -868,6 +874,291 @@ void sourceSelectionFocusContracts() {
     assert(index==0 && scroll==0);
     assert(G::captureSourceFocus(rows,99).physicalIdentity.empty());
     assert(G::captureSourceFocus(rows,-1).physicalIdentity.empty());
+}
+
+void boundedProviderDiscoveryContracts() {
+    char pattern[]="/tmp/pokebank_gen5_provider_budgets_XXXXXX";
+    assert(::mkdtemp(pattern));
+    const std::string dir=pattern;
+    const std::string retro=dir+"/retro",drastic=dir+"/drastic",melon=dir+"/melon";
+    for(const auto& path:{retro,drastic,melon})assert(::mkdir(path.c_str(),0700)==0);
+    const auto invalid=std::vector<uint8_t>(L::FullSaveSize,0);
+    for(int i=0;i<8;++i)fileFixture(retro+"/z_"+std::to_string(i)+".sav",invalid);
+    // Child directories can exhaust a directory budget independently of files.
+    for(int i=0;i<3;++i)assert(::mkdir((retro+"/a_child_"+std::to_string(i)).c_str(),0700)==0);
+    const auto white=dsvFixture(make(G::SaveFamily::BlackWhite,20));
+    const auto white2=make(G::SaveFamily::Black2White2,22);
+    const std::string draPath=drastic+"/white.dsv",melonPath=melon+"/white2.sav";
+    fileFixture(draPath,white);
+    fileFixture(melonPath,white2);
+    std::array<G::DiscoveryRoot,3> roots{{
+        {retro,"RetroArch",0},{drastic,"DraStic",0},{melon,"melonDS",0}}};
+    const auto check=[&](G::DiscoveryLimits limits) {
+        const auto found=G::discoverSources(roots,limits);
+        assert(found.limitReached);
+        assert(found.filesExamined<=limits.maxFiles && found.entriesExamined<=limits.maxEntries);
+        assert(found.directoriesExamined<=limits.maxDirectories);
+        assert(found.rootsExamined==3);
+        bool dra=false,mel=false;
+        for(const auto& row:found.instances) {
+            assert(row.readOnly());
+            dra|=row.ready() && row.gameId=="white_nds" && row.providerLabel=="DraStic";
+            mel|=row.ready() && row.gameId=="white2_nds" && row.providerLabel=="melonDS";
+        }
+        assert(dra && mel); // Earlier provider exhaustion cannot starve later providers.
+    };
+    check({3,64,6}); // File budget.
+    check({32,6,6}); // Directory-entry budget, including unrelated names.
+    roots[0].maxDepth=2;
+    check({32,64,3}); // Visited-directory budget.
+    const std::array<G::DiscoveryRoot,4> duplicates{{roots[0],roots[0],roots[1],roots[2]}};
+    const auto duplicateResult=G::discoverSources(duplicates,{3,64,6});
+    const auto uniqueResult=G::discoverSources(roots,{3,64,6});
+    assert(duplicateResult.rootsExamined==4);
+    assert(duplicateResult.filesExamined==uniqueResult.filesExamined);
+    assert(duplicateResult.directoriesExamined==uniqueResult.directoriesExamined);
+    assert(duplicateResult.instances.size()==2);
+    const auto noFiles=G::discoverSources(roots,{0,64,6});
+    assert(noFiles.filesExamined==0 && noFiles.instances.empty() && noFiles.limitReached);
+    const auto noEntries=G::discoverSources(roots,{32,0,6});
+    assert(noEntries.entriesExamined==0 && noEntries.instances.empty() && noEntries.limitReached);
+    const auto noDirectories=G::discoverSources(roots,{32,64,0});
+    assert(noDirectories.rootsExamined==0 && noDirectories.instances.empty() && noDirectories.limitReached);
+    std::vector<G::DiscoveryRoot> excessive(1000,roots[0]);
+    const auto cappedRoots=G::discoverSources(excessive,{32,64,3});
+    assert(cappedRoots.rootsExamined==3 && cappedRoots.limitReached);
+    assert(cappedRoots.directoriesExamined<=3);
+    assert(diskBytes(draPath)==white && diskBytes(melonPath)==white2);
+    std::filesystem::remove_all(dir);
+    std::cout<<"Gen V provider discovery: fair file/entry/directory budgets and bounded root aliases PASS\n";
+}
+
+void snapshotChoiceAndRememberedAliasContracts() {
+    namespace B=PokeVault::Legacy;
+    namespace S=PokeVault::Source;
+    char pattern[]="/tmp/pokebank_gen5_choice_snapshot_XXXXXX";
+    assert(::mkdtemp(pattern));
+    const std::string dir=pattern,db=dir+"/bindings";
+    B::LegacySourceBindings bindings(db);
+    assert(bindings.load());
+    const std::array<const char*,4> ids{"black_nds","white_nds","black2_nds","white2_nds"};
+    const std::array<uint8_t,4> versions{21,20,23,22};
+    for(size_t g=0;g<ids.size();++g) {
+        const auto family=g<2?G::SaveFamily::BlackWhite:G::SaveFamily::Black2White2;
+        const size_t copySize=g<2?L::BlackWhiteCopySize:L::Black2White2CopySize;
+        auto raw=make(family,versions[g]);
+        auto backup=make(family,versions[g],copySize);
+        backup[copySize+0x19400+6]='Y';
+        if(g<2)stamp(backup,copySize,L::BlackWhite);
+        else stamp(backup,copySize,L::Black2White2);
+        std::copy(backup.begin()+static_cast<std::ptrdiff_t>(copySize),
+            backup.begin()+static_cast<std::ptrdiff_t>(copySize*2),
+            raw.begin()+static_cast<std::ptrdiff_t>(copySize));
+        const std::string suffix=g%2?".dsv":".sav";
+        const std::string path=dir+"/z_manual_"+std::to_string(g)+suffix;
+        const std::string alias=dir+"/a_scanned_"+std::to_string(g)+suffix;
+        auto disk=g%2?dsvFixture(raw):raw;
+        fileFixture(path,disk);
+        assert(::link(path.c_str(),alias.c_str())==0);
+        const auto choices=G::inspectSourceChoices(path,"Manual",ids[g]);
+        assert(choices.size()==2 && choices[0].ready() && choices[1].ready());
+        assert(choices[0].sourceVariant=="gen5-copy-0-primary");
+        assert(choices[1].sourceVariant=="gen5-copy-1-backup");
+        assert(choices[0].physicalIdentity==choices[1].physicalIdentity);
+        assert(choices[0].sourceIdentity==choices[1].sourceIdentity);
+        assert(choices[0].contentFingerprint==choices[1].contentFingerprint);
+        assert(choices[0].containerType==choices[1].containerType);
+        assert(choices[0].fileSize==choices[1].fileSize);
+        assert(choices[0].trainerName=="NX" && choices[1].trainerName=="NY");
+        assert(G::reopenValidatedSource(choices[0]).ready());
+        assert(G::reopenValidatedSource(choices[1]).ready());
+        assert(G::assignValidatedSource(bindings,choices[1],"profile-one",ids[g]).success);
+        auto discovered=G::inspectSourceChoices(alias,"RetroArch",ids[g]);
+        discovered.insert(discovered.end(),choices.begin(),choices.end());
+        const auto catalog=G::forGameAndProfile(discovered,bindings,"profile-one",ids[g]);
+        assert(catalog.rows.size()==2);
+        for(const auto& row:catalog.rows) {
+            assert(row.path()==path && row.label.find("z_manual_")==0);
+            assert(row.providerLabel=="Manual");
+            assert(row.sourceAliases.size()==1);
+            assert(row.rememberedSource==(row.sourceVariant=="gen5-copy-1-backup"));
+        }
+        assert(G::forGameAndProfile(discovered,bindings,"profile-two",ids[g]).rows.empty());
+        const auto wrong=G::inspectSourceChoices(path,"Manual",ids[g^1]);
+        assert(wrong.size()==2);
+        for(const auto& row:wrong)
+            assert(!row.ready() && row.validation==S::ValidationStatus::AssignmentMismatch);
+        const auto metadata=diskBytes(db);
+        assert(!G::assignValidatedSource(bindings,wrong[0],"profile-one",ids[g^1]).success);
+        assert(diskBytes(db)==metadata);
+        // Native payload changes outside either retail copy still invalidate
+        // both selected snapshots, including when a DSV wrapper is present.
+        raw.back()^=0x80;
+        fileFixture(path,g%2?dsvFixture(raw):raw);
+        assert(!G::reopenValidatedSource(choices[0]).ready());
+        assert(!G::reopenValidatedSource(choices[1]).ready());
+        assert(!G::assignValidatedSource(bindings,choices[1],"profile-one",ids[g]).success);
+        assert(diskBytes(db)==metadata);
+        fileFixture(path,disk);
+        // A missing remembered alias cannot substitute another discovered
+        // path. The still-owned physical alias can be explicitly relinked.
+        assert(std::remove(path.c_str())==0);
+        assert(G::openAssignedSource(bindings,"profile-one",ids[g]).status==G::AssignedOpenStatus::Missing);
+        const auto relinkChoices=G::inspectSourceChoices(alias,"RetroArch",ids[g]);
+        const auto relinkRows=G::forGameAndProfile(relinkChoices,bindings,"profile-one",ids[g]);
+        assert(relinkRows.rows.size()==2);
+        for(const auto& row:relinkRows.rows)assert(!row.rememberedSource);
+        assert(!G::assignValidatedSource(bindings,relinkChoices[1],"profile-two",ids[g]).success);
+        assert(G::assignValidatedSource(bindings,relinkChoices[1],"profile-one",ids[g]).success);
+        assert(G::openAssignedSource(bindings,"profile-one",ids[g]).save->selectedBackupPartition());
+        assert(diskBytes(alias)==disk);
+        assert(std::remove(alias.c_str())==0);
+        // A single valid source remains a single pinned choice.
+        const auto single=g%2?dsvFixture(make(family,versions[g])):make(family,versions[g]);
+        fileFixture(path,single);
+        const auto one=G::inspectSourceChoices(path,"Manual",ids[g]);
+        assert(one.size()==1 && one[0].ready() && one[0].sourceVariant=="gen5-copy-0-primary");
+        assert(diskBytes(path)==single);
+        assert(std::remove(path.c_str())==0);
+    }
+    // Deterministically model a deleted source inode being reused. The new
+    // save is parsed by the real reader; only the OLD binding's physical key
+    // is constructed to match the reused allocation, with its old fingerprint.
+    const std::string reusedPath=dir+"/reused.sav";
+    const auto oldRaw=make(G::SaveFamily::BlackWhite,21);
+    const std::string oldPath=dir+"/old.sav";
+    fileFixture(oldPath,oldRaw);
+    const auto old=G::inspectSourceFile(oldPath,"Manual","black_nds");
+    assert(old.ready());
+    assert(std::remove(oldPath.c_str())==0);
+    const auto freshRaw=make(G::SaveFamily::Black2White2,22);
+    fileFixture(reusedPath,freshRaw);
+    const auto fresh=G::inspectSourceFile(reusedPath,"Manual","white2_nds");
+    assert(fresh.ready());
+    B::LegacySourceBindings inodeBindings(dir+"/inode-bindings");
+    assert(inodeBindings.load());
+    B::BindingRecord staleBinding{"old-profile","black_nds",oldPath,"Manual","BW",
+        "gen5-copy-0-primary",fresh.physicalIdentity,old.contentFingerprint};
+    assert(inodeBindings.assignFileAndSave("deleted-source",staleBinding));
+    auto unrelated=fresh;
+    inodeBindings.applyClaims(unrelated);
+    assert(unrelated.claimedProfile.empty() && !unrelated.claimConflict);
+    assert(G::assignValidatedSource(inodeBindings,fresh,"new-profile","white2_nds").success);
+    assert(G::openAssignedSource(inodeBindings,"old-profile","black_nds").status==G::AssignedOpenStatus::Missing);
+    assert(G::openAssignedSource(inodeBindings,"new-profile","white2_nds").ready());
+    assert(diskBytes(reusedPath)==freshRaw);
+    // Same-game inode reuse with DIFFERENT bytes is equally unrelated.
+    auto different=oldRaw;
+    different[0x19400+6]='Y';stamp(different,0,L::BlackWhite);
+    fileFixture(reusedPath,different);
+    const auto freshBlack=G::inspectSourceFile(reusedPath,"Manual","black_nds");
+    B::LegacySourceBindings sameGameBindings(dir+"/same-game-inode");
+    assert(sameGameBindings.load());
+    staleBinding.physicalIdentity=freshBlack.physicalIdentity;
+    assert(sameGameBindings.assignFileAndSave("deleted-black",staleBinding));
+    unrelated=freshBlack;
+    sameGameBindings.applyClaims(unrelated);
+    assert(unrelated.claimedProfile.empty() && unrelated.claimConflict);
+    const auto sameGameMetadata=diskBytes(dir+"/same-game-inode");
+    assert(!G::assignValidatedSource(sameGameBindings,freshBlack,"new-profile","black_nds").success);
+    assert(diskBytes(dir+"/same-game-inode")==sameGameMetadata);
+    const auto unknown=G::forGameAndProfile(std::span(&freshBlack,1),sameGameBindings,"new-profile","black_nds");
+    assert(unknown.rows.empty() && unknown.ambiguousOwnership==1);
+    assert(sameGameBindings.unassignGameAndSave("old-profile","black_nds"));
+    assert(G::assignValidatedSource(sameGameBindings,freshBlack,"new-profile","black_nds").success);
+    // Older eight-column physical claims remain readable and do not acquire
+    // an unrelated generation/title after inode reuse.
+    B::LegacySourceBindings eightColumn(dir+"/old-eight-column");
+    assert(eightColumn.load());
+    staleBinding.contentFingerprint.clear();
+    assert(eightColumn.assignFileAndSave("old-eight",staleBinding));
+    fileFixture(reusedPath,freshRaw);
+    unrelated=G::inspectSourceFile(reusedPath,"Manual","white2_nds");
+    eightColumn.applyClaims(unrelated);
+    assert(unrelated.claimedProfile.empty() && !unrelated.claimConflict);
+    assert(eightColumn.load());
+    assert(eightColumn.resolveFileForGame("old-profile","black_nds").binding.contentFingerprint.empty());
+    const auto missing=G::inspectSourceChoices(dir+"/absent.sav","Manual","black_nds");
+    assert(missing.size()==1 && !missing[0].ready());
+    const auto invalidPath=dir+"/bad.dsv";
+    fileFixture(invalidPath,std::vector<uint8_t>(L::FullSaveSize+41,0));
+    const auto wrapper=G::inspectSourceChoices(invalidPath,"DraStic","black_nds");
+    assert(wrapper.size()==1 && !wrapper[0].ready());
+    assert(wrapper[0].validation==S::ValidationStatus::Unsupported);
+    std::filesystem::remove_all(dir);
+    std::cout<<"Gen V snapshot choices: 4 titles, raw/DSV, remembered path/provider and explicit alias relink PASS\n";
+}
+
+void gen5ProfileFocusAndSdOwnershipContracts() {
+    namespace B=PokeVault::Legacy;
+    G::ProfileGameFocus focus;
+    assert(focus.gameFor("profile-one").empty());
+    focus.remember("profile-one","black_nds");
+    focus.remember("profile-two","white2_nds");
+    assert(focus.gameFor("profile-one")=="black_nds");
+    assert(focus.gameFor("profile-two")=="white2_nds");
+    focus.remember("profile-one","black2_nds");
+    assert(focus.gameFor("profile-one")=="black2_nds");
+    assert(focus.gameFor("profile-two")=="white2_nds");
+    focus.remember("profile-two","firered_gba");
+    assert(focus.gameFor("profile-two").empty()); // Preserve earlier-gen reset semantics.
+    focus.remember("","white_nds");
+    assert(focus.gameFor("").empty());
+    const auto offline=std::string(32,'0');
+    focus.remember(offline,"white_nds");
+    assert(focus.gameFor(offline)=="white_nds");
+    assert(focus.gameFor("profile-one")=="black2_nds");
+    assert(G::sameSdOwnershipPath("sdmc:/switch/MELONDS/Black.SAV",
+                                  "SDMC:/SWITCH/melonds/./folder/../black.sav"));
+    assert(G::sameSdOwnershipPath("sdmc:/switch/black.sav","sdmc:\\switch\\black.sav"));
+    assert(!G::sameSdOwnershipPath("/tmp/BLACK.SAV","/tmp/black.sav"));
+    assert(G::sdOwnershipPath("sdmc:/../outside.sav").empty());
+    assert(G::sdOwnershipPath(std::string("sdmc:/bad\0.sav",15)).empty());
+    std::vector<uint8_t> rejectedBytes;
+    std::string rejectedDiagnostic;
+    assert(!G::readNormalizedSourceReadOnly("sdmc:/../outside.sav",rejectedBytes,rejectedDiagnostic));
+    assert(rejectedBytes.empty() && rejectedDiagnostic.find("unsupported source path")!=std::string::npos);
+    assert(!G::readNormalizedSourceReadOnly(std::string("sdmc:/bad\0.sav",15),rejectedBytes,rejectedDiagnostic));
+    assert(rejectedBytes.empty());
+    char pattern[]="/tmp/pokebank_gen5_sd_ownership_XXXXXX";
+    assert(::mkdtemp(pattern));
+    const std::string dir=pattern;
+    B::LegacySourceBindings bindings(dir+"/bindings");
+    assert(bindings.load());
+    const std::array<const char*,4> ids{"black_nds","white_nds","black2_nds","white2_nds"};
+    for(size_t i=0;i<ids.size();++i) {
+        const auto path="sdmc:/switch/MELONDS/Save"+std::to_string(i)+".SAV";
+        assert(bindings.assignFileAndSave("sd-source-"+std::to_string(i),
+            {"profile-one",ids[i],path,"melonDS",i<2?"BW":"B2W2"}));
+        PokeVault::Source::SaveInstance candidate;
+        candidate.gameId=ids[i];
+        candidate.sourceIdentity="different-case-identity-"+std::to_string(i);
+        candidate.sourcePath="sdmc:/SWITCH/melonds/unused/../save"+std::to_string(i)+".sav";
+        // Explicit model of FAT/devoptab with no usable inode: profile claims
+        // must not depend on POSIX stat or a case-sensitive source hash.
+        bindings.applyClaims(candidate);
+        assert(candidate.claimedProfile=="profile-one" && !candidate.claimConflict);
+        const auto metadata=diskBytes(dir+"/bindings");
+        assert(!bindings.replaceFileAssignmentAndSave(candidate.sourceIdentity,
+            {"profile-two",ids[i],candidate.sourcePath,"Manual",i<2?"BW":"B2W2"}));
+        assert(diskBytes(dir+"/bindings")==metadata);
+        candidate.gameId=ids[i^1];
+        bindings.applyClaims(candidate);
+        assert(candidate.claimConflict);
+    }
+    // Metadata .tmp/.bak aliases on the Switch SD mount must be rejected
+    // before any persistence I/O, even when stat has no usable identity.
+    B::LegacySourceBindings virtualSd("sdmc:/switch/PokeBank-NX/Bindings.cfg");
+    for(const std::string suffix:{"",".tmp",".bak"}) {
+        B::BindingRecord binding{"profile-one","black_nds",
+            "sdmc:/SWITCH/pokebank-nx/./bindings.CFG"+suffix,"Manual","BW"};
+        assert(!virtualSd.assignFileAndSave("sd-alias",binding));
+        assert(virtualSd.lastError().find("assignment-aliases-metadata")!=std::string::npos);
+        assert(!virtualSd.replaceFileAssignmentAndSave("sd-alias",binding));
+        assert(virtualSd.size()==0);
+    }
+    std::filesystem::remove_all(dir);
+    std::cout<<"Gen V profile focus and SD ASCII case/dot alias ownership model PASS\n";
 }
 
 int main() {
@@ -1747,5 +2038,8 @@ int main() {
     fourTitleProfileAssignmentContracts();
     persistentCopyAssignmentContracts();
     sourceSelectionFocusContracts();
+    boundedProviderDiscoveryContracts();
+    snapshotChoiceAndRememberedAliasContracts();
+    gen5ProfileFocusAndSdOwnershipContracts();
     std::cout<<"Gen V strict BW/B2W2 save reader synthetic contracts PASS\n";
 }

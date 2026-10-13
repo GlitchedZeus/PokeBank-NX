@@ -2,11 +2,29 @@
 #define POKEBANK_GEN5_SOURCE_SELECTION_H
 
 #include "Source/SaveInstance.h"
+#include "Integration/Gen5/Gen5SaveInstanceAdapter.h"
 #include <algorithm>
 #include <span>
 #include <string>
+#include <unordered_map>
 
 namespace PokeVault::Integration::Gen5 {
+// Remember navigation only for profiles whose last focused game was Gen V.
+// No disk writes, trainer inference or source-open authority belongs here.
+class ProfileGameFocus {
+public:
+    void remember(std::string_view profile,std::string_view game) {
+        if(profile.empty())return;
+        if(isExactGen5Id(game))games_[std::string(profile)]=game;
+        else games_.erase(std::string(profile));
+    }
+    [[nodiscard]] std::string gameFor(std::string_view profile) const {
+        const auto found=games_.find(std::string(profile));
+        return found==games_.end()?std::string():found->second;
+    }
+private:
+    std::unordered_map<std::string,std::string> games_;
+};
 // UI focus only, never authorization to open cached source bytes.
 struct SourceSelectionFocus {
     std::string gameId;

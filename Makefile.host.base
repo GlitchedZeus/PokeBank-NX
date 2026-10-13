@@ -393,13 +393,13 @@ $(HOST_BUILD)/test_legacy_frlg_browse_sanitize: $(LEGACY_FRLG_BROWSE_SOURCES) $(
 	$(CXX) $(CXXFLAGS) $(LEGACY_FRLG_BROWSE_FLAGS) $(SANITIZE_FLAGS) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude \
 		$(LEGACY_FRLG_BROWSE_SOURCES) -o $@
 
-$(HOST_BUILD)/test_legacy_source_bindings: tests/test_legacy_source_bindings.cpp src/Legacy/LegacySourceBindings.cpp
+$(HOST_BUILD)/test_legacy_source_bindings: tests/test_legacy_source_bindings.cpp src/Legacy/LegacySourceBindings.cpp include/Legacy/LegacySourceBindings.h include/Integration/Gen5/Gen5SourcePathIdentity.h
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+	$(CXX) $(CXXFLAGS) -Iinclude $(filter %.cpp,$^) -o $@
 
-$(HOST_BUILD)/test_legacy_source_bindings_sanitize: tests/test_legacy_source_bindings.cpp src/Legacy/LegacySourceBindings.cpp
+$(HOST_BUILD)/test_legacy_source_bindings_sanitize: tests/test_legacy_source_bindings.cpp src/Legacy/LegacySourceBindings.cpp include/Legacy/LegacySourceBindings.h include/Integration/Gen5/Gen5SourcePathIdentity.h
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(filter %.cpp,$^) -o $@
 
 $(HOST_BUILD)/test_rby_gen1_adapter: $(GEN1_ADAPTER_SOURCES) $(PKSM_CORE_OBJECT)
 	@mkdir -p $(HOST_BUILD)
