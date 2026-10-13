@@ -73,7 +73,7 @@ int main(){
         assert(A::evaluate(p,x).status==A::Status::SourceCapacityUnknown);++tests;
         x=input;x.count=0;
         assert(A::evaluate(p,x).status==A::Status::NoOriginalRoutes);++tests;
-        x=input;x.routes[0].history.allOriginalStatExpEventsIndependentlyEnumerated=false;
+        x=input;x.routes[0].history.events[0].originalVitaminItemIndependentlyAttested=false;
         r=A::evaluate(p,x);
         assert(r.status==A::Status::OneSupportedOriginalHistory);
         assert(r.unknown==1 && r.supported==1);tests+=2;
