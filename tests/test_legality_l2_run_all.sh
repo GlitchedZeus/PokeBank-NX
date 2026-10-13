@@ -59,6 +59,8 @@ tests=(
     test_legality_l2_gen1_native_record_adversarial
     test_legality_l2_gen1_native_exp_growth
     test_legality_l2_gen1_original_stat_exp_battles
+    test_legality_l2_gen1_divided_battle_vitamins
+    test_legality_l2_gen1_stat_exp_alternative_routes
     test_legality_l2_gen1_stat_exp_math_boundaries
     test_legality_l2_dp_alternative_egg_histories
     test_legality_l2_dp_move_stage
@@ -117,7 +119,9 @@ for test in "${tests[@]}"; do
             "$root/src/Integration/Gen1/Gen1ReadOnlySave.cpp"
         )
     fi
-    if [[ "$test" == test_legality_l2_gen1_original_stat_exp_battles ]]; then
+    if [[ "$test" == test_legality_l2_gen1_original_stat_exp_battles ||
+          "$test" == test_legality_l2_gen1_divided_battle_vitamins ||
+          "$test" == test_legality_l2_gen1_stat_exp_alternative_routes ]]; then
         sources+=(
             "$root/src/Legality/Gen1OriginalStatExpBattleHistory.cpp"
             "$root/src/Integration/Gen1/Gen1ReadOnlySave.cpp"

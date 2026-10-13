@@ -74,6 +74,7 @@ suites=(
   test_legality_l1_gen1_pret_wild_roll
   test_legality_l1_gen1_pret_slot_weights
   test_legality_l1_gen1_pret_fishing_roll
+  test_legality_l1_gen1_pret_trade_metadata
 )
 profiles=(host sanitize)
 if [[ -n "${L1_PROFILE:-}" ]]; then

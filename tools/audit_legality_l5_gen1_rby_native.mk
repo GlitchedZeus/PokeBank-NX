@@ -53,3 +53,22 @@ l5-gen1-all151: $(L5_G1_ALLDEX_NORMAL)
 	./$(L5_G1_ALLDEX_NORMAL)
 l5-gen1-all151-san: $(L5_G1_ALLDEX_SAN)
 	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 ./$(L5_G1_ALLDEX_SAN)
+
+# L5 end-to-end synthetic native saved-byte path (not retail provenance).
+# Production target MUST invoke the genuine Gen1ReadOnlySave::parse and
+# Pokemon1ReadOnly -> Legality::analyze; independent generator has no linkage.
+L5_G1_PIPELINE_CPP := ../tests/fixtures/legality_l5_gen1_rby_real_save_pipeline.cpp
+L5_G1_PIPELINE_GRAPH := $(L5_G1_ALLDEX_GRAPH)
+L5_G1_PIPELINE_BUILD := $(HOST_BUILD)/l5_gen1_real_save_pipeline
+L5_G1_PIPELINE_SAN_BUILD := $(HOST_BUILD)/l5_gen1_real_save_pipeline_san
+.PHONY: l5-gen1-real-save-pipeline l5-gen1-real-save-pipeline-san
+$(L5_G1_PIPELINE_BUILD): $(L5_G1_PIPELINE_CPP) $(L5_G1_PIPELINE_GRAPH)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(L5_G1_PIPELINE_CPP) $(L5_G1_PIPELINE_GRAPH) -o $@
+$(L5_G1_PIPELINE_SAN_BUILD): $(L5_G1_PIPELINE_CPP) $(L5_G1_PIPELINE_GRAPH)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(L5_G1_PIPELINE_CPP) $(L5_G1_PIPELINE_GRAPH) -o $@
+l5-gen1-real-save-pipeline: $(L5_G1_PIPELINE_BUILD)
+	./$(L5_G1_PIPELINE_BUILD)
+l5-gen1-real-save-pipeline-san: $(L5_G1_PIPELINE_SAN_BUILD)
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 ./$(L5_G1_PIPELINE_SAN_BUILD)

@@ -25,11 +25,15 @@ suites=(
   tests/test_legality_l1_gen1_pret_wild_roll.cpp
   tests/test_legality_l1_gen1_pret_slot_weights.cpp
   tests/test_legality_l1_gen1_pret_fishing_roll.cpp
+  tests/test_legality_l1_gen1_pret_trade_metadata.cpp
   tests/test_legality_l3_gen1_rby_original_joint.cpp
+  tests/test_legality_l3_gen1_retail_catalog.cpp
+  tests/test_legality_l3_gen1_all_species_joint.cpp
   tests/fixtures/legality_l4_gen1_preflight.cpp
   tests/fixtures/legality_l4_gen1_npc_metadata.cpp
   tests/fixtures/legality_l4_gen1_individual_chain.cpp
   tests/fixtures/legality_l4_gen1_original_native.cpp
+  tests/fixtures/legality_l4_gen1_raw_record_witness.cpp
   tests/fixtures/legality_l5_gen1_rby_vector_integrity.cpp
 )
 for source in "${suites[@]}"; do

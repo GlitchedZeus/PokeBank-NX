@@ -132,6 +132,49 @@ int main(){
       negative+=3;
     }
  }
+ // Original Yellow trade slot 9 Cubone -> Machoke can immediately
+ // evolve into Machamp. The source ROM row is NOT a false contradiction
+ // if original receipt, level and post-trade evolution are independently
+ // attested. Without this chronology its outcome stays Unknown.
+ H::PretTradeCandidate machamp{};
+ machamp.originalGame="yellow_gb";machamp.originalOfferIndex=9;
+ machamp.requestedSpecies=104;machamp.receivedSpecies=68;
+ machamp.originalGameIndependentlyAttested=true;
+ machamp.originalOfferIndexIndependentlyAttested=true;
+ machamp.originalRequestedSpeciesIndependentlyAttested=true;
+ machamp.originalReceivedSpeciesIndependentlyAttested=true;
+ machamp.originalNpcTrainerIndependentlyAttested=true;
+ machamp.originalTransactionIndependentlyAttested=true;
+ machamp.originalSubmittedLevel=35;machamp.originalReceivedLevel=35;
+ machamp.originalSubmittedLevelIndependentlyAttested=true;
+ machamp.originalReceivedLevelIndependentlyAttested=true;
+ assert(H::evaluatePretNpcTrade(machamp).status==
+        Status::UnknownOriginalPostTradeEvolution);
+ ++unknown;
+ machamp.originalPostTradeEvolutionIndependentlyAttested=true;
+ machamp.originalPostTradeEvolutionCompleted=true;
+ assert(H::evaluatePretNpcTrade(machamp).status==
+        Status::ConditionalPretNpcTradeOfferOnly);
+ ++compatible;
+ machamp.originalPostTradeEvolutionCompleted=false;
+ assert(H::evaluatePretNpcTrade(machamp).status==
+        Status::CandidateOriginalSpeciesContradicted);
+ ++negative;
+ auto meta=Legality::Gen1PretTradeMetadataStage::Witness{};
+ meta.originalGame="yellow_gb";meta.originalOfferIndex=9;
+ meta.originalReceivedNickname="RICKY";meta.originalReceivedOT="<TRAINER>";
+ meta.originalPostTradeSpecies=68;
+ meta.originalGameAttested=meta.sourceRowAttested=true;
+ meta.originalNicknameAttested=meta.originalTrainerNameAttested=true;
+ meta.originalPostTradeSpeciesAttested=true;
+ assert(H::evaluatePretNpcTradeMetadata(meta).status==
+        Legality::Gen1PretTradeMetadataStage::Status::UnknownOriginalPostTradeEvolution);
+ ++unknown;
+ meta.originalPostTradeEvolutionAttested=true;
+ meta.originalTradeEvolutionCompleted=true;
+ assert(H::evaluatePretNpcTradeMetadata(meta).status==
+        Legality::Gen1PretTradeMetadataStage::Status::ConditionalOriginalNpcMetadataOnly);
+ ++compatible;
  // Unused Yellow Mew-for-Mew, Butterfree, Pidgeot offer slots are
  // explicitly not obtainable. They must never become positive simply
  // because the submitted species and source row match their ROM entries.

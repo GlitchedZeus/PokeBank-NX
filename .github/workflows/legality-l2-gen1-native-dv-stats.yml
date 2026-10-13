@@ -42,6 +42,8 @@ jobs:
             tests/test_legality_l2_gen1_native_record_adversarial.cpp
             tests/test_legality_l2_gen1_native_exp_growth.cpp
             tests/test_legality_l2_gen1_original_stat_exp_battles.cpp
+            tests/test_legality_l2_gen1_divided_battle_vitamins.cpp
+            tests/test_legality_l2_gen1_stat_exp_alternative_routes.cpp
             tests/test_legality_l2_gen1_stat_exp_math_boundaries.cpp
             tests/test_gen1_battle_stats.cpp
           )
@@ -64,14 +66,15 @@ jobs:
             for file in "${tests[@]}"; do
               bin="$tmp/$(basename "$file" .cpp)-$mode"
               inputs=("$file" "${sources[@]}")
-              if [[ "$file" == tests/test_legality_l2_gen1_stat_exp_math_boundaries.cpp ]]; then
-                :
-              fi
-              if [[ "$file" == tests/test_legality_l2_gen1_original_stat_exp_battles.cpp ]]; then
+              if [[ "$file" == tests/test_legality_l2_gen1_original_stat_exp_battles.cpp ||
+                    "$file" == tests/test_legality_l2_gen1_divided_battle_vitamins.cpp ||
+                    "$file" == tests/test_legality_l2_gen1_stat_exp_alternative_routes.cpp ]]; then
                 inputs+=(src/Legality/Gen1OriginalStatExpBattleHistory.cpp)
               fi
               if [[ "$file" != tests/test_gen1_battle_stats.cpp &&
                     "$file" != tests/test_legality_l2_gen1_original_stat_exp_battles.cpp &&
+                    "$file" != tests/test_legality_l2_gen1_divided_battle_vitamins.cpp &&
+                    "$file" != tests/test_legality_l2_gen1_stat_exp_alternative_routes.cpp &&
                     "$file" != tests/test_legality_l2_gen1_stat_exp_math_boundaries.cpp ]]; then
                 inputs+=(src/Legality/Gen1NativeDVStatEvidence.cpp
                          src/Legality/Gen1NativeExperienceEvidence.cpp)

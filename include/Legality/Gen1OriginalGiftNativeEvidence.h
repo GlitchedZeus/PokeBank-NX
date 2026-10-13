@@ -7,6 +7,7 @@
 #include "Legality/Gen1OriginalGiftNativePreflight.h"
 #include "Legality/Gen1OriginalNPCTradeMetadata.h"
 #include "Legality/Gen1OriginalIndividualEvidence.h"
+#include "Legality/Gen1NativeRawRecordWitness.h"
 #include <array>
 #include <cstdint>
 #include <span>
@@ -83,7 +84,9 @@ constexpr Result evaluate(const NativeRecord& native,bool independentlyValidated
     const Source& source) noexcept {
     Result result{};
     if(!independentlyValidated ||
-       !Gen1OriginalGiftNativePreflight::bounded(native.species,native.level,native.moves,native.dvs,native.ppUps))
+       !Gen1OriginalGiftNativePreflight::bounded(native.species,native.level,native.moves,native.dvs,native.ppUps) ||
+       Gen1NativeRawRecordWitness::evaluate(native).status!=
+           Gen1NativeRawRecordWitness::Status::Consistent)
         return result;
     const auto& hypothesis=source.hypothesis;
     const auto& row=hypothesis.original;
