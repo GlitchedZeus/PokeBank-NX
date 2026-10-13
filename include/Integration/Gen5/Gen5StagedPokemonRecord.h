@@ -5,6 +5,7 @@
 #include "Integration/Gen5/Gen5MovePP.h"
 #include "Integration/Gen5/Gen5EncounterLocations.h"
 #include "Integration/Gen5/Gen5PersonalData.h"
+#include "Integration/Gen5/Gen5Progression.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -23,7 +24,7 @@ class StagedPokemon5Record {
 public:
     enum class Field : uint8_t { Nature, Friendship, IV, EV, HeldItem, Ball, MetLevel,
                                 Move, MovePP, MovePPUps, TrainerId, SecretId, OriginalTrainerGender,
-                                Pokerus, MetLocation, FatefulEncounter, Form, AbilitySlot, Gender };
+                                Pokerus, MetLocation, FatefulEncounter, Form, AbilitySlot, Gender, Level, Experience };
 
     static std::optional<StagedPokemon5Record> create(
         std::span<const uint8_t> source, std::string* error = nullptr,
@@ -54,7 +55,8 @@ public:
             if (error) *error = msg;
             return false;
         };
-        std::vector<uint8_t> candidate = Crypto::decrypt(staged_);
+        const std::vector<uint8_t> previous=Crypto::decrypt(staged_);
+        std::vector<uint8_t> candidate=previous;
         if (!Crypto::recordSizeValid(candidate.size()))
             return fail("Gen V staged source has invalid PK5 size");
 
@@ -72,16 +74,8 @@ public:
                 if(!personal || !next)
                     return fail("Gen V form does not exist in this exact BW/B2W2 title");
                 if(value==sourceForm)break;
-                // Party extensions cache battle stats. Don't change base
-                // stats until per-generation party regeneration is built.
-                if(candidate.size()==Crypto::PartySize &&
-                   (personal.info->hp!=next.info->hp ||
-                    personal.info->atk!=next.info->atk ||
-                    personal.info->def!=next.info->def ||
-                    personal.info->spe!=next.info->spe ||
-                    personal.info->spa!=next.info->spa ||
-                    personal.info->spd!=next.info->spd))
-                    return fail("Gen V party form changes requiring stat regeneration are locked");
+                // Party battle stats are regenerated after the native identity
+                // transaction, using the target form's exact personal record.
                 const uint8_t currentSlot=(candidate[0x42]&1)?2:
                     static_cast<uint8_t>((Crypto::read32(candidate,0)>>16)&1);
                 const uint8_t chosen=abilityForSlot5(*next.info,currentSlot);
@@ -139,6 +133,30 @@ public:
                     (candidate[0x40]&~uint8_t{6}) | (value<<1));
                 break;
             }
+            case Field::Level:
+                if(stat!=0 || value<1 || value>100 || !personal ||
+                   personal.info->growthRate>5)
+                    return fail("Gen V level requires exact personal growth and 1..100");
+                if(Crypto::read32(candidate,0x10)==
+                   experienceForLevel5(personal.info->growthRate,value))
+                    break;
+                Crypto::write16(candidate,0x10,static_cast<uint16_t>(
+                    experienceForLevel5(personal.info->growthRate,value)));
+                Crypto::write16(candidate,0x12,static_cast<uint16_t>(
+                    experienceForLevel5(personal.info->growthRate,value)>>16));
+                if(candidate.size()==Crypto::PartySize)
+                    candidate[0x8C]=static_cast<uint8_t>(value);
+                break;
+            case Field::Experience:
+                if(stat!=0 || !personal || personal.info->growthRate>5 ||
+                   value>experienceForLevel5(personal.info->growthRate,100))
+                    return fail("Gen V EXP exceeds this species' native level-100 limit");
+                if(Crypto::read32(candidate,0x10)==value)break;
+                Crypto::write16(candidate,0x10,static_cast<uint16_t>(value));
+                Crypto::write16(candidate,0x12,static_cast<uint16_t>(value>>16));
+                if(candidate.size()==Crypto::PartySize)
+                    candidate[0x8C]=levelForExperience5(personal.info->growthRate,value);
+                break;
             case Field::Nature:
                 if (stat != 0 || value > 24)
                     return fail("Gen V nature index must be in [0,24]");
@@ -284,6 +302,16 @@ public:
                 // never be accepted as a valid native PK5 field transaction.
                 return fail("Gen V staged editor field is unsupported");
         }
+
+        // Stat-dependent native edits must never leave stale party battle
+        // caches: HP/current HP, stats and level are part of the PK5 extension.
+        // Recalculate only when a meaningful stat-related byte changed.
+        const bool statEdit=field==Field::Nature || field==Field::IV ||
+            field==Field::EV || field==Field::Form ||
+            field==Field::Level || field==Field::Experience;
+        if(statEdit && candidate.size()==Crypto::PartySize &&
+           candidate!=previous && !regeneratePartyStats5(candidate,Crypto::decrypt(original_),black2White2_))
+            return fail("Gen V party battle statistics cannot be safely regenerated");
 
         const auto encrypted = Crypto::encryptCandidate(candidate);
         const Pokemon5ReadOnly strict(encrypted);

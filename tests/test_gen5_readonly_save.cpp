@@ -682,6 +682,8 @@ int main() {
         assert(G::fieldAccess(GF::HeldItem)==GAccess::Editable);
         assert(G::fieldAccess(GF::Ball)==GAccess::Editable);
         assert(G::fieldAccess(GF::MetLevel)==GAccess::Editable);
+        assert(G::fieldAccess(GF::Level)==GAccess::Editable);
+        assert(G::fieldAccess(GF::Experience)==GAccess::Editable);
         assert(G::fieldAccess(GF::Ability)==GAccess::Editable);
         assert(G::fieldAccess(GF::Form)==GAccess::Editable);
         assert(G::fieldAccess(GF::Gender)==GAccess::Editable);
@@ -689,7 +691,7 @@ int main() {
         assert(G::fieldAccess(GF::Move)==GAccess::Editable);
         assert(G::fieldAccess(GF::MovePP)==GAccess::Editable);
         assert(G::fieldAccess(GF::MovePPUps)==GAccess::Editable);
-        static_assert(G::Gen5SharedScreenState::kEditableRows.size()==38);
+        static_assert(G::Gen5SharedScreenState::kEditableRows.size()==40);
         assert(G::fieldAccess(GF::TrainerId)==GAccess::Editable);
         assert(G::fieldAccess(GF::SecretId)==GAccess::Editable);
         assert(G::fieldAccess(GF::OriginalTrainerGender)==GAccess::Editable);
@@ -743,6 +745,8 @@ int main() {
         assert(ui.activateSelected(localUiWorkspace,error));
         assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
         const auto& rows=G::Gen5SharedScreenState::kEditableRows;
+        assert(rows[38].field==GF::Level &&
+               rows[39].field==GF::Experience);
         assert(rows[2].field==GF::HeldItem && rows[3].field==GF::Ball);
         assert(rows[4].field==GF::MetLevel);
         ui.moveField(2);

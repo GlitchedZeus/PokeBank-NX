@@ -6,7 +6,8 @@ GEN5_PK5_INPUTS := tests/test_gen5_pk5_readonly.cpp \
     include/Integration/Gen5/Gen5StagedPokemonRecord.h \
     include/Integration/Gen5/Gen5MovePP.h \
     include/Integration/Gen5/Gen5EncounterLocations.h \
-    include/Integration/Gen5/Gen5PersonalData.h
+    include/Integration/Gen5/Gen5PersonalData.h \
+    include/Integration/Gen5/Gen5Progression.h
 
 HOST_TESTS += $(GEN5_PK5_TEST)
 HOST_SANITIZE_TESTS += $(GEN5_PK5_SANITIZE)

@@ -71,6 +71,22 @@ struct VerifiedSlotReview {
        !apply(Field::Pokerus,0,before.pokerusMode(),after.pokerusMode()) ||
        !apply(Field::MetLocation,0,before.metLocation(),after.metLocation()))
         return std::nullopt;
+    // EXP and Level form a single native transaction. Use Level only for
+    // exact growth-curve thresholds, otherwise replay raw bounded EXP.
+    if(before.experience()!=after.experience()) {
+        const auto personal=personal5(after.species(),after.form(),change.black2White2);
+        if(!personal)return fail("Gen V review lacks exact EXP growth data");
+        const uint8_t level=after.partyRecord()?after.partyLevel():
+            levelForExperience5(personal.info->growthRate,after.experience());
+        const bool exact=level>=1 && level<=100 &&
+            after.experience()==experienceForLevel5(personal.info->growthRate,level);
+        if(!apply(exact?Field::Level:Field::Experience,0,
+                  exact?(before.partyRecord()?before.partyLevel():
+                    levelForExperience5(personal.info->growthRate,before.experience()))
+                       :before.experience(),
+                  exact?level:after.experience()))
+            return std::nullopt;
+    }
     if(!apply(Field::Form,0,before.form(),after.form()))
         return std::nullopt;
     const auto slot5=[](const Pokemon5ReadOnly& p)->uint32_t {

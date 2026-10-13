@@ -360,6 +360,8 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
         // mutations with deterministic replay and original-SAV protection.
         // Coupled moves, ability/form and party-stat updates stay locked.
         switch (field) {
+            case FieldIdentity::Level:
+            case FieldIdentity::Experience:
             case FieldIdentity::Friendship:
             case FieldIdentity::IV:
             case FieldIdentity::EV:
@@ -384,8 +386,6 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::Nickname:
             case FieldIdentity::Shiny:
             case FieldIdentity::Language:
-            case FieldIdentity::Level:
-            case FieldIdentity::Experience:
             case FieldIdentity::CalculatedStats:
             case FieldIdentity::PersonalityId:
             case FieldIdentity::OriginGame:

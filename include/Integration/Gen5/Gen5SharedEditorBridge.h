@@ -87,6 +87,10 @@ struct SharedEditorSlot {
     switch(field) {
         case Shared::FieldIdentity::Nature:
             return session.stage(NativeField::Nature,stat,value,error);
+        case Shared::FieldIdentity::Level:
+            return session.stage(NativeField::Level,stat,value,error);
+        case Shared::FieldIdentity::Experience:
+            return session.stage(NativeField::Experience,stat,value,error);
         case Shared::FieldIdentity::Friendship:
             return session.stage(NativeField::Friendship,stat,value,error);
         case Shared::FieldIdentity::IV:

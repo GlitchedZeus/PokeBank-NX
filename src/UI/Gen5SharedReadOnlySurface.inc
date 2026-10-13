@@ -115,6 +115,8 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                    field==ScreenState::Field::MetLocation ||
                    field==ScreenState::Field::TrainerId ||
                    field==ScreenState::Field::SecretId ||
+                   field==ScreenState::Field::Level ||
+                   field==ScreenState::Field::Experience ||
                    field==ScreenState::Field::Ability ||
                    field==ScreenState::Field::Form ||
                    field==ScreenState::Field::Gender)
@@ -209,21 +211,39 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                         std::string error;
                         if(!state.openIdentityPicker(error))screen.postStatus(error,300);
                     } else if(row.field==ScreenState::Field::TrainerId ||
-                              row.field==ScreenState::Field::SecretId) {
+                              row.field==ScreenState::Field::SecretId ||
+                              row.field==ScreenState::Field::Level ||
+                              row.field==ScreenState::Field::Experience) {
                         const auto current=state.draft().current();
                         if(current) {
-                            const auto old=ScreenState::fieldValue(*current,row);
+                            const auto old=ScreenState::fieldValue(*current,row,state.black2White2());
+                            const bool expField=row.field==ScreenState::Field::Experience;
+                            const auto info=PokeVault::Integration::Gen5::personal5(
+                                current->species(),current->form(),state.black2White2());
+                            if((expField || row.field==ScreenState::Field::Level) && !info) {
+                                screen.postStatus("Missing BW/B2W2 experience growth data",300);
+                                return true;
+                            }
+                            const int maximum=expField?static_cast<int>(
+                                PokeVault::Integration::Gen5::experienceForLevel5(
+                                    info.info->growthRate,100)):
+                                row.field==ScreenState::Field::Level?100:65535;
+                            const char* label=row.field==ScreenState::Field::TrainerId
+                                ? "Generation V Trainer ID":
+                                row.field==ScreenState::Field::SecretId
+                                ? "Generation V Secret ID":
+                                row.field==ScreenState::Field::Level
+                                ? "Generation V Level":"Generation V Experience";
                             const auto result=Utils::promptNumber(
-                                row.field==ScreenState::Field::TrainerId
-                                    ? "Generation V Trainer ID" : "Generation V Secret ID",
-                                static_cast<int>(old),0,65535);
+                                label,static_cast<int>(old),
+                                row.field==ScreenState::Field::Level?1:0,maximum);
                             if(result.accepted) {
                                 std::string error;
                                 if(!state.stageFieldValue(
                                       static_cast<uint32_t>(result.value),error))
                                     screen.postStatus(error,300);
                                 else screen.postStatus(
-                                    "TID/SID changed in draft; shiny status may change",260);
+                                    "Gen V value changed in local draft; source unchanged",260);
                             }
                             screen.controllerNavigation.reset();
                         }
@@ -513,6 +533,8 @@ std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedField
     std::string name;
     switch(c.field) {
         case Field::Nature:name="Nature";break;
+        case Field::Level:name="Level";break;
+        case Field::Experience:name="Experience";break;
         case Field::Friendship:name="Friendship";break;
         case Field::IV:name=std::string("IV ")+reviewedStatName(c.stat);break;
         case Field::EV:name=std::string("EV ")+reviewedStatName(c.stat);break;
@@ -628,6 +650,8 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
            row.field!=ScreenState::Field::MetLocation &&
            row.field!=ScreenState::Field::TrainerId &&
            row.field!=ScreenState::Field::SecretId &&
+           row.field!=ScreenState::Field::Level &&
+           row.field!=ScreenState::Field::Experience &&
            row.field!=ScreenState::Field::Ability &&
            row.field!=ScreenState::Field::Form &&
            row.field!=ScreenState::Field::Gender) {
@@ -636,7 +660,7 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
             screen.touchButtons.push_back(
                 {kGen5IncreaseTouchBase+static_cast<int>(index),x+418,yy+3,36,40});
         }
-        std::string value=std::to_string(ScreenState::fieldValue(*current,row));
+        std::string value=std::to_string(ScreenState::fieldValue(*current,row,state.black2White2()));
         if(row.field==ScreenState::Field::Pokerus)
             value=current->pokerusMode()==0?"None":
                   current->pokerusMode()==1?"Cured":"Infected";
@@ -649,12 +673,16 @@ void drawEdit(TrainerViewScreen& screen,PKSEFramebuffer& fb,
            row.field==ScreenState::Field::MetLocation ||
            row.field==ScreenState::Field::TrainerId ||
            row.field==ScreenState::Field::SecretId ||
+           row.field==ScreenState::Field::Level ||
+           row.field==ScreenState::Field::Experience ||
            row.field==ScreenState::Field::Ability ||
            row.field==ScreenState::Field::Form ||
            row.field==ScreenState::Field::Gender) {
             fb.drawText(x+315,yy+11,
                 row.field==ScreenState::Field::TrainerId ||
-                row.field==ScreenState::Field::SecretId?"A Edit":"A Pick",
+                row.field==ScreenState::Field::SecretId ||
+                row.field==ScreenState::Field::Level ||
+                row.field==ScreenState::Field::Experience?"A Edit":"A Pick",
                 Colors::Accent,TextStyle::Body);
             fb.drawText(x+398,yy+11,value,Colors::Text,TextStyle::Body);
         } else {

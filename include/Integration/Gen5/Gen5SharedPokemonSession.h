@@ -136,6 +136,19 @@ public:
         // Apply native form first (it may reconcile the form-specific
         // ability and forced gender), then choose exact ability slot/gender.
         // Keep and independent Review must use identical ordering.
+        // A level picker writes the exact EXP growth threshold; an EXP
+        // picker can retain partial progress. Replayed party level/stats
+        // must match the entire original local draft byte for byte.
+        if(before.experience()!=after.experience()) {
+            const auto personal=personal5(after.species(),after.form(),workspace.black2White2());
+            if(!personal) {error="Gen V EXP requires exact growth data";return false;}
+            const uint8_t level=after.partyRecord()?after.partyLevel():
+                levelForExperience5(personal.info->growthRate,after.experience());
+            const bool exact=level>=1 && level<=100 &&
+                after.experience()==experienceForLevel5(personal.info->growthRate,level);
+            if(!apply(exact?Field::Level:Field::Experience,0,
+                      exact?level:after.experience()))return false;
+        }
         if(before.form()!=after.form() && !apply(Field::Form,0,after.form()))
             return false;
         const auto slot5=[](const Pokemon5ReadOnly& p)->uint32_t {

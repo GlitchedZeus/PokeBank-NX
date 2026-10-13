@@ -26,7 +26,7 @@ public:
         ConfirmDiscardAll, ConfirmExport, ConfirmExit
     };
     struct EditableRow { Field field; size_t stat; const char* label; uint32_t maximum; };
-    static constexpr std::array<EditableRow,38> kEditableRows{{
+    static constexpr std::array<EditableRow,40> kEditableRows{{
         {Field::Nature,0,"Nature",24}, {Field::Friendship,0,"Friendship",255},
         {Field::HeldItem,0,"Held Item ID",638},
         {Field::Ball,0,"Ball ID",25},
@@ -57,7 +57,9 @@ public:
         {Field::EV,4,"EV SpA",255}, {Field::EV,5,"EV SpD",255},
         {Field::Ability,0,"Ability Slot",2},
         {Field::Form,0,"Form",31},
-        {Field::Gender,0,"Gender",2}
+        {Field::Gender,0,"Gender",2},
+        {Field::Level,0,"Level",100},
+        {Field::Experience,0,"Experience",1640000}
     }};
 
     [[nodiscard]] Surface surface() const noexcept { return surface_; }
@@ -252,7 +254,7 @@ public:
             error="Gen V has no verified native identity for this Pokemon";
             return false;
         }
-        identitySelection_=fieldValue(*current,row);
+        identitySelection_=fieldValue(*current,row,black2White2_);
         surface_=Surface::IdentityPicker;
         error.clear();
         return true;
@@ -320,8 +322,16 @@ public:
         return stageSharedField(draft_,row.field,row.stat,value,error);
     }
     [[nodiscard]] static uint32_t fieldValue(const Pokemon5ReadOnly& pk,
-                                              const EditableRow& row) noexcept {
+                                              const EditableRow& row,
+                                              bool black2White2=false) noexcept {
         switch(row.field) {
+            case Field::Level: {
+                const auto info=personal5(pk.species(),pk.form(),black2White2);
+                                return pk.partyRecord()?pk.partyLevel():
+                       info?levelForExperience5(info.info->growthRate,
+                                                pk.experience()):0;
+            }
+            case Field::Experience:return pk.experience();
             case Field::Nature:return pk.nature();
             case Field::Friendship:return pk.friendship();
             case Field::HeldItem:return pk.heldItem();
@@ -360,7 +370,7 @@ public:
             error="Press A to choose a verified Generation V picker value";
             return false;
         }
-        const int64_t value=static_cast<int64_t>(fieldValue(*current,row))+delta;
+        const int64_t value=static_cast<int64_t>(fieldValue(*current,row,black2White2_))+delta;
         // No modulo wrapping; failed EV totals and range errors preserve
         // the full draft instead of introducing invalid intermediate states.
         if(value<0 || value>row.maximum) {

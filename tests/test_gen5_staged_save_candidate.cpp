@@ -93,6 +93,8 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     assert(ws.stageParty(0,Field::Move,0,559,&error));
     assert(ws.stageParty(0,Field::MovePPUps,0,3,&error));
     assert(ws.stageParty(0,Field::MovePP,0,4,&error));
+    assert(ws.stageBox(0,0,Field::Level,0,40,&error));
+    assert(ws.stageBox(0,0,Field::Experience,0,75000,&error));
     assert(ws.stageBox(0,0,Field::HeldItem,0,638,&error));
     assert(ws.stageBox(0,0,Field::AbilitySlot,0,2,&error));
     assert(ws.stageBox(0,0,Field::Gender,0,1,&error));

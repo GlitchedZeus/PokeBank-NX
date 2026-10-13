@@ -248,7 +248,7 @@ require(native_review, "apply(Field::HeldItem,0,before.heldItem(),after.heldItem
 require(native_bridge, "NativeField::HeldItem,stat,value,error",
         "NativeField::Ball,stat,value,error",
         "NativeField::MetLevel,stat,value,error")
-require(native_screen, "std::array<EditableRow,38>",
+require(native_screen, "std::array<EditableRow,40>",
         '"Held Item ID",638', '"Ball ID",25', '"Met Level",100',
         "case Field::HeldItem:return pk.heldItem();",
         "case Field::Ball:return pk.ball();",
@@ -291,7 +291,7 @@ require(native_bridge, "NativeField::TrainerId,stat,value,error",
         "NativeField::Pokerus,stat,value,error",
         "NativeField::FatefulEncounter,stat,value,error",
         "NativeField::MetLocation,stat,value,error")
-require(native_screen, "std::array<EditableRow,38>",
+require(native_screen, "std::array<EditableRow,40>",
         '"Trainer ID",65535', '"Secret ID",65535',
         '"OT Gender",1', '"Pokerus",2', '"Met Location",65535',
         '"Fateful",1',
@@ -342,7 +342,7 @@ require(shared_contract, "case FieldIdentity::Form:",
         "case FieldIdentity::Gender:", "case FieldIdentity::Ability:")
 require(read("tests/test_gen5_readonly_save.cpp"),
         "ui.openIdentityPicker(error)", "ui.acceptIdentityPicker(error)",
-        "kEditableRows.size()==38")
+        "kEditableRows.size()==40")
 require(read("tests/test_gen5_pk5_readonly.cpp"),
         "G5::NativePersonalBW.size()==668", "G5::NativePersonalB2W2.size()==709",
         "G5::personal5(386,1,false)", "Field::AbilitySlot")
@@ -368,7 +368,7 @@ require(native_bridge, "NativeField::Move,stat,value,error",
         "NativeField::MovePPUps,stat,value,error")
 require(native_screen, "Surface::MovePicker", "openMovePicker(",
         "movePickerCursor(", "acceptMovePicker(", "cancelMovePicker()",
-        "std::array<EditableRow,38>", "Field::Move:return pk.moves()[row.stat]",
+        "std::array<EditableRow,40>", "Field::Move:return pk.moves()[row.stat]",
         "Field::MovePPUps:return pk.ppUps()[row.stat]",
         "Field::MovePP:return pk.pp()[row.stat]")
 require(surface, "case Surface::MovePicker:", "drawMovePicker(",
@@ -493,4 +493,19 @@ require(candidate, "verifyStagedReview(change, &reviewError)",
 for forbidden in ("fwrite(", "ofstream", "std::filesystem", "injectSave("):
     assert forbidden not in candidate, f"Gen V candidate must not write sources: {forbidden}"
 
+progression=read("include/Integration/Gen5/Gen5Progression.h")
+require(progression,"experienceForLevel5(","levelForExperience5(",
+        "regeneratePartyStats5(","0x8E","0x90","0x9A",
+        "species==292","oldMax=Crypto::read16(original,0x90)")
+require(native_stage,"case Field::Level:","case Field::Experience:",
+        "value>experienceForLevel5(personal.info->growthRate,100)",
+        "regeneratePartyStats5(candidate,Crypto::decrypt(original_),black2White2_)")
+require(native_screen,'{Field::Level,0,"Level",100}',
+        '{Field::Experience,0,"Experience",1640000}')
+require(native_bridge,"NativeField::Level,stat,value,error",
+        "NativeField::Experience,stat,value,error")
+require(native_session,"Field::Experience","experienceForLevel5(")
+require(read("include/Integration/Gen5/Gen5SharedReview.h"),"Field::Experience",
+        "experienceForLevel5(")
+require(surface,"Generation V Level","Generation V Experience")
 print("Gen V read-only shared UI guard contracts: PASS")

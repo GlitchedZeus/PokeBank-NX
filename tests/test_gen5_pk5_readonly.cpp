@@ -61,6 +61,14 @@ int main() {
     static_assert(!G5::isNativeMetLocation5(3));
     static_assert(!G5::isNativeMetLocation5(138));
     static_assert(C::PartySize == 0xDC);
+    static_assert(G5::experienceForLevel5(0,10)==1000);
+    static_assert(G5::experienceForLevel5(1,10)==1800);
+    static_assert(G5::experienceForLevel5(2,10)==540);
+    static_assert(G5::experienceForLevel5(3,10)==560);
+    static_assert(G5::experienceForLevel5(4,10)==800);
+    static_assert(G5::experienceForLevel5(5,10)==1250);
+    static_assert(G5::levelForExperience5(0,999)==9);
+    static_assert(G5::levelForExperience5(0,1000)==10);
     // Independent hand-calculated checksum sum for this sparse record.
     auto single = makeRecord(C::StoredSize, 0x12345678);
     const auto sum = C::checksum(single);
@@ -130,6 +138,18 @@ int main() {
         std::string error;
         auto staged=G5::StagedPokemon5Record::create(source,&error);
         assert(staged && !staged->dirty());
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Level,0,50,&error));
+        assert(staged->current().experience()==125000);
+        if(size==C::PartySize) {
+            const auto pk=staged->current();
+            assert(pk.partyLevel()==50);
+            const auto bytes=pk.decodedBytes();
+            assert(C::read16(bytes,0x90)>0);
+            assert(C::read16(bytes,0x8E)<=C::read16(bytes,0x90));
+        }
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Experience,0,125500,&error));
+        assert(staged->current().experience()==125500);
+        if(size==C::PartySize)assert(staged->current().partyLevel()==50);
         assert(staged->stage(G5::StagedPokemon5Record::Field::Nature,0,24,&error));
         assert(staged->stage(G5::StagedPokemon5Record::Field::Friendship,0,255,&error));
         assert(staged->stage(G5::StagedPokemon5Record::Field::IV,0,0,&error));
@@ -177,6 +197,10 @@ int main() {
         assert(std::equal(staged->originalBytes().begin(),staged->originalBytes().end(),source.begin()));
         const auto beforeInvalid=std::vector<uint8_t>(
             staged->stagedBytes().begin(),staged->stagedBytes().end());
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Level,0,0,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Level,0,101,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Experience,0,1000001,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Experience,1,50,&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::Nature,0,25,&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::Friendship,0,256,&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::IV,6,12,&error));
@@ -207,6 +231,30 @@ int main() {
         staged->rollback();
         assert(!staged->dirty());
         assert(std::equal(staged->stagedBytes().begin(),staged->stagedBytes().end(),source.begin()));
+    }
+    // Party stat recomputation is independent of local edit order.
+    {
+        auto plain=makeRecord(C::PartySize,0x13579BDF);
+        plain[0x40]=0x02; // native Pikachu, form 0
+        C::write16(plain,0x8E,88);
+        C::write16(plain,0x90,100); // 12 HP damage
+        const auto raw=C::encryptCandidate(plain);
+        auto a=G5::StagedPokemon5Record::create(raw);
+        auto b=G5::StagedPokemon5Record::create(raw);
+        assert(a && b);
+        assert(a->stage(G5::StagedPokemon5Record::Field::Level,0,50));
+        assert(a->stage(G5::StagedPokemon5Record::Field::IV,0,0));
+        assert(b->stage(G5::StagedPokemon5Record::Field::IV,0,0));
+        assert(b->stage(G5::StagedPokemon5Record::Field::Level,0,50));
+        assert(std::equal(a->stagedBytes().begin(),a->stagedBytes().end(),
+                          b->stagedBytes().begin()));
+        const auto parsed=a->current();
+        const auto bytes=parsed.decodedBytes();
+        assert(C::read16(bytes,0x90)==98);
+        assert(C::read16(bytes,0x8E)==86);
+        assert(C::read16(bytes,0x92)>0 && C::read16(bytes,0x94)>0);
+        assert(std::equal(a->originalBytes().begin(),a->originalBytes().end(),
+                          raw.begin()));
     }
     // Pinned PKHeX BW vs B2W2 personal rows, including shared-form entries.
     static_assert(G5::NativePersonalBW.size()==668);
@@ -248,8 +296,7 @@ int main() {
         assert(std::equal(edit->originalBytes().begin(),edit->originalBytes().end(),
                           raw.begin()));
     }
-    // Form-only changes are allowed for boxes, but changes in native base
-    // stats are refused for party records until party stat regeneration lands.
+    // Party form changes recalculate native battle stats from exact personal data.
     for(const bool b2w2:{false,true}) {
         for(const size_t size:{C::StoredSize,C::PartySize}) {
             auto form=makeRecord(size,0x1379BDF0);
@@ -262,7 +309,7 @@ int main() {
             assert(edit);
             const bool changed=edit->stage(G5::StagedPokemon5Record::Field::Form,
                                            0,1);
-            assert(changed==(size==C::StoredSize));
+            assert(changed);
             if(changed) {
                 assert(edit->current().form()==1);
                 assert(edit->current().gender()==2);
