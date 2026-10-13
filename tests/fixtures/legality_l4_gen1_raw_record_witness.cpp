@@ -1,26 +1,23 @@
 #include "Legality/Gen1NativeRawRecordWitness.h"
+#include "Integration/Gen1/Gen1ReadOnlySave.h"
 #include <array>
 #include <cassert>
 #include <cstdint>
 #include <iostream>
 #include <span>
 namespace W=Legality::Gen1NativeRawRecordWitness;
-struct Native {
-    uint8_t rawSpecies=84,status=0,type1=1,type2=1,catchRate=45,level=20;
-    uint16_t currentHP=99,trainerId=17389,maxHP=120,attack=55,defense=40,speed=70,special=60;
-    uint32_t experience=8000;
-    std::array<uint8_t,4> moves{1,2,3,0},pp{35,20,15,0},ppUps{0,1,2,3};
-    std::array<uint8_t,5> dvs{10,15,10,7,12};
-    std::array<uint16_t,5> statExperience{1,2,3,4,5};
-    bool partyRecord=true;
-    std::array<uint8_t,44> rawBody{};
-    std::size_t rawBodySize=44;
-};
+using Native=PokeVault::Integration::Gen1::PokemonRecord;
 void be16(std::array<uint8_t,44>& b,size_t pos,uint16_t v) {
     b[pos]=uint8_t(v>>8);b[pos+1]=uint8_t(v);
 }
 Native specimen(bool party){
-    Native v{};v.partyRecord=party;v.rawBodySize=party?44:33;
+    Native v{};
+    v.rawSpecies=84;v.status=0;v.type1=1;v.type2=1;v.catchRate=45;v.level=20;
+    v.currentHP=99;v.trainerId=17389;v.maxHP=120;v.attack=55;
+    v.defense=40;v.speed=70;v.special=60;v.experience=8000;
+    v.moves={1,2,3,0};v.pp={35,20,15,0};v.ppUps={0,1,2,3};
+    v.dvs={10,15,10,7,12};v.statExperience={1,2,3,4,5};
+    v.partyRecord=party;v.rawBodySize=party?44:33;
     auto& b=v.rawBody;
     b[0]=v.rawSpecies;be16(b,1,v.currentHP);b[4]=v.status;
     b[5]=v.type1;b[6]=v.type2;b[7]=v.catchRate;
