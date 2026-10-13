@@ -49,7 +49,7 @@ def inspect(root: Path) -> dict:
         "r.coverage.eggBreeding=CoverageLevel::None",
         "r.coverage.transfer=CoverageLevel::None",
         "const bool unresolvedModernSpecies",
-        "Species id " + " + std::to_string(species)",
+        '"Species id " + std::to_string(species)',
         "!unresolvedModernSpecies",
     ))
     ensure(data["include/Enums/GameVersion.h"], "original game IDs", (
