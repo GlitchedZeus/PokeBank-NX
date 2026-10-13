@@ -1002,8 +1002,8 @@ namespace UI {
     }
 
     void SaveSelectScreen::loadGen5Cards() {
-        // Gen V is a preview-only development milestone. The exact game cards
-        // are visible but never enter Gen IV's editor or enable native writes.
+        // Gen V uses the existing shared editor's validated staged-PK5 surface.
+        // The exact game cards cannot open generic writers or mutate SAV5 files.
         for(auto& user:users) {
             user.titles.erase(std::remove_if(user.titles.begin(),user.titles.end(),
                 [](const auto& title) {
@@ -1449,10 +1449,10 @@ namespace UI {
         // the L/R input frame. ZR/A perform exact validation when the user actually requests work.
         if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
             launchDescriptor.state=GameLaunchState::ChooseSource;
-            launchDescriptor.detail="Generation V source preview only.";
+            launchDescriptor.detail="Select a Gen V Save Instance to open the shared staged editor.";
             partyPreviewStatus=title.sourceLabel=="REMEMBERED" ?
-                "Select Open for validated Gen V Save Instances." :
-                "Choose a Gen V Save Instance to preview its party.";
+                "Open to choose a validated Gen V Save Instance." :
+                "Choose a Gen V Save Instance to view or stage Pokemon edits.";
         } else if (title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
             title.legacyInstances.size() > 1) {
             launchDescriptor.backend = GameLaunchBackend::HomebrewNro;
@@ -1697,7 +1697,7 @@ namespace UI {
                     if(preview->party[i].occupied)
                         addParty(i,preview->party[i].species,preview->party[i].level,0,
                                  preview->party[i].shiny);
-                partyPreviewStatus="Gen V preview only — editor not yet enabled.";
+                partyPreviewStatus="Gen V: open Save Instances for the shared staged editor.";
             } else partyPreviewStatus="Choose a validated Gen V Save Instance.";
             return;
         }
@@ -1915,7 +1915,7 @@ namespace UI {
         // The Gen V emulator/game launch and editor are not production-wired.
         // Never let generic title launch infer a command from save-path identity.
         if(title.sourceKind==SelectedSourceKind::Gen5AssignedFile) {
-            hubNotice="Gen V launch is pending validation; use A for Save Instances preview.";
+            hubNotice="Use A to select a Gen V Save Instance and open the shared editor.";
             return false;
         }
         // L/R keeps only cached presentation state. Resolve and validate the exact launch target now,
@@ -2801,7 +2801,7 @@ namespace UI {
                     overlay = Overlay::LegacyInstances;
                 } else if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
                     openGen5Setup(title.gameId,
-                        "Review or change this Gen V source (preview only).");
+                        "Review or change this Gen V profile/save assignment.");
                 } else if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
                     openGen4Setup(title.gameId,
                         "Review or change this game's remembered read-only save source.");
@@ -4887,7 +4887,7 @@ namespace UI {
             fb.drawText(x+28,y+44,"Pokémon "+title+" — Save Instances",
                         Colors::TextPrimary,TextStyle::Heading);
             fb.drawText(x+28,y+76,
-                        "Select validated save for preview. The original file stays unchanged.",
+                        "Open the shared staged editor. The original save stays unchanged.",
                         Colors::TextSecondary,TextStyle::Caption);
             const int first=gen5CandidateScroll;
             const int liveOffset=gen5CandidateTouchScroll.offset();
@@ -4904,7 +4904,7 @@ namespace UI {
             if(!gen5Notice.empty())
                 fb.drawText(x+28,y+h-34,gen5Notice.substr(0,95),
                             Colors::TextMuted,TextStyle::Caption);
-            drawNavBar(fb,{{"D-pad/Stick","Choose Save"},{"A","Use For Preview"},
+            drawNavBar(fb,{{"D-pad/Stick","Choose Save"},{"A","Open Editor"},
                            {"Y","Source Setup"},{"X","Refresh"},{"B","Back"}});
         } else if (overlay == Overlay::Gen4Setup && u) {
             constexpr int w = 760, h = 430, rowH = 64;

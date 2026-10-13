@@ -510,7 +510,7 @@ namespace UI {
             identity->dataGeneration!=5 ||
             identity->support!=PokeVault::Games::SourceSupport::Planned ||
             intent!=SaveSelectScreen::OpenIntent::Default) {
-            error="Generation V supports validated read-only Trainer/Party/Boxes browsing only";
+            error="Gen V shared editor requires an exact title and validated external save";
             return false;
         }
 
@@ -542,8 +542,9 @@ namespace UI {
             PokeVault::Safety::SourceKind::ExternalLegacy,gameId,
             opened.source.binding.sourceType);
         // Gen5SharedReadOnlySurface intercepts ALL Gen V input before the
-        // inherited source/bank/Items/editor/save handlers. Only shared
-        // passive Party/Boxes/Trainer browsing is available at this stage.
+        // inherited source/bank/Items/writer handlers. Gen V reuses the
+        // shared View/Edit/Review field model with native staged PK5 records;
+        // the original emulator save remains immutable.
         trainerScreen.selectedMode=TrainerViewScreen::ViewMode::Party;
         trainerScreen.detailViewActive=true;
         fb.startFade();

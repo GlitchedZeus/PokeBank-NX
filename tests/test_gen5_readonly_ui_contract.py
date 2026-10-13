@@ -214,6 +214,15 @@ gen5_setup = games.split("if (overlay == Overlay::Gen5Setup) {", 1)[1]
 gen5_setup = gen5_setup.split("if (overlay == Overlay::Gen5Candidates)", 1)[0]
 assert "gen5SetupIndex==2)overlay=Overlay::Gen5UnassignConfirm;" in gen5_setup
 assert "gen5SetupIndex==2)unassignCurrentGen5Game()" not in gen5_setup
+# Gen V reuses the already-shared staged editor, not a second Create/Edit UI.
+# Game cards and the source picker must not claim the editor is unavailable.
+require(games,
+        "Gen V: open Save Instances for the shared staged editor.",
+        "Open the shared staged editor. The original save stays unchanged.",
+        '"A","Open Editor"',
+        "Review or change this Gen V profile/save assignment.")
+assert "Gen V preview only — editor not yet enabled." not in games
+require(manager, "Gen V reuses the", "shared View/Edit/Review field model")
 require(games, "if (overlay == Overlay::Gen5UnassignConfirm)",
         "else if(kDown & HidNpadButton_Y)unassignCurrentGen5Game();",
         "Original save files remain untouched.")
