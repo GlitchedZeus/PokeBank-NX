@@ -53,6 +53,7 @@ jobs:
           )
           for mode in normal sanitizer; do
             flags=(-std=c++20 -Wall -Wextra -Wpedantic -Werror
+                   -Wno-unused-const-variable
                    -ffunction-sections -fdata-sections -Wl,--gc-sections
                    -Wno-unused-parameter -Iinclude)
             if [[ "$mode" == sanitizer ]]; then
