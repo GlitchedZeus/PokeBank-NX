@@ -31,6 +31,8 @@ def load_vectors(path:Path)->list[dict]:
         ids.add(ident)
         check(row["species"] in (1,81) and row["move"] in (33,200),"VECTOR_CONTENT")
         check(row["dv16"] in (0,0x5555,0xffff),"VECTOR_DVS")
+        check(row.get("stat_experience") in (0,32768,65535),"GEN1_STAT_EXP_DOMAIN")
+        check(row["stat_experience"]=={0:0,0x5555:32768,0xffff:65535}[row["dv16"]],"STAT_EXP_PATTERN_DRIFT")
         check(row["source"] in ("","red_gb","blue_gb","yellow_gb",
                                  "platinum_nds","unknown_source"),"VECTOR_SOURCE")
     return rows
@@ -78,6 +80,10 @@ def evaluate(cases:list[dict],oracle:dict[str,dict],accepted:dict[str,dict],
                 check(record.get(field)==v[field],"INPUT_DRIFT:"+ident+":"+field)
             for field,expected in dv_values(v["dv16"]).items():
                 check(record.get(field)==expected,"DV_ORIGINAL_DISAGREEMENT:"+ident+":"+field)
+            for field in ("stat_exp_hp","stat_exp_attack","stat_exp_defense",
+                          "stat_exp_speed","stat_exp_special"):
+                check(record.get(field)==v["stat_experience"],
+                      "GEN1_16BIT_STAT_EXP_ORIGINAL_DISAGREEMENT:"+ident+":"+field)
             check(type(record.get("ability_invalid")) is bool,"ABILITY_BOOL")
             check(type(record.get("gender_invalid")) is bool,"GENDER_BOOL")
         # PKHeX PK1 has convenience-derived Gender and Ability=-1, whereas
@@ -85,6 +91,8 @@ def evaluate(cases:list[dict],oracle:dict[str,dict],accepted:dict[str,dict],
         # Compare emitted verifier defects and REAL DVs, never numeric
         # convenience values as if Gen I stored these modern fields.
         for native in (a,c):
+            check(native.get("modern_ev_invalid") is False,
+                  "GEN1_STAT_EXP_MISREAD_AS_MODERN_EV_INVALID:"+ident)
             check(native.get("move_domain_invalid")== (v["move"]==200),
                   "GEN1_NATIVE_MOVE_DOMAIN_FALSE_INVALID_OR_FALSE_NEGATIVE:"+ident)
         for field in ("ability_invalid","gender_invalid"):
@@ -120,6 +128,8 @@ def evaluate(cases:list[dict],oracle:dict[str,dict],accepted:dict[str,dict],
       "accepted_baseline_non_native_false_invalid_counts":dict(accepted_old),
       "coordinator_non_native_defect_disagreements":0,
       "gen1_dv_field_differential_disagreements":0,
+      "gen1_stat_experience_differential_disagreements":0,
+      "stat_experience_native_boundaries":[0,32768,65535],
       "pkhex_global_legal_comparison":"NOT_CLAIMED_SYNTHETIC_CONTEXT_INCOMPLETE",
       "accepted_baseline_mismatch_samples":mismatches,
       "remaining_scope":"encounter/moves/gifts/trades/version-specific original histories",
@@ -128,7 +138,8 @@ def evaluate(cases:list[dict],oracle:dict[str,dict],accepted:dict[str,dict],
 
 def selftest()->None:
     v={"id":"x","species":1,"level":5,"move":33,"dv16":0xffff,
-       "experience":125,"source":"","expected_source_context":"Unknown"}
+       "experience":125,"stat_experience":65535,
+       "source":"","expected_source_context":"Unknown"}
     check(dv_values(0)==dict(dv_hp=0,dv_attack=0,dv_defense=0,
                              dv_speed=0,dv_special=0),"DV_ZERO")
     check(dv_values(65535)==dict(dv_hp=15,dv_attack=15,dv_defense=15,
@@ -139,9 +150,12 @@ def selftest()->None:
        "pkhex_revision":PIN,"original_source":"RBY_VERSION_UNKNOWN",
        "original_retail_history_authenticated":False,"id":"x","source":"",
        "species":1,"move":33,"dv16":65535,"ability_invalid":False,
-       "gender_invalid":False,"parsed":True,"pk1_ability":-1,"pk1_gender":0,**dv_values(65535)}
+       "gender_invalid":False,"parsed":True,"pk1_ability":-1,"pk1_gender":0,
+       **{name:65535 for name in ("stat_exp_hp","stat_exp_attack","stat_exp_defense",
+                                  "stat_exp_speed","stat_exp_special")},**dv_values(65535)}
     a={**p,"engine":"POKEBANK_NX_ANALYZER","execution_mode":"actual_production_pk1",
-       "ability_invalid":True,"gender_invalid":True,"move_domain_invalid":False}
+       "ability_invalid":True,"gender_invalid":True,"move_domain_invalid":False,
+       "modern_ev_invalid":False}
     c={**a,"ability_invalid":False,"gender_invalid":False}
     # The small partial input fails closed before claiming runtime parity.
     try:evaluate([v],{"x":p},{"x":a},{"x":c})
