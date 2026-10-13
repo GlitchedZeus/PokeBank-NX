@@ -50,3 +50,32 @@ These run each of 19 L2 suites under normal and sanitizer modes per compiler; fi
 ## Known missing evidence
 
 Actual R/B/Y archived party states showing precisely when stat recalculation occurred; independently pinned retail CPU/stat-overflow edge cases; original save/region/tradeback identity proof; authenticated retail specimen parity; cross-check of the full linked native model under all compilers; linkage into production legality analysis (coordinator-owned). Unsupported source histories and absent modern properties must remain Incomplete/Unknown, never globally Invalid.
+
+
+## Follow-up major tranche: original Gen I EXP thresholds and level provenance
+
+This is **Generation I native legality only**; it does not add or reinterpret breeding, modern EV/IV, abilities, natures, gender, held items, or native shininess.
+
+### Additional source-backed code
+
+- `include/Legality/Gen1NativeExperienceEvidence.h` and `src/Legality/Gen1NativeExperienceEvidence.cpp`: read-only proof for original 24-bit PK1 EXP `0x0E..0x10` and boxed/party level `0x03`/`0x21`. Compares the exact read-only source bytes and decoded fields, consults the EXISTING `StagedPokemonEditor::growthRate(species)` (original Gen I personal table, valid values 0/3/4/5) and `Pokemon::getExpForLevel` / `Pokemon::getLevelFromExp` (shared PKHeX-derived growth tables). There is no new production growth formula and no PK1 parser duplication.
+- `Gen1NativeDVStatEvidence.h/.cpp`: exposes the separate experience result and only gates candidate status when `originalExperienceProgressionIndependentlyVerified` has been explicitly supplied. A detached record, unknown species growth identity, glitch provenance or Time Capsule history is **Unknown**, not globally invalid. A level-100 EXP value exceeding the minimum level-100 threshold is **Unknown**: the modern shared calculator's clamp to 100 does not prove ordinary retail origin.
+- `tests/test_legality_l2_gen1_native_exp_growth.cpp`: checks all 151 original species at levels 1 through 100, inclusive/exclusive threshold boundaries, 24-bit EXP encoding, malformed wrappers, level-100 saturation, Missing/Unknown proof and opt-in joint DV result behavior.
+- `tests/test_legality_l2_run_all.sh` now lists **20** L2 programs; `L2 Stage 7 Final Breeding Legality Acceptance` requires **156** executions (20 original native programs × four compiler/modes plus 19 additional regression programs × four compiler/modes), assuming all required files compile.
+
+Additional original authoritative sources, separately pinned:
+
+| Source | Git blob | Reused field/mechanic |
+|---|---|---|
+| `src/Pokemon/Experience.cpp`, PokeBank NX at pre-tranche head | `3eb891a7467c28b697e41a7fbe4788b71dce6a22` | exact shared growth thresholds and level lookup |
+| `include/Pokemon/Experience.h` | `9002bc6b11a949ba593ed30780c2ca48dfd95c22` | native level/experience API |
+| `PKHeX.Core/PKM/Util/Experience.cs` at `kwsch/PKHeX@66ef5983a5d349efa2dd615f2926a1b1ee97306e` | `2e695c078143ae102bfa7fe27c8d2bcdbeea3b99` | independent original source for the level-100 clamp and growth tables |
+| `PKHeX.Core/PKM/PK1.cs` at same pin | `a4b692ae7045afb9d11ea3a3b6e25b94c0c4de8b` | 24-bit EXP source byte offsets |
+
+### Verified versus blocked
+
+The new header/implementation and integrated DV header/implementation were exactly copied into an isolated container, and the four resulting Git blob hashes matched the committed PR files. Local strict C++20 compilation (GCC and Clang) with **normal plus ASan/UBSan** executed the previous 262,756-check DV regression and a new 2,196-check EXP threshold/unknown test each of four ways: **264,952 checks per configuration, 1,059,808 checks total**.
+
+**Important:** the isolated test used the exact original `Gen1BattleStats.cpp`, but a reduced two-species read-only PK1 map/personal-data fixture and a test-only implementation of the four original Gen I EXP growth formulae, **not** the committed full `Experience.cpp` object or the full reader. The original full `Pokemon::Experience` and Gen I parser are linked by the CI jobs and full checkout runner, neither of which executed locally. No full 151-species runtime pass or integration pass is claimed until the exact-head GitHub workflow succeeds.
+
+The full-project command remains `bash tests/test_legality_l2_run_all.sh` (and `CXX=clang++ bash tests/test_legality_l2_run_all.sh`). The acceptance gate remains blocked while full-checkout/CI runs are unavailable or pending. This tranche does not touch the production legality analyzer, main UI or original save bytes.
