@@ -80,6 +80,8 @@ suites=(
   test_legality_l1_phasea_rng
   test_legality_l1_gen1_pret_slots
   test_legality_l1_gen1_pret_statics_trades
+  test_legality_l1_gen1_pret_prizes
+  test_legality_l1_gen1_pret_rod_init
 )
 profiles=(host sanitize)
 if [[ -n "${L1_PROFILE:-}" ]]; then
