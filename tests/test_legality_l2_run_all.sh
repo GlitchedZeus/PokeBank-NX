@@ -58,6 +58,7 @@ tests=(
     test_legality_l2_gen1_native_dv_stat
     test_legality_l2_gen1_native_record_adversarial
     test_legality_l2_gen1_native_exp_growth
+    test_legality_l2_gen1_original_stat_exp_battles
     test_legality_l2_dp_alternative_egg_histories
     test_legality_l2_dp_move_stage
     test_legality_l2_dp_egg_iv
@@ -105,6 +106,12 @@ for test in "${tests[@]}"; do
             "$root/src/Pokemon/Experience.cpp"
             "$root/src/Integration/Gen1/Gen1BattleStats.cpp"
             "$root/src/Integration/Gen1/Gen1StagedPokemonEditor.cpp"
+            "$root/src/Integration/Gen1/Gen1ReadOnlySave.cpp"
+        )
+    fi
+    if [[ "$test" == test_legality_l2_gen1_original_stat_exp_battles ]]; then
+        sources+=(
+            "$root/src/Legality/Gen1OriginalStatExpBattleHistory.cpp"
             "$root/src/Integration/Gen1/Gen1ReadOnlySave.cpp"
         )
     fi
