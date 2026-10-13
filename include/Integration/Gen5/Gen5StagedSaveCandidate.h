@@ -75,19 +75,36 @@ struct Gen5StagedSaveCandidate {
             pos + recordSize > copySize)
             return fail("Gen V export refused invalid native PK5 record geometry");
 
-        // Re-verify the entire encrypted before/after transaction. CRC-valid
-        // but unrelated mutations (species, PID, moves, OT etc.) are rejected.
+        // Re-verify ordinary native field edits or exact box clone/remove
+        // transactions. All PK5 and source-copy provenance is independently
+        // checked against the immutable, checksum-valid selected SAV5.
         std::string reviewError;
         if (!verifyStagedReview(change, &reviewError))
             return fail("Gen V export refused unverified staged PK5 field changes");
         const auto sourceRecord = party ? source.partyPokemon(change.location.slot)
             : source.boxPokemon(change.location.box, change.location.slot);
-        if (!sourceRecord || !sourceRecord->valid() || sourceRecord->empty())
+        if (!sourceRecord || !sourceRecord->valid() ||
+            (change.kind!=Gen5StagedPokemonWorkspace::ChangeKind::CloneBox &&
+             sourceRecord->empty()))
             return fail("Gen V export source slot is absent or invalid");
         const auto bytes = sourceRecord->originalEncryptedBytes();
         if (bytes.size() != change.before.size() ||
             !std::equal(bytes.begin(), bytes.end(), change.before.begin()))
             return fail("Gen V export source slot differs from the staged baseline");
+        if(change.kind==Gen5StagedPokemonWorkspace::ChangeKind::CloneBox) {
+            const auto& id=change.cloneSource;
+            if(!Gen5StagedPokemonWorkspace::canonicalSlot(id))
+                return fail("Gen V export clone source identity is not canonical");
+            const auto from=id.region==Region::Party
+                ? source.partyPokemon(id.slot)
+                : source.boxPokemon(id.box,id.slot);
+            if(!from || !from->valid() || from->empty() ||
+               from->originalEncryptedBytes().size()!=change.cloneSourceOriginal.size() ||
+               !std::equal(from->originalEncryptedBytes().begin(),
+                           from->originalEncryptedBytes().end(),
+                           change.cloneSourceOriginal.begin()))
+                return fail("Gen V clone source differs from immutable SAV5");
+        }
 
         // Only one layout block may own an individual record. Never update a
         // block across a boundary, or guess a block from the currently viewed UI.
@@ -158,7 +175,11 @@ struct Gen5StagedSaveCandidate {
         const bool party = change.location.region == Region::Party;
         const auto pk = party ? checked->partyPokemon(change.location.slot)
             : checked->boxPokemon(change.location.box, change.location.slot);
-        if (!pk || !pk->valid() || pk->empty() ||
+        if (!pk || !pk->valid() ||
+            (change.kind!=Gen5StagedPokemonWorkspace::ChangeKind::RemoveBox &&
+             pk->empty()) ||
+            (change.kind==Gen5StagedPokemonWorkspace::ChangeKind::RemoveBox &&
+             !pk->empty()) ||
             pk->originalEncryptedBytes().size() != change.after.size() ||
             !std::equal(pk->originalEncryptedBytes().begin(),
                         pk->originalEncryptedBytes().end(), change.after.begin()))

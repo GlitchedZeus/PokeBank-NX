@@ -562,6 +562,61 @@ int main() {
         assert(parsed->diagnostics().invalidBoxRecords==0);
         G::Gen5StagedPokemonWorkspace workspace(*parsed);
         assert(!workspace.hasChanges() && workspace.changedRecordCount()==0);
+        // Shared Clone/Remove actions are separate from Edit and never go
+        // through a generic Trainer mutator. Y is required for removal.
+        {
+            using Slot=G::Gen5StagedPokemonWorkspace::Slot;
+            using Region=G::Gen5StagedPokemonWorkspace::Region;
+            using Action=PokeBank::UIModel::SharedPokemonEditor::Action;
+            G::Gen5StagedPokemonWorkspace ops(*parsed);
+            G::Gen5SharedScreenState actionUi;
+            assert(actionUi.openActions(ops,Slot{Region::Party,0,0},error));
+            const auto available=actionUi.availableActions(ops);
+            bool canClone=false;
+            for(size_t i=0;i<available.count;++i)
+                if(available[i]==Action::Clone)canClone=true;
+            assert(canClone);
+            assert(actionUi.activate(ops,Action::Clone,error));
+            assert(actionUi.surface()==G::Gen5SharedScreenState::Surface::CloneDestination);
+            assert(actionUi.cloneDestinationIndex()==1);
+            assert(actionUi.cloneDestinationAllowed(ops));
+            assert(!actionUi.confirmClone(ops,[&](std::string& why){
+                why="Presentation intentionally failed";
+                return false;
+            },error));
+            assert(!ops.hasChanges() && actionUi.cloneDestinationAllowed(ops));
+            assert(actionUi.confirmClone(ops,[&](std::string&){
+                return true;
+            },error));
+            assert(actionUi.surface()==G::Gen5SharedScreenState::Surface::Browse);
+            assert(ops.viewBox(0,1)->species()==25 && ops.changedRecordCount()==1);
+            assert(actionUi.openActions(ops,Slot{Region::Box,0,0},error));
+            const auto boxActions=actionUi.availableActions(ops);
+            bool canRemove=false;
+            for(size_t i=0;i<boxActions.count;++i)
+                if(boxActions[i]==Action::Remove)canRemove=true;
+            assert(canRemove);
+            assert(actionUi.activate(ops,Action::Remove,error));
+            assert(actionUi.surface()==G::Gen5SharedScreenState::Surface::ConfirmRemoveBox);
+            assert(!actionUi.confirmRemoveBox(ops,[&](std::string& why){
+                why="Presentation intentionally failed";
+                return false;
+            },error));
+            assert(!ops.viewBox(0,0)->empty() && ops.changedRecordCount()==1);
+            actionUi.cancelBoxAction();
+            assert(actionUi.surface()==G::Gen5SharedScreenState::Surface::Actions);
+            assert(actionUi.activate(ops,Action::Remove,error));
+            assert(actionUi.confirmRemoveBox(ops,[&](std::string&){
+                return true;
+            },error));
+            assert(ops.viewBox(0,0)->empty() && ops.changedRecordCount()==2);
+            const auto output=G::buildStagedSaveCandidate(ops,&error);
+            assert(output && output->changedRecords==2);
+            assert(std::equal(parsed->sourceBytes().begin(),
+                              parsed->sourceBytes().end(),sav.begin()));
+            ops.discardAll();
+            assert(!ops.hasChanges() && ops.viewBox(0,0)->species()==133);
+        }
         assert(workspace.stageParty(0,G::StagedPokemon5Record::Field::Nature,0,12,&error));
         assert(workspace.stageBox(0,0,G::StagedPokemon5Record::Field::Friendship,0,255,&error));
         assert(workspace.stageBox(0,0,G::StagedPokemon5Record::Field::IV,5,31,&error));
@@ -696,7 +751,7 @@ int main() {
         assert(G::fieldAccess(GF::Ability)==GAccess::Editable);
         assert(G::fieldAccess(GF::Form)==GAccess::Editable);
         assert(G::fieldAccess(GF::Gender)==GAccess::Editable);
-        assert(G::fieldAccess(GF::Species)!=GAccess::Editable);
+        assert(G::fieldAccess(GF::Species)==GAccess::Editable);
         assert(G::fieldAccess(GF::Move)==GAccess::Editable);
         assert(G::fieldAccess(GF::MovePP)==GAccess::Editable);
         assert(G::fieldAccess(GF::MovePPUps)==GAccess::Editable);

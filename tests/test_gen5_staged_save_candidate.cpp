@@ -322,6 +322,71 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
         assert(std::equal(parsed->sourceBytes().begin(),
                           parsed->sourceBytes().end(),input.begin()));
     }
+    // Gen IV-parity box operations: source-party/box native clones and
+    // boxed removal are separately audited from field editing. The working
+    // copy changes only one selected retail partition and verified CRCs.
+    G::Gen5StagedPokemonWorkspace boxOps(*parsed);
+    using Region=G::Gen5StagedPokemonWorkspace::Region;
+    using Slot=G::Gen5StagedPokemonWorkspace::Slot;
+    assert(boxOps.firstEmptyCloneDestination()==1);
+    assert(!boxOps.cloneToEmptyBox({Region::Party,0,0},0,0,&error));
+    assert(!boxOps.cloneToEmptyBox({Region::Party,0,4},0,1,&error));
+    assert(boxOps.cloneToEmptyBox({Region::Party,0,0},0,1,&error));
+    assert(!boxOps.cloneToEmptyBox({Region::Party,0,0},0,1,&error));
+    assert(boxOps.isBoxReplacement(0,1));
+    assert(boxOps.viewBox(0,1)->valid() && !boxOps.viewBox(0,1)->empty());
+    assert(boxOps.viewBox(0,1)->species()==25);
+    assert(boxOps.viewBox(0,1)->pid()==parsed->partyPokemon(0)->pid());
+    assert(!boxOps.viewBox(0,1)->partyRecord());
+    assert(!boxOps.stageBox(0,1,Field::Nature,0,3,&error));
+    assert(!boxOps.removeBox(0,1,&error)); // Cannot remove newly staged clone.
+    assert(boxOps.removeBox(0,0,&error));
+    assert(!boxOps.removeBox(0,0,&error));
+    assert(boxOps.viewBox(0,0)->valid() && boxOps.viewBox(0,0)->empty());
+    assert(!boxOps.cloneToEmptyBox({Region::Box,0,0},0,2,&error));
+    assert(boxOps.changedRecordCount()==2);
+    bool sawClone=false,sawRemove=false;
+    for(const auto& change:boxOps.pendingReview()) {
+        const auto verified=G::verifyStagedReview(change,&error);
+        assert(verified && verified->fields.size()==1);
+        if(change.kind==G::Gen5StagedPokemonWorkspace::ChangeKind::CloneBox) {
+            sawClone=true;
+            assert(change.location.box==0 && change.location.slot==1);
+            assert(verified->fields[0].field==Field::CloneBox);
+            auto forged=change;
+            forged.cloneSourceOriginal[0]^=0x1;
+            assert(!G::verifyStagedReview(forged,&error));
+            forged=change;
+            forged.after[8]^=0x1;
+            assert(!G::verifyStagedReview(forged,&error));
+        } else {
+            sawRemove=true;
+            assert(change.kind==G::Gen5StagedPokemonWorkspace::ChangeKind::RemoveBox);
+            assert(verified->fields[0].field==Field::RemoveBox);
+            auto forged=change;
+            forged.after[10]=1;
+            assert(!G::verifyStagedReview(forged,&error));
+        }
+    }
+    assert(sawClone && sawRemove);
+    const auto operations=G::buildStagedSaveCandidate(boxOps,&error);
+    assert(operations && error.empty() && operations->changedRecords==2);
+    const auto checked=G::Gen5ReadOnlySave::parse(operations->bytes,game,
+        &error,selected);
+    assert(checked && checked->boxPokemon(0,0)->empty());
+    assert(checked->boxPokemon(0,1)->species()==25);
+    assert(checked->boxPokemon(0,1)->pid()==parsed->partyPokemon(0)->pid());
+    assert(checked->partyPokemon(0)->species()==25);
+    assert(std::equal(parsed->sourceBytes().begin(),
+                      parsed->sourceBytes().end(),input.begin()));
+    // Undo a single boxed operation without losing unrelated draft edits.
+    assert(boxOps.undoBoxReplacement(0,1));
+    assert(boxOps.changedRecordCount()==1);
+    assert(!boxOps.undoBoxReplacement(0,1));
+    assert(boxOps.undoBoxReplacement(0,0));
+    assert(!boxOps.hasChanges());
+    assert(boxOps.viewBox(0,0)->species()==133);
+    assert(boxOps.viewBox(0,1)->empty());
     ws.discardAll();
     assert(!ws.hasChanges() && !G::buildStagedSaveCandidate(ws,&error));
 }

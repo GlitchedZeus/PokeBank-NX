@@ -583,6 +583,58 @@ require(read("tests/test_gen5_readonly_save.cpp"),
         "assert(ui.openNaturePicker(error));",
         "assert(ui.natureSelection()==24);",
         "assert(ui.acceptNaturePicker(error));")
+# Box-only Clone and Remove live exclusively in the app-owned staged
+# workspace, require the exact source slot, and are included in independent
+# SAV5 review/reparse. Y, never A, stages destructive boxed removal.
+box_workspace=read("include/Integration/Gen5/Gen5StagedPokemonWorkspace.h")
+require(box_workspace,
+        "enum class ChangeKind : uint8_t { FieldEdit, CloneBox, RemoveBox }",
+        "cloneToEmptyBox(Slot from,size_t box,size_t slot",
+        "removeBox(size_t box,size_t slot",
+        "undoBoxReplacement(size_t box,size_t slot)",
+        "firstEmptyCloneDestination() const",
+        "target->originalEncryptedBytes().size()!=Crypto::StoredSize",
+        "decoded.resize(Crypto::StoredSize)",
+        "boxReplacements_.emplace(to,std::move(replacement))",
+        "pending_.clear();boxReplacements_.clear();")
+require(native_review,"ChangeKind::FieldEdit",
+        "Field::CloneBox","Field::RemoveBox",
+        "Crypto::encryptCandidate(d)!=change.after",
+        "Gen V removal must blank exactly one occupied box PK5")
+require(candidate,
+        "Gen V export clone source identity is not canonical",
+        "Gen V clone source differs from immutable SAV5",
+        "Gen5StagedPokemonWorkspace::ChangeKind::RemoveBox",
+        "Gen V export candidate did not preserve exact staged PK5 bytes")
+require(native_bridge,"append(Shared::Action::Clone)",
+        "append(Shared::Action::Remove)",
+        "workspace.originalOccupied(slot.location)")
+require(native_screen,"Surface::CloneDestination",
+        "Surface::ConfirmRemoveBox",
+        "confirmClone(Workspace& workspace",
+        "confirmRemoveBox(Workspace& workspace",
+        "workspace.cloneToEmptyBox(target_",
+        "workspace.removeBox(target_.box,target_.slot",
+        "workspace=std::move(snapshot)")
+require(surface,"kGen5CloneTouchBase=80000",
+        "case Surface::CloneDestination:",
+        "case Surface::ConfirmRemoveBox:",
+        "state.confirmClone(staged",
+        "state.confirmRemoveBox(staged",
+        "drawCloneDestination(screen,fb,state,staged)",
+        '"Y","Stage Remove"',
+        "Box clone/remove staged only; no source writes")
+require(read("tests/test_gen5_staged_save_candidate.cpp"),
+        "boxOps.cloneToEmptyBox(",
+        "boxOps.removeBox(",
+        "boxOps.undoBoxReplacement(",
+        "verifyStagedReview(change,&error)",
+        "operations->changedRecords==2")
+require(read("tests/test_gen5_readonly_save.cpp"),
+        "actionUi.activate(ops,Action::Clone,error)",
+        "actionUi.activate(ops,Action::Remove,error)",
+        "actionUi.confirmClone(ops,",
+        "actionUi.confirmRemoveBox(ops,")
 # Native text editing stays on the strict PK5 writer whitelist.
 native_text=read("include/Integration/Gen5/Gen5NativeText.h")
 require(native_text,"asciiName5(","encodeAsciiName5(",

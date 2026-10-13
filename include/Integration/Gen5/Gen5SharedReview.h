@@ -38,6 +38,52 @@ struct VerifiedSlotReview {
     };
     if(!Gen5StagedPokemonWorkspace::canonicalSlot(change.location))
         return fail("Gen V review slot identity is noncanonical");
+    // Box replacement operations have no ordinary field replay: certify
+    // byte-exact clone of an original occupied PK5, or all-zero box removal.
+    // The exporter independently checks clone-source bytes against SAV5.
+    if(change.kind!=Gen5StagedPokemonWorkspace::ChangeKind::FieldEdit) {
+        using Kind=Gen5StagedPokemonWorkspace::ChangeKind;
+        using Region=Gen5StagedPokemonWorkspace::Region;
+        if(change.location.region!=Region::Box ||
+           change.before.size()!=Crypto::StoredSize ||
+           change.after.size()!=Crypto::StoredSize)
+            return fail("Gen V box operation has invalid geometry");
+        const Pokemon5ReadOnly beforeBox(std::span<const uint8_t>(change.before));
+        const Pokemon5ReadOnly afterBox(std::span<const uint8_t>(change.after));
+        VerifiedSlotReview result;
+        result.location=change.location;
+        if(change.kind==Kind::RemoveBox) {
+            if(!beforeBox.valid() || beforeBox.empty() ||
+               !afterBox.valid() || !afterBox.empty() ||
+               !std::all_of(change.after.begin(),change.after.end(),
+                            [](uint8_t byte){return byte==0;}) ||
+               !change.cloneSourceOriginal.empty())
+                return fail("Gen V removal must blank exactly one occupied box PK5");
+            result.fields.push_back({Field::RemoveBox,0,beforeBox.species(),0});
+        } else if(change.kind==Kind::CloneBox) {
+            if(!beforeBox.valid() || !beforeBox.empty() ||
+               !std::all_of(change.before.begin(),change.before.end(),
+                            [](uint8_t byte){return byte==0;}) ||
+               !afterBox.valid() || afterBox.empty() ||
+               !Gen5StagedPokemonWorkspace::canonicalSlot(change.cloneSource) ||
+               (change.cloneSource.region==Region::Box &&
+                change.cloneSource.box==change.location.box &&
+                change.cloneSource.slot==change.location.slot))
+                return fail("Gen V clone needs an empty target and distinct source");
+            const Pokemon5ReadOnly source(std::span<const uint8_t>(
+                change.cloneSourceOriginal));
+            if(!source.valid() || source.empty() ||
+               source.partyRecord()!=(change.cloneSource.region==Region::Party))
+                return fail("Gen V clone source certificate is not native PK5");
+            auto d=Crypto::decrypt(change.cloneSourceOriginal);
+            d.resize(Crypto::StoredSize);
+            if(Crypto::encryptCandidate(d)!=change.after)
+                return fail("Gen V clone does not match exact encrypted source snapshot");
+            result.fields.push_back({Field::CloneBox,0,0,afterBox.species()});
+        } else return fail("Gen V review box-operation kind is unknown");
+        if(error)error->clear();
+        return result;
+    }
     const Pokemon5ReadOnly before(std::span<const uint8_t>(change.before));
     const Pokemon5ReadOnly after(std::span<const uint8_t>(change.after));
     if(!before.valid() || before.empty() || !after.valid() || after.empty() ||

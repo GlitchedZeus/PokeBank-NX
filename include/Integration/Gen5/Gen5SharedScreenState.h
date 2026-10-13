@@ -24,7 +24,7 @@ public:
     using Action=Shared::Action;
     using Field=Shared::FieldIdentity;
     enum class Surface : uint8_t {
-        Browse, Actions, View, Edit, MovePicker, LocationPicker, IdentityPicker, SpeciesPicker, NaturePicker, ConfirmDraft, Review,
+        Browse, Actions, View, Edit, MovePicker, LocationPicker, IdentityPicker, SpeciesPicker, NaturePicker, CloneDestination, ConfirmRemoveBox, ConfirmDraft, Review,
         ConfirmDiscardAll, ConfirmExport, ConfirmExit
     };
     struct EditableRow { Field field; size_t stat; const char* label; uint32_t maximum; };
@@ -117,6 +117,12 @@ public:
     }
     [[nodiscard]] bool black2White2() const noexcept { return black2White2_; }
     [[nodiscard]] size_t reviewPage() const noexcept { return reviewPage_; }
+    [[nodiscard]] size_t cloneDestinationIndex() const noexcept { return cloneDestinationIndex_; }
+    [[nodiscard]] bool cloneDestinationAllowed(const Workspace& workspace) const {
+        return cloneDestinationIndex_<720 &&
+            workspace.emptyCloneDestination(cloneDestinationIndex_/30,
+                                            cloneDestinationIndex_%30);
+    }
     static constexpr size_t kReviewPageSize = 4;
     [[nodiscard]] const Gen5SharedPokemonSession& draft() const noexcept { return draft_; }
     [[nodiscard]] bool isEditing() const noexcept { return surface_==Surface::Edit; }
@@ -163,6 +169,26 @@ public:
             error.clear();
             return true;
         }
+        if(action==Action::Clone) {
+            cloneDestinationIndex_=workspace.firstEmptyCloneDestination();
+            if(cloneDestinationIndex_>=720) {
+                error="Gen V has no verified empty box destination";
+                return false;
+            }
+            surface_=Surface::CloneDestination;
+            error.clear();
+            return true;
+        }
+        if(action==Action::Remove) {
+            if(target_.region!=Workspace::Region::Box ||
+               !workspace.originalOccupied(target_)) {
+                error="Gen V removal requires an occupied original box slot";
+                return false;
+            }
+            surface_=Surface::ConfirmRemoveBox;
+            error.clear();
+            return true;
+        }
         if(action==Action::View || action==Action::Edit) {
             if(!openSharedDraft(draft_,workspace,selectedSlot(workspace,target_),action,error))
                 return false;
@@ -184,6 +210,54 @@ public:
         return activate(workspace,allowed[static_cast<size_t>(actionRow_)],error);
     }
 
+    void moveCloneCursor(int delta) noexcept {
+        if(surface_!=Surface::CloneDestination)return;
+        cloneDestinationIndex_=static_cast<size_t>(std::clamp(
+            static_cast<int>(cloneDestinationIndex_)+delta,0,719));
+    }
+    template<class Refresh>
+    [[nodiscard]] bool confirmClone(Workspace& workspace,Refresh&& refresh,
+                                    std::string& error) {
+        if(surface_!=Surface::CloneDestination ||
+           !cloneDestinationAllowed(workspace)) {
+            error="Gen V clone destination is not an empty verified box slot";
+            return false;
+        }
+        Workspace snapshot=workspace;
+        if(!workspace.cloneToEmptyBox(target_,cloneDestinationIndex_/30,
+                                      cloneDestinationIndex_%30,&error))return false;
+        if(!std::forward<Refresh>(refresh)(error)) {
+            workspace=std::move(snapshot);
+            if(error.empty())error="Gen V clone presentation rejected; stage rolled back";
+            return false;
+        }
+        surface_=Surface::Browse;
+        error.clear();
+        return true;
+    }
+    template<class Refresh>
+    [[nodiscard]] bool confirmRemoveBox(Workspace& workspace,Refresh&& refresh,
+                                        std::string& error) {
+        if(surface_!=Surface::ConfirmRemoveBox ||
+           target_.region!=Workspace::Region::Box) {
+            error="Gen V removal requires explicit Y confirmation";
+            return false;
+        }
+        Workspace snapshot=workspace;
+        if(!workspace.removeBox(target_.box,target_.slot,&error))return false;
+        if(!std::forward<Refresh>(refresh)(error)) {
+            workspace=std::move(snapshot);
+            if(error.empty())error="Gen V remove presentation rejected; stage rolled back";
+            return false;
+        }
+        surface_=Surface::Browse;
+        error.clear();
+        return true;
+    }
+    void cancelBoxAction() noexcept {
+        if(surface_==Surface::CloneDestination ||
+           surface_==Surface::ConfirmRemoveBox)surface_=Surface::Actions;
+    }
     void moveReviewPage(int delta,const Workspace& workspace) noexcept {
         if(surface_!=Surface::Review)return;
         const size_t records=workspace.changedRecordCount();
@@ -600,6 +674,11 @@ public:
             cancelNaturePicker();
             return false;
         }
+        if(surface_==Surface::CloneDestination ||
+           surface_==Surface::ConfirmRemoveBox) {
+            cancelBoxAction();
+            return false;
+        }
         if(surface_==Surface::View || surface_==Surface::Edit) {
             if(draft_.back()) {surface_=Surface::Browse;return true;}
             surface_=Surface::ConfirmDraft;
@@ -720,6 +799,7 @@ private:
     bool black2White2_=false;
     size_t locationPickerIndex_=0;
     size_t reviewPage_=0;
+    size_t cloneDestinationIndex_=0;
     Gen5SharedPokemonSession draft_;
 };
 

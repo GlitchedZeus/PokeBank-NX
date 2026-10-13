@@ -40,6 +40,7 @@ constexpr int kGen5LocationTouchBase=78000;
 constexpr int kGen5IdentityTouchBase=78500;
 constexpr int kGen5SpeciesTouchBase=78600;
 constexpr int kGen5NatureTouchBase=79500;
+constexpr int kGen5CloneTouchBase=80000;
 
 PokeVault::Legacy::Gen5ReadOnlyTrainer& nativeTrainer(TrainerViewScreen& screen) {
     return static_cast<PokeVault::Legacy::Gen5ReadOnlyTrainer&>(screen.trainer);
@@ -170,6 +171,11 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
         state.moveNatureCursor(tap-kGen5NatureTouchBase-
                                static_cast<int>(state.natureSelection()));
         down|=HidNpadButton_A;
+    } else if(state.surface()==Surface::CloneDestination &&
+              tap>=kGen5CloneTouchBase && tap<kGen5CloneTouchBase+720) {
+        state.moveCloneCursor(tap-kGen5CloneTouchBase-
+                              static_cast<int>(state.cloneDestinationIndex()));
+        down|=HidNpadButton_A;
     } else if(state.surface()==Surface::Browse &&
               screen.selectedMode==TrainerViewScreen::ViewMode::Party &&
               tap>=kGen5PartyTouchBase &&
@@ -192,6 +198,36 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                 if(!state.activateSelected(staged,error))
                     screen.postStatus(error,300);
                 screen.controllerNavigation.reset();
+            }
+            return true;
+        case Surface::CloneDestination:
+            if(keys&HidNpadButton_Up)state.moveCloneCursor(-1);
+            if(keys&HidNpadButton_Down)state.moveCloneCursor(1);
+            if(keys&HidNpadButton_Left)state.moveCloneCursor(-6);
+            if(keys&HidNpadButton_Right)state.moveCloneCursor(6);
+            if(keys&HidNpadButton_ZL)state.moveCloneCursor(-30);
+            if(keys&HidNpadButton_ZR)state.moveCloneCursor(30);
+            if(keys&HidNpadButton_B)state.cancelBoxAction();
+            else if(keys&HidNpadButton_A) {
+                std::string error;
+                if(!state.confirmClone(staged,[&](std::string& why) {
+                    return trainer.refreshStagedPokemonPresentation(why);
+                },error))
+                    screen.postStatus(error,320);
+                else screen.postStatus(
+                    "Gen V cloned to empty staged box slot; source SAV5 unchanged",260);
+            }
+            return true;
+        case Surface::ConfirmRemoveBox:
+            if(keys&HidNpadButton_B)state.cancelBoxAction();
+            else if(keys&HidNpadButton_Y) {
+                std::string error;
+                if(!state.confirmRemoveBox(staged,[&](std::string& why) {
+                    return trainer.refreshStagedPokemonPresentation(why);
+                },error))
+                    screen.postStatus(error,320);
+                else screen.postStatus(
+                    "Gen V box slot removed in app memory only; source SAV5 unchanged",260);
             }
             return true;
         case Surface::View:
@@ -624,6 +660,8 @@ std::string reviewedFieldLabel(const PokeVault::Integration::Gen5::VerifiedField
         case Field::Level:name="Level";break;
         case Field::Experience:name="Experience";break;
         case Field::Species:name="Species";break;
+        case Field::CloneBox:name="Clone to Box";break;
+        case Field::RemoveBox:name="Remove from Box";break;
         case Field::NicknameText:name="Nickname";break;
         case Field::OriginalTrainerText:name="OT Name";break;
         case Field::Friendship:name="Friendship";break;
@@ -695,10 +733,47 @@ void drawReview(TrainerViewScreen& screen,PKSEFramebuffer& fb,
             line+="  |  +"+std::to_string(verified->fields.size()-3)+" more";
         fb.drawText(x+32,yy+43,line,Colors::TextSecondary,TextStyle::Caption);
     }
-    fb.drawText(x+24,y+h-31,"No Create, Clone, source writes or inferred legality",
+    fb.drawText(x+24,y+h-31,"Box clone/remove staged only; no source writes or inferred legality",
                 Colors::TextDim,TextStyle::Caption);
     drawNavBar(fb,{{"L/R","Review Pages"},{"X","Export Working Copy"},
                    {"Y","Discard All..."},{"B","Back"}});
+}
+void drawCloneDestination(TrainerViewScreen& screen,PKSEFramebuffer& fb,
+                          const ScreenState& state,
+                          const PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace& ws) {
+    dimShared(screen,fb);
+    constexpr int w=820,h=555;
+    const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-kNavBarH-h)/2;
+    fb.drawFilledRoundedRect(x,y,w,h,16,Colors::Panel);
+    fb.drawRoundedRect(x,y,w,h,16,Colors::Border,1);
+    fb.drawText(x+24,y+18,"Clone Pokemon - Choose Empty Box Slot",
+                Colors::Text,TextStyle::Heading);
+    fb.drawText(x+24,y+56,
+        "Original PK5 is unchanged; only a validated empty box can be selected",
+        Colors::Accent,TextStyle::Caption);
+    const auto visible=PokeBank::UIModel::SharedPokemonEditor::scrollWindow(
+        size_t{720},9,state.cloneDestinationIndex());
+    for(size_t i=0;i<visible.count;++i) {
+        const size_t index=visible.first+i;
+        const size_t box=index/30,slot=index%30;
+        const bool allowed=ws.emptyCloneDestination(box,slot);
+        const int yy=y+100+static_cast<int>(i)*44;
+        if(index==state.cloneDestinationIndex())
+            fb.drawSelectionHighlight(x+12,yy,w-24,40);
+        if(allowed)
+            screen.touchButtons.push_back({kGen5CloneTouchBase+static_cast<int>(index),
+                x+14,yy,w-28,40});
+        fb.drawText(x+28,yy+9,
+            "Box "+std::to_string(box+1)+" / Slot "+std::to_string(slot+1),
+            allowed?Colors::Text:Colors::TextDim,TextStyle::Body);
+        fb.drawText(x+w-180,yy+11,allowed?"Empty":"Unavailable",
+            allowed?Colors::Accent:Colors::TextDim,TextStyle::Caption);
+    }
+    fb.drawText(x+24,y+h-40,
+        "A clones to empty slot in memory only; B cancels without any change",
+        Colors::TextDim,TextStyle::Caption);
+    drawNavBar(fb,{{"D-pad/Stick","Browse"},{"ZL/ZR","Box"},
+                   {"A","Stage Clone"},{"B","Cancel"}});
 }
 void drawDecision(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                   std::string title,std::string message,
@@ -1037,6 +1112,8 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     screen.details.active=false;
     switch(state.surface()) {
         case Surface::Actions:drawActions(screen,fb,state,staged);return true;
+        case Surface::CloneDestination:
+            drawCloneDestination(screen,fb,state,staged);return true;
         case Surface::Review:drawReview(screen,fb,state,staged);return true;
         case Surface::Edit:drawEdit(screen,fb,state);return true;
         case Surface::MovePicker:drawMovePicker(screen,fb,state);return true;
@@ -1054,6 +1131,11 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
             drawNavBar(fb,{{"B","Back"},{"","Verified PK5 View"}});
             return true;
         }
+        case Surface::ConfirmRemoveBox:
+            drawDecision(screen,fb,"Remove Boxed Pokemon From Staged Copy?",
+                "Requires Y confirmation; source SAV5 and backups stay intact.",
+                {{"Y","Stage Remove"},{"B","Cancel"}});
+            return true;
         case Surface::ConfirmDraft:
             drawDecision(screen,fb,"Unsaved PK5 Draft",
                 "Choose Keep Staged, Discard Draft, or Continue Editing.",
