@@ -5,6 +5,10 @@ GB_LEGALITY_GEN1_SOURCES := tests/test_gb_legality_gen1.cpp \
 	src/Integration/Gen1/Gen1ReadOnlySave.cpp
 HOST_TESTS += $(HOST_BUILD)/test_gb_legality_gen1
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gb_legality_gen1_sanitize
+# host-test/host-sanitize take their prerequisites when Makefile.host.base is read,
+# before this file appends to the lists, so name the new binaries explicitly.
+host-test: $(HOST_BUILD)/test_gb_legality_gen1
+host-sanitize: $(HOST_BUILD)/test_gb_legality_gen1_sanitize
 
 $(HOST_BUILD)/test_gb_legality_gen1: $(GB_LEGALITY_GEN1_SOURCES)
 	@mkdir -p $(HOST_BUILD)
@@ -21,6 +25,8 @@ GB_LEGALITY_GEN2_SOURCES := tests/test_gb_legality_gen2.cpp src/Legality/GBLegal
 	src/Pokemon/Experience.cpp
 HOST_TESTS += $(HOST_BUILD)/test_gb_legality_gen2
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gb_legality_gen2_sanitize
+host-test: $(HOST_BUILD)/test_gb_legality_gen2
+host-sanitize: $(HOST_BUILD)/test_gb_legality_gen2_sanitize
 
 $(HOST_BUILD)/test_gb_legality_gen2: $(GB_LEGALITY_GEN2_SOURCES)
 	@mkdir -p $(HOST_BUILD)
