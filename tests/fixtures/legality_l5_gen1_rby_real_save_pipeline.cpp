@@ -160,13 +160,23 @@ void runReal(const std::vector<uint8_t>& b,const Layout& l,int game,
     const Pokemon::Pokemon1ReadOnly pk(r);
     CHECK(pk.ability()==0 && pk.gender()==2 && pk.heldItem()==0);
     CHECK(pk.statExpHP()==r.statExperience[0] && pk.statExpSpecial()==r.statExperience[4]);
-    const auto report=Legality::analyze(pk,pk.getGameGroup(),sourceGameId(label));
-    CHECK(!issue(report,Legality::Severity::Invalid,"Ability not legal for this species"));
-    CHECK(!issue(report,Legality::Severity::Invalid,"Gendered species marked genderless"));
-    CHECK(!issue(report,Legality::Severity::Invalid,"EV over 252"));
-    CHECK(!issue(report,Legality::Severity::Invalid,"EV total over 510"));
-    CHECK(issue(report,Legality::Severity::Invalid,"cannot exist in a Generation")== (move==200));
-    CHECK(!issue(report,Legality::Severity::Warning,"source-game label conflicts"));
+    // Four independently observed contexts. A native PK1 has no original
+    // Red/Blue/Yellow game label; even a checksum-valid synthetic save
+    // supplies a candidate source, not proof of an authentic retail history.
+    // Missing or conflicting source must not convert absent Gen I ability
+    // and gender into false Invalid. A genuine out-of-gen move stays Invalid.
+    const std::array<std::string_view,4> sources{
+        sourceGameId(label), "", "platinum_nds", "unknown_source"};
+    for(const auto source:sources){
+        const auto report=Legality::analyze(pk,pk.getGameGroup(),source);
+        CHECK(!issue(report,Legality::Severity::Invalid,"Ability not legal for this species"));
+        CHECK(!issue(report,Legality::Severity::Invalid,"Gendered species marked genderless"));
+        CHECK(!issue(report,Legality::Severity::Invalid,"EV over 252"));
+        CHECK(!issue(report,Legality::Severity::Invalid,"EV total over 510"));
+        CHECK(issue(report,Legality::Severity::Invalid,"cannot exist in a Generation")== (move==200));
+        CHECK(issue(report,Legality::Severity::Warning,"source-game label conflicts")==
+              (source=="platinum_nds"));
+    }
 }
 void negatives(const std::vector<uint8_t>& original,const Layout& l,int game){
     using namespace PokeVault::Integration::Gen1;
@@ -228,7 +238,8 @@ int main(){
 #ifndef L5_FIXTURE_ONLY
     CHECK(negativesTested==6);
     std::cout<<"L5 Gen I actual saved-byte parser -> PK1 -> Legality analyzer: "<<cases
-             <<" contexts; "<<negativesTested<<" negative groups PASS (synthetic provenance Unknown)\n";
+             <<" saved-byte cases x 4 source labels; "<<negativesTested
+             <<" negative groups PASS (synthetic provenance Unknown)\n";
 #else
     std::cout<<"L5 Gen I independent checksum-valid save generator: "<<cases
              <<" cases and "<<checks<<" byte assertions PASS (NOT production analyzer)\n";
