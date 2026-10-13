@@ -549,10 +549,17 @@ require(surface,"kGen5SpeciesTouchBase=78600",
         "Names::getSpeciesName(id)",
         "state.acceptSpeciesPicker(error)",
         "state.cancelSpeciesPicker()",
-        "Only compatible base forms, growth groups, gender and ability slots")
+        "Rename first if unnicknamed",
+        "Only compatible original base forms, growth groups, gender and abilities")
 require(native_stage,
         "Name this Pokemon before changing species",
         "(originalDecoded[0x40]>>3)!=0")
+require(native_session,"originalBaseFormForSpecies() const",
+        "source.form()==0")
+require(native_screen,"draft_.originalBaseFormForSpecies()")
+require(read("tests/test_gen5_pk5_readonly.cpp"),
+        'pk->stageName(true,"DEO",&error)',
+        'Field::Species,0,150,&error')
 require(read("tests/test_gen5_readonly_save.cpp"),
         "assert(ui.speciesChoiceCount()==649);",
         'ui.filterSpecies("rAi"',

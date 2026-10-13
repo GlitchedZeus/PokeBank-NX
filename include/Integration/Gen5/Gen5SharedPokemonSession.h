@@ -68,6 +68,14 @@ public:
         if(!working_)return std::nullopt;
         return working_->current();
     }
+    // The species transaction deliberately requires the ORIGINAL PK5 to
+    // be a base form. Editing Form to zero inside this draft cannot bypass
+    // independent Keep / Review replay ordering.
+    [[nodiscard]] bool originalBaseFormForSpecies() const {
+        if(!working_)return false;
+        const Pokemon5ReadOnly source(working_->originalBytes());
+        return source.valid() && !source.empty() && source.form()==0;
+    }
 
     [[nodiscard]] bool stage(Field field,size_t stat,uint32_t value,std::string& error) {
         if(!editable()) {

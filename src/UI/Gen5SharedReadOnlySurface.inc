@@ -967,8 +967,11 @@ void drawSpeciesPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,
     if(state.speciesChoiceCount()==0)
         fb.drawText(x+26,y+180,"No matching Generation V species",
                     Colors::TextSecondary,TextStyle::Body);
+    fb.drawText(x+24,y+h-61,
+        "Rename first if unnicknamed; species changes never silently rewrite names",
+        Colors::TextSecondary,TextStyle::Caption);
     fb.drawText(x+24,y+h-39,
-        "Only compatible base forms, growth groups, gender and ability slots",
+        "Only compatible original base forms, growth groups, gender and abilities",
         Colors::TextDim,TextStyle::Caption);
     drawNavBar(fb,{{"Up/Down","Browse"},{"ZL/ZR","Jump 40"},
                    {"X","Search"},{"A","Choose"},{"B","Cancel"}});

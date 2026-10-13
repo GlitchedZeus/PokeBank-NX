@@ -360,6 +360,25 @@ int main() {
             assert(!edit->stage(G5::StagedPokemon5Record::Field::Gender,0,1));
         }
     }
+    // A form-1 original must not gain species-change eligibility merely
+    // because a subsequent in-memory Form 0 edit made the draft look simple.
+    // Keep and independent Review replay from the original PK5 identity.
+    for(const bool b2w2:{false,true}) {
+        auto d=makeRecord(C::StoredSize,0x1379BDF0);
+        C::write16(d,8,386); // Deoxys form 1, genderless, Pressure
+        d[0x40]=static_cast<uint8_t>((1<<3)|4);
+        d[0x42]=0;
+        d[0x15]=46;
+        std::string error;
+        auto pk=G5::StagedPokemon5Record::create(
+            C::encryptCandidate(d),&error,b2w2);
+        assert(pk);
+        assert(pk->stageName(true,"DEO",&error));
+        assert(pk->stage(G5::StagedPokemon5Record::Field::Form,0,0,&error));
+        assert(pk->current().form()==0);
+        assert(!pk->stage(G5::StagedPokemon5Record::Field::Species,0,150,&error));
+        assert(pk->current().species()==386);
+    }
     // A structurally readable but impossible source form cannot supply
     // exact BW/B2W2 stats or growth data for party recalculation.
     {

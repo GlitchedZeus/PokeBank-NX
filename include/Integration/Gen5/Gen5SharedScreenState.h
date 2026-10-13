@@ -100,6 +100,7 @@ public:
         if(!current || !current->valid() || current->empty() ||
            current->form()!=0 || species<1 || species>649)return false;
         if(species==current->species())return true;
+        if(!draft_.originalBaseFormForSpecies())return false;
         // Do not carry an unnicknamed old species name into a new
         // identity: require a user-confirmed nickname edit first.
         if((Crypto::read32(current->decodedBytes(),0x38)&0x80000000u)==0)
