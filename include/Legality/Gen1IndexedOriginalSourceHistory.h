@@ -63,8 +63,8 @@ struct Result {
 constexpr bool possibleOriginalEvolution(uint16_t source,uint16_t current) noexcept {
     if(source==current && source!=0 && source<=151)return true;
     if(source==0 || current==0 || current>151)return false;
-    // Eevee's three evolutions are siblings, never one another's parents.
-    if(current>=134 && current<=136)return source==133;
+    // Original retail source graph handles Eevee branches and every
+    // two-stage family without the numeric-neighbor false-positive risk.
     return Gen1Encounter::canDescendFrom(current,source);
 }
 
