@@ -7,6 +7,7 @@ on:
       - 'src/Legality/Legality.cpp'
       - 'tests/fixtures/legality_l5_gen1_*'
       - 'tools/audit_legality_l5_gen1_*'
+      - 'tools/legality/verify_gen1_oracle_source_pins.py'
       - '.github/workflows/legality-gen1-exact-pkhex-oracle.yml'
   workflow_dispatch:
 
@@ -57,6 +58,12 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
           git diff --check
+      - name: Check original Gen I oracle SHA pin integrity (fast, deterministic)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/legality/verify_gen1_oracle_source_pins.py --self-test
+          python3 tools/legality/verify_gen1_oracle_source_pins.py
       - name: Verify immutable branch heads and source hashes
         shell: bash
         run: |
@@ -70,7 +77,6 @@ jobs:
           test "$(git hash-object _l5_gen1_accepted/src/Legality/Legality.cpp)" = b1d02d6620e8fffca2cf71874b786d44108e193f
           test "$(git hash-object _l5_gen1_coordinator/src/Legality/Legality.cpp)" = aeede14171542247eb633451c50bd9b2074c49dc
           test "$(git hash-object _l5_gen1_coordinator/src/Integration/Gen1/Gen1ReadOnlySave.cpp)" = a2445a20a2ede222a2b14e56f87305ef3263484e
-          test "$(git hash-object tests/fixtures/legality_l5_gen1_all_151_sourcefree_native.cpp)" = 02711fccd0b5f0342c5dbe259bafaed5c003046e
           test "$(git hash-object _l5_gen1_pkhex/PKHeX.Core/PKM/PK1.cs)" = a4b692ae7045afb9d11ea3a3b6e25b94c0c4de8b
           test "$(git hash-object _l5_gen1_pkhex/PKHeX.Core/Legality/LegalityAnalysis.cs)" = b7f5ca8534e426ad3bf1d30de6f7f7ca57544f3c
           test "$(git hash-object tools/audit_legality_l5_gen1_pkhex_oracle/Program.cs)" = 6cb93000fcc3cf2198e8d399c49b426bbf973621
