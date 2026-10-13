@@ -14,6 +14,7 @@ from pathlib import Path
 
 FILES = (
     "src/Legality/Legality.cpp",
+    "include/Enums/GameVersion.h",
     "include/Legality/Gen59FormatDomainEvidence.h",
     "include/Legality/Gen56NativeEnvelopeEvidence.h",
     "tests/test_legality_gen59_native_foundation.cpp",
@@ -47,6 +48,20 @@ def inspect(root: Path) -> dict:
         "r.coverage.eventGift=CoverageLevel::None",
         "r.coverage.eggBreeding=CoverageLevel::None",
         "r.coverage.transfer=CoverageLevel::None",
+        "const bool unresolvedModernSpecies",
+        "Species id " + " + std::to_string(species)",
+        "!unresolvedModernSpecies",
+    ))
+    ensure(data["include/Enums/GameVersion.h"], "original game IDs", (
+        "W = 20, B = 21, W2 = 22, B2 = 23",
+        "X = 24, Y = 25, AS = 26, OR = 27",
+        "SN = 30, MN = 31, US = 32, UM = 33",
+        "return GameVersion::BW;",
+        "return GameVersion::B2W2;",
+        "return GameVersion::XY;",
+        "return GameVersion::ORAS;",
+        "return GameVersion::SM;",
+        "return GameVersion::USUM;",
     ))
     ensure(domain, "native storage domain", (
         "Kind::LetsGo", "Kind::SwordShield",
