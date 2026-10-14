@@ -383,6 +383,7 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             screen.controllerNavigation.reset();
             return true;
         case Action::None:
+        case Action::Move: // Not offered by the Gen II action set.
             return true;
     }
     return true;

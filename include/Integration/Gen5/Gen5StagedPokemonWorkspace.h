@@ -5,6 +5,7 @@
 #include "Integration/Gen5/Gen5StagedPokemonRecord.h"
 #include "Integration/Gen5/Gen5NativeCreate.h"
 #include "Integration/Gen5/Gen5Bag.h"
+#include "Integration/Gen5/Gen5Trainer.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -62,7 +63,7 @@ public:
     }
 
     [[nodiscard]] bool hasChanges() const noexcept {
-        if(!boxReplacements_.empty() || bagDirty())return true;
+        if(!boxReplacements_.empty() || bagDirty() || trainerDirty())return true;
         for(const auto& pair:pending_)if(pair.second.dirty())return true;
         return false;
     }
@@ -197,6 +198,24 @@ public:
         if(error)error->clear();
         return true;
     }
+    // Shared "Move Pokemon" (Gen IV box vocabulary): one atomic transaction
+    // of an exact boxed Clone into a verified empty box slot plus the
+    // all-zero Remove of the ORIGINAL occupied source slot. Both halves are
+    // the already-verified Clone/Remove replacements; nothing else changes.
+    [[nodiscard]] bool moveToEmptyBox(Slot from,size_t box,size_t slot,
+                                      std::string* error=nullptr) {
+        if(from.region!=Region::Box || !originalOccupied(from)) {
+            if(error)*error="Gen V Move requires an unmodified occupied box slot";
+            return false;
+        }
+        auto snapshot=boxReplacements_;
+        if(!cloneToEmptyBox(from,box,slot,error))return false;
+        if(!removeBox(from.box,from.slot,error)) {
+            boxReplacements_=std::move(snapshot);
+            return false;
+        }
+        return true;
+    }
     [[nodiscard]] bool undoBoxReplacement(size_t box,size_t slot) noexcept {
         return boxReplacements_.erase({Region::Box,box,slot})==1;
     }
@@ -253,7 +272,27 @@ public:
         }
         return out;
     }
-    void discardAll() noexcept { pending_.clear();boxReplacements_.clear();bag_.reset(); }
+    void discardAll() noexcept {
+        pending_.clear();boxReplacements_.clear();bag_.reset();trainer_.reset();
+    }
+
+    // App-owned PlayerData/Misc copies for native Trainer edits (Name, Money,
+    // Play Time). nullptr when the trainer blocks are not fully recognized.
+    [[nodiscard]] Gen5StagedTrainer* stagedTrainer(std::string* error=nullptr) {
+        if(!trainer_)trainer_=Gen5StagedTrainer::create(source_,error);
+        return trainer_?&*trainer_:nullptr;
+    }
+    [[nodiscard]] const Gen5StagedTrainer* stagedTrainerIfOpened() const noexcept {
+        return trainer_?&*trainer_:nullptr;
+    }
+    [[nodiscard]] bool trainerDirty() const noexcept { return trainer_ && trainer_->dirty(); }
+    [[nodiscard]] std::optional<Trainer5View> trainerPresentation() const {
+        if(trainer_)return trainer_->current();
+        return decodeTrainer5(source_);
+    }
+    [[nodiscard]] std::vector<TrainerChange5> trainerReviewChanges() const {
+        return trainerDirty()?trainer_->changes():std::vector<TrainerChange5>{};
+    }
 
     // App-owned Items-block copy for native Bag edits. Created on first use from
     // the selected validated copy; nullptr when the bag is not fully recognized.
@@ -265,6 +304,16 @@ public:
         return bag_?&*bag_:nullptr;
     }
     [[nodiscard]] bool bagDirty() const noexcept { return bag_ && bag_->dirty(); }
+    // What the shared Items panel shows: the staged bag once opened, else the
+    // strictly decoded source bag. nullopt means the bag is unavailable.
+    [[nodiscard]] std::optional<ValidatedBag5> bagPresentation() const {
+        if(bag_)return bag_->current();
+        return decodeBag5(source_);
+    }
+    [[nodiscard]] std::vector<BagChange5> bagReviewChanges() const {
+        if(!bagDirty())return {};
+        return diffBag5(bag_->baseline(),bag_->current());
+    }
     void discardBag() noexcept { bag_.reset(); }
 
 private:
@@ -376,6 +425,7 @@ private:
     std::map<Slot,StagedPokemon5Record> pending_;
     std::map<Slot,BoxReplacement> boxReplacements_;
     std::optional<Gen5StagedBag> bag_;
+    std::optional<Gen5StagedTrainer> trainer_;
 };
 
 } // namespace PokeVault::Integration::Gen5

@@ -22,6 +22,7 @@ struct Gen5StagedSaveCandidate {
     std::vector<uint8_t> bytes;
     size_t changedRecords = 0;
     bool bagChanged = false;
+    bool trainerChanged = false;
     size_t selectedCopyOffset = 0;
     std::string exactGameId;
 };
@@ -38,7 +39,10 @@ struct Gen5StagedSaveCandidate {
     const auto original = source.sourceBytes();
     const auto pending = workspace.pendingReview();
     const Gen5StagedBag* stagedBag = workspace.bagDirty() ? workspace.stagedBagIfOpened() : nullptr;
-    if (original.size() != LayoutInfo::FullSaveSize || (pending.empty() && !stagedBag))
+    const Gen5StagedTrainer* stagedTrainer =
+        workspace.trainerDirty() ? workspace.stagedTrainerIfOpened() : nullptr;
+    if (original.size() != LayoutInfo::FullSaveSize ||
+        (pending.empty() && !stagedBag && !stagedTrainer))
         return fail("Gen V export needs a full validated save and pending staged changes");
 
     const auto blockTable = source.family() == SaveFamily::BlackWhite
@@ -166,6 +170,36 @@ struct Gen5StagedSaveCandidate {
         modified[ItemsBlockIndex] = true;
     }
 
+    // Native Trainer: PlayerData (27) and Misc (52) may differ from the
+    // source only inside the cited Name / Play Time / Money byte ranges.
+    if (stagedTrainer) {
+        if (stagedTrainer->family() != source.family())
+            return fail("Gen V export trainer family differs from the selected source copy");
+        const auto apply = [&](size_t index, std::span<const uint8_t> before,
+                               std::span<const uint8_t> after, auto ranges) {
+            const auto sourceBlock = sourceTrainerBlock5(source, index);
+            if (sourceBlock.empty() || before.size() != sourceBlock.size() ||
+                after.size() != sourceBlock.size() ||
+                !std::equal(sourceBlock.begin(), sourceBlock.end(), before.begin()))
+                return false;
+            const size_t at = base + trainerBlock5(source.family(), index).offset;
+            for (const auto& range : ranges)
+                std::fill_n(allowed.begin() + static_cast<std::ptrdiff_t>(at + range.offset),
+                            range.length, static_cast<uint8_t>(1));
+            if (!std::equal(before.begin(), before.end(), after.begin())) {
+                std::copy(after.begin(), after.end(),
+                          output.bytes.begin() + static_cast<std::ptrdiff_t>(at));
+                modified[index] = true;
+            }
+            return true;
+        };
+        if (!apply(TrainerLayout5::PlayerBlockIndex, stagedTrainer->originalPlayer(),
+                   stagedTrainer->stagedPlayer(), Gen5StagedTrainer::kPlayerRanges) ||
+            !apply(TrainerLayout5::MiscBlockIndex, stagedTrainer->originalMisc(),
+                   stagedTrainer->stagedMisc(), Gen5StagedTrainer::kMiscRanges))
+            return fail("Gen V export trainer baseline differs from the selected source copy");
+    }
+
     auto partition = std::span<uint8_t>(output.bytes).subspan(base, copySize);
     // A block's mirrored checksum lies in the terminal checksum-table block.
     // Therefore the dependent terminal CRC is recalculated LAST, once.
@@ -238,8 +272,19 @@ struct Gen5StagedSaveCandidate {
             return fail("Gen V export candidate did not preserve the exact staged bag");
     }
 
+    if (stagedTrainer) {
+        const auto exported = decodeTrainer5(*checked);
+        const auto expected = stagedTrainer->current();
+        if (!exported || exported->rawName != expected.rawName || exported->money != expected.money ||
+            exported->hours != expected.hours || exported->minutes != expected.minutes ||
+            exported->seconds != expected.seconds || exported->tid != expected.tid ||
+            exported->sid != expected.sid || exported->badges != expected.badges)
+            return fail("Gen V export candidate did not preserve the exact staged trainer");
+    }
+
     output.changedRecords = pending.size();
     output.bagChanged = stagedBag != nullptr;
+    output.trainerChanged = stagedTrainer != nullptr;
     if (error) error->clear();
     return output;
 }

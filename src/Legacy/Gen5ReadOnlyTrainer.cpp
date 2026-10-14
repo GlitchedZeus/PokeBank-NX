@@ -37,7 +37,7 @@ std::unique_ptr<Gen5ReadOnlyTrainer> Gen5ReadOnlyTrainer::create(
     trainer->TID=native.tid;
     trainer->SID=native.sid;
     trainer->trainerGender=native.gender<=1?native.gender:0;
-    trainer->money=0; // Not decoded; no write or title-money editing.
+    trainer->money=0; // Set from the cited Misc block in rebuildPresentation().
     trainer->currentBox=0;
     trainer->saveRevisionString="Gen V / READ ONLY";
     trainer->saveRevisionString+=validated.selectedBackupPartition() ?
@@ -89,7 +89,19 @@ bool Gen5ReadOnlyTrainer::rebuildPresentation(std::string& error) {
     }
     party.swap(displayParty);
     boxes.swap(displayBoxes);
-    items.clear(); // Unsupported pouch data is not represented as a known inventory.
+    // The five native pockets (PKHeX PlayerBag5*, Items = Block(25)) from the
+    // staged Items block, or the strictly decoded source bag before the first
+    // edit. An unrecognized bag stays empty: the shared Items panel then says
+    // the bag is unavailable instead of guessing at pouch contents.
+    decltype(items) displayItems;
+    if(const auto bag=staged_.bagPresentation())displayItems.assign(bag->begin(),bag->end());
+    items.swap(displayItems);
+    // Trainer panel: staged (or source) PlayerData/Misc per PKHeX
+    // PlayerData5/Misc5. TID/SID/gender stay the source's read-only values.
+    if(const auto shown=staged_.trainerPresentation()) {
+        trainerName=Gen5::displayTrainerName(shown->rawName).value_or("Unknown");
+        money=shown->money;
+    }
     return true;
 }
 } // namespace PokeVault::Legacy
