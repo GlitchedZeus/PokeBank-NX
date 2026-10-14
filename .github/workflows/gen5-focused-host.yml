@@ -17,6 +17,10 @@ on:
       - 'include/Legacy/LegacySourceBindings.h'
       - 'src/Legacy/LegacySourceBindings.cpp'
       - 'include/Source/SaveInstance.h'
+      - 'include/Legacy/Gen5ReadOnlyTrainer.h'
+      - 'src/Legacy/Gen5ReadOnlyTrainer.cpp'
+      - 'src/UI/Panels/ItemsPanel.cpp'
+      - 'include/UI/InventoryUIContract.h'
       - 'tests/test_gen5_*.cpp'
       - 'tests/test_gen5_*.py'
       - 'src/UI/Gen5SharedReadOnlySurface.inc'
@@ -41,6 +45,10 @@ on:
       - 'include/Legacy/LegacySourceBindings.h'
       - 'src/Legacy/LegacySourceBindings.cpp'
       - 'include/Source/SaveInstance.h'
+      - 'include/Legacy/Gen5ReadOnlyTrainer.h'
+      - 'src/Legacy/Gen5ReadOnlyTrainer.cpp'
+      - 'src/UI/Panels/ItemsPanel.cpp'
+      - 'include/UI/InventoryUIContract.h'
       - 'tests/test_gen5_*.cpp'
       - 'tests/test_gen5_*.py'
       - 'src/UI/Gen5SharedReadOnlySurface.inc'
@@ -86,7 +94,7 @@ jobs:
       - name: Build and run focused Gen V host contracts
         run: |
           set -euo pipefail
-          for bin in test_gen5_pk5_readonly test_gen5_readonly_save test_gen5_staged_save_candidate test_gen5_native_create test_gen5_create_integration test_gen5_box_touch test_gen5_create_input_rules; do
+          for bin in test_gen5_pk5_readonly test_gen5_readonly_save test_gen5_staged_save_candidate test_gen5_native_create test_gen5_create_integration test_gen5_box_touch test_gen5_create_input_rules test_gen5_bag test_gen5_bag_screen test_gen5_party_box_parity test_gen5_trainer test_gen5_source_e2e test_gen5_export_validation; do
             make -f Makefile.host "build-host/$bin"
             "./build-host/$bin"
           done
@@ -95,7 +103,7 @@ jobs:
       - name: Run focused ASan and UBSan contracts
         run: |
           set -euo pipefail
-          for bin in test_gen5_pk5_readonly_sanitize test_gen5_readonly_save_sanitize test_gen5_staged_save_candidate_sanitize test_gen5_native_create_sanitize test_gen5_create_integration_sanitize test_gen5_box_touch_sanitize test_gen5_create_input_rules_sanitize; do
+          for bin in test_gen5_pk5_readonly_sanitize test_gen5_readonly_save_sanitize test_gen5_staged_save_candidate_sanitize test_gen5_native_create_sanitize test_gen5_create_integration_sanitize test_gen5_box_touch_sanitize test_gen5_create_input_rules_sanitize test_gen5_bag_sanitize test_gen5_bag_screen_sanitize test_gen5_party_box_parity_sanitize test_gen5_trainer_sanitize test_gen5_source_e2e_sanitize test_gen5_export_validation_sanitize; do
             make -f Makefile.host "build-host/$bin"
             "./build-host/$bin"
           done
