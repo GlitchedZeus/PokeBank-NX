@@ -193,6 +193,14 @@ require(read("tests/test_gen5_readonly_save.cpp"),
         "persistedGen5FATIdentityContracts()",
         "assert(oldSave==emulatorSavedAgain)")
 assert "pathIdentity(path,&st,row.contentFingerprint)" not in discovery
+# No-inode FAT aliases must preserve one source/profile claim, and manual
+# parent-path tricks must not escape that identity rule.
+require(discovery, "hasDotPathComponent(path)",
+        "unsupported source path with dot or parent segments",
+        "std::tolower(static_cast<unsigned char>(out[0]))")
+require(read("tests/test_gen5_readonly_save.cpp"),
+        '"SDMC:/Switch/Drastic/User/Backup/POKEMON BLACK.DSV"',
+        "root+\"/junk/../black_rejected.srm\"")
 
 # A selected physical source is also an EXACT CONTENT SNAPSHOT. Inode and
 # path equivalence alone cannot exclude an in-place emulator save rewrite.

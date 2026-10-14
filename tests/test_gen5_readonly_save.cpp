@@ -111,6 +111,10 @@ void persistedGen5FATIdentityContracts() {
     assert(oldSave==emulatorSavedAgain);
     assert(oldSave==G::persistentGen5SourceIdentity(
         "sdmc:\\switch\\drastic\\user\\backup\\Pokemon Black.dsv",0,0));
+    assert(oldSave==G::persistentGen5SourceIdentity(
+        "SDMC:/Switch/Drastic/User/Backup/POKEMON BLACK.DSV",0,0));
+    assert(oldSave==G::persistentGen5SourceIdentity(
+        "sdmc:/switch//drastic/user/backup/Pokemon Black.dsv",0,0));
     assert(oldSave!=G::persistentGen5SourceIdentity(
         "sdmc:/switch/drastic/user/backup/Pokemon White.dsv",0,0));
     assert(oldSave!=G::persistentGen5SourceIdentity(sdPath,2,42));
@@ -138,6 +142,13 @@ void rejectedRetroArchGen5DiagnosticContracts() {
     assert(inspected.sourceVariant=="gen5-unverified-version-hint");
     assert(inspected.diagnostic.find("unverified Gen V header suggests black_nds")!=std::string::npos);
     assert(!G::reopenValidatedSource(inspected).ready());
+    // Lexically equivalent /./ and /../ paths must never bypass an SD
+    // profile claim by presenting another spelling of the same save.
+    const auto dotPath=G::inspectSourceFile(root+"/./black_rejected.srm","Manual");
+    const auto parentPath=G::inspectSourceFile(root+"/junk/../black_rejected.srm","Manual");
+    assert(!dotPath.ready() && !parentPath.ready());
+    assert(dotPath.validation==PokeVault::Source::ValidationStatus::Unsupported);
+    assert(parentPath.validation==PokeVault::Source::ValidationStatus::Unsupported);
     const G::DiscoveryRoot source{root,"RetroArch",0};
     const auto discovered=G::discoverSources(std::span<const G::DiscoveryRoot>(&source,1));
     assert(discovered.filesExamined==2);

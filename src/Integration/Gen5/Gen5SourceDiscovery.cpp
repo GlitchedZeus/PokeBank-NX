@@ -30,7 +30,24 @@ std::string normalized(std::string path) {
         out.push_back(ch);
     }
     while(out.size()>1 && out.back()=='/') out.pop_back();
+    // The Switch SD card is FAT/exFAT: a spelling-only case change must NOT
+    // produce a second profile owner for the exact same physical file when
+    // its devoptab inode is zero. POSIX test paths remain case-sensitive.
+    if(out.size()>=6 &&
+       std::tolower(static_cast<unsigned char>(out[0]))=='s' &&
+       std::tolower(static_cast<unsigned char>(out[1]))=='d' &&
+       std::tolower(static_cast<unsigned char>(out[2]))=='m' &&
+       std::tolower(static_cast<unsigned char>(out[3]))=='c' &&
+       out[4]==':' && out[5]=='/')
+        std::transform(out.begin(),out.end(),out.begin(),
+            [](unsigned char c){return static_cast<char>(std::tolower(c));});
     return out;
+}
+bool hasDotPathComponent(std::string_view path) {
+    const auto value=normalized(std::string(path));
+    const std::string wrapped="/"+value+"/";
+    return wrapped.find("/./")!=std::string::npos ||
+           wrapped.find("/../")!=std::string::npos;
 }
 bool safeScanRoot(std::string_view root) {
     // A malformed or broad RetroArch savefile_directory must never turn a
@@ -248,6 +265,10 @@ bool readNormalizedSourceReadOnly(const std::string& path,
     bytes.clear();
     diagnostic.clear();
     if(containerType)containerType->clear();
+    if(hasDotPathComponent(path)) {
+        diagnostic="unsupported source path with dot or parent segments";
+        return false;
+    }
     if(extension(path)==".dss") {
         diagnostic="savestate .dss is unsupported; use cartridge backup";
         return false;
@@ -330,6 +351,14 @@ Source::SaveInstance inspectSourceFile(const std::string& path,
     row.kind=extension(path)==".dsv"?Source::SaveInstanceKind::Backup:
         Source::SaveInstanceKind::BatterySave;
     row.gameId=std::string(assignedExactGame);
+    // File paths with /./ or /../ can alias an already-owned SD file under
+    // a different spelling on a no-inode filesystem. Never accept them from
+    // the manual source picker, even if the OS can follow the path.
+    if(hasDotPathComponent(path)) {
+        row.validation=Source::ValidationStatus::Unsupported;
+        row.diagnostic="unsupported source path with dot or parent segments";
+        return row;
+    }
     struct stat st{};
     if(!safeRegular(path,&st)) {
         row.validation=Source::ValidationStatus::ReadError;
