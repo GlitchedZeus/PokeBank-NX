@@ -19,7 +19,7 @@
 |---|---|---|
 | [#92 — Gen I–IV parent](https://github.com/GlitchedZeus/PokeBank-NX/pull/92) | `ddaff2470947ed3ca579ec22eb25c7564e215a8c` | Accepted earlier UI/editor ancestor; parent remains draft/unmerged |
 | [#278 — narrow actions](https://github.com/GlitchedZeus/PokeBank-NX/pull/278) / [#280 — touch parity](https://github.com/GlitchedZeus/PokeBank-NX/pull/280) | `d0a45909` / `dcd855a7` | Shared narrow greyed-out actions; Gen III/IV empty-slot tap/A parity; owner hardware retest outstanding |
-| [#306 — Claude Gen I–IV finalization](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) | `6f3b4ddf86f1cd8751025c4cde41fd1be07820de` | 10 region backdrops / 20 trainer portraits, all 16 Gen I–IV covers and in-NRO RomFS package verification, fair DS per-root discovery, GB/GBA/NDS ROM-header checks. **Gen IV candidate CI failed at last check; other checks active.** |
+| [#306 — Claude Gen I–IV finalization](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) | `3ac0ae29fe5d40bc8abededffd2b49326610eec4` | 10 region backdrops / 20 trainer portraits, all 16 Gen I–IV covers and in-NRO RomFS package verification, fair DS per-root discovery, GB/GBA/NDS ROM-header checks. **At later recheck: Gen I–IV hardware candidate, Product UI native, Gen IV shared-editor, Native PR Gate and Touch passed; Full Host Tests still running.** |
 | [#300 — Gen V shared application](https://github.com/GlitchedZeus/PokeBank-NX/pull/300) | `58bd564ba479745f6129f57167aeac6616297753` | Exact BW/B2W2 Save Instances, source/profile assignment, validated primary/backup copies, native Trainer/Party/24 Boxes, staged PK5 View/Edit/Create/Review, working-copy export, source diagnostics and artwork. **All six exact-head CI checks passed. Owner hardware pending.** |
 | [#304 — independent Gen V source-hardening](https://github.com/GlitchedZeus/PokeBank-NX/pull/304) | `4d8c267e8b86df15aeb0002df89207cad0516211` | Persisted exact copy/snapshot/profile identity, alias and moved-file guards, equitable provider source budgets, manual repair and focus/scroll refinements. Stacked on #300; review/reconciliation pending. |
 | [#305 — Gen IV Ball correction](https://github.com/GlitchedZeus/PokeBank-NX/pull/305) | `b8eb006ebb85900684ce4caac4d75a18ebb5a8be` | PK4 capture Ball `max(0x83,0x86)`; separate unmerged change. |
@@ -48,7 +48,7 @@ Original-source routes, decisions, authenticated distribution provenance and exh
 | Area | Verified progress | Remaining |
 |---|---|---|
 | Gen I–III | Owner-accepted editor/save foundation | One combined Gen I–IV UI/touch/launch regression NRO |
-| Gen IV | Owner-accepted prior foundation; advanced edit/items work in draft | #306 native/host CI repair; DS save discovery fairness; actual NRO artwork, Items/exit and touch smoke |
+| Gen IV | Owner-accepted prior foundation; advanced edit/items work in draft | #306 remaining full host CI and owner hardware smoke; DS save discovery fairness; actual NRO artwork, Items/exit and touch smoke |
 | Gen V | Extensive native/shared PK5 editor, Create/Review/export, six green CI gates | **Owner** must prove discovery in existing RetroArch/DraStic/melonDS directories; profile binding, fresh reopen, primary/backup, edits, source immutability |
 | UI | HOME-style art, Party/Trainer previews, Game Sources, touch/focus foundation | Verify in-NRO assets and new controller/touch flows on Switch |
 | Legality | Five independent lines plus original PKHeX differential scaffolding | Combined exact-head tests, cross-lane reconciliation, pinned-source evidence and trustworthy Unknown handling |
