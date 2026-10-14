@@ -1,5 +1,6 @@
 #include "UI/ClassicInventoryOverlay.h"
 
+#include "Integration/Common/ClassicStrictValidators.h"
 #include "Integration/Common/VerifiedStagedExport.h"
 #include "Integration/Gen1/Gen1StagedInventoryEditor.h"
 #include "Integration/Gen2/Gen2StagedEditor.h"
@@ -366,30 +367,12 @@ int generation(TrainerViewScreen& screen) noexcept {
 // Strict parser for the exact classic game behind the current staged Bag workspace.
 Common::StrictSaveValidator strictValidator(TrainerViewScreen& screen) {
     switch (sourceKind(screen.sourceGameId)) {
-        case SourceKind::Gen1: {
-            const auto game = rbyTrainer(screen)->stagedInventory()->sourceGame();
-            return [game](std::span<const uint8_t> bytes, std::string& error) {
-                const auto parsed = PokeVault::Integration::Gen1::parse(bytes, game);
-                if (!parsed) error = parsed.detail.empty() ? "Gen I save failed strict parse" : parsed.detail;
-                return static_cast<bool>(parsed);
-            };
-        }
-        case SourceKind::Gen2: {
-            const auto game = gscTrainer(screen)->stagedEditor()->metadata().sourceGame;
-            return [game](std::span<const uint8_t> bytes, std::string& error) {
-                const auto parsed = PokeVault::Integration::Gen2::parse(bytes, game);
-                if (!parsed) error = parsed.detail.empty() ? "Gen II save failed strict parse" : parsed.detail;
-                return static_cast<bool>(parsed);
-            };
-        }
-        case SourceKind::Gen3: {
-            const auto game = gen3Trainer(screen)->stagedInventory()->sourceGame();
-            return [game](std::span<const uint8_t> bytes, std::string& error) {
-                const auto parsed = PokeVault::Integration::Gen3::parse(bytes, game);
-                if (!parsed) error = parsed.detail.empty() ? "Gen III save failed strict parse" : parsed.detail;
-                return static_cast<bool>(parsed);
-            };
-        }
+        case SourceKind::Gen1:
+            return Common::gen1StrictValidator(rbyTrainer(screen)->stagedInventory()->sourceGame());
+        case SourceKind::Gen2:
+            return Common::gen2StrictValidator(gscTrainer(screen)->stagedEditor()->metadata().sourceGame);
+        case SourceKind::Gen3:
+            return Common::gen3StrictValidator(gen3Trainer(screen)->stagedInventory()->sourceGame());
         case SourceKind::None:
             break;
     }

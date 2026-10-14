@@ -9,5 +9,6 @@ include Makefile.host.hardware-fixes
 include Makefile.host.gen4
 include Makefile.host.source-instances
 include Makefile.host.product-ui
+include Makefile.host.exports
 
 include Makefile.host.machine
