@@ -1,10 +1,35 @@
 # PokeBank NX — Build / Artifact Record
 
-Last updated: 2026-09-11
+Last updated: **2026-10-14**
 
 This file distinguishes application source, build verification, artifact identity, packaging infrastructure, and physical-device acceptance.
 
-## CURRENT ACCEPTED RBY ARTIFACT — PHYSICALLY ACCEPTED
+## Current Gen V NRO development artifact — CI GREEN / HARDWARE PENDING
+
+```text
+Application SHA: 58bd564ba479745f6129f57167aeac6616297753
+Branch: integration/gen5-ui-hardware-candidate-20261012
+PR: https://github.com/GlitchedZeus/PokeBank-NX/pull/300
+GitHub Actions run: https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38523683607
+Artifact: PokeBank-NX-Gen5-Save-Instances-38523683607
+Exact-head CI: Native PR Gate, Full Host Tests, Gen V Focused Host
+               (+ASan/UBSan), Touch Input Gating,
+               Gen I/II Packed Move and Multi-Move — ALL PASSED
+Owner hardware acceptance: FALSE — pending current NRO test
+Source writes: DISABLED; only app-owned staged/export copies supported
+```
+
+This is a development artifact for a branch that contains Black/White/B2W2 source discovery, Save Instances and **Assign Save to This Profile**, strict primary/backup choice, native shared staged PK5 editing/Create/Review and app-owned export, with source saves immutable. The GitHub artifact is not equivalent to proof that the owner's existing emulator saves open correctly on Switch.
+
+**Artifact hash discipline:** The exact NRO payload's byte-level SHA-256 was not independently extracted in this documentation pass; **do not invent a hash** from the Actions ZIP size or GitHub artifact ID. A future owner-accepted NRO must record its actual digest, application/tree SHA and physical smoke result.
+
+## Gen I–IV newest finalization candidate — NOT ACCEPTED
+
+- [Claude PR #306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) at checked head `6f3b4ddf86f1cd8751025c4cde41fd1be07820de` adds exact built-NRO RomFS asset verification, 10 region scenes, 20 trainer portraits, fair DS discovery and ROM-header launch identity.
+- A Gen IV candidate CI job was **failing**, with other checks active, at the October 14 audit. **No all-green or owner-approved device artifact claim** should appear here until the failing run is corrected and a new exact NRO is tested.
+- Last owner-accepted integrated application: `0760334fb850ca46b5171c55f690998d7680d4e7` (October 8). NRO SHA-256 `4f28d7f7ad38c2b62458642e014ae3c05e866755c4152bf4c2db0574c381ce91`.
+
+## HISTORICAL RBY ARTIFACT — PHYSICALLY ACCEPTED
 
 ```text
 Version: 0.1.0-alpha
