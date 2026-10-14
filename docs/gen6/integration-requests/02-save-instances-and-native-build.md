@@ -41,13 +41,10 @@ Azahar and JKSM must **not** be scanned (see `docs/gen6/EMULATOR_SAVE_PROVIDERS.
 Call `Gen6StagedSession::exportWorkingCopy` with `rootDirectory` empty, or set it to
 `PokeBank::Paths::exportsRoot() + "/gen6"`. On Switch, any other root is refused.
 
-## 4. Pre-existing base issue found while running the full host suite
+## 4. Note: full host suite (no base issue)
 
-On `a17c503` (unchanged base, reproduced with the Gen VI include removed),
-`make -f Makefile.host host-test` fails at `Makefile.host.base:337`
-(`build-host/pksm-core-c.o: gcc: fatal error: no input files`). The pinned
-PKSM-Core `aa22d7a4` contains no `*.c` files, so `PKSM_CORE_C_SOURCES` is empty
-and the `-r` link has no inputs. With `make -k` every other target builds. A minimal
-fix in Thread 2's file is to make `$(PKSM_CORE_C_OBJECT)` (and its sanitize variant)
-conditional on `PKSM_CORE_C_SOURCES` being non-empty, and to drop it from the link
-lines when empty. The Gen VI focused targets do not depend on it.
+An earlier local `pksm-core-c.o: no input files` failure came from PKSM-Core's
+nested `memecrypto` submodule not being initialized in the Thread 3 container.
+After `git submodule update --init --recursive` (what CI's `submodules: recursive`
+does), `make -f Makefile.host host-test` passes on this branch, Gen VI included.
+No action is needed from Thread 2.

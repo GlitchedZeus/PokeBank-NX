@@ -80,7 +80,7 @@ No NRO contains Gen VI yet: the native `Makefile` (Thread 2) does not list
 
 ## Still missing / next
 
-- Shared registration and UI wiring (requests 01–03).
+- Shared registration and UI wiring (requests 01–02).
 - Bag (MyItem block 1), Pokédex and box names. These need cited pouch tables.
 - Party stat recomputation, which would let IV/EV/Nature become editable on party
   records. It needs verified Gen VI base stats.
