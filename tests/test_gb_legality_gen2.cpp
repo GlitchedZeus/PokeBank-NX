@@ -179,6 +179,31 @@ const Case kCases[] = {
     {"trade2-wrong-ot-jp-7144", "5f0021670000bf1e00001b000000000000000000009666232800004600007e030000000f000f0008000e000900070008", "958da1985050", "1ba61ba65050", false, false},  // PKHeX: EncounterTrade2:95:GSC:3
 };
 
+// Deliberate differences from PKHeX's GB-era settings, with the verdict PokeBank NX gives.
+// Japanese Crystal's GS Ball Celebi (Mobile System GB, 2001-2002; Ilex Forest shrine,
+// level 30, pokecrystal maps/IlexForest.asm) is a recorded encounter here; PKHeX models
+// it for Virtual Console only and calls all of these invalid. Without matching Japanese
+// Crystal met data a Celebi stays Uncertain, as any unrecorded distribution would.
+struct Deliberate {
+    const char* name;
+    const char* body;
+    const char* ot;
+    const char* nick;
+    Legality::GB::Status expect;
+    bool gsBall;
+};
+
+const Deliberate kDeliberate[] = {
+    {"jp-celebi-gsball", "fb0069dbf6f8303900550000000000000000000000aaaa0419050d46005e0e1e00000064006400470047004700470047", "8a938b505050", "8da71ab05050", Legality::GB::Status::Legal, true},
+    {"jp-celebi-gsball-l45", "fb0069dbf6f8303901458700000000000000000000aaaa0219040f46009e0e2d00000091009100680068006800680068", "8a938b505050", "8da71ab05050", Legality::GB::Status::Legal, true},
+    {"jp-celebi-gsball-female-ot", "fb0069dbf6f8303900550000000000000000000000aaaa4903460f46005e8e1e00000064006400470047004700470047", "b1b6c8505050", "8da71ab05050", Legality::GB::Status::Legal, true},
+    {"intl-celebi-ilex", "fb0069dbf6f8303900550000000000000000000000aaaadb0e050946005e0e1e00000064006400470047004700470047", "868e8b8350505050505050", "82848b8481885050505050", Legality::GB::Status::Uncertain, false},
+    {"jp-celebi-wrong-level", "fb0069dbf6f8303900550000000000000000000000aaaae019430246005d0e1e00000064006400470047004700470047", "8a938b505050", "8da71ab05050", Legality::GB::Status::Uncertain, false},
+    {"jp-celebi-wrong-place", "fb0069dbf6f8303900550000000000000000000000aaaa0be8c89446005e0f1e00000064006400470047004700470047", "8a938b505050", "8da71ab05050", Legality::GB::Status::Uncertain, false},
+    {"jp-celebi-no-metdata", "fb0069dbf6f8303900550000000000000000000000aaaa0c0e000f460000001e00000064006400470047004700470047", "8a938b505050", "8da71ab05050", Legality::GB::Status::Uncertain, false},
+    {"jp-celebi-gsball-badmove", "fb0069dbf639303900550000000000000000000000aaaad90e468d46005e0e1e00000064006400470047004700470047", "8a938b505050", "8da71ab05050", Legality::GB::Status::Uncertain, false},
+};
+
 std::vector<uint8_t> hex(const char* s) {
     std::vector<uint8_t> out;
     for (const char* p = s; p[0] && p[1]; p += 2)
@@ -250,6 +275,18 @@ int main() {
         if (valid != r.problems.empty()) {
             ++failures;
             std::fprintf(stderr, "FAIL %s: a Legal result must have no problems and vice versa\n", c.name);
+        }
+    }
+    for (const Deliberate& d : kDeliberate) {
+        const Case c{d.name, d.body, d.ot, d.nick, false, false};
+        const Legality::GB::Result r = check(c);
+        ++checks;
+        if (r.status != d.expect || r.origin.gsBall != d.gsBall) {
+            ++failures;
+            std::fprintf(stderr, "FAIL %s: unexpected status %d (gsBall %d)\n", d.name, static_cast<int>(r.status),
+                         static_cast<int>(r.origin.gsBall));
+            for (const auto& p : r.problems)
+                std::fprintf(stderr, "    %s\n", p.text.c_str());
         }
     }
     if (failures != 0) {

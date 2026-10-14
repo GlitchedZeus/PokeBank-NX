@@ -5,13 +5,16 @@
 // differences are marked:
 //  - PKHeX does not compare level with EXP for Gen I, while the games keep them in step
 //    (battle, Rare Candy and Day Care all recompute).
-//  - Where every origin is excluded only by a rule PokeBank NX does not treat as definitive,
-//    the report is Incomplete with a warning instead of a verdict either way: a Mew that
-//    matches no recorded distribution, even one carrying a tour trainer name (PKHeX:
-//    invalid; the event list is not known to be complete, and the in-game Mew glitch,
-//    which PKHeX does not model, gives any trainer and DVs), and the Gen I evolution-order
-//    move rule (PKHeX: valid; it never applies the
-//    rule to PK1, so no independent implementation checks it).
+//  - A Mew that matches no recorded distribution, even one carrying a tour trainer name,
+//    is Incomplete with a warning instead of a verdict either way (PKHeX: invalid; the
+//    event list is not known to be complete, and the in-game Mew glitch, which PKHeX does
+//    not model, gives any trainer and DVs).
+//
+// The Gen I evolution-order rule (a pre-evolution's higher-level move next to an evolved
+// form's lower-level one) is satisfied by Pokemon Stadium 2's move reminder, which reads
+// Red/Blue/Yellow cartridges directly: "exeggutor-stomp-after-poisonpowder" (catch rate
+// 90, so it never visited Gen II) learned PoisonPowder as Exeggcute at 37, evolved, and
+// was reminded of Stomp. PKHeX calls it valid too.
 #include "Integration/Gen1/Gen1ReadOnlySave.h"
 #include "Legality/Legality.h"
 #include "Names/ItemNames.h"
@@ -164,8 +167,7 @@ bool hasSeverity(const Legality::Report& report, Legality::Severity severity) {
 }
 
 bool uncertainCase(const std::string& name) {
-    return name == "mew-unrecorded-event" || name == "mew-wrong-dvs" ||
-           name == "exeggutor-stomp-after-poisonpowder";
+    return name == "mew-unrecorded-event" || name == "mew-wrong-dvs";
 }
 }  // namespace
 

@@ -10,6 +10,11 @@ does not have.
 PokeBank NX may also answer UNCERTAIN: every origin was excluded, but only by a rule
 it does not treat as definitive. Those records are counted in their own columns, and
 each one must cite a reason from UNCERTAIN_REASONS; any other UNCERTAIN fails.
+
+A few verdicts differ from PKHeX's GB-era settings on purpose (DELIBERATE): each is
+counted on its own and must name its documented origin; any other difference fails.
+Every record lands in exactly one of: matching legal, matching invalid, deliberately
+different, deliberately uncertain, or differing (a failure).
 """
 
 import argparse
@@ -23,6 +28,14 @@ UNCERTAIN_REASONS = (
     # Mew and Celebi: no recorded distribution matches, and the GB-era event list is not
     # known to be complete. PKHeX answers INVALID here.
     "was only distributed at events",
+)
+
+
+# (PKHeX verdict, PokeBank NX verdict, text the PokeBank explanation must contain).
+DELIBERATE = (
+    # Japanese Crystal's GS Ball Celebi (Mobile System GB, 2001-2002): PKHeX models the
+    # Ilex Forest Celebi for Virtual Console only (Encounters2.CelebiVC).
+    ("INVALID", "VALID", "GS Ball Celebi in Japanese Crystal"),
 )
 
 
@@ -61,26 +74,36 @@ def main():
             known = any(k in b[1] for k in UNCERTAIN_REASONS)
             diffs[("uncertain", a[0]) if known else ("unexplained",)].append((key, kind, a[1], b[1]))
         elif a[0] != b[0]:
-            diffs[(a[0], b[0])].append((key, kind, a[1], b[1]))
+            deliberate = any(a[0] == pv and b[0] == ov and text in b[1] for pv, ov, text in DELIBERATE)
+            if deliberate:
+                table[kind]["deliberate"] += 1
+                table[kind][(a[0], b[0])] -= 1
+            diffs[("deliberate", a[0], b[0]) if deliberate else (a[0], b[0])].append((key, kind, a[1], b[1]))
     total = collections.Counter()
     print(f"{'kind':18} {'both valid':>10} {'both invalid':>13} {'PKHeX only valid':>17} {'ours only valid':>16}"
-          f" {'uncertain':>10}")
+          f" {'uncertain':>10} {'deliberate':>11}")
     for kind in sorted(table):
         c = table[kind]
         total.update(c)
         print(f"{kind:18} {c[('VALID', 'VALID')]:10} {c[('INVALID', 'INVALID')]:13} "
               f"{c[('VALID', 'INVALID')]:17} {c[('INVALID', 'VALID')]:16} "
-              f"{c[('VALID', 'UNCERTAIN')] + c[('INVALID', 'UNCERTAIN')]:10}")
+              f"{c[('VALID', 'UNCERTAIN')] + c[('INVALID', 'UNCERTAIN')]:10} {c['deliberate']:11}")
     agree = total[("VALID", "VALID")] + total[("INVALID", "INVALID")]
     uncertain = total[("VALID", "UNCERTAIN")] + total[("INVALID", "UNCERTAIN")]
+    deliberate = total["deliberate"]
+    differing = total[("VALID", "INVALID")] + total[("INVALID", "VALID")]
     n = sum(v for k, v in total.items() if k != "missing")
-    decided = n - uncertain
-    print(f"\nagreement {agree}/{decided} decided records = {100.0 * agree / max(decided, 1):.2f}%  "
+    decided = n - uncertain - deliberate
+    print(f"\nmatching legal {total[('VALID', 'VALID')]}, matching invalid {total[('INVALID', 'INVALID')]}, "
+          f"differing {differing}, deliberately uncertain {uncertain}, deliberately different {deliberate}")
+    print(f"agreement {agree}/{decided} decided records = {100.0 * agree / max(decided, 1):.2f}%  "
           f"(PKHeX-only-valid {total[('VALID', 'INVALID')]}, ours-only-valid {total[('INVALID', 'VALID')]})")
     print(f"uncertain {uncertain}/{n} (PKHeX VALID {total[('VALID', 'UNCERTAIN')]}, "
           f"PKHeX INVALID {total[('INVALID', 'UNCERTAIN')]})")
     for direction, items in diffs.items():
         label = (f"Uncertain, PKHeX {direction[1]}" if direction[0] == "uncertain" else
+                 f"Deliberately different, PKHeX {direction[1]}, PokeBank {direction[2]}"
+                 if direction[0] == "deliberate" else
                  "UNCERTAIN without a known reason" if direction == ("unexplained",) else
                  "PKHeX VALID, PokeBank INVALID" if direction == ("VALID", "INVALID") else
                  "PKHeX INVALID, PokeBank VALID")
@@ -91,7 +114,7 @@ def main():
         print(f"\n== Corpus accounting: {len(missing)} records without both verdicts, "
               f"{len(extra)} verdicts for unknown records (first: {(missing + extra)[:5]})")
     print(f"\naccounted for {n}/{len(kinds)} corpus records")
-    raise SystemExit(1 if missing or extra or any(k[0] != "uncertain" for k in diffs) else 0)
+    raise SystemExit(1 if missing or extra or any(k[0] not in ("uncertain", "deliberate") for k in diffs) else 0)
 
 
 if __name__ == "__main__":

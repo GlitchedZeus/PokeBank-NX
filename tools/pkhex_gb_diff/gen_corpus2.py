@@ -90,6 +90,12 @@ class Data:
         self.trade_names = gen.read_text_lines(res / "legality/gen2/text_tradegsc_en.txt")
         self.trade_names_ja = gen.read_text_lines(res / "legality/gen2/text_tradegsc_ja.txt")
         self.jp = gbtext.Encoder(gbtext.read_table(pkhex, 2, "TableJP"))
+        # PK2 keeps no language: PKHeX decodes a lone international record with TableEN,
+        # which spells every accented letter of the European trade names (HÜHOTTI,
+        # FALCÁN, MANÍA) at the same byte as the French/German and Italian/Spanish tables.
+        self.en = gbtext.Encoder(gbtext.read_table(pkhex, 2, "TableEN"))
+        self.trade_names_eu = {lang: gen.read_text_lines(res / f"legality/gen2/text_tradegsc_{lang}.txt")
+                               for lang in ("de", "fr", "it", "es")}
         self.jp_names = gbtext.japanese_names(self.jp)
         raw = res.joinpath("legality/mgdb/event2.pkl").read_bytes()
         self.gifts = [raw[i:i + 12] for i in range(0, len(raw), 12)]
@@ -236,7 +242,9 @@ def finish(d, mon, rng):
         def jp(s):
             return d.jp.encode(s, 6, terminate=not mon.fill_name or len(s) < 6)
         return body, jp(mon.ot), jp("タマゴ" if mon.egg else mon.nick)
-    return body, text(mon.ot, 11), text("EGG" if mon.egg else mon.nick, 11)
+    def intl(s):
+        return text(s, 11) if all(c in TEXT for c in s) else d.en.encode(s, 11)
+    return body, intl(mon.ot), intl("EGG" if mon.egg else mon.nick)
 
 
 def japanize(d, mon, rng):
@@ -323,14 +331,14 @@ def static_mon(d, rng, s):
     return mon
 
 
-def trade_mon(d, rng, t, variant, japanese=False):
+def trade_mon(d, rng, t, variant, japanese=False, lang=None):
     crystal = rng.random() < 0.5
     mon = Mon(t["species"], t["level"], encounter_moves(d, t["species"], t["level"], crystal), crystal)
     if t["dvs"]:
         hp, atk, df, spe, spa, _spd = t["dvs"]
         mon.dvs = [atk, df, spe, spa]
         mon.tid = t["tid"]
-    names = d.trade_names_ja if japanese else d.trade_names
+    names = d.trade_names_ja if japanese else d.trade_names_eu[lang] if lang else d.trade_names
     wrong = "ニセモノ" if japanese else None
     mon.japanese = japanese
     mon.nick = names[t["index"]] if variant != "trade2-wrong-nick" else (wrong or "NOTRADE")
@@ -364,6 +372,22 @@ def gift_mon(d, rng, g):
         mon.caught = caught(0, 1 if egg else level, 0, 0 if egg else location)
         if egg:
             mon.caught = caught(rng.randint(1, 3), 1, 0, rng.randint(1, 95))
+    return mon
+
+
+# Japanese Crystal's GS Ball Celebi: Ilex Forest shrine (location 14), wild level 30.
+def gsball_mon(d, rng, variant):
+    mon = Mon(251, 30, encounter_moves(d, 251, 30, True), True)
+    level, location = 30, 14
+    if variant == "wrong-level":
+        level = rng.choice((29, 31))
+    elif variant == "wrong-place":
+        location = rng.choice((13, 15, 33))
+    mon.caught = caught(rng.randint(1, 3), level, rng.randrange(2), location)
+    if variant == "grown":
+        grow(d, mon, 30 + rng.randrange(1, 40), rng)
+    if variant != "international":
+        japanize(d, mon, rng)
     return mon
 
 
@@ -411,6 +435,16 @@ def main():
                 emit(variant + ("-jp" if japanese else ""), trade_mon(d, rng, t, variant, japanese))
     for g in d.gifts:
         emit("gift2-jp" if g[10] == 1 else "gift2", gift_mon(d, rng, g))
+    # European in-game trades, right and renamed (PKHeX accepts any international language).
+    for lang in ("de", "fr", "it", "es"):
+        for t in d.trades:
+            for variant in ("trade2", "trade2-wrong-nick"):
+                emit(f"{variant}-{lang}", trade_mon(d, rng, t, variant, False, lang))
+    # Japanese Crystal's GS Ball Celebi, with the met data that make it one and without.
+    for variant, count in (("caught", 6), ("grown", 6), ("international", 3), ("wrong-level", 3),
+                           ("wrong-place", 3)):
+        for _ in range(count):
+            emit("gsball2-" + variant, gsball_mon(d, rng, variant))
 
     def emit_maybe_jp(kind, mon, japanese):
         if japanese:

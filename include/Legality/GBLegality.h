@@ -75,6 +75,7 @@ namespace Legality::GB {
         uint8_t level = 0;                  // encounter level (minimum for wild slots)
         uint8_t versions = 0;               // GBData::Version bits
         uint8_t slotType = 0;               // GBData::SlotType1/2 for wild encounters
+        bool gsBall = false;                // Japanese Crystal's GS Ball Celebi (not in PKHeX's GB-era set)
     };
 
     /// Legal: a legitimate origin exists and every check passed.

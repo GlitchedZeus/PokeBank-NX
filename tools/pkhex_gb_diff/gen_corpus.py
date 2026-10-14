@@ -121,6 +121,10 @@ class Data:
         for name in ("TradeGift_RB", "TradeGift_YW", "TradeGift_BU"):
             self.trades.extend(gen.parse_trade1(enc1, name))
         self.trade_names = gen.read_text_lines(res / "legality/gen1/text_traderby_en.txt")
+        self.trade_names_eu = {lang: gen.read_text_lines(res / f"legality/gen1/text_traderby_{lang}.txt")
+                               for lang in ("de", "fr", "it", "es")}
+        self.pkhex, self.pokered = pkhex, pokered
+        self._gen2 = None
         self.trade_names_ja = gen.read_text_lines(res / "legality/gen1/text_traderby_ja.txt")
         self.jp = gbtext.Encoder(gbtext.read_table(pkhex, 1, "TableJP"))
         self.jp_names = gbtext.japanese_names(self.jp)
@@ -130,6 +134,13 @@ class Data:
         for idx, name in by_internal.items():
             if name in pret.dex:
                 self.internal[pret.dex[name]] = idx
+
+    def gen2(self):
+        """The Gen II corpus data, loaded on first use (gen_corpus2 imports this module)."""
+        if self._gen2 is None:
+            import gen_corpus2
+            self._gen2 = gen_corpus2.Data(self.pkhex, self.pokered)
+        return self._gen2
 
     def tms(self, species, yellow):
         bits = self.personal[yellow][species]["tm"]
@@ -236,6 +247,49 @@ def finish(d, mon, rng, japanese):
     return body, ot, nick
 
 
+def evolution_order_pairs(d):
+    """(pre-evolution, evolved form, version, evolved-only move and level, pre-evolution-only
+    move and level) where the evolved form's level-up move comes earlier: the order Gen I's
+    own games cannot produce, which Stadium 2's reminder can."""
+    out = []
+    for s1 in range(1, 152):
+        for _etype, s2, _lv in d.evolutions(s1):
+            for yellow in (False, True):
+                first1, first2 = {}, {}
+                for lv, mv in d.learn[yellow][s1]:
+                    first1.setdefault(mv, lv)
+                for lv, mv in d.learn[yellow][s2]:
+                    first2.setdefault(mv, lv)
+                for a, la in first2.items():
+                    if a in first1 or la <= 1:
+                        continue
+                    for b, lb in first1.items():
+                        if b not in first2 and lb > la:
+                            out.append((s1, s2, yellow, a, la, b, lb))
+    return out
+
+
+def gen2_origin_mon(d, rng):
+    """A Pokemon hatched or caught in Gold/Silver/Crystal, raised there, then sent to
+    Red/Blue/Yellow through the Time Capsule: Gen I species and moves only, and its held
+    item now sits in the catch-rate byte."""
+    import gen_corpus2 as g2
+    d2 = d.gen2()
+    wild_gs = [w for w in d2.wild if w[6] != g2.C]
+    for _ in range(100):
+        mon2 = g2.egg_mon(d2, rng, True) if rng.random() < 0.5 else g2.wild_mon(d2, rng, rng.choice(wild_gs))
+        g2.grow(d2, mon2, min(100, mon2.level + rng.randrange(0, 30)), rng)
+        if mon2.species <= 151 and mon2.moves and all(m <= 165 for m in mon2.moves):
+            break
+    else:
+        return None
+    mon = Mon(mon2.species, mon2.level, mon2.moves, rng.choice(HELD_RATES), False)
+    mon.dvs = list(mon2.dvs) if mon2.dvs else None
+    mon.tid = mon2.tid
+    mon.statexp = list(mon2.statexp)
+    return mon
+
+
 def japanize(d, mon, rng):
     """Give a Pokemon a Japanese trainer and nickname (the caller emits it as Japanese)."""
     mon.ot = rng.choice(d.jp_names)
@@ -299,6 +353,51 @@ def main():
                 else:
                     mon.nick = names[idx] if variant != "trade-wrong-nick" else "NOTRADE"
                 emit(variant + ("-jp" if japanese else ""), mon, japanese)
+
+    # The same trades in German, French, Italian and Spanish Red/Blue/Yellow.
+    for species, v, _rby, gsc, idx, evolve in d.trades:
+        if v == BU:
+            continue
+        yellow = v == YW
+        for lang, names in d.trade_names_eu.items():
+            if idx >= len(names):
+                continue
+            for variant in ("trade", "trade-wrong-nick"):
+                got = species + 1 if evolve else species
+                mon = Mon(got, max(gsc, 5) + rng.randrange(10), [], personal_catch(species, yellow), yellow)
+                mon.moves = encounter_moves(d, species, mon.level, yellow)
+                mon.trade_ot = True
+                mon.nick = names[idx] if variant == "trade" else "NOTRADE"
+                emit(f"{variant}-{lang}", mon)
+
+    # Every evolution-order pair once, with the pre-evolution's own catch rate (no Gen II
+    # visit): caught at its lowest wild level, it learns the late move b before evolving,
+    # and only Pokemon Stadium 2's reminder then gives the evolved form its earlier move a.
+    lowest = {}
+    for species, lmin, _lmax, v in d.wild:
+        if v != BU:
+            key = (species, v == YW)
+            lowest[key] = min(lowest.get(key, 101), lmin)
+    for s1, s2, yellow, a, la, b, lb in evolution_order_pairs(d):
+        start = lowest.get((s1, yellow))
+        if start is None or start > lb:
+            continue
+        mon = Mon(s1, start, encounter_moves(d, s1, start, yellow), personal_catch(s1, yellow), yellow)
+        for lv in range(start + 1, lb + 1):
+            for learn_lv, mv in d.learn[yellow][s1]:
+                if learn_lv == lv and mv not in mon.moves:
+                    if len(mon.moves) < 4:
+                        mon.moves.append(mv)
+                    else:
+                        mon.moves[mon.moves.index(min(mon.moves, key=lambda m: m == b))] = mv
+        mon.level = min(100, max(la, lb) + rng.randrange(0, 8))
+        mon.species = s2
+        if a not in mon.moves:
+            if len(mon.moves) < 4:
+                mon.moves.append(a)
+            else:
+                mon.moves[next(i for i, m in enumerate(mon.moves) if m != b)] = a
+        emit("evo-order", mon)
 
     while made < args.count:
         roll = rng.random()
@@ -371,6 +470,13 @@ def main():
             elif defect == "nick-empty":
                 mon.nick = ""
             emit("defect-" + defect + jp, mon, japanese)
+        elif roll < 0.92:  # bred or caught in Gen II, back in Gen I
+            mon = gen2_origin_mon(d, rng)
+            if mon is None:
+                continue
+            if japanese:
+                japanize(d, mon, rng)
+            emit("from-gen2" + jp, mon, japanese)
         else:  # fully random
             species = rng.randint(1, 151)
             moves = list(dict.fromkeys(rng.randint(1, 165) for _ in range(rng.randint(1, 4))))

@@ -43,6 +43,10 @@ constexpr uint8_t kSpeciesPikachu = 25, kSpeciesRaichu = 26;
 constexpr uint8_t kSpeciesMagnemite = 81, kSpeciesMagneton = 82, kSpeciesDitto = 132;
 constexpr uint8_t kSpeciesPorygon = 137, kSpeciesDragonite = 149, kSpeciesPsyduck = 54;
 constexpr uint8_t kSpeciesCelebi = 251;
+// Japanese Crystal's GS Ball Celebi: the Ilex Forest shrine script (pret/pokecrystal
+// maps/IlexForest.asm, `loadwildmon CELEBI, 30`) and PKHeX's Encounters2.CelebiVC location.
+constexpr uint8_t kLocationIlexForest = 14;
+constexpr uint8_t kGsBallCelebiLevel = 30;
 constexpr uint8_t kMoveSurf = 57, kMoveDizzyPunch = 146;
 constexpr uint8_t kLocationLinkTrade2 = 126;  // Gen II met location for NPC trades
 constexpr uint32_t kOddEggExp = 125;
@@ -240,13 +244,18 @@ bool eggMove(bool crystal, uint8_t species, uint8_t move) {
     return false;
 }
 
+// LearnMethodStadium2 source bits: level-up moves the reminder can teach, per cartridge.
+constexpr uint8_t kStadiumLevelUpRB = 1 << 0, kStadiumLevelUpYW = 1 << 1;
+constexpr uint8_t kStadiumLevelUpAny = 0x0F;  // RB, YW, GS, C
+
 /// LearnsetStadium.CanRelearn: Stadium 2's reminder offers level-up moves up to `level`.
-uint8_t stadiumRelearnLevel(uint8_t species, uint8_t move, uint8_t level) {
+/// `sources` limits which cartridges' learnsets count (IsAbleToBeRelearned is all four).
+uint8_t stadiumRelearnLevel(uint8_t species, uint8_t move, uint8_t level, uint8_t sources = kStadiumLevelUpAny) {
     for (uint16_t i = kStadium2RelearnIndex[species]; i < kStadium2RelearnIndex[species + 1]; ++i) {
         const Stadium2Move& m = kStadium2Relearn[i];
         if (level < m.level)
             return 0;  // sorted by level
-        if (m.move == move && (m.sources & 0x0F) != 0)
+        if (m.move == move && (m.sources & sources) != 0)
             return m.level;
     }
     return 0;
@@ -401,6 +410,7 @@ struct Candidate {
     bool egg = false;                     // hatched from an egg (bred, gift or event)
     bool bred = false;                    // daycare egg: egg moves and inherited moves apply
     bool stadiumGift = false;             // Gen I Stadium gift (catch rate is a gift box)
+    bool gsBall = false;                  // Japanese Crystal's GS Ball Celebi
     bool trade1 = false;
     bool gift2 = false;                   // Gen II event distribution
     bool oddEgg = false;
@@ -637,7 +647,7 @@ void checkGen2Sources(MoveCheck& mc, const std::array<uint8_t, 4>& current, cons
 
 /// Gen I's move bookkeeping rules: no move deleter, no relearner.
 void flagGen1Bookkeeping(MoveCheck& mc, const std::array<uint8_t, 4>& current, const Candidate& enc,
-                         const Chain& hist1, bool emptySlots) {
+                         const Chain& hist1, bool emptySlots, uint8_t stadiumSources) {
     const std::array<uint8_t, 4> initial1 = enc.generation == 1 ? initialMoves(enc) : std::array<uint8_t, 4>{};
     if (emptySlots && enc.generation == 1) {
         // LearnGroup1.FlagFishyMoveSlots: without a Gen II move deleter, a move slot can
@@ -656,11 +666,18 @@ void flagGen1Bookkeeping(MoveCheck& mc, const std::array<uint8_t, 4>& current, c
         }
     }
     // A pre-evolution cannot learn a move at a higher level than a move its evolved
-    // form learned by level-up: it evolved after that level, and Gen I has no move
-    // relearner. (PKHeX's LearnGroup1.FlagEvolutionSlots states this rule, but its
+    // form learned by level-up: it evolved after that level, and the Gen I games have no
+    // move relearner. (PKHeX's LearnGroup1.FlagEvolutionSlots states this rule, but its
     // GetPrevious fall-through means it never runs for PK1 files.)
+    // Pokemon Stadium 2's reminder is the one way round it: it reads a Pokemon straight
+    // from a Red/Blue/Yellow cartridge in the Transfer Pak and re-teaches a level-up move
+    // of its current species up to its level (PKHeX LearnSource2Stadium, whose
+    // reminder_stad2 table tags each move with the cartridges' learnsets; Bulbapedia's
+    // "Game move errors" records Yellow-cart-only reminders, e.g. Starmie's Harden).
+    // No Gen II visit is needed, so the catch rate is untouched; `stadiumSources` says
+    // which cartridges' learnsets count (Red/Blue/Yellow only when Gen II is out of reach).
     // Only a contradiction under EVERY way of learning both moves counts: each move's
-    // options are its encounter/TM/tutor sources (no timing) and every in-range
+    // options are its encounter/TM/tutor/reminder sources (no timing) and every in-range
     // level-up listing at every form, in Red/Blue and Yellow.
     struct Option { bool timed; int stage; uint8_t level; };
     auto options = [&](uint8_t move) {
@@ -678,6 +695,8 @@ void flagGen1Bookkeeping(MoveCheck& mc, const std::array<uint8_t, 4>& current, c
                     if (p->move == move && p->level >= s.min && p->level <= s.max)
                         out.push_back({true, stage, p->level});
             }
+            if (move <= kMaxMove1 && stadiumRelearnLevel(s.species, move, s.max, stadiumSources) != 0)
+                out.push_back({false, stage, 0});
         }
         return out;
     };
@@ -719,8 +738,8 @@ MoveCheck checkMoves(const Subject& pk, const Candidate& enc, const Chain& hist1
         checkGen1Sources(mc, current, enc, hist1);
         if (otherGenerationReachable && !allValid(mc))
             checkGen2Sources(mc, current, enc, hist2);
-        if (!otherGenerationReachable)
-            flagGen1Bookkeeping(mc, current, enc, hist1, true);
+        if (!otherGenerationReachable)  // still in Red/Blue/Yellow carts only
+            flagGen1Bookkeeping(mc, current, enc, hist1, true, kStadiumLevelUpRB | kStadiumLevelUpYW);
     } else {
         checkGen2Sources(mc, current, enc, hist2);
         if (otherGenerationReachable && !allValid(mc)) {
@@ -735,7 +754,7 @@ MoveCheck checkMoves(const Subject& pk, const Candidate& enc, const Chain& hist1
             }
             checkGen1Sources(mc, current, enc, hist1);
             // LearnGroup1.GetPrevious is null for PK2, so the evolution-order rule applies.
-            flagGen1Bookkeeping(mc, current, enc, hist1, false);
+            flagGen1Bookkeeping(mc, current, enc, hist1, false, kStadiumLevelUpAny);
         }
     }
     for (const MoveResult& r : mc.result) {
@@ -1148,6 +1167,29 @@ std::vector<Candidate> gen2Candidates(const Subject& pk, const Chain& chain) {
             c.fixedMoves = {s.moves[0], s.moves[1], s.moves[2], s.moves[3]};
         }
         out.push_back(c);
+    }
+
+    // The GS Ball Celebi, a GB-era encounter only in Japanese Crystal. The GS Ball came
+    // from the Goldenrod Pokemon Communication Center through the Mobile System GB event
+    // (27 January 2001 - 14 December 2002; Serebii "Mobile System GB", Bulbapedia "GS Ball");
+    // Kurt passes it on to the Ilex Forest shrine, which summons a wild level-30 Celebi.
+    // The Western carts carry the script, but only a Virtual Console hook ever sets the
+    // flag that releases the ball (pokecrystal engine/menus/save.asm sGSBallFlag), which is
+    // why PKHeX models it for Virtual Console only. Catching it writes Crystal met data,
+    // and a Gen II-only species never takes the Time Capsule trip that would wipe it.
+    if (pk2 && maybeJapanese && hasMet && pk.metLocation == kLocationIlexForest &&
+        pk.metLevel == kGsBallCelebiLevel) {
+        const int idx = chain.indexOf(kSpeciesCelebi);
+        if (idx >= 0 && chain.stage[idx].max >= kGsBallCelebiLevel) {
+            Candidate c;
+            c.kind = EncounterKind::Static;
+            c.generation = 2;
+            c.species = kSpeciesCelebi;
+            c.level = kGsBallCelebiLevel;
+            c.versions = Crystal;
+            c.gsBall = true;
+            out.push_back(c);
+        }
     }
 
     for (std::size_t i = 0; i < kWildSlotCount; ++i) {
@@ -1680,7 +1722,7 @@ Result search(const Subject& pk, const Chain& chainOwn, const Chain& chainOther,
         Evaluation ev = evaluate(pk, c, chain, otherGeneration);
         if (ev.problems.empty()) {
             res.status = extra.empty() ? Status::Legal : Status::Illegal;
-            res.origin = {c.kind, c.generation, c.species, c.level, c.versions, c.slotType};
+            res.origin = {c.kind, c.generation, c.species, c.level, c.versions, c.slotType, c.gsBall};
             res.timeCapsule = ev.timeCapsule;
             res.problems = extra;
             return res;
@@ -1744,7 +1786,7 @@ Result search(const Subject& pk, const Chain& chainOwn, const Chain& chainOther,
         }
     } else {
         const Candidate& c = best.enc;
-        res.origin = {c.kind, c.generation, c.species, c.level, c.versions, c.slotType};
+        res.origin = {c.kind, c.generation, c.species, c.level, c.versions, c.slotType, c.gsBall};
         res.timeCapsule = best.timeCapsule;
         res.problems = std::move(best.problems);
     }
@@ -1780,6 +1822,8 @@ bool movesWellFormed(const std::array<uint8_t, 4>& moves, uint8_t maxMove, const
 std::string describe(const Origin& o) {
     if (o.kind == EncounterKind::None)
         return "no known origin";
+    if (o.gsBall)
+        return "GS Ball Celebi in Japanese Crystal (level " + std::to_string(o.level) + ")";
     std::string kind;
     switch (o.kind) {
         case EncounterKind::Wild: kind = "wild"; break;
