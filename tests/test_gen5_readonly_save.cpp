@@ -642,6 +642,15 @@ void fourTitleProfileAssignmentContracts() {
         assert(!G::openAssignedSource(bindings,
             std::string(g.profile)=="profile-a"?"profile-b":"profile-a",
             g.id).ready());
+        // Profile assignment is persisted WITHOUT launching any editor.
+        // The active target profile can reopen the same immutable SAV; a
+        // different Switch profile may not inherit or claim this file.
+        const auto preferred=bindings.resolveFileForGame(g.profile,g.id);
+        assert(preferred.status==PokeVault::Legacy::AssignedFileStatus::Ready);
+        assert(preferred.sourceIdentity==source.sourceIdentity);
+        assert(preferred.binding.sourcePath==entry.path);
+        assert(preferred.binding.profileIdentity==g.profile);
+        assert(preferred.binding.gameIdentity==g.id);
         // The exact title remains authoritative even for identical-size raw
         // files. A source assigned to Black must never open for White.
         const char* wrong=i==0?"white_nds":

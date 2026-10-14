@@ -141,6 +141,33 @@ require(selector_header, "getSelectedGen5Copy() const",
 require(ui_header, "SaveCopySelection selectedCopy")
 require(manager, "selectScreen.getSelectedGen5Copy()",
         "legacySourceBindings,profileIdentity(userUid),gameId,selectedCopy")
+# Gen V must match Gen I-IV's explicit active-profile linking:
+# Save Source menu -> Assign Save to This Profile -> validated chooser A.
+# Opening a game by A is distinct. A metadata-only assignment never starts
+# the editor, and manual source selection uses the same shared bindings.
+require(selector_header, "bool gen5AssignOnly = true;")
+require(games,
+        '"Assign Save to This Profile"',
+        '"Browse Saves / Open Shared Editor"',
+        '"Assign Save File Manually"',
+        'gen5AssignOnly=true; // Source/Game File defaults to metadata-only profile link.',
+        'gen5AssignOnly=false; // Explicit A on a game requests the shared editor.',
+        'if(gen5SetupIndex==0) {',
+        'gen5AssignOnly=true;',
+        'if(gen5SetupIndex==1) {',
+        'gen5AssignOnly=false;',
+        'if(gen5AssignOnly) {',
+        'titleSelected=false;',
+        'selectedGen5Fingerprint.clear();',
+        '"Gen V save assigned to "+selectedUser->name',
+        'overlay=Overlay::GamesDrawer;',
+        'gen5AssignOnly?"Assign to Profile":"Open Editor"',
+        'legacyBindings->replaceFileAssignmentAndSave(',
+        'PokeVault::Source::visibleToProfile(checked,profile)')
+assign_only_body=games.split("if(gen5AssignOnly) {",1)[1].split("selectedUserUid=selectedUser->uid;",1)[0]
+assert "titleSelected=true;" not in assign_only_body
+assert "selectedGen5Fingerprint=fresh.instance.contentFingerprint;" not in assign_only_body
+
 # A file with two different checksum-valid copies cannot open through an
 # automatic persisted assignment that does not record which copy was chosen.
 require(games, '"CHOOSE COPY"', "SaveCopySelection::Automatic",
@@ -212,8 +239,8 @@ assert "gen5CandidateTouchScroll.offset()" in gen5_draw
 # there are still no original SAV writes anywhere on the Gen V route.
 gen5_setup = games.split("if (overlay == Overlay::Gen5Setup) {", 1)[1]
 gen5_setup = gen5_setup.split("if (overlay == Overlay::Gen5Candidates)", 1)[0]
-assert "gen5SetupIndex==2)overlay=Overlay::Gen5UnassignConfirm;" in gen5_setup
-assert "gen5SetupIndex==2)unassignCurrentGen5Game()" not in gen5_setup
+assert "gen5SetupIndex==3)overlay=Overlay::Gen5UnassignConfirm;" in gen5_setup
+assert "gen5SetupIndex==3)unassignCurrentGen5Game()" not in gen5_setup
 # Local NRO fallback must be a detached, exact-SHA devkitA64 build.
 # A queued remote runner cannot turn a stale binary into a valid candidate.
 build_sh=read("tools/build_gen5_smoke_nro.sh")

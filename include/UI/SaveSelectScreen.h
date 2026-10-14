@@ -266,6 +266,9 @@ namespace UI {
         std::string gen5TargetGameId;
         std::string gen5Notice;
         bool gen5SetupFromGamesDrawer = false;
+        // Explicit Source/Game File action only links a validated save to
+        // the active Switch profile; A/Open Editor remains a separate route.
+        bool gen5AssignOnly = true;
         std::vector<PokeVault::Source::SaveInstance> gen5Instances;
         int gen5SetupIndex = 0;
         int gen5CandidateIndex = 0;

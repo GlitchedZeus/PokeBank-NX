@@ -2208,6 +2208,7 @@ namespace UI {
         selectedGen5Fingerprint.clear();
         gen5Notice=std::move(notice);
         gen5SetupFromGamesDrawer=returnToGamesDrawer;
+        gen5AssignOnly=true; // Source/Game File defaults to metadata-only profile link.
         gen5Instances.clear();
         gen5SetupIndex=0;
         gen5CandidateIndex=0;
@@ -2385,9 +2386,9 @@ namespace UI {
             }
         scrollSelectionIntoView();
         refreshHubPreview();
-        // The user explicitly selected this exact validated Save Instance.
-        // Route straight to the guarded shared Trainer surface after the
-        // assignment is persisted; UIManager reopens/revalidates yet again.
+        // Both modes persist the same exact validated physical source to the
+        // CURRENT selected Switch profile. The assignment-only mode must not
+        // trigger the editor, set a selection fingerprint, or inherit A/Open.
         const auto* selectedUser=currentUser();
         if(!selectedUser || titleIndex<0 ||
            titleIndex>=static_cast<int>(selectedUser->titles.size()) ||
@@ -2395,6 +2396,23 @@ namespace UI {
             gen5Notice="Gen V card changed after assignment; reopen Games to choose it again.";
             overlay=Overlay::Gen5Setup;
             return false;
+        }
+        if(gen5AssignOnly) {
+            titleSelected=false;
+            selectedGen5Fingerprint.clear();
+            selectedGen5Copy=PokeVault::Integration::Gen5::SaveCopySelection::Automatic;
+            hubNotice="Gen V save assigned to "+selectedUser->name+
+                ". Source unchanged; press A on the game to open the editor.";
+            if(gen5SetupFromGamesDrawer) {
+                gamesDrawerIndex=titleIndex;
+                gamesDrawerScroll=std::max(0,gamesDrawerIndex/3-1);
+                overlay=Overlay::GamesDrawer;
+            } else {
+                overlay=Overlay::None;
+            }
+            gen5SetupFromGamesDrawer=false;
+            gen5Instances.clear();
+            return true;
         }
         selectedUserUid=selectedUser->uid;
         selectedTitleId=0;
@@ -2583,6 +2601,7 @@ namespace UI {
             // bypass explicit source choice for this edit/view session.
             openGen5Setup(selectedGameId,
                 "Choose a validated Gen V Save Instance; source stays read-only.");
+            gen5AssignOnly=false; // Explicit A on a game requests the shared editor.
             discoverGen5Candidates();
             return;
         }
@@ -3339,12 +3358,19 @@ namespace UI {
                 gen5SetupFromGamesDrawer=false;
                 return;
             }
-            if(kDown & HidNpadButton_Up)gen5SetupIndex=(gen5SetupIndex+3)%4;
-            if(kDown & HidNpadButton_Down)gen5SetupIndex=(gen5SetupIndex+1)%4;
+            if(kDown & HidNpadButton_Up)gen5SetupIndex=(gen5SetupIndex+4)%5;
+            if(kDown & HidNpadButton_Down)gen5SetupIndex=(gen5SetupIndex+1)%5;
             if(kDown & HidNpadButton_A) {
-                if(gen5SetupIndex==0)discoverGen5Candidates();
-                else if(gen5SetupIndex==1)chooseGen5ManualFile();
-                else if(gen5SetupIndex==2)overlay=Overlay::Gen5UnassignConfirm;
+                if(gen5SetupIndex==0) {
+                    gen5AssignOnly=true;
+                    discoverGen5Candidates();
+                } else if(gen5SetupIndex==1) {
+                    gen5AssignOnly=false;
+                    discoverGen5Candidates();
+                } else if(gen5SetupIndex==2) {
+                    gen5AssignOnly=true; // Manual browse links to current profile.
+                    chooseGen5ManualFile();
+                } else if(gen5SetupIndex==3)overlay=Overlay::Gen5UnassignConfirm;
                 else {
                     overlay=gen5SetupFromGamesDrawer?Overlay::GamesDrawer:Overlay::None;
                     gen5SetupFromGamesDrawer=false;
@@ -4921,7 +4947,7 @@ namespace UI {
                 drawLine("", path.substr(offset, 70));
             drawNavBar(fb, {{"B", "Back to Save List"}});
         } else if (overlay == Overlay::Gen5Setup && u) {
-            constexpr int w=760,h=430,rowH=64;
+            constexpr int w=800,h=520,rowH=62;
             const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-h)/2;
             drawModalSurface(fb,x,y,w,h);
             const auto* game=PokeVault::Games::findGame(gen5TargetGameId);
@@ -4931,14 +4957,17 @@ namespace UI {
             fb.drawText(x+28,y+44,"Pokémon "+title,
                         Colors::TextPrimary,TextStyle::Heading);
             fb.drawText(x+28,y+76,
-                        "Browse and stage PK5 fields in memory. Original saves stay unchanged.",
+                        "Assign to "+u->name+" or open the shared editor; source stays unchanged.",
                         Colors::TextSecondary,TextStyle::Caption);
-            const std::string rows[4]={
-                "Refresh Known Emulator Saves","Choose Save File Manually",
-                "Forget Remembered Save","Cancel"
+            const std::string rows[5]={
+                "Assign Save to This Profile",
+                "Browse Saves / Open Shared Editor",
+                "Assign Save File Manually",
+                "Forget Remembered Save",
+                "Cancel"
             };
             int ry=y+112;
-            for(int i=0;i<4;++i) {
+            for(int i=0;i<5;++i) {
                 drawFocusedCard(fb,x+24,ry,w-48,rowH-8,i==gen5SetupIndex,10);
                 overlayRects.push_back({x+24,ry,w-48,rowH-8,i});
                 fb.drawText(x+44,ry+15,rows[i],i==gen5SetupIndex?
@@ -4983,7 +5012,9 @@ namespace UI {
             fb.drawText(x+28,y+44,"Pokémon "+title+" — Save Instances",
                         Colors::TextPrimary,TextStyle::Heading);
             fb.drawText(x+28,y+76,
-                        "Open the shared staged editor. The original save stays unchanged.",
+                        gen5AssignOnly
+                            ? "Assign to "+u->name+" without opening. Original save unchanged."
+                            : "Open shared staged editor. Original save stays unchanged.",
                         Colors::TextSecondary,TextStyle::Caption);
             const int first=gen5CandidateScroll;
             const int liveOffset=gen5CandidateTouchScroll.offset();
@@ -5000,7 +5031,8 @@ namespace UI {
             if(!gen5Notice.empty())
                 fb.drawText(x+28,y+h-34,gen5Notice.substr(0,95),
                             Colors::TextMuted,TextStyle::Caption);
-            drawNavBar(fb,{{"D-pad/Stick","Choose Save"},{"A","Open Editor"},
+            drawNavBar(fb,{{"D-pad/Stick","Choose Save"},
+                           {"A",gen5AssignOnly?"Assign to Profile":"Open Editor"},
                            {"Y","Source Setup"},{"X","Refresh"},{"B","Back"}});
         } else if (overlay == Overlay::Gen4Setup && u) {
             constexpr int w = 760, h = 430, rowH = 64;
