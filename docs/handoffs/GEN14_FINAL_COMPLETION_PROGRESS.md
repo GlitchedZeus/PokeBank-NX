@@ -16,6 +16,9 @@ Re-fetch GitHub before acting on any SHA below. Never force-push; never reset ba
 | Commit | Change | Evidence |
 |---|---|---|
 | `eb2aa8b3` | Artwork regression root cause: `native-pr-build.yml` did `rm -rf romfs; cp -a recovery-work/romfs romfs` (dropping branch region backdrops) and never ran `fetch_product_art.py` (no trainer portraits / Hisui / Paldea). All NRO workflows now use `tools/prepare_release_romfs.sh` (fill-gaps-only). New `tools/verify_nro_romfs.py` parses the built NRO ASET → RomFS tables and fails on any missing/different required asset. `check_device_assets.py` now requires 10 backdrops + 20 portraits. New combined `gen14-hardware-candidate.yml`. | `tests/test_verify_nro_romfs.py` PASS (synthetic build_romfs-format NRO). Real-NRO verification runs in CI. |
+| `2bcc4053`,`87bf4301`,`cb9ef219` | Classic Bag export (Gen I–III) and Gen I Pokémon export moved onto the verified transaction with exact-game strict validators (`Integration/Common/ClassicStrictValidators.h`); same paths/file names. | `test_classic_verified_export` (real checksum-valid Red/Gold, corrupt refusal, fault cleanup) normal + ASan/UBSan; devkitA64 full make. |
+| `03782f3a` | Save Instances names the Gen IV folder that hit its scan limit. | devkitA64 full make; product-ui-test. |
+| `3ac0ae29` | Diagnostics shows the verified exports folder. | — |
 | `2ca38757` | Gen III/IV verified working-copy export (`Integration/Common/VerifiedStagedExport`): temp dir → fsync → read-back → SHA-256 → strict reparse before/after → atomic rename; never overwrites; source never written. Gen IV review shows original→staged slot list; X = Export Copy in Gen III/IV review (Gen III refuses while separate Bag edits pending). Exports: `sdmc:/switch/PokeBank-NX/exports/gen3|gen4`. | Gen IV 3 layouts + Gen III 5 games: export/reparse/reopen/manifest/4 fault points/no-overwrite/source immutability, normal + ASan/UBSan. |
 | `6f3b4ddf`+`beb7cf7c` | Review → Discard All now two-step (Y arms confirmation, second Y discards, B keeps, A/X inert) in Gen III/IV. | direct-row touch contract asserts it; local devkitA64 `make native-ui-check` PASS. |
 | `92bba2d0` | Product UI Native + Gen IV Candidate gates now trigger for this PR's base. | CI |
@@ -50,7 +53,11 @@ See the draft PR checks for the current head.
 
 ## NRO candidate
 
-None yet. Hardware acceptance: **PENDING**.
+- Pipeline proven: `3ac0ae29` → artifact `PokeBank-NX-Gen1-4-Candidate-3ac0ae29`
+  (run 38534704407, artifact 11879113100): real devkitA64 NRO, packaged RomFS verified
+  against all required assets. **Superseded** by later heads — not the hardware candidate.
+- Real-NRO check of `tools/verify_nro_romfs.py` locally: parsed 25 packaged files byte-exact.
+- Hardware acceptance: **PENDING**. Checklist: `docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md`.
 
 ## Next task
 
