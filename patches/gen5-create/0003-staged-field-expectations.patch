@@ -1,0 +1,12 @@
+diff --git a/tests/test_gen5_readonly_save.cpp b/tests/test_gen5_readonly_save.cpp
+--- a/tests/test_gen5_readonly_save.cpp
++++ b/tests/test_gen5_readonly_save.cpp
+@@ -468,5 +468,5 @@
+         assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::EV));
+-        assert(!stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Species));
+-        assert(!stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Ability));
+-        assert(!stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::HeldItem));
++        assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Species));
++        assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Ability));
++        assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::HeldItem));
+         assert(!stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Shiny));

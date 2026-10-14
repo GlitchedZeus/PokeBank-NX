@@ -41,6 +41,12 @@ jobs:
           echo "APPLICATION_SHA=$EXPECTED_SHA"
           echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
 
+      - name: Check isolated Gen V NRO build entrypoint syntax
+        run: |
+          set -euo pipefail
+          test -x tools/build_gen5_smoke_nro.sh
+          bash -n tools/build_gen5_smoke_nro.sh
+
       - name: Checkout permanent recovery snapshot
         uses: actions/checkout@v4
         with:
@@ -72,10 +78,39 @@ jobs:
       - name: Verify packaged RomFS artwork in final NRO
         run: python3 tools/verify_nro_romfs.py PokeBankNX.nro
 
-      - name: Upload native build log
+      # This exact-head smoke artifact is the first testable NRO for Gen V
+      # profile/game Save Instances. It is NOT a device-accepted release.
+      # Do not emit an NRO when native compile/link failed.
+      - name: Package exact-head Gen V Save Instances smoke NRO
+        run: |
+          set -euo pipefail
+          test -s PokeBankNX.elf
+          test -s PokeBankNX.nro
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          short="$(git rev-parse --short=8 HEAD)"
+          out="gen5-hardware-candidate"
+          mkdir -p "$out"
+          cp PokeBankNX.nro "$out/PokeBank-NX-Gen5-Save-Instances-$short.nro"
+          (cd "$out" && sha256sum ./*.nro > SHA256SUMS.txt)
+          printf 'APPLICATION_SHA=%s\nTREE_SHA=%s\nSOURCE_SAV5_WRITE=DISABLED\nDEVICE_ACCEPTED=false\n' \
+            "$(git rev-parse HEAD)" "$(git rev-parse 'HEAD^{tree}')" \
+            > "$out/BUILD_IDENTITY.txt"
+
+      - name: Upload exact-head Gen V smoke NRO and native build log
         uses: actions/upload-artifact@v4
         with:
-          name: PokeBank-NX-Native-PR-${{ github.run_id }}
-          path: native-pr-build.log
+          name: PokeBank-NX-Gen5-Save-Instances-${{ github.run_id }}
+          path: |
+            gen5-hardware-candidate/
+            native-pr-build.log
           if-no-files-found: error
+          retention-days: 30
+
+      - name: Preserve native compile failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PokeBank-NX-Failed-Native-${{ github.run_id }}
+          path: native-pr-build.log
+          if-no-files-found: warn
           retention-days: 14

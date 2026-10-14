@@ -1,0 +1,398 @@
+#include "Encryption/Encryption5.h"
+#include "Pokemon/Pokemon5ReadOnly.h"
+#include "Integration/Gen5/Gen5StagedPokemonRecord.h"
+
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <iostream>
+#include <vector>
+
+namespace G5 = PokeVault::Integration::Gen5;
+namespace C = PokeVault::Integration::Gen5::Crypto;
+
+void set32(std::vector<uint8_t>& b, size_t o, uint32_t v) {
+    C::write16(b, o, static_cast<uint16_t>(v));
+    C::write16(b, o+2, static_cast<uint16_t>(v >> 16));
+}
+std::vector<uint8_t> makeRecord(size_t size, uint32_t pid) {
+    std::vector<uint8_t> d(size, 0);
+    set32(d,0,pid);
+    C::write16(d,0x08,25);
+    C::write16(d,0x0A,4);
+    C::write16(d,0x0C,12345);
+    C::write16(d,0x0E,54321);
+    set32(d,0x10,10000);
+    d[0x14]=70;
+    d[0x15]=9;
+    d[0x17]=2;
+    d[0x18]=31;
+    C::write16(d,0x28,85);
+    d[0x30]=15;
+    d[0x34]=1;
+    set32(d,0x38,31 | (30u << 5) | (29u << 10));
+    d[0x40]=static_cast<uint8_t>(1 << 1); // valid native Pikachu form 0
+    d[0x41]=3;
+    d[0x42]=1;
+    d[0x5F]=20;
+    d[0x82]=0x21; // Existing Pokemon: strain 2, 1 contagious day.
+    d[0x83]=4;    // Poke Ball.
+    d[0x84]=0x80 | 45; // Met level, female original trainer.
+    if (size == C::PartySize) {
+        for (size_t i=0x88;i<size;i++) d[i]=static_cast<uint8_t>(i*7+1);
+        d[0x8C]=50; // fill first; then restore the source-backed level field
+    }
+    return d;
+}
+int main() {
+    static_assert(C::StoredSize == 0x88);
+    static_assert(G5::NativeMovePP5.size()==560);
+    static_assert(G5::basePP5(0)==0);
+    static_assert(G5::basePP5(1)==35);
+    static_assert(G5::basePP5(559)==5);
+    static_assert(G5::maxPP5(1,3)==56);
+    static_assert(!G5::validNativeMove5(560));
+    static_assert(G5::NativeMetLocations5.size()==276);
+    static_assert(G5::isNativeMetLocation5(30001));
+    static_assert(G5::isNativeMetLocation5(40001));
+    static_assert(G5::isNativeMetLocation5(60003));
+    static_assert(!G5::isNativeMetLocation5(3));
+    static_assert(!G5::isNativeMetLocation5(138));
+    static_assert(C::PartySize == 0xDC);
+    static_assert(G5::experienceForLevel5(0,10)==1000);
+    static_assert(G5::experienceForLevel5(1,10)==1800);
+    static_assert(G5::experienceForLevel5(2,10)==540);
+    static_assert(G5::experienceForLevel5(3,10)==560);
+    static_assert(G5::experienceForLevel5(4,10)==800);
+    static_assert(G5::experienceForLevel5(5,10)==1250);
+    static_assert(G5::levelForExperience5(0,999)==9);
+    static_assert(G5::levelForExperience5(0,1000)==10);
+    // Independent hand-calculated checksum sum for this sparse record.
+    auto single = makeRecord(C::StoredSize, 0x12345678);
+    const auto sum = C::checksum(single);
+    assert(sum != 0);
+    for (uint32_t sv=0; sv<32; sv++) {
+        for (size_t size : {C::StoredSize, C::PartySize}) {
+            auto plain = makeRecord(size, (sv << 13) | 0x123u);
+            const auto before=plain;
+            const auto encrypted = C::encryptCandidate(plain);
+            assert(plain == before);
+            assert(encrypted.size() == size);
+            assert(C::read16(encrypted,6) == C::checksum(plain));
+            const auto decrypted = C::decrypt(encrypted);
+            auto expected = plain;
+            C::write16(expected,6,C::checksum(expected));
+            assert(decrypted == expected);
+            const G5::Pokemon5ReadOnly entity(encrypted);
+            assert(entity.valid() && !entity.empty());
+            assert(entity.partyRecord() == (size == C::PartySize));
+            assert(entity.partyLevel() == (size == C::PartySize ? 50 : 0));
+            assert(entity.species()==25 && entity.heldItem()==4);
+            assert(entity.tid()==12345 && entity.sid()==54321);
+            assert(entity.experience()==10000);
+            assert(entity.friendship()==70 && entity.ability()==9);
+            assert(entity.evs()[0]==31 && entity.moves()[0]==85);
+            assert(entity.pp()[0]==15 && entity.ppUps()[0]==1);
+            assert(entity.ivs()[0]==31 && entity.ivs()[1]==30);
+            assert(entity.gender()==1 && entity.form()==0);
+            assert(entity.nature()==3 && entity.hiddenAbility());
+            assert(entity.originVersion()==20);
+            assert(entity.pokerusState()==0x21 && entity.pokerusMode()==2);
+            assert(entity.ball()==4 && entity.metLevel()==45);
+            assert(entity.originalTrainerGender()==1);
+            assert(std::equal(entity.originalEncryptedBytes().begin(),
+                              entity.originalEncryptedBytes().end(),encrypted.begin()));
+            auto corrupt=encrypted;
+            corrupt[0x20]^=0x01;
+            G5::Pokemon5ReadOnly invalid(corrupt);
+            assert(!invalid.valid() && !invalid.checksumValid());
+            assert(invalid.species()==0 && invalid.moves()[0]==0);
+        }
+    }
+    std::vector<uint8_t> allZero(C::StoredSize, 0);
+    G5::Pokemon5ReadOnly empty(allZero);
+    assert(empty.valid() && empty.empty());
+    G5::Pokemon5ReadOnly shortRecord(std::span<const uint8_t>(allZero.data(), 80));
+    assert(!shortRecord.valid() && shortRecord.species() == 0);
+    assert(C::encryptCandidate(std::span<const uint8_t>(allZero.data(), 80)).empty());
+    // Sanity and out-of-range species failures remain quarantined.
+    auto sane = makeRecord(C::StoredSize, 99);
+    C::write16(sane,4,1);
+    assert(!G5::Pokemon5ReadOnly(C::encryptCandidate(sane)).valid());
+    C::write16(sane,4,0);
+    C::write16(sane,8,650);
+    assert(!G5::Pokemon5ReadOnly(C::encryptCandidate(sane)).valid());
+    // PK5's additive checksum excludes the PID/header. A PID-only mutation
+    // can be undetectable when the data blocks have repeated/zero contents;
+    // never assert that this checksum authenticates those excluded bytes.
+    auto raw = C::encryptCandidate(makeRecord(C::PartySize,0x12345678));
+    raw[1]^=0x20;
+    const G5::Pokemon5ReadOnly pidChanged(raw);
+    assert(pidChanged.sizeValid());
+    assert(pidChanged.pid() != 0x12345678u || !pidChanged.valid());
+    // A compatible exact-native species change preserves PID, OT, EXP,
+    // moves, form and gender, while updating only native species/ability
+    // and recomputing a party cache. Impossible conversions fail closed.
+    for(const size_t size : {C::StoredSize,C::PartySize}) {
+        const auto old=C::encryptCandidate(makeRecord(size,0x13579BDF));
+        std::string error;
+        auto edit=G5::StagedPokemon5Record::create(old,&error);
+        assert(edit && error.empty());
+        const auto before=edit->current();
+        const auto oldMoves=before.moves();
+        const auto oldExp=before.experience();
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Species,0,0,&error));
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Species,0,650,&error));
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Species,0,1,&error));
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Species,0,32,&error));
+        assert(!edit->dirty());
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Species,0,26,&error));
+        // Explicit nickname first; native species replacement never auto-
+        // converts a historic unnicknamed species name to a false identity.
+        assert(edit->stageName(true,"SPARK",&error));
+        assert(edit->stage(G5::StagedPokemon5Record::Field::Species,0,26,&error));
+        const auto raichu=edit->current();
+        assert(raichu.valid() && raichu.species()==26);
+        assert(raichu.pid()==before.pid() && raichu.gender()==before.gender());
+        assert(raichu.moves()==oldMoves && raichu.experience()==oldExp);
+        assert(raichu.ability()==31 && raichu.form()==0); // Hidden Lightning Rod
+        assert(std::equal(old.begin(),old.end(),edit->originalBytes().begin()));
+        if(size==C::PartySize) {
+            assert(C::read16(raichu.decodedBytes(),0x90)>0);
+            assert(raichu.partyLevel()==before.partyLevel());
+        }
+    }
+    // App-owned entity mutation is atomic and never touches external saves.
+    for (const size_t size : {C::StoredSize, C::PartySize}) {
+        const auto source=C::encryptCandidate(makeRecord(size,0x13579BDF));
+        std::string error;
+        auto staged=G5::StagedPokemon5Record::create(source,&error);
+        assert(staged && !staged->dirty());
+        assert(staged->stageName(true,"PIKA NX",&error));
+        assert(staged->stageName(false,"ASH",&error));
+        const auto names=staged->current();
+        assert(G5::asciiName5(names.decodedBytes(),true)=="PIKA NX");
+        assert(G5::asciiName5(names.decodedBytes(),false)=="ASH");
+        assert((C::read32(names.decodedBytes(),0x38)&0x80000000u)!=0);
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Level,0,50,&error));
+        assert(staged->current().experience()==125000);
+        if(size==C::PartySize) {
+            const auto pk=staged->current();
+            assert(pk.partyLevel()==50);
+            const auto bytes=pk.decodedBytes();
+            assert(C::read16(bytes,0x90)>0);
+            assert(C::read16(bytes,0x8E)<=C::read16(bytes,0x90));
+        }
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Experience,0,125500,&error));
+        assert(staged->current().experience()==125500);
+        if(size==C::PartySize)assert(staged->current().partyLevel()==50);
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Nature,0,24,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Friendship,0,255,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::IV,0,0,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::IV,5,31,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::EV,0,255,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::EV,1,255,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::HeldItem,0,638,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Ball,0,25,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::MetLevel,0,100,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::TrainerId,0,65535,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::SecretId,0,0,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::OriginalTrainerGender,0,0,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::FatefulEncounter,0,1,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::MetLocation,0,30001,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Pokerus,0,1,&error));
+        assert(staged->current().pokerusState()==0x20);
+        // Undo infection toggle recovers original strain AND native duration.
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Pokerus,0,2,&error));
+        assert(staged->current().pokerusState()==0x21);
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Pokerus,0,1,&error));
+        assert(staged->stage(G5::StagedPokemon5Record::Field::Move,0,559,&error));
+        assert(staged->current().moves()[0]==559);
+        assert(staged->current().pp()[0]==5);
+        assert(staged->current().ppUps()[0]==0);
+        assert(staged->stage(G5::StagedPokemon5Record::Field::MovePPUps,0,3,&error));
+        assert(staged->current().pp()[0]==8);
+        assert(staged->current().ppUps()[0]==3);
+        assert(staged->stage(G5::StagedPokemon5Record::Field::MovePP,0,4,&error));
+        assert(staged->dirty());
+        const auto current=staged->current();
+        assert(current.valid() && current.nature()==24 && current.friendship()==255);
+        assert(current.ivs()[0]==0 && current.ivs()[5]==31);
+        assert(current.evs()[0]==255 && current.evs()[1]==255);
+        assert(current.heldItem()==638 && current.ball()==25);
+        assert(current.metLevel()==100 && current.originalTrainerGender()==0);
+        assert(current.tid()==65535 && current.sid()==0);
+        assert(current.fatefulEncounter() && current.gender()==1 && current.form()==0);
+        assert(current.metLocation()==30001);
+        assert(current.pokerusState()==0x20 && current.pokerusMode()==1 &&
+               current.hiddenAbility());
+        assert(current.moves()[0]==559 && current.pp()[0]==4 &&
+               current.ppUps()[0]==3);
+        assert(current.moves()[1]==0 && current.pp()[1]==0);
+        assert(current.moves()[2]==0 && current.moves()[3]==0);
+        assert(std::equal(staged->originalBytes().begin(),staged->originalBytes().end(),source.begin()));
+        const auto beforeInvalid=std::vector<uint8_t>(
+            staged->stagedBytes().begin(),staged->stagedBytes().end());
+        assert(!staged->stageName(true,"",&error));
+        assert(!staged->stageName(true,"TOO MANY TEXT",&error));
+        assert(!staged->stageName(false,"TOO LONG",&error));
+        assert(!staged->stageName(true,"Pikaché",&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Level,0,0,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Level,0,101,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Experience,0,1000001,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Experience,1,50,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Nature,0,25,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Friendship,0,256,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::IV,6,12,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::IV,0,32,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::EV,2,1,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::EV,0,256,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::HeldItem,0,639,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::HeldItem,1,25,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Ball,0,26,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MetLevel,0,101,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::TrainerId,0,65536,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::SecretId,1,1,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::OriginalTrainerGender,0,2,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::FatefulEncounter,0,2,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Pokerus,0,3,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MetLocation,0,3,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MetLocation,0,138,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MetLocation,0,65535,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Move,0,560,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::Move,4,85,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MovePPUps,0,4,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MovePP,0,9,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MovePP,4,1,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MovePPUps,1,1,&error));
+        assert(!staged->stage(G5::StagedPokemon5Record::Field::MovePP,1,1,&error));
+        assert(std::equal(staged->stagedBytes().begin(),staged->stagedBytes().end(),
+                          beforeInvalid.begin()));
+        staged->rollback();
+        assert(!staged->dirty());
+        assert(std::equal(staged->stagedBytes().begin(),staged->stagedBytes().end(),source.begin()));
+    }
+    // Party stat recomputation is independent of local edit order.
+    {
+        auto plain=makeRecord(C::PartySize,0x13579BDF);
+        plain[0x40]=0x02; // native Pikachu, form 0
+        C::write16(plain,0x8E,88);
+        C::write16(plain,0x90,100); // 12 HP damage
+        const auto raw=C::encryptCandidate(plain);
+        auto a=G5::StagedPokemon5Record::create(raw);
+        auto b=G5::StagedPokemon5Record::create(raw);
+        assert(a && b);
+        assert(a->stage(G5::StagedPokemon5Record::Field::Level,0,50));
+        assert(a->stage(G5::StagedPokemon5Record::Field::IV,0,0));
+        assert(b->stage(G5::StagedPokemon5Record::Field::IV,0,0));
+        assert(b->stage(G5::StagedPokemon5Record::Field::Level,0,50));
+        assert(std::equal(a->stagedBytes().begin(),a->stagedBytes().end(),
+                          b->stagedBytes().begin()));
+        const auto parsed=a->current();
+        const auto bytes=parsed.decodedBytes();
+        assert(C::read16(bytes,0x90)==98);
+        assert(C::read16(bytes,0x8E)==86);
+        assert(C::read16(bytes,0x92)>0 && C::read16(bytes,0x94)>0);
+        assert(std::equal(a->originalBytes().begin(),a->originalBytes().end(),
+                          raw.begin()));
+    }
+    // Pinned PKHeX BW vs B2W2 personal rows, including shared-form entries.
+    static_assert(G5::NativePersonalBW.size()==668);
+    static_assert(G5::NativePersonalB2W2.size()==709);
+    static_assert(G5::personal5(25,0,false).info->ability1==9);
+    static_assert(G5::personal5(25,0,true).info->abilityHidden==31);
+    static_assert(G5::personal5(201,27,false).info==
+                  G5::personal5(201,0,false).info);
+    static_assert(G5::personal5(386,1,false).info->atk==180);
+    static_assert(G5::personal5(646,2,true).info->hp==125);
+    static_assert(!G5::personal5(646,2,false).info);
+    static_assert(!G5::personal5(650,0,true).info);
+    // Gender-locked examples (Tauros male, Chansey female, Magnemite genderless).
+    static_assert(G5::personal5(128,0,false).info->genderRatio==0);
+    static_assert(G5::personal5(113,0,false).info->genderRatio==254);
+    static_assert(G5::personal5(81,0,false).info->genderRatio==255);
+    for(const bool b2w2:{false,true}) {
+        auto plain=makeRecord(C::StoredSize,0x1379BDF0);
+        C::write16(plain,8,25);
+        plain[0x40]=0; // native Pikachu, form 0 / male
+        plain[0x42]=0; // normal ability
+        const auto raw=C::encryptCandidate(plain);
+        std::string error;
+        auto edit=G5::StagedPokemon5Record::create(raw,&error,b2w2);
+        assert(edit);
+        const auto originalShiny=edit->current().shiny();
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Form,0,1,&error));
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Gender,0,2,&error));
+        assert(edit->stage(G5::StagedPokemon5Record::Field::Gender,0,1,&error));
+        assert(edit->current().gender()==1);
+        assert(edit->stage(G5::StagedPokemon5Record::Field::AbilitySlot,0,2,&error));
+        assert(edit->current().ability()==31 && edit->current().hiddenAbility());
+        assert(edit->current().shiny()==originalShiny);
+        assert(edit->stage(G5::StagedPokemon5Record::Field::AbilitySlot,0,0,&error));
+        assert(edit->current().ability()==9 && !edit->current().hiddenAbility());
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::AbilitySlot,0,3,&error));
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Gender,1,1,&error));
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Form,0,32,&error));
+        assert(std::equal(edit->originalBytes().begin(),edit->originalBytes().end(),
+                          raw.begin()));
+    }
+    // Party form changes recalculate native battle stats from exact personal data.
+    for(const bool b2w2:{false,true}) {
+        for(const size_t size:{C::StoredSize,C::PartySize}) {
+            auto form=makeRecord(size,0x1379BDF0);
+            C::write16(form,8,386); // Deoxys 0..3, nonidentical base stats
+            form[0x40]=0x04; // genderless, form 0
+            form[0x42]=0;
+            form[0x15]=46; // Pressure
+            auto edit=G5::StagedPokemon5Record::create(
+                C::encryptCandidate(form),nullptr,b2w2);
+            assert(edit);
+            const bool changed=edit->stage(G5::StagedPokemon5Record::Field::Form,
+                                           0,1);
+            assert(changed);
+            if(changed) {
+                assert(edit->current().form()==1);
+                assert(edit->current().gender()==2);
+                assert(edit->current().valid());
+            } else assert(edit->current().form()==0);
+            assert(!edit->stage(G5::StagedPokemon5Record::Field::Gender,0,1));
+        }
+    }
+    // A form-1 original must not gain species-change eligibility merely
+    // because a subsequent in-memory Form 0 edit made the draft look simple.
+    // Keep and independent Review replay from the original PK5 identity.
+    for(const bool b2w2:{false,true}) {
+        auto d=makeRecord(C::StoredSize,0x1379BDF0);
+        C::write16(d,8,386); // Deoxys form 1, genderless, Pressure
+        d[0x40]=static_cast<uint8_t>((1<<3)|4);
+        d[0x42]=0;
+        d[0x15]=46;
+        std::string error;
+        auto pk=G5::StagedPokemon5Record::create(
+            C::encryptCandidate(d),&error,b2w2);
+        assert(pk);
+        assert(pk->stageName(true,"DEO",&error));
+        assert(pk->stage(G5::StagedPokemon5Record::Field::Form,0,0,&error));
+        assert(pk->current().form()==0);
+        assert(!pk->stage(G5::StagedPokemon5Record::Field::Species,0,150,&error));
+        assert(pk->current().species()==386);
+    }
+    // A structurally readable but impossible source form cannot supply
+    // exact BW/B2W2 stats or growth data for party recalculation.
+    {
+        auto invalid=makeRecord(C::PartySize,0x12345678);
+        invalid[0x40]|=uint8_t{2<<3}; // Pikachu form 2 does not exist
+        const auto raw=C::encryptCandidate(invalid);
+        auto edit=G5::StagedPokemon5Record::create(raw);
+        assert(edit);
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Level,0,50));
+        assert(!edit->stage(G5::StagedPokemon5Record::Field::Nature,0,1));
+        assert(std::equal(edit->stagedBytes().begin(),edit->stagedBytes().end(),
+                          raw.begin()));
+    }
+    const auto invalidEntity = std::vector<uint8_t>(C::StoredSize,0);
+    assert(!G5::StagedPokemon5Record::create(invalidEntity).has_value());
+    std::cout << "Gen V PK5 read-only record/crypto contracts PASS (32 shuffles, boxed/party, corruption)\n";
+}

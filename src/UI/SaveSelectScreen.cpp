@@ -24,6 +24,9 @@
 #include "Trainer/Trainer.h"
 #include "Games/GameIdentity.h"
 #include "Integration/Gen4/Gen4AssignedSource.h"
+#include "Integration/Gen5/Gen5AssignedSource.h"
+#include "Integration/Gen5/Gen5GameCardPreview.h"
+#include "Integration/Gen5/Gen5GameSourceCatalog.h"
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
 #include "Utils/Keyboard.h"
 #include "Utils/Logger.h"
@@ -270,7 +273,13 @@ namespace UI {
                 fb.drawText(x + 44, rowY + 8, instance.label,
                             i == selectedIndex ? Colors::TextPrimary : Colors::TextSecondary,
                             TextStyle::Body);
-                if (instance.mostRecentlyModified || showOlderLabel) {
+                // File mtime cannot rank two validated retail copies inside
+                // the same physical Gen V save. Never imply that Primary is
+                // newer merely because its row sorts before Backup.
+                const bool separateGen5Copy =
+                    instance.generation==5 && !instance.sourceVariant.empty();
+                if (!separateGen5Copy &&
+                    (instance.mostRecentlyModified || showOlderLabel)) {
                     const std::string recency = instance.mostRecentlyModified
                         ? "MOST RECENTLY MODIFIED" : "OLDER FILE";
                     int fw = 0, fh = 0;
@@ -409,6 +418,17 @@ namespace UI {
             return genderKnown
                 ? TrainerPortraitPresentation{female ? "Lyra" : "Ethan", female ? "lyra" : "ethan", female, true}
                 : TrainerPortraitPresentation{"Johto Trainer", "ethan", false, true};
+
+        if (gameId == "black_nds" || gameId == "white_nds")
+            return genderKnown
+                ? TrainerPortraitPresentation{female ? "Hilda" : "Hilbert",
+                                              female ? "hilda" : "hilbert", female, true}
+                : TrainerPortraitPresentation{"Unova Trainer", "hilbert", false, true};
+        if (gameId == "black2_nds" || gameId == "white2_nds")
+            return genderKnown
+                ? TrainerPortraitPresentation{female ? "Rosa" : "Nate",
+                                              female ? "rosa" : "nate", female, true}
+                : TrainerPortraitPresentation{"Unova Trainer", "nate", false, true};
 
         // Later games still use the save-backed gender when available, but now show the real
         // default protagonist art instead of an empty Poké Ball placeholder.
@@ -713,6 +733,7 @@ namespace UI {
         loadUsers();
         loadLegacySources(legacySources);
         loadGen4Cards();
+        loadGen5Cards();
 
         if (resumeState && !users.empty()) {
             bool restoredProfile = false;
@@ -991,6 +1012,59 @@ namespace UI {
         sortGamesPreservingSelection();
     }
 
+    void SaveSelectScreen::loadGen5Cards() {
+        // Gen V uses the existing shared editor's validated staged-PK5 surface.
+        // The exact game cards cannot open generic writers or mutate SAV5 files.
+        for(auto& user:users) {
+            user.titles.erase(std::remove_if(user.titles.begin(),user.titles.end(),
+                [](const auto& title) {
+                    return title.sourceKind==SelectedSourceKind::Gen5AssignedFile;
+                }),user.titles.end());
+            const auto profile=profileIdentity(user.uid);
+            for(const auto& game:PokeVault::Games::allGameDescriptors()) {
+                if(game.platform!=PokeVault::Games::Platform::NintendoDS ||
+                   game.dataGeneration!=5 ||
+                   !PokeVault::Integration::Gen5::isExactGen5Id(game.id))continue;
+                TitleEntry card;
+                card.name="Pokemon "+std::string(game.title);
+                card.label=std::string(game.title);
+                card.gameId=std::string(game.id);
+                card.platformLabel="Nintendo DS";
+                card.artworkKey=card.gameId;
+                card.sourceKind=SelectedSourceKind::Gen5AssignedFile;
+                card.sourceLabel="CHOOSE SAVE";
+                if(legacyBindings) {
+                    const auto source=legacyBindings->resolveFileForGame(profile,game.id);
+                    if(source.status==PokeVault::Legacy::AssignedFileStatus::Ready) {
+                        card.locationLabel=sourceLeafName(source.binding.sourcePath);
+                        const auto opened=PokeVault::Integration::Gen5::openAssignedSource(
+                            *legacyBindings,profile,game.id);
+                        const auto preview=PokeVault::Integration::Gen5::previewAssignedGame(opened);
+                        if(preview) {
+                            card.gen5Preview=*preview;
+                            card.sourceLabel="REMEMBERED";
+                            card.trainerName=preview->trainerName;
+                            card.trainerGender=preview->trainerGender;
+                            card.trainerGenderKnown=preview->trainerGenderKnown;
+                            card.dexSeen=preview->dexSeen;
+                            card.dexCaught=preview->dexCaught;
+                            card.dexTotal=preview->dexTotal;
+                        } else card.sourceLabel=
+                            opened.diagnostic.find("two valid but different")!=std::string::npos
+                                ? "REMEMBERED / CHOOSE COPY" : "RELINK SAVE";
+                    } else if(source.status==PokeVault::Legacy::AssignedFileStatus::Missing)
+                        card.sourceLabel="MISSING";
+                    else if(source.status==PokeVault::Legacy::AssignedFileStatus::Unreadable)
+                        card.sourceLabel="INVALID";
+                    else if(source.status==PokeVault::Legacy::AssignedFileStatus::Ambiguous)
+                        card.sourceLabel="AMBIGUOUS";
+                }
+                user.titles.push_back(std::move(card));
+            }
+        }
+        sortGamesPreservingSelection();
+    }
+
     void SaveSelectScreen::rebuildUnassignedLegacySources() {
         unassignedLegacySources.clear();
         if (!legacyCatalog || !legacyBindings) return;
@@ -1028,7 +1102,8 @@ namespace UI {
             return {};
         }
 
-        if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile && legacyBindings) {
+        if ((title.sourceKind == SelectedSourceKind::Gen4AssignedFile ||
+             title.sourceKind == SelectedSourceKind::Gen5AssignedFile) && legacyBindings) {
             const auto assigned = legacyBindings->resolveFileForGame(
                 currentProfileIdentity(), title.gameId);
             if (assigned.status == PokeVault::Legacy::AssignedFileStatus::Ready)
@@ -1384,7 +1459,24 @@ namespace UI {
         // Keep the selected card responsive. This is deliberately presentation-only: no save mount,
         // parser, provider discovery, HOME application enumeration, or ROM filesystem scan belongs on
         // the L/R input frame. ZR/A perform exact validation when the user actually requests work.
-        if (title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
+        if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
+            launchDescriptor.state=GameLaunchState::ChooseSource;
+            launchDescriptor.detail="Select a Gen V Save Instance to open the shared staged editor.";
+            const auto& cached=title.gen5Preview;
+            if(cached && cached->exactGameId==title.gameId) {
+                for(size_t i=0;i<cached->partyCount && i<partyPreview.size();++i) {
+                    const auto& pk=cached->party[i];
+                    if(!pk.occupied)continue;
+                    auto& slot=partyPreview[i];
+                    slot.species=pk.species;
+                    slot.level=pk.level;
+                    slot.shiny=pk.shiny;
+                    const char* name=Trainer::getSpeciesName(pk.species);
+                    slot.name=name?name:"Unknown";
+                }
+                partyPreviewStatus="Gen V cached party; exact source verified on Open.";
+            } else partyPreviewStatus="Choose a validated Gen V Save Instance.";
+        } else if (title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
             title.legacyInstances.size() > 1) {
             launchDescriptor.backend = GameLaunchBackend::HomebrewNro;
             launchDescriptor.state = GameLaunchState::ChooseSource;
@@ -1613,6 +1705,27 @@ namespace UI {
             return;
         }
 
+        if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
+            // Do not reopen and reparse a 0x80000 SAV5 merely because the
+            // user moved focus between game cards. Source validation and
+            // fingerprint checking happen again on explicit Save Instance Open.
+            const auto& preview=title.gen5Preview;
+            if(preview && preview->exactGameId==title.gameId) {
+                previewTrainerName=preview->trainerName;
+                previewTrainerGender=preview->trainerGender;
+                previewTrainerGenderKnown=preview->trainerGenderKnown;
+                previewDexSeen=preview->dexSeen;
+                previewDexCaught=preview->dexCaught;
+                previewDexTotal=preview->dexTotal;
+                for(size_t i=0;i<preview->partyCount && i<partyPreview.size();++i)
+                    if(preview->party[i].occupied)
+                        addParty(i,preview->party[i].species,preview->party[i].level,0,
+                                 preview->party[i].shiny);
+                partyPreviewStatus="Gen V cached party; choose Save Instances to open.";
+            } else partyPreviewStatus="Choose a validated Gen V Save Instance.";
+            return;
+        }
+
         if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile && legacyBindings) {
             const auto opened = PokeVault::Integration::Gen4::openAssignedSource(
                 *legacyBindings, currentProfileIdentity(), title.gameId);
@@ -1757,6 +1870,10 @@ namespace UI {
             return true;
         }
 
+        if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
+            hubNotice="Gen V game launch linking is not supported in this preview milestone.";
+            return false;
+        }
         if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile && legacyBindings) {
             const auto assigned = legacyBindings->resolveFileForGame(
                 currentProfileIdentity(), title.gameId);
@@ -1819,6 +1936,12 @@ namespace UI {
             return false;
         const auto& title = user->titles[static_cast<size_t>(titleIndex)];
 
+        // The Gen V emulator/game launch and editor are not production-wired.
+        // Never let generic title launch infer a command from save-path identity.
+        if(title.sourceKind==SelectedSourceKind::Gen5AssignedFile) {
+            hubNotice="Use A to select a Gen V Save Instance and open the shared editor.";
+            return false;
+        }
         // L/R keeps only cached presentation state. Resolve and validate the exact launch target now,
         // on the explicit launch action, before consulting launchDescriptor.
         refreshHubPreview();
@@ -2084,6 +2207,303 @@ namespace UI {
         titleSelected = true;
     }
 
+    void SaveSelectScreen::openGen5Setup(
+        const std::string& gameId,std::string notice,bool returnToGamesDrawer) {
+        gen5TargetGameId=gameId;
+        selectedGen5Copy=PokeVault::Integration::Gen5::SaveCopySelection::Automatic;
+        selectedGen5Fingerprint.clear();
+        gen5Notice=std::move(notice);
+        gen5SetupFromGamesDrawer=returnToGamesDrawer;
+        gen5AssignOnly=true; // Source/Game File defaults to metadata-only profile link.
+        gen5Instances.clear();
+        gen5SetupIndex=0;
+        gen5CandidateIndex=0;
+        gen5CandidateScroll=0;
+        overlay=Overlay::Gen5Setup;
+    }
+
+    void SaveSelectScreen::discoverGen5Candidates() {
+        gen5Instances.clear();
+        gen5CandidateTouchScroll.stop();
+        const auto discovered=PokeVault::Integration::Gen5::discoverKnownSources();
+        std::vector<PokeVault::Source::SaveInstance> rows=discovered.instances;
+        // Preserve exact manually assigned paths outside known emulator roots,
+        // but never accept an invalid, ambiguous, or replaced source as ready.
+        if(legacyBindings) {
+            const auto assigned=legacyBindings->resolveFileForGame(
+                currentProfileIdentity(),gen5TargetGameId);
+            if(assigned.status==PokeVault::Legacy::AssignedFileStatus::Ready) {
+                auto old=PokeVault::Integration::Gen5::inspectSourceFile(
+                    assigned.binding.sourcePath,assigned.binding.sourceType,
+                    gen5TargetGameId);
+                if(old.ready() && old.sourceIdentity==assigned.sourceIdentity) {
+                    rows.push_back(std::move(old));
+                } else if(old.diagnostic.find("two valid but different")!=std::string::npos) {
+                    // A manually assigned path outside emulator roots may
+                    // still contain two individually valid but distinct copies.
+                    for(const auto copy:{
+                            PokeVault::Integration::Gen5::SaveCopySelection::Primary,
+                            PokeVault::Integration::Gen5::SaveCopySelection::Backup}) {
+                        auto separate=PokeVault::Integration::Gen5::inspectSourceFile(
+                            assigned.binding.sourcePath,assigned.binding.sourceType,
+                            gen5TargetGameId,copy);
+                        if(separate.ready() &&
+                           separate.sourceIdentity==assigned.sourceIdentity)
+                            rows.push_back(std::move(separate));
+                    }
+                }
+            }
+        }
+        if(!legacyBindings) {
+            gen5Notice="Profile assignments unavailable; Gen V source remains read-only.";
+            overlay=Overlay::Gen5Setup;
+            return;
+        }
+        const auto catalog=PokeVault::Integration::Gen5::forGameAndProfile(
+            rows,*legacyBindings,currentProfileIdentity(),gen5TargetGameId);
+        gen5Instances=catalog.rows;
+        // Append-only local diagnostics; never save or alter emulator bytes.
+        // These counts tell a real hardware tester whether an emulator root
+        // was opened, whether battery filenames were found, and how many
+        // candidates strict parsing/profile ownership rejected.
+        logInfoToFile("Gen V scan: game="+gen5TargetGameId+
+            " roots="+std::to_string(discovered.rootsOpened)+"/"+
+                         std::to_string(discovered.rootsConsidered)+
+            " entries="+std::to_string(discovered.entriesExamined)+
+            " files="+std::to_string(discovered.filesExamined)+
+            " ready="+std::to_string(gen5Instances.size())+
+            " wrongGame="+std::to_string(catalog.wrongGame)+
+            " invalid="+std::to_string(catalog.invalidOrAmbiguous)+
+            " claimedOther="+std::to_string(catalog.ownedByOtherProfile)+
+            " incomplete="+std::to_string(discovered.limitReached));
+        if(gen5Instances.empty()) {
+            // A missing candidate is NOT the same as a missing file. Show the
+            // evidence available from the same discovery pass as Gen IV: the
+            // number inspected, exact-game mismatch, cross-profile claims or
+            // the first strict parser rejection. Never silently open a file.
+            if(discovered.limitReached) {
+                gen5Notice="Gen V scan limit reached after "+
+                    std::to_string(discovered.filesExamined)+
+                    " file(s); try the manual save chooser.";
+            } else if(discovered.rootsOpened==0) {
+                gen5Notice="No known emulator save directories were accessible (0 opened). "
+                           "Existing Gen IV sources remain unchanged.";
+            } else if(discovered.filesExamined==0) {
+                gen5Notice="Opened "+std::to_string(discovered.rootsOpened)+
+                    " emulator folder(s), but found no DS battery files. "
+                    "Use the manual chooser for an exact path.";
+            } else if(catalog.ownedByOtherProfile>0 && catalog.wrongGame==0 &&
+                      catalog.invalidOrAmbiguous==0) {
+                gen5Notice=std::to_string(catalog.ownedByOtherProfile)+
+                    " validated save(s) belong to another Switch profile; "
+                    "original save ownership was preserved.";
+            } else if(catalog.wrongGame>0 && catalog.invalidOrAmbiguous==0) {
+                gen5Notice="Found "+std::to_string(catalog.wrongGame)+
+                    " Gen V save(s) for other game titles, none for this exact title.";
+            } else {
+                const auto diagnosticOnly=[](const PokeVault::Source::SaveInstance& item) {
+                    return item.generation==5 && !item.ready() &&
+                           !item.diagnostic.empty() &&
+                           item.kind!=PokeVault::Source::SaveInstanceKind::SaveState;
+                };
+                // Prefer a *non-authoritative* version hint for the selected
+                // game over an unrelated Gen IV save in the same emulator folder.
+                auto rejected=std::find_if(rows.begin(),rows.end(),
+                    [&](const PokeVault::Source::SaveInstance& item) {
+                        return diagnosticOnly(item) &&
+                               item.sourceVariant=="gen5-unverified-version-hint" &&
+                               item.diagnostic.find(gen5TargetGameId)!=std::string::npos;
+                    });
+                if(rejected==rows.end())
+                    rejected=std::find_if(rows.begin(),rows.end(),diagnosticOnly);
+                gen5Notice="Inspected "+std::to_string(discovered.filesExamined)+
+                    " DS save file(s); none validated for this game.";
+                if(rejected!=rows.end()) {
+                    gen5Notice+=" Example rejection: "+rejected->diagnostic;
+                    logInfoToFile("Gen V strict read-only rejection: game="+gen5TargetGameId+
+                                  " provider="+rejected->providerLabel+
+                                  " file="+rejected->label+
+                                  " reason="+rejected->diagnostic);
+                }
+                else if(catalog.ownedByOtherProfile>0)
+                    gen5Notice+=" Some saves belong to another profile.";
+                else
+                    gen5Notice+=" Select a saved battery file manually for details.";
+            }
+            overlay=Overlay::Gen5Setup;
+        } else {
+            gen5Notice=std::to_string(gen5Instances.size())+
+                " validated read-only save instance(s).";
+            if(discovered.limitReached)
+                gen5Notice+=" Scan limit reached; list may be incomplete.";
+            overlay=Overlay::Gen5Candidates;
+        }
+        gen5CandidateIndex=0;
+        gen5CandidateScroll=0;
+    }
+
+    bool SaveSelectScreen::assignGen5Candidate(
+        const PokeVault::Source::SaveInstance& chosen) {
+        if(!legacyBindings || !chosen.ready() ||
+           chosen.gameId!=gen5TargetGameId || !chosen.readOnly() ||
+           (chosen.sourceVariant!="" &&
+            chosen.sourceVariant!="gen5-copy-0-primary" &&
+            chosen.sourceVariant!="gen5-copy-1-backup"))return false;
+        const auto profile=currentProfileIdentity();
+        if(profile.empty())return false;
+
+        const auto fresh=PokeVault::Integration::Gen5::reopenValidatedSource(chosen);
+        if(!fresh.ready() || fresh.instance.gameId!=gen5TargetGameId ||
+           fresh.instance.contentFingerprint.empty()) {
+            gen5Notice="Gen V source changed or is ambiguous. Refresh Save Instances.";
+            discoverGen5Candidates();
+            return false;
+        }
+        auto checked=fresh.instance;
+        legacyBindings->applyClaims(checked);
+        if(!PokeVault::Source::visibleToProfile(checked,profile)) {
+            gen5Notice="This save belongs to another profile or game.";
+            overlay=Overlay::Gen5Setup;
+            return false;
+        }
+        PokeVault::Legacy::BindingRecord binding;
+        binding.profileIdentity=profile;
+        binding.gameIdentity=gen5TargetGameId;
+        binding.sourcePath=checked.path();
+        binding.sourceType=checked.providerLabel;
+        binding.expectedRawFamily=
+            gen5TargetGameId=="black_nds" || gen5TargetGameId=="white_nds"
+                ? "BW" : "B2W2";
+        if(!legacyBindings->replaceFileAssignmentAndSave(
+                checked.sourceIdentity,std::move(binding))) {
+            gen5Notice=legacyBindings->lastError().find("conflict")!=std::string::npos
+                ? "This save is already linked to another profile or game."
+                : "Gen V assignment could not be stored safely; original source unchanged.";
+            overlay=Overlay::Gen5Setup;
+            return false;
+        }
+
+        const auto cardId=gen5TargetGameId;
+        loadGen5Cards();
+        const auto* user=currentUser();
+        if(user)for(size_t i=0;i<user->titles.size();++i)
+            if(user->titles[i].sourceKind==SelectedSourceKind::Gen5AssignedFile &&
+               user->titles[i].gameId==cardId) {
+                titleIndex=static_cast<int>(i);
+                break;
+            }
+        scrollSelectionIntoView();
+        refreshHubPreview();
+        // Both modes persist the same exact validated physical source to the
+        // CURRENT selected Switch profile. The assignment-only mode must not
+        // trigger the editor, set a selection fingerprint, or inherit A/Open.
+        const auto* selectedUser=currentUser();
+        if(!selectedUser || titleIndex<0 ||
+           titleIndex>=static_cast<int>(selectedUser->titles.size()) ||
+           selectedUser->titles[static_cast<size_t>(titleIndex)].gameId!=cardId) {
+            gen5Notice="Gen V card changed after assignment; reopen Games to choose it again.";
+            overlay=Overlay::Gen5Setup;
+            return false;
+        }
+        if(gen5AssignOnly) {
+            titleSelected=false;
+            selectedGen5Fingerprint.clear();
+            selectedGen5Copy=PokeVault::Integration::Gen5::SaveCopySelection::Automatic;
+            hubNotice="Gen V save assigned to "+selectedUser->name+
+                ". Source unchanged; press A on the game to open the editor.";
+            if(gen5SetupFromGamesDrawer) {
+                gamesDrawerIndex=titleIndex;
+                gamesDrawerScroll=std::max(0,gamesDrawerIndex/3-1);
+                overlay=Overlay::GamesDrawer;
+            } else {
+                overlay=Overlay::None;
+            }
+            gen5SetupFromGamesDrawer=false;
+            gen5Instances.clear();
+            return true;
+        }
+        selectedUserUid=selectedUser->uid;
+        selectedTitleId=0;
+        selectedTitleName=selectedUser->titles[static_cast<size_t>(titleIndex)].name;
+        selectedGameId=cardId;
+        selectedSourceKind=SelectedSourceKind::Gen5AssignedFile;
+        selectedGen5Fingerprint=fresh.instance.contentFingerprint;
+        selectedGen5Copy=chosen.sourceVariant=="gen5-copy-0-primary"
+            ? PokeVault::Integration::Gen5::SaveCopySelection::Primary
+            : chosen.sourceVariant=="gen5-copy-1-backup"
+                ? PokeVault::Integration::Gen5::SaveCopySelection::Backup
+                : PokeVault::Integration::Gen5::SaveCopySelection::Automatic;
+        titleSelected=true;
+        gen5SetupFromGamesDrawer=false;
+        overlay=Overlay::None;
+        return true;
+    }
+
+    void SaveSelectScreen::chooseGen5ManualFile() {
+        const auto chosen=Utils::promptText(
+            "Choose Generation V Save",
+            "Full SD path to raw .sav/.srm or validated .dsv; no savestates",
+            "",240);
+        if(!chosen.accepted)return;
+        auto row=PokeVault::Integration::Gen5::inspectSourceFile(
+            chosen.text,"Manual",gen5TargetGameId);
+        if(!row.ready() &&
+           row.diagnostic.find("two valid but different")!=std::string::npos &&
+           legacyBindings) {
+            // Never assume that either valid copy is the newest. Display
+            // both in the ordinary chooser, with independent strict parsing
+            // and the same profile/physical-source claim protections.
+            std::vector<PokeVault::Source::SaveInstance> alternatives;
+            for(const auto copy:{
+                    PokeVault::Integration::Gen5::SaveCopySelection::Primary,
+                    PokeVault::Integration::Gen5::SaveCopySelection::Backup}) {
+                auto candidate=PokeVault::Integration::Gen5::inspectSourceFile(
+                    chosen.text,"Manual",gen5TargetGameId,copy);
+                if(candidate.ready())alternatives.push_back(std::move(candidate));
+            }
+            const auto catalog=PokeVault::Integration::Gen5::forGameAndProfile(
+                alternatives,*legacyBindings,currentProfileIdentity(),gen5TargetGameId);
+            if(!catalog.rows.empty()) {
+                gen5Instances=catalog.rows;
+                gen5CandidateIndex=0;
+                gen5CandidateScroll=0;
+                gen5Notice="Select the exact Primary or Backup copy; neither is assumed newest.";
+                overlay=Overlay::Gen5Candidates;
+                return;
+            }
+        }
+        if(!row.ready()) {
+            gen5Notice=row.diagnostic.empty()?
+                "That file is not a validated save for this Gen V title.":row.diagnostic;
+            overlay=Overlay::Gen5Setup;
+            return;
+        }
+        if(legacyBindings) {
+            legacyBindings->applyClaims(row);
+            if(!PokeVault::Source::visibleToProfile(row,currentProfileIdentity())) {
+                gen5Notice="This save is already claimed by another profile.";
+                overlay=Overlay::Gen5Setup;
+                return;
+            }
+        }
+        assignGen5Candidate(row);
+    }
+
+    bool SaveSelectScreen::unassignCurrentGen5Game() {
+        if(!legacyBindings)return false;
+        if(!legacyBindings->unassignGameAndSave(
+                currentProfileIdentity(),gen5TargetGameId)) {
+            gen5Notice="Could not forget Gen V assignment.";
+            return false;
+        }
+        loadGen5Cards();
+        scrollSelectionIntoView();
+        refreshHubPreview();
+        gen5Notice="Gen V assignment forgotten. Original save file was not changed.";
+        overlay=Overlay::Gen5Setup;
+        return true;
+    }
+
     void SaveSelectScreen::selectCurrentTitle() {
         const UserEntry* user = currentUser();
         if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size())) return;
@@ -2183,6 +2603,17 @@ namespace UI {
             return;
         }
 
+        if (selected.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
+            // A always presents the exact-game Save Instances picker. An
+            // assigned path is a remembered suggestion, NOT permission to
+            // bypass explicit source choice for this edit/view session.
+            openGen5Setup(selectedGameId,
+                "Choose a validated Gen V Save Instance; source stays read-only.");
+            gen5AssignOnly=false; // Explicit A on a game requests the shared editor.
+            discoverGen5Candidates();
+            return;
+        }
+
         if (selected.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
             if (!legacyBindings) {
                 openGen4Setup(selectedGameId, "Choose a validated read-only save for this game.");
@@ -2244,6 +2675,10 @@ namespace UI {
             return;
         }
 
+        if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
+            hubNotice="Gen V Items are not yet supported. Original saves remain read-only.";
+            return;
+        }
         if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
             if (!legacyBindings) {
                 hubNotice = "Items needs a remembered validated save for this game.";
@@ -2403,7 +2838,10 @@ namespace UI {
             return;
         }
         const auto& game = user->titles[static_cast<size_t>(titleIndex)];
-        if (game.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
+        if (game.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
+            openGen5Setup(game.gameId,
+                "Assign or change a validated Gen V read-only save.",fromGamesDrawer);
+        } else if (game.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
             openGen4Setup(game.gameId, "Assign, repair, or change this game's save source.",
                           fromGamesDrawer, fromClassicGames);
         } else if (game.sourceKind == SelectedSourceKind::RetroArchFRLG) {
@@ -2476,6 +2914,9 @@ namespace UI {
                     legacyInstanceScroll = 0;
                     legacyNotice.clear();
                     overlay = Overlay::LegacyInstances;
+                } else if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
+                    openGen5Setup(title.gameId,
+                        "Review or change this Gen V profile/save assignment.");
                 } else if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile) {
                     openGen4Setup(title.gameId,
                         "Review or change this game's remembered read-only save source.");
@@ -2508,6 +2949,7 @@ namespace UI {
         legacyInstanceTouchScroll.reset();
         legacyAssignmentTouchScroll.reset();
         gen4CandidateTouchScroll.reset();
+        gen5CandidateTouchScroll.reset();
         classicGamesTouchScroll.reset();
 
         // Entry to a fresh profile modal starts with the chosen user visible.
@@ -2605,6 +3047,8 @@ namespace UI {
                         case Overlay::LegacyAssignment: legacyAssignmentIndex = r.idx; break;
                         case Overlay::Gen4Setup: gen4SetupIndex = r.idx; break;
                         case Overlay::Gen4Candidates: gen4CandidateIndex = r.idx; break;
+                        case Overlay::Gen5Candidates: gen5CandidateIndex = r.idx; break;
+                        case Overlay::Gen5Setup: gen5SetupIndex = r.idx; break;
                         case Overlay::Options: optionsIndex = r.idx; break;
                         default: break;
                     }
@@ -2632,6 +3076,8 @@ namespace UI {
                         case Overlay::LegacyAssignment: legacyAssignmentIndex = idx; break;
                         case Overlay::Gen4Setup: gen4SetupIndex = idx; break;
                         case Overlay::Gen4Candidates: gen4CandidateIndex = idx; break;
+                        case Overlay::Gen5Candidates: gen5CandidateIndex = idx; break;
+                        case Overlay::Gen5Setup: gen5SetupIndex = idx; break;
                         case Overlay::Options: optionsIndex = idx; break;
                         default: activate = false; break;
                     }
@@ -2904,6 +3350,88 @@ namespace UI {
                     legacyAssignmentScroll = legacyAssignmentIndex - visibleRows + 1;
             }
             if (kDown & HidNpadButton_A) assignCurrentLegacySource();
+            return;
+        }
+        if (overlay == Overlay::Gen5UnassignConfirm) {
+            // A or a touch tap must never silently forget a profile binding.
+            // Only an explicit Y confirmation removes app-owned assignment
+            // metadata; the original emulator save is never modified.
+            if(kDown & HidNpadButton_B)overlay=Overlay::Gen5Setup;
+            else if(kDown & HidNpadButton_Y)unassignCurrentGen5Game();
+            return;
+        }
+        if (overlay == Overlay::Gen5Setup) {
+            if(kDown & HidNpadButton_B) {
+                overlay=gen5SetupFromGamesDrawer?Overlay::GamesDrawer:Overlay::None;
+                gen5SetupFromGamesDrawer=false;
+                return;
+            }
+            if(kDown & HidNpadButton_Up)gen5SetupIndex=(gen5SetupIndex+4)%5;
+            if(kDown & HidNpadButton_Down)gen5SetupIndex=(gen5SetupIndex+1)%5;
+            if(kDown & HidNpadButton_A) {
+                if(gen5SetupIndex==0) {
+                    gen5AssignOnly=true;
+                    discoverGen5Candidates();
+                } else if(gen5SetupIndex==1) {
+                    gen5AssignOnly=false;
+                    discoverGen5Candidates();
+                } else if(gen5SetupIndex==2) {
+                    gen5AssignOnly=true; // Manual browse links to current profile.
+                    chooseGen5ManualFile();
+                } else if(gen5SetupIndex==3)overlay=Overlay::Gen5UnassignConfirm;
+                else {
+                    overlay=gen5SetupFromGamesDrawer?Overlay::GamesDrawer:Overlay::None;
+                    gen5SetupFromGamesDrawer=false;
+                }
+            }
+            return;
+        }
+        if (overlay == Overlay::Gen5Candidates) {
+            const int count=static_cast<int>(gen5Instances.size());
+            constexpr int w=900,h=540,rowH=76,visibleRows=5;
+            const int x=(1280-w)/2,y=(720-h)/2;
+            const int maxFirst=std::max(0,count-visibleRows);
+            gen5CandidateScroll=std::clamp(gen5CandidateScroll,0,maxFirst);
+            if(maxFirst>0)
+                gen5CandidateTouchScroll.updateVertical(
+                    touch,x+24,y+108,w-48,visibleRows*rowH,
+                    rowH,gen5CandidateScroll,maxFirst+1);
+            else gen5CandidateTouchScroll.stop();
+            if(kDown & HidNpadButton_B) {
+                gen5CandidateTouchScroll.stop();
+                overlay=gen5SetupFromGamesDrawer?Overlay::GamesDrawer:Overlay::None;
+                gen5SetupFromGamesDrawer=false;
+                return;
+            }
+            if(kDown & HidNpadButton_X) {
+                gen5CandidateTouchScroll.stop();
+                discoverGen5Candidates();
+                return;
+            }
+            if(kDown & HidNpadButton_Y) {
+                gen5CandidateTouchScroll.stop();
+                openGen5Setup(gen5TargetGameId,"Choose or repair a Gen V read-only source.",
+                              gen5SetupFromGamesDrawer);
+                return;
+            }
+            if(count==0) {overlay=Overlay::Gen5Setup;return;}
+            if(kDown & (HidNpadButton_Up|HidNpadButton_Down))
+                gen5CandidateTouchScroll.stop();
+            if(kDown & HidNpadButton_Up)
+                gen5CandidateIndex=(gen5CandidateIndex-1+count)%count;
+            if(kDown & HidNpadButton_Down)
+                gen5CandidateIndex=(gen5CandidateIndex+1)%count;
+            // A release-confirmed tap on a clipped visible row updates focus
+            // and routes through the SAME strict assign/reopen path as A.
+            // Never snap a finger-scrolled viewport back to stale focus.
+            if(kDown & (HidNpadButton_Up|HidNpadButton_Down)) {
+                if(gen5CandidateIndex<gen5CandidateScroll)
+                    gen5CandidateScroll=gen5CandidateIndex;
+                else if(gen5CandidateIndex>=gen5CandidateScroll+visibleRows)
+                    gen5CandidateScroll=gen5CandidateIndex-visibleRows+1;
+            }
+            if(kDown & HidNpadButton_A)
+                assignGen5Candidate(gen5Instances[static_cast<size_t>(gen5CandidateIndex)]);
             return;
         }
         if (overlay == Overlay::Gen4Setup) {
@@ -4062,7 +4590,8 @@ namespace UI {
                     int saveCount = 1;
                     if (title.sourceKind == SelectedSourceKind::RetroArchFRLG)
                         saveCount = static_cast<int>(title.legacyInstances.size());
-                    else if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile)
+                    else if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile ||
+                             title.sourceKind == SelectedSourceKind::Gen5AssignedFile)
                         saveCount = title.sourceLabel == "REMEMBERED" ? 1 : 0;
                     const std::string saveLine = saveCount == 1
                         ? "1 save"
@@ -4425,6 +4954,94 @@ namespace UI {
             for (size_t offset = 70; offset < path.size() && offset < 210; offset += 70)
                 drawLine("", path.substr(offset, 70));
             drawNavBar(fb, {{"B", "Back to Save List"}});
+        } else if (overlay == Overlay::Gen5Setup && u) {
+            constexpr int w=800,h=520,rowH=62;
+            const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-h)/2;
+            drawModalSurface(fb,x,y,w,h);
+            const auto* game=PokeVault::Games::findGame(gen5TargetGameId);
+            const std::string title=game?std::string(game->title):"Generation V";
+            fb.drawText(x+28,y+18,"NINTENDO DS / GEN V SAVE SOURCES / READ ONLY",
+                        Colors::Accent,TextStyle::Caption);
+            fb.drawText(x+28,y+44,"Pokémon "+title,
+                        Colors::TextPrimary,TextStyle::Heading);
+            fb.drawText(x+28,y+76,
+                        "Assign to "+u->name+" or open the shared editor; source stays unchanged.",
+                        Colors::TextSecondary,TextStyle::Caption);
+            const std::string rows[5]={
+                "Assign Save to This Profile",
+                "Browse Saves / Open Shared Editor",
+                "Assign Save File Manually",
+                "Forget Remembered Save",
+                "Cancel"
+            };
+            int ry=y+112;
+            for(int i=0;i<5;++i) {
+                drawFocusedCard(fb,x+24,ry,w-48,rowH-8,i==gen5SetupIndex,10);
+                overlayRects.push_back({x+24,ry,w-48,rowH-8,i});
+                fb.drawText(x+44,ry+15,rows[i],i==gen5SetupIndex?
+                    Colors::TextPrimary:Colors::TextSecondary);
+                ry+=rowH;
+            }
+            if(!gen5Notice.empty()) {
+                // Hardware diagnostics can be longer than the original generic
+                // status line; use two visible rows, without clipping the cause.
+                constexpr size_t maxPerLine=84;
+                fb.drawText(x+28,y+h-53,gen5Notice.substr(0,maxPerLine),
+                            Colors::TextMuted,TextStyle::Caption);
+                if(gen5Notice.size()>maxPerLine)
+                    fb.drawText(x+28,y+h-31,
+                                gen5Notice.substr(maxPerLine,maxPerLine),
+                                Colors::TextMuted,TextStyle::Caption);
+            }
+            drawNavBar(fb,{{"D-pad/Stick","Choose"},{"A","Select"},{"B","Back"}});
+        } else if (overlay == Overlay::Gen5UnassignConfirm && u) {
+            constexpr int w=760,h=270;
+            const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-h)/2;
+            drawModalSurface(fb,x,y,w,h);
+            fb.drawText(x+28,y+22,"FORGET GENERATION V SOURCE ASSIGNMENT?",
+                        Colors::TextPrimary,TextStyle::Heading);
+            fb.drawText(x+28,y+86,
+                        "This clears the remembered profile/game file link only.",
+                        Colors::TextSecondary,TextStyle::Body);
+            fb.drawText(x+28,y+124,"Original save files remain untouched.",
+                        Colors::Accent,TextStyle::Body);
+            fb.drawText(x+28,y+165,
+                        "Y: Confirm forgetting link     B: Keep assignment",
+                        Colors::TextPrimary,TextStyle::Body);
+            drawNavBar(fb,{{"Y","Confirm Forget"},{"B","Keep Assignment"}});
+        } else if (overlay == Overlay::Gen5Candidates && u) {
+            constexpr int w=900,h=540,rowH=76,visibleRows=5;
+            const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-h)/2;
+            drawModalSurface(fb,x,y,w,h);
+            const auto* game=PokeVault::Games::findGame(gen5TargetGameId);
+            const std::string title=game?std::string(game->title):"Generation V";
+            fb.drawText(x+28,y+18,"NINTENDO DS / SAVE INSTANCES / READ ONLY",
+                        Colors::Accent,TextStyle::Caption);
+            fb.drawText(x+28,y+44,"Pokémon "+title+" — Save Instances",
+                        Colors::TextPrimary,TextStyle::Heading);
+            fb.drawText(x+28,y+76,
+                        gen5AssignOnly
+                            ? "Assign to "+u->name+" without opening. Original save unchanged."
+                            : "Open shared staged editor. Original save stays unchanged.",
+                        Colors::TextSecondary,TextStyle::Caption);
+            const int first=gen5CandidateScroll;
+            const int liveOffset=gen5CandidateTouchScroll.offset();
+            drawSaveInstanceRows(fb,gen5Instances,gen5CandidateIndex,
+                                 first,x,y+108,w,rowH,visibleRows,false,liveOffset);
+            const int drawFirst=std::max(0,first-1);
+            const int drawLast=std::min<int>(static_cast<int>(gen5Instances.size()),
+                                              first+visibleRows+1);
+            for(int i=drawFirst;i<drawLast;++i) {
+                const int touchY=y+108+(i-first)*rowH+liveOffset;
+                pushViewportHit(overlayRects,x+24,touchY,w-48,rowH-6,i,
+                                x+24,y+108,w-48,visibleRows*rowH);
+            }
+            if(!gen5Notice.empty())
+                fb.drawText(x+28,y+h-34,gen5Notice.substr(0,95),
+                            Colors::TextMuted,TextStyle::Caption);
+            drawNavBar(fb,{{"D-pad/Stick","Choose Save"},
+                           {"A",gen5AssignOnly?"Assign to Profile":"Open Editor"},
+                           {"Y","Source Setup"},{"X","Refresh"},{"B","Back"}});
         } else if (overlay == Overlay::Gen4Setup && u) {
             constexpr int w = 760, h = 430, rowH = 64;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;

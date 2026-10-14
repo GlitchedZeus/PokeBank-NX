@@ -69,6 +69,10 @@ struct SaveInstance {
     std::string sourcePath;
     std::string physicalIdentity;
     std::string containerType;
+    // Opaque, explicitly selected subresource of a physical save (for example
+    // a Gen V primary/backup copy). Blank for ordinary whole-file sources.
+    // Both variants retain the same physical/source identity and profile claim.
+    std::string sourceVariant;
     ValidationStatus validation = ValidationStatus::Unknown;
     AccessMode access = AccessMode::ReadOnly;
     DiagnosticState diagnosticState = DiagnosticState::None;
@@ -138,7 +142,10 @@ inline void addSourceAlias(SourceMetadata& instance, const std::string& identity
 // Keep the first provider/validation handle, but retain provenance and claims from aliases.
 inline bool appendDeduplicated(std::vector<SaveInstance>& instances, SaveInstance instance) {
     for (auto& existing : instances) {
-        if (!samePhysicalSource(existing, instance)) continue;
+        // Two explicitly chosen, independently validated copies of one
+        // physical SAV are distinct visible choices, not path duplicates.
+        if (!samePhysicalSource(existing, instance) ||
+            existing.sourceVariant != instance.sourceVariant) continue;
         addSourceAlias(existing, instance.sourceIdentity);
         for (const auto& identity : instance.sourceAliases) addSourceAlias(existing, identity);
         existing.rememberedSource |= instance.rememberedSource;
@@ -155,7 +162,9 @@ inline bool appendDeduplicated(std::vector<SaveInstance>& instances, SaveInstanc
     return shown.ready() && fresh.ready() && shown.gameId == fresh.gameId &&
         shown.sourceIdentity == fresh.sourceIdentity && shown.normalizedPath == fresh.normalizedPath &&
         shown.fileSize == fresh.fileSize && shown.modifiedTime == fresh.modifiedTime &&
-        shown.contentFingerprint == fresh.contentFingerprint && samePhysicalSource(shown, fresh);
+        shown.contentFingerprint == fresh.contentFingerprint &&
+        shown.sourceVariant == fresh.sourceVariant &&
+        samePhysicalSource(shown, fresh);
 }
 
 // One shared ordering rule for every generation: trustworthy physical mtime first, then stable
@@ -169,7 +178,9 @@ inline void sortNewestFirst(std::vector<SaveInstance>& instances) {
         if (left.providerId != right.providerId) return left.providerId < right.providerId;
         if (left.normalizedPath != right.normalizedPath)
             return left.normalizedPath < right.normalizedPath;
-        return left.sourceIdentity < right.sourceIdentity;
+        if (left.sourceIdentity != right.sourceIdentity)
+            return left.sourceIdentity < right.sourceIdentity;
+        return left.sourceVariant < right.sourceVariant;
     });
     for (auto& instance : instances) instance.mostRecentlyModified = false;
     if (!instances.empty() && instances.front().modifiedTime > 0)

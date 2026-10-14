@@ -210,6 +210,10 @@ enum class FieldIdentity : uint8_t {
     EncounterLegality,
     Provenance,
     OriginalTrainerGender,
+    Move,
+    MovePP,
+    MovePPUps,
+    FatefulEncounter,
 };
 
 enum class FieldAccess : uint8_t { Hidden, Derived, ReadOnly, Editable };
@@ -343,6 +347,49 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::EggDate:
             case FieldIdentity::OriginalTrainerGender:
             case FieldIdentity::CalculatedStats:
+            case FieldIdentity::MoveCompatibility:
+            case FieldIdentity::EncounterLegality:
+            case FieldIdentity::Provenance:
+                return FieldAccess::ReadOnly;
+            default:
+                return FieldAccess::Hidden;
+        }
+    }
+    if (generation == Generation::Gen5) {
+        // Gen IV parity is enabled incrementally by exact native PK5
+        // mutations with deterministic replay and original-SAV protection.
+        // All edits require native guarded PK5 staged transactions; source saves remain immutable.
+        switch (field) {
+            case FieldIdentity::Species:
+            case FieldIdentity::Level:
+            case FieldIdentity::Experience:
+            case FieldIdentity::Friendship:
+            case FieldIdentity::IV:
+            case FieldIdentity::EV:
+            case FieldIdentity::Nature:
+            case FieldIdentity::Nickname:
+            case FieldIdentity::OriginalTrainer:
+            case FieldIdentity::HeldItem:
+            case FieldIdentity::Ball:
+            case FieldIdentity::Form:
+            case FieldIdentity::Gender:
+            case FieldIdentity::Ability:
+            case FieldIdentity::MetLevel:
+            case FieldIdentity::Move:
+            case FieldIdentity::MovePP:
+            case FieldIdentity::MovePPUps:
+            case FieldIdentity::TrainerId:
+            case FieldIdentity::SecretId:
+            case FieldIdentity::OriginalTrainerGender:
+            case FieldIdentity::Pokerus:
+            case FieldIdentity::MetLocation:
+            case FieldIdentity::FatefulEncounter:
+                return FieldAccess::Editable;
+            case FieldIdentity::Shiny:
+            case FieldIdentity::Language:
+            case FieldIdentity::CalculatedStats:
+            case FieldIdentity::PersonalityId:
+            case FieldIdentity::OriginGame:
             case FieldIdentity::MoveCompatibility:
             case FieldIdentity::EncounterLegality:
             case FieldIdentity::Provenance:

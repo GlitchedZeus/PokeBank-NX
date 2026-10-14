@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <vector>
 #include <string>
 
@@ -18,6 +19,8 @@
 #include "Legacy/FRLGSourceBrowser.h"
 #include "Legacy/LegacySourceBindings.h"
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
+#include "Integration/Gen5/Gen5SourceDiscovery.h"
+#include "Integration/Gen5/Gen5GameCardPreview.h"
 
 namespace UI {
     // JKSV-style combined user + title picker. Shows the selected user's avatar + name at the top
@@ -32,6 +35,7 @@ namespace UI {
             SwitchTitle,
             RetroArchFRLG,
             Gen4AssignedFile,
+            Gen5AssignedFile,
         };
 
         enum class OpenIntent { Default, Items, Backups };
@@ -86,6 +90,12 @@ namespace UI {
         const std::string& getSelectedTitleName() const { return selectedTitleName; }
         const std::string& getSelectedGameId() const { return selectedGameId; }
         SelectedSourceKind getSelectedSourceKind() const { return selectedSourceKind; }
+        PokeVault::Integration::Gen5::SaveCopySelection getSelectedGen5Copy() const {
+            return selectedGen5Copy;
+        }
+        const std::string& getSelectedGen5Fingerprint() const {
+            return selectedGen5Fingerprint;
+        }
         size_t getSelectedLegacySourceIndex() const { return selectedLegacySourceIndex; }
         OpenIntent getOpenIntent() const { return openIntent; }
 
@@ -106,6 +116,9 @@ namespace UI {
             uint16_t dexSeen = 0;
             uint16_t dexCaught = 0;
             uint16_t dexTotal = 0;
+            // App-memory presentation snapshot; session Open always revalidates
+            // the exact save/copy/fingerprint, never trusts this cached data.
+            std::optional<PokeVault::Integration::Gen5::GameCardReadOnlyPreview> gen5Preview;
             std::vector<PokeVault::Legacy::FRLGSaveInstance> legacyInstances;
             SelectedSourceKind sourceKind = SelectedSourceKind::SwitchTitle;
         };
@@ -195,7 +208,8 @@ namespace UI {
         int hubFeatureIndex = -1;
         enum class Overlay { None, Options, Help, OpenFailure, GamesDrawer, ProfilePicker, GameWorkspace,
                              LegacyInstances, LegacyAssignment, LegacyDetails, Gen4Setup,
-                             Gen4Candidates, GameFilePicker };
+                             Gen4Candidates, Gen5Setup, Gen5UnassignConfirm,
+                             Gen5Candidates, GameFilePicker };
         Overlay overlay = Overlay::None;
         Overlay helpReturnOverlay = Overlay::None;
         // Touch motion is surface-local. These markers let one centralized fence clear residual
@@ -212,6 +226,13 @@ namespace UI {
         std::string selectedTitleName;
         std::string selectedGameId;
         SelectedSourceKind selectedSourceKind = SelectedSourceKind::None;
+        // Ephemeral, exact-session selection; never guessed from file mtime
+        // and never grants emulator/source write authority.
+        PokeVault::Integration::Gen5::SaveCopySelection selectedGen5Copy =
+            PokeVault::Integration::Gen5::SaveCopySelection::Automatic;
+        // Only the normalized exact source bytes selected for THIS editor
+        // open, never a permission token or a remembered game preference.
+        std::string selectedGen5Fingerprint;
         size_t selectedLegacySourceIndex = 0;
         PokeVault::Legacy::FRLGDiscoveryResult* legacyCatalog = nullptr;
         PokeVault::Legacy::LegacySourceBindings* legacyBindings = nullptr;
@@ -240,6 +261,19 @@ namespace UI {
         // consumes the same provider-neutral SaveInstance rows used by Gen I-III.
         std::vector<PokeVault::Integration::Gen4::SourceCandidate> gen4Candidates;
         std::vector<PokeVault::Source::SaveInstance> gen4Instances;
+
+        // Isolated Gen V preview-only Game Sources; original SAV stays immutable.
+        std::string gen5TargetGameId;
+        std::string gen5Notice;
+        bool gen5SetupFromGamesDrawer = false;
+        // Explicit Source/Game File action only links a validated save to
+        // the active Switch profile; A/Open Editor remains a separate route.
+        bool gen5AssignOnly = true;
+        std::vector<PokeVault::Source::SaveInstance> gen5Instances;
+        int gen5SetupIndex = 0;
+        int gen5CandidateIndex = 0;
+        int gen5CandidateScroll = 0;
+        TouchScrollState gen5CandidateTouchScroll;
         int gen4SetupIndex = 0;
         int gen4CandidateIndex = 0;
         int gen4CandidateScroll = 0;
@@ -268,6 +302,7 @@ namespace UI {
         void loadUsers();
         void loadLegacySources(const PokeVault::Legacy::FRLGDiscoveryResult& legacySources);
         void loadGen4Cards();
+        void loadGen5Cards();
         void rebuildUnassignedLegacySources();
         bool assignCurrentLegacySource();
         [[nodiscard]] std::string currentProfileIdentity() const;
@@ -305,6 +340,12 @@ namespace UI {
         void chooseGen4ManualFile();
         bool unassignCurrentGen4Game();
         void selectAssignedGen4Title();
+        void openGen5Setup(const std::string& gameId, std::string notice = {},
+                           bool returnToGamesDrawer = false);
+        void discoverGen5Candidates();
+        bool assignGen5Candidate(const PokeVault::Source::SaveInstance& chosen);
+        void chooseGen5ManualFile();
+        bool unassignCurrentGen5Game();
 
         const UserEntry* currentUser() const;
         int titleColumns() const;      // grid columns for the current user's title count (<= 5)

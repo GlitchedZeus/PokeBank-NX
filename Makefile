@@ -40,7 +40,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	PokeBankNX
 BUILD		:=	build
-SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/Integration/Common src/Integration/Gen1 src/Integration/Gen2 src/Integration/Gen3 src/Integration/Gen4 src/Inventory src/Legacy src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion nanovg
+SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/Integration/Common src/Integration/Gen1 src/Integration/Gen2 src/Integration/Gen3 src/Integration/Gen4 src/Integration/Gen5 src/Inventory src/Legacy src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion nanovg
 DATA		:=	data
 INCLUDES	:=	include nanovg
 APP_TITLE   :=  PokeBank NX
@@ -261,6 +261,10 @@ game-card-art:
 	@cp -f "$(GAME_CARD_ART_SOURCE)/platinum_nds.png" "$(GAME_CARD_ART_DIR)/platinum_nds.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/heartgold_nds.png" "$(GAME_CARD_ART_DIR)/heartgold_nds.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/soulsilver_nds.png" "$(GAME_CARD_ART_DIR)/soulsilver_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/black_nds.png" "$(GAME_CARD_ART_DIR)/black_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/white_nds.png" "$(GAME_CARD_ART_DIR)/white_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/black2_nds.png" "$(GAME_CARD_ART_DIR)/black2_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/white2_nds.png" "$(GAME_CARD_ART_DIR)/white2_nds.png"
 
 #---------------------------------------------------------------------------------
 # Type sprite download (generation-ix scarlet-violet style)
