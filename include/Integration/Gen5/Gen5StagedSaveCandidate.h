@@ -21,6 +21,7 @@ namespace PokeVault::Integration::Gen5 {
 struct Gen5StagedSaveCandidate {
     std::vector<uint8_t> bytes;
     size_t changedRecords = 0;
+    bool bagChanged = false;
     size_t selectedCopyOffset = 0;
     std::string exactGameId;
 };
@@ -36,7 +37,8 @@ struct Gen5StagedSaveCandidate {
     const Gen5ReadOnlySave& source = workspace.sourceSave();
     const auto original = source.sourceBytes();
     const auto pending = workspace.pendingReview();
-    if (original.size() != LayoutInfo::FullSaveSize || pending.empty())
+    const Gen5StagedBag* stagedBag = workspace.bagDirty() ? workspace.stagedBagIfOpened() : nullptr;
+    if (original.size() != LayoutInfo::FullSaveSize || (pending.empty() && !stagedBag))
         return fail("Gen V export needs a full validated save and pending staged changes");
 
     const auto blockTable = source.family() == SaveFamily::BlackWhite
@@ -141,6 +143,29 @@ struct Gen5StagedSaveCandidate {
                     recordSize, static_cast<uint8_t>(1));
     }
 
+    // Native Bag: the staged Items block may differ from the source only inside
+    // its pocket slots (Gen5StagedBag audits every edit); the source baseline it
+    // was built from must still be the selected copy's exact Items block.
+    if (stagedBag) {
+        const auto sourceBlock = sourceItemsBlock(source);
+        const auto originalBlock = stagedBag->original();
+        const auto stagedBlock = stagedBag->staged();
+        if (stagedBag->family() != source.family() || sourceBlock.empty() ||
+            originalBlock.size() != sourceBlock.size() || stagedBlock.size() != sourceBlock.size() ||
+            !std::equal(sourceBlock.begin(), sourceBlock.end(), originalBlock.begin()) ||
+            !decodeBag5(source.family(), stagedBlock))
+            return fail("Gen V export bag baseline differs from the selected source copy");
+        const size_t blockAt = base + itemsBlockOffset(source.family());
+        for (size_t pocket = 0; pocket < BagPocket5Count; ++pocket) {
+            const auto spec = bagPocketLayout5(source.family(), pocket);
+            std::fill_n(allowed.begin() + static_cast<std::ptrdiff_t>(blockAt + spec.offset),
+                        spec.slots * 4, static_cast<uint8_t>(1));
+        }
+        std::copy(stagedBlock.begin(), stagedBlock.end(),
+                  output.bytes.begin() + static_cast<std::ptrdiff_t>(blockAt));
+        modified[ItemsBlockIndex] = true;
+    }
+
     auto partition = std::span<uint8_t>(output.bytes).subspan(base, copySize);
     // A block's mirrored checksum lies in the terminal checksum-table block.
     // Therefore the dependent terminal CRC is recalculated LAST, once.
@@ -199,8 +224,22 @@ struct Gen5StagedSaveCandidate {
                         pk->originalEncryptedBytes().end(), change.after.begin()))
             return fail("Gen V export candidate did not preserve exact staged PK5 bytes");
     }
+    if (stagedBag) {
+        const auto exported = decodeBag5(*checked);
+        const auto expected = decodeBag5(source.family(), stagedBag->staged());
+        bool same = exported && expected;
+        for (size_t p = 0; same && p < BagPocket5Count; ++p) {
+            same = (*exported)[p].size() == (*expected)[p].size();
+            for (size_t i = 0; same && i < (*exported)[p].size(); ++i)
+                same = (*exported)[p][i].itemId == (*expected)[p][i].itemId &&
+                       (*exported)[p][i].count == (*expected)[p][i].count;
+        }
+        if (!same)
+            return fail("Gen V export candidate did not preserve the exact staged bag");
+    }
 
     output.changedRecords = pending.size();
+    output.bagChanged = stagedBag != nullptr;
     if (error) error->clear();
     return output;
 }

@@ -105,6 +105,31 @@ int main() {
         "sdmc:/roms/nds/Pokemon Pearl Version.nds"));
     assert(!gameLaunchContentSupported("platinum_nds", "/roms/Pokemon Platinum.gba"));
 
+    // Gen V: "pokemonblack" prefixes "pokemonblack2"; the original and the sequel must never
+    // claim each other's ROM, by official name or by stem containment (archives have no header).
+    const std::string blackSave = "sdmc:/switch/drastic/user/backup/Pokemon Black.dsv";
+    const std::string black2Save = "sdmc:/switch/drastic/user/backup/Pokemon Black 2.dsv";
+    assert(gameLaunchCandidateStemMatches(
+        "black_nds", blackSave, "sdmc:/switch/drastic/games/Pokemon - Black Version (USA, Europe).nds"));
+    assert(!gameLaunchCandidateStemMatches(
+        "black_nds", blackSave, "sdmc:/switch/drastic/games/Pokemon - Black Version 2 (USA, Europe).nds"));
+    assert(!gameLaunchCandidateStemMatches(
+        "black_nds", blackSave, "sdmc:/roms/nds/Pokemon Black 2.zip"));
+    assert(gameLaunchCandidateStemMatches(
+        "black2_nds", black2Save, "sdmc:/roms/nds/Pokemon Black 2.zip"));
+    assert(!gameLaunchCandidateStemMatches(
+        "black2_nds", black2Save, "sdmc:/roms/nds/Pokemon Black.nds"));
+    assert(gameLaunchCandidateStemMatches(
+        "white2_nds", "sdmc:/switch/drastic/user/backup/main.dsv",
+        "sdmc:/roms/nds/Pokemon White 2.nds"));
+    assert(!gameLaunchCandidateStemMatches(
+        "white_nds", "sdmc:/switch/drastic/user/backup/main.dsv",
+        "sdmc:/roms/nds/Pokemon White 2.nds"));
+    assert(!gameLaunchCandidateStemMatches(
+        "white_nds", "sdmc:/switch/drastic/user/backup/main.dsv",
+        "sdmc:/roms/nds/Pokemon Black.nds"));
+    assert(gameLaunchContentSupported("white2_nds", "/roms/Pokemon White 2.nds"));
+
     // Hardware regression: bounded DS discovery may see duplicate ROM/archive copies. The
     // emulator-owned raw .nds file must outrank a generic archive while unrelated releases remain
     // ineligible. This lets ZR auto-resolve the common duplicate case without weakening ambiguity

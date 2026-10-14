@@ -1587,7 +1587,8 @@ namespace UI {
                     currentProfileIdentity(), title.gameId, instance.sourceIdentity);
                 previewTrainerName = instance.trainerName;
             }
-        } else if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile && legacyBindings) {
+        } else if ((title.sourceKind == SelectedSourceKind::Gen4AssignedFile ||
+                    title.sourceKind == SelectedSourceKind::Gen5AssignedFile) && legacyBindings) {
             const auto assigned = legacyBindings->resolveFileForGame(
                 currentProfileIdentity(), title.gameId);
             if (assigned.status == PokeVault::Legacy::AssignedFileStatus::Ready) {
@@ -1928,11 +1929,10 @@ namespace UI {
             return true;
         }
 
-        if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
-            hubNotice="Gen V game launch linking is not supported in this preview milestone.";
-            return false;
-        }
-        if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile && legacyBindings) {
+        // Gen V reuses the Gen IV DraStic/melonDS link: the remembered exact profile/game
+        // binding supplies provider and save path; the ROM header must still match the title.
+        if ((title.sourceKind == SelectedSourceKind::Gen4AssignedFile ||
+             title.sourceKind == SelectedSourceKind::Gen5AssignedFile) && legacyBindings) {
             const auto assigned = legacyBindings->resolveFileForGame(
                 currentProfileIdentity(), title.gameId);
             if (assigned.status != PokeVault::Legacy::AssignedFileStatus::Ready) {
@@ -1994,12 +1994,8 @@ namespace UI {
             return false;
         const auto& title = user->titles[static_cast<size_t>(titleIndex)];
 
-        // The Gen V emulator/game launch and editor are not production-wired.
-        // Never let generic title launch infer a command from save-path identity.
-        if(title.sourceKind==SelectedSourceKind::Gen5AssignedFile) {
-            hubNotice="Use A to select a Gen V Save Instance and open the shared editor.";
-            return false;
-        }
+        // Gen V launches exactly like Gen IV: only from the remembered profile/game binding,
+        // never from a save-path guess; refreshHubPreview() resolves it below.
         // L/R keeps only cached presentation state. Resolve and validate the exact launch target now,
         // on the explicit launch action, before consulting launchDescriptor.
         refreshHubPreview();

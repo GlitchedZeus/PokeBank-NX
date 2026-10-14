@@ -288,6 +288,15 @@ inline bool gameLaunchCandidateStemMatches(std::string_view gameId,
     const std::string wanted = normalizedLaunchStem(savePath);
     const std::string candidate = normalizedLaunchStem(contentPath);
     if (candidate.empty()) return false;
+    // A Black/White ROM name never names Black 2/White 2 and vice versa, even by containment
+    // (a .zip has no readable cartridge header to catch the mix-up later).
+    // No-Intro names the sequels "Pokemon - Black Version 2"; others write "Pokemon Black 2".
+    const bool unovaSequelName = candidate.find("black2") != std::string::npos ||
+                                 candidate.find("white2") != std::string::npos ||
+                                 candidate.find("blackversion2") != std::string::npos ||
+                                 candidate.find("whiteversion2") != std::string::npos;
+    if ((gameId == "black_nds" || gameId == "white_nds") && unovaSequelName) return false;
+    if ((gameId == "black2_nds" || gameId == "white2_nds") && !unovaSequelName) return false;
     if (!wanted.empty() && candidate == wanted) return true;
 
     // Emulator saves often add/remove words such as "Pokemon", "Version", region tags, or archive
@@ -324,6 +333,9 @@ inline bool gameLaunchCandidateStemMatches(std::string_view gameId,
     if (gameId == "platinum_nds") return officialRelease("platinum");
     if (gameId == "heartgold_nds") return officialRelease("heartgold");
     if (gameId == "soulsilver_nds") return officialRelease("soulsilver");
+    // The original/sequel split was already enforced by unovaSequelName above.
+    if (gameId == "black_nds" || gameId == "black2_nds") return officialRelease("black");
+    if (gameId == "white_nds" || gameId == "white2_nds") return officialRelease("white");
 
     const size_t underscore = gameId.find('_');
     const std::string_view identity = gameId.substr(0, underscore);
@@ -386,6 +398,11 @@ inline std::string_view gameLaunchRomHeaderGameId(std::string_view extension,
         if (code == "CPU") return "platinum_nds";
         if (code == "IPK") return "heartgold_nds";
         if (code == "IPG") return "soulsilver_nds";
+        // Unova cartridge codes (all regions share the first three characters).
+        if (code == "IRB") return "black_nds";
+        if (code == "IRA") return "white_nds";
+        if (code == "IRE") return "black2_nds";
+        if (code == "IRD") return "white2_nds";
         return {};
     }
     return {};

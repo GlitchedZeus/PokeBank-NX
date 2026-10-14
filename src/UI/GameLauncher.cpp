@@ -184,6 +184,15 @@ bool installedForwarderNameMatches(std::string_view gameId, std::string_view nor
     if (gameId == "platinum_nds") return shaped("platinum");
     if (gameId == "heartgold_nds") return shaped("heartgold");
     if (gameId == "soulsilver_nds") return shaped("soulsilver");
+    // "pokemonblack" prefixes "pokemonblack2"; never let the original claim the sequel.
+    const bool sequel = normalizedName.find("black2") != std::string_view::npos ||
+                        normalizedName.find("white2") != std::string_view::npos ||
+                        normalizedName.find("blackversion2") != std::string_view::npos ||
+                        normalizedName.find("whiteversion2") != std::string_view::npos;
+    if (gameId == "black_nds") return !sequel && shaped("black");
+    if (gameId == "white_nds") return !sequel && shaped("white");
+    if (gameId == "black2_nds") return sequel && shaped("black");
+    if (gameId == "white2_nds") return sequel && shaped("white");
     return false;
 }
 

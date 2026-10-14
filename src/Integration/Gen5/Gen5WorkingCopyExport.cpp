@@ -136,6 +136,7 @@ std::string manifest(const WorkingCopyExportRequest& request,
                               "Primary":"Backup")+"\n";
     out+="SELECTED_COPY_OFFSET="+std::to_string(candidate.selectedCopyOffset)+"\n";
     out+="CHANGED_RECORDS="+std::to_string(candidate.changedRecords)+"\n";
+    out+="BAG_CHANGED="+std::string(candidate.bagChanged?"YES":"NO")+"\n";
     out+="TIMESTAMP="+request.timestamp+"\n";
     out+="APPLICATION_SHA="+request.applicationSha+"\n";
     out+="ORIGINAL_BACKUP=original_backup.sav\n";

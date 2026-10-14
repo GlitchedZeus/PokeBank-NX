@@ -94,6 +94,26 @@ $(GEN5_EXPORT_SANITIZE): $(GEN5_EXPORT_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_staged_save_candidate.cpp src/Integration/Gen5/Gen5WorkingCopyExport.cpp src/Utils/SHA256.cpp -o $@
 
+# Gen V native Bag (Items block 25): strict decode, staged quantity/add/remove
+# and bag-inclusive export candidate + verified working copy. No source writes.
+GEN5_BAG_TEST := $(HOST_BUILD)/test_gen5_bag
+GEN5_BAG_SANITIZE := $(HOST_BUILD)/test_gen5_bag_sanitize
+GEN5_BAG_INPUTS := tests/test_gen5_bag.cpp include/Integration/Gen5/Gen5Bag.h \
+    $(GEN5_EXPORT_INPUTS)
+
+HOST_TESTS += $(GEN5_BAG_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_BAG_SANITIZE)
+host-test: $(GEN5_BAG_TEST)
+host-sanitize: $(GEN5_BAG_SANITIZE)
+
+$(GEN5_BAG_TEST): $(GEN5_BAG_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_bag.cpp src/Integration/Gen5/Gen5WorkingCopyExport.cpp src/Utils/SHA256.cpp -o $@
+
+$(GEN5_BAG_SANITIZE): $(GEN5_BAG_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_bag.cpp src/Integration/Gen5/Gen5WorkingCopyExport.cpp src/Utils/SHA256.cpp -o $@
+
 # Codex independently tested native PK5 Create foundation. These tests create
 # app-owned boxed records only; they do not enable staged Create, Inject or
 # source/emulator save writes. Preserve native exact-title provenance gates.

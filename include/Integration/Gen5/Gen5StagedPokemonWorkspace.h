@@ -4,6 +4,7 @@
 #include "Integration/Gen5/Gen5ReadOnlySave.h"
 #include "Integration/Gen5/Gen5StagedPokemonRecord.h"
 #include "Integration/Gen5/Gen5NativeCreate.h"
+#include "Integration/Gen5/Gen5Bag.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -61,7 +62,7 @@ public:
     }
 
     [[nodiscard]] bool hasChanges() const noexcept {
-        if(!boxReplacements_.empty())return true;
+        if(!boxReplacements_.empty() || bagDirty())return true;
         for(const auto& pair:pending_)if(pair.second.dirty())return true;
         return false;
     }
@@ -252,7 +253,19 @@ public:
         }
         return out;
     }
-    void discardAll() noexcept { pending_.clear();boxReplacements_.clear(); }
+    void discardAll() noexcept { pending_.clear();boxReplacements_.clear();bag_.reset(); }
+
+    // App-owned Items-block copy for native Bag edits. Created on first use from
+    // the selected validated copy; nullptr when the bag is not fully recognized.
+    [[nodiscard]] Gen5StagedBag* stagedBag(std::string* error=nullptr) {
+        if(!bag_)bag_=Gen5StagedBag::create(source_,error);
+        return bag_?&*bag_:nullptr;
+    }
+    [[nodiscard]] const Gen5StagedBag* stagedBagIfOpened() const noexcept {
+        return bag_?&*bag_:nullptr;
+    }
+    [[nodiscard]] bool bagDirty() const noexcept { return bag_ && bag_->dirty(); }
+    void discardBag() noexcept { bag_.reset(); }
 
 private:
     struct BoxReplacement {
@@ -362,6 +375,7 @@ private:
     Gen5ReadOnlySave source_;
     std::map<Slot,StagedPokemon5Record> pending_;
     std::map<Slot,BoxReplacement> boxReplacements_;
+    std::optional<Gen5StagedBag> bag_;
 };
 
 } // namespace PokeVault::Integration::Gen5

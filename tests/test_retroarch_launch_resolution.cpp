@@ -131,6 +131,14 @@ int main() {
         assert(id("heartgold_nds", "a.nds", ".nds", "IPKE") == R::Matches);
         assert(id("soulsilver_nds", "a.nds", ".nds", "IPKE") == R::Contradicts);
         assert(id("platinum_nds", "a.nds", ".nds", "CPUJ") == R::Matches);
+        // Unova: BW and B2W2 cartridge codes are distinct titles.
+        assert(id("black_nds", "a.nds", ".nds", "IRBO") == R::Matches);
+        assert(id("white_nds", "a.nds", ".nds", "IRAO") == R::Matches);
+        assert(id("black2_nds", "a.nds", ".nds", "IREO") == R::Matches);
+        assert(id("white2_nds", "a.nds", ".nds", "IRDO") == R::Matches);
+        assert(id("black_nds", "a.nds", ".nds", "IREO") == R::Contradicts);
+        assert(id("white2_nds", "a.nds", ".nds", "IRAO") == R::Contradicts);
+        assert(id("black_nds", "a.nds", ".nds", "ADAE") == R::Contradicts);
         // Unknown header (hack/other) and archives never block a launch.
         assert(id("red_gb", "a.gb", ".gb", "ZELDA") == R::Unknown);
         assert(id("platinum_nds", "a.zip", ".nds", "ADAE") == R::Unknown);
