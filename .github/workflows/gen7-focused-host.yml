@@ -1,0 +1,102 @@
+name: PokeBank NX Gen VII Focused Host
+
+on:
+  push:
+    branches:
+      - claude/gen7-native-20261014
+    paths:
+      - 'include/Integration/Gen7/**'
+      - 'include/Integration/Gen6/**'
+      - 'src/Integration/Gen7/**'
+      - 'src/Integration/Gen6/**'
+      - 'tests/test_gen7_*'
+      - 'tests/test_gen6_*'
+      - 'tests/fixtures/gen7/**'
+      - 'tests/fixtures/gen6/**'
+      - 'include/Integration/Common/VerifiedStagedExport.h'
+      - 'src/Integration/Common/VerifiedStagedExport.cpp'
+      - 'include/UI/ExactFormatEditorProvider.h'
+      - 'include/UI/SharedPokemonEditorContract.h'
+      - 'include/Source/SaveInstance.h'
+      - 'include/Utils/CRC16.h'
+      - 'vendor/PKSM-Core'
+      - 'Makefile.host'
+      - 'Makefile.host.gen7'
+      - 'Makefile.host.gen6'
+      - 'docs/gen7/**'
+      - '.github/workflows/gen7-focused-host.yml'
+  pull_request:
+    paths:
+      - 'include/Integration/Gen7/**'
+      - 'include/Integration/Gen6/**'
+      - 'src/Integration/Gen7/**'
+      - 'src/Integration/Gen6/**'
+      - 'tests/test_gen7_*'
+      - 'tests/test_gen6_*'
+      - 'tests/fixtures/gen7/**'
+      - 'tests/fixtures/gen6/**'
+      - 'include/Integration/Common/VerifiedStagedExport.h'
+      - 'src/Integration/Common/VerifiedStagedExport.cpp'
+      - 'include/UI/ExactFormatEditorProvider.h'
+      - 'include/UI/SharedPokemonEditorContract.h'
+      - 'include/Source/SaveInstance.h'
+      - 'include/Utils/CRC16.h'
+      - 'vendor/PKSM-Core'
+      - 'Makefile.host'
+      - 'Makefile.host.gen7'
+      - 'Makefile.host.gen6'
+      - 'docs/gen7/**'
+      - '.github/workflows/gen7-focused-host.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pokebank-gen7-focused-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gen7-host:
+    name: Gen VII PK7/SAV7 contracts (${{ matrix.compiler }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+    env:
+      APPLICATION_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      ASAN_OPTIONS: detect_leaks=1
+      CXX: ${{ matrix.compiler }}
+    steps:
+      - name: Checkout exact Gen VII head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APPLICATION_SHA }}
+          fetch-depth: 2
+          submodules: recursive
+      - name: Verify exact Git identity and whitespace
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPLICATION_SHA"
+          git diff --check HEAD^ HEAD
+          echo "APPLICATION_SHA=$APPLICATION_SHA"
+          echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
+          echo "PKSM_CORE=$(git -C vendor/PKSM-Core rev-parse HEAD)"
+          $CXX --version
+      - name: Guard Gen VII ownership and source immutability
+        run: |
+          set -euo pipefail
+          # Gen VII code must never open a file for writing outside the shared verified exporter.
+          if grep -nE 'fopen\([^)]*"(w|a|r\+)' src/Integration/Gen7/*.cpp; then exit 1; fi
+          if grep -nE 'ofstream|O_WRONLY|O_RDWR' src/Integration/Gen7/*.cpp include/Integration/Gen7/*.h; then exit 1; fi
+          # Fixtures are synthetic source code only: no committed binary saves.
+          if find tests/fixtures/gen7 -type f ! -name '*.h' | grep .; then exit 1; fi
+      - name: Build and run Gen VII host contracts
+        run: make -f Makefile.host CXX="$CXX" gen7-host-test
+      - name: Build and run Gen VII ASan/UBSan contracts
+        run: |
+          set -euo pipefail
+          make -f Makefile.host CXX="$CXX" gen7-host-sanitize
+          echo "Gen VII exact-head $CXX + ASan/UBSan PASS"

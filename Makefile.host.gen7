@@ -1,0 +1,54 @@
+# Gen VII (Sun/Moon, Ultra Sun/Ultra Moon) native SAV7 contracts: strict
+# read-only parse, CRC16Invert blocks and MemeCrypto signature verification.
+# SAV7 staged export is explicitly unsupported (docs/gen7/README.md).
+GEN7_TEST_NAMES := test_gen7_save
+GEN7_TESTS := $(addprefix $(HOST_BUILD)/,$(GEN7_TEST_NAMES))
+GEN7_SANITIZE_TESTS := $(addsuffix _sanitize,$(GEN7_TESTS))
+
+HOST_TESTS += $(GEN7_TESTS)
+HOST_SANITIZE_TESTS += $(GEN7_SANITIZE_TESTS)
+host-test: $(GEN7_TESTS)
+host-sanitize: $(GEN7_SANITIZE_TESTS)
+
+# Vendored FlagBrew/memecrypto (PKSM-Core nested submodule, GPL-3.0), compiled
+# per file so the sanitizer runtime is linked only into the final binaries.
+# Its sha1.c:203 left-shifts 0x80 into the sign bit of an int (UBSan shift-base,
+# upstream FlagBrew/memecrypto@bd3b16ee). The submodule cannot be patched here, so
+# only that single check is exempted, only for these vendored objects; all of
+# PokeBank's own code keeps the full ASan/UBSan set. Reported for a vendor fix.
+GEN7_MEME_ROOT := $(PKSM_CORE_ROOT)/memecrypto
+GEN7_MEME_SOURCES := $(addprefix $(GEN7_MEME_ROOT)/,aes.c memecrypto.c mini-gmp.c rsa.c sha1.c)
+GEN7_MEME_OBJECTS := $(patsubst $(GEN7_MEME_ROOT)/%.c,$(HOST_BUILD)/gen7-meme/%.o,$(GEN7_MEME_SOURCES))
+GEN7_MEME_SANITIZE_OBJECTS := $(patsubst $(GEN7_MEME_ROOT)/%.c,$(HOST_BUILD)/gen7-meme/%_sanitize.o,$(GEN7_MEME_SOURCES))
+GEN7_HOST_CC := $(if $(HOST_CXX_IS_CLANG),clang,gcc)
+
+$(HOST_BUILD)/gen7-meme/%.o: $(GEN7_MEME_ROOT)/%.c
+	@mkdir -p $(dir $@)
+	$(GEN7_HOST_CC) -std=gnu11 -O2 -w -c $< -o $@
+
+$(HOST_BUILD)/gen7-meme/%_sanitize.o: $(GEN7_MEME_ROOT)/%.c
+	@mkdir -p $(dir $@)
+	$(GEN7_HOST_CC) -std=gnu11 -O1 -w -fsanitize=address,undefined -fno-sanitize=shift-base -fno-omit-frame-pointer -c $< -o $@
+
+GEN7_HEADERS := $(wildcard include/Integration/Gen7/*.h) $(wildcard tests/fixtures/gen7/*.h) \
+	$(wildcard include/Integration/Gen6/*.h) $(wildcard tests/fixtures/gen6/*.h) include/Utils/CRC16.h
+GEN7_SOURCES := tests/test_gen7_save.cpp src/Integration/Gen7/Gen7Save.cpp src/Integration/Gen7/Gen7SaveSources.cpp \
+	src/Integration/Gen6/Gen6Save.cpp src/Integration/Gen6/Gen6SaveSources.cpp src/Utils/SHA256.cpp \
+	$(PKSM_CORE_ROOT)/source/utils/crypto_checksums.cpp
+GEN7_FLAGS := -Iinclude -Itests -isystem $(GEN7_MEME_ROOT) -isystem $(PKSM_CORE_ROOT)/include \
+	-D_PKSMCORE_CONFIGURED -fno-operator-names $(if $(HOST_CXX_IS_CLANG),-fbracket-depth=1024,)
+
+$(HOST_BUILD)/test_gen7_save: $(GEN7_SOURCES) $(GEN7_HEADERS) $(GEN7_MEME_OBJECTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN7_FLAGS) $(GEN7_SOURCES) $(GEN7_MEME_OBJECTS) -o $@
+
+$(HOST_BUILD)/test_gen7_save_sanitize: $(GEN7_SOURCES) $(GEN7_HEADERS) $(GEN7_MEME_SANITIZE_OBJECTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) $(GEN7_FLAGS) $(GEN7_SOURCES) $(GEN7_MEME_SANITIZE_OBJECTS) -o $@
+
+.PHONY: gen7-host-test gen7-host-sanitize
+gen7-host-test: $(GEN7_TESTS)
+	@set -e; for test_bin in $(GEN7_TESTS); do ./$$test_bin; done
+
+gen7-host-sanitize: $(GEN7_SANITIZE_TESTS)
+	@set -e; for test_bin in $(GEN7_SANITIZE_TESTS); do ASAN_OPTIONS="$(ASAN_OPTIONS)" ./$$test_bin; done
