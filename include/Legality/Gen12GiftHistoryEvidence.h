@@ -17,7 +17,7 @@ enum class Disposition : uint8_t { Unknown, CandidateContradicted, ConditionalCa
 enum Field : uint32_t {
     Source = 1u << 0, Species = 1u << 1, Level = 1u << 2,
     TrainerId = 1u << 3, TrainerName = 1u << 4, Nickname = 1u << 5,
-    Moves = 1u << 6, Capsule = 1u << 7, Route = 1u << 8
+    Moves = 1u << 6, Capsule = 1u << 7, Route = 1u << 8, Edition = 1u << 9
 };
 template <class T> struct Datum {
     bool known = false;
@@ -66,6 +66,10 @@ struct RouteWitness {
     // Exact party snapshot at the documented crossing, not current moves.
     Datum<uint16_t> crossingSpecies;
     Datum<Moves4> crossingMoves;
+    // A row from one edition observed in another edition of the same
+    // generation (e.g. a Yellow NPC trade in a Red save) needs an independent
+    // witness of that link trade; the row alone says nothing about it.
+    bool sameGenerationEditionTransferIndependentlyVerified = false;
 };
 struct Result {
     Disposition disposition = Disposition::Unknown;
@@ -80,6 +84,17 @@ constexpr bool isGen1(Game g) noexcept {
 }
 constexpr bool isGen2(Game g) noexcept {
     return g == Game::Gold || g == Game::Silver || g == Game::Crystal;
+}
+// Editions whose original static/gift/trade rows are identical share a
+// family: Red and Blue, Gold and Silver.
+constexpr int editionFamily(Game g) noexcept {
+    switch (g) {
+        case Game::Red: case Game::Blue: return 1;
+        case Game::Yellow: return 2;
+        case Game::Gold: case Game::Silver: return 3;
+        case Game::Crystal: return 4;
+        default: return 0;
+    }
 }
 constexpr bool supportedKind(Game game, Kind kind) noexcept {
     if (!isGen1(game) && !isGen2(game)) return false;
@@ -195,6 +210,11 @@ constexpr Result evaluate(const GiftRow& source, const Observation& observed,
         else if (!legalSpeciesAtCrossing(route.crossingSpecies.value) ||
                  !legalMovesAtCrossing(route.crossingMoves.value)) reject(Capsule);
     }
+    if (((isGen1(source.game) && isGen1(observed.game)) ||
+         (isGen2(source.game) && isGen2(observed.game))) &&
+        editionFamily(source.game) != editionFamily(observed.game) &&
+        !route.sameGenerationEditionTransferIndependentlyVerified)
+        unknown(Edition);
     // A missing or untrusted source must NEVER produce a negative assertion.
     if (out.missing & (Source | Route)) {
         out.contradicted = 0;
@@ -212,6 +232,9 @@ static_assert(legalSpeciesAtCrossing(151));
 static_assert(!legalSpeciesAtCrossing(152));
 static_assert(legalMovesAtCrossing({1, 2, 165, 0}));
 static_assert(!legalMovesAtCrossing({1, 2, 166, 0}));
+static_assert(editionFamily(Game::Red) == editionFamily(Game::Blue));
+static_assert(editionFamily(Game::Red) != editionFamily(Game::Yellow));
+static_assert(editionFamily(Game::Gold) != editionFamily(Game::Crystal));
 static_assert(supportedKind(Game::Crystal, Kind::PCNYGift));
 static_assert(!supportedKind(Game::Red, Kind::PCNYGift));
 } // namespace Legality::Gen12GiftHistoryEvidence
