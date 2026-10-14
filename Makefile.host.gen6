@@ -1,0 +1,49 @@
+# Gen VI (X/Y, Omega Ruby/Alpha Sapphire) native PK6/SAV6 contracts.
+# Strict format + staged session + verified working-copy export + sources.
+# No source-save, emulator or installed-game write exists in this lane.
+GEN6_TEST_NAMES := test_gen6_pk6 test_gen6_save test_gen6_staged test_gen6_editor_sources
+GEN6_TESTS := $(addprefix $(HOST_BUILD)/,$(GEN6_TEST_NAMES))
+GEN6_SANITIZE_TESTS := $(addsuffix _sanitize,$(GEN6_TESTS))
+
+HOST_TESTS += $(GEN6_TESTS)
+HOST_SANITIZE_TESTS += $(GEN6_SANITIZE_TESTS)
+host-test: $(GEN6_TESTS)
+host-sanitize: $(GEN6_SANITIZE_TESTS)
+
+GEN6_HEADERS := $(wildcard include/Integration/Gen6/*.h) $(wildcard tests/fixtures/gen6/*.h) \
+	include/Utils/CRC16.h include/UI/ExactFormatEditorProvider.h \
+	include/UI/SharedPokemonEditorContract.h include/Source/SaveInstance.h \
+	include/Integration/Common/VerifiedStagedExport.h
+GEN6_CORE_SOURCES := src/Integration/Gen6/Gen6Save.cpp
+GEN6_SESSION_SOURCES := $(GEN6_CORE_SOURCES) src/Integration/Gen6/Gen6StagedSession.cpp \
+	src/Integration/Common/VerifiedStagedExport.cpp src/Utils/SHA256.cpp
+# Differential references: PKSM-Core's header-only PK6 crypto, its SAV6 block
+# tables and its CRC16-CCITT (vendor/PKSM-Core, pinned submodule).
+GEN6_PKSM_FLAGS := -isystem $(PKSM_CORE_ROOT)/include -D_PKSMCORE_CONFIGURED -fno-operator-names \
+	$(if $(HOST_CXX_IS_CLANG),-fbracket-depth=1024,)
+GEN6_FLAGS := -Iinclude -Itests
+
+GEN6_SOURCES_test_gen6_pk6 := tests/test_gen6_pk6.cpp $(GEN6_CORE_SOURCES)
+GEN6_SOURCES_test_gen6_save := tests/test_gen6_save.cpp $(GEN6_CORE_SOURCES) \
+	$(PKSM_CORE_ROOT)/source/utils/crypto_checksums.cpp
+GEN6_SOURCES_test_gen6_staged := tests/test_gen6_staged.cpp $(GEN6_SESSION_SOURCES)
+GEN6_SOURCES_test_gen6_editor_sources := tests/test_gen6_editor_sources.cpp $(GEN6_SESSION_SOURCES) \
+	src/Integration/Gen6/Gen6SaveSources.cpp
+
+define GEN6_TEST_RULES
+$(HOST_BUILD)/$(1): $$(GEN6_SOURCES_$(1)) $$(GEN6_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$$(CXX) $$(CXXFLAGS) $$(GEN6_FLAGS) $$(GEN6_PKSM_FLAGS) $$(GEN6_SOURCES_$(1)) -o $$@
+
+$(HOST_BUILD)/$(1)_sanitize: $$(GEN6_SOURCES_$(1)) $$(GEN6_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$$(CXX) $$(CXXFLAGS) $$(SANITIZE_FLAGS) $$(GEN6_FLAGS) $$(GEN6_PKSM_FLAGS) $$(GEN6_SOURCES_$(1)) -o $$@
+endef
+$(foreach t,$(GEN6_TEST_NAMES),$(eval $(call GEN6_TEST_RULES,$(t))))
+
+.PHONY: gen6-host-test gen6-host-sanitize
+gen6-host-test: $(GEN6_TESTS)
+	@set -e; for test_bin in $(GEN6_TESTS); do ./$$test_bin; done
+
+gen6-host-sanitize: $(GEN6_SANITIZE_TESTS)
+	@set -e; for test_bin in $(GEN6_SANITIZE_TESTS); do ASAN_OPTIONS="$(ASAN_OPTIONS)" ./$$test_bin; done
