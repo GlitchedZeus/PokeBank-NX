@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cerrno>
 #include <cstdio>
 #include <dirent.h>
 #include <set>
@@ -89,16 +90,27 @@ std::string pathIdentity(const std::string& path,const struct stat* physical=nul
         label+=":sha256:"+std::string(contentHash);
     return sha256Hex({reinterpret_cast<const uint8_t*>(label.data()),label.size()});
 }
+// Some Switch SD devoptab implementations support stat() but not lstat().
+// On POSIX filesystems always use lstat() so a link cannot escape a scan root.
+// SD card FAT/exFAT has no POSIX symlinks; ONLY on the sdmc: device and ONLY
+// for an unsupported lstat syscall may we use the same stat() as Gen IV.
+bool safeSourceStat(const std::string& path,struct stat& st) {
+    if(::lstat(path.c_str(),&st)==0)return !S_ISLNK(st.st_mode);
+    const int failure=errno;
+    if(path.compare(0,6,"sdmc:/")!=0 ||
+       (failure!=ENOSYS && failure!=EOPNOTSUPP && failure!=EINVAL))
+        return false;
+    return ::stat(path.c_str(),&st)==0;
+}
 bool safeRegular(const std::string& path,struct stat* dst=nullptr) {
     struct stat st{};
-    // Don't resolve symlinks outside the bounded source roots.
-    if(::lstat(path.c_str(),&st)!=0 || !S_ISREG(st.st_mode))return false;
+    if(!safeSourceStat(path,st) || !S_ISREG(st.st_mode))return false;
     if(dst)*dst=st;
     return true;
 }
 bool safeDirectory(const std::string& path,struct stat* dst=nullptr) {
     struct stat st{};
-    if(::lstat(path.c_str(),&st)!=0 || !S_ISDIR(st.st_mode))return false;
+    if(!safeSourceStat(path,st) || !S_ISDIR(st.st_mode))return false;
     if(dst)*dst=st;
     return true;
 }
@@ -186,7 +198,7 @@ void scan(const DiscoveryRoot& root,const std::string& dir,size_t depth,ScanStat
         const std::string file=join(dir,name);
         struct stat st{};
         // lstat never follows outside-directory symlinks.
-        if(::lstat(file.c_str(),&st)!=0 || S_ISLNK(st.st_mode))continue;
+        if(!safeSourceStat(file,st))continue;
         if(S_ISDIR(st.st_mode)) {
             if(depth<root.maxDepth)scan(root,file,depth+1,s);
             continue;
@@ -242,8 +254,14 @@ bool readNormalizedSourceReadOnly(const std::string& path,
         return false;
     }
     const bool raw=before.st_size==static_cast<off_t>(SaveSize);
+    // DraStic / DeSmuME battery containers may carry extra metadata before
+    // their final 40-byte footer. Gen IV already accepts this documented
+    // shape; Gen V must locate the footer at EOF, not at raw-payload EOF.
+    // Bound the extension to avoid interpreting an arbitrary large file.
+    constexpr size_t MaxDsvTrailer=4096;
     const bool dsv=extension(path)==".dsv" &&
-        before.st_size==static_cast<off_t>(SaveSize+DsvFooterSize);
+        before.st_size>=static_cast<off_t>(SaveSize+DsvFooterSize) &&
+        before.st_size<=static_cast<off_t>(SaveSize+MaxDsvTrailer);
     if(!raw && !dsv) {
         diagnostic=extension(path)==".dsv" ?
             "unsupported .dsv wrapper size" : "unsupported NDS save size";
@@ -261,6 +279,11 @@ bool readNormalizedSourceReadOnly(const std::string& path,
     bool ok=std::fread(candidate.data(),1,SaveSize,f)==SaveSize;
     if(dsv) {
         std::array<uint8_t,DsvFooterSize> footer{};
+        // The footer marker is at the END of the container, not necessarily
+        // immediately after the 0x80000-byte save payload.
+        ok=ok && std::fseek(f,
+            static_cast<long>(before.st_size-static_cast<off_t>(DsvFooterSize)),
+            SEEK_SET)==0;
         ok=ok && std::fread(footer.data(),1,footer.size(),f)==footer.size();
         ok=ok && std::equal(DsvMarker.begin(),DsvMarker.end(),
                            footer.begin()+24);

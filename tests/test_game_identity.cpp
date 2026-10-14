@@ -80,7 +80,8 @@ int main() {
         assert(game->support == SourceSupport::Planned); // No premature save/edit routes.
         assert(game->switchTitleId == 0);
         assert(legacyPlatformAbbreviation(game->id).empty());
-        assert(gameCardArtworkPath(game->id).empty()); // No invented art asset.
+        assert(gameCardArtworkPath(game->id) ==
+               std::string("romfs:/game_cards/") + std::string(game->id) + ".png"); // Pinned retail artwork.
         assert(gameRegionBackdropKey(game->id) == "unova");
     }
     assert(fireRedSwitch->platform == Platform::NintendoSwitch);

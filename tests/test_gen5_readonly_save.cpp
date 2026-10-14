@@ -101,6 +101,36 @@ std::vector<uint8_t> dsvFixture(const std::vector<uint8_t>& raw) {
     std::copy(marker.begin(),marker.end(),wrapped.begin()+static_cast<std::ptrdiff_t>(raw.size()+24));
     return wrapped;
 }
+void extendedDsvContainerContracts() {
+    char pattern[]="/tmp/pokebank_gen5_dsv_XXXXXX";
+    const char* root=::mkdtemp(pattern);
+    assert(root);
+    const std::string path=std::string(root)+"/white_extended.dsv";
+    const auto raw=make(G::SaveFamily::BlackWhite,20);
+    auto extended=dsvFixture(raw);
+    // Gen IV accepts this same emulator wrapper: 82 metadata bytes before
+    // the fixed footer; a Gen V reader must not reject it by total size.
+    extended.insert(extended.end()-40,82,uint8_t{0xA5});
+    assert(extended.size()==L::FullSaveSize+122);
+    fileFixture(path,extended);
+    std::vector<uint8_t> normalized;
+    std::string diagnostic,container;
+    assert(G::readNormalizedSourceReadOnly(path,normalized,diagnostic,&container));
+    assert(normalized==raw && container=="dsv-footer");
+    const auto ready=G::inspectSourceFile(path,"DraStic");
+    assert(ready.ready() && ready.gameId=="white_nds");
+    assert(ready.fileSize==extended.size());
+    assert(G::reopenValidatedSource(ready).ready());
+    // Invalid footer cannot become a battery save merely by having the
+    // correct 0x80000-byte prefix.
+    extended.back()^=0x01;
+    fileFixture(path,extended);
+    assert(!G::readNormalizedSourceReadOnly(path,normalized,diagnostic));
+    assert(!G::inspectSourceFile(path,"DraStic").ready());
+    assert(!G::reopenValidatedSource(ready).ready());
+    assert(std::remove(path.c_str())==0);
+    assert(::rmdir(root)==0);
+}
 void discoveryContracts() {
     char pattern[]="/tmp/pokebank_gen5_discovery_XXXXXX";
     const char* tmp=::mkdtemp(pattern);
@@ -1475,6 +1505,7 @@ int main() {
     std::vector<uint8_t> empty(L::FullSaveSize,0);
     assert(!G::Gen5ReadOnlySave::parse(empty));
     assert(!G::Gen5ReadOnlySave::parse(std::span<const uint8_t>(empty.data(),0x40000)));
+    extendedDsvContainerContracts();
     discoveryContracts();
     fourTitleProfileAssignmentContracts();
     std::cout<<"Gen V strict BW/B2W2 save reader synthetic contracts PASS\n";
