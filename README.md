@@ -41,7 +41,7 @@
 ---
 
 > [!IMPORTANT]
-> **Active alpha — no v1.0 release.** Last **owner-accepted** integrated Gen I–IV / Product Home build: `0760334f` (October 8, 2026). The newer Gen I–IV finalization [#306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306), Gen V [#300](https://github.com/GlitchedZeus/PokeBank-NX/pull/300), and legality [#298](https://github.com/GlitchedZeus/PokeBank-NX/pull/298)/[#303](https://github.com/GlitchedZeus/PokeBank-NX/pull/303) remain separate development branches. Gen V #300 passed **six exact-head CI checks** at `58bd564b` but still needs owner Switch testing. #306 and the legality coordinator have outstanding CI failures; none of these changes is a released or hardware-accepted v1.0 build. See [the October 14 project snapshot](docs/ENGINEERING_SNAPSHOT_20261014.md).
+> **Active alpha — no v1.0 release.** Last **owner-accepted** integrated Gen I–IV / Product Home build: `0760334f` (October 8, 2026). The newer Gen I–IV finalization [#306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306), Gen V [#300](https://github.com/GlitchedZeus/PokeBank-NX/pull/300), and legality [#298](https://github.com/GlitchedZeus/PokeBank-NX/pull/298)/[#303](https://github.com/GlitchedZeus/PokeBank-NX/pull/303) remain separate development branches. Gen V #300 passed **six exact-head CI checks** at `58bd564b` but still needs owner Switch testing. #306's latest candidate/native/Gen IV/touch gates have passed while its full host suite is still running; the legality coordinator has outstanding CI failures; none of these changes is a released or hardware-accepted v1.0 build. See [the October 14 project snapshot](docs/ENGINEERING_SNAPSHOT_20261014.md).
 
 ## Overview
 
@@ -69,7 +69,7 @@ Current work centers on **one reliable Gen I–IV candidate**, a separately veri
 | Gen I — R/B/Y | ✅ Accepted foundation | Shared staged editor, sources and Items; latest integrated UI still needs retest |
 | Gen II — G/S/C | ✅ Accepted foundation | Native DV/Stat Exp/Pokérus and editor; latest integrated UI retest pending |
 | Gen III — R/S/E/FR/LG | ✅ Accepted foundation | Trainer/Party/Boxes, native staged editing/inventory; launch/touch polish ongoing |
-| Gen IV — D/P/Pt/HG/SS | ✅ Earlier milestone; 🚧 finalizing | Shared editor and Items; [#306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) artwork, DS fairness and ROM-header improvements still CI/device pending |
+| Gen IV — D/P/Pt/HG/SS | ✅ Earlier milestone; 🚧 finalizing | Shared editor and Items; [#306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) artwork, DS fairness and ROM-header candidate gates green; full host/device acceptance pending |
 | Product Home & launching | ✅ Earlier hardware checkpoint; 🚧 new fixes | Artwork, Quick Games, trainer/Party previews, launch and Quit & Return; new packaged NRO audit in #306 |
 | Gen V — B/W/B2/W2 | 🧪 Experimental shared editor / **CI green** | [#300](https://github.com/GlitchedZeus/PokeBank-NX/pull/300): validated Save Instances, profile assignment, primary/backup choice, native PK5 Edit/Create/Review, app-owned export; **device acceptance pending** |
 | Gen V profile/source hardening | 🧪 Separate draft | [#304](https://github.com/GlitchedZeus/PokeBank-NX/pull/304): extra persistent copy/identity, fair provider discovery, navigation/repair; reconciliation pending |
@@ -269,7 +269,7 @@ The five legality lanes also produce standalone native and source-research tests
 | [#301 — Gen V–IX legality groundwork](https://github.com/GlitchedZeus/PokeBank-NX/pull/301) | **Open/draft.** Product-compatible PK5, standalone PK6/PK7 structural analyzers and PKHeX.Core oracle groundwork; historical legality incomplete |
 | [#300 — Gen V Product candidate](https://github.com/GlitchedZeus/PokeBank-NX/pull/300) | **Open/draft.** Gen V editor/assignment/export six-check green at `58bd564b`, Switch test pending |
 | [#304 — Gen V profile/source hardening](https://github.com/GlitchedZeus/PokeBank-NX/pull/304) | **Open stacked draft.** Persisted copy/profile choice and fair source scanning; requires review |
-| [#306 — Gen I–IV finalization](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) | **Open/draft.** Claude's art packaging, fair DS roots, ROM-header verification; exact-head CI failure outstanding |
+| [#306 — Gen I–IV finalization](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) | **Open/draft.** Claude's art packaging, fair DS roots, ROM-header verification; five exact-head candidate/native/Gen IV/touch gates passed, full host still running; device acceptance outstanding |
 | [#303 — Gen I legality integration](https://github.com/GlitchedZeus/PokeBank-NX/pull/303) | **Open/draft.** Original-PKHeX differential coverage, but full host CI red |
 | [#305 — native Gen IV Ball](https://github.com/GlitchedZeus/PokeBank-NX/pull/305) | **Open/unmerged.** PK4 Ball read `max(0x83,0x86)`, not owner-tested |
 | [#101 — forensic remediation](https://github.com/GlitchedZeus/PokeBank-NX/pull/101) | Integrated into PR #92 development history; audit evidence retained |
@@ -331,7 +331,7 @@ PokeBank NX does not provide commercial game ROMs or console firmware.
 
 Progress is recorded by **implemented code, exact-head passing checks, and real hardware acceptance**—not invented percentages.
 
-1. **Finish one Gen I–IV hardware round** — [#306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306): repair exact-head CI, verify embedded NRO assets, fair DS source discovery and ROM identity, then test Items, action/touch parity and Quit & Return.
+1. **Finish one Gen I–IV hardware round** — [#306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306): finish exact-head host verification, verify embedded NRO assets, fair DS source discovery and ROM identity, then test Items, action/touch parity and Quit & Return.
 2. **Accept Gen V on actual emulator saves** — [#300](https://github.com/GlitchedZeus/PokeBank-NX/pull/300): B/W/B2/W2 discovery in the owner's existing folders, explicit per-profile assignment and copy selection, shared Edit/Create/Review, immutable original, app-owned export; review the extra [#304](https://github.com/GlitchedZeus/PokeBank-NX/pull/304) source safeguards.
 3. **Complete touch and safe exit workflows** — all key controller/touch paths and handheld/docked layouts, with one tested NRO per round.
 4. **Continue legality independently** — reconcile five lanes [#298](https://github.com/GlitchedZeus/PokeBank-NX/pull/298) and Claude's [#303](https://github.com/GlitchedZeus/PokeBank-NX/pull/303), preserve source Unknown/Incomplete, fix CI and integrate **verified subsets**. Encyclopedic PKHeX coverage is **not** the first-release gate.
