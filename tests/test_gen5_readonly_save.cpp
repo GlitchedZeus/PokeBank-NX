@@ -166,6 +166,19 @@ void extendedDsvContainerContracts() {
     assert(ready.ready() && ready.gameId=="white_nds");
     assert(ready.fileSize==extended.size());
     assert(G::reopenValidatedSource(ready).ready());
+    // The original Gen IV adapter also permits a longer metadata trailer.
+    // Rejecting it solely for exceeding an invented 4096-byte cap made
+    // the same emulator work for Gen IV but fail for Gen V.
+    extended=dsvFixture(raw);
+    extended.insert(extended.end()-40,8192,uint8_t{0xA6});
+    fileFixture(path,extended);
+    assert(G::readNormalizedSourceReadOnly(path,normalized,diagnostic,&container));
+    assert(normalized==raw && container=="dsv-footer");
+    const auto longFooter=G::inspectSourceFile(path,"DraStic");
+    assert(longFooter.ready() && longFooter.gameId=="white_nds");
+    assert(longFooter.fileSize==extended.size());
+    assert(G::reopenValidatedSource(longFooter).ready());
+    assert(!G::reopenValidatedSource(ready).ready()); // old snapshot invalidated
     // Invalid footer cannot become a battery save merely by having the
     // correct 0x80000-byte prefix.
     extended.back()^=0x01;

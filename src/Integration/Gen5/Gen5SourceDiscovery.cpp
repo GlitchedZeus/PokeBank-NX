@@ -258,14 +258,13 @@ bool readNormalizedSourceReadOnly(const std::string& path,
         return false;
     }
     const bool raw=before.st_size==static_cast<off_t>(SaveSize);
-    // DraStic / DeSmuME battery containers may carry extra metadata before
-    // their final 40-byte footer. Gen IV already accepts this documented
-    // shape; Gen V must locate the footer at EOF, not at raw-payload EOF.
-    // Bound the extension to avoid interpreting an arbitrary large file.
-    constexpr size_t MaxDsvTrailer=4096;
+    // Gen IV's established emulator adapter accepts a raw 0x80000 payload
+    // followed by variable-size metadata with a documented final 40-byte
+    // DeSmuME footer. Use exactly that boundary here: read at most 0x80000
+    // bytes into memory, seek to EOF-40, and validate footer plus native
+    // Gen V checksums. No write access or unbounded allocation is possible.
     const bool dsv=extension(path)==".dsv" &&
-        before.st_size>=static_cast<off_t>(SaveSize+DsvFooterSize) &&
-        before.st_size<=static_cast<off_t>(SaveSize+MaxDsvTrailer);
+        before.st_size>=static_cast<off_t>(SaveSize+DsvFooterSize);
     if(!raw && !dsv) {
         diagnostic=extension(path)==".dsv" ?
             "unsupported .dsv wrapper size" : "unsupported NDS save size";

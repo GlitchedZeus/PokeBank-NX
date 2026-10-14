@@ -35,9 +35,11 @@ struct DiscoveryResult {
     bool limitReached = false;
 };
 
-// Read a single confirmed raw 0x80000 save or exact documented DeSmuME
-// 0x80000+40 DSV footer container. Unsupported wrappers and savestates fail
-// closed. The original is never opened in write mode.
+// Read a single confirmed raw 0x80000 save or a DeSmuME .dsv with a
+// 0x80000-byte prefix and validated final 40-byte footer, regardless of
+// trailing emulator metadata size (Gen IV adapter parity). Only the fixed
+// prefix/footer are buffered. Malformed wrappers and savestates fail closed.
+// The original is never opened in write mode.
 [[nodiscard]] bool readNormalizedSourceReadOnly(
     const std::string& path, std::vector<uint8_t>& bytes,
     std::string& diagnostic, std::string* containerType = nullptr);
