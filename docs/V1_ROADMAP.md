@@ -1,10 +1,12 @@
 # PokeBank NX — v1.0 Roadmap
 
-Last updated: **2026-10-05**
+Last updated: **2026-10-14**
 
-`CURRENT_STATUS.md` is authoritative for exact live state. This roadmap describes product direction, not branch ownership.
+`CURRENT_STATUS.md` and the [October 14 development snapshot](ENGINEERING_SNAPSHOT_20261014.md) track exact live branch/CI evidence. This roadmap is the long-term product direction, not a claim of merged code or full PKHeX legality parity.
 
 ## v1 target
+
+**Progressive release contract:** a tested safe editor plus whatever legality rules are demonstrably verified may ship before exhaustive PKHeX coverage. Expand reliable generation-native formats and the legality rule set in subsequent v1.x releases. Persistent Vault/Banks and live source writes must not be described as finished before their own acceptance gates.
 
 PokeBank NX v1 should be a stable native Switch application that can:
 
@@ -50,7 +52,7 @@ PokeBank NX v1 should be a stable native Switch application that can:
 - [x] controller navigation and editor parity
 - [x] physical hardware acceptance across the current Gen I–III foundation
 
-## Phase 3 — Generation IV shared editor — ACTIVE / HARDWARE PENDING
+## Phase 3 — Generation IV shared editor — FOUNDATION IMPLEMENTED / NEW CANDIDATE HARDWARE PENDING
 
 - [x] strict DP/Pt/HGSS read backend
 - [x] persistent provider/source assignment
@@ -69,7 +71,7 @@ PokeBank NX v1 should be a stable native Switch application that can:
 - [x] current exact-head automated application gates green
 - [ ] physical acceptance of the current full G4-04 + Product UI candidate
 
-## Phase 4 — product UI / source / launch integration — ACTIVE / FINAL HARDWARE POLISH
+## Phase 4 — product UI / source / launch integration — ACTIVE CLAUDE FINALIZATION #306
 
 - [x] modern Product Home
 - [x] selected-game Open / Launch flow
@@ -140,7 +142,9 @@ This starts **after** the integrated UI candidate is physically accepted.
 ### DS
 
 - [x] Gen IV foundation
-- [ ] Black / White / Black 2 / White 2
+- [x] Black / White / Black 2 / White 2 — experimental shared staged PK5, 24 boxes, Create/Review/export and profile assignment implemented in [#300](https://github.com/GlitchedZeus/PokeBank-NX/pull/300)
+- [ ] **physical Switch acceptance** of Gen V source discovery/assign/reopen/editor using real existing emulator saves
+- [ ] reconcile separately tested [#304](https://github.com/GlitchedZeus/PokeBank-NX/pull/304) source-hardening changes only after review
 
 ### 3DS
 
@@ -212,30 +216,16 @@ There is no global unsafe-write switch.
 - [ ] release-candidate hardware torture pass
 - [ ] v1.0 tag/release
 
-## Current critical path
+## Current critical path — October 14, 2026
 
-```text
-Gen I–III shared editor            DEVICE ACCEPTED
-Gen IV full shared editor          AUTOMATED GREEN / HARDWARE PENDING
-Product UI / source integration    FINAL HARDWARE POLISH
-Audit remediation                  INTEGRATED INTO ACTIVE APP LANE
-Legality engine                    ACTIVE IN PARALLEL / READ-ONLY
-        ↓
-one exact integrated hardware candidate
-        ↓
-full touch controls
-        ↓
-Master Vault + Banks
-        ↓
-provider / later-generation expansion
-        ↓
-collection / provenance / search
-        ↓
-conversion / legality / transfers
-        ↓
-approved write transactions
-        ↓
-release hardening
-        ↓
-v1.0
-```
+| Priority | Implemented / underway | Required next gate |
+|---|---|---|
+| Gen I–IV application | Owner-accepted foundation and Claude's [finalization #306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) | Fix Gen IV candidate CI; package verified artwork, fair DS sources and correct ROM identity; one owner-tested NRO |
+| Gen V application | [#300](https://github.com/GlitchedZeus/PokeBank-NX/pull/300) staged PK5 editor / Create / profile assignment / app-owned export is **six-check green** | Owner tests the existing same-folder RetroArch/DraStic/melonDS saves, selected retail copy, persistent profile link, safe edits and exit; evaluate stacked #304 |
+| Touch / Items / Product UI | HOME-like cards, Quick Games, shared native action paths | All-controller/handheld touch parity and stable modal navigation on real Switch |
+| Read-only legality | Gen I–IV five-lane coordinator [#298](https://github.com/GlitchedZeus/PokeBank-NX/pull/298), Claude [#303](https://github.com/GlitchedZeus/PokeBank-NX/pull/303), later-format foundations [#301](https://github.com/GlitchedZeus/PokeBank-NX/pull/301) | Resolve exact combined host/PKHeX/source CI blockers, independently source-audit rule applicability, preserve Unknown/Incomplete |
+| Future product layers | Vault/Banks, Dex/Search, transfer workflows, additional generations, per-source live transactions | Real tested backends and separate authorization; no premature release claim |
+
+**Last owner-accepted integrated application:** `0760334f` (Oct 8). **Gen V six-check-green candidate:** `58bd564b` / [Actions artifact](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38523683607); **not hardware accepted**. An exact NRO hash and user device pass must precede each production milestone.
+
+A green PR is not the same as a finished release. No fabricated completion percentages, silent source overwrite, cross-game True Move unlock or unsafe global Inject Save.
