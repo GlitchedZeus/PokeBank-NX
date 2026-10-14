@@ -3,6 +3,7 @@
 
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "Integration/Gen5/Gen5TrainerName.h"
+#include "Integration/Gen5/Gen5Pokedex.h"
 
 #include <array>
 #include <cstddef>
@@ -20,9 +21,10 @@ namespace PokeVault::Integration::Gen5 {
 class Gen5TrainerScreen {
 public:
     using Workspace = Gen5StagedPokemonWorkspace;
-    enum class Row : uint8_t { Name, Money, PlayTime, TrainerId, SecretId, Gender, Badges, Language };
-    static constexpr std::array<Row, 8> kRows{{Row::Name, Row::Money, Row::PlayTime, Row::TrainerId,
-                                               Row::SecretId, Row::Gender, Row::Badges, Row::Language}};
+    enum class Row : uint8_t { Name, Money, PlayTime, TrainerId, SecretId, Gender, Badges, Language, Pokedex };
+    static constexpr std::array<Row, 9> kRows{{Row::Name, Row::Money, Row::PlayTime, Row::TrainerId,
+                                               Row::SecretId, Row::Gender, Row::Badges, Row::Language,
+                                               Row::Pokedex}};
     struct FooterEntry { const char* glyph; const char* label; };
 
     [[nodiscard]] bool open() const noexcept { return open_; }
@@ -41,11 +43,17 @@ public:
             case Row::Gender: return "Gender";
             case Row::Badges: return "Badges";
             case Row::Language: return "Language";
+            case Row::Pokedex: return "Pokedex";
         }
         return "";
     }
     [[nodiscard]] static bool available(const Workspace& ws) { return ws.trainerPresentation().has_value(); }
     [[nodiscard]] static std::string value(const Workspace& ws, Row row) {
+        if (row == Row::Pokedex) {
+            const auto dex = decodePokedex5(ws.sourceSave());
+            return dex ? "Seen " + std::to_string(dex->seen) + " / Caught " + std::to_string(dex->caught)
+                       : "Unsupported";
+        }
         const auto t = ws.trainerPresentation();
         if (!t) return "Unavailable";
         switch (row) {
@@ -57,6 +65,7 @@ public:
             case Row::Gender: return t->gender == 0 ? "Male" : t->gender == 1 ? "Female" : "Unknown";
             case Row::Badges: return std::to_string(t->badgeCount()) + " / 8";
             case Row::Language: return std::to_string(t->language);
+            case Row::Pokedex: break;
         }
         return {};
     }
@@ -71,7 +80,19 @@ public:
         error.clear();
         return true;
     }
-    void close() noexcept { open_ = false; row_ = 0; }
+    void close() noexcept { open_ = false; row_ = 0; dex_.close(); }
+    // Read-only Pokedex list (no Pokedex editor exists for Gen V).
+    [[nodiscard]] Gen5PokedexView& dex() noexcept { return dex_; }
+    [[nodiscard]] const Gen5PokedexView& dex() const noexcept { return dex_; }
+    [[nodiscard]] bool openPokedex(const Workspace& ws, std::string& error) {
+        if (!open_ || selectedRow() != Row::Pokedex || !decodePokedex5(ws.sourceSave())) {
+            error = "Gen V Pokedex view requires the Pokedex row and a recognized dex block";
+            return false;
+        }
+        dex_.openAt(1);
+        error.clear();
+        return true;
+    }
     void moveRow(int delta) noexcept {
         if (!open_) return;
         constexpr int count = static_cast<int>(kRows.size());
@@ -100,6 +121,10 @@ public:
     }
     [[nodiscard]] std::vector<FooterEntry> footer() const {
         if (!open_) return {{"A", "Edit Trainer"}, {"X", "Party"}, {"Y", "Bag"}, {"B", "Exit"}};
+        if (dex_.open())
+            return {{"D-pad/Stick", "Browse"}, {"L/R", "Prev/Next Registered"}, {"B", "Back"}};
+        if (selectedRow() == Row::Pokedex)
+            return {{"D-pad/Stick", "Choose"}, {"A", "Open Pokedex"}, {"+", "Review"}, {"B", "Back"}};
         if (editable(selectedRow()))
             return {{"D-pad/Stick", "Choose"}, {"A", "Edit"}, {"+", "Review"}, {"B", "Back"}};
         return {{"D-pad/Stick", "Choose"}, {"+", "Review"}, {"B", "Back"}};
@@ -149,6 +174,7 @@ private:
 
     bool open_ = false;
     size_t row_ = 0;
+    Gen5PokedexView dex_;
 };
 
 } // namespace PokeVault::Integration::Gen5

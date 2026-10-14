@@ -166,7 +166,7 @@ GEN5_TRAINER_SANITIZE := $(HOST_BUILD)/test_gen5_trainer_sanitize
 GEN5_TRAINER_SOURCES := tests/test_gen5_trainer.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp \
     src/Names/SpeciesNames.cpp
 GEN5_TRAINER_INPUTS := $(GEN5_TRAINER_SOURCES) include/Integration/Gen5/Gen5Trainer.h \
-    include/Integration/Gen5/Gen5TrainerScreen.h $(GEN5_BAG_SCREEN_INPUTS)
+    include/Integration/Gen5/Gen5TrainerScreen.h include/Integration/Gen5/Gen5Pokedex.h $(GEN5_BAG_SCREEN_INPUTS)
 
 HOST_TESTS += $(GEN5_TRAINER_TEST)
 HOST_SANITIZE_TESTS += $(GEN5_TRAINER_SANITIZE)

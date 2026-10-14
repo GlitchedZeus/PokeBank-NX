@@ -1144,4 +1144,19 @@ require(read("include/Integration/Gen5/Gen5StagedSaveCandidate.h"), "Gen5StagedT
         "did not preserve the exact staged trainer")
 require(read("src/Integration/Gen5/Gen5WorkingCopyExport.cpp"), "TRAINER_CHANGED=")
 
+# Product Home Items reaches the Gen V Bag through the explicit Save Instance
+# chooser (no path guessing), and opens the same shared session on Items.
+items_route = games[games.index("void SaveSelectScreen::selectCurrentTitleForItems()"):]
+items_route = items_route[:items_route.index("SelectedSourceKind::Gen4AssignedFile")]
+assert "not yet supported" not in items_route
+require(items_route, "openGen5Setup(title.gameId,", "discoverGen5Candidates();", "gen5AssignOnly=false;")
+require(manager, "intent!=SaveSelectScreen::OpenIntent::Items", "trainerScreen.openItemsShortcut();")
+require(surface, "if(screen.itemsShortcutActive) {", "if(state.requestExit(ws))screen.goBack=true;")
+
+# Gen V Pokedex is a read-only view of the cited Zukan5 block.
+dex_model = read("include/Integration/Gen5/Gen5Pokedex.h")
+require(dex_model, "Zukan5.cs", "CaughtOffset = 0x08", "SeenOffset = 0x5C", "No flag is ever written")
+require(surface, "editor.openPokedex(ws,error)", "Pokedex - Generation V (read-only)")
+assert "write" not in dex_model.split("namespace PokeVault")[1].lower().replace("never written", "")
+
 print("Gen V read-only shared UI guard contracts: PASS")

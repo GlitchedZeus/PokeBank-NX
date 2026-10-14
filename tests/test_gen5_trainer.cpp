@@ -10,6 +10,7 @@
 #include <cassert>
 #include <cstdint>
 #include <iostream>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -58,6 +59,13 @@ std::vector<uint8_t> fixture(G::SaveFamily family, uint8_t version) {
     const auto party = C::encryptCandidate(pk);
     sav[L::PartyOffset + 4] = 1;
     std::copy(party.begin(), party.end(), sav.begin() + static_cast<std::ptrdiff_t>(L::PartyOffset + 8));
+    // Pokedex flags (Zukan5): Pikachu caught + seen (region 0), Eevee seen
+    // only as female shiny (region 3), Victini (494) caught only.
+    const size_t dex = family == G::SaveFamily::BlackWhite ? 0x21600 : 0x21400;
+    sav[dex + 0x08 + (24 >> 3)] |= uint8_t(1u << (24 & 7));
+    sav[dex + 0x5C + (24 >> 3)] |= uint8_t(1u << (24 & 7));
+    sav[dex + 0x5C + 3 * 0x54 + (132 >> 3)] |= uint8_t(1u << (132 & 7));
+    sav[dex + 0x08 + (493 >> 3)] |= uint8_t(1u << (493 & 7));
     const size_t items = G::itemsBlockOffset(family);
     C::write16(sav, items, 4);
     C::write16(sav, items + 2, 10);
@@ -69,6 +77,12 @@ std::vector<uint8_t> fixture(G::SaveFamily family, uint8_t version) {
         C::write16(copy, b.mirrorOffset, crc);
     }
     return sav;
+}
+
+const G::Gen5StagedPokemonWorkspace& ws_probe(const G::Gen5ReadOnlySave& save) {
+    static std::optional<G::Gen5StagedPokemonWorkspace> probe;
+    probe.emplace(save);
+    return *probe;
 }
 
 bool hasGlyph(const std::vector<Screen::FooterEntry>& footer, std::string_view glyph) {
@@ -98,6 +112,16 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     const auto refresh = [&](std::string& why) { return trainer->refreshStagedPokemonPresentation(why); };
     const auto refuse = [](std::string& why) { why = "refused"; return false; };
 
+    // Read-only Pokedex from the cited Zukan5 block, consistent with the
+    // existing card preview counter.
+    const auto dex = G::decodePokedex5(*parsed);
+    assert(dex && dex->caught == 2 && dex->seen == 2);
+    assert(dex->entries[24].caught && dex->entries[24].seen);
+    assert(dex->entries[132].seen && !dex->entries[132].caught);
+    assert(dex->entries[493].caught && !dex->entries[493].seen);
+    assert(parsed->dexProgress().caught == dex->caught && parsed->dexProgress().seen == dex->seen);
+    assert(Screen::value(ws_probe(*parsed), Row::Pokedex) == "Seen 2 / Caught 2");
+
     // Closed: A opens; open: Up/Down/tap focus, A edits only editable rows.
     assert(hasGlyph(screen.footer(), "A") && !screen.open());
     assert(!screen.beginEdit(ws, error));
@@ -111,6 +135,22 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
         assert(error.find("read-only") != std::string::npos);
         assert(!hasGlyph(screen.footer(), "A"));
     }
+    // Pokedex row: A opens a read-only list; nothing becomes staged.
+    while (screen.selectedRow() != Row::Pokedex) screen.moveRow(1);
+    assert(hasGlyph(screen.footer(), "A") && !screen.beginEdit(ws, error));
+    assert(screen.openPokedex(ws, error) && screen.dex().open() && screen.dex().cursor() == 0);
+    screen.dex().jumpRegistered(*dex, 1);
+    assert(screen.dex().cursor() == 24);
+    screen.dex().jumpRegistered(*dex, 1);
+    assert(screen.dex().cursor() == 132);
+    screen.dex().jumpRegistered(*dex, -1);
+    assert(screen.dex().cursor() == 24);
+    screen.dex().move(-1000);
+    assert(screen.dex().cursor() == 0);
+    screen.dex().move(1000);
+    assert(screen.dex().cursor() == 648);
+    assert(!hasGlyph(screen.footer(), "A") && !ws.hasChanges());
+    screen.dex().close();
     screen.moveRow(-100);
     assert(!screen.tapRow(1) && screen.selectedRow() == Row::Money);
     assert(screen.tapRow(1) && screen.beginEdit(ws, error));

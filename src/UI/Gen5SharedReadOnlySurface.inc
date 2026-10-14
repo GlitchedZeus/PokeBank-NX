@@ -363,6 +363,13 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap) {
     else if(tap==CategoryTouch::NextId)keys|=HidNpadButton_R;
     else if(tap>=0 && bag.tapRow(static_cast<size_t>(tap),ws))keys|=HidNpadButton_A;
     if(keys&HidNpadButton_B) {
+        if(screen.itemsShortcutActive) {
+            // Opened from Product Home Items: B leaves the session through the
+            // same staged-changes confirmation as the Browse exit.
+            if(state.requestExit(ws))screen.goBack=true;
+            screen.controllerNavigation.reset();
+            return true;
+        }
         bag.reset();
         screen.selectedMode=TrainerViewScreen::ViewMode::Trainer;
         screen.controllerNavigation.reset();
@@ -402,6 +409,7 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap) {
 }
 // ---- Native Trainer fields in the shared Trainer panel ----
 constexpr int kGen5TrainerRowTouchBase=81800;
+constexpr int kGen5DexRowTouchBase=82000;
 bool handleTrainerEditor(TrainerViewScreen& screen,u64 keys,int tap) {
     namespace G=PokeVault::Integration::Gen5;
     using Row=G::Gen5TrainerScreen::Row;
@@ -412,6 +420,22 @@ bool handleTrainerEditor(TrainerViewScreen& screen,u64 keys,int tap) {
     const auto refresh=[&](std::string& why) {
         return trainer.refreshStagedPokemonPresentation(why);
     };
+    if(editor.dex().open()) {
+        // Read-only Pokedex list: browsing never stages or writes anything.
+        auto& dex=editor.dex();
+        if(tap>=kGen5DexRowTouchBase && tap<kGen5DexRowTouchBase+649)
+            dex.move(tap-kGen5DexRowTouchBase-static_cast<int>(dex.cursor()));
+        if(keys&HidNpadButton_B) {dex.close();screen.controllerNavigation.reset();return true;}
+        if(keys&HidNpadButton_Up)dex.move(-1);
+        if(keys&HidNpadButton_Down)dex.move(1);
+        if(keys&HidNpadButton_Left)dex.move(-10);
+        if(keys&HidNpadButton_Right)dex.move(10);
+        if(const auto decoded=G::decodePokedex5(ws.sourceSave())) {
+            if(keys&HidNpadButton_L)dex.jumpRegistered(*decoded,-1);
+            if(keys&HidNpadButton_R)dex.jumpRegistered(*decoded,1);
+        }
+        return true;
+    }
     if(tap>=kGen5TrainerRowTouchBase &&
        tap<kGen5TrainerRowTouchBase+static_cast<int>(G::Gen5TrainerScreen::kRows.size()) &&
        editor.tapRow(static_cast<size_t>(tap-kGen5TrainerRowTouchBase)))
@@ -431,6 +455,11 @@ bool handleTrainerEditor(TrainerViewScreen& screen,u64 keys,int tap) {
     }
     if(!(keys&HidNpadButton_A))return true;
     std::string error;
+    if(editor.selectedRow()==Row::Pokedex) {
+        if(!editor.openPokedex(ws,error))screen.postStatus(error,280);
+        screen.controllerNavigation.reset();
+        return true;
+    }
     if(!editor.beginEdit(ws,error)) {
         screen.postStatus(error,280);
         return true;
@@ -479,6 +508,38 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     auto& trainer=nativeTrainer(screen);
     const auto& ws=trainer.stagedPokemon();
     const auto& editor=trainer.trainerScreen();
+    if(editor.dex().open()) {
+        screen.drawGSCOverlay(fb);
+        fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,150));
+        constexpr int w=760,h=540,rowH=44,rows=9;
+        const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-kNavBarH-h)/2;
+        fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
+        fb.drawRoundedRect(x,y,w,h,18,Colors::Border,1);
+        const auto decoded=G::decodePokedex5(ws.sourceSave());
+        fb.drawText(x+24,y+18,"Pokedex - Generation V (read-only)",Colors::Text,TextStyle::Heading);
+        fb.drawText(x+24,y+56,decoded
+            ? "Seen "+std::to_string(decoded->seen)+" / Caught "+std::to_string(decoded->caught)+
+              " of 649  |  native flags, never edited"
+            : std::string("Pokedex block unsupported"),Colors::Accent,TextStyle::Caption);
+        const int cursor=editor.dex().cursor();
+        const int first=std::clamp(cursor-rows/2,0,649-rows);
+        for(int r=0;decoded && r<rows;++r) {
+            const int i=first+r;
+            const int yy=y+92+r*rowH;
+            if(i==cursor)fb.drawSelectionHighlight(x+16,yy,w-32,rowH-6);
+            screen.touchButtons.push_back({kGen5DexRowTouchBase+i,x+16,yy,w-32,rowH-6});
+            const auto& e=decoded->entries[static_cast<size_t>(i)];
+            fb.drawText(x+32,yy+9,"#"+std::to_string(i+1)+"  "+
+                ((e.seen||e.caught)?std::string(Names::getSpeciesName(static_cast<uint16_t>(i+1))):"-----"),
+                Colors::Text,TextStyle::Body);
+            fb.drawText(x+w-200,yy+11,e.caught?"Caught":e.seen?"Seen":"Unregistered",
+                        e.caught?Colors::Accent:Colors::TextDim,TextStyle::Caption);
+        }
+        std::vector<ControllerHint> hints;
+        for(const auto& entry:editor.footer())hints.push_back({entry.glyph,entry.label});
+        drawNavBar(fb,hints);
+        return;
+    }
     screen.drawGSCOverlay(fb);
     fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,150));
     constexpr int w=760,rowH=46;
