@@ -1398,6 +1398,45 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
     return true;
 }
 
+// Verified export of the staged Pokemon copy into the app-owned exports/gen3 root. The emulator
+// source is never written. Bag edits live in a separate staged buffer, so a combined export is
+// refused rather than silently dropping either set of changes.
+void exportStagedGen3Copy(TrainerViewScreen& screen) {
+    auto* staged = editor(screen);
+    if (!staged || !staged->hasPendingChanges()) {
+        screen.postStatus("No staged Generation III Pokemon changes to export", 240);
+        return;
+    }
+    const auto* inventory = bridge(screen).stagedInventory();
+    if (inventory && inventory->hasPendingChanges()) {
+        screen.postStatus("Bag edits are staged separately; export or discard them in Items first", 480);
+        return;
+    }
+    std::string error;
+    const std::string root = PokeBank::Paths::gen3ExportsRoot();
+    const std::string timestamp = Utils::getTimestamp();
+    if (!PokeBank::Paths::ensureDirectoryTree(root, &error) ||
+        !PokeBank::Paths::isSafeTimestamp(timestamp)) {
+        screen.postStatus(error.empty() ? "Could not prepare the Generation III export folder" : error, 420);
+        return;
+    }
+    Gen3::Gen3ExportRequest request;
+    request.rootDirectory = root;
+    request.directoryStem = PokeBank::Paths::sanitizeComponent(
+        Gen3::sourceGameId(staged->sourceGame())) + "_" + timestamp;
+    request.sourcePath = screen.backupDir;
+    request.timestamp = timestamp;
+#ifdef POKEVAULT_GIT_COMMIT
+    request.applicationSha = POKEVAULT_GIT_COMMIT;
+#endif
+    const auto result = Gen3::publishVerifiedGen3Export(*staged, request);
+    if (!result.success) {
+        screen.postStatus(result.error.empty() ? "Verified Generation III export failed" : result.error, 480);
+        return;
+    }
+    screen.postStatus("Verified copy exported: " + result.directory + "/edited.sav (source unchanged)", 600);
+}
+
 bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.review) {
         state.confirmDiscardAll = false;
@@ -1458,45 +1497,6 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         return true;
     }
     return true;
-}
-
-// Verified export of the staged Pokemon copy into the app-owned exports/gen3 root. The emulator
-// source is never written. Bag edits live in a separate staged buffer, so a combined export is
-// refused rather than silently dropping either set of changes.
-void exportStagedGen3Copy(TrainerViewScreen& screen) {
-    auto* staged = editor(screen);
-    if (!staged || !staged->hasPendingChanges()) {
-        screen.postStatus("No staged Generation III Pokemon changes to export", 240);
-        return;
-    }
-    const auto* inventory = bridge(screen).stagedInventory();
-    if (inventory && inventory->hasPendingChanges()) {
-        screen.postStatus("Bag edits are staged separately; export or discard them in Items first", 480);
-        return;
-    }
-    std::string error;
-    const std::string root = PokeBank::Paths::gen3ExportsRoot();
-    const std::string timestamp = Utils::getTimestamp();
-    if (!PokeBank::Paths::ensureDirectoryTree(root, &error) ||
-        !PokeBank::Paths::isSafeTimestamp(timestamp)) {
-        screen.postStatus(error.empty() ? "Could not prepare the Generation III export folder" : error, 420);
-        return;
-    }
-    Gen3::Gen3ExportRequest request;
-    request.rootDirectory = root;
-    request.directoryStem = PokeBank::Paths::sanitizeComponent(
-        Gen3::sourceGameId(staged->sourceGame())) + "_" + timestamp;
-    request.sourcePath = screen.backupDir;
-    request.timestamp = timestamp;
-#ifdef POKEVAULT_GIT_COMMIT
-    request.applicationSha = POKEVAULT_GIT_COMMIT;
-#endif
-    const auto result = Gen3::publishVerifiedGen3Export(*staged, request);
-    if (!result.success) {
-        screen.postStatus(result.error.empty() ? "Verified Generation III export failed" : result.error, 480);
-        return;
-    }
-    screen.postStatus("Verified copy exported: " + result.directory + "/edited.sav (source unchanged)", 600);
 }
 
 bool handleReleaseConfirm(TrainerViewScreen& screen, State& state, u64 down) {
