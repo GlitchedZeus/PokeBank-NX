@@ -5,7 +5,7 @@ name: PokeBank NX Gen I-IV Hardware Candidate
 on:
   push:
     branches:
-      - claude/pokebankn-gen14-completion-klwcwv
+      - claude/gen14-final-20261014
   pull_request:
   workflow_dispatch:
 
