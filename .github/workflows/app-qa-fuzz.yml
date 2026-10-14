@@ -1,0 +1,114 @@
+name: PokeBank NX App QA Fuzz
+
+# Thread 4 independent application QA. Parser robustness for every Gen I-V native save/record entry
+# point the app uses. Per PR: a time-boxed smoke run (deterministic runner under GCC and Clang with
+# ASan/UBSan, plus a short libFuzzer run). Nightly: longer libFuzzer and deterministic soaks.
+# Synthetic inputs only; crash inputs are uploaded as artifacts for reproduction.
+
+on:
+  pull_request:
+    paths:
+      - 'include/**'
+      - 'src/Integration/**'
+      - 'src/Pokemon/**'
+      - 'src/Encryption/**'
+      - 'src/Legacy/**'
+      - 'src/Names/**'
+      - 'src/Inventory/**'
+      - 'src/Utils/**'
+      - 'tests/fuzz_*'
+      - 'tests/fixtures/**'
+      - 'Makefile.host'
+      - 'Makefile.host.base'
+      - 'Makefile.host.qa'
+      - '.github/workflows/app-qa-fuzz.yml'
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: 'libFuzzer seconds per target'
+        default: '300'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pokebank-app-qa-fuzz-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  deterministic:
+    name: Deterministic mutation runner (${{ matrix.compiler }}, plain + ASan/UBSan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+    env:
+      APPLICATION_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      ASAN_OPTIONS: detect_leaks=1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APPLICATION_SHA }}
+          submodules: recursive
+      - name: Record exact identity
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPLICATION_SHA"
+          echo "APPLICATION_SHA=$APPLICATION_SHA"
+          echo "TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
+          ${{ matrix.compiler }} --version | head -1
+      - name: Install clang sanitizer runtimes
+        if: matrix.compiler == 'clang++'
+        run: sudo apt-get install -y libclang-rt-dev || sudo apt-get install -y "libclang-rt-$(clang++ --version | sed -n 's/.*version \([0-9]*\).*/\1/p' | head -1)-dev"
+      - name: Fuzz smoke (every target, every strategy, with and without checksum forging)
+        run: |
+          set -euo pipefail
+          SECONDS_PER=45
+          ITER=25
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            make -f Makefile.host -j"$(nproc)" CXX=${{ matrix.compiler }} qa-fuzz-build
+            make -f Makefile.host CXX=${{ matrix.compiler }} QA_FUZZ_SECONDS=300 QA_FUZZ_RNG=${{ github.run_number }} qa-fuzz-long
+          else
+            make -f Makefile.host -j"$(nproc)" CXX=${{ matrix.compiler }} qa-fuzz-build
+            make -f Makefile.host CXX=${{ matrix.compiler }} QA_FUZZ_SMOKE_SECONDS=$SECONDS_PER QA_FUZZ_ITERATIONS=$ITER qa-fuzz-smoke
+          fi
+
+  libfuzzer:
+    name: libFuzzer (clang -fsanitize=fuzzer,address,undefined)
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      APPLICATION_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      ASAN_OPTIONS: detect_leaks=1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.APPLICATION_SHA }}
+          submodules: recursive
+      - name: Install clang fuzzer/sanitizer runtimes
+        run: sudo apt-get install -y libclang-rt-dev || sudo apt-get install -y "libclang-rt-$(clang++ --version | sed -n 's/.*version \([0-9]*\).*/\1/p' | head -1)-dev"
+      - name: Build libFuzzer targets and synthetic seed corpora
+        run: |
+          set -euo pipefail
+          make -f Makefile.host -j"$(nproc)" CXX=clang++ qa-libfuzzer qa-seeds
+      - name: Time-boxed libFuzzer run
+        run: |
+          set -euo pipefail
+          case "${{ github.event_name }}" in
+            schedule) SECS=600 ;;
+            workflow_dispatch) SECS="${{ github.event.inputs.seconds }}" ;;
+            *) SECS=30 ;;
+          esac
+          make -f Makefile.host CXX=clang++ QA_FUZZ_SECONDS="$SECS" qa-libfuzzer-run
+      - name: Upload crash / leak / timeout inputs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-qa-fuzz-crashes-${{ github.run_id }}
+          path: build-host/qa-clang/artifacts/
+          if-no-files-found: ignore
+          retention-days: 14

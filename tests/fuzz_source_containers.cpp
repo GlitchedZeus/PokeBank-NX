@@ -27,6 +27,14 @@ const fs::path& scratchFile(const char* extension) {
         fs::create_directories(d);
         return d;
     }();
+    // Remove the scratch directory at exit (libFuzzer and the deterministic runner both exit normally).
+    static const struct Cleanup {
+        fs::path path;
+        ~Cleanup() {
+            std::error_code ignored;
+            fs::remove_all(path, ignored);
+        }
+    } cleanup{dir};
     static fs::path raw = dir / "synthetic.sav";
     static fs::path dsv = dir / "synthetic.dsv";
     return std::string_view(extension) == ".dsv" ? dsv : raw;

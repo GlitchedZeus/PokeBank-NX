@@ -60,8 +60,12 @@ void pk4(std::span<const uint8_t> data) {
         if (mon.valid()) {
             qafuzz::noteAccepted();
             if (!mon.empty()) (void)mon.personal();
+            // An all-zero slot is the accepted blank-slot convention (Pokemon4ReadOnly keeps it
+            // unencrypted, like PK5); it has no ciphertext to round-trip to.
+            const bool allZero = std::all_of(data.begin(), data.end(), [](uint8_t b) { return b == 0; });
             const auto again = Encryption::encryptArray4(mon.decryptedBytes());
-            QA_CHECK(std::equal(again.begin(), again.end(), asBytes(data).begin(), asBytes(data).end()));
+            if (!allZero)
+                QA_CHECK(std::equal(again.begin(), again.end(), asBytes(data).begin(), asBytes(data).end()));
         }
     }
 }
