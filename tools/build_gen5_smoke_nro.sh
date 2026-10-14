@@ -89,7 +89,8 @@ for part in trainer_portraits region_backdrops; do
     fi
 done
 for name in gold_gbc silver_gbc crystal_gbc diamond_nds pearl_nds \
-            platinum_nds heartgold_nds soulsilver_nds; do
+            platinum_nds heartgold_nds soulsilver_nds \
+            black_nds white_nds black2_nds white2_nds; do
     [[ -s "assets/game_cards/$name.png" ]] ||
         fail "required recovered game cover missing: $name"
     cp "assets/game_cards/$name.png" "romfs/game_cards/$name.png"

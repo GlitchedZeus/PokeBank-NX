@@ -93,6 +93,50 @@
       "tree_mode": "100644",
       "png_signature": "PASS",
       "local_destination": "assets/game_cards/soulsilver_nds.png"
+    },
+    {
+      "label": "BLACK_NDS",
+      "game_id": "black_nds",
+      "upstream_repository": "https://github.com/libretro-thumbnails/Nintendo_-_Nintendo_DS",
+      "pinned_commit": "a119dcab8fa04c9974b9c229eda824318d923322",
+      "upstream_path": "Named_Boxarts/Pokemon - Black Version (USA, Europe) (NDSi Enhanced).png",
+      "git_blob_sha": "0480305a7dfec9ff026ef4dba740b990b7acc848",
+      "tree_mode": "100644",
+      "png_signature": "PASS",
+      "local_destination": "assets/game_cards/black_nds.png"
+    },
+    {
+      "label": "WHITE_NDS",
+      "game_id": "white_nds",
+      "upstream_repository": "https://github.com/libretro-thumbnails/Nintendo_-_Nintendo_DS",
+      "pinned_commit": "a119dcab8fa04c9974b9c229eda824318d923322",
+      "upstream_path": "Named_Boxarts/Pokemon - White Version (USA, Europe) (NDSi Enhanced).png",
+      "git_blob_sha": "e2cb7fa13c675ccdf47e92bce82fb2efb6c86d6d",
+      "tree_mode": "100644",
+      "png_signature": "PASS",
+      "local_destination": "assets/game_cards/white_nds.png"
+    },
+    {
+      "label": "BLACK2_NDS",
+      "game_id": "black2_nds",
+      "upstream_repository": "https://github.com/libretro-thumbnails/Nintendo_-_Nintendo_DS",
+      "pinned_commit": "a119dcab8fa04c9974b9c229eda824318d923322",
+      "upstream_path": "Named_Boxarts/Pokemon - Black Version 2 (USA, Europe) (NDSi Enhanced).png",
+      "git_blob_sha": "6fe62c7636b60f774347a39c5e862397208e43cf",
+      "tree_mode": "100644",
+      "png_signature": "PASS",
+      "local_destination": "assets/game_cards/black2_nds.png"
+    },
+    {
+      "label": "WHITE2_NDS",
+      "game_id": "white2_nds",
+      "upstream_repository": "https://github.com/libretro-thumbnails/Nintendo_-_Nintendo_DS",
+      "pinned_commit": "a119dcab8fa04c9974b9c229eda824318d923322",
+      "upstream_path": "Named_Boxarts/Pokemon - White Version 2 (USA, Europe) (NDSi Enhanced).png",
+      "git_blob_sha": "2cfe218b7ec09ce8ea3f1cd06bd4bab12c447e96",
+      "tree_mode": "100644",
+      "png_signature": "PASS",
+      "local_destination": "assets/game_cards/white2_nds.png"
     }
   ],
   "additional_upstreams": [

@@ -34,6 +34,7 @@ BALL_ICON_NAMES = (
 )
 FONT_DIR = ROMFS / "fonts"
 GAME_CARD_ART_DIR = ROMFS / "game_cards"
+REGION_BACKDROP_DIR = ROMFS / "region_backdrops"
 GENERATOR = ROOT / "tools" / "gen_hdsprites.py"
 SPRITE_MANAGER = ROOT / "src" / "UI" / "SpriteManager.cpp"
 SPECIES_NAMES_CPP = ROOT / "src" / "Names" / "SpeciesNames.cpp"
@@ -235,6 +236,7 @@ def main() -> int:
         "ruby_gba.png", "sapphire_gba.png", "emerald_gba.png",
         "diamond_nds.png", "pearl_nds.png", "platinum_nds.png",
         "heartgold_nds.png", "soulsilver_nds.png",
+        "black_nds.png", "white_nds.png", "black2_nds.png", "white2_nds.png",
     )
     if not GAME_CARD_ART_DIR.is_dir():
         fail(errors, "romfs/game_cards/ is missing; run: make game-card-art")
@@ -243,7 +245,31 @@ def main() -> int:
         if missing_cards:
             fail(errors, f"required game-card artwork missing: {', '.join(missing_cards)}")
         else:
-            ok("GB/GBC/GBA legacy cards + Diamond/Pearl/Platinum/HeartGold/SoulSilver NDS artwork is present")
+            invalid_cards = []
+            for name in required_game_cards:
+                valid, reason, _ = validate_png(GAME_CARD_ART_DIR / name)
+                if not valid:
+                    invalid_cards.append(f"{name}: {reason}")
+            if invalid_cards:
+                fail(errors, "invalid packaged cover artwork: " + "; ".join(invalid_cards))
+            else:
+                ok("all required game-card artwork (Gen I-V) is packaged and PNG-validated")
+
+    required_regions = ("kanto", "johto", "hoenn", "sinnoh",
+                        "unova", "kalos", "alola", "galar")
+    if not REGION_BACKDROP_DIR.is_dir():
+        fail(errors, "romfs/region_backdrops/ is missing; branch artwork was not packaged")
+    else:
+        missing_or_invalid = []
+        for region in required_regions:
+            file = REGION_BACKDROP_DIR / f"{region}.png"
+            valid, reason, _ = validate_png(file)
+            if not valid:
+                missing_or_invalid.append(f"{region}: {reason}")
+        if missing_or_invalid:
+            fail(errors, "missing or invalid region scenery: " + "; ".join(missing_or_invalid))
+        else:
+            ok("all 8 regional backdrops are packaged and PNG-validated")
 
     print()
     if errors:

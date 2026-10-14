@@ -261,6 +261,10 @@ game-card-art:
 	@cp -f "$(GAME_CARD_ART_SOURCE)/platinum_nds.png" "$(GAME_CARD_ART_DIR)/platinum_nds.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/heartgold_nds.png" "$(GAME_CARD_ART_DIR)/heartgold_nds.png"
 	@cp -f "$(GAME_CARD_ART_SOURCE)/soulsilver_nds.png" "$(GAME_CARD_ART_DIR)/soulsilver_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/black_nds.png" "$(GAME_CARD_ART_DIR)/black_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/white_nds.png" "$(GAME_CARD_ART_DIR)/white_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/black2_nds.png" "$(GAME_CARD_ART_DIR)/black2_nds.png"
+	@cp -f "$(GAME_CARD_ART_SOURCE)/white2_nds.png" "$(GAME_CARD_ART_DIR)/white2_nds.png"
 
 #---------------------------------------------------------------------------------
 # Type sprite download (generation-ix scarlet-violet style)

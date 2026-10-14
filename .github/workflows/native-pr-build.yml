@@ -59,9 +59,11 @@ jobs:
           set -euo pipefail
           test "$(git -C recovery-work rev-parse HEAD)" = "$RECOVERY_SHA"
           (cd recovery-work && python3 tools/recover_workspace.py)
-          rm -rf romfs
-          cp -a recovery-work/romfs romfs
-          for f in gold_gbc silver_gbc crystal_gbc diamond_nds pearl_nds platinum_nds heartgold_nds soulsilver_nds; do
+          # Recovery predates current HEAD artwork. Restore only missing resources;
+          # never replace or delete this branch\'s packaged region backdrops/covers.
+          mkdir -p romfs
+          rsync -a --ignore-existing recovery-work/romfs/ romfs/
+          for f in gold_gbc silver_gbc crystal_gbc diamond_nds pearl_nds platinum_nds heartgold_nds soulsilver_nds black_nds white_nds black2_nds white2_nds; do
             test -s "assets/game_cards/$f.png"
             cp "assets/game_cards/$f.png" "romfs/game_cards/$f.png"
           done

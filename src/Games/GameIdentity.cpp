@@ -102,6 +102,10 @@ namespace PokeVault::Games {
         if (id == "platinum_nds") return "romfs:/game_cards/platinum_nds.png";
         if (id == "heartgold_nds") return "romfs:/game_cards/heartgold_nds.png";
         if (id == "soulsilver_nds") return "romfs:/game_cards/soulsilver_nds.png";
+        if (id == "black_nds") return "romfs:/game_cards/black_nds.png";
+        if (id == "white_nds") return "romfs:/game_cards/white_nds.png";
+        if (id == "black2_nds") return "romfs:/game_cards/black2_nds.png";
+        if (id == "white2_nds") return "romfs:/game_cards/white2_nds.png";
         return {};
     }
 

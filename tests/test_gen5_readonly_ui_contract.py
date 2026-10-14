@@ -231,6 +231,21 @@ require(read(".github/workflows/native-pr-build.yml"),
         "bash -n tools/build_gen5_smoke_nro.sh",
         "test -x tools/build_gen5_smoke_nro.sh")
 
+# Native NRO packaging must not erase region scenery on the integration branch.
+# Gen V retail covers must resolve just like Gen I-IV, and preflight must reject
+# a reintroduced missing-region/missing-cover regression before emitting an NRO.
+workflow = read(".github/workflows/native-pr-build.yml")
+makefile = read("Makefile")
+identity = read("src/Games/GameIdentity.cpp")
+asset_preflight = read("tools/check_device_assets.py")
+assert "rsync -a --ignore-existing recovery-work/romfs/ romfs/" in workflow
+assert "rm -rf romfs" not in workflow
+for game in ("black_nds", "white_nds", "black2_nds", "white2_nds"):
+    require(identity, f'if (id == "{game}") return "romfs:/game_cards/{game}.png";')
+    require(makefile, f'$(GAME_CARD_ART_SOURCE)/{game}.png')
+    require(asset_preflight, f'"{game}.png"')
+require(asset_preflight, 'REGION_BACKDROP_DIR', 'all 8 regional backdrops are packaged')
+
 # Four native titles, profile-isolated assignments, and the existing
 # shared 6x5 Box grid are exercised by executable host fixtures.
 assignment=read("tests/test_gen5_readonly_save.cpp")
