@@ -184,7 +184,7 @@ require(games, '"REMEMBERED / CHOOSE COPY"', "SaveCopySelection::Automatic",
 # Profile bindings must remain stable across normal emulator-save writes on
 # FAT/exFAT devices (st_ino==0), matching Gen IV. The selected content SHA
 # remains separately mandatory before opening the editor.
-require(discovery_header,
+require(read("include/Integration/Gen5/Gen5SourceDiscovery.h"),
         "persistentGen5SourceIdentity(",
         "the changing byte fingerprint")
 require(discovery, "persistentGen5SourceIdentity(",
