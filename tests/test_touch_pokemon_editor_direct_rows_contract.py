@@ -276,7 +276,17 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurf
 gen3_review = read("src/UI/Gen3SharedPokemonSurface.inc").split(
     "bool handleReview(", 1)[1].split("bool handleReleaseConfirm(", 1)[0]
 assert gen3_review.count("state.actions = true;") == 2
-assert gen3_review.count("screen.controllerNavigation.reset();") == 2
+# B exit, Discard-All arm, Discard-All cancel and confirmed discard each reset repeat state.
+assert gen3_review.count("screen.controllerNavigation.reset();") == 4
+# Review -> Discard All is two-step for Gen III and IV: the first Y only arms a
+# confirmation, B keeps the edits, and only a second Y calls discard().
+for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurface.inc"):
+    review = read(rel).split("bool handleReview(", 1)[1].split("\n}\n", 1)[0]
+    assert "state.confirmDiscardAll = true;" in review, f"{rel}: Discard All must arm a confirmation"
+    arm = review.index("state.confirmDiscardAll = true;")
+    assert review.index("staged->discard();") < arm or "if (state.confirmDiscardAll" in review[:review.index("staged->discard();")], \
+        f"{rel}: discard() must be reachable only from the confirmed state"
+    assert '{{"Y", "Discard All"}, {"B", "Keep Changes"}}' in read(rel), f"{rel}: confirm legend missing"
 
 # Cancelling Release restores the original focused action in Gen I/III
 # (matching Gen II/IV); B cannot leak into the restored popup.

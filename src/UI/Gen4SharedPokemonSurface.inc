@@ -85,6 +85,8 @@ struct State {
     bool review = false;
     bool legality = false;
     bool confirmRelease = false;
+    // Discard All in Review is a two-step Y -> Y confirmation; B keeps the staged edits.
+    bool confirmDiscardAll = false;
     bool speciesPreviewShiny = false;
     int actionRow = 0;
     TargetKind target = TargetKind::Box;
@@ -1640,7 +1642,29 @@ void exportStagedGen4Copy(TrainerViewScreen& screen) {
 }
 
 bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
-    if (!state.review) return false;
+    if (!state.review) {
+        state.confirmDiscardAll = false;
+        return false;
+    }
+    if (state.confirmDiscardAll) {
+        if (down & HidNpadButton_B) {
+            state.confirmDiscardAll = false;
+            screen.controllerNavigation.reset();
+            return true;
+        }
+        // A/X are inert here: only an explicit second Y discards every staged edit.
+        if (!(down & HidNpadButton_Y)) return true;
+        state.confirmDiscardAll = false;
+        if (auto* staged = editor(screen)) {
+            staged->discard();
+            if (refreshPresentation(screen))
+                screen.postStatus("All staged Generation IV edits discarded; source unchanged", 300);
+        }
+        state.review = false;
+        state.actions = true;
+        screen.controllerNavigation.reset();
+        return true;
+    }
     if (down & HidNpadButton_X) {
         exportStagedGen4Copy(screen);
         return true;
@@ -1652,13 +1676,8 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
         return true;
     }
     if (down & HidNpadButton_Y) {
-        if (auto* staged = editor(screen)) {
-            staged->discard();
-            if (refreshPresentation(screen))
-                screen.postStatus("All staged Generation IV edits discarded; source unchanged", 300);
-        }
-        state.review = false;
-        state.actions = true;
+        const auto* staged = editor(screen);
+        if (staged && staged->hasChanges()) state.confirmDiscardAll = true;
         screen.controllerNavigation.reset();
         return true;
     }
@@ -2234,7 +2253,23 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
 }
 
-void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+// Second step of Review -> Discard All. Drawn over the review list; nothing changes until Y.
+void drawDiscardAllConfirm(PKSEFramebuffer& fb, const char* generation) {
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 150));
+    constexpr int w = 760, h = 240;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - kNavBarH - h) / 2;
+    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
+    fb.drawText(x + 34, y + 30, "Discard all staged changes?", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 34, y + 96,
+                std::string("Every pending ") + generation + " edit in this workspace is lost.",
+                Colors::Text, TextStyle::Body);
+    fb.drawText(x + 34, y + 140, "Export Copy first to keep them. The original save is never written.",
+                Colors::TextDim, TextStyle::Caption);
+}
+
+void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state) {
     auto* staged = editor(screen);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Colors::Background);
     fb.drawText(32, 24, "Review Pending Changes", Colors::Text, TextStyle::Heading);
@@ -2264,7 +2299,12 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         if (lines.size() > kShown)
             fb.drawText(64, y, "+" + std::to_string(lines.size() - kShown) + " more",
                         Colors::TextDim, TextStyle::Caption);
-        drawNavBar(fb, {{"X", "Export Copy"}, {"Y", "Discard All Staged"}, {"B", "Back"}});
+        if (state.confirmDiscardAll) {
+            drawDiscardAllConfirm(fb, "Generation IV");
+            drawNavBar(fb, {{"Y", "Discard All"}, {"B", "Keep Changes"}});
+        } else {
+            drawNavBar(fb, {{"X", "Export Copy"}, {"Y", "Discard All Staged"}, {"B", "Back"}});
+        }
     } else {
         drawNavBar(fb, {{"B", "Back"}});
     }
@@ -2844,7 +2884,7 @@ bool draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     else if (state.itemRemoveConfirmActive)drawItemRemoveConfirm(screen,fb,state);
     else if (state.confirmRelease) drawReleaseConfirm(screen, fb, state);
     else if (state.legality) drawLegality(screen, fb, state);
-    else if (state.review) drawReview(screen, fb);
+    else if (state.review) drawReview(screen, fb, state);
     else if (workspaceActive(state)) drawWorkspace(screen, fb, state);
     else if (state.actions) drawActions(screen, fb, state);
     return true;

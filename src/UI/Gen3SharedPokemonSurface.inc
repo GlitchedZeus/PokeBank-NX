@@ -85,6 +85,8 @@ struct State {
     TouchScrollState reviewTouchScroll;
     bool legality = false;
     bool confirmRelease = false;
+    // Discard All in Review is a two-step Y -> Y confirmation; B keeps the staged edits.
+    bool confirmDiscardAll = false;
     bool speciesPicker = false;
     bool valuePicker = false;
     PickerTarget pickerTarget = PickerTarget::None;
@@ -1397,10 +1399,22 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
 }
 
 bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
-    if (!state.review) return false;
+    if (!state.review) {
+        state.confirmDiscardAll = false;
+        return false;
+    }
     auto* staged = editor(screen);
     if (!staged) {
         state.review = false;
+        state.confirmDiscardAll = false;
+        return true;
+    }
+    if (state.confirmDiscardAll && !(down & HidNpadButton_Y)) {
+        // B keeps every staged edit; A/X/D-pad/touch are inert while the question is open.
+        if (down & HidNpadButton_B) {
+            state.confirmDiscardAll = false;
+            screen.controllerNavigation.reset();
+        }
         return true;
     }
     const int reviewCount = static_cast<int>(staged->pendingChanges().size());
@@ -1427,6 +1441,13 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         return true;
     }
     if (down & HidNpadButton_Y) {
+        if (!state.confirmDiscardAll) {
+            // First Y only asks; an explicit second Y discards every staged edit.
+            if (!staged->pendingChanges().empty()) state.confirmDiscardAll = true;
+            screen.controllerNavigation.reset();
+            return true;
+        }
+        state.confirmDiscardAll = false;
         state.reviewTouchScroll.reset();
         staged->discard();
         refreshPresentation(screen);
@@ -2019,6 +2040,22 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
 }
 
+// Second step of Review -> Discard All. Drawn over the review list; nothing changes until Y.
+void drawDiscardAllConfirm(PKSEFramebuffer& fb, const char* generation) {
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 150));
+    constexpr int w = 760, h = 240;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - kNavBarH - h) / 2;
+    fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
+    fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
+    fb.drawText(x + 34, y + 30, "Discard all staged changes?", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 34, y + 96,
+                std::string("Every pending ") + generation + " edit in this workspace is lost.",
+                Colors::Text, TextStyle::Body);
+    fb.drawText(x + 34, y + 140, "Export Copy first to keep them. The original save is never written.",
+                Colors::TextDim, TextStyle::Caption);
+}
+
 void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     screen.touchButtons.clear();
     auto* staged = editor(screen);
@@ -2057,7 +2094,10 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
             fb, fb.getWidth() - 28, viewportY, viewportH,
             changes.size(), visible, state.reviewScroll);
     }
-    if (changes.empty())
+    if (state.confirmDiscardAll && !changes.empty()) {
+        drawDiscardAllConfirm(fb, "Generation III");
+        drawNavBar(fb, {{"Y", "Discard All"}, {"B", "Keep Changes"}});
+    } else if (changes.empty())
         drawNavBar(fb, {{"D-pad/Stick", "Scroll"}, {"Y", "Discard All Staged"}, {"B", "Back"}});
     else
         drawNavBar(fb, {{"D-pad/Stick", "Scroll"}, {"X", "Export Copy"},
