@@ -9,6 +9,12 @@
 // Cases named "...-uncertain-..." are Mew/Celebi records that match no recorded
 // distribution. PKHeX calls them invalid; PokeBank NX answers Uncertain, with only
 // non-definitive problems, because the GB-era event list is not known to be complete.
+//
+// kKorean holds Korean Gold/Silver records (Hangul names, decoded here to UTF-8 with
+// PKHeX's StringConverter2KOR tables by gen_corpus2.py's harness). PokeBank NX agrees
+// with PKHeX wherever it decides; it answers Uncertain where only a Korean-Western
+// cartridge trade (Bulbapedia; PKHeX does not allow it) explains the record, and where a
+// Korean record carries Crystal met data.
 
 #include "Integration/Gen2/Gen2ReadOnlySave.h"
 #include "Legality/GBLegality.h"
@@ -30,6 +36,19 @@ struct Case {
 };
 
 const Case kCases[] = {
+    // Kingler caught as a level-40 Crystal Krabby, with Take Down (Gen I only) and Protect
+    // (in Krabby's level-40 moves, and TM17). A Time Capsule trip purges Gen II-only
+    // encounter moves, but Krabby's TM still explains Protect (LearnGroup2.Check lets the
+    // earlier form's TM replace the encounter move). PokeBank NX used to call it invalid.
+    {"defect2-move-kingler-protect-20400", "634c24980cb6f11c053bd80000000000000000000037a5580a000a4600e81b46000000af00af00bf00af007c00520052", "868e8b8350505050505050", "8c8e8d5050505050505050", false, true},  // PKHeX: EncounterSlot2:98:C:40
+    {"defect2-exp-100-exact-8503", "3100103c5e8da9770f4240a45b8bf137068072320a52252314020a4641d9cd640000010c010c0091008100bd00c300a5", "868e8b8350505050505050", "8c8e8d5050505050505050", false, true},  // PKHeX: level 100 at the EXP cap
+    {"defect2-exp-100-above-cap-8805", "49e4bcfa6738c401133ff9000000000000000000001fdc010bfd0546000000640000012a012a009300a500e700bd010d", "868e8b8350505050505050", "8c8e8d5050505050505050", false, false},  // PKHeX: Level:LevelEXPTooHigh
+    {"defect2-egg-name-8378", "810096000000feb300009c00000000000000000000e1c22800000002000000050000001100110007000a000e00060007", "868e8b8350505050505050", "8486869250505050505050", true, false},  // PKHeX: EncounterEgg2:129:GS:5
+    {"defect2-egg-name-8471", "5400402daf00a6ea00007d000000000000000000002ab823280f000600000005000000120012000d000a000d00090009", "868e8b8350505050505050", "8f89858091505050505050", true, false},  // PKHeX: EncounterEgg2:84:GS:5
+    {"defect2-egg-name-8559", "bb0096eb2700340f0000870000000000000000000063fe28051e00040000000500000013001300090009000b0009000b", "868e8b8350505050505050", "8e84948550505050505050", true, true},  // PKHeX: EncounterEgg2:187:GS:5
+    {"defect2-egg-name-8698", "480028e53e0019f500009c00000000000000000000188723281400050000000500000013001300090009000c000a000f", "868e8b8350505050505050", "8488505050505050505050", true, true},  // PKHeX: EncounterEgg2:72:GS:5
+    {"defect2-egg-name-jp-8832", "640021000000933700007d00000000000000000000f5c82300000005000000050000001400140009000a0010000b000b", "858c9e505050", "4388a1ab5050", true, false},  // PKHeX: EncounterEgg2:100:GS:5
+    {"defect2-egg-name-jp-9141", "3f0064707100d79f00008700000000000000000000dad9141e1e000f0000000500000012001200080007000f0010000b", "8f888b505050", "8f9d50505050", true, false},  // PKHeX: EncounterEgg2:63:GS:5
     {"defect2-caught-14002", "82d896215200b61d007716000000000000000000000c496f0c0600460040de1d0000005e005e004d00390036002d0044", "868e8b8350505050505050", "8c8e8d5050505050505050", false, false},  // PKHeX: EncounterEgg2:129:C:5
     {"defect2-caught-10472", "2d0047e64d4edf3100435a00000000000000000000206a0814b1cb460056f71c0000005000500032003400240042003d", "868e8b8350505050505050", "8c8e8d5050505050505050", false, false},  // PKHeX: EncounterInvalid:45:GSC:22
     {"defect2-caught-11679", "8200c421522b522f0091760000000000000000000002db521600934600812b1f00000065006500520037003f00310049", "868e8b8350505050505050", "8c8e8d5050505050505050", false, true},  // PKHeX: EncounterEgg2:129:GS:5
@@ -201,7 +220,96 @@ const Deliberate kDeliberate[] = {
     {"jp-celebi-wrong-level", "fb0069dbf6f8303900550000000000000000000000aaaae019430246005d0e1e00000064006400470047004700470047", "8a938b505050", "8da71ab05050", Legality::GB::Status::Uncertain, false},
     {"jp-celebi-wrong-place", "fb0069dbf6f8303900550000000000000000000000aaaa0be8c89446005e0f1e00000064006400470047004700470047", "8a938b505050", "8da71ab05050", Legality::GB::Status::Uncertain, false},
     {"jp-celebi-no-metdata", "fb0069dbf6f8303900550000000000000000000000aaaa0c0e000f460000001e00000064006400470047004700470047", "8a938b505050", "8da71ab05050", Legality::GB::Status::Uncertain, false},
+    // Level-100 Tentacruel with 1,249,999 EXP, one short of the level-100 total. PKHeX only
+    // rejects EXP above the total; the games reach level 100 only with all of it
+    // (pokecrystal battle EXP cap, CalcLevel, Rare Candy), so PokeBank NX calls it Invalid.
+    {"exp-100-below-cap-8387", "4900333d0fad9a241312cf0000000000000000000078ee92831ed84620a84b640000011e011e009f009700e900c10111", "868e8b8350505050505050", "8c8e8d5050505050505050", Legality::GB::Status::Illegal, false},
     {"jp-celebi-gsball-badmove", "fb0069dbf639303900550000000000000000000000aaaad90e468d46005e0e1e00000064006400470047004700470047", "8a938b505050", "8da71ab05050", Legality::GB::Status::Uncertain, false},
+};
+
+using Legality::GB::Status;
+
+struct KoreanCase {
+    const char* name;
+    const char* body;
+    const char* ot;    // decoded, UTF-8
+    const char* nick;  // decoded, UTF-8
+    bool egg;
+    bool pkhexValid;
+    Status expect;
+};
+
+const KoreanCase kKorean[] = {
+    {"kor2-ot-latin-8232", "47e2164a234d1ff6014587ce5f918d748275f208baca5b0628cff8460000002d000000810081006e0048004800680044", "영희Z9", "용용이", false, false, Status::Uncertain},  // PKHeX: EncounterEgg2:69:GS:5
+    {"kor2-ot-latin-8235", "6c007a236f17316a00697800000000000000000000eec01e095783460000001e0000005e005e002e003a001e00290032", "골드-", "별님", false, true, Status::Legal},  // PKHeX: EncounterEgg2:108:GS:5
+    {"kor2-wild-7472", "29008d30810019fc0003e800000000000000000000ceee89020500460000000a0000001c001c0010000e0012000d000f", "지훈", "용용이", false, true, Status::Legal},  // PKHeX: EncounterEgg2:41:GS:5
+    {"kor2-egg-7512", "6f001e27f2dedff400009c00000000000000000000b48817aa430a7800000005000000170017000e000e000800080008", "지훈", "피카", false, true, Status::Legal},  // PKHeX: EncounterEgg2:111:GS:5
+    {"kor2-egg-unhatched-7552", "29008de41000de6a00007d0000000000000000000030c30f1423000f0000000500000013001300090008000b00080009", "철수", "알", true, true, Status::Legal},  // PKHeX: EncounterEgg2:41:GS:5
+    {"kor2-egg-unhatched-7565", "d10021b8d7f26a00000064000000000000000000005138230a050f0d00000005000000160016000d000a000800090009", "한별", "알", true, false, Status::Illegal},  // PKHeX: EncounterEgg2:209:GS:5
+    {"kor2-static-7592", "f9006938f081c795068ace0000000000000000000014de5200000f4600000046000000f200f2008400c000b1009600f0", "철수", "꼬마", false, true, Status::Legal},  // PKHeX: EncounterStatic2:249:GD:70
+    {"kor2-trade-7632", "4200432b00009254000087000000000000000000003766141c00004600000005000000170017000d000a000900090009", "청수", "근육", false, true, Status::Legal},  // PKHeX: EncounterTrade2:66:GSC:5
+    {"kor2-trade-wrong-nick-7672", "4200432b000092540000870000000000000000000037660e1e00004600000005000000170017000d000a000900090009", "청수", "가짜", false, true, Status::Legal},  // PKHeX: EncounterEgg2:66:GS:5
+    {"kor2-trade-wrong-nick-7678", "70001e27171f011b0004e20000000000000000000077660beb1402460000000a0000002b002b0020001e000e000f000f", "미사", "가짜", false, false, Status::Illegal},  // PKHeX: EncounterTrade2:112:GSC:10
+    {"kor2-crystal-wild-7712", "b100402b6564620c0036000000000000000000000043fc236447144600000018000000380038001e001c002d002c0020", "민수", "용용이", false, true, Status::Legal},  // PKHeX: EncounterEgg2:177:GS:5
+    {"kor2-met-data-7752", "82009621f03fd7db01faf2000000000000000000005a8c286a83c24600aa492f000000990099007f005800580048006e", "민수", "Mon", false, false, Status::Uncertain},  // PKHeX: EncounterInvalid:130:GSC:42
+    {"kor2-met-data-7764", "29008d302c00c6db0006c0000000000000000000000e780f140b00460047560c000000200020000f00100013000e0010", "영희", "Mon", false, true, Status::Uncertain},  // PKHeX: EncounterSlot2:41:GD:7
+    {"kor2-crystal-move-7792", "3e00913a1d03926702086d00000000000000000000985c1e0a0a0a4600000034000000a600a6006600700053005a006f", "민수", "친구", false, false, Status::Uncertain},  // PKHeX: EncounterSlot2:60:SI:40
+    {"kor2-crystal-move-7795", "ab00af37d16d4480019ff000000000000000000000b7f00da31408460000002c000000b000b00041003e004d00470047", "한별", "Mon", false, true, Status::Legal},  // PKHeX: EncounterEgg2:170:GS:5
+    {"kor2-crystal-egg-7832", "9800212d490e0bb9000087000000000000000000008cb41eb60a1e7800000005000000130013000a000c000a000a000b", "영희", "Mon", false, false, Status::Uncertain},  // PKHeX: EncounterStatic2:152:GSC:5
+    {"kor2-crystal-egg-7858", "d8000a2b4424113b00007d0000000000000000000030b5e16214037800000005000000160016000d000a000a000a000a", "민수", "피카", false, true, Status::Legal},  // PKHeX: EncounterEgg2:216:GS:5
+    {"kor2-odd-egg-7872", "ac0054cc92002fe400007d000000000000000000002aaa1e9c4b00780000000500000011001100090007000c00090009", "서연", "피카", false, true, Status::Uncertain},  // PKHeX: EncounterStatic2:172:C:5
+    {"kor2-odd-egg-7874", "270003cccd9cfb2c0054600000000000000000000000008758dac9780000001e0000006d006d00200011001100200014", "한별", "꼬마", false, true, Status::Legal},  // PKHeX: EncounterEgg2:174:GS:5
+    {"kor2-gen1-move-7912", "29008d6600002a7c00007d000000000000000000003b0c0f0a0000460000000500000014001400090009000a0009000a", "민수", "꼬마", false, false, Status::Uncertain},  // PKHeX: EncounterSlot2:41:SI:5
+    {"kor2-gen1-move-7917", "2a00302c6d11fe9800697800000000000000000000feaf1404d0f8460000001e0000005a005a003e003700410035003b", "영희", "BUDDY", false, true, Status::Legal},  // PKHeX: EncounterEgg2:41:GS:5
+    {"kor2-gen1-move-7929", "31002132c12418da000d2f0000000000000000000049a1c814289c460000000f0000002f002f0019001900230020001b", "민수", "용용이", false, false, Status::Illegal},  // PKHeX: EncounterSlot2:49:GD:15
+    {"kor2-stadium-7952", "f900b1db10692c8b013880000000000000000000008ecbc45e23d8460000002800000087008700530078006600550089", "지훈", "꼬마", false, true, Status::Legal},  // PKHeX: EncounterStatic2:249:SI:40
+    {"kor2-stadium-7955", "f4002b342e2cafa5013880000000000000000000002db11904040e460000002800000093009300620053005d004d0041", "한별", "꼬마", false, false, Status::Uncertain},  // PKHeX: EncounterStatic2:244:GSC:40
+    {"kor2-pcny-egg-7992", "8300372d2c00ce5e00009c00000000000000000000c56ca328420078000000050000001c001c000e000d000b000e000f", "골드", "BUDDY", false, false, Status::Uncertain},  // PKHeX: EncounterEgg2:131:GS:5
+    {"kor2-event-8032", "f5002b372e106ad0013880000000000000000000007aaa1e194623460000002800000088008800460069005100550069", "서연", "친구", false, true, Status::Legal},  // PKHeX: EncounterStatic2:245:GS:40
+    {"kor2-event-8038", "fb00495dd76985ff0000870000000000000000000046620a12050b4600000005000000190019000f000f000f000f000f", "지훈", "꼬마", false, false, Status::Uncertain},  // PKHeX: EncounterInvalid:251:GSC:0
+    {"kor2-event-8040", "92005361cb357afe02625a00000000000000000000aaaa0d02080f4600000032000000960096007300690069008c0064", "영희", "친구", false, false, Status::Illegal},  // PKHeX: EncounterInvalid:146:GSC:0
+    {"kor2-nick-latin-8072", "400064323c69590d003463bf6ca0e94fac6857fb35cff48a149c14460000001a0000003b003b001d001c00430045002b", "골드", "XGQA", false, true, Status::Legal},  // PKHeX: EncounterEgg2:63:GS:5
+    {"kor2-nick-latin-8074", "d0ef216fc9158c8601216800000000000000000000169e0a280a14460000002a0000007b007b004d00b20025003e0047", "지훈", "ENEZJEX", false, false, Status::Illegal},  // PKHeX: EncounterEgg2:95:GS:5
+    {"kor2-nick-long-8112", "e8726f3f59e5bf5f0496db2800460032005a000a006a4a28c809284600000043000000c500c500ad00b3004d00620062", "영희", "츄피피츄별A", false, false, Status::Illegal},  // PKHeX: EncounterEgg2:231:GS:5
+    {"kor2-nick-latin-long-8152", "c30037271585ee620069780000000000000000000016ec03939c14460000001e0000006500650038003b002200330033", "골드", "PXWYZBSPTWG", false, false, Status::Illegal},  // PKHeX: EncounterEgg2:194:GS:5
+    {"kor2-ot-long-8192", "5a00ae39b6803ca103ead3e7f24fc1864bcb7b4c3597d7020c0aca464100003b0000007a007a005c008300430042002a", "지수수훈훈A", "BUDDY", false, false, Status::Illegal},  // PKHeX: EncounterEgg2:90:GS:5
+    {"kor2-time-capsule-8232", "71006b6f7126e2ed03826c0000000000000000000062dce002ef0846000000420000019801980013000e00580043009f", "한별", "별님", false, true, Status::Legal},  // PKHeX: EncounterEgg2:113:GS:5
+    {"kor2-time-capsule-8234", "1000101c660067510000b30000000000000000000051f223438e004600000006000000160016000b0009000d00090009", "민수", "용용이", false, false, Status::Uncertain},  // PKHeX: EncounterSlot2:16:SI:3
+    {"random2-kor-8278", "e40046ec1e0012100a22ed48ccbc004e243972776f0a73908719004600a74c51000000a800a8006600450079008b005a", "철수", "친구", false, false, Status::Illegal},  // PKHeX: EncounterInvalid:228:GSC:39
+    {"grown2-kor-8285", "41d264733c69e3b4045da30000000000000000000019708e450f124600000042000000a700a70048004c00ac00b70075", "민수", "BUDDY", false, true, Status::Legal},  // PKHeX: EncounterEgg2:63:GS:5
+    {"egg2-kor-8312", "8900b021a0003d2600007d00000000000000000000e5ad1ef8aa007800000005000000160016000c000c000a000e000d", "한별", "꼬마", false, true, Status::Legal},  // PKHeX: EncounterEgg2:137:GS:5
+    {"grown-static2-kor-8314", "ef00622b7109edd9001acb000000000000000000000000471ec40778000000130000002e002e001c00130029001d0019", "철수", "친구", false, true, Status::Legal},  // PKHeX: EncounterEgg2:239:GS:5
+    {"defect2-egg-statexp-kor-8338", "68002d27f600639700007db85dbf0a3793036529550e5f281e05001200000005000000140014000a000f0009000a000b", "지훈", "알", true, false, Status::Illegal},  // PKHeX: EncounterEgg2:104:GS:5
+    {"defect2-ot-long-kor-8377", "63006ad80c984fab01e8480000000000000000000028e5e80a010a461000003200000074007400890080005e003c003c", "훈한지훈별A", "별님", false, false, Status::Illegal},  // PKHeX: EncounterEgg2:98:GS:5
+    {"defect2-egg-pp-kor-8403", "cb00212d5d170eb600007d000000000000000000004f08232819271400000005000000160016000d000d000d000e000c", "민수", "알", true, false, Status::Illegal},  // PKHeX: EncounterEgg2:203:GS:5
+    {"time-capsule-kor-8412", "140027a29e7413cb0376a50000000000000000000057fd5709951e460000003d0000009c009c006d0056008d0051006a", "민수", "BUDDY", false, true, Status::Legal},  // PKHeX: EncounterEgg2:19:GS:5
+    {"defect2-move-kor-8437", "1c000a684ea3b38d0044a845a6b763a29dbeefc2f9ae4723d3f0e0460000001a0000004b004b003e0045002800200025", "골드", "Mon", false, false, Status::Illegal},  // PKHeX: EncounterSlot2:28:GD:10
+    {"grown2-kor-8461", "490070233a33245701508700000000000000000000f7a21b0ec28946000000290000007e007e004a0040005f00480069", "서연", "Mon", false, false, Status::Uncertain},  // PKHeX: EncounterSlot2:73:SI:35
+    {"defect2-nick-empty-kor-8508", "4e001753617eae67062ee80000000000000000000006c103d28605460000004a000000b500b50099007500b2007c007c", "한별", "", false, false, Status::Illegal},  // PKHeX: EncounterEgg2:77:GS:5
+    {"time-capsule-kor-8514", "36000a278263f4b2005f4500000000000000000000032a23640514460000001d00000046004600230022002600300027", "한별", "BUDDY", false, false, Status::Uncertain},  // PKHeX: EncounterSlot2:54:SI:5
+    {"defect2-pp-kor-8560", "7d00812b09719ec6004ce38a51a61bc1ef314dd9ef12131ee81213460000001b0000004e004e00320024003e00390034", "철수", "별님", false, false, Status::Illegal},  // PKHeX: EncounterSlot2:125:GD:15
+    {"defect2-caught-kor-8571", "a9003f11136dc9f1017c3803eae2d1e41739bb30a421ea462201d04600e3182e0000008900890059004f0089004e0057", "지훈", "용용이", false, false, Status::Uncertain},  // PKHeX: EncounterInvalid:169:GSC:35
+    {"defect2-egg-moves-kor-8581", "730004170000170800007d0000000000000000000067bc0f14000007000000050000001a001a000f000d000f000a000e", "한별", "알", true, true, Status::Legal},  // PKHeX: EncounterEgg2:115:GS:5
+    {"defect2-statexp-kor-8637", "57001d3a3e9cd92001958f0000a000000000000000985f8542140a460000002f000000970097004f0057004b0054006c", "철수", "친구", false, false, Status::Illegal},  // PKHeX: EncounterEgg2:86:GS:5
+    {"defect2-ot-empty-kor-8666", "7d00622b098154a80055c0668f9940f73c103ef12e074f041e0f9c465100001c0000004d004d0033002800420042003d", "", "Mon", false, false, Status::Illegal},  // PKHeX: EncounterSlot2:125:C:16
+    {"defect2-pokerus-kor-8734", "2100741e18d5e68b00cb9f000000000000000000002ea7f05ef00f46f0000027000000610061003e003c003f00350035", "철수", "친구", false, false, Status::Illegal},  // PKHeX: EncounterEgg2:32:GS:5
+    {"defect2-otgender-kor-8807", "3de822593703fe8d00dd540000000000000000000052720f0acd0346110080280000006e006e003d003a0052002e002e", "골드", "BUDDY", false, false, Status::Uncertain},  // PKHeX: EncounterEgg2:60:GS:5
+    {"egg2-unhatched-kor-8820", "5f0021679d00767100007d00000000000000000000120423280a000e0000000500000013001300090015000c00080009", "철수", "알", true, true, Status::Legal},  // PKHeX: EncounterEgg2:95:GS:5
+    {"defect2-egg-moves-kor-8973", "df00be3700004e4c00007d00000000000000000000168d0a1900000c00000005000000130013000b0009000c000c0009", "철수", "알", true, false, Status::Illegal},  // PKHeX: EncounterEgg2:223:GS:5
+    {"defect2-egg-cycles-kor-9019", "56001d2d157a0ef300007d00000000000000000000502e0f28141e0000000005000000160016000a000a0009000a000d", "지훈", "알", true, false, Status::Illegal},  // PKHeX: EncounterEgg2:86:GS:5
+    {"grown-static2-kor-9111", "27ad2fcc92009fa70001990000000000000000000000000f0f00007800000008000000240024000c00080008000c0009", "민수", "별님", false, true, Status::Uncertain},  // PKHeX: EncounterStatic2:174:C:5
+    {"defect2-egg-item-kor-9228", "1754232bfb00552b00007d000000000000000000005755141e0a000a00000005000000140014000b000a000b0009000a", "골드", "알", true, false, Status::Illegal},  // PKHeX: EncounterEgg2:23:GS:5
+    {"defect2-wipe-kor-9508", "4c009978f1bdbdde01e8c60000000000000000000048630005824c46100000330000008f008f0079009100390040004a", "골드", "용용이", false, true, Status::Legal},  // PKHeX: EncounterEgg2:74:GS:5
+    {"defect2-item-kor-9529", "0cc1215110cfbb9300c5dd00000000000000000000a057236f8e0f46000000250000005d005d002d002a003c00450045", "서연", "BUDDY", false, true, Status::Legal},  // PKHeX: EncounterEgg2:10:GS:5
+    {"defect2-level-kor-9542", "ba52f0083703dcb80000393fb4cc2457ba6872f5c9edc9050f95034600000003000000120012000a000a0009000a000b", "지훈", "BUDDY", false, false, Status::Illegal},  // PKHeX: EncounterInvalid:186:GSC:0
+    {"defect2-pp-kor-9644", "4600334aed4f83810055000000000000000000000017bfcaa20f0f460000001e000000580058003b0027002c00410029", "서연", "Mon", false, true, Status::Legal},  // PKHeX: EncounterEgg2:69:GS:5
+    {"random2-kor-10064", "eb1e21459c00082a001239000000003c00140032008a02084c0900465117a1120000002f002f000f00150020000c0015", "영희", "꼬마", false, false, Status::Uncertain},  // PKHeX: EncounterInvalid:235:GSC:23
+    {"defect2-level-kor-10110", "1434212762a207b3008c610000000000000000000073a76a050f494600000021000000570057003f002e004b002a0037", "서연", "BUDDY", false, true, Status::Legal},  // PKHeX: EncounterEgg2:19:GS:5
+    {"defect2-caught-kor-10645", "820b9621af0037cd0184370000000000000000000004fa6f238c0046008bdc2b0000008800880070004c005700410063", "골드", "BUDDY", false, true, Status::Uncertain},  // PKHeX: EncounterSlot2:129:GD:10
+    {"defect2-time-kor-11050", "0f001fe42963098e008000000000000000000000004f4005094c144600400020000000560056003a0028003700210038", "서연", "Mon", false, false, Status::Uncertain},  // PKHeX: EncounterEgg2:13:GS:5
+    {"defect2-move-kor-11744", "a9008d112cd3d57100fa001400140050005a003c005c96cb23d81946510000280000007e007e0051004e007400410049", "골드", "피카", false, true, Status::Legal},  // PKHeX: EncounterEgg2:41:GS:5
+    {"random2-kor-11933", "5400af000000ae000013312e43e740dfa488fc4c11b8d5c800000046000000110000002a002a00250017002200120012", "한별", "Mon", false, true, Status::Legal},  // PKHeX: EncounterEgg2:84:GS:5
+    {"defect2-pokerus-kor-11960", "46004e4a2333cb07002dd70000320000005a001e0071db1ede121e46340000190000004b004b0035001e002700350021", "영희", "친구", false, true, Status::Legal},  // PKHeX: EncounterEgg2:69:GS:5
 };
 
 std::vector<uint8_t> hex(const char* s) {
@@ -211,10 +319,9 @@ std::vector<uint8_t> hex(const char* s) {
     return out;
 }
 
-Legality::GB::Result check(const Case& c) {
-    namespace Gen2 = PokeVault::Integration::Gen2;
+Legality::GB::Entity2 entity(const char* bodyHex, bool egg) {
     namespace GB = Legality::GB;
-    const auto body = hex(c.body), ot = hex(c.ot), nick = hex(c.nick);
+    const auto body = hex(bodyHex);
     GB::Entity2 e;
     e.species = body[0];
     e.heldItem = body[1];
@@ -233,7 +340,15 @@ Legality::GB::Result check(const Case& c) {
     e.pokerus = body[28];
     e.caughtData = static_cast<uint16_t>((body[29] << 8) | body[30]);
     e.level = body[31];
-    e.isEgg = c.egg;
+    e.isEgg = egg;
+    return e;
+}
+
+Legality::GB::Result check(const Case& c) {
+    namespace Gen2 = PokeVault::Integration::Gen2;
+    namespace GB = Legality::GB;
+    const auto ot = hex(c.ot), nick = hex(c.nick);
+    GB::Entity2 e = entity(c.body, c.egg);
     e.tradeTrainer = ot[0] == 0x5D;
     // A Japanese save stores 6-byte names, an international one 11-byte names.
     const bool jp = ot.size() == 6;
@@ -287,6 +402,43 @@ int main() {
                          static_cast<int>(r.origin.gsBall));
             for (const auto& p : r.problems)
                 std::fprintf(stderr, "    %s\n", p.text.c_str());
+        }
+    }
+    for (const KoreanCase& k : kKorean) {
+        Legality::GB::Entity2 e = entity(k.body, k.egg);
+        e.otName = k.ot;
+        e.nickname = k.nick;
+        e.language = Legality::GB::Language::Korean;
+        const Legality::GB::Result r = Legality::GB::checkGen2(e);
+        bool definitive = false, western = false;
+        for (const auto& p : r.problems) {
+            definitive |= p.definitive;
+            western |= p.text.find("Korean Gold/Silver and a Western game") != std::string::npos;
+        }
+        ++checks;
+        bool ok = r.status == k.expect;
+        if (k.expect == Status::Legal)  // decided: PKHeX agrees
+            ok &= k.pkhexValid && r.problems.empty();
+        else if (k.expect == Status::Illegal)
+            ok &= !k.pkhexValid && definitive;
+        else
+            ok &= !definitive && !r.problems.empty();
+        if (!ok) {
+            ++failures;
+            std::fprintf(stderr, "FAIL %s: status %d, expected %d (PKHeX %s)\n", k.name, static_cast<int>(r.status),
+                         static_cast<int>(k.expect), k.pkhexValid ? "VALID" : "INVALID");
+            for (const auto& p : r.problems)
+                std::fprintf(stderr, "    %s%s\n", p.text.c_str(), p.definitive ? "" : " (not definitive)");
+        }
+        if (!western)
+            continue;
+        // The same bytes from a Western cartridge need no such trade: the Korean rules
+        // alone are what leave the record unconfirmed.
+        e.language = Legality::GB::Language::International;
+        ++checks;
+        if (Legality::GB::checkGen2(e).status != Status::Legal) {
+            ++failures;
+            std::fprintf(stderr, "FAIL %s: not Legal as an international record\n", k.name);
         }
     }
     if (failures != 0) {

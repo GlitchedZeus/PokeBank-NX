@@ -28,6 +28,15 @@ UNCERTAIN_REASONS = (
     # Mew and Celebi: no recorded distribution matches, and the GB-era event list is not
     # known to be complete. PKHeX answers INVALID here.
     "was only distributed at events",
+    # Korean Gold/Silver: PKHeX allows no Crystal, Stadium 2 or Gen I content; Bulbapedia
+    # documents Korean-Western cartridge trades that bring it in. PKHeX answers INVALID.
+    "Needs a trade between Korean Gold/Silver and a Western game",
+    # Korean Gold/Silver with Crystal met data: Gold/Silver zero those bytes (pokegold), but
+    # the Korean ROM is not disassembled. PKHeX ignores them and may answer VALID.
+    "Korean Gold/Silver do not record met data",
+    # A Korean trainer name with one-byte-page characters: PKHeX's G1CharOT, which has not
+    # been checked against the Korean naming screen. PKHeX answers INVALID.
+    "Korean trainer name has characters outside the Hangul pages",
 )
 
 
@@ -36,7 +45,27 @@ DELIBERATE = (
     # Japanese Crystal's GS Ball Celebi (Mobile System GB, 2001-2002): PKHeX models the
     # Ilex Forest Celebi for Virtual Console only (Encounters2.CelebiVC).
     ("INVALID", "VALID", "GS Ball Celebi in Japanese Crystal"),
+    # A level-100 Gen II Pokemon has exactly the level-100 EXP total (pokecrystal caps EXP
+    # in battle and Rare Candy sets it). PKHeX rejects EXP above it, not below it.
+    ("VALID", "INVALID", "A level-100 Pokemon has exactly"),
 )
+
+# Differences named by PKHeX's own result: (PKHeX verdict, PokeBank NX verdict, the result
+# codes that must be PKHeX's only complaints).
+DELIBERATE_PKHEX = (
+    # PKHeX's word filter (a PKHeX setting) rejects some nicknames; Game Boy games filter
+    # nothing, and PokeBank NX does not judge words.
+    ("INVALID", "VALID", ("WordFilterFlaggedPattern", "WordFilterTooManyNumbers")),
+)
+
+
+def deliberate_pkhex(a, b):
+    """True when every PKHeX complaint is one of a DELIBERATE_PKHEX entry's codes."""
+    codes = a[1].partition(";")[2].split()
+    for pv, ov, allowed in DELIBERATE_PKHEX:
+        if a[0] == pv and b[0] == ov and codes and all(any(x in c for x in allowed) for c in codes):
+            return True
+    return False
 
 
 def load(path):
@@ -74,7 +103,8 @@ def main():
             known = any(k in b[1] for k in UNCERTAIN_REASONS)
             diffs[("uncertain", a[0]) if known else ("unexplained",)].append((key, kind, a[1], b[1]))
         elif a[0] != b[0]:
-            deliberate = any(a[0] == pv and b[0] == ov and text in b[1] for pv, ov, text in DELIBERATE)
+            deliberate = (any(a[0] == pv and b[0] == ov and text in b[1] for pv, ov, text in DELIBERATE)
+                          or deliberate_pkhex(a, b))
             if deliberate:
                 table[kind]["deliberate"] += 1
                 table[kind][(a[0], b[0])] -= 1

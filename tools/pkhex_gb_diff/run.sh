@@ -12,7 +12,8 @@ python3 -I "$here/$corpus" --pkhex "$pkhex" --pokered "$pokered" --count "$count
 dotnet build "$here/oracle/PKHeXGBOracle.csproj" -c Release -p:PKHEX_ROOT="$pkhex" -o "$work/oracle" > "$work/build.log" \
     || { cat "$work/build.log"; exit 1; }
 dotnet "$work/oracle/PKHeXGBOracle.dll" < "$work/corpus.txt" > "$work/pkhex.txt"
-g++ -std=c++20 -O2 -I"$repo/include" "$here/gb_diff.cpp" "$repo/src/Legality/GBLegality.cpp" \
+python3 -I "$here/gb_text.py" korean-table "$pkhex" > "$work/gb_korean_table.inc"
+g++ -std=c++20 -O2 -I"$repo/include" -I"$work" "$here/gb_diff.cpp" "$repo/src/Legality/GBLegality.cpp" \
     "$repo/src/Legality/GBLegalityData.cpp" "$repo/src/Names/SpeciesNames.cpp" "$repo/src/Names/MoveNames.cpp" \
     "$repo/src/Integration/Gen1/Gen1ReadOnlySave.cpp" "$repo/src/Integration/Gen2/Gen2ReadOnlySave.cpp" \
     "$repo/src/Utils/StringHelpers.cpp" "$repo/src/Utils/HelperUtilities.cpp" "$repo/src/Pokemon/Experience.cpp" -o "$work/gb_diff"

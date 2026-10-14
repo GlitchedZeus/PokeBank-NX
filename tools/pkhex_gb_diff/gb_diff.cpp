@@ -11,6 +11,10 @@
 #include <string>
 #include <vector>
 
+// PokeBank NX has no Korean Gold/Silver save support, so this harness decodes Korean names
+// itself, with a table run.sh generates from the pinned PKHeX source (gb_text.py).
+#include "gb_korean_table.inc"
+
 namespace {
 uint16_t be16(const std::vector<uint8_t>& b, std::size_t at) {
     return static_cast<uint16_t>((b[at] << 8) | b[at + 1]);
@@ -19,6 +23,28 @@ uint16_t be16(const std::vector<uint8_t>& b, std::size_t at) {
 const char* verdict(Legality::GB::Status s) {
     using Legality::GB::Status;
     return s == Status::Legal ? " VALID " : s == Status::Uncertain ? " UNCERTAIN " : " INVALID ";
+}
+
+/// StringConverter2KOR.LoadString: bytes 1-11 select a page for the next byte (a Hangul
+/// syllable or jamo); anything else is a one-byte character; 0 or a blank cell ends it.
+std::string decodeKorean(const std::vector<uint8_t>& data) {
+    std::string out;
+    for (std::size_t i = 0; i < data.size(); ++i) {
+        uint8_t page = 0, value = data[i];
+        if (value == 0)
+            break;
+        if (value <= 11) {
+            if (++i == data.size())
+                break;
+            page = value;
+            value = data[i];
+        }
+        const char* c = kKoreanTable[page][value];
+        if (*c == '\0')
+            break;
+        out += c;
+    }
+    return out;
 }
 
 std::vector<uint8_t> hex(const std::string& s) {
@@ -54,9 +80,11 @@ Legality::GB::Result checkPk2(const std::vector<uint8_t>& body, const std::vecto
     e.level = body[31];
     e.isEgg = egg;
     e.tradeTrainer = ot[0] == 0x5D;
-    e.otName = Gen2::decodeGen2String(ot, region);
-    e.nickname = Gen2::decodeGen2String(nick, region);
-    e.language = jp ? GB::Language::Japanese : GB::Language::International;
+    // PK2.Korean: not Japanese, and the trainer name starts with a Hangul page byte.
+    const bool korean = !jp && !ot.empty() && ot[0] <= 11;
+    e.otName = korean ? decodeKorean(ot) : Gen2::decodeGen2String(ot, region);
+    e.nickname = korean ? decodeKorean(nick) : Gen2::decodeGen2String(nick, region);
+    e.language = jp ? GB::Language::Japanese : korean ? GB::Language::Korean : GB::Language::International;
     return GB::checkGen2(e);
 }
 

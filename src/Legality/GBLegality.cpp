@@ -22,6 +22,7 @@
 #include "Pokemon/Experience.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstddef>
 
 namespace Legality::GB {
@@ -389,6 +390,11 @@ struct Subject {
     bool tradeTrainer = false;
     std::string otName, nickname;
     Language language = Language::Unknown;
+    // A Korean Gold/Silver record taken through a Western game. Bulbapedia ("Korean
+    // character encoding (Generation II)", "Trade") documents that Korean cartridges
+    // trade with Western Gen I and II cartridges (only the Virtual Console releases
+    // block it); PKHeX treats Korean Gold/Silver as closed. See checkGen2.
+    bool westernTrade = false;
     // PK1 only
     uint8_t catchRate = 0, type1 = 0, type2 = 0;
     // PK2 only
@@ -419,14 +425,29 @@ struct Candidate {
     std::string partialReason;
 };
 
+/// Korean Gold/Silver and nothing else: no Crystal, no Stadium 2, no Gen I visit.
+bool koreanCartOnly(const Subject& pk) {
+    return pk.language == Language::Korean && !pk.westernTrade;
+}
+
+/// Whether a PKHeX LanguageID (1 Japanese, 8 Korean, the rest international) fits `lang`.
+bool languageFits(Language lang, uint8_t id) {
+    switch (lang) {
+        case Language::Unknown: return true;
+        case Language::Japanese: return id == 1;
+        case Language::Korean: return id == 8;
+        case Language::International: return id != 1 && id != 8;
+    }
+    return true;
+}
+
 bool nameMatches(const TradeName* table, std::size_t count, uint8_t index, const std::string& name,
                  Language lang) {
     for (std::size_t i = 0; i < count; ++i) {
         const TradeName& t = table[i];
         if (t.index != index || name != t.name)
             continue;
-        const bool jp = t.language == 1;
-        if (lang == Language::Unknown || (lang == Language::Japanese) == jp)
+        if (languageFits(lang, t.language))
             return true;
     }
     return false;
@@ -440,8 +461,7 @@ uint32_t nameLanguages(const TradeName* table, std::size_t count, uint8_t index,
         const TradeName& t = table[i];
         if (t.index != index || name != t.name)
             continue;
-        const bool jp = t.language == 1;
-        if (lang == Language::Unknown || (lang == Language::Japanese) == jp)
+        if (languageFits(lang, t.language))
             mask |= 1u << t.language;
     }
     return mask;
@@ -501,18 +521,21 @@ struct Learn {
     uint8_t level = 0;
 };
 
-// LearnGroup1/2.GetIsPreferable: which of two valid explanations to keep.
+// LearnGroup1/2.GetIsPreferable: which of two valid explanations to keep. PKHeX records
+// Stadium 2's reminder as a level-up (LearnSource2Stadium.GetCanRelearn), so Relearn
+// counts as one here.
 bool preferable(const MoveResult& entry, const Learn& chk, int stage) {
+    const auto levelUp = [](Source s) { return s == Source::LevelUp || s == Source::Relearn; };
     if (entry.source == Source::None)
         return true;
-    if (entry.source == Source::LevelUp) {
-        if (chk.source != Source::LevelUp)
+    if (levelUp(entry.source)) {
+        if (!levelUp(chk.source))
             return true;
         if (entry.stage == stage)
             return entry.level < chk.level;
     } else if (entry.source == Source::Egg || entry.source == Source::Inherit) {
         return true;
-    } else if (chk.source == Source::LevelUp) {
+    } else if (levelUp(chk.source)) {
         return false;
     }
     return entry.stage < stage;
@@ -606,7 +629,7 @@ void checkGen1Sources(MoveCheck& mc, const std::array<uint8_t, 4>& current, cons
 /// LearnGroup2.Check: Gen II encounter moves, each Gen II form (G/S, Crystal, Stadium 2's
 /// reminder), and egg / inherited moves for daycare eggs.
 void checkGen2Sources(MoveCheck& mc, const std::array<uint8_t, 4>& current, const Candidate& enc,
-                      const Chain& hist2) {
+                      const Chain& hist2, bool goldSilverOnly) {
     if (enc.generation == 2)
         markInitial(mc, current, initialMoves(enc), 2);
     for (int stage = 0; stage < hist2.count; ++stage) {
@@ -614,12 +637,32 @@ void checkGen2Sources(MoveCheck& mc, const std::array<uint8_t, 4>& current, cons
         const bool encounterStage = stage == hist2.count - 1;
         for (int i = 3; i >= 0; --i) {
             MoveResult& entry = mc.result[i];
-            if (current[i] == 0 || entry.valid())
+            if (current[i] == 0)
+                continue;
+            // LearnGroup2.Check re-checks a move the encounter gave: GetIsPreferable lets an
+            // earlier form's TM or tutor replace it. That decides whether a Time Capsule
+            // trip, which purges Gen II-only encounter moves, leaves the move explained.
+            if (entry.source == Source::Initial && entry.generation == 2) {
+                const auto take = [&](const Learn& chk) {
+                    if (chk.source == Source::None || !preferable(entry, chk, stage))
+                        return false;
+                    entry = {chk.source, 2, static_cast<uint8_t>(stage), chk.level};
+                    return true;
+                };
+                if (take(canLearn2(s.species, current[i], s, false, !encounterStage)) || goldSilverOnly)
+                    continue;
+                take(canLearn2(s.species, current[i], s, true, !encounterStage));
+                if (const uint8_t lv = stadiumRelearnLevel(s.species, current[i], s.max); lv != 0)
+                    take({Source::Relearn, lv});
+                continue;
+            }
+            if (entry.valid())
                 continue;
             Learn chk = canLearn2(s.species, current[i], s, false, !encounterStage);
-            if (chk.source == Source::None)
+            // LearnGroup2.Check: Korean Gold/Silver have neither Crystal nor Stadium 2.
+            if (chk.source == Source::None && !goldSilverOnly)
                 chk = canLearn2(s.species, current[i], s, true, !encounterStage);
-            if (chk.source == Source::None) {
+            if (chk.source == Source::None && !goldSilverOnly) {
                 const uint8_t lv = stadiumRelearnLevel(s.species, current[i], s.max);
                 if (lv != 0)
                     chk = {Source::Relearn, lv};
@@ -737,11 +780,11 @@ MoveCheck checkMoves(const Subject& pk, const Candidate& enc, const Chain& hist1
     if (pk.format == 1) {
         checkGen1Sources(mc, current, enc, hist1);
         if (otherGenerationReachable && !allValid(mc))
-            checkGen2Sources(mc, current, enc, hist2);
+            checkGen2Sources(mc, current, enc, hist2, false);
         if (!otherGenerationReachable)  // still in Red/Blue/Yellow carts only
             flagGen1Bookkeeping(mc, current, enc, hist1, true, kStadiumLevelUpRB | kStadiumLevelUpYW);
     } else {
-        checkGen2Sources(mc, current, enc, hist2);
+        checkGen2Sources(mc, current, enc, hist2, koreanCartOnly(pk));
         if (otherGenerationReachable && !allValid(mc)) {
             // LearnGroup2: a trip to Gen I needs every move to exist there; a Gen II-only
             // move must be re-learnable afterwards, so encounter and egg moves above Gen I's
@@ -893,8 +936,8 @@ void addWild(std::vector<Candidate>& out, const WildSlot& w, uint8_t generation,
 std::vector<Candidate> gen1Candidates(const Subject& pk, const Chain& chain) {
     std::vector<Candidate> out;
     const bool pk1 = pk.format == 1;
-    const bool maybeJapanese = pk.language != Language::International;
-    const bool maybeInternational = pk.language != Language::Japanese;
+    const bool maybeJapanese = pk.language == Language::Japanese || pk.language == Language::Unknown;
+    const bool maybeInternational = pk.language == Language::International || pk.language == Language::Unknown;
 
     // In-game trades (fixed OT, fixed nickname per language).
     for (std::size_t i = 0; i < kTrades1Count; ++i) {
@@ -1059,11 +1102,18 @@ bool matchEggLocation(const Subject& pk, bool encounterIsEgg) {
 std::vector<Candidate> gen2Candidates(const Subject& pk, const Chain& chain) {
     std::vector<Candidate> out;
     const bool pk2 = pk.format == 2;
-    const bool maybeJapanese = pk.language != Language::International;
+    const bool maybeJapanese = pk.language == Language::Japanese || pk.language == Language::Unknown;
     const bool hasMet = pk2 && pk.caught;
+    // Korean Gold/Silver set the trainer of what they catch, receive and hatch; there is
+    // no Korean Crystal (PKHeX ParseSettings.AllowGen2Crystal, EncounterEnumerator2). An
+    // egg is the exception: whoever hatches it becomes its trainer (pokegold
+    // engine/pokemon/breeding.asm HatchEggs), so an egg from a Western Crystal or event
+    // hatches Korean -- after a Korean-Western trade (see Subject::westernTrade).
+    const bool korean = pk.language == Language::Korean;
+    const bool foreignEggOk = !korean || (pk.westernTrade && !pk.egg);
     // EncounterEnumerator2: a Crystal origin keeps its met data unless a Time Capsule trip
     // wiped it, which only species that can visit Gen I can have taken.
-    const bool crystalOk = !pk2 || pk.caught || canVisitGen1(chain.stage[0].species);
+    const bool crystalOk = !korean && (!pk2 || pk.caught || canVisitGen1(chain.stage[0].species));
     const bool gsOk = !(hasMet || (pk2 && pk.caught && pk.otGender == 1));
 
     for (std::size_t i = 0; i < kTrades2Count; ++i) {
@@ -1103,6 +1153,8 @@ std::vector<Candidate> gen2Candidates(const Subject& pk, const Chain& chain) {
         const bool base = preEvolution(true, baby) == nullptr;
         if (hatchable && base && lowest.min <= kEggLevel && kEggLevel <= lowest.max) {
             for (uint8_t v : {static_cast<uint8_t>(Gold | Silver), static_cast<uint8_t>(Crystal)}) {
+                if (v == Crystal && !foreignEggOk)
+                    continue;
                 Candidate c;
                 c.kind = EncounterKind::Egg;
                 c.generation = 2;
@@ -1121,6 +1173,8 @@ std::vector<Candidate> gen2Candidates(const Subject& pk, const Chain& chain) {
         const bool oddEgg = s.egg && s.moves[0] != 0;
         // EncounterEnumerator2 offers the Odd Eggs before (and regardless of) its Crystal gate.
         if (s.version == Crystal && !crystalOk && !oddEgg)
+            continue;
+        if (oddEgg && !foreignEggOk)
             continue;
         if ((s.version == Gold || s.version == Silver || s.version == (Gold | Silver)) && !gsOk)
             continue;
@@ -1228,6 +1282,11 @@ std::vector<Candidate> gen2Candidates(const Subject& pk, const Chain& chain) {
         if (pk.language == Language::International && g.language == 1)
             continue;
         if (g.language == 1 && !maybeJapanese)
+            continue;
+        // No GB-era distribution reached Korean Gold/Silver (PKHeX EncounterEnumerator2 offers
+        // a Korean record no events). A Western event egg hatched by a Korean player is the
+        // one way in; Japanese and Korean cartridges cannot trade (Bulbapedia).
+        if (korean && (g.language == 1 || !g.egg || !foreignEggOk))
             continue;
         if (g.currentLevel != 0 && g.currentLevel > pk.level)
             continue;
@@ -1458,18 +1517,18 @@ std::string trainerNameProblem(const Subject& pk) {
     const std::size_t length = codePoints(pk.otName);
     if (length == 0)
         return "Original trainer name is empty";
-    const std::size_t limit = pk.language == Language::Japanese ? 5 : 7;
+    const std::size_t limit = pk.language == Language::Japanese || pk.language == Language::Korean ? 5 : 7;
     if (length > limit)
         return "Original trainer name is longer than " + std::to_string(limit) + " characters";
     return {};
 }
 
 /// NicknameVerifier (Legal.GetMaxLengthNickname for Gen I/II): the naming screen allows
-/// 10 characters, 5 in Japanese. Eggs and fixed-nickname trades are judged elsewhere.
+/// 10 characters, 5 in Japanese and Korean. Eggs and fixed-nickname trades are judged elsewhere.
 std::string nicknameProblem(const Subject& pk) {
     if (pk.egg)
         return {};
-    const std::size_t limit = pk.language == Language::Japanese ? 5 : 10;
+    const std::size_t limit = pk.language == Language::Japanese || pk.language == Language::Korean ? 5 : 10;
     if (codePoints(pk.nickname) > limit)
         return "Nickname is longer than " + std::to_string(limit) + " characters";
     return {};
@@ -1538,8 +1597,8 @@ Evaluation evaluate(const Subject& pk, const Candidate& enc, const Chain& chain,
     bool reachable;
     if (pk.format == 1)
         reachable = enc.generation == 2 || (otherGeneration && isHeldItemRate(pk.catchRate));
-    else
-        reachable = enc.generation == 1 || hist1.count != 0;
+    else  // LearnGroup2.GetPrevious: never for Korean Gold/Silver, which had no Time Capsule partner
+        reachable = (enc.generation == 1 || hist1.count != 0) && !koreanCartOnly(pk);
     MoveCheck mc;
     if (pk.format == 2 && pk.egg) {
         // LearnVerifierEgg: the moveset is judged as a whole, in order.
@@ -1859,6 +1918,14 @@ std::vector<Problem> formatProblems(const Entity2& e) {
         out.push_back({Area::Misc, pokerus});
     if (e.nickname.empty())
         out.push_back({Area::Trainer, "Nickname is empty"});
+    // The games name an egg when they make it (pokegold engine/events/daycare.asm and
+    // pokecrystal engine/pokemon/move_mon.asm write "EGG@") and nothing renames one.
+    // NicknameVerifier.VerifyNicknameEgg accepts a PK2 egg named in any Gen II language
+    // (SpeciesName.GetEggName1234: Gen II names are upper case, French OEUF).
+    static constexpr const char* kEggNames[] = {"EGG", "OEUF", "UOVO", "EI", "HUEVO", "タマゴ", "알"};
+    if (e.isEgg && !e.nickname.empty() &&
+        std::none_of(std::begin(kEggNames), std::end(kEggNames), [&](const char* n) { return e.nickname == n; }))
+        out.push_back({Area::Egg, "An unhatched egg keeps the name the game gave it (EGG, or its translation)"});
     return out;
 }
 
@@ -1957,6 +2024,49 @@ Result checkGen2(const Entity2& e) {
                                              " cannot be held in Gold/Silver/Crystal"});
     if (pk.egg && pk.level != kEggLevel)
         extra.push_back({Area::Egg, "An unhatched egg is always level 5"});
+    // A level-100 Pokemon has exactly the level-100 EXP total. The games stop EXP there
+    // (pokecrystal engine/battle/core.asm caps it after every battle), the level follows
+    // the EXP (CalcLevel), and Rare Candy refuses level 100 and otherwise sets EXP to the
+    // new level's total (engine/items/item_effects.asm). PKHeX's LevelVerifier rejects EXP
+    // above the total (LevelEXPTooHigh) but lets a lower total through.
+    if (!pk.egg && pk.level == 100) {
+        const uint32_t max = Pokemon::getExpForLevel(100, Pokemon::getGrowthRate(pk.species));
+        if (pk.exp != max)
+            extra.push_back({Area::Stats, "A level-100 Pokemon has exactly " + std::to_string(max) + " EXP"});
+    }
+    // Korean Gold/Silver keep no met data. Only Crystal writes it: pokecrystal's
+    // SetCaughtData family runs on catch, hatch, gift and in-game trade, never on a link
+    // trade, and Gold/Silver zero those two bytes (pokegold engine/pokemon/move_mon.asm,
+    // "Unused1/Unused2"). The Korean ROM itself is not disassembled, so this is not taken
+    // as proof; like PKHeX (EncounterEnumerator2 ignores a Korean record's met data), the
+    // search goes on as if the bytes were zero, and the record can be no better than
+    // unconfirmed.
+    std::vector<Problem> unconfirmed;
+    if (pk.language == Language::Korean && pk.caught) {
+        unconfirmed.push_back({Area::MetData, "Korean Gold/Silver do not record met data (Gold/Silver zero "
+                                              "those bytes; the Korean ROM is not disassembled)",
+                               false});
+        pk.caught = false;
+        pk.metTime = pk.metLevel = pk.otGender = pk.metLocation = 0;
+    }
+    // TrainerNameVerifier: a Korean trainer name uses only the two-byte Hangul pages
+    // (StringConverter2KOR.GetIsKorean); the one-byte page holds the Latin letters, digits,
+    // space, / and the gender and times signs. PKHeX's rule, not checked against the Korean
+    // naming screen here, so it leaves the record unconfirmed rather than invalid.
+    if (pk.language == Language::Korean && !pk.tradeTrainer) {
+        const std::string& ot = pk.otName;
+        const bool oneBytePage =
+            std::any_of(ot.begin(), ot.end(), [](char c) {
+                const unsigned char u = static_cast<unsigned char>(c);
+                return u < 0x80 && (std::isalnum(u) != 0 || u == ' ' || u == '/');
+            }) ||
+            ot.find("♂") != std::string::npos || ot.find("♀") != std::string::npos || ot.find("×") != std::string::npos;
+        if (oneBytePage)
+            unconfirmed.push_back({Area::Trainer, "Korean trainer name has characters outside the Hangul pages "
+                                                  "(PKHeX requires Hangul; not confirmed for the Korean naming "
+                                                  "screen)",
+                                   false});
+    }
     if (pk.metLocation != 0 && !pk.egg && pk.level < pk.metLevel)
         extra.push_back({Area::MetData, "Level is below the Crystal met level"});
     if (const std::string pp = ppProblem(2, e.moves, e.pp, e.ppUps, pk.egg); !pp.empty())
@@ -1975,8 +2085,41 @@ Result checkGen2(const Entity2& e) {
     }
     // GBRestrictions.CanOriginateGen1: no Korean games, no eggs, no Crystal met data, and a
     // species that could have been in Gen I.
-    const bool fromGen1 = !pk.egg && !pk.caught && canVisitGen1(pk.species);
-    return search(pk, chain, chain, fromGen1, extra);
+    const bool fromGen1 = pk.language != Language::Korean && !pk.egg && !pk.caught && canVisitGen1(pk.species);
+    const auto withUnconfirmed = [&](Result r) {
+        if (unconfirmed.empty())
+            return r;
+        if (r.status == Status::Legal)
+            r.status = Status::Uncertain;
+        r.problems.insert(r.problems.end(), unconfirmed.begin(), unconfirmed.end());
+        return r;
+    };
+    Result own = search(pk, chain, chain, fromGen1, extra);
+    if (pk.language != Language::Korean || own.status == Status::Legal || !extra.empty())
+        return withUnconfirmed(own);
+
+    // PKHeX keeps a Korean record inside Korean Gold/Silver: no Crystal learnsets, tutor,
+    // eggs or Odd Egg, no Stadium 2 reminder, no Gen I visit. The cartridges were not that
+    // closed: Bulbapedia ("Korean character encoding (Generation II)", "Trade") records
+    // that Korean Gold/Silver trade with Western Gen I and II cartridges (garbling the
+    // Hangul names; only the Virtual Console releases refuse). A Pokemon a Korean player
+    // caught could learn Crystal's moves or visit Red/Blue/Yellow that way, and an egg
+    // from a Western game hatches with the Korean player as its trainer. That route rests
+    // on one secondary source, so a record that needs it is reported as unconfirmed, not
+    // as legal; and PKHeX's rule alone does not make it Invalid.
+    Subject western = pk;
+    western.westernTrade = true;
+    Result alt = search(western, chain, chain, false, extra);
+    // The trade must be what explains the record: a second pass that is itself only
+    // unconfirmed (an unrecorded event, say) adds nothing to a first pass that already is.
+    if (alt.status == Status::Illegal || (alt.status == Status::Uncertain && own.status == Status::Uncertain))
+        return withUnconfirmed(own);
+    alt.status = Status::Uncertain;
+    alt.problems.push_back({Area::Encounter, "Needs a trade between Korean Gold/Silver and a Western game "
+                                             "(documented for the cartridges by Bulbapedia; PKHeX does not "
+                                             "allow it)",
+                            false});
+    return withUnconfirmed(alt);
 }
 
 } // namespace Legality::GB

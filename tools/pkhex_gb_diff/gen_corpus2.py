@@ -3,7 +3,9 @@
 
 Each output line is one Pokemon exactly as a Gold/Silver/Crystal save stores it:
 
-    <id> <kind> <japanese 0|1> <48-byte party body hex> <OT name hex> <nickname hex> <egg 0|1>
+    <id> <kind> <language> <48-byte party body hex> <OT name hex> <nickname hex> <egg 0|1>
+
+<language> is PKHeX's LanguageID for the name encoding: 1 Japanese, 8 Korean, 0 any other.
 
 Like gen_corpus.py (Gen I), it mixes Pokemon built the way the games build them
 (wild slots with and without Crystal met data, statics, in-game trades, event
@@ -12,7 +14,10 @@ then levelled, evolved and taught TMs, with deliberately broken variants and
 random records. Nothing here decides legality; run.sh compares PKHeX's verdict
 with PokeBank NX's on the same bytes. Japanese records use 6-byte name fields and
 the Japanese character table from PKHeX's StringConverter2, including the
-Japanese-only event gifts and in-game trade names.
+Japanese-only event gifts and in-game trade names. Korean Gold/Silver records use
+the two-byte Hangul tables from PKHeX's StringConverter2KOR (the trainer name's
+first byte, a Hangul page 1-11, is what marks a PK2 as Korean); the kor2-* kinds
+aim at one Korean rule each.
 
 Usage:
     python3 tools/pkhex_gb_diff/gen_corpus2.py --pkhex PKHEX --pokered POKERED \
@@ -97,6 +102,10 @@ class Data:
         self.trade_names_eu = {lang: gen.read_text_lines(res / f"legality/gen2/text_tradegsc_{lang}.txt")
                                for lang in ("de", "fr", "it", "es")}
         self.jp_names = gbtext.japanese_names(self.jp)
+        # Korean Gold/Silver: two-byte Hangul from PKHeX's StringConverter2KOR tables.
+        self.kor = gbtext.KoreanEncoder(gbtext.read_korean_tables(pkhex))
+        self.kor_names = gbtext.korean_names(self.kor)
+        self.trade_names_ko = gen.read_text_lines(res / "legality/gen2/text_tradegsc_ko.txt")
         raw = res.joinpath("legality/mgdb/event2.pkl").read_bytes()
         self.gifts = [raw[i:i + 12] for i in range(0, len(raw), 12)]
         header = (HERE.parent.parent / "include/Legality/GBLegalityData.h").read_text()
@@ -144,7 +153,9 @@ class Mon:
         self.statexp = [0] * 5
         self.pokerus = 0
         self.japanese = False
-        self.fill_name = False  # Japanese only: the name fills its field with no terminator
+        self.korean = False
+        self.fill_name = False  # the name fills its field with no terminator
+        self.egg_name = None  # an unhatched egg's name when it is not the game's own
 
 
 def encounter_moves(d, species, level, crystal):
@@ -238,13 +249,17 @@ def finish(d, mon, rng):
     body[36:38] = hp.to_bytes(2, "big")
     for i, (b, dv) in enumerate(((stats[1], atk), (stats[2], df), (stats[3], spe), (stats[4], spc), (stats[5], spc))):
         body[38 + i * 2:40 + i * 2] = g1.stat(b, dv, mon.level, False).to_bytes(2, "big")
+    if mon.korean:
+        def kor(s):
+            return d.kor.encode(s, 11, terminate=not mon.fill_name)
+        return body, kor(mon.ot), kor((mon.egg_name or "알") if mon.egg else mon.nick)
     if mon.japanese:
         def jp(s):
             return d.jp.encode(s, 6, terminate=not mon.fill_name or len(s) < 6)
-        return body, jp(mon.ot), jp("タマゴ" if mon.egg else mon.nick)
+        return body, jp(mon.ot), jp((mon.egg_name or "タマゴ") if mon.egg else mon.nick)
     def intl(s):
         return text(s, 11) if all(c in TEXT for c in s) else d.en.encode(s, 11)
-    return body, intl(mon.ot), intl("EGG" if mon.egg else mon.nick)
+    return body, intl(mon.ot), intl((mon.egg_name or "EGG") if mon.egg else mon.nick)
 
 
 def japanize(d, mon, rng):
@@ -280,12 +295,13 @@ def wild_mon(d, rng, slot):
     return mon
 
 
-def egg_mon(d, rng, hatched):
+def egg_mon(d, rng, hatched, crystal=None):
     while True:
         species = rng.randrange(1, 252)
         if species not in NO_HATCH and d.base(species) == species:
             break
-    crystal = rng.random() < 0.5
+    if crystal is None:
+        crystal = rng.random() < 0.5
     mon = Mon(species, 5, encounter_moves(d, species, 5, crystal), crystal)
     pool = [m for m in d.eggs[crystal][species] if m and m not in mon.moves]
     for _ in range(rng.randrange(0, 3)):
@@ -407,6 +423,165 @@ def time_capsule_mon(d, rng, japanese=False):
     return mon
 
 
+KOREAN_NICKS = ("피카", "친구", "꼬마", "별님", "용용이", "BUDDY", "Mon")
+
+
+def koreanize(d, mon, rng, keep_met=False):
+    """Make this a Korean Gold/Silver Pokemon: Hangul trainer and nickname. There is no
+    Korean Crystal, so a Korean player's Pokemon carries no met data unless a defect adds it."""
+    mon.korean = True
+    mon.crystal = False
+    mon.ot = rng.choice(d.kor_names)
+    mon.nick = rng.choice(KOREAN_NICKS)
+    if not keep_met:
+        mon.caught = 0
+
+
+def gen1_only_moves(d, species):
+    """Moves a Gen I species learns in Red/Blue/Yellow (TM or level-up) that no form of it
+    learns in Gold/Silver/Crystal by TM, tutor, level-up or egg."""
+    family, sp = set(), species
+    while True:
+        family.add(sp)
+        if sp not in d.pre:
+            break
+        sp = d.pre[sp]
+    gen2 = set()
+    for sp in family:
+        gen2.update(d.tms(sp, True))
+        for crystal in (False, True):
+            gen2.update(mv for _lv, mv in d.learn[crystal][sp])
+            gen2.update(d.eggs[crystal][sp])
+    gen1 = set()
+    for sp in family:
+        if sp > 151:
+            continue
+        for yellow in (False, True):
+            gen1.update(d.g1.tms(sp, yellow))
+    return sorted(m for m in gen1 - gen2 if m)
+
+
+# Korean Gold/Silver records, each aimed at one rule: what Korean Gold/Silver alone make
+# (PKHeX and PokeBank NX agree), what needs a Korean-Western cartridge trade (PKHeX
+# INVALID, PokeBank NX UNCERTAIN), and what no route makes (both INVALID).
+KOREAN_VARIANTS = ("wild", "egg", "egg-unhatched", "static", "trade", "trade-wrong-nick", "crystal-wild",
+                   "met-data", "crystal-move", "crystal-egg", "odd-egg", "gen1-move", "stadium", "pcny-egg",
+                   "event", "nick-latin", "nick-long", "nick-latin-long", "ot-long", "ot-latin", "time-capsule")
+
+
+def korean_mon(d, rng, variant):
+    gs_wild = [w for w in d.wild if w[6] != C]
+    if variant in ("trade", "trade-wrong-nick"):
+        t = rng.choice([t for t in d.trades if d.trade_names_ko[t["index"]]])
+        mon = Mon(t["species"], t["level"], encounter_moves(d, t["species"], t["level"], False), False)
+        if t["dvs"]:
+            _hp, atk, df, spe, spa, _spd = t["dvs"]
+            mon.dvs = [atk, df, spe, spa]
+            mon.tid = t["tid"]
+        mon.korean = True
+        mon.nick = d.trade_names_ko[t["index"]] if variant == "trade" else "가짜"
+        mon.ot = d.trade_names_ko[t["index"] + 11]
+        return mon
+    if variant in ("egg", "egg-unhatched"):
+        mon = egg_mon(d, rng, variant == "egg", crystal=False)
+        koreanize(d, mon, rng)
+        if variant == "egg" and rng.random() < 0.6:
+            grow(d, mon, min(100, 5 + rng.randrange(0, 50)), rng)
+        return mon
+    if variant == "crystal-egg":  # bred in Crystal (Crystal-only egg move), hatched in Korean Gold/Silver
+        while True:
+            mon = egg_mon(d, rng, True, crystal=True)
+            pool = [m for m in d.eggs[True][mon.species] if m and m not in d.eggs[False][mon.species]]
+            if pool:
+                break
+        g1.learn(mon, rng.choice(pool), rng)
+        koreanize(d, mon, rng)
+        return mon
+    if variant == "odd-egg":  # Crystal's Odd Egg, hatched by a Korean player
+        s = rng.choice([s for s in d.statics if s["egg"] and s["moves"]])
+        mon = Mon(s["species"], 5, list(s["moves"]), False)
+        mon.friendship = 120
+        if s["dvs"]:  # the shiny Odd Eggs carry fixed DVs
+            _hp, atk, df, spe, spa, _spd = s["dvs"]
+            mon.dvs = [atk, df, spe, spa]
+        koreanize(d, mon, rng)
+        if rng.random() < 0.5:
+            grow(d, mon, min(100, 5 + rng.randrange(1, 40)), rng)
+        return mon
+    if variant in ("pcny-egg", "event"):
+        egg = variant == "pcny-egg"
+        g = rng.choice([g for g in d.gifts if g[9] == egg and g[10] == 0])
+        species, level, m1, m2, m3, m4 = g[:6]
+        mon = Mon(species, max(level, g[7]), [m for m in (m1, m2, m3, m4) if m], False)
+        if g[8]:
+            mon.dvs = [rng.choice((2, 3, 6, 7, 10, 11, 14, 15)), 10, 10, 10]
+        if egg:
+            mon.friendship = 120
+        koreanize(d, mon, rng)
+        return mon
+    if variant == "static" or variant == "stadium":
+        legend = variant == "stadium"
+        pool = [s for s in d.statics if not s["egg"] and s["version"] != C and
+                (not legend or s["species"] in NO_HATCH)]
+        s = rng.choice(pool)
+        mon = static_mon(d, rng, s)
+        if not s["moves"]:
+            mon.moves = encounter_moves(d, s["species"], s["level"], False)
+        koreanize(d, mon, rng)
+        if legend:  # a level-up move pushed out before the encounter: only a reminder restores it
+            forgotten = [mv for lv, mv in d.learn[False][s["species"]] if lv <= s["level"] and mv not in mon.moves]
+            if forgotten:
+                mon.moves[rng.randrange(len(mon.moves))] = rng.choice(forgotten)
+                mon.moves = list(dict.fromkeys(mon.moves))
+        elif rng.random() < 0.5:
+            grow(d, mon, min(100, mon.level + rng.randrange(0, 30)), rng)
+        return mon
+    if variant == "crystal-wild":
+        mon = wild_mon(d, rng, rng.choice([w for w in d.wild if w[6] == C]))
+        koreanize(d, mon, rng)
+        return mon
+    if variant == "time-capsule":
+        mon = time_capsule_mon(d, rng)
+        koreanize(d, mon, rng)
+        return mon
+    if variant == "gen1-move":
+        while True:
+            slot = rng.choice(gs_wild)
+            if slot[0] <= 151 and gen1_only_moves(d, slot[0]):
+                break
+        mon = wild_mon(d, rng, slot)
+        g1.learn(mon, rng.choice(gen1_only_moves(d, slot[0])), rng)
+        koreanize(d, mon, rng)
+        return mon
+    mon = wild_mon(d, rng, rng.choice(gs_wild))
+    grow(d, mon, min(100, mon.level + rng.randrange(0, 40)), rng)
+    koreanize(d, mon, rng)
+    if variant == "met-data":
+        mon.caught = caught(rng.randint(1, 3), max(2, mon.level - 5), 0, rng.randint(1, 95))
+    elif variant == "crystal-move":
+        tutor = [m for m in d.tms(mon.species, True) if m not in d.tms(mon.species, False)]
+        levelup = [mv for lv, mv in d.learn[True][mon.species]
+                   if lv <= mon.level and mv not in {m for _l, m in d.learn[False][mon.species]}]
+        if tutor or levelup:
+            g1.learn(mon, rng.choice(tutor + levelup), rng)
+    elif variant == "nick-latin":
+        mon.nick = g1.letters(rng, rng.randint(1, 10))
+    elif variant == "nick-latin-long":
+        mon.nick = g1.letters(rng, 11)
+        mon.fill_name = True
+    elif variant == "nick-long":  # five Hangul and a letter: six characters in the 11-byte field
+        mon.nick = "".join(rng.choice("피카츄꼬마별") for _ in range(5)) + "A"
+        mon.fill_name = True
+    elif variant == "ot-long":
+        mon.ot = "".join(rng.choice("한별민수지훈") for _ in range(5)) + "A"
+        mon.fill_name = True
+    elif variant == "ot-latin":  # Hangul first (what marks the record Korean), then the one-byte page
+        mon.ot = rng.choice(d.kor_names)[:2] + rng.choice(("A", "Z9", " B", "x", "♂", "1"))
+        if rng.random() < 0.3:  # punctuation the Hangul pages do have
+            mon.ot = rng.choice(d.kor_names)[:2] + rng.choice(("!", "-", "?"))
+    return mon
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--pkhex", required=True, type=Path)
@@ -422,7 +597,8 @@ def main():
     def emit(kind, mon):
         nonlocal made
         body, ot, nick = finish(d, mon, rng)
-        out.write(f"{made} {kind} {int(mon.japanese)} {body.hex()} {ot.hex()} {nick.hex()} {int(mon.egg)}\n")
+        lang = 1 if mon.japanese else 8 if mon.korean else 0  # PKHeX LanguageID; 0 = other
+        out.write(f"{made} {kind} {lang} {body.hex()} {ot.hex()} {nick.hex()} {int(mon.egg)}\n")
         made += 1
 
     for slot in d.wild:
@@ -446,40 +622,52 @@ def main():
         for _ in range(count):
             emit("gsball2-" + variant, gsball_mon(d, rng, variant))
 
-    def emit_maybe_jp(kind, mon, japanese):
+    # Korean Gold/Silver, a fixed number of each targeted kind.
+    for variant in KOREAN_VARIANTS:
+        for _ in range(40):
+            emit("kor2-" + variant, korean_mon(d, rng, variant))
+
+    def emit_maybe_jp(kind, mon, japanese, korean=False):
         if japanese:
             japanize(d, mon, rng)
-        emit(kind + ("-jp" if japanese else ""), mon)
+        elif korean:
+            koreanize(d, mon, rng, keep_met=kind == "random2")
+        emit(kind + ("-jp" if japanese else "-kor" if korean else ""), mon)
 
     while made < args.count:
         roll = rng.random()
         japanese = rng.random() < 0.25
+        # Korean Gold/Silver: about one record in twelve, on the same kinds.
+        korean = not japanese and rng.random() < 0.11
         if roll < 0.30:
             mon = wild_mon(d, rng, rng.choice(d.wild))
             grow(d, mon, min(100, mon.level + rng.randrange(0, 60)), rng)
-            emit_maybe_jp("grown2", mon, japanese)
+            emit_maybe_jp("grown2", mon, japanese, korean)
         elif roll < 0.40:
             hatched = rng.random() < 0.7
-            mon = egg_mon(d, rng, hatched)
+            mon = egg_mon(d, rng, hatched, crystal=False if korean else None)
             if hatched and rng.random() < 0.7:
                 grow(d, mon, min(100, 5 + rng.randrange(0, 50)), rng)
-            emit_maybe_jp("egg2" if not mon.egg else "egg2-unhatched", mon, japanese)
+            emit_maybe_jp("egg2" if not mon.egg else "egg2-unhatched", mon, japanese, korean)
         elif roll < 0.48:
             mon = static_mon(d, rng, rng.choice(d.statics))
             if not mon.egg:
                 grow(d, mon, min(100, mon.level + rng.randrange(0, 40)), rng)
-            emit_maybe_jp("grown-static2", mon, japanese)
+            emit_maybe_jp("grown-static2", mon, japanese, korean and not mon.egg)
         elif roll < 0.58:
-            emit_maybe_jp("time-capsule", time_capsule_mon(d, rng, japanese), japanese)
+            emit_maybe_jp("time-capsule", time_capsule_mon(d, rng, japanese), japanese, korean)
         elif roll < 0.88:
             mon = wild_mon(d, rng, rng.choice(d.wild))
             grow(d, mon, min(100, mon.level + rng.randrange(0, 40)), rng)
             defect = rng.choice(("move", "level", "item", "caught", "wipe", "time", "otgender",
-                                 "egg-cycles", "egg-item", "pp", "egg-pp", "egg-moves",
-                                 "statexp", "egg-statexp", "pokerus", "ot-long", "ot-empty", "nick-empty")
+                                 "egg-cycles", "egg-item", "pp", "egg-pp", "egg-moves", "egg-name",
+                                 "statexp", "egg-statexp", "pokerus", "ot-long", "ot-empty", "nick-empty",
+                                 "exp-100")
                                 + (("nick-long",) if japanese else ()))
             if japanese:
                 japanize(d, mon, rng)
+            elif korean:
+                koreanize(d, mon, rng)
             if defect == "move":
                 mon.moves[rng.randrange(len(mon.moves))] = rng.randint(1, 251)
                 mon.moves = list(dict.fromkeys(mon.moves))
@@ -497,10 +685,17 @@ def main():
                 mon.caught ^= 0x80
             elif defect == "statexp":
                 mon.statexp = g1.stat_exp_defect(rng)
+            elif defect == "exp-100":  # level 100 with EXP off the cap, or exactly on it
+                grow(d, mon, 100, rng)
+                top = g1.exp_for(d.personal[mon.species]["growth"], 100)
+                mon.exp = top + rng.choice((0, 0, 1, rng.randint(2, 50000), -1, -rng.randint(2, 20000)))
             elif defect == "pokerus":
                 mon.pokerus = rng.randrange(256)
-            elif defect == "ot-long":  # seven letters (five in Japanese) is the limit
-                if japanese:
+            elif defect == "ot-long":  # seven letters (five in Japanese and Korean) is the limit
+                if korean:  # five Hangul and a letter fill the 11-byte field
+                    mon.ot = "".join(rng.choice("한별민수지훈") for _ in range(5)) + "A"
+                    mon.fill_name = True
+                elif japanese:
                     mon.ot = "".join(rng.choice("アイウエオカキクケコ") for _ in range(rng.randint(5, 6)))
                     mon.fill_name = True
                 else:
@@ -515,11 +710,20 @@ def main():
             elif defect == "pp":
                 moves = (mon.moves + [0, 0, 0, 0])[:4]
                 mon.pp = [(rng.randrange(64), rng.randrange(4)) for _ in moves]
-            elif defect in ("egg-cycles", "egg-item", "egg-pp", "egg-moves", "egg-statexp"):
-                mon = egg_mon(d, rng, False)
+            elif defect in ("egg-cycles", "egg-item", "egg-pp", "egg-moves", "egg-statexp", "egg-name"):
+                mon = egg_mon(d, rng, False, crystal=False if korean else None)
                 if japanese:
                     japanize(d, mon, rng)
-                if defect == "egg-statexp":  # vitamins cannot be used on an egg either
+                elif korean:
+                    koreanize(d, mon, rng)
+                if defect == "egg-name":  # another language's egg name, or a name no game gives an egg
+                    if japanese:
+                        mon.egg_name = rng.choice(("ポケモン", "タマ"))
+                    elif korean:
+                        mon.egg_name = rng.choice(("알알", "친구"))
+                    else:
+                        mon.egg_name = rng.choice(("EI", "OEUF", "UOVO", "HUEVO", "EGGS", "MON", g1.letters(rng, 5)))
+                elif defect == "egg-statexp":  # vitamins cannot be used on an egg either
                     mon.statexp = rng.choice((g1.stat_exp(rng), [2560 * rng.randint(1, 10)] + [0] * 4))
                 elif defect == "egg-cycles":
                     mon.friendship = rng.choice((0, d.personal[mon.species]["hatch"] + 1, 255))
@@ -535,7 +739,7 @@ def main():
                         later = [mv for lv, mv in d.learn[mon.crystal][mon.species] if lv > 5]
                         if later:
                             g1.learn(mon, rng.choice(later), rng)
-            emit("defect2-" + defect + ("-jp" if japanese else ""), mon)
+            emit("defect2-" + defect + ("-jp" if japanese else "-kor" if korean else ""), mon)
         else:
             species = rng.randint(1, 251)
             moves = list(dict.fromkeys(rng.randint(1, 251) for _ in range(rng.randint(1, 4))))
@@ -545,7 +749,7 @@ def main():
                 mon.caught = rng.randrange(65536)
             mon.statexp = rng.choice((g1.stat_exp(rng), [rng.randrange(65536) for _ in range(5)]))
             mon.pokerus = rng.choice((0, pokerus(rng), rng.randrange(256)))
-            emit_maybe_jp("random2", mon, japanese)
+            emit_maybe_jp("random2", mon, japanese, korean)
 
 
 if __name__ == "__main__":

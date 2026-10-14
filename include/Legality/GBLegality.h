@@ -24,7 +24,10 @@
 
 namespace Legality::GB {
 
-    enum class Language : uint8_t { Unknown, Japanese, International };
+    /// The game language a record was made in, as its name bytes show it. Korean is
+    /// Korean Gold/Silver (Hangul trainer name; there is no Korean Red/Blue/Yellow or
+    /// Crystal); International is any other non-Japanese language.
+    enum class Language : uint8_t { Unknown, Japanese, International, Korean };
 
     /// The fields of a native PK1 that the origin search reads.
     struct Entity1 {
