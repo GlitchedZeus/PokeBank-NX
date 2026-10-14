@@ -1512,6 +1512,13 @@ int main() {
         auto corrupt=sav; corrupt[L::BoxOffset+1]^=1;
         assert(!G::Gen5ReadOnlySave::parse(corrupt,id,&error));
         assert(error.find("checksum")!=std::string::npos);
+        // A single bad game-data CRC reports the exact verified fraction
+        // without changing fail-closed semantics or inferred source identity.
+        const std::string copyDiagnostic=family==G::SaveFamily::BlackWhite
+            ? "unverified BW primary 69/70 blocks"
+            : "unverified B2W2 primary 73/74 blocks";
+        assert(error.find(copyDiagnostic)!=std::string::npos);
+        assert(!G::Gen5ReadOnlySave::parse(corrupt,id));
         auto wrongFamily=make(family,static_cast<uint8_t>(
             family==G::SaveFamily::BlackWhite ? 22 : 20));
         assert(!G::Gen5ReadOnlySave::parse(wrongFamily,{},&error));
@@ -1561,7 +1568,9 @@ int main() {
         assert(error.find("disagree on exact game identity")!=std::string::npos);
     }
     std::vector<uint8_t> empty(L::FullSaveSize,0);
-    assert(!G::Gen5ReadOnlySave::parse(empty));
+    std::string emptyError;
+    assert(!G::Gen5ReadOnlySave::parse(empty,{},&emptyError));
+    assert(emptyError.find("unverified") == std::string::npos); // no invented format hint
     assert(!G::Gen5ReadOnlySave::parse(std::span<const uint8_t>(empty.data(),0x40000)));
     rejectedRetroArchGen5DiagnosticContracts();
     extendedDsvContainerContracts();

@@ -64,8 +64,50 @@ public:
                             LayoutInfo::Black2White2))
                 candidates.push_back({SaveFamily::Black2White2, offset});
         }
-        if (candidates.empty())
-            return fail("Gen V save has no fully valid BW or B2W2 checksum copy");
+        if (candidates.empty()) {
+            // The initial failure must remain fail-closed: an unchecked game
+            // version is NOT an identity or permission to open. However, when
+            // a suspect raw battery has a recognizable Gen V version byte,
+            // explain which native checksum copy was close to validating.
+            // This avoids treating a nearly valid emulator save as "missing".
+            const auto versionAt=[&](size_t offset) {
+                return source[offset + 0x19400 + 0x1F];
+            };
+            const auto isBW=[](uint8_t v) { return v==20 || v==21; };
+            const auto isB2W2=[](uint8_t v) { return v==22 || v==23; };
+            const bool hintBW=isBW(versionAt(0)) ||
+                isBW(versionAt(LayoutInfo::BlackWhiteCopySize));
+            const bool hintB2=isB2W2(versionAt(0)) ||
+                isB2W2(versionAt(LayoutInfo::Black2White2CopySize));
+            if (!hintBW && !hintB2)
+                return fail("Gen V save has no fully valid BW or B2W2 checksum copy");
+
+            std::string detail="Gen V save has no fully valid BW or B2W2 checksum copy";
+            if (hintBW) {
+                const auto count0=countValidBlocks(
+                    source.subspan(0,LayoutInfo::BlackWhiteCopySize),LayoutInfo::BlackWhite);
+                const auto count1=countValidBlocks(
+                    source.subspan(LayoutInfo::BlackWhiteCopySize,LayoutInfo::BlackWhiteCopySize),
+                    LayoutInfo::BlackWhite);
+                detail+="; unverified BW primary "+
+                    std::to_string(count0)+"/70 blocks, backup "+
+                    std::to_string(count1)+"/70";
+            }
+            if (hintB2) {
+                const auto count0=countValidBlocks(
+                    source.subspan(0,LayoutInfo::Black2White2CopySize),
+                    LayoutInfo::Black2White2);
+                const auto count1=countValidBlocks(
+                    source.subspan(LayoutInfo::Black2White2CopySize,
+                                   LayoutInfo::Black2White2CopySize),
+                    LayoutInfo::Black2White2);
+                detail+="; unverified B2W2 primary "+
+                    std::to_string(count0)+"/74 blocks, backup "+
+                    std::to_string(count1)+"/74";
+            }
+            if (error) *error=detail;
+            return std::nullopt;
+        }
 
         const SaveFamily family = candidates.front().family;
         for (const auto& c : candidates) {
@@ -223,6 +265,22 @@ public:
 
 private:
     Gen5ReadOnlySave() = default;
+
+    template <size_t N>
+    static size_t countValidBlocks(
+        std::span<const uint8_t> part,
+        const std::array<LayoutInfo::SaveBlock,N>& layout) noexcept {
+        size_t matched=0;
+        for (const auto& block:layout) {
+            const size_t off=block.offset,len=block.length;
+            if(off+len>part.size() || block.checksumOffset+2>part.size() ||
+               block.mirrorOffset+2>part.size())continue;
+            const uint16_t crc=Utils::crc16ccitt(part.data()+off,len);
+            if(crc==Crypto::read16(part,block.checksumOffset) &&
+               crc==Crypto::read16(part,block.mirrorOffset))++matched;
+        }
+        return matched;
+    }
 
     template <size_t N>
     static bool validBlocks(std::span<const uint8_t> part,
