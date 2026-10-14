@@ -266,7 +266,7 @@ def main() -> int:
     else:
         missing_or_invalid = []
         for region in required_regions:
-            file = REGION_BACKDROP_DIR / f"{region}.png"
+            file = REGION_BACKDROP_DIR / region
             valid, reason, _ = validate_png(file)
             if not valid:
                 missing_or_invalid.append(f"{region}: {reason}")
