@@ -20,9 +20,10 @@ namespace Exact = PokeBank::UIModel::ExactFormatEditor;
 using Field = PokeBank::UIModel::SharedPokemonEditor::FieldIdentity;
 using State = Exact::FieldState;
 
-// Party PK6 records carry cached battle stats (0xE8..0x104). This lane has no
-// verified Gen VI base-stat/stat-formula wiring, so any field that changes a
-// battle stat is ReadOnly on party records and Editable only on boxed records.
+// Party PK6 records carry cached battle stats (0xE8..0x104). Edits that change
+// a battle-stat input (IV, EV, Nature, Level) recompute those cached stats from
+// the cited formulas and PKHeX personal_ao base stats (Gen6Stats.h); the
+// verifier checks the result exactly. RecordRegion only changes presentation.
 enum class RecordRegion : uint8_t { Box, Party };
 
 [[nodiscard]] constexpr State fieldState(Field field, RecordRegion region) noexcept {
@@ -40,19 +41,18 @@ enum class RecordRegion : uint8_t { Box, Party };
         case Field::Ball:
         case Field::FatefulEncounter:
             return State::Editable;
-        // Battle-stat inputs: editable only where no cached stats exist.
+        // Battle-stat inputs; party records get recomputed cached stats.
+        // Level is staged as the growth-rate minimum EXP for that level.
         case Field::IV:
         case Field::EV:
         case Field::Nature:
-            return party ? State::ReadOnly : State::Editable;
+        case Field::Level:
+            return State::Editable;
         // Computed from PID ^ TID ^ SID (G6PKM PSV/TSV); follows TID/SID edits.
         case Field::Shiny:
             return State::Derived;
-        // Party stores its level byte; a boxed level derives from EXP + growth rate.
-        case Field::Level:
-            return party ? State::ReadOnly : State::Derived;
         case Field::CalculatedStats:
-            return party ? State::ReadOnly : State::Hidden;
+            return party ? State::Derived : State::Hidden;
         // Correlated with PID, species personal data, encounter or move data that
         // this lane does not have verified: shown, never edited.
         case Field::Species:

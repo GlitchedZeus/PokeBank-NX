@@ -114,10 +114,7 @@ void testPartyEditRules() {
     auto s = session(original);
     std::string error;
     const auto p = SlotRef::party(1);
-    // Stat inputs are ReadOnly on party records (stale cached stats otherwise).
-    GEN6_CHECK(!s.stageValue(p, Field::IV, 1, 0, &error));
-    GEN6_CHECK(!s.stageValue(p, Field::EV, 1, 0, &error));
-    GEN6_CHECK(!s.stageValue(p, Field::Nature, 1, 0, &error));
+    // Non-stat edits leave the cached party block untouched (stat edits: test_gen6_stats).
     GEN6_CHECK(s.stageValue(p, Field::Friendship, 200, 0, &error));
     GEN6_CHECK(s.stageText(p, Field::Nickname, "Bud", &error));
     const auto edited = s.buildWorkingCopy(&error);
@@ -130,7 +127,7 @@ void testPartyEditRules() {
     GEN6_CHECK(re && re->partyCount() == 2);
     const auto mon = re->party(1).pokemon;
     GEN6_CHECK(mon && mon->partyForm() && mon->originalTrainerFriendship() == 200 && mon->nickname() == u"Bud");
-    // Cached party stats preserved byte-for-byte.
+    // Cached party stats preserved byte-for-byte (no stat input changed).
     const auto old = Gen6Save::parse(original)->party(1).pokemon;
     GEN6_CHECK(mon && old && std::equal(mon->plain().begin() + PK6::StoredSize, mon->plain().end(),
                                         old->plain().begin() + PK6::StoredSize));
@@ -155,7 +152,7 @@ void testValueValidation() {
     GEN6_CHECK(!s.stageValue(b, Field::TrainerId, 0x10000, 0, &error));
     GEN6_CHECK(!s.stageValue(b, Field::FatefulEncounter, 2, 0, &error));
     // ReadOnly / Derived / Hidden fields are never staged.
-    for (const auto f : {Field::Species, Field::Form, Field::Gender, Field::Shiny, Field::Level,
+    for (const auto f : {Field::Species, Field::Form, Field::Gender, Field::Shiny, Field::CalculatedStats,
                          Field::Experience, Field::Ability, Field::PersonalityId, Field::Move,
                          Field::MovePP, Field::MetLocation, Field::Language, Field::DV, Field::AV})
         GEN6_CHECK(!s.stageValue(b, f, 1, 0, &error));
