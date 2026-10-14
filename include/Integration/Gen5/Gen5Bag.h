@@ -195,6 +195,35 @@ using ValidatedBag5=std::array<std::vector<Trainer::InventoryItem>,BagPocket5Cou
     return bag;
 }
 
+// One reviewed Bag difference between the source baseline and the staged
+// Items block: before==0 is an Add, after==0 is a Remove, otherwise a
+// quantity change. Only stacks that decode on both sides are compared.
+struct BagChange5 {
+    size_t pocket = 0;
+    uint16_t itemId = 0;
+    uint16_t before = 0;
+    uint16_t after = 0;
+};
+
+[[nodiscard]] inline std::vector<BagChange5> diffBag5(const ValidatedBag5& baseline,
+                                                      const ValidatedBag5& current) {
+    std::vector<BagChange5> out;
+    const auto countOf=[](const std::vector<Trainer::InventoryItem>& pocket,uint16_t id) {
+        for(const auto& stack:pocket)if(stack.itemId==id)return stack.count;
+        return uint16_t{0};
+    };
+    for(size_t pocket=0;pocket<BagPocket5Count;++pocket) {
+        for(const auto& stack:baseline[pocket]) {
+            const uint16_t after=countOf(current[pocket],stack.itemId);
+            if(after!=stack.count)out.push_back({pocket,stack.itemId,stack.count,after});
+        }
+        for(const auto& stack:current[pocket])
+            if(countOf(baseline[pocket],stack.itemId)==0)
+                out.push_back({pocket,stack.itemId,0,stack.count});
+    }
+    return out;
+}
+
 // The selected, CRC-validated copy's Items block. Never reads the other copy.
 [[nodiscard]] inline std::span<const uint8_t> sourceItemsBlock(const Gen5ReadOnlySave& save) noexcept {
     const auto bytes=save.sourceBytes();

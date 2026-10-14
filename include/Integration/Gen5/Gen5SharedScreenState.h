@@ -345,13 +345,26 @@ public:
            surface_==Surface::ConfirmRemoveBox ||
            surface_==Surface::ConfirmCreateBox)surface_=Surface::Actions;
     }
-    void moveReviewPage(int delta,const Workspace& workspace) noexcept {
+    void moveReviewPage(int delta,const Workspace& workspace) {
         if(surface_!=Surface::Review)return;
-        const size_t records=workspace.changedRecordCount();
+        const size_t records=reviewRowCount(workspace);
         const size_t pages=std::max(size_t{1},
             (records+kReviewPageSize-1)/kReviewPageSize);
         if(delta>0 && reviewPage_+1<pages)++reviewPage_;
         else if(delta<0 && reviewPage_>0)--reviewPage_;
+    }
+
+    // Review lists staged PK5 records first, then each verified Bag change.
+    [[nodiscard]] static size_t reviewRowCount(const Workspace& workspace) {
+        return workspace.changedRecordCount()+workspace.bagReviewChanges().size();
+    }
+    // The Bag has no Pokemon action menu, so the shared Items panel opens the
+    // same Review surface directly (+). Nothing is staged or exported here.
+    [[nodiscard]] bool openReviewFromBrowse(const Workspace& workspace) noexcept {
+        if(surface_!=Surface::Browse || !workspace.hasChanges())return false;
+        reviewPage_=0;
+        surface_=Surface::Review;
+        return true;
     }
 
     void moveField(int delta) noexcept {

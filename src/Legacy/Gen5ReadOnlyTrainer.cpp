@@ -89,7 +89,13 @@ bool Gen5ReadOnlyTrainer::rebuildPresentation(std::string& error) {
     }
     party.swap(displayParty);
     boxes.swap(displayBoxes);
-    items.clear(); // Unsupported pouch data is not represented as a known inventory.
+    // The five native pockets (PKHeX PlayerBag5*, Items = Block(25)) from the
+    // staged Items block, or the strictly decoded source bag before the first
+    // edit. An unrecognized bag stays empty: the shared Items panel then says
+    // the bag is unavailable instead of guessing at pouch contents.
+    decltype(items) displayItems;
+    if(const auto bag=staged_.bagPresentation())displayItems.assign(bag->begin(),bag->end());
+    items.swap(displayItems);
     return true;
 }
 } // namespace PokeVault::Legacy

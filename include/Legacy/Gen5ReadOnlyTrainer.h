@@ -4,6 +4,7 @@
 #include "Integration/Gen5/Gen5ReadOnlySave.h"
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "Integration/Gen5/Gen5SharedScreenState.h"
+#include "Integration/Gen5/Gen5BagScreen.h"
 #include "Trainer/Trainer.h"
 
 #include <memory>
@@ -55,6 +56,9 @@ public:
     [[nodiscard]] const Integration::Gen5::Gen5SharedScreenState& sharedScreen() const noexcept {
         return screen_;
     }
+    // Bag cursor/modal state for the shared Items panel (session-local).
+    [[nodiscard]] Integration::Gen5::Gen5BagScreen& bagScreen() noexcept { return bag_; }
+    [[nodiscard]] const Integration::Gen5::Gen5BagScreen& bagScreen() const noexcept { return bag_; }
     // Present only already validated staged records. This never assembles,
     // writes, injects or exposes a modified SAV5.
     [[nodiscard]] bool refreshStagedPokemonPresentation(std::string& error);
@@ -67,6 +71,7 @@ private:
     std::string gameId_;
     Integration::Gen5::Gen5StagedPokemonWorkspace staged_;
     Integration::Gen5::Gen5SharedScreenState screen_;
+    Integration::Gen5::Gen5BagScreen bag_;
 };
 } // namespace PokeVault::Legacy
 #endif

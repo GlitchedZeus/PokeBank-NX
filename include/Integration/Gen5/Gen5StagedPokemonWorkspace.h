@@ -265,6 +265,16 @@ public:
         return bag_?&*bag_:nullptr;
     }
     [[nodiscard]] bool bagDirty() const noexcept { return bag_ && bag_->dirty(); }
+    // What the shared Items panel shows: the staged bag once opened, else the
+    // strictly decoded source bag. nullopt means the bag is unavailable.
+    [[nodiscard]] std::optional<ValidatedBag5> bagPresentation() const {
+        if(bag_)return bag_->current();
+        return decodeBag5(source_);
+    }
+    [[nodiscard]] std::vector<BagChange5> bagReviewChanges() const {
+        if(!bagDirty())return {};
+        return diffBag5(bag_->baseline(),bag_->current());
+    }
     void discardBag() noexcept { bag_.reset(); }
 
 private:
