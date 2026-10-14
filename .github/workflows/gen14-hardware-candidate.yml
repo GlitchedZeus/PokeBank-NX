@@ -3,9 +3,7 @@ name: PokeBank NX Gen I-IV Hardware Candidate
 # One combined Gen I-IV application NRO per exact head. The artifact is a hardware TEST
 # candidate only: DEVICE_ACCEPTED stays false until the owner physically tests it.
 on:
-  push:
-    branches:
-      - claude/gen14-final-20261014
+  # PR #306 builds every exact head; a parallel push run only doubled runner load.
   pull_request:
   workflow_dispatch:
 
