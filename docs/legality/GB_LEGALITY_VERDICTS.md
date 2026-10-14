@@ -97,10 +97,25 @@ nothing derived from it is committed.
 - **Gen II egg names.** An unhatched egg keeps the name the game gave it. pokegold and
   pokecrystal write `EGG@`, and nothing renames an egg. Like PKHeX (`VerifyNicknameEgg`),
   any Gen II language's egg name is accepted: EGG, OEUF, UOVO, EI, HUEVO, タマゴ, 알.
-- **Level 100 means the level-100 EXP total.** pokecrystal caps EXP there after every
-  battle (`engine/battle/core.asm`). The level follows EXP (`CalcLevel`). Rare Candy
-  refuses level 100 and otherwise sets EXP to the new level's total
-  (`engine/items/item_effects.asm`).
+- **No duplicate moves.** Learning a move a Pokémon already knows does nothing, so a
+  record with the same move in two slots is Invalid (PKHeX `Move1:Duplicate`), for PK1
+  and PK2, alongside the existing packing rules (no gap before a move, at least one move).
+- **The stored level is the level the EXP gives, and EXP stops at the level-100 total.**
+  Both rules apply to PK1 and PK2 (`GB::formatProblems`); unhatched eggs are judged by
+  their encounter instead.
+  - Battle EXP raises the level as thresholds are crossed and stops EXP at the level-100
+    total (pokered `engine/battle/experience.asm`, pokecrystal `engine/battle/core.asm`).
+  - Rare Candy refuses level 100 and otherwise sets EXP to the new level's total
+    (`engine/items/item_effects.asm`).
+  - The Day Care sets the level from EXP when a Pokémon is withdrawn, and caps (Gen I,
+    pokered `scripts/Daycare.asm`) or resets (Gen II, pokecrystal `RetrieveBreedmon`,
+    pret `docs/bugs_and_glitches.md` "might lose experience") the EXP to that level. A
+    Pokémon still in the Day Care carries a stale level and, in both generations, EXP that
+    can pass the level-100 total; PokeBank NX's save parsers do not read the Day Care
+    slot, and a record exported from it would be judged by these rules.
+  - PKHeX rejects EXP above the level-100 total (`LevelEXPTooHigh`) but derives the level
+    from EXP, so it does not compare the two: a stored level the EXP does not give is a
+    deliberate difference.
 - **GS Ball Celebi.** Japanese Crystal's Mobile System GB event (27 January 2001 –
   14 December 2002; Serebii, Bulbapedia) gave the GS Ball. Kurt takes it to the Ilex Forest
   shrine, which summons a wild level-30 Celebi (pokecrystal `maps/IlexForest.asm`). A
@@ -110,17 +125,35 @@ nothing derived from it is committed.
 
 ## Evidence
 
-`tools/pkhex_gb_diff/run.sh` builds a corpus of raw party records, runs them through
-PKHeX.Core and through `GBLegality`, and fails on any VALID/INVALID disagreement, on an
-UNCERTAIN verdict without one of the reasons above, or on a corpus record either side
-skipped. Every record lands in exactly one class: matching legal, matching invalid,
-deliberately uncertain, deliberately different, or differing (a failure).
+`tools/pkhex_gb_diff/run.sh` builds a corpus of raw party records and runs them through
+PKHeX.Core and through `GBLegality`. Every record lands in exactly one class: matching
+legal, matching invalid, deliberately uncertain, deliberately different, or differing (a
+failure). `compare.py` enforces the protocol and the exceptions:
+
+- A malformed or duplicate corpus line, a malformed or duplicate verdict line, a verdict
+  for an unknown record, a record without a verdict from either program, or a verdict
+  word a program may not give stops the run (exit 2). The PKHeX oracle and `gb_diff`
+  reject malformed corpus lines instead of skipping them.
+- No exception is granted on explanatory text alone. Each is a predicate on the record's
+  own bytes and on both programs' complaints: an "event only" reason needs a Mew or
+  Celebi, a Korean reason a Hangul trainer name (and met data, or a one-byte-page
+  character, where the reason says so), the GS Ball difference a Japanese Celebi met at
+  Ilex Forest at level 30 with no other PKHeX complaint, the level/EXP difference a
+  stored level the EXP does not give and no other PokeBank NX complaint.
+- Every uncertain or deliberately different record is listed by id with its reason.
+- `compare.py --self-test` (run by `run.sh` first) corrupts the protocol 20 ways and
+  checks that each is caught.
 
 The corpora contain:
 
 - records built the way the games build them;
 - deliberate defects: moves, levels, catch rate, types, held items, met data, PP, egg
   data, egg names, stat experience, level-100 EXP, Pokérus, over-long or empty names;
+- structural defects (`struct-*`, `struct2-*`, 30 records per kind and seed, plus a share
+  of the random defects): duplicate moves, EXP 0, EXP one short of the level, EXP of the
+  next level, and level 100 with EXP at, one under, one over and far over the total, with
+  the two boundaries that must stay legal (EXP one short of the next level, level 100 at
+  the total);
 - random records.
 
 About a quarter of the records are Japanese, encoded with PKHeX's own
@@ -141,18 +174,21 @@ Seeds 1–3, 50,000 records each:
 | | PK1 | PK2 |
 |---|---|---|
 | Records | 150,000 | 150,000 |
-| Matching legal | 110,644 | 105,257 |
-| Matching invalid | 39,289 | 42,375 |
+| Matching legal | 109,865 | 104,661 |
+| Matching invalid | 38,741 | 42,282 |
 | **Differing** | **0** | **0** |
-| Deliberately uncertain: Mew/Celebi from an unrecorded event (PKHeX INVALID) | 67 | 106 |
-| Deliberately uncertain: Korean, needs a Korean–Western trade (PKHeX INVALID / VALID) | – | 783 / 150 |
-| Deliberately uncertain: Korean met data (PKHeX INVALID / VALID) | – | 504 / 63 |
-| Deliberately uncertain: two of the reasons above (PKHeX INVALID) | – | 17 |
+| Deliberately uncertain: Mew/Celebi from an unrecorded event (PKHeX INVALID) | 66 | 107 |
+| Deliberately uncertain: Korean, needs a Korean–Western trade (PKHeX INVALID / VALID) | – | 777 / 152 |
+| Deliberately uncertain: Korean met data (PKHeX INVALID / VALID) | – | 472 / 63 |
+| Deliberately uncertain: two of the reasons above (PKHeX INVALID) | – | 16 |
 | Deliberately uncertain: Korean trainer name outside the Hangul pages (PKHeX INVALID) | – | 82 |
+| Deliberately different: stored level not the level of the EXP (ours INVALID, PKHeX VALID) | 1,328 | 1,352 |
 | Deliberately different: GS Ball Celebi (ours VALID, PKHeX INVALID) | – | 36 |
-| Deliberately different: level-100 EXP below the total (ours INVALID, PKHeX VALID) | – | 627 |
 
-Every one of the 300,000 records has a verdict from both programs. The 150 Korean
+Every one of the 300,000 records has a verdict from both programs. The structural kinds
+all agree with PKHeX where PKHeX decides: duplicate moves, EXP 0 and EXP over the
+level-100 total are Invalid for both (450 records per format); the two legal boundaries
+are legal for both (180 per format). The 150 Korean
 records PKHeX accepts but that only a trade explains are mostly Crystal Odd Eggs: PKHeX
 allows the Odd Egg for Korean records (`ParseSettings.AllowGen2OddEgg` excludes only
 Japanese) while it rules out every other Crystal source. No record of these seeds is
@@ -164,13 +200,17 @@ programs, through Stadium 2's reminder.
 `tests/test_gb_legality_gen2.cpp` keep PKHeX-verdict samples of every corpus kind in the
 ordinary host suite. They include the uncertain and deliberate cases above, every Korean
 outcome, and each record a fix in this document came from.
+`tests/test_gb_legality_structural.cpp` covers the structural rules: duplicate moves in
+every slot pattern, a level/EXP grid over the four Gen I/II growth rates checked against
+the games' EXP formulas, a checksum-valid Red save with a level-100 Bulbasaur at, above
+and below the EXP total through the production analyzer (save bytes unchanged), and native
+PK2 records.
 
 ## Deliberate differences from PKHeX
 
 | PokeBank NX | PKHeX | Records |
 |---|---|---|
-| A PK1's level must match its EXP: the games recompute level from EXP in battle, with Rare Candy and at the Day Care. | Not compared for Gen I | PK1 production path |
-| A level-100 PK2 has exactly the level-100 EXP | Rejects only EXP above it | `defect2-exp-100*` below the total |
+| The stored level must be the level the EXP gives (PK1 and PK2): battle, Rare Candy and the Day Care keep them in step. | Derives the level from EXP; does not compare | `struct*-exp-below`, `struct*-exp-next`, `struct*-exp-cap-minus1`, level defects |
 | GS Ball Celebi in Japanese Crystal is legal | Invalid (Virtual Console only) | `gsball2-caught`, `gsball2-grown` |
 | No word filter: Game Boy games filter no names | `WordFilterFlaggedPattern` on some random nicknames | random Latin nicknames |
 | Incomplete for the non-definitive rules above | Invalid, or valid (Korean Odd Egg, Korean met data) | see the Uncertain columns |
@@ -190,5 +230,6 @@ outcome, and each record a fix in this document came from.
   otherwise judged by length, since callers decode them.
 - **Korean edge cases:** a PK1 holding a Korean Gold/Silver Pokémon (Korean → Western
   Red/Blue/Yellow) is not modelled.
-- **Level and EXP below level 100:** PK2 level against EXP is checked only at level 100,
-  as PKHeX does.
+- **Day Care slots:** a Pokémon still in the Day Care (stale level, EXP possibly past the
+  level-100 total) is not read by the save parsers; exported on its own, it would be
+  judged Invalid by the level/EXP rules.
