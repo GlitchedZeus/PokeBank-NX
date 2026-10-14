@@ -62,7 +62,7 @@ conservative estimates.
 | Lane | Branch | HEAD | CI | Owner |
 |---|---|---|---|---|
 | #306 Gen I–IV | `claude/gen14-final-20261014` | `4b9b9f65` | 9/9 green | Thread 1 |
-| #307 Gen V integration | `claude/gen5-integration-20261014` | `a17c503a` | 8/8 green | Thread 2 (handoff from legality session pending confirmation) |
+| #307 Gen V integration | `claude/gen5-integration-20261014` | `a17c503a` | 8/8 green | Thread 2 (exclusive; legality session confirmed handoff 2026-10-14) |
 | Gen VI native | `claude/gen6-native-20261014` | branch from `a17c503a` | — | Thread 3 |
 | App QA | `audit/app-qa-20261014` | branch from `a17c503a` | — | Thread 4 |
 | Coordinator | `claude/optimistic-euler-ph2z4f` | docs only, on `a17c503a` | — | Coordinator |
@@ -74,7 +74,7 @@ conservative estimates.
 1. Gen I–III RetroArch exit crash. **Codex owns this**; Main Development does not edit RetroArch exit code.
 2. Gen IV/V DraStic "Quit to Launcher" returns to DraStic, not PokeBank NX.
 3. Hardware test of the `9bf9d492` candidate is pending with the owner.
-4. #307 ownership: waiting for the legality session to confirm it has stopped pushing there.
+4. ~~#307 ownership~~: resolved. The legality session confirmed it stopped at `a17c503a` and left draft handoff `claude/gen5-handoff-from-legality-20261014` @ `fc519414` (Bag in the Items panel; unbuilt) for Thread 2 to review.
 5. Native builds outside CI depend on pulling the devkitA64 Docker image, which can hit the Docker Hub rate limit.
 
 ## Next implementation tasks
