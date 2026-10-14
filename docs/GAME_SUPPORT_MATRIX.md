@@ -1,18 +1,18 @@
 # PokeBank NX — Game Support / Verification Matrix
 
-Last updated: **2026-10-05**
+Last updated: **2026-10-14**
 
 This matrix separates implemented support from physical device acceptance.
 
-No current adapter is approved for direct live writing to an installed-game save or emulator source.
+No current adapter is approved for direct live writing to an installed-game save or emulator source. **Open draft implementation is not a feature merged into the default branch or owner-device acceptance.**
 
 | Generation | Games | Read / source state | Staged editing state | Device state |
 |---|---|---|---|---|
 | I | Red / Blue / Yellow | RetroArch + validated legacy source model | Shared View / Create / Edit + inventory | **DEVICE ACCEPTED** |
 | II | Gold / Silver / Crystal | RetroArch + validated legacy source model | Shared View / Create / Edit + inventory | **DEVICE ACCEPTED** |
 | III | Ruby / Sapphire / Emerald / FireRed / LeafGreen | RetroArch / provider-aware legacy source model | Shared View / Create / Edit + inventory | **DEVICE ACCEPTED** |
-| IV | Diamond / Pearl / Platinum / HeartGold / SoulSilver | DraStic / melonDS / remembered/manual assignment foundation | Party + Box View/Edit, Create, native field/move/form work | Base milestone accepted; full G4-04 **HARDWARE PENDING** |
-| V | Black / White / Black 2 / White 2 | Not started as a product workflow | Not started | **NOT SUPPORTED** |
+| IV | Diamond / Pearl / Platinum / HeartGold / SoulSilver | DraStic / melonDS / remembered/manual assignment foundation | Party + Box View/Edit, Create, native field/move/form work | Earlier integrated milestone accepted; latest finalization **HARDWARE PENDING** |
+| V | Black / White / Black 2 / White 2 | Experimental RetroArch/DraStic/melonDS/manual exact BW/B2W2 Save Instances, profile assignment, Primary/Backup | Experimental shared PK5 native staged View/Edit/Create/Review + app-owned export on [#300](https://github.com/GlitchedZeus/PokeBank-NX/pull/300) | **CI GREEN; SWITCH HARDWARE PENDING** |
 | 3DS | X/Y, ORAS, SM/USUM | Provider/research planning only | Not started | **NOT SUPPORTED** |
 | Modern Switch | LGPE, SWSH, BDSP, PLA, SV, Z-A and other tracked identities | validation/source foundation varies by title | production editor/write support not advertised | **NOT GENERALLY ACCEPTED** |
 
@@ -165,3 +165,21 @@ source injection              LOCKED
 ```
 
 Malformed or unsupported sources must never be silently repaired, normalized, reassigned, or overwritten.
+
+## October 14 Gen V implementation and source state
+
+The [Gen V experimental app PR #300](https://github.com/GlitchedZeus/PokeBank-NX/pull/300) at `58bd564ba479745f6129f57167aeac6616297753` has all six exact-head checks green and publishes a [development NRO](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38523683607). The production-owner acceptance flag is still **false**. The owner's previous Switch run could not see Gen V saves although they exist in the **same emulator directories as Gen IV**. Current source discovery, artwork and assignment fixes have **not yet been accepted on the device**.
+
+Implemented Gen V draft coverage includes strict BW/B2W2 70/74 native checksum blocks, two independently validated save copies, real 24 PC boxes, Trainer/Party, PK5 stage/Create/Review and app-owned working-copy export, immutable original source data, manually chosen/emulator Save Instances, and an active-Switch-profile **Assign Save to This Profile** action. Reopening must validate exact game/title/copy and source content. FAT/exFAT path normalization keeps profile ownership stable across routine emulator-save writes; old content-based links may need one deliberate relink.
+
+The stronger, separately tested [Gen V source-hardening PR #304](https://github.com/GlitchedZeus/PokeBank-NX/pull/304) includes additional persisted copy/profile and fair provider budget work; it remains a **stacked draft**, not automatically part of #300.
+
+## October 14 Gen I–IV, touch and launch
+
+[Claude finalization PR #306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) adds verified in-NRO RomFS packaging (10 regions, 20 trainers, game art), fair Gen IV multi-provider discovery and ROM header title verification before game launching. At the checked HEAD, a Gen IV candidate CI job was failing; this work still needs clean native/host gates and an owner device pass. The Gen IV native capture Ball `max(0x83,0x86)` correction is independently tracked in [#305](https://github.com/GlitchedZeus/PokeBank-NX/pull/305). Full touch-only workflow parity and Items/exit navigation require fresh tests.
+
+## Legality limits
+
+Gen I–IV evidence-aware legality is a separate five-lane research/implementation effort ([#298](https://github.com/GlitchedZeus/PokeBank-NX/pull/298), [Claude #303](https://github.com/GlitchedZeus/PokeBank-NX/pull/303)); later-generation envelope/domain groundwork is [#301](https://github.com/GlitchedZeus/PokeBank-NX/pull/301). Neither original-game provenance coverage nor full PKHeX historical parity is complete; no production source-save write permission is implied.
+
+See the [cross-lane release-gate snapshot](ENGINEERING_SNAPSHOT_20261014.md).
