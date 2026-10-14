@@ -4,7 +4,7 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-14 ~22:10 UTC (18:10 America/Toronto).
+**Last updated:** 2026-10-14 ~22:15 UTC (18:15 America/Toronto).
 
 ## Active milestone
 
@@ -30,7 +30,7 @@ conservative estimates.
 |---|---|---|---|---|
 | I–III | RBY, GSC, RSE/FRLG | ~90% | CI green on #306/#307 | Earlier build accepted; newest candidate untested |
 | IV | DPPt, HGSS | ~90% | CI green on #306/#307 | Earlier build accepted; newest candidate untested |
-| V | BW, B2W2 | ~65% | 8/8 CI green on #307 `a17c503a` | Not tested |
+| V | BW, B2W2 | ~85% | Local GCC/Clang host + sanitizers pass; CI running on `60c48c1b` | Not tested |
 | VI | X, Y, OR, AS | ~40% (format, session, editor provider and sources on its own lane; not wired into the app) | 1,896 local checks across Gen VI/VII under GCC/Clang ± ASan/UBSan; Gen VI CI green on #309 so far | — |
 | VII | SM, USUM; LGPE as its own family | ~15% (strict read-only SAV7 with MemeCrypto verify; export blocked on re-signing evidence) | local only; CI running | — |
 | VIII | SwSh, BDSP, PLA | ~5% (PK8/PB8/PA8 classes, BDSP/LA crypto headers) | none | — |
@@ -47,18 +47,22 @@ conservative estimates.
 - DraStic/melonDS launch with Unova ROM header identity (IRB/IRA/IRE/IRD).
 - Gen V Bag backend: strict decode, staged quantity/Add/Remove, bag-aware export (`BAG_CHANGED`).
 
-**New since the last update (Thread 2, `60f7cdc2`; CI running, not yet green):**
-- `b9c8d8fa`: native Gen V Bag in the shared Items surface with staged edits.
-- `5f450952`: Gen IV parity for box Move Pokémon, plus read-only origin fields.
-- `60f7cdc2`: native Trainer Name, Money and Play Time staging in the shared panel.
+**Added by Thread 2 (`a17c503a..60c48c1b`, 10 commits):**
+- Bag in the shared Items screen, with Review rows and Bag export.
+- Product Home Items opens the Gen V Bag through the Save Instance chooser.
+- Moving Pokémon between boxes at Gen IV parity, plus read-only origin fields.
+- Trainer Name, Money and Play Time staging, with the export whitelist and a `TRAINER_CHANGED` manifest entry.
+- Read-only Pokédex.
+- End-to-end assign → reopen → copy → stage → export test.
+- 572 randomized export validations.
+- `patches/gen5-create` removed.
+- `gen15-integrated-candidate.yml`: one Gen I–V NRO.
 
 **Missing:**
-- Bag in Review and Bag export: whether these are complete is to be confirmed in Thread 2's report.
-- Party/Box edit parity audit against Gen IV.
+- QA-F1: the Gen V covers are not in the NRO RomFS manifest. Must land before the candidate.
+- QA-F3: the export publish must fail closed.
+- The final candidate identity and green CI on the final head.
 - Trainer fields beyond Name, Money and Play Time.
-- Pokédex view.
-- End-to-end exact-copy and export tests for combined PK5+Bag edits.
-- The leftover `patches/gen5-create/` folder.
 - The integrated Gen I–V candidate NRO.
 - Automatic return to PokeBank NX after DraStic (shared issue with Gen IV).
 
@@ -67,13 +71,13 @@ conservative estimates.
 | Lane | Branch | HEAD | CI | Owner |
 |---|---|---|---|---|
 | #306 Gen I–IV | `claude/gen14-final-20261014` | `4b9b9f65` | 9/9 green | Thread 1 |
-| #307 Gen V integration | `claude/gen5-integration-20261014` | `60f7cdc2` | running (`a17c503a` was 8/8 green) | Thread 2 (exclusive; legality session confirmed handoff 2026-10-14) |
+| #307 Gen V integration | `claude/gen5-integration-20261014` | `60c48c1b` | running | Thread 2 (exclusive; legality session confirmed handoff 2026-10-14) |
 | Gen VI native | `claude/gen6-native-20261014` (draft #309 → #307, CI only) | `aee7e911` | Gen VI host + native green; full host running | Thread 3 |
 | Gen VII native | `claude/gen7-native-20261014` | `4e66e94f` | running | Thread 3 |
 | App QA | `audit/app-qa-20261014` (draft #310 → #307, CI only) | `e43f234` | running; no Gen I–V parser crash/UB found so far | Thread 4 |
 | Coordinator | `claude/optimistic-euler-ph2z4f` | docs only, on `a17c503a` | — | Coordinator |
 | #300 / #304 / #302 | preserved source lanes | `58bd564b` / `4d8c267e` / `6e27bbd5` | green | Contained in #307 |
-| #305 / #280 | `claude/gen4-capture-ball` / `fix/gen14-action-tap-empty-parity-20261011` | `b8eb006e` / `dcd855a7` | — | Rule confirmed by test / tests to port (Thread 1) |
+| #305 / #280 | `claude/gen4-capture-ball` / `fix/gen14-action-tap-empty-parity-20261011` | `b8eb006e` / `dcd855a7` | — | Rule confirmed by test / #280 tests change Gen III/IV surfaces → Thread 1 |
 
 ## Blockers
 
