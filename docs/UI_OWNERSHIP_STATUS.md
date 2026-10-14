@@ -50,7 +50,7 @@ Normal focus uses the PokeBank teal/cyan product accent. Red is reserved for sem
 
 ## Near-term UI boundary
 
-The active October 14 lanes are **Gen I–IV finalization [#306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306)** (candidate CI failure outstanding) and **Gen V [#300](https://github.com/GlitchedZeus/PokeBank-NX/pull/300)** (six CI checks green; hardware pending). These both extend the one shared PokeBank Pokémon editor; neither authorizes source writeback.
+The active October 14 lanes are **Gen I–IV finalization [#306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306)** (hardware candidate/Gen IV/native/touch checks passed, full host still running, device pending) and **Gen V [#300](https://github.com/GlitchedZeus/PokeBank-NX/pull/300)** (six CI checks green; hardware pending). These both extend the one shared PokeBank Pokémon editor; neither authorizes source writeback.
 
 Before the next accepted hardware candidate:
 
@@ -73,6 +73,6 @@ For Black, White, Black 2 and White 2, the active profile's X/Source menu now in
 
 ### Art packaging and launch identity
 
-Claude's [#306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) adds actual NRO-packaged asset validation and ROM cartridge-header exact-release checks. Older recovery packaging discarded regional backdrops/trainer portraits. Current code packages 10 region scenes, 20 trainer portraits and Gen I–IV cover art, but exact-head native/Gen IV CI must pass before any new hardware candidate is accepted. Preserve the already accepted Quit & Return behavior.
+Claude's [#306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) adds actual NRO-packaged asset validation and ROM cartridge-header exact-release checks. Older recovery packaging discarded regional backdrops/trainer portraits. Current code packages 10 region scenes, 20 trainer portraits and Gen I–IV cover art, and the newer exact-head native/Gen IV candidate gates have passed; full host verification and owner hardware testing are still required. Preserve the already accepted Quit & Return behavior.
 
 [October 14 engineering snapshot](ENGINEERING_SNAPSHOT_20261014.md) · [Game support matrix](GAME_SUPPORT_MATRIX.md)
