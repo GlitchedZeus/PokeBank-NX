@@ -255,6 +255,16 @@ require(host_gen5,
         "assert(!G::reopenValidatedSource(inspected).ready())")
 require(games, 'item.sourceVariant=="gen5-unverified-version-hint"')
 
+# A successful Gen IV scan cannot prove Gen V opened any emulator root;
+# retain exact hardware scan counts and the first strict read-only rejection.
+discovery = read("src/Integration/Gen5/Gen5SourceDiscovery.cpp")
+discovery_header = read("include/Integration/Gen5/Gen5SourceDiscovery.h")
+require(discovery_header, "rootsConsidered", "rootsOpened")
+require(discovery, "++state.result.rootsConsidered",
+        "++state.result.rootsOpened")
+require(games, "discovered.rootsOpened==0",
+        "Gen V scan: game=", "Gen V strict read-only rejection:")
+
 # When no Gen V Save Instance is presented, hardware users must learn if
 # the same emulator folder was scanned but rejected by strict validation.
 require(

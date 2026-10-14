@@ -32,6 +32,10 @@ struct DiscoveryResult {
     size_t filesExamined = 0;
     size_t entriesExamined = 0;
     size_t directoriesExamined = 0;
+    // "No saves" is not proof of a scanned emulator folder. Report only
+    // attempted/actually opened bounded roots, never full SD traversal.
+    size_t rootsConsidered = 0;
+    size_t rootsOpened = 0;
     bool limitReached = false;
 };
 

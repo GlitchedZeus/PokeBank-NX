@@ -478,10 +478,17 @@ DiscoveryResult discoverSources(std::span<const DiscoveryRoot> roots,
     state.limits.maxDirectories=std::min<size_t>(limits.maxDirectories,512);
     for(const auto& r:roots) {
         if(state.result.limitReached)break;
+        // Count actual root-directory opens rather than guessing from the
+        // existence of a provider config path. Permission and mount failures
+        // must not be presented to the user as "no save files found".
+        ++state.result.rootsConsidered;
+        const size_t openedBefore=state.result.directoriesExamined;
         // Cap recursion even when an untrusted caller supplies a huge maxDepth.
         DiscoveryRoot safe=r;
         safe.maxDepth=std::min<size_t>(safe.maxDepth,2);
         scan(safe,safe.path,0,state);
+        if(state.result.directoriesExamined>openedBefore)
+            ++state.result.rootsOpened;
     }
     Source::sortNewestFirst(state.result.instances);
     return std::move(state.result);

@@ -122,6 +122,7 @@ void rejectedRetroArchGen5DiagnosticContracts() {
     const G::DiscoveryRoot source{root,"RetroArch",0};
     const auto discovered=G::discoverSources(std::span<const G::DiscoveryRoot>(&source,1));
     assert(discovered.filesExamined==2);
+    assert(discovered.rootsConsidered==1 && discovered.rootsOpened==1);
     assert(discovered.instances.size()==1); // unrelated old-gen raw images remain hidden
     assert(discovered.instances[0].sourcePath==invalid);
     assert(!discovered.instances[0].ready());
@@ -356,6 +357,7 @@ void discoveryContracts() {
     const G::DiscoveryRoot one{dir,"RetroArch",0};
     const auto results=G::discoverSources(std::span<const G::DiscoveryRoot>(&one,1));
     assert(results.filesExamined==4); // Invalid symlink skipped; nested excluded.
+    assert(results.rootsConsidered==1 && results.rootsOpened==1);
     assert(results.instances.size()==4); // Three valid plus explicit DSV/DSS diagnostics.
     assert(results.instances[0].mostRecentlyModified);
     assert(!results.instances[1].mostRecentlyModified);
@@ -376,6 +378,7 @@ void discoveryContracts() {
         const auto blocked=G::discoverSources(
             std::span<const G::DiscoveryRoot>(&forbidden,1),{4});
         assert(blocked.filesExamined==0 && blocked.instances.empty());
+        assert(blocked.rootsConsidered==1 && blocked.rootsOpened==0);
     }
     const std::string retroarchCfg=dir+"/retroarch.cfg";
     {
@@ -388,6 +391,7 @@ void discoveryContracts() {
     const auto safeDefault=G::discoverKnownSources(
         {4},retroarchCfg,dir+"/nonexistent_default_root");
     assert(safeDefault.filesExamined==0 && safeDefault.instances.empty());
+    assert(safeDefault.rootsConsidered==0 && safeDefault.rootsOpened==0);
     assert(std::remove(retroarchCfg.c_str())==0);
     const auto roots=G::defaultDraSticRoots();
     assert(roots.size()==4 && roots[0].providerLabel=="DraStic");
@@ -518,6 +522,7 @@ void discoveryContracts() {
         twoRoots,G::DiscoveryLimits{32,4096,1});
     assert(directoryBudget.limitReached);
     assert(directoryBudget.directoriesExamined==1);
+    assert(directoryBudget.rootsConsidered==1 && directoryBudget.rootsOpened==1);
     for(const auto& path:junkFiles)assert(std::remove(path.c_str())==0);
     assert(::rmdir(flood.c_str())==0);
 

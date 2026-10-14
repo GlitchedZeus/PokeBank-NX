@@ -2255,6 +2255,20 @@ namespace UI {
         const auto catalog=PokeVault::Integration::Gen5::forGameAndProfile(
             rows,*legacyBindings,currentProfileIdentity(),gen5TargetGameId);
         gen5Instances=catalog.rows;
+        // Append-only local diagnostics; never save or alter emulator bytes.
+        // These counts tell a real hardware tester whether an emulator root
+        // was opened, whether battery filenames were found, and how many
+        // candidates strict parsing/profile ownership rejected.
+        logInfoToFile("Gen V scan: game="+gen5TargetGameId+
+            " roots="+std::to_string(discovered.rootsOpened)+"/"+
+                         std::to_string(discovered.rootsConsidered)+
+            " entries="+std::to_string(discovered.entriesExamined)+
+            " files="+std::to_string(discovered.filesExamined)+
+            " ready="+std::to_string(gen5Instances.size())+
+            " wrongGame="+std::to_string(catalog.wrongGame)+
+            " invalid="+std::to_string(catalog.invalidOrAmbiguous)+
+            " claimedOther="+std::to_string(catalog.ownedByOtherProfile)+
+            " incomplete="+std::to_string(discovered.limitReached));
         if(gen5Instances.empty()) {
             // A missing candidate is NOT the same as a missing file. Show the
             // evidence available from the same discovery pass as Gen IV: the
@@ -2264,9 +2278,13 @@ namespace UI {
                 gen5Notice="Gen V scan limit reached after "+
                     std::to_string(discovered.filesExamined)+
                     " file(s); try the manual save chooser.";
+            } else if(discovered.rootsOpened==0) {
+                gen5Notice="No known emulator save directories were accessible (0 opened). "
+                           "Existing Gen IV sources remain unchanged.";
             } else if(discovered.filesExamined==0) {
-                gen5Notice="No DS battery files found in known emulator save folders. "
-                           "Choose manually or check the emulator's save directory.";
+                gen5Notice="Opened "+std::to_string(discovered.rootsOpened)+
+                    " emulator folder(s), but found no DS battery files. "
+                    "Use the manual chooser for an exact path.";
             } else if(catalog.ownedByOtherProfile>0 && catalog.wrongGame==0 &&
                       catalog.invalidOrAmbiguous==0) {
                 gen5Notice=std::to_string(catalog.ownedByOtherProfile)+
@@ -2293,8 +2311,13 @@ namespace UI {
                     rejected=std::find_if(rows.begin(),rows.end(),diagnosticOnly);
                 gen5Notice="Inspected "+std::to_string(discovered.filesExamined)+
                     " DS save file(s); none validated for this game.";
-                if(rejected!=rows.end())
+                if(rejected!=rows.end()) {
                     gen5Notice+=" Example rejection: "+rejected->diagnostic;
+                    logInfoToFile("Gen V strict read-only rejection: game="+gen5TargetGameId+
+                                  " provider="+rejected->providerLabel+
+                                  " file="+rejected->label+
+                                  " reason="+rejected->diagnostic);
+                }
                 else if(catalog.ownedByOtherProfile>0)
                     gen5Notice+=" Some saves belong to another profile.";
                 else
