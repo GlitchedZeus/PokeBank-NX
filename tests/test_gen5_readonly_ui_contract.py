@@ -584,8 +584,8 @@ require(create_suite,
 # Game cards and the source picker must not claim the editor is unavailable.
 require(games,
         "Gen V cached party; choose Save Instances to open.",
-        "Open the shared staged editor. The original save stays unchanged.",
-        '"A","Open Editor"',
+        "Open shared staged editor. Original save stays unchanged.",
+        '"A",gen5AssignOnly?"Assign to Profile":"Open Editor"',
         "Review or change this Gen V profile/save assignment.")
 assert "Gen V preview only — editor not yet enabled." not in games
 require(manager, "Gen V reuses the", "shared View/Edit/Review field model")
