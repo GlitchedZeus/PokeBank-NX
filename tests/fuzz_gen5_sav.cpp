@@ -14,6 +14,7 @@
 #include "Integration/Gen5/Gen5SaveInstanceAdapter.h"
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "Integration/Gen5/Gen5StagedSaveCandidate.h"
+#include "Integration/Gen5/Gen5Trainer.h"
 
 namespace G5 = PokeVault::Integration::Gen5;
 
@@ -50,6 +51,24 @@ void exercise(const G5::Gen5ReadOnlySave& save, std::span<const uint8_t> data) {
     // A real staged edit on a fuzzed-but-accepted save must either be refused or produce a
     // candidate that re-parses strictly as the same game and copy, differs from the source only
     // inside the selected copy, and leaves the source bytes untouched.
+    // Native Trainer view/staging (Gen5Trainer.h): decode must agree with create.
+    QA_CHECK(static_cast<bool>(G5::decodeTrainer5(save)) ==
+             static_cast<bool>(G5::Gen5StagedTrainer::create(save)));
+    if (auto* trainer = workspace.stagedTrainer(&error)) {
+        const auto before = trainer->current();
+        if (trainer->setMoney(before.money == 1 ? 2 : 1, &error)) {
+            QA_CHECK(trainer->dirty());
+            const auto candidate = G5::buildStagedSaveCandidateForObservedSource(workspace, data, &error);
+            if (candidate) {
+                QA_CHECK(candidate->trainerChanged && candidate->selectedCopyOffset == save.selectedCopyOffset());
+                std::string reparseError;
+                const auto selection = save.selectedBackupPartition() ? G5::SaveCopySelection::Backup
+                                                                      : G5::SaveCopySelection::Primary;
+                QA_CHECK(G5::Gen5ReadOnlySave::parse(candidate->bytes, save.exactGameId(), &reparseError, selection));
+            }
+        }
+        workspace.discardAll();
+    }
     if (auto* bagEditor = workspace.stagedBag(&error)) {
         const auto current = bagEditor->current();
         bool edited = false;

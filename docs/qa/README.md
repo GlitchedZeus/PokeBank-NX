@@ -44,7 +44,7 @@ quietly turn a target into rejection-only fuzzing.
 | `fuzz_gen2_sav` | `Gen2::parse` (G/S/C, RTC footers) and its validator, `decodeInventory`, `Pokemon2ReadOnly` (PK2), Gen II staged editor |
 | `fuzz_gen3_sav` | native `Gen3::parse` (all five games, the adapter the Switch build compiles) and its validator, PK3 party/box enumeration, Bag pouches, both staged editors |
 | `fuzz_gen4_sav` | `Gen4ReadOnlySave::parse` (DP/Pt/HGSS, with and without assignment), partition selection, PK4 records, `decodeReadOnlyBag`, staged editor |
-| `fuzz_gen5_sav` | `Gen5ReadOnlySave::parse` with the **copy selector** (Automatic/Primary/Backup), **Save Instance identification** (`probeNormalizedBattery`), PK5 records, `decodeBag5`, `Gen5StagedBag`, staged export candidate after a real Bag edit |
+| `fuzz_gen5_sav` | `Gen5ReadOnlySave::parse` with the **copy selector** (Automatic/Primary/Backup), **Save Instance identification** (`probeNormalizedBattery`), PK5 records, `decodeBag5`, `Gen5StagedBag`, `decodeTrainer5` / `Gen5StagedTrainer`, staged export candidates after a real Trainer and Bag edit |
 | `fuzz_gen5_bag` | `decodeBag5` on raw Items blocks + an operation tape driving `Gen5StagedBag` set/add/remove (exactly one 4-byte slot may change per accepted op) |
 | `fuzz_pk_records` | raw PK3 (`Pokemon3FRLG`, `decodeRecord`), PK4 (`Pokemon4ReadOnly`, all groups), PK5 (`Pokemon5ReadOnly`); valid records must re-encrypt to the exact input |
 | `fuzz_source_containers` | on-disk identification: Gen IV `readSourcePayloadReadOnly` / `inspectSourceFile`, Gen V `readNormalizedSourceReadOnly` / `inspectSourceChoices` on raw and DeSmuME `.dsv` containers; the file's bytes and mtime must not change |
@@ -56,7 +56,8 @@ accepted fixtures that already pin them (cited in [`tests/fuzz_synthetic_saves.h
 
 [`tests/test_qa_export_contracts.cpp`](../../tests/test_qa_export_contracts.cpp) drives every export
 path exactly as its UI caller does: Gen I Pokemon+Bag and Bag, Gen II Trainer and Bag, Gen III
-Pokemon+Bag and Bag, Gen IV (DP/Pt/HGSS), Gen V PK5 and Bag (BW/B2W2, primary and backup copy).
+Pokemon+Bag and Bag, Gen IV (DP/Pt/HGSS), Gen V PK5, Bag and Trainer Name/Money (BW/B2W2, primary
+and backup copy).
 For each path:
 
 - **C1** source file bytes, size and mtime unchanged, including across failed exports and when the

@@ -1,7 +1,9 @@
 # Application QA findings (Thread 4)
 
-Audited head: PR #307 `claude/gen5-integration-20261014` at `a17c503ad272cc55e69b8b3cbd925cec999567cc`
-(contains the #306 Gen I–IV baseline). All inputs synthetic.
+Audited heads: PR #307 `claude/gen5-integration-20261014` at `a17c503ad272cc55e69b8b3cbd925cec999567cc`
+(lane start, contains the #306 Gen I–IV baseline), re-run on the latest #307 head
+`87584a67cd29a1fbe58ddf5f61b8bc23c8a0a2d0` (adds Gen V Trainer/Bag/Pokedex surfaces), which this lane
+forward-merged without conflicts. All inputs synthetic.
 
 Each open defect has a failing reproduction that is kept **out** of every default gate:
 
@@ -23,7 +25,7 @@ as the regression test for its fix.
 
 No crash, sanitizer report, out-of-bounds read or round-trip violation was found in any Gen I–V parser,
 record decoder, Bag decoder, copy selector or Save Instance identification path (see
-[Fuzzing evidence](#fuzzing-evidence)). All 15 export paths satisfy the five export-safety contracts.
+[Fuzzing evidence](#fuzzing-evidence)). All 17 export paths (including the new Gen V Trainer Name/Money path) satisfy the five export-safety contracts.
 
 ## QA-F2 (Medium): invalid workflow files produce a failed run on every push
 
@@ -97,7 +99,7 @@ Local runs on the audited head (Ubuntu 24.04, GCC 13.3, Clang 18.1):
 
 | Run | Result |
 | --- | --- |
-| `make qa` under GCC and under Clang (deterministic runner plain + ASan/UBSan, all 8 targets; 15 export contracts; NRO audit regression) | pass |
+| `make qa` under GCC and under Clang (deterministic runner plain + ASan/UBSan, all 8 targets; 17 export contracts; NRO audit regression) | pass |
 | libFuzzer 30 s/target (smoke) | clean: 59k / 37k / 1.4k / 0.9k / 0.2k / 607k / 3.8k / 69 execs |
 | libFuzzer soak 240 s/target | clean: gen1 545k, gen2 327k, gen3 13k, gen4 11k, gen5-bag 35k, gen5-sav 2.6k, source-containers 733 execs |
 | libFuzzer soak 240 s, `fuzz_pk_records` | first run stopped on an all-zero PK4 record: harness gap (blank-slot convention), fixed, input kept as regression corpus; re-run clean, 4.7M execs |

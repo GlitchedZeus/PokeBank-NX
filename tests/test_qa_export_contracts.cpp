@@ -11,6 +11,7 @@
 //   gen4-pokemon      Gen4SharedPokemonSurface: Gen4::publishVerifiedGen4Export
 //   gen5-pk5          Gen5SharedReadOnlySurface: readNormalizedSourceReadOnly + publishGen5WorkingCopy
 //   gen5-bag          the same Gen V path with only a native Bag edit staged
+//   gen5-trainer      the same Gen V path with native Trainer Name + Money staged
 //
 // Contracts checked for every path:
 //   C1 the source file's bytes, size and mtime never change (also when the export root IS the
@@ -504,7 +505,10 @@ std::vector<Range> gen5RecordWhitelist(G5::SaveFamily family, size_t copyBase, s
     return out;
 }
 
-ExportPath gen5Path(G5::SaveFamily family, uint8_t version, bool backupCopy, bool bag) {
+enum class Gen5Edit { Pk5, Bag, Trainer };
+
+ExportPath gen5Path(G5::SaveFamily family, uint8_t version, bool backupCopy, Gen5Edit edit) {
+    const bool bag = edit == Gen5Edit::Bag;
     const auto original = qasynth::gen5::save(family, version, backupCopy ? 2 : 1);
     std::string error;
     const auto selection = backupCopy ? G5::SaveCopySelection::Backup : G5::SaveCopySelection::Primary;
@@ -513,7 +517,19 @@ ExportPath gen5Path(G5::SaveFamily family, uint8_t version, bool backupCopy, boo
     auto workspace = std::make_shared<G5::Gen5StagedPokemonWorkspace>(*parsed);
     const size_t base = parsed->selectedCopyOffset();
     ExportPath path;
-    if (bag) {
+    if (edit == Gen5Edit::Trainer) {
+        // Native Trainer Name + Money (Gen5Trainer.h TrainerLayout5: PlayerData block 27 name at
+        // 0x04..0x13, Misc block 52 money at 0x00..0x03).
+        auto* trainer = workspace->stagedTrainer(&error);
+        if (!trainer || !trainer->setName("QATEST", &error) || !trainer->setMoney(123456, &error))
+            throw std::runtime_error("gen5 trainer staging failed: " + error);
+        namespace T = G5::TrainerLayout5;
+        const auto& player = G5::trainerBlock5(family, T::PlayerBlockIndex);
+        const auto& misc = G5::trainerBlock5(family, T::MiscBlockIndex);
+        path.whitelist = gen5RecordWhitelist(family, base, player.offset + T::NameOffset, T::NameBytes);
+        const auto money = gen5RecordWhitelist(family, base, misc.offset + T::MoneyOffset, 4);
+        path.whitelist.insert(path.whitelist.end(), money.begin(), money.end());
+    } else if (bag) {
         auto* staged = workspace->stagedBag(&error);
         if (!staged || !staged->setQuantity(static_cast<size_t>(G5::BagPocket5::Items), 0, 7, &error))
             throw std::runtime_error("gen5 bag staging failed: " + error);
@@ -526,7 +542,7 @@ ExportPath gen5Path(G5::SaveFamily family, uint8_t version, bool backupCopy, boo
         path.whitelist = gen5RecordWhitelist(family, base, G5::LayoutInfo::BoxOffset, G5::Crypto::StoredSize);
     }
     const std::string game(parsed->exactGameId());
-    path.name = std::string(bag ? "gen5-bag-" : "gen5-pk5-") + game + (backupCopy ? "-backup" : "-primary");
+    path.name = std::string(edit == Gen5Edit::Trainer ? "gen5-trainer-" : bag ? "gen5-bag-" : "gen5-pk5-") + game + (backupCopy ? "-backup" : "-primary");
     path.sourceFile = "POKEMON B.sav";
     path.original = original;
     path.backupName = "original_backup.sav";
@@ -566,12 +582,14 @@ int main() {
         [] { return gen4Path(qasynth::gen4::Kind::DiamondPearl, G4::Layout::DiamondPearl, "diamond_nds"); },
         [] { return gen4Path(qasynth::gen4::Kind::Platinum, G4::Layout::Platinum, "platinum_nds"); },
         [] { return gen4Path(qasynth::gen4::Kind::HeartGoldSoulSilver, G4::Layout::HeartGoldSoulSilver, "heartgold_nds"); },
-        [] { return gen5Path(G5::SaveFamily::BlackWhite, 21, false, false); },
-        [] { return gen5Path(G5::SaveFamily::BlackWhite, 20, true, false); },
-        [] { return gen5Path(G5::SaveFamily::Black2White2, 23, false, false); },
-        [] { return gen5Path(G5::SaveFamily::Black2White2, 22, true, false); },
-        [] { return gen5Path(G5::SaveFamily::BlackWhite, 21, false, true); },
-        [] { return gen5Path(G5::SaveFamily::Black2White2, 22, true, true); },
+        [] { return gen5Path(G5::SaveFamily::BlackWhite, 21, false, Gen5Edit::Pk5); },
+        [] { return gen5Path(G5::SaveFamily::BlackWhite, 20, true, Gen5Edit::Pk5); },
+        [] { return gen5Path(G5::SaveFamily::Black2White2, 23, false, Gen5Edit::Pk5); },
+        [] { return gen5Path(G5::SaveFamily::Black2White2, 22, true, Gen5Edit::Pk5); },
+        [] { return gen5Path(G5::SaveFamily::BlackWhite, 21, false, Gen5Edit::Bag); },
+        [] { return gen5Path(G5::SaveFamily::Black2White2, 22, true, Gen5Edit::Bag); },
+        [] { return gen5Path(G5::SaveFamily::BlackWhite, 20, true, Gen5Edit::Trainer); },
+        [] { return gen5Path(G5::SaveFamily::Black2White2, 23, false, Gen5Edit::Trainer); },
     };
     std::cout << "Export-safety contracts (C1 source immutable, C2 strict reparse, C3 whitelist, "
                  "C4 no overwrite, C5 no partial output):\n";
