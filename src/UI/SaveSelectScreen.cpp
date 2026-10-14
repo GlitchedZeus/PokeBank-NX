@@ -2245,9 +2245,41 @@ namespace UI {
             rows,*legacyBindings,currentProfileIdentity(),gen5TargetGameId);
         gen5Instances=catalog.rows;
         if(gen5Instances.empty()) {
-            gen5Notice=discovered.limitReached
-                ? "Gen V scan limit reached; use a validated manual save."
-                : "No valid Gen V cartridge saves found; use a manual file or choose an emulator save.";
+            // A missing candidate is NOT the same as a missing file. Show the
+            // evidence available from the same discovery pass as Gen IV: the
+            // number inspected, exact-game mismatch, cross-profile claims or
+            // the first strict parser rejection. Never silently open a file.
+            if(discovered.limitReached) {
+                gen5Notice="Gen V scan limit reached after "+
+                    std::to_string(discovered.filesExamined)+
+                    " file(s); try the manual save chooser.";
+            } else if(discovered.filesExamined==0) {
+                gen5Notice="No DS battery files found in known emulator save folders. "
+                           "Choose manually or check the emulator's save directory.";
+            } else if(catalog.ownedByOtherProfile>0 && catalog.wrongGame==0 &&
+                      catalog.invalidOrAmbiguous==0) {
+                gen5Notice=std::to_string(catalog.ownedByOtherProfile)+
+                    " validated save(s) belong to another Switch profile; "
+                    "original save ownership was preserved.";
+            } else if(catalog.wrongGame>0 && catalog.invalidOrAmbiguous==0) {
+                gen5Notice="Found "+std::to_string(catalog.wrongGame)+
+                    " Gen V save(s) for other game titles, none for this exact title.";
+            } else {
+                const auto rejected=std::find_if(rows.begin(),rows.end(),
+                    [](const PokeVault::Source::SaveInstance& item) {
+                        return item.generation==5 && !item.ready() &&
+                               !item.diagnostic.empty() &&
+                               item.kind!=PokeVault::Source::SaveInstanceKind::SaveState;
+                    });
+                gen5Notice="Inspected "+std::to_string(discovered.filesExamined)+
+                    " DS save file(s); none validated for this game.";
+                if(rejected!=rows.end())
+                    gen5Notice+=" Example rejection: "+rejected->diagnostic;
+                else if(catalog.ownedByOtherProfile>0)
+                    gen5Notice+=" Some saves belong to another profile.";
+                else
+                    gen5Notice+=" Select a saved battery file manually for details.";
+            }
             overlay=Overlay::Gen5Setup;
         } else {
             gen5Notice=std::to_string(gen5Instances.size())+
@@ -4870,9 +4902,17 @@ namespace UI {
                     Colors::TextPrimary:Colors::TextSecondary);
                 ry+=rowH;
             }
-            if(!gen5Notice.empty())
-                fb.drawText(x+28,y+h-42,gen5Notice.substr(0,105),
+            if(!gen5Notice.empty()) {
+                // Hardware diagnostics can be longer than the original generic
+                // status line; use two visible rows, without clipping the cause.
+                constexpr size_t maxPerLine=84;
+                fb.drawText(x+28,y+h-53,gen5Notice.substr(0,maxPerLine),
                             Colors::TextMuted,TextStyle::Caption);
+                if(gen5Notice.size()>maxPerLine)
+                    fb.drawText(x+28,y+h-31,
+                                gen5Notice.substr(maxPerLine,maxPerLine),
+                                Colors::TextMuted,TextStyle::Caption);
+            }
             drawNavBar(fb,{{"D-pad/Stick","Choose"},{"A","Select"},{"B","Back"}});
         } else if (overlay == Overlay::Gen5UnassignConfirm && u) {
             constexpr int w=760,h=270;

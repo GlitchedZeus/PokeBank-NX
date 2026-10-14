@@ -231,6 +231,19 @@ require(read(".github/workflows/native-pr-build.yml"),
         "bash -n tools/build_gen5_smoke_nro.sh",
         "test -x tools/build_gen5_smoke_nro.sh")
 
+# When no Gen V Save Instance is presented, hardware users must learn if
+# the same emulator folder was scanned but rejected by strict validation.
+require(
+    games,
+    "discovered.filesExamined==0",
+    "catalog.ownedByOtherProfile>0",
+    "catalog.wrongGame>0",
+    "catalog.invalidOrAmbiguous",
+    "Example rejection: ",
+    "gen5Notice.substr(maxPerLine,maxPerLine)",
+)
+assert 'No valid Gen V cartridge saves found; use a manual file' not in games
+
 # Native NRO packaging must not erase region scenery on the integration branch.
 # Gen V retail covers must resolve just like Gen I-IV, and preflight must reject
 # a reintroduced missing-region/missing-cover regression before emitting an NRO.
