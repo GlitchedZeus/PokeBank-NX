@@ -176,7 +176,7 @@ The stronger, separately tested [Gen V source-hardening PR #304](https://github.
 
 ## October 14 Gen I–IV, touch and launch
 
-[Claude finalization PR #306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) adds verified in-NRO RomFS packaging (10 regions, 20 trainers, game art), fair Gen IV multi-provider discovery and ROM header title verification before game launching. At the checked HEAD, a Gen IV candidate CI job was failing; this work still needs clean native/host gates and an owner device pass. The Gen IV native capture Ball `max(0x83,0x86)` correction is independently tracked in [#305](https://github.com/GlitchedZeus/PokeBank-NX/pull/305). Full touch-only workflow parity and Items/exit navigation require fresh tests.
+[Claude finalization PR #306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) adds verified in-NRO RomFS packaging (10 regions, 20 trainers, game art), fair Gen IV multi-provider discovery and ROM header title verification before game launching. At the newer checked HEAD `3ac0ae29`, the Gen I–IV hardware candidate, Product UI native, Gen IV, native and touch checks passed. Full host testing was still running; owner device acceptance remains pending. The Gen IV native capture Ball `max(0x83,0x86)` correction is independently tracked in [#305](https://github.com/GlitchedZeus/PokeBank-NX/pull/305). Full touch-only workflow parity and Items/exit navigation require fresh tests.
 
 ## Legality limits
 
