@@ -1,6 +1,7 @@
 #include "Encryption/Encryption4.h"
 #include "Integration/Gen4/Gen4ReadOnlySave.h"
 #include "Integration/Gen4/Gen4BagCatalog.h"
+#include "Integration/Gen4/Gen4ExportTransaction.h"
 #include "Integration/Gen4/Gen4StagedPokemonEditor.h"
 #include "Pokemon/Pokemon4Mutable.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
@@ -11,10 +12,14 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <span>
 #include <string>
 #include <vector>
+#include <unistd.h>
 
 using PokeVault::Integration::Gen4::Gen4ReadOnlySave;
 using PokeVault::Integration::Gen4::Gen4StagedPokemonEditor;
@@ -680,6 +685,79 @@ void testRecoveredAndMismatchRemainReadOnly() {
 
 } // namespace
 
+std::vector<uint8_t> slurp(const std::filesystem::path& path) {
+    std::ifstream in(path, std::ios::binary);
+    return std::vector<uint8_t>(std::istreambuf_iterator<char>(in), {});
+}
+
+void testVerifiedWorkingCopyExport() {
+    namespace fs = std::filesystem;
+    using PokeVault::Integration::Common::ExportFailurePoint;
+    const fs::path root = fs::temp_directory_path() /
+        ("pokebank-g4-export-" + std::to_string(::getpid()));
+    fs::remove_all(root);
+    for (const auto layout : {Layout::DiamondPearl, Layout::Platinum,
+                              Layout::HeartGoldSoulSilver}) {
+        auto source = makeSave(layout);
+        const auto original = source;
+        std::string error;
+        auto editor = Gen4StagedPokemonEditor::create(source, layout, gameId(layout), &error);
+        assert(editor && error.empty());
+
+        PokeVault::Integration::Gen4::Gen4ExportRequest request;
+        request.rootDirectory = root.string();
+        request.directoryStem = gameId(layout) + "_20261014-120000";
+        request.sourcePath = "sdmc:/retroarch/saves/fixture.sav";
+        request.timestamp = "20261014-120000";
+
+        // Nothing staged: refused before any filesystem work.
+        auto none = PokeVault::Integration::Gen4::publishVerifiedGen4Export(*editor, request);
+        assert(!none.success && none.error.find("No pending") != std::string::npos);
+        assert(!fs::exists(root / request.directoryStem));
+
+        assert(editor->stageCloneBoxPokemon(0, 0, 0, 1, &error));
+        const auto lines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor);
+        assert(lines.size() == 1 && lines[0].rfind("Box 1 slot 2: (empty) -> ", 0) == 0);
+
+        // Every injected failure leaves no published or temporary directory behind.
+        for (auto point : {ExportFailurePoint::AfterBackupWrite, ExportFailurePoint::AfterEditedWrite,
+                           ExportFailurePoint::AfterReadbackVerify,
+                           ExportFailurePoint::AfterManifestWrite}) {
+            auto faulty = request;
+            faulty.failurePoint = point;
+            auto failed = PokeVault::Integration::Gen4::publishVerifiedGen4Export(*editor, faulty);
+            assert(!failed.success && failed.directory.empty());
+            assert(!fs::exists(root / request.directoryStem));
+            for (const auto& entry : fs::directory_iterator(root))
+                assert(entry.path().filename().string().find(".tmp") == std::string::npos);
+        }
+
+        auto exported = PokeVault::Integration::Gen4::publishVerifiedGen4Export(*editor, request);
+        assert(exported.success && exported.error.empty());
+        assert(exported.directory == (root / request.directoryStem).string());
+        assert(exported.changedBytes > 0);
+        const fs::path dir(exported.directory);
+        assert(slurp(dir / "original_backup.sav") == original);
+        const auto edited = slurp(dir / "edited.sav");
+        assert(edited == editor->stagedBytes() && edited != original);
+        const auto reparsed = Gen4ReadOnlySave::parse(edited, layout, gameId(layout), &error);
+        assert(reparsed && !reparsed->box(0, 1).empty());
+        std::ifstream manifestIn(dir / "EDIT_MANIFEST.txt");
+        const std::string manifest((std::istreambuf_iterator<char>(manifestIn)), {});
+        assert(manifest.find("GAME_ID=" + gameId(layout)) != std::string::npos);
+        assert(manifest.find("SOURCE_SHA256=" + exported.originalSha256) != std::string::npos);
+        assert(manifest.find("EDITED_SHA256=" + exported.editedSha256) != std::string::npos);
+        assert(manifest.find("STRICT_REPARSE=VERIFIED") != std::string::npos);
+        assert(manifest.find("- Box 1 slot 2: (empty) -> ") != std::string::npos);
+
+        // A second export never overwrites the first; the source bytes never changed.
+        auto again = PokeVault::Integration::Gen4::publishVerifiedGen4Export(*editor, request);
+        assert(again.success && again.directory == exported.directory + "-2");
+        assert(source == original);
+    }
+    fs::remove_all(root);
+}
+
 int main() {
     testLayout(Layout::DiamondPearl);
     testLayout(Layout::Platinum);
@@ -694,6 +772,7 @@ int main() {
     testNoOpAndFailureRollback();
     testShedinjaPartyHpRule();
     testRecoveredAndMismatchRemainReadOnly();
+    testVerifiedWorkingCopyExport();
     std::cout << "Gen IV staged boxed Pokemon editor PASS\n";
     return 0;
 }

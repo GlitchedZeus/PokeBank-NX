@@ -17,6 +17,7 @@
 #include "Pokemon/PersonalInfo4HGSS.h"
 #include "Trainer/Trainer.h"
 #include "UI/ClassicGameContext.h"
+#include "Integration/Gen4/Gen4ExportTransaction.h"
 #include "UI/Common.h"
 #include "UI/Dialogs/DialogFrame.h"
 #include "UI/Gen4SharedPokemonSession.h"
@@ -36,6 +37,7 @@
 #include "UI/TouchScroll.h"
 #include "UI/SharedPokemonShell.h"
 #include "Utils/Keyboard.h"
+#include "Utils/PokeBankPaths.h"
 #include "Utils/StringHelpers.h"
 
 #include <algorithm>
@@ -1605,8 +1607,44 @@ bool handleReleaseConfirm(TrainerViewScreen& screen, State& state, u64 down) {
     return true;
 }
 
+// Verified export of the staged copy into the app-owned exports/gen4 root. Never writes the
+// emulator source; the staged workspace is kept so the user can continue editing.
+void exportStagedGen4Copy(TrainerViewScreen& screen) {
+    auto* staged = editor(screen);
+    if (!staged || !staged->hasChanges()) {
+        screen.postStatus("No staged Generation IV changes to export", 240);
+        return;
+    }
+    std::string error;
+    const std::string root = PokeBank::Paths::gen4ExportsRoot();
+    const std::string timestamp = Utils::getTimestamp();
+    if (!PokeBank::Paths::ensureDirectoryTree(root, &error) ||
+        !PokeBank::Paths::isSafeTimestamp(timestamp)) {
+        screen.postStatus(error.empty() ? "Could not prepare the Generation IV export folder" : error, 420);
+        return;
+    }
+    PokeVault::Integration::Gen4::Gen4ExportRequest request;
+    request.rootDirectory = root;
+    request.directoryStem = PokeBank::Paths::sanitizeComponent(staged->exactGameId()) + "_" + timestamp;
+    request.sourcePath = screen.backupDir;
+    request.timestamp = timestamp;
+#ifdef POKEVAULT_GIT_COMMIT
+    request.applicationSha = POKEVAULT_GIT_COMMIT;
+#endif
+    const auto result = PokeVault::Integration::Gen4::publishVerifiedGen4Export(*staged, request);
+    if (!result.success) {
+        screen.postStatus(result.error.empty() ? "Verified Generation IV export failed" : result.error, 480);
+        return;
+    }
+    screen.postStatus("Verified copy exported: " + result.directory + "/edited.sav (source unchanged)", 600);
+}
+
 bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
     if (!state.review) return false;
+    if (down & HidNpadButton_X) {
+        exportStagedGen4Copy(screen);
+        return true;
+    }
     if (down & HidNpadButton_B) {
         state.review = false;
         state.actions = true;
@@ -2214,10 +2252,22 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     fb.drawText(44, 270, "Original emulator source: HARD READ ONLY", Colors::Accent);
     fb.drawText(44, 308, "Create/Edit/Box Clone/Release use staged bytes only; source remains immutable",
                 Colors::TextDim, TextStyle::Caption);
-    if (changed)
-        drawNavBar(fb, {{"Y", "Discard All Staged"}, {"B", "Back"}});
-    else
+    if (changed) {
+        // Original-versus-staged comparison, from strict parses of both buffers.
+        const auto lines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*staged);
+        constexpr size_t kShown = 8;
+        int y = 352;
+        fb.drawText(44, y, "Changed slots (original -> staged)", Colors::Text, TextStyle::Body);
+        y += 36;
+        for (size_t i = 0; i < lines.size() && i < kShown; ++i, y += 30)
+            fb.drawText(64, y, lines[i], Colors::TextDim, TextStyle::Caption);
+        if (lines.size() > kShown)
+            fb.drawText(64, y, "+" + std::to_string(lines.size() - kShown) + " more",
+                        Colors::TextDim, TextStyle::Caption);
+        drawNavBar(fb, {{"X", "Export Copy"}, {"Y", "Discard All Staged"}, {"B", "Back"}});
+    } else {
         drawNavBar(fb, {{"B", "Back"}});
+    }
 }
 
 void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {

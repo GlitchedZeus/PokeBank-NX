@@ -3,6 +3,7 @@
 #include "Encryption/Encryption3FRLG.h"
 #include <cstring>
 #include "Integration/Gen3/Gen3ExactFormatEditorProvider.h"
+#include "Integration/Gen3/Gen3ExportTransaction.h"
 #include "Integration/Gen3/Gen3LearnsetTable.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
 #include "Legacy/FRLGReadOnlyTrainer.h"
@@ -32,7 +33,9 @@
 #include "UI/SharedHeldItemPickerPresentation.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "UI/TouchScroll.h"
+#include "Utils/FileUtilities.h"
 #include "Utils/Keyboard.h"
+#include "Utils/PokeBankPaths.h"
 
 #include <algorithm>
 #include <array>
@@ -1419,6 +1422,10 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         screen.controllerNavigation.reset();
         return true;
     }
+    if ((down & HidNpadButton_X) && !staged->pendingChanges().empty()) {
+        exportStagedGen3Copy(screen);
+        return true;
+    }
     if (down & HidNpadButton_Y) {
         state.reviewTouchScroll.reset();
         staged->discard();
@@ -1430,6 +1437,45 @@ bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const Touch
         return true;
     }
     return true;
+}
+
+// Verified export of the staged Pokemon copy into the app-owned exports/gen3 root. The emulator
+// source is never written. Bag edits live in a separate staged buffer, so a combined export is
+// refused rather than silently dropping either set of changes.
+void exportStagedGen3Copy(TrainerViewScreen& screen) {
+    auto* staged = editor(screen);
+    if (!staged || !staged->hasPendingChanges()) {
+        screen.postStatus("No staged Generation III Pokemon changes to export", 240);
+        return;
+    }
+    const auto* inventory = bridge(screen).stagedInventory();
+    if (inventory && inventory->hasPendingChanges()) {
+        screen.postStatus("Bag edits are staged separately; export or discard them in Items first", 480);
+        return;
+    }
+    std::string error;
+    const std::string root = PokeBank::Paths::gen3ExportsRoot();
+    const std::string timestamp = Utils::getTimestamp();
+    if (!PokeBank::Paths::ensureDirectoryTree(root, &error) ||
+        !PokeBank::Paths::isSafeTimestamp(timestamp)) {
+        screen.postStatus(error.empty() ? "Could not prepare the Generation III export folder" : error, 420);
+        return;
+    }
+    Gen3::Gen3ExportRequest request;
+    request.rootDirectory = root;
+    request.directoryStem = PokeBank::Paths::sanitizeComponent(
+        Gen3::sourceGameId(staged->sourceGame())) + "_" + timestamp;
+    request.sourcePath = screen.backupDir;
+    request.timestamp = timestamp;
+#ifdef POKEVAULT_GIT_COMMIT
+    request.applicationSha = POKEVAULT_GIT_COMMIT;
+#endif
+    const auto result = Gen3::publishVerifiedGen3Export(*staged, request);
+    if (!result.success) {
+        screen.postStatus(result.error.empty() ? "Verified Generation III export failed" : result.error, 480);
+        return;
+    }
+    screen.postStatus("Verified copy exported: " + result.directory + "/edited.sav (source unchanged)", 600);
 }
 
 bool handleReleaseConfirm(TrainerViewScreen& screen, State& state, u64 down) {
@@ -2011,7 +2057,11 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
             fb, fb.getWidth() - 28, viewportY, viewportH,
             changes.size(), visible, state.reviewScroll);
     }
-    drawNavBar(fb, {{"D-pad/Stick", "Scroll"}, {"Y", "Discard All Staged"}, {"B", "Back"}});
+    if (changes.empty())
+        drawNavBar(fb, {{"D-pad/Stick", "Scroll"}, {"Y", "Discard All Staged"}, {"B", "Back"}});
+    else
+        drawNavBar(fb, {{"D-pad/Stick", "Scroll"}, {"X", "Export Copy"},
+                        {"Y", "Discard All Staged"}, {"B", "Back"}});
 }
 
 void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {

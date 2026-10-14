@@ -1,3 +1,8 @@
+#include "Integration/Gen3/Gen3ExportTransaction.h"
+#include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <unistd.h>
 #include "Encryption/Encryption3FRLG.h"
 #include "Integration/Gen3/Gen3SaveValidation.h"
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
@@ -506,6 +511,63 @@ void runGame(SourceGame game, Family family) {
 
 } // namespace
 
+std::vector<uint8_t> slurpFile(const std::filesystem::path& path) {
+    std::ifstream in(path, std::ios::binary);
+    return std::vector<uint8_t>(std::istreambuf_iterator<char>(in), {});
+}
+
+// Verified app-owned working-copy export for every exact Gen III game: strict reparse before and
+// after writing, exact original backup, manifest provenance, fault cleanup, source immutability.
+void exportGame(SourceGame game, Family family) {
+    namespace fs = std::filesystem;
+    using PokeVault::Integration::Common::ExportFailurePoint;
+    const fs::path root = fs::temp_directory_path() /
+        ("pokebank-g3-export-" + std::to_string(::getpid()));
+    fs::remove_all(root);
+    auto source = fixture(family, game);
+    const auto immutableSource = source;
+    std::string error;
+    auto editor = StagedPokemonEditor::create(source, game, error);
+    assert(editor && error.empty());
+
+    PokeVault::Integration::Gen3::Gen3ExportRequest request;
+    request.rootDirectory = root.string();
+    request.directoryStem = std::string(exactSourceGameId(game)) + "_20261014-120000";
+    request.sourcePath = "sdmc:/retroarch/saves/fixture.srm";
+    request.timestamp = "20261014-120000";
+    auto none = PokeVault::Integration::Gen3::publishVerifiedGen3Export(*editor, request);
+    assert(!none.success && none.error.find("No pending") != std::string::npos);
+
+    BoxPokemonEdit edit; edit.nickname = "EXPORT"; edit.level = 42;
+    assert(editor->stageBoxPokemonEdit(0, 0, edit, error));
+    for (auto point : {ExportFailurePoint::AfterBackupWrite, ExportFailurePoint::AfterEditedWrite,
+                       ExportFailurePoint::AfterReadbackVerify, ExportFailurePoint::AfterManifestWrite}) {
+        auto faulty = request;
+        faulty.failurePoint = point;
+        assert(!PokeVault::Integration::Gen3::publishVerifiedGen3Export(*editor, faulty).success);
+        assert(fs::is_empty(root));
+    }
+    auto exported = PokeVault::Integration::Gen3::publishVerifiedGen3Export(*editor, request);
+    assert(exported.success && exported.error.empty());
+    const fs::path dir(exported.directory);
+    assert(slurpFile(dir / "original_backup.sav") == immutableSource);
+    const auto edited = slurpFile(dir / "edited.sav");
+    assert(edited == editor->stagedBytes() && edited != immutableSource);
+    auto reparsed = parse(edited, game);
+    assert(reparsed);
+    auto reopened = StagedPokemonEditor::create(edited, game, error);
+    assert(reopened);
+    const auto mon = reopened->boxedPokemon(0, 0, error);
+    assert(mon && mon->nickname == "EXPORT" && mon->level == 42);
+    std::ifstream manifestIn(dir / "EDIT_MANIFEST.txt");
+    const std::string manifest((std::istreambuf_iterator<char>(manifestIn)), {});
+    assert(manifest.find(std::string("GAME_ID=") + exactSourceGameId(game)) != std::string::npos);
+    assert(manifest.find("SOURCE_SHA256=" + exported.originalSha256) != std::string::npos);
+    assert(manifest.find("- Box 1 slot 1 ") != std::string::npos);
+    assert(source == immutableSource);
+    fs::remove_all(root);
+}
+
 int main() {
     // A PK3 egg stores language=Japanese as a placeholder, so its OT charset comes from the
     // containing save. clone() must carry that non-byte context or a Japanese OT becomes Latin.
@@ -539,5 +601,10 @@ int main() {
     runGame(SourceGame::EmeraldGBA, Family::Emerald);
     runGame(SourceGame::FireRedGBA, Family::FRLG);
     runGame(SourceGame::LeafGreenGBA, Family::FRLG);
+    exportGame(SourceGame::RubyGBA, Family::RS);
+    exportGame(SourceGame::SapphireGBA, Family::RS);
+    exportGame(SourceGame::EmeraldGBA, Family::Emerald);
+    exportGame(SourceGame::FireRedGBA, Family::FRLG);
+    exportGame(SourceGame::LeafGreenGBA, Family::FRLG);
     std::cout << "Generation III staged boxed Pokemon editor: PASS\n";
 }

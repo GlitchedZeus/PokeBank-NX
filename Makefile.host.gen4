@@ -89,6 +89,8 @@ $(GEN4_MUTABLE_SANITIZE): $(GEN4_MUTABLE_SOURCES) include/Pokemon/Pokemon4Mutabl
 # G4-03: app-owned staged boxed-PK4 save mutation. No filesystem/source writer is linked.
 GEN4_STAGED_EDITOR_SOURCES := tests/test_gen4_staged_pokemon_editor.cpp \
 	src/Integration/Gen4/Gen4StagedPokemonEditor.cpp \
+	src/Integration/Gen4/Gen4ExportTransaction.cpp src/Integration/Common/VerifiedStagedExport.cpp \
+	src/Utils/SHA256.cpp \
 	src/Integration/Gen4/Gen4ReadOnlySave.cpp \
 	src/Pokemon/Pokemon4Mutable.cpp src/Pokemon/Pokemon4ReadOnly.cpp \
 	src/Pokemon/PersonalRecord4.cpp src/Pokemon/PersonalInfo4DP.cpp \
@@ -105,12 +107,14 @@ host-test: $(GEN4_STAGED_EDITOR_TEST)
 host-sanitize: $(GEN4_STAGED_EDITOR_SANITIZE)
 
 $(GEN4_STAGED_EDITOR_TEST): $(GEN4_STAGED_EDITOR_SOURCES) \
-	include/Integration/Gen4/Gen4StagedPokemonEditor.h include/Pokemon/Pokemon4Mutable.h
+	include/Integration/Gen4/Gen4StagedPokemonEditor.h include/Pokemon/Pokemon4Mutable.h \
+	include/Integration/Gen4/Gen4ExportTransaction.h include/Integration/Common/VerifiedStagedExport.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(GEN4_STAGED_EDITOR_SOURCES) -o $@
 
 $(GEN4_STAGED_EDITOR_SANITIZE): $(GEN4_STAGED_EDITOR_SOURCES) \
-	include/Integration/Gen4/Gen4StagedPokemonEditor.h include/Pokemon/Pokemon4Mutable.h
+	include/Integration/Gen4/Gen4StagedPokemonEditor.h include/Pokemon/Pokemon4Mutable.h \
+	include/Integration/Gen4/Gen4ExportTransaction.h include/Integration/Common/VerifiedStagedExport.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GEN4_STAGED_EDITOR_SOURCES) -o $@
 

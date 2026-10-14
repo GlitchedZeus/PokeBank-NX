@@ -18,6 +18,8 @@ inline std::string root() { return std::string(kRoot); }
 inline std::string exportsRoot() { return root() + "/exports"; }
 inline std::string gen1ExportsRoot() { return exportsRoot() + "/gen1"; }
 inline std::string gen2ExportsRoot() { return exportsRoot() + "/gen2"; }
+inline std::string gen3ExportsRoot() { return exportsRoot() + "/gen3"; }
+inline std::string gen4ExportsRoot() { return exportsRoot() + "/gen4"; }
 inline std::string backupsRoot() { return root() + "/backups"; }
 inline std::string transactionsRoot() { return root() + "/transactions"; }
 
