@@ -1,0 +1,151 @@
+# Thread 4 application QA: parser fuzzing, export-safety contracts and known-failure repros.
+#
+# Opt-in targets only; nothing here is added to host-test / host-sanitize, so the default suite and
+# its accepted test graph are unchanged.
+#
+#   make -f Makefile.host qa-fuzz-smoke        deterministic mutation runner, plain + ASan/UBSan
+#   make -f Makefile.host qa-contracts         export-safety / source-immutability contracts (+ ASan/UBSan)
+#   make -f Makefile.host qa-libfuzzer         clang libFuzzer binaries (CXX=clang++)
+#   make -f Makefile.host qa-libfuzzer-run     time-boxed libFuzzer run (QA_FUZZ_SECONDS per target)
+#   make -f Makefile.host qa-tools-test        tools/qa NRO audit regression
+#   make -f Makefile.host qa-known-failures    reproductions of OPEN defects (expected to fail until fixed)
+#   make -f Makefile.host qa                   fuzz smoke + contracts + tools (what CI gates on)
+#
+# Production sources are compiled once per toolchain variant into a static archive; each fuzz or
+# contract binary links only what it uses. The native Gen III adapter is the one the Switch app
+# compiles (POKEBANK_GEN3_SELECTIVE_PORT_TEST selects it on the host, as the existing suites do).
+
+QA_TAG := $(if $(HOST_CXX_IS_CLANG),clang,gcc)
+QA_BUILD := $(HOST_BUILD)/qa-$(QA_TAG)
+QA_FLAGS := -Wno-unused-parameter -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude -Itests -Ivendor/PKSM-Core/include
+QA_FUZZ_ITERATIONS ?= 25
+QA_FUZZ_SECONDS ?= 60
+QA_FUZZ_SMOKE_SECONDS ?= 45
+QA_LIBFUZZER_FLAGS := -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -O1 -g
+
+QA_CORE_SOURCES := $(sort \
+	src/Integration/Common/VerifiedStagedExport.cpp \
+	src/Integration/Gen1/Gen1StagedPokemonEditor.cpp src/Integration/Gen1/Gen1BattleStats.cpp \
+	src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1StagedInventoryEditor.cpp \
+	src/Integration/Gen1/Gen1ReadOnlyInventory.cpp \
+	src/Integration/Gen2/Gen2StagedEditor.cpp src/Integration/Gen2/Gen2UniversalInventory.cpp \
+	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
+	src/Integration/Gen2/Gen2PersonalData.cpp src/Integration/Gen2/Gen2ExportTransaction.cpp \
+	src/Integration/Gen3/Gen3StagedPokemonEditor.cpp src/Integration/Gen3/Gen3ExportTransaction.cpp \
+	src/Integration/Gen3/Gen3StagedInventoryEditor.cpp src/Integration/Gen3/PKSMGen3NativeAdapter.cpp \
+	src/Integration/Gen3/FRLGReadModel.cpp \
+	src/Integration/Gen4/Gen4ReadOnlySave.cpp src/Integration/Gen4/Gen4AssignedSource.cpp \
+	src/Integration/Gen4/Gen4SourceDiscovery.cpp src/Integration/Gen4/Gen4StagedPokemonEditor.cpp \
+	src/Integration/Gen4/Gen4ExportTransaction.cpp \
+	src/Integration/Gen5/Gen5WorkingCopyExport.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp \
+	src/Integration/Gen5/Gen5AssignedSource.cpp \
+	src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp \
+	src/Games/GameIdentity.cpp \
+	src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp \
+	src/Pokemon/Experience.cpp src/Pokemon/Pokemon4ReadOnly.cpp src/Pokemon/Pokemon4ReadOnlyView.cpp \
+	src/Pokemon/PersonalRecord4.cpp src/Pokemon/PersonalInfo4DP.cpp src/Pokemon/PersonalInfo4PT.cpp \
+	src/Pokemon/PersonalInfo4HGSS.cpp src/Pokemon/Pokemon4Mutable.cpp \
+	src/Pokemon/Pokemon1ReadOnly.cpp src/Pokemon/Pokemon2ReadOnly.cpp \
+	src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp \
+	src/Inventory/ClassicInventoryCatalog.cpp \
+	src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Names/MoveInfo.cpp src/Names/SpeciesNames.cpp \
+	src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Names/ItemPresence.cpp \
+	src/Names/MovePresence.cpp \
+	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp \
+	vendor/PKSM-Core/source/utils/crypto_checksums.cpp)
+
+QA_FUZZ_TARGETS := fuzz_gen1_sav fuzz_gen2_sav fuzz_gen3_sav fuzz_gen4_sav fuzz_gen5_sav \
+	fuzz_pk_records fuzz_gen5_bag fuzz_source_containers
+QA_HEADERS := tests/fuzz_support.h tests/fuzz_synthetic_saves.h tests/test_qa_support.h \
+	$(wildcard include/Integration/*/*.h include/Pokemon/*.h include/Encryption/*.h include/Utils/*.h include/Source/*.h)
+
+# variant -> extra compile flags
+QA_VARIANT_FLAGS_plain := $(CXXFLAGS)
+QA_VARIANT_FLAGS_san := $(CXXFLAGS) $(SANITIZE_FLAGS)
+QA_VARIANT_FLAGS_fuzz := $(filter-out -O2,$(CXXFLAGS)) -fsanitize=fuzzer-no-link,address,undefined -fno-omit-frame-pointer -O1 -g
+
+define QA_VARIANT
+QA_OBJS_$(1) := $$(patsubst %.cpp,$(QA_BUILD)/$(1)/obj/%.o,$(QA_CORE_SOURCES))
+$(QA_BUILD)/$(1)/obj/%.o: %.cpp
+	@mkdir -p $$(dir $$@)
+	$$(CXX) $$(QA_VARIANT_FLAGS_$(1)) $$(QA_FLAGS) -c $$< -o $$@
+$(QA_BUILD)/$(1)/libqacore.a: $$(QA_OBJS_$(1))
+	@rm -f $$@
+	ar rcs $$@ $$^
+endef
+$(foreach v,plain san fuzz,$(eval $(call QA_VARIANT,$(v))))
+
+# Deterministic runners (any compiler).
+$(QA_BUILD)/plain/%: tests/%.cpp $(QA_BUILD)/plain/libqacore.a $(QA_HEADERS)
+	$(CXX) $(QA_VARIANT_FLAGS_plain) $(QA_FLAGS) $< $(QA_BUILD)/plain/libqacore.a -o $@
+$(QA_BUILD)/san/%: tests/%.cpp $(QA_BUILD)/san/libqacore.a $(QA_HEADERS)
+	$(CXX) $(QA_VARIANT_FLAGS_san) $(QA_FLAGS) $< $(QA_BUILD)/san/libqacore.a -o $@
+# libFuzzer binaries (clang only).
+$(QA_BUILD)/fuzz/%: tests/%.cpp $(QA_BUILD)/fuzz/libqacore.a $(QA_HEADERS)
+	$(CXX) $(filter-out -O2,$(CXXFLAGS)) $(QA_LIBFUZZER_FLAGS) -DPOKEBANK_QA_LIBFUZZER $(QA_FLAGS) $< $(QA_BUILD)/fuzz/libqacore.a -o $@
+
+# The Gen III seed is the accepted pinned FR/LG fixture, generated by the existing host target.
+QA_GEN3_FIXTURE := $(GEN3_FIXTURE)
+export POKEBANK_QA_GEN3_FIXTURE := $(QA_GEN3_FIXTURE)
+
+QA_FUZZ_PLAIN := $(addprefix $(QA_BUILD)/plain/,$(QA_FUZZ_TARGETS))
+QA_FUZZ_SAN := $(addprefix $(QA_BUILD)/san/,$(QA_FUZZ_TARGETS))
+QA_FUZZ_LIBFUZZER := $(addprefix $(QA_BUILD)/fuzz/,$(QA_FUZZ_TARGETS))
+
+.PHONY: qa qa-fuzz-build qa-fuzz-smoke qa-fuzz-long qa-libfuzzer qa-libfuzzer-run qa-contracts \
+	qa-known-failures qa-tools-test qa-seeds qa-clean
+
+qa-fuzz-build: $(QA_FUZZ_PLAIN) $(QA_FUZZ_SAN) $(QA_GEN3_FIXTURE)
+
+# Every target, both builds, every strategy, with and without checksum forging.
+qa-fuzz-smoke: qa-fuzz-build
+	@set -e; for t in $(QA_FUZZ_TARGETS); do \
+		$(QA_BUILD)/plain/$$t --iterations $(QA_FUZZ_ITERATIONS) --seconds $(QA_FUZZ_SMOKE_SECONDS); \
+		ASAN_OPTIONS=$(ASAN_OPTIONS) UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+			$(QA_BUILD)/san/$$t --iterations $(QA_FUZZ_ITERATIONS) --seconds $(QA_FUZZ_SMOKE_SECONDS); \
+	done
+
+# Longer deterministic soak (nightly): more rounds and a different RNG stream per run.
+QA_FUZZ_RNG ?= 0x5EED0C7A11
+qa-fuzz-long: qa-fuzz-build
+	@set -e; for t in $(QA_FUZZ_TARGETS); do \
+		ASAN_OPTIONS=$(ASAN_OPTIONS) UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+			$(QA_BUILD)/san/$$t --iterations 100000 --seconds $(QA_FUZZ_SECONDS) --rng-seed $(QA_FUZZ_RNG); \
+	done
+
+qa-libfuzzer: $(QA_FUZZ_LIBFUZZER)
+
+# Seed corpora for libFuzzer come from the same synthetic builders.
+qa-seeds: $(QA_FUZZ_PLAIN) $(QA_GEN3_FIXTURE)
+	@set -e; for t in $(QA_FUZZ_TARGETS); do \
+		$(QA_BUILD)/plain/$$t --write-seeds $(QA_BUILD)/corpus/$$t; \
+	done
+
+qa-libfuzzer-run: qa-libfuzzer qa-seeds
+	@set -e; mkdir -p $(QA_BUILD)/artifacts; for t in $(QA_FUZZ_TARGETS); do \
+		echo "== libFuzzer $$t ($(QA_FUZZ_SECONDS)s)"; \
+		ASAN_OPTIONS=$(ASAN_OPTIONS) UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+			$(QA_BUILD)/fuzz/$$t -max_total_time=$(QA_FUZZ_SECONDS) -max_len=600000 -rss_limit_mb=4096 \
+			-timeout=30 -print_final_stats=1 -artifact_prefix=$(QA_BUILD)/artifacts/$$t- \
+			$(QA_BUILD)/corpus/$$t; \
+	done
+
+QA_CONTRACT_TESTS := test_qa_export_contracts
+qa-contracts: $(addprefix $(QA_BUILD)/plain/,$(QA_CONTRACT_TESTS)) $(addprefix $(QA_BUILD)/san/,$(QA_CONTRACT_TESTS)) $(QA_GEN3_FIXTURE)
+	@set -e; for t in $(QA_CONTRACT_TESTS); do \
+		$(QA_BUILD)/plain/$$t; \
+		ASAN_OPTIONS=$(ASAN_OPTIONS) UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 $(QA_BUILD)/san/$$t; \
+	done
+
+# Open-defect reproductions. Kept OUT of qa / host-test so CI stays honest; each case exits
+# non-zero while its defect is open. See docs/qa/FINDINGS.md.
+qa-known-failures: $(QA_BUILD)/san/test_qa_known_failures $(QA_GEN3_FIXTURE)
+	ASAN_OPTIONS=$(ASAN_OPTIONS) $(QA_BUILD)/san/test_qa_known_failures
+
+qa-tools-test:
+	python3 tests/test_qa_nro_audit.py
+
+qa: qa-fuzz-smoke qa-contracts qa-tools-test
+
+qa-clean:
+	rm -rf $(QA_BUILD)

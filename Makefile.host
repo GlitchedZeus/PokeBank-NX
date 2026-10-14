@@ -11,5 +11,6 @@ include Makefile.host.gen5
 include Makefile.host.source-instances
 include Makefile.host.product-ui
 include Makefile.host.exports
+include Makefile.host.qa
 
 include Makefile.host.machine
