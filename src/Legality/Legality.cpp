@@ -442,12 +442,15 @@ namespace Legality {
                             pk.isShiny(pk.id32(), {}), pk.otName()
                         },
                         bacd);
+                // The candidate stores a view of the OT name and outlives this
+                // statement, so the name must be owned here, not a temporary.
+                const std::u16string negaiOtName = pk.otName();
                 const Gen3NegaiBoshiEvent::Candidate negaiCandidate{
                     species, pk.tid16(), pk.sid16(), pk.originGame(),
                     pk.language(), pk.otGender(), pk.metLevel(),
                     pk.metLocation(), pk.ball(), pk.isEgg(),
                     pk.isFatefulEncounter(),
-                    pk.isShiny(pk.id32(), {}), pk.otName()
+                    pk.isShiny(pk.id32(), {}), negaiOtName
                 };
                 const bool negaiForceAnti =
                     Gen3NegaiBoshiEvent::matchesForceAntiShiny(
