@@ -56,6 +56,15 @@ struct VerifiedExportResult {
 
 [[nodiscard]] std::string sha256Hex(std::span<const uint8_t> bytes);
 
+// Combine two staged copies of the SAME original whose edits live in different fixed-size blocks
+// (for example Gen III 4 KiB sectors, each with its own checksum). Every block is taken from the
+// copy that changed it; a block changed by both copies is refused rather than guessed. Returns an
+// empty vector and fills error on mismatch/overlap.
+[[nodiscard]] std::vector<uint8_t> mergeDisjointBlocks(std::span<const uint8_t> original,
+                                                       std::span<const uint8_t> first,
+                                                       std::span<const uint8_t> second,
+                                                       size_t blockSize, std::string& error);
+
 [[nodiscard]] VerifiedExportResult publishVerifiedStagedExport(const VerifiedExportRequest& request);
 
 } // namespace PokeVault::Integration::Common

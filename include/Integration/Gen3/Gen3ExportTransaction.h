@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Integration/Common/VerifiedStagedExport.h"
+#include "Integration/Gen3/Gen3StagedInventoryEditor.h"
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
 
 #include <string>
@@ -18,7 +19,10 @@ struct Gen3ExportRequest {
 
 // Verified app-owned export of the staged Gen III Pokemon copy. The edited bytes must strictly
 // reparse (rotating sectors, signatures, checksums, exact family) before and after writing.
+// When a staged Bag workspace with pending changes is supplied, its changed sectors are merged in
+// (sector-disjoint only; both workspaces must share the exact original) so one export carries both.
 [[nodiscard]] Common::VerifiedExportResult publishVerifiedGen3Export(
-    const StagedPokemonEditor& editor, const Gen3ExportRequest& request);
+    const StagedPokemonEditor& editor, const Gen3ExportRequest& request,
+    const StagedInventoryEditor* inventory = nullptr);
 
 } // namespace PokeVault::Integration::Gen3

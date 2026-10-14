@@ -93,6 +93,32 @@ std::string sha256Hex(std::span<const uint8_t> bytes) {
     return out;
 }
 
+std::vector<uint8_t> mergeDisjointBlocks(std::span<const uint8_t> original,
+                                         std::span<const uint8_t> first,
+                                         std::span<const uint8_t> second,
+                                         size_t blockSize, std::string& error) {
+    error.clear();
+    if (blockSize == 0 || original.size() != first.size() || original.size() != second.size() ||
+        original.size() % blockSize != 0) {
+        error = "Staged copies do not share the original save layout";
+        return {};
+    }
+    std::vector<uint8_t> merged(first.begin(), first.end());
+    for (size_t offset = 0; offset < original.size(); offset += blockSize) {
+        const auto base = original.subspan(offset, blockSize);
+        const auto a = first.subspan(offset, blockSize);
+        const auto b = second.subspan(offset, blockSize);
+        const bool aChanged = !std::equal(a.begin(), a.end(), base.begin());
+        const bool bChanged = !std::equal(b.begin(), b.end(), base.begin());
+        if (aChanged && bChanged) {
+            error = "Both staged workspaces changed the same save block; export them separately";
+            return {};
+        }
+        if (bChanged) std::copy(b.begin(), b.end(), merged.begin() + static_cast<std::ptrdiff_t>(offset));
+    }
+    return merged;
+}
+
 VerifiedExportResult publishVerifiedStagedExport(const VerifiedExportRequest& request) {
     VerifiedExportResult result;
     if (request.rootDirectory.empty() || !safeStem(request.directoryStem)) {

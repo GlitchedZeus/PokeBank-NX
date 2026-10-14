@@ -138,6 +138,20 @@ int main() {
     exportCase(root, "gold_gbc", gen2Save(0x40), gen2Save(0x41),
                Common::gen2StrictValidator(Gen2::SourceGame::Gold));
 
+    // Sector-disjoint merge: each block comes from the copy that changed it; overlap is refused.
+    {
+        const std::vector<uint8_t> base(0x3000, 0);
+        auto a = base, b = base;
+        a[0x0010] = 1;
+        b[0x2010] = 2;
+        std::string error;
+        const auto merged = Common::mergeDisjointBlocks(base, a, b, 0x1000, error);
+        assert(error.empty() && merged.size() == base.size() && merged[0x0010] == 1 && merged[0x2010] == 2);
+        b[0x0020] = 3;  // now both copies changed block 0
+        assert(Common::mergeDisjointBlocks(base, a, b, 0x1000, error).empty() && !error.empty());
+        assert(Common::mergeDisjointBlocks(base, a, std::vector<uint8_t>(0x2000), 0x1000, error).empty());
+    }
+
     fs::remove_all(root);
     std::cout << "Classic verified Bag export (Gen I/II strict validators): PASS\n";
     return 0;

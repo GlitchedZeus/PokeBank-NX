@@ -3,17 +3,36 @@
 namespace PokeVault::Integration::Gen3 {
 
 Common::VerifiedExportResult publishVerifiedGen3Export(
-    const StagedPokemonEditor& editor, const Gen3ExportRequest& request) {
+    const StagedPokemonEditor& editor, const Gen3ExportRequest& request,
+    const StagedInventoryEditor* inventory) {
     Common::VerifiedExportResult result;
-    if (!editor.hasPendingChanges()) {
+    const bool bagPending = inventory && inventory->hasPendingChanges();
+    if (!editor.hasPendingChanges() && !bagPending) {
         result.error = "No pending changes to export";
         return result;
     }
     std::string finalizeError;
-    const auto edited = editor.finalizedBytes(finalizeError);
+    auto edited = editor.finalizedBytes(finalizeError);
     if (edited.empty()) {
         result.error = finalizeError.empty() ? "Staged Gen III finalization failed" : finalizeError;
         return result;
+    }
+    if (bagPending) {
+        if (inventory->sourceGame() != editor.sourceGame() ||
+            inventory->originalBytes() != editor.originalBytes()) {
+            result.error = "Bag and Pokemon workspaces were opened from different saves";
+            return result;
+        }
+        const auto bag = inventory->finalizedBytes(finalizeError);
+        if (bag.empty()) {
+            result.error = finalizeError.empty() ? "Staged Gen III Bag finalization failed" : finalizeError;
+            return result;
+        }
+        edited = Common::mergeDisjointBlocks(editor.originalBytes(), edited, bag, 0x1000, finalizeError);
+        if (edited.empty()) {
+            result.error = finalizeError;
+            return result;
+        }
     }
 
     const SourceGame game = editor.sourceGame();
@@ -33,6 +52,7 @@ Common::VerifiedExportResult publishVerifiedGen3Export(
         transaction.changeLines.push_back(
             "Box " + std::to_string(change.box + 1) + " slot " + std::to_string(change.slot + 1) +
             " " + change.label + ": " + change.beforeValue + " -> " + change.afterValue);
+    if (bagPending) transaction.changeLines.push_back("Bag: staged item changes included");
     transaction.validator = [game](std::span<const uint8_t> bytes, std::string& error) {
         auto parsed = parse(bytes, game);
         if (!parsed) {

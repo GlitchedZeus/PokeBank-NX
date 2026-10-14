@@ -1398,18 +1398,14 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
     return true;
 }
 
-// Verified export of the staged Pokemon copy into the app-owned exports/gen3 root. The emulator
-// source is never written. Bag edits live in a separate staged buffer, so a combined export is
-// refused rather than silently dropping either set of changes.
+// Verified export of the staged Pokemon copy (plus any pending Bag edits) into the app-owned
+// exports/gen3 root. The emulator source is never written.
 void exportStagedGen3Copy(TrainerViewScreen& screen) {
     auto* staged = editor(screen);
-    if (!staged || !staged->hasPendingChanges()) {
-        screen.postStatus("No staged Generation III Pokemon changes to export", 240);
-        return;
-    }
     const auto* inventory = bridge(screen).stagedInventory();
-    if (inventory && inventory->hasPendingChanges()) {
-        screen.postStatus("Bag edits are staged separately; export or discard them in Items first", 480);
+    if (!staged || (!staged->hasPendingChanges() &&
+                    !(inventory && inventory->hasPendingChanges()))) {
+        screen.postStatus("No staged Generation III changes to export", 240);
         return;
     }
     std::string error;
@@ -1429,7 +1425,8 @@ void exportStagedGen3Copy(TrainerViewScreen& screen) {
 #ifdef POKEVAULT_GIT_COMMIT
     request.applicationSha = POKEVAULT_GIT_COMMIT;
 #endif
-    const auto result = Gen3::publishVerifiedGen3Export(*staged, request);
+    // Pending Bag edits are merged in by sector so one exported save carries both workspaces.
+    const auto result = Gen3::publishVerifiedGen3Export(*staged, request, inventory);
     if (!result.success) {
         screen.postStatus(result.error.empty() ? "Verified Generation III export failed" : result.error, 480);
         return;

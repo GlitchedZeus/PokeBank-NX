@@ -1,4 +1,5 @@
 #include "Integration/Gen3/Gen3ExportTransaction.h"
+#include "Integration/Gen3/Gen3StagedInventoryEditor.h"
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -564,6 +565,34 @@ void exportGame(SourceGame game, Family family) {
     assert(manifest.find(std::string("GAME_ID=") + exactSourceGameId(game)) != std::string::npos);
     assert(manifest.find("SOURCE_SHA256=" + exported.originalSha256) != std::string::npos);
     assert(manifest.find("- Box 1 slot 1 ") != std::string::npos);
+
+    // Bag edits live in a separate staged workspace; one export carries both, merged by sector.
+    auto bag = StagedInventoryEditor::create(source, game, error);
+    assert(bag && error.empty());
+    assert(bag->stageInventoryQuantity(InventoryPouch::Items, 13, 7, error));
+    auto combined = PokeVault::Integration::Gen3::publishVerifiedGen3Export(*editor, request, bag.get());
+    assert(combined.success && combined.directory != exported.directory);
+    const auto both = slurpFile(fs::path(combined.directory) / "edited.sav");
+    auto bothParsed = parse(both, game);
+    assert(bothParsed);
+    bool sawPotion = false;
+    for (const auto& pouch : bothParsed.save->inventory())
+        for (const auto& item : pouch.items)
+            if (pouch.pouch == InventoryPouch::Items && item.itemId == 13 && item.count == 7) sawPotion = true;
+    assert(sawPotion);
+    auto bothReopened = StagedPokemonEditor::create(both, game, error);
+    const auto bothMon = bothReopened ? bothReopened->boxedPokemon(0, 0, error) : std::nullopt;
+    assert(bothMon && bothMon->nickname == "EXPORT");
+
+    // A Bag-only export works too; a workspace opened from a different save is refused.
+    editor->discard();
+    assert(PokeVault::Integration::Gen3::publishVerifiedGen3Export(*editor, request, bag.get()).success);
+    auto other = fixture(family, game);
+    other[0x10] ^= 1;  // different original bytes (outside any validated sector payload use)
+    auto foreign = StagedInventoryEditor::create(other, game, error);
+    if (foreign && foreign->stageInventoryQuantity(InventoryPouch::Items, 13, 2, error))
+        assert(!PokeVault::Integration::Gen3::publishVerifiedGen3Export(*editor, request, foreign.get()).success);
+    error.clear();
     assert(source == immutableSource);
     fs::remove_all(root);
 }
