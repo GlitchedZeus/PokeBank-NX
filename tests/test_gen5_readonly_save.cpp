@@ -522,7 +522,10 @@ void discoveryContracts() {
         twoRoots,G::DiscoveryLimits{32,4096,1});
     assert(directoryBudget.limitReached);
     assert(directoryBudget.directoriesExamined==1);
-    assert(directoryBudget.rootsConsidered==1 && directoryBudget.rootsOpened==1);
+    // The second bounded root is considered, but cannot be opened after
+    // exhausting the directory budget in the first root. Neither provider
+    // may be silently claimed as fully scanned.
+    assert(directoryBudget.rootsConsidered==2 && directoryBudget.rootsOpened==1);
     for(const auto& path:junkFiles)assert(std::remove(path.c_str())==0);
     assert(::rmdir(flood.c_str())==0);
 
