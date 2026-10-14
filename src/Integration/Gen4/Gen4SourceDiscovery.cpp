@@ -179,10 +179,18 @@ struct ScanState {
     DiscoveryResult result;
     std::set<std::string> visitedDirectories;
     std::set<std::string> visitedFiles;
+    size_t rootFilesExamined = 0;
+    bool rootLimitReached = false;
+
+    // The per-root candidate-file budget is spent. An entry-cap hit in one oversized directory
+    // also marks the root truncated, but sibling directories are still scanned.
+    [[nodiscard]] bool fileBudgetExhausted() const noexcept {
+        return rootLimitReached && rootFilesExamined >= limits.maxFiles;
+    }
 };
 
 void scanDirectory(const DiscoveryRoot& root, const std::string& path, size_t depth, ScanState& state) {
-    if (state.result.limitReached || depth > root.maxDepth) return;
+    if (state.fileBudgetExhausted() || depth > root.maxDepth) return;
 
     struct stat directoryInfo{};
     if (::stat(path.c_str(), &directoryInfo) != 0 || !S_ISDIR(directoryInfo.st_mode)) return;
@@ -197,13 +205,18 @@ void scanDirectory(const DiscoveryRoot& root, const std::string& path, size_t de
     std::vector<std::string> names;
     while (const dirent* entry = readdir(directory)) {
         const std::string name(entry->d_name);
-        if (name != "." && name != "..") names.push_back(name);
+        if (name == "." || name == "..") continue;
+        if (names.size() >= state.limits.maxEntriesPerDirectory) {
+            state.rootLimitReached = true;
+            break;
+        }
+        names.push_back(name);
     }
     closedir(directory);
     std::sort(names.begin(), names.end());
 
     for (const auto& name : names) {
-        if (state.result.limitReached) break;
+        if (state.fileBudgetExhausted()) break;
         const std::string child = join(path, name);
         struct stat st{};
         if (::stat(child.c_str(), &st) != 0) continue;
@@ -217,10 +230,11 @@ void scanDirectory(const DiscoveryRoot& root, const std::string& path, size_t de
               std::to_string(static_cast<unsigned long long>(st.st_ino))
             : normalizedPath(child);
         if (!state.visitedFiles.insert(fileKey).second) continue;
-        if (state.result.filesExamined >= state.limits.maxFiles) {
-            state.result.limitReached = true;
+        if (state.rootFilesExamined >= state.limits.maxFiles) {
+            state.rootLimitReached = true;
             break;
         }
+        ++state.rootFilesExamined;
         ++state.result.filesExamined;
         SourceCandidate candidate = inspectSourceFile(
             child, sourceTypeForPath(root.sourceType, child));
@@ -512,11 +526,19 @@ SourceCandidate inspectSourceFile(
 
 DiscoveryResult discoverSources(std::span<const DiscoveryRoot> roots, DiscoveryLimits limits) {
     if (limits.maxFiles == 0) limits.maxFiles = 1;
+    if (limits.maxEntriesPerDirectory == 0) limits.maxEntriesPerDirectory = 1;
     ScanState state{limits, {}, {}, {}};
     for (const auto& root : roots) {
-        if (state.result.limitReached) break;
-        if (!root.path.empty() && isDirectory(root.path))
-            scanDirectory(root, root.path, 0, state);
+        if (root.path.empty() || !isDirectory(root.path)) continue;
+        // Fair, independent budget per provider root: an earlier root hitting its limit
+        // marks only itself truncated and never prevents later roots from being scanned.
+        state.rootFilesExamined = 0;
+        state.rootLimitReached = false;
+        scanDirectory(root, root.path, 0, state);
+        if (state.rootLimitReached) {
+            state.result.limitReached = true;
+            state.result.truncatedRoots.push_back(root.path);
+        }
     }
     return std::move(state.result);
 }

@@ -797,6 +797,42 @@ void testSourceDiscovery() {
     assert(ready==5 && dsvReady==2 && wrappedCount==1 && savestateCount==1 &&
            sawDP && sawPT && sawHG);
 
+    // Provider fairness: a RetroArch folder full of unrelated saves exhausts only its OWN
+    // budget. DraStic and melonDS roots after it must still be scanned completely.
+    {
+        const auto crowded=root/"crowded-retroarch";
+        const auto melon=root/"melonds";
+        fs::create_directories(crowded);
+        fs::create_directories(melon);
+        const std::vector<uint8_t> junk(64,0x5A);
+        for(int i=0;i<40;++i) write(crowded/("Other Game "+std::to_string(100+i)+".srm"),junk);
+        write(melon/"Pearl.sav",dp);
+        const std::array<DiscoveryRoot,3> fairRoots{{
+            {crowded.string(),"RetroArch",1},
+            {drasticBackup.string(),"DraStic",1},
+            {melon.string(),"melonDS",1},
+        }};
+        auto fair=discoverSources(fairRoots,{8});
+        assert(fair.limitReached);
+        assert(fair.truncatedRoots.size()==1 && fair.truncatedRoots.front()==crowded.string());
+        size_t drasticReady=0,melonReady=0;
+        for(const auto& candidate:fair.candidates) {
+            if(!candidate.ready()) continue;
+            if(candidate.sourceType=="DraStic") ++drasticReady;
+            if(candidate.sourceType=="melonDS") ++melonReady;
+        }
+        assert(drasticReady==2 && melonReady==1);
+        assert(fair.filesExamined==8+2+1);
+
+        // Directory-entry cap bounds a single huge folder without hiding later providers.
+        auto capped=discoverSources(fairRoots,{256,16});
+        assert(capped.limitReached && capped.truncatedRoots.front()==crowded.string());
+        size_t cappedMelon=0;
+        for(const auto& candidate:capped.candidates)
+            if(candidate.ready() && candidate.sourceType=="melonDS") ++cappedMelon;
+        assert(cappedMelon==1);
+    }
+
     auto manual=inspectSourceFile((retro/"Diamond.srm").string(),"Manual","diamond_nds");
     assert(manual.ready() && manual.expectedRawFamily=="DP");
     auto mismatch=inspectSourceFile((retro/"Platinum.sav").string(),"Manual","diamond_nds");

@@ -30,7 +30,11 @@ struct DiscoveryRoot {
 };
 
 struct DiscoveryLimits {
+    // Candidate files inspected PER ROOT. Each provider root gets its own budget so a large
+    // RetroArch savefiles folder can never starve DraStic/melonDS discovery.
     size_t maxFiles = 256;
+    // Directory entries buffered per opened directory (bounds memory/stat work on huge folders).
+    size_t maxEntriesPerDirectory = 4096;
 };
 
 struct SourceCandidate {
@@ -58,6 +62,8 @@ struct DiscoveryResult {
     std::vector<SourceCandidate> candidates;
     size_t filesExamined = 0;
     bool limitReached = false;
+    // Roots whose scan stopped at a limit; results from other roots are still complete.
+    std::vector<std::string> truncatedRoots;
 };
 
 enum class SourceContainerKind : uint8_t {
