@@ -95,6 +95,17 @@ bool retroArchContentExists(std::string_view contentPath) {
     return regularFile(retroArchPhysicalContentPath(contentPath));
 }
 
+// True only when the file's cartridge header positively names a different Pokémon release.
+bool romHeaderContradictsGame(std::string_view gameId, const std::string& path) {
+    FILE* file = std::fopen(path.c_str(), "rb");
+    if (!file) return false;
+    std::array<unsigned char, kGameLaunchRomHeaderBytes> header{};
+    const size_t got = std::fread(header.data(), 1, header.size(), file);
+    std::fclose(file);
+    return gameLaunchRomIdentity(gameId, path, header.data(), got) ==
+           GameLaunchRomIdentity::Contradicts;
+}
+
 bool hasExtension(std::string_view path, std::string_view ext) {
     if (path.size() < ext.size()) return false;
     auto tail = path.substr(path.size() - ext.size());
@@ -597,7 +608,8 @@ void collectContentMatches(const std::string& root, std::string_view sourcePath,
         }
         if (!S_ISREG(st.st_mode) || !gameLaunchContentSupported(gameId, path)) continue;
         ++examined;
-        if (gameLaunchCandidateStemMatches(gameId, sourcePath, path))
+        if (gameLaunchCandidateStemMatches(gameId, sourcePath, path) &&
+            !romHeaderContradictsGame(gameId, path))
             matches.push_back(path);
     }
 }
@@ -706,6 +718,12 @@ GameLaunchDescriptor descriptorFromStored(std::string_view gameId,
                (kind != GameLaunchProviderKind::RetroArch && !regularFile(result.contentPath))) {
         result.state = GameLaunchState::NeedsContentLink;
         result.detail = "The linked game file is missing; link it again.";
+    } else if (romHeaderContradictsGame(gameId, kind == GameLaunchProviderKind::RetroArch
+                   ? retroArchPhysicalContentPath(result.contentPath) : result.contentPath)) {
+        // A remembered link is re-verified every time; a replaced/renamed file cannot
+        // silently launch a different Pokémon game.
+        result.state = GameLaunchState::NeedsContentLink;
+        result.detail = "The linked game file is a different Pokémon game; link it again.";
     } else if (kind == GameLaunchProviderKind::RetroArch &&
                (result.corePath.empty() || !regularFile(result.corePath))) {
         result.state = GameLaunchState::LauncherMissing;
@@ -787,6 +805,10 @@ GameLaunchDescriptor resolveRetroArch(std::string_view gameId,
                 content = switchPath(content);
                 if (!gameLaunchContentSupported(gameId, content)) { pos += 6; continue; }
                 if (!retroArchContentExists(content)) { pos += 6; continue; }
+                if (romHeaderContradictsGame(gameId, retroArchPhysicalContentPath(content))) {
+                    pos += 6;
+                    continue;
+                }
                 sawFamilyCompatibleContent = true;
 
                 const size_t corePos = text.find("\"core_path\"", pos + 6);
@@ -1111,6 +1133,10 @@ bool saveGameLaunchBinding(std::string_view bindingKey,
     }
     if (!gameLaunchContentSupported(gameId, content)) {
         error = "That file type does not match this Pokémon game.";
+        return false;
+    }
+    if (romHeaderContradictsGame(gameId, content)) {
+        error = "That game file's header identifies a different Pokémon game.";
         return false;
     }
 

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <string>
@@ -331,6 +332,74 @@ inline bool gameLaunchCandidateStemMatches(std::string_view gameId,
     for (unsigned char c : identity)
         if (std::isalnum(c)) compact.push_back(static_cast<char>(std::tolower(c)));
     return compact.size() >= 5 && candidate.find(compact) != std::string::npos;
+}
+
+// ROM-content identity. A filename match is not proof of the game: before any content file is
+// linked or launched, its cartridge header is compared with the selected game. Only a header that
+// positively identifies a DIFFERENT Pokémon release is rejected; archives, hacks with unknown
+// headers and unreadable files stay "Unknown" so legitimate localized dumps are never refused.
+enum class GameLaunchRomIdentity : uint8_t { Unknown, Matches, Contradicts };
+
+// Bytes a caller must supply (from file offset 0) for gameLaunchRomHeaderGameId().
+inline constexpr size_t kGameLaunchRomHeaderBytes = 0x150;
+
+inline std::string_view gameLaunchRomHeaderGameId(std::string_view extension,
+                                                   const unsigned char* data,
+                                                   size_t size) noexcept {
+    if (!data) return {};
+    if (extension == ".gb" || extension == ".gbc") {
+        if (size < 0x144) return {};
+        // Title is 0x134..0x143; on CGB-aware carts 0x143 is the CGB flag, not text.
+        const size_t titleEnd = (data[0x143] & 0x80u) ? 0x143 : 0x144;
+        size_t end = 0x134;
+        while (end < titleEnd && data[end] != 0) ++end;
+        while (end > 0x134 && data[end - 1] == ' ') --end;
+        const std::string_view title(reinterpret_cast<const char*>(data + 0x134), end - 0x134);
+        constexpr std::string_view kRed[] = {"POKEMON RED", "POKEMON ROT", "POKEMON ROUGE",
+                                             "POKEMON ROSSO", "POKEMON ROJO"};
+        constexpr std::string_view kBlue[] = {"POKEMON BLUE", "POKEMON BLAU", "POKEMON BLEU",
+                                              "POKEMON BLU", "POKEMON AZUL"};
+        for (auto t : kRed) if (title == t) return "red_gb";
+        for (auto t : kBlue) if (title == t) return "blue_gb";
+        if (title == "POKEMON GREEN") return "green_gb";
+        if (title.rfind("POKEMON YEL", 0) == 0) return "yellow_gb";
+        if (title.rfind("POKEMON_GLD", 0) == 0) return "gold_gbc";
+        if (title.rfind("POKEMON_SLV", 0) == 0) return "silver_gbc";
+        if (title.rfind("PM_CRYSTAL", 0) == 0) return "crystal_gbc";
+        return {};
+    }
+    if (extension == ".gba") {
+        if (size < 0xBD || data[0xB2] != 0x96) return {};  // fixed GBA header value
+        const std::string_view code(reinterpret_cast<const char*>(data + 0xAC), 3);
+        if (code == "AXV") return "ruby_gba";
+        if (code == "AXP") return "sapphire_gba";
+        if (code == "BPE") return "emerald_gba";
+        if (code == "BPR") return "firered_gba";
+        if (code == "BPG") return "leafgreen_gba";
+        return {};
+    }
+    if (extension == ".nds") {
+        if (size < 0x10) return {};
+        const std::string_view code(reinterpret_cast<const char*>(data + 0x0C), 3);
+        if (code == "ADA") return "diamond_nds";
+        if (code == "APA") return "pearl_nds";
+        if (code == "CPU") return "platinum_nds";
+        if (code == "IPK") return "heartgold_nds";
+        if (code == "IPG") return "soulsilver_nds";
+        return {};
+    }
+    return {};
+}
+
+inline GameLaunchRomIdentity gameLaunchRomIdentity(std::string_view gameId,
+                                                   std::string_view contentPath,
+                                                   const unsigned char* header,
+                                                   size_t size) noexcept {
+    const std::string extension = lowerLaunchExtension(contentPath);
+    const std::string_view identified = gameLaunchRomHeaderGameId(extension, header, size);
+    if (identified.empty()) return GameLaunchRomIdentity::Unknown;
+    return identified == gameId ? GameLaunchRomIdentity::Matches
+                                : GameLaunchRomIdentity::Contradicts;
 }
 
 inline int gameLaunchCandidateScore(std::string_view gameId,
