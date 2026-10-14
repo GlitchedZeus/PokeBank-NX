@@ -141,6 +141,11 @@ require(selector_header, "getSelectedGen5Copy() const",
 require(ui_header, "SaveCopySelection selectedCopy")
 require(manager, "selectScreen.getSelectedGen5Copy()",
         "legacySourceBindings,profileIdentity(userUid),gameId,selectedCopy")
+# Assigned Gen V paths are shown as LINKED even when two independent
+# checksum-valid retail copies require explicit re-selection on every Open.
+require(games, '"REMEMBERED / CHOOSE COPY"',
+        '"This save is already linked to another profile or game."')
+
 # Gen V must match Gen I-IV's explicit active-profile linking:
 # Save Source menu -> Assign Save to This Profile -> validated chooser A.
 # Opening a game by A is distinct. A metadata-only assignment never starts
@@ -170,7 +175,7 @@ assert "selectedGen5Fingerprint=fresh.instance.contentFingerprint;" not in assig
 
 # A file with two different checksum-valid copies cannot open through an
 # automatic persisted assignment that does not record which copy was chosen.
-require(games, '"CHOOSE COPY"', "SaveCopySelection::Automatic",
+require(games, '"REMEMBERED / CHOOSE COPY"', "SaveCopySelection::Automatic",
         "const bool separateGen5Copy =",
         "instance.generation==5 && !instance.sourceVariant.empty()",
         "if (!separateGen5Copy &&")

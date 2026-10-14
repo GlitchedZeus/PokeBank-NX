@@ -651,6 +651,17 @@ void fourTitleProfileAssignmentContracts() {
         assert(preferred.binding.sourcePath==entry.path);
         assert(preferred.binding.profileIdentity==g.profile);
         assert(preferred.binding.gameIdentity==g.id);
+        // Merely switching to another Switch profile must not steal the
+        // existing source, replace its binding, or make it visible there.
+        const std::string otherProfile=std::string(g.profile)=="profile-a"?
+            "profile-b":"profile-a";
+        assert(!bindings.replaceFileAssignmentAndSave(source.sourceIdentity,
+            {otherProfile,g.id,entry.path,g.provider,
+             g.family==G::SaveFamily::BlackWhite?"BW":"B2W2"}));
+        const auto stillOwned=bindings.resolveFileForGame(g.profile,g.id);
+        assert(stillOwned.status==PokeVault::Legacy::AssignedFileStatus::Ready);
+        assert(stillOwned.binding.profileIdentity==g.profile);
+        assert(stillOwned.sourceIdentity==source.sourceIdentity);
         // The exact title remains authoritative even for identical-size raw
         // files. A source assigned to Black must never open for White.
         const char* wrong=i==0?"white_nds":

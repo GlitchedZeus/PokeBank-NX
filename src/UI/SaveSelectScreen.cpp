@@ -1051,7 +1051,7 @@ namespace UI {
                             card.dexTotal=preview->dexTotal;
                         } else card.sourceLabel=
                             opened.diagnostic.find("two valid but different")!=std::string::npos
-                                ? "CHOOSE COPY" : "RELINK SAVE";
+                                ? "REMEMBERED / CHOOSE COPY" : "RELINK SAVE";
                     } else if(source.status==PokeVault::Legacy::AssignedFileStatus::Missing)
                         card.sourceLabel="MISSING";
                     else if(source.status==PokeVault::Legacy::AssignedFileStatus::Unreadable)
@@ -2370,7 +2370,9 @@ namespace UI {
                 ? "BW" : "B2W2";
         if(!legacyBindings->replaceFileAssignmentAndSave(
                 checked.sourceIdentity,std::move(binding))) {
-            gen5Notice="Gen V assignment could not be stored safely; original source unchanged.";
+            gen5Notice=legacyBindings->lastError().find("conflict")!=std::string::npos
+                ? "This save is already linked to another profile or game."
+                : "Gen V assignment could not be stored safely; original source unchanged.";
             overlay=Overlay::Gen5Setup;
             return false;
         }
