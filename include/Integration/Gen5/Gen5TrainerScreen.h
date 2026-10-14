@@ -1,0 +1,155 @@
+#ifndef POKEBANK_GEN5_TRAINER_SCREEN_H
+#define POKEBANK_GEN5_TRAINER_SCREEN_H
+
+#include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
+#include "Integration/Gen5/Gen5TrainerName.h"
+
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <utility>
+#include <vector>
+
+namespace PokeVault::Integration::Gen5 {
+
+// Session-local model for the shared Trainer panel's Gen V field list.
+// Editable rows (Name, Money, Play Time) stage through Gen5StagedTrainer;
+// every other row is read-only and says so. Controller and touch share the
+// same entry points: Up/Down or tap focuses, A or a second tap edits.
+class Gen5TrainerScreen {
+public:
+    using Workspace = Gen5StagedPokemonWorkspace;
+    enum class Row : uint8_t { Name, Money, PlayTime, TrainerId, SecretId, Gender, Badges, Language };
+    static constexpr std::array<Row, 8> kRows{{Row::Name, Row::Money, Row::PlayTime, Row::TrainerId,
+                                               Row::SecretId, Row::Gender, Row::Badges, Row::Language}};
+    struct FooterEntry { const char* glyph; const char* label; };
+
+    [[nodiscard]] bool open() const noexcept { return open_; }
+    [[nodiscard]] size_t row() const noexcept { return row_; }
+    [[nodiscard]] Row selectedRow() const noexcept { return kRows[row_]; }
+    [[nodiscard]] static constexpr bool editable(Row row) noexcept {
+        return row == Row::Name || row == Row::Money || row == Row::PlayTime;
+    }
+    [[nodiscard]] static constexpr const char* label(Row row) noexcept {
+        switch (row) {
+            case Row::Name: return "Name";
+            case Row::Money: return "Money";
+            case Row::PlayTime: return "Play Time";
+            case Row::TrainerId: return "Trainer ID";
+            case Row::SecretId: return "Secret ID";
+            case Row::Gender: return "Gender";
+            case Row::Badges: return "Badges";
+            case Row::Language: return "Language";
+        }
+        return "";
+    }
+    [[nodiscard]] static bool available(const Workspace& ws) { return ws.trainerPresentation().has_value(); }
+    [[nodiscard]] static std::string value(const Workspace& ws, Row row) {
+        const auto t = ws.trainerPresentation();
+        if (!t) return "Unavailable";
+        switch (row) {
+            case Row::Name: return displayTrainerName(t->rawName).value_or("(unsupported glyphs)");
+            case Row::Money: return std::to_string(t->money);
+            case Row::PlayTime: return playTime5(t->hours, t->minutes, t->seconds);
+            case Row::TrainerId: return std::to_string(t->tid);
+            case Row::SecretId: return std::to_string(t->sid);
+            case Row::Gender: return t->gender == 0 ? "Male" : t->gender == 1 ? "Female" : "Unknown";
+            case Row::Badges: return std::to_string(t->badgeCount()) + " / 8";
+            case Row::Language: return std::to_string(t->language);
+        }
+        return {};
+    }
+
+    [[nodiscard]] bool openEditor(const Workspace& ws, std::string& error) {
+        if (!available(ws)) {
+            error = "Gen V trainer data failed native validation; view only";
+            return false;
+        }
+        open_ = true;
+        row_ = 0;
+        error.clear();
+        return true;
+    }
+    void close() noexcept { open_ = false; row_ = 0; }
+    void moveRow(int delta) noexcept {
+        if (!open_) return;
+        constexpr int count = static_cast<int>(kRows.size());
+        row_ = static_cast<size_t>(((static_cast<int>(row_) + delta) % count + count) % count);
+    }
+    [[nodiscard]] bool tapRow(size_t row) noexcept {
+        if (!open_ || row >= kRows.size()) return false;
+        const bool focused = row == row_;
+        row_ = row;
+        return focused;
+    }
+    // A on the focused row: true when the row may be edited by the caller's
+    // keypad/keyboard prompt; false (with a reason) for read-only rows.
+    [[nodiscard]] bool beginEdit(const Workspace& ws, std::string& error) const {
+        if (!open_ || !available(ws)) {
+            error = "Gen V trainer editor is not open";
+            return false;
+        }
+        if (!editable(selectedRow())) {
+            error = std::string(label(selectedRow())) +
+                    " is read-only for Gen V (ownership/story data is never edited)";
+            return false;
+        }
+        error.clear();
+        return true;
+    }
+    [[nodiscard]] std::vector<FooterEntry> footer() const {
+        if (!open_) return {{"A", "Edit Trainer"}, {"X", "Party"}, {"Y", "Bag"}, {"B", "Exit"}};
+        if (editable(selectedRow()))
+            return {{"D-pad/Stick", "Choose"}, {"A", "Edit"}, {"+", "Review"}, {"B", "Back"}};
+        return {{"D-pad/Stick", "Choose"}, {"+", "Review"}, {"B", "Back"}};
+    }
+
+    template <class Refresh>
+    [[nodiscard]] bool applyName(Workspace& ws, std::string_view name, Refresh&& refresh, std::string& error) {
+        return apply(ws, Row::Name, std::forward<Refresh>(refresh), error,
+                     [&](Gen5StagedTrainer& t, std::string* why) { return t.setName(name, why); });
+    }
+    template <class Refresh>
+    [[nodiscard]] bool applyMoney(Workspace& ws, uint32_t money, Refresh&& refresh, std::string& error) {
+        return apply(ws, Row::Money, std::forward<Refresh>(refresh), error,
+                     [&](Gen5StagedTrainer& t, std::string* why) { return t.setMoney(money, why); });
+    }
+    template <class Refresh>
+    [[nodiscard]] bool applyPlayTime(Workspace& ws, uint32_t h, uint32_t m, uint32_t s, Refresh&& refresh,
+                                     std::string& error) {
+        return apply(ws, Row::PlayTime, std::forward<Refresh>(refresh), error,
+                     [&](Gen5StagedTrainer& t, std::string* why) { return t.setPlayTime(h, m, s, why); });
+    }
+
+private:
+    template <class Refresh, class Op>
+    [[nodiscard]] bool apply(Workspace& ws, Row expected, Refresh&& refresh, std::string& error, Op&& op) {
+        if (!open_ || selectedRow() != expected) {
+            error = "Gen V trainer selection changed; edit cancelled";
+            return false;
+        }
+        Workspace snapshot = ws;
+        auto* trainer = ws.stagedTrainer(&error);
+        if (!trainer) return false;
+        if (!op(*trainer, &error)) {
+            ws = std::move(snapshot);
+            return false;
+        }
+        if (!refresh(error)) {
+            ws = std::move(snapshot);
+            std::string restored;
+            (void)refresh(restored);
+            if (error.empty()) error = "Gen V trainer presentation refresh failed; edit rolled back";
+            return false;
+        }
+        error.clear();
+        return true;
+    }
+
+    bool open_ = false;
+    size_t row_ = 0;
+};
+
+} // namespace PokeVault::Integration::Gen5
+#endif

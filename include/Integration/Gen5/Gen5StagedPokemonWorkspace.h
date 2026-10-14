@@ -5,6 +5,7 @@
 #include "Integration/Gen5/Gen5StagedPokemonRecord.h"
 #include "Integration/Gen5/Gen5NativeCreate.h"
 #include "Integration/Gen5/Gen5Bag.h"
+#include "Integration/Gen5/Gen5Trainer.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -62,7 +63,7 @@ public:
     }
 
     [[nodiscard]] bool hasChanges() const noexcept {
-        if(!boxReplacements_.empty() || bagDirty())return true;
+        if(!boxReplacements_.empty() || bagDirty() || trainerDirty())return true;
         for(const auto& pair:pending_)if(pair.second.dirty())return true;
         return false;
     }
@@ -271,7 +272,27 @@ public:
         }
         return out;
     }
-    void discardAll() noexcept { pending_.clear();boxReplacements_.clear();bag_.reset(); }
+    void discardAll() noexcept {
+        pending_.clear();boxReplacements_.clear();bag_.reset();trainer_.reset();
+    }
+
+    // App-owned PlayerData/Misc copies for native Trainer edits (Name, Money,
+    // Play Time). nullptr when the trainer blocks are not fully recognized.
+    [[nodiscard]] Gen5StagedTrainer* stagedTrainer(std::string* error=nullptr) {
+        if(!trainer_)trainer_=Gen5StagedTrainer::create(source_,error);
+        return trainer_?&*trainer_:nullptr;
+    }
+    [[nodiscard]] const Gen5StagedTrainer* stagedTrainerIfOpened() const noexcept {
+        return trainer_?&*trainer_:nullptr;
+    }
+    [[nodiscard]] bool trainerDirty() const noexcept { return trainer_ && trainer_->dirty(); }
+    [[nodiscard]] std::optional<Trainer5View> trainerPresentation() const {
+        if(trainer_)return trainer_->current();
+        return decodeTrainer5(source_);
+    }
+    [[nodiscard]] std::vector<TrainerChange5> trainerReviewChanges() const {
+        return trainerDirty()?trainer_->changes():std::vector<TrainerChange5>{};
+    }
 
     // App-owned Items-block copy for native Bag edits. Created on first use from
     // the selected validated copy; nullptr when the bag is not fully recognized.
@@ -404,6 +425,7 @@ private:
     std::map<Slot,StagedPokemon5Record> pending_;
     std::map<Slot,BoxReplacement> boxReplacements_;
     std::optional<Gen5StagedBag> bag_;
+    std::optional<Gen5StagedTrainer> trainer_;
 };
 
 } // namespace PokeVault::Integration::Gen5

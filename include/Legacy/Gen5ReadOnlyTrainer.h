@@ -5,6 +5,7 @@
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "Integration/Gen5/Gen5SharedScreenState.h"
 #include "Integration/Gen5/Gen5BagScreen.h"
+#include "Integration/Gen5/Gen5TrainerScreen.h"
 #include "Trainer/Trainer.h"
 
 #include <memory>
@@ -59,6 +60,16 @@ public:
     // Bag cursor/modal state for the shared Items panel (session-local).
     [[nodiscard]] Integration::Gen5::Gen5BagScreen& bagScreen() noexcept { return bag_; }
     [[nodiscard]] const Integration::Gen5::Gen5BagScreen& bagScreen() const noexcept { return bag_; }
+    [[nodiscard]] Integration::Gen5::Gen5TrainerScreen& trainerScreen() noexcept { return trainerScreen_; }
+    [[nodiscard]] const Integration::Gen5::Gen5TrainerScreen& trainerScreen() const noexcept {
+        return trainerScreen_;
+    }
+    uint32_t getMaxMoney() const noexcept override {
+        return Integration::Gen5::TrainerLayout5::MaxMoney;
+    }
+    size_t getMaxTrainerNameLength() const noexcept override {
+        return Integration::Gen5::TrainerLayout5::MaxNameChars;
+    }
     // Present only already validated staged records. This never assembles,
     // writes, injects or exposes a modified SAV5.
     [[nodiscard]] bool refreshStagedPokemonPresentation(std::string& error);
@@ -72,6 +83,7 @@ private:
     Integration::Gen5::Gen5StagedPokemonWorkspace staged_;
     Integration::Gen5::Gen5SharedScreenState screen_;
     Integration::Gen5::Gen5BagScreen bag_;
+    Integration::Gen5::Gen5TrainerScreen trainerScreen_;
 };
 } // namespace PokeVault::Legacy
 #endif

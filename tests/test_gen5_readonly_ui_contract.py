@@ -1133,4 +1133,15 @@ require(native_bridge, "append(Shared::Action::Move);")
 require(native_screen, "workspace.moveToEmptyBox(target_,")
 require(read("tests/test_gen5_party_box_parity.cpp"), "Action::Move", "originSummary5(")
 
+# Gen V Trainer: only cited Name/Money/Play Time stage; other rows read-only.
+trainer_model = read("include/Integration/Gen5/Gen5Trainer.h")
+require(trainer_model, "6501f0ab46e8f8ca048539dbaf8cae8cb104e722", "PlayerBlockIndex = 27",
+        "MiscBlockIndex = 52", "MaxMoney = 9999999", "kPlayerRanges", "kMiscRanges")
+require(surface, "return handleTrainerEditor(screen,keys,tap);", "editor.applyName(ws,r.text,refresh,error)",
+        "editor.applyMoney(", "editor.applyPlayTime(", "drawTrainerEditor(screen,fb);",
+        "ws.trainerReviewChanges()", '{"A","Edit Trainer"}')
+require(read("include/Integration/Gen5/Gen5StagedSaveCandidate.h"), "Gen5StagedTrainer::kPlayerRanges",
+        "did not preserve the exact staged trainer")
+require(read("src/Integration/Gen5/Gen5WorkingCopyExport.cpp"), "TRAINER_CHANGED=")
+
 print("Gen V read-only shared UI guard contracts: PASS")

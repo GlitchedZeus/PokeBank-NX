@@ -365,9 +365,11 @@ public:
         else if(delta<0 && reviewPage_>0)--reviewPage_;
     }
 
-    // Review lists staged PK5 records first, then each verified Bag change.
+    // Review lists staged PK5 records, then each verified Bag change, then
+    // each verified Trainer field change.
     [[nodiscard]] static size_t reviewRowCount(const Workspace& workspace) {
-        return workspace.changedRecordCount()+workspace.bagReviewChanges().size();
+        return workspace.changedRecordCount()+workspace.bagReviewChanges().size()+
+               workspace.trainerReviewChanges().size();
     }
     // The Bag has no Pokemon action menu, so the shared Items panel opens the
     // same Review surface directly (+). Nothing is staged or exported here.
