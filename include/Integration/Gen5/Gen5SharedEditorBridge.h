@@ -56,6 +56,12 @@ struct SharedEditorSlot {
         if(workspace.originalOccupied(slot.location) &&
            workspace.firstEmptyCloneDestination()<720)
             append(Shared::Action::Clone);
+        // Move Pokemon matches Gen IV's box action: an exact clone into a
+        // verified empty box slot plus removal of the original source slot.
+        if(slot.location.region==Gen5StagedPokemonWorkspace::Region::Box &&
+           workspace.originalOccupied(slot.location) &&
+           workspace.firstEmptyCloneDestination()<720)
+            append(Shared::Action::Move);
         if(slot.location.region==Gen5StagedPokemonWorkspace::Region::Box &&
            workspace.originalOccupied(slot.location))
             append(Shared::Action::Remove);

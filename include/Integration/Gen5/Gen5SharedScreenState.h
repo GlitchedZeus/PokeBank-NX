@@ -119,6 +119,8 @@ public:
     [[nodiscard]] bool black2White2() const noexcept { return black2White2_; }
     [[nodiscard]] size_t reviewPage() const noexcept { return reviewPage_; }
     [[nodiscard]] size_t cloneDestinationIndex() const noexcept { return cloneDestinationIndex_; }
+    // The destination picker is shared by Clone and Move Pokemon.
+    [[nodiscard]] bool moveDestination() const noexcept { return moveDestination_; }
     // The shared Add wizard retains accepted input only in this Trainer
     // session. Rejecting a native field or presentation need not make the
     // player enter all previous PK5 values again.
@@ -185,7 +187,12 @@ public:
             error.clear();
             return true;
         }
-        if(action==Action::Clone) {
+        if(action==Action::Clone || action==Action::Move) {
+            if(action==Action::Move && target_.region!=Workspace::Region::Box) {
+                error="Gen V Move is available for box slots only";
+                return false;
+            }
+            moveDestination_=action==Action::Move;
             cloneDestinationIndex_=workspace.firstEmptyCloneDestination();
             if(cloneDestinationIndex_>=720) {
                 error="Gen V has no verified empty box destination";
@@ -251,8 +258,12 @@ public:
             return false;
         }
         Workspace snapshot=workspace;
-        if(!workspace.cloneToEmptyBox(target_,cloneDestinationIndex_/30,
-                                      cloneDestinationIndex_%30,&error))return false;
+        const bool staged=moveDestination_
+            ? workspace.moveToEmptyBox(target_,cloneDestinationIndex_/30,
+                                       cloneDestinationIndex_%30,&error)
+            : workspace.cloneToEmptyBox(target_,cloneDestinationIndex_/30,
+                                        cloneDestinationIndex_%30,&error);
+        if(!staged)return false;
         if(!std::forward<Refresh>(refresh)(error)) {
             workspace=std::move(snapshot);
             if(error.empty())error="Gen V clone presentation rejected; stage rolled back";
@@ -901,6 +912,7 @@ private:
     size_t locationPickerIndex_=0;
     size_t reviewPage_=0;
     size_t cloneDestinationIndex_=0;
+    bool moveDestination_=false;
     Gen5SharedPokemonSession draft_;
     std::optional<CreateRequest5> pendingCreateInput_;
 };

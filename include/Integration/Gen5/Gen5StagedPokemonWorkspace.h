@@ -197,6 +197,24 @@ public:
         if(error)error->clear();
         return true;
     }
+    // Shared "Move Pokemon" (Gen IV box vocabulary): one atomic transaction
+    // of an exact boxed Clone into a verified empty box slot plus the
+    // all-zero Remove of the ORIGINAL occupied source slot. Both halves are
+    // the already-verified Clone/Remove replacements; nothing else changes.
+    [[nodiscard]] bool moveToEmptyBox(Slot from,size_t box,size_t slot,
+                                      std::string* error=nullptr) {
+        if(from.region!=Region::Box || !originalOccupied(from)) {
+            if(error)*error="Gen V Move requires an unmodified occupied box slot";
+            return false;
+        }
+        auto snapshot=boxReplacements_;
+        if(!cloneToEmptyBox(from,box,slot,error))return false;
+        if(!removeBox(from.box,from.slot,error)) {
+            boxReplacements_=std::move(snapshot);
+            return false;
+        }
+        return true;
+    }
     [[nodiscard]] bool undoBoxReplacement(size_t box,size_t slot) noexcept {
         return boxReplacements_.erase({Region::Box,box,slot})==1;
     }

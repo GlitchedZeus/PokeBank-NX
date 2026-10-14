@@ -1124,4 +1124,13 @@ require(trainer, "staged_.bagPresentation()")
 assert "writeFile" not in bag_model and "fopen" not in bag_model
 require(read("tests/test_gen5_bag_screen.cpp"), "unavailableBag();", "fullPocketRefusesAdd();")
 
+# Gen IV parity: shared box Move Pokemon reuses the verified destination
+# picker; origin dates are View-only (no dynamic_cast under -fno-rtti).
+require(surface, "state.moveDestination()", '"Move Pokemon - Choose Empty Box Slot"',
+        "originSummary5(*native)", "drawVerifiedSummary(screen,fb,&view,false,&*current);")
+assert "dynamic_cast" not in surface
+require(native_bridge, "append(Shared::Action::Move);")
+require(native_screen, "workspace.moveToEmptyBox(target_,")
+require(read("tests/test_gen5_party_box_parity.cpp"), "Action::Move", "originSummary5(")
+
 print("Gen V read-only shared UI guard contracts: PASS")

@@ -7,6 +7,7 @@
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Integration/Gen5/Gen5BoxTouchNavigation.h"
 #include "Integration/Gen5/Gen5SharedReview.h"
+#include "Integration/Gen5/Gen5OriginSummary.h"
 #include "Integration/Gen5/Gen5WorkingCopyExport.h"
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
 #include "Utils/PokeBankPaths.h"
@@ -575,8 +576,9 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                     return trainer.refreshStagedPokemonPresentation(why);
                 },error))
                     screen.postStatus(error,320);
-                else screen.postStatus(
-                    "Gen V cloned to empty staged box slot; source SAV5 unchanged",260);
+                else screen.postStatus(state.moveDestination()
+                    ? "Gen V Pokemon moved in the staged copy; source SAV5 unchanged"
+                    : "Gen V cloned to empty staged box slot; source SAV5 unchanged",260);
             }
             return true;
         case Surface::ConfirmCreateBox:
@@ -938,7 +940,8 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
 // only verified record fields; unlike the generic details modal it NEVER
 // calls Legality::analyze or synthesizes unknown history/stat calculations.
 void drawVerifiedSummary(TrainerViewScreen& screen,PKSEFramebuffer& fb,
-                         const Pokemon::Pokemon* p,bool editDraft=false) {
+                         const Pokemon::Pokemon* p,bool editDraft=false,
+                         const PokeVault::Integration::Gen5::Pokemon5ReadOnly* native=nullptr) {
     if(!p)return;
     const int width=fb.getWidth(),height=fb.getHeight();
     fb.drawFilledRect(0,0,width,height-kNavBarH,Color(0,0,0,165));
@@ -990,6 +993,9 @@ void drawVerifiedSummary(TrainerViewScreen& screen,PKSEFramebuffer& fb,
         "  |  Met location "+std::to_string(p->metLocation())+
         "  |  Ball "+std::to_string(p->ball()),
         Colors::TextSecondary,TextStyle::Caption);
+    if(native && !editDraft) // Edit draws its field list over this region.
+        fb.drawText(x+30,y+503,PokeVault::Integration::Gen5::originSummary5(*native),
+                    Colors::TextSecondary,TextStyle::Caption);
 }
 
 void dimShared(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
@@ -1152,10 +1158,13 @@ void drawCloneDestination(TrainerViewScreen& screen,PKSEFramebuffer& fb,
     const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-kNavBarH-h)/2;
     fb.drawFilledRoundedRect(x,y,w,h,16,Colors::Panel);
     fb.drawRoundedRect(x,y,w,h,16,Colors::Border,1);
-    fb.drawText(x+24,y+18,"Clone Pokemon - Choose Empty Box Slot",
+    const bool move=state.moveDestination();
+    fb.drawText(x+24,y+18,move?"Move Pokemon - Choose Empty Box Slot"
+                              :"Clone Pokemon - Choose Empty Box Slot",
                 Colors::Text,TextStyle::Heading);
-    fb.drawText(x+24,y+56,
-        "Original PK5 is unchanged; only a validated empty box can be selected",
+    fb.drawText(x+24,y+56,move
+        ? "Staged exact copy to the empty slot, then the original slot is cleared"
+        : "Original PK5 is unchanged; only a validated empty box can be selected",
         Colors::Accent,TextStyle::Caption);
     const auto visible=PokeBank::UIModel::SharedPokemonEditor::scrollWindow(
         size_t{720},9,state.cloneDestinationIndex());
@@ -1175,11 +1184,12 @@ void drawCloneDestination(TrainerViewScreen& screen,PKSEFramebuffer& fb,
         fb.drawText(x+w-180,yy+11,allowed?"Empty":"Unavailable",
             allowed?Colors::Accent:Colors::TextDim,TextStyle::Caption);
     }
-    fb.drawText(x+24,y+h-40,
-        "A clones to empty slot in memory only; B cancels without any change",
+    fb.drawText(x+24,y+h-40,move
+        ? "A stages the move in memory only; B cancels without any change"
+        : "A clones to empty slot in memory only; B cancels without any change",
         Colors::TextDim,TextStyle::Caption);
     drawNavBar(fb,{{"D-pad/Stick","Browse"},{"ZL/ZR","Box"},
-                   {"A","Stage Clone"},{"B","Cancel"}});
+                   {"A",move?"Stage Move":"Stage Clone"},{"B","Cancel"}});
 }
 void drawDecision(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                   std::string title,std::string message,
@@ -1599,7 +1609,7 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
             screen.drawGSCOverlay(fb);
             if(current) {
                 Pokemon::Pokemon5ReadOnlyView view(*current,screen.trainer.getGameGroup());
-                drawVerifiedSummary(screen,fb,&view);
+                drawVerifiedSummary(screen,fb,&view,false,&*current);
             }
             drawNavBar(fb,{{"B","Back"},{"","Verified PK5 View"}});
             return true;
