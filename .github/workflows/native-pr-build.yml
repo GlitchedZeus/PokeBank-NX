@@ -70,6 +70,10 @@ jobs:
           # The permanent recovery snapshot intentionally predates item sprites.
           # Regenerate exact per-ball / per-item PNGs using THIS PR head's
           # pinned generator after restoring the snapshot, before validation.
+          # Product Home needs the real trainer sprites plus the missing
+          # Hisui/Paldea artwork. The recovered asset snapshot predates them;
+          # stage them after restoring RomFS, before mandatory asset checks.
+          python3 tools/fetch_product_art.py
           python3 tools/gen_item_sprites.py
           python3 tools/check_device_assets.py
 

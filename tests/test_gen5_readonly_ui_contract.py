@@ -257,7 +257,9 @@ for game in ("black_nds", "white_nds", "black2_nds", "white2_nds"):
     require(identity, f'if (id == "{game}") return "romfs:/game_cards/{game}.png";')
     require(makefile, f'$(GAME_CARD_ART_SOURCE)/{game}.png')
     require(asset_preflight, f'"{game}.png"')
-require(asset_preflight, 'REGION_BACKDROP_DIR', 'all 8 regional backdrops are packaged')
+require(asset_preflight, 'REGION_BACKDROP_DIR', 'all 10 regional backdrops are packaged',
+        'TRAINER_PORTRAIT_DIR', 'from fetch_product_art import TRAINER_URLS, REQUIRED_REGIONS')
+require(workflow, 'python3 tools/fetch_product_art.py')
 
 # Four native titles, profile-isolated assignments, and the existing
 # shared 6x5 Box grid are exercised by executable host fixtures.

@@ -20,6 +20,7 @@ import re
 from pathlib import Path
 
 from png_asset_validation import validate_png
+from fetch_product_art import TRAINER_URLS, REQUIRED_REGIONS
 
 ROOT = Path(__file__).resolve().parent.parent
 ROMFS = ROOT / "romfs"
@@ -35,6 +36,7 @@ BALL_ICON_NAMES = (
 FONT_DIR = ROMFS / "fonts"
 GAME_CARD_ART_DIR = ROMFS / "game_cards"
 REGION_BACKDROP_DIR = ROMFS / "region_backdrops"
+TRAINER_PORTRAIT_DIR = ROMFS / "trainer_portraits"
 GENERATOR = ROOT / "tools" / "gen_hdsprites.py"
 SPRITE_MANAGER = ROOT / "src" / "UI" / "SpriteManager.cpp"
 SPECIES_NAMES_CPP = ROOT / "src" / "Names" / "SpeciesNames.cpp"
@@ -255,8 +257,10 @@ def main() -> int:
             else:
                 ok("all required game-card artwork (Gen I-V) is packaged and PNG-validated")
 
-    required_regions = ("kanto", "johto", "hoenn", "sinnoh",
-                        "unova", "kalos", "alola", "galar")
+    # Use the same canonical exact Product Home manifest that stages
+    # trainer images and region scenes. Do not greenlight a native NRO with
+    # only the older eight backdrops or fake Trainer placeholder badges.
+    required_regions = REQUIRED_REGIONS
     if not REGION_BACKDROP_DIR.is_dir():
         fail(errors, "romfs/region_backdrops/ is missing; branch artwork was not packaged")
     else:
@@ -269,7 +273,21 @@ def main() -> int:
         if missing_or_invalid:
             fail(errors, "missing or invalid region scenery: " + "; ".join(missing_or_invalid))
         else:
-            ok("all 8 regional backdrops are packaged and PNG-validated")
+            ok("all 10 regional backdrops are packaged and PNG-validated")
+
+    if not TRAINER_PORTRAIT_DIR.is_dir():
+        fail(errors, "romfs/trainer_portraits/ is missing; Product Home trainers were not packaged")
+    else:
+        missing_trainers = []
+        for name in TRAINER_URLS:
+            file = TRAINER_PORTRAIT_DIR / name
+            valid, reason, _ = validate_png(file)
+            if not valid:
+                missing_trainers.append(f"{name}: {reason}")
+        if missing_trainers:
+            fail(errors, "missing or invalid trainer portraits: " + "; ".join(missing_trainers))
+        else:
+            ok(f"all {len(TRAINER_URLS)} Product Home trainer portraits are packaged and PNG-validated")
 
     print()
     if errors:
