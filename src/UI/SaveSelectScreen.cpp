@@ -419,6 +419,17 @@ namespace UI {
                 ? TrainerPortraitPresentation{female ? "Lyra" : "Ethan", female ? "lyra" : "ethan", female, true}
                 : TrainerPortraitPresentation{"Johto Trainer", "ethan", false, true};
 
+        if (gameId == "black_nds" || gameId == "white_nds")
+            return genderKnown
+                ? TrainerPortraitPresentation{female ? "Hilda" : "Hilbert",
+                                              female ? "hilda" : "hilbert", female, true}
+                : TrainerPortraitPresentation{"Unova Trainer", "hilbert", false, true};
+        if (gameId == "black2_nds" || gameId == "white2_nds")
+            return genderKnown
+                ? TrainerPortraitPresentation{female ? "Rosa" : "Nate",
+                                              female ? "rosa" : "nate", female, true}
+                : TrainerPortraitPresentation{"Unova Trainer", "nate", false, true};
+
         // Later games still use the save-backed gender when available, but now show the real
         // default protagonist art instead of an empty Poké Ball placeholder.
         if (gameId == "letsgo_pikachu_switch" || gameId == "letsgo_eevee_switch")

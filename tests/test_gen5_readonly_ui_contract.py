@@ -231,6 +231,16 @@ require(read(".github/workflows/native-pr-build.yml"),
         "bash -n tools/build_gen5_smoke_nro.sh",
         "test -x tools/build_gen5_smoke_nro.sh")
 
+# Both Gen V pairs use their saved gender to select the correct actual
+# protagonist image; missing/unassigned metadata uses a neutral caption.
+product_home = read("src/UI/SaveSelectScreen.cpp")
+product_art = read("tools/fetch_product_art.py")
+for exact_game in ("black_nds", "white_nds", "black2_nds", "white2_nds"):
+    require(product_home, f'gameId == "{exact_game}"')
+for portrait in ("hilbert", "hilda", "nate", "rosa"):
+    require(product_home, f'"{portrait}"')
+    require(product_art, f'"{portrait}.png": "https://play.pokemonshowdown.com/sprites/trainers/{portrait}.png"')
+
 # When no Gen V Save Instance is presented, hardware users must learn if
 # the same emulator folder was scanned but rejected by strict validation.
 require(
