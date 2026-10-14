@@ -51,15 +51,23 @@ Re-fetch GitHub before acting on any SHA below. Never force-push; never reset ba
 
 See the draft PR checks for the current head.
 
-## NRO candidate
+## NRO candidate (current hardware test candidate)
 
-- Pipeline proven: `3ac0ae29` → artifact `PokeBank-NX-Gen1-4-Candidate-3ac0ae29`
-  (run 38534704407, artifact 11879113100): real devkitA64 NRO, packaged RomFS verified
-  against all required assets. **Superseded** by later heads — not the hardware candidate.
-- Real-NRO check of `tools/verify_nro_romfs.py` locally: parsed 25 packaged files byte-exact.
-- Hardware acceptance: **PENDING**. Checklist: `docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md`.
+| Field | Value |
+|---|---|
+| Application SHA | `9bf9d492bd8942503fbc261a7dcabcfd06d9e8c6` |
+| Tree SHA | `d3a9edae0239a229199deb3681fc92bdfea72883` |
+| Artifact | `PokeBank-NX-Gen1-4-Candidate-9bf9d492` (run 38544369031, artifact 11884126974, expires 2027-01-12) |
+| NRO | `PokeBank-NX-Gen1-4-Candidate-9bf9d492.nro`, 173,640,313 bytes |
+| NRO SHA-256 | `f623d23794e721049fb0087f23d089fe7ad1baae716acd68f28092815be5bfa8` |
+| Packaged RomFS | PASS: 10 backdrops, 20 portraits, 16 covers, 931 item icons, 18 types, 3260 HOME sprites, 3 fonts |
+| CI on that exact head | 9/9 PASS (Host GCC, Host Clang + ASan/UBSan, Native PR Gate, Product UI Native, Gen IV gate x3, Gen I-IV candidate, Touch) |
+| Source save writes | DISABLED |
+| Hardware acceptance | **PENDING** — `docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md` |
+
+Later docs-only commits do not change this application candidate.
 
 ## Next task
 
-1. Watch CI on the draft PR (incl. new Gen I-IV candidate workflow); fix anything red.
+1. Owner runs the hardware checklist on the candidate above; fix hardware-reported bugs on this branch.
 2. Continue audit: Save Instances / profile assignment, launch adapters, touch parity gaps.
