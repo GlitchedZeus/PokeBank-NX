@@ -220,7 +220,7 @@ There is no global unsafe-write switch.
 
 | Priority | Implemented / underway | Required next gate |
 |---|---|---|
-| Gen I–IV application | Owner-accepted foundation and Claude's [finalization #306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) | Fix Gen IV candidate CI; package verified artwork, fair DS sources and correct ROM identity; one owner-tested NRO |
+| Gen I–IV application | Owner-accepted foundation and Claude's [finalization #306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) | Complete the remaining full host check at `3ac0ae29`; packaged artwork, Gen IV, touch and native candidate checks passed; one owner-tested NRO still required |
 | Gen V application | [#300](https://github.com/GlitchedZeus/PokeBank-NX/pull/300) staged PK5 editor / Create / profile assignment / app-owned export is **six-check green** | Owner tests the existing same-folder RetroArch/DraStic/melonDS saves, selected retail copy, persistent profile link, safe edits and exit; evaluate stacked #304 |
 | Touch / Items / Product UI | HOME-like cards, Quick Games, shared native action paths | All-controller/handheld touch parity and stable modal navigation on real Switch |
 | Read-only legality | Gen I–IV five-lane coordinator [#298](https://github.com/GlitchedZeus/PokeBank-NX/pull/298), Claude [#303](https://github.com/GlitchedZeus/PokeBank-NX/pull/303), later-format foundations [#301](https://github.com/GlitchedZeus/PokeBank-NX/pull/301) | Resolve exact combined host/PKHeX/source CI blockers, independently source-audit rule applicability, preserve Unknown/Incomplete |
