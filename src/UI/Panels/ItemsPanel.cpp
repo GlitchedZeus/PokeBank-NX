@@ -19,6 +19,7 @@
 #include "Trainer/Inventory7LGPE.h"
 #include "Trainer/Inventory3FRLG.h"
 #include "Integration/Gen1/Gen1ReadOnlyInventory.h"
+#include "Integration/Gen5/Gen5Bag.h"
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
 #include "Integration/Gen4/Gen4ReadOnlyInventory.h"
 #include "Inventory/ClassicInventoryCatalog.h"
@@ -83,6 +84,8 @@ namespace Panels {
         else if (gameGroup == GameVersion::BDSP) name = getPouchInfo8BDSP(static_cast<PouchType8BDSP>(category)).name;
         else if (gameGroup == GameVersion::GG)   name = getPouchInfo7LGPE(static_cast<PouchType7LGPE>(category)).name;
         else if (gameGroup == GameVersion::GSC)  name = gscPouchDisplayName(category);
+        else if (gameGroup == GameVersion::BW || gameGroup == GameVersion::B2W2)
+            name = PokeVault::Integration::Gen5::bagPocketName5(static_cast<size_t>(category));
         else if (gameGroup == GameVersion::DP || gameGroup == GameVersion::PT ||
                  gameGroup == GameVersion::HGSS)
             name = PokeVault::Integration::Gen4::bagPocketName(static_cast<size_t>(category));

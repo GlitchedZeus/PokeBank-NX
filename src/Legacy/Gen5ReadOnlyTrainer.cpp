@@ -7,6 +7,7 @@
 #include <array>
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -89,7 +90,13 @@ bool Gen5ReadOnlyTrainer::rebuildPresentation(std::string& error) {
     }
     party.swap(displayParty);
     boxes.swap(displayBoxes);
-    items.clear(); // Unsupported pouch data is not represented as a known inventory.
+    // Native bag: the staged copy once opened, otherwise the selected source
+    // copy. An unrecognized bag stays empty (never guessed or partially shown).
+    items.clear();
+    std::optional<Gen5::ValidatedBag5> bag;
+    if(const auto* stagedBag=staged_.stagedBagIfOpened())bag=stagedBag->current();
+    else bag=Gen5::decodeBag5(save_);
+    if(bag)items.assign(bag->begin(),bag->end());
     return true;
 }
 } // namespace PokeVault::Legacy
