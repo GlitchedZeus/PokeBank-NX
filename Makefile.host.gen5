@@ -31,6 +31,8 @@ GEN5_SAVE_INPUTS := tests/test_gen5_readonly_save.cpp \
     src/Games/GameIdentity.cpp include/Games/GameIdentity.h \
     src/Integration/Gen5/Gen5AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp \
     include/Integration/Gen5/Gen5AssignedSource.h include/Legacy/LegacySourceBindings.h \
+    include/Integration/Gen5/Gen5SourceSelection.h \
+    include/Integration/Gen5/Gen5SourcePathIdentity.h \
     include/Integration/Gen5/Gen5GameSourceCatalog.h \
     include/Integration/Gen5/Gen5GameCardPreview.h \
     include/Pokemon/Pokemon5ReadOnlyView.h include/Legacy/Gen5ReadOnlyTrainer.h \
@@ -121,13 +123,15 @@ $(GEN5_CREATE_SANITIZE): tests/test_gen5_native_create.cpp $(GEN5_CREATE_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_native_create.cpp -o $@
 
+# The shared screen currently has an unused workspace parameter. Match the
+# save-reader host warning policy without modifying the editor lane.
 $(GEN5_CREATE_INTEGRATION_TEST): tests/test_gen5_create_integration.cpp $(GEN5_CREATE_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_create_integration.cpp -o $@
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude tests/test_gen5_create_integration.cpp -o $@
 
 $(GEN5_CREATE_INTEGRATION_SANITIZE): tests/test_gen5_create_integration.cpp $(GEN5_CREATE_INPUTS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_create_integration.cpp -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude tests/test_gen5_create_integration.cpp -o $@
 
 # Host-only native Gen V box-grid touch, controller focus, and safety guard.
 GEN5_BOX_TOUCH_TEST := $(HOST_BUILD)/test_gen5_box_touch

@@ -36,7 +36,10 @@ struct DiscoveryResult {
     // attempted/actually opened bounded roots, never full SD traversal.
     size_t rootsConsidered = 0;
     size_t rootsOpened = 0;
+    // Distinct safe roots admitted to the fair-share scan budget.
+    size_t rootsExamined = 0;
     bool limitReached = false;
+    size_t unreadableDirectories = 0;
 };
 
 // Read a single confirmed raw 0x80000 save or a DeSmuME .dsv with a
@@ -63,6 +66,13 @@ struct DiscoveryResult {
     const std::string& path, std::string_view providerLabel,
     std::string_view assignedExactGame = {},
     SaveCopySelection copy = SaveCopySelection::Automatic);
+
+// One physical read and fingerprint for every choice from the same file.
+// Different valid copies yield two labeled rows; single/identical copies
+// yield the pinned validated row. Rejections remain visible as one row.
+[[nodiscard]] std::vector<Source::SaveInstance> inspectSourceChoices(
+    const std::string& path, std::string_view providerLabel,
+    std::string_view assignedExactGame = {});
 
 // Reopen a catalog entry only after fresh strict validation AND snapshot
 // equivalence. Never trust cached trainer data or filesystem timestamp alone.

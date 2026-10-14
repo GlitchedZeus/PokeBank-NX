@@ -25,6 +25,9 @@ manager = read("src/UI/UI.cpp")
 manager_header = read("include/UI/UI.h")
 games = read("src/UI/SaveSelectScreen.cpp")
 trainer = read("src/Legacy/Gen5ReadOnlyTrainer.cpp")
+# These are used by the Create contracts before the field contracts below.
+native_bridge = read("include/Integration/Gen5/Gen5SharedEditorBridge.h")
+native_screen = read("include/Integration/Gen5/Gen5SharedScreenState.h")
 
 require(
     surface,
@@ -106,7 +109,7 @@ require(
     "if (selected.sourceKind == SelectedSourceKind::Gen5AssignedFile)",
     "openGen5Setup(selectedGameId,",
     "discoverGen5Candidates();",
-    "reopenValidatedSource(chosen)",
+    "PokeVault::Integration::Gen5::assignValidatedSource(",
     "selectedSourceKind=SelectedSourceKind::Gen5AssignedFile;",
     "titleSelected=true;",
 )
@@ -167,8 +170,7 @@ require(games,
         '"Gen V save assigned to "+selectedUser->name',
         'overlay=Overlay::GamesDrawer;',
         'gen5AssignOnly?"Assign to Profile":"Open Editor"',
-        'legacyBindings->replaceFileAssignmentAndSave(',
-        'PokeVault::Source::visibleToProfile(checked,profile)')
+        'PokeVault::Integration::Gen5::assignValidatedSource(')
 assign_only_body=games.split("if(gen5AssignOnly) {",1)[1].split("selectedUserUid=selectedUser->uid;",1)[0]
 assert "titleSelected=true;" not in assign_only_body
 assert "selectedGen5Fingerprint=fresh.instance.contentFingerprint;" not in assign_only_body
@@ -208,10 +210,14 @@ require(read("tests/test_gen5_readonly_save.cpp"),
 # UIManager to the final twice-validated read-only source opener.
 assigned_h = read("include/Integration/Gen5/Gen5AssignedSource.h")
 assigned_cpp = read("src/Integration/Gen5/Gen5AssignedSource.cpp")
+# Profile visibility and the persisted binding are enforced once, in the
+# shared assignment helper that the Games UI calls.
+require(assigned_cpp, "Source::visibleToProfile(checked,profile)",
+        "bindings.replaceFileAssignmentAndSave(")
 require(selector_header, "getSelectedGen5Fingerprint() const",
         "std::string selectedGen5Fingerprint;")
 require(games, "selectedGen5Fingerprint.clear();",
-        "selectedGen5Fingerprint=fresh.instance.contentFingerprint;")
+        "selectedGen5Fingerprint=assigned.instance.contentFingerprint;")
 require(ui_header, "std::string_view selectedFingerprint")
 require(manager, "selectScreen.getSelectedGen5Fingerprint()",
         "if(selectedFingerprint.empty())",
@@ -327,7 +333,7 @@ require(
     "catalog.wrongGame>0",
     "catalog.invalidOrAmbiguous",
     "Example rejection: ",
-    "gen5Notice.substr(maxPerLine,maxPerLine)",
+    "drawGen5SourceNotice(fb,gen5Notice",
 )
 assert 'No valid Gen V cartridge saves found; use a manual file' not in games
 
@@ -338,7 +344,11 @@ workflow = read(".github/workflows/native-pr-build.yml")
 makefile = read("Makefile")
 identity = read("src/Games/GameIdentity.cpp")
 asset_preflight = read("tools/check_device_assets.py")
-assert "rsync -a --ignore-existing recovery-work/romfs/ romfs/" in workflow
+romfs_stage = read("tools/prepare_release_romfs.sh")
+# The snapshot only fills gaps; branch-owned artwork is never replaced.
+require(workflow, "tools/prepare_release_romfs.sh recovery-work/romfs",
+        "python3 tools/verify_nro_romfs.py PokeBankNX.nro")
+require(romfs_stage, '[ -e "romfs/$f" ] || cp -p')
 assert "rm -rf romfs" not in workflow
 for game in ("black_nds", "white_nds", "black2_nds", "white2_nds"):
     require(identity, f'if (id == "{game}") return "romfs:/game_cards/{game}.png";')
@@ -346,7 +356,9 @@ for game in ("black_nds", "white_nds", "black2_nds", "white2_nds"):
     require(asset_preflight, f'"{game}.png"')
 require(asset_preflight, 'REGION_BACKDROP_DIR', 'all 10 regional backdrops are packaged',
         'TRAINER_PORTRAIT_DIR', 'from fetch_product_art import TRAINER_URLS, REQUIRED_REGIONS')
-require(workflow, 'python3 tools/fetch_product_art.py')
+require(romfs_stage, 'python3 tools/fetch_product_art.py')
+for game in ("black_nds", "white_nds", "black2_nds", "white2_nds"):
+    require(romfs_stage, game)
 
 # Four native titles, profile-isolated assignments, and the existing
 # shared 6x5 Box grid are exercised by executable host fixtures.
@@ -604,6 +616,7 @@ require(create_suite,
 # Gen V reuses the already-shared staged editor, not a second Create/Edit UI.
 # Game cards and the source picker must not claim the editor is unavailable.
 require(games,
+        "Choose a validated Gen V Save Instance; source stays read-only.",
         "Gen V cached party; choose Save Instances to open.",
         "Open shared staged editor. Original save stays unchanged.",
         '"A",gen5AssignOnly?"Assign to Profile":"Open Editor"',
@@ -1071,4 +1084,25 @@ require(read("tests/test_gen5_readonly_save.cpp"),
         "presented->boxes[0][0]->level()==1",
         "presented->boxes[0][0]->baseHP()==55",
         "presented->boxes[0][0]->statHPMax()==0")
+
+# Assignment is an executable backend transaction shared with production UI.
+require(assigned_cpp, "SourceAssignmentResult assignValidatedSource(",
+        "reopenValidatedSource(selected)", "binding.sourceVariant=checked.sourceVariant;",
+        "binding.physicalIdentity=checked.physicalIdentity;", "copy=persisted;")
+require(games, "captureSourceFocus(", "restoreSourceFocus(",
+        "remembered.binding.sourcePath,240", "gen5Notice=assigned.diagnostic;")
+require(read("tests/test_gen5_readonly_save.cpp"),
+        "persistentCopyAssignmentContracts();", "sourceSelectionFocusContracts();")
+
+require(games, "void SaveSelectScreen::closeGen5Setup()", "gen5SetupReturnCandidates=sameTarget;")
+require(games, "instance.generation==5 && instance.rememberedSource", '"REMEMBERED / "')
+require(games, "focusedGen5Game=focused.gameId;", "user->titles[i].gameId==focusedGen5Game")
+# Shared one-read copy enumeration backs discovery and the manual chooser.
+require(discovery, "inspectSourceChoices(const std::string& path", "state.stopAt=", "remainingRoots",
+        "state.result.rootsExamined", "s.result.unreadableDirectories")
+require(games,"PokeVault::Integration::Gen5::inspectSourceChoices(",
+        "gen5ProfileFocus.remember(","gen5ProfileFocus.gameFor(","drawGen5SourceNotice(fb,gen5Notice",
+        "rows.push_back(choice);", "Some emulator folders could not be read.")
+require(read("tests/test_gen5_readonly_save.cpp"), "boundedProviderDiscoveryContracts();",
+        "snapshotChoiceAndRememberedAliasContracts();", "gen5ProfileFocusAndSdOwnershipContracts();")
 print("Gen V read-only shared UI guard contracts: PASS")

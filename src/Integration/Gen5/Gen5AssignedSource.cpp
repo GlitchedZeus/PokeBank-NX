@@ -19,6 +19,51 @@ AssignedOpenStatus mapUnavailable(Legacy::AssignedFileStatus status) noexcept {
 }
 } // namespace
 
+SourceAssignmentResult assignValidatedSource(
+    Legacy::LegacySourceBindings& bindings,const Source::SaveInstance& selected,
+    std::string_view profile,std::string_view exactGame) {
+    SourceAssignmentResult out;
+    if(profile.empty() || !isExactGen5Id(exactGame) ||
+       selected.gameId!=exactGame || !selected.readOnly() || !selected.ready()) {
+        out.diagnostic="Choose a validated read-only save for this exact Gen V game and profile";
+        return out;
+    }
+    const auto fresh=reopenValidatedSource(selected);
+    if(!fresh.ready() || fresh.instance.contentFingerprint.empty() ||
+       (fresh.instance.sourceVariant!="gen5-copy-0-primary" &&
+        fresh.instance.sourceVariant!="gen5-copy-1-backup")) {
+        out.diagnostic="Selected Gen V file or copy changed; refresh Save Instances or re-link the file";
+        return out;
+    }
+    auto checked=fresh.instance;
+    bindings.applyClaims(checked);
+    if(!Source::visibleToProfile(checked,profile)) {
+        out.diagnostic=checked.claimConflict?
+            "Source ownership is ambiguous; repair or forget the stale assignment before selecting this file":
+            "This save is assigned to another profile or game";
+        return out;
+    }
+    Legacy::BindingRecord binding;
+    binding.profileIdentity=profile;
+    binding.gameIdentity=exactGame;
+    binding.sourcePath=checked.path();
+    binding.sourceType=checked.providerLabel;
+    binding.expectedRawFamily=expectedFamily(exactGame);
+    binding.sourceVariant=checked.sourceVariant;
+    binding.physicalIdentity=checked.physicalIdentity;
+    binding.contentFingerprint=checked.contentFingerprint;
+    if(!bindings.replaceFileAssignmentAndSave(checked.sourceIdentity,std::move(binding))) {
+        out.diagnostic="Could not remember the Gen V save; previous assignment kept. "+bindings.lastError();
+        return out;
+    }
+    checked.claimedProfile=profile;
+    checked.rememberedSource=true;
+    out.instance=std::move(checked);
+    out.success=true;
+    out.diagnostic="Exact Gen V source and copy remembered for this profile; original unchanged";
+    return out;
+}
+
 AssignedSourceReadOnly openAssignedSource(
     const Legacy::LegacySourceBindings& bindings,
     std::string_view profile,std::string_view exactGame,
@@ -43,6 +88,22 @@ AssignedSourceReadOnly openAssignedSource(
         out.status=AssignedOpenStatus::AssignmentMismatch;
         out.diagnostic="Gen V persisted assignment has wrong exact title, provider, or BW/B2W2 family";
         return out;
+    }
+    if(!binding.sourceVariant.empty()) {
+        const auto persisted=binding.sourceVariant=="gen5-copy-0-primary"
+            ? SaveCopySelection::Primary : SaveCopySelection::Backup;
+        if(binding.sourceVariant!="gen5-copy-0-primary" &&
+           binding.sourceVariant!="gen5-copy-1-backup") {
+            out.status=AssignedOpenStatus::AssignmentMismatch;
+            out.diagnostic="Unsupported remembered Gen V copy; explicit reassignment required";
+            return out;
+        }
+        if(copy!=SaveCopySelection::Automatic && copy!=persisted) {
+            out.status=AssignedOpenStatus::AssignmentMismatch;
+            out.diagnostic="Gen V copy conflicts with remembered choice; select and assign the desired copy again";
+            return out;
+        }
+        copy=persisted;
     }
     // Independently re-validate the chosen source on open. A filename, family
     // claim or earlier scan is never authority for the actual save format.

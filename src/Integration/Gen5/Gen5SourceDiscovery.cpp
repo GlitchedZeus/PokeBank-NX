@@ -1,6 +1,8 @@
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
 
 #include "Utils/SHA256.h"
+#include "Games/GameIdentity.h"
+#include "Integration/Gen5/Gen5SourcePathIdentity.h"
 
 #include <algorithm>
 #include <array>
@@ -169,37 +171,49 @@ Source::ValidationStatus statusForFailure(const std::string& msg) {
 
 struct ScanState {
     DiscoveryLimits limits;
+    DiscoveryLimits stopAt;
+    bool rootLimitReached = false;
     DiscoveryResult result;
     std::set<std::string> visitedDirs;
     std::set<std::string> visitedFiles;
 };
 void scan(const DiscoveryRoot& root,const std::string& dir,size_t depth,ScanState& s) {
     struct stat dirSt{};
-    if(s.result.limitReached || depth>root.maxDepth ||
+    if(s.rootLimitReached || depth>root.maxDepth ||
        !safeScanRoot(dir) || !safeDirectory(dir,&dirSt)) return;
-    if(!s.visitedDirs.insert(identityFor(dirSt,dir)).second)return;
-    if(s.result.directoriesExamined>=s.limits.maxDirectories) {
-        s.result.limitReached=true;
+    const auto dirIdentity=identityFor(dirSt,dir);
+    if(s.visitedDirs.contains(dirIdentity))return;
+    if(s.result.directoriesExamined>=s.stopAt.maxDirectories) {
+        s.rootLimitReached=true;
         return;
     }
-    DIR* d=::opendir(dir.c_str()); if(!d)return;
+    // Count attempted opens too: repeated unreadable folders are bounded.
     ++s.result.directoriesExamined;
+    s.visitedDirs.insert(dirIdentity);
+    DIR* d=::opendir(dir.c_str());
+    if(!d) {++s.result.unreadableDirectories;return;}
     std::vector<std::string> names;
     bool entryLimitReached=false;
-    while(const dirent* item=::readdir(d)) {
+    for(;;) {
+        errno=0;
+        const auto* item=::readdir(d);
+        if(!item) {
+            if(errno!=0)++s.result.unreadableDirectories;
+            break;
+        }
         std::string name(item->d_name);
         if(name=="." || name=="..")continue;
-        if(s.result.entriesExamined>=s.limits.maxEntries) {
+        if(s.result.entriesExamined>=s.stopAt.maxEntries) {
             entryLimitReached=true;
             break;
         }
         ++s.result.entriesExamined;
         names.push_back(std::move(name));
     }
-    ::closedir(d);
+    if(::closedir(d)!=0)++s.result.unreadableDirectories;
     std::sort(names.begin(),names.end());
     for(const auto& name:names) {
-        if(s.result.limitReached)break;
+        if(s.rootLimitReached)break;
         const std::string file=join(dir,name);
         struct stat st{};
         // lstat never follows outside-directory symlinks.
@@ -209,40 +223,31 @@ void scan(const DiscoveryRoot& root,const std::string& dir,size_t depth,ScanStat
             continue;
         }
         if(!S_ISREG(st.st_mode) || !eligible(name))continue;
-        if(!s.visitedFiles.insert(identityFor(st,file)).second)continue;
-        if(s.result.filesExamined>=s.limits.maxFiles) {
-            s.result.limitReached=true; break;
+        const auto fileIdentity=identityFor(st,file);
+        if(s.visitedFiles.contains(fileIdentity))continue;
+        if(s.result.filesExamined>=s.stopAt.maxFiles) {
+            s.rootLimitReached=true; break;
         }
+        s.visitedFiles.insert(fileIdentity);
         ++s.result.filesExamined;
-        auto row=inspectSourceFile(file,root.providerLabel);
-        // A Gen V cartridge has two complete checksum copies. When both
-        // validate but differ, presenting neither makes a legitimate file
-        // inaccessible; silently choosing either loses source identity.
-        // Expose two explicitly labeled read-only choices for ONE file.
-        if (!row.ready() &&
-            row.diagnostic.find("two valid but different")!=std::string::npos) {
-            for (const auto choice : {SaveCopySelection::Primary,
-                                       SaveCopySelection::Backup}) {
-                auto candidate=inspectSourceFile(file,root.providerLabel,{},choice);
-                if (candidate.ready())
-                    s.result.instances.push_back(std::move(candidate));
-            }
-            continue;
+        auto choices=inspectSourceChoices(file,root.providerLabel);
+        for(auto& row:choices) {
+            // Hide unrelated RetroArch raw saves while retaining actionable
+            // wrapper/savestate failures and BOTH verified native copy rows.
+            // A failed Gen V parser is normally hidden, EXCEPT when a normalized
+            // raw battery image carries a recognizable, explicitly UNVERIFIED
+            // Gen V game-version byte. Keep that failure for diagnostics only.
+            // It is NEVER an assignable Save Instance (validation != Ready).
+            if(row.ready() || root.providerLabel!="RetroArch" ||
+               extension(file)==".dsv" || extension(file)==".dss" ||
+               row.sourceVariant=="gen5-unverified-version-hint")
+                s.result.instances.push_back(std::move(row));
         }
-        // A mixed RetroArch folder also contains unrelated Gen I-IV saves.
-        // A failed Gen V parser is normally hidden, EXCEPT when a normalized
-        // raw battery image carries a recognizable, explicitly UNVERIFIED
-        // Gen V game-version byte. Keep that failure for diagnostics only.
-        // It is NEVER an assignable Save Instance (validation != Ready).
-        if(row.ready() || root.providerLabel!="RetroArch" ||
-           extension(file)==".dsv" || extension(file)==".dss" ||
-           row.sourceVariant=="gen5-unverified-version-hint")
-            s.result.instances.push_back(std::move(row));
     }
     // Process all names already enumerated under the hard memory cap, then
     // report incomplete discovery rather than pretending this catalog is
     // exhaustive. Subdirectory scans may have hit another limit first.
-    if(entryLimitReached)s.result.limitReached=true;
+    if(entryLimitReached)s.rootLimitReached=true;
 }
 } // namespace
 
@@ -269,6 +274,22 @@ bool readNormalizedSourceReadOnly(const std::string& path,
         diagnostic="unsupported source path with dot or parent segments";
         return false;
     }
+    std::string prefix=path.substr(0,5);
+    std::transform(prefix.begin(),prefix.end(),prefix.begin(),
+        [](unsigned char ch){return static_cast<char>(std::tolower(ch));});
+    if(path.find('\0')!=std::string::npos ||
+       (prefix=="sdmc:" && sdOwnershipPath(path).empty())) {
+        diagnostic="unsupported source path; choose a full path within sdmc:/";
+        return false;
+    }
+#ifdef __SWITCH__
+    // A remembered relative path changes meaning with the homebrew loader's
+    // working directory. Gen V emulator assignments are absolute SD paths.
+    if(!path.starts_with("sdmc:/")) {
+        diagnostic="unsupported source path; choose a full sdmc:/ save path";
+        return false;
+    }
+#endif
     if(extension(path)==".dss") {
         diagnostic="savestate .dss is unsupported; use cartridge backup";
         return false;
@@ -333,11 +354,16 @@ bool readNormalizedSourceReadOnly(const std::string& path,
     return true;
 }
 
-Source::SaveInstance inspectSourceFile(const std::string& path,
-                                       std::string_view providerLabel,
-                                       std::string_view assignedExactGame,
-                                       SaveCopySelection copy) {
+namespace {
+struct SourceSnapshot {
     Source::SaveInstance row;
+    std::vector<uint8_t> bytes;
+    std::string message;
+};
+SourceSnapshot readSourceSnapshot(const std::string& path,
+    std::string_view providerLabel,std::string_view assignedExactGame) {
+    SourceSnapshot snapshot;
+    auto& row=snapshot.row;
     row.generation=5;
     row.platformLabel="Nintendo DS";
     row.providerLabel=std::string(providerLabel);
@@ -357,13 +383,13 @@ Source::SaveInstance inspectSourceFile(const std::string& path,
     if(hasDotPathComponent(path)) {
         row.validation=Source::ValidationStatus::Unsupported;
         row.diagnostic="unsupported source path with dot or parent segments";
-        return row;
+        return snapshot;
     }
     struct stat st{};
     if(!safeRegular(path,&st)) {
         row.validation=Source::ValidationStatus::ReadError;
         row.diagnostic="source is missing, symlink, or not a regular file";
-        return row;
+        return snapshot;
     }
     row.fileSize=static_cast<uint64_t>(st.st_size);
     row.modifiedTime=static_cast<int64_t>(st.st_mtime);
@@ -372,18 +398,41 @@ Source::SaveInstance inspectSourceFile(const std::string& path,
         row.kind=Source::SaveInstanceKind::SaveState;
         row.validation=Source::ValidationStatus::Unsupported;
         row.diagnostic="DraStic .dss savestate unsupported; use in-game backup";
-        return row;
+        return snapshot;
     }
 
-    std::vector<uint8_t> bytes;
-    std::string message,container;
+    auto& bytes=snapshot.bytes;
+    auto& message=snapshot.message;
+    std::string container;
     if(!readNormalizedSourceReadOnly(path,bytes,message,&container)) {
         row.validation=statusForFailure(message);
         row.diagnostic=message;
-        return row;
+        return snapshot;
     }
+    struct stat after{};
+    if(!safeRegular(path,&after) || st.st_dev!=after.st_dev ||
+       st.st_ino!=after.st_ino || st.st_size!=after.st_size ||
+       st.st_mtime!=after.st_mtime) {
+        bytes.clear();
+        row.validation=Source::ValidationStatus::Invalid;
+        row.diagnostic="source changed during inspection; choose it again";
+        return snapshot;
+    }
+    row.contentFingerprint=sha256Hex(bytes);
+    // Profile ownership keys the normalized path (+inode where usable), not the
+    // changing content hash; every open still revalidates the exact snapshot.
+    row.sourceIdentity=persistentGen5SourceIdentity(
+        path,static_cast<uint64_t>(st.st_dev),static_cast<uint64_t>(st.st_ino));
+    row.containerType=container;
+    return snapshot;
+}
+
+Source::SaveInstance inspectSnapshot(const SourceSnapshot& snapshot,
+    std::string_view assignedExactGame,SaveCopySelection copy) {
+    auto row=snapshot.row;
+    if(snapshot.bytes.empty())return row;
     std::string error;
-    const auto save=Gen5ReadOnlySave::parse(bytes,{},&error,copy);
+    const auto save=Gen5ReadOnlySave::parse(snapshot.bytes,{},&error,copy);
     if(!save) {
         row.validation=statusForFailure(error);
         row.diagnostic=error;
@@ -395,8 +444,8 @@ Source::SaveInstance inspectSourceFile(const std::string& path,
         for(const size_t offset:{size_t{0},LayoutInfo::BlackWhiteCopySize,
                                  LayoutInfo::Black2White2CopySize}) {
             const size_t versionAt=offset+0x19400+0x1F;
-            if(versionAt>=bytes.size())continue;
-            const auto hinted=Gen5ReadOnlySave::gameIdFromVersion(bytes[versionAt]);
+            if(versionAt>=snapshot.bytes.size())continue;
+            const auto hinted=Gen5ReadOnlySave::gameIdFromVersion(snapshot.bytes[versionAt]);
             if(!isExactGen5Id(hinted))continue;
             row.sourceVariant="gen5-unverified-version-hint";
             row.diagnostic+="; unverified Gen V header suggests "+std::string(hinted);
@@ -405,13 +454,10 @@ Source::SaveInstance inspectSourceFile(const std::string& path,
         return row;
     }
     row.gameId=std::string(save->exactGameId());
-    row.contentFingerprint=sha256Hex(bytes);
-    row.sourceIdentity=persistentGen5SourceIdentity(
-        path,static_cast<uint64_t>(st.st_dev),
-        static_cast<uint64_t>(st.st_ino));
-    row.containerType=container;
-    row.sourceVariant=copy==SaveCopySelection::Primary?"gen5-copy-0-primary":
-                      copy==SaveCopySelection::Backup?"gen5-copy-1-backup":"";
+    // Even Automatic must pin the actually validated partition. Otherwise a
+    // later corruption could silently reopen the other copy of the same file.
+    row.sourceVariant=save->selectedBackupPartition()?"gen5-copy-1-backup":
+                      "gen5-copy-0-primary";
     row.partyCount=save->partyCount();
     row.trainerName=displayTrainerName(save->trainer().rawName).value_or("");
     // Both retail save copies may have valid checksums yet vastly different
@@ -424,16 +470,40 @@ Source::SaveInstance inspectSourceFile(const std::string& path,
         " / Boxed "+std::to_string(save->diagnostics().occupiedBoxRecords);
     if(!row.trainerName.empty())row.sourceLabel+=" / "+row.trainerName;
     row.validation=Source::ValidationStatus::Ready;
-    row.diagnostic=message;
+    row.diagnostic=snapshot.message;
     if(save->selectedBackupPartition())row.diagnostic+="; validated backup copy";
     if(save->diagnostics().invalidBoxRecords)
         row.diagnostic+="; boxed PK5 quarantined: "+
             std::to_string(save->diagnostics().invalidBoxRecords);
     if(!assignedExactGame.empty() && row.gameId!=assignedExactGame) {
         row.validation=Source::ValidationStatus::AssignmentMismatch;
-        row.diagnostic="internal game version differs from requested exact game";
+        const auto* actual=Games::findGame(row.gameId);
+        const auto* expected=Games::findGame(assignedExactGame);
+        row.diagnostic="Save is Pokemon "+(actual?std::string(actual->title):row.gameId)+
+            "; choose a save for Pokemon "+
+            (expected?std::string(expected->title):std::string(assignedExactGame));
     }
     return row;
+}
+} // namespace
+
+Source::SaveInstance inspectSourceFile(const std::string& path,
+    std::string_view providerLabel,std::string_view assignedExactGame,
+    SaveCopySelection copy) {
+    return inspectSnapshot(readSourceSnapshot(path,providerLabel,assignedExactGame),
+                           assignedExactGame,copy);
+}
+
+std::vector<Source::SaveInstance> inspectSourceChoices(const std::string& path,
+    std::string_view providerLabel,std::string_view assignedExactGame) {
+    const auto snapshot=readSourceSnapshot(path,providerLabel,assignedExactGame);
+    auto row=inspectSnapshot(snapshot,assignedExactGame,SaveCopySelection::Automatic);
+    if(row.diagnostic.find("two valid but different")==std::string::npos)
+        return {std::move(row)};
+    std::vector<Source::SaveInstance> choices;
+    for(const auto copy:{SaveCopySelection::Primary,SaveCopySelection::Backup})
+        choices.push_back(inspectSnapshot(snapshot,assignedExactGame,copy));
+    return choices;
 }
 
 ReadOnlyProbe reopenValidatedSource(const Source::SaveInstance& selected,
@@ -507,19 +577,46 @@ DiscoveryResult discoverSources(std::span<const DiscoveryRoot> roots,
     state.limits.maxFiles=std::min<size_t>(limits.maxFiles,4096);
     state.limits.maxEntries=std::min<size_t>(limits.maxEntries,32768);
     state.limits.maxDirectories=std::min<size_t>(limits.maxDirectories,512);
-    for(const auto& r:roots) {
-        if(state.result.limitReached)break;
+    std::vector<DiscoveryRoot> activeRoots;
+    std::set<std::string> rootIdentities;
+    for(const auto& root:roots) {
+        // Every root reached here was attempted, including one refused only
+        // because the directory budget is already spent.
+        ++state.result.rootsConsidered;
+        if(state.result.rootsExamined>=state.limits.maxDirectories) {
+            state.result.limitReached=true;
+            break;
+        }
+        ++state.result.rootsExamined;
+        struct stat st{};
+        if(!safeScanRoot(root.path) || !safeDirectory(root.path,&st) ||
+           !rootIdentities.insert(identityFor(st,root.path)).second)continue;
+        auto bounded=root;
+        bounded.maxDepth=std::min<size_t>(bounded.maxDepth,2);
+        activeRoots.push_back(std::move(bounded));
+    }
+    for(size_t i=0;i<activeRoots.size();++i) {
+        const size_t remainingRoots=activeRoots.size()-i;
+        // Reserve a fair share for every remaining provider/root. A huge
+        // RetroArch folder must not consume the entire file/entry/directory
+        // budget before DraStic or melonDS is ever searched. Unused budget
+        // carries forward; global hard caps remain unchanged.
+        const auto share=[remainingRoots](size_t used,size_t cap) {
+            const size_t remaining=cap-used;
+            return used+remaining/remainingRoots+(remaining%remainingRoots!=0);
+        };
+        state.stopAt={share(state.result.filesExamined,state.limits.maxFiles),
+                      share(state.result.entriesExamined,state.limits.maxEntries),
+                      share(state.result.directoriesExamined,state.limits.maxDirectories)};
+        state.rootLimitReached=false;
         // Count actual root-directory opens rather than guessing from the
         // existence of a provider config path. Permission and mount failures
         // must not be presented to the user as "no save files found".
-        ++state.result.rootsConsidered;
         const size_t openedBefore=state.result.directoriesExamined;
-        // Cap recursion even when an untrusted caller supplies a huge maxDepth.
-        DiscoveryRoot safe=r;
-        safe.maxDepth=std::min<size_t>(safe.maxDepth,2);
-        scan(safe,safe.path,0,state);
+        scan(activeRoots[i],activeRoots[i].path,0,state);
         if(state.result.directoriesExamined>openedBefore)
             ++state.result.rootsOpened;
+        state.result.limitReached|=state.rootLimitReached;
     }
     Source::sortNewestFirst(state.result.instances);
     return std::move(state.result);

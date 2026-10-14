@@ -6,6 +6,7 @@ on:
     branches:
       - feature/touch-controls-20261005
       - integration/gen5-ui-hardware-candidate-20261012
+      - codex/gen5-profile-save-instances-hardware
   pull_request:
     branches:
       - integration/gen4-polish-hardware-20260928

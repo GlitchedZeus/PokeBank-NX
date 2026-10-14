@@ -29,6 +29,18 @@ struct AssignedSourceReadOnly {
     }
 };
 
+struct SourceAssignmentResult {
+    bool success = false;
+    Source::SaveInstance instance;
+    std::string diagnostic;
+};
+
+// The UI and host integration tests share this exact transaction: re-read
+// selected bytes/copy, check ownership, then persist metadata atomically.
+[[nodiscard]] SourceAssignmentResult assignValidatedSource(
+    Legacy::LegacySourceBindings& bindings, const Source::SaveInstance& selected,
+    std::string_view profile, std::string_view exactGame);
+
 // Explicit source paths only. There is no scanner fallback, source write,
 // trainer/profile inference, or automatic ambiguous-copy selection.
 [[nodiscard]] AssignedSourceReadOnly openAssignedSource(
