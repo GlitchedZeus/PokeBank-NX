@@ -2276,12 +2276,21 @@ namespace UI {
                 gen5Notice="Found "+std::to_string(catalog.wrongGame)+
                     " Gen V save(s) for other game titles, none for this exact title.";
             } else {
-                const auto rejected=std::find_if(rows.begin(),rows.end(),
-                    [](const PokeVault::Source::SaveInstance& item) {
-                        return item.generation==5 && !item.ready() &&
-                               !item.diagnostic.empty() &&
-                               item.kind!=PokeVault::Source::SaveInstanceKind::SaveState;
+                const auto diagnosticOnly=[](const PokeVault::Source::SaveInstance& item) {
+                    return item.generation==5 && !item.ready() &&
+                           !item.diagnostic.empty() &&
+                           item.kind!=PokeVault::Source::SaveInstanceKind::SaveState;
+                };
+                // Prefer a *non-authoritative* version hint for the selected
+                // game over an unrelated Gen IV save in the same emulator folder.
+                auto rejected=std::find_if(rows.begin(),rows.end(),
+                    [&](const PokeVault::Source::SaveInstance& item) {
+                        return diagnosticOnly(item) &&
+                               item.sourceVariant=="gen5-unverified-version-hint" &&
+                               item.diagnostic.find(gen5TargetGameId)!=std::string::npos;
                     });
+                if(rejected==rows.end())
+                    rejected=std::find_if(rows.begin(),rows.end(),diagnosticOnly);
                 gen5Notice="Inspected "+std::to_string(discovered.filesExamined)+
                     " DS save file(s); none validated for this game.";
                 if(rejected!=rows.end())

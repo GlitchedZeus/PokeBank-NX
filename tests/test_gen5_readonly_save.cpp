@@ -101,6 +101,51 @@ std::vector<uint8_t> dsvFixture(const std::vector<uint8_t>& raw) {
     std::copy(marker.begin(),marker.end(),wrapped.begin()+static_cast<std::ptrdiff_t>(raw.size()+24));
     return wrapped;
 }
+void rejectedRetroArchGen5DiagnosticContracts() {
+    char pattern[]="/tmp/pokebank_gen5_invalid_retroarch_XXXXXX";
+    const char* temp=::mkdtemp(pattern);
+    assert(temp);
+    const std::string root=temp;
+    const std::string invalid=root+"/black_rejected.srm";
+    const std::string unrelated=root+"/not_gen5.sav";
+    auto candidate=make(G::SaveFamily::BlackWhite,21);
+    candidate[L::BoxOffset+7]^=uint8_t{0x80}; // checksum mismatch, retain native version byte
+    fileFixture(invalid,candidate);
+    fileFixture(unrelated,std::vector<uint8_t>(L::FullSaveSize,0));
+    const auto inspected=G::inspectSourceFile(invalid,"RetroArch");
+    assert(!inspected.ready());
+    assert(inspected.gameId.empty()); // no trusted game identity from corrupt save
+    assert(inspected.validation==PokeVault::Source::ValidationStatus::Invalid);
+    assert(inspected.sourceVariant=="gen5-unverified-version-hint");
+    assert(inspected.diagnostic.find("unverified Gen V header suggests black_nds")!=std::string::npos);
+    assert(!G::reopenValidatedSource(inspected).ready());
+    const G::DiscoveryRoot source{root,"RetroArch",0};
+    const auto discovered=G::discoverSources(std::span<const G::DiscoveryRoot>(&source,1));
+    assert(discovered.filesExamined==2);
+    assert(discovered.instances.size()==1); // unrelated old-gen raw images remain hidden
+    assert(discovered.instances[0].sourcePath==invalid);
+    assert(!discovered.instances[0].ready());
+    PokeVault::Legacy::LegacySourceBindings claims(root+"/claims");
+    assert(claims.load());
+    const auto catalog=G::forGameAndProfile(discovered.instances,claims,"profile-one","black_nds");
+    assert(catalog.validQuery);
+    assert(catalog.rows.empty() && catalog.invalidOrAmbiguous==1);
+    // Black 2 backup-only candidates are diagnosed without becoming valid
+    // after the checksum is damaged; no inferred release/assignment occurs.
+    auto b2=make(G::SaveFamily::Black2White2,23,L::Black2White2CopySize);
+    b2[L::Black2White2CopySize+L::BoxOffset+7]^=uint8_t{0x40};
+    const std::string backup=root+"/black2_rejected.sav";
+    fileFixture(backup,b2);
+    const auto rejectedBackup=G::inspectSourceFile(backup,"RetroArch");
+    assert(!rejectedBackup.ready());
+    assert(rejectedBackup.gameId.empty());
+    assert(rejectedBackup.sourceVariant=="gen5-unverified-version-hint");
+    assert(rejectedBackup.diagnostic.find("black2_nds")!=std::string::npos);
+    assert(std::remove(backup.c_str())==0);
+    assert(std::remove(invalid.c_str())==0);
+    assert(std::remove(unrelated.c_str())==0);
+    assert(::rmdir(root.c_str())==0);
+}
 void extendedDsvContainerContracts() {
     char pattern[]="/tmp/pokebank_gen5_dsv_XXXXXX";
     const char* root=::mkdtemp(pattern);
@@ -1505,6 +1550,7 @@ int main() {
     std::vector<uint8_t> empty(L::FullSaveSize,0);
     assert(!G::Gen5ReadOnlySave::parse(empty));
     assert(!G::Gen5ReadOnlySave::parse(std::span<const uint8_t>(empty.data(),0x40000)));
+    rejectedRetroArchGen5DiagnosticContracts();
     extendedDsvContainerContracts();
     discoveryContracts();
     fourTitleProfileAssignmentContracts();

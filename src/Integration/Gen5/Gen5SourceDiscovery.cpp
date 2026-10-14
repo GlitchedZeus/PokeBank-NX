@@ -224,10 +224,14 @@ void scan(const DiscoveryRoot& root,const std::string& dir,size_t depth,ScanStat
             }
             continue;
         }
-        // RetroArch can contain saves from other generations: hide unrelated
-        // raw payloads, but retain actionable .dsv/.dss diagnostics.
+        // A mixed RetroArch folder also contains unrelated Gen I-IV saves.
+        // A failed Gen V parser is normally hidden, EXCEPT when a normalized
+        // raw battery image carries a recognizable, explicitly UNVERIFIED
+        // Gen V game-version byte. Keep that failure for diagnostics only.
+        // It is NEVER an assignable Save Instance (validation != Ready).
         if(row.ready() || root.providerLabel!="RetroArch" ||
-           extension(file)==".dsv" || extension(file)==".dss")
+           extension(file)==".dsv" || extension(file)==".dss" ||
+           row.sourceVariant=="gen5-unverified-version-hint")
             s.result.instances.push_back(std::move(row));
     }
     // Process all names already enumerated under the hard memory cap, then
@@ -355,6 +359,21 @@ Source::SaveInstance inspectSourceFile(const std::string& path,
     if(!save) {
         row.validation=statusForFailure(error);
         row.diagnostic=error;
+        // A real Gen V battery file with one damaged checksum was previously
+        // dropped from mixed RetroArch folders, hiding the actual rejection.
+        // An unchecked header is not proof of game identity: keep gameId
+        // empty, leave validation Invalid/Unsupported, and mark the hint only
+        // to improve failure reporting (never profile assignment).
+        for(const size_t offset:{size_t{0},LayoutInfo::BlackWhiteCopySize,
+                                 LayoutInfo::Black2White2CopySize}) {
+            const size_t versionAt=offset+0x19400+0x1F;
+            if(versionAt>=bytes.size())continue;
+            const auto hinted=Gen5ReadOnlySave::gameIdFromVersion(bytes[versionAt]);
+            if(!isExactGen5Id(hinted))continue;
+            row.sourceVariant="gen5-unverified-version-hint";
+            row.diagnostic+="; unverified Gen V header suggests "+std::string(hinted);
+            break;
+        }
         return row;
     }
     row.gameId=std::string(save->exactGameId());

@@ -241,6 +241,20 @@ for portrait in ("hilbert", "hilda", "nate", "rosa"):
     require(product_home, f'"{portrait}"')
     require(product_art, f'"{portrait}.png": "https://play.pokemonshowdown.com/sprites/trainers/{portrait}.png"')
 
+# Failed Gen V raw files under a mixed RetroArch directory must remain
+# diagnostically visible but NEVER selectable or silently reinterpreted.
+source_scan = read("src/Integration/Gen5/Gen5SourceDiscovery.cpp")
+host_gen5 = read("tests/test_gen5_readonly_save.cpp")
+require(source_scan,
+        'row.sourceVariant=="gen5-unverified-version-hint"',
+        'row.validation=statusForFailure(error)',
+        'row.diagnostic+="; unverified Gen V header suggests "')
+require(host_gen5,
+        "rejectedRetroArchGen5DiagnosticContracts()",
+        "assert(catalog.rows.empty() && catalog.invalidOrAmbiguous==1)",
+        "assert(!G::reopenValidatedSource(inspected).ready())")
+require(games, 'item.sourceVariant=="gen5-unverified-version-hint"')
+
 # When no Gen V Save Instance is presented, hardware users must learn if
 # the same emulator folder was scanned but rejected by strict validation.
 require(
