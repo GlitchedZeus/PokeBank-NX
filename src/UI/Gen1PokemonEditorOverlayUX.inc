@@ -29,6 +29,8 @@
 #include <utility>
 #include <vector>
 
+#include "Integration/Common/ClassicStrictValidators.h"
+
 namespace UI::Gen1PokemonEditor {
 namespace {
 
@@ -617,23 +619,6 @@ std::vector<std::string> pendingLines(TrainerViewScreen& screen) {
     return out;
 }
 
-bool pathExists(const std::string& path) noexcept {
-    struct stat st{};
-    return ::stat(path.c_str(), &st) == 0;
-}
-
-bool writeBytes(const std::string& path, std::span<const uint8_t> bytes) {
-    FILE* out = std::fopen(path.c_str(), "wb");
-    if (!out) return false;
-    const bool ok = std::fwrite(bytes.data(), 1, bytes.size(), out) == bytes.size();
-    const bool closeOk = std::fclose(out) == 0;
-    return ok && closeOk;
-}
-
-bool writeText(const std::string& path, const std::string& text) {
-    return writeBytes(path, std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(text.data()), text.size()));
-}
-
 std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
     error.clear();
     auto* trainer = rbyTrainer(screen);
@@ -661,46 +646,40 @@ std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
     const std::string root = PokeBank::Paths::gen1ExportsRoot();
     if (!PokeBank::Paths::ensureGen1ExportsRoot(&error)) return {};
     const std::string timestamp = Utils::getTimestamp();
-    std::string exportDir = PokeBank::Paths::gen1ExportDirectory(screen.sourceGameId, timestamp);
+    const std::string exportDir = PokeBank::Paths::gen1ExportDirectory(screen.sourceGameId, timestamp);
     if (exportDir.empty()) {
         error = "Could not construct safe Generation I export path";
         return {};
     }
-    const std::string baseName = exportDir.substr(root.size() + 1);
-    for (int suffix = 2; pathExists(exportDir) && suffix < 1000; ++suffix)
-        exportDir = root + "/" + baseName + "-" + std::to_string(suffix);
-    if (pathExists(exportDir) || ::mkdir(exportDir.c_str(), 0777) != 0) {
-        error = "Could not create unique Generation I export directory";
-        return {};
-    }
+    const auto game = screen.sourceGameId == "yellow_gb"
+        ? PokeVault::Integration::Gen1::SourceGame::Yellow
+        : screen.sourceGameId == "blue_gb" ? PokeVault::Integration::Gen1::SourceGame::Blue
+                                           : PokeVault::Integration::Gen1::SourceGame::Red;
 
-    if (!writeBytes(exportDir + "/original_backup.srm", pokemon->originalBytes())) {
-        error = "Could not write automatic original Generation I backup";
+    // Verified transaction: temp directory, fsync, read-back + SHA-256, strict Gen I reparse
+    // before and after writing, atomic publish. The RetroArch source is never opened for writing.
+    PokeVault::Integration::Common::VerifiedExportRequest request;
+    request.rootDirectory = root;
+    request.directoryStem = exportDir.substr(root.size() + 1);
+    request.generationLabel = "Generation I";
+    request.fileExtension = ".srm";
+    request.sourcePath = screen.backupDir;
+    request.gameId = screen.sourceGameId;
+    request.saveFormat = "International R/B/Y SRAM (Party edit deferred)";
+    request.timestamp = timestamp;
+#ifdef POKEVAULT_GIT_COMMIT
+    request.applicationSha = POKEVAULT_GIT_COMMIT;
+#endif
+    request.originalBytes = pokemon->originalBytes();
+    request.editedBytes = edited;
+    request.changeLines = pendingLines(screen);
+    request.validator = PokeVault::Integration::Common::gen1StrictValidator(game);
+    const auto result = PokeVault::Integration::Common::publishVerifiedStagedExport(request);
+    if (!result.success) {
+        error = result.error.empty() ? "Verified Generation I export failed" : result.error;
         return {};
     }
-    if (!writeBytes(exportDir + "/edited.srm", edited)) {
-        error = "Could not write staged Generation I edited save";
-        return {};
-    }
-
-    std::string manifest;
-    manifest += "PokeBank NX Generation I staged boxed-Pokemon export\n";
-    manifest += "GAME_ID=" + screen.sourceGameId + "\n";
-    manifest += "SOURCE_PATH=" + screen.backupDir + "\n";
-    manifest += "SOURCE_KIND=RetroArchLegacy_READ_ONLY\n";
-    manifest += "ORIGINAL_BACKUP=original_backup.srm\n";
-    manifest += "EDITED_SAVE=edited.srm\n";
-    manifest += "LIVE_RETROARCH_WRITE=DISABLED\n";
-    manifest += "LIVE_INSTALLED_GAME_WRITE=DISABLED\n";
-    manifest += "PARTY_EDIT=DEFERRED\n";
-    manifest += "LAYOUT=International_RBY_only\n";
-    manifest += "PENDING_CHANGES:\n";
-    for (const auto& line : pendingLines(screen)) manifest += "- " + line + "\n";
-    if (!writeText(exportDir + "/EDIT_MANIFEST.txt", manifest)) {
-        error = "Edited save was written, but provenance manifest creation failed";
-        return {};
-    }
-    return exportDir;
+    return result.directory;
 }
 
 void discardAll(TrainerViewScreen& screen) {
