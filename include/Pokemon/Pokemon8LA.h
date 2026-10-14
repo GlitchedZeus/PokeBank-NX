@@ -385,7 +385,7 @@ namespace Pokemon {
          * Checks if the Pokemon is currently infected with Pokerus.
          * @return true if infected, false otherwise
          */
-        bool isPokerusInfected() const noexcept
+        bool isPokerusInfected() const noexcept override
         {
             return (pokerus() & 0xF) > 0;
         }
@@ -395,7 +395,7 @@ namespace Pokemon {
          * Cured Pokemon retain the EV gain bonus but can't spread the virus.
          * @return true if cured, false otherwise
          */
-        bool isPokerusCured() const noexcept
+        bool isPokerusCured() const noexcept override
         {
             return (pokerus() & 0xF0) > 0 && (pokerus() & 0xF) == 0;
         }

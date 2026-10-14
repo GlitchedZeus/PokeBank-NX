@@ -92,7 +92,7 @@ std::string hexHash(const std::array<uint8_t, 32>& hash) {
     return out.str();
 }
 
-std::vector<std::byte> nativeBytes(const Pokemon::Pokemon& pk) {
+std::vector<std::byte> nativeBytes(const ::Pokemon::Pokemon& pk) {
     const auto data = pk.getData();
     std::byte* encrypted = nullptr;
     switch (pk.getGameGroup()) {
@@ -126,21 +126,21 @@ std::vector<std::byte> nativeBytes(const Pokemon::Pokemon& pk) {
     return out;
 }
 
-std::unique_ptr<Pokemon::Pokemon> reparse(GameVersion group, const std::vector<std::byte>& native) {
+std::unique_ptr< ::Pokemon::Pokemon> reparse(GameVersion group, const std::vector<std::byte>& native) {
     const std::span<const std::byte> bytes(native.data(), native.size());
     switch (group) {
-        case GameVersion::FRLG: return std::make_unique<Pokemon::Pokemon3FRLG>(bytes);
-        case GameVersion::GG:   return std::make_unique<Pokemon::Pokemon7LGPE>(bytes);
-        case GameVersion::SWSH: return std::make_unique<Pokemon::Pokemon8SWSH>(bytes);
-        case GameVersion::BDSP: return std::make_unique<Pokemon::Pokemon8BDSP>(bytes);
-        case GameVersion::PLA:  return std::make_unique<Pokemon::Pokemon8LA>(bytes);
-        case GameVersion::SV:   return std::make_unique<Pokemon::Pokemon9SV>(bytes);
-        case GameVersion::ZA:   return std::make_unique<Pokemon::Pokemon9LZA>(bytes);
+        case GameVersion::FRLG: return std::make_unique< ::Pokemon::Pokemon3FRLG>(bytes);
+        case GameVersion::GG:   return std::make_unique< ::Pokemon::Pokemon7LGPE>(bytes);
+        case GameVersion::SWSH: return std::make_unique< ::Pokemon::Pokemon8SWSH>(bytes);
+        case GameVersion::BDSP: return std::make_unique< ::Pokemon::Pokemon8BDSP>(bytes);
+        case GameVersion::PLA:  return std::make_unique< ::Pokemon::Pokemon8LA>(bytes);
+        case GameVersion::SV:   return std::make_unique< ::Pokemon::Pokemon9SV>(bytes);
+        case GameVersion::ZA:   return std::make_unique< ::Pokemon::Pokemon9LZA>(bytes);
         default: return nullptr;
     }
 }
 
-void assertSerializedReparse(const Pokemon::Pokemon& candidate) {
+void assertSerializedReparse(const ::Pokemon::Pokemon& candidate) {
     assert(candidate.checksumValid());
     const auto bytes = nativeBytes(candidate);
     auto parsed = reparse(candidate.getGameGroup(), bytes);
@@ -187,87 +187,87 @@ void assertSerializedReparse(const Pokemon::Pokemon& candidate) {
     }
 }
 
-std::unique_ptr<Pokemon::Pokemon3FRLG> blankPK3(uint32_t pid, uint32_t id32) {
+std::unique_ptr< ::Pokemon::Pokemon3FRLG> blankPK3(uint32_t pid, uint32_t id32) {
     std::vector<std::byte> dec(Encryption::SIZE_PARTY3_FRLG, std::byte{0});
     wr32(dec, 0x00, pid);
     wr32(dec, 0x04, id32);
     wr16(dec, 0x1C, Encryption::checksum3FRLG(dec));
     std::byte* enc = Encryption::encryptArray3FRLG(dec);
-    auto out = std::make_unique<Pokemon::Pokemon3FRLG>(
+    auto out = std::make_unique< ::Pokemon::Pokemon3FRLG>(
         std::span<const std::byte>(enc, dec.size()));
     delete[] enc;
     assert(out->checksumValid());
     return out;
 }
 
-std::unique_ptr<Pokemon::Pokemon7LGPE> blankGG(uint32_t ec = 0x0A0B0C0Du) {
+std::unique_ptr< ::Pokemon::Pokemon7LGPE> blankGG(uint32_t ec = 0x0A0B0C0Du) {
     std::vector<std::byte> dec(0x104, std::byte{0});
     wr32(dec, 0x00, ec);
     std::byte* enc = Encryption::encryptArray7LGPE(dec, ec);
-    auto out = std::make_unique<Pokemon::Pokemon7LGPE>(
+    auto out = std::make_unique< ::Pokemon::Pokemon7LGPE>(
         std::span<const std::byte>(enc, dec.size()));
     delete[] enc;
     assert(out->checksumValid());
     return out;
 }
 
-std::unique_ptr<Pokemon::Pokemon8SWSH> blankSWSH(uint32_t ec = 0x10203040u) {
+std::unique_ptr< ::Pokemon::Pokemon8SWSH> blankSWSH(uint32_t ec = 0x10203040u) {
     std::vector<std::byte> dec(Encryption::SIZE_PARTY8_SWSH, std::byte{0});
     wr32(dec, 0x00, ec);
     std::byte* enc = Encryption::encryptArray8SWSH(dec, ec);
-    auto out = std::make_unique<Pokemon::Pokemon8SWSH>(
+    auto out = std::make_unique< ::Pokemon::Pokemon8SWSH>(
         std::span<const std::byte>(enc, dec.size()));
     delete[] enc;
     assert(out->checksumValid());
     return out;
 }
 
-std::unique_ptr<Pokemon::Pokemon8BDSP> blankBDSP(uint32_t ec = 0x21314151u) {
+std::unique_ptr< ::Pokemon::Pokemon8BDSP> blankBDSP(uint32_t ec = 0x21314151u) {
     constexpr std::size_t PARTY = 0x158;
     std::vector<std::byte> dec(PARTY, std::byte{0});
     wr32(dec, 0x00, ec);
     std::byte* enc = Encryption::encryptArray8BDSP(dec, ec);
-    auto out = std::make_unique<Pokemon::Pokemon8BDSP>(
+    auto out = std::make_unique< ::Pokemon::Pokemon8BDSP>(
         std::span<const std::byte>(enc, dec.size()));
     delete[] enc;
     assert(out->checksumValid());
     return out;
 }
 
-std::unique_ptr<Pokemon::Pokemon8LA> blankPLA(uint32_t ec = 0x55667788u) {
+std::unique_ptr< ::Pokemon::Pokemon8LA> blankPLA(uint32_t ec = 0x55667788u) {
     std::vector<std::byte> dec(Encryption::SIZE_PARTY8_LA, std::byte{0});
     wr32(dec, 0x00, ec);
     std::byte* enc = Encryption::encryptArray8LA(dec, ec);
-    auto out = std::make_unique<Pokemon::Pokemon8LA>(
+    auto out = std::make_unique< ::Pokemon::Pokemon8LA>(
         std::span<const std::byte>(enc, dec.size()));
     delete[] enc;
     assert(out->checksumValid());
     return out;
 }
 
-std::unique_ptr<Pokemon::Pokemon9SV> blankSV(uint32_t ec = 0x31415926u) {
+std::unique_ptr< ::Pokemon::Pokemon9SV> blankSV(uint32_t ec = 0x31415926u) {
     std::vector<std::byte> dec(Encryption::SIZE_PARTY9_SV, std::byte{0});
     wr32(dec, 0x00, ec);
     std::byte* enc = Encryption::encryptArray9SV(dec, ec);
-    auto out = std::make_unique<Pokemon::Pokemon9SV>(
+    auto out = std::make_unique< ::Pokemon::Pokemon9SV>(
         std::span<const std::byte>(enc, dec.size()));
     delete[] enc;
     assert(out->checksumValid());
     return out;
 }
 
-std::unique_ptr<Pokemon::Pokemon9LZA> blankZA(uint32_t ec = 0x27182818u) {
+std::unique_ptr< ::Pokemon::Pokemon9LZA> blankZA(uint32_t ec = 0x27182818u) {
     std::vector<std::byte> dec(Encryption::SIZE_PARTY9_LZA, std::byte{0});
     wr32(dec, 0x00, ec);
     std::byte* enc = Encryption::encryptArray9LZA(dec, ec);
-    auto out = std::make_unique<Pokemon::Pokemon9LZA>(
+    auto out = std::make_unique< ::Pokemon::Pokemon9LZA>(
         std::span<const std::byte>(enc, dec.size()));
     delete[] enc;
     assert(out->checksumValid());
     return out;
 }
 
-void configurePK3(Pokemon::Pokemon3FRLG& pk, uint16_t species, uint32_t pid, uint32_t id32,
+void configurePK3(::Pokemon::Pokemon3FRLG& pk, uint16_t species, uint32_t pid, uint32_t id32,
                   const std::u16string& nickname = u"PIKACHU") {
     pk.setSpecies(species);
     pk.setId32(id32);
@@ -288,7 +288,7 @@ void configurePK3(Pokemon::Pokemon3FRLG& pk, uint16_t species, uint32_t pid, uin
     assert(pk.checksumValid());
 }
 
-void configureModern(Pokemon::Pokemon& pk, uint16_t species, uint8_t form,
+void configureModern(::Pokemon::Pokemon& pk, uint16_t species, uint8_t form,
                      uint32_t pid, uint32_t id32, uint8_t origin,
                      const std::u16string& nickname, bool nicknamed) {
     pk.setSpecies(species);
@@ -318,7 +318,7 @@ void configureModern(Pokemon::Pokemon& pk, uint16_t species, uint8_t form,
     assert(pk.checksumValid());
 }
 
-void proveSourceUnchanged(const Pokemon::Pokemon& source,
+void proveSourceUnchanged(const ::Pokemon::Pokemon& source,
                           const std::vector<std::byte>& before,
                           const std::array<uint8_t, 32>& beforeHash) {
     const auto after = nativeBytes(source);
@@ -353,7 +353,7 @@ void assertMalformedEntityLengths(std::size_t storedSize, std::size_t partySize)
 }
 
 template <typename Entity>
-void assertModernStoredNormalization(const Pokemon::Pokemon& source,
+void assertModernStoredNormalization(const ::Pokemon::Pokemon& source,
                                      std::size_t storedSize,
                                      std::size_t partySize) {
     std::vector<std::byte> partyBytes = nativeBytes(source);
@@ -410,13 +410,13 @@ int main() {
         configurePK3(*pk3Source, 25, 0x12345678u, 0x12345778u);
         const auto pk3Party = nativeBytes(*pk3Source);
         assert(pk3Party.size() == Encryption::SIZE_PARTY3_FRLG);
-        Pokemon::Pokemon3FRLG pk3PartyParsed(
+        ::Pokemon::Pokemon3FRLG pk3PartyParsed(
             std::span<const std::byte>(pk3Party.data(), pk3Party.size()));
         assert(pk3PartyParsed.inputValid());
         assert(pk3PartyParsed.getDataSize() == Encryption::SIZE_PARTY3_FRLG);
         std::vector<std::byte> pk3StoredBytes(
             pk3Party.begin(), pk3Party.begin() + Encryption::SIZE_STORED3_FRLG);
-        Pokemon::Pokemon3FRLG pk3Stored(
+        ::Pokemon::Pokemon3FRLG pk3Stored(
             std::span<const std::byte>(pk3StoredBytes.data(), pk3StoredBytes.size()));
         assert(pk3Stored.inputValid());
         assert(pk3Stored.getDataSize() == Encryption::SIZE_STORED3_FRLG);
@@ -425,55 +425,55 @@ int main() {
         (void)pk3Stored.statHPMax();
         pk3Stored.setLevel(26);
         assert(pk3Stored.checksumValid());
-        assertMalformedEntityLengths<Pokemon::Pokemon3FRLG>(
+        assertMalformedEntityLengths< ::Pokemon::Pokemon3FRLG>(
             Encryption::SIZE_STORED3_FRLG, Encryption::SIZE_PARTY3_FRLG);
 
         auto gg = blankGG(0xA0260001u);
         configureModern(*gg, 25, 0, 0x10203040u, 0x10203140u,
                         static_cast<uint8_t>(GameVersion::GP), u"PIKACHU", false);
-        assertModernStoredNormalization<Pokemon::Pokemon7LGPE>(
+        assertModernStoredNormalization< ::Pokemon::Pokemon7LGPE>(
             *gg, Encryption::SIZE_STORED7_LGPE, Encryption::SIZE_PARTY7_LGPE);
-        assertMalformedEntityLengths<Pokemon::Pokemon7LGPE>(
+        assertMalformedEntityLengths< ::Pokemon::Pokemon7LGPE>(
             Encryption::SIZE_STORED7_LGPE, Encryption::SIZE_PARTY7_LGPE);
 
         auto swsh = blankSWSH(0xA0260002u);
         configureModern(*swsh, 25, 0, 0x20304050u, 0x20304150u,
                         static_cast<uint8_t>(GameVersion::SW), u"PIKACHU", false);
-        assertModernStoredNormalization<Pokemon::Pokemon8SWSH>(
+        assertModernStoredNormalization< ::Pokemon::Pokemon8SWSH>(
             *swsh, Encryption::SIZE_STORED8_SWSH, Encryption::SIZE_PARTY8_SWSH);
-        assertMalformedEntityLengths<Pokemon::Pokemon8SWSH>(
+        assertMalformedEntityLengths< ::Pokemon::Pokemon8SWSH>(
             Encryption::SIZE_STORED8_SWSH, Encryption::SIZE_PARTY8_SWSH);
 
         auto bdsp = blankBDSP(0xA0260003u);
         configureModern(*bdsp, 25, 0, 0x30405060u, 0x30405160u,
                         static_cast<uint8_t>(GameVersion::BD), u"PIKACHU", false);
-        assertModernStoredNormalization<Pokemon::Pokemon8BDSP>(
+        assertModernStoredNormalization< ::Pokemon::Pokemon8BDSP>(
             *bdsp, Encryption::SIZE_STORED8_BDSP, Encryption::SIZE_PARTY8_BDSP);
-        assertMalformedEntityLengths<Pokemon::Pokemon8BDSP>(
+        assertMalformedEntityLengths< ::Pokemon::Pokemon8BDSP>(
             Encryption::SIZE_STORED8_BDSP, Encryption::SIZE_PARTY8_BDSP);
 
         auto pla = blankPLA(0xA0260004u);
         configureModern(*pla, 25, 0, 0x40506070u, 0x40506170u,
                         static_cast<uint8_t>(GameVersion::PLA), u"PIKACHU", false);
-        assertModernStoredNormalization<Pokemon::Pokemon8LA>(
+        assertModernStoredNormalization< ::Pokemon::Pokemon8LA>(
             *pla, Encryption::SIZE_STORED8_LA, Encryption::SIZE_PARTY8_LA);
-        assertMalformedEntityLengths<Pokemon::Pokemon8LA>(
+        assertMalformedEntityLengths< ::Pokemon::Pokemon8LA>(
             Encryption::SIZE_STORED8_LA, Encryption::SIZE_PARTY8_LA);
 
         auto sv = blankSV(0xA0260005u);
         configureModern(*sv, 25, 0, 0x50607080u, 0x50607180u,
                         static_cast<uint8_t>(GameVersion::SL), u"PIKACHU", false);
-        assertModernStoredNormalization<Pokemon::Pokemon9SV>(
+        assertModernStoredNormalization< ::Pokemon::Pokemon9SV>(
             *sv, Encryption::SIZE_STORED9_SV, Encryption::SIZE_PARTY9_SV);
-        assertMalformedEntityLengths<Pokemon::Pokemon9SV>(
+        assertMalformedEntityLengths< ::Pokemon::Pokemon9SV>(
             Encryption::SIZE_STORED9_SV, Encryption::SIZE_PARTY9_SV);
 
         auto za = blankZA(0xA0260006u);
         configureModern(*za, 25, 0, 0x60708090u, 0x60708190u,
                         static_cast<uint8_t>(GameVersion::ZA), u"PIKACHU", false);
-        assertModernStoredNormalization<Pokemon::Pokemon9LZA>(
+        assertModernStoredNormalization< ::Pokemon::Pokemon9LZA>(
             *za, Encryption::SIZE_STORED9_LZA, Encryption::SIZE_PARTY9_LZA);
-        assertMalformedEntityLengths<Pokemon::Pokemon9LZA>(
+        assertMalformedEntityLengths< ::Pokemon::Pokemon9LZA>(
             Encryption::SIZE_STORED9_LZA, Encryption::SIZE_PARTY9_LZA);
 
         std::array<std::byte, 7> tooShort{};
@@ -1093,7 +1093,7 @@ int main() {
         source->setFatefulEncounter(true);
         uint16_t commonMove = 0;
         uint16_t swordOnlyMove = 0;
-        for (uint16_t move = 1; move <= Pokemon::LEARN_MAX_MOVE_ID; ++move) {
+        for (uint16_t move = 1; move <= ::Pokemon::LEARN_MAX_MOVE_ID; ++move) {
             const bool sw = Pokemon::isLearnable(25, 0, GameVersion::SWSH, move);
             const bool sv = Pokemon::isLearnable(25, 0, GameVersion::SV, move);
             if (sw && sv && commonMove == 0) commonMove = move;
@@ -1192,7 +1192,7 @@ int main() {
         source->setFatefulEncounter(true);
         uint16_t commonMove = 0;
         uint16_t swordOnlyMove = 0;
-        for (uint16_t move = 1; move <= Pokemon::LEARN_MAX_MOVE_ID; ++move) {
+        for (uint16_t move = 1; move <= ::Pokemon::LEARN_MAX_MOVE_ID; ++move) {
             const bool sw = Pokemon::isLearnable(25, 0, GameVersion::SWSH, move);
             const bool sv = Pokemon::isLearnable(25, 0, GameVersion::SV, move);
             if (sw && sv && commonMove == 0) commonMove = move;
@@ -1833,10 +1833,10 @@ int main() {
     {
         size_t sharedBase = 0, swshOnlyBase = 0, svOnlyBase = 0, neitherBase = 0;
         size_t sharedForms = 0, swshOnlyForms = 0, svOnlyForms = 0, neitherForms = 0;
-        for (uint16_t sp = 1; sp <= Pokemon::PERSONAL_MAX_SPECIES; ++sp) {
+        for (uint16_t sp = 1; sp <= ::Pokemon::PERSONAL_MAX_SPECIES; ++sp) {
             const auto& base = Pokemon::getPersonalInfo(sp, 0);
-            const bool sw = (base.presence & Pokemon::PERSONAL_GAME_SWSH) != 0;
-            const bool sv = (base.presence & Pokemon::PERSONAL_GAME_SV) != 0;
+            const bool sw = (base.presence & ::Pokemon::PERSONAL_GAME_SWSH) != 0;
+            const bool sv = (base.presence & ::Pokemon::PERSONAL_GAME_SV) != 0;
             if (sw && sv) ++sharedBase;
             else if (sw) ++swshOnlyBase;
             else if (sv) ++svOnlyBase;
@@ -1844,8 +1844,8 @@ int main() {
 
             for (uint8_t form = 1; form < base.formCount; ++form) {
                 const auto& pi = Pokemon::getPersonalInfo(sp, form);
-                const bool fsw = (pi.presence & Pokemon::PERSONAL_GAME_SWSH) != 0;
-                const bool fsv = (pi.presence & Pokemon::PERSONAL_GAME_SV) != 0;
+                const bool fsw = (pi.presence & ::Pokemon::PERSONAL_GAME_SWSH) != 0;
+                const bool fsv = (pi.presence & ::Pokemon::PERSONAL_GAME_SV) != 0;
                 if (fsw && fsv) ++sharedForms;
                 else if (fsw) ++swshOnlyForms;
                 else if (fsv) ++svOnlyForms;
@@ -1861,7 +1861,7 @@ int main() {
         assert(svOnlyForms == 175);
         assert(neitherForms == 169);
 
-        auto expectNotInDex = [&](std::unique_ptr<Pokemon::Pokemon> source,
+        auto expectNotInDex = [&](std::unique_ptr< ::Pokemon::Pokemon> source,
                                   GameVersion destinationGroup,
                                   uint8_t destinationVersion) {
             const auto before = nativeBytes(*source);
@@ -1960,7 +1960,7 @@ int main() {
         };
 
         uint16_t commonMove = 0;
-        for (uint16_t move = 1; move <= Pokemon::LEARN_MAX_MOVE_ID; ++move) {
+        for (uint16_t move = 1; move <= ::Pokemon::LEARN_MAX_MOVE_ID; ++move) {
             if (Pokemon::isLearnable(25, 0, GameVersion::SWSH, move) &&
                 Pokemon::isLearnable(25, 0, GameVersion::SV, move)) {
                 commonMove = move;
@@ -1981,7 +1981,7 @@ int main() {
 
         for (size_t r = 0; r < std::size(routes); ++r) {
             const auto& route = routes[r];
-            std::unique_ptr<Pokemon::Pokemon> source;
+            std::unique_ptr< ::Pokemon::Pokemon> source;
             if (route.sourceG8) source = blankSWSH(0x79000000u + static_cast<uint32_t>(r));
             else source = blankSV(0x79000000u + static_cast<uint32_t>(r));
 
@@ -2131,7 +2131,7 @@ int main() {
             for (const uint16_t shinyXor : {uint16_t{0}, uint16_t{15}, uint16_t{16}}) {
                 const uint32_t pid = 0x13572468u + shinyXor;
                 const uint32_t id32 = pid ^ shinyXor;
-                std::unique_ptr<Pokemon::Pokemon> source;
+                std::unique_ptr< ::Pokemon::Pokemon> source;
                 if (fromG8) source = blankSWSH(0x7A000000u + shinyXor);
                 else source = blankSV(0x7A100000u + shinyXor);
                 configureModern(*source, 25, 0, pid, id32,
@@ -2167,8 +2167,8 @@ int main() {
         const uint16_t species[] = {280, 25}; // Ralts has distinct normal slots; Pikachu duplicates
         for (const uint16_t sp : species) {
             const auto& pi = Pokemon::getPersonalInfo(sp, 0);
-            assert((pi.presence & Pokemon::PERSONAL_GAME_SWSH) != 0);
-            assert((pi.presence & Pokemon::PERSONAL_GAME_SV) != 0);
+            assert((pi.presence & ::Pokemon::PERSONAL_GAME_SWSH) != 0);
+            assert((pi.presence & ::Pokemon::PERSONAL_GAME_SV) != 0);
             const std::array<std::pair<uint16_t, uint8_t>, 3> abilities{{
                 {pi.ability1, 1},
                 {pi.ability2, 2},
@@ -2177,8 +2177,8 @@ int main() {
             for (const bool fromG8 : {true, false}) {
                 for (const auto& [ability, slot] : abilities) {
                     auto source = fromG8
-                        ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x7B000000u + sp + slot).release())
-                        : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x7B100000u + sp + slot).release());
+                        ? std::unique_ptr< ::Pokemon::Pokemon>(blankSWSH(0x7B000000u + sp + slot).release())
+                        : std::unique_ptr< ::Pokemon::Pokemon>(blankSV(0x7B100000u + sp + slot).release());
                     configureModern(*source, sp, 0, 0x24680000u + sp + slot, 0x24680100u + sp + slot,
                                     static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
                                     u"ABILITY", true);
@@ -2221,7 +2221,7 @@ int main() {
         };
         for (const auto& x : cases) {
             for (const bool fromG8 : {true, false}) {
-                std::unique_ptr<Pokemon::Pokemon> source;
+                std::unique_ptr< ::Pokemon::Pokemon> source;
                 if (fromG8) source = blankSWSH(0x7B800000u + x.species);
                 else source = blankSV(0x7B900000u + x.species);
                 configureModern(*source, x.species, 0, 0x76540000u + x.species,
@@ -2261,7 +2261,7 @@ int main() {
     // stale move ids. Shared moves survive; source-only moves and relearns are explicitly dropped.
     {
         std::vector<uint16_t> common, swOnly, svOnly;
-        for (uint16_t move = 1; move <= Pokemon::LEARN_MAX_MOVE_ID; ++move) {
+        for (uint16_t move = 1; move <= ::Pokemon::LEARN_MAX_MOVE_ID; ++move) {
             const bool sw = Pokemon::isLearnable(25, 0, GameVersion::SWSH, move);
             const bool sv = Pokemon::isLearnable(25, 0, GameVersion::SV, move);
             if (sw && sv) common.push_back(move);
@@ -2272,7 +2272,7 @@ int main() {
 
         auto exercise = [&](bool fromG8,
                             const std::vector<uint16_t>& sourceOnly) {
-            std::unique_ptr<Pokemon::Pokemon> source;
+            std::unique_ptr< ::Pokemon::Pokemon> source;
             if (fromG8) source = blankSWSH(fromG8 ? 0x7C000001u : 0x7C100001u);
             else source = blankSV(0x7C100001u);
             configureModern(*source, 25, 0, 0x33445566u, 0x33445466u,
@@ -2327,7 +2327,7 @@ int main() {
         assert(common != 0 && swOnly != 0 && svOnly != 0);
 
         auto exercise = [&](bool fromG8, uint16_t item, bool expectDrop) {
-            std::unique_ptr<Pokemon::Pokemon> source;
+            std::unique_ptr< ::Pokemon::Pokemon> source;
             if (fromG8) source = blankSWSH(0x7D000000u + item);
             else source = blankSV(0x7D100000u + item);
             configureModern(*source, 25, 0, 0x44556677u, 0x44556777u,
@@ -2431,7 +2431,7 @@ int main() {
         const uint8_t balls[] = {1,4,16,17,25,26};
         for (const bool fromG8 : {true, false}) {
             for (const uint8_t language : languages) {
-                std::unique_ptr<Pokemon::Pokemon> source;
+                std::unique_ptr< ::Pokemon::Pokemon> source;
                 if (fromG8) source = blankSWSH(0x7E000000u + language);
                 else source = blankSV(0x7E100000u + language);
                 configureModern(*source, 25, 0, 0x55667700u + language, 0x55667600u + language,
@@ -2470,7 +2470,7 @@ int main() {
             }
 
             for (const uint8_t ball : balls) {
-                std::unique_ptr<Pokemon::Pokemon> source;
+                std::unique_ptr< ::Pokemon::Pokemon> source;
                 if (fromG8) source = blankSWSH(0x7E200000u + ball);
                 else source = blankSV(0x7E300000u + ball);
                 configureModern(*source, 25, 0, 0x66778800u + ball, 0x66778900u + ball,
@@ -2496,7 +2496,7 @@ int main() {
 
             for (const uint64_t tracker : std::array<uint64_t, 3>{
                      uint64_t{0}, uint64_t{0x0102030405060708ULL}, uint64_t{0xFFEEDDCCBBAA9988ULL}}) {
-                std::unique_ptr<Pokemon::Pokemon> source;
+                std::unique_ptr< ::Pokemon::Pokemon> source;
                 if (fromG8) source = blankSWSH(static_cast<uint32_t>(0x7E400000u + (tracker & 0xFF)));
                 else source = blankSV(static_cast<uint32_t>(0x7E500000u + (tracker & 0xFF)));
                 configureModern(*source, 25, 0, 0x77889900u, 0x77889800u,
@@ -2605,9 +2605,9 @@ int main() {
     // 0x3E-0x3F are authoritative padding and stay zero.
     {
         for (const bool fromG8 : {true, false}) {
-            std::unique_ptr<Pokemon::Pokemon> source =
-                fromG8 ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x7E180000u))
-                       : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x7E190000u));
+            std::unique_ptr< ::Pokemon::Pokemon> source =
+                fromG8 ? std::unique_ptr< ::Pokemon::Pokemon>(blankSWSH(0x7E180000u))
+                       : std::unique_ptr< ::Pokemon::Pokemon>(blankSV(0x7E190000u));
             configureModern(*source, 25, 0, 0x12344321u, 0x12344221u,
                             static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
                             u"RIBBONBITS", true);
@@ -2711,9 +2711,9 @@ int main() {
     {
         for (uint8_t ball = 1; ball <= 26; ++ball) {
             for (const bool fromG8 : {true, false}) {
-                std::unique_ptr<Pokemon::Pokemon> source =
-                    fromG8 ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x7E1A0000u + ball))
-                           : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x7E1B0000u + ball));
+                std::unique_ptr< ::Pokemon::Pokemon> source =
+                    fromG8 ? std::unique_ptr< ::Pokemon::Pokemon>(blankSWSH(0x7E1A0000u + ball))
+                           : std::unique_ptr< ::Pokemon::Pokemon>(blankSV(0x7E1B0000u + ball));
                 configureModern(*source, 25, 0, 0x70700000u + ball, 0x70700100u + ball,
                                 static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
                                 u"BALLDOMAIN", true);
@@ -2792,15 +2792,15 @@ int main() {
     // is cleared with an explicit loss. This is not a synthetic HOME trade-handler update.
     {
         for (const bool fromG8 : {true, false}) {
-            std::unique_ptr<Pokemon::Pokemon> source =
-                fromG8 ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x7E1E0001u))
-                       : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x7E1F0001u));
+            std::unique_ptr< ::Pokemon::Pokemon> source =
+                fromG8 ? std::unique_ptr< ::Pokemon::Pokemon>(blankSWSH(0x7E1E0001u))
+                       : std::unique_ptr< ::Pokemon::Pokemon>(blankSV(0x7E1F0001u));
             configureModern(*source, 869 /*Alcremie*/, 0, 0x81818181u, 0x81818081u,
                             static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
                             u"ALCREMIE", true);
             const auto& pi = Pokemon::getPersonalInfo(869, 0);
-            assert((pi.presence & Pokemon::PERSONAL_GAME_SWSH) != 0);
-            assert((pi.presence & Pokemon::PERSONAL_GAME_SV) != 0);
+            assert((pi.presence & ::Pokemon::PERSONAL_GAME_SWSH) != 0);
+            assert((pi.presence & ::Pokemon::PERSONAL_GAME_SV) != 0);
             auto raw = source->getData();
             raw[0xC2] = std::byte{1}; raw[0xC3] = std::byte{2}; raw[0xC4] = std::byte{1};
             raw[0xC6] = std::byte{0x34}; raw[0xC7] = std::byte{0x12};
@@ -2895,18 +2895,18 @@ int main() {
         };
         auto findPPDrop = [](GameVersion sourceGroup, GameVersion destinationGroup) {
             PPCandidate found{};
-            for (uint16_t sp = 1; sp <= Pokemon::PERSONAL_MAX_SPECIES && found.species == 0; ++sp) {
+            for (uint16_t sp = 1; sp <= ::Pokemon::PERSONAL_MAX_SPECIES && found.species == 0; ++sp) {
                 const auto& pi = Pokemon::getPersonalInfo(sp, 0);
                 const bool presentSource =
                     sourceGroup == GameVersion::SWSH
-                        ? (pi.presence & Pokemon::PERSONAL_GAME_SWSH) != 0
-                        : (pi.presence & Pokemon::PERSONAL_GAME_SV) != 0;
+                        ? (pi.presence & ::Pokemon::PERSONAL_GAME_SWSH) != 0
+                        : (pi.presence & ::Pokemon::PERSONAL_GAME_SV) != 0;
                 const bool presentDestination =
                     destinationGroup == GameVersion::SWSH
-                        ? (pi.presence & Pokemon::PERSONAL_GAME_SWSH) != 0
-                        : (pi.presence & Pokemon::PERSONAL_GAME_SV) != 0;
+                        ? (pi.presence & ::Pokemon::PERSONAL_GAME_SWSH) != 0
+                        : (pi.presence & ::Pokemon::PERSONAL_GAME_SV) != 0;
                 if (!presentSource || !presentDestination) continue;
-                for (uint16_t move = 1; move <= Pokemon::LEARN_MAX_MOVE_ID; ++move) {
+                for (uint16_t move = 1; move <= ::Pokemon::LEARN_MAX_MOVE_ID; ++move) {
                     if (!Pokemon::isLearnable(sp, 0, sourceGroup, move) ||
                         !Pokemon::isLearnable(sp, 0, destinationGroup, move))
                         continue;
@@ -2931,7 +2931,7 @@ int main() {
             if (pp.species == 0) continue; // only require a fixture where current tables contain drift
             ++provenDirections;
             const bool fromG8 = sourceGroup == GameVersion::SWSH;
-            std::unique_ptr<Pokemon::Pokemon> source;
+            std::unique_ptr< ::Pokemon::Pokemon> source;
             if (fromG8) source = blankSWSH(0x7E600000u + pp.species);
             else source = blankSV(0x7E700000u + pp.species);
             configureModern(*source, pp.species, 0, 0x99000000u + pp.species,
@@ -2978,7 +2978,7 @@ int main() {
         };
         for (const bool fromG8 : {true, false}) {
             for (const auto& tc : textCases) {
-                std::unique_ptr<Pokemon::Pokemon> source;
+                std::unique_ptr< ::Pokemon::Pokemon> source;
                 if (fromG8) source = blankSWSH(0x7E800000u + tc.language);
                 else source = blankSV(0x7E900000u + tc.language);
                 configureModern(*source, 25, 0, 0xAA000000u + tc.language,
@@ -3012,9 +3012,9 @@ int main() {
     // terminator or an unpaired surrogate fail preflight/conversion without touching the source.
     {
         for (const bool fromG8 : {true, false}) {
-            std::unique_ptr<Pokemon::Pokemon> maxText =
-                fromG8 ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x7EA00001u))
-                       : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x7EA10001u));
+            std::unique_ptr< ::Pokemon::Pokemon> maxText =
+                fromG8 ? std::unique_ptr< ::Pokemon::Pokemon>(blankSWSH(0x7EA00001u))
+                       : std::unique_ptr< ::Pokemon::Pokemon>(blankSV(0x7EA10001u));
             configureModern(*maxText, 25, 0, 0xABABABABu, 0xABABAAABu,
                             static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
                             u"ABCDEFGHIJKL", true); // exactly 12
@@ -3075,9 +3075,9 @@ int main() {
     // The index-to-name catalog is pinned in the audit document; byte survival alone is insufficient.
     for (const bool fromG8 : {true, false}) {
         for (unsigned index = 0; index < 128; ++index) {
-            std::unique_ptr<Pokemon::Pokemon> source = fromG8
-                ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0xC1050000u + index))
-                : std::unique_ptr<Pokemon::Pokemon>(blankSV(0xC1060000u + index));
+            std::unique_ptr< ::Pokemon::Pokemon> source = fromG8
+                ? std::unique_ptr< ::Pokemon::Pokemon>(blankSWSH(0xC1050000u + index))
+                : std::unique_ptr< ::Pokemon::Pokemon>(blankSV(0xC1060000u + index));
             configureModern(*source, 25, 0, 0x12345678u, 0x87654321u,
                 static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL), u"TITLE", true);
             auto raw = source->getData();
@@ -3120,9 +3120,9 @@ int main() {
     // closure-ball-domain: exercise every byte value, not just a few special/reserved examples.
     for (const bool fromG8 : {true, false}) {
         for (unsigned ball = 0; ball < 256; ++ball) {
-            std::unique_ptr<Pokemon::Pokemon> source = fromG8
-                ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0xC1070000u + ball))
-                : std::unique_ptr<Pokemon::Pokemon>(blankSV(0xC1080000u + ball));
+            std::unique_ptr< ::Pokemon::Pokemon> source = fromG8
+                ? std::unique_ptr< ::Pokemon::Pokemon>(blankSWSH(0xC1070000u + ball))
+                : std::unique_ptr< ::Pokemon::Pokemon>(blankSV(0xC1080000u + ball));
             configureModern(*source, 25, 0, 0x12345678u, 0x87654321u,
                 static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL), u"BALL", true);
             source->setBall(static_cast<uint8_t>(ball));
@@ -3152,9 +3152,9 @@ int main() {
     for (const bool fromG8 : {true, false}) {
         for (const size_t field : {0x58u, 0xA8u, 0xF8u}) {
             for (const auto& tc : textCases) {
-                std::unique_ptr<Pokemon::Pokemon> source = fromG8
-                    ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0xC1090000u))
-                    : std::unique_ptr<Pokemon::Pokemon>(blankSV(0xC10A0000u));
+                std::unique_ptr< ::Pokemon::Pokemon> source = fromG8
+                    ? std::unique_ptr< ::Pokemon::Pokemon>(blankSWSH(0xC1090000u))
+                    : std::unique_ptr< ::Pokemon::Pokemon>(blankSV(0xC10A0000u));
                 configureModern(*source, 25, 0, 0x12345678u, 0x87654321u,
                     static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL), u"TEXT", true);
                 auto raw = source->getData();
@@ -3195,7 +3195,7 @@ int main() {
         };
         for (size_t i = 0; i < std::size(cases); ++i) {
             const auto& rt = cases[i];
-            std::unique_ptr<Pokemon::Pokemon> source;
+            std::unique_ptr< ::Pokemon::Pokemon> source;
             if (rt.startG8) source = blankSWSH(0x7F000000u + static_cast<uint32_t>(i));
             else source = blankSV(0x7F100000u + static_cast<uint32_t>(i));
             configureModern(*source, 869 /*Alcremie*/, 0, 0x88990000u + static_cast<uint32_t>(i),
@@ -3304,9 +3304,9 @@ int main() {
         };
         for (size_t i = 0; i < std::size(fixed); ++i) {
             const auto& c = fixed[i];
-            std::unique_ptr<Pokemon::Pokemon> source = c.g8
-                ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x7FB00000u + static_cast<uint32_t>(i)))
-                : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x7FC00000u + static_cast<uint32_t>(i)));
+            std::unique_ptr< ::Pokemon::Pokemon> source = c.g8
+                ? std::unique_ptr< ::Pokemon::Pokemon>(blankSWSH(0x7FB00000u + static_cast<uint32_t>(i)))
+                : std::unique_ptr< ::Pokemon::Pokemon>(blankSV(0x7FC00000u + static_cast<uint32_t>(i)));
             configureModern(*source, 25, 0, 0x11110000u + static_cast<uint32_t>(i),
                             0x22220000u + static_cast<uint32_t>(i),
                             static_cast<uint8_t>(c.g8 ? GameVersion::SW : GameVersion::SL),
@@ -3365,9 +3365,9 @@ int main() {
         // Shared HT ID at 0xC6-0xC7 remains semantically uncertain in the pinned model
         // ("unused?"), but it is representation-safe because the exact two bytes preserve both ways.
         for (const bool fromG8 : {true, false}) {
-            std::unique_ptr<Pokemon::Pokemon> source = fromG8
-                ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x7FE10001u))
-                : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x7FE10002u));
+            std::unique_ptr< ::Pokemon::Pokemon> source = fromG8
+                ? std::unique_ptr< ::Pokemon::Pokemon>(blankSWSH(0x7FE10001u))
+                : std::unique_ptr< ::Pokemon::Pokemon>(blankSV(0x7FE10002u));
             configureModern(*source, 25, 0, 0x55551111u, 0x66661111u,
                             static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
                             u"HTID", true);
@@ -3392,9 +3392,9 @@ int main() {
     {
         for (const bool fromG8 : {true, false}) {
             for (int variant = 0; variant < 6; ++variant) {
-                std::unique_ptr<Pokemon::Pokemon> source = fromG8
-                    ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x7FF00000u + variant))
-                    : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x7FF10000u + variant));
+                std::unique_ptr< ::Pokemon::Pokemon> source = fromG8
+                    ? std::unique_ptr< ::Pokemon::Pokemon>(blankSWSH(0x7FF00000u + variant))
+                    : std::unique_ptr< ::Pokemon::Pokemon>(blankSV(0x7FF10000u + variant));
                 configureModern(*source, 25, 0, 0x77770000u + variant, 0x88880000u + variant,
                                 static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
                                 u"HPSTATE", true);
@@ -3443,20 +3443,20 @@ int main() {
 
         size_t shared = 0;
         size_t blocked = 0;
-        for (uint16_t species = 1; species <= Pokemon::PERSONAL_MAX_SPECIES; ++species) {
+        for (uint16_t species = 1; species <= ::Pokemon::PERSONAL_MAX_SPECIES; ++species) {
             const auto& base = Pokemon::getPersonalInfo(species, 0);
             for (uint8_t form = 0; form < base.formCount; ++form) {
                 const auto& pi = Pokemon::getPersonalInfo(species, form);
-                const uint8_t both = Pokemon::PERSONAL_GAME_SWSH | Pokemon::PERSONAL_GAME_SV;
+                const uint8_t both = ::Pokemon::PERSONAL_GAME_SWSH | ::Pokemon::PERSONAL_GAME_SV;
                 if ((pi.presence & both) != both) continue;
                 ++shared;
                 const bool transferable = swshSvFormTransferable(species, form);
                 if (!transferable) ++blocked;
 
                 for (const bool fromG8 : {true, false}) {
-                    std::unique_ptr<Pokemon::Pokemon> source = fromG8
-                        ? std::unique_ptr<Pokemon::Pokemon>(blankSWSH(0x81000000u + species * 16u + form))
-                        : std::unique_ptr<Pokemon::Pokemon>(blankSV(0x82000000u + species * 16u + form));
+                    std::unique_ptr< ::Pokemon::Pokemon> source = fromG8
+                        ? std::unique_ptr< ::Pokemon::Pokemon>(blankSWSH(0x81000000u + species * 16u + form))
+                        : std::unique_ptr< ::Pokemon::Pokemon>(blankSV(0x82000000u + species * 16u + form));
                     configureModern(*source, species, form, 0x12340000u + species,
                                     0x56780000u + species,
                                     static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),

@@ -42,15 +42,15 @@ using Enums::GameVersion;
 namespace Conversion {
     namespace {
         // Rebuild the destination entity from an ENCRYPTED record (the subclass ctor decrypts).
-        std::unique_ptr<Pokemon::Pokemon> makePokemon(GameVersion g, std::span<const std::byte> rec) {
+        std::unique_ptr< ::Pokemon::Pokemon> makePokemon(GameVersion g, std::span<const std::byte> rec) {
             switch (g) {
-                case GameVersion::GG:   return std::make_unique<Pokemon::Pokemon7LGPE>(rec);
-                case GameVersion::SWSH: return std::make_unique<Pokemon::Pokemon8SWSH>(rec);
-                case GameVersion::BDSP: return std::make_unique<Pokemon::Pokemon8BDSP>(rec);
-                case GameVersion::PLA:  return std::make_unique<Pokemon::Pokemon8LA>(rec);
-                case GameVersion::SV:   return std::make_unique<Pokemon::Pokemon9SV>(rec);
-                case GameVersion::ZA:   return std::make_unique<Pokemon::Pokemon9LZA>(rec);
-                case GameVersion::FRLG: return std::make_unique<Pokemon::Pokemon3FRLG>(rec);
+                case GameVersion::GG:   return std::make_unique< ::Pokemon::Pokemon7LGPE>(rec);
+                case GameVersion::SWSH: return std::make_unique< ::Pokemon::Pokemon8SWSH>(rec);
+                case GameVersion::BDSP: return std::make_unique< ::Pokemon::Pokemon8BDSP>(rec);
+                case GameVersion::PLA:  return std::make_unique< ::Pokemon::Pokemon8LA>(rec);
+                case GameVersion::SV:   return std::make_unique< ::Pokemon::Pokemon9SV>(rec);
+                case GameVersion::ZA:   return std::make_unique< ::Pokemon::Pokemon9LZA>(rec);
+                case GameVersion::FRLG: return std::make_unique< ::Pokemon::Pokemon3FRLG>(rec);
                 default:                return nullptr;
             }
         }
@@ -71,12 +71,12 @@ namespace Conversion {
 
         uint8_t presenceBit(GameVersion g) {
             switch (g) {
-                case GameVersion::GG:   return Pokemon::PERSONAL_GAME_GG;
-                case GameVersion::SWSH: return Pokemon::PERSONAL_GAME_SWSH;
-                case GameVersion::BDSP: return Pokemon::PERSONAL_GAME_BDSP;
-                case GameVersion::PLA:  return Pokemon::PERSONAL_GAME_PLA;
-                case GameVersion::SV:   return Pokemon::PERSONAL_GAME_SV;
-                case GameVersion::ZA:   return Pokemon::PERSONAL_GAME_ZA;
+                case GameVersion::GG:   return ::Pokemon::PERSONAL_GAME_GG;
+                case GameVersion::SWSH: return ::Pokemon::PERSONAL_GAME_SWSH;
+                case GameVersion::BDSP: return ::Pokemon::PERSONAL_GAME_BDSP;
+                case GameVersion::PLA:  return ::Pokemon::PERSONAL_GAME_PLA;
+                case GameVersion::SV:   return ::Pokemon::PERSONAL_GAME_SV;
+                case GameVersion::ZA:   return ::Pokemon::PERSONAL_GAME_ZA;
                 default:                return 0;
             }
         }
@@ -123,7 +123,7 @@ namespace Conversion {
             return false;
         }
 
-        bool swshSvTextRepresentable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+        bool swshSvTextRepresentable(const ::Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
             const GameVersion from = src.getGameGroup();
             if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
                   (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
@@ -136,7 +136,7 @@ namespace Conversion {
                    validTerminatedUtf16(data, 0xF8, 26);
         }
 
-        uint64_t homeTracker(const Pokemon::Pokemon& src) noexcept {
+        uint64_t homeTracker(const ::Pokemon::Pokemon& src) noexcept {
             const auto data = src.getData();
             switch (src.getGameGroup()) {
                 case GameVersion::SWSH:
@@ -148,7 +148,7 @@ namespace Conversion {
             }
         }
 
-        bool hasModernMarks(const Pokemon::Pokemon& src) noexcept {
+        bool hasModernMarks(const ::Pokemon::Pokemon& src) noexcept {
             switch (src.getGameGroup()) {
                 case GameVersion::SWSH:
                 case GameVersion::BDSP:
@@ -168,7 +168,7 @@ namespace Conversion {
         constexpr size_t PARTY_SIZE_G89 = 0x158;
 
         // Whether a supported+allowed conversion from src -> dest exists (no allocation).
-        Result gate(const Pokemon::Pokemon& src, GameVersion dest) {
+        Result gate(const ::Pokemon::Pokemon& src, GameVersion dest) {
             const GameVersion from = src.getGameGroup();
             if (from == dest) return Result::SameGroup;
 
@@ -185,7 +185,7 @@ namespace Conversion {
 
             const uint16_t species = src.speciesID();
             const uint8_t  form    = src.form();
-            const Pokemon::PersonalInfo& pi = Pokemon::getPersonalInfo(species, form);
+            const ::Pokemon::PersonalInfo& pi = Pokemon::getPersonalInfo(species, form);
             // A form >= the species' form count can't exist in ANY destination. Guard it explicitly:
             // getPersonalInfo() clamps an out-of-range form back to form 0, so without this a corrupt
             // form would read form-0's presence and silently false-pass the dex checks below (then get
@@ -365,7 +365,7 @@ namespace Conversion {
             { zeroRange(b, 0x90, 0x10);
               wr32(b, 0x90, statusCondition);
               if (destination == GameVersion::SV) {
-                  Pokemon::TypePair tp = Pokemon::getPokemonTypes(species, form, Enums::GameVersion::SV);
+                  ::Pokemon::TypePair tp = Pokemon::getPokemonTypes(species, form, Enums::GameVersion::SV);
                   const uint8_t tera = Fidelity::defaultTeraType(tp.type1, tp.type2);
                   wr8(b, 0x94, tera); wr8(b, 0x95, tera);
                   if (report) report->addAdaptation(Adaptation::TargetDefaultTeraSynthesized);
@@ -689,7 +689,7 @@ namespace Conversion {
             {
                 const uint16_t species = static_cast<uint16_t>(rd8(d, 0x08)) | (static_cast<uint16_t>(rd8(d, 0x09)) << 8);
                 const uint8_t form = static_cast<uint8_t>(rd8(d, 0x1D) >> 3);   // PB7 packs form in 0x1D bits 3+
-                const Pokemon::PersonalInfo& pi = Pokemon::getPersonalInfo(species, form);
+                const ::Pokemon::PersonalInfo& pi = Pokemon::getPersonalInfo(species, form);
                 const float hr = (rd8(d, 0x3A) / 255.0f) * 0.79999995f + 0.6f;   // height ratio (+40% / -20%)
                 const float wr = (rd8(d, 0x3B) / 255.0f) * 0.40000004f + 0.8f;   // weight ratio (+/- 20%)
                 wrf32(d, 0x2C, hr * static_cast<float>(pi.height));              // HeightAbsolute
@@ -723,8 +723,8 @@ namespace Conversion {
                                  | ((pid & 0x00000300u) >> 6)  | (pid & 0x00000003u);
                 form = static_cast<uint8_t>(v % 28);
             }
-            const Pokemon::PersonalInfo& pi = Pokemon::getPersonalInfo(national, form);
-            const Pokemon::PersonalInfoG3& g3 = Pokemon::getPersonalInfoG3(national);
+            const ::Pokemon::PersonalInfo& pi = Pokemon::getPersonalInfo(national, form);
+            const ::Pokemon::PersonalInfoG3& g3 = Pokemon::getPersonalInfoG3(national);
 
             wr32(d, 0x00, pid);                                     // EC := original Gen III PID
             wr16(d, 0x08, national);                                // Species (National)
@@ -970,7 +970,7 @@ namespace Conversion {
         }
     }
 
-    bool swshSvFormTransferable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+    bool swshSvFormTransferable(const ::Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
         const GameVersion from = src.getGameGroup();
         if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
               (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
@@ -978,7 +978,7 @@ namespace Conversion {
         return swshSvFormTransferable(src.speciesID(), src.form());
     }
 
-    bool swshSvKnownSourceSemantics(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+    bool swshSvKnownSourceSemantics(const ::Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
         const GameVersion from = src.getGameGroup();
         if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
               (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
@@ -1004,7 +1004,7 @@ namespace Conversion {
         return !(nz(0x156) || nz(0x157));
     }
 
-    bool swshSvAbilityRepresentable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+    bool swshSvAbilityRepresentable(const ::Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
         const GameVersion from = src.getGameGroup();
         if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
               (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
@@ -1028,7 +1028,7 @@ namespace Conversion {
         }
     }
 
-    bool swshSvBallRepresentable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+    bool swshSvBallRepresentable(const ::Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
         const GameVersion from = src.getGameGroup();
         if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
               (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
@@ -1042,7 +1042,7 @@ namespace Conversion {
         return ball <= 26;
     }
 
-    bool swshSvRibbonMarkRepresentable(const Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
+    bool swshSvRibbonMarkRepresentable(const ::Pokemon::Pokemon& src, GameVersion destGroup) noexcept {
         const GameVersion from = src.getGameGroup();
         if (!((from == GameVersion::SWSH && destGroup == GameVersion::SV) ||
               (from == GameVersion::SV && destGroup == GameVersion::SWSH)))
@@ -1058,12 +1058,12 @@ namespace Conversion {
         return true;
     }
 
-    bool canConvert(const Pokemon::Pokemon& src, GameVersion destGroup, Result& result) {
+    bool canConvert(const ::Pokemon::Pokemon& src, GameVersion destGroup, Result& result) {
         result = gate(src, destGroup);
         return result == Result::Ok || result == Result::SameGroup;
     }
 
-    std::unique_ptr<Pokemon::Pokemon> convert(const Pokemon::Pokemon& src, GameVersion destGroup, Result& result,
+    std::unique_ptr< ::Pokemon::Pokemon> convert(const ::Pokemon::Pokemon& src, GameVersion destGroup, Result& result,
                                               uint8_t destOriginVersion, Report* report) {
         if (report) {
             *report = Report{};
@@ -1186,7 +1186,7 @@ namespace Conversion {
             if (0x23 < buf.size()) buf[0x23] = std::byte{0};
 
             if (destGroup == GameVersion::SV) {
-                const Pokemon::TypePair tp = Pokemon::getPokemonTypes(src.speciesID(), src.form(), GameVersion::SV);
+                const ::Pokemon::TypePair tp = Pokemon::getPokemonTypes(src.speciesID(), src.form(), GameVersion::SV);
                 const uint8_t tera = Fidelity::defaultTeraType(tp.type1, tp.type2);
                 wr8(buf, 0x94, tera); wr8(buf, 0x95, tera);
                 if (report) report->addAdaptation(Adaptation::TargetDefaultTeraSynthesized);
@@ -1236,7 +1236,7 @@ namespace Conversion {
                 }
                 buf = remapPK8toPB7(buf);
             } else if (destGroup == GameVersion::FRLG) {
-                const Pokemon::PersonalInfoG3& g3 = Pokemon::getPersonalInfoG3(src.speciesID());
+                const ::Pokemon::PersonalInfoG3& g3 = Pokemon::getPersonalInfoG3(src.speciesID());
                 const auto abilityMap = Fidelity::mapModernAbilityToGen3(
                     rd16(buf, 0x14), rd8(buf, 0x16) & 0x07, g3.ability1, g3.ability2);
                 if (!abilityMap.ok) { result = Result::AbilityNotRepresentable; return nullptr; }
@@ -1364,7 +1364,7 @@ namespace Conversion {
         return out;
     }
 
-    PreflightResult preflightConvert(const Pokemon::Pokemon& src, GameVersion destGroup,
+    PreflightResult preflightConvert(const ::Pokemon::Pokemon& src, GameVersion destGroup,
                                      uint8_t destOriginVersion) {
         PreflightResult out;
         if (src.getGameGroup() == destGroup) {
@@ -1379,7 +1379,7 @@ namespace Conversion {
         return out;
     }
 
-    bool normalizeAffixedRibbon(Pokemon::Pokemon& pk) {
+    bool normalizeAffixedRibbon(::Pokemon::Pokemon& pk) {
         const GameVersion group = pk.getGameGroup();
         const size_t affix = affixedRibbonOffset(group);
         if (affix == 0) return false; // format has no such field
