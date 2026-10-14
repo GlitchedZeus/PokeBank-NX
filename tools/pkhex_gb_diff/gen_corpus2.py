@@ -597,7 +597,8 @@ def main():
     def emit(kind, mon):
         nonlocal made
         body, ot, nick = finish(d, mon, rng)
-        lang = 1 if mon.japanese else 8 if mon.korean else 0  # PKHeX LanguageID; 0 = other
+        # PKHeX LanguageID as the bytes show it (PK2.Korean: a Hangul page first byte); 0 = other.
+        lang = 1 if mon.japanese else 8 if mon.korean and ot[0] <= 11 else 0
         out.write(f"{made} {kind} {lang} {body.hex()} {ot.hex()} {nick.hex()} {int(mon.egg)}\n")
         made += 1
 
@@ -626,6 +627,15 @@ def main():
     for variant in KOREAN_VARIANTS:
         for _ in range(40):
             emit("kor2-" + variant, korean_mon(d, rng, variant))
+
+    # Structural defects and their legal boundaries, 30 records each, on grown Gold/Silver/
+    # Crystal wild Pokemon (met data dropped when a defect moves the level off the met level).
+    for variant in g1.STRUCTURAL:
+        for _ in range(30):
+            mon = wild_mon(d, rng, rng.choice(d.wild))
+            grow(d, mon, min(100, mon.level + rng.randrange(0, 40)), rng)
+            g1.structural_defect(mon, rng, variant, d.personal[mon.species]["growth"])
+            emit("struct2-" + variant, mon)
 
     def emit_maybe_jp(kind, mon, japanese, korean=False):
         if japanese:
@@ -662,7 +672,7 @@ def main():
             defect = rng.choice(("move", "level", "item", "caught", "wipe", "time", "otgender",
                                  "egg-cycles", "egg-item", "pp", "egg-pp", "egg-moves", "egg-name",
                                  "statexp", "egg-statexp", "pokerus", "ot-long", "ot-empty", "nick-empty",
-                                 "exp-100")
+                                 "exp-100", "structural")
                                 + (("nick-long",) if japanese else ()))
             if japanese:
                 japanize(d, mon, rng)
@@ -685,6 +695,9 @@ def main():
                 mon.caught ^= 0x80
             elif defect == "statexp":
                 mon.statexp = g1.stat_exp_defect(rng)
+            elif defect == "structural":
+                defect = rng.choice(g1.STRUCTURAL)
+                g1.structural_defect(mon, rng, defect, d.personal[mon.species]["growth"])
             elif defect == "exp-100":  # level 100 with EXP off the cap, or exactly on it
                 grow(d, mon, 100, rng)
                 top = g1.exp_for(d.personal[mon.species]["growth"], 100)

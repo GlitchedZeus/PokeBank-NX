@@ -6,17 +6,30 @@ using PKHeX.Core;
 
 ParseSettings.AllowEraCartGB = true;
 
+// A line the corpus protocol does not allow is an error, never a silent skip: compare.py
+// must see a verdict for every corpus record or fail the run.
 string? line;
+var lineNumber = 0;
 while ((line = Console.ReadLine()) is not null)
 {
+    ++lineNumber;
     var parts = line.Split(' ');
-    if (parts.Length < 6)
-        continue;
+    if (parts.Length is not (6 or 7))
+    {
+        Console.Error.WriteLine($"oracle: corpus line {lineNumber} has {parts.Length} fields");
+        return 2;
+    }
     var body = Convert.FromHexString(parts[3]);
     var ot = Convert.FromHexString(parts[4]);
     var nick = Convert.FromHexString(parts[5]);
+    if (!((body.Length == 44 && parts.Length == 6) || (body.Length == 48 && parts.Length == 7 && parts[6] is "0" or "1"))
+        || ot.Length != nick.Length || ot.Length is not (6 or 11))
+    {
+        Console.Error.WriteLine($"oracle: corpus line {lineNumber} has a malformed record");
+        return 2;
+    }
     PKM pk = body.Length == 48
-        ? new PK2(body, ot, nick) { IsEgg = parts.Length > 6 && parts[6] == "1" }
+        ? new PK2(body, ot, nick) { IsEgg = parts[6] == "1" }
         : new PK1(body, ot, nick);
     var la = new LegalityAnalysis(pk);
     var enc = la.EncounterMatch;
@@ -26,3 +39,4 @@ while ((line = Console.ReadLine()) is not null)
             .Select(x => $"Move{x.i + 1}:{x.m.Info.Method}"));
     Console.WriteLine($"{parts[0]} {(la.Valid ? "VALID" : "INVALID")} {enc.GetType().Name}:{enc.Species}:{enc.Version}:{enc.LevelMin} ; {string.Join(' ', invalid)}");
 }
+return 0;

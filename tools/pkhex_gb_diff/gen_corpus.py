@@ -159,7 +159,39 @@ class Mon:
         self.tid = None
         self.ot, self.nick, self.trade_ot = "ASH", "MON", False
         self.statexp = [0] * 5
+        self.exp = None  # EXP when it is not the level's own total (a defect)
         self.fill_name = False  # Japanese only: the name fills its field with no terminator
+
+
+# Structural defects shared by the PK1 and PK2 corpora: what a hex editor produces and the
+# games never do. The "-ok" variants stay legal (the boundaries the rules must not cross).
+STRUCTURAL = ("dup-move", "dup-move-all", "exp-zero", "exp-below", "exp-next", "exp-top-ok",
+              "exp-cap-ok", "exp-cap-plus1", "exp-cap-big", "exp-cap-minus1")
+
+
+def structural_defect(mon, rng, variant, growth):
+    """Apply one STRUCTURAL variant to `mon` (moves, level and exp attributes)."""
+    if variant == "dup-move":
+        if len(mon.moves) < 4:
+            mon.moves.append(rng.choice(mon.moves))
+        else:
+            i, j = sorted(rng.sample(range(4), 2))
+            mon.moves[j] = mon.moves[i]
+    elif variant == "dup-move-all":
+        mon.moves = [mon.moves[0]] * rng.randint(2, 4)
+    elif variant == "exp-zero":
+        mon.exp = 0
+    elif variant == "exp-below":  # one short of the level's total
+        mon.exp = exp_for(growth, mon.level) - 1 if mon.level > 1 else 0
+    elif variant == "exp-next":  # the next level's total, level unchanged
+        mon.exp = exp_for(growth, min(100, mon.level + 1)) + (1 if mon.level == 100 else 0)
+    elif variant == "exp-top-ok":  # one short of the next level: still this level
+        mon.exp = exp_for(growth, mon.level + 1) - 1 if mon.level < 100 else exp_for(growth, 100)
+    else:
+        mon.level = 100
+        top = exp_for(growth, 100)
+        mon.exp = {"exp-cap-ok": top, "exp-cap-plus1": top + 1, "exp-cap-big": top + rng.randint(2, 4000000),
+                   "exp-cap-minus1": top - 1}[variant]
 
 
 def learn(mon, move, rng):
@@ -227,7 +259,8 @@ def finish(d, mon, rng, japanese):
     for i, m in enumerate((mon.moves + [0, 0, 0, 0])[:4]):
         body[8 + i] = m
     body[0x0C:0x0E] = mon.tid.to_bytes(2, "big")
-    body[0x0E:0x11] = exp_for(p["growth"], mon.level).to_bytes(3, "big")
+    exp = mon.exp if mon.exp is not None else exp_for(p["growth"], mon.level)
+    body[0x0E:0x11] = exp.to_bytes(3, "big")
     for i, value in enumerate(mon.statexp):  # HP ATK DEF SPE SPC
         body[0x11 + i * 2:0x13 + i * 2] = value.to_bytes(2, "big")
     body[0x1B:0x1D] = ((atk << 12) | (df << 8) | (spe << 4) | spc).to_bytes(2, "big")
@@ -354,6 +387,18 @@ def main():
                     mon.nick = names[idx] if variant != "trade-wrong-nick" else "NOTRADE"
                 emit(variant + ("-jp" if japanese else ""), mon, japanese)
 
+    # Structural defects and their legal boundaries, 30 records each, on grown wild Pokemon.
+    for variant in STRUCTURAL:
+        for _ in range(30):
+            species, lmin, lmax, v = rng.choice([w for w in d.wild if w[3] != BU])
+            yellow = v == YW
+            level = rng.randint(lmin, lmax)
+            mon = Mon(species, level, encounter_moves(d, species, level, yellow),
+                      personal_catch(species, yellow), yellow)
+            grow(d, mon, min(100, level + rng.randrange(0, 40)), rng)
+            structural_defect(mon, rng, variant, d.personal[False][mon.species]["growth"])
+            emit("struct-" + variant, mon)
+
     # The same trades in German, French, Italian and Spanish Red/Blue/Yellow.
     for species, v, _rby, gsc, idx, evolve in d.trades:
         if v == BU:
@@ -438,8 +483,11 @@ def main():
             if japanese:
                 japanize(d, mon, rng)
             defect = rng.choice(("move", "level", "catch", "catch-item", "types", "drop-move",
-                                 "statexp", "ot-long", "ot-empty", "nick-empty")
+                                 "statexp", "ot-long", "ot-empty", "nick-empty", "structural")
                                 + (("nick-long",) if japanese else ()))
+            if defect == "structural":
+                defect = rng.choice(STRUCTURAL)
+                structural_defect(mon, rng, defect, d.personal[False][mon.species]["growth"])
             if defect == "move":
                 mon.moves[rng.randrange(len(mon.moves))] = rng.randint(1, 165)
                 mon.moves = list(dict.fromkeys(mon.moves))

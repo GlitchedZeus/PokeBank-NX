@@ -1873,7 +1873,18 @@ bool movesWellFormed(const std::array<uint8_t, 4>& moves, uint8_t maxMove, const
             return false;
         }
     }
-    return true;
+    // A Pokemon never knows a move twice: learning a move it already knows does nothing
+    // (MoveVerifier "Duplicate" in PKHeX). Same wording as Legality::analyzeNativeGen1.
+    bool duplicate = false;
+    for (int i = 0; i < 4; ++i) {
+        for (int j = i + 1; j < 4; ++j) {
+            if (moves[i] != 0 && moves[i] == moves[j]) {
+                res.problems.push_back({Area::Moves, "Duplicate move: " + moveName(moves[i])});
+                duplicate = true;
+            }
+        }
+    }
+    return !duplicate;
 }
 
 } // namespace
@@ -1901,8 +1912,31 @@ std::string describe(const Origin& o) {
     return out;
 }
 
+/// Level against EXP. The games keep the stored level at the level the EXP gives: battle
+/// EXP raises it as thresholds are crossed and stops EXP at the level-100 total (pokered
+/// engine/battle/experience.asm, pokecrystal engine/battle/core.asm); Rare Candy sets EXP
+/// to the new level's total; the Day Care sets the level from EXP on withdrawal and caps
+/// (Gen I, pokered scripts/Daycare.asm) or resets (Gen II, pokecrystal RetrieveBreedmon)
+/// the EXP to it. Only a Pokemon still in the Day Care carries a stale level, and that
+/// slot is not a party or box record. PKHeX rejects EXP above the level-100 total
+/// (LevelEXPTooHigh) and derives the level from EXP, so it does not compare the two.
+static std::string levelExpProblem(uint8_t species, uint8_t level, uint32_t exp) {
+    const uint8_t growth = Pokemon::getGrowthRate(species);
+    const uint32_t max = Pokemon::getExpForLevel(100, growth);
+    if (exp > max)
+        return "EXP " + std::to_string(exp) + " is above the level-100 total of " + std::to_string(max);
+    const uint8_t expLevel = Pokemon::getLevelFromExp(exp, growth);
+    if (level != expLevel)
+        return "Level " + std::to_string(level) + " does not match EXP (expected " + std::to_string(expLevel) + ")";
+    return {};
+}
+
 std::vector<Problem> formatProblems(const Entity1& e) {
     std::vector<Problem> out;
+    if (e.species != 0 && e.species <= kMaxSpecies1) {
+        if (const std::string level = levelExpProblem(e.species, e.level, e.exp); !level.empty())
+            out.push_back({Area::Stats, level});
+    }
     if (const std::string stats = statExpProblem(e.statExp, false); !stats.empty())
         out.push_back({Area::Stats, stats});
     if (e.nickname.empty())
@@ -1916,6 +1950,11 @@ std::vector<Problem> formatProblems(const Entity2& e) {
         out.push_back({Area::Stats, stats});
     if (const std::string pokerus = pokerusProblem(e.pokerus); !pokerus.empty())
         out.push_back({Area::Misc, pokerus});
+    // An unhatched egg's EXP is judged against its encounter (Odd Eggs carry 125).
+    if (!e.isEgg && e.species != 0 && e.species <= kMaxSpecies2) {
+        if (const std::string level = levelExpProblem(e.species, e.level, e.exp); !level.empty())
+            out.push_back({Area::Stats, level});
+    }
     if (e.nickname.empty())
         out.push_back({Area::Trainer, "Nickname is empty"});
     // The games name an egg when they make it (pokegold engine/events/daycare.asm and
@@ -2024,16 +2063,6 @@ Result checkGen2(const Entity2& e) {
                                              " cannot be held in Gold/Silver/Crystal"});
     if (pk.egg && pk.level != kEggLevel)
         extra.push_back({Area::Egg, "An unhatched egg is always level 5"});
-    // A level-100 Pokemon has exactly the level-100 EXP total. The games stop EXP there
-    // (pokecrystal engine/battle/core.asm caps it after every battle), the level follows
-    // the EXP (CalcLevel), and Rare Candy refuses level 100 and otherwise sets EXP to the
-    // new level's total (engine/items/item_effects.asm). PKHeX's LevelVerifier rejects EXP
-    // above the total (LevelEXPTooHigh) but lets a lower total through.
-    if (!pk.egg && pk.level == 100) {
-        const uint32_t max = Pokemon::getExpForLevel(100, Pokemon::getGrowthRate(pk.species));
-        if (pk.exp != max)
-            extra.push_back({Area::Stats, "A level-100 Pokemon has exactly " + std::to_string(max) + " EXP"});
-    }
     // Korean Gold/Silver keep no met data. Only Crystal writes it: pokecrystal's
     // SetCaughtData family runs on catch, hatch, gift and in-game trade, never on a link
     // trade, and Gold/Silver zero those two bytes (pokegold engine/pokemon/move_mon.asm,

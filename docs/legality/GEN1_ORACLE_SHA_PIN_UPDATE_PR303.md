@@ -54,3 +54,19 @@ workflow are unchanged.
 
 `python3 tools/legality/verify_gen1_oracle_source_pins.py` passes with the new pins:
 12 local sources match, and the 3 external pins are still enforced by the workflow.
+
+## Second update: level, EXP and duplicate moves
+
+`_l5_gen1_coordinator/src/Legality/Legality.cpp` moves again, from `2e80b428…` to
+`5963b60d…`, for three structural fixes an independent audit found:
+
+- A level-100 PK1 with EXP above the level-100 total read "No problems found": the
+  level-from-EXP comparison stops at 100. The rule now lives in `GB::formatProblems`
+  (shared with PK2 and with the PKHeX differential harness), and the generic analyzer path
+  that native PK2 records take rejects EXP above the total as well. PKHeX reports the same
+  records as `LevelEXPTooHigh`.
+- Native PK1's level-against-EXP check moved from its own `Legality.cpp` site into the same
+  GB rule, so the Invalid-site gate counts 43 sites instead of 44 (`host-tests.yml`).
+
+No other pin, expected output line or step changes. The oracle workflow's 16 steps were
+rerun locally at the new head with this pin.

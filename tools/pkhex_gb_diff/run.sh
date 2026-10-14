@@ -18,4 +18,6 @@ g++ -std=c++20 -O2 -I"$repo/include" -I"$work" "$here/gb_diff.cpp" "$repo/src/Le
     "$repo/src/Integration/Gen1/Gen1ReadOnlySave.cpp" "$repo/src/Integration/Gen2/Gen2ReadOnlySave.cpp" \
     "$repo/src/Utils/StringHelpers.cpp" "$repo/src/Utils/HelperUtilities.cpp" "$repo/src/Pokemon/Experience.cpp" -o "$work/gb_diff"
 "$work/gb_diff" < "$work/corpus.txt" > "$work/pokebank.txt"
-python3 -I "$here/compare.py" "$work/corpus.txt" "$work/pkhex.txt" "$work/pokebank.txt" --show "${SHOW:-8}"
+python3 -I "$here/compare.py" --self-test > "$work/selftest.txt" || { cat "$work/selftest.txt"; exit 1; }
+python3 -I "$here/compare.py" "$work/corpus.txt" "$work/pkhex.txt" "$work/pokebank.txt" \
+    --pkhex "$pkhex" --pokered "$pokered" --show "${SHOW:-8}"

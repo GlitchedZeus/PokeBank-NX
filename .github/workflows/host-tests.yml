@@ -171,8 +171,10 @@ jobs:
               python3 tools/audit_legality_l5_stage1_parity_gate.py --self-test
               python3 tools/audit_legality_l5_stage1_parity_gate.py --verify-manifests --current-integration-head "$INTEGRATION_EXACT_SHA"
               python3 tools/audit_legality_l5_invalid_site_gate.py --self-test
-              # F5 introduces one separately audited direct Invalid site.
-              python3 tools/audit_legality_l5_invalid_site_gate.py --source src/Legality/Legality.cpp --expected-invalid 44 --require-f3-f4
+              # F5 introduces one separately audited direct Invalid site. PR #303's level/EXP
+              # rule for native PK1 moved from a direct site into GBLegality's format rules,
+              # reported through the existing GB-problem site (44 -> 43).
+              python3 tools/audit_legality_l5_invalid_site_gate.py --source src/Legality/Legality.cpp --expected-invalid 43 --require-f3-f4
               python3 tools/audit_legality_l5_stage2_native.py --full --source-pin
               python3 tools/audit_legality_l5_stage4_crosslane.py --self-test
               python3 tools/audit_legality_l5_stage4_crosslane.py --l1-root . --l2-root . --l3-root . --l4-root .

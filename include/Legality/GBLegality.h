@@ -36,6 +36,7 @@ namespace Legality::GB {
         std::array<uint8_t, 4> moves{};
         std::array<uint8_t, 4> pp{};        // current PP per move slot
         std::array<uint8_t, 4> ppUps{};
+        uint32_t exp = 0;                   // total EXP (bytes 0x0E-0x10)
         uint8_t catchRate = 0;              // byte 0x07; a Gen II held item after a Time Capsule trip
         uint8_t type1 = 0, type2 = 0;       // stored type bytes (Gen I type ids)
         std::array<uint8_t, 4> dvs{};       // ATK DEF SPE SPC
@@ -108,8 +109,9 @@ namespace Legality::GB {
     Result checkGen2(const Entity2& pk);
 
     /// The rules that hold whatever the origin and whatever else is wrong with the record
-    /// (stat experience, Pokerus, an empty nickname). checkGen1/checkGen2 already include
-    /// them; this is for callers that cannot run the origin search on a malformed record.
+    /// (stat experience, Pokerus, level against EXP, an empty nickname). checkGen1/checkGen2
+    /// already include them; this is for callers that cannot run the origin search on a
+    /// malformed record.
     std::vector<Problem> formatProblems(const Entity1& pk);
     std::vector<Problem> formatProblems(const Entity2& pk);
 

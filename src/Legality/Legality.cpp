@@ -194,21 +194,16 @@ namespace Legality {
                     }
                 }
             }
-            if (structural) {
-                const uint8_t expLevel = Pokemon::getLevelFromExp(pk.exp(), Pokemon::getGrowthRate(species));
-                if (pk.level() != expLevel) {
-                    add(r, Severity::Invalid,
-                        "Level " + std::to_string(pk.level()) + " does not match EXP (expected " +
-                            std::to_string(expLevel) + ")",
-                        CheckIdentifier::Stats);
-                }
-            }
             if (rec.originalTrainer.empty()) {
                 add(r, Severity::Invalid, "Original trainer name is empty", CheckIdentifier::Trainer);
             }
 
             bool uncertain = false;
             GB::Entity1 e;
+            // Level against EXP, the level-100 EXP cap included, is one of GB's format rules.
+            e.species = species <= 151 ? static_cast<uint8_t>(species) : 0;
+            e.level = rec.level;
+            e.exp = rec.experience;
             e.statExp = rec.statExperience;
             e.otName = rec.originalTrainer;
             e.nickname = rec.nickname;
@@ -217,8 +212,6 @@ namespace Legality {
                 // The origin search cannot run, but the rules that hold for any origin still do.
                 problems = GB::formatProblems(e);
             } else {
-                e.species = static_cast<uint8_t>(species);
-                e.level = rec.level;
                 for (int i = 0; i < 4; ++i) {
                     e.moves[i] = rec.moves[static_cast<std::size_t>(i)];
                     e.pp[i] = rec.pp[static_cast<std::size_t>(i)];
@@ -2615,9 +2608,15 @@ namespace Legality {
         const uint8_t expLevel = Pokemon::getLevelFromExp(pk.exp(), Pokemon::getGrowthRate(species));
         if (expLevel < 1 || expLevel > 100)
             add(r, Severity::Invalid, "EXP maps to invalid level (" + std::to_string(expLevel) + ")");
-        if (pk.level() != 0 && pk.level() != expLevel)
-            add(r, Severity::Invalid, "Level " + std::to_string(pk.level()) +
-                                      " does not match EXP (expected " + std::to_string(expLevel) + ")");
+        // getLevelFromExp stops at 100, so EXP past the level-100 total would otherwise pass
+        // for a level-100 Pokemon. No game lets EXP exceed it (PKHeX LevelEXPTooHigh).
+        const uint32_t maxExp = Pokemon::getExpForLevel(100, Pokemon::getGrowthRate(species));
+        if (pk.exp() > maxExp || (pk.level() != 0 && pk.level() != expLevel))
+            add(r, Severity::Invalid,
+                pk.exp() > maxExp
+                    ? "EXP " + std::to_string(pk.exp()) + " is above the level-100 total of " + std::to_string(maxExp)
+                    : "Level " + std::to_string(pk.level()) + " does not match EXP (expected " +
+                          std::to_string(expLevel) + ")");
 
         // ---- L2: met level <= current level ----
         {

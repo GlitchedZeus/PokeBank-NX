@@ -47,11 +47,21 @@ std::string decodeKorean(const std::vector<uint8_t>& data) {
     return out;
 }
 
-std::vector<uint8_t> hex(const std::string& s) {
-    std::vector<uint8_t> out;
-    for (std::size_t i = 0; i + 1 < s.size(); i += 2)
-        out.push_back(static_cast<uint8_t>(std::stoi(s.substr(i, 2), nullptr, 16)));
-    return out;
+/// Strict hex: an odd length or a non-hex digit is a protocol error, not a shorter record.
+bool hex(const std::string& s, std::vector<uint8_t>& out) {
+    out.clear();
+    if (s.empty() || s.size() % 2 != 0)
+        return false;
+    for (std::size_t i = 0; i < s.size(); i += 2) {
+        const auto digit = [](char c) {
+            return c >= '0' && c <= '9' ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 : -1;
+        };
+        const int hi = digit(s[i]), lo = digit(s[i + 1]);
+        if (hi < 0 || lo < 0)
+            return false;
+        out.push_back(static_cast<uint8_t>(hi * 16 + lo));
+    }
+    return true;
 }
 }
 
@@ -92,13 +102,28 @@ int main() {
     using namespace PokeVault::Integration::Gen1;
     namespace GB = Legality::GB;
     std::string line;
+    std::size_t lineNumber = 0;
+    // Every corpus line gets a verdict or the run stops: compare.py relies on it.
+    const auto reject = [&](const char* why) {
+        std::cerr << "gb_diff: corpus line " << lineNumber << ": " << why << '\n';
+        return 2;
+    };
     while (std::getline(std::cin, line)) {
+        ++lineNumber;
         std::istringstream in(line);
-        std::string id, kind, jp, bodyHex, otHex, nickHex, eggFlag;
+        std::string id, kind, jp, bodyHex, otHex, nickHex, eggFlag, extra;
         if (!(in >> id >> kind >> jp >> bodyHex >> otHex >> nickHex))
-            continue;
+            return reject("fewer than 6 fields");
         in >> eggFlag;
-        const auto body = hex(bodyHex), ot = hex(otHex), nick = hex(nickHex);
+        if (in >> extra)
+            return reject("more than 7 fields");
+        std::vector<uint8_t> body, ot, nick;
+        if (!hex(bodyHex, body) || !hex(otHex, ot) || !hex(nickHex, nick))
+            return reject("malformed hex");
+        if (ot.size() != nick.size() || (ot.size() != 6 && ot.size() != 11))
+            return reject("name fields must both be 6 or 11 bytes");
+        if (!(body.size() == 48 && (eggFlag == "0" || eggFlag == "1")) && !(body.size() == 44 && eggFlag.empty()))
+            return reject("body length does not fit the field count");
         if (body.size() == 48) {
             const GB::Result r = checkPk2(body, ot, nick, jp == "1", eggFlag == "1");
             std::cout << id << verdict(r.status) << GB::describe(r.origin)
@@ -112,6 +137,7 @@ int main() {
         GB::Entity1 e;
         e.species = static_cast<uint8_t>(gen1InternalToNational(body[0]));
         e.level = body[0x21];
+        e.exp = (static_cast<uint32_t>(body[0x0E]) << 16) | (body[0x0F] << 8) | body[0x10];
         e.type1 = body[5];
         e.type2 = body[6];
         e.catchRate = body[7];
