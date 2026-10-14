@@ -25,8 +25,8 @@ This is a development artifact for a branch that contains Black/White/B2W2 sourc
 
 ## Gen I–IV newest finalization candidate — NOT ACCEPTED
 
-- [Claude PR #306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) at checked head `6f3b4ddf86f1cd8751025c4cde41fd1be07820de` adds exact built-NRO RomFS asset verification, 10 region scenes, 20 trainer portraits, fair DS discovery and ROM-header launch identity.
-- A Gen IV candidate CI job was **failing**, with other checks active, at the October 14 audit. **No all-green or owner-approved device artifact claim** should appear here until the failing run is corrected and a new exact NRO is tested.
+- [Claude PR #306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) at checked head `3ac0ae29fe5d40bc8abededffd2b49326610eec4` adds exact built-NRO RomFS asset verification, 10 region scenes, 20 trainer portraits, fair DS discovery and ROM-header launch identity.
+- At the later October 14 recheck, Gen I–IV hardware-candidate build, Product UI native, Gen IV shared-editor gate, Native PR Gate and Touch checks **passed** at `3ac0ae29`. The full Host Tests workflow was still **running**. Exact [Gen I–IV artifact](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38534704407): `PokeBank-NX-Gen1-4-Candidate-3ac0ae29`. **No owner hardware acceptance is implied** until the current NRO is physically tested.
 - Last owner-accepted integrated application: `0760334fb850ca46b5171c55f690998d7680d4e7` (October 8). NRO SHA-256 `4f28d7f7ad38c2b62458642e014ae3c05e866755c4152bf4c2db0574c381ce91`.
 
 ## HISTORICAL RBY ARTIFACT — PHYSICALLY ACCEPTED
