@@ -1,3 +1,4 @@
+#include "Utils/PokeBankPaths.h"
 #include "UI/AppShellScreen.h"
 
 #include <algorithm>
@@ -675,6 +676,7 @@ void AppShellScreen::drawDiagnostics(PKSEFramebuffer& fb) {
     line("Auto-backup", g_autoBackupEnabled ? "On" : "Off", Colors::TextPrimary);
     line("Debug logging", g_debugLogging ? "On" : "Off", Colors::TextPrimary);
     line("External source writes", "LOCKED", Colors::Info);
+    line("Verified exports", PokeBank::Paths::exportsRoot() + "/gen1 ... gen4", Colors::TextPrimary);
     line("Cross-game True Move", "LOCKED", Colors::Info);
     line("Master Vault backend", "Coming Soon", Colors::TextSecondary);
     line("Global search index", "Coming Soon", Colors::TextSecondary);
