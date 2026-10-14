@@ -35,7 +35,10 @@ PKSM_CORE_DEFINES := -D_PKSMCORE_CONFIGURED \
 PKSM_CORE_FLAGS := -fno-operator-names -Wno-psabi \
 	-Wno-missing-field-initializers -Wno-unused-parameter
 # Clang caps fold-expression nesting at 256; PKSM-Core's large constexpr std::array tables need more.
-PKSM_CORE_FLAGS += $(if $(findstring clang,$(shell $(CXX) --version 2>/dev/null)),-fbracket-depth=1024,)
+HOST_CXX_IS_CLANG := $(findstring clang,$(shell $(CXX) --version 2>/dev/null))
+PKSM_CORE_FLAGS += $(if $(HOST_CXX_IS_CLANG),-fbracket-depth=1024,)
+# Clang links the sanitizer runtime even into a -r partial link; keep it for the final link only.
+PKSM_CORE_SANITIZE_RELOCATABLE_FLAGS := $(if $(HOST_CXX_IS_CLANG),-fno-sanitize-link-runtime,)
 GEN3_ADAPTER_SOURCES := tests/test_pksm_gen3_adapter.cpp \
 	src/Integration/Gen3/PKSMGen3Adapter.cpp src/Integration/Gen3/FRLGReadModel.cpp \
 	src/Encryption/Encryption3FRLG.cpp src/Utils/StringHelpers.cpp \
@@ -122,6 +125,13 @@ RBY_BRIDGE_FLAGS := -Wno-unused-parameter
 GEN3_FIXTURE := $(HOST_BUILD)/frlg_fixture.sav
 PKSM_CORE_OBJECT := $(HOST_BUILD)/pksm-core.o
 PKSM_CORE_SANITIZE_OBJECT := $(HOST_BUILD)/pksm-core-sanitize.o
+# memecrypto is C: compile it as C so its definitions carry the C linkage memecrypto.h declares
+# (extern "C") instead of C++-mangled names that only --gc-sections happened to hide.
+PKSM_CORE_C_SOURCES := $(filter %.c,$(PKSM_CORE_SOURCES))
+PKSM_CORE_CXX_SOURCES := $(filter-out %.c,$(PKSM_CORE_SOURCES))
+HOST_CC := $(if $(HOST_CXX_IS_CLANG),clang,gcc)
+PKSM_CORE_C_OBJECT := $(HOST_BUILD)/pksm-core-c.o
+PKSM_CORE_C_SANITIZE_OBJECT := $(HOST_BUILD)/pksm-core-c-sanitize.o
 HOST_TESTS += $(HOST_BUILD)/test_pksm_gen3_adapter
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_pksm_gen3_adapter_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_gen3_native_slice
@@ -322,14 +332,24 @@ $(HOST_BUILD)/test_sc_read_validation_sanitize: $(SC_READ_VALIDATION_TEST_SOURCE
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
 
-$(PKSM_CORE_OBJECT): $(PKSM_CORE_SOURCES)
+$(PKSM_CORE_C_OBJECT): $(PKSM_CORE_C_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(HOST_CC) -std=gnu11 -O2 -w -ffunction-sections -fdata-sections \
+		$(PKSM_CORE_INCLUDES) -r $^ -o $@
+
+$(PKSM_CORE_C_SANITIZE_OBJECT): $(PKSM_CORE_C_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(HOST_CC) -std=gnu11 -w $(SANITIZE_FLAGS) $(PKSM_CORE_SANITIZE_RELOCATABLE_FLAGS) \
+		-ffunction-sections -fdata-sections $(PKSM_CORE_INCLUDES) -r $^ -o $@
+
+$(PKSM_CORE_OBJECT): $(PKSM_CORE_CXX_SOURCES) $(PKSM_CORE_C_OBJECT)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) -std=c++20 -O2 -w $(PKSM_CORE_FLAGS) -ffunction-sections -fdata-sections \
 		$(PKSM_CORE_INCLUDES) $(PKSM_CORE_DEFINES) -r $^ -o $@
 
-$(PKSM_CORE_SANITIZE_OBJECT): $(PKSM_CORE_SOURCES)
+$(PKSM_CORE_SANITIZE_OBJECT): $(PKSM_CORE_CXX_SOURCES) $(PKSM_CORE_C_SANITIZE_OBJECT)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) -std=c++20 -w $(PKSM_CORE_FLAGS) $(SANITIZE_FLAGS) -ffunction-sections -fdata-sections \
+	$(CXX) -std=c++20 -w $(PKSM_CORE_FLAGS) $(SANITIZE_FLAGS) $(PKSM_CORE_SANITIZE_RELOCATABLE_FLAGS) -ffunction-sections -fdata-sections \
 		$(PKSM_CORE_INCLUDES) $(PKSM_CORE_DEFINES) -r $^ -o $@
 
 $(HOST_BUILD)/test_pksm_gen3_adapter: $(GEN3_ADAPTER_SOURCES) $(PKSM_CORE_OBJECT)
