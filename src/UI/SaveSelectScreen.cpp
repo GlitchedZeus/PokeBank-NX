@@ -1940,7 +1940,9 @@ namespace UI {
         if (gen4Instances.empty()) {
             gen4Notice = !rememberedDiagnostic.empty() ? rememberedDiagnostic
                 : discovered.limitReached
-                    ? "No compatible save found before the bounded scan limit."
+                    ? "No compatible save found before the scan limit in " +
+                      (discovered.truncatedRoots.empty() ? std::string("a provider folder")
+                                                         : discovered.truncatedRoots.front()) + "."
                 : savestates > 0
                     ? "DraStic savestate found (.dss). PokeBank needs the cartridge save in /switch/drastic/user/backup/."
                 : wrappers > 0
@@ -1950,6 +1952,10 @@ namespace UI {
         } else {
             gen4Notice = std::to_string(gen4Instances.size()) +
                 (gen4Instances.size() == 1 ? " validated save instance." : " validated save instances.");
+            // Other providers were still scanned in full; only name the folder that hit its bound.
+            if (!discovered.truncatedRoots.empty())
+                gen4Notice += " Scan limit reached in " + discovered.truncatedRoots.front() +
+                              "; move older saves out or use Manual selection.";
             overlay = Overlay::Gen4Candidates;
         }
     }
