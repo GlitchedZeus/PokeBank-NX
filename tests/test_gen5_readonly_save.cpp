@@ -320,6 +320,7 @@ void discoveryContracts() {
     const auto wrapped=G::inspectSourceFile(dsv,"DraStic");
     assert(wrapped.ready() && wrapped.gameId=="white_nds");
     assert(wrapped.containerType=="dsv-footer");
+    assert(wrapped.sourceLabel.find("Boxed 1")!=std::string::npos);
     assert(G::reopenValidatedSource(wrapped).ready());
     assert(bindings.assignFileAndSave(wrapped.sourceIdentity,
         {"other-profile","white_nds",dsv,"DraStic","BW"}));
@@ -441,6 +442,11 @@ void discoveryContracts() {
            catalogWithCopies.rows[1].claimedProfile=="profile-one");
     assert(first.sourceLabel.find("Primary copy")!=std::string::npos);
     assert(second.sourceLabel.find("Backup copy")!=std::string::npos);
+    // Selected-copy rows display their independently verified PC occupancy
+    // alongside Party count, so a legitimate but empty backup isn't
+    // indistinguishable from a populated primary on Switch hardware.
+    assert(first.sourceLabel.find("Boxed 1")!=std::string::npos);
+    assert(second.sourceLabel.find("Boxed 1")!=std::string::npos);
     const auto openedPrimary=G::reopenValidatedSource(first,G::SaveCopySelection::Primary);
     const auto openedBackup=G::reopenValidatedSource(second,G::SaveCopySelection::Backup);
     assert(openedPrimary.ready() && openedBackup.ready());

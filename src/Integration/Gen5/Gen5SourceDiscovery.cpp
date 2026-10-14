@@ -383,9 +383,14 @@ Source::SaveInstance inspectSourceFile(const std::string& path,
                       copy==SaveCopySelection::Backup?"gen5-copy-1-backup":"";
     row.partyCount=save->partyCount();
     row.trainerName=displayTrainerName(save->trainer().rawName).value_or("");
+    // Both retail save copies may have valid checksums yet vastly different
+    // PC contents. Real Black/White/B2W2 saves can contain a populated
+    // primary and an empty backup. Make this distinction visible BEFORE the
+    // user explicitly chooses a copy; never silently pick a "newer" save.
     row.sourceLabel=std::string("Gen V / ")+
         (save->selectedBackupPartition()?"Backup copy":"Primary copy")+
-        " / Party "+std::to_string(save->partyCount());
+        " / Party "+std::to_string(save->partyCount())+
+        " / Boxed "+std::to_string(save->diagnostics().occupiedBoxRecords);
     if(!row.trainerName.empty())row.sourceLabel+=" / "+row.trainerName;
     row.validation=Source::ValidationStatus::Ready;
     row.diagnostic=message;
