@@ -53,17 +53,8 @@ jobs:
           set -euo pipefail
           test "$(git -C recovery-work rev-parse HEAD)" = "$RECOVERY_SHA"
           (cd recovery-work && python3 tools/recover_workspace.py)
-          rm -rf romfs
-          cp -a recovery-work/romfs romfs
-          for f in gold_gbc silver_gbc crystal_gbc diamond_nds pearl_nds platinum_nds heartgold_nds soulsilver_nds; do
-            test -s "assets/game_cards/$f.png"
-            cp "assets/game_cards/$f.png" "romfs/game_cards/$f.png"
-          done
-          # The permanent recovery snapshot intentionally predates item sprites.
-          # Regenerate exact per-ball / per-item PNGs using THIS PR head's
-          # pinned generator after restoring the snapshot, before validation.
-          python3 tools/gen_item_sprites.py
-          python3 tools/check_device_assets.py
+          # Fill gaps from the snapshot only; never replace branch-owned artwork.
+          tools/prepare_release_romfs.sh recovery-work/romfs
 
       - name: Clean devkitA64 compile and link
         run: |
@@ -77,6 +68,9 @@ jobs:
             test -s PokeBankNX.elf
             test -s PokeBankNX.nro
           ' 2>&1 | tee native-pr-build.log
+
+      - name: Verify packaged RomFS artwork in final NRO
+        run: python3 tools/verify_nro_romfs.py PokeBankNX.nro
 
       - name: Upload native build log
         uses: actions/upload-artifact@v4

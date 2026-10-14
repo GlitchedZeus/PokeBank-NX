@@ -275,6 +275,9 @@ jobs:
           print("final NRO presentation payload verified")
           PY
 
+      - name: Verify complete packaged RomFS in final NRO
+        run: python3 application/tools/verify_nro_romfs.py application/PokeBankNX.nro --romfs application/romfs
+
       - name: Package exact Gen IV shared-editor candidate
         run: |
           set -euo pipefail

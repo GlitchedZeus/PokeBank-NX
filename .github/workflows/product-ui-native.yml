@@ -189,6 +189,9 @@ jobs:
           print("final NRO presentation payload verified")
           PY
 
+      - name: Verify complete packaged RomFS in final NRO
+        run: python3 tools/verify_nro_romfs.py PokeBankNX.nro
+
       - name: Package product UI hardware artifact
         run: |
           set -euo pipefail

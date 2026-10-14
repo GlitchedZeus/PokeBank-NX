@@ -33,6 +33,14 @@ BALL_ICON_NAMES = (
     "dusk-ball", "heal-ball", "quick-ball", "cherish-ball",
 )
 FONT_DIR = ROMFS / "fonts"
+REGION_BACKDROPS = (
+    "kanto", "johto", "hoenn", "sinnoh", "unova", "kalos", "alola", "galar", "hisui", "paldea",
+)
+TRAINER_PORTRAITS = (
+    "red", "leaf", "gold", "kris", "brendan", "may", "lucas", "dawn", "ethan", "lyra",
+    "chase", "elaine", "victor", "gloria", "rei", "akari", "florian", "juliana", "paxton",
+    "harmony",
+)
 GAME_CARD_ART_DIR = ROMFS / "game_cards"
 GENERATOR = ROOT / "tools" / "gen_hdsprites.py"
 SPRITE_MANAGER = ROOT / "src" / "UI" / "SpriteManager.cpp"
@@ -244,6 +252,26 @@ def main() -> int:
             fail(errors, f"required game-card artwork missing: {', '.join(missing_cards)}")
         else:
             ok("GB/GBC/GBA legacy cards + Diamond/Pearl/Platinum/HeartGold/SoulSilver NDS artwork is present")
+
+    # Product Home scenery and trainer art. A previous hardware NRO silently lost these when CI
+    # replaced the branch romfs/ with the older recovery snapshot; keep them mandatory.
+    for label, directory, names in (
+        ("region backdrop", ROMFS / "region_backdrops", REGION_BACKDROPS),
+        ("trainer portrait", ROMFS / "trainer_portraits", TRAINER_PORTRAITS),
+    ):
+        bad = []
+        for name in names:
+            path = directory / f"{name}.png"
+            if not path.is_file():
+                bad.append(f"{name}: missing")
+                continue
+            valid, reason, _dimensions = validate_png(path)
+            if not valid:
+                bad.append(f"{name}: {reason}")
+        if bad:
+            fail(errors, f"{label} PNGs invalid/missing (run tools/fetch_product_art.py): " + "; ".join(bad))
+        else:
+            ok(f"all {len(names)} {label} PNGs present and valid")
 
     print()
     if errors:
