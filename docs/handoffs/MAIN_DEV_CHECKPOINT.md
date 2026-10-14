@@ -4,7 +4,7 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-14 ~17:15 UTC (13:15 America/Toronto).
+**Last updated:** 2026-10-14 ~21:55 UTC (17:55 America/Toronto).
 
 ## Active milestone
 
@@ -47,10 +47,15 @@ conservative estimates.
 - DraStic/melonDS launch with Unova ROM header identity (IRB/IRA/IRE/IRD).
 - Gen V Bag backend: strict decode, staged quantity/Add/Remove, bag-aware export (`BAG_CHANGED`).
 
+**New since the last update (Thread 2, `60f7cdc2`; CI running, not yet green):**
+- `b9c8d8fa`: native Gen V Bag in the shared Items surface with staged edits.
+- `5f450952`: Gen IV parity for box Move Pokémon, plus read-only origin fields.
+- `60f7cdc2`: native Trainer Name, Money and Play Time staging in the shared panel.
+
 **Missing:**
-- The Bag isn't shown in the shared Items screen, and Review doesn't list Bag changes.
+- Bag in Review and Bag export: whether these are complete is to be confirmed in Thread 2's report.
 - Party/Box edit parity audit against Gen IV.
-- Trainer editing (only where the format is verified).
+- Trainer fields beyond Name, Money and Play Time.
 - Pokédex view.
 - End-to-end exact-copy and export tests for combined PK5+Bag edits.
 - The leftover `patches/gen5-create/` folder.
@@ -62,9 +67,9 @@ conservative estimates.
 | Lane | Branch | HEAD | CI | Owner |
 |---|---|---|---|---|
 | #306 Gen I–IV | `claude/gen14-final-20261014` | `4b9b9f65` | 9/9 green | Thread 1 |
-| #307 Gen V integration | `claude/gen5-integration-20261014` | `a17c503a` | 8/8 green | Thread 2 (exclusive; legality session confirmed handoff 2026-10-14) |
+| #307 Gen V integration | `claude/gen5-integration-20261014` | `60f7cdc2` | running (`a17c503a` was 8/8 green) | Thread 2 (exclusive; legality session confirmed handoff 2026-10-14) |
 | Gen VI native | `claude/gen6-native-20261014` | branch from `a17c503a` | — | Thread 3 |
-| App QA | `audit/app-qa-20261014` | branch from `a17c503a` | — | Thread 4 |
+| App QA | `audit/app-qa-20261014` | `24e730a0` (Gen I–V parser fuzzing and export-safety contracts) | no PR yet | Thread 4 |
 | Coordinator | `claude/optimistic-euler-ph2z4f` | docs only, on `a17c503a` | — | Coordinator |
 | #300 / #304 / #302 | preserved source lanes | `58bd564b` / `4d8c267e` / `6e27bbd5` | green | Contained in #307 |
 | #305 / #280 | `claude/gen4-capture-ball` / `fix/gen14-action-tap-empty-parity-20261011` | `b8eb006e` / `dcd855a7` | — | Rule confirmed by test / tests to port (Thread 1) |
