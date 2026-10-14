@@ -16,6 +16,9 @@ Re-fetch GitHub before acting on any SHA below. Never force-push; never reset ba
 | Commit | Change | Evidence |
 |---|---|---|
 | `eb2aa8b3` | Artwork regression root cause: `native-pr-build.yml` did `rm -rf romfs; cp -a recovery-work/romfs romfs` (dropping branch region backdrops) and never ran `fetch_product_art.py` (no trainer portraits / Hisui / Paldea). All NRO workflows now use `tools/prepare_release_romfs.sh` (fill-gaps-only). New `tools/verify_nro_romfs.py` parses the built NRO ASET → RomFS tables and fails on any missing/different required asset. `check_device_assets.py` now requires 10 backdrops + 20 portraits. New combined `gen14-hardware-candidate.yml`. | `tests/test_verify_nro_romfs.py` PASS (synthetic build_romfs-format NRO). Real-NRO verification runs in CI. |
+| `2ca38757` | Gen III/IV verified working-copy export (`Integration/Common/VerifiedStagedExport`): temp dir → fsync → read-back → SHA-256 → strict reparse before/after → atomic rename; never overwrites; source never written. Gen IV review shows original→staged slot list; X = Export Copy in Gen III/IV review (Gen III refuses while separate Bag edits pending). Exports: `sdmc:/switch/PokeBank-NX/exports/gen3|gen4`. | Gen IV 3 layouts + Gen III 5 games: export/reparse/reopen/manifest/4 fault points/no-overwrite/source immutability, normal + ASan/UBSan. |
+| `6f3b4ddf`+`beb7cf7c` | Review → Discard All now two-step (Y arms confirmation, second Y discards, B keeps, A/X inert) in Gen III/IV. | direct-row touch contract asserts it; local devkitA64 `make native-ui-check` PASS. |
+| `92bba2d0` | Product UI Native + Gen IV Candidate gates now trigger for this PR's base. | CI |
 | `41a8ceee` | Launch: ROM header identity (GB/GBC title, GBA code @0xAC, NDS code @0x0C) for all 16 games. Contradicting headers are excluded from filesystem/playlist resolution, rejected by Manual Link, and re-checked for remembered links. Unknown/archives never refused. | `test_retroarch_launch_resolution` PASS normal + ASan/UBSan. |
 | `f5b876fe` | Gen IV discovery starvation: one shared 256-file budget scanned RetroArch first → large RetroArch folder hid DraStic/melonDS. Per-root budgets, per-directory entry cap, `truncatedRoots`. | `test_gen4_readonly_foundation` PASS normal + ASan/UBSan, new fairness/entry-cap cases. |
 
@@ -33,6 +36,11 @@ Re-fetch GitHub before acting on any SHA below. Never force-push; never reset ba
   Y shiny preview in species picker.
 
 ## Tests executed (local, this lane)
+
+- Local devkitA64 available: `sudo dockerd &` then
+  `docker run --rm -v "$PWD:/work" -w /work devkitpro/devkita64@sha256:1fc388c3… bash -lc 'make native-ui-check'`.
+- Full `make -f Makefile.host host-test` PASS after export work; `host-test host-sanitize` PASS at `f5b876fe`.
+- `one-time-*` workflows show zero-job "failures" on every push (inherited invalid/no-op files, not PR checks).
 
 - Baseline `make -f Makefile.host host-test` on `d0a45909` (after submodule init): PASS.
 

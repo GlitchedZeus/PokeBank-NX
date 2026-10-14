@@ -1,5 +1,6 @@
 #include "UI/ClassicInventoryOverlay.h"
 
+#include "Integration/Common/VerifiedStagedExport.h"
 #include "Integration/Gen1/Gen1StagedInventoryEditor.h"
 #include "Integration/Gen2/Gen2StagedEditor.h"
 #include "Integration/Gen3/Gen3StagedInventoryEditor.h"
@@ -35,6 +36,7 @@
 
 namespace UI::ClassicInventory {
 namespace {
+namespace Common = PokeVault::Integration::Common;
 
 using PokeVault::Inventory::ClassicGame;
 using PokeVault::Inventory::ClassicPocket;
@@ -361,24 +363,41 @@ int generation(TrainerViewScreen& screen) noexcept {
     return 0;
 }
 
-bool pathExists(const std::string& path) noexcept {
-    struct stat st{};
-    return ::stat(path.c_str(), &st) == 0;
+// Strict parser for the exact classic game behind the current staged Bag workspace.
+Common::StrictSaveValidator strictValidator(TrainerViewScreen& screen) {
+    switch (sourceKind(screen.sourceGameId)) {
+        case SourceKind::Gen1: {
+            const auto game = rbyTrainer(screen)->stagedInventory()->sourceGame();
+            return [game](std::span<const uint8_t> bytes, std::string& error) {
+                const auto parsed = PokeVault::Integration::Gen1::parse(bytes, game);
+                if (!parsed) error = parsed.detail.empty() ? "Gen I save failed strict parse" : parsed.detail;
+                return static_cast<bool>(parsed);
+            };
+        }
+        case SourceKind::Gen2: {
+            const auto game = gscTrainer(screen)->stagedEditor()->metadata().sourceGame;
+            return [game](std::span<const uint8_t> bytes, std::string& error) {
+                const auto parsed = PokeVault::Integration::Gen2::parse(bytes, game);
+                if (!parsed) error = parsed.detail.empty() ? "Gen II save failed strict parse" : parsed.detail;
+                return static_cast<bool>(parsed);
+            };
+        }
+        case SourceKind::Gen3: {
+            const auto game = gen3Trainer(screen)->stagedInventory()->sourceGame();
+            return [game](std::span<const uint8_t> bytes, std::string& error) {
+                const auto parsed = PokeVault::Integration::Gen3::parse(bytes, game);
+                if (!parsed) error = parsed.detail.empty() ? "Gen III save failed strict parse" : parsed.detail;
+                return static_cast<bool>(parsed);
+            };
+        }
+        case SourceKind::None:
+            break;
+    }
+    return {};
 }
 
-bool writeBytes(const std::string& path, std::span<const uint8_t> bytes) {
-    FILE* out = std::fopen(path.c_str(), "wb");
-    if (!out) return false;
-    const bool ok = std::fwrite(bytes.data(), 1, bytes.size(), out) == bytes.size();
-    const bool closeOk = std::fclose(out) == 0;
-    return ok && closeOk;
-}
-
-bool writeText(const std::string& path, const std::string& text) {
-    return writeBytes(path, std::span<const uint8_t>(
-        reinterpret_cast<const uint8_t*>(text.data()), text.size()));
-}
-
+// Verified Bag export: temp directory, fsync, read-back + SHA-256, strict reparse before and after
+// writing, atomic publish. Only the app-owned exports root is written; the source never is.
 std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
     error.clear();
     if (!hasPending(screen)) {
@@ -404,44 +423,29 @@ std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
         error = "Could not construct a safe classic export timestamp";
         return {};
     }
-    const std::string stem = PokeBank::Paths::sanitizeComponent(screen.sourceGameId) + "_" + timestamp;
-    std::string exportDir = root + "/" + stem;
-    for (int suffix = 2; pathExists(exportDir) && suffix < 1000; ++suffix)
-        exportDir = root + "/" + stem + "-" + std::to_string(suffix);
-    if (pathExists(exportDir) || !PokeBank::Paths::ensureDirectoryTree(exportDir, &error)) {
-        if (error.empty()) error = "Could not create unique classic staged export directory";
-        return {};
-    }
 
-    if (!writeBytes(exportDir + "/original_backup.srm", original)) {
-        error = "Could not write automatic original backup";
+    Common::VerifiedExportRequest request;
+    request.rootDirectory = root;
+    request.directoryStem = PokeBank::Paths::sanitizeComponent(screen.sourceGameId) + "_" + timestamp;
+    request.generationLabel = "Generation " + std::string(gen == 1 ? "I" : gen == 2 ? "II" : "III") + " Bag";
+    request.fileExtension = ".srm";
+    request.sourcePath = screen.backupDir;
+    request.gameId = screen.sourceGameId;
+    request.saveFormat = gen == 3 ? "Gen III rotating-sector Flash" : "Classic battery SRAM";
+    request.timestamp = timestamp;
+#ifdef POKEVAULT_GIT_COMMIT
+    request.applicationSha = POKEVAULT_GIT_COMMIT;
+#endif
+    request.originalBytes = original;
+    request.editedBytes = edited;
+    request.changeLines = pendingLines(screen);
+    request.validator = strictValidator(screen);
+    const auto result = Common::publishVerifiedStagedExport(request);
+    if (!result.success) {
+        error = result.error.empty() ? "Verified classic export failed" : result.error;
         return {};
     }
-    if (!writeBytes(exportDir + "/edited.srm", edited)) {
-        error = "Could not write staged edited save";
-        return {};
-    }
-
-    std::string manifest;
-    manifest += "PokeBank NX classic staged export\n";
-    manifest += "GAME_ID=" + screen.sourceGameId + "\n";
-    manifest += "GENERATION=" + std::to_string(gen) + "\n";
-    manifest += "SOURCE_PATH=" + screen.backupDir + "\n";
-    manifest += "SOURCE_KIND=RetroArchLegacy_READ_ONLY\n";
-    manifest += "ORIGINAL_BACKUP=original_backup.srm\n";
-    manifest += "EDITED_SAVE=edited.srm\n";
-    manifest += "ORIGINAL_BYTES=" + std::to_string(original.size()) + "\n";
-    manifest += "EDITED_BYTES=" + std::to_string(edited.size()) + "\n";
-    manifest += "LIVE_RETROARCH_WRITE=DISABLED\n";
-    manifest += "LIVE_EMULATOR_WRITE=DISABLED\n";
-    manifest += "LIVE_INSTALLED_GAME_WRITE=DISABLED\n";
-    manifest += "PENDING_CHANGES:\n";
-    for (const auto& line : pendingLines(screen)) manifest += "- " + line + "\n";
-    if (!writeText(exportDir + "/EDIT_MANIFEST.txt", manifest)) {
-        error = "Edited save was written, but provenance manifest creation failed";
-        return {};
-    }
-    return exportDir;
+    return result.directory;
 }
 
 bool currentPocket(TrainerViewScreen& screen, ClassicGame& game, ClassicPocket& pocket) {
