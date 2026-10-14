@@ -12,7 +12,7 @@
 | Development lane | HEAD at audit | What is actually delivered / missing |
 |---|---|---|
 | [#92 Gen I–IV parent](https://github.com/GlitchedZeus/PokeBank-NX/pull/92) | `ddaff2470947ed3ca579ec22eb25c7564e215a8c` | Staged Gen I–IV source/editor/Product UI parent, unmerged draft |
-| [#306 Claude Gen I–IV finalization](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) | `6f3b4ddf86f1cd8751025c4cde41fd1be07820de` | Exact in-NRO RomFS artwork verifier, 10 regional scenes, 20 trainer portraits, Gen I–IV covers, fair DS discovery and original ROM header launch identity. **Gen IV candidate CI failed; hardware pending** |
+| [#306 Claude Gen I–IV finalization](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) | `3ac0ae29fe5d40bc8abededffd2b49326610eec4` | Exact in-NRO RomFS artwork verifier, 10 regional scenes, 20 trainer portraits, Gen I–IV covers, fair DS discovery and original ROM header launch identity. **Gen I–IV candidate, Product UI native, native, Gen IV and touch checks passed; full host still running; hardware pending** |
 | [#300 Gen V application](https://github.com/GlitchedZeus/PokeBank-NX/pull/300) | `58bd564ba479745f6129f57167aeac6616297753` | BW/B2W2 exact source/profile assignment, selected primary/backup copy, native Trainer/Party/24 Boxes, shared PK5 staged Edit/Create/Review, app-owned export. **All six CI checks passed; hardware pending** |
 | [#304 Gen V stacked source hardening](https://github.com/GlitchedZeus/PokeBank-NX/pull/304) | `4d8c267e8b86df15aeb0002df89207cad0516211` | Persisted exact copy, equitable scan budgets, alias/repair/focus changes, independently green; **not yet reconciled/merged** |
 | [#305 PK4 capture Ball](https://github.com/GlitchedZeus/PokeBank-NX/pull/305) | `b8eb006ebb85900684ce4caac4d75a18ebb5a8be` | Capture Ball derived from `max(0x83,0x86)`, separate unmerged correction |
@@ -36,7 +36,7 @@ Workflow under test: Games → X / Source/Game File → **Assign Save to This Pr
 Missing independently proven acquisition histories and authenticated event data remain **Unknown/Incomplete**, not globally Invalid. No PKHeX-total parity or legal/certified stamp is claimed.
 
 ## Current acceptance priorities
-1. Clear [#306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) exact-head native/host failures; test one NRO on real hardware, preserving Oct 8 launch/Quit & Return.
+1. Finish [#306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) exact-head full host verification; test one NRO on real hardware, preserving Oct 8 launch/Quit & Return.
 2. Retest [#300](https://github.com/GlitchedZeus/PokeBank-NX/pull/300) Gen V in existing emulator folders, profile assign/reopen, selected retail copy, shared editor and source-safety/asset claims.
 3. Review stacked [#304](https://github.com/GlitchedZeus/PokeBank-NX/pull/304) before any integration; preserve its branch history and later contributor commits.
 4. Reconcile [#298](https://github.com/GlitchedZeus/PokeBank-NX/pull/298)/[#303](https://github.com/GlitchedZeus/PokeBank-NX/pull/303) from original source and exact-head test evidence, independently of app development.
