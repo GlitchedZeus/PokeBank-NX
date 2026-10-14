@@ -34,6 +34,8 @@ PKSM_CORE_DEFINES := -D_PKSMCORE_CONFIGURED \
 	-D_PKSMCORE_PERSONAL_FOLDER='"$(PKSM_CORE_ROOT)/personals/"'
 PKSM_CORE_FLAGS := -fno-operator-names -Wno-psabi \
 	-Wno-missing-field-initializers -Wno-unused-parameter
+# Clang caps fold-expression nesting at 256; PKSM-Core's large constexpr std::array tables need more.
+PKSM_CORE_FLAGS += $(if $(findstring clang,$(shell $(CXX) --version 2>/dev/null)),-fbracket-depth=1024,)
 GEN3_ADAPTER_SOURCES := tests/test_pksm_gen3_adapter.cpp \
 	src/Integration/Gen3/PKSMGen3Adapter.cpp src/Integration/Gen3/FRLGReadModel.cpp \
 	src/Encryption/Encryption3FRLG.cpp src/Utils/StringHelpers.cpp \

@@ -185,17 +185,17 @@ namespace Conversion {
 
             const uint16_t species = src.speciesID();
             const uint8_t  form    = src.form();
-            const ::Pokemon::PersonalInfo& pi = Pokemon::getPersonalInfo(species, form);
+            const ::Pokemon::PersonalInfo& pi = ::Pokemon::getPersonalInfo(species, form);
             // A form >= the species' form count can't exist in ANY destination. Guard it explicitly:
             // getPersonalInfo() clamps an out-of-range form back to form 0, so without this a corrupt
             // form would read form-0's presence and silently false-pass the dex checks below (then get
             // written verbatim into the destination as an out-of-range form -> bad egg in-game).
-            if (form != 0 && form >= Pokemon::getPersonalInfo(species, 0).formCount)
+            if (form != 0 && form >= ::Pokemon::getPersonalInfo(species, 0).formCount)
                 return Result::NotInDex;
             // Dex-presence gate. FRLG has no personal-table presence bit, so use the Gen 3 species range
             // (National <= 386 that maps to a valid internal id). Every other game uses its presence bit.
             if (dest == GameVersion::FRLG) {
-                if (Pokemon::nationalToG3(species) == 0) return Result::NotInDex;   // not obtainable in Gen 3
+                if (::Pokemon::nationalToG3(species) == 0) return Result::NotInDex;   // not obtainable in Gen 3
                 // Gen 3 stores no general form byte, so an alternate form (Alolan/Galarian/Hisuian/Paldean
                 // variant, a Paldean Tauros breed, an alternate Deoxys, ...) would be silently FLATTENED to
                 // the base form on write -- a Combat Breed Tauros arriving in FireRed as a plain Tauros.
@@ -348,7 +348,7 @@ namespace Conversion {
 
             // 0x08 species: the PK8 hub stores the NATIONAL dex number, but PK9/PA9 store the Gen 9
             // INTERNAL index (diverges from #917 on) -- convert, or the game shows a shifted species.
-            wr16(b, 0x08, Pokemon::gen9NationalToInternal(rd16(b, 0x08)));
+            wr16(b, 0x08, ::Pokemon::gen9NationalToInternal(rd16(b, 0x08)));
             // 0x16 bit4 CanGigantamax -> PK9 has no G-Max: clear it.
             wr8(b, 0x16, rd8(b, 0x16) & ~0x10);
             // 0x22 gender: PK8 (byte>>2)&3 -> PK9 (byte>>1)&3. Keep Fateful(bit0); drop PK8 Flag2(bit1).
@@ -365,7 +365,7 @@ namespace Conversion {
             { zeroRange(b, 0x90, 0x10);
               wr32(b, 0x90, statusCondition);
               if (destination == GameVersion::SV) {
-                  ::Pokemon::TypePair tp = Pokemon::getPokemonTypes(species, form, Enums::GameVersion::SV);
+                  ::Pokemon::TypePair tp = ::Pokemon::getPokemonTypes(species, form, Enums::GameVersion::SV);
                   const uint8_t tera = Fidelity::defaultTeraType(tp.type1, tp.type2);
                   wr8(b, 0x94, tera); wr8(b, 0x95, tera);
                   if (report) report->addAdaptation(Adaptation::TargetDefaultTeraSynthesized);
@@ -478,7 +478,7 @@ namespace Conversion {
             wr8(b, 0x23, 0);
             // 0x08 species: PK9/PA9 store the Gen 9 INTERNAL index; the PK8 hub (and every format fed
             // from it) uses the NATIONAL dex number -- convert (mirror of transformG8toG9).
-            wr16(b, 0x08, Pokemon::gen9InternalToNational(rd16(b, 0x08)));
+            wr16(b, 0x08, ::Pokemon::gen9InternalToNational(rd16(b, 0x08)));
             // 0x22 gender: PK9 (byte>>1)&3 -> PK8 (byte>>2)&3. Keep Fateful(bit0); PK8 Flag2(bit1) stays 0.
             { uint8_t v = rd8(b, 0x22); uint8_t fateful = v & 0x01; uint8_t gender = (v >> 1) & 0x03;
               wr8(b, 0x22, fateful | (gender << 2)); }
@@ -689,7 +689,7 @@ namespace Conversion {
             {
                 const uint16_t species = static_cast<uint16_t>(rd8(d, 0x08)) | (static_cast<uint16_t>(rd8(d, 0x09)) << 8);
                 const uint8_t form = static_cast<uint8_t>(rd8(d, 0x1D) >> 3);   // PB7 packs form in 0x1D bits 3+
-                const ::Pokemon::PersonalInfo& pi = Pokemon::getPersonalInfo(species, form);
+                const ::Pokemon::PersonalInfo& pi = ::Pokemon::getPersonalInfo(species, form);
                 const float hr = (rd8(d, 0x3A) / 255.0f) * 0.79999995f + 0.6f;   // height ratio (+40% / -20%)
                 const float wr = (rd8(d, 0x3B) / 255.0f) * 0.40000004f + 0.8f;   // weight ratio (+/- 20%)
                 wrf32(d, 0x2C, hr * static_cast<float>(pi.height));              // HeightAbsolute
@@ -709,7 +709,7 @@ namespace Conversion {
         std::vector<std::byte> remapPK3toPK8(const std::vector<std::byte>& s, Report* report) {
             std::vector<std::byte> d(0x148, std::byte{0});
             const uint32_t pid      = rd32(s, 0x00);
-            const uint16_t national = Pokemon::g3ToNational(rd16(s, 0x20));
+            const uint16_t national = ::Pokemon::g3ToNational(rd16(s, 0x20));
             const uint32_t iv32     = rd32(s, 0x48);
             const uint16_t origins  = rd16(s, 0x46);
             const uint8_t  abilBit  = (iv32 >> 31) & 1;
@@ -723,8 +723,8 @@ namespace Conversion {
                                  | ((pid & 0x00000300u) >> 6)  | (pid & 0x00000003u);
                 form = static_cast<uint8_t>(v % 28);
             }
-            const ::Pokemon::PersonalInfo& pi = Pokemon::getPersonalInfo(national, form);
-            const ::Pokemon::PersonalInfoG3& g3 = Pokemon::getPersonalInfoG3(national);
+            const ::Pokemon::PersonalInfo& pi = ::Pokemon::getPersonalInfo(national, form);
+            const ::Pokemon::PersonalInfoG3& g3 = ::Pokemon::getPersonalInfoG3(national);
 
             wr32(d, 0x00, pid);                                     // EC := original Gen III PID
             wr16(d, 0x08, national);                                // Species (National)
@@ -849,7 +849,7 @@ namespace Conversion {
                 Enums::safeLanguageForGroup(GameVersion::FRLG, rd8(s, 0xE2));
             wr8(d, 0x12, destinationLanguage);
             wr8(d, 0x13, 0x02);                                    // HasSpecies; eggs fail closed above
-            wr16(d, 0x20, Pokemon::nationalToG3(national));         // Species (INTERNAL Gen 3 id)
+            wr16(d, 0x20, ::Pokemon::nationalToG3(national));         // Species (INTERNAL Gen 3 id)
             wr16(d, 0x22, Names::itemModernToG3(rd16(s, 0x0A)));    // Held item (modern -> Gen 3; 0 if none)
             copyBytes(d, 0x24, s, 0x10, 4);                         // EXP
 
@@ -1186,7 +1186,7 @@ namespace Conversion {
             if (0x23 < buf.size()) buf[0x23] = std::byte{0};
 
             if (destGroup == GameVersion::SV) {
-                const ::Pokemon::TypePair tp = Pokemon::getPokemonTypes(src.speciesID(), src.form(), GameVersion::SV);
+                const ::Pokemon::TypePair tp = ::Pokemon::getPokemonTypes(src.speciesID(), src.form(), GameVersion::SV);
                 const uint8_t tera = Fidelity::defaultTeraType(tp.type1, tp.type2);
                 wr8(buf, 0x94, tera); wr8(buf, 0x95, tera);
                 if (report) report->addAdaptation(Adaptation::TargetDefaultTeraSynthesized);
@@ -1216,7 +1216,7 @@ namespace Conversion {
             if ((isG8(destGroup) || isG9(destGroup)) && buf.size() < PARTY_SIZE_G89) {
                 buf.resize(PARTY_SIZE_G89, std::byte{0});
                 const uint16_t sp = rd16(buf, 0x08);
-                wr8(buf, 0x148, Pokemon::getLevelFromExp(rd32(buf, 0x10), Pokemon::getGrowthRate(sp)));
+                wr8(buf, 0x148, ::Pokemon::getLevelFromExp(rd32(buf, 0x10), ::Pokemon::getGrowthRate(sp)));
                 seededPartyTail = true;
             }
 
@@ -1236,7 +1236,7 @@ namespace Conversion {
                 }
                 buf = remapPK8toPB7(buf);
             } else if (destGroup == GameVersion::FRLG) {
-                const ::Pokemon::PersonalInfoG3& g3 = Pokemon::getPersonalInfoG3(src.speciesID());
+                const ::Pokemon::PersonalInfoG3& g3 = ::Pokemon::getPersonalInfoG3(src.speciesID());
                 const auto abilityMap = Fidelity::mapModernAbilityToGen3(
                     rd16(buf, 0x14), rd8(buf, 0x16) & 0x07, g3.ability1, g3.ability2);
                 if (!abilityMap.ok) { result = Result::AbilityNotRepresentable; return nullptr; }
@@ -1264,12 +1264,12 @@ namespace Conversion {
             const uint16_t sp = out->speciesID();
             const uint8_t  fm = out->form();
             for (int i = 0; i < 4; ++i) {
-                if (out->move(i) != 0 && !Pokemon::isLearnable(sp, fm, destGroup, out->move(i))) {
+                if (out->move(i) != 0 && !::Pokemon::isLearnable(sp, fm, destGroup, out->move(i))) {
                     if (report) report->addLoss(Loss::MoveDropped);
                     out->setMove(i, 0); out->setMovePP(i, 0); out->setMovePPUps(i, 0);
                 }
                 if (destGroup != GameVersion::FRLG && out->relearnMove(i) != 0
-                    && !Pokemon::isLearnable(sp, fm, destGroup, out->relearnMove(i))) {
+                    && !::Pokemon::isLearnable(sp, fm, destGroup, out->relearnMove(i))) {
                     if (report) report->addLoss(Loss::RelearnMoveDropped);
                     out->setRelearnMove(i, 0);   // Gen 3 has no relearn moves (remap leaves them 0)
                 }

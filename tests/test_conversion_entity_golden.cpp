@@ -297,7 +297,7 @@ void configureModern(::Pokemon::Pokemon& pk, uint16_t species, uint8_t form,
     pk.setPID(pid);
     pk.setNature(static_cast<uint8_t>(pid % 25));
     pk.setStatNature(static_cast<uint8_t>(pid % 25));
-    const auto& pi = Pokemon::getPersonalInfo(species, form);
+    const auto& pi = ::Pokemon::getPersonalInfo(species, form);
     pk.setGender(Conversion::Gen3PidSearch::genderForPid(pid, pi.genderRatio));
     pk.setAbility(pi.ability1);
     pk.setAbilityNumber(1);
@@ -624,7 +624,7 @@ int main() {
     // F08: production ability ID + slot/number semantics, including duplicate and hidden ability.
     {
         // Ralts has distinct Gen III normal abilities (Synchronize / Trace): both slots must round-trip.
-        const auto& raltsG3 = Pokemon::getPersonalInfoG3(280);
+        const auto& raltsG3 = ::Pokemon::getPersonalInfoG3(280);
         assert(raltsG3.ability1 != 0 && raltsG3.ability2 != 0 && raltsG3.ability1 != raltsG3.ability2);
         for (const uint8_t slot : {uint8_t{1}, uint8_t{2}}) {
             const uint32_t pid = 0x2468ACE0u + slot;
@@ -665,7 +665,7 @@ int main() {
 
         // Pikachu has the same Gen III ability in both native slots. Slot 2 can be represented in PK3,
         // but a later modern representation normalizes the redundant selector to slot 1 and declares it.
-        const auto& pikachuG3 = Pokemon::getPersonalInfoG3(25);
+        const auto& pikachuG3 = ::Pokemon::getPersonalInfoG3(25);
         assert(pikachuG3.ability1 == pikachuG3.ability2 && pikachuG3.ability1 != 0);
         {
             const uint32_t pid = 0x2468ACF2u;
@@ -709,7 +709,7 @@ int main() {
             auto source = blankSWSH();
             configureModern(*source, 25, 0, pid, id32,
                             static_cast<uint8_t>(GameVersion::SW), u"PIKACHU", false);
-            const auto& pi = Pokemon::getPersonalInfo(25, 0);
+            const auto& pi = ::Pokemon::getPersonalInfo(25, 0);
             source->setAbility(pi.abilityHidden);
             source->setAbilityNumber(4);
             source->refreshChecksum();
@@ -1094,8 +1094,8 @@ int main() {
         uint16_t commonMove = 0;
         uint16_t swordOnlyMove = 0;
         for (uint16_t move = 1; move <= ::Pokemon::LEARN_MAX_MOVE_ID; ++move) {
-            const bool sw = Pokemon::isLearnable(25, 0, GameVersion::SWSH, move);
-            const bool sv = Pokemon::isLearnable(25, 0, GameVersion::SV, move);
+            const bool sw = ::Pokemon::isLearnable(25, 0, GameVersion::SWSH, move);
+            const bool sv = ::Pokemon::isLearnable(25, 0, GameVersion::SV, move);
             if (sw && sv && commonMove == 0) commonMove = move;
             if (sw && !sv && swordOnlyMove == 0) swordOnlyMove = move;
             if (commonMove != 0 && swordOnlyMove != 0) break;
@@ -1193,8 +1193,8 @@ int main() {
         uint16_t commonMove = 0;
         uint16_t swordOnlyMove = 0;
         for (uint16_t move = 1; move <= ::Pokemon::LEARN_MAX_MOVE_ID; ++move) {
-            const bool sw = Pokemon::isLearnable(25, 0, GameVersion::SWSH, move);
-            const bool sv = Pokemon::isLearnable(25, 0, GameVersion::SV, move);
+            const bool sw = ::Pokemon::isLearnable(25, 0, GameVersion::SWSH, move);
+            const bool sv = ::Pokemon::isLearnable(25, 0, GameVersion::SV, move);
             if (sw && sv && commonMove == 0) commonMove = move;
             if (sw && !sv && swordOnlyMove == 0) swordOnlyMove = move;
             if (commonMove != 0 && swordOnlyMove != 0) break;
@@ -1392,7 +1392,7 @@ int main() {
         assert(pre.report.hasLoss(Loss::HeldItemDropped));
         assert(pre.report.hasLoss(Loss::StatTrainingReset));
 
-        const auto& pi = Pokemon::getPersonalInfo(25, 0);
+        const auto& pi = ::Pokemon::getPersonalInfo(25, 0);
         source->setAbility(pi.abilityHidden);
         source->setAbilityNumber(4);
         source->refreshChecksum();
@@ -1834,7 +1834,7 @@ int main() {
         size_t sharedBase = 0, swshOnlyBase = 0, svOnlyBase = 0, neitherBase = 0;
         size_t sharedForms = 0, swshOnlyForms = 0, svOnlyForms = 0, neitherForms = 0;
         for (uint16_t sp = 1; sp <= ::Pokemon::PERSONAL_MAX_SPECIES; ++sp) {
-            const auto& base = Pokemon::getPersonalInfo(sp, 0);
+            const auto& base = ::Pokemon::getPersonalInfo(sp, 0);
             const bool sw = (base.presence & ::Pokemon::PERSONAL_GAME_SWSH) != 0;
             const bool sv = (base.presence & ::Pokemon::PERSONAL_GAME_SV) != 0;
             if (sw && sv) ++sharedBase;
@@ -1843,7 +1843,7 @@ int main() {
             else ++neitherBase;
 
             for (uint8_t form = 1; form < base.formCount; ++form) {
-                const auto& pi = Pokemon::getPersonalInfo(sp, form);
+                const auto& pi = ::Pokemon::getPersonalInfo(sp, form);
                 const bool fsw = (pi.presence & ::Pokemon::PERSONAL_GAME_SWSH) != 0;
                 const bool fsv = (pi.presence & ::Pokemon::PERSONAL_GAME_SV) != 0;
                 if (fsw && fsv) ++sharedForms;
@@ -1961,8 +1961,8 @@ int main() {
 
         uint16_t commonMove = 0;
         for (uint16_t move = 1; move <= ::Pokemon::LEARN_MAX_MOVE_ID; ++move) {
-            if (Pokemon::isLearnable(25, 0, GameVersion::SWSH, move) &&
-                Pokemon::isLearnable(25, 0, GameVersion::SV, move)) {
+            if (::Pokemon::isLearnable(25, 0, GameVersion::SWSH, move) &&
+                ::Pokemon::isLearnable(25, 0, GameVersion::SV, move)) {
                 commonMove = move;
                 break;
             }
@@ -2166,7 +2166,7 @@ int main() {
     {
         const uint16_t species[] = {280, 25}; // Ralts has distinct normal slots; Pikachu duplicates
         for (const uint16_t sp : species) {
-            const auto& pi = Pokemon::getPersonalInfo(sp, 0);
+            const auto& pi = ::Pokemon::getPersonalInfo(sp, 0);
             assert((pi.presence & ::Pokemon::PERSONAL_GAME_SWSH) != 0);
             assert((pi.presence & ::Pokemon::PERSONAL_GAME_SV) != 0);
             const std::array<std::pair<uint16_t, uint8_t>, 3> abilities{{
@@ -2262,8 +2262,8 @@ int main() {
     {
         std::vector<uint16_t> common, swOnly, svOnly;
         for (uint16_t move = 1; move <= ::Pokemon::LEARN_MAX_MOVE_ID; ++move) {
-            const bool sw = Pokemon::isLearnable(25, 0, GameVersion::SWSH, move);
-            const bool sv = Pokemon::isLearnable(25, 0, GameVersion::SV, move);
+            const bool sw = ::Pokemon::isLearnable(25, 0, GameVersion::SWSH, move);
+            const bool sv = ::Pokemon::isLearnable(25, 0, GameVersion::SV, move);
             if (sw && sv) common.push_back(move);
             else if (sw) swOnly.push_back(move);
             else if (sv) svOnly.push_back(move);
@@ -2798,7 +2798,7 @@ int main() {
             configureModern(*source, 869 /*Alcremie*/, 0, 0x81818181u, 0x81818081u,
                             static_cast<uint8_t>(fromG8 ? GameVersion::SW : GameVersion::SL),
                             u"ALCREMIE", true);
-            const auto& pi = Pokemon::getPersonalInfo(869, 0);
+            const auto& pi = ::Pokemon::getPersonalInfo(869, 0);
             assert((pi.presence & ::Pokemon::PERSONAL_GAME_SWSH) != 0);
             assert((pi.presence & ::Pokemon::PERSONAL_GAME_SV) != 0);
             auto raw = source->getData();
@@ -2896,7 +2896,7 @@ int main() {
         auto findPPDrop = [](GameVersion sourceGroup, GameVersion destinationGroup) {
             PPCandidate found{};
             for (uint16_t sp = 1; sp <= ::Pokemon::PERSONAL_MAX_SPECIES && found.species == 0; ++sp) {
-                const auto& pi = Pokemon::getPersonalInfo(sp, 0);
+                const auto& pi = ::Pokemon::getPersonalInfo(sp, 0);
                 const bool presentSource =
                     sourceGroup == GameVersion::SWSH
                         ? (pi.presence & ::Pokemon::PERSONAL_GAME_SWSH) != 0
@@ -2907,8 +2907,8 @@ int main() {
                         : (pi.presence & ::Pokemon::PERSONAL_GAME_SV) != 0;
                 if (!presentSource || !presentDestination) continue;
                 for (uint16_t move = 1; move <= ::Pokemon::LEARN_MAX_MOVE_ID; ++move) {
-                    if (!Pokemon::isLearnable(sp, 0, sourceGroup, move) ||
-                        !Pokemon::isLearnable(sp, 0, destinationGroup, move))
+                    if (!::Pokemon::isLearnable(sp, 0, sourceGroup, move) ||
+                        !::Pokemon::isLearnable(sp, 0, destinationGroup, move))
                         continue;
                     const uint8_t srcMax = Names::getMoveMaxPP(move, 0, sourceGroup);
                     const uint8_t dstMax = Names::getMoveMaxPP(move, 0, destinationGroup);
@@ -3444,9 +3444,9 @@ int main() {
         size_t shared = 0;
         size_t blocked = 0;
         for (uint16_t species = 1; species <= ::Pokemon::PERSONAL_MAX_SPECIES; ++species) {
-            const auto& base = Pokemon::getPersonalInfo(species, 0);
+            const auto& base = ::Pokemon::getPersonalInfo(species, 0);
             for (uint8_t form = 0; form < base.formCount; ++form) {
-                const auto& pi = Pokemon::getPersonalInfo(species, form);
+                const auto& pi = ::Pokemon::getPersonalInfo(species, form);
                 const uint8_t both = ::Pokemon::PERSONAL_GAME_SWSH | ::Pokemon::PERSONAL_GAME_SV;
                 if ((pi.presence & both) != both) continue;
                 ++shared;
