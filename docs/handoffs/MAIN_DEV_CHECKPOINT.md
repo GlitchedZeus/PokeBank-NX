@@ -70,7 +70,7 @@ conservative estimates.
 | #307 Gen V integration | `claude/gen5-integration-20261014` | `60f7cdc2` | running (`a17c503a` was 8/8 green) | Thread 2 (exclusive; legality session confirmed handoff 2026-10-14) |
 | Gen VI native | `claude/gen6-native-20261014` (draft #309 → #307, CI only) | `aee7e911` | Gen VI host + native green; full host running | Thread 3 |
 | Gen VII native | `claude/gen7-native-20261014` | `4e66e94f` | running | Thread 3 |
-| App QA | `audit/app-qa-20261014` | `24e730a0` (Gen I–V parser fuzzing and export-safety contracts) | no PR yet | Thread 4 |
+| App QA | `audit/app-qa-20261014` (draft #310 → #307, CI only) | `e43f234` | running; no Gen I–V parser crash/UB found so far | Thread 4 |
 | Coordinator | `claude/optimistic-euler-ph2z4f` | docs only, on `a17c503a` | — | Coordinator |
 | #300 / #304 / #302 | preserved source lanes | `58bd564b` / `4d8c267e` / `6e27bbd5` | green | Contained in #307 |
 | #305 / #280 | `claude/gen4-capture-ball` / `fix/gen14-action-tap-empty-parity-20261011` | `b8eb006e` / `dcd855a7` | — | Rule confirmed by test / tests to port (Thread 1) |
@@ -88,6 +88,7 @@ conservative estimates.
 1. Approve integrating Gen VI (later Gen VII) into #307 after the Gen V candidate. The integration requests are in `docs/gen6/integration-requests/01-02` on the Gen VI lane.
 2. Gen VII re-signing: needs a "payload tail" diagnostic from one game-written SM/USUM save. PKHeX and PKSM-Core differ here, so SAV7 export stays unsupported until then.
 3. Approve bumping the `memecrypto` submodule: `sha1.c` has undefined behavior in a signed shift, and `rsa.c` leaks memory.
+5. QA-F2 (Medium): 3 invalid `one-time-*` workflow YAMLs fail on every push to every branch (~1,100 failed runs each). Approve removing or fixing them.
 4. Confirm the Dekopon (`sdmc:/switch/dekopon/…`) and Checkpoint (`sdmc:/3ds/Checkpoint/saves/…`) paths on the real SD card. Azahar has no Switch build, so it is unsupported.
 
 ## Next implementation tasks
