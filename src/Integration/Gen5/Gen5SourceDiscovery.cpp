@@ -77,19 +77,7 @@ std::string sha256Hex(std::span<const uint8_t> data) {
     for(uint8_t b:digest) { out.push_back(digits[b>>4]); out.push_back(digits[b&15]); }
     return out;
 }
-std::string pathIdentity(const std::string& path,const struct stat* physical=nullptr,
-                         std::string_view contentHash={}) {
-    // Exact source identity is intentionally stricter than the visible file
-    // name: a different inode at the same path is not silently adopted as
-    // the original profile's source. FAT/devoptab sources without useful
-    // inode identity use an immutable verified content hash instead.
-    std::string label="gen5-physical-v2:"+normalized(path);
-    if(physical && physical->st_ino!=0)
-        label+=":"+identityFor(*physical,path);
-    else if(!contentHash.empty())
-        label+=":sha256:"+std::string(contentHash);
-    return sha256Hex({reinterpret_cast<const uint8_t*>(label.data()),label.size()});
-}
+
 // Some Switch SD devoptab implementations support stat() but not lstat().
 // On POSIX filesystems always use lstat() so a link cannot escape a scan root.
 // SD card FAT/exFAT has no POSIX symlinks; ONLY on the sdmc: device and ONLY
@@ -241,6 +229,18 @@ void scan(const DiscoveryRoot& root,const std::string& dir,size_t depth,ScanStat
 }
 } // namespace
 
+std::string persistentGen5SourceIdentity(
+    std::string_view path,uint64_t device,uint64_t inode) {
+    // Retain the preexisting v2 key for inode-backed files. For a Switch SD
+    // file with st_ino==0 use the normalized path alone: an ordinary emulator
+    // save should NOT invalidate profile ownership just because its contents
+    // changed. A source must still be freshly parsed when selected to open.
+    std::string label="gen5-physical-v2:"+normalized(std::string(path));
+    if(inode!=0)label+=":inode:"+std::to_string(device)+":"+
+                       std::to_string(inode);
+    return sha256Hex({reinterpret_cast<const uint8_t*>(label.data()),label.size()});
+}
+
 bool readNormalizedSourceReadOnly(const std::string& path,
                                   std::vector<uint8_t>& bytes,
                                   std::string& diagnostic,
@@ -325,7 +325,7 @@ Source::SaveInstance inspectSourceFile(const std::string& path,
     row.sourcePath=path;
     row.location=path;
     row.normalizedPath=normalized(path);
-    row.sourceIdentity=pathIdentity(path);
+    row.sourceIdentity=persistentGen5SourceIdentity(path,0,0);
     row.access=Source::AccessMode::ReadOnly;
     row.kind=extension(path)==".dsv"?Source::SaveInstanceKind::Backup:
         Source::SaveInstanceKind::BatterySave;
@@ -377,7 +377,9 @@ Source::SaveInstance inspectSourceFile(const std::string& path,
     }
     row.gameId=std::string(save->exactGameId());
     row.contentFingerprint=sha256Hex(bytes);
-    row.sourceIdentity=pathIdentity(path,&st,row.contentFingerprint);
+    row.sourceIdentity=persistentGen5SourceIdentity(
+        path,static_cast<uint64_t>(st.st_dev),
+        static_cast<uint64_t>(st.st_ino));
     row.containerType=container;
     row.sourceVariant=copy==SaveCopySelection::Primary?"gen5-copy-0-primary":
                       copy==SaveCopySelection::Backup?"gen5-copy-1-backup":"";

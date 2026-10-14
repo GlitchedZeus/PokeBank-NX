@@ -181,6 +181,19 @@ require(games, '"REMEMBERED / CHOOSE COPY"', "SaveCopySelection::Automatic",
         "if (!separateGen5Copy &&")
 
 
+# Profile bindings must remain stable across normal emulator-save writes on
+# FAT/exFAT devices (st_ino==0), matching Gen IV. The selected content SHA
+# remains separately mandatory before opening the editor.
+require(discovery_header,
+        "persistentGen5SourceIdentity(",
+        "the changing byte fingerprint")
+require(discovery, "persistentGen5SourceIdentity(",
+        "if(inode!=0)", "gen5-physical-v2:")
+require(read("tests/test_gen5_readonly_save.cpp"),
+        "persistedGen5FATIdentityContracts()",
+        "assert(oldSave==emulatorSavedAgain)")
+assert "pathIdentity(path,&st,row.contentFingerprint)" not in discovery
+
 # A selected physical source is also an EXACT CONTENT SNAPSHOT. Inode and
 # path equivalence alone cannot exclude an in-place emulator save rewrite.
 # Thread the selected normalized fingerprint from the candidate through

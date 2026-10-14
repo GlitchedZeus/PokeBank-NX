@@ -101,6 +101,25 @@ std::vector<uint8_t> dsvFixture(const std::vector<uint8_t>& raw) {
     std::copy(marker.begin(),marker.end(),wrapped.begin()+static_cast<std::ptrdiff_t>(raw.size()+24));
     return wrapped;
 }
+void persistedGen5FATIdentityContracts() {
+    // Switch FAT/exFAT's st_ino==0 cannot offer a physical inode. A stable
+    // assignment follows the exact same path across normal emulator writes,
+    // while a renamed file or a real inode change remains a different source.
+    const auto sdPath="sdmc:/switch/drastic/user/backup/Pokemon Black.dsv";
+    const auto oldSave=G::persistentGen5SourceIdentity(sdPath,0,0);
+    const auto emulatorSavedAgain=G::persistentGen5SourceIdentity(sdPath,0,0);
+    assert(oldSave==emulatorSavedAgain);
+    assert(oldSave==G::persistentGen5SourceIdentity(
+        "sdmc:\\switch\\drastic\\user\\backup\\Pokemon Black.dsv",0,0));
+    assert(oldSave!=G::persistentGen5SourceIdentity(
+        "sdmc:/switch/drastic/user/backup/Pokemon White.dsv",0,0));
+    assert(oldSave!=G::persistentGen5SourceIdentity(sdPath,2,42));
+    assert(G::persistentGen5SourceIdentity(sdPath,2,42)!=
+           G::persistentGen5SourceIdentity(sdPath,2,43));
+    assert(G::persistentGen5SourceIdentity(sdPath,2,42)!=
+           G::persistentGen5SourceIdentity(sdPath,3,42));
+}
+
 void rejectedRetroArchGen5DiagnosticContracts() {
     char pattern[]="/tmp/pokebank_gen5_invalid_retroarch_XXXXXX";
     const char* temp=::mkdtemp(pattern);
@@ -725,6 +744,7 @@ void fourTitleProfileAssignmentContracts() {
 }
 
 int main() {
+    persistedGen5FATIdentityContracts();
     for(const auto& [family,version,id] :
         {std::tuple{G::SaveFamily::BlackWhite,uint8_t{20},"white_nds"},
          std::tuple{G::SaveFamily::BlackWhite,uint8_t{21},"black_nds"},

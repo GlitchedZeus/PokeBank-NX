@@ -48,6 +48,16 @@ struct DiscoveryResult {
     const std::string& path, std::vector<uint8_t>& bytes,
     std::string& diagnostic, std::string* containerType = nullptr);
 
+// Stable metadata key for a source owned by one Switch profile. On FAT/exFAT
+// (st_ino == 0), saved content naturally changes whenever the emulator saves:
+// the persisted profile assignment must therefore key the NORMALIZED PATH,
+// NOT the changing byte fingerprint. On filesystems with usable inode identity
+// a different inode at the same path still requires explicit reassignment.
+// This is not edit authorization: every A/Open revalidates exact game, copy and
+// selected 0x80000 SHA-256 snapshot separately.
+[[nodiscard]] std::string persistentGen5SourceIdentity(
+    std::string_view path, uint64_t device, uint64_t inode);
+
 // A file is always validated by its internal exact game ID, not its filename.
 [[nodiscard]] Source::SaveInstance inspectSourceFile(
     const std::string& path, std::string_view providerLabel,
