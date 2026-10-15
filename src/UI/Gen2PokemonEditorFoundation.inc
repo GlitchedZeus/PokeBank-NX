@@ -366,13 +366,29 @@ bool chooseGender(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
     return true;
 }
 
+// "Atk 7->10, Def 6->10": the Gen II DVs a shiny toggle rewrote, so the change is never silent
+// (gender, stats and Hidden Power all derive from these DVs).
+std::string describeDVChanges(const std::array<uint8_t, 4>& before, const std::array<uint8_t, 4>& after) {
+    static constexpr std::array<const char*, 4> names{"Atk", "Def", "Spe", "Spc"};
+    std::string out;
+    for (std::size_t i = 0; i < before.size(); ++i) {
+        if (before[i] == after[i]) continue;
+        if (!out.empty()) out += ", ";
+        out += std::string(names[i]) + " " + std::to_string(before[i]) + "->" + std::to_string(after[i]);
+    }
+    return out;
+}
+
 void toggleShiny(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
-    auto dvs = editableDVs(p);
+    const auto before = editableDVs(p);
+    auto dvs = before;
     if (Gen2::StagedEditor::isShinyDVs(dvs)) {
         // Preserve Attack DV/gender when making normal; changing Defense alone breaks the shiny pattern.
         dvs[1] = dvs[1] == 10 ? 9 : dvs[1];
         if (Gen2::StagedEditor::isShinyDVs(dvs)) dvs[2] = 9;
         applyEditableDVs(p, dvs);
+        screen.postStatus("Shiny off: DVs " + describeDVChanges(before, dvs) +
+                          " (stats and Hidden Power follow)", 300);
         return;
     }
 
@@ -386,10 +402,14 @@ void toggleShiny(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
         const int score = (sameGender ? 0 : 100) + std::abs(static_cast<int>(candidate) - static_cast<int>(dvs[0]));
         if (score < bestScore) { bestScore = score; best = candidate; }
     }
-    applyEditableDVs(p, {static_cast<uint8_t>(best), 10, 10, 10});
+    const std::array<uint8_t, 4> shiny{static_cast<uint8_t>(best), 10, 10, 10};
+    applyEditableDVs(p, shiny);
+    const std::string changes = "DVs " + describeDVChanges(before, shiny);
     if (Gen2::genderFromAttackDV(p.species, p.dvs[1]) != originalGender &&
         originalGender != Gen2::PokemonGender::Genderless)
-        screen.postStatus("Authentic shiny DVs changed gender for this species ratio", 300);
+        screen.postStatus("Authentic shiny DVs changed gender for this species ratio; " + changes, 360);
+    else
+        screen.postStatus("Shiny on: " + changes + " (stats and Hidden Power follow)", 300);
 }
 
 void randomizeDVs(State& state) {

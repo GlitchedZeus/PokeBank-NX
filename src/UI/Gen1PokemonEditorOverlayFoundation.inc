@@ -1,5 +1,6 @@
 #include "UI/PokemonEditorFoundationContract.h"
 #include "UI/PokemonEditorExitGuard.h"
+#include "UI/Gen12RerollDVsConfirm.h"
 #include "UI/Gen1PokemonPresentation.h"
 #include "UI/ScreenChrome.h"
 #include "UI/Dialogs/DialogFrame.h"
@@ -21,7 +22,12 @@ struct FoundationState {
     uint32_t randomState = 0x6D2B79F5u;
     std::optional<PokemonRecord> editBaseline;
     bool editExitConfirm = false;
+    // Y Random DVs is two explicit steps (see Gen12RerollDVsConfirm.h).
+    PokeBank::UIModel::Gen12RerollDVs::State reroll;
 };
+
+constexpr int kRerollCancelTouchId = 5903;
+constexpr int kRerollConfirmTouchId = 5904;
 
 FoundationState& foundationStateFor(const TrainerViewScreen& screen) {
     static FoundationState state;
@@ -47,6 +53,7 @@ void foundationSyncMainMode(TrainerViewScreen& screen) {
         foundation.randomState ^= static_cast<uint32_t>((state.box + 1) * 0x9E37u);
         foundation.randomState ^= static_cast<uint32_t>((state.slot + 1) * 0x85EBu);
         foundation.editExitConfirm = false;
+        foundation.reroll = {};
         if (state.mode == UX2Mode::Edit) {
             std::string error;
             foundation.editBaseline = ux2SelectedPokemon(screen, error);
@@ -166,6 +173,7 @@ void foundationExitMainMode(TrainerViewScreen& screen) {
     foundation.lastMainMode = UX2Mode::Closed;
     foundation.editBaseline.reset();
     foundation.editExitConfirm = false;
+    foundation.reroll = {};
 }
 
 void foundationRandomizeDVs(TrainerViewScreen& screen, bool add) {
@@ -351,6 +359,23 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
         return;
     }
 
+    if (editable) {
+        // Y Random DVs asks first; while the prompt is open it owns all input (focus, X Add,
+        // B exit and field activation are inert). Only A/Y there re-rolls.
+        namespace Reroll = PokeBank::UIModel::Gen12RerollDVs;
+        switch (Reroll::step(foundation.reroll, (down & HidNpadButton_Y) != 0,
+                             (down & HidNpadButton_A) != 0, (down & HidNpadButton_B) != 0)) {
+            case Reroll::Outcome::NotHandled: break;
+            case Reroll::Outcome::AskConfirm:
+            case Reroll::Outcome::Cancelled:
+            case Reroll::Outcome::Swallowed:
+                return;
+            case Reroll::Outcome::Reroll:
+                foundationRandomizeDVs(screen, add);
+                return;
+        }
+    }
+
     if (down & HidNpadButton_Up) foundation.focus = Foundation::moveFocus(foundation.focus, Foundation::Direction::Up);
     if (down & HidNpadButton_Down) foundation.focus = Foundation::moveFocus(foundation.focus, Foundation::Direction::Down);
     if (down & HidNpadButton_Left) foundation.focus = Foundation::moveFocus(foundation.focus, Foundation::Direction::Left);
@@ -358,7 +383,16 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
     if (down & HidNpadButton_L) foundation.focus = Foundation::nextPanel(Foundation::nextPanel(foundation.focus));
     if (down & HidNpadButton_R) foundation.focus = Foundation::nextPanel(foundation.focus);
 
-    if (add && (down & HidNpadButton_X)) { ux3StageAdd(screen); return; }
+    if (add && (down & HidNpadButton_X)) {
+        // Same session reset as the dialog's A Keep: the next Create starts on Species, not on
+        // the previous draft's focus.
+        if (ux3StageAdd(screen)) {
+            foundation.lastMainMode = UX2Mode::Closed;
+            foundation.editBaseline.reset();
+            foundation.editExitConfirm = false;
+        }
+        return;
+    }
     if (down & HidNpadButton_B) {
         const auto exitKind = add ? ExitGuard::SessionKind::Create
                             : state.mode == UX2Mode::Edit ? ExitGuard::SessionKind::Edit
@@ -372,10 +406,7 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
         foundationExitMainMode(screen);
         return;
     }
-    if (editable && (down & HidNpadButton_Y)) {
-        foundationRandomizeDVs(screen, add);
-        return;
-    }
+
     if (!(down & HidNpadButton_A)) return;
     if (!editable) {
         screen.postStatus("View Pokemon is read-only; choose Edit from Actions to stage changes", 260);
@@ -423,12 +454,17 @@ void foundationDrawExitConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const Color accent = create ? Colors::Primary : Colors::Orange;
     int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, title, accent);
 
+    // Edit always confirms (PokemonEditorExitGuard), so say what is actually at stake: a clean
+    // session has nothing to lose.
+    const bool dirty = !create && foundationEditSessionDirty(screen);
     fb.drawText(x + 28, cy,
-                create ? "Keep this new Pokémon?" : "This Pokémon has unsaved changes.",
+                create ? "Keep this new Pokémon?"
+                       : dirty ? "This Pokémon has unsaved changes." : "No changes in this edit session.",
                 Colors::Text);
     fb.drawText(x + 28, cy + 34,
                 create ? "Discard removes it; Back keeps editing."
-                       : "Discard loses them; Back keeps editing.",
+                       : dirty ? "Discard loses them; Back keeps editing."
+                               : "Save or Discard leaves it unchanged; Back keeps editing.",
                 Colors::TextDim, TextStyle::Caption);
 
     const int cbw = 160, cbh = TouchTargetMin, cby = y + h - cbh - 18;
@@ -439,6 +475,26 @@ void foundationDrawExitConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     screen.touchButtons.push_back({5900, x + 24, cby, cbw, cbh});
     screen.touchButtons.push_back({5901, x + (w - cbw) / 2, cby, cbw, cbh});
     screen.touchButtons.push_back({5902, x + w - 24 - cbw, cby, cbw, cbh});
+}
+
+void foundationDrawRerollConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    namespace Reroll = PokeBank::UIModel::Gen12RerollDVs;
+    if (!foundationStateFor(screen).reroll.confirming) return;
+    const bool add = ux2StateFor(screen).mode == UX2Mode::AddDraft;
+    constexpr int w = 560, h = 226;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - h) / 2;
+    const int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, Reroll::kTitle, Colors::Orange);
+    fb.drawText(x + 28, cy, Reroll::kConsequence, Colors::Text);
+    fb.drawText(x + 28, cy + 34,
+                add ? "Only this draft changes; nothing is staged until Add."
+                    : "Discard on exit restores the pre-edit Pokemon.",
+                Colors::TextDim, TextStyle::Caption);
+    const int cbw = 190, cbh = TouchTargetMin, cby = y + h - cbh - 18;
+    drawGlyphButton(fb, x + 24, cby, cbw, cbh, "B", "Cancel", Colors::PanelAlt);
+    drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Re-roll", Colors::PanelAlt);
+    screen.touchButtons.push_back({kRerollCancelTouchId, x + 24, cby, cbw, cbh});
+    screen.touchButtons.push_back({kRerollConfirmTouchId, x + w - 24 - cbw, cby, cbw, cbh});
 }
 
 void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -600,6 +656,7 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (add) footer = "D-pad/Stick Navigate   A Edit   Y Randomize DVs   L/R Panel   X Stage Add   B Cancel Draft";
     drawFooter(fb, footer);
     foundationDrawExitConfirm(screen, fb);
+    foundationDrawRerollConfirm(screen, fb);
 }
 
 } // namespace
@@ -639,6 +696,12 @@ uint64_t foundationDirectTouchInput(TrainerViewScreen& screen, uint64_t down, co
         }
         return false;
     };
+    if (foundation.reroll.confirming) {
+        // The re-roll prompt is modal: only its own buttons act.
+        if (tapped == kRerollCancelTouchId) down |= HidNpadButton_B;
+        else if (tapped == kRerollConfirmTouchId) down |= HidNpadButton_A;
+        return down;
+    }
     if (foundation.editExitConfirm) {
         if (tapped == 5900) down |= HidNpadButton_B;
         else if (tapped == 5901) down |= HidNpadButton_Y;
@@ -654,8 +717,14 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int 
     auto& state = ux2StateFor(screen);
     // An active picker owns all input even while the underlying fullscreen editor
     // remains in Edit/AddDraft mode; never route touch or A to its hidden fields.
-    if (state.picker != UX2Picker::None || !foundationMainMode(state.mode))
+    if (state.picker != UX2Picker::None || !foundationMainMode(state.mode)) {
+        // Track the held stick while another surface owns input, so returning to the workspace
+        // with the stick still held does not register a fresh press and jump focus.
+        (void)foundationStateFor(screen).navigation.apply(
+            down, held, stickX, stickY,
+            HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
         return handleInputUXCleanup3(screen, down, held, stickX, stickY);
+    }
 
     auto& foundation = foundationStateFor(screen);
     const uint64_t navigated = foundation.navigation.apply(
@@ -671,8 +740,14 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int 
     auto& state = ux2StateFor(screen);
     // An active picker owns all input even while the underlying fullscreen editor
     // remains in Edit/AddDraft mode; never route touch or A to its hidden fields.
-    if (state.picker != UX2Picker::None || !foundationMainMode(state.mode))
+    if (state.picker != UX2Picker::None || !foundationMainMode(state.mode)) {
+        // Track the held stick while another surface owns input, so returning to the workspace
+        // with the stick still held does not register a fresh press and jump focus.
+        (void)foundationStateFor(screen).navigation.apply(
+            down, held, stickX, stickY,
+            HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
         return handleInputUXCleanup3(screen, down, held, stickX, stickY, touch);
+    }
 
     auto& foundation = foundationStateFor(screen);
     const uint64_t touched = foundationDirectTouchInput(screen, down, touch);

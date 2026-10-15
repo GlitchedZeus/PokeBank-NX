@@ -332,6 +332,12 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
 
     if (view) {
         drawNavBar(fb, {{"B", "Back"}, {"Touch", "Back"}});
+    } else if (foundationStateFor(screen).reroll.confirming) {
+        drawNavBar(fb, {{"B", "Cancel"}, {"A", "Re-roll"}});
+    } else if (foundationStateFor(screen).editExitConfirm) {
+        // The exit dialog is modal: its footer offers exactly the dialog's own B/Y/A, so a
+        // footer tap (mapped to that button) never reads as a workspace edit shortcut.
+        drawNavBar(fb, {{"B", "Back"}, {"Y", "Discard"}, {"A", add ? "Keep" : "Save"}});
     } else if (add) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}});
@@ -359,7 +365,7 @@ void drawFoundationPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     // underlying DETAILS/STATS/MOVES target before registering picker rows.
     screen.touchButtons.clear();
     // ux3DrawPicker applies the existing dimmer exactly once.
-    const int w = state.picker == UX2Picker::Species ? 1080 : 760;
+    const int w = state.picker == UX2Picker::Species ? 1080 : kGen1MovePickerW;
     constexpr int h = 520;
     ux3DrawPicker(screen, fb, (1280 - w) / 2, (672 - h) / 2, w, h);
     ux3DrawTouchNavBar(fb, state);
@@ -372,6 +378,7 @@ void drawFoundationBottomSplit(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!foundationMainMode(state.mode) || foundationPickerActive(screen)) return;
     drawFullscreenGen1Workspace(screen, fb);
     if (foundationStateFor(screen).editExitConfirm) foundationDrawExitConfirm(screen, fb);
+    foundationDrawRerollConfirm(screen, fb);
 }
 
 } // namespace UI::Gen1PokemonEditor

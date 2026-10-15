@@ -1,5 +1,6 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2NativePresentation.h"
+#include "UI/Gen12ReviewDiscardConfirm.h"
 
 namespace UI::Gen2PokemonEditor {
 namespace {
@@ -13,6 +14,7 @@ struct SharedSurfaceState {
     bool cloneActive = false;
     bool provenanceActive = false;
     int cloneBox = 0;
+    PokeBank::UIModel::Gen12ReviewDiscard::State reviewDiscard;
 };
 
 SharedSurfaceState& sharedSurfaceStateFor(const TrainerViewScreen& screen) {
@@ -155,6 +157,7 @@ bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held
             auto& shared = sharedSurfaceStateFor(screen);
             shared.cloneActive = true;
             shared.cloneBox = legacy.pokemonBox;
+            legacy.pokemonActions = false;
             screen.controllerNavigation.reset();
             return true;
         }
@@ -203,9 +206,18 @@ bool handleSharedClone(TrainerViewScreen& screen, uint64_t down) {
     const int boxes = static_cast<int>(editor->metadata().boxCount);
     if (down & HidNpadButton_L) shared.cloneBox = (shared.cloneBox - 1 + boxes) % boxes;
     if (down & HidNpadButton_R) shared.cloneBox = (shared.cloneBox + 1) % boxes;
-    if (down & HidNpadButton_B) {
+    // Leaving the Clone dialog (B, or after staging) returns to Pokemon Actions, exactly like
+    // Legality & Provenance: Clone hides the action sheet while it owns input.
+    auto backToActions = [&] {
         shared.cloneActive = false;
+        auto& actions = editorOverlayState(screen);
+        actions.active = true;
+        actions.pokemonActions = true;
+        actions.review = false;
         screen.controllerNavigation.reset();
+    };
+    if (down & HidNpadButton_B) {
+        backToActions();
         return true;
     }
     if (!(down & HidNpadButton_A)) return true;
@@ -225,7 +237,7 @@ bool handleSharedClone(TrainerViewScreen& screen, uint64_t down) {
         screen.postStatus(error.empty() ? "Clone failed" : error, 300);
         return true;
     }
-    shared.cloneActive = false;
+    backToActions();
     gscTrainer(screen).refreshStagedBoxPresentation(error);
     screen.postStatus("Clone added to Box " + std::to_string(shared.cloneBox + 1) +
                       " / Slot " + std::to_string(destinationSlot + 1), 300);
@@ -238,6 +250,32 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     if (!legacy.active || !legacy.review) return false;
     auto* editor = stagedEditor(screen);
     if (!editor) return true;
+    // Discard Staged is two explicit steps: X asks, only Y in the confirmation discards.
+    namespace Discard = PokeBank::UIModel::Gen12ReviewDiscard;
+    switch (Discard::step(sharedSurfaceStateFor(screen).reviewDiscard,
+                          (down & HidNpadButton_X) != 0, (down & HidNpadButton_Y) != 0,
+                          (down & HidNpadButton_B) != 0)) {
+        case Discard::Outcome::NotHandled:
+            break;
+        case Discard::Outcome::AskConfirm:
+        case Discard::Outcome::Cancelled:
+            screen.controllerNavigation.reset();
+            return true;
+        case Discard::Outcome::Swallowed:
+            return true;
+        case Discard::Outcome::Discard: {
+            editor->discard();
+            std::string refreshError;
+            gscTrainer(screen).refreshStagedBoxPresentation(refreshError);
+            legacy.review = false;
+            legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
+            legacy.active = legacy.pokemonActions;
+            legacy.pokemonRow = 0;
+            screen.controllerNavigation.reset();
+            screen.postStatus("All staged Gen II changes discarded", 300);
+            return true;
+        }
+    }
     const auto& changes = editor->pendingChanges();
     const int count = std::max(1, static_cast<int>(changes.size()));
     const uint64_t nav = screen.controllerNavigation.apply(
@@ -251,17 +289,6 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         legacy.active = legacy.pokemonActions;
         legacy.pokemonRow = 0;
         screen.controllerNavigation.reset();
-        return true;
-    }
-    if (down & HidNpadButton_X) {
-        editor->discard();
-        std::string refreshError;
-        gscTrainer(screen).refreshStagedBoxPresentation(refreshError);
-        legacy.review = false;
-        legacy.pokemonActions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;
-        legacy.active = legacy.pokemonActions;
-        legacy.pokemonRow = 0;
-        screen.postStatus("All staged Gen II changes discarded", 300);
         return true;
     }
     if (down & HidNpadButton_A) {
