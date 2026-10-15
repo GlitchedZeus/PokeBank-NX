@@ -24,7 +24,7 @@ hardware acceptance**. Gen V is **not** complete and **not** hardware-ready. Dia
 
 ### On-device save diagnostics
 Save Instances → Gen V candidates → **+ Save Diagnostics** writes
-`sdmc:/switch/PokeBank-NX/diagnostics/gen5-<game>-<timestamp>.txt` (exclusive create, never
+`sdmc:/switch/PokeBank-NX/diagnostics/gen5_<game>_<timestamp>.txt` (exclusive create, never
 overwrites, source opened read-only). It lists per copy: block checksums valid/total, version
 byte, gender byte, whether TID/SID and a name are present (no values), party count and record
 validity, occupied / encrypted-blank / zero / invalid box slots, dex seen/caught, play time and the
