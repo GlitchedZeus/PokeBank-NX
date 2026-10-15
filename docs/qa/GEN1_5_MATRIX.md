@@ -59,6 +59,9 @@ Consistent everywhere: `bag.read=yes`, `create.default.level=5`, `export.output=
 - QA-F8a (Gen IV no-op release review line): FIXED in c7b0f97.
 - **QA-F8b** (open, C): the same no-op still changes the slot's bytes in the working copy and export.
 - The comment in `SaveSelectScreen::loadLegacySources` about unassigned visibility was corrected in d57e5bc.
+- Gen IV review: C `2b2be00` lists Bag-only edits in Review and the export manifest. The Gen IV review
+  cell accepts exactly the 4 slot lines, or those plus exactly `Bag Medicines: item #17 5 -> 9`. It will
+  require the Bag line once the integrated #307 head carries 2b2be00.
 
 ## Generated matrix
 
