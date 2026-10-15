@@ -13,7 +13,8 @@ Every input is synthetic and built in code. No real save, ROM or key is read or 
 
 ```sh
 git submodule update --init vendor/PKSM-Core
-make -f Makefile.host qa                       # fuzz smoke + export contracts + tooling (CI gate)
+make -f Makefile.host qa                       # fuzz smoke + export contracts + Gen I-V matrix + tooling (CI gate)
+make -f Makefile.host qa-matrix                # Gen I-V acceptance matrix only (docs/qa/GEN1_5_MATRIX.md)
 make -f Makefile.host CXX=clang++ qa           # the same under Clang
 make -f Makefile.host CXX=clang++ QA_FUZZ_SECONDS=300 qa-libfuzzer-run
 make -f Makefile.host qa-known-failures        # open-defect repros; exits non-zero while any is open
@@ -100,7 +101,8 @@ other inputs for later candidates.
   per target with libFuzzer, plus a longer deterministic soak with a per-run RNG stream. Crash
   inputs are uploaded as artifacts.
 - [`app-qa-contracts.yml`](../../.github/workflows/app-qa-contracts.yml): export contracts under
-  GCC and Clang with ASan/UBSan, plus the NRO audit regression.
+  GCC and Clang with ASan/UBSan, the Gen I–V acceptance matrix ([GEN1_5_MATRIX.md](GEN1_5_MATRIX.md),
+  tables in the step summary), plus the NRO audit regression.
 
 ## 5. CI hygiene
 

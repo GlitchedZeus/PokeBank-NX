@@ -22,6 +22,7 @@ lands, its reproduction moves into the passing suite as a regression test
 | QA-F1 | Low | Packaged-RomFS manifest omitted the four Gen V game cards the app requests | Thread 2 | **FIXED** in `3b35b3f`; regression test in `qa-tools-test` |
 | QA-F4 | Low (defence in depth) | Gen V PID replay (`Field::Personality`) protects the PID/gender link only when the ability link also holds | Thread 2R (`Gen5StagedPokemonRecord.h`) | **FIXED** in `bc83815`; regression in `test_qa_regressions.cpp` |
 | QA-F5 | Low (presentation) | Gen V Home party strip drops the party member's form, so alternate forms show the base-form icon; Gen IV keeps it | Thread 2R (`Gen5GameCardPreview.h`) | **FIXED** on #307 (`PartyPreviewSlot.form`); regression in `test_qa_regressions.cpp` |
+| QA-F6 | Low (identity) | Gen III discovery takes the exact release from a raw substring of the WHOLE path, so an unrelated folder or word decides a hint-less save's identity (Gen I/II accept only isolated tokens) | Thread C (`RetroArchFRLGDiscovery.cpp` `identityHint`) | OPEN; repro `tests/test_qa_known_failures.cpp` |
 
 No crash, sanitizer report, out-of-bounds read or round-trip violation was found in any Gen I–V parser,
 record decoder, Bag decoder, copy selector or Save Instance identification path (see
@@ -47,6 +48,26 @@ record decoder, Bag decoder, copy selector or Save Instance identification path 
 - **Suggested fix:** check each link independently: refuse when the previous record's gender link
   held and the new PID breaks it, and separately when the ability link held and the new PID breaks
   it.
+
+## QA-F6 (Low, identity): Gen III release hint is a substring of the whole path
+
+- **Found by:** the Gen I–V acceptance matrix (Phase 5, `tests/test_qa_matrix_gen3.cpp` identity
+  cell), 2026-10-15. Confirmed with a dedicated repro.
+- **Code:** `src/Legacy/RetroArchFRLGDiscovery.cpp` `identityHint(path)`. It lower-cases the whole
+  path, keeps only alphanumerics, and returns the release whose name occurs ANYWHERE in it
+  (`compact.find(needle)`). Ruby/Sapphire and FireRed/LeafGreen saves are byte-identical families, so
+  the strict family check cannot catch a wrong hint.
+- **Effect:** a valid save with no release in its own name is identified from any directory or word
+  that merely contains a release name, e.g. `.../myleafgreenerybackups/game.sav` → Ready
+  `leafgreen_gba`. The same hint-less save in a neutral folder is correctly held as
+  `AmbiguousIdentity`. This contradicts the project rule that discovery never guesses save
+  identity. It is also inconsistent with Gen I (`RetroArchRBYDiscovery.cpp` `identityHint`), which
+  accepts only title forms or an *isolated* path token ("/savefiles/red/game.srm" works,
+  "redesign.srm" does not).
+- **Repro:** `tests/test_qa_known_failures.cpp` case QA-F6 (`make -f Makefile.host qa-known-failures`).
+  Observed: status Ready, gameId `leafgreen_gba`. Expected: `AmbiguousIdentity`, as for the control file.
+- **Suggested fix:** match Gen III hints like Gen I: title forms ("pokemonruby", "pokeruby", ...) or
+  isolated path tokens only.
 
 ## QA-F5 (Low, presentation; FIXED on #307): Gen V Home party strip drops form
 

@@ -2,7 +2,8 @@ name: PokeBank NX App QA Contracts
 
 # Thread 4 independent application QA: source-immutability and export-safety contracts across every
 # export path (Gen I/II/III Bag and Pokemon, Gen IV, Gen V PK5 and Bag), under GCC and Clang with
-# ASan/UBSan, plus the NRO audit tooling regression. Known open defects are reproduced separately by
+# ASan/UBSan, the Gen I-V acceptance matrix (docs/qa/GEN1_5_MATRIX.md), plus the NRO audit tooling
+# regression. Known open defects are reproduced separately by
 # `make qa-known-failures` (see docs/qa/FINDINGS.md) and are never part of this gate.
 
 on:
@@ -62,6 +63,11 @@ jobs:
         run: |
           set -euo pipefail
           make -f Makefile.host -j"$(nproc)" CXX=${{ matrix.compiler }} qa-contracts
+      - name: Gen I-V acceptance matrix (20 versions, real production paths)
+        run: |
+          set -euo pipefail
+          make -f Makefile.host -j"$(nproc)" CXX=${{ matrix.compiler }} qa-matrix
+          cat build-host/qa-*/GEN1_5_MATRIX.generated.md >> "$GITHUB_STEP_SUMMARY"
 
   tools:
     name: NRO audit tooling regression

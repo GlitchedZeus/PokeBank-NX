@@ -39,7 +39,11 @@ QA_CORE_SOURCES := $(sort \
 	src/Integration/Gen4/Gen4ExportTransaction.cpp \
 	src/Integration/Gen5/Gen5WorkingCopyExport.cpp src/Integration/Gen5/Gen5SourceDiscovery.cpp \
 	src/Integration/Gen5/Gen5AssignedSource.cpp \
-	src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp \
+	src/Legacy/LegacySourceBindings.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp src/Legacy/Gen4ReadOnlyTrainer.cpp \
+	src/Legacy/RetroArchFRLGDiscovery.cpp src/Legacy/RetroArchRBYDiscovery.cpp src/Legacy/RetroArchGSCDiscovery.cpp \
+	src/Legacy/FRLGSourceBrowser.cpp src/Legacy/FRLGReadOnlyTrainer.cpp \
+	src/Integration/Gen1/Gen1MoveCompatibility.cpp src/Integration/Gen2/Gen2MoveCompatibility.cpp \
+	src/Integration/Gen2/Gen2PackedMove.cpp \
 	src/Games/GameIdentity.cpp \
 	src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp \
 	src/Pokemon/Experience.cpp src/Pokemon/Pokemon4ReadOnly.cpp src/Pokemon/Pokemon4ReadOnlyView.cpp \
@@ -68,7 +72,10 @@ define QA_VARIANT
 QA_OBJS_$(1) := $$(patsubst %.cpp,$(QA_BUILD)/$(1)/obj/%.o,$(QA_CORE_SOURCES))
 $(QA_BUILD)/$(1)/obj/%.o: %.cpp
 	@mkdir -p $$(dir $$@)
-	$$(CXX) $$(QA_VARIANT_FLAGS_$(1)) $$(QA_FLAGS) -c $$< -o $$@
+	$$(CXX) $$(QA_VARIANT_FLAGS_$(1)) $$(QA_FLAGS) -MMD -MP -c $$< -o $$@
+# Header dependencies: a header change must rebuild every object that includes it (a stale object
+# archived into libqacore.a once produced an ASan new-delete-type-mismatch).
+-include $$(QA_OBJS_$(1):.o=.d)
 $(QA_BUILD)/$(1)/libqacore.a: $$(QA_OBJS_$(1))
 	@rm -f $$@
 	ar rcs $$@ $$^
@@ -96,7 +103,7 @@ QA_FUZZ_SAN := $(addprefix $(QA_BUILD)/san/,$(QA_FUZZ_TARGETS))
 QA_FUZZ_LIBFUZZER := $(addprefix $(QA_BUILD)/fuzz/,$(QA_FUZZ_TARGETS))
 
 .PHONY: qa qa-fuzz-build qa-fuzz-smoke qa-fuzz-long qa-libfuzzer qa-libfuzzer-run qa-contracts \
-	qa-known-failures qa-tools-test qa-seeds qa-clean
+	qa-known-failures qa-tools-test qa-seeds qa-matrix qa-clean
 
 qa-fuzz-build: $(QA_FUZZ_PLAIN) $(QA_FUZZ_SAN) $(QA_GEN3_FIXTURE)
 
@@ -140,6 +147,23 @@ qa-contracts: $(addprefix $(QA_BUILD)/plain/,$(QA_CONTRACT_TESTS)) $(addprefix $
 		ASAN_OPTIONS=$(ASAN_OPTIONS) UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 $(QA_BUILD)/san/$$t; \
 	done
 
+# Gen I-V acceptance matrix: 20 versions x 21 cells on real production paths (docs/qa/GEN1_5_MATRIX.md).
+# Fails on any FAIL / MISSING / DUPLICATE cell; Known defects are reproduced in qa-known-failures.
+QA_MATRIX_SOURCES := tests/test_qa_matrix.cpp tests/test_qa_matrix_gen12.cpp tests/test_qa_matrix_gen3.cpp \
+	tests/test_qa_matrix_gen4.cpp tests/test_qa_matrix_gen5.cpp
+QA_MATRIX_EXTRA_SOURCES :=
+$(QA_BUILD)/plain/test_qa_matrix: $(QA_MATRIX_SOURCES) $(QA_MATRIX_EXTRA_SOURCES) tests/test_qa_matrix.h \
+		$(QA_BUILD)/plain/libqacore.a $(QA_HEADERS)
+	$(CXX) $(QA_VARIANT_FLAGS_plain) $(QA_FLAGS) $(QA_MATRIX_SOURCES) $(QA_MATRIX_EXTRA_SOURCES) \
+		$(QA_BUILD)/plain/libqacore.a -o $@
+$(QA_BUILD)/san/test_qa_matrix: $(QA_MATRIX_SOURCES) $(QA_MATRIX_EXTRA_SOURCES) tests/test_qa_matrix.h \
+		$(QA_BUILD)/san/libqacore.a $(QA_HEADERS)
+	$(CXX) $(QA_VARIANT_FLAGS_san) $(QA_FLAGS) $(QA_MATRIX_SOURCES) $(QA_MATRIX_EXTRA_SOURCES) \
+		$(QA_BUILD)/san/libqacore.a -o $@
+qa-matrix: $(QA_BUILD)/plain/test_qa_matrix $(QA_BUILD)/san/test_qa_matrix $(QA_GEN3_FIXTURE)
+	$(QA_BUILD)/plain/test_qa_matrix --markdown $(QA_BUILD)/GEN1_5_MATRIX.generated.md >/dev/null
+	ASAN_OPTIONS=$(ASAN_OPTIONS) UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 $(QA_BUILD)/san/test_qa_matrix >/dev/null
+
 # Open-defect reproductions. Kept OUT of qa / host-test so CI stays honest; each case exits
 # non-zero while its defect is open. See docs/qa/FINDINGS.md.
 # Fixed findings move to test_qa_regressions(.cpp|_assets.py), which run inside the qa gate.
@@ -153,7 +177,7 @@ qa-tools-test:
 	python3 tests/test_qa_nro_audit.py
 	python3 tests/test_qa_regressions_assets.py
 
-qa: qa-fuzz-smoke qa-contracts qa-tools-test
+qa: qa-fuzz-smoke qa-contracts qa-matrix qa-tools-test
 
 qa-clean:
 	rm -rf $(QA_BUILD)
