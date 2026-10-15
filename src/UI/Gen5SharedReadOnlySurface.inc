@@ -223,12 +223,12 @@ struct Gen5Editor {
     static constexpr const char* kHeldItemTitle = "Held Item — Generation V";
     static constexpr const char* kMovePickerTitle = "Move — Generation V";
     static constexpr const char* kMovePickerSubtitle =
-        "Valid BW/B2W2 moves • type, category, Pwr / Acc / PP • learnability not checked";
+        "Valid BW/B2W2 moves • Pwr/Acc/PP • learnability not checked";
     static constexpr const char* kMoveEditorSubtitle =
-        "Valid native BW/B2W2 move • whether this species can learn it is not evaluated";
+        "Valid native BW/B2W2 move • species learnability not checked";
     static constexpr const char* kMoveHintEditable = "A: choose a valid BW/B2W2 move";
     static constexpr const char* kMoveHintView = "Native = valid BW/B2W2 move ID";
-    static constexpr const char* kMoveLegend = "Native = valid ID; learnability not checked";
+    static constexpr const char* kMoveLegend = "Native = valid ID • learnability unchecked";
     static constexpr const char* kDataTitle = "GEN V DATA";
 
     static PokeVault::Integration::Gen5::Gen5SharedScreenState& backend(const TrainerViewScreen& screen) {

@@ -758,6 +758,122 @@ void testVerifiedWorkingCopyExport() {
     fs::remove_all(root);
 }
 
+// Phase 4: Party and Box edits exported SEPARATELY through the real transaction. Each export's
+// edited bytes differ from the source only inside that record and its own block CRC (the other
+// block is byte-identical), the review lines name only that surface, racing destinations and a
+// mid-publication failure leave no residue, and malformed inputs never open a working copy.
+void testPhase4PartyBoxExportSeparation() {
+    namespace fs = std::filesystem;
+    using PokeVault::Integration::Common::ExportFailurePoint;
+    const fs::path root = fs::temp_directory_path() /
+        ("pokebank-g4-phase4-" + std::to_string(::getpid()));
+    fs::remove_all(root);
+    fs::create_directories(root);
+    auto entries = [&] {
+        return static_cast<size_t>(std::distance(fs::directory_iterator(root), fs::directory_iterator()));
+    };
+    for (const auto layout : {Layout::DiamondPearl, Layout::Platinum, Layout::HeartGoldSoulSilver}) {
+        const auto sp = spec(layout);
+        const auto original = makeSave(layout);
+        // makeSave stamps partition 0 newest for both blocks.
+        const size_t partyBegin = sp.party, partyEnd = partyBegin + Encryption::SIZE_PARTY4;
+        const size_t generalCrc = sp.generalSize - 2;
+        const size_t boxBegin = sp.storageStart + sp.boxData;
+        const size_t boxEnd = boxBegin + Encryption::SIZE_STORED4;
+        const size_t storageCrc = sp.storageStart + sp.storageSize - 2;
+
+        for (const bool partyEdit : {true, false}) {
+            auto source = original;
+            std::string error;
+            auto editor = Gen4StagedPokemonEditor::create(source, layout, gameId(layout), &error);
+            assert(editor && error.empty());
+            if (partyEdit) {
+                auto party = editor->editablePartyPokemon(0, &error);
+                assert(party && party->setFriendship(201));
+                assert(editor->commitPartyPokemon(0, *party, &error));
+            } else {
+                auto boxed = editor->editableBoxPokemon(0, 0, &error);
+                assert(boxed && boxed->setFriendship(202));
+                assert(editor->commitBoxPokemon(0, 0, *boxed, &error));
+            }
+            const auto lines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor);
+            assert(lines.size() == 1);
+            assert(lines[0].rfind(partyEdit ? "Party slot 1: " : "Box 1 slot 1: ", 0) == 0);
+
+            PokeVault::Integration::Gen4::Gen4ExportRequest request;
+            request.rootDirectory = root.string();
+            request.directoryStem = gameId(layout) + (partyEdit ? "_party" : "_box");
+            request.sourcePath = "sdmc:/drastic/backup/fixture.dsv";
+            request.timestamp = "20261015-120000";
+            for (auto point : {ExportFailurePoint::AfterFirstPublishedFile,
+                               ExportFailurePoint::DestinationAppearsAsEmptyDirectory,
+                               ExportFailurePoint::DestinationAppearsAsFile}) {
+                auto faulty = request;
+                faulty.failurePoint = point;
+                auto failed = PokeVault::Integration::Gen4::publishVerifiedGen4Export(*editor, faulty);
+                assert(!failed.success && failed.directory.empty());
+                const fs::path raced = root / request.directoryStem;
+                if (point == ExportFailurePoint::DestinationAppearsAsEmptyDirectory) {
+                    assert(fs::is_directory(raced) && fs::is_empty(raced));
+                    fs::remove(raced);
+                } else if (point == ExportFailurePoint::DestinationAppearsAsFile) {
+                    assert(fs::is_regular_file(raced) && fs::file_size(raced) == 0);
+                    fs::remove(raced);
+                }
+                assert(entries() == 0);
+            }
+
+            auto exported = PokeVault::Integration::Gen4::publishVerifiedGen4Export(*editor, request);
+            assert(exported.success);
+            const fs::path dir(exported.directory);
+            assert(slurp(dir / "original_backup.sav") == original);
+            const auto edited = slurp(dir / "edited.sav");
+            assert(edited.size() == original.size());
+            bool recordChanged = false;
+            for (size_t i = 0; i < edited.size(); ++i) {
+                if (edited[i] == original[i]) continue;
+                if (partyEdit) {
+                    assert((i >= partyBegin && i < partyEnd) || i == generalCrc || i == generalCrc + 1);
+                    recordChanged = recordChanged || (i >= partyBegin && i < partyEnd);
+                } else {
+                    assert((i >= boxBegin && i < boxEnd) || i == storageCrc || i == storageCrc + 1);
+                    recordChanged = recordChanged || (i >= boxBegin && i < boxEnd);
+                }
+            }
+            assert(recordChanged);
+            auto reparsed = Gen4ReadOnlySave::parse(edited, layout, gameId(layout), &error);
+            assert(reparsed && !reparsed->recovered());
+            assert(reparsed->nativePartySlots()[0].friendship() == (partyEdit ? 201 : 70));
+            assert(reparsed->box(0, 0).friendship() == (partyEdit ? 70 : 202));
+            std::ifstream manifestIn(dir / "EDIT_MANIFEST.txt");
+            const std::string manifest((std::istreambuf_iterator<char>(manifestIn)), {});
+            assert(manifest.find(partyEdit ? "- Party slot 1: " : "- Box 1 slot 1: ") != std::string::npos);
+            assert(manifest.find(partyEdit ? "- Box 1 slot 1: " : "- Party slot 1: ") == std::string::npos);
+            assert(source == original);
+            fs::remove_all(dir);
+            assert(entries() == 0);
+        }
+
+        // Malformed, truncated, oversized and doubly-corrupt inputs never open a working copy.
+        std::string error;
+        auto truncated = original;
+        truncated.resize(original.size() - 1);
+        assert(!Gen4StagedPokemonEditor::create(truncated, layout, gameId(layout), &error));
+        auto oversized = original;
+        oversized.push_back(0);
+        assert(!Gen4StagedPokemonEditor::create(oversized, layout, gameId(layout), &error));
+        assert(!Gen4StagedPokemonEditor::create(std::vector<uint8_t>{}, layout, gameId(layout), &error));
+        auto bothBroken = original;
+        bothBroken[sp.storageStart + sp.boxData] ^= 1;
+        bothBroken[PARTITION + sp.storageStart + sp.boxData] ^= 1;
+        assert(!Gen4StagedPokemonEditor::create(bothBroken, layout, gameId(layout), &error));
+        // The wrong exact game for these bytes is a mismatch, not a working copy.
+        const auto wrongLayout = layout == Layout::Platinum ? Layout::DiamondPearl : Layout::Platinum;
+        assert(!Gen4StagedPokemonEditor::create(original, wrongLayout, gameId(wrongLayout), &error));
+    }
+    fs::remove_all(root);
+}
+
 int main() {
     testLayout(Layout::DiamondPearl);
     testLayout(Layout::Platinum);
@@ -773,6 +889,7 @@ int main() {
     testShedinjaPartyHpRule();
     testRecoveredAndMismatchRemainReadOnly();
     testVerifiedWorkingCopyExport();
+    testPhase4PartyBoxExportSeparation();
     std::cout << "Gen IV staged boxed Pokemon editor PASS\n";
     return 0;
 }

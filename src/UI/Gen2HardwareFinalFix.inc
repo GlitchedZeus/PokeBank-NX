@@ -272,6 +272,8 @@ void drawFullscreenGen2Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     if (passive || state.mode == Mode::View) {
         screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget, 16, fb.getHeight() - 68, 190, 58});
         drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
+    } else if (unified.reroll.confirming) {
+        drawNavBar(fb, {{"B", "Cancel"}, {"A", "Re-roll"}});
     } else if (state.mode == Mode::Create) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
                         {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}});
@@ -288,6 +290,7 @@ void drawFullscreenGen2Active(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (unified.moveEditor) drawUnifiedMoveEditor(screen, fb, state, unified);
     if (state.itemPicker) drawHeldItemPicker(fb, state);
     if (state.confirmExit) drawConfirm(fb, state);
+    if (unified.reroll.confirming) drawRerollConfirm(screen, fb);
     if (unified.progressionEditor) drawProgressionEditor(fb, state, unified);
 }
 

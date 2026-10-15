@@ -176,7 +176,7 @@ inline constexpr uint16_t kMaxSpecies = 649;
     if (row == PidValueRow)
         return "PID is read-only; Gender, Shiny and Ability change it through native rules";
     if (earlierOrigin(*p))
-        return "This Pokemon came from Gen III/IV: its PID fixes nature, gender, ability and shininess";
+        return "From Gen III/IV: its original PID fixes nature, gender, ability and shiny";
     if (row == GenderRow) return "Gender is fixed for this Generation V species";
     if (row == AbilityRow && abilityChoices(*p, b2w2).size() <= 1)
         return "This Generation V species has a single ability";

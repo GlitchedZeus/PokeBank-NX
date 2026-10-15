@@ -30,6 +30,7 @@
 #include "Integration/Gen5/Gen5GameSourceCatalog.h"
 #include "Integration/Gen5/Gen5SourceSelection.h"
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
+#include "Integration/Common/HomePartyPreview.h"
 #include "Source/HomeCardSnapshot.h"
 #include "Source/SaveProviderIdentity.h"
 #include "Utils/Keyboard.h"
@@ -1766,6 +1767,9 @@ namespace UI {
             const char* speciesName = Trainer::getSpeciesName(species);
             partyPreview[index].name = speciesName ? speciesName : "Unknown";
         };
+        auto addSlot = [&](size_t index, const PokeVault::Source::HomeCardPartySlot& slot) {
+            addParty(index, slot.species, slot.level, slot.form, slot.shiny);
+        };
 
         const std::string_view forwarderSaveGameId = legacySaveGameIdForForwarder(title.gameId);
         if (title.sourceKind == SelectedSourceKind::SwitchTitle && !forwarderSaveGameId.empty()) {
@@ -1793,7 +1797,7 @@ namespace UI {
             previewDexTotal = dex.total;
             const auto party = source.save->party();
             for (size_t i = 0; i < std::min(party.size(), partyPreview.size()); ++i)
-                addParty(i, party[i].species, 0, 0, false);
+                addSlot(i, PokeVault::Integration::HomePartyPreview::fromGen3(party[i]));
             partyPreviewStatus = std::any_of(partyPreview.begin(), partyPreview.end(),
                     [](const auto& slot) { return slot.species != 0; })
                 ? "Current save party" : "No active party Pokémon.";
@@ -1880,21 +1884,21 @@ namespace UI {
                 partyPreviewStatus = "Party preview unavailable.";
                 return;
             }
+            // The ONE Gen I-V Home party rule (Integration/Common/HomePartyPreview.h).
+            namespace Preview = PokeVault::Integration::HomePartyPreview;
             if (source.isGen1()) {
                 const auto& party = source.gen1Save->party();
                 for (size_t i = 0; i < std::min(party.size(), partyPreview.size()); ++i)
-                    addParty(i, party[i].species, party[i].level, 0, false);
+                    addSlot(i, Preview::fromGen1(party[i]));
             } else if (source.isGen2()) {
                 const auto& party = source.gen2Save->party();
                 for (size_t i = 0; i < std::min(party.size(), partyPreview.size()); ++i)
-                    addParty(i, party[i].species, party[i].level, 0, false);
+                    addSlot(i, Preview::fromGen2(party[i]));
             } else if (source.isGen3()) {
+                // Level is the stored party level (PK3 0x54), never a growth-curve guess.
                 const auto party = source.save->party();
-                // The strict Gen III read-only record intentionally exposes experience rather than
-                // a cached level. Do not invent a growth-curve conversion in presentation code:
-                // species is authoritative here and the level line stays omitted for this preview.
                 for (size_t i = 0; i < std::min(party.size(), partyPreview.size()); ++i)
-                    addParty(i, party[i].species, 0, 0, false);
+                    addSlot(i, Preview::fromGen3(party[i]));
             }
             partyPreviewStatus = std::any_of(partyPreview.begin(), partyPreview.end(),
                     [](const auto& slot) { return slot.species != 0; })
