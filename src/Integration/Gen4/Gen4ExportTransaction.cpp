@@ -10,9 +10,10 @@ namespace {
 
 constexpr size_t kBoxCount = 18;
 constexpr size_t kBoxSlots = 30;
+constexpr const char* kEmpty = "(empty)";
 
 std::string describe(const Pokemon::Pokemon4ReadOnly& pokemon) {
-    if (!pokemon.valid() || pokemon.empty() || pokemon.species() == 0) return "(empty)";
+    if (!pokemon.valid() || pokemon.empty() || pokemon.species() == 0) return kEmpty;
     const char* name = Names::getSpeciesName(pokemon.species());
     return std::string(name ? name : "Species") + " #" + std::to_string(pokemon.species());
 }
@@ -69,6 +70,9 @@ std::vector<std::string> describeStagedSlotChanges(const Gen4StagedPokemonEditor
         if (sameRecord(oldParty[i], newParty[i])) continue;
         const std::string from = describe(oldParty[i]);
         const std::string to = describe(newParty[i]);
+        // Two different encodings of an empty slot (e.g. a Pokemon added and then released in
+        // this session) are not a Pokemon change; never show "(empty) (edited)".
+        if (from == kEmpty && to == kEmpty) continue;
         lines.push_back("Party slot " + std::to_string(i + 1) + ": " + from +
                         (from == to ? " (edited)" : " -> " + to));
     }
@@ -79,6 +83,7 @@ std::vector<std::string> describeStagedSlotChanges(const Gen4StagedPokemonEditor
             if (sameRecord(oldMon, newMon)) continue;
             const std::string from = describe(oldMon);
             const std::string to = describe(newMon);
+            if (from == kEmpty && to == kEmpty) continue;
             lines.push_back("Box " + std::to_string(box + 1) + " slot " + std::to_string(slot + 1) +
                             ": " + from + (from == to ? " (edited)" : " -> " + to));
         }

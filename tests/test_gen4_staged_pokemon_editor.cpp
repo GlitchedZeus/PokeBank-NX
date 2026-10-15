@@ -874,6 +874,28 @@ void testPhase4PartyBoxExportSeparation() {
     fs::remove_all(root);
 }
 
+// Review lines describe Pokemon changes only: a Pokemon created and then released in this session
+// leaves a differently-encoded empty slot, which must not appear as "(empty) (edited)"; a real
+// release still reads "<species> -> (empty)".
+void testReviewLinesSkipEmptyToEmpty() {
+    for (const auto layout : {Layout::DiamondPearl, Layout::Platinum, Layout::HeartGoldSoulSilver}) {
+        auto source = makeSave(layout);
+        std::string error;
+        auto editor = Gen4StagedPokemonEditor::create(source, layout, gameId(layout), &error);
+        assert(editor);
+        auto draft = editor->createBoxDraft(0, 1, 393, &error);
+        assert(draft && editor->stageCreateBoxPokemon(0, 1, *draft, &error));
+        assert(editor->stageReleaseBoxPokemon(0, 1, &error));
+        for (const auto& line : PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor))
+            assert(line.find("(empty) (edited)") == std::string::npos);
+        assert(PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor).empty());
+        assert(editor->stageReleaseBoxPokemon(0, 0, &error));
+        const auto lines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor);
+        assert(lines.size() == 1 && lines[0].rfind("Box 1 slot 1: ", 0) == 0 &&
+               lines[0].find("-> (empty)") != std::string::npos);
+    }
+}
+
 int main() {
     testLayout(Layout::DiamondPearl);
     testLayout(Layout::Platinum);
@@ -890,6 +912,7 @@ int main() {
     testRecoveredAndMismatchRemainReadOnly();
     testVerifiedWorkingCopyExport();
     testPhase4PartyBoxExportSeparation();
+    testReviewLinesSkipEmptyToEmpty();
     std::cout << "Gen IV staged boxed Pokemon editor PASS\n";
     return 0;
 }
