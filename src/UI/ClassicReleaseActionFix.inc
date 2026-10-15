@@ -281,6 +281,9 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
                               int stickX, int stickY, const TouchInput& touch) {
     if (!isGSC(screen) || stateFor(screen).mode != Mode::None) return false;
     if (handlePassiveViewTouch(screen, touch)) return true;
+    // Defence in depth: never own input under the Clone or Provenance dialogs.
+    if (const auto& shared = sharedSurfaceStateFor(screen); shared.cloneActive || shared.provenanceActive)
+        return false;
     auto& legacy = editorOverlayState(screen);
     if (!legacy.active || legacy.review || !legacy.pokemonActions) return false;
     auto* editor = stagedEditor(screen);
@@ -353,6 +356,10 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             auto& shared = sharedSurfaceStateFor(screen);
             shared.cloneActive = true;
             shared.cloneBox = legacy.pokemonBox;
+            // The Clone destination dialog owns input and the frame (as Legality & Provenance
+            // does). Leaving the action sheet "open" underneath kept this handler capturing
+            // every input, so Clone looked inert and B revealed the dialog instead of cancelling.
+            legacy.pokemonActions = false;
             screen.controllerNavigation.reset();
             return true;
         }
@@ -391,6 +398,8 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
 
 bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!isGSC(screen) || stateFor(screen).mode != Mode::None) return false;
+    if (const auto& shared = sharedSurfaceStateFor(screen); shared.cloneActive || shared.provenanceActive)
+        return false;
     auto& legacy = editorOverlayState(screen);
     if (!legacy.active || legacy.review || !legacy.pokemonActions) return false;
     auto* editor = stagedEditor(screen);

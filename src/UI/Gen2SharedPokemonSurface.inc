@@ -157,6 +157,7 @@ bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held
             auto& shared = sharedSurfaceStateFor(screen);
             shared.cloneActive = true;
             shared.cloneBox = legacy.pokemonBox;
+            legacy.pokemonActions = false;
             screen.controllerNavigation.reset();
             return true;
         }
@@ -205,9 +206,18 @@ bool handleSharedClone(TrainerViewScreen& screen, uint64_t down) {
     const int boxes = static_cast<int>(editor->metadata().boxCount);
     if (down & HidNpadButton_L) shared.cloneBox = (shared.cloneBox - 1 + boxes) % boxes;
     if (down & HidNpadButton_R) shared.cloneBox = (shared.cloneBox + 1) % boxes;
-    if (down & HidNpadButton_B) {
+    // Leaving the Clone dialog (B, or after staging) returns to Pokemon Actions, exactly like
+    // Legality & Provenance: Clone hides the action sheet while it owns input.
+    auto backToActions = [&] {
         shared.cloneActive = false;
+        auto& actions = editorOverlayState(screen);
+        actions.active = true;
+        actions.pokemonActions = true;
+        actions.review = false;
         screen.controllerNavigation.reset();
+    };
+    if (down & HidNpadButton_B) {
+        backToActions();
         return true;
     }
     if (!(down & HidNpadButton_A)) return true;
@@ -227,7 +237,7 @@ bool handleSharedClone(TrainerViewScreen& screen, uint64_t down) {
         screen.postStatus(error.empty() ? "Clone failed" : error, 300);
         return true;
     }
-    shared.cloneActive = false;
+    backToActions();
     gscTrainer(screen).refreshStagedBoxPresentation(error);
     screen.postStatus("Clone added to Box " + std::to_string(shared.cloneBox + 1) +
                       " / Slot " + std::to_string(destinationSlot + 1), 300);

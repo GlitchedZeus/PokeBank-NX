@@ -25,3 +25,16 @@ $(HOST_BUILD)/test_gen12_review_parity: $(GEN12_REVIEW_PARITY_SOURCES) include/U
 $(HOST_BUILD)/test_gen12_review_parity_sanitize: $(GEN12_REVIEW_PARITY_SOURCES) include/UI/Gen12ReviewDiscardConfirm.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN12_REVIEW_PARITY_SOURCES) -o $@
+
+# Gen II Actions -> Clone dialog ownership (ClassicReleaseActionFix.inc).
+GEN2_CLONE_FLOW_SOURCES := tests/test_gen2_clone_flow.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen2_clone_flow
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_clone_flow_sanitize
+host-test: $(HOST_BUILD)/test_gen2_clone_flow
+host-sanitize: $(HOST_BUILD)/test_gen2_clone_flow_sanitize
+$(HOST_BUILD)/test_gen2_clone_flow: $(GEN2_CLONE_FLOW_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN2_CLONE_FLOW_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_clone_flow_sanitize: $(GEN2_CLONE_FLOW_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_CLONE_FLOW_SOURCES) -o $@
