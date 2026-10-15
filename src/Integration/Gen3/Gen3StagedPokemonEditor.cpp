@@ -113,6 +113,16 @@ std::string defaultNickname(uint16_t species, uint8_t language) {
     return name;
 }
 
+// A Pokerus byte is strain (high nibble) and days (low nibble); 0 is "never infected". Strain 0
+// with days left is not a state the games produce (pokeemerald pokemon.c infection always sets a
+// non-zero strain), so it is refused instead of being written.
+constexpr bool validPokerus(uint8_t raw) noexcept { return raw == 0 || (raw >> 4) != 0; }
+
+// Japanese PK3 names are 5 characters for both nickname and OT; other languages allow 10 / 7
+// (PKHeX PK3 MaxStringLengthNickname / MaxStringLengthTrainer).
+constexpr std::size_t maxNicknameLength(uint8_t language) noexcept { return language == 1 ? 5 : 10; }
+constexpr std::size_t maxOtLength(uint8_t language) noexcept { return language == 1 ? 5 : 7; }
+
 bool validLanguage(uint8_t language) noexcept {
     // PK3 language ids: Japanese, English, French, Italian, German, Spanish.
     return language == 1 || language == 2 || language == 3 ||
@@ -442,7 +452,22 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         pokemon.setLanguage(*edit.language);
     }
     if (edit.friendship) pokemon.setFriendship(*edit.friendship);
-    if (edit.pokerus) pokemon.setPokerus(*edit.pokerus);
+    if (edit.pokerus) {
+        if (!validPokerus(*edit.pokerus)) {
+            error = "Pokerus strain 0 cannot have days remaining";
+            return false;
+        }
+        pokemon.setPokerus(*edit.pokerus);
+    }
+    // Name lengths follow the record's (possibly just edited) language.
+    if ((edit.nickname || edit.language) && pokemon.nickname().size() > maxNicknameLength(pokemon.language())) {
+        error = "Nickname is too long for this Generation III record language";
+        return false;
+    }
+    if ((edit.otName || edit.language) && pokemon.otName().size() > maxOtLength(pokemon.language())) {
+        error = "OT name is too long for this Generation III record language";
+        return false;
+    }
     if (edit.ball) {
         if (*edit.ball < 1 || *edit.ball > 12 || *edit.ball == 0) {
             error = "Generation III Ball must be one of the native Master-through-Premier ids";
@@ -580,7 +605,7 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     if (create.species == 0 || create.species > 386 ||
         create.level < 1 || create.level > 100 ||
         !validHeldItem(sourceGame_, create.heldItem) ||
-        !validLanguage(create.language) ||
+        !validLanguage(create.language) || !validPokerus(create.pokerus) ||
         create.ball < 1 || create.ball > 12 ||
         create.metLevel > 100 || create.metLocation > 255) {
         error = "Generation III Create draft contains an unsupported field value";
@@ -606,7 +631,7 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     pokemon.setMetLocation(create.metLocation);
     pokemon.setOTGender(trainer_.gender & 1);
     const auto ot = Utils::utf8ToUtf16(create.otName.value_or(trainer_.name));
-    if (ot.size() > 7 || !pokemon.canStoreNickname(ot)) {
+    if (ot.size() > maxOtLength(create.language) || !pokemon.canStoreNickname(ot)) {
         error = "Create OT name cannot be represented in the Generation III character set";
         return false;
     }
@@ -615,7 +640,7 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     std::string nickname = create.nickname;
     if (nickname.empty()) nickname = defaultNickname(create.species, create.language);
     const auto nickname16 = Utils::utf8ToUtf16(nickname);
-    if (nickname16.size() > 10 || !pokemon.canStoreNickname(nickname16)) {
+    if (nickname16.size() > maxNicknameLength(create.language) || !pokemon.canStoreNickname(nickname16)) {
         error = "Create nickname cannot be represented in the Generation III character set";
         return false;
     }

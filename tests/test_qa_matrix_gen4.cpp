@@ -733,9 +733,8 @@ void runVersion(Matrix& m, const VersionSpec& v) {
     });
 
     // ---------------------------------------------------------------- review
-    cell(m, ver, "review", "describeStagedSlotChanges lists party slots 1-2 (edited), Box 1 slot 1 "
-             "Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur, and the Bag edit "
-             "\"Bag Medicines: item #17 5 -> 9\" once Bag-only review lines land (C 2b2be00)", [&](Probe& p) {
+    cell(m, ver, "review", "describeStagedSlotChanges lists party slots 1-2 (edited) and Box 1 slot 1 "
+             "Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur, Bag Medicines Potion 5 -> 9", [&](Probe& p) {
         if (!fieldsEditor) {
             p.expect(false, "no staged editor");
             return;
@@ -745,11 +744,8 @@ void runVersion(Matrix& m, const VersionSpec& v) {
         p.expect(hasLine(lines, "Party slot 1: Pikachu #25 (edited)"), "party slot 1 line missing");
         p.expect(hasLine(lines, "Party slot 2: Burmy #412 (edited)"), "party slot 2 line missing");
         p.expect(hasLine(lines, "Box 1 slot 4: (empty) -> Bulbasaur #1"), "created slot line missing");
-        // C 2b2be00 adds Bag review lines; until that reaches #307 the review is slot-only. Either way
-        // nothing else may appear: exactly the 4 slot lines, or those plus exactly this Bag line.
-        // Tighten to the 5-line form when the integrated head carries 2b2be00.
-        const bool bagLine = hasLine(lines, "Bag Medicines: item #17 5 -> 9");
-        p.expect(lines.size() == (bagLine ? 5u : 4u), "unexpected line count " + std::to_string(lines.size()));
+        p.expect(hasLine(lines, "Bag Medicines: item #17 5 -> 9"), "bag quantity line missing");
+        p.expect(lines.size() == 5, "unexpected line count " + std::to_string(lines.size()));
     });
 
     // ---------------------------------------------------------------- export

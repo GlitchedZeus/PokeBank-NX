@@ -18,3 +18,20 @@ $(HOST_BUILD)/test_classic_verified_export: $(CLASSIC_EXPORT_SOURCES) $(CLASSIC_
 $(HOST_BUILD)/test_classic_verified_export_sanitize: $(CLASSIC_EXPORT_SOURCES) $(CLASSIC_EXPORT_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(CLASSIC_EXPORT_SOURCES) -o $@
+
+# Optional verbatim source-file backup + container facts (Gen IV .dsv) on the shared export.
+VERBATIM_EXPORT_SOURCES := tests/test_verified_export_verbatim.cpp \
+	src/Integration/Common/VerifiedStagedExport.cpp src/Utils/SHA256.cpp
+
+HOST_TESTS += $(HOST_BUILD)/test_verified_export_verbatim
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_verified_export_verbatim_sanitize
+host-test: $(HOST_BUILD)/test_verified_export_verbatim
+host-sanitize: $(HOST_BUILD)/test_verified_export_verbatim_sanitize
+
+$(HOST_BUILD)/test_verified_export_verbatim: $(VERBATIM_EXPORT_SOURCES) include/Integration/Common/VerifiedStagedExport.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(VERBATIM_EXPORT_SOURCES) -o $@
+
+$(HOST_BUILD)/test_verified_export_verbatim_sanitize: $(VERBATIM_EXPORT_SOURCES) include/Integration/Common/VerifiedStagedExport.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(VERBATIM_EXPORT_SOURCES) -o $@

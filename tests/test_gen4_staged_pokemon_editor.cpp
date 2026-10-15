@@ -615,8 +615,19 @@ void testGen4BagQuantityBoundsAndSourceImmutability() {
         assert((*bag)[keyItems].size() == 1 &&
                (*bag)[keyItems][0].count == 1);
         assert(editor->originalBytes() == original);
+        // Bag-only changes are listed for Review and the manifest (one line per changed item).
+        const auto bagLines = PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor);
+        assert(bagLines.size() == 4);
+        const auto hasLine = [&](const std::string& text) {
+            return std::find(bagLines.begin(), bagLines.end(), text) != bagLines.end();
+        };
+        assert(hasLine("Bag Items: item #68 0 -> 900"));
+        assert(hasLine("Bag TM/HM: item #328 0 -> 99"));
+        assert(hasLine("Bag TM/HM: item #420 0 -> 1"));
+        assert(hasLine("Bag Key Items: item #434 0 -> 1"));
         editor->discard();
         assert(editor->stagedBytes() == original);
+        assert(PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor).empty());
     }
 }
 

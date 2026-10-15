@@ -1,9 +1,11 @@
 #include "Integration/Gen4/Gen4ExportTransaction.h"
 
+#include "Integration/Gen4/Gen4ReadOnlyInventory.h"
 #include "Names/SpeciesNames.h"
 
 #include <algorithm>
 #include <cstddef>
+#include <map>
 
 namespace PokeVault::Integration::Gen4 {
 namespace {
@@ -87,6 +89,25 @@ std::vector<std::string> describeStagedSlotChanges(const Gen4StagedPokemonEditor
             lines.push_back("Box " + std::to_string(box + 1) + " slot " + std::to_string(slot + 1) +
                             ": " + from + (from == to ? " (edited)" : " -> " + to));
         }
+    }
+    // Bag edits are review changes too: a Bag-only export must never confirm an empty list.
+    // Quantities are compared per native pocket and item id (all stacks of an item together).
+    const auto oldBag = decodeReadOnlyBag(*before);
+    const auto newBag = decodeReadOnlyBag(*after);
+    if (oldBag && newBag) {
+        for (size_t pocket = 0; pocket < BagPocketCount; ++pocket) {
+            std::map<uint16_t, std::pair<uint32_t, uint32_t>> totals;
+            for (const auto& item : (*oldBag)[pocket]) totals[item.itemId].first += item.count;
+            for (const auto& item : (*newBag)[pocket]) totals[item.itemId].second += item.count;
+            for (const auto& [itemId, counts] : totals) {
+                if (counts.first == counts.second) continue;
+                lines.push_back(std::string("Bag ") + bagPocketName(pocket) + ": item #" +
+                                std::to_string(itemId) + " " + std::to_string(counts.first) +
+                                " -> " + std::to_string(counts.second));
+            }
+        }
+    } else if (oldBag.has_value() != newBag.has_value()) {
+        lines.push_back("Bag: native item data changed validity");
     }
     return lines;
 }
