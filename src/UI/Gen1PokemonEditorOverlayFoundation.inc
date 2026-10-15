@@ -95,7 +95,7 @@ void foundationDrawBadge(PKSEFramebuffer& fb, int x, int y, const std::string& t
 
 std::string foundationNickname(const UX2State& state, const PokemonRecord* pokemon, bool add, uint16_t species) {
     if (add)
-        return state.draft.nickname.empty() ? std::string(Names::getSpeciesName(species)) : state.draft.nickname;
+        return state.draft.nickname.empty() ? PokeBank::UIModel::classicDefaultNickname(species) : state.draft.nickname;
     return pokemon ? pokemon->nickname : std::string{};
 }
 

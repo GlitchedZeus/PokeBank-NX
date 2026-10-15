@@ -210,7 +210,7 @@ const char* fieldLabel(int row) noexcept {
 
 std::string draftValue(const BoxPokemonCreate& d, const Editor& e, int row) {
     if (row == 0) return speciesCompact(d.species);
-    if (row == 1) return d.nickname.empty() ? std::string(Names::getSpeciesName(d.species)) + " (default)" : d.nickname;
+    if (row == 1) return d.nickname.empty() ? PokeBank::UIModel::classicDefaultNickname(d.species) + " (default)" : d.nickname;
     if (row == 2) return std::to_string(d.level);
     if (row == 3) return std::to_string(draftExperience(d)) + " (derived)";
     if (row >= 4 && row < 16) {
@@ -380,7 +380,7 @@ bool editDraftField(TrainerViewScreen& screen) {
     }
     if (row == 1) {
         const std::string initial = state.draft.nickname.empty()
-            ? std::string(Names::getSpeciesName(state.draft.species)) : state.draft.nickname;
+            ? PokeBank::UIModel::classicDefaultNickname(state.draft.species) : state.draft.nickname;
         const auto result = Utils::promptText("Generation I Nickname", "1-10 supported Gen I characters", initial, 10);
         if (!result.accepted) return false;
         state.draft.nickname = result.text;
@@ -788,7 +788,7 @@ void drawPreview(PKSEFramebuffer& fb, int x, int y, int w, const PokemonRecord* 
     const uint16_t species = draft ? draft->species : (pokemon ? pokemon->species : 0);
     const uint8_t level = draft ? draft->level : (pokemon ? pokemon->level : 0);
     const std::string nickname = draft
-        ? (draft->nickname.empty() ? std::string(Names::getSpeciesName(species)) : draft->nickname)
+        ? (draft->nickname.empty() ? PokeBank::UIModel::classicDefaultNickname(species) : draft->nickname)
         : (pokemon ? pokemon->nickname : std::string{});
     const uint32_t exp = draft ? draftExperience(*draft) : (pokemon ? pokemon->experience : 0);
 
