@@ -103,3 +103,16 @@ $(HOST_BUILD)/test_gen13_picker_paging: $(GEN13_PAGING_SOURCES) include/UI/Gen13
 $(HOST_BUILD)/test_gen13_picker_paging_sanitize: $(GEN13_PAGING_SOURCES) include/UI/Gen13PickerPaging.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN13_PAGING_SOURCES) -o $@
+
+# Gen I Edit working-copy draft.
+GEN1_EDIT_DRAFT_SOURCES := tests/test_gen1_edit_draft.cpp $(GEN1_POKEMON_COMMON) src/Integration/Gen1/Gen1PackedMove.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen1_edit_draft
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_edit_draft_sanitize
+host-test: $(HOST_BUILD)/test_gen1_edit_draft
+host-sanitize: $(HOST_BUILD)/test_gen1_edit_draft_sanitize
+$(HOST_BUILD)/test_gen1_edit_draft: $(GEN1_EDIT_DRAFT_SOURCES) include/UI/Gen1EditDraft.h src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_EDIT_DRAFT_SOURCES) -o $@
+$(HOST_BUILD)/test_gen1_edit_draft_sanitize: $(GEN1_EDIT_DRAFT_SOURCES) include/UI/Gen1EditDraft.h src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_EDIT_DRAFT_SOURCES) -o $@
