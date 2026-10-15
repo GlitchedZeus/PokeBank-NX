@@ -66,6 +66,16 @@ no change. Needles restated old → new:
 | `if (state.session.confirmExit)` | `if (A::confirmExit(screen, state)) {` + `return gen4(state).session.confirmExit;` |
 | `species, 493, previewShiny` | `species, A::kMaxSpecies, previewShiny` + `static constexpr int kMaxSpecies = 493;` |
 
+### Internal build `c952565c` (NOT an owner hardware candidate)
+Per the owner's completion-campaign directive, only ONE final Gen I–V NRO will be posted.
+`c952565cf878705726b2541546d085fa9724108d` (tree `3090368d1e84f97839c0d9012e473ec8280309db`) is an
+internal build only: Gen I–V integrated NRO built in run 38694846639 (artifact 11953557955,
+`PokeBank-NX-Gen1-5-Candidate-c952565c.nro`, 175,517,361 bytes, SHA-256
+`e35d6efd33837aee2f9e726d29ac1ab350ace950bb298946c92991f99fecc995`), 8/9 checks green with
+Host tests (GCC) still running when recorded. Local: GCC host-test + host-sanitize and Clang
+host-test pass; local Clang host-sanitize cannot link here (container has no clang ASan
+runtime), covered by CI "Host tests + ASan/UBSan (Clang)" green. NOT DEVICE TESTED.
+
 Thread 2H (`claude/gen5-home-providers-20261015` @ `ece88e27`) was merged forward with a merge
 commit (`9c038d9`) before the integrated candidate.
 
