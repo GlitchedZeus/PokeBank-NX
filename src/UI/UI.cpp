@@ -1,5 +1,6 @@
 
 #include <cstdio>
+#include <ctime>
 #include <sys/stat.h>
 #include <iomanip>
 #include <sstream>
@@ -10,6 +11,7 @@
 #include "UI/AppShellScreen.h"
 #include "UI/SaveSelectScreen.h"
 #include "UI/BackupSelectionScreen.h"
+#include "UI/GameLauncher.h"
 #include "UI/TrainerViewScreen.h"
 #include "UI/Dialogs/KeyboardDialog.h"
 #include "Utils/HelperUtilities.h"
@@ -33,6 +35,50 @@ using namespace Trainer;
 
 namespace UI {
     namespace {
+        // Launch/return: Product Home focus survives the emulator round trip (a new process).
+        SaveSelectScreen::SelectedSourceKind returnSourceKind(int value) {
+            using Kind = SaveSelectScreen::SelectedSourceKind;
+            switch (value) {
+                case static_cast<int>(Kind::SwitchTitle):      return Kind::SwitchTitle;
+                case static_cast<int>(Kind::RetroArchFRLG):    return Kind::RetroArchFRLG;
+                case static_cast<int>(Kind::Gen4AssignedFile): return Kind::Gen4AssignedFile;
+                case static_cast<int>(Kind::Gen5AssignedFile): return Kind::Gen5AssignedFile;
+                default:                                       return Kind::None;
+            }
+        }
+
+        void recordLaunchReturnSelection(const SaveSelectScreen::NavigationState& state) {
+            GameLaunchReturnSelection selection;
+            selection.profileIdentity = state.profileIdentity;
+            selection.gameId = state.gameId;
+            selection.sourceIdentity = state.sourceIdentity;
+            selection.sourceKind = static_cast<int>(state.sourceKind);
+            selection.titleId = state.titleId;
+            selection.userIndex = state.userIndex;
+            selection.titleIndex = state.titleIndex;
+            selection.classicGamesActive = state.classicGamesActive;
+            selection.savedAt = static_cast<int64_t>(std::time(nullptr));
+            std::string error;
+            if (!saveGameLaunchReturnSelection(selection, error))
+                logErrorToFile("Launch return selection not recorded", error.c_str());
+        }
+
+        bool restoreLaunchReturnSelection(SaveSelectScreen::NavigationState& state) {
+            GameLaunchReturnSelection selection;
+            if (!consumeGameLaunchReturnSelection(static_cast<int64_t>(std::time(nullptr)), selection))
+                return false;
+            state = {};
+            state.profileIdentity = selection.profileIdentity;
+            state.gameId = selection.gameId;
+            state.sourceIdentity = selection.sourceIdentity;
+            state.sourceKind = returnSourceKind(selection.sourceKind);
+            state.titleId = selection.titleId;
+            state.userIndex = selection.userIndex;
+            state.titleIndex = selection.titleIndex;
+            state.classicGamesActive = selection.classicGamesActive;
+            return true;
+        }
+
         std::string profileIdentity(AccountUid uid) {
             std::ostringstream output;
             output << std::hex << std::setfill('0')
@@ -172,6 +218,17 @@ namespace UI {
     // Product Home owns game/profile/save selection. Returning from a loaded backup/trainer
     // rebuilds it so newly-created saves stay visible; secondary destinations return here.
     SaveSelectScreen::MainMenuDestination UIManager::handleSaveSelection() {
+        // First Home of this process: if the previous process handed off to a game, reopen on
+        // that exact game/source (identity first, indices only as SaveSelectScreen's fallback).
+        static bool launchReturnChecked = false;
+        if (!launchReturnChecked) {
+            launchReturnChecked = true;
+            if (!productHomeNavigationValid && restoreLaunchReturnSelection(productHomeNavigation)) {
+                productHomeNavigationValid = true;
+                logInfoToFile("Restored Product Home focus after emulator return",
+                              productHomeNavigation.gameId.c_str());
+            }
+        }
         while (running) {
             SaveSelectScreen selectScreen(
                 legacyFRLGSources, legacySourceBindings,
@@ -257,6 +314,8 @@ namespace UI {
 
             if (!running) return SaveSelectScreen::MainMenuDestination::None;
             if (selectScreen.hasRequestedAppExit()) {
+                if (gameLaunchHandoffRequested())
+                    recordLaunchReturnSelection(selectScreen.navigationState());
                 running = false;
                 return SaveSelectScreen::MainMenuDestination::None;
             }

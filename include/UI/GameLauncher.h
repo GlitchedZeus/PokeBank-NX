@@ -33,6 +33,16 @@ void setGameLaunchReturnPath(std::string_view path);
 
 bool requestGameLaunch(const GameLaunchDescriptor& descriptor, std::string& error);
 
+// Where the emulator's own quit leads for this descriptor (for pre-launch UI copy).
+GameLaunchQuitRoute previewGameLaunchQuitRoute(const GameLaunchDescriptor& descriptor);
+
+// True once requestGameLaunch() has scheduled a handoff in this process.
+bool gameLaunchHandoffRequested();
+
+// Product Home focus at handoff, restored once on the next PokeBank start.
+bool saveGameLaunchReturnSelection(const GameLaunchReturnSelection& selection, std::string& error);
+bool consumeGameLaunchReturnSelection(int64_t now, GameLaunchReturnSelection& selection);
+
 } // namespace UI
 
 #endif
