@@ -206,6 +206,7 @@ Local runs on the audited head (Ubuntu 24.04, GCC 13.3, Clang 18.1):
 | libFuzzer 30 s/target (smoke) | clean: 59k / 37k / 1.4k / 0.9k / 0.2k / 607k / 3.8k / 69 execs |
 | libFuzzer soak 240 s/target | clean: gen1 545k, gen2 327k, gen3 13k, gen4 11k, gen5-bag 35k, gen5-sav 2.6k, source-containers 733 execs |
 | `fuzz_launch_plan` (Thread L launch/return plan, 2026-10-15): deterministic 140k execs ASan/UBSan + libFuzzer 1.75M runs / 180 s | clean: plan argv == libnx tokenisation, loader caps held, hosted argv accepted unchanged by the return host, return host never used unless enabled, return-selection round trip |
+| `fuzz_home_cache` (Home snapshot cache, Gen IV/V cards, 2026-10-15): deterministic 280k execs ASan/UBSan + libFuzzer 597k runs / 120 s | clean: unassigned/missing never parse or show an old party; reuse only for same path+binding+stamp; failed re-validation never Current, Stale only with the same assignment's data; a write during the parse forces the next re-parse |
 | libFuzzer soak 240 s, `fuzz_pk_records` | first run stopped on an all-zero PK4 record: harness gap (blank-slot convention), fixed, input kept as regression corpus; re-run clean, 4.7M execs |
 
 CI evidence for this branch is linked from the draft PR.
