@@ -4,7 +4,7 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-15 09:40 UTC (C divergence items 1–7 done; Gen III gender on Home; .dsv backup decision).
+**Last updated:** 2026-10-15 10:15 UTC (tick: Gen V verbatim .dsv backup fixed; QA matrix facts derived).
 
 ## Active milestone
 
@@ -30,6 +30,9 @@ any SHA below.
 | 09:40 | #307 `d57e5bc4`: L `980a217b` and C `c7b0f978` merged, Gen III Home gender wired (HomePartyPreview.h:56/63), 139 PASS GCC/Clang plain and sanitize, qa 420/0. Pending merges: C `ce82066f` (all divergence items 1–7 done, Gen I Edit working-copy draft), QA `ce5919c` (Phase 6 complete, no new defects). |
 | Decision: .dsv backups | Gen IV (and Gen V if affected): original_backup must be the byte-exact source file, container and footer included. The edited export stays the raw 0x80000 payload, and the manifest states the container. C does the transaction side, 2R the UI hand-off. |
 | Decision: battle-only forms | Gen IV editor offers only stored form 0 for Castform and Cherrim (PKHeX FormInfo). Existing values are preserved. |
+| 10:15 | #307 `f99e262c`. Gen V export now backs up the source file verbatim, .dsv footer included (test_gen5_source_e2e dsvBackupIsVerbatim; manifest ORIGINAL_BACKUP_IS=VERBATIM_SOURCE_FILE). C `ce82066f` merged. 143 PASS GCC/Clang plain and sanitize, qa 420/0. Pending merges: C `7dec0c78` (bag review lines, Gen III JP names, strain-0 Pokérus), QA `d6f34e4a` (Home facts derived; F6/F7/F8a are regressions). |
+| Remaining before the final NRO | C: QA-F8b (Gen IV clone→release export bytes), Castform/Cherrim form 0, Gen IV .dsv stale-source check plus verbatim backup. 2R: VerifiedExportRequest backupBytes and container keys (Common), Gen IV UI hand-off. Then a full gate run and ONE NRO. |
+| Ownership exception | C edited QA's tests/test_qa_matrix_gen4.cpp once, a stricter bag-review cell needed after 2b2be00f. QA is told to adopt it. |
 | Known limitation (decided) | Gen I–III Home cards have no STALE state: a failed source shows "Party preview unavailable". Gen IV/V keep the last data as STALE. Not changed, because it is hardware-accepted Legacy behaviour. |
 | QA-F6 (Low, C) | `src/Legacy/RetroArchFRLGDiscovery.cpp:114`: identityHint substring-matches release names across the whole path. Confirmed in code and routed to C. |
 | Divergence noted | Create default species is #1 for Gen I/IV and #25 for Gen II/III/V. Kept as is: hardware-accepted and documented. |
