@@ -320,3 +320,22 @@ $(GEN5_CREATE_INPUT_TEST): $(GEN5_CREATE_INPUT_FILES)
 $(GEN5_CREATE_INPUT_SANITIZE): $(GEN5_CREATE_INPUT_FILES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_create_input_rules.cpp -o $@
+
+# Gen V PID-linked Gender / Shiny / Ability coordination (PKHeX 6501f0ab rules).
+GEN5_PID_TEST := $(HOST_BUILD)/test_gen5_pid_coordination
+GEN5_PID_SANITIZE := $(HOST_BUILD)/test_gen5_pid_coordination_sanitize
+GEN5_PID_INPUTS := tests/test_gen5_pid_coordination.cpp include/Integration/Gen5/Gen5PidCoordination.h \
+    include/Integration/Gen5/Gen5StagedPokemonRecord.h
+
+HOST_TESTS += $(GEN5_PID_TEST)
+HOST_SANITIZE_TESTS += $(GEN5_PID_SANITIZE)
+host-test: $(GEN5_PID_TEST)
+host-sanitize: $(GEN5_PID_SANITIZE)
+
+$(GEN5_PID_TEST): $(GEN5_PID_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_gen5_pid_coordination.cpp -o $@
+
+$(GEN5_PID_SANITIZE): $(GEN5_PID_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_gen5_pid_coordination.cpp -o $@

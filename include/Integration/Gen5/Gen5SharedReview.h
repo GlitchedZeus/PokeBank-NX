@@ -201,6 +201,9 @@ struct VerifiedSlotReview {
     }
     if(!apply(Field::Gender,0,before.gender(),after.gender()))
         return std::nullopt;
+    // Coordinated Gender / Shiny / Ability / ID edits end in one exact PID.
+    if(!apply(Field::Personality,0,before.pid(),after.pid()))
+        return std::nullopt;
     const auto bi=before.ivs(),ai=after.ivs();
     for(size_t i=0;i<6;++i)
         if(!apply(Field::IV,i,bi[i],ai[i]))return std::nullopt;
