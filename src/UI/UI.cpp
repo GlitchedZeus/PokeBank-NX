@@ -67,6 +67,10 @@ namespace UI {
             GameLaunchReturnSelection selection;
             if (!consumeGameLaunchReturnSelection(static_cast<int64_t>(std::time(nullptr)), selection))
                 return false;
+            if (!gameLaunchReturnSelectionUsable(selection, [](std::string_view id) {
+                    return PokeVault::Games::findGame(id) != nullptr;
+                }))
+                return false;
             state = {};
             state.profileIdentity = selection.profileIdentity;
             state.gameId = selection.gameId;

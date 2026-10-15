@@ -27,6 +27,8 @@ static char g_nextNroPath[RH_LOADER_PATH_CAP];
 static char g_nextArgv[RH_LOADER_ARGV_CAP];
 static char g_argv[RH_LOADER_ARGV_CAP];
 static bool g_logStarted = false;
+// Last step loadImageAndMap() reached; logged with every load result.
+static const char* g_loadStage = "none";
 static u8 g_savedTls[0x100];
 static void* g_heapAddr;
 static u64 g_heapSize;
@@ -203,9 +205,11 @@ static void unmapCurrentNro(void) {
 }
 
 static Result loadImageAndMap(const char* path) {
+    g_loadStage = "mount-sd";
     Result rc = fsdevMountSdmc();
     if (R_FAILED(rc)) return rc;
 
+    g_loadStage = "open";
     int fd = open(path, O_RDONLY);
     if (fd < 0) {
         fsdevUnmountAll();
@@ -217,6 +221,7 @@ static Result loadImageAndMap(const char* path) {
     NroHeader* header = (NroHeader*)(nrobuf + sizeof(NroStart));
     u8* rest = nrobuf + sizeof(NroStart) + sizeof(NroHeader);
 
+    g_loadStage = "read-header";
     bool ok = readExact(fd, start, sizeof(*start)) && readExact(fd, header, sizeof(*header));
     if (!ok || header->magic != NROHEADER_MAGIC ||
         header->size < sizeof(NroStart) + sizeof(NroHeader)) {
@@ -225,6 +230,7 @@ static Result loadImageAndMap(const char* path) {
         return MAKERESULT(Module_HomebrewLoader, 42);
     }
 
+    g_loadStage = "read-image";
     const size_t restSize = header->size - sizeof(NroStart) - sizeof(NroHeader);
     const u64 rwSize =
         (header->segments[2].size + header->bss_size + 0xFFF) & ~0xFFFULL;
@@ -243,6 +249,7 @@ static Result loadImageAndMap(const char* path) {
     close(fd);
     fsdevUnmountAll();
 
+    g_loadStage = "check-segments";
     for (int i = 0; i < 3; ++i) {
         if (header->segments[i].file_off >= header->size ||
             header->segments[i].size > header->size ||
@@ -254,6 +261,7 @@ static Result loadImageAndMap(const char* path) {
     memcpy(&g_nroHeader, header, sizeof(g_nroHeader));
     header = &g_nroHeader;
 
+    g_loadStage = "map-code";
     virtmemLock();
     void* mapAddr = virtmemFindCodeMemory(mappedSize, 0);
     if (!mapAddr) {
@@ -267,16 +275,20 @@ static Result loadImageAndMap(const char* path) {
     g_nroAddr = (u64)mapAddr;
     g_nroMappedSize = mappedSize;
 
+    g_loadStage = "perm-text";
     rc = svcSetProcessMemoryPermission(g_procHandle,
         g_nroAddr + header->segments[0].file_off, header->segments[0].size, Perm_R | Perm_X);
     if (R_FAILED(rc)) { unmapCurrentNro(); return rc; }
+    g_loadStage = "perm-rodata";
     rc = svcSetProcessMemoryPermission(g_procHandle,
         g_nroAddr + header->segments[1].file_off, header->segments[1].size, Perm_R);
     if (R_FAILED(rc)) { unmapCurrentNro(); return rc; }
+    g_loadStage = "perm-data";
     rc = svcSetProcessMemoryPermission(g_procHandle,
         g_nroAddr + header->segments[2].file_off, rwSize, Perm_Rw);
     if (R_FAILED(rc)) { unmapCurrentNro(); return rc; }
 
+    g_loadStage = "mapped";
     return 0;
 }
 
@@ -307,7 +319,8 @@ void NX_NORETURN loadNro(void) {
     svcBreak(BreakReason_NotificationOnlyFlag | BreakReason_PreLoadDll,
              (uintptr_t)g_argv, sizeof(g_argv));
     const Result rc = loadImageAndMap(g_state.childPath);
-    hostLog("load hop=%u rc=0x%08X path=%s", g_state.hops + 1, (unsigned)rc, g_state.childPath);
+    hostLog("load hop=%u rc=0x%08X stage=%s size=0x%lX path=%s", g_state.hops + 1, (unsigned)rc,
+            g_loadStage, (unsigned long)g_nroMappedSize, g_state.childPath);
     if (R_FAILED(rc)) returnToPokeBank("load-failed", rc);
 
     g_nextNroPath[0] = '\0';
@@ -366,6 +379,10 @@ void NX_NORETURN loadNro(void) {
 
     svcBreak(BreakReason_NotificationOnlyFlag | BreakReason_PostLoadDll,
              g_nroAddr, g_nroMappedSize);
+    // Last line written before control leaves the host. If the log ends here, the child itself
+    // faulted (or never returned); if it ends earlier, the host failed at the logged stage.
+    hostLog("enter hop=%u heap=0x%lX app=%d codemem=%d", g_state.hops,
+            (unsigned long)childHeapSize, (int)g_isApplication, (int)g_codeMemoryCapability);
     nroEntrypointTrampoline(entries, (u64)-1, g_nroAddr);
 }
 
@@ -396,6 +413,9 @@ int main(int argc, char** argv) {
 
     getIsApplication();
     getCodeMemoryCapability();
+    hostLog("environment heap=0x%lX app=%d codemem=%d applet=%d hos=0x%08X",
+            (unsigned long)g_heapSize, (int)g_isApplication, (int)g_codeMemoryCapability,
+            (int)__nx_applet_type, (unsigned)hosversionGet());
     // nx-hbloader closes SM before running any NRO (main(): "Close SM as we don't need it
     // anymore"); the host does the same so every child starts with the loader's resource
     // picture. fs stays open for the next image load, as in nx-hbloader.
