@@ -4,6 +4,7 @@
 #include "Integration/Gen5/Gen5SharedScreenState.h"
 #include "Integration/Gen5/Gen5StagedSaveCandidate.h"
 #include "Integration/Gen5/Gen5TrainerScreen.h"
+#include "Integration/Gen5/Gen5HubRouting.h"
 #include "Legacy/Gen5ReadOnlyTrainer.h"
 
 #include <algorithm>
@@ -272,7 +273,82 @@ void unrecognizedTrainerIsViewOnly() {
 
 } // namespace
 
+// Hardware failure fa9cfcea: Gen V opened forced into Party and used a
+// separate Trainer pop-up. It now opens on the shared hub; these are the
+// route decisions the Gen V surface applies on top of the base hub.
+void hubRoutes() {
+    using G::HubCommand5;
+    using G::HubTile5;
+    constexpr auto t = [](HubTile5 tile) { return static_cast<int>(tile); };
+    // Focus movement and help stay with the base hub.
+    static_assert(G::routeHub5(0, false, false, false, -1).command == HubCommand5::PassToBase);
+    // A on each tile.
+    static_assert(G::routeHub5(t(HubTile5::Pokemon), true, false, false, -1).command == HubCommand5::Enter);
+    static_assert(G::routeHub5(t(HubTile5::Party), true, false, false, -1).tile == t(HubTile5::Party));
+    static_assert(G::routeHub5(t(HubTile5::Items), true, false, false, -1).command == HubCommand5::Enter);
+    static_assert(G::routeHub5(t(HubTile5::Trainer), true, false, false, -1).command == HubCommand5::Enter);
+    // Legacy Storage (Bank) never opens for Gen V: no PK5 conversion exists.
+    static_assert(G::routeHub5(t(HubTile5::Storage), true, false, false, -1).command ==
+                  HubCommand5::StorageRefused);
+    // A completed tap focuses AND activates, exactly like A; Storage taps refused too.
+    static_assert(G::routeHub5(0, false, false, false, 104).command == HubCommand5::Enter);
+    static_assert(G::routeHub5(0, false, false, false, 104).tile == t(HubTile5::Trainer));
+    static_assert(G::routeHub5(4, false, false, false, 102).command == HubCommand5::StorageRefused);
+    static_assert(G::routeHub5(0, false, false, false, 105).command == HubCommand5::PassToBase);
+    static_assert(G::routeHub5(0, false, false, false, 99).command == HubCommand5::PassToBase);
+    // B exits through the Gen V confirmation; + opens Review; out-of-range focus clamps.
+    static_assert(G::routeHub5(3, false, true, false, -1).command == HubCommand5::Exit);
+    static_assert(G::routeHub5(3, false, false, true, -1).command == HubCommand5::Review);
+    static_assert(G::routeHub5(9, true, false, false, -1).tile == 0);
+    // Panel B returns to the hub except for the Product Home Items shortcut.
+    static_assert(G::panelBack5(false) == G::PanelBack5::ToHub);
+    static_assert(G::panelBack5(true) == G::PanelBack5::ExitSession);
+}
+
+void trainerPanelFocusMemory() {
+    const auto sav = fixture(G::SaveFamily::Black2White2, 23);
+    std::string error;
+    const auto parsed = G::Gen5ReadOnlySave::parse(sav, "black2_nds", &error, G::SaveCopySelection::Primary);
+    assert(parsed);
+    auto trainer = PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*parsed, "black2_nds", error);
+    assert(trainer);
+    auto& ws = trainer->stagedPokemon();
+    auto& screen = trainer->trainerScreen();
+    // Hub -> Trainer: the shared panel opens on Name.
+    assert(screen.enter(ws, error) && screen.open() && screen.selectedRow() == Row::Name);
+    screen.moveRow(4);
+    assert(screen.selectedRow() == Row::SecretId);
+    // B -> hub keeps the focused row; re-entering restores it.
+    screen.leave();
+    assert(!screen.open());
+    assert(screen.enter(ws, error) && screen.selectedRow() == Row::SecretId);
+    // Read-only rows refuse A with a reason; editable rows accept it.
+    assert(!screen.beginEdit(ws, error) && error.find("read-only") != std::string::npos);
+    screen.moveRow(-4);
+    assert(screen.beginEdit(ws, error));
+    // Scrolling keeps the focused row visible for any viewport size.
+    for (size_t visible = 1; visible <= Screen::kRows.size() + 1; ++visible)
+        for (size_t row = 0; row < Screen::kRows.size(); ++row) {
+            assert(screen.enter(ws, error));
+            screen.moveRow(static_cast<int>(row) - static_cast<int>(screen.row()));
+            const size_t first = screen.firstVisible(visible);
+            assert(screen.row() >= first && screen.row() < first + visible);
+            assert(first + std::min(visible, Screen::kRows.size()) <= Screen::kRows.size());
+        }
+    // Wrap-around in both directions.
+    screen.moveRow(-static_cast<int>(screen.row()));
+    screen.moveRow(-1);
+    assert(screen.selectedRow() == Row::Pokedex);
+    screen.moveRow(1);
+    assert(screen.selectedRow() == Row::Name);
+    // Parity footer: no X/Y mode shortcuts.
+    screen.leave();
+    assert(!hasGlyph(screen.footer(), "X") && !hasGlyph(screen.footer(), "Y"));
+}
+
 int main() {
+    hubRoutes();
+    trainerPanelFocusMemory();
     static_assert(G::trainerNameAccepted5("Hilda"));
     static_assert(!G::trainerNameAccepted5("12345678"));
     exercise(G::SaveFamily::BlackWhite, "white_nds", 20);

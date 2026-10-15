@@ -81,6 +81,27 @@ public:
         return true;
     }
     void close() noexcept { open_ = false; row_ = 0; dex_.close(); }
+    // Shared Trainer panel entry from the hub. Unlike openEditor, the last
+    // focused row is kept (focus memory); leave() returns to the hub without
+    // forgetting it.
+    [[nodiscard]] bool enter(const Workspace& ws, std::string& error) {
+        if (!available(ws)) {
+            error = "Gen V trainer data failed native validation; view only";
+            return false;
+        }
+        open_ = true;
+        if (row_ >= kRows.size()) row_ = 0;
+        error.clear();
+        return true;
+    }
+    void leave() noexcept { open_ = false; dex_.close(); }
+    // First visible row so the focused row is always on screen.
+    [[nodiscard]] size_t firstVisible(size_t visibleRows) const noexcept {
+        if (visibleRows == 0 || kRows.size() <= visibleRows) return 0;
+        const size_t maxFirst = kRows.size() - visibleRows;
+        const size_t centred = row_ >= visibleRows / 2 ? row_ - visibleRows / 2 : 0;
+        return centred < maxFirst ? centred : maxFirst;
+    }
     // Read-only Pokedex list (no Pokedex editor exists for Gen V).
     [[nodiscard]] Gen5PokedexView& dex() noexcept { return dex_; }
     [[nodiscard]] const Gen5PokedexView& dex() const noexcept { return dex_; }
@@ -120,7 +141,7 @@ public:
         return true;
     }
     [[nodiscard]] std::vector<FooterEntry> footer() const {
-        if (!open_) return {{"A", "Edit Trainer"}, {"X", "Party"}, {"Y", "Bag"}, {"B", "Exit"}};
+        if (!open_) return {{"A", "Open"}, {"B", "Back"}};
         if (dex_.open())
             return {{"D-pad/Stick", "Browse"}, {"L/R", "Prev/Next Registered"}, {"B", "Back"}};
         if (selectedRow() == Row::Pokedex)

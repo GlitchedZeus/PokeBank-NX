@@ -101,8 +101,27 @@ require(
     "opened.instance.gameId!=gameId",
     "Gen5ReadOnlyTrainer::create(",
     "PokeVault::Safety::SourceKind::ExternalLegacy",
-    "trainerScreen.detailViewActive=true;",
 )
+# Hardware failure fa9cfcea: Gen V must open on the SAME loaded-game hub as
+# Gen I-IV, never forced into a Party detail view.
+gen5_open = manager.split("bool UIManager::handleGen5View(", 1)[1].split("bool UIManager::handleGen4View(", 1)[0]
+assert "detailViewActive=true" not in gen5_open
+assert "selectedMode=TrainerViewScreen::ViewMode::Party" not in gen5_open
+hub = surface.split("if(state.surface()==Surface::Browse && !screen.detailViewActive) {", 1)[1]
+hub = hub.split("if(state.surface()==Surface::Actions) {", 1)[0]
+require(hub, "if(screen.helpOverlayActive)return false;",
+        "G::routeHub5(screen.homeMenuIndex,",
+        "case G::HubCommand5::PassToBase:return false;",
+        "case G::HubCommand5::StorageRefused:",
+        "trainer.trainerScreen().enter(staged,error)")
+# Hub routing runs before any Gen V touch decoding of box/party ids.
+assert surface.index("G::routeHub5(") < surface.index("decodeGen5BoxTouch(")
+# B inside a panel returns to the hub; the separate Trainer pop-up is gone.
+require(surface, "screen.detailViewActive=false; // back to the hub, tile still focused",
+        "editor.leave(); // focused row is remembered for the next visit",
+        "if(!screen.detailViewActive) {\n        // The same loaded-game hub as Gen I-IV, drawn by the base renderer.")
+assert "Trainer - Generation V" not in surface
+assert '{"X/Y","Party/Trainer"}' not in surface
 require(manager_header, "bool handleGen5View(")
 require(
     games,
@@ -1122,7 +1141,8 @@ require(surface, "return handleBag(screen,keys,tap);", "bag.beginQuantity(ws,err
         "bag.confirmAdd(ws,id,r.value,refresh,error)", "state.openReviewFromBrowse(ws)",
         "CategoryTouch::PreviousId", "bag.tapRow(static_cast<size_t>(tap),ws)",
         "bag.tapAddChoice(", "drawBag(screen,fb);", "ws.bagReviewChanges()",
-        '{"Y","Bag"}')
+        "case G::HubTile5::Items:")
+assert '{"Y","Bag"}' not in surface
 assert surface.index("return handleBag(screen,keys,tap);") < surface.index("switch(state.surface()) {\n        case Surface::Actions:")
 require(items_panel, "Gen5::bagPocketName5(", "Native Generation V bag data failed validation.")
 require(bag_model, "PokeBank::UIModel::inventoryActionAvailability(", "Workspace snapshot=ws;",
@@ -1147,7 +1167,8 @@ require(trainer_model, "6501f0ab46e8f8ca048539dbaf8cae8cb104e722", "PlayerBlockI
         "MiscBlockIndex = 52", "MaxMoney = 9999999", "kPlayerRanges", "kMiscRanges")
 require(surface, "return handleTrainerEditor(screen,keys,tap);", "editor.applyName(ws,r.text,refresh,error)",
         "editor.applyMoney(", "editor.applyPlayTime(", "drawTrainerEditor(screen,fb);",
-        "ws.trainerReviewChanges()", '{"A","Edit Trainer"}')
+        "ws.trainerReviewChanges()", 'const char* tag=row==G::Gen5TrainerScreen::Row::Pokedex?"View only":"Read-only";',
+        "editor.firstVisible(visible)")
 require(read("include/Integration/Gen5/Gen5StagedSaveCandidate.h"), "Gen5StagedTrainer::kPlayerRanges",
         "did not preserve the exact staged trainer")
 require(read("src/Integration/Gen5/Gen5WorkingCopyExport.cpp"), "TRAINER_CHANGED=")
