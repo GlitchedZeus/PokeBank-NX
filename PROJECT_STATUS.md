@@ -1,5 +1,15 @@
 # PokeBank NX Project Status
 
+## CURRENT PRIORITY — October 15, 2026
+
+**Freeze application scope at Generations I–V** until a complete code audit and owner Switch hardware torture test pass. Active [Gen I–V PR #307](https://github.com/GlitchedZeus/PokeBank-NX/pull/307) at `35cbf163` passed all nine exact-head CI checks and published a combined NRO, **not yet device accepted**. Earlier combined `fa9cfcea` failed physical Gen V testing; its hub, blank-slot Create and trainer-state regressions are now mandatory retest items.
+
+Owner acceptance = **all 20 Gen I–V games** plus every reachable app action (button and touch, supported source/emulator, profile, staged edit, Export Copy, B/confirmation/exit) tested on one exact frozen NRO with artifact SHA-256. [Full 106-checkpoint starter matrix](docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md) · [Single acceptance tracker #313](https://github.com/GlitchedZeus/PokeBank-NX/issues/313).
+
+**Gen VI/VII/VIII backend drafts are preserved but on hold for active Switch app integration**; only when the owner accepts Gen I–V do we start the different Gen VI emulator phase. The project cleaned four superseded PRs and moved 18 post-v1 ideas to [deferred index](docs/FUTURE_AFTER_GEN15_BACKLOG.md), leaving 28 open PRs/28 open issues. No original save writing or mainline draft merges were authorized.
+
+---
+
 **Last checked: October 14, 2026.** This is a milestone summary, not a fictitious completion percentage. [Current engineering state](CURRENT_STATUS.md) · [Full cross-lane snapshot](docs/ENGINEERING_SNAPSHOT_20261014.md).
 
 ## Product identity
