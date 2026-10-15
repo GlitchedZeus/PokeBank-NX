@@ -14,6 +14,13 @@ the input:
   Resources/legality/mgdb/pgf.pkl                          PGF Mystery Gift cards (raw)
   Legality/Encounters/Data/Gen5/Encounters5{BW,B2W2,DR}.cs static, gift, trade and
                                                            Dream World definitions
+  Legality/Encounters/Templates/Gen5/EncounterStatic5N.cs  N's Pokemon fixed ball
+  Resources/legality/gen5/text_trade{bw,b2w2}_<lang>.txt   in-game trade nicknames / OTs
+  Resources/text/other/<lang>/text_Species_<lang>.txt      species names (9 languages)
+  Resources/text/badwords/badwords_{switch,3ds,gen5}.txt   PKHeX word-filter lists
+  Resources/legality/gen{3,4}/text_trade*_<lang>.txt,      Gen III/IV in-game trade names
+  Legality/Encounters/Data/Gen3/Encounters3XD.cs,          (transferred Pokemon)
+  Legality/Encounters/Templates/Gen4/EncounterTrade4RanchGift.cs
 
 PKHeX is GPL-3.0; PokeBank NX is AGPL-3.0, which GPL-3.0 section 13 permits
 combining with. The generated files carry that attribution.
@@ -368,6 +375,7 @@ def parse_trades(source, name, bw, constants):
             raw = p["ID32"]
             id32 = constants[raw] if raw in constants else cs_int(raw)
         out.append(dict(
+            names=names.strip(),
             versions=version_of(version), species=cs_int(p["Species"]), level=cs_int(p["Level"]),
             form=cs_int(p.get("Form", "0")), ability=ABILITY[p["Ability"]],
             id32=id32, ot_gender=cs_int(p["OTGender"]), gender=cs_int(p.get("Gender", "-1")),
@@ -381,6 +389,143 @@ def parse_trades(source, name, bw, constants):
 def cs_constants(source):
     return {m.group(1): cs_int(m.group(2))
             for m in re.finditer(r"const\s+u?(?:short|int)\s+(\w+)\s*=\s*(\w+)\s*;", source)}
+
+
+def cs_string_array(source, name):
+    """A `string[] Name = ["a", string.Empty, ...];` field."""
+    m = re.search(r"\b" + re.escape(name) + r"\s*=\s*\[(.*?)\];", source, re.S)
+    if not m:
+        die(f"C# string array {name} not found")
+    items = []
+    for part in split_top(m.group(1)):
+        if part == "string.Empty":
+            items.append("")
+            continue
+        mm = re.fullmatch(r'"([^"\\]*)"', part)
+        if not mm:
+            die(f"{name}: unparsed string {part!r}")
+        items.append(mm.group(1))
+    return items
+
+
+# --------------------------------------------------------------------------- text
+
+# PKHeX LanguageID -> resource language code (EncounterUtil.GetLanguageStrings and
+# SpeciesName.SpeciesLang); 0 and 6 are unused ids.
+LANG_CODES = {1: "ja", 2: "en", 3: "fr", 4: "it", 5: "de", 7: "es", 8: "ko", 9: "zh-Hans", 10: "zh-Hant"}
+TRADE_LANGS = [1, 2, 3, 4, 5, 7, 8]
+SPECIES_LANGS = [1, 2, 3, 4, 5, 7, 8, 9, 10]
+# Gen III/IV in-game trade text (EncounterUtil.GetLanguageStrings in Encounters3RSE,
+# Encounters3FRLG, Encounters4DPPt, Encounters4HGSS).
+TRANSFER_TRADE_TEXT = [("gen3", "traderse", [1, 2, 3, 4, 5, 7]), ("gen3", "tradefrlg", [1, 2, 3, 4, 5, 7]),
+                       ("gen4", "tradedppt", TRADE_LANGS), ("gen4", "tradehgss", TRADE_LANGS)]
+SPECIES_NAME_COUNT = 1026  # 0 (egg) .. 1025
+
+
+def read_lines(path):
+    """Util.GetStringList: StreamReader text (BOM dropped) split on LF, CR trimmed."""
+    text = path.read_bytes().decode("utf-8-sig")
+    if not text:
+        return []
+    return [line[:-1] if line.endswith("\r") else line for line in text.split("\n")]
+
+
+def lower_invariant(text):
+    """char.ToLowerInvariant per UTF-16 unit for the characters the filter lists use.
+    tools/pkhex_gen5_diff/run.sh compares the result with .NET."""
+    out = []
+    for c in text:
+        if c == "İ":  # .NET invariant casing leaves capital dotted I unchanged
+            out.append(c)
+            continue
+        low = c.lower()
+        if len(low) != 1:
+            die(f"no single-unit lower case for U+{ord(c):04X}")
+        out.append(low)
+    return "".join(out)
+
+
+def read_patterns(path):
+    """WordFilter.LoadPatterns: the list lower-cased, one regular expression per line."""
+    text = path.read_bytes().decode("utf-8-sig")
+    if any(c in text for c in "\r\x0b\x0c\x85  "):
+        die(f"{path.name}: unexpected line separator")
+    return [lower_invariant(line) for line in text.split("\n")]
+
+
+def u16_literal(text):
+    """A C++ u"" literal with everything outside printable ASCII escaped."""
+    out = ['u"']
+    for c in text:
+        o = ord(c)
+        if o > 0xFFFF:
+            out.append(f"\\U{o:08X}")
+        elif c in '"\\?':
+            out.append("\\" + c)
+        elif 0x20 <= o < 0x7F:
+            out.append(c)
+        else:
+            out.append(f"\\u{o:04X}")
+    out.append('"')
+    return "".join(out)
+
+
+def string_rows(values, width=6):
+    lines = []
+    for i in range(0, len(values), width):
+        lines.append("    " + ", ".join(u16_literal(v) for v in values[i:i + width]) + ",")
+    return "\n".join(lines)
+
+
+def g3_table(source, name):
+    """StringConverter3.G3_EN / G3_JP: the Gen III character table as 256 characters."""
+    m = re.search(r"\b" + re.escape(name) + r"\s*=>\s*\[(.*?)\];", strip_comments(source), re.S)
+    if not m:
+        die(f"StringConverter3.{name} not found")
+    named = {"HGM": "\u246D", "HGF": "\u246E", "FGM": "\u2642", "FGF": "\u2640", "Terminator": "\xff"}
+    table = []
+    for tok in re.finditer(r"'(\\.|[^'\\])'|\b([A-Z][A-Za-z]*)\b", m.group(1)):
+        if tok.group(1) is not None:
+            ch = tok.group(1)
+            table.append(ch[1] if ch.startswith("\\") else ch)
+        elif tok.group(2) in named:
+            table.append(named[tok.group(2)])
+        else:
+            die(f"StringConverter3.{name}: unknown entry {tok.group(2)}")
+    if len(table) != 256:
+        die(f"StringConverter3.{name} has {len(table)} entries")
+    return table
+
+
+def transfer_glyphs34(text, language, g3_en, g3_jp):
+    """StringConverter345.TransferGlyphs34 for a decoded name: Pal Park reads Gen III
+    glyphs 0x01-0xA0 and 0xB7 with the Japanese table whatever the language."""
+    if language == 1:
+        return text
+    out = []
+    for c in text:
+        glyph = g3_en.index(c) if c in g3_en and c != "\u201C" else 0xFF
+        out.append(g3_jp[glyph] if 0x01 <= glyph <= 0xA0 or glyph == 0xB7 else c)
+    return "".join(out)
+
+
+def trade_names(t, lists):
+    """A trade's nickname and OT for LanguageID 0..8 (EncounterUtil.GetNamesForLanguage);
+    nicknames are empty when the trade's nickname is not fixed."""
+    names = lists[t["names"]]
+    if t["name_index"] >= 0:
+        half = len(names[1]) >> 1
+        idx = t["name_index"]
+        nick = [n[idx] if idx < len(n) else "" for n in names]
+        ot = [n[idx + half] if idx + half < len(n) else "" for n in names]
+    else:
+        nick = [""] * len(names)
+        ot = list(names)
+    if len(nick) != 9 or len(ot) != 9:
+        die("trade name lists must cover LanguageID 0..8")
+    if not t["fixed_nickname"]:
+        nick = [""] * 9
+    return nick, ot
 
 
 # --------------------------------------------------------------------------- main
@@ -450,12 +595,29 @@ def generate(pkhex):
         "Encounters5BW.cs": core / "Legality/Encounters/Data/Gen5/Encounters5BW.cs",
         "Encounters5B2W2.cs": core / "Legality/Encounters/Data/Gen5/Encounters5B2W2.cs",
         "Encounters5DR.cs": core / "Legality/Encounters/Data/Gen5/Encounters5DR.cs",
+        "EncounterStatic5N.cs": core / "Legality/Encounters/Templates/Gen5/EncounterStatic5N.cs",
         "MoveInfo5.cs": core / "Moves/MoveInfo5.cs",
         "PersonalInfo5BW.cs": core / "PersonalInfo/Info/PersonalInfo5BW.cs",
         "PersonalInfo5B2W2.cs": core / "PersonalInfo/Info/PersonalInfo5B2W2.cs",
         "Move.cs": core / "Game/Enums/Move.cs",
         "ItemStorage5.cs": core / "Items/ItemStorage5.cs",
+        "badwords_switch": res / "text/badwords/badwords_switch.txt",
+        "badwords_3ds": res / "text/badwords/badwords_3ds.txt",
+        "badwords_gen5": res / "text/badwords/badwords_gen5.txt",
     }
+    for lang in TRADE_LANGS:
+        for kind in ("tradebw", "tradeb2w2"):
+            inputs[f"{kind}_{LANG_CODES[lang]}"] = res / f"legality/gen5/text_{kind}_{LANG_CODES[lang]}.txt"
+    for lang in SPECIES_LANGS:
+        code = LANG_CODES[lang]
+        inputs[f"species_{code}"] = res / f"text/other/{code}/text_Species_{code}.txt"
+    for folder, kind, langs in TRANSFER_TRADE_TEXT:
+        for lang in langs:
+            inputs[f"{kind}_{LANG_CODES[lang]}"] = res / f"legality/{folder}/text_{kind}_{LANG_CODES[lang]}.txt"
+    inputs["Encounters3XD.cs"] = core / "Legality/Encounters/Data/Gen3/Encounters3XD.cs"
+    inputs["EncounterTrade4RanchGift.cs"] = core / "Legality/Encounters/Templates/Gen4/EncounterTrade4RanchGift.cs"
+    inputs["StringConverter3.cs"] = core / "PKM/Strings/StringConverter3.cs"
+    inputs["StringConverter345.cs"] = core / "PKM/Strings/StringConverter345.cs"
     for key, path in inputs.items():
         if not path.is_file():
             die(f"missing PKHeX input {key}: {path}")
@@ -506,6 +668,85 @@ def generate(pkhex):
     trades += listed(parse_trades(b2_src, "TradeGift_B2W2", False, consts), "B2W2")
     trades += listed(parse_trades(b2_src, "TradeGift_B2", False, consts), "B2")
     trades += listed(parse_trades(b2_src, "TradeGift_W2", False, consts), "W2")
+
+    # EncounterUtil.GetLanguageStrings(file, 8): LanguageID 0 and 6 have no list.
+    def lang_lists(kind):
+        lists = [[] for _ in range(9)]
+        for lang in TRADE_LANGS:
+            lists[lang] = read_lines(inputs[f"{kind}_{LANG_CODES[lang]}"])
+        return lists
+    trade_lists = {
+        1: {"TradeNames": lang_lists("tradebw")},
+        0: {"TradeNames": lang_lists("tradeb2w2"),
+            "TradeOT_B2W2_F": cs_string_array(b2_src, "TradeOT_B2W2_F"),
+            "TradeOT_B2W2_M": cs_string_array(b2_src, "TradeOT_B2W2_M")},
+    }
+    trade_text = []
+    for t in trades:
+        lists = trade_lists[t["bw"]]
+        if t["names"] not in lists:
+            die(f"unknown trade name list {t['names']}")
+        trade_text.append(trade_names(t, lists))
+    species_names = []
+    for lang in SPECIES_LANGS:
+        names = read_lines(inputs[f"species_{LANG_CODES[lang]}"])
+        if len(names) != SPECIES_NAME_COUNT:
+            die(f"species list {LANG_CODES[lang]} has {len(names)} names")
+        species_names.append(names)
+    # EncounterStatic5N.FixedBall: one of N's Pokemon (Zorua) is a gift in a Poke Ball;
+    # the others are caught in any ball.
+    m = re.search(r"FixedBall\s*=>\s*Species\s*==\s*\(int\)Core\.Species\.(\w+)\s*\?\s*(Ball\.\w+)\s*:\s*Ball\.None;",
+                  inputs["EncounterStatic5N.cs"].read_text(encoding="utf-8"))
+    if not m or m.group(2) not in BALL or m.group(1) not in species_names[SPECIES_LANGS.index(2)]:
+        die("EncounterStatic5N.FixedBall has an unexpected form")
+    n_ball_species = species_names[SPECIES_LANGS.index(2)].index(m.group(1))
+    fixed = [s for s in statics if s["kind"] == K_N and s["species"] == n_ball_species]
+    if not fixed:
+        die("EncounterStatic5N.FixedBall names a species N does not have")
+    for s in fixed:
+        s["ball"] = BALL[m.group(2)]
+    # Gen III/IV in-game trade names (nicknames and OTs of every language) and the XD
+    # trade's fixed nickname: a transferred Pokemon may carry one of them.
+    # Pal Park re-reads some Gen III glyphs as Japanese (TransferGlyphs34) and Poke
+    # Transfer turns glyphs Gen V lacks into '?' (TransferGlyphs45); both forms are kept.
+    sc3 = inputs["StringConverter3.cs"].read_text(encoding="utf-8")
+    g3_en, g3_jp = g3_table(sc3, "G3_EN"), g3_table(sc3, "G3_JP")
+    m45 = re.search(r'InvalidSearchVal45\s*=\s*SearchValues\.Create\("([^"\\]*)"\)',
+                    inputs["StringConverter345.cs"].read_text(encoding="utf-8"))
+    if not m45:
+        die("StringConverter345.InvalidSearchVal45 not found")
+    invalid45 = set(m45.group(1))
+    def transfer_glyphs45(text):
+        return "".join("?" if c in invalid45 else c for c in text)
+    zaprong = cs_string_array(inputs["Encounters3XD.cs"].read_text(encoding="utf-8"), "Zaprong")
+    gen3_names = {(lang, name) for lang, name in enumerate(zaprong)}
+    for folder, kind, langs in TRANSFER_TRADE_TEXT:
+        if folder == "gen3":
+            for lang in langs:
+                gen3_names.update((lang, name) for name in read_lines(inputs[f"{kind}_{LANG_CODES[lang]}"]))
+    fixed34 = set()
+    for lang, name in gen3_names:
+        fixed34.update((name, transfer_glyphs34(name, lang, g3_en, g3_jp)))
+    ranch = re.search(r"GetTrainerName\(int language\)\s*=>\s*language\s+switch\s*\{(.*?)\};",
+                      strip_comments(inputs["EncounterTrade4RanchGift.cs"].read_text(encoding="utf-8")), re.S)
+    if not ranch:
+        die("EncounterTrade4RanchGift.GetTrainerName not found")
+    ranch_names = re.findall(r'\b\d+\s*=>\s*"([^"\\]*)"', ranch.group(1))
+    if len(ranch_names) != 6:
+        die(f"expected 6 My Pokemon Ranch OT names, found {len(ranch_names)}")
+    fixed34.update(ranch_names)
+    for folder, kind, langs in TRANSFER_TRADE_TEXT:
+        if folder == "gen4":
+            for lang in langs:
+                fixed34.update(read_lines(inputs[f"{kind}_{LANG_CODES[lang]}"]))
+    fixed34.update([transfer_glyphs45(name) for name in fixed34])
+    fixed34.discard("")
+    fixed34 = sorted(fixed34, key=lambda s: s.encode("utf-16-be"))
+    if any(ord(ch) > 0xFFFF for s in fixed34 for ch in s):
+        die("Gen III/IV trade names must be BMP text")
+    bad_switch = read_patterns(inputs["badwords_switch"])
+    bad_3ds = read_patterns(inputs["badwords_3ds"])
+    bad_gen5 = read_lines(inputs["badwords_gen5"])
 
     move_pp, machines, type_tutors, tutors = parse_move_tables(
         inputs["MoveInfo5.cs"].read_text(encoding="utf-8"),
@@ -601,6 +842,31 @@ def generate(pkhex):
          f"inline constexpr std::size_t kHeldItemCount = {len(held)};",
          "extern const uint16_t kHeldItems[]; // ascending",
          "",
+         "/// In-game trade names by PKHeX LanguageID 0..8 (rows match kTrades). A nickname is",
+         "/// empty when the trade's nickname is not fixed.",
+         "extern const char16_t* const kTradeNicknames[][9];",
+         "extern const char16_t* const kTradeTrainers[][9];",
+         "",
+         "/// Species names (SpeciesName.SpeciesLang) for kSpeciesNameLanguages; [0] is the egg name.",
+         f"inline constexpr std::size_t kSpeciesNameCount = {SPECIES_NAME_COUNT};",
+         f"inline constexpr std::size_t kSpeciesLanguageCount = {len(SPECIES_LANGS)};",
+         f"inline constexpr uint8_t kSpeciesNameLanguages[kSpeciesLanguageCount] = {{{', '.join(str(x) for x in SPECIES_LANGS)}}};",
+         "extern const char16_t* const kSpeciesNames[kSpeciesLanguageCount][kSpeciesNameCount];",
+         "",
+         "/// Every Gen III/IV in-game trade nickname and OT name (all languages), the XD trade's",
+         "/// fixed nickname and the My Pokemon Ranch OT names, sorted by UTF-16 code units.",
+         f"inline constexpr std::size_t kTransferTradeNameCount = {len(fixed34)};",
+         "extern const char16_t* const kTransferTradeNames[];",
+         "",
+         "/// PKHeX word filters: the Switch and 3DS regular expressions, lower-cased as",
+         "/// WordFilter.LoadPatterns does, and the Gen V dictionary (whole words).",
+         f"inline constexpr std::size_t kBadWordsSwitchCount = {len(bad_switch)};",
+         "extern const char16_t* const kBadWordsSwitch[];",
+         f"inline constexpr std::size_t kBadWords3DSCount = {len(bad_3ds)};",
+         "extern const char16_t* const kBadWords3DS[];",
+         f"inline constexpr std::size_t kBadWordsGen5Count = {len(bad_gen5)};",
+         "extern const char16_t* const kBadWordsGen5[];",
+         "",
          "/// SHA-256 of every PKHeX input, so a regenerated table can be traced to its source.",
          "struct SourcePin { const char* path; const char* sha256; };",
          f"inline constexpr std::size_t kSourcePinCount = {len(inputs)};",
@@ -645,6 +911,19 @@ def generate(pkhex):
         c.append("    {" + ", ".join(str(m) for m in t) + "},")
     c += ["};", ""]
     c += ["const uint16_t kHeldItems[] = {", arr(held), "};", ""]
+    c += ["const char16_t* const kTradeNicknames[][9] = {"]
+    c += ["    {" + ", ".join(u16_literal(n) for n in nick) + "}," for nick, _ in trade_text]
+    c += ["};", "const char16_t* const kTradeTrainers[][9] = {"]
+    c += ["    {" + ", ".join(u16_literal(n) for n in ot) + "}," for _, ot in trade_text]
+    c += ["};", ""]
+    c += ["const char16_t* const kSpeciesNames[kSpeciesLanguageCount][kSpeciesNameCount] = {"]
+    for lang, names in zip(SPECIES_LANGS, species_names):
+        c += [f"  {{ // {LANG_CODES[lang]}", string_rows(names), "  },"]
+    c += ["};", ""]
+    c += ["const char16_t* const kTransferTradeNames[] = {", string_rows(fixed34), "};", ""]
+    c += ["const char16_t* const kBadWordsSwitch[] = {", string_rows(bad_switch, 4), "};", ""]
+    c += ["const char16_t* const kBadWords3DS[] = {", string_rows(bad_3ds, 4), "};", ""]
+    c += ["const char16_t* const kBadWordsGen5[] = {", string_rows(bad_gen5, 8), "};", ""]
     c += ["const SourcePin kSourcePins[] = {"]
     for key, path in inputs.items():
         rel = path.relative_to(pkhex).as_posix()
