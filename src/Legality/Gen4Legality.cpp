@@ -231,7 +231,7 @@ std::string moveFailText(std::size_t slot, const MoveResult& m, uint16_t move) {
 // ======================================================================= analyzer
 class Analyzer {
 public:
-    explicit Analyzer(const Pk4& pk) : pk_(pk) {}
+    Analyzer(const Pk4& pk, Table cart) : pk_(pk), cart_(cart) {}
     Report run();
 
 private:
@@ -243,7 +243,9 @@ private:
     Search search_{};
     std::vector<Check> parse_;
     uint8_t level_ = 1;     // CurrentLevel (HGSS growth of the current species/form)
-    Personal pi_{};         // PersonalTable.HGSS.GetFormEntry(species, form)
+    Table cart_ = Table::HGSS; // personal table of the game whose save holds the record
+    Personal pi_{};         // LegalityAnalysis.PersonalInfo: cart table's GetFormEntry(species, form)
+    Personal piEntity_{};   // PKM.PersonalInfo: PersonalTable.HGSS.GetFormEntry(species, form)
     bool gtsSanitized_ = false;
     bool encounterSearched_ = false;
 
@@ -806,7 +808,7 @@ void Analyzer::verifyForm() {
 // ----------------------------------------------------------------------- misc
 void Analyzer::verifyMisc() {
     if (pk_.isEgg) {
-        if (pk_.friendship > pi_.hatchCycles()) invalid(CheckIdentifier::Egg, "Egg hatch counter is above the species' maximum");
+        if (pk_.friendship > piEntity_.hatchCycles()) invalid(CheckIdentifier::Egg, "Egg hatch counter is above the species' maximum");
         bool contest = false;
         for (uint8_t c : pk_.contest) if (c != 0) contest = true;
         if (contest) invalid(CheckIdentifier::Egg, "Eggs cannot have contest stats");
@@ -993,7 +995,10 @@ Report Analyzer::run() {
     Report r;
     r.coverage.structure = CoverageLevel::Complete;
     level_ = levelFromExp(pk_.exp, personal(Table::HGSS, pk_.species, pk_.form).expGrowth());
-    pi_ = personal(Table::HGSS, pk_.species, pk_.form);
+    // PKHeX analyzes a slot of a save with that game's personal table (form count,
+    // abilities and gender ratio differ: D/P lack the Platinum forms).
+    pi_ = personal(cart_, pk_.species, pk_.form);
+    piEntity_ = personal(Table::HGSS, pk_.species, pk_.form);
 
     findVerifiedEncounter();
 
@@ -1045,7 +1050,6 @@ Report Analyzer::run() {
 } // namespace Gen4
 
 Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId) {
-    (void)exactSourceGameId;
     Report r;
     r.coverage.structure = CoverageLevel::Complete;
     Gen4::Pk4 pk;
@@ -1088,7 +1092,10 @@ Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSour
                                  CheckIdentifier::SourceGame});
         return r;
     }
-    Gen4::Analyzer a(pk);
+    Gen4::Table cart = Gen4::Table::HGSS;
+    if (exactSourceGameId == "diamond_nds" || exactSourceGameId == "pearl_nds") cart = Gen4::Table::DP;
+    else if (exactSourceGameId == "platinum_nds") cart = Gen4::Table::Pt;
+    Gen4::Analyzer a(pk, cart);
     return a.run();
 }
 

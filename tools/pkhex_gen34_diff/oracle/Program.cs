@@ -176,7 +176,7 @@ void Run(int gen, GameVersion[] versions, ushort maxSpecies)
 void EmitGrown(int gen, GameVersion cart, PKM made)
 {
     made.RefreshChecksum();
-    if (!new LegalityAnalysis(made).Valid)
+    if (!Analyze(made, cart).Valid)
         return; // only legitimate records are grown
     PK4 result;
     string baseId, mutId;
@@ -202,7 +202,7 @@ void EmitGrown(int gen, GameVersion cart, PKM made)
 void EmitKept(string baseId, string mutId, GameVersion cart, PK4 result)
 {
     result.RefreshChecksum();
-    if (!new LegalityAnalysis(result).Valid)
+    if (!Analyze(result, cart).Valid)
         return; // keep only grown records PKHeX accepts
     Emit($"{baseId}{count++}", cart, result);
     for (int m = 0; m < mutations; m++)
@@ -405,7 +405,7 @@ static void SetLevel(PK4 pk, int level, Random rng)
 static void Emit(string id, GameVersion cart, PKM pk)
 {
     pk.RefreshChecksum();
-    var la = new LegalityAnalysis(pk);
+    var la = Analyze(pk, cart);
     var enc = la.EncounterMatch;
     var invalid = la.Results.Where(r => !r.Valid).Select(r => $"{r.Identifier}:{r.Result}")
         .Concat(la.Info.Moves.Select((m, i) => (m, i)).Where(x => !x.m.Valid)
@@ -415,6 +415,17 @@ static void Emit(string id, GameVersion cart, PKM pk)
     var hex = Convert.ToHexString(pk.Data[..len]);
     Console.WriteLine($"{id} {cart} {hex} {(la.Valid ? "VALID" : "INVALID")} {enc.GetType().Name}:{enc.Species} ; {string.Join(' ', invalid)}");
 }
+
+// A PK4 is judged as PKHeX judges a slot of that game's save: with the save's personal
+// table (D/P lack the Platinum forms such as Rotom's appliances and Giratina-Origin).
+static LegalityAnalysis Analyze(PKM pk, GameVersion cart) => pk is PK4
+    ? new LegalityAnalysis(pk, cart switch
+    {
+        GameVersion.D or GameVersion.P => PersonalTable.DP,
+        GameVersion.Pt => PersonalTable.Pt,
+        _ => PersonalTable.HGSS,
+    })
+    : new LegalityAnalysis(pk);
 
 static string Mutate3(PK3 pk, Random rng)
 {
