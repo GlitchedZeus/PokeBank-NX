@@ -46,7 +46,7 @@ Invalid (the rest are Incomplete); certifies = whether the app can say "No probl
 | 14 | Platinum | same | 3,951 | 0 | 31% | no | Safe, partial |
 | 15 | HeartGold | same | 5,512 | 0 | 32% | no | Safe, partial |
 | 16 | SoulSilver | same | 5,416 | 0 | 32% | no | Safe, partial |
-| 17 | Black | `Legality::analyzePk5` | ~19,000 across B/W/B2/W2 | 0 (1 deliberate, below) | 99.9% | no (OT/nickname text pending) | Strong, text gap |
+| 17 | Black | `Legality::analyzePk5` | ~19,000 across B/W/B2/W2 | 0 (the one deliberate case is now a Warning, below) | 99.9% | no (OT/nickname text pending) | Strong, text gap |
 | 18 | White | same | same | same | same | same | same |
 | 19 | Black 2 | same | same | same | same | same | same |
 | 20 | White 2 | same | same | same | same | same | same |
@@ -69,9 +69,13 @@ Gen III/IV counts are from `tools/pkhex_gen34_diff/run.sh PKHeX 1 3`; Gen V from
 
 ## Deliberate differences from PKHeX
 
+Each one is reviewed against original-game evidence in
+[PKHEX_DISAGREEMENT_REVIEW.md](PKHEX_DISAGREEMENT_REVIEW.md).
+
 - Gen I/II: listed in [GB_LEGALITY_VERDICTS.md](GB_LEGALITY_VERDICTS.md).
 - Gen V: a hidden-ability-only template with the hidden-ability flag but a slot 1/2
-  ability is Invalid here; PKHeX accepts it. See
+  ability was Invalid here while PKHeX accepts it. No original-game evidence rules it
+  out, so it is now a Warning (Incomplete). See
   [GEN5_PKHEX_RULE_INVENTORY.md](GEN5_PKHEX_RULE_INVENTORY.md).
 
 ## False Invalids fixed in this campaign (found by the differentials)

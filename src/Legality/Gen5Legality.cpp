@@ -705,6 +705,17 @@ void Gen5Analyzer::abilities() {
     const uint8_t number = abilityNumber(p_);
     const uint8_t expected = number == 4 ? ah : number == 2 ? a1 : a0;
     if (p_.ability == expected || (number != 4 && a0 == a1 && p_.ability == a0)) return;
+    if (number == 4 && match_.ability == OnlyHidden) {
+        // A hidden-ability-only template (Entree Forest, Hidden Grotto, Dream Radar...),
+        // evolved since. No Gen V game is known to keep the flag with a slot 1/2 ability,
+        // but nothing from the games proves it (no Gen V decompilation), and PKHeX accepts
+        // the record when it matches the current species' template (AbilityVerifier
+        // VerifyFixedAbility). Unproven, so a Warning: docs/legality/PKHEX_DISAGREEMENT_REVIEW.md.
+        a_.report.coverage.internal = CoverageLevel::Partial;
+        a_.warn(CheckIdentifier::Ability, "Hidden ability flag is set but the ability is not the hidden ability "
+                                          "(not shown impossible in Gen V; not treated as Invalid)");
+        return;
+    }
     a_.invalid(CheckIdentifier::Ability, number == 4
         ? "Hidden ability flag is set but the ability is not the hidden ability"
         : "Ability does not match the PID's ability slot");

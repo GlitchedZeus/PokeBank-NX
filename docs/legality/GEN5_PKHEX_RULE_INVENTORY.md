@@ -899,17 +899,22 @@ QUIRKS TO DECIDE ON:
 Measured with `tools/pkhex_gen5_diff/run.sh` (every Gen V encounter PKHeX can
 build, plus single-field mutations).
 
-Deliberately stricter than PKHeX:
-
-- **Hidden-ability flag with a non-hidden ability.** For a template that only
-  allows the hidden ability (Entree Forest / Dream World), PKHeX's
-  `VerifyFixedAbility` accepts the record when `AbilityNumber == 4`, without
-  checking the stored ability is the species' hidden ability. No Gen V game
-  can set the flag and keep a slot 1/2 ability (there is no Ability Capsule
-  before Gen VI), so PokeBank NX reports Invalid. run.sh counts these
-  separately instead of failing on them.
+Deliberately stricter than PKHeX: nothing. run.sh fails on every record PKHeX
+accepts and PokeBank NX reports Invalid; it has no allow-list.
 
 Known gaps (reported as Incomplete, never Invalid):
+
+- **Hidden-ability flag with a slot 1/2 ability on a hidden-ability-only
+  template** (Entree Forest / Dream World, Hidden Grotto, Dream Radar, hidden
+  ability statics and trades) that the Pokemon has evolved from. This used to
+  be Invalid. PKHeX accepts such a record when it matches the current species'
+  template (`VerifyFixedAbility` returns VALID on `AbilityNumber == 4` alone,
+  `AbilityVerifier.cs:225`), and no original-game evidence shows Gen V cannot
+  produce it: there is no Gen V decompilation, and the absence of an Ability
+  Capsule before Gen VI is a secondary source. It is now a Warning; see
+  [PKHEX_DISAGREEMENT_REVIEW.md](PKHEX_DISAGREEMENT_REVIEW.md). Bred Pokemon
+  with the flag and a slot 1/2 ability stay Invalid, as in PKHeX
+  (`VerifyAbility5` → `CheckMatch` → `GetPIDAbilityMatch`).
 
 - OT and nickname text of in-game trades and event cards, and nicknames that
   do not match the species name in the record's language when it may have

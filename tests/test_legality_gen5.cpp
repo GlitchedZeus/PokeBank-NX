@@ -85,6 +85,11 @@ void fail(const std::string& what, const Legality::Report& r) {
     for (const auto& i : r.issues) std::cerr << "    " << static_cast<int>(i.severity) << " " << i.text << "\n";
 }
 
+bool hasText(const Legality::Report& r, Legality::Severity s, const std::string& text) {
+    return std::any_of(r.issues.begin(), r.issues.end(),
+                       [&](const auto& i) { return i.severity == s && i.text.find(text) != std::string::npos; });
+}
+
 bool has(const Legality::Report& r, Legality::Severity s) {
     return std::any_of(r.issues.begin(), r.issues.end(), [s](const auto& i) { return i.severity == s; });
 }
@@ -174,6 +179,35 @@ int main() {
         r = Legality::analyzePk5(pk, {.encrypted = false});
         if (has(r, Severity::Invalid) || !has(r, Severity::Warning)) fail("party level: expected a Warning", r);
         checked += 4;
+    }
+
+    // Hidden-ability flag with a slot 1/2 ability (docs/legality/PKHEX_DISAGREEMENT_REVIEW.md).
+    // m9008-ability from the oracle's `generate 1 4`: Scizor matching an Entree Forest
+    // (hidden-ability-only) template of Scyther, flag set, Technician instead of Light Metal.
+    // PKHeX: VALID (EncounterStatic5Entree:212, Ability:AbilityFlag). No original-game
+    // evidence shows Gen V cannot produce it, so it is a Warning, never Invalid.
+    {
+        const std::string flagText = "Hidden ability flag is set but the ability is not the hidden ability";
+        const auto scizor = fromHex("EDB39CC40000B7AFD40000004AFE1CB4E80300004665000200000000000000000000000000000000D3000000000000001900000000000000FEE4163B0000000000140100000000005300630069007A006F007200FFFF000000000000000000150000000000000000540065007300740065007200FFFF00000000001A0A0F00004B0000190A000000");
+        auto r = Legality::analyzePk5(scizor, {.encrypted = false});
+        if (has(r, Severity::Invalid) || !hasText(r, Severity::Warning, flagText) || r.verdict() != Verdict::Incomplete)
+            fail("hidden-ability flag on an evolved hidden-ability-only template: expected a Warning, no Invalid", r);
+        if (!sameReport(r, Legality::analyzePk5(PokeVault::Integration::Gen5::Crypto::encryptCandidate(scizor))))
+            fail("hidden-ability flag: encrypted form differs", r);
+        // The same Scizor with its hidden ability (Light Metal, 135): nothing to report.
+        auto hidden = scizor;
+        hidden[0x15] = 135;
+        refreshChecksum(hidden);
+        r = Legality::analyzePk5(hidden, {.encrypted = false});
+        if (has(r, Severity::Invalid) || has(r, Severity::Warning))
+            fail("hidden-ability flag with the hidden ability: expected no problems", r);
+        // m14877-ability: a Relicanth egg (EncounterEgg5:369) with the flag and Swift Swim.
+        // PKHeX: INVALID (Ability:AbilityMismatchPID). Not a disagreement; stays Invalid.
+        const auto egg = fromHex("2AEDF4DF0000AB6471010000CB5A364200000000782100020000000000000000000000000000000021006A0000000000231E000000000000FEFB2F3E00000000000D010000000000520065006C006900630061006E0074006800FFFF000000150000000000000000540065007300740065007200FFFF00001A0A0F1A0A0F62EA4000000401000000");
+        r = Legality::analyzePk5(egg, {.encrypted = false});
+        if (r.verdict() != Verdict::Invalid || !hasText(r, Severity::Invalid, flagText))
+            fail("hidden-ability flag on a bred Pokemon: expected Invalid", r);
+        checked += 3;
     }
 
     // Fuzz: random bytes at every size class (both decoding paths), then single-byte
