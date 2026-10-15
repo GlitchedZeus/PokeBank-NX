@@ -24,6 +24,8 @@ struct PartyPreviewSlot {
     uint8_t nature = 0;
     uint8_t level = 0; // only the native party extension stores level
     bool shiny = false;
+    uint8_t form = 0;  // PK5 0x40 bits 3..7 (PKHeX 6501f0ab PK5.Form)
+    uint8_t gender = 2; // PK5 0x40 bits 1..2
 };
 struct GameCardReadOnlyPreview {
     std::string exactGameId;
@@ -68,7 +70,8 @@ struct GameCardReadOnlyPreview {
         if(!pk || !pk->valid() || pk->empty())return std::nullopt;
         const uint8_t level=pk->partyLevel();
         p.party[slot]={true,pk->species(),pk->heldItem(),pk->nature(),
-                       level>=1 && level<=100 ? level : uint8_t{0},pk->shiny()};
+                       level>=1 && level<=100 ? level : uint8_t{0},pk->shiny(),
+                       pk->form(),pk->gender()};
     }
     return p;
 }
@@ -118,7 +121,7 @@ enum class CardFailure : uint8_t { ChooseCopy, NoTrainerData, Relink };
     for(size_t i=0;i<preview->party.size();++i) {
         const auto& slot=preview->party[i];
         if(!slot.occupied)continue;
-        s.party[i]={slot.species,slot.level,0,slot.shiny};
+        s.party[i]={slot.species,slot.level,slot.form,slot.shiny,slot.gender};
     }
     return s;
 }

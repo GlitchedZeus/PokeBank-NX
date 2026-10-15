@@ -503,6 +503,9 @@ void ux3DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         fb.drawText(rightX + 18, contentY + 420, "Fix [!] move before Stage Add", Colors::Warning, TextStyle::Caption);
 }
 
+// The Gen I Move picker panel width used by every draw path and its drag region.
+constexpr int kGen1MovePickerW = 760;
+
 void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
     auto& state = ux2StateFor(screen);
     auto& ux3 = ux3StateFor(screen);
@@ -709,6 +712,9 @@ void ux3DrawTouchNavBar(PKSEFramebuffer& fb, const UX2State& state) {
         case UX2Mode::RemoveConfirm:
             drawNavBar(fb, {{"A", "Confirm Remove"}, {"B", "Cancel"}}); return;
         case UX2Mode::Review:
+            if (state.reviewDiscard.confirming) {
+                drawNavBar(fb, {{"B", "Cancel"}, {"Y", "Discard"}}); return;
+            }
             drawNavBar(fb, {{"Up/Down", "Browse"}, {"A", "Export Copy"}, {"Y", "Discard Staged"}, {"B", "Back"}}); return;
         case UX2Mode::Closed: return;
     }
@@ -746,8 +752,11 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
         state.pickerViewport.ensure(current, count, visible);
         const int maxFirst = TouchPickerViewport::maxFirst(count, visible);
         if (maxFirst > 0)
+            // Exactly the drawn list: the live Move picker is kGen1MovePickerW wide and centred
+            // (ux3DrawPicker list = panel x + 24, width w - 48, top y + 86).
             state.pickerScroll.updateVertical(
-                touch, 164, 162, 952, visible * 42, 42,
+                touch, (1280 - kGen1MovePickerW) / 2 + 24, (672 - 520) / 2 + 86,
+                kGen1MovePickerW - 48, visible * 42, 42,
                 state.pickerViewport.firstRow, maxFirst + 1);
         else
             state.pickerScroll.stop();
@@ -814,6 +823,9 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
         // Clone destination is not committed or focused on touch-down.
         const int slot = selectedId(1200, slots, tapped);
         if (slot >= 0) { state.cloneSlot = slot; down |= HidNpadButton_A; }
+    } else if (state.mode == UX2Mode::Review && state.reviewDiscard.confirming) {
+        // The discard confirmation is modal; only its nav-bar B/Y act.
+        state.reviewScroll.stop();
     } else if (state.mode == UX2Mode::Review) {
         const auto lines = ux3PendingLines(screen);
         const int count = static_cast<int>(lines.size());
@@ -981,9 +993,27 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         case UX2Mode::View:
         case UX2Mode::Closed: break;
     }
+    if (state.mode == UX2Mode::Review && state.reviewDiscard.confirming) {
+        // Second step of Discard Staged, drawn over the review list; nothing changes until Y.
+        screen.touchButtons.clear();
+        fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 150));
+        constexpr int cw = 760, ch = 240;
+        constexpr int cx = (1280 - cw) / 2;
+        constexpr int cy = (672 - ch) / 2;
+        ux2DrawPanel(fb, cx, cy, cw, ch);
+        fb.drawText(cx + 34, cy + 30, PokeBank::UIModel::Gen12ReviewDiscard::kTitle,
+                    Colors::Text, TextStyle::Heading);
+        fb.drawText(cx + 34, cy + 96,
+                    std::to_string(ux3PendingLines(screen).size()) +
+                        " pending Generation I change(s), Pokemon and Bag, are lost.",
+                    Colors::Text, TextStyle::Body);
+        fb.drawText(cx + 34, cy + 140,
+                    "Export Copy first to keep them. The original .srm is never written.",
+                    Colors::TextDim, TextStyle::Caption);
+    }
 
     if (state.picker != UX2Picker::None) {
-        const int pw = state.picker == UX2Picker::Species ? 1080 : 1000;
+        const int pw = state.picker == UX2Picker::Species ? 1080 : kGen1MovePickerW;
         const int ph = 520;
         ux3DrawPicker(screen, fb, (1280 - pw) / 2, (672 - ph) / 2, pw, ph);
     }

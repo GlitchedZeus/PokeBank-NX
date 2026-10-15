@@ -52,7 +52,6 @@ using Region=PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace::Region;
 // Every tap is release-confirmed by touchedButtonId(), not touch-down.
 constexpr int kGen5ActionTouchBase=77000;
 constexpr int kGen5PartyTouchBase=77400;
-constexpr int kGen5CloneTouchBase=80000;
 
 PokeVault::Legacy::Gen5ReadOnlyTrainer& nativeTrainer(TrainerViewScreen& screen) {
     return static_cast<PokeVault::Legacy::Gen5ReadOnlyTrainer&>(screen.trainer);
@@ -224,12 +223,12 @@ struct Gen5Editor {
     static constexpr const char* kHeldItemTitle = "Held Item — Generation V";
     static constexpr const char* kMovePickerTitle = "Move — Generation V";
     static constexpr const char* kMovePickerSubtitle =
-        "Valid BW/B2W2 moves • type, category, Pwr / Acc / PP • learnability not checked";
+        "Valid BW/B2W2 moves • Pwr/Acc/PP • learnability not checked";
     static constexpr const char* kMoveEditorSubtitle =
-        "Valid native BW/B2W2 move • whether this species can learn it is not evaluated";
+        "Valid native BW/B2W2 move • species learnability not checked";
     static constexpr const char* kMoveHintEditable = "A: choose a valid BW/B2W2 move";
     static constexpr const char* kMoveHintView = "Native = valid BW/B2W2 move ID";
-    static constexpr const char* kMoveLegend = "Native = valid ID; learnability not checked";
+    static constexpr const char* kMoveLegend = "Native = valid ID • learnability unchecked";
     static constexpr const char* kDataTitle = "GEN V DATA";
 
     static PokeVault::Integration::Gen5::Gen5SharedScreenState& backend(const TrainerViewScreen& screen) {
@@ -1208,6 +1207,36 @@ void drawTrainerEditor(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
 }
 } // namespace
 
+// Clone and Move Pokemon use the SAME box / slot keypads as the Gen IV Clone
+// action (Gen I-IV share them), defaulting to the first verified empty slot.
+// Cancelling either keypad stages nothing.
+void stageCloneOrMoveByKeypad(TrainerViewScreen& screen) {
+    auto& trainer=nativeTrainer(screen);
+    auto& state=trainer.sharedScreen();
+    auto& staged=trainer.stagedPokemon();
+    const bool move=state.moveDestination();
+    const int first=static_cast<int>(state.cloneDestinationIndex());
+    const auto box=Utils::promptNumber(move?"Move to Gen V Box":"Clone to Gen V Box",
+                                       first/30+1,1,24);
+    if(!box.accepted) {state.cancelBoxAction();return;}
+    const auto slot=Utils::promptNumber(move?"Move to Slot":"Clone to Slot",first%30+1,1,30);
+    if(!slot.accepted) {state.cancelBoxAction();return;}
+    const int target=(box.value-1)*30+(slot.value-1);
+    state.moveCloneCursor(target-static_cast<int>(state.cloneDestinationIndex()));
+    std::string error;
+    if(static_cast<int>(state.cloneDestinationIndex())!=target ||
+       !state.confirmClone(staged,[&](std::string& why) {
+           return trainer.refreshStagedPokemonPresentation(why);
+       },error)) {
+        state.cancelBoxAction();
+        screen.postStatus(error.empty()?"Box "+std::to_string(box.value)+" / Slot "+
+            std::to_string(slot.value)+" is not an empty verified Gen V box slot":error,320);
+        return;
+    }
+    screen.postStatus(move?"Gen V Pokemon moved in the staged copy; source SAV5 unchanged"
+                          :"Gen V cloned to empty staged box slot; source SAV5 unchanged",260);
+}
+
 bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                  int stickX,int stickY,const TouchInput& touch) {
     if(!isGen5Source(screen))return false;
@@ -1310,11 +1339,7 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             state.moveAction(row-state.actionRow(),staged);
             down|=HidNpadButton_A;
         }
-    } else if(state.surface()==Surface::CloneDestination &&
-              tap>=kGen5CloneTouchBase && tap<kGen5CloneTouchBase+720) {
-        state.moveCloneCursor(tap-kGen5CloneTouchBase-
-                              static_cast<int>(state.cloneDestinationIndex()));
-        down|=HidNpadButton_A;
+
     } else if(state.surface()==Surface::Browse &&
               screen.selectedMode==TrainerViewScreen::ViewMode::Party &&
               tap>=kGen5PartyTouchBase &&
@@ -1381,27 +1406,9 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                         !beginSharedCreate(screen,error)) {
                     state.cancelBoxAction();
                     screen.postStatus(error,360);
-                }
+                } else if(state.surface()==Surface::CloneDestination)
+                    stageCloneOrMoveByKeypad(screen);
                 screen.controllerNavigation.reset();
-            }
-            return true;
-        case Surface::CloneDestination:
-            if(keys&HidNpadButton_Up)state.moveCloneCursor(-1);
-            if(keys&HidNpadButton_Down)state.moveCloneCursor(1);
-            if(keys&HidNpadButton_Left)state.moveCloneCursor(-6);
-            if(keys&HidNpadButton_Right)state.moveCloneCursor(6);
-            if(keys&HidNpadButton_ZL)state.moveCloneCursor(-30);
-            if(keys&HidNpadButton_ZR)state.moveCloneCursor(30);
-            if(keys&HidNpadButton_B)state.cancelBoxAction();
-            else if(keys&HidNpadButton_A) {
-                std::string error;
-                if(!state.confirmClone(staged,[&](std::string& why) {
-                    return trainer.refreshStagedPokemonPresentation(why);
-                },error))
-                    screen.postStatus(error,320);
-                else screen.postStatus(state.moveDestination()
-                    ? "Gen V Pokemon moved in the staged copy; source SAV5 unchanged"
-                    : "Gen V cloned to empty staged box slot; source SAV5 unchanged",260);
             }
             return true;
         case Surface::ConfirmCreateBox:
@@ -1421,7 +1428,7 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                 },error))
                     screen.postStatus(error,320);
                 else screen.postStatus(
-                    "Gen V box slot removed in app memory only; source SAV5 unchanged",260);
+                    "Generation V Release staged; source SAV5 unchanged",300);
             }
             return true;
         case Surface::Review:
@@ -1497,6 +1504,9 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             else if(keys&HidNpadButton_Y) {
                 if(state.confirmDiscardAndExit(staged))screen.goBack=true;
             }
+            return true;
+        case Surface::CloneDestination:
+            state.cancelBoxAction(); // only transient while the keypads are open
             return true;
         case Surface::View:
         case Surface::Edit:
@@ -1731,47 +1741,6 @@ void drawReview(TrainerViewScreen& screen,PKSEFramebuffer& fb,
     drawNavBar(fb,{{"L/R","Review Pages"},{"X","Export Working Copy"},
                    {"Y","Discard All..."},{"B","Back"}});
 }
-void drawCloneDestination(TrainerViewScreen& screen,PKSEFramebuffer& fb,
-                          const ScreenState& state,
-                          const PokeVault::Integration::Gen5::Gen5StagedPokemonWorkspace& ws) {
-    dimShared(screen,fb);
-    constexpr int w=820,h=555;
-    const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-kNavBarH-h)/2;
-    fb.drawFilledRoundedRect(x,y,w,h,16,Colors::Panel);
-    fb.drawRoundedRect(x,y,w,h,16,Colors::Border,1);
-    const bool move=state.moveDestination();
-    fb.drawText(x+24,y+18,move?"Move Pokemon - Choose Empty Box Slot"
-                              :"Clone Pokemon - Choose Empty Box Slot",
-                Colors::Text,TextStyle::Heading);
-    fb.drawText(x+24,y+56,move
-        ? "Staged exact copy to the empty slot, then the original slot is cleared"
-        : "Original PK5 is unchanged; only a validated empty box can be selected",
-        Colors::Accent,TextStyle::Caption);
-    const auto visible=PokeBank::UIModel::SharedPokemonEditor::scrollWindow(
-        size_t{720},9,state.cloneDestinationIndex());
-    for(size_t i=0;i<visible.count;++i) {
-        const size_t index=visible.first+i;
-        const size_t box=index/30,slot=index%30;
-        const bool allowed=ws.emptyCloneDestination(box,slot);
-        const int yy=y+100+static_cast<int>(i)*44;
-        if(index==state.cloneDestinationIndex())
-            fb.drawSelectionHighlight(x+12,yy,w-24,40);
-        if(allowed)
-            screen.touchButtons.push_back({kGen5CloneTouchBase+static_cast<int>(index),
-                x+14,yy,w-28,40});
-        fb.drawText(x+28,yy+9,
-            "Box "+std::to_string(box+1)+" / Slot "+std::to_string(slot+1),
-            allowed?Colors::Text:Colors::TextDim,TextStyle::Body);
-        fb.drawText(x+w-180,yy+11,allowed?"Empty":"Unavailable",
-            allowed?Colors::Accent:Colors::TextDim,TextStyle::Caption);
-    }
-    fb.drawText(x+24,y+h-40,move
-        ? "A stages the move in memory only; B cancels without any change"
-        : "A clones to empty slot in memory only; B cancels without any change",
-        Colors::TextDim,TextStyle::Caption);
-    drawNavBar(fb,{{"D-pad/Stick","Browse"},{"ZL/ZR","Box"},
-                   {"A",move?"Stage Move":"Stage Clone"},{"B","Cancel"}});
-}
 void drawDecision(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                   std::string title,std::string message,
                   const std::vector<ControllerHint>& keys) {
@@ -1864,7 +1833,8 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     switch(state.surface()) {
         case Surface::Actions:drawActions(screen,fb,state,staged);return true;
         case Surface::CloneDestination:
-            drawCloneDestination(screen,fb,state,staged);return true;
+            // Transient while the Gen IV box / slot keypads are open.
+            dimShared(screen,fb);return true;
         case Surface::Review:drawReview(screen,fb,state,staged);return true;
         case Surface::Edit:
         case Surface::View:
@@ -1877,9 +1847,12 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
                 {{"A","Create"},{"B","Cancel"}});
             return true;
         case Surface::ConfirmRemoveBox:
-            drawDecision(screen,fb,"Remove Boxed Pokemon From Staged Copy?",
-                "Requires Y confirmation; source SAV5 and backups stay intact.",
-                {{"Y","Stage Remove"},{"B","Cancel"}});
+            // The Gen IV Release dialog: same title, box/slot line and Y confirm.
+            drawDecision(screen,fb,"Release this Pokemon?",
+                "Box "+std::to_string(state.target().box+1)+" / Slot "+
+                    std::to_string(state.target().slot+1)+
+                    ": removed only from the app-owned staged copy.",
+                {{"Y","Confirm Release"},{"B","Cancel"}});
             return true;
         case Surface::ConfirmExport:
             drawDecision(screen,fb,"Export Verified Generation V Working Copy?",

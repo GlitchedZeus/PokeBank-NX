@@ -1,0 +1,97 @@
+name: PokeBank NX App QA NRO Audit
+
+# Thread 4 independent QA: run tools/qa/nro_audit.py against the EXACT candidate NRO that CI
+# published (downloaded from its own workflow run, never rebuilt), and check it against the identity
+# that was posted for it. Produces a hardware-test record that always says NOT DEVICE TESTED.
+
+on:
+  pull_request:
+    paths:
+      - 'tools/qa/**'
+      - 'tools/verify_nro_romfs.py'
+      - 'tests/test_qa_nro_audit.py'
+      - '.github/workflows/app-qa-nro-audit.yml'
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Workflow run that published the candidate artifact'
+        required: true
+      artifact_name:
+        description: 'Artifact name'
+        required: true
+      code_sha:
+        description: 'Full code SHA the NRO must be built from'
+        required: true
+      nro_sha256:
+        description: 'Posted NRO SHA-256'
+        required: true
+      nro_size:
+        description: 'Posted NRO size in bytes'
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: pokebank-app-qa-nro-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Gen I-V hardware candidate posted on PR #307 (Thread 2), 2026-10-14.
+  RUN_ID: ${{ github.event.inputs.run_id || '38673482742' }}
+  ARTIFACT_NAME: ${{ github.event.inputs.artifact_name || 'PokeBank-NX-Gen1-5-Candidate-fa9cfcea' }}
+  CODE_SHA: ${{ github.event.inputs.code_sha || 'fa9cfceabfecd2afb79d0df935588a3e81e0a7fe' }}
+  NRO_SHA256: ${{ github.event.inputs.nro_sha256 || '57b4ec2bebf6f15cac0ee59218672fd6acc029c1e025abbe159a322aa1bccd23' }}
+  NRO_SIZE: ${{ github.event.inputs.nro_size || '175435441' }}
+
+jobs:
+  audit:
+    name: Exact-head audit of the published candidate NRO
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout the audit tooling (full history, to resolve the candidate tree SHA)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Checkout the candidate's exact source (for the romfs:/ reference scan)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CODE_SHA }}
+          path: candidate-src
+          fetch-depth: 1
+      - name: Download the published artifact from its own run (no rebuild)
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          run-id: ${{ env.RUN_ID }}
+          github-token: ${{ github.token }}
+          path: candidate-artifact
+      - name: Audit
+        run: |
+          set -euo pipefail
+          git fetch -q origin "$CODE_SHA" || true
+          find candidate-artifact -type f -printf '%s  %p\n'
+          nro="$(find candidate-artifact -type f -name '*.nro' | head -n 2)"
+          test "$(printf '%s\n' "$nro" | wc -l)" = 1 || { echo "artifact must hold exactly one .nro"; exit 1; }
+          python3 tools/qa/nro_audit.py "$nro" \
+            --expect-sha "$CODE_SHA" \
+            --expect-nro-sha256 "$NRO_SHA256" \
+            --expect-size "$NRO_SIZE" \
+            --artifact candidate-artifact \
+            --romfs candidate-src/romfs \
+            --ci-run "https://github.com/${{ github.repository }}/actions/runs/$RUN_ID" \
+            --record HARDWARE_TEST_RECORD.md | tee nro-audit.log
+          cat HARDWARE_TEST_RECORD.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the audit record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-qa-nro-audit-${{ env.RUN_ID }}
+          path: |
+            HARDWARE_TEST_RECORD.md
+            nro-audit.log
+          if-no-files-found: ignore
+          retention-days: 30

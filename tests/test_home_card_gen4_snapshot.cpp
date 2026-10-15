@@ -1,7 +1,8 @@
 // Gen IV Home card through the shared fingerprinted snapshot cache. Card
 // output is unchanged except for the provider label: the same trainer,
-// gender, dex and party species/level/form the hub always showed (no shiny
-// badge), now parsed once per save change instead of on every focus change.
+// gender, dex and party species/level/form the hub always showed, plus the
+// Gen I-V Home shiny badge and gender (campaign directive: one Home card rule),
+// parsed once per save change instead of on every focus change.
 // Synthetic DP save only: block offsets/footers mirror
 // tests/test_gen4_readonly_foundation.cpp (cited in Gen4ReadOnlySave.cpp);
 // CRC comes from the pinned PKSM-Core oracle.
@@ -58,10 +59,11 @@ void put(std::vector<std::byte>& dst, size_t off, std::span<const std::byte> src
     std::copy(src.begin(), src.end(), dst.begin() + static_cast<std::ptrdiff_t>(off));
 }
 
-std::vector<std::byte> partyEntity(uint16_t species, uint8_t level, uint8_t form) {
+std::vector<std::byte> partyEntity(uint16_t species, uint8_t level, uint8_t form,
+                                   uint32_t pid = 0x12345678u, uint8_t gender = 0) {
     const uint8_t language = static_cast<uint8_t>(Enums::LanguageID::English);
     std::vector<std::byte> d(Encryption::SIZE_PARTY4, std::byte{0});
-    wb32(d, 0, 0x12345678u);
+    wb32(d, 0, pid);
     wb16(d, 0x08, species);
     wb16(d, 0x0C, 12345);
     wb16(d, 0x0E, 54321);
@@ -70,7 +72,7 @@ std::vector<std::byte> partyEntity(uint16_t species, uint8_t level, uint8_t form
     d[0x17] = static_cast<std::byte>(language);
     wb16(d, 0x28, 33);
     d[0x30] = std::byte{35};
-    d[0x40] = static_cast<std::byte>(form << 3);
+    d[0x40] = static_cast<std::byte>((form << 3) | (gender << 1));
     put(d, 0x48, Utils::encodeGen4Field(u"MON", 11, 10, language));
     put(d, 0x68, Utils::encodeGen4Field(u"ASH", 8, 7, language));
     wb32(d, 0x88, 0);
@@ -88,7 +90,10 @@ void footer(std::vector<uint8_t>& save, size_t off, size_t len, uint32_t major, 
     w16(save, end - 2, crc);
 }
 
-struct Member { uint16_t species; uint8_t level; uint8_t form; };
+struct Member { uint16_t species; uint8_t level; uint8_t form;
+                uint32_t pid = 0x12345678u; uint8_t gender = 0; };
+// (TID 12345 ^ SID 54321 ^ PIDhi ^ PIDlo) == 0 -> shiny under the Gen IV rule.
+constexpr uint32_t kShinyPid = (static_cast<uint32_t>(0x1111u ^ 12345u ^ 54321u) << 16) | 0x1111u;
 
 std::vector<uint8_t> makeDiamond(const std::vector<Member>& party, uint8_t gender) {
     const uint8_t language = static_cast<uint8_t>(Enums::LanguageID::English);
@@ -106,7 +111,8 @@ std::vector<uint8_t> makeDiamond(const std::vector<Member>& party, uint8_t gende
         save[base + PARTY - 4] = static_cast<uint8_t>(party.size());
         for (size_t i = 0; i < party.size(); ++i)
             put(save, base + PARTY + i * Encryption::SIZE_PARTY4,
-                partyEntity(party[i].species, party[i].level, party[i].form));
+                partyEntity(party[i].species, party[i].level, party[i].form,
+                            party[i].pid, party[i].gender));
         for (size_t box = 0; box < 18; ++box)
             for (size_t slot = 0; slot < 30; ++slot)
                 put(save, st + BOX_DATA + box * BOX_STRIDE + slot * Encryption::SIZE_STORED4, blank);
@@ -129,7 +135,7 @@ void writeFile(const std::string& path, const std::vector<uint8_t>& bytes, long 
 
 void gen4CardsThroughSnapshotCache(const std::string& root) {
     const std::string save = root + "/diamond.sav";
-    writeFile(save, makeDiamond({{25, 25, 0}, {201, 9, 3}}, 1), 1000);
+    writeFile(save, makeDiamond({{25, 25, 0, kShinyPid, 1}, {201, 9, 3, 0x12345678u, 2}}, 1), 1000);
     for (std::string provider : {"DraStic", "melonDS", "RetroArch/DeSmuME", "RetroArch", "Manual"}) {
         PokeVault::Legacy::LegacySourceBindings bindings(root + "/bindings-" + S::providerIdFor(provider));
         assert(bindings.load());
@@ -152,7 +158,7 @@ void gen4CardsThroughSnapshotCache(const std::string& root) {
         assert(snapshot->current() && parses == 1);
 
         // Exactly what the hub showed before: real save trainer, gender, dex,
-        // party species/level/form, and no shiny badge for Gen IV.
+        // party species/level/form, now with the shared shiny badge and gender.
         const auto direct = G4::openAssignedSource(bindings, "user", "diamond_nds");
         assert(direct.status == G4::OpenStatus::Ready && direct.save);
         assert(snapshot->trainerName == Utils::utf16ToUtf8(direct.save->trainer().name));
@@ -167,8 +173,10 @@ void gen4CardsThroughSnapshotCache(const std::string& root) {
             assert(snapshot->party[i].species == party[i].species());
             assert(snapshot->party[i].level == party[i].partyLevel());
             assert(snapshot->party[i].form == party[i].form());
-            assert(!snapshot->party[i].shiny);
+            assert(snapshot->party[i].gender == party[i].gender());
         }
+        assert(snapshot->party[0].shiny && snapshot->party[0].gender == 1);
+        assert(!snapshot->party[1].shiny && snapshot->party[1].gender == 2);
         assert(snapshot->party[0].species == 25 && snapshot->party[0].level == 25);
         assert(snapshot->party[1].species == 201);
         assert(snapshot->party[2].species == 0);

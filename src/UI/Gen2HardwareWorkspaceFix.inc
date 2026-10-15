@@ -113,7 +113,8 @@ bool focusUnifiedTouchPoint(TrainerViewScreen& screen, int px, int py, bool acti
         }
         return false;
     }
-    if (state.itemPicker || state.confirmExit || pickerStateFor(screen).model.active()) return false;
+    if (state.itemPicker || state.confirmExit || unified.reroll.confirming ||
+        pickerStateFor(screen).model.active()) return false;
 
     // The final hardware surface is the SharedPokemonShell fullscreen layout, not the older
     // centered workspace geometry. Hit-test exactly that 1280x720 Switch surface.
@@ -170,7 +171,8 @@ void handleUnifiedTouch(TrainerViewScreen& screen, const TouchInput& touch, uint
     auto& state = stateFor(screen);
     auto& unified = unifiedStateFor(screen);
     if (state.mode == Mode::None) return;
-    if (state.itemPicker || state.confirmExit || pickerStateFor(screen).model.active()) return;
+    if (state.itemPicker || state.confirmExit || unified.reroll.confirming ||
+        pickerStateFor(screen).model.active()) return;
 
     // Keep Details/Stats/Moves focus intact until release resolves the actual
     // tap. Contact alone can still turn into a long Details-panel swipe.

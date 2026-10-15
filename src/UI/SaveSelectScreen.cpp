@@ -30,6 +30,7 @@
 #include "Integration/Gen5/Gen5GameSourceCatalog.h"
 #include "Integration/Gen5/Gen5SourceSelection.h"
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
+#include "Integration/Common/HomePartyPreview.h"
 #include "Source/HomeCardSnapshot.h"
 #include "Source/SaveProviderIdentity.h"
 #include "Utils/Keyboard.h"
@@ -1766,6 +1767,9 @@ namespace UI {
             const char* speciesName = Trainer::getSpeciesName(species);
             partyPreview[index].name = speciesName ? speciesName : "Unknown";
         };
+        auto addSlot = [&](size_t index, const PokeVault::Source::HomeCardPartySlot& slot) {
+            addParty(index, slot.species, slot.level, slot.form, slot.shiny);
+        };
 
         const std::string_view forwarderSaveGameId = legacySaveGameIdForForwarder(title.gameId);
         if (title.sourceKind == SelectedSourceKind::SwitchTitle && !forwarderSaveGameId.empty()) {
@@ -1793,7 +1797,7 @@ namespace UI {
             previewDexTotal = dex.total;
             const auto party = source.save->party();
             for (size_t i = 0; i < std::min(party.size(), partyPreview.size()); ++i)
-                addParty(i, party[i].species, 0, 0, false);
+                addSlot(i, PokeVault::Integration::HomePartyPreview::fromGen3(party[i]));
             partyPreviewStatus = std::any_of(partyPreview.begin(), partyPreview.end(),
                     [](const auto& slot) { return slot.species != 0; })
                 ? "Current save party" : "No active party Pokémon.";
@@ -1880,21 +1884,21 @@ namespace UI {
                 partyPreviewStatus = "Party preview unavailable.";
                 return;
             }
+            // The ONE Gen I-V Home party rule (Integration/Common/HomePartyPreview.h).
+            namespace Preview = PokeVault::Integration::HomePartyPreview;
             if (source.isGen1()) {
                 const auto& party = source.gen1Save->party();
                 for (size_t i = 0; i < std::min(party.size(), partyPreview.size()); ++i)
-                    addParty(i, party[i].species, party[i].level, 0, false);
+                    addSlot(i, Preview::fromGen1(party[i]));
             } else if (source.isGen2()) {
                 const auto& party = source.gen2Save->party();
                 for (size_t i = 0; i < std::min(party.size(), partyPreview.size()); ++i)
-                    addParty(i, party[i].species, party[i].level, 0, false);
+                    addSlot(i, Preview::fromGen2(party[i]));
             } else if (source.isGen3()) {
+                // Level is the stored party level (PK3 0x54), never a growth-curve guess.
                 const auto party = source.save->party();
-                // The strict Gen III read-only record intentionally exposes experience rather than
-                // a cached level. Do not invent a growth-curve conversion in presentation code:
-                // species is authoritative here and the level line stays omitted for this preview.
                 for (size_t i = 0; i < std::min(party.size(), partyPreview.size()); ++i)
-                    addParty(i, party[i].species, 0, 0, false);
+                    addSlot(i, Preview::fromGen3(party[i]));
             }
             partyPreviewStatus = std::any_of(partyPreview.begin(), partyPreview.end(),
                     [](const auto& slot) { return slot.species != 0; })
@@ -2095,6 +2099,18 @@ namespace UI {
         appExitRequested = true;
         exitRequested = true;
         return true;
+    }
+
+    const std::string& SaveSelectScreen::currentLaunchQuitNotice() {
+        const auto& d = launchDescriptor;
+        std::string key = std::to_string(static_cast<int>(d.backend)) + '|' +
+            std::to_string(static_cast<int>(d.state)) + '|' + std::to_string(d.titleId) + '|' +
+            d.providerId + '|' + d.launcherPath + '|' + d.contentPath + '|' + d.corePath;
+        if (key != launchQuitNoticeKey) {
+            launchQuitNoticeKey = std::move(key);
+            launchQuitNotice = gameLaunchQuitRouteNotice(previewGameLaunchQuitRoute(d));
+        }
+        return launchQuitNotice;
     }
 
     bool SaveSelectScreen::launchCurrentTitle() {
@@ -4546,10 +4562,48 @@ namespace UI {
                             launchActionable ? Colors::Info : Colors::PanelAlt,
                             launchActionable ? Colors::White : Colors::TextMuted);
 
+            // Caption rows under the buttons (inside the panel): +505 and +525. Before ZR hands
+            // off, a ready launch states where the emulator's Quit returns (Thread L's quit
+            // route); it takes the row of the sort-order hint and never leaves the panel.
+            const int captionW = DETAIL_W - 48;
+            const auto fitCaption = [&](std::string text) {
+                int tw = 0, th = 0;
+                fb.measureText(text, tw, th, TextStyle::Caption);
+                while (tw > captionW && text.size() > 1) {
+                    text.resize(text.size() - 2);
+                    while (!text.empty() && (static_cast<unsigned char>(text.back()) & 0xC0) == 0x80)
+                        text.pop_back(); // never split a UTF-8 sequence
+                    fb.measureText(text + "…", tw, th, TextStyle::Caption);
+                    if (tw <= captionW) return text + "…";
+                }
+                return text;
+            };
+            const std::string quitNotice =
+                launchDescriptor.ready() ? currentLaunchQuitNotice() : std::string();
             if (!hubNotice.empty()) {
                 std::string notice = hubNotice;
                 if (notice.size() > 92) notice = notice.substr(0, 91) + "…";
                 fb.drawText(DETAIL_X + 24, HUB_Y + 505, notice, Colors::Info, TextStyle::Caption);
+                if (!quitNotice.empty())
+                    fb.drawText(DETAIL_X + 24, HUB_Y + 525, fitCaption(quitNotice),
+                                Colors::TextMuted, TextStyle::Caption);
+            } else if (!quitNotice.empty()) {
+                // Word-wrap into the two caption rows.
+                std::string first = quitNotice, second;
+                int qw = 0, qh = 0;
+                fb.measureText(first, qw, qh, TextStyle::Caption);
+                while (qw > captionW) {
+                    const size_t cut = first.rfind(' ');
+                    if (cut == std::string::npos) break;
+                    second = first.substr(cut + 1) + (second.empty() ? "" : " " + second);
+                    first.resize(cut);
+                    fb.measureText(first, qw, qh, TextStyle::Caption);
+                }
+                fb.drawText(DETAIL_X + 24, HUB_Y + 505, fitCaption(first),
+                            Colors::TextMuted, TextStyle::Caption);
+                if (!second.empty())
+                    fb.drawText(DETAIL_X + 24, HUB_Y + 525, fitCaption(second),
+                                Colors::TextMuted, TextStyle::Caption);
             } else {
                 fb.drawText(DETAIL_X + 24, HUB_Y + 505,
                             std::string("Order: ") + gameSortModeLabel(),
