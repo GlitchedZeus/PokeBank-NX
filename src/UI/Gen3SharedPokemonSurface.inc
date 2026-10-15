@@ -722,7 +722,12 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
 
     if (row == 5) {
         const auto r = Utils::promptNumber("Trainer ID", p.tid, 0, 65535);
-        if (r.accepted) p.tid = static_cast<uint16_t>(r.value);
+        if (r.accepted) {
+            p.tid = static_cast<uint16_t>(r.value);
+            // Keeps shininess stable across the TID change (explicit request when it would flip).
+            state.session.setTid(p.tid);
+            state.previewValid = false;
+        }
         return;
     }
 
@@ -980,6 +985,8 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
 
     if (down & HidNpadButton_B) {
         state.pickerScroll.stop();
+        // A held direction must not keep repeating into workspace focus after the picker closes.
+        screen.controllerNavigation.reset();
         state.valuePicker = false;
         state.pickerTarget = PickerTarget::None;
         state.pickerValues.clear();
@@ -1723,7 +1730,13 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
             auto preview = state.session.mode == SessionModel::Mode::Create
                 ? staged->previewCreate(state.box, state.slot, state.session.createRequest(), state.previewError)
                 : staged->previewEdit(state.box, state.slot, state.session.editRequest(), state.previewError);
-            if (preview) state.previewRecord = *preview;
+            if (preview) {
+                state.previewRecord = *preview;
+                // Unrequested PID-linked values follow the exact preview, so toggles start from
+                // the displayed Gender/Shiny/Ability. Re-arm the cache key with the adopted draft.
+                state.session.adoptPreview(*preview);
+                state.previewInput = state.session.working;
+            }
         } else state.previewError = "Exact preview unavailable";
         state.previewValid = true;
     }
