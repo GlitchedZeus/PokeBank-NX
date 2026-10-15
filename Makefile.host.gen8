@@ -1,0 +1,38 @@
+# Gen VIII (Sword/Shield) native PK8/SwishCrypto contracts. Bytes come only from
+# an app-owned copy; this lane has no mount, commit, inject or source-write path.
+GEN8_TEST_NAMES := test_gen8_swsh
+GEN8_TESTS := $(addprefix $(HOST_BUILD)/,$(GEN8_TEST_NAMES))
+GEN8_SANITIZE_TESTS := $(addsuffix _sanitize,$(GEN8_TESTS))
+
+HOST_TESTS += $(GEN8_TESTS)
+HOST_SANITIZE_TESTS += $(GEN8_SANITIZE_TESTS)
+host-test: $(GEN8_TESTS)
+host-sanitize: $(GEN8_SANITIZE_TESTS)
+
+GEN8_HEADERS := $(wildcard include/Integration/Gen8/*.h) $(wildcard tests/fixtures/gen8/*.h) include/Utils/SHA256.h
+GEN8_CORE_SOURCES := src/Integration/Gen8/Gen8SwishCrypto.cpp src/Integration/Gen8/Gen8Save.cpp src/Utils/SHA256.cpp
+# Differential references: PKSM-Core's SwishCrypto (crypto_swsh.cpp + its SHA-256)
+# and its header-only PK8 crypt (vendor/PKSM-Core, pinned submodule).
+GEN8_PKSM_SOURCES := $(PKSM_CORE_ROOT)/source/utils/crypto_swsh.cpp $(PKSM_CORE_ROOT)/source/utils/crypto_sha256.cpp
+GEN8_FLAGS := -Iinclude -Itests -isystem $(PKSM_CORE_ROOT)/include -D_PKSMCORE_CONFIGURED -fno-operator-names \
+	$(if $(HOST_CXX_IS_CLANG),-fbracket-depth=1024,)
+
+GEN8_SOURCES_test_gen8_swsh := tests/test_gen8_swsh.cpp $(GEN8_CORE_SOURCES) $(GEN8_PKSM_SOURCES)
+
+define GEN8_TEST_RULES
+$(HOST_BUILD)/$(1): $$(GEN8_SOURCES_$(1)) $$(GEN8_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$$(CXX) $$(CXXFLAGS) $$(GEN8_FLAGS) $$(GEN8_SOURCES_$(1)) -o $$@
+
+$(HOST_BUILD)/$(1)_sanitize: $$(GEN8_SOURCES_$(1)) $$(GEN8_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$$(CXX) $$(CXXFLAGS) $$(SANITIZE_FLAGS) $$(GEN8_FLAGS) $$(GEN8_SOURCES_$(1)) -o $$@
+endef
+$(foreach t,$(GEN8_TEST_NAMES),$(eval $(call GEN8_TEST_RULES,$(t))))
+
+.PHONY: gen8-host-test gen8-host-sanitize
+gen8-host-test: $(GEN8_TESTS)
+	@set -e; for test_bin in $(GEN8_TESTS); do ./$$test_bin; done
+
+gen8-host-sanitize: $(GEN8_SANITIZE_TESTS)
+	@set -e; for test_bin in $(GEN8_SANITIZE_TESTS); do ASAN_OPTIONS="$(ASAN_OPTIONS)" ./$$test_bin; done
