@@ -314,8 +314,13 @@ namespace {
 // Stored forms that the personal table cannot express: Unown's letters share one personal entry,
 // so PKHeX personal_dp/pt/hgss list formCount 1. Gen III+ Unown has 28 stored forms (A-Z, !, ?;
 // PKHeX FormConverter GetFormsUnown), kept in the PK4 form bits like every other Gen IV form.
+// Cherrim's personal entry is likewise single, but it has two forms, Overcast (0) and Sunshine (1)
+// (PKHeX 6501f0ab FormConverter GetFormsGen4). Counting both lets a stored Sunshine value be shown
+// and preserved; setForm still never writes it (battle-only, see setForm).
 uint8_t storedFormCount(uint16_t species, uint8_t personalCount) noexcept {
-    return species == 201 ? 28 : personalCount;
+    if (species == 201) return 28;
+    if (species == 421) return 2;
+    return personalCount;
 }
 } // namespace
 
@@ -885,6 +890,13 @@ bool Pokemon4Mutable::setForm(uint8_t value) noexcept {
     const uint8_t forms = storedFormCount(species(), base.formCount);
     if (base.hp == 0 || forms == 0 || value >= forms) return false;
     if (value == form()) return true;
+
+    // Castform (351) and Cherrim (421) change form only inside battle: PKHeX FormInfo.BattleForms
+    // (6501f0ab, PKHeX.Core/Legality/Tables/FormInfo.cs; IsBattleForm => form != 0). The editor
+    // offers stored form 0 only; an existing non-zero value is left as-is (the early return above
+    // keeps re-selecting it a no-op) and can be set back to 0.
+    if ((species() == 351 || species() == 421) && value != 0)
+        return false;
 
     // Exact Gen IV legality/storage side effects pinned from PKHeX FormVerifier/FormItem.
     if (species() == 492 && value != 0 && !isParty())
