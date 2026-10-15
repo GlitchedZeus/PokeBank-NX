@@ -310,9 +310,18 @@ uint8_t Pokemon4Mutable::form() const noexcept {
     return static_cast<uint8_t>(byteAt(0x40) >> 3);
 }
 
+namespace {
+// Stored forms that the personal table cannot express: Unown's letters share one personal entry,
+// so PKHeX personal_dp/pt/hgss list formCount 1. Gen III+ Unown has 28 stored forms (A-Z, !, ?;
+// PKHeX FormConverter GetFormsUnown), kept in the PK4 form bits like every other Gen IV form.
+uint8_t storedFormCount(uint16_t species, uint8_t personalCount) noexcept {
+    return species == 201 ? 28 : personalCount;
+}
+} // namespace
+
 uint8_t Pokemon4Mutable::formCount() const noexcept {
     if (!valid_) return 0;
-    return personalFor(sourceGroup_, species(), 0).formCount;
+    return storedFormCount(species(), personalFor(sourceGroup_, species(), 0).formCount);
 }
 uint8_t Pokemon4Mutable::gender() const noexcept {
     return static_cast<uint8_t>((byteAt(0x40) >> 1) & 3u);
@@ -873,7 +882,8 @@ bool Pokemon4Mutable::rerollPid(
 bool Pokemon4Mutable::setForm(uint8_t value) noexcept {
     if (!valid_) return false;
     const auto& base = personalFor(sourceGroup_, species(), 0);
-    if (base.hp == 0 || base.formCount == 0 || value >= base.formCount) return false;
+    const uint8_t forms = storedFormCount(species(), base.formCount);
+    if (base.hp == 0 || forms == 0 || value >= forms) return false;
     if (value == form()) return true;
 
     // Exact Gen IV legality/storage side effects pinned from PKHeX FormVerifier/FormItem.
