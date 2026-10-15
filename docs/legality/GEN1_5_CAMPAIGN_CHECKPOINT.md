@@ -46,13 +46,16 @@ Invalid (the rest are Incomplete); certifies = whether the app can say "No probl
 | 14 | Platinum | same | 3,951 | 0 | 31% | no | Safe, partial |
 | 15 | HeartGold | same | 5,512 | 0 | 32% | no | Safe, partial |
 | 16 | SoulSilver | same | 5,416 | 0 | 32% | no | Safe, partial |
-| 17 | Black | `Legality::analyzePk5` | ~19,000 across B/W/B2/W2 | 0 (the one deliberate case is now a Warning, below) | 99.9% | no (OT/nickname text pending) | Strong, text gap |
+| 17 | Black | `Legality::analyzePk5` | 227,135 across B/W/B2/W2 (seeds 1, 2, 7, 11) | 0 (false Valid also 0) | 93.4% | yes for native, trade and event records (99.9%); Gen III/IV transfers stay Incomplete | Strong, transfer gap |
 | 18 | White | same | same | same | same | same | same |
 | 19 | Black 2 | same | same | same | same | same | same |
 | 20 | White 2 | same | same | same | same | same | same |
 
 Gen III/IV counts are from `tools/pkhex_gen34_diff/run.sh PKHeX 1 3`; Gen V from
-`tools/pkhex_gen5_diff/run.sh PKHeX 1 4` (seeds 7 and 11 also checked).
+`tools/pkhex_gen5_diff/run.sh PKHeX <seed> 4` for seeds 1, 2, 7 and 11 (461,340 records).
+Gen V "No problems found" by origin: native 117,432/117,521, in-game trade 8,579/8,579,
+event 16,061/16,074, Gen III/IV transfer 0/84,961 (their original encounter is not yet
+checked from the PK5 side).
 
 ## Open Unknown / Incomplete cases
 
@@ -61,9 +64,12 @@ Gen III/IV counts are from `tools/pkhex_gen34_diff/run.sh PKHeX 1 3`; Gen V from
   PID/IV correlation (`PIDTypeMismatch`), encounter location/level (`EncInvalid`),
   Gen IV encounter type, PP/PP-ups, fateful flags and event-card matching, untrained
   EVs, unobtainable moves, Pokérus, Johto balls, nickname language.
-- **Gen V:** OT/nickname text of trades and event cards; fateful records that match no
-  PGF card (warned, not Invalid: the card list is not proven complete); Gen III/IV-origin
-  PK5 records only get Gen V-side checks.
+- **Gen V:** Gen III/IV-origin PK5 records get the Gen V-side transfer checks but not their
+  original Gen III/IV encounter, so they stay Incomplete; fateful records that match no PGF
+  card (warned, not Invalid: the card list is not proven complete); a BACD PID coincidence
+  on a shiny card PID; JP/KR OT names of exactly six characters; a nickname that differs
+  from the card's; gender when several templates match; names outside the modelled text
+  set; Gen III fixed-OT gifts.
 - **Gen I/II stat experience:** battle stat experience next to a zero stat stays Unknown
   (gains are divided among recipients, pret `DivideExpDataByNumMonsGainingExp`).
 
@@ -118,10 +124,19 @@ separately from corpus detection rates and test counts. No merge without the own
   Korean saves); PK1 seed 1: 20,000 records, 0 differences.
 - (5) The L4 event-metadata matrix (g++/clang++, sanitizer on/off) only ran on PR #292; it now
   also runs on this branch.
-- (2), (3), (4) in progress: separate Gen III (PK3) and Gen IV (PK4, incl. Pal Park) analyzers
-  measured by `tools/pkhex_gen34_diff` with a false-Valid gate and a grown-record corpus; Gen V
-  trade/event/transfer checks; a written review of every disagreement
-  (`docs/legality/PKHEX_DISAGREEMENT_REVIEW.md`).
+- (3) Done in merge `2565e0c9`: Gen V in-game trade and event OT/nickname/language/OT gender
+  checks, PGF card provenance, Gen III/IV-origin transfer checks (Gen V side), a decoder for
+  Gen V names (`Gen5Text`). Seeds 1, 2, 7, 11: 0 false Invalid, 0 false Valid; PKHeX-invalid
+  records caught 82.3% -> 93.4%; native/trade/event records now certify "No problems found".
+  Three Gen V calls for the owner to confirm: the hidden-ability flag on a fateful Gen IV
+  origin is a Warning (PKHeX `VerifyAbilityPCD`); the Wurmple branch is Invalid only when no
+  other template matches; Mothim forms 1-2 are accepted.
+- (4) Done: [PKHEX_DISAGREEMENT_REVIEW.md](PKHEX_DISAGREEMENT_REVIEW.md) reviews all 12
+  deliberate differences. Only the Gen V hidden-ability case lacked original-game evidence and
+  is now a Warning; the Gen V name-length limit (item 12) matches PKHeX except its fixed-trainer
+  and traded-egg exemptions and is kept.
+- (2) In progress: separate Gen III (PK3) and Gen IV (PK4, incl. Pal Park) analyzers measured by
+  `tools/pkhex_gen34_diff` with a false-Valid gate and a grown-record corpus.
 
 ## Next steps
 
