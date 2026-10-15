@@ -106,7 +106,7 @@ Summary: 28 files, +2,062/−583. No Gen I–IV integration files touched. New N
 - All four Gen V DraStic `.dsv` files (B/W/B2/W2) are 0x80000 bytes plus the standard 122-byte DeSmuME footer. Identification is correct: BW footers at 0x23F00/0x47F00, B2W2 at 0x25F00/0x4BF00, version bytes 20–23.
 - **They are freshly initialized new-game saves:** empty name, TID/SID 0, play time 0:00, money 0, party 0, and all 720 box slots encrypted blanks. The Platinum control save has real progress.
 - So the empty data PokeBank showed was **correct for these files**. The real defects are: (a) an uninitialized trainer is shown as "(unsupported glyphs)" / Male / male portrait instead of an explicit no-trainer state; (b) Create rejects every empty slot, because real empty slots are encrypted blanks, not zero-filled (the cause of "only Cancel").
-- Open owner question: where the B2 progress actually is (DraStic save not flushed, a savestate only, or another file).
+- **Resolved:** the owner confirmed those Gen V files really were blank; there were no in-game saves yet. The decode was correct. Thread 2's `35cbf16` adds an explicit new-game state for such saves.
 
 ## QA results (Thread 4, final, 2026-10-15)
 
