@@ -9,7 +9,7 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 | Item | Value |
 | --- | --- |
 | Lane branch | `audit/app-qa-20261014` |
-| Last #307 head merged | `44a976e1a3dcf672b62fb2a08222bbb46ee6a7c7` (includes `c952565c`) |
+| Last #307 head merged | `85421cfa1f847169ae78a801bfb06bd6bf536125` (merge `8fa5061`) |
 | Draft PR | #310 (CI evidence only, never merge; Thread 2R will merge this lane into #307) |
 | Continuation | `send_later` self check-in every ~60 min: "Thread 4 campaign: re-fetch, verify checkpoint docs/qa/CAMPAIGN_CHECKPOINT.md, continue" |
 
@@ -35,3 +35,4 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 - 2026-10-15 07:12 UTC — campaign resumed; merged #307 `44a976e`.
 - 2026-10-15 — `fuzz_gen5_edits` (Gen V edit-sequence fuzzer) added; libFuzzer found QA-F4; 5-min soak clean on a retail-consistent seed.
 - 2026-10-15 — QA-F5: Gen V Home party strip drops form; repro on the real assignment -> HomeSnapshotCache -> homeCardSnapshot path (GCC and Clang, ASan/UBSan). Cross-gen shiny/level/form notes recorded in FINDINGS.md.
+- 2026-10-15 — merged #307 `85421cf` (Gen V Clone/Move keypads, Release dialog; UI-only, reviewed, no defect).
