@@ -4,7 +4,7 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-15 08:25 UTC (C and L merged; QA Phase 5 done).
+**Last updated:** 2026-10-15 08:50 UTC (QA merged; Phase 1 items in 2R's lane closed).
 
 ## Active milestone
 
@@ -19,7 +19,10 @@ any SHA below.
 | C | `cd2bbbff` (8 commits: Review discard, picker parity, export separation tests, Gen II Clone, Y Random DVs confirm, Gen IV bag layout). 2R is merging it. |
 | L | `50491e88` (draft PR #317). The RetroArch Quit "crash" is upstream behaviour: no next load, so the loader goes to hbmenu or HOME. The DraStic return is its saved LauncherPath. Fixes: a bounded argv plan with libnx-exact quoting, the return selection restored on Home, and a return-on-launcher mode inside the **opt-in** return host. Default handoff is byte-identical. Merges cleanly; 2R is merging it and adding the quit-route notice. NOT DEVICE TESTED. |
 | QA (4) | `c8c0f38c`: **Phase 5 matrix done**. 20 versions × 21 cells = 415 PASS, 5 N/A, 0 FAIL, identical under GCC and Clang (plain and ASan/UBSan). Hardware-only residue is listed in `docs/qa/GEN1_5_MATRIX.md`. 2R is merging it. Next: Phase 6 independent audit on the integrated head. |
-| Merges on #307 | C → `a0b72203` (gates green, reported by 2R); L → `181423a4`; QA pending |
+| Merges on #307 | C → `a0b72203`; L → `181423a4`; QA `c8c0f38c` → `f9441070`. 2R reports host-test, sanitize and qa green under GCC and Clang. Pending merges: QA `4ae526f2`, L `95255c97` (draft PR #319). Head `c939cd4a`. |
+| Phase 1 (2R lane) | Quit-route notice (`77ad7fbe`, SaveSelectScreen.cpp:2104), D-pad/stick/touch parity (test_shared_editor_contract navigation/touchParity), Left/Right never mutates (`c939cd4a`, test_shared_editor_contract.cpp:431). Verified in code. |
+| QA-F7 / F8 (Low, C) | Gen IV Unown form not editable; clone→release leaves "(empty) (edited)" and different export bytes. Repros are on the QA branch. |
+| Known limitation (decided) | Gen I–III Home cards have no STALE state: a failed source shows "Party preview unavailable". Gen IV/V keep the last data as STALE. Not changed, because it is hardware-accepted Legacy behaviour. |
 | QA-F6 (Low, C) | `src/Legacy/RetroArchFRLGDiscovery.cpp:114`: identityHint substring-matches release names across the whole path. Confirmed in code and routed to C. |
 | Divergence noted | Create default species is #1 for Gen I/IV and #25 for Gen II/III/V. Kept as is: hardware-accepted and documented. |
 
