@@ -57,6 +57,7 @@ Direction words:
 | 9 | GB: battle stat experience next to a zero stat | `GBLegality.cpp:1479-1503` (Warning) | more lenient | `EffortValueVerifier.cs:80-96`, which calls itself a "simple sanity check" | pokered `engine/battle/experience.asm:294-325` floors each base stat by the number of recipients, so a stat can gain 0 | Keep (Warning) | No |
 | 10 | Gen IV: the stored party level must be the level the EXP gives | `Legality.cpp:2760-2772`, through `Pokemon4ReadOnlyView.cpp:30-34` | stricter | `PKM.cs:389`, `LevelVerifier.cs:46-59`. No legality code in PKHeX reads `Stat_Level` | **Found.** pokeplatinum, pokeheartgold: every write of a party Pokémon's EXP is followed by a level recalculation (§10) | Keep | No |
 | 11 | Gen V: hidden-ability flag with a slot 1/2 ability on a hidden-ability-only template | `Gen5Legality.cpp:700-722` | was stricter, now warns more | `AbilityVerifier.cs:225-226` (VALID on `AbilityNumber == 4`) | **None found**, either way (§11) | **Downgrade to Warning** | **Yes** |
+| 12 | Gen V: a nickname over 10 or an OT over 7 units (no 0xFFFF terminator in the buffer) is Invalid | `Gen5Legality.cpp`, `internal()` text-buffer rule | stricter only in PKHeX's exemptions | `Legal.cs:244-261` gives the same limits for Gen <= 5 (OT 7, nickname 10) and `TrainerNameVerifier.cs:49-53` / `NicknameVerifier.cs:179-184` flag longer names; PKHeX exempts fixed-trainer templates and traded eggs (`TrainerNameVerifier.cs:80-95`) and makes a foreign species-name length Fishy | **Format only.** The PK5 layout stores the OT in 8 and the nickname in 11 UTF-16 units including the terminator (PKHeX `PK5.cs`), so an exempt name still fits the limit; no record PKHeX builds reaches the difference (Gen V differential, 4 seeds) | Keep; revisit if a real record ever reaches it | No |
 
 No other Invalid that PKHeX would not issue was found:
 
@@ -366,6 +367,18 @@ Still open, for the owner to decide:
   stricter, so it was not done.
 - The bred case is Invalid in both programs, but it lacks Gen V original-game evidence
   too. It is not a PKHeX disagreement, so it was left as it is.
+
+## 12. Gen V name length (keep, found when merging the Gen V text work)
+
+The Gen V text work (merged after this review) documented one more theoretical difference:
+the analyzer reads a name only up to the 0xFFFF terminator and calls a nickname over 10 or an
+OT over 7 units Invalid. PKHeX applies the same limits to Gen <= 5 (`Legal.GetMaxLengthOT`,
+`GetMaxLengthNickname`) but skips the OT check for fixed-trainer templates and traded eggs
+and only warns (Fishy) for a foreign species name within that language's length. Every
+exempt name comes from the game's own buffer, which the PK5 format bounds at 8 OT units and
+11 nickname units including the terminator, so a game-made exempt name is still within the
+limit. No PKHeX-built record reached the difference in the Gen V differential (seeds 1, 2, 7,
+11). It stays as is; a real record that reaches it would be the evidence to revisit.
 
 ## Not disagreements (checked)
 

@@ -899,8 +899,10 @@ QUIRKS TO DECIDE ON:
 Measured with `tools/pkhex_gen5_diff/run.sh` (every Gen V encounter PKHeX can
 build, plus single-field mutations).
 
-Deliberately stricter than PKHeX: nothing. run.sh fails on every record PKHeX
-accepts and PokeBank NX reports Invalid; it has no allow-list.
+Deliberately stricter than PKHeX: only the theoretical text-buffer case below
+(PKHEX_DISAGREEMENT_REVIEW.md item 12), which no PKHeX-built record reaches. run.sh
+fails on every record PKHeX accepts and PokeBank NX reports Invalid; it has no
+allow-list.
 
 Known gaps (reported as Incomplete, never Invalid):
 
