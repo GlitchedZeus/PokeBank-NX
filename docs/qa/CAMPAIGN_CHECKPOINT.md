@@ -9,7 +9,7 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 | Item | Value |
 | --- | --- |
 | Lane branch | `audit/app-qa-20261014` |
-| Last #307 head merged | `2d8195d` (merge `f7837e9`; #307 now contains QA 4ae526f and L 95255c97) |
+| Last #307 head merged | `d57e5bc` (merge `c81d0c9`; C c7b0f97/82032a9/f17926f, Gen III Home gender) |
 | Draft PR | #310 (CI evidence only, never merge; Thread 2R will merge this lane into #307) |
 | Continuation | `send_later` self check-in every ~60 min: "Thread 4 campaign: re-fetch, verify checkpoint docs/qa/CAMPAIGN_CHECKPOINT.md, continue" |
 
@@ -29,9 +29,10 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 | QA-F3b Gen II export publish via `rename()` | Low | C | FIXED (cb88043); regression in qa-contracts |
 | QA-F4 Gen V PID replay guard conjoins gender+ability links | Low | 2R | FIXED (bc83815); regression in test_qa_regressions |
 | QA-F5 Gen V Home party strip drops form (Gen IV keeps it) | Low | 2R | FIXED on #307; regression in test_qa_regressions |
-| QA-F6 Gen III release hint from a substring of the whole path | Low | C | open (repro `tests/test_qa_known_failures.cpp`) |
-| QA-F7 Gen IV Unown letter cannot be edited (form count 1 vs PKSM-Core 28) | Low | C | open (repro `tests/test_qa_known_failures.cpp`) |
-| QA-F8 Gen IV no-op clone+release still reviews as "(empty) (edited)" | Low | C | open (repro `tests/test_qa_known_failures.cpp`) |
+| QA-F6 Gen III release hint from a substring of the whole path | Low | C | FIXED (82032a9); regression in test_qa_regressions |
+| QA-F7 Gen IV Unown letter cannot be edited | Low | C | FIXED (f17926f); regression in test_qa_regressions |
+| QA-F8a Gen IV no-op clone+release review line | Low | C | FIXED (c7b0f97); regression in test_qa_regressions |
+| QA-F8b Gen IV no-op clone+release still changes the slot bytes (export) | Low | C | open (repro `tests/test_qa_known_failures.cpp`) |
 
 ## Log
 
@@ -50,3 +51,4 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 - 2026-10-15 — Phase 6 save-safety chain: export contract C6 (Exit: Discard All restores, later export refused) on all 18 paths — all refuse after discard, no files left; `docs/qa/SAVE_SAFETY_CHAIN.md` maps Open→Validate→Working copy→Edit→Review→Export→Verify→Exit to the gates. make qa EXIT 0; Clang contracts green.
 - 2026-10-15 — Phase 6 Home cache: `fuzz_home_cache` (refresh/invalidate/clear sequences against the documented contract) — 280k deterministic + 597k libFuzzer runs, no defect.
 - 2026-10-15 — integrated #307 `2d8195d` (QA + L merged by 2R) forward-merged as `f7837e9`: make qa EXIT 0 under GCC AND Clang (fuzz smoke incl. launch-plan/home-cache, 18 paths C1–C6, matrix 420 cells 0 problems, regressions F1–F5); open repros F6/F7/F8 still reproduce (owner C).
+- 2026-10-15 09:30 UTC — merged #307 `d57e5bc`: QA-F6/F7/F8a moved to regressions; QA-F8 split, export-bytes half QA-F8b stays known-failing (126 bytes). Matrix home.party.* facts now DERIVED from HomePartyPreview::fromGen1/2/3 (tests/test_qa_matrix_home.h) and the Gen IV/V snapshots, plus a new home.party.gender fact; all four are consistent across Gen I–V. The runner no longer counts "n/a" as an inconsistency. Gen I–III have no STALE Home state: a decided, known limitation.
