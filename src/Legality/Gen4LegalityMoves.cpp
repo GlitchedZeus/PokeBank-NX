@@ -488,6 +488,10 @@ bool verifyBaseMoves(const BreedInfo& info) {
     }
     if (baseLen == count) return true;
     for (int i = count; i < static_cast<int>(info.actual.size()); i++) {
+        // Possible holds one entry per move before the first empty slot. With a move after an
+        // empty slot PKHeX indexes past it and throws, and LegalityAnalysis reports the record
+        // Invalid; here the moveset simply fails to validate (moves must be packed anyway).
+        if (static_cast<std::size_t>(i) >= info.possible.size()) return false;
         const bool isBase = (info.possible[static_cast<std::size_t>(i)] & (1 << kSrcBase)) != 0;
         if (!isBase) continue;
         const int baseIndex = indexIn(base, moves[static_cast<std::size_t>(i)]);

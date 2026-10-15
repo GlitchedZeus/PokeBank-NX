@@ -281,6 +281,9 @@ const Rule kRules[] = {
     {"gender-genderless", "static-fateful", {{Op::And8, 0x40, 249}}, "Gender does not match the species' gender ratio"},
     // PKHeX: INVALID Level:EggEXP
     {"egg-exp", "egg-unhatched", {{Op::Set32, 0x10, 1}}, "Egg EXP must be the minimum for its level"},
+    // PKHeX: INVALID (move results: empty slot before a later move). Found by libFuzzer: the
+    // egg-move breeding check once read past its per-move table for a move after an empty slot.
+    {"egg-move-gap", "egg-unhatched", {{Op::Set16, 0x2A, 0}, {Op::Set16, 0x2E, 45}, {Op::Set8, 0x31, 0}, {Op::Set8, 0x33, 40}}, "is empty before a later move (moves must be packed)"},
 };
 
 int failures = 0;
@@ -584,6 +587,10 @@ int main() {
         const auto& [base, game] = valid[next() % valid.size()];
         auto pk = base;
         for (uint32_t n = 1 + next() % 4; n > 0; --n) pk[8 + next() % 128] = static_cast<uint8_t>(next());
+        if (next() % 8 == 0) {  // an empty move slot (possibly before a later move)
+            const uint32_t slot = next() % 4;
+            pk[0x28 + 2 * slot] = pk[0x29 + 2 * slot] = 0;
+        }
         refreshChecksum(pk);
         const auto copy = pk;
         const auto direct = Legality::analyzePk4(pk, game);
