@@ -30,10 +30,10 @@ jobs:
           submodules: recursive
           # Audit, umbrella legality, and isolated legality-lane PRs require evidence
           # for their exact application head, not GitHub's synthetic pull-request merge ref.
-          ref: ${{ (github.event.pull_request.number == 79 || github.event.pull_request.number == 103 || startsWith(github.event.pull_request.head.ref, 'feature/legality-') || startsWith(github.event.pull_request.head.ref, 'docs/legality-') || startsWith(github.event.pull_request.head.ref, 'integration/legality-')) && github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ (github.event.pull_request.number == 79 || github.event.pull_request.number == 103 || startsWith(github.event.pull_request.head.ref, 'feature/legality-') || startsWith(github.event.pull_request.head.ref, 'docs/legality-') || (startsWith(github.event.pull_request.head.ref, 'integration/legality-') || startsWith(github.event.pull_request.head.ref, 'claude/gen1-5-legality-'))) && github.event.pull_request.head.sha || github.sha }}
 
       - name: Verify exact pull-request application identity
-        if: github.event.pull_request.number == 79 || github.event.pull_request.number == 103 || startsWith(github.event.pull_request.head.ref, 'feature/legality-') || startsWith(github.event.pull_request.head.ref, 'docs/legality-') || startsWith(github.event.pull_request.head.ref, 'integration/legality-')
+        if: github.event.pull_request.number == 79 || github.event.pull_request.number == 103 || startsWith(github.event.pull_request.head.ref, 'feature/legality-') || startsWith(github.event.pull_request.head.ref, 'docs/legality-') || (startsWith(github.event.pull_request.head.ref, 'integration/legality-') || startsWith(github.event.pull_request.head.ref, 'claude/gen1-5-legality-'))
         env:
           EXPECTED_APPLICATION_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -105,7 +105,7 @@ jobs:
   # automatically run standalone lane tests. Require exact PR head here.
   legality-parallel-validation:
     name: Legality lane ${{ matrix.lane }} (native + sanitizers)
-    if: ${{ github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'integration/legality-') }}
+    if: ${{ github.event_name == 'pull_request' && (startsWith(github.event.pull_request.head.ref, 'integration/legality-') || startsWith(github.event.pull_request.head.ref, 'claude/gen1-5-legality-')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
