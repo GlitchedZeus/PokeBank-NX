@@ -64,3 +64,16 @@ $(HOST_BUILD)/test_gen3_gender: $(GEN3_GENDER_SOURCES) include/Integration/Gen3/
 $(HOST_BUILD)/test_gen3_gender_sanitize: $(GEN3_GENDER_SOURCES) include/Integration/Gen3/Gen3Gender.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN3_GENDER_SOURCES) -o $@
+
+# Gen I View navigation (read-only, focusable).
+GEN1_VIEW_NAV_SOURCES := tests/test_gen1_view_navigation.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen1_view_navigation
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_view_navigation_sanitize
+host-test: $(HOST_BUILD)/test_gen1_view_navigation
+host-sanitize: $(HOST_BUILD)/test_gen1_view_navigation_sanitize
+$(HOST_BUILD)/test_gen1_view_navigation: $(GEN1_VIEW_NAV_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_VIEW_NAV_SOURCES) -o $@
+$(HOST_BUILD)/test_gen1_view_navigation_sanitize: $(GEN1_VIEW_NAV_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_VIEW_NAV_SOURCES) -o $@

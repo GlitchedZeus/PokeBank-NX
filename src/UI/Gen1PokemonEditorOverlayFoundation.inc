@@ -672,36 +672,40 @@ bool isGen1SourceUX(const TrainerViewScreen& screen) noexcept {
     return isGen1SourceUXCleanup3(screen);
 }
 
+// The workspace field a completed tap selects (identity rows, editable DV/Stat Exp cells, Shiny,
+// moves). Shared by Edit/Create (where the tap also activates) and read-only View (focus only).
+bool foundationFocusTouchTarget(FoundationState& foundation, int id) {
+    if (id >= 5000 && id < 5006) {
+        foundation.focus = {Foundation::Panel::Identity, static_cast<uint8_t>(id - 5000), 0};
+        return true;
+    }
+    if (id >= 5100 && id < 5150) {
+        const int encoded = id - 5100;
+        const int row = encoded / 10, col = encoded % 10;
+        if (row >= 0 && row < 5 && col >= 0 && col < 3) {
+            foundation.focus = {Foundation::Panel::Values, static_cast<uint8_t>(row), static_cast<uint8_t>(col)};
+            return true;
+        }
+    }
+    if (id == 5190) {
+        foundation.focus = {Foundation::Panel::Values, static_cast<uint8_t>(Foundation::ValueRow::Shiny), 0};
+        return true;
+    }
+    if (id >= 5200 && id < 5204) {
+        foundation.focus = {Foundation::Panel::Moves, static_cast<uint8_t>(id - 5200), 0};
+        return true;
+    }
+    return false;
+}
+
 uint64_t foundationDirectTouchInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch) {
     auto& foundation = foundationStateFor(screen);
     // No provisional field focus: a finger may turn into a scroll gesture.
     const int tapped = screen.touchedButtonId(touch);
     auto focusId = [&](int id, bool activate) {
-        if (id >= 5000 && id < 5006) {
-            foundation.focus = {Foundation::Panel::Identity, static_cast<uint8_t>(id - 5000), 0};
-            if (activate) down |= HidNpadButton_A;
-            return true;
-        }
-        if (id >= 5100 && id < 5150) {
-            const int encoded = id - 5100;
-            const int row = encoded / 10, col = encoded % 10;
-            if (row >= 0 && row < 5 && col >= 0 && col < 3) {
-                foundation.focus = {Foundation::Panel::Values, static_cast<uint8_t>(row), static_cast<uint8_t>(col)};
-                if (activate) down |= HidNpadButton_A;
-                return true;
-            }
-        }
-        if (id == 5190) {
-            foundation.focus = {Foundation::Panel::Values, static_cast<uint8_t>(Foundation::ValueRow::Shiny), 0};
-            if (activate) down |= HidNpadButton_A;
-            return true;
-        }
-        if (id >= 5200 && id < 5204) {
-            foundation.focus = {Foundation::Panel::Moves, static_cast<uint8_t>(id - 5200), 0};
-            if (activate) down |= HidNpadButton_A;
-            return true;
-        }
-        return false;
+        if (!foundationFocusTouchTarget(foundation, id)) return false;
+        if (activate) down |= HidNpadButton_A;
+        return true;
     };
     if (foundation.reroll.confirming) {
         // The re-roll prompt is modal: only its own buttons act.
