@@ -285,6 +285,20 @@ void dataLayerFixes(const L& l, SourceGame game) {
     pp.pp = std::array<uint8_t, 4>{62, 0, 0, 0};
     assert(!editor->stageBoxPokemonEdit(0, 0, pp, error));
 
+    // Pokerus: strain 0 with days left is refused in Edit and Create; real states are accepted.
+    BoxPokemonEdit sick;
+    sick.pokerus = 0x0F;
+    assert(!editor->stageBoxPokemonEdit(0, 0, sick, error));
+    sick.pokerus = 0x21;
+    assert(editor->stageBoxPokemonEdit(0, 0, sick, error));
+    {
+        BoxPokemonCreate infected;
+        infected.species = 25; infected.nickname = "SICK"; infected.otName = "ABC";
+        infected.moves = {33, 0, 0, 0}; infected.pp = {35, 0, 0, 0}; infected.pokerus = 0x0F;
+        std::size_t s = 0;
+        assert(!editor->stageAddBoxPokemon(2, infected, s, error));
+    }
+
     // OT: 7 characters accepted, 8 refused (Edit and Create).
     BoxPokemonEdit ot;
     ot.otName = "ABCDEFG";

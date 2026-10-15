@@ -17,8 +17,9 @@ struct Gen4ExportRequest {
     Common::ExportFailurePoint failurePoint = Common::ExportFailurePoint::None;
 };
 
-// Human-readable per-slot differences between the original and staged saves (party + boxes),
-// derived from strict parses of both buffers. Used for the export manifest and review summaries.
+// Human-readable differences between the original and staged saves (party, boxes and per-pocket
+// Bag item quantities), derived from strict parses of both buffers. Used for the export manifest
+// and review summaries.
 [[nodiscard]] std::vector<std::string> describeStagedSlotChanges(
     const Gen4StagedPokemonEditor& editor);
 
