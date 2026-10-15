@@ -8,16 +8,28 @@
 #include "test_qa_support.h"
 
 #include "Encryption/Encryption5.h"
+#include "Integration/Gen5/Gen5AssignedSource.h"
+#include "Integration/Gen5/Gen5GameCardPreview.h"
+#include "Integration/Gen5/Gen5SaveBlockLayout.h"
+#include "Legacy/LegacySourceBindings.h"
+#include "Source/HomeCardSnapshot.h"
+#include "Utils/CRC16.h"
 #include "Integration/Gen5/Gen5PersonalData.h"
 #include "Integration/Gen5/Gen5PidCoordination.h"
 #include "Integration/Gen5/Gen5StagedPokemonRecord.h"
 #include "fuzz_synthetic_saves.h"
 
+#include <cstdio>
 #include <iostream>
+#include <span>
+#include <sys/stat.h>
+#include <unistd.h>
 
 using namespace qacontract;
 namespace G5 = PokeVault::Integration::Gen5;
 namespace C = PokeVault::Integration::Gen5::Crypto;
+namespace L = PokeVault::Integration::Gen5::LayoutInfo;
+namespace S = PokeVault::Source;
 
 namespace {
 
@@ -63,12 +75,77 @@ bool personalityReplayKeepsGenderLinkIndependently() {
     return !accepted || linkKept;
 }
 
+// QA-F5 (Low, Thread 2R: include/Integration/Gen5/Gen5GameCardPreview.h, homeCardSnapshot).
+// The Gen V Home party strip passes form 0 for every member (PartyPreviewSlot has no form and
+// homeCardSnapshot writes `{species, level, 0, shiny}`), so SaveSelectScreen draws the base-form
+// icon (SpriteManager::getIconSprite(species, form, shiny)) for alternate-form party members. The
+// Gen IV snapshot passes the record's form (Gen4GameCardPreview.h), so Gen IV and Gen V disagree.
+// PK5 form lives in the upper five bits of 0x40 (PKHeX PK5.Form; Pokemon5ReadOnly::form()).
+// Real production path: inspectSourceFile -> LegacySourceBindings assignment -> HomeSnapshotCache
+// -> openAssignedSource -> homeCardSnapshot, the same wiring as SaveSelectScreen.
+// Save layout follows tests/test_home_card_gen5_snapshot.cpp (Gen5SaveBlockLayout.h, PKHeX SAV5).
+bool gen5HomePartyStripKeepsForm() {
+    currentCase() = "QA-F5 Gen V Home party strip keeps the party member's form";
+    constexpr uint16_t basculin = 550;
+    constexpr uint8_t blueStriped = 1;
+    Bytes sav(L::FullSaveSize, 0);
+    const size_t tr = 0x19400;
+    sav[tr + 4] = 'N';
+    sav[tr + 6] = 'X';
+    C::write16(sav, tr + 0x14, 12345);
+    C::write16(sav, tr + 0x16, 54321);
+    C::write16(sav, tr + 0x24, 23);
+    sav[tr + 0x1E] = 2;
+    sav[tr + 0x1F] = 21;                           // Pokemon Black
+    sav[L::PartyOffset + 4] = 1;
+    Bytes pk(C::PartySize, 0);
+    qasynth::w32(pk, 0x00, 0x12345690u);
+    qasynth::w16(pk, 0x08, basculin);
+    qasynth::w16(pk, 0x0C, 12345);
+    qasynth::w16(pk, 0x0E, 54321);
+    pk[0x40] = static_cast<uint8_t>(blueStriped << 3);
+    pk[0x5F] = 21;
+    pk[0x8C] = 30;
+    const auto encrypted = C::encryptCandidate(pk);
+    std::copy(encrypted.begin(), encrypted.end(), sav.begin() + static_cast<std::ptrdiff_t>(L::PartyOffset + 8));
+    auto partition = std::span<uint8_t>(sav).subspan(0, L::BlackWhiteCopySize);
+    for (const auto& b : L::BlackWhite) {
+        const uint16_t crc = Utils::crc16ccitt(partition.data() + b.offset, b.length);
+        C::write16(partition, b.checksumOffset, crc);
+        C::write16(partition, b.mirrorOffset, crc);
+    }
+
+    const int before = failures();
+    const auto root = scratchRoot("known-f5");
+    const std::string path = (root / "Pokemon Black.sav").string();
+    writeSource(path, sav);
+    const auto probe = G5::inspectSourceFile(path, "DraStic");
+    QA_EXPECT(probe.ready(), "synthetic save is a ready Gen V source: " + probe.diagnostic);
+    PokeVault::Legacy::LegacySourceBindings bindings((root / "bindings").string());
+    QA_EXPECT(bindings.load(), "bindings load");
+    QA_EXPECT(bindings.assignFileAndSave(probe.sourceIdentity, {"profile", "black_nds", path, "DraStic", "BW"}),
+              "assign save to black_nds");
+    const auto assigned = bindings.resolveFileForGame("profile", "black_nds");
+    QA_EXPECT(assigned.status == PokeVault::Legacy::AssignedFileStatus::Ready, "assignment resolves");
+    if (failures() != before) return false;
+    S::HomeSnapshotCache cache;
+    const auto& snapshot = cache.refresh(S::assignedSnapshotRequest("profile", "black_nds", assigned),
+        S::statRegularFile, [&] { return G5::homeCardSnapshot(G5::openAssignedSource(bindings, "profile", "black_nds")); });
+    QA_EXPECT(snapshot.current() && snapshot.partyCount == 1 && snapshot.party[0].species == basculin,
+              "snapshot is current with the Basculin party member");
+    QA_EXPECT(snapshot.party[0].form == blueStriped,
+              "Home party strip form " + std::to_string(snapshot.party[0].form) + " != record form 1");
+    return snapshot.current() && snapshot.party[0].form == blueStriped;
+}
+
 } // namespace
 
 int main() {
     std::cout << "Known open defects (each line FAILS until fixed):\n";
     const bool f4 = personalityReplayKeepsGenderLinkIndependently();
     std::cout << "  QA-F4 Gen V PID replay keeps an existing gender link: " << (f4 ? "fixed" : "OPEN") << "\n";
+    const bool f5 = gen5HomePartyStripKeepsForm();
+    std::cout << "  QA-F5 Gen V Home party strip keeps form: " << (f5 ? "fixed" : "OPEN") << "\n";
     if (failures() != 0) {
         std::cerr << failures() << " known defect(s) still reproduce\n";
         return 1;

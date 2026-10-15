@@ -21,6 +21,7 @@ lands, its reproduction moves into the passing suite as a regression test
 | QA-F3b | Low | The same non-exclusive `rename()` publish remains in the Gen II transaction | Thread 1 (`Gen2ExportTransaction.cpp`) | OPEN (by inspection; no injection point for a deterministic repro) |
 | QA-F1 | Low | Packaged-RomFS manifest omitted the four Gen V game cards the app requests | Thread 2 | **FIXED** in `3b35b3f`; regression test in `qa-tools-test` |
 | QA-F4 | Low (defence in depth) | Gen V PID replay (`Field::Personality`) protects the PID/gender link only when the ability link also holds | Thread 2R (`Gen5StagedPokemonRecord.h`) | OPEN; repro `tests/test_qa_known_failures.cpp` |
+| QA-F5 | Low (presentation) | Gen V Home party strip drops the party member's form, so alternate forms show the base-form icon; Gen IV keeps it | Thread 2R (`Gen5GameCardPreview.h`) | OPEN; repro `tests/test_qa_known_failures.cpp` |
 
 No crash, sanitizer report, out-of-bounds read or round-trip violation was found in any Gen I–V parser,
 record decoder, Bag decoder, copy selector or Save Instance identification path (see
@@ -46,6 +47,31 @@ record decoder, Bag decoder, copy selector or Save Instance identification path 
 - **Suggested fix:** check each link independently: refuse when the previous record's gender link
   held and the new PID breaks it, and separately when the ability link held and the new PID breaks
   it.
+
+## QA-F5 (Low, presentation): Gen V Home party strip drops form
+
+- **Found by:** Phase 6 cross-generation review of the Home snapshot path, confirmed on the real
+  production path (2026-10-15).
+- **Code:** `include/Integration/Gen5/Gen5GameCardPreview.h`. `PartyPreviewSlot` has no form field,
+  and `homeCardSnapshot` writes `s.party[i]={slot.species,slot.level,0,slot.shiny}`. The Home strip
+  renders `SpriteManager::getIconSprite(species, form, shiny)` (`src/UI/SaveSelectScreen.cpp`), so a
+  Gen V party member in an alternate form (Basculin Blue-Striped, Deerling/Sawsbuck seasons, Unown,
+  Shellos/Gastrodon East, Burmy/Wormadam cloaks) shows the base-form icon. The Gen IV snapshot passes
+  `party[i].form()` (`Gen4GameCardPreview.h`), so Gen IV and Gen V disagree.
+- **Repro:** `tests/test_qa_known_failures.cpp` case QA-F5. A synthetic Pokémon Black save whose
+  party holds Basculin with form 1 (PK5 `0x40 >> 3`, PKHeX `PK5.Form`, `Pokemon5ReadOnly::form()`)
+  goes through `inspectSourceFile` -> `LegacySourceBindings` assignment -> `HomeSnapshotCache::refresh`
+  -> `openAssignedSource` -> `homeCardSnapshot` (the `SaveSelectScreen` wiring). The snapshot is
+  Current with the right species, but `party[0].form == 0`. Reproduces under GCC and Clang with
+  ASan/UBSan.
+- **Suggested fix:** carry `pk->form()` in `PartyPreviewSlot` and pass it in `homeCardSnapshot`, as
+  Gen IV does.
+- **Related cross-generation notes (not filed, no repro yet):** Gen I/II and Gen III Home party
+  previews in `SaveSelectScreen.cpp` also pass form 0 (`addParty(i, species, level, 0, false)`), so
+  a Gen II/III Unown shows the base letter; Gen III also passes level 0. Shiny is shown only for
+  Gen V: Gen IV hard-codes `false` with the comment "Gen IV Home shiny badges are not part of the
+  accepted card output", and Gen I–III also pass `false`. These are recorded for the Phase 5 matrix
+  cross-generation comparison (owner C for Gen I–IV) rather than filed as defects.
 
 ## QA-F2 (Medium): invalid workflow files produce a failed run on every push
 
