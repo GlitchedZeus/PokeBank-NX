@@ -21,3 +21,19 @@ g++ -std=c++20 -O2 -I"$repo/include" -I"$work" "$here/gb_diff.cpp" "$repo/src/Le
 python3 -I "$here/compare.py" --self-test > "$work/selftest.txt" || { cat "$work/selftest.txt"; exit 1; }
 python3 -I "$here/compare.py" "$work/corpus.txt" "$work/pkhex.txt" "$work/pokebank.txt" \
     --pkhex "$pkhex" --pokered "$pokered" --show "${SHOW:-8}"
+# The same corpus through the app's path (PokemonRecord -> Pokemon1/2ReadOnly -> Legality::analyze)
+# must give the origin search's verdict; see production_parity.cpp.
+srcs=(src/Legality/Legality.cpp src/Legality/GBLegality.cpp src/Legality/GBLegalityData.cpp
+    src/Integration/Gen1/Gen1MoveCompatibility.cpp src/Integration/Gen2/Gen2MoveCompatibility.cpp
+    src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp
+    src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/Pokemon1ReadOnly.cpp src/Pokemon/Pokemon2ReadOnly.cpp
+    src/Pokemon/PersonalRecord4.cpp src/Pokemon/PersonalInfo4DP.cpp src/Pokemon/PersonalInfo4PT.cpp
+    src/Pokemon/PersonalInfo4HGSS.cpp src/Integration/Gen2/Gen2PersonalData.cpp
+    src/Encryption/Encryption3FRLG.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp
+    src/Pokemon/Experience.cpp src/Pokemon/AbilityInfo.cpp src/Pokemon/FormInfo.cpp
+    src/Pokemon/LearnsetTable.cpp src/Names/MoveNames.cpp src/Names/ItemNames.cpp
+    src/Names/SpeciesNames.cpp src/Names/NatureNames.cpp src/Names/AbilityNames.cpp
+    src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp)
+g++ -std=c++20 -O2 -Wno-unused-parameter -Wno-return-type -I"$repo/include" -I"$work" -I"$here" "$here/production_parity.cpp" \
+    "${srcs[@]/#/$repo/}" -o "$work/production_parity"
+"$work/production_parity" < "$work/corpus.txt"
