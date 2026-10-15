@@ -472,6 +472,9 @@ constexpr Layout layoutFor(Generation generation, bool crystal = false) noexcept
         return {/*details*/15, /*values*/11, /*moves*/4, /*stat rows*/6, /*columns*/3};
     if (generation == Generation::Gen4)
         return {/*details*/16, /*values*/11, /*moves*/4, /*stat rows*/6, /*columns*/3};
+    // Gen V: the Gen IV rows in the same order, plus OT Gender and Fateful.
+    if (generation == Generation::Gen5)
+        return {/*details*/18, /*values*/11, /*moves*/4, /*stat rows*/6, /*columns*/3};
     return {/*details*/6, /*values*/6, /*moves*/4, /*stat rows*/5, /*columns*/3};
 }
 
@@ -623,9 +626,10 @@ constexpr CellFocus cellFocus(Focus focus) noexcept {
     return focus.column == 1 ? CellFocus{180, 90} : CellFocus{278, 98};
 }
 constexpr CellFocus cellFocusFor(Generation generation, Focus focus) noexcept {
-    // Gen III and Gen IV both expose six IV/EV stat rows. Earlier generations use the five-row
+    // Gen III, IV and V all expose six IV/EV stat rows. Earlier generations use the five-row
     // fallback where row 5 is a derived/full-width row instead of an editable IV/EV cell pair.
-    if (generation != Generation::Gen3 && generation != Generation::Gen4)
+    if (generation != Generation::Gen3 && generation != Generation::Gen4 &&
+        generation != Generation::Gen5)
         return cellFocus(focus);
     if (focus.panel == Panel::Details) return {104, 186};
     if (focus.panel == Panel::Moves) {
@@ -690,7 +694,7 @@ constexpr bool gen2ExternalPassiveViewUsesSharedSurface() noexcept { return true
 // (fixed-gender and genderless species remain non-toggleable).
 constexpr bool genderUsesInlineToggle(Generation generation) noexcept {
     return generation == Generation::Gen2 || generation == Generation::Gen3 ||
-           generation == Generation::Gen4;
+           generation == Generation::Gen4 || generation == Generation::Gen5;
 }
 constexpr bool genderOpensDedicatedPicker(Generation) noexcept { return false; }
 
