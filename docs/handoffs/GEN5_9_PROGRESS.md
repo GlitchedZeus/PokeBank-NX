@@ -9,7 +9,7 @@ Physical Switch status of every NRO built from this branch: **NOT DEVICE TESTED*
 
 ## Gen I–V completion campaign checkpoint (Thread 2R)
 
-HEAD `77ad7fb` (draft PR #307). No candidate NRO is posted until the campaign ends; there will be ONE final NRO, and it is NOT DEVICE TESTED.
+HEAD `0c2fffb` (draft PR #307). No candidate NRO is posted until the campaign ends; there will be ONE final NRO, and it is NOT DEVICE TESTED.
 
 | Commit | Unit |
 | --- | --- |
@@ -25,6 +25,16 @@ HEAD `77ad7fb` (draft PR #307). No candidate NRO is posted until the campaign en
 | `a0b7220` | Merge of Thread C @ `cd2bbbff` (Review discard, DV reroll confirm, Gen II Clone, Gen IV bag layout, export separation tests) |
 | `181423a` | Merge of Thread L @ `50491e88` (bounded chain plan, opt-in return host, return focus) |
 | `77ad7fb` | Product Home shows the quit-route notice before launch (Thread L request), cached per launch target |
+| `ca96784` | Gen III Home party gender from the PID (Thread C's `Gen3Gender.h`); Unknown maps to no gender |
+| `f944107`, `62df41a`, `9a57037`, `93421d5` | QA merges (`c8c0f38c`, `4ae526f2`, `d6f34e4a`, `2fa40e3`); the Gen IV review cell takes C's strict 5-line form |
+| `2d8195d`, `2e60dac` | Thread L merges (`95255c97`, `980a217b`) |
+| `e9efafb`, `a241d9f`, `8b741e7`, `dde56e2`, `be9eb19`, `14a887d`, `92a4177` | Thread C merges up to `afd96e3b` (divergences 2/3/5, picker paging, Gen I draft, F6/F7/F8, Castform/Cherrim, Gen IV source snapshot and verbatim backup) |
+| `57fb0ac` | Gen I read-only View gets held keys and the stick (C's overload) |
+| `c939cd4` | Contract test: Left/Right never mutate a value in any Gen I–V editor |
+| `f99e262` | Gen V export backs up the source file verbatim; a `.dsv` keeps its metadata and DeSmuME footer |
+| `d9cdcf7` | Common `VerifiedExportRequest`: optional verbatim `backupBytes` + container keys (Gen V key names) |
+| `73f38d0` | Gen IV Open snapshots the source file; export refuses a source that changed since Open |
+| `0c2fffb` | Common `editedFileExtension`: `original_backup.dsv` + raw `edited.sav` |
 
 Gen V audit items, verified in code with tests:
 - Exit guard: Browse with staged changes goes to ConfirmExit, where B stays, X reviews and Y discards and leaves (`test_gen5_readonly_save.cpp`).
@@ -34,22 +44,27 @@ Gen V audit items, verified in code with tests:
   - Add opens the editor directly on A and on touch, as in Gen IV. The create dialog appears only for a moment, or after a failure.
   - Status toasts are the same kind Gen IV shows.
 
-Gates at `cedc2f8`:
-- GCC host-test: rc 0.
-- Clang host-sanitize: rc 0. The local Clang ASan runtime comes from `apt-get install -y libclang-rt-18-dev`.
+Gates at `0c2fffb`:
+- host-test GCC and Clang: rc 0 (144 PASS).
+- host-sanitize GCC and Clang: rc 0 (144 PASS).
+- `make -f Makefile.host qa` GCC and Clang: rc 0 (matrix 420 cells, 0 problems).
+- `qa-known-failures`: rc 0 (F8b reported fixed).
 - Python contracts: all pass.
 - `git diff --check`: clean.
+- `tools/qa/check_workflows.py`: all 47 workflows parse.
 - devkitA64: clean.
-- At `b3f8871`, Clang host-test and GCC host-sanitize also passed (rc 0).
+- The local Clang ASan runtime comes from `apt-get install -y libclang-rt-18-dev`.
 
 Open requests:
-- Thread C: a Gen III gender accessor. Until then the Home slot's gender for Gen III is `GenderUnknown`.
-- Gen I–III editor divergences 1–7 are with Thread C.
-- Per the owner: no gender glyph on the Home icons.
+- None from 2R. The Gen III gender accessor is wired in, and Gen I–III divergences 1–7 are closed by Thread C, except item 6 (Gen I header), which is skipped.
+
+Decisions recorded:
+- Gen I–III Home cards keep their accepted refresh: a failed source shows "Party preview unavailable". Known limitation: Gen I–III cards have no STALE state; Gen IV/V do.
+- No gender glyph on the Home icons; gender stays in the data model.
+- The optional Gen I `drawChrome(genderSlot)` change is skipped because it is not pixel-identical.
 
 Remaining:
-- Further Thread C merges, and the QA merge once Thread 4's matrix is complete.
-- Wiring Gen III gender once Thread C publishes the accessor.
+- Merge Thread C's backup-name switch and QA's F8b close-out head.
 - Final gates.
 - One final NRO.
 
