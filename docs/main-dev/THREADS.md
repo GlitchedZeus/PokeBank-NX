@@ -48,6 +48,20 @@ The original Thread 2 session stood down after two failed hardware rounds (`fa9c
 - **Thread 2R** (`session_01Gn6iaKx8qUJWbAydeQ6ST6`) owns PR #307, the editor surfaces and the shared pickers. It is authorised to generalise the Gen IV surface into a generation-neutral shared editor, on #307 only, provided Gen I–IV behaviour and tests stay unchanged.
 - **Thread 2H** (`session_01Q3ZqvwVczMByFNuUX4EvU3`) owns `claude/gen5-home-providers-20261015`: `SaveSelectScreen.cpp`, the game-card previews and Save Instance provider metadata. 2R merges this branch forward into #307 before the NRO.
 
+## Gen I–V COMPLETION CAMPAIGN (owner directive, 2026-10-15)
+
+Continuous work until 100% of the Gen I–V software scope is done and every release gate is green on the final commit. One final integrated NRO only. No Gen VI–IX and no Master Vault until the owner approves.
+
+| Thread | Session | Branch | Owns |
+|---|---|---|---|
+| 2R (integrator) | `session_01Gn6iaKx8qUJWbAydeQ6ST6` | #307 `claude/gen5-integration-20261014` | Gen V, shared editor surfaces/pickers/menus, `Integration/Common`, `Source/**`, `SaveSelectScreen.cpp` and card previews, `UI.cpp` (except launch/return), Makefiles, candidate workflows |
+| C | `session_012Qk8aPZvVGKZhMUyUC6rya` | `claude/gen14-campaign-20261015` | `Integration/Gen1–4`, Gen1*/Gen2*/Gen3* UI files, Legacy Gen1–4 adapters, Gen I–IV tests |
+| L | `session_018pWZ7NgJhPJTRjFNNs6Hu4` | `claude/launch-return-20261015` | `GameLauncher.*`, `GameLaunchModel.h`, `runtime/return_host/**`, RetroArch launch resolution, launch/return paths in `UI.cpp` |
+| 4 (QA) | `session_01VXXPj238uqedMPANHRVViz` | `audit/app-qa-20261014` | QA tests, fuzzing, matrix and audit (no production code) |
+
+- 2R merges C, L and QA forward into #307 with merge commits. Every thread self-schedules check-ins so it resumes after usage-limit stops.
+- Threads 3 (Gen VI–VIII) and 2H have stood down.
+
 ## Thread 3 — Gen VI native save formats
 
 - **Branch:** `claude/gen6-native-20261014`, new, from `a17c503a`.
