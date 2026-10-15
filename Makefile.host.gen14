@@ -90,3 +90,16 @@ $(HOST_BUILD)/test_gen2_field_selector: $(GEN2_FIELD_SELECTOR_SOURCES) include/U
 $(HOST_BUILD)/test_gen2_field_selector_sanitize: $(GEN2_FIELD_SELECTOR_SOURCES) include/UI/Gen2FieldSelector.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_FIELD_SELECTOR_SOURCES) -o $@
+
+# Gen I-III picker paging parity with the shared editor.
+GEN13_PAGING_SOURCES := tests/test_gen13_picker_paging.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen13_picker_paging
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen13_picker_paging_sanitize
+host-test: $(HOST_BUILD)/test_gen13_picker_paging
+host-sanitize: $(HOST_BUILD)/test_gen13_picker_paging_sanitize
+$(HOST_BUILD)/test_gen13_picker_paging: $(GEN13_PAGING_SOURCES) include/UI/Gen13PickerPaging.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN13_PAGING_SOURCES) -o $@
+$(HOST_BUILD)/test_gen13_picker_paging_sanitize: $(GEN13_PAGING_SOURCES) include/UI/Gen13PickerPaging.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN13_PAGING_SOURCES) -o $@

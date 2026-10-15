@@ -158,8 +158,9 @@ int main() {
     contains(surface, "readableReadOnly ? Colors::TextSecondary");
     contains(surface, "readableReadOnly ? Colors::Text");
     contains(surface, "Trainer ID");
-    contains(surface, "down & (HidNpadButton_Left | HidNpadButton_L)");
-    contains(surface, "down & (HidNpadButton_Right | HidNpadButton_R)");
+    // Left or L / Right or R page by 10 through the shared list scheme (Gen13PickerPaging.h).
+    contains(surface, "static_cast<int>(state.speciesPreview) - 1, 386, gen3PickerKeys(down)) + 1)");
+    contains(surface, "(down & HidNpadButton_Left) != 0, (down & HidNpadButton_Right) != 0,\n            (down & HidNpadButton_L) != 0, (down & HidNpadButton_R) != 0,");
     contains(surface, "if (row == 1 || row == 2 || row == 3 || row == 4 || row == 5) return true;");
     contains(surface, "Utils::promptNumber(\"Generation III Experience\"");
     contains(surface, "p.tid = static_cast<uint16_t>(r.value)"); contains(surface, "SID (read-only)");

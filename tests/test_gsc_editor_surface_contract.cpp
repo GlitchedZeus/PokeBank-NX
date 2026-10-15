@@ -40,8 +40,8 @@ int main() {
     const auto picker = readFile("src/UI/Gen2PokemonPickerOverlay.inc");
     // Both paging directions still update selection, but now stop active
     // touch inertia first so physical controls cannot fight the viewport.
-    assert(picker.find("(nav & HidNpadButton_Left)) { picker.scroll.stop(); picker.model.stepList(-10); }") != std::string::npos);
-    assert(picker.find("(nav & HidNpadButton_Right)) { picker.scroll.stop(); picker.model.stepList(10); }") != std::string::npos);
+    // Paging follows the shared list scheme (Gen13PickerPaging.h) and stops touch inertia first.
+    assert(picker.find("if (keys.any() && listCount > 0) {\n            picker.scroll.stop();\n            picker.model.index = PokeBank::UIModel::SharedPickerPaging::pagedRow(") != std::string::npos);
     const auto pickerModel = readFile("include/UI/Gen2PokemonPickerModel.h");
     const auto nativePresentation = readFile("include/UI/Gen2NativePresentation.h");
     const auto sharedShell = readFile("include/UI/SharedPokemonShell.h");
