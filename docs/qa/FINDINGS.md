@@ -28,7 +28,7 @@ lands, its reproduction moves into the passing suite as a regression test
 
 No crash, sanitizer report, out-of-bounds read or round-trip violation was found in any Gen I–V parser,
 record decoder, Bag decoder, copy selector or Save Instance identification path (see
-[Fuzzing evidence](#fuzzing-evidence)). All 18 export paths (including the Gen V Trainer Name/Money path and the production Gen I transaction `publishVerifiedGen1Export`) satisfy the five export-safety contracts.
+[Fuzzing evidence](#fuzzing-evidence)). All 18 export paths (including the Gen V Trainer Name/Money path and the production Gen I transaction `publishVerifiedGen1Export`) satisfy the six export-safety contracts C1–C6 (C6: Discard All restores the working copy and a later export is refused); see [SAVE_SAFETY_CHAIN.md](SAVE_SAFETY_CHAIN.md).
 
 ## QA-F4 (Low, defence in depth; FIXED in bc83815): Gen V PID replay guard conjoins the gender and ability links
 
