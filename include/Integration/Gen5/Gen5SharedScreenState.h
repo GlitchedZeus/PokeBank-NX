@@ -4,6 +4,7 @@
 #include "Integration/Gen5/Gen5SharedEditorBridge.h"
 #include "Integration/Gen5/Gen5CreateValidation.h"
 #include "Integration/Gen5/Gen5CreateInputRules.h"
+#include "Integration/Gen5/Gen5TrainerName.h"
 
 #include <algorithm>
 #include <array>
@@ -368,6 +369,12 @@ public:
         const uint32_t version=trainer.gameVersion;
         if(version<20 || version>23) {
             error="Gen V Create needs the validated exact game version";
+            return std::nullopt;
+        }
+        if(newGameNoTrainer5(trainer.rawName.size(),trainer.tid,trainer.sid,trainer.playedHours,
+                             trainer.playedMinutes,trainer.playedSeconds)) {
+            error="New-game save: no trainer yet, so there is no Original Trainer to copy. "
+                  "Play until the game saves, then Create";
             return std::nullopt;
         }
         CreateTrainer5 ot;

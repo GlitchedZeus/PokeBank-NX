@@ -32,6 +32,7 @@ namespace PokeVault::Integration::Gen5 {
 enum class CopyState5 : uint8_t {
     ChecksumInvalid,      // one or more retail blocks fail CRC16-CCITT
     UnknownVersion,       // checksums valid but the game-version byte is not 20..23
+    NewGameNoTrainer,     // valid new-game save: no name, TID=SID=0, play time 0, no Pokemon
     NoTrainerIdentity,    // valid, but TID=SID=0 and an empty name: blank/initial copy
     UnreadableTrainerName,// trainer present but the name holds unsupported code units
     InvalidPokemonRecords,// a declared party PK5 fails validation (boxed ones are quarantined)
@@ -43,6 +44,7 @@ enum class CopyState5 : uint8_t {
     switch (s) {
         case CopyState5::ChecksumInvalid: return "checksums invalid";
         case CopyState5::UnknownVersion: return "unknown game version";
+        case CopyState5::NewGameNoTrainer: return "no trainer data (new-game save, no trainer yet)";
         case CopyState5::NoTrainerIdentity: return "no trainer data (blank or initial copy)";
         case CopyState5::UnreadableTrainerName: return "trainer name unreadable";
         case CopyState5::InvalidPokemonRecords: return "invalid Pokemon records";
@@ -54,7 +56,7 @@ enum class CopyState5 : uint8_t {
 // A copy the shared editor may open without hiding missing data.
 [[nodiscard]] constexpr bool copyOpenable5(CopyState5 s) noexcept {
     return s == CopyState5::Populated || s == CopyState5::GenuinelyEmpty ||
-           s == CopyState5::UnreadableTrainerName;
+           s == CopyState5::UnreadableTrainerName || s == CopyState5::NewGameNoTrainer;
 }
 
 struct CopyReport5 {
@@ -178,6 +180,10 @@ template <size_t N>
                                                             : (r.versionByte == 22 || r.versionByte == 23);
     if (r.blocksValid != r.blocksTotal) r.state = CopyState5::ChecksumInvalid;
     else if (!versionOk) r.state = CopyState5::UnknownVersion;
+    else if (newGameNoTrainer5(r.nameLength, r.trainerIdPresent ? 1 : 0, 0, r.playedHours,
+                               r.playedMinutes, r.playedSeconds) &&
+             r.partyCountByte == 0 && r.occupiedBoxRecords == 0 && r.invalidBoxRecords == 0)
+        r.state = CopyState5::NewGameNoTrainer;
     else if (!r.trainerIdPresent && r.nameLength == 0) r.state = CopyState5::NoTrainerIdentity;
     // Damaged boxed records are quarantined (Gen IV parity) and counted, not
     // fatal; a damaged DECLARED party member makes the copy unreadable.
@@ -243,7 +249,8 @@ template <size_t N>
     if (!r.chosenIndex) return std::nullopt;
     const auto& chosen = r.copies[*r.chosenIndex];
     for (size_t i = 0; i < r.copies.size(); ++i)
-        if (i != *r.chosenIndex && r.copies[i].family == chosen.family && copyOpenable5(r.copies[i].state))
+        if (i != *r.chosenIndex && r.copies[i].family == chosen.family && copyOpenable5(r.copies[i].state) &&
+            r.copies[i].state != CopyState5::NewGameNoTrainer)
             return i;
     return std::nullopt;
 }
@@ -256,10 +263,15 @@ template <size_t N>
 // is described, never silently substituted. Empty result: copy is openable.
 [[nodiscard]] inline std::string unopenableCopyDiagnostic5(std::span<const uint8_t> image,
                                                            const Gen5ReadOnlySave& save,
-                                                           SaveCopySelection selection) {
+                                                           SaveCopySelection selection,
+                                                           CopyState5* stateOut = nullptr) {
     const auto report = inspectSave5(image, "normalized", selection);
     const auto state = chosenState5(report);
-    if (copyOpenable5(state)) return {};
+    if (stateOut) *stateOut = state;
+    // A new-game copy opens (read-only presentation says "no trainer yet"),
+    // unless the other copy holds a real game: then it is a stale copy.
+    const bool staleNewGame = state == CopyState5::NewGameNoTrainer && openableAlternative5(report);
+    if (copyOpenable5(state) && !staleNewGame) return {};
     std::string out = std::string(save.selectedBackupPartition() ? "Backup" : "Primary") +
                       " copy: " + copyStateLabel5(state);
     if (const auto other = openableAlternative5(report)) {

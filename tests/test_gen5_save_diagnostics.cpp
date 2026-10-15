@@ -9,6 +9,8 @@
 #include "Integration/Gen5/Gen5SaveDiagnostics.h"
 #include "Integration/Gen5/Gen5SaveInstanceAdapter.h"
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
+#include "Integration/Gen5/Gen5SharedScreenState.h"
+#include "Integration/Gen5/Gen5TrainerScreen.h"
 
 #include <cassert>
 #include <cstdio>
@@ -118,7 +120,8 @@ void dualCopyBlankPrimary(G::SaveFamily f, const char* game, uint8_t version) {
     const auto report = G::inspectSave5(sav, "desmume-dsv", G::SaveCopySelection::Primary);
     assert(report.copies.size() == 2 && !report.copiesIdentical);
     assert(report.copies[0].blocksValid == report.copies[0].blocksTotal);
-    assert(report.copies[0].state == State::NoTrainerIdentity);
+    // A new-game copy next to a real game is a stale copy: refused below.
+    assert(report.copies[0].state == State::NewGameNoTrainer);
     assert(!report.copies[0].trainerIdPresent && report.copies[0].nameLength == 0);
     assert(report.copies[0].blankEncryptedBoxSlots == 720 && report.copies[0].occupiedBoxRecords == 0);
     assert(report.copies[1].state == State::Populated);
@@ -148,18 +151,64 @@ void dualCopyBlankPrimary(G::SaveFamily f, const char* game, uint8_t version) {
 }
 
 void singleBlankCopy() {
-    // Only the blank Primary validates: refused, other copy reported invalid.
+    // Only a new-game Primary validates and nothing better exists: it opens
+    // (read-only presentation says "no trainer yet"), never as invented data.
     std::vector<uint8_t> sav(L::FullSaveSize, 0);
     blankCopy(sav, 0, G::SaveFamily::Black2White2, 23);
     const auto p = probe(sav, "black2_nds", G::SaveCopySelection::Automatic);
-    assert(!p.ready());
-    assert(p.instance.diagnostic.find("no trainer data") != std::string::npos);
-    assert(p.instance.diagnostic.find("other copy is checksums invalid") != std::string::npos);
+    assert(p.ready() && p.instance.trainerName.empty() && p.instance.partyCount == 0);
+    // A blank copy that is NOT a new game (play time recorded, no identity)
+    // is still refused.
+    std::vector<uint8_t> odd(L::FullSaveSize, 0);
+    odd[0x19400 + T::GameOffset] = 23;
+    C::write16(odd, 0x19400 + T::HoursOffset, 5);
+    encryptedBlankBoxes(odd, 0);
+    stamp(odd, 0, G::SaveFamily::Black2White2);
+    assert(G::inspectSave5(odd, "raw").copies[0].state == State::NoTrainerIdentity);
+    const auto q = probe(odd, "black2_nds", G::SaveCopySelection::Automatic);
+    assert(!q.ready() && q.instance.diagnostic.find("blank or initial copy") != std::string::npos);
+    assert(q.instance.diagnostic.find("other copy is checksums invalid") != std::string::npos);
+}
+
+// Models the real state the owner's four DraStic Gen V files were found in
+// (built from the format, never from the owner's files): both copies valid
+// and identical, version bytes 20-23, no trainer written yet, every box slot
+// the encrypted blank. It opens; nothing shows "Male", zeros are labelled
+// as a new-game save, all 720 slots accept Create, and Create explains why it
+// cannot copy an Original Trainer.
+void realNewGameSave(G::SaveFamily f, const char* game, uint8_t version) {
+    std::vector<uint8_t> sav(L::FullSaveSize, 0);
+    blankCopy(sav, 0, f, version);
+    blankCopy(sav, copySize(f), f, version);
+    const auto report = G::inspectSave5(sav, "desmume-dsv");
+    assert(report.copiesIdentical && report.copies.size() == 2);
+    assert(report.copies[0].state == State::NewGameNoTrainer && report.copies[1].state == State::NewGameNoTrainer);
+    assert(report.copies[0].blankEncryptedBoxSlots == 720 && report.copies[0].zeroFilledBoxSlots == 0);
+    assert(!G::openableAlternative5(report));
+    const auto p = probe(sav, game, G::SaveCopySelection::Automatic);
+    assert(p.ready() && p.save && p.instance.trainerName.empty());
+    const auto& t = p.save->trainer();
+    assert(G::newGameNoTrainer5(t.rawName.size(), t.tid, t.sid, t.playedHours, t.playedMinutes, t.playedSeconds));
+    G::Gen5StagedPokemonWorkspace ws(*p.save);
+    using Screen = G::Gen5TrainerScreen;
+    assert(Screen::value(ws, Screen::Row::Gender) == "-");
+    assert(Screen::value(ws, Screen::Row::Name) == "- (no trainer yet)");
+    assert(Screen::value(ws, Screen::Row::TrainerId) == "-");
+    Screen screen;
+    std::string error;
+    assert(screen.enter(ws, error));
+    assert(!screen.beginEdit(ws, error) && error.find("New-game save") != std::string::npos);
+    size_t empty = 0;
+    for (size_t box = 0; box < L::BoxCount; ++box)
+        for (size_t slot = 0; slot < L::BoxSlots; ++slot) empty += ws.emptyCloneDestination(box, slot);
+    assert(empty == 720);
+    assert(!G::Gen5SharedScreenState::sharedCreateDefaults(ws, 1, "Pikachu", {2026, 10, 15}, error));
+    assert(error.find("no trainer yet") != std::string::npos);
 }
 
 void singleBlankCopyFile() {
-    // Automatic on a file whose only valid copy is blank: an explicit
-    // NOT OPENABLE row, never a remembered card with zeros.
+    // Automatic on a file whose only valid copy is a new-game save: a Ready
+    // row that says so, never a row that looks like a played game with zeros.
     char pattern[] = "/tmp/pokebank_gen5_blank_XXXXXX";
     assert(::mkdtemp(pattern));
     const std::string dir = pattern, src = dir + "/w.sav";
@@ -170,9 +219,9 @@ void singleBlankCopyFile() {
         assert(f && std::fwrite(sav.data(), 1, sav.size(), f) == sav.size() && std::fclose(f) == 0);
     }
     const auto choices = G::inspectSourceChoices(src, "DraStic", "white_nds");
-    assert(choices.size() == 1 && !choices[0].ready());
-    assert(choices[0].diagnostic.find("Primary copy: no trainer data") != std::string::npos);
-    assert(choices[0].sourceLabel.find("NOT OPENABLE") != std::string::npos);
+    assert(choices.size() == 1 && choices[0].ready());
+    assert(choices[0].sourceLabel.find("New-game save: no trainer yet") != std::string::npos);
+    assert(choices[0].sourceLabel.find("NOT OPENABLE") == std::string::npos);
     assert(std::remove(src.c_str()) == 0 && ::rmdir(dir.c_str()) == 0);
 }
 
@@ -270,6 +319,10 @@ int main() {
     dualCopyBlankPrimary(G::SaveFamily::Black2White2, "white2_nds", 22);
     singleBlankCopy();
     singleBlankCopyFile();
+    realNewGameSave(G::SaveFamily::BlackWhite, "white_nds", 20);
+    realNewGameSave(G::SaveFamily::BlackWhite, "black_nds", 21);
+    realNewGameSave(G::SaveFamily::Black2White2, "white2_nds", 22);
+    realNewGameSave(G::SaveFamily::Black2White2, "black2_nds", 23);
     otherStates();
     reportFile();
     std::cout << "Gen V save diagnostics: blank/stale copy, populated, empty, unreadable name, "

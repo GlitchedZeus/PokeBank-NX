@@ -56,6 +56,15 @@ public:
         }
         const auto t = ws.trainerPresentation();
         if (!t) return "Unavailable";
+        if (newGame(*t)) {
+            switch (row) {
+                case Row::Name: return "- (no trainer yet)";
+                case Row::TrainerId:
+                case Row::SecretId:
+                case Row::Gender: return "-";
+                default: break;
+            }
+        }
         switch (row) {
             case Row::Name: return displayTrainerName(t->rawName).value_or("(unsupported glyphs)");
             case Row::Money: return std::to_string(t->money);
@@ -132,6 +141,10 @@ public:
             error = "Gen V trainer editor is not open";
             return false;
         }
+        if (const auto t = ws.trainerPresentation(); t && newGame(*t)) {
+            error = "New-game save: the game has not written a trainer yet; nothing to edit";
+            return false;
+        }
         if (!editable(selectedRow())) {
             error = std::string(label(selectedRow())) +
                     " is read-only for Gen V (ownership/story data is never edited)";
@@ -166,6 +179,10 @@ public:
                                      std::string& error) {
         return apply(ws, Row::PlayTime, std::forward<Refresh>(refresh), error,
                      [&](Gen5StagedTrainer& t, std::string* why) { return t.setPlayTime(h, m, s, why); });
+    }
+
+    [[nodiscard]] static bool newGame(const Trainer5View& t) noexcept {
+        return newGameNoTrainer5(t.rawName.size(), t.tid, t.sid, t.hours, t.minutes, t.seconds);
     }
 
 private:

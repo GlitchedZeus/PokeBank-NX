@@ -31,6 +31,8 @@ struct GameCardReadOnlyPreview {
     std::string trainerName; // empty if Gen V text was malformed
     uint8_t trainerGender = 0;
     bool trainerGenderKnown = false;
+    // Freshly initialized save: no trainer written yet (neutral presentation).
+    bool newGameNoTrainer = false;
     uint16_t dexSeen = 0;
     uint16_t dexCaught = 0;
     uint16_t dexTotal = 0;
@@ -49,8 +51,12 @@ struct GameCardReadOnlyPreview {
     p.providerLabel=assigned.instance.providerLabel;
     p.sourceIdentity=assigned.instance.sourceIdentity;
     p.trainerName=displayTrainerName(save.trainer().rawName).value_or("");
-    p.trainerGender=save.trainer().gender;
-    p.trainerGenderKnown=p.trainerGender<=1;
+    const auto& t=save.trainer();
+    p.newGameNoTrainer=newGameNoTrainer5(t.rawName.size(),t.tid,t.sid,t.playedHours,
+                                         t.playedMinutes,t.playedSeconds);
+    p.trainerGender=t.gender;
+    // The gender byte of a new-game save is not a gender: neutral portrait.
+    p.trainerGenderKnown=!p.newGameNoTrainer && p.trainerGender<=1;
     p.dexSeen=save.dexProgress().seen;
     p.dexCaught=save.dexProgress().caught;
     p.dexTotal=save.dexProgress().total;

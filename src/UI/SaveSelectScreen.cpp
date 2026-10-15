@@ -1077,7 +1077,8 @@ namespace UI {
                         const auto preview=PokeVault::Integration::Gen5::previewAssignedGame(opened);
                         if(preview) {
                             card.gen5Preview=*preview;
-                            card.sourceLabel="REMEMBERED";
+                            card.sourceLabel=preview->newGameNoTrainer
+                                ? "REMEMBERED / NEW-GAME SAVE, NO TRAINER YET" : "REMEMBERED";
                             card.trainerName=preview->trainerName;
                             card.trainerGender=preview->trainerGender;
                             card.trainerGenderKnown=preview->trainerGenderKnown;

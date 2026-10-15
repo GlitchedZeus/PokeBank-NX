@@ -464,7 +464,8 @@ Source::SaveInstance inspectSnapshot(const SourceSnapshot& snapshot,
     // The same blank/invalid-copy gate as probeNormalizedBattery: a
     // checksum-valid copy with no trainer identity never becomes a Ready
     // "Party 0 / Boxed 0" row, a card preview, or an editor session.
-    if(auto refused=unopenableCopyDiagnostic5(snapshot.bytes,*save,copy);!refused.empty()) {
+    CopyState5 copyState=CopyState5::ChecksumInvalid;
+    if(auto refused=unopenableCopyDiagnostic5(snapshot.bytes,*save,copy,&copyState);!refused.empty()) {
         row.validation=Source::ValidationStatus::Invalid;
         row.sourceLabel=std::string("Gen V / ")+
             (save->selectedBackupPartition()?"Backup copy":"Primary copy")+" / NOT OPENABLE";
@@ -484,6 +485,8 @@ Source::SaveInstance inspectSnapshot(const SourceSnapshot& snapshot,
         " / Party "+std::to_string(save->partyCount())+
         " / Boxed "+std::to_string(save->diagnostics().occupiedBoxRecords);
     if(!row.trainerName.empty())row.sourceLabel+=" / "+row.trainerName;
+    if(copyState==CopyState5::NewGameNoTrainer)
+        row.sourceLabel+=" / New-game save: no trainer yet";
     row.validation=Source::ValidationStatus::Ready;
     row.diagnostic=snapshot.message;
     if(save->selectedBackupPartition())row.diagnostic+="; validated backup copy";
