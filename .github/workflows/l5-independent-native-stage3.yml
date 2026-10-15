@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - audit/legality-l5-research-qa-20261012
+      # Gen I-V integration branch (PR #314): run on its exact pushed head.
+      - 'claude/gen1-5-legality-**'
   workflow_dispatch:
 
 permissions:
@@ -47,8 +49,17 @@ jobs:
           set -euo pipefail
           expected="L5 Stage3 actual PK3/PK4 entity quarantine: 17310 PASS (synthetic; full-checkout production linkage)"
           for compiler in g++ clang++; do
+            flags=()
             if [ "$compiler" = "clang++" ]; then
               variant=-clang
+              # Clang only: the linked production PK3 sources carry GCC-only
+              # diagnostic pragmas (src/Encryption/Encryption3FRLG.cpp) and an
+              # unused inline helper (unownFormValue in src/Pokemon/Pokemon3FRLG.cpp)
+              # that Clang rejects under -Werror. Same two flags as the other
+              # Clang legality gates (tools/audit_legality_l6_stage5.py,
+              # tools/audit_legality_stage2_native_formats.py). GCC keeps the
+              # Makefile.host default CXXFLAGS untouched.
+              flags=(CXXFLAGS="-std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -Wno-unknown-warning-option -Wno-unused-function")
             else
               variant=-gcc
             fi
@@ -60,7 +71,7 @@ jobs:
               fi
               log="/tmp/l5-stage3-entity-${compiler}-${mode}.log"
               make -f Makefile.host -f tools/audit_legality_l5_stage3_entities.mk \
-                CXX="$compiler" L5_STAGE3_ENTITY_VARIANT="$variant" "$target" | tee "$log"
+                CXX="$compiler" "${flags[@]}" L5_STAGE3_ENTITY_VARIANT="$variant" "$target" | tee "$log"
               grep -Fx "$expected" "$log"
             done
           done
