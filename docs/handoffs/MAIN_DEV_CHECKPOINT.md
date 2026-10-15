@@ -4,11 +4,21 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-15 (Gen V hardware failure recorded).
+**Last updated:** 2026-10-15 08:15 UTC (campaign tick: L report, QA-F2 fixed).
 
 ## Active milestone
 
 **Gen I–V COMPLETION CAMPAIGN** (owner directive, 2026-10-15): continuous work by Threads 2R/C/L/4 until all Gen I–V software scope is done and every gate is green on the final commit, then ONE NRO. #307 head at campaign start: `c952565cf878705726b2541546d085fa9724108d`, CI 8/9 green with GCC host still running; internal build only.
+
+### Campaign progress (08:15 UTC tick)
+
+| Item | State |
+|---|---|
+| #307 head | `96a446853e9f12574c98379499d1ce233ad82445`: 2R Gen V audit closed at `cedc2f8` (glyphs and overflow; exit guard, focus restore and popups verified) |
+| QA-F2 | **Fixed** in `96a44685`. The three `one-time-*` workflows are re-indented and gated to `workflow_dispatch`; none deleted. |
+| C | `cd2bbbff` (8 commits: Review discard, picker parity, export separation tests, Gen II Clone, Y Random DVs confirm, Gen IV bag layout). 2R is merging it. |
+| L | `50491e88` (draft PR #317). The RetroArch Quit "crash" is upstream behaviour: no next load, so the loader goes to hbmenu or HOME. The DraStic return is its saved LauncherPath. Fixes: a bounded argv plan with libnx-exact quoting, the return selection restored on Home, and a return-on-launcher mode inside the **opt-in** return host. Default handoff is byte-identical. Merges cleanly; 2R is merging it and adding the quit-route notice. NOT DEVICE TESTED. |
+| QA (4) | `1b101ed5`: matrix framework, runner and workflow checker. Gen I/II and V cells are still open. |
 
 **URGENT: Gen V FAILED owner hardware acceptance** on candidate `fa9cfcea` (NRO `57b4ec2b…`). Thread 2 is repairing it on #307 (unfrozen). Gen VI/VII merges are on hold. Thread 3 is standing down so the usage quota goes to the repair.
 
@@ -161,8 +171,7 @@ The PKSE-derived installed-save inject path (`restoreBackupToTitle`, used by `sa
 
 0. Usage limit: three threads plus the coordinator use up the 5-hour quota in about 1 hour. Thread 4 resumed to audit the candidate.
 
-1. Gen I–III RetroArch exit crash. **Codex owns this**; Main Development does not edit RetroArch exit code.
-2. Gen IV/V DraStic "Quit to Launcher" returns to DraStic, not PokeBank NX.
+1. Gen I–III RetroArch exit and 2. DraStic "Quit to Launcher": reassigned to Thread L by the campaign directive. Findings and the opt-in fix are in `docs/handoffs/LAUNCH_RETURN_PROGRESS.md` (L branch). They need the owner's A/B device test.
 3. Hardware test of the `9bf9d492` candidate is pending with the owner.
 4. ~~#307 ownership~~: resolved. The legality session confirmed it stopped at `a17c503a` and left draft handoff `claude/gen5-handoff-from-legality-20261014` @ `fc519414` (Bag in the Items panel; unbuilt) for Thread 2 to review.
 5. Native builds outside CI depend on pulling the devkitA64 Docker image, which can hit the Docker Hub rate limit.
@@ -172,7 +181,7 @@ The PKSE-derived installed-save inject path (`restoreBackupToTitle`, used by `sa
 1. Approve integrating Gen VI (later Gen VII) into #307 after the Gen V candidate. The integration requests are in `docs/gen6/integration-requests/01-02` on the Gen VI lane.
 2. Gen VII re-signing: needs a "payload tail" diagnostic from one game-written SM/USUM save. PKHeX and PKSM-Core differ here, so SAV7 export stays unsupported until then.
 3. Approve bumping the `memecrypto` submodule: `sha1.c` has undefined behavior in a signed shift, and `rsa.c` leaks memory.
-5. QA-F2 (Medium): 3 invalid `one-time-*` workflow YAMLs fail on every push to every branch (~1,100 failed runs each). Approve removing or fixing them.
+5. QA-F2: fixed by gating to `workflow_dispatch` (`96a44685`). Deleting the stale one-time workflows still needs owner approval.
 4. Confirm the Dekopon (`sdmc:/switch/dekopon/…`) and Checkpoint (`sdmc:/3ds/Checkpoint/saves/…`) paths on the real SD card. Azahar has no Switch build, so it is unsupported.
 
 ## Next implementation tasks
