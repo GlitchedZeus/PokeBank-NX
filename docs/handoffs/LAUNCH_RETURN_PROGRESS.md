@@ -134,4 +134,20 @@ For every launch, confirm that the save file's SHA-256 is unchanged by PokeBank.
 
 ## Gates (this checkpoint)
 
-See the latest section below.
+Application code SHA `86c3490f97b4d8dfdb65084eced46d05681f611c`. The later commit adds docs and one test assertion; that assertion was also run under GCC.
+
+| Gate | Result |
+|---|---|
+| `make -f Makefile.host host-test` (GCC 13) | PASS |
+| `make -f Makefile.host host-sanitize` (GCC 13, ASan/UBSan) | PASS |
+| `make -f Makefile.host host-test CXX=clang++` (Clang 18) | PASS |
+| `make -f Makefile.host host-sanitize CXX=clang++` | PASS (after installing the container's missing `libclang-rt-18-dev`; the first run failed to link every sanitize binary for that reason alone) |
+| All 20 `tests/test_*.py` contracts | PASS |
+| `git diff --check` | PASS |
+| Native devkitA64 (pinned `sha256:1fc388c3…`) `make`, including `runtime/return_host` | PASS. `PokeBankNX.nro` 24,250,505 B, SHA-256 `4f4445215eab76921424046205604d2825479f94cabb5999fc7467b15e60e216`. Built without the recovered RomFS assets, so it is **not** a device candidate; CI builds the candidate. |
+
+## Next
+
+1. Thread 2R forward-merges this branch into #307. The candidate NRO comes from #307's integrated build.
+2. Owner device round: procedure A, then B.
+3. If B6 crashes, read the `return-host.log` stage, then narrow the host fault from it (`load` reached or not, `child-exit` reached or not).
