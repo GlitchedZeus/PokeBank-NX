@@ -57,8 +57,16 @@ and QA work cleanly mergeable into the Gen V application.
 - **Reads only:** PR #301 (legality lane) PK5/PK6 transport and PKSM-Core
   (`vendor/PKSM-Core`). Code taken from #301 comes in only as a reviewed,
   cited cherry-pick after owner approval.
-- Later Gen VII work (SM/USUM, plus LGPE as its own family) continues on new
-  `claude/gen7-*` lanes under the same rules.
+- Later lanes, each stacked on the previous one and under the same rules (new files
+  only, one `Makefile.host` include line):
+  - Gen VII SM/USUM: `claude/gen7-native-20261014`, owning `Integration/Gen7`.
+  - Gen VIII: `claude/gen8-native-20261015`, owning `Integration/Gen8`, approved 2026-10-15.
+    Bytes come only from the existing `backupSaveData` workspace copy. It has no mount or
+    commit code, never calls `saveTrainerInfo*`/`injectToTitle`, and exports only to
+    `exports/gen8`. SWSH exports `main` only, with `backup`/`poke_trade` carried
+    byte-identical. BDSP export stays unsupported until the authoritative file is
+    cited.
+  - Let's Go: a `Gen7b` lane after SWSH reaches a staged session.
 
 ## Thread 4 — Application QA, fuzzing and native CI
 

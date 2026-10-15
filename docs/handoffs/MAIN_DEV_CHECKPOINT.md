@@ -4,7 +4,7 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-15 ~03:30 UTC (23:30 America/Toronto, Oct 14).
+**Last updated:** 2026-10-15 ~03:35 UTC (23:35 America/Toronto, Oct 14).
 
 ## Active milestone
 
@@ -32,8 +32,8 @@ conservative estimates.
 | IV | DPPt, HGSS | ~90% | CI green on #306/#307 | Earlier build accepted; newest candidate untested |
 | V | BW, B2W2 | ~90% | 9/9 CI green on `fa9cfcea`; full GCC/Clang host + sanitizers pass | Candidate `fa9cfcea` awaiting owner test |
 | VI | X, Y, OR, AS | ~60% (PK6/SAV6, staged Edit/Clone/Remove, party stat recompute, staged Bag, read-only box names/Pokédex, editor provider, sources; not wired into the app) | 7 Gen VI test binaries under GCC/Clang ± ASan/UBSan; differential vs PKSM-Core | — |
-| VII | SM, USUM; LGPE as its own family | ~35% (read-only SAV7 + MemeCrypto verify; PK7 staged Edit/Clone/Remove up to signing; hyper-training-aware party stats; read-only box names/Pokédex; export blocked on re-signing evidence; LGPE research note only) | Gen VII focused CI green on #311 | — |
-| VIII | SwSh, BDSP, PLA | ~5% (PK8/PB8/PA8 classes, BDSP/LA crypto headers) | none | — |
+| VII | SM, USUM; LGPE as its own family | ~40% (read-only SAV7 + MemeCrypto verify; PK7 staged Edit/Clone/Remove plus staged Bag up to signing; party stats; read-only box names/Pokédex; export blocked on re-signing evidence; LGPE research only) | Gen VII focused CI green on #311 | — |
+| VIII | SwSh, BDSP, PLA | ~8% (PKSE-derived read code; research note `docs/gen8/SWSH_RESEARCH.md`; installed-save path confirmed read-only; `Integration/Gen8` lane approved, SWSH first) | none yet | — |
 | IX | SV, Legends: Z-A | ~2% (`BaseStatsGen89`, MyStatus validation) | none | — |
 
 ## Gen V: implemented vs missing (PR #307 `a17c503a`)
@@ -97,7 +97,6 @@ The PKSE-derived installed-save inject path (`restoreBackupToTitle`, used by `sa
 1. Approve integrating Gen VI (later Gen VII) into #307 after the Gen V candidate. The integration requests are in `docs/gen6/integration-requests/01-02` on the Gen VI lane.
 2. Gen VII re-signing: needs a "payload tail" diagnostic from one game-written SM/USUM save. PKHeX and PKSM-Core differ here, so SAV7 export stays unsupported until then.
 3. Approve bumping the `memecrypto` submodule: `sha1.c` has undefined behavior in a signed shift, and `rsa.c` leaks memory.
-6. Approve a new `Integration/Gen7b` lane for Let's Go Pikachu/Eevee (research: `docs/gen7/LGPE_RESEARCH.md` on the Gen VII lane).
 5. QA-F2 (Medium): 3 invalid `one-time-*` workflow YAMLs fail on every push to every branch (~1,100 failed runs each). Approve removing or fixing them.
 4. Confirm the Dekopon (`sdmc:/switch/dekopon/…`) and Checkpoint (`sdmc:/3ds/Checkpoint/saves/…`) paths on the real SD card. Azahar has no Switch build, so it is unsupported.
 
