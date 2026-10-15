@@ -4,7 +4,7 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-15 12:15 UTC (FINAL Gen I–V tree pushed; waiting for exact-head CI and the ONE NRO).
+**Last updated:** 2026-10-15 12:50 UTC (FINAL Gen I–V NRO produced and verified; awaiting owner hardware test).
 
 ## Active milestone
 
@@ -50,6 +50,7 @@ Stage C (Gen VI) is starting in parallel.
 
 | Build | Code SHA | NRO SHA-256 | Status |
 |---|---|---|---|
+| **FINAL Gen I–V campaign candidate** (#307) | `a0633b6d53a582aaae2be5bf91e9fde0c10d27ac` (tree `945df45d892aaa3082a57927ffbfa8f6d54365cc`) | `55977952445e2b987044dca40b1cd58d681b901eeff5d2cfced61ff8caee68ea` (`PokeBank-NX-Gen1-5-Candidate-a0633b6d.nro`, 175,632,049 B; run 38732921202, artifact 11970313582, zip sha256 2675e35a…705d) | **NOT DEVICE TESTED**. CI 17/17 success on the exact head (coordinator-verified). Report: #307 comment 6192368775. |
 | Integrated Gen I–IV / Product Home | `0760334fb850ca46b5171c55f690998d7680d4e7` | `4f28d7f7ad38c2b62458642e014ae3c05e866755c4152bf4c2db0574c381ce91` | **Owner accepted** (Oct 8) |
 | Earlier #306 candidate | (earlier #306 head) | — | Owner confirmed: artwork restored, Gen IV launches directly into DraStic |
 | #306 Gen I–IV candidate | `9bf9d492` (PR head `4b9b9f65` adds docs only) | recorded in a #306 PR comment | **NOT DEVICE TESTED** |
