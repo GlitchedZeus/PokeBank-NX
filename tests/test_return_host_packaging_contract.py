@@ -67,4 +67,33 @@ require(request.index("prepareReturnHost(hostPath, hostError)") > gate and
 require("std::string quoted(" not in game_launcher,
         "the escaping quoted() helper produced argv libnx cannot parse; use gameLaunchAppendArg")
 
-print("Return-host packaging + opt-in launch-plan contract: PASS")
+# Default (direct) handoff hygiene. hbloader reuses this process for the emulator, so everything
+# PokeBank opened must be released on the normal return from main(): newlib closes stdio
+# streams, then libnx __appExit() unmounts fsdev devices and closes fs/time/hid/applet/sm.
+# The handoff therefore must never short-circuit that path, and the explicit teardown in
+# main() must stay in reverse-init order.
+main_source = (ROOT / "src/main.cpp").read_text(encoding="utf-8")
+teardown = main_source[main_source.index("uiManager.run();"):]
+order = ["}  // UIManager", "UI::SpriteManager::cleanup();", "UI::SystemIcons::cleanup();",
+         "SDL_Quit();", "romfsExit();", "accountExit();", "nsExit();", "return 0;"]
+positions = [teardown.index(step) for step in order]
+require(positions == sorted(positions),
+        "main() must release UI/SDL, RomFS, account and ns before returning to the loader")
+for path in ["src/main.cpp", "src/UI/UI.cpp", "src/UI/GameLauncher.cpp", "src/UI/SaveSelectScreen.cpp"]:
+    text = (ROOT / path).read_text(encoding="utf-8")
+    require("svcExitProcess" not in text and "std::exit(" not in text and
+            "std::quick_exit" not in text and "_Exit(" not in text,
+            f"{path}: a launch must leave through main()'s teardown, never an abrupt exit")
+for source in (ROOT / "src").rglob("*.cpp"):
+    text = source.read_text(encoding="utf-8", errors="replace")
+    require("void __appExit" not in text and "void userAppExit" not in text,
+            f"{source}: overriding libnx __appExit/userAppExit would skip loader-handoff cleanup")
+save_select = (ROOT / "src/UI/SaveSelectScreen.cpp").read_text(encoding="utf-8")
+require('fsdevUnmountDevice("pbpreview")' in save_select,
+        "installed-save preview mounts must be unmounted after use")
+require("fsSaveDataInfoReaderClose(&reader);" in save_select,
+        "save-data info readers must be closed")
+require("g_gameLaunchHandoffRequested = true;" in request,
+        "UI.cpp records return focus only for real handoffs")
+
+print("Return-host packaging + opt-in launch-plan + handoff hygiene contract: PASS")
