@@ -51,3 +51,16 @@ $(HOST_BUILD)/test_gen12_reroll_confirm: $(GEN12_REROLL_SOURCES) include/UI/Gen1
 $(HOST_BUILD)/test_gen12_reroll_confirm_sanitize: $(GEN12_REROLL_SOURCES) include/UI/Gen12RerollDVsConfirm.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN12_REROLL_SOURCES) -o $@
+
+# Gen III PID gender accessor (PokemonRecord::gender), cross-checked against PKSM personal3.
+GEN3_GENDER_SOURCES := tests/test_gen3_gender.cpp src/Pokemon/PersonalInfoTable.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen3_gender
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_gender_sanitize
+host-test: $(HOST_BUILD)/test_gen3_gender
+host-sanitize: $(HOST_BUILD)/test_gen3_gender_sanitize
+$(HOST_BUILD)/test_gen3_gender: $(GEN3_GENDER_SOURCES) include/Integration/Gen3/Gen3Gender.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN3_GENDER_SOURCES) -o $@
+$(HOST_BUILD)/test_gen3_gender_sanitize: $(GEN3_GENDER_SOURCES) include/Integration/Gen3/Gen3Gender.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN3_GENDER_SOURCES) -o $@
