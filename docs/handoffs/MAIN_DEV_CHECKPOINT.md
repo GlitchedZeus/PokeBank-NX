@@ -4,7 +4,7 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-15 11:15 UTC (all QA findings fixed in code; Gen IV .dsv backup wired; final NRO prep).
+**Last updated:** 2026-10-15 12:15 UTC (FINAL Gen I–V tree pushed; waiting for exact-head CI and the ONE NRO).
 
 ## Active milestone
 
@@ -35,6 +35,7 @@ any SHA below.
 | Ownership exception | C edited QA's tests/test_qa_matrix_gen4.cpp once, a stricter bag-review cell needed after 2b2be00f. QA is told to adopt it. |
 | 11:15 | #307 `73f38d0a`: C `768c65fd` merged (F8b fixed `f883f4d0`; Castform/Cherrim form 0 `7e36220f`; Gen IV stale-source refusal), QA `2fa40e3`, Common verbatim-backup fields (`d9cdcf78`, test_verified_export_verbatim), Gen IV snapshot at Open (UI.cpp:678). All QA findings F1–F8 are fixed in code. Pending: C `afd96e3b` (Gen IV verbatim backup and manifest keys), the optional backup extension (2R), QA's F8b move to regressions and the strict cell. Then the ONE final NRO. |
 | Note | PR #310 shows "merged by GlitchedZeus" at 10:50:42. That is GitHub auto-marking it merged when 2R pushed 93421d5d (the QA merge), not a separate owner action. |
+| **FINAL TREE** | #307 `a0633b6d53a582aaae2be5bf91e9fde0c10d27ac`, tree `945df45d892aaa3082a57927ffbfa8f6d54365cc`. Verified by the coordinator: it contains QA `fad2523f`, C `bcd20dc5`, L `980a217b`, and the F8b, Castform/Cherrim, Gen IV/V verbatim .dsv backup and Common export units. `LIVE_SAVE_WRITES_ENABLED = false` (WritePolicy.h:18). 2R reports green on GCC and Clang host-test and host-sanitize (144 PASS), qa 420/0, qa-known-failures 0, contracts, diff-check, workflows and devkitA64. Waiting on exact-head CI and the gen15-integrated-candidate artifact. |
 | Known limitation (decided) | Gen I–III Home cards have no STALE state: a failed source shows "Party preview unavailable". Gen IV/V keep the last data as STALE. Not changed, because it is hardware-accepted Legacy behaviour. |
 | QA-F6 (Low, C) | `src/Legacy/RetroArchFRLGDiscovery.cpp:114`: identityHint substring-matches release names across the whole path. Confirmed in code and routed to C. |
 | Divergence noted | Create default species is #1 for Gen I/IV and #25 for Gen II/III/V. Kept as is: hardware-accepted and documented. |
