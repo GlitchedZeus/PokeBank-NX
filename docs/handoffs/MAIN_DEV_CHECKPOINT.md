@@ -4,7 +4,7 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-15 ~02:55 UTC (22:55 America/Toronto, Oct 14).
+**Last updated:** 2026-10-15 ~03:10 UTC (23:10 America/Toronto, Oct 14).
 
 ## Active milestone
 
@@ -31,8 +31,8 @@ conservative estimates.
 | I–III | RBY, GSC, RSE/FRLG | ~90% | CI green on #306/#307 | Earlier build accepted; newest candidate untested |
 | IV | DPPt, HGSS | ~90% | CI green on #306/#307 | Earlier build accepted; newest candidate untested |
 | V | BW, B2W2 | ~85% | Local GCC/Clang host + sanitizers pass; 9/9 CI green on `60c48c1b` | Not tested |
-| VI | X, Y, OR, AS | ~40% (format, session, editor provider and sources on its own lane; not wired into the app) | 1,896 local checks across Gen VI/VII under GCC/Clang ± ASan/UBSan; Gen VI CI green on #309 so far | — |
-| VII | SM, USUM; LGPE as its own family | ~15% (strict read-only SAV7 with MemeCrypto verify; export blocked on re-signing evidence) | local only; CI running | — |
+| VI | X, Y, OR, AS | ~60% (PK6/SAV6, staged Edit/Clone/Remove, party stat recompute, staged Bag, read-only box names/Pokédex, editor provider, sources; not wired into the app) | 7 Gen VI test binaries under GCC/Clang ± ASan/UBSan; differential vs PKSM-Core | — |
+| VII | SM, USUM; LGPE as its own family | ~25% (read-only SAV7 + MemeCrypto verify; PK7 staged Edit/Clone/Remove up to signing; export blocked on re-signing evidence) | 2 test binaries, 925 checks; draft #311 CI only | — |
 | VIII | SwSh, BDSP, PLA | ~5% (PK8/PB8/PA8 classes, BDSP/LA crypto headers) | none | — |
 | IX | SV, Legends: Z-A | ~2% (`BaseStatsGen89`, MyStatus validation) | none | — |
 
@@ -72,8 +72,8 @@ conservative estimates.
 |---|---|---|---|---|
 | #306 Gen I–IV | `claude/gen14-final-20261014` | `4b9b9f65` | 9/9 green | Thread 1 |
 | #307 Gen V integration | `claude/gen5-integration-20261014` | `60c48c1b` | **9/9 green**, incl. the Gen I–V integrated NRO job | Thread 2 (exclusive; legality session confirmed handoff 2026-10-14) |
-| Gen VI native | `claude/gen6-native-20261014` (draft #309 → #307, CI only) | `c9206dc8` (+ party stat recomputation) | Gen VI host + native green; full host running | Thread 3 |
-| Gen VII native | `claude/gen7-native-20261014` | `4e66e94f` | running | Thread 3 |
+| Gen VI native | `claude/gen6-native-20261014` (draft #309 → #307, CI only) | `5e683690` | see PR #309 | Thread 3 |
+| Gen VII native | `claude/gen7-native-20261014` (draft #311 → Gen VI lane, CI only) | `08a4359b` | see PR #311 | Thread 3 |
 | App QA | `audit/app-qa-20261014` (draft #310 → #307, CI only) | `e43f234` | running; no Gen I–V parser crash/UB found so far | Thread 4 |
 | Coordinator | `claude/optimistic-euler-ph2z4f` | docs only, on `a17c503a` | — | Coordinator |
 | #300 / #304 / #302 | preserved source lanes | `58bd564b` / `4d8c267e` / `6e27bbd5` | green | Contained in #307 |
