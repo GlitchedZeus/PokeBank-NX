@@ -735,7 +735,7 @@ void runVersion(Matrix& m, const VersionSpec& v) {
 
     // ---------------------------------------------------------------- review
     cell(m, ver, "review", "describeStagedSlotChanges lists party slots 1-2 (edited) and Box 1 slot 1 "
-             "Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur; bag edits are not listed (slot-only review)", [&](Probe& p) {
+             "Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur, Bag Medicines Potion 5 -> 9", [&](Probe& p) {
         if (!fieldsEditor) {
             p.expect(false, "no staged editor");
             return;
@@ -745,7 +745,8 @@ void runVersion(Matrix& m, const VersionSpec& v) {
         p.expect(hasLine(lines, "Party slot 1: Pikachu #25 (edited)"), "party slot 1 line missing");
         p.expect(hasLine(lines, "Party slot 2: Burmy #412 (edited)"), "party slot 2 line missing");
         p.expect(hasLine(lines, "Box 1 slot 4: (empty) -> Bulbasaur #1"), "created slot line missing");
-        p.expect(lines.size() == 4, "unexpected line count " + std::to_string(lines.size()));
+        p.expect(hasLine(lines, "Bag Medicines: item #17 5 -> 9"), "bag quantity line missing");
+        p.expect(lines.size() == 5, "unexpected line count " + std::to_string(lines.size()));
     });
 
     // ---------------------------------------------------------------- export
