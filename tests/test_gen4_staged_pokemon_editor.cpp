@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -935,6 +936,104 @@ void testReleaseRestoresOriginalEmptyRecord() {
     }
 }
 
+// A synthetic DeSmuME .dsv container: payload, then the documented 40-byte footer (six u32 values
+// and the 16-byte "|-DESMUME SAVE-|" cookie). Values are fixture data, not a real save.
+std::vector<uint8_t> dsvContainer(const std::vector<uint8_t>& payload) {
+    std::vector<uint8_t> file = payload;
+    const uint32_t words[6] = {static_cast<uint32_t>(payload.size()), static_cast<uint32_t>(payload.size()),
+                               0, 0, 0, 0};
+    for (uint32_t word : words)
+        for (int i = 0; i < 4; ++i) file.push_back(static_cast<uint8_t>(word >> (8 * i)));
+    const std::string cookie = "|-DESMUME SAVE-|";
+    file.insert(file.end(), cookie.begin(), cookie.end());
+    return file;
+}
+
+void spitBytes(const std::filesystem::path& path, const std::vector<uint8_t>& bytes) {
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    out.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+}
+
+// Gen IV export with an Open snapshot: a raw or .dsv source that is unchanged exports; one that
+// changed after Open (content, size or mtime) is refused before anything is written, and the
+// source file itself is never touched.
+void testExportRefusesStaleSource() {
+    namespace fs = std::filesystem;
+    namespace G4 = PokeVault::Integration::Gen4;
+    const fs::path root = fs::temp_directory_path() / ("pokebank-g4-stale-" + std::to_string(::getpid()));
+    fs::remove_all(root);
+    fs::create_directories(root / "src");
+    for (const auto container : {G4::Gen4SourceContainer::Raw, G4::Gen4SourceContainer::Dsv}) {
+        const bool dsv = container == G4::Gen4SourceContainer::Dsv;
+        const auto payload = makeSave(Layout::Platinum);
+        const auto fileBytes = dsv ? dsvContainer(payload) : payload;
+        const fs::path sourcePath = root / "src" / (dsv ? "platinum.dsv" : "platinum.sav");
+        spitBytes(sourcePath, fileBytes);
+        const auto sourceTime = fs::last_write_time(sourcePath);
+        std::string error;
+
+        // Snapshot shape checks: the container must match the file, and the payload must lead it.
+        const auto wrong = dsv ? G4::Gen4SourceContainer::Raw : G4::Gen4SourceContainer::Dsv;
+        assert(!G4::snapshotGen4Source(sourcePath.string(), wrong, payload, &error) && !error.empty());
+        auto otherPayload = payload;
+        otherPayload[0x10] ^= 0xFF;
+        assert(!G4::snapshotGen4Source(sourcePath.string(), container, otherPayload, &error));
+        const auto snapshot = G4::snapshotGen4Source(sourcePath.string(), container, payload, &error);
+        assert(snapshot && error.empty());
+        assert(snapshot->fileSize == fileBytes.size() && snapshot->container == container);
+        assert(snapshot->fileSha256 == PokeVault::Integration::Common::sha256Hex(fileBytes));
+
+        auto editor = Gen4StagedPokemonEditor::create(payload, Layout::Platinum, "platinum_nds", &error);
+        assert(editor && editor->stageCloneBoxPokemon(0, 0, 0, 1, &error));
+
+        G4::Gen4ExportRequest request;
+        request.rootDirectory = (root / "out").string();
+        request.sourcePath = sourcePath.string();
+        request.timestamp = "20261015-120000";
+        request.sourceSnapshot = snapshot;
+        int attempt = 0;
+        auto refused = [&](const std::vector<uint8_t>& replacement, bool restoreTime) {
+            spitBytes(sourcePath, replacement);
+            if (restoreTime) fs::last_write_time(sourcePath, sourceTime);
+            request.directoryStem = std::string(dsv ? "dsv" : "raw") + "_stale_" + std::to_string(attempt++);
+            const auto result = G4::publishVerifiedGen4Export(*editor, request);
+            assert(!result.success && result.directory.empty());
+            assert(result.error.find("reopen it before exporting") != std::string::npos ||
+                   result.error.find("no longer begins") != std::string::npos);
+            assert(!fs::exists(fs::path(request.rootDirectory) / request.directoryStem));
+            assert(slurp(sourcePath) == replacement);
+        };
+
+        // Same size, one footer/payload byte different, mtime restored: the hash catches it.
+        auto flipped = fileBytes;
+        flipped.back() ^= 0x01;
+        refused(flipped, true);
+        // Truncated (a .dsv losing its footer, a raw file losing its tail).
+        refused(std::vector<uint8_t>(fileBytes.begin(), fileBytes.end() - 40), true);
+        // Identical bytes, but rewritten later: the mtime alone is enough to refuse.
+        spitBytes(sourcePath, fileBytes);
+        fs::last_write_time(sourcePath, sourceTime + std::chrono::seconds(5));
+        request.directoryStem = std::string(dsv ? "dsv" : "raw") + "_touched";
+        auto touched = G4::publishVerifiedGen4Export(*editor, request);
+        assert(!touched.success && touched.error.find("changed after it was opened") != std::string::npos);
+        // Gone entirely.
+        fs::remove(sourcePath);
+        request.directoryStem = std::string(dsv ? "dsv" : "raw") + "_missing";
+        auto missing = G4::publishVerifiedGen4Export(*editor, request);
+        assert(!missing.success && missing.error.find("missing or unreadable") != std::string::npos);
+
+        // Restored exactly as opened: the export proceeds and the source stays byte-identical.
+        spitBytes(sourcePath, fileBytes);
+        fs::last_write_time(sourcePath, sourceTime);
+        request.directoryStem = std::string(dsv ? "dsv" : "raw") + "_ok";
+        const auto exported = G4::publishVerifiedGen4Export(*editor, request);
+        assert(exported.success && exported.error.empty());
+        assert(slurp(fs::path(exported.directory) / "edited.sav") == editor->stagedBytes());
+        assert(slurp(sourcePath) == fileBytes);
+    }
+    fs::remove_all(root);
+}
+
 int main() {
     testLayout(Layout::DiamondPearl);
     testLayout(Layout::Platinum);
@@ -944,6 +1043,7 @@ int main() {
     testEmptySlotCreateTransaction();
     testCloneAndReleaseTransactions();
     testReleaseRestoresOriginalEmptyRecord();
+    testExportRefusesStaleSource();
     testMoveSwapAndCrossBoxTransactions();
     testSharedHoldYGroupPlacementAtomicity();
     testGen4BagQuantityBoundsAndSourceImmutability();

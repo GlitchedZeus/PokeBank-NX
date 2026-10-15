@@ -119,6 +119,14 @@ Common::VerifiedExportResult publishVerifiedGen4Export(
         result.error = "No pending changes to export";
         return result;
     }
+    if (request.sourceSnapshot) {
+        std::string staleError;
+        if (!gen4SourceUnchangedSinceOpen(request.sourcePath, *request.sourceSnapshot,
+                                          editor.originalBytes(), &staleError)) {
+            result.error = staleError;
+            return result;
+        }
+    }
     std::string finalizeError;
     const auto edited = editor.finalizedBytes(&finalizeError);
     if (edited.empty()) {
