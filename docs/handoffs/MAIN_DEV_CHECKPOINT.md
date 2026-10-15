@@ -88,6 +88,19 @@ conservative estimates.
 4. **Home card portrait assumes male** when the gender is unknown (`trainerPortraitForGame`). Name, party and dex are missing from the card.
 5. **Separate "Trainer - Generation V" modal** with broken navigation.
 
+## Gen V repair progress (Thread 2, #307, after `fa9cfcea`)
+
+| Commit | Change |
+|---|---|
+| `395e2a6f` | Classify both copies; refuse a blank/stale copy with an explicit reason, never swapping copies on its own; on-device diagnostics report (no personal data) |
+| `3cbf3683` | Create offered on retail encrypted-blank slots; Remove writes the retail blank |
+| `b9c1ea8d` | One copy gate shared by Save Instances, Home card and open; neutral portrait when gender is unknown |
+| `7123035d` | Opens on the shared loaded-game hub; Trainer uses the shared panel |
+| `80bfce6c` | Create/View/Edit use the shared three-panel Pokémon workspace |
+| `1b21022a`, `2ad496df` | Diagnosis docs |
+
+Summary: 28 files, +2,062/−583. No Gen I–IV integration files touched. New NRO pending.
+
 ## Owner real-save analysis (2026-10-15; files analysed only in the coordinator scratchpad, never committed)
 
 - All four Gen V DraStic `.dsv` files (B/W/B2/W2) are 0x80000 bytes plus the standard 122-byte DeSmuME footer. Identification is correct: BW footers at 0x23F00/0x47F00, B2W2 at 0x25F00/0x4BF00, version bytes 20–23.
