@@ -21,8 +21,9 @@ using State = Exact::FieldState;
 
 inline constexpr bool ExportSupported = false;
 
-// Party PK7 records cache battle stats; Gen VII base stats / hyper-training aware
-// recomputation is not wired in this lane, so stat inputs are ReadOnly on party records.
+// Party PK7 records cache battle stats; edits to a stat input (IV, EV, Nature,
+// Level) recompute them (Gen7Stats.h, hyper-training aware) and the verifier
+// checks the exact recomputation. RecordRegion only changes presentation.
 enum class RecordRegion : uint8_t { Box, Party };
 
 [[nodiscard]] constexpr State fieldState(Field field, RecordRegion region) noexcept {
@@ -42,13 +43,12 @@ enum class RecordRegion : uint8_t { Box, Party };
         case Field::IV:
         case Field::EV:
         case Field::Nature:
-            return party ? State::ReadOnly : State::Editable;
+        case Field::Level:  // staged as the growth-rate minimum EXP
+            return State::Editable;
         case Field::Shiny:  // PSV == TSV (xor < 16), as in Gen VI
             return State::Derived;
-        case Field::Level:  // EXP + growth rate; party records store the level byte
-            return party ? State::ReadOnly : State::Derived;
         case Field::CalculatedStats:
-            return party ? State::ReadOnly : State::Hidden;
+            return party ? State::Derived : State::Hidden;
         case Field::DV:
         case Field::StatExperience:
         case Field::AV:  // Let's Go only, a different save family

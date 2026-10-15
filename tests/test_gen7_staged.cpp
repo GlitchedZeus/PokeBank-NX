@@ -46,9 +46,8 @@ void testCandidate() {
         GEN6_CHECK(!s.stageValue(box, Field::HeldItem, f == Layout::Family::SunMoon ? 921 : 960, 0, &error));
         GEN6_CHECK(s.stageText(box, Field::Nickname, "Rowlet", &error));
         GEN6_CHECK(s.stageText(SlotRef::party(0), Field::OriginalTrainer, "Kahuna", &error));
-        GEN6_CHECK(!s.stageValue(SlotRef::party(0), Field::IV, 1, 0, &error));      // party stat input
         GEN6_CHECK(!s.stageValue(box, Field::Species, 1, 0, &error));
-        GEN6_CHECK(!s.stageValue(box, Field::Level, 5, 0, &error));
+        GEN6_CHECK(!s.stageValue(box, Field::CalculatedStats, 5, 0, &error));
         GEN6_CHECK(s.cloneToBox(SlotRef::party(1), 0, 0, &error));
         GEN6_CHECK(s.stageValue(SlotRef::boxed(0, 0), Field::IV, 0, 0, &error));     // edit a staged clone
         GEN6_CHECK(!s.cloneToBox(SlotRef::party(1), 31, 29, &error));               // occupied/staged target

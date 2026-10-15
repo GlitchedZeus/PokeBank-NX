@@ -13,7 +13,7 @@ save family and is not handled here.
 | SAV7 identification: size 0x6BE00 / 0x6CC00, BEEF footer, all block CRC16Invert (block 36 computed with the signature region cleared), MyStatus version (SN 30, MN 31, US 32, UM 33) | `Gen7SaveLayout.h`, `Gen7Save.h/.cpp` | done; tables and CRC differential vs PKSM-Core |
 | MemeCrypto signature verification: RSA verify + payload must start with SHA256(checksum table) | `Gen7Save::verifySignature` (vendored FlagBrew/memecrypto `bd3b16ee`) | done |
 | Trainer (read-only), Party, 32×30 Boxes, quarantined invalid boxed records | `Gen7Save` | done |
-| Shared-editor provider | `Gen7ExactFormatEditorProvider.h`: per Box/Party field states, as in Gen VI. IV/EV/Nature are ReadOnly on party records. No field is a UI editor target while `ExportSupported` is false | done |
+| Shared-editor provider | `Gen7ExactFormatEditorProvider.h`: per Box/Party field states, as in Gen VI. IV/EV/Nature/Level are editable on party records too, with hyper-training-aware stat recomputation (`Gen7Stats.h`, base stats generated from PKHeX `personal_uu` by `docs/gen7/tools/gen_gen7_personal.py`, checked against PKSM-Core `personal7`). No field is a UI editor target while `ExportSupported` is false | done |
 | Sources | `Gen7SaveSources.h/.cpp`: same verified Checkpoint/Dekopon layouts as Gen VI (title-ID generic); Azahar unsupported | done |
 | Staged Edit/Clone/Remove | `Gen7StagedSession.h/.cpp`: app-owned copy, unsigned candidate (records written, owning block CRCs refreshed, signature untouched), independent whitelist verifier | done up to the signing step |
 | Export | **explicitly unsupported** (see below) | blocked on owner evidence |

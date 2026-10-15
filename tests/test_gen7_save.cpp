@@ -170,7 +170,8 @@ void testProviderAndSources() {
         for (const auto r : {Region::Box, Region::Party})
             GEN6_CHECK(d && !d->fieldIsEditorTarget(static_cast<Field>(i), r));
     GEN6_CHECK(Provider::fieldState(Field::IV, Region::Box) == State::Editable);
-    GEN6_CHECK(Provider::fieldState(Field::IV, Region::Party) == State::ReadOnly);
+    GEN6_CHECK(Provider::fieldState(Field::IV, Region::Party) == State::Editable);
+    GEN6_CHECK(Provider::fieldState(Field::CalculatedStats, Region::Party) == State::Derived);
     GEN6_CHECK(Provider::fieldState(Field::Nickname, Region::Party) == State::Editable);
     GEN6_CHECK(Provider::fieldState(Field::Species, Region::Box) == State::ReadOnly);
     GEN6_CHECK(Provider::fieldState(Field::Shiny, Region::Box) == State::Derived);

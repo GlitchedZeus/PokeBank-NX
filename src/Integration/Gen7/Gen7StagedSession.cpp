@@ -1,4 +1,5 @@
 #include "Integration/Gen7/Gen7StagedSession.h"
+#include "Integration/Gen7/Gen7Stats.h"
 
 #include <algorithm>
 #include <array>
@@ -36,6 +37,7 @@ std::array<uint8_t, Layout::PartyRecordSize> editMask(RecordRegion region) {
     if (editable(Field::HeldItem, region)) range(0x0A, 0x0C);
     if (editable(Field::TrainerId, region)) range(0x0C, 0x0E);
     if (editable(Field::SecretId, region)) range(0x0E, 0x10);
+    if (editable(Field::Level, region)) range(0x10, 0x14);  // EXP
     if (editable(Field::Nature, region)) m[0x1C] = 0xFF;
     if (editable(Field::FatefulEncounter, region)) m[0x1D] |= 0x01;
     if (editable(Field::EV, region)) range(0x1E, 0x24);
@@ -47,6 +49,14 @@ std::array<uint8_t, Layout::PartyRecordSize> editMask(RecordRegion region) {
     if (editable(Field::Ball, region)) m[0xDC] = 0xFF;
     if (editable(Field::OriginalTrainerGender, region)) m[0xDD] |= 0x80;
     return m;
+}
+
+// True when a battle-stat input (EXP, nature, EVs, IV bits 0..29) differs.
+bool statInputsChanged(std::span<const uint8_t> a, std::span<const uint8_t> b) {
+    for (size_t i = 0x10; i < 0x14; ++i) if (a[i] != b[i]) return true;
+    if (a[0x1C] != b[0x1C]) return true;
+    for (size_t i = 0x1E; i < 0x24; ++i) if (a[i] != b[i]) return true;
+    return (PK7::read32(a, 0x74) & 0x3FFFFFFFu) != (PK7::read32(b, 0x74) & 0x3FFFFFFFu);
 }
 
 bool allowedName(std::string_view text) {
@@ -130,6 +140,14 @@ bool Gen7StagedSession::stageValue(SlotRef slot, Field field, uint32_t value, si
             note += std::string("IV ") + StatNames[index] + " -> " + std::to_string(value);
             rec->setIv(index, static_cast<uint8_t>(value));
             break;
+        case Field::Level: {
+            const auto exp = Stats::experienceForLevel(*rec, static_cast<uint8_t>(value > 255 ? 0 : value));
+            if (value < 1 || value > 100 || !exp)
+                return fail("Gen VII level must be 1-100 for a species/form with verified growth data");
+            note += "level -> " + std::to_string(value);
+            rec->setExperience(*exp);
+            break;
+        }
         case Field::Pokerus:
             if (value > 0xFF) return fail("Gen VII Pokerus byte out of range");
             note += "Pokerus -> " + std::to_string(value);
@@ -153,6 +171,17 @@ bool Gen7StagedSession::stageValue(SlotRef slot, Field field, uint32_t value, si
             break;
         default:
             return fail("Gen VII field has no numeric staged editor");
+    }
+    if (slot.region == RecordRegion::Party) {
+        const auto base = original(slot);
+        if (base.pokemon && statInputsChanged(base.pokemon->plain(), rec->plain())) {
+            if (!Stats::refreshParty(*rec)) return fail("Gen VII party stats cannot be recomputed for this species/form");
+            note += " (party stats recomputed)";
+        } else if (base.pokemon) {
+            std::array<uint16_t, 6> stats{};
+            for (size_t i = 0; i < 6; ++i) stats[i] = base.pokemon->stat(i + 1);
+            rec->setPartyStats(base.pokemon->statLevel(), base.pokemon->stat(0), stats);
+        }
     }
     commitEdit(slot, std::move(*rec), std::move(note));
     if (error) error->clear();
@@ -301,9 +330,21 @@ bool verifyUnsignedCandidate(const Gen7Save& source, std::span<const uint8_t> ed
             case ChangeKind::Edit: {
                 if (!src.occupied() || rec.pokemon->empty()) return fail("Gen VII edit must keep an occupied record");
                 const auto mask = editMask(c.slot.region);
-                for (size_t i = 0; i < plain.size(); ++i)
+                for (size_t i = 0; i < Layout::BoxRecordSize; ++i)
                     if ((plain[i] ^ base[i]) & ~mask[i])
                         return fail("Gen VII edit touched a non-whitelisted PK7 byte at 0x" + std::to_string(i));
+                if (c.slot.region == RecordRegion::Party) {
+                    std::span<const uint8_t> expected(c.originalPlain);
+                    std::optional<PK7::Pokemon6> refreshed;
+                    if (statInputsChanged(c.originalPlain, plain)) {
+                        refreshed = rec.pokemon;
+                        if (!Stats::refreshParty(*refreshed)) return fail("Gen VII party stats cannot be recomputed");
+                        expected = refreshed->plain();
+                    }
+                    if (!std::equal(plain.begin() + static_cast<std::ptrdiff_t>(Layout::BoxRecordSize), plain.end(),
+                                    expected.begin() + static_cast<std::ptrdiff_t>(Layout::BoxRecordSize), expected.end()))
+                        return fail("Gen VII party cached stats are not the exact recomputation");
+                }
                 break;
             }
             case ChangeKind::Clone: {
