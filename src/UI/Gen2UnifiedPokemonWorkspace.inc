@@ -1,6 +1,7 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2WorkspacePresentation.h"
 #include "UI/Gen12RerollDVsConfirm.h"
+#include "UI/Gen2FieldSelector.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
 
 namespace UI::Gen2PokemonEditor {
@@ -17,6 +18,8 @@ struct UnifiedWorkspaceState {
     std::size_t detailsFocus = 0;
     // Y Random DVs is two explicit steps (see Gen12RerollDVsConfirm.h).
     PokeBank::UIModel::Gen12RerollDVs::State reroll;
+    // Pokerus / Crystal Met Time / Crystal OT Gender selector (Gen2FieldSelector.h).
+    PokeBank::UIModel::Gen2FieldSelector::Selector selector;
     // Stable row viewport: drag moves the content, not the semantic focus.
     // Otherwise the older scrollWindow(focusedRow) snaps to its old page,
     // making Held Item and Crystal metadata painful to reach by touch.
@@ -53,6 +56,7 @@ UnifiedWorkspaceState& unifiedStateFor(const TrainerViewScreen& screen) {
         state.progressionEditor = false;
         state.progressionRow = 0;
         state.reroll = {};
+        state.selector = {};
         state.lastMode = mode;
     }
     state.crystal = screen.sourceGameId == "crystal_gbc";
@@ -90,6 +94,7 @@ void resetUnifiedFocus(TrainerViewScreen& screen) {
     unified.moveEditor = false;
     unified.moveEditorRow = 0;
     unified.reroll = {};
+    unified.selector = {};
     unified.lastMode = stateFor(screen).mode;
     screen.controllerNavigation.reset();
 }
@@ -288,13 +293,55 @@ uint8_t crystalAllowedTimeMask(const TrainerViewScreen& screen,
     return mask == 0 ? static_cast<uint8_t>(0x0E) : mask;
 }
 
-uint8_t nextCrystalAllowedMetTime(uint8_t allowedMask, uint8_t current) noexcept {
-    for (int step = 1; step <= 3; ++step) {
-        const uint8_t candidate = static_cast<uint8_t>(
-            ((static_cast<int>(current) - 1 + step + 3) % 3) + 1);
-        if (allowedMask & static_cast<uint8_t>(1u << candidate)) return candidate;
+constexpr int kSelectorTouchBase = 1760;
+
+// Writes a confirmed selector choice with exactly the side effects the previous in-place cycling
+// had. Intentionally do not touch p.caughtData for pending values: they must never fabricate
+// Crystal met location/level/time history; recorded history is re-encoded.
+void applyFieldSelector(TrainerViewScreen& screen, State& state,
+                        PokeBank::UIModel::Gen2FieldSelector::Field field, uint8_t value) {
+    namespace Selector = PokeBank::UIModel::Gen2FieldSelector;
+    auto& p = state.working;
+    if (field == Selector::Field::Pokerus) {
+        p.pokerus = value;
+        return;
     }
-    return current >= 1 && current <= 3 ? current : 1;
+    if (screen.sourceGameId != "crystal_gbc") return;
+    auto caught = Gen2Native::decodeCrystalCaughtData(p.caughtData);
+    if (field == Selector::Field::MetTime) {
+        state.crystalMetTime = value;
+        if (!caught.present) return;
+        caught.timeOfDay = value;
+    } else if (field == Selector::Field::OtGender) {
+        state.crystalOtGender = static_cast<Gen2Native::CrystalOtGenderChoice>(value);
+        if (!caught.present) return;
+        caught.originalTrainerFemale = Gen2Native::crystalOtGenderFemale(state.crystalOtGender);
+    }
+    p.caughtData = Gen2Native::encodeCrystalCaughtData(caught);
+}
+
+void drawFieldSelector(TrainerViewScreen& screen, PKSEFramebuffer& fb,
+                       const PokeBank::UIModel::Gen2FieldSelector::Selector& selector) {
+    namespace Selector = PokeBank::UIModel::Gen2FieldSelector;
+    const char* title = selector.field == Selector::Field::Pokerus ? "Pokérus"
+                      : selector.field == Selector::Field::MetTime ? "Met Time" : "OT Gender";
+    constexpr int w = 440, rowH = 52;
+    const int h = 96 + selector.count * rowH;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - kNavBarH - h) / 2;
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 120));
+    const int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, title, Colors::Primary);
+    for (int i = 0; i < selector.count; ++i) {
+        const auto& choice = selector.choices[static_cast<std::size_t>(i)];
+        const int rowY = cy + i * rowH;
+        if (i == selector.row) fb.drawSelectionHighlight(x + 20, rowY, w - 40, rowH - 6);
+        fb.drawText(x + 36, rowY + 12, choice.label,
+                    !choice.enabled ? Colors::TextDim
+                                    : i == selector.row ? Colors::SelectedText : Colors::Text,
+                    TextStyle::Body);
+        if (choice.enabled)
+            screen.touchButtons.push_back({kSelectorTouchBase + i, x + 20, rowY, w - 40, rowH - 6});
+    }
 }
 
 bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified::Focus& focus) {
@@ -362,7 +409,8 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             return true;
         }
         if (focus.row == 8) {
-            p.pokerus = Gen2Native::cyclePokerusState(p.pokerus);
+            unifiedStateFor(screen).selector = PokeBank::UIModel::Gen2FieldSelector::pokerus(p.pokerus);
+            screen.controllerNavigation.reset();
             return true;
         }
         if (focus.row >= 9 && screen.sourceGameId == "crystal_gbc") {
@@ -374,14 +422,14 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
                 return true;
             }
             if (focus.row == 9) {
-                if (!caught.present) {
-                    state.crystalMetTime = static_cast<uint8_t>((state.crystalMetTime + 1) % 4);
-                    // Pending Met Time is editor-only until a legitimate location creates caught history.
-                    return true;
-                }
-                caught.timeOfDay = nextCrystalAllowedMetTime(
-                    crystalAllowedTimeMask(screen, p, caught), caught.timeOfDay);
-                state.crystalMetTime = caught.timeOfDay;
+                // Pending Met Time is editor-only until a legitimate location creates caught
+                // history; recorded history offers only the encounter's allowed times.
+                unifiedStateFor(screen).selector = caught.present
+                    ? PokeBank::UIModel::Gen2FieldSelector::metTime(
+                          caught.timeOfDay, true, crystalAllowedTimeMask(screen, p, caught))
+                    : PokeBank::UIModel::Gen2FieldSelector::metTime(state.crystalMetTime, false, 0);
+                screen.controllerNavigation.reset();
+                return true;
             }
             if (focus.row == 10) {
                 const auto choices = Encounter::forGameSpecies(screen.sourceGameId, p.species);
@@ -432,17 +480,10 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
                 return true;
             }
             if (focus.row == 12) {
-                if (!caught.present) {
-                    state.crystalOtGender =
-                        Gen2Native::cycleUnrecordedCrystalOtGender(state.crystalOtGender);
-                    // Intentionally do not touch p.caughtData: pending OT gender must not
-                    // fabricate Crystal met location/level/time history.
-                    return true;
-                }
-                state.crystalOtGender =
-                    Gen2Native::cycleRecordedCrystalOtGender(state.crystalOtGender);
-                caught.originalTrainerFemale =
-                    Gen2Native::crystalOtGenderFemale(state.crystalOtGender);
+                unifiedStateFor(screen).selector =
+                    PokeBank::UIModel::Gen2FieldSelector::otGender(state.crystalOtGender, caught.present);
+                screen.controllerNavigation.reset();
+                return true;
             }
             p.caughtData = Gen2Native::encodeCrystalCaughtData(caught);
             return true;
@@ -558,6 +599,26 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
     if (state.confirmExit) return handleConfirm(screen, state, down);
     if (handleProgressionEditor(screen, down, held, stickX, stickY)) return true;
     if (handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY)) return true;
+
+    if (unified.selector.open()) {
+        // The field selector owns all input while open: Up/Down move, A or a tap applies, B
+        // cancels; the field keeps focus either way.
+        namespace Selector = PokeBank::UIModel::Gen2FieldSelector;
+        const uint64_t selectorNav = screen.controllerNavigation.apply(
+            down, held, stickX, stickY,
+            HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
+        const int tapped = screen.touchedButtonId(touch);
+        const int tappedRow = tapped >= kSelectorTouchBase && tapped < kSelectorTouchBase + unified.selector.count
+            ? tapped - kSelectorTouchBase : -1;
+        const auto field = unified.selector.field;
+        const auto result = Selector::step(unified.selector, (selectorNav & HidNpadButton_Up) != 0,
+            (selectorNav & HidNpadButton_Down) != 0, (down & HidNpadButton_A) != 0,
+            (down & HidNpadButton_B) != 0, tappedRow);
+        if (result.outcome == Selector::Outcome::Apply) applyFieldSelector(screen, state, field, result.value);
+        if (result.outcome == Selector::Outcome::Apply || result.outcome == Selector::Outcome::Cancelled)
+            screen.controllerNavigation.reset();
+        return true;
+    }
 
     {
         // Y Random DVs asks first; while the prompt is open it owns all input (fields, taps,

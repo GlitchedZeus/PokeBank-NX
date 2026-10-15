@@ -113,7 +113,7 @@ bool focusUnifiedTouchPoint(TrainerViewScreen& screen, int px, int py, bool acti
         }
         return false;
     }
-    if (state.itemPicker || state.confirmExit || unified.reroll.confirming ||
+    if (state.itemPicker || state.confirmExit || unified.reroll.confirming || unified.selector.open() ||
         pickerStateFor(screen).model.active()) return false;
 
     // The final hardware surface is the SharedPokemonShell fullscreen layout, not the older
@@ -171,7 +171,7 @@ void handleUnifiedTouch(TrainerViewScreen& screen, const TouchInput& touch, uint
     auto& state = stateFor(screen);
     auto& unified = unifiedStateFor(screen);
     if (state.mode == Mode::None) return;
-    if (state.itemPicker || state.confirmExit || unified.reroll.confirming ||
+    if (state.itemPicker || state.confirmExit || unified.reroll.confirming || unified.selector.open() ||
         pickerStateFor(screen).model.active()) return;
 
     // Keep Details/Stats/Moves focus intact until release resolves the actual

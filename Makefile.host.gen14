@@ -77,3 +77,16 @@ $(HOST_BUILD)/test_gen1_view_navigation: $(GEN1_VIEW_NAV_SOURCES)
 $(HOST_BUILD)/test_gen1_view_navigation_sanitize: $(GEN1_VIEW_NAV_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_VIEW_NAV_SOURCES) -o $@
+
+# Gen II Pokerus / Crystal Met Time / OT Gender selectors.
+GEN2_FIELD_SELECTOR_SOURCES := tests/test_gen2_field_selector.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen2_field_selector
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_field_selector_sanitize
+host-test: $(HOST_BUILD)/test_gen2_field_selector
+host-sanitize: $(HOST_BUILD)/test_gen2_field_selector_sanitize
+$(HOST_BUILD)/test_gen2_field_selector: $(GEN2_FIELD_SELECTOR_SOURCES) include/UI/Gen2FieldSelector.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN2_FIELD_SELECTOR_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_field_selector_sanitize: $(GEN2_FIELD_SELECTOR_SOURCES) include/UI/Gen2FieldSelector.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_FIELD_SELECTOR_SOURCES) -o $@
