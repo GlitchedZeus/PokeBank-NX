@@ -709,6 +709,9 @@ void ux3DrawTouchNavBar(PKSEFramebuffer& fb, const UX2State& state) {
         case UX2Mode::RemoveConfirm:
             drawNavBar(fb, {{"A", "Confirm Remove"}, {"B", "Cancel"}}); return;
         case UX2Mode::Review:
+            if (state.reviewDiscard.confirming) {
+                drawNavBar(fb, {{"B", "Cancel"}, {"Y", "Discard"}}); return;
+            }
             drawNavBar(fb, {{"Up/Down", "Browse"}, {"A", "Export Copy"}, {"Y", "Discard Staged"}, {"B", "Back"}}); return;
         case UX2Mode::Closed: return;
     }
@@ -814,6 +817,9 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
         // Clone destination is not committed or focused on touch-down.
         const int slot = selectedId(1200, slots, tapped);
         if (slot >= 0) { state.cloneSlot = slot; down |= HidNpadButton_A; }
+    } else if (state.mode == UX2Mode::Review && state.reviewDiscard.confirming) {
+        // The discard confirmation is modal; only its nav-bar B/Y act.
+        state.reviewScroll.stop();
     } else if (state.mode == UX2Mode::Review) {
         const auto lines = ux3PendingLines(screen);
         const int count = static_cast<int>(lines.size());
@@ -980,6 +986,24 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         case UX2Mode::Provenance: ux2DrawProvenance(screen, fb, x, y, w, h); break;
         case UX2Mode::View:
         case UX2Mode::Closed: break;
+    }
+    if (state.mode == UX2Mode::Review && state.reviewDiscard.confirming) {
+        // Second step of Discard Staged, drawn over the review list; nothing changes until Y.
+        screen.touchButtons.clear();
+        fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 150));
+        constexpr int cw = 760, ch = 240;
+        constexpr int cx = (1280 - cw) / 2;
+        constexpr int cy = (672 - ch) / 2;
+        ux2DrawPanel(fb, cx, cy, cw, ch);
+        fb.drawText(cx + 34, cy + 30, PokeBank::UIModel::Gen12ReviewDiscard::kTitle,
+                    Colors::Text, TextStyle::Heading);
+        fb.drawText(cx + 34, cy + 96,
+                    std::to_string(ux3PendingLines(screen).size()) +
+                        " pending Generation I change(s), Pokemon and Bag, are lost.",
+                    Colors::Text, TextStyle::Body);
+        fb.drawText(cx + 34, cy + 140,
+                    "Export Copy first to keep them. The original .srm is never written.",
+                    Colors::TextDim, TextStyle::Caption);
     }
 
     if (state.picker != UX2Picker::None) {

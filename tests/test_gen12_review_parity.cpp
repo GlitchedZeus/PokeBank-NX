@@ -1,0 +1,136 @@
+// Gen I / Gen II shared-editor contract fixes (Thread C audit):
+//  - Review -> Discard Staged is a two-step, modal confirmation (pure model + both live routes).
+//  - Gen I exit dialog footer offers only the dialog's own B/Y/A (no "Random DVs" under it).
+//  - Gen I workspace keeps its stick repeat state current while a picker owns input.
+//  - Gen II Species row tap opens the picker exactly like A; the Move editor's picker entry uses
+//    the same normalization as the controller path.
+#include "UI/Gen12ReviewDiscardConfirm.h"
+
+#include <cassert>
+#include <fstream>
+#include <iostream>
+#include <iterator>
+#include <string>
+
+namespace Discard = PokeBank::UIModel::Gen12ReviewDiscard;
+using Outcome = Discard::Outcome;
+
+namespace {
+
+std::string read(const char* path) {
+    std::ifstream in(path, std::ios::binary);
+    assert(in);
+    return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+}
+std::string between(const std::string& text, const char* begin, const char* end) {
+    const auto a = text.find(begin);
+    if (a == std::string::npos) std::cerr << "Missing route start: " << begin << '\n';
+    assert(a != std::string::npos);
+    const auto b = text.find(end, a + 1);
+    if (b == std::string::npos) std::cerr << "Missing route end: " << end << '\n';
+    assert(b != std::string::npos);
+    return text.substr(a, b - a);
+}
+void has(const std::string& text, const char* needle) {
+    if (text.find(needle) == std::string::npos) std::cerr << "Missing: " << needle << '\n';
+    assert(text.find(needle) != std::string::npos);
+}
+void lacks(const std::string& text, const char* needle) {
+    if (text.find(needle) != std::string::npos) std::cerr << "Forbidden: " << needle << '\n';
+    assert(text.find(needle) == std::string::npos);
+}
+
+void modelContract() {
+    Discard::State s;
+    // Nothing open: ordinary review input is not handled; Y alone (Gen II) is not Discard.
+    assert(Discard::step(s, false, false, false) == Outcome::NotHandled);
+    assert(Discard::step(s, false, true, false) == Outcome::NotHandled && !s.confirming);
+    assert(Discard::step(s, false, false, true) == Outcome::NotHandled);
+    // First Discard press only asks.
+    assert(Discard::step(s, true, false, false) == Outcome::AskConfirm && s.confirming);
+    // While open: A / navigation / repeated non-Y input never discards or leaves.
+    assert(Discard::step(s, false, false, false) == Outcome::Swallowed && s.confirming);
+    assert(Discard::step(s, true, false, false) == Outcome::Swallowed && s.confirming); // Gen II X again
+    // B cancels and wins over a simultaneous Y.
+    assert(Discard::step(s, false, true, true) == Outcome::Cancelled && !s.confirming);
+    // Gen I uses Y for both steps: the same press cannot both ask and confirm.
+    assert(Discard::step(s, true, true, false) == Outcome::AskConfirm && s.confirming);
+    assert(Discard::step(s, true, true, false) == Outcome::Discard && !s.confirming);
+    // After a discard the next press starts over.
+    assert(Discard::step(s, true, false, false) == Outcome::AskConfirm);
+    static_assert([] {
+        Discard::State c;
+        return Discard::step(c, true, false, false) == Outcome::AskConfirm &&
+               Discard::step(c, false, true, false) == Outcome::Discard;
+    }());
+}
+
+void gen2Routes() {
+    const auto surface = read("src/UI/Gen2SharedPokemonSurface.inc");
+    const auto review = between(surface, "bool handleSharedReview(", "void drawSharedActionSurface(");
+    has(review, "Discard::step(sharedSurfaceStateFor(screen).reviewDiscard,");
+    // editor->discard() appears exactly once, inside the confirmed outcome.
+    const auto confirmed = between(review, "case Discard::Outcome::Discard:", "const auto& changes");
+    has(confirmed, "editor->discard();");
+    assert(review.find("editor->discard();") == review.find("editor->discard();", 0) &&
+           review.find("editor->discard();", review.find("editor->discard();") + 1) == std::string::npos);
+    assert(review.find("Discard::step(") < review.find("if (down & HidNpadButton_A)"));
+    const auto parity = read("src/UI/Gen2SharedSurfaceParity.inc");
+    const auto draw = between(parity, "void drawParityGen2Review(", "void drawParityGen2Clone(");
+    has(draw, "reviewDiscard.confirming");
+    has(draw, "drawNavBar(fb, {{\"B\", \"Cancel\"}, {\"Y\", \"Discard\"}});");
+
+    const auto unified = read("src/UI/Gen2UnifiedPokemonWorkspace.inc");
+    // The editable (Edit/Create) route, after the item/confirm/move-editor modals.
+    const auto editRoute = unified.substr(unified.find("if (handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY)) return true;"));
+    const auto tap = between(editRoute, "const int touchedDetail = updateUnifiedDetailsTouch(",
+                             "const uint64_t nav = screen.controllerNavigation.apply(");
+    has(tap, "if (!activateUnifiedField(screen, state, unified.focus))");
+    has(tap, "openPickerForFocusedField(screen, state, pickerStateFor(screen), HidNpadButton_A)");
+    const auto moveEntry = between(unified, "if (unified.moveEditorRow == 0) {", "if (unified.moveEditorRow == 1) {");
+    has(moveEntry, "normalizeHardwareMovePicker(screen, state, picker);");
+}
+
+void gen1Routes() {
+    const auto ux2 = read("src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc");
+    const auto review = between(ux2, "if (state.mode == UX2Mode::Review) {", "void ux2DrawPanel(");
+    has(review, "Discard::step(state.reviewDiscard, y, y,");
+    const auto confirmed = between(review, "case Discard::Outcome::Discard:", "const auto lines = pendingLines(screen);");
+    has(confirmed, "discardAll(screen);");
+    assert(review.find("discardAll(screen);") == review.find("discardAll(screen);", 0) &&
+           review.find("discardAll(screen);", review.find("discardAll(screen);") + 1) == std::string::npos);
+    assert(review.find("Discard::step(") < review.find("if (down & HidNpadButton_A)"));
+
+    const auto ux3 = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc");
+    has(ux3, "} else if (state.mode == UX2Mode::Review && state.reviewDiscard.confirming) {");
+    has(ux3, "if (state.mode == UX2Mode::Review && state.reviewDiscard.confirming) {");
+    has(ux3, "drawNavBar(fb, {{\"B\", \"Cancel\"}, {\"Y\", \"Discard\"}}); return;");
+
+    // Exit dialog footer: only the dialog's actions while it is open.
+    const auto fix = read("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc");
+    const auto footer = between(fix, "} else if (foundationStateFor(screen).editExitConfirm) {", "} else if (add) {");
+    has(footer, "{\"B\", \"Back\"}, {\"Y\", \"Discard\"}, {\"A\", add ? \"Keep\" : \"Save\"}");
+    lacks(footer, "Random DVs");
+    lacks(footer, "\"Edit\"");
+
+    // Held-stick state is tracked on both routes that hand input to another surface.
+    const auto foundation = read("src/UI/Gen1PokemonEditorOverlayFoundation.inc");
+    size_t at = 0;
+    int tracked = 0;
+    while ((at = foundation.find("if (state.picker != UX2Picker::None || !foundationMainMode(state.mode)) {", at)) != std::string::npos) {
+        const auto block = foundation.substr(at, foundation.find("return handleInputUXCleanup3(", at) - at);
+        has(block, "foundationStateFor(screen).navigation.apply(");
+        ++tracked;
+        ++at;
+    }
+    assert(tracked == 2);
+}
+
+} // namespace
+
+int main() {
+    modelContract();
+    gen2Routes();
+    gen1Routes();
+    std::cout << "Gen I/II review discard confirmation, exit-dialog footer, stick handoff and Gen II picker entry: PASS\n";
+}

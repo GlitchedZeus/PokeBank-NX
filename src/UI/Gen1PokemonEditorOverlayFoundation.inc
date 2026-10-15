@@ -654,8 +654,14 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int 
     auto& state = ux2StateFor(screen);
     // An active picker owns all input even while the underlying fullscreen editor
     // remains in Edit/AddDraft mode; never route touch or A to its hidden fields.
-    if (state.picker != UX2Picker::None || !foundationMainMode(state.mode))
+    if (state.picker != UX2Picker::None || !foundationMainMode(state.mode)) {
+        // Track the held stick while another surface owns input, so returning to the workspace
+        // with the stick still held does not register a fresh press and jump focus.
+        (void)foundationStateFor(screen).navigation.apply(
+            down, held, stickX, stickY,
+            HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
         return handleInputUXCleanup3(screen, down, held, stickX, stickY);
+    }
 
     auto& foundation = foundationStateFor(screen);
     const uint64_t navigated = foundation.navigation.apply(
@@ -671,8 +677,14 @@ bool handleInputUX(TrainerViewScreen& screen, uint64_t down, uint64_t held, int 
     auto& state = ux2StateFor(screen);
     // An active picker owns all input even while the underlying fullscreen editor
     // remains in Edit/AddDraft mode; never route touch or A to its hidden fields.
-    if (state.picker != UX2Picker::None || !foundationMainMode(state.mode))
+    if (state.picker != UX2Picker::None || !foundationMainMode(state.mode)) {
+        // Track the held stick while another surface owns input, so returning to the workspace
+        // with the stick still held does not register a fresh press and jump focus.
+        (void)foundationStateFor(screen).navigation.apply(
+            down, held, stickX, stickY,
+            HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
         return handleInputUXCleanup3(screen, down, held, stickX, stickY, touch);
+    }
 
     auto& foundation = foundationStateFor(screen);
     const uint64_t touched = foundationDirectTouchInput(screen, down, touch);

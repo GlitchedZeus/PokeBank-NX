@@ -1,3 +1,4 @@
+#include "UI/Gen12ReviewDiscardConfirm.h"
 #include "UI/StatsRadar.h"
 #include "UI/TouchScroll.h"
 
@@ -56,6 +57,7 @@ struct UX2State {
     int cloneBox = 0;
     int cloneSlot = 0;
     std::string lastExportDirectory;
+    PokeBank::UIModel::Gen12ReviewDiscard::State reviewDiscard;
 };
 
 UX2State& ux2StateFor(const TrainerViewScreen& screen) {
@@ -702,17 +704,27 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
     }
 
     if (state.mode == UX2Mode::Review) {
+        // Discard Staged discards the whole workspace (Pokemon and Bag): Y asks first and only
+        // a second Y in the confirmation discards; B cancels; A cannot export meanwhile.
+        namespace Discard = PokeBank::UIModel::Gen12ReviewDiscard;
+        const bool y = (down & HidNpadButton_Y) != 0;
+        switch (Discard::step(state.reviewDiscard, y, y, (down & HidNpadButton_B) != 0)) {
+            case Discard::Outcome::NotHandled: break;
+            case Discard::Outcome::AskConfirm:
+            case Discard::Outcome::Swallowed:
+            case Discard::Outcome::Cancelled:
+                return;
+            case Discard::Outcome::Discard:
+                discardAll(screen);
+                screen.postStatus("All Generation I staged changes discarded; original .srm was never modified", 300);
+                state.reviewRow = 0;
+                return;
+        }
         const auto lines = pendingLines(screen);
         const int count = static_cast<int>(lines.size());
         if (count > 0 && (down & HidNpadButton_Up)) state.reviewRow = (state.reviewRow + count - 1) % count;
         if (count > 0 && (down & HidNpadButton_Down)) state.reviewRow = (state.reviewRow + 1) % count;
         if (down & HidNpadButton_B) { state.mode = UX2Mode::Actions; state.row = 0; return; }
-        if (down & HidNpadButton_Y) {
-            discardAll(screen);
-            screen.postStatus("All Generation I staged changes discarded; original .srm was never modified", 300);
-            state.reviewRow = 0;
-            return;
-        }
         if (down & HidNpadButton_A) {
             std::string error;
             const auto path = exportStagedCopy(screen, error);

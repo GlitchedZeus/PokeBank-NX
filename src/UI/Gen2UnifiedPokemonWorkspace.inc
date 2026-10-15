@@ -213,7 +213,10 @@ bool handleUnifiedMoveEditor(TrainerViewScreen& screen, State& state, uint64_t d
         Unified::Focus moveFocus{Unified::Panel::Moves, static_cast<uint8_t>(slot), 0};
         mirrorPickerFocus(state, moveFocus);
         auto& picker = pickerStateFor(screen);
-        openPickerForFocusedField(screen, state, picker, HidNpadButton_A);
+        // Same entry normalization as the controller path: the highlighted row is exactly
+        // the choice A applies, even when the slot holds a move outside the compatible list.
+        if (openPickerForFocusedField(screen, state, picker, HidNpadButton_A))
+            normalizeHardwareMovePicker(screen, state, picker);
         return true;
     }
     if (unified.moveEditorRow == 1) {
@@ -537,7 +540,9 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         unified.focus = {Unified::Panel::Details, static_cast<uint8_t>(touchedDetail), 0};
         unified.detailsFocus = static_cast<std::size_t>(touchedDetail);
         mirrorPickerFocus(state, unified.focus);
-        (void)activateUnifiedField(screen, state, unified.focus);
+        // Species (row 0) is a picker field: a completed tap opens it exactly like A does.
+        if (!activateUnifiedField(screen, state, unified.focus))
+            (void)openPickerForFocusedField(screen, state, pickerStateFor(screen), HidNpadButton_A);
         return true; // the modal always consumes a row tap, even for inert fields
     }
 

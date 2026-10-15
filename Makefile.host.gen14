@@ -12,3 +12,16 @@ $(HOST_BUILD)/test_gen1_export_transaction: $(GEN1_EXPORT_SOURCES) src/Integrati
 $(HOST_BUILD)/test_gen1_export_transaction_sanitize: $(GEN1_EXPORT_SOURCES) src/Integration/Gen1/Gen1PersonalData.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_EXPORT_SOURCES) -o $@
+
+# Gen I/II shared-editor contract fixes: two-step Review discard, modal exit footer, picker entry.
+GEN12_REVIEW_PARITY_SOURCES := tests/test_gen12_review_parity.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen12_review_parity
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen12_review_parity_sanitize
+host-test: $(HOST_BUILD)/test_gen12_review_parity
+host-sanitize: $(HOST_BUILD)/test_gen12_review_parity_sanitize
+$(HOST_BUILD)/test_gen12_review_parity: $(GEN12_REVIEW_PARITY_SOURCES) include/UI/Gen12ReviewDiscardConfirm.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN12_REVIEW_PARITY_SOURCES) -o $@
+$(HOST_BUILD)/test_gen12_review_parity_sanitize: $(GEN12_REVIEW_PARITY_SOURCES) include/UI/Gen12ReviewDiscardConfirm.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN12_REVIEW_PARITY_SOURCES) -o $@
