@@ -2,7 +2,7 @@
 # records and a deterministic fuzz pass. tools/pkhex_gen5_diff/run.sh reproduces the
 # fixture verdicts at scale against PKHeX.Core.
 GEN5_LEGALITY_SOURCES := tests/test_legality_gen5.cpp src/Legality/Gen5Legality.cpp \
-	src/Legality/Gen5LegalityData.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp \
+	src/Legality/Gen5LegalityData.cpp src/Legality/Gen5Text.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp \
 	src/Pokemon/Experience.cpp
 HOST_TESTS += $(HOST_BUILD)/test_legality_gen5
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_gen5_sanitize
