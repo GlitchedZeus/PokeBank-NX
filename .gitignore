@@ -53,3 +53,4 @@ tools/__pycache__/
 __pycache__/
 # PKHeX source/resource files the gen_*.py scripts fetch from GitHub (tools/pkhex_source.py)
 tools/.pkhex_cache/
+.claude/worktrees/
