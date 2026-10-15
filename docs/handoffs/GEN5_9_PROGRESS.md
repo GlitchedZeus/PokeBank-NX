@@ -9,33 +9,42 @@ Physical Switch status of every NRO built from this branch: **NOT DEVICE TESTED*
 
 ## Gen I–V completion campaign checkpoint (Thread 2R)
 
-HEAD `5342d6e` (draft PR #307). No candidate NRO is posted until the campaign ends; there will be ONE final NRO, and it is NOT DEVICE TESTED.
+HEAD `cedc2f8` (draft PR #307). No candidate NRO is posted until the campaign ends; there will be ONE final NRO, and it is NOT DEVICE TESTED.
 
-Since `44a976e`:
-- `8529557`: Gen V Clone and Move Pokemon use the Gen IV box (1–24) / slot (1–30) keypads. The Gen V-only destination list was removed.
-- `5342d6e`: the Gen V Release confirmation matches Gen IV ("Release this Pokemon?", Box/Slot line, Y Confirm Release).
+| Commit | Unit |
+| --- | --- |
+| `8529557` | Gen V Clone and Move Pokemon use the Gen IV box (1–24) / slot (1–30) keypads |
+| `5342d6e` | Gen V Release confirmation matches the Gen IV dialog |
+| `bc83815` | QA-F4: the PID replay protects the gender and ability links independently (the QA case is ported and fails on the old guard) |
+| `cb88043` | Merge of Thread C `claude/gen14-campaign-20261015` @ `8d7609f5` |
+| `6c366bd` | QA-F5: the Gen V Home party strip keeps the native form |
+| `b3f8871` | One Gen I–V Home party rule (`Integration/Common/HomePartyPreview.h`): species / level / form / shiny / gender, filled only where the format defines them |
+| `7251977` | Home preview contract needles restated for the adapter (old→new list in the message) |
+| `cedc2f8` | Gen V shared-panel captions are no longer than the Gen IV strings; caption glyph/length guard added |
 
-Verified in code with tests:
-- Exit guard: Browse with staged changes goes to ConfirmExit, where B keeps, X reviews and Y discards and leaves. Covered by `test_gen5_readonly_save.cpp`.
-- Focus is kept across pickers. This is the shared template, the same path as Gen IV.
+Gen V audit items, verified in code with tests:
+- Exit guard: Browse with staged changes goes to ConfirmExit, where B stays, X reviews and Y discards and leaves (`test_gen5_readonly_save.cpp`).
+- Focus restore: shared template, the same path as Gen IV.
+- Glyphs: only ASCII plus — • é, all of which Gen IV already draws. Caption length is ≤ Gen IV (`test_gen5_readonly_ui_contract.py`).
+- Popups:
+  - Add opens the editor directly on A and on touch, as in Gen IV. The create dialog appears only for a moment, or after a failure.
+  - Status toasts are the same kind Gen IV shows.
 
-Gates at `5342d6e`:
-- devkitA64 native build is clean. The only warnings come from pre-existing Gen I/II files.
-- GCC `host-test` passes.
-- Every `tests/*.py` passes.
-- `git diff --check` is clean.
+Gates at `cedc2f8`:
+- GCC host-test: rc 0.
+- Clang host-sanitize: rc 0. The local Clang ASan runtime comes from `apt-get install -y libclang-rt-18-dev`.
+- Python contracts: all pass.
+- `git diff --check`: clean.
+- devkitA64: clean.
+- At `b3f8871`, Clang host-test and GCC host-sanitize also passed (rc 0).
 
-Gen I–III divergences were surveyed and sent to the coordinator for Thread C (they own those files):
-1. Gen II: tapping the Species row does not open the picker.
-2. Gen I and II Edit have no X Keep.
-3. Gen I View cannot be navigated.
-4. Gen I and II: Y randomizes DVs with no confirmation (Gen I stages it immediately).
-5. Gen II: A cycles Pokérus, met time and OT gender in place.
-6. Gen I/II use custom panel layouts.
-7. Picker paging differs between generations.
+Open requests:
+- Thread C: a Gen III gender accessor. Until then the Home slot's gender for Gen III is `GenderUnknown`.
+- Gen I–III editor divergences 1–7 are with Thread C.
+- Per the owner: no gender glyph on the Home icons.
 
 Remaining:
-- Thread C/L/QA merges when the coordinator says.
+- Further Thread C merges, plus the L and QA merges, when the coordinator says.
 - Final gates.
 - One final NRO.
 
