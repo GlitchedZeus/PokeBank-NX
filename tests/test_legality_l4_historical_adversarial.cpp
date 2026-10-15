@@ -55,6 +55,18 @@ int main(){
   assert(result.status==P::Status::UnknownHistoricalTransformation);
   const P::Step direct{P::Action::PalPark,P::Generation::I,P::Generation::IV,true,0,{}};
   assert(P::evaluate(true,P::Generation::IV,observed,i,std::array{direct}).status==P::Status::CandidateRouteContradicted);
+  // A malformed label sandwiched into an otherwise fully witnessed
+  // three-step history must invalidate only the candidate witness, never
+  // the Pokémon. No later valid step may conceal the malformed middle.
+  std::array<P::Step,3> tagged{{
+      {P::Action::Trade,P::Generation::IV,P::Generation::IV,true,0,{}},
+      {static_cast<P::Action>(254),P::Generation::IV,P::Generation::IV,true,0,{}},
+      {P::Action::Trade,P::Generation::IV,P::Generation::IV,true,0,{}}
+  }};
+  const auto malformed=P::evaluate(true,P::Generation::IV,observed,src,tagged);
+  assert(malformed.status==P::Status::UnknownHistoricalTransformation);
+  assert(malformed.inspectedSteps==1 && malformed.contradicted==0);
+  assert(malformed.unknown==P::kAllFields && !malformed.authenticated);
   // No observed native fields is never a conditional provenance witness.
   now.known=0;
   assert(P::evaluate(true,P::Generation::IV,now,src).status==P::Status::UnknownHistoricalTransformation);

@@ -8,12 +8,23 @@ on:
     paths:
       - .github/workflows/legality-l4-evidence-matrix.yml
       - tests/test_legality_l4_*
+      - tests/fixtures/legality_l4_*
       - include/Legality/Gen14Event*
+      - include/Legality/Gen14OriginalCurrentChain*
+      - include/Legality/Gen14OriginalSourceRights*
+      - include/Legality/Gen14FinalProvenanceGate*
+      - include/Legality/Gen56MysteryGiftSource*
+      - include/Legality/Gen1OriginalGiftNative*
+      - include/Legality/Gen1OriginalNPCTrade*
+      - include/Legality/Gen1OriginalIndividual*
+      - include/Legality/Gen1NativeRawRecordWitness*
       - include/Legality/Gen12Gift*
+      - include/Legality/Gen12OriginalDistribution*
       - include/Legality/Gen3*Event*
       - include/Legality/Gen3Distribution*
       - include/Legality/Gen4*Event*
       - include/Legality/Gen4MysteryGift*
+      - include/Legality/Gen4OriginalCardRecipient*
       - include/Legality/Gen4ContestRibbon*
       - tools/legality_l4_*
       - docs/legality/l4/**
