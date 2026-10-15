@@ -15,9 +15,12 @@
 // The "grown" corpus (Gen IV only) instead takes every PKHeX-valid base Gen IV record and
 // plays it forward: hatching, levels with EXP, level-up / TM / tutor moves, EV training,
 // evolution (level, friendship, stone and trade), held items, Pokerus, common Gen IV
-// ribbons and a trade into another Gen IV game's save; and it transfers every PKHeX-valid
-// Gen III base record through Pal Park (PK3.ConvertToPK4). Only grown records PKHeX judges
-// VALID are kept (ids g* and p*); MUTATIONS mutations of each follow (ids h*-name, q*-name).
+// ribbons and a trade into another Gen IV game's save. Some records take another shape
+// instead: an unhatched egg (from a bred encounter), a Cute Charm lead capture or a
+// Poke Radar chain shiny (from a wild slot), and Pokemon Ranger Manaphy eggs (hatched and
+// unhatched). It also transfers every PKHeX-valid Gen III base record through Pal Park
+// (PK3.ConvertToPK4). Only grown records PKHeX judges VALID are kept (ids g* and p*);
+// MUTATIONS mutations of each follow (ids h*-name, q*-name).
 // PK3 hex is the 80-byte decrypted box record in canonical G/A/E/M order; PK4 hex is the
 // 136-byte decrypted box record in canonical A/B/C/D order. Records are synthetic.
 using PKHeX.Core;
@@ -63,6 +66,31 @@ if (which.Contains('3') || (grown && which.Contains('4')))
     Run(3, [GameVersion.R, GameVersion.S, GameVersion.E, GameVersion.FR, GameVersion.LG], 386);
 if (which.Contains('4'))
     Run(4, gen4Carts, 493);
+if (grown && which.Contains('4'))
+{
+    // Pokemon Ranger's Manaphy egg (PGT), received in each Gen IV game.
+    foreach (var cart in gen4Carts)
+    {
+        var tr = new SimpleTrainerInfo(cart) { OT = "Tester", TID16 = (ushort)rng.Next(1, 65535), SID16 = (ushort)rng.Next(1, 65535), Language = (int)LanguageID.English };
+        var gift = new PGT { CardType = 7, ItemSubID = 1 };
+        for (int i = 0; i < 4; i++)
+        {
+            PK4 egg;
+            try { egg = (PK4)gift.ConvertToPKM(tr); }
+            catch (Exception) { break; }
+            if (i % 2 == 1 && egg.IsEgg)
+            {
+                egg.IsEgg = false; // hatched in a town of the receiving game
+                var towns = Enumerable.Range(1, 234).Select(l => (ushort)l).Where(l => EggHatchLocation4.IsValidMet4(l, egg.Version)).ToArray();
+                egg.MetLocation = towns[rng.Next(towns.Length)];
+                egg.MetDate = egg.EggMetDate;
+                egg.OriginalTrainerFriendship = 120;
+                egg.ClearNickname();
+            }
+            EmitKept("g", "h", cart, egg);
+        }
+    }
+}
 return 0;
 
 void Run(int gen, GameVersion[] versions, ushort maxSpecies)
@@ -162,9 +190,17 @@ void EmitGrown(int gen, GameVersion cart, PKM made)
     }
     else
     {
-        result = Grow4((PK4)made.Clone(), rng, cart, gen4Carts, out cart);
+        var pk4 = (PK4)made.Clone();
+        PK4? shaped = rng.Next(4) == 0 ? Reshape4(pk4, rng) : null;
+        result = shaped ?? Grow4(pk4, rng, cart, gen4Carts, out cart);
         (baseId, mutId) = ("g", "h");
     }
+    EmitKept(baseId, mutId, cart, result);
+}
+
+// Emits a grown record PKHeX accepts, then its mutations.
+void EmitKept(string baseId, string mutId, GameVersion cart, PK4 result)
+{
     result.RefreshChecksum();
     if (!new LegalityAnalysis(result).Valid)
         return; // keep only grown records PKHeX accepts
@@ -175,6 +211,61 @@ void EmitGrown(int gen, GameVersion cart, PKM made)
         var name = Mutate4(copy, rng);
         Emit($"{mutId}{count++}-{name}", cart, copy);
     }
+}
+
+// Other legitimate shapes of a base record: an unhatched egg, a Cute Charm lead capture
+// or a Poke Radar chain shiny. Null when the record has no such shape.
+static PK4? Reshape4(PK4 pk, Random rng)
+{
+    var la = new LegalityAnalysis(pk);
+    if (la.EncounterMatch is EncounterEgg4)
+    {
+        // Still an egg: received from the Day-Care man (or by trade), not hatched yet.
+        pk.IsEgg = true;
+        pk.MetLocation = rng.Next(4) == 0 ? Locations.LinkTrade4 : (ushort)0;
+        if (pk.MetLocation == 0)
+            pk.MetDate = null;
+        pk.MetLevel = 0;
+        pk.Nickname = SpeciesName.GetEggName(pk.Language, 4);
+        pk.IsNicknamed = false;
+        pk.OriginalTrainerFriendship = (byte)rng.Next(0, pk.PersonalInfo.HatchCycles + 1);
+        return pk;
+    }
+    if (la.EncounterMatch is not EncounterSlot4 slot)
+        return null;
+    var gr = pk.PersonalInfo.Gender;
+    bool hgss = pk.Version is GameVersion.HG or GameVersion.SS;
+    for (int attempt = 0; attempt < 400; attempt++)
+    {
+        var copy = (PK4)pk.Clone();
+        var seed = (uint)rng.NextInt64(0, 1L << 32);
+        uint pid;
+        var radar = !hgss && rng.Next(2) == 0;
+        if (radar)
+        {
+            pid = ClassicEraRNG.GetChainShinyPID(ref seed, pk.ID32);
+        }
+        else
+        {
+            if (gr is 0 or 254 or 255)
+                return null;
+            var rand = LCRNG.Prev(seed) >> 16; // the nature call right before the IVs
+            var nature = hgss ? rand % 25 : rand / 0xA3E;
+            pid = rng.Next(2) == 0 ? CuteCharm4.GetPIDFemale(nature) : CuteCharm4.GetPIDMale(gr, nature);
+        }
+        var iv1 = LCRNG.Next16(ref seed);
+        var iv2 = LCRNG.Next16(ref seed);
+        copy.PID = pid;
+        copy.Gender = EntityGender.GetFromPIDAndRatio(pid, gr);
+        copy.RefreshAbility((int)(pid & 1));
+        copy.IV_HP = (int)(iv1 & 31); copy.IV_ATK = (int)((iv1 >> 5) & 31); copy.IV_DEF = (int)((iv1 >> 10) & 31);
+        copy.IV_SPE = (int)(iv2 & 31); copy.IV_SPA = (int)((iv2 >> 5) & 31); copy.IV_SPD = (int)((iv2 >> 10) & 31);
+        copy.RefreshChecksum();
+        var want = radar ? PIDType.ChainShiny : PIDType.CuteCharm;
+        if (MethodFinder.Analyze(copy).Type == want && new LegalityAnalysis(copy).Valid)
+            return copy;
+    }
+    return null;
 }
 
 // Plays a legitimate Gen IV record forward the way a player would.
