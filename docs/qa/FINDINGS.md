@@ -26,6 +26,7 @@ lands, its reproduction moves into the passing suite as a regression test
 | QA-F7 | Low (editor gap) | Gen IV Unown letter (form) cannot be edited: `setForm` uses the personal table's raw form count (1), the pinned PKSM-Core normalises Unown to 28 | Thread C (`Pokemon4Mutable.cpp` `setForm`) | **FIXED** in `f17926f`; regression in `test_qa_regressions.cpp` |
 | QA-F8a | Low (presentation) | Gen IV net no-op clone + release reviewed as "(empty) (edited)" | Thread C | **FIXED** in `c7b0f97`; regression in `test_qa_regressions.cpp` |
 | QA-F8b | Low (export bytes) | Gen IV release zero-fills a slot that held an encrypted blank, so a net no-op clone + release still changes 126 bytes of the working copy / `edited.sav` that the review no longer lists | Thread C (`Gen4StagedPokemonEditor::stageReleaseBoxPokemon`) | **FIXED** in `f883f4d0`; regression in `test_qa_regressions.cpp` |
+| QA-F9 | **High** (release gate) | The candidate-NRO audit workflow fell back to hard-coded fa9cfcea identity defaults on every pull_request run, so run 38732921392 on #307 `a0633b6d` was green while auditing the OLD fa9cfcea NRO | Thread 4 (`app-qa-nro-audit.yml`) | **FIXED** on `audit/app-qa-20261014`; regression `tests/test_qa_nro_audit_workflow.py` in `qa-tools-test` |
 
 No crash, sanitizer report, out-of-bounds read or round-trip violation was found in any Gen I–V parser,
 record decoder, Bag decoder, copy selector or Save Instance identification path (see
@@ -67,6 +68,47 @@ record decoder, Bag decoder, copy selector or Save Instance identification path 
   refused in layout groups 77/78/79; Burmy (control) is accepted.
 - **Suggested fix:** use the same normalisation as the pinned reference for Unown's form bound. Any
   extra Unown rules (e.g. letter/PID relation) need a citation before they are enforced.
+
+## QA-F9 (High, release gate; FIXED): the NRO audit audited a stale, defaulted artifact
+
+- **Reported by:** the owner, 2026-10-15, on #307 head `a0633b6d`.
+- **Evidence status:** run **38732921392** ("Exact-head audit of the published candidate NRO") is
+  **INVALID as candidate evidence**. It downloaded and audited the fa9cfcea NRO from run 38673482742,
+  not the a0633b6d candidate from run 38732921202.
+- **Cause:** `.github/workflows/app-qa-nro-audit.yml` defined the candidate identity in a top-level
+  `env:` block as `${{ github.event.inputs.X || '<fa9cfcea default>' }}`. A pull_request run has no
+  inputs, so every pull_request run audited the hard-coded fa9cfcea artifact against its own
+  fa9cfcea identity and passed. A `paths:` filter could also skip the audit on heads that did not
+  touch QA files.
+- **Fix:**
+  - The identity comes from exactly one source: all-required `workflow_dispatch` inputs (now
+    including `artifact_id`, `tree_sha` and `nro_file`), or, for pull_request,
+    `docs/qa/CANDIDATE_UNDER_AUDIT.env`. There are no defaults, no `||` and no identity literal in
+    the workflow.
+  - Formats are validated: 40-hex SHAs, 64-hex SHA-256, numeric run, artifact and size.
+  - The run is bound through the GitHub API: `head_sha` == CODE_SHA, `conclusion` == success, and the
+    path is `gen15-integrated-candidate.yml`. The run must hold exactly one artifact named
+    ARTIFACT_NAME, with id == ARTIFACT_ID, not expired.
+  - pull_request staleness guard: CODE_SHA must be an ancestor of the head, and no non-QA file may
+    have changed since it was built (any changed file is listed). `CODE_SHA^{tree}` must equal
+    TREE_SHA.
+  - `BUILD_IDENTITY.txt` (APPLICATION_SHA, TREE_SHA, ARTIFACT, SIZE_BYTES, SHA256, RUN_ID,
+    DEVICE_ACCEPTED=false), `SHA256SUMS.txt` and the NRO's own sha256sum and size must all agree,
+    and only then does `nro_audit.py` run.
+  - The `paths:` filter is removed, every identity field goes to the step summary, and the record is
+    named `app-qa-nro-audit-<CODE_SHA short>`.
+- **Regression:** `tests/test_qa_nro_audit_workflow.py`, run in `make qa-tools-test` through
+  `test_qa_regressions_assets.py`. It reports 24 violations on the old workflow and passes on the new
+  one. The workflow's shell steps were also dry-run locally on the real identity file:
+  - resolution passes, and a malformed value fails;
+  - the staleness guard passes on this head and fails, listing the file, when an application file
+    changes;
+  - the cross-check passes on a matching synthetic artifact and fails on `DEVICE_ACCEPTED=true` or a
+    size mismatch.
+  GitHub's record for run 38732921202 matches the binding: head_sha a0633b6d…, success,
+  `.github/workflows/gen15-integrated-candidate.yml`.
+- **Valid evidence:** the first pull_request run of this workflow on the #307 head that carries this
+  fix, auditing a0633b6d (run 38732921202, artifact 11970313582).
 
 ## QA-F8 (Low; FIXED: review half QA-F8a in c7b0f97, export-bytes half QA-F8b in f883f4d0): Gen IV no-op release
 
