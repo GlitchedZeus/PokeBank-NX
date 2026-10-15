@@ -21,16 +21,18 @@ milestone), every `tests/*.py` contract, `git diff --check`.
 | 3b | Gen I/II: two-step Review discard; Gen I exit-dialog footer modal; Gen I held-stick handoff; Gen II Species tap opens picker; Gen II move-editor picker normalization | done | 34c084a1 | `test_gen12_review_parity` |
 | 3c | Gen II Clone from Actions is swallowed by `ClassicReleaseActionFix.inc` (not owned) | reported to coordinator | | |
 | 3d | Gen I/II "Y Random DVs" one-press rewrite | owner decision requested | | |
-| 4b | Phase 4 Gen II/III/IV Party vs Box, malformed/stale inputs | pending | | |
-| 5 | Remaining audit lows (Gen I post-Add focus, move picker drag geometry, Actions cursor after Edit, exit text when clean; Gen II shiny-toggle DV notice) | pending | | |
+| 4b | Phase 4 Gen II/III/IV: Box vs Trainer/Bag/Party exports separated with byte-footprint checks; races; malformed/foreign refusal | done | 27940e54 | `test_gsc_export_transaction`, `test_gen3_staged_pokemon_editor`, `test_gen4_staged_pokemon_editor` |
+| 5a | Audit lows: Gen I post-Add focus, Move picker drag geometry, honest exit text; Gen II shiny-toggle DV notice | done | 1ca0d8b3 | `test_gen12_review_parity` |
+| 5b | Gen I Actions cursor returns to View (row 0) after leaving Edit | cosmetic; row semantics owned by `ClassicReleaseActionFix.inc` | | |
+| 5c | Gen IV source/party audit; Gen I-III create/trainer/checksum audit | running | | |
 
 ## Verification log
 
-- Full GCC `host-test` + `host-sanitize`, Clang `host-test`: PASS at 0bac3cf1 tree (Clang sanitize running).
+- Full GCC + Clang `host-test` + `host-sanitize`: PASS at the 0bac3cf1 tree.
 - Every unit: touched targets GCC+Clang, plain + ASan/UBSan; all `tests/*.py`; `git diff --check`.
-- Native devkitA64 (pinned CI image `devkitpro/devkita64@sha256:1fc388c3…`) local build PASS through 34c084a1.
+- Native devkitA64 (pinned CI image `devkitpro/devkita64@sha256:1fc388c3…`) local build PASS through 1ca0d8b3.
 - Draft PR #316 (base #307) for CI evidence.
 
 ## Next
 
-Phase 4 for Gen II/III/IV (Party vs Box separation, stale/missing/ambiguous source refusal), then the audit lows.
+Act on the Gen IV and Gen I-III data-layer audits; rerun full suites for the milestone; watch PR #316 CI.
