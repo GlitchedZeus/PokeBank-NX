@@ -673,8 +673,8 @@ void runVersion(Matrix& m, const VersionSpec& v) {
     // ---------------------------------------------------------------- actions
     cell(m, ver, "actions", "Gen4BoxTouchActions select/open + staged Clone/Move/Release primitives; descriptor "
              "grants BoxPokemon/Editing/Creation, never a source write (menu rows live in the non-host "
-             "Gen4SharedPokemonSurface.inc); a net no-op clone/move/release may still "
-             "review as \"Box 2 slot 1: (empty) (edited)\" (QA-F8)", [&](Probe& p) {
+             "Gen4SharedPokemonSurface.inc); a net no-op clone/move/release leaves no "
+             "review line (QA-F8a)", [&](Probe& p) {
         p.expect(BoxTouch::selectsTappedBoxSlot(0, 30) && BoxTouch::selectsTappedBoxSlot(29, 30) &&
                      !BoxTouch::selectsTappedBoxSlot(30, 30), "tap selection");
         p.expect(BoxTouch::opensSelectedSlotActions(4, 4, 30) &&
@@ -705,12 +705,11 @@ void runVersion(Matrix& m, const VersionSpec& v) {
                      afterRelease->box(0, 0).species() == 25, "release result");
         p.expect(!editor->boxedPokemon(1, 0, &err), "released slot still opens as a Pokemon");
         p.expect(!editor->stageReleaseBoxPokemon(1, 0, &err), "release of an empty slot accepted");
-        // A net no-op: the review must not describe any Pokemon change. Today Release zero-fills the
-        // slot while the source held an encrypted blank, so one "(empty) (edited)" line remains: QA-F8
-        // (strict repro in test_qa_known_failures.cpp). Both the current line and the fixed (empty)
-        // review are accepted here so this cell neither pins the defect nor hides another change.
+        // A net no-op: the review must not describe any Pokemon change (QA-F8a, fixed in c7b0f97).
+        // The working copy still differs in the slot's empty encoding: QA-F8b, repro in
+        // test_qa_known_failures.cpp.
         const auto lines = G4::describeStagedSlotChanges(*editor);
-        p.expect(lines.empty() || (lines.size() == 1 && lines[0] == "Box 2 slot 1: (empty) (edited)"),
+        p.expect(lines.empty(),
                  "unexpected review after clone+move+release: " + (lines.empty() ? std::string() : lines[0]));
         p.expect(sourceUnchanged("actions"), "actions changed the source");
     });
@@ -849,8 +848,8 @@ void runVersion(Matrix& m, const VersionSpec& v) {
         p.expect(outcome == S::SnapshotRefresh::Parsed && changed.current(), "rewrite not reparsed: " + changed.reason);
         p.expect(changed.party[0].species == 25 && changed.party[0].level == 33, "card party level after rewrite");
         p.expect(changed.party[1].form == 2, "card form after rewrite");
-        // The rewritten lead is shiny (fields cell); the Gen IV card hides shiny by design
-        // (Gen4GameCardPreview.h: "Gen IV Home shiny badges are not part of the accepted card output").
+        // The rewritten lead is shiny (fields cell); whether the card shows it is recorded as a fact
+        // (Gen4GameCardPreview.h fills the card through HomePartyPreview::fromGen4).
         const auto reopened = G4::openAssignedSource(bindings, kProfile, v.gameId);
         bool leadShiny = false;
         if (reopened.save && !reopened.save->party().empty()) {
@@ -860,6 +859,10 @@ void runVersion(Matrix& m, const VersionSpec& v) {
         }
         p.expect(leadShiny, "rewritten lead is not shiny in the save");
         m.fact(ver, "home.party.shiny", changed.party[0].shiny ? "shown" : "hidden");
+        const bool genderKept = reopened.save && !reopened.save->party().empty() &&
+                                reopened.save->party()[0].gender() <= 2 &&
+                                changed.party[0].gender == reopened.save->party()[0].gender();
+        m.fact(ver, "home.party.gender", genderKept ? "kept" : "dropped");
         p.expect(S::homePartyStatus(changed) == "Current save party", "party status '" + S::homePartyStatus(changed) + "'");
         const Bytes garbage(qasynth::gen4::kSaveSize, 0x5A);
         qacontract::spit(source, garbage);

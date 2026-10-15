@@ -142,6 +142,23 @@ VerifiedExportResult publishVerifiedStagedExport(const VerifiedExportRequest& re
         result.error = "No strict save validator was supplied";
         return result;
     }
+    // A verbatim source file must contain exactly the validated payload at its start.
+    const bool verbatim = !request.backupBytes.empty();
+    if (verbatim && (request.backupBytes.size() < request.originalBytes.size() ||
+                     !std::equal(request.originalBytes.begin(), request.originalBytes.end(),
+                                 request.backupBytes.begin()))) {
+        result.error = "Verbatim source file does not start with the original save payload";
+        return result;
+    }
+    for (const std::string* token : {&request.sourceContainer, &request.editedContainer,
+                                     &request.sourceSha256Scope}) {
+        if (!token->empty() && !safeStem(*token)) {
+            result.error = "Export container fact is not a safe token";
+            return result;
+        }
+    }
+    const std::span<const uint8_t> backupBytes =
+        verbatim ? request.backupBytes : request.originalBytes;
     for (size_t i = 0; i < request.editedBytes.size(); ++i)
         if (request.originalBytes[i] != request.editedBytes[i]) ++result.changedBytes;
     if (result.changedBytes == 0) {
@@ -158,6 +175,7 @@ VerifiedExportResult publishVerifiedStagedExport(const VerifiedExportRequest& re
 
     result.originalSha256 = sha256Hex(request.originalBytes);
     result.editedSha256 = sha256Hex(request.editedBytes);
+    result.backupSha256 = verbatim ? sha256Hex(backupBytes) : result.originalSha256;
 
     if (!mkdirIfNeeded(request.rootDirectory)) {
         result.error = "Could not create export root";
@@ -193,11 +211,21 @@ VerifiedExportResult publishVerifiedStagedExport(const VerifiedExportRequest& re
         ::rmdir(temporaryDirectory.c_str());
         result.originalSha256.clear();
         result.editedSha256.clear();
+        result.backupSha256.clear();
         return result;
     };
 
     std::string ioError;
-    if (!writeSynced(backupPath, request.originalBytes, ioError)) return fail(ioError);
+    if (!writeSynced(backupPath, backupBytes, ioError)) return fail(ioError);
+    if (request.failurePoint == ExportFailurePoint::CorruptBackupAfterWrite) {
+        FILE* tamper = std::fopen(backupPath.c_str(), "r+b");
+        if (tamper) {
+            const int first = std::fgetc(tamper);
+            std::fseek(tamper, 0, SEEK_SET);
+            std::fputc(first ^ 0xFF, tamper);
+            std::fclose(tamper);
+        }
+    }
     if (request.failurePoint == ExportFailurePoint::AfterBackupWrite)
         return fail("Injected failure after backup write");
     if (!writeSynced(editedPath, request.editedBytes, ioError)) return fail(ioError);
@@ -210,12 +238,12 @@ VerifiedExportResult publishVerifiedStagedExport(const VerifiedExportRequest& re
     if (!readAll(backupPath, backupReadback, ioError)) return fail(ioError);
     if (!readAll(editedPath, editedReadback, ioError)) return fail(ioError);
     if (!std::equal(backupReadback.begin(), backupReadback.end(),
-                    request.originalBytes.begin(), request.originalBytes.end()))
+                    backupBytes.begin(), backupBytes.end()))
         return fail("Original backup read-back mismatch");
     if (!std::equal(editedReadback.begin(), editedReadback.end(),
                     request.editedBytes.begin(), request.editedBytes.end()))
         return fail("Edited save read-back mismatch");
-    if (sha256Hex(backupReadback) != result.originalSha256)
+    if (sha256Hex(backupReadback) != result.backupSha256)
         return fail("Original backup hash verification failed");
     if (sha256Hex(editedReadback) != result.editedSha256)
         return fail("Edited save hash verification failed");
@@ -233,10 +261,24 @@ VerifiedExportResult publishVerifiedStagedExport(const VerifiedExportRequest& re
     manifest += "SOURCE_KIND=READ_ONLY\n";
     manifest += "SOURCE_SIZE=" + std::to_string(request.originalBytes.size()) + "\n";
     manifest += "SOURCE_SHA256=" + result.originalSha256 + "\n";
+    if (!request.sourceSha256Scope.empty())
+        manifest += "SOURCE_SHA256_SCOPE=" + request.sourceSha256Scope + "\n";
+    if (!request.sourceContainer.empty())
+        manifest += "SOURCE_CONTAINER=" + request.sourceContainer + "\n";
+    if (verbatim) {
+        manifest += "SOURCE_FILE_SIZE=" + std::to_string(backupBytes.size()) + "\n";
+        manifest += "SOURCE_FILE_SHA256=" + result.backupSha256 + "\n";
+    }
     manifest += "TIMESTAMP=" + request.timestamp + "\n";
     manifest += "APPLICATION_SHA=" + request.applicationSha + "\n";
     manifest += "ORIGINAL_BACKUP=" + backupName + "\n";
+    if (verbatim) {
+        manifest += "ORIGINAL_BACKUP_SHA256=" + result.backupSha256 + "\n";
+        manifest += "ORIGINAL_BACKUP_IS=VERBATIM_SOURCE_FILE\n";
+    }
     manifest += "EDITED_SAVE=" + editedName + "\n";
+    if (!request.editedContainer.empty())
+        manifest += "EDITED_CONTAINER=" + request.editedContainer + "\n";
     manifest += "EDITED_SIZE=" + std::to_string(request.editedBytes.size()) + "\n";
     manifest += "EDITED_SHA256=" + result.editedSha256 + "\n";
     manifest += "CHANGED_BYTES=" + std::to_string(result.changedBytes) + "\n";

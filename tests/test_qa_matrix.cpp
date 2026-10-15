@@ -129,7 +129,10 @@ int main(int argc, char** argv) {
             for (size_t i = 0; i < versions.size(); ++i) values << (i ? ", " : "") << versions[i];
             values << ')';
         }
-        const bool same = groups.size() <= 1;
+        // "n/a" = the format has no such data (e.g. Gen I shiny): not an inconsistency.
+        size_t applicable = 0;
+        for (const auto& group : groups) applicable += group.first == "n/a" ? 0 : 1;
+        const bool same = applicable <= 1;
         if (!same) ++inconsistent;
         md << "| `" << key << "` | " << escapeCell(values.str()) << " | " << (same ? "yes" : "**NO**") << " |\n";
     }

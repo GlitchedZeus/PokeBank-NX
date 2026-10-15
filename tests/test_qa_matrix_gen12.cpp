@@ -29,6 +29,7 @@
 //           src/Integration/Gen2/Gen2ReadOnlySave.cpp dexProgress.
 #include "fixtures/gsc_pokemon_fixture.h"
 #include "test_qa_matrix.h"
+#include "test_qa_matrix_home.h"
 #include "test_qa_support.h"
 
 #include "Integration/Common/VerifiedStagedExport.h"
@@ -511,9 +512,10 @@ void runHomeCells(Row& row, const Spec& spec, const Env& env, const fs::path& so
                   "stat()-triggered re-discovery call itself is UI code in SaveSelectScreen.cpp");
     }
     row.fact("home.refresh", "legacy-rediscovery");
-    row.fact("home.party.level", "kept");
-    row.fact("home.party.shiny", "hidden");
-    row.fact("home.party.form", spec.generation == 1 ? "n/a" : "dropped");
+    // Derived from the production Home adapters (HomePartyPreview::fromGen1/2), never hard-coded.
+    const auto fact = [&](const std::string& key, const std::string& value) { row.fact(key, value); };
+    if (spec.generation == 1) home::recordGen1(fact);
+    else home::recordGen2(fact);
 
     {
         Checks c;

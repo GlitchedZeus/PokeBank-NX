@@ -84,7 +84,13 @@ struct ExportPath {
     std::function<Outcome(const fs::path& root, const fs::path& source, int failurePoint)> publish;
     std::function<bool(std::span<const uint8_t>, std::string&)> strictReparse;
     std::vector<Range> whitelist;
+    // C6 (Exit): performs the production "Discard All" on every staged workspace this path exports
+    // and returns "" when nothing is pending and the working copy equals the original bytes, else why.
+    std::function<std::string()> discardAll;
 };
+
+template <class Span>
+bool sameBytes(const Span& a, const Bytes& b) { return std::equal(a.begin(), a.end(), b.begin(), b.end()); }
 
 Common::ExportFailurePoint commonPoint(int p) {
     switch (p) {
@@ -194,8 +200,27 @@ void runContract(const ExportPath& path) {
     const auto inSource = path.publish(sourceDir, source, 0);
     QA_EXPECT(inSource.success, "export into the source directory failed: " + inSource.error);
     checkSource("after exporting into the source directory");
+
+    // C6 (Exit): Discard All restores the working copy to the original bytes with nothing pending;
+    // a later export either refuses (nothing to export) or writes only the original bytes.
+    QA_EXPECT(static_cast<bool>(path.discardAll), "C6 path has no Discard All check");
+    std::string c6 = "C6 not run";
+    if (path.discardAll) {
+        const std::string why = path.discardAll();
+        QA_EXPECT(why.empty(), "C6 " + why);
+        const fs::path afterRoot = base / "after-discard";
+        const auto after = path.publish(afterRoot, source, 0);
+        c6 = after.success ? "C6 export after Discard All = original bytes" : "C6 export after Discard All refused";
+        if (after.success)
+            QA_EXPECT(slurp(fs::path(after.directory) / path.editedName) == path.original,
+                      "C6 export after Discard All carries edits");
+        else
+            QA_EXPECT(!fs::exists(afterRoot) || filesOnly(treeState(afterRoot)).empty(),
+                      "C6 refused export after Discard All left files behind");
+        checkSource("after Discard All");
+    }
     fs::remove_all(base);
-    std::cout << "  " << path.name << ": " << changed << " byte(s) changed, all whitelisted\n";
+    std::cout << "  " << path.name << ": " << changed << " byte(s) changed, all whitelisted; " << c6 << "\n";
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -247,6 +272,15 @@ ExportPath gen1TransactionPath() {
     };
     path.strictReparse = Common::gen1StrictValidator(G1::SourceGame::Red);
     path.whitelist = {{kGen1Bag, kGen1Bag + kGen1BagBytes}, {kGen1Sum, kGen1Sum + 1}};
+    path.discardAll = [=]() -> std::string {
+        inventory->discard();
+        if (pokemon) pokemon->discard();
+        if (!inventory->pendingChanges().empty() || !sameBytes(inventory->stagedBytes(), original))
+            return "Gen I Bag workspace still differs after discard";
+        if (pokemon && (!pokemon->pendingChanges().empty() || !sameBytes(pokemon->stagedBytes(), original)))
+            return "Gen I Pokemon workspace still differs after discard";
+        return {};
+    };
     return path;
 }
 
@@ -290,6 +324,15 @@ ExportPath gen1Path(bool withPokemonEditor) {
     };
     path.strictReparse = Common::gen1StrictValidator(G1::SourceGame::Red);
     path.whitelist = {{kGen1Bag, kGen1Bag + kGen1BagBytes}, {kGen1Sum, kGen1Sum + 1}};
+    path.discardAll = [=]() -> std::string {
+        inventory->discard();
+        if (pokemon) pokemon->discard();
+        if (!inventory->pendingChanges().empty() || !sameBytes(inventory->stagedBytes(), original))
+            return "Gen I Bag workspace still differs after discard";
+        if (pokemon && (!pokemon->pendingChanges().empty() || !sameBytes(pokemon->stagedBytes(), original)))
+            return "Gen I Pokemon workspace still differs after discard";
+        return {};
+    };
     return path;
 }
 
@@ -398,6 +441,12 @@ ExportPath gen2Path(bool bag) {
         }
     path.whitelist.push_back({GS.sum, GS.sum + 2});
     path.whitelist.push_back({GS.sum2, GS.sum2 + 2});
+    path.discardAll = [=]() -> std::string {
+        editor->discard();
+        if (!editor->pendingChanges().empty() || !sameBytes(editor->stagedBytes(), original))
+            return "Gen II workspace still differs after discard";
+        return {};
+    };
     return path;
 }
 
@@ -465,6 +514,15 @@ ExportPath gen3Path(bool pokemon) {
     };
     path.strictReparse = Common::gen3StrictValidator(game);
     path.whitelist = gen3Whitelist(inventory->activeSlot());
+    path.discardAll = [=]() -> std::string {
+        inventory->discard();
+        if (editor) editor->discard();
+        if (!inventory->pendingChanges().empty() || !sameBytes(inventory->stagedBytes(), original))
+            return "Gen III Bag workspace still differs after discard";
+        if (editor && (!editor->pendingChanges().empty() || !sameBytes(editor->stagedBytes(), original)))
+            return "Gen III Pokemon workspace still differs after discard";
+        return {};
+    };
     return path;
 }
 
@@ -502,6 +560,12 @@ ExportPath gen4Path(qasynth::gen4::Kind kind, G4::Layout layout, const char* gam
     // Only the selected storage block (boxes) of the selected partition: SAV4 spec() geometry.
     const size_t storage = parsed->storageSelection().offset;
     path.whitelist = {{storage, storage + sp.storageSize}};
+    path.discardAll = [=]() -> std::string {
+        editor->discard();
+        if (editor->hasChanges() || !sameBytes(editor->stagedBytes(), original))
+            return "Gen IV workspace still differs after discard";
+        return {};
+    };
     return path;
 }
 
@@ -602,6 +666,11 @@ ExportPath gen5Path(G5::SaveFamily family, uint8_t version, bool backupCopy, Gen
         const auto again = G5::Gen5ReadOnlySave::parse(bytes, game, &err, selection);
         return again && again->selectedCopyOffset() == base;
     };
+    path.discardAll = [=]() -> std::string {
+        workspace->discardAll();
+        if (workspace->hasChanges()) return "Gen V workspace still has changes after Discard All";
+        return {};
+    };
     return path;
 }
 
@@ -667,7 +736,7 @@ int main() {
         [] { return gen5Path(G5::SaveFamily::Black2White2, 23, false, Gen5Edit::Trainer); },
     };
     std::cout << "Export-safety contracts (C1 source immutable, C2 strict reparse, C3 whitelist, "
-                 "C4 no overwrite, C5 no partial output):\n";
+                 "C4 no overwrite, C5 no partial output, C6 Discard All restores):\n";
     for (const auto& make : paths) {
         try {
             runContract(make());
@@ -686,6 +755,6 @@ int main() {
         std::fprintf(stderr, "%d export contract violation(s)\n", failures());
         return 1;
     }
-    std::cout << "All " << paths.size() << " export paths satisfy C1-C5\n";
+    std::cout << "All " << paths.size() << " export paths satisfy C1-C6\n";
     return 0;
 }

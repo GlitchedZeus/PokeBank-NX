@@ -3,7 +3,7 @@
 Source of truth: `make -f Makefile.host qa-matrix` (part of `make qa` and the **App QA Contracts**
 workflow, GCC and Clang, plain and ASan/UBSan). The runner fails on any FAIL, MISSING or DUPLICATE
 cell. The tables below are its generated output on `audit/app-qa-20261014` after merging #307
-`181423a` (GCC and Clang identical). CI writes the same tables to each run's step summary.
+`d57e5bc` (GCC and Clang identical). CI writes the same tables to each run's step summary.
 
 - **Rows:** all 20 Gen I–V versions. **Columns:** 21 acceptance cells (definitions in
   `tests/test_qa_matrix.h`).
@@ -36,30 +36,32 @@ parts below run only on the Switch and are NOT covered by any PASS here. Every N
 
 ## Cross-generation comparison (classification)
 
-The runner compares normalised facts across versions. Every difference it flags is classified here.
+The runner compares normalised facts across versions; "n/a" (the format has no such data) is not
+counted as a difference. The `home.party.*` facts are DERIVED from the production Home adapters
+(`HomePartyPreview::fromGen1/2/3`, `fromGen4`, the Gen V card) by `tests/test_qa_matrix_home.h` and the
+Gen IV/V home cells. They are never hard-coded, so they cannot drift.
 
-| Fact | Difference | Classification | Owner |
+| Fact | Status | Classification | Owner |
 | --- | --- | --- | --- |
-| `identity.source` | filename hint (RBY except Crystal, GS, all Gen III); assignment (Diamond/Pearl); save-internal (Crystal, Pt, HG/SS, Gen V) | Inherent to the formats: R/B, G/S, R/S and FR/LG saves are byte-identical families and DP lacks a version marker. **But** Gen III takes the hint from a raw substring of the whole path while Gen I/II accept only isolated tokens: filed as **QA-F6** | L (QA-F6) |
+| `home.party.level / form / shiny / gender` | consistent: kept wherever the format defines it (Gen I has no form, shiny or gender) | One shared Home party rule since `b3f8871` (`Integration/Common/HomePartyPreview.h`) | — |
+| `home.refresh` | legacy re-discovery (Gen I–III) vs `HomeSnapshotCache` (Gen IV/V) | **Decided, known limitation:** a Gen I–III card whose source fails shows "Party preview unavailable" and has no STALE state; Gen IV/V keep the last validated data as STALE (`fuzz_home_cache`) | 2R (Home) |
+| `identity.source` | filename hint (RBY except Crystal, GS, Gen III); assignment (Diamond/Pearl); save-internal (Crystal, Pt, HG/SS, Gen V) | Inherent to the formats (byte-identical families). The Gen III hint now needs an isolated token like Gen I/II (QA-F6 fixed) | — |
 | `trainer.gender` | not stored in RBY and Gold/Silver | Inherent to the format (N/A cells) | — |
-| `home.refresh` | legacy re-discovery (Gen I–III) vs `HomeSnapshotCache` (Gen IV/V) | Two mechanisms for one Home card; Gen I–III refresh only for a single-instance title (`SaveSelectScreen.cpp`). Consistency item | 2R (Home) |
-| `home.party.form` | dropped for Gen II/III (Unown letter), kept for Gen IV/V | Cross-gen preview consistency, assigned to 2R by the coordinator (QA-F5 fixed the Gen V case) | 2R |
-| `home.party.level` | dropped for Gen III (`addParty(i, species, 0, 0, false)`) | Same preview-consistency item | 2R |
-| `home.party.shiny` | shown only for Gen V; Gen IV hidden by its own comment; Gen I–III pass `false` | Same preview-consistency item (a product decision is needed: show for all or none) | 2R |
-| `create.default.species` | #1 Bulbasaur (Gen I, Gen IV) vs #25 Pikachu (Gen II, III, V) | Create defaults differ by generation in the one shared editor. Defaults are not format rules; consistency item | C (Gen I–IV) / 2R (Gen V) |
+| `create.default.species` | #1 Bulbasaur (Gen I, Gen IV) vs #25 Pikachu (Gen II, III, V) | Create defaults are not format rules; consistency item | C (Gen I–IV) / 2R (Gen V) |
 
 Consistent everywhere: `bag.read=yes`, `create.default.level=5`, `export.output=new-file-only`,
-`export.reparse=strict`, `nav.mutates=no`.
+`export.reparse=strict`, `nav.mutates=no`, and all four `home.party.*` facts.
 
-## Observations from the matrix work
+## Findings from the matrix work
 
-- Gen IV: Unown's letter cannot be edited. Filed as **QA-F7** (C), verified against PKSM-Core
-  `PersonalDPPtHGSS::formCount`.
-- Gen IV: a net no-op clone/move/release still reviews as "(empty) (edited)". Filed as **QA-F8** (C).
-  The actions cell accepts both today's line and the fixed empty review.
-- Gen III: unassigned RetroArch saves are visible to every profile (accepted behaviour,
-  `test_legacy_frlg_browse.cpp`). The comment in `SaveSelectScreen::loadLegacySources` says a source
-  "appears only after an explicit persistent assignment"; the comment is wrong (C).
+- QA-F6 (Gen III path-substring identity hint): FIXED in 82032a9.
+- QA-F7 (Gen IV Unown letter not editable): FIXED in f17926f.
+- QA-F8a (Gen IV no-op release review line): FIXED in c7b0f97.
+- **QA-F8b** (open, C): the same no-op still changes the slot's bytes in the working copy and export.
+- The comment in `SaveSelectScreen::loadLegacySources` about unassigned visibility was corrected in d57e5bc.
+- Gen IV review: C `2b2be00` lists Bag-only edits in Review and the export manifest. The Gen IV review
+  cell accepts exactly the 4 slot lines, or those plus exactly `Bag Medicines: item #17 5 -> 9`. It will
+  require the Bag line once the integrated #307 head carries 2b2be00.
 
 ## Generated matrix
 
@@ -337,7 +339,7 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | diamond | creation | PASS | createBoxDraft(species 1 as Gen4SharedPokemonSurface.inc beginCreate) -> Lv5, Poke Ball, trainer OT/TID; Session Create -> keepCreate stages; occupied/out-of-range/invalid refused |
 | diamond | fields | PASS | box: species/nickname/level/OT/TID/held item/friendship/language/met level/met location/ball/Pokerus/IV/EV/move/PP/PP Ups/nature/gender/shiny/ability; party: level/shiny/form (Burmy); bag quantity: all stage and round-trip through strict reparse |
 | diamond | pickers | PASS | species names 1..493; Gen4MoveCompatibility::selectableMoves (the move picker source) per exact game; held-item catalog per family; descriptor move evaluator |
-| diamond | actions | PASS | Gen4BoxTouchActions select/open + staged Clone/Move/Release primitives; descriptor grants BoxPokemon/Editing/Creation, never a source write (menu rows live in the non-host Gen4SharedPokemonSurface.inc); a net no-op clone/move/release may still review as "Box 2 slot 1: (empty) (edited)" (QA-F8) |
+| diamond | actions | PASS | Gen4BoxTouchActions select/open + staged Clone/Move/Release primitives; descriptor grants BoxPokemon/Editing/Creation, never a source write (menu rows live in the non-host Gen4SharedPokemonSurface.inc); a net no-op clone/move/release leaves no review line (QA-F8a) |
 | diamond | working-copy | PASS | originalBytes == source file; staged/finalized bytes carry every edit; source file byte/mtime identical |
 | diamond | review | PASS | describeStagedSlotChanges lists party slots 1-2 (edited) and Box 1 slot 1 Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur; bag edits are not listed (slot-only review) |
 | diamond | export | PASS | publishVerifiedGen4Export: new directory with original_backup.sav (== source) + edited.sav; strict reparse Match; changes only inside the selected General + Storage blocks; unchanged editor refused |
@@ -358,7 +360,7 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | pearl | creation | PASS | createBoxDraft(species 1 as Gen4SharedPokemonSurface.inc beginCreate) -> Lv5, Poke Ball, trainer OT/TID; Session Create -> keepCreate stages; occupied/out-of-range/invalid refused |
 | pearl | fields | PASS | box: species/nickname/level/OT/TID/held item/friendship/language/met level/met location/ball/Pokerus/IV/EV/move/PP/PP Ups/nature/gender/shiny/ability; party: level/shiny/form (Burmy); bag quantity: all stage and round-trip through strict reparse |
 | pearl | pickers | PASS | species names 1..493; Gen4MoveCompatibility::selectableMoves (the move picker source) per exact game; held-item catalog per family; descriptor move evaluator |
-| pearl | actions | PASS | Gen4BoxTouchActions select/open + staged Clone/Move/Release primitives; descriptor grants BoxPokemon/Editing/Creation, never a source write (menu rows live in the non-host Gen4SharedPokemonSurface.inc); a net no-op clone/move/release may still review as "Box 2 slot 1: (empty) (edited)" (QA-F8) |
+| pearl | actions | PASS | Gen4BoxTouchActions select/open + staged Clone/Move/Release primitives; descriptor grants BoxPokemon/Editing/Creation, never a source write (menu rows live in the non-host Gen4SharedPokemonSurface.inc); a net no-op clone/move/release leaves no review line (QA-F8a) |
 | pearl | working-copy | PASS | originalBytes == source file; staged/finalized bytes carry every edit; source file byte/mtime identical |
 | pearl | review | PASS | describeStagedSlotChanges lists party slots 1-2 (edited) and Box 1 slot 1 Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur; bag edits are not listed (slot-only review) |
 | pearl | export | PASS | publishVerifiedGen4Export: new directory with original_backup.sav (== source) + edited.sav; strict reparse Match; changes only inside the selected General + Storage blocks; unchanged editor refused |
@@ -379,7 +381,7 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | platinum | creation | PASS | createBoxDraft(species 1 as Gen4SharedPokemonSurface.inc beginCreate) -> Lv5, Poke Ball, trainer OT/TID; Session Create -> keepCreate stages; occupied/out-of-range/invalid refused |
 | platinum | fields | PASS | box: species/nickname/level/OT/TID/held item/friendship/language/met level/met location/ball/Pokerus/IV/EV/move/PP/PP Ups/nature/gender/shiny/ability; party: level/shiny/form (Burmy); bag quantity: all stage and round-trip through strict reparse |
 | platinum | pickers | PASS | species names 1..493; Gen4MoveCompatibility::selectableMoves (the move picker source) per exact game; held-item catalog per family; descriptor move evaluator |
-| platinum | actions | PASS | Gen4BoxTouchActions select/open + staged Clone/Move/Release primitives; descriptor grants BoxPokemon/Editing/Creation, never a source write (menu rows live in the non-host Gen4SharedPokemonSurface.inc); a net no-op clone/move/release may still review as "Box 2 slot 1: (empty) (edited)" (QA-F8) |
+| platinum | actions | PASS | Gen4BoxTouchActions select/open + staged Clone/Move/Release primitives; descriptor grants BoxPokemon/Editing/Creation, never a source write (menu rows live in the non-host Gen4SharedPokemonSurface.inc); a net no-op clone/move/release leaves no review line (QA-F8a) |
 | platinum | working-copy | PASS | originalBytes == source file; staged/finalized bytes carry every edit; source file byte/mtime identical |
 | platinum | review | PASS | describeStagedSlotChanges lists party slots 1-2 (edited) and Box 1 slot 1 Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur; bag edits are not listed (slot-only review) |
 | platinum | export | PASS | publishVerifiedGen4Export: new directory with original_backup.sav (== source) + edited.sav; strict reparse Match; changes only inside the selected General + Storage blocks; unchanged editor refused |
@@ -400,7 +402,7 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | heartgold | creation | PASS | createBoxDraft(species 1 as Gen4SharedPokemonSurface.inc beginCreate) -> Lv5, Poke Ball, trainer OT/TID; Session Create -> keepCreate stages; occupied/out-of-range/invalid refused |
 | heartgold | fields | PASS | box: species/nickname/level/OT/TID/held item/friendship/language/met level/met location/ball/Pokerus/IV/EV/move/PP/PP Ups/nature/gender/shiny/ability; party: level/shiny/form (Burmy); bag quantity: all stage and round-trip through strict reparse |
 | heartgold | pickers | PASS | species names 1..493; Gen4MoveCompatibility::selectableMoves (the move picker source) per exact game; held-item catalog per family; descriptor move evaluator |
-| heartgold | actions | PASS | Gen4BoxTouchActions select/open + staged Clone/Move/Release primitives; descriptor grants BoxPokemon/Editing/Creation, never a source write (menu rows live in the non-host Gen4SharedPokemonSurface.inc); a net no-op clone/move/release may still review as "Box 2 slot 1: (empty) (edited)" (QA-F8) |
+| heartgold | actions | PASS | Gen4BoxTouchActions select/open + staged Clone/Move/Release primitives; descriptor grants BoxPokemon/Editing/Creation, never a source write (menu rows live in the non-host Gen4SharedPokemonSurface.inc); a net no-op clone/move/release leaves no review line (QA-F8a) |
 | heartgold | working-copy | PASS | originalBytes == source file; staged/finalized bytes carry every edit; source file byte/mtime identical |
 | heartgold | review | PASS | describeStagedSlotChanges lists party slots 1-2 (edited) and Box 1 slot 1 Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur; bag edits are not listed (slot-only review) |
 | heartgold | export | PASS | publishVerifiedGen4Export: new directory with original_backup.sav (== source) + edited.sav; strict reparse Match; changes only inside the selected General + Storage blocks; unchanged editor refused |
@@ -421,7 +423,7 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | soulsilver | creation | PASS | createBoxDraft(species 1 as Gen4SharedPokemonSurface.inc beginCreate) -> Lv5, Poke Ball, trainer OT/TID; Session Create -> keepCreate stages; occupied/out-of-range/invalid refused |
 | soulsilver | fields | PASS | box: species/nickname/level/OT/TID/held item/friendship/language/met level/met location/ball/Pokerus/IV/EV/move/PP/PP Ups/nature/gender/shiny/ability; party: level/shiny/form (Burmy); bag quantity: all stage and round-trip through strict reparse |
 | soulsilver | pickers | PASS | species names 1..493; Gen4MoveCompatibility::selectableMoves (the move picker source) per exact game; held-item catalog per family; descriptor move evaluator |
-| soulsilver | actions | PASS | Gen4BoxTouchActions select/open + staged Clone/Move/Release primitives; descriptor grants BoxPokemon/Editing/Creation, never a source write (menu rows live in the non-host Gen4SharedPokemonSurface.inc); a net no-op clone/move/release may still review as "Box 2 slot 1: (empty) (edited)" (QA-F8) |
+| soulsilver | actions | PASS | Gen4BoxTouchActions select/open + staged Clone/Move/Release primitives; descriptor grants BoxPokemon/Editing/Creation, never a source write (menu rows live in the non-host Gen4SharedPokemonSurface.inc); a net no-op clone/move/release leaves no review line (QA-F8a) |
 | soulsilver | working-copy | PASS | originalBytes == source file; staged/finalized bytes carry every edit; source file byte/mtime identical |
 | soulsilver | review | PASS | describeStagedSlotChanges lists party slots 1-2 (edited) and Box 1 slot 1 Pikachu -> Eevee, Box 1 slot 4 (empty) -> Bulbasaur; bag edits are not listed (slot-only review) |
 | soulsilver | export | PASS | publishVerifiedGen4Export: new directory with original_backup.sav (== source) + edited.sav; strict reparse Match; changes only inside the selected General + Storage blocks; unchanged editor refused |
@@ -522,9 +524,10 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | `create.default.species` | `1` (red, blue, yellow, diamond, pearl, platinum, heartgold, soulsilver); `25` (gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, black, white, black2, white2) | **NO** |
 | `export.output` | `new-file-only` (red, blue, yellow, gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | yes |
 | `export.reparse` | `strict` (red, blue, yellow, gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | yes |
-| `home.party.form` | `dropped` (gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen); `kept` (diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2); `n/a` (red, blue, yellow) | **NO** |
-| `home.party.level` | `dropped` (ruby, sapphire, emerald, firered, leafgreen); `kept` (red, blue, yellow, gold, silver, crystal, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | **NO** |
-| `home.party.shiny` | `hidden` (red, blue, yellow, gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen); `shown` (diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | **NO** |
+| `home.party.form` | `kept` (gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2); `n/a` (red, blue, yellow) | yes |
+| `home.party.gender` | `kept` (gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2); `n/a` (red, blue, yellow) | yes |
+| `home.party.level` | `kept` (red, blue, yellow, gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | yes |
+| `home.party.shiny` | `n/a` (red, blue, yellow); `shown` (gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | yes |
 | `home.refresh` | `legacy-rediscovery` (red, blue, yellow, gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen); `snapshot-cache` (diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | **NO** |
 | `identity.source` | `assignment` (diamond, pearl); `filename` (red, blue, yellow, gold, silver, ruby, sapphire, emerald, firered, leafgreen); `save-internal` (crystal, platinum, heartgold, soulsilver, black, white, black2, white2) | **NO** |
 | `nav.mutates` | `no` (red, blue, yellow, gold, silver, crystal, ruby, sapphire, emerald, firered, leafgreen, diamond, pearl, platinum, heartgold, soulsilver, black, white, black2, white2) | yes |

@@ -22,6 +22,7 @@
 // Both get one Pokedex seen+caught flag so the Pokedex cell is not vacuous (offsets from production
 // PKSMGen3NativeAdapter.cpp ReadOnlySave::dexProgress: logical sector 0 + 0x28 caught, + 0x5C seen).
 #include "test_qa_matrix.h"
+#include "test_qa_matrix_home.h"
 
 #include "fuzz_synthetic_saves.h"
 #include "test_qa_support.h"
@@ -829,10 +830,9 @@ void runVersion(qamatrix::Matrix& m, const Spec& spec) {
 
         // ---- home-refresh ---------------------------------------------------------------------
         row.fact("home.refresh", "legacy-rediscovery");
-        // SaveSelectScreen.cpp RetroArchFRLG party preview: addParty(i, species, 0, 0, false).
-        row.fact("home.party.level", "dropped");
-        row.fact("home.party.form", "dropped");
-        row.fact("home.party.shiny", "hidden");
+        // Derived from the production Home adapter (HomePartyPreview::fromGen3, which
+        // SaveSelectScreen.cpp feeds into the Home strip), never hard-coded.
+        qamatrix::home::recordGen3([&](const std::string& key, const std::string& value) { row.fact(key, value); });
         {
             Errors e;
             e.expect(!exported.empty(), "no exported save to restore");

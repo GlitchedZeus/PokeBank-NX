@@ -967,6 +967,15 @@ Outcome homeRefresh(Ctx& c, Matrix& m) {
     m.fact(c.spec.row, "home.party.level", levelKept ? "kept" : "dropped");
     m.fact(c.spec.row, "home.party.shiny", shinyShown ? "shown" : "hidden");
     m.fact(c.spec.row, "home.party.form", formKept ? "kept" : "dropped");
+    {
+        // Gender: the card must carry the record's own PK5 0x40 gender (strict reparse of the file).
+        std::string genderError;
+        const auto onDisk = G5::Gen5ReadOnlySave::parse(qacontract::slurp(c.path), c.spec.game, &genderError,
+                                                       G5::SaveCopySelection::Primary);
+        const auto lead = onDisk ? onDisk->partyPokemon(0) : std::nullopt;
+        m.fact(c.spec.row, "home.party.gender",
+               lead && lead->gender() <= 2 && snap->party[0].gender == lead->gender() ? "kept" : "dropped");
+    }
     need(levelKept && shinyShown, "refreshed party level/shiny lost");
     const std::string mechanics =
         "HomeSnapshotCache + homeCardSnapshot: Parsed once, Reused while unchanged, re-validated Current after "
