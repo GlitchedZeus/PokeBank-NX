@@ -137,6 +137,7 @@ std::string manifest(const WorkingCopyExportRequest& request,
     out+="SELECTED_COPY_OFFSET="+std::to_string(candidate.selectedCopyOffset)+"\n";
     out+="CHANGED_RECORDS="+std::to_string(candidate.changedRecords)+"\n";
     out+="BAG_CHANGED="+std::string(candidate.bagChanged?"YES":"NO")+"\n";
+    out+="TRAINER_CHANGED="+std::string(candidate.trainerChanged?"YES":"NO")+"\n";
     out+="TIMESTAMP="+request.timestamp+"\n";
     out+="APPLICATION_SHA="+request.applicationSha+"\n";
     out+="ORIGINAL_BACKUP=original_backup.sav\n";
@@ -257,10 +258,34 @@ WorkingCopyExportResult publishGen5WorkingCopy(
         return fail(ioError);
     if(request.failurePoint==WorkingCopyFailurePoint::AfterManifest)
         return fail("Injected failure after Gen V manifest write");
-    // Publication is the last rename, only inside the app-owned export tree.
-    // An existing destination may never be knowingly replaced.
-    if(exists(finalPath) || ::rename(temporaryPath.c_str(),finalPath.c_str())!=0)
+    if(request.failurePoint==WorkingCopyFailurePoint::DestinationAppears)
+        (void)::mkdir(finalPath.c_str(),0700);
+    // Publication happens only inside the app-owned export tree and never
+    // replaces anything: a directory rename would silently replace an empty
+    // destination, so the destination is claimed with an exclusive mkdir
+    // (EEXIST for any existing directory, file or link) and the verified
+    // files move in, manifest last. Failure returns them and removes only
+    // the directory this call created.
+    if(::mkdir(finalPath.c_str(),0700)!=0)
         return fail("Gen V working-copy publication failed; existing export preserved");
+    const auto publishedBackup=join(finalPath,"original_backup.sav");
+    const auto publishedEdited=join(finalPath,"edited.sav");
+    const auto publishedManifest=join(finalPath,"EXPORT_MANIFEST.txt");
+    const auto unpublish=[&](std::string reason) {
+        (void)::rename(publishedBackup.c_str(),backupPath.c_str());
+        (void)::rename(publishedEdited.c_str(),editedPath.c_str());
+        (void)::rename(publishedManifest.c_str(),manifestPath.c_str());
+        ::rmdir(finalPath.c_str());
+        return fail(std::move(reason));
+    };
+    if(::rename(backupPath.c_str(),publishedBackup.c_str())!=0)
+        return unpublish("Gen V working-copy publication failed");
+    if(request.failurePoint==WorkingCopyFailurePoint::AfterFirstPublishedFile)
+        return unpublish("Injected failure during Gen V publication");
+    if(::rename(editedPath.c_str(),publishedEdited.c_str())!=0 ||
+       ::rename(manifestPath.c_str(),publishedManifest.c_str())!=0)
+        return unpublish("Gen V working-copy publication failed");
+    ::rmdir(temporaryPath.c_str());
     out.success=true;
     out.directory=finalPath;
     out.error.clear();

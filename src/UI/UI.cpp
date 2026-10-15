@@ -509,7 +509,8 @@ namespace UI {
         if (!identity || identity->platform!=PokeVault::Games::Platform::NintendoDS ||
             identity->dataGeneration!=5 ||
             identity->support!=PokeVault::Games::SourceSupport::Planned ||
-            intent!=SaveSelectScreen::OpenIntent::Default) {
+            (intent!=SaveSelectScreen::OpenIntent::Default &&
+             intent!=SaveSelectScreen::OpenIntent::Items)) {
             error="Gen V shared editor requires an exact title and validated external save";
             return false;
         }
@@ -547,6 +548,9 @@ namespace UI {
         // the original emulator save remains immutable.
         trainerScreen.selectedMode=TrainerViewScreen::ViewMode::Party;
         trainerScreen.detailViewActive=true;
+        // Product Home Items opens the same session directly on the Gen V Bag.
+        if (intent==SaveSelectScreen::OpenIntent::Items)
+            trainerScreen.openItemsShortcut();
         fb.startFade();
         while (appletMainLoop() && running && !trainerScreen.shouldExit() &&
                !trainerScreen.hasRequestedExit()) {

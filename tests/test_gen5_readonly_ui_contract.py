@@ -396,8 +396,14 @@ require(read("Makefile.host.gen5"),
         "host-test: $(GEN5_BOX_TOUCH_TEST)",
         "host-sanitize: $(GEN5_BOX_TOUCH_SANITIZE)")
 require(read(".github/workflows/gen5-focused-host.yml"),
-        "test_gen5_create_integration test_gen5_box_touch test_gen5_create_input_rules; do",
-        "test_gen5_create_integration_sanitize test_gen5_box_touch_sanitize test_gen5_create_input_rules_sanitize; do")
+        "test_gen5_create_integration test_gen5_box_touch test_gen5_create_input_rules ",
+        "test_gen5_create_integration_sanitize test_gen5_box_touch_sanitize test_gen5_create_input_rules_sanitize ",
+        "test_gen5_bag_screen test_gen5_party_box_parity test_gen5_trainer test_gen5_source_e2e test_gen5_export_validation; do",
+        "test_gen5_trainer_sanitize test_gen5_source_e2e_sanitize test_gen5_export_validation_sanitize; do")
+# One integrated Gen I-V candidate with packaged RomFS verification.
+require(read(".github/workflows/gen15-integrated-candidate.yml"),
+        "python3 tools/verify_nro_romfs.py PokeBankNX.nro --list", "DEVICE_ACCEPTED=false",
+        "STATUS=NOT DEVICE TESTED", "devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282")
 
 # Shared Gen V action-screen Undo is limited to app-owned Box Clone,
 # Remove and Create transactions; never reach generic storage/save handlers.
@@ -487,8 +493,8 @@ require(surface,
 require(read("Makefile.host.gen5"),
         "GEN5_CREATE_INPUT_TEST :=","GEN5_CREATE_INPUT_SANITIZE :=")
 require(read(".github/workflows/gen5-focused-host.yml"),
-        "test_gen5_box_touch test_gen5_create_input_rules; do",
-        "test_gen5_box_touch_sanitize test_gen5_create_input_rules_sanitize; do")
+        "test_gen5_box_touch test_gen5_create_input_rules ",
+        "test_gen5_box_touch_sanitize test_gen5_create_input_rules_sanitize ")
 require(read("tests/test_gen5_create_input_rules.cpp"),
         "for(uint32_t y=2000;y<=2099;++y)",
         "G::createMoveChoiceAllowed5(",
@@ -832,8 +838,10 @@ require(working_cpp, "buildStagedSaveCandidateForObservedSource(",
         "readExact(editedPath", "hash(editedReadback)",
         "Gen5ReadOnlySave::parse(",
         "cleanTemporary(temporaryPath);",
-        "rename(temporaryPath.c_str(),finalPath.c_str())",
+        "::mkdir(finalPath.c_str(),0700)!=0", "unpublish(",
         "INJECT_SAVE=DISABLED", "EMULATOR_SAVE_WRITE=DISABLED")
+# QA-F3: publication never renames a directory onto the destination.
+assert "::rename(temporaryPath.c_str(),finalPath.c_str())" not in working_cpp
 for forbidden in ("std::fopen(request.sourcePath", '::rename(request.sourcePath',
                   '::remove(request.sourcePath', "injectSave("):
     assert forbidden not in working_cpp, f"Gen V writer touches original source: {forbidden}"
@@ -1105,4 +1113,58 @@ require(games,"PokeVault::Integration::Gen5::inspectSourceChoices(",
         "rows.push_back(choice);", "Some emulator folders could not be read.")
 require(read("tests/test_gen5_readonly_save.cpp"), "boundedProviderDiscoveryContracts();",
         "snapshotChoiceAndRememberedAliasContracts();", "gen5ProfileFocusAndSdOwnershipContracts();")
+# Gen V Bag uses the SAME shared Items panel and inventory contract as Gen
+# III/IV: A quantity, X Add, Y Remove (confirmed), L/R pockets, + Review.
+items_panel = read("src/UI/Panels/ItemsPanel.cpp")
+bag_model = read("include/Integration/Gen5/Gen5BagScreen.h")
+require(surface, "return handleBag(screen,keys,tap);", "bag.beginQuantity(ws,error)",
+        "bag.openAdd(ws,error)", "bag.requestRemove(ws,error)", "bag.confirmRemove(ws,refresh,error)",
+        "bag.confirmAdd(ws,id,r.value,refresh,error)", "state.openReviewFromBrowse(ws)",
+        "CategoryTouch::PreviousId", "bag.tapRow(static_cast<size_t>(tap),ws)",
+        "bag.tapAddChoice(", "drawBag(screen,fb);", "ws.bagReviewChanges()",
+        '{"Y","Bag"}')
+assert surface.index("return handleBag(screen,keys,tap);") < surface.index("switch(state.surface()) {\n        case Surface::Actions:")
+require(items_panel, "Gen5::bagPocketName5(", "Native Generation V bag data failed validation.")
+require(bag_model, "PokeBank::UIModel::inventoryActionAvailability(", "Workspace snapshot=ws;",
+        "pocket!=static_cast<size_t>(BagPocket5::KeyItems)",
+        "pocket!=static_cast<size_t>(BagPocket5::Machines)")
+require(trainer, "staged_.bagPresentation()")
+assert "writeFile" not in bag_model and "fopen" not in bag_model
+require(read("tests/test_gen5_bag_screen.cpp"), "unavailableBag();", "fullPocketRefusesAdd();")
+
+# Gen IV parity: shared box Move Pokemon reuses the verified destination
+# picker; origin dates are View-only (no dynamic_cast under -fno-rtti).
+require(surface, "state.moveDestination()", '"Move Pokemon - Choose Empty Box Slot"',
+        "originSummary5(*native)", "drawVerifiedSummary(screen,fb,&view,false,&*current);")
+assert "dynamic_cast" not in surface
+require(native_bridge, "append(Shared::Action::Move);")
+require(native_screen, "workspace.moveToEmptyBox(target_,")
+require(read("tests/test_gen5_party_box_parity.cpp"), "Action::Move", "originSummary5(")
+
+# Gen V Trainer: only cited Name/Money/Play Time stage; other rows read-only.
+trainer_model = read("include/Integration/Gen5/Gen5Trainer.h")
+require(trainer_model, "6501f0ab46e8f8ca048539dbaf8cae8cb104e722", "PlayerBlockIndex = 27",
+        "MiscBlockIndex = 52", "MaxMoney = 9999999", "kPlayerRanges", "kMiscRanges")
+require(surface, "return handleTrainerEditor(screen,keys,tap);", "editor.applyName(ws,r.text,refresh,error)",
+        "editor.applyMoney(", "editor.applyPlayTime(", "drawTrainerEditor(screen,fb);",
+        "ws.trainerReviewChanges()", '{"A","Edit Trainer"}')
+require(read("include/Integration/Gen5/Gen5StagedSaveCandidate.h"), "Gen5StagedTrainer::kPlayerRanges",
+        "did not preserve the exact staged trainer")
+require(read("src/Integration/Gen5/Gen5WorkingCopyExport.cpp"), "TRAINER_CHANGED=")
+
+# Product Home Items reaches the Gen V Bag through the explicit Save Instance
+# chooser (no path guessing), and opens the same shared session on Items.
+items_route = games[games.index("void SaveSelectScreen::selectCurrentTitleForItems()"):]
+items_route = items_route[:items_route.index("SelectedSourceKind::Gen4AssignedFile")]
+assert "not yet supported" not in items_route
+require(items_route, "openGen5Setup(title.gameId,", "discoverGen5Candidates();", "gen5AssignOnly=false;")
+require(manager, "intent!=SaveSelectScreen::OpenIntent::Items", "trainerScreen.openItemsShortcut();")
+require(surface, "if(screen.itemsShortcutActive) {", "if(state.requestExit(ws))screen.goBack=true;")
+
+# Gen V Pokedex is a read-only view of the cited Zukan5 block.
+dex_model = read("include/Integration/Gen5/Gen5Pokedex.h")
+require(dex_model, "Zukan5.cs", "CaughtOffset = 0x08", "SeenOffset = 0x5C", "No flag is ever written")
+require(surface, "editor.openPokedex(ws,error)", "Pokedex - Generation V (read-only)")
+assert "write" not in dex_model.split("namespace PokeVault")[1].lower().replace("never written", "")
+
 print("Gen V read-only shared UI guard contracts: PASS")

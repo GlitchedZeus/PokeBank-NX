@@ -42,6 +42,7 @@ enum class Action : uint8_t {
     Review,
     Close, // internal close/cancel semantic; product copy is always "Cancel".
     None,
+    Move, // box-to-empty-box move (Gen IV/V shared box vocabulary)
 };
 
 struct ActionCapabilities {
@@ -94,6 +95,7 @@ constexpr const char* actionLabel(Action action) noexcept {
         case Action::Review: return "Review Pending Changes";
         case Action::Close: return "Cancel";
         case Action::None: return "";
+        case Action::Move: return "Move Pokemon";
     }
     return "";
 }
@@ -112,6 +114,7 @@ constexpr Surface surfaceForAction(Action action) noexcept {
         case Action::Add: return Surface::CreateDraft;
         case Action::Review: return Surface::Review;
         case Action::Clone:
+        case Action::Move:
         case Action::Remove:
         case Action::LegalityProvenance:
         case Action::Close:
@@ -390,6 +393,12 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::CalculatedStats:
             case FieldIdentity::PersonalityId:
             case FieldIdentity::OriginGame:
+            // Gen IV parity: origin dates, egg flag and egg location are
+            // shown read-only from the cited PK5 layout; never edited.
+            case FieldIdentity::MetDate:
+            case FieldIdentity::Egg:
+            case FieldIdentity::EggLocation:
+            case FieldIdentity::EggDate:
             case FieldIdentity::MoveCompatibility:
             case FieldIdentity::EncounterLegality:
             case FieldIdentity::Provenance:
