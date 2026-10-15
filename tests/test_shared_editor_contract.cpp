@@ -469,6 +469,22 @@ void leftRightNeverMutatesGen1To3() {
     }
 }
 
+// Save safety (Gen IV .dsv): Open snapshots the exact source FILE from the same payload the
+// staged editor holds, with the container from the read-only adapter; export hands that
+// snapshot to the transaction, which refuses a source that changed since Open.
+void gen4SourceSnapshotWiring() {
+    const auto ui = read("src/UI/UI.cpp");
+    contains(ui, "const auto payload = G4::readSourcePayloadReadOnly(sourcePath);");
+    contains(ui, "!std::equal(openedBytes.begin(), openedBytes.end(), payload.bytes.begin())");
+    contains(ui, "payload.kind == G4::SourceContainerKind::DsvFooter ? G4::Gen4SourceContainer::Dsv");
+    contains(ui, "auto snapshot = G4::snapshotGen4Source(");
+    contains(ui, "trainerScreen.gen4SourceSnapshot = std::move(snapshot);");
+    const auto gen4 = read("src/UI/Gen4SharedPokemonSurface.inc");
+    contains(gen4, "request.sourceSnapshot = screen.gen4SourceSnapshot;");
+    contains(read("include/UI/TrainerViewScreenBase.h"),
+             "std::optional<PokeVault::Integration::Gen4::Gen4SourceSnapshot> gen4SourceSnapshot;");
+}
+
 } // namespace
 
 int main() {
@@ -481,5 +497,6 @@ int main() {
     actionMenuContract();
     surfaceSourceContracts();
     leftRightNeverMutatesGen1To3();
+    gen4SourceSnapshotWiring();
     std::cout << "Shared Pokemon editor UI contract (Gen I-V, 14 owner checks): PASS\n";
 }

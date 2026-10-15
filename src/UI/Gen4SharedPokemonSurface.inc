@@ -1132,6 +1132,8 @@ void exportStagedGen4Copy(TrainerViewScreen& screen) {
     request.rootDirectory = root;
     request.directoryStem = PokeBank::Paths::sanitizeComponent(staged->exactGameId()) + "_" + timestamp;
     request.sourcePath = screen.backupDir;
+    // The Open snapshot: export re-reads the source and fails closed if it changed since.
+    request.sourceSnapshot = screen.gen4SourceSnapshot;
     request.timestamp = timestamp;
 #ifdef POKEVAULT_GIT_COMMIT
     request.applicationSha = POKEVAULT_GIT_COMMIT;
