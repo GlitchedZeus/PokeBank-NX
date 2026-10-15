@@ -705,9 +705,8 @@ void runVersion(Matrix& m, const VersionSpec& v) {
                      afterRelease->box(0, 0).species() == 25, "release result");
         p.expect(!editor->boxedPokemon(1, 0, &err), "released slot still opens as a Pokemon");
         p.expect(!editor->stageReleaseBoxPokemon(1, 0, &err), "release of an empty slot accepted");
-        // A net no-op: the review must not describe any Pokemon change (QA-F8a, fixed in c7b0f97).
-        // The working copy still differs in the slot's empty encoding: QA-F8b, repro in
-        // test_qa_known_failures.cpp.
+        // A net no-op: no review line (QA-F8a, c7b0f97) and the slot keeps the source's own empty record
+        // (QA-F8b, f883f4d0; regression in test_qa_regressions.cpp).
         const auto lines = G4::describeStagedSlotChanges(*editor);
         p.expect(lines.empty(),
                  "unexpected review after clone+move+release: " + (lines.empty() ? std::string() : lines[0]));

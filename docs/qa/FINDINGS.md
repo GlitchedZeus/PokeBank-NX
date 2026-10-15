@@ -25,7 +25,7 @@ lands, its reproduction moves into the passing suite as a regression test
 | QA-F6 | Low (identity) | Gen III discovery takes the exact release from a raw substring of the WHOLE path, so an unrelated folder or word decides a hint-less save's identity (Gen I/II accept only isolated tokens) | Thread C (`RetroArchFRLGDiscovery.cpp` `identityHint`) | **FIXED** in `82032a9`; regression in `test_qa_regressions.cpp` |
 | QA-F7 | Low (editor gap) | Gen IV Unown letter (form) cannot be edited: `setForm` uses the personal table's raw form count (1), the pinned PKSM-Core normalises Unown to 28 | Thread C (`Pokemon4Mutable.cpp` `setForm`) | **FIXED** in `f17926f`; regression in `test_qa_regressions.cpp` |
 | QA-F8a | Low (presentation) | Gen IV net no-op clone + release reviewed as "(empty) (edited)" | Thread C | **FIXED** in `c7b0f97`; regression in `test_qa_regressions.cpp` |
-| QA-F8b | Low (export bytes) | Gen IV release zero-fills a slot that held an encrypted blank, so a net no-op clone + release still changes 126 bytes of the working copy / `edited.sav` that the review no longer lists | Thread C (`Gen4StagedPokemonEditor::stageReleaseBoxPokemon`) | OPEN; repro `tests/test_qa_known_failures.cpp` |
+| QA-F8b | Low (export bytes) | Gen IV release zero-fills a slot that held an encrypted blank, so a net no-op clone + release still changes 126 bytes of the working copy / `edited.sav` that the review no longer lists | Thread C (`Gen4StagedPokemonEditor::stageReleaseBoxPokemon`) | **FIXED** in `f883f4d0`; regression in `test_qa_regressions.cpp` |
 
 No crash, sanitizer report, out-of-bounds read or round-trip violation was found in any Gen I–V parser,
 record decoder, Bag decoder, copy selector or Save Instance identification path (see
@@ -68,7 +68,7 @@ record decoder, Bag decoder, copy selector or Save Instance identification path 
 - **Suggested fix:** use the same normalisation as the pinned reference for Unown's form bound. Any
   extra Unown rules (e.g. letter/PID relation) need a citation before they are enforced.
 
-## QA-F8 (Low; review half QA-F8a FIXED in c7b0f97, export-bytes half QA-F8b OPEN): Gen IV no-op release
+## QA-F8 (Low; FIXED: review half QA-F8a in c7b0f97, export-bytes half QA-F8b in f883f4d0): Gen IV no-op release
 
 - **Found by:** the Gen I–V acceptance matrix (Gen IV actions cell), 2026-10-15.
 - **Code:** `Gen4StagedPokemonEditor::stageReleaseBoxPokemon` writes an all-zero record; empty box
@@ -78,10 +78,9 @@ record decoder, Bag decoder, copy selector or Save Instance identification path 
   show "Box 2 slot 1: (empty) (edited)", and `edited.sav` differs from the source in that slot,
   although the player changed nothing.
 - **Repro:** `tests/test_qa_known_failures.cpp` QA-F8b, regression QA-F8a in `test_qa_regressions.cpp` (synthetic D/P save from `qasynth::gen4`).
-- **Status:** the review now skips empty→empty slots (c7b0f97, regression QA-F8a). Still open as
-  **QA-F8b**: the working copy and `edited.sav` keep the re-encoded empty slot (126 bytes on the
-  synthetic D/P save). Suggested fix: when releasing a slot that was empty in the original, restore
-  the original slot bytes.
+- **Status:** the review now skips empty→empty slots (c7b0f97, regression QA-F8a). The export-bytes half
+  **QA-F8b** (126 bytes on the synthetic D/P save) is fixed in f883f4d0: release restores the source's own
+  empty record (regression QA-F8b).
 
 ## QA-F6 (Low, identity; owner Thread C; FIXED in 82032a9): Gen III release hint is a substring of the whole path
 

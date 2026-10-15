@@ -57,11 +57,10 @@ Consistent everywhere: `bag.read=yes`, `create.default.level=5`, `export.output=
 - QA-F6 (Gen III path-substring identity hint): FIXED in 82032a9.
 - QA-F7 (Gen IV Unown letter not editable): FIXED in f17926f.
 - QA-F8a (Gen IV no-op release review line): FIXED in c7b0f97.
-- **QA-F8b** (open, C): the same no-op still changes the slot's bytes in the working copy and export.
+- QA-F8b (no-op release changed the slot's bytes in the working copy/export): FIXED in f883f4d0.
 - The comment in `SaveSelectScreen::loadLegacySources` about unassigned visibility was corrected in d57e5bc.
-- Gen IV review: C `2b2be00` lists Bag-only edits in Review and the export manifest. The Gen IV review
-  cell accepts exactly the 4 slot lines, or those plus exactly `Bag Medicines: item #17 5 -> 9`. It will
-  require the Bag line once the integrated #307 head carries 2b2be00.
+- Gen IV review: C `2b2be00` lists Bag-only edits in Review and the export manifest; the review cell is
+  strict (C `7dec0c78`): exactly the 4 slot lines plus `Bag Medicines: item #17 5 -> 9`.
 
 ## Generated matrix
 

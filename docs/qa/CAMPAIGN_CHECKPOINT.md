@@ -9,7 +9,7 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 | Item | Value |
 | --- | --- |
 | Lane branch | `audit/app-qa-20261014` |
-| Last #307 head merged | `d57e5bc` (merge `c81d0c9`; C c7b0f97/82032a9/f17926f, Gen III Home gender) |
+| Last #307 head merged | `0c2fffb` (merge `dd5a2bc`; C up to afd96e3b, QA 2fa40e3) |
 | Draft PR | #310 (CI evidence only, never merge; Thread 2R will merge this lane into #307) |
 | Continuation | `send_later` self check-in every ~60 min: "Thread 4 campaign: re-fetch, verify checkpoint docs/qa/CAMPAIGN_CHECKPOINT.md, continue" |
 
@@ -32,7 +32,7 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 | QA-F6 Gen III release hint from a substring of the whole path | Low | C | FIXED (82032a9); regression in test_qa_regressions |
 | QA-F7 Gen IV Unown letter cannot be edited | Low | C | FIXED (f17926f); regression in test_qa_regressions |
 | QA-F8a Gen IV no-op clone+release review line | Low | C | FIXED (c7b0f97); regression in test_qa_regressions |
-| QA-F8b Gen IV no-op clone+release still changes the slot bytes (export) | Low | C | open (repro `tests/test_qa_known_failures.cpp`) |
+| QA-F8b Gen IV no-op clone+release still changes the slot bytes (export) | Low | C | FIXED (f883f4d0); regression in test_qa_regressions |
 
 ## Log
 
@@ -53,3 +53,4 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 - 2026-10-15 — integrated #307 `2d8195d` (QA + L merged by 2R) forward-merged as `f7837e9`: make qa EXIT 0 under GCC AND Clang (fuzz smoke incl. launch-plan/home-cache, 18 paths C1–C6, matrix 420 cells 0 problems, regressions F1–F5); open repros F6/F7/F8 still reproduce (owner C).
 - 2026-10-15 09:30 UTC — merged #307 `d57e5bc`: QA-F6/F7/F8a moved to regressions; QA-F8 split, export-bytes half QA-F8b stays known-failing (126 bytes). Matrix home.party.* facts now DERIVED from HomePartyPreview::fromGen1/2/3 (tests/test_qa_matrix_home.h) and the Gen IV/V snapshots, plus a new home.party.gender fact; all four are consistent across Gen I–V. The runner no longer counts "n/a" as an inconsistency. Gen I–III have no STALE Home state: a decided, known limitation.
 - 2026-10-15 10:15 UTC — Gen IV review cell adopts C 2b2be00 (Bag-only edits in Review): accepts exactly the 4 slot lines or those + exactly "Bag Medicines: item #17 5 -> 9"; verified in a scratch worktree with 2b2be00's Gen4ExportTransaction applied (strict 5-line form passes, 0 problems). Tighten to strict once #307 carries 2b2be00.
+- 2026-10-15 11:35 UTC — merged #307 `0c2fffb`: QA-F8b fixed (f883f4d0) and moved to test_qa_regressions; qa-known-failures has no open C++ defect. Gen IV review cell strict (C 7dec0c78). ALL QA findings F1–F8 closed.
