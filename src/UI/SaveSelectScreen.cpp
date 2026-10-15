@@ -2101,6 +2101,18 @@ namespace UI {
         return true;
     }
 
+    const std::string& SaveSelectScreen::currentLaunchQuitNotice() {
+        const auto& d = launchDescriptor;
+        std::string key = std::to_string(static_cast<int>(d.backend)) + '|' +
+            std::to_string(static_cast<int>(d.state)) + '|' + std::to_string(d.titleId) + '|' +
+            d.providerId + '|' + d.launcherPath + '|' + d.contentPath + '|' + d.corePath;
+        if (key != launchQuitNoticeKey) {
+            launchQuitNoticeKey = std::move(key);
+            launchQuitNotice = gameLaunchQuitRouteNotice(previewGameLaunchQuitRoute(d));
+        }
+        return launchQuitNotice;
+    }
+
     bool SaveSelectScreen::launchCurrentTitle() {
         const UserEntry* user = currentUser();
         if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size()))
@@ -4550,10 +4562,48 @@ namespace UI {
                             launchActionable ? Colors::Info : Colors::PanelAlt,
                             launchActionable ? Colors::White : Colors::TextMuted);
 
+            // Caption rows under the buttons (inside the panel): +505 and +525. Before ZR hands
+            // off, a ready launch states where the emulator's Quit returns (Thread L's quit
+            // route); it takes the row of the sort-order hint and never leaves the panel.
+            const int captionW = DETAIL_W - 48;
+            const auto fitCaption = [&](std::string text) {
+                int tw = 0, th = 0;
+                fb.measureText(text, tw, th, TextStyle::Caption);
+                while (tw > captionW && text.size() > 1) {
+                    text.resize(text.size() - 2);
+                    while (!text.empty() && (static_cast<unsigned char>(text.back()) & 0xC0) == 0x80)
+                        text.pop_back(); // never split a UTF-8 sequence
+                    fb.measureText(text + "…", tw, th, TextStyle::Caption);
+                    if (tw <= captionW) return text + "…";
+                }
+                return text;
+            };
+            const std::string quitNotice =
+                launchDescriptor.ready() ? currentLaunchQuitNotice() : std::string();
             if (!hubNotice.empty()) {
                 std::string notice = hubNotice;
                 if (notice.size() > 92) notice = notice.substr(0, 91) + "…";
                 fb.drawText(DETAIL_X + 24, HUB_Y + 505, notice, Colors::Info, TextStyle::Caption);
+                if (!quitNotice.empty())
+                    fb.drawText(DETAIL_X + 24, HUB_Y + 525, fitCaption(quitNotice),
+                                Colors::TextMuted, TextStyle::Caption);
+            } else if (!quitNotice.empty()) {
+                // Word-wrap into the two caption rows.
+                std::string first = quitNotice, second;
+                int qw = 0, qh = 0;
+                fb.measureText(first, qw, qh, TextStyle::Caption);
+                while (qw > captionW) {
+                    const size_t cut = first.rfind(' ');
+                    if (cut == std::string::npos) break;
+                    second = first.substr(cut + 1) + (second.empty() ? "" : " " + second);
+                    first.resize(cut);
+                    fb.measureText(first, qw, qh, TextStyle::Caption);
+                }
+                fb.drawText(DETAIL_X + 24, HUB_Y + 505, fitCaption(first),
+                            Colors::TextMuted, TextStyle::Caption);
+                if (!second.empty())
+                    fb.drawText(DETAIL_X + 24, HUB_Y + 525, fitCaption(second),
+                                Colors::TextMuted, TextStyle::Caption);
             } else {
                 fb.drawText(DETAIL_X + 24, HUB_Y + 505,
                             std::string("Order: ") + gameSortModeLabel(),

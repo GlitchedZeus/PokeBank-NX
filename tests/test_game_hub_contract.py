@@ -717,3 +717,20 @@ require("case Overlay::GamesDrawer: break;" in drawer_down and
 portrait = source[source.index("void drawTrainerPortrait("):source.index("// Approved product-home layout")]
 require("drawPanelSurface(" not in portrait and "fb.drawImageScaled(" in portrait,
         "Trainer cutouts must reveal region artwork on all game cards")
+
+# Thread L request (2R lane): before ZR hands off, a ready launch tells the user where the
+# emulator's Quit goes, from the same chain plan the launcher uses, cached per launch target
+# (never recomputed per frame) and drawn only inside the detail panel's two caption rows.
+quit_notice = source[source.index("const std::string& SaveSelectScreen::currentLaunchQuitNotice()"):
+                     source.index("bool SaveSelectScreen::launchCurrentTitle()")]
+require("gameLaunchQuitRouteNotice(previewGameLaunchQuitRoute(d))" in quit_notice and
+        "if (key != launchQuitNoticeKey)" in quit_notice,
+        "Launch notice must show the cached quit-route notice from the launcher's chain plan")
+hub_caption = source[source.index("// Caption rows under the buttons (inside the panel)"):
+                     source.index("// The whole selected-game panel remains one safe A/Open touch target")]
+require("launchDescriptor.ready() ? currentLaunchQuitNotice() : std::string()" in hub_caption and
+        "HUB_Y + 505" in hub_caption and "HUB_Y + 525" in hub_caption and
+        "HUB_Y + 527" not in hub_caption and "HUB_Y + 547" not in hub_caption,
+        "Quit-route notice must stay in the two caption rows inside the hub panel")
+require("std::string launchQuitNoticeKey;" in header,
+        "Quit-route notice must be cached per resolved launch target")

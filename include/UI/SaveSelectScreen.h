@@ -175,6 +175,10 @@ namespace UI {
         uint16_t previewDexCaught = 0;
         uint16_t previewDexTotal = 0;
         GameLaunchDescriptor launchDescriptor;
+        // Where the emulator's Quit goes for the ready launch (Thread L's quit-route notice),
+        // recomputed only when the resolved launch target changes, never per frame.
+        std::string launchQuitNotice;
+        std::string launchQuitNoticeKey;
         std::string hubNotice;
         std::string openFailureMessage;
         bool launchLegacyMode = false;
@@ -343,6 +347,7 @@ namespace UI {
         PokeVault::Source::HomeSnapshotCache homeSnapshots;
         int saveWatchFrames = 0;
         void refreshHubPreview(bool resolveLaunchTarget = true);
+        const std::string& currentLaunchQuitNotice();
         bool launchCurrentTitle();
         bool launchCurrentLegacyInstance();
         bool beginLaunchLinkForCurrentTitle();
