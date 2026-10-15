@@ -1,0 +1,14 @@
+# Gen I-IV completion campaign (Thread C) host tests.
+GEN1_EXPORT_SOURCES := tests/test_gen1_export_transaction.cpp $(GEN1_POKEMON_COMMON) \
+	src/Integration/Gen1/Gen1ExportTransaction.cpp src/Integration/Common/VerifiedStagedExport.cpp \
+	src/Integration/Gen1/Gen1PackedMove.cpp src/Utils/SHA256.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen1_export_transaction
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_export_transaction_sanitize
+host-test: $(HOST_BUILD)/test_gen1_export_transaction
+host-sanitize: $(HOST_BUILD)/test_gen1_export_transaction_sanitize
+$(HOST_BUILD)/test_gen1_export_transaction: $(GEN1_EXPORT_SOURCES) src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_EXPORT_SOURCES) -o $@
+$(HOST_BUILD)/test_gen1_export_transaction_sanitize: $(GEN1_EXPORT_SOURCES) src/Integration/Gen1/Gen1PersonalData.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_EXPORT_SOURCES) -o $@

@@ -50,8 +50,27 @@ void contains(const std::string& text, const char* needle) {
 }
 }
 
+// The source between two needles (exclusive of the end needle); both must exist in order.
+std::string routeBetween(const std::string& text, const char* begin, const char* end) {
+    const auto start = text.find(begin);
+    if (start == std::string::npos) std::cerr << "Missing route start: " << begin << '\n';
+    assert(start != std::string::npos);
+    const auto stop = text.find(end, start);
+    if (stop == std::string::npos) std::cerr << "Missing route end: " << end << '\n';
+    assert(stop != std::string::npos);
+    return text.substr(start, stop - start);
+}
+
 int main() {
     namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+    // PR #280 parity: both empty and occupied slots open Actions with A OR a clean tap;
+    // only an explicit X on an empty cell starts a staged Add, and X on an occupied cell
+    // or no input does nothing.
+    static_assert(Shared::boxActivation(false, true, false) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(true, true, false) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(false, false, true) == Shared::BoxActivation::Add);
+    static_assert(Shared::boxActivation(true, false, true) == Shared::BoxActivation::None);
+    static_assert(Shared::boxActivation(false, false, false) == Shared::BoxActivation::None);
     namespace Narrow = PokeBank::UIModel::NarrowPokemonMenu;
     // Behavior-level contract: the older popup is narrow and never makes a
     // disabled transfer command available through touch or controller A.
@@ -440,6 +459,16 @@ int main() {
     contains(surface, "screen.selectedItemIndex = tapped;");
     contains(surface, "beginActions(screen);");
     assert(surface.find("if (selectedOccupied(screen)) beginActions(screen);") == std::string::npos);
+    {
+        // The Boxes tap route (empty or occupied cell) opens the same guarded menu as A. It must
+        // never be gated on occupancy and never stage an Add directly from the first touch.
+        const auto boxTap = routeBetween(surface,
+            "screen.detailViewActive && touch.justTapped()", "if (!partyEntry && !boxEntry && !storageEntry) return false;");
+        assert(boxTap.find("beginActions(screen);") != std::string::npos);
+        assert(boxTap.find("selectedOccupied") == std::string::npos);
+        assert(boxTap.find("beginCreate") == std::string::npos);
+        assert(boxTap.find("screen.selectedItemIndex = previous;") != std::string::npos);
+    }
     // A stale six-party hit target cannot pick an out-of-range party member.
     contains(surface, "tapped - 6200 < static_cast<int>(screen.trainer.getPartySize())");
     contains(surface, "screen.touchedButtonId(touch)");

@@ -17,8 +17,27 @@ void contains(const std::string& text, const char* needle) {
     if (text.find(needle) == std::string::npos) std::cerr << "Missing surface contract: " << needle << '\n';
     assert(text.find(needle) != std::string::npos);
 }
+// The source between two needles (exclusive of the end needle); both must exist in order.
+std::string routeBetween(const std::string& text, const char* begin, const char* end) {
+    const auto start = text.find(begin);
+    if (start == std::string::npos) std::cerr << "Missing route start: " << begin << '\n';
+    assert(start != std::string::npos);
+    const auto stop = text.find(end, start);
+    if (stop == std::string::npos) std::cerr << "Missing route end: " << end << '\n';
+    assert(stop != std::string::npos);
+    return text.substr(start, stop - start);
+}
+
 int main() {
     namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+    // PR #280 parity: both empty and occupied slots open Actions with A OR a clean tap;
+    // only an explicit X on an empty cell starts a staged Add, and X on an occupied cell
+    // or no input does nothing.
+    static_assert(Shared::boxActivation(false, true, false) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(true, true, false) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(false, false, true) == Shared::BoxActivation::Add);
+    static_assert(Shared::boxActivation(true, false, true) == Shared::BoxActivation::None);
+    static_assert(Shared::boxActivation(false, false, false) == Shared::BoxActivation::None);
     namespace Multi = PokeBank::UIModel::ClassicPackedMove;
     constexpr UI::SharedPokemonShell::Geometry geometry(1280, 720, 46);
     namespace HeldItems = PokeBank::UIModel::SharedHeldItemPicker;
@@ -83,6 +102,16 @@ int main() {
 
     // Production routing and renderer wiring (Switch compilation is a separate native gate).
     const auto surface = read("src/UI/Gen3SharedPokemonSurface.inc");
+    {
+        // The Boxes tap route (empty or occupied cell) opens the same guarded menu as A. It must
+        // never be gated on occupancy and never stage an Add directly from the first touch.
+        const auto boxTap = routeBetween(surface,
+            "screen.detailViewActive && touch.justTapped()", "const bool inBoxes = boxEntrySurface(screen);");
+        assert(boxTap.find("beginActions(screen);") != std::string::npos);
+        assert(boxTap.find("selectedOccupied") == std::string::npos);
+        assert(boxTap.find("beginCreate") == std::string::npos);
+        assert(boxTap.find("screen.selectedItemIndex = previous;") != std::string::npos);
+    }
     const auto composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp");
     const auto move = read("src/UI/ClassicPackedMoveOverlay.inc");
     const auto bridge = read("src/Legacy/FRLGReadOnlyTrainer.cpp");
