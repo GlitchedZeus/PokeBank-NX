@@ -673,8 +673,8 @@ void runVersion(Matrix& m, const VersionSpec& v) {
     // ---------------------------------------------------------------- actions
     cell(m, ver, "actions", "Gen4BoxTouchActions select/open + staged Clone/Move/Release primitives; descriptor "
              "grants BoxPokemon/Editing/Creation, never a source write (menu rows live in the non-host "
-             "Gen4SharedPokemonSurface.inc); note: Release zero-fills, so a net no-op clone/move/release still "
-             "reviews as \"Box 2 slot 1: (empty) (edited)\"", [&](Probe& p) {
+             "Gen4SharedPokemonSurface.inc); a net no-op clone/move/release may still "
+             "review as \"Box 2 slot 1: (empty) (edited)\" (QA-F8)", [&](Probe& p) {
         p.expect(BoxTouch::selectsTappedBoxSlot(0, 30) && BoxTouch::selectsTappedBoxSlot(29, 30) &&
                      !BoxTouch::selectsTappedBoxSlot(30, 30), "tap selection");
         p.expect(BoxTouch::opensSelectedSlotActions(4, 4, 30) &&
@@ -705,10 +705,12 @@ void runVersion(Matrix& m, const VersionSpec& v) {
                      afterRelease->box(0, 0).species() == 25, "release result");
         p.expect(!editor->boxedPokemon(1, 0, &err), "released slot still opens as a Pokemon");
         p.expect(!editor->stageReleaseBoxPokemon(1, 0, &err), "release of an empty slot accepted");
-        // Release zero-fills the slot (all-zero PK4 = blank, PKHeX convention) while the source held an
-        // encrypted blank record, so the slot-level review keeps one "(empty) (edited)" line.
+        // A net no-op: the review must not describe any Pokemon change. Today Release zero-fills the
+        // slot while the source held an encrypted blank, so one "(empty) (edited)" line remains: QA-F8
+        // (strict repro in test_qa_known_failures.cpp). Both the current line and the fixed (empty)
+        // review are accepted here so this cell neither pins the defect nor hides another change.
         const auto lines = G4::describeStagedSlotChanges(*editor);
-        p.expect(lines.size() == 1 && lines[0] == "Box 2 slot 1: (empty) (edited)",
+        p.expect(lines.empty() || (lines.size() == 1 && lines[0] == "Box 2 slot 1: (empty) (edited)"),
                  "unexpected review after clone+move+release: " + (lines.empty() ? std::string() : lines[0]));
         p.expect(sourceUnchanged("actions"), "actions changed the source");
     });

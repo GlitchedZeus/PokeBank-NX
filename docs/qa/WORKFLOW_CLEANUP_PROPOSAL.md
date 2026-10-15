@@ -10,7 +10,7 @@ workflow list from the GitHub API (181 registered workflows, most of them only o
 
 These files are not valid YAML. GitHub cannot read their `on:` filters, so it records a **failed
 run for every push to every branch** that contains them, under the file path instead of a name
-(QA-F2 in [FINDINGS.md](FINDINGS.md); reproducer: `python3 tests/test_qa_known_failures_assets.py`).
+(QA-F2 in [FINDINGS.md](FINDINGS.md); reproducer before the repair: `python3 tools/qa/check_workflows.py`).
 
 | File | YAML error at | Failed runs so far | Latest examples |
 | --- | --- | --- | --- |
@@ -21,9 +21,18 @@ run for every push to every branch** that contains them, under the file path ins
 Each push to any lane gets three red entries that have nothing to do with the change, which hides real
 failures and makes "CI green" unreadable. The intended one-time patches were applied long ago (see §2).
 
-**Proposed action:** delete the three files on the integration line that every lane branches from
-(and therefore on every new lane). Fixing their YAML instead would re-arm one-time patch jobs that
+**Original proposal:** delete the three files on the integration line that every lane branches from
+(and therefore on every new lane). Fixing their YAML alone would re-arm one-time patch jobs that
 hold `contents: write`, which is worse.
+
+**Repair applied (2026-10-15, #307 commit `96a44685` by Thread 2R, from Thread 4's patch; nothing
+deleted):** the Python string continuation lines that started below the `run: |` block indentation
+were prefixed with exactly that indentation, so YAML returns the original text verbatim (`git diff -w`
+is empty apart from the triggers). Every extracted script passes `bash -n` / Python compile. Because
+all three hold `contents: write` and push patches, their triggers are gated to `workflow_dispatch`
+only; each still refuses a stale branch and a missing anchor if dispatched. Recurrence guard:
+`tools/qa/check_workflows.py` in `make qa-tools-test` and `.github/workflows/app-qa-workflow-hygiene.yml`.
+Deleting the spent files (and the other §2 candidates) remains the owner's decision.
 
 ## 2. Stale `one-time-*` patch workflows (21 files in this tree)
 
