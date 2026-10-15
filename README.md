@@ -41,7 +41,7 @@
 ---
 
 > [!IMPORTANT]
-> **Owner-mandated release order (October 15, 2026):** Finish **Gen V** on the existing shared Gen I–V app, have Claude audit **every reachable action** across all **20 Gen I–V releases**, then run the exhaustive [Switch acceptance matrix](docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md) and fix every blocker. **Do not begin active Gen VI/new-emulator app integration until the owner explicitly accepts one exact Gen I–V NRO.** Latest integrated application: [#307](https://github.com/GlitchedZeus/PokeBank-NX/pull/307), `35cbf163`, **9/9 CI green, not device accepted**. Earlier `fa9cfcea` Gen V build **failed hardware** and its reported defects require a retest. Separate Gen VI–VIII draft research remains preserved, not promoted. The next milestone is **quality and physical approval**, not an invented completion percentage.
+> **Owner-mandated release order (October 15, 2026):** Finish **Gen V** on the existing shared Gen I–V app, have Claude audit **every reachable action** across all **20 Gen I–V releases**, then run the exhaustive [Switch acceptance matrix](docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md) and fix every blocker. **Do not begin active Gen VI/new-emulator app integration until the owner explicitly accepts one exact Gen I–V NRO.** [Gen I–V integration #307](https://github.com/GlitchedZeus/PokeBank-NX/pull/307) is the active application branch. Last fully green checked head: `35cbf163` (9/9); Claude has since advanced the branch to `888b886c`, whose new exact-head host/native checks are still running. **No hardware acceptance**. Earlier `fa9cfcea` Gen V build **failed hardware** and its reported defects require a retest. Separate Gen VI–VIII draft research remains preserved, not promoted. The next milestone is **quality and physical approval**, not an invented completion percentage.
 
 ## Overview
 
@@ -80,7 +80,7 @@ Current work centers on **one reliable Gen I–IV candidate**, a separately veri
 | Master Vault, Banks, later consoles, social/link apps | ⏳ Preserved in [deferred backlog](docs/FUTURE_AFTER_GEN15_BACKLOG.md) | Not in the Gen I–V acceptance scope; no unsafe source writes |
 
 > [!NOTE]
-> **Last earlier owner-accepted integrated build:** `0760334fb850ca46b5171c55f690998d7680d4e7` (Oct 8), NRO SHA-256 `4f28d7f7ad38c2b62458642e014ae3c05e866755c4152bf4c2db0574c381ce91`. **Current nine-check-green Gen I–V candidate:** `35cbf1637da41e9607f2d524354c51d70e401fb2`, [exact NRO artifact](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38682361760), not yet owner-tested. Hardware sign-off does not transfer between NROs.
+> **Last earlier owner-accepted integrated build:** `0760334fb850ca46b5171c55f690998d7680d4e7` (Oct 8), NRO SHA-256 `4f28d7f7ad38c2b62458642e014ae3c05e866755c4152bf4c2db0574c381ce91`. **Last verified nine-check-green Gen I–V candidate:** `35cbf1637da41e9607f2d524354c51d70e401fb2`, [exact NRO artifact](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38682361760), not yet owner-tested. Hardware sign-off does not transfer between NROs.
 
 ## Features
 
