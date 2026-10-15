@@ -9,6 +9,7 @@
 #include "Integration/Gen5/Gen5OriginSummary.h"
 #include "Integration/Gen5/Gen5SharedScreenState.h"
 #include "Integration/Gen5/Gen5StagedSaveCandidate.h"
+#include "Integration/Gen5/Gen5WorkspaceLayout.h"
 #include "UI/SharedPokemonEditorContract.h"
 
 #include <algorithm>
@@ -271,6 +272,150 @@ void retailEncryptedBlankSlots(G::SaveFamily family, std::string_view game, uint
     (void)ok;
 }
 
+// Hardware failure fa9cfcea: Create showed only Cancel and was a raw prompt
+// wizard. Route: empty retail-blank Box slot -> Actions -> Add -> Create ->
+// the SAME Edit draft as Edit (species, nickname, level, nature, IVs, EVs,
+// moves, ability, gender, held item) -> Keep -> Review -> Export -> reopen.
+void focusRow(G::Gen5SharedScreenState& ui, G::Gen5SharedScreenState::Field field, size_t stat = 0) {
+    for (size_t i = 0; i < G::Gen5SharedScreenState::kEditableRows.size(); ++i)
+        if (G::Gen5SharedScreenState::kEditableRows[i].field == field &&
+            G::Gen5SharedScreenState::kEditableRows[i].stat == stat) {
+            ui.moveField(static_cast<int>(i) - ui.fieldRow());
+            assert(ui.fieldRow() == static_cast<int>(i));
+            return;
+        }
+    assert(false);
+}
+
+void sharedCreateRoute(G::SaveFamily family, std::string_view game, uint8_t version) {
+    using F = G::Gen5SharedScreenState::Field;
+    auto sav = fixture(family, version);
+    sav[0x19400 + 0x1E] = 2;  // English
+    sav[0x19400 + 0x21] = 1;  // female trainer
+    const auto& blank = G::encryptedBlankBoxSlot5();
+    for (size_t box = 0; box < L::BoxCount; ++box)
+        for (size_t slot = 0; slot < L::BoxSlots; ++slot) {
+            if (box == 0 && slot < 2) continue;
+            std::copy(blank.begin(), blank.end(),
+                      sav.begin() + static_cast<std::ptrdiff_t>(L::BoxOffset + box * L::BoxStride + slot * C::StoredSize));
+        }
+    const auto blocks = family == G::SaveFamily::BlackWhite ? std::span<const L::SaveBlock>(L::BlackWhite)
+                                                            : std::span<const L::SaveBlock>(L::Black2White2);
+    auto copy = std::span<uint8_t>(sav).subspan(0, family == G::SaveFamily::BlackWhite ? L::BlackWhiteCopySize
+                                                                                        : L::Black2White2CopySize);
+    for (const auto& b : blocks) {
+        const uint16_t crc = Utils::crc16ccitt(copy.data() + b.offset, b.length);
+        C::write16(copy, b.checksumOffset, crc);
+        C::write16(copy, b.mirrorOffset, crc);
+    }
+    const auto pristine = sav;
+    std::string error;
+    const auto parsed = G::Gen5ReadOnlySave::parse(sav, game, &error, G::SaveCopySelection::Primary);
+    assert(parsed);
+    G::Gen5StagedPokemonWorkspace ws(*parsed);
+    G::Gen5SharedScreenState ui;
+    const auto ok = [](std::string&) { return true; };
+    const auto refuse = [](std::string& why) { why = "renderer refused"; return false; };
+    const G::Gen5SharedScreenState::CreateDate5 date{2026, 10, 15};
+
+    // Defaults copy the save's own trainer; nothing is invented from a filename.
+    const auto defaults = G::Gen5SharedScreenState::sharedCreateDefaults(ws, 0x00340000u, "Pikachu", date, error);
+    assert(defaults && defaults->trainer && defaults->trainer->name == "NX");
+    assert(defaults->trainer->tid == 12345 && defaults->trainer->sid == 54321);
+    assert(defaults->trainer->gender == 1 && defaults->trainer->language == 2);
+    assert(static_cast<uint32_t>(defaults->game) == version && defaults->gender == 1);
+
+    // Occupied slot: Create refused.
+    assert(ui.openActions(ws, Slot{Region::Box, 0, 0}, error));
+    assert(!has(ui.availableActions(ws), Action::Add));
+    assert(ui.activate(ws, Action::Close, error));
+
+    // Empty slot -> Add -> Create opens the shared Edit draft on Species.
+    assert(ui.openActions(ws, Slot{Region::Box, 0, 5}, error));
+    assert(ui.activate(ws, Action::Add, error) && ui.surface() == Surface::ConfirmCreateBox);
+    // A renderer refusal rolls the whole Create back.
+    assert(!ui.beginCreateDraft(ws, *defaults, refuse, error) && !ws.hasChanges());
+    assert(ui.surface() == Surface::ConfirmCreateBox && ws.emptyCloneDestination(0, 5));
+    assert(ui.beginCreateDraft(ws, *defaults, ok, error));
+    assert(ui.surface() == Surface::Edit && ui.createPending());
+    assert(G::Gen5SharedScreenState::kEditableRows[static_cast<size_t>(ui.fieldRow())].field == F::Species);
+    assert(G::panelPosition5(ui.fieldRow()).panel == G::WorkspacePanel5::Details);
+    assert(ui.draft().current()->species() == 25);
+
+    // Edit every owner-listed field through the same draft entry points.
+    assert(ui.stageFieldValue(133, error));                       // species (Eevee)
+    focusRow(ui, F::Nickname);
+    assert(ui.stageNameValue("SPARKY", error));
+    focusRow(ui, F::Level);
+    assert(ui.stageFieldValue(20, error));
+    focusRow(ui, F::Nature);
+    assert(ui.openNaturePicker(error));
+    ui.moveNatureCursor(10 - static_cast<int>(ui.natureSelection()));
+    assert(ui.acceptNaturePicker(error));
+    focusRow(ui, F::IV, 1);
+    assert(ui.stageFieldValue(31, error));
+    focusRow(ui, F::EV, 3);
+    assert(ui.stageFieldValue(252, error));
+    focusRow(ui, F::HeldItem);
+    assert(ui.stageFieldValue(1, error));
+    focusRow(ui, F::Move, 1);
+    assert(ui.openMovePicker(error));
+    ui.movePickerCursor(98 - static_cast<int>(ui.movePickerSelection()));  // Quick Attack
+    assert(ui.acceptMovePicker(error));
+    focusRow(ui, F::Ability);
+    assert(ui.openIdentityPicker(error) && ui.surface() == Surface::IdentityPicker);
+    ui.cancelIdentityPicker();
+    focusRow(ui, F::Gender);
+    assert(ui.openIdentityPicker(error));
+    ui.cancelIdentityPicker();
+    assert(ui.surface() == Surface::Edit && ui.draft().dirty());
+
+    // B never drops a pending Create: Keep/Discard decision first.
+    assert(!ui.back() && ui.surface() == Surface::ConfirmDraft);
+    ui.continueEditing();
+    assert(ui.surface() == Surface::Edit && ui.draft().dirty());
+    assert(ui.keepWithPresentation(ws, ok, error));
+    assert(ui.surface() == Surface::Browse && !ui.createPending());
+    assert(ws.changedRecordCount() == 1);
+
+    // Clean Create + Keep just finalizes the default record.
+    assert(ui.openActions(ws, Slot{Region::Box, 0, 7}, error));
+    assert(ui.activate(ws, Action::Add, error));
+    assert(ui.beginCreateDraft(ws, *defaults, ok, error));
+    assert(ui.keepWithPresentation(ws, ok, error) && !ui.createPending());
+    assert(ws.changedRecordCount() == 2);
+
+    // Create then Discard restores the native empty slot exactly.
+    assert(ui.openActions(ws, Slot{Region::Box, 0, 6}, error));
+    assert(ui.activate(ws, Action::Add, error));
+    assert(ui.beginCreateDraft(ws, *defaults, ok, error));
+    assert(ws.changedRecordCount() == 3);
+    ui.discardDraft();  // cannot orphan a created record
+    assert(ui.surface() == Surface::Edit && ui.createPending());
+    assert(!ui.back() && ui.surface() == Surface::ConfirmDraft);
+    assert(ui.discardCreateDraft(ws, ok, error));
+    assert(ui.surface() == Surface::Browse && !ui.createPending());
+    assert(ws.changedRecordCount() == 2 && ws.emptyCloneDestination(0, 6));
+
+    // Review -> Export -> reopen.
+    for (const auto& change : ws.pendingReview()) assert(G::verifyStagedReview(change, &error));
+    assert(ui.openReviewFromBrowse(ws) && ui.surface() == Surface::Review);
+    assert(ui.requestExport(ws) && ui.surface() == Surface::ConfirmExport);
+    const auto out = G::buildStagedSaveCandidate(ws, &error);
+    assert(out && out->changedRecords == 2);
+    const auto reopened = G::Gen5ReadOnlySave::parse(out->bytes, game, &error, G::SaveCopySelection::Primary);
+    assert(reopened);
+    const auto made = reopened->boxPokemon(0, 5);
+    assert(made && made->valid() && made->species() == 133 && made->nature() == 10);
+    assert(made->ivs()[1] == 31 && made->evs()[3] == 252 && made->heldItem() == 1);
+    assert(made->moves()[0] == 84 && made->moves()[1] == 98 && made->tid() == 12345);
+    assert(G::asciiName5(made->decodedBytes(), true).value_or("") == "SPARKY");
+    assert(reopened->boxPokemon(0, 7)->species() == 25);
+    const auto vacated = reopened->boxPokemon(0, 6);
+    assert(vacated->valid() && vacated->empty());
+    assert(sav == pristine);
+}
+
 } // namespace
 
 int main() {
@@ -284,6 +429,10 @@ int main() {
     }
     retailEncryptedBlankSlots(G::SaveFamily::BlackWhite, "black_nds", 21);
     retailEncryptedBlankSlots(G::SaveFamily::Black2White2, "black2_nds", 23);
+    sharedCreateRoute(G::SaveFamily::BlackWhite, "white_nds", 20);
+    sharedCreateRoute(G::SaveFamily::BlackWhite, "black_nds", 21);
+    sharedCreateRoute(G::SaveFamily::Black2White2, "white2_nds", 22);
+    sharedCreateRoute(G::SaveFamily::Black2White2, "black2_nds", 23);
     exercise(G::SaveFamily::BlackWhite, "white_nds", 20);
     exercise(G::SaveFamily::BlackWhite, "black_nds", 21);
     exercise(G::SaveFamily::Black2White2, "white2_nds", 22);

@@ -2,6 +2,8 @@
 #define POKEBANK_GEN5_SHARED_SCREEN_STATE_H
 
 #include "Integration/Gen5/Gen5SharedEditorBridge.h"
+#include "Integration/Gen5/Gen5CreateValidation.h"
+#include "Integration/Gen5/Gen5CreateInputRules.h"
 
 #include <algorithm>
 #include <array>
@@ -350,6 +352,129 @@ public:
         error.clear();
         return true;
     }
+    // ---- Shared Create (Gen I-IV parity) --------------------------------
+    // Create opens the SAME Edit draft used by Edit, not a prompt wizard. A
+    // native PK5 is built from the save's own trainer (OT name, TID, SID,
+    // gender, language, exact game) with the caller's PID and date, placed in
+    // the empty slot, and opened for editing on Species. Nothing persists
+    // unless Keep is chosen: B asks Keep/Discard, and Discard undoes the
+    // staged creation so the slot is the original native empty slot again.
+    [[nodiscard]] bool createPending() const noexcept { return createPending_; }
+    struct CreateDate5 { uint32_t year=0, month=0, day=0; };
+    [[nodiscard]] static std::optional<CreateRequest5> sharedCreateDefaults(
+        const Workspace& ws, uint32_t pid, std::string_view nickname,
+        CreateDate5 date, std::string& error) {
+        const auto& trainer=ws.sourceSave().trainer();
+        const uint32_t version=trainer.gameVersion;
+        if(version<20 || version>23) {
+            error="Gen V Create needs the validated exact game version";
+            return std::nullopt;
+        }
+        CreateTrainer5 ot;
+        for(const char16_t ch:trainer.rawName) {
+            if(ch<0x20 || ch>0x7e) {
+                error="Save trainer name is not plain ASCII; Create cannot copy it as OT";
+                return std::nullopt;
+            }
+            ot.name.push_back(static_cast<char>(ch));
+        }
+        if(ot.name.empty() || trainer.gender>1 || !createLanguageAllowed5(trainer.language)) {
+            error="Save trainer identity is incomplete; Create cannot copy it as OT";
+            return std::nullopt;
+        }
+        ot.tid=trainer.tid;
+        ot.sid=trainer.sid;
+        ot.gender=trainer.gender;
+        ot.language=trainer.language;
+        CreateRequest5 r;
+        r.game=static_cast<CreateGame5>(version);
+        r.format=CreateFormat5::Boxed;
+        r.species=kSharedCreateSpecies; r.form=0; r.level=5;
+        r.pid=pid;
+        r.nature=pid%25;
+        const auto personal=personal5(r.species,0,version>=22);
+        if(!personal) {
+            error="Gen V personal data unavailable for the default species";
+            return std::nullopt;
+        }
+        r.gender=createGenderForPID5(personal.info->genderRatio,pid);
+        r.abilitySlot=(pid>>16)&1u;
+        r.friendship=70;
+        r.heldItem=0;
+        r.trainer=ot;
+        r.nickname=std::string(nickname);
+        r.encounter={CreateHistory5::CallerSuppliedNative,kSharedCreateMetLocation,r.level,
+                     kSharedCreateBall,date.year,date.month,date.day};
+        r.ivs={15,15,15,15,15,15};
+        r.evs={};
+        r.moves[0]={kSharedCreateMove,0,std::nullopt};
+        if(const auto checked=validateCreate5(r);!checked) {
+            error=std::string(checked.message);
+            return std::nullopt;
+        }
+        error.clear();
+        return r;
+    }
+    template<class Refresh>
+    [[nodiscard]] bool beginCreateDraft(Workspace& ws,const CreateRequest5& request,
+                                        Refresh&& refresh,std::string& error) {
+        if(surface_!=Surface::ConfirmCreateBox ||
+           target_.region!=Workspace::Region::Box ||
+           !ws.emptyCloneDestination(target_.box,target_.slot)) {
+            error="Gen V Create requires the original empty native box slot";
+            return false;
+        }
+        Workspace snapshot=ws;
+        if(!ws.createInEmptyBox(request,target_.box,target_.slot,&error))return false;
+        if(!refresh(error)) {
+            ws=std::move(snapshot);
+            std::string restored;
+            (void)refresh(restored);
+            if(error.empty())error="Gen V Create presentation failed; stage rolled back";
+            return false;
+        }
+        if(!openSharedDraft(draft_,ws,selectedSlot(ws,target_),Action::Edit,error)) {
+            ws=std::move(snapshot);
+            std::string restored;
+            (void)refresh(restored);
+            return false;
+        }
+        pendingCreateInput_.reset();
+        black2White2_=ws.black2White2();
+        fieldRow_=speciesFieldRow();
+        surface_=Surface::Edit;
+        createPending_=true;
+        error.clear();
+        return true;
+    }
+    template<class Refresh>
+    [[nodiscard]] bool discardCreateDraft(Workspace& ws,Refresh&& refresh,std::string& error) {
+        if(!createPending_ || (surface_!=Surface::Edit && surface_!=Surface::ConfirmDraft) ||
+           target_.region!=Workspace::Region::Box) {
+            error="No pending Gen V Create to discard";
+            return false;
+        }
+        Workspace snapshot=ws;
+        if(!ws.undoBoxReplacement(target_.box,target_.slot)) {
+            error="Gen V Create was already cleared";
+            return false;
+        }
+        if(!refresh(error)) {
+            ws=std::move(snapshot);
+            if(error.empty())error="Gen V Create discard presentation failed; draft kept";
+            return false;
+        }
+        draft_.discardDraft();
+        createPending_=false;
+        surface_=Surface::Browse;
+        error.clear();
+        return true;
+    }
+    [[nodiscard]] static constexpr int speciesFieldRow() noexcept {
+        for(size_t i=0;i<kEditableRows.size();++i)
+            if(kEditableRows[i].field==Field::Species)return static_cast<int>(i);
+        return 0;
+    }
     void cancelBoxAction() noexcept {
         if(surface_==Surface::ConfirmCreateBox)pendingCreateInput_.reset();
         if(surface_==Surface::CloneDestination ||
@@ -380,8 +505,9 @@ public:
         return true;
     }
 
+    // Edit moves the field focus; the read-only View browses the same rows.
     void moveField(int delta) noexcept {
-        if(surface_!=Surface::Edit)return;
+        if(surface_!=Surface::Edit && surface_!=Surface::View)return;
         constexpr int count=static_cast<int>(kEditableRows.size());
         fieldRow_=(fieldRow_+delta%count+count)%count;
     }
@@ -751,11 +877,21 @@ public:
             error="Generation V presentation Keep requires an active Edit draft";
             return false;
         }
+        if(createPending_ && !draft_.dirty()) {
+            // The created record is already staged and presented; Keep with
+            // no further edits simply finalizes it.
+            draft_.discardDraft();
+            createPending_=false;
+            surface_=Surface::Browse;
+            error.clear();
+            return true;
+        }
         Workspace baselineWorkspace=workspace;
         Gen5SharedPokemonSession baselineDraft=draft_;
         const Surface baselineSurface=surface_;
         if(!keep(workspace,error))return false;
         if(std::forward<Refresh>(refresh)(error)) {
+            createPending_=false;
             error.clear();
             return true;
         }
@@ -793,6 +929,10 @@ public:
             cancelBoxAction();
             return false;
         }
+        if(surface_==Surface::Edit && createPending_) {
+            surface_=Surface::ConfirmDraft;
+            return false;
+        }
         if(surface_==Surface::View || surface_==Surface::Edit) {
             if(draft_.back()) {surface_=Surface::Browse;return true;}
             surface_=Surface::ConfirmDraft;
@@ -808,11 +948,12 @@ public:
     }
     void continueEditing() noexcept {
         if(surface_==Surface::ConfirmDraft) {
-            draft_.continueEditing();
+            if(!createPending_)draft_.continueEditing();
             surface_=Surface::Edit;
         }
     }
     void discardDraft() noexcept {
+        if(createPending_)return; // use discardCreateDraft: it undoes the staged record
         if(surface_==Surface::Edit || surface_==Surface::ConfirmDraft ||
            surface_==Surface::View) {
             draft_.discardDraft();
@@ -917,6 +1058,14 @@ private:
     bool moveDestination_=false;
     Gen5SharedPokemonSession draft_;
     std::optional<CreateRequest5> pendingCreateInput_;
+    bool createPending_=false;
+public:
+    // Shared Create defaults (not format rules): a native species, move and
+    // met data the Gen V validators accept, all editable before Keep.
+    static constexpr uint32_t kSharedCreateSpecies=25;    // Pikachu
+    static constexpr uint32_t kSharedCreateMove=84;       // Thunder Shock
+    static constexpr uint32_t kSharedCreateMetLocation=1; // native location list entry
+    static constexpr uint32_t kSharedCreateBall=4;        // Poke Ball
 };
 
 } // namespace PokeVault::Integration::Gen5

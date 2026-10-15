@@ -47,7 +47,7 @@ require(
     "reviewedFieldLabel(verified->fields[field])",
     "screen.drawGSCOverlay(fb)",
     "screen.details.active=false;",
-    "drawVerifiedSummary(screen,fb,&view",
+    "drawWorkspace5(screen,fb,state)",
     "return true;",
     "All inherited generic storage/bank/source mutation routes stay barred.",
     "screen.touchedButtonId(touch);",
@@ -57,7 +57,20 @@ require(
 assert "Gen5SharedReview.h" in surface
 assert "verifyStagedReview(" in read("include/Integration/Gen5/Gen5SharedReview.h")
 assert "Legality::analyze(" not in surface
-assert surface.index("screen.details.active=false;") < surface.index("drawVerifiedSummary(screen,fb,&view")
+assert surface.index("screen.details.active=false;") < surface.index("case Surface::View:drawWorkspace5(screen,fb,state);")
+# Hardware failure fa9cfcea: View/Create/Edit use the SAME three-panel shared
+# workspace as Gen I-IV, and Create is not a prompt wizard.
+require(surface, "SharedPokemonShell::drawChrome(", "SharedPokemonShell::drawPortrait(",
+        "SharedPokemonShell::drawScrollableDetails(", "SharedPokemonShell::drawDataAndGraph(",
+        '"DETAILS"', '"STATS"', '"MOVES"', "G::computeStats5(",
+        "case Surface::Edit:drawWorkspace5(screen,fb,state);return true;",
+        "bool beginSharedCreate(TrainerViewScreen& screen,std::string& error)",
+        "state.beginCreateDraft(ws,*request,", "state.discardCreateDraft(",
+        "PokeVault::Integration::Gen5::stepWithinPanel5(state.fieldRow(),1)",
+        "PokeVault::Integration::Gen5::switchPanel5(state.fieldRow(),1)")
+for gone in ("promptNativeBoxCreate", "Add Pokemon - PID lower 16 bits", "drawVerifiedSummary",
+             "Staged PK5 Fields", "kGen5DecreaseTouchBase"):
+    assert gone not in surface, f"retired Gen V UI still present: {gone}"
 assert "Gen5SharedScreenState" in read("include/Legacy/Gen5ReadOnlyTrainer.h")
 assert "Gen5SharedPokemonSession draft_;" in read("include/Integration/Gen5/Gen5SharedScreenState.h")
 assert "requestExit(const Workspace& workspace)" in read("include/Integration/Gen5/Gen5SharedScreenState.h")
@@ -417,8 +430,8 @@ require(read("Makefile.host.gen5"),
 require(read(".github/workflows/gen5-focused-host.yml"),
         "test_gen5_create_integration test_gen5_box_touch test_gen5_create_input_rules ",
         "test_gen5_create_integration_sanitize test_gen5_box_touch_sanitize test_gen5_create_input_rules_sanitize ",
-        "test_gen5_bag_screen test_gen5_party_box_parity test_gen5_trainer test_gen5_source_e2e test_gen5_export_validation; do",
-        "test_gen5_trainer_sanitize test_gen5_source_e2e_sanitize test_gen5_export_validation_sanitize; do")
+        "test_gen5_bag_screen test_gen5_party_box_parity test_gen5_trainer test_gen5_source_e2e test_gen5_export_validation test_gen5_save_diagnostics; do",
+        "test_gen5_trainer_sanitize test_gen5_source_e2e_sanitize test_gen5_export_validation_sanitize test_gen5_save_diagnostics_sanitize; do")
 # One integrated Gen I-V candidate with packaged RomFS verification.
 require(read(".github/workflows/gen15-integrated-candidate.yml"),
         "python3 tools/verify_nro_romfs.py PokeBankNX.nro --list", "DEVICE_ACCEPTED=false",
@@ -476,7 +489,7 @@ require(read("include/Integration/Gen5/Gen5CreateValidation.h"),
         "CreateError5")
 require(read("include/Integration/Gen5/Gen5NativeCreate.h"),
         "Crypto::write16(plain, 0x0A, static_cast<uint16_t>(r.heldItem))")
-require(surface,"Add Pokemon - Held Item ID (0=None)")
+require(surface,'case F::HeldItem:return pk.heldItem()==0?std::string("None"):')
 require(read("tests/test_gen5_native_create.cpp"),
         "withItem.heldItem=638",
         "r.heldItem=639",
@@ -499,16 +512,11 @@ require(read("include/Integration/Gen5/Gen5CreateValidation.h"),
         "createFormNeedsUnsupportedHandling5(",
         "createLanguageAllowed5(language)",
         "createLastCalendarDay5(e.year,e.month)")
-require(surface,
-        "basePersonal.info->formCount>1",
-        "createFormNeedsUnsupportedHandling5(request.species,request.form)",
-        "G::createLanguageAllowed5(ot.language)",
-        "G::isNativeMetLocation5(request.encounter.location)",
-        "G::createLastCalendarDay5(",
-        "G::createMoveChoiceAllowed5(chosenMoves,i,id)",
-        "G::createRemainingEVMax5(request.evs,i)",
-        "Current PP",
-        "PP Ups")
+# Shared Create builds its native defaults through the same validators.
+require(read("include/Integration/Gen5/Gen5SharedScreenState.h"),
+        "createLanguageAllowed5(trainer.language)",
+        "if(const auto checked=validateCreate5(r);!checked)",
+        "r.gender=createGenderForPID5(personal.info->genderRatio,pid);")
 require(read("Makefile.host.gen5"),
         "GEN5_CREATE_INPUT_TEST :=","GEN5_CREATE_INPUT_SANITIZE :=")
 require(read(".github/workflows/gen5-focused-host.yml"),
@@ -526,13 +534,6 @@ require(read("include/Integration/Gen5/Gen5SharedScreenState.h"),
         "rememberCreateInput(",
         "pendingCreateInput_=request",
         "pendingCreateInput_.reset()")
-require(surface,
-        "state.pendingCreateInput().value_or(",
-        "state.rememberCreateInput(ws,request)",
-        "dest>=static_cast<uint32_t>(minimum)",
-        "out.empty()?initial:out",
-        "request.pid=(pidHigh<<16)|pidLow",
-        "G::CreateTrainer5& ot=*request.trainer")
 require(read("tests/test_gen5_create_integration.cpp"),
         "addScreen.pendingCreateInput()",
         "addScreen.rememberCreateInput(workspace,r)",
@@ -558,16 +559,18 @@ require(native_screen,
         "confirmCreateBox(Workspace& ws",
         "surface_=Surface::ConfirmCreateBox")
 require(surface,
-        "bool promptNativeBoxCreate(",
         "Utils::promptNumber(",
         "Utils::promptText(",
-        "request.pid=(pidHigh<<16)|pidLow",
-        "request.encounter.kind=G::CreateHistory5::CallerSuppliedNative",
-        "request.gender=G::createGenderForPID5",
-        "state.confirmCreateBox(ws,request",
+        "else if(state.surface()==Surface::ConfirmCreateBox &&",
+        "!beginSharedCreate(screen,error)) {",
         "case Surface::ConfirmCreateBox:",
-        '"Y","Enter Create Fields"',
-        "state.cancelBoxAction()")
+        "state.cancelBoxAction()",
+        "ScreenState::sharedCreateDefaults(")
+require(native_screen, "beginCreateDraft(Workspace& ws", "discardCreateDraft(Workspace& ws",
+        "if(createPending_)return; // use discardCreateDraft",
+        "if(surface_==Surface::Edit && createPending_) {")
+require(read("tests/test_gen5_party_box_parity.cpp"), "void sharedCreateRoute(",
+        "ui.beginCreateDraft(ws, *defaults, ok, error)", "ui.discardCreateDraft(ws, ok, error)")
 add_suite=read("tests/test_gen5_create_integration.cpp")
 require(add_suite,
         "addScreen.availableActions(workspace)",
@@ -688,7 +691,7 @@ require(native_screen, "std::array<EditableRow,43>",
         "case Field::MetLevel:return pk.metLevel();")
 require(shared_contract, "case FieldIdentity::HeldItem:",
         "case FieldIdentity::Ball:", "case FieldIdentity::MetLevel:")
-require(surface, "Gen V identity + encounter edits remain staged and reversible")
+require(surface, "Learnset legality is not evaluated", '"PID-LINKED / SUMMARY"')
 
 # Gen V identity/encounter parity is source-backed and independent from
 # future event/encounter legality. Each field flows through exact PK5 stage,
@@ -816,19 +819,15 @@ require(surface, "case Surface::MovePicker:", "drawMovePicker(",
 # Touch IDs and hitboxes are generated by the actual drawn modal rows.
 require(surface, "kGen5ActionTouchBase=77000",
         "kGen5FieldTouchBase=77100",
-        "kGen5DecreaseTouchBase=77200",
-        "kGen5IncreaseTouchBase=77300",
         "kGen5PartyTouchBase=77400",
         "screen.touchedButtonId(touch)",
         "screen.touchButtons.push_back(",
         "down|=HidNpadButton_A;",
-        "down|=HidNpadButton_Left;",
-        "down|=HidNpadButton_Right;",
         "screen.selectedPartyIndex=tap-kGen5PartyTouchBase;",
         "kGen5ActionTouchBase+static_cast<int>(i)",
-        "kGen5FieldTouchBase+static_cast<int>(index)",
-        "kGen5DecreaseTouchBase+static_cast<int>(index)",
-        "kGen5IncreaseTouchBase+static_cast<int>(index)")
+        "kGen5FieldTouchBase+G::kDetailsRows5[window.first+i]",
+        "kGen5FieldTouchBase+ivRow", "kGen5FieldTouchBase+moveRow",
+        "if(alreadyFocused && state.surface()==Surface::Edit)down|=HidNpadButton_A;")
 assert "openPokemonActionSheet(" not in surface
 assert "touch.justTouchedDown()" not in surface
 # The hitboxes must not override controller-confirmation or app-memory
@@ -942,7 +941,8 @@ require(native_bridge,"NativeField::Level,stat,value,error",
 require(native_session,"Field::Experience","experienceForLevel5(")
 require(read("include/Integration/Gen5/Gen5SharedReview.h"),"Field::Experience",
         "experienceForLevel5(")
-require(surface,"Generation V Level","Generation V Experience")
+require(surface,'const std::string label="Generation V "+std::string(row.label);',
+        "experienceForLevel5(")
 # Species changes must use exact native personal data and never reroll PID.
 require(native_stage,"case Field::Species:","value>649",
         "target.info->growthRate!=personal.info->growthRate",
@@ -954,7 +954,7 @@ require(native_review,"Field::Species,0,before.species(),after.species()")
 require(native_bridge,"NativeField::Species,stat,value,error")
 require(native_screen,'{Field::Species,0,"Species Dex ID",649}',
         "case Field::Species:return pk.species();")
-require(surface,"Generation V Species Dex ID (native-compatible only)",
+require(surface,"case F::Species:return std::string(Names::getSpeciesName(pk.species()));",
         "case Field::Species:name")
 require(read("tests/test_gen5_pk5_readonly.cpp"),
         "Field::Species,0,26","Field::Species,0,32")
@@ -1012,7 +1012,7 @@ require(surface,"kGen5NatureTouchBase=79500",
         "drawNaturePicker(screen,fb,state)",
         "state.acceptNaturePicker(error)",
         "state.cancelNaturePicker()",
-        "ScreenState::natureName(current->nature())")
+        "std::string(ScreenState::natureName(pk.nature()))")
 require(read("tests/test_gen5_readonly_save.cpp"),
         'natureName(12)=="Serious"',
         "assert(ui.openNaturePicker(error));",
@@ -1155,7 +1155,7 @@ require(read("tests/test_gen5_bag_screen.cpp"), "unavailableBag();", "fullPocket
 # Gen IV parity: shared box Move Pokemon reuses the verified destination
 # picker; origin dates are View-only (no dynamic_cast under -fno-rtti).
 require(surface, "state.moveDestination()", '"Move Pokemon - Choose Empty Box Slot"',
-        "originSummary5(*native)", "drawVerifiedSummary(screen,fb,&view,false,&*current);")
+        '{"Origin data",G::originSummary5(pk)}')
 assert "dynamic_cast" not in surface
 require(native_bridge, "append(Shared::Action::Move);")
 require(native_screen, "workspace.moveToEmptyBox(target_,")
