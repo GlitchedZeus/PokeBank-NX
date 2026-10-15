@@ -245,6 +245,22 @@ void testReturnSelection() {
     unsafe = selection;
     unsafe.gameId.clear();
     assert(!serializeGameLaunchReturnSelection(unsafe, text));
+
+    // A game that left the catalog is dropped silently (Home keeps its default focus).
+    auto catalog = [](std::string_view id) { return id == "emerald_gba" || id == "red_gb"; };
+    assert(gameLaunchReturnSelectionUsable(selection, catalog));
+    GameLaunchReturnSelection vanished = selection;
+    vanished.gameId = "retired_gba";
+    assert(serializeGameLaunchReturnSelection(vanished, text));
+    assert(parseGameLaunchReturnSelection(text, selection.savedAt, parsed));  // well-formed...
+    assert(!gameLaunchReturnSelectionUsable(parsed, catalog));                // ...but unusable
+    GameLaunchReturnSelection empty;
+    assert(!gameLaunchReturnSelectionUsable(empty, catalog));
+    // Indices in a record are bounded at parse time, so SaveSelectScreen's clamp fallback for a
+    // vanished card can never see a negative or huge value.
+    std::string hugeIndex = text;
+    hugeIndex.replace(hugeIndex.find("index=7"), 7, "index=70000");
+    assert(!parseGameLaunchReturnSelection(hugeIndex, selection.savedAt, parsed));
 }
 
 } // namespace

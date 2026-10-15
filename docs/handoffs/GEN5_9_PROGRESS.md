@@ -9,7 +9,7 @@ Physical Switch status of every NRO built from this branch: **NOT DEVICE TESTED*
 
 ## Gen I–V completion campaign checkpoint (Thread 2R)
 
-HEAD `cedc2f8` (draft PR #307). No candidate NRO is posted until the campaign ends; there will be ONE final NRO, and it is NOT DEVICE TESTED.
+HEAD `77ad7fb` (draft PR #307). No candidate NRO is posted until the campaign ends; there will be ONE final NRO, and it is NOT DEVICE TESTED.
 
 | Commit | Unit |
 | --- | --- |
@@ -21,6 +21,10 @@ HEAD `cedc2f8` (draft PR #307). No candidate NRO is posted until the campaign en
 | `b3f8871` | One Gen I–V Home party rule (`Integration/Common/HomePartyPreview.h`): species / level / form / shiny / gender, filled only where the format defines them |
 | `7251977` | Home preview contract needles restated for the adapter (old→new list in the message) |
 | `cedc2f8` | Gen V shared-panel captions are no longer than the Gen IV strings; caption glyph/length guard added |
+| `96a4468` | QA-F2: the three invalid one-time workflows are repaired (whitespace only) and gated to `workflow_dispatch` |
+| `a0b7220` | Merge of Thread C @ `cd2bbbff` (Review discard, DV reroll confirm, Gen II Clone, Gen IV bag layout, export separation tests) |
+| `181423a` | Merge of Thread L @ `50491e88` (bounded chain plan, opt-in return host, return focus) |
+| `77ad7fb` | Product Home shows the quit-route notice before launch (Thread L request), cached per launch target |
 
 Gen V audit items, verified in code with tests:
 - Exit guard: Browse with staged changes goes to ConfirmExit, where B stays, X reviews and Y discards and leaves (`test_gen5_readonly_save.cpp`).
@@ -44,7 +48,8 @@ Open requests:
 - Per the owner: no gender glyph on the Home icons.
 
 Remaining:
-- Further Thread C merges, plus the L and QA merges, when the coordinator says.
+- Further Thread C merges, and the QA merge once Thread 4's matrix is complete.
+- Wiring Gen III gender once Thread C publishes the accessor.
 - Final gates.
 - One final NRO.
 
