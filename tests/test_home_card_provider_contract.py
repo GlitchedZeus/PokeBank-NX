@@ -115,9 +115,20 @@ require(snapshot, "SnapshotState::Stale", '"Linked save file is missing."',
         '"Current save party"')
 forbid(snapshot, "cached")
 
-# Gen I-III hub output stays on its accepted path (only provider text changed).
+# Gen I-III hub output stays on its accepted path, and every generation fills
+# the SAME Home party fields (species/level/form/shiny/gender) through the one
+# cross-generation adapter (campaign directive; QA-F5 follow-up).
 require(ui, ': "Choose a Save Instance to view its party.";',
-        "addParty(i, party[i].species, party[i].level, 0, false);",
+        "addSlot(i, Preview::fromGen1(party[i]));",
+        "addSlot(i, Preview::fromGen2(party[i]));",
+        "addSlot(i, Preview::fromGen3(party[i]));",
+        "addSlot(i, PokeVault::Integration::HomePartyPreview::fromGen3(party[i]));",
         '? "Current save party" : "No active party Pokémon.";')
+forbid(ui, "addParty(i, party[i].species, party[i].level, 0, false);",
+       "addParty(i, party[i].species, 0, 0, false);")
+require(text("include/Integration/Gen4/Gen4GameCardPreview.h"),
+        "s.party[i]=HomePartyPreview::fromGen4(party[i]);")
+forbid(text("include/Integration/Gen5/Gen5GameCardPreview.h"),
+       "{slot.species,slot.level,0,slot.shiny}")
 
 print("Home card providers/snapshot contract: PASS")

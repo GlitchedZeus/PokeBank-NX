@@ -25,6 +25,10 @@ struct HomeCardPartySlot {
     uint8_t level = 0; // 0 = the native record exposes no level for previews
     uint8_t form = 0;
     bool shiny = false;
+    // 0 male / 1 female / 2 genderless; GenderUnknown when the format (Gen I)
+    // or the adapter (Gen III, no pinned personal table) does not define it.
+    static constexpr uint8_t GenderUnknown = 0xFF;
+    uint8_t gender = GenderUnknown;
 };
 
 enum class SnapshotState : uint8_t {

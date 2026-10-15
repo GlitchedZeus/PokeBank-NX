@@ -46,7 +46,8 @@ void stampBlocks(std::vector<uint8_t>& sav) {
     }
 }
 
-struct PartyMember { uint16_t species; uint8_t level; bool shiny; uint32_t pid; };
+struct PartyMember { uint16_t species; uint8_t level; bool shiny; uint32_t pid; uint8_t form = 0;
+                     uint8_t gender = 0; };
 
 // Pokemon Black (version 21) with an explicit party.
 std::vector<uint8_t> makeBlack(const std::vector<PartyMember>& party, bool newGame = false) {
@@ -71,6 +72,7 @@ std::vector<uint8_t> makeBlack(const std::vector<PartyMember>& party, bool newGa
         C::write16(pk, 8, party[i].species);
         C::write16(pk, 12, 12345);
         C::write16(pk, 14, 54321);
+        pk[0x40] = static_cast<uint8_t>((party[i].form << 3) | (party[i].gender << 1));
         pk[0x8C] = party[i].level;
         const auto encrypted = C::encryptCandidate(pk);
         std::copy(encrypted.begin(), encrypted.end(),
@@ -125,7 +127,8 @@ void currentSaveOnHomeWithoutEditor(const std::string& root) {
     for (std::string provider : {"DraStic", "melonDS", "RetroArch", "Manual"}) {
         Fixture f(root + "/" + provider);
         assert(::mkdir(f.dir.c_str(), 0700) == 0);
-        writeFile(f.save, makeBlack({{25, 50, true, shinyPid()}, {133, 12, false, 0xABCDEF01}}),
+        writeFile(f.save, makeBlack({{25, 50, true, shinyPid()}, {133, 12, false, 0xABCDEF01},
+                             {585, 20, false, 0x12345678, 2, 1}}), // female Deerling Autumn
                   1000000);
         const auto probe = G::inspectSourceFile(f.save, provider);
         assert(probe.ready());
@@ -140,12 +143,15 @@ void currentSaveOnHomeWithoutEditor(const std::string& root) {
         assert(snapshot->trainerName == "NX");
         assert(snapshot->trainerGenderKnown && snapshot->trainerGender == 1);
         assert(snapshot->dexSeen == 1 && snapshot->dexCaught == 1 && snapshot->dexTotal == 649);
-        assert(snapshot->partyCount == 2);
+        assert(snapshot->partyCount == 3);
         assert(snapshot->party[0].species == 25 && snapshot->party[0].level == 50 &&
-               snapshot->party[0].shiny);
+               snapshot->party[0].shiny && snapshot->party[0].form == 0);
         assert(snapshot->party[1].species == 133 && snapshot->party[1].level == 12 &&
                !snapshot->party[1].shiny);
-        assert(snapshot->party[2].species == 0);
+        // The party strip keeps the native form (QA: no form drop).
+        assert(snapshot->party[2].species == 585 && snapshot->party[2].form == 2 &&
+               snapshot->party[2].gender == 1 && snapshot->party[0].gender == 0);
+        assert(snapshot->party[3].species == 0);
         assert(snapshot->contentFingerprint == probe.contentFingerprint);
         // Same wording as Gen I-IV: current, never "cached".
         assert(S::homePartyStatus(*snapshot) == "Current save party");

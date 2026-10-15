@@ -1017,13 +1017,12 @@ require(native_screen,"Surface::CloneDestination",
         "workspace.cloneToEmptyBox(target_",
         "workspace.removeBox(target_.box,target_.slot",
         "workspace=std::move(snapshot)")
-require(surface,"kGen5CloneTouchBase=80000",
-        "case Surface::CloneDestination:",
+require(surface,"void stageCloneOrMoveByKeypad(TrainerViewScreen& screen)",
+        '"Clone to Gen V Box"', '"Move to Gen V Box"',
         "case Surface::ConfirmRemoveBox:",
-        "state.confirmClone(staged",
+        "!state.confirmClone(staged,",
         "state.confirmRemoveBox(staged",
-        "drawCloneDestination(screen,fb,state,staged)",
-        '"Y","Stage Remove"',
+        '"Release this Pokemon?"', '"Y","Confirm Release"',
         "Box clone/remove staged only; no source writes")
 require(read("tests/test_gen5_staged_save_candidate.cpp"),
         "boxOps.cloneToEmptyBox(",
@@ -1111,9 +1110,9 @@ require(trainer, "staged_.bagPresentation()")
 assert "writeFile" not in bag_model and "fopen" not in bag_model
 require(read("tests/test_gen5_bag_screen.cpp"), "unavailableBag();", "fullPocketRefusesAdd();")
 
-# Gen IV parity: shared box Move Pokemon reuses the verified destination
-# picker; origin dates are View-only (no dynamic_cast under -fno-rtti).
-require(surface, "state.moveDestination()", '"Move Pokemon - Choose Empty Box Slot"',
+# Gen IV parity: Clone and Move Pokemon use the Gen IV box / slot keypads
+# over the verified empty-destination check; origin dates are View-only (no dynamic_cast under -fno-rtti).
+require(surface, "state.moveDestination()", '"Move to Slot"',
         )
 assert "dynamic_cast" not in surface
 require(native_bridge, "append(Shared::Action::Move);")
@@ -1185,4 +1184,19 @@ require(read("tests/test_gen5_readonly_save.cpp"), "ui.editDraft().stage(GField:
         'ui.editDraft().stageName(GField::NicknameText,"NXPIKA",error)', "ui.speciesRefusal(1)")
 require(read("tests/test_gen5_party_box_parity.cpp"),
         'ui.recreateCreateSpecies(ws, 1, false, "Bulbasaur", "Pikachu", ok, error)')
+# Glyph/overflow guard: every Gen V adapter caption drawn into a shared fixed-width
+# panel is no longer (in characters) than the hardware-accepted Gen IV string in
+# the same slot, and uses only glyphs Gen IV already draws (ASCII, — • é).
+import re as _re
+_gen4_surface = read("src/UI/Gen4SharedPokemonSurface.inc")
+def _adapter_string(text, key):
+    match = _re.search(key + r'\s*=\s*"([^"]*)"', text)
+    assert match, f"missing adapter string {key}"
+    return match.group(1)
+for _key in ("kMovePickerSubtitle", "kMoveEditorSubtitle", "kMoveLegend", "kMoveHintEditable",
+             "kHeldItemTitle", "kMovePickerTitle", "kDataTitle"):
+    _gen5_text = _adapter_string(surface, _key)
+    _gen4_text = _adapter_string(_gen4_surface, _key)
+    assert len(_gen5_text) <= len(_gen4_text), f"{_key} longer than Gen IV: {_gen5_text!r}"
+    assert all(ord(c) < 128 or c in "—•é" for c in _gen5_text), f"{_key} glyph: {_gen5_text!r}"
 print("Gen V read-only shared UI guard contracts: PASS")

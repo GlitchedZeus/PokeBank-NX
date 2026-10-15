@@ -177,6 +177,72 @@ int main() {
                                   "sdmc:/roms/gb/Pokemon Red.gb", linkError));
     assert(linkError.find("different Pok") != std::string::npos);
 
+    // Launch/return: Product Home focus is recorded at handoff and restored exactly once.
+    resetTree();
+    {
+        GameLaunchReturnSelection selection;
+        selection.profileIdentity = "profile";
+        selection.gameId = "red_gb";
+        selection.sourceIdentity = "retroarch|sdmc:/retroarch/saves/Pokemon Red.srm";
+        selection.sourceKind = 2;
+        selection.titleIndex = 3;
+        selection.savedAt = 1'760'000'000;
+        std::string error;
+        assert(saveGameLaunchReturnSelection(selection, error) && error.empty());
+        const fs::path record = "sdmc:/switch/PokeBank-NX/config/launch_return_selection.cfg";
+        assert(fs::exists(record));
+        assert(!fs::exists(record.string() + ".tmp"));
+        GameLaunchReturnSelection restored;
+        assert(consumeGameLaunchReturnSelection(selection.savedAt + 120, restored));
+        assert(restored.gameId == "red_gb" && restored.titleIndex == 3 &&
+               restored.sourceIdentity == selection.sourceIdentity);
+        assert(!fs::exists(record));                         // consumed
+        assert(!consumeGameLaunchReturnSelection(selection.savedAt + 121, restored));
+        // A corrupt record is still removed so it can never pin focus on later starts.
+        {
+            std::ofstream out(record, std::ios::binary | std::ios::trunc);
+            out << "garbage";
+        }
+        assert(!consumeGameLaunchReturnSelection(selection.savedAt, restored));
+        assert(!fs::exists(record));
+        // Overwrite keeps only the newest handoff.
+        assert(saveGameLaunchReturnSelection(selection, error));
+        selection.gameId = "blue_gb";
+        assert(saveGameLaunchReturnSelection(selection, error));
+        assert(consumeGameLaunchReturnSelection(selection.savedAt, restored) &&
+               restored.gameId == "blue_gb");
+        GameLaunchReturnSelection unsafe = selection;
+        unsafe.gameId = "bad\ngame";
+        assert(!saveGameLaunchReturnSelection(unsafe, error) && !error.empty());
+        assert(!fs::exists(record));
+    }
+
+    // Quit route preview for the resolved descriptors (no return-host opt-in on host builds).
+    resetTree();
+    {
+        GameLaunchDescriptor drastic;
+        drastic.backend = GameLaunchBackend::HomebrewNro;
+        drastic.state = GameLaunchState::Ready;
+        drastic.providerId = "drastic";
+        drastic.launcherPath = "sdmc:/switch/DrasticDS.nro";
+        drastic.contentPath = "sdmc:/switch/drastic/games/Pokemon Platinum.nds";
+        assert(previewGameLaunchQuitRoute(drastic) == GameLaunchQuitRoute::EmulatorLauncher);
+        GameLaunchDescriptor retro;
+        retro.backend = GameLaunchBackend::RetroArch;
+        retro.state = GameLaunchState::Ready;
+        retro.corePath = "sdmc:/retroarch/cores/mgba_libretro_libnx.nro";
+        retro.contentPath = "sdmc:/roms/gba/Pokemon Emerald.gba";
+        assert(previewGameLaunchQuitRoute(retro) == GameLaunchQuitRoute::LoaderDefault);
+        GameLaunchDescriptor title;
+        title.backend = GameLaunchBackend::SwitchTitle;
+        title.state = GameLaunchState::Ready;
+        assert(previewGameLaunchQuitRoute(title) == GameLaunchQuitRoute::None);
+        // Host builds never hand off, so no return selection may be recorded by UI.cpp.
+        std::string launchError;
+        assert(!requestGameLaunch(retro, launchError) && !launchError.empty());
+        assert(!gameLaunchHandoffRequested());
+    }
+
     fs::remove_all("sdmc:");
     std::cout << "RetroArch launch resolver ambiguity/family contract: PASS\n";
     return 0;
