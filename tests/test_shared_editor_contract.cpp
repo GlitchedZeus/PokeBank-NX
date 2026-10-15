@@ -423,6 +423,52 @@ void surfaceSourceContracts() {
     static_assert(Shared::layoutFor(Shared::Generation::Gen3).detailsRows == 15);
 }
 
+// Owner hardware rule (every Gen I-V editor field): D-pad Left/Right and the
+// stick only move focus; a value changes only after A + picker/keypad. Gen IV/V
+// share Workspace::navigate (pure, navigationContract above). Gen I-III keep
+// their accepted editors: every live workspace handler routes Left/Right to its
+// pure focus function, never to a value setter.
+void leftRightNeverMutatesGen1To3() {
+    const auto gen3 = read("src/UI/Gen3SharedPokemonSurface.inc");
+    for (const char* needle : {
+             "? Shared::passiveViewMoveColumn(Shared::Generation::Gen3, state.focus, -1)",
+             ": Shared::moveRowColumn(Shared::Generation::Gen3, state.focus, -1);",
+             "? Shared::passiveViewMoveColumn(Shared::Generation::Gen3, state.focus, 1)",
+             ": Shared::moveRowColumn(Shared::Generation::Gen3, state.focus, 1);"})
+        contains(gen3, needle);
+    const auto gen2 = read("src/UI/Gen2UnifiedPokemonWorkspace.inc");
+    contains(gen2, "if (nav & HidNpadButton_Left) unified.focus = Unified::moveRowColumn("
+                   "Unified::Generation::Gen2, unified.focus, -1, unified.crystal);");
+    contains(gen2, "if (nav & HidNpadButton_Right) unified.focus = Unified::moveRowColumn("
+                   "Unified::Generation::Gen2, unified.focus, 1, unified.crystal);");
+    contains(gen2, "unified.focus = Unified::passiveViewMoveColumn(Unified::Generation::Gen2, "
+                   "unified.focus, -1, unified.crystal);");
+    const auto gen2Parity = read("src/UI/Gen2SharedSurfaceParity.inc");
+    contains(gen2Parity, "unified.focus = Unified::passiveViewMoveColumn(Unified::Generation::Gen2, "
+                         "unified.focus, -1, unified.crystal);");
+    contains(gen2Parity, "unified.focus = Unified::passiveViewMoveColumn(Unified::Generation::Gen2, "
+                         "unified.focus, 1, unified.crystal);");
+    const auto gen1 = read("src/UI/Gen1PokemonEditorOverlayFoundation.inc");
+    contains(gen1, "if (down & HidNpadButton_Left) foundation.focus = Foundation::moveFocus("
+                   "foundation.focus, Foundation::Direction::Left);");
+    contains(gen1, "if (down & HidNpadButton_Right) foundation.focus = Foundation::moveFocus("
+                   "foundation.focus, Foundation::Direction::Right);");
+    // No Gen I-V surface advertises Left/Right as a value control.
+    for (const char* file : {"src/UI/Gen1PokemonEditorOverlayFoundation.inc",
+                             "src/UI/Gen1PokemonEditorFoundationHardwareFix.inc",
+                             "src/UI/Gen2UnifiedPokemonWorkspace.inc",
+                             "src/UI/Gen2HardwareFinalFix.inc",
+                             "src/UI/Gen3SharedPokemonSurface.inc",
+                             "src/UI/SharedPokemonEditorSurface.inc",
+                             "src/UI/Gen4SharedPokemonSurface.inc",
+                             "src/UI/Gen5SharedReadOnlySurface.inc"}) {
+        const auto text = read(file);
+        absent(text, "{\"Left/Right\", \"Adjust\"}");
+        absent(text, "{\"Left/Right\",\"Adjust\"}");
+        absent(text, "{\"Left/Right\", \"Change\"}");
+    }
+}
+
 } // namespace
 
 int main() {
@@ -434,5 +480,6 @@ int main() {
     nativeCatalogContracts();
     actionMenuContract();
     surfaceSourceContracts();
+    leftRightNeverMutatesGen1To3();
     std::cout << "Shared Pokemon editor UI contract (Gen I-V, 14 owner checks): PASS\n";
 }
