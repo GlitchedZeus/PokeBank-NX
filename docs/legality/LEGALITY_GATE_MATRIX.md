@@ -96,8 +96,8 @@ pushed head. Their checks appear on the PR because they run on the same head SHA
 | 40 | host-tests.yml / Host tests (GCC) | Full host suite, RSE regression, ASan/UBSan | a | Yes | CI success (31 min) |
 | 41 | legality-data-generation.yml | Regenerates six tables and commits them (contents: write) | c | Not enabled. It is a maintenance generator with no pass/fail comparison, and its push trigger commits to its own branch | Replayed in a scratch copy: all six tables match the committed ones byte for byte. Two one-shot migrations exit 1 (anchors gone), and one would add a second `ribbonNational()` to Pokemon.h |
 
-Summary: 41 rows. 17 are **a**, 20 are **b**, 3 are **c**, and 1 needs an owner
-decision. Every **b** row now runs on the exact head of this branch, either in its own
+Summary: 41 rows. 17 are **a**, 20 are **b** and 4 are **c** (one of them, row 11, only
+because Gen VI is frozen). Every **b** row now runs on the exact head of this branch, either in its own
 workflow or inside L2 final acceptance (rows 8-10).
 
 ## Pins that will move with the Gen III/IV analyzer work
