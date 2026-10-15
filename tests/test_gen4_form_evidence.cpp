@@ -41,6 +41,12 @@ int main() {
         assert(!isFormValid(game, 201, 28));
     }
 
+    // Mothim keeps its Burmy cloak form value (0-2) in every Gen IV game.
+    for (const char* game : {"diamond_nds", "pearl_nds", "platinum_nds", "heartgold_nds", "soulsilver_nds"}) {
+        assert(isFormValid(game, 414, 2));
+        assert(!isFormValid(game, 414, 3));
+    }
+
     assert(!isFormValid("unknown", 479, 0));
     assert(!isFormValid("platinum_nds", 494, 0));
 

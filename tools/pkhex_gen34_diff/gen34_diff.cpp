@@ -1,5 +1,5 @@
 // Reads the Gen III/IV oracle's lines on stdin and prints PokeBank NX's verdict:
-//   <id> INVALID|NOPROBLEMS|INCOMPLETE|LOADFAIL <coverage> ; <invalid issue> | <invalid issue> ...
+//   <id> INVALID|NOPROBLEMS|INCOMPLETE|LOADFAIL <coverage> ; <invalid issue> | ... | W: <warning issue> | ...
 // Each record is re-encrypted and loaded through the production entity types
 // (Pokemon3FRLG for PK3, Pokemon4ReadOnly + Pokemon4ReadOnlyView for PK4), then
 // analyzed with the save-format group and the exact source game of its cartridge.
@@ -65,6 +65,11 @@ void print(const std::string& id, const Legality::Report& report) {
     for (const auto& issue : report.issues) {
         if (issue.severity != Legality::Severity::Invalid) continue;
         std::cout << (first ? " " : " | ") << issue.text;
+        first = false;
+    }
+    for (const auto& issue : report.issues) {
+        if (issue.severity != Legality::Severity::Warning) continue;
+        std::cout << (first ? " " : " | ") << "W: " << issue.text;
         first = false;
     }
     std::cout << '\n';
