@@ -126,11 +126,40 @@ void gen1Routes() {
     assert(tracked == 2);
 }
 
+
+void lowSeverityRoutes() {
+    const auto foundation = read("src/UI/Gen1PokemonEditorOverlayFoundation.inc");
+    // X Stage Add resets the session exactly like the dialog's A Keep.
+    const auto stageX = between(foundation, "if (add && (down & HidNpadButton_X)) {", "if (down & HidNpadButton_B) {");
+    has(stageX, "if (ux3StageAdd(screen)) {");
+    has(stageX, "foundation.lastMainMode = UX2Mode::Closed;");
+    // The exit dialog only claims unsaved changes when the edit session is dirty.
+    const auto exitText = between(foundation, "void foundationDrawExitConfirm(", "drawGlyphButton(");
+    has(exitText, "foundationEditSessionDirty(screen)");
+    has(exitText, "No changes in this edit session.");
+
+    // Gen I Move picker: one width for every draw path and the drag region.
+    const auto ux3 = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc");
+    has(ux3, "constexpr int kGen1MovePickerW = 760;");
+    has(ux3, "touch, (1280 - kGen1MovePickerW) / 2 + 24, (672 - 520) / 2 + 86,");
+    lacks(ux3, "touch, 164, 162, 952,");
+    const auto fix = read("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc");
+    has(fix, "const int w = state.picker == UX2Picker::Species ? 1080 : kGen1MovePickerW;");
+
+    // Gen II Shiny toggle always reports the DVs it rewrote.
+    const auto gen2 = read("src/UI/Gen2PokemonEditorFoundation.inc");
+    const auto toggle = between(gen2, "void toggleShiny(", "void randomizeDVs(");
+    has(toggle, "\"Shiny off: DVs \" + describeDVChanges(before, dvs)");
+    has(toggle, "\"Shiny on: \" + changes");
+    has(toggle, "changed gender for this species ratio; \" + changes");
+}
+
 } // namespace
 
 int main() {
     modelContract();
     gen2Routes();
     gen1Routes();
+    lowSeverityRoutes();
     std::cout << "Gen I/II review discard confirmation, exit-dialog footer, stick handoff and Gen II picker entry: PASS\n";
 }

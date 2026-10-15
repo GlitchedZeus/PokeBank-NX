@@ -358,7 +358,16 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
     if (down & HidNpadButton_L) foundation.focus = Foundation::nextPanel(Foundation::nextPanel(foundation.focus));
     if (down & HidNpadButton_R) foundation.focus = Foundation::nextPanel(foundation.focus);
 
-    if (add && (down & HidNpadButton_X)) { ux3StageAdd(screen); return; }
+    if (add && (down & HidNpadButton_X)) {
+        // Same session reset as the dialog's A Keep: the next Create starts on Species, not on
+        // the previous draft's focus.
+        if (ux3StageAdd(screen)) {
+            foundation.lastMainMode = UX2Mode::Closed;
+            foundation.editBaseline.reset();
+            foundation.editExitConfirm = false;
+        }
+        return;
+    }
     if (down & HidNpadButton_B) {
         const auto exitKind = add ? ExitGuard::SessionKind::Create
                             : state.mode == UX2Mode::Edit ? ExitGuard::SessionKind::Edit
@@ -423,12 +432,17 @@ void foundationDrawExitConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const Color accent = create ? Colors::Primary : Colors::Orange;
     int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, title, accent);
 
+    // Edit always confirms (PokemonEditorExitGuard), so say what is actually at stake: a clean
+    // session has nothing to lose.
+    const bool dirty = !create && foundationEditSessionDirty(screen);
     fb.drawText(x + 28, cy,
-                create ? "Keep this new Pokémon?" : "This Pokémon has unsaved changes.",
+                create ? "Keep this new Pokémon?"
+                       : dirty ? "This Pokémon has unsaved changes." : "No changes in this edit session.",
                 Colors::Text);
     fb.drawText(x + 28, cy + 34,
                 create ? "Discard removes it; Back keeps editing."
-                       : "Discard loses them; Back keeps editing.",
+                       : dirty ? "Discard loses them; Back keeps editing."
+                               : "Save or Discard leaves it unchanged; Back keeps editing.",
                 Colors::TextDim, TextStyle::Caption);
 
     const int cbw = 160, cbh = TouchTargetMin, cby = y + h - cbh - 18;

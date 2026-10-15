@@ -503,6 +503,9 @@ void ux3DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         fb.drawText(rightX + 18, contentY + 420, "Fix [!] move before Stage Add", Colors::Warning, TextStyle::Caption);
 }
 
+// The Gen I Move picker panel width used by every draw path and its drag region.
+constexpr int kGen1MovePickerW = 760;
+
 void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
     auto& state = ux2StateFor(screen);
     auto& ux3 = ux3StateFor(screen);
@@ -749,8 +752,11 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
         state.pickerViewport.ensure(current, count, visible);
         const int maxFirst = TouchPickerViewport::maxFirst(count, visible);
         if (maxFirst > 0)
+            // Exactly the drawn list: the live Move picker is kGen1MovePickerW wide and centred
+            // (ux3DrawPicker list = panel x + 24, width w - 48, top y + 86).
             state.pickerScroll.updateVertical(
-                touch, 164, 162, 952, visible * 42, 42,
+                touch, (1280 - kGen1MovePickerW) / 2 + 24, (672 - 520) / 2 + 86,
+                kGen1MovePickerW - 48, visible * 42, 42,
                 state.pickerViewport.firstRow, maxFirst + 1);
         else
             state.pickerScroll.stop();
@@ -1007,7 +1013,7 @@ void drawOverlayUX(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     }
 
     if (state.picker != UX2Picker::None) {
-        const int pw = state.picker == UX2Picker::Species ? 1080 : 1000;
+        const int pw = state.picker == UX2Picker::Species ? 1080 : kGen1MovePickerW;
         const int ph = 520;
         ux3DrawPicker(screen, fb, (1280 - pw) / 2, (672 - ph) / 2, pw, ph);
     }

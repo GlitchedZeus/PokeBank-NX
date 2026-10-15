@@ -363,7 +363,7 @@ void drawFoundationPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     // underlying DETAILS/STATS/MOVES target before registering picker rows.
     screen.touchButtons.clear();
     // ux3DrawPicker applies the existing dimmer exactly once.
-    const int w = state.picker == UX2Picker::Species ? 1080 : 760;
+    const int w = state.picker == UX2Picker::Species ? 1080 : kGen1MovePickerW;
     constexpr int h = 520;
     ux3DrawPicker(screen, fb, (1280 - w) / 2, (672 - h) / 2, w, h);
     ux3DrawTouchNavBar(fb, state);
