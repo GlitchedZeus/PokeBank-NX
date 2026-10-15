@@ -13,5 +13,6 @@ include Makefile.host.product-ui
 include Makefile.host.exports
 include Makefile.host.home-providers
 include Makefile.host.gen14
+include Makefile.host.qa
 
 include Makefile.host.machine

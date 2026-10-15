@@ -1,0 +1,43 @@
+# Thread 4 — Gen I–V completion campaign checkpoint
+
+Owner-authorised continuous QA for Gen I–V (no Gen VI–IX). Updated after every verified unit.
+Resume rule: re-fetch, forward-merge the current #307 head (`claude/gen5-integration-20261014`)
+with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then continue below.
+
+## Current state
+
+| Item | Value |
+| --- | --- |
+| Lane branch | `audit/app-qa-20261014` |
+| Last #307 head merged | `6c366bd0c9ce95b1fdad1f3b5c0c268f02f02ad9` (merge `84c5ecd`; includes Thread C `cb88043`) |
+| Draft PR | #310 (CI evidence only, never merge; Thread 2R will merge this lane into #307) |
+| Continuation | `send_later` self check-in every ~60 min: "Thread 4 campaign: re-fetch, verify checkpoint docs/qa/CAMPAIGN_CHECKPOINT.md, continue" |
+
+## Phases
+
+| Phase | Status | Notes |
+| --- | --- | --- |
+| Merge #307 `44a976e` | done (`47a4794`) | one trivial `Makefile.host` include-line conflict, both lines kept; `make qa` (GCC) PASS on the merged tree |
+| Phase 5 — Gen I–V acceptance matrix (20 versions) | done (gate `qa-matrix`) | 420 cells: 415 PASS, 5 N/A, 0 FAIL; GCC = Clang; `docs/qa/GEN1_5_MATRIX.md` (hardware-only residue + cross-gen classification); found QA-F6 |
+| Phase 6 — independent audit of #307 | in progress | `fuzz_gen5_edits` (edit sequences + export) added: found QA-F4; Home snapshot cross-gen review found QA-F5 | shared editor surface, Gen IV/V adapters, PID-coordinated edits, Home snapshot cache; fuzz every new parser/adapter |
+
+## Open findings (owner)
+
+| ID | Severity | Owner | Status |
+| --- | --- | --- | --- |
+| QA-F2 invalid one-time workflow YAML | Medium | owner approval | open (repro in `qa-known-failures`) |
+| QA-F3b Gen II export publish via `rename()` | Low | C | FIXED (cb88043); regression in qa-contracts |
+| QA-F4 Gen V PID replay guard conjoins gender+ability links | Low | 2R | FIXED (bc83815); regression in test_qa_regressions |
+| QA-F5 Gen V Home party strip drops form (Gen IV keeps it) | Low | 2R | FIXED on #307; regression in test_qa_regressions |
+| QA-F6 Gen III release hint from a substring of the whole path | Low | C | open (repro `tests/test_qa_known_failures.cpp`) |
+
+## Log
+
+- 2026-10-15 07:12 UTC — campaign resumed; merged #307 `44a976e`.
+- 2026-10-15 — `fuzz_gen5_edits` (Gen V edit-sequence fuzzer) added; libFuzzer found QA-F4; 5-min soak clean on a retail-consistent seed.
+- 2026-10-15 — QA-F5: Gen V Home party strip drops form; repro on the real assignment -> HomeSnapshotCache -> homeCardSnapshot path (GCC and Clang, ASan/UBSan). Cross-gen shiny/level/form notes recorded in FINDINGS.md.
+- 2026-10-15 — merged #307 `85421cf` (Gen V Clone/Move keypads, Release dialog; UI-only, reviewed, no defect).
+- 2026-10-15 — `fuzz_gen5_sav` extended to the Gen V save diagnostics (inspectSave5 / unopenableCopyDiagnostic5 / formatSaveReport5) and the Home snapshot from a ready probe; deterministic 60 s (GCC ASan/UBSan) and libFuzzer 180 s (Clang) clean.
+- 2026-10-15 — merged #307 `6c366bd` (QA-F4 fix bc83815, Thread C merge cb88043). QA-F4/F5 moved to test_qa_regressions; QA-F3b regression and the production Gen I export transaction added to qa-contracts (18 paths); GCC and Clang green.
+- 2026-10-15 — QA-F2 repair prepared (YAML re-indent only + workflow_dispatch gating, verified with bash -n / Python compile) but the push of the three shared one-time-* workflows was blocked by the session's permission policy; held as a scratch patch pending the user's decision. `tools/qa/check_workflows.py` committed (reproduces QA-F2 on the current tree).
+- 2026-10-15 — Phase 5 matrix landed: 20 versions x 21 cells on real production paths, `qa-matrix` in `make qa` and App QA Contracts CI; libqacore object rule now tracks header dependencies (-MMD), after a stale object caused an ASan new-delete-type-mismatch; QA-F6 filed (C).
