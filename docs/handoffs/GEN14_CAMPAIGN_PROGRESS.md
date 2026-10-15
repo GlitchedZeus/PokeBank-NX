@@ -41,12 +41,12 @@ Each new test fails against the previous code unless marked "pinning".
 | V6 | Gen I panels use the shared shell geometry; shell assessment below | ce82066f | static_asserts in the Gen I workspace |
 | A1 | Gen IV review lists Bag changes (bag-only edits now have review lines) | 2b2be00f | `test_gen4_staged_pokemon_editor`, QA matrix review cell (7dec0c78) |
 | A2 | Gen III Japanese name lengths (5/5); Gen II/III strain-0 Pokerus with days refused | c934a945 | `test_gen3_staged_pokemon_editor`, `test_gsc_pokemon_editor` |
-| A3 | QA-F8 export half: Gen IV Release restores a slot's original empty record (clone+release is byte-identical) | this commit | `test_gen4_staged_pokemon_editor`; `qa-known-failures` F6/F7/F8 all fixed |
+| A3 | QA-F8 export half: Gen IV Release restores a slot's original empty record (clone+release is byte-identical) | f883f4d0 | `test_gen4_staged_pokemon_editor`; `qa-known-failures` F6/F7/F8 all fixed |
+| A4 | Gen IV Castform/Cherrim: only stored form 0 is writable; an existing battle form is shown and kept (PKHeX 6501f0ab FormInfo.BattleForms, FormConverter) | this commit | `test_gen4_mutable_pokemon` |
 
 Open / reported:
 - Coordinator one-liner: pass held/stick to `handleFoundationPassiveViewInput` (Gen I View stick parity).
 - Coordinator wording for `SaveSelectScreen.cpp:914-915` (QA-c).
-- Gen IV battle-only stored forms (Castform 4, Cherrim) — awaiting a decision.
 - Gen IV export drops a DraStic `.dsv` footer (raw `.sav` export); bag-only edits have no review line;
   Diamond vs Pearl not checked against the save (no pinned reference distinguishes them) — owner decision on `.dsv`.
 
