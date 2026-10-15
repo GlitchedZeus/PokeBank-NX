@@ -1451,10 +1451,12 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                 // serializing an app-owned backup and edited working copy.
                 // Candidate construction separately rejects ANY baseline
                 // byte change, including the unselected retail save copy.
-                std::vector<uint8_t> observed;
+                // The backup is the source FILE exactly as found (a .dsv keeps
+                // its metadata and DeSmuME footer); edited.sav stays raw.
+                std::vector<uint8_t> observed,observedFile;
                 std::string error,container;
-                if(!PokeVault::Integration::Gen5::readNormalizedSourceReadOnly(
-                       screen.backupDir,observed,error,&container)) {
+                if(!PokeVault::Integration::Gen5::readSourceFileReadOnly(
+                       screen.backupDir,observedFile,observed,error,&container)) {
                     screen.postStatus("Gen V export blocked: "+error,400);
                     return true;
                 }
@@ -1468,6 +1470,8 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                 request.timestamp=Utils::getTimestamp();
                 request.sourcePath=screen.backupDir;
                 request.observedSourceBytes=observed;
+                request.observedSourceFile=observedFile;
+                request.sourceContainer=container;
 #ifdef POKEVAULT_GIT_COMMIT
                 request.applicationSha=POKEVAULT_GIT_COMMIT;
 #endif
