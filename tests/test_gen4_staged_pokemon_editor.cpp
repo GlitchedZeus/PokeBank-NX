@@ -907,6 +907,34 @@ void testReviewLinesSkipEmptyToEmpty() {
     }
 }
 
+// QA-F8: a slot that started empty holds an encrypted blank in retail saves. Releasing a clone
+// placed there restores those original bytes, so the net no-op leaves the working copy (and any
+// export) byte-identical to the source and no review line; releasing a source Pokemon still
+// clears its slot.
+void testReleaseRestoresOriginalEmptyRecord() {
+    for (const auto layout : {Layout::DiamondPearl, Layout::Platinum, Layout::HeartGoldSoulSilver}) {
+        const auto source = makeSave(layout);
+        std::string error;
+        auto editor = Gen4StagedPokemonEditor::create(source, layout, gameId(layout), &error);
+        assert(editor);
+        assert(editor->stageCloneBoxPokemon(0, 0, 1, 0, &error));
+        assert(editor->hasChanges());
+        assert(editor->stageReleaseBoxPokemon(1, 0, &error));
+        assert(!editor->hasChanges());
+        assert(editor->stagedBytes() == source);
+        assert(PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor).empty());
+        const auto finalized = editor->finalizedBytes(&error);
+        assert(finalized == source);
+
+        // The original Pokemon's slot was never empty: Release still empties it.
+        assert(editor->stageReleaseBoxPokemon(0, 0, &error));
+        assert(editor->hasChanges());
+        const auto reparsed = Gen4ReadOnlySave::parse(editor->stagedBytes(), layout, gameId(layout), &error);
+        assert(reparsed && reparsed->box(0, 0).valid() && reparsed->box(0, 0).empty());
+        assert(PokeVault::Integration::Gen4::describeStagedSlotChanges(*editor).size() == 1);
+    }
+}
+
 int main() {
     testLayout(Layout::DiamondPearl);
     testLayout(Layout::Platinum);
@@ -915,6 +943,7 @@ int main() {
     testMixedPartitionMutationFootprint();
     testEmptySlotCreateTransaction();
     testCloneAndReleaseTransactions();
+    testReleaseRestoresOriginalEmptyRecord();
     testMoveSwapAndCrossBoxTransactions();
     testSharedHoldYGroupPlacementAtomicity();
     testGen4BagQuantityBoundsAndSourceImmutability();

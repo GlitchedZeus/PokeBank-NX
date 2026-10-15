@@ -39,8 +39,9 @@ Each new test fails against the previous code unless marked "pinning".
 | V7 | Picker paging matches the shared editor | 2849071b | `test_gen13_picker_paging` |
 | V4 | Gen I Edit working-copy draft (Keep stages, Discard drops) | 74d4b16f | `test_gen1_edit_draft` |
 | V6 | Gen I panels use the shared shell geometry; shell assessment below | ce82066f | static_asserts in the Gen I workspace |
-| A1 | Gen IV review lists Bag changes (bag-only edits now have review lines) | 2b2be00f | `test_gen4_export_transaction` |
+| A1 | Gen IV review lists Bag changes (bag-only edits now have review lines) | 2b2be00f | `test_gen4_staged_pokemon_editor`, QA matrix review cell (7dec0c78) |
 | A2 | Gen III Japanese name lengths (5/5); Gen II/III strain-0 Pokerus with days refused | c934a945 | `test_gen3_staged_pokemon_editor`, `test_gsc_pokemon_editor` |
+| A3 | QA-F8 export half: Gen IV Release restores a slot's original empty record (clone+release is byte-identical) | this commit | `test_gen4_staged_pokemon_editor`; `qa-known-failures` F6/F7/F8 all fixed |
 
 Open / reported:
 - Coordinator one-liner: pass held/stick to `handleFoundationPassiveViewInput` (Gen I View stick parity).
