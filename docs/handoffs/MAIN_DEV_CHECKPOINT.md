@@ -8,6 +8,8 @@ any SHA below.
 
 ## Active milestone
 
+**Gen I–V COMPLETION CAMPAIGN** (owner directive, 2026-10-15): continuous work by Threads 2R/C/L/4 until all Gen I–V software scope is done and every gate is green on the final commit, then ONE NRO. #307 head at campaign start: `c952565cf878705726b2541546d085fa9724108d`, CI 8/9 green with GCC host still running; internal build only.
+
 **URGENT: Gen V FAILED owner hardware acceptance** on candidate `fa9cfcea` (NRO `57b4ec2b…`). Thread 2 is repairing it on #307 (unfrozen). Gen VI/VII merges are on hold. Thread 3 is standing down so the usage quota goes to the repair.
 
 **Stage B — complete Gen V (Black, White, Black 2, White 2)** on PR #307.
