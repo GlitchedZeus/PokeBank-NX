@@ -119,10 +119,13 @@ Common::VerifiedExportResult publishVerifiedGen4Export(
         result.error = "No pending changes to export";
         return result;
     }
+    // With an Open snapshot the backup is the source FILE verbatim (a .dsv keeps its footer),
+    // re-read here and proven unchanged since Open; edited.sav is always the raw payload.
+    std::vector<uint8_t> sourceFile;
     if (request.sourceSnapshot) {
         std::string staleError;
         if (!gen4SourceUnchangedSinceOpen(request.sourcePath, *request.sourceSnapshot,
-                                          editor.originalBytes(), &staleError)) {
+                                          editor.originalBytes(), &staleError, &sourceFile)) {
             result.error = staleError;
             return result;
         }
@@ -146,6 +149,12 @@ Common::VerifiedExportResult publishVerifiedGen4Export(
     transaction.applicationSha = request.applicationSha;
     transaction.originalBytes = editor.originalBytes();
     transaction.editedBytes = edited;
+    if (request.sourceSnapshot) {
+        transaction.backupBytes = sourceFile;
+        transaction.sourceContainer = gen4SourceContainerLabel(request.sourceSnapshot->container);
+        transaction.editedContainer = gen4SourceContainerLabel(Gen4SourceContainer::Raw);
+        transaction.sourceSha256Scope = "0x80000_SAV4_PAYLOAD";
+    }
     transaction.changeLines = describeStagedSlotChanges(editor);
     transaction.validator = [&editor](std::span<const uint8_t> bytes, std::string& error) {
         return strictParse(bytes, editor, error).has_value();
