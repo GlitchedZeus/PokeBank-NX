@@ -37,13 +37,12 @@ void testFieldTable() {
         GEN6_CHECK(box(f) == State::Editable);
         GEN6_CHECK(party(f) == State::Editable);
     }
-    for (const auto f : {Field::IV, Field::EV, Field::Nature}) {
+    for (const auto f : {Field::IV, Field::EV, Field::Nature, Field::Level}) {
         GEN6_CHECK(box(f) == State::Editable);
-        GEN6_CHECK(party(f) == State::ReadOnly);
+        GEN6_CHECK(party(f) == State::Editable);  // party cached stats are recomputed
     }
     GEN6_CHECK(box(Field::Shiny) == State::Derived && party(Field::Shiny) == State::Derived);
-    GEN6_CHECK(box(Field::Level) == State::Derived && party(Field::Level) == State::ReadOnly);
-    GEN6_CHECK(box(Field::CalculatedStats) == State::Hidden && party(Field::CalculatedStats) == State::ReadOnly);
+    GEN6_CHECK(box(Field::CalculatedStats) == State::Hidden && party(Field::CalculatedStats) == State::Derived);
     for (const auto f : {Field::Species, Field::Form, Field::Gender, Field::Language, Field::Experience,
                          Field::Ability, Field::PersonalityId, Field::OriginGame, Field::MetLevel,
                          Field::MetLocation, Field::MetDate, Field::Egg, Field::EggLocation, Field::EggDate,
@@ -74,7 +73,8 @@ void testDescriptor() {
     GEN6_CHECK(!xy->source.saveOperations.supports(Cap::PokemonCreation));
     // Editor targets need a validated staged workspace.
     GEN6_CHECK(xy->fieldIsEditorTarget(Field::IV, RecordRegion::Box));
-    GEN6_CHECK(!xy->fieldIsEditorTarget(Field::IV, RecordRegion::Party));
+    GEN6_CHECK(xy->fieldIsEditorTarget(Field::IV, RecordRegion::Party));
+    GEN6_CHECK(!xy->fieldIsEditorTarget(Field::CalculatedStats, RecordRegion::Party));
     GEN6_CHECK(!oras->fieldIsEditorTarget(Field::Nickname, RecordRegion::Box));
     // Shared action menu: Remove only on boxed records; no Legality action.
     const auto boxActions = Provider::actionCapabilities(RecordRegion::Box);

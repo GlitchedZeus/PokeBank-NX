@@ -119,6 +119,8 @@ public:
     [[nodiscard]] bool black2White2() const noexcept { return black2White2_; }
     [[nodiscard]] size_t reviewPage() const noexcept { return reviewPage_; }
     [[nodiscard]] size_t cloneDestinationIndex() const noexcept { return cloneDestinationIndex_; }
+    // The destination picker is shared by Clone and Move Pokemon.
+    [[nodiscard]] bool moveDestination() const noexcept { return moveDestination_; }
     // The shared Add wizard retains accepted input only in this Trainer
     // session. Rejecting a native field or presentation need not make the
     // player enter all previous PK5 values again.
@@ -185,7 +187,12 @@ public:
             error.clear();
             return true;
         }
-        if(action==Action::Clone) {
+        if(action==Action::Clone || action==Action::Move) {
+            if(action==Action::Move && target_.region!=Workspace::Region::Box) {
+                error="Gen V Move is available for box slots only";
+                return false;
+            }
+            moveDestination_=action==Action::Move;
             cloneDestinationIndex_=workspace.firstEmptyCloneDestination();
             if(cloneDestinationIndex_>=720) {
                 error="Gen V has no verified empty box destination";
@@ -251,8 +258,12 @@ public:
             return false;
         }
         Workspace snapshot=workspace;
-        if(!workspace.cloneToEmptyBox(target_,cloneDestinationIndex_/30,
-                                      cloneDestinationIndex_%30,&error))return false;
+        const bool staged=moveDestination_
+            ? workspace.moveToEmptyBox(target_,cloneDestinationIndex_/30,
+                                       cloneDestinationIndex_%30,&error)
+            : workspace.cloneToEmptyBox(target_,cloneDestinationIndex_/30,
+                                        cloneDestinationIndex_%30,&error);
+        if(!staged)return false;
         if(!std::forward<Refresh>(refresh)(error)) {
             workspace=std::move(snapshot);
             if(error.empty())error="Gen V clone presentation rejected; stage rolled back";
@@ -345,13 +356,28 @@ public:
            surface_==Surface::ConfirmRemoveBox ||
            surface_==Surface::ConfirmCreateBox)surface_=Surface::Actions;
     }
-    void moveReviewPage(int delta,const Workspace& workspace) noexcept {
+    void moveReviewPage(int delta,const Workspace& workspace) {
         if(surface_!=Surface::Review)return;
-        const size_t records=workspace.changedRecordCount();
+        const size_t records=reviewRowCount(workspace);
         const size_t pages=std::max(size_t{1},
             (records+kReviewPageSize-1)/kReviewPageSize);
         if(delta>0 && reviewPage_+1<pages)++reviewPage_;
         else if(delta<0 && reviewPage_>0)--reviewPage_;
+    }
+
+    // Review lists staged PK5 records, then each verified Bag change, then
+    // each verified Trainer field change.
+    [[nodiscard]] static size_t reviewRowCount(const Workspace& workspace) {
+        return workspace.changedRecordCount()+workspace.bagReviewChanges().size()+
+               workspace.trainerReviewChanges().size();
+    }
+    // The Bag has no Pokemon action menu, so the shared Items panel opens the
+    // same Review surface directly (+). Nothing is staged or exported here.
+    [[nodiscard]] bool openReviewFromBrowse(const Workspace& workspace) noexcept {
+        if(surface_!=Surface::Browse || !workspace.hasChanges())return false;
+        reviewPage_=0;
+        surface_=Surface::Review;
+        return true;
     }
 
     void moveField(int delta) noexcept {
@@ -888,6 +914,7 @@ private:
     size_t locationPickerIndex_=0;
     size_t reviewPage_=0;
     size_t cloneDestinationIndex_=0;
+    bool moveDestination_=false;
     Gen5SharedPokemonSession draft_;
     std::optional<CreateRequest5> pendingCreateInput_;
 };

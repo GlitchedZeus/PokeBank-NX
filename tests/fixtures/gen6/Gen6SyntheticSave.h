@@ -150,6 +150,22 @@ inline std::vector<uint8_t> makeSave(const SaveSpec& spec = {}) {
     return save;
 }
 
+// A native MyItem block: zero-filled, with the given (pocket offset, item, count)
+// slots written in order per pocket. Caller re-signs the save.
+struct BagSlot { size_t pocketOffset; uint16_t item; uint16_t count; };
+inline void writeBag(std::vector<uint8_t>& save, Layout::Family family, const std::vector<BagSlot>& slots) {
+    const auto& block = Layout::blocks(family)[1];
+    std::fill_n(save.begin() + block.offset, block.length, uint8_t{0});
+    std::vector<size_t> used;
+    for (const auto& s : slots) {
+        size_t n = 0;
+        for (const size_t u : used) if (u == s.pocketOffset) ++n;
+        PK6::write16(save, block.offset + s.pocketOffset + n * 4, s.item);
+        PK6::write16(save, block.offset + s.pocketOffset + n * 4 + 2, s.count);
+        used.push_back(s.pocketOffset);
+    }
+}
+
 } // namespace Gen6Fixture
 
 #endif

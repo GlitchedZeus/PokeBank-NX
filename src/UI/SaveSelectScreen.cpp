@@ -2732,7 +2732,12 @@ namespace UI {
         }
 
         if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
-            hubNotice="Gen V Items are not yet supported. Original saves remain read-only.";
+            // Same explicit Save Instance choice as Open; the shared editor
+            // then starts on its native Bag. openIntent stays Items.
+            openGen5Setup(title.gameId,
+                "Choose a validated Gen V Save Instance to open its Bag; source stays read-only.");
+            gen5AssignOnly=false;
+            discoverGen5Candidates();
             return;
         }
         if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile) {

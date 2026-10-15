@@ -39,14 +39,17 @@ shared edit is `include Makefile.host.gen6` in `Makefile.host`.
 `Gen6EditorProvider::fieldState(field, region)`:
 
 - **Editable (Box and Party):** Nickname, Held item, Friendship (OT; handler friendship
-  unsupported), Pokérus, OT name, OT gender, TID, SID, Ball, Fateful encounter.
-- **Editable on Box records, ReadOnly on Party records:** IV, EV, Nature. Party records
-  cache battle stats, and this lane has no verified Gen VI stat recomputation, so the
-  serializer would otherwise leave stale stats.
-- **Derived:** Shiny (PID^TID^SID < 16), and Level for box records.
+  unsupported), Pokérus, OT name, OT gender, TID, SID, Ball, Fateful encounter, IV, EV,
+  Nature, Level (staged as the growth-rate minimum EXP).
+- **Party records:** any IV/EV/Nature/Level edit recomputes the cached level and battle
+  stats (`Gen6Stats.h`). The formula comes from PKHeX `PKM.LoadStats` and PKSM-Core
+  `PK6::statImpl`. Base stats come from a table generated from PKHeX `personal_ao`
+  (`docs/gen6/tools/gen_gen6_personal.py`), checked row by row against PKSM-Core
+  `personal6`. Current HP becomes max HP, as in both references; status is left
+  untouched. The verifier requires the exact recomputation.
+- **Derived:** Shiny (PID^TID^SID < 16), and calculated stats on party records.
 - **ReadOnly:** Species, Form, Gender, Language, EXP, Ability, PID, Origin game, Met/Egg
-  data, Moves/PP/PP Ups, move compatibility, legality and provenance. Party Level and
-  calculated stats are also ReadOnly.
+  data, Moves/PP/PP Ups, move compatibility, legality and provenance.
 - **Hidden:** DV, Stat Exp, AV, Effort level, Stat nature.
 
 The staged session enforces the same table. A test drives every field in both
@@ -71,7 +74,7 @@ regions and asserts that a field stages only if it is Editable.
 |---|---|---|---|
 | PK6 format | 100% | 100% (host, GCC/Clang, ASan/UBSan, PKSM differential) | 0%: NOT DEVICE TESTED |
 | SAV6 format (Trainer/Party/Boxes) | 90% (Bag, Pokédex and box names not parsed) | 90% | 0% |
-| Staged Edit/Clone/Remove + export | 85% (Create unsupported by design; party Remove unsupported) | 85% | 0% |
+| Staged Edit/Clone/Remove + export | 90% (Create unsupported by design; party Remove unsupported) | 90% | 0% |
 | Shared editor plug-in | 60% (provider done; UI registration pending Thread 2) | provider 100%, UI 0% | 0% |
 | Save sources | 60% (model and validation done; Save Instances registration pending) | 70% | 0% |
 
@@ -81,7 +84,5 @@ No NRO contains Gen VI yet: the native `Makefile` (Thread 2) does not list
 ## Still missing / next
 
 - Shared registration and UI wiring (requests 01–02).
-- Bag (MyItem block 1), Pokédex and box names. These need cited pouch tables.
-- Party stat recomputation, which would let IV/EV/Nature become editable on party
-  records. It needs verified Gen VI base stats.
+- Box-name editing and Pokédex editing (read-only readouts exist in Gen6Readouts.h).
 - Real-save confirmation by the owner. Synthetic fixtures only so far.

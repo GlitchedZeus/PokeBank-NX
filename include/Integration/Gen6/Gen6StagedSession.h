@@ -2,6 +2,7 @@
 #define POKEBANK_GEN6_STAGED_SESSION_H
 
 #include "Integration/Common/VerifiedStagedExport.h"
+#include "Integration/Gen6/Gen6Bag.h"
 #include "Integration/Gen6/Gen6ExactFormatEditorProvider.h"
 #include "Integration/Gen6/Gen6Save.h"
 
@@ -100,8 +101,19 @@ public:
     }
 
     bool undo(SlotRef slot) noexcept { return entries_.erase(slot) != 0; }
-    void clear() noexcept { entries_.clear(); }
-    [[nodiscard]] bool hasChanges() const noexcept { return !entries_.empty(); }
+    void clear() noexcept {
+        entries_.clear();
+        if (bag_) bag_->discard();
+    }
+    [[nodiscard]] bool hasChanges() const noexcept { return !entries_.empty() || bagDirty(); }
+
+    // Staged native Bag (MyItem block). Opened on first use from the immutable
+    // source; nullptr (with error) when the source bag is not fully recognized.
+    [[nodiscard]] Gen6StagedBag* bag(std::string* error = nullptr) {
+        if (!bag_) bag_ = Gen6StagedBag::create(source_, error);
+        return bag_ ? &*bag_ : nullptr;
+    }
+    [[nodiscard]] bool bagDirty() const noexcept { return bag_ && bag_->dirty(); }
     [[nodiscard]] size_t changeCount() const noexcept { return entries_.size(); }
     [[nodiscard]] std::vector<StagedChange> changes() const;
     [[nodiscard]] std::vector<std::string> changeLines() const;
@@ -127,6 +139,7 @@ private:
 
     Gen6Save source_;
     std::map<SlotRef, Entry> entries_;
+    std::optional<Gen6StagedBag> bag_;
 };
 
 // Independent verifier (also used by tests with tampered images): `edited`
@@ -134,9 +147,13 @@ private:
 // from `source` must be (a) inside a staged record's range, at a plain offset
 // the change kind is allowed to touch, or (b) the u16 checksum of a block that
 // owns a staged record. Every staged record must decode to its staged plain.
+// With a non-empty `stagedBagBlock`, the MyItem block must equal it, decode
+// strictly and differ from the source only inside pocket slot arrays (plus block
+// 1's CRC); with an empty one the bag must be byte-identical to the source.
 [[nodiscard]] bool verifyWorkingCopy(const Gen6Save& source, std::span<const uint8_t> edited,
                                      const std::vector<StagedChange>& changes,
-                                     std::string* error = nullptr);
+                                     std::string* error = nullptr,
+                                     std::span<const uint8_t> stagedBagBlock = {});
 
 } // namespace PokeVault::Integration::Gen6
 

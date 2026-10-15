@@ -278,6 +278,15 @@ public:
     void setNicknamedFlag(bool v) noexcept {
         write32(plain_, 0x74, (iv32() & 0x7FFFFFFFu) | (v ? 0x80000000u : 0u));
     }
+    void setExperience(uint32_t v) noexcept { write32(plain_, 0x10, v); }
+    // Party-only cached battle data: level byte 0xEC, current HP 0xF0, then
+    // HP max/Atk/Def/Spe/SpA/SpD at 0xF2..0xFD (PKHeX PK6.cs, PKSM-Core PK6::partyStat).
+    void setPartyStats(uint8_t level, uint16_t currentHp, const std::array<uint16_t, 6>& stats) noexcept {
+        if (!partyForm()) return;
+        plain_[0xEC] = level;
+        write16(plain_, 0xF0, currentHp);
+        for (size_t i = 0; i < 6; ++i) write16(plain_, 0xF2 + 2 * i, stats[i]);
+    }
     void setOriginalTrainerFriendship(uint8_t v) noexcept { plain_[0xCA] = v; }
     void setBall(uint8_t v) noexcept { plain_[0xDC] = v; }
     void setOriginalTrainerGender(uint8_t v) noexcept {

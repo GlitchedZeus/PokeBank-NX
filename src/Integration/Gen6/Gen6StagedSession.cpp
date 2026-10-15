@@ -1,4 +1,5 @@
 #include "Integration/Gen6/Gen6StagedSession.h"
+#include "Integration/Gen6/Gen6Stats.h"
 
 #ifdef __SWITCH__
 #include "Utils/PokeBankPaths.h"
@@ -38,6 +39,7 @@ std::array<uint8_t, PK6::PartySize> editMask(RecordRegion region) {
     if (editable(Field::HeldItem, region)) range(0x0A, 0x0C);
     if (editable(Field::TrainerId, region)) range(0x0C, 0x0E);
     if (editable(Field::SecretId, region)) range(0x0E, 0x10);
+    if (editable(Field::Level, region)) range(0x10, 0x14);  // EXP
     if (editable(Field::Nature, region)) m[0x1C] = 0xFF;
     if (editable(Field::FatefulEncounter, region)) m[0x1D] |= 0x01;
     if (editable(Field::EV, region)) range(0x1E, 0x24);
@@ -49,6 +51,14 @@ std::array<uint8_t, PK6::PartySize> editMask(RecordRegion region) {
     if (editable(Field::Ball, region)) m[0xDC] = 0xFF;
     if (editable(Field::OriginalTrainerGender, region)) m[0xDD] |= 0x80;
     return m;
+}
+
+// True when a battle-stat input (EXP, nature, EVs, IV bits 0..29) differs.
+bool statInputsChanged(std::span<const uint8_t> a, std::span<const uint8_t> b) {
+    for (size_t i = 0x10; i < 0x14; ++i) if (a[i] != b[i]) return true;
+    if (a[0x1C] != b[0x1C]) return true;
+    for (size_t i = 0x1E; i < 0x24; ++i) if (a[i] != b[i]) return true;
+    return (PK6::read32(a, 0x74) & 0x3FFFFFFFu) != (PK6::read32(b, 0x74) & 0x3FFFFFFFu);
 }
 
 bool allowedName(std::string_view text) {
@@ -146,6 +156,14 @@ bool Gen6StagedSession::stageValue(SlotRef slot, Field field, uint32_t value, si
                     " -> " + std::to_string(value);
             rec->setIv(index, static_cast<uint8_t>(value));
             break;
+        case Field::Level: {
+            const auto exp = Stats::experienceForLevel(*rec, static_cast<uint8_t>(value > 255 ? 0 : value));
+            if (value < 1 || value > 100 || !exp)
+                return fail("Gen VI level must be 1-100 for a species/form with verified growth data");
+            note += "level " + std::to_string(Stats::level(*rec).value_or(0)) + " -> " + std::to_string(value);
+            rec->setExperience(*exp);
+            break;
+        }
         case Field::Pokerus:
             if (value > 0xFF) return fail("Gen VI Pokerus byte out of range");
             note += "Pokerus " + std::to_string(rec->pokerus()) + " -> " + std::to_string(value);
@@ -173,6 +191,19 @@ bool Gen6StagedSession::stageValue(SlotRef slot, Field field, uint32_t value, si
             break;
         default:
             return fail("Gen VI field has no numeric staged editor");
+    }
+    if (slot.region == RecordRegion::Party) {
+        const auto base = original(slot);
+        if (base.pokemon && statInputsChanged(base.pokemon->plain(), rec->plain())) {
+            if (!Stats::refreshParty(*rec))
+                return fail("Gen VI party stats cannot be recomputed for this species/form");
+            note += " (party stats recomputed)";
+        } else if (base.pokemon) {
+            // Inputs back at their original values: restore the original cached block.
+            std::array<uint16_t, 6> stats{};
+            for (size_t i = 0; i < 6; ++i) stats[i] = base.pokemon->stat(i + 1);
+            rec->setPartyStats(base.pokemon->statLevel(), base.pokemon->stat(0), stats);
+        }
     }
     commitEdit(slot, std::move(*rec), std::move(note));
     if (error) error->clear();
@@ -266,6 +297,14 @@ std::vector<std::string> Gen6StagedSession::changeLines() const {
     std::vector<std::string> lines;
     for (const auto& [slot, entry] : entries_)
         lines.insert(lines.end(), entry.notes.begin(), entry.notes.end());
+    if (bagDirty()) {
+        const auto before = *decodeBag6(source_.family(), bag_->original());
+        const auto after = bag_->current();
+        for (size_t p = 0; p < BagPocket6Count; ++p)
+            if (before[p] != after[p])
+                lines.push_back(std::string("Bag ") + bagPocketName6(p) + ": " + std::to_string(before[p].size()) +
+                                " -> " + std::to_string(after[p].size()) + " stacks (quantities staged)");
+    }
     return lines;
 }
 
@@ -274,7 +313,7 @@ std::optional<std::vector<uint8_t>> Gen6StagedSession::buildWorkingCopy(std::str
         if (error) *error = why;
         return std::nullopt;
     };
-    if (entries_.empty()) return fail("Gen VI working copy needs at least one staged change");
+    if (!hasChanges()) return fail("Gen VI working copy needs at least one staged change");
     const auto family = source_.family();
     std::vector<uint8_t> out(source_.bytes().begin(), source_.bytes().end());
     std::set<size_t> touched;
@@ -288,9 +327,15 @@ std::optional<std::vector<uint8_t>> Gen6StagedSession::buildWorkingCopy(std::str
         std::copy(encrypted.begin(), encrypted.end(), out.begin() + static_cast<std::ptrdiff_t>(offset));
         touched.insert(*block);
     }
+    std::span<const uint8_t> bagBlock;
+    if (bagDirty()) {
+        bagBlock = bag_->staged();
+        std::copy(bagBlock.begin(), bagBlock.end(), out.begin() + static_cast<std::ptrdiff_t>(itemsBlockOffset6(family)));
+        touched.insert(ItemsBlock);
+    }
     for (const size_t id : touched) Gen6Save::refreshBlockChecksum(out, family, id);
     std::string why;
-    if (!verifyWorkingCopy(source_, out, changes(), &why)) return fail(why);
+    if (!verifyWorkingCopy(source_, out, changes(), &why, bagBlock)) return fail(why);
     if (error) error->clear();
     return out;
 }
@@ -334,14 +379,16 @@ Common::VerifiedExportResult Gen6StagedSession::exportWorkingCopy(const Gen6Expo
     r.failurePoint = request.failurePoint;
     const auto expected = changes();
     const Gen6Save& baseline = source_;
-    r.validator = [&baseline, &expected](std::span<const uint8_t> bytes, std::string& why) {
-        return verifyWorkingCopy(baseline, bytes, expected, &why);
+    const std::span<const uint8_t> bagBlock = bagDirty() ? bag_->staged() : std::span<const uint8_t>{};
+    r.validator = [&baseline, &expected, bagBlock](std::span<const uint8_t> bytes, std::string& why) {
+        return verifyWorkingCopy(baseline, bytes, expected, &why, bagBlock);
     };
     return Common::publishVerifiedStagedExport(r);
 }
 
 bool verifyWorkingCopy(const Gen6Save& source, std::span<const uint8_t> edited,
-                       const std::vector<StagedChange>& changes, std::string* error) {
+                       const std::vector<StagedChange>& changes, std::string* error,
+                       std::span<const uint8_t> stagedBagBlock) {
     const auto fail = [&](const std::string& why) { if (error) *error = why; return false; };
     const auto original = source.bytes();
     if (edited.size() != original.size()) return fail("Gen VI working copy size changed");
@@ -383,10 +430,25 @@ bool verifyWorkingCopy(const Gen6Save& source, std::span<const uint8_t> edited,
                 if (!sourceRec.occupied() || rec.pokemon->empty())
                     return fail("Gen VI edit must keep an occupied record");
                 const auto mask = editMask(c.slot.region);
-                for (size_t i = 0; i < plain.size(); ++i)
+                for (size_t i = 0; i < PK6::StoredSize; ++i)
                     if ((plain[i] ^ c.originalPlain[i]) & ~mask[i])
                         return fail("Gen VI edit touched a non-whitelisted PK6 byte at 0x" +
                                     std::to_string(i));
+                if (c.slot.region == RecordRegion::Party) {
+                    // Cached party block: unchanged unless a stat input changed, in which
+                    // case it must equal an exact recomputation from the staged inputs.
+                    std::span<const uint8_t> expected(c.originalPlain);
+                    std::optional<PK6::Pokemon6> refreshed;
+                    if (statInputsChanged(c.originalPlain, plain)) {
+                        refreshed = rec.pokemon;
+                        if (!Stats::refreshParty(*refreshed))
+                            return fail("Gen VI party stats cannot be recomputed for verification");
+                        expected = refreshed->plain();
+                    }
+                    if (!std::equal(plain.begin() + static_cast<std::ptrdiff_t>(PK6::StoredSize), plain.end(),
+                                    expected.begin() + static_cast<std::ptrdiff_t>(PK6::StoredSize), expected.end()))
+                        return fail("Gen VI party cached stats are not the exact recomputation");
+                }
                 break;
             }
             case ChangeKind::Clone: {
@@ -410,6 +472,17 @@ bool verifyWorkingCopy(const Gen6Save& source, std::span<const uint8_t> edited,
                     return fail("Gen VI removal must blank an occupied box slot");
                 break;
         }
+    }
+    if (!stagedBagBlock.empty()) {
+        const size_t at = itemsBlockOffset6(family);
+        const auto block = edited.subspan(at, itemsBlockLength6(family));
+        if (!std::equal(block.begin(), block.end(), stagedBagBlock.begin(), stagedBagBlock.end()))
+            return fail("Gen VI working copy bag differs from the staged bag");
+        if (!decodeBag6(family, block)) return fail("Gen VI staged bag does not decode strictly");
+        if (!bagDiffWithinSlots(family, sourceItemsBlock6(source), block))
+            return fail("Gen VI staged bag changed bytes outside pouch slots");
+        std::fill_n(allowed.begin() + static_cast<std::ptrdiff_t>(at), block.size(), uint8_t{0xFF});
+        blocks.insert(ItemsBlock);
     }
     for (const size_t id : blocks) {
         const size_t at = Layout::checksumOffset(family, id);
