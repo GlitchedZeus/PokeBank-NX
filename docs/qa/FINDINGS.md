@@ -16,13 +16,15 @@ lands, its reproduction moves into the passing suite as a regression test
 
 | ID | Severity | Area | Owner | Status |
 | --- | --- | --- | --- | --- |
-| QA-F2 | **Medium** (CI hygiene) | 3 invalid `one-time-*` workflow files fail on every push to every branch | Owner approval; coordinator | OPEN |
+| QA-F2 | **Medium** (CI hygiene) | 3 invalid `one-time-*` workflow files failed on every push to every branch | Thread 2R (applied); deletion: owner | **FIXED** on #307 in `96a44685` (indentation-only repair, triggers gated to `workflow_dispatch`); regression `tools/qa/check_workflows.py` in `qa-tools-test` and `app-qa-workflow-hygiene.yml` |
 | QA-F3 | Low | Common (and Gen V) export publish could replace a destination created after the uniqueness check | Thread 2 | **FIXED** in `fa9cfcea`; regression test in `qa-contracts` |
 | QA-F3b | Low | The same non-exclusive `rename()` publish remained in the Gen II transaction | Thread C (`Gen2ExportTransaction.cpp`) | **FIXED** on #307 (Thread C merge `cb88043`); regression `gen2PublishIsExclusive` in `qa-contracts` |
 | QA-F1 | Low | Packaged-RomFS manifest omitted the four Gen V game cards the app requests | Thread 2 | **FIXED** in `3b35b3f`; regression test in `qa-tools-test` |
 | QA-F4 | Low (defence in depth) | Gen V PID replay (`Field::Personality`) protects the PID/gender link only when the ability link also holds | Thread 2R (`Gen5StagedPokemonRecord.h`) | **FIXED** in `bc83815`; regression in `test_qa_regressions.cpp` |
 | QA-F5 | Low (presentation) | Gen V Home party strip drops the party member's form, so alternate forms show the base-form icon; Gen IV keeps it | Thread 2R (`Gen5GameCardPreview.h`) | **FIXED** on #307 (`PartyPreviewSlot.form`); regression in `test_qa_regressions.cpp` |
-| QA-F6 | Low (identity) | Gen III discovery takes the exact release from a raw substring of the WHOLE path, so an unrelated folder or word decides a hint-less save's identity (Gen I/II accept only isolated tokens) | Thread C (`RetroArchFRLGDiscovery.cpp` `identityHint`) | OPEN; repro `tests/test_qa_known_failures.cpp` |
+| QA-F6 | Low (identity) | Gen III discovery takes the exact release from a raw substring of the WHOLE path, so an unrelated folder or word decides a hint-less save's identity (Gen I/II accept only isolated tokens) | Thread L (`RetroArchFRLGDiscovery.cpp` `identityHint`) | OPEN; repro `tests/test_qa_known_failures.cpp` |
+| QA-F7 | Low (editor gap) | Gen IV Unown letter (form) cannot be edited: `setForm` uses the personal table's raw form count (1), the pinned PKSM-Core normalises Unown to 28 | Thread C (`Pokemon4Mutable.cpp` `setForm`) | OPEN; repro `tests/test_qa_known_failures.cpp` |
+| QA-F8 | Low (presentation) | Gen IV Release zero-fills the slot, so a net no-op clone + release still reviews as "Box N slot M: (empty) (edited)" and the export differs in that slot | Thread C (`Gen4StagedPokemonEditor` release / `describeStagedSlotChanges`) | OPEN; repro `tests/test_qa_known_failures.cpp` |
 
 No crash, sanitizer report, out-of-bounds read or round-trip violation was found in any Gen I–V parser,
 record decoder, Bag decoder, copy selector or Save Instance identification path (see
@@ -49,7 +51,36 @@ record decoder, Bag decoder, copy selector or Save Instance identification path 
   held and the new PID breaks it, and separately when the ability link held and the new PID breaks
   it.
 
-## QA-F6 (Low, identity): Gen III release hint is a substring of the whole path
+## QA-F7 (Low, editor gap): Gen IV Unown letter cannot be edited
+
+- **Found by:** the Gen I–V acceptance matrix (Gen IV fields cell), 2026-10-15; verified against the
+  pinned reference.
+- **Code:** `src/Pokemon/Pokemon4Mutable.cpp` `setForm`: `value >= base.formCount` with `base` read
+  from the Gen IV personal tables (`PersonalInfo4DP/PT/HGSS.cpp`), where Unown (201) has form count 1
+  because its letters share one stat entry.
+- **Reference:** `vendor/PKSM-Core/source/personal/personal.cpp` `PersonalDPPtHGSS::formCount`
+  returns 28 for species 201 ("Normalized to fit with other formCounts' return values").
+- **Effect:** in D/P, Pt and HG/SS the shared editor refuses every Unown letter except A, while other
+  multi-form species edit normally.
+- **Repro:** `tests/test_qa_known_failures.cpp` QA-F7. `createStored` Unown then `setForm(1)` is
+  refused in layout groups 77/78/79; Burmy (control) is accepted.
+- **Suggested fix:** use the same normalisation as the pinned reference for Unown's form bound. Any
+  extra Unown rules (e.g. letter/PID relation) need a citation before they are enforced.
+
+## QA-F8 (Low, presentation): Gen IV no-op release still reviews as an edit
+
+- **Found by:** the Gen I–V acceptance matrix (Gen IV actions cell), 2026-10-15.
+- **Code:** `Gen4StagedPokemonEditor::stageReleaseBoxPokemon` writes an all-zero record; empty box
+  slots in a save hold an encrypted blank record (both mean empty). `describeStagedSlotChanges`
+  (`Gen4ExportTransaction.cpp`) compares records, so the slot is listed as "(empty) (edited)".
+- **Effect:** clone into an empty slot, then release that clone: the review and the export manifest
+  show "Box 2 slot 1: (empty) (edited)", and `edited.sav` differs from the source in that slot,
+  although the player changed nothing.
+- **Repro:** `tests/test_qa_known_failures.cpp` QA-F8 (synthetic D/P save from `qasynth::gen4`).
+- **Suggested fix:** when releasing a slot that was empty in the original, restore the original
+  slot bytes; or have the review skip empty→empty changes.
+
+## QA-F6 (Low, identity; owner Thread L): Gen III release hint is a substring of the whole path
 
 - **Found by:** the Gen I–V acceptance matrix (Phase 5, `tests/test_qa_matrix_gen3.cpp` identity
   cell), 2026-10-15. Confirmed with a dedicated repro.
@@ -94,7 +125,7 @@ record decoder, Bag decoder, copy selector or Save Instance identification path 
   accepted card output", and Gen I–III also pass `false`. These are recorded for the Phase 5 matrix
   cross-generation comparison (owner C for Gen I–IV) rather than filed as defects.
 
-## QA-F2 (Medium): invalid workflow files produce a failed run on every push
+## QA-F2 (Medium; FIXED on #307 in 96a44685): invalid workflow files produced a failed run on every push
 
 - **Files:** `.github/workflows/one-time-product-direct-launch-fix.yml` (YAML error line 70),
   `one-time-product-direct-launch-fix-v2.yml` (line 67), `one-time-quick-games-freeze-fix-20261005.yml`

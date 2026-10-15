@@ -9,7 +9,7 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 | Item | Value |
 | --- | --- |
 | Lane branch | `audit/app-qa-20261014` |
-| Last #307 head merged | `6c366bd0c9ce95b1fdad1f3b5c0c268f02f02ad9` (merge `84c5ecd`; includes Thread C `cb88043`) |
+| Last #307 head merged | `181423a491b5396e967f73ed4e510ed9a4dd8d06` (merge `2002344`; includes QA-F2 fix `96a44685`) |
 | Draft PR | #310 (CI evidence only, never merge; Thread 2R will merge this lane into #307) |
 | Continuation | `send_later` self check-in every ~60 min: "Thread 4 campaign: re-fetch, verify checkpoint docs/qa/CAMPAIGN_CHECKPOINT.md, continue" |
 
@@ -25,11 +25,13 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 
 | ID | Severity | Owner | Status |
 | --- | --- | --- | --- |
-| QA-F2 invalid one-time workflow YAML | Medium | owner approval | open (repro in `qa-known-failures`) |
+| QA-F2 invalid one-time workflow YAML | Medium | 2R applied | FIXED (#307 96a44685); regression in qa-tools-test |
 | QA-F3b Gen II export publish via `rename()` | Low | C | FIXED (cb88043); regression in qa-contracts |
 | QA-F4 Gen V PID replay guard conjoins gender+ability links | Low | 2R | FIXED (bc83815); regression in test_qa_regressions |
 | QA-F5 Gen V Home party strip drops form (Gen IV keeps it) | Low | 2R | FIXED on #307; regression in test_qa_regressions |
-| QA-F6 Gen III release hint from a substring of the whole path | Low | C | open (repro `tests/test_qa_known_failures.cpp`) |
+| QA-F6 Gen III release hint from a substring of the whole path | Low | L | open (repro `tests/test_qa_known_failures.cpp`) |
+| QA-F7 Gen IV Unown letter cannot be edited (form count 1 vs PKSM-Core 28) | Low | C | open (repro `tests/test_qa_known_failures.cpp`) |
+| QA-F8 Gen IV no-op clone+release still reviews as "(empty) (edited)" | Low | C | open (repro `tests/test_qa_known_failures.cpp`) |
 
 ## Log
 
@@ -41,3 +43,5 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 - 2026-10-15 — merged #307 `6c366bd` (QA-F4 fix bc83815, Thread C merge cb88043). QA-F4/F5 moved to test_qa_regressions; QA-F3b regression and the production Gen I export transaction added to qa-contracts (18 paths); GCC and Clang green.
 - 2026-10-15 — QA-F2 repair prepared (YAML re-indent only + workflow_dispatch gating, verified with bash -n / Python compile) but the push of the three shared one-time-* workflows was blocked by the session's permission policy; held as a scratch patch pending the user's decision. `tools/qa/check_workflows.py` committed (reproduces QA-F2 on the current tree).
 - 2026-10-15 — Phase 5 matrix landed: 20 versions x 21 cells on real production paths, `qa-matrix` in `make qa` and App QA Contracts CI; libqacore object rule now tracks header dependencies (-MMD), after a stale object caused an ASan new-delete-type-mismatch; QA-F6 filed (C).
+- 2026-10-15 08:25 UTC — merged #307 `181423a` (QA-F2 repaired by 2R in 96a44685): QA-F2 moved to qa-tools-test regressions; `app-qa-workflow-hygiene.yml` added; QA-F6 owner corrected to L (RetroArch discovery).
+- 2026-10-15 — verified matrix observations: (b) filed QA-F7 (Unown, PKSM-Core PersonalDPPtHGSS::formCount = 28), (c) filed QA-F8 (no-op release review line; Gen IV matrix cell no longer pins the defect). make qa EXIT 0 on the 181423a merge.
