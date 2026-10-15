@@ -297,6 +297,14 @@ std::vector<std::string> Gen6StagedSession::changeLines() const {
     std::vector<std::string> lines;
     for (const auto& [slot, entry] : entries_)
         lines.insert(lines.end(), entry.notes.begin(), entry.notes.end());
+    if (bagDirty()) {
+        const auto before = *decodeBag6(source_.family(), bag_->original());
+        const auto after = bag_->current();
+        for (size_t p = 0; p < BagPocket6Count; ++p)
+            if (before[p] != after[p])
+                lines.push_back(std::string("Bag ") + bagPocketName6(p) + ": " + std::to_string(before[p].size()) +
+                                " -> " + std::to_string(after[p].size()) + " stacks (quantities staged)");
+    }
     return lines;
 }
 
@@ -305,7 +313,7 @@ std::optional<std::vector<uint8_t>> Gen6StagedSession::buildWorkingCopy(std::str
         if (error) *error = why;
         return std::nullopt;
     };
-    if (entries_.empty()) return fail("Gen VI working copy needs at least one staged change");
+    if (!hasChanges()) return fail("Gen VI working copy needs at least one staged change");
     const auto family = source_.family();
     std::vector<uint8_t> out(source_.bytes().begin(), source_.bytes().end());
     std::set<size_t> touched;
@@ -319,9 +327,15 @@ std::optional<std::vector<uint8_t>> Gen6StagedSession::buildWorkingCopy(std::str
         std::copy(encrypted.begin(), encrypted.end(), out.begin() + static_cast<std::ptrdiff_t>(offset));
         touched.insert(*block);
     }
+    std::span<const uint8_t> bagBlock;
+    if (bagDirty()) {
+        bagBlock = bag_->staged();
+        std::copy(bagBlock.begin(), bagBlock.end(), out.begin() + static_cast<std::ptrdiff_t>(itemsBlockOffset6(family)));
+        touched.insert(ItemsBlock);
+    }
     for (const size_t id : touched) Gen6Save::refreshBlockChecksum(out, family, id);
     std::string why;
-    if (!verifyWorkingCopy(source_, out, changes(), &why)) return fail(why);
+    if (!verifyWorkingCopy(source_, out, changes(), &why, bagBlock)) return fail(why);
     if (error) error->clear();
     return out;
 }
@@ -365,14 +379,16 @@ Common::VerifiedExportResult Gen6StagedSession::exportWorkingCopy(const Gen6Expo
     r.failurePoint = request.failurePoint;
     const auto expected = changes();
     const Gen6Save& baseline = source_;
-    r.validator = [&baseline, &expected](std::span<const uint8_t> bytes, std::string& why) {
-        return verifyWorkingCopy(baseline, bytes, expected, &why);
+    const std::span<const uint8_t> bagBlock = bagDirty() ? bag_->staged() : std::span<const uint8_t>{};
+    r.validator = [&baseline, &expected, bagBlock](std::span<const uint8_t> bytes, std::string& why) {
+        return verifyWorkingCopy(baseline, bytes, expected, &why, bagBlock);
     };
     return Common::publishVerifiedStagedExport(r);
 }
 
 bool verifyWorkingCopy(const Gen6Save& source, std::span<const uint8_t> edited,
-                       const std::vector<StagedChange>& changes, std::string* error) {
+                       const std::vector<StagedChange>& changes, std::string* error,
+                       std::span<const uint8_t> stagedBagBlock) {
     const auto fail = [&](const std::string& why) { if (error) *error = why; return false; };
     const auto original = source.bytes();
     if (edited.size() != original.size()) return fail("Gen VI working copy size changed");
@@ -456,6 +472,17 @@ bool verifyWorkingCopy(const Gen6Save& source, std::span<const uint8_t> edited,
                     return fail("Gen VI removal must blank an occupied box slot");
                 break;
         }
+    }
+    if (!stagedBagBlock.empty()) {
+        const size_t at = itemsBlockOffset6(family);
+        const auto block = edited.subspan(at, itemsBlockLength6(family));
+        if (!std::equal(block.begin(), block.end(), stagedBagBlock.begin(), stagedBagBlock.end()))
+            return fail("Gen VI working copy bag differs from the staged bag");
+        if (!decodeBag6(family, block)) return fail("Gen VI staged bag does not decode strictly");
+        if (!bagDiffWithinSlots(family, sourceItemsBlock6(source), block))
+            return fail("Gen VI staged bag changed bytes outside pouch slots");
+        std::fill_n(allowed.begin() + static_cast<std::ptrdiff_t>(at), block.size(), uint8_t{0xFF});
+        blocks.insert(ItemsBlock);
     }
     for (const size_t id : blocks) {
         const size_t at = Layout::checksumOffset(family, id);

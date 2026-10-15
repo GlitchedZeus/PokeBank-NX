@@ -84,5 +84,5 @@ No NRO contains Gen VI yet: the native `Makefile` (Thread 2) does not list
 ## Still missing / next
 
 - Shared registration and UI wiring (requests 01–02).
-- Bag (MyItem block 1), Pokédex and box names. These need cited pouch tables.
+- Pokédex and box names.
 - Real-save confirmation by the owner. Synthetic fixtures only so far.

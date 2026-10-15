@@ -1,7 +1,7 @@
 # Gen VI (X/Y, Omega Ruby/Alpha Sapphire) native PK6/SAV6 contracts.
 # Strict format + staged session + verified working-copy export + sources.
 # No source-save, emulator or installed-game write exists in this lane.
-GEN6_TEST_NAMES := test_gen6_pk6 test_gen6_save test_gen6_staged test_gen6_editor_sources test_gen6_stats
+GEN6_TEST_NAMES := test_gen6_pk6 test_gen6_save test_gen6_staged test_gen6_editor_sources test_gen6_stats test_gen6_bag
 GEN6_TESTS := $(addprefix $(HOST_BUILD)/,$(GEN6_TEST_NAMES))
 GEN6_SANITIZE_TESTS := $(addsuffix _sanitize,$(GEN6_TESTS))
 
@@ -29,6 +29,7 @@ GEN6_SOURCES_test_gen6_save := tests/test_gen6_save.cpp $(GEN6_CORE_SOURCES) \
 	$(PKSM_CORE_ROOT)/source/utils/crypto_checksums.cpp
 GEN6_SOURCES_test_gen6_staged := tests/test_gen6_staged.cpp $(GEN6_SESSION_SOURCES)
 GEN6_SOURCES_test_gen6_stats := tests/test_gen6_stats.cpp $(GEN6_SESSION_SOURCES)
+GEN6_SOURCES_test_gen6_bag := tests/test_gen6_bag.cpp $(GEN6_SESSION_SOURCES)
 GEN6_SOURCES_test_gen6_editor_sources := tests/test_gen6_editor_sources.cpp $(GEN6_SESSION_SOURCES) \
 	src/Integration/Gen6/Gen6SaveSources.cpp
 
