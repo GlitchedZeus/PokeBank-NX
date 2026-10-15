@@ -4,7 +4,7 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-15 ~03:35 UTC (23:35 America/Toronto, Oct 14).
+**Last updated:** 2026-10-15 ~03:40 UTC (23:40 America/Toronto, Oct 14).
 
 ## Active milestone
 
@@ -73,10 +73,26 @@ conservative estimates.
 | #307 Gen V integration | `claude/gen5-integration-20261014` | `fa9cfcea` (**frozen for hardware test**) | **9/9 green** | Thread 2 (standing by) |
 | Gen VI native | `claude/gen6-native-20261014` (draft #309 → #307, CI only) | `5e683690` | see PR #309 | Thread 3 |
 | Gen VII native | `claude/gen7-native-20261014` (draft #311 → Gen VI lane, CI only) | `08a4359b` | see PR #311 | Thread 3 |
-| App QA | `audit/app-qa-20261014` (draft #310 → #307, CI only) | `e43f234` | running; no Gen I–V parser crash/UB found so far | Thread 4 |
+| App QA | `audit/app-qa-20261014` (draft #310 → #307, CI only) | `a726610` | 12/13 green when last checked (GCC host still running) | Thread 4 (standing by) |
 | Coordinator | `claude/optimistic-euler-ph2z4f` | docs only, on `a17c503a` | — | Coordinator |
 | #300 / #304 / #302 | preserved source lanes | `58bd564b` / `4d8c267e` / `6e27bbd5` | green | Contained in #307 |
 | #305 / #280 | `claude/gen4-capture-ball` / `fix/gen14-action-tap-empty-parity-20261011` | `b8eb006e` / `dcd855a7` | — | Rule confirmed by test / #280 tests change Gen III/IV surfaces → Thread 1 |
+
+## QA results (Thread 4, final, 2026-10-15)
+
+- **No crash, UB, out-of-bounds read or round-trip violation** in any Gen I–V parser, PK1–PK5 decoder, Bag decoder, Gen V copy selector or Save Instance identification.
+  - 8 fuzz targets, plain and with ASan/UBSan, under GCC and Clang.
+  - libFuzzer: 60 s per target, plus earlier 240 s soaks.
+- Export contracts C1–C5 cover all 17 export paths.
+- Candidate NRO `fa9cfcea` was audited in CI from artifact 11945232986: size and SHA-256 match, the build embeds `fa9cfcea`, there are 4,267 RomFS files, and every required asset is present (run 38675885758).
+- Findings:
+
+| ID | Severity | Status |
+|---|---|---|
+| QA-F1 | Low | Fixed in `3b35b3f` |
+| QA-F2 | Medium | Open; owner decision on deleting 3 invalid workflows |
+| QA-F3 | Low | Fixed for Common and Gen V in `fa9cfce` |
+| QA-F3b | Low | Open; Gen II export transaction, Thread 1 |
 
 ## Safety audit (2026-10-15)
 
