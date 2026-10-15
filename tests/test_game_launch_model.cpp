@@ -125,6 +125,8 @@ void testChainPlans() {
     assert(plan.nroPath == retro.corePath);
     assert((libnxSplitArgv(plan.argv) == std::vector<std::string>{retro.corePath, retro.contentPath}));
     assert(plan.quitRoute == GameLaunchQuitRoute::LoaderDefault);
+    // Byte-identical to the hardware-accepted 0760334f handoff string for ordinary paths.
+    assert(plan.argv == "\"" + retro.corePath + "\" \"" + retro.contentPath + "\"");
     assert(std::string(gameLaunchQuitRouteNotice(plan.quitRoute)).find("Homebrew Menu") != std::string::npos);
 
     GameLaunchReturnOptions options;
