@@ -7,6 +7,38 @@ ownership. Forward commits only; no history rewritten.
 
 Physical Switch status of every NRO built from this branch: **NOT DEVICE TESTED**.
 
+## Gen I–V completion campaign checkpoint (Thread 2R)
+
+HEAD `5342d6e` (draft PR #307). No candidate NRO is posted until the campaign ends; there will be ONE final NRO, and it is NOT DEVICE TESTED.
+
+Since `44a976e`:
+- `8529557`: Gen V Clone and Move Pokemon use the Gen IV box (1–24) / slot (1–30) keypads. The Gen V-only destination list was removed.
+- `5342d6e`: the Gen V Release confirmation matches Gen IV ("Release this Pokemon?", Box/Slot line, Y Confirm Release).
+
+Verified in code with tests:
+- Exit guard: Browse with staged changes goes to ConfirmExit, where B keeps, X reviews and Y discards and leaves. Covered by `test_gen5_readonly_save.cpp`.
+- Focus is kept across pickers. This is the shared template, the same path as Gen IV.
+
+Gates at `5342d6e`:
+- devkitA64 native build is clean. The only warnings come from pre-existing Gen I/II files.
+- GCC `host-test` passes.
+- Every `tests/*.py` passes.
+- `git diff --check` is clean.
+
+Gen I–III divergences were surveyed and sent to the coordinator for Thread C (they own those files):
+1. Gen II: tapping the Species row does not open the picker.
+2. Gen I and II Edit have no X Keep.
+3. Gen I View cannot be navigated.
+4. Gen I and II: Y randomizes DVs with no confirmation (Gen I stages it immediately).
+5. Gen II: A cycles Pokérus, met time and OT gender in place.
+6. Gen I/II use custom panel layouts.
+7. Picker paging differs between generations.
+
+Remaining:
+- Thread C/L/QA merges when the coordinator says.
+- Final gates.
+- One final NRO.
+
 ## Hardware failure of candidate `35cbf163` and the editor-parity repair (2026-10-15, Thread 2R)
 
 The owner tested `35cbf1637da41e9607f2d524354c51d70e401fb2` on a Switch and Gen V **failed
