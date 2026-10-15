@@ -1064,6 +1064,10 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
     created.pokerus = pokemon.pokerus;
     created.caughtData = pokemon.caughtData;
     created.nickname = pokemon.nickname.empty() ? std::string(Names::getSpeciesName(pokemon.species)) : pokemon.nickname;
+    // An un-nicknamed Pokemon carries the upper-case retail species name (pret/pokecrystal
+    // data/pokemon/names.asm); evolution renames only a name equal to the old species name.
+    if (pokemon.nickname.empty())
+        for (auto& ch : created.nickname) if (ch >= 'a' && ch <= 'z') ch = static_cast<char>(ch - 'a' + 'A');
     created.originalTrainer = pokemon.otName.empty() ? trainerName_ : pokemon.otName;
     created.partyRecord = false;
     created.isEgg = false;

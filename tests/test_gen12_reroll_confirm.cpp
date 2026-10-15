@@ -108,11 +108,39 @@ void gen1Route() {
     has(fix, "} else if (foundationStateFor(screen).reroll.confirming) {\n        drawNavBar(fb, {{\"B\", \"Cancel\"}, {\"A\", \"Re-roll\"}});");
 }
 
+// Divergence item 2: X Keep in Gen I/II Edit, matching the Gen III-V shared editor. It commits
+// the same way as the exit dialog's A Save, never restores/discards, and is inert while the
+// re-roll prompt is open (the prompt is resolved first).
+void keepRoutes() {
+    const auto unified = read("src/UI/Gen2UnifiedPokemonWorkspace.inc");
+    const auto editable = unified.substr(unified.find("if (handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY)) return true;"));
+    const auto keep = between(editable, "if ((down & HidNpadButton_X) && state.mode == Mode::Edit) {", "if (down & HidNpadButton_B) {");
+    has(keep, "if (stageEdit(screen)) resetUnifiedFocus(screen);");
+    lacks(keep, "discard");
+    assert(editable.find("Reroll::step(unified.reroll,") < editable.find("if ((down & HidNpadButton_X) && state.mode == Mode::Edit) {"));
+    // The exit dialog's A Save is the same commit.
+    has(read("src/UI/Gen2PokemonEditorFoundation.inc"), "if (create ? stageCreate(screen) : stageEdit(screen)) return true;");
+    has(read("src/UI/Gen2HardwareFinalFix.inc"), "{\"Y\", \"Random DVs\"}, {\"X\", \"Keep\"}, {\"B\", \"Exit\"}");
+
+    const auto f = read("src/UI/Gen1PokemonEditorOverlayFoundation.inc");
+    const auto main = between(f, "if (foundation.editExitConfirm) {\n        const bool create", "std::string error;");
+    const auto gen1Keep = between(main, "if (state.mode == UX2Mode::Edit && (down & HidNpadButton_X)) {", "if (add && (down & HidNpadButton_X)) {");
+    has(gen1Keep, "foundationExitMainMode(screen);");
+    lacks(gen1Keep, "foundationRestoreEditBaseline");
+    assert(main.find("Reroll::step(foundation.reroll,") < main.find("if (state.mode == UX2Mode::Edit && (down & HidNpadButton_X)) {"));
+    // Same outcome as the dialog's A in Edit: keep staged work and leave.
+    const auto dialogA = between(main, "if (down & HidNpadButton_A) {\n            if (create) {", "return;\n        }\n        return;");
+    has(dialogA, "foundationExitMainMode(screen);");
+    has(read("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc"),
+        "{\"Y\", \"Random DVs\"}, {\"X\", \"Keep\"}, {\"B\", \"Exit\"}");
+}
+
 } // namespace
 
 int main() {
     model();
     gen2Route();
     gen1Route();
+    keepRoutes();
     std::cout << "Gen I/II Y Random DVs confirmation (model + live routes): PASS\n";
 }

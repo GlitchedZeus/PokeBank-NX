@@ -494,7 +494,7 @@ void ux2HandleMainEditor(TrainerViewScreen& screen, uint64_t down) {
             break;
         case 1: {
             const std::string initial = add
-                ? (state.draft.nickname.empty() ? std::string(Names::getSpeciesName(state.draft.species)) : state.draft.nickname)
+                ? (state.draft.nickname.empty() ? PokeBank::UIModel::classicDefaultNickname(state.draft.species) : state.draft.nickname)
                 : pokemon->nickname;
             const auto result = Utils::promptText("Generation I Nickname", "1-10 supported Gen I characters", initial, 10);
             if (!result.accepted) break;
