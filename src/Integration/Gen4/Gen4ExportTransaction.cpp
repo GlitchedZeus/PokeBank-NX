@@ -151,6 +151,11 @@ Common::VerifiedExportResult publishVerifiedGen4Export(
     transaction.editedBytes = edited;
     if (request.sourceSnapshot) {
         transaction.backupBytes = sourceFile;
+        // A .dsv backup keeps its extension (original_backup.dsv); edited.sav stays raw, as in Gen V.
+        if (request.sourceSnapshot->container == Gen4SourceContainer::Dsv) {
+            transaction.fileExtension = ".dsv";
+            transaction.editedFileExtension = ".sav";
+        }
         transaction.sourceContainer = gen4SourceContainerLabel(request.sourceSnapshot->container);
         transaction.editedContainer = gen4SourceContainerLabel(Gen4SourceContainer::Raw);
         transaction.sourceSha256Scope = "0x80000_SAV4_PAYLOAD";

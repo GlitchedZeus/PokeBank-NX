@@ -1034,7 +1034,10 @@ void testExportRefusesStaleSource() {
         assert(exported.success && exported.error.empty());
         const fs::path out(exported.directory);
         // The backup is the source FILE verbatim (footer included); edited.sav is the raw payload.
-        assert(slurp(out / "original_backup.sav") == fileBytes);
+        const fs::path backupPath = out / (dsv ? "original_backup.dsv" : "original_backup.sav");
+        assert(slurp(backupPath) == fileBytes);
+        assert(!dsv || !fs::exists(out / "original_backup.sav"));
+        assert(!fs::exists(out / "edited.dsv"));
         assert(slurp(out / "edited.sav") == editor->stagedBytes());
         assert(exported.backupSha256 == PokeVault::Integration::Common::sha256Hex(fileBytes));
         assert(exported.originalSha256 == PokeVault::Integration::Common::sha256Hex(payload));
@@ -1048,6 +1051,8 @@ void testExportRefusesStaleSource() {
         assert(has("SOURCE_FILE_SHA256=" + exported.backupSha256));
         assert(has("ORIGINAL_BACKUP_IS=VERBATIM_SOURCE_FILE"));
         assert(has("SOURCE_SIZE=" + std::to_string(payload.size())));
+        assert(has(std::string("ORIGINAL_BACKUP=") + (dsv ? "original_backup.dsv" : "original_backup.sav")));
+        assert(has("EDITED_SAVE=edited.sav"));
         assert(slurp(sourcePath) == fileBytes);
     }
     fs::remove_all(root);
