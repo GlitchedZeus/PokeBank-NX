@@ -124,11 +124,17 @@ def referenced_romfs_paths(source_roots: list[Path]) -> set[str]:
 
 
 def audit(nro_path: Path, expect_sha: str = "", artifact: Path | None = None, ci_run: str = "",
-          romfs_dir: Path | None = None, source_roots: list[Path] | None = None) -> Audit:
+          romfs_dir: Path | None = None, source_roots: list[Path] | None = None,
+          expect_nro_sha256: str = "", expect_size: int | None = None) -> Audit:
     result = Audit(nro_path=str(nro_path), ci_run=ci_run)
     nro = nro_path.read_bytes()
     result.size = len(nro)
     result.sha256 = hashlib.sha256(nro).hexdigest()
+    # The identity a coordinator or CI posted for this candidate must match the file byte for byte.
+    if expect_nro_sha256 and expect_nro_sha256.lower() != result.sha256:
+        result.errors.append(f"NRO SHA-256 {result.sha256} differs from the posted {expect_nro_sha256.lower()}")
+    if expect_size is not None and expect_size != result.size:
+        result.errors.append(f"NRO size {result.size} differs from the posted {expect_size} bytes")
 
     if artifact is not None:
         try:
@@ -234,6 +240,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("nro", type=Path)
     parser.add_argument("--expect-sha", default="", help="full commit SHA the NRO must be built from")
+    parser.add_argument("--expect-nro-sha256", default="", help="posted SHA-256 the NRO must have")
+    parser.add_argument("--expect-size", type=int, help="posted NRO size in bytes")
     parser.add_argument("--artifact", type=Path, help="CI artifact (.zip or extracted directory)")
     parser.add_argument("--ci-run", default="", help="CI run URL or id, recorded verbatim")
     parser.add_argument("--romfs", type=Path, default=ROOT / "romfs")
@@ -241,7 +249,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        result = audit(args.nro, args.expect_sha, args.artifact, args.ci_run, args.romfs)
+        result = audit(args.nro, args.expect_sha, args.artifact, args.ci_run, args.romfs,
+                       expect_nro_sha256=args.expect_nro_sha256, expect_size=args.expect_size)
     except OSError as exc:
         print(f"NRO AUDIT: FAIL (cannot read NRO: {exc})")
         return 1

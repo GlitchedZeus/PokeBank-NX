@@ -17,6 +17,7 @@ make -f Makefile.host qa                       # fuzz smoke + export contracts +
 make -f Makefile.host CXX=clang++ qa           # the same under Clang
 make -f Makefile.host CXX=clang++ QA_FUZZ_SECONDS=300 qa-libfuzzer-run
 make -f Makefile.host qa-known-failures        # open-defect repros; exits non-zero while any is open
+                                               # (fixed ones move to test_qa_regressions*, inside `qa`)
 ```
 
 `qa*` targets are opt-in; the default `host-test` / `host-sanitize` graph is unchanged.
@@ -83,7 +84,13 @@ Prints NRO size, SHA-256, code SHA, tree SHA, whether the build embedded the exp
 `tools/verify_nro_romfs.py` for the ASET/RomFS walk and manifest check, adds a check that every
 `romfs:/` asset the application source requests is packaged, verifies a CI artifact copy is
 byte-identical, and writes a hardware-test record whose status is always **NOT DEVICE TESTED**.
+`--expect-nro-sha256` / `--expect-size` check the file against the identity posted for it.
 Regression: `tests/test_qa_nro_audit.py`.
+
+[`app-qa-nro-audit.yml`](../../.github/workflows/app-qa-nro-audit.yml) runs the audit in CI against
+the exact artifact a candidate run published (downloaded from that run, never rebuilt). Its pinned
+default is the Gen I–V candidate `fa9cfcea` (run 38673482742, artifact 11945232986); dispatch it with
+other inputs for later candidates.
 
 ## 4. CI
 

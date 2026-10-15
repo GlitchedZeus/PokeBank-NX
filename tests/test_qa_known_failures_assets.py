@@ -3,9 +3,7 @@
 
 Each check FAILS (non-zero exit) while its defect is open; see docs/qa/FINDINGS.md.
 
-QA-F1  tools/verify_nro_romfs.py required_paths() does not cover every romfs:/ asset the application
-       source requests (today: the four Gen V game cards). The packaging gate would pass an NRO that
-       lacks them as long as the local romfs/ tree lacks them too.
+(QA-F1 was fixed in 3b35b3f and moved to tests/test_qa_regressions_assets.py.)
 QA-F2  Some committed .github/workflows files are not valid YAML, so GitHub registers them as
        broken workflows (they show up under their file path instead of their name).
 """
@@ -15,11 +13,6 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "tools"))
-sys.path.insert(0, str(ROOT / "tools" / "qa"))
-
-import nro_audit  # noqa: E402
-import verify_nro_romfs  # noqa: E402
 
 open_defects = 0
 
@@ -30,10 +23,6 @@ def report(ok: bool, label: str, detail: str = "") -> None:
     if not ok:
         open_defects += 1
 
-
-referenced = nro_audit.referenced_romfs_paths([ROOT / "src", ROOT / "include"])
-uncovered = sorted(referenced - set(verify_nro_romfs.required_paths()))
-report(not uncovered, "QA-F1 packaged-RomFS manifest covers every source-referenced asset", ", ".join(uncovered))
 
 try:
     import yaml  # type: ignore

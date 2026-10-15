@@ -88,6 +88,14 @@ def main() -> int:
                 if r.startswith("| ") and not r.startswith("| Area") and not r.startswith("| ---")]
         check(rows and all("| NOT RUN |" in r for r in rows), "hardware record never pre-fills an owner result")
 
+        posted = nro_audit.audit(good, SHA, romfs_dir=local, source_roots=[src],
+                                 expect_nro_sha256=result.sha256.upper(), expect_size=result.size)
+        check(not posted.errors, "posted SHA-256 and size that match are accepted")
+        mismatch = nro_audit.audit(good, SHA, romfs_dir=local, source_roots=[src],
+                                   expect_nro_sha256="0" * 64, expect_size=result.size + 1)
+        check(sum("differs from the posted" in e for e in mismatch.errors) == 2,
+              "posted SHA-256 / size that differ are rejected")
+
         wrong = nro_audit.audit(good, "f" * 40, romfs_dir=local, source_roots=[src])
         check(any("does not embed commit" in e for e in wrong.errors), "wrong head is rejected")
         check(any("must be a full" in e for e in nro_audit.audit(good, "abc", romfs_dir=local,
@@ -109,11 +117,11 @@ def main() -> int:
         diff = nro_audit.audit(good, SHA, artifact=other, romfs_dir=local, source_roots=[src])
         check(any("differs from the CI artifact" in e for e in diff.errors), "different CI artifact copy rejected")
 
-        (src / "Gen5.cpp").write_text('auto b = "romfs:/game_cards/black_nds.png";\n')
+        (src / "Later.cpp").write_text('auto b = "romfs:/game_cards/qa_unlisted_card.png";\n')
         missing = nro_audit.audit(good, SHA, romfs_dir=local, source_roots=[src])
         check(not v.verify(v.walk_romfs(v.extract_romfs(good.read_bytes())), v.local_tree(local),
                            v.required_paths()), "older manifest alone still passes (the gap)")
-        check(any("requested by the app source are absent" in e and "black_nds" in e for e in missing.errors),
+        check(any("requested by the app source are absent" in e and "qa_unlisted_card" in e for e in missing.errors),
               "source-referenced asset absent from the package is rejected")
         check(any("not in verify_nro_romfs.required_paths()" in n for n in missing.notes),
               "manifest gap is reported")
@@ -122,7 +130,7 @@ def main() -> int:
         broken.write_bytes(good.read_bytes()[:0x1010])
         check(bool(nro_audit.audit(broken, SHA, romfs_dir=local, source_roots=[src]).errors),
               "truncated NRO fails cleanly")
-        print("--- CLI run on the synthetic package (expected to report the real source's Gen V cards as absent) ---")
+        print("--- CLI run on the synthetic package against the real source tree ---")
         out = tmp_path / "record.md"
         code = nro_audit.main([str(good), "--expect-sha", SHA, "--romfs", str(local), "--record", str(out)])
         check(code in (0, 1) and "NOT DEVICE TESTED" in out.read_text(), "CLI always writes the record")

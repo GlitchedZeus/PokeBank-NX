@@ -1,27 +1,25 @@
 # Application QA findings (Thread 4)
 
 Audited heads: PR #307 `claude/gen5-integration-20261014` at `a17c503ad272cc55e69b8b3cbd925cec999567cc`
-(lane start, contains the #306 Gen I–IV baseline), re-run on the latest #307 head
-`87584a67cd29a1fbe58ddf5f61b8bc23c8a0a2d0` (adds Gen V Trainer/Bag/Pokedex surfaces), which this lane
-forward-merged without conflicts. All inputs synthetic.
+(lane start, contains the #306 Gen I–IV baseline), then `87584a67` (Gen V Trainer/Bag/Pokedex
+surfaces), then the Gen I–V hardware candidate head `fa9cfceabfecd2afb79d0df935588a3e81e0a7fe`
+(tree `5de23dc2`), which carries the QA-F1 and QA-F3 fixes. Each was forward-merged into this lane
+without conflicts and the full suite re-run. All inputs synthetic.
 
-Each open defect has a failing reproduction that is kept **out** of every default gate:
-
-```sh
-make -f Makefile.host qa-known-failures   # exits non-zero while any defect below is open
-```
-
-The C++ cases live in `tests/test_qa_known_failures.cpp`, the tooling/CI cases in
-`tests/test_qa_known_failures_assets.py`. Each can be ported verbatim into the owning thread's suite
-as the regression test for its fix.
+Open defects keep a failing reproduction **outside** every default gate
+(`make -f Makefile.host qa-known-failures`, `tests/test_qa_known_failures_assets.py`). When a fix
+lands, its reproduction moves into the passing suite as a regression test
+(`tests/test_qa_regressions.cpp` in `qa-contracts`, `tests/test_qa_regressions_assets.py` in
+`qa-tools-test`).
 
 ## Summary
 
 | ID | Severity | Area | Owner | Status |
 | --- | --- | --- | --- | --- |
 | QA-F2 | **Medium** (CI hygiene) | 3 invalid `one-time-*` workflow files fail on every push to every branch | Owner approval; coordinator | OPEN |
-| QA-F3 | Low | Common and Gen II export publish can replace a destination created after the uniqueness check | Thread 2 (`Integration/Common`), Thread 1 (Gen II publisher) | OPEN |
-| QA-F1 | Low | Packaged-RomFS manifest omits the four Gen V game cards the app requests | Thread 2 (`native-pr-build.yml` gate) / coordinator (`tools/verify_nro_romfs.py`) | OPEN |
+| QA-F3 | Low | Common (and Gen V) export publish could replace a destination created after the uniqueness check | Thread 2 | **FIXED** in `fa9cfcea`; regression test in `qa-contracts` |
+| QA-F3b | Low | The same non-exclusive `rename()` publish remains in the Gen II transaction | Thread 1 (`Gen2ExportTransaction.cpp`) | OPEN (by inspection; no injection point for a deterministic repro) |
+| QA-F1 | Low | Packaged-RomFS manifest omitted the four Gen V game cards the app requests | Thread 2 | **FIXED** in `3b35b3f`; regression test in `qa-tools-test` |
 
 No crash, sanitizer report, out-of-bounds read or round-trip violation was found in any Gen I–V parser,
 record decoder, Bag decoder, copy selector or Save Instance identification path (see
@@ -40,7 +38,7 @@ record decoder, Bag decoder, copy selector or Save Instance identification path 
 - **Proposed fix:** delete the three files (they are spent one-time patch jobs with `contents: write`);
   see [WORKFLOW_CLEANUP_PROPOSAL.md](WORKFLOW_CLEANUP_PROPOSAL.md) §1. Needs owner approval.
 
-## QA-F3 (Low): export publication is not exclusive
+## QA-F3 (Low, FIXED in fa9cfcea for Common and Gen V; Gen II open as QA-F3b): export publication is not exclusive
 
 - **Code:** `src/Integration/Common/VerifiedStagedExport.cpp` (`publishVerifiedStagedExport`: unique
   name chosen with `stat()` at line ~167, published with `rename()` at line ~256). Same pattern in
@@ -52,7 +50,11 @@ record decoder, Bag decoder, copy selector or Save Instance identification path 
   tool), the export reports success into that path instead of failing closed or taking the next free
   name. A non-empty destination makes `rename()` fail, so no export data is lost; the defect is a
   non-exclusive publish, not data loss. On the Switch the app is single-process, hence Low.
-- **Repro (deterministic):** `tests/test_qa_known_failures.cpp` case QA-F3 creates the destination
+- **Status:** `fa9cfcea` claims the destination with an exclusive `mkdir` (Common and Gen V). The
+  repro is now a passing regression test, `tests/test_qa_regressions.cpp`, extended to a racing
+  non-empty directory as well. Gen II's own transaction (Thread 1) still publishes with `rename()`
+  (QA-F3b).
+- **Original repro (deterministic):** case QA-F3 creates the destination
   from inside the strict validator callback, which the exporter calls after read-back and before
   `rename()`; the export then reports success into the pre-existing directory.
 - **Suggested fix (owner decides):** reserve the final name exclusively up front, as Gen V already
@@ -60,7 +62,7 @@ record decoder, Bag decoder, copy selector or Save Instance identification path 
   inside a temp directory under it, or re-check plus fail closed if `rename()` would target an
   existing path. `renameat2(RENAME_NOREPLACE)` is not available on Horizon/newlib.
 
-## QA-F1 (Low): packaged-RomFS manifest does not cover Gen V game cards
+## QA-F1 (Low, FIXED in 3b35b3f): packaged-RomFS manifest did not cover Gen V game cards
 
 - **Code:** `tools/verify_nro_romfs.py` `GAME_CARDS` stops at Gen IV, while
   `src/Games/GameIdentity.cpp` `gameCardArtworkPath()` requests `game_cards/black_nds.png`,
@@ -69,7 +71,8 @@ record decoder, Bag decoder, copy selector or Save Instance identification path 
   verifier's "every local file is packaged" check catches a dropped file, so current NROs are fine.
   But if the prepare step stops copying them, the native gate still passes an NRO without Gen V
   artwork: the defence in depth that exists for Gen I–IV is missing for Gen V.
-- **Repro:** `python3 tests/test_qa_known_failures_assets.py` (QA-F1 line).
+- **Status:** `3b35b3f` adds the four covers to `GAME_CARDS`. `tests/test_qa_regressions_assets.py`
+  now asserts every `romfs:/` literal in the source is in the manifest.
 - **Mitigation shipped here:** `tools/qa/nro_audit.py` checks every `romfs:/` literal in the
   application source in addition to the manifest, so it flags this class of gap automatically.
 - **Suggested fix:** add the four Gen V ids to `GAME_CARDS` (or derive the list from the source as the
