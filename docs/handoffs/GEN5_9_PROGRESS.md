@@ -7,6 +7,68 @@ ownership. Forward commits only; no history rewritten.
 
 Physical Switch status of every NRO built from this branch: **NOT DEVICE TESTED**.
 
+## Hardware failure of candidate `35cbf163` and the editor-parity repair (2026-10-15, Thread 2R)
+
+The owner tested `35cbf1637da41e9607f2d524354c51d70e401fb2` on a Switch and Gen V **failed
+hardware acceptance** on editor parity. Owner's rule: ONE PKSE interface, ONE shared editor,
+ONE set of menus; only generation-specific data, restrictions and capabilities may differ.
+
+**Root cause (all findings).** `Gen5SharedReadOnlySurface.inc` re-implemented its own
+workspace, pickers, field model and navigation (`drawWorkspace5`, five Gen V-only pickers,
+`Gen5WorkspaceLayout`, a 43-row `kEditableRows` focus list, Left/Right/ZL/ZR mapped to
+`adjustField`), while Gen IV was built from the shared components. **Fix:** the Gen IV
+workspace was extracted, unchanged, into the generation-neutral
+`src/UI/SharedPokemonEditorSurface.inc` (templated on a generation adapter) plus the
+host-testable focus model `include/UI/SharedPokemonEditorWorkspace.h`. Gen IV supplies
+`Gen4Editor` (its exact strings, setters and catalogs); Gen V supplies `Gen5Editor` over the
+new field model `include/Integration/Gen5/Gen5EditorFields.h`. The Gen V-only editor, pickers,
+`Gen5WorkspaceLayout.h` and the backend picker/field-row state were deleted.
+
+| Owner finding | Diagnosis | Fix (commit) |
+| --- | --- | --- |
+| P1 navigation differs; moving focus changes values | Gen V surface mapped Left/Right/ZL/ZR to `adjustField()` and had its own panel model | Gen V runs the shared Gen IV navigation: D-pad/stick cross DETAILS↔STATS↔MOVES, L/R switch panels, values change only after A + picker/keypad; touch on every field; 4 move rows × Move/PP/PP Ups editor (`5d8b833`, `de22e35`) |
+| P2 Nature/Gender/Shiny/Ability/PID duplicated or unreachable | Gen V showed a read-only PID summary and edited Nature/Gender/Ability in DETAILS | Shared STATS PID-linked rows; Nature is a stored byte (PK5 0x41); Gender/Shiny/Ability change the PID only through cited deterministic procedures (PKHeX `6501f0ab` EntityGender/PK5/PKM/EntityPID), Gen V origins only, behind an explicit "Change PID?" confirmation with strict re-verify; PID read-only (`2af2563`, `6efd8c6`) |
+| P3 Actions/Add menu not the Gen I–IV menu | Custom Gen V modal | `drawNarrowPokemonActions` with only available actions, Gen I–IV order (`de22e35`, `f041992`) |
+| P4 field controls | Raw ID keypads for item/ball/location; ID-only ability/form lists | Shared Species (1–649, sprites, Y shiny, X search, refusal reasons, native Create rebuild), Held Item grid (PKHeX `ItemStorage5.GetAllHeld`), Ball 1–25, Met Location (ID 0 shown as text), Pokérus, compact Form, named Ability, Nature layout; keypads only for numeric fields; DETAILS order = Gen IV + OT Gender + Fateful (`de22e35`) |
+| P5 move picker | Name + PP only | Shared move picker row + Gen V type icon, category, Pwr/Acc (— when undefined) and PP from the cited table `include/Names/MoveBattleStats5.h` (PKHeX MoveInfo5 + Showdown gen5, cross-checked); "Native" = valid ID, learnability not checked (`888b886`, `de22e35`) |
+| P6 Box HP/stats 0 | `Pokemon5ReadOnlyView` returned party cache only (0 for boxed) | `displayStats5` shared by Box summary, View and Edit (`de22e35`) |
+| P6 origin/OT/met text overlaps graph | Long data rows | Short GEN V DATA rows, values bounded (`de22e35`) |
+| P6 Form/Nature menus oversized | Gen V-only 680×525 pickers | Shared NaturePickerLayout and compact Form picker (`de22e35`) |
+| P6 Trainer/Items conventions | Clamp/first-tap-focus lists, read-only trainer rows focusable | Items: wrap, page-start paging, swipe scroll, tap = A; Trainer: focus only actionable rows, wrap, tap = A (`ad95b2d`) |
+| P7 contract tests | none | `tests/test_shared_editor_contract.cpp` — the owner's 14 checks for Gen I–V layouts, plus routing/no-separate-editor locks (`f041992`, `6efd8c6`) |
+
+### Gen I–IV files touched (authorised for this purpose, behaviour unchanged)
+`src/UI/Gen4SharedPokemonSurface.inc` (workspace extracted; Gen IV adapter keeps every
+string/setter/catalog), `include/UI/SharedPokemonEditorContract.h` (Gen V layout added; Gen
+I–IV entries unchanged). No Integration/Gen1–4 file was touched. Every existing Gen I–IV host
+test passes under GCC and Clang, with ASan/UBSan.
+
+### Source-text contract readers (coordinator-approved, no assertion dropped)
+`tests/test_gen4_hardware_surface_contract.cpp`, `tests/test_nature_picker_layout.cpp` and
+`tests/test_shared_species_picker_surface_contract.cpp` (plus the UI-owned
+`test_reachable_ui_consistency.py`, `test_touch_appwide_surface_contract.py`,
+`test_touch_pokemon_editor_direct_rows_contract.py`) expand the one textual include
+`SharedPokemonEditorSurface.inc` (commit `b7c7336`). `test_move_picker_presentation.cpp` needed
+no change. Needles restated old → new:
+
+| Old needle | New needle(s) |
+| --- | --- |
+| `Shared::normalizeMoveRowFocus(Shared::Generation::Gen4` | `static constexpr auto generation = Shared::Generation::Gen4;`, `Workspace::navigate(A::generation, state.focus, keys, passive, editable,`, model `focus = Shared::normalizeMoveRowFocus(generation, focus);` |
+| `Shared::moveRowColumn(Shared::Generation::Gen4` | model `: Shared::moveRowColumn(generation, focus, -1);` |
+| `Shared::passiveViewMoveColumn(Shared::Generation::Gen4` | model `focus = passive ? Shared::passiveViewMoveColumn(generation, focus, -1)` |
+| `openMoveEditor(screen, state, state.focus.row)` | `openMoveEditor<A>(screen, state, activation.row)` |
+| `state.moveBaseline = state.session.working->moves()` | `state.moveBaseline = A::workingMove(screen, state, slot)` + `gen4(state).session.working->moves()[static_cast<size_t>(slot)]` |
+| `state.session.working->setMove(slot, state.moveBaseline)` | `A::setMove(screen, state, slot, state.moveBaseline)` |
+| `if (detailEditable(state, state.focus.row, p)) return;` | model `if (detailEditable(static_cast<int>(focus.row))) return focus;` + `return UI::Gen4SharedEditorSurface::detailEditable(gen4(state), row, p);` |
+| `if (pidLinkedRowEditable(state, state.focus.row, p)) return;` | model `if (pidEditable(static_cast<int>(focus.row))) return focus;` + `return pidLinkedRowEditable(gen4(state), row, p);` |
+| `state.session.mode == SessionModel::Mode::View \|\| editable` | `state.focus.row == row && (viewMode \|\| editable);` + `return gen4(state).session.mode == SessionModel::Mode::View;` |
+| order `drawMoveEditor(screen, fb, state)` < `drawValuePicker(screen, fb, state)` | order `drawMoveEditor<A>(screen, fb, state)` < `drawValuePicker<A>(screen, fb, state)` |
+| `if (state.session.confirmExit)` | `if (A::confirmExit(screen, state)) {` + `return gen4(state).session.confirmExit;` |
+| `species, 493, previewShiny` | `species, A::kMaxSpecies, previewShiny` + `static constexpr int kMaxSpecies = 493;` |
+
+Thread 2H (`claude/gen5-home-providers-20261015` @ `ece88e27`) was merged forward with a merge
+commit (`9c038d9`) before the integrated candidate.
+
 ## Hardware failure of candidate `fa9cfcea` and the repair (2026-10-15)
 
 The owner tested `fa9cfceabfecd2afb79d0df935588a3e81e0a7fe` on a Switch and Gen V **failed
@@ -53,7 +115,9 @@ No Gen IV source file was changed.
 - Open → the same hub as Gen I–IV: Pokémon (Boxes), Party, Storage (refused for Gen V), Items,
   Trainer. B on the hub exits through the staged-changes confirmation; + opens Review.
 - A on a slot → Pokémon Actions. Add on an empty slot → shared editor (DETAILS / STATS / MOVES).
-  L/R panel, Up/Down field, A picker/keypad, Left/Right step, X Keep/Add, Y Discard, B back.
+  The SAME shared editor as Gen IV: D-pad/stick move between fields and across DETAILS / STATS /
+  MOVES, L/R switch panels, A opens the field's picker or keypad (focus never changes a value),
+  X Keep/Add, B back (unsaved changes ask Save / Discard / Back).
 
 ### Earlier (pre-repair) notes
 
