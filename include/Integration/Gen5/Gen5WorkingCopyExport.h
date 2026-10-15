@@ -13,7 +13,10 @@ namespace PokeVault::Integration::Gen5 {
 // source-path write, emulator injection, or installed-game save permission.
 // On Switch the destination is fixed to PokeBank NX's exports/gen5 tree.
 enum class WorkingCopyFailurePoint : uint8_t {
-    None, AfterBackup, AfterEdited, AfterReadback, AfterManifest
+    None, AfterBackup, AfterEdited, AfterReadback, AfterManifest,
+    // Host-only race simulation: the destination appears (as an empty
+    // directory) just before publication, or publication fails midway.
+    DestinationAppears, AfterFirstPublishedFile
 };
 struct WorkingCopyExportRequest {
     std::string profileIdentity; // exact 32-character, nonzero AccountUid hex

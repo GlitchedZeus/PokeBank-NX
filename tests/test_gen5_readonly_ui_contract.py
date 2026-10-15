@@ -396,8 +396,14 @@ require(read("Makefile.host.gen5"),
         "host-test: $(GEN5_BOX_TOUCH_TEST)",
         "host-sanitize: $(GEN5_BOX_TOUCH_SANITIZE)")
 require(read(".github/workflows/gen5-focused-host.yml"),
-        "test_gen5_create_integration test_gen5_box_touch test_gen5_create_input_rules; do",
-        "test_gen5_create_integration_sanitize test_gen5_box_touch_sanitize test_gen5_create_input_rules_sanitize; do")
+        "test_gen5_create_integration test_gen5_box_touch test_gen5_create_input_rules ",
+        "test_gen5_create_integration_sanitize test_gen5_box_touch_sanitize test_gen5_create_input_rules_sanitize ",
+        "test_gen5_bag_screen test_gen5_party_box_parity test_gen5_trainer test_gen5_source_e2e test_gen5_export_validation; do",
+        "test_gen5_trainer_sanitize test_gen5_source_e2e_sanitize test_gen5_export_validation_sanitize; do")
+# One integrated Gen I-V candidate with packaged RomFS verification.
+require(read(".github/workflows/gen15-integrated-candidate.yml"),
+        "python3 tools/verify_nro_romfs.py PokeBankNX.nro --list", "DEVICE_ACCEPTED=false",
+        "STATUS=NOT DEVICE TESTED", "devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282")
 
 # Shared Gen V action-screen Undo is limited to app-owned Box Clone,
 # Remove and Create transactions; never reach generic storage/save handlers.
@@ -487,8 +493,8 @@ require(surface,
 require(read("Makefile.host.gen5"),
         "GEN5_CREATE_INPUT_TEST :=","GEN5_CREATE_INPUT_SANITIZE :=")
 require(read(".github/workflows/gen5-focused-host.yml"),
-        "test_gen5_box_touch test_gen5_create_input_rules; do",
-        "test_gen5_box_touch_sanitize test_gen5_create_input_rules_sanitize; do")
+        "test_gen5_box_touch test_gen5_create_input_rules ",
+        "test_gen5_box_touch_sanitize test_gen5_create_input_rules_sanitize ")
 require(read("tests/test_gen5_create_input_rules.cpp"),
         "for(uint32_t y=2000;y<=2099;++y)",
         "G::createMoveChoiceAllowed5(",
@@ -832,8 +838,10 @@ require(working_cpp, "buildStagedSaveCandidateForObservedSource(",
         "readExact(editedPath", "hash(editedReadback)",
         "Gen5ReadOnlySave::parse(",
         "cleanTemporary(temporaryPath);",
-        "rename(temporaryPath.c_str(),finalPath.c_str())",
+        "::mkdir(finalPath.c_str(),0700)!=0", "unpublish(",
         "INJECT_SAVE=DISABLED", "EMULATOR_SAVE_WRITE=DISABLED")
+# QA-F3: publication never renames a directory onto the destination.
+assert "::rename(temporaryPath.c_str(),finalPath.c_str())" not in working_cpp
 for forbidden in ("std::fopen(request.sourcePath", '::rename(request.sourcePath',
                   '::remove(request.sourcePath', "injectSave("):
     assert forbidden not in working_cpp, f"Gen V writer touches original source: {forbidden}"
