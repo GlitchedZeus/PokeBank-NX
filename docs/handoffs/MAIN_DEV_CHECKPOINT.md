@@ -4,7 +4,7 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-15 08:15 UTC (campaign tick: L report, QA-F2 fixed).
+**Last updated:** 2026-10-15 08:25 UTC (C and L merged; QA Phase 5 done).
 
 ## Active milestone
 
@@ -18,7 +18,10 @@ any SHA below.
 | QA-F2 | **Fixed** in `96a44685`. The three `one-time-*` workflows are re-indented and gated to `workflow_dispatch`; none deleted. |
 | C | `cd2bbbff` (8 commits: Review discard, picker parity, export separation tests, Gen II Clone, Y Random DVs confirm, Gen IV bag layout). 2R is merging it. |
 | L | `50491e88` (draft PR #317). The RetroArch Quit "crash" is upstream behaviour: no next load, so the loader goes to hbmenu or HOME. The DraStic return is its saved LauncherPath. Fixes: a bounded argv plan with libnx-exact quoting, the return selection restored on Home, and a return-on-launcher mode inside the **opt-in** return host. Default handoff is byte-identical. Merges cleanly; 2R is merging it and adding the quit-route notice. NOT DEVICE TESTED. |
-| QA (4) | `1b101ed5`: matrix framework, runner and workflow checker. Gen I/II and V cells are still open. |
+| QA (4) | `c8c0f38c`: **Phase 5 matrix done**. 20 versions × 21 cells = 415 PASS, 5 N/A, 0 FAIL, identical under GCC and Clang (plain and ASan/UBSan). Hardware-only residue is listed in `docs/qa/GEN1_5_MATRIX.md`. 2R is merging it. Next: Phase 6 independent audit on the integrated head. |
+| Merges on #307 | C → `a0b72203` (gates green, reported by 2R); L → `181423a4`; QA pending |
+| QA-F6 (Low, C) | `src/Legacy/RetroArchFRLGDiscovery.cpp:114`: identityHint substring-matches release names across the whole path. Confirmed in code and routed to C. |
+| Divergence noted | Create default species is #1 for Gen I/IV and #25 for Gen II/III/V. Kept as is: hardware-accepted and documented. |
 
 **URGENT: Gen V FAILED owner hardware acceptance** on candidate `fa9cfcea` (NRO `57b4ec2b…`). Thread 2 is repairing it on #307 (unfrozen). Gen VI/VII merges are on hold. Thread 3 is standing down so the usage quota goes to the repair.
 
