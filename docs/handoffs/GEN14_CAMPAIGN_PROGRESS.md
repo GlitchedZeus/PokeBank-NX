@@ -38,15 +38,16 @@ Each new test fails against the previous code unless marked "pinning".
 | V5 | Gen II Pokerus / Met Time / OT Gender selectors | cea1da09 | `test_gen2_field_selector` |
 | V7 | Picker paging matches the shared editor | 2849071b | `test_gen13_picker_paging` |
 | V4 | Gen I Edit working-copy draft (Keep stages, Discard drops) | 74d4b16f | `test_gen1_edit_draft` |
-| V6 | Gen I panels use the shared shell geometry; shell assessment below | this commit | static_asserts in the Gen I workspace |
+| V6 | Gen I panels use the shared shell geometry; shell assessment below | ce82066f | static_asserts in the Gen I workspace |
+| A1 | Gen IV review lists Bag changes (bag-only edits now have review lines) | 2b2be00f | `test_gen4_export_transaction` |
+| A2 | Gen III Japanese name lengths (5/5); Gen II/III strain-0 Pokerus with days refused | c934a945 | `test_gen3_staged_pokemon_editor`, `test_gsc_pokemon_editor` |
 
 Open / reported:
 - Coordinator one-liner: pass held/stick to `handleFoundationPassiveViewInput` (Gen I View stick parity).
 - Coordinator wording for `SaveSelectScreen.cpp:914-915` (QA-c).
 - Gen IV battle-only stored forms (Castform 4, Cherrim) — awaiting a decision.
 - Gen IV export drops a DraStic `.dsv` footer (raw `.sav` export); bag-only edits have no review line;
-  Diamond vs Pearl not checked against the save — next audit fixes.
-- Gen III Japanese name lengths / Pokerus strain-0 validation (audit, low).
+  Diamond vs Pearl not checked against the save (no pinned reference distinguishes them) — owner decision on `.dsv`.
 
 ## Item 6 assessment: Gen I/II and SharedPokemonShell
 
@@ -75,6 +76,7 @@ Open / reported:
 
 ## Verification log
 
+- Full GCC + Clang `host-test` + `host-sanitize`: PASS on the c934a945 tree.
 - Full GCC + Clang `host-test`: PASS at c7b0f978. GCC + Clang `host-sanitize`: PASS on the
   f5db8074 merge tree.
 - Every unit: touched targets GCC+Clang, plain + ASan/UBSan; all `tests/*.py`; `git diff --check`;
@@ -82,5 +84,4 @@ Open / reported:
 
 ## Next
 
-Re-run full suites for the milestone; Gen IV `.dsv` export container and bag review lines; Gen III
-validation lows; watch PR #318 CI.
+Continue the Gen I–IV audit; Gen IV `.dsv` container once the owner decides; watch PR #318 CI.
