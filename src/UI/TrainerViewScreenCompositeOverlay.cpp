@@ -364,7 +364,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     }
 
     if (Gen1PokemonEditor::isGen1SourceUX(*this) && Gen1PokemonEditor::foundationPassiveViewActive(*this)) {
-        Gen1PokemonEditor::handleFoundationPassiveViewInput(*this, down, touchedButtonId(touch));
+        Gen1PokemonEditor::handleFoundationPassiveViewInput(*this, down, touchedButtonId(touch), held, stick.x, stick.y);
         return;
     }
 

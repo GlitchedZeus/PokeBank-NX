@@ -265,6 +265,9 @@ bool StagedPokemonEditor::stageAdd(size_t b,size_t s,const BoxPokemonCreate& c,s
     if(c.nickname.empty() && c.species==29) nickname="Nidoran F";
     if(c.nickname.empty() && c.species==32) nickname="Nidoran M";
     if(c.nickname.empty() && c.species==83) nickname="Farfetchd";
+    // An un-nicknamed Pokemon carries the upper-case retail species name (pret/pokered
+    // data/pokemon/names.asm); evolution renames only a name equal to the old species name.
+    if(c.nickname.empty()) for(auto& ch:nickname) if(ch>='a' && ch<='z') ch=static_cast<char>(ch-'a'+'A');
     const auto owner=c.otName.empty()?original_->trainer().name:c.otName;
     if(!encodeName(nickname,10,nick,error) || !encodeName(owner,7,ot,error)) return false;
     for(auto v:c.dvs) if(v>15) {error="DVs must be 0..15";return false;}

@@ -158,7 +158,7 @@ Gen2::PokemonRecord defaultCreateRecord(Gen2::StagedEditor& editor) {
     Gen2::PokemonRecord p;
     p.species = 25;
     p.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::fallbackLevel;
-    p.nickname = Names::getSpeciesName(p.species);
+    p.nickname = PokeBank::UIModel::classicDefaultNickname(p.species);
     p.originalTrainer = editor.trainerName();
     p.trainerId = editor.trainerId();
     p.heldItem = 0;
@@ -290,7 +290,7 @@ bool stageCreate(TrainerViewScreen& screen) {
     }
 
     const std::string displayName = state.working.nickname.empty()
-        ? std::string(Names::getSpeciesName(state.working.species)) : state.working.nickname;
+        ? PokeBank::UIModel::classicDefaultNickname(state.working.species) : state.working.nickname;
     const int destinationBox = state.box;
     std::size_t slot = 0;
     std::string error;
@@ -436,12 +436,12 @@ void editIdentityField(TrainerViewScreen& screen, State& state) {
     switch (state.row) {
         case 0: {
             const uint16_t oldSpecies = p.species;
-            const std::string oldDefault = Names::getSpeciesName(oldSpecies);
+            const std::string oldDefault = PokeBank::UIModel::classicDefaultNickname(oldSpecies);
             const auto result = Utils::promptNumber("Gen II Species ID", p.species, 1, 251);
             if (!result.accepted) return;
             state.setSpecies(static_cast<uint16_t>(result.value), screen.sourceGameId);
             if (state.mode == Mode::Create && p.nickname == oldDefault)
-                p.nickname = Names::getSpeciesName(p.species);
+                p.nickname = PokeBank::UIModel::classicDefaultNickname(p.species);
             refreshDerived(p);
             break;
         }

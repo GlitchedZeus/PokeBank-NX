@@ -189,6 +189,12 @@ void runGame(SourceGame game, Family family) {
         assert(added->nickname == "DRAFT" && added->level == 50 && added->otName == "BLUE" && added->tid == 0);
         assert(identity->originalBytes() == immutableSource);
         identity->discard(); assert(identity->stagedBytes() == immutableSource);
+        // A blank English nickname defaults to the upper-case retail species name.
+        BoxPokemonCreate unnamed; unnamed.species = 25; unnamed.level = 5; unnamed.language = 2;
+        unnamed.otName = "BLUE";
+        assert(identity->stageAddBoxPokemon(0, 1, unnamed, error));
+        assert(identity->boxedPokemon(0, 1, error)->nickname == "PIKACHU");
+        identity->discard();
         create.otName = "TOOLONGOT";
         assert(!identity->stageAddBoxPokemon(0, 1, create, error));
         assert(identity->stagedBytes() == immutableSource);

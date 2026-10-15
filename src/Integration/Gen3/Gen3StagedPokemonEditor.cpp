@@ -102,6 +102,17 @@ uint8_t originVersion(SourceGame game) noexcept {
     return 0;
 }
 
+// Name of an un-nicknamed Pokemon. English Gen III stores species names in upper case
+// (pret/pokeemerald gSpeciesNames, pokefirered likewise) and evolution renames only a name equal
+// to the old species name. Other record languages keep the existing English default until their
+// localized retail names are pinned.
+std::string defaultNickname(uint16_t species, uint8_t language) {
+    std::string name = Names::getSpeciesName(species);
+    if (language == 2)
+        for (auto& ch : name) if (ch >= 'a' && ch <= 'z') ch = static_cast<char>(ch - 'a' + 'A');
+    return name;
+}
+
 bool validLanguage(uint8_t language) noexcept {
     // PK3 language ids: Japanese, English, French, Italian, German, Spanish.
     return language == 1 || language == 2 || language == 3 ||
@@ -602,7 +613,7 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     pokemon.setOTName(ot);
 
     std::string nickname = create.nickname;
-    if (nickname.empty()) nickname = Names::getSpeciesName(create.species);
+    if (nickname.empty()) nickname = defaultNickname(create.species, create.language);
     const auto nickname16 = Utils::utf8ToUtf16(nickname);
     if (nickname16.size() > 10 || !pokemon.canStoreNickname(nickname16)) {
         error = "Create nickname cannot be represented in the Generation III character set";
@@ -684,7 +695,7 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     }
     auto after = boxedPokemon(box, slot, error);
     const std::string expectedNickname = create.nickname.empty()
-        ? std::string(Names::getSpeciesName(create.species)) : create.nickname;
+        ? defaultNickname(create.species, create.language) : create.nickname;
     const std::string expectedOt = create.otName.value_or(trainer_.name);
     if (!after || after->species != create.species || after->level != create.level ||
         (create.experience && after->experience != *create.experience) ||

@@ -40,8 +40,8 @@ int main() {
     const auto picker = readFile("src/UI/Gen2PokemonPickerOverlay.inc");
     // Both paging directions still update selection, but now stop active
     // touch inertia first so physical controls cannot fight the viewport.
-    assert(picker.find("(nav & HidNpadButton_Left)) { picker.scroll.stop(); picker.model.stepList(-10); }") != std::string::npos);
-    assert(picker.find("(nav & HidNpadButton_Right)) { picker.scroll.stop(); picker.model.stepList(10); }") != std::string::npos);
+    // Paging follows the shared list scheme (Gen13PickerPaging.h) and stops touch inertia first.
+    assert(picker.find("if (keys.any() && listCount > 0) {\n            picker.scroll.stop();\n            picker.model.index = PokeBank::UIModel::SharedPickerPaging::pagedRow(") != std::string::npos);
     const auto pickerModel = readFile("include/UI/Gen2PokemonPickerModel.h");
     const auto nativePresentation = readFile("include/UI/Gen2NativePresentation.h");
     const auto sharedShell = readFile("include/UI/SharedPokemonShell.h");
@@ -222,11 +222,13 @@ int main() {
 
     assert(unified.find("Choose a legitimate Crystal encounter first") != std::string::npos);
     assert(unified.find("focus.row == 10 && !caught.present") != std::string::npos);
-    assert(unified.find("cycleUnrecordedCrystalOtGender") != std::string::npos);
+    // OT gender / Met Time use the shared selector (owner directive); the pending/recorded split
+    // and the encounter's allowed-time mask are unchanged.
+    assert(unified.find("Gen2FieldSelector::otGender(state.crystalOtGender, caught.present)") != std::string::npos);
     assert(foundation.find("uint8_t crystalMetTime = 0") != std::string::npos);
     assert(unified.find("Pending Met Time is editor-only") != std::string::npos);
     assert(unified.find("crystalAllowedTimeMask") != std::string::npos);
-    assert(unified.find("nextCrystalAllowedMetTime") != std::string::npos);
+    assert(unified.find("caught.timeOfDay, true, crystalAllowedTimeMask(screen, p, caught)") != std::string::npos);
     assert(picker.find("resolvedMetTime = state.crystalMetTime") != std::string::npos);
     assert(unified.find("passiveViewMoveColumn") != std::string::npos);
     assert(parity.find("passiveViewMoveColumn") != std::string::npos);
@@ -282,7 +284,10 @@ int main() {
     assert(picker.find("Pokerus days remaining") == std::string::npos);
     assert(picker.find("Stored byte preview") == std::string::npos);
     assert(unified.find("if (focus.row == 8)") != std::string::npos);
-    assert(unified.find("p.pokerus = Gen2Native::cyclePokerusState(p.pokerus)") != std::string::npos);
+    // Owner campaign directive: Pokerus uses the shared selector interaction (same three native
+    // states None/Infected/Cured, still no strain/days editor) instead of cycling in place.
+    assert(unified.find("selector = PokeBank::UIModel::Gen2FieldSelector::pokerus(p.pokerus);") != std::string::npos);
+    assert(unified.find("p.pokerus = Gen2Native::cyclePokerusState(p.pokerus)") == std::string::npos);
     assert(picker.find("state.working.caughtData = 0") != std::string::npos);
 
     // Move slots must enter the accepted Gen I-style Move N contextual editor first.

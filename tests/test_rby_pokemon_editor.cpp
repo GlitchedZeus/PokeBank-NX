@@ -217,6 +217,19 @@ int main() {
     assert(nicknameAfterSpeciesChange("FlameBoy", 6, 9) == "FlameBoy");
     assert(nicknameAfterSpeciesChange("", 1, 150).empty());
     assert(nicknameAfterSpeciesChange("Pikachu", 25, 83) == "Farfetchd");
+    // A blank nickname defaults to the retail upper-case species name, and a still-default
+    // upper-case name follows a species change.
+    assert(PokeBank::UIModel::classicDefaultNickname(25) == "PIKACHU");
+    assert(PokeBank::UIModel::classicDefaultNickname(29) == "NIDORAN F");
+    assert(nicknameAfterSpeciesChange("PIKACHU", 25, 26) == "RAICHU");
+    for (auto game : {SourceGame::Red, SourceGame::Blue, SourceGame::Yellow}) {
+        const auto raw = fixture(game); const auto source = parse(raw, game);
+        std::string error; auto e = StagedPokemonEditor::create(*source.save, error); assert(e);
+        BoxPokemonCreate blank; blank.species = 25; blank.nickname = "";
+        const auto slot = e->appendSlot(2, error); assert(slot);
+        assert(e->stageAdd(2, *slot, blank, error));
+        assert(e->boxedPokemon(2, *slot, error)->nickname == "PIKACHU");
+    }
 
     for(auto game:{SourceGame::Red,SourceGame::Blue,SourceGame::Yellow}) { run(game); currentBoxAdd(game); speciesLevelPolicy(game); currentHpFollowsMaxHp(game); }
     assert(StagedPokemonEditor::moveMaxPP(74,3)==61);assert(StagedPokemonEditor::moveBasePP(105)==20);

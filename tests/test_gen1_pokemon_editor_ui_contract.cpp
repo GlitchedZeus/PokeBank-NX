@@ -276,8 +276,10 @@ int main() {
     assert(moveDialog.find("drawOverlayUXCleanup3(screen, fb)") < moveDialog.find("ux3DrawPicker"));
     assert(speciesBackdrop.find("drawFullscreenGen1Workspace(screen, fb)") < speciesBackdrop.find("ux3DrawPicker"));
     const auto pickerSource = readFile("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc");
-    assert(pickerSource.find("down & (HidNpadButton_L | HidNpadButton_Left)") != std::string::npos);
-    assert(pickerSource.find("down & (HidNpadButton_R | HidNpadButton_Right)") != std::string::npos);
+    // Species paging: Left or L / Right or R page by 10 via the shared list scheme
+    // (Gen13PickerPaging.h, which also adds wrap and ZL/ZR like the Gen IV/V pickers).
+    assert(pickerSource.find("pagedRow(state.pickerValue - 1, 151, keys) + 1") != std::string::npos);
+    assert(pickerSource.find("(down & HidNpadButton_Left) != 0, (down & HidNpadButton_Right) != 0,\n            (down & HidNpadButton_L) != 0, (down & HidNpadButton_R) != 0,") != std::string::npos);
     const auto pickerDraw = pickerSource.substr(pickerSource.find("void ux3DrawPicker"));
     assert(pickerDraw.find("fb.drawFilledRect") < pickerDraw.find("ux2DrawPanel"));
     assert(speciesBackdrop.substr(0, speciesBackdrop.find("void drawFoundationBottomSplit")).find("fb.drawFilledRect") == std::string::npos);

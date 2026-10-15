@@ -21,6 +21,7 @@
 #include <array>
 #include <cstdint>
 #include <cstdio>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -92,14 +93,65 @@ const PokeVault::Legacy::RBYReadOnlyTrainer* rbyTrainer(const TrainerViewScreen&
     return static_cast<const PokeVault::Legacy::RBYReadOnlyTrainer*>(&screen.trainer);
 }
 
-Editor* editor(TrainerViewScreen& screen) noexcept {
+// Working-copy draft for one Gen I Edit session (as in the Gen III-V shared editor). While it
+// exists, every editor() caller - field edits, pickers, sub-editors, Random DVs, the workspace
+// display - reads and writes the draft; the real staged copy changes only when the session is
+// kept (one verified stageEdit), and Discard simply drops the draft. A draft made from another
+// trainer/staged editor (source reload) is never used.
+struct Gen1EditDraft {
+    const TrainerViewScreen* owner = nullptr;
+    const Editor* base = nullptr;
+    std::unique_ptr<Editor> draft;
+};
+
+Gen1EditDraft& editDraftFor() noexcept {
+    static Gen1EditDraft draft;
+    return draft;
+}
+
+Editor* realEditor(TrainerViewScreen& screen) noexcept {
     auto* trainer = rbyTrainer(screen);
     return trainer ? trainer->stagedPokemon() : nullptr;
 }
 
+Editor* editor(TrainerViewScreen& screen) noexcept {
+    auto* real = realEditor(screen);
+    auto& d = editDraftFor();
+    if (real && d.draft && d.owner == &screen && d.base == real) return d.draft.get();
+    return real;
+}
+
 const Editor* editor(const TrainerViewScreen& screen) noexcept {
     auto* trainer = rbyTrainer(screen);
-    return trainer ? trainer->stagedPokemon() : nullptr;
+    const Editor* real = trainer ? trainer->stagedPokemon() : nullptr;
+    const auto& d = editDraftFor();
+    if (real && d.draft && d.owner == &screen && d.base == real) return d.draft.get();
+    return real;
+}
+
+// Starts the session's draft from the current staged copy (strictly reparsed by create()).
+bool beginEditDraft(TrainerViewScreen& screen, std::string& error) {
+    auto* real = realEditor(screen);
+    auto& d = editDraftFor();
+    d = {};
+    if (!real) {
+        error = "Generation I staged boxed Pokemon editing is unavailable";
+        return false;
+    }
+    auto draft = Editor::create(real->view(), error);
+    if (!draft) return false;
+    d.owner = &screen;
+    d.base = real;
+    d.draft = std::move(draft);
+    return true;
+}
+
+void dropEditDraft() noexcept { editDraftFor() = {}; }
+
+bool editDraftActive(const TrainerViewScreen& screen) noexcept {
+    const auto* trainer = rbyTrainer(screen);
+    const auto& d = editDraftFor();
+    return trainer && d.draft && d.owner == &screen && d.base == trainer->stagedPokemon();
 }
 
 bool editorAvailable(const TrainerViewScreen& screen) noexcept {
@@ -210,7 +262,7 @@ const char* fieldLabel(int row) noexcept {
 
 std::string draftValue(const BoxPokemonCreate& d, const Editor& e, int row) {
     if (row == 0) return speciesCompact(d.species);
-    if (row == 1) return d.nickname.empty() ? std::string(Names::getSpeciesName(d.species)) + " (default)" : d.nickname;
+    if (row == 1) return d.nickname.empty() ? PokeBank::UIModel::classicDefaultNickname(d.species) + " (default)" : d.nickname;
     if (row == 2) return std::to_string(d.level);
     if (row == 3) return std::to_string(draftExperience(d)) + " (derived)";
     if (row >= 4 && row < 16) {
@@ -380,7 +432,7 @@ bool editDraftField(TrainerViewScreen& screen) {
     }
     if (row == 1) {
         const std::string initial = state.draft.nickname.empty()
-            ? std::string(Names::getSpeciesName(state.draft.species)) : state.draft.nickname;
+            ? PokeBank::UIModel::classicDefaultNickname(state.draft.species) : state.draft.nickname;
         const auto result = Utils::promptText("Generation I Nickname", "1-10 supported Gen I characters", initial, 10);
         if (!result.accepted) return false;
         state.draft.nickname = result.text;
@@ -788,7 +840,7 @@ void drawPreview(PKSEFramebuffer& fb, int x, int y, int w, const PokemonRecord* 
     const uint16_t species = draft ? draft->species : (pokemon ? pokemon->species : 0);
     const uint8_t level = draft ? draft->level : (pokemon ? pokemon->level : 0);
     const std::string nickname = draft
-        ? (draft->nickname.empty() ? std::string(Names::getSpeciesName(species)) : draft->nickname)
+        ? (draft->nickname.empty() ? PokeBank::UIModel::classicDefaultNickname(species) : draft->nickname)
         : (pokemon ? pokemon->nickname : std::string{});
     const uint32_t exp = draft ? draftExperience(*draft) : (pokemon ? pokemon->experience : 0);
 

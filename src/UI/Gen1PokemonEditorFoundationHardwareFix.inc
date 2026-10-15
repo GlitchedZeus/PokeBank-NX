@@ -1,8 +1,18 @@
 #include "UI/ClassicGameContext.h"
+#include "UI/SharedPokemonShell.h"
 
 namespace UI::Gen1PokemonEditor {
 
 namespace ClassicContext = PokeBank::UIModel::ClassicGameContext;
+
+// The Gen I workspace panels use the shared shell geometry; the retained Gen I constants
+// (drawNeutralGen1WorkspaceHeadings) must keep describing the same panels.
+static_assert(SharedPokemonShell::Geometry(1280, 720, 48).y == 96);
+static_assert(SharedPokemonShell::Geometry(1280, 720, 48).leftX == 24 &&
+              SharedPokemonShell::Geometry(1280, 720, 48).leftW == 300);
+static_assert(SharedPokemonShell::Geometry(1280, 720, 48).midX == 24 + 300 + 14 &&
+              SharedPokemonShell::Geometry(1280, 720, 48).midW == 398);
+static_assert(SharedPokemonShell::Geometry(1280, 720, 48).rightX == 24 + 300 + 14 + 398 + 14);
 
 // Hardware fix 2026-09-13: picker state must own both input and drawing even while
 // the underlying editor mode remains AddDraft/Edit. The original foundation gate
@@ -144,7 +154,8 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     const auto& pp = add ? state.draft.pp : pokemon->pp;
     const auto badMove = MoveCompatibility::firstIncompatible(e->metadata().sourceGame, species, moves);
     const Color incompatibleColor = add ? Colors::Error : Colors::Warning;
-    const bool editable = !view;
+    // View is read-only but navigable: focus outlines and field targets are drawn in every
+    // mode; only Edit/Create activation (A) changes values.
 
     screen.touchButtons.clear();
     fb.drawVerticalGradient(0, 0, fb.getWidth(), fb.getHeight(),
@@ -173,13 +184,15 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     fb.drawFilledRect(0, 60, fb.getWidth(), 2, Colors::Accent);
     drawExactGen1WorkspaceSubtitle(screen, fb, workspaceMode);
 
-    constexpr int contentY = 96;
-    const int contentH = fb.getHeight() - contentY - kNavBarH - 8;
-    constexpr int leftX = 24, leftW = 300;
-    constexpr int gap = 14;
-    constexpr int midX = leftX + leftW + gap, midW = 398;
-    constexpr int rightX = midX + midW + gap;
-    const int rightW = fb.getWidth() - 24 - rightX;
+    // Panel geometry is the shared Pokemon shell's (identical numbers to the former Gen I
+    // constants), so Gen I DETAILS/STATS/MOVES sit exactly where Gen II-V panels do.
+    const SharedPokemonShell::Geometry geometry(fb.getWidth(), fb.getHeight(), kNavBarH);
+    const int contentY = geometry.y;
+    const int contentH = geometry.h;
+    const int leftX = geometry.leftX, leftW = geometry.leftW;
+    const int midX = geometry.midX, midW = geometry.midW;
+    const int rightX = geometry.rightX;
+    const int rightW = geometry.rightW;
 
     drawPanelSurface(fb, leftX, contentY, leftW, contentH, false, 14);
     drawPanelSurface(fb, midX, contentY, midW, contentH, false, 14);
@@ -205,9 +218,9 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     };
     for (int i = 0; i < 6; ++i) {
         const int yy = contentY + 214 + i * 43;
-        const bool selected = editable && foundation.focus.panel == Foundation::Panel::Identity && foundation.focus.row == i;
+        const bool selected = foundation.focus.panel == Foundation::Panel::Identity && foundation.focus.row == i;
         drawClassicFocus(fb, leftX + 8, yy, leftW - 16, 38, selected);
-        if (editable) screen.touchButtons.push_back({5000 + i, leftX + 8, yy, leftW - 16, 38});
+        screen.touchButtons.push_back({5000 + i, leftX + 8, yy, leftW - 16, 38});
         fb.drawText(leftX + 18, yy + 7, leftLabels[static_cast<size_t>(i)],
                     selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(leftX + 108, yy + 7, leftValues[static_cast<size_t>(i)], Colors::Text, TextStyle::Caption);
@@ -225,7 +238,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     constexpr auto statLabels = Foundation::gen1StatLabels();
     for (int r = 0; r < 5; ++r) {
         const int rowY = gridY + 28 + r * 42;
-        const bool rowSelected = editable && foundation.focus.panel == Foundation::Panel::Values &&
+        const bool rowSelected = foundation.focus.panel == Foundation::Panel::Values &&
                                  foundation.focus.row == r &&
                                  Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r),
                                                                static_cast<Foundation::ValueColumn>(foundation.focus.column));
@@ -233,13 +246,13 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
                     rowSelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         for (int c = 0; c < 3; ++c) {
             const int cellX = gridX + labelW + c * cellW;
-            const bool selected = editable &&
+            const bool selected =
                                   Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r),
                                                                 static_cast<Foundation::ValueColumn>(c)) &&
                                   foundation.focus.panel == Foundation::Panel::Values &&
                                   foundation.focus.row == r && foundation.focus.column == c;
             drawClassicFocus(fb, cellX, rowY, cellW - 4, 34, selected);
-            if (editable && Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r),
+            if (Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r),
                                                            static_cast<Foundation::ValueColumn>(c)))
                 screen.touchButtons.push_back({5100 + r * 10 + c, cellX, rowY, cellW - 4, 34});
             std::string value;
@@ -252,9 +265,9 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
         }
     }
     fb.drawText(gridX + 8, gridY + 244, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
-    const bool shinySelected = editable && foundation.focus.panel == Foundation::Panel::Values && foundation.focus.row == 5;
+    const bool shinySelected = foundation.focus.panel == Foundation::Panel::Values && foundation.focus.row == 5;
     drawClassicFocus(fb, gridX, gridY + 276, midW - 20, 38, shinySelected);
-    if (editable) screen.touchButtons.push_back({5190, gridX, gridY + 276, midW - 20, 38});
+    screen.touchButtons.push_back({5190, gridX, gridY + 276, midW - 20, 38});
     fb.drawText(gridX + 12, gridY + 286, "Shiny",
                 shinySelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
     fb.drawText(gridX + 130, gridY + 286, presentation.shiny ? "Yes" : "No",
@@ -272,9 +285,9 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
     for (int i = 0; i < 4; ++i) {
         const int rowY = contentY + 44 + i * 40;
-        const bool selected = editable && foundation.focus.panel == Foundation::Panel::Moves && foundation.focus.row == i;
+        const bool selected = foundation.focus.panel == Foundation::Panel::Moves && foundation.focus.row == i;
         drawClassicFocus(fb, rightX + 10, rowY, rightW - 20, 36, selected);
-        if (editable) screen.touchButtons.push_back({5200 + i, rightX + 10, rowY, rightW - 20, 36});
+        screen.touchButtons.push_back({5200 + i, rightX + 10, rowY, rightW - 20, 36});
         const bool incompatible = !MoveCompatibility::canLearnMove(e->metadata().sourceGame, species, moves[static_cast<size_t>(i)]);
         std::string moveText = moves[static_cast<size_t>(i)] == 0 ? "Empty" : std::string(Names::getMoveName(moves[static_cast<size_t>(i)]));
         if (incompatible) moveText = "[!] " + moveText;
@@ -331,7 +344,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     StatsRadar::drawGen1Labeled(fb, rightPaneX + 8, splitY + 32, rightPaneW - 16, splitH - 40, stats);
 
     if (view) {
-        drawNavBar(fb, {{"B", "Back"}, {"Touch", "Back"}});
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
     } else if (foundationStateFor(screen).reroll.confirming) {
         drawNavBar(fb, {{"B", "Cancel"}, {"A", "Re-roll"}});
     } else if (foundationStateFor(screen).editExitConfirm) {
@@ -343,7 +356,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
                         {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}});
     } else {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"B", "Exit"}});
+                        {"Y", "Random DVs"}, {"X", "Keep"}, {"B", "Exit"}});
     }
 }
 
