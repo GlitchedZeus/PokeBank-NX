@@ -169,10 +169,13 @@ void runReal(const std::vector<uint8_t>& b,const Layout& l,int game,
         sourceGameId(label), "", "platinum_nds", "unknown_source"};
     for(const auto source:sources){
         const auto report=Legality::analyze(pk,pk.getGameGroup(),source);
-        // An exact current cartridge label cannot prove absence of
-        // Gen II Time Capsule return trips for native Gen I Pokémon.
-        CHECK(report.coverage.transfer==Legality::CoverageLevel::Partial);
-        CHECK(report.verdict()!=Legality::Verdict::NoProblemsFound);
+        // Every rotation of {0,1,32768,65534,65535} is battle-gained stat
+        // experience with one stat at zero, which no origin, cartridge label
+        // or Time Capsule trip can produce: a battle raises all five. Pinned
+        // PKHeX 6501f0ab reports the same rule (EVs:EffortShouldBeZero) on all
+        // 5436 records, so the verdict is a definite Invalid.
+        CHECK(report.verdict()==Legality::Verdict::Invalid);
+        CHECK(issue(report,Legality::Severity::Invalid,"Stat experience from battles raises every stat"));
         CHECK(!issue(report,Legality::Severity::Invalid,"Ability not legal for this species"));
         CHECK(!issue(report,Legality::Severity::Invalid,"Gendered species marked genderless"));
         CHECK(!issue(report,Legality::Severity::Invalid,"EV over 252"));

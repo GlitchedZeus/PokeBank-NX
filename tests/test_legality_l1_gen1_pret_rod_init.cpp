@@ -18,7 +18,7 @@ H::Candidate make(std::size_t i,const H::PretSlot& row,const char* game) {
  return c;
 }
 int main(){
- static_assert(H::kPretSlotCount==1512);
+ static_assert(H::kPretSlotCount==1621);
  uint64_t positive=0,negative=0,unknown=0;
  for(std::size_t i=0;i<H::kPretSlotCount;++i){
    const H::PretSlot* row=H::pretSlot(i);
@@ -70,6 +70,26 @@ int main(){
  assert(y<H::kPretSlotCount && r<H::kPretSlotCount);
  assert(H::pretSlot(y)->species==120 && H::pretSlot(y)->level==10);
  assert(H::pretSlot(r)->species==72 && H::pretSlot(r)->level==15);
+ // The Red/Blue Super Rod rows of the pret namespace and of the legacy
+ // kVerifiedSlots namespace come from the same pinned super_rod.asm: each
+ // pret row matches exactly one legacy row, and both hold all 109 rows.
+ {
+   std::size_t legacy=0,pretRows=0;
+   for(const auto& slot:H::kVerifiedSlots)
+     if(slot.method==H::Method::SuperRod&&slot.gameMask==3)++legacy;
+   for(std::size_t i=0;i<H::kPretSlotCount;++i){
+     const auto* row=H::pretSlot(i);
+     if(row->method!=H::Method::SuperRod||row->gameMask!=3)continue;
+     std::size_t matches=0;
+     for(const auto& slot:H::kVerifiedSlots)
+       matches+=slot.method==H::Method::SuperRod&&slot.gameMask==3&&
+                slot.map==row->map&&slot.physicalSlot==row->physicalSlot&&
+                slot.species==row->species&&slot.level==row->level;
+     assert(matches==1);
+     ++pretRows;
+   }
+   assert(legacy==109&&pretRows==109);
+ }
  auto yellow=make(y,*H::pretSlot(y),"yellow_gb");
  assert(H::evaluatePretFishingInit(yellow,{true,true}).status==
         S::SourceSlotCompatibleRateAndHistoryUnverified);
