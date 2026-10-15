@@ -758,6 +758,9 @@ void testVerifiedWorkingCopyExport() {
         const std::string manifest((std::istreambuf_iterator<char>(manifestIn)), {});
         assert(manifest.find("GAME_ID=" + gameId(layout)) != std::string::npos);
         assert(manifest.find("SOURCE_SHA256=" + exported.originalSha256) != std::string::npos);
+        // No Open snapshot: the backup is the payload and no container facts are claimed.
+        assert(manifest.find("SOURCE_CONTAINER=") == std::string::npos);
+        assert(manifest.find("ORIGINAL_BACKUP_IS=") == std::string::npos);
         assert(manifest.find("EDITED_SHA256=" + exported.editedSha256) != std::string::npos);
         assert(manifest.find("STRICT_REPARSE=VERIFIED") != std::string::npos);
         assert(manifest.find("- Box 1 slot 2: (empty) -> ") != std::string::npos);
@@ -1029,7 +1032,22 @@ void testExportRefusesStaleSource() {
         request.directoryStem = std::string(dsv ? "dsv" : "raw") + "_ok";
         const auto exported = G4::publishVerifiedGen4Export(*editor, request);
         assert(exported.success && exported.error.empty());
-        assert(slurp(fs::path(exported.directory) / "edited.sav") == editor->stagedBytes());
+        const fs::path out(exported.directory);
+        // The backup is the source FILE verbatim (footer included); edited.sav is the raw payload.
+        assert(slurp(out / "original_backup.sav") == fileBytes);
+        assert(slurp(out / "edited.sav") == editor->stagedBytes());
+        assert(exported.backupSha256 == PokeVault::Integration::Common::sha256Hex(fileBytes));
+        assert(exported.originalSha256 == PokeVault::Integration::Common::sha256Hex(payload));
+        std::ifstream manifestIn(out / "EDIT_MANIFEST.txt");
+        const std::string manifest((std::istreambuf_iterator<char>(manifestIn)), {});
+        auto has = [&](const std::string& line) { return manifest.find(line + "\n") != std::string::npos; };
+        assert(has(std::string("SOURCE_CONTAINER=") + (dsv ? "dsv-footer" : "raw-nds-battery")));
+        assert(has("EDITED_CONTAINER=raw-nds-battery"));
+        assert(has("SOURCE_SHA256_SCOPE=0x80000_SAV4_PAYLOAD"));
+        assert(has("SOURCE_FILE_SIZE=" + std::to_string(fileBytes.size())));
+        assert(has("SOURCE_FILE_SHA256=" + exported.backupSha256));
+        assert(has("ORIGINAL_BACKUP_IS=VERBATIM_SOURCE_FILE"));
+        assert(has("SOURCE_SIZE=" + std::to_string(payload.size())));
         assert(slurp(sourcePath) == fileBytes);
     }
     fs::remove_all(root);
