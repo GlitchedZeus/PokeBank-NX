@@ -1,0 +1,304 @@
+/**
+ * Gen4LegalityInternal.h - shared internals of the Gen IV analyzer (not a public API).
+ *
+ * The analyzer is split by topic: Gen4LegalityRng.cpp (PID/IV correlation and wild
+ * lead/frame checks), Gen4LegalityMoves.cpp (evolution chains and move sources),
+ * Gen4LegalityEncounters.cpp (encounter search), Gen4LegalityText.cpp (names and the
+ * word filter) and Gen4Legality.cpp (field verifiers and the report).
+ */
+#pragma once
+
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <span>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "Legality/Gen4Legality.h"
+#include "Legality/Gen4LegalityData.h"
+
+namespace Legality::Gen4 {
+
+namespace D = ::Legality::Gen4Data;
+
+// ---------------------------------------------------------------- species and versions
+enum : uint16_t {
+    kBulbasaur = 1, kCharmander = 4, kPikachu = 25, kNidoranF = 29, kNidoranM = 32, kClefairy = 35,
+    kMarill = 183, kAzumarill = 184, kPichu = 172, kUnown = 201, kWobbuffet = 202, kWurmple = 265,
+    kSilcoon = 266, kCascoon = 268, kNincada = 290, kNinjask = 291, kShedinja = 292,
+    kAzurill = 298, kCastform = 351, kDeoxys = 386, kTurtwig = 387, kBurmy = 412, kWormadam = 413,
+    kMothim = 414, kCombee = 415, kVespiquen = 416, kCherrim = 421, kShellos = 422, kGastrodon = 423,
+    kKirlia = 281, kGallade = 475, kSnorunt = 361, kFroslass = 478, kRotom = 479, kGiratina = 487,
+    kManaphy = 490, kShaymin = 492, kArceus = 493, kSmeargle = 235, kEevee = 133, kSpinda = 327,
+    kMaxSpecies4 = 493,
+};
+inline bool isGen4Version(uint8_t v) noexcept { return v == D::kHG || v == D::kSS || v == D::kD || v == D::kP || v == D::kPt; }
+inline bool isGen3Version(uint8_t v) noexcept { return (v >= 1 && v <= 5) || v == 15; }
+inline bool isHGSS(uint8_t v) noexcept { return v == D::kHG || v == D::kSS; }
+
+// ---------------------------------------------------------------- personal tables
+enum class Table : uint8_t { DP, Pt, HGSS };
+struct Personal {
+    const uint8_t* p = nullptr;
+    uint8_t baseStat(int i) const noexcept { return p[i]; }
+    uint8_t type1() const noexcept { return p[6]; }
+    uint8_t type2() const noexcept { return p[7]; }
+    uint16_t evYield() const noexcept { return static_cast<uint16_t>(p[0xA] | (p[0xB] << 8)); }
+    uint16_t item1() const noexcept { return static_cast<uint16_t>(p[0xC] | (p[0xD] << 8)); }
+    uint16_t item2() const noexcept { return static_cast<uint16_t>(p[0xE] | (p[0xF] << 8)); }
+    uint8_t gender() const noexcept { return p[0x10]; }
+    uint8_t hatchCycles() const noexcept { return p[0x11]; }
+    uint8_t baseFriendship() const noexcept { return p[0x12]; }
+    uint8_t expGrowth() const noexcept { return p[0x13]; }
+    uint8_t eggGroup1() const noexcept { return p[0x14]; }
+    uint8_t eggGroup2() const noexcept { return p[0x15]; }
+    uint8_t ability1() const noexcept { return p[0x16]; }
+    uint8_t ability2() const noexcept { return p[0x17]; }
+    uint8_t color() const noexcept { return p[0x19]; }
+    bool tmhm(int bit) const noexcept { return bit >= 0 && bit < 100 && ((p[0x1C + (bit >> 3)] >> (bit & 7)) & 1) != 0; }
+    uint8_t formCount() const noexcept { return p[0x29]; }
+    uint16_t formStatsIndex() const noexcept { return static_cast<uint16_t>(p[0x2A] | (p[0x2B] << 8)); }
+    bool hasForm(uint8_t form) const noexcept { return form != 0 && formStatsIndex() > 0 && form < formCount(); }
+    uint16_t formIndex(uint16_t species, uint8_t form) const noexcept {
+        return hasForm(form) ? static_cast<uint16_t>(formStatsIndex() + form - 1) : species;
+    }
+};
+std::size_t tableCount(Table t) noexcept;
+Personal personalAt(Table t, std::size_t index) noexcept;              // raw index (form index)
+uint16_t formIndex(Table t, uint16_t species, uint8_t form) noexcept; // PersonalTable4.GetFormIndex
+Personal personal(Table t, uint16_t species, uint8_t form) noexcept;  // GetFormEntry
+bool isPresentInGame(Table t, uint16_t species, uint8_t form) noexcept;
+inline Table tableForVersion(uint8_t v) noexcept {
+    return isHGSS(v) ? Table::HGSS : (v == D::kPt ? Table::Pt : Table::DP);
+}
+/// GameData.GetLearnSource(version) for Gen IV versions, including the grouped values.
+inline Table learnTable(uint8_t v) noexcept {
+    if (v == D::kD || v == D::kP || v == D::kVerDP) return Table::DP;
+    if (v == D::kPt || v == D::kVerDPPt) return Table::Pt;
+    return Table::HGSS;
+}
+/// EntityGender.GetFromPIDAndRatio
+inline uint8_t genderFromPid(uint32_t pid, uint8_t ratio) noexcept {
+    if (ratio == 255) return 2;
+    if (ratio == 254) return 1;
+    if (ratio == 0) return 0;
+    return (pid & 0xFF) < ratio ? 1 : 0;
+}
+uint8_t levelFromExp(uint32_t exp, uint8_t growth) noexcept;
+uint32_t expForLevel(uint8_t level, uint8_t growth) noexcept;
+
+// ---------------------------------------------------------------- RNG
+namespace lcrng {
+constexpr uint32_t next(uint32_t s) noexcept { return s * 0x41C64E6Du + 0x6073u; }
+constexpr uint32_t prev(uint32_t s) noexcept { return s * 0xEEB9EB65u + 0x0A3561A1u; }
+constexpr uint32_t advance(uint32_t s, int n) noexcept { for (int i = 0; i < n; ++i) s = next(s); return s; }
+constexpr uint32_t reverse(uint32_t s, int n) noexcept { for (int i = 0; i < n; ++i) s = prev(s); return s; }
+inline uint32_t next16(uint32_t& s) noexcept { s = next(s); return s >> 16; }
+inline uint32_t next15(uint32_t& s) noexcept { s = next(s); return (s >> 16) & 0x7FFF; }
+inline uint32_t prev16(uint32_t& s) noexcept { s = prev(s); return s >> 16; }
+int getSeeds(uint32_t* out, uint32_t first, uint32_t second) noexcept;      // LCRNGReversal.GetSeeds
+int getSeedsIVs(uint32_t* out, uint32_t first, uint32_t second) noexcept;   // LCRNGReversal.GetSeedsIVs
+int getSeedsSkip(uint32_t* out, uint32_t first, uint32_t third) noexcept;   // LCRNGReversalSkip.GetSeeds
+int getSeedsIVs(uint32_t* out, const std::array<uint8_t, 6>& ivs) noexcept; // hp atk def spe spa spd order input
+} // namespace lcrng
+inline constexpr int kSeedBuffer = 32;
+/// ClassicEraRNG.GetSequentialPID
+inline uint32_t sequentialPid(uint32_t seed) noexcept {
+    const uint32_t a = lcrng::next16(seed);
+    const uint32_t b = lcrng::next16(seed);
+    return (b << 16) | a;
+}
+
+enum class PidType : uint8_t {
+    None, Method_1, Method_2, Method_3, Method_4,
+    Method_1_Unown, Method_2_Unown, Method_3_Unown, Method_4_Unown, Method_1_Roamer,
+    CXD, CXDAnti, G4MGAntiShiny,
+    BACD, BACD_A, BACD_AX, BACD_ES, BACD_EA, BACD_EAX, BACD_S,
+    ChainShiny, CuteCharm, G5MGShiny, Pokewalker,
+};
+struct PidIv { PidType type = PidType::None; uint32_t seed = 0; };
+/// MethodFinder.Analyze for a PK4 (Gen IV origin; Colosseum starters and Channel Jirachi never apply).
+PidIv analyzePidIv(const Pk4& pk) noexcept;
+/// MethodFinder.GetLCRNGMethod1Match
+bool method1Seed(const Pk4& pk, uint32_t& seed) noexcept;
+/// ShinyUtil.GetIsShiny3 on (TID ^ SID, PID)
+inline bool isShinyXor(uint32_t idXor, uint32_t pid) noexcept {
+    const uint32_t x = pid ^ idXor;
+    return ((x ^ (x >> 16)) & 0xFFFF) < 8;
+}
+/// CuteCharm4.IsCuteCharm(pk, pid) and CuteCharm4.IsValid(enc, pk)
+bool isCuteCharm(const Pk4& pk, uint32_t pid) noexcept;
+bool isCuteCharmValid(uint16_t encSpecies, const Pk4& pk) noexcept;
+/// PokewalkerRNG.GetPID
+uint32_t pokewalkerPid(uint16_t tid, uint16_t sid, uint32_t nature, uint8_t gender, uint8_t ratio) noexcept;
+/// PGT.IsG4ManaphyPIDValid-style helpers live with the gift code.
+
+// ---------------------------------------------------------------- wild slots
+struct SlotRef {
+    const D::Area4* area = nullptr;
+    const D::Slot4* slot = nullptr;
+    uint8_t type() const noexcept { return area->type; }
+    uint8_t location() const noexcept { return area->location; }
+    uint8_t version() const noexcept { return area->version; }
+    uint8_t levelMin() const noexcept { return slot->levelMin; }
+    uint8_t levelMax() const noexcept { return slot->levelMax; }
+    bool isFixedLevel() const noexcept { return slot->levelMin == slot->levelMax; }
+    uint8_t pressureLevel() const noexcept;
+    bool canUseRadar() const noexcept;
+    bool isCoronetFeebasArea() const noexcept { return area->rate == 255; }
+    bool isRerollMinimum31() const noexcept { return area->type == kBugContest || area->location == 202; }
+    enum : uint8_t {
+        kGrass = 0, kSurf = 1, kOldRod = 2, kGoodRod = 3, kSuperRod = 4, kRockSmash = 5, kHeadbutt = 6,
+        kHeadbuttSpecial = 7, kBugContest = 8, kHoneyTree = 9, kSafariGrass = 10, kSafariSurf = 11,
+        kSafariOldRod = 12, kSafariGoodRod = 13, kSafariSuperRod = 14,
+    };
+};
+enum class Lead : uint8_t {
+    Invalid = 0, StaticMagnetFail, CuteCharmFail, SynchronizeFail, PressureHustleSpiritFail,
+    IntimidateKeenEyeFail, Illuminate, SuctionCups, PressureHustleSpirit, MagnetPull, Static,
+    CuteCharm, Synchronize, CuteCharmRadar, SynchronizeRadar, Radar, None = 255,
+};
+struct LeadSeed { uint32_t seed = 0; Lead lead = Lead::Invalid; bool valid() const noexcept { return lead != Lead::Invalid; } };
+/// LeadFinder.GetLeadInfo4 with the Gen IV level constraint (met level).
+LeadSeed leadInfo4(const Pk4& pk, const SlotRef& slot, const PidIv& pidiv, uint8_t levelMin, uint8_t levelMax) noexcept;
+bool isMunchlaxTree(uint32_t id32, uint8_t location) noexcept;
+bool isUnownFormValid(const Pk4& pk, uint8_t form, bool ruinsOfAlph) noexcept;
+bool isWurmpleEvoValid(uint32_t pid, uint16_t species) noexcept;
+
+
+// ---------------------------------------------------------------- evolutions and moves
+/// PKHeX EvoCriteria; method kSentinel marks SentinelNotReached.
+struct Evo {
+    uint16_t species = 0;
+    uint8_t form = 0;
+    uint8_t levelUpRequired = 0;
+    uint8_t levelMax = 0;
+    uint8_t levelMin = 0;
+    uint8_t method = 0;
+    bool insideLevelRange(uint8_t level) const noexcept { return levelMin <= level && level <= levelMax; }
+};
+inline constexpr uint8_t kSentinel = 255;
+
+enum class EncKind : uint8_t { Invalid, Slot, Static, Walker, Trade, Ranch, Pcd, RangerManaphy, Egg };
+/// The facts of a matched encounter template that the evolution and move code reads.
+struct EncInfo {
+    EncKind kind = EncKind::Invalid;
+    uint16_t species = 0;
+    uint8_t form = 0;
+    uint8_t levelMin = 0;
+    uint8_t levelMax = 0;
+    uint8_t version = 0;                 // template version (egg/learn source)
+    std::array<uint16_t, 4> moves{};     // IMoveset moves (all zero when none)
+    bool hasMoves() const noexcept { return moves[0] != 0; }
+    bool isEggTemplate = false;          // IEncounterable.IsEgg
+};
+
+/// EvolutionChain.GetEvolutionChainsAllGens for a format-4 entity: the Gen IV history.
+std::vector<Evo> evolutionHistory(const Pk4& pk, const EncInfo& enc, uint8_t currentLevel);
+bool hasVisited(const std::vector<Evo>& history, uint16_t species) noexcept;
+
+enum class LearnMethod : uint8_t {
+    None, Duplicate, EmptyInvalid, Unobtainable, UnobtainableExpect, Empty, Initial, LevelUp, TMHM,
+    Tutor, Sketch, HOME, Encounter, Evolution, Shared, ShedinjaEvo, Relearn, EggMove, InheritLevelUp, SpecialEgg,
+};
+struct MoveResult {
+    LearnMethod method = LearnMethod::None;
+    uint16_t expect = 0;
+    bool valid() const noexcept { return method >= LearnMethod::Empty; }
+    bool parsed() const noexcept { return method != LearnMethod::None; }
+};
+using MoveResults = std::array<MoveResult, 4>;
+/// LearnVerifier.Verify for a PK4 (Gen IV context).
+MoveResults verifyMoves(const Pk4& pk, const EncInfo& enc, const std::vector<Evo>& history);
+/// EvolutionRestrictions.IsValidEvolutionWithMove
+bool isValidEvolutionWithMove(const Pk4& pk, const EncInfo& enc, const std::vector<Evo>& history, const MoveResults& moves);
+/// MoveBreed4.Validate (exposed for tests).
+bool moveBreed4Validate(uint16_t species, uint8_t version, std::span<const uint16_t> moves, std::span<uint8_t> origins);
+/// Level-up learnset of a species/form for a game table.
+struct Learnset { const D::LevelMove* begin = nullptr; const D::LevelMove* end = nullptr; };
+Learnset learnset(Table t, uint16_t species, uint8_t form) noexcept;
+/// Breeding.GetCanInheritMoves etc. from kBreed flags.
+bool canInheritMoves(uint16_t species) noexcept;
+
+
+// ---------------------------------------------------------------- encounters
+/// One yielded encounter template (EncounterGenerator4 output).
+struct Candidate {
+    EncKind kind = EncKind::Invalid;
+    int index = -1;          // kStatics / kWalkers / kTrades / kRanch / kPcd / kSlots index
+    int area = -1;           // kAreas index (slots)
+    uint16_t species = 0;    // egg species (eggs), template species otherwise
+    uint8_t version = 0;     // egg version
+    Lead lead = Lead::Invalid;
+};
+/// A decoded PCD gift (PGT header plus its PK4).
+struct Gift {
+    uint16_t cardType = 0;
+    Pk4 pk;
+    bool isManaphyEgg() const noexcept { return cardType == 7; }
+    bool isEgg() const noexcept { return cardType == 2 || cardType == 7; }
+    bool isEntity() const noexcept { return cardType == 1 || cardType == 2 || cardType == 7 || cardType == 13; }
+    uint16_t species() const noexcept { return isManaphyEgg() ? static_cast<uint16_t>(kManaphy) : pk.species; }
+    uint8_t level() const noexcept { return isManaphyEgg() ? 1 : isEntity() ? pk.metLevel : 0; }
+    uint8_t ball() const noexcept { return isManaphyEgg() ? 4 : isEntity() ? pk.ball() : 0; }
+    uint8_t version() const noexcept { return isManaphyEgg() ? D::kVerGen4 : pk.version; }
+    bool fateful() const noexcept { return isManaphyEgg() || pk.fateful; }
+    uint16_t location() const noexcept { return static_cast<uint16_t>(isEgg() ? 0 : pk.eggLocation() + 3000); }
+    uint16_t eggLocation() const noexcept { return static_cast<uint16_t>(isEgg() ? pk.eggLocation() + 3000 : 0); }
+};
+Gift pcdGift(int index) noexcept;
+Gift rangerManaphy() noexcept;
+/// Template view used by the verifiers.
+struct Template {
+    EncKind kind = EncKind::Invalid;
+    uint16_t species = 0;
+    uint8_t form = 0;
+    uint8_t levelMin = 0, levelMax = 0;
+    uint8_t version = 0;
+    uint16_t location = 0, eggLocation = 0;
+    bool isEgg = false;           // IEncounterable.IsEgg
+    uint8_t fixedBall = 0;        // Ball (0 none)
+    int8_t ability = 0;           // AbilityPermission
+    uint8_t shiny = 0;            // Shiny: 0 Random, 1 Never, 2 Always, 5 FixedValue
+    bool fateful = false;
+    uint8_t gender = 0xFF;        // fixed gender or 0xFF
+    uint8_t nature = 25;          // fixed nature or 25
+    uint16_t heldItem = 0;
+    std::array<uint16_t, 4> moves{};
+    const D::Area4* area = nullptr;
+    const D::Slot4* slot = nullptr;
+    int index = -1;
+    Gift gift{};                  // PCD / Ranger Manaphy
+};
+Template makeTemplate(const Candidate& c, const Pk4& pk);
+EncInfo encInfo(const Template& t);
+inline constexpr uint8_t kShinyRandom = 0, kShinyNever = 1, kShinyAlways = 2, kShinyFixed = 5;
+
+struct Search {
+    PidIv pidiv;
+    std::vector<Candidate> list;
+    uint8_t manualFlag = 0; // 1 InvalidPIDIV, 2 InvalidFrame: set when the last element is the deferred last resort
+};
+/// EncounterOrigin.GetOriginChain(pk, 4, Gen4)
+std::vector<Evo> originChain(const Pk4& pk, uint8_t currentLevel);
+/// EncounterGenerator4.GetEncounters
+Search searchEncounters(const Pk4& pk, uint8_t currentLevel);
+/// Rating of a template that implements IEncounterMatch (-1 when it does not).
+int matchRating(const Template& t, const Pk4& pk);
+bool isFormChangeable(uint16_t species) noexcept;
+/// (species, form) of EvolutionTree.Evolves4.GetBaseSpeciesForm
+std::pair<uint16_t, uint8_t> baseSpeciesForm(uint16_t species, uint8_t form) noexcept;
+bool decodeEqualOT(const Pk4& a, const Pk4& b) noexcept;
+
+// ---------------------------------------------------------------- results
+/// One PKHeX CheckResult. severity: 0 Valid, 1 Fishy (our Warning), 2 Invalid.
+struct Check {
+    uint8_t severity = 0;
+    CheckIdentifier id = CheckIdentifier::Misc;
+    std::string message;
+};
+inline constexpr uint8_t kValid = 0, kFishy = 1, kInvalid = 2;
+
+} // namespace Legality::Gen4
