@@ -207,11 +207,87 @@ void runExport(const L& layout, SourceGame game, const std::string& tag) {
     ::rmdir(root.c_str());
 }
 
+
+// Phase 4: a Box edit and a Trainer (money) edit exported SEPARATELY. Neither touches the party
+// list or the RTC trailer; the Box edit never touches money; the money edit never touches PC box
+// banks. Both reparse strictly. Truncated, oversized, empty and checksum-broken images are refused.
+void phase4(const L& layout, SourceGame game, const std::string& tag) {
+    const auto source = fixture(layout, true);
+    const size_t partyLength = listLen(6, 48, 11);
+    const std::string root = "/tmp/pokebank-gen2-phase4-" + std::to_string(::getpid());
+    ::mkdir(root.c_str(), 0777);
+    auto exportWith = [&](auto&& stage, const std::string& stem) {
+        auto parsed = parse(source, game);
+        assert(parsed);
+        std::string error;
+        auto editor = StagedEditor::create(*parsed.save, error);
+        assert(editor && stage(*editor, error));
+        StagedEditorExportRequest request;
+        request.rootDirectory = root;
+        request.directoryStem = stem + "-" + tag;
+        request.sourcePath = "/retroarch/saves/" + tag + ".srm";
+        request.gameId = sourceGameId(game);
+        request.timestamp = "20261015-120000";
+        const auto result = publishVerifiedStagedEditorExport(*editor, request);
+        assert(result.success);
+        assert(readBytes(result.directory + "/original_backup.srm") == source);
+        auto edited = readBytes(result.directory + "/edited.srm");
+        removeExport(result.directory);
+        assert(edited.size() == source.size());
+        assert(parse(edited, game));
+        // Party list and RTC trailer are never written by either edit.
+        assert(std::equal(edited.begin() + static_cast<std::ptrdiff_t>(layout.party),
+                          edited.begin() + static_cast<std::ptrdiff_t>(layout.party + partyLength),
+                          source.begin() + static_cast<std::ptrdiff_t>(layout.party)));
+        assert(std::equal(edited.begin() + 0x8000, edited.end(), source.begin() + 0x8000));
+        return edited;
+    };
+
+    const auto box = exportWith([](StagedEditor& editor, std::string& error) {
+        BoxPokemonEdit edit;
+        edit.nickname = "SPARK";
+        return editor.stageBoxPokemonEdit(1, 0, edit, error);
+    }, "box");
+    assert(std::equal(box.begin() + static_cast<std::ptrdiff_t>(layout.money),
+                      box.begin() + static_cast<std::ptrdiff_t>(layout.money + 3),
+                      source.begin() + static_cast<std::ptrdiff_t>(layout.money)));
+    {
+        auto reparsed = parse(box, game);
+        std::string error;
+        auto reopened = StagedEditor::create(*reparsed.save, error);
+        assert(reopened);
+        const auto mon = reopened->boxedPokemon(1, 0, error);
+        assert(mon && mon->nickname == "SPARK");
+        assert(reparsed.save->party().size() == parse(source, game).save->party().size());
+    }
+
+    const auto money = exportWith([](StagedEditor& editor, std::string& error) {
+        return editor.stageMoney(123457, error);
+    }, "money");
+    // PC box banks are untouched by a money edit. The only bytes there that may change are the
+    // Gold/Silver secondary checksum (0x7E6D), which covers the mirrored backup copy of the
+    // main data; Crystal keeps its secondary checksum outside the banks (0x1F0D).
+    for (size_t i = 0x4000; i < 0x8000; ++i)
+        if (money[i] != source[i]) assert(i == layout.sum2 || i == layout.sum2 + 1);
+
+    auto truncated = source; truncated.resize(0x7FFF);
+    assert(!parse(truncated, game));
+    assert(!parse(std::vector<uint8_t>{}, game));
+    auto oversized = source; oversized.resize(0x9000);
+    assert(!parse(oversized, game));
+    auto broken = source; broken[layout.money] ^= 0x01;
+    assert(!parse(broken, game));
+    ::rmdir(root.c_str());
+}
+
 } // namespace
 
 int main() {
     runExport(GS, SourceGame::Gold, "gold");
     runExport(GS, SourceGame::Silver, "silver");
     runExport(C, SourceGame::Crystal, "crystal");
+    phase4(GS, SourceGame::Gold, "gold");
+    phase4(GS, SourceGame::Silver, "silver");
+    phase4(C, SourceGame::Crystal, "crystal");
     std::puts("GSC verified staged UI export + transaction: files, provenance, read-back, strict reparse, cleanup and source immutability PASS");
 }
