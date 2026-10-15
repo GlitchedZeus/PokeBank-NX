@@ -4,7 +4,7 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-15 08:50 UTC (QA merged; Phase 1 items in 2R's lane closed).
+**Last updated:** 2026-10-15 09:15 UTC (tick: C/L/QA heads verified; Phase 6 audit units).
 
 ## Active milestone
 
@@ -22,6 +22,11 @@ any SHA below.
 | Merges on #307 | C → `a0b72203`; L → `181423a4`; QA `c8c0f38c` → `f9441070`. 2R reports host-test, sanitize and qa green under GCC and Clang. Pending merges: QA `4ae526f2`, L `95255c97` (draft PR #319). Head `c939cd4a`. |
 | Phase 1 (2R lane) | Quit-route notice (`77ad7fbe`, SaveSelectScreen.cpp:2104), D-pad/stick/touch parity (test_shared_editor_contract navigation/touchParity), Left/Right never mutates (`c939cd4a`, test_shared_editor_contract.cpp:431). Verified in code. |
 | QA-F7 / F8 (Low, C) | Gen IV Unown form not editable; clone→release leaves "(empty) (edited)" and different export bytes. Repros are on the QA branch. |
+| Heads at 09:15 | #307 `2d8195d3` (QA `4ae526f2` and L `95255c97` merged; gates green per 2R). Pending: C `cea1da09`, L `ba6d63ba`, QA `d350cc2d`. |
+| C since `cd2bbbff` | QA-F6 fixed; QA-F7 fixed (Unown 28 letters); QA-F8 review line fixed (export-bytes half still open); Gen III gender accessor `Gen3Gender.h`; Gen I HP; Gen II PP/OT/re-encode; retail upper-case nicknames; X Keep (div. 2); Gen I View navigation (div. 3); Gen II shared selectors (div. 5). Open: F8 export bytes, Castform/Cherrim stored forms restricted to form 0, div. 7/4/6. |
+| L | Lane complete in software: opt-in return host with a per-stage log, return-selection validation, handoff-hygiene audit (no leaked services or handles on the default path). Awaiting the owner's A/B device test. |
+| QA Phase 6 | fuzz_launch_plan (1.9M runs, no defect); export contract C6 Discard All on all 18 paths; SAVE_SAFETY_CHAIN.md; fuzz_home_cache. Open: stale home.party.* matrix facts. |
+| Final NRO gate | Waits on: C's F8 bytes and Castform/Cherrim; Gen III gender wiring (2R); QA matrix facts and re-run on the integrated head. gen15-integrated-candidate workflow is ready; last runs green on c939cd4 and c933734. |
 | Known limitation (decided) | Gen I–III Home cards have no STALE state: a failed source shows "Party preview unavailable". Gen IV/V keep the last data as STALE. Not changed, because it is hardware-accepted Legacy behaviour. |
 | QA-F6 (Low, C) | `src/Legacy/RetroArchFRLGDiscovery.cpp:114`: identityHint substring-matches release names across the whole path. Confirmed in code and routed to C. |
 | Divergence noted | Create default species is #1 for Gen I/IV and #25 for Gen II/III/V. Kept as is: hardware-accepted and documented. |
