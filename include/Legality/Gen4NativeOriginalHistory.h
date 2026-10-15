@@ -50,12 +50,16 @@ struct Original {
             c.tutorMask=D::kHeartGoldSoulSilverTutorMask[species];
             // HGSS level-up binary wotbl.narc unresolved -> no positive level timeline.
         } else if(game==Game::Platinum){
-            const auto row=P::row(species);
-            if(!row)return c; // No source for this species: Unknown.
+            // Index lookup, not a null-pointer test: GCC 13 rejects comparing
+            // the address of an inline constexpr array element with null in
+            // a constant expression.
+            const auto index=P::rowIndex(species);
+            if(index>=P::kRows.size())return c; // No source for this species: Unknown.
+            const auto& row=P::kRows[index];
             c.orderedLevelSourceComplete=true;
             c.originalRelearnerSourceComplete=true;
             c.packedOffers=std::span<const std::uint16_t>(
-                P::kOffers.data()+row->offerStart,row->offerCount);
+                P::kOffers.data()+row.offerStart,row.offerCount);
             c.machineCompatibilitySourceComplete=true;
             // Normalize Platinum's original 100..107 HM bit positions to
             // shared TM01..92/HM01..08 positions 92..99, preserving identity.
@@ -69,8 +73,8 @@ struct Original {
             c.numberedMachineMoves=kPlatinumConfirmedItems;
             c.tutorSourceComplete=true;
             c.tutorMoves=std::span<const std::uint16_t>(
-                P::kTutors.data()+row->tutorStart,row->tutorCount);
-            c.tutorMask=(std::uint64_t{1}<<row->tutorCount)-1;
+                P::kTutors.data()+row.tutorStart,row.tutorCount);
+            c.tutorMask=(std::uint64_t{1}<<row.tutorCount)-1;
         }
         return c;
     }

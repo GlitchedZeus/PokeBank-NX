@@ -32,8 +32,12 @@ struct PlatinumEvidence {
 };
 [[nodiscard]] constexpr PlatinumEvidence originalPlatinum(std::uint16_t species) noexcept {
     PlatinumEvidence evidence{};
-    const auto row=D::row(species);
-    if(!row||!row->offerCount||row->offerCount>evidence.offers.size()||
+    // Index lookup: GCC 13 rejects a null test on the address of an
+    // inline constexpr array element inside a constant expression.
+    const auto index=D::rowIndex(species);
+    if(index>=D::kRows.size())return evidence;
+    const auto* row=&D::kRows[index];
+    if(!row->offerCount||row->offerCount>evidence.offers.size()||
        row->tutorCount>evidence.tutors.size()||M::kPinned.size()>evidence.machines.size())
         return evidence;
     evidence.offerCount=row->offerCount;

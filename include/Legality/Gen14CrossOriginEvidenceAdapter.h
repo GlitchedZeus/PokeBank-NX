@@ -79,6 +79,14 @@ constexpr C::Evidence map(NPC::Status status) noexcept {
  default:return C::Evidence::Unknown;
  }
 }
+// Every original-source stage status the evidence bridge classifies (for example
+// Gen1OriginalWildFishingStage::Status) maps through that classification, so a
+// stage without a dedicated overload above still reaches the lineage reconciler.
+template<class OriginalSourceStatus>
+    requires requires(OriginalSourceStatus status) { B::classify(status); }
+constexpr C::Evidence map(OriginalSourceStatus status) noexcept {
+ return map(B::classify(status));
+}
 template<class OriginalSourceStatus>
 constexpr C::Route withOriginalSourceEvidence(C::Route route,
                                                OriginalSourceStatus status) noexcept {

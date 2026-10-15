@@ -161,7 +161,11 @@ int main() {
         auto native=observed(targetGame);
         auto route=unchanged();
         const auto before=E::evaluate(source,native,route);
-        if(origin==destination)
+        // Red/Blue and Gold/Silver carry identical original rows, so an
+        // observation in the sibling edition matches the row directly.
+        const bool sameFamily=
+            E::editionFamily(originGame)==E::editionFamily(targetGame);
+        if(sameFamily)
             assert(before.disposition==D::ConditionalCandidate);
         else
             assert(before.disposition==D::Unknown);
@@ -180,7 +184,7 @@ int main() {
         // Even a contrary native OT may NOT yield a candidate exclusion
         // while its intervening edition history remains unattested.
         native.trainerId.value++;
-        if(gen1Origin==gen1Dest && origin!=destination) {
+        if(gen1Origin==gen1Dest && !sameFamily) {
             route.sameGenerationEditionTransferIndependentlyVerified=false;
             const auto without=E::evaluate(source,native,route);
             assert(without.disposition==D::Unknown);

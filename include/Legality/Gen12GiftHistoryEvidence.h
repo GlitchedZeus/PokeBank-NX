@@ -215,8 +215,9 @@ constexpr Result evaluate(const GiftRow& source, const Observation& observed,
         editionFamily(source.game) != editionFamily(observed.game) &&
         !route.sameGenerationEditionTransferIndependentlyVerified)
         unknown(Edition);
-    // A missing or untrusted source must NEVER produce a negative assertion.
-    if (out.missing & (Source | Route)) {
+    // A missing or untrusted source, or an unwitnessed cross-edition link,
+    // must NEVER produce a negative assertion.
+    if (out.missing & (Source | Route | Edition)) {
         out.contradicted = 0;
         out.disposition = Disposition::Unknown;
     } else if (out.contradicted) {

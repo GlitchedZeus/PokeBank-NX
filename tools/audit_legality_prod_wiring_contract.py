@@ -138,7 +138,7 @@ def audit(root: Path) -> dict:
         "l5-pk2-egg-fixed\n", "l5-pk2-egg-fixed-sanitize",
         "l5-platinum-native\n", "l5-platinum-native-sanitize",
         "l5-pk12-fixed-sanitize",
-        "--expected-invalid 38", "stage4_crosslane.py --l1-root ."))
+        "--expected-invalid 43", "stage4_crosslane.py --l1-root ."))
     return {
         "schema": "POKEBANK_LEGALITY_PRODUCTION_CONNECTION_CONTRACT_V1",
         "contracts": ["native Gen II egg F5"] + audited,

@@ -167,7 +167,18 @@ bool hasSeverity(const Legality::Report& report, Legality::Severity severity) {
 }
 
 bool uncertainCase(const std::string& name) {
-    return name == "mew-unrecorded-event" || name == "mew-wrong-dvs";
+    // rattata-statexp-one-zero: PKHeX rejects battle stat experience next to a zero stat
+    // (EVs:EffortShouldBeZero), but pret/pokered divides each enemy base stat among the
+    // recipients before adding it (DivideExpDataByNumMonsGainingExp), so a battle can add
+    // 0 to one stat. Neither verdict is proven from the record alone.
+    // rattata-statexp-eleven-vitamins: HP 28160 is above the 25600 vitamin cap, so part of
+    // it came from battles, while the other stats are 0. That is the same case: e.g. a
+    // Jigglypuff (HP 115, others below 72) split six ways under Exp. All adds 1 HP and 0
+    // elsewhere per battle.
+    // defect-statexp-jp-2542 is the same zero-next-to-battle-gains case on a Japanese record.
+    return name == "mew-unrecorded-event" || name == "mew-wrong-dvs" ||
+           name == "rattata-statexp-one-zero" || name == "rattata-statexp-eleven-vitamins" ||
+           name == "defect-statexp-jp-2542";
 }
 }  // namespace
 

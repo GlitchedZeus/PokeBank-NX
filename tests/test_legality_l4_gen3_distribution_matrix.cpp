@@ -199,7 +199,7 @@ int main() {
     // original trainer encoding and event move history are independent facts.
     // A Pokémon from a documented GameCube transfer can retain a GC-origin
     // game value while the receiving GBA version is Sapphire/Ruby.
-    {auto a=c;a.originalSource=W::OriginalSource::Colosseum;
+    {auto a=c;a.originalSource=W::OriginalSource::ColosseumBonusDisc;
      auto x=n;x.originGame=15;
      a.originGame.original=15;
      W::TransferHistory h{};

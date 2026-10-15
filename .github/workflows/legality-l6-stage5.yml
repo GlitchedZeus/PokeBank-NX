@@ -30,6 +30,8 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           submodules: recursive
           persist-credentials: false
+          # The whitespace check below diffs against the parent commit.
+          fetch-depth: 2
       - name: Verify commit and original-source tree
         shell: bash
         env:

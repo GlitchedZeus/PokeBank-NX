@@ -93,7 +93,10 @@ constexpr Result evaluate(const Input& in) noexcept {
            // named move-parent snapshots MUST match the same ordered pair,
            // not just species/gender and an opaque pair token.
            (c.pid.originalParentWitness.supplied &&
-            (m.physicalSlots[0].snapshotIdentity!=
+            (!c.pid.originalParentWitness.originalPhysicalPairIdentity ||
+             c.pid.originalParentWitness.originalPhysicalPairIdentity!=
+                 c.ivPhysicalParentPairIdentity ||
+             m.physicalSlots[0].snapshotIdentity!=
                  c.pid.originalParentWitness.physicalSlots[0].snapshotIdentity ||
              m.physicalSlots[1].snapshotIdentity!=
                  c.pid.originalParentWitness.physicalSlots[1].snapshotIdentity)) ||
