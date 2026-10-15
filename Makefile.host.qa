@@ -27,7 +27,7 @@ QA_CORE_SOURCES := $(sort \
 	src/Integration/Common/VerifiedStagedExport.cpp \
 	src/Integration/Gen1/Gen1StagedPokemonEditor.cpp src/Integration/Gen1/Gen1BattleStats.cpp \
 	src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1StagedInventoryEditor.cpp \
-	src/Integration/Gen1/Gen1ReadOnlyInventory.cpp \
+	src/Integration/Gen1/Gen1ReadOnlyInventory.cpp src/Integration/Gen1/Gen1ExportTransaction.cpp \
 	src/Integration/Gen2/Gen2StagedEditor.cpp src/Integration/Gen2/Gen2UniversalInventory.cpp \
 	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
 	src/Integration/Gen2/Gen2PersonalData.cpp src/Integration/Gen2/Gen2ExportTransaction.cpp \

@@ -1,8 +1,10 @@
 // PokeBank NX application QA: export-safety and source-immutability contracts for EVERY export path
 // (Thread 4, QA-owned). Each path is driven exactly the way its UI caller drives it:
 //
-//   gen1-pokemon+bag  Gen1PokemonEditorOverlayUX exportStagedCopy: Pokemon finalize with Bag candidate,
-//                     Common::publishVerifiedStagedExport + gen1StrictValidator (.srm)
+//   gen1-transaction  Gen1PokemonEditorOverlay exportStagedCopy: Gen1::publishVerifiedGen1Export(editor,
+//                     request, inventory) (.srm)
+//   gen1-pokemon+bag  the same bytes through Common::publishVerifiedStagedExport + gen1StrictValidator
+//                     (the shared publisher underneath; kept as a direct check)
 //   gen1-bag          ClassicInventoryOverlay exportStagedCopy (Gen I)            (.srm)
 //   gen2-trainer      TrainerViewScreenGSCOverlay: Gen2::publishVerifiedStagedEditorExport (.srm)
 //   gen2-bag          ClassicInventoryOverlay exportStagedCopy (Gen II)           (.srm)
@@ -27,6 +29,8 @@
 #include "fixtures/gsc_pokemon_fixture.h"
 #include "fuzz_synthetic_saves.h"
 #include "test_qa_support.h"
+
+#include "Integration/Gen1/Gen1ExportTransaction.h"
 
 #include "Integration/Common/ClassicStrictValidators.h"
 #include "Integration/Common/VerifiedStagedExport.h"
@@ -212,6 +216,38 @@ Bytes gen1Source() {
     d[kGen1Pc + 1] = 0xFF;
     qasynth::gen1::forge(d);
     return d;
+}
+
+// The production Gen I UI path (src/UI/Gen1PokemonEditorOverlay.cpp): publishVerifiedGen1Export over
+// the staged Pokemon workspace plus the staged Bag/PC workspace, both opened from the same bytes.
+ExportPath gen1TransactionPath() {
+    const auto original = gen1Source();
+    auto parsed = G1::parse(original, G1::SourceGame::Red);
+    if (!parsed) throw std::runtime_error("gen1 synthetic source rejected: " + parsed.detail);
+    std::string error;
+    std::shared_ptr<G1::StagedInventoryEditor> inventory = G1::StagedInventoryEditor::create(*parsed.save, error);
+    if (!inventory || !inventory->stageSetQuantity(PokeVault::Inventory::ClassicPocket::Medicines, 20, 25, error))
+        throw std::runtime_error("gen1 bag staging failed: " + error);
+    std::shared_ptr<G1::StagedPokemonEditor> pokemon = G1::StagedPokemonEditor::create(*parsed.save, error);
+    if (!pokemon) throw std::runtime_error("gen1 pokemon editor failed: " + error);
+    ExportPath path;
+    path.name = "gen1-transaction";
+    path.sourceFile = "Pokemon Red.srm";
+    path.original = original;
+    path.backupName = "original_backup.srm";
+    path.editedName = "edited.srm";
+    path.publish = [=](const fs::path& root, const fs::path& source, int point) {
+        G1::Gen1ExportRequest request;
+        request.rootDirectory = root.string();
+        request.directoryStem = std::string("red_gb_") + kTimestamp;
+        request.sourcePath = source.string();
+        request.timestamp = kTimestamp;
+        request.failurePoint = commonPoint(point);
+        return fromCommon(G1::publishVerifiedGen1Export(*pokemon, request, inventory.get()));
+    };
+    path.strictReparse = Common::gen1StrictValidator(G1::SourceGame::Red);
+    path.whitelist = {{kGen1Bag, kGen1Bag + kGen1BagBytes}, {kGen1Sum, kGen1Sum + 1}};
+    return path;
 }
 
 ExportPath gen1Path(bool withPokemonEditor) {
@@ -571,8 +607,47 @@ ExportPath gen5Path(G5::SaveFamily family, uint8_t version, bool backupCopy, Gen
 
 } // namespace
 
+// QA-F3b regression (Low, Thread C: src/Integration/Gen2/Gen2ExportTransaction.cpp; fixed on #307
+// via Thread C's branch). The Gen II publisher used rename(2) onto the final directory, which silently
+// replaces an empty directory created after the destination was chosen. It must now claim the
+// destination exclusively: a racing empty directory or file is left exactly as the other writer made
+// it, and a failure after the first file moved in removes only what this export published.
+void gen2PublishIsExclusive() {
+    currentCase() = "QA-F3b Gen II publish exclusivity";
+    const auto path = gen2Path(false);
+    const fs::path base = scratchRoot("gen2-exclusive");
+    const fs::path source = base / "source" / path.sourceFile;
+    writeSource(source, path.original);
+    const auto sourceBefore = fileState(source);
+    const fs::path root = base / "exports";
+    const fs::path destination = root / (std::string("gold_gbc_") + kTimestamp);
+    // ExportFailurePoint values after the four common ones (Gen2ExportTransaction.h).
+    constexpr int kEmptyDirectory = 5, kFile = 6, kAfterFirstFile = 7;
+    static_assert(static_cast<int>(G2::ExportFailurePoint::DestinationAppearsAsEmptyDirectory) == kEmptyDirectory);
+    static_assert(static_cast<int>(G2::ExportFailurePoint::DestinationAppearsAsFile) == kFile);
+    static_assert(static_cast<int>(G2::ExportFailurePoint::AfterFirstPublishedFile) == kAfterFirstFile);
+    for (int point : {kEmptyDirectory, kFile, kAfterFirstFile}) {
+        fs::remove_all(root);
+        const auto out = path.publish(root, source, point);
+        QA_EXPECT(!out.success, "publication over a racing destination / injected failure reported success");
+        if (point == kEmptyDirectory)
+            QA_EXPECT(fs::is_directory(destination) && fs::is_empty(destination),
+                      "the racing empty directory was replaced or filled");
+        if (point == kFile)
+            QA_EXPECT(fs::is_regular_file(destination) && fs::file_size(destination) == 0,
+                      "the racing file was replaced or modified");
+        if (point == kAfterFirstFile) QA_EXPECT(!fs::exists(destination), "a partial export stayed published");
+        std::error_code ec;
+        for (const auto& entry : fs::directory_iterator(root, ec))
+            QA_EXPECT(entry.path() == destination, "unexpected entry left behind: " + entry.path().string());
+        QA_EXPECT(fileState(source) == sourceBefore, "source file changed");
+    }
+    fs::remove_all(base);
+}
+
 int main() {
     std::vector<std::function<ExportPath()>> paths = {
+        [] { return gen1TransactionPath(); },
         [] { return gen1Path(true); },
         [] { return gen1Path(false); },
         [] { return gen2Path(false); },
@@ -600,6 +675,12 @@ int main() {
             ++failures();
             std::fprintf(stderr, "CONTRACT SETUP FAILED [%s]: %s\n", currentCase().c_str(), e.what());
         }
+    }
+    try {
+        gen2PublishIsExclusive();
+    } catch (const std::exception& e) {
+        ++failures();
+        std::fprintf(stderr, "CONTRACT SETUP FAILED [%s]: %s\n", currentCase().c_str(), e.what());
     }
     if (failures() != 0) {
         std::fprintf(stderr, "%d export contract violation(s)\n", failures());

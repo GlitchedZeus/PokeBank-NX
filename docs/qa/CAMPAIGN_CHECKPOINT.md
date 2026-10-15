@@ -9,7 +9,7 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 | Item | Value |
 | --- | --- |
 | Lane branch | `audit/app-qa-20261014` |
-| Last #307 head merged | `85421cfa1f847169ae78a801bfb06bd6bf536125` (merge `8fa5061`) |
+| Last #307 head merged | `6c366bd0c9ce95b1fdad1f3b5c0c268f02f02ad9` (merge `84c5ecd`; includes Thread C `cb88043`) |
 | Draft PR | #310 (CI evidence only, never merge; Thread 2R will merge this lane into #307) |
 | Continuation | `send_later` self check-in every ~60 min: "Thread 4 campaign: re-fetch, verify checkpoint docs/qa/CAMPAIGN_CHECKPOINT.md, continue" |
 
@@ -26,9 +26,9 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 | ID | Severity | Owner | Status |
 | --- | --- | --- | --- |
 | QA-F2 invalid one-time workflow YAML | Medium | owner approval | open (repro in `qa-known-failures`) |
-| QA-F3b Gen II export publish via `rename()` | Low | C (Gen I–IV integration) | open (by inspection) |
-| QA-F4 Gen V PID replay guard conjoins gender+ability links | Low | 2R | open (repro `tests/test_qa_known_failures.cpp`) |
-| QA-F5 Gen V Home party strip drops form (Gen IV keeps it) | Low | 2R | open (repro `tests/test_qa_known_failures.cpp`, real Home path) |
+| QA-F3b Gen II export publish via `rename()` | Low | C | FIXED (cb88043); regression in qa-contracts |
+| QA-F4 Gen V PID replay guard conjoins gender+ability links | Low | 2R | FIXED (bc83815); regression in test_qa_regressions |
+| QA-F5 Gen V Home party strip drops form (Gen IV keeps it) | Low | 2R | FIXED on #307; regression in test_qa_regressions |
 
 ## Log
 
@@ -37,3 +37,4 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 - 2026-10-15 — QA-F5: Gen V Home party strip drops form; repro on the real assignment -> HomeSnapshotCache -> homeCardSnapshot path (GCC and Clang, ASan/UBSan). Cross-gen shiny/level/form notes recorded in FINDINGS.md.
 - 2026-10-15 — merged #307 `85421cf` (Gen V Clone/Move keypads, Release dialog; UI-only, reviewed, no defect).
 - 2026-10-15 — `fuzz_gen5_sav` extended to the Gen V save diagnostics (inspectSave5 / unopenableCopyDiagnostic5 / formatSaveReport5) and the Home snapshot from a ready probe; deterministic 60 s (GCC ASan/UBSan) and libFuzzer 180 s (Clang) clean.
+- 2026-10-15 — merged #307 `6c366bd` (QA-F4 fix bc83815, Thread C merge cb88043). QA-F4/F5 moved to test_qa_regressions; QA-F3b regression and the production Gen I export transaction added to qa-contracts (18 paths); GCC and Clang green.

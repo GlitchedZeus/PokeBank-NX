@@ -18,16 +18,16 @@ lands, its reproduction moves into the passing suite as a regression test
 | --- | --- | --- | --- | --- |
 | QA-F2 | **Medium** (CI hygiene) | 3 invalid `one-time-*` workflow files fail on every push to every branch | Owner approval; coordinator | OPEN |
 | QA-F3 | Low | Common (and Gen V) export publish could replace a destination created after the uniqueness check | Thread 2 | **FIXED** in `fa9cfcea`; regression test in `qa-contracts` |
-| QA-F3b | Low | The same non-exclusive `rename()` publish remains in the Gen II transaction | Thread 1 (`Gen2ExportTransaction.cpp`) | OPEN (by inspection; no injection point for a deterministic repro) |
+| QA-F3b | Low | The same non-exclusive `rename()` publish remained in the Gen II transaction | Thread C (`Gen2ExportTransaction.cpp`) | **FIXED** on #307 (Thread C merge `cb88043`); regression `gen2PublishIsExclusive` in `qa-contracts` |
 | QA-F1 | Low | Packaged-RomFS manifest omitted the four Gen V game cards the app requests | Thread 2 | **FIXED** in `3b35b3f`; regression test in `qa-tools-test` |
-| QA-F4 | Low (defence in depth) | Gen V PID replay (`Field::Personality`) protects the PID/gender link only when the ability link also holds | Thread 2R (`Gen5StagedPokemonRecord.h`) | OPEN; repro `tests/test_qa_known_failures.cpp` |
-| QA-F5 | Low (presentation) | Gen V Home party strip drops the party member's form, so alternate forms show the base-form icon; Gen IV keeps it | Thread 2R (`Gen5GameCardPreview.h`) | OPEN; repro `tests/test_qa_known_failures.cpp` |
+| QA-F4 | Low (defence in depth) | Gen V PID replay (`Field::Personality`) protects the PID/gender link only when the ability link also holds | Thread 2R (`Gen5StagedPokemonRecord.h`) | **FIXED** in `bc83815`; regression in `test_qa_regressions.cpp` |
+| QA-F5 | Low (presentation) | Gen V Home party strip drops the party member's form, so alternate forms show the base-form icon; Gen IV keeps it | Thread 2R (`Gen5GameCardPreview.h`) | **FIXED** on #307 (`PartyPreviewSlot.form`); regression in `test_qa_regressions.cpp` |
 
 No crash, sanitizer report, out-of-bounds read or round-trip violation was found in any Gen I–V parser,
 record decoder, Bag decoder, copy selector or Save Instance identification path (see
-[Fuzzing evidence](#fuzzing-evidence)). All 17 export paths (including the new Gen V Trainer Name/Money path) satisfy the five export-safety contracts.
+[Fuzzing evidence](#fuzzing-evidence)). All 18 export paths (including the Gen V Trainer Name/Money path and the production Gen I transaction `publishVerifiedGen1Export`) satisfy the five export-safety contracts.
 
-## QA-F4 (Low, defence in depth): Gen V PID replay guard conjoins the gender and ability links
+## QA-F4 (Low, defence in depth; FIXED in bc83815): Gen V PID replay guard conjoins the gender and ability links
 
 - **Found by:** `fuzz_gen5_edits` (libFuzzer, 2026-10-15), the new edit-sequence fuzzer over
   `Gen5StagedPokemonWorkspace`.
@@ -48,7 +48,7 @@ record decoder, Bag decoder, copy selector or Save Instance identification path 
   held and the new PID breaks it, and separately when the ability link held and the new PID breaks
   it.
 
-## QA-F5 (Low, presentation): Gen V Home party strip drops form
+## QA-F5 (Low, presentation; FIXED on #307): Gen V Home party strip drops form
 
 - **Found by:** Phase 6 cross-generation review of the Home snapshot path, confirmed on the real
   production path (2026-10-15).
