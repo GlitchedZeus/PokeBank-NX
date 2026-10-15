@@ -71,7 +71,13 @@ int main() {
             assert(S::evaluate(missing).status==Status::UnknownOriginalPath);
             auto wrong=c;wrong.originalSpecies=0;
             assert(S::evaluate(wrong).status==
-                   Status::CandidateOriginalSpeciesOrFormContradicted);
+                   Status::UnknownMalformedOriginalIdentity);
+            wrong=c;wrong.originalSpecies=65535;
+            assert(S::evaluate(wrong).status==Status::UnknownMalformedOriginalIdentity);
+            wrong=c;wrong.originalLevel=0;
+            assert(S::evaluate(wrong).status==Status::UnknownMalformedOriginalIdentity);
+            wrong=c;wrong.originalLevel=101;
+            assert(S::evaluate(wrong).status==Status::UnknownMalformedOriginalIdentity);
             wrong=c;wrong.originalLocation=0;
             assert(S::evaluate(wrong).status==
                    Status::CandidateOriginalLocationOrLevelContradicted);
