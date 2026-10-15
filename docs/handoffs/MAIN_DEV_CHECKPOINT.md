@@ -4,7 +4,7 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-15 10:15 UTC (tick: Gen V verbatim .dsv backup fixed; QA matrix facts derived).
+**Last updated:** 2026-10-15 11:15 UTC (all QA findings fixed in code; Gen IV .dsv backup wired; final NRO prep).
 
 ## Active milestone
 
@@ -33,6 +33,8 @@ any SHA below.
 | 10:15 | #307 `f99e262c`. Gen V export now backs up the source file verbatim, .dsv footer included (test_gen5_source_e2e dsvBackupIsVerbatim; manifest ORIGINAL_BACKUP_IS=VERBATIM_SOURCE_FILE). C `ce82066f` merged. 143 PASS GCC/Clang plain and sanitize, qa 420/0. Pending merges: C `7dec0c78` (bag review lines, Gen III JP names, strain-0 Pokérus), QA `d6f34e4a` (Home facts derived; F6/F7/F8a are regressions). |
 | Remaining before the final NRO | C: QA-F8b (Gen IV clone→release export bytes), Castform/Cherrim form 0, Gen IV .dsv stale-source check plus verbatim backup. 2R: VerifiedExportRequest backupBytes and container keys (Common), Gen IV UI hand-off. Then a full gate run and ONE NRO. |
 | Ownership exception | C edited QA's tests/test_qa_matrix_gen4.cpp once, a stricter bag-review cell needed after 2b2be00f. QA is told to adopt it. |
+| 11:15 | #307 `73f38d0a`: C `768c65fd` merged (F8b fixed `f883f4d0`; Castform/Cherrim form 0 `7e36220f`; Gen IV stale-source refusal), QA `2fa40e3`, Common verbatim-backup fields (`d9cdcf78`, test_verified_export_verbatim), Gen IV snapshot at Open (UI.cpp:678). All QA findings F1–F8 are fixed in code. Pending: C `afd96e3b` (Gen IV verbatim backup and manifest keys), the optional backup extension (2R), QA's F8b move to regressions and the strict cell. Then the ONE final NRO. |
+| Note | PR #310 shows "merged by GlitchedZeus" at 10:50:42. That is GitHub auto-marking it merged when 2R pushed 93421d5d (the QA merge), not a separate owner action. |
 | Known limitation (decided) | Gen I–III Home cards have no STALE state: a failed source shows "Party preview unavailable". Gen IV/V keep the last data as STALE. Not changed, because it is hardware-accepted Legacy behaviour. |
 | QA-F6 (Low, C) | `src/Legacy/RetroArchFRLGDiscovery.cpp:114`: identityHint substring-matches release names across the whole path. Confirmed in code and routed to C. |
 | Divergence noted | Create default species is #1 for Gen I/IV and #25 for Gen II/III/V. Kept as is: hardware-accepted and documented. |
