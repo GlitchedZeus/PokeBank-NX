@@ -4,7 +4,7 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-15 ~03:25 UTC (23:25 America/Toronto, Oct 14).
+**Last updated:** 2026-10-15 ~03:30 UTC (23:30 America/Toronto, Oct 14).
 
 ## Active milestone
 
@@ -19,7 +19,7 @@ Stage C (Gen VI) is starting in parallel.
 | Integrated Gen I–IV / Product Home | `0760334fb850ca46b5171c55f690998d7680d4e7` | `4f28d7f7ad38c2b62458642e014ae3c05e866755c4152bf4c2db0574c381ce91` | **Owner accepted** (Oct 8) |
 | Earlier #306 candidate | (earlier #306 head) | — | Owner confirmed: artwork restored, Gen IV launches directly into DraStic |
 | #306 Gen I–IV candidate | `9bf9d492` (PR head `4b9b9f65` adds docs only) | recorded in a #306 PR comment | **NOT DEVICE TESTED** |
-| Integrated Gen I–V candidate | not built yet | — | — |
+| **Integrated Gen I–V candidate** (#307) | `fa9cfceabfecd2afb79d0df935588a3e81e0a7fe` (tree `5de23dc2`) | `57b4ec2bebf6f15cac0ee59218672fd6acc029c1e025abbe159a322aa1bccd23` (175,435,441 B; run 38673482742, artifact 11945232986) | **NOT DEVICE TESTED**. Owner checklist in the #307 comment. #307 is frozen during the test. |
 
 ## Generation and game coverage
 
@@ -30,7 +30,7 @@ conservative estimates.
 |---|---|---|---|---|
 | I–III | RBY, GSC, RSE/FRLG | ~90% | CI green on #306/#307 | Earlier build accepted; newest candidate untested |
 | IV | DPPt, HGSS | ~90% | CI green on #306/#307 | Earlier build accepted; newest candidate untested |
-| V | BW, B2W2 | ~85% | Local GCC/Clang host + sanitizers pass; 9/9 CI green on `60c48c1b` | Not tested |
+| V | BW, B2W2 | ~90% | 9/9 CI green on `fa9cfcea`; full GCC/Clang host + sanitizers pass | Candidate `fa9cfcea` awaiting owner test |
 | VI | X, Y, OR, AS | ~60% (PK6/SAV6, staged Edit/Clone/Remove, party stat recompute, staged Bag, read-only box names/Pokédex, editor provider, sources; not wired into the app) | 7 Gen VI test binaries under GCC/Clang ± ASan/UBSan; differential vs PKSM-Core | — |
 | VII | SM, USUM; LGPE as its own family | ~35% (read-only SAV7 + MemeCrypto verify; PK7 staged Edit/Clone/Remove up to signing; hyper-training-aware party stats; read-only box names/Pokédex; export blocked on re-signing evidence; LGPE research note only) | Gen VII focused CI green on #311 | — |
 | VIII | SwSh, BDSP, PLA | ~5% (PK8/PB8/PA8 classes, BDSP/LA crypto headers) | none | — |
@@ -59,9 +59,8 @@ conservative estimates.
 - `gen15-integrated-candidate.yml`: one Gen I–V NRO.
 
 **Missing:**
-- QA-F1: the Gen V covers are not in the NRO RomFS manifest. Must land before the candidate.
-- QA-F3: the export publish must fail closed.
-- The final candidate identity and green CI on the final head.
+- QA-F1 fixed (`3b35b3f`) and QA-F3 fixed (`fa9cfce`; Gen II's equivalent is Thread 1's).
+- Hardware acceptance of `fa9cfcea`.
 - Trainer fields beyond Name, Money and Play Time.
 - The integrated Gen I–V candidate NRO.
 - Automatic return to PokeBank NX after DraStic (shared issue with Gen IV).
@@ -71,7 +70,7 @@ conservative estimates.
 | Lane | Branch | HEAD | CI | Owner |
 |---|---|---|---|---|
 | #306 Gen I–IV | `claude/gen14-final-20261014` | `4b9b9f65` | 9/9 green | Thread 1 |
-| #307 Gen V integration | `claude/gen5-integration-20261014` | `60c48c1b` | **9/9 green**, incl. the Gen I–V integrated NRO job | Thread 2 (exclusive; legality session confirmed handoff 2026-10-14) |
+| #307 Gen V integration | `claude/gen5-integration-20261014` | `fa9cfcea` (**frozen for hardware test**) | **9/9 green** | Thread 2 (standing by) |
 | Gen VI native | `claude/gen6-native-20261014` (draft #309 → #307, CI only) | `5e683690` | see PR #309 | Thread 3 |
 | Gen VII native | `claude/gen7-native-20261014` (draft #311 → Gen VI lane, CI only) | `08a4359b` | see PR #311 | Thread 3 |
 | App QA | `audit/app-qa-20261014` (draft #310 → #307, CI only) | `e43f234` | running; no Gen I–V parser crash/UB found so far | Thread 4 |
@@ -85,7 +84,7 @@ The PKSE-derived installed-save inject path (`restoreBackupToTitle`, used by `sa
 
 ## Blockers
 
-0. Usage limit: three threads plus the coordinator use up the 5-hour quota in about 1 hour. Thread 4 is paused until the Gen V candidate is posted.
+0. Usage limit: three threads plus the coordinator use up the 5-hour quota in about 1 hour. Thread 4 resumed to audit the candidate.
 
 1. Gen I–III RetroArch exit crash. **Codex owns this**; Main Development does not edit RetroArch exit code.
 2. Gen IV/V DraStic "Quit to Launcher" returns to DraStic, not PokeBank NX.
