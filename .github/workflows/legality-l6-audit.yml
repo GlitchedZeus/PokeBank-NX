@@ -1,0 +1,56 @@
+name: L6 integration hardening native gates
+
+on:
+  push:
+    branches:
+      - audit/legality-integration-hardening-20261012
+
+permissions:
+  contents: read
+
+jobs:
+  stage4-native:
+    name: L6 gate ledger (${{ matrix.compiler }} / ${{ matrix.profile }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+        profile: [normal, sanitize]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          submodules: recursive
+      - name: Verify actual integration-audit branch commit
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          echo "L6_SHA=$EXPECTED_SHA"
+          echo "L6_TREE=$(git rev-parse 'HEAD^{tree}')"
+      - name: Build and run Stage 4 exact-source C++ checks
+        run: |
+          python3 tools/audit_legality_stage4_gate_ledger.py \
+            --compiler "${{ matrix.compiler }}" \
+            --${{ matrix.profile }}
+
+  stage4-python-failures:
+    name: L6 failure receipt and manifest regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          submodules: recursive
+      - name: Pin exact Git SHA
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Audit failure-path regressions
+        run: |
+          python3 tests/test_legality_l6_stage4_audit_failures.py
+          python3 tests/test_legality_integration_audit_runner.py

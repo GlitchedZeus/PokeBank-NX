@@ -23,11 +23,12 @@ ROOT = Path(__file__).resolve().parents[1]
 VECTOR_PATH = ROOT/"tests/fixtures/legality_l5_native_ev_vectors.json"
 CLI = ROOT/"tests/fixtures/legality_l5_native_codec_batch.cpp"
 SOURCE_PATHS = {
+    # Keep this list aligned with the C++ command below.  The PK4 read-only
+    # adapter is covered by its own native suite and is not linked here.
     "PK3": "src/Encryption/Encryption3FRLG.cpp",
     "PK4": "src/Encryption/Encryption4.cpp",
     "shuffle": "include/Encryption/Encryption.h",
     "PK3wrapper": "include/Pokemon/Pokemon3FRLG.h",
-    "PK4wrapper": "src/Pokemon/Pokemon4ReadOnly.cpp",
 }
 
 def gitblob(path: Path) -> str:

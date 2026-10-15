@@ -1,0 +1,53 @@
+name: Legality L6 Stage 5 cross-lane audit
+
+on:
+  pull_request:
+    paths:
+      - 'tools/legality_l6_stage5_joint_history_gate.h'
+      - 'tests/fixtures/legality_l6_stage5_*.cpp'
+      - 'tools/audit_legality_l6_stage5.py'
+      - '.github/workflows/legality-l6-stage5.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stage5:
+    name: L6 Stage5 ${{ matrix.compiler }} production and standalone
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: g++
+          - compiler: clang++
+    steps:
+      - name: Checkout exact audit-branch application head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          submodules: recursive
+          persist-credentials: false
+      - name: Verify commit and original-source tree
+        shell: bash
+        env:
+          EXPECTED: ${{ github.event.pull_request.head.sha || github.sha }}
+          CXX: ${{ matrix.compiler }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED"
+          git diff --check HEAD^ HEAD
+          echo "L6_APPLICATION_SHA=$EXPECTED"
+          echo "L6_TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
+          "$CXX" --version
+      - name: Strict GCC/Clang normal plus ASan/UBSan
+        shell: bash
+        env:
+          CXX: ${{ matrix.compiler }}
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l6_stage5.py \
+            --compiler "$CXX" \
+            --output "/tmp/l6-stage5-${CXX}.json"
