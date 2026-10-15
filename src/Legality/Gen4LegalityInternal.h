@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -291,6 +292,24 @@ bool isFormChangeable(uint16_t species) noexcept;
 /// (species, form) of EvolutionTree.Evolves4.GetBaseSpeciesForm
 std::pair<uint16_t, uint8_t> baseSpeciesForm(uint16_t species, uint8_t form) noexcept;
 bool decodeEqualOT(const Pk4& a, const Pk4& b) noexcept;
+
+// ---------------------------------------------------------------- text (Gen4LegalityText.cpp)
+/// StringConverter4.LoadString: code units up to the 0xFFFF terminator; unmapped units decode to U+FFFF.
+std::u16string decodeText(std::span<const uint16_t> raw);
+std::u16string nicknameText(const Pk4& pk);
+std::u16string otText(const Pk4& pk);
+/// SpeciesName.GetSpeciesNameGeneration(species, language, 4) (species 0: the Gen IV egg name).
+std::u16string_view speciesName4(uint16_t species, uint8_t language) noexcept;
+/// SpeciesName.IsNicknamedAnyLanguage(species, nickname, Gen4).
+bool isNicknamedAnyLanguage4(uint16_t species, std::u16string_view nickname) noexcept;
+/// SpeciesName.TryGetSpeciesAnyLanguage(name, out species, Gen4) (case-sensitive).
+bool tryGetSpeciesAnyLanguage4(std::u16string_view name, uint16_t& species) noexcept;
+/// StringConverter.HasEastAsianScriptCharacters.
+bool hasEastAsianScript(std::u16string_view s) noexcept;
+/// Count of chars for which char.IsNumber is true.
+int numberCount(std::u16string_view s) noexcept;
+/// WordFilter.IsFiltered(message, Gen4, Gen4) with default settings.
+bool isWordFiltered4(std::u16string_view message);
 
 // ---------------------------------------------------------------- results
 /// One PKHeX CheckResult. severity: 0 Valid, 1 Fishy (our Warning), 2 Invalid.

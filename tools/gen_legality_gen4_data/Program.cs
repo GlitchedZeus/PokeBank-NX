@@ -597,6 +597,38 @@ internal static class Program
         h.Append("struct SpeciesKey { const char16_t* name; uint16_t species; };\n");
         Dict(EntityContext.Gen4, "SpeciesLowerGen4");
         Dict(EntityContext.Gen7, "SpeciesLowerGen7");
+
+        // Case-sensitive species names (SpeciesName.SpeciesDict, used by TryGetSpeciesAnyLanguage) a
+        // Gen IV string can spell, first language hit in Gen IV language order.
+        var exact = new HashSet<char>(chars.Select(x => (char)x));
+        var seenExact = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var lang in Language.GetAvailableGameLanguages(EntityContext.Gen4))
+        {
+            var list = speciesLang[lang];
+            var dict = new Dictionary<string, int>(StringComparer.Ordinal);
+            for (int s = 1; s < list.Length; s++)
+                dict[list[s]] = s;
+            foreach (var (k, v) in dict)
+                seenExact.TryAdd(k, v);
+        }
+        var exactRows = seenExact.Where(kv => kv.Key.All(exact.Contains)).OrderBy(kv => kv.Key, StringComparer.Ordinal)
+            .Select(kv => $"{{{U16Lit(kv.Key)}, {kv.Value}}}").ToList();
+        h.Append("/// Species names as SpeciesName.SpeciesDict holds them (case-sensitive) that a Gen IV string can spell,\n");
+        h.Append("/// sorted by UTF-16 code units; species is the first hit in the Gen IV language order.\n");
+        h.Append($"inline constexpr std::size_t kSpeciesGen4Count = {exactRows.Count};\n");
+        h.Append("extern const SpeciesKey kSpeciesGen4[];\n");
+        c.Append("const SpeciesKey kSpeciesGen4[] = {\n").Append(Arr(exactRows, 4)).Append("};\n");
+
+        // char.IsNumber and char.IsWhiteSpace over every char a Gen IV string can decode to.
+        var numbers = chars.Where(ch => char.IsNumber((char)ch)).Select(ch => $"0x{ch:X4}").ToList();
+        var spaces = chars.Where(ch => char.IsWhiteSpace((char)ch)).Select(ch => $"0x{ch:X4}").ToList();
+        h.Append("/// Decodable Gen IV chars for which char.IsNumber / char.IsWhiteSpace is true, ascending.\n");
+        h.Append($"inline constexpr std::size_t kNumberCharCount = {numbers.Count};\n");
+        h.Append("extern const uint16_t kNumberChars[];\n");
+        h.Append($"inline constexpr std::size_t kWhiteSpaceCharCount = {spaces.Count};\n");
+        h.Append("extern const uint16_t kWhiteSpaceChars[];\n");
+        c.Append("const uint16_t kNumberChars[] = {\n").Append(Arr(numbers, 12)).Append("};\n");
+        c.Append("const uint16_t kWhiteSpaceChars[] = {\n").Append(Arr(spaces, 12)).Append("};\n");
         h.Append('\n');
         c.Append('\n');
     }

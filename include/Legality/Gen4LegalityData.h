@@ -127,6 +127,15 @@ inline constexpr std::size_t kSpeciesLowerGen4Count = 4800;
 extern const SpeciesKey kSpeciesLowerGen4[];
 inline constexpr std::size_t kSpeciesLowerGen7Count = 4800;
 extern const SpeciesKey kSpeciesLowerGen7[];
+/// Species names as SpeciesName.SpeciesDict holds them (case-sensitive) that a Gen IV string can spell,
+/// sorted by UTF-16 code units; species is the first hit in the Gen IV language order.
+inline constexpr std::size_t kSpeciesGen4Count = 4800;
+extern const SpeciesKey kSpeciesGen4[];
+/// Decodable Gen IV chars for which char.IsNumber / char.IsWhiteSpace is true, ascending.
+inline constexpr std::size_t kNumberCharCount = 66;
+extern const uint16_t kNumberChars[];
+inline constexpr std::size_t kWhiteSpaceCharCount = 2;
+extern const uint16_t kWhiteSpaceChars[];
 
 /// WordFilterNX / WordFilter3DS patterns (badwords_switch.txt, badwords_3ds.txt), lowercased as
 /// WordFilter.LoadPatterns does; .NET regular expressions in the subset Gen4Legality's matcher accepts.
