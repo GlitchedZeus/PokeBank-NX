@@ -34,7 +34,7 @@ pushed head. Their checks appear on the PR because they run on the same head SHA
 | 8 | legality-l2-stage4-source.yml | Pt/HGSS daycare source and source-bound test, g++/clang, normal/ASan | b | Now: yes, inside row 5 (stage 7 script lines 39 and 46, same flags). Not enabled on its own, so it does not run twice | PASS (in row 5) |
 | 9 | legality-l2-stage5-joint.yml | 5 same-route programs | b | Now: yes, inside row 5 (lines 40-41 and 47-49) | PASS (in row 5) |
 | 10 | legality-l2-stage6-lineage.yml | 5 lineage programs | b | Now: yes, inside row 5 (lines 42-43 and 50-52) | PASS (in row 5) |
-| 11 | legality-l2-gen56-pkhex-phase-a.yml | Gen V/VI egg fixtures (g++/clang, normal/ASan, 9590-row export) and a PKHeX `66ef5983` .NET differential | owner decision | Not enabled. It also covers Gen VI and uses a second PKHeX pin | PASS, exit 0, "matched 9590 rows" |
+| 11 | legality-l2-gen56-pkhex-phase-a.yml | Gen V/VI egg fixtures (g++/clang, normal/ASan, 9590-row export) and a PKHeX `66ef5983` .NET differential | c (frozen scope) | Not enabled: it also asserts Gen VI behaviour, which is frozen until the owner authorizes Gen VI, and uses a second PKHeX pin. Its Gen V egg fixtures pass locally | PASS, exit 0, "matched 9590 rows" |
 
 ## L3 moves
 
