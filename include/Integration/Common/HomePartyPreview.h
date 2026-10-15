@@ -36,20 +36,24 @@ using Slot = Source::HomeCardPartySlot;
 // Gen III: PKHeX 6501f0ab PK3.cs, Stat_Level = Data[0x54] in the unencrypted
 // 100-byte party extension; boxed (80-byte) records have no stored level.
 // Shiny: (TID ^ SID ^ PIDhi ^ PIDlo) < 8. Unown letter: EntityPID
-// GetUnownForm3 (Conversion::Gen3PidSearch::unownForm). Gen III gender needs a
-// Gen III personal table that this adapter does not expose, so it stays unknown.
+// GetUnownForm3 (Conversion::Gen3PidSearch::unownForm). Gender: PokemonRecord::gender()
+// (Gen3Gender.h, PKSM-Core aa22d7a4 personal3 ratios); Unknown maps to no gender.
 inline constexpr std::size_t kGen3PartySize = 100;
 inline constexpr std::size_t kGen3PartyLevelOffset = 0x54;
 inline constexpr uint16_t kUnown = 201;
 [[nodiscard]] inline bool gen3Shiny(uint32_t pid, uint16_t tid, uint16_t sid) noexcept {
     return (tid ^ sid ^ (pid >> 16) ^ (pid & 0xFFFFu)) < 8u;
 }
+[[nodiscard]] constexpr uint8_t gen3Gender(Gen3::Gen3Gender gender) noexcept {
+    return gender == Gen3::Gen3Gender::Unknown ? Source::HomeCardPartySlot::GenderUnknown
+                                               : static_cast<uint8_t>(gender);
+}
 [[nodiscard]] inline Slot fromGen3(const Gen3::PokemonRecord& p) noexcept {
     const uint8_t level = p.originalBytes.size() == kGen3PartySize
         ? p.originalBytes[kGen3PartyLevelOffset] : uint8_t{0};
     return {p.species, level <= 100 ? level : uint8_t{0},
             p.species == kUnown ? Conversion::Gen3PidSearch::unownForm(p.pid) : uint8_t{0},
-            gen3Shiny(p.pid, p.tid, p.sid), Source::HomeCardPartySlot::GenderUnknown};
+            gen3Shiny(p.pid, p.tid, p.sid), gen3Gender(p.gender())};
 }
 
 // Gen IV: the strict PK4 record's own level/form/gender; shiny by the same

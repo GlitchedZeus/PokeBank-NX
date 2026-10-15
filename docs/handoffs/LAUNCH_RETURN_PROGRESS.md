@@ -90,7 +90,9 @@ sdmc:/switch/PokeBank-NX/config/experimental_return_host.enable
 
 Delete it to go back to the direct path. No other behaviour depends on it.
 
-## Owner test procedure (exact NRO from this branch)
+## Final Switch checklist — owner A/B procedure (exact integrated NRO)
+
+Use the integrated #307 candidate NRO that contains this branch. Record the NRO SHA-256 with the results.
 
 Record for each step: PASS/FAIL, any error code, and the contents of `sdmc:/switch/PokeBank-NX/runtime/return-host.log` after the step.
 
@@ -115,6 +117,22 @@ Record for each step: PASS/FAIL, any error code, and the contents of `sdmc:/swit
 
 For every launch, confirm that the save file's SHA-256 is unchanged by PokeBank. PokeBank never writes emulator saves; only the emulator does.
 
+### Reading `return-host.log` (B steps)
+
+The log is rewritten for every hosted launch. Its **last line** shows where a failure happened:
+
+| Last line | Meaning | Next engineering step |
+|---|---|---|
+| (file missing) | The host never ran, or could not mount the SD card. Check the PokeBank log for `Launch handoff via return host` / `Return host unavailable`. | Outer loader or host install |
+| `refused …` | Protocol or loader environment rejected; the host exited cleanly. | Argv or loader mismatch |
+| `start …` / `environment …` | Crashed while probing the environment, or before loading. | Compare with the env values logged |
+| `load hop=N rc≠0 stage=X` | Host failed at step X (`open`, `read-image`, `map-code`, `perm-*`) and returned to PokeBank. | That syscall or mapping step |
+| `enter hop=N …` | Host handed control to the child, and the child crashed or never returned. | Child environment (heap, applet type, exception chaining) |
+| `child-exit … next=(none)` then `return reason=chain-ended` | Correct RetroArch quit path. | — |
+| `return reason=launcher-requested` | Correct DraStic Quit-to-launcher interception. | — |
+
+`698ea4d1`'s device crash had no log. One B6 run of this build splits it into "host stage X failed" versus "child faulted after `enter`".
+
 ## Proven vs. unproven
 
 | Claim | Status |
@@ -122,7 +140,7 @@ For every launch, confirm that the save file's SHA-256 is unchanged by PokeBank.
 | Argv and paths are bounded and quoted exactly as libnx parses them | Host-tested (`libnxSplitArgv` port) |
 | The default launch is byte-identical to the accepted direct handoff | Host-tested (plan argv equals the old `quoted` output for paths without `"` or `\`) |
 | The host's decisions (quit, restart, DraStic launcher intercept) | Host-tested (pure policy) |
-| Return focus record: round trip, staleness, consume-once | Host-tested, including the production file path |
+| Return focus record: round trip, staleness, corrupt file, consume-once, game no longer in catalog (silent drop), bounded indices | Host-tested, including the production file path |
 | Return host starts RetroArch / DraStic on device | **UNPROVEN.** `698ea4d1` crashed; root cause not identified. Opt-in only. |
 | DraStic emulator runs nested (JIT + fastmem exceptions chained through the host) | **UNPROVEN on device** |
 | Quit returns to PokeBank on device | **UNPROVEN on device** |

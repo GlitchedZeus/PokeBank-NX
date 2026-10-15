@@ -766,6 +766,18 @@ inline bool parseGameLaunchReturnSelection(std::string_view text, int64_t now,
     return true;
 }
 
+// A parsed record is only a hint. If its game left the catalog (renamed id, removed support)
+// the restore is dropped silently and Product Home keeps its normal first focus; a game that
+// still exists but whose card or source vanished falls back inside SaveSelectScreen, which
+// matches identity first and clamps the recorded indices into range.
+template <class IsKnownGame>
+inline bool gameLaunchReturnSelectionUsable(const GameLaunchReturnSelection& selection,
+                                            IsKnownGame&& isKnownGame) {
+    if (selection.gameId.empty() || !isKnownGame(std::string_view(selection.gameId)))
+        return false;
+    return selection.userIndex >= 0 && selection.titleIndex >= 0 && selection.sourceKind >= 0;
+}
+
 } // namespace UI
 
 #endif
