@@ -96,7 +96,9 @@ for trainer in ("Brendan", "May", "Red", "Leaf", "Lucas", "Dawn", "Ethan", "Lyra
     require(f'"{trainer}"' in source, f"trainer portrait mapping is missing {trainer}")
 require("trainerGenderKnown" in header and "previewTrainerGenderKnown" in header,
         "trainer portraits must distinguish proven gender from unknown appearance")
-require("opened.save->trainer().gender" in source,
+gen4_card_preview = (ROOT / "include/Integration/Gen4/Gen4GameCardPreview.h").read_text(encoding="utf-8")
+require("s.trainerGender=save.trainer().gender;" in gen4_card_preview and
+        "PokeVault::Integration::Gen4::homeCardSnapshot(" in source,
         "Gen IV portrait identity must use the parsed save gender")
 
 # Safe preview and launch boundaries remain unchanged.
@@ -538,8 +540,10 @@ require('"red"' in source and '"leaf"' in source and '"dawn"' in source and
         '"florian"' in source and '"juliana"' in source and '"paxton"' in source and
         '"harmony"' in source,
         "trainer portrait mapping must cover classic and supported Switch protagonists")
-require("productSourceLabel" in source and '"System save"' in source and '"Linked save"' in source and
-        '"Choose save"' in source and '"Needs attention"' in source,
+provider_identity = (ROOT / "include/Source/SaveProviderIdentity.h").read_text(encoding="utf-8")
+require("productSourceLabel" in source and '"System save"' in provider_identity and
+        '"Linked save"' not in source and '"Linked save"' not in provider_identity and
+        '"Choose save"' in provider_identity and '"Needs attention"' in provider_identity,
         "Product Home must translate raw source-state diagnostics into consumer-facing labels")
 require('Truthful fallback: a Poké Ball identity badge' in source and
         'fake "character portrait"' in source,

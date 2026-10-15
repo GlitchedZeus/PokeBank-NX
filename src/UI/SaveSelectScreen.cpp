@@ -24,11 +24,14 @@
 #include "Trainer/Trainer.h"
 #include "Games/GameIdentity.h"
 #include "Integration/Gen4/Gen4AssignedSource.h"
+#include "Integration/Gen4/Gen4GameCardPreview.h"
 #include "Integration/Gen5/Gen5AssignedSource.h"
 #include "Integration/Gen5/Gen5GameCardPreview.h"
 #include "Integration/Gen5/Gen5GameSourceCatalog.h"
 #include "Integration/Gen5/Gen5SourceSelection.h"
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
+#include "Source/HomeCardSnapshot.h"
+#include "Source/SaveProviderIdentity.h"
 #include "Utils/Keyboard.h"
 #include "Utils/Logger.h"
 #include "Utils/PokeBankPaths.h"
@@ -43,6 +46,7 @@ using namespace Enums;
 namespace UI {
     namespace {
         constexpr int LEGACY_INSTANCE_VISIBLE_ROWS = 5;
+        constexpr int SAVE_WATCH_INTERVAL_FRAMES = 90;
         // A scrolled row may be drawn partially under a clipped viewport. Its touch rectangle
         // must be the visible intersection, not the full offscreen artwork/cell.
         template <class Hit>
@@ -76,15 +80,30 @@ namespace UI {
             return value.substr(0, std::min(length, value.size()));
         }
 
-        std::string productSourceLabel(std::string_view raw) {
-            if (raw == "LOCAL SAVE") return "System save";
-            if (raw == "REMEMBERED") return "Linked save";
-            if (raw == "CHOOSE SAVE") return "Choose save";
-            if (raw == "MISSING") return "Missing source";
-            if (raw == "INVALID") return "Invalid source";
-            if (raw == "AMBIGUOUS") return "Needs attention";
-            return std::string(raw);
+        // Consumer-facing card source text. Linked cards name the real provider
+        // from Save Instance metadata ("DraStic", "melonDS", "Manual file"...);
+        // a generic linked-save label would hide which emulator owns the file.
+        std::string productSourceLabel(std::string_view raw, std::string_view provider) {
+            return PokeVault::Source::homeCardSourceText(raw, provider);
         }
+
+        // Measured single-line fit: never lets a label overflow into the
+        // neighbouring card, and never splits a UTF-8 code point.
+        std::string fitTextToWidth(PKSEFramebuffer& fb, const std::string& text,
+                                   int maxWidth, TextStyle style) {
+            return PokeVault::Source::ellipsizeToWidth(text, maxWidth,
+                [&](const std::string& candidate) {
+                    int w = 0, h = 0;
+                    fb.measureText(candidate, w, h, style);
+                    return w;
+                });
+        }
+
+        std::optional<PokeVault::Source::FileStamp> statSaveFile(const std::string& path) {
+            return PokeVault::Source::statRegularFile(path);
+        }
+
+        using PokeVault::Source::homeSnapshotKey;
 
         // HOME forwarders are launch identities, not native Pokemon save containers. Keep the
         // installed Switch title ID for ZR launch, but bind preview/open to the real GBA battery
@@ -162,7 +181,7 @@ namespace UI {
             std::vector<std::string> providers;
             for (const auto& instance : instances) {
                 const std::string provider =
-                    instance.providerLabel.empty() ? std::string("Source") : instance.providerLabel;
+                    PokeVault::Source::providerDisplayName(instance.providerLabel);
                 if (std::find(providers.begin(), providers.end(), provider) == providers.end())
                     providers.push_back(provider);
             }
@@ -299,22 +318,24 @@ namespace UI {
                 // newer merely because its row sorts before Backup.
                 const bool separateGen5Copy =
                     instance.generation==5 && !instance.sourceVariant.empty();
+                int recencyW = 0;
                 if (!separateGen5Copy &&
                     (instance.mostRecentlyModified || showOlderLabel)) {
                     const std::string recency = instance.mostRecentlyModified
                         ? "MOST RECENTLY MODIFIED" : "OLDER FILE";
-                    int fw = 0, fh = 0;
-                    fb.measureText(recency, fw, fh, TextStyle::Caption);
-                    fb.drawText(x + width - 44 - fw, rowY + 11, recency, Colors::TextMuted,
+                    int fh = 0;
+                    fb.measureText(recency, recencyW, fh, TextStyle::Caption);
+                    fb.drawText(x + width - 44 - recencyW, rowY + 11, recency, Colors::TextMuted,
                                 TextStyle::Caption);
                 }
+                // Provider identity comes from Save Instance metadata only.
                 const std::string sourceLine =
                     (instance.generation==5 && instance.rememberedSource
                         ? std::string("REMEMBERED / ") : std::string()) +
-                    (instance.providerLabel.empty() ? std::string("Source") : instance.providerLabel) +
-                    " / " + instance.sourceLabel;
-                fb.drawText(x + 44, rowY + 34, sourceLine, Colors::TextMuted,
-                            TextStyle::Caption);
+                    PokeVault::Source::saveInstanceSourceLine(instance);
+                fb.drawText(x + 44, rowY + 34,
+                            fitTextToWidth(fb, sourceLine, width - 88, TextStyle::Caption),
+                            Colors::TextMuted, TextStyle::Caption);
             }
             fb.clearClip();
         }
@@ -911,6 +932,7 @@ namespace UI {
                 if (card == cards.end()) continue;
                 installed.legacyInstances = card->instances;
                 installed.sourceLabel = card->sourceLabel;
+                installed.providerLabel = PokeVault::Source::cardProviderLabel(card->instances);
                 installed.locationLabel = std::to_string(card->instances.size()) +
                     (card->instances.size() == 1 ? " SAVE" : " SAVES");
                 if (card->instances.size() == 1)
@@ -925,6 +947,7 @@ namespace UI {
                 entry.gameId = card.gameId;
                 entry.platformLabel = card.platformLabel;
                 entry.sourceLabel = card.sourceLabel;
+                entry.providerLabel = PokeVault::Source::cardProviderLabel(card.instances);
                 entry.locationLabel = std::to_string(card.instances.size()) +
                     (card.instances.size() == 1 ? " SAVE" : " SAVES");
                 entry.artworkKey = card.artworkKey;
@@ -996,44 +1019,7 @@ namespace UI {
                 entry.artworkKey = entry.gameId;
                 entry.sourceKind = SelectedSourceKind::Gen4AssignedFile;
 
-                if (!legacyBindings) {
-                    entry.sourceLabel = "CHOOSE SAVE";
-                } else {
-                    const auto assigned = legacyBindings->resolveFileForGame(profile, game.id);
-                    switch (assigned.status) {
-                        case PokeVault::Legacy::AssignedFileStatus::Ready: {
-                            entry.sourceLabel = "REMEMBERED";
-                            entry.locationLabel = sourceLeafName(assigned.binding.sourcePath);
-                            const auto opened = PokeVault::Integration::Gen4::openAssignedSource(
-                                *legacyBindings, profile, game.id);
-                            if (opened.status == PokeVault::Integration::Gen4::OpenStatus::Ready &&
-                                opened.save) {
-                                entry.trainerName = Utils::utf16ToUtf8(opened.save->trainer().name);
-                                entry.trainerGender = opened.save->trainer().gender;
-                                entry.trainerGenderKnown = true;
-                                const auto dex = opened.save->dexProgress();
-                                entry.dexSeen = dex.seen;
-                                entry.dexCaught = dex.caught;
-                                entry.dexTotal = dex.total;
-                            }
-                            break;
-                        }
-                        case PokeVault::Legacy::AssignedFileStatus::Missing:
-                            entry.sourceLabel = "MISSING";
-                            entry.locationLabel = sourceLeafName(assigned.binding.sourcePath);
-                            break;
-                        case PokeVault::Legacy::AssignedFileStatus::Unreadable:
-                            entry.sourceLabel = "INVALID";
-                            entry.locationLabel = sourceLeafName(assigned.binding.sourcePath);
-                            break;
-                        case PokeVault::Legacy::AssignedFileStatus::Ambiguous:
-                            entry.sourceLabel = "AMBIGUOUS";
-                            break;
-                        case PokeVault::Legacy::AssignedFileStatus::Unassigned:
-                            entry.sourceLabel = "CHOOSE SAVE";
-                            break;
-                    }
-                }
+                applyAssignedCardState(entry, profile);
                 user.titles.push_back(std::move(entry));
             }
         }
@@ -1067,42 +1053,7 @@ namespace UI {
                 card.platformLabel="Nintendo DS";
                 card.artworkKey=card.gameId;
                 card.sourceKind=SelectedSourceKind::Gen5AssignedFile;
-                card.sourceLabel="CHOOSE SAVE";
-                if(legacyBindings) {
-                    const auto source=legacyBindings->resolveFileForGame(profile,game.id);
-                    if(source.status==PokeVault::Legacy::AssignedFileStatus::Ready) {
-                        card.locationLabel=sourceLeafName(source.binding.sourcePath);
-                        const auto opened=PokeVault::Integration::Gen5::openAssignedSource(
-                            *legacyBindings,profile,game.id);
-                        const auto preview=PokeVault::Integration::Gen5::previewAssignedGame(opened);
-                        if(preview) {
-                            card.gen5Preview=*preview;
-                            card.sourceLabel=preview->newGameNoTrainer
-                                ? "REMEMBERED / NEW-GAME SAVE, NO TRAINER YET" : "REMEMBERED";
-                            card.trainerName=preview->trainerName;
-                            card.trainerGender=preview->trainerGender;
-                            card.trainerGenderKnown=preview->trainerGenderKnown;
-                            card.dexSeen=preview->dexSeen;
-                            card.dexCaught=preview->dexCaught;
-                            card.dexTotal=preview->dexTotal;
-                        } else {
-                            // Never show zeros for an unverified copy: the card
-                            // states why, and Save Instances explains the copy.
-                            const auto& d=opened.diagnostic;
-                            card.sourceLabel=
-                                d.find("two valid but different")!=std::string::npos ||
-                                d.find("choose it explicitly")!=std::string::npos
-                                    ? "REMEMBERED / CHOOSE COPY" :
-                                d.find("no trainer data")!=std::string::npos
-                                    ? "NO TRAINER DATA / RELINK" : "RELINK SAVE";
-                        }
-                    } else if(source.status==PokeVault::Legacy::AssignedFileStatus::Missing)
-                        card.sourceLabel="MISSING";
-                    else if(source.status==PokeVault::Legacy::AssignedFileStatus::Unreadable)
-                        card.sourceLabel="INVALID";
-                    else if(source.status==PokeVault::Legacy::AssignedFileStatus::Ambiguous)
-                        card.sourceLabel="AMBIGUOUS";
-                }
+                applyAssignedCardState(card,profile);
                 user.titles.push_back(std::move(card));
             }
         }
@@ -1117,6 +1068,184 @@ namespace UI {
                     gamesDrawerIndex=titleIndex;
                     break;
                 }
+    }
+
+    const PokeVault::Source::HomeCardSnapshot* SaveSelectScreen::refreshAssignedSnapshot(
+        const std::string& profile, const TitleEntry& title,
+        PokeVault::Source::SnapshotRefresh* outcome) {
+        using PokeVault::Source::SnapshotRequest;
+        if (outcome) *outcome = PokeVault::Source::SnapshotRefresh::Unassigned;
+        if (!legacyBindings || profile.empty() ||
+            (title.sourceKind != SelectedSourceKind::Gen4AssignedFile &&
+             title.sourceKind != SelectedSourceKind::Gen5AssignedFile)) return nullptr;
+        const std::string key = homeSnapshotKey(profile, title.gameId);
+        const auto assigned = legacyBindings->resolveFileForGame(profile, title.gameId);
+        if (assigned.status != PokeVault::Legacy::AssignedFileStatus::Ready) {
+            // Missing / invalid / ambiguous / unassigned keep their own card
+            // states. No old snapshot may survive to be shown as current.
+            homeSnapshots.invalidate(key);
+            return nullptr;
+        }
+        const SnapshotRequest request =
+            PokeVault::Source::assignedSnapshotRequest(profile, title.gameId, assigned);
+        const bool gen5 = title.sourceKind == SelectedSourceKind::Gen5AssignedFile;
+        const std::string gameId = title.gameId;
+        return &homeSnapshots.refresh(request, statSaveFile,
+            [&]() -> PokeVault::Source::HomeCardSnapshot {
+                if (gen5)
+                    return PokeVault::Integration::Gen5::homeCardSnapshot(
+                        PokeVault::Integration::Gen5::openAssignedSource(
+                            *legacyBindings, profile, gameId));
+                return PokeVault::Integration::Gen4::homeCardSnapshot(
+                    PokeVault::Integration::Gen4::openAssignedSource(
+                        *legacyBindings, profile, gameId));
+            }, outcome);
+    }
+
+    // One card-state rule for Gen IV and Gen V assigned files: the explicit
+    // binding decides missing/invalid/ambiguous/unassigned; a resolved file
+    // shows its real provider and the validated snapshot (or an explicit
+    // stale/unavailable state). Gen V keeps its copy gate and new-game state.
+    void SaveSelectScreen::applyAssignedCardState(TitleEntry& card, const std::string& profile) {
+        using PokeVault::Source::SnapshotState;
+        card.sourceLabel = "CHOOSE SAVE";
+        card.providerLabel.clear();
+        card.locationLabel.clear();
+        card.linkedSave = false;
+        card.snapshotState = SnapshotState::Unavailable;
+        card.trainerName.clear();
+        card.trainerGender = 0;
+        card.trainerGenderKnown = false;
+        card.dexSeen = card.dexCaught = card.dexTotal = 0;
+        if (!legacyBindings) return;
+        const auto assigned = legacyBindings->resolveFileForGame(profile, card.gameId);
+        switch (assigned.status) {
+            case PokeVault::Legacy::AssignedFileStatus::Ready: break;
+            case PokeVault::Legacy::AssignedFileStatus::Missing:
+                card.sourceLabel = "MISSING";
+                card.locationLabel = sourceLeafName(assigned.binding.sourcePath);
+                homeSnapshots.invalidate(homeSnapshotKey(profile, card.gameId));
+                return;
+            case PokeVault::Legacy::AssignedFileStatus::Unreadable:
+                card.sourceLabel = "INVALID";
+                card.locationLabel = sourceLeafName(assigned.binding.sourcePath);
+                homeSnapshots.invalidate(homeSnapshotKey(profile, card.gameId));
+                return;
+            case PokeVault::Legacy::AssignedFileStatus::Ambiguous:
+                card.sourceLabel = "AMBIGUOUS";
+                homeSnapshots.invalidate(homeSnapshotKey(profile, card.gameId));
+                return;
+            case PokeVault::Legacy::AssignedFileStatus::Unassigned:
+                homeSnapshots.invalidate(homeSnapshotKey(profile, card.gameId));
+                return;
+        }
+        card.linkedSave = true;
+        card.sourceLabel = "REMEMBERED";
+        card.providerLabel = assigned.binding.sourceType;
+        card.locationLabel = sourceLeafName(assigned.binding.sourcePath);
+        const auto* snapshot = refreshAssignedSnapshot(profile, card);
+        if (!snapshot) return;
+        card.snapshotState = snapshot->state;
+        if (snapshot->hasData()) {
+            card.trainerName = snapshot->trainerName;
+            card.trainerGender = snapshot->trainerGender;
+            card.trainerGenderKnown = snapshot->trainerGenderKnown;
+            card.dexSeen = snapshot->dexSeen;
+            card.dexCaught = snapshot->dexCaught;
+            card.dexTotal = snapshot->dexTotal;
+        }
+        if (snapshot->state == SnapshotState::Stale) {
+            card.sourceLabel = "REMEMBERED / STALE";
+        } else if (snapshot->current()) {
+            if (snapshot->newGameNoTrainer)
+                card.sourceLabel = "REMEMBERED / NEW-GAME SAVE, NO TRAINER YET";
+        } else if (card.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
+            // Never show zeros for an unverified copy: the card states why,
+            // and Save Instances explains the copy.
+            using PokeVault::Integration::Gen5::CardFailure;
+            using PokeVault::Integration::Gen5::cardFailureReason;
+            card.sourceLabel =
+                snapshot->reason == cardFailureReason(CardFailure::ChooseCopy)
+                    ? "REMEMBERED / CHOOSE COPY" :
+                snapshot->reason == cardFailureReason(CardFailure::NoTrainerData)
+                    ? "NO TRAINER DATA / RELINK" : "RELINK SAVE";
+        }
+    }
+
+    void SaveSelectScreen::applySnapshotToHub(const PokeVault::Source::HomeCardSnapshot& snapshot) {
+        partyPreview = {};
+        previewTrainerName.clear();
+        previewTrainerGender = 0;
+        previewTrainerGenderKnown = false;
+        previewDexSeen = previewDexCaught = previewDexTotal = 0;
+        partyPreviewStatus = PokeVault::Source::homePartyStatus(snapshot);
+        if (!snapshot.hasData()) return;
+        previewTrainerName = snapshot.trainerName;
+        previewTrainerGender = snapshot.trainerGender;
+        previewTrainerGenderKnown = snapshot.trainerGenderKnown;
+        previewDexSeen = snapshot.dexSeen;
+        previewDexCaught = snapshot.dexCaught;
+        previewDexTotal = snapshot.dexTotal;
+        for (size_t i = 0; i < snapshot.party.size() && i < partyPreview.size(); ++i) {
+            const auto& pk = snapshot.party[i];
+            if (pk.species == 0) continue;
+            auto& slot = partyPreview[i];
+            slot.species = pk.species;
+            slot.level = pk.level;
+            slot.form = pk.form;
+            slot.shiny = pk.shiny;
+            const char* name = Trainer::getSpeciesName(pk.species);
+            slot.name = name ? name : "Unknown";
+        }
+    }
+
+    void SaveSelectScreen::pollFocusedSaveChange() {
+        if (syncFocusedSaveSnapshot()) refreshHubPreview(false);
+    }
+
+    // Re-check only the focused card's save. Returns true when its card data
+    // changed (re-validated, now missing/stale, or re-discovered).
+    bool SaveSelectScreen::syncFocusedSaveSnapshot() {
+        if (users.empty() || userIndex < 0 || userIndex >= static_cast<int>(users.size()))
+            return false;
+        auto& user = users[static_cast<size_t>(userIndex)];
+        if (titleIndex < 0 || titleIndex >= static_cast<int>(user.titles.size())) return false;
+        auto& title = user.titles[static_cast<size_t>(titleIndex)];
+        const std::string profile = profileIdentity(user.uid);
+        if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile ||
+            title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
+            if (!legacyBindings) return false;
+            const auto status = legacyBindings->resolveFileForGame(profile, title.gameId).status;
+            PokeVault::Source::SnapshotRefresh outcome{};
+            if (status == PokeVault::Legacy::AssignedFileStatus::Ready)
+                refreshAssignedSnapshot(profile, title, &outcome);
+            const bool linkChanged =
+                title.linkedSave != (status == PokeVault::Legacy::AssignedFileStatus::Ready);
+            if (!linkChanged && (outcome == PokeVault::Source::SnapshotRefresh::Reused ||
+                                 outcome == PokeVault::Source::SnapshotRefresh::Unassigned))
+                return false;
+            // The cache now holds the re-validated snapshot; rebuilding the
+            // card state re-reads it without parsing the save again.
+            applyAssignedCardState(title, profile);
+            return true;
+        }
+        // Gen I-III battery saves are parsed into the session catalog by the
+        // bounded discovery. A changed single source re-runs that same
+        // provider-complete discovery once; unchanged files cost one stat().
+        if (title.legacyInstances.size() != 1 || !legacyCatalog) return false;
+        const auto& instance = title.legacyInstances.front();
+        const auto stamp = statSaveFile(instance.path());
+        if (stamp && stamp->size == instance.fileSize && stamp->modifiedTime == instance.modifiedTime)
+            return false;
+        // One re-discovery per observed file state, never one per poll.
+        const std::string watchKey = instance.path() + '\t' +
+            (stamp ? std::to_string(stamp->size) + ':' + std::to_string(stamp->modifiedTime)
+                   : std::string("missing"));
+        if (watchKey == legacyWatchKey) return false;
+        legacyWatchKey = watchKey;
+        *legacyCatalog = PokeVault::Legacy::discoverConfiguredLegacySaves();
+        loadLegacySources(*legacyCatalog);
+        return true;
     }
 
     void SaveSelectScreen::rebuildUnassignedLegacySources() {
@@ -1532,20 +1661,14 @@ namespace UI {
         if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
             launchDescriptor.state=GameLaunchState::ChooseSource;
             launchDescriptor.detail="Select a Gen V Save Instance to open the shared staged editor.";
-            const auto& cached=title.gen5Preview;
-            if(cached && cached->exactGameId==title.gameId) {
-                for(size_t i=0;i<cached->partyCount && i<partyPreview.size();++i) {
-                    const auto& pk=cached->party[i];
-                    if(!pk.occupied)continue;
-                    auto& slot=partyPreview[i];
-                    slot.species=pk.species;
-                    slot.level=pk.level;
-                    slot.shiny=pk.shiny;
-                    const char* name=Trainer::getSpeciesName(pk.species);
-                    slot.name=name?name:"Unknown";
-                }
-                partyPreviewStatus="Gen V cached party; exact source verified on Open.";
-            } else partyPreviewStatus="Choose a validated Gen V Save Instance.";
+            // Lookup only (no stat/parse on the input frame). The snapshot was
+            // validated against the save's current size/mtime/bytes and is
+            // labelled exactly like Gen I-IV; stale data says so explicitly.
+            const auto* snapshot=title.linkedSave
+                ? homeSnapshots.find(homeSnapshotKey(profileIdentity(user->uid),title.gameId))
+                : nullptr;
+            if(snapshot)applySnapshotToHub(*snapshot);
+            else partyPreviewStatus="Choose a validated Gen V Save Instance.";
         } else if (title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
             title.legacyInstances.size() > 1) {
             launchDescriptor.backend = GameLaunchBackend::HomebrewNro;
@@ -1561,6 +1684,9 @@ namespace UI {
     }
 
     void SaveSelectScreen::refreshHubPreview(bool resolveLaunchTarget) {
+        // App start, profile change, assignment change and editor return all
+        // land here: one stat() of the focused save; reparse only on change.
+        syncFocusedSaveSnapshot();
         partyPreview = {};
         partyPreviewStatus.clear();
         previewTrainerName.clear();
@@ -1776,51 +1902,22 @@ namespace UI {
             return;
         }
 
-        if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
-            // Do not reopen and reparse a 0x80000 SAV5 merely because the
-            // user moved focus between game cards. Source validation and
-            // fingerprint checking happen again on explicit Save Instance Open.
-            const auto& preview=title.gen5Preview;
-            if(preview && preview->exactGameId==title.gameId) {
-                previewTrainerName=preview->trainerName;
-                previewTrainerGender=preview->trainerGender;
-                previewTrainerGenderKnown=preview->trainerGenderKnown;
-                previewDexSeen=preview->dexSeen;
-                previewDexCaught=preview->dexCaught;
-                previewDexTotal=preview->dexTotal;
-                for(size_t i=0;i<preview->partyCount && i<partyPreview.size();++i)
-                    if(preview->party[i].occupied)
-                        addParty(i,preview->party[i].species,preview->party[i].level,0,
-                                 preview->party[i].shiny);
-                partyPreviewStatus="Gen V cached party; choose Save Instances to open.";
-            } else partyPreviewStatus="Choose a validated Gen V Save Instance.";
+        if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile ||
+            title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
+            // Do not reopen and reparse a 0x80000 save merely because focus
+            // moved: the snapshot cache stat()s the file and re-validates only
+            // when its size/mtime or the assignment changed. Gen V Open still
+            // revalidates the exact copy and fingerprint chosen in Save Instances.
+            const auto* snapshot = title.linkedSave
+                ? homeSnapshots.find(homeSnapshotKey(currentProfileIdentity(), title.gameId))
+                : nullptr;
+            if (snapshot) applySnapshotToHub(*snapshot);
+            else if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile)
+                partyPreviewStatus = "Choose a validated Gen V Save Instance.";
+            else partyPreviewStatus = PokeVault::Integration::Gen4::UnavailablePartyReason;
             return;
         }
 
-        if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile && legacyBindings) {
-            const auto opened = PokeVault::Integration::Gen4::openAssignedSource(
-                *legacyBindings, currentProfileIdentity(), title.gameId);
-            if (opened.status == PokeVault::Integration::Gen4::OpenStatus::Ready && opened.save) {
-                previewTrainerName = Utils::utf16ToUtf8(opened.save->trainer().name);
-                previewTrainerGender = opened.save->trainer().gender;
-                previewTrainerGenderKnown = true;
-                const auto dex = opened.save->dexProgress();
-                previewDexSeen = dex.seen;
-                previewDexCaught = dex.caught;
-                previewDexTotal = dex.total;
-                const auto party = opened.save->party();
-                for (size_t i = 0; i < std::min(party.size(), partyPreview.size()); ++i) {
-                    if (party[i].valid())
-                        addParty(i, party[i].species(), party[i].partyLevel(),
-                                 party[i].form(), false);
-                }
-                partyPreviewStatus = std::any_of(partyPreview.begin(), partyPreview.end(),
-                    [](const auto& slot) { return slot.species != 0; })
-                ? "Current save party" : "No active party Pokémon.";
-            } else {
-                partyPreviewStatus = "Choose a Save Instance to view its party.";
-            }
-        }
     }
 
     void SaveSelectScreen::openGameFilePicker(
@@ -3041,6 +3138,16 @@ namespace UI {
             overlay = Overlay::None; // Dismiss only when the sheet is offscreen.
             syncTouchScrollSurface();
         }
+        // Emulator save watch for the visible Home card only: one stat() every
+        // ~1.5 s; the strict parser runs only when the file actually changed.
+        if (overlay == Overlay::None && !classicGamesActive && !titleSelected) {
+            if (++saveWatchFrames >= SAVE_WATCH_INTERVAL_FRAMES) {
+                saveWatchFrames = 0;
+                pollFocusedSaveChange();
+            }
+        } else {
+            saveWatchFrames = 0;
+        }
         // A tap on a nav-bar badge becomes that button's press, so every handler below is
         // reached identically whether the user pressed the button or tapped its on-screen badge.
         const HidAnalogStickState stick = padGetStickPos(&pad, 0);
@@ -4106,17 +4213,19 @@ namespace UI {
             else
                 fb.drawFilledRoundedRect(x + 29, y + 14, CLASSIC_ICON, CLASSIC_ICON, 12, Colors::PanelAlt);
 
-            std::string label = title.label;
-            if (label.size() > 18) label = label.substr(0, 17) + "…";
+            // Measured fit: tile text never spills into the neighbouring card.
+            const int tileTextW = CLASSIC_TILE_W - 16;
+            const std::string label =
+                fitTextToWidth(fb, title.label, tileTextW, TextStyle::Caption);
             int lw=0,lh=0; fb.measureText(label,lw,lh,TextStyle::Caption);
             fb.drawText(x + (CLASSIC_TILE_W-lw)/2, y + 146, label,
                         focused ? Colors::SelectedText : Colors::TextPrimary, TextStyle::Caption);
 
             std::string meta = title.trainerName.empty()
-                ? productSourceLabel(title.sourceLabel) : title.trainerName;
+                ? productSourceLabel(title.sourceLabel, title.providerLabel) : title.trainerName;
             if (title.dexTotal > 0)
                 meta += "  •  " + std::to_string(title.dexCaught) + "/" + std::to_string(title.dexTotal);
-            if (meta.size() > 24) meta = meta.substr(0, 23) + "…";
+            meta = fitTextToWidth(fb, meta, tileTextW, TextStyle::Caption);
             int mw=0,mh=0; fb.measureText(meta,mw,mh,TextStyle::Caption);
             fb.drawText(x + (CLASSIC_TILE_W-mw)/2, y + 172, meta,
                         Colors::TextMuted, TextStyle::Caption);
@@ -4306,10 +4415,13 @@ namespace UI {
                 title.gameId, previewTrainerGenderKnown, previewTrainerGender);
             drawTrainerPortrait(fb, infoX + 334, HUB_Y + 66, 94, 108, portrait, true);
 
-            std::string sourceLine = title.platformLabel;
-            if (!title.sourceLabel.empty()) sourceLine += "  •  " + productSourceLabel(title.sourceLabel);
-            if (sourceLine.size() > 38) sourceLine = sourceLine.substr(0, 37) + "…";
-            fb.drawText(infoX, HUB_Y + 139, sourceLine,
+            // "Nintendo DS • DraStic": the real provider from Save Instance
+            // metadata, fitted to the space left of the trainer portrait.
+            const std::string sourceLine = PokeVault::Source::homeSourceLine(
+                title.platformLabel, title.sourceLabel.empty()
+                    ? std::string() : productSourceLabel(title.sourceLabel, title.providerLabel));
+            fb.drawText(infoX, HUB_Y + 139,
+                        fitTextToWidth(fb, sourceLine, 326, TextStyle::Body),
                         heroSecondary, TextStyle::Body);
 
             fb.drawFilledRoundedRect(infoX, HUB_Y + 172, DETAIL_W - (infoX - DETAIL_X) - 24,
@@ -4340,8 +4452,9 @@ namespace UI {
             const int partyY = HUB_Y + 278;
             fb.drawText(partyX, partyY, "PARTY", Colors::Info, TextStyle::Caption);
             if (!partyPreviewStatus.empty()) {
-                std::string status = partyPreviewStatus;
-                if (status.size() > 62) status = status.substr(0, 61) + "…";
+                // Stale/unavailable reasons can be long: fit to the strip.
+                const std::string status = fitTextToWidth(fb, partyPreviewStatus,
+                    DETAIL_W - 44 - 70, TextStyle::Caption);
                 fb.drawText(partyX + 70, partyY, status, Colors::TextMuted, TextStyle::Caption);
             }
 
@@ -4678,7 +4791,7 @@ namespace UI {
                         saveCount = static_cast<int>(title.legacyInstances.size());
                     else if (title.sourceKind == SelectedSourceKind::Gen4AssignedFile ||
                              title.sourceKind == SelectedSourceKind::Gen5AssignedFile)
-                        saveCount = title.sourceLabel == "REMEMBERED" ? 1 : 0;
+                        saveCount = title.linkedSave ? 1 : 0;
                     const std::string saveLine = saveCount == 1
                         ? "1 save"
                         : saveCount > 1 ? std::to_string(saveCount) + " saves" : "Choose save";
@@ -4690,8 +4803,9 @@ namespace UI {
                                 saveLine, Colors::TextMuted, TextStyle::Caption);
 
                     if (!specificArt) {
-                        std::string label = title.label.empty() ? title.name : title.label;
-                        if (label.size() > 18) label = label.substr(0, 17) + "…";
+                        const std::string label = fitTextToWidth(fb,
+                            title.label.empty() ? title.name : title.label,
+                            tileW - 10, TextStyle::Caption);
                         int lw = 0, lh = 0;
                         fb.measureText(label, lw, lh, TextStyle::Caption);
                         fb.drawText(bx + std::max(5, (tileW - lw) / 2), by + 124, label,
@@ -4849,7 +4963,10 @@ namespace UI {
                         TextStyle::Body);
             fb.drawText(x + 30, metaY + 34, "Source", Colors::TextMuted, TextStyle::Caption);
             fb.drawText(x + 122, metaY + 34,
-                        title.sourceLabel.empty() ? "Validated source" : productSourceLabel(title.sourceLabel),
+                        fitTextToWidth(fb, title.sourceLabel.empty()
+                            ? std::string("Validated source")
+                            : productSourceLabel(title.sourceLabel, title.providerLabel),
+                            gridX - x - 122 - 16, TextStyle::Body),
                         Colors::TextSecondary, TextStyle::Body);
             fb.drawText(x + 30, metaY + 68, "Save", Colors::TextMuted, TextStyle::Caption);
             fb.drawText(x + 122, metaY + 68,
@@ -4997,9 +5114,9 @@ namespace UI {
                                                            : Colors::TextSecondary,
                             TextStyle::Body);
                 fb.drawText(x + 44, rowY + 35,
-                            (entry.instance.providerLabel.empty() ? std::string("Source")
-                                                                 : entry.instance.providerLabel) +
-                                " / " + entry.instance.sourceLabel,
+                            fitTextToWidth(fb,
+                                PokeVault::Source::saveInstanceSourceLine(entry.instance),
+                                w - 88, TextStyle::Caption),
                             Colors::TextMuted, TextStyle::Caption);
             }
             fb.clearClip();
@@ -5012,8 +5129,8 @@ namespace UI {
             constexpr int w = 900, h = 520;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
             drawModalSurface(fb, x, y, w, h);
-            const std::string detailsProvider = legacyDetailsInstance.providerLabel.empty()
-                ? std::string("SOURCE") : legacyDetailsInstance.providerLabel;
+            const std::string detailsProvider =
+                PokeVault::Source::providerDisplayName(legacyDetailsInstance.providerLabel);
             fb.drawText(x + 28, y + 18,
                         detailsProvider + " / SOURCE DIAGNOSTICS / READ ONLY",
                         Colors::Accent, TextStyle::Caption);
@@ -5025,8 +5142,8 @@ namespace UI {
                 fb.drawText(x + 214, lineY, value, Colors::TextPrimary, TextStyle::Caption);
                 lineY += 30;
             };
-            drawLine("Provider", legacyDetailsInstance.providerLabel.empty()
-                ? "Source" : legacyDetailsInstance.providerLabel);
+            drawLine("Provider",
+                PokeVault::Source::providerDisplayName(legacyDetailsInstance.providerLabel));
             drawLine("Game identity", legacyDetailsGameId);
             drawLine("Trainer", legacyDetailsInstance.trainerName.empty()
                 ? "Unknown" : legacyDetailsInstance.trainerName);
