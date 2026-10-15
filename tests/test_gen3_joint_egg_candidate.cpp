@@ -271,6 +271,10 @@ void testBreedingEligibilityAndRoles() {
             in.slot0.eggGroup1=15; // Undiscovered
             assert(B::evaluate(in).status==B::Status::Incompatible);
             in.slot0.eggGroup1=13;
+            // Only Ditto is in the Ditto egg group, so this record is incoherent
+            // personal data rather than a breeding verdict.
+            assert(B::evaluate(in).status==B::Status::UnknownPersonalData);
+            in.slot0={101,132,13,13,Gender::Genderless,0x12345678u,true,true,true};
             assert(B::evaluate(in).status==B::Status::Incompatible); // Ditto + Ditto
             in.slot0=female;in.slot1=male;
             in.slot1.gender=Gender::Female;
