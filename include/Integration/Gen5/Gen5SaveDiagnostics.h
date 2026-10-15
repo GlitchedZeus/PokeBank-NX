@@ -248,6 +248,32 @@ template <size_t N>
     return std::nullopt;
 }
 
+// Shared gate for every Gen V open path (Save Instances rows, Home card
+// preview, assigned open, generic reopen). Valid checksums do not prove the
+// copy holds the player's game: a blank/initial copy (no TID/SID/name) or one
+// whose declared party holds invalid PK5 records is refused with an explicit
+// reason instead of opening as "Trainer 0 / Party 0 / Dex 0". The other copy
+// is described, never silently substituted. Empty result: copy is openable.
+[[nodiscard]] inline std::string unopenableCopyDiagnostic5(std::span<const uint8_t> image,
+                                                           const Gen5ReadOnlySave& save,
+                                                           SaveCopySelection selection) {
+    const auto report = inspectSave5(image, "normalized", selection);
+    const auto state = chosenState5(report);
+    if (copyOpenable5(state)) return {};
+    std::string out = std::string(save.selectedBackupPartition() ? "Backup" : "Primary") +
+                      " copy: " + copyStateLabel5(state);
+    if (const auto other = openableAlternative5(report)) {
+        const auto& alt = report.copies[*other];
+        out += std::string("; the ") + (alt.offset == 0 ? "Primary" : "Backup") +
+               " copy is " + copyStateLabel5(alt.state) + " - choose it explicitly";
+    } else {
+        for (const auto& c : report.copies)
+            if (c.family == save.family() && c.offset != save.selectedCopyOffset())
+                out += std::string("; the other copy is ") + copyStateLabel5(c.state);
+    }
+    return out;
+}
+
 // Plain-text report with no personal data: no name text, no IDs, no raw bytes.
 [[nodiscard]] inline std::string formatSaveReport5(const SaveReport5& r, std::string_view gameId) {
     std::string out = "PokeBank NX Gen V save diagnostics\n";

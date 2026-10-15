@@ -157,6 +157,25 @@ void singleBlankCopy() {
     assert(p.instance.diagnostic.find("other copy is checksums invalid") != std::string::npos);
 }
 
+void singleBlankCopyFile() {
+    // Automatic on a file whose only valid copy is blank: an explicit
+    // NOT OPENABLE row, never a remembered card with zeros.
+    char pattern[] = "/tmp/pokebank_gen5_blank_XXXXXX";
+    assert(::mkdtemp(pattern));
+    const std::string dir = pattern, src = dir + "/w.sav";
+    std::vector<uint8_t> sav(L::FullSaveSize, 0);
+    blankCopy(sav, 0, G::SaveFamily::BlackWhite, 20);
+    {
+        FILE* f = std::fopen(src.c_str(), "wb");
+        assert(f && std::fwrite(sav.data(), 1, sav.size(), f) == sav.size() && std::fclose(f) == 0);
+    }
+    const auto choices = G::inspectSourceChoices(src, "DraStic", "white_nds");
+    assert(choices.size() == 1 && !choices[0].ready());
+    assert(choices[0].diagnostic.find("Primary copy: no trainer data") != std::string::npos);
+    assert(choices[0].sourceLabel.find("NOT OPENABLE") != std::string::npos);
+    assert(std::remove(src.c_str()) == 0 && ::rmdir(dir.c_str()) == 0);
+}
+
 void otherStates() {
     // Genuinely empty: trainer present, no Pokemon -> opens.
     std::vector<uint8_t> sav(L::FullSaveSize, 0);
@@ -205,6 +224,21 @@ void reportFile() {
         FILE* f = std::fopen(src.c_str(), "wb");
         assert(f && std::fwrite(sav.data(), 1, sav.size(), f) == sav.size() && std::fclose(f) == 0);
     }
+    // Save Instances rows use the same gate: the checksum-valid blank Primary
+    // never becomes a Ready "Party 0 / Boxed 0" row; both copies are offered.
+    {
+        const auto primary = G::inspectSourceFile(src, "DraStic", "black2_nds", G::SaveCopySelection::Primary);
+        assert(!primary.ready() && primary.validation == PokeVault::Source::ValidationStatus::Invalid);
+        assert(primary.sourceLabel.find("NOT OPENABLE") != std::string::npos);
+        assert(primary.sourceLabel.find("Party 0") == std::string::npos && primary.partyCount == 0);
+        assert(primary.diagnostic.find("Backup copy is valid, populated - choose it explicitly") != std::string::npos);
+        const auto choices = G::inspectSourceChoices(src, "DraStic", "black2_nds");
+        assert(choices.size() == 2);
+        assert(!choices[0].ready() && choices[0].sourceVariant == "gen5-copy-0-primary");
+        assert(choices[1].ready() && choices[1].sourceVariant == "gen5-copy-1-backup");
+        assert(choices[1].partyCount == 2 && choices[1].trainerName == "Rosa");
+        assert(choices[1].sourceLabel.find("Backup copy / Party 2 / Boxed 1") != std::string::npos);
+    }
     std::string written, error;
     assert(G::writeGen5DiagnosticsReport(src, "black2_nds", "20261015_101010", dir + "/diagnostics", written, error));
     std::ifstream in(written);
@@ -235,6 +269,7 @@ int main() {
     dualCopyBlankPrimary(G::SaveFamily::Black2White2, "black2_nds", 23);
     dualCopyBlankPrimary(G::SaveFamily::Black2White2, "white2_nds", 22);
     singleBlankCopy();
+    singleBlankCopyFile();
     otherStates();
     reportFile();
     std::cout << "Gen V save diagnostics: blank/stale copy, populated, empty, unreadable name, "

@@ -461,6 +461,18 @@ Source::SaveInstance inspectSnapshot(const SourceSnapshot& snapshot,
     // later corruption could silently reopen the other copy of the same file.
     row.sourceVariant=save->selectedBackupPartition()?"gen5-copy-1-backup":
                       "gen5-copy-0-primary";
+    // The same blank/invalid-copy gate as probeNormalizedBattery: a
+    // checksum-valid copy with no trainer identity never becomes a Ready
+    // "Party 0 / Boxed 0" row, a card preview, or an editor session.
+    if(auto refused=unopenableCopyDiagnostic5(snapshot.bytes,*save,copy);!refused.empty()) {
+        row.validation=Source::ValidationStatus::Invalid;
+        row.sourceLabel=std::string("Gen V / ")+
+            (save->selectedBackupPartition()?"Backup copy":"Primary copy")+" / NOT OPENABLE";
+        row.partyCount=0;
+        row.trainerName.clear();
+        row.diagnostic=std::move(refused);
+        return row;
+    }
     row.partyCount=save->partyCount();
     row.trainerName=displayTrainerName(save->trainer().rawName).value_or("");
     // Both retail save copies may have valid checksums yet vastly different
@@ -501,7 +513,10 @@ std::vector<Source::SaveInstance> inspectSourceChoices(const std::string& path,
     std::string_view providerLabel,std::string_view assignedExactGame) {
     const auto snapshot=readSourceSnapshot(path,providerLabel,assignedExactGame);
     auto row=inspectSnapshot(snapshot,assignedExactGame,SaveCopySelection::Automatic);
-    if(row.diagnostic.find("two valid but different")==std::string::npos)
+    // Offer both explicit copies when Automatic is ambiguous, or when the
+    // automatically validated copy is blank but the other copy is openable.
+    if(row.diagnostic.find("two valid but different")==std::string::npos &&
+       row.diagnostic.find("choose it explicitly")==std::string::npos)
         return {std::move(row)};
     std::vector<Source::SaveInstance> choices;
     for(const auto copy:{SaveCopySelection::Primary,SaveCopySelection::Backup})

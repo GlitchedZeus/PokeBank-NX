@@ -446,12 +446,14 @@ namespace UI {
             return genderKnown
                 ? TrainerPortraitPresentation{female ? "Hilda" : "Hilbert",
                                               female ? "hilda" : "hilbert", female, true}
-                : TrainerPortraitPresentation{"Unova Trainer", "hilbert", false, true};
+                // Unknown gender is NOT male: no protagonist is shown until a
+                // validated save copy supplies its gender byte.
+                : TrainerPortraitPresentation{"Unova Trainer", "", false, false};
         if (gameId == "black2_nds" || gameId == "white2_nds")
             return genderKnown
                 ? TrainerPortraitPresentation{female ? "Rosa" : "Nate",
                                               female ? "rosa" : "nate", female, true}
-                : TrainerPortraitPresentation{"Unova Trainer", "nate", false, true};
+                : TrainerPortraitPresentation{"Unova Trainer", "", false, false};
 
         // Later games still use the save-backed gender when available, but now show the real
         // default protagonist art instead of an empty Poké Ball placeholder.
@@ -1082,9 +1084,17 @@ namespace UI {
                             card.dexSeen=preview->dexSeen;
                             card.dexCaught=preview->dexCaught;
                             card.dexTotal=preview->dexTotal;
-                        } else card.sourceLabel=
-                            opened.diagnostic.find("two valid but different")!=std::string::npos
-                                ? "REMEMBERED / CHOOSE COPY" : "RELINK SAVE";
+                        } else {
+                            // Never show zeros for an unverified copy: the card
+                            // states why, and Save Instances explains the copy.
+                            const auto& d=opened.diagnostic;
+                            card.sourceLabel=
+                                d.find("two valid but different")!=std::string::npos ||
+                                d.find("choose it explicitly")!=std::string::npos
+                                    ? "REMEMBERED / CHOOSE COPY" :
+                                d.find("no trainer data")!=std::string::npos
+                                    ? "NO TRAINER DATA / RELINK" : "RELINK SAVE";
+                        }
                     } else if(source.status==PokeVault::Legacy::AssignedFileStatus::Missing)
                         card.sourceLabel="MISSING";
                     else if(source.status==PokeVault::Legacy::AssignedFileStatus::Unreadable)
