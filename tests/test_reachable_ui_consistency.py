@@ -3,8 +3,21 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# The shared editor workspace lives in src/UI/SharedPokemonEditorSurface.inc,
+# which a generation surface includes textually. Expand that one include so a
+# surface's contract covers the shared code it compiles.
+def _expand_surface_includes(text: str) -> str:
+    import re as _re
+    def inline(match):
+        name = match.group(1)
+        nested = ROOT / "src/UI" / name
+        return match.group(0) + ("\n" + _expand_surface_includes(nested.read_text(encoding="utf-8"))
+                                 if nested.is_file() else "")
+    return _re.sub(r'#include "(SharedPokemonEditorSurface\.inc)"', inline, text)
+
+
 def read(path: str) -> str:
-    return (ROOT / path).read_text(encoding="utf-8")
+    return _expand_surface_includes((ROOT / path).read_text(encoding="utf-8"))
 
 held = read("include/UI/Gen2HeldItemPicker.h")
 shared_held = read("include/UI/SharedHeldItemPickerPresentation.h")

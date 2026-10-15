@@ -5,10 +5,32 @@
 #include <string>
 
 namespace {
+// The shared editor workspace lives in src/UI/SharedPokemonEditorSurface.inc,
+// which a generation surface includes textually. Expand that one include so a
+// surface's contract covers the shared code it compiles.
+std::string expandSurfaceIncludes(const std::string& text) {
+    std::string out;
+    std::size_t pos = 0;
+    const std::string marker = "#include \"";
+    while (true) {
+        const auto at = text.find(marker, pos);
+        if (at == std::string::npos) { out += text.substr(pos); break; }
+        const auto close = text.find('"', at + marker.size());
+        const std::string name = text.substr(at + marker.size(), close - at - marker.size());
+        out += text.substr(pos, close + 1 - pos);
+        pos = close + 1;
+        if (name == "SharedPokemonEditorSurface.inc") {
+            std::ifstream nested("src/UI/" + name, std::ios::binary);
+            if (nested) out += "\n" + expandSurfaceIncludes(
+                {std::istreambuf_iterator<char>(nested), std::istreambuf_iterator<char>()});
+        }
+    }
+    return out;
+}
 std::string read(const char* path) {
     std::ifstream in(path);
     assert(in);
-    return {std::istreambuf_iterator<char>(in), {}};
+    return expandSurfaceIncludes({std::istreambuf_iterator<char>(in), {}});
 }
 
 void contains(const std::string& text, const char* needle) {
@@ -53,7 +75,8 @@ int main() {
     contains(gen1, "state.pickerValue, 151");
     contains(gen2, "model.speciesChoice(), 251");
     contains(gen3, "state.speciesPreview, 386");
-    contains(gen4, "species, 493, previewShiny");
+    contains(gen4, "species, A::kMaxSpecies, previewShiny");
+    contains(gen4, "static constexpr int kMaxSpecies = 493;");
     contains(gen4, "state.speciesPreviewShiny");
     contains(gen4, "\"Y\", \"Normal/Shiny\"");
     contains(gen4, "true, previewTypes");
