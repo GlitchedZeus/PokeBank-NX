@@ -1,6 +1,7 @@
 #ifndef POKEBANK_GEN7_STAGED_SESSION_H
 #define POKEBANK_GEN7_STAGED_SESSION_H
 
+#include "Integration/Gen7/Gen7Bag.h"
 #include "Integration/Gen7/Gen7ExactFormatEditorProvider.h"
 #include "Integration/Gen7/Gen7Save.h"
 
@@ -73,7 +74,17 @@ public:
     [[nodiscard]] bool removeFromBox(size_t box, size_t slot, std::string* error = nullptr);
 
     bool undo(SlotRef slot) noexcept { return entries_.erase(slot) != 0; }
-    [[nodiscard]] bool hasChanges() const noexcept { return !entries_.empty(); }
+    [[nodiscard]] bool hasChanges() const noexcept { return !entries_.empty() || bagDirty(); }
+
+    // Staged native Bag (MyItem block 0); nullptr (with error) when unrecognized.
+    [[nodiscard]] Gen7StagedBag* bag(std::string* error = nullptr) {
+        if (!bag_) bag_ = Gen7StagedBag::create(source_, error);
+        return bag_ ? &*bag_ : nullptr;
+    }
+    [[nodiscard]] bool bagDirty() const noexcept { return bag_ && bag_->dirty(); }
+    [[nodiscard]] std::span<const uint8_t> stagedBagBlock() const noexcept {
+        return bagDirty() ? bag_->staged() : std::span<const uint8_t>{};
+    }
     [[nodiscard]] std::vector<StagedChange> changes() const;
     [[nodiscard]] std::vector<std::string> changeLines() const;
     [[nodiscard]] std::optional<PK7::Pokemon6> current(SlotRef slot) const;
@@ -98,6 +109,7 @@ private:
 
     Gen7Save source_;
     std::map<SlotRef, Entry> entries_;
+    std::optional<Gen7StagedBag> bag_;
 };
 
 // Independent check of an unsigned candidate: same size, reparses (signature
@@ -105,8 +117,11 @@ private:
 // and differs from the source only inside staged records (decrypted diff within
 // the editable-field mask, or exact clone/blank) and the CRCs of owning blocks.
 // The signature region must be untouched.
+// With a non-empty `stagedBagBlock`, MyItem must equal it, decode strictly and differ
+// only inside pouch slot arrays (plus block 0's CRC); otherwise the bag must be identical.
 [[nodiscard]] bool verifyUnsignedCandidate(const Gen7Save& source, std::span<const uint8_t> edited,
-                                           const std::vector<StagedChange>& changes, std::string* error = nullptr);
+                                           const std::vector<StagedChange>& changes, std::string* error = nullptr,
+                                           std::span<const uint8_t> stagedBagBlock = {});
 
 } // namespace PokeVault::Integration::Gen7
 

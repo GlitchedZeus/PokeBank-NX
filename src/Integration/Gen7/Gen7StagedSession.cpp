@@ -272,7 +272,7 @@ std::optional<UnsignedCandidate> Gen7StagedSession::buildUnsignedCandidate(std::
         if (error) *error = why;
         return std::nullopt;
     };
-    if (entries_.empty()) return fail("Gen VII candidate needs at least one staged change");
+    if (!hasChanges()) return fail("Gen VII candidate needs at least one staged change");
     const auto family = source_.family();
     UnsignedCandidate out;
     out.bytes.assign(source_.bytes().begin(), source_.bytes().end());
@@ -287,16 +287,22 @@ std::optional<UnsignedCandidate> Gen7StagedSession::buildUnsignedCandidate(std::
         std::copy(encrypted.begin(), encrypted.end(), out.bytes.begin() + static_cast<std::ptrdiff_t>(offset));
         touched.insert(*block);
     }
+    const auto bagBlock = stagedBagBlock();
+    if (!bagBlock.empty()) {
+        std::copy(bagBlock.begin(), bagBlock.end(), out.bytes.begin() + static_cast<std::ptrdiff_t>(itemsBlockOffset7(family)));
+        touched.insert(ItemsBlock7);
+    }
     for (const size_t id : touched)
         PK7::write16(out.bytes, Layout::checksumOffset(family, id), Gen7Save::computeBlockChecksum(out.bytes, family, id));
     std::string why;
-    if (!verifyUnsignedCandidate(source_, out.bytes, changes(), &why)) return fail(why);
+    if (!verifyUnsignedCandidate(source_, out.bytes, changes(), &why, bagBlock)) return fail(why);
     if (error) error->clear();
     return out;
 }
 
 bool verifyUnsignedCandidate(const Gen7Save& source, std::span<const uint8_t> edited,
-                             const std::vector<StagedChange>& changes, std::string* error) {
+                             const std::vector<StagedChange>& changes, std::string* error,
+                             std::span<const uint8_t> stagedBagBlock) {
     const auto fail = [&](const std::string& why) { if (error) *error = why; return false; };
     const auto original = source.bytes();
     if (edited.size() != original.size()) return fail("Gen VII candidate size changed");
@@ -369,6 +375,17 @@ bool verifyUnsignedCandidate(const Gen7Save& source, std::span<const uint8_t> ed
                     return fail("Gen VII removal must blank an occupied box slot");
                 break;
         }
+    }
+    if (!stagedBagBlock.empty()) {
+        const size_t at = itemsBlockOffset7(family);
+        const auto block = edited.subspan(at, itemsBlockLength7(family));
+        if (!std::equal(block.begin(), block.end(), stagedBagBlock.begin(), stagedBagBlock.end()))
+            return fail("Gen VII candidate bag differs from the staged bag");
+        if (!decodeBag7(family, block)) return fail("Gen VII staged bag does not decode strictly");
+        if (!bagDiffWithinSlots7(family, sourceItemsBlock7(source), block))
+            return fail("Gen VII staged bag changed bytes outside pouch slots");
+        std::fill_n(allowed.begin() + static_cast<std::ptrdiff_t>(at), block.size(), uint8_t{0xFF});
+        blocks.insert(ItemsBlock7);
     }
     for (const size_t id : blocks) {
         const size_t at = Layout::checksumOffset(family, id);

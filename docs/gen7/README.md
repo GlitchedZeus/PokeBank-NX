@@ -14,6 +14,7 @@ save family and is not handled here.
 | MemeCrypto signature verification: RSA verify + payload must start with SHA256(checksum table) | `Gen7Save::verifySignature` (vendored FlagBrew/memecrypto `bd3b16ee`) | done |
 | Trainer (read-only), Party, 32×30 Boxes, quarantined invalid boxed records | `Gen7Save` | done |
 | Shared-editor provider | `Gen7ExactFormatEditorProvider.h`: per Box/Party field states, as in Gen VI. IV/EV/Nature/Level are editable on party records too, with hyper-training-aware stat recomputation (`Gen7Stats.h`, base stats generated from PKHeX `personal_uu` by `docs/gen7/tools/gen_gen7_personal.py`, checked against PKSM-Core `personal7`). No field is a UI editor target while `ExportSupported` is false | done |
+| Bag (staged, export gated) | `Gen7Bag.h` + `Gen7BagCatalog.h` (generated from PKHeX ItemStorage7SM/USUM): PlayerBag7SM/7USUM pouches, packed u32 slots (item/count/free-space index/NEW), quantity edits keep sort and NEW bits; included in the unsigned candidate with a slot-only whitelist | done up to the signing step |
 | Box names / Pokédex (read-only) | `Gen7Readouts.h`: BoxLayout7 block 13 names/unlocked/current, Zukan7 block 6 caught/seen (SM 802, USUM 807) | done |
 | Sources | `Gen7SaveSources.h/.cpp`: same verified Checkpoint/Dekopon layouts as Gen VI (title-ID generic); Azahar unsupported | done |
 | Staged Edit/Clone/Remove | `Gen7StagedSession.h/.cpp`: app-owned copy, unsigned candidate (records written, owning block CRCs refreshed, signature untouched), independent whitelist verifier | done up to the signing step |

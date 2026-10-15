@@ -1,7 +1,7 @@
 # Gen VII (Sun/Moon, Ultra Sun/Ultra Moon) native SAV7 contracts: strict
 # read-only parse, CRC16Invert blocks and MemeCrypto signature verification.
 # SAV7 staged export is explicitly unsupported (docs/gen7/README.md).
-GEN7_TEST_NAMES := test_gen7_save test_gen7_staged test_gen7_stats test_gen7_readouts
+GEN7_TEST_NAMES := test_gen7_save test_gen7_staged test_gen7_stats test_gen7_readouts test_gen7_bag
 GEN7_TESTS := $(addprefix $(HOST_BUILD)/,$(GEN7_TEST_NAMES))
 GEN7_SANITIZE_TESTS := $(addsuffix _sanitize,$(GEN7_TESTS))
 
@@ -68,6 +68,17 @@ $(HOST_BUILD)/test_gen7_readouts: $(GEN7_READOUT_SOURCES) $(GEN7_HEADERS) $(GEN7
 $(HOST_BUILD)/test_gen7_readouts_sanitize: $(GEN7_READOUT_SOURCES) $(GEN7_HEADERS) $(GEN7_MEME_SANITIZE_OBJECTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) $(GEN7_FLAGS) $(GEN7_READOUT_SOURCES) $(GEN7_MEME_SANITIZE_OBJECTS) -o $@
+
+GEN7_BAG_SOURCES := tests/test_gen7_bag.cpp src/Integration/Gen7/Gen7Save.cpp \
+	src/Integration/Gen7/Gen7StagedSession.cpp src/Utils/SHA256.cpp src/Pokemon/Experience.cpp
+
+$(HOST_BUILD)/test_gen7_bag: $(GEN7_BAG_SOURCES) $(GEN7_HEADERS) $(GEN7_MEME_OBJECTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN7_FLAGS) $(GEN7_BAG_SOURCES) $(GEN7_MEME_OBJECTS) -o $@
+
+$(HOST_BUILD)/test_gen7_bag_sanitize: $(GEN7_BAG_SOURCES) $(GEN7_HEADERS) $(GEN7_MEME_SANITIZE_OBJECTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) $(GEN7_FLAGS) $(GEN7_BAG_SOURCES) $(GEN7_MEME_SANITIZE_OBJECTS) -o $@
 
 $(HOST_BUILD)/test_gen7_save: $(GEN7_SOURCES) $(GEN7_HEADERS) $(GEN7_MEME_OBJECTS)
 	@mkdir -p $(HOST_BUILD)
