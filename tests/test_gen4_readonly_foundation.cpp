@@ -1255,6 +1255,45 @@ void testPresentationBridge() {
 
 }
 
+
+// Bag layout pinned to vendor/PKSM-Core aa22d7a4 pouch offsets: pouches are contiguous and never
+// overlap; the final Battle pouch is PKSM's 13 slots; HGSS TM/HM starts at 0x9A0 (101 slots up to
+// Mail at 0xB34). Bytes after the Battle pouch (DP/Pt/HGSS event/game state) are never decoded as
+// items, so they can never be "removed" or overwritten by an append.
+void testGen4BagLayoutBounds() {
+    namespace G4=PokeVault::Integration::Gen4;
+    using Bag=G4::BagPocket;
+    constexpr size_t kMachines=static_cast<size_t>(Bag::Machines);
+    constexpr size_t kBattle=static_cast<size_t>(Bag::BattleItems);
+    static_assert(G4::bagLayout(Layout::HeartGoldSoulSilver)[kMachines].offset==0x9A0);
+    static_assert(G4::bagLayout(Layout::HeartGoldSoulSilver)[kMachines].slots==101);
+    for(const auto layout:{Layout::DiamondPearl,Layout::Platinum,Layout::HeartGoldSoulSilver}) {
+        const auto native=G4::bagLayout(layout);
+        for(size_t p=0;p+1<G4::BagPocketCount;++p)
+            assert(native[p].offset+native[p].slots*4==native[p+1].offset);
+        assert(native[kBattle].slots==13);
+
+        auto bytes=makeSave(layout,0,0,layout==Layout::HeartGoldSoulSilver?7:0);
+        const auto s=spec(layout);
+        // Plausible (valid id, small count) pairs right after the Battle pouch: event vars in a
+        // real save. They must not appear as Battle Items.
+        const size_t after=native[kBattle].offset+native[kBattle].slots*4;
+        for(size_t i=0;i<8;++i) { w16(bytes,after+i*4,static_cast<uint16_t>(55+i)); w16(bytes,after+i*4+2,1); }
+        // The lowest HGSS TM sits at the true pouch start.
+        w16(bytes,native[kMachines].offset,328); w16(bytes,native[kMachines].offset+2,1);
+        stamp(bytes,0,s.generalSize,s.footerSize,20,1,MAGIC_INTL);
+        const std::string game=layout==Layout::DiamondPearl?"diamond_nds":
+            layout==Layout::Platinum?"platinum_nds":"heartgold_nds";
+        std::string error;
+        auto parsed=Gen4ReadOnlySave::parse(bytes,layout,game,&error);
+        assert(parsed && error.empty());
+        const auto bag=G4::decodeReadOnlyBag(*parsed);
+        assert(bag);
+        assert((*bag)[kBattle].empty());
+        assert((*bag)[kMachines].size()==1 && (*bag)[kMachines][0].itemId==328);
+    }
+}
+
 int main(int argc,char** argv) {
     if(argc==2 && std::string_view(argv[1])=="--generate-oracles") {
         std::filesystem::create_directories("tests/fixtures/gen4");
@@ -1273,6 +1312,7 @@ int main(int argc,char** argv) {
     testHardwareEmptyCartridgeShape();
     testQuarantinedPresentationRefresh();
     testNativeGen4Bag();
+    testGen4BagLayoutBounds();
     testPresentationBridge();
     testCryptoAndEntity();
     testText();
