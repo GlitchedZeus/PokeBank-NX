@@ -1,5 +1,16 @@
 # PokeBank NX — Build / Artifact Record
 
+## Current combined Gen I–V integration candidate — CI GREEN / DEVICE RETEST PENDING (Oct 15)
+
+- [PR #307](https://github.com/GlitchedZeus/PokeBank-NX/pull/307) application code at checked SHA `35cbf1637da41e9607f2d524354c51d70e401fb2`.
+- **All nine exact-head GitHub checks passed**: GCC/Clang full host, Gen V focused, native PR, integrated Gen I–V and Gen I–IV NROs, Touch, Gen I/II move/multi-move.
+- [Combined NRO workflow run 38682361760](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38682361760), artifact `PokeBank-NX-Gen1-5-Candidate-35cbf163` (artifact ID `11948329433`; GitHub reports unexpired through January 13, 2027).
+- Exact NRO payload SHA-256 is **not independently extracted here**; no fabricated hash. Its packaging/CI success does **not** certify the physical Switch.
+- The owner's actual earlier `fa9cfcea` Gen I–V hardware run **FAILED** for Gen V shared-hub routing, retail encrypted blank Create, new-game trainer representation and separate wizard/modal. #307 includes software fixes after that failed run; they **require owner retest**. Never rewrite the acceptance record as "not device tested" for `fa9cfcea`: it **was** tested and failed.
+- Follow [the complete 20-game, 106-checkpoint starting hardware matrix](handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md) and [sole acceptance issue #313](https://github.com/GlitchedZeus/PokeBank-NX/issues/313). No active Gen VI/3DS emulator integration before the owner signs the exact Gen I–V candidate.
+- Older isolated #278/#300/#304/#306 PRs closed solely because their heads are provable ancestors of #307; branches/commits preserved.
+
+
 Last updated: **2026-10-14**
 
 This file distinguishes application source, build verification, artifact identity, packaging infrastructure, and physical-device acceptance.
