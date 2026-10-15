@@ -45,12 +45,11 @@ Each new test fails against the previous code unless marked "pinning".
 | A4 | Gen IV Castform/Cherrim: only stored form 0 is writable; an existing battle form is shown and kept (PKHeX 6501f0ab FormInfo.BattleForms, FormConverter) | 7e36220f | `test_gen4_mutable_pokemon` |
 | A5 | Gen IV export: optional Open snapshot of the source file (raw or .dsv); export fails closed if size/mtime/SHA-256 changed or the payload no longer leads the file | 768c65fd | `test_gen4_staged_pokemon_editor` (synthetic .dsv fixture) |
 | A6 | Gen IV export backs up the source FILE verbatim (`.dsv` footer kept) with SOURCE_CONTAINER / EDITED_CONTAINER / SOURCE_SHA256_SCOPE / ORIGINAL_BACKUP_IS keys matching Gen V (Common fields d9cdcf78) | 40f78f3c | `test_gen4_staged_pokemon_editor` |
+| A7 | `.dsv` backup named `original_backup.dsv` (edited stays `edited.sav`, raw), via shared `editedFileExtension` (0c2fffb6) | this commit | `test_gen4_staged_pokemon_editor` |
 
 Open / reported:
 - Coordinator one-liner: pass held/stick to `handleFoundationPassiveViewInput` (Gen I View stick parity).
 - Coordinator wording for `SaveSelectScreen.cpp:914-915` (QA-c).
-- Gen IV `.dsv`: UI must pass the Open snapshot (2R); separate edited-file extension requested so the
-  backup can be named `original_backup.dsv` (today both use `.sav`).
 - Diamond vs Pearl not checked against the save (no pinned reference distinguishes them).
 
 ## Item 6 assessment: Gen I/II and SharedPokemonShell
