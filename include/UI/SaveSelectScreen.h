@@ -22,6 +22,7 @@
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
 #include "Integration/Gen5/Gen5GameCardPreview.h"
 #include "Integration/Gen5/Gen5SourceSelection.h"
+#include "Source/HomeCardSnapshot.h"
 
 namespace UI {
     // JKSV-style combined user + title picker. Shows the selected user's avatar + name at the top
@@ -117,9 +118,15 @@ namespace UI {
             uint16_t dexSeen = 0;
             uint16_t dexCaught = 0;
             uint16_t dexTotal = 0;
-            // App-memory presentation snapshot; session Open always revalidates
-            // the exact save/copy/fingerprint, never trusts this cached data.
-            std::optional<PokeVault::Integration::Gen5::GameCardReadOnlyPreview> gen5Preview;
+            // Raw provider recorded by discovery/manual link in Save Instance
+            // metadata (binding sourceType for Gen IV/V). Empty while the card
+            // is unassigned/missing/invalid/ambiguous.
+            std::string providerLabel;
+            // An explicit Gen IV/V assignment currently resolves to a file.
+            bool linkedSave = false;
+            // Presentation state of the validated Home snapshot for this card.
+            PokeVault::Source::SnapshotState snapshotState =
+                PokeVault::Source::SnapshotState::Unavailable;
             std::vector<PokeVault::Legacy::FRLGSaveInstance> legacyInstances;
             SelectedSourceKind sourceKind = SelectedSourceKind::SwitchTitle;
         };
@@ -321,6 +328,20 @@ namespace UI {
         static bool scanSaveSpace(UserEntry& user, int spaceId, int& scanned, int& forUser);
         void setUser(int idx);
         void refreshHubSelectionFromCache();
+        // Fingerprinted, validated Home snapshot of an assigned Gen IV/V save.
+        // stat() on every call; the strict parser only when size/mtime or the
+        // assignment changed. Never opens an editor or writes a source.
+        const PokeVault::Source::HomeCardSnapshot* refreshAssignedSnapshot(
+            const std::string& profile, const TitleEntry& title,
+            PokeVault::Source::SnapshotRefresh* outcome = nullptr);
+        void applyAssignedCardState(TitleEntry& card, const std::string& profile);
+        void applySnapshotToHub(const PokeVault::Source::HomeCardSnapshot& snapshot);
+        // Re-check only the focused card's save file; reparse only on change.
+        void pollFocusedSaveChange();
+        bool syncFocusedSaveSnapshot();
+        std::string legacyWatchKey;
+        PokeVault::Source::HomeSnapshotCache homeSnapshots;
+        int saveWatchFrames = 0;
         void refreshHubPreview(bool resolveLaunchTarget = true);
         bool launchCurrentTitle();
         bool launchCurrentLegacyInstance();

@@ -477,22 +477,26 @@ require(create_undo_tests,
         "Create Undo presentation failure")
 
 # Gen V game card selection must not re-read/parse full SAV5 every time
-# focus changes. The cached preview cannot authorize opening an editor.
+# focus changes. The Home card shows the CURRENT validated snapshot (same
+# wording as Gen I-IV), refreshed only when the save's size/mtime or the
+# assignment changes. The snapshot cannot authorize opening an editor.
 selector_header=read("include/UI/SaveSelectScreen.h")
 require(selector_header,
-        "std::optional<PokeVault::Integration::Gen5::GameCardReadOnlyPreview> gen5Preview;")
+        "PokeVault::Source::HomeSnapshotCache homeSnapshots;",
+        "bool linkedSave = false;")
+assert "gen5Preview" not in selector_header
 require(games,
-        "card.gen5Preview=*preview;",
-        "const auto& cached=title.gen5Preview;",
-        "const auto& preview=title.gen5Preview;",
-        "Gen V cached party; exact source verified on Open.")
+        "PokeVault::Integration::Gen5::homeCardSnapshot(",
+        "homeSnapshots.refresh(request, statSaveFile,",
+        "applySnapshotToHub(*snapshot);")
+assert "cached party" not in games
 fast=games.split("void SaveSelectScreen::refreshHubSelectionFromCache()",1)[1]
 fast=fast.split("void SaveSelectScreen::refreshHubPreview(bool resolveLaunchTarget)",1)[0]
-assert "Gen V cached party; exact source verified on Open." in fast
+assert "homeSnapshots.find(" in fast
 assert "Gen5::openAssignedSource(" not in fast
 full=games.split("void SaveSelectScreen::refreshHubPreview(bool resolveLaunchTarget)",1)[1]
 full=full.split("void SaveSelectScreen::begin",1)[0] if "void SaveSelectScreen::begin" in full else full
-assert "const auto& preview=title.gen5Preview;" in full
+assert "homeSnapshots.find(homeSnapshotKey(currentProfileIdentity(), title.gameId))" in full
 require(manager,
         "Gen5::openAssignedSource(",
         "selectScreen.getSelectedGen5Fingerprint()")
@@ -660,7 +664,7 @@ require(create_suite,
 # Game cards and the source picker must not claim the editor is unavailable.
 require(games,
         "Choose a validated Gen V Save Instance; source stays read-only.",
-        "Gen V cached party; choose Save Instances to open.",
+        '"Choose a validated Gen V Save Instance."',
         "Open shared staged editor. Original save stays unchanged.",
         '"A",gen5AssignOnly?"Assign to Profile":"Open Editor"',
         "Review or change this Gen V profile/save assignment.")
