@@ -26,7 +26,7 @@ struct HomeCardPartySlot {
     uint8_t form = 0;
     bool shiny = false;
     // 0 male / 1 female / 2 genderless; GenderUnknown when the format (Gen I)
-    // or the adapter (Gen III, no pinned personal table) does not define it.
+    // does not define it or the species has no data for its generation.
     static constexpr uint8_t GenderUnknown = 0xFF;
     uint8_t gender = GenderUnknown;
 };
