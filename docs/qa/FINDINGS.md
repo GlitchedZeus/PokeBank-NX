@@ -108,3 +108,21 @@ Local runs on the audited head (Ubuntu 24.04, GCC 13.3, Clang 18.1):
 | libFuzzer soak 240 s, `fuzz_pk_records` | first run stopped on an all-zero PK4 record: harness gap (blank-slot convention), fixed, input kept as regression corpus; re-run clean, 4.7M execs |
 
 CI evidence for this branch is linked from the draft PR.
+
+## Candidate NRO audit: Gen I–V hardware candidate `fa9cfcea`
+
+Audited by `app-qa-nro-audit.yml` (job 116229262837, run 38675885758) against the artifact the
+candidate run published (run 38673482742, artifact 11945232986), downloaded from that run, not rebuilt.
+(The QA container's network policy blocks the Actions artifact storage host, so the audit ran in CI.)
+
+| Field | Result |
+| --- | --- |
+| NRO | `PokeBank-NX-Gen1-5-Candidate-fa9cfcea.nro` |
+| Size | 175,435,441 bytes (matches posted) |
+| SHA-256 | `57b4ec2bebf6f15cac0ee59218672fd6acc029c1e025abbe159a322aa1bccd23` (matches posted) |
+| Code SHA / tree SHA | `fa9cfceabfecd2afb79d0df935588a3e81e0a7fe` / `5de23dc22b7b2ea60fbada9e45245386e20ae871` |
+| Embedded commit | `fa9cfcea` (POKEVAULT_GIT_COMMIT) |
+| NACP | PokeBank NX 0.1.0-alpha |
+| Packaged RomFS | 4,267 files, content digest `5c636404250499cb`; required manifest (incl. Gen V covers) and every source-referenced `romfs:/` asset present |
+| Audit | PASS; record uploaded as artifact 11946126752 |
+| Hardware status | **NOT DEVICE TESTED** |
