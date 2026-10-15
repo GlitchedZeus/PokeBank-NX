@@ -7,6 +7,35 @@ ownership. Forward commits only; no history rewritten.
 
 Physical Switch status of every NRO built from this branch: **NOT DEVICE TESTED**.
 
+## Hardware failure of candidate `fa9cfcea` and the repair (2026-10-15)
+
+The owner tested `fa9cfceabfecd2afb79d0df935588a3e81e0a7fe` on a Switch and Gen V **failed
+hardware acceptance**. Gen V is **not** complete and **not** hardware-ready. Diagnosis and fixes:
+
+| # | Failure seen on hardware | Root cause | Fix (commit) |
+| --- | --- | --- | --- |
+| 1 | Opened straight into Party, no hub | `UI.cpp handleGen5View` forced `selectedMode=Party; detailViewActive=true` | Opens on the shared loaded-game hub; `Gen5HubRouting.h` decides the only Gen V intercepts (`7123035`) |
+| 2 | Create showed only Cancel | `emptyCloneDestination` required raw zero bytes; retail empty slots hold the *encrypted* blank (PID 0, checksum 0 → non-zero keystream; PKHeX `SaveFile.ClearBoxes` writes `BlankPKM`), so Add was never offered. The provider also lacked `PokemonCreation` | `nativeBlankSlot5` accepts zeros or the encrypted blank; Remove now writes the retail blank (`3cbf368`) |
+| 2b | Create was a ~30-prompt wizard | Separate Gen V UI | Create opens the SAME Edit draft/three-panel workspace on Species; nothing persists until Keep; Discard restores the native blank (`80bfce6`) |
+| 3 | Real Black 2 DraStic `.dsv`: "Primary copy / Party 0 / Boxed 0", name "(unsupported glyphs)", Money 0, TID/SID 0, Male, Dex 0 | The selected copy was checksum-valid but blank/initial (version byte only). The Save Instances/Home card path (`inspectSnapshot`) never ran the blank-copy gate, so it presented zeros. Synthetic reproduction in `test_gen5_save_diagnostics` | One gate (`unopenableCopyDiagnostic5`) for Save Instances, Home card and open: the copy is shown NOT OPENABLE with the reason, the other copy is offered explicitly, never swapped silently (`395e2a6`, `b9c1ea8`). **Not yet confirmed against the owner's file** – see on-device diagnostics below |
+| 4 | Male portrait for a female trainer | Unknown/blank gender fell back to Hilbert/Nate; the blank copy (gender byte 0) fed the card | Gender only from an openable copy; unknown shows a neutral "Unova Trainer"; hilbert/hilda/nate/rosa are required RomFS portraits (`b9c1ea8`) |
+| 5 | Separate "Trainer – Generation V" pop-up | Gen V-only modal | Trainer is drawn in the shared content rect/HOME card; read-only rows labelled; scrolling; focus memory; B returns to the hub (`7123035`) |
+| 6 | General parity | Gen V owned every input | Hub, Pokémon Actions, shared Create/Edit, Items, Review/Export routes now follow Gen IV; Legacy Storage (Bank) is refused with a status because no PK5 bank conversion exists |
+
+### On-device save diagnostics
+Save Instances → Gen V candidates → **+ Save Diagnostics** writes
+`sdmc:/switch/PokeBank-NX/diagnostics/gen5-<game>-<timestamp>.txt` (exclusive create, never
+overwrites, source opened read-only). It lists per copy: block checksums valid/total, version
+byte, gender byte, whether TID/SID and a name are present (no values), party count and record
+validity, occupied / encrypted-blank / zero / invalid box slots, dex seen/caught, play time and the
+copy state (`valid, populated` / `no trainer data (blank or initial copy)` / `checksums invalid` /
+…). It contains no names, IDs or save bytes. This is how the Black 2 `.dsv` case is confirmed.
+
+### Shared files touched (Gen V branches only; Gen I–IV behaviour unchanged)
+`src/UI/SaveSelectScreen.cpp` (Gen V portrait fallback, Gen V card label, diagnostics key),
+`src/UI/UI.cpp` (`handleGen5View` only), `tools/verify_nro_romfs.py` (+4 Gen V portraits).
+No Gen IV source file was changed.
+
 ## Status by step
 
 | Step | Software | Automated verification | Hardware |
@@ -20,7 +49,13 @@ Physical Switch status of every NRO built from this branch: **NOT DEVICE TESTED*
 | 7. Housekeeping | `patches/gen5-create` removed (verified live) | — | n/a |
 | 8. Integrated Gen I–V candidate | Workflow `gen15-integrated-candidate.yml` | CI on the exact head | NOT DEVICE TESTED |
 
-## What the user can do now (Gen V, all four titles)
+## What the user can do now (Gen V, all four titles) — as of the repair
+- Open → the same hub as Gen I–IV: Pokémon (Boxes), Party, Storage (refused for Gen V), Items,
+  Trainer. B on the hub exits through the staged-changes confirmation; + opens Review.
+- A on a slot → Pokémon Actions. Add on an empty slot → shared editor (DETAILS / STATS / MOVES).
+  L/R panel, Up/Down field, A picker/keypad, Left/Right step, X Keep/Add, Y Discard, B back.
+
+### Earlier (pre-repair) notes
 
 - **Items (Bag):** from the Trainer panel press **Y** (or tap the "Y Bag" footer), or use
   Product Home → Items, which runs the same explicit Save Instance chooser. Pockets: Items,
