@@ -21,6 +21,11 @@ enum class ExportFailurePoint : uint8_t {
     AfterEditedWrite,
     AfterReadbackVerify,
     AfterManifestWrite,
+    // Host-only race simulation: another writer creates the final directory
+    // (empty) or a plain file at that path just before publication.
+    DestinationAppearsAsEmptyDirectory,
+    DestinationAppearsAsFile,
+    AfterFirstPublishedFile,
 };
 
 // Returns true when bytes parse strictly as the expected exact game; fills error otherwise.

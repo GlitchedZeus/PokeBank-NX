@@ -838,8 +838,10 @@ require(working_cpp, "buildStagedSaveCandidateForObservedSource(",
         "readExact(editedPath", "hash(editedReadback)",
         "Gen5ReadOnlySave::parse(",
         "cleanTemporary(temporaryPath);",
-        "rename(temporaryPath.c_str(),finalPath.c_str())",
+        "::mkdir(finalPath.c_str(),0700)!=0", "unpublish(",
         "INJECT_SAVE=DISABLED", "EMULATOR_SAVE_WRITE=DISABLED")
+# QA-F3: publication never renames a directory onto the destination.
+assert "::rename(temporaryPath.c_str(),finalPath.c_str())" not in working_cpp
 for forbidden in ("std::fopen(request.sourcePath", '::rename(request.sourcePath',
                   '::remove(request.sourcePath', "injectSave("):
     assert forbidden not in working_cpp, f"Gen V writer touches original source: {forbidden}"

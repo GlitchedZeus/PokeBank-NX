@@ -292,6 +292,29 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
                 "/."+std::string(game)+"_"+req.timestamp+".pending";
             assert(::lstat(temporary.c_str(),&st)!=0 && errno==ENOENT);
         }
+        {
+            // QA-F3: a destination appearing just before publication is never
+            // replaced (the racing empty directory survives untouched) and a
+            // mid-publication failure leaves neither directory behind.
+            req.timestamp="20261012_221510";
+            req.failurePoint=G::WorkingCopyFailurePoint::DestinationAppears;
+            const auto raced=G::publishGen5WorkingCopy(ws,req);
+            assert(!raced.success && raced.error.find("existing export preserved")!=std::string::npos);
+            const std::string base=exportRoot+"/account-"+req.profileIdentity+"/";
+            const std::string racedPath=base+std::string(game)+"_"+req.timestamp;
+            struct stat st{};
+            assert(::lstat(racedPath.c_str(),&st)==0 && S_ISDIR(st.st_mode));
+            assert(::rmdir(racedPath.c_str())==0); // proves it stayed empty
+            const std::string racedTemp=base+"."+std::string(game)+"_"+req.timestamp+".pending";
+            assert(::lstat(racedTemp.c_str(),&st)!=0 && errno==ENOENT);
+            req.timestamp="20261012_221511";
+            req.failurePoint=G::WorkingCopyFailurePoint::AfterFirstPublishedFile;
+            assert(!G::publishGen5WorkingCopy(ws,req).success);
+            const std::string midPath=base+std::string(game)+"_"+req.timestamp;
+            assert(::lstat(midPath.c_str(),&st)!=0 && errno==ENOENT);
+            const std::string midTemp=base+"."+std::string(game)+"_"+req.timestamp+".pending";
+            assert(::lstat(midTemp.c_str(),&st)!=0 && errno==ENOENT);
+        }
         req.failurePoint=G::WorkingCopyFailurePoint::None;
         req.timestamp="20261012_221520";
         auto stale=input;
