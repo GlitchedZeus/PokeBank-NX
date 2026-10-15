@@ -279,7 +279,7 @@ void drawFullscreenGen2Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb,
                         {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}});
     } else {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"B", "Exit"}});
+                        {"Y", "Random DVs"}, {"X", "Keep"}, {"B", "Exit"}});
     }
 }
 

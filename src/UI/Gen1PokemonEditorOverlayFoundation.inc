@@ -383,6 +383,13 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
     if (down & HidNpadButton_L) foundation.focus = Foundation::nextPanel(Foundation::nextPanel(foundation.focus));
     if (down & HidNpadButton_R) foundation.focus = Foundation::nextPanel(foundation.focus);
 
+    // X Keep, as in the Gen III-V shared editor: confirm this edit session (its changes are already
+    // in the staged copy) and return to Actions, exactly like the exit dialog's A Save.
+    if (state.mode == UX2Mode::Edit && (down & HidNpadButton_X)) {
+        screen.postStatus("Edit session kept staged; source .srm unchanged", 300);
+        foundationExitMainMode(screen);
+        return;
+    }
     if (add && (down & HidNpadButton_X)) {
         // Same session reset as the dialog's A Keep: the next Create starts on Species, not on
         // the previous draft's focus.

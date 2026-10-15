@@ -617,6 +617,12 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         if (stageCreate(screen)) resetUnifiedFocus(screen);
         return true;
     }
+    // X Keep, as in the Gen III-V shared editor: stage this edit draft and return to Actions
+    // (the same commit as the exit dialog's A Save). Nothing is staged before this.
+    if ((down & HidNpadButton_X) && state.mode == Mode::Edit) {
+        if (stageEdit(screen)) resetUnifiedFocus(screen);
+        return true;
+    }
     if (down & HidNpadButton_B) {
         if (state.back()) {
             closeToActions(screen);
