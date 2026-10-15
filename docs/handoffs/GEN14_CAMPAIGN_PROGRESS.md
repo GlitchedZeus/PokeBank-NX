@@ -43,8 +43,8 @@ Each new test fails against the previous code unless marked "pinning".
 | A2 | Gen III Japanese name lengths (5/5); Gen II/III strain-0 Pokerus with days refused | c934a945 | `test_gen3_staged_pokemon_editor`, `test_gsc_pokemon_editor` |
 | A3 | QA-F8 export half: Gen IV Release restores a slot's original empty record (clone+release is byte-identical) | f883f4d0 | `test_gen4_staged_pokemon_editor`; `qa-known-failures` F6/F7/F8 all fixed |
 | A4 | Gen IV Castform/Cherrim: only stored form 0 is writable; an existing battle form is shown and kept (PKHeX 6501f0ab FormInfo.BattleForms, FormConverter) | 7e36220f | `test_gen4_mutable_pokemon` |
-| A5 | Gen IV export: optional Open snapshot of the source file (raw or .dsv); export fails closed if size/mtime/SHA-256 changed or the payload no longer leads the file | this commit | `test_gen4_staged_pokemon_editor` (synthetic .dsv fixture) |
-| A6 | Gen IV export backs up the source FILE verbatim (`.dsv` footer kept) with SOURCE_CONTAINER / EDITED_CONTAINER / SOURCE_SHA256_SCOPE / ORIGINAL_BACKUP_IS keys matching Gen V (Common fields d9cdcf78) | this commit | `test_gen4_staged_pokemon_editor` |
+| A5 | Gen IV export: optional Open snapshot of the source file (raw or .dsv); export fails closed if size/mtime/SHA-256 changed or the payload no longer leads the file | 768c65fd | `test_gen4_staged_pokemon_editor` (synthetic .dsv fixture) |
+| A6 | Gen IV export backs up the source FILE verbatim (`.dsv` footer kept) with SOURCE_CONTAINER / EDITED_CONTAINER / SOURCE_SHA256_SCOPE / ORIGINAL_BACKUP_IS keys matching Gen V (Common fields d9cdcf78) | 40f78f3c | `test_gen4_staged_pokemon_editor` |
 
 Open / reported:
 - Coordinator one-liner: pass held/stick to `handleFoundationPassiveViewInput` (Gen I View stick parity).
