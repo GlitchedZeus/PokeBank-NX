@@ -29,6 +29,16 @@ ROW_FIELDS = frozenset({
     "proposed_usage", "copy_source_code", "import_original_retail_tables",
     "redistribute_event_or_pokemon_payloads", "legal_review_complete",
     "legal_basis_or_grant"})
+# The exact L5 Q08 baseline (Git blob 7cd3d0a227dc9b008f7c304581a2d7e8d85f06e9,
+# reviewed in docs/legality/l4/STAGE6_SOURCE_RIGHTS_Q07_Q08_HANDOFF_20261012.md)
+# records two sources with a narrower, source-specific usage than the generic
+# citation-and-digest usage. Each source must match its own frozen value
+# exactly; any other value still requires a new source-specific review.
+DEFAULT_USAGE = "citation_and_digest_only"
+SOURCE_SPECIFIC_USAGE = {
+    "pokediamond": "symbol references and SHA256 only",
+    "PokeAPI-provenance-existing": "existing only; no new binary/data import",
+}
 
 
 def require(ok: bool, reason: str) -> None:
@@ -58,7 +68,7 @@ def verify_rights(text: str) -> dict:
         require(isinstance(name, str) and name.strip() and name not in names,
                 f"invalid or duplicate source row {i}")
         names.add(name)
-        require(row["proposed_usage"] == "citation_and_digest_only" and
+        require(row["proposed_usage"] == SOURCE_SPECIFIC_USAGE.get(name, DEFAULT_USAGE) and
                 str(row["legal_basis_or_grant"]).startswith("not documented"),
                 f"{name}: legal basis/usage changed; independent review required")
         require(row.get("legal_review_complete") is False,
