@@ -55,7 +55,7 @@ QA_CORE_SOURCES := $(sort \
 	vendor/PKSM-Core/source/utils/crypto_checksums.cpp)
 
 QA_FUZZ_TARGETS := fuzz_gen1_sav fuzz_gen2_sav fuzz_gen3_sav fuzz_gen4_sav fuzz_gen5_sav \
-	fuzz_pk_records fuzz_gen5_bag fuzz_source_containers
+	fuzz_pk_records fuzz_gen5_bag fuzz_source_containers fuzz_gen5_edits
 QA_HEADERS := tests/fuzz_support.h tests/fuzz_synthetic_saves.h tests/test_qa_support.h \
 	$(wildcard include/Integration/*/*.h include/Pokemon/*.h include/Encryption/*.h include/Utils/*.h include/Source/*.h)
 
@@ -143,8 +143,11 @@ qa-contracts: $(addprefix $(QA_BUILD)/plain/,$(QA_CONTRACT_TESTS)) $(addprefix $
 # Open-defect reproductions. Kept OUT of qa / host-test so CI stays honest; each case exits
 # non-zero while its defect is open. See docs/qa/FINDINGS.md.
 # Fixed findings move to test_qa_regressions(.cpp|_assets.py), which run inside the qa gate.
-qa-known-failures:
-	python3 tests/test_qa_known_failures_assets.py
+qa-known-failures: $(QA_BUILD)/san/test_qa_known_failures
+	@status=0; \
+	ASAN_OPTIONS=$(ASAN_OPTIONS) $(QA_BUILD)/san/test_qa_known_failures || status=1; \
+	python3 tests/test_qa_known_failures_assets.py || status=1; \
+	exit $$status
 
 qa-tools-test:
 	python3 tests/test_qa_nro_audit.py

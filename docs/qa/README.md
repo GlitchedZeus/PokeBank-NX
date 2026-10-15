@@ -48,6 +48,7 @@ quietly turn a target into rejection-only fuzzing.
 | `fuzz_gen5_sav` | `Gen5ReadOnlySave::parse` with the **copy selector** (Automatic/Primary/Backup), **Save Instance identification** (`probeNormalizedBattery`), PK5 records, `decodeBag5`, `Gen5StagedBag`, `decodeTrainer5` / `Gen5StagedTrainer`, staged export candidates after a real Trainer and Bag edit |
 | `fuzz_gen5_bag` | `decodeBag5` on raw Items blocks + an operation tape driving `Gen5StagedBag` set/add/remove (exactly one 4-byte slot may change per accepted op) |
 | `fuzz_pk_records` | raw PK3 (`Pokemon3FRLG`, `decodeRecord`), PK4 (`Pokemon4ReadOnly`, all groups), PK5 (`Pokemon5ReadOnly`); valid records must re-encrypt to the exact input |
+| `fuzz_gen5_edits` | Gen V staged edit SEQUENCES through `Gen5StagedPokemonWorkspace` (every field incl. PID-coordinated Gender/Shiny/Ability/Personality, names, clone, remove, forged field ids) then the export candidate: refused ops change nothing, PID/gender links and earlier-origin PIDs are preserved, the export reproduces the staged slots exactly |
 | `fuzz_source_containers` | on-disk identification: Gen IV `readSourcePayloadReadOnly` / `inspectSourceFile`, Gen V `readNormalizedSourceReadOnly` / `inspectSourceChoices` on raw and DeSmuME `.dsv` containers; the file's bytes and mtime must not change |
 
 Layout constants used by seed builders and forgers come from the production headers or from the

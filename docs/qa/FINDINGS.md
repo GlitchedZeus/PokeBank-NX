@@ -20,10 +20,32 @@ lands, its reproduction moves into the passing suite as a regression test
 | QA-F3 | Low | Common (and Gen V) export publish could replace a destination created after the uniqueness check | Thread 2 | **FIXED** in `fa9cfcea`; regression test in `qa-contracts` |
 | QA-F3b | Low | The same non-exclusive `rename()` publish remains in the Gen II transaction | Thread 1 (`Gen2ExportTransaction.cpp`) | OPEN (by inspection; no injection point for a deterministic repro) |
 | QA-F1 | Low | Packaged-RomFS manifest omitted the four Gen V game cards the app requests | Thread 2 | **FIXED** in `3b35b3f`; regression test in `qa-tools-test` |
+| QA-F4 | Low (defence in depth) | Gen V PID replay (`Field::Personality`) protects the PID/gender link only when the ability link also holds | Thread 2R (`Gen5StagedPokemonRecord.h`) | OPEN; repro `tests/test_qa_known_failures.cpp` |
 
 No crash, sanitizer report, out-of-bounds read or round-trip violation was found in any Gen I–V parser,
 record decoder, Bag decoder, copy selector or Save Instance identification path (see
 [Fuzzing evidence](#fuzzing-evidence)). All 17 export paths (including the new Gen V Trainer Name/Money path) satisfy the five export-safety contracts.
+
+## QA-F4 (Low, defence in depth): Gen V PID replay guard conjoins the gender and ability links
+
+- **Found by:** `fuzz_gen5_edits` (libFuzzer, 2026-10-15), the new edit-sequence fuzzer over
+  `Gen5StagedPokemonWorkspace`.
+- **Code:** `include/Integration/Gen5/Gen5StagedPokemonRecord.h`, `case Field::Personality`. The
+  `linked` lambda returns `genderOk && abilityOk`; the replay is refused only when the PREVIOUS
+  record was linked on both. A Gen V origin record whose stored gender matches its PID but whose
+  ability byte does not match its PID ability slot (bit 16) is therefore "unlinked", and any
+  replayed PID is accepted, including one that desynchronises stored gender from the PID
+  (PKHeX `EntityGender.GetFromPID`).
+- **Impact:** limited. The shared editor only replays PIDs built by the coordinated
+  Gender/Shiny/Ability procedures, which keep the links, and retail Gen V records carry a consistent
+  ability. It matters for already-inconsistent (imported or hand-edited) records and as a
+  defence-in-depth gap in the record API.
+- **Repro:** `tests/test_qa_known_failures.cpp` case QA-F4 (direct `StagedPokemon5Record` on a
+  synthetic Eevee: stored gender male = PID-derived, ability byte 9, replay PID `0x0009FE00` ->
+  female-derived; accepted today).
+- **Suggested fix:** check each link independently: refuse when the previous record's gender link
+  held and the new PID breaks it, and separately when the ability link held and the new PID breaks
+  it.
 
 ## QA-F2 (Medium): invalid workflow files produce a failed run on every push
 
