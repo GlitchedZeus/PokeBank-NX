@@ -740,7 +740,15 @@ bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
     }
     if (edit.trainerId) after.trainerId = *edit.trainerId;
     if (edit.friendship) after.friendship = *edit.friendship;
-    if (edit.pokerus) after.pokerus = *edit.pokerus;
+    if (edit.pokerus) {
+        // Strain (high nibble) 0 with days left is not a state the games produce
+        // (pokecrystal GivePokerus always picks a non-zero strain).
+        if (*edit.pokerus != 0 && (*edit.pokerus >> 4) == 0) {
+            error = "Pokerus strain 0 cannot have days remaining";
+            return false;
+        }
+        after.pokerus = *edit.pokerus;
+    }
     if (edit.caughtData) after.caughtData = *edit.caughtData;
 
     if (edit.statExperience) after.statExperience = *edit.statExperience;
@@ -1061,6 +1069,10 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
     created.level = pokemon.level;
     created.statExperience = pokemon.statExperience;
     created.friendship = pokemon.friendship;
+    if (pokemon.pokerus != 0 && (pokemon.pokerus >> 4) == 0) {
+        error = "Pokerus strain 0 cannot have days remaining";
+        return false;
+    }
     created.pokerus = pokemon.pokerus;
     created.caughtData = pokemon.caughtData;
     created.nickname = pokemon.nickname.empty() ? std::string(Names::getSpeciesName(pokemon.species)) : pokemon.nickname;

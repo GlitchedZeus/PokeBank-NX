@@ -195,6 +195,27 @@ void runGame(SourceGame game, Family family) {
         assert(identity->stageAddBoxPokemon(0, 1, unnamed, error));
         assert(identity->boxedPokemon(0, 1, error)->nickname == "PIKACHU");
         identity->discard();
+        // Japanese records: 5-character nickname and OT (PKHeX PK3); a 6th character is refused.
+        BoxPokemonCreate japanese; japanese.species = 25; japanese.level = 5; japanese.language = 1;
+        japanese.otName = "サトシ";
+        japanese.nickname = "ピカチュウ";
+        assert(identity->stageAddBoxPokemon(0, 1, japanese, error));
+        identity->discard();
+        japanese.nickname = "ピカチュウダ";
+        assert(!identity->stageAddBoxPokemon(0, 1, japanese, error));
+        japanese.nickname = "ピカ"; japanese.otName = "サトシサトシ";
+        assert(!identity->stageAddBoxPokemon(0, 1, japanese, error));
+        assert(identity->stagedBytes() == immutableSource);
+        // Pokerus strain 0 with days left is never written (Create or Edit); real states are.
+        BoxPokemonCreate sick; sick.species = 25; sick.level = 5; sick.language = 2; sick.otName = "BLUE";
+        sick.pokerus = 0x0F;
+        assert(!identity->stageAddBoxPokemon(0, 1, sick, error));
+        BoxPokemonEdit pokerus; pokerus.pokerus = 0x0F;
+        assert(!identity->stageBoxPokemonEdit(0, 0, pokerus, error));
+        pokerus.pokerus = 0x21;
+        assert(identity->stageBoxPokemonEdit(0, 0, pokerus, error));
+        identity->discard();
+        error.clear();
         create.otName = "TOOLONGOT";
         assert(!identity->stageAddBoxPokemon(0, 1, create, error));
         assert(identity->stagedBytes() == immutableSource);
