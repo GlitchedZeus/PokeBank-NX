@@ -2,7 +2,7 @@
 
 ## CURRENT PRIORITY — October 15, 2026
 
-**Freeze application scope at Generations I–V** until a complete code audit and owner Switch hardware torture test pass. Active [Gen I–V PR #307](https://github.com/GlitchedZeus/PokeBank-NX/pull/307) at `35cbf163` passed all nine exact-head CI checks and published a combined NRO, **not yet device accepted**. Earlier combined `fa9cfcea` failed physical Gen V testing; its hub, blank-slot Create and trainer-state regressions are now mandatory retest items.
+**Freeze application scope at Generations I–V** until a complete code audit and owner Switch hardware torture test pass. Active [Gen I–V PR #307](https://github.com/GlitchedZeus/PokeBank-NX/pull/307) previously passed all nine exact-head CI checks at `35cbf163` (later `888b886c` head still running full host/native checks) and published a combined NRO, **not yet device accepted**. Earlier combined `fa9cfcea` failed physical Gen V testing; its hub, blank-slot Create and trainer-state regressions are now mandatory retest items.
 
 Owner acceptance = **all 20 Gen I–V games** plus every reachable app action (button and touch, supported source/emulator, profile, staged edit, Export Copy, B/confirmation/exit) tested on one exact frozen NRO with artifact SHA-256. [Full 106-checkpoint starter matrix](docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md) · [Single acceptance tracker #313](https://github.com/GlitchedZeus/PokeBank-NX/issues/313).
 
