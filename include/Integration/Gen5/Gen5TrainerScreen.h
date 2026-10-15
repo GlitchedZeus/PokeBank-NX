@@ -123,16 +123,31 @@ public:
         error.clear();
         return true;
     }
-    void moveRow(int delta) noexcept {
-        if (!open_) return;
-        constexpr int count = static_cast<int>(kRows.size());
-        row_ = static_cast<size_t>(((static_cast<int>(row_) + delta) % count + count) % count);
+    // Gen I-IV Trainer convention: focus moves only between rows that can be
+    // acted on (the staged rows and the Pokedex list); read-only rows stay
+    // visible and labelled but are never focused. Up/Down wrap.
+    [[nodiscard]] static constexpr bool focusable(Row row) noexcept {
+        return editable(row) || row == Row::Pokedex;
     }
+    void moveRow(int delta) noexcept {
+        if (!open_ || delta == 0) return;
+        constexpr int count = static_cast<int>(kRows.size());
+        const int step = delta < 0 ? -1 : 1;
+        for (int moved = 0; moved < (delta < 0 ? -delta : delta); ++moved) {
+            int next = static_cast<int>(row_);
+            for (int i = 0; i < count; ++i) {
+                next = ((next + step) % count + count) % count;
+                if (focusable(kRows[static_cast<size_t>(next)])) break;
+            }
+            row_ = static_cast<size_t>(next);
+        }
+    }
+    // A completed tap on an actionable row selects it and acts like A at once
+    // (the Gen I-IV Trainer rows); a tap on a read-only row does nothing.
     [[nodiscard]] bool tapRow(size_t row) noexcept {
-        if (!open_ || row >= kRows.size()) return false;
-        const bool focused = row == row_;
+        if (!open_ || row >= kRows.size() || !focusable(kRows[row])) return false;
         row_ = row;
-        return focused;
+        return true;
     }
     // A on the focused row: true when the row may be edited by the caller's
     // keypad/keyboard prompt; false (with a reason) for read-only rows.

@@ -130,14 +130,24 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     assert(Screen::value(ws, Row::Name) == "NX" && Screen::value(ws, Row::Money) == "123456");
     assert(Screen::value(ws, Row::PlayTime) == "12:34:56" && Screen::value(ws, Row::Badges) == "3 / 8");
     assert(Screen::value(ws, Row::Gender) == "Female");
-    for (const Row ro : {Row::TrainerId, Row::SecretId, Row::Gender, Row::Badges, Row::Language}) {
-        while (screen.selectedRow() != ro) screen.moveRow(1);
-        assert(!Screen::editable(ro) && !screen.beginEdit(ws, error));
-        assert(error.find("read-only") != std::string::npos);
-        assert(!hasGlyph(screen.footer(), "A"));
-    }
+    // Gen I-IV Trainer convention: read-only rows are shown but never focused;
+    // Up/Down wrap over Name, Money, Play Time and the Pokedex list.
+    for (const Row ro : {Row::TrainerId, Row::SecretId, Row::Gender, Row::Badges, Row::Language})
+        assert(!Screen::editable(ro) && !Screen::focusable(ro));
+    screen.moveRow(1);
+    assert(screen.selectedRow() == Row::Money);
+    screen.moveRow(1);
+    assert(screen.selectedRow() == Row::PlayTime);
+    screen.moveRow(1);
+    assert(screen.selectedRow() == Row::Pokedex);  // skips the read-only rows
+    screen.moveRow(1);
+    assert(screen.selectedRow() == Row::Name);     // wraps
+    screen.moveRow(-1);
+    assert(screen.selectedRow() == Row::Pokedex);
+    for (size_t i = 0; i < Screen::kRows.size(); ++i)
+        if (!Screen::focusable(Screen::kRows[i])) assert(!screen.tapRow(i));
+    assert(screen.selectedRow() == Row::Pokedex);
     // Pokedex row: A opens a read-only list; nothing becomes staged.
-    while (screen.selectedRow() != Row::Pokedex) screen.moveRow(1);
     assert(hasGlyph(screen.footer(), "A") && !screen.beginEdit(ws, error));
     assert(screen.openPokedex(ws, error) && screen.dex().open() && screen.dex().cursor() == 0);
     screen.dex().jumpRegistered(*dex, 1);
@@ -152,9 +162,9 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     assert(screen.dex().cursor() == 648);
     assert(!hasGlyph(screen.footer(), "A") && !ws.hasChanges());
     screen.dex().close();
-    screen.moveRow(-100);
-    assert(!screen.tapRow(1) && screen.selectedRow() == Row::Money);
-    assert(screen.tapRow(1) && screen.beginEdit(ws, error));
+    // A completed tap on an editable row selects it and acts like A.
+    assert(screen.tapRow(1) && screen.selectedRow() == Row::Money);
+    assert(screen.beginEdit(ws, error));
     // Wrong-row apply is refused (stale selection).
     assert(!screen.applyName(ws, "RED", refresh, error) && !ws.hasChanges());
 
@@ -316,16 +326,19 @@ void trainerPanelFocusMemory() {
     auto& screen = trainer->trainerScreen();
     // Hub -> Trainer: the shared panel opens on Name.
     assert(screen.enter(ws, error) && screen.open() && screen.selectedRow() == Row::Name);
-    screen.moveRow(4);
-    assert(screen.selectedRow() == Row::SecretId);
+    screen.moveRow(2);
+    assert(screen.selectedRow() == Row::PlayTime);
     // B -> hub keeps the focused row; re-entering restores it.
     screen.leave();
     assert(!screen.open());
-    assert(screen.enter(ws, error) && screen.selectedRow() == Row::SecretId);
-    // Read-only rows refuse A with a reason; editable rows accept it.
-    assert(!screen.beginEdit(ws, error) && error.find("read-only") != std::string::npos);
-    screen.moveRow(-4);
+    assert(screen.enter(ws, error) && screen.selectedRow() == Row::PlayTime);
     assert(screen.beginEdit(ws, error));
+    // The next focus skips the read-only identity rows to the Pokedex list,
+    // which opens a view rather than an edit.
+    screen.moveRow(1);
+    assert(screen.selectedRow() == Row::Pokedex && !screen.beginEdit(ws, error));
+    screen.moveRow(-3);
+    assert(screen.selectedRow() == Row::Name && screen.beginEdit(ws, error));
     // Scrolling keeps the focused row visible for any viewport size.
     for (size_t visible = 1; visible <= Screen::kRows.size() + 1; ++visible)
         for (size_t row = 0; row < Screen::kRows.size(); ++row) {
@@ -336,7 +349,7 @@ void trainerPanelFocusMemory() {
             assert(first + std::min(visible, Screen::kRows.size()) <= Screen::kRows.size());
         }
     // Wrap-around in both directions.
-    screen.moveRow(-static_cast<int>(screen.row()));
+    while (screen.selectedRow() != Row::Name) screen.moveRow(1);
     screen.moveRow(-1);
     assert(screen.selectedRow() == Row::Pokedex);
     screen.moveRow(1);

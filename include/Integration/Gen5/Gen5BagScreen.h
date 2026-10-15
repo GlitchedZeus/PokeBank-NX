@@ -116,13 +116,29 @@ public:
         row_=static_cast<size_t>(std::clamp(static_cast<long>(row_)+delta,
                                             0L,static_cast<long>(rows)-1));
     }
-    // A touch tap on a list row: the first tap focuses, a tap on the already
-    // focused row returns true so the caller performs the same action as A.
+    // Gen I-IV Items convention (TrainerViewScreenBase Items list): Up/Down
+    // wrap, Left/Right page with wrap and land on the page's first item, a
+    // vertical swipe that starts on a row scrolls by whole rows, and a
+    // completed tap on a row selects it and acts like A.
+    void stepRow(int direction,const Workspace& ws) {
+        if(surface_!=Surface::Browse)return;
+        const long rows=static_cast<long>(rowCount(ws,pocket_));
+        if(rows==0) {row_=0;return;}
+        row_=static_cast<size_t>(((static_cast<long>(row_)+(direction<0?-1:1))%rows+rows)%rows);
+    }
+    void stepPage(int direction,size_t perPage,const Workspace& ws) {
+        if(surface_!=Surface::Browse || perPage==0)return;
+        const size_t rows=rowCount(ws,pocket_);
+        const size_t pages=(rows+perPage-1)/perPage;
+        if(pages<=1)return;
+        const size_t page=row_/perPage;
+        const size_t next=direction<0?(page+pages-1)%pages:(page+1)%pages;
+        row_=std::min(next*perPage,rows-1);
+    }
     [[nodiscard]] bool tapRow(size_t row,const Workspace& ws) {
         if(surface_!=Surface::Browse || row>=rowCount(ws,pocket_))return false;
-        const bool focused=row==row_;
         row_=row;
-        return focused;
+        return true;
     }
     // Keep the cursor valid after any refresh (remove of the last row, etc).
     void clamp(const Workspace& ws) {

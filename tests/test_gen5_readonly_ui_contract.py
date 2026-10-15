@@ -1091,14 +1091,14 @@ require(read("tests/test_gen5_readonly_save.cpp"), "boundedProviderDiscoveryCont
 # III/IV: A quantity, X Add, Y Remove (confirmed), L/R pockets, + Review.
 items_panel = read("src/UI/Panels/ItemsPanel.cpp")
 bag_model = read("include/Integration/Gen5/Gen5BagScreen.h")
-require(surface, "return handleBag(screen,keys,tap);", "bag.beginQuantity(ws,error)",
+require(surface, "return handleBag(screen,keys,tap,touch);", "bag.stepRow(-1,ws)", "bag.stepPage(1,", "bag.beginQuantity(ws,error)",
         "bag.openAdd(ws,error)", "bag.requestRemove(ws,error)", "bag.confirmRemove(ws,refresh,error)",
         "bag.confirmAdd(ws,id,r.value,refresh,error)", "state.openReviewFromBrowse(ws)",
         "CategoryTouch::PreviousId", "bag.tapRow(static_cast<size_t>(tap),ws)",
         "bag.tapAddChoice(", "drawBag(screen,fb);", "ws.bagReviewChanges()",
         "case G::HubTile5::Items:")
 assert '{"Y","Bag"}' not in surface
-assert surface.index("return handleBag(screen,keys,tap);") < surface.index("switch(state.surface()) {\n        case Surface::Actions:")
+assert surface.index("return handleBag(screen,keys,tap,touch);") < surface.index("switch(state.surface()) {\n        case Surface::Actions:")
 require(items_panel, "Gen5::bagPocketName5(", "Native Generation V bag data failed validation.")
 require(bag_model, "PokeBank::UIModel::inventoryActionAvailability(", "Workspace snapshot=ws;",
         "pocket!=static_cast<size_t>(BagPocket5::KeyItems)",

@@ -724,7 +724,7 @@ void syncBagCursor(TrainerViewScreen& screen) {
 std::string bagItemLabel(const TrainerViewScreen& screen,uint16_t id) {
     return Names::machineDisplayLabel(screen.trainer.getGameGroup(),id,Names::getItemName(id));
 }
-bool handleBag(TrainerViewScreen& screen,u64 keys,int tap) {
+bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touch) {
     namespace G=PokeVault::Integration::Gen5;
     using BagSurface=G::Gen5BagScreen::Surface;
     auto& trainer=nativeTrainer(screen);
@@ -795,10 +795,25 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap) {
     }
     if(keys&HidNpadButton_L)bag.changePocket(-1);
     if(keys&HidNpadButton_R)bag.changePocket(1);
-    if(keys&HidNpadButton_Up)bag.moveRow(-1,ws);
-    if(keys&HidNpadButton_Down)bag.moveRow(1,ws);
-    if(keys&HidNpadButton_Left)bag.moveRow(-bagItemsPerPage(),ws);
-    if(keys&HidNpadButton_Right)bag.moveRow(bagItemsPerPage(),ws);
+    // Same list conventions as the Gen I-IV Items panel: Up/Down wrap,
+    // Left/Right page, a vertical swipe that starts on a row scrolls.
+    if(touch.justReleased() && touch.dragged()) {
+        const int dy=touch.deltaY();
+        const bool startedOnItem=std::any_of(screen.touchButtons.begin(),screen.touchButtons.end(),
+            [&](const auto& hit) {
+                return hit.id>=0 && hit.id<1000 &&
+                       touch.startX()>=hit.x && touch.startX()<hit.x+hit.w &&
+                       touch.startY()>=hit.y && touch.startY()<hit.y+hit.h;
+            });
+        if(startedOnItem && std::abs(dy)>=24 && std::abs(dy)>std::abs(touch.deltaX())) {
+            const int steps=std::max(1,std::abs(dy)/52);
+            bag.moveRow(dy<0?steps:-steps,ws);
+        }
+    }
+    if(keys&HidNpadButton_Up)bag.stepRow(-1,ws);
+    if(keys&HidNpadButton_Down)bag.stepRow(1,ws);
+    if(keys&HidNpadButton_Left)bag.stepPage(-1,static_cast<size_t>(bagItemsPerPage()),ws);
+    if(keys&HidNpadButton_Right)bag.stepPage(1,static_cast<size_t>(bagItemsPerPage()),ws);
     if(keys&HidNpadButton_Plus) {
         if(!state.openReviewFromBrowse(ws))
             screen.postStatus("No staged Gen V changes to review",220);
@@ -1167,7 +1182,7 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
     if(state.surface()==Surface::Browse &&
        screen.selectedMode==TrainerViewScreen::ViewMode::Items) {
         screen.details.active=false;
-        return handleBag(screen,keys,tap);
+        return handleBag(screen,keys,tap,touch);
     }
 
     switch(state.surface()) {
