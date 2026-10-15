@@ -53,15 +53,16 @@ struct SharedEditorSlot {
         // Native Create/Clone results use the SAME shared Edit surface.
         // Only app-owned PK5 fields can be staged, never source-save writes.
         append(Shared::Action::Edit);
-        if(workspace.originalOccupied(slot.location) &&
-           workspace.firstEmptyCloneDestination()<720)
-            append(Shared::Action::Clone);
         // Move Pokemon matches Gen IV's box action: an exact clone into a
         // verified empty box slot plus removal of the original source slot.
+        // Order follows the narrow Gen I-IV menu: Edit, Move, Clone, Release.
         if(slot.location.region==Gen5StagedPokemonWorkspace::Region::Box &&
            workspace.originalOccupied(slot.location) &&
            workspace.firstEmptyCloneDestination()<720)
             append(Shared::Action::Move);
+        if(workspace.originalOccupied(slot.location) &&
+           workspace.firstEmptyCloneDestination()<720)
+            append(Shared::Action::Clone);
         if(slot.location.region==Gen5StagedPokemonWorkspace::Region::Box &&
            workspace.originalOccupied(slot.location))
             append(Shared::Action::Remove);

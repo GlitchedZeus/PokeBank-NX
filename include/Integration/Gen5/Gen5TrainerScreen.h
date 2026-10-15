@@ -56,6 +56,15 @@ public:
         }
         const auto t = ws.trainerPresentation();
         if (!t) return "Unavailable";
+        if (newGame(*t)) {
+            switch (row) {
+                case Row::Name: return "- (no trainer yet)";
+                case Row::TrainerId:
+                case Row::SecretId:
+                case Row::Gender: return "-";
+                default: break;
+            }
+        }
         switch (row) {
             case Row::Name: return displayTrainerName(t->rawName).value_or("(unsupported glyphs)");
             case Row::Money: return std::to_string(t->money);
@@ -81,6 +90,27 @@ public:
         return true;
     }
     void close() noexcept { open_ = false; row_ = 0; dex_.close(); }
+    // Shared Trainer panel entry from the hub. Unlike openEditor, the last
+    // focused row is kept (focus memory); leave() returns to the hub without
+    // forgetting it.
+    [[nodiscard]] bool enter(const Workspace& ws, std::string& error) {
+        if (!available(ws)) {
+            error = "Gen V trainer data failed native validation; view only";
+            return false;
+        }
+        open_ = true;
+        if (row_ >= kRows.size()) row_ = 0;
+        error.clear();
+        return true;
+    }
+    void leave() noexcept { open_ = false; dex_.close(); }
+    // First visible row so the focused row is always on screen.
+    [[nodiscard]] size_t firstVisible(size_t visibleRows) const noexcept {
+        if (visibleRows == 0 || kRows.size() <= visibleRows) return 0;
+        const size_t maxFirst = kRows.size() - visibleRows;
+        const size_t centred = row_ >= visibleRows / 2 ? row_ - visibleRows / 2 : 0;
+        return centred < maxFirst ? centred : maxFirst;
+    }
     // Read-only Pokedex list (no Pokedex editor exists for Gen V).
     [[nodiscard]] Gen5PokedexView& dex() noexcept { return dex_; }
     [[nodiscard]] const Gen5PokedexView& dex() const noexcept { return dex_; }
@@ -93,22 +123,41 @@ public:
         error.clear();
         return true;
     }
-    void moveRow(int delta) noexcept {
-        if (!open_) return;
-        constexpr int count = static_cast<int>(kRows.size());
-        row_ = static_cast<size_t>(((static_cast<int>(row_) + delta) % count + count) % count);
+    // Gen I-IV Trainer convention: focus moves only between rows that can be
+    // acted on (the staged rows and the Pokedex list); read-only rows stay
+    // visible and labelled but are never focused. Up/Down wrap.
+    [[nodiscard]] static constexpr bool focusable(Row row) noexcept {
+        return editable(row) || row == Row::Pokedex;
     }
+    void moveRow(int delta) noexcept {
+        if (!open_ || delta == 0) return;
+        constexpr int count = static_cast<int>(kRows.size());
+        const int step = delta < 0 ? -1 : 1;
+        for (int moved = 0; moved < (delta < 0 ? -delta : delta); ++moved) {
+            int next = static_cast<int>(row_);
+            for (int i = 0; i < count; ++i) {
+                next = ((next + step) % count + count) % count;
+                if (focusable(kRows[static_cast<size_t>(next)])) break;
+            }
+            row_ = static_cast<size_t>(next);
+        }
+    }
+    // A completed tap on an actionable row selects it and acts like A at once
+    // (the Gen I-IV Trainer rows); a tap on a read-only row does nothing.
     [[nodiscard]] bool tapRow(size_t row) noexcept {
-        if (!open_ || row >= kRows.size()) return false;
-        const bool focused = row == row_;
+        if (!open_ || row >= kRows.size() || !focusable(kRows[row])) return false;
         row_ = row;
-        return focused;
+        return true;
     }
     // A on the focused row: true when the row may be edited by the caller's
     // keypad/keyboard prompt; false (with a reason) for read-only rows.
     [[nodiscard]] bool beginEdit(const Workspace& ws, std::string& error) const {
         if (!open_ || !available(ws)) {
             error = "Gen V trainer editor is not open";
+            return false;
+        }
+        if (const auto t = ws.trainerPresentation(); t && newGame(*t)) {
+            error = "New-game save: the game has not written a trainer yet; nothing to edit";
             return false;
         }
         if (!editable(selectedRow())) {
@@ -120,7 +169,7 @@ public:
         return true;
     }
     [[nodiscard]] std::vector<FooterEntry> footer() const {
-        if (!open_) return {{"A", "Edit Trainer"}, {"X", "Party"}, {"Y", "Bag"}, {"B", "Exit"}};
+        if (!open_) return {{"A", "Open"}, {"B", "Back"}};
         if (dex_.open())
             return {{"D-pad/Stick", "Browse"}, {"L/R", "Prev/Next Registered"}, {"B", "Back"}};
         if (selectedRow() == Row::Pokedex)
@@ -145,6 +194,10 @@ public:
                                      std::string& error) {
         return apply(ws, Row::PlayTime, std::forward<Refresh>(refresh), error,
                      [&](Gen5StagedTrainer& t, std::string* why) { return t.setPlayTime(h, m, s, why); });
+    }
+
+    [[nodiscard]] static bool newGame(const Trainer5View& t) noexcept {
+        return newGameNoTrainer5(t.rawName.size(), t.tid, t.sid, t.hours, t.minutes, t.seconds);
     }
 
 private:

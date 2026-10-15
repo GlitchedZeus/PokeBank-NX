@@ -5,9 +5,11 @@
 // - Party Level edits regenerate stored party data (level byte and stats).
 // - Read-only origin fields (met/egg date, egg location) from the cited PK5
 //   layout, shown like Gen IV's read-only rows and never editable.
+#include "Integration/Gen5/Gen5BlankSlot.h"
 #include "Integration/Gen5/Gen5OriginSummary.h"
 #include "Integration/Gen5/Gen5SharedScreenState.h"
 #include "Integration/Gen5/Gen5StagedSaveCandidate.h"
+#include "Integration/Gen5/Gen5EditorFields.h"
 #include "UI/SharedPokemonEditorContract.h"
 
 #include <algorithm>
@@ -131,7 +133,7 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     assert(ui.openActions(ws, Slot{Region::Box, 0, 0}, error));
     assert(!has(ui.availableActions(ws), Action::Move));
     assert(ui.activate(ws, Action::Close, error));
-    // Review certifies a byte-exact clone plus an all-zero removal.
+    // Review certifies a byte-exact clone plus a retail encrypted-blank removal.
     for (const auto& change : ws.pendingReview()) {
         const auto verified = G::verifyStagedReview(change, &error);
         assert(verified && verified->fields.size() == 1);
@@ -191,6 +193,213 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     assert(G::originSummary5(*parsed->boxPokemon(0, 1)).find("Met none") != std::string::npos);
 }
 
+// Owner hardware failure 2: on a real Black 2 save an empty box slot offered
+// only "Cancel". Retail boxes store the ENCRYPTED blank PK5 (PKHeX
+// SaveFile.ClearBoxes writes WriteSlotBox(BlankPKM)), not zero bytes, and the
+// old empty-destination check accepted raw zeros only.
+void retailEncryptedBlankSlots(G::SaveFamily family, std::string_view game, uint8_t version) {
+    auto sav = fixture(family, version);
+    const auto& blank = G::encryptedBlankBoxSlot5();
+    bool nonzero = false;
+    for (auto b : blank) nonzero |= b != 0;
+    assert(nonzero && G::nativeBlankSlot5(blank));
+    // Every slot except the two real Pokemon becomes the retail blank.
+    for (size_t box = 0; box < L::BoxCount; ++box)
+        for (size_t slot = 0; slot < L::BoxSlots; ++slot) {
+            if (box == 0 && slot < 2) continue;
+            std::copy(blank.begin(), blank.end(),
+                      sav.begin() + static_cast<std::ptrdiff_t>(L::BoxOffset + box * L::BoxStride + slot * C::StoredSize));
+        }
+    // A garbage (non-blank, invalid) slot must never become a destination.
+    sav[L::BoxOffset + 2 * L::BoxStride + 5 * C::StoredSize + 40] ^= 0x5A;
+    const auto blocks = family == G::SaveFamily::BlackWhite ? std::span<const L::SaveBlock>(L::BlackWhite)
+                                                            : std::span<const L::SaveBlock>(L::Black2White2);
+    auto copy = std::span<uint8_t>(sav).subspan(0, family == G::SaveFamily::BlackWhite ? L::BlackWhiteCopySize
+                                                                                        : L::Black2White2CopySize);
+    for (const auto& b : blocks) {
+        const uint16_t crc = Utils::crc16ccitt(copy.data() + b.offset, b.length);
+        C::write16(copy, b.checksumOffset, crc);
+        C::write16(copy, b.mirrorOffset, crc);
+    }
+    const auto pristine = sav;
+    std::string error;
+    const auto parsed = G::Gen5ReadOnlySave::parse(sav, game, &error, G::SaveCopySelection::Primary);
+    assert(parsed && parsed->diagnostics().invalidBoxRecords == 1);
+    G::Gen5StagedPokemonWorkspace ws(*parsed);
+    G::Gen5SharedScreenState ui;
+    const auto ok = [](std::string&) { return true; };
+
+    // Encrypted-blank slot: Add is offered (it was "Cancel" only before).
+    assert(ws.emptyCloneDestination(0, 5));
+    assert(ui.openActions(ws, Slot{Region::Box, 0, 5}, error));
+    auto actions = ui.availableActions(ws);
+    assert(has(actions, Action::Add) && !has(actions, Action::View));
+    assert(ui.activate(ws, Action::Close, error));
+    // Damaged slot: never a destination, no Add.
+    assert(!ws.emptyCloneDestination(2, 5));
+    assert(ui.openActions(ws, Slot{Region::Box, 2, 5}, error));
+    assert(!has(ui.availableActions(ws), Action::Add));
+    assert(ui.activate(ws, Action::Close, error));
+
+    // Create into the encrypted blank, Clone and Move into blanks, Remove.
+    G::CreateRequest5 r;
+    r.game = static_cast<G::CreateGame5>(version);
+    r.species = 25; r.level = 12; r.nature = 3; r.gender = 0; r.abilitySlot = 0;
+    r.pid = 0x00340012; r.friendship = 70;
+    r.gender = G::createGenderForPID5(G::personal5(25, 0, family == G::SaveFamily::Black2White2).info->genderRatio, *r.pid);
+    r.trainer = G::CreateTrainer5{12345, 54321, 1, 2, "ROSA"};
+    r.nickname = "PIKA";
+    r.encounter = {G::CreateHistory5::CallerSuppliedNative, 1, 5, 4, 2024, 1, 1};
+    r.moves[0] = {84, 0, std::nullopt};
+    assert(ws.createInEmptyBox(r, 0, 5, &error));
+    assert(ws.viewBox(0, 5)->species() == 25);
+    assert(ws.cloneToEmptyBox(Slot{Region::Box, 0, 0}, 3, 7, &error));
+    assert(ws.moveToEmptyBox(Slot{Region::Box, 0, 1}, 4, 9, &error));
+    for (const auto& change : ws.pendingReview()) assert(G::verifyStagedReview(change, &error));
+    const auto out = G::buildStagedSaveCandidate(ws, &error);
+    assert(out && out->changedRecords == 4);
+    const auto reopened = G::Gen5ReadOnlySave::parse(out->bytes, game, &error, G::SaveCopySelection::Primary);
+    assert(reopened);
+    assert(reopened->boxPokemon(0, 5)->species() == 25);
+    assert(reopened->boxPokemon(3, 7)->species() == 133);
+    assert(reopened->boxPokemon(4, 9)->species() == 495);
+    // The moved-out slot is written as the retail encrypted blank, not zeros.
+    const auto vacated = reopened->boxPokemon(0, 1);
+    assert(vacated->valid() && vacated->empty());
+    assert(std::equal(vacated->originalEncryptedBytes().begin(), vacated->originalEncryptedBytes().end(),
+                      blank.begin()));
+    assert(sav == pristine);
+    (void)ok;
+}
+
+// Hardware failure fa9cfcea: Create showed only Cancel and was a raw prompt
+// wizard. Route: empty retail-blank Box slot -> Actions -> Add -> Create ->
+// the SAME Edit draft as Edit (species, nickname, level, nature, IVs, EVs,
+// moves, ability, gender, held item) -> Keep -> Review -> Export -> reopen.
+void sharedCreateRoute(G::SaveFamily family, std::string_view game, uint8_t version) {
+    using NF = G::StagedPokemon5Record::Field;
+    auto sav = fixture(family, version);
+    sav[0x19400 + 0x1E] = 2;  // English
+    sav[0x19400 + 0x21] = 1;  // female trainer
+    const auto& blank = G::encryptedBlankBoxSlot5();
+    for (size_t box = 0; box < L::BoxCount; ++box)
+        for (size_t slot = 0; slot < L::BoxSlots; ++slot) {
+            if (box == 0 && slot < 2) continue;
+            std::copy(blank.begin(), blank.end(),
+                      sav.begin() + static_cast<std::ptrdiff_t>(L::BoxOffset + box * L::BoxStride + slot * C::StoredSize));
+        }
+    const auto blocks = family == G::SaveFamily::BlackWhite ? std::span<const L::SaveBlock>(L::BlackWhite)
+                                                            : std::span<const L::SaveBlock>(L::Black2White2);
+    auto copy = std::span<uint8_t>(sav).subspan(0, family == G::SaveFamily::BlackWhite ? L::BlackWhiteCopySize
+                                                                                        : L::Black2White2CopySize);
+    for (const auto& b : blocks) {
+        const uint16_t crc = Utils::crc16ccitt(copy.data() + b.offset, b.length);
+        C::write16(copy, b.checksumOffset, crc);
+        C::write16(copy, b.mirrorOffset, crc);
+    }
+    const auto pristine = sav;
+    std::string error;
+    const auto parsed = G::Gen5ReadOnlySave::parse(sav, game, &error, G::SaveCopySelection::Primary);
+    assert(parsed);
+    G::Gen5StagedPokemonWorkspace ws(*parsed);
+    G::Gen5SharedScreenState ui;
+    const auto ok = [](std::string&) { return true; };
+    const auto refuse = [](std::string& why) { why = "renderer refused"; return false; };
+    const G::Gen5SharedScreenState::CreateDate5 date{2026, 10, 15};
+
+    // Defaults copy the save's own trainer; nothing is invented from a filename.
+    const auto defaults = G::Gen5SharedScreenState::sharedCreateDefaults(ws, 0x00340000u, "Pikachu", date, error);
+    assert(defaults && defaults->trainer && defaults->trainer->name == "NX");
+    assert(defaults->trainer->tid == 12345 && defaults->trainer->sid == 54321);
+    assert(defaults->trainer->gender == 1 && defaults->trainer->language == 2);
+    assert(static_cast<uint32_t>(defaults->game) == version && defaults->gender == 1);
+
+    // Occupied slot: Create refused.
+    assert(ui.openActions(ws, Slot{Region::Box, 0, 0}, error));
+    assert(!has(ui.availableActions(ws), Action::Add));
+    assert(ui.activate(ws, Action::Close, error));
+
+    // Empty slot -> Add -> Create opens the shared Edit draft on Species.
+    assert(ui.openActions(ws, Slot{Region::Box, 0, 5}, error));
+    assert(ui.activate(ws, Action::Add, error) && ui.surface() == Surface::ConfirmCreateBox);
+    // A renderer refusal rolls the whole Create back.
+    assert(!ui.beginCreateDraft(ws, *defaults, refuse, error) && !ws.hasChanges());
+    assert(ui.surface() == Surface::ConfirmCreateBox && ws.emptyCloneDestination(0, 5));
+    assert(ui.beginCreateDraft(ws, *defaults, ok, error));
+    assert(ui.surface() == Surface::Edit && ui.createPending());
+    assert(ui.draft().current()->species() == 25);
+
+    // A pending Create has no history: any BW/B2W2 species rebuilds it natively,
+    // even across EXP growth groups (Bulbasaur), and a default nickname follows.
+    assert(ui.recreateCreateSpecies(ws, 1, false, "Bulbasaur", "Pikachu", ok, error));
+    assert(ui.draft().current()->species() == 1 && ui.createPending());
+    assert(G::asciiName5(ui.draft().current()->decodedBytes(), true) == "Bulbasaur");
+    assert(!ui.recreateCreateSpecies(ws, 650, false, "X", "Bulbasaur", ok, error));
+    assert(ui.recreateCreateSpecies(ws, 133, true, "Eevee", "Bulbasaur", ok, error));
+    assert(ui.draft().current()->species() == 133 && ui.draft().current()->shiny());
+    assert(G::asciiName5(ui.draft().current()->decodedBytes(), true) == "Eevee");
+    assert(ui.recreateCreateSpecies(ws, 133, false, "Eevee", "Eevee", ok, error));
+    assert(!ui.draft().current()->shiny());
+
+    // Edit every owner-listed field through the same native draft the shared
+    // editor workspace stages into.
+    auto& draft = ui.editDraft();
+    assert(draft.stageName(NF::NicknameText, "SPARKY", error));
+    assert(draft.stage(NF::Level, 0, 20, error));
+    assert(draft.stage(NF::Nature, 0, 10, error));
+    assert(draft.stage(NF::IV, 1, 31, error));
+    assert(draft.stage(NF::EV, 3, 252, error));
+    assert(draft.stage(NF::HeldItem, 0, 1, error));
+    assert(draft.stage(NF::Move, 1, 98, error));  // Quick Attack
+    assert(G::EditorFields::toggleShiny(draft, error) && draft.current()->shiny());
+    assert(ui.surface() == Surface::Edit && ui.draft().dirty());
+
+    // B never drops a pending Create: Keep/Discard decision first.
+    assert(!ui.back() && ui.surface() == Surface::ConfirmDraft);
+    ui.continueEditing();
+    assert(ui.surface() == Surface::Edit && ui.draft().dirty());
+    assert(ui.keepWithPresentation(ws, ok, error));
+    assert(ui.surface() == Surface::Browse && !ui.createPending());
+    assert(ws.changedRecordCount() == 1);
+
+    // Clean Create + Keep just finalizes the default record.
+    assert(ui.openActions(ws, Slot{Region::Box, 0, 7}, error));
+    assert(ui.activate(ws, Action::Add, error));
+    assert(ui.beginCreateDraft(ws, *defaults, ok, error));
+    assert(ui.keepWithPresentation(ws, ok, error) && !ui.createPending());
+    assert(ws.changedRecordCount() == 2);
+
+    // Create then Discard restores the native empty slot exactly.
+    assert(ui.openActions(ws, Slot{Region::Box, 0, 6}, error));
+    assert(ui.activate(ws, Action::Add, error));
+    assert(ui.beginCreateDraft(ws, *defaults, ok, error));
+    assert(ws.changedRecordCount() == 3);
+    ui.discardDraft();  // cannot orphan a created record
+    assert(ui.surface() == Surface::Edit && ui.createPending());
+    assert(!ui.back() && ui.surface() == Surface::ConfirmDraft);
+    assert(ui.discardCreateDraft(ws, ok, error));
+    assert(ui.surface() == Surface::Browse && !ui.createPending());
+    assert(ws.changedRecordCount() == 2 && ws.emptyCloneDestination(0, 6));
+
+    // Review -> Export -> reopen.
+    for (const auto& change : ws.pendingReview()) assert(G::verifyStagedReview(change, &error));
+    assert(ui.openReviewFromBrowse(ws) && ui.surface() == Surface::Review);
+    assert(ui.requestExport(ws) && ui.surface() == Surface::ConfirmExport);
+    const auto out = G::buildStagedSaveCandidate(ws, &error);
+    assert(out && out->changedRecords == 2);
+    const auto reopened = G::Gen5ReadOnlySave::parse(out->bytes, game, &error, G::SaveCopySelection::Primary);
+    assert(reopened);
+    const auto made = reopened->boxPokemon(0, 5);
+    assert(made && made->valid() && made->species() == 133 && made->nature() == 10);
+    assert(made->ivs()[1] == 31 && made->evs()[3] == 252 && made->heldItem() == 1);
+    assert(made->moves()[0] == 84 && made->moves()[1] == 98 && made->tid() == 12345);
+    assert(G::asciiName5(made->decodedBytes(), true).value_or("") == "SPARKY");
+    assert(reopened->boxPokemon(0, 7)->species() == 25);
+    const auto vacated = reopened->boxPokemon(0, 6);
+    assert(vacated->valid() && vacated->empty());
+    assert(sav == pristine);
+}
+
 } // namespace
 
 int main() {
@@ -202,6 +411,12 @@ int main() {
         assert(Shared::fieldAccessForGeneration(Generation::Gen4, field) == FieldAccess::ReadOnly);
         assert(Shared::fieldAccessForGeneration(Generation::Gen5, field) == FieldAccess::ReadOnly);
     }
+    retailEncryptedBlankSlots(G::SaveFamily::BlackWhite, "black_nds", 21);
+    retailEncryptedBlankSlots(G::SaveFamily::Black2White2, "black2_nds", 23);
+    sharedCreateRoute(G::SaveFamily::BlackWhite, "white_nds", 20);
+    sharedCreateRoute(G::SaveFamily::BlackWhite, "black_nds", 21);
+    sharedCreateRoute(G::SaveFamily::Black2White2, "white2_nds", 22);
+    sharedCreateRoute(G::SaveFamily::Black2White2, "black2_nds", 23);
     exercise(G::SaveFamily::BlackWhite, "white_nds", 20);
     exercise(G::SaveFamily::BlackWhite, "black_nds", 21);
     exercise(G::SaveFamily::Black2White2, "white2_nds", 22);

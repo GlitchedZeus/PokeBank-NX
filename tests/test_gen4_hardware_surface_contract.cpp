@@ -16,10 +16,32 @@
 #include <string>
 
 namespace {
+// The shared editor workspace lives in src/UI/SharedPokemonEditorSurface.inc,
+// which a generation surface includes textually. Expand that one include so a
+// surface's contract covers the shared code it compiles.
+std::string expandSurfaceIncludes(const std::string& text) {
+    std::string out;
+    std::size_t pos = 0;
+    const std::string marker = "#include \"";
+    while (true) {
+        const auto at = text.find(marker, pos);
+        if (at == std::string::npos) { out += text.substr(pos); break; }
+        const auto close = text.find('"', at + marker.size());
+        const std::string name = text.substr(at + marker.size(), close - at - marker.size());
+        out += text.substr(pos, close + 1 - pos);
+        pos = close + 1;
+        if (name == "SharedPokemonEditorSurface.inc") {
+            std::ifstream nested("src/UI/" + name, std::ios::binary);
+            if (nested) out += "\n" + expandSurfaceIncludes(
+                {std::istreambuf_iterator<char>(nested), std::istreambuf_iterator<char>()});
+        }
+    }
+    return out;
+}
 std::string read(const char* path) {
     std::ifstream in(path, std::ios::binary);
     assert(in);
-    return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+    return expandSurfaceIncludes({std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()});
 }
 void contains(const std::string& text, const char* needle) {
     if (text.find(needle) == std::string::npos)
@@ -270,9 +292,13 @@ int main() {
     contains(surface, "appendClippedTouchButton(screen.touchButtons, 41000 + row");
     contains(surface, "detailPixelOffset, firstDetailRow");
     contains(surface, "SharedPokemonShell::drawDataAndGraph");
-    contains(surface, "Shared::normalizeMoveRowFocus(Shared::Generation::Gen4");
-    contains(surface, "Shared::moveRowColumn(Shared::Generation::Gen4");
-    contains(surface, "Shared::passiveViewMoveColumn(Shared::Generation::Gen4");
+    // Gen IV drives the shared workspace model with its own Gen IV layout.
+    const auto workspaceModel = read("include/UI/SharedPokemonEditorWorkspace.h");
+    contains(surface, "static constexpr auto generation = Shared::Generation::Gen4;");
+    contains(surface, "Workspace::navigate(A::generation, state.focus, keys, passive, editable,");
+    contains(workspaceModel, "focus = Shared::normalizeMoveRowFocus(generation, focus);");
+    contains(workspaceModel, ": Shared::moveRowColumn(generation, focus, -1);");
+    contains(workspaceModel, "focus = passive ? Shared::passiveViewMoveColumn(generation, focus, -1)");
     contains(surface, "Shared::moveRowFocus(g.rightW)");
 
     // Gen IV inherits the accepted D-pad / left-stick repeat navigation path.
@@ -291,7 +317,7 @@ int main() {
     contains(surface, "Could not reconcile Species/Shiny while preserving PID-linked traits");
 
     // Outer move focus is exactly one row. PP / PP Ups live in the contextual dialog.
-    contains(surface, "openMoveEditor(screen, state, state.focus.row)");
+    contains(surface, "openMoveEditor<A>(screen, state, activation.row)");
     contains(surface, "A: choose compatible Gen IV move");
     contains(surface, "OK = native   Transfer/Preserved = warning");
     contains(surface, "PP Ups");
@@ -300,8 +326,9 @@ int main() {
     contains(surface, "state.moveEditorRow == 2");
     contains(surface, "state.session.working->setMove(slot, value)");
     contains(surface, "uint16_t moveBaseline = 0;");
-    contains(surface, "state.moveBaseline = state.session.working->moves()");
-    contains(surface, "state.session.working->setMove(slot, state.moveBaseline)");
+    contains(surface, "state.moveBaseline = A::workingMove(screen, state, slot)");
+    contains(surface, "A::setMove(screen, state, slot, state.moveBaseline)");
+    contains(surface, "gen4(state).session.working->moves()[static_cast<size_t>(slot)]");
     contains(surface, "PickerTarget::Move");
     contains(surface, "#include \"Integration/Gen4/Gen4MoveCompatibility.h\"");
     contains(surface, "PokeVault::Integration::Gen4MoveCompatibility::selectableMoves(");
@@ -488,8 +515,10 @@ int main() {
     // metadata, SID/Origin remain inspectable read-only, and fixed-only rows are skipped.
     contains(surface, "bool detailEditable(const State& state");
     contains(surface, "hasAlternateValidForm");
-    contains(surface, "if (detailEditable(state, state.focus.row, p)) return;");
-    contains(surface, "if (pidLinkedRowEditable(state, state.focus.row, p)) return;");
+    contains(workspaceModel, "if (detailEditable(static_cast<int>(focus.row))) return focus;");
+    contains(workspaceModel, "if (pidEditable(static_cast<int>(focus.row))) return focus;");
+    contains(surface, "return UI::Gen4SharedEditorSurface::detailEditable(gen4(state), row, p);");
+    contains(surface, "return pidLinkedRowEditable(gen4(state), row, p);");
     contains(surface, "\"OT\", \"Trainer ID\"");
     assert(surface.find("OT (read-only)") == std::string::npos);
     assert(surface.find("TID (read-only)") == std::string::npos);
@@ -497,11 +526,12 @@ int main() {
     contains(surface, "setOriginalTrainerName");
     contains(surface, "setTID");
     contains(surface, "Origin (read-only)");
-    contains(surface, "state.session.mode == SessionModel::Mode::View || editable");
+    contains(surface, "state.focus.row == row && (viewMode || editable);");
+    contains(surface, "return gen4(state).session.mode == SessionModel::Mode::View;");
 
     // A nested move choice must render above the contextual Move editor, never behind it.
-    const auto moveEditorDraw = surface.find("if (state.moveEditor) drawMoveEditor(screen, fb, state);");
-    const auto valuePickerDraw = surface.find("if (state.valuePicker) drawValuePicker(screen, fb, state);");
+    const auto moveEditorDraw = surface.find("if (state.moveEditor) drawMoveEditor<A>(screen, fb, state);");
+    const auto valuePickerDraw = surface.find("if (state.valuePicker) drawValuePicker<A>(screen, fb, state);");
     assert(moveEditorDraw != std::string::npos && valuePickerDraw > moveEditorDraw);
 
     // Gen IV picker/action chrome follows the accepted shared layout instead of the cramped G4-04 prototype.
@@ -617,7 +647,8 @@ int main() {
 
     // Dirty Back uses the same shared exit guard and explicit A/Y/B confirmation.
     contains(session, "PokemonEditorExitGuard::requiresConfirmation");
-    contains(surface, "if (state.session.confirmExit)");
+    contains(surface, "if (A::confirmExit(screen, state)) {");
+    contains(surface, "return gen4(state).session.confirmExit;");
     contains(surface, "HidNpadButton_Y");
     contains(surface, "Dialogs::drawDialogFrame");
     contains(surface, "\"Unsaved changes\"");

@@ -104,3 +104,27 @@ $(NATURE_PICKER_TEST): tests/test_nature_picker_layout.cpp include/UI/NaturePick
 $(NATURE_PICKER_SANITIZE): tests/test_nature_picker_layout.cpp include/UI/NaturePickerLayout.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+# Owner's 14-point shared Pokemon editor UI contract, run for Gen I-V layouts
+# (and the Gen V adapter's native data); Gen VI-IX add their generation here.
+SHARED_EDITOR_CONTRACT_TEST := $(HOST_BUILD)/test_shared_editor_contract
+SHARED_EDITOR_CONTRACT_SANITIZE := $(HOST_BUILD)/test_shared_editor_contract_sanitize
+SHARED_EDITOR_CONTRACT_INPUTS := tests/test_shared_editor_contract.cpp \
+    include/UI/SharedPokemonEditorWorkspace.h include/UI/SharedPokemonEditorContract.h \
+    include/UI/NarrowPokemonActionMenu.h include/Integration/Gen5/Gen5EditorFields.h \
+    include/Integration/Gen5/Gen5SharedScreenState.h include/Integration/Gen5/Gen5DisplayStats.h \
+    include/Names/MoveBattleStats5.h src/UI/SharedPokemonEditorSurface.inc \
+    src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
+
+HOST_TESTS += $(SHARED_EDITOR_CONTRACT_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_EDITOR_CONTRACT_SANITIZE)
+host-test: $(SHARED_EDITOR_CONTRACT_TEST)
+host-sanitize: $(SHARED_EDITOR_CONTRACT_SANITIZE)
+
+$(SHARED_EDITOR_CONTRACT_TEST): $(SHARED_EDITOR_CONTRACT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_shared_editor_contract.cpp -o $@
+
+$(SHARED_EDITOR_CONTRACT_SANITIZE): $(SHARED_EDITOR_CONTRACT_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_shared_editor_contract.cpp -o $@

@@ -2,6 +2,7 @@
 #define POKEBANK_GEN5_SAVE_INSTANCE_ADAPTER_H
 
 #include "Integration/Gen5/Gen5ReadOnlySave.h"
+#include "Integration/Gen5/Gen5SaveDiagnostics.h"
 #include "Integration/Gen5/Gen5TrainerName.h"
 #include "Source/SaveInstance.h"
 
@@ -94,6 +95,12 @@ struct ReadOnlyProbe {
         return out;
     }
 
+    // Shared blank/invalid-copy gate (Gen5SaveDiagnostics.h).
+    if (auto refused = unopenableCopyDiagnostic5(raw, *save, selection); !refused.empty()) {
+        row.validation = Source::ValidationStatus::Invalid;
+        row.diagnostic = std::move(refused);
+        return out;
+    }
     row.validation = Source::ValidationStatus::Ready;
     // Only validated, printable UTF-16 becomes a visible trainer label.
     // Malformed/unsupported display text does not invalidate the entire save.

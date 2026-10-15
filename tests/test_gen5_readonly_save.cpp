@@ -14,6 +14,8 @@
 #include "Integration/Gen5/Gen5StagedSaveCandidate.h"
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
+#include "Integration/Gen5/Gen5EditorFields.h"
+#include "Integration/Gen5/Gen5DisplayStats.h"
 #include "Games/GameIdentity.h"
 
 #include <algorithm>
@@ -1346,7 +1348,8 @@ int main() {
         assert(!stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Shiny));
         assert(!readOnlyDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Nature));
         assert(!stagedDescriptor->source.canWriteOriginalSource());
-        assert(!stagedDescriptor->source.saveOperations.supports(
+        // Gen IV parity: staged Create into a verified native blank slot.
+        assert(stagedDescriptor->source.saveOperations.supports(
                PokeVault::SaveEdit::Capability::PokemonCreation));
         const Exact::MoveCompatibilityQuery unverifiedMove{id,25,0,1,false};
         assert(stagedDescriptor->moves.evaluate(unverifiedMove)==
@@ -1376,7 +1379,11 @@ int main() {
         assert(presented->boxes[0][0]->baseHP()==55);
         assert(presented->boxes[0][0]->baseATK()==55);
         assert(presented->boxes[0][0]->baseSPD()==65);
-        assert(presented->boxes[0][0]->statHPMax()==0);
+        // Owner finding (35cbf163): Box summary HP/stats were 0 while Edit showed
+        // the real values. Boxed stats now use the same displayStats5 as View/Edit.
+        assert(presented->boxes[0][0]->statHPMax()>0);
+        assert(presented->boxes[0][0]->statHPMax()==G::displayStats5(
+            *parsed->boxPokemon(0,0),family==G::SaveFamily::Black2White2)[0]);
         assert(!presented->boxes[0][1]);
         assert(presented->trainerName=="NX" && presented->TID16==12345);
         assert(!presented->hasStagedChanges());
@@ -1691,7 +1698,7 @@ int main() {
         assert(G::fieldAccess(GF::Move)==GAccess::Editable);
         assert(G::fieldAccess(GF::MovePP)==GAccess::Editable);
         assert(G::fieldAccess(GF::MovePPUps)==GAccess::Editable);
-        static_assert(G::Gen5SharedScreenState::kEditableRows.size()==43);
+        static_assert(G::EditorFields::RowCount==18); // Gen IV rows + OT Gender + Fateful
         assert(G::fieldAccess(GF::TrainerId)==GAccess::Editable);
         assert(G::fieldAccess(GF::SecretId)==GAccess::Editable);
         assert(G::fieldAccess(GF::OriginalTrainerGender)==GAccess::Editable);
@@ -1721,7 +1728,7 @@ int main() {
         assert(ui.surface()==G::Gen5SharedScreenState::Surface::Actions);
         assert(ui.activateSelected(localUiWorkspace,error)); // View
         assert(ui.surface()==G::Gen5SharedScreenState::Surface::View);
-        assert(!ui.adjustField(1,error)); // View is immutable.
+        assert(!ui.editDraft().stage(GField::Nature,0,1,error)); // View is immutable.
         assert(ui.back());
         assert(ui.surface()==G::Gen5SharedScreenState::Surface::Browse);
         assert(ui.openActions(localUiWorkspace,GSlot{GRegion::Party,0,0},error));
@@ -1729,7 +1736,7 @@ int main() {
         assert(ui.activateSelected(localUiWorkspace,error));
         assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
         const auto firstNature=ui.draft().current()->nature();
-        assert(ui.adjustField(1,error));
+        assert(ui.editDraft().stage(GField::Nature,0,firstNature+1u,error));
         assert(ui.draft().current()->nature()==firstNature+1);
         assert(!ui.back()); // Cannot lose a dirty draft with B.
         assert(ui.surface()==G::Gen5SharedScreenState::Surface::ConfirmDraft);
@@ -1744,38 +1751,18 @@ int main() {
         ui.moveAction(1,localUiWorkspace); // Edit
         assert(ui.activateSelected(localUiWorkspace,error));
         assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
-        const auto& rows=G::Gen5SharedScreenState::kEditableRows;
-        assert(rows[38].field==GF::Level &&
-               rows[39].field==GF::Experience &&
-               rows[40].field==GF::Nickname &&
-               rows[41].field==GF::OriginalTrainer &&
-               rows[42].field==GF::Species);
-        assert(rows[2].field==GF::HeldItem && rows[3].field==GF::Ball);
-        assert(rows[4].field==GF::MetLevel);
-        static_assert(G::Gen5SharedScreenState::natureName(0)=="Hardy");
-        static_assert(G::Gen5SharedScreenState::natureName(12)=="Serious");
-        static_assert(G::Gen5SharedScreenState::natureName(24)=="Quirky");
-        const auto sourceNature=ui.draft().current()->nature();
-        assert(ui.openNaturePicker(error));
-        assert(ui.surface()==G::Gen5SharedScreenState::Surface::NaturePicker);
-        assert(ui.natureSelection()==sourceNature);
-        ui.moveNatureCursor(30); // Bounded 24, never wraps.
-        assert(ui.natureSelection()==24);
-        assert(!ui.back()); // Cancel is lossless and keeps Edit cursor.
-        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
-        assert(ui.draft().current()->nature()==sourceNature);
-        assert(ui.openNaturePicker(error));
-        ui.moveNatureCursor(12-static_cast<int>(sourceNature));
-        assert(ui.natureSelection()==12);
-        assert(ui.acceptNaturePicker(error));
-        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
+        static_assert(G::EditorFields::natureName(0)==std::string_view("Hardy"));
+        static_assert(G::EditorFields::natureName(12)==std::string_view("Serious"));
+        static_assert(G::EditorFields::natureName(24)==std::string_view("Quirky"));
+        // The shared editor stages every field through this one native draft.
+        auto& draft=ui.editDraft();
+        assert(!draft.stage(GField::Nature,0,25,error)); // Bounded 24, never wraps.
+        assert(draft.stage(GField::Nature,0,12,error));
         assert(ui.draft().current()->nature()==12);
-        ui.moveField(2);
-        assert(ui.adjustField(1,error));
-        ui.moveField(1);
-        assert(ui.adjustField(1,error));
-        ui.moveField(1);
-        assert(ui.adjustField(1,error));
+        const auto base=workspace.viewParty(0);
+        assert(draft.stage(GField::HeldItem,0,base->heldItem()+1u,error));
+        assert(draft.stage(GField::Ball,0,base->ball()+1u,error));
+        assert(draft.stage(GField::MetLevel,0,base->metLevel()+1u,error));
         assert(ui.keep(localUiWorkspace,error));
         assert(localUiWorkspace.viewParty(0)->heldItem()==
                workspace.viewParty(0)->heldItem()+1);
@@ -1789,26 +1776,14 @@ int main() {
         assert(ui.openActions(localUiWorkspace,GSlot{GRegion::Party,0,0},error));
         ui.moveAction(1,localUiWorkspace);
         assert(ui.activateSelected(localUiWorkspace,error));
-        ui.moveField(11);
-        assert(G::Gen5SharedScreenState::kEditableRows[11].field==GF::Move);
-        assert(ui.openMovePicker(error));
-        assert(ui.surface()==G::Gen5SharedScreenState::Surface::MovePicker);
-        ui.movePickerCursor(559);
-        assert(ui.movePickerSelection()==559);
-        assert(!ui.back());
-        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
-        assert(ui.openMovePicker(error));
-        ui.movePickerCursor(559);
-        assert(ui.acceptMovePicker(error));
-        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
+        assert(!ui.editDraft().stage(GField::Move,0,560,error)); // native IDs 0..559 only
+        assert(ui.editDraft().stage(GField::Move,0,559,error));
         assert(ui.draft().current()->moves()[0]==559);
         assert(ui.draft().current()->pp()[0]==5);
         assert(ui.draft().current()->ppUps()[0]==0);
-        ui.moveField(4); // PP Ups 1
-        assert(ui.adjustField(1,error));
+        assert(ui.editDraft().stage(GField::MovePPUps,0,1,error));
         assert(ui.draft().current()->pp()[0]==6);
-        ui.moveField(4); // current PP 1
-        assert(ui.adjustField(-1,error));
+        assert(ui.editDraft().stage(GField::MovePP,0,5,error));
         assert(ui.draft().current()->pp()[0]==5);
         assert(ui.keep(localUiWorkspace,error));
         assert(localUiWorkspace.viewParty(0)->moves()[0]==559);
@@ -1830,27 +1805,15 @@ int main() {
         assert(ui.openActions(localUiWorkspace,GSlot{GRegion::Party,0,0},error));
         ui.moveAction(1,localUiWorkspace);
         assert(ui.activateSelected(localUiWorkspace,error));
-        ui.moveField(5); // Trainer ID, after original met level.
-        assert(G::Gen5SharedScreenState::kEditableRows[5].field==GF::TrainerId);
-        assert(!ui.stageFieldValue(65536,error));
-        assert(ui.stageFieldValue(1111,error));
-        ui.moveField(1); // Secret ID
-        assert(ui.stageFieldValue(2222,error));
-        ui.moveField(1); // original trainer gender
-        assert(ui.adjustField(1,error));
-        ui.moveField(1); // Pokérus None -> Cured, never a raw byte editor
-        assert(ui.adjustField(1,error));
-        ui.moveField(1); // met location
-        assert(ui.openLocationPicker(error));
-        assert(ui.surface()==G::Gen5SharedScreenState::Surface::LocationPicker);
-        ui.moveLocationCursor(1);
-        assert(ui.back()==false); // picker cancel preserves original
-        assert(ui.openLocationPicker(error));
-        ui.moveLocationCursor(1);
-        assert(ui.acceptLocationPicker(error));
+        assert(!ui.editDraft().stage(GField::TrainerId,0,65536,error));
+        assert(ui.editDraft().stage(GField::TrainerId,0,1111,error));
+        assert(ui.editDraft().stage(GField::SecretId,0,2222,error));
+        assert(G::EditorFields::toggleFlag(ui.editDraft(),GField::OriginalTrainerGender,error));
+        assert(ui.editDraft().stage(GField::Pokerus,0,1,error)); // None -> Cured, never a raw byte
+        assert(!ui.editDraft().stage(GField::MetLocation,0,65535,error));
+        assert(ui.editDraft().stage(GField::MetLocation,0,1,error));
         assert(ui.draft().current()->metLocation()==1);
-        ui.moveField(1); // fateful bit in same byte as gender/form
-        assert(ui.adjustField(1,error));
+        assert(G::EditorFields::toggleFlag(ui.editDraft(),GField::FatefulEncounter,error));
         assert(ui.keep(localUiWorkspace,error));
         const auto identity=localUiWorkspace.viewParty(0);
         assert(identity && identity->tid()==1111 && identity->sid()==2222);
@@ -1877,75 +1840,33 @@ int main() {
         assert(ui.openActions(localUiWorkspace,GSlot{GRegion::Party,0,0},error));
         ui.moveAction(1,localUiWorkspace);
         assert(ui.activateSelected(localUiWorkspace,error));
-        ui.moveField(35);
-        assert(rows[35].field==GF::Ability &&
-               rows[36].field==GF::Form && rows[37].field==GF::Gender);
-        assert(ui.openIdentityPicker(error));
-        assert(ui.identityChoiceCount()==3);
-        ui.moveIdentityCursor(2);
-        assert(ui.identitySelection()==2);
-        assert(!ui.back()); // Cancels without changing hidden ability.
-        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
-        assert(!ui.draft().current()->hiddenAbility());
-        assert(ui.openIdentityPicker(error));
-        ui.moveIdentityCursor(2);
-        assert(ui.acceptIdentityPicker(error));
-        assert(ui.draft().current()->hiddenAbility());
-        assert(ui.draft().current()->ability()==31);
-        ui.moveField(1);
-        assert(ui.openIdentityPicker(error));
-        assert(ui.identityChoiceCount()==1); // Pikachu has only base form.
-        assert(!ui.identityChoiceAllowed(1));
-        assert(!ui.back());
-        ui.moveField(1);
-        assert(ui.openIdentityPicker(error));
-        assert(ui.identityChoiceCount()==3);
-        assert(!ui.identityChoiceAllowed(2)); // Pikachu isn't genderless.
-        ui.moveIdentityCursor(1);
-        assert(ui.acceptIdentityPicker(error));
-        assert(ui.draft().current()->gender()==1);
-        ui.moveField(3); // Nickname follows Gender/Level/EXP.
-        assert(rows[40].field==GF::Nickname);
-        assert(!ui.stageNameValue("INVALID NAME LONG",error));
-        assert(ui.stageNameValue("NXPIKA",error));
-        ui.moveField(1);
-        assert(rows[41].field==GF::OriginalTrainer);
-        assert(ui.stageNameValue("NXT",error));
-        ui.moveField(1);
-        assert(rows[42].field==GF::Species);
-        // Exact-native named picker preserves the local draft until A.
-        assert(ui.openSpeciesPicker(error));
-        assert(ui.surface()==G::Gen5SharedScreenState::Surface::SpeciesPicker);
-        assert(ui.speciesChoiceCount()==649);
-        assert(ui.chosenSpeciesId()==25);
-        assert(ui.speciesChoiceAllowed(26));
-        assert(!ui.speciesChoiceAllowed(1)); // Different growth group.
-        assert(!ui.speciesChoiceAllowed(650));
-        ui.moveSpeciesCursor(1);
-        assert(ui.chosenSpeciesId()==26);
-        ui.cancelSpeciesPicker();
-        assert(ui.draft().current()->species()==25); // No mutation on B.
-        assert(ui.openSpeciesPicker(error));
-        ui.filterSpecies("rAi",[](uint16_t id)->const char* {
-            return id==26?"Raichu":"Other";
-        });
-        assert(ui.speciesSearch()=="rAi");
-        assert(ui.speciesChoiceCount()==1);
-        assert(ui.chosenSpeciesId()==26);
-        ui.filterSpecies("Not a Pokemon",[](uint16_t)->const char* {
-            return "Other";
-        });
-        assert(ui.speciesChoiceCount()==0);
-        assert(!ui.acceptSpeciesPicker(error)); // Never choose an absent match.
+        {
+            const auto current=*ui.draft().current();
+            // Named ability choices without duplicate ID-only rows.
+            const auto abilities=G::EditorFields::abilityChoices(current,family==G::SaveFamily::Black2White2);
+            assert(!abilities.empty() && abilities.back()==2);
+            assert(std::adjacent_find(abilities.begin(),abilities.end())==abilities.end());
+            assert(!ui.draft().current()->hiddenAbility());
+            assert(ui.editDraft().stage(GField::AbilitySlot,0,2,error));
+            assert(ui.draft().current()->hiddenAbility());
+            assert(ui.draft().current()->ability()==31);
+            // Pikachu has only its base form.
+            assert(G::EditorFields::formChoices(ui.draft(),family==G::SaveFamily::Black2White2).size()==1);
+            assert(!ui.editDraft().stage(GField::Gender,0,2,error)); // Pikachu isn't genderless.
+            assert(ui.editDraft().stage(GField::Gender,0,1,error));
+            assert(ui.draft().current()->gender()==1);
+        }
+        assert(!ui.editDraft().stageName(GField::NicknameText,"INVALID NAME LONG",error));
+        assert(ui.editDraft().stageName(GField::NicknameText,"NXPIKA",error));
+        assert(ui.editDraft().stageName(GField::OriginalTrainerText,"NXT",error));
+        // Occupied-slot species changes explain their native restriction.
+        assert(ui.speciesRefusal(26).empty());
+        assert(!ui.speciesRefusal(1).empty());   // Different growth group.
+        assert(!ui.speciesRefusal(650).empty()); // Never a later-generation species.
         assert(ui.draft().current()->species()==25);
-        ui.filterSpecies("rAi",[](uint16_t id)->const char* {
-            return id==26?"Raichu":"Other";
-        });
-        assert(ui.speciesChoiceCount()==1);
-        assert(ui.acceptSpeciesPicker(error));
-        assert(ui.surface()==G::Gen5SharedScreenState::Surface::Edit);
+        assert(ui.editDraft().stage(GField::Species,0,26,error));
         assert(ui.draft().current()->species()==26);
-        assert(!ui.stageFieldValue(1,error)); // Growth differs: fail closed.
+        assert(!ui.editDraft().stage(GField::Species,0,1,error)); // Growth differs: fail closed.
         assert(ui.keep(localUiWorkspace,error));
         assert(localUiWorkspace.viewParty(0)->hiddenAbility());
         assert(localUiWorkspace.viewParty(0)->gender()==1);
@@ -1998,7 +1919,7 @@ int main() {
             GSlot{GRegion::Party,0,0},error));
         assert(transactionUi.activate(transactionWorkspace,GA::Edit,error));
         const auto transactionNature=transactionUi.draft().current()->nature();
-        assert(transactionUi.adjustField(1,error));
+        assert(transactionUi.editDraft().stage(GField::Nature,0,(transactionNature+1u)%25u,error));
         assert(!transactionUi.back());
         assert(transactionUi.surface()==G::Gen5SharedScreenState::Surface::ConfirmDraft);
         const auto untouched=transactionWorkspace.viewParty(0)->nature();

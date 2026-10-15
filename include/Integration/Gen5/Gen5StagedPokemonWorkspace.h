@@ -5,6 +5,7 @@
 #include "Integration/Gen5/Gen5StagedPokemonRecord.h"
 #include "Integration/Gen5/Gen5NativeCreate.h"
 #include "Integration/Gen5/Gen5Bag.h"
+#include "Integration/Gen5/Gen5BlankSlot.h"
 #include "Integration/Gen5/Gen5Trainer.h"
 
 #include <cstddef>
@@ -112,9 +113,8 @@ public:
            !target || !target->valid() || !target->empty() ||
            target->originalEncryptedBytes().size()!=Crypto::StoredSize)
             return fail("Gen V clone requires occupied original and truly empty box slot");
-        const auto empty=target->originalEncryptedBytes();
-        if(!std::all_of(empty.begin(),empty.end(),[](uint8_t v){return v==0;}))
-            return fail("Gen V clone refuses nonzero empty-slot payload");
+        if(!nativeBlankSlot5(target->originalEncryptedBytes()))
+            return fail("Gen V clone destination is not a native blank PK5 slot");
         auto decoded=Crypto::decrypt(original->originalEncryptedBytes());
         if(decoded.size()!=Crypto::StoredSize && decoded.size()!=Crypto::PartySize)
             return fail("Gen V clone encountered a noncanonical PK5 geometry");
@@ -175,7 +175,7 @@ public:
         return true;
     }
 
-    // A boxed removal is an app-owned all-zero PK5 replacement only.
+    // A boxed removal is an app-owned native blank PK5 replacement only.
     // Party removal and party compaction are explicitly unsupported.
     [[nodiscard]] bool removeBox(size_t box,size_t slot,
                                  std::string* error=nullptr) {
@@ -193,7 +193,8 @@ public:
             return fail("Gen V removal requires one occupied valid original box slot");
         BoxReplacement replacement;
         replacement.kind=ChangeKind::RemoveBox;
-        replacement.after.assign(Crypto::StoredSize,0);
+        // Retail at-rest blank (PKHeX SaveFile.ClearBoxes), never raw zeros.
+        replacement.after=encryptedBlankBoxSlot5();
         boxReplacements_.emplace(location,std::move(replacement));
         if(error)error->clear();
         return true;
@@ -234,9 +235,10 @@ public:
            boxReplacements_.count(location))return false;
         const auto pk=sourceSlot(location);
         if(!pk || !pk->valid() || !pk->empty())return false;
+        // Retail empty slots are usually the ENCRYPTED blank PK5 (nonzero
+        // keystream bytes), not raw zeros; both native encodings qualify.
         const auto bytes=pk->originalEncryptedBytes();
-        return bytes.size()==Crypto::StoredSize &&
-            std::all_of(bytes.begin(),bytes.end(),[](uint8_t byte){return byte==0;});
+        return bytes.size()==Crypto::StoredSize && nativeBlankSlot5(bytes);
     }
     [[nodiscard]] size_t firstEmptyCloneDestination() const {
         for(size_t box=0;box<24;++box)

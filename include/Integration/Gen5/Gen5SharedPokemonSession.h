@@ -206,6 +206,10 @@ public:
            !apply(Field::AbilitySlot,0,slot5(after)))return false;
         if(before.gender()!=after.gender() &&
            !apply(Field::Gender,0,after.gender()))return false;
+        // Coordinated Gender / Shiny / Ability / ID edits end in one exact
+        // PID; Review replays the same field in the same position.
+        if(before.pid()!=after.pid() &&
+           !apply(Field::Personality,0,after.pid()))return false;
 
         const auto beforeIv=before.ivs();
         const auto afterIv=after.ivs();

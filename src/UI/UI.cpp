@@ -542,12 +542,12 @@ namespace UI {
             *trainer,"Pokemon "+std::string(identity->title),sourcePath,0,userUid,
             PokeVault::Safety::SourceKind::ExternalLegacy,gameId,
             opened.source.binding.sourceType);
-        // Gen5SharedReadOnlySurface intercepts ALL Gen V input before the
-        // inherited source/bank/Items/writer handlers. Gen V reuses the
-        // shared View/Edit/Review field model with native staged PK5 records;
-        // the original emulator save remains immutable.
-        trainerScreen.selectedMode=TrainerViewScreen::ViewMode::Party;
-        trainerScreen.detailViewActive=true;
+        // Gen V opens on the same loaded-game hub as Gen I-IV (Pokemon, Party,
+        // Storage, Items, Trainer). Gen5SharedReadOnlySurface intercepts only
+        // activation, Exit and Review on the hub, and owns the entered panels,
+        // so inherited Bank/source writers stay unreachable. The original
+        // emulator save remains immutable. Gen V reuses the
+        // shared View/Edit/Review field model with native staged PK5 records.
         // Product Home Items opens the same session directly on the Gen V Bag.
         if (intent==SaveSelectScreen::OpenIntent::Items)
             trainerScreen.openItemsShortcut();

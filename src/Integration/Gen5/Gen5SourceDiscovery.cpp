@@ -1,4 +1,5 @@
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
+#include "Integration/Gen5/Gen5SaveDiagnostics.h"
 
 #include "Utils/SHA256.h"
 #include "Games/GameIdentity.h"
@@ -10,6 +11,8 @@
 #include <cerrno>
 #include <cstdio>
 #include <dirent.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <set>
 #include <sys/stat.h>
 #include <utility>
@@ -458,6 +461,19 @@ Source::SaveInstance inspectSnapshot(const SourceSnapshot& snapshot,
     // later corruption could silently reopen the other copy of the same file.
     row.sourceVariant=save->selectedBackupPartition()?"gen5-copy-1-backup":
                       "gen5-copy-0-primary";
+    // The same blank/invalid-copy gate as probeNormalizedBattery: a
+    // checksum-valid copy with no trainer identity never becomes a Ready
+    // "Party 0 / Boxed 0" row, a card preview, or an editor session.
+    CopyState5 copyState=CopyState5::ChecksumInvalid;
+    if(auto refused=unopenableCopyDiagnostic5(snapshot.bytes,*save,copy,&copyState);!refused.empty()) {
+        row.validation=Source::ValidationStatus::Invalid;
+        row.sourceLabel=std::string("Gen V / ")+
+            (save->selectedBackupPartition()?"Backup copy":"Primary copy")+" / NOT OPENABLE";
+        row.partyCount=0;
+        row.trainerName.clear();
+        row.diagnostic=std::move(refused);
+        return row;
+    }
     row.partyCount=save->partyCount();
     row.trainerName=displayTrainerName(save->trainer().rawName).value_or("");
     // Both retail save copies may have valid checksums yet vastly different
@@ -469,6 +485,8 @@ Source::SaveInstance inspectSnapshot(const SourceSnapshot& snapshot,
         " / Party "+std::to_string(save->partyCount())+
         " / Boxed "+std::to_string(save->diagnostics().occupiedBoxRecords);
     if(!row.trainerName.empty())row.sourceLabel+=" / "+row.trainerName;
+    if(copyState==CopyState5::NewGameNoTrainer)
+        row.sourceLabel+=" / New-game save: no trainer yet";
     row.validation=Source::ValidationStatus::Ready;
     row.diagnostic=snapshot.message;
     if(save->selectedBackupPartition())row.diagnostic+="; validated backup copy";
@@ -498,7 +516,10 @@ std::vector<Source::SaveInstance> inspectSourceChoices(const std::string& path,
     std::string_view providerLabel,std::string_view assignedExactGame) {
     const auto snapshot=readSourceSnapshot(path,providerLabel,assignedExactGame);
     auto row=inspectSnapshot(snapshot,assignedExactGame,SaveCopySelection::Automatic);
-    if(row.diagnostic.find("two valid but different")==std::string::npos)
+    // Offer both explicit copies when Automatic is ambiguous, or when the
+    // automatically validated copy is blank but the other copy is openable.
+    if(row.diagnostic.find("two valid but different")==std::string::npos &&
+       row.diagnostic.find("choose it explicitly")==std::string::npos)
         return {std::move(row)};
     std::vector<Source::SaveInstance> choices;
     for(const auto copy:{SaveCopySelection::Primary,SaveCopySelection::Backup})
@@ -647,6 +668,55 @@ DiscoveryResult discoverKnownSources(DiscoveryLimits limits,
             DiscoveryRoot{"sdmc:/melonds","melonDS",2}})
         if(safeDirectory(root.path))roots.push_back(root);
     return discoverSources(roots,limits);
+}
+
+bool writeGen5DiagnosticsReport(const std::string& sourcePath,std::string_view exactGame,
+                                std::string_view timestamp,const std::string& diagnosticsRoot,
+                                std::string& writtenPath,std::string& error) {
+    writtenPath.clear();
+    error.clear();
+    const auto safe=[](std::string_view v) {
+        return !v.empty() && std::all_of(v.begin(),v.end(),[](unsigned char c) {
+            return std::isalnum(c) || c=='_' || c=='-';
+        });
+    };
+    if(!safe(exactGame) || !safe(timestamp) || diagnosticsRoot.empty()) {
+        error="diagnostics request has an unsafe game id, timestamp or root";
+        return false;
+    }
+    std::vector<uint8_t> bytes;
+    std::string container;
+    std::string readError;
+    SaveReport5 report;
+    if(!readNormalizedSourceReadOnly(sourcePath,bytes,readError,&container)) {
+        report.container=container.empty()?"unreadable":container;
+        report.chosenReason="source read failed: "+readError;
+    } else {
+        report=inspectSave5(bytes,container.empty()?"raw-nds-battery":container);
+    }
+    if(::mkdir(diagnosticsRoot.c_str(),0777)!=0 && errno!=EEXIST) {
+        error="could not create the diagnostics directory";
+        return false;
+    }
+    const std::string path=diagnosticsRoot+"/gen5_"+std::string(exactGame)+"_"+
+                           std::string(timestamp)+".txt";
+    // O_EXCL: a new file only; never overwrite or touch any other file.
+    const int fd=::open(path.c_str(),O_WRONLY|O_CREAT|O_EXCL,0644);
+    if(fd<0) {
+        error="could not create a new diagnostics file";
+        return false;
+    }
+    const auto text=formatSaveReport5(report,exactGame);
+    bool ok=::write(fd,text.data(),text.size())==static_cast<ssize_t>(text.size());
+    ok=::fsync(fd)==0 && ok;
+    ok=::close(fd)==0 && ok;
+    if(!ok) {
+        ::unlink(path.c_str());
+        error="could not write the diagnostics file";
+        return false;
+    }
+    writtenPath=path;
+    return true;
 }
 
 } // namespace PokeVault::Integration::Gen5

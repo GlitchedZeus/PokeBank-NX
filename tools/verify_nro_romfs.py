@@ -32,6 +32,7 @@ GAME_CARDS = (
 )
 TRAINER_PORTRAITS = (
     "red", "leaf", "gold", "kris", "brendan", "may", "lucas", "dawn", "ethan", "lyra",
+    "hilbert", "hilda", "nate", "rosa",
     "chase", "elaine", "victor", "gloria", "rei", "akari", "florian", "juliana", "paxton",
     "harmony",
 )

@@ -49,7 +49,7 @@ jobs:
           set -euo pipefail
           python3 tests/test_verify_nro_romfs.py
           python3 tests/test_gen5_readonly_ui_contract.py
-          for bin in test_gen5_bag_screen test_gen5_trainer test_gen5_party_box_parity test_gen5_source_e2e test_gen5_export_validation; do
+          for bin in test_gen5_bag_screen test_gen5_trainer test_gen5_party_box_parity test_gen5_source_e2e test_gen5_export_validation test_gen5_save_diagnostics; do
             make -f Makefile.host "build-host/$bin"
             "./build-host/$bin"
           done

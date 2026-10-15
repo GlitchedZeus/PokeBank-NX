@@ -155,14 +155,24 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     }
     while (bag.pocket() != 0) bag.changePocket(1);
 
-    // Touch: first tap focuses a row, a tap on the focused row acts as A.
-    assert(!bag.tapRow(1, ws) && bag.row() == 1);
-    assert(bag.tapRow(1, ws));
+    // Gen I-IV Items conventions: a completed tap selects and acts like A;
+    // Up/Down wrap; Left/Right page; a swipe moves by whole rows (clamped).
+    assert(bag.tapRow(1, ws) && bag.row() == 1);
     assert(!bag.tapRow(9, ws) && bag.row() == 1);
     bag.moveRow(-5, ws);
     assert(bag.row() == 0);
     bag.moveRow(50, ws);
     assert(bag.row() == 1);
+    bag.stepRow(1, ws);
+    assert(bag.row() == 0);  // wraps past the last item
+    bag.stepRow(-1, ws);
+    assert(bag.row() == 1);  // wraps past the first item
+    bag.stepPage(1, 1, ws);
+    assert(bag.row() == 0);  // one item per page: next page wraps to the first
+    bag.stepPage(-1, 1, ws);
+    assert(bag.row() == 1);
+    bag.stepPage(1, 8, ws);
+    assert(bag.row() == 1);  // a single page does not move
     bag.moveRow(-1, ws);
 
     // A = quantity keypad. A stale request (cursor moved) is refused.

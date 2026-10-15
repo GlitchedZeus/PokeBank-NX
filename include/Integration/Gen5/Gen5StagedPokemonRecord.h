@@ -7,6 +7,7 @@
 #include "Integration/Gen5/Gen5PersonalData.h"
 #include "Integration/Gen5/Gen5Progression.h"
 #include "Integration/Gen5/Gen5NativeText.h"
+#include "Integration/Gen5/Gen5PidCoordination.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -26,7 +27,8 @@ class StagedPokemon5Record {
 public:
     enum class Field : uint8_t { Nature, Friendship, IV, EV, HeldItem, Ball, MetLevel,
                                 Move, MovePP, MovePPUps, TrainerId, SecretId, OriginalTrainerGender,
-                                Pokerus, MetLocation, FatefulEncounter, Form, AbilitySlot, Gender, Level, Experience, NicknameText, OriginalTrainerText, Species, CloneBox, RemoveBox, CreateBox };
+                                Pokerus, MetLocation, FatefulEncounter, Form, AbilitySlot, Gender, Level, Experience, NicknameText, OriginalTrainerText, Species, CloneBox, RemoveBox, CreateBox,
+                                Shiny, Personality };
 
     static std::optional<StagedPokemon5Record> create(
         std::span<const uint8_t> source, std::string* error = nullptr,
@@ -167,8 +169,13 @@ public:
                 if(ability==0)
                     return fail("Gen V selected ability slot is not present for this form");
                 const uint32_t beforePID=Crypto::read32(candidate,0);
-                const uint32_t newPID=value==2?beforePID:
-                    ((beforePID&~(1u<<16))|(value<<16));
+                const uint8_t beforeSlot=(candidate[0x42]&1)?2:
+                    static_cast<uint8_t>(abilityBit5(beforePID));
+                // Gen III/IV origins keep their ability in PID bit 0 (PKHeX
+                // PKM.PIDAbility); only a Gen V origin may move PID bit 16.
+                if(value!=beforeSlot && earlierGenerationOrigin5(candidate[0x5F]))
+                    return fail("The ability of a Pokemon from an earlier generation is fixed by its original PID");
+                const uint32_t newPID=value==2?beforePID:withAbilityBit5(beforePID,value);
                 // Changing the PID ability bit must not silently change shiny
                 // status or hidden/coupled game metadata.
                 const uint16_t tid=Crypto::read16(candidate,0x0C);
@@ -190,8 +197,54 @@ public:
                 if(stat!=0 || value>2 || !personal ||
                    !genderAllowed5(personal.info->genderRatio,value))
                     return fail("Gen V gender is incompatible with this form's native ratio");
+                const uint8_t storedGender=static_cast<uint8_t>((candidate[0x40]>>1)&3);
+                if(value!=storedGender && variableGenderRatio5(personal.info->genderRatio)) {
+                    // Gen V gender is derived from the PID low byte (PKHeX
+                    // EntityGender.GetFromPID); stored bits never diverge from it.
+                    if(earlierGenerationOrigin5(candidate[0x5F]))
+                        return fail("The gender of a Pokemon from an earlier generation is fixed by its original PID");
+                    const auto pid=withGender5(Crypto::read32(candidate,0),personal.info->genderRatio,
+                        static_cast<uint8_t>(value),Crypto::read16(candidate,0x0C),
+                        Crypto::read16(candidate,0x0E));
+                    if(!pid)return fail("Gen V gender could not be matched to a native PID");
+                    Crypto::write16(candidate,0,static_cast<uint16_t>(*pid));
+                    Crypto::write16(candidate,2,static_cast<uint16_t>(*pid>>16));
+                }
                 candidate[0x40]=static_cast<uint8_t>(
                     (candidate[0x40]&~uint8_t{6}) | (value<<1));
+                break;
+            }
+            case Field::Shiny: {
+                if(stat!=0 || value>1)
+                    return fail("Gen V shiny state must be off/on");
+                const uint32_t pid=Crypto::read32(candidate,0);
+                const uint16_t tid=Crypto::read16(candidate,0x0C),sid=Crypto::read16(candidate,0x0E);
+                if(shinyPid5(pid,tid,sid)==(value!=0))break;
+                if(earlierGenerationOrigin5(candidate[0x5F]))
+                    return fail("Shiny state of a Pokemon from an earlier generation is fixed by its original PID");
+                const uint32_t next=withShiny5(pid,tid,sid,value!=0);
+                Crypto::write16(candidate,0,static_cast<uint16_t>(next));
+                Crypto::write16(candidate,2,static_cast<uint16_t>(next>>16));
+                break;
+            }
+            case Field::Personality: {
+                // Exact PID replay of a draft built by the coordinated procedures
+                // above. Only a Gen V origin, and a PID that keeps the native
+                // gender / ability links whenever the record already had them.
+                if(stat!=0 || earlierGenerationOrigin5(candidate[0x5F]) || !personal)
+                    return fail("Gen V PID replay requires a native Gen V origin");
+                const auto linked=[&](const std::vector<uint8_t>& bytes,uint32_t pid) {
+                    const uint8_t gender=static_cast<uint8_t>((bytes[0x40]>>1)&3);
+                    const bool hidden=(bytes[0x42]&1)!=0;
+                    const bool genderOk=genderFromPid5(pid,personal.info->genderRatio)==gender;
+                    const bool abilityOk=hidden ||
+                        abilityForSlot5(*personal.info,abilityBit5(pid))==bytes[0x15];
+                    return genderOk && abilityOk;
+                };
+                if(linked(previous,Crypto::read32(previous,0)) && !linked(candidate,value))
+                    return fail("Gen V PID would break the native gender / ability link");
+                Crypto::write16(candidate,0,static_cast<uint16_t>(value));
+                Crypto::write16(candidate,2,static_cast<uint16_t>(value>>16));
                 break;
             }
             case Field::Level: {
@@ -220,6 +273,9 @@ public:
             case Field::Nature:
                 if (stat != 0 || value > 24)
                     return fail("Gen V nature index must be in [0,24]");
+                // Gen V stores nature at 0x41; Gen III/IV origins keep PID % 25.
+                if (value != candidate[0x41] && earlierGenerationOrigin5(candidate[0x5F]))
+                    return fail("The nature of a Pokemon from an earlier generation is fixed by its original PID");
                 candidate[0x41] = static_cast<uint8_t>(value);
                 break;
             case Field::Friendship:
