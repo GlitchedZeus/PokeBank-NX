@@ -4,9 +4,11 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-15 ~03:40 UTC (23:40 America/Toronto, Oct 14).
+**Last updated:** 2026-10-15 (Gen V hardware failure recorded).
 
 ## Active milestone
+
+**URGENT: Gen V FAILED owner hardware acceptance** on candidate `fa9cfcea` (NRO `57b4ec2b…`). Thread 2 is repairing it on #307 (unfrozen). Gen VI/VII merges are on hold. Thread 3 is standing down so the usage quota goes to the repair.
 
 **Stage B — complete Gen V (Black, White, Black 2, White 2)** on PR #307.
 Stage A (Gen I–IV) is software-complete on #306 and waiting on hardware testing.
@@ -19,7 +21,7 @@ Stage C (Gen VI) is starting in parallel.
 | Integrated Gen I–IV / Product Home | `0760334fb850ca46b5171c55f690998d7680d4e7` | `4f28d7f7ad38c2b62458642e014ae3c05e866755c4152bf4c2db0574c381ce91` | **Owner accepted** (Oct 8) |
 | Earlier #306 candidate | (earlier #306 head) | — | Owner confirmed: artwork restored, Gen IV launches directly into DraStic |
 | #306 Gen I–IV candidate | `9bf9d492` (PR head `4b9b9f65` adds docs only) | recorded in a #306 PR comment | **NOT DEVICE TESTED** |
-| **Integrated Gen I–V candidate** (#307) | `fa9cfceabfecd2afb79d0df935588a3e81e0a7fe` (tree `5de23dc2`) | `57b4ec2bebf6f15cac0ee59218672fd6acc029c1e025abbe159a322aa1bccd23` (175,435,441 B; run 38673482742, artifact 11945232986) | **NOT DEVICE TESTED**. Owner checklist in the #307 comment. #307 is frozen during the test. |
+| **Integrated Gen I–V candidate** (#307) — **FAILED hardware** | `fa9cfceabfecd2afb79d0df935588a3e81e0a7fe` (tree `5de23dc2`) | `57b4ec2bebf6f15cac0ee59218672fd6acc029c1e025abbe159a322aa1bccd23` (175,435,441 B; run 38673482742, artifact 11945232986) | **NOT DEVICE TESTED**. Owner checklist in the #307 comment. #307 is frozen during the test. |
 
 ## Generation and game coverage
 
@@ -30,7 +32,7 @@ conservative estimates.
 |---|---|---|---|---|
 | I–III | RBY, GSC, RSE/FRLG | ~90% | CI green on #306/#307 | Earlier build accepted; newest candidate untested |
 | IV | DPPt, HGSS | ~90% | CI green on #306/#307 | Earlier build accepted; newest candidate untested |
-| V | BW, B2W2 | ~90% | 9/9 CI green on `fa9cfcea`; full GCC/Clang host + sanitizers pass | Candidate `fa9cfcea` awaiting owner test |
+| V | BW, B2W2 | **repair in progress** (UI does not match Gen I–IV; Create unusable; real B2 save decodes as empty) | CI green on `fa9cfcea`, but CI did not catch the failures | **FAILED** on `fa9cfcea` |
 | VI | X, Y, OR, AS | ~60% (PK6/SAV6, staged Edit/Clone/Remove, party stat recompute, staged Bag, read-only box names/Pokédex, editor provider, sources; not wired into the app) | 7 Gen VI test binaries under GCC/Clang ± ASan/UBSan; differential vs PKSM-Core | — |
 | VII | SM, USUM; LGPE as its own family | ~40% (read-only SAV7 + MemeCrypto verify; PK7 staged Edit/Clone/Remove plus staged Bag up to signing; party stats; read-only box names/Pokédex; export blocked on re-signing evidence; LGPE research only) | Gen VII focused CI green on #311 | — |
 | VIII | SwSh, BDSP, PLA | ~8% (PKSE-derived read code; research note `docs/gen8/SWSH_RESEARCH.md`; installed-save path confirmed read-only; `Integration/Gen8` lane approved, SWSH first) | none yet | — |
@@ -77,6 +79,14 @@ conservative estimates.
 | Coordinator | `claude/optimistic-euler-ph2z4f` | docs only, on `a17c503a` | — | Coordinator |
 | #300 / #304 / #302 | preserved source lanes | `58bd564b` / `4d8c267e` / `6e27bbd5` | green | Contained in #307 |
 | #305 / #280 | `claude/gen4-capture-ball` / `fix/gen14-action-tap-empty-parity-20261011` | `b8eb006e` / `dcd855a7` | — | Rule confirmed by test / #280 tests change Gen III/IV surfaces → Thread 1 |
+
+## Gen V hardware failures (owner test of `fa9cfcea`)
+
+1. **Wrong first screen.** `UI.cpp` `handleGen5View()` forces Party mode with the detail view open, and `Gen5SharedReadOnlySurface.inc` (1,886 lines) intercepts all Gen V input. Gen IV opens the storage hub instead.
+2. **Empty box → A shows only Cancel.** Add is gated by `emptyCloneDestination()`, the slot must be zero-filled, and the provider does not advertise the PokemonCreation capability.
+3. **Real B2 DraStic `.dsv` decodes as empty.** Name shows unsupported glyphs; Money, TID and SID are 0; gender shows male for a female character; party, boxes and dex are all 0. Suspects: copy/counter selection, layout identification, decoding.
+4. **Home card portrait assumes male** when the gender is unknown (`trainerPortraitForGame`). Name, party and dex are missing from the card.
+5. **Separate "Trainer - Generation V" modal** with broken navigation.
 
 ## QA results (Thread 4, final, 2026-10-15)
 
