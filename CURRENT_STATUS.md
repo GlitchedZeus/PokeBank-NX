@@ -1,5 +1,20 @@
 # PokeBank NX — Current Verified Engineering State
 
+## ACTIVE OWNER GATE — OCTOBER 15, 2026
+
+**Mandatory sequence: Gen V fixes → full Gen I–V code/action audit → exhaustive real Switch test of every reachable action on all 20 releases → owner approves the exact NRO → only then active Gen VI/3DS integration.** [Master acceptance #313](https://github.com/GlitchedZeus/PokeBank-NX/issues/313) · [106-checkpoint hardware matrix](docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md).
+
+- **Single app integration:** [#307](https://github.com/GlitchedZeus/PokeBank-NX/pull/307) @ `35cbf1637da41e9607f2d524354c51d70e401fb2`; all **9/9 exact-head CI gates SUCCESS**, [Gen I–V NRO artifact](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38682361760). **Hardware NOT yet accepted.** Prior `fa9cfcea` Gen V candidate **failed** physical testing (shared hub, native encrypted blank/Create, new-game trainer presentation); fixes require retest.
+- **Gen I–IV:** finalization PR #306 head `4b9b9f65` is **fully an ancestor of #307**. The older #278/#300/#304 are also fully incorporated. Their PRs were closed as **superseded tracking** (not merged to main; branches/commits preserved).
+- **Gen VI–VIII:** [#309](https://github.com/GlitchedZeus/PokeBank-NX/pull/309), [#311](https://github.com/GlitchedZeus/PokeBank-NX/pull/311), [#312](https://github.com/GlitchedZeus/PokeBank-NX/pull/312) are individually CI-green research/backend drafts, **not** permission to shift active app focus beyond Gen V. No owner-device accepted VI–VIII editor.
+- **QA:** [#310](https://github.com/GlitchedZeus/PokeBank-NX/pull/310) fuzz/export/NRO audit green; outstanding QA-F2 obsolete one-time workflow YAML and QA-F3b Gen II exclusive publishing should be reviewed before final sign-off.
+- **Legality:** [#298](https://github.com/GlitchedZeus/PokeBank-NX/pull/298), [#303](https://github.com/GlitchedZeus/PokeBank-NX/pull/303) and [#308](https://github.com/GlitchedZeus/PokeBank-NX/pull/308) remain separate, combined gate failures need review; not complete PKHeX parity.
+- **GitHub hygiene:** original board 275 branches/32 open PR/45 open issues. Four ancestor PRs closed as superseded, 18 future-feature issues archived not-planned for current milestone, and one new [acceptance issue #313](https://github.com/GlitchedZeus/PokeBank-NX/issues/313) created; **28 open PRs / 28 open issues**. Full original idea histories preserved in [future backlog](docs/FUTURE_AFTER_GEN15_BACKLOG.md). **Branch refs not deleted**; 269 unique branch tips require separate safety review before pruning.
+
+The October 14 snapshots below are historical, not today's active work authorization.
+
+---
+
 **Checked October 14, 2026.** GitHub remains authoritative: re-fetch every PR HEAD and exact-run CI before any integration. [Detailed cross-lane audit](docs/ENGINEERING_SNAPSHOT_20261014.md).
 
 ## Hardware acceptance and release
