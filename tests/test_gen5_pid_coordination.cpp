@@ -4,7 +4,7 @@
 // - Nature is a stored byte in Gen V (0x41) and never touches the PID.
 // - Gen III/IV-origin PK5s keep their PID-derived nature / gender / ability.
 // - The exact-PID replay (Field::Personality) refuses a PID that breaks a
-//   gender / ability link the record already had.
+//   gender / ability link the record already had; each link independently (QA-F4).
 #include "Integration/Gen5/Gen5PidCoordination.h"
 #include "Integration/Gen5/Gen5StagedPokemonRecord.h"
 
@@ -159,6 +159,30 @@ void idChangeCanKeepShinyThroughPid() {
     assert(r.current().shiny() && linked(r.current()));
 }
 
+// QA-F4 (fuzz_gen5_edits): the gender and ability links are protected
+// independently. A Gen V record whose ability byte does not match its PID slot
+// still keeps its PID/gender link on an exact PID replay.
+void replayProtectsEachLinkIndependently() {
+    constexpr uint16_t eevee = 133;                // gender ratio 31 (variable)
+    constexpr uint32_t pid = 0x11220090u;          // low byte 0x90 -> male
+    auto plain = C::decrypt(record(eevee, pid, 21));
+    plain[0x15] = 9;                               // not an Eevee ability: link already broken
+    C::write16(plain, 6, C::checksum(plain));
+    auto r = staged(C::encryptCandidate(plain));
+    const auto personal = G::personal5(eevee, 0, true);
+    assert(G::genderFromPid5(pid, personal.info->genderRatio) == r.current().gender());
+    std::string error;
+    const uint32_t breaking = 0x0009FE00u;         // low byte 0x00 -> female
+    assert(!r.stage(Field::Personality, 0, breaking, &error) && !r.dirty());
+    assert(error.find("gender") != std::string::npos);
+    // A PID that keeps gender is still accepted: the already-broken ability
+    // link is not newly broken, so it does not block the replay.
+    const uint32_t keepsGender = 0x0001FE90u;
+    assert(G::genderFromPid5(keepsGender, personal.info->genderRatio) == 0);
+    assert(r.stage(Field::Personality, 0, keepsGender, &error));
+    assert(r.current().pid() == keepsGender && r.current().gender() == 0);
+}
+
 } // namespace
 
 int main() {
@@ -169,5 +193,6 @@ int main() {
     earlierOriginsKeepPidDerivedTraits();
     exactPidReplayKeepsLinks();
     idChangeCanKeepShinyThroughPid();
+    replayProtectsEachLinkIndependently();
     std::cout << "Gen V PID-coordinated Gender / Shiny / Ability / Nature: PASS\n";
 }

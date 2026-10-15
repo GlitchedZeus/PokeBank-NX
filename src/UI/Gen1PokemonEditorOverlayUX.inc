@@ -1,5 +1,6 @@
 #include "UI/Gen1PokemonEditorOverlay.h"
 
+#include "Integration/Gen1/Gen1ExportTransaction.h"
 #include "Integration/Gen1/Gen1StagedInventoryEditor.h"
 #include "Integration/Gen1/Gen1StagedPokemonEditor.h"
 #include "Legacy/RBYReadOnlyTrainer.h"
@@ -603,20 +604,10 @@ bool hasPending(TrainerViewScreen& screen) {
 }
 
 std::vector<std::string> pendingLines(TrainerViewScreen& screen) {
-    std::vector<std::string> out;
     auto* trainer = rbyTrainer(screen);
-    if (!trainer) return out;
-    if (auto* e = trainer->stagedPokemon()) {
-        for (const auto& change : e->pendingChanges())
-            out.push_back(change.label + ": " + change.beforeValue + " -> " + change.afterValue);
-    }
-    if (auto* inv = trainer->stagedInventory()) {
-        for (const auto& change : inv->pendingChanges()) {
-            out.push_back("Inventory item " + std::to_string(change.itemId) + ": " +
-                std::to_string(change.before) + " -> " + std::to_string(change.after));
-        }
-    }
-    return out;
+    if (!trainer || !trainer->stagedPokemon()) return {};
+    return PokeVault::Integration::Gen1::gen1ExportChangeLines(
+        *trainer->stagedPokemon(), trainer->stagedInventory());
 }
 
 std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
@@ -632,17 +623,6 @@ std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
         return {};
     }
 
-    std::vector<uint8_t> inventoryCandidate;
-    if (auto* inventory = trainer->stagedInventory(); inventory && inventory->hasPendingChanges()) {
-        inventoryCandidate = inventory->finalize(error);
-        if (inventoryCandidate.empty()) return {};
-    }
-    const auto edited = pokemon->finalizedBytes(error, inventoryCandidate);
-    if (edited.empty()) {
-        if (error.empty()) error = "Generation I staged export finalization failed";
-        return {};
-    }
-
     const std::string root = PokeBank::Paths::gen1ExportsRoot();
     if (!PokeBank::Paths::ensureGen1ExportsRoot(&error)) return {};
     const std::string timestamp = Utils::getTimestamp();
@@ -651,30 +631,20 @@ std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
         error = "Could not construct safe Generation I export path";
         return {};
     }
-    const auto game = screen.sourceGameId == "yellow_gb"
-        ? PokeVault::Integration::Gen1::SourceGame::Yellow
-        : screen.sourceGameId == "blue_gb" ? PokeVault::Integration::Gen1::SourceGame::Blue
-                                           : PokeVault::Integration::Gen1::SourceGame::Red;
 
     // Verified transaction: temp directory, fsync, read-back + SHA-256, strict Gen I reparse
-    // before and after writing, atomic publish. The RetroArch source is never opened for writing.
-    PokeVault::Integration::Common::VerifiedExportRequest request;
+    // before and after writing, exclusive publish. The RetroArch source is never opened for
+    // writing. The exact game comes from the parsed save, never from the UI's game id.
+    PokeVault::Integration::Gen1::Gen1ExportRequest request;
     request.rootDirectory = root;
     request.directoryStem = exportDir.substr(root.size() + 1);
-    request.generationLabel = "Generation I";
-    request.fileExtension = ".srm";
     request.sourcePath = screen.backupDir;
-    request.gameId = screen.sourceGameId;
-    request.saveFormat = "International R/B/Y SRAM (Party edit deferred)";
     request.timestamp = timestamp;
 #ifdef POKEVAULT_GIT_COMMIT
     request.applicationSha = POKEVAULT_GIT_COMMIT;
 #endif
-    request.originalBytes = pokemon->originalBytes();
-    request.editedBytes = edited;
-    request.changeLines = pendingLines(screen);
-    request.validator = PokeVault::Integration::Common::gen1StrictValidator(game);
-    const auto result = PokeVault::Integration::Common::publishVerifiedStagedExport(request);
+    const auto result = PokeVault::Integration::Gen1::publishVerifiedGen1Export(
+        *pokemon, request, trainer->stagedInventory());
     if (!result.success) {
         error = result.error.empty() ? "Verified Generation I export failed" : result.error;
         return {};
