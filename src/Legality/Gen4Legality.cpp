@@ -366,12 +366,20 @@ void Analyzer::findVerifiedEncounter() {
         moves_ = verifyMoves(pk_, info_, history_);
         return;
     }
+    // PKHeX enumerates lazily (PeekEnumerator) and sets ManualFlag only when the generator is
+    // advanced to its deferred last resort, so the flag counts only when that element was
+    // requested: by MoveNext, or by a PeekIsNext made while the element before it was current.
     const std::size_t n = search_.list.size();
+    std::size_t requested = 0; // highest list index the generator has produced
+    auto peek = [&](std::size_t i) {
+        if (i + 1 < n) requested = std::max(requested, i + 1);
+        return i + 1 < n;
+    };
     for (std::size_t i = 0; i < n; ++i) {
-        const bool hasNext = i + 1 < n;
+        requested = std::max(requested, i);
         const Template t = makeTemplate(search_.list[i], pk_);
         Check e = verifyEncounter(t);
-        if (e.severity != kValid && hasNext) continue;
+        if (e.severity != kValid && peek(i)) continue;
         enc_ = t;
         info_ = encInfo(t);
         parse_.clear();
@@ -381,22 +389,23 @@ void Analyzer::findVerifiedEncounter() {
         }
         history_ = evolutionHistory(pk_, info_, level_);
         moves_ = verifyMoves(pk_, info_, history_);
-        if (!allValid(moves_) && hasNext) continue;
+        if (!allValid(moves_) && peek(i)) continue;
         bool parseValid = true;
         for (const auto& c : parse_) if (c.severity == kInvalid) parseValid = false;
-        if (!parseValid && hasNext) continue;
+        if (!parseValid && peek(i)) continue;
         const Check evo = verifyEvolution(t, history_, moves_);
-        if (evo.severity != kValid && hasNext) continue;
+        if (evo.severity != kValid && peek(i)) continue;
         if (evo.severity != kValid) parse_.push_back(evo);
         const int rating = matchRating(t, pk_);
         if (rating < 0 || rating < 3) break; // not IEncounterMatch, or better than PartialMatch
-        if (hasNext) continue;
+        if (peek(i)) continue;
         invalid(CheckIdentifier::Encounter, "Encounter is only a partial match (wrong version, location or IVs)");
         break;
     }
-    if (search_.manualFlag == 2)
+    const bool lastResortReached = requested + 1 == n;
+    if (lastResortReached && search_.manualFlag == 2)
         invalid(CheckIdentifier::PidRng, "The PID/IV does not match any reachable RNG frame for this wild encounter and lead");
-    else if (search_.manualFlag == 1)
+    else if (lastResortReached && search_.manualFlag == 1)
         invalid(CheckIdentifier::PidRng, "The PID/IV correlation type does not match this encounter");
 }
 

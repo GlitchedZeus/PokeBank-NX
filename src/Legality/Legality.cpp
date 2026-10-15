@@ -10,6 +10,7 @@
 
 #include "Legality/Legality.h"
 #include "Legality/GBLegality.h"
+#include "Legality/Gen4Legality.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen2/Gen2MoveCompatibility.h"
@@ -3187,6 +3188,7 @@ namespace Legality {
         if (!pk.checksumValid())
             add(r, Severity::Warning, "Stored checksum is invalid");
 
+        applyGen4Analyzer(r, pk, context.exactSourceGameId);
         return r;
     }
 

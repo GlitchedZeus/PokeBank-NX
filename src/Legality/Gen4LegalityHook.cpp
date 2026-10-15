@@ -16,8 +16,9 @@ namespace Legality {
 
 void applyGen4Analyzer(Report& report, const Pokemon::Pokemon& pk, std::string_view exactSourceGameId) {
     const Pokemon::Pokemon4ReadOnly* native = pk.nativePk4ReadOnly();
-    if (native == nullptr || !native->sizeValid()) return;
+    if (native == nullptr) return;
     const auto bytes = native->decryptedBytes();
+    if (bytes.size() != 136 && bytes.size() != 236) return; // structure problems are analyze()'s
     const std::span<const uint8_t> data(reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size());
     const Report g = analyzePk4(data, exactSourceGameId);
     const bool existingClean = report.problemCount() == 0;
