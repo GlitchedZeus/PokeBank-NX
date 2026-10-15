@@ -4,7 +4,7 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-15 09:15 UTC (tick: C/L/QA heads verified; Phase 6 audit units).
+**Last updated:** 2026-10-15 09:40 UTC (C divergence items 1–7 done; Gen III gender on Home; .dsv backup decision).
 
 ## Active milestone
 
@@ -27,6 +27,9 @@ any SHA below.
 | L | Lane complete in software: opt-in return host with a per-stage log, return-selection validation, handoff-hygiene audit (no leaked services or handles on the default path). Awaiting the owner's A/B device test. |
 | QA Phase 6 | fuzz_launch_plan (1.9M runs, no defect); export contract C6 Discard All on all 18 paths; SAVE_SAFETY_CHAIN.md; fuzz_home_cache. Open: stale home.party.* matrix facts. |
 | Final NRO gate | Waits on: C's F8 bytes and Castform/Cherrim; Gen III gender wiring (2R); QA matrix facts and re-run on the integrated head. gen15-integrated-candidate workflow is ready; last runs green on c939cd4 and c933734. |
+| 09:40 | #307 `d57e5bc4`: L `980a217b` and C `c7b0f978` merged, Gen III Home gender wired (HomePartyPreview.h:56/63), 139 PASS GCC/Clang plain and sanitize, qa 420/0. Pending merges: C `ce82066f` (all divergence items 1–7 done, Gen I Edit working-copy draft), QA `ce5919c` (Phase 6 complete, no new defects). |
+| Decision: .dsv backups | Gen IV (and Gen V if affected): original_backup must be the byte-exact source file, container and footer included. The edited export stays the raw 0x80000 payload, and the manifest states the container. C does the transaction side, 2R the UI hand-off. |
+| Decision: battle-only forms | Gen IV editor offers only stored form 0 for Castform and Cherrim (PKHeX FormInfo). Existing values are preserved. |
 | Known limitation (decided) | Gen I–III Home cards have no STALE state: a failed source shows "Party preview unavailable". Gen IV/V keep the last data as STALE. Not changed, because it is hardware-accepted Legacy behaviour. |
 | QA-F6 (Low, C) | `src/Legacy/RetroArchFRLGDiscovery.cpp:114`: identityHint substring-matches release names across the whole path. Confirmed in code and routed to C. |
 | Divergence noted | Create default species is #1 for Gen I/IV and #25 for Gen II/III/V. Kept as is: hardware-accepted and documented. |
