@@ -531,6 +531,13 @@ def generate(pkhex):
     for sp in range(1, MAX_SPECIES + 1):
         if ratios[sp] != rs[sp][0x10]:
             die(f"EntityGender ratio differs from personal_rs for species {sp}")
+    # EffortValueVerifier reads the HG/SS growth rate and MethodFinder's Cute Charm check reads
+    # the HG/SS gender ratio; the analyzer reads the RS table, so both must agree for 1-386.
+    hgss = src("Resources/byte/personal/personal_hgss").read_bytes()
+    for sp in range(1, MAX_SPECIES + 1):
+        base = sp * 0x2C
+        if hgss[base + 0x10] != rs[sp][0x10] or hgss[base + 0x13] != rs[sp][0x13]:
+            die(f"personal_hgss gender/growth differs from personal_rs for species {sp}")
 
     # Learnsets, egg moves, evolutions.
     learn = {g: read_learnsets(src(f"Resources/byte/levelup/lvlmove_{g}.pkl"), ident)

@@ -144,7 +144,7 @@ extern const char16_t* const kBadwordsSwitch[]; extern const char16_t* const kBa
 
 /// SHA-256 of every PKHeX input, so a regenerated table can be traced to its source.
 struct SourcePin { const char* path; const char* sha256; };
-inline constexpr std::size_t kSourcePinCount = 63;
+inline constexpr std::size_t kSourcePinCount = 64;
 extern const SourcePin kSourcePins[];
 inline constexpr const char* kPkhexCommit = "6501f0ab46e8f8ca048539dbaf8cae8cb104e722";
 

@@ -52643,6 +52643,7 @@ const SourcePin kSourcePins[] = {
     {"PKHeX.Core/Resources/byte/personal/hmtm_g3.pkl", "e62efd2f182b6fd658cb9d7fd161abea2c6ba4730006d3e507f2324281109449"},
     {"PKHeX.Core/Resources/byte/personal/personal_e", "af8f94d16827cf05a8317be62ebf43a87607585c28c4cc4e5a4b4e1e9d989866"},
     {"PKHeX.Core/Resources/byte/personal/personal_fr", "63b08802afcd6233a1bfd235d699004be6db80bc12e77ae40e5a6f296a5ce7bd"},
+    {"PKHeX.Core/Resources/byte/personal/personal_hgss", "f7040b193e96869d8d7f15f66e25a854f27b184f828e4fdd093f387df2395f30"},
     {"PKHeX.Core/Resources/byte/personal/personal_lg", "ac487f5d9687c00b2b7ee5359467d6f8dbeb984a8c0f9b005ac1bfe6d38844ab"},
     {"PKHeX.Core/Resources/byte/personal/personal_rs", "648c39c819c97f6706db4119c50abf858d6c4af4c1e0183fc2625ccda9901808"},
     {"PKHeX.Core/Resources/byte/personal/tutors_g3.pkl", "ee7a86a894f051cdb55204c10b9b4e297567b9cd351c9366baa05f4f9d128120"},
