@@ -160,18 +160,23 @@ void testRejections() {
 void testProviderAndSources() {
     using Field = Provider::Field;
     using State = Provider::State;
-    GEN6_CHECK(!Provider::StagedEditingSupported);
+    using Region = Provider::RecordRegion;
+    GEN6_CHECK(!Provider::ExportSupported);
     GEN6_CHECK(!Provider::descriptorForSource("x_3ds"));
     const auto d = Provider::descriptorForSource("moon_3ds");
     GEN6_CHECK(d.has_value());
-    for (int i = 0; i <= static_cast<int>(Field::FatefulEncounter); ++i) {
-        const auto f = static_cast<Field>(i);
-        GEN6_CHECK(Provider::fieldState(f) != State::Editable);
-        GEN6_CHECK(d && !d->fieldIsEditorTarget(f));
-    }
-    GEN6_CHECK(Provider::fieldState(Field::Shiny) == State::Derived);
-    GEN6_CHECK(Provider::fieldState(Field::AV) == State::Hidden);
-    GEN6_CHECK(Provider::fieldState(Field::IV) == State::ReadOnly);
+    // While export is unsupported, no field is ever a UI editor target.
+    for (int i = 0; i <= static_cast<int>(Field::FatefulEncounter); ++i)
+        for (const auto r : {Region::Box, Region::Party})
+            GEN6_CHECK(d && !d->fieldIsEditorTarget(static_cast<Field>(i), r));
+    GEN6_CHECK(Provider::fieldState(Field::IV, Region::Box) == State::Editable);
+    GEN6_CHECK(Provider::fieldState(Field::IV, Region::Party) == State::ReadOnly);
+    GEN6_CHECK(Provider::fieldState(Field::Nickname, Region::Party) == State::Editable);
+    GEN6_CHECK(Provider::fieldState(Field::Species, Region::Box) == State::ReadOnly);
+    GEN6_CHECK(Provider::fieldState(Field::Shiny, Region::Box) == State::Derived);
+    GEN6_CHECK(Provider::fieldState(Field::AV, Region::Box) == State::Hidden);
+    GEN6_CHECK(Provider::limitsFor(Layout::Family::SunMoon).maxHeldItem == 920);
+    GEN6_CHECK(Provider::limitsFor(Layout::Family::UltraSunUltraMoon).maxHeldItem == 959);
     GEN6_CHECK(d && !d->source.saveOperations.supports(PokeVault::SaveEdit::Capability::PokemonEditing));
 
     namespace S = Gen7::Sources;

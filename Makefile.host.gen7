@@ -1,7 +1,7 @@
 # Gen VII (Sun/Moon, Ultra Sun/Ultra Moon) native SAV7 contracts: strict
 # read-only parse, CRC16Invert blocks and MemeCrypto signature verification.
 # SAV7 staged export is explicitly unsupported (docs/gen7/README.md).
-GEN7_TEST_NAMES := test_gen7_save
+GEN7_TEST_NAMES := test_gen7_save test_gen7_staged
 GEN7_TESTS := $(addprefix $(HOST_BUILD)/,$(GEN7_TEST_NAMES))
 GEN7_SANITIZE_TESTS := $(addsuffix _sanitize,$(GEN7_TESTS))
 
@@ -37,6 +37,17 @@ GEN7_SOURCES := tests/test_gen7_save.cpp src/Integration/Gen7/Gen7Save.cpp src/I
 	$(PKSM_CORE_ROOT)/source/utils/crypto_checksums.cpp
 GEN7_FLAGS := -Iinclude -Itests -isystem $(GEN7_MEME_ROOT) -isystem $(PKSM_CORE_ROOT)/include \
 	-D_PKSMCORE_CONFIGURED -fno-operator-names $(if $(HOST_CXX_IS_CLANG),-fbracket-depth=1024,)
+
+GEN7_STAGED_SOURCES := tests/test_gen7_staged.cpp src/Integration/Gen7/Gen7Save.cpp \
+	src/Integration/Gen7/Gen7StagedSession.cpp src/Utils/SHA256.cpp
+
+$(HOST_BUILD)/test_gen7_staged: $(GEN7_STAGED_SOURCES) $(GEN7_HEADERS) $(GEN7_MEME_OBJECTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN7_FLAGS) $(GEN7_STAGED_SOURCES) $(GEN7_MEME_OBJECTS) -o $@
+
+$(HOST_BUILD)/test_gen7_staged_sanitize: $(GEN7_STAGED_SOURCES) $(GEN7_HEADERS) $(GEN7_MEME_SANITIZE_OBJECTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) $(GEN7_FLAGS) $(GEN7_STAGED_SOURCES) $(GEN7_MEME_SANITIZE_OBJECTS) -o $@
 
 $(HOST_BUILD)/test_gen7_save: $(GEN7_SOURCES) $(GEN7_HEADERS) $(GEN7_MEME_OBJECTS)
 	@mkdir -p $(HOST_BUILD)
