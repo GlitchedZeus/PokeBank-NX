@@ -99,7 +99,11 @@ conservative estimates.
 | `80bfce6c` | Create/View/Edit use the shared three-panel Pokémon workspace |
 | `1b21022a`, `2ad496df` | Diagnosis docs |
 
-Summary: 28 files, +2,062/−583. No Gen I–IV integration files touched. New NRO pending.
+- `35cbf163`: NewGameNoTrainer state, from the real-save findings.
+- **Repaired candidate:** `PokeBank-NX-Gen1-5-Candidate-35cbf163.nro`, code `35cbf1637da41e9607f2d524354c51d70e401fb2`, tree `9cb8fde7`, 175,451,825 bytes, SHA-256 `16aa25333b4a8d0e07df3dc458f4695f170f2f08c7ab6c023bd07a5b839ec787` (run 38682361760, artifact 11948329433). **NOT DEVICE TESTED.**
+- CI: 7/9 green; the GCC host suite and the Clang ASan/UBSan host suite are still running.
+- No Gen I–IV integration files touched.
+- Consolidation is partial. Gen V opens on the shared hub and uses the shared Trainer panel and the shared three-panel Pokémon workspace. `Gen5SharedReadOnlySurface.inc` is still 1,848 lines (it was 1,886; 920 lines changed) and owns hub activation/Exit/Review and the entered panels. Storage is refused for Gen V.
 
 ## Owner real-save analysis (2026-10-15; files analysed only in the coordinator scratchpad, never committed)
 
