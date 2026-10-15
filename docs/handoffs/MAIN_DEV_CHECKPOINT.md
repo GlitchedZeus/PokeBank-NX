@@ -4,7 +4,7 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-15 ~03:10 UTC (23:10 America/Toronto, Oct 14).
+**Last updated:** 2026-10-15 ~03:25 UTC (23:25 America/Toronto, Oct 14).
 
 ## Active milestone
 
@@ -32,7 +32,7 @@ conservative estimates.
 | IV | DPPt, HGSS | ~90% | CI green on #306/#307 | Earlier build accepted; newest candidate untested |
 | V | BW, B2W2 | ~85% | Local GCC/Clang host + sanitizers pass; 9/9 CI green on `60c48c1b` | Not tested |
 | VI | X, Y, OR, AS | ~60% (PK6/SAV6, staged Edit/Clone/Remove, party stat recompute, staged Bag, read-only box names/Pokédex, editor provider, sources; not wired into the app) | 7 Gen VI test binaries under GCC/Clang ± ASan/UBSan; differential vs PKSM-Core | — |
-| VII | SM, USUM; LGPE as its own family | ~25% (read-only SAV7 + MemeCrypto verify; PK7 staged Edit/Clone/Remove up to signing; export blocked on re-signing evidence) | 2 test binaries, 925 checks; draft #311 CI only | — |
+| VII | SM, USUM; LGPE as its own family | ~35% (read-only SAV7 + MemeCrypto verify; PK7 staged Edit/Clone/Remove up to signing; hyper-training-aware party stats; read-only box names/Pokédex; export blocked on re-signing evidence; LGPE research note only) | Gen VII focused CI green on #311 | — |
 | VIII | SwSh, BDSP, PLA | ~5% (PK8/PB8/PA8 classes, BDSP/LA crypto headers) | none | — |
 | IX | SV, Legends: Z-A | ~2% (`BaseStatsGen89`, MyStatus validation) | none | — |
 
@@ -79,6 +79,10 @@ conservative estimates.
 | #300 / #304 / #302 | preserved source lanes | `58bd564b` / `4d8c267e` / `6e27bbd5` | green | Contained in #307 |
 | #305 / #280 | `claude/gen4-capture-ball` / `fix/gen14-action-tap-empty-parity-20261011` | `b8eb006e` / `dcd855a7` | — | Rule confirmed by test / #280 tests change Gen III/IV surfaces → Thread 1 |
 
+## Safety audit (2026-10-15)
+
+The PKSE-derived installed-save inject path (`restoreBackupToTitle`, used by `saveTrainerInfo*` with `injectToTitle`) refuses before mounting, via `Safety::canWriteTo(LiveGame)`. That checks the compile-time `LIVE_SAVE_WRITES_ENABLED = false`, and `test_write_policy`, `test_source_mutation_policy` and `test_gen4_safety_contract` guard it. `writeBlocksToSaveData7LGPE` only patches workspace images.
+
 ## Blockers
 
 0. Usage limit: three threads plus the coordinator use up the 5-hour quota in about 1 hour. Thread 4 is paused until the Gen V candidate is posted.
@@ -94,6 +98,7 @@ conservative estimates.
 1. Approve integrating Gen VI (later Gen VII) into #307 after the Gen V candidate. The integration requests are in `docs/gen6/integration-requests/01-02` on the Gen VI lane.
 2. Gen VII re-signing: needs a "payload tail" diagnostic from one game-written SM/USUM save. PKHeX and PKSM-Core differ here, so SAV7 export stays unsupported until then.
 3. Approve bumping the `memecrypto` submodule: `sha1.c` has undefined behavior in a signed shift, and `rsa.c` leaks memory.
+6. Approve a new `Integration/Gen7b` lane for Let's Go Pikachu/Eevee (research: `docs/gen7/LGPE_RESEARCH.md` on the Gen VII lane).
 5. QA-F2 (Medium): 3 invalid `one-time-*` workflow YAMLs fail on every push to every branch (~1,100 failed runs each). Approve removing or fixing them.
 4. Confirm the Dekopon (`sdmc:/switch/dekopon/…`) and Checkpoint (`sdmc:/3ds/Checkpoint/saves/…`) paths on the real SD card. Azahar has no Switch build, so it is unsupported.
 
