@@ -159,6 +159,48 @@ void run(SourceGame game) {
     }
 }
 }
+// Stored current HP (box_struct +1) follows max HP when species/level/DVs/Stat Exp change: a
+// Pokemon at full HP stays full, a damaged one is clamped (never above max). New Pokemon start at
+// the exact max HP including Stat Exp. HP never changes for unrelated edits.
+void currentHpFollowsMaxHp(SourceGame game) {
+    const auto hpOf=[](const PokemonRecord& p){
+        return StagedPokemonEditor::calculateBattleStats(p.species,p.level,{p.dvs[1],p.dvs[2],p.dvs[3],p.dvs[4]},p.statExperience).hp;
+    };
+    for (const uint16_t startHp : {uint16_t(20), uint16_t(10)}) {
+        auto raw=fixture(game);
+        const size_t body=0x30C0+22;
+        raw[body+1]=static_cast<uint8_t>(startHp>>8); raw[body+2]=static_cast<uint8_t>(startHp);
+        std::copy_n(raw.begin()+0x30C0,0x462,raw.begin()+bank(2)); checksums(raw);
+        const auto source=parse(raw,game); assert(source);
+        std::string error; auto e=StagedPokemonEditor::create(*source.save,error); assert(e);
+        const auto before=*e->boxedPokemon(2,0,error);
+        const bool full=startHp>=hpOf(before);
+        BoxPokemonEdit edit; edit.nickname="SPARKY";
+        assert(e->stageEdit(2,0,edit,error) && e->boxedPokemon(2,0,error)->currentHP==startHp);
+        edit={}; edit.level=50; assert(e->stageEdit(2,0,edit,error));
+        auto now=*e->boxedPokemon(2,0,error);
+        assert(hpOf(now)>startHp);
+        assert(now.currentHP==(full?hpOf(now):startHp));
+        edit={}; edit.level=2; assert(e->stageEdit(2,0,edit,error));
+        now=*e->boxedPokemon(2,0,error);
+        assert(now.currentHP<=hpOf(now));
+        assert(now.currentHP==(full?hpOf(now):std::min<uint16_t>(startHp,hpOf(now))));
+        edit={}; edit.statExperience=std::array<uint16_t,5>{65535,0,0,0,0}; assert(e->stageEdit(2,0,edit,error));
+        now=*e->boxedPokemon(2,0,error);
+        assert(now.currentHP<=hpOf(now));
+        const auto out=e->finalizedBytes(error); assert(!out.empty() && parse(out,game));
+    }
+    const auto raw=fixture(game); const auto source=parse(raw,game);
+    std::string error; auto e=StagedPokemonEditor::create(*source.save,error); assert(e);
+    BoxPokemonCreate create; create.species=113; create.level=60; create.nickname="CHANSEY";
+    create.statExperience={65535,0,0,0,0};
+    const auto slot=e->appendSlot(2,error); assert(slot);
+    assert(e->stageAdd(2,*slot,create,error));
+    const auto added=*e->boxedPokemon(2,*slot,error);
+    assert(added.currentHP==hpOf(added));
+    assert(added.currentHP>StagedPokemonEditor::calculateBattleStats(113,60,create.dvs,{}).hp);
+}
+
 int main() {
     using namespace PokeVault::Inventory;
     for (auto game : {ClassicGame::Red, ClassicGame::Blue, ClassicGame::Yellow}) {
@@ -176,7 +218,7 @@ int main() {
     assert(nicknameAfterSpeciesChange("", 1, 150).empty());
     assert(nicknameAfterSpeciesChange("Pikachu", 25, 83) == "Farfetchd");
 
-    for(auto game:{SourceGame::Red,SourceGame::Blue,SourceGame::Yellow}) { run(game); currentBoxAdd(game); speciesLevelPolicy(game); }
+    for(auto game:{SourceGame::Red,SourceGame::Blue,SourceGame::Yellow}) { run(game); currentBoxAdd(game); speciesLevelPolicy(game); currentHpFollowsMaxHp(game); }
     assert(StagedPokemonEditor::moveMaxPP(74,3)==61);assert(StagedPokemonEditor::moveBasePP(105)==20);
     assert(StagedPokemonEditor::moveBasePP(166)==0);
     for(uint8_t a=0;a<16;++a) for(uint8_t d=0;d<16;++d) for(uint8_t s=0;s<16;++s) for(uint8_t c=0;c<16;++c)

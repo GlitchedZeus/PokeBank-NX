@@ -240,11 +240,77 @@ void runFamily(const L& l,SourceGame game){
     editor->discard();assert(!editor->hasPendingChanges());
     assert(std::equal(editor->stagedBytes().begin(),editor->stagedBytes().end(),source.begin()));
 }
+// Data-layer audit fixes:
+//  - Max PP follows pokecrystal ComputeMaxPP (each PP Up adds min(7, base/5)).
+//  - A Pokemon's OT is a 7-character player name, in Edit and in Create.
+//  - Editing an unrelated field never re-encodes the stored nickname/OT bytes, so glyphs the
+//    editor cannot type (MR.MIME's 0xE8) never block, or silently change, an edit.
+void dataLayerFixes(const L& l, SourceGame game) {
+    assert(StagedEditor::gen2MoveBasePP(45) == 40);                // Growl
+    assert(StagedEditor::gen2MoveMaxPP(45, 3) == 61);              // not 64/63
+    assert(StagedEditor::gen2MoveMaxPP(45, 1) == 47);
+    assert(StagedEditor::gen2MoveMaxPP(33, 3) == 56);              // Tackle 35 -> 35 + 3*7
+    assert(StagedEditor::gen2MoveMaxPP(16, 3) == 56);              // Gust 35
+    for (uint8_t move = 1; move <= 251; ++move) {
+        const unsigned base = StagedEditor::gen2MoveBasePP(move);
+        for (uint8_t ups = 0; ups <= 3; ++ups)
+            assert(StagedEditor::gen2MoveMaxPP(move, ups) == base + std::min(7u, base / 5u) * ups);
+    }
+
+    auto raw = fixture(l, true);
+    // MR.MIME-style nickname with the 0xE8 glyph the editor's typed charset cannot produce.
+    const size_t nick = boxNick(0);
+    raw[nick + 2] = 0xE8;
+    checksum(raw, l);
+    auto parsed = parse(raw, game);
+    assert(parsed);
+    std::string error;
+    auto editor = StagedEditor::create(*parsed.save, error);
+    assert(editor);
+    const std::vector<uint8_t> nickBefore(raw.begin() + nick, raw.begin() + nick + 11);
+    const std::vector<uint8_t> otBefore(raw.begin() + boxOT(0), raw.begin() + boxOT(0) + 11);
+    BoxPokemonEdit level;
+    level.level = 30;
+    assert(editor->stageBoxPokemonEdit(0, 0, level, error));
+    const auto staged = editor->stagedBytes();
+    assert(std::equal(nickBefore.begin(), nickBefore.end(), staged.begin() + nick));
+    assert(std::equal(otBefore.begin(), otBefore.end(), staged.begin() + boxOT(0)));
+
+    // PP: Growl + 3 PP Ups accepts 61, refuses 62.
+    BoxPokemonEdit pp;
+    pp.moves = std::array<uint8_t, 4>{45, 0, 0, 0};
+    pp.ppUps = std::array<uint8_t, 4>{3, 0, 0, 0};
+    pp.pp = std::array<uint8_t, 4>{61, 0, 0, 0};
+    assert(editor->stageBoxPokemonEdit(0, 0, pp, error));
+    pp.pp = std::array<uint8_t, 4>{62, 0, 0, 0};
+    assert(!editor->stageBoxPokemonEdit(0, 0, pp, error));
+
+    // OT: 7 characters accepted, 8 refused (Edit and Create).
+    BoxPokemonEdit ot;
+    ot.otName = "ABCDEFG";
+    assert(editor->stageBoxPokemonEdit(0, 0, ot, error));
+    ot.otName = "ABCDEFGH";
+    assert(!editor->stageBoxPokemonEdit(0, 0, ot, error));
+    BoxPokemonCreate create;
+    create.species = 25;
+    create.nickname = "SPARKY";
+    create.otName = "ABCDEFGH";
+    create.moves = {33, 0, 0, 0};
+    create.pp = {35, 0, 0, 0};
+    std::size_t slot = 0;
+    assert(!editor->stageAddBoxPokemon(2, create, slot, error));
+    create.otName = "ABCDEFG";
+    assert(editor->stageAddBoxPokemon(2, create, slot, error));
+    assert(parse(editor->finalizedBytes(error), game));
+}
+
 }
 
 int main(){
     runFamily(GS,SourceGame::Gold);
     runFamily(GS,SourceGame::Silver);
     runFamily(C,SourceGame::Crystal);
+    dataLayerFixes(GS,SourceGame::Gold);
+    dataLayerFixes(C,SourceGame::Crystal);
     std::cout<<"Generation II boxed Pokemon staged editor tests: PASS\n";
 }
