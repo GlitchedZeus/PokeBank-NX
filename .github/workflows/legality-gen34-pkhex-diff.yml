@@ -1,0 +1,61 @@
+name: Gen III/IV legality vs PKHeX
+
+# Every Gen III (R/S/E/FR/LG) and Gen IV (D/P/Pt/HG/SS) encounter PKHeX.Core can
+# build, plus seeded single-field mutations, is read through the production PK3/PK4
+# entities and Legality::analyze with the cartridge's own source game. Fails on any
+# false Invalid (PKHeX VALID, PokeBank NX Invalid) or any record that cannot load.
+
+on:
+  pull_request:
+    paths:
+      - 'src/Legality/**'
+      - 'include/Legality/**'
+      - 'src/Pokemon/Pokemon3FRLG.cpp'
+      - 'include/Pokemon/Pokemon3FRLG.h'
+      - 'src/Pokemon/Pokemon4ReadOnly*.cpp'
+      - 'include/Pokemon/Pokemon4ReadOnly*.h'
+      - 'src/Encryption/Encryption3FRLG.cpp'
+      - 'src/Encryption/Encryption4.cpp'
+      - 'tools/pkhex_gen34_diff/**'
+      - '.github/workflows/legality-gen34-pkhex-diff.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: legality-gen34-pkhex-diff-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PKHEX_SHA: 6501f0ab46e8f8ca048539dbaf8cae8cb104e722
+
+jobs:
+  gen34:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: kwsch/PKHeX
+          ref: ${{ env.PKHEX_SHA }}
+          path: _ref/PKHeX
+          persist-credentials: false
+      - name: Exact heads
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          test "$(git -C _ref/PKHeX rev-parse HEAD)" = "$PKHEX_SHA"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: PK3/PK4 verdicts against PKHeX (every Gen III/IV encounter, 3 seeds)
+        run: |
+          set -euo pipefail
+          for seed in 1 2 3; do
+            tools/pkhex_gen34_diff/run.sh _ref/PKHeX "$seed" 3
+          done

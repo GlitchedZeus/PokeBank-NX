@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+"""Summarize a joined PKHeX / PokeBank NX Gen III-IV run.
+
+Input lines (tab-joined): <oracle line>\t<driver line>
+  oracle: <id> <cart> <hex> VALID|INVALID <enc>:<species> ; <code> ...
+  driver: <id> INVALID|NOPROBLEMS|INCOMPLETE|LOADFAIL <coverage> ; <issue> | <issue> ...
+Prints verdict tables per game and the top discrepancy categories.
+Exit status 1 when there is any false Invalid (PKHeX VALID, ours INVALID) or LOADFAIL.
+"""
+import re
+import sys
+from collections import Counter, defaultdict
+
+SHOW = int(sys.argv[2]) if len(sys.argv) > 2 else 12
+GAMES = ["R", "S", "E", "FR", "LG", "D", "P", "Pt", "HG", "SS"]
+VERDICTS = ["INVALID", "INCOMPLETE", "NOPROBLEMS", "LOADFAIL"]
+
+
+def norm(text):
+    """Collapse numbers/names so issue texts group into categories."""
+    text = re.sub(r"0x[0-9A-Fa-f]+", "#", text)
+    text = re.sub(r"\d+", "#", text)
+    text = re.sub(r"'[^']*'", "'*'", text)
+    text = re.sub(r'"[^"]*"', '"*"', text)
+    return text.strip()
+
+
+def mutation(rid):
+    return "base" if rid.startswith("b") else rid.split("-", 1)[1]
+
+
+rows = []
+with open(sys.argv[1]) as f:
+    for line in f:
+        left, right = line.rstrip("\n").split("\t")
+        lhead, _, lcodes = left.partition(" ; ")
+        rid, cart, hexdata, pverdict, enc = lhead.split(" ")[:5]
+        rhead, _, rissues = right.partition(" ;")
+        rparts = rhead.split(" ")
+        if rparts[0] != rid:
+            sys.exit(f"id mismatch {rid} {rparts[0]}")
+        rows.append(dict(id=rid, cart=cart, hex=hexdata, p=pverdict, enc=enc, codes=lcodes.strip(),
+                         ours=rparts[1], cov=rparts[2] if len(rparts) > 2 else "-",
+                         issues=[i.strip() for i in rissues.split(" | ") if i.strip()]))
+
+print(f"{len(rows)} records")
+for subset, label in ((lambda r: True, "all records"), (lambda r: r["id"].startswith("b"), "base encounters only")):
+    print(f"\n== PKHeX verdict x PokeBank NX verdict per game ({label}) ==")
+    print(f"{'game':5} {'PKHeX':8} " + " ".join(f"{v:>10}" for v in VERDICTS))
+    table = defaultdict(Counter)
+    for r in rows:
+        if subset(r):
+            table[(r["cart"], r["p"])][r["ours"]] += 1
+    tot = defaultdict(Counter)
+    for g in GAMES:
+        for p in ("VALID", "INVALID"):
+            c = table.get((g, p))
+            if not c:
+                continue
+            tot[p].update(c)
+            print(f"{g:5} {p:8} " + " ".join(f"{c[v]:>10}" for v in VERDICTS))
+    for p in ("VALID", "INVALID"):
+        print(f"{'ALL':5} {p:8} " + " ".join(f"{tot[p][v]:>10}" for v in VERDICTS))
+
+
+def report(title, selected, keyfn):
+    print(f"\n== {title}: {len(selected)} records ==")
+    cats = defaultdict(list)
+    for r in selected:
+        for k in keyfn(r):
+            cats[k].append(r)
+    for k, rs in sorted(cats.items(), key=lambda kv: -len(kv[1]))[:SHOW]:
+        ex = rs[0]
+        games = Counter(r["cart"] for r in rs)
+        muts = Counter(mutation(r["id"]) for r in rs)
+        print(f"\n[{len(rs)}] {k}")
+        print(f"   games: {dict(games.most_common(10))}")
+        print(f"   mutations: {dict(muts.most_common(6))}")
+        print(f"   e.g. {ex['id']} {ex['cart']} {ex['enc']} PKHeX={ex['p']} codes=[{ex['codes']}]")
+        print(f"   ours: {' | '.join(ex['issues']) or '(no Invalid issue)'}  coverage={ex['cov']}")
+        print(f"   hex: {ex['hex']}")
+
+
+false_invalid = [r for r in rows if r["p"] == "VALID" and r["ours"] == "INVALID"]
+report("FALSE INVALID (PKHeX VALID, ours Invalid) by our issue", false_invalid,
+       lambda r: sorted({norm(i) for i in r["issues"]}))
+false_valid = [r for r in rows if r["p"] == "INVALID" and r["ours"] == "NOPROBLEMS"]
+report("FALSE VALID (PKHeX INVALID, ours NoProblemsFound) by PKHeX code", false_valid,
+       lambda r: sorted({c.split(":")[0] + ":" + c.split(":")[1] for c in r["codes"].split()} or {"(none)"}))
+incomplete_inv = [r for r in rows if r["p"] == "INVALID" and r["ours"] == "INCOMPLETE"]
+report("PKHeX INVALID, ours Incomplete (acceptable) by PKHeX code", incomplete_inv,
+       lambda r: sorted({c for c in r["codes"].split()} or {"(none)"}))
+valid_incomplete = Counter(r["cov"] for r in rows if r["p"] == "VALID" and r["ours"] == "INCOMPLETE")
+print("\n== PKHeX VALID, ours Incomplete: non-Complete coverage fields ==")
+for k, n in valid_incomplete.most_common(SHOW):
+    print(f"  {n:6} {k}")
+loadfail = [r for r in rows if r["ours"] == "LOADFAIL"]
+if loadfail:
+    report("LOADFAIL (C++ side could not load)", loadfail, lambda r: [norm(" ".join(r["issues"]))])
+sys.exit(1 if false_invalid or loadfail else 0)

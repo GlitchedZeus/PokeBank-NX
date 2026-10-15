@@ -42,11 +42,16 @@ bool Pokemon4ReadOnly::sanityValid() const noexcept { return sizeValid() && sani
 bool Pokemon4ReadOnly::valid() const noexcept { return sizeValid() && sanityValid() && checksumValid(); }
 bool Pokemon4ReadOnly::isParty() const noexcept { return encrypted_.size() == Encryption::SIZE_PARTY4; }
 bool Pokemon4ReadOnly::empty() const noexcept {
-    // A retail empty PK4 slot is exactly zero-filled.  A nonzero record with
-    // species zero can be checksum-valid after corruption or malformed input;
-    // it must not silently disappear from a read-only scan as an empty slot.
-    return valid() && std::all_of(encrypted_.begin(), encrypted_.end(),
-        [](std::byte value) { return value == std::byte{0}; });
+    // PKHeX EntityDetection.IsPresent: a slot is empty when its stored PID is 0
+    // and the stored species word is 0 (an all-zero slot, or a blank record
+    // encrypted with checksum 0, whose first keystream word is 0). A record with
+    // any other PID but species zero can be checksum-valid after corruption or
+    // malformed input; it must not silently disappear from a read-only scan.
+    auto raw16 = [this](size_t offset) {
+        return static_cast<uint16_t>(static_cast<uint8_t>(encrypted_[offset]) |
+                                     (static_cast<uint8_t>(encrypted_[offset + 1]) << 8));
+    };
+    return valid() && raw16(0) == 0 && raw16(2) == 0 && raw16(8) == 0 && species() == 0;
 }
 
 uint8_t Pokemon4ReadOnly::byteAt(size_t offset) const noexcept {

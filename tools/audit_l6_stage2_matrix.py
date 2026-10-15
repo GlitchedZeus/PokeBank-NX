@@ -112,8 +112,8 @@ SOURCE_PINS: dict[str, dict[str, str]] = {
         "src/Encryption/Encryption3FRLG.cpp": "eec27b73a15d6652371ed2e066690ef0fa9fb7ef",
         "src/Encryption/Encryption4.cpp": "406935761713db95ae738398b65ba0a37d4cf97b",
         "include/Encryption/Encryption.h": "9eab685b76511d5ea08e0fffdff63529a5824fe6",
-        "include/Pokemon/Pokemon3FRLG.h": "f93b121fb59b08495668161e932b7aa2bbb82588",
-        "src/Pokemon/Pokemon4ReadOnly.cpp": "bc82e07fa737bf5a3fa15533bd77083b0300436a",
+        "include/Pokemon/Pokemon3FRLG.h": "9f0e1ede52d338e90a969dba8ecd0f081e3a88ea",
+        "src/Pokemon/Pokemon4ReadOnly.cpp": "021a4ed89c6ede16c4e3e0045506a03e9e3bbb24",
     },
 }
 

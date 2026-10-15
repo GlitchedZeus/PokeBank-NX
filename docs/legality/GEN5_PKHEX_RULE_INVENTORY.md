@@ -893,3 +893,29 @@ QUIRKS TO DECIDE ON:
 (f) GetTransferMetLocation4 returns the "Unused" capsule locations 30010/30012.
 (g) There is no 252 EV cap in format 5.
 ```
+
+## PokeBank NX: deliberate differences and known gaps
+
+Measured with `tools/pkhex_gen5_diff/run.sh` (every Gen V encounter PKHeX can
+build, plus single-field mutations).
+
+Deliberately stricter than PKHeX:
+
+- **Hidden-ability flag with a non-hidden ability.** For a template that only
+  allows the hidden ability (Entree Forest / Dream World), PKHeX's
+  `VerifyFixedAbility` accepts the record when `AbilityNumber == 4`, without
+  checking the stored ability is the species' hidden ability. No Gen V game
+  can set the flag and keep a slot 1/2 ability (there is no Ability Capsule
+  before Gen VI), so PokeBank NX reports Invalid. run.sh counts these
+  separately instead of failing on them.
+
+Known gaps (reported as Incomplete, never Invalid):
+
+- OT and nickname text of in-game trades and event cards, and nicknames that
+  do not match the species name in the record's language when it may have
+  evolved or been traded as an egg (PKHeX `EncTradeChangedOT`,
+  `EncTradeChangedNickname`, some `NickMatchLanguageFail`).
+- Fateful records that match no PGF card in the database (`EncGiftNotFound`):
+  the card list is not proven complete, so the analyzer warns.
+- Gen III/IV-origin PK5 records: only Gen V-side rules are checked; the
+  original encounter is left to the Gen III/IV analyzer.

@@ -1,0 +1,202 @@
+// Gen III / Gen IV differential oracle for PokeBank NX.
+//
+//   dotnet PKHeXGen34Oracle.dll generate SEED MUTATIONS [3|4|34]
+//   dotnet PKHeXGen34Oracle.dll probe HEX        (80-byte PK3 or 136-byte PK4, decrypted)
+//
+// Builds every Gen III encounter PKHeX knows for species 1-386 in Ruby, Sapphire,
+// Emerald, FireRed and LeafGreen (Colosseum/XD origins skipped), and every Gen IV
+// encounter for species 1-493 in Diamond, Pearl, Platinum, HeartGold and SoulSilver.
+// Each is converted with a fixed test trainer ("Tester"), then MUTATIONS single-field
+// mutations of each are added. One line per record:
+//   <id> <cartridge> <decrypted box hex> VALID|INVALID <encounter type>:<species> ; <identifier>:<result> ...
+// <cartridge> is the game the base record was generated for (the save it would sit in).
+// PK3 hex is the 80-byte decrypted box record in canonical G/A/E/M order; PK4 hex is the
+// 136-byte decrypted box record in canonical A/B/C/D order. Records are synthetic.
+using PKHeX.Core;
+
+if (args.Length >= 2 && args[0] == "probe")
+{
+    // probe HEX, or probe ORACLE_OUTPUT_FILE ID... (records by id from a generate run)
+    var hexes = File.Exists(args[1])
+        ? File.ReadLines(args[1]).Select(l => l.Split(' ')).Where(p => args.Skip(2).Contains(p[0])).Select(p => p[2]).ToList()
+        : [args[1]];
+    foreach (var hex in hexes)
+    {
+        var bytes = Convert.FromHexString(hex);
+        PKM probe = bytes.Length == 80 ? new PK3(bytes) : new PK4(bytes);
+        var pla = new LegalityAnalysis(probe);
+        Console.WriteLine($"{(pla.Valid ? "VALID" : "INVALID")} {pla.EncounterMatch.GetType().Name}:{pla.EncounterMatch.Species} \"{pla.EncounterMatch.LongName}\"");
+        Console.WriteLine($"  species {probe.Species} form {probe.Form} version {probe.Version} egg {probe.IsEgg} met {probe.MetLocation}@{probe.MetLevel} eggloc {probe.EggLocation} ball {probe.Ball} ability {probe.Ability} pid {probe.PID:X8} fateful {probe.FatefulEncounter} lang {probe.Language} OT {probe.OriginalTrainerName} {probe.TID16}/{probe.SID16}");
+        foreach (var r in pla.Results)
+            Console.WriteLine($"  {(r.Valid ? "ok " : "BAD")} {r.Identifier}:{r.Result}");
+    }
+    return 0;
+}
+if (args.Length < 3 || args[0] != "generate")
+{
+    Console.Error.WriteLine("usage: generate SEED MUTATIONS [3|4|34]");
+    return 2;
+}
+var rng = new Random(int.Parse(args[1]));
+var mutations = int.Parse(args[2]);
+var which = args.Length > 3 ? args[3] : "34";
+var count = 0;
+var seen = new HashSet<string>();
+
+if (which.Contains('3'))
+    Run(3, [GameVersion.R, GameVersion.S, GameVersion.E, GameVersion.FR, GameVersion.LG], 386);
+if (which.Contains('4'))
+    Run(4, [GameVersion.D, GameVersion.P, GameVersion.Pt, GameVersion.HG, GameVersion.SS], 493);
+return 0;
+
+void Run(int gen, GameVersion[] versions, ushort maxSpecies)
+{
+    for (ushort species = 1; species <= maxSpecies; species++)
+    {
+        IPersonalInfo pi = gen == 3 ? PersonalTable.E[species] : PersonalTable.HGSS[species];
+        for (byte form = 0; form < Math.Max((byte)1, pi.FormCount); form++)
+        {
+            foreach (var version in versions)
+            {
+                var tid = (ushort)rng.Next(1, 65535);
+                var sid = (ushort)rng.Next(1, 65535);
+                if (version is GameVersion.R or GameVersion.S)
+                {
+                    // Ruby/Sapphire draw SID then TID from consecutive LCRNG calls; PKHeX
+                    // rejects (TrainerIDNoSeed) any pair no seed can produce.
+                    var s1 = (uint)rng.NextInt64(0, 1L << 32) * 0x41C64E6Du + 0x6073u;
+                    var s2 = s1 * 0x41C64E6Du + 0x6073u;
+                    sid = (ushort)(s1 >> 16);
+                    tid = (ushort)(s2 >> 16);
+                }
+                var tr = new SimpleTrainerInfo(version)
+                {
+                    OT = "Tester",
+                    TID16 = tid,
+                    SID16 = sid,
+                    Language = (int)LanguageID.English,
+                };
+                PKM blank = gen == 3 ? new PK3 { Species = species, Form = form, Version = version }
+                                     : new PK4 { Species = species, Form = form, Version = version };
+                List<IEncounterable> encounters;
+                try { encounters = EncounterMovesetGenerator.GenerateEncounters(blank, tr, ReadOnlyMemory<ushort>.Empty, version).ToList(); }
+                catch (Exception) { continue; }
+                foreach (var enc in encounters)
+                {
+                    if (enc.Context != (gen == 3 ? EntityContext.Gen3 : EntityContext.Gen4))
+                        continue;
+                    if (gen == 3 && (enc.Version is GameVersion.CXD or GameVersion.COLO or GameVersion.XD))
+                        continue;
+                    var key = $"{version}:{enc.GetType().Name}:{enc.Species}:{enc.Form}:{enc.Version}:{enc.Location}:{enc.EggLocation}:{enc.LevelMin}:{enc.LongName}";
+                    if (!seen.Add(key))
+                        continue;
+                    PKM made;
+                    try { made = enc.ConvertToPKM(tr); }
+                    catch (Exception) { continue; }
+                    if (made is not (PK3 or PK4))
+                        continue;
+                    var cart = made.Version; // the record sits in a save of its own origin game
+                    if (!versions.Contains(cart))
+                        cart = version;
+                    Emit($"b{count++}", cart, made);
+                    if (made is PK4 { Species: (ushort)Species.Unown } unown)
+                    {
+                        // A Gen IV Unown slot converts to one letter; the letter is stored
+                        // independently of the PID, so cover every form PKHeX can judge.
+                        for (byte f = 0; f < 28; f++)
+                        {
+                            if (f == unown.Form)
+                                continue;
+                            var letter = unown.Clone();
+                            letter.Form = f;
+                            Emit($"b{count++}", cart, letter);
+                        }
+                    }
+                    for (int m = 0; m < mutations; m++)
+                    {
+                        var copy = made.Clone();
+                        var name = gen == 3 ? Mutate3((PK3)copy, rng) : Mutate4((PK4)copy, rng);
+                        Emit($"m{count++}-{name}", cart, copy);
+                    }
+                }
+            }
+        }
+    }
+}
+
+static void Emit(string id, GameVersion cart, PKM pk)
+{
+    pk.RefreshChecksum();
+    var la = new LegalityAnalysis(pk);
+    var enc = la.EncounterMatch;
+    var invalid = la.Results.Where(r => !r.Valid).Select(r => $"{r.Identifier}:{r.Result}")
+        .Concat(la.Info.Moves.Select((m, i) => (m, i)).Where(x => !x.m.Valid)
+            .Select(x => $"Move{x.i + 1}:{x.m.Info.Method}"));
+    var len = pk is PK3 ? 80 : 136;
+    var hex = Convert.ToHexString(pk.Data[..len]);
+    Console.WriteLine($"{id} {cart} {hex} {(la.Valid ? "VALID" : "INVALID")} {enc.GetType().Name}:{enc.Species} ; {string.Join(' ', invalid)}");
+}
+
+static string Mutate3(PK3 pk, Random rng)
+{
+    switch (rng.Next(22))
+    {
+        case 0: pk.Ball = (byte)rng.Next(1, 13); return "ball";
+        case 1: pk.MetLevel = (byte)Math.Clamp(pk.MetLevel + rng.Next(-3, 4), 0, 100); return "metlevel";
+        case 2: pk.AbilityBit = !pk.AbilityBit; return "abilitybit";
+        case 3: pk.PID ^= 1; return "pidlowbit";
+        case 4: pk.PID = (uint)rng.NextInt64(0, 1L << 32); return "pid";
+        case 5: pk.MetLocation = (ushort)new[] { 0, 16, 17, 32, 87, 88, 101, 126, 136, 202, 253, 254, 255 }[rng.Next(13)]; return "metlocation";
+        case 6: pk.SetMove(rng.Next(4) == 0 ? 3 : 0, (ushort)rng.Next(1, 355)); return "move";
+        case 7: pk.SetEV(rng.Next(6), rng.Next(256)); return "ev";
+        case 8: pk.SetIV(rng.Next(6), rng.Next(32)); return "iv";
+        case 9: pk.FatefulEncounter = !pk.FatefulEncounter; return "fateful";
+        case 10: pk.Version = (GameVersion)rng.Next(1, 6); return "version";
+        case 11: pk.Language = rng.Next(0, 8); return "language";
+        case 12: pk.HeldItem = rng.Next(0, 377); return "item";
+        case 13: pk.EXP = (uint)Math.Max(0, (int)pk.EXP + rng.Next(-2000, 2000)); return "exp";
+        case 14: pk.Move1_PPUps = rng.Next(0, 4); pk.Move1_PP = rng.Next(0, 70); return "pp";
+        case 15: pk.Data[0x4C + rng.Next(3)] |= (byte)(1 << rng.Next(8)); return "ribbon";
+        case 16: pk.ContestCool = (byte)rng.Next(1, 256); return "contest";
+        case 17: pk.Species = (ushort)Math.Clamp(pk.Species + (rng.Next(2) == 0 ? -1 : 1), 1, 386); return "species";
+        case 18: pk.Data[0x44] = (byte)rng.Next(256); return "pokerus";
+        case 19: pk.OriginalTrainerGender = (byte)(pk.OriginalTrainerGender ^ 1); return "otgender";
+        case 20: pk.IsEgg = !pk.IsEgg; return "egg";
+        default: pk.TID16 = (ushort)rng.Next(65536); return "tid";
+    }
+}
+
+static string Mutate4(PK4 pk, Random rng)
+{
+    switch (rng.Next(28))
+    {
+        case 0: pk.Ball = (byte)rng.Next(1, 25); return "ball";
+        case 1: pk.MetLevel = (byte)Math.Clamp(pk.MetLevel + rng.Next(-3, 4), 0, 100); return "metlevel";
+        case 2: pk.Ability = rng.Next(1, 124); return "ability";
+        case 3: pk.PID ^= 1; return "pidlowbit";
+        case 4: pk.Gender = (byte)(pk.Gender ^ 1); return "gender";
+        case 5: pk.PID = (uint)rng.NextInt64(0, 1L << 32); return "pid";
+        case 6: pk.MetLocation = (ushort)new[] { 0, 1, 16, 50, 55, 86, 126, 149, 182, 233, 2000, 2002, 3001, 3002 }[rng.Next(14)]; return "metlocation";
+        case 7: pk.SetMove(rng.Next(4) == 0 ? 3 : 0, (ushort)rng.Next(1, 468)); return "move";
+        case 8: pk.SetEV(rng.Next(6), rng.Next(256)); return "ev";
+        case 9: pk.SetIV(rng.Next(6), rng.Next(32)); return "iv";
+        case 10: pk.FatefulEncounter = !pk.FatefulEncounter; return "fateful";
+        case 11: pk.EggLocation = (ushort)new[] { 0, 2000, 2002, 3001 }[rng.Next(4)]; return "egglocation";
+        case 12: pk.Version = (GameVersion)new[] { 1, 2, 3, 4, 5, 7, 8, 10, 11, 12 }[rng.Next(10)]; return "version";
+        case 13: pk.Form = (byte)rng.Next(4); return "form";
+        case 14: pk.Language = rng.Next(0, 9); return "language";
+        case 15: pk.HeldItem = rng.Next(0, 537); return "item";
+        case 16: pk.EXP = (uint)Math.Max(0, (int)pk.EXP + rng.Next(-2000, 2000)); return "exp";
+        case 17: pk.MetDate = new DateOnly(2000 + rng.Next(0, 99), rng.Next(1, 13), rng.Next(1, 29)); return "metdate";
+        case 18: pk.Move1_PPUps = rng.Next(0, 4); pk.Move1_PP = rng.Next(0, 70); return "pp";
+        case 19: pk.Data[0x24 + rng.Next(4)] |= (byte)(1 << rng.Next(8)); return "ribbon";
+        case 20: pk.ContestCool = (byte)rng.Next(1, 256); return "contest";
+        case 21: pk.Species = (ushort)Math.Clamp(pk.Species + (rng.Next(2) == 0 ? -1 : 1), 1, 493); return "species";
+        case 22: pk.BallHGSS = (byte)rng.Next(0, 25); return "ballhgss";
+        case 23: pk.PokerusState = (byte)rng.Next(256); return "pokerus";
+        case 24: pk.ShinyLeaf = rng.Next(0, 64); return "shinyleaf";
+        case 25: pk.MetLocationExtended = (ushort)rng.Next(0, 3); return "metlocext";
+        case 26: pk.IsEgg = !pk.IsEgg; return "egg";
+        default: pk.TID16 = (ushort)rng.Next(65536); return "tid";
+    }
+}

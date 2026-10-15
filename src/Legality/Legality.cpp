@@ -1377,7 +1377,8 @@ namespace Legality {
                        : 0);
         if (eggFormatGeneration == 3 || eggFormatGeneration == 4) {
             const auto eggState = Gen34EggState::analyze(
-                eggFormatGeneration, pk.isEgg(), pk.eggLocation(), pk.metLevel());
+                eggFormatGeneration, pk.isEgg(), pk.eggLocation(), pk.metLevel(),
+                pk.metLocation(), pk.id32());
             if (eggState.invalid()) {
                 add(r, Severity::Invalid,
                     std::string(Gen34EggState::evidenceName(eggState.evidence)),
@@ -1867,7 +1868,11 @@ namespace Legality {
             if (!Pokemon::isAbilityLegal(slots, pk.ability())) {
                 add(r, Severity::Invalid, "Ability not legal for this species");
             } else if (sourceProfile && exactGeneration == 4 &&
-                       storedGen4OriginKind == Gen4Origin::Kind::Gen4Retail) {
+                       storedGen4OriginKind == Gen4Origin::Kind::Gen4Retail &&
+                       !pk.isFatefulEncounter()) {
+                // Event gifts (PCD) keep the card's ability even when the PID would
+                // select the other slot (PKHeX VerifyAbilityPCD), so fateful records
+                // are left to the event checks.
                 const uint8_t slotIndex = static_cast<uint8_t>(pk.pid() & 1u);
                 uint16_t expectedAbility = slots.slot[slotIndex];
                 if (expectedAbility == 0)

@@ -25,7 +25,15 @@ awk -F'\t' '{split($1,a," "); split($2,b," "); if (a[1]!=b[1]) {print "id mismat
 echo "PKHeX rejects, PokeBank NX Incomplete (by mutation and PKHeX result):"
 awk -F'\t' '{split($1,a," "); split($2,b," "); if (a[3]=="INVALID" && b[2]!="INVALID") {m=a[1]; sub(/^m[0-9]+-/,"",m); sub(/^b[0-9]+$/,"base",m); r=$1; sub(/^[^;]*; /,"",r); print m" :: "r}}' \
     "$work/joined.txt" | sort | uniq -c | sort -rn | head -"${SHOW:-15}"
-false_invalid=$(awk -F'\t' '{split($1,a," "); split($2,b," "); if (a[3]=="VALID" && b[2]=="INVALID") print}' "$work/joined.txt")
+# Deliberately stricter than PKHeX (docs/legality/GEN5_PKHEX_RULE_INVENTORY.md,
+# "Deliberate differences"): for a hidden-ability-only template PKHeX accepts the
+# hidden-ability flag without checking the stored ability is the hidden one
+# (VerifyFixedAbility compares AbilityNumber only). No Gen V game can change it.
+stricter='Hidden ability flag is set but the ability is not the hidden ability'
+awk -F'\t' -v s="$stricter" '{split($1,a," "); split($2,b," "); r=$2; sub(/^[^;]*; /,"",r);
+    if (a[3]=="VALID" && b[2]=="INVALID" && r==s) n++} END{print "deliberately stricter than PKHeX (hidden-ability flag):", n+0}' "$work/joined.txt"
+false_invalid=$(awk -F'\t' -v s="$stricter" '{split($1,a," "); split($2,b," "); r=$2; sub(/^[^;]*; /,"",r);
+    if (a[3]=="VALID" && b[2]=="INVALID" && r!=s) print}' "$work/joined.txt")
 if [ -n "$false_invalid" ]; then
     echo "FALSE INVALID (PKHeX VALID, PokeBank NX INVALID):"
     printf '%s\n' "$false_invalid" | head -"${SHOW:-15}"

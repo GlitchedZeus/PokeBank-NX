@@ -210,7 +210,7 @@ void testPk4Properties(unsigned& checks) {
         const auto original = bytes;
         Pokemon::Pokemon4ReadOnly malformed(bytes, Enums::GameVersion::PT);
         assert(!malformed.sizeValid() && !malformed.valid() && !malformed.empty());
-        assert(malformed.species() == 0 && malformed.moves() == std::array<uint16_t, 4>{});
+        assert(malformed.species() == 0 && (malformed.moves() == std::array<uint16_t, 4>{}));
         assert(bytes == original);
         ++checks;
     }
@@ -225,8 +225,8 @@ void testPk4Properties(unsigned& checks) {
             altered[offset] ^= static_cast<std::byte>(1u << (next(seed) & 7u));
             const auto original = altered;
             Pokemon::Pokemon4ReadOnly corrupt(altered, Enums::GameVersion::PT);
-            assert(!corrupt.valid() && corrupt.species() == 0 && corrupt.moves() ==
-                   std::array<uint16_t, 4>{});
+            assert(!corrupt.valid() && corrupt.species() == 0 && (corrupt.moves() ==
+                   std::array<uint16_t, 4>{}));
             assert(altered == original);
             ++checks;
         }

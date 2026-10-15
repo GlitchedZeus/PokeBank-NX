@@ -40,6 +40,9 @@ def run(compiler: str, sanitize: bool, native: bool) -> dict[str, object]:
                "-Werror", "-Wno-unused-parameter", "-I.", "-Iinclude"]
     command += ["-O1", "-g", "-fsanitize=address,undefined",
                 "-fno-omit-frame-pointer"] if sanitize else ["-O2"]
+    if native and "clang" in Path(compiler).name:
+        # Same production-source allowances as the Stage 3 manifest's own Clang build.
+        command += ["-Wno-unknown-warning-option", "-Wno-unused-function"]
     with tempfile.TemporaryDirectory(prefix="pbnx-l6-stage5-") as directory:
         executable = str(Path(directory) / "stage5")
         compile_cmd = [*command, *sources, "-o", executable]
