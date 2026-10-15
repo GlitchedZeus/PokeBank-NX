@@ -2,6 +2,7 @@
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen1/Gen1Shiny.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
+#include "UI/Gen13PickerPaging.h"
 #include "UI/Gen1PokemonEditorUX3Contract.h"
 #include "UI/NavigationRepeat.h"
 #include "UI/MovePickerPresentation.h"
@@ -211,13 +212,20 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
     return false;
 }
 
+PokeBank::UIModel::SharedPickerPaging::Keys ux3PickerKeys(uint64_t down) noexcept {
+    return {(down & HidNpadButton_Up) != 0, (down & HidNpadButton_Down) != 0,
+            (down & HidNpadButton_Left) != 0, (down & HidNpadButton_Right) != 0,
+            (down & HidNpadButton_L) != 0, (down & HidNpadButton_R) != 0,
+            (down & HidNpadButton_ZL) != 0, (down & HidNpadButton_ZR) != 0};
+}
+
 void ux3HandleSpeciesPicker(TrainerViewScreen& screen, uint64_t down) {
     auto& state = ux2StateFor(screen);
     auto& ux3 = ux3StateFor(screen);
-    if (down & HidNpadButton_Up) state.pickerValue = std::max(1, state.pickerValue - 1);
-    if (down & HidNpadButton_Down) state.pickerValue = std::min(151, state.pickerValue + 1);
-    if (down & (HidNpadButton_L | HidNpadButton_Left)) state.pickerValue = std::max(1, state.pickerValue - 10);
-    if (down & (HidNpadButton_R | HidNpadButton_Right)) state.pickerValue = std::min(151, state.pickerValue + 10);
+    // Shared list paging (Gen13PickerPaging.h): Up/Down wrap, Left/L/Right/R +-10, ZL/ZR +-50.
+    const auto keys = ux3PickerKeys(down);
+    if (keys.any())
+        state.pickerValue = PokeBank::UIModel::SharedPickerPaging::pagedRow(state.pickerValue - 1, 151, keys) + 1;
     if (down & HidNpadButton_Y) ux3.pickerPreviewShiny = !ux3.pickerPreviewShiny;
     if (down & HidNpadButton_B) { state.picker = UX2Picker::None; return; }
     if (down & HidNpadButton_A) ux3ApplySpeciesPicker(screen);
@@ -230,15 +238,13 @@ void ux3HandleMovePicker(TrainerViewScreen& screen, uint64_t down) {
     int index = 0;
     for (int i = 0; i < static_cast<int>(choices.size()); ++i)
         if (choices[static_cast<size_t>(i)] == state.pickerValue) { index = i; break; }
-    if (down & HidNpadButton_Up) index = std::max(0, index - 1);
-    if (down & HidNpadButton_Down) index = std::min(static_cast<int>(choices.size()) - 1, index + 1);
-    if (down & HidNpadButton_L) index = std::max(0, index - 10);
-    if (down & HidNpadButton_R) index = std::min(static_cast<int>(choices.size()) - 1, index + 10);
+    const auto keys = ux3PickerKeys(down);
+    index = PokeBank::UIModel::SharedPickerPaging::pagedRow(index, static_cast<int>(choices.size()), keys);
     state.pickerValue = choices[static_cast<size_t>(index)];
     constexpr int visible = 9;
     const int count = static_cast<int>(choices.size());
     state.pickerViewport.ensure(index, count, visible);
-    if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_L | HidNpadButton_R)) {
+    if (keys.any()) {
         state.pickerScroll.stop();
         state.pickerViewport.reveal(index, count, visible);
     }

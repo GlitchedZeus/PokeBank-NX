@@ -3,6 +3,7 @@
 // overlay model; the Gen2PokemonSession changes only when A explicitly applies a selected value.
 
 #include "UI/Gen2PokemonPickerModel.h"
+#include "UI/Gen13PickerPaging.h"
 #include "UI/MovePickerPresentation.h"
 #include "UI/TouchScroll.h"
 #include "Utils/Keyboard.h"
@@ -319,16 +320,23 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
 
     if (picker.model.kind == Gen2Picker::Kind::Species ||
         picker.model.kind == Gen2Picker::Kind::Move || picker.model.kind == Gen2Picker::Kind::Location) {
-        if (nav & HidNpadButton_Up) { picker.scroll.stop(); picker.model.stepList(-1); }
-        if (nav & HidNpadButton_Down) { picker.scroll.stop(); picker.model.stepList(1); }
-        if (picker.model.kind == Gen2Picker::Kind::Species) {
-            if ((down & HidNpadButton_L) || (nav & HidNpadButton_Left)) { picker.scroll.stop(); picker.model.stepList(-10); }
-            if ((down & HidNpadButton_R) || (nav & HidNpadButton_Right)) { picker.scroll.stop(); picker.model.stepList(10); }
-            if (down & HidNpadButton_Y) picker.model.previewShiny = !picker.model.previewShiny;
-        } else {
-            if (nav & HidNpadButton_Left) { picker.scroll.stop(); picker.model.stepList(-10); }
-            if (nav & HidNpadButton_Right) { picker.scroll.stop(); picker.model.stepList(10); }
+        // Shared list paging (Gen13PickerPaging.h): Up/Down wrap, Left/L/Right/R +-10,
+        // ZL/ZR +-50, clamped. The stick repeats through nav like the D-pad.
+        const PokeBank::UIModel::SharedPickerPaging::Keys keys{
+            (nav & HidNpadButton_Up) != 0, (nav & HidNpadButton_Down) != 0,
+            (nav & HidNpadButton_Left) != 0, (nav & HidNpadButton_Right) != 0,
+            (down & HidNpadButton_L) != 0, (down & HidNpadButton_R) != 0,
+            (down & HidNpadButton_ZL) != 0, (down & HidNpadButton_ZR) != 0};
+        const int listCount = picker.model.kind == Gen2Picker::Kind::Species ? 251
+                            : picker.model.kind == Gen2Picker::Kind::Move ? 252
+                            : picker.model.locationCount();
+        if (keys.any() && listCount > 0) {
+            picker.scroll.stop();
+            picker.model.index = PokeBank::UIModel::SharedPickerPaging::pagedRow(
+                picker.model.index, listCount, keys);
         }
+        if (picker.model.kind == Gen2Picker::Kind::Species && (down & HidNpadButton_Y))
+            picker.model.previewShiny = !picker.model.previewShiny;
     }
 
     if (picker.model.kind == Gen2Picker::Kind::Location) {

@@ -1,6 +1,7 @@
 #include "UI/PokemonEditorFoundationContract.h"
 #include "UI/PokemonEditorExitGuard.h"
 #include "UI/Gen12RerollDVsConfirm.h"
+#include "UI/Gen1EditDraft.h"
 #include "UI/Gen1PokemonPresentation.h"
 #include "UI/ScreenChrome.h"
 #include "UI/Dialogs/DialogFrame.h"
@@ -56,8 +57,18 @@ void foundationSyncMainMode(TrainerViewScreen& screen) {
         foundation.reroll = {};
         if (state.mode == UX2Mode::Edit) {
             std::string error;
+            if (!beginEditDraft(screen, error)) {
+                // Fail closed: without a draft, edits would write the staged copy directly.
+                screen.postStatus(error.empty() ? "Could not open a Generation I edit draft" : error, 360);
+                ux3ResetSessionState(screen);
+                state.mode = UX2Mode::Actions;
+                foundation.lastMainMode = UX2Mode::Closed;
+                foundation.editBaseline.reset();
+                return;
+            }
             foundation.editBaseline = ux2SelectedPokemon(screen, error);
         } else {
+            dropEditDraft();
             foundation.editBaseline.reset();
         }
     }
@@ -135,31 +146,29 @@ bool foundationEditSessionDirty(TrainerViewScreen& screen) {
     return current && !foundationSameEditablePokemon(*foundation.editBaseline, *current);
 }
 
-bool foundationRestoreEditBaseline(TrainerViewScreen& screen) {
+// Keep: write the draft's Pokemon into the real staged copy with one verified stageEdit, then end
+// the draft. On any refusal the draft (and the session) stays open and nothing is lost.
+bool foundationCommitEditDraft(TrainerViewScreen& screen) {
     auto& state = ux2StateFor(screen);
-    auto& foundation = foundationStateFor(screen);
-    auto* e = editor(screen);
-    if (!foundation.editBaseline || !e) return true;
-
-    const auto& baseline = *foundation.editBaseline;
-    BoxPokemonEdit edit;
-    edit.species = baseline.species;
-    edit.nickname = baseline.nickname;
-    edit.level = baseline.level;
-    edit.experience = baseline.experience;
-    edit.trainerId = baseline.trainerId;
-    edit.moves = baseline.moves;
-    edit.pp = baseline.pp;
-    edit.ppUps = baseline.ppUps;
-    edit.dvs = storedDVs(baseline);
-    edit.statExperience = baseline.statExperience;
-    edit.otName = baseline.originalTrainer;
-
+    if (!editDraftActive(screen)) return true;
     std::string error;
-    if (!e->stageEdit(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), edit, error)) {
-        screen.postStatus(error.empty() ? "Could not restore the pre-edit staged Pokemon" : error, 360);
+    const auto drafted = ux2SelectedPokemon(screen, error);
+    auto* real = realEditor(screen);
+    if (!drafted || !real) {
+        screen.postStatus(error.empty() ? "Generation I edit draft is unavailable" : error, 360);
         return false;
     }
+    if (!real->stageEdit(static_cast<size_t>(state.box), static_cast<size_t>(state.slot),
+                         PokeBank::UIModel::Gen1EditDraft::editFromRecord(*drafted), error)) {
+        screen.postStatus(error.empty() ? "Generation I edit was rejected" : error, 360);
+        return false;
+    }
+    const auto staged = real->boxedPokemon(static_cast<size_t>(state.box), static_cast<size_t>(state.slot), error);
+    if (!staged || !foundationSameEditablePokemon(*staged, *drafted)) {
+        screen.postStatus("Kept Pokemon did not match the edit draft; review the staged copy", 420);
+        return false;
+    }
+    dropEditDraft();
     refreshBoxes(screen);
     return true;
 }
@@ -174,6 +183,7 @@ void foundationExitMainMode(TrainerViewScreen& screen) {
     foundation.editBaseline.reset();
     foundation.editExitConfirm = false;
     foundation.reroll = {};
+    dropEditDraft();
 }
 
 void foundationRandomizeDVs(TrainerViewScreen& screen, bool add) {
@@ -189,7 +199,7 @@ void foundationRandomizeDVs(TrainerViewScreen& screen, bool add) {
     }
     BoxPokemonEdit edit;
     edit.dvs = dvs;
-    if (ux2CommitEdit(screen, edit, "Randomized DVs staged in this edit session; source .srm unchanged"))
+    if (ux2CommitEdit(screen, edit, "Randomized DVs set in this edit draft; X Keep stages it"))
         ux3.preShinyEditDVs.reset();
 }
 
@@ -208,7 +218,7 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
                                                   foundationNickname(state, pokemon, add, species), 10);
             if (!result.accepted) break;
             if (add) state.draft.nickname = result.text;
-            else { BoxPokemonEdit edit; edit.nickname = result.text; ux2CommitEdit(screen, edit, "Nickname change staged in this edit session; source .srm unchanged"); }
+            else { BoxPokemonEdit edit; edit.nickname = result.text; ux2CommitEdit(screen, edit, "Nickname change set in this edit draft; X Keep stages it"); }
             break;
         }
         case 2: {
@@ -221,7 +231,7 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
                     state.draft.level, Editor::growthRate(state.draft.species));
             } else {
                 BoxPokemonEdit edit; edit.level = static_cast<uint8_t>(result.value);
-                ux2CommitEdit(screen, edit, "Level change staged in this edit session; source .srm unchanged");
+                ux2CommitEdit(screen, edit, "Level change set in this edit draft; X Keep stages it");
             }
             break;
         }
@@ -239,7 +249,7 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
                 state.draft.level = level;
             } else {
                 BoxPokemonEdit edit; edit.experience = experience;
-                ux2CommitEdit(screen, edit, "Experience change staged in this edit session; source .srm unchanged");
+                ux2CommitEdit(screen, edit, "Experience change set in this edit draft; X Keep stages it");
             }
             break;
         }
@@ -248,14 +258,14 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
                                                   foundationOT(state, *e, pokemon, add), 7);
             if (!result.accepted) break;
             if (add) state.draft.otName = result.text;
-            else { BoxPokemonEdit edit; edit.otName = result.text; ux2CommitEdit(screen, edit, "OT change staged in this edit session; source .srm unchanged"); }
+            else { BoxPokemonEdit edit; edit.otName = result.text; ux2CommitEdit(screen, edit, "OT change set in this edit draft; X Keep stages it"); }
             break;
         }
         case 5: {
             const auto result = Utils::promptNumber("Generation I Trainer ID", foundationTID(state, *e, pokemon, add), 0, 65535);
             if (!result.accepted) break;
             if (add) state.draft.trainerId = static_cast<uint16_t>(result.value);
-            else { BoxPokemonEdit edit; edit.trainerId = static_cast<uint16_t>(result.value); ux2CommitEdit(screen, edit, "TID change staged in this edit session; source .srm unchanged"); }
+            else { BoxPokemonEdit edit; edit.trainerId = static_cast<uint16_t>(result.value); ux2CommitEdit(screen, edit, "TID change set in this edit draft; X Keep stages it"); }
             break;
         }
     }
@@ -290,7 +300,7 @@ void foundationEditValue(TrainerViewScreen& screen, const Foundation::Focus& foc
             } else {
                 BoxPokemonEdit edit;
                 edit.dvs = dvs;
-                if (ux2CommitEdit(screen, edit, "DV change staged in this edit session; source .srm unchanged"))
+                if (ux2CommitEdit(screen, edit, "DV change set in this edit draft; X Keep stages it"))
                     ux3.preShinyEditDVs.reset();
             }
             return;
@@ -307,7 +317,7 @@ void foundationEditValue(TrainerViewScreen& screen, const Foundation::Focus& foc
         } else {
             BoxPokemonEdit edit;
             edit.statExperience = statExperience;
-            ux2CommitEdit(screen, edit, "Stat Exp change staged in this edit session; source .srm unchanged");
+            ux2CommitEdit(screen, edit, "Stat Exp change set in this edit draft; X Keep stages it");
         }
         return;
     }
@@ -338,8 +348,9 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
                 state.draft = BoxPokemonCreate{};
                 screen.postStatus("Create draft discarded; staged/source bytes unchanged", 300);
             } else {
-                if (!foundationRestoreEditBaseline(screen)) return;
-                screen.postStatus("Edit-session changes discarded; pre-edit staged Pokemon restored", 320);
+                // The staged copy was never touched; dropping the draft is the whole discard.
+                dropEditDraft();
+                screen.postStatus("Edit-session changes discarded; staged Pokemon unchanged", 320);
             }
             foundationExitMainMode(screen);
             return;
@@ -352,7 +363,8 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
                 foundation.editExitConfirm = false;
                 return;
             }
-            screen.postStatus("Edit session confirmed and kept staged; source .srm unchanged", 300);
+            if (!foundationCommitEditDraft(screen)) return;
+            screen.postStatus("Edit kept in the staged copy; source .srm unchanged", 300);
             foundationExitMainMode(screen);
             return;
         }
@@ -386,7 +398,8 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
     // X Keep, as in the Gen III-V shared editor: confirm this edit session (its changes are already
     // in the staged copy) and return to Actions, exactly like the exit dialog's A Save.
     if (state.mode == UX2Mode::Edit && (down & HidNpadButton_X)) {
-        screen.postStatus("Edit session kept staged; source .srm unchanged", 300);
+        if (!foundationCommitEditDraft(screen)) return;
+        screen.postStatus("Edit kept in the staged copy; source .srm unchanged", 300);
         foundationExitMainMode(screen);
         return;
     }

@@ -54,17 +54,6 @@ void normalizeHardwareMovePicker(const TrainerViewScreen& screen, const State& s
     if (!hardwareMoveAllowed(screen, state, picker.model.moveChoice())) picker.model.index = 0;
 }
 
-void stepHardwareMovePicker(const TrainerViewScreen& screen, const State& state,
-                            PickerOverlayState& picker, int delta) {
-    const auto& choices = hardwareCompatibleMoveChoices(screen, state);
-    if (choices.empty()) { picker.model.index = 0; return; }
-    const int count = static_cast<int>(choices.size());
-    const int current = hardwareMoveChoicePosition(choices, picker.model.moveChoice());
-    int next = (current + delta) % count;
-    if (next < 0) next += count;
-    picker.model.index = static_cast<int>(choices[static_cast<std::size_t>(next)]);
-}
-
 void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state,
                             const PokeBank::UIModel::Gen2PokemonPicker::Model& model) {
     const int W = fb.getWidth(), H = fb.getHeight();
@@ -170,16 +159,19 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         closePicker(screen, picker);
         return true;
     }
-    if (nav & (HidNpadButton_Up | HidNpadButton_Down |
-               HidNpadButton_Left | HidNpadButton_Right))
+    // Shared list paging over the compatible choices (Gen13PickerPaging.h).
+    const PokeBank::UIModel::SharedPickerPaging::Keys pageKeys{
+        (nav & HidNpadButton_Up) != 0, (nav & HidNpadButton_Down) != 0,
+        (nav & HidNpadButton_Left) != 0, (nav & HidNpadButton_Right) != 0,
+        (down & HidNpadButton_L) != 0, (down & HidNpadButton_R) != 0,
+        (down & HidNpadButton_ZL) != 0, (down & HidNpadButton_ZR) != 0};
+    if (pageKeys.any() && count > 0) {
         picker.moveScroll.stop();
-    if (nav & HidNpadButton_Up) stepHardwareMovePicker(screen, state, picker, -1);
-    if (nav & HidNpadButton_Down) stepHardwareMovePicker(screen, state, picker, 1);
-    if (nav & HidNpadButton_Left) stepHardwareMovePicker(screen, state, picker, -10);
-    if (nav & HidNpadButton_Right) stepHardwareMovePicker(screen, state, picker, 10);
+        const int next = PokeBank::UIModel::SharedPickerPaging::pagedRow(selectedPos, count, pageKeys);
+        picker.model.index = static_cast<int>(touchChoices[static_cast<std::size_t>(next)]);
+    }
     const int focusedPos = hardwareMoveChoicePosition(touchChoices, picker.model.moveChoice());
-    if (nav & (HidNpadButton_Up | HidNpadButton_Down |
-               HidNpadButton_Left | HidNpadButton_Right))
+    if (pageKeys.any())
         picker.moveViewport.reveal(focusedPos, count, visible);
     if (down & HidNpadButton_A) {
         if (!picker.moveViewport.containsSelection(focusedPos, count, visible)) {

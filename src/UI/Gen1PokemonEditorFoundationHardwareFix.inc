@@ -1,8 +1,18 @@
 #include "UI/ClassicGameContext.h"
+#include "UI/SharedPokemonShell.h"
 
 namespace UI::Gen1PokemonEditor {
 
 namespace ClassicContext = PokeBank::UIModel::ClassicGameContext;
+
+// The Gen I workspace panels use the shared shell geometry; the retained Gen I constants
+// (drawNeutralGen1WorkspaceHeadings) must keep describing the same panels.
+static_assert(SharedPokemonShell::Geometry(1280, 720, 48).y == 96);
+static_assert(SharedPokemonShell::Geometry(1280, 720, 48).leftX == 24 &&
+              SharedPokemonShell::Geometry(1280, 720, 48).leftW == 300);
+static_assert(SharedPokemonShell::Geometry(1280, 720, 48).midX == 24 + 300 + 14 &&
+              SharedPokemonShell::Geometry(1280, 720, 48).midW == 398);
+static_assert(SharedPokemonShell::Geometry(1280, 720, 48).rightX == 24 + 300 + 14 + 398 + 14);
 
 // Hardware fix 2026-09-13: picker state must own both input and drawing even while
 // the underlying editor mode remains AddDraft/Edit. The original foundation gate
@@ -174,13 +184,15 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     fb.drawFilledRect(0, 60, fb.getWidth(), 2, Colors::Accent);
     drawExactGen1WorkspaceSubtitle(screen, fb, workspaceMode);
 
-    constexpr int contentY = 96;
-    const int contentH = fb.getHeight() - contentY - kNavBarH - 8;
-    constexpr int leftX = 24, leftW = 300;
-    constexpr int gap = 14;
-    constexpr int midX = leftX + leftW + gap, midW = 398;
-    constexpr int rightX = midX + midW + gap;
-    const int rightW = fb.getWidth() - 24 - rightX;
+    // Panel geometry is the shared Pokemon shell's (identical numbers to the former Gen I
+    // constants), so Gen I DETAILS/STATS/MOVES sit exactly where Gen II-V panels do.
+    const SharedPokemonShell::Geometry geometry(fb.getWidth(), fb.getHeight(), kNavBarH);
+    const int contentY = geometry.y;
+    const int contentH = geometry.h;
+    const int leftX = geometry.leftX, leftW = geometry.leftW;
+    const int midX = geometry.midX, midW = geometry.midW;
+    const int rightX = geometry.rightX;
+    const int rightW = geometry.rightW;
 
     drawPanelSurface(fb, leftX, contentY, leftW, contentH, false, 14);
     drawPanelSurface(fb, midX, contentY, midW, contentH, false, 14);

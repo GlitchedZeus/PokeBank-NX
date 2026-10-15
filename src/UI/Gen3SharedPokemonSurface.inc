@@ -2,6 +2,7 @@
 #include "Pokemon/PersonalInfoTable.h"
 #include "Encryption/Encryption3FRLG.h"
 #include <cstring>
+#include "UI/Gen13PickerPaging.h"
 #include "Integration/Gen3/Gen3ExactFormatEditorProvider.h"
 #include "Integration/Gen3/Gen3ExportTransaction.h"
 #include "Integration/Gen3/Gen3LearnsetTable.h"
@@ -880,6 +881,13 @@ void editMoveCell(TrainerViewScreen& screen, State& state) {
 }
 
 
+PokeBank::UIModel::SharedPickerPaging::Keys gen3PickerKeys(u64 down) noexcept {
+    return {(down & HidNpadButton_Up) != 0, (down & HidNpadButton_Down) != 0,
+            (down & HidNpadButton_Left) != 0, (down & HidNpadButton_Right) != 0,
+            (down & HidNpadButton_L) != 0, (down & HidNpadButton_R) != 0,
+            (down & HidNpadButton_ZL) != 0, (down & HidNpadButton_ZR) != 0};
+}
+
 bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.valuePicker) return false;
     const int count = static_cast<int>(state.pickerValues.size());
@@ -973,14 +981,11 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
         if (down & HidNpadButton_R)
             state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, 0, 1);
     } else {
-        if (down & HidNpadButton_Up) state.pickerRow = (state.pickerRow - 1 + count) % count;
-        if (down & HidNpadButton_Down) state.pickerRow = (state.pickerRow + 1) % count;
-        if (down & HidNpadButton_Left) state.pickerRow = std::max(0, state.pickerRow - 10);
-        if (down & HidNpadButton_Right) state.pickerRow = std::min(count - 1, state.pickerRow + 10);
+        state.pickerRow = PokeBank::UIModel::SharedPickerPaging::pagedRow(
+            state.pickerRow, count, gen3PickerKeys(down));
     }
 
-    if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left |
-                HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R))
+    if (gen3PickerKeys(down).any())
         state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
 
     if (down & HidNpadButton_B) {
@@ -1026,14 +1031,9 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down, cons
         state.speciesPreview = static_cast<uint16_t>(std::clamp<int>(
             static_cast<int>(state.speciesPreview) + (dy < 0 ? steps : -steps), 1, 386));
     }
-    if (down & HidNpadButton_Up)
-        state.speciesPreview = static_cast<uint16_t>(std::max<int>(1, state.speciesPreview - 1));
-    if (down & HidNpadButton_Down)
-        state.speciesPreview = static_cast<uint16_t>(std::min<int>(386, state.speciesPreview + 1));
-    if (down & (HidNpadButton_Left | HidNpadButton_L))
-        state.speciesPreview = static_cast<uint16_t>(std::max<int>(1, state.speciesPreview - 10));
-    if (down & (HidNpadButton_Right | HidNpadButton_R))
-        state.speciesPreview = static_cast<uint16_t>(std::min<int>(386, state.speciesPreview + 10));
+    if (gen3PickerKeys(down).any())
+        state.speciesPreview = static_cast<uint16_t>(PokeBank::UIModel::SharedPickerPaging::pagedRow(
+            static_cast<int>(state.speciesPreview) - 1, 386, gen3PickerKeys(down)) + 1);
     if (down & HidNpadButton_B) {
         state.speciesPicker = false;
         return true;
