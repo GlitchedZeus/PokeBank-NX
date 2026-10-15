@@ -446,8 +446,8 @@ require(read("Makefile.host.gen5"),
 require(read(".github/workflows/gen5-focused-host.yml"),
         "test_gen5_create_integration test_gen5_box_touch test_gen5_create_input_rules ",
         "test_gen5_create_integration_sanitize test_gen5_box_touch_sanitize test_gen5_create_input_rules_sanitize ",
-        "test_gen5_bag_screen test_gen5_party_box_parity test_gen5_trainer test_gen5_source_e2e test_gen5_export_validation test_gen5_save_diagnostics; do",
-        "test_gen5_trainer_sanitize test_gen5_source_e2e_sanitize test_gen5_export_validation_sanitize test_gen5_save_diagnostics_sanitize; do")
+        "test_gen5_bag_screen test_gen5_party_box_parity test_gen5_trainer test_gen5_source_e2e test_gen5_export_validation test_gen5_save_diagnostics test_gen5_pid_coordination; do",
+        "test_gen5_trainer_sanitize test_gen5_source_e2e_sanitize test_gen5_export_validation_sanitize test_gen5_save_diagnostics_sanitize test_gen5_pid_coordination_sanitize; do")
 # One integrated Gen I-V candidate with packaged RomFS verification.
 require(read(".github/workflows/gen15-integrated-candidate.yml"),
         "python3 tools/verify_nro_romfs.py PokeBankNX.nro --list", "DEVICE_ACCEPTED=false",
