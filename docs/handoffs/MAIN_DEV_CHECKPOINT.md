@@ -105,6 +105,22 @@ conservative estimates.
 - No Gen I–IV integration files touched.
 - Consolidation is partial. Gen V opens on the shared hub and uses the shared Trainer panel and the shared three-panel Pokémon workspace. `Gen5SharedReadOnlySurface.inc` is still 1,848 lines (it was 1,886; 920 lines changed) and owns hub activation/Exit/Review and the entered panels. Storage is refused for Gen V.
 
+## Gen V parity repair round 2 (after the `35cbf163` hardware failure)
+
+- **Thread 2H done:** `claude/gen5-home-providers-20261015` @ `ece88e27` (draft #315).
+  - Generation-neutral `HomeCardSnapshot` cache, refreshed only on stat or assignment change, with an explicit STALE state.
+  - The Gen V card shows the "Current save party".
+  - Real providers via `SaveProviderIdentity` ("Nintendo DS • DraStic"); "Linked save" is removed.
+  - Width-measured label ellipsizing.
+  - Contract tests replaced one-for-one and are stricter.
+  - Not done: Gen IV card shiny badges (Gen IV output left unchanged); Dekopon/Azahar are recognised as labels only.
+  - Thread 2R has been told to merge it forward.
+- **Thread 2R in progress on #307:**
+  - `888b886c`: cited BW/B2W2 move data table.
+  - `2af25639`: PID-coordinated Gender/Shiny/Ability with exact replay.
+  - `5d8b833e`: Gen IV editor workspace extracted into the shared `SharedPokemonEditorSurface`.
+  - `b7c73365`: test source-path update (approved).
+
 ## Owner real-save analysis (2026-10-15; files analysed only in the coordinator scratchpad, never committed)
 
 - All four Gen V DraStic `.dsv` files (B/W/B2/W2) are 0x80000 bytes plus the standard 122-byte DeSmuME footer. Identification is correct: BW footers at 0x23F00/0x47F00, B2W2 at 0x25F00/0x4BF00, version bytes 20–23.
