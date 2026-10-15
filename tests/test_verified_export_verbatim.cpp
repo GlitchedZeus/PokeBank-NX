@@ -101,6 +101,7 @@ void unsetIsByteIdentical(const fs::path& root, const Fixture& f) {
 void verbatimBackupAndContainerFacts(const fs::path& root, const Fixture& f) {
     auto r = f.request(root, "verbatim");
     r.fileExtension = ".dsv";
+    r.editedFileExtension = ".sav"; // the raw payload must not look like a .dsv container
     r.backupBytes = f.file;
     r.sourceContainer = "dsv-footer";
     r.editedContainer = "raw-nds-battery";
@@ -109,7 +110,8 @@ void verbatimBackupAndContainerFacts(const fs::path& root, const Fixture& f) {
     assert(result.success);
     const fs::path dir = result.directory;
     assert(slurp(dir / "original_backup.dsv") == f.file);   // verbatim, footer included
-    assert(slurp(dir / "edited.dsv") == f.edited);          // edited stays the raw payload
+    assert(slurp(dir / "edited.sav") == f.edited);          // edited stays the raw payload, .sav
+    assert(!fs::exists(dir / "edited.dsv"));
     assert(result.backupSha256 == C::sha256Hex(f.file));
     assert(result.originalSha256 == C::sha256Hex(f.payload));
     const auto manifest = text(dir / "EDIT_MANIFEST.txt");
@@ -121,6 +123,7 @@ void verbatimBackupAndContainerFacts(const fs::path& root, const Fixture& f) {
              "SOURCE_FILE_SIZE=" + std::to_string(f.file.size()) + "\n",
              "SOURCE_FILE_SHA256=" + result.backupSha256 + "\n",
              std::string("ORIGINAL_BACKUP=original_backup.dsv\n"),
+             std::string("EDITED_SAVE=edited.sav\n"),
              "ORIGINAL_BACKUP_SHA256=" + result.backupSha256 + "\n",
              std::string("ORIGINAL_BACKUP_IS=VERBATIM_SOURCE_FILE\n"),
              std::string("EDITED_CONTAINER=raw-nds-battery\n"),
@@ -144,6 +147,10 @@ void refusalsFailClosed(const fs::path& root, const Fixture& f) {
     // A file shorter than the payload is refused.
     const std::vector<uint8_t> shorter(f.file.begin(), f.file.begin() + 0x100);
     r.backupBytes = shorter;
+    assert(!C::publishVerifiedStagedExport(r).success);
+    // An unsafe edited extension is refused.
+    r = f.request(root, "edited-ext");
+    r.editedFileExtension = "../x";
     assert(!C::publishVerifiedStagedExport(r).success);
     // Container facts are tokens only; no manifest line injection.
     r = f.request(root, "token");

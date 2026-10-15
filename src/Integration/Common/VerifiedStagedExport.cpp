@@ -130,6 +130,13 @@ VerifiedExportResult publishVerifiedStagedExport(const VerifiedExportRequest& re
         result.error = "Export file extension is unsafe";
         return result;
     }
+    const std::string& editedExtension =
+        request.editedFileExtension.empty() ? request.fileExtension : request.editedFileExtension;
+    if (!safeStem(editedExtension.size() > 1 ? editedExtension.substr(1) : "") ||
+        editedExtension.front() != '.') {
+        result.error = "Export file extension is unsafe";
+        return result;
+    }
     if (request.originalBytes.empty() || request.editedBytes.empty()) {
         result.error = "Export source or staged bytes are empty";
         return result;
@@ -198,7 +205,7 @@ VerifiedExportResult publishVerifiedStagedExport(const VerifiedExportRequest& re
     }
 
     const std::string backupName = "original_backup" + request.fileExtension;
-    const std::string editedName = "edited" + request.fileExtension;
+    const std::string editedName = "edited" + editedExtension;
     const std::string backupPath = join(temporaryDirectory, backupName);
     const std::string editedPath = join(temporaryDirectory, editedName);
     const std::string manifestPath = join(temporaryDirectory, "EDIT_MANIFEST.txt");

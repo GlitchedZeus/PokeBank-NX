@@ -38,6 +38,10 @@ struct VerifiedExportRequest {
     std::string directoryStem;
     std::string generationLabel;      // e.g. "Generation IV"
     std::string fileExtension = ".sav";
+    // Optional extension of edited<ext> only. Empty: fileExtension, as before. A verbatim .dsv
+    // backup keeps fileExtension ".dsv" while the edited raw payload is named edited.sav, so it
+    // never looks like a footer container to an emulator or to discovery.
+    std::string editedFileExtension;
     std::string sourcePath;
     std::string gameId;
     std::string saveFormat;
