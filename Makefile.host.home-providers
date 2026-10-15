@@ -28,10 +28,27 @@ HOME_GEN4_SOURCES := tests/test_home_card_gen4_snapshot.cpp \
 HOME_GEN4_HEADERS := $(HOME_PROVIDERS_HEADERS) $(wildcard include/Integration/Gen4/*.h) \
     include/Encryption/Encryption4.h
 
-HOST_TESTS += $(HOME_PROVIDERS_TEST) $(HOME_GEN5_TEST) $(HOME_GEN4_TEST)
-HOST_SANITIZE_TESTS += $(HOME_PROVIDERS_SANITIZE) $(HOME_GEN5_SANITIZE) $(HOME_GEN4_SANITIZE)
-host-test: $(HOME_PROVIDERS_TEST) $(HOME_GEN5_TEST) $(HOME_GEN4_TEST)
-host-sanitize: $(HOME_PROVIDERS_SANITIZE) $(HOME_GEN5_SANITIZE) $(HOME_GEN4_SANITIZE)
+# Gen I-III Home party adapters (the same slot fields as Gen IV / Gen V).
+HOME_PARTY_TEST := $(HOST_BUILD)/test_home_party_preview
+HOME_PARTY_SANITIZE := $(HOST_BUILD)/test_home_party_preview_sanitize
+HOME_PARTY_SOURCES := tests/test_home_party_preview.cpp src/Integration/Gen2/Gen2PersonalData.cpp
+HOME_PARTY_HEADERS := $(HOME_PROVIDERS_HEADERS) include/Integration/Common/HomePartyPreview.h \
+    include/Conversion/Gen3PidSearch.h include/Integration/Gen2/Gen2PersonalData.h
+
+HOST_TESTS += $(HOME_PROVIDERS_TEST) $(HOME_GEN5_TEST) $(HOME_GEN4_TEST) $(HOME_PARTY_TEST)
+HOST_SANITIZE_TESTS += $(HOME_PROVIDERS_SANITIZE) $(HOME_GEN5_SANITIZE) $(HOME_GEN4_SANITIZE) \
+    $(HOME_PARTY_SANITIZE)
+host-test: $(HOME_PROVIDERS_TEST) $(HOME_GEN5_TEST) $(HOME_GEN4_TEST) $(HOME_PARTY_TEST)
+host-sanitize: $(HOME_PROVIDERS_SANITIZE) $(HOME_GEN5_SANITIZE) $(HOME_GEN4_SANITIZE) \
+    $(HOME_PARTY_SANITIZE)
+
+$(HOME_PARTY_TEST): $(HOME_PARTY_SOURCES) $(HOME_PARTY_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(HOME_PARTY_SOURCES) -o $@
+
+$(HOME_PARTY_SANITIZE): $(HOME_PARTY_SOURCES) $(HOME_PARTY_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(HOME_PARTY_SOURCES) -o $@
 
 $(HOME_PROVIDERS_TEST): tests/test_home_card_providers.cpp $(HOME_PROVIDERS_HEADERS)
 	@mkdir -p $(HOST_BUILD)

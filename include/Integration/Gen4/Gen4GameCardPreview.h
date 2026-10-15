@@ -2,6 +2,7 @@
 #define POKEBANK_GEN4_GAME_CARD_PREVIEW_H
 
 #include "Integration/Gen4/Gen4AssignedSource.h"
+#include "Integration/Common/HomePartyPreview.h"
 #include "Source/HomeCardSnapshot.h"
 #include "Utils/StringHelpers.h"
 
@@ -12,7 +13,7 @@ namespace PokeVault::Integration::Gen4 {
 
 // Read-only Home card snapshot of an explicitly assigned Gen IV save. It
 // carries exactly what the Home hero already showed for Gen IV (trainer,
-// gender, dex, party species/level/form); it only moves the strict parse out
+// gender, dex, party species/level/form/shiny/gender); it only moves the strict parse out
 // of every focus change and into the fingerprinted snapshot cache.
 inline constexpr const char* UnavailablePartyReason = "Choose a Save Instance to view its party.";
 
@@ -35,8 +36,8 @@ inline constexpr const char* UnavailablePartyReason = "Choose a Save Instance to
     s.partyCount=static_cast<uint8_t>(std::min(party.size(),s.party.size()));
     for(size_t i=0;i<s.partyCount;++i) {
         if(!party[i].valid())continue;
-        // Gen IV Home shiny badges are not part of the accepted card output.
-        s.party[i]={party[i].species(),party[i].partyLevel(),party[i].form(),false};
+        // The ONE Gen I-V Home party rule, shiny badge included (campaign directive).
+        s.party[i]=HomePartyPreview::fromGen4(party[i]);
     }
     return s;
 }
