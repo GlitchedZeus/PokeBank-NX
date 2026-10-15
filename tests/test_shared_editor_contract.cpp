@@ -346,6 +346,30 @@ void surfaceSourceContracts() {
     contains(gen4, "Surface::drawWorkspace<Gen4Editor>(screen, fb, state);");
     contains(gen5, "EditorSurface::handleWorkspace<Gen5Editor>(screen, state, keys, touch);");
     contains(gen5, "EditorSurface::drawWorkspace<Gen5Editor>(screen, fb, state);");
+    // No regression to a separate editor: the Gen IV and Gen V surface files no
+    // longer contain their own workspace navigation, pickers or move editor.
+    for (const auto* text : {&gen4, &gen5}) {
+        for (const char* own : {"bool handleValuePicker(", "void drawValuePicker(",
+                                "bool handleMoveEditor(", "void drawMoveEditor(",
+                                "void normalizeEditableFocus(", "enum class PickerTarget",
+                                "Shared::switchPanel(", "Shared::moveVertical(",
+                                "Shared::moveRowColumn(", "Shared::passiveViewMoveVertical(",
+                                "SharedSpeciesPicker::drawContent(", "NaturePickerLayout::forChoices(",
+                                "SharedHeldItemPickerPresentation::drawGrid(", "drawScrollableDetails("})
+            absent(*text, own);
+    }
+    for (const char* retired : {"drawWorkspace5", "drawMovePicker(", "drawLocationPicker(",
+                                "drawNaturePicker(", "drawSpeciesPicker(", "drawIdentityPicker(",
+                                "kGen5FieldTouchBase", "stepWithinPanel5", "switchPanel5",
+                                "Surface::MovePicker", "Surface::SpeciesPicker"})
+        absent(gen5, retired);
+    // Coordinated PID edits are explicit: a confirmation that states the PID
+    // change, a strict re-verify, and never a silent side effect.
+    contains(gen5, "\"Change PID?\"");
+    contains(gen5, "This changes the Pokemon's PID (personality value):");
+    contains(gen5, "Gen5Editor::pidLinksHold(*after, b2w2)");
+    contains(gen5, "if (handlePidConfirmation(screen, state, keys, touch)) return true;");
+    contains(gen5, "if (before->pid() == after->pid()) {");
     // 11: the stick is folded into D-pad keys before the shared workspace runs.
     contains(gen4, "screen.controllerNavigation.apply(");
     contains(gen5, "const u64 workspaceKeys=screen.controllerNavigation.apply(");

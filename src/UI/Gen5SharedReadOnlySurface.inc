@@ -34,6 +34,8 @@
 #include "UI/InventoryUIContract.h"
 #include "UI/ItemPickerArtwork.h"
 #include "Utils/Keyboard.h"
+#include "UI/Dialogs/DialogFrame.h"
+#include <cstdio>
 
 namespace UI::Gen5SharedReadOnlySurface {
 namespace {
@@ -145,10 +147,30 @@ namespace Fields = PokeVault::Integration::Gen5::EditorFields;
 namespace EditorSurface = UI::SharedPokemonEditorSurface;
 namespace MoveUI = PokeBank::UIModel::MovePickerPresentation;
 
+// A PID-changing edit (Gender, Shiny, Ability slot, TID/SID keeping
+// shininess, Species with a shiny choice) is never applied silently: it waits
+// here until the player confirms a dialog that states the PID change.
+struct PendingPidChange5 {
+    bool active = false;
+    std::string what;
+    uint32_t before = 0, after = 0;
+    std::optional<PokeVault::Integration::Gen5::Gen5SharedPokemonSession> probe;
+    bool rebuildCreate = false;
+    uint16_t species = 0;
+    bool shiny = false;
+};
 struct Gen5EditorState : EditorSurface::EditorState {
     const TrainerViewScreen* owner = nullptr;
     bool workspaceOpen = false;
+    PendingPidChange5 pid;
 };
+constexpr int kGen5PidCancelTouch = 41700;
+constexpr int kGen5PidConfirmTouch = 41701;
+std::string pidHex5(uint32_t pid) {
+    char text[16]{};
+    std::snprintf(text, sizeof(text), "0x%08X", static_cast<unsigned>(pid));
+    return text;
+}
 Gen5EditorState& editorStateFor(const TrainerViewScreen& screen) {
     static Gen5EditorState state;
     if (state.owner != &screen) {
@@ -263,6 +285,43 @@ struct Gen5Editor {
         return false;
     }
 
+    static Gen5EditorState& gen5(EditorSurface::EditorState& state) {
+        return static_cast<Gen5EditorState&>(state);
+    }
+    // Strict re-verify of a PID-changing probe (PKHeX 6501f0ab rules, see
+    // Gen5PidCoordination.h): a valid Gen V-origin PK5 whose stored gender and
+    // normal ability still follow the new PID.
+    static bool pidLinksHold(const Record& p, bool b2w2) {
+        const auto personal = PokeVault::Integration::Gen5::personal5(p.species(), p.form(), b2w2);
+        return p.valid() && !p.empty() && personal &&
+               !PokeVault::Integration::Gen5::earlierGenerationOrigin5(p.originVersion()) &&
+               PokeVault::Integration::Gen5::genderFromPid5(p.pid(), personal.info->genderRatio) == p.gender() &&
+               (p.hiddenAbility() ||
+                PokeVault::Integration::Gen5::abilityForSlot5(
+                    *personal.info, PokeVault::Integration::Gen5::abilityBit5(p.pid())) == p.ability());
+    }
+    // Apply a probe draft at once when the PID is unchanged; otherwise hold it
+    // for the explicit "Change PID?" confirmation.
+    static bool offer(TrainerViewScreen& screen, EditorSurface::EditorState& state,
+                      PokeVault::Integration::Gen5::Gen5SharedPokemonSession probe, std::string what) {
+        const auto before = draft(screen).current();
+        const auto after = probe.current();
+        if (!before || !after) return false;
+        if (before->pid() == after->pid()) {
+            draft(screen) = std::move(probe);
+            return true;
+        }
+        auto& pending = gen5(state).pid;
+        pending = {};
+        pending.active = true;
+        pending.what = std::move(what);
+        pending.before = before->pid();
+        pending.after = after->pid();
+        pending.probe = std::move(probe);
+        screen.controllerNavigation.reset();
+        return true;
+    }
+
     static const char* detailLabel(int row) { return Fields::kDetailLabels[static_cast<size_t>(row)]; }
     static bool detailEditable(const TrainerViewScreen& screen, const EditorSurface::EditorState&,
                                int row, const Record&) {
@@ -347,8 +406,15 @@ struct Gen5Editor {
                 const bool secret = row == SecretId;
                 const auto r = Utils::promptNumber(secret ? "Secret ID" : "Trainer ID",
                     secret ? p.sid() : p.tid(), 0, 65535);
-                if (r.accepted && !Fields::stageTrainerId(d, secret, static_cast<uint16_t>(r.value), error))
+                if (!r.accepted) return true;
+                auto probe = d;
+                if (!Fields::stageTrainerId(probe, secret, static_cast<uint16_t>(r.value), error))
                     refused(error);
+                else
+                    offer(screen, state, std::move(probe),
+                          std::string(secret ? "Secret ID " : "Trainer ID ") +
+                              std::to_string(secret ? p.sid() : p.tid()) + " -> " +
+                              std::to_string(r.value) + ", shininess kept");
                 return true;
             }
             case HeldItem:
@@ -452,9 +518,19 @@ struct Gen5Editor {
             for (uint16_t i = 0; i < 25; ++i) natures.push_back(i);
             EditorSurface::openPicker(screen, state, PickerTarget::Nature, std::move(natures), p.nature());
         } else if (row == Fields::GenderRow) {
-            if (!Fields::toggleGender(d, error)) screen.postStatus(error, 300);
+            auto probe = d;
+            if (!Fields::toggleGender(probe, error)) {
+                screen.postStatus(error, 300);
+            } else {
+                std::string what = std::string("Gender ") + EditorSurface::genderText(p.gender()) +
+                                   " -> " + EditorSurface::genderText(probe.current()->gender());
+                offer(screen, state, std::move(probe), std::move(what));
+            }
         } else if (row == Fields::ShinyRow) {
-            if (!Fields::toggleShiny(d, error)) screen.postStatus(error, 300);
+            auto probe = d;
+            if (!Fields::toggleShiny(probe, error)) screen.postStatus(error, 300);
+            else offer(screen, state, std::move(probe),
+                       std::string("Shiny ") + (p.shiny() ? "Yes -> No" : "No -> Yes"));
         } else if (row == Fields::AbilityRow) {
             EditorSurface::openPicker(screen, state, PickerTarget::Ability,
                                       Fields::abilityChoices(p, b2w2(screen)),
@@ -569,7 +645,16 @@ struct Gen5Editor {
             case PickerTarget::Form: return stage(screen, Field::Form, 0, value);
             case PickerTarget::Move: return stage(screen, Field::Move, static_cast<size_t>(state.moveEditorSlot), value);
             case PickerTarget::Nature: return stage(screen, Field::Nature, 0, value);
-            case PickerTarget::Ability: return stage(screen, Field::AbilitySlot, 0, value);
+            case PickerTarget::Ability: {
+                auto probe = d;
+                std::string why;
+                if (!probe.stage(Field::AbilitySlot, 0, value, why)) {
+                    screen.postStatus(why, 320);
+                    return false;
+                }
+                return offer(screen, state, std::move(probe),
+                             "Ability -> " + pickerLabel(screen, state, PickerTarget::Ability, value));
+            }
             default: return false;
         }
     }
@@ -580,6 +665,22 @@ struct Gen5Editor {
                              const Record& p, uint16_t species) {
         auto& backendState = backend(screen);
         std::string error;
+        if (backendState.createPending() && p.shiny() != state.speciesPreviewShiny) {
+            // Rebuilding the new Pokemon with the other shiny state changes its PID.
+            auto& pending = gen5(state).pid;
+            pending = {};
+            pending.active = true;
+            pending.rebuildCreate = true;
+            pending.species = species;
+            pending.shiny = state.speciesPreviewShiny;
+            pending.what = std::string(Names::getSpeciesName(species)) +
+                           (state.speciesPreviewShiny ? ", Shiny" : ", not Shiny");
+            pending.before = p.pid();
+            pending.after = PokeVault::Integration::Gen5::withShiny5(
+                p.pid(), p.tid(), p.sid(), state.speciesPreviewShiny);
+            screen.controllerNavigation.reset();
+            return true;
+        }
         if (backendState.createPending()) {
             auto& trainer = nativeTrainer(screen);
             if (!backendState.recreateCreateSpecies(trainer.stagedPokemon(), species,
@@ -607,8 +708,9 @@ struct Gen5Editor {
             screen.postStatus("Could not reconcile Species/Shiny while preserving PID-linked traits: " + error, 360);
             return false;
         }
-        draft(screen) = std::move(probe);
-        return true;
+        return offer(screen, state, std::move(probe),
+                     std::string("Species ") + Names::getSpeciesName(species) +
+                         (state.speciesPreviewShiny ? ", Shiny" : ", not Shiny"));
     }
     static std::array<uint8_t,2> speciesPreviewTypes(const TrainerViewScreen& screen, uint16_t species) {
         return classicTypes5(species, 0, b2w2(screen));
@@ -682,16 +784,86 @@ struct Gen5Editor {
     }
 };
 
+// The explicit PID confirmation: A (or the Change PID button) applies the
+// strictly re-verified probe; B (or Cancel) leaves the draft untouched.
+bool handlePidConfirmation(TrainerViewScreen& screen, Gen5EditorState& state, u64 keys,
+                           const TouchInput& touch) {
+    auto& pending = state.pid;
+    if (!pending.active) return false;
+    const int tap = screen.touchedButtonId(touch);
+    if (tap == kGen5PidConfirmTouch) keys |= HidNpadButton_A;
+    if (tap == kGen5PidCancelTouch) keys |= HidNpadButton_B;
+    if (keys & HidNpadButton_B) {
+        pending = {};
+        screen.postStatus("PID unchanged; the draft was not modified", 200);
+        screen.controllerNavigation.reset();
+        return true;
+    }
+    if (!(keys & HidNpadButton_A)) return true;
+    const bool b2w2 = nativeTrainer(screen).sharedScreen().black2White2();
+    std::string error;
+    bool applied = false;
+    if (pending.rebuildCreate) {
+        auto& trainer = nativeTrainer(screen);
+        const auto current = trainer.sharedScreen().draft().current();
+        applied = current && trainer.sharedScreen().recreateCreateSpecies(
+            trainer.stagedPokemon(), pending.species, pending.shiny,
+            Names::getSpeciesName(pending.species), Names::getSpeciesName(current->species()),
+            [&](std::string& why) { return trainer.refreshStagedPokemonPresentation(why); }, error);
+        const auto rebuilt = trainer.sharedScreen().draft().current();
+        applied = applied && rebuilt && Gen5Editor::pidLinksHold(*rebuilt, b2w2);
+    } else if (pending.probe) {
+        const auto after = pending.probe->current();
+        if (after && after->pid() == pending.after && Gen5Editor::pidLinksHold(*after, b2w2)) {
+            Gen5Editor::draft(screen) = std::move(*pending.probe);
+            applied = true;
+        } else {
+            error = "The new PID failed strict re-verification; nothing was changed";
+        }
+    }
+    screen.postStatus(applied ? "PID changed in the draft: " + pidHex5(pending.before) + " -> " +
+                                    pidHex5(pending.after)
+                              : (error.empty() ? std::string("PID change refused") : error), 320);
+    pending = {};
+    screen.controllerNavigation.reset();
+    return true;
+}
+void drawPidConfirmation(TrainerViewScreen& screen, PKSEFramebuffer& fb, const Gen5EditorState& state) {
+    const auto& pending = state.pid;
+    if (!pending.active) return;
+    screen.touchButtons.clear();
+    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 150));
+    constexpr int w = 700, h = 290;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - kNavBarH - h) / 2;
+    const int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, "Change PID?", Colors::Orange);
+    fb.drawText(x + 28, cy, pending.what, Colors::Text);
+    fb.drawText(x + 28, cy + 36, "This changes the Pokemon's PID (personality value):",
+                Colors::TextSecondary, TextStyle::Caption);
+    fb.drawText(x + 28, cy + 62, pidHex5(pending.before) + "  ->  " + pidHex5(pending.after),
+                Colors::Text, TextStyle::Body);
+    fb.drawText(x + 28, cy + 98, "Gender, ability and shininess stay linked to the new PID. "
+                "Encounter legality is not evaluated.", Colors::TextDim, TextStyle::Caption);
+    const int bw = 190, bh = TouchTargetMin, by = y + h - bh - 18;
+    drawGlyphButton(fb, x + 24, by, bw, bh, "B", "Cancel", Colors::PanelAlt);
+    drawGlyphButton(fb, x + w - 24 - bw, by, bw, bh, "A", "Change PID", Colors::PanelAlt);
+    screen.touchButtons.push_back({kGen5PidCancelTouch, x + 24, by, bw, bh});
+    screen.touchButtons.push_back({kGen5PidConfirmTouch, x + w - 24 - bw, by, bw, bh});
+    drawNavBar(fb, {{"A", "Change PID"}, {"B", "Cancel"}});
+}
+
 bool handleSharedWorkspace(TrainerViewScreen& screen, u64 keys, const TouchInput& touch) {
     auto& state = editorStateFor(screen);
     if (!state.workspaceOpen) {
         EditorSurface::resetWorkspaceFocus(state);
         state.workspaceOpen = true;
     }
+    if (handlePidConfirmation(screen, state, keys, touch)) return true;
     EditorSurface::handleWorkspace<Gen5Editor>(screen, state, keys, touch);
     if (!workspaceSurface(nativeTrainer(screen).sharedScreen().surface())) {
         EditorSurface::resetWorkspaceFocus(state);
         state.workspaceOpen = false;
+        state.pid = {};
     }
     return true;
 }
@@ -702,6 +874,7 @@ void drawSharedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         state.workspaceOpen = true;
     }
     EditorSurface::drawWorkspace<Gen5Editor>(screen, fb, state);
+    drawPidConfirmation(screen, fb, state);
 }
 
 // ---- Native Bag in the shared Items panel (same surface as Gen III/IV) ----
