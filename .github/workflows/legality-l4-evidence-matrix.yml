@@ -1,5 +1,6 @@
-# L4-owned, PR #292-only native evidence verification.
-# Does not modify the shared host workflow, production analyzer or other lanes.
+# L4-owned native evidence verification: PR #292 and the Gen I-V integration branch,
+# which carries the L4 lane (#314). Does not modify the shared host workflow,
+# production analyzer or other lanes.
 name: L4 Event Metadata Exact-Head Verification
 
 on:
@@ -34,7 +35,7 @@ permissions:
 
 jobs:
   l4-native-matrix:
-    if: github.event.pull_request.number == 292
+    if: github.event.pull_request.number == 292 || startsWith(github.event.pull_request.head.ref, 'claude/gen1-5-legality-')
     runs-on: ubuntu-24.04
     timeout-minutes: 65
     strategy:

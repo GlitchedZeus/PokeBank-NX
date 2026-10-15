@@ -33,9 +33,9 @@ Invalid (the rest are Incomplete); certifies = whether the app can say "No probl
 | 1 | Red | `GB::checkGen1` (app) | Gen I corpus 3 × 50,000 | 0 (by design: differences are listed in GB_LEGALITY_VERDICTS.md) | matches PKHeX | yes | Done |
 | 2 | Blue | same | same | 0 | matches PKHeX | yes | Done |
 | 3 | Yellow | same | same | 0 | matches PKHeX | yes | Done |
-| 4 | Gold | app: older Gen II checks in `Legality.cpp`; `GB::checkGen2` tested, not wired | Gen II corpus 3 × 50,000 (checkGen2) | 0 (checkGen2) | matches PKHeX (checkGen2) | no | Gap: wire `GB::checkGen2` into the app |
-| 5 | Silver | same | same | same | same | no | same gap |
-| 6 | Crystal | same | same | same | same | no | same gap |
+| 4 | Gold | `GB::checkGen2` (app, since round 2) | Gen II corpus 3 × 50,000; app path parity 18,291/18,291 (seed 1) | 0 (differences in GB_LEGALITY_VERDICTS.md) | matches PKHeX | yes | Done |
+| 5 | Silver | same | same | 0 | matches PKHeX | yes | Done |
+| 6 | Crystal | same | same | 0 | matches PKHeX | yes | Done |
 | 7 | Ruby | `Legality::analyze` (PK3) | 2,846 | 0 | 13% | no | Safe, partial |
 | 8 | Sapphire | same | 2,679 | 0 | 14% | no | Safe, partial |
 | 9 | Emerald | same | 2,805 | 0 | 13% | no | Safe, partial |
@@ -61,8 +61,6 @@ Gen III/IV counts are from `tools/pkhex_gen34_diff/run.sh PKHeX 1 3`; Gen V from
   PID/IV correlation (`PIDTypeMismatch`), encounter location/level (`EncInvalid`),
   Gen IV encounter type, PP/PP-ups, fateful flags and event-card matching, untrained
   EVs, unobtainable moves, Pokérus, Johto balls, nickname language.
-- **Gen II in the app** still uses the older per-rule checks, not the PKHeX-matched origin
-  search.
 - **Gen V:** OT/nickname text of trades and event cards; fateful records that match no
   PGF card (warned, not Invalid: the card list is not proven complete); Gen III/IV-origin
   PK5 records only get Gen V-side checks.
@@ -99,10 +97,31 @@ tools/pkhex_gen5_diff/run.sh /path/to/PKHeX 1 4
 python3 tools/gen_legality_gen5_data.py --pkhex /path/to/PKHeX --check
 ```
 
-## Next steps (not started)
+## Round 2 (owner review 2026-10-15): progress
 
-1. Wire `GB::checkGen2` into `Legality::analyze` for PK2 (Gold/Silver/Crystal).
-2. Raise Gen III/IV coverage using the differential's top PKHeX-only categories, keeping
+Owner priorities, in order: (1) wire `GB::checkGen2` into the app; (2) Gen III/IV production
+rules, the largest priority; (3) Gen V trade/event text, PGF provenance, Gen III/IV-origin
+transfer; (4) review every deliberate PKHeX disagreement, requiring original-game evidence for
+any stricter Invalid; (5) every L1-L5 gate on the exact final commit, including skipped event
+checks; (6) broader tests across all 20 titles; (7) report production-wired rule coverage
+separately from corpus detection rates and test counts. No merge without the owner.
+
+- (1) Done in `7356b3835d2d97eed270cae2d86300ece9b55f26`: native PK2 goes through
+  `analyzeNativeGen2` (format checks, then `GB::checkGen2`); the older PK2 provenance notes stay
+  as Info. `tools/pkhex_gb_diff/run.sh` now also runs the corpus through the app path
+  (`production_parity.cpp`) and fails when the app's verdict differs from the origin search:
+  PK2 seed 1: 18,291 records, 0 differences (1,709 Korean records skipped: the app reads no
+  Korean saves); PK1 seed 1: 20,000 records, 0 differences.
+- (5) The L4 event-metadata matrix (g++/clang++, sanitizer on/off) only ran on PR #292; it now
+  also runs on this branch.
+- (2), (3), (4) in progress: separate Gen III (PK3) and Gen IV (PK4, incl. Pal Park) analyzers
+  measured by `tools/pkhex_gen34_diff` with a false-Valid gate and a grown-record corpus; Gen V
+  trade/event/transfer checks; a written review of every disagreement
+  (`docs/legality/PKHEX_DISAGREEMENT_REVIEW.md`).
+
+## Next steps
+
+1. Raise Gen III/IV coverage using the differential's top PKHeX-only categories, keeping
    false Invalid at 0.
-3. Gen V OT/nickname text for trades and event cards.
-4. Combined Gen I–V app and legality test campaign on Switch hardware (owner).
+2. Gen V OT/nickname text for trades and event cards.
+3. Combined Gen I–V app and legality test campaign on Switch hardware (owner).
