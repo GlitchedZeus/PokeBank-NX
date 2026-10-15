@@ -32,6 +32,7 @@
 #include "Utils/Keyboard.h"
 #include "Utils/Logger.h"
 #include "Utils/PokeBankPaths.h"
+#include "Utils/FileUtilities.h"
 #include "Utils/Settings.h"
 #include "Utils/SHA256.h"
 #include "Utils/StringHelpers.h"
@@ -3467,6 +3468,21 @@ namespace UI {
                 discoverGen5Candidates();
                 return;
             }
+            if((kDown & HidNpadButton_Plus) && gen5CandidateIndex>=0 &&
+               gen5CandidateIndex<static_cast<int>(gen5Instances.size())) {
+                // Owner diagnostics: both copies' CRC status, version/gender
+                // bytes, party/box/dex counts and copy state, written as a
+                // NEW app-owned file. No names, IDs or save bytes; the source
+                // is only read.
+                const auto& row=gen5Instances[static_cast<size_t>(gen5CandidateIndex)];
+                std::string written,error;
+                if(PokeVault::Integration::Gen5::writeGen5DiagnosticsReport(
+                       row.sourcePath,gen5TargetGameId,Utils::getTimestamp(),
+                       PokeBank::Paths::root()+"/diagnostics",written,error))
+                    gen5Notice="Save diagnostics written: "+written;
+                else gen5Notice="Save diagnostics failed: "+error;
+                return;
+            }
             if(kDown & HidNpadButton_Y) {
                 gen5CandidateTouchScroll.stop();
                 openGen5Setup(gen5TargetGameId,"Choose or repair a Gen V read-only source.",
@@ -5090,7 +5106,7 @@ namespace UI {
                 drawGen5SourceNotice(fb,gen5Notice,x+28,y+h-44,w-56);
             drawNavBar(fb,{{"D-pad/Stick","Choose Save"},
                            {"A",gen5AssignOnly?"Assign to Profile":"Open Editor"},
-                           {"Y","Source Setup"},{"X","Refresh"},{"B","Back"}});
+                           {"Y","Source Setup"},{"X","Refresh"},{"+","Save Diagnostics"},{"B","Back"}});
         } else if (overlay == Overlay::Gen4Setup && u) {
             constexpr int w = 760, h = 430, rowH = 64;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;

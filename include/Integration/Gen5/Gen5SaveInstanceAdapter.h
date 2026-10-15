@@ -2,6 +2,7 @@
 #define POKEBANK_GEN5_SAVE_INSTANCE_ADAPTER_H
 
 #include "Integration/Gen5/Gen5ReadOnlySave.h"
+#include "Integration/Gen5/Gen5SaveDiagnostics.h"
 #include "Integration/Gen5/Gen5TrainerName.h"
 #include "Source/SaveInstance.h"
 
@@ -94,6 +95,27 @@ struct ReadOnlyProbe {
         return out;
     }
 
+    // Valid checksums do not prove the copy holds the player's game. A blank
+    // or initial copy (no TID/SID/name) or one with invalid PK5 records is
+    // refused with an explicit reason instead of opening as "Trainer 0 /
+    // Party 0 / Dex 0". The other copy is described, never silently chosen.
+    const auto report = inspectSave5(raw, "raw-nds-battery", selection);
+    const auto state = chosenState5(report);
+    if (!copyOpenable5(state)) {
+        row.validation = Source::ValidationStatus::Invalid;
+        row.diagnostic = std::string(save->selectedBackupPartition() ? "Backup" : "Primary") +
+                         " copy: " + copyStateLabel5(state);
+        if (const auto other = openableAlternative5(report)) {
+            const auto& alt = report.copies[*other];
+            row.diagnostic += std::string("; the ") + (alt.offset == 0 ? "Primary" : "Backup") +
+                              " copy is " + copyStateLabel5(alt.state) + " - choose it explicitly";
+        } else if (report.chosenIndex) {
+            for (const auto& c : report.copies)
+                if (c.family == save->family() && c.offset != save->selectedCopyOffset())
+                    row.diagnostic += std::string("; the other copy is ") + copyStateLabel5(c.state);
+        }
+        return out;
+    }
     row.validation = Source::ValidationStatus::Ready;
     // Only validated, printable UTF-16 becomes a visible trainer label.
     // Malformed/unsupported display text does not invalidate the entire save.

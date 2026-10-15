@@ -1,4 +1,5 @@
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
+#include "Integration/Gen5/Gen5SaveDiagnostics.h"
 
 #include "Utils/SHA256.h"
 #include "Games/GameIdentity.h"
@@ -10,6 +11,8 @@
 #include <cerrno>
 #include <cstdio>
 #include <dirent.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <set>
 #include <sys/stat.h>
 #include <utility>
@@ -647,6 +650,55 @@ DiscoveryResult discoverKnownSources(DiscoveryLimits limits,
             DiscoveryRoot{"sdmc:/melonds","melonDS",2}})
         if(safeDirectory(root.path))roots.push_back(root);
     return discoverSources(roots,limits);
+}
+
+bool writeGen5DiagnosticsReport(const std::string& sourcePath,std::string_view exactGame,
+                                std::string_view timestamp,const std::string& diagnosticsRoot,
+                                std::string& writtenPath,std::string& error) {
+    writtenPath.clear();
+    error.clear();
+    const auto safe=[](std::string_view v) {
+        return !v.empty() && std::all_of(v.begin(),v.end(),[](unsigned char c) {
+            return std::isalnum(c) || c=='_' || c=='-';
+        });
+    };
+    if(!safe(exactGame) || !safe(timestamp) || diagnosticsRoot.empty()) {
+        error="diagnostics request has an unsafe game id, timestamp or root";
+        return false;
+    }
+    std::vector<uint8_t> bytes;
+    std::string container;
+    std::string readError;
+    SaveReport5 report;
+    if(!readNormalizedSourceReadOnly(sourcePath,bytes,readError,&container)) {
+        report.container=container.empty()?"unreadable":container;
+        report.chosenReason="source read failed: "+readError;
+    } else {
+        report=inspectSave5(bytes,container.empty()?"raw-nds-battery":container);
+    }
+    if(::mkdir(diagnosticsRoot.c_str(),0777)!=0 && errno!=EEXIST) {
+        error="could not create the diagnostics directory";
+        return false;
+    }
+    const std::string path=diagnosticsRoot+"/gen5_"+std::string(exactGame)+"_"+
+                           std::string(timestamp)+".txt";
+    // O_EXCL: a new file only; never overwrite or touch any other file.
+    const int fd=::open(path.c_str(),O_WRONLY|O_CREAT|O_EXCL,0644);
+    if(fd<0) {
+        error="could not create a new diagnostics file";
+        return false;
+    }
+    const auto text=formatSaveReport5(report,exactGame);
+    bool ok=::write(fd,text.data(),text.size())==static_cast<ssize_t>(text.size());
+    ok=::fsync(fd)==0 && ok;
+    ok=::close(fd)==0 && ok;
+    if(!ok) {
+        ::unlink(path.c_str());
+        error="could not write the diagnostics file";
+        return false;
+    }
+    writtenPath=path;
+    return true;
 }
 
 } // namespace PokeVault::Integration::Gen5

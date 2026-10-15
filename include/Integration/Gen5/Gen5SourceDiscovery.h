@@ -80,6 +80,14 @@ struct DiscoveryResult {
     const Source::SaveInstance& selected,
     SaveCopySelection copy = SaveCopySelection::Automatic);
 
+// Owner-requested evidence: read the source read-only, inspect BOTH copies
+// and write a plain-text report (no names, IDs or raw bytes) as a NEW file in
+// the app-owned diagnostics directory. Never opens the source for writing.
+[[nodiscard]] bool writeGen5DiagnosticsReport(
+    const std::string& sourcePath, std::string_view exactGame,
+    std::string_view timestamp, const std::string& diagnosticsRoot,
+    std::string& writtenPath, std::string& error);
+
 [[nodiscard]] DiscoveryResult discoverSources(
     std::span<const DiscoveryRoot> roots, DiscoveryLimits limits = {});
 
