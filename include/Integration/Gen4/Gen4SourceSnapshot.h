@@ -107,8 +107,9 @@ inline bool readWholeSourceFile(const std::string& path, std::vector<uint8_t>& o
     return true;
 }
 
+// Manifest SOURCE_CONTAINER values, identical to the Gen V export's (Gen5WorkingCopyExport.cpp).
 [[nodiscard]] inline const char* gen4SourceContainerLabel(Gen4SourceContainer container) noexcept {
-    return container == Gen4SourceContainer::Dsv ? "dsv (DeSmuME 40-byte footer)" : "raw .sav";
+    return container == Gen4SourceContainer::Dsv ? "dsv-footer" : "raw-nds-battery";
 }
 
 } // namespace PokeVault::Integration::Gen4

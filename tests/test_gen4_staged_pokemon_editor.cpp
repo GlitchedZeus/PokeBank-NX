@@ -981,6 +981,7 @@ void testExportRefusesStaleSource() {
         const auto snapshot = G4::snapshotGen4Source(sourcePath.string(), container, payload, &error);
         assert(snapshot && error.empty());
         assert(snapshot->fileSize == fileBytes.size() && snapshot->container == container);
+        assert(std::string(G4::gen4SourceContainerLabel(container)) == (dsv ? "dsv-footer" : "raw-nds-battery"));
         assert(snapshot->fileSha256 == PokeVault::Integration::Common::sha256Hex(fileBytes));
 
         auto editor = Gen4StagedPokemonEditor::create(payload, Layout::Platinum, "platinum_nds", &error);
