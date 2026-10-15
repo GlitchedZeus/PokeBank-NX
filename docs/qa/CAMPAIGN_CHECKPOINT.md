@@ -33,6 +33,7 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 | QA-F7 Gen IV Unown letter cannot be edited | Low | C | FIXED (f17926f); regression in test_qa_regressions |
 | QA-F8a Gen IV no-op clone+release review line | Low | C | FIXED (c7b0f97); regression in test_qa_regressions |
 | QA-F8b Gen IV no-op clone+release still changes the slot bytes (export) | Low | C | FIXED (f883f4d0); regression in test_qa_regressions |
+| QA-F9 NRO audit defaulted to the stale fa9cfcea artifact on pull_request (run 38732921392 INVALID) | High | 4 | FIXED; regression tests/test_qa_nro_audit_workflow.py |
 
 ## Log
 
@@ -54,3 +55,4 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 - 2026-10-15 09:30 UTC — merged #307 `d57e5bc`: QA-F6/F7/F8a moved to regressions; QA-F8 split, export-bytes half QA-F8b stays known-failing (126 bytes). Matrix home.party.* facts now DERIVED from HomePartyPreview::fromGen1/2/3 (tests/test_qa_matrix_home.h) and the Gen IV/V snapshots, plus a new home.party.gender fact; all four are consistent across Gen I–V. The runner no longer counts "n/a" as an inconsistency. Gen I–III have no STALE Home state: a decided, known limitation.
 - 2026-10-15 10:15 UTC — Gen IV review cell adopts C 2b2be00 (Bag-only edits in Review): accepts exactly the 4 slot lines or those + exactly "Bag Medicines: item #17 5 -> 9"; verified in a scratch worktree with 2b2be00's Gen4ExportTransaction applied (strict 5-line form passes, 0 problems). Tighten to strict once #307 carries 2b2be00.
 - 2026-10-15 11:35 UTC — merged #307 `0c2fffb`: QA-F8b fixed (f883f4d0) and moved to test_qa_regressions; qa-known-failures has no open C++ defect. Gen IV review cell strict (C 7dec0c78). ALL QA findings F1–F8 closed.
+- 2026-10-15 — QA-F9 (owner-reported, High): app-qa-nro-audit.yml rewritten with a single identity source (dispatch inputs or docs/qa/CANDIDATE_UNDER_AUDIT.env = a0633b6d), no defaults, GitHub API run/artifact binding, staleness and tree guards, BUILD_IDENTITY/SHA256SUMS cross-check, no paths filter. Run 38732921392 is INVALID evidence. Forward-merged #307 a0633b6 first (tree now identical to a0633b6 apart from QA files).
