@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - audit/legality-l5-research-qa-20261012
+      # Gen I-V integration branch (PR #314): run on its exact pushed head.
+      # The 336-cell dashboard below is a frozen audit of coordinator
+      # ad9c1c85 by design (the tool refuses any other coordinator head); the
+      # current head's direct Invalid sites are gated by host-tests.yml
+      # (audit_legality_l5_invalid_site_gate.py --expected-invalid).
+      - 'claude/gen1-5-legality-**'
   workflow_dispatch:
 
 permissions:

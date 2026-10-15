@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - audit/legality-integration-hardening-20261012
+      # Gen I-V integration branch (PR #314): run on its exact pushed head.
+      - 'claude/gen1-5-legality-**'
 
 permissions:
   contents: read
