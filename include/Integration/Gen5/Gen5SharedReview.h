@@ -2,6 +2,7 @@
 #define POKEBANK_GEN5_SHARED_REVIEW_H
 
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
+#include "Integration/Gen5/Gen5BlankSlot.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -56,8 +57,7 @@ struct VerifiedSlotReview {
             if(!change.createRequest ||
                !change.cloneSourceOriginal.empty() ||
                !beforeBox.valid() || !beforeBox.empty() ||
-               !std::all_of(change.before.begin(),change.before.end(),
-                    [](uint8_t byte){return byte==0;}) ||
+               !nativeBlankSlot5(change.before) ||
                !afterBox.valid() || afterBox.empty() || afterBox.partyRecord())
                 return fail("Gen V Create needs an empty original and explicit native request");
             const auto rebuilt=createNative5(*change.createRequest);
@@ -70,15 +70,13 @@ struct VerifiedSlotReview {
                 return fail("Gen V Remove carried an unrelated creation request");
             if(!beforeBox.valid() || beforeBox.empty() ||
                !afterBox.valid() || !afterBox.empty() ||
-               !std::all_of(change.after.begin(),change.after.end(),
-                            [](uint8_t byte){return byte==0;}) ||
+               change.after!=encryptedBlankBoxSlot5() ||
                !change.cloneSourceOriginal.empty())
                 return fail("Gen V removal must blank exactly one occupied box PK5");
             result.fields.push_back({Field::RemoveBox,0,beforeBox.species(),0});
         } else if(change.kind==Kind::CloneBox) {
             if(change.createRequest || !beforeBox.valid() || !beforeBox.empty() ||
-               !std::all_of(change.before.begin(),change.before.end(),
-                            [](uint8_t byte){return byte==0;}) ||
+               !nativeBlankSlot5(change.before) ||
                !afterBox.valid() || afterBox.empty() ||
                !Gen5StagedPokemonWorkspace::canonicalSlot(change.cloneSource) ||
                (change.cloneSource.region==Region::Box &&

@@ -1,6 +1,7 @@
 #ifndef POKEBANK_GEN5_SAVE_DIAGNOSTICS_H
 #define POKEBANK_GEN5_SAVE_DIAGNOSTICS_H
 
+#include "Integration/Gen5/Gen5BlankSlot.h"
 #include "Integration/Gen5/Gen5Pokedex.h"
 #include "Integration/Gen5/Gen5ReadOnlySave.h"
 #include "Integration/Gen5/Gen5SaveBlockLayout.h"
@@ -109,18 +110,6 @@ template <size_t N>
     return true;
 }
 } // namespace detail5diag
-
-// True when a PK5 slot is the native representation of "no Pokemon": either
-// raw zero bytes or an encrypted blank record (PID 0, checksum 0, all-zero
-// payload; Crypto::decrypt yields 136 zero bytes). Both are what the games
-// read as empty. Anything else is a real (or corrupt) record.
-[[nodiscard]] inline bool nativeBlankSlot5(std::span<const uint8_t> encrypted) {
-    if (encrypted.size() != Crypto::StoredSize && encrypted.size() != Crypto::PartySize) return false;
-    if (detail5diag::allZero(encrypted)) return true;
-    if (encrypted.size() != Crypto::StoredSize) return false;
-    const auto plain = Crypto::decrypt(encrypted);
-    return plain.size() == Crypto::StoredSize && detail5diag::allZero(plain);
-}
 
 [[nodiscard]] inline CopyReport5 inspectCopy5(std::span<const uint8_t> image, SaveFamily family,
                                               size_t offset) {

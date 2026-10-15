@@ -1346,7 +1346,8 @@ int main() {
         assert(!stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Shiny));
         assert(!readOnlyDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Nature));
         assert(!stagedDescriptor->source.canWriteOriginalSource());
-        assert(!stagedDescriptor->source.saveOperations.supports(
+        // Gen IV parity: staged Create into a verified native blank slot.
+        assert(stagedDescriptor->source.saveOperations.supports(
                PokeVault::SaveEdit::Capability::PokemonCreation));
         const Exact::MoveCompatibilityQuery unverifiedMove{id,25,0,1,false};
         assert(stagedDescriptor->moves.evaluate(unverifiedMove)==

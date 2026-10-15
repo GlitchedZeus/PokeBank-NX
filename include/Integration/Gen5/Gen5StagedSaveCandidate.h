@@ -104,8 +104,7 @@ struct Gen5StagedSaveCandidate {
                static_cast<uint32_t>(request->game)!=source.trainer().gameVersion ||
                request->format!=CreateFormat5::Boxed ||
                !sourceRecord->empty() ||
-               !std::all_of(bytes.begin(),bytes.end(),
-                            [](uint8_t b){return b==0;}))
+               !nativeBlankSlot5(bytes))
                 return fail("Gen V Create requires exact-title source and empty baseline");
             const auto created=createNative5(*request);
             if(!created || created.encrypted!=change.replacementOriginal)

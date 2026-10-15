@@ -5,6 +5,7 @@
 // - Party Level edits regenerate stored party data (level byte and stats).
 // - Read-only origin fields (met/egg date, egg location) from the cited PK5
 //   layout, shown like Gen IV's read-only rows and never editable.
+#include "Integration/Gen5/Gen5BlankSlot.h"
 #include "Integration/Gen5/Gen5OriginSummary.h"
 #include "Integration/Gen5/Gen5SharedScreenState.h"
 #include "Integration/Gen5/Gen5StagedSaveCandidate.h"
@@ -131,7 +132,7 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     assert(ui.openActions(ws, Slot{Region::Box, 0, 0}, error));
     assert(!has(ui.availableActions(ws), Action::Move));
     assert(ui.activate(ws, Action::Close, error));
-    // Review certifies a byte-exact clone plus an all-zero removal.
+    // Review certifies a byte-exact clone plus a retail encrypted-blank removal.
     for (const auto& change : ws.pendingReview()) {
         const auto verified = G::verifyStagedReview(change, &error);
         assert(verified && verified->fields.size() == 1);
@@ -191,6 +192,85 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     assert(G::originSummary5(*parsed->boxPokemon(0, 1)).find("Met none") != std::string::npos);
 }
 
+// Owner hardware failure 2: on a real Black 2 save an empty box slot offered
+// only "Cancel". Retail boxes store the ENCRYPTED blank PK5 (PKHeX
+// SaveFile.ClearBoxes writes WriteSlotBox(BlankPKM)), not zero bytes, and the
+// old empty-destination check accepted raw zeros only.
+void retailEncryptedBlankSlots(G::SaveFamily family, std::string_view game, uint8_t version) {
+    auto sav = fixture(family, version);
+    const auto& blank = G::encryptedBlankBoxSlot5();
+    bool nonzero = false;
+    for (auto b : blank) nonzero |= b != 0;
+    assert(nonzero && G::nativeBlankSlot5(blank));
+    // Every slot except the two real Pokemon becomes the retail blank.
+    for (size_t box = 0; box < L::BoxCount; ++box)
+        for (size_t slot = 0; slot < L::BoxSlots; ++slot) {
+            if (box == 0 && slot < 2) continue;
+            std::copy(blank.begin(), blank.end(),
+                      sav.begin() + static_cast<std::ptrdiff_t>(L::BoxOffset + box * L::BoxStride + slot * C::StoredSize));
+        }
+    // A garbage (non-blank, invalid) slot must never become a destination.
+    sav[L::BoxOffset + 2 * L::BoxStride + 5 * C::StoredSize + 40] ^= 0x5A;
+    const auto blocks = family == G::SaveFamily::BlackWhite ? std::span<const L::SaveBlock>(L::BlackWhite)
+                                                            : std::span<const L::SaveBlock>(L::Black2White2);
+    auto copy = std::span<uint8_t>(sav).subspan(0, family == G::SaveFamily::BlackWhite ? L::BlackWhiteCopySize
+                                                                                        : L::Black2White2CopySize);
+    for (const auto& b : blocks) {
+        const uint16_t crc = Utils::crc16ccitt(copy.data() + b.offset, b.length);
+        C::write16(copy, b.checksumOffset, crc);
+        C::write16(copy, b.mirrorOffset, crc);
+    }
+    const auto pristine = sav;
+    std::string error;
+    const auto parsed = G::Gen5ReadOnlySave::parse(sav, game, &error, G::SaveCopySelection::Primary);
+    assert(parsed && parsed->diagnostics().invalidBoxRecords == 1);
+    G::Gen5StagedPokemonWorkspace ws(*parsed);
+    G::Gen5SharedScreenState ui;
+    const auto ok = [](std::string&) { return true; };
+
+    // Encrypted-blank slot: Add is offered (it was "Cancel" only before).
+    assert(ws.emptyCloneDestination(0, 5));
+    assert(ui.openActions(ws, Slot{Region::Box, 0, 5}, error));
+    auto actions = ui.availableActions(ws);
+    assert(has(actions, Action::Add) && !has(actions, Action::View));
+    assert(ui.activate(ws, Action::Close, error));
+    // Damaged slot: never a destination, no Add.
+    assert(!ws.emptyCloneDestination(2, 5));
+    assert(ui.openActions(ws, Slot{Region::Box, 2, 5}, error));
+    assert(!has(ui.availableActions(ws), Action::Add));
+    assert(ui.activate(ws, Action::Close, error));
+
+    // Create into the encrypted blank, Clone and Move into blanks, Remove.
+    G::CreateRequest5 r;
+    r.game = static_cast<G::CreateGame5>(version);
+    r.species = 25; r.level = 12; r.nature = 3; r.gender = 0; r.abilitySlot = 0;
+    r.pid = 0x00340012; r.friendship = 70;
+    r.gender = G::createGenderForPID5(G::personal5(25, 0, family == G::SaveFamily::Black2White2).info->genderRatio, *r.pid);
+    r.trainer = G::CreateTrainer5{12345, 54321, 1, 2, "ROSA"};
+    r.nickname = "PIKA";
+    r.encounter = {G::CreateHistory5::CallerSuppliedNative, 1, 5, 4, 2024, 1, 1};
+    r.moves[0] = {84, 0, std::nullopt};
+    assert(ws.createInEmptyBox(r, 0, 5, &error));
+    assert(ws.viewBox(0, 5)->species() == 25);
+    assert(ws.cloneToEmptyBox(Slot{Region::Box, 0, 0}, 3, 7, &error));
+    assert(ws.moveToEmptyBox(Slot{Region::Box, 0, 1}, 4, 9, &error));
+    for (const auto& change : ws.pendingReview()) assert(G::verifyStagedReview(change, &error));
+    const auto out = G::buildStagedSaveCandidate(ws, &error);
+    assert(out && out->changedRecords == 4);
+    const auto reopened = G::Gen5ReadOnlySave::parse(out->bytes, game, &error, G::SaveCopySelection::Primary);
+    assert(reopened);
+    assert(reopened->boxPokemon(0, 5)->species() == 25);
+    assert(reopened->boxPokemon(3, 7)->species() == 133);
+    assert(reopened->boxPokemon(4, 9)->species() == 495);
+    // The moved-out slot is written as the retail encrypted blank, not zeros.
+    const auto vacated = reopened->boxPokemon(0, 1);
+    assert(vacated->valid() && vacated->empty());
+    assert(std::equal(vacated->originalEncryptedBytes().begin(), vacated->originalEncryptedBytes().end(),
+                      blank.begin()));
+    assert(sav == pristine);
+    (void)ok;
+}
+
 } // namespace
 
 int main() {
@@ -202,6 +282,8 @@ int main() {
         assert(Shared::fieldAccessForGeneration(Generation::Gen4, field) == FieldAccess::ReadOnly);
         assert(Shared::fieldAccessForGeneration(Generation::Gen5, field) == FieldAccess::ReadOnly);
     }
+    retailEncryptedBlankSlots(G::SaveFamily::BlackWhite, "black_nds", 21);
+    retailEncryptedBlankSlots(G::SaveFamily::Black2White2, "black2_nds", 23);
     exercise(G::SaveFamily::BlackWhite, "white_nds", 20);
     exercise(G::SaveFamily::BlackWhite, "black_nds", 21);
     exercise(G::SaveFamily::Black2White2, "white2_nds", 22);

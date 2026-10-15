@@ -18,8 +18,10 @@ namespace Exact = PokeBank::UIModel::ExactFormatEditor;
 [[nodiscard]] constexpr PokeVault::SaveEdit::Capabilities stagedFieldCapabilities() noexcept {
     PokeVault::SaveEdit::Capabilities caps;
     caps.add(PokeVault::SaveEdit::Capability::BoxPokemon)
-        .add(PokeVault::SaveEdit::Capability::PokemonEditing);
-    // No PokemonCreation or direct source editing until separately validated.
+        .add(PokeVault::SaveEdit::Capability::PokemonEditing)
+        // Gen IV parity: staged native Create into a verified blank box slot
+        // (raw zeros or the retail encrypted blank). Never a source write.
+        .add(PokeVault::SaveEdit::Capability::PokemonCreation);
     return caps;
 }
 [[nodiscard]] inline std::optional<Exact::ExactFormatEditorDescriptor> descriptorForSource(
