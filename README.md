@@ -356,6 +356,7 @@ Please avoid posting personal/private save files publicly. Use a disposable test
 
 ## Project documentation
 
+- [Three-branch consolidation plan](docs/THREE_BRANCH_CONSOLIDATION_PLAN.md) — future main / Gen VI+ / legality architecture, accepted-only promotion and safe branch archival.
 - [Gen I–V complete Switch acceptance matrix](docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md) — owner release gate, 106 initial action checks, all 20 games.
 - [Future ideas (archived, not discarded)](docs/FUTURE_AFTER_GEN15_BACKLOG.md) — older post-v1 issue discussions with links.
 - [Current Engineering Status](CURRENT_STATUS.md) — fresh branch heads, exact-build checks and owner acceptance boundary.
