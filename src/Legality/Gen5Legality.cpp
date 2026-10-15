@@ -5,10 +5,12 @@
 // The record is read through a bounds-checked copy and never modified.
 //
 // Result classes: a rule that is decided from the record and pinned data is
-// Invalid when broken. Anything this analyzer cannot decide (event cards that
-// are not in the pinned database, Gen III/IV move sources of transferred
-// Pokemon, nickname and OT text against name tables) is a Warning and leaves
-// its coverage Partial, so the verdict stays Incomplete instead of Invalid.
+// Invalid when broken. Anything this analyzer cannot decide is a Warning and
+// leaves its coverage Partial, so the verdict stays Incomplete instead of
+// Invalid. Examples: event cards that are not in the pinned database; the
+// original Gen III/IV encounter (and move sources) of a transferred Pokemon;
+// names with characters outside Gen5Text's modelled set; names only an in-game
+// trade or event could have fixed.
 #include "Legality/Gen5Legality.h"
 
 #include <algorithm>
