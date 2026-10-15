@@ -127,6 +127,8 @@ inline constexpr std::size_t kSpeciesLowerGen4Count = 4800;
 extern const SpeciesKey kSpeciesLowerGen4[];
 inline constexpr std::size_t kSpeciesLowerGen7Count = 4800;
 extern const SpeciesKey kSpeciesLowerGen7[];
+inline constexpr std::size_t kSpeciesLowerGen3Count = 3775;
+extern const SpeciesKey kSpeciesLowerGen3[];
 /// Species names as SpeciesName.SpeciesDict holds them (case-sensitive) that a Gen IV string can spell,
 /// sorted by UTF-16 code units; species is the first hit in the Gen IV language order.
 inline constexpr std::size_t kSpeciesGen4Count = 4800;
@@ -143,9 +145,80 @@ inline constexpr std::size_t kWordFilterNXCount = 4533;
 inline constexpr std::size_t kWordFilter3DSCount = 3405;
 extern const char16_t* const kWordFilterNX[]; extern const char16_t* const kWordFilter3DS[];
 
+// ---------------------------------------------------------------- Generation III (Pal Park origin)
+/// PersonalTable.E per species 0..386: gender ratio and abilities.
+struct Personal3 { uint8_t gender; uint8_t ability1; uint8_t ability2; };
+extern const Personal3 kPersonalE3[387];
+/// Gen III level-up learnsets indexed by species (lvlmove_e/rs/fr/lg.pkl).
+inline constexpr std::size_t kLevelUpE3Count = 387;
+extern const LevelMove kLevelUpE3[]; extern const uint16_t kLevelUpE3Start[];
+inline constexpr std::size_t kLevelUpRS3Count = 387;
+extern const LevelMove kLevelUpRS3[]; extern const uint16_t kLevelUpRS3Start[];
+inline constexpr std::size_t kLevelUpFR3Count = 387;
+extern const LevelMove kLevelUpFR3[]; extern const uint16_t kLevelUpFR3Start[];
+inline constexpr std::size_t kLevelUpLG3Count = 387;
+extern const LevelMove kLevelUpLG3[]; extern const uint16_t kLevelUpLG3Start[];
+/// Gen III egg moves indexed by species (eggmove_rs.pkl, shared by every Gen III game).
+inline constexpr std::size_t kEggMovesRS3Count = 372;
+extern const uint16_t kEggMovesRS3[]; extern const uint16_t kEggMovesRS3Start[];
+/// Per species 0..386, ascending: moves a format-4 entity could learn in Gen III other than by level-up
+/// (Emerald TMs and tutors, R/S/XD and FR/LG special tutors).
+extern const uint16_t kOtherMoves3[]; extern const uint16_t kOtherMoves3Start[388];
+/// EvolutionTree.Evolves3 methods per species (evos_g3.pkl).
+inline constexpr std::size_t kEvolution3Count = 387;
+extern const Evolution kEvolutions3[]; extern const uint16_t kEvolution3Start[];
+/// EncounterArea3 lists in PKHeX order: SlotsSwarmRSE, SlotsR, SlotsS, SlotsE, SlotsFR, SlotsLG;
+/// kArea3ListStart[i]..[i+1] bounds list i. type is SlotType3; moves are the swarm movesets.
+struct Area3 { uint8_t version; uint8_t location; uint8_t type; uint8_t rate; uint16_t slotStart; uint16_t slotCount; };
+struct Slot3 { uint16_t species; uint8_t form; uint8_t levelMin; uint8_t levelMax; uint8_t slotNumber;
+               uint8_t magnetPullIndex; uint8_t magnetPullCount; uint8_t staticIndex; uint8_t staticCount; uint16_t moves[4]; };
+enum Area3List : uint8_t { SlotsSwarmRSE, SlotsR, SlotsS, SlotsE, SlotsFR, SlotsLG, Area3ListCount };
+inline constexpr std::size_t kArea3Count = 1284;
+inline constexpr std::size_t kSlot3Count = 7681;
+extern const Area3 kAreas3[]; extern const Slot3 kSlots3[]; extern const uint16_t kArea3ListStart[];
+/// EncounterStatic3 lists in PKHeX order: StaticR, StaticS, StaticE, StaticRSE, StaticFR, StaticLG, StaticFRLG.
+struct Static3 { uint8_t version; uint16_t species; uint8_t form; uint8_t level; uint8_t location; uint8_t ball;
+                 uint8_t fateful; uint8_t roaming; uint8_t isEgg; uint16_t moves[4]; };
+enum Static3List : uint8_t { StaticR3, StaticS3, StaticE3, StaticRSE3, StaticFR3, StaticLG3, StaticFRLG3, Static3ListCount };
+inline constexpr std::size_t kStatic3Count = 75;
+extern const Static3 kStatics3[]; extern const uint16_t kStatic3ListStart[];
+/// EncounterTrade3: list 0 TradeGift_RS, 1 TradeGift_E, 2 TradeGift_FR, 3 TradeGift_LG, 4 TradeGift_FRLG.
+/// ivs HP Atk Def Spe SpA SpD (fixed); contest Cool Beauty Cute Smart Tough Sheen. otNames/nicknames index
+/// kTrade3Strings: 8 entries each (language 0..7) after StringConverter345.TransferGlyphs34.
+struct Trade3 { uint8_t list; uint8_t version; uint16_t species; uint8_t level; int8_t ability; uint8_t gender; uint8_t otGender;
+                uint16_t tid; uint16_t sid; int8_t ivs[6]; uint8_t contest[6]; uint32_t pid; uint16_t otNames; uint16_t nicknames; };
+inline constexpr std::size_t kTrade3Count = 19;
+extern const Trade3 kTrades3[];
+inline constexpr std::size_t kTrade3StringCount = 304;
+extern const char16_t* const kTrade3Strings[];
+/// EncounterGift3 (EncountersWC3.Encounter_WC3) in PKHeX order. versionMask has bit v set when Version.Contains(v);
+/// method: 1 BACD_U, 2 BACD_R, 3 BACD_R_A, 4 BACD_U_AX, 5 BACD_TA, 6 BACD_TS, 7 BACD_RBCD, 8 BACD_M,
+/// 9 Channel, 10 Method_2; tid/sid 0xFFFF unspecified; shiny is Shiny; otGender is GiftGender3; otName
+/// indexes kGift3Strings.
+struct Gift3 { uint16_t species; uint8_t level; uint16_t versionMask; uint8_t isEgg; uint8_t metLevel; uint8_t method;
+               uint16_t moves[4]; uint16_t tid; uint16_t sid; uint8_t language; uint8_t shiny; uint8_t fateful;
+               uint8_t ribbonNational; uint8_t otGender; uint8_t fixedTrainer; uint16_t otName; };
+inline constexpr std::size_t kGift3Count = 177;
+extern const Gift3 kGifts3[]; extern const char16_t* const kGift3Strings[];
+/// EncounterGift3NY (PCNY) and EncounterGift3JPN (PCJP) in PKHeX order; distribution is the
+/// Distribution3NY / Distribution3JPN value.
+struct GiftNY3 { uint16_t species; uint8_t distribution; uint8_t level; uint16_t moves[4]; };
+struct GiftJP3 { uint16_t species; uint8_t distribution; };
+inline constexpr std::size_t kGiftNY3Count = 50;
+inline constexpr std::size_t kGiftJP3Count = 58;
+extern const GiftNY3 kGiftsNY3[]; extern const GiftJP3 kGiftsJP3[];
+/// EncounterGift3Colo in PKHeX order (ColoGiftsR then ColoGiftsS); names index kGiftColo3Strings (8 per gift).
+struct GiftColo3 { uint16_t species; uint8_t level; uint8_t version; uint8_t location; uint16_t tid; uint8_t otGender;
+                   uint16_t moves[4]; uint16_t names; };
+inline constexpr std::size_t kGiftColo3Count = 3;
+inline constexpr std::size_t kGiftColoR3Count = 2;
+extern const GiftColo3 kGiftsColo3[]; extern const char16_t* const kGiftColo3Strings[];
+/// SpeciesName.GetEggName(language, 3) for language 0..8.
+extern const char16_t* const kEggName3[9];
+
 /// SHA-256 of every PKHeX input file, so a regenerated table can be traced to its source.
 struct SourcePin { const char* path; const char* sha256; };
-inline constexpr std::size_t kSourcePinCount = 21;
+inline constexpr std::size_t kSourcePinCount = 56;
 extern const SourcePin kSourcePins[];
 inline constexpr const char* kPkhexCommit = "6501f0ab46e8f8ca048539dbaf8cae8cb104e722";
 

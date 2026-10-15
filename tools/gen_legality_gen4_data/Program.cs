@@ -175,6 +175,7 @@ internal static class Program
         EmitMoves(h, c);
         EmitText(h, c);
         EmitWordFilter(h, c);
+        EmitGen3(h, c);
 
         h.Append("/// SHA-256 of every PKHeX input file, so a regenerated table can be traced to its source.\n");
         h.Append("struct SourcePin { const char* path; const char* sha256; };\n");
@@ -597,6 +598,7 @@ internal static class Program
         h.Append("struct SpeciesKey { const char16_t* name; uint16_t species; };\n");
         Dict(EntityContext.Gen4, "SpeciesLowerGen4");
         Dict(EntityContext.Gen7, "SpeciesLowerGen7");
+        Dict(EntityContext.Gen3, "SpeciesLowerGen3");
 
         // Case-sensitive species names (SpeciesName.SpeciesDict, used by TryGetSpeciesAnyLanguage) a
         // Gen IV string can spell, first language hit in Gen IV language order.
@@ -652,5 +654,346 @@ internal static class Program
         h.Append("extern const char16_t* const kWordFilterNX[]; extern const char16_t* const kWordFilter3DS[];\n\n");
         c.Append("const char16_t* const kWordFilterNX[] = {\n").Append(Arr(a.Select(U16Lit), 4)).Append("};\n");
         c.Append("const char16_t* const kWordFilter3DS[] = {\n").Append(Arr(b.Select(U16Lit), 4)).Append("};\n\n");
+    }
+
+    // ------------------------------------------------------------------ Generation III (Pal Park origin)
+    private static int GiftMethod(PIDType t) => t switch
+    {
+        PIDType.BACD_U => 1,
+        PIDType.BACD_R => 2,
+        PIDType.BACD_R_A => 3,
+        PIDType.BACD_U_AX => 4,
+        PIDType.BACD_TA => 5,
+        PIDType.BACD_TS => 6,
+        PIDType.BACD_RBCD => 7,
+        PIDType.BACD_M => 8,
+        PIDType.Channel => 9,
+        PIDType.Method_2 => 10,
+        _ => throw new Exception($"unmapped WC3 method {t}"),
+    };
+
+    private static int VersionMask(GameVersion v)
+    {
+        int mask = 0;
+        for (int i = 1; i <= 15; i++)
+        {
+            if (v.Contains((GameVersion)i))
+                mask |= 1 << i;
+        }
+        return mask;
+    }
+
+    private static string Moves4(Moveset m) => $"{{{m.Move1}, {m.Move2}, {m.Move3}, {m.Move4}}}";
+
+    private static void EmitGen3(StringBuilder h, StringBuilder c)
+    {
+        h.Append("// ---------------------------------------------------------------- Generation III (Pal Park origin)\n");
+        c.Append("// ---------------------------------------------------------------- Generation III (Pal Park origin)\n");
+
+        // Personal: PersonalTable.E gender ratio and abilities (species 0..386); RS form counts must all be 1
+        // (EvolutionTree.Evolves3 registers form 0 only).
+        Resource("personal_e", "PKHeX.Core/Resources/byte/personal/personal_e");
+        Resource("personal_rs", "PKHeX.Core/Resources/byte/personal/personal_rs");
+        Resource("hmtm_g3.pkl", "PKHeX.Core/Resources/byte/personal/hmtm_g3.pkl");
+        Resource("tutors_g3.pkl", "PKHeX.Core/Resources/byte/personal/tutors_g3.pkl");
+        var e = PersonalTable.E;
+        var rs = PersonalTable.RS;
+        var prows = new List<string>();
+        for (ushort s = 0; s <= 386; s++)
+        {
+            if (rs[s].FormCount != 1)
+                throw new Exception($"RS form count {s}");
+            var pi = e[s];
+            prows.Add($"{{{pi.Gender}, {pi.Ability1}, {pi.Ability2}}}");
+        }
+        h.Append("/// PersonalTable.E per species 0..386: gender ratio and abilities.\n");
+        h.Append("struct Personal3 { uint8_t gender; uint8_t ability1; uint8_t ability2; };\n");
+        h.Append("extern const Personal3 kPersonalE3[387];\n");
+        c.Append("const Personal3 kPersonalE3[387] = {\n").Append(Arr(prows, 8)).Append("};\n");
+
+        // Level-up learnsets (indexed by species) and the shared Gen III egg moves.
+        void Learn(string name, string res, string path, string ident)
+        {
+            var entries = BinLinker16(Resource(res, path), ident);
+            var lists = new List<IReadOnlyList<string>>();
+            foreach (var en in entries)
+            {
+                int count = en.Length / 3;
+                var l = new List<string>();
+                for (int i = 0; i < count; i++)
+                    l.Add($"{{{BitConverter.ToUInt16(en, i * 2)}, {en[(count * 2) + i]}}}");
+                lists.Add(l);
+            }
+            Flatten(lists, out var flat, out var starts);
+            h.Append($"inline constexpr std::size_t kLevelUp{name}Count = {entries.Count};\n");
+            h.Append($"extern const LevelMove kLevelUp{name}[]; extern const uint16_t kLevelUp{name}Start[];\n");
+            c.Append($"const LevelMove kLevelUp{name}[] = {{\n").Append(Arr(flat, 8)).Append("};\n");
+            c.Append($"const uint16_t kLevelUp{name}Start[] = {{\n").Append(Arr(starts)).Append("};\n");
+        }
+        h.Append("/// Gen III level-up learnsets indexed by species (lvlmove_e/rs/fr/lg.pkl).\n");
+        Learn("E3", "lvlmove_e.pkl", "PKHeX.Core/Resources/byte/levelup/lvlmove_e.pkl", "em");
+        Learn("RS3", "lvlmove_rs.pkl", "PKHeX.Core/Resources/byte/levelup/lvlmove_rs.pkl", "rs");
+        Learn("FR3", "lvlmove_fr.pkl", "PKHeX.Core/Resources/byte/levelup/lvlmove_fr.pkl", "fr");
+        Learn("LG3", "lvlmove_lg.pkl", "PKHeX.Core/Resources/byte/levelup/lvlmove_lg.pkl", "lg");
+        {
+            var entries = BinLinker16(Resource("eggmove_rs.pkl", "PKHeX.Core/Resources/byte/eggmove/eggmove_rs.pkl"), "rs");
+            var lists = entries.Select(en => (IReadOnlyList<int>)Enumerable.Range(0, en.Length / 2).Select(i => (int)BitConverter.ToUInt16(en, i * 2)).ToList()).ToList();
+            Flatten(lists, out var flat, out var starts);
+            h.Append("/// Gen III egg moves indexed by species (eggmove_rs.pkl, shared by every Gen III game).\n");
+            h.Append($"inline constexpr std::size_t kEggMovesRS3Count = {entries.Count};\n");
+            h.Append("extern const uint16_t kEggMovesRS3[]; extern const uint16_t kEggMovesRS3Start[];\n");
+            c.Append("const uint16_t kEggMovesRS3[] = {\n").Append(Arr(flat)).Append("};\n");
+            c.Append("const uint16_t kEggMovesRS3Start[] = {\n").Append(Arr(starts)).Append("};\n");
+        }
+
+        // Non-level-up Gen III move sources for a format-4 entity, per species: LearnSource3E.GetCanLearn
+        // with Machine (TMs only outside format 3) and SpecialTutor, LearnSource3RS and LearnSource3FR
+        // with SpecialTutor. All of them depend on the species alone.
+        {
+            var pk4 = new PK4();
+            var eSrc = LearnSource3E.Instance;
+            var rsSrc = LearnSource3RS.Instance;
+            var frSrc = LearnSource3FR.Instance;
+            var lists = new List<IReadOnlyList<int>>();
+            for (ushort s = 0; s <= 386; s++)
+            {
+                var l = new List<int>();
+                if (s != 0)
+                {
+                    var evo = new EvoCriteria { Species = s, LevelMax = 100, LevelMin = 1 };
+                    for (ushort m = 1; m <= 354; m++)
+                    {
+                        bool ok = eSrc.GetCanLearn(pk4, e[s], evo, m, MoveSourceType.Machine | MoveSourceType.SpecialTutor) != default
+                               || rsSrc.GetCanLearn(pk4, rs[s], evo, m, MoveSourceType.SpecialTutor) != default
+                               || frSrc.GetCanLearn(pk4, PersonalTable.FR[s], evo, m, MoveSourceType.SpecialTutor) != default;
+                        if (ok)
+                            l.Add(m);
+                    }
+                }
+                lists.Add(l);
+            }
+            Flatten(lists, out var flat, out var starts);
+            h.Append("/// Per species 0..386, ascending: moves a format-4 entity could learn in Gen III other than by level-up\n");
+            h.Append("/// (Emerald TMs and tutors, R/S/XD and FR/LG special tutors).\n");
+            h.Append("extern const uint16_t kOtherMoves3[]; extern const uint16_t kOtherMoves3Start[388];\n");
+            c.Append("const uint16_t kOtherMoves3[] = {\n").Append(Arr(flat)).Append("};\n");
+            c.Append("const uint16_t kOtherMoves3Start[388] = {\n").Append(Arr(starts)).Append("};\n");
+        }
+
+        // Evolutions (evos_g3.pkl), same layout as evos_g4.
+        {
+            var entries = BinLinker16(Resource("evos_g3.pkl", "PKHeX.Core/Resources/byte/evolve/evos_g3.pkl"), "g3");
+            var lists = new List<IReadOnlyList<string>>();
+            foreach (var en in entries)
+            {
+                var l = new List<string>();
+                for (int off = 0; off + 8 <= en.Length; off += 8)
+                {
+                    var type = (EvolutionType)en[off];
+                    var arg = BitConverter.ToUInt16(en, off + 2);
+                    var species = BitConverter.ToUInt16(en, off + 4);
+                    var form = en[off + 6];
+                    var level = en[off + 7];
+                    var lvlup = type.IsLevelUpRequired ? 1 : 0;
+                    l.Add($"{{{(int)type}, {arg}, {species}, {form}, {level}, {lvlup}}}");
+                }
+                lists.Add(l);
+            }
+            Flatten(lists, out var flat, out var starts);
+            h.Append("/// EvolutionTree.Evolves3 methods per species (evos_g3.pkl).\n");
+            h.Append($"inline constexpr std::size_t kEvolution3Count = {entries.Count};\n");
+            h.Append("extern const Evolution kEvolutions3[]; extern const uint16_t kEvolution3Start[];\n");
+            c.Append("const Evolution kEvolutions3[] = {\n").Append(Arr(flat, 6)).Append("};\n");
+            c.Append("const uint16_t kEvolution3Start[] = {\n").Append(Arr(starts)).Append("};\n");
+        }
+
+        // Wild areas: SlotsSwarmRSE, SlotsR, SlotsS, SlotsE, SlotsFR, SlotsLG.
+        Resource("encounter_rse_swarm.pkl", "PKHeX.Core/Resources/legality/wild/Gen3/encounter_rse_swarm.pkl");
+        Resource("encounter_r.pkl", "PKHeX.Core/Resources/legality/wild/Gen3/encounter_r.pkl");
+        Resource("encounter_s.pkl", "PKHeX.Core/Resources/legality/wild/Gen3/encounter_s.pkl");
+        Resource("encounter_e.pkl", "PKHeX.Core/Resources/legality/wild/Gen3/encounter_e.pkl");
+        Resource("encounter_fr.pkl", "PKHeX.Core/Resources/legality/wild/Gen3/encounter_fr.pkl");
+        Resource("encounter_lg.pkl", "PKHeX.Core/Resources/legality/wild/Gen3/encounter_lg.pkl");
+        PinText("PKHeX.Core/Legality/Encounters/Data/Gen3/Encounters3RSE.cs");
+        PinText("PKHeX.Core/Legality/Encounters/Data/Gen3/Encounters3FRLG.cs");
+        var areaRows = new List<string>();
+        var slotRows = new List<string>();
+        var areaStarts = new List<int>();
+        foreach (var (type, field) in new[] { ("Encounters3RSE", "SlotsSwarmRSE"), ("Encounters3RSE", "SlotsR"), ("Encounters3RSE", "SlotsS"),
+                     ("Encounters3RSE", "SlotsE"), ("Encounters3FRLG", "SlotsFR"), ("Encounters3FRLG", "SlotsLG") })
+        {
+            areaStarts.Add(areaRows.Count);
+            foreach (var a in (EncounterArea3[])SF(type, field))
+            {
+                areaRows.Add($"{{{(int)a.Version}, {a.Location}, {(int)a.Type}, {a.Rate}, {slotRows.Count}, {a.Slots.Length}}}");
+                foreach (var s in a.Slots)
+                {
+                    var moves = s is IMoveset ms ? Moves4(ms.Moves) : "{0, 0, 0, 0}";
+                    slotRows.Add($"{{{s.Species}, {s.Form}, {s.LevelMin}, {s.LevelMax}, {s.SlotNumber}, {s.MagnetPullIndex}, {s.MagnetPullCount}, {s.StaticIndex}, {s.StaticCount}, {moves}}}");
+                }
+            }
+        }
+        areaStarts.Add(areaRows.Count);
+        h.Append("/// EncounterArea3 lists in PKHeX order: SlotsSwarmRSE, SlotsR, SlotsS, SlotsE, SlotsFR, SlotsLG;\n");
+        h.Append("/// kArea3ListStart[i]..[i+1] bounds list i. type is SlotType3; moves are the swarm movesets.\n");
+        h.Append("struct Area3 { uint8_t version; uint8_t location; uint8_t type; uint8_t rate; uint16_t slotStart; uint16_t slotCount; };\n");
+        h.Append("struct Slot3 { uint16_t species; uint8_t form; uint8_t levelMin; uint8_t levelMax; uint8_t slotNumber;\n");
+        h.Append("               uint8_t magnetPullIndex; uint8_t magnetPullCount; uint8_t staticIndex; uint8_t staticCount; uint16_t moves[4]; };\n");
+        h.Append("enum Area3List : uint8_t { SlotsSwarmRSE, SlotsR, SlotsS, SlotsE, SlotsFR, SlotsLG, Area3ListCount };\n");
+        h.Append($"inline constexpr std::size_t kArea3Count = {areaRows.Count};\n");
+        h.Append($"inline constexpr std::size_t kSlot3Count = {slotRows.Count};\n");
+        h.Append("extern const Area3 kAreas3[]; extern const Slot3 kSlots3[]; extern const uint16_t kArea3ListStart[];\n");
+        c.Append("const Area3 kAreas3[] = {\n").Append(Arr(areaRows, 4)).Append("};\n");
+        c.Append("const Slot3 kSlots3[] = {\n").Append(Arr(slotRows, 3)).Append("};\n");
+        c.Append("const uint16_t kArea3ListStart[] = {\n").Append(Arr(areaStarts)).Append("};\n");
+
+        // Statics: StaticR, StaticS, StaticE, StaticRSE, StaticFR, StaticLG, StaticFRLG.
+        var staticRows = new List<string>();
+        var staticStarts = new List<int>();
+        foreach (var (type, field) in new[] { ("Encounters3RSE", "StaticR"), ("Encounters3RSE", "StaticS"), ("Encounters3RSE", "StaticE"),
+                     ("Encounters3RSE", "StaticRSE"), ("Encounters3FRLG", "StaticFR"), ("Encounters3FRLG", "StaticLG"), ("Encounters3FRLG", "StaticFRLG") })
+        {
+            staticStarts.Add(staticRows.Count);
+            foreach (var s in (EncounterStatic3[])SF(type, field))
+            {
+                staticRows.Add($"{{{(int)s.Version}, {s.Species}, {s.Form}, {s.Level}, {s.Location}, {(int)s.FixedBall}, {(s.FatefulEncounter ? 1 : 0)}, "
+                    + $"{(s.IsRoaming ? 1 : 0)}, {(s.IsEgg ? 1 : 0)}, {Moves4(s.Moves)}}}");
+            }
+        }
+        staticStarts.Add(staticRows.Count);
+        h.Append("/// EncounterStatic3 lists in PKHeX order: StaticR, StaticS, StaticE, StaticRSE, StaticFR, StaticLG, StaticFRLG.\n");
+        h.Append("struct Static3 { uint8_t version; uint16_t species; uint8_t form; uint8_t level; uint8_t location; uint8_t ball;\n");
+        h.Append("                 uint8_t fateful; uint8_t roaming; uint8_t isEgg; uint16_t moves[4]; };\n");
+        h.Append("enum Static3List : uint8_t { StaticR3, StaticS3, StaticE3, StaticRSE3, StaticFR3, StaticLG3, StaticFRLG3, Static3ListCount };\n");
+        h.Append($"inline constexpr std::size_t kStatic3Count = {staticRows.Count};\n");
+        h.Append("extern const Static3 kStatics3[]; extern const uint16_t kStatic3ListStart[];\n");
+        c.Append("const Static3 kStatics3[] = {\n").Append(Arr(staticRows, 2)).Append("};\n");
+        c.Append("const uint16_t kStatic3ListStart[] = {\n").Append(Arr(staticStarts)).Append("};\n");
+
+        // In-game trades with names as a Pal Park transfer writes them (StringConverter345.TransferGlyphs34).
+        foreach (var lang in new[] { "de", "en", "es", "fr", "it", "ja" })
+        {
+            PinText($"PKHeX.Core/Resources/legality/gen3/text_traderse_{lang}.txt");
+            PinText($"PKHeX.Core/Resources/legality/gen3/text_tradefrlg_{lang}.txt");
+        }
+        var tradeStrings = new List<string>();
+        int AddNames(object? mem)
+        {
+            int start = tradeStrings.Count;
+            var arr = mem is ReadOnlyMemory<string> r ? r.ToArray() : [];
+            if (arr.Length != 8)
+                throw new Exception("trade3 name count");
+            for (int lang = 0; lang < 8; lang++)
+            {
+                var name = arr[lang] ?? "";
+                var tmp = new char[name.Length];
+                StringConverter345.TransferGlyphs34(name, lang, tmp);
+                tradeStrings.Add(new string(tmp));
+            }
+            return start;
+        }
+        var tradeRows = new List<string>();
+        var tradeLists = new[] { ("Encounters3RSE", "TradeGift_RS"), ("Encounters3RSE", "TradeGift_E"), ("Encounters3FRLG", "TradeGift_FR"),
+                                 ("Encounters3FRLG", "TradeGift_LG"), ("Encounters3FRLG", "TradeGift_FRLG") };
+        for (int li = 0; li < tradeLists.Length; li++)
+        {
+            foreach (var t in (EncounterTrade3[])SF(tradeLists[li].Item1, tradeLists[li].Item2))
+            {
+                var ivs = t.IVs;
+                int ot = AddNames(IF(t, "TrainerNames"));
+                int nick = AddNames(IF(t, "Nicknames"));
+                tradeRows.Add($"{{{li}, {(int)t.Version}, {t.Species}, {t.Level}, {Ability(t.Ability)}, {t.Gender}, {t.OTGender}, {t.TID16}, {t.SID16}, "
+                    + $"{{{ivs.HP}, {ivs.ATK}, {ivs.DEF}, {ivs.SPE}, {ivs.SPA}, {ivs.SPD}}}, "
+                    + $"{{{t.ContestCool}, {t.ContestBeauty}, {t.ContestCute}, {t.ContestSmart}, {t.ContestTough}, {t.ContestSheen}}}, {t.PID}u, {ot}, {nick}}}");
+            }
+        }
+        h.Append("/// EncounterTrade3: list 0 TradeGift_RS, 1 TradeGift_E, 2 TradeGift_FR, 3 TradeGift_LG, 4 TradeGift_FRLG.\n");
+        h.Append("/// ivs HP Atk Def Spe SpA SpD (fixed); contest Cool Beauty Cute Smart Tough Sheen. otNames/nicknames index\n");
+        h.Append("/// kTrade3Strings: 8 entries each (language 0..7) after StringConverter345.TransferGlyphs34.\n");
+        h.Append("struct Trade3 { uint8_t list; uint8_t version; uint16_t species; uint8_t level; int8_t ability; uint8_t gender; uint8_t otGender;\n");
+        h.Append("                uint16_t tid; uint16_t sid; int8_t ivs[6]; uint8_t contest[6]; uint32_t pid; uint16_t otNames; uint16_t nicknames; };\n");
+        h.Append($"inline constexpr std::size_t kTrade3Count = {tradeRows.Count};\n");
+        h.Append("extern const Trade3 kTrades3[];\n");
+        h.Append($"inline constexpr std::size_t kTrade3StringCount = {tradeStrings.Count};\n");
+        h.Append("extern const char16_t* const kTrade3Strings[];\n");
+        c.Append("const Trade3 kTrades3[] = {\n").Append(Arr(tradeRows, 1)).Append("};\n");
+        c.Append("const char16_t* const kTrade3Strings[] = {\n").Append(Arr(tradeStrings.Select(U16Lit), 8)).Append("};\n");
+
+        // Event gifts (EncountersWC3.Encounter_WC3).
+        PinText("PKHeX.Core/Legality/Encounters/Data/Gen3/EncountersWC3.cs");
+        var giftStrings = new List<string>();
+        var giftRows = new List<string>();
+        foreach (var g in (EncounterGift3[])SF("EncountersWC3", "Encounter_WC3"))
+        {
+            int name = giftStrings.Count;
+            giftStrings.Add(g.OriginalTrainerName ?? "");
+            giftRows.Add($"{{{g.Species}, {g.Level}, {VersionMask(g.Version)}, {(g.IsEgg ? 1 : 0)}, {g.MetLevel}, {GiftMethod(g.Method)}, {Moves4(g.Moves)}, "
+                + $"{g.TID16}, {g.SID16}, {g.Language}, {(int)g.Shiny}, {(g.FatefulEncounter ? 1 : 0)}, {(g.RibbonNational ? 1 : 0)}, "
+                + $"{(int)g.OriginalTrainerGender}, {(g.IsFixedTrainer ? 1 : 0)}, {name}}}");
+        }
+        h.Append("/// EncounterGift3 (EncountersWC3.Encounter_WC3) in PKHeX order. versionMask has bit v set when Version.Contains(v);\n");
+        h.Append("/// method: 1 BACD_U, 2 BACD_R, 3 BACD_R_A, 4 BACD_U_AX, 5 BACD_TA, 6 BACD_TS, 7 BACD_RBCD, 8 BACD_M,\n");
+        h.Append("/// 9 Channel, 10 Method_2; tid/sid 0xFFFF unspecified; shiny is Shiny; otGender is GiftGender3; otName\n");
+        h.Append("/// indexes kGift3Strings.\n");
+        h.Append("struct Gift3 { uint16_t species; uint8_t level; uint16_t versionMask; uint8_t isEgg; uint8_t metLevel; uint8_t method;\n");
+        h.Append("               uint16_t moves[4]; uint16_t tid; uint16_t sid; uint8_t language; uint8_t shiny; uint8_t fateful;\n");
+        h.Append("               uint8_t ribbonNational; uint8_t otGender; uint8_t fixedTrainer; uint16_t otName; };\n");
+        h.Append($"inline constexpr std::size_t kGift3Count = {giftRows.Count};\n");
+        h.Append("extern const Gift3 kGifts3[]; extern const char16_t* const kGift3Strings[];\n");
+        c.Append("const Gift3 kGifts3[] = {\n").Append(Arr(giftRows, 1)).Append("};\n");
+        c.Append("const char16_t* const kGift3Strings[] = {\n").Append(Arr(giftStrings.Select(U16Lit), 8)).Append("};\n");
+
+        // PCNY / PCJP distribution machines.
+        Resource("encounter_pcny.pkl", "PKHeX.Core/Resources/legality/wild/Gen3/encounter_pcny.pkl");
+        PinText("PKHeX.Core/Legality/Encounters/Templates/Gen3/Gifts/Distribution3NY.cs");
+        PinText("PKHeX.Core/Legality/Encounters/Templates/Gen3/Gifts/Distribution3JPN.cs");
+        var nyRows = ((EncounterGift3NY[])SF("EncountersWC3", "PCNY"))
+            .Select(g => $"{{{g.Species}, {(int)g.Distribution}, {g.Level}, {Moves4(g.Moves)}}}").ToList();
+        var jpRows = ((EncounterGift3JPN[])SF("EncountersWC3", "PCJP"))
+            .Select(g => $"{{{g.Species}, {(int)g.Distribution}}}").ToList();
+        h.Append("/// EncounterGift3NY (PCNY) and EncounterGift3JPN (PCJP) in PKHeX order; distribution is the\n");
+        h.Append("/// Distribution3NY / Distribution3JPN value.\n");
+        h.Append("struct GiftNY3 { uint16_t species; uint8_t distribution; uint8_t level; uint16_t moves[4]; };\n");
+        h.Append("struct GiftJP3 { uint16_t species; uint8_t distribution; };\n");
+        h.Append($"inline constexpr std::size_t kGiftNY3Count = {nyRows.Count};\n");
+        h.Append($"inline constexpr std::size_t kGiftJP3Count = {jpRows.Count};\n");
+        h.Append("extern const GiftNY3 kGiftsNY3[]; extern const GiftJP3 kGiftsJP3[];\n");
+        c.Append("const GiftNY3 kGiftsNY3[] = {\n").Append(Arr(nyRows, 4)).Append("};\n");
+        c.Append("const GiftJP3 kGiftsJP3[] = {\n").Append(Arr(jpRows, 8)).Append("};\n");
+
+        // Colosseum bonus-disk / Mt. Battle gifts (Encounters3RSE.ColoGiftsR, ColoGiftsS).
+        var coloStrings = new List<string>();
+        var coloRows = new List<string>();
+        foreach (var field in new[] { "ColoGiftsR", "ColoGiftsS" })
+        {
+            foreach (var g in (EncounterGift3Colo[])SF("Encounters3RSE", field))
+            {
+                int names = coloStrings.Count;
+                var arr = IF(g, "TrainerNames") is ReadOnlyMemory<string> r ? r.ToArray() : [];
+                if (arr.Length != 8)
+                    throw new Exception("colo name count");
+                coloStrings.AddRange(arr.Select(x => x ?? ""));
+                coloRows.Add($"{{{g.Species}, {g.Level}, {(int)g.Version}, {g.Location}, {g.TID16}, {g.OriginalTrainerGender}, {Moves4(g.Moves)}, {names}}}");
+            }
+        }
+        h.Append("/// EncounterGift3Colo in PKHeX order (ColoGiftsR then ColoGiftsS); names index kGiftColo3Strings (8 per gift).\n");
+        h.Append("struct GiftColo3 { uint16_t species; uint8_t level; uint8_t version; uint8_t location; uint16_t tid; uint8_t otGender;\n");
+        h.Append("                   uint16_t moves[4]; uint16_t names; };\n");
+        h.Append($"inline constexpr std::size_t kGiftColo3Count = {coloRows.Count};\n");
+        h.Append($"inline constexpr std::size_t kGiftColoR3Count = {((EncounterGift3Colo[])SF("Encounters3RSE", "ColoGiftsR")).Length};\n");
+        h.Append("extern const GiftColo3 kGiftsColo3[]; extern const char16_t* const kGiftColo3Strings[];\n");
+        c.Append("const GiftColo3 kGiftsColo3[] = {\n").Append(Arr(coloRows, 1)).Append("};\n");
+        c.Append("const char16_t* const kGiftColo3Strings[] = {\n").Append(Arr(coloStrings.Select(U16Lit), 8)).Append("};\n");
+
+        // Egg names as a Gen III encounter's egg is checked (SpeciesName.GetEggName(language, 3)).
+        var eggNames = Enumerable.Range(0, 9).Select(l => U16Lit(SpeciesName.GetEggName(l, 3))).ToList();
+        h.Append("/// SpeciesName.GetEggName(language, 3) for language 0..8.\n");
+        h.Append("extern const char16_t* const kEggName3[9];\n");
+        c.Append("const char16_t* const kEggName3[9] = {\n").Append(Arr(eggNames, 9)).Append("};\n");
+
+        // Hand-ported RNG tables (MystryMew seeds) are traced to their source file.
+        PinText("PKHeX.Core/Legality/RNG/ClassicEra/Gen3/MystryMew.cs");
+        h.Append('\n');
+        c.Append('\n');
     }
 }
