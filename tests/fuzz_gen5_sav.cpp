@@ -1,6 +1,7 @@
 // QA fuzz target: Generation V SAV5 loader (BW / B2W2), the primary/backup copy selector, Save
 // Instance identification (probeNormalizedBattery), PK5 party/box records, the native Bag and the
-// staged export candidate.
+// staged export candidate, the Gen V save diagnostics (inspectSave5 / unopenableCopyDiagnostic5 /
+// formatSaveReport5) and the Home card snapshot built from a ready Save Instance probe.
 //
 // Copy-selector contract checked on every input:
 //  * Automatic never picks a copy that Primary/Backup would refuse;
@@ -9,8 +10,11 @@
 #include "fuzz_support.h"
 #include "fuzz_synthetic_saves.h"
 
+#include "Integration/Gen5/Gen5AssignedSource.h"
 #include "Integration/Gen5/Gen5Bag.h"
+#include "Integration/Gen5/Gen5GameCardPreview.h"
 #include "Integration/Gen5/Gen5ReadOnlySave.h"
+#include "Integration/Gen5/Gen5SaveDiagnostics.h"
 #include "Integration/Gen5/Gen5SaveInstanceAdapter.h"
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "Integration/Gen5/Gen5StagedSaveCandidate.h"
@@ -38,6 +42,22 @@ void exercise(const G5::Gen5ReadOnlySave& save, std::span<const uint8_t> data) {
             if (box == G5::LayoutInfo::BoxCount || slot == G5::LayoutInfo::BoxSlots) QA_CHECK(!mon);
             if (mon) (void)mon->ivs();
         }
+
+    // Diagnostics must describe the copy the loader chose with the same selection, never another.
+    const auto selection = save.selectedBackupPartition() ? G5::SaveCopySelection::Backup
+                                                          : G5::SaveCopySelection::Primary;
+    const auto report = G5::inspectSave5(data, "fuzz", selection);
+    QA_CHECK(report.chosenIndex.has_value() && *report.chosenIndex < report.copies.size());
+    if (report.chosenIndex) {
+        QA_CHECK(report.copies[*report.chosenIndex].family == save.family());
+        QA_CHECK(report.copies[*report.chosenIndex].offset == save.selectedCopyOffset());
+    }
+    if (const auto alternative = G5::openableAlternative5(report)) QA_CHECK(*alternative < report.copies.size());
+    G5::CopyState5 state{};
+    const auto unopenable = G5::unopenableCopyDiagnostic5(data, save, selection, &state);
+    QA_CHECK(state == G5::chosenState5(report));
+    if (unopenable.empty()) QA_CHECK(G5::copyOpenable5(state));
+    QA_CHECK(G5::formatSaveReport5(report, save.exactGameId()).find("CHOSEN=") != std::string::npos);
 
     const auto bag = G5::decodeBag5(save);
     auto staged = G5::Gen5StagedBag::create(save);
@@ -148,6 +168,21 @@ void runOne(std::span<const uint8_t> data) {
         if (probe.ready()) {
             QA_CHECK(probe.save && probe.save->exactGameId() == assigned);
             QA_CHECK(probe.instance.partyCount == probe.save->partyCount());
+            // The Home card is built from the same strict preview: all of the party or nothing.
+            G5::AssignedSourceReadOnly ready;
+            ready.status = G5::AssignedOpenStatus::Ready;
+            ready.instance = probe.instance;
+            ready.save = probe.save;
+            const auto home = G5::homeCardSnapshot(ready);
+            if (home.current()) {
+                QA_CHECK(home.gameId == assigned && home.partyCount == probe.save->partyCount());
+                for (size_t slot = 0; slot < home.party.size(); ++slot) {
+                    const auto mon = slot < home.partyCount ? probe.save->partyPokemon(slot) : std::nullopt;
+                    QA_CHECK(home.party[slot].species == (mon ? mon->species() : 0));
+                }
+            } else {
+                QA_CHECK(!home.reason.empty() && home.partyCount == 0);
+            }
         } else {
             QA_CHECK(!probe.instance.diagnostic.empty());
         }

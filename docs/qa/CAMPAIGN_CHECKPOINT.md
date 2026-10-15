@@ -36,3 +36,4 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 - 2026-10-15 — `fuzz_gen5_edits` (Gen V edit-sequence fuzzer) added; libFuzzer found QA-F4; 5-min soak clean on a retail-consistent seed.
 - 2026-10-15 — QA-F5: Gen V Home party strip drops form; repro on the real assignment -> HomeSnapshotCache -> homeCardSnapshot path (GCC and Clang, ASan/UBSan). Cross-gen shiny/level/form notes recorded in FINDINGS.md.
 - 2026-10-15 — merged #307 `85421cf` (Gen V Clone/Move keypads, Release dialog; UI-only, reviewed, no defect).
+- 2026-10-15 — `fuzz_gen5_sav` extended to the Gen V save diagnostics (inspectSave5 / unopenableCopyDiagnostic5 / formatSaveReport5) and the Home snapshot from a ready probe; deterministic 60 s (GCC ASan/UBSan) and libFuzzer 180 s (Clang) clean.
