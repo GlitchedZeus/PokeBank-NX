@@ -1428,7 +1428,7 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                 },error))
                     screen.postStatus(error,320);
                 else screen.postStatus(
-                    "Gen V box slot removed in app memory only; source SAV5 unchanged",260);
+                    "Generation V Release staged; source SAV5 unchanged",300);
             }
             return true;
         case Surface::Review:
@@ -1847,9 +1847,12 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
                 {{"A","Create"},{"B","Cancel"}});
             return true;
         case Surface::ConfirmRemoveBox:
-            drawDecision(screen,fb,"Remove Boxed Pokemon From Staged Copy?",
-                "Requires Y confirmation; source SAV5 and backups stay intact.",
-                {{"Y","Stage Remove"},{"B","Cancel"}});
+            // The Gen IV Release dialog: same title, box/slot line and Y confirm.
+            drawDecision(screen,fb,"Release this Pokemon?",
+                "Box "+std::to_string(state.target().box+1)+" / Slot "+
+                    std::to_string(state.target().slot+1)+
+                    ": removed only from the app-owned staged copy.",
+                {{"Y","Confirm Release"},{"B","Cancel"}});
             return true;
         case Surface::ConfirmExport:
             drawDecision(screen,fb,"Export Verified Generation V Working Copy?",

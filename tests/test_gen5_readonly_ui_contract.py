@@ -1022,7 +1022,7 @@ require(surface,"void stageCloneOrMoveByKeypad(TrainerViewScreen& screen)",
         "case Surface::ConfirmRemoveBox:",
         "!state.confirmClone(staged,",
         "state.confirmRemoveBox(staged",
-        '"Y","Stage Remove"',
+        '"Release this Pokemon?"', '"Y","Confirm Release"',
         "Box clone/remove staged only; no source writes")
 require(read("tests/test_gen5_staged_save_candidate.cpp"),
         "boxOps.cloneToEmptyBox(",
