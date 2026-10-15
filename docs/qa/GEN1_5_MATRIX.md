@@ -40,7 +40,7 @@ The runner compares normalised facts across versions. Every difference it flags 
 
 | Fact | Difference | Classification | Owner |
 | --- | --- | --- | --- |
-| `identity.source` | filename hint (RBY except Crystal, GS, all Gen III); assignment (Diamond/Pearl); save-internal (Crystal, Pt, HG/SS, Gen V) | Inherent to the formats: R/B, G/S, R/S and FR/LG saves are byte-identical families and DP lacks a version marker. **But** Gen III takes the hint from a raw substring of the whole path while Gen I/II accept only isolated tokens: filed as **QA-F6** | L (QA-F6) |
+| `identity.source` | filename hint (RBY except Crystal, GS, all Gen III); assignment (Diamond/Pearl); save-internal (Crystal, Pt, HG/SS, Gen V) | Inherent to the formats: R/B, G/S, R/S and FR/LG saves are byte-identical families and DP lacks a version marker. **But** Gen III takes the hint from a raw substring of the whole path while Gen I/II accept only isolated tokens: filed as **QA-F6** | C (QA-F6) |
 | `trainer.gender` | not stored in RBY and Gold/Silver | Inherent to the format (N/A cells) | — |
 | `home.refresh` | legacy re-discovery (Gen I–III) vs `HomeSnapshotCache` (Gen IV/V) | Two mechanisms for one Home card; Gen I–III refresh only for a single-instance title (`SaveSelectScreen.cpp`). Consistency item | 2R (Home) |
 | `home.party.form` | dropped for Gen II/III (Unown letter), kept for Gen IV/V | Cross-gen preview consistency, assigned to 2R by the coordinator (QA-F5 fixed the Gen V case) | 2R |

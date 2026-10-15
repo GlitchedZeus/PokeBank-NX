@@ -24,7 +24,7 @@ namespace {
 
 namespace L = PokeVault::Legacy;
 
-// QA-F6 (Low, Thread L: src/Legacy/RetroArchFRLGDiscovery.cpp identityHint).
+// QA-F6 (Low, Thread C: src/Legacy/RetroArchFRLGDiscovery.cpp identityHint).
 // Gen III discovery takes the exact release (Ruby/Sapphire/Emerald/FireRed/LeafGreen) from a raw
 // SUBSTRING of the whole lower-cased alphanumeric path, directories included. Any word or folder that
 // merely contains a release name therefore decides the identity of a save whose own name carries no

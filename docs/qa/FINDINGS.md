@@ -22,7 +22,7 @@ lands, its reproduction moves into the passing suite as a regression test
 | QA-F1 | Low | Packaged-RomFS manifest omitted the four Gen V game cards the app requests | Thread 2 | **FIXED** in `3b35b3f`; regression test in `qa-tools-test` |
 | QA-F4 | Low (defence in depth) | Gen V PID replay (`Field::Personality`) protects the PID/gender link only when the ability link also holds | Thread 2R (`Gen5StagedPokemonRecord.h`) | **FIXED** in `bc83815`; regression in `test_qa_regressions.cpp` |
 | QA-F5 | Low (presentation) | Gen V Home party strip drops the party member's form, so alternate forms show the base-form icon; Gen IV keeps it | Thread 2R (`Gen5GameCardPreview.h`) | **FIXED** on #307 (`PartyPreviewSlot.form`); regression in `test_qa_regressions.cpp` |
-| QA-F6 | Low (identity) | Gen III discovery takes the exact release from a raw substring of the WHOLE path, so an unrelated folder or word decides a hint-less save's identity (Gen I/II accept only isolated tokens) | Thread L (`RetroArchFRLGDiscovery.cpp` `identityHint`) | OPEN; repro `tests/test_qa_known_failures.cpp` |
+| QA-F6 | Low (identity) | Gen III discovery takes the exact release from a raw substring of the WHOLE path, so an unrelated folder or word decides a hint-less save's identity (Gen I/II accept only isolated tokens) | Thread C (`RetroArchFRLGDiscovery.cpp` `identityHint`) | OPEN; repro `tests/test_qa_known_failures.cpp` |
 | QA-F7 | Low (editor gap) | Gen IV Unown letter (form) cannot be edited: `setForm` uses the personal table's raw form count (1), the pinned PKSM-Core normalises Unown to 28 | Thread C (`Pokemon4Mutable.cpp` `setForm`) | OPEN; repro `tests/test_qa_known_failures.cpp` |
 | QA-F8 | Low (presentation) | Gen IV Release zero-fills the slot, so a net no-op clone + release still reviews as "Box N slot M: (empty) (edited)" and the export differs in that slot | Thread C (`Gen4StagedPokemonEditor` release / `describeStagedSlotChanges`) | OPEN; repro `tests/test_qa_known_failures.cpp` |
 
@@ -80,7 +80,7 @@ record decoder, Bag decoder, copy selector or Save Instance identification path 
 - **Suggested fix:** when releasing a slot that was empty in the original, restore the original
   slot bytes; or have the review skip empty→empty changes.
 
-## QA-F6 (Low, identity; owner Thread L): Gen III release hint is a substring of the whole path
+## QA-F6 (Low, identity; owner Thread C): Gen III release hint is a substring of the whole path
 
 - **Found by:** the Gen I–V acceptance matrix (Phase 5, `tests/test_qa_matrix_gen3.cpp` identity
   cell), 2026-10-15. Confirmed with a dedicated repro.
@@ -205,6 +205,7 @@ Local runs on the audited head (Ubuntu 24.04, GCC 13.3, Clang 18.1):
 | `make qa` under GCC and under Clang (deterministic runner plain + ASan/UBSan, all 8 targets; 17 export contracts; NRO audit regression) | pass |
 | libFuzzer 30 s/target (smoke) | clean: 59k / 37k / 1.4k / 0.9k / 0.2k / 607k / 3.8k / 69 execs |
 | libFuzzer soak 240 s/target | clean: gen1 545k, gen2 327k, gen3 13k, gen4 11k, gen5-bag 35k, gen5-sav 2.6k, source-containers 733 execs |
+| `fuzz_launch_plan` (Thread L launch/return plan, 2026-10-15): deterministic 140k execs ASan/UBSan + libFuzzer 1.75M runs / 180 s | clean: plan argv == libnx tokenisation, loader caps held, hosted argv accepted unchanged by the return host, return host never used unless enabled, return-selection round trip |
 | libFuzzer soak 240 s, `fuzz_pk_records` | first run stopped on an all-zero PK4 record: harness gap (blank-slot convention), fixed, input kept as regression corpus; re-run clean, 4.7M execs |
 
 CI evidence for this branch is linked from the draft PR.

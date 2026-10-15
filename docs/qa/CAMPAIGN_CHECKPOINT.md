@@ -29,7 +29,7 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 | QA-F3b Gen II export publish via `rename()` | Low | C | FIXED (cb88043); regression in qa-contracts |
 | QA-F4 Gen V PID replay guard conjoins gender+ability links | Low | 2R | FIXED (bc83815); regression in test_qa_regressions |
 | QA-F5 Gen V Home party strip drops form (Gen IV keeps it) | Low | 2R | FIXED on #307; regression in test_qa_regressions |
-| QA-F6 Gen III release hint from a substring of the whole path | Low | L | open (repro `tests/test_qa_known_failures.cpp`) |
+| QA-F6 Gen III release hint from a substring of the whole path | Low | C | open (repro `tests/test_qa_known_failures.cpp`) |
 | QA-F7 Gen IV Unown letter cannot be edited (form count 1 vs PKSM-Core 28) | Low | C | open (repro `tests/test_qa_known_failures.cpp`) |
 | QA-F8 Gen IV no-op clone+release still reviews as "(empty) (edited)" | Low | C | open (repro `tests/test_qa_known_failures.cpp`) |
 
@@ -45,3 +45,5 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 - 2026-10-15 — Phase 5 matrix landed: 20 versions x 21 cells on real production paths, `qa-matrix` in `make qa` and App QA Contracts CI; libqacore object rule now tracks header dependencies (-MMD), after a stale object caused an ASan new-delete-type-mismatch; QA-F6 filed (C).
 - 2026-10-15 08:25 UTC — merged #307 `181423a` (QA-F2 repaired by 2R in 96a44685): QA-F2 moved to qa-tools-test regressions; `app-qa-workflow-hygiene.yml` added; QA-F6 owner corrected to L (RetroArch discovery).
 - 2026-10-15 — verified matrix observations: (b) filed QA-F7 (Unown, PKSM-Core PersonalDPPtHGSS::formCount = 28), (c) filed QA-F8 (no-op release review line; Gen IV matrix cell no longer pins the defect). make qa EXIT 0 on the 181423a merge.
+- 2026-10-15 08:40 UTC — coordinator routed QA-F6 to C (owner corrected back from L).
+- 2026-10-15 — Phase 6 (launch/return, Thread L 86c3490 via #307): `fuzz_launch_plan` added. Covers buildGameLaunchChainPlan vs the libnx argvSetup tokenizer and loader caps, hosted argv accepted unchanged by rh_parse_args, rh_* buffer bounds, the return host off unless explicitly enabled, and the return-selection parse/serialize round trip. Deterministic 140k execs (GCC ASan/UBSan) and libFuzzer 1.75M runs/180 s (Clang): no defect. Return host stays off by default: `GameLaunchReturnOptions{}` is false, and it is only enabled behind `experimental_return_host.enable` (GameLauncher.cpp; the file check runs on the device only).

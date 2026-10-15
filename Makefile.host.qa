@@ -59,8 +59,8 @@ QA_CORE_SOURCES := $(sort \
 	vendor/PKSM-Core/source/utils/crypto_checksums.cpp)
 
 QA_FUZZ_TARGETS := fuzz_gen1_sav fuzz_gen2_sav fuzz_gen3_sav fuzz_gen4_sav fuzz_gen5_sav \
-	fuzz_pk_records fuzz_gen5_bag fuzz_source_containers fuzz_gen5_edits
-QA_HEADERS := tests/fuzz_support.h tests/fuzz_synthetic_saves.h tests/test_qa_support.h \
+	fuzz_pk_records fuzz_gen5_bag fuzz_source_containers fuzz_gen5_edits fuzz_launch_plan
+QA_HEADERS := tests/fuzz_support.h tests/fuzz_synthetic_saves.h tests/test_qa_support.h include/UI/GameLaunchModel.h runtime/return_host/source/return_host_policy.h \
 	$(wildcard include/Integration/*/*.h include/Pokemon/*.h include/Encryption/*.h include/Utils/*.h include/Source/*.h)
 
 # variant -> extra compile flags
