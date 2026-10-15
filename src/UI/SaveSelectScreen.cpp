@@ -911,8 +911,9 @@ namespace UI {
             users.front().name = "Pokémon Saves";
         }
 
-        // Discovery is app-global; normal visibility is not. A filesystem source has no intrinsic
-        // Nintendo-account owner, so it appears only after an explicit persistent assignment.
+        // Discovery is app-global. A filesystem source has no intrinsic Nintendo-account owner:
+        // an unclaimed source is shown under every profile; a persistent claim limits it to the
+        // claiming profile, and a conflicting claim hides it everywhere (Source::visibleToProfile).
         for (auto& user : users) {
             const auto cards = legacyBindings
                 ? PokeVault::Legacy::buildFRLGSourceCardsForProfile(

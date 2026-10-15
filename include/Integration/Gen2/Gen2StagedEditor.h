@@ -158,6 +158,8 @@ private:
                            std::string& error) const;
     bool encodePokemonName(std::string_view name, std::vector<uint8_t>& encoded,
                            std::string& error) const;
+    bool encodeOTName(std::string_view name, std::vector<uint8_t>& encoded,
+                      std::string& error) const;
     bool syncCurrentBoxCopy(std::size_t box, std::string& error);
     void rememberPokemonExpectation(std::size_t box, std::size_t slot,
                                     const PokemonRecord& expected);

@@ -9,6 +9,8 @@
 #ifndef POKEBANK_INTEGRATION_GEN3_PKSM_GEN3_ADAPTER_H
 #define POKEBANK_INTEGRATION_GEN3_PKSM_GEN3_ADAPTER_H
 
+#include "Integration/Gen3/Gen3Gender.h"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -109,6 +111,10 @@ namespace PokeVault::Integration::Gen3 {
         std::string otName;
         bool checksumValid = false;
         bool byteIdenticalRoundTrip = false;
+
+        // PID-derived gender for the species' Gen III ratio (Gen3Gender.h); Unknown only when
+        // the species has no Gen III data.
+        [[nodiscard]] Gen3Gender gender() const noexcept { return gen3GenderFromPid(species, pid); }
     };
 
     struct SaveMetadata {

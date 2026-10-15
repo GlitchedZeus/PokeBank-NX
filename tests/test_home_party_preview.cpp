@@ -79,8 +79,14 @@ void gen3UsesStoredLevelPidShinyAndUnownLetter() {
     assert(P::fromGen3(gen3(201, 0x01000000u, 10)).form == 64 % 28);
     // Only Unown uses the PID letter.
     assert(P::fromGen3(gen3(25, 0x03030303u, 10)).form == 0);
-    // Gen III gender stays explicitly unknown (no pinned Gen III personal table here).
-    assert(P::fromGen3(gen3(25, 0x03030303u, 10)).gender == kUnknown);
+    // Gender from the PID against the Gen III ratio (Gen3Gender.h, PKSM-Core personal3).
+    // Pikachu 127: PID low byte 0x03 < 127 -> female; 0x90 -> male. Unown genderless.
+    assert(P::fromGen3(gen3(25, 0x03030303u, 10)).gender == 1);
+    assert(P::fromGen3(gen3(25, 0x00000090u, 10)).gender == 0);
+    assert(P::fromGen3(gen3(201, 0x00000001u, 10)).gender == 2);
+    assert(P::fromGen3(gen3(29, 0x000000FFu, 10)).gender == 1); // Nidoran F: always female
+    // A species with no Gen III data has no gender, never a guess.
+    assert(P::fromGen3(gen3(387, 0x000000FFu, 10)).gender == kUnknown);
 }
 
 } // namespace

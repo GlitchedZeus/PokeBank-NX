@@ -693,6 +693,26 @@ void testExactGameForms() {
     }
 }
 
+void testUnownStoredLetters() {
+    // PKHeX personal tables give Unown one entry (formCount 1), but Gen IV stores its 28 letters
+    // (A-Z, !, ?) in the form bits; every letter is editable, nothing past "?" is.
+    for (const auto group : {Enums::GameVersion::DP, Enums::GameVersion::PT, Enums::GameVersion::HGSS}) {
+        auto unown = Pokemon::Pokemon4Mutable::fromEncrypted(
+            makeEntity(201, 0x12345678u, 26), group);
+        assert(unown && unown->formCount() == 28);
+        for (uint8_t letter : {uint8_t(1), uint8_t(25), uint8_t(26), uint8_t(27), uint8_t(0)}) {
+            const uint32_t pid = unown->pid();
+            assert(unown->setForm(letter));
+            Pokemon::Pokemon4ReadOnly stored(unown->encryptedBytes(), group);
+            assert(stored.valid() && stored.species() == 201 && stored.form() == letter);
+            assert(unown->pid() == pid); // a cosmetic form never rerolls the PID
+        }
+        const auto before = unown->encryptedBytes();
+        assert(!unown->setForm(28));
+        assert(unown->encryptedBytes() == before);
+    }
+}
+
 void testItemDrivenAndStorageFormRules() {
     // Diamond/Pearl do not expose Giratina Origin Forme in their personal table.
     auto dpGiratina = Pokemon::Pokemon4Mutable::fromEncrypted(
@@ -774,6 +794,7 @@ int main() {
     testExactBallSemantics();
     testExactMetLocationSemantics();
     testExactGameForms();
+    testUnownStoredLetters();
     testItemDrivenAndStorageFormRules();
     testNativeStoredCreateDraft();
     testBadInputFailsClosed();

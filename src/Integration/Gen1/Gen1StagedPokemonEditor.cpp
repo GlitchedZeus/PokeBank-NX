@@ -60,6 +60,16 @@ void copySlot(const std::vector<uint8_t>& from,size_t f,size_t fs,
     std::copy_n(from.begin()+otOffset(f,fs),11,to.begin()+otOffset(t,ts));
     std::copy_n(from.begin()+nickOffset(f,fs),11,to.begin()+nickOffset(t,ts));
 }
+// Max HP with the R/B/Y Stat Exp term (same rule as Gen1BattleStats.cpp, kept local so this
+// translation unit has no extra link dependency): ((base + HP DV) * 2 + ceil(sqrt(StatExp))/4)
+// * level / 100 + level + 10.
+uint16_t maxHP(uint16_t species,uint8_t level,uint8_t hpDV,uint16_t hpStatExp) noexcept {
+    if(species<1 || species>151) return 0;
+    uint16_t root=0;
+    while(root<255 && static_cast<uint32_t>(root)*root<hpStatExp) ++root;
+    const uint32_t scaled=((static_cast<uint32_t>(kPersonal[species][0]+hpDV)*2U+root/4U)*level)/100U;
+    return static_cast<uint16_t>(scaled+level+10U);
+}
 bool sameRecord(const PokemonRecord& a,const PokemonRecord& b) {
     return a.rawBody==b.rawBody && a.nickname==b.nickname && a.originalTrainer==b.originalTrainer;
 }
@@ -221,6 +231,18 @@ bool StagedPokemonEditor::stageEdit(size_t b,size_t s,const BoxPokemonEdit& e,st
     for(size_t i=0;i<4;++i) {bytes[o+8+i]=next.moves[i];bytes[o+29+i]=next.pp[i]|(next.ppUps[i]<<6);}
     for(size_t i=0;i<5;++i) be16(bytes,o+17+i*2,next.statExperience[i]);
     bytes[o+27]=(next.dvs[1]<<4)|next.dvs[2];bytes[o+28]=(next.dvs[3]<<4)|next.dvs[4];
+    {
+        // A boxed Gen I record keeps current HP at body+1 (pret/pokered box_struct). Withdrawing
+        // recomputes max HP but copies current HP as-is, so it must stay <= the new max HP after
+        // a species/level/DV/Stat Exp change. A Pokemon that was at full HP stays at full HP.
+        const uint16_t oldMax=maxHP(p->species,p->level,p->dvs[0],p->statExperience[0]);
+        const uint16_t newMax=maxHP(next.species,next.level,next.dvs[0],next.statExperience[0]);
+        const uint16_t current=static_cast<uint16_t>((bytes[o+1]<<8)|bytes[o+2]);
+        const bool hpInputsChanged=next.species!=p->species || next.level!=p->level ||
+            next.dvs!=p->dvs || next.statExperience!=p->statExperience;
+        const uint16_t hp=current>=oldMax?newMax:std::min(current,newMax);
+        if(hpInputsChanged && hp!=current) be16(bytes,o+1,hp);
+    }
     if(e.nickname && *e.nickname!=p->nickname) {
         const auto& baseline=original_->boxes()[b].slots[s];
         if(baseline && *e.nickname==baseline->nickname) std::copy_n(originalBytes().begin()+nickOffset(box,s),11,bytes.begin()+nickOffset(box,s));
@@ -259,7 +281,8 @@ bool StagedPokemonEditor::stageAdd(size_t b,size_t s,const BoxPokemonCreate& c,s
     std::fill_n(bytes.begin()+o,33,0);bytes[box]=s+1;bytes[box+1+s]=bytes[o]=internalSpecies(c.species);bytes[box+2+s]=0xFF;
     bytes[o+3]=c.level;bytes[o+5]=kPersonal[c.species][5];bytes[o+6]=kPersonal[c.species][6];bytes[o+7]=kPersonal[c.species][7];
     // Catch rate is a stored Gen I byte, not a held item; do not claim encounter legality.
-    be16(bytes,o+1,static_cast<uint16_t>(((kPersonal[c.species][0]+derivedHPDV(c.dvs))*2*c.level)/100+c.level+10));
+    // A new Pokemon starts at full HP, including its Stat Exp contribution.
+    be16(bytes,o+1,maxHP(c.species,c.level,derivedHPDV(c.dvs),c.statExperience[0]));
     be16(bytes,o+12,c.trainerId.value_or(original_->trainer().trainerId));be24(bytes,o+14,p.experience);
     for(size_t i=0;i<4;++i) {bytes[o+8+i]=c.moves[i];bytes[o+29+i]=c.pp[i]|(c.ppUps[i]<<6);}
     for(size_t i=0;i<5;++i) be16(bytes,o+17+i*2,c.statExperience[i]);
