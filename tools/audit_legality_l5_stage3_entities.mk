@@ -3,8 +3,11 @@
 # Tests the actual Pokemon3FRLG and immutable Pokemon4ReadOnly classes.
 L5_STAGE3_ENTITY_SOURCES := tests/fixtures/legality_l5_stage3_native_entity_boundary.cpp \
  $(filter-out tests/test_gen34_ball_domain_analyzer.cpp,$(GEN34_BALL_ANALYZER_SOURCES))
-L5_STAGE3_ENTITY_NORMAL := $(HOST_BUILD)/legality_l5_stage3_entity
-L5_STAGE3_ENTITY_SAN := $(HOST_BUILD)/legality_l5_stage3_entity_san
+# Isolate compiler variants so a previous GCC binary is never mistaken for
+# a Clang result when CI reuses the same checkout/build-host directory.
+L5_STAGE3_ENTITY_VARIANT ?=
+L5_STAGE3_ENTITY_NORMAL := $(HOST_BUILD)/legality_l5_stage3_entity$(L5_STAGE3_ENTITY_VARIANT)
+L5_STAGE3_ENTITY_SAN := $(HOST_BUILD)/legality_l5_stage3_entity_san$(L5_STAGE3_ENTITY_VARIANT)
 .PHONY: l5-stage3-entity l5-stage3-entity-sanitize
 $(L5_STAGE3_ENTITY_NORMAL): $(L5_STAGE3_ENTITY_SOURCES)
 	@mkdir -p $(HOST_BUILD)

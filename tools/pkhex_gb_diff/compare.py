@@ -194,9 +194,27 @@ UNCERTAIN_REASONS = (
     ("korean-western-trade", "Needs a trade between Korean Gold/Silver and a Western game",
      lambda r, ctx: r.korean),
     ("korean-met-data", "Korean Gold/Silver do not record met data", lambda r, ctx: r.korean and r.caught != 0),
+    # EffortValueVerifier.VerifyEVsGB (EVs:EffortShouldBeZero): PKHeX's "simple sanity check".
+    # pret/pokered DivideExpDataByNumMonsGainingExp floors each enemy base stat by the
+    # recipient count (halved first under Exp. All), so a stat can gain 0 in a battle.
+    ("gb-divided-stat-exp-zero", "Stat experience from battles with one stat still at zero",
+     lambda r, ctx: not r.egg and battle_stat_exp_with_zero(r)),
     ("korean-trainer-name", "Korean trainer name has characters outside the Hangul pages",
      lambda r, ctx: r.korean and korean_one_byte_char(r.ot)),
 )
+
+
+def stat_exp(r):
+    """The five big-endian stat experience words: PK1 body 0x11, PK2 body 11."""
+    at = 0x11 if r.format == 1 else 11
+    return [(r.body[at + 2 * i] << 8) | r.body[at + 2 * i + 1] for i in range(5)]
+
+
+def battle_stat_exp_with_zero(r):
+    """EffortValues.VitaminBoost12 2560, MaxVitamins12 25600."""
+    values = stat_exp(r)
+    battle = any(v > 25600 or v % 2560 for v in values)
+    return battle and 0 in values
 
 
 def move_ids(r):
@@ -310,11 +328,13 @@ def self_test():
     """Corrupt a small valid run every way the protocol forbids; each must fail."""
     ctx = Context({1: 3, 151: 3, 251: 3, 25: 0}, {})
 
-    def pk2(species, level, exp, caught=0, moves=(33, 45)):
+    def pk2(species, level, exp, caught=0, moves=(33, 45), stat_exp=(0, 0, 0, 0, 0)):
         body = bytearray(48)
         body[0] = species
         body[2:2 + len(moves)] = bytes(moves)
         body[8:11] = exp.to_bytes(3, "big")
+        for i, v in enumerate(stat_exp):
+            body[11 + 2 * i:13 + 2 * i] = v.to_bytes(2, "big")
         body[29:31] = caught.to_bytes(2, "big")
         body[31] = level
         return body.hex()
@@ -329,15 +349,17 @@ def self_test():
         f"3 lvl 0 {pk2(1, 50, 0)} {intl} {intl} 0",
         f"4 gs 1 {pk2(251, 30, exp_for(3, 30), caught=(30 << 8) | 14)} {jp} {jp} 0",
         f"5 kor 8 {pk2(1, 5, 135)} {kor} {kor} 0",
+        f"6 sx 0 {pk2(1, 5, 135, stat_exp=(65535, 0, 1, 32768, 65534))} {intl} {intl} 0",
     ]
     pkhex = ["0 VALID x ; ", "1 INVALID x ; Move1:Duplicate", "2 INVALID x ; Encounter:EncInvalid",
              "3 VALID x ; ", "4 INVALID x ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
-             "5 INVALID x ; Move2:None"]
+             "5 INVALID x ; Move2:None", "6 INVALID x ; EVs:EffortShouldBeZero"]
     pokebank = ["0 VALID x ;", "1 INVALID x ; | Duplicate move: Tackle",
                 "2 UNCERTAIN no known origin ; | Mew was only distributed at events; the event list is not known",
                 "3 INVALID x ; | Level 50 does not match EXP (expected 1)",
                 "4 VALID GS Ball Celebi in Japanese Crystal (level 30) ;",
-                "5 UNCERTAIN x ; | Needs a trade between Korean Gold/Silver and a Western game (Bulbapedia)"]
+                "5 UNCERTAIN x ; | Needs a trade between Korean Gold/Silver and a Western game (Bulbapedia)",
+                "6 UNCERTAIN x ; | Stat experience from battles with one stat still at zero needs every one"]
 
     def run(c, a, b):
         with tempfile.TemporaryDirectory() as tmp:
@@ -386,6 +408,12 @@ def self_test():
         ("Korean reason on a non-Korean record", "differ",
          edit(lines, 5, lines[5].replace(f" kor 8 {pk2(1, 5, 135)} {kor} {kor}", f" kor 0 {pk2(1, 5, 135)} {intl} {intl}")),
          pkhex, pokebank),
+        ("divided stat-exp reason without a zero stat", "differ",
+         edit(lines, 6, lines[6].replace(pk2(1, 5, 135, stat_exp=(65535, 0, 1, 32768, 65534)),
+                                         pk2(1, 5, 135, stat_exp=(65535, 7, 1, 32768, 65534)))), pkhex, pokebank),
+        ("divided stat-exp reason on vitamin-only stat exp", "differ",
+         edit(lines, 6, lines[6].replace(pk2(1, 5, 135, stat_exp=(65535, 0, 1, 32768, 65534)),
+                                         pk2(1, 5, 135, stat_exp=(2560, 0, 5120, 0, 0)))), pkhex, pokebank),
         ("word-filter exception with a real complaint", "differ", lines,
          edit(pkhex, 0, "0 INVALID x ; Nickname:WordFilterFlaggedPattern_01 Move1:None"), pokebank),
     ]

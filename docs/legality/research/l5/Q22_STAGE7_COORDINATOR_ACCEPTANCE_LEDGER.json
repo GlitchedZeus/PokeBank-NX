@@ -1,0 +1,100 @@
+{
+  "schema": "L5_STAGE7_FINAL_COORDINATOR_ACCEPTANCE_LEDGER_V1",
+  "project": "PokeBank NX",
+  "date": "2026-10-12",
+  "audit_pr": 294,
+  "coordinator_pr": 298,
+  "accepted_legality_head": "d29eada5c087e201e00c749703f1a2de3ddfadeb",
+  "coordinator_inspected_head": "ad9c1c859f94c0321a5d17489c72b0e7dbb9f440",
+  "coordinator_inspected_cpp_blob": "4ac8a0dc0badb8211eb105811eb3fa9f928e36e4",
+  "evidence_snapshot": "Q21_STAGE7_FROZEN_DASHBOARD_336_38.json",
+  "summary": {
+    "game_family_cells": 336,
+    "native_potentially_applicable": 310,
+    "not_native": 26,
+    "full_original_pkhex_parity_certificates": 0,
+    "retail_originals_authenticated": 0,
+    "original_event_payload_sha256_verified": 0,
+    "archived_invalid_emissions": 37,
+    "current_lexical_invalid_emissions": 38,
+    "original_history_requests_unmet": 22,
+    "release_ready": false
+  },
+  "gates": [
+    {
+      "id": "L5-01",
+      "area": "Exact latest branch and source identity",
+      "state": "PARTIALLY_SOURCE_VERIFIED",
+      "blocker": "Current coordinator SHA is pinned; any newer coordinator commit requires re-fetch, source re-pin, and regenerated 38-site ledger"
+    },
+    {
+      "id": "L5-02",
+      "area": "Complete host / sanitizer and real whole Legality::analyze",
+      "state": "BLOCKED",
+      "blocker": "Full repo CI and actual production analyzer current-head execution not verified locally; no claimed green run"
+    },
+    {
+      "id": "L5-03",
+      "area": "Current Invalid site-by-site semantics",
+      "state": "BLOCKED",
+      "blocker": "Historical Q18 inventory 37 on c91b cannot certify 38 direct sites on ad9c; new source/format/original-history audit required"
+    },
+    {
+      "id": "L5-04",
+      "area": "All 336 full game-family parity",
+      "state": "BLOCKED",
+      "blocker": "0 independently paired full native analyzer/PKHeX runtime and authenticated source-original chains; 310 potentially applicable cells unverified"
+    },
+    {
+      "id": "L5-05",
+      "area": "L1 encounters + candidate provenance",
+      "state": "BLOCKED",
+      "blocker": "Original game, capture-time TID/slot, alternative origins and latest L1 branch linked native histories not exhaustively proven"
+    },
+    {
+      "id": "L5-06",
+      "area": "L2 breeding + physical original parents",
+      "state": "BLOCKED",
+      "blocker": "No independently attested full original parent IV/held item histories, game-specific PID/IV stages and exhaustive alternatives"
+    },
+    {
+      "id": "L5-07",
+      "area": "L3 moves + original game chronology",
+      "state": "BLOCKED",
+      "blocker": "No complete native original TM/HM/relearner/action receipts spanning all historical acquisition routes"
+    },
+    {
+      "id": "L5-08",
+      "area": "L4 events + archive records",
+      "state": "BLOCKED",
+      "blocker": "247 structural WC4 templates do not establish original distribution; 0 original redeem receipts/payload SHA256s"
+    },
+    {
+      "id": "L5-09",
+      "area": "Source/save chain of custody",
+      "state": "BLOCKED",
+      "blocker": "22 original history requests unfulfilled; SHA digests alone do not prove trusted origin, device clock, consent or provenance"
+    },
+    {
+      "id": "L5-10",
+      "area": "Third-party content redistribution",
+      "state": "BLOCKED",
+      "blocker": "Case-specific legal/permission clearances for third-party payloads and original event archives not established"
+    },
+    {
+      "id": "L5-11",
+      "area": "Research QA evidence integrity",
+      "state": "PARTIAL_EXECUTED",
+      "blocker": "Stage 7 audit-only native fuzz passed locally; exact-head independent Actions workflow and complete actual source manifests awaiting verified current-run completion"
+    }
+  ],
+  "policy": {
+    "never_auto_merge": true,
+    "never_force_push": true,
+    "never_discard_newer_commits": true,
+    "never_promote_synthetic_to_original": true,
+    "candidate_mismatch_is_not_global_invalid": true,
+    "release_blocked_without_original_and_runtime": true
+  },
+  "final_handoff": "Stage 7 is the last authorized L5 development stage. Audit branch should remain a draft until coordinator evaluates current native linked execution and closure of all original/source requirements. Stop issuing additional stages."
+}

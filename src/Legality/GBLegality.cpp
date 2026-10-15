@@ -1476,9 +1476,16 @@ bool isSketchable2(uint8_t move) {
 constexpr uint16_t kVitaminBoost = 2560;          // EffortValues.VitaminBoost12
 constexpr uint16_t kMaxVitamins = 10 * 2560;      // EffortValues.MaxVitamins12
 
-/// EffortValueVerifier.VerifyEVsGB: stat experience that vitamins cannot explain came
-/// from defeated Pokemon, and each of those raises every stat, so none can be zero.
-std::string statExpProblem(const std::array<uint16_t, 5>& statExp, bool egg) {
+/// EffortValueVerifier.VerifyEVsGB flags stat experience that vitamins cannot explain
+/// next to a stat still at zero (EVs:EffortShouldBeZero), calling it a "simple sanity
+/// check". The original games do not support it as a rule: pret/pokered
+/// engine/battle/experience.asm DivideExpDataByNumMonsGainingExp floors every enemy
+/// base stat by the number of recipients before adding it, and engine/battle/core.asm
+/// halves it first when Exp. All is in the bag, so a low base stat can add 0 while the
+/// others grow. The zero is therefore reported as a non-definitive warning: it keeps
+/// the report from reading "No problems found" but never makes it Invalid on its own.
+/// An unhatched egg has never battled, so any stat experience on one is definitive.
+Problem statExpProblem(const std::array<uint16_t, 5>& statExp, bool egg) {
     bool any = false, battle = false, zero = false;
     for (uint16_t v : statExp) {
         any |= v != 0;
@@ -1486,10 +1493,13 @@ std::string statExpProblem(const std::array<uint16_t, 5>& statExp, bool egg) {
         zero |= v == 0;
     }
     if (egg)
-        return any ? "An egg has no stat experience" : std::string();
+        return {Area::Stats, any ? "An egg has no stat experience" : std::string(), true};
     if (battle && zero)
-        return "Stat experience from battles raises every stat, but one is still zero";
-    return {};
+        return {Area::Stats,
+                "Stat experience from battles with one stat still at zero needs every one of "
+                "those battles to add nothing to that stat (gains are divided among recipients)",
+                false};
+    return {Area::Stats, std::string(), true};
 }
 
 /// MiscPokerusVerifier (Gen II): strain 0-8, days 0-(strain % 4 + 1).
@@ -1774,13 +1784,16 @@ Result search(const Subject& pk, const Chain& chainOwn, const Chain& chainOther,
     const auto definitive = [](const std::vector<Problem>& problems) {
         return std::any_of(problems.begin(), problems.end(), [](const Problem& p) { return p.definitive; });
     };
+    // Origin-independent problems: a definitive one makes the record Illegal whatever
+    // its origin; non-definitive ones only keep a legitimate origin from reading Legal.
+    const bool extraDefinitive = definitive(extra);
     bool haveBest = false, bestTentative = false;
     Evaluation best;
     for (const Candidate& c : candidates) {
         const Chain& chain = pk.format == 1 ? (c.generation == 1 ? chainOwn : chainOther) : chainOwn;
         Evaluation ev = evaluate(pk, c, chain, otherGeneration);
         if (ev.problems.empty()) {
-            res.status = extra.empty() ? Status::Legal : Status::Illegal;
+            res.status = extraDefinitive ? Status::Illegal : extra.empty() ? Status::Legal : Status::Uncertain;
             res.origin = {c.kind, c.generation, c.species, c.level, c.versions, c.slotType, c.gsBall};
             res.timeCapsule = ev.timeCapsule;
             res.problems = extra;
@@ -1849,7 +1862,7 @@ Result search(const Subject& pk, const Chain& chainOwn, const Chain& chainOther,
         res.timeCapsule = best.timeCapsule;
         res.problems = std::move(best.problems);
     }
-    if (!extra.empty())
+    if (extraDefinitive)
         res.status = Status::Illegal;
     res.problems.insert(res.problems.end(), extra.begin(), extra.end());
     return res;
@@ -1937,8 +1950,8 @@ std::vector<Problem> formatProblems(const Entity1& e) {
         if (const std::string level = levelExpProblem(e.species, e.level, e.exp); !level.empty())
             out.push_back({Area::Stats, level});
     }
-    if (const std::string stats = statExpProblem(e.statExp, false); !stats.empty())
-        out.push_back({Area::Stats, stats});
+    if (Problem stats = statExpProblem(e.statExp, false); !stats.text.empty())
+        out.push_back(std::move(stats));
     if (e.nickname.empty())
         out.push_back({Area::Trainer, "Nickname is empty"});
     return out;
@@ -1946,8 +1959,8 @@ std::vector<Problem> formatProblems(const Entity1& e) {
 
 std::vector<Problem> formatProblems(const Entity2& e) {
     std::vector<Problem> out;
-    if (const std::string stats = statExpProblem(e.statExp, e.isEgg); !stats.empty())
-        out.push_back({Area::Stats, stats});
+    if (Problem stats = statExpProblem(e.statExp, e.isEgg); !stats.text.empty())
+        out.push_back(std::move(stats));
     if (const std::string pokerus = pokerusProblem(e.pokerus); !pokerus.empty())
         out.push_back({Area::Misc, pokerus});
     // An unhatched egg's EXP is judged against its encounter (Odd Eggs carry 125).
@@ -2124,7 +2137,8 @@ Result checkGen2(const Entity2& e) {
         return r;
     };
     Result own = search(pk, chain, chain, fromGen1, extra);
-    if (pk.language != Language::Korean || own.status == Status::Legal || !extra.empty())
+    const bool extraDefinitive = std::any_of(extra.begin(), extra.end(), [](const Problem& p) { return p.definitive; });
+    if (pk.language != Language::Korean || own.status == Status::Legal || extraDefinitive)
         return withUnconfirmed(own);
 
     // PKHeX keeps a Korean record inside Korean Gold/Silver: no Crystal learnsets, tutor,
