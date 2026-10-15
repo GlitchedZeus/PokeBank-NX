@@ -233,16 +233,22 @@ public:
                 // gender / ability links whenever the record already had them.
                 if(stat!=0 || earlierGenerationOrigin5(candidate[0x5F]) || !personal)
                     return fail("Gen V PID replay requires a native Gen V origin");
-                const auto linked=[&](const std::vector<uint8_t>& bytes,uint32_t pid) {
+                // Each link is checked on its own: every link that held before
+                // the replay must still hold after it (a broken ability link
+                // never removes the gender link's protection, or vice versa).
+                const auto genderLinked=[&](const std::vector<uint8_t>& bytes,uint32_t pid) {
                     const uint8_t gender=static_cast<uint8_t>((bytes[0x40]>>1)&3);
-                    const bool hidden=(bytes[0x42]&1)!=0;
-                    const bool genderOk=genderFromPid5(pid,personal.info->genderRatio)==gender;
-                    const bool abilityOk=hidden ||
-                        abilityForSlot5(*personal.info,abilityBit5(pid))==bytes[0x15];
-                    return genderOk && abilityOk;
+                    return genderFromPid5(pid,personal.info->genderRatio)==gender;
                 };
-                if(linked(previous,Crypto::read32(previous,0)) && !linked(candidate,value))
-                    return fail("Gen V PID would break the native gender / ability link");
+                const auto abilityLinked=[&](const std::vector<uint8_t>& bytes,uint32_t pid) {
+                    return (bytes[0x42]&1)!=0 ||
+                        abilityForSlot5(*personal.info,abilityBit5(pid))==bytes[0x15];
+                };
+                const uint32_t before=Crypto::read32(previous,0);
+                if(genderLinked(previous,before) && !genderLinked(candidate,value))
+                    return fail("Gen V PID would break the native gender link");
+                if(abilityLinked(previous,before) && !abilityLinked(candidate,value))
+                    return fail("Gen V PID would break the native ability link");
                 Crypto::write16(candidate,0,static_cast<uint16_t>(value));
                 Crypto::write16(candidate,2,static_cast<uint16_t>(value>>16));
                 break;
