@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <cstdio>
+#include <dirent.h>
 #include <fstream>
 #include <iterator>
 #include <string>
@@ -27,6 +28,29 @@ std::vector<uint8_t> readBytes(const std::string& path) {
 std::string readText(const std::string& path) {
     std::ifstream in(path, std::ios::binary);
     return std::string(std::istreambuf_iterator<char>(in), {});
+}
+
+// Every entry name directly inside the export root (no "." / "..").
+std::vector<std::string> rootEntries(const std::string& root) {
+    std::vector<std::string> names;
+    DIR* dir = ::opendir(root.c_str());
+    assert(dir);
+    while (const dirent* entry = ::readdir(dir)) {
+        const std::string name = entry->d_name;
+        if (name != "." && name != "..") names.push_back(name);
+    }
+    ::closedir(dir);
+    return names;
+}
+
+bool isDirectory(const std::string& path) {
+    struct stat st{};
+    return ::stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+bool isEmptyRegularFile(const std::string& path) {
+    struct stat st{};
+    return ::stat(path.c_str(), &st) == 0 && S_ISREG(st.st_mode) && st.st_size == 0;
 }
 
 void removeExport(const std::string& directory) {
@@ -112,6 +136,54 @@ void runExport(const L& layout, SourceGame game, const std::string& tag) {
     assert(!failResult.success);
     assert(!exists(root + "/fail-" + tag));
     assert(!exists(root + "/fail-" + tag + ".tmp"));
+
+    // Every pre-publication fault point fails closed: the export root gains no final directory
+    // and no temporary tree (only the successful UI export above remains).
+    for (const auto point : {ExportFailurePoint::AfterBackupWrite, ExportFailurePoint::AfterEditedWrite,
+                             ExportFailurePoint::AfterReadbackVerify, ExportFailurePoint::AfterManifestWrite,
+                             ExportFailurePoint::AfterFirstPublishedFile}) {
+        ExportTransactionRequest faulty = request;
+        faulty.directoryStem = "fault-" + tag;
+        faulty.failurePoint = point;
+        assert(!publishVerifiedExport(faulty).success);
+        assert(rootEntries(root).size() == 1);
+    }
+
+    // QA-F3b: a destination that appears after the unique name was chosen (an empty directory,
+    // which rename(2) would silently replace, or a plain file) is never replaced or removed, and
+    // nothing of this export is left behind.
+    ExportTransactionRequest racedDir = request;
+    racedDir.directoryStem = "raced-dir-" + tag;
+    racedDir.failurePoint = ExportFailurePoint::DestinationAppearsAsEmptyDirectory;
+    const auto racedDirResult = publishVerifiedExport(racedDir);
+    assert(!racedDirResult.success);
+    assert(racedDirResult.error.find("appeared before publication") != std::string::npos);
+    assert(isDirectory(root + "/raced-dir-" + tag));
+    assert(rootEntries(root + "/raced-dir-" + tag).empty());
+    assert(rootEntries(root).size() == 2);
+    ::rmdir((root + "/raced-dir-" + tag).c_str());
+
+    ExportTransactionRequest racedFile = request;
+    racedFile.directoryStem = "raced-file-" + tag;
+    racedFile.failurePoint = ExportFailurePoint::DestinationAppearsAsFile;
+    const auto racedFileResult = publishVerifiedExport(racedFile);
+    assert(!racedFileResult.success);
+    assert(racedFileResult.error.find("appeared before publication") != std::string::npos);
+    assert(isEmptyRegularFile(root + "/raced-file-" + tag));
+    assert(rootEntries(root).size() == 2);
+    std::remove((root + "/raced-file-" + tag).c_str());
+    assert(rootEntries(root).size() == 1);
+
+    // A clean low-level publish leaves no temporary directory beside the final one.
+    ExportTransactionRequest clean = request;
+    clean.directoryStem = "clean-" + tag;
+    const auto cleanResult = publishVerifiedExport(clean);
+    assert(cleanResult.success);
+    assert(readBytes(cleanResult.directory + "/edited.srm") == edited);
+    assert(readBytes(cleanResult.directory + "/original_backup.srm") == source);
+    assert(exists(cleanResult.directory + "/EDIT_MANIFEST.txt"));
+    for (const auto& name : rootEntries(root)) assert(name.find(".tmp") == std::string::npos);
+    removeExport(cleanResult.directory);
 
     // 0x2009 is inside the checksum-covered payload for both G/S and Crystal fixtures.
     // Flipping it without updating the stored checksum must be rejected by strict parse before

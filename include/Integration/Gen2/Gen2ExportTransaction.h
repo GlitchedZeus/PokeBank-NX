@@ -13,6 +13,12 @@ enum class ExportFailurePoint : uint8_t {
     AfterEditedWrite,
     AfterReadbackVerify,
     AfterManifestWrite,
+    // Host-only race simulation: another writer creates the final directory
+    // (empty) or a plain file at that path just before publication, or the
+    // publication step fails after the first file moved into place.
+    DestinationAppearsAsEmptyDirectory,
+    DestinationAppearsAsFile,
+    AfterFirstPublishedFile,
 };
 
 struct ExportTransactionRequest {
