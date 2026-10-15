@@ -1184,4 +1184,19 @@ require(read("tests/test_gen5_readonly_save.cpp"), "ui.editDraft().stage(GField:
         'ui.editDraft().stageName(GField::NicknameText,"NXPIKA",error)', "ui.speciesRefusal(1)")
 require(read("tests/test_gen5_party_box_parity.cpp"),
         'ui.recreateCreateSpecies(ws, 1, false, "Bulbasaur", "Pikachu", ok, error)')
+# Glyph/overflow guard: every Gen V adapter caption drawn into a shared fixed-width
+# panel is no longer (in characters) than the hardware-accepted Gen IV string in
+# the same slot, and uses only glyphs Gen IV already draws (ASCII, — • é).
+import re as _re
+_gen4_surface = read("src/UI/Gen4SharedPokemonSurface.inc")
+def _adapter_string(text, key):
+    match = _re.search(key + r'\s*=\s*"([^"]*)"', text)
+    assert match, f"missing adapter string {key}"
+    return match.group(1)
+for _key in ("kMovePickerSubtitle", "kMoveEditorSubtitle", "kMoveLegend", "kMoveHintEditable",
+             "kHeldItemTitle", "kMovePickerTitle", "kDataTitle"):
+    _gen5_text = _adapter_string(surface, _key)
+    _gen4_text = _adapter_string(_gen4_surface, _key)
+    assert len(_gen5_text) <= len(_gen4_text), f"{_key} longer than Gen IV: {_gen5_text!r}"
+    assert all(ord(c) < 128 or c in "—•é" for c in _gen5_text), f"{_key} glyph: {_gen5_text!r}"
 print("Gen V read-only shared UI guard contracts: PASS")
