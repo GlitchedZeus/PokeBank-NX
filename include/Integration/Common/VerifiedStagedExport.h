@@ -26,6 +26,8 @@ enum class ExportFailurePoint : uint8_t {
     DestinationAppearsAsEmptyDirectory,
     DestinationAppearsAsFile,
     AfterFirstPublishedFile,
+    // Host-only: flip one byte of the written original backup before read-back.
+    CorruptBackupAfterWrite,
 };
 
 // Returns true when bytes parse strictly as the expected exact game; fills error otherwise.
@@ -43,6 +45,21 @@ struct VerifiedExportRequest {
     std::string applicationSha = "unknown";
     std::span<const uint8_t> originalBytes;
     std::span<const uint8_t> editedBytes;
+
+    // Optional verbatim source FILE (for example a DeSmuME .dsv: payload, emulator
+    // metadata and footer). Empty: the backup is originalBytes, exactly as before. Non-empty:
+    // it must start with originalBytes; original_backup<ext> is written from it and read back
+    // against it, and the manifest adds SOURCE_FILE_SIZE, SOURCE_FILE_SHA256,
+    // ORIGINAL_BACKUP_SHA256 and ORIGINAL_BACKUP_IS=VERBATIM_SOURCE_FILE. SOURCE_SIZE,
+    // SOURCE_SHA256 and CHANGED_BYTES keep describing the payload.
+    std::span<const uint8_t> backupBytes;
+    // Optional container facts (the Gen V working-copy manifest keys). Each is written only
+    // when set and must be a token of [A-Za-z0-9_.-]: SOURCE_CONTAINER (e.g. "dsv-footer"),
+    // EDITED_CONTAINER (e.g. "raw-nds-battery"), SOURCE_SHA256_SCOPE (e.g.
+    // "0x80000_SAV4_PAYLOAD"). No other manifest text can be supplied.
+    std::string sourceContainer;
+    std::string editedContainer;
+    std::string sourceSha256Scope;
     std::vector<std::string> changeLines;
     StrictSaveValidator validator;
 
@@ -55,6 +72,7 @@ struct VerifiedExportResult {
     std::string directory;
     std::string originalSha256;
     std::string editedSha256;
+    std::string backupSha256; // SHA-256 of original_backup<ext> (== originalSha256 unless verbatim)
     size_t changedBytes = 0;
     std::string error;
 };
