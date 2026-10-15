@@ -9,7 +9,7 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 | Item | Value |
 | --- | --- |
 | Lane branch | `audit/app-qa-20261014` |
-| Last #307 head merged | `181423a491b5396e967f73ed4e510ed9a4dd8d06` (merge `2002344`; includes QA-F2 fix `96a44685`) |
+| Last #307 head merged | `2d8195d` (merge `f7837e9`; #307 now contains QA 4ae526f and L 95255c97) |
 | Draft PR | #310 (CI evidence only, never merge; Thread 2R will merge this lane into #307) |
 | Continuation | `send_later` self check-in every ~60 min: "Thread 4 campaign: re-fetch, verify checkpoint docs/qa/CAMPAIGN_CHECKPOINT.md, continue" |
 
@@ -49,3 +49,4 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 - 2026-10-15 — Phase 6 (launch/return, Thread L 86c3490 via #307): `fuzz_launch_plan` added. Covers buildGameLaunchChainPlan vs the libnx argvSetup tokenizer and loader caps, hosted argv accepted unchanged by rh_parse_args, rh_* buffer bounds, the return host off unless explicitly enabled, and the return-selection parse/serialize round trip. Deterministic 140k execs (GCC ASan/UBSan) and libFuzzer 1.75M runs/180 s (Clang): no defect. Return host stays off by default: `GameLaunchReturnOptions{}` is false, and it is only enabled behind `experimental_return_host.enable` (GameLauncher.cpp; the file check runs on the device only).
 - 2026-10-15 — Phase 6 save-safety chain: export contract C6 (Exit: Discard All restores, later export refused) on all 18 paths — all refuse after discard, no files left; `docs/qa/SAVE_SAFETY_CHAIN.md` maps Open→Validate→Working copy→Edit→Review→Export→Verify→Exit to the gates. make qa EXIT 0; Clang contracts green.
 - 2026-10-15 — Phase 6 Home cache: `fuzz_home_cache` (refresh/invalidate/clear sequences against the documented contract) — 280k deterministic + 597k libFuzzer runs, no defect.
+- 2026-10-15 — integrated #307 `2d8195d` (QA + L merged by 2R) forward-merged as `f7837e9`: make qa EXIT 0 under GCC AND Clang (fuzz smoke incl. launch-plan/home-cache, 18 paths C1–C6, matrix 420 cells 0 problems, regressions F1–F5); open repros F6/F7/F8 still reproduce (owner C).
