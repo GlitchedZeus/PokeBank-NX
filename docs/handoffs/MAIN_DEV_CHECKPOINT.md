@@ -120,6 +120,13 @@ conservative estimates.
   - `2af25639`: PID-coordinated Gender/Shiny/Ability with exact replay.
   - `5d8b833e`: Gen IV editor workspace extracted into the shared `SharedPokemonEditorSurface`.
   - `b7c73365`: test source-path update (approved).
+  - `de22e35f`: Gen V View/Edit/Create now run through the shared surface. The Gen V `adjustField` navigation is gone. The Actions menu uses the shared `NarrowPokemonMenu`.
+  - `f0419926`: the owner's 14-point shared editor contract test for Gen I–V.
+  - `ad95b2de`: Trainer and Items follow the Gen I–IV list conventions.
+  - `6efd8c60` / `28a97b0c`: an explicit "Change PID" confirmation dialog, plus tests.
+  - `9c038d91`: Thread 2H merged forward. GitHub then auto-marked #315 as merged, which was intended.
+  - `Gen5SharedReadOnlySurface.inc` still holds Gen V's Bag, Trainer editor, Review, clone destination and the field adapter (1,942 lines).
+  - The NRO is still pending.
 
 ## Owner real-save analysis (2026-10-15; files analysed only in the coordinator scratchpad, never committed)
 
