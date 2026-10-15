@@ -144,7 +144,7 @@ GEN5_PARITY_SANITIZE := $(HOST_BUILD)/test_gen5_party_box_parity_sanitize
 GEN5_PARITY_INPUTS := tests/test_gen5_party_box_parity.cpp \
     include/Integration/Gen5/Gen5OriginSummary.h include/UI/SharedPokemonEditorContract.h \
     include/Integration/Gen5/Gen5SharedScreenState.h include/Integration/Gen5/Gen5SharedEditorBridge.h \
-    include/Pokemon/Pokemon5ReadOnly.h include/Integration/Gen5/Gen5WorkspaceLayout.h $(GEN5_EXPORT_INPUTS)
+    include/Pokemon/Pokemon5ReadOnly.h $(GEN5_EXPORT_INPUTS)
 
 HOST_TESTS += $(GEN5_PARITY_TEST)
 HOST_SANITIZE_TESTS += $(GEN5_PARITY_SANITIZE)

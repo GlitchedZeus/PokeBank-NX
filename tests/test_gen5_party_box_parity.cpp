@@ -9,7 +9,7 @@
 #include "Integration/Gen5/Gen5OriginSummary.h"
 #include "Integration/Gen5/Gen5SharedScreenState.h"
 #include "Integration/Gen5/Gen5StagedSaveCandidate.h"
-#include "Integration/Gen5/Gen5WorkspaceLayout.h"
+#include "Integration/Gen5/Gen5EditorFields.h"
 #include "UI/SharedPokemonEditorContract.h"
 
 #include <algorithm>
@@ -276,19 +276,8 @@ void retailEncryptedBlankSlots(G::SaveFamily family, std::string_view game, uint
 // wizard. Route: empty retail-blank Box slot -> Actions -> Add -> Create ->
 // the SAME Edit draft as Edit (species, nickname, level, nature, IVs, EVs,
 // moves, ability, gender, held item) -> Keep -> Review -> Export -> reopen.
-void focusRow(G::Gen5SharedScreenState& ui, G::Gen5SharedScreenState::Field field, size_t stat = 0) {
-    for (size_t i = 0; i < G::Gen5SharedScreenState::kEditableRows.size(); ++i)
-        if (G::Gen5SharedScreenState::kEditableRows[i].field == field &&
-            G::Gen5SharedScreenState::kEditableRows[i].stat == stat) {
-            ui.moveField(static_cast<int>(i) - ui.fieldRow());
-            assert(ui.fieldRow() == static_cast<int>(i));
-            return;
-        }
-    assert(false);
-}
-
 void sharedCreateRoute(G::SaveFamily family, std::string_view game, uint8_t version) {
-    using F = G::Gen5SharedScreenState::Field;
+    using NF = G::StagedPokemon5Record::Field;
     auto sav = fixture(family, version);
     sav[0x19400 + 0x1E] = 2;  // English
     sav[0x19400 + 0x21] = 1;  // female trainer
@@ -338,36 +327,31 @@ void sharedCreateRoute(G::SaveFamily family, std::string_view game, uint8_t vers
     assert(ui.surface() == Surface::ConfirmCreateBox && ws.emptyCloneDestination(0, 5));
     assert(ui.beginCreateDraft(ws, *defaults, ok, error));
     assert(ui.surface() == Surface::Edit && ui.createPending());
-    assert(G::Gen5SharedScreenState::kEditableRows[static_cast<size_t>(ui.fieldRow())].field == F::Species);
-    assert(G::panelPosition5(ui.fieldRow()).panel == G::WorkspacePanel5::Details);
     assert(ui.draft().current()->species() == 25);
 
-    // Edit every owner-listed field through the same draft entry points.
-    assert(ui.stageFieldValue(133, error));                       // species (Eevee)
-    focusRow(ui, F::Nickname);
-    assert(ui.stageNameValue("SPARKY", error));
-    focusRow(ui, F::Level);
-    assert(ui.stageFieldValue(20, error));
-    focusRow(ui, F::Nature);
-    assert(ui.openNaturePicker(error));
-    ui.moveNatureCursor(10 - static_cast<int>(ui.natureSelection()));
-    assert(ui.acceptNaturePicker(error));
-    focusRow(ui, F::IV, 1);
-    assert(ui.stageFieldValue(31, error));
-    focusRow(ui, F::EV, 3);
-    assert(ui.stageFieldValue(252, error));
-    focusRow(ui, F::HeldItem);
-    assert(ui.stageFieldValue(1, error));
-    focusRow(ui, F::Move, 1);
-    assert(ui.openMovePicker(error));
-    ui.movePickerCursor(98 - static_cast<int>(ui.movePickerSelection()));  // Quick Attack
-    assert(ui.acceptMovePicker(error));
-    focusRow(ui, F::Ability);
-    assert(ui.openIdentityPicker(error) && ui.surface() == Surface::IdentityPicker);
-    ui.cancelIdentityPicker();
-    focusRow(ui, F::Gender);
-    assert(ui.openIdentityPicker(error));
-    ui.cancelIdentityPicker();
+    // A pending Create has no history: any BW/B2W2 species rebuilds it natively,
+    // even across EXP growth groups (Bulbasaur), and a default nickname follows.
+    assert(ui.recreateCreateSpecies(ws, 1, false, "Bulbasaur", "Pikachu", ok, error));
+    assert(ui.draft().current()->species() == 1 && ui.createPending());
+    assert(G::asciiName5(ui.draft().current()->decodedBytes(), true) == "Bulbasaur");
+    assert(!ui.recreateCreateSpecies(ws, 650, false, "X", "Bulbasaur", ok, error));
+    assert(ui.recreateCreateSpecies(ws, 133, true, "Eevee", "Bulbasaur", ok, error));
+    assert(ui.draft().current()->species() == 133 && ui.draft().current()->shiny());
+    assert(G::asciiName5(ui.draft().current()->decodedBytes(), true) == "Eevee");
+    assert(ui.recreateCreateSpecies(ws, 133, false, "Eevee", "Eevee", ok, error));
+    assert(!ui.draft().current()->shiny());
+
+    // Edit every owner-listed field through the same native draft the shared
+    // editor workspace stages into.
+    auto& draft = ui.editDraft();
+    assert(draft.stageName(NF::NicknameText, "SPARKY", error));
+    assert(draft.stage(NF::Level, 0, 20, error));
+    assert(draft.stage(NF::Nature, 0, 10, error));
+    assert(draft.stage(NF::IV, 1, 31, error));
+    assert(draft.stage(NF::EV, 3, 252, error));
+    assert(draft.stage(NF::HeldItem, 0, 1, error));
+    assert(draft.stage(NF::Move, 1, 98, error));  // Quick Attack
+    assert(G::EditorFields::toggleShiny(draft, error) && draft.current()->shiny());
     assert(ui.surface() == Surface::Edit && ui.draft().dirty());
 
     // B never drops a pending Create: Keep/Discard decision first.

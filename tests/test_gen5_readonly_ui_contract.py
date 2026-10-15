@@ -36,7 +36,6 @@ require(
     "trainer.sharedScreen()",
     "trainer.sharedScreen().openActions",
     "state.activateSelected(staged,error)",
-    "state.adjustField(delta,error)",
     "trainer.sharedScreen().keepWithPresentation(",
     "state.discardDraft()",
     "state.requestExit(staged)",
@@ -47,7 +46,7 @@ require(
     "reviewedFieldLabel(verified->fields[field])",
     "screen.drawGSCOverlay(fb)",
     "screen.details.active=false;",
-    "drawWorkspace5(screen,fb,state)",
+    "drawSharedWorkspace(screen,fb)",
     "return true;",
     "All inherited generic storage/bank/source mutation routes stay barred.",
     "screen.touchedButtonId(touch);",
@@ -57,17 +56,34 @@ require(
 assert "Gen5SharedReview.h" in surface
 assert "verifyStagedReview(" in read("include/Integration/Gen5/Gen5SharedReview.h")
 assert "Legality::analyze(" not in surface
-assert surface.index("screen.details.active=false;") < surface.index("case Surface::View:drawWorkspace5(screen,fb,state);")
-# Hardware failure fa9cfcea: View/Create/Edit use the SAME three-panel shared
-# workspace as Gen I-IV, and Create is not a prompt wizard.
-require(surface, "SharedPokemonShell::drawChrome(", "SharedPokemonShell::drawPortrait(",
+assert surface.index("screen.details.active=false;") < surface.index("drawSharedWorkspace(screen,fb);return true;")
+# Hardware failure 35cbf163: View/Create/Edit run through the SAME shared editor
+# surface code path as Gen IV (SharedPokemonEditorSurface.inc), not a Gen V copy.
+shared_surface = read("src/UI/SharedPokemonEditorSurface.inc")
+require(shared_surface, "SharedPokemonShell::drawChrome(", "SharedPokemonShell::drawPortrait(",
         "SharedPokemonShell::drawScrollableDetails(", "SharedPokemonShell::drawDataAndGraph(",
-        '"DETAILS"', '"STATS"', '"MOVES"', "G::computeStats5(",
-        "case Surface::Edit:drawWorkspace5(screen,fb,state);return true;",
+        '"DETAILS"', '"STATS"', '"MOVES"', "Workspace::navigate(A::generation",
+        "SharedSpeciesPicker::drawContent(", "SharedHeldItemPickerPresentation::drawGrid(",
+        "PokeBank::UIModel::NaturePickerLayout::forChoices(", "drawMoveEditor<A>(")
+require(surface, '#include "SharedPokemonEditorSurface.inc"',
+        "EditorSurface::handleWorkspace<Gen5Editor>(screen, state, keys, touch);",
+        "EditorSurface::drawWorkspace<Gen5Editor>(screen, fb, state);",
+        "PokeVault::Integration::Gen5::displayStats5(p, b2w2(screen));",
         "bool beginSharedCreate(TrainerViewScreen& screen,std::string& error)",
         "state.beginCreateDraft(ws,*request,", "state.discardCreateDraft(",
-        "PokeVault::Integration::Gen5::stepWithinPanel5(state.fieldRow(),1)",
-        "PokeVault::Integration::Gen5::switchPanel5(state.fieldRow(),1)")
+        "drawNarrowPokemonActions(fb,screen.touchButtons,model,state.actionRow(),title,")
+require(read("src/UI/Gen4SharedPokemonSurface.inc"), '#include "SharedPokemonEditorSurface.inc"',
+        "Surface::handleWorkspace<Gen4Editor>(screen, state, down, touch);")
+# The retired Gen V-only editor, pickers and focus mutations are gone: moving
+# focus never changes a value (no Left/Right "Adjust" on a field).
+for gone in ("drawWorkspace5", "drawMovePicker(", "drawLocationPicker(", "drawNaturePicker(",
+             "drawSpeciesPicker(", "drawIdentityPicker(", "adjustField(", "stepWithinPanel5",
+             "switchPanel5", "Gen5WorkspaceLayout", '"Left/Right","Adjust"', "kGen5FieldTouchBase"):
+    assert gone not in surface, f"retired Gen V-only editor UI still present: {gone}"
+for gone in ("adjustField(", "openMovePicker(", "openLocationPicker(", "openIdentityPicker(",
+             "openSpeciesPicker(", "openNaturePicker(", "kEditableRows", "fieldRow_"):
+    assert gone not in native_screen, f"retired Gen V-only picker model still present: {gone}"
+assert not (ROOT / "include/Integration/Gen5/Gen5WorkspaceLayout.h").exists()
 for gone in ("promptNativeBoxCreate", "Add Pokemon - PID lower 16 bits", "drawVerifiedSummary",
              "Staged PK5 Fields", "kGen5DecreaseTouchBase"):
     assert gone not in surface, f"retired Gen V UI still present: {gone}"
@@ -489,7 +505,6 @@ require(read("include/Integration/Gen5/Gen5CreateValidation.h"),
         "CreateError5")
 require(read("include/Integration/Gen5/Gen5NativeCreate.h"),
         "Crypto::write16(plain, 0x0A, static_cast<uint16_t>(r.heldItem))")
-require(surface,'case F::HeldItem:return pk.heldItem()==0?std::string("None"):')
 require(read("tests/test_gen5_native_create.cpp"),
         "withItem.heldItem=638",
         "r.heldItem=639",
@@ -684,14 +699,9 @@ require(native_review, "apply(Field::HeldItem,0,before.heldItem(),after.heldItem
 require(native_bridge, "NativeField::HeldItem,stat,value,error",
         "NativeField::Ball,stat,value,error",
         "NativeField::MetLevel,stat,value,error")
-require(native_screen, "std::array<EditableRow,43>",
-        '"Held Item ID",638', '"Ball ID",25', '"Met Level",100',
-        "case Field::HeldItem:return pk.heldItem();",
-        "case Field::Ball:return pk.ball();",
-        "case Field::MetLevel:return pk.metLevel();")
 require(shared_contract, "case FieldIdentity::HeldItem:",
         "case FieldIdentity::Ball:", "case FieldIdentity::MetLevel:")
-require(surface, "Learnset legality is not evaluated", '"PID-LINKED / SUMMARY"')
+
 
 # Gen V identity/encounter parity is source-backed and independent from
 # future event/encounter legality. Each field flows through exact PK5 stage,
@@ -727,20 +737,14 @@ require(native_bridge, "NativeField::TrainerId,stat,value,error",
         "NativeField::Pokerus,stat,value,error",
         "NativeField::FatefulEncounter,stat,value,error",
         "NativeField::MetLocation,stat,value,error")
-require(native_screen, "std::array<EditableRow,43>",
-        '"Trainer ID",65535', '"Secret ID",65535',
-        '"OT Gender",1', '"Pokerus",2', '"Met Location",65535',
-        '"Fateful",1',
-        "LocationPicker", "openLocationPicker(", "acceptLocationPicker(",
-        "cancelLocationPicker()", "stageFieldValue(")
 require(shared_contract, "case FieldIdentity::FatefulEncounter:",
         "case FieldIdentity::TrainerId:",
         "case FieldIdentity::SecretId:")
-require(surface, "void drawLocationPicker(", "case Surface::LocationPicker:",
-        "kGen5LocationTouchBase=78000", "Names::getMetLocationName(",
-        "Utils::promptNumber(", "state.stageFieldValue(",
-        "state.acceptLocationPicker(error)", "state.cancelLocationPicker()",
-        "Gen V value changed in local draft; source unchanged")
+require(surface,
+         "Names::getMetLocationName(",
+        "Utils::promptNumber(",
+
+        )
 
 # Gen V form, ability-slot and gender use distinct PKHeX BW/B2W2
 # personal data; never borrow Gen IX abilities or accept an invented form.
@@ -764,21 +768,14 @@ require(native_session, "Field::Form,0,after.form()",
 require(native_review, "Field::Form,0,before.form(),after.form()",
         "Field::AbilitySlot,0,slot5(before),slot5(after)",
         "Field::Gender,0,before.gender(),after.gender()")
-require(native_screen, "IdentityPicker", "openIdentityPicker(",
-        "acceptIdentityPicker(", "cancelIdentityPicker()",
-        "identityChoiceAllowed(", "identityChoiceCount()",
-        '"Ability Slot",2', '"Form",31', '"Gender",2')
-require(surface, "void drawIdentityPicker(",
-        "case Surface::IdentityPicker:",
-        "kGen5IdentityTouchBase=78500",
-        "state.openIdentityPicker(error)",
-        "state.acceptIdentityPicker(error)", "state.cancelIdentityPicker()",
-        "state.black2White2()", "personal5(")
+require(surface,
+
+
+
+
+         "personal5(")
 require(shared_contract, "case FieldIdentity::Form:",
         "case FieldIdentity::Gender:", "case FieldIdentity::Ability:")
-require(read("tests/test_gen5_readonly_save.cpp"),
-        "ui.openIdentityPicker(error)", "ui.acceptIdentityPicker(error)",
-        "kEditableRows.size()==43")
 require(read("tests/test_gen5_pk5_readonly.cpp"),
         "G5::NativePersonalBW.size()==668", "G5::NativePersonalB2W2.size()==709",
         "G5::personal5(386,1,false)", "Field::AbilitySlot")
@@ -802,32 +799,22 @@ require(native_review, "Field::Move,i,beforeMoves[i],afterMoves[i]",
 require(native_bridge, "NativeField::Move,stat,value,error",
         "NativeField::MovePP,stat,value,error",
         "NativeField::MovePPUps,stat,value,error")
-require(native_screen, "Surface::MovePicker", "openMovePicker(",
-        "movePickerCursor(", "acceptMovePicker(", "cancelMovePicker()",
-        "std::array<EditableRow,43>", "Field::Move:return pk.moves()[row.stat]",
-        "Field::MovePPUps:return pk.ppUps()[row.stat]",
-        "Field::MovePP:return pk.pp()[row.stat]")
-require(surface, "case Surface::MovePicker:", "drawMovePicker(",
-        "kGen5MovePickerTouchBase=77500",
-        "Names::getMoveName(id)", "basePP5(id)",
-        "state.acceptMovePicker(error)", "state.cancelMovePicker()",
-        "species learnability is not yet evaluated")
 
 # Touch-to-Edit stays on the verified native PK5 field transaction
 # model. The shared Add action uses explicit prompts and a staged transaction;
 # inherited source-save, Storage/Bank and generic mutation routes stay barred.
 # Touch IDs and hitboxes are generated by the actual drawn modal rows.
 require(surface, "kGen5ActionTouchBase=77000",
-        "kGen5FieldTouchBase=77100",
+
         "kGen5PartyTouchBase=77400",
         "screen.touchedButtonId(touch)",
         "screen.touchButtons.push_back(",
         "down|=HidNpadButton_A;",
         "screen.selectedPartyIndex=tap-kGen5PartyTouchBase;",
-        "kGen5ActionTouchBase+static_cast<int>(i)",
-        "kGen5FieldTouchBase+G::kDetailsRows5[window.first+i]",
-        "kGen5FieldTouchBase+ivRow", "kGen5FieldTouchBase+moveRow",
-        "if(alreadyFocused && state.surface()==Surface::Edit)down|=HidNpadButton_A;")
+
+
+
+        )
 assert "openPokemonActionSheet(" not in surface
 assert "touch.justTouchedDown()" not in surface
 # The hitboxes must not override controller-confirmation or app-memory
@@ -934,14 +921,12 @@ require(progression,"experienceForLevel5(","levelForExperience5(",
 require(native_stage,"case Field::Level:","case Field::Experience:",
         "value>experienceForLevel5(personal.info->growthRate,100)",
         "regeneratePartyStats5(candidate,Crypto::decrypt(original_),black2White2_)")
-require(native_screen,'{Field::Level,0,"Level",100}',
-        '{Field::Experience,0,"Experience",1640000}')
 require(native_bridge,"NativeField::Level,stat,value,error",
         "NativeField::Experience,stat,value,error")
 require(native_session,"Field::Experience","experienceForLevel5(")
 require(read("include/Integration/Gen5/Gen5SharedReview.h"),"Field::Experience",
         "experienceForLevel5(")
-require(surface,'const std::string label="Generation V "+std::string(row.label);',
+require(surface,
         "experienceForLevel5(")
 # Species changes must use exact native personal data and never reroll PID.
 require(native_stage,"case Field::Species:","value>649",
@@ -952,14 +937,12 @@ require(native_stage,"case Field::Species:","value>649",
 require(native_session,"apply(Field::Species,0,after.species())")
 require(native_review,"Field::Species,0,before.species(),after.species()")
 require(native_bridge,"NativeField::Species,stat,value,error")
-require(native_screen,'{Field::Species,0,"Species Dex ID",649}',
-        "case Field::Species:return pk.species();")
-require(surface,"case F::Species:return std::string(Names::getSpeciesName(pk.species()));",
+require(surface,
         "case Field::Species:name")
 require(read("tests/test_gen5_pk5_readonly.cpp"),
         "Field::Species,0,26","Field::Species,0,32")
 require(read("tests/test_gen5_readonly_save.cpp"),
-        "assert(ui.acceptSpeciesPicker(error));",
+
         "localUiWorkspace.viewParty(0)->species()==26")
 # Duplicate switch labels are an immediate native C++ compile failure.
 gen5_access=shared_contract.split("if (generation == Generation::Gen5) {",1)[1]
@@ -970,22 +953,22 @@ assert gen5_access.count("case FieldIdentity::Species:")==1
 # Species name browsing is a modal, not a write path. Search/cancel
 # cannot alter a draft; A uses the same guarded native species transaction.
 require(native_screen,
-        "Surface::SpeciesPicker", "openSpeciesPicker(",
-        "moveSpeciesCursor(", "filterSpecies(",
-        "chosenSpeciesId()", "speciesChoiceAllowed(",
-        "acceptSpeciesPicker(", "cancelSpeciesPicker()",
-        "kEditableRows[static_cast<size_t>(fieldRow_)].field!=Field::Species",
+
+
+
+
+
         "current->form()!=0",
         "source.info->growthRate!=target.info->growthRate")
-require(surface,"kGen5SpeciesTouchBase=78600",
-        "case Surface::SpeciesPicker:",
-        "drawSpeciesPicker(screen,fb,state)",
-        "Utils::promptText(", "Filter national Dex names",
-        "Names::getSpeciesName(id)",
-        "state.acceptSpeciesPicker(error)",
-        "state.cancelSpeciesPicker()",
-        "Rename first if unnicknamed",
-        "Only compatible original base forms, growth groups, gender and abilities")
+require(surface,
+
+
+        "Utils::promptText(",
+
+
+
+
+        )
 require(native_stage,
         "Name this Pokemon before changing species",
         "(originalDecoded[0x40]>>3)!=0")
@@ -995,29 +978,8 @@ require(native_screen,"draft_.originalBaseFormForSpecies()")
 require(read("tests/test_gen5_pk5_readonly.cpp"),
         'pk->stageName(true,"DEO",&error)',
         'Field::Species,0,150,&error')
-require(read("tests/test_gen5_readonly_save.cpp"),
-        "assert(ui.speciesChoiceCount()==649);",
-        'ui.filterSpecies("rAi"',
-        "assert(ui.speciesChoiceCount()==1);",
-        "ui.cancelSpeciesPicker();",
-        "assert(ui.acceptSpeciesPicker(error));")
 # The 25 exact native Nature IDs have named UI choices and a reversible
 # separate picker; the A action cannot commit a source save.
-require(native_screen,"Surface::NaturePicker",
-        "std::array<std::string_view,25> kNatureNames",
-        "openNaturePicker(", "moveNatureCursor(",
-        "acceptNaturePicker(", "cancelNaturePicker()")
-require(surface,"kGen5NatureTouchBase=79500",
-        "case Surface::NaturePicker:",
-        "drawNaturePicker(screen,fb,state)",
-        "state.acceptNaturePicker(error)",
-        "state.cancelNaturePicker()",
-        "std::string(ScreenState::natureName(pk.nature()))")
-require(read("tests/test_gen5_readonly_save.cpp"),
-        'natureName(12)=="Serious"',
-        "assert(ui.openNaturePicker(error));",
-        "assert(ui.natureSelection()==24);",
-        "assert(ui.acceptNaturePicker(error));")
 # Box-only Clone and Remove live exclusively in the app-owned staged
 # workspace, require the exact source slot, and are included in independent
 # SAV5 review/reparse. Y, never A, stages destructive boxed removal.
@@ -1086,21 +1048,14 @@ require(native_session,"stageName(Field field,std::string_view name",
         "stagePartyName(","stageBoxName(","replayName(true)")
 require(native_review,"candidate->stageName(nickname,*name,error)",
         "Field::NicknameText","Field::OriginalTrainerText")
-require(native_screen,"std::array<EditableRow,43>",
-        '{Field::Nickname,0,"Nickname",10}',
-        '{Field::OriginalTrainer,0,"OT Name",7}',
-        "stageNameValue(")
 require(native_bridge,"stageSharedName(",
         "StagedPokemon5Record::Field::NicknameText",
         "StagedPokemon5Record::Field::OriginalTrainerText")
-require(surface,"Utils::promptText(","state.stageNameValue(",
-        "Native PK5 text staged; original SAV5 unchanged")
+require(surface,"Utils::promptText(",
+        )
 require(read("tests/test_gen5_pk5_readonly.cpp"),
         'stageName(true,"PIKA NX"', 'stageName(false,"ASH"',
         'stageName(true,"Pikaché"')
-require(read("tests/test_gen5_readonly_save.cpp"),
-        'ui.stageNameValue("NXPIKA",error)',
-        'ui.stageNameValue("NXT",error)')
 view=read("include/Pokemon/Pokemon5ReadOnlyView.h")
 require(view,"const PokeVault::Integration::Gen5::Personal5* nativePersonal()",
         "sourceGroup_==Enums::GameVersion::B2W2",
@@ -1110,7 +1065,7 @@ require(view,"const PokeVault::Integration::Gen5::Personal5* nativePersonal()",
 require(read("tests/test_gen5_readonly_save.cpp"),
         "presented->boxes[0][0]->level()==1",
         "presented->boxes[0][0]->baseHP()==55",
-        "presented->boxes[0][0]->statHPMax()==0")
+        "presented->boxes[0][0]->statHPMax()>0")
 
 # Assignment is an executable backend transaction shared with production UI.
 require(assigned_cpp, "SourceAssignmentResult assignValidatedSource(",
@@ -1155,7 +1110,7 @@ require(read("tests/test_gen5_bag_screen.cpp"), "unavailableBag();", "fullPocket
 # Gen IV parity: shared box Move Pokemon reuses the verified destination
 # picker; origin dates are View-only (no dynamic_cast under -fno-rtti).
 require(surface, "state.moveDestination()", '"Move Pokemon - Choose Empty Box Slot"',
-        '{"Origin data",G::originSummary5(pk)}')
+        )
 assert "dynamic_cast" not in surface
 require(native_bridge, "append(Shared::Action::Move);")
 require(native_screen, "workspace.moveToEmptyBox(target_,")
@@ -1188,4 +1143,42 @@ require(dex_model, "Zukan5.cs", "CaughtOffset = 0x08", "SeenOffset = 0x5C", "No 
 require(surface, "editor.openPokedex(ws,error)", "Pokedex - Generation V (read-only)")
 assert "write" not in dex_model.split("namespace PokeVault")[1].lower().replace("never written", "")
 
+
+# Hardware failure 35cbf163 repair: every Gen V field lives in the ONE shared
+# editor field model (Gen5EditorFields.h + the Gen5Editor adapter), reached
+# through the shared pickers, keypads and move editor; nothing is Gen V-only UI.
+fields = read("include/Integration/Gen5/Gen5EditorFields.h")
+require(fields, '"Species", "Nickname", "Level", "Experience", "OT", "Trainer ID", "SID",',
+        '"Held Item", "Friendship", "Language (read-only)", "Origin (read-only)", "Ball",',
+        '"Met Level", "Met Location", "Pokerus", "Form", "OT Gender", "Fateful Encounter"',
+        "ItemStorage5.GetAllHeld()", "BagCatalog5::kUnreleased", "Master (1) .. Dream (25)",
+        "NativeMetLocations5.begin()", "move <= MaxNativeMove5", "kMaxSpecies = 649",
+        "probe.stage(Field::Form, 0, form, error)", "info.ability2 != info.ability1",
+        "keepShinyForIds5(", "Field::Shiny", "earlierGenerationOrigin5(")
+require(surface, "Fields::detailEditable(draft(screen), row, b2w2(screen))",
+        "Fields::pidRowEditable(draft(screen), row, b2w2(screen))",
+        "PickerTarget::Species", "PickerTarget::HeldItem", "PickerTarget::Ball",
+        "PickerTarget::MetLocation", "PickerTarget::Pokerus", "PickerTarget::Form",
+        "PickerTarget::Nature", "PickerTarget::Ability", "Fields::heldItemChoices()",
+        "Fields::metLocationChoices()", "Fields::ballChoices()", "Fields::moveChoices()",
+        'Utils::promptNumber("Level"', 'Utils::promptNumber("Experience"',
+        'Utils::promptNumber("Friendship"', 'Utils::promptNumber("Met Level"',
+        "d.stageName(nickname ? Field::NicknameText : Field::OriginalTrainerText",
+        "Fields::stageTrainerId(d, secret,", "Fields::toggleGender(d, error)",
+        "Fields::toggleShiny(d, error)", "Fields::toggleFlag(d, row == FatefulEncounter",
+        "backendState.speciesRefusal(species)", "backendState.recreateCreateSpecies(",
+        "Names::getMoveBattleStats5(move)", 'std::string("—")', "Names::moveCategoryName5(",
+        "learnability not checked", 'return "None (ID 0)";',
+        "static constexpr bool kCompactForm = true;", "static constexpr bool kSpeciesSearch = true;")
+require(native_screen, "Gen5SharedPokemonSession& editDraft() noexcept",
+        "std::string speciesRefusal(uint32_t species) const",
+        "bool recreateCreateSpecies(Workspace& ws,uint32_t species,bool shiny,")
+require(native_stage, "case Field::Shiny:", "case Field::Personality:", "withGender5(",
+        "withShiny5(", "withAbilityBit5(")
+require(native_session, "apply(Field::Personality,0,after.pid())")
+require(native_review, "apply(Field::Personality,0,before.pid(),after.pid())")
+require(read("tests/test_gen5_readonly_save.cpp"), "ui.editDraft().stage(GField::AbilitySlot,0,2,error)",
+        'ui.editDraft().stageName(GField::NicknameText,"NXPIKA",error)', "ui.speciesRefusal(1)")
+require(read("tests/test_gen5_party_box_parity.cpp"),
+        'ui.recreateCreateSpecies(ws, 1, false, "Bulbasaur", "Pikachu", ok, error)')
 print("Gen V read-only shared UI guard contracts: PASS")
