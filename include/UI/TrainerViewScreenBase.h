@@ -3,12 +3,14 @@
 
 #include <cstddef>   // std::byte (details.editSnapshot)
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <switch.h>
 
 #include "Globals.h"
+#include "Integration/Gen4/Gen4SourceSnapshot.h"
 #include "Safety/WritePolicy.h"
 #include "UI/ActionSheetModel.h"
 #include "UI/MutationTargetPolicy.h"
@@ -145,6 +147,9 @@ namespace UI {
         Trainer::Trainer& trainer;
         std::string titleName;
         std::string backupDir;  // working-backup path or read-only source location
+        // Gen IV only: the exact source FILE (raw or .dsv) at Open. Export refuses a file
+        // that changed since (Gen4ExportRequest::sourceSnapshot).
+        std::optional<PokeVault::Integration::Gen4::Gen4SourceSnapshot> gen4SourceSnapshot;
         std::string gameVersion;  // Actual game version from NACP (e.g., "1.0.1", "1.3.2")
         u64 titleId;
         AccountUid userUid;

@@ -39,15 +39,19 @@ Each new test fails against the previous code unless marked "pinning".
 | V7 | Picker paging matches the shared editor | 2849071b | `test_gen13_picker_paging` |
 | V4 | Gen I Edit working-copy draft (Keep stages, Discard drops) | 74d4b16f | `test_gen1_edit_draft` |
 | V6 | Gen I panels use the shared shell geometry; shell assessment below | ce82066f | static_asserts in the Gen I workspace |
-| A1 | Gen IV review lists Bag changes (bag-only edits now have review lines) | 2b2be00f | `test_gen4_export_transaction` |
+| A1 | Gen IV review lists Bag changes (bag-only edits now have review lines) | 2b2be00f | `test_gen4_staged_pokemon_editor`, QA matrix review cell (7dec0c78) |
 | A2 | Gen III Japanese name lengths (5/5); Gen II/III strain-0 Pokerus with days refused | c934a945 | `test_gen3_staged_pokemon_editor`, `test_gsc_pokemon_editor` |
+| A3 | QA-F8 export half: Gen IV Release restores a slot's original empty record (clone+release is byte-identical) | f883f4d0 | `test_gen4_staged_pokemon_editor`; `qa-known-failures` F6/F7/F8 all fixed |
+| A4 | Gen IV Castform/Cherrim: only stored form 0 is writable; an existing battle form is shown and kept (PKHeX 6501f0ab FormInfo.BattleForms, FormConverter) | 7e36220f | `test_gen4_mutable_pokemon` |
+| A5 | Gen IV export: optional Open snapshot of the source file (raw or .dsv); export fails closed if size/mtime/SHA-256 changed or the payload no longer leads the file | 768c65fd | `test_gen4_staged_pokemon_editor` (synthetic .dsv fixture) |
+| A6 | Gen IV export backs up the source FILE verbatim (`.dsv` footer kept) with SOURCE_CONTAINER / EDITED_CONTAINER / SOURCE_SHA256_SCOPE / ORIGINAL_BACKUP_IS keys matching Gen V (Common fields d9cdcf78) | 40f78f3c | `test_gen4_staged_pokemon_editor` |
 
 Open / reported:
 - Coordinator one-liner: pass held/stick to `handleFoundationPassiveViewInput` (Gen I View stick parity).
 - Coordinator wording for `SaveSelectScreen.cpp:914-915` (QA-c).
-- Gen IV battle-only stored forms (Castform 4, Cherrim) — awaiting a decision.
-- Gen IV export drops a DraStic `.dsv` footer (raw `.sav` export); bag-only edits have no review line;
-  Diamond vs Pearl not checked against the save (no pinned reference distinguishes them) — owner decision on `.dsv`.
+- Gen IV `.dsv`: UI must pass the Open snapshot (2R); separate edited-file extension requested so the
+  backup can be named `original_backup.dsv` (today both use `.sav`).
+- Diamond vs Pearl not checked against the save (no pinned reference distinguishes them).
 
 ## Item 6 assessment: Gen I/II and SharedPokemonShell
 

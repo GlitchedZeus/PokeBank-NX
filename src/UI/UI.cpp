@@ -1,4 +1,5 @@
 
+#include <algorithm>
 #include <cstdio>
 #include <ctime>
 #include <sys/stat.h>
@@ -27,6 +28,8 @@
 #include "Legacy/FRLGSourceBrowser.h"
 #include "Legacy/Gen4ReadOnlyTrainer.h"
 #include "Integration/Gen4/Gen4AssignedSource.h"
+#include "Integration/Gen4/Gen4SourceDiscovery.h"
+#include "Integration/Gen4/Gen4SourceSnapshot.h"
 #include "Legacy/Gen5ReadOnlyTrainer.h"
 #include "Integration/Gen5/Gen5AssignedSource.h"
 
@@ -660,11 +663,33 @@ namespace UI {
         }
 
         const std::string sourcePath = opened.source.binding.sourcePath;
+        // Snapshot the exact source FILE at Open from the same payload the staged editor holds.
+        // The container comes from the read-only adapter, never from a guess; a file that
+        // changed since the validated read is refused here, and export later refuses one that
+        // changed after this snapshot.
+        namespace G4 = PokeVault::Integration::Gen4;
+        const auto openedBytes = opened.save->sourceBytes();
+        const auto payload = G4::readSourcePayloadReadOnly(sourcePath);
+        if (!payload.ready() || payload.bytes.size() != openedBytes.size() ||
+            !std::equal(openedBytes.begin(), openedBytes.end(), payload.bytes.begin())) {
+            error = "Generation IV source changed while it was opened; reopen it";
+            return false;
+        }
+        auto snapshot = G4::snapshotGen4Source(
+            sourcePath,
+            payload.kind == G4::SourceContainerKind::DsvFooter ? G4::Gen4SourceContainer::Dsv
+                                                               : G4::Gen4SourceContainer::Raw,
+            openedBytes, &error);
+        if (!snapshot) {
+            if (error.empty()) error = "Generation IV source snapshot failed";
+            return false;
+        }
         logInfoToFile("Opening assigned Generation IV source read-only", sourcePath.c_str());
         TrainerViewScreen trainerScreen(
             *trainer, "Pokemon " + std::string(identity->title), sourcePath, 0, userUid,
             PokeVault::Safety::SourceKind::ExternalLegacy, gameId,
             opened.source.binding.sourceType);
+        trainerScreen.gen4SourceSnapshot = std::move(snapshot);
         if (intent == SaveSelectScreen::OpenIntent::Items)
             trainerScreen.openItemsShortcut();
         fb.startFade();
