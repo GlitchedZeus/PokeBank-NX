@@ -42,6 +42,12 @@ and QA work cleanly mergeable into the Gen V application.
   plus Gen V tests.
 - Integrates other lanes forward when the owner approves.
 
+## Thread 2R / 2H — Gen V parity repair (2026-10-15)
+
+The original Thread 2 session stood down after two failed hardware rounds (`fa9cfcea`, `35cbf163`).
+- **Thread 2R** (`session_01Gn6iaKx8qUJWbAydeQ6ST6`) owns PR #307, the editor surfaces and the shared pickers. It is authorised to generalise the Gen IV surface into a generation-neutral shared editor, on #307 only, provided Gen I–IV behaviour and tests stay unchanged.
+- **Thread 2H** (`session_01Q3ZqvwVczMByFNuUX4EvU3`) owns `claude/gen5-home-providers-20261015`: `SaveSelectScreen.cpp`, the game-card previews and Save Instance provider metadata. 2R merges this branch forward into #307 before the NRO.
+
 ## Thread 3 — Gen VI native save formats
 
 - **Branch:** `claude/gen6-native-20261014`, new, from `a17c503a`.

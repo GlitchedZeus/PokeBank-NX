@@ -101,7 +101,7 @@ conservative estimates.
 
 - `35cbf163`: NewGameNoTrainer state, from the real-save findings.
 - **Repaired candidate:** `PokeBank-NX-Gen1-5-Candidate-35cbf163.nro`, code `35cbf1637da41e9607f2d524354c51d70e401fb2`, tree `9cb8fde7`, 175,451,825 bytes, SHA-256 `16aa25333b4a8d0e07df3dc458f4695f170f2f08c7ab6c023bd07a5b839ec787` (run 38682361760, artifact 11948329433). **NOT DEVICE TESTED.**
-- CI: 7/9 green; the GCC host suite and the Clang ASan/UBSan host suite are still running.
+- CI: 9/9 green. **FAILED owner hardware test (editor parity):** navigation mutates values, the middle panel is inaccessible, wide action menu, raw ID keypads, Gen V-specific move and species pickers, "cached party" Home card, "Linked save" provider labels, and Box Summary stats showing 0. Repair dispatched to Thread 2R (editor) and Thread 2H (Home card and providers).
 - No Gen I–IV integration files touched.
 - Consolidation is partial. Gen V opens on the shared hub and uses the shared Trainer panel and the shared three-panel Pokémon workspace. `Gen5SharedReadOnlySurface.inc` is still 1,848 lines (it was 1,886; 920 lines changed) and owns hub activation/Exit/Review and the entered panels. Storage is refused for Gen V.
 
