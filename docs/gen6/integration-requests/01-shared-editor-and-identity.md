@@ -59,15 +59,17 @@ In `capabilitiesForSourceId()`:
 
 ## 3. `include/UI/SharedPokemonEditorContract.h`: the Gen 6 field table
 
-The shared table is per generation. PK6 also depends on the record region (party
-records cache battle stats). Proposal: the shared table returns the **Box** column,
-and the shared editor asks `Gen6EditorProvider::fieldState(field, RecordRegion::Party)`
-for a party slot, the same way it already consults provider descriptors.
+The shared table is per generation. PK6 differs by record region only for
+presentation of cached party stats (`CalculatedStats` is Derived on party records and
+Hidden on boxed ones). IV, EV, Nature and Level are Editable on both: party edits
+recompute the cached stats (`Gen6Stats.h`). Proposal: the shared table returns the
+**Box** column, and the shared editor asks
+`Gen6EditorProvider::fieldState(field, RecordRegion::Party)` for a party slot.
 
 ```cpp
     if (generation == Generation::Gen6) {
-        // Box-region PK6 table; party slots must use Gen6EditorProvider::fieldState(..., Party),
-        // which makes IV/EV/Nature ReadOnly and Level/CalculatedStats ReadOnly.
+        // Box-region PK6 table; party slots use Gen6EditorProvider::fieldState(..., Party)
+        // (CalculatedStats Derived there; stat inputs stay Editable with recomputation).
         switch (field) {
             case FieldIdentity::Nickname: case FieldIdentity::HeldItem:
             case FieldIdentity::Friendship: case FieldIdentity::Pokerus:
@@ -75,8 +77,9 @@ for a party slot, the same way it already consults provider descriptors.
             case FieldIdentity::TrainerId: case FieldIdentity::SecretId:
             case FieldIdentity::Ball: case FieldIdentity::FatefulEncounter:
             case FieldIdentity::IV: case FieldIdentity::EV: case FieldIdentity::Nature:
+            case FieldIdentity::Level:
                 return FieldAccess::Editable;
-            case FieldIdentity::Shiny: case FieldIdentity::Level:
+            case FieldIdentity::Shiny:
                 return FieldAccess::Derived;
             case FieldIdentity::DV: case FieldIdentity::StatExperience: case FieldIdentity::AV:
             case FieldIdentity::EffortLevel: case FieldIdentity::StatNature:
