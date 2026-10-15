@@ -109,6 +109,66 @@ int main() {
         assert(DP::evaluate(noTrainer).status==DP::Status::UnknownCollectionTrainer);
         auto noEgg=known;noEgg.originalUnhatchedEggPidIndependentlyVerified=false;
         assert(DP::evaluate(noEgg).status==DP::Status::UnknownOriginalChildPID);
+        // Stage 3 original parent archive: identities, personalities,
+        // held items and collection languages must all belong to the same
+        // original daycare event. Neither the detached PK4 nor matching
+        // MT output is enough to reconstruct that archive.
+        for(uint32_t seed=0;seed<512;++seed) {
+            auto x=base(trial,game);
+            namespace W=Legality::Gen4DiamondPearlOriginalParentWitness;
+            auto& archive=x.originalParentWitness;
+            archive.supplied=true;
+            archive.originalDaycareEventIndependentlyVerified=true;
+            archive.physicalDepositOrderIndependentlyVerified=true;
+            archive.originalPairIdentityIndependentlyVerified=true;
+            archive.originalParentSnapshotsIndependentlyVerified=true;
+            archive.creationItemsIndependentlyVerified=true;
+            archive.collectionLanguagesIndependentlyVerified=true;
+            archive.originalEggEventIdentity=x.parentStageToken;
+            archive.originalPhysicalPairIdentity=0xBEEF0001u+seed;
+            archive.physicalSlots[0]={101,25,1,7,229,2};
+            archive.physicalSlots[1]={202,25,0,11,0,2};
+            const auto matched=DP::evaluate(x);
+            assert(matched.status==DP::Status::ConditionalOriginalEggPIDMatched);
+            assert(matched.originalParentWitnessStatus==W::Status::ConditionallyMatched);
+            ++checks;
+            auto wrong=x;wrong.originalParentWitness.originalEggEventIdentity++;
+            assert(DP::evaluate(wrong).status==DP::Status::IncoherentOriginalParentWitness);
+            ++checks;
+            wrong=x;wrong.originalParentWitness.physicalSlots[0].snapshotIdentity=0;
+            assert(DP::evaluate(wrong).status==DP::Status::UnknownOriginalParentWitness);
+            ++checks;
+            wrong=x;wrong.originalParentWitness.physicalSlots[0].snapshotIdentity=202;
+            assert(DP::evaluate(wrong).status==DP::Status::UnknownOriginalParentWitness);
+            ++checks;
+            wrong=x;wrong.originalParentWitness.physicalSlots[1].species=81;
+            assert(DP::evaluate(wrong).status==DP::Status::IncoherentOriginalParentWitness);
+            ++checks;
+            wrong=x;wrong.originalParentWitness.physicalSlots[0].gender=0;
+            assert(DP::evaluate(wrong).status==DP::Status::IncoherentOriginalParentWitness);
+            ++checks;
+            wrong=x;wrong.originalParentWitness.physicalSlots[1].personality^=1u;
+            assert(DP::evaluate(wrong).status==DP::Status::IncoherentOriginalParentWitness);
+            ++checks;
+            wrong=x;wrong.originalParentWitness.physicalSlots[0].heldItemAtCreation=0;
+            assert(DP::evaluate(wrong).status==DP::Status::IncoherentOriginalParentWitness);
+            ++checks;
+            wrong=x;wrong.originalParentWitness.physicalSlots[1].languageAtCollection=1;
+            assert(DP::evaluate(wrong).status==DP::Status::IncoherentOriginalParentWitness);
+            ++checks;
+            wrong=x;wrong.originalParentWitness.collectionLanguagesIndependentlyVerified=false;
+            assert(DP::evaluate(wrong).status==DP::Status::UnknownOriginalParentWitness);
+            ++checks;
+            wrong=x;wrong.originalParentLanguagesIndependentlyVerified=false;
+            assert(DP::evaluate(wrong).status==DP::Status::UnknownOriginalParentWitness);
+            ++checks;
+            wrong=x;wrong.parents[1].pidIndependentlyVerified=false;
+            assert(DP::evaluate(wrong).status==DP::Status::UnknownOriginalParentWitness);
+            ++checks;
+            wrong=x;wrong.originalParentWitness.supplied=false;
+            assert(DP::evaluate(wrong).status==DP::Status::ConditionalOriginalEggPIDMatched);
+            ++checks;
+        }
         checks+=21;
     }
     // Exhaustion: the original ARM loop consumes 2401 MT candidates,

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- This must point to the ACTUAL unmodified pinned upstream C# project.
+         Do not compile against a C++-derived mock or reimplemented oracle. -->
+    <ProjectReference Include="$(PKHEX_CORE_PROJECT)" />
+  </ItemGroup>
+</Project>

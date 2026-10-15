@@ -1,0 +1,62 @@
+name: L2 Platinum HGSS Source-Bound Breeding
+# Dedicated lane-owned gate. Exact-head and actual production headers/tests.
+on:
+  push:
+    branches:
+      - feature/legality-l2-breeding-20261012
+  workflow_dispatch:
+
+concurrency:
+  group: legality-l2-pt-hgss-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  source-bound-native:
+    name: Stage 4 ${{ matrix.compiler }} normal and ASan UBSan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: gcc
+            cxx: g++
+          - compiler: clang
+            cxx: clang++
+    steps:
+      - name: Checkout exact full repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Compile and execute source and joined production histories
+        shell: bash
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -f include/Legality/Gen34EggMoveData.inc
+          test -f tests/test_legality_l2_gen4_pt_hgss_full_moves.cpp
+          "$CXX" --version
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          for mode in normal sanitizer; do
+            flags=(-std=c++20 -Wall -Wextra -Wpedantic -Werror
+                   -Wno-unused-parameter -Iinclude)
+            if [[ "$mode" == sanitizer ]]; then
+              flags+=(-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer)
+            else
+              flags+=(-O2)
+            fi
+            for test in legality_l2_pt_hgss_original_daycare_source test_legality_l2_gen4_pt_hgss_source_bound; do
+              dir=tests
+              if [[ "$test" == legality_* ]]; then dir=tests/fixtures; fi
+              "$CXX" "${flags[@]}" "$dir/$test.cpp" -o "$tmp/$test"
+              ASAN_OPTIONS=halt_on_error=1:detect_leaks=1 \
+                UBSAN_OPTIONS=halt_on_error=1 "$tmp/$test"
+            done
+          done

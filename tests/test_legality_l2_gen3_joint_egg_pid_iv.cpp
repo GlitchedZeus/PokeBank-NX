@@ -63,6 +63,34 @@ int main() {
             assert(good.status==J::Status::BothOriginalStagesConditionallyMatched);
             assert(good.pid.status==P::Status::ConditionallyMatchedOriginalEggPID);
             assert(good.iv==V::CandidateCheck::Matched);
+            // Optional original acquisition archive must belong to THIS
+            // PID/IV history. A matching IV cannot hide a contradicted
+            // pending or collection payload from the same original event.
+            auto acquisition=x;
+            auto& archived=acquisition.pid.acquisitionTranscript;
+            archived.supplied=true;
+            archived.pendingPayloadIndependentlyVerified=true;
+            archived.collectedPayloadIndependentlyVerified=true;
+            archived.originalPhysicalPairIndependentlyVerified=true;
+            archived.stageIdentityIndependentlyVerified=true;
+            archived.originalStageIdentity=x.originalEggEventIdentity;
+            archived.physicalSlot0Snapshot=x.pid.physicalSlots[0].snapshotIdentity;
+            archived.physicalSlot1Snapshot=x.pid.physicalSlots[1].snapshotIdentity;
+            archived.archivedPendingPayload=good.pid.pendingPersonality;
+            archived.archivedCollectedPersonality=good.pid.finalPersonality;
+            assert(J::evaluate(acquisition).status==J::Status::BothOriginalStagesConditionallyMatched);
+            auto acquisitionWrong=acquisition;
+            acquisitionWrong.pid.acquisitionTranscript.archivedPendingPayload^=1u;
+            assert(J::evaluate(acquisitionWrong).status==J::Status::PIDCandidateContradicted);
+            acquisitionWrong=acquisition;
+            acquisitionWrong.pid.acquisitionTranscript.archivedCollectedPersonality^=1u;
+            assert(J::evaluate(acquisitionWrong).status==J::Status::PIDCandidateContradicted);
+            acquisitionWrong=acquisition;
+            acquisitionWrong.pid.acquisitionTranscript.originalStageIdentity++;
+            assert(J::evaluate(acquisitionWrong).status==J::Status::UnknownOriginalPIDHistory);
+            acquisitionWrong=acquisition;
+            acquisitionWrong.pid.acquisitionTranscript.originalPhysicalPairIndependentlyVerified=false;
+            assert(J::evaluate(acquisitionWrong).status==J::Status::UnknownOriginalPIDHistory);
             auto wrongPID=x;wrongPID.pid.originalUnhatchedEggPID^=0x1u;
             assert(J::evaluate(wrongPID).status==J::Status::PIDCandidateContradicted);
             auto wrongIV=x;

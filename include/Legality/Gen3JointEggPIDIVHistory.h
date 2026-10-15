@@ -81,8 +81,12 @@ constexpr Result evaluate(const Input& in) noexcept {
         out.status=Status::UnknownOriginalIVHistory;return out;
     }
     out.pid=PID::evaluate(in.pid);
+    const bool contradictedPID=
+        out.pid.status==PID::Status::OriginalEggPIDContradicted ||
+        out.pid.status==PID::Status::OriginalPendingPayloadContradicted ||
+        out.pid.status==PID::Status::OriginalCollectionPayloadContradicted;
     if(out.pid.status!=PID::Status::ConditionallyMatchedOriginalEggPID &&
-       out.pid.status!=PID::Status::OriginalEggPIDContradicted) {
+       !contradictedPID) {
         out.status=Status::UnknownOriginalPIDHistory;return out;
     }
     out.iv=IV::verifyKnownStage(
@@ -96,7 +100,9 @@ constexpr Result evaluate(const Input& in) noexcept {
        out.iv!=IV::CandidateCheck::CandidateMismatch) {
         out.status=Status::UnknownOriginalIVHistory;return out;
     }
-    if(out.pid.status==PID::Status::OriginalEggPIDContradicted) {
+    if(contradictedPID) {
+        // A contradicted, separately attested acquisition transcript
+        // rejects this candidate only, never the detached child globally.
         out.status=Status::PIDCandidateContradicted;return out;
     }
     if(out.iv==IV::CandidateCheck::CandidateMismatch) {
