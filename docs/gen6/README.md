@@ -84,5 +84,5 @@ No NRO contains Gen VI yet: the native `Makefile` (Thread 2) does not list
 ## Still missing / next
 
 - Shared registration and UI wiring (requests 01–02).
-- Pokédex and box names.
+- Box-name editing and Pokédex editing (read-only readouts exist in Gen6Readouts.h).
 - Real-save confirmation by the owner. Synthetic fixtures only so far.
