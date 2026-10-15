@@ -1,5 +1,6 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2WorkspacePresentation.h"
+#include "UI/Gen12RerollDVsConfirm.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
 
 namespace UI::Gen2PokemonEditor {
@@ -14,6 +15,8 @@ struct UnifiedWorkspaceState {
     Mode lastMode = Mode::None;
     Unified::Focus focus{};
     std::size_t detailsFocus = 0;
+    // Y Random DVs is two explicit steps (see Gen12RerollDVsConfirm.h).
+    PokeBank::UIModel::Gen12RerollDVs::State reroll;
     // Stable row viewport: drag moves the content, not the semantic focus.
     // Otherwise the older scrollWindow(focusedRow) snaps to its old page,
     // making Held Item and Crystal metadata painful to reach by touch.
@@ -49,10 +52,30 @@ UnifiedWorkspaceState& unifiedStateFor(const TrainerViewScreen& screen) {
         state.detailsTouchW = state.detailsTouchH = 0;
         state.progressionEditor = false;
         state.progressionRow = 0;
+        state.reroll = {};
         state.lastMode = mode;
     }
     state.crystal = screen.sourceGameId == "crystal_gbc";
     return state;
+}
+
+constexpr int kRerollCancelTouchId = 1798;
+constexpr int kRerollConfirmTouchId = 1799;
+
+void drawRerollConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    namespace Reroll = PokeBank::UIModel::Gen12RerollDVs;
+    constexpr int w = 560, h = 226;
+    const int x = (fb.getWidth() - w) / 2;
+    const int y = (fb.getHeight() - h) / 2;
+    const int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, Reroll::kTitle, Colors::Orange);
+    fb.drawText(x + 28, cy, Reroll::kConsequence, Colors::Text);
+    fb.drawText(x + 28, cy + 34, "Only this draft changes; nothing is staged until Keep/Add.",
+                Colors::TextDim, TextStyle::Caption);
+    const int cbw = 190, cbh = TouchTargetMin, cby = y + h - cbh - 18;
+    drawGlyphButton(fb, x + 24, cby, cbw, cbh, "B", "Cancel", Colors::PanelAlt);
+    drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Re-roll", Colors::PanelAlt);
+    screen.touchButtons.push_back({kRerollCancelTouchId, x + 24, cby, cbw, cbh});
+    screen.touchButtons.push_back({kRerollConfirmTouchId, x + w - 24 - cbw, cby, cbw, cbh});
 }
 
 void resetUnifiedFocus(TrainerViewScreen& screen) {
@@ -66,6 +89,7 @@ void resetUnifiedFocus(TrainerViewScreen& screen) {
     unified.progressionRow = 0;
     unified.moveEditor = false;
     unified.moveEditorRow = 0;
+    unified.reroll = {};
     unified.lastMode = stateFor(screen).mode;
     screen.controllerNavigation.reset();
 }
@@ -535,6 +559,32 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
     if (handleProgressionEditor(screen, down, held, stickX, stickY)) return true;
     if (handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY)) return true;
 
+    {
+        // Y Random DVs asks first; while the prompt is open it owns all input (fields, taps,
+        // X Add and B exit are inert). Only A/Y (or its Re-roll button) changes the draft.
+        namespace Reroll = PokeBank::UIModel::Gen12RerollDVs;
+        if (unified.reroll.confirming) {
+            const int tapped = screen.touchedButtonId(touch);
+            if (tapped == kRerollCancelTouchId) down |= HidNpadButton_B;
+            else if (tapped == kRerollConfirmTouchId) down |= HidNpadButton_A;
+        }
+        switch (Reroll::step(unified.reroll, (down & HidNpadButton_Y) != 0,
+                             (down & HidNpadButton_A) != 0, (down & HidNpadButton_B) != 0)) {
+            case Reroll::Outcome::NotHandled: break;
+            case Reroll::Outcome::AskConfirm:
+            case Reroll::Outcome::Cancelled:
+                screen.controllerNavigation.reset();
+                return true;
+            case Reroll::Outcome::Swallowed:
+                return true;
+            case Reroll::Outcome::Reroll:
+                randomizeDVs(state); // the local working draft only; nothing is staged
+                screen.postStatus("Generation II DVs re-rolled in this draft; Keep/Add stages them", 240);
+                screen.controllerNavigation.reset();
+                return true;
+        }
+    }
+
     const int touchedDetail = updateUnifiedDetailsTouch(screen, unified, touch, down);
     if (touchedDetail >= 0) {
         unified.focus = {Unified::Panel::Details, static_cast<uint8_t>(touchedDetail), 0};
@@ -563,11 +613,6 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         unified.detailsViewport.reveal(unified.focus.row,
                                        unified.crystal ? 13 : 9, 8);
 
-    if (down & HidNpadButton_Y) {
-        randomizeDVs(state);
-        screen.postStatus("Generation II DVs randomized in this local editor session", 240);
-        return true;
-    }
     if ((down & HidNpadButton_X) && state.mode == Mode::Create) {
         if (stageCreate(screen)) resetUnifiedFocus(screen);
         return true;
