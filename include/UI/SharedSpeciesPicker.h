@@ -107,9 +107,8 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
                  bool shinyToggleAvailable = true,
                  std::array<uint8_t, 2> previewTypes = {0xFF, 0xFF}) {
         fb.drawText(x + 24, y + 50,
-                    shinyToggleAvailable
-                        ? "Drag to browse • tap to choose • Y chooses intended Normal/Shiny appearance"
-                        : "Drag to browse • tap to choose • Shiny is edited from the shared field",
+                    shinyToggleAvailable ? "Drag to browse • tap to choose • Y Normal/Shiny"
+                                         : "Drag to browse • tap to choose",
                     Colors::TextDim, TextStyle::Caption);
         constexpr int visible = 9;
         constexpr int rowStep = 43;
@@ -171,12 +170,9 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
         ClassicTypeBadges::drawPairCentered(fb, previewX, previewW, y + 344, types[0], types[1]);
 
         fb.drawText(previewX, y + 374,
-            std::string("Intended: ") + (previewShiny ? "Shiny" : "Normal"),
+            std::string("Shiny: ") + (previewShiny ? "Yes" : "No"),
             previewShiny ? Colors::ShinyStar : Colors::Accent, TextStyle::Body);
-        fb.drawText(previewX, y + 406, "A commits to draft/editor only", Colors::TextDim, TextStyle::Caption);
-        fb.drawText(previewX, y + 430,
-                    shinyToggleAvailable ? "B restores previous committed choice"
-                                         : "B cancels species choice; Shiny remains separate",
-                    Colors::TextDim, TextStyle::Caption);
+        // The picker's own footer (SharedEditorPresentation::pickerFooter) carries A Select /
+        // B Cancel; the preview pane shows no developer or staging copy.
 }
 } // namespace UI::SharedSpeciesPicker

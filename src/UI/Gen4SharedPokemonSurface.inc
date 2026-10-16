@@ -1257,9 +1257,6 @@ struct Gen4Editor {
         "Empty + compatible moves only • exact Gen IV Acc / Pwr / PP";
     static constexpr const char* kMoveEditorSubtitle =
         "Gen IV move compatibility • event/encounter legality is not fully checked";
-    static constexpr const char* kMoveHintEditable = "A: choose compatible Gen IV move";
-    static constexpr const char* kMoveHintView = "Move compatibility: checked";
-    static constexpr const char* kMoveLegend = "OK = native   Transfer/Preserved = warning";
     static constexpr const char* kDataTitle = "GEN IV DATA";
 
     static State& gen4(Surface::EditorState& state) { return static_cast<State&>(state); }
@@ -1428,10 +1425,8 @@ struct Gen4Editor {
         statusOut = status;
         colorOut = statusColor;
     }
-    static void drawMoveRow(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
-                            uint16_t value) {
-        MovePickerRowUI::draw(fb, x, y, value, bridge(screen).sourceSave().rawFamily());
-    }
+    // Exact DP / Pt / HGSS game group for the shared Moves panel and chooser facts.
+    static Enums::GameVersion moveGame(const TrainerViewScreen& screen) { return family(screen); }
 
     static std::string pickerLabel(TrainerViewScreen& screen, const Surface::EditorState& state,
                                    PickerTarget target, uint16_t value) {

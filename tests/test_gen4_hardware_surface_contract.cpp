@@ -318,7 +318,7 @@ int main() {
     contains(workspaceModel, "focus = Shared::normalizeMoveRowFocus(generation, focus);");
     contains(workspaceModel, ": Shared::moveRowColumn(generation, focus, -1);");
     contains(workspaceModel, "focus = passive ? Shared::passiveViewMoveColumn(generation, focus, -1)");
-    contains(surface, "Shared::moveRowFocus(g.rightW)");
+    contains(surface, "SharedMovesPanel::draw(fb, movesLayout, slots, A::moveGame(screen),");
 
     // Gen IV inherits the accepted D-pad / left-stick repeat navigation path.
     contains(surface, "screen.controllerNavigation.apply(");
@@ -337,8 +337,6 @@ int main() {
 
     // Outer move focus is exactly one row. PP / PP Ups live in the contextual dialog.
     contains(surface, "openMoveEditor<A>(screen, state, activation.row)");
-    contains(surface, "A: choose compatible Gen IV move");
-    contains(surface, "OK = native   Transfer/Preserved = warning");
     contains(surface, "PP Ups");
     contains(surface, "state.moveEditorRow = 0; // Shared move editor opens on the Move row");
     contains(surface, "state.moveEditorRow == 1");
@@ -494,7 +492,7 @@ int main() {
     contains(surface, "state.session.working->setSpecies(value)");
     contains(surface, "state.speciesPreviewShiny = !state.speciesPreviewShiny");
     contains(surface, "state.session.working->setShiny(state.speciesPreviewShiny)");
-    contains(surface, "\"Y\", \"Normal/Shiny\"");
+    contains(surface, "footer.yLabel = \"Normal/Shiny\"");
     contains(surface, "return \"#\" + number + \"  \" + Names::getSpeciesName(value);");
     contains(surface, "PickerTarget::HeldItem");
     contains(surface, "PickerTarget::Language");
@@ -629,8 +627,8 @@ int main() {
     const auto fixedMoveRows = read("include/UI/MovePickerRowUI.h");
     contains(gen1Move, "MovePickerRowUI::draw(fb");
     contains(gen2Move, "MovePickerRowUI::draw(fb");
-    contains(gen3Picker, "MovePickerRowUI::draw(fb");
-    contains(surface, "MovePickerRowUI::draw(fb");
+    contains(gen3Picker, "SharedMovesPanel::drawChooserRow(fb");
+    contains(surface, "SharedMovesPanel::drawChooserRow(fb");
     contains(fixedMoveRows, "Presentation::numberedName(move)");
     contains(fixedMoveRows, "x+308");
     contains(fixedMoveRows, "x+423");

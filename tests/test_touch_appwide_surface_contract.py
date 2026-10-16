@@ -451,7 +451,7 @@ assert report_gestures.count(
 assert report_gestures.count("std::abs(touch.deltaY()) >= 24") == 3
 require_all("include/UI/SharedPokemonShell.h",
             "int pixelOffset = 0, int independentFirstRow = -1",
-            "const int yy = y + 224 + i * 38 + pixelOffset",
+            "const int yy = viewport.firstRowY + i * viewport.rowStep + pixelOffset",
             "independentFirstRow >= 0",
             "rowIndex < 0 || rowIndex >= static_cast<int>(total)")
 require_all("src/UI/Gen2HardwareFinalFix.inc",

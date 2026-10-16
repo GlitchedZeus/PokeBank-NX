@@ -1,6 +1,7 @@
 #pragma once
 #include "UI/ClassicGameContext.h"
 #include "UI/SharedPokemonEditorContract.h"
+#include "UI/SharedEditorPresentation.h"
 #include "UI/Common.h"
 #include "UI/SpriteManager.h"
 #include "UI/StatsRadar.h"
@@ -14,6 +15,16 @@ struct Geometry {
     constexpr Geometry(int width, int height, int navBarHeight)
         : h(height - 96 - navBarHeight - 8), rightW(width - 24 - 750) {}
 };
+// The DETAILS row viewport of the shared shell: below the portrait, above the panel's bottom
+// edge (and therefore above the footer). Input handlers and drawing both use this one model.
+constexpr PokeBank::UIModel::SharedEditorPresentation::DetailsViewport
+detailsViewport(const Geometry& g) noexcept {
+    return PokeBank::UIModel::SharedEditorPresentation::detailsViewport(g.y, g.h);
+}
+static_assert(detailsViewport(Geometry(1280, 720, 56)).visibleRows == 8,
+              "input handlers page DETAILS by 8 rows");
+static_assert(detailsViewport(Geometry(1280, 720, 56)).bottom() <= 96 + Geometry(1280, 720, 56).h - 8,
+              "DETAILS rows never reach the panel edge or the footer");
 inline std::string dexLabel(uint16_t species) {
     auto value = std::to_string(species);
     while (value.size() < 3) value = "0" + value;
@@ -92,7 +103,8 @@ template <class Label, class Value>
 inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int h,
     std::size_t total, std::size_t focus, bool focused, Label label, Value value,
     int pixelOffset = 0, int independentFirstRow = -1) {
-    constexpr std::size_t visibleRows = 8;
+    const auto viewport = PokeBank::UIModel::SharedEditorPresentation::detailsViewport(y, h);
+    const std::size_t visibleRows = static_cast<std::size_t>(viewport.visibleRows);
     // Keep one value column across scrolling windows, sized for the real field labels.
     int labelWidth = 0;
     for (std::size_t row = 0; row < total; ++row) {
@@ -111,9 +123,8 @@ inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int 
     }
     // Scrolling owns one clipped row viewport. Clear it before painting the next window so
     // an older set of rows can never ghost underneath the current focus position.
-    const int viewportY = y + 216;
-    const int viewportBottom = y + h - 40;
-    const int viewportH = std::max(0, viewportBottom - viewportY);
+    const int viewportY = viewport.top;
+    const int viewportH = viewport.height;
     fb.drawFilledRect(x + 8, viewportY, w - 16, viewportH, Colors::Panel);
     fb.setClipRect(x + 8, viewportY, w - 16, viewportH);
     // Keep one extra row on either side of a live finger drag to avoid
@@ -124,7 +135,7 @@ inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int 
         const int rowIndex = static_cast<int>(window.first) + i;
         if (rowIndex < 0 || rowIndex >= static_cast<int>(total)) continue;
         const auto row = static_cast<std::size_t>(rowIndex);
-        const int yy = y + 224 + i * 38 + pixelOffset;
+        const int yy = viewport.firstRowY + i * viewport.rowStep + pixelOffset;
         const bool selected = focused && row == focus;
         if (selected)
             fb.drawRoundedRect(x + 8, yy + 2, std::max(0, w - 36), 30, 6, Colors::FocusBorder, 2);
@@ -137,9 +148,7 @@ inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int 
     fb.clearClip();
     drawVerticalScrollIndicator(fb, x + w - 10, viewportY + 6,
         std::max(0, viewportH - 12), total, visibleRows, window.first);
-    fb.drawText(x + 16, y + h - 30, "Rows " + std::to_string(window.first + 1) + "-" +
-        std::to_string(window.first + window.count) + " / " + std::to_string(total),
-        Colors::TextDim, TextStyle::Caption);
+    // No "Rows N-M / T" counter: the scrollbar alone reports position.
 }
 // The native-data and six-stat radar composition is shared by exact-format providers.
 template <class Rows>

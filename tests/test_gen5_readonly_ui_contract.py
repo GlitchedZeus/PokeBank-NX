@@ -1172,7 +1172,7 @@ require(surface, "Fields::detailEditable(draft(screen), row, b2w2(screen))",
         "Fields::stageTrainerId(probe, secret,", "Fields::toggleGender(probe, error)",
         "Fields::toggleShiny(probe, error)", "Fields::toggleFlag(d, row == FatefulEncounter",
         "backendState.speciesRefusal(species)", "backendState.recreateCreateSpecies(",
-        "Names::getMoveBattleStats5(move)", 'std::string("—")', "Names::moveCategoryName5(",
+        "return b2w2(screen) ? Enums::GameVersion::B2W2 : Enums::GameVersion::BW;",
         "learnability not checked", 'return "None (ID 0)";',
         "static constexpr bool kCompactForm = true;", "static constexpr bool kSpeciesSearch = true;")
 require(native_screen, "Gen5SharedPokemonSession& editDraft() noexcept",
@@ -1195,7 +1195,7 @@ def _adapter_string(text, key):
     match = _re.search(key + r'\s*=\s*"([^"]*)"', text)
     assert match, f"missing adapter string {key}"
     return match.group(1)
-for _key in ("kMovePickerSubtitle", "kMoveEditorSubtitle", "kMoveLegend", "kMoveHintEditable",
+for _key in ("kMovePickerSubtitle", "kMoveEditorSubtitle",
              "kHeldItemTitle", "kMovePickerTitle", "kDataTitle"):
     _gen5_text = _adapter_string(surface, _key)
     _gen4_text = _adapter_string(_gen4_surface, _key)

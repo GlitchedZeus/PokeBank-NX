@@ -226,9 +226,6 @@ struct Gen5Editor {
         "Valid BW/B2W2 moves • Pwr/Acc/PP • learnability not checked";
     static constexpr const char* kMoveEditorSubtitle =
         "Valid native BW/B2W2 move • species learnability not checked";
-    static constexpr const char* kMoveHintEditable = "A: choose a valid BW/B2W2 move";
-    static constexpr const char* kMoveHintView = "Native = valid BW/B2W2 move ID";
-    static constexpr const char* kMoveLegend = "Native = valid ID • learnability unchecked";
     static constexpr const char* kDataTitle = "GEN V DATA";
 
     static PokeVault::Integration::Gen5::Gen5SharedScreenState& backend(const TrainerViewScreen& screen) {
@@ -575,32 +572,10 @@ struct Gen5Editor {
         status = move == 0 ? "-" : "Native";
         color = move == 0 ? Colors::TextDim : Colors::TextSecondary;
     }
-    // The shared move row plus Gen V's type, category and an em dash wherever
-    // the move has no fixed Power or Accuracy (never 0).
-    static void drawMoveRow(TrainerViewScreen&, PKSEFramebuffer& fb, int x, int y, uint16_t move) {
-        if (move == 0) {
-            fb.drawText(x, y + 4, "000 - Empty move slot", Colors::Text, TextStyle::Body);
-            return;
-        }
-        const auto* stats = Names::getMoveBattleStats5(move);
-        fb.drawText(x, y, shortValue5(MoveUI::numberedName(move), 22), Colors::Text, TextStyle::Body);
-        if (!stats) return;
-        if (auto* sprite = SpriteManager::getTypeSprite(SharedSpeciesPicker::canonicalToClassicType(stats->type));
-            sprite && sprite->data && sprite->height > 0) {
-            const int width = sprite->width * 20 / sprite->height;
-            fb.drawImageScaled(x + 262, y + 6, sprite->width, sprite->height, width, 20,
-                               sprite->data, sprite->channels);
-        }
-        const auto value = [](uint8_t v) {
-            return v == Names::kMoveValueUndefined5 ? std::string("—") : std::to_string(v);
-        };
-        fb.drawText(x + 330, y + 9, Names::moveCategoryName5(stats->category),
-                    Colors::TextSecondary, TextStyle::Caption);
-        fb.drawText(x + 418, y + 9, "| Pwr " + value(stats->power), Colors::TextSecondary, TextStyle::Caption);
-        fb.drawText(x + 508, y + 9, "| Acc " + value(stats->accuracy), Colors::TextSecondary, TextStyle::Caption);
-        fb.drawText(x + 598, y + 9, "| PP " + std::to_string(stats->pp), Colors::TextSecondary, TextStyle::Caption);
+    // Black/White or Black 2/White 2 for the shared Moves panel and chooser facts.
+    static Enums::GameVersion moveGame(const TrainerViewScreen& screen) {
+        return b2w2(screen) ? Enums::GameVersion::B2W2 : Enums::GameVersion::BW;
     }
-
     static std::string pickerLabel(TrainerViewScreen& screen, const EditorSurface::EditorState&,
                                    PickerTarget target, uint16_t value) {
         const auto p = draft(screen).current();

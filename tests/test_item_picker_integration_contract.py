@@ -37,7 +37,9 @@ for name,body,native in [
     assert native in body, (name,"native sort snapshot missing")
     assert "ItemPickerSort::reorder(" in body, (name,"reorder not wired")
     assert "ItemPickerSort::next(" in body, (name,"sort X cycle missing")
-    assert '{"X", "Sort"}' in body or '{"X","Sort"}' in body, (name,"controller help missing")
+    # The shared picker footer (SharedEditorPresentation::pickerFooter) names X Sort as xLabel.
+    assert ('{"X", "Sort"}' in body or '{"X","Sort"}' in body or
+            'footer.xLabel = "Sort"' in body), (name,"controller help missing")
     assert "ItemPickerSort::label(" in body, (name,"sort label missing")
 
 # Original game item IDs must be mapped to move type before asking for art.
