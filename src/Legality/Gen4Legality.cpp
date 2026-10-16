@@ -1033,6 +1033,26 @@ void Analyzer::verifyMisc() {
     const bool palParkPtHGSS = palPark && pk_.metLocationExtended != 0;
     if (palParkPtHGSS && pk_.metLocationExtended != pk_.metLocationDP)
         invalid(CheckIdentifier::Transfer, "Pal Park met location differs between the D/P and Pt/HG/SS fields");
+    // Pt/HG/SS write both met-location fields through one setter: a place D/P know goes into both,
+    // any other place puts Faraway Place (3002) in the D/P field (pokeplatinum src/pokemon.c:1731-1739
+    // with src/unk_02017038.c:38-45; pokeheartgold src/pokemon.c:1286-1292). D/P never write the
+    // Pt/HG/SS field, and a non-egg Pokemon's met location is never rewritten; only hatching in D/P
+    // rewrites the D/P field alone, so egg-origin records are left out. Every PKHeX Gen IV event
+    // template leaves the Pt/HG/SS field at 0, so a gift received in D/P is skipped too. My Pokemon
+    // Ranch records are written by the Wii software, which has no decomp, so they only get a Warning.
+    // PKHeX does not compare the two fields (deliberate difference, PKHEX_DISAGREEMENT_REVIEW.md item 14).
+    if (!palPark && pk_.metLocationExtended != 0 && pk_.eggLocationDP == 0 && pk_.eggLocationExtended == 0) {
+        const uint16_t ext = pk_.metLocationExtended;
+        const bool knownToDP = ext <= 111 || (ext >= 2000 && ext <= 2010) || (ext >= 3000 && ext <= 3076);
+        const bool ptHGSSOnly = (ext >= 112 && ext <= 1999) || (ext >= 2011 && ext <= 2999);
+        if ((knownToDP || ptHGSSOnly) && pk_.metLocationDP != (knownToDP ? ext : uint16_t{3002})) {
+            std::string text = "D/P met location field holds " + std::to_string(pk_.metLocationDP) +
+                               " where Pt/HG/SS write " + std::to_string(knownToDP ? ext : 3002) +
+                               " for met location " + std::to_string(ext);
+            if (enc_.kind == EncKind::Ranch) fishy(CheckIdentifier::Encounter, std::move(text));
+            else invalid(CheckIdentifier::Encounter, std::move(text));
+        }
+    }
     if (pk_.ballDPPt > kBallCherish) invalid(CheckIdentifier::Items, "D/P/Pt ball value is above the Cherish Ball");
     {
         // MiscVerifierG4.IsValidBallHGSS: HG/SS-created records (including Pal Park into Pt/HG/SS) set this byte.

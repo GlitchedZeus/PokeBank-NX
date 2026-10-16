@@ -271,8 +271,9 @@ const Rule kRules[] = {
     {"egg-location", "static", {{Op::Set16, 0x7E, 0x7D0}}, "Hatched egg: met level must be 0"},
     // PKHeX: INVALID Encounter:EncGiftNotFound Encounter:EncTypeMismatch
     {"met-location", "slot-type0-pid1-lead12", {{Op::Set16, 0x46, 0xBB8}}, "No matching Mystery Gift (event) encounter"},
-    // PKHeX: VALID
-    {"met-location-dp-field", "slot-type0-pid1-lead12", {{Op::Set16, 0x80, 0xBB8}}, nullptr},
+    // PKHeX: VALID (it does not compare the two met-location fields). Pt/HG/SS write 3002 to the D/P
+    // field for this Pt-only place, so no game writes this pair: PKHEX_DISAGREEMENT_REVIEW.md item 14.
+    {"met-location-dp-field", "slot-type0-pid1-lead12", {{Op::Set16, 0x80, 0xBB8}}, "D/P met location field holds 3000 where Pt/HG/SS write 3002"},
     // PKHeX: INVALID Encounter:EncGiftNotFound
     {"fateful-missing", "pcd", {{Op::And8, 0x40, 254}}, "No matching Mystery Gift (event) encounter"},
     // PKHeX: INVALID Shiny:EncGiftPIDMismatch
