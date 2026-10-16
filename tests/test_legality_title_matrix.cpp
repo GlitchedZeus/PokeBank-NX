@@ -1,8 +1,10 @@
-// Per-title acceptance matrix for the Gen I, Gen II, Gen III and Gen V legality analyzers.
+// Per-title acceptance matrix for the Gen I to Gen V legality analyzers (20 titles).
 // docs/legality/TITLE_TEST_MATRIX.md lists the same cases with their evidence.
 //
-// Every case prints one line: title | kind | case | expected | actual | PASS or FAIL.
-// The program exits non-zero when any case fails. Pass -v to print every report.
+// Every case prints one line: title | kind | case | expected | actual | PASS, FAIL or BUG.
+// BUG marks a known engine bug: the expected verdict comes from the evidence, and the
+// engine still gives the documented wrong verdict. The program exits non-zero when any
+// case fails. Pass -v to print every report.
 //
 // Gen I and Gen II: each case starts from synthetic 32 KiB battery-save bytes and runs
 // the app's own path. Gen1::parse / Gen2::parse get the title as the source hint, the
@@ -14,6 +16,13 @@
 // UI.cpp; the box slot goes through Legality::analyze(pk, pk.getGameGroup(),
 // metadata().sourceGameId), as in PokemonDetailsModal.cpp. Record cases load the stored
 // (encrypted) PK3 into Pokemon3FRLG and make the same call with the exact source game id.
+// Gen IV: the app's NDS path. Synthetic 512 KiB saves go through Gen4ReadOnlySave::parse
+// for every layout with the assigned game id (Gen4AssignedSource.cpp openAssignedSource),
+// then Gen4ReadOnlyTrainer::create (UI.cpp handleGen4View); box 1 slot 1 goes through
+// Pokemon4ReadOnlyView and Legality::analyze(view, view.getGameGroup(), sourceGameId), as in
+// Gen4SharedPokemonSurface.inc drawLegality. Record cases load the stored (encrypted) PK4
+// into Pokemon4ReadOnly and make the same call. Legality::analyzePk4 on the decrypted bytes
+// must agree: production never drops its Invalid and never certifies more.
 // Gen V: Legality::analyzePk5 on the decrypted record and on its stored (encrypted)
 // form. This branch has no PK5 save reader (that is PR #307), so the app does not call
 // analyzePk5 yet.
@@ -29,12 +38,16 @@
 // Nothing here writes a save or changes a record: every case checks its input bytes
 // afterwards.
 #include "Encryption/Encryption3FRLG.h"
+#include "Encryption/Encryption4.h"
 #include "Encryption/Encryption5.h"
 #include "Integration/Gen1/Gen1ReadOnlySave.h"
 #include "Integration/Gen2/Gen2ReadOnlySave.h"
 #include "Integration/Gen3/PKSMGen3Adapter.h"
+#include "Integration/Gen4/Gen4ReadOnlySave.h"
 #include "Legacy/FRLGReadOnlyTrainer.h"
+#include "Legacy/Gen4ReadOnlyTrainer.h"
 #include "Legality/Gen3Legality.h"
+#include "Legality/Gen4Legality.h"
 #include "Legality/Gen5Legality.h"
 #include "Legality/Legality.h"
 #include "Names/ItemNames.h"
@@ -42,6 +55,8 @@
 #include "Pokemon/Pokemon1ReadOnly.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
 #include "Pokemon/Pokemon3FRLG.h"
+#include "Pokemon/Pokemon4ReadOnly.h"
+#include "Pokemon/Pokemon4ReadOnlyView.h"
 #include "legality_gen5_test_helpers.h"
 
 #include <algorithm>
@@ -117,6 +132,10 @@ struct Expect {
     std::vector<Text> present;  // issues the report must contain (substring match)
     std::vector<Text> absent;   // issues it must not contain
     bool structureNone = false; // the report must say the structure was not read
+    // A known engine bug. The expected verdict stays what the evidence says. While the
+    // engine still gives this wrong verdict, the row reads BUG and does not fail the run.
+    std::optional<Outcome> knownBug;
+    std::string bugNote;
 };
 
 Expect expect(Outcome o, std::vector<Text> present = {}, std::vector<Text> absent = {}) {
@@ -142,11 +161,12 @@ struct Actual {
 };
 
 bool verbose = false;
-int caseCount = 0, failureCount = 0;
+int caseCount = 0, failureCount = 0, bugCount = 0;
 std::map<std::string, std::map<std::string, int>> tally;  // title -> kind -> cases
 
 const char* const kTitles[] = {"Red", "Blue", "Yellow", "Gold", "Silver", "Crystal",
                                "Ruby", "Sapphire", "Emerald", "FireRed", "LeafGreen",
+                               "Diamond", "Pearl", "Platinum", "HeartGold", "SoulSilver",
                                "Black", "White", "Black 2", "White 2"};
 const char* const kKinds[] = {"positive", "negative", "malformed", "unknown", "original-game", "title-specific"};
 
@@ -185,11 +205,18 @@ void record(const std::string& title, const std::string& kind, const std::string
     ++caseCount;
     ++tally[title][kind];
     const bool pass = why.empty();
-    if (!pass)
+    const bool bug = !pass && e.knownBug && a.outcome == *e.knownBug && a.problems.empty();
+    if (bug)
+        ++bugCount;
+    else if (!pass)
         ++failureCount;
-    std::printf("%-9s | %-14s | %-66s | expected %-30s | actual %-30s | %s\n", title.c_str(), kind.c_str(),
+    std::printf("%-10s | %-14s | %-66s | expected %-30s | actual %-30s | %s\n", title.c_str(), kind.c_str(),
                 name.c_str(), label(e.outcome, e.parserError).c_str(), label(a.outcome, a.parserError).c_str(),
-                pass ? "PASS" : "FAIL");
+                pass ? "PASS" : bug ? "BUG" : "FAIL");
+    if (bug)
+        std::printf("    known engine bug: %s\n", e.bugNote.c_str());
+    if (pass && e.knownBug)
+        std::printf("    note: the known engine bug is fixed; drop the knownBug mark and update the doc\n");
     for (const auto& w : why)
         std::printf("    reason: %s\n", w.c_str());
     if ((!pass || verbose) && a.report)
@@ -1283,6 +1310,597 @@ void cases() {
 
 }  // namespace gen3
 
+// ---------------------------------------------------------------- Gen IV
+
+namespace gen4 {
+
+namespace G4 = PokeVault::Integration::Gen4;
+using Gen5TestHelpers::fromHex;
+
+// Decrypted 136-byte PK4 box records. Most come from the PKHeX-generated corpus of
+// tools/pkhex_gen34_diff (`run.sh PKHEX 1 3 4`, PKHeX kwsch/PKHeX@6501f0ab), built by PKHeX for
+// OT "Tester". PKHeX calls each one VALID with the personal table of the save that holds it.
+// The corpus id follows each name (bNNNNN: base corpus, pNN: grown corpus).
+// Diamond: Murkrow L11, Eterna Forest (met location 48), a Diamond-only night slot (b29516).
+constexpr const char* kDiamondMurkrow =
+    "FBEA6C7D0000D985C600000065BBB789E6020000236900020000000000000000000000000000000040003601E4007200230F141E000000008548B10E00000000000000000000000037013F013C0135013C0139014101FFFF000000000000000A00000000000000003E0149015701580149015601FFFF00000000001A0A100000300000040B020000";
+// Diamond: Dialga L47, Spear Pillar (met location 51) (b50779).
+constexpr const char* kDiamondDialga =
+    "652F81620000C944E3010000E194F090F2FA0100002E000200000000000000000000000000000000E800F6005101CB0123050F0500000000F68B9F0B0000000004000000000000002E0133012B01360131012B01FFFF0000000000000000000A00000000000000003E0149015701580149015601FFFF00000000001A0A100000330000042F040000";
+// Diamond: an event Arceus L100 from a PCD (OT Michina, fateful) (b50987).
+constexpr const char* kDiamondEventArceus =
+    "9B12190500001DFDED01D400332BFE74D01213000079000200000000000000000000000000000004C101CB01CC01D3010A0505050000000035503E060000000005000000000000002B013C012D012F013F013D01FFFFFFFFFFFFFFFFFFFF000A000000000000000037014D0147014C014D0152014501FFFF0000001A0A100000F40B001064000000";
+// Pearl: Misdreavus L11, Eterna Forest, a Pearl-only night slot (b29636).
+constexpr const char* kPearlMisdreavus =
+    "EAEAE6D000003A15C8000000BF09CC7F28040000231A0002000000000000000000000000000000002D009500B4003601280F0A0F00000000C6E9B910000000000000000000000000370133013D012E013C012F012B0140013F013D01FFFF000B00000000000000003E0149015701580149015601FFFF00000000001A0A100000300000040B020000";
+// Pearl: Dustox L12, Eterna Forest (b35675).
+constexpr const char* kPearlDustox =
+    "BF8836540000DA340D010000C2541225C006000046130002000000000000000000000000000000005D000000000000001900000000000000FE26032C0000000000000000000000002E013F013D013E0139014201FFFF0000000000000000000B00000000000000003E0149015701580149015601FFFF00000000001A0A100000300000040C020000";
+// Pearl: Palkia L47, Spear Pillar (b50795).
+constexpr const char* kPearlPalkia =
+    "FD77FD000000FC6EE4010000BC9037A2F2FA0100002E0002000000000000000000000000000000006001F6005101CC0114050F0500000000FE872D2B0000000004000000000000003A012B013601350133012B01FFFF0000000000000000000B00000000000000003E0149015701580149015601FFFF00000000001A0A100000330000042F040000";
+// Platinum: Giratina-Origin L47 holding the Griseous Orb, Distortion World (met location
+// 117; the D/P met-location field holds 3002) (b50859).
+constexpr const char* kPlatinumGiratinaOrigin =
+    "56F5966D0000F27FE7017000917554A0F2FA0100001A000200000000000000000000000000000000D201F6005101D30105050F05000000005BB08221000000000C00000000007500310133013C012B013E01330138012B01FFFF00000000000C00000000000000003E0149015701580149015601FFFF00000000001A0A100000BA0B00042F170000";
+// Platinum: Giratina L47, Turnback Cave (met location 62) (b50855).
+constexpr const char* kPlatinumGiratina =
+    "AEF3624100007582E7010000917554A0F2FA0100002E000200000000000000000000000000000000D201F6005101D30105050F05000000007CB74D27000000000400000000000000310133013C012B013E01330138012B01FFFF00000000000C00000000000000003E0149015701580149015601FFFF00000000001A0A1000003E0000042F050000";
+// Platinum: Rotom L20, Old Chateau (met location 70) (b50731).
+constexpr const char* kPlatinumRotom =
+    "1CC8E85600002026DF010000F3709434401F0000461A00020000000000000000000000000000000054006D00FD0068001E0A0A0F00000000F69C92390000000004000000000000003C0139013E0139013701FFFF00000000000000000000000C00000000000000003E0149015701580149015601FFFF00000000001A0A1000004600000414090000";
+// Platinum: a FireRed Bulbasaur brought in through Pal Park (met location 55, origin game 4) (p24).
+constexpr const char* kFireRedBulbasaurPalPark =
+    "234D1D850000C10601000000C12727F387000000464100020000000000000000000000000000000021002D00000000002328000000000000A127E6110000000000000000000000002C013F0136012C012B013D012B013F013C01FFFFE0FF000400000000000000003E0149015701580149015601FFFF3F010000001A0A1000003700000405000000";
+// HeartGold: Spinarak L2, Route 30 (met location 178), a HeartGold-only night slot (b26992).
+constexpr const char* kHeartGoldSpinarak =
+    "2B01F5AF00004A4BA7000000885BF9F106000000460F000200000000000000000000000000000000280051000000000023280000000000006E3AD23300000000020000000000B2003D013A01330138012B013C012B013501FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A100000BA0B000402020400";
+// HeartGold: Ho-Oh L45, Bell Tower (met location 205) (b34427).
+constexpr const char* kHeartGoldHoOh =
+    "41E7E3390000533CFA0000004AD20636F2BC0100002E0002000000000000000000000000000000004601F1007E00DD001E05050500000000ECC1481D00000000040000000000CD0032013901BE0139013201FFFF00000000000000000000000700000000000000003E0149015701580149015601FFFF00000000001A0A100000BA0B00042D090400";
+// HeartGold: Pikachu L15 from the Pokewalker Yellow Forest course (met location 233) (b2548).
+constexpr const char* kHeartGoldWalkerPikachu =
+    "FFFFFFA00000376719000000677690282F0D00004609000200000000000000000000000000000000130057002D0027000F0A281E000000000000BF3400000000000000000000E9003A01330135012B012D0132013F01FFFF000000000000000700000000000000003E0149015701580149015601FFFF00000000001A0A100000BA0B00040F000400";
+// SoulSilver: Ledyba L3, Route 30, a SoulSilver-only morning slot (b26800).
+constexpr const char* kSoulSilverLedyba =
+    "96E6AB5400006746A50000003023CE53150000004644000200000000000000000000000000000000210000000000000023000000000000007716311E00000000000000000000B20036012F012E0143012C012B01FFFF0000000000000000000800000000000000003E0149015701580149015601FFFF00000000001A0A100000BA0B000403020400";
+// SoulSilver: Lugia L45, Whirl Islands (met location 218) (b34423).
+constexpr const char* kSoulSilverLugia =
+    "18954FBA00006C3FF9000000B8788C34F2BC0100002E0002000000000000000000000000000000004601F0003800B1001E050505000000005500FB3E00000000040000000000DA0036013F01310133012B01FFFF00000000000000000000000800000000000000003E0149015701580149015601FFFF00000000001A0A100000BA0B00042D070400";
+// SoulSilver: Caterpie L17 in a Sport Ball (HG/SS ball byte 24), Bug-Catching Contest,
+// National Park (met location 207) (b192).
+constexpr const char* kSoulSilverSportCaterpie =
+    "2C2635E300002AB00A00000073960574311300004613000200000000000000000000000000000000210051000000000023280000000000006BFC030200000000020000000000CF002D012B013E012F013C013A0133012F01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A100000BA0B000411021800";
+// SoulSilver: Pikachu L15 from the Pokewalker (b2596).
+constexpr const char* kSoulSilverWalkerPikachu =
+    "FEFFFF6600005F6519000000188A07122F0D00004609000200000000000000000000000000000000130057002D0027000F0A281E000000000000BF3400000000000000000000E9003A01330135012B012D0132013F01FFFF000000000000000800000000000000003E0149015701580149015601FFFF00000000001A0A100000BA0B00040F000400";
+// Colosseum/XD Pokemon brought in through Pal Park (origin game 15). The PKHeX oracle built
+// each from its Colosseum/XD encounter list (EncounterMovesetGenerator, GameVersion.CXD, OT
+// Tester) as a CK3/XK3, then converted it CK3/XK3 -> PK3 -> PK4 the way Pal Park does. PKHeX
+// calls each one VALID (with a Fishy note on the OT).
+// Colosseum: the starter Umbreon L26.
+constexpr const char* kColosseumUmbreon =
+    "E56A52B30000BDE5C5000000393031D4A8440000461C0002000000000000000000000000000000002C000D01220121011914140A00000000F44B241F0000000000000000000000003F0137012C013C012F0139013801FFFF48A10C02E0FF000F00000000000000003E0149015701580149015601FFFFFFFF0000001A0A100000370000041A000000";
+// XD: the starter Eevee L10.
+constexpr const char* kXDEevee =
+    "E56A52B3000050C485000000393031D4E80300004632000200000000000000000000000000000000210027002C001C00231E190F00000000F44B241F0000000001000000000000002F012F0140012F012F01FFFF0000000048A10C02E0FF000F00000000000000003E0149015701580149015601FFFF00000000001A0A100000370000040A000000";
+// Colosseum: a snagged Shadow Quilava L30.
+constexpr const char* kColosseumShadowQuilava =
+    "B713BB39000086639C000000393031D4005500004642000200000000000000000000000000000000F1006C005B00AC0005140A1900000000B05F39250000002000000000000000003B013F01330136012B0140012B01FFFF48A10C02E0FF000F00000000000000003E0149015701580149015601FFFFFFFF0000001A0A100000370000041E000000";
+// XD: a snagged Shadow Ledyba L10.
+constexpr const char* kXDShadowLedyba =
+    "131320670000F55BA5000000393031D42003000046440002000000000000000000000000000000003C001F014C01300014141414000000009CCB630700000020030000000000000036012F012E0143012C012B01FFFF000048A10C02E0FF000F00000000000000003E0149015701580149015601FFFF00000000001A0A100000370000040A000000";
+
+// PK4 layout (PKHeX PK4.cs; pokeplatinum include/struct_defs/pokemon.h).
+constexpr std::size_t kSanity = 0x04, kChecksum = 0x06, kSpecies = 0x08, kTid = 0x0C, kSid = 0x0E, kExp = 0x10;
+constexpr std::size_t kLanguage = 0x17, kMoves = 0x28, kFlags = 0x40, kShinyLeaf = 0x41, kVersion = 0x5F;
+constexpr std::size_t kOtName = 0x68, kMetLocationDP = 0x80, kBallDPPt = 0x83, kMetLevel = 0x84, kBallHGSS = 0x86;
+constexpr uint8_t kHeartGold = 7, kSoulSilver = 8, kDiamond = 10, kPearl = 11, kPlatinum = 12;
+constexpr std::size_t kStoredSize = 0x88;
+
+uint16_t le16(const std::vector<uint8_t>& b, std::size_t o) {
+    return static_cast<uint16_t>(b[o] | (b[o + 1] << 8));
+}
+
+void setLe16(std::vector<uint8_t>& b, std::size_t o, unsigned v) {
+    b[o] = static_cast<uint8_t>(v);
+    b[o + 1] = static_cast<uint8_t>(v >> 8);
+}
+
+void setLe32(std::vector<uint8_t>& b, std::size_t o, uint32_t v) {
+    setLe16(b, o, v & 0xFFFF);
+    setLe16(b, o + 2, v >> 16);
+}
+
+std::span<const std::byte> asBytes(const std::vector<uint8_t>& v) {
+    return {reinterpret_cast<const std::byte*>(v.data()), v.size()};
+}
+
+std::vector<uint8_t> toVector(std::span<const std::byte> s) {
+    std::vector<uint8_t> out(s.size());
+    std::transform(s.begin(), s.end(), out.begin(), [](std::byte b) { return static_cast<uint8_t>(b); });
+    return out;
+}
+
+// The games' checksum: the 16-bit sum of the data words 0x08-0x87.
+void refreshChecksum(std::vector<uint8_t>& pk) {
+    unsigned sum = 0;
+    for (std::size_t o = 0x08; o < kStoredSize; o += 2)
+        sum += le16(pk, o);
+    setLe16(pk, kChecksum, sum & 0xFFFF);
+}
+
+std::vector<uint8_t> edited(const char* hex, const std::function<void(std::vector<uint8_t>&)>& edit) {
+    auto pk = fromHex(hex);
+    edit(pk);
+    refreshChecksum(pk);
+    return pk;
+}
+
+std::vector<uint8_t> withVersion(const char* hex, uint8_t version) {
+    return edited(hex, [version](std::vector<uint8_t>& pk) { pk[kVersion] = version; });
+}
+
+// The record as a save stores it (Encryption4: blocks shuffled by PID, data encrypted with the
+// checksum as the seed). encryptArray4 writes the checksum of the data it encrypts, so a record
+// with a bad checksum has to be damaged after this step.
+std::vector<uint8_t> stored(const std::vector<uint8_t>& pk) {
+    return toVector(Encryption::encryptArray4(asBytes(pk)));
+}
+
+Enums::GameVersion group(const std::string& game) {
+    if (game == "diamond_nds" || game == "pearl_nds")
+        return Enums::GameVersion::DP;
+    if (game == "platinum_nds")
+        return Enums::GameVersion::PT;
+    return Enums::GameVersion::HGSS;
+}
+
+// Legality::analyzePk4 on the bytes the production entity decrypted must agree: production
+// never drops its Invalid and never certifies more.
+void crossCheck(Actual& a, const Pokemon::Pokemon4ReadOnly& source, const std::string& game) {
+    const auto pk4 = Legality::analyzePk4(toVector(source.decryptedBytes()), game).verdict();
+    if (pk4 == Legality::Verdict::Invalid && a.outcome != Outcome::Invalid)
+        a.problems.push_back("Legality::analyze dropped an analyzePk4 Invalid");
+    if (a.outcome == Outcome::NoProblemsFound && pk4 != Legality::Verdict::NoProblemsFound)
+        a.problems.push_back("Legality::analyze certified what analyzePk4 did not");
+}
+
+// Record path: the stored bytes go through Pokemon4ReadOnly and Pokemon4ReadOnlyView, then
+// Legality::analyze(view, view.getGameGroup(), game), as Gen4SharedPokemonSurface.inc
+// drawLegality does. `corrupt` says the save reader must quarantine the record (it hides every
+// record that fails Pokemon4ReadOnly::valid()); the analysis still runs on it, and
+// analyzePk4 on the decrypted bytes must name the Bad Egg. (Legality::analyze itself reads
+// such a record as species 0, an empty slot, and reports no issue: see Findings in
+// docs/legality/TITLE_TEST_MATRIX.md.)
+Actual runStored(const std::vector<uint8_t>& bytes, const std::string& game, bool corrupt = false) {
+    Actual a;
+    const auto copy = bytes;
+    const Pokemon::Pokemon4ReadOnly source(asBytes(bytes), group(game));
+    if (source.valid() == corrupt)
+        a.problems.push_back(corrupt ? "Pokemon4ReadOnly accepts the corrupt record (the save reader would show it)"
+                                     : "Pokemon4ReadOnly rejects the record (the save reader would hide it)");
+    if (corrupt && !hasText(Legality::analyzePk4(toVector(source.decryptedBytes()), game), Severity::Warning,
+                            "PK4 checksum or sanity word does not match its data (the games show it as a Bad Egg)"))
+        a.problems.push_back("analyzePk4 does not report the Bad Egg Warning");
+    const Pokemon::Pokemon4ReadOnlyView view(source);
+    a.report = Legality::analyze(view, view.getGameGroup(), game);
+    a.outcome = fromReport(*a.report);
+    if (!Gen5TestHelpers::sameReport(*a.report, Legality::analyze(view, view.getGameGroup(), game)))
+        a.problems.push_back("a second analysis gave a different report");
+    crossCheck(a, source, game);
+    if (bytes != copy)
+        a.problems.push_back("record bytes changed");
+    return a;
+}
+
+Actual run(const std::vector<uint8_t>& pk, const std::string& game, bool corrupt = false) {
+    const auto bytes = stored(pk);
+    Actual a = runStored(bytes, game, corrupt);
+    const Pokemon::Pokemon4ReadOnly source(asBytes(bytes), group(game));
+    if (toVector(source.decryptedBytes()) != pk)
+        a.problems.push_back("Pokemon4ReadOnly decrypted other bytes than the record");
+    return a;
+}
+
+// Engine entry point for bytes no save reader hands over (a record that is not 136 or 236
+// bytes long).
+Actual runPk4(const std::vector<uint8_t>& pk, const std::string& game) {
+    Actual a;
+    const auto copy = pk;
+    a.report = Legality::analyzePk4(pk, game);
+    a.outcome = fromReport(*a.report);
+    if (pk != copy)
+        a.problems.push_back("record bytes changed");
+    return a;
+}
+
+// ------------------------------------------------ synthetic 512 KiB NDS saves
+
+constexpr std::size_t kSaveSize = 0x80000;
+
+// Block layout per family (PKHeX SAV4DP.cs, SAV4Pt.cs, SAV4HGSS.cs): General and Storage
+// block offsets and sizes, footer size, and the Trainer, Party and box data offsets.
+struct SaveSpec {
+    std::size_t generalSize, storageStart, storageSize, footer, trainer, party, boxData, boxStride;
+};
+
+SaveSpec specOf(G4::Layout layout) {
+    switch (layout) {
+        case G4::Layout::DiamondPearl: return {0xC100, 0xC100, 0x121E0, 0x14, 0x64, 0x98, 4, 30 * kStoredSize};
+        case G4::Layout::Platinum: return {0xCF2C, 0xCF2C, 0x121E4, 0x14, 0x68, 0xA0, 4, 30 * kStoredSize};
+        case G4::Layout::HeartGoldSoulSilver: return {0xF628, 0xF700, 0x12310, 0x10, 0x64, 0x98, 0, 0x1000};
+    }
+    return {};
+}
+
+// CRC-16/CCITT (polynomial 0x1021, start 0xFFFF), PKHeX Checksums.CRC16_CCITT, written bit by
+// bit here.
+uint16_t crc16(const uint8_t* data, std::size_t length) {
+    uint16_t crc = 0xFFFF;
+    for (std::size_t i = 0; i < length; ++i) {
+        crc = static_cast<uint16_t>(crc ^ (data[i] << 8));
+        for (int bit = 0; bit < 8; ++bit)
+            crc = static_cast<uint16_t>((crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1);
+    }
+    return crc;
+}
+
+// Block footer (PKHeX SAV4.cs, SAV4BlockDetection.cs): save counter, block size, magic
+// 0x20060623, and the CRC of everything before the footer in the last two bytes.
+void stampFooter(std::vector<uint8_t>& b, std::size_t start, std::size_t size, std::size_t footer) {
+    const std::size_t end = start + size;
+    setLe32(b, end - 0x10, 1);
+    setLe32(b, end - 0x0C, static_cast<uint32_t>(size));
+    setLe32(b, end - 0x08, 0x20060623u);
+    setLe16(b, end - 0x02, crc16(b.data() + start, size - footer));
+}
+
+// Partition 0 holds a General and a Storage block; partition 1 is erased flash (0xFF), so it
+// holds no valid copy. General: the trainer is the record's OT (name, TID, SID, gender,
+// language) with the given ROM code at Trainer + 0x1C (7 HeartGold, 8 SoulSilver, 12 Platinum,
+// unused by D/P), and an empty party. Storage: current box 0, every slot a blank record, and box
+// 1 slot 1 the stored record (`damage` may change its stored bytes first).
+std::vector<uint8_t> save(G4::Layout layout, const std::vector<uint8_t>& pk, uint8_t romCode,
+                          const std::function<void(std::vector<uint8_t>&)>& damage = nullptr) {
+    const SaveSpec s = specOf(layout);
+    std::vector<uint8_t> b(kSaveSize, 0xFF);
+    std::fill_n(b.begin(), s.generalSize, uint8_t{0});
+    std::fill_n(b.begin() + static_cast<std::ptrdiff_t>(s.storageStart), s.storageSize, uint8_t{0});
+    std::copy_n(pk.begin() + kOtName, 16, b.begin() + static_cast<std::ptrdiff_t>(s.trainer));
+    setLe16(b, s.trainer + 0x10, le16(pk, kTid));
+    setLe16(b, s.trainer + 0x12, le16(pk, kSid));
+    b[s.trainer + 0x18] = pk[kMetLevel] >> 7;
+    b[s.trainer + 0x19] = pk[kLanguage];
+    b[s.trainer + 0x1C] = romCode;
+    const auto blank = toVector(Encryption::encryptArray4(asBytes(std::vector<uint8_t>(kStoredSize, 0))));
+    for (std::size_t box = 0; box < 18; ++box)
+        for (std::size_t slot = 0; slot < 30; ++slot)
+            std::copy(blank.begin(), blank.end(),
+                      b.begin() + static_cast<std::ptrdiff_t>(s.storageStart + s.boxData + box * s.boxStride +
+                                                              slot * kStoredSize));
+    auto record = stored(pk);
+    if (damage)
+        damage(record);
+    std::copy(record.begin(), record.end(), b.begin() + static_cast<std::ptrdiff_t>(s.storageStart + s.boxData));
+    stampFooter(b, 0, s.generalSize, s.footer);
+    stampFooter(b, s.storageStart, s.storageSize, s.footer);
+    return b;
+}
+
+G4::Layout layoutOf(const std::string& game) {
+    if (game == "diamond_nds" || game == "pearl_nds")
+        return G4::Layout::DiamondPearl;
+    if (game == "platinum_nds")
+        return G4::Layout::Platinum;
+    return G4::Layout::HeartGoldSoulSilver;
+}
+
+// Save path, as UI.cpp handleGen4View opens an assigned Gen IV source: openAssignedSource
+// (Gen4AssignedSource.cpp) tries every layout with the assigned game id, needs exactly one to
+// validate, and needs the assignment to match; then Gen4ReadOnlyTrainer::create. Box 1 slot 1
+// is read as Gen4SharedPokemonSurface.inc boxRecord does (the staged editor's copy when there
+// is one) and analyzed as drawLegality does.
+Actual runSave(const std::vector<uint8_t>& bytes, const std::string& game) {
+    Actual a;
+    const auto copy = bytes;
+    std::optional<G4::Gen4ReadOnlySave> save;
+    int layouts = 0;
+    for (G4::Layout layout : {G4::Layout::DiamondPearl, G4::Layout::Platinum, G4::Layout::HeartGoldSoulSilver}) {
+        auto candidate = G4::Gen4ReadOnlySave::parse(bytes, layout, game);
+        if (!candidate)
+            continue;
+        ++layouts;
+        save = std::move(candidate);
+    }
+    if (layouts > 1) {
+        a.parserError = "Multiple valid raw save layouts; source identity is ambiguous";
+        return a;
+    }
+    if (!save) {
+        a.parserError = "No validated Gen IV General/Storage layout";
+        return a;
+    }
+    if (save->assignmentStatus() != G4::AssignmentStatus::Match || save->layout() != layoutOf(game)) {
+        a.parserError = "Assigned game/family does not match the validated save; explicit reassignment required";
+        return a;
+    }
+    std::string error;
+    const auto trainer = PokeVault::Legacy::Gen4ReadOnlyTrainer::create(*save, game, error);
+    if (!trainer) {
+        a.parserError = error;
+        return a;
+    }
+    if (trainer->sourceGameId() != game)
+        a.problems.push_back("sourceGameId is " + trainer->sourceGameId());
+    std::optional<Pokemon::Pokemon4ReadOnly> record;
+    if (const auto* staged = trainer->stagedPokemon()) {
+        record = staged->boxedPokemon(0, 0, &error);
+    } else {
+        const auto& source = trainer->sourceSave().box(0, 0);
+        if (source.valid() && !source.empty())
+            record = source;
+        else
+            error = source.empty() ? "Selected Generation IV slot is empty"
+                                   : "Selected Generation IV PK4 failed strict validation";
+    }
+    const Pokemon::Pokemon* shown = trainer->boxes.empty() ? nullptr : trainer->boxes[0][0].get();
+    if (!record) {
+        a.parserError = error;
+        if (shown)
+            a.problems.push_back("the box shows a record the legality screen refuses");
+    } else {
+        if (!shown)
+            a.problems.push_back("box 1 slot 1 is empty in the box view");
+        const Pokemon::Pokemon4ReadOnlyView view(*record);
+        a.report = Legality::analyze(view, view.getGameGroup(), game);
+        a.outcome = fromReport(*a.report);
+        if (shown && !Gen5TestHelpers::sameReport(*a.report, Legality::analyze(*shown, shown->getGameGroup(), game)))
+            a.problems.push_back("the box view's Pokemon gives another report");
+        crossCheck(a, *record, game);
+    }
+    const auto src = trainer->sourceSave().sourceBytes();
+    if (!std::equal(src.begin(), src.end(), bytes.begin(), bytes.end()) || bytes != copy)
+        a.problems.push_back("save bytes changed");
+    return a;
+}
+
+void cases() {
+    using O = Outcome;
+    using L = G4::Layout;
+    const auto noEncounter = invalid("No matching Gen IV encounter for this species, level, location, ball and PID/IV");
+    const auto colosseumXD = warning("the Colosseum/XD encounter is not verified");
+    const auto mismatch = "Assigned game/family does not match the validated save; explicit reassignment required";
+    const auto metLocationBug = [](const std::string& note) {
+        Expect e = expect(Outcome::Invalid);
+        e.knownBug = Outcome::NoProblemsFound;
+        e.bugNote = note;
+        return e;
+    };
+
+    // Positive: each title's own record read from that title's save bytes.
+    // pokediamond arm9/src/map_header.c:20 picks d_enc_data or p_enc_data by GAME_VERSION, and
+    // :287 gives Eterna Forest narc_0008. files/fielddata/encountdata/d_enc_data/narc_0008.bin
+    // 0x74 and 0x78 (the night slots 2 and 3) hold 198 Murkrow; p_enc_data holds 200 Misdreavus
+    // there. Slot 2 (0x14) is L11. pokeplatinum src/overlay006/wild_encounters.c:182-191 swaps
+    // the night species into slots 2 and 3.
+    record("Diamond", "positive", "Murkrow L11, Eterna Forest, a Diamond-only night slot, from D/P save bytes",
+           expect(O::NoProblemsFound), runSave(save(L::DiamondPearl, fromHex(kDiamondMurkrow), 0), "diamond_nds"));
+    record("Diamond", "positive", "Dialga L47, Spear Pillar", expect(O::NoProblemsFound),
+           run(fromHex(kDiamondDialga), "diamond_nds"));
+    record("Pearl", "positive", "Misdreavus L11, Eterna Forest, a Pearl-only night slot, from D/P save bytes",
+           expect(O::NoProblemsFound), runSave(save(L::DiamondPearl, fromHex(kPearlMisdreavus), 0), "pearl_nds"));
+    record("Pearl", "positive", "Palkia L47, Spear Pillar", expect(O::NoProblemsFound),
+           run(fromHex(kPearlPalkia), "pearl_nds"));
+    // pokeplatinum res/field/scripts/scripts_distortion_world_giratina_room.s:69
+    // `StartGiratinaOriginBattle SPECIES_GIRATINA, 47`.
+    record("Platinum", "positive", "Giratina-Origin L47, Distortion World, from Platinum save bytes",
+           expect(O::NoProblemsFound),
+           runSave(save(L::Platinum, fromHex(kPlatinumGiratinaOrigin), kPlatinum), "platinum_nds"));
+    record("Platinum", "positive", "FireRed Bulbasaur brought in through Pal Park (met location 55)",
+           expect(O::NoProblemsFound), run(fromHex(kFireRedBulbasaurPalPark), "platinum_nds"));
+    // pokeheartgold files/fielddata/encountdata/gs_enc_data.json:512-532: Route 30 slot 0 is L2
+    // in HeartGold and L3 in SoulSilver; at night HeartGold has Spinarak there, and in the
+    // morning SoulSilver has Ledyba.
+    record("HeartGold", "positive", "Spinarak L2, Route 30, a HeartGold-only night slot, from HG/SS save bytes",
+           expect(O::NoProblemsFound),
+           runSave(save(L::HeartGoldSoulSilver, fromHex(kHeartGoldSpinarak), kHeartGold), "heartgold_nds"));
+    record("SoulSilver", "positive", "Ledyba L3, Route 30, a SoulSilver-only morning slot, from HG/SS save bytes",
+           expect(O::NoProblemsFound),
+           runSave(save(L::HeartGoldSoulSilver, fromHex(kSoulSilverLedyba), kSoulSilver), "soulsilver_nds"));
+
+    // Negative: one broken rule each, named in the report.
+    // pokeheartgold src/pokemon.c:1298-1307: only HG/SS write the second ball byte (0x86), and
+    // they write the Apricorn balls (17-24) there with a Poke Ball at 0x83.
+    record("Diamond", "negative", "Murkrow with a Level Ball in the HG/SS ball byte (0x86 = 18)",
+           expect(O::Invalid, {invalid("Ball (#18) is not possible for this encounter"),
+                               invalid("HG/SS ball value does not match the D/P/Pt ball value")}),
+           run(edited(kDiamondMurkrow, [](std::vector<uint8_t>& pk) { pk[kBallHGSS] = 18; }), "diamond_nds"));
+    record("Pearl", "negative", "Palkia with the fateful encounter flag set",
+           expect(O::Invalid, {invalid("Fateful encounter flag is set on a non-event encounter")}),
+           run(edited(kPearlPalkia, [](std::vector<uint8_t>& pk) { pk[kFlags] |= 0x01; }), "pearl_nds"));
+    record("Platinum", "negative", "the Pal Park Bulbasaur with met location 16",
+           expect(O::Invalid, {invalid("A Generation III Pokemon must have been met at Pal Park")}),
+           run(edited(kFireRedBulbasaurPalPark, [](std::vector<uint8_t>& pk) { setLe16(pk, kMetLocationDP, 16); }),
+               "platinum_nds"));
+    record("HeartGold", "negative", "Spinarak with a Great Ball at 0x83 and a Poke Ball at 0x86",
+           expect(O::Invalid, {invalid("HG/SS ball value does not match the D/P/Pt ball value")}),
+           run(edited(kHeartGoldSpinarak, [](std::vector<uint8_t>& pk) { pk[kBallDPPt] = 3; }), "heartgold_nds"));
+    record("SoulSilver", "negative", "Lugia with Shiny Leaf byte 32",
+           expect(O::Invalid, {invalid("Shiny Leaf value is not obtainable")}),
+           run(edited(kSoulSilverLugia, [](std::vector<uint8_t>& pk) { pk[kShinyLeaf] = 32; }), "soulsilver_nds"));
+
+    // Malformed: never "No problems found".
+    record("Diamond", "malformed", "D/P save whose box record fails its checksum (a Bad Egg)",
+           rejected("selected Gen IV PK4 failed strict validation"),
+           runSave(save(L::DiamondPearl, fromHex(kDiamondMurkrow), 0,
+                        [](std::vector<uint8_t>& record) { record[kSpecies] ^= 0x01; }),
+                   "diamond_nds"));
+    {
+        auto pk = fromHex(kDiamondMurkrow);
+        pk.pop_back();
+        Expect e = expect(O::Invalid, {invalid("PK4 record must be 136 or 236 bytes")});
+        e.structureNone = true;
+        record("Diamond", "malformed", "Murkrow record cut to 135 bytes (analyzePk4)", e, runPk4(pk, "diamond_nds"));
+    }
+    {
+        auto bytes = stored(fromHex(kPearlMisdreavus));
+        bytes[kSpecies] ^= 0x01;
+        record("Pearl", "malformed", "Misdreavus with one stored data bit flipped (a Bad Egg)",
+               expect(O::Incomplete), runStored(bytes, "pearl_nds", true));
+    }
+    record("Pearl", "malformed", "Misdreavus with species 494 (past the Gen IV National Dex)",
+           expect(O::Invalid, {invalid("Species #494 does not exist in Generation IV")}),
+           run(edited(kPearlMisdreavus, [](std::vector<uint8_t>& pk) { setLe16(pk, kSpecies, 494); }), "pearl_nds"));
+    record("Platinum", "malformed", "Rotom with origin game 0",
+           expect(O::Invalid, {invalid("Origin game #0 cannot produce a PK4 (not a Gen III or Gen IV game)")}),
+           run(withVersion(kPlatinumRotom, 0), "platinum_nds"));
+    {
+        auto pk = fromHex(kPlatinumRotom);
+        pk.push_back(0);
+        Expect e = expect(O::Invalid, {invalid("PK4 record must be 136 or 236 bytes")});
+        e.structureNone = true;
+        record("Platinum", "malformed", "Rotom record padded to 237 bytes (analyzePk4)", e, runPk4(pk, "platinum_nds"));
+    }
+    {
+        auto bytes = save(L::HeartGoldSoulSilver, fromHex(kHeartGoldSpinarak), kHeartGold);
+        bytes[specOf(L::HeartGoldSoulSilver).storageStart + 0x200] ^= 0x01;
+        record("HeartGold", "malformed", "HG/SS save whose Storage block fails its CRC",
+               rejected("No validated Gen IV General/Storage layout"), runSave(bytes, "heartgold_nds"));
+    }
+    record("SoulSilver", "malformed", "Ledyba with sanity word 4 (a Bad Egg)", expect(O::Incomplete),
+           run(edited(kSoulSilverLedyba, [](std::vector<uint8_t>& pk) { setLe16(pk, kSanity, 4); }), "soulsilver_nds",
+               true));
+
+    // Unknown: the history depends on data outside the record.
+    record("Diamond", "unknown", "Colosseum Umbreon brought in through Pal Park (origin game 15)",
+           expect(O::Incomplete, {colosseumXD}), run(fromHex(kColosseumUmbreon), "diamond_nds"));
+    record("Pearl", "unknown", "XD Eevee brought in through Pal Park (origin game 15)", expect(O::Incomplete, {colosseumXD}),
+           run(fromHex(kXDEevee), "pearl_nds"));
+    // pokeplatinum res/field/scripts/scripts_route_210_grandma_wilma_house.s:81-82 checks the
+    // party Pokemon's current type is Dragon (:103-106, :117 teach Draco Meteor). Arceus is a
+    // Dragon type only while it holds the Draco Plate, which the record cannot show.
+    record("Platinum", "unknown", "event Arceus that knows Draco Meteor (the Pt tutor needs a Dragon type)",
+           expect(O::Incomplete, {warning("Arceus can learn it only from the Pt/HG/SS tutor while holding a Draco Plate")}),
+           run(edited(kDiamondEventArceus, [](std::vector<uint8_t>& pk) { setLe16(pk, kMoves + 6, 434); }),
+               "platinum_nds"));
+    record("HeartGold", "unknown", "Colosseum Shadow Quilava brought in through Pal Park",
+           expect(O::Incomplete, {colosseumXD}), run(fromHex(kColosseumShadowQuilava), "heartgold_nds"));
+    record("SoulSilver", "unknown", "XD Shadow Ledyba brought in through Pal Park", expect(O::Incomplete, {colosseumXD}),
+           run(fromHex(kXDShadowLedyba), "soulsilver_nds"));
+
+    // Original game: the expected verdict follows from the pret disassemblies.
+    // d_enc_data/narc_0008.bin: Murkrow is in night slots 2 (L11) and 3 (L10) only; the L12
+    // slots 10 and 11 hold 267 Beautifly in Diamond and 269 Dustox in Pearl (p_enc_data).
+    record("Diamond", "original-game", "Murkrow met at L12 in Eterna Forest (Diamond night slots: L10-11)",
+           expect(O::Invalid, {noEncounter}), run(edited(kDiamondMurkrow, [](std::vector<uint8_t>& pk) {
+                                                      pk[kMetLevel] = 12;
+                                                      setLe32(pk, kExp, 1000);
+                                                  }),
+                                                  "diamond_nds"));
+    record("Pearl", "original-game", "Dustox L12, Eterna Forest (Pearl slots 10-11)", expect(O::NoProblemsFound),
+           run(fromHex(kPearlDustox), "pearl_nds"));
+    // pokeplatinum res/field/scripts/scripts_old_chateau_back_middle_west_room.s:24
+    // `StartWildBattle SPECIES_ROTOM, 20`.
+    record("Platinum", "original-game", "Rotom met at L15 in the Old Chateau (the script gives L20)",
+           expect(O::Invalid, {noEncounter}),
+           run(edited(kPlatinumRotom, [](std::vector<uint8_t>& pk) { pk[kMetLevel] = (pk[kMetLevel] & 0x80) | 15; }),
+               "platinum_nds"));
+    // pokeplatinum src/pokemon.c:1733-1739: the met-location setter writes the location into the
+    // Pt/HG/SS field (0x46) and 3002 (FATEFUL_ENCOUNTER_LOCATION, :59) into the D/P field (0x80)
+    // unless the location is one D/P know (src/unk_02017038.c:38-45: 1-111, 2000-2010,
+    // 3000-3076). Distortion World is 117 (res/text/location_names.json:473-474).
+    record("Platinum", "original-game", "Giratina-Origin whose D/P met-location field says 117 (the game writes 3002)",
+           metLocationBug("Platinum writes 3002 to the D/P met-location field for location 117; the engine "
+                          "(and PKHeX) accept 117 there"),
+           run(edited(kPlatinumGiratinaOrigin, [](std::vector<uint8_t>& pk) { setLe16(pk, kMetLocationDP, 117); }),
+               "platinum_nds"));
+    // pokeheartgold files/fielddata/script/scr_seq/scr_seq_0021_D17R0110.s:57-72: Ho-Oh is L45
+    // when the game version is HeartGold (7) and L70 otherwise; scr_seq_0104_D40R0107.s:69-84:
+    // Lugia is L70 in HeartGold and L45 otherwise.
+    record("HeartGold", "original-game", "Ho-Oh L45, Bell Tower (HeartGold gives L45, SoulSilver L70)",
+           expect(O::NoProblemsFound), run(fromHex(kHeartGoldHoOh), "heartgold_nds"));
+    record("HeartGold", "original-game", "Ho-Oh L45 with version SoulSilver, in a HeartGold save (SoulSilver gives L70)",
+           expect(O::Invalid, {noEncounter}), run(withVersion(kHeartGoldHoOh, kSoulSilver), "heartgold_nds"));
+    record("SoulSilver", "original-game", "Lugia L45, Whirl Islands (SoulSilver gives L45, HeartGold L70)",
+           expect(O::NoProblemsFound), run(fromHex(kSoulSilverLugia), "soulsilver_nds"));
+    record("SoulSilver", "original-game", "Lugia L45 with version HeartGold, in a SoulSilver save (HeartGold gives L70)",
+           expect(O::Invalid, {noEncounter}), run(withVersion(kSoulSilverLugia, kHeartGold), "soulsilver_nds"));
+    // pokeheartgold src/pokemon.c:1286-1292 writes METLOC_FARAWAY_PLACE (3002,
+    // include/constants/map_sections.h:258) to the D/P field unless
+    // LocationIsDiamondPearlCompatible (asm/unk_02017FAC.s:68-97: Twinleaf Town to Battle Park,
+    // the Day Care couple to Riley, Lovely Place to Concert Event). Route 30 is 178 (:182).
+    record("HeartGold", "original-game", "Spinarak whose D/P met-location field says Route 30 (the game writes 3002)",
+           metLocationBug("HeartGold writes 3002 to the D/P met-location field for Route 30; the engine "
+                          "(and PKHeX) accept 178 there"),
+           run(edited(kHeartGoldSpinarak, [](std::vector<uint8_t>& pk) { setLe16(pk, kMetLocationDP, 178); }),
+               "heartgold_nds"));
+    record("SoulSilver", "original-game", "Ledyba whose D/P met-location field says Route 30 (the game writes 3002)",
+           metLocationBug("SoulSilver writes 3002 to the D/P met-location field for Route 30; the engine "
+                          "(and PKHeX) accept 178 there"),
+           run(edited(kSoulSilverLedyba, [](std::vector<uint8_t>& pk) { setLe16(pk, kMetLocationDP, 178); }),
+               "soulsilver_nds"));
+
+    // Title-specific: the origin version in the record (0x5F) decides which game's encounters
+    // apply, and the save's personal table decides which forms exist.
+    record("Diamond", "title-specific", "the Diamond Murkrow with version Pearl (Pearl has Misdreavus there)",
+           expect(O::Invalid, {noEncounter}), run(withVersion(kDiamondMurkrow, kPearl), "diamond_nds"));
+    record("Diamond", "title-specific", "the Pearl Misdreavus traded into a Diamond save", expect(O::NoProblemsFound),
+           runSave(save(L::DiamondPearl, fromHex(kPearlMisdreavus), 0), "diamond_nds"));
+    // pokeplatinum include/constants/forms.h:87 ROTOM_FORM_WASH 2. pokediamond
+    // arm9/src/pokemon.c:3400-3413 ResolveMonForm: D/P have personal data for Deoxys and
+    // Wormadam forms only. pokeplatinum src/overlay005/ov5_021F6454.c:451-509 reverts Rotom and
+    // Giratina forms before the Union Room
+    // (res/field/scripts/scripts_pokemon_center_2f_common.s:409).
+    record("Diamond", "title-specific", "a Platinum Rotom-Wash (form 2) read in a Diamond save",
+           expect(O::Invalid, {invalid("Form 2 is out of range")}),
+           run(edited(kPlatinumRotom, [](std::vector<uint8_t>& pk) { pk[kFlags] |= 2 << 3; }), "diamond_nds"));
+    record("Pearl", "title-specific", "the Pearl Misdreavus with version Diamond (Diamond has Murkrow there)",
+           expect(O::Invalid, {noEncounter}), run(withVersion(kPearlMisdreavus, kDiamond), "pearl_nds"));
+    record("Pearl", "title-specific", "the Platinum Giratina-Origin read in a Pearl save",
+           expect(O::Invalid, {invalid("Form 1 is out of range")}), run(fromHex(kPlatinumGiratinaOrigin), "pearl_nds"));
+    record("Pearl", "title-specific", "D/P save bytes assigned to Platinum", rejected(mismatch),
+           runSave(save(L::DiamondPearl, fromHex(kPearlMisdreavus), 0), "platinum_nds"));
+    record("Platinum", "title-specific", "Rotom-Wash (form 2) from Platinum save bytes", expect(O::NoProblemsFound),
+           runSave(save(L::Platinum, edited(kPlatinumRotom, [](std::vector<uint8_t>& pk) { pk[kFlags] |= 2 << 3; }),
+                        kPlatinum),
+                   "platinum_nds"));
+    // pokeplatinum res/field/scripts/scripts_turnback_cave_giratina_room.s:35
+    // `StartLegendaryBattle SPECIES_GIRATINA, 47`; D/P give Giratina at L70 there (PKHeX
+    // Encounters4DPPt.cs:57 and :90).
+    record("Platinum", "title-specific", "the Turnback Cave Giratina L47 with version Diamond (D/P give L70)",
+           expect(O::Invalid, {noEncounter}), run(withVersion(kPlatinumGiratina, kDiamond), "platinum_nds"));
+    record("Platinum", "title-specific", "the HeartGold Spinarak traded into a Platinum save",
+           expect(O::NoProblemsFound),
+           runSave(save(L::Platinum, fromHex(kHeartGoldSpinarak), kPlatinum), "platinum_nds"));
+    record("HeartGold", "title-specific", "the HeartGold Spinarak L2 with version SoulSilver, in a HeartGold save",
+           expect(O::Invalid, {noEncounter}), run(withVersion(kHeartGoldSpinarak, kSoulSilver), "heartgold_nds"));
+    // pokeheartgold include/constants/balls.h:25-33: the Apricorn balls are 17-24 (Level Ball 18).
+    record("HeartGold", "title-specific", "Spinarak in a Level Ball (an HG/SS Apricorn Ball)",
+           expect(O::NoProblemsFound),
+           run(edited(kHeartGoldSpinarak, [](std::vector<uint8_t>& pk) { pk[kBallHGSS] = 18; }), "heartgold_nds"));
+    // pokeheartgold include/constants/map_sections.h:237: met location 233 is the Pokewalker.
+    record("HeartGold", "title-specific", "Pikachu L15 from the Pokewalker (met location 233)",
+           expect(O::NoProblemsFound), run(fromHex(kHeartGoldWalkerPikachu), "heartgold_nds"));
+    record("HeartGold", "title-specific", "SoulSilver save bytes (ROM code 8) assigned to HeartGold",
+           rejected(mismatch), runSave(save(L::HeartGoldSoulSilver, fromHex(kSoulSilverLedyba), kSoulSilver), "heartgold_nds"));
+    record("SoulSilver", "title-specific", "the SoulSilver Ledyba L3 with version HeartGold, in a SoulSilver save",
+           expect(O::Invalid, {noEncounter}), run(withVersion(kSoulSilverLedyba, kHeartGold), "soulsilver_nds"));
+    // pokeheartgold files/data/mushi/mushi_encount.csv:2: Caterpie L7-18 in the Bug-Catching
+    // Contest; src/pokemon.c:1298-1307 stores the Sport Ball as 24 at 0x86.
+    record("SoulSilver", "title-specific", "Caterpie in a Sport Ball, Bug-Catching Contest, National Park",
+           expect(O::NoProblemsFound), run(fromHex(kSoulSilverSportCaterpie), "soulsilver_nds"));
+    // pokeplatinum res/text/location_names.json ends at location 125 (:505): Platinum has no
+    // location 233.
+    record("SoulSilver", "title-specific", "the Pokewalker Pikachu with version Platinum (no Pokewalker in Pt)",
+           expect(O::Invalid, {noEncounter}), run(withVersion(kSoulSilverWalkerPikachu, kPlatinum), "soulsilver_nds"));
+    record("SoulSilver", "title-specific", "the Platinum Rotom traded into a SoulSilver save",
+           expect(O::NoProblemsFound),
+           runSave(save(L::HeartGoldSoulSilver, fromHex(kPlatinumRotom), kSoulSilver), "soulsilver_nds"));
+}
+
+}  // namespace gen4
+
 // ---------------------------------------------------------------- Gen V
 
 namespace gen5 {
@@ -1515,15 +2133,16 @@ int main(int argc, char** argv) {
     gen1::cases();
     gen2::cases();
     gen3::cases();
+    gen4::cases();
     gen5::cases();
 
-    std::printf("\nCases per title and kind:\n%-9s", "");
+    std::printf("\nCases per title and kind:\n%-10s", "");
     for (const char* kind : kKinds)
         std::printf(" | %-14s", kind);
     std::printf(" | total\n");
     for (const char* title : kTitles) {
         int total = 0;
-        std::printf("%-9s", title);
+        std::printf("%-10s", title);
         for (const char* kind : kKinds) {
             const int n = tally[title][kind];
             total += n;
@@ -1531,11 +2150,11 @@ int main(int argc, char** argv) {
         }
         std::printf(" | %d\n", total);
     }
-    std::printf("Gen IV titles (Diamond, Pearl, Platinum, HeartGold, SoulSilver): pending the Gen IV analyzer merge.\n");
     if (failureCount != 0) {
         std::printf("Title matrix: %d of %d cases FAILED\n", failureCount, caseCount);
         return EXIT_FAILURE;
     }
-    std::printf("Title matrix: %d cases PASS\n", caseCount);
+    std::printf("Title matrix: %d cases, %d PASS, %d known engine bug(s) (BUG rows)\n", caseCount,
+                caseCount - bugCount, bugCount);
     return EXIT_SUCCESS;
 }

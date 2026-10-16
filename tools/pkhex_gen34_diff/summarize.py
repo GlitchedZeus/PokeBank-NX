@@ -8,7 +8,9 @@ Record ids: b* base encounter, m*-<mutation> its mutations; grown corpus: g* gro
 record, h*-<mutation> its mutations, p* Pal Park transfer, q*-<mutation> its mutations.
 Prints verdict tables and catch/certification metrics per game and the top discrepancy
 categories. Exit status 1 when there is any false Invalid (PKHeX VALID, ours INVALID),
-false Valid (PKHeX INVALID, ours NOPROBLEMS) or LOADFAIL.
+false Valid (PKHeX INVALID, ours NOPROBLEMS) or LOADFAIL. A PKHeX-valid record that PokeBank NX
+calls Invalid only for a documented stricter rule (DELIBERATE below) is listed separately and
+counts as a false Invalid unless the rule's predicate holds on the record bytes.
 """
 import re
 import sys
@@ -50,6 +52,51 @@ with open(sys.argv[1]) as f:
                          issues=[i for i in allissues if not i.startswith("W: ")],
                          warnings=[i[3:] for i in allissues if i.startswith("W: ")]))
 
+def u16(hexdata, offset):
+    return int(hexdata[2 * offset + 2:2 * offset + 4] + hexdata[2 * offset:2 * offset + 2], 16)
+
+
+def met_location_fields(r):
+    """PKHEX_DISAGREEMENT_REVIEW.md item 14: Pt/HG/SS write both met-location fields through one
+    setter (a place D/P know goes into both, any other puts Faraway Place 3002 in the D/P field),
+    so a native non-egg PK4 whose two fields disagree was not written by any game. PKHeX does not
+    compare them; its mutations of the Pt/HG/SS field alone produce such records."""
+    h = r["hex"]
+    if r["cart"] not in ("D", "P", "Pt", "HG", "SS") or len(h) < 2 * 0x88:
+        return False
+    version = int(h[2 * 0x5F:2 * 0x5F + 2], 16)
+    egg_ext, ext, egg_dp, dp = u16(h, 0x44), u16(h, 0x46), u16(h, 0x7E), u16(h, 0x80)
+    if version in (1, 2, 3, 4, 5, 15) or ext == 0 or egg_dp or egg_ext:
+        return False
+    known = ext <= 111 or 2000 <= ext <= 2010 or 3000 <= ext <= 3076
+    pthgss_only = 112 <= ext <= 1999 or 2011 <= ext <= 2999
+    return (known or pthgss_only) and dp != (ext if known else 3002)
+
+
+# (name, our only Invalid issue after norm(), predicate over the record bytes)
+DELIBERATE = (
+    ("met-location-fields", "D/P met location field holds # where Pt/HG/SS write # for met location #",
+     met_location_fields),
+)
+
+
+def deliberate(r):
+    if r["p"] != "VALID" or r["ours"] != "INVALID" or not r["issues"]:
+        return None
+    for name, text, pred in DELIBERATE:
+        if all(norm(i) == text for i in r["issues"]) and pred(r):
+            return name
+    return None
+
+
+for r in rows:
+    r["deliberate"] = deliberate(r)
+
+
+def false_invalid_row(r):
+    return r["p"] == "VALID" and r["ours"] == "INVALID" and not r["deliberate"]
+
+
 print(f"{len(rows)} records")
 SUBSETS = [(lambda r: True, "all records")]
 for prefix, label in (("b", "base encounters only"), ("g", "grown records only"), ("p", "Pal Park transfers only")):
@@ -86,7 +133,7 @@ for g in GAMES + ["ALL"]:
         continue
     valid = [r for r in sel if r["p"] == "VALID"]
     invalid = [r for r in sel if r["p"] == "INVALID"]
-    fi = sum(r["ours"] == "INVALID" for r in valid)
+    fi = sum(false_invalid_row(r) for r in valid)
     fv = sum(r["ours"] == "NOPROBLEMS" for r in invalid)
     caught = sum(r["ours"] == "INVALID" for r in invalid)
     clean = sum(r["ours"] == "NOPROBLEMS" for r in valid)
@@ -107,7 +154,7 @@ for g in GAMES + ["ALL"]:
                 clean=len(clean), clean_certified=sum(r["ours"] == "NOPROBLEMS" for r in clean),
                 invalid=sum(r["p"] == "INVALID" for r in rs),
                 caught=sum(r["p"] == "INVALID" and r["ours"] == "INVALID" for r in rs),
-                false_invalid=sum(r["p"] == "VALID" and r["ours"] == "INVALID" for r in rs),
+                false_invalid=sum(false_invalid_row(r) for r in rs),
                 false_valid=sum(r["p"] == "INVALID" and r["ours"] == "NOPROBLEMS" for r in rs))
     print(f"{g:5} {m['valid']:>11} {m['certified']:>10} {pct(m['certified'], m['valid']):>7} {m['clean']:>7} "
           f"{pct(m['clean_certified'], m['clean']):>11} {m['invalid']:>10} "
@@ -134,9 +181,11 @@ def report(title, selected, keyfn):
         print(f"   hex: {ex['hex']}")
 
 
-false_invalid = [r for r in rows if r["p"] == "VALID" and r["ours"] == "INVALID"]
+false_invalid = [r for r in rows if false_invalid_row(r)]
 report("FALSE INVALID (PKHeX VALID, ours Invalid) by our issue", false_invalid,
        lambda r: sorted({norm(i) for i in r["issues"]}))
+report("DELIBERATELY STRICTER (PKHeX VALID, ours Invalid by a documented rule; predicate checked)",
+       [r for r in rows if r["deliberate"]], lambda r: [r["deliberate"]])
 false_valid = [r for r in rows if r["p"] == "INVALID" and r["ours"] == "NOPROBLEMS"]
 report("FALSE VALID (PKHeX INVALID, ours NoProblemsFound) by PKHeX code", false_valid,
        lambda r: sorted({c.split(":")[0] + ":" + c.split(":")[1] for c in r["codes"].split() if not c.startswith("~")}
