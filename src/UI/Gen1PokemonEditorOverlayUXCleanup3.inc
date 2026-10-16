@@ -1,4 +1,9 @@
+// The composite TU includes this file with drawFooter renamed; keep the shared chrome
+// header's own drawFooter intact so later surfaces still find it.
+#pragma push_macro("drawFooter")
+#undef drawFooter
 #include "UI/SharedEditorChrome.h"
+#pragma pop_macro("drawFooter")
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
