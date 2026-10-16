@@ -60,12 +60,15 @@ Each new test fails against the previous code unless marked "pinning".
 | 1/5 | Gen I list editors: whole rows above status line; no Row x/y counters | 9d1d03f9 | `test_gen1_list_fit` |
 | 2 | Bag Remove asks first (Y/B); one per-item quantity query | 3dcce1fd | `test_classic_inventory_ui_model` |
 | 4/7 | "Origin & Legality" label; shared picker footers (pickerFooter); shared Pokerus rule | 4203ce0d + 6e900e27 (native fix) | `test_gen2_inline_fields`, route contracts |
+| 1 | Gen I/II moves on the shared Moves panel (UI/ClassicMovesPanel.h); native max PP; touch == outlined rows; legality row in DATA | ddd52f55, c7355c57 | `test_gen2_moves_panel` |
+| 5 | Gen I/II Actions sheet forwards to S's NarrowPokemonMenu::classic/gen1 | 5d9dc8e5 | `test_classic_pokemon_action_menu` |
 
 Note: 4203ce0d alone fails the native build (SharedEditorChrome.h first included under the composite's
 `drawFooter` rename); 6e900e27 fixes it with push/pop_macro.
 
-Remaining: item 1 QuantityPolicy (waiting on Makefile link permission); phase 1 Gen I/II moves on
-SharedMovesPanel; item 5 action menu adapter (S 41271d7); item 6 SharedDataPane::layoutRows (S 9c3f6f8);
+Remaining: item 1 QuantityPolicy (waiting on Makefile link permission); Gen I/II move chooser rows on
+SharedMovesPanel (waiting on S: SharedMoveFacts has no Gen I/II move types, panel detail shows "???");
+item 6 SharedDataPane::layoutRows (S 9c3f6f8 not yet in #307);
 owner detail on the "hidden row" in Gen I Create.
 
 Open / reported:
