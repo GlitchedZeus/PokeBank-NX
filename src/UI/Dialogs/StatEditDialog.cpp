@@ -4,6 +4,8 @@
 #include "UI/Dialogs/DialogFrame.h"
 #include "UI/Dialogs/EditControls.h"   // shared step buttons + A/B choice buttons
 #include "UI/TrainerViewScreen.h"
+#include "UI/ClassicGenericUiGuard.h"
+#include "UI/SharedEditorChrome.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
 #include "Trainer/Trainer.h"
@@ -18,6 +20,11 @@ namespace Dialogs {
         // Resolve the Pokemon being edited (party / box / bank).
         const Pokemon::Pokemon* pokemon = screen.detailsTargetPokemon();
         if (!pokemon) return;
+        // Gen I-V: the dialog owns the touch layer and draws its own footer. Gen VI+ keeps its
+        // original presentation.
+        const bool classicSessionDialog =
+            PokeBank::UIModel::ClassicGenericUi::classicSession(screen.sourceGameId);
+        if (classicSessionDialog) SharedEditorChrome::beginModal(screen.touchButtons);
 
         // Let's Go uses Awakening Values (AVs) instead of EVs (EVs are inert in that game),
         // so the second editable stat is AV for LGPE Pokemon and EV for everything else.
@@ -83,6 +90,7 @@ namespace Dialogs {
         const int cbw = 190;
         drawEditChoiceButton(screen, fb, x + 24, cby, cbw, cbh, "B", "Cancel", 0);
         drawEditChoiceButton(screen, fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Save", 1);
+        if (classicSessionDialog) drawNavBar(fb, {{"B", "Cancel"}, {"A", "Save"}});
     }
 }
 }

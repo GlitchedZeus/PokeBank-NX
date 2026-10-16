@@ -152,7 +152,7 @@ int main() {
     assert(actionsDraw.find("drawNarrowPokemonActions(fb, screen.touchButtons") != std::string::npos);
     const auto narrow = readFile("include/UI/NarrowPokemonActionMenu.h");
     assert(narrow.find("int width = 440") != std::string::npos);
-    assert(narrow.find("Add to Master Vault") != std::string::npos);
+    assert(narrow.find("onlySharedLabels(classic(") != std::string::npos); // no placeholder rows (Master Vault, Make Shiny)
     assert(actionsDraw.find("fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2)") == std::string::npos);
     // The composite wrapper must not paint the legacy staged-editor Accent shell first.
     const auto ownsFrame = parity.substr(parity.find("bool finalGen2SurfaceOwnsFrame"),

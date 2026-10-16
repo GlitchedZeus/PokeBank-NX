@@ -12,6 +12,8 @@
 #include "UI/SpriteManager.h"
 #include "UI/ScreenChrome.h" // drawGlyphButton -- on-button controller glyphs
 #include "UI/Dialogs/DialogFrame.h"
+#include "UI/ClassicGenericUiGuard.h"
+#include "UI/SharedEditorChrome.h"
 #include "Names/FormNames.h" // getDisplayName -- variant prefix ("Alolan Raichu", etc.)
 #include "Trainer/Trainer.h"
 #include "Trainer/Bank.h"
@@ -594,6 +596,11 @@ namespace UI
         {
             constexpr int w = 580, h = 300;
             int x = 0, y = 0;
+            // Gen I-V (an FRLG backup session can place Bank Pokémon): the confirm owns the touch
+            // layer and draws its own footer. Gen VI+ keeps its original presentation.
+            const bool classicSessionPrompt =
+                PokeBank::UIModel::ClassicGenericUi::classicSession(screen.sourceGameId);
+            if (classicSessionPrompt) SharedEditorChrome::beginModal(screen.touchButtons);
             int cy = beginMoveConfirm(fb, "Convert to Gen 3?", Colors::Warning, x, y, w, h);
             fb.drawText(x + 28, cy, "Gen 3 has no nature field, so the PID is", Colors::Text);
             fb.drawText(x + 28, cy + 28, "regenerated to preserve it — the result", Colors::Text);
@@ -601,6 +608,7 @@ namespace UI
             fb.drawText(x + 28, cy + 84, "and held item are dropped. Can't be undone.", Colors::Text);
             fb.drawText(x + 28, cy + 124, "Not recommended. Continue anyway?", Colors::TextDim, TextStyle::Caption);
             endMoveConfirm(screen, fb, x, y, w, h);
+            if (classicSessionPrompt) drawNavBar(fb, {{"B", "Cancel"}, {"A", "Continue"}});
         }
 
         // Let's Go. Stat training is reset, which the player can earn back -- so this one obeys the
@@ -609,12 +617,18 @@ namespace UI
         {
             constexpr int w = 580, h = 300;
             int x = 0, y = 0;
+            // Gen I-V (an FRLG backup session can place Bank Pokémon): the confirm owns the touch
+            // layer and draws its own footer. Gen VI+ keeps its original presentation.
+            const bool classicSessionPrompt =
+                PokeBank::UIModel::ClassicGenericUi::classicSession(screen.sourceGameId);
+            if (classicSessionPrompt) SharedEditorChrome::beginModal(screen.touchButtons);
             int cy = beginMoveConfirm(fb, "Let's Go transfer", Colors::Primary, x, y, w, h);
             fb.drawText(x + 28, cy, "Moving to/from Let's Go resets AVs/EVs", Colors::Text);
             fb.drawText(x + 28, cy + 28, "to 0, removes held items, and drops any", Colors::Text);
             fb.drawText(x + 28, cy + 56, "move it can't legally learn.", Colors::Text);
             fb.drawText(x + 28, cy + 96, "Continue with this transfer?", Colors::TextDim, TextStyle::Caption);
             endMoveConfirm(screen, fb, x, y, w, h);
+            if (classicSessionPrompt) drawNavBar(fb, {{"B", "Cancel"}, {"A", "Continue"}});
         }
 
         void drawStorageExitConfirm(TrainerViewScreen &screen, PKSEFramebuffer &fb)
@@ -622,7 +636,14 @@ namespace UI
             // The bank has unsaved changes; ask before leaving (HOME-style). Bank saving is separate
             // from the game (X) save, so this is the bank's own persistence decision.
             static const char *const items[] = {"Save & Exit", "Discard changes", "Cancel"};
+            // Gen I-V: the prompt owns the touch layer (the covered Bank footer is not tappable)
+            // and draws its own footer. Gen VI+ keeps its original presentation.
+            const bool classicSessionPrompt =
+                PokeBank::UIModel::ClassicGenericUi::classicSession(screen.sourceGameId);
+            if (classicSessionPrompt) SharedEditorChrome::beginModal(screen.touchButtons);
             drawPopupMenu(screen, fb, "Save bank changes?", items, 3, screen.storageExitConfirmIndex);
+            if (classicSessionPrompt)
+                drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Confirm"}, {"B", "Stay"}});
         }
     }
 }

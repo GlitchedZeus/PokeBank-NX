@@ -46,10 +46,19 @@ Base: #307 application branch `claude/gen5-integration-20261014`. It was merged 
 - **Phase 12:** one editable field set for Gen III–V, plus Gen III Unown letter editing (`Pokemon3FRLG::setUnownLetter`).
 - **Gen I/II for Thread C:** move types come from pinned pret `moves.asm`, and max PP follows the native rule (40 PP + 3 Ups = 61).
 
+- **QA cross-gen contracts (candidate mode), Thread S share:**
+  - CG01: the `NarrowPokemonActionMenu.h` static_asserts now check that every row is a shared command (`onlySharedLabels`), with no placeholder literal.
+  - CG03: Gen III–V legality copy reads "Origin & Legality: not checked / incomplete" or "Legality"; no "encounter legality" wording.
+  - CG04: the Gen III raw location table carries player-facing names (`tools/gen_locations.py` `GEN3_DISPLAY`: Safari Zone / Victory Road / Altering Cave get a region suffix, Navel Rock / Birth Island none). `LocationDisplayNames.h` only adds what needs the origin game (58, 196, 253–255, "(unused)").
+  - CG05: Gen III/IV/V action menus use `SharedEditorChrome::drawPickerFooter`.
+  - CG08: the Gen III/IV Discard All and Release confirms, the Gen IV item remove confirm and the Gen V decision dialog own the touch layer and draw their own footer. The base-reached SaveConfirm, ItemEdit, StatEdit, Bank exit and the Bank Gen 3 convert / Let's Go confirms do the same in Gen I–V sessions only (guarded by `classicSession`, so Gen VI+ is unchanged).
+  - CG09: `gen4QuantityRule` resolves the exact game through `QuantityPolicy::gameFromId`.
+  - Left for other lanes: `ActionSheetModel.h` (Gen VI+ sheet, unreachable from Gen I–V per CG11), `PickerDialog.cpp` (same), `PokemonDetailsDispatcher.cpp` (a router: Gen I presenter is Thread C's, Modern is Gen VI+), the Gen1/Gen2/GSC/Classic sites (Thread C), `ClassicInventoryOverlay.cpp` (C/I).
+
 ## Not done / blocked
 
 - **Gen III bag** lives in `src/UI/ClassicInventoryOverlay.cpp` (Thread C's Classic* scope). Non-key items are removed with no confirmation, and `ClassicInventoryCatalog::quantityRule` caps at 99, which is wrong for FRLG / RSE PC and Berries at 999. This was reported to the coordinator.
-- `include/UI/ActionSheetModel.h:57` still says "Legality & Provenance". It is the generic Gen VI+ action sheet, outside this lane, so it was routed to the coordinator.
+- `include/UI/ActionSheetModel.h` still says "Make Shiny" / "Legality & Provenance". It is the generic Gen VI+ action sheet, unreachable from Gen I–V (CG11), so QA was asked to scope it out.
 - **Gen III surface** is still its own implementation (it is not on `SharedPokemonEditorSurface.inc`). It now draws every shared component, but a full port onto the shared template is the next big consolidation step.
 - **Gen III Party editing:** `Gen3StagedPokemonEditor` stages box records only, so Party is View-only for now. Party staging (100-byte PK3 party records with battle stats) would be a new backend feature.
 - **Gen IV-format Bank records** in a Gen IV session are refused. The Gen IV View reads the native PK4 source view, not a Bank record.

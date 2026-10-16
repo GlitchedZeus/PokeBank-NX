@@ -424,8 +424,29 @@ static void testRealSourcesUseSharedUnit() {
     for (std::size_t at = base.find("GenericUi::Picker)) return;"); at != std::string::npos;
          at = base.find("GenericUi::Picker)) return;", at + 1)) ++pickerGuards;
     require(creatorGuards == 2 && pickerGuards == 2, "generic creator / item picker opens are guarded");
-    require(base.find("SharedEditorChrome::beginModal(touchButtons);\n            Dialogs::drawSaveConfirmDialog(*this, fb);") != std::string::npos,
-            "exit save dialog owns the touch layer in Gen I-V");
+    // CG08: base-reached modals own the touch layer and draw their own footer in Gen I-V,
+    // guarded so Gen VI+ keeps its presentation.
+    for (const char* path : {"src/UI/Dialogs/SaveConfirmDialog.cpp", "src/UI/Dialogs/ItemEditDialog.cpp",
+                             "src/UI/Dialogs/StatEditDialog.cpp", "src/UI/Panels/StoragePanel.cpp"}) {
+        const std::string text = read(path);
+        require(text.find("ClassicGenericUi::classicSession(screen.sourceGameId)") != std::string::npos &&
+                text.find("SharedEditorChrome::beginModal(screen.touchButtons);") != std::string::npos,
+                std::string("Gen I-V modal owns the touch layer: ") + path);
+    }
+    require(read("src/UI/Dialogs/SaveConfirmDialog.cpp").find(
+                "SharedEditorChrome::drawFooter(fb, classicSaveConfirmFooter(screen));") != std::string::npos,
+            "exit save dialog draws its own Gen I-V footer");
+    for (const auto* text : {&gen3, &gen4}) {
+        require(text->find("void drawDiscardAllConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const char* generation) {\n"
+                           "    SharedEditorChrome::beginModal(screen.touchButtons);") != std::string::npos,
+                "Discard All confirm owns the touch layer");
+        require(text->find("{\"A\", \"Select\"}") == std::string::npos, "action menus use the shared footer");
+    }
+    require(gen5.find("dimShared(screen,fb);\n    // The decision owns the frame's touch; the covered hub's footer is never tappable.\n"
+                      "    SharedEditorChrome::beginModal(screen.touchButtons);") != std::string::npos,
+            "Gen V decision owns the touch layer");
+    require(gen4.find("PokeVault::Inventory::QuantityPolicy::gameFromId(screen.sourceGameId, game)") != std::string::npos,
+            "Gen IV bag quantity resolves the exact game through QuantityPolicy");
     require(species.find("commits to draft") == std::string::npos &&
             species.find("restores previous committed") == std::string::npos, "species picker has no developer copy");
     require(read("include/UI/SharedPokemonShell.h").find("\"Rows \"") == std::string::npos, "shell row counter removed");

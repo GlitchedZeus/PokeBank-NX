@@ -39,7 +39,7 @@ int main() {
                          "        QP::Pocket::Medicine, QP::Pocket::Berries, QP::Pocket::Balls, QP::Pocket::BattleItems}};")
            != std::string::npos);
     // One query for the surface (A / Add) and the Base Items footer (A shown only if editable).
-    assert(gen4.find("PokeBank::UIModel::Gen4BagQuantity::rule(screen.sourceGameId, pocket, id)") != std::string::npos);
+    assert(gen4.find("PokeBank::UIModel::Gen4BagQuantity::rule(game, pocket, id)") != std::string::npos);
     assert(base.find("PokeBank::UIModel::Gen4BagQuantity::rule(") != std::string::npos);
     assert(base.find("instructions += \"  |  A: Edit Quantity  |  Y: Remove...\";") == std::string::npos);
     assert(gen5.find("QP::Pocket::Items, QP::Pocket::KeyItems, QP::Pocket::TMHM, QP::Pocket::Medicine,\n"

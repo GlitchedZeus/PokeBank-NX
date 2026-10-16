@@ -5305,33 +5305,9 @@ namespace UI {
             Dialogs::drawStatEditDialog(*this, fb);
         }
         if (saveConfirmActive) {
-            const bool classicSessionDialog =
-                PokeBank::UIModel::ClassicGenericUi::classicSession(sourceGameId);
-            // Gen I-V: the dialog owns the frame (the screen footer drawn above stops being
-            // tappable) and draws the shared confirm footer naming exactly what each button
-            // does. Semantics are unchanged; Gen VI+ keeps its original presentation.
-            if (classicSessionDialog) SharedEditorChrome::beginModal(touchButtons);
+            // Gen I-V: the dialog owns the touch layer and draws its own footer
+            // (Dialogs/SaveConfirmDialog.cpp). Gen VI+ keeps its original presentation.
             Dialogs::drawSaveConfirmDialog(*this, fb);
-            if (classicSessionDialog) {
-                namespace Presentation = PokeBank::UIModel::SharedEditorPresentation;
-                Presentation::Footer footer;
-                if (exitingWithUnsavedChanges && itemsShortcutActive) {
-                    footer.push("B", "Keep Editing");
-                    if (!sourceReadOnly()) {
-                        footer.push("Y", "Discard & Home");
-                        footer.push("A", "Save Working Copy & Home");
-                    } else {
-                        footer.push("A", "Discard & Home");
-                    }
-                } else if (exitingWithUnsavedChanges) {
-                    footer.push("B", "Keep Editing");
-                    footer.push("A", "Discard & Exit");
-                } else {
-                    footer.push("B", "Cancel");
-                    footer.push("A", "Save Changes");
-                }
-                SharedEditorChrome::drawFooter(fb, footer);
-            }
         }
         if (actionSheet.isOpen()) {
             Panels::drawPokemonActionSheet(*this, fb);

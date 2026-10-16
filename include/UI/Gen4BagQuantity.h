@@ -19,19 +19,25 @@ namespace PokeBank::UIModel::Gen4BagQuantity {
 
 struct Rule { bool valid = false; bool editable = false; uint16_t maximum = 0; };
 
-inline Rule rule(std::string_view sourceGameId, std::size_t pocket, uint16_t id) noexcept {
+inline Rule rule(PokeVault::Inventory::QuantityPolicy::Game game, std::size_t pocket,
+                 uint16_t id) noexcept {
     namespace QP = PokeVault::Inventory::QuantityPolicy;
     namespace Gen4 = PokeVault::Integration::Gen4;
     static constexpr std::array<QP::Pocket, Gen4::BagPocketCount> kPockets{{
         QP::Pocket::Items, QP::Pocket::KeyItems, QP::Pocket::TMHM, QP::Pocket::Mail,
         QP::Pocket::Medicine, QP::Pocket::Berries, QP::Pocket::Balls, QP::Pocket::BattleItems}};
-    QP::Game game{};
-    if (pocket >= kPockets.size() || !QP::gameFromId(sourceGameId, game)) return {};
+    if (pocket >= kPockets.size() || QP::generation(game) != 4) return {};
     const auto r = QP::quantityRule(game, kPockets[pocket], id);
     const uint16_t nativeCap = Gen4::gen4BagMaxQuantity(pocket, id);
     if (!r.valid || nativeCap == 0) return {};
     const uint16_t maximum = std::min(r.maximum, nativeCap);
     return {true, r.editable && maximum > 1, maximum};
+}
+
+inline Rule rule(std::string_view sourceGameId, std::size_t pocket, uint16_t id) noexcept {
+    PokeVault::Inventory::QuantityPolicy::Game game{};
+    if (!PokeVault::Inventory::QuantityPolicy::gameFromId(sourceGameId, game)) return {};
+    return rule(game, pocket, id);
 }
 
 } // namespace PokeBank::UIModel::Gen4BagQuantity
