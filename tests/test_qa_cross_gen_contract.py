@@ -27,14 +27,7 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 # Contract id -> owning lane, while the fix is not yet on the integration branch.
 # Remove an entry when its contract XPASSes; it is then ENFORCED.
 XFAIL = {
-    "CG01-no-make-shiny-quick-action": "S (Gen III-V) + C (Gen I/II)",
-    "CG02-no-row-counters": "S (shared shell) + C (Gen I)",
-    "CG03-origin-legality-heading": "S + C",
-    "CG04-no-developer-wording": "S + C (+ Names for '(RSE)')",
-    "CG05-picker-footer-helper": "S (SharedEditorChrome drawPickerFooter adoption)",
-    "CG08-modal-footer-and-touch-layer": "S + C (editor modals); 2R (Home, done)",
-    "CG09-item-quantity-policy": "I + C (QuantityPolicy adoption)",
-    "CG11-no-generic-modern-ui-in-gen1-5": "S (generic sheet unreachable from Gen I-V)",
+    "CG08-modal-footer-and-touch-layer": "C (Gen2PokemonDetailsModal beginModal)",
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational
@@ -69,6 +62,9 @@ PICKER_FOOTER_HELPER_FILE = re.compile(r"include/UI/SharedEditor(Presentation|Ch
 QUANTITY_POLICY_SYMBOL = "QuantityPolicy"
 QUANTITY_POLICY_USE = re.compile(r"\bQuantityPolicy\b|\bQuantityPolicy::quantityRule\s*\(|\bmayAddItem\s*\(")
 # Per-format wrappers are accepted only where their own definition calls QuantityPolicy.
+STRICT_LAYER_RX = re.compile(r"\bbeginTopTouchLayer\s*\(|\bbeginModal\s*\(")
+
+
 def wrapper_call(name: str) -> str:
     """A call to the wrapper itself: unqualified or qualified by its own namespace, never through another
     alias (QP::quantityRule is the shared policy's own function, not ClassicInventoryCatalog's)."""
@@ -392,8 +388,25 @@ def contracts(sources: list[Source]) -> list[Result]:
         for name, ln, body in function_bodies(s.code, modal_rx):
             # A router draws no pixel itself and only delegates to presenters, each checked on its own
             # (S e86741c: PokemonDetailsDispatcher -> Gen1/Gen2/Modern details modals).
+            # It passes only through its Gen I-V presenters (coordinator, 2026-10-16): each must draw its
+            # own footer AND open a real top touch layer (beginModal / beginTopTouchLayer; clearing
+            # screen touchButtons alone leaves the covered glyph hits live). Modern* is Gen VI+.
             if not re.search(r"\bfb\s*\.\s*\w+\s*\(|\bdim\w*\s*\(", body) and \
-                    re.search(r"\bdraw\w+\s*\(", body) and not footer_rx.search(body) and not layer_rx.search(body):
+                    re.findall(r"\b(draw\w+)\s*\(", body) and \
+                    all(modal_rx.search(t) for t in re.findall(r"\b(draw\w+)\s*\(", body)) and \
+                    not footer_rx.search(body) and not layer_rx.search(body):
+                for target in dedupe(re.findall(r"\b(draw\w+)\s*\(", body)):
+                    if "Modern" in target:
+                        continue
+                    defs = [(c.rel, b) for c in U for _, _, b in function_bodies(c.code, re.compile("^" + re.escape(target) + "$"))]
+                    if not defs:
+                        r.violations.append(f"{s.rel}:{ln}: {name}() routes to {target}(), which is not defined")
+                    for drel, dbody in defs:
+                        if not footer_rx.search(dbody):
+                            r.violations.append(f"{s.rel}:{ln}: {name}() routes to {target}() ({drel}), which draws no footer")
+                        if not STRICT_LAYER_RX.search(dbody):
+                            r.violations.append(f"{s.rel}:{ln}: {name}() routes to {target}() ({drel}), which opens no "
+                                                "beginModal / beginTopTouchLayer")
                 continue
             if not footer_rx.search(body) and not every_caller(name, s.rel, ln, 0, 30, footer_rx):
                 r.violations.append(f"{s.rel}:{ln}: {name}() draws no footer of its own")
