@@ -4,8 +4,9 @@
 Input lines (tab-joined): <oracle line>\t<driver line>
   oracle: <id> <cart> <hex> VALID|INVALID <enc>:<species> ; <code> ...
   driver: <id> INVALID|NOPROBLEMS|INCOMPLETE|LOADFAIL <coverage> ; <issue> | <issue> ...
-Prints verdict tables per game and the top discrepancy categories.
-Exit status 1 when there is any false Invalid (PKHeX VALID, ours INVALID) or LOADFAIL.
+Prints verdict tables and rates per game and the top discrepancy categories.
+Exit status 1 when there is any false Invalid (PKHeX VALID, ours INVALID), any false
+Valid (PKHeX INVALID, ours NOPROBLEMS) or any LOADFAIL.
 """
 import re
 import sys
@@ -63,6 +64,26 @@ for subset, label in ((lambda r: True, "all records"), (lambda r: r["id"].starts
         print(f"{'ALL':5} {p:8} " + " ".join(f"{tot[p][v]:>10}" for v in VERDICTS))
 
 
+def pct(n, d):
+    return f"{100.0 * n / d:6.2f}%" if d else "     -"
+
+
+print("\n== Per-game rates (PKHeX-invalid caught as Invalid; PKHeX-valid with No problems found) ==")
+print(f"{'game':5} {'falseInvalid':>12} {'falseValid':>10} {'caught':>15} {'rate':>7} {'noProblems':>15} {'rate':>7}")
+for g in GAMES + ["ALL"]:
+    sel = [r for r in rows if g == "ALL" or r["cart"] == g]
+    if not sel:
+        continue
+    valid = [r for r in sel if r["p"] == "VALID"]
+    invalid = [r for r in sel if r["p"] == "INVALID"]
+    fi = sum(r["ours"] == "INVALID" for r in valid)
+    fv = sum(r["ours"] == "NOPROBLEMS" for r in invalid)
+    caught = sum(r["ours"] == "INVALID" for r in invalid)
+    clean = sum(r["ours"] == "NOPROBLEMS" for r in valid)
+    print(f"{g:5} {fi:>12} {fv:>10} {f'{caught}/{len(invalid)}':>15} {pct(caught, len(invalid)):>7} "
+          f"{f'{clean}/{len(valid)}':>15} {pct(clean, len(valid)):>7}")
+
+
 def report(title, selected, keyfn):
     print(f"\n== {title}: {len(selected)} records ==")
     cats = defaultdict(list)
@@ -97,4 +118,4 @@ for k, n in valid_incomplete.most_common(SHOW):
 loadfail = [r for r in rows if r["ours"] == "LOADFAIL"]
 if loadfail:
     report("LOADFAIL (C++ side could not load)", loadfail, lambda r: [norm(" ".join(r["issues"]))])
-sys.exit(1 if false_invalid or loadfail else 0)
+sys.exit(1 if false_invalid or false_valid or loadfail else 0)
