@@ -167,3 +167,17 @@ $(HOST_BUILD)/test_gen2_inline_fields: $(GEN2_INLINE_FIELDS_SOURCES) $(GEN2_INLI
 $(HOST_BUILD)/test_gen2_inline_fields_sanitize: $(GEN2_INLINE_FIELDS_SOURCES) $(GEN2_INLINE_FIELDS_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_INLINE_FIELDS_SOURCES) -o $@
+
+# Crystal Met Location chooser (owner campaign phase 11).
+GEN2_LOCATION_PICKER_SOURCES := tests/test_gen2_location_picker.cpp $(GEN2_STAGED_EDITOR_COMMON)
+GEN2_LOCATION_PICKER_DEPS := include/UI/Gen2PokemonPickerModel.h src/UI/Gen2PokemonPickerOverlay.inc
+HOST_TESTS += $(HOST_BUILD)/test_gen2_location_picker
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_location_picker_sanitize
+host-test: $(HOST_BUILD)/test_gen2_location_picker
+host-sanitize: $(HOST_BUILD)/test_gen2_location_picker_sanitize
+$(HOST_BUILD)/test_gen2_location_picker: $(GEN2_LOCATION_PICKER_SOURCES) $(GEN2_LOCATION_PICKER_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN2_LOCATION_PICKER_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_location_picker_sanitize: $(GEN2_LOCATION_PICKER_SOURCES) $(GEN2_LOCATION_PICKER_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_LOCATION_PICKER_SOURCES) -o $@

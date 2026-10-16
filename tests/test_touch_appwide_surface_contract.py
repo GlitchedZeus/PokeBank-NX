@@ -426,12 +426,12 @@ require_all("src/UI/Gen2PokemonPickerOverlay.inc",
             "appendClippedTouchButton(",
             "x + 20, listY - 5, panelW - 40, visible * rowStep + 8",
             "TouchPickerViewport locationViewport;",
-            "picker.locationViewport.ensure(picker.model.index, pickerCount, visible);",
+            "picker.locationViewport.ensure(picker.model.index, pickerCount, g.visible);",
             "picker.locationViewport.firstRow, maxFirst + 1",
-            "const int first = location ? overlay.locationViewport.firstRow :",
+            "const int first = overlay.locationViewport.firstRow;",
             "picker.locationViewport.reveal(picker.model.index, pickerCount, visible);",
             "!picker.locationViewport.containsSelection(",
-            "Focused encounter brought into view; press A again or tap a visible row")
+            "Location brought into view; press A again or tap it")
 picker_hit = read("src/UI/Gen2PokemonPickerOverlay.inc")
 assert "screen.touchButtons.push_back({2000 + i" not in picker_hit, (
     "Gen II picker should not publish unclipped hitboxes for hidden rows"
