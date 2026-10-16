@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -11,7 +12,10 @@
 // then every frame with a new button edge, and every exit / open / dispatch decision, is
 // appended as one line to a bounded log the owner can copy off the SD card:
 //
-//   F=<frame> S=<screen> RAW=<pressed> HELD=<held> LOGICAL=<post-navigation> ST=<state>
+//   F=<frame> S=<screen> RAW=<pressed> HELD=<held> LOGICAL=<post-navigation> ST=<state> T=<ms>
+//
+//   T is milliseconds since the trace started, so frame pacing and hold-repeat timing on
+//   hardware can be read straight off consecutive lines.
 //   E=<frame> S=<screen> EVENT=<origin> <detail>
 //
 // Each line is flushed immediately so a crash or abort keeps everything before it. Only button
@@ -62,6 +66,7 @@ public:
         logPath_ = logPath;
         maxLines_ = maxLines == 0 ? 1 : maxLines;
         lines_ = 0;
+        startMs_ = nowMs();
         if (enabled_) open("w");
     }
     [[nodiscard]] bool enabled() const noexcept { return enabled_; }
@@ -75,7 +80,8 @@ public:
         if (!enabled_ || (pressed == 0 && logical == 0)) return;
         write("F=" + std::to_string(frame_) + " S=" + sanitizeTag(screen) +
               " RAW=" + buttonNames(pressed) + " HELD=" + buttonNames(held) +
-              " LOGICAL=" + buttonNames(logical) + " ST=" + sanitizeTag(state));
+              " LOGICAL=" + buttonNames(logical) + " ST=" + sanitizeTag(state) +
+              " T=" + std::to_string(elapsedMs()));
     }
     void event(const char* screen, const char* origin, const std::string& detail = {}) {
         if (!enabled_) return;
@@ -86,6 +92,13 @@ public:
     ~Recorder() { close(); }
 
 private:
+    static std::uint64_t nowMs() {
+        using namespace std::chrono;
+        return static_cast<std::uint64_t>(
+            duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count());
+    }
+    std::uint64_t elapsedMs() const { return nowMs() - startMs_; }
+
     void open(const char* mode) {
         file_ = std::fopen(logPath_.c_str(), mode);
         if (!file_) { enabled_ = false; return; }
@@ -116,6 +129,7 @@ private:
     std::size_t maxLines_ = 4000;
     std::size_t lines_ = 0;
     std::uint64_t frame_ = 0;
+    std::uint64_t startMs_ = 0;
     std::FILE* file_ = nullptr;
 };
 

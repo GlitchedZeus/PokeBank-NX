@@ -13,6 +13,7 @@
 #include "UI/ExactSaveCapabilities.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2WorkspaceLayers.h"
+#include "UI/Gen12DVReroll.h"
 #include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Experience.h"
@@ -413,8 +414,17 @@ void toggleShiny(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
         screen.postStatus("Shiny on: " + changes + " (stats and Hidden Power follow)", 300);
 }
 
-void randomizeDVs(State& state) {
-    applyEditableDVs(state.working, Foundation::randomDVs(state.rng));
+// Y Random DVs: a new roll that keeps shiny state, Gen II gender (Attack DV vs. ratio) and the
+// Unown letter. False when no other combination keeps them (the draft is unchanged).
+bool randomizeDVs(State& state) {
+    namespace Reroll = PokeBank::UIModel::Gen12DVReroll;
+    const uint16_t species = state.working.species;
+    const auto result = Reroll::reroll(editableDVs(state.working), state.rng,
+        [species](uint8_t attack) { return static_cast<int>(Gen2::genderFromAttackDV(species, attack)); },
+        species == 201);
+    if (!result.changed) return false;
+    applyEditableDVs(state.working, result.dvs);
+    return true;
 }
 
 void openHeldItemPicker(State& state) {
@@ -813,7 +823,7 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
     }
 
     const std::array<std::pair<std::string, std::string>, 3> extras{{
-        {"Shiny", p.shiny ? "Yes (DV-derived)" : "No (DV-derived)"},
+        {"Shiny", p.shiny ? "Yes" : "No"},
         {"Friendship", std::to_string(p.friendship)},
         {"Pokerus", pokerusText(p.pokerus)},
     }};

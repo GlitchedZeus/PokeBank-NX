@@ -212,4 +212,15 @@ constexpr uint8_t cyclePokerusState(uint8_t raw) noexcept {
     return 0;
 }
 
+// The in-place A cycle (None -> Infected -> Cured -> None) for an edit session whose record
+// started as `original`. Coming back to a state the record started in restores its exact byte
+// (its strain and remaining days), so cycling through never rewrites data the player kept.
+constexpr uint8_t cyclePokerusState(uint8_t raw, uint8_t original) noexcept {
+    const uint8_t next = cyclePokerusState(raw);
+    const auto was = decodePokerus(original);
+    const auto now = decodePokerus(next);
+    if (now.present == was.present && now.active == was.active) return original;
+    return next;
+}
+
 } // namespace PokeBank::UIModel::Gen2Native

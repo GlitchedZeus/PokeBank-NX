@@ -93,7 +93,7 @@ void recorderIsOptInBoundedAndFlushed(const std::string& dir) {
         r.event("home", "open-title", "kind=3,intent=0");
         // Flushed per line: readable while the recorder is still open (crash safety).
         const std::string text = slurp(log);
-        assert(text.find("F=1 S=home RAW=R HELD=R LOGICAL=R ST=ov=0,title=1") != std::string::npos);
+        assert(text.find("F=1 S=home RAW=R HELD=R LOGICAL=R ST=ov=0,title=1 T=") != std::string::npos);
         assert(text.find("E=1 S=home EVENT=open-title kind=3,intent=0") != std::string::npos);
         assert(text.find("idle") == std::string::npos);
         // Bounded: after 5 lines the file restarts instead of growing.

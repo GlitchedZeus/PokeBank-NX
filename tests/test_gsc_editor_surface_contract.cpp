@@ -63,7 +63,7 @@ int main() {
     // focus-outline the entire modal. Only the selected row/action owns the theme focus color.
     assert(drawing.find("fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2)") == std::string::npos);
     assert(drawing.find("drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow") != std::string::npos);
-    assert(drawing.find("NarrowPokemonMenu::classic(") != std::string::npos);
+    assert(drawing.find("ClassicPokemonActionMenu::fromShared(actions)") != std::string::npos);
     assert(drawing.find("screen.legacyProviderLabel() + \" GBC SOURCE / READ ONLY\"") != std::string::npos);
     assert(drawing.find("Names::getSpeciesName(pokemon->species)") != std::string::npos);
     assert(drawing.find("drawPanelSurface(fb, x, y, w, h, false, 18)") != std::string::npos); // confirmation only
@@ -144,7 +144,7 @@ int main() {
 
     assert(shared.find("caps.hasLegalityProvenance = true") != std::string::npos);
     assert(shared.find("SharedEditor::actionLabel(action)") != std::string::npos);
-    assert(parity.find("NarrowPokemonMenu::classic(") != std::string::npos);
+    assert(parity.find("ClassicPokemonActionMenu::fromShared(actions)") != std::string::npos);
     const auto actionsDraw = parity.substr(parity.find("void drawParityGen2Actions"),
         parity.find("void drawParityGen2Review") - parity.find("void drawParityGen2Actions"));
     assert(actionsDraw.find("screen.drawLegacyBase(fb)") != std::string::npos);
@@ -289,7 +289,7 @@ int main() {
     assert(unified.find("if (focus.row == 8)") != std::string::npos);
     // Owner campaign directive: Pokerus uses the shared selector interaction (same three native
     // states None/Infected/Cured, still no strain/days editor) instead of cycling in place.
-    assert(unified.find("selector = PokeBank::UIModel::Gen2FieldSelector::pokerus(p.pokerus);") != std::string::npos);
+    assert(unified.find("p.pokerus = Gen2Native::cyclePokerusState(p.pokerus, state.baseline.pokerus);") != std::string::npos);
     assert(unified.find("p.pokerus = Gen2Native::cyclePokerusState(p.pokerus)") == std::string::npos);
     assert(picker.find("state.working.caughtData = 0") != std::string::npos);
 

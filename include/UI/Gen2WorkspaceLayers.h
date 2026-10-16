@@ -19,7 +19,6 @@ enum class Layer : uint8_t {
     ProgressionEditor, // Level / Experience
     MoveEditor,        // Move N contextual editor
     FieldSelector,     // Pokérus / Crystal Met Time / Crystal OT Gender
-    RerollConfirm,     // "Re-roll all DVs?"
     Workspace,
 };
 
@@ -30,7 +29,6 @@ struct Open {
     bool progressionEditor = false;
     bool moveEditor = false;
     bool fieldSelector = false;
-    bool rerollConfirm = false;
 };
 
 constexpr Layer topLayer(const Open& open) noexcept {
@@ -40,7 +38,6 @@ constexpr Layer topLayer(const Open& open) noexcept {
     if (open.progressionEditor) return Layer::ProgressionEditor;
     if (open.moveEditor) return Layer::MoveEditor;
     if (open.fieldSelector) return Layer::FieldSelector;
-    if (open.rerollConfirm) return Layer::RerollConfirm;
     return Layer::Workspace;
 }
 
@@ -53,8 +50,7 @@ enum class Action : uint8_t {
     AskExit,         // Workspace B: open the exit dialog (never leaves directly)
     StageAdd,        // Create: X in the workspace, A in the exit dialog
     StageKeep,       // Edit: X in the workspace, A in the exit dialog
-    AskReroll,       // Workspace Y
-    Reroll,          // A or Y in the re-roll prompt
+    Reroll,          // Workspace Y: re-roll the draft's DVs now (no prompt; Gen12DVReroll.h)
     Discard,         // Y in the exit dialog
     ContinueEditing, // B in the exit dialog
     Select,          // A in a list/selector/child editor
@@ -69,7 +65,7 @@ constexpr Action action(Layer layer, Session session, Button button) noexcept {
                 case Button::A: return Action::EditField;
                 case Button::B: return Action::AskExit;
                 case Button::X: return create ? Action::StageAdd : Action::StageKeep;
-                case Button::Y: return Action::AskReroll;
+                case Button::Y: return Action::Reroll;
             }
             break;
         case Layer::ExitConfirm:
@@ -77,13 +73,6 @@ constexpr Action action(Layer layer, Session session, Button button) noexcept {
                 case Button::A: return create ? Action::StageAdd : Action::StageKeep;
                 case Button::B: return Action::ContinueEditing;
                 case Button::Y: return Action::Discard;
-                case Button::X: return Action::None;
-            }
-            break;
-        case Layer::RerollConfirm:
-            switch (button) {
-                case Button::A: case Button::Y: return Action::Reroll;
-                case Button::B: return Action::Cancel;
                 case Button::X: return Action::None;
             }
             break;
@@ -126,7 +115,7 @@ constexpr void push(Footer& footer, const char* glyph, const char* label) noexce
 }
 } // namespace detail
 
-// The workspace footer for the layers whose footer the workspace itself draws. The pickers, the
+// The footer for the layers whose footer the workspace itself draws. The pickers, the
 // Held Item grid, the Move editor and the Level/Experience editor draw their own footer over it.
 constexpr Footer footer(Layer layer, Session session) noexcept {
     const bool create = session == Session::Create;
@@ -141,11 +130,6 @@ constexpr Footer footer(Layer layer, Session session) noexcept {
             detail::push(f, "D-pad/Stick", "Choose");
             detail::push(f, "A", "Apply");
             detail::push(f, "B", "Cancel");
-            break;
-        case Layer::RerollConfirm:
-            detail::push(f, "B", "Cancel");
-            detail::push(f, "A", "Re-roll");
-            detail::push(f, "Y", "Re-roll");
             break;
         default:
             detail::push(f, "D-pad/Stick", "Navigate");

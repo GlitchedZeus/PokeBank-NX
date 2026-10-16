@@ -19,3 +19,5 @@ host-classic-inventory:
 	/tmp/test_gsc_universal_inventory
 	$(CXX) $(CXXFLAGS) tests/test_gen3_staged_inventory.cpp $(GEN3_EDITOR_SOURCES) -o /tmp/test_gen3_staged_inventory
 	/tmp/test_gen3_staged_inventory
+	$(CXX) $(CXXFLAGS) tests/test_item_quantity_policy.cpp src/Inventory/ItemQuantityPolicy.cpp $(CATALOG_SOURCES) -o /tmp/test_item_quantity_policy
+	/tmp/test_item_quantity_policy

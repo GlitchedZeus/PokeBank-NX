@@ -198,6 +198,7 @@ namespace UI {
             fb.flush();
             padUpdate(&pad);
             touch.update();
+            traceScreenFrame("keyboard-release", pad, "wait");
             const bool buttonStillMoving = ((padGetButtons(&pad) | padGetButtonsUp(&pad)) & answeringButtons) != 0;
             if (!buttonStillMoving && !touch.isDown() && !touch.justReleased()) break;
         }
@@ -419,6 +420,7 @@ namespace UI {
         while (appletMainLoop() && running && !backupScreen.shouldExit()) {
             padUpdate(&pad);
             touch.update();
+            traceScreenFrame("backup", pad, "intent=" + std::to_string(static_cast<int>(intent)));
             backupScreen.update(pad, touch);
 
             // Selection/exit retires this chooser immediately; do not flash it again.

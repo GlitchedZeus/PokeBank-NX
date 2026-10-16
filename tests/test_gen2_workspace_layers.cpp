@@ -8,7 +8,6 @@
 // the live handler / footers / exit dialog are checked to route through it.
 #include "UI/Gen2WorkspaceLayers.h"
 #include "UI/Gen2FieldSelector.h"
-#include "UI/Gen12RerollDVsConfirm.h"
 
 #include <cassert>
 #include <cstring>
@@ -21,7 +20,6 @@ namespace {
 
 namespace L = PokeBank::UIModel::Gen2WorkspaceLayers;
 namespace Selector = PokeBank::UIModel::Gen2FieldSelector;
-namespace Reroll = PokeBank::UIModel::Gen12RerollDVs;
 
 constexpr L::Button kButtons[] = {L::Button::A, L::Button::B, L::Button::X, L::Button::Y};
 constexpr L::Session kSessions[] = {L::Session::Create, L::Session::Edit};
@@ -72,8 +70,8 @@ void lacks(const std::string& text, const char* needle) {
 }
 
 void everyOverlapHasOneOwner() {
-    // All 128 combinations of open layers: the owner is the highest open one, never two.
-    for (int bits = 0; bits < 128; ++bits) {
+    // All 64 combinations of open layers: the owner is the highest open one, never two.
+    for (int bits = 0; bits < 64; ++bits) {
         L::Open open;
         open.picker = bits & 1;
         open.heldItemPicker = bits & 2;
@@ -81,19 +79,17 @@ void everyOverlapHasOneOwner() {
         open.progressionEditor = bits & 8;
         open.moveEditor = bits & 16;
         open.fieldSelector = bits & 32;
-        open.rerollConfirm = bits & 64;
         const auto owner = L::topLayer(open);
         int expected = 0;
-        while (expected < 7 && !(bits & (1 << expected))) ++expected;
-        assert(static_cast<int>(owner) == expected); // Layer::Workspace == 7 when nothing is open
+        while (expected < 6 && !(bits & (1 << expected))) ++expected;
+        assert(static_cast<int>(owner) == expected); // Layer::Workspace == 6 when nothing is open
     }
 }
 
 void footersMatchActions() {
     for (const auto session : kSessions) {
         const bool create = session == L::Session::Create;
-        for (const auto layer : {L::Layer::Workspace, L::Layer::ExitConfirm, L::Layer::FieldSelector,
-                                 L::Layer::RerollConfirm}) {
+        for (const auto layer : {L::Layer::Workspace, L::Layer::ExitConfirm, L::Layer::FieldSelector}) {
             const auto f = L::footer(layer, session);
             for (const auto button : kButtons) {
                 const char* label = hinted(f, button);
@@ -128,11 +124,8 @@ void footersMatchActions() {
         assert(std::strcmp(hinted(ws, L::Button::X), create ? "Add" : "Keep") == 0);
         assert(std::strcmp(hinted(ws, L::Button::B), "Exit") == 0);
         assert(L::action(L::Layer::Workspace, session, L::Button::B) == L::Action::AskExit);
-        assert(L::action(L::Layer::Workspace, session, L::Button::Y) == L::Action::AskReroll);
-
-        // The re-roll prompt names both confirming buttons (Gen12RerollDVs: A or Y re-rolls).
-        const auto rr = L::footer(L::Layer::RerollConfirm, session);
-        assert(hinted(rr, L::Button::A) && hinted(rr, L::Button::Y) && hinted(rr, L::Button::B));
+        // Y re-rolls the draft at once (no prompt layer; Gen12DVReroll.h).
+        assert(L::action(L::Layer::Workspace, session, L::Button::Y) == L::Action::Reroll);
     }
 }
 
@@ -151,7 +144,6 @@ void exitDialogActsOncePerFrame() {
 struct Driver {
     L::Open open;
     Selector::Selector selector;
-    Reroll::State reroll;
     int staged = 0, discarded = 0, rerolled = 0, applied = 0;
     bool sessionOpen = true;
 
@@ -159,7 +151,6 @@ struct Driver {
 
     Result press(L::Button b) {
         open.fieldSelector = selector.open();
-        open.rerollConfirm = reroll.confirming;
         const auto layer = L::topLayer(open);
         const auto expected = L::action(layer, L::Session::Create, b);
         const bool a = b == L::Button::A, bb = b == L::Button::B, y = b == L::Button::Y;
@@ -177,11 +168,8 @@ struct Driver {
                 if (r.outcome == Selector::Outcome::Apply) ++applied;
                 break;
             }
-            case L::Layer::RerollConfirm:
             case L::Layer::Workspace: {
-                const auto r = Reroll::step(reroll, y, a, bb);
-                if (r == Reroll::Outcome::Reroll) ++rerolled;
-                if (r != Reroll::Outcome::NotHandled) break;
+                if (y) { ++rerolled; break; }
                 if (bb) open.exitConfirm = true;
                 if (b == L::Button::X) { ++staged; sessionOpen = false; }
                 if (a) selector = Selector::pokerus(0); // A on the focused Pokérus row
@@ -224,16 +212,12 @@ void syntheticCreateSession() {
     assert(r.layer == L::Layer::FieldSelector && r.action == L::Action::Select);
     assert(e.applied == 1 && !e.selector.open());
 
-    // Y asks; B cancels the prompt without opening the exit dialog; A in the prompt re-rolls only.
+    // Y re-rolls at once: one press, one roll, no prompt and nothing else opened.
     r = e.press(L::Button::Y);
-    assert(r.action == L::Action::AskReroll && e.reroll.confirming);
-    r = e.press(L::Button::B);
-    assert(r.layer == L::Layer::RerollConfirm && r.action == L::Action::Cancel);
-    assert(!e.reroll.confirming && !e.open.exitConfirm);
-    e.press(L::Button::Y);
-    r = e.press(L::Button::A);
-    assert(r.layer == L::Layer::RerollConfirm && r.action == L::Action::Reroll);
-    assert(e.rerolled == 1 && !e.selector.open());
+    assert(r.layer == L::Layer::Workspace && r.action == L::Action::Reroll);
+    assert(e.rerolled == 1 && !e.selector.open() && !e.open.exitConfirm);
+    r = e.press(L::Button::Y);
+    assert(e.rerolled == 2);
 
     // X in the workspace stages exactly once.
     r = e.press(L::Button::X);

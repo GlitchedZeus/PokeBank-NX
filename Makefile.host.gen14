@@ -40,15 +40,17 @@ $(HOST_BUILD)/test_gen2_clone_flow_sanitize: $(GEN2_CLONE_FLOW_SOURCES)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_CLONE_FLOW_SOURCES) -o $@
 
 # Gen I/II Y Random DVs confirmation.
-GEN12_REROLL_SOURCES := tests/test_gen12_reroll_confirm.cpp
-HOST_TESTS += $(HOST_BUILD)/test_gen12_reroll_confirm
-HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen12_reroll_confirm_sanitize
-host-test: $(HOST_BUILD)/test_gen12_reroll_confirm
-host-sanitize: $(HOST_BUILD)/test_gen12_reroll_confirm_sanitize
-$(HOST_BUILD)/test_gen12_reroll_confirm: $(GEN12_REROLL_SOURCES) include/UI/Gen12RerollDVsConfirm.h
+GEN12_REROLL_SOURCES := tests/test_gen12_dv_reroll.cpp src/Integration/Gen2/Gen2PersonalData.cpp
+GEN12_REROLL_DEPS := include/UI/Gen12DVReroll.h src/UI/Gen2UnifiedPokemonWorkspace.inc \
+	src/UI/Gen2PokemonEditorFoundation.inc src/UI/Gen1PokemonEditorOverlayFoundation.inc
+HOST_TESTS += $(HOST_BUILD)/test_gen12_dv_reroll
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen12_dv_reroll_sanitize
+host-test: $(HOST_BUILD)/test_gen12_dv_reroll
+host-sanitize: $(HOST_BUILD)/test_gen12_dv_reroll_sanitize
+$(HOST_BUILD)/test_gen12_dv_reroll: $(GEN12_REROLL_SOURCES) $(GEN12_REROLL_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude $(GEN12_REROLL_SOURCES) -o $@
-$(HOST_BUILD)/test_gen12_reroll_confirm_sanitize: $(GEN12_REROLL_SOURCES) include/UI/Gen12RerollDVsConfirm.h
+$(HOST_BUILD)/test_gen12_dv_reroll_sanitize: $(GEN12_REROLL_SOURCES) $(GEN12_REROLL_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN12_REROLL_SOURCES) -o $@
 
@@ -120,7 +122,7 @@ $(HOST_BUILD)/test_gen1_edit_draft_sanitize: $(GEN1_EDIT_DRAFT_SOURCES) include/
 # Gen II Create/Edit workspace: one input owner per frame, footer == action (hardware a0633b6d).
 GEN2_WORKSPACE_LAYERS_SOURCES := tests/test_gen2_workspace_layers.cpp
 GEN2_WORKSPACE_LAYERS_DEPS := include/UI/Gen2WorkspaceLayers.h include/UI/Gen2FieldSelector.h \
-	include/UI/Gen12RerollDVsConfirm.h src/UI/Gen2UnifiedPokemonWorkspace.inc \
+	src/UI/Gen2UnifiedPokemonWorkspace.inc \
 	src/UI/Gen2PokemonEditorFoundation.inc src/UI/Gen2HardwareFinalFix.inc
 HOST_TESTS += $(HOST_BUILD)/test_gen2_workspace_layers
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_workspace_layers_sanitize
@@ -132,3 +134,36 @@ $(HOST_BUILD)/test_gen2_workspace_layers: $(GEN2_WORKSPACE_LAYERS_SOURCES) $(GEN
 $(HOST_BUILD)/test_gen2_workspace_layers_sanitize: $(GEN2_WORKSPACE_LAYERS_SOURCES) $(GEN2_WORKSPACE_LAYERS_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_WORKSPACE_LAYERS_SOURCES) -o $@
+
+# Gen I/II Pokemon Actions sheet: real commands only, shared order (owner campaign phase 3).
+CLASSIC_ACTION_MENU_SOURCES := tests/test_classic_pokemon_action_menu.cpp
+CLASSIC_ACTION_MENU_DEPS := include/UI/ClassicPokemonActionMenu.h include/UI/NarrowPokemonActionMenu.h \
+	include/UI/SharedPokemonEditorContract.h include/UI/Gen1PokemonEditorUIContract.h \
+	include/UI/PokemonViewActions.h src/UI/ClassicReleaseActionFix.inc src/UI/Gen2SharedSurfaceParity.inc \
+	src/UI/Gen2SharedPokemonSurface.inc src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc \
+	src/UI/TrainerViewScreenGSCOverlay.inc
+HOST_TESTS += $(HOST_BUILD)/test_classic_pokemon_action_menu
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_pokemon_action_menu_sanitize
+host-test: $(HOST_BUILD)/test_classic_pokemon_action_menu
+host-sanitize: $(HOST_BUILD)/test_classic_pokemon_action_menu_sanitize
+$(HOST_BUILD)/test_classic_pokemon_action_menu: $(CLASSIC_ACTION_MENU_SOURCES) $(CLASSIC_ACTION_MENU_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(CLASSIC_ACTION_MENU_SOURCES) -o $@
+$(HOST_BUILD)/test_classic_pokemon_action_menu_sanitize: $(CLASSIC_ACTION_MENU_SOURCES) $(CLASSIC_ACTION_MENU_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(CLASSIC_ACTION_MENU_SOURCES) -o $@
+
+# Gen II inline Shiny / Pokerus / Gender (owner campaign phase 10).
+GEN2_INLINE_FIELDS_SOURCES := tests/test_gen2_inline_fields.cpp
+GEN2_INLINE_FIELDS_DEPS := include/UI/Gen2NativePresentation.h src/UI/Gen2UnifiedPokemonWorkspace.inc \
+	src/UI/Gen2PokemonEditorFoundation.inc src/UI/Gen2HardwareFinalFix.inc
+HOST_TESTS += $(HOST_BUILD)/test_gen2_inline_fields
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_inline_fields_sanitize
+host-test: $(HOST_BUILD)/test_gen2_inline_fields
+host-sanitize: $(HOST_BUILD)/test_gen2_inline_fields_sanitize
+$(HOST_BUILD)/test_gen2_inline_fields: $(GEN2_INLINE_FIELDS_SOURCES) $(GEN2_INLINE_FIELDS_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN2_INLINE_FIELDS_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_inline_fields_sanitize: $(GEN2_INLINE_FIELDS_SOURCES) $(GEN2_INLINE_FIELDS_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_INLINE_FIELDS_SOURCES) -o $@
