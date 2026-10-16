@@ -141,14 +141,14 @@ host-test: $(SHARED_EDITOR_UNIT_TEST)
 host-sanitize: $(SHARED_EDITOR_UNIT_SANITIZE)
 
 $(SHARED_EDITOR_UNIT_TEST): $(SHARED_EDITOR_UNIT_SOURCES) include/UI/SharedMovesPanel.h \
-	include/UI/SharedMoveFacts.h include/UI/SharedEditorPresentation.h include/UI/SharedPokemonShell.h \
+	include/UI/SharedMoveFacts.h include/UI/SharedEditorPresentation.h include/UI/SharedPokemonShell.h include/UI/SharedDataPaneLayout.h \
 	include/Names/MoveTypes34.h include/Names/LocationDisplayNames.h src/UI/Gen3SharedPokemonSurface.inc src/UI/SharedPokemonEditorSurface.inc \
 	src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude $(SHARED_EDITOR_UNIT_SOURCES) -o $@
 
 $(SHARED_EDITOR_UNIT_SANITIZE): $(SHARED_EDITOR_UNIT_SOURCES) include/UI/SharedMovesPanel.h \
-	include/UI/SharedMoveFacts.h include/UI/SharedEditorPresentation.h include/UI/SharedPokemonShell.h \
+	include/UI/SharedMoveFacts.h include/UI/SharedEditorPresentation.h include/UI/SharedPokemonShell.h include/UI/SharedDataPaneLayout.h \
 	include/Names/MoveTypes34.h include/Names/LocationDisplayNames.h src/UI/Gen3SharedPokemonSurface.inc src/UI/SharedPokemonEditorSurface.inc \
 	src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
 	@mkdir -p $(HOST_BUILD)
@@ -193,3 +193,25 @@ $(SHARED_REROLL_TEST): $(SHARED_REROLL_SOURCES) include/UI/SharedStatReroll.h
 $(SHARED_REROLL_SANITIZE): $(SHARED_REROLL_SOURCES) include/UI/SharedStatReroll.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(SHARED_REROLL_SOURCES) -o $@
+
+# Phase 2: Gen IV / V bags query QuantityPolicy (one per-item rule), capped by the native writer.
+SHARED_BAG_QUANTITY_SOURCES := tests/test_shared_bag_quantity.cpp src/Inventory/ItemQuantityPolicy.cpp \
+	src/Inventory/ClassicInventoryCatalog.cpp src/Names/ItemNames.cpp src/Names/MoveNames.cpp \
+	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
+SHARED_BAG_QUANTITY_TEST := $(HOST_BUILD)/test_shared_bag_quantity
+SHARED_BAG_QUANTITY_SANITIZE := $(HOST_BUILD)/test_shared_bag_quantity_sanitize
+
+HOST_TESTS += $(SHARED_BAG_QUANTITY_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_BAG_QUANTITY_SANITIZE)
+host-test: $(SHARED_BAG_QUANTITY_TEST)
+host-sanitize: $(SHARED_BAG_QUANTITY_SANITIZE)
+
+$(SHARED_BAG_QUANTITY_TEST): $(SHARED_BAG_QUANTITY_SOURCES) include/Inventory/ItemQuantityPolicy.h \
+	src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(SHARED_BAG_QUANTITY_SOURCES) -o $@
+
+$(SHARED_BAG_QUANTITY_SANITIZE): $(SHARED_BAG_QUANTITY_SOURCES) include/Inventory/ItemQuantityPolicy.h \
+	src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(SHARED_BAG_QUANTITY_SOURCES) -o $@

@@ -422,7 +422,7 @@ void surfaceSourceContracts() {
     // Gen I-III keep their accepted editors and the same shared contract layout.
     static_assert(Shared::layoutFor(Shared::Generation::Gen4).detailsRows == 16);
     static_assert(Shared::layoutFor(Shared::Generation::Gen5).detailsRows == F::RowCount);
-    static_assert(Shared::layoutFor(Shared::Generation::Gen3).detailsRows == 15);
+    static_assert(Shared::layoutFor(Shared::Generation::Gen3).detailsRows == 16);
 }
 
 // Owner hardware rule (every Gen I-V editor field): D-pad Left/Right and the

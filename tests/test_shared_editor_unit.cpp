@@ -54,6 +54,7 @@ void PKSEFramebuffer::drawText(int x, int y, const char* s, Color c, TextStyle s
 void PKSEFramebuffer::drawFilledRect(int x, int y, int w, int h, Color) { rects.push_back({x, y, w, h}); }
 void PKSEFramebuffer::drawFilledRoundedRect(int x, int y, int w, int h, int, Color) { rects.push_back({x, y, w, h}); }
 void PKSEFramebuffer::drawRoundedRect(int x, int y, int w, int h, int, Color, int) { rects.push_back({x, y, w, h}); }
+void PKSEFramebuffer::drawFilledCircle(int x, int y, int r, Color) { rects.push_back({x - r, y - r, 2 * r, 2 * r}); }
 void PKSEFramebuffer::setClipRect(int, int, int, int) {}
 void PKSEFramebuffer::clearClip() {}
 } // namespace UI
@@ -239,6 +240,76 @@ static void testDetailsViewport() {
     }
 }
 
+static void testOriginPaneBounds() {
+    // The Gen IV pane is the longest (13 rows incl. Legality); nothing may run past the panel.
+    constexpr UI::SharedPokemonShell::Geometry g(1280, 720, 56);
+    struct Row { std::string label, value; };
+    const std::vector<Row> rows{{"Game", "HeartGold"}, {"Origin", "SoulSilver"}, {"Language", "English"},
+        {"Ball", "Poke Ball"}, {"Met", "Route 29 / Lv. 5"}, {"Friendship", "255"},
+        {"Pok\xC3\xA9rus", "Infected"}, {"Fateful", "No"}, {"Egg status", "Not egg"},
+        {"OT gender", "Female"}, {"PC markings", "\xE2\x97\x8F\xE2\x96\xB2"},
+        {"Legality", P::legalityLabel(P::LegalityState::Incomplete)}};
+    texts.clear(); rects.clear();
+    UI::SharedPokemonShell::drawDataAndGraph(fb_global(), g.rightX, g.y + 244, g.rightW, g.h - 256,
+        P::kOriginLegalityHeading, rows, {301, 200, 180, 245, 279, 185});
+    bool heading = false;
+    for (const auto& t : texts) {
+        require(t.y + t.h <= g.y + g.h - 8, "origin pane text above the panel edge: " + t.value);
+        heading |= t.value == P::kOriginLegalityHeading;
+    }
+    require(heading, "Origin & Legality heading drawn");
+}
+
+static void testDataPaneWrap() {
+    // Phase 9: over-long values wrap inside the 198px data pane; a no-space word is broken on a
+    // code point; overflow ends in "..." -- never into the graph pane or below the panel.
+    constexpr UI::SharedPokemonShell::Geometry g(1280, 720, 56);
+    struct Row { std::string label, value; };
+    const int paneX = g.rightX + 12, paneRight = paneX + 198;
+    for (int extra = 0; extra < 12; ++extra) {
+        std::vector<Row> rows{{"Met Location", "Altering Cave (Sevii Islands)"},
+            {"Encounter origin", "Bulbasaur \xE2\x86\x92 Venusaur"},
+            {"Long", std::string(40, 'W') + "\xC3\xA9\xC3\xA9\xC3\xA9"},
+            {"Legality", "Not checked"}};
+        for (int i = 0; i < extra; ++i) rows.push_back({"Row " + std::to_string(i), "Pok\xC3\xA9mon League Front Gate"});
+        texts.clear(); rects.clear();
+        UI::SharedPokemonShell::drawDataAndGraph(fb_global(), g.rightX, g.y + 244, g.rightW, g.h - 256,
+            P::kOriginLegalityHeading, rows, {1, 2, 3, 4, 5, 6});
+        bool ellipsis = false;
+        for (const auto& t : texts) {
+            if (t.x >= paneRight) continue; // graph pane labels
+            require(t.x >= paneX && t.x + t.w <= paneRight - 10, "data text inside the pane: " + t.value);
+            require(t.y + t.h <= g.y + g.h - 8, "data text above the panel edge: " + t.value);
+            for (std::size_t i = 0; i < t.value.size(); ++i)
+                if ((static_cast<unsigned char>(t.value[i]) & 0xE0) == 0xC0)
+                    require(i + 1 < t.value.size(), "no split UTF-8 sequence");
+            ellipsis |= t.value.size() >= 3 && t.value.compare(t.value.size() - 3, 3, "...") == 0;
+        }
+        if (extra >= 8) require(ellipsis, "overflowing pane ends in an ellipsis");
+    }
+}
+
+static void testFieldAccessParity() {
+    // Phase 12: one editable set wherever the format allows it.
+    namespace SE = PokeBank::UIModel::SharedPokemonEditor;
+    using FI = SE::FieldIdentity;
+    for (const auto gen : {SE::Generation::Gen3, SE::Generation::Gen4, SE::Generation::Gen5})
+        for (const auto field : {FI::Species, FI::Nickname, FI::Nature, FI::Gender, FI::Shiny, FI::Ability,
+                                 FI::Form, FI::IV, FI::EV, FI::HeldItem, FI::Pokerus, FI::Ball,
+                                 FI::MetLevel, FI::MetLocation, FI::Move, FI::MovePP, FI::MovePPUps,
+                                 FI::TrainerId, FI::OriginalTrainer, FI::Level, FI::Experience})
+            require(SE::fieldAccessForGeneration(gen, field) == SE::FieldAccess::Editable,
+                    "Gen III-V editable parity for field " + std::to_string(static_cast<int>(field)));
+    for (const auto gen : {SE::Generation::Gen1, SE::Generation::Gen2})
+        for (const auto field : {FI::Move, FI::MovePP, FI::MovePPUps})
+            require(SE::fieldAccessForGeneration(gen, field) == SE::FieldAccess::Editable, "Gen I/II moves editable");
+    // The PID itself is never typed in; Gen V language has no verified native mutation.
+    for (const auto gen : {SE::Generation::Gen3, SE::Generation::Gen4, SE::Generation::Gen5})
+        require(SE::fieldAccessForGeneration(gen, FI::PersonalityId) == SE::FieldAccess::ReadOnly, "PID read-only");
+    require(SE::fieldAccessForGeneration(SE::Generation::Gen5, FI::Language) == SE::FieldAccess::ReadOnly,
+            "Gen V language read-only with a reason");
+}
+
 static void testLocationNames() {
     // Gen III: no PKHeX source tags or raw ids; duplicates only for the SAME place.
     const std::set<std::string> samePlace{"Birth Island", "Fiery Path", "Jagged Pass",
@@ -307,6 +378,9 @@ int main() {
     testChooserBounds();
     testFooterAndToggles();
     testDetailsViewport();
+    testOriginPaneBounds();
+    testFieldAccessParity();
+    testDataPaneWrap();
     testLocationNames();
     testRealSourcesUseSharedUnit();
     std::cout << "Shared Gen I-V editor unit (moves panel, chooser, footer, toggles, viewport) PASS\n";

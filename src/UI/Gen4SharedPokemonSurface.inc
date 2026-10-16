@@ -1,3 +1,4 @@
+#include "Inventory/ItemQuantityPolicy.h"
 #include "Names/LocationDisplayNames.h"
 #include "Integration/Gen4/Gen4ExactFormatEditorProvider.h"
 #include "UI/Gen4BoxTouchActions.h"
@@ -573,8 +574,9 @@ bool beginCreate(TrainerViewScreen& screen) {
         return false;
     }
     std::string error;
+    // Same Create default as Gen II / III / V: Pikachu (25), present in every Gen IV game.
     auto draft = staged->createBoxDraft(
-        static_cast<size_t>(state.box), static_cast<size_t>(state.slot), 1, &error);
+        static_cast<size_t>(state.box), static_cast<size_t>(state.slot), 25, &error);
     if (!draft) {
         screen.postStatus(error.empty() ? "Could not start Generation IV Create draft" : error, 360);
         return false;
@@ -1659,6 +1661,25 @@ void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& s
     drawNavBar(fb, {{"Y", "Confirm Release"}, {"B", "Cancel"}});
 }
 
+// The ONE per-item quantity query of the Gen IV bag, backed by Thread I's source-backed
+// Inventory/ItemQuantityPolicy.h (d08c5aa8). Unique items (Key Items, HMs) get no quantity
+// editor; everything else edits 1..max. The cap never exceeds the native writer's own bound
+// (gen4BagMaxQuantity), so the UI can never offer a value the staged editor would refuse.
+struct Gen4QuantityRule { bool valid = false; bool editable = false; uint16_t maximum = 0; };
+Gen4QuantityRule gen4QuantityRule(const TrainerViewScreen& screen, size_t pocket, uint16_t id) noexcept {
+    namespace QP = PokeVault::Inventory::QuantityPolicy;
+    static constexpr std::array<QP::Pocket, Gen4::BagPocketCount> kPockets{{
+        QP::Pocket::Items, QP::Pocket::KeyItems, QP::Pocket::TMHM, QP::Pocket::Mail,
+        QP::Pocket::Medicine, QP::Pocket::Berries, QP::Pocket::Balls, QP::Pocket::BattleItems}};
+    QP::Game game{};
+    if (pocket >= kPockets.size() || !QP::gameFromId(screen.sourceGameId, game)) return {};
+    const auto rule = QP::quantityRule(game, kPockets[pocket], id);
+    const uint16_t nativeCap = Gen4::gen4BagMaxQuantity(pocket, id);
+    if (!rule.valid || nativeCap == 0) return {};
+    const uint16_t maximum = std::min(rule.maximum, nativeCap);
+    return {true, rule.editable && maximum > 1, maximum};
+}
+
 bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
                         u64 held,int stickX,int stickY,const TouchInput& touch) {
     const bool itemsScreen=screen.detailViewActive &&
@@ -1748,17 +1769,22 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
             return true;
         }
         const uint16_t id=state.itemAddChoices[static_cast<size_t>(state.itemAddIndex)];
-        const uint16_t limit=Gen4::gen4BagMaxQuantity(
-            static_cast<size_t>(state.itemAddPocket),id);
-        if(!limit || !Gen4::gen4BagItemAllowed(
+        const auto rule=gen4QuantityRule(screen,static_cast<size_t>(state.itemAddPocket),id);
+        const uint16_t limit=rule.maximum;
+        if(!rule.valid || !Gen4::gen4BagItemAllowed(
                 staged->layout(),static_cast<size_t>(state.itemAddPocket),id)) {
             screen.postStatus("Gen IV item invalid in selected native pocket",300);
             return true;
         }
-        const auto r=Utils::promptNumber(
-            "Add "+Names::machineDisplayLabel(
-                screen.trainer.getGameGroup(),id,Names::getItemName(id)),
-            1,1,static_cast<int>(limit));
+        // A unique item is added once; only a quantity-editable item asks for an amount.
+        Utils::NumberResult r{};
+        r.accepted=true;
+        r.value=1;
+        if(rule.editable)
+            r=Utils::promptNumber(
+                "Add "+Names::machineDisplayLabel(
+                    screen.trainer.getGameGroup(),id,Names::getItemName(id)),
+                1,1,static_cast<int>(limit));
         screen.controllerNavigation.reset();
         if(!r.accepted)return true; // Cancel is byte-for-byte inert.
         if(r.value<1 || r.value>static_cast<int>(limit)) {
@@ -1940,10 +1966,15 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
             screen.controllerNavigation.reset();
             return true;
         }
-        const uint16_t limit=Gen4::gen4BagMaxQuantity(
-            static_cast<size_t>(pocket),item.itemId);
-        if(!limit || item.count>limit) {
+        const auto rule=gen4QuantityRule(screen,static_cast<size_t>(pocket),item.itemId);
+        const uint16_t limit=rule.maximum;
+        if(!rule.valid || item.count>limit) {
             screen.postStatus("Gen IV item quantity outside native limits",300);
+            return true;
+        }
+        if(!rule.editable) {
+            // Key Items and HMs are unique: no quantity editor, nothing staged.
+            screen.postStatus("This item is unique; its quantity is fixed at 1",260);
             return true;
         }
         const uint16_t originalId=item.itemId;

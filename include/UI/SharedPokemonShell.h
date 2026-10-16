@@ -2,6 +2,7 @@
 #include "UI/ClassicGameContext.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedEditorPresentation.h"
+#include "UI/SharedDataPaneLayout.h"
 #include "UI/Common.h"
 #include "UI/SpriteManager.h"
 #include "UI/StatsRadar.h"
@@ -162,20 +163,19 @@ inline void drawDataAndGraph(PKSEFramebuffer& fb, int x, int y, int w, int h,
         fb.drawRoundedRect(pane.first, y, pane.second, h, 12, Colors::Divider, 1);
     }
     fb.drawText(dataX + 10, y + 10, title, Colors::Accent, TextStyle::Caption);
-    int rowY = y + 34;
-    for (const auto& row : rows) {
-        const auto combined = row.label + ": " + row.value;
-        int tw = 0, th = 0;
-        fb.measureText(combined, tw, th, TextStyle::Caption);
-        if (tw <= dataW - 20) {
-            fb.drawText(dataX + 10, rowY, combined, Colors::Text, TextStyle::Caption);
-            rowY += 20;
-        } else {
-            fb.drawText(dataX + 10, rowY, row.label, Colors::TextDim, TextStyle::Caption);
-            fb.drawText(dataX + 10, rowY + 20, row.value, Colors::Text, TextStyle::Caption);
-            rowY += 40;
-        }
-    }
+    // One shared wrap/clip layout (UI/SharedDataPaneLayout.h): long values wrap inside the pane
+    // and overflow ends in "...", so no row can spill into the graph or below the panel.
+    namespace Pane = PokeBank::UIModel::SharedDataPane;
+    static_assert(Pane::kPaneWidth == dataW);
+    const auto lines = Pane::layoutRows(rows, Pane::kTextWidth,
+        h - Pane::kTextTop - Pane::kTextBottom, [&fb](const std::string& text) {
+            int tw = 0, th = 0;
+            fb.measureText(text, tw, th, TextStyle::Caption);
+            return tw;
+        });
+    for (const auto& line : lines)
+        fb.drawText(dataX + Pane::kTextInset, y + Pane::kTextTop + line.y, line.text,
+                    line.label ? Colors::TextDim : Colors::Text, TextStyle::Caption);
     fb.drawText(graphX + 10, y + 10, "BATTLE STATS", Colors::Accent, TextStyle::Caption);
     StatsRadar::drawGen3Labeled(fb, graphX + 8, y + 32, graphW - 16, h - 40, stats);
 }

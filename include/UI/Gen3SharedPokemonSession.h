@@ -61,7 +61,8 @@ inline bool sameEditableRecord(const Gen3::StagedPokemonRecord& a,
            a.nature == b.nature &&
            a.gender == b.gender &&
            a.shiny == b.shiny &&
-           a.abilityNumber == b.abilityNumber;
+           a.abilityNumber == b.abilityNumber &&
+           a.form == b.form;
 }
 
 struct Session {
@@ -74,6 +75,7 @@ struct Session {
     std::optional<uint8_t> requestedGender;
     std::optional<bool> requestedShiny;
     std::optional<uint8_t> requestedAbilityNumber;
+    std::optional<uint8_t> requestedForm; // Unown letter (PID-derived)
 
     void begin(const Gen3::StagedPokemonRecord& record, Mode next) {
         baseline = working = record;
@@ -83,6 +85,7 @@ struct Session {
         requestedGender.reset();
         requestedShiny.reset();
         requestedAbilityNumber.reset();
+        requestedForm.reset();
         progression = next == Mode::Create ? ProgressionSource::Level
                                            : ProgressionSource::Unchanged;
     }
@@ -117,6 +120,7 @@ struct Session {
             requestedGender.reset();
         if (requestedAbilityNumber && *requestedAbilityNumber == 2 && nativeAbilitySlots(species).size() < 2)
             requestedAbilityNumber.reset();
+        if (species != 201) requestedForm.reset();
         normalizeRequests();
         return setLevel(SpeciesChangeLevelPolicy::defaultLevel(sourceGameId, species));
     }
@@ -144,6 +148,7 @@ struct Session {
         if (requestedGender && sameSpecies && *requestedGender == baseline.gender) requestedGender.reset();
         if (requestedAbilityNumber && sameSpecies && *requestedAbilityNumber == baseline.abilityNumber)
             requestedAbilityNumber.reset();
+        if (requestedForm && sameSpecies && *requestedForm == baseline.form) requestedForm.reset();
         if (requestedShiny && *requestedShiny == baseline.shiny &&
             shinyFor(working.tid, baseline.sid, baseline.pid) == baseline.shiny)
             requestedShiny.reset();
@@ -157,6 +162,7 @@ struct Session {
         if (!requestedNature) working.nature = preview.nature;
         if (!requestedGender) working.gender = preview.gender;
         if (!requestedShiny) working.shiny = preview.shiny;
+        if (!requestedForm) working.form = preview.form;
         if (!requestedAbilityNumber) {
             working.abilityNumber = preview.abilityNumber;
             working.ability = preview.ability;
@@ -236,6 +242,15 @@ struct Session {
         return true;
     }
 
+    // Unown (201) letter 0..27; the staged editor re-rolls the PID keeping Nature / Shiny.
+    bool setUnownLetter(uint8_t letter) noexcept {
+        if (!editable() || working.species != 201 || letter >= 28) return false;
+        working.form = letter;
+        requestedForm = letter;
+        normalizeRequests();
+        return true;
+    }
+
     Gen3::BoxPokemonEdit editRequest() const {
         Gen3::BoxPokemonEdit edit;
         if (baseline.species != working.species) edit.species = working.species;
@@ -262,6 +277,7 @@ struct Session {
         edit.gender = requestedGender;
         edit.shiny = requestedShiny;
         edit.abilityNumber = requestedAbilityNumber;
+        if (working.species == 201) edit.form = requestedForm;
         return edit;
     }
 
@@ -289,6 +305,7 @@ struct Session {
         create.gender = requestedGender;
         create.shiny = requestedShiny;
         create.abilityNumber = requestedAbilityNumber;
+        if (working.species == 201) create.form = requestedForm;
         return create;
     }
 
