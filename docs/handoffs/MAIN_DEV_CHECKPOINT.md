@@ -27,7 +27,10 @@ Status:
 | Phase 8 scroll | Root cause: NavigationRepeat counted frames (18/4), so on a slow screen it ran at 900/200 ms. Fix: a wall-clock HoldRepeatClock in the one shared engine (immediate first step, 250 ms delay, 67 ms repeat, one step per frame), with the keyboard on the same clock and a timing test at 16/33/50 ms frames. Pushing after gates. Trace lines now carry T=ms. |
 | Input chain | No button remap (NpadStandard, logical A/B). Touch goes through the top layer only. No stale edges. Open owner question: in the full Games browser L/R switch PROFILE (documented). Kept for this round, with the footer to show "L/R Profile". |
 | Quota | All lanes stopped on the shared usage limit 07:40–09:10 UTC. Resumed 2R, C, S and I at 09:12. QA is held until lane code lands. |
-| Lanes S, I | Created 07:33 UTC. |
+| Lane I | **Done:** `d08c5aa8` (ItemQuantityPolicy, 20 games, PKHeX PlayerBag* caps; key items/HMs/Gen V TMs unique). The coordinator built and ran its test: OK. Open findings routed to C: Gen III 99 cap in ClassicInventoryCatalog, Gen I id 50 duplicate, test_classic_inventory_catalog GS BALL. |
+| Lane C | `dcd8770c`: Phase 3 (no Make Shiny/placeholders; order View, Edit, Clone, Release, Legality, Review, Cancel) and Phase 6 (instant Y reroll keeping shiny, Gen II gender and the Unown letter; 200-press tests). Verified in code. Next: Phase 10, then the shared unit for Phases 1/4/7. |
+| Lane S | `7fd8d0e4`: shared unit (SharedMovesPanel, SharedMoveFacts, SharedEditorPresentation with footers, Origin & Legality, toggles and viewport, SharedEditorChrome beginModal). Rows counter and "commits to draft" removed; Gen III–V surfaces adopt it. |
+| Combined check | The coordinator test-merged #307 65cbd69a + I + C + S: no conflicts, GCC host-test exit 0, 24/24 py contracts pass. 2R is merging Phase 8 + I + C + S with one full gate. |
 
 ## Previous milestone
 
