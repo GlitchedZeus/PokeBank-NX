@@ -72,12 +72,12 @@ false_valid=$(awk -F'\t' '{split($1,a," "); split($2,b," "); if (a[3]=="INVALID"
 echo "false Valid (PKHeX INVALID, PokeBank NX No problems found): $(printf '%s' "$false_valid" | grep -c . || true)"
 if [ -n "$false_valid" ]; then
     echo "FALSE VALID:"
-    printf '%s\n' "$false_valid" | head -"${SHOW:-15}"
+    printf '%s\n' "$false_valid" | awk -v n="${SHOW:-15}" 'NR <= n'
     exit 1
 fi
 echo "PKHeX rejects, PokeBank NX Incomplete (by mutation and PKHeX result):"
 awk -F'\t' '{split($1,a," "); split($2,b," "); if (a[3]=="INVALID" && b[2]!="INVALID") {m=a[1]; sub(/^m[0-9]+-/,"",m); sub(/^b[0-9]+$/,"base",m); r=$1; sub(/^[^;]*; /,"",r); print m" :: "r}}' \
-    "$work/joined.txt" | sort | uniq -c | sort -rn | head -"${SHOW:-15}"
+    "$work/joined.txt" | sort | uniq -c | sort -rn | awk -v n="${SHOW:-15}" 'NR <= n'
 # No allow-list: PokeBank NX has no deliberately stricter Gen V rule. The former one
 # (hidden-ability flag with a slot 1/2 ability on a hidden-ability-only template) is a
 # Warning since docs/legality/PKHEX_DISAGREEMENT_REVIEW.md found no original-game evidence.
@@ -85,7 +85,7 @@ false_invalid=$(awk -F'\t' '{split($1,a," "); split($2,b," ");
     if (a[3]=="VALID" && b[2]=="INVALID") print}' "$work/joined.txt")
 if [ -n "$false_invalid" ]; then
     echo "FALSE INVALID (PKHeX VALID, PokeBank NX INVALID):"
-    printf '%s\n' "$false_invalid" | head -"${SHOW:-15}"
+    printf '%s\n' "$false_invalid" | awk -v n="${SHOW:-15}" 'NR <= n'
     exit 1
 fi
 echo "PASS: no false Invalid"
