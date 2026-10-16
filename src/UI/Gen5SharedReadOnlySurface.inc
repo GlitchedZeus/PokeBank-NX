@@ -217,7 +217,7 @@ struct Gen5Editor {
     static constexpr bool kSpeciesSearch = true;
     static constexpr bool kCompactForm = true;
     static constexpr const char* kDetailReadOnly =
-        "Language and Origin are fixed in a Generation V record";
+        "Language and Origin are read-only for a Generation V record in this editor";
     static constexpr const char* kValueReadOnly = "This Generation V value is read-only";
     static constexpr const char* kHeldItemTitle = "Held Item — Generation V";
     static constexpr const char* kMovePickerTitle = "Move — Generation V";

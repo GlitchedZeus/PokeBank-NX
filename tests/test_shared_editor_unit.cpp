@@ -289,6 +289,27 @@ static void testDataPaneWrap() {
     }
 }
 
+static void testFieldAccessParity() {
+    // Phase 12: one editable set wherever the format allows it.
+    namespace SE = PokeBank::UIModel::SharedPokemonEditor;
+    using FI = SE::FieldIdentity;
+    for (const auto gen : {SE::Generation::Gen3, SE::Generation::Gen4, SE::Generation::Gen5})
+        for (const auto field : {FI::Species, FI::Nickname, FI::Nature, FI::Gender, FI::Shiny, FI::Ability,
+                                 FI::Form, FI::IV, FI::EV, FI::HeldItem, FI::Pokerus, FI::Ball,
+                                 FI::MetLevel, FI::MetLocation, FI::Move, FI::MovePP, FI::MovePPUps,
+                                 FI::TrainerId, FI::OriginalTrainer, FI::Level, FI::Experience})
+            require(SE::fieldAccessForGeneration(gen, field) == SE::FieldAccess::Editable,
+                    "Gen III-V editable parity for field " + std::to_string(static_cast<int>(field)));
+    for (const auto gen : {SE::Generation::Gen1, SE::Generation::Gen2})
+        for (const auto field : {FI::Move, FI::MovePP, FI::MovePPUps})
+            require(SE::fieldAccessForGeneration(gen, field) == SE::FieldAccess::Editable, "Gen I/II moves editable");
+    // The PID itself is never typed in; Gen V language has no verified native mutation.
+    for (const auto gen : {SE::Generation::Gen3, SE::Generation::Gen4, SE::Generation::Gen5})
+        require(SE::fieldAccessForGeneration(gen, FI::PersonalityId) == SE::FieldAccess::ReadOnly, "PID read-only");
+    require(SE::fieldAccessForGeneration(SE::Generation::Gen5, FI::Language) == SE::FieldAccess::ReadOnly,
+            "Gen V language read-only with a reason");
+}
+
 static void testLocationNames() {
     // Gen III: no PKHeX source tags or raw ids; duplicates only for the SAME place.
     const std::set<std::string> samePlace{"Birth Island", "Fiery Path", "Jagged Pass",
@@ -358,6 +379,7 @@ int main() {
     testFooterAndToggles();
     testDetailsViewport();
     testOriginPaneBounds();
+    testFieldAccessParity();
     testDataPaneWrap();
     testLocationNames();
     testRealSourcesUseSharedUnit();

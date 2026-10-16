@@ -574,8 +574,9 @@ bool beginCreate(TrainerViewScreen& screen) {
         return false;
     }
     std::string error;
+    // Same Create default as Gen II / III / V: Pikachu (25), present in every Gen IV game.
     auto draft = staged->createBoxDraft(
-        static_cast<size_t>(state.box), static_cast<size_t>(state.slot), 1, &error);
+        static_cast<size_t>(state.box), static_cast<size_t>(state.slot), 25, &error);
     if (!draft) {
         screen.postStatus(error.empty() ? "Could not start Generation IV Create draft" : error, 360);
         return false;

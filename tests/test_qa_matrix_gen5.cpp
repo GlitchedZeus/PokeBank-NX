@@ -671,7 +671,9 @@ Outcome fields(Ctx& c) {
     std::vector<std::string> uncovered;
     for (int f = 0; f <= static_cast<int>(FI::FatefulEncounter); ++f) {
         const auto field = static_cast<FI>(f);
-        if (G5::fieldAccess(field) != Shared::FieldAccess::Editable || field == FI::Form) continue;
+        // Form and Shiny are staged separately below (Deerling form; the PID-linked Shiny row).
+        if (G5::fieldAccess(field) != Shared::FieldAccess::Editable || field == FI::Form ||
+            field == FI::Shiny) continue;
         if (std::none_of(cases.begin(), cases.end(), [&](const FieldCase& k) { return k.field == field; }))
             uncovered.push_back(std::to_string(f));
     }
@@ -770,7 +772,7 @@ Outcome actions(Ctx& c) {
         (void)ui.back();
     };
     expect(Slot{Region::Party, 0, 0}, {A::View, A::Edit, A::Clone, A::Close}, "party");
-    expect(Slot{Region::Box, 0, 0}, {A::View, A::Edit, A::Move, A::Clone, A::Remove, A::Close}, "box");
+    expect(Slot{Region::Box, 0, 0}, {A::View, A::Edit, A::Clone, A::Move, A::Remove, A::Close}, "box");
     expect(Slot{Region::Box, 0, 1}, {A::Add, A::Close}, "empty box");
     // Cursor wraps; Cancel (Close) returns to Browse without staging.
     need(ui.openActions(ws, Slot{Region::Box, 0, 0}, error), "openActions: " + error);
@@ -801,7 +803,7 @@ Outcome actions(Ctx& c) {
          "Review not offered after staging");
     (void)ui.back();
     need(c.sourceUntouched(), "actions touched the source file");
-    return passed("party [View,Edit,Clone,Cancel], box [View,Edit,Move,Clone,Release,Cancel], empty [Add,Cancel]; "
+    return passed("party [View,Edit,Clone,Cancel], box [View,Edit,Clone,Move,Release,Cancel] (shared order), empty [Add,Cancel]; "
                   "wrap, Release+Undo, Clone, Move, Review after staging");
 }
 

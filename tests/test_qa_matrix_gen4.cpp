@@ -502,19 +502,19 @@ void runVersion(Matrix& m, const VersionSpec& v) {
     });
 
     // ---------------------------------------------------------------- creation
-    m.fact(ver, "create.default.species", "1");
+    m.fact(ver, "create.default.species", "25");
     m.fact(ver, "create.default.level", "5");
-    cell(m, ver, "creation", "createBoxDraft(species 1 as Gen4SharedPokemonSurface.inc beginCreate) -> Lv5, "
+    cell(m, ver, "creation", "createBoxDraft(species 25 as Gen4SharedPokemonSurface.inc beginCreate) -> Lv5, "
              "Poke Ball, trainer OT/TID; Session Create -> keepCreate stages; occupied/out-of-range/invalid refused",
          [&](Probe& p) {
         std::string err;
         auto editor = G4::Gen4StagedPokemonEditor::create(original, v.layout, v.gameId, &err);
         p.expect(editor.has_value(), "staged editor: " + err);
         if (!editor) return;
-        auto draft = editor->createBoxDraft(0, 1, 1, &err);
+        auto draft = editor->createBoxDraft(0, 1, 25, &err);
         p.expect(draft.has_value(), "draft: " + err);
         if (!draft) return;
-        p.expect(draft->species() == 1 && draft->level() == 5 && draft->ball() == 4 && draft->metLevel() == 5,
+        p.expect(draft->species() == 25 && draft->level() == 5 && draft->ball() == 4 && draft->metLevel() == 5,
                  "draft defaults species/level/ball/metLevel " + std::to_string(draft->species()) + "/" +
                      std::to_string(draft->level()));
         p.expect(draft->tid() == 12150 && draft->sid() == 22558, "draft TID/SID");
@@ -526,7 +526,7 @@ void runVersion(Matrix& m, const VersionSpec& v) {
         session.continueEditing();
         p.expect(session.keepCreate(*editor, 0, 1, err), "keepCreate: " + err);
         const auto created = editor->boxedPokemon(0, 1, &err);
-        p.expect(created && created->species() == 1 && created->originalTrainerName() == u"Kylie",
+        p.expect(created && created->species() == 25 && created->originalTrainerName() == u"Kylie",
                  "created record species/OT");
         const auto reopened = editor->editableBoxPokemon(0, 1, &err);
         p.expect(reopened && reopened->level() == 5, "created level");

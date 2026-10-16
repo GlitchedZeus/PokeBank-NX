@@ -77,6 +77,7 @@ enum class PickerTarget : uint8_t {
     Gender,
     Ability,
     Move,
+    Form,
 };
 
 struct State {
@@ -384,6 +385,18 @@ Color genderValueColor(uint8_t gender) {
     return Colors::Text;
 }
 
+// Gen III stores a form only for Unown (PID-derived letter, Pokemon3FRLG::form). Deoxys' form
+// is decided by the game it is in, not by the record (PKHeX PK3: Form is 0 except Unown).
+std::string unownLetterName(uint8_t letter) {
+    if (letter < 26) return std::string(1, static_cast<char>('A' + letter));
+    return letter == 26 ? "!" : "?";
+}
+std::string gen3FormLabel(uint16_t species, uint8_t form) {
+    if (species == 201) return "Unown " + unownLetterName(form);
+    if (species == 386) return "Set by game";
+    return "None";
+}
+
 std::string detailsValue(const TrainerViewScreen& screen,
                          const Gen3::StagedPokemonRecord& p, int row) {
     switch (row) {
@@ -402,18 +415,21 @@ std::string detailsValue(const TrainerViewScreen& screen,
         case 12: return std::to_string(p.metLevel);
         case 13: return metLocationText(p);
         case 14: return Presentation::pokerusLabel(Presentation::pokerusState(p.pokerus));
+        case 15: return gen3FormLabel(p.species, p.form);
         default: return {};
     }
 }
 
-constexpr std::array<const char*,15> detailLabels{{
+constexpr std::array<const char*,16> detailLabels{{
     "Species", "Nickname", "Level", "Experience", "OT", "Trainer ID", "SID (read-only)",
     "Held Item", "Friendship", "Language", "Origin", "Ball",
-    "Met Level", "Met Location", "Pokerus"
+    "Met Level", "Met Location", "Pokerus", "Form"
 }};
+static_assert(detailLabels.size() == Shared::layoutFor(Shared::Generation::Gen3).detailsRows);
 
 bool detailEditable(const State& state, int row) noexcept {
     if (!state.session.editable()) return false;
+    if (row == 15) return state.session.working.species == 201; // Unown letter (PID-derived)
     if (row == 1 || row == 2 || row == 3 || row == 4 || row == 5) return true;
     if (state.session.mode == SessionModel::Mode::Create)
         return row == 0 || row == 1 || row == 2 || row == 7 ||
@@ -528,6 +544,8 @@ std::string pickerValueLabel(const State& state, uint16_t value) {
         }
         case PickerTarget::Move:
             return MoveUI::rowLabel(value, Enums::GameVersion::FRLG);
+        case PickerTarget::Form:
+            return "Unown " + unownLetterName(static_cast<uint8_t>(value));
         default: return {};
     }
 }
@@ -542,6 +560,7 @@ const char* pickerTitle(PickerTarget target) noexcept {
         case PickerTarget::Gender: return "Choose Gender";
         case PickerTarget::Ability: return "Choose Ability";
         case PickerTarget::Move: return "Choose Move";
+        case PickerTarget::Form: return "Choose Unown Letter";
         default: return "Choose Value";
     }
 }
@@ -556,6 +575,7 @@ uint16_t currentPickerValue(const State& state, PickerTarget target, int moveSlo
         case PickerTarget::Nature: return p.nature;
         case PickerTarget::Gender: return p.gender;
         case PickerTarget::Ability: return p.abilityNumber;
+        case PickerTarget::Form: return p.form;
         case PickerTarget::Move:
             return moveSlot >= 0 && moveSlot < 4 ? p.moves[static_cast<std::size_t>(moveSlot)] : 0;
         default: return 0;
@@ -609,6 +629,8 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
         state.pickerValues = {0, 1};
     } else if (target == PickerTarget::Ability) {
         state.pickerValues = SessionModel::nativeAbilitySlots(state.session.working.species);
+    } else if (target == PickerTarget::Form) {
+        for (uint16_t letter = 0; letter < 28; ++letter) state.pickerValues.push_back(letter);
     } else if (target == PickerTarget::Move) {
         const auto game = PokeVault::Integration::Gen3EditorProvider::sourceGameForId(screen.sourceGameId);
         if (game) {
@@ -669,6 +691,9 @@ void applyValuePicker(State& state) {
             break;
         case PickerTarget::Ability:
             state.session.setAbilityNumber(static_cast<uint8_t>(value));
+            break;
+        case PickerTarget::Form:
+            state.session.setUnownLetter(static_cast<uint8_t>(value));
             break;
         case PickerTarget::MetLocation: {
             if (const auto* choice = EncounterPicker::choiceAt(state.encounterChoices, value)) {
@@ -747,6 +772,7 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
     }
 
     if (row == 7) { openValuePicker(screen, state, PickerTarget::HeldItem); return; }
+    if (row == 15) { openValuePicker(screen, state, PickerTarget::Form); return; }
     if (row == 9) {
         // Inline toggle: A cycles Japanese / English / French / Italian / German / Spanish in
         // place. PK3 names are 5 / 5 characters in Japanese and 10 / 7 otherwise
@@ -946,7 +972,7 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
         state.pickerTarget == PickerTarget::Ball ||
         state.pickerTarget == PickerTarget::MetLocation ||
         nature || state.pickerTarget == PickerTarget::Ability ||
-        state.pickerTarget == PickerTarget::Gender;
+        state.pickerTarget == PickerTarget::Gender || state.pickerTarget == PickerTarget::Form;
     const int visibleRows = gridPicker ? HeldItemGrid::rows
         : state.pickerTarget == PickerTarget::Move ? MoveUI::compactPickerLayout().visibleRows
         : nature ? natureLayout.visibleRows
@@ -1629,7 +1655,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         state.pickerTarget==PickerTarget::MetLocation ||
         state.pickerTarget==PickerTarget::Nature ||
         state.pickerTarget==PickerTarget::Ability ||
-        state.pickerTarget==PickerTarget::Gender;
+        state.pickerTarget==PickerTarget::Gender || state.pickerTarget==PickerTarget::Form;
     const bool naturePicker=state.pickerTarget==PickerTarget::Nature;
     const auto natureLayout=PokeBank::UIModel::NaturePickerLayout::forChoices(pickerCount);
     const int visibleChoices=naturePicker?natureLayout.visibleRows:

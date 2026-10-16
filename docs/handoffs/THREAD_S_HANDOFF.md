@@ -45,7 +45,7 @@ Base: #307 application branch `claude/gen5-integration-20261014`. It was merged 
 
 ## How to verify
 
-- `make -f Makefile.host host-test` — GCC, 152 tests.
+- `make -f Makefile.host host-test` — GCC, 151 tests.
 - `make -f Makefile.host host-sanitize`
 - `for f in tests/*.py; do python3 $f; done`
 - New tests: `tests/test_shared_editor_unit.cpp` and `tests/test_shared_stat_reroll.cpp`.

@@ -1345,7 +1345,9 @@ int main() {
         assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Species));
         assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Ability));
         assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::HeldItem));
-        assert(!stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Shiny));
+        // Shiny is editable through the PID shiny rule (withShiny5); Language stays read-only.
+        assert(stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Shiny));
+        assert(!stagedDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Language));
         assert(!readOnlyDescriptor->fieldIsEditorTarget(Shared::FieldIdentity::Nature));
         assert(!stagedDescriptor->source.canWriteOriginalSource());
         // Gen IV parity: staged Create into a verified native blank slot.
