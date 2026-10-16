@@ -1,42 +1,68 @@
 #ifndef UI_NAVIGATION_REPEAT_H
 #define UI_NAVIGATION_REPEAT_H
 
+#include <chrono>
 #include <cstdint>
 
 namespace PokeBank::UIModel {
-    // Frame-based navigation repeat for controller UIs. D-pad directions arrive as button bits;
-    // libnx exposes the analog sticks separately, so AnalogNavigation below converts the left stick
-    // into the same logical directions before it reaches this repeater.
+    // Shared hold-to-repeat timing for every controller-first screen (P0 #320 phase 8). It is
+    // measured in wall-clock milliseconds, not frames: a frame-counted delay stretched with the frame
+    // time (18 frames is 300 ms at 60 fps but 900 ms at 20 fps), which felt like "moves once, waits,
+    // then moves again" whenever a screen did heavy work. First move is immediate on the press edge,
+    // repeat begins after INITIAL_DELAY_MS, then one step every REPEAT_INTERVAL_MS. At most one step
+    // is emitted per frame and a late frame never bursts several steps, so nothing is skipped.
+    struct RepeatTiming {
+        static constexpr std::uint64_t INITIAL_DELAY_MS = 250;
+        static constexpr std::uint64_t REPEAT_INTERVAL_MS = 67;
+    };
+
+    inline std::uint64_t monotonicMilliseconds() {
+        using namespace std::chrono;
+        return static_cast<std::uint64_t>(
+            duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count());
+    }
+
+    // The timing gate itself, shared by direction repeat and the keyboard's typing repeat.
+    class HoldRepeatClock {
+    public:
+        void start(std::uint64_t nowMs) { nextMs = nowMs + RepeatTiming::INITIAL_DELAY_MS; }
+        // True at most once per call; a stalled frame resumes the cadence instead of bursting.
+        bool due(std::uint64_t nowMs) {
+            if (nowMs < nextMs) return false;
+            nextMs += RepeatTiming::REPEAT_INTERVAL_MS;
+            if (nextMs <= nowMs) nextMs = nowMs + RepeatTiming::REPEAT_INTERVAL_MS;
+            return true;
+        }
+    private:
+        std::uint64_t nextMs = 0;
+    };
+
+    // Navigation repeat for controller UIs. D-pad directions arrive as button bits; libnx exposes
+    // the analog sticks separately, so AnalogNavigation below converts the left stick into the same
+    // logical directions before it reaches this repeater.
     class NavigationRepeat {
     public:
-        static constexpr int INITIAL_DELAY_FRAMES = 18;
-        static constexpr int REPEAT_INTERVAL_FRAMES = 4;
-
         std::uint64_t apply(std::uint64_t pressed, std::uint64_t held,
                             std::uint64_t repeatableMask) {
+            return apply(pressed, held, repeatableMask, monotonicMilliseconds());
+        }
+
+        std::uint64_t apply(std::uint64_t pressed, std::uint64_t held,
+                            std::uint64_t repeatableMask, std::uint64_t nowMs) {
             const std::uint64_t repeatableHeld = held & repeatableMask;
             if (repeatableHeld == 0 || repeatableHeld != heldDirections) {
                 heldDirections = repeatableHeld;
-                heldFrames = 0;
+                if (repeatableHeld != 0) clock.start(nowMs);
                 return pressed;
             }
-
-            ++heldFrames;
-            if (heldFrames >= INITIAL_DELAY_FRAMES &&
-                (heldFrames - INITIAL_DELAY_FRAMES) % REPEAT_INTERVAL_FRAMES == 0) {
-                return pressed | repeatableHeld;
-            }
-            return pressed;
+            return clock.due(nowMs) ? (pressed | repeatableHeld) : pressed;
         }
 
-        void reset() {
-            heldDirections = 0;
-            heldFrames = 0;
-        }
+        void reset() { heldDirections = 0; }
 
     private:
         std::uint64_t heldDirections = 0;
-        int heldFrames = 0;
+        HoldRepeatClock clock;
     };
 
     struct AnalogNavigationSample {
@@ -120,11 +146,19 @@ namespace PokeBank::UIModel {
                             int stickX, int stickY,
                             std::uint64_t up, std::uint64_t down,
                             std::uint64_t left, std::uint64_t right) {
+            return apply(digitalPressed, digitalHeld, stickX, stickY, up, down, left, right,
+                         monotonicMilliseconds());
+        }
+
+        std::uint64_t apply(std::uint64_t digitalPressed, std::uint64_t digitalHeld,
+                            int stickX, int stickY,
+                            std::uint64_t up, std::uint64_t down,
+                            std::uint64_t left, std::uint64_t right, std::uint64_t nowMs) {
             const AnalogNavigationSample analog =
                 analogNavigation.sample(stickX, stickY, up, down, left, right);
             const std::uint64_t mask = up | down | left | right;
             return navigationRepeat.apply(digitalPressed | analog.down,
-                                          digitalHeld | analog.held, mask);
+                                          digitalHeld | analog.held, mask, nowMs);
         }
 
         void reset() {
