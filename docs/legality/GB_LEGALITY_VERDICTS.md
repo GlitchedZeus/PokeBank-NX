@@ -218,7 +218,6 @@ PK2 records.
 
 ## Not covered yet
 
-- **Gen II in the app:** waits on independent verification of the Gen I/II code.
 - **Events:** GB-era distributions beyond PKHeX's `event2`/Gen I event tables. Japanese
   Mobile System GB content other than the GS Ball is not modelled; a non-Mew/Celebi
   Pokémon from an unrecorded event is Invalid, as in PKHeX.
