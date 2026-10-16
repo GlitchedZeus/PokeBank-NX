@@ -1,3 +1,4 @@
+#include "UI/Gen1ListFit.h"
 #include "UI/Gen1PokemonEditorOverlay.h"
 
 #include "Integration/Gen1/Gen1ExportTransaction.h"
@@ -897,16 +898,16 @@ void drawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
     const int listX = x + 330;
     const int listW = w - 360;
     const int listY = y + 82;
-    const int visible = 12;
+    // Only whole rows that end above the status line (y + h - 70) are drawn, so the focused
+    // row can never sit under it; there is no "Row x/y" counter (the list scrolls with focus).
+    const int visible = PokeBank::UIModel::Gen1ListFit::wholeRows(listY, y + h - 70 - 8, 41, 12);
     const int start = std::clamp(state.row - visible / 2, 0, 30 - visible);
     for (int i = 0; i < visible; ++i) {
         const int field = start + i;
         const std::string value = add ? draftValue(state.draft, *e, field) : existingValue(*pokemon, field);
         drawRow(fb, listX, listY + i * 41, listW, fieldLabel(field), value, field == state.row);
     }
-    fb.drawText(listX, y + h - 70,
-        "Row " + std::to_string(state.row + 1) + "/30   •   " + sectionForRow(state.row),
-        Colors::TextDim, TextStyle::Caption);
+    fb.drawText(listX, y + h - 70, sectionForRow(state.row), Colors::TextDim, TextStyle::Caption);
     fb.drawText(leftX, y + h - 70,
         add ? "Nothing is staged until Stage Add." : "Edits are staged; source .srm stays immutable.",
         Colors::Accent, TextStyle::Caption);

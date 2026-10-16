@@ -1,3 +1,4 @@
+#include "UI/Gen1ListFit.h"
 #include "UI/ClassicPokemonActionMenu.h"
 #include "UI/Gen12ReviewDiscardConfirm.h"
 #include "UI/StatsRadar.h"
@@ -867,9 +868,11 @@ void ux2DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     const int listX = x + 338;
     const int listW = w - 370;
     const int listY = y + 92;
-    const int viewportH = h - 184;
     constexpr int rowH = 48;
-    const int visible = std::max(1, viewportH / rowH);
+    // Whole rows only, ending above the status divider (y + h - 76): the focused row is never
+    // drawn under it, and no "Row x/y" counter is shown (Gen1ListFit.h).
+    const int visible = PokeBank::UIModel::Gen1ListFit::wholeRows(listY, y + h - 76 - 4, rowH, 13);
+    const int viewportH = visible * rowH;
     const int start = std::clamp(state.row - visible / 2, 0, std::max(0, 13 - visible));
 
     fb.setClipRect(listX, listY, listW, viewportH);
@@ -882,9 +885,7 @@ void ux2DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
 
     const int statusY = y + h - 66;
     fb.drawHDivider(listX, statusY - 10, listW);
-    fb.drawText(listX, statusY,
-        "Row " + std::to_string(state.row + 1) + "/13   •   " + ux2SectionForRow(state.row),
-        Colors::TextDim, TextStyle::Caption);
+    fb.drawText(listX, statusY, ux2SectionForRow(state.row), Colors::TextDim, TextStyle::Caption);
 }
 
 // The Gen I action sheet lists only the commands the staged editor performs, each carrying its
