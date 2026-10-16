@@ -20,6 +20,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "Legality/Legality.h"
 
@@ -85,6 +86,28 @@ bool isWordFiltered(std::u16string_view message);
 /// Number of pinned word-filter patterns the matcher cannot evaluate (0 for the pinned lists).
 std::size_t unsupportedWordFilterPatterns();
 
+/// The species itself, then every Gen III pre-evolution (EvolutionTree3, form-0 sources),
+/// nearest first. Unknown species ids return just the id.
+std::vector<uint16_t> lineage(uint16_t species);
+
+/// One run of the analyzer on a stored record, made once by Legality::analyze so its
+/// older Gen III checks (the L1 encounter table, the pret move pools) can yield to it.
+struct Verification {
+    bool ran = false;        ///< the record is an 80/100-byte PK3 in the Gen III save group
+    bool emptySlot = false;  ///< internal species index 0: an empty slot, nothing to validate
+    Report report;           ///< analyzePk3's report (empty when !ran or emptySlot)
+    /// Every coverage area Complete with no Warning or Invalid: the analyzer matched an
+    /// encounter for this exact record, verified its moves and every other rule, and the
+    /// source is a GBA game.
+    bool certified = false;
+    /// The matched encounter, e.g. "in-game trade Nidoran F at met location 254, level 5";
+    /// empty when the analyzer matched none.
+    std::string encounter;
+};
+
+/// Runs the analyzer on pk's stored bytes. Not a PK3 (or not decryptable): ran == false.
+Verification verify(const Pokemon::Pokemon& pk, std::string_view exactSourceGameId);
+
 } // namespace Gen3Pk3
 
 /// Analyzes a decrypted PK3 record. exactSourceGameId names the save the record
@@ -97,7 +120,10 @@ Report analyzePk3(std::span<const uint8_t> decrypted, std::string_view exactSour
 /// marks every coverage area Complete only when the analyzer verified a
 /// legitimate origin with every area checked, nothing is wrong, r itself has
 /// no Invalid or Warning, and the source is a GBA game. Anything else leaves
-/// r's coverage untouched. Records that are not PK3 are ignored.
+/// r's coverage untouched. Records that are not PK3, and empty PK3 slots, are ignored.
+void applyGen3Analyzer(Report& r, const Gen3Pk3::Verification& verified, std::string_view exactSourceGameId);
+
+/// Same as above, running verify() first.
 void applyGen3Analyzer(Report& r, const Pokemon::Pokemon& pk, std::string_view exactSourceGameId);
 
 } // namespace Legality

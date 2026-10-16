@@ -13,7 +13,9 @@
 //   Unknown  PKHeX INVALID only for want of save data (the e-Reader Enigma Berry):
 //            Warning here, never Invalid.
 // prodClean marks records Legality::analyze also certifies (the older production
-// checks add no Warning of their own to them).
+// checks add no Warning of their own to them). The older Gen III checks judge the
+// record's origin game and evolution lineage and yield to a certified analysis, so
+// every Valid fixture is prodClean; the yield itself is tested below.
 // Then constructed rule cases, malformed sizes and checksums, origin games this
 // analyzer does not judge, the production merge rule, input immutability and a
 // deterministic fuzz pass (ASan/UBSan under host-sanitize).
@@ -66,29 +68,29 @@ const Case kCases[] = {
     {"b32", Expect::Valid, true, "leafgreen_gba", "EncounterStatic3:1", "4C500DB1FF0BEF1EBCCFC6BCBBCDBBCFCCFF0202CED9E7E8D9E6FF004F83000001000000870000000046000021002D00000000002328000000000000000000000000000000588522387D991C00000000"},  // PKHeX: VALID
     {"b124", Expect::Valid, true, "firered_gba", "EncounterSlot3:10", "A45955DB165E1594BDBBCEBFCCCAC3BFFF000202CED9E7E8D9E6FF00EEFE00000A000000400000000046000021005100000000002328000000000000000000000000000000660422A2E0692700000000"},  // PKHeX: VALID
     {"b160", Expect::Valid, true, "leafgreen_gba", "EncounterSlot3:10", "416DE1515CF33C50BDBBCEBFCCCAC3BFFF000202CED9E7E8D9E6FF00722500000A000000400000000046000021005100000000002328000000000000000000000000000000668422AAFB653200000000"},  // PKHeX: VALID
-    {"b1632", Expect::Valid, false, "ruby_gba", "EncounterGift3NY:25", "E23F3850AE040000CAC3C5BBBDC2CFFF00000202CABDC8D3D6FF000013F300001900000048E801000046000055006100570071000F1E0A1E00000000000000000000000000FF32211E28CA3E00000000"},  // PKHeX: VALID
-    {"b1652", Expect::Valid, false, "sapphire_gba", "EncounterGift3:172", "948F450800000000606F8BFF0000000000000106BBD4CFCDBBFF000051F90000AC0000007D000000000A00005400CC00390000001E140F0000000000000000000000000000FF80A059C4C97400000000"},  // PKHeX: VALID
-    {"b1656", Expect::Valid, false, "sapphire_gba", "EncounterGift3NY:25", "A7F250C1AB050000CAC3C5BBBDC2CFFF00000202CABDC8D3D6FF00001AE600001900000048E801000046000055006100570071000F1E0A1E00000000000000000000000000FFB220AD28C23100000000"},  // PKHeX: VALID
+    {"b1632", Expect::Valid, true, "ruby_gba", "EncounterGift3NY:25", "E23F3850AE040000CAC3C5BBBDC2CFFF00000202CABDC8D3D6FF000013F300001900000048E801000046000055006100570071000F1E0A1E00000000000000000000000000FF32211E28CA3E00000000"},  // PKHeX: VALID
+    {"b1652", Expect::Valid, true, "sapphire_gba", "EncounterGift3:172", "948F450800000000606F8BFF0000000000000106BBD4CFCDBBFF000051F90000AC0000007D000000000A00005400CC00390000001E140F0000000000000000000000000000FF80A059C4C97400000000"},  // PKHeX: VALID
+    {"b1656", Expect::Valid, true, "sapphire_gba", "EncounterGift3NY:25", "A7F250C1AB050000CAC3C5BBBDC2CFFF00000202CABDC8D3D6FF00001AE600001900000048E801000046000055006100570071000F1E0A1E00000000000000000000000000FFB220AD28C23100000000"},  // PKHeX: VALID
     {"b1660", Expect::Valid, true, "sapphire_gba", "EncounterSlot3:25", "183CBAD0AF808685CAC3C5BBBDC2CFFF00000202CED9E7E8D9E6FF002989000019000000093D0000004600005600620068001500141E0F1400000000000000000000000000399928CB4A4B2600000000"},  // PKHeX: VALID
-    {"b1672", Expect::Valid, false, "emerald_gba", "EncounterGift3:172", "6C14487600000000606F8BFF0000000000000106BBD4CFCDBBFF0000AFBD0000AC0000007D000000000A00005400CC00390000001E140F0000000000000000000000000000FF80A199B9E74200000000"},  // PKHeX: VALID
+    {"b1672", Expect::Valid, true, "emerald_gba", "EncounterGift3:172", "6C14487600000000606F8BFF0000000000000106BBD4CFCDBBFF0000AFBD0000AC0000007D000000000A00005400CC00390000001E140F0000000000000000000000000000FF80A199B9E74200000000"},  // PKHeX: VALID
     {"b1680", Expect::Valid, true, "emerald_gba", "EncounterSlot3:25", "F86338AC643E4602CAC3C5BBBDC2CFFF00000202CED9E7E8D9E6FF00E876000019000000093D0000004600005600620068001500141E0F1400000000000000000000000000399929CB4F0A0E00000000"},  // PKHeX: VALID
-    {"b1692", Expect::Valid, false, "firered_gba", "EncounterGift3:172", "2A862C8C00000000606F8BFF0000000000000106BBD4CFCDBBFF00005FD70000AC0000007D000000000A00005400CC00390000001E140F0000000000000000000000000000FF00A22CB0846500000000"},  // PKHeX: VALID
-    {"b1724", Expect::Valid, false, "leafgreen_gba", "EncounterGift3:172", "45F56DFB00000000606F8BFF0000000000000106BBD4CFCDBBFF0000E0A40000AC0000007D000000000A00005400CC00390000001E140F0000000000000000000000000000FF80A212A09F4200000000"},  // PKHeX: VALID
+    {"b1692", Expect::Valid, true, "firered_gba", "EncounterGift3:172", "2A862C8C00000000606F8BFF0000000000000106BBD4CFCDBBFF00005FD70000AC0000007D000000000A00005400CC00390000001E140F0000000000000000000000000000FF00A22CB0846500000000"},  // PKHeX: VALID
+    {"b1724", Expect::Valid, true, "leafgreen_gba", "EncounterGift3:172", "45F56DFB00000000606F8BFF0000000000000106BBD4CFCDBBFF0000E0A40000AC0000007D000000000A00005400CC00390000001E140F0000000000000000000000000000FF80A212A09F4200000000"},  // PKHeX: VALID
     {"b1756", Expect::Valid, true, "ruby_gba", "EncounterSlot3:27", "D428EFEEA33D40DECDBBC8BECDC2CCBFD1FF0202CED9E7E8D9E6FF000CB300001B000000401F0000004600000A006F001C00280023280F23000000000000000000000000001A1421E7A4C72100000000"},  // PKHeX: VALID
-    {"b1956", Expect::Valid, false, "firered_gba", "EncounterTrade3:29", "890B974CD0F60000C7CDAD00C8C3BEC9FF000202CDBBC3C1BFFF00007F3100001D00000087000000004600002D000A000000000028230000000000000000050505051E0A00FE05A256E6F92C00000000"},  // PKHeX: VALID
-    {"b2060", Expect::Valid, false, "leafgreen_gba", "EncounterTrade3:32", "9E0B974CD0F60000C7CCAD00C8C3BEC9FF000202CDBBC3C1BFFF00007B8900002000000087000000004600002B004000000000001E2300000000000000001E050505050A00FE85A2334B6B1F00000000"},  // PKHeX: VALID
+    {"b1956", Expect::Valid, true, "firered_gba", "EncounterTrade3:29", "890B974CD0F60000C7CDAD00C8C3BEC9FF000202CDBBC3C1BFFF00007F3100001D00000087000000004600002D000A000000000028230000000000000000050505051E0A00FE05A256E6F92C00000000"},  // PKHeX: VALID
+    {"b2060", Expect::Valid, true, "leafgreen_gba", "EncounterTrade3:32", "9E0B974CD0F60000C7CCAD00C8C3BEC9FF000202CDBBC3C1BFFF00007B8900002000000087000000004600002B004000000000001E2300000000000000001E050505050A00FE85A2334B6B1F00000000"},  // PKHeX: VALID
     {"b4308", Expect::Valid, true, "emerald_gba", "EncounterTrade3:52", "8B00000059650100C7BFC9D1C9D1FF0000000202C3CDC3CDFF00000021D40000340000001B000000004600000A002D0000000000232800000000000000000505051E050A00FE83A1A490420800000000"},  // PKHeX: VALID
     {"b11444", Expect::Valid, true, "ruby_gba", "EncounterStatic3:100", "0615FD38FBC1002FD0C9C6CEC9CCBCFF00000202CED9E7E8D9E6FF00A219000064000000093D000000460000210067003100D10023281414000000000000000000000000003E1921B8E7A31100000000"},  // PKHeX: VALID
     {"b11472", Expect::Valid, true, "sapphire_gba", "EncounterStatic3:100", "39618BDA4CE14E1ED0C9C6CEC9CCBCFF00000202CED9E7E8D9E6FF00EAFA000064000000093D000000460000210067003100D10023281414000000000000000000000000003E99204226E1B400000000"},  // PKHeX: VALID
     {"b11500", Expect::Valid, true, "emerald_gba", "EncounterStatic3:100", "2A252BB341812557D0C9C6CEC9CCBCFF00000202CED9E7E8D9E6FF000335000064000000093D000000460000210067003100D10023281414000000000000000000000000003E992120D91C3B00000000"},  // PKHeX: VALID
-    {"b18692", Expect::Valid, false, "ruby_gba", "EncounterTrade3:222", "7F0B974C07C40000BDC9CCC9CDC9FF0000000202C6BBC8BFFF0000006D030000DE000000F01C0000004600006A00910069001F011E1E1414000000000000051E0505050A00FE15A18414428A00000000"},  // PKHeX: VALID
-    {"b18708", Expect::Valid, false, "sapphire_gba", "EncounterTrade3:222", "7F0B974C07C40000BDC9CCC9CDC9FF0000000202C6BBC8BFFF000000ED020000DE000000F01C0000004600006A00910069001F011E1E1414000000000000051E0505050A00FE95A08414428A00000000"},  // PKHeX: VALID
+    {"b18692", Expect::Valid, true, "ruby_gba", "EncounterTrade3:222", "7F0B974C07C40000BDC9CCC9CDC9FF0000000202C6BBC8BFFF0000006D030000DE000000F01C0000004600006A00910069001F011E1E1414000000000000051E0505050A00FE15A18414428A00000000"},  // PKHeX: VALID
+    {"b18708", Expect::Valid, true, "sapphire_gba", "EncounterTrade3:222", "7F0B974C07C40000BDC9CCC9CDC9FF0000000202C6BBC8BFFF000000ED020000DE000000F01C0000004600006A00910069001F011E1E1414000000000000051E0505050A00FE95A08414428A00000000"},  // PKHeX: VALID
     {"b20180", Expect::Valid, true, "ruby_gba", "EncounterSlot3Swarm:273", "18C3E0EA1A33782CCDBFBFBEC9CEFF0000000202CED9E7E8D9E6FF0051D200002A010000390000000046000075006A00490000000A1E0A000000000000000000000000000011032160064F3300000000"},  // PKHeX: VALID
     {"b20200", Expect::Valid, true, "sapphire_gba", "EncounterSlot3Swarm:273", "7EADD0DF6ED1B02ACDBFBFBEC9CEFF0000000202CED9E7E8D9E6FF007E6300002A010000390000000046000075006A00490000000A1E0A000000000000000000000000000011832047B6151500000000"},  // PKHeX: VALID
     {"b20224", Expect::Valid, true, "emerald_gba", "EncounterSlot3Swarm:273", "4F4A0E0BDC497C5ECDBFBFBEC9CEFF0000000202CED9E7E8D9E6FF00AAD800002A010000ED0400000046000075006A004A000B010A1E281400000000000000000000000000208D218E8D128900000000"},  // PKHeX: VALID
     {"b16228", Expect::Valid, true, "ruby_gba", "EncounterGift3:151", "C1DB39BB121B0000C7BFD1FF0000000000000202C7D3CDCECCD3FF0009DF00009700000030020000006400000100900000000000230A000000000000000000000000000000FF0A2177BE0D0F00000080"},  // PKHeX: VALID
     {"b16236", Expect::Valid, true, "emerald_gba", "EncounterStatic3:151", "B96BE61FAE1D7DB3708553FF00000000000001028AAE6C78FFFF0000374300009700000000550000006400000100900005007600230A140A00000000000000000000000000C99E214C01730800000080"},  // PKHeX: VALID
-    {"b17772", Expect::Valid, false, "ruby_gba", "EncounterGift3NY:360", "DEF31BE3A2070000D1D3C8BBCFCEFF0000000202CABDC8D3D8FF0000E27B0000680100007D000000004600009600CC00E30000002814050000000000000000000000000000FF052163F0230D00000000"},  // PKHeX: VALID
+    {"b17772", Expect::Valid, true, "ruby_gba", "EncounterGift3NY:360", "DEF31BE3A2070000D1D3C8BBCFCEFF0000000202CABDC8D3D8FF0000E27B0000680100007D000000004600009600CC00E30000002814050000000000000000000000000000FF052163F0230D00000000"},  // PKHeX: VALID
     {"b19244", Expect::Valid, true, "emerald_gba", "EncounterStatic3:249", "A700ECFA4F76F81AC6CFC1C3BBFF000000000202CED9E7E8D9E6FF00B1980000F9000000CE8A06000000000069003800F00081001405051400000000000000000000000000D3C6212070D30C00000080"},  // PKHeX: VALID
     {"b19260", Expect::Valid, true, "emerald_gba", "EncounterStatic3:250", "1254007A0963B2C5C2C9AEC9C2FF000000000202CED9E7E8D9E6FF003E880000FA000000CE8A06000000000069007E00F10081001405051400000000000000000000000000D3C621563FE22C00000080"},  // PKHeX: VALID
     {"b28740", Expect::Valid, true, "ruby_gba", "EncounterStatic3:380", "8C2B5F88774E3BAEC6BBCEC3BBCDFF0000000202CED9E7E8D9E6FF00BABB0000970100005A620200005A000028015E006900CC00050A141400000000000000000000000000493221AC4C152600000000"},  // PKHeX: VALID
@@ -199,6 +201,24 @@ const Case kCases[] = {
     {"m1505-otgender", Expect::Invalid, false, "ruby_gba", "EncounterGift3JPN:23", "2E74F566D2EA000051AE9AFF0000000000000102765A6A6FFF000000977B000017000000E80300000046000023002B0028000000141E230000000000000000000000000000FF0A21B5F12C0100000000"},  // PKHeX: PID:PIDTypeMismatch
     {"m1997-tid", Expect::Invalid, false, "firered_gba", "EncounterInvalid:30", "15CAEE00010A0000C8C3C8BBFF00000000000202CECFCCC8BFCCFF0098B000001E000000E7090000004600002D000A002700180028231E1E00000000000005051E05050A00FE102236CB691F00000000"},  // PKHeX: Encounter:EncInvalid Fateful:FatefulGiftMissing
     {"m7621-item", Expect::Unknown, false, "firered_gba", "EncounterSlot3:72", "C27629DE27F83C0ACEBFC8CEBBBDC9C9C6FF0202CED9E7E8D9E6FF0059F200004800AF00804300000046000028003000840033002314231E000000000000000000000000005818222F9C461E00000000"},  // PKHeX: HeldItem:ItemUnreleased (needs save data)
+    // Grown/base records the older Gen III checks in Legality.cpp used to hold at Incomplete
+    // (they judged the cartridge instead of the origin game, ignored evolution, or lacked the
+    // encounter kind or move in their audited tables); production certifies them now.
+    {"g1091-exp+candy+trade+item", Expect::Valid, true, "leafgreen_gba", "EncounterGift3:25", "2CC6A7CE53180000CAC3C5BBBDC2CFFF00000202A2A1BBC8C8C3D000ADF200001900280140420F000046000055006100570071000F1E0A1E00000000000000000000000000FF46A1C96B771F00000000"},  // PKHeX: VALID; older checks: enc-event
+    {"g1092-exp+candy+move", Expect::Valid, true, "ruby_gba", "EncounterGift3:25", "878EE17DF5A000009C56618553FF000000000102BBC8BBFF000000008A2C000019000000786900000046000013005400550056000F1E0F1400000000000000000000000000FF0A211403AB2600000000"},  // PKHeX: VALID; older checks: enc-event + mv-preserved-EncounterGift
+    {"g18840-exp+item+ev+item+exp", Expect::Valid, true, "ruby_gba", "EncounterGift3NY:359", "D200DB8847090000BBBCCDC9C6FF000000000202CABDC8D3D7FF0000DEF1000078011A005E900600002300000D002C000E00B4000A191E0A0F0C0D11111500000000000000FF23215EBF170700000000"},  // PKHeX: VALID; older checks: enc-event + mv-preserved-EncounterGiftNY
+    {"b22552", Expect::Valid, true, "ruby_gba", "EncounterGift3:300", "E95B498A8EC40000606F8BFF00000000000001069F599BAE58FF0000436D00003B01000064000000000F00002D0021002700CD0028231E1400000000000000000000000000FF0521FDA31A6000000000"},  // PKHeX: VALID; older checks: enc-event + mv-transfer-same
+    {"g82-evolve+move", Expect::Valid, true, "firered_gba", "EncounterSlot3:10", "DB9E45FCCFAE4E50C7BFCEBBCAC9BEFFFF000202CED9E7E8D9E6FF005B1100000B0000005701000000FF0000210051006A00000023281E0000000000000000000000000000660522875B500400000000"},  // PKHeX: VALID; older checks: enc-evolved
+    {"g1406-exp", Expect::Valid, true, "firered_gba", "EncounterStatic3:35", "0F0DD20F3F0376AFBDC6BFC0BBC3CCD3FF000202CED9E7E8D9E6FF008161000023000000F0A90000008C000001002D00E300000023280500000000000000000000000000005E08229950943100000000"},  // PKHeX: VALID; older checks: enc-gamecorner
+    {"g1113-exp+trade+candy+ev", Expect::Valid, true, "firered_gba", "EncounterSlot3:25", "E2EE1A6D35761DC5CAC3C5BBBDC2CFFF00000202CED9E7E8D9E6FF008B3200001900000018670200004600005600620068001500141E0F14050C08050E060000000000000039992854AFF82900000000"},  // PKHeX: VALID; older checks: enc-origin
+    {"g19247-trade+exp+item", Expect::Valid, true, "leafgreen_gba", "EncounterStatic3:386", "8FAA432E912F07B8BEBFC9D2D3CDFF0000000202CED9E7E8D9E6FF0048DA00009A012200FB040200000000001A01E4005E00810014140A1400000000000000000000000000C89E211230E40E00000080"},  // PKHeX: VALID; older checks: enc-origin + mv-transfer-origin
+    {"g123-evolve+candy+trade", Expect::Valid, true, "firered_gba", "EncounterSlot3:10", "8F4CD1886E59EF88C7BFCEBBCAC9BEFFFF000202CED9E7E8D9E6FF00223700000B000000DDC5000000FF000021005100000000002328000000000000000000000000000000B68622FD40223000000000"},  // PKHeX: VALID; older checks: enc-origin+evolved
+    {"g13568-move+exp+ev", Expect::Valid, true, "ruby_gba", "EncounterSlot3Swarm:273", "273CF439DF05085ACDBFBFBEC9CEFF0000000202CED9E7E8D9E6FF002F6700002A010000EE2900000046000075004A000B0149000A28140A090C0D0E0A0A00000000000000200D2175D5448700000000"},  // PKHeX: VALID; older checks: enc-outbreak
+    {"g7897-move+candy+move+item", Expect::Valid, true, "ruby_gba", "EncounterStatic3:101", "CC8F1715CE42EDE7BFC6BFBDCECCC9BEBFFF0202CED9E7E8D9E6FF0027B6000065007A00000004000046000067003100810078002814140500000000000000000000000000421E2128C4312D00000000"},  // PKHeX: VALID; older checks: enc-static-66
+    {"g1296-evolve+exp", Expect::Valid, true, "firered_gba", "EncounterTrade3:29", "890B974CD0F60000C7CDAD00C8C3BEC9FF000202CDBBC3C1BFFF0000D7FA00001E000000DE10000000FF00002D000A000000000028230000000000000000050505051E0A00FE05A256E6F92C00000000"},  // PKHeX: VALID; older checks: enc-trade
+    {"g1093-item+trade+move+evolve", Expect::Valid, true, "sapphire_gba", "EncounterGift3:25", "878EE17DF5A000007752618553FF000000000102BBC8BBFF000000003C8000001A005000E803000000FF0000130054002D0056000F1E281400000000000000000000000000FF0A211403AB2600000000"},  // PKHeX: VALID; older checks: mv-preserved-EncounterGift
+    {"g18837-trade+item", Expect::Valid, true, "firered_gba", "EncounterGift3NY:359", "023CB1A448020000BBBCCDC9C6FF000000000202CABDC8D3D7FF0000D617000078016100538E0000002300000D002C000E00B4000A191E0A00000000000000000000000000FF2321A610BE0F00000000"},  // PKHeX: VALID; older checks: mv-preserved-EncounterGiftNY
+    {"g2858-evolve+move+move+trade", Expect::Valid, true, "sapphire_gba", "EncounterSlot3:50", "07F121808388913BBECFC1CECCC3C9FF00000202CED9E7E8D9E6FF0007EE000033000000A844000000FF00000A0048019A005B00230F0F0A00000000000000000000000000831422403F5FAA00000000"},  // PKHeX: VALID; older checks: mv-transfer-origin
 };
 
 using Legality::Severity;
@@ -377,6 +397,71 @@ int main() {
         expectInvalid("fateful flag", pk, "");
     }
 
+    // Production: an internal species index with no National Dex number reads as species 0
+    // in Legality::analyze; the analyzer's Invalid still reaches the report. An empty PK3 slot
+    // stays unjudged (no Warning, no Invalid).
+    {
+        auto pk = base;
+        put16(pk, 0x20, 260);
+        refreshChecksum(pk);
+        const auto p = production(pk, "ruby_gba");
+        if (p.verdict() != Verdict::Invalid || !hasText(p, "is not a Gen III Pokemon"))
+            fail("production: unused species index must be Invalid", p);
+        const auto e = production(std::vector<uint8_t>(80, 0), "ruby_gba");
+        if (has(e, Severity::Warning) || has(e, Severity::Invalid)) fail("production: empty slot must stay unjudged", e);
+        checked += 2;
+    }
+
+    // Production: the older Gen III checks yield to the analyzer only when it certified the
+    // record. Their table/pool gap is then an Info naming the analyzer's match; with an
+    // analyzer Warning (an Enigma Berry) the older Warning stays.
+    {
+        const auto fixture = [&](std::string_view name) -> std::vector<uint8_t> {
+            for (const Case& c : kCases)
+                if (name == c.name) return fromHex(c.hex);
+            std::cerr << "FAIL missing fixture " << name << "\n";
+            ++failures;
+            return base;
+        };
+        const auto hasInfo = [](const Legality::Report& r, std::string_view text) {
+            return std::any_of(r.issues.begin(), r.issues.end(), [text](const auto& i) {
+                return i.severity == Severity::Info && i.text.find(text) != std::string::npos;
+            });
+        };
+        struct Yield { const char* fixture; const char* game; const char* older; const char* note; };
+        const Yield yields[] = {
+            // FireRed in-game trade (met location 254, evolved): the L1 table has no trades.
+            {"g1296-evolve+exp", "firered_gba", "Met location/level does not match the audited encounter table for firered_gba",
+             "the Gen III analyzer matched in-game trade"},
+            // PCNY Shuppet: Spite is an event move outside the pret pools.
+            {"g18840-exp+item+ev+item+exp", "ruby_gba", "Move is preserved but not in the audited Gen III native/transfer pool: Spite",
+             "the Gen III analyzer verified every move"},
+            // Ruby/Sapphire mass outbreak Seedot (record-mixed Emerald TV show): no L1 row.
+            {"g13568-move+exp+ev", "ruby_gba", "Met location/level does not match the audited encounter table for ruby_gba",
+             "(mass outbreak)"},
+        };
+        for (const auto& y : yields) {
+            auto pk = fixture(y.fixture);
+            const auto clean = production(pk, y.game);
+            if (!certified(clean) || !hasInfo(clean, y.older) || !hasInfo(clean, y.note))
+                fail(std::string(y.fixture) + ": certified record should carry the older check as an Info note", clean);
+            put16(pk, 0x22, 175);  // Enigma Berry: the analyzer no longer certifies
+            refreshChecksum(pk);
+            const auto held = production(pk, y.game);
+            if (held.verdict() != Verdict::Incomplete || !hasText(held, y.older))
+                fail(std::string(y.fixture) + ": uncertified record must keep the older Warning", held);
+            checked += 2;
+        }
+        // Origin game, not cartridge: a Sapphire-origin Pikachu in a FireRed save matches the
+        // Sapphire table, so no table note at all.
+        const auto traded = production(fixture("g1113-exp+trade+candy+ev"), "firered_gba");
+        if (!certified(traded) ||
+            std::any_of(traded.issues.begin(), traded.issues.end(),
+                        [](const auto& i) { return i.text.find("audited encounter table") != std::string::npos; }))
+            fail("g1113: origin-game table lookup", traded);
+        ++checked;
+    }
+
     // Records this analyzer does not judge: Warning (Unknown), never Invalid.
     {
         auto pk = base;
@@ -457,10 +542,7 @@ int main() {
             fail("mutation fuzz: certified without a source id", r);
         if (i % 16 == 0) {
             const auto p = production(pk, kGames[next() % 5]);
-            // An internal species index with no national species loads as an empty slot,
-            // which Legality::analyze leaves unjudged (no issues, Incomplete) before the hook.
-            if (r.verdict() == Verdict::Invalid && p.verdict() != Verdict::Invalid &&
-                !(hasText(r, "is not a Gen III Pokemon") && p.issues.empty()))
+            if (r.verdict() == Verdict::Invalid && p.verdict() != Verdict::Invalid)
                 fail("mutation fuzz: production dropped an analyzer Invalid", p);
             if (p.verdict() == Verdict::NoProblemsFound && r.verdict() != Verdict::NoProblemsFound)
                 fail("mutation fuzz: production certified what the analyzer did not", p);
