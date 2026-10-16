@@ -161,7 +161,7 @@ int main() {
     const auto compositeDraw = composite.substr(composite.find("void TrainerViewScreen::draw(PKSEFramebuffer& fb)"));
     assert(compositeDraw.find("if (!Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this))") != std::string::npos);
     assert(shared.find("drawSharedProvenanceSurface") != std::string::npos);
-    assert(shared.find("Encounter legality\", \"Not checked") != std::string::npos);
+    assert(shared.find("kOriginLegalityHeading, \"Not checked") != std::string::npos);
     assert(shared.find("case SharedEditor::Action::Close") != std::string::npos);
 
     // The established inline page owns rendering and exactly two cursor rows.
@@ -201,7 +201,7 @@ int main() {
     assert(unified.find("{\"Friendship\", std::to_string(p.friendship)}") != std::string::npos);
     assert(unified.find("{\"Pokerus\", Gen2Native::pokerusText(p.pokerus)}") != std::string::npos);
     assert(unified.find("std::array<std::pair<std::string, std::string>, 2> capabilityRows") != std::string::npos);
-    assert(unified.find("Encounter legality: Not checked") != std::string::npos);
+    assert(unified.find("std::string(PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading) + \": Not checked\"") != std::string::npos);
     assert(unified.find("const int first = unified.detailsViewport.firstRow") != std::string::npos);
     // Touching a visually scrolled Details row must not invoke the old
     // independently recalculated focus-centred hit test. The 1700+ row
@@ -291,7 +291,7 @@ int main() {
     assert(unified.find("if (focus.row == 8)") != std::string::npos);
     // Owner campaign directive: Pokerus uses the shared selector interaction (same three native
     // states None/Infected/Cured, still no strain/days editor) instead of cycling in place.
-    assert(unified.find("p.pokerus = Gen2Native::cyclePokerusState(p.pokerus, state.baseline.pokerus);") != std::string::npos);
+    assert(unified.find("SharedEditorPresentation::nextPokerusByte(") != std::string::npos);
     assert(unified.find("p.pokerus = Gen2Native::cyclePokerusState(p.pokerus)") == std::string::npos);
     assert(picker.find("state.working.caughtData = 0") != std::string::npos);
 

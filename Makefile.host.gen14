@@ -181,3 +181,16 @@ $(HOST_BUILD)/test_gen2_location_picker: $(GEN2_LOCATION_PICKER_SOURCES) $(GEN2_
 $(HOST_BUILD)/test_gen2_location_picker_sanitize: $(GEN2_LOCATION_PICKER_SOURCES) $(GEN2_LOCATION_PICKER_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_LOCATION_PICKER_SOURCES) -o $@
+
+# Gen I list editors: whole rows above the status line, no "Row x/y" counters (phases 1/5).
+GEN1_LIST_FIT_SOURCES := tests/test_gen1_list_fit.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen1_list_fit
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen1_list_fit_sanitize
+host-test: $(HOST_BUILD)/test_gen1_list_fit
+host-sanitize: $(HOST_BUILD)/test_gen1_list_fit_sanitize
+$(HOST_BUILD)/test_gen1_list_fit: $(GEN1_LIST_FIT_SOURCES) include/UI/Gen1ListFit.h src/UI/Gen1PokemonEditorOverlayUX.inc src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN1_LIST_FIT_SOURCES) -o $@
+$(HOST_BUILD)/test_gen1_list_fit_sanitize: $(GEN1_LIST_FIT_SOURCES) include/UI/Gen1ListFit.h src/UI/Gen1PokemonEditorOverlayUX.inc src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_LIST_FIT_SOURCES) -o $@

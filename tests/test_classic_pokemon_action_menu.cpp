@@ -1,5 +1,5 @@
 // Gen I / Gen II Pokemon Actions sheet (owner campaign phase 3): only real commands, in the shared
-// order View, Edit, Clone, Release, then Legality & Provenance, Review, Cancel. No Make Shiny
+// order View, Edit, Clone, Release, then Origin & Legality, Review, Cancel. No Make Shiny
 // (shiny is edited inside the editor) and no greyed placeholders. Every row keeps its native
 // action index, so controller order, touch ids and dispatch are unchanged.
 #include "UI/ClassicPokemonActionMenu.h"
@@ -69,10 +69,10 @@ int main() {
         const auto occupied = Shared::actionsForSlot(true, caps, pending);
         const auto model = Menu::fromShared(occupied);
         if (pending)
-            expectLabels(model, {"View", "Edit", "Clone", "Release", "Legality & Provenance",
+            expectLabels(model, {"View", "Edit", "Clone", "Release", "Origin & Legality",
                                  "Review Pending Changes", "Cancel"});
         else
-            expectLabels(model, {"View", "Edit", "Clone", "Release", "Legality & Provenance", "Cancel"});
+            expectLabels(model, {"View", "Edit", "Clone", "Release", "Origin & Legality", "Cancel"});
         nativeIndicesAreIdentity(model, occupied);
         const auto empty = Shared::actionsForSlot(false, caps, pending);
         const auto emptyModel = Menu::fromShared(empty);
@@ -84,17 +84,17 @@ int main() {
     Shared::ActionCapabilities noRemove = caps;
     noRemove.canRemove = false;
     expectLabels(Menu::fromShared(Shared::actionsForSlot(true, noRemove, false)),
-                 {"View", "Edit", "Clone", "Legality & Provenance", "Cancel"});
+                 {"View", "Edit", "Clone", "Origin & Legality", "Cancel"});
 
     // Gen I: its padded table lists Cancel once.
     for (const bool pending : {false, true}) {
         const auto occupied = Gen1::actionsForSlot(true, pending);
         const auto model = Menu::fromGen1(occupied);
         if (pending)
-            expectLabels(model, {"View", "Edit", "Clone", "Release", "Legality & Provenance",
+            expectLabels(model, {"View", "Edit", "Clone", "Release", "Origin & Legality",
                                  "Review Pending Changes", "Cancel"});
         else
-            expectLabels(model, {"View", "Edit", "Clone", "Release", "Legality & Provenance", "Cancel"});
+            expectLabels(model, {"View", "Edit", "Clone", "Release", "Origin & Legality", "Cancel"});
         nativeIndicesAreIdentity(model, occupied);
         const auto empty = Menu::fromGen1(Gen1::actionsForSlot(false, pending));
         if (pending) expectLabels(empty, {"Add Pokemon", "Review Pending Changes", "Cancel"});

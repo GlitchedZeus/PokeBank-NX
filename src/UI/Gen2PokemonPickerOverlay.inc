@@ -1,3 +1,4 @@
+#include "UI/SharedEditorChrome.h"
 // Named Generation II picker layer. It intercepts only Species and Move activation before
 // the preserved shared editor launches its legacy numeric prompts. Browsing lives entirely in this
 // overlay model; the Gen2PokemonSession changes only when A explicitly applies a selected value.
@@ -161,7 +162,9 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
             },
             [](uint16_t species) { return std::to_string(species) + " - " + Names::getSpeciesName(species); },
             &latestTouchGesture());
-        drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"L/R", "Page"}, {"Y", "Normal/Shiny"}, {"A", "Select"}, {"B", "Cancel"}});
+        PokeBank::UIModel::SharedEditorPresentation::PickerFooterSpec spec;
+        spec.yLabel = "Normal/Shiny";
+        UI::SharedEditorChrome::drawPickerFooter(fb, spec);
         return;
     }
     if (model.kind == Gen2Picker::Kind::Location) {
@@ -191,7 +194,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
             fb.drawText(g.listX + g.listWidth - 14 - dw, yy + 12, text.detail, Colors::TextDim, TextStyle::Caption);
         }
         fb.clearClip();
-        drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"A", "Select"}, {"B", "Cancel"}});
+        UI::SharedEditorChrome::drawPickerFooter(fb, PokeBank::UIModel::SharedEditorPresentation::PickerFooterSpec{true, false});
         return;
     }
     const int W = fb.getWidth(), H = fb.getHeight();
@@ -241,7 +244,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
         }
     }
     fb.clearClip();
-    drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"}, {"A", "Select"}, {"B", "Cancel"}});
+    UI::SharedEditorChrome::drawPickerFooter(fb);
 }
 
 

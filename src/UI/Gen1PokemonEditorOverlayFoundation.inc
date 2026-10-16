@@ -1,3 +1,4 @@
+#include "UI/SharedEditorPresentation.h"
 #include "UI/PokemonEditorFoundationContract.h"
 #include "UI/PokemonEditorExitGuard.h"
 #include "UI/Gen12DVReroll.h"
@@ -639,7 +640,7 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const std::string compatibilityText = !badMove ? "OK" : (add ? "Needs correction" : "Unusual preserved");
     const Color compatibilityColor = !badMove ? Colors::Success : (add ? Colors::Error : Colors::Warning);
     fb.drawText(rightX + rightW - 148, statusY, compatibilityText, compatibilityColor, TextStyle::Caption);
-    fb.drawText(rightX + 18, statusY + 26, "Encounter legality", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(rightX + 18, statusY + 26, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim, TextStyle::Caption);
     fb.drawText(rightX + rightW - 118, statusY + 26, "Not checked", Colors::Text, TextStyle::Caption);
     if (badMove) {
         const std::string warning = add ? "Change marked move before Stage Add" : "Legacy/unusual move kept unless you replace it";
