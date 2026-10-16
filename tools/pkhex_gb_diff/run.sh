@@ -24,6 +24,7 @@ python3 -I "$here/compare.py" "$work/corpus.txt" "$work/pkhex.txt" "$work/pokeba
 # The same corpus through the app's path (PokemonRecord -> Pokemon1/2ReadOnly -> Legality::analyze)
 # must give the origin search's verdict; see production_parity.cpp.
 srcs=(src/Legality/Legality.cpp src/Legality/GBLegality.cpp src/Legality/GBLegalityData.cpp
+    src/Legality/Gen3Legality.cpp src/Legality/Gen3LegalityData.cpp
     src/Integration/Gen1/Gen1MoveCompatibility.cpp src/Integration/Gen2/Gen2MoveCompatibility.cpp
     src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp
     src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/Pokemon1ReadOnly.cpp src/Pokemon/Pokemon2ReadOnly.cpp

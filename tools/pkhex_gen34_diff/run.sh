@@ -18,6 +18,7 @@ dotnet build "$here/oracle/PKHeXGen34Oracle.csproj" -c Release -p:PKHEX_ROOT="$p
 dotnet "$work/oracle/PKHeXGen34Oracle.dll" generate "$seed" "$mutations" "$gens" > "$work/pkhex.txt"
 # Same production sources as GEN34_LANGUAGE_ANALYZER_SOURCES (Makefile.host.legality-language).
 srcs=(src/Legality/Legality.cpp src/Legality/GBLegality.cpp src/Legality/GBLegalityData.cpp
+    src/Legality/Gen3Legality.cpp src/Legality/Gen3LegalityData.cpp
     src/Integration/Gen1/Gen1MoveCompatibility.cpp src/Integration/Gen2/Gen2MoveCompatibility.cpp
     src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/Pokemon1ReadOnly.cpp src/Pokemon/Pokemon2ReadOnly.cpp
     src/Pokemon/PersonalRecord4.cpp src/Pokemon/PersonalInfo4DP.cpp src/Pokemon/PersonalInfo4PT.cpp

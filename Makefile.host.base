@@ -49,6 +49,7 @@ GEN3_STAGED_POKEMON_LINK_SOURCES := src/Integration/Gen3/Gen3StagedPokemonEditor
 	src/Names/MoveInfo.cpp
 GEN3_LEGALITY_CONTEXT_SOURCES := tests/test_gen3_legality_context.cpp \
 	src/Legality/Legality.cpp src/Legality/GBLegality.cpp src/Legality/GBLegalityData.cpp \
+	src/Legality/Gen3Legality.cpp src/Legality/Gen3LegalityData.cpp \
 	src/Integration/Gen1/Gen1MoveCompatibility.cpp \
 	src/Integration/Gen2/Gen2MoveCompatibility.cpp \
 	src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/Pokemon1ReadOnly.cpp src/Pokemon/Pokemon2ReadOnly.cpp \

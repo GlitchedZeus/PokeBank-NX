@@ -27,7 +27,7 @@ namespace Pokemon { class Pokemon; }
 
 namespace Legality {
 
-namespace Gen3 {
+namespace Gen3Pk3 {
 
 /// Decrypted, bounds-checked snapshot of every PK3 field the analyzer reads.
 struct Pk3 {
@@ -85,7 +85,7 @@ bool isWordFiltered(std::u16string_view message);
 /// Number of pinned word-filter patterns the matcher cannot evaluate (0 for the pinned lists).
 std::size_t unsupportedWordFilterPatterns();
 
-} // namespace Gen3
+} // namespace Gen3Pk3
 
 /// Analyzes a decrypted PK3 record. exactSourceGameId names the save the record
 /// was read from (ruby_gba, sapphire_gba, emerald_gba, firered_gba or

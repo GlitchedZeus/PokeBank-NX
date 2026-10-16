@@ -29,7 +29,7 @@
 
 namespace Legality {
 
-namespace Gen3 {
+namespace Gen3Pk3 {
 
 namespace D = ::Legality::Gen3Data;
 
@@ -3518,10 +3518,10 @@ bool isUnusedInternalSpecies(uint16_t internal) noexcept {
 
 } // namespace
 
-} // namespace Gen3
+} // namespace Gen3Pk3
 
 Report analyzePk3(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId) {
-    using namespace Gen3;
+    using namespace Gen3Pk3;
     Report r;
     setAllCoverage(r.coverage, CoverageLevel::Partial);
     auto add = [&r](Severity sev, CheckIdentifier id, std::string text) {
@@ -3595,7 +3595,7 @@ void applyGen3Analyzer(Report& r, const Pokemon::Pokemon& pk, std::string_view e
     std::vector<uint8_t> raw(size);
     for (size_t i = 0; i < size; ++i) raw[i] = static_cast<uint8_t>(data[i]);
     Report g3 = analyzePk3(raw, exactSourceGameId);
-    const bool certified = Gen3::allCoverageComplete(g3.coverage) && g3.problemCount() == 0;
+    const bool certified = Gen3Pk3::allCoverageComplete(g3.coverage) && g3.problemCount() == 0;
     for (auto& issue : g3.issues) {
         if (issue.severity == Severity::Info) continue;
         bool duplicate = false;
@@ -3603,8 +3603,8 @@ void applyGen3Analyzer(Report& r, const Pokemon::Pokemon& pk, std::string_view e
             if (existing.text == issue.text) { duplicate = true; break; }
         if (!duplicate) r.issues.push_back(std::move(issue));
     }
-    if (certified && r.problemCount() == 0 && Gen3::isGbaSourceGame(exactSourceGameId))
-        Gen3::setAllCoverage(r.coverage, CoverageLevel::Complete);
+    if (certified && r.problemCount() == 0 && Gen3Pk3::isGbaSourceGame(exactSourceGameId))
+        Gen3Pk3::setAllCoverage(r.coverage, CoverageLevel::Complete);
 }
 
 } // namespace Legality
