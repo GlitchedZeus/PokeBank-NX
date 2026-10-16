@@ -2,6 +2,7 @@
 #include "UI/Gen2WorkspacePresentation.h"
 #include "UI/Gen12RerollDVsConfirm.h"
 #include "UI/Gen2FieldSelector.h"
+#include "UI/Gen2WorkspaceLayers.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
 
 namespace UI::Gen2PokemonEditor {
@@ -55,12 +56,39 @@ UnifiedWorkspaceState& unifiedStateFor(const TrainerViewScreen& screen) {
         state.detailsTouchW = state.detailsTouchH = 0;
         state.progressionEditor = false;
         state.progressionRow = 0;
+        state.moveEditor = false;
+        state.moveEditorRow = 0;
         state.reroll = {};
         state.selector = {};
         state.lastMode = mode;
     }
     state.crystal = screen.sourceGameId == "crystal_gbc";
     return state;
+}
+
+// The single owner of this frame's input (and footer); see Gen2WorkspaceLayers.h.
+PokeBank::UIModel::Gen2WorkspaceLayers::Layer workspaceTopLayer(const TrainerViewScreen& screen) {
+    const auto& state = stateFor(screen);
+    const auto& unified = unifiedStateFor(screen);
+    PokeBank::UIModel::Gen2WorkspaceLayers::Open open;
+    open.picker = pickerStateFor(screen).model.active();
+    open.heldItemPicker = state.itemPicker;
+    open.exitConfirm = state.confirmExit;
+    open.progressionEditor = unified.progressionEditor;
+    open.moveEditor = unified.moveEditor;
+    open.fieldSelector = unified.selector.open();
+    open.rerollConfirm = unified.reroll.confirming;
+    return PokeBank::UIModel::Gen2WorkspaceLayers::topLayer(open);
+}
+
+void drawWorkspaceFooter(PKSEFramebuffer& fb, const TrainerViewScreen& screen) {
+    namespace Layers = PokeBank::UIModel::Gen2WorkspaceLayers;
+    const auto footer = Layers::footer(workspaceTopLayer(screen),
+        stateFor(screen).mode == Mode::Create ? Layers::Session::Create : Layers::Session::Edit);
+    std::vector<ControllerHint> hints;
+    for (std::size_t i = 0; i < footer.count; ++i)
+        hints.push_back({footer.hints[i].glyph, footer.hints[i].label});
+    drawNavBar(fb, hints);
 }
 
 constexpr int kRerollCancelTouchId = 1798;
@@ -593,14 +621,19 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         return true; // A/Y/X never mutate a View session.
     }
 
-    if (pickerStateFor(screen).model.active()) return false;
-    if (state.itemPicker)
+    // Exactly one layer owns this frame (Gen2WorkspaceLayers::topLayer), highest first.
+    namespace Layers = PokeBank::UIModel::Gen2WorkspaceLayers;
+    const auto layer = workspaceTopLayer(screen);
+    if (layer == Layers::Layer::Picker) return false; // the picker overlay handles it next
+    if (layer == Layers::Layer::HeldItemPicker)
         return handleItemPicker(screen, state, down, held, stickX, stickY, touch);
-    if (state.confirmExit) return handleConfirm(screen, state, down);
-    if (handleProgressionEditor(screen, down, held, stickX, stickY)) return true;
-    if (handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY)) return true;
+    if (layer == Layers::Layer::ExitConfirm) return handleConfirm(screen, state, down);
+    if (layer == Layers::Layer::ProgressionEditor)
+        return handleProgressionEditor(screen, down, held, stickX, stickY);
+    if (layer == Layers::Layer::MoveEditor)
+        return handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY);
 
-    if (unified.selector.open()) {
+    if (layer == Layers::Layer::FieldSelector) {
         // The field selector owns all input while open: Up/Down move, A or a tap applies, B
         // cancels; the field keeps focus either way.
         namespace Selector = PokeBank::UIModel::Gen2FieldSelector;
@@ -996,12 +1029,8 @@ void drawUnifiedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (view) {
         screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget, 16, fb.getHeight() - 68, 190, 58});
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
-    } else if (create) {
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Cancel Draft"}});
     } else {
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"B", "Back"}});
+        drawWorkspaceFooter(fb, screen);
     }
     if (state.itemPicker) drawHeldItemPicker(fb, state);
     if (state.confirmExit) drawConfirm(fb, state);

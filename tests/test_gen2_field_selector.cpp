@@ -98,8 +98,8 @@ int main() {
     lacks(unified, "cycleUnrecordedCrystalOtGender(");
     lacks(unified, "cycleRecordedCrystalOtGender(");
     lacks(unified, "(state.crystalMetTime + 1) % 4");
-    const auto editable = unified.substr(unified.find("if (handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY)) return true;"));
-    const auto gate = editable.find("if (unified.selector.open()) {");
+    const auto editable = unified.substr(unified.find("return handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY);"));
+    const auto gate = editable.find("if (layer == Layers::Layer::FieldSelector) {");
     assert(gate != std::string::npos);
     assert(gate < editable.find("Reroll::step(unified.reroll,"));
     assert(gate < editable.find("const int touchedDetail = updateUnifiedDetailsTouch("));

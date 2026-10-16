@@ -69,7 +69,7 @@ void gen2Route() {
     const auto unified = read("src/UI/Gen2UnifiedPokemonWorkspace.inc");
     // The one randomizeDVs call in the live editable route sits in the confirmed outcome, and
     // the prompt is resolved before any Details tap, X Add, B exit or A field activation.
-    const auto editable = unified.substr(unified.find("if (handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY)) return true;"));
+    const auto editable = unified.substr(unified.find("return handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY);"));
     const auto confirmed = between(editable, "case Reroll::Outcome::Reroll:", "const int touchedDetail");
     has(confirmed, "randomizeDVs(state);");
     assert(count(editable.substr(0, editable.find("bool drawUnifiedWorkspace")), "randomizeDVs(state)") == 1);
@@ -84,7 +84,9 @@ void gen2Route() {
     assert(count(hw, "unified.reroll.confirming") == 2);
     const auto final_ = read("src/UI/Gen2HardwareFinalFix.inc");
     has(final_, "if (unified.reroll.confirming) drawRerollConfirm(screen, fb);");
-    has(final_, "} else if (unified.reroll.confirming) {\n        drawNavBar(fb, {{\"B\", \"Cancel\"}, {\"A\", \"Re-roll\"}});");
+    // The prompt's footer comes from the layer model and names every confirming button.
+    has(final_, "drawWorkspaceFooter(fb, screen);");
+    has(read("include/UI/Gen2WorkspaceLayers.h"), "case Layer::RerollConfirm:\n            detail::push(f, \"B\", \"Cancel\");\n            detail::push(f, \"A\", \"Re-roll\");\n            detail::push(f, \"Y\", \"Re-roll\");");
 }
 
 void gen1Route() {
@@ -113,14 +115,16 @@ void gen1Route() {
 // re-roll prompt is open (the prompt is resolved first).
 void keepRoutes() {
     const auto unified = read("src/UI/Gen2UnifiedPokemonWorkspace.inc");
-    const auto editable = unified.substr(unified.find("if (handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY)) return true;"));
+    const auto editable = unified.substr(unified.find("return handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY);"));
     const auto keep = between(editable, "if ((down & HidNpadButton_X) && state.mode == Mode::Edit) {", "if (down & HidNpadButton_B) {");
     has(keep, "if (stageEdit(screen)) resetUnifiedFocus(screen);");
     lacks(keep, "discard");
     assert(editable.find("Reroll::step(unified.reroll,") < editable.find("if ((down & HidNpadButton_X) && state.mode == Mode::Edit) {"));
     // The exit dialog's A Save is the same commit.
-    has(read("src/UI/Gen2PokemonEditorFoundation.inc"), "if (create ? stageCreate(screen) : stageEdit(screen)) return true;");
-    has(read("src/UI/Gen2HardwareFinalFix.inc"), "{\"Y\", \"Random DVs\"}, {\"X\", \"Keep\"}, {\"B\", \"Exit\"}");
+    has(read("src/UI/Gen2PokemonEditorFoundation.inc"), "(void)(create ? stageCreate(screen) : stageEdit(screen));");
+    // The workspace footer (Gen2WorkspaceLayers.h) offers X Keep in Edit.
+    has(read("include/UI/Gen2WorkspaceLayers.h"), "detail::push(f, \"X\", create ? \"Add\" : \"Keep\");");
+    has(read("src/UI/Gen2HardwareFinalFix.inc"), "drawWorkspaceFooter(fb, screen);");
 
     const auto f = read("src/UI/Gen1PokemonEditorOverlayFoundation.inc");
     const auto main = between(f, "if (foundation.editExitConfirm) {\n        const bool create", "std::string error;");
