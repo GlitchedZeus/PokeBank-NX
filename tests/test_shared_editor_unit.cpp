@@ -87,6 +87,21 @@ static void testMoveFacts() {
     require(bite4.type == 16 && bite4.category == 0 && std::string(Facts::categoryLabel(bite4)) == "Physical", "Gen IV Bite is Physical");
     require(Facts::facts(85, GameVersion::HGSS).category == 1, "Gen IV Thunderbolt is Special");
     require(Facts::facts(85, GameVersion::BW).power == 95, "Gen V Thunderbolt power 95");
+    // Gen I / II types from pinned pret moves.asm: Gen I has Karate Chop, Gust, Sand Attack and
+    // Bite as Normal; Gen II matches Gen III for 1..251. No per-move category before Gen IV.
+    for (const auto& [move, gen1, gen2] : std::array<std::array<int, 3>, 8>{{
+             {2, 0, 1}, {16, 0, 2}, {28, 0, 4}, {44, 0, 16}, {85, 12, 12}, {53, 9, 9}, {94, 13, 13}, {57, 10, 10}}}) {
+        require(Facts::facts(static_cast<uint16_t>(move), GameVersion::RBY).type == gen1, "Gen I type " + std::to_string(move));
+        require(Facts::facts(static_cast<uint16_t>(move), GameVersion::GSC).type == gen2, "Gen II type " + std::to_string(move));
+    }
+    require(Facts::typeLabel(Facts::facts(174, GameVersion::GSC)) == "???" &&
+            Facts::typeLabel(Facts::facts(237, GameVersion::GSC)) == "Varies" &&
+            Facts::typeLabel(Facts::facts(185, GameVersion::GSC)) == "Dark", "Gen II Curse / Hidden Power / Feint Attack");
+    require(Facts::facts(85, GameVersion::RBY).category == -1 && Facts::categoryLabel(Facts::facts(85, GameVersion::GSC))[0] == '\0',
+            "Gen I/II show no per-move category");
+    require(!Facts::moveExists(166, GameVersion::RBY) && !Facts::moveExists(252, GameVersion::GSC), "Gen I/II move bounds");
+    for (uint16_t m = 1; m <= 165; ++m)
+        require(Facts::facts(m, GameVersion::RBY).type != Facts::kNoType, "every Gen I move has a type");
     // Curse is ??? before Gen V and Ghost in Gen V.
     require(Facts::typeLabel(Facts::facts(174, GameVersion::PT)) == "???", "Gen IV Curse is ???");
     require(Facts::typeLabel(Facts::facts(174, GameVersion::B2W2)) == "Ghost", "Gen V Curse is Ghost");
@@ -115,8 +130,8 @@ static void testMovesPanelBounds() {
     const auto l = UI::SharedMovesPanel::layout(g.rightX, g.y, g.rightW);
     require(l.bottom() <= g.y + UI::SharedMovesPanel::kDataPaneOffset - 4, "moves rows end above the data pane");
     require(l.nameMaxW() >= 200, "move names have room");
-    for (auto game : {GameVersion::FRLG, GameVersion::DP, GameVersion::PT, GameVersion::HGSS,
-                      GameVersion::BW, GameVersion::B2W2}) {
+    for (auto game : {GameVersion::RBY, GameVersion::GSC, GameVersion::FRLG, GameVersion::DP,
+                      GameVersion::PT, GameVersion::HGSS, GameVersion::BW, GameVersion::B2W2}) {
         const uint16_t last = Facts::maxMoveId(Facts::eraFor(game));
         for (int focus = -1; focus < 4; ++focus) {
             texts.clear(); rects.clear();
@@ -158,7 +173,8 @@ static void testChooserBounds() {
     constexpr auto pl = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout();
     const int x = (1280 - pl.width) / 2;
     const auto c = UI::SharedMovesPanel::chooserColumns(x + 40, pl.width - 80);
-    for (auto game : {GameVersion::FRLG, GameVersion::DP, GameVersion::HGSS, GameVersion::BW}) {
+    for (auto game : {GameVersion::RBY, GameVersion::GSC, GameVersion::FRLG, GameVersion::DP,
+                      GameVersion::HGSS, GameVersion::BW}) {
         texts.clear();
         UI::SharedMovesPanel::drawChooserCaptions(fb_global(), c, 58, game);
         const auto captions = texts;
