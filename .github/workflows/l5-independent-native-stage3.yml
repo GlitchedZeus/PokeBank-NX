@@ -17,7 +17,11 @@ concurrency:
 
 jobs:
   native-stage3:
-    runs-on: ubuntu-22.04
+    # ubuntu-24.04 (clang 18): on ubuntu-22.04, clang 14 links the full-checkout entity
+    # build against a libstdc++ that lacks std::u16string's _M_construct<const char16_t*>
+    # (used by src/Utils/StringHelpers.cpp), so the Clang entity step cannot link there.
+    # The host-tests L5 lane already runs this tool and the GCC entity build on 24.04.
+    runs-on: ubuntu-24.04
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
