@@ -517,9 +517,12 @@ namespace UI
             const int cancelX = relX - bw - 16; // left  = Cancel  (id 0 -> B)
             drawGlyphButton(fb, cancelX, by, bw, bh, "B", "Cancel", Colors::PanelAlt);
             screen.touchButtons.push_back({0, cancelX, by, bw, bh});
-            drawGlyphButton(fb, relX, by, bw, bh, "A", "Release", Colors::Red, Colors::White);
+            // Gen I-V: Y releases (A and B cancel); the button shows and taps as Y.
+            drawGlyphButton(fb, relX, by, bw, bh, classicSessionPrompt ? "Y" : "A", "Release",
+                            Colors::Red, Colors::White);
             screen.touchButtons.push_back({1, relX, by, bw, bh});
-            if (classicSessionPrompt) drawNavBar(fb, {{"B", "Cancel"}, {"A", "Release"}});
+            if (classicSessionPrompt)
+                SharedEditorChrome::drawFooter(fb, SharedEditorChrome::Presentation::confirmFooter("Y", "Release"));
         }
 
         // Creator "Keep this new Pokemon?" confirm. Three glyph buttons (like the Edit Item dialog),

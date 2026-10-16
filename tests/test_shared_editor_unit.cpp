@@ -452,8 +452,31 @@ static void testRealSourcesUseSharedUnit() {
             ? text.find("\nvoid ", at + 1) : text.find("    void ", at + 1);
         const std::string body = text.substr(at, next == std::string::npos ? std::string::npos : next - at);
         require(body.find("SharedEditorChrome::beginModal(screen.touchButtons);") != std::string::npos &&
-                body.find("drawNavBar(fb,") != std::string::npos,
+                (body.find("drawNavBar(fb,") != std::string::npos ||
+                 body.find("SharedEditorChrome::drawFooter(fb,") != std::string::npos),
                 std::string("modal owns the touch layer and its footer: ") + fn);
+    }
+    // Gen I-V destructive confirms: only Y commits; A, B and Y+B cancel; the button taps as Y.
+    {
+        namespace P = PokeBank::UIModel::SharedEditorPresentation;
+        require(P::destructiveConfirmStep(true, false, false) == P::DestructiveConfirm::Commit, "Y commits");
+        require(P::destructiveConfirmStep(false, true, false) == P::DestructiveConfirm::Cancel, "A cancels");
+        require(P::destructiveConfirmStep(false, false, true) == P::DestructiveConfirm::Cancel, "B cancels");
+        require(P::destructiveConfirmStep(true, false, true) == P::DestructiveConfirm::Cancel, "Y+B cancels");
+        require(P::destructiveConfirmStep(true, true, false) == P::DestructiveConfirm::Cancel, "Y+A cancels");
+        require(P::destructiveConfirmStep(false, false, false) == P::DestructiveConfirm::None, "idle");
+        for (const char* handler : {"        if (releaseConfirmActive) {\n", "        if (itemRemoveConfirmActive) {\n"}) {
+            const std::size_t at = base.find(handler);
+            require(at != std::string::npos, std::string("confirm handler: ") + handler);
+            const std::string body = base.substr(at, 1600);
+            require(body.find("if (tb == 1) kDown |= yCommits ? HidNpadButton_Y : HidNpadButton_A;") != std::string::npos &&
+                    body.find("Presentation::destructiveConfirmStep(") != std::string::npos &&
+                    body.find("ClassicGenericUi::classicSession(sourceGameId)") != std::string::npos,
+                    std::string("Gen I-V confirm commits on Y only: ") + handler);
+        }
+        require(read("src/UI/Panels/StoragePanel.cpp").find("confirmFooter(\"Y\", \"Release\")") != std::string::npos &&
+                read("src/UI/Dialogs/ItemEditDialog.cpp").find("confirmFooter(\"Y\", \"Remove\")") != std::string::npos,
+                "Release / Remove footers name Y");
     }
     require(read("src/UI/Dialogs/SaveConfirmDialog.cpp").find(
                 "SharedEditorChrome::drawFooter(fb, classicSaveConfirmFooter(screen));") != std::string::npos,
