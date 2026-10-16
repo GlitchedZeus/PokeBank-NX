@@ -4,6 +4,7 @@
 // source-save writer, Storage/Bank or generic uncontrolled mutation handlers.
 // Touch targets are isolated to verified read-only and native-field staged
 // actions; native bank, source-writing and unsupported mutation routes remain barred.
+#include "Names/LocationDisplayNames.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Integration/Gen5/Gen5BoxTouchNavigation.h"
 #include "Integration/Gen5/Gen5SharedReview.h"
@@ -184,11 +185,8 @@ bool workspaceSurface(Surface surface) noexcept {
 // A location name made only of the full-width placeholder glyphs the Switch
 // font cannot draw (e.g. Gen V location 0) is shown as text instead.
 std::string metLocationText5(uint8_t origin, uint16_t location) {
-    const char* name = Names::getMetLocationName(origin, location);
-    const bool printable = name && name[0] &&
-        std::string_view(name).find('\xEF') == std::string_view::npos;
-    if (location == 0) return "None (ID 0)";
-    return printable ? std::string(name) : "Location ID " + std::to_string(location);
+    // Player-facing name only: no raw id; placeholder-glyph entries read "Unknown location".
+    return Names::getMetLocationDisplayName(origin, location);
 }
 std::string shortValue5(std::string value, size_t limit = 18) {
     if (value.size() <= limit) return value;
@@ -442,9 +440,14 @@ struct Gen5Editor {
                 EditorSurface::openPicker(screen, state, PickerTarget::MetLocation,
                                           Fields::metLocationChoices(), p.metLocation());
                 return true;
-            case Pokerus:
-                EditorSurface::openPicker(screen, state, PickerTarget::Pokerus, {0, 1, 2}, p.pokerusMode());
+            case Pokerus: {
+                // Inline toggle: None -> Infected -> Cured -> None (Gen V modes 0 / 2 / 1).
+                // The native record restores the source byte when the original mode returns.
+                const uint32_t mode = p.pokerusMode();
+                const uint32_t next = mode == 0 ? 2u : mode == 2 ? 1u : 0u;
+                stage(screen, Field::Pokerus, 0, next);
                 return true;
+            }
             case Form: {
                 auto forms = Fields::formChoices(d, b2w2(screen));
                 if (forms.size() <= 1) {

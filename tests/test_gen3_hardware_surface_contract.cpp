@@ -210,7 +210,7 @@ int main() {
     contains(surface, "EncounterPicker::choiceAt");
     contains(surface, "forGameSpeciesWithGen3Provenance");
     contains(surface, "Encounter origin");
-    contains(surface, "origin →");
+    contains(surface, "met as ");
     assert(surface.find("state.pickerValues.push_back(current)") != std::string::npos);
     assert(surface.find("No supported exact-game encounter templates for this Pokemon") != std::string::npos);
     contains(surface, "Met Level for selected encounter");

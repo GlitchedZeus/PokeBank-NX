@@ -1,3 +1,4 @@
+#include "Names/LocationDisplayNames.h"
 #include "Integration/Gen4/Gen4ExactFormatEditorProvider.h"
 #include "UI/Gen4BoxTouchActions.h"
 #include "Integration/Gen4/Gen4MoveCompatibility.h"
@@ -523,11 +524,8 @@ std::string detailValue(const Pokemon::Pokemon4ReadOnly& p,
         case 10: return Enums::getOriginGameName(p.originVersion());
         case 11: return Enums::getBallName(view.ball());
         case 12: return std::to_string(p.metLevel());
-        case 13: {
-            const char* name = Names::getMetLocationName(p.originVersion(), view.metLocation());
-            return name && name[0] ? std::string(name)
-                                  : "ID " + std::to_string(view.metLocation());
-        }
+        case 13:
+            return Names::getMetLocationDisplayName(p.originVersion(), view.metLocation());
         case 14: {
             const uint8_t pk = p.pokerusState();
             return pk == 0 ? "None" : (pk & 0x0Fu) == 0 ? "Cured" : "Infected";
@@ -616,23 +614,6 @@ void openHeldItemPicker(TrainerViewScreen& screen, State& state) {
     screen.controllerNavigation.reset();
 }
 
-void openLanguagePicker(TrainerViewScreen& screen, State& state) {
-    state.valuePicker = true;
-    state.pickerScroll.reset();
-    state.pickerViewport.reset();
-    state.pickerTarget = PickerTarget::Language;
-    state.pickerValues.clear();
-    const auto group = bridge(screen).sourceSave().rawFamily();
-    for (uint16_t language = 1; language <= 8; ++language)
-        if (Enums::groupHasLanguage(group, static_cast<uint8_t>(language)))
-            state.pickerValues.push_back(language);
-    const uint16_t current = state.session.working ? state.session.working->language() : 2;
-    const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
-    state.pickerRow = it == state.pickerValues.end() ? 0 :
-        static_cast<int>(std::distance(state.pickerValues.begin(), it));
-    screen.controllerNavigation.reset();
-}
-
 void openBallPicker(TrainerViewScreen& screen, State& state,
                     const Pokemon::Pokemon4ReadOnly& record) {
     const auto originGroup = Enums::getGameGroup(
@@ -686,19 +667,6 @@ void openMetLocationPicker(TrainerViewScreen& screen, State& state,
     const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
     state.pickerRow = it == state.pickerValues.end() ? 0 :
         static_cast<int>(std::distance(state.pickerValues.begin(), it));
-    screen.controllerNavigation.reset();
-}
-
-void openPokerusPicker(TrainerViewScreen& screen, State& state) {
-    state.valuePicker = true;
-    state.pickerScroll.reset();
-    state.pickerViewport.reset();
-    state.pickerTarget = PickerTarget::Pokerus;
-    state.pickerValues = {0x00, 0x10, 0x11};
-    const uint8_t current = state.session.working ? state.session.working->pokerus() : 0;
-    if (current == 0) state.pickerRow = 0;
-    else if ((current & 0x0Fu) == 0) state.pickerRow = 1;
-    else state.pickerRow = 2;
     screen.controllerNavigation.reset();
 }
 
@@ -868,7 +836,20 @@ bool editDetail(TrainerViewScreen& screen, State& state, int row,
         return true;
     }
     if (row == 9) {
-        openLanguagePicker(screen, state);
+        // Inline toggle: A cycles this game group's languages in place (no popup).
+        // setLanguage keeps the default (un-nicknamed) name in that language.
+        std::vector<uint8_t> languages;
+        const auto group = bridge(screen).sourceSave().rawFamily();
+        for (uint8_t language = 1; language <= 8; ++language)
+            if (Enums::groupHasLanguage(group, language)) languages.push_back(language);
+        if (languages.size() <= 1) {
+            screen.postStatus("This game group has a single language", 240);
+            return true;
+        }
+        auto it = std::find(languages.begin(), languages.end(), mon.language());
+        const uint8_t next = it == languages.end() || ++it == languages.end() ? languages.front() : *it;
+        if (!mon.setLanguage(next))
+            screen.postStatus("This Pokemon's names cannot be stored in that language", 300);
         return true;
     }
     if (row == 11) {
@@ -885,7 +866,18 @@ bool editDetail(TrainerViewScreen& screen, State& state, int row,
         return true;
     }
     if (row == 14) {
-        openPokerusPicker(screen, state);
+        // Inline toggle: None -> Infected -> Cured -> None. Returning to the untouched
+        // state restores the source byte exactly (strain/days are never invented).
+        uint8_t baseline = 0;
+        if (!state.session.baselineEncrypted.empty()) {
+            Pokemon::Pokemon4ReadOnly source(state.session.baselineEncrypted,
+                                             bridge(screen).sourceSave().rawFamily());
+            if (source.valid()) baseline = source.pokerusState();
+        }
+        const uint8_t next = PokeBank::UIModel::SharedEditorPresentation::nextPokerusByte(
+            mon.pokerus(), baseline);
+        if (!mon.setPokerus(next))
+            screen.postStatus("Pokerus could not be changed for this Pokemon", 240);
         return true;
     }
     if (row == 15) {
@@ -1196,10 +1188,9 @@ std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
         return Enums::getBallName(static_cast<uint8_t>(value));
     if (target == PickerTarget::MetLocation) {
         const auto preview = workingRecord(state, bridge(screen).sourceSave().rawFamily());
-        const char* name = preview
-            ? Names::getMetLocationName(preview->originVersion(), value) : "";
-        std::string label = name && name[0] ? std::string(name)
-                                            : "Location " + std::to_string(value);
+        std::string label = preview
+            ? Names::getMetLocationDisplayName(preview->originVersion(), value)
+            : std::string("Unknown location");
         if (preview)
             label += "  |  Met Lv. " + std::to_string(preview->metLevel());
         return label;
@@ -1469,10 +1460,8 @@ struct Gen4Editor {
             {"Ball", Enums::getBallName(view.ball())},
             {"Met", [&] {
                 const uint16_t location = view.metLocation();
-                const char* sourceName = Names::getMetLocationName(raw->originVersion(), location);
                 const std::string label = location == 0 ? "(not recorded)"
-                    : (sourceName && sourceName[0]) ? std::string(sourceName)
-                    : "Unknown (ID " + std::to_string(location) + ")";
+                    : Names::getMetLocationDisplayName(raw->originVersion(), location);
                 return label + " / Lv. " + std::to_string(raw->metLevel());
             }()},
             {"Friendship", std::to_string(raw->friendship())},

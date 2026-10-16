@@ -29,6 +29,8 @@
 #include "UI/SharedEditorChrome.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedMovesPanel.h"
+#include "UI/SharedStatReroll.h"
+#include "Utils/HelperUtilities.h"
 #include "UI/SharedPokemonShell.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "UI/TouchScroll.h"
@@ -175,6 +177,9 @@ inline void openPicker(TrainerViewScreen& screen, EditorState& state, PickerTarg
     screen.controllerNavigation.reset();
 }
 
+// The Met Location picker is wider so place names and met level fit on one row (Gen III too).
+inline constexpr int kMetLocationPickerWidth = 900;
+
 inline bool compactPicker(PickerTarget target) noexcept {
     return target == PickerTarget::Language || target == PickerTarget::Ball ||
            target == PickerTarget::MetLocation || target == PickerTarget::Nature ||
@@ -231,7 +236,9 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
                 pickerLayout.visibleRows * pickerLayout.rowStep,
                 pickerLayout.rowStep, state.pickerViewport.firstRow, maxFirstRow + 1);
         } else {
-            const int pickerW = nature ? natureLayout.width : compact ? 640 : 680;
+            const int pickerW = nature ? natureLayout.width
+                : state.pickerTarget == PickerTarget::MetLocation ? kMetLocationPickerWidth
+                : compact ? 640 : 680;
             const int pickerH = nature ? natureLayout.height : compact ? 125 + visibleRows * 42 : 560;
             const int rowStep = nature ? natureLayout.rowStep : 42;
             const int px = (1280 - pickerW) / 2;
@@ -529,6 +536,19 @@ bool handleWorkspace(TrainerViewScreen& screen, EditorState& state, u64 down, co
         A::keep(screen, state);
         return true;
     }
+    if ((down & HidNpadButton_Y) && editable) {
+        // Y re-rolls IVs/EVs in the working draft at once: no prompt, a new result every press.
+        // PK4/PK5 IVs and EVs are not PID-derived, so Shiny/Gender/Nature/Ability are kept.
+        // EVs are cleared first so the adapter's 510-total check never sees a transient overflow.
+        namespace Reroll = PokeBank::UIModel::SharedStatReroll;
+        Reroll::Rng rng(Utils::rand32());
+        const auto next = Reroll::reroll(rng, {A::ivs(*record), A::evs(*record)});
+        for (size_t stat = 0; stat < 6; ++stat) A::setEv(screen, state, stat, 0);
+        for (size_t stat = 0; stat < 6; ++stat) A::setIv(screen, state, stat, next.ivs[stat]);
+        for (size_t stat = 0; stat < 6; ++stat) A::setEv(screen, state, stat, next.evs[stat]);
+        screen.postStatus(Reroll::kRerollStatus, 200);
+        return true;
+    }
     if ((down & HidNpadButton_A) && passive &&
         state.focus.panel == Shared::Panel::Details)
         A::passiveActivate(screen, state, state.focus.row);
@@ -570,6 +590,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         compactChoices ? std::min(8,totalChoices) : 10;
     const int w = heldItems ? HeldItemGrid::modalWidth : movePicker ? moveLayout.width :
         speciesPicker ? 760 : naturePicker ? natureLayout.width :
+        state.pickerTarget == PickerTarget::MetLocation ? kMetLocationPickerWidth :
         compactChoices ? 640 : 680;
     const int h = heldItems ? HeldItemGrid::modalHeight : movePicker ? moveLayout.height :
         speciesPicker ? 560 : naturePicker ? natureLayout.height :
@@ -708,8 +729,20 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         if (selected) fb.drawSelectionHighlight(x + 22, yy - 4, w - 44,
             naturePicker ? natureLayout.highlightHeight : 38);
         const auto value = state.pickerValues[static_cast<size_t>(i)];
-        fb.drawText(x + 38, yy + 7, A::pickerLabel(screen, state, state.pickerTarget, value),
-                    Colors::Text, TextStyle::Body);
+        const std::string label = A::pickerLabel(screen, state, state.pickerTarget, value);
+        const auto split = label.find("  |  ");
+        if (state.pickerTarget == PickerTarget::MetLocation && split != std::string::npos) {
+            // Same row style as Gen III: bright place name left, met level right.
+            const std::string detail = label.substr(split + 5);
+            int dw = 0, dh = 0;
+            fb.measureText(detail, dw, dh, TextStyle::Caption);
+            fb.drawText(x + 38, yy + 7, SharedMovesPanel::fit(fb, label.substr(0, split),
+                        w - 76 - dw - 20, TextStyle::Body), Colors::Text, TextStyle::Body);
+            fb.drawText(x + w - 38 - dw, yy + 10, detail,
+                        selected ? Colors::Text : Colors::TextSecondary, TextStyle::Caption);
+        } else {
+            fb.drawText(x + 38, yy + 7, label, Colors::Text, TextStyle::Body);
+        }
         if(state.pickerTarget == PickerTarget::Ball)
             ItemPickerArtwork::draw(fb, x + w - 35, yy, 32,
                                     Enums::getBallName(static_cast<uint8_t>(value)));
@@ -910,6 +943,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}});
     else
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
+                        {"Y", PokeBank::UIModel::SharedStatReroll::kRerollHint},
                         {"X", A::creating(screen, state) ? "Add" : "Keep"}, {"B", "Exit"}});
 
     if (A::confirmExit(screen, state)) {
