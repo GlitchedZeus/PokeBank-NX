@@ -240,7 +240,7 @@ int main() {
     assert(fullscreen.find("MoveCompatibility::firstIncompatible") != std::string::npos);
     assert(fullscreen.find("MoveCompatibility::canLearnMove") != std::string::npos);
     assert(fullscreen.find("Move compatibility") != std::string::npos);
-    assert(fullscreen.find("Encounter legality") != std::string::npos);
+    assert(fullscreen.find("SharedEditorPresentation::kOriginLegalityHeading") != std::string::npos);
 
     // The independent legacy details routes still use the presentation object and
     // retain their explicit compatibility initialization.
@@ -249,7 +249,7 @@ int main() {
         assert(readFile(path).find("view.setMoveCompatibility(") != std::string::npos);
     const auto passivePresentation = readFile("src/UI/Gen1PokemonDetailsPresentation.cpp");
     assert(passivePresentation.find("p.moveCompatible[i] ? \"OK\" : \"Unusual\"") != std::string::npos);
-    assert(passivePresentation.find("Encounter legality\", \"Not checked") != std::string::npos);
+    assert(passivePresentation.find("kOriginLegalityHeading, \"Not checked") != std::string::npos);
 
     const auto hardware = readFile("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc");
     assert(hardware.find("Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r)") != std::string::npos);

@@ -43,8 +43,10 @@ constexpr std::array<ClassicPocket, 6> kGen3Pockets{{
 constexpr std::array<uint16_t, 18> kG1Items{{
     10,29,30,32,33,34,46,47,49,51,55,56,57,58,65,66,67,68,
 }};
-constexpr std::array<uint16_t, 27> kG1Medicines{{
-    11,12,13,14,15,16,17,18,19,20,35,36,37,38,39,40,50,52,53,54,60,61,62,79,80,81,82,
+// Id 50 is pokered's unused duplicate "PP UP" (the real PP Up is 79); PKHeX does not offer it,
+// so it is not addable here either.
+constexpr std::array<uint16_t, 26> kG1Medicines{{
+    11,12,13,14,15,16,17,18,19,20,35,36,37,38,39,40,52,53,54,60,61,62,79,80,81,82,
 }};
 constexpr std::array<uint16_t, 4> kG1Balls{{1,2,3,4}};
 constexpr std::array<uint16_t, 20> kG1Keys{{

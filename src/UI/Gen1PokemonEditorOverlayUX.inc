@@ -1,3 +1,4 @@
+#include "UI/SharedEditorPresentation.h"
 #include "UI/Gen1ListFit.h"
 #include "UI/Gen1PokemonEditorOverlay.h"
 
@@ -965,7 +966,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
         "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1),
         Colors::TextDim);
     static constexpr const char* names[] = {
-        "View", "Edit", "Clone", "Remove", "Legality & Provenance",
+        "View", "Edit", "Clone", "Remove", PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading,
         "Add Pokemon", "Review Pending Changes", "Cancel",
     };
     int rowY = y + 104;
@@ -1031,7 +1032,7 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
 void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
     auto* trainer = rbyTrainer(screen);
     auto* e = editor(screen);
-    fb.drawText(x + 26, y + 18, "Generation I Legality & Provenance", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 26, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
     const int lx = x + 40, vx = x + 330;
     const std::array<std::pair<const char*, std::string>, 7> rows{{
         {"Source game", screen.sourceGameId},
@@ -1039,7 +1040,7 @@ void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y
         {"Source mutation", "HARD DISABLED"},
         {"Party mutation", "DEFERRED"},
         {"Format validation", "Strict reparse + checksum on export"},
-        {"Encounter legality", "NOT CLAIMED by this editor"},
+        {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "NOT CLAIMED by this editor"},
         {"Original bytes", e ? std::to_string(e->originalBytes().size()) + " immutable bytes" : "Unavailable"},
     }};
     for (int i = 0; i < static_cast<int>(rows.size()); ++i) {

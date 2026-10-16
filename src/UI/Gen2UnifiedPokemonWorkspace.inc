@@ -2,6 +2,7 @@
 #include "UI/Gen2WorkspacePresentation.h"
 #include "UI/Gen2FieldSelector.h"
 #include "UI/Gen2WorkspaceLayers.h"
+#include "UI/SharedEditorPresentation.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
 
 namespace UI::Gen2PokemonEditor {
@@ -412,9 +413,10 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             return true;
         }
         if (focus.row == 8) {
-            // A cycles None -> Infected -> Cured in place, no popup; a state the record started
-            // in comes back with its exact strain/days.
-            p.pokerus = Gen2Native::cyclePokerusState(p.pokerus, state.baseline.pokerus);
+            // A cycles None -> Infected -> Cured in place, no popup, with the shared Gen II-V rule:
+            // a state the record started in comes back with its exact strain/days.
+            p.pokerus = PokeBank::UIModel::SharedEditorPresentation::nextPokerusByte(
+                p.pokerus, state.baseline.pokerus);
             return true;
         }
         if (focus.row >= 9 && screen.sourceGameId == "crystal_gbc") {
@@ -931,10 +933,10 @@ void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, cons
             ? Colors::Error
             : legality == Gen2Native::CaughtLevelLegality::Valid ? Colors::Success : Colors::TextDim;
         fb.drawText(x + 18, y + 220,
-            std::string("Encounter legality: ") + Gen2Native::caughtLevelLegalityText(legality),
+            std::string(PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading) + ": " + Gen2Native::caughtLevelLegalityText(legality),
             legalityColor, TextStyle::Caption);
     } else {
-        fb.drawText(x + 18, y + 220, "Encounter legality: Not checked", Colors::TextDim, TextStyle::Caption);
+        fb.drawText(x + 18, y + 220, std::string(PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading) + ": Not checked", Colors::TextDim, TextStyle::Caption);
     }
     if (const auto game = Rules::exactGameFromSourceId(screen.sourceGameId))
         Gen2WorkspacePresentation::drawDataAndGraph(fb, x, y + 244, w, h - 256, state.working, *game);

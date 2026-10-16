@@ -1,11 +1,12 @@
 #pragma once
+#include "UI/SharedEditorPresentation.h"
 
 #include "UI/Gen1PokemonEditorUIContract.h"
 #include "UI/NarrowPokemonActionMenu.h"
 #include "UI/SharedPokemonEditorContract.h"
 
 // The Gen I / Gen II Pokemon Actions sheet. It lists only the commands the staged editor really
-// performs, in the shared order View, Edit, Clone, Release (then Legality & Provenance, Review,
+// performs, in the shared order View, Edit, Clone, Release (then Origin & Legality, Review,
 // Cancel). Shiny is edited inside the editor, never from the sheet, and the greyed placeholders
 // for features these games do not have (Make Shiny, Master Vault, Bank, Transfer) are not shown.
 // Moving a Pokemon stays the box-grid hold-Y carry; the sheet has no Move command for Gen I/II.
@@ -22,7 +23,7 @@ constexpr const char* sharedLabel(SharedPokemonEditor::Action action) noexcept {
         case A::Edit: return "Edit";
         case A::Clone: return "Clone";
         case A::Remove: return "Release";
-        case A::LegalityProvenance: return "Legality & Provenance";
+        case A::LegalityProvenance: return PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityAction;
         case A::Add: return "Add Pokemon";
         case A::Review: return "Review Pending Changes";
         case A::Close: return "Cancel";
@@ -36,7 +37,7 @@ constexpr const char* gen1Label(Gen1Editor::Action action) noexcept {
         case A::Edit: return "Edit";
         case A::Clone: return "Clone";
         case A::Remove: return "Release";
-        case A::LegalityProvenance: return "Legality & Provenance";
+        case A::LegalityProvenance: return PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityAction;
         case A::AddPokemon: return "Add Pokemon";
         case A::ReviewPendingChanges: return "Review Pending Changes";
         case A::Cancel: return "Cancel";

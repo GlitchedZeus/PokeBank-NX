@@ -1,3 +1,4 @@
+#include "UI/SharedEditorPresentation.h"
 #include "UI/Gen1ListFit.h"
 #include "UI/ClassicPokemonActionMenu.h"
 #include "UI/Gen12ReviewDiscardConfirm.h"
@@ -1090,14 +1091,14 @@ void ux2DrawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
 void ux2DrawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
     auto* trainer = rbyTrainer(screen);
     auto* e = editor(screen);
-    fb.drawText(x + 24, y + 18, "Generation I Legality & Provenance", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 24, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
     const std::array<std::pair<const char*,std::string>,8> rows{{
         {"Source game", screen.sourceGameId},
         {"Region/layout", trainer && trainer->japaneseLayout() ? "Japanese — editing disabled" : "International — validated editor"},
         {"Source mutation", "HARD DISABLED"},
         {"Party mutation", "DEFERRED"},
         {"Format validation", "Strict reparse + checksum on export"},
-        {"Encounter legality", "Not checked yet"},
+        {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Not checked yet"},
         {"Original bytes", e ? std::to_string(e->originalBytes().size()) + " immutable bytes" : "Unavailable"},
         {"Pending semantic changes", std::to_string(pendingLines(screen).size())},
     }};

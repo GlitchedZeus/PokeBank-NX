@@ -91,7 +91,7 @@ int main() {
     // place by A (owner campaign phase 10, test_gen2_inline_fields). The selector owns input ahead
     // of Y, field taps and B exit; apply re-encodes caught data only when history is recorded.
     const auto unified = read("src/UI/Gen2UnifiedPokemonWorkspace.inc");
-    has(unified, "p.pokerus = Gen2Native::cyclePokerusState(p.pokerus, state.baseline.pokerus);");
+    has(unified, "SharedEditorPresentation::nextPokerusByte(");
     has(unified, "PokeBank::UIModel::Gen2FieldSelector::metTime(state.crystalMetTime, false, 0)");
     has(unified, "PokeBank::UIModel::Gen2FieldSelector::otGender(state.crystalOtGender, caught.present)");
     lacks(unified, "cyclePokerusState(p.pokerus)");

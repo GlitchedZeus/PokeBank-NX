@@ -1,3 +1,4 @@
+#include "UI/SharedEditorPresentation.h"
 #include "UI/Modals/Gen2PokemonDetailsModal.h"
 
 #include "Integration/Gen2/Gen2BattleStats.h"
@@ -230,7 +231,7 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     compactRow(fb, rightX + 18, contentY + 235, "Move compatibility",
                compatible ? "OK" : "Unusual preserved", 300,
                compatible ? Colors::Success : Colors::Warning);
-    compactRow(fb, rightX + 18, contentY + 261, "Encounter legality", "Not checked", 300, Colors::TextDim);
+    compactRow(fb, rightX + 18, contentY + 261, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Not checked", 300, Colors::TextDim);
 
     // Native exact-format data + six-axis battle radar.
     constexpr int splitY = contentY + 288, splitH = 216, inset = 12, gap = 10;

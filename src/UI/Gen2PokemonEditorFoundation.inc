@@ -1,3 +1,4 @@
+#include "UI/SharedEditorChrome.h"
 // Generation II shared DETAILS | VALUES | MOVES workspace.
 // This stays layered over the accepted GSC discovery/export/action-sheet implementation.
 // Browsing edits only a local session record; StagedEditor is touched solely by Add / Keep.
@@ -929,8 +930,10 @@ void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
             gridX, gridY - 3, Grid::modalWidth - 2 * Grid::gridInsetX,
             Grid::rows * Grid::rowPitch);
     }
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
-                    {"A", "Choose"}, {"B", "Cancel"}, {"X", "Sort"}});
+    PokeBank::UIModel::SharedEditorPresentation::PickerFooterSpec footer;
+    footer.gridPaging = true;
+    footer.xLabel = "Sort";
+    UI::SharedEditorChrome::drawPickerFooter(fb, footer);
 }
 
 void drawConfirm(PKSEFramebuffer& fb, const State& state) {

@@ -1,3 +1,4 @@
+#include "UI/SharedEditorPresentation.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
 
 #include "Integration/Gen1/Gen1StagedPokemonEditor.h"
@@ -208,7 +209,7 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
         : (p.moveCompatibilityCompatible ? Colors::Success : Colors::Warning);
     compactRow(fb, rightX + 18, contentY + 235, "Move compatibility", compatibilityText, 300,
                compatibilityColor);
-    compactRow(fb, rightX + 18, contentY + 261, "Encounter legality", "Not checked", 300,
+    compactRow(fb, rightX + 18, contentY + 261, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Not checked", 300,
                Colors::TextDim);
 
     const int splitY = contentY + 288;
