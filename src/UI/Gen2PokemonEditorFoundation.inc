@@ -12,6 +12,7 @@
 #include "UI/Gen2NativePresentation.h"
 #include "UI/ExactSaveCapabilities.h"
 #include "UI/SharedPokemonEditorContract.h"
+#include "UI/Gen2WorkspaceLayers.h"
 #include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Experience.h"
@@ -621,23 +622,30 @@ bool handleItemPicker(TrainerViewScreen& screen, State& state, uint64_t down, ui
 }
 
 bool handleConfirm(TrainerViewScreen& screen, State& state, uint64_t down) {
+    // Match PKSE's native creator/details confirmation mapping: B Back, Y Discard, A Keep/Save.
+    // One button acts per frame (Gen2WorkspaceLayers::exitConfirmStep): a Keep that fails to stage
+    // leaves the dialog open and never falls through to Discard or Back in the same frame.
+    // The local session still never mutates source bytes; only the PokeBank staged copy can change.
+    namespace Layers = PokeBank::UIModel::Gen2WorkspaceLayers;
     const bool create = state.mode == Mode::Create;
-    if (down & HidNpadButton_A) {
-        if (create ? stageCreate(screen) : stageEdit(screen)) return true;
-    }
-    if (down & HidNpadButton_Y) {
-        // Match PKSE's native creator/details confirmation mapping: B Back, Y Discard, A Keep/Save.
-        // The local session still never mutates source bytes; only the PokeBank staged copy can change.
-        screen.postStatus(create
-            ? "Create draft discarded; staged/source bytes unchanged"
-            : "This Edit session discarded; earlier staged work preserved", 300);
-        state.discard();
-        closeToActions(screen);
-        return true;
-    }
-    if (down & HidNpadButton_B) {
-        state.continueEditing();
-        screen.controllerNavigation.reset();
+    switch (Layers::exitConfirmStep((down & HidNpadButton_A) != 0, (down & HidNpadButton_B) != 0,
+                                    (down & HidNpadButton_Y) != 0)) {
+        case Layers::ExitChoice::Keep:
+            (void)(create ? stageCreate(screen) : stageEdit(screen));
+            return true;
+        case Layers::ExitChoice::Discard:
+            screen.postStatus(create
+                ? "Create draft discarded; staged/source bytes unchanged"
+                : "This Edit session discarded; earlier staged work preserved", 300);
+            state.discard();
+            closeToActions(screen);
+            return true;
+        case Layers::ExitChoice::Continue:
+            state.continueEditing();
+            screen.controllerNavigation.reset();
+            return true;
+        case Layers::ExitChoice::None:
+            return true;
     }
     return true;
 }

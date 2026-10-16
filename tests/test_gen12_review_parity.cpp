@@ -82,7 +82,7 @@ void gen2Routes() {
 
     const auto unified = read("src/UI/Gen2UnifiedPokemonWorkspace.inc");
     // The editable (Edit/Create) route, after the item/confirm/move-editor modals.
-    const auto editRoute = unified.substr(unified.find("if (handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY)) return true;"));
+    const auto editRoute = unified.substr(unified.find("return handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY);"));
     const auto tap = between(editRoute, "const int touchedDetail = updateUnifiedDetailsTouch(",
                              "const uint64_t nav = screen.controllerNavigation.apply(");
     has(tap, "if (!activateUnifiedField(screen, state, unified.focus))");
