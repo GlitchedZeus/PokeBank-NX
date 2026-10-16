@@ -1934,6 +1934,20 @@ constexpr const char* kFireRedWeedle =
     "AEDD9D98000003C90D00000083A9E792D800000046130002000000000000000000000000000000002800510000000000232800000000000077736F2600000000000900000000000057004500450044004C004500FFFF000000000000000000040000000000000000540065007300740065007200FFFF00000000001A0A0F00003175000486000000";
 constexpr const char* kLeafGreenCaterpie =
     "B7680C5E0000F69D0A00000056498F7B57010000461300040000000000000000000000000000000021005100000000002328000000000000E9B7D72100000000001200000000000043004100540045005200500049004500FFFF0000000000050000000000000000500072006F0076006100FFFF000000000000001A0A0F00003175000487000000";
+// Transfers whose origin the analyzer still cannot decide; PKHeX calls each VALID.
+// XD Shadow Butterfree and Colosseum Shadow Bayleef (version byte 15, Colosseum / XD).
+constexpr const char* kXdShadowButterfree =
+    "D644DDD2000090E00C000000B1A78B9B78690000460E0007000000000000000000000000000000005E00EA004F004C010A050F1400000000170F600F00000020010D0000000000004200550054005400450052004600520045004500FFFF000F0000000000000000500072006F006200610064006F00FFFF0000001A0A0F0000317500041E000000";
+constexpr const char* kColosseumShadowBayleef =
+    "A574741900008F089900000053744475005500004641000300000000000000000000000000000000F100EB004B0022000505190F00000000F375D11400000020000C0000000000004D004100430052004F004E00490055004D00FFFF0000000F00000000000000005400650073007400650075007200FFFF0000001A0A100000317500041E000000";
+// A Sapphire egg whose TID/SID PKHeX finds no Ruby/Sapphire seed for (Fishy
+// Trainer:TrainerIDNoSeed), and a LeafGreen Caterpie whose Method 1 seed reaches no frame
+// that gives this slot and level (Fishy PID:EncConditionBadRNGFrame). PKHeX does not call
+// either Invalid, so neither may read Invalid or "No problems found" here.
+constexpr const char* kSapphireEggTid =
+    "D63257B20000F162010000004159342F87000000464100040000000000000000000000000000000021002D00000000002328000000000000E06FF63F000000000013000000000000420055004C00420041005300410055005200FFFF000000010000000000000000500072006F0076006100FFFF000000000000001A0A1000003175000485000000";
+constexpr const char* kLeafGreenRngFrame =
+    "FF42ED7E00001A6C0A000000159854287D000000461300010000000000000000000000000000000021005100000000002328000000000000540CD81A000000000018000000000000AD30E330BF30D430FC30FFFF0000000000000000000000050000000000000000C630B930C830FFFF00000000000000000000001A0A1000003175000484000000";
 
 constexpr std::size_t kSpecies = 0x08, kMoves = 0x28, kPp = 0x30, kFlags = 0x40, kFlags2 = 0x42;
 constexpr std::size_t kVersion = 0x5F, kBall = 0x83, kMetLevel = 0x84, kNickname = 0x48, kOt = 0x68;
@@ -1993,7 +2007,7 @@ void swapBlocks(std::vector<uint8_t>& pk, std::size_t a, std::size_t b) {
 void cases() {
     using O = Outcome;
     const auto noEncounter = invalid("No Gen V encounter gives");
-    const auto transferWarning = warning("Gen III/IV origin: the original encounter and moves are not checked");
+    const auto cxdWarning = warning("Colosseum / XD origin: the original encounter and moves are not checked");
     const auto checksumInvalid = invalid("PK5 checksum does not match its data");
 
     // Positive: a version-exclusive wild slot in its own game.
@@ -2091,21 +2105,41 @@ void cases() {
                }
            })));
 
-    // Unknown: a transfer keeps its Gen IV / III version byte, and nothing in the record
-    // says which Gen V game received it. The verdict does not depend on the title.
-    record("Black", "unknown", "Diamond Caterpie transferred", expect(O::Incomplete, {transferWarning}),
-           run(record5(kDiamondCaterpie)));
-    record("White", "unknown", "FireRed Weedle transferred", expect(O::Incomplete, {transferWarning}),
-           run(record5(kFireRedWeedle)));
-    record("Black 2", "unknown", "HeartGold Caterpie transferred", expect(O::Incomplete, {transferWarning}),
-           run(record5(kHeartGoldCaterpie)));
-    record("White 2", "unknown", "LeafGreen Caterpie transferred", expect(O::Incomplete, {transferWarning}),
-           run(record5(kLeafGreenCaterpie)));
+    // Transfers: a transferred Pokemon keeps its Gen IV / III version byte, and nothing in
+    // the record says which Gen V game received it, so the verdict does not depend on the
+    // title. The Gen IV analyzer's origin analysis (Gen4::analyzeOrigin5) matches the
+    // original encounter and the moves, so a clean PKHeX-VALID transfer is certified.
+    const auto origin = [](const char* kind, const char* species) {
+        return info(std::string("Gen III/IV origin matches a ") + kind + " (" + species + ")");
+    };
+    record("Black", "positive", "Diamond Caterpie transferred",
+           expect(O::NoProblemsFound, {origin("Gen IV wild encounter", "Caterpie")}), run(record5(kDiamondCaterpie)));
+    record("White", "positive", "FireRed Weedle transferred",
+           expect(O::NoProblemsFound, {origin("Gen III wild encounter", "Weedle")}), run(record5(kFireRedWeedle)));
+    record("Black 2", "positive", "HeartGold Caterpie transferred",
+           expect(O::NoProblemsFound, {origin("Gen IV wild encounter", "Caterpie")}), run(record5(kHeartGoldCaterpie)));
+    record("White 2", "positive", "LeafGreen Caterpie transferred",
+           expect(O::NoProblemsFound, {origin("Gen III wild encounter", "Caterpie")}), run(record5(kLeafGreenCaterpie)));
+
+    // Unknown: transfers whose origin is not decided here. Colosseum / XD encounters are
+    // not modelled, and PKHeX's "fishy" Gen III results stay Warnings.
+    record("Black", "unknown", "XD Shadow Butterfree transferred", expect(O::Incomplete, {cxdWarning}),
+           run(record5(kXdShadowButterfree)));
+    record("White", "unknown", "Sapphire egg on a TID/SID with no Ruby/Sapphire seed",
+           expect(O::Incomplete, {warning("cannot be generated by Ruby/Sapphire")}), run(record5(kSapphireEggTid)));
+    record("Black 2", "unknown", "LeafGreen Caterpie on no reachable RNG frame",
+           expect(O::Incomplete, {warning("reachable RNG frame for this Generation III")}),
+           run(record5(kLeafGreenRngFrame)));
+    record("White 2", "unknown", "Colosseum Shadow Bayleef transferred", expect(O::Incomplete, {cxdWarning}),
+           run(record5(kColosseumShadowBayleef)));
 
     // Original-game: Gen V has no disassembly, so these use the Gen IV decompilations
     // (pokeplatinum generated/items.txt:2-17, pokeheartgold include/constants/items.h:270-285
     // and 913-921): no Gen IV game has a Dream Ball, and the Sport Ball is HeartGold /
-    // SoulSilver only.
+    // SoulSilver only. The Bug-Catching Contest gives Caterpie at L7-18
+    // (pokeheartgold files/data/mushi/mushi_encount.csv:2) and throws only Sport Balls
+    // (src/battle/battle_controller_player.c:1865-1873), so the SoulSilver Caterpie
+    // transferred at L15 is certified.
     record("Black", "original-game", "Platinum Caterpie in a Dream Ball",
            expect(O::Invalid, {invalid("The Dream Ball did not exist in Gen IV")}),
            run(edited(kPlatinumCaterpie, [](std::vector<uint8_t>& pk) { pk[kBall] = 25; })));
@@ -2116,7 +2150,8 @@ void cases() {
            expect(O::Invalid, {invalid("Ball 24 exists only in HeartGold / SoulSilver")}),
            run(edited(kPlatinumCaterpie, [](std::vector<uint8_t>& pk) { pk[kBall] = 24; })));
     record("White 2", "original-game", "SoulSilver Caterpie in a Sport Ball",
-           expect(O::Incomplete, {transferWarning}, {invalid("exists only in HeartGold / SoulSilver")}),
+           expect(O::NoProblemsFound, {origin("Gen IV wild encounter", "Caterpie")},
+                  {invalid("exists only in HeartGold / SoulSilver")}),
            run(record5(kSoulSilverSportBallCaterpie)));
 }
 

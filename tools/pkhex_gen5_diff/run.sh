@@ -36,8 +36,14 @@ if [ -n "${GEN5_DIFF_CORPUS:-}" ]; then
 else
     dotnet "$work/oracle/PKHeXGen5Oracle.dll" generate "$seed" "$mutations" > "$work/pkhex.txt"
 fi
+# Gen III/IV-origin records are checked by the Gen IV analyzer's origin analysis
+# (Gen4::analyzeOrigin5), so its sources are part of the Gen V analyzer.
 g++ -std=c++20 -O2 -I"$repo/include" "$here/gen5_diff.cpp" "$repo/src/Legality/Gen5Legality.cpp" \
-    "$repo/src/Legality/Gen5LegalityData.cpp" "$repo/src/Legality/Gen5Text.cpp" "$repo/src/Names/SpeciesNames.cpp" \
+    "$repo/src/Legality/Gen5LegalityData.cpp" "$repo/src/Legality/Gen5Text.cpp" \
+    "$repo/src/Legality/Gen4Legality.cpp" "$repo/src/Legality/Gen4LegalityData.cpp" \
+    "$repo/src/Legality/Gen4LegalityEncounters.cpp" "$repo/src/Legality/Gen4LegalityMoves.cpp" \
+    "$repo/src/Legality/Gen4LegalityPalPark.cpp" "$repo/src/Legality/Gen4LegalityRng.cpp" \
+    "$repo/src/Legality/Gen4LegalityText.cpp" "$repo/src/Names/SpeciesNames.cpp" \
     "$repo/src/Names/MoveNames.cpp" "$repo/src/Pokemon/Experience.cpp" -o "$work/gen5_diff"
 
 # Text helpers against .NET and PKHeX: invariant casing of every UTF-16 unit inside the
@@ -66,6 +72,10 @@ awk -F'\t' '{split($1,a," "); split($2,b," "); if (a[1]!=b[1]) {print "id mismat
 echo "PKHeX-valid records PokeBank NX certifies \"No problems found\" (origin, game):"
 awk -F'\t' '{split($1,a," "); split($2,b," "); if (a[3]!="VALID") next; o=a[5]; g=a[7];
     t[o" "g]++; t[o" all"]++; t["all all"]++; if (b[2]=="NOPROBLEMS") {n[o" "g]++; n[o" all"]++; n["all all"]++}}
+    END{for(k in t) printf "  %-22s %6d / %6d  %5.1f%%\n", k, n[k], t[k], 100*n[k]/t[k]}' "$work/joined.txt" | sort
+echo "PKHeX-invalid records PokeBank NX reports Invalid (origin, game):"
+awk -F'\t' '{split($1,a," "); split($2,b," "); if (a[3]!="INVALID") next; o=a[5]; g=a[7];
+    t[o" "g]++; t[o" all"]++; t["all all"]++; if (b[2]=="INVALID") {n[o" "g]++; n[o" all"]++; n["all all"]++}}
     END{for(k in t) printf "  %-22s %6d / %6d  %5.1f%%\n", k, n[k], t[k], 100*n[k]/t[k]}' "$work/joined.txt" | sort
 # A false Valid ("No problems found" for a record PKHeX rejects) fails the run.
 false_valid=$(awk -F'\t' '{split($1,a," "); split($2,b," "); if (a[3]=="INVALID" && b[2]=="NOPROBLEMS") print}' "$work/joined.txt")

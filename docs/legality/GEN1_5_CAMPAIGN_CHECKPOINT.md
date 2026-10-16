@@ -55,10 +55,11 @@ Gen III counts are from `tools/pkhex_gen34_diff/run.sh PKHeX 1 3 3` (base) and `
 the uncaught Gen III records all hold an Enigma Berry (a deliberate Unknown). Gen IV counts are
 seed 1 with 3 mutations; seeds 1-3 together caught 83,524 of 83,524 PKHeX-invalid records, and the
 grown percentages are seeds 1-3. Gen V from
-`tools/pkhex_gen5_diff/run.sh PKHeX <seed> 4` for seeds 1, 2, 7 and 11 (461,340 records).
-Gen V "No problems found" by origin: native 117,432/117,521, in-game trade 8,579/8,579,
-event 16,061/16,074, Gen III/IV transfer 0/84,961 (their original encounter is not yet
-checked from the PK5 side).
+`tools/pkhex_gen5_diff/run.sh PKHeX <seed> 4` for seeds 1, 2, 7 and 11 (460,475 records).
+Gen V "No problems found" by origin: native 117,358/117,444, in-game trade 8,587/8,587,
+event 16,060/16,073, Gen III/IV transfer 80,992/82,536 (the rest are PKHeX "Fishy" R/S egg
+TIDs and Gen III RNG frames, kept as Warnings, and one name outside the modelled text set);
+Colosseum/XD transfer 0/1,995 (not analyzed).
 
 ## Open Unknown / Incomplete cases
 
@@ -66,8 +67,8 @@ checked from the PK5 side).
   frame, PID 0, SID 0, all IVs equal, a Ruby/Sapphire TID without a seed), for a Colosseum/XD
   origin (Orre tables not ported), a checksum or sanity mismatch, or an Enigma Berry. That is
   about 2-4% of PKHeX-valid Gen III and 0.75% of grown Gen IV records.
-- **Gen V:** Gen III/IV-origin PK5 records get the Gen V-side transfer checks but not their
-  original Gen III/IV encounter, so they stay Incomplete; fateful records that match no PGF
+- **Gen V:** Colosseum/XD-origin PK5 records (Orre tables not ported) and Gen III/IV-origin
+  ones with a PKHeX "Fishy" origin result stay Incomplete; fateful records that match no PGF
   card (warned, not Invalid: the card list is not proven complete); a BACD PID coincidence
   on a shiny card PID; JP/KR OT names of exactly six characters; a nickname that differs
   from the card's; gender when several templates match; names outside the modelled text

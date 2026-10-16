@@ -62,7 +62,7 @@ met-location fields, and the Gen V name-buffer length) rest on decomp or record-
 | Markings, ground tile | n/a | n/a | P (markings) | P | E |
 | Moves (level-up, TM/HM, tutor, egg, event, evolution order) | P (incl. Stadium 2 reminder) | P | P | P | E |
 | Evolution | P | P | P | P | E |
-| Transfer (Time Capsule, Pal Park, Poke Transfer) | P (Time Capsule) | P (Time Capsule, Crystal met data) | n/a | P (Pal Park, Gen III origin verified) | E (Gen V side only; original encounter in progress) |
+| Transfer (Time Capsule, Pal Park, Poke Transfer) | P (Time Capsule) | P (Time Capsule, Crystal met data) | n/a | P (Pal Park, Gen III origin verified) | E (Gen V side, and the Gen III/IV original encounter and moves through the Gen IV analyzer; Colosseum/XD origin not checked) |
 
 Detail per rule, with PKHeX file references: `GB_LEGALITY_VERDICTS.md` (I, II),
 `GEN3_PKHEX_RULE_INVENTORY.md`, `GEN4_PKHEX_RULE_INVENTORY.md`, `GEN5_PKHEX_RULE_INVENTORY.md`.
@@ -74,9 +74,9 @@ Detail per rule, with PKHeX file references: `GB_LEGALITY_VERDICTS.md` (I, II),
 - Gen III/IV: Colosseum/XD origins (Orre tables not ported); PKHeX "Fishy" findings
   (bad RNG frame, PID 0, SID 0, all IVs equal, R/S TID without a seed); a checksum or
   sanity mismatch; Enigma Berry holders.
-- Gen V: Gen III/IV-origin transfers (original encounter not yet checked from the PK5 side);
-  fateful records matching no supported PGF card; the text cases in the Gen V inventory's
-  "Still Incomplete".
+- Gen V: Colosseum/XD-origin transfers (Orre tables not ported); Gen III/IV-origin transfers
+  with a PKHeX "Fishy" result (R/S TID without a seed, bad Gen III RNG frame); fateful records
+  matching no supported PGF card; the text cases in the Gen V inventory's "Still Incomplete".
 
 ## 2. Corpus detection rates (PKHeX differential)
 
@@ -91,7 +91,7 @@ PKHeX invalid, PokeBank NX "No problems found". Every tool fails on either.
 | II | same, PK2; app-path parity 18,291 / 18,291 (1,709 Korean skipped) | 0 | 0 | same | same |
 | III | `pkhex_gen34_diff` seeds 1-3, 3 mutations, plus the grown Gen III corpus | 0 | 0 | 43,110 / 43,120 (99.98%; the 10 are Enigma Berry holders) | base 41,612 / 43,388 (95.91%); grown 56,806 / 57,861 (98.18%) |
 | IV | `pkhex_gen34_diff` seeds 1-3, 3 mutations, plus the grown Gen IV corpus | 0 | 0 | base 83,599 / 83,599 (100%); grown 113,993 / 113,993 (100%) | base 69,298 / 69,410 (99.84%); grown 114,336 / 115,247 (99.21%). Of the uncertified, 112 and 109 are the deliberately stricter met-location rule (`PKHEX_DISAGREEMENT_REVIEW.md` item 14) |
-| V | `pkhex_gen5_diff` seeds 1, 2, 7, 11, 4 mutations (461,340 records) | 0 | 0 | 93.4% | native 117,432 / 117,521; trade 8,579 / 8,579; event 16,061 / 16,074; Gen III/IV transfer 0 / 84,961 |
+| V | `pkhex_gen5_diff` seeds 1, 2, 7, 11, 4 mutations (460,475 records) | 0 | 0 | 231,941 / 233,840 (99.2%); Gen III/IV-origin transfers 88,541 / 88,548 | native 117,358 / 117,444; trade 8,587 / 8,587; event 16,060 / 16,073; Gen III/IV transfer 80,992 / 82,536 (Colosseum/XD 0 / 1,995) |
 
 Before this round, Gen III caught 13-14% and Gen IV 31-32% of PKHeX-invalid records, and
 neither could certify any record.
@@ -105,8 +105,8 @@ neither could certify any record.
 | `test_gb_legality_structural` | 1,511 checks |
 | `test_legality_gen3` | 268 cases + 12,000 fuzz records |
 | `test_legality_gen4` | 198 cases + 40,000 fuzz records (400,000 in the gen34 CI job) |
-| `test_legality_gen5` | 121 cases + 40,000 fuzz records |
-| `test_legality_title_matrix` | 171 cases across all 20 titles (positive, negative, malformed, Unknown, original-game and title-specific) |
+| `test_legality_gen5` | 167 cases + 40,000 fuzz records (400,000 in the gen5 CI job) |
+| `test_legality_title_matrix` | 175 cases across all 20 titles (positive, negative, malformed, Unknown, original-game and title-specific) |
 
 Each also builds with ASan/UBSan, and GCC and Clang where the lane gates require it. The
 lane gates (L1-L6) and their workflows are listed in `LEGALITY_GATE_MATRIX.md`.

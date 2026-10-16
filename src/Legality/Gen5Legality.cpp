@@ -7,10 +7,17 @@
 // Result classes: a rule that is decided from the record and pinned data is
 // Invalid when broken. Anything this analyzer cannot decide is a Warning and
 // leaves its coverage Partial, so the verdict stays Incomplete instead of
-// Invalid. Examples: event cards that are not in the pinned database; the
-// original Gen III/IV encounter (and move sources) of a transferred Pokemon;
+// Invalid. Examples: event cards that are not in the pinned database; a
+// Colosseum / XD original encounter; PKHeX "fishy" Gen III origin results;
 // names with characters outside Gen5Text's modelled set; names only an in-game
 // trade or event could have fixed.
+//
+// A Gen III/IV-origin (Poke Transfer) record's original encounter, moves and
+// origin-side rules are checked by the Gen IV analyzer (Gen4::analyzeOrigin5)
+// on a PK4-shaped view of the PK5 bytes, the way PKHeX analyzes a format-5
+// entity: Transfer4 met location, encounter level <= the transfer level, and
+// moves from the Gen V / IV / III learnsets (format5Data() hands it this
+// file's Gen V tables).
 #include "Legality/Gen5Legality.h"
 
 #include <algorithm>
@@ -21,6 +28,7 @@
 #include <vector>
 
 #include "Encryption/Encryption5.h"
+#include "Gen4LegalityInternal.h"
 #include "Legality/Gen5LegalityData.h"
 #include "Legality/Gen5Text.h"
 #include "Names/MoveNames.h"
@@ -130,6 +138,8 @@ namespace {
 
 namespace D = Gen5Data;
 namespace T = Gen5Text;
+namespace G4 = Gen4;
+namespace D4 = Gen4Data;
 using Gen5::Pk5;
 
 // ---------------------------------------------------------------- constants
@@ -369,6 +379,143 @@ void addStageMoves(std::bitset<kMaxMove + 1>& pool, uint16_t species, uint8_t fo
     }
 }
 
+// ---------------------------------------------------------------- Gen III/IV origin (Poke Transfer)
+//
+// PKHeX analyzes a PK5 of Gen III/IV origin with that generation's encounter generator,
+// the Gen V evolution tree and personal table and the Gen V/IV/III learn groups. The Gen IV
+// analyzer runs that analysis (Gen4::analyzeOrigin5); the Gen V data it needs is passed in
+// through these hooks, so the Gen V tables are not duplicated.
+
+// EvolutionTree.Evolves5 (GetViaSpecies over the BW table) in the Gen IV analyzer's layout,
+// with EvolutionSet's levelUp amount (1 when EvolutionType.IsLevelUpRequired). Built once;
+// the Gen IV analyzer keeps pointers into it.
+std::span<const D4::Evolution> evolutions5(uint16_t species) {
+    static const std::vector<D4::Evolution> table = [] {
+        std::vector<D4::Evolution> t;
+        const uint16_t total = D::kEvolutionStart[D::kEvolutionCount];
+        t.reserve(total);
+        for (uint16_t i = 0; i < total; ++i) {
+            const auto& e = D::kEvolutions[i];
+            t.push_back({e.type, e.argument, e.species, e.form, e.level, static_cast<uint8_t>(levelUpRequired(e.type) ? 1 : 0)});
+        }
+        return t;
+    }();
+    if (species >= D::kEvolutionCount) return {};
+    return std::span<const D4::Evolution>(table).subspan(D::kEvolutionStart[species],
+                                                         D::kEvolutionStart[species + 1] - D::kEvolutionStart[species]);
+}
+
+// PersonalTable.BW[species].FormCount.
+uint8_t formCountBW5(uint16_t species) {
+    return species < D::kPersonalBWCount ? D::kPersonalBW[species * D::kPersonalBWSize + 0x20] : 0;
+}
+
+// PersonalTable5B2W2.IsPresentInGame.
+bool presentB2W25(uint16_t species, uint8_t form) {
+    if (species > kMaxSpecies) return false;
+    if (form == 0) return true;
+    const uint8_t* rec = D::kPersonalB2W2 + species * D::kPersonalB2W2Size;
+    const uint16_t formStats = static_cast<uint16_t>(rec[0x1C] | (rec[0x1D] << 8));
+    if (formStats != 0 && form < rec[0x20]) return true; // PersonalInfo.HasForm
+    switch (species) {
+        case 201: return form < 28;           // Unown
+        case 412: case 414: return form < 3;  // Burmy, Mothim
+        case 421: return form == 1;           // Cherrim
+        case 422: case 423: return form == 1; // Shellos, Gastrodon
+        case 493: return form < 17;           // Arceus
+        case 585: case 586: return form < 4;  // Deerling, Sawsbuck
+        case 649: return form <= 4;           // Genesect
+        default: return false;
+    }
+}
+
+// PersonalTable.B2W2.GetFormEntry.
+G4::Personal5 personalB2W25(uint16_t species, uint8_t form) {
+    G4::Personal5 out;
+    const Personal p = personal(species, form);
+    if (!p.rec) return out;
+    for (int i = 0; i < 3; ++i) out.abilities[static_cast<std::size_t>(i)] = p.ability(i);
+    out.gender = p.genderRatio();
+    out.formCount = p.formCount();
+    out.growth = p.growth();
+    out.valid = true;
+    return out;
+}
+
+// Learnset.TryGetLevelLearnMove: the level of the move's first entry, -1 when absent.
+int firstLevel(const D::LevelMove* moves, const uint16_t* start, std::size_t count, int index, uint16_t move) {
+    if (index < 0 || static_cast<std::size_t>(index) >= count) return -1;
+    for (uint16_t i = start[index]; i < start[index + 1]; ++i)
+        if (moves[i].move == move) return moves[i].level;
+    return -1;
+}
+
+// ReadOnlySpan.IndexOf over a move list; -1 when absent.
+int indexOf(const uint16_t* list, std::size_t count, uint16_t move) {
+    for (std::size_t i = 0; i < count; ++i) if (list[i] == move) return static_cast<int>(i);
+    return -1;
+}
+
+// LearnGroup5.CheckInternal for one evolution stage and form: LearnSource5B2W2.GetCanLearn
+// (level-up up to evo.LevelMax, TM/HM, type tutors, B2W2 tutors, enhanced tutors), then
+// LearnSource5BW level-up, whose result replaces the B2W2 one when found.
+G4::LearnMethod learn5(const G4::Pk4& pk, const G4::Evo& evo, uint16_t move, bool past) {
+    using LM = G4::LearnMethod;
+    if (evo.species == 0 || evo.species > kMaxSpecies) return LM::None; // TryGetPersonal
+    LM result = LM::None;
+    const Personal p = personal(evo.species, evo.form);
+    const int level = firstLevel(D::kLevelUpB2W2, D::kLevelUpB2W2Start, D::kLearnsetB2W2Count, indexB2W2(evo.species, evo.form), move);
+    if (level >= 0 && level <= evo.levelMax) {
+        result = LM::LevelUp;
+    } else if (p.rec) {
+        const int tm = indexOf(D::kMachineMoves, D::kMachineCount, move);
+        const int type = indexOf(D::kTypeTutorMoves, D::kTypeTutorCount, move);
+        bool special = false;
+        for (int t = 0; t < 4 && !special; ++t) {
+            const int i = indexOf(D::kTutorMoves[t], D::kTutorCounts[t], move);
+            special = i >= 0 && ((p.rec[0x3C + 4 * t + (i >> 3)] >> (i & 7)) & 1u);
+        }
+        bool enhanced = false;
+        if (evo.species == 479) { // Rotom: the appliance moves (any form in the past, else the current form's)
+            static constexpr uint16_t kRotom[] = {315, 56, 59, 403, 437};
+            for (uint8_t k = 1; k <= 5; ++k)
+                if (move == kRotom[k - 1]) enhanced = past || pk.form == k;
+        }
+        if (tm >= 0 && p.tm(tm)) result = LM::TMHM;
+        else if ((type >= 0 && p.typeTutor(type)) || special || enhanced) result = LM::Tutor;
+    }
+    const int levelBW = firstLevel(D::kLevelUpBW, D::kLevelUpBWStart, D::kLearnsetBWCount, indexBW(evo.species, evo.form), move);
+    if (levelBW >= 0 && levelBW <= evo.levelMax) result = LM::LevelUp;
+    return result;
+}
+
+const G4::Format5Data& format5Data() {
+    static const G4::Format5Data data{evolutions5, formCountBW5, presentB2W25, personalB2W25, learn5};
+    return data;
+}
+
+const char* originKindName(G4::EncKind k) {
+    using K = G4::EncKind;
+    switch (k) {
+        case K::Slot: return "Gen IV wild encounter";
+        case K::Static: return "Gen IV static or gift encounter";
+        case K::Walker: return "Pokewalker encounter";
+        case K::Trade: return "Gen IV in-game trade";
+        case K::Ranch: return "My Pokemon Ranch gift";
+        case K::Pcd: return "Gen IV Mystery Gift";
+        case K::RangerManaphy: return "Pokemon Ranger Manaphy egg";
+        case K::Egg: return "Gen IV egg";
+        case K::Slot3: return "Gen III wild encounter";
+        case K::Static3: return "Gen III static encounter";
+        case K::Trade3: return "Gen III in-game trade";
+        case K::Gift3: case K::GiftNY3: case K::GiftJP3: return "Gen III event gift";
+        case K::GiftColo3: return "Colosseum / XD bonus disc gift";
+        case K::Egg3: return "Gen III egg";
+        case K::Invalid: break;
+    }
+    return "encounter";
+}
+
 // ---------------------------------------------------------------- reporting
 
 struct Analysis {
@@ -536,12 +683,20 @@ void checkCommon(const Pk5& p, const Template& t, const Personal& cur, std::vect
 
 class Gen5Analyzer {
 public:
-    explicit Gen5Analyzer(const Pk5& p) : p_(p) {}
+    Gen5Analyzer(const Pk5& p, std::span<const uint8_t> decrypted) : p_(p), raw_(decrypted) {}
     Report run();
 
 private:
     const Pk5& p_;
+    std::span<const uint8_t> raw_; // the decrypted record p_ was read from
     Analysis a_;
+    // Gen III/IV origin analysis of a transferred Pokemon (Gen4::analyzeOrigin5).
+    G4::Origin5 origin_;
+    bool originMatched() const { return origin_.analyzed && origin_.encounterMatched; }
+    void analyzeOrigin();
+    void mergeOrigin();
+    void namesOrigin();
+    bool unNicknamedNameValid(const std::u16string& nick) const;
     Personal cur_;
     std::vector<Stage> chain_;
     uint8_t level_ = 1;
@@ -671,6 +826,8 @@ void Gen5Analyzer::internal() {
     // PokeStar Studios fame.
     if (p_.pokeStarFame != 0) {
         if (p_.isEgg) a_.invalid(CheckIdentifier::Misc, "An egg cannot have PokeStar fame");
+        // MiscVerifierPK5: Ditto (whose encounter is always Ditto) cannot take part in PokeStar Studios.
+        else if (p_.species == 132) a_.invalid(CheckIdentifier::Misc, "Ditto cannot have PokeStar fame");
         else if (p_.pokeStarFame % 25 != 0 && p_.pokeStarFame % 25 != 5)
             a_.invalid(CheckIdentifier::Misc, "PokeStar fame " + std::to_string(p_.pokeStarFame) + " is not a reachable value");
     }
@@ -709,6 +866,8 @@ void Gen5Analyzer::abilities() {
         return;
     }
     if (!gen5Origin_) {
+        // The origin analysis ran AbilityVerifier.VerifyAbility345 with the Gen III/IV encounter.
+        if (origin_.analyzed) return;
         // PKHeX rejects the flag for every Gen III/IV encounter (CheckMatch) except an
         // unevolved Gen IV card (VerifyAbilityPCD compares the ability only), and a
         // fateful Gen IV Pokemon may be one.
@@ -752,6 +911,7 @@ void Gen5Analyzer::abilities() {
 // is known to be Wurmple.
 void Gen5Analyzer::wurmple() {
     if (p_.species < 266 || p_.species > 269) return;
+    if (origin_.analyzed) return; // PIDVerifier with the Gen III/IV encounter ran in the origin analysis
     const uint32_t branch = ((p_.pid >> 16) % 10) / 5; // 0: Silcoon line, 1: Cascoon line
     if (branch == (p_.species <= 267 ? 0u : 1u)) return;
     const bool fromWurmple = matched_ && match_.species == 265;
@@ -775,6 +935,7 @@ void Gen5Analyzer::genderFromDual() {
         default: return;
     }
     if (p_.gender == 2 || !cur_.rec) return;
+    if (origin_.analyzed) return; // checked against the Gen III/IV encounter species in the origin analysis
     auto pidGender = [&](uint16_t species) {
         const Personal pi = personal(species, 0);
         const uint8_t r = pi.rec ? pi.genderRatio() : 255;
@@ -1325,12 +1486,33 @@ std::array<int, 2> sheenRange(const Pk5& p, bool gen3) {
     return {minimum, maximum};
 }
 
+// Runs the Gen III/IV origin analysis (Gen4::analyzeOrigin5) on a view of this record.
+void Gen5Analyzer::analyzeOrigin() {
+    // Poke Transfer refuses eggs; Colosseum / XD origin and species above 493 stay with this analyzer.
+    if (p_.isEgg || p_.species == 0 || p_.species > 493 || p_.version == kVersionCXD || raw_.size() < 136) return;
+    G4::Pk4 view;
+    if (!G4::read(raw_.first(136), view)) return;
+    // PK5 0x41 is the nature and 0x42 the hidden-ability / N flags; 0x44-0x47 and 0x86 are unused and
+    // 0x87 is the PokeStar fame. A PK4 keeps the Shiny Leaf, the Pt/HG/SS egg and met locations, the
+    // HG/SS ball and the walking mood there, none of which a PK5 has.
+    view.format = 5;
+    view.nature5 = p_.nature;
+    view.hiddenAbility5 = p_.hiddenAbility;
+    view.shinyLeaf = 0;
+    view.eggLocationExtended = 0;
+    view.metLocationExtended = 0;
+    view.ballHGSS = 0;
+    view.walkingMood = 0;
+    origin_ = G4::analyzeOrigin5(view, level_, format5Data());
+}
+
 void Gen5Analyzer::transfer() {
     auto& cov = a_.report.coverage;
     cov.encounter = CoverageLevel::Partial;
     cov.pidRng = CoverageLevel::Partial;
     cov.eventGift = CoverageLevel::Partial;
     cov.transfer = CoverageLevel::Partial;
+    analyzeOrigin();
     if (p_.species > 493)
         a_.invalid(CheckIdentifier::Transfer, "Species above 493 cannot come from Gen III/IV");
     if (p_.nSparkle) a_.invalid(CheckIdentifier::Transfer, "N's sparkle flag on a transferred Pokemon");
@@ -1351,9 +1533,10 @@ void Gen5Analyzer::transfer() {
         a_.warn(CheckIdentifier::Transfer, "Met location " + std::to_string(p_.metLocation) +
                                                " is the event-capsule transfer location, but this Pokemon is not a fateful event gift");
     // PKHeX ContestStatVerifier: sheen follows the contest stats Pokeblocks / Poffins
-    // gave. In-game trades and Gen IV events start with stats of their own (unknown here).
+    // gave. In-game trades and Gen IV events start with stats of their own; the origin
+    // analysis checks it against the encounter, so this is only for a record it skips.
     const auto sheen = sheenRange(p_, isGen3Version(p_.version));
-    if (p_.contest[5] < sheen[0] || p_.contest[5] > sheen[1]) {
+    if (!origin_.analyzed && (p_.contest[5] < sheen[0] || p_.contest[5] > sheen[1])) {
         const std::string text = "Contest sheen " + std::to_string(p_.contest[5]) + " is outside " + std::to_string(sheen[0]) +
                                  "-" + std::to_string(sheen[1]) + ", the range its contest stats allow";
         // Only Gen IV cards (all fateful) and the EncounterTrade3 / EncounterTrade4PID
@@ -1386,10 +1569,14 @@ void Gen5Analyzer::transfer() {
         if (p_.species == 172 && p_.form == 1 && p_.version >= 10)
             a_.invalid(CheckIdentifier::Species, "Spiky-eared Pichu can only come from HeartGold / SoulSilver");
     }
-    if (isGen3Version(p_.version) && p_.metLevel < 5 && p_.eggLocation == 0)
+    // The origin analysis matches the encounter's level against the transfer level.
+    if (!origin_.analyzed && isGen3Version(p_.version) && p_.metLevel < 5 && p_.eggLocation == 0)
         a_.warn(CheckIdentifier::Transfer, "Transferred Gen III Pokemon below level 5");
     if (p_.metLevel == 0) a_.invalid(CheckIdentifier::Transfer, "Transferred Pokemon must have its transfer level as met level");
-    a_.warn(CheckIdentifier::Transfer, "Gen III/IV origin: the original encounter and moves are not checked by the Gen V analyzer");
+    if (!origin_.analyzed)
+        a_.warn(CheckIdentifier::Transfer, p_.version == kVersionCXD
+            ? "Colosseum / XD origin: the original encounter and moves are not checked"
+            : "Gen III/IV origin: the original encounter and moves are not checked by the Gen V analyzer");
 }
 
 // PKHeX Breeding.GetCanInheritMoves: level-up moves pass to an egg only through a
@@ -1457,6 +1644,11 @@ void Gen5Analyzer::movePool() {
         }
         return out;
     };
+    if (!gen5Origin_ && origin_.analyzed) {
+        // LearnVerifier with LearnGroup5, then 4, then 3 ran in the origin analysis (mergeOrigin).
+        cov.moves = CoverageLevel::Partial;
+        return;
+    }
     if (!gen5Origin_ || !matched_) {
         const auto bad = missing(movesFor(nullptr));
         for (uint16_t m : bad)
@@ -1601,7 +1793,8 @@ void Gen5Analyzer::transferRibbons() {
 
 void Gen5Analyzer::ribbons() {
     if (!gen5Origin_) {
-        if (isGen3Version(p_.version) || isGen4Version(p_.version)) transferRibbons();
+        // RibbonVerifier with the Gen III/IV encounter and history ran in the origin analysis.
+        if (!origin_.analyzed && (isGen3Version(p_.version) || isGen4Version(p_.version))) transferRibbons();
         return;
     }
     // Gen V games have no contests; only a gift card can carry contest stats
@@ -1833,6 +2026,101 @@ void Gen5Analyzer::namesTransfer() {
     }
 }
 
+// PKHeX NicknameVerifier.IsNotNicknameValid for a transferred PK5 that is not flagged as
+// nicknamed: the Gen V species name of its language; any language's name after evolving
+// or as a traded egg; then IsMatch45 (the Gen IV name, Farfetch'd upper-cased).
+bool Gen5Analyzer::unNicknamedNameValid(const std::u16string& nick) const {
+    const uint16_t sp = p_.species;
+    const uint8_t lang = p_.language;
+    const std::u16string expect = T::speciesNameGeneration(sp, lang, 5);
+    if (nick == expect) return true;
+    const bool anyLanguage = origin_.encSpecies != sp || origin_.wasTradedEgg;
+    if (anyLanguage && !T::isNicknamedAnyLanguage(sp, nick, 5)) return true;
+    if (sp == 83) { // Farfetch'd: Gen IV used another apostrophe; compared upper-cased
+        if (nick.size() == expect.size()) {
+            bool upper = true;
+            for (std::size_t i = 0; i < nick.size() && upper; ++i) upper = nick[i] == T::toUpperInvariant(expect[i]);
+            if (upper) return true;
+        }
+        if (lang == 2 || lang == 4 || lang == 7) return false; // SpeciesName.IsApostropheFarfetchdLanguage
+    }
+    if (anyLanguage) return !T::isNicknamedAnyLanguage(sp, nick, 4);
+    return nick == T::speciesNameGeneration(sp, lang, 4);
+}
+
+// PKHeX NicknameVerifier / TrainerNameVerifier for a Gen III/IV-origin PK5 whose encounter
+// the origin analysis matched: the rules a player-chosen name follows. Fixed in-game trade
+// nicknames, fixed trainers and Gen IV card nicknames were checked by the origin analysis.
+void Gen5Analyzer::namesOrigin() {
+    const auto& o = origin_;
+    const std::u16string nick = T::load5(p_.nickname), ot = T::load5(p_.ot);
+    emptyNames(nick, ot, o.playerOT);
+    const uint8_t lang = p_.language;
+    const bool asian = lang == 1 || lang == 8;
+    const uint8_t gen = o.encGeneration; // word filter context and digit limit (enc.Context / Generation)
+    if (!nick.empty() && !o.fixedNickname) {
+        if (!p_.isNicknamed) {
+            if (!unNicknamedNameValid(nick))
+                a_.invalid(CheckIdentifier::Trainer, "Name \"" + utf8(nick) +
+                               "\" is not the species name for its language, but the Pokemon is not flagged as nicknamed");
+        } else if (T::speciesAnyLanguage(nick, 5) != 0) {
+            // A species name: PKHeX "fishy" only (NicknamedAnotherSpecies), not reported, as for Gen V origin.
+        } else if (std::any_of(nick.begin(), nick.end(), [](char16_t c) { return c >= 0x4E00 && c <= 0x9FFF; })) {
+            a_.invalid(CheckIdentifier::Trainer, "Nickname \"" + utf8(nick) + "\" has CJK ideographs, which Gen III/IV cannot type");
+        } else if (nick.size() > (asian ? 5u : 10u)) {
+            // internal() reports more than 10. A Japanese / Korean Gen IV egg hatched in a Western
+            // game gets a Western-length nickname (PKHeX GetForeignNicknameLength: "fishy").
+            if (nick.size() <= 10) {
+                if (gen == 4 && o.encIsEgg && o.wasTradedEgg)
+                    a_.info(CheckIdentifier::Trainer, "Nickname is longer than its language allows; a traded egg hatched "
+                                                      "in another language's game can have it");
+                else
+                    a_.invalid(CheckIdentifier::Trainer, "Japanese / Korean nickname is longer than 5 characters");
+            }
+        } else {
+            filterName(nick, gen, "Nickname");
+        }
+    }
+    if (!o.playerOT || ot.empty()) return;
+    // PKHeX: 6 for Japanese / Korean, 12 otherwise (internal() stops a name at 7); a traded egg
+    // may carry another language's name up to 12, and a Korean GTS-sanitized OT any length.
+    if (asian && ot.size() > 6 && ot.size() <= 7 && !(o.encIsEgg && o.wasTradedEgg) && !o.gtsSanitized)
+        a_.invalid(CheckIdentifier::Trainer, "Japanese / Korean Original Trainer name is longer than 6 characters");
+    filterName(ot, gen, "OT name");
+}
+
+// Adds the origin analysis' results. Coverage of the encounter, PID, event, transfer, egg and
+// move areas is Complete only when it matched an encounter, verified every move and found
+// nothing Invalid or Warning.
+void Gen5Analyzer::mergeOrigin() {
+    if (!origin_.analyzed) return;
+    auto& cov = a_.report.coverage;
+    bool reported = false;
+    for (const auto& c : origin_.checks) {
+        if (c.severity == G4::kInvalid) { a_.invalid(c.id, c.message); reported = true; }
+        else if (c.severity == G4::kFishy) { a_.warn(c.id, c.message); reported = true; }
+        else if (c.severity == G4::kNote) a_.info(c.id, c.message);
+    }
+    if (origin_.encounterMatched)
+        a_.info(CheckIdentifier::Encounter, std::string("Gen III/IV origin matches a ") + originKindName(origin_.kind) + " (" +
+                    speciesName(origin_.encSpecies) + ")");
+    if (!origin_.clean()) {
+        if (!reported)
+            a_.warn(CheckIdentifier::Transfer, "Gen III/IV origin: the original encounter and moves could not be fully checked");
+        return;
+    }
+    const bool transferWarned = std::any_of(a_.report.issues.begin(), a_.report.issues.end(), [](const Issue& i) {
+        return i.severity == Severity::Warning && i.identifier == CheckIdentifier::Transfer;
+    });
+    cov.sourceGame = CoverageLevel::Complete;
+    cov.encounter = CoverageLevel::Complete;
+    cov.pidRng = CoverageLevel::Complete;
+    cov.eventGift = CoverageLevel::Complete;
+    cov.moves = CoverageLevel::Complete;
+    cov.eggBreeding = CoverageLevel::Complete;
+    cov.transfer = transferWarned ? CoverageLevel::Partial : CoverageLevel::Complete;
+}
+
 Report Gen5Analyzer::run() {
     auto& cov = a_.report.coverage;
     cov.structure = CoverageLevel::Complete;
@@ -1858,9 +2146,11 @@ Report Gen5Analyzer::run() {
     movePool();
     ribbons();
     if (gen5Origin_) namesGen5();
+    else if (originMatched()) namesOrigin();
     else namesTransfer();
     cov.internal = textUnknown_ ? CoverageLevel::Partial : CoverageLevel::Complete;
     if (!gen5Origin_) cov.eggBreeding = CoverageLevel::Partial;
+    mergeOrigin();
     return a_.report;
 }
 
@@ -1894,7 +2184,7 @@ Report analyzePk5(std::span<const uint8_t> record, const Pk5Input& input) {
         return report;
     }
     if (p.species == 0) return report;
-    return Gen5Analyzer(p).run();
+    return Gen5Analyzer(p, plain).run();
 }
 
 } // namespace Legality

@@ -61,11 +61,19 @@ struct Pk4 {
     uint8_t groundTile = 0, ballHGSS = 0;
     int8_t walkingMood = 0;
     std::array<uint8_t, 16> ribbons{}; // 0x24-0x27, 0x3C-0x3F, 0x60-0x63
+    /// 4 for a PK4. 5 for the view of a PK5 (Poke Transfer) that the Gen V analyzer builds to check
+    /// the Gen III/IV origin: then the location fields hold the PK5's single egg/met location (the
+    /// Pt/HG/SS fields are 0), metLevel is the transfer level, ballDPPt is the PK5 ball, the
+    /// names are the PK5's UTF-16 units, and nature5 / hiddenAbility5 are PK5 0x41 / 0x42 bit 0.
+    uint8_t format = 4;
+    uint8_t nature5 = 0;
+    bool hiddenAbility5 = false;
 
     uint16_t eggLocation() const noexcept { return eggLocationExtended != 0 ? eggLocationExtended : eggLocationDP; }
     uint16_t metLocation() const noexcept { return metLocationExtended != 0 ? metLocationExtended : metLocationDP; }
     uint8_t ball() const noexcept { return ballHGSS > ballDPPt ? ballHGSS : ballDPPt; }
-    uint8_t nature() const noexcept { return static_cast<uint8_t>(pid % 25u); }
+    /// PKM.Nature: derived from the PID in a PK4, stored in a PK5.
+    uint8_t nature() const noexcept { return format == 5 ? nature5 : static_cast<uint8_t>(pid % 25u); }
     bool isShiny() const noexcept {
         return (((pid >> 16) ^ (pid & 0xFFFFu) ^ tid ^ sid) & 0xFFFFu) < 8;
     }

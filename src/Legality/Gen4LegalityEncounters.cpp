@@ -80,7 +80,10 @@ bool slotMatchExact(const D::Area4& a, const D::Slot4& s, const Pk4& pk, const E
         if (s.form < 30) return false; // IsRandomUnspecificForm (FormDynamic)
     }
     const SlotRef ref{&a, &s};
-    if (!(s.levelMin <= pk.metLevel && pk.metLevel <= s.levelMax)) {
+    if (pk.format != 4) {
+        // A PK5's met level is the transfer level: the slot only has to be reachable.
+        if (evo.levelMax < s.levelMin) return false;
+    } else if (!(s.levelMin <= pk.metLevel && pk.metLevel <= s.levelMax)) {
         // RNGFrameNotFound4 is Invalid by default, so Pressure slots pass on to the lead check.
         if (a.type != SlotRef::kGrass || pk.metLevel != ref.pressureLevel()) return false;
     }
@@ -103,7 +106,26 @@ uint8_t slotFixedBall(const D::Area4& a) noexcept {
     return isSafariBallRequired(a.location) ? kBallSafari : 0;
 }
 
+bool staticMatchExact5(const D::Static4& t, const Pk4& pk, const Evo& evo) noexcept {
+    // EncounterStatic4.IsMatchExact for a transferred entity: Poke Transfer keeps only the D/P egg
+    // location (a Pt/HG/SS-only egg location reads as Faraway Place), the met location is lost and
+    // the met level is the transfer level.
+    const bool isEggTemplate = t.eggLocation != 0;
+    const uint16_t eggLoc = pk.eggLocation();
+    if (!isEggTemplate) {
+        if (eggLoc != t.eggLocation) return false;
+    } else if (eggLoc != kLocLinkTrade4) {
+        const uint16_t cmp = (t.eggLocation > 2010 && t.eggLocation < 3000) ? static_cast<uint16_t>(kLocFaraway4) : uint16_t{t.eggLocation};
+        if (eggLoc != cmp) return false;
+    }
+    if (t.level > evo.levelMax) return false;
+    if (t.gender != 0xFF && pk.gender != t.gender) return false;
+    if (t.form != evo.form && !isFormChangeable(t.species)) return false;
+    return true;
+}
+
 bool staticMatchExact(const D::Static4& t, const Pk4& pk, const Evo& evo) noexcept {
+    if (pk.format != 4) return staticMatchExact5(t, pk, evo);
     const bool isEggTemplate = t.eggLocation != 0;
     const uint16_t eggLoc = pk.eggLocation();
     if (!isEggTemplate) {
@@ -136,8 +158,12 @@ int staticRating(const D::Static4& t, const Pk4& pk) noexcept {
 
 bool walkerMatchExact(const D::Walker4& t, const Pk4& pk, const Evo& evo) noexcept {
     if (pk.eggLocation() != 0) return false;
-    if (pk.metLocation() != kLocPokewalker4) return false;
-    if (pk.metLevel != t.level) return false;
+    if (pk.format != 4) {
+        if (evo.levelMax < t.level) return false; // transfer location is verified later
+    } else {
+        if (pk.metLocation() != kLocPokewalker4) return false;
+        if (pk.metLevel != t.level) return false;
+    }
     if (pk.gender != t.gender) {
         if (pk.species != t.species && t.species == kAzurill && t.gender == 1) {
             if (genderFromPid(pk.pid, 0xBF) != t.gender) return false;
@@ -155,13 +181,16 @@ int walkerRating(const Pk4& pk) noexcept {
 
 bool tradeMatchExact(const D::Trade4& t, const Pk4& pk, const Evo& evo) noexcept {
     const bool metUnset = t.metLocation == 0;
-    if (!metUnset) { if (pk.metLevel != t.level) return false; }
+    const bool transferred = pk.format != 4;
+    if (transferred) { if (evo.levelMax < t.level) return false; }
+    else if (!metUnset) { if (pk.metLevel != t.level) return false; }
     else if (pk.metLevel < t.level) return false;
     if (pk.tid != t.tid || pk.sid != t.sid) return false;
     const uint16_t location = metUnset ? static_cast<uint16_t>(kLocLinkTrade4NPC) : uint16_t{t.metLocation};
-    if (pk.metLocation() != location) return false;
+    if (!transferred && pk.metLocation() != location) return false;
     for (std::size_t i = 0; i < 6; ++i) if (static_cast<int>(pk.ivs[i]) != t.ivs[i]) return false;
     if (pk.pid != t.pid) return false;
+    if (pk.nature() != t.pid % 25) return false; // a PK5 stores its nature
     if (evo.form != 0 && !isFormChangeable(t.species)) return false;
     if (pk.otGender != t.otGender) return false;
     if (pk.eggLocation() != 0) return false;
@@ -171,12 +200,13 @@ bool tradeMatchExact(const D::Trade4& t, const Pk4& pk, const Evo& evo) noexcept
 }
 
 bool ranchMatchExact(const D::Ranch4& t, const Pk4& pk, const Evo& evo) noexcept {
-    if (pk.metLevel != t.metLevel) return false;
+    if (pk.format != 4) { if (evo.levelMax < t.level) return false; }
+    else if (pk.metLevel != t.metLevel) return false;
     if (pk.tid != 1000 || pk.sid != t.sid) return false;
     if (pk.gender != t.gender) return false;
     if (t.fateful) { if (pk.isShiny()) return false; }
     else if (t.pid != pk.pid) return false;
-    if (pk.metLocation() != t.location) return false;
+    if (pk.format == 4 && pk.metLocation() != t.location) return false;
     if (evo.form != t.form && !isFormChangeable(t.species)) return false;
     if (pk.otGender != t.otGender) return false;
     if (pk.eggLocation() != t.eggLocation) return false;
@@ -191,11 +221,18 @@ bool pcdMatchExact(const Gift& g, const Pk4& pk, const Evo& evo) noexcept {
         if (!decodeEqualOT(wc, pk)) return false;
         if (wc.otGender != pk.otGender) return false;
         if (wc.language != 0 && wc.language != pk.language) return false;
-        if (wc.eggLocation() + 3000 != pk.metLocation()) return false;
-        if (pkCurrentLevel(wc) != pk.metLevel) return false;
+        if (pk.format != 4) {
+            // Transferred: the met location is checked with the transfer rules.
+            if (pkCurrentLevel(wc) > pk.metLevel) return false;
+            if (pk.eggLocation() != g.eggLocation()) return false;
+        } else {
+            if (wc.eggLocation() + 3000 != pk.metLocation()) return false;
+            if (pkCurrentLevel(wc) != pk.metLevel) return false;
+        }
     } else {
         if (wc.eggLocation() + 3000 != pk.eggLocation() && pk.eggLocation() != kLocLinkTrade4) return false;
         if (pkCurrentLevel(wc) != pk.metLevel) return false;
+        if (pk.isEgg && pk.format != 4) return false;
     }
     if (wc.form != evo.form && !isFormChangeable(wc.species)) return false;
     if (wc.ball() != pk.ball()) return false;
@@ -217,6 +254,7 @@ bool isRangerManaphy(const Pk4& pk) noexcept {
     if (pk.language >= 8) return false;
     const uint16_t egg = pk.eggLocation();
     if (!pk.isEgg) return egg == kLocLinkTrade4 || egg == kLocRanger4;
+    if (pk.format != 4) return false; // cannot be an egg if it must be transferred
     if (egg != kLocRanger4) return false;
     const uint16_t met = pk.metLocation();
     return met == kLocLinkTrade4 || met == 0;
@@ -300,7 +338,8 @@ struct Enumerator {
         const uint16_t met = pk.metLocation();
         for (std::size_t ai = 0; ai < D::kAreaCount; ++ai) {
             const auto& a = D::kAreas[ai];
-            if (a.version != pk.version || a.location != met) continue;
+            // A PK5 lost its original met location (EncounterEnumerator4 hasOriginalLocation).
+            if (a.version != pk.version || (pk.format == 4 && a.location != met)) continue;
             for (uint16_t k = 0; k < a.slotCount; ++k) {
                 const int si = a.slotStart + k;
                 const auto& s = D::kSlots[si];
@@ -462,10 +501,18 @@ bool isFormChangeable(uint16_t species) noexcept {
 }
 
 Search searchEncounters(const Pk4& pk, uint8_t currentLevel) {
+    if (!isGen4Version(pk.version)) {
+        Search s;
+        s.pidiv = analyzePidIv(pk);
+        return s;
+    }
+    return searchEncounters(pk, originChain(pk, currentLevel));
+}
+
+Search searchEncounters(const Pk4& pk, const std::vector<Evo>& chain) {
     Search s;
     s.pidiv = analyzePidIv(pk);
     if (!isGen4Version(pk.version)) return s;
-    const std::vector<Evo> chain = originChain(pk, currentLevel);
     if (chain.empty()) return s;
     Enumerator e{pk, chain, {}, {}, false, kMaxNotMatch};
     e.run();
@@ -502,7 +549,18 @@ Search searchEncounters(const Pk4& pk, uint8_t currentLevel) {
             continue;
         }
         const SlotRef ref{&D::kAreas[c.area], &D::kSlots[c.index]};
-        const LeadSeed lead = leadInfo4(pk, ref, s.pidiv, pk.metLevel, pk.metLevel);
+        // LeadFinder.GetLevelConstraint: the met level for a PK4; for a PK5 the chain entry of the
+        // slot species clamped to the slot's level range.
+        uint8_t levelMin = pk.metLevel, levelMax = pk.metLevel;
+        if (pk.format != 4) {
+            for (const Evo& evo : chain) {
+                if (evo.species != ref.slot->species) continue;
+                levelMin = std::max(evo.levelMin, ref.levelMin());
+                levelMax = std::min(evo.levelMax, ref.levelMax());
+                break;
+            }
+        }
+        const LeadSeed lead = leadInfo4(pk, ref, s.pidiv, levelMin, levelMax);
         if (!lead.valid()) { defer(Deferral::SlotNumber, c); continue; }
         Candidate withLead = c;
         withLead.lead = lead.lead;

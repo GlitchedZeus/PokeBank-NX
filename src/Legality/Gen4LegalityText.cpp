@@ -333,10 +333,31 @@ std::u16string decodeText(std::span<const uint16_t> raw) {
     return out;
 }
 
-std::u16string nicknameText(const Pk4& pk) { return decodeText(pk.nickname); }
-std::u16string otText(const Pk4& pk) { return decodeText(pk.ot); }
+namespace {
+/// StringConverter5.LoadString (as Gen5Text::load5): UTF-16 up to 0xFFFF or 0, with the Gen V
+/// gender-symbol code points mapped to the Unicode ones.
+std::u16string decodeText5(std::span<const uint16_t> raw) {
+    std::u16string out;
+    for (uint16_t v : raw) {
+        if (v == 0xFFFF || v == 0) break;
+        out.push_back(v == 0x246D ? u'♂' : v == 0x246E ? u'♀' : static_cast<char16_t>(v));
+    }
+    return out;
+}
+} // namespace
+
+std::u16string nicknameText(const Pk4& pk) { return pk.format == 5 ? decodeText5(pk.nickname) : decodeText(pk.nickname); }
+std::u16string otText(const Pk4& pk) { return pk.format == 5 ? decodeText5(pk.ot) : decodeText(pk.ot); }
 
 bool decodeEqualOT(const Pk4& a, const Pk4& b) noexcept {
+    if (a.format == 5 || b.format == 5) {
+        // A PK5 view: compare the decoded strings (each in its own format's encoding).
+        try {
+            return otText(a) == otText(b);
+        } catch (...) {
+            return false;
+        }
+    }
     for (std::size_t i = 0; i < a.ot.size(); ++i) {
         const bool endA = a.ot[i] == 0xFFFF;
         const bool endB = b.ot[i] == 0xFFFF;

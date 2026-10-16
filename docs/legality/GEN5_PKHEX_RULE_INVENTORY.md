@@ -925,10 +925,10 @@ Known gaps (reported as Incomplete, never Invalid):
 - Fateful records that match no supported PGF card (`EncGiftNotFound`): the
   card list is not proven complete, so the analyzer warns. "Supported PGF" is
   defined below.
-- Gen III/IV-origin PK5 records. Every Gen V-side and conversion rule PKHeX
-  applies to them is checked. The original Gen III/IV encounter, and the moves
-  and PID/IV correlation it fixes, are left to the Gen III/IV analyzer, so
-  these records are always Incomplete (transfer coverage Partial).
+- Gen III/IV-origin PK5 records that the origin analysis cannot settle:
+  Colosseum / XD origins (the Orre encounter tables are not ported), and
+  PKHeX "fishy" Gen III origin results, which stay Warnings (see "Poke Transfer
+  / Pal Park origin" below).
 
 ## PokeBank NX: names, trades, events and transfers
 
@@ -1013,12 +1013,66 @@ Warning (PID/RNG coverage Partial) instead of deciding.
 
 ### Poke Transfer / Pal Park origin (Gen III/IV)
 
-The original encounter is not identified, so a rule is Invalid only when no
-Gen III/IV encounter can explain the record. Otherwise it is a Warning. Every
-Gen III/IV-origin record also carries the Warning "the original encounter and
-moves are not checked by the Gen V analyzer".
+A Gen III/IV-origin PK5 is analyzed the way PKHeX analyzes a format-5 entity
+whose encounter is from Generation III or IV. `Gen5Analyzer::analyzeOrigin`
+(`src/Legality/Gen5Legality.cpp`) hands a PK4-shaped view of the PK5 bytes to
+the Gen IV analyzer's `Gen4::analyzeOrigin5` (`src/Legality/Gen4Legality.cpp`).
+The view carries the PK5's nature and hidden-ability flag, and leaves the bytes
+a PK4 uses for the Pt/HG/SS locations, the HG/SS ball, the shiny leaf and the
+walking mood at 0, because a PK5 does not use them.
 
-| Rule | PKHeX | PokeBank NX |
+- **Gen IV origin.** `EncounterGenerator4` with Format 5 (`PK4.ConvertToPK5`,
+  `TransferVerifier.VerifyTransferLegalityG4`). The met location is Transfer4
+  (30001, or the Celebi / beast capsule locations) and the met level is the
+  transfer level, so an encounter matches when its level is at most the met
+  level. The nature must be PID % 25.
+- **Gen III origin.** The Gen III encounter search of the Gen IV analyzer's Pal
+  Park path (`EncounterGenerator3`, `VerifyTransferLegalityG3`), with the
+  Transporter location 30001 in place of Pal Park's 55.
+- **History and moves.** `EvolutionChain.GetEvolutionChainsAllGens` for a PK5
+  (`EvolutionTree.Evolves5`, then Gen IV, then Gen III) and `LearnVerifier` with
+  `LearnGroup5`, then `LearnGroup4`, then `LearnGroup3` for a Gen III encounter.
+  A move is verified if any generation the Pokemon lived in explains it. The
+  Gen V learnsets (`LearnSource5B2W2` and `LearnSource5BW`: level-up, TMs and
+  HMs, type tutors, B2W2 special tutors, Rotom's form moves) are this
+  analyzer's tables, handed over through `Gen4::Format5Data`. They are not
+  duplicated.
+- **Encounter-dependent rules.** With the matched encounter: PID/IV
+  correlation and card PIDs, language, trainer ID seeds, IVs, level, ribbons,
+  ability (`VerifyAbility345`, including the hidden-ability flag), ball,
+  fateful flag, gender from a two-gender pre-evolution, the Wurmple branch,
+  contest sheen, ground tile, moves, and evolution with a move. When the origin
+  analysis runs, the Gen V analyzer's own encounter-free versions of these
+  rules are skipped.
+- **Names.** These stay on the Gen V side and use the UTF-16 PK5 text; the Gen IV
+  text encoding is not re-checked. With a matched encounter they follow
+  `NicknameVerifier` and `TrainerNameVerifier` for the encounter:
+  - fixed trade nicknames and OTs (`VerifyNicknameTrade`);
+  - no nickname on a Gen IV card;
+  - `IsNotNicknameValid` and `IsMatch45` for a name that is not flagged as a nickname;
+  - ideographs, Japanese / Korean length, word filter and digits for a nickname. PKHeX calls a Japanese / Korean nickname of 6 to 10 characters on a traded Gen IV egg Fishy; it is an Info here, because a traded egg is nicknamed in the game that hatches it;
+  - Japanese / Korean OT length, word filter and digits for a player OT.
+- **Merge.** Each origin result keeps PKHeX's severity: Invalid as Invalid,
+  Fishy as Warning, a note as Info. An Info names the matched encounter. When
+  an encounter matched, every move is verified and the origin analysis
+  reports nothing Invalid or Fishy, the source-game, encounter, PID/RNG,
+  event, moves and breeding coverage is Complete. Transfer coverage is
+  Complete too, unless a transfer Warning remains (the capsule location
+  below). The record then reads "No problems found" when the Gen V side found
+  nothing either. Otherwise it stays Incomplete; when the origin analysis
+  reported nothing more specific it carries the Warning "Gen III/IV origin:
+  the original encounter and moves could not be fully checked".
+
+A Colosseum / XD origin is not analyzed. The table below is what the Gen V
+analyzer checks on every Gen III/IV-origin record without the origin analysis,
+and so all that is checked for Colosseum / XD. A rule there is Invalid only when no Gen III/IV
+encounter can explain the record; otherwise it is a Warning. A Colosseum / XD
+record also carries the Warning "Colosseum / XD origin: the original encounter
+and moves are not checked". When the origin analysis runs, its
+encounter-dependent rules replace the rows for the hidden-ability flag, contest
+sheen, ribbons, two-gender pre-evolutions, the Wurmple branch and names.
+
+| Rule | PKHeX | PokeBank NX (without the origin analysis) |
 |---|---|---|
 | Hidden-ability flag | `AbilityVerifier.CheckMatch` (Gen III/IV) | Invalid; Warning on a fateful Gen IV Pokemon (below) |
 | Contest sheen within the range the contest stats allow | `ContestStatVerifier`, `CalculateMinimumSheen3/4`, `CalculateMaximumSheen` | Invalid; Warning for a fateful Gen IV Pokemon or a trade OT (they may start with stats) |
@@ -1074,7 +1128,16 @@ contest stats (`EncounterTrade3`, `EncounterTrade4PID`).
 
 ### Still Incomplete
 
-- Gen III/IV-origin records: the original encounter (above).
+- Colosseum / XD-origin records: the Orre encounters, moves and PID/IV are not
+  checked (Warning "Colosseum / XD origin: the original encounter and moves are
+  not checked").
+- Gen III/IV-origin records with a PKHeX "fishy" result, kept as a Warning as
+  PKHeX does: a Ruby / Sapphire egg whose TID/SID has no Ruby / Sapphire seed
+  (`TrainerIDNoSeed`), and a Gen III wild encounter whose PID/IV is on no
+  reachable RNG frame (`EncConditionBadRNGFrame`).
+- A Celebi or Raikou / Entei / Suicune at an event-capsule transfer location
+  (30010-30013) that is not fateful: PKHeX's converter gives these locations
+  only to event Pokemon, but its verifier accepts them (Warning).
 - Fateful records that match no supported PGF card.
 - Names with a UTF-16 unit outside `Gen5Text::inDomain`.
 - Japanese / Korean player OTs of exactly 6 characters.
@@ -1083,8 +1146,8 @@ contest stats (`EncounterTrade3`, `EncounterTrade4PID`).
 - Encounter-dependent rules where several Gen V templates match and PKHeX's
   choice is not modelled: gender from a two-gender pre-evolution, and the
   Wurmple branch.
-- Gen III/IV-origin names, OTs, contest sheen and event ribbons that only an
-  in-game trade or an event card can explain (see the table).
+- Colosseum / XD-origin names, OTs, contest sheen and event ribbons that only
+  an in-game trade or an event card can explain (see the table).
 
 ### Measured
 
@@ -1098,7 +1161,7 @@ contest stats (`EncounterTrade3`, `EncounterTrade4PID`).
 - 0 fixed Gen III/IV names missing from the trade-name table (225 nicknames,
   339 OTs).
 
-The corpora hold 461,340 records in all; 227,135 of them are PKHeX-valid.
+The corpora hold 460,475 records in all; 226,635 of them are PKHeX-valid.
 Each record is in one of these groups:
 
 - native Gen V encounters;
@@ -1108,30 +1171,43 @@ Each record is in one of these groups:
 - grown copies of each of the above;
 - four single-field mutations of every record.
 
-"Before" is the base commit 7356b383. Its name rules were not implemented, so
-it certified nothing.
+"Before" is commit 495dd3fe, the parent of the Gen III/IV origin analysis,
+run on the same four corpora. It checked every Gen V-side and conversion rule
+of a transfer but not its original encounter, so it certified no transfer.
+The native, trade and event verdicts are the same before and after.
 
 Share of PKHeX-valid records certified "No problems found":
 
 | Origin | Game | PKHeX-valid | Before | After |
 |---|---|---:|---:|---:|
-| native | B | 27,439 | 0 | 27,419 (99.9%) |
-| native | W | 23,712 | 0 | 23,695 (99.9%) |
-| native | B2 | 34,151 | 0 | 34,123 (99.9%) |
-| native | W2 | 32,219 | 0 | 32,195 (99.9%) |
-| native | all | 117,521 | 0 | 117,432 (99.9%) |
-| trade | B | 689 | 0 | 689 (100%) |
-| trade | W | 514 | 0 | 514 (100%) |
-| trade | B2 | 4,624 | 0 | 4,624 (100%) |
-| trade | W2 | 2,752 | 0 | 2,752 (100%) |
-| trade | all | 8,579 | 0 | 8,579 (100%) |
-| event | B | 5,200 | 0 | 5,197 (99.9%) |
-| event | W | 3,715 | 0 | 3,711 (99.9%) |
-| event | B2 | 3,636 | 0 | 3,634 (99.9%) |
-| event | W2 | 3,523 | 0 | 3,519 (99.9%) |
-| event | all | 16,074 | 0 | 16,061 (99.9%) |
-| transfer | R / S / E / FR / LG / CXD / D / P / Pt / HG / SS | 84,961 | 0 | 0 (by design: original encounter Partial) |
-| all | | 227,135 | 0 | 142,072 (62.5%) |
+| native | B | 27,446 | 27,426 (99.9%) | 27,426 (99.9%) |
+| native | W | 23,683 | 23,666 (99.9%) | 23,666 (99.9%) |
+| native | B2 | 34,149 | 34,121 (99.9%) | 34,121 (99.9%) |
+| native | W2 | 32,166 | 32,145 (99.9%) | 32,145 (99.9%) |
+| native | all | 117,444 | 117,358 (99.9%) | 117,358 (99.9%) |
+| trade | B | 689 | 689 (100%) | 689 (100%) |
+| trade | W | 514 | 514 (100%) | 514 (100%) |
+| trade | B2 | 4,632 | 4,632 (100%) | 4,632 (100%) |
+| trade | W2 | 2,752 | 2,752 (100%) | 2,752 (100%) |
+| trade | all | 8,587 | 8,587 (100%) | 8,587 (100%) |
+| event | B | 5,203 | 5,200 (99.9%) | 5,200 (99.9%) |
+| event | W | 3,717 | 3,713 (99.9%) | 3,713 (99.9%) |
+| event | B2 | 3,632 | 3,630 (99.9%) | 3,630 (99.9%) |
+| event | W2 | 3,521 | 3,517 (99.9%) | 3,517 (99.9%) |
+| event | all | 16,073 | 16,060 (99.9%) | 16,060 (99.9%) |
+| transfer | R | 6,372 | 0 | 5,741 (90.1%) |
+| transfer | S | 4,948 | 0 | 4,145 (83.8%) |
+| transfer | E | 6,684 | 0 | 6,640 (99.3%) |
+| transfer | FR | 6,899 | 0 | 6,861 (99.4%) |
+| transfer | LG | 6,392 | 0 | 6,365 (99.6%) |
+| transfer | CXD | 1,995 | 0 | 0 (not analyzed) |
+| transfer | D | 10,521 | 0 | 10,521 (100%) |
+| transfer | P | 9,927 | 0 | 9,926 (99.99%) |
+| transfer | Pt | 10,569 | 0 | 10,569 (100%) |
+| transfer | HG | 10,668 | 0 | 10,668 (100%) |
+| transfer | SS | 9,556 | 0 | 9,556 (100%) |
+| transfer | all | 84,531 | 0 | 80,992 (95.8%) |
+| all | | 226,635 | 142,005 (62.7%) | 222,997 (98.4%) |
 
 The PKHeX-valid native, trade and event records left Incomplete are:
 
@@ -1140,28 +1216,42 @@ The PKHeX-valid native, trade and event records left Incomplete are:
 - records where several templates match and the gender fits only another
   species' PID.
 
+The PKHeX-valid transfers left Incomplete are:
+
+- the 1,995 Colosseum / XD records;
+- 1,333 Ruby / Sapphire eggs whose TID/SID PKHeX finds no Ruby / Sapphire
+  seed for, and 210 Gen III wild encounters on no reachable RNG frame. PKHeX
+  calls both Fishy, and they stay Warnings;
+- 1 Pearl record whose OT has characters the word filter is not modelled for.
+
 Share of PKHeX-invalid records reported Invalid:
 
-| Origin | PKHeX-invalid | Before | After |
-|---|---:|---:|---:|
-| native | 101,534 | 97,407 (95.9%) | 101,520 (99.99%) |
-| trade | 11,571 | 9,748 (84.2%) | 11,570 (99.99%) |
-| event | 26,536 | 22,258 (83.9%) | 25,526 (96.2%) |
-| transfer | 94,564 | 63,435 (67.1%) | 80,118 (84.7%) |
-| all | 234,205 | 192,848 (82.3%) | 218,734 (93.4%) |
+| Origin | Game | PKHeX-invalid | Before | After |
+|---|---|---:|---:|---:|
+| native | all | 101,581 | 101,566 (99.99%) | 101,566 (99.99%) |
+| trade | all | 11,563 | 11,562 (99.99%) | 11,562 (99.99%) |
+| event | all | 26,537 | 25,524 (96.2%) | 25,524 (96.2%) |
+| transfer | R | 7,952 | 6,097 (76.7%) | 7,951 (99.99%) |
+| transfer | S | 6,612 | 5,111 (77.3%) | 6,612 (100%) |
+| transfer | E | 6,750 | 5,964 (88.4%) | 6,750 (100%) |
+| transfer | FR | 6,684 | 5,919 (88.6%) | 6,684 (100%) |
+| transfer | LG | 6,268 | 5,598 (89.3%) | 6,267 (99.98%) |
+| transfer | CXD | 3,231 | 2,443 (75.6%) | 2,443 (75.6%) |
+| transfer | D | 11,276 | 9,530 (84.5%) | 11,275 (99.99%) |
+| transfer | P | 10,210 | 8,979 (87.9%) | 10,210 (100%) |
+| transfer | Pt | 10,979 | 9,456 (86.1%) | 10,979 (100%) |
+| transfer | HG | 11,612 | 9,721 (83.7%) | 11,609 (99.97%) |
+| transfer | SS | 10,205 | 8,635 (84.6%) | 10,204 (99.99%) |
+| transfer | B / W / B2 / W2 | 2,380 | 2,305 (96.8%) | 2,305 (96.8%) |
+| transfer | all | 94,159 | 79,758 (84.7%) | 93,289 (99.1%) |
+| all | | 233,840 | 218,410 (93.4%) | 231,941 (99.2%) |
 
-Transfer records PKHeX rejects and PokeBank NX leaves Incomplete depend on the
-original Gen III/IV encounter. By PKHeX result, the most frequent are:
+The "transfer B / W / B2 / W2" rows are transfers whose version byte the
+mutator changed to a Gen V game. The 870 PKHeX-invalid transfers left
+Incomplete are:
 
-| PKHeX result | Records |
-|---|---:|
-| `FatefulInvalid` | 4,406 |
-| `PIDTypeMismatch` | 2,458 |
-| `TrainerIDNoSeed` | 2,152 |
-| `Unobtainable` (moves) | 1,856 |
-| `EncInvalid` | 1,729 |
-| `EncTypeMismatch` | 1,199 |
-| `BallEncMismatch` | 1,182 |
-
-Fixed-name encounters account for the word-filter, `OTLong` and
-`NickMatchLanguageFail` cases, which therefore stay Warnings.
+- 788 Colosseum / XD records;
+- 75 of those Gen V-version records: fateful records that match no supported
+  PGF card;
+- 7 Gen III/IV records whose nickname or OT has characters the word filter is
+  not modelled for.

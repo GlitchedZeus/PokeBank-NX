@@ -1,9 +1,14 @@
 # Gen V (Black/White/Black 2/White 2) PK5 legality: PKHeX-backed fixtures, malformed
 # records and a deterministic fuzz pass. tools/pkhex_gen5_diff/run.sh reproduces the
-# fixture verdicts at scale against PKHeX.Core.
+# fixture verdicts at scale against PKHeX.Core. A Gen III/IV-origin (Poke Transfer) record's
+# original encounter is checked by the Gen IV analyzer (Gen4::analyzeOrigin5), so the Gen IV
+# legality sources are part of the Gen V analyzer.
+GEN5_GEN4_ORIGIN_SOURCES := src/Legality/Gen4Legality.cpp src/Legality/Gen4LegalityData.cpp \
+	src/Legality/Gen4LegalityEncounters.cpp src/Legality/Gen4LegalityMoves.cpp src/Legality/Gen4LegalityPalPark.cpp \
+	src/Legality/Gen4LegalityRng.cpp src/Legality/Gen4LegalityText.cpp
 GEN5_LEGALITY_SOURCES := tests/test_legality_gen5.cpp src/Legality/Gen5Legality.cpp \
 	src/Legality/Gen5LegalityData.cpp src/Legality/Gen5Text.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp \
-	src/Pokemon/Experience.cpp
+	src/Pokemon/Experience.cpp $(GEN5_GEN4_ORIGIN_SOURCES)
 HOST_TESTS += $(HOST_BUILD)/test_legality_gen5
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_gen5_sanitize
 host-test: $(HOST_BUILD)/test_legality_gen5

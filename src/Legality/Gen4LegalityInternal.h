@@ -367,4 +367,80 @@ struct Check {
 };
 inline constexpr uint8_t kValid = 0, kFishy = 1, kInvalid = 2, kNote = 3;
 
+// ---------------------------------------------------------------- format 5 (a PK5 of Gen III/IV origin)
+// PKHeX analyzes a PK5 whose origin is Generation III or IV with that generation's encounter
+// generator, the Gen V evolution tree and personal table, and the Gen V/IV/III learn groups.
+// The Gen V data lives with the Gen V analyzer (Gen5Legality.cpp), which passes it in through
+// Format5Data so that the Gen IV analyzer does not link against it.
+
+/// PersonalTable.B2W2.GetFormEntry fields the format-5 verifiers read.
+struct Personal5 {
+    std::array<uint8_t, 3> abilities{}; // Ability1, Ability2, AbilityH
+    uint8_t gender = 0;
+    uint8_t formCount = 1;
+    uint8_t growth = 0;
+    bool valid = false;
+    int indexOfAbility(uint8_t ability) const noexcept {
+        for (int i = 0; i < 3; ++i) if (abilities[static_cast<std::size_t>(i)] == ability) return i;
+        return -1;
+    }
+    bool ability12Same() const noexcept { return abilities[0] == abilities[1]; }
+};
+
+struct Format5Data {
+    /// EvolutionTree.Evolves5 forward methods of a species (levelUp set from EvolutionType.IsLevelUpRequired).
+    std::span<const D::Evolution> (*evolutions)(uint16_t species) = nullptr;
+    /// PersonalTable.BW form count (the Evolves5 reverse lineage is built over BW forms).
+    uint8_t (*formCountBW)(uint16_t species) = nullptr;
+    /// PersonalTable.B2W2.IsPresentInGame.
+    bool (*presentB2W2)(uint16_t species, uint8_t form) = nullptr;
+    /// PersonalTable.B2W2.GetFormEntry.
+    Personal5 (*personalB2W2)(uint16_t species, uint8_t form) = nullptr;
+    /// LearnGroup5.CheckInternal for one evolution stage and form: LearnSource5B2W2 (level-up up to
+    /// evo.levelMax, TM/HM, type tutors, B2W2 tutors, the enhanced tutors) then LearnSource5BW level-up.
+    LearnMethod (*learn)(const Pk4& pk, const Evo& evo, uint16_t move, bool past) = nullptr;
+    bool ready() const noexcept { return evolutions && formCountBW && presentB2W2 && personalB2W2 && learn; }
+};
+
+/// EvolutionHistory.Gen3 / Gen4 / Gen5 of a PK5.
+struct History345 { std::vector<Evo> gen3, gen4, gen5; };
+/// EncounterOrigin.GetOriginChain(pk, 4, Gen4) / (pk, 3, Gen3) for a PK5 (gen3: Gen III origin).
+std::vector<Evo> originChain5(const Pk4& pk, uint8_t currentLevel, bool gen3, const Format5Data& f5);
+/// EvolutionChain.GetEvolutionChainsAllGens for a PK5 and a Generation III/IV encounter.
+History345 evolutionHistory5(const Pk4& pk, const EncInfo& enc, uint8_t currentLevel, const Format5Data& f5);
+/// LearnVerifier.Verify for a PK5 (LearnGroup5, then LearnGroup4, then LearnGroup3 for a Gen III encounter).
+MoveResults verifyMoves5(const Pk4& pk, const EncInfo& enc, const History345& history, const Format5Data& f5);
+bool isValidEvolutionWithMove5(const Pk4& pk, const EncInfo& enc, const History345& history, const MoveResults& moves,
+                               const Format5Data& f5);
+/// EncounterGenerator4 / EncounterGenerator3 over a given origin chain (format 5 passes originChain5).
+Search searchEncounters(const Pk4& pk, const std::vector<Evo>& chain);
+Search searchEncounters3(const Pk4& pk, const std::vector<Evo>& chain);
+
+/// What the format-5 origin analysis found (see analyzeOrigin5).
+struct Origin5 {
+    bool analyzed = false;          // the analysis ran (a Gen III/IV origin it handles)
+    bool encounterMatched = false;  // an encounter template matched (not EncounterInvalid)
+    bool allMovesVerified = false;  // every move slot has a source
+    std::vector<Check> checks;      // PKHeX results the Gen V analyzer does not produce itself
+    // Facts the Gen V name rules need.
+    EncKind kind = EncKind::Invalid;
+    uint16_t encSpecies = 0;
+    uint8_t encGeneration = 0;      // 3 or 4
+    uint8_t encContextGeneration = 0; // IEncounterTemplate.Context as a generation (3, 4; 5 for EncounterInvalid)
+    bool encIsEgg = false;          // IEncounterTemplate.IsEgg
+    bool playerOT = true;           // TrainerNameVerifier.IsPlayerOriginalTrainer
+    bool fixedNickname = false;     // IFixedNickname { IsFixedNickname: true }
+    bool gtsSanitized = false;      // LanguageVerifier GTSTrainerSanitized tag
+    bool wasTradedEgg = false;      // PKM.WasTradedEgg (egg location 2002 for Gen IV, 30002 for Gen III)
+    std::array<const char*, 4> moveSource{}; // how each move slot was verified (nullptr: not verified)
+    bool clean() const noexcept {
+        for (const Check& c : checks) if (c.severity == kInvalid || c.severity == kFishy) return false;
+        return analyzed && encounterMatched && allMovesVerified;
+    }
+};
+/// Runs PKHeX's encounter search, move/evolution history and the encounter-dependent verifiers
+/// for a PK5 of Generation III/IV origin, as LegalityAnalysis does for a format-5 entity.
+/// pk must be a format-5 view (pk.format == 5); currentLevel is the PK5's level.
+Origin5 analyzeOrigin5(const Pk4& pk, uint8_t currentLevel, const Format5Data& f5);
+
 } // namespace Legality::Gen4
