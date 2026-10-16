@@ -131,10 +131,12 @@ separately from corpus detection rates and test counts. No merge without the own
   Three Gen V calls for the owner to confirm: the hidden-ability flag on a fateful Gen IV
   origin is a Warning (PKHeX `VerifyAbilityPCD`); the Wurmple branch is Invalid only when no
   other template matches; Mothim forms 1-2 are accepted.
-- (4) Done: [PKHEX_DISAGREEMENT_REVIEW.md](PKHEX_DISAGREEMENT_REVIEW.md) reviews all 12
+- (4) Done: [PKHEX_DISAGREEMENT_REVIEW.md](PKHEX_DISAGREEMENT_REVIEW.md) reviews all 13
   deliberate differences. Only the Gen V hidden-ability case lacked original-game evidence and
   is now a Warning; the Gen V name-length limit (item 12) matches PKHeX except its fixed-trainer
-  and traded-egg exemptions and is kept.
+  and traded-egg exemptions and is kept. Item 13 (found by CI on 2877d2a5): a non-event
+  Celebi/beast at its Gen IV capsule transfer location was Invalid and PKHeX accepts it; with
+  no original-game source either way it is now a Warning.
 - (2) In progress: separate Gen III (PK3) and Gen IV (PK4, incl. Pal Park) analyzers measured by
   `tools/pkhex_gen34_diff` with a false-Valid gate and a grown-record corpus.
 
