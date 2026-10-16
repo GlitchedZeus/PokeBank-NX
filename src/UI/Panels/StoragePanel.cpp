@@ -485,6 +485,11 @@ namespace UI
 
         void drawStorageReleaseConfirm(TrainerViewScreen &screen, PKSEFramebuffer &fb)
         {
+            // Gen I-V: own the touch layer (covered glyphs and footer badges stop injecting
+            // buttons, P0 #320) and draw this dialog's footer. Gen VI+ keeps its presentation.
+            const bool classicSessionPrompt =
+                PokeBank::UIModel::ClassicGenericUi::classicSession(screen.sourceGameId);
+            if (classicSessionPrompt) SharedEditorChrome::beginModal(screen.touchButtons);
             std::string msg;
             if (screen.releaseGroup)
             {
@@ -514,6 +519,7 @@ namespace UI
             screen.touchButtons.push_back({0, cancelX, by, bw, bh});
             drawGlyphButton(fb, relX, by, bw, bh, "A", "Release", Colors::Red, Colors::White);
             screen.touchButtons.push_back({1, relX, by, bw, bh});
+            if (classicSessionPrompt) drawNavBar(fb, {{"B", "Cancel"}, {"A", "Release"}});
         }
 
         // Creator "Keep this new Pokemon?" confirm. Three glyph buttons (like the Edit Item dialog),
@@ -521,6 +527,11 @@ namespace UI
         // editing), Y = Discard (remove it), A = Keep. ids 0 / 2 / 1 respectively.
         void drawCreatorKeepConfirm(TrainerViewScreen &screen, PKSEFramebuffer &fb)
         {
+            // Gen I-V: own the touch layer (covered glyphs and footer badges stop injecting
+            // buttons, P0 #320) and draw this dialog's footer. Gen VI+ keeps its presentation.
+            const bool classicSessionPrompt =
+                PokeBank::UIModel::ClassicGenericUi::classicSession(screen.sourceGameId);
+            if (classicSessionPrompt) SharedEditorChrome::beginModal(screen.touchButtons);
             constexpr int w = 540, h = 226;
             const int x = (fb.getWidth() - w) / 2;
             const int y = (fb.getHeight() - h) / 2;
@@ -536,10 +547,17 @@ namespace UI
             screen.touchButtons.push_back({2, x + (w - cbw) / 2, cby, cbw, cbh});
             drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Keep", Colors::PanelAlt);
             screen.touchButtons.push_back({1, x + w - 24 - cbw, cby, cbw, cbh});
+            if (classicSessionPrompt)
+                drawNavBar(fb, {{"B", "Back"}, {"Y", "Discard"}, {"A", "Keep"}});
         }
 
         void drawDetailsDiscardConfirm(TrainerViewScreen &screen, PKSEFramebuffer &fb)
         {
+            // Gen I-V: own the touch layer (covered glyphs and footer badges stop injecting
+            // buttons, P0 #320) and draw this dialog's footer. Gen VI+ keeps its presentation.
+            const bool classicSessionPrompt =
+                PokeBank::UIModel::ClassicGenericUi::classicSession(screen.sourceGameId);
+            if (classicSessionPrompt) SharedEditorChrome::beginModal(screen.touchButtons);
             // Deliberately the same shape as the creator's Keep/Discard above: same three glyph
             // buttons in the same places, so leaving an edit page always looks and answers alike.
             // What differs is the stakes -- here the mon already exists and only the EDITS are at
@@ -560,6 +578,8 @@ namespace UI
             screen.touchButtons.push_back({2, x + (w - cbw) / 2, cby, cbw, cbh});
             drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Save", Colors::PanelAlt);
             screen.touchButtons.push_back({1, x + w - 24 - cbw, cby, cbw, cbh});
+            if (classicSessionPrompt)
+                drawNavBar(fb, {{"B", "Back"}, {"Y", "Discard"}, {"A", "Save"}});
         }
 
         namespace

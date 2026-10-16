@@ -812,7 +812,8 @@ bool handlePidConfirmation(TrainerViewScreen& screen, Gen5EditorState& state, u6
 void drawPidConfirmation(TrainerViewScreen& screen, PKSEFramebuffer& fb, const Gen5EditorState& state) {
     const auto& pending = state.pid;
     if (!pending.active) return;
-    screen.touchButtons.clear();
+    // The confirm owns the touch layer: covered glyphs and footer badges never inject a button.
+    SharedEditorChrome::beginModal(screen.touchButtons);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 150));
     constexpr int w = 700, h = 290;
     const int x = (fb.getWidth() - w) / 2;

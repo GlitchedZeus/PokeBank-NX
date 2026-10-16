@@ -15,7 +15,9 @@
 #include <iterator>
 #include <map>
 #include <set>
+#include <initializer_list>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -432,6 +434,26 @@ static void testRealSourcesUseSharedUnit() {
         require(text.find("ClassicGenericUi::classicSession(screen.sourceGameId)") != std::string::npos &&
                 text.find("SharedEditorChrome::beginModal(screen.touchButtons);") != std::string::npos,
                 std::string("Gen I-V modal owns the touch layer: ") + path);
+    }
+    // touchButtons.clear() alone leaves covered glyph/footer hits live (P0 #320): every
+    // Gen I-V-reachable confirm starts its own touch layer.
+    for (const auto& [path, fn] : std::initializer_list<std::pair<const char*, const char*>>{
+             {"src/UI/Panels/StoragePanel.cpp", "void drawStorageReleaseConfirm("},
+             {"src/UI/Panels/StoragePanel.cpp", "void drawCreatorKeepConfirm("},
+             {"src/UI/Panels/StoragePanel.cpp", "void drawDetailsDiscardConfirm("},
+             {"src/UI/Panels/StoragePanel.cpp", "void drawStorageExitConfirm("},
+             {"src/UI/Dialogs/ItemEditDialog.cpp", "void drawItemRemoveConfirm("},
+             {"src/UI/Dialogs/ItemEditDialog.cpp", "void drawItemEditDialog("},
+             {"src/UI/Gen5SharedReadOnlySurface.inc", "void drawPidConfirmation("}}) {
+        const std::string text = read(path);
+        const std::size_t at = text.find(fn);
+        require(at != std::string::npos, std::string("modal exists: ") + fn);
+        const std::size_t next = text.find("\nvoid ", at + 1) < text.find("    void ", at + 1)
+            ? text.find("\nvoid ", at + 1) : text.find("    void ", at + 1);
+        const std::string body = text.substr(at, next == std::string::npos ? std::string::npos : next - at);
+        require(body.find("SharedEditorChrome::beginModal(screen.touchButtons);") != std::string::npos &&
+                body.find("drawNavBar(fb,") != std::string::npos,
+                std::string("modal owns the touch layer and its footer: ") + fn);
     }
     require(read("src/UI/Dialogs/SaveConfirmDialog.cpp").find(
                 "SharedEditorChrome::drawFooter(fb, classicSaveConfirmFooter(screen));") != std::string::npos,

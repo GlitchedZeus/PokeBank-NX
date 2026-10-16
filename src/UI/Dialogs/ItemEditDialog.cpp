@@ -91,6 +91,10 @@ namespace Dialogs {
     // release confirm: red frame, B = Cancel (id 0), A = Remove (id 1). The delete itself runs in
     // TrainerViewScreen's itemRemoveConfirmActive handler.
     void drawItemRemoveConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+        // Gen I-V: own the touch layer and draw this dialog's footer. Gen VI+ keeps its presentation.
+        const bool classicSessionDialog =
+            PokeBank::UIModel::ClassicGenericUi::classicSession(screen.sourceGameId);
+        if (classicSessionDialog) SharedEditorChrome::beginModal(screen.touchButtons);
         const bool g3Items = (screen.trainer.getGameGroup() == Enums::GameVersion::FRLG);
         std::string itemName = "this item";
         if (screen.selectedCategory >= 0 && screen.selectedCategory < static_cast<int>(screen.trainer.items.size())) {
@@ -117,6 +121,7 @@ namespace Dialogs {
         screen.touchButtons.push_back({0, cancelX, by, bw, bh});
         drawGlyphButton(fb, remX,    by, bw, bh, "A", "Remove", Colors::Red, Colors::White);
         screen.touchButtons.push_back({1, remX, by, bw, bh});
+        if (classicSessionDialog) drawNavBar(fb, {{"B", "Cancel"}, {"A", "Remove"}});
     }
 }
 }
