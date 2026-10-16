@@ -13,7 +13,7 @@
 //   detailLabel detailEditable detailValue editDetail passiveActivate
 //   ivs evs stats setIv setEv pidRowEditable pidRowValue gender editPidRow
 //   moves pp ppUps workingMove workingPP workingPPUps setMove setPP setPPUps
-//   maxPP moveChoices moveStatus drawMoveRow moveEditorPrompt
+//   maxPP moveChoices moveStatus moveGame moveEditorPrompt
 //   pickerLabel applyPicker speciesPreviewTypes speciesLabel speciesSearch
 //   heldItemArtKey chrome portraitTypes dataRows + text constants (k*)
 #include "UI/SharedPokemonEditorWorkspace.h"
@@ -26,6 +26,9 @@
 #include "UI/SharedHeldItemPicker.h"
 #include "UI/SharedHeldItemPickerPresentation.h"
 #include "UI/SharedPokemonEditorContract.h"
+#include "UI/SharedEditorChrome.h"
+#include "UI/SharedEditorPresentation.h"
+#include "UI/SharedMovesPanel.h"
 #include "UI/SharedPokemonShell.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "UI/TouchScroll.h"
@@ -47,6 +50,7 @@ namespace Workspace = PokeBank::UIModel::SharedPokemonWorkspace;
 namespace HeldItemGrid = PokeBank::UIModel::SharedHeldItemPicker;
 namespace MoveUI = PokeBank::UIModel::MovePickerPresentation;
 namespace Context = PokeBank::UIModel::ClassicGameContext;
+namespace Presentation = PokeBank::UIModel::SharedEditorPresentation;
 
 enum class PickerTarget : uint8_t {
     None, Species, HeldItem, Language, Ball, MetLocation, Pokerus, Form, Move, Nature, Ability
@@ -249,12 +253,16 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
         state.valuePicker = false;
         return true;
     }
-    if (gridPicker && (down & HidNpadButton_X)) {
+    if ((gridPicker || state.pickerTarget == PickerTarget::Move) && (down & HidNpadButton_X)) {
         state.pickerSort = ItemPickerSort::next(state.pickerSort);
         state.pickerRow = ItemPickerSort::reorder(
             state.pickerValues, state.pickerNativeValues,
             state.pickerSort, state.pickerRow,
-            [&](uint16_t id) { return A::pickerLabel(screen, state, PickerTarget::HeldItem, id); });
+            [&](uint16_t id) {
+                if (state.pickerTarget == PickerTarget::Move)
+                    return id == 0 ? std::string() : std::string(Names::getMoveName(id));
+                return A::pickerLabel(screen, state, PickerTarget::HeldItem, id);
+            });
         state.pickerScroll.stop();
         state.pickerViewport.reset();
         state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
@@ -547,7 +555,7 @@ bool handleWorkspace(TrainerViewScreen& screen, EditorState& state, u64 down, co
 template <class A>
 void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& state) {
     if (!state.valuePicker || state.pickerValues.empty()) return;
-    screen.touchButtons.clear();
+    SharedEditorChrome::beginModal(screen.touchButtons);
     const bool heldItems = state.pickerTarget == PickerTarget::HeldItem;
     const bool movePicker = state.pickerTarget == PickerTarget::Move;
     const bool speciesPicker = state.pickerTarget == PickerTarget::Species;
@@ -595,20 +603,24 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
             [](uint16_t value) { return A::speciesLabel(value); },
             [](uint16_t value) { return A::speciesLabel(value); },
             &latestTouchGesture(), true, previewTypes);
-        if (A::kSpeciesSearch)
-            drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
-                            {"ZL/ZR", "Jump"}, {"X", "Search"}, {"Y", "Normal/Shiny"},
-                            {"A", "Choose"}, {"B", "Cancel"}});
-        else
-            drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
-                            {"ZL/ZR", "Jump"}, {"Y", "Normal/Shiny"},
-                            {"A", "Choose"}, {"B", "Cancel"}});
+        Presentation::PickerFooterSpec footer;
+        footer.jump = true;
+        footer.xLabel = A::kSpeciesSearch ? "Search" : nullptr;
+        footer.yLabel = "Normal/Shiny";
+        SharedEditorChrome::drawPickerFooter(fb, footer);
         return;
     }
 
     if (movePicker) {
         fb.drawText(x + 24, y + 18, A::kMovePickerTitle, Colors::Text, TextStyle::Heading);
-        fb.drawText(x + 24, y + 52, A::kMovePickerSubtitle, Colors::TextDim, TextStyle::Caption);
+        {
+            const std::string sort = std::string("Sort: ") + ItemPickerSort::label(state.pickerSort);
+            int sw = 0, sh = 0;
+            fb.measureText(sort, sw, sh, TextStyle::Caption);
+            fb.drawText(x + w - 24 - sw, y + 26, sort, Colors::TextDim, TextStyle::Caption);
+        }
+        const auto columns = SharedMovesPanel::chooserColumns(x + 40, w - 80);
+        SharedMovesPanel::drawChooserCaptions(fb, columns, y + 58, A::moveGame(screen));
         const int count = static_cast<int>(state.pickerValues.size());
         constexpr int visible = moveLayout.visibleRows;
         const int first = state.pickerViewport.firstRow;
@@ -624,11 +636,16 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
             if (selected)
                 fb.drawSelectionHighlight(x + 24, yy, w - 48, moveLayout.highlightHeight);
             const auto value = state.pickerValues[static_cast<size_t>(i)];
-            A::drawMoveRow(screen, fb, x + 40, yy + 4, value);
+            SharedMovesPanel::drawChooserRow(fb, columns, yy + 6, value, A::moveGame(screen), selected);
         }
         fb.clearClip();
-        drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
-                        {"ZL/ZR", "Jump"}, {"A", "Select"}, {"B", "Cancel"}});
+        SharedPokemonShell::drawVerticalScrollIndicator(fb, x + w - 18, y + moveLayout.rowStart,
+            visible * moveLayout.rowStep, static_cast<std::size_t>(count),
+            static_cast<std::size_t>(visible), static_cast<std::size_t>(first));
+        Presentation::PickerFooterSpec footer;
+        footer.jump = true;
+        footer.xLabel = "Sort";
+        SharedEditorChrome::drawPickerFooter(fb, footer);
         return;
     }
 
@@ -662,8 +679,10 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
                 cellX, cellY - 3, cellW - 10, cellHeight - 4,
                 gridX, gridY - 3, w - 44, HeldItemGrid::rows * cellHeight);
         }
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
-                        {"A", "Choose"}, {"B", "Cancel"}, {"X", "Sort"}});
+        Presentation::PickerFooterSpec footer;
+        footer.gridPaging = true;
+        footer.xLabel = "Sort";
+        SharedEditorChrome::drawPickerFooter(fb, footer);
         return;
     }
     fb.drawText(x + 28, y + 20, pickerTitle(state.pickerTarget),
@@ -695,8 +714,13 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
                                     Enums::getBallName(static_cast<uint8_t>(value)));
     }
     fb.clearClip();
-    drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
-                    {"ZL/ZR", "Jump"}, {"A", "Choose"}, {"B", "Cancel"}});
+    SharedPokemonShell::drawVerticalScrollIndicator(fb, x + w - 14, viewportTop - 4,
+        visible * rowStep, static_cast<std::size_t>(count),
+        static_cast<std::size_t>(visible), static_cast<std::size_t>(first));
+    Presentation::PickerFooterSpec footer;
+    footer.page = count > visible;
+    footer.jump = count > 50;
+    SharedEditorChrome::drawPickerFooter(fb, footer);
 }
 
 template <class A>
@@ -707,11 +731,17 @@ void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState&
     constexpr int w = 680, h = 390;
     const int x = (fb.getWidth() - w) / 2;
     const int y = (fb.getHeight() - kNavBarH - h) / 2;
+    SharedEditorChrome::beginModal(screen.touchButtons);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0,0,0,100));
     drawPanelSurface(fb, x, y, w, h, false, 18);
     fb.drawText(x + 24, y + 18, "Move " + std::to_string(state.moveEditorSlot + 1),
                 Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52, A::kMoveEditorSubtitle, Colors::TextDim, TextStyle::Caption);
+    {
+        const std::string detail = PokeBank::UIModel::SharedMoveFacts::detailLine(
+            PokeBank::UIModel::SharedMoveFacts::facts(move, A::moveGame(screen)));
+        fb.drawText(x + 24, y + 52, detail.empty() ? std::string(A::kMoveEditorSubtitle) : detail,
+                    Colors::TextDim, TextStyle::Caption);
+    }
     const std::array<std::pair<std::string,std::string>,5> rows{{
         {"Move", move == 0 ? "Empty" : std::string(Names::getMoveName(move))},
         {"PP", std::to_string(A::workingPP(screen, state, slot)) + "/" +
@@ -732,7 +762,9 @@ void drawMoveEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState&
         fb.drawText(x + w - 38 - vw, yy + 10, rows[static_cast<size_t>(i)].second,
                     selected ? Colors::Text : Colors::TextDim);
     }
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Edit / Apply"}, {"B", "Cancel"}});
+    Presentation::PickerFooterSpec footer;
+    footer.page = false;
+    SharedEditorChrome::drawPickerFooter(fb, footer);
 }
 
 template <class A>
@@ -764,8 +796,9 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
     }
     constexpr std::size_t detailVisibleRows = Workspace::kVisibleDetailRows;
     constexpr int detailRowStep = 38;
-    const int detailViewportY = g.y + 216;
-    const int detailViewportH = std::max(0, g.y + g.h - 40 - detailViewportY);
+    const auto detailViewport = SharedPokemonShell::detailsViewport(g);
+    const int detailViewportY = detailViewport.top;
+    const int detailViewportH = detailViewport.height;
     state.detailsViewport.ensure(state.detailsFocus, detailRows,
                                  static_cast<int>(detailVisibleRows));
     const int firstDetailRow = state.detailsViewport.firstRow;
@@ -781,7 +814,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
         for (int row = std::max(0, firstDetailRow - 1);
              row < std::min(detailRows,
                             firstDetailRow + static_cast<int>(detailVisibleRows) + 1); ++row) {
-            const int yy = g.y + 224 + (row - firstDetailRow) * detailRowStep + detailPixelOffset;
+            const int yy = detailViewport.firstRowY + (row - firstDetailRow) * detailRowStep + detailPixelOffset;
             appendClippedTouchButton(screen.touchButtons, 41000 + row,
                 g.leftX + 8, yy + 2, g.leftW - 36, 30,
                 g.leftX + 8, detailViewportY, g.leftW - 16, detailViewportH);
@@ -838,41 +871,33 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
     }
 
     drawPanel(fb, g.rightX, g.y, g.rightW, g.h, "MOVES");
-    fb.drawText(g.rightX + 186, g.y + 42, "PP", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(g.rightX + 242, g.y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
-    const auto moves = A::moves(*raw);
-    const auto pp = A::pp(*raw);
-    const auto ups = A::ppUps(*raw);
-    for (int row = 0; row < 4; ++row) {
-        const int yy = g.y + 62 + row * 32;
-        const bool selected = state.focus.panel == Shared::Panel::Moves && state.focus.row == row;
-        screen.touchButtons.push_back({41300 + row, g.rightX + 8, yy - 5, g.rightW - 16, 32});
-        if (selected) {
-            const auto cell = Shared::moveRowFocus(g.rightW);
-            drawFocus(fb, g.rightX + cell.x, yy - 5, cell.width, 32, true);
+    {
+        // The ONE shared Moves panel (UI/SharedMovesPanel.h); the adapter supplies only native
+        // move ids, PP, PP Ups, its compatibility status and its exact game version.
+        const auto moves = A::moves(*raw);
+        const auto pp = A::pp(*raw);
+        const auto ups = A::ppUps(*raw);
+        const auto movesLayout = SharedMovesPanel::layout(g.rightX, g.y, g.rightW);
+        std::array<SharedMovesPanel::Slot, 4> slots{};
+        for (int row = 0; row < 4; ++row) {
+            const auto i = static_cast<size_t>(row);
+            auto& slot = slots[i];
+            slot.move = moves[i];
+            slot.pp = pp[i];
+            slot.ppUps = ups[i];
+            slot.maxPP = moves[i] == 0 ? 0 : A::maxPP(screen, moves[i], ups[i]);
+            const char* status = "";
+            Color statusColor = Colors::TextDim;
+            A::moveStatus(screen, state, *raw, moves[i], status, statusColor);
+            slot.status = moves[i] == 0 ? "" : status;
+            slot.statusColor = statusColor;
+            screen.touchButtons.push_back({41300 + row, movesLayout.focusX(), movesLayout.rowTop(row),
+                                           movesLayout.focusW(), SharedMovesPanel::Layout::kRowHeight});
         }
-        const uint16_t move = moves[static_cast<size_t>(row)];
-        fb.drawText(g.rightX + 18, yy, move == 0 ? "Empty" : Names::getMoveName(move),
-                    Colors::Text, TextStyle::Caption);
-        fb.drawText(g.rightX + 186, yy, std::to_string(pp[static_cast<size_t>(row)]),
-                    Colors::Text, TextStyle::Caption);
-        fb.drawText(g.rightX + 242, yy, std::to_string(ups[static_cast<size_t>(row)]),
-                    Colors::Text, TextStyle::Caption);
-        const char* status = "-";
-        Color statusColor = Colors::TextDim;
-        A::moveStatus(screen, state, *raw, move, status, statusColor);
-        int sw = 0, sh = 0;
-        fb.measureText(status, sw, sh, TextStyle::Caption);
-        fb.drawText(g.rightX + g.rightW - 18 - sw, yy, status,
-                    statusColor, TextStyle::Caption);
+        const bool movesFocused = state.focus.panel == Shared::Panel::Moves;
+        SharedMovesPanel::draw(fb, movesLayout, slots, A::moveGame(screen),
+                               movesFocused ? static_cast<int>(state.focus.row) : -1);
     }
-    const bool editableSession = A::editable(screen, state);
-    fb.drawText(g.rightX + 18, g.y + 205,
-                editableSession ? A::kMoveHintEditable : A::kMoveHintView,
-                editableSession ? Colors::Success : Colors::TextDim,
-                TextStyle::Caption);
-    fb.drawText(g.rightX + 18, g.y + 226, A::kMoveLegend,
-                Colors::TextDim, TextStyle::Caption);
 
     const std::vector<DataRow> rows = A::dataRows(screen, state, *raw);
     SharedPokemonShell::drawDataAndGraph(
@@ -888,6 +913,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
         constexpr int w = 560, h = 226;
         const int x = (fb.getWidth() - w) / 2;
         const int y = (fb.getHeight() - h) / 2;
+        // The dialog owns this frame: the workspace footer and rows underneath stop being tappable.
+        SharedEditorChrome::beginModal(screen.touchButtons);
         const int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, "Unsaved changes", Colors::Orange);
         const bool creating = A::creating(screen, state);
         fb.drawText(x + 28, cy,
@@ -901,6 +928,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
         drawGlyphButton(fb, x + (w - cbw) / 2, cby, cbw, cbh, "Y", "Discard", Colors::PanelAlt);
         drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A",
                         creating ? "Add" : "Save", Colors::PanelAlt);
+        SharedEditorChrome::drawFooter(fb, Presentation::confirmFooter(
+            "A", creating ? "Add" : "Save", "Y", "Discard"));
     }
 
     if (state.moveEditor) drawMoveEditor<A>(screen, fb, state);

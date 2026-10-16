@@ -128,3 +128,26 @@ $(SHARED_EDITOR_CONTRACT_TEST): $(SHARED_EDITOR_CONTRACT_INPUTS)
 $(SHARED_EDITOR_CONTRACT_SANITIZE): $(SHARED_EDITOR_CONTRACT_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_shared_editor_contract.cpp -o $@
+
+# Shared Gen I-V editor unit: Moves panel, Move chooser, picker footer, inline toggles and the
+# DETAILS viewport, plus source contracts that the real Gen III-V surfaces use them.
+SHARED_EDITOR_UNIT_SOURCES := tests/test_shared_editor_unit.cpp src/Names/MoveNames.cpp
+SHARED_EDITOR_UNIT_TEST := $(HOST_BUILD)/test_shared_editor_unit
+SHARED_EDITOR_UNIT_SANITIZE := $(HOST_BUILD)/test_shared_editor_unit_sanitize
+
+HOST_TESTS += $(SHARED_EDITOR_UNIT_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_EDITOR_UNIT_SANITIZE)
+host-test: $(SHARED_EDITOR_UNIT_TEST)
+host-sanitize: $(SHARED_EDITOR_UNIT_SANITIZE)
+
+$(SHARED_EDITOR_UNIT_TEST): $(SHARED_EDITOR_UNIT_SOURCES) include/UI/SharedMovesPanel.h \
+	include/UI/SharedMoveFacts.h include/UI/SharedEditorPresentation.h include/UI/SharedPokemonShell.h \
+	include/Names/MoveTypes34.h src/UI/Gen3SharedPokemonSurface.inc src/UI/SharedPokemonEditorSurface.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(SHARED_EDITOR_UNIT_SOURCES) -o $@
+
+$(SHARED_EDITOR_UNIT_SANITIZE): $(SHARED_EDITOR_UNIT_SOURCES) include/UI/SharedMovesPanel.h \
+	include/UI/SharedMoveFacts.h include/UI/SharedEditorPresentation.h include/UI/SharedPokemonShell.h \
+	include/Names/MoveTypes34.h src/UI/Gen3SharedPokemonSurface.inc src/UI/SharedPokemonEditorSurface.inc
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(SHARED_EDITOR_UNIT_SOURCES) -o $@
