@@ -203,9 +203,9 @@ void putName(std::vector<uint8_t>& b, std::size_t o, std::size_t length, const s
         b[o + i] = static_cast<uint8_t>(0x80 + (s[i] - 'A'));
 }
 
-// The games' stat formula (pokered engine/pokemon/add_mon.asm CalcStat, the same in
-// pokecrystal): ((base + DV) * 2 + ceil(sqrt(stat exp)) / 4) * level / 100 + 5,
-// and + level + 10 instead of + 5 for HP.
+// The games' stat formula (pokered home/move_mon.asm CalcStat, pokecrystal
+// engine/pokemon/move_mon.asm CalcMonStatC): ((base + DV) * 2 + ceil(sqrt(stat exp)) / 4)
+// * level / 100 + 5, and + level + 10 instead of + 5 for HP.
 unsigned gbStat(uint8_t base, uint8_t dv, uint16_t statExp, uint8_t level, bool hp) {
     unsigned root = 0;
     while (root * root < statExp)
@@ -746,7 +746,7 @@ Mon ledyba3() {  // Route 30 morning, Silver only (pokegold data/wild/johto_gras
 
 // Route 29 morning Pidgey L2 caught in Crystal: caught data = morning (1) << 14 |
 // level 2 << 8 | male OT | landmark Route 29 (2) (pokecrystal data/wild/johto_grass.asm:1240,
-// engine/pokemon/caught_data.asm, constants/landmark_constants.asm:7).
+// engine/pokemon/caught_data.asm:163-199, constants/landmark_constants.asm:7).
 constexpr uint16_t kRoute29Morning2 = (1u << 14) | (2u << 8) | 2u;
 
 Mon pidgey2Crystal() {
