@@ -23,7 +23,10 @@ Status:
 | Item | State |
 |---|---|
 | #320 Home | **Pushed `65cbd69a`** (a fast-forward of c9e24334). The coordinator verified it in code: requestGameLaunch and appExitRequested=true each have exactly one site, in the QuitConfirm Y branch (SaveSelectScreen.cpp:3221/3231). decide(): A/B stay, only Y alone quits. Root B, Options Exit, ZR and legacy A only open the dialog. 2R reports GCC/Clang host-test, sanitize and qa green (327 PASS each), plus devkitA64 OK. The stale-candidate audit check is red by design. Opt-in trace: `config/input_trace.enable` → `logs/input-trace.log`. NOT DEVICE TESTED.
-| Gen II Create | C `ae099c77`, a fast-forward of c9e24334. 2R's permission layer blocked the merge twice. The owner's campaign directive authorises integration into #307 (relayed). |
+| Gen II Create | C `ae099c77` **merged into #307 at `eb0feb0a`** (the coordinator verified both parents; the merge is clean). 2R reports 329 PASS on GCC/Clang host-test, sanitize and qa, plus devkitA64 OK. NOT DEVICE TESTED. |
+| Phase 8 scroll | Root cause: NavigationRepeat counted frames (18/4), so on a slow screen it ran at 900/200 ms. Fix: a wall-clock HoldRepeatClock in the one shared engine (immediate first step, 250 ms delay, 67 ms repeat, one step per frame), with the keyboard on the same clock and a timing test at 16/33/50 ms frames. Pushing after gates. Trace lines now carry T=ms. |
+| Input chain | No button remap (NpadStandard, logical A/B). Touch goes through the top layer only. No stale edges. Open owner question: in the full Games browser L/R switch PROFILE (documented). Kept for this round, with the footer to show "L/R Profile". |
+| Quota | All lanes stopped on the shared usage limit 07:40–09:10 UTC. Resumed 2R, C, S and I at 09:12. QA is held until lane code lands. |
 | Lanes S, I | Created 07:33 UTC. |
 
 ## Previous milestone
