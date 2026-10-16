@@ -54,7 +54,9 @@ PICKER_FOOTER_HELPER_FILE = re.compile(r"include/UI/SharedEditor(Presentation|Ch
 # I: include/Inventory/ItemQuantityPolicy.h, PokeVault::Inventory::QuantityPolicy::quantityRule / mayAddItem;
 # C keeps one classicItemQuantity entry that delegates to it.
 QUANTITY_POLICY_SYMBOL = "QuantityPolicy"
-QUANTITY_POLICY_USE = re.compile(r"\bQuantityPolicy\b|\bquantityRule\s*\(|\bmayAddItem\s*\(|\bclassicItemQuantity\s*\(")
+QUANTITY_POLICY_USE = re.compile(r"\bQuantityPolicy\b|\bQuantityPolicy::quantityRule\s*\(|\bmayAddItem\s*\(")
+# Per-format wrappers are accepted only where their own definition calls QuantityPolicy.
+QUANTITY_POLICY_WRAPPERS = ("gen4QuantityRule", "gen5QuantityRule", "classicItemQuantity", "quantityRule")  # quantityRule: ClassicInventoryCatalog
 QUANTITY_POLICY_HEADER = "include/Inventory/ItemQuantityPolicy.h"
 REPEAT_ENGINE_FILE = "include/UI/NavigationRepeat.h"
 
@@ -319,8 +321,15 @@ def contracts(sources: list[Source]) -> list[Result]:
     r = Result("CG09-item-quantity-policy",
                "Item quantity editors consult ItemQuantityPolicy (unique items never get max > 1)")
     qty_rx = re.compile(r"\b(stageInventoryQuantity|stageSetQuantity|stageBagQuantity|setQuantity|stageQuantity)\s*\(")
+    valid_wrappers = set()
+    for src in sources:
+        for name, _, body in function_bodies(src.code, re.compile("^(" + "|".join(QUANTITY_POLICY_WRAPPERS) + ")$")):
+            if re.search(r"\bQuantityPolicy\b", body):
+                valid_wrappers.add(name)
+    wrapper_use = re.compile(r"\b(" + "|".join(sorted(valid_wrappers)) + r")\s*\(") if valid_wrappers else None
     for s in U:
-        if qty_rx.search(s.code) and not QUANTITY_POLICY_USE.search(s.code):
+        uses_policy = QUANTITY_POLICY_USE.search(s.code) or (wrapper_use and wrapper_use.search(s.code))
+        if qty_rx.search(s.code) and not uses_policy:
             ln = s.code.count("\n", 0, qty_rx.search(s.code).start()) + 1
             r.violations.append(f"{s.rel}:{ln}: edits item quantities without {QUANTITY_POLICY_SYMBOL}")
     header = next((s for s in sources if s.rel == QUANTITY_POLICY_HEADER), None)

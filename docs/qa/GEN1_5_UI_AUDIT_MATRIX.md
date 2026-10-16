@@ -14,26 +14,26 @@ launch/return) is **NOT DEVICE TESTED** until the owner tests the exact candidat
 
 | Game | Home / Games / Instances | Party / Boxes / Trainer / Dex | View / Create / Edit | Bag Add / quantity / Remove / sort | Clone / Move / Release | Review / Discard / Export Copy | Source-save immutability | Launch / return |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Red (Gen 1) | ✅ | ✅ | ⚠ CG01, CG02, CG03, CG04, CG05 | ✅ | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Blue (Gen 1) | ✅ | ✅ | ⚠ CG01, CG02, CG03, CG04, CG05 | ✅ | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Yellow (Gen 1) | ✅ | ✅ | ⚠ CG01, CG02, CG03, CG04, CG05 | ✅ | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Gold (Gen 2) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ✅ | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Silver (Gen 2) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ✅ | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Crystal (Gen 2) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ✅ | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Ruby (Gen 3) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ✅ | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Sapphire (Gen 3) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ✅ | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Emerald (Gen 3) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ✅ | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| FireRed (Gen 3) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ✅ | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| LeafGreen (Gen 3) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ✅ | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
+| Red (Gen 1) | ✅ | ✅ | ⚠ CG01, CG02, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
+| Blue (Gen 1) | ✅ | ✅ | ⚠ CG01, CG02, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
+| Yellow (Gen 1) | ✅ | ✅ | ⚠ CG01, CG02, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
+| Gold (Gen 2) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
+| Silver (Gen 2) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
+| Crystal (Gen 2) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
+| Ruby (Gen 3) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
+| Sapphire (Gen 3) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
+| Emerald (Gen 3) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
+| FireRed (Gen 3) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
+| LeafGreen (Gen 3) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
 | Diamond (Gen 4) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
 | Pearl (Gen 4) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
 | Platinum (Gen 4) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
 | HeartGold (Gen 4) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
 | SoulSilver (Gen 4) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Black (Gen 5) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ✅ | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| White (Gen 5) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ✅ | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Black 2 (Gen 5) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ✅ | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| White 2 (Gen 5) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ✅ | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
+| Black (Gen 5) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
+| White (Gen 5) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
+| Black 2 (Gen 5) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
+| White 2 (Gen 5) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
 
 ## 2. Editor fields × generation (declared access)
 
@@ -70,7 +70,7 @@ contract lists them as not shown; differences between generations are flagged fo
 | CG06-reroll-without-confirmation: No confirmation modal on draft-only DV/IV/EV reroll; Release / Delete / Discard confirmations still exist | PASS | 0 | 0 | 0 | 0 | 0 |
 | CG07-single-exit-and-launch-site: appExitRequested=true and requestGameLaunch each have exactly one call site, behind the Y-confirmed leave dialog | PASS | 0 | 0 | 0 | 0 | 0 |
 | CG08-modal-footer-and-touch-layer: Every modal draws its own footer, and the covered footer is not tappable while it is open | XFAIL until S + C (editor modals); 2R (Home, done) | 7 | 4 | 6 | 7 | 4 |
-| CG09-item-quantity-policy: Item quantity editors consult ItemQuantityPolicy (unique items never get max > 1) | XFAIL until I + C (QuantityPolicy adoption) | 0 | 0 | 0 | 1 | 0 |
+| CG09-item-quantity-policy: Item quantity editors consult ItemQuantityPolicy (unique items never get max > 1) | XFAIL until I + C (QuantityPolicy adoption) | 1 | 1 | 1 | 2 | 1 |
 | CG10-single-navigation-repeat-engine: Navigation repeat timings live only in the shared NavigationRepeat engine | PASS | 0 | 0 | 0 | 0 | 0 |
 
 Counts are violations attributed to each generation; a violation in a shared component (no
