@@ -36,17 +36,30 @@ Base: #307 application branch `claude/gen5-integration-20261014`. It was merged 
   - Gen III "PID (read-only)" became "PID" plus a sub-line, so the label no longer runs into the value column.
   - Bounds tests cover the Moves panel, the chooser, the DETAILS viewport and the provenance pane.
 
+- **Base routing (ownership exception; Gen VI+ unchanged):**
+  - `genericUiAllowedForSession()` in `TrainerViewScreenBase.inc` (`include/UI/ClassicGenericUiGuard.h`) is the one Gen I–V router, bound by QA CG11. Gen I–V never reach the generic action sheet, editable details, pickers, stat dialog or creator.
+  - Instead, targets open their own generation's read-only View.
+  - Gen III Party opens the Gen III View with a "move it to a box to edit" message.
+  - Foreign Bank records are refused.
+  - The exit save dialog uses `beginModal` and the shared confirm footer.
+  - The Gen IV bag footer comes from `include/UI/Gen4BagQuantity.h`.
+- **Phase 12:** one editable field set for Gen III–V, plus Gen III Unown letter editing (`Pokemon3FRLG::setUnownLetter`).
+- **Gen I/II for Thread C:** move types come from pinned pret `moves.asm`, and max PP follows the native rule (40 PP + 3 Ups = 61).
+
 ## Not done / blocked
 
 - **Gen III bag** lives in `src/UI/ClassicInventoryOverlay.cpp` (Thread C's Classic* scope). Non-key items are removed with no confirmation, and `ClassicInventoryCatalog::quantityRule` caps at 99, which is wrong for FRLG / RSE PC and Berries at 999. This was reported to the coordinator.
 - `include/UI/ActionSheetModel.h:57` still says "Legality & Provenance". It is the generic Gen VI+ action sheet, outside this lane, so it was routed to the coordinator.
 - **Gen III surface** is still its own implementation (it is not on `SharedPokemonEditorSurface.inc`). It now draws every shared component, but a full port onto the shared template is the next big consolidation step.
+- **Gen III Party editing:** `Gen3StagedPokemonEditor` stages box records only, so Party is View-only for now. Party staging (100-byte PK3 party records with battle stats) would be a new backend feature.
+- **Gen IV-format Bank records** in a Gen IV session are refused. The Gen IV View reads the native PK4 source view, not a Bank record.
 - **Clang ASan** can't run in this container (no runtime installed); CI covers it.
 
 ## How to verify
 
 - `make -f Makefile.host host-test` — GCC, 151 tests.
 - `make -f Makefile.host host-sanitize`
+- `make -f Makefile.host qa` (Gen I–V acceptance matrix, fuzz smoke, QA contracts)
 - `for f in tests/*.py; do python3 $f; done`
 - New tests: `tests/test_shared_editor_unit.cpp` and `tests/test_shared_stat_reroll.cpp`.
 - The device `.inc` files have no host build. Syntax-check `src/UI/TrainerViewScreenCompositeOverlay.cpp` with g++/clang++ `-fsyntax-only` against a stub `switch.h`. That stub is not committed: it defines the libnx pad/touch types, `HidNpadButton_*`, and `armGetSystemTick`.
