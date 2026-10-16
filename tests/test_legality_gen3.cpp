@@ -452,6 +452,19 @@ int main() {
                 fail(std::string(y.fixture) + ": uncertified record must keep the older Warning", held);
             checked += 2;
         }
+        // PKHeX matches an in-game trade at any met location; the games always record 254.
+        // The analyzer still certifies (PKHeX parity), production keeps a Warning.
+        {
+            auto pk = fixture("g1296-evolve+exp");
+            pk[0x45] = 101;  // met location: Route 1 instead of the in-game trade's 254
+            refreshChecksum(pk);
+            const auto r = Legality::analyzePk3(pk, "firered_gba");
+            const auto p = production(pk, "firered_gba");
+            if (!certified(r)) fail("trade met elsewhere: the analyzer follows PKHeX and certifies", r);
+            if (p.verdict() != Verdict::Incomplete || !hasText(p, "Gen III in-game trades are always recorded at met location 254"))
+                fail("trade met elsewhere: production must keep a Warning", p);
+            checked += 2;
+        }
         // Origin game, not cartridge: a Sapphire-origin Pikachu in a FireRed save matches the
         // Sapphire table, so no table note at all.
         const auto traded = production(fixture("g1113-exp+trade+candy+ev"), "firered_gba");

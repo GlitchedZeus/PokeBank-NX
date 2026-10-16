@@ -103,6 +103,9 @@ struct Verification {
     /// The matched encounter, e.g. "in-game trade Nidoran F at met location 254, level 5";
     /// empty when the analyzer matched none.
     std::string encounter;
+    /// The match is an in-game trade. PKHeX's EncounterTrade3 does not check the met
+    /// location, which the games always set to 254 (see GEN3_PKHEX_RULE_INVENTORY.md 4b).
+    bool inGameTrade = false;
 };
 
 /// Runs the analyzer on pk's stored bytes. Not a PK3 (or not decryptable): ran == false.

@@ -2829,29 +2829,36 @@ namespace Legality {
                         candidates.insert(candidates.end(), rows.begin(), rows.end());
                     }
                 }
-                if (!candidates.empty()) {
-                    const bool match = std::any_of(
-                        candidates.begin(), candidates.end(), [&](const auto& encounter) {
-                            return encounter.location == pk.metLocation() &&
-                                   encounter.containsLevel(pk.metLevel());
-                        });
-                    if (!match) {
-                        std::string text =
-                            "Met location/level does not match the audited encounter table for " +
-                            std::string(originGameId);
-                        // The L1 table is a guardrail subset: it has no in-game trades,
-                        // event gifts, Game Corner prizes, roaming routes or mass outbreaks
-                        // and misses some Ruby/FireRed-only statics (see
-                        // docs/legality/GEN3_PKHEX_RULE_INVENTORY.md). When the PKHeX-order
-                        // analyzer certified this exact record, the gap is a note.
-                        if (gen3Verified.certified) {
-                            add(r, Severity::Info,
-                                text + "; the Gen III analyzer matched " + gen3Verified.encounter,
-                                CheckIdentifier::Encounter);
-                        } else {
-                            add(r, Severity::Warning, std::move(text),
-                                CheckIdentifier::Encounter);
-                        }
+                const bool tableMatch = std::any_of(
+                    candidates.begin(), candidates.end(), [&](const auto& encounter) {
+                        return encounter.location == pk.metLocation() &&
+                               encounter.containsLevel(pk.metLevel());
+                    });
+                if (gen3Verified.inGameTrade && pk.metLocation() != 254) {
+                    // PKHeX (EncounterTrade3.IsMatchExact) matches a Gen III in-game
+                    // trade without checking the met location, but the games always
+                    // store 254 for one (pokeemerald src/trade.c:4555/4577, pokeruby
+                    // src/trade.c:4948/4970, pokefirered src/trade_scene.c:2461/2481). Kept a
+                    // Warning: PKHeX accepts the record, so it is never Invalid here.
+                    add(r, Severity::Warning,
+                        "Met location " + std::to_string(pk.metLocation()) +
+                            " does not fit the in-game trade the Gen III analyzer matched: Gen III in-game trades are always recorded at met location 254",
+                        CheckIdentifier::Encounter);
+                } else if (!candidates.empty() && !tableMatch) {
+                    std::string text =
+                        "Met location/level does not match the audited encounter table for " +
+                        std::string(originGameId);
+                    // The L1 table is a guardrail subset: it has no in-game trades, event
+                    // gifts, Game Corner prizes, roaming routes or mass outbreaks and
+                    // misses some Ruby/FireRed-only statics (decomp evidence in
+                    // docs/legality/GEN3_PKHEX_RULE_INVENTORY.md 4b). When the PKHeX-order
+                    // analyzer certified this exact record, the gap is a note.
+                    if (gen3Verified.certified) {
+                        add(r, Severity::Info,
+                            text + "; the Gen III analyzer matched " + gen3Verified.encounter,
+                            CheckIdentifier::Encounter);
+                    } else {
+                        add(r, Severity::Warning, std::move(text), CheckIdentifier::Encounter);
                     }
                 }
             } else if (exactGeneration == 4) {

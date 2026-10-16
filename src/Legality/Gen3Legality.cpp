@@ -3528,7 +3528,7 @@ std::string describeEncounter(const Pk3& pk, const Enc& e) {
 
 bool isCertified(const Report& r) noexcept { return allCoverageComplete(r.coverage) && r.problemCount() == 0; }
 
-Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId, std::string* encounter);
+Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId, Verification* out);
 
 } // namespace
 
@@ -3561,14 +3561,14 @@ Verification verify(const Pokemon::Pokemon& pk, std::string_view exactSourceGame
         v.emptySlot = true;
         return v;
     }
-    v.report = analyzeDetailed(raw, exactSourceGameId, &v.encounter);
+    v.report = analyzeDetailed(raw, exactSourceGameId, &v);
     v.certified = isCertified(v.report);
     return v;
 }
 
 namespace {
 
-Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId, std::string* encounter) {
+Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId, Verification* out) {
     Report r;
     setAllCoverage(r.coverage, CoverageLevel::Partial);
     auto add = [&r](Severity sev, CheckIdentifier id, std::string text) {
@@ -3630,7 +3630,10 @@ Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exac
     r.coverage.structure = certify ? CoverageLevel::Complete : CoverageLevel::Partial;
     if (certify && !problem && a.enc.kind != Kind::Invalid && isGbaSourceGame(exactSourceGameId))
         setAllCoverage(r.coverage, CoverageLevel::Complete);
-    if (encounter != nullptr && a.enc.kind != Kind::Invalid) *encounter = describeEncounter(pk, a.enc);
+    if (out != nullptr && a.enc.kind != Kind::Invalid) {
+        out->encounter = describeEncounter(pk, a.enc);
+        out->inGameTrade = a.enc.kind == Kind::Trade;
+    }
     return r;
 }
 
