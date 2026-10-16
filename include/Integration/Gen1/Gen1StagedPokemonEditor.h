@@ -19,13 +19,16 @@ struct BoxPokemonEdit {
     std::optional<std::array<uint8_t,4>> moves, pp, ppUps, dvs;
     std::optional<std::array<uint16_t,5>> statExperience;
 };
+// Create default is #25 Pikachu at L5, the same default as the Gen II-V editors. Its moves are
+// Pikachu's pret/pokered base moves (data/pokemon/base_stats/pikachu.asm: THUNDERSHOCK, GROWL)
+// at their base PP (data/moves/moves.asm: Thunder Shock 30, Growl 40).
 struct BoxPokemonCreate {
-    uint16_t species = 1;
+    uint16_t species = 25;
     uint8_t level = 5;
     std::optional<uint32_t> experience;
     std::string nickname, otName;
     std::optional<uint16_t> trainerId;
-    std::array<uint8_t,4> moves{33,0,0,0}, pp{35,0,0,0}, ppUps{}, dvs{8,8,8,8};
+    std::array<uint8_t,4> moves{84,45,0,0}, pp{30,40,0,0}, ppUps{}, dvs{8,8,8,8};
     std::array<uint16_t,5> statExperience{};
 };
 struct BattleStats {
