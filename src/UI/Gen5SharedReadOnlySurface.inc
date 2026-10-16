@@ -1784,10 +1784,18 @@ void drawBag(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     std::vector<ControllerHint> hints;
     for(const auto& entry:bag.footer(ws))hints.push_back({entry.glyph,entry.label});
     if(bag.surface()==BagSurface::Browse) {
+        // A glyph-less segment is a state marker (accent text). The vector overload drops hints
+        // without a button, so serialize it here or "view only" would never be shown.
+        std::string serialized;
+        for(const auto& hint:hints) {
+            if(hint.button.empty() || hint.label.empty()) continue;
+            if(!serialized.empty()) serialized+="  |  ";
+            serialized+=hint.button+": "+hint.label;
+        }
         if(!G::Gen5BagScreen::mutablePocket(bag.pocket()) &&
            G::Gen5BagScreen::available(ws))
-            hints.push_back({"","Key Items/TMs view only"});
-        drawNavBar(fb,hints);
+            serialized+="  |  Key Items/TMs view only";
+        drawNavBar(fb,serialized);
         return;
     }
     fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,160));

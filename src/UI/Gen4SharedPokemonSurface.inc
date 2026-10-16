@@ -2148,17 +2148,33 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
             }
             screen.selectedItemIndex = previous;
         }
-    }
-    if (!partyEntry && !boxEntry && !storageEntry) return false;
-    if (partyEntry && touch.justTapped()) {
-        const int tapped = screen.touchedButtonId(touch);
-        if (tapped >= 6200 && tapped < 6206 &&
-            tapped - 6200 < static_cast<int>(screen.trainer.getPartySize())) {
-            screen.selectedPartyIndex = tapped - 6200;
+        // The summary panel's "A / tap: Actions" target opens the SAME native Gen IV sheet,
+        // never the inherited generic action sheet (Make Shiny / Legality placeholders).
+        if (tapped == PokeBank::UIModel::Gen4BoxTouchActions::SummaryPanelTouchId &&
+            PokeBank::UIModel::Gen4BoxTouchActions::opensSelectedSlotActions(
+                tapped, screen.selectedItemIndex, slots) && boxEntrySurface(screen)) {
             beginActions(screen);
             return true;
         }
     }
+    // A party tap must reach the Gen IV sheet even when the D-pad cursor sits on an empty
+    // party slot (partyEntrySurface is false there): select the tapped Pokemon first, then
+    // apply the full modal guard, exactly like the first-tap Boxes entry above.
+    if (screen.selectedMode == TrainerViewScreen::ViewMode::Party &&
+        screen.detailViewActive && touch.justTapped()) {
+        const int tapped = screen.touchedButtonId(touch);
+        if (tapped >= 6200 && tapped < 6206 &&
+            tapped - 6200 < static_cast<int>(screen.trainer.getPartySize())) {
+            const int previous = screen.selectedPartyIndex;
+            screen.selectedPartyIndex = tapped - 6200;
+            if (partyEntrySurface(screen)) {
+                beginActions(screen);
+                return true;
+            }
+            screen.selectedPartyIndex = previous;
+        }
+    }
+    if (!partyEntry && !boxEntry && !storageEntry) return false;
 
 
     if (navigated & HidNpadButton_A) {
@@ -2176,6 +2192,9 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
 }
 
 bool draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
+    // Like Gen III: adopt a pending passive View in the draw too, so the inherited generic
+    // details modal can never flash for one frame before handleInput runs.
+    if (isGen4Nds(screen)) beginPassiveView(screen);
     if (!ownsFrameImpl(screen)) return false;
     auto& state = stateFor(screen);
     if (state.itemAddPickerActive)drawItemAddPicker(screen,fb,state);
