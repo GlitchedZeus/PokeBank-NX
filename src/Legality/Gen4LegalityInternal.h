@@ -358,12 +358,13 @@ bool isWordFiltered4(std::u16string_view message);
 bool isWordFiltered(std::u16string_view message, uint8_t originalGeneration);
 
 // ---------------------------------------------------------------- results
-/// One PKHeX CheckResult. severity: 0 Valid, 1 Fishy (our Warning), 2 Invalid.
+/// One PKHeX CheckResult. severity: 0 Valid, 1 Fishy (our Warning), 2 Invalid, 3 a PKHeX
+/// Fishy result that the games are shown to produce in normal play (reported as Info).
 struct Check {
     uint8_t severity = 0;
     CheckIdentifier id = CheckIdentifier::Misc;
     std::string message;
 };
-inline constexpr uint8_t kValid = 0, kFishy = 1, kInvalid = 2;
+inline constexpr uint8_t kValid = 0, kFishy = 1, kInvalid = 2, kNote = 3;
 
 } // namespace Legality::Gen4

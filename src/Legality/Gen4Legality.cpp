@@ -282,6 +282,7 @@ private:
     }
     void invalid(CheckIdentifier id, std::string text) { add(kInvalid, id, std::move(text)); }
     void fishy(CheckIdentifier id, std::string text) { add(kFishy, id, std::move(text)); }
+    void note(CheckIdentifier id, std::string text) { add(kNote, id, std::move(text)); }
 
     bool isMysteryGift() const noexcept { return enc_.kind == EncKind::Pcd || enc_.kind == EncKind::RangerManaphy; }
     /// TrainerNameVerifier.IsPlayerOriginalTrainer
@@ -778,8 +779,14 @@ void Analyzer::verifyEvs() {
     }
     bool allSame = true;
     for (std::size_t i = 1; i < 6; ++i) if (pk_.evs[i] != pk_.evs[0]) allSame = false;
-    if (sum == 0 && !isWithinEncounterRange()) fishy(CheckIdentifier::Stats, "Gained levels but has no EVs");
-    else if (sum == 508) fishy(CheckIdentifier::Stats, "EV total is 508 (2 below the cap)");
+    // PKHeX grades the first two Fishy (EffortValueVerifier.cs:49-52); both come from normal play,
+    // so they are Info here. EXP with no EVs: Rare Candy and the Day Care add EXP and no EVs
+    // (pokeplatinum src/item_use_pokemon.c:291-293, src/overlay005/daycare.c:221-224;
+    // pokeheartgold src/use_item_on_mon.c:294-296, src/get_egg.c:147-150). A 508 total: battle
+    // EV gain stops only at 510 (pokeplatinum src/battle/battle_script.c:10237,
+    // include/constants/pokemon.h:15-16; pokeheartgold include/constants/pokemon.h:9).
+    if (sum == 0 && !isWithinEncounterRange()) note(CheckIdentifier::Stats, "Gained levels but has no EVs");
+    else if (sum == 508) note(CheckIdentifier::Stats, "EV total is 508 (2 below the cap)");
     else if (pk_.evs[0] != 0 && allSame) fishy(CheckIdentifier::Stats, "All EVs are equal");
 }
 
@@ -806,7 +813,10 @@ void Analyzer::verifyLevel() {
         invalid(CheckIdentifier::Stats, "EXP is above the level 100 maximum");
     if (level_ < pk_.metLevel) invalid(CheckIdentifier::Stats, "Current level is below the met level");
     else if (!isWithinEncounterRange() && level_ != 100 && pk_.exp == expForLevel(level_, growth))
-        fishy(CheckIdentifier::Stats, "EXP is exactly at a level threshold");
+        // PKHeX: Fishy (LevelVerifier.cs:56-57). A Rare Candy adds exactly the EXP to the next
+        // level (pokeplatinum src/item_use_pokemon.c:291-293 with src/pokemon.c:2313-2319;
+        // pokeheartgold src/use_item_on_mon.c:294-296), so the threshold is normal play: Info.
+        note(CheckIdentifier::Stats, "EXP is exactly at a level threshold");
 }
 
 // ----------------------------------------------------------------------- ribbons
@@ -1289,12 +1299,14 @@ Report Analyzer::run() {
 
     for (const Check& c : parse_) {
         if (c.severity == kValid) continue;
-        const Severity sev = c.severity == kInvalid ? Severity::Invalid : Severity::Warning;
+        const Severity sev = c.severity == kInvalid ? Severity::Invalid
+                             : c.severity == kNote  ? Severity::Info
+                                                    : Severity::Warning;
         bool dup = false;
         for (const Issue& i : r.issues) if (i.severity == sev && i.text == c.message) dup = true;
         if (!dup) r.issues.push_back(Issue{sev, c.message, c.id});
     }
-    if (r.issues.empty()) {
+    if (r.problemCount() == 0) {
         r.coverage.sourceGame = r.coverage.internal = r.coverage.moves = r.coverage.encounter = CoverageLevel::Complete;
         r.coverage.eventGift = r.coverage.pidRng = r.coverage.eggBreeding = r.coverage.transfer = CoverageLevel::Complete;
     } else {
