@@ -26,20 +26,26 @@ Base: #307 application branch `claude/gen5-integration-20261014`. It was merged 
 - **Phase 11:** clean location names. The Gen III encounter picker is 900 px with name left and method/level right; Gen IV/V use the same row style.
   - Met dates: Gen III stores none. Gen V shows YYYY-MM-DD (never a time of day).
   - Gen IV PK4 does store met/egg dates (0x78–0x7D), but the repo has no getter, so nothing is shown and nothing is invented.
-- **Phase 2 (partial):**
-  - Gen IV bag: `gen4QuantityRule()` is the single per-item query. Unique items (Key Items, HMs) get no numpad, either on A or on Add. Remove is already Y→Y confirmed.
-  - Gen V: Key Items and TMs/HMs are already read-only.
+- **Phase 2 (Gen IV/V done):**
+  - `gen4QuantityRule()` and `gen5QuantityRule()` now ask Thread I's `QuantityPolicy::quantityRule` for the exact game and pocket. The result is capped by the native writer's own limit.
+  - Unique items (Key Items, Gen IV HMs, every Gen V TM/HM) get no numpad on A, and Add stages them once without one.
+  - Remove stays Y→Y confirmed.
+  - Test: `tests/test_shared_bag_quantity.cpp`.
+- **Phase 9:**
+  - The data pane now uses one shared wrap/clip layout (`include/UI/SharedDataPaneLayout.h`, lifted from C's Gen II layout and made UTF-8 safe).
+  - Gen III "PID (read-only)" became "PID" plus a sub-line, so the label no longer runs into the value column.
+  - Bounds tests cover the Moves panel, the chooser, the DETAILS viewport and the provenance pane.
 
 ## Not done / blocked
 
 - **Gen III bag** lives in `src/UI/ClassicInventoryOverlay.cpp` (Thread C's Classic* scope). Non-key items are removed with no confirmation, and `ClassicInventoryCatalog::quantityRule` caps at 99, which is wrong for FRLG / RSE PC and Berries at 999. This was reported to the coordinator.
-- **ItemQuantityPolicy.h** (Thread I, d08c5aa8) is not in #307 yet. When it lands, replace the body of `gen4QuantityRule()` and the Gen V `bagPocketLayout5` caps with `QuantityPolicy::quantityRule`.
+- `include/UI/ActionSheetModel.h:57` still says "Legality & Provenance". It is the generic Gen VI+ action sheet, outside this lane, so it was routed to the coordinator.
 - **Gen III surface** is still its own implementation (it is not on `SharedPokemonEditorSurface.inc`). It now draws every shared component, but a full port onto the shared template is the next big consolidation step.
 - **Clang ASan** can't run in this container (no runtime installed); CI covers it.
 
 ## How to verify
 
-- `make -f Makefile.host host-test` — GCC, 147 tests.
+- `make -f Makefile.host host-test` — GCC, 152 tests.
 - `make -f Makefile.host host-sanitize`
 - `for f in tests/*.py; do python3 $f; done`
 - New tests: `tests/test_shared_editor_unit.cpp` and `tests/test_shared_stat_reroll.cpp`.

@@ -1928,7 +1928,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         {"Gender", genderText(p.gender)},
         {"Shiny", p.shiny ? "Yes" : "No"},
         {"Ability", Trainer::getAbilityName(p.ability)},
-        {"PID (read-only)", std::to_string(p.pid)},
+        {"PID", std::to_string(p.pid)},
     }};
     for (int i = 0; i < 5; ++i) {
         const int row = i + 6;
@@ -1957,6 +1957,10 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         if (i == 1 && editableRow && !selected) valueColor = genderValueColor(p.gender);
         fb.drawText(midX + 130, yy, derived[static_cast<std::size_t>(i)].second,
                     valueColor, TextStyle::Caption);
+        // Same as the shared Gen IV/V panel: the PID status sits on its own subordinate line so
+        // the label never runs into the 10-digit value column.
+        if (i == 4)
+            fb.drawText(midX + 18, yy + 15, "read-only", Colors::TextDim, TextStyle::Caption);
     }
 
     drawPanel(fb, rightX, y, rightW, h, "MOVES");

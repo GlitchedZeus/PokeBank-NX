@@ -152,7 +152,8 @@ int main() {
     // The species picker footer is the shared one: ... Y Normal/Shiny, A Select, B Cancel.
     contains(surface, "footer.yLabel = \"Normal/Shiny\"");
     contains(surface, "SharedEditorChrome::drawPickerFooter(fb, footer)");
-    contains(surface, "PID (read-only)");
+    contains(surface, "{\"PID\", std::to_string(p.pid)}");
+    assert(surface.find("PID (read-only)") == std::string::npos); // label no longer runs into the value
     // Read-only Gen III PID-linked information must remain legible. In passive View
     // mode every derived row is informational; in Create/Edit PID remains readable
     // while still non-editable.
