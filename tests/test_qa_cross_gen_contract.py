@@ -31,16 +31,20 @@ XFAIL = {
     "CG02-no-row-counters": "S (shared shell) + C (Gen I)",
     "CG03-origin-legality-heading": "S + C",
     "CG04-no-developer-wording": "S + C (+ Names for '(RSE)')",
-    "CG05-picker-footer-helper": "S (shared green-A Select / red-B Cancel helper)",
-    "CG06-reroll-without-confirmation": "C (Gen I/II) + S",
+    "CG05-picker-footer-helper": "S (SharedEditorChrome drawPickerFooter adoption)",
     "CG08-modal-footer-and-touch-layer": "S + C (editor modals); 2R (Home, done)",
-    "CG09-item-quantity-policy": "I (ItemQuantityPolicy)",
-    "CG10-single-navigation-repeat-engine": "2R (input) + S",
+    "CG09-item-quantity-policy": "I + C (QuantityPolicy adoption)",
 }
 
 # Names the lanes are introducing. Update when the lane lands if the final name differs.
-PICKER_FOOTER_HELPER_FILE = re.compile(r"(PickerFooter|SharedPickerFooter|ControllerFooter)", re.I)
-QUANTITY_POLICY_SYMBOL = "ItemQuantityPolicy"
+# S: include/UI/SharedEditorPresentation.h pickerFooter(PickerFooterSpec) / confirmFooter and
+# include/UI/SharedEditorChrome.h drawPickerFooter / drawFooter / beginModal / drawOriginLegalityHeading.
+PICKER_FOOTER_HELPER_FILE = re.compile(r"include/UI/SharedEditor(Presentation|Chrome)\.h$")
+# I: include/Inventory/ItemQuantityPolicy.h, PokeVault::Inventory::QuantityPolicy::quantityRule / mayAddItem;
+# C keeps one classicItemQuantity entry that delegates to it.
+QUANTITY_POLICY_SYMBOL = "QuantityPolicy"
+QUANTITY_POLICY_USE = re.compile(r"\bQuantityPolicy\b|\bquantityRule\s*\(|\bmayAddItem\s*\(|\bclassicItemQuantity\s*\(")
+QUANTITY_POLICY_HEADER = "include/Inventory/ItemQuantityPolicy.h"
 REPEAT_ENGINE_FILE = "include/UI/NavigationRepeat.h"
 
 GEN_FILE = {
@@ -215,15 +219,17 @@ def contracts(sources: list[Source]) -> list[Result]:
 
     r = Result("CG01b-shiny-editing-still-present",
                "Shiny remains editable in every generation's editor (native entry point referenced by the UI)")
+    # Each generation's own shiny edit entry point, searched only in that generation's UI files.
     evidence = {
         1: r"Gen1Shiny\.h|nearestShinyAttack|attackIsShinyCompatible",
-        2: r"stageBoxPokemonShiny",
+        2: r"stageBoxPokemonShiny|\btoggleShiny\s*\(screen",   # Gen II DV re-derivation on the draft (e59df02)
         3: r"requestedShiny",
         4: r"setShiny\s*\(",
-        5: r"Field::Shiny\b",
+        5: r"Field::Shiny\b|Fields::toggleShiny\s*\(",
     }
     for gen, pat in evidence.items():
-        if not any(re.search(pat, s.code) for s in U):
+        gen_files = [s for s in U if GEN_FILE[gen].search(Path(s.rel).name)]
+        if not any(re.search(pat, s.code) for s in gen_files):
             r.violations.append(f"Gen {gen}: no UI reference to its shiny edit entry point ({pat})")
     res.append(r)
 
@@ -251,6 +257,8 @@ def contracts(sources: list[Source]) -> list[Result]:
     # A picker footer is any footer offering an A-Select/Choose/Pick action.
     pair = r'\{\s*"A"\s*,\s*"(Select|Choose|Pick)"\s*\}'
     r.violations = [h for h in code_hits(U, pair) if not PICKER_FOOTER_HELPER_FILE.search(h.split(":", 1)[0])]
+    if not any(s.rel == "include/UI/SharedEditorChrome.h" and re.search(r"\bdrawPickerFooter\s*\(", s.code) for s in U):
+        r.violations.append("include/UI/SharedEditorChrome.h: shared drawPickerFooter helper missing")
     res.append(r)
 
     r = Result("CG06-reroll-without-confirmation",
@@ -292,7 +300,7 @@ def contracts(sources: list[Source]) -> list[Result]:
         for name, ln, body in function_bodies(s.code, modal_rx):
             if not footer_rx.search(body):
                 r.violations.append(f"{s.rel}:{ln}: {name}() draws no footer of its own")
-            if not re.search(r"beginTopTouchLayer\s*\(|touchButtons\s*\.\s*clear\s*\(", body):
+            if not re.search(r"beginTopTouchLayer\s*\(|beginModal\s*\(|touchButtons\s*\.\s*clear\s*\(", body):
                 r.violations.append(f"{s.rel}:{ln}: {name}() leaves the covered footer's touch targets live")
     res.append(r)
 
@@ -300,11 +308,12 @@ def contracts(sources: list[Source]) -> list[Result]:
                "Item quantity editors consult ItemQuantityPolicy (unique items never get max > 1)")
     qty_rx = re.compile(r"\b(stageInventoryQuantity|stageSetQuantity|stageBagQuantity|setQuantity|stageQuantity)\s*\(")
     for s in U:
-        if qty_rx.search(s.code) and QUANTITY_POLICY_SYMBOL not in s.code:
+        if qty_rx.search(s.code) and not QUANTITY_POLICY_USE.search(s.code):
             ln = s.code.count("\n", 0, qty_rx.search(s.code).start()) + 1
             r.violations.append(f"{s.rel}:{ln}: edits item quantities without {QUANTITY_POLICY_SYMBOL}")
-    if not any(QUANTITY_POLICY_SYMBOL in s.code for s in sources if s.rel.startswith("include/")):
-        r.violations.append(f"{QUANTITY_POLICY_SYMBOL} is not defined in include/")
+    header = next((s for s in sources if s.rel == QUANTITY_POLICY_HEADER), None)
+    if header is None or "namespace PokeVault::Inventory::QuantityPolicy" not in header.code:
+        r.violations.append(f"{QUANTITY_POLICY_HEADER} does not define PokeVault::Inventory::QuantityPolicy")
     res.append(r)
 
     r = Result("CG10-single-navigation-repeat-engine",
