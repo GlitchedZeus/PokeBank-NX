@@ -3,8 +3,9 @@
  *
  * The analyzer is split by topic: Gen4LegalityRng.cpp (PID/IV correlation and wild
  * lead/frame checks), Gen4LegalityMoves.cpp (evolution chains and move sources),
- * Gen4LegalityEncounters.cpp (encounter search), Gen4LegalityText.cpp (names and the
- * word filter) and Gen4Legality.cpp (field verifiers and the report).
+ * Gen4LegalityEncounters.cpp (encounter search), Gen4LegalityPalPark.cpp (the Generation III
+ * encounter search for Pal Park records), Gen4LegalityText.cpp (names and the word filter) and
+ * Gen4Legality.cpp (field verifiers and the report).
  */
 #pragma once
 
@@ -118,10 +119,18 @@ enum class PidType : uint8_t {
     CXD, CXDAnti, G4MGAntiShiny,
     BACD, BACD_A, BACD_AX, BACD_ES, BACD_EA, BACD_EAX, BACD_S,
     ChainShiny, CuteCharm, G5MGShiny, Pokewalker,
+    BACD_R, Channel, // only ever produced as a PIDIV.Mutated revision (BACD_R) or by GetChannelMatch (R/S)
 };
 struct PidIv { PidType type = PidType::None; uint32_t seed = 0; };
-/// MethodFinder.Analyze for a PK4 (Gen IV origin; Colosseum starters and Channel Jirachi never apply).
+/// MethodFinder.Analyze for a PK4 (Colosseum starters need Colosseum/XD origin and never apply here).
 PidIv analyzePidIv(const Pk4& pk) noexcept;
+/// MethodJ.GetReversalWindow (shared by Method H).
+int methodJReversalWindow(uint32_t seed, uint8_t nature) noexcept;
+namespace xdrng {
+constexpr uint32_t next(uint32_t s) noexcept { return s * 0x343FDu + 0x269EC3u; }
+constexpr uint32_t prev(uint32_t s) noexcept { return s * 0xB9B33155u + 0xA170F641u; }
+inline uint32_t prev16(uint32_t& s) noexcept { s = prev(s); return s >> 16; }
+} // namespace xdrng
 /// MethodFinder.GetLCRNGMethod1Match
 bool method1Seed(const Pk4& pk, uint32_t& seed) noexcept;
 /// ShinyUtil.GetIsShiny3 on (TID ^ SID, PID)
@@ -182,7 +191,13 @@ struct Evo {
 };
 inline constexpr uint8_t kSentinel = 255;
 
-enum class EncKind : uint8_t { Invalid, Slot, Static, Walker, Trade, Ranch, Pcd, RangerManaphy, Egg };
+enum class EncKind : uint8_t {
+    Invalid, Slot, Static, Walker, Trade, Ranch, Pcd, RangerManaphy, Egg,
+    // Generation III templates (Pal Park origin): EncounterSlot3(+Swarm), EncounterStatic3, EncounterTrade3,
+    // EncounterGift3, EncounterGift3NY, EncounterGift3JPN, EncounterGift3Colo, EncounterEgg3.
+    Slot3, Static3, Trade3, Gift3, GiftNY3, GiftJP3, GiftColo3, Egg3,
+};
+inline bool isGen3Kind(EncKind k) noexcept { return k >= EncKind::Slot3; }
 /// The facts of a matched encounter template that the evolution and move code reads.
 struct EncInfo {
     EncKind kind = EncKind::Invalid;
@@ -199,6 +214,15 @@ struct EncInfo {
 /// EvolutionChain.GetEvolutionChainsAllGens for a format-4 entity: the Gen IV history.
 std::vector<Evo> evolutionHistory(const Pk4& pk, const EncInfo& enc, uint8_t currentLevel);
 bool hasVisited(const std::vector<Evo>& history, uint16_t species) noexcept;
+/// EvolutionHistory.Gen3 / Gen4 of a format-4 entity whose encounter is a Generation III template.
+struct History34 { std::vector<Evo> gen3, gen4; };
+History34 evolutionHistory3(const Pk4& pk, const EncInfo& enc, uint8_t currentLevel);
+/// EncounterOrigin.GetOriginChain(pk, 3, Gen3) for a PK4.
+std::vector<Evo> originChain3(const Pk4& pk, uint8_t currentLevel);
+/// EvolutionTree.Evolves3.GetBaseSpeciesForm
+std::pair<uint16_t, uint8_t> baseSpeciesForm3(uint16_t species, uint8_t form) noexcept;
+/// PersonalTable.E.IsPresentInGame
+bool isPresentInGameE(uint16_t species, uint8_t form) noexcept;
 
 enum class LearnMethod : uint8_t {
     None, Duplicate, EmptyInvalid, Unobtainable, UnobtainableExpect, Empty, Initial, LevelUp, TMHM,
@@ -215,6 +239,9 @@ using MoveResults = std::array<MoveResult, 4>;
 MoveResults verifyMoves(const Pk4& pk, const EncInfo& enc, const std::vector<Evo>& history);
 /// EvolutionRestrictions.IsValidEvolutionWithMove
 bool isValidEvolutionWithMove(const Pk4& pk, const EncInfo& enc, const std::vector<Evo>& history, const MoveResults& moves);
+/// LearnVerifier.Verify / IsValidEvolutionWithMove for a Generation III encounter (LearnGroup4 then LearnGroup3).
+MoveResults verifyMoves3(const Pk4& pk, const EncInfo& enc, const History34& history);
+bool isValidEvolutionWithMove3(const Pk4& pk, const EncInfo& enc, const History34& history, const MoveResults& moves);
 /// MoveBreed4.Validate (exposed for tests).
 bool moveBreed4Validate(uint16_t species, uint8_t version, std::span<const uint16_t> moves, std::span<uint8_t> origins);
 /// Level-up learnset of a species/form for a game table.
@@ -270,12 +297,15 @@ struct Template {
     std::array<uint16_t, 4> moves{};
     const D::Area4* area = nullptr;
     const D::Slot4* slot = nullptr;
+    const D::Area3* area3 = nullptr;
+    const D::Slot3* slot3 = nullptr;
     int index = -1;
     Gift gift{};                  // PCD / Ranger Manaphy
 };
 Template makeTemplate(const Candidate& c, const Pk4& pk);
 EncInfo encInfo(const Template& t);
-inline constexpr uint8_t kShinyRandom = 0, kShinyNever = 1, kShinyAlways = 2, kShinyFixed = 5;
+inline constexpr uint8_t kShinyRandom = 0, kShinyNever = 1, kShinyAlways = 2, kShinyAlwaysStar = 3, kShinyAlwaysSquare = 4,
+                         kShinyFixed = 5; // PKHeX Shiny enum values
 
 struct Search {
     PidIv pidiv;
@@ -288,6 +318,20 @@ std::vector<Evo> originChain(const Pk4& pk, uint8_t currentLevel);
 Search searchEncounters(const Pk4& pk, uint8_t currentLevel);
 /// Rating of a template that implements IEncounterMatch (-1 when it does not).
 int matchRating(const Template& t, const Pk4& pk);
+/// EncounterGenerator3.GetEncounters for a PK4 of Generation III origin (versions 1-5).
+Search searchEncounters3(const Pk4& pk, uint8_t currentLevel);
+Template makeTemplate3(const Candidate& c, const Pk4& pk);
+int matchRating3(const Template& t, const Pk4& pk);
+/// IFixedTrainer.IsTrainerMatch / IFixedNickname.IsNicknameMatch of a Gen III template (Trade3, GiftColo3).
+bool isTrainerMatch3(const Template& t, const Pk4& pk, std::u16string_view trainer, int language);
+bool isNicknameMatch3(const Template& t, const Pk4& pk, std::u16string_view nickname, int language);
+/// IFixedTrainer.IsFixedTrainer of a Gen III template.
+bool isFixedTrainer3(const Template& t) noexcept;
+/// EntityPID.GetUnownForm3
+inline uint8_t unownForm3(uint32_t pid) noexcept {
+    const uint32_t v = ((pid & 0x3000000u) >> 18) | ((pid & 0x30000u) >> 12) | ((pid & 0x300u) >> 6) | (pid & 3u);
+    return static_cast<uint8_t>(v % 28u);
+}
 bool isFormChangeable(uint16_t species) noexcept;
 /// (species, form) of EvolutionTree.Evolves4.GetBaseSpeciesForm
 std::pair<uint16_t, uint8_t> baseSpeciesForm(uint16_t species, uint8_t form) noexcept;
@@ -310,6 +354,8 @@ bool hasEastAsianScript(std::u16string_view s) noexcept;
 int numberCount(std::u16string_view s) noexcept;
 /// WordFilter.IsFiltered(message, Gen4, Gen4) with default settings.
 bool isWordFiltered4(std::u16string_view message);
+/// WordFilter.IsFiltered(message, Gen4, original) for an original context of Gen III or Gen IV.
+bool isWordFiltered(std::u16string_view message, uint8_t originalGeneration);
 
 // ---------------------------------------------------------------- results
 /// One PKHeX CheckResult. severity: 0 Valid, 1 Fishy (our Warning), 2 Invalid.

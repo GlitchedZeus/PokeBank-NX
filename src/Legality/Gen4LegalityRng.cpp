@@ -238,6 +238,33 @@ bool roamerMatch(uint32_t* seeds, uint32_t top, uint32_t bot, uint32_t iv32, Pid
     return false;
 }
 
+// MethodFinder.GetChannelMatch (Ruby/Sapphire origin only).
+bool channelMatch(uint32_t* seeds, const Pk4& pk, uint32_t top, uint32_t bot, uint32_t iv32, PidIv& out) noexcept {
+    const uint8_t version = pk.version;
+    if (version != 1 && version != 2) return false; // S = 1, R = 2
+    const uint32_t undo = (top >> 16) ^ 0x8000u;
+    if ((undo > 7 ? 0u : 1u) != ((bot >> 16) ^ pk.sid ^ 40122u)) top = undo << 16;
+    const int count = xd::getSeeds(seeds, top, bot);
+    for (int i = 0; i < count; ++i) {
+        const uint32_t seed = seeds[i];
+        const uint32_t c = xdrng::next(xdrng::next(xdrng::next(seed))); // held item (unchecked)
+        const uint32_t d = xdrng::next(c);                               // version
+        if ((d >> 31) + 1 != version) continue;
+        const uint32_t e = xdrng::next(d);                               // OT gender
+        if ((e >> 31) != pk.otGender) continue;
+        uint32_t s = e, ivs = 0;
+        for (int k = 0; k < 6; ++k) {
+            s = xdrng::next(s);
+            ivs |= (s >> 27) << (5 * k);
+        }
+        if (ivs != iv32) continue;
+        if ((seed >> 16) != pk.sid) continue;
+        out = {PidType::Channel, xdrng::prev(seed)};
+        return true;
+    }
+    return false;
+}
+
 uint32_t psvOf(uint32_t v) noexcept { return ((v >> 16) ^ (v & 0xFFFF)) >> 3; }
 
 bool mg4Match(uint32_t* seeds, uint32_t pid, uint32_t iv1, uint32_t iv2, PidIv& out) noexcept {
@@ -393,9 +420,14 @@ bool pokewalkerMatch(const Pk4& pk, uint32_t actualPid, PidIv& out) noexcept {
 bool modifiedPidMatch(uint32_t* seeds, const Pk4& pk, uint32_t pid, uint32_t iv1, uint32_t iv2, PidIv& out) noexcept {
     if (pk.isShiny()) {
         if (chainShinyMatch(seeds, pk, pid, iv1, iv2, out)) return true;
-        // pk.Gen4: Cute Charm first, then the Gen V Mystery Gift shiny pattern.
-        if (pid <= 0xFF && cuteCharmMatch(pk, pid, out)) return true;
-        if (g5mgShinyMatch(pk, pid, out)) return true;
+        // GetModified8BitMatch: pk.Gen4 checks Cute Charm first, other origins the Gen V gift pattern first.
+        if (isGen4Version(pk.version)) {
+            if (pid <= 0xFF && cuteCharmMatch(pk, pid, out)) return true;
+            if (g5mgShinyMatch(pk, pid, out)) return true;
+        } else {
+            if (g5mgShinyMatch(pk, pid, out)) return true;
+            if (pid <= 0xFF && cuteCharmMatch(pk, pid, out)) return true;
+        }
     } else {
         if (pid <= 0xFF && cuteCharmMatch(pk, pid, out)) return true;
     }
@@ -417,7 +449,7 @@ PidIv analyzePidIv(const Pk4& pk) noexcept {
     // GetColoStarterMatch requires Colosseum/XD origin: never for a Gen IV-origin PK4.
     if (xdMatch(seeds, pk, top, bot, iv1, iv2, r)) return r;
     if (roamerMatch(seeds, top, bot, iv32, r)) return r;
-    // GetChannelMatch requires Ruby/Sapphire origin: never for a Gen IV-origin PK4.
+    if (channelMatch(seeds, pk, top, bot, iv32, r)) return r;
     if (mg4Match(seeds, pid, iv1, iv2, r)) return r;
     if (bacdMatch(seeds, pk, pid, iv1, iv2, r)) return r;
     if (modifiedPidMatch(seeds, pk, pid, iv1, iv2, r)) return r;
@@ -1140,6 +1172,8 @@ bool tryCuteCharm(const S& e, const uint32_t* seeds, int count, uint8_t nat, uin
 }
 } // namespace K
 } // namespace
+
+int methodJReversalWindow(uint32_t seed, uint8_t nature) noexcept { return reversalWindow(seed, nature); }
 
 LeadSeed leadInfo4(const Pk4& pk, const SlotRef& slot, const PidIv& pidiv, uint8_t levelMin, uint8_t levelMax) noexcept {
     const bool hgss = isHGSS(pk.version);

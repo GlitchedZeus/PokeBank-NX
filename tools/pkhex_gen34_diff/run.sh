@@ -24,7 +24,7 @@ dotnet "$work/oracle/PKHeXGen34Oracle.dll" generate "$seed" "$mutations" "$gens"
 srcs=(src/Legality/Legality.cpp src/Legality/GBLegality.cpp src/Legality/GBLegalityData.cpp
     src/Legality/Gen4Legality.cpp src/Legality/Gen4LegalityHook.cpp src/Legality/Gen4LegalityEncounters.cpp
     src/Legality/Gen4LegalityMoves.cpp src/Legality/Gen4LegalityRng.cpp src/Legality/Gen4LegalityText.cpp
-    src/Legality/Gen4LegalityData.cpp
+    src/Legality/Gen4LegalityData.cpp src/Legality/Gen4LegalityPalPark.cpp
     src/Integration/Gen1/Gen1MoveCompatibility.cpp src/Integration/Gen2/Gen2MoveCompatibility.cpp
     src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/Pokemon1ReadOnly.cpp src/Pokemon/Pokemon2ReadOnly.cpp
     src/Pokemon/PersonalRecord4.cpp src/Pokemon/PersonalInfo4DP.cpp src/Pokemon/PersonalInfo4PT.cpp

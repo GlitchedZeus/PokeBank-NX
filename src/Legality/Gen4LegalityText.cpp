@@ -373,16 +373,20 @@ int numberCount(std::u16string_view s) noexcept {
     return n;
 }
 
-bool isWordFiltered4(std::u16string_view message) {
+bool isWordFiltered4(std::u16string_view message) { return isWordFiltered(message, 4); }
+
+bool isWordFiltered(std::u16string_view message, uint8_t originalGeneration) {
     if (message.size() <= 1 || isWhiteSpaceOnly(message)) return false;
     std::u16string lower;
     lower.reserve(message.size());
     for (char16_t c : message) lower.push_back(lowerInvariant(c));
     const std::u16string clean = normalize(message);
     uint16_t species = 0;
-    // WordFilterNX.IsFiltered(message, original Gen4): a Gen IV species name (any language) is exempt.
-    const bool nxExempt = lookupSpecies(D::kSpeciesLowerGen4, D::kSpeciesLowerGen4Count, lower, species) &&
-                          species <= kMaxSpecies4;
+    // WordFilterNX.IsFiltered(message, original): a species name of the original generation (any language,
+    // case-insensitive, up to that generation's max species) is exempt.
+    const bool nxExempt = originalGeneration == 3
+        ? lookupSpecies(D::kSpeciesLowerGen3, D::kSpeciesLowerGen3Count, lower, species) && species <= 386
+        : lookupSpecies(D::kSpeciesLowerGen4, D::kSpeciesLowerGen4Count, lower, species) && species <= kMaxSpecies4;
     if (!nxExempt && filterNX().isMatch(clean)) return true;
     // WordFilter3DS.IsFiltered(message, original Gen4) -> IsSpeciesNameGen7 (case-insensitive, <= 807).
     const bool dsExempt = lookupSpecies(D::kSpeciesLowerGen7, D::kSpeciesLowerGen7Count, lower, species) &&

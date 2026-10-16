@@ -12,8 +12,11 @@
  * GroundTileVerifier. PKHeX runs with default settings and no active save; its Fishy results
  * become Warnings here, Invalid stays Invalid.
  *
- * A Gen III origin (Pal Park) record is checked only for what does not depend on the Gen III
- * encounter; the encounter itself is reported as a Warning (coverage stays partial).
+ * A Gen III origin (Pal Park) record from R/S/E/FR/LG runs PKHeX's ParsePK3 for format 4: the
+ * Generation III encounter search (Gen4LegalityPalPark.cpp, EncounterGenerator3), the Gen III
+ * learn and evolution rules, the same field verifiers with their Generation III branches, and
+ * TransferVerifier.VerifyTransferLegalityG3. A Colosseum/XD origin is reported as a Warning
+ * (coverage stays partial) because the Orre encounter tables are not ported.
  */
 #include "Gen4LegalityInternal.h"
 
@@ -104,9 +107,10 @@ enum : uint8_t {
     kBallMaster = 1, kBallPoke = 4, kBallSafari = 5, kBallCherish = 16, kBallSport = 24,
 };
 enum : uint16_t {
-    kLocDaycare4 = 2000, kLocLinkTrade4 = 2002, kLocTransfer3 = 55, kItemGriseousOrb = 112,
-    kMoveSketch = 166,
+    kLocDaycare4 = 2000, kLocLinkTrade4 = 2002, kLocLinkTrade6 = 30002, kLocTransfer3 = 55, kItemGriseousOrb = 112,
+    kMoveSketch = 166, kSpeciesMew = 151,
 };
+enum : uint8_t { kVerS = 1, kVerR = 2, kVerE = 3, kVerFR = 4, kVerLG = 5 };
 enum : uint8_t { kLangJapanese = 1, kLangEnglish = 2, kLangFrench = 3, kLangItalian = 4, kLangSpanish = 7, kLangKorean = 8 };
 
 // Ribbon bits: index into Pk4::ribbons (0x24-0x27, 0x3C-0x3F, 0x60-0x63) and bit.
@@ -238,7 +242,8 @@ private:
     const Pk4& pk_;
     Template enc_{};
     EncInfo info_{};
-    std::vector<Evo> history_;
+    std::vector<Evo> history_; // EvolutionHistory.Gen4
+    History34 history3_{};     // Gen III origin only: EvolutionHistory.Gen3 (and Gen4, copied to history_)
     MoveResults moves_{};
     Search search_{};
     std::vector<Check> parse_;
@@ -256,15 +261,29 @@ private:
     void fishy(CheckIdentifier id, std::string text) { add(kFishy, id, std::move(text)); }
 
     bool isMysteryGift() const noexcept { return enc_.kind == EncKind::Pcd || enc_.kind == EncKind::RangerManaphy; }
+    /// TrainerNameVerifier.IsPlayerOriginalTrainer
     bool isPlayerOT() const noexcept {
         if (enc_.kind == EncKind::Trade || enc_.kind == EncKind::Ranch) return false;
+        if (isGen3Kind(enc_.kind)) return !isFixedTrainer3(enc_); // GiftColo3 (ITrainerID16ReadOnly) is fixed too
         if (isMysteryGift() && !enc_.isEgg) return false;
         return true;
     }
+    bool gen3Origin() const noexcept { return isGen3Version(pk_.version); }
+    bool hasVisitedGen3() const noexcept { return !history3_.gen3.empty(); }
     bool hasVisitedGen4() const noexcept { return !history_.empty(); }
-    bool wasTradedEgg() const noexcept { return pk_.eggLocation() == kLocLinkTrade4; }
+    /// PKM.GetTradedEggLocation: Generation 4 uses the link-trade location, Generation 3 the default.
+    uint16_t tradedEggLocation() const noexcept { return gen3Origin() ? kLocLinkTrade6 : kLocLinkTrade4; }
+    bool wasTradedEgg() const noexcept { return pk_.eggLocation() == tradedEggLocation(); }
     bool isWithinEncounterRange() const noexcept;
-    uint8_t encGeneration() const noexcept { return enc_.kind == EncKind::Invalid ? (isGen4Version(pk_.version) ? 4 : 0) : 4; }
+    /// IEncounterTemplate.Generation of the matched encounter (EncounterInvalid takes the origin's).
+    uint8_t encGeneration() const noexcept {
+        if (isGen3Kind(enc_.kind)) return 3;
+        if (enc_.kind != EncKind::Invalid) return 4;
+        return isGen4Version(pk_.version) ? 4 : (gen3Origin() ? 3 : 0);
+    }
+    /// IEncounterTemplate.Context as a generation (EncounterInvalid takes the entity's: Gen IV).
+    uint8_t encContextGeneration() const noexcept { return isGen3Kind(enc_.kind) ? 3 : 4; }
+    bool abilityCanMismatch3();
 
     // encounter search
     Check verifyEncounter(const Template& t) const;
@@ -299,6 +318,8 @@ private:
 
 bool Analyzer::isWithinEncounterRange() const noexcept {
     const uint8_t level = level_;
+    // PKM.HasOriginalMetLocation is false for a Gen III origin (the met data was rewritten by Pal Park).
+    if (gen3Origin()) return enc_.levelMin <= level && level <= enc_.levelMax;
     if (enc_.isEgg) return level == enc_.levelMin;
     if (enc_.kind == EncKind::Ranch) return enc_.levelMin <= level && level <= enc_.levelMax;
     if (pk_.metLevel != 0) return level == pk_.metLevel;
@@ -317,6 +338,30 @@ Check Analyzer::verifyEgg4Hatched() const {
 }
 
 Check Analyzer::verifyEncounter(const Template& t) const {
+    if (t.kind == EncKind::Static3) {
+        const auto& s = D::kStatics3[t.index];
+        if (s.species == kSpeciesMew && pk_.language != kLangJapanese)
+            return {kInvalid, CheckIdentifier::Encounter, "Mew at Faraway Island was only distributed to Japanese games"};
+        if (s.species == kDeoxys && s.location == 200 && pk_.language == kLangJapanese)
+            return {kInvalid, CheckIdentifier::Encounter, "Deoxys at Birth Island was never distributed to Japanese games"};
+    }
+    if (t.kind == EncKind::Egg3 && pk_.isEgg) { // VerifyUnhatchedEgg3
+        if (pk_.metLevel != 0) return {kInvalid, CheckIdentifier::Egg, "Egg: met level must be 0"};
+        const uint16_t hatch = (pk_.version == kVerFR || pk_.version == kVerLG) ? 146 : 32;
+        if (pk_.metLocation() != hatch) return {kInvalid, CheckIdentifier::Egg, "Egg: met location is not the Generation III egg location"};
+        return {};
+    }
+    if (isGen3Kind(t.kind)) {
+        if (t.isEgg && !pk_.isEgg) { // VerifyEncounterEgg3Transfer (format 4)
+            if (pk_.metLevel < 5)
+                return {kInvalid, CheckIdentifier::Egg, "Pal Park transfer of a hatched egg: met level must be at least 5"};
+            if (pk_.eggLocation() != 0)
+                return {kInvalid, CheckIdentifier::Egg, "Pal Park transfer of a hatched egg: egg location must be empty"};
+            if (pk_.metLocation() != kLocTransfer3)
+                return {kInvalid, CheckIdentifier::Egg, "Pal Park transfer of a hatched egg: met location must be Pal Park"};
+        }
+        return {};
+    }
     if (t.kind == EncKind::Static && t.species == kShaymin && pk_.language == kLangKorean)
         return {kInvalid, CheckIdentifier::Encounter, "Shaymin was never distributed to Korean games"};
     if (t.kind == EncKind::Static && D::kStatics[t.index].roaming && pk_.metLocation() == 193 && pk_.groundTile == 7)
@@ -340,15 +385,24 @@ Check Analyzer::verifyEncounter(const Template& t) const {
 
 Check Analyzer::verifyEvolution(const Template& t, const std::vector<Evo>& history, const MoveResults& moves) const {
     if (pk_.species != t.species) {
-        if (!hasVisited(history, pk_.species) || !hasVisited(history, t.species))
+        // The encounter species must appear in the history of the encounter's own context.
+        const bool gen3 = isGen3Kind(t.kind);
+        const std::vector<Evo>& original = gen3 ? history3_.gen3 : history;
+        if (!hasVisited(history, pk_.species) || !hasVisited(original, t.species))
             return {kInvalid, CheckIdentifier::Species, "Evolution from the encounter species is not possible"};
-        if (!isValidEvolutionWithMove(pk_, encInfo(t), history, moves))
+        const bool withMove = gen3 ? isValidEvolutionWithMove3(pk_, encInfo(t), history3_, moves)
+                                   : isValidEvolutionWithMove(pk_, encInfo(t), history, moves);
+        if (!withMove)
             return {kInvalid, CheckIdentifier::Species, "Evolution requires a move this Pokemon cannot have known"};
     }
     return {};
 }
 
 std::string encounterHint(const Pk4& pk) {
+    if (isGen3Version(pk.version)) {
+        if (pk.fateful) return "No matching Generation III event encounter";
+        return "No matching Generation III encounter for this species, level, ball and PID/IV";
+    }
     if (!pk.fateful && pk.eggLocation() - 2009u <= 5u) return "No matching gift egg";
     if (pk.fateful && pk.eggDate[2] != 0) return "No matching event egg (the only Gen IV event egg is Manaphy)";
     const uint16_t met = pk.metLocation();
@@ -357,15 +411,29 @@ std::string encounterHint(const Pk4& pk) {
 }
 
 void Analyzer::findVerifiedEncounter() {
-    search_ = searchEncounters(pk_, level_);
+    // A Gen III origin (Pal Park) record runs EncounterGenerator3 and the Gen III learn/evolution rules.
+    const bool gen3 = gen3Origin();
+    search_ = gen3 ? searchEncounters3(pk_, level_) : searchEncounters(pk_, level_);
     encounterSearched_ = true;
+    auto makeTemplateAny = [&](const Candidate& c) { return gen3 ? makeTemplate3(c, pk_) : makeTemplate(c, pk_); };
+    auto setHistory = [&](const EncInfo& info) {
+        if (gen3) {
+            history3_ = evolutionHistory3(pk_, info, level_);
+            history_ = history3_.gen4;
+        } else {
+            history_ = evolutionHistory(pk_, info, level_);
+        }
+    };
+    auto verifyMovesAny = [&](const EncInfo& info) {
+        return gen3 ? verifyMoves3(pk_, info, history3_) : verifyMoves(pk_, info, history_);
+    };
     if (search_.list.empty()) {
-        enc_ = makeTemplate(Candidate{}, pk_);
+        enc_ = makeTemplateAny(Candidate{});
         info_ = encInfo(enc_);
-        history_ = evolutionHistory(pk_, info_, level_);
+        setHistory(info_);
         parse_.clear();
         invalid(CheckIdentifier::Encounter, encounterHint(pk_));
-        moves_ = verifyMoves(pk_, info_, history_);
+        moves_ = verifyMovesAny(info_);
         return;
     }
     // PKHeX enumerates lazily (PeekEnumerator) and sets ManualFlag only when the generator is
@@ -379,7 +447,7 @@ void Analyzer::findVerifiedEncounter() {
     };
     for (std::size_t i = 0; i < n; ++i) {
         requested = std::max(requested, i);
-        const Template t = makeTemplate(search_.list[i], pk_);
+        const Template t = makeTemplateAny(search_.list[i]);
         Check e = verifyEncounter(t);
         if (e.severity != kValid && peek(i)) continue;
         enc_ = t;
@@ -389,8 +457,8 @@ void Analyzer::findVerifiedEncounter() {
             if (e.message.empty()) e.message = encounterHint(pk_);
             parse_.push_back(e);
         }
-        history_ = evolutionHistory(pk_, info_, level_);
-        moves_ = verifyMoves(pk_, info_, history_);
+        setHistory(info_);
+        moves_ = verifyMovesAny(info_);
         if (!allValid(moves_) && peek(i)) continue;
         bool parseValid = true;
         for (const auto& c : parse_) if (c.severity == kInvalid) parseValid = false;
@@ -398,14 +466,17 @@ void Analyzer::findVerifiedEncounter() {
         const Check evo = verifyEvolution(t, history_, moves_);
         if (evo.severity != kValid && peek(i)) continue;
         if (evo.severity != kValid) parse_.push_back(evo);
-        const int rating = matchRating(t, pk_);
+        const int rating = gen3 ? matchRating3(t, pk_) : matchRating(t, pk_);
         if (rating < 0 || rating < 3) break; // not IEncounterMatch, or better than PartialMatch
         if (peek(i)) continue;
         invalid(CheckIdentifier::Encounter, "Encounter is only a partial match (wrong version, location or IVs)");
         break;
     }
     const bool lastResortReached = requested + 1 == n;
-    if (lastResortReached && search_.manualFlag == 2)
+    // FramePatternSettings: RNGFrameNotFound3 is Fishy, RNGFrameNotFound4 Invalid.
+    if (lastResortReached && search_.manualFlag == 2 && encGeneration() == 3)
+        fishy(CheckIdentifier::PidRng, "The PID/IV does not match any reachable RNG frame for this Generation III wild encounter and lead");
+    else if (lastResortReached && search_.manualFlag == 2)
         invalid(CheckIdentifier::PidRng, "The PID/IV does not match any reachable RNG frame for this wild encounter and lead");
     else if (lastResortReached && search_.manualFlag == 1)
         invalid(CheckIdentifier::PidRng, "The PID/IV correlation type does not match this encounter");
@@ -416,21 +487,36 @@ void Analyzer::verifyPid() {
     if (enc_.species == kWurmple && pk_.species != kWurmple && !isWurmpleEvoValid(pk_.pid, pk_.species))
         invalid(CheckIdentifier::PidRng, "Wurmple's evolution does not match its PID");
     if (pk_.pid == 0) fishy(CheckIdentifier::PidRng, "PID is zero");
+    auto verifyEggGender8000 = [&]() {
+        if (enc_.species > kMaxSpecies4 || (D::kBreed[enc_.species].flags & 8) == 0) return;
+        const bool bit34 = pk_.gender != ((pk_.pid & 0x8000u) >> 15);
+        if (bit34) return;
+        bool inherited = false;
+        for (const auto& m : moves_) if (m.method == LearnMethod::InheritLevelUp) inherited = true;
+        if (pk_.gender == 1 || inherited)
+            invalid(CheckIdentifier::PidRng, "PID bit 15 does not match the gender for this Nidoran/Volbeat/Illumise egg");
+    };
     if (enc_.kind == EncKind::Egg) {
         if (pk_.pid == 0) fishy(CheckIdentifier::PidRng, "Egg PID is zero");
-        if (enc_.species <= kMaxSpecies4 && (D::kBreed[enc_.species].flags & 8) != 0) {
-            const bool bit34 = pk_.gender != ((pk_.pid & 0x8000u) >> 15);
-            if (!bit34) {
-                bool inherited = false;
-                for (const auto& m : moves_) if (m.method == LearnMethod::InheritLevelUp) inherited = true;
-                if (pk_.gender == 1 || inherited)
-                    invalid(CheckIdentifier::PidRng, "PID bit 15 does not match the gender for this Nidoran/Volbeat/Illumise egg");
-            }
-        }
+        verifyEggGender8000();
+    } else if (enc_.kind == EncKind::Egg3) {
+        // Daycare3.IsValidProcPID: R/S/FR/LG store only a non-zero lower half; Emerald any non-zero PID.
+        const bool proc = enc_.version == kVerE ? pk_.pid != 0 : (pk_.pid & 0xFFFFu) != 0;
+        if (!proc) invalid(CheckIdentifier::PidRng, "Generation III egg PID cannot be produced by the Day Care");
+        verifyEggGender8000();
     }
+    // Shiny.IsValid
     const bool shiny = pk_.isShiny();
-    if ((enc_.shiny == kShinyNever && shiny) || (enc_.shiny == kShinyAlways && !shiny))
-        invalid(CheckIdentifier::PidRng, shiny ? "This encounter cannot be shiny" : "This encounter must be shiny");
+    const uint32_t xorValue = (pk_.tid ^ pk_.sid ^ (pk_.pid >> 16) ^ (pk_.pid & 0xFFFFu)) & 0xFFFFu;
+    bool shinyOk = true;
+    switch (enc_.shiny) {
+    case kShinyNever: shinyOk = !shiny; break;
+    case kShinyAlways: shinyOk = shiny; break;
+    case kShinyAlwaysStar: shinyOk = xorValue == 1; break;
+    case kShinyAlwaysSquare: shinyOk = xorValue == 0; break;
+    default: break;
+    }
+    if (!shinyOk) invalid(CheckIdentifier::PidRng, shiny ? "This encounter cannot be shiny" : "This encounter must be shiny");
     if (enc_.kind == EncKind::Pcd && enc_.gift.pk.pid != 1 && pk_.pid != enc_.gift.pk.pid)
         invalid(CheckIdentifier::EventGift, "PID does not match the Mystery Gift's fixed PID");
 }
@@ -438,9 +524,12 @@ void Analyzer::verifyPid() {
 // ----------------------------------------------------------------------- language
 void Analyzer::verifyLanguage() {
     const uint8_t lang = pk_.language;
-    const int max = encGeneration() == 4 ? 8 : -1;
+    const uint8_t gen = encGeneration();
+    const int max = gen == 4 ? 8 : gen == 3 ? 7 : -1; // Legal.GetMaxLanguageID: Korean arrived in Generation IV
     if (lang == 6 || lang == 0 || static_cast<int>(lang) > max) {
-        invalid(CheckIdentifier::Trainer, "Language ID " + std::to_string(lang) + " is not valid for a Gen IV Pokemon");
+        invalid(CheckIdentifier::Trainer, "Language ID " + std::to_string(lang) +
+                                              (gen == 3 ? " is not valid for a Pokemon from a Generation III game"
+                                                        : " is not valid for a Gen IV Pokemon"));
         return;
     }
     if (encGeneration() == 4 && lang == kLangKorean && !pk_.isEgg) {
@@ -451,6 +540,13 @@ void Analyzer::verifyLanguage() {
 
 // ----------------------------------------------------------------------- nickname
 void Analyzer::verifyNicknameEgg(const std::u16string& nickname) {
+    // EggStateLegality.IsNicknameFlagSet and SpeciesName.GetEggName(language, enc.Generation).
+    if (encGeneration() == 3) {
+        if (!pk_.isNicknamed) invalid(CheckIdentifier::Egg, "Generation III eggs have the nickname flag set");
+        const std::u16string_view expect = pk_.language < 9 ? std::u16string_view(D::kEggName3[pk_.language]) : std::u16string_view();
+        if (nickname != expect) invalid(CheckIdentifier::Egg, "Egg name does not match the egg name for its language");
+        return;
+    }
     if (pk_.isNicknamed) invalid(CheckIdentifier::Egg, "Gen IV eggs do not have the nickname flag set");
     if (nickname != speciesName4(0, pk_.language))
         invalid(CheckIdentifier::Egg, "Egg name does not match the egg name for its language");
@@ -515,6 +611,18 @@ void Analyzer::verifyNickname() {
         verifyTrade4Names(nickname);
         if (enc_.kind == EncKind::Trade) return;
     }
+    // Generation III IFixedTrainer templates (trades, event gifts, PCNY/PCJP, Colosseum bonus discs): VerifyTrade.
+    const bool fixedTrainer3 = enc_.kind == EncKind::Trade3 || enc_.kind == EncKind::Gift3 || enc_.kind == EncKind::GiftNY3 ||
+                               enc_.kind == EncKind::GiftJP3 || enc_.kind == EncKind::GiftColo3;
+    if (fixedTrainer3) {
+        if (isFixedTrainer3(enc_) && !isTrainerMatch3(enc_, pk_, otText(pk_), pk_.language) && !gtsSanitized_)
+            invalid(CheckIdentifier::Trainer, "In-game trade or gift OT name was changed");
+        if (enc_.kind == EncKind::Trade3) { // IFixedNickname
+            if (!isNicknameMatch3(enc_, pk_, nickname, pk_.language))
+                invalid(CheckIdentifier::Trainer, "In-game trade nickname was changed");
+            return;
+        }
+    }
     if (pk_.isEgg) { verifyNicknameEgg(nickname); return; }
     if (pk_.isNicknamed) {
         uint16_t species = 0;
@@ -528,7 +636,8 @@ void Analyzer::verifyNickname() {
         }
         const std::size_t max = (pk_.language == kLangJapanese || pk_.language == kLangKorean) ? 5 : 10;
         if (nickname.size() > max) {
-            const std::size_t foreign = (enc_.isEgg && wasTradedEgg()) ? 10 : 0;
+            // GetForeignNicknameLength: only a traded egg from Generations 4-7.
+            const std::size_t foreign = (encGeneration() == 4 && enc_.isEgg && wasTradedEgg()) ? 10 : 0;
             if (foreign != 0 && nickname.size() <= foreign) fishy(CheckIdentifier::Trainer, "Nickname is longer than its language allows");
             else invalid(CheckIdentifier::Trainer, "Nickname is longer than its language allows");
             return;
@@ -548,8 +657,11 @@ void Analyzer::verifyNickname() {
         if (!valid) invalid(CheckIdentifier::Trainer, "Nickname does not match the species name for its language");
     }
     if (pk_.isNicknamed) {
-        if (isWordFiltered4(nickname)) invalid(CheckIdentifier::Trainer, "Nickname is blocked by the Nintendo word filter");
-        if (nickname.size() > 4 && numberCount(nickname) > 4) invalid(CheckIdentifier::Trainer, "Nickname has more than 4 digits");
+        // WordFilter.IsFiltered(nickname, Gen4, enc.Context); ContainsTooManyNumbers has no limit for Generation III.
+        if (isWordFiltered(nickname, encContextGeneration()))
+            invalid(CheckIdentifier::Trainer, "Nickname is blocked by the Nintendo word filter");
+        if (encGeneration() > 3 && nickname.size() > 4 && numberCount(nickname) > 4)
+            invalid(CheckIdentifier::Trainer, "Nickname has more than 4 digits");
     }
 }
 
@@ -575,16 +687,32 @@ void Analyzer::verifyTrainerName() {
     }
     const std::size_t max = (pk_.language == kLangJapanese || pk_.language == kLangKorean) ? 6 : 12;
     if (ot.size() > max) {
+        // TrainerNameVerifier.IsEdgeCaseLength
         bool edge = false;
-        if (enc_.isEgg) edge = (pk_.isEgg ? pk_.metLocation() == kLocLinkTrade4 : wasTradedEgg()) && ot.size() <= 12;
+        if (enc_.isEgg) {
+            if (enc_.kind == EncKind::Gift3 && pk_.isEgg && ot == std::u16string_view(D::kGift3Strings[D::kGifts3[enc_.index].otName]))
+                edge = true; // fixed-OT Mystery Gift egg
+            else
+                edge = (pk_.isEgg ? pk_.metLocation() == tradedEggLocation() : wasTradedEgg()) && ot.size() <= 12;
+        }
         if (!edge && !gtsSanitized_) invalid(CheckIdentifier::Trainer, "OT name is longer than its language allows");
     }
-    if (isWordFiltered4(ot)) invalid(CheckIdentifier::Trainer, "OT name is blocked by the Nintendo word filter");
-    if (ot.size() > 4 && numberCount(ot) > 4) invalid(CheckIdentifier::Trainer, "OT name has more than 4 digits");
+    if (isWordFiltered(ot, encContextGeneration())) invalid(CheckIdentifier::Trainer, "OT name is blocked by the Nintendo word filter");
+    if (encGeneration() > 3 && ot.size() > 4 && numberCount(ot) > 4) invalid(CheckIdentifier::Trainer, "OT name has more than 4 digits");
 }
 
 void Analyzer::verifyTrainerId() {
     if (!isPlayerOT()) return;
+    if (pk_.version == kVerR || pk_.version == kVerS) {
+        // MethodH.TryGetSeedTrainerID: Ruby/Sapphire derive the TID/SID pair from one LCRNG seed. A hatched R/S
+        // egg may carry an Emerald trainer's IDs without the version changing (Fishy).
+        uint32_t seeds[kSeedBuffer];
+        if (lcrng::getSeeds(seeds, static_cast<uint32_t>(pk_.sid) << 16, static_cast<uint32_t>(pk_.tid) << 16) == 0) {
+            const char* text = "Trainer ID/Secret ID pair cannot be generated by Ruby/Sapphire";
+            if (enc_.kind == EncKind::Egg3 && !pk_.isEgg) fishy(CheckIdentifier::Trainer, text);
+            else invalid(CheckIdentifier::Trainer, text);
+        }
+    }
     if (pk_.tid == 0 && pk_.sid == 0) fishy(CheckIdentifier::Trainer, "Trainer ID and Secret ID are both zero");
     else if (pk_.tid == pk_.sid) fishy(CheckIdentifier::Trainer, "Trainer ID equals Secret ID");
     else if (pk_.tid == 0) fishy(CheckIdentifier::Trainer, "Trainer ID is zero");
@@ -679,43 +807,57 @@ void Analyzer::verifyRibbons() {
         flag(kGorgeous); flag(kRoyal); flag(kGorgeousRoyal);
     } else {
         const bool gen4 = hasVisitedGen4();
-        // Event3
-        if (gift) {
+        const bool gen3 = hasVisitedGen3();
+        // Event3. RibbonRules.IsEarthRibbonAllowed: Generation III encounters (Colosseum/XD Mt. Battle).
+        const bool earthAllowed = encGeneration() == 3;
+        if (enc_.kind == EncKind::Gift3) { // IRibbonSetEvent3: only the National Ribbon is set by the template
+            if (rib(pk_, kNational) != (D::kGifts3[enc_.index].ribbonNational != 0)) ++bad;
+            flag(kCountry); flag(kChampionBattle); flag(kChampionRegional); flag(kChampionNational);
+        } else if (gift) {
             if (rib(g, kEarth)) { if (!rib(pk_, kEarth)) ++bad; }
             else flag(kEarth); // Earth needs a Gen III encounter
             for (Rib r : kEvent3Ribbons) compare(r);
         } else {
-            flag(kEarth);
+            if (!earthAllowed) flag(kEarth);
             for (Rib r : kEvent3Ribbons) flag(r); // National: only Gen III Shadow Pokemon
         }
         // Event4
         for (Rib r : kEvent4Ribbons) { if (gift) compare(r); else flag(r); }
-        // Unique3 / Common3 (no Gen III history for a Gen IV origin)
-        flag(kWinning); flag(kVictory);
-        flag(kChampionG3); flag(kArtist);
-        if (rib(pk_, kEffort) && !gen4) ++bad;
+        // Unique3 (RibbonRules.IsRibbonValidWinning / IsRibbonValidVictory) and Common3
+        if (gen3) {
+            const bool frontier3 = isAllowedBattleFrontier(history3_.gen3.front().species);
+            if (rib(pk_, kWinning) && !(frontier3 && enc_.levelMin <= 50)) ++bad;
+            if (rib(pk_, kVictory) && !frontier3) ++bad;
+        } else {
+            flag(kWinning); flag(kVictory);
+            flag(kChampionG3); flag(kArtist);
+        }
+        if (rib(pk_, kEffort) && !gen3 && !gen4) ++bad;
         // Unique4
         const Evo head = gen4 ? history_.front() : Evo{};
         const bool frontier = gen4 && isAllowedBattleFrontier(head.species) && !(head.species == kPichu && head.form == 1);
         if (!frontier) for (Rib r : kAbilityRibbons) flag(r);
-        for (uint8_t b = 4; b <= 6; ++b) for (uint8_t bit = 0; bit < 8; ++bit) if (!(b == 6 && bit >= 4)) flag(Rib{b, bit});
-        const bool contest4 = gen4 && head.species != 132 && head.species != kUnown && !(head.species == kPichu && head.form == 1);
-        for (uint8_t set = 0; set < 5; ++set) {
-            const uint8_t b = static_cast<uint8_t>(8 + set / 2);
-            const uint8_t base = static_cast<uint8_t>((set % 2) * 4);
+        // Contest ribbon sets (initial, super/great, hyper/ultra, master): a higher rank needs every lower one.
+        auto contestSet = [&](uint8_t b, uint8_t base, bool allowed) {
             const bool initial = rib(pk_, Rib{b, base}), great = rib(pk_, Rib{b, static_cast<uint8_t>(base + 1)});
             const bool ultra = rib(pk_, Rib{b, static_cast<uint8_t>(base + 2)}), master = rib(pk_, Rib{b, static_cast<uint8_t>(base + 3)});
-            if (!contest4) {
+            if (!allowed) {
                 bad += initial + great + ultra + master;
-                continue;
+                return;
             }
             bool top = master;
             if (ultra) top = true; else if (top) ++bad;
             if (great) top = true; else if (top) ++bad;
             if (top && !initial) ++bad;
-        }
+        };
+        // RibbonRules.IsAllowedContest3: any species with a Generation III history.
+        for (uint8_t set = 0; set < 5; ++set)
+            contestSet(static_cast<uint8_t>(4 + set / 2), static_cast<uint8_t>((set % 2) * 4), gen3);
+        const bool contest4 = gen4 && head.species != 132 && head.species != kUnown && !(head.species == kPichu && head.form == 1);
+        for (uint8_t set = 0; set < 5; ++set)
+            contestSet(static_cast<uint8_t>(8 + set / 2), static_cast<uint8_t>((set % 2) * 4), contest4);
         // Common4
-        if (rib(pk_, kFootprint) && !gen4) ++bad;
+        if (rib(pk_, kFootprint) && !gen3 && !gen4) ++bad;
         flag(kRecord);
         const bool sinnoh4 = gen4 && !(enc_.kind == EncKind::Static && enc_.species == kPichu && enc_.form == 1);
         if (rib(pk_, kLegend) && !gen4) ++bad;
@@ -749,34 +891,64 @@ void Analyzer::verifyAbility() {
         return;
     }
     if (enc_.kind == EncKind::RangerManaphy) return;
+    // VerifyAbility345: a Gen III origin may keep its Gen III ability without matching the PID (pre-capsule).
+    const bool canMismatch = a1 != a2 && encGeneration() == 3 && abilityCanMismatch3();
     const int encAbility = enc_.ability;
     if (encAbility > 0) {
         const int single = encAbility == 1 ? 0 : (encAbility == 2 ? 1 : 2);
-        if (enc_.species != pk_.species) { pidMatch(); return; }
+        if (enc_.species != pk_.species && !canMismatch) {
+            // Evolving in Gen III keeps the ability index, so a Gen III fixed ability may still be held.
+            if (encGeneration() == 3 && single == abilIndex) return;
+            pidMatch();
+            return;
+        }
         if (single == abilIndex) return;
-        if ((1 << pidIndex) == (1 << single)) return;
+        if (pidIndex == single) return;
+        if (canMismatch) { pidMatch(); return; }
         invalid(CheckIdentifier::Ability, "Ability does not match this encounter's fixed ability");
         return;
     }
-    pidMatch();
+    if (!canMismatch) pidMatch();
+}
+
+/// AbilityVerifier.VerifyAbilityPreCapsule / VerifyAbilityGen3Transfer for a Gen III origin in format 4.
+bool Analyzer::abilityCanMismatch3() {
+    if (pk_.species > 386) return false;              // evolved in Gen IV into a new species
+    if (history3_.gen3.empty()) return false;         // could not exist in Gen III
+    const uint16_t max3 = history3_.gen3.front().species;
+    const D::Personal3& pers = D::kPersonalE3[max3];
+    if (pers.ability1 != pers.ability2) return false; // two Gen III abilities: the PID decides
+    if (pk_.species != max3) return false;            // evolved in Gen IV: must match the PID
+    if (history_.size() > 1) {
+        if (pk_.ability == pers.ability1) return true;
+        if (pk_.ability == pi_.ability2()) return false;
+    }
+    if (pk_.ability != pers.ability1)
+        invalid(CheckIdentifier::Ability, "Ability must be the species' only Generation III ability");
+    return true;
 }
 
 // ----------------------------------------------------------------------- ball
 void Analyzer::verifyBall() {
     const uint8_t ball = pk_.ball();
     auto bad = [&]() { invalid(CheckIdentifier::Items, "Ball (#" + std::to_string(ball) + ") is not possible for this encounter"); };
-    if (enc_.species == kNincada && pk_.species == kShedinja) {
+    // Gen III evolution copies the ball; otherwise Shedinja gets a Poke Ball.
+    const bool shedinja3 = enc_.kind == EncKind::Slot3 && history3_.gen3.size() == 2;
+    if (enc_.species == kNincada && pk_.species == kShedinja && !shedinja3) {
         const bool bcc = enc_.kind == EncKind::Slot && enc_.area->type == SlotRef::kBugContest && history_.size() == 2;
         if (bcc ? !(ball == kBallSport || ball == kBallPoke) : ball != kBallPoke) bad();
         return;
     }
     if (enc_.kind == EncKind::Invalid) return;
     if (enc_.fixedBall != 0) { if (ball != enc_.fixedBall) bad(); return; }
-    if (enc_.kind == EncKind::Egg) { if (ball != kBallPoke) bad(); return; }
+    if (enc_.kind == EncKind::Egg || enc_.kind == EncKind::Egg3) { if (ball != kBallPoke) bad(); return; }
+    // BallUseLegality.GetWildBalls(enc.Generation, enc.Version)
     const uint8_t v = enc_.version;
-    const bool hgss = v == D::kHG || v == D::kSS || v == D::kVerHGSS;
+    const bool gen3 = encGeneration() == 3;
+    const bool hgss = !gen3 && (v == D::kHG || v == D::kSS || v == D::kVerHGSS);
     uint64_t mask = 0;
-    for (uint8_t b : {1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}) mask |= uint64_t{1} << b;
+    for (uint8_t b : {1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12}) mask |= uint64_t{1} << b;
+    if (!gen3) for (uint8_t b : {13, 14, 15}) mask |= uint64_t{1} << b;
     if (hgss) for (uint8_t b = 17; b <= 23; ++b) mask |= uint64_t{1} << b;
     if (ball >= 64 || ((mask >> ball) & 1) == 0) bad();
 }
@@ -791,6 +963,10 @@ void Analyzer::verifyForm() {
     const bool inRange = form == 0 || form < count;
     const bool oob = (species == kUnown && form < (gen == 2 ? 26 : 28)) || (species == kMothim && form < 3);
     if (!inRange && !oob) { invalid(CheckIdentifier::Species, "Form " + std::to_string(form) + " is out of range"); return; }
+    if (species == kUnown && gen == 3) { // EntityPID.GetUnownForm3: Gen III Unown take their letter from the PID
+        if (form != unownForm3(pk_.pid)) invalid(CheckIdentifier::Species, "Unown's form does not match its PID");
+        return;
+    }
     if (species == kGiratina && ((form == 1) != (pk_.heldItem == kItemGriseousOrb))) {
         invalid(CheckIdentifier::Species, "Giratina's form must match whether it holds the Griseous Orb");
         return;
@@ -812,27 +988,43 @@ void Analyzer::verifyMisc() {
         bool contest = false;
         for (uint8_t c : pk_.contest) if (c != 0) contest = true;
         if (contest) invalid(CheckIdentifier::Egg, "Eggs cannot have contest stats");
+        // EggVerifier: an egg cannot change context (a Gen III egg must hatch before Pal Park).
+        if (isGen3Kind(enc_.kind)) invalid(CheckIdentifier::Egg, "Generation III eggs cannot be transferred to Generation IV");
     }
     // MiscVerifierG4
     if (pk_.walkingMood != 0 && pk_.isEgg) fishy(CheckIdentifier::Egg, "Eggs do not have a walking mood");
     const uint8_t leaf = pk_.shinyLeaf;
     if ((leaf > 0x1F && leaf != 0x3F) || (leaf != 0 && pk_.isEgg)) invalid(CheckIdentifier::Misc, "Shiny Leaf value is not obtainable");
+    // Pal Park: D/P leave the Pt/HG/SS met location unset; Pt/HG/SS write it equal to the D/P value.
+    const bool palPark = encGeneration() == 3;
+    const bool palParkPtHGSS = palPark && pk_.metLocationExtended != 0;
+    if (palParkPtHGSS && pk_.metLocationExtended != pk_.metLocationDP)
+        invalid(CheckIdentifier::Transfer, "Pal Park met location differs between the D/P and Pt/HG/SS fields");
     if (pk_.ballDPPt > kBallCherish) invalid(CheckIdentifier::Items, "D/P/Pt ball value is above the Cherish Ball");
     {
-        const bool createdHGSS = isHGSS(pk_.version) && enc_.kind != EncKind::Pcd;
+        // MiscVerifierG4.IsValidBallHGSS: HG/SS-created records (including Pal Park into Pt/HG/SS) set this byte.
+        const bool createdHGSS = isHGSS(pk_.version) ? enc_.kind != EncKind::Pcd : palParkPtHGSS;
         bool ok;
         if (!createdHGSS) ok = pk_.ballHGSS == 0;
+        else if (palParkPtHGSS && pk_.ballHGSS == 0) ok = true; // could be a Platinum transfer
         else ok = pk_.ballHGSS == pk_.ballDPPt || (pk_.ballDPPt == kBallPoke && pk_.ballHGSS > kBallCherish);
         if (!ok) invalid(CheckIdentifier::Items, "HG/SS ball value does not match the D/P/Pt ball value");
     }
     // Fateful
-    if (isMysteryGift()) {
+    if (enc_.kind == EncKind::Gift3) {
+        const auto& g = D::kGifts3[enc_.index];
+        if (g.fateful != 0) {
+            if (!g.isEgg && !pk_.fateful) invalid(CheckIdentifier::EventGift, "Fateful encounter flag is missing");
+        } else if (pk_.fateful) {
+            invalid(CheckIdentifier::EventGift, "Fateful encounter flag is set on a non-event encounter");
+        }
+    } else if (isMysteryGift()) {
         const bool giftFateful = enc_.kind == EncKind::Pcd ? enc_.gift.pk.fateful : enc_.gift.fateful();
         if (enc_.kind == EncKind::Pcd && enc_.gift.version() != pk_.version && enc_.gift.pk.version == 0)
             invalid(CheckIdentifier::EventGift, "This Mystery Gift was not distributed to the origin game");
         if (pk_.fateful != giftFateful)
             invalid(CheckIdentifier::EventGift, giftFateful ? "Fateful encounter flag is missing" : "Fateful encounter flag is set");
-    } else if ((enc_.kind == EncKind::Static || enc_.kind == EncKind::Ranch) && enc_.fateful) {
+    } else if ((enc_.kind == EncKind::Static || enc_.kind == EncKind::Ranch || enc_.kind == EncKind::Static3) && enc_.fateful) {
         if (!pk_.fateful) invalid(CheckIdentifier::EventGift, "Fateful encounter flag is missing");
     } else if (pk_.fateful) {
         invalid(CheckIdentifier::EventGift, "Fateful encounter flag is set on a non-event encounter");
@@ -917,8 +1109,10 @@ void Analyzer::verifyItem() {
 
 void Analyzer::verifyContest() {
     std::array<uint8_t, 6> initial{};
-    const bool trade = enc_.kind == EncKind::Trade;
-    if (trade) for (std::size_t i = 0; i < 5; ++i) initial[i] = D::kTrades[enc_.index].contest;
+    // ContestStatInfo.GetReferenceTemplate: in-game trades (IContestStatsReadOnly) carry contest stats.
+    const bool trade = enc_.kind == EncKind::Trade || enc_.kind == EncKind::Trade3;
+    if (enc_.kind == EncKind::Trade) for (std::size_t i = 0; i < 5; ++i) initial[i] = D::kTrades[enc_.index].contest;
+    if (enc_.kind == EncKind::Trade3) for (std::size_t i = 0; i < 6; ++i) initial[i] = D::kTrades3[enc_.index].contest[i];
     bool any = false;
     for (uint8_t c : pk_.contest) if (c != 0) any = true;
     if (!any || (trade && pk_.contest == initial)) return;
@@ -942,6 +1136,39 @@ void Analyzer::verifyContest() {
     const uint8_t nature = pk_.nature();
     const uint8_t sheen = pk_.contest[5];
     const bool equal = pk_.contest == initial;
+    if (encGeneration() == 3) { // Pokeblocks: ContestStatInfo.CalculateMinimumSheen3 / CalculateMaximumSheen3
+        constexpr int kBestSheen3 = 214;
+        int minSheen3;
+        if (equal) minSheen3 = initial[5];
+        else {
+            const int raw = averageFeel(0);
+            if (raw == 255) minSheen3 = kBestSheen3;
+            else {
+                int avg = std::max(1, nature % 6 == 0 ? raw : averageFeel(nature));
+                avg = std::min(raw, avg);
+                avg = kBestSheen3 * avg / 255;
+                minSheen3 = std::clamp(avg, 1, kBestSheen3);
+            }
+        }
+        if (sheen < minSheen3) invalid(CheckIdentifier::Stats, "Contest sheen is too low for the contest stats gained");
+        int maxSheen3;
+        bool anyMax3 = false;
+        for (std::size_t i = 0; i < 5; ++i) if (pk_.contest[i] == 255) anyMax3 = true;
+        if (anyMax3) maxSheen3 = 255;
+        else if (equal) maxSheen3 = initial[5];
+        else {
+            const int sum = gainedSum(nature);
+            if (sum == 0) maxSheen3 = 0;
+            else {
+                int gained = 0;
+                for (std::size_t i = 0; i < 5; ++i) if (pk_.contest[i] - initial[i] >= 2) ++gained;
+                const int permit = gained >= 3 ? sum * 83 / 6 : sum * 19 / 9;
+                maxSheen3 = std::clamp(permit, 1, 255);
+            }
+        }
+        if (sheen > maxSheen3) invalid(CheckIdentifier::Stats, "Contest sheen is too high for the contest stats gained");
+        return;
+    }
     // CalculateMinimumSheen4
     int minSheen;
     if (equal) minSheen = initial[5];
@@ -1022,10 +1249,14 @@ Report Analyzer::run() {
     verifyMarking();
     verifyGroundTile();
     verifyMoveResults();
+    // ParsePK3: TransferVerifier.VerifyTransferLegalityG3 (Pal Park writes met location 55).
+    if (gen3Origin() && pk_.metLocation() != kLocTransfer3)
+        invalid(CheckIdentifier::Transfer, "A Generation III Pokemon must have been met at Pal Park");
 
     bool anyInvalid = false;
     for (const Check& c : parse_) if (c.severity == kInvalid) anyInvalid = true;
-    if (anyInvalid && enc_.kind == EncKind::Invalid && pk_.fateful)
+    // LegalityAnalysis.IsPotentiallyMysteryGift: never for a Gen III origin outside format 3.
+    if (anyInvalid && enc_.kind == EncKind::Invalid && pk_.fateful && !gen3Origin())
         invalid(CheckIdentifier::EventGift, "Fateful encounter without a matching Mystery Gift");
 
     for (const Check& c : parse_) {
@@ -1076,17 +1307,18 @@ Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSour
                                  CheckIdentifier::Species});
         return r;
     }
-    if (Gen4::isGen3Version(pk.version)) {
+    if (pk.version == 15) {
+        // Colosseum/XD origin: the Orre encounter tables (shadow, XD wild/static, trades) are not ported.
         const char* name = Gen4::versionName(pk.version);
         r.coverage.sourceGame = r.coverage.internal = r.coverage.moves = r.coverage.encounter = CoverageLevel::Partial;
         r.coverage.eventGift = r.coverage.pidRng = r.coverage.eggBreeding = r.coverage.transfer = CoverageLevel::Partial;
         r.issues.push_back(Issue{Severity::Warning,
                                  std::string("Pal Park transfer from ") + (name ? name : "a Gen III game") +
-                                     ": the Generation III encounter is not verified",
+                                     ": the Colosseum/XD encounter is not verified",
                                  CheckIdentifier::Transfer});
         return r;
     }
-    if (!Gen4::isGen4Version(pk.version)) {
+    if (!Gen4::isGen4Version(pk.version) && !Gen4::isGen3Version(pk.version)) {
         r.issues.push_back(Issue{Severity::Invalid,
                                  "Origin game #" + std::to_string(pk.version) + " cannot produce a PK4 (not a Gen III or Gen IV game)",
                                  CheckIdentifier::SourceGame});
