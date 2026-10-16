@@ -194,3 +194,16 @@ $(HOST_BUILD)/test_gen1_list_fit: $(GEN1_LIST_FIT_SOURCES) include/UI/Gen1ListFi
 $(HOST_BUILD)/test_gen1_list_fit_sanitize: $(GEN1_LIST_FIT_SOURCES) include/UI/Gen1ListFit.h src/UI/Gen1PokemonEditorOverlayUX.inc src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_LIST_FIT_SOURCES) -o $@
+
+GEN2_MOVES_PANEL_SOURCES := tests/test_gen2_moves_panel.cpp $(GEN2_STAGED_EDITOR_COMMON) src/Names/MoveNames.cpp src/Integration/Gen1/Gen1StagedPokemonEditor.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen1/Gen1BattleStats.cpp
+GEN2_MOVES_PANEL_DEPS := include/UI/Gen2MovesPanel.h include/UI/ClassicMovesPanel.h include/UI/SharedMovesPanel.h include/UI/SharedMoveFacts.h src/UI/Gen1PokemonEditorFoundationHardwareFix.inc src/UI/Gen1PokemonDetailsPresentation.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen2_moves_panel
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_moves_panel_sanitize
+host-test: $(HOST_BUILD)/test_gen2_moves_panel
+host-sanitize: $(HOST_BUILD)/test_gen2_moves_panel_sanitize
+$(HOST_BUILD)/test_gen2_moves_panel: $(GEN2_MOVES_PANEL_SOURCES) $(GEN2_MOVES_PANEL_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN2_MOVES_PANEL_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_moves_panel_sanitize: $(GEN2_MOVES_PANEL_SOURCES) $(GEN2_MOVES_PANEL_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_MOVES_PANEL_SOURCES) -o $@

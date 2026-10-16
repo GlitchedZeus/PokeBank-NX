@@ -215,38 +215,12 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
 
 void redrawGen2MovesSemantics(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
                               const UnifiedWorkspaceState& unified,
-                              int x, int y, int w, bool /*passive*/) {
+                              int x, int y, int w, bool passive) {
+    // Repaint the heading and the shared move rows over anything an older layer drew there.
     fb.drawFilledRect(x + 10, y + 6, 150, 34, Colors::Panel);
     fb.drawText(x + 14, y + 10, "MOVES", Colors::Text, TextStyle::Heading);
-    fb.drawFilledRect(x + 10, y + 38, w - 20, 146, Colors::Panel);
-    const int ppX = x + w - 226;
-    const int upsX = x + w - 154;
-    fb.drawText(ppX, y + 42, "PP", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(upsX, y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
-    const auto visibleMoveFocus = UnifiedContract::normalizeMoveRowFocus(
-        UnifiedContract::Generation::Gen2, unified.focus, unified.crystal);
-    for (int slot = 0; slot < 4; ++slot) {
-        const int yy = y + 62 + slot * 32;
-        const bool selected = visibleMoveFocus.panel == UnifiedContract::Panel::Moves &&
-                              visibleMoveFocus.row == slot;
-        if (selected) {
-            const auto cell = UnifiedContract::moveRowFocus(w);
-            drawGen2Focus(fb, x + cell.x, yy - 5, cell.width, 28, true);
-        }
-        const uint8_t move = state.working.moves[static_cast<std::size_t>(slot)];
-        const auto status = moveStatus(screen, state, slot);
-        fb.drawText(x + 18, yy, move == 0 ? "Empty" : Names::getMoveName(move), Colors::Text, TextStyle::Caption);
-        if (move != 0) {
-            fb.drawText(ppX, yy, std::to_string(state.working.pp[static_cast<std::size_t>(slot)]), Colors::Text, TextStyle::Caption);
-            fb.drawText(upsX, yy, std::to_string(state.working.ppUps[static_cast<std::size_t>(slot)]), Colors::Text, TextStyle::Caption);
-        }
-        const std::string statusText = status == Rules::CompatibilityState::Ok ? "OK" :
-            status == Rules::CompatibilityState::UnusualPreserved ? "Unusual" : "Invalid";
-        int statusW = 0, statusH = 0;
-        fb.measureText(statusText, statusW, statusH, TextStyle::Caption);
-        fb.drawText(x + w - 18 - statusW, yy, statusText,
-                    unifiedStatusColor(status), TextStyle::Caption);
-    }
+    fb.drawFilledRect(x + 6, y + 32, w - 12, UI::SharedMovesPanel::kDataPaneOffset - 36, Colors::Panel);
+    drawGen2SharedMoveRows(fb, screen, state, unified, x, y, w, passive);
 }
 
 void drawFullscreenGen2Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb,

@@ -41,6 +41,11 @@ inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame ga
     } else {
         rows.push_back({"Caught history", "No caught data recorded"});
     }
+    // Origin & Legality (formerly under the move rows): Crystal checks the current level against
+    // the recorded met level; Gold/Silver record nothing to check.
+    rows.push_back({"Legality", game == G::SourceGame::Crystal
+        ? Gen2Native::caughtLevelLegalityText(Gen2Native::caughtLevelLegality(p.level, caught))
+        : "Not checked"});
     return rows;
 }
 

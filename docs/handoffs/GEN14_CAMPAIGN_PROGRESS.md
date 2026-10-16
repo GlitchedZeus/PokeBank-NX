@@ -59,9 +59,14 @@ Each new test fails against the previous code unless marked "pinning".
 | 11 | Crystal Met Location chooser proportional, names only; Gen I has no met location | 47cac826 | `test_gen2_location_picker` |
 | 1/5 | Gen I list editors: whole rows above status line; no Row x/y counters | 9d1d03f9 | `test_gen1_list_fit` |
 | 2 | Bag Remove asks first (Y/B); one per-item quantity query | 3dcce1fd | `test_classic_inventory_ui_model` |
+| 4/7 | "Origin & Legality" label; shared picker footers (pickerFooter); shared Pokerus rule | 4203ce0d + 6e900e27 (native fix) | `test_gen2_inline_fields`, route contracts |
 
-Waiting: Thread S shared unit (Origin & Legality label, green-A/red-B picker footer, shared moves
-panel) for phases 4/7 and the Gen I moves alignment; owner detail on the "hidden row" in Gen I Create.
+Note: 4203ce0d alone fails the native build (SharedEditorChrome.h first included under the composite's
+`drawFooter` rename); 6e900e27 fixes it with push/pop_macro.
+
+Remaining: item 1 QuantityPolicy (waiting on Makefile link permission); phase 1 Gen I/II moves on
+SharedMovesPanel; item 5 action menu adapter (S 41271d7); item 6 SharedDataPane::layoutRows (S 9c3f6f8);
+owner detail on the "hidden row" in Gen I Create.
 
 Open / reported:
 - Coordinator one-liner: pass held/stick to `handleFoundationPassiveViewInput` (Gen I View stick parity).

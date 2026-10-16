@@ -135,11 +135,9 @@ int main() {
     assert(gen2Final.find("stat, Colors::Accent, TextStyle::Caption") == std::string::npos);
 
     // Move status owns a far-right region independent of PP/Ups; empty rows skip PP/Ups.
-    assert(gen1Passive.find("moveStatusRightPad") != std::string::npos);
-    assert(gen1Passive.find("ppRightOffset") != std::string::npos);
-    assert(gen1Passive.find("if (move != 0)") != std::string::npos);
-    assert(gen2Final.find("const int ppX = x + w - 226") != std::string::npos);
-    assert(gen2Final.find("x + w - 18 - statusW") != std::string::npos);
+    assert(gen1Passive.find("ClassicMovesPanel::draw(") != std::string::npos);
+    // Gen II rows are the shared Moves panel's (fixed PP / PP Ups / status columns).
+    assert(gen2Final.find("drawGen2SharedMoveRows(") != std::string::npos);
     assert(gen2Final.find("fb.drawText(x + 292, yy") == std::string::npos);
 
     // Classic derivation/storage notes have dedicated baselines instead of one long overlapping line.

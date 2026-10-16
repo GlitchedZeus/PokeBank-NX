@@ -201,7 +201,8 @@ int main() {
     assert(unified.find("{\"Friendship\", std::to_string(p.friendship)}") != std::string::npos);
     assert(unified.find("{\"Pokerus\", Gen2Native::pokerusText(p.pokerus)}") != std::string::npos);
     assert(unified.find("std::array<std::pair<std::string, std::string>, 2> capabilityRows") != std::string::npos);
-    assert(unified.find("std::string(PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading) + \": Not checked\"") != std::string::npos);
+    // Origin & Legality moved from under the move rows into the GEN II DATA pane.
+    assert(unified.find("drawGen2SharedMoveRows(") != std::string::npos);
     assert(unified.find("const int first = unified.detailsViewport.firstRow") != std::string::npos);
     // Touching a visually scrolled Details row must not invoke the old
     // independently recalculated focus-centred hit test. The 1700+ row
@@ -246,12 +247,13 @@ int main() {
            std::string::npos);
     assert(sharedShell.find("drawVerticalScrollIndicator") != std::string::npos);
     assert(finalFix.find("drawVerticalScrollIndicator") != std::string::npos);
-    assert(finalFix.find("visibleMoveFocus = UnifiedContract::normalizeMoveRowFocus") != std::string::npos);
-    assert(finalFix.find("moveRowFocus(w)") != std::string::npos);
+    // Move rows: one row-wide focus, drawn by the shared Moves panel in every layer.
+    assert(finalFix.find("drawGen2SharedMoveRows(") != std::string::npos);
     assert(unified.find("Unified::moveRowColumn") != std::string::npos);
-    const auto movePanel = unified.substr(unified.find("void drawUnifiedMoves("),
-        unified.find("void drawProgressionEditor(") - unified.find("void drawUnifiedMoves("));
-    assert(movePanel.find("Unified::moveRowFocus(w)") != std::string::npos);
+    const auto movePanel = unified.substr(unified.find("void drawGen2SharedMoveRows("),
+        unified.find("void drawProgressionEditor(") - unified.find("void drawGen2SharedMoveRows("));
+    assert(movePanel.find("visibleMoveFocus = Unified::normalizeMoveRowFocus") != std::string::npos);
+    assert(movePanel.find("UI::Gen2MovesPanel::draw(") != std::string::npos);
     assert(movePanel.find("unified.focus.column == 1") == std::string::npos);
     assert(movePanel.find("unified.focus.column == 2") == std::string::npos);
     assert(unified.find("A/Y/X never mutate a View session") != std::string::npos);
