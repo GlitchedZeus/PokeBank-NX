@@ -45,14 +45,13 @@ OUT_OF_SCOPE: dict[str, str] = {
     # e.g. the base builds a gen4ItemView footer, so Gen IV bags may render through it).
 }
 
-# CG11: the Gen I-V refusal guard S adds in front of the generic (Gen VI+) Pokemon UI. Rebind the
-# name when S lands.
-GENERIC_UI_GUARD = re.compile(
-    r"\b(isGen1to5\w*|isGenItoV\w*|gen15\w*Source|isClassicOrNative\w*|genericPokemonUiAllowed|"
-    r"allowsGenericPokemonUi|genericSheetAllowed|isModernGenerationSource|nativeGen15\w*)\s*\(")
-GENERIC_UI_OPEN = re.compile(
-    r"\bactionSheet\s*\.\s*open\s*\(|\bdetails\s*\.\s*active\s*=\s*true\b|"
-    r"\bpickerActive\s*=\s*true\b|\bstatEdit\s*\.\s*dialogActive\s*=\s*true\b")
+# CG11 (S 647917e): genericUiAllowedForSession(screen, ClassicGenericUi::GenericUi kind) in
+# TrainerViewScreenBase.inc wraps ClassicGenericUi::genericUiAllowed(classicSession(gameId), kind)
+# (include/UI/ClassicGenericUiGuard.h). Openers of the generic action sheet and details editor are
+# guarded; a per-frame reset in update() closes any generic picker / stat dialog in a Gen I-V session.
+GENERIC_UI_GUARD = re.compile(r"\bgenericUiAllowedForSession\s*\(")
+GENERIC_UI_GUARDED_OPEN = re.compile(r"\bactionSheet\s*\.\s*open\s*\(|\bdetails\s*\.\s*active\s*=\s*true\b")
+GENERIC_UI_GUARD_HEADER = "include/UI/ClassicGenericUiGuard.h"
 
 # Names the lanes are introducing. Update when the lane lands if the final name differs.
 # S: include/UI/SharedEditorPresentation.h pickerFooter(PickerFooterSpec) / confirmFooter and
@@ -354,11 +353,28 @@ def contracts(sources: list[Source]) -> list[Result]:
     r = Result("CG11-no-generic-modern-ui-in-gen1-5",
                "In a Gen I-V session no path opens the generic action sheet, details modal, PickerDialog or StatEditDialog")
     for s in U:
-        for m in GENERIC_UI_OPEN.finditer(s.code):
+        for m in GENERIC_UI_GUARDED_OPEN.finditer(s.code):
             ln = s.code.count("\n", 0, m.start()) + 1
-            window = "\n".join(s.code.splitlines()[max(0, ln - 60):ln])
-            if not GENERIC_UI_GUARD.search(window):
-                r.violations.append(f"{s.rel}:{ln}: {s.code.splitlines()[ln - 1].strip()[:120]} (no Gen I-V refusal guard)")
+            lines = s.code.splitlines()
+            # The guard may precede the open, or follow it within the same few lines (the base opener
+            # opens, then re-routes / closes before anything is drawn).
+            window = "\n".join(lines[max(0, ln - 40):ln + 6])
+            # A target hand-off that is never drawn: open, read-only details, close.
+            handoff = "\n".join(lines[ln - 1:ln + 4])
+            is_handoff = (re.search(r"openActionSheetTargetDetails\s*\(\s*true\s*\)", handoff)
+                          and re.search(r"actionSheet\s*\.\s*close\s*\(", handoff))
+            if not GENERIC_UI_GUARD.search(window) and not is_handoff:
+                r.violations.append(f"{s.rel}:{ln}: {lines[ln - 1].strip()[:120]} (no genericUiAllowedForSession guard)")
+    base = next((s for s in U if s.rel == "src/UI/TrainerViewScreenBase.inc"), None)
+    reset = base and re.search(
+        r"if\s*\(\s*!\s*genericUiAllowedForSession\s*\([^)]*\)\s*\)\s*\{(?=[^}]*pickerActive\s*=\s*false)(?=[^}]*statEdit\s*\.\s*dialogActive\s*=\s*false)",
+        base.code)
+    if not reset:
+        r.violations.append("src/UI/TrainerViewScreenBase.inc: no per-frame reset closing pickerActive / statEdit.dialogActive "
+                            "when genericUiAllowedForSession(...) is false")
+    hdr = next((s for s in sources if s.rel == GENERIC_UI_GUARD_HEADER), None)
+    if hdr is None or not re.search(r"\bgenericUiAllowed\s*\(", hdr.code):
+        r.violations.append(f"{GENERIC_UI_GUARD_HEADER}: ClassicGenericUi::genericUiAllowed missing")
     res.append(r)
     for r in res:
         r.out_of_scope = [v for v in r.violations if v.split(":", 1)[0] in OUT_OF_SCOPE]

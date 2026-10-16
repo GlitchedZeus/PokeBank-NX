@@ -61,3 +61,4 @@ with a merge commit, re-run `make -f Makefile.host qa` (GCC and Clang), then con
 - 2026-10-16 — Gen VI+-only code (ActionSheetModel.h; StoragePanel and the modern Stat/Item/SaveConfirm/Picker dialogs reached only from TrainerViewScreenBase.inc) is out of scope: listed as informational, never a violation (coordinator).
 - 2026-10-16 — OUT_OF_SCOPE emptied again (coordinator): TrainerViewScreenBase dialogs, ItemsPanel/StoragePanel and ActionSheetModel stay in scope until S proves a file unreachable from Gen I–V.
 - 2026-10-16 — CG11 (XFAIL until S): no generic action sheet / details modal / PickerDialog / StatEditDialog open in a Gen I–V session; 24 unguarded open sites in TrainerViewScreenBase.inc.
+- 2026-10-16 — CG11 bound to S's router genericUiAllowedForSession (647917e): guarded openers, read-only target hand-off, per-frame reset, ClassicGenericUiGuard.h. XPASS on S's branch; mutations (guard / reset removed) fail it. XFAIL here until 647917e reaches #307.

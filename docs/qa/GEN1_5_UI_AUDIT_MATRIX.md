@@ -72,7 +72,7 @@ contract lists them as not shown; differences between generations are flagged fo
 | CG08-modal-footer-and-touch-layer: Every modal draws its own footer, and the covered footer is not tappable while it is open | XFAIL until S + C (editor modals); 2R (Home, done) | 16 | 13 | 15 | 16 | 13 |
 | CG09-item-quantity-policy: Item quantity editors consult ItemQuantityPolicy (unique items never get max > 1) | XFAIL until I + C (QuantityPolicy adoption) | 1 | 1 | 1 | 2 | 1 |
 | CG10-single-navigation-repeat-engine: Navigation repeat timings live only in the shared NavigationRepeat engine | PASS | 0 | 0 | 0 | 0 | 0 |
-| CG11-no-generic-modern-ui-in-gen1-5: In a Gen I-V session no path opens the generic action sheet, details modal, PickerDialog or StatEditDialog | XFAIL until S (generic sheet unreachable from Gen I-V) | 24 | 24 | 24 | 24 | 24 |
+| CG11-no-generic-modern-ui-in-gen1-5: In a Gen I-V session no path opens the generic action sheet, details modal, PickerDialog or StatEditDialog | XFAIL until S (generic sheet unreachable from Gen I-V) | 5 | 5 | 5 | 5 | 5 |
 
 Counts are violations attributed to each generation; a violation in a shared component (no
 generation in its file name) counts for every generation. Full lists:
