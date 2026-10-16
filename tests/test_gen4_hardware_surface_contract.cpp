@@ -433,7 +433,7 @@ int main() {
     contains(surface, "status = \"Preserved\"");
     contains(surface, "MoveResult::Unsupported");
     contains(surface, "status = \"Transfer\"");
-    contains(surface, "Gen IV move compatibility • event/encounter legality is not fully checked");
+    contains(surface, "Gen IV move compatibility checked • Origin & Legality: incomplete");
     assert(surface.find("Names::isMovePresent") == std::string::npos);
     assert(surface.find("Native Gen IV move catalog") == std::string::npos);
     assert(surface.find("move choice read-only in G4-03") == std::string::npos);

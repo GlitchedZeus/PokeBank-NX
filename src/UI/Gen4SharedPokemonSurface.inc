@@ -1237,7 +1237,7 @@ struct Gen4Editor {
     static constexpr const char* kMovePickerSubtitle =
         "Empty + compatible moves only • exact Gen IV Acc / Pwr / PP";
     static constexpr const char* kMoveEditorSubtitle =
-        "Gen IV move compatibility • event/encounter legality is not fully checked";
+        "Gen IV move compatibility checked • Origin & Legality: incomplete";
     static constexpr const char* kDataTitle = "Origin & Legality";
 
     static State& gen4(Surface::EditorState& state) { return static_cast<State&>(state); }
@@ -1517,11 +1517,15 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     drawNarrowPokemonActions(fb, screen.touchButtons, model, state.actionRow,
                             title,
                             screen.legacyProviderLabel() + " NDS SOURCE / READ ONLY", 41600);
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
+    SharedEditorChrome::Presentation::PickerFooterSpec footer;
+    footer.page = false;
+    SharedEditorChrome::drawPickerFooter(fb, footer);
 }
 
 // Second step of Review -> Discard All. Drawn over the review list; nothing changes until Y.
-void drawDiscardAllConfirm(PKSEFramebuffer& fb, const char* generation) {
+// The confirm owns the frame's touch: the review list's rows and footer are not tappable under it.
+void drawDiscardAllConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const char* generation) {
+    SharedEditorChrome::beginModal(screen.touchButtons);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 150));
     constexpr int w = 760, h = 240;
     const int x = (fb.getWidth() - w) / 2;
@@ -1534,6 +1538,7 @@ void drawDiscardAllConfirm(PKSEFramebuffer& fb, const char* generation) {
                 Colors::Text, TextStyle::Body);
     fb.drawText(x + 34, y + 140, "Export Copy first to keep them. The original save is never written.",
                 Colors::TextDim, TextStyle::Caption);
+    drawNavBar(fb, {{"Y", "Discard All"}, {"B", "Keep Changes"}});
 }
 
 void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state) {
@@ -1567,8 +1572,7 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& sta
             fb.drawText(64, y, "+" + std::to_string(lines.size() - kShown) + " more",
                         Colors::TextDim, TextStyle::Caption);
         if (state.confirmDiscardAll) {
-            drawDiscardAllConfirm(fb, "Generation IV");
-            drawNavBar(fb, {{"Y", "Discard All"}, {"B", "Keep Changes"}});
+            drawDiscardAllConfirm(screen, fb, "Generation IV");
         } else {
             drawNavBar(fb, {{"X", "Export Copy"}, {"Y", "Discard All Staged"}, {"B", "Back"}});
         }
@@ -1586,7 +1590,7 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
     fb.drawText(x + 24, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading,
                 Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
-                "Exact Gen IV structural + move guardrails • encounter legality remains advisory",
+                "PK4 structure and move guardrails checked • no full legality checker",
                 Colors::TextDim, TextStyle::Caption);
 
     std::string error;
@@ -1605,7 +1609,7 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
                 record->valid() ? Colors::Success : Colors::Error);
     fb.drawText(x + 34, y + 180, "Source mutation", Colors::TextDim);
     fb.drawText(x + 250, y + 180, "HARD DISABLED", Colors::Accent);
-    fb.drawText(x + 34, y + 218, "Encounter legality", Colors::TextDim);
+    fb.drawText(x + 34, y + 218, "Legality", Colors::TextDim);
     fb.drawText(x + 250, y + 218, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(
                     PokeBank::UIModel::SharedEditorPresentation::LegalityState::Incomplete),
                 Colors::Warning);
@@ -1644,6 +1648,7 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
 
 void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     screen.drawGSCOverlay(fb);
+    SharedEditorChrome::beginModal(screen.touchButtons);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 120));
     constexpr int w = 760, h = 260;
     const int x = (fb.getWidth() - w) / 2;
@@ -1666,7 +1671,10 @@ void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& s
 // Items footer in TrainerViewScreenBase.inc so the footer only offers A where it edits.
 using Gen4QuantityRule = PokeBank::UIModel::Gen4BagQuantity::Rule;
 Gen4QuantityRule gen4QuantityRule(const TrainerViewScreen& screen, size_t pocket, uint16_t id) noexcept {
-    return PokeBank::UIModel::Gen4BagQuantity::rule(screen.sourceGameId, pocket, id);
+    // The exact game resolves through Thread I's QuantityPolicy; unknown ids get no editor.
+    PokeVault::Inventory::QuantityPolicy::Game game{};
+    if (!PokeVault::Inventory::QuantityPolicy::gameFromId(screen.sourceGameId, game)) return {};
+    return PokeBank::UIModel::Gen4BagQuantity::rule(game, pocket, id);
 }
 
 bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
@@ -2061,6 +2069,7 @@ void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State
 
 void drawItemRemoveConfirm(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {
     screen.drawGSCOverlay(fb);
+    SharedEditorChrome::beginModal(screen.touchButtons);
     const int w=625,h=244,x=(fb.getWidth()-w)/2;
     const int y=(fb.getHeight()-kNavBarH-h)/2;
     fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,160));

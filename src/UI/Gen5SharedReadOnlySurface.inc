@@ -824,7 +824,7 @@ void drawPidConfirmation(TrainerViewScreen& screen, PKSEFramebuffer& fb, const G
     fb.drawText(x + 28, cy + 62, pidHex5(pending.before) + "  ->  " + pidHex5(pending.after),
                 Colors::Text, TextStyle::Body);
     fb.drawText(x + 28, cy + 98, "Gender, ability and shininess stay linked to the new PID. "
-                "Encounter legality is not evaluated.", Colors::TextDim, TextStyle::Caption);
+                "Origin & Legality: not checked.", Colors::TextDim, TextStyle::Caption);
     const int bw = 190, bh = TouchTargetMin, by = y + h - bh - 18;
     drawGlyphButton(fb, x + 24, by, bw, bh, "B", "Cancel", Colors::PanelAlt);
     drawGlyphButton(fb, x + w - 24 - bw, by, bw, bh, "A", "Change PID", Colors::PanelAlt);
@@ -1632,11 +1632,10 @@ void drawActions(TrainerViewScreen& screen,PKSEFramebuffer& fb,
     drawNarrowPokemonActions(fb,screen.touchButtons,model,state.actionRow(),title,
                              screen.legacyProviderLabel()+" NDS SOURCE / READ ONLY",
                              kGen5ActionTouchBase);
-    if(state.selectedBoxUndoAvailable(workspace))
-        drawNavBar(fb,{{"D-pad/Stick","Navigate"},{"A","Select"},
-                       {"Y","Undo This Slot"},{"B","Cancel"}});
-    else
-        drawNavBar(fb,{{"D-pad/Stick","Navigate"},{"A","Select"},{"B","Cancel"}});
+    SharedEditorChrome::Presentation::PickerFooterSpec footer;
+    footer.page=false;
+    if(state.selectedBoxUndoAvailable(workspace))footer.yLabel="Undo This Slot";
+    SharedEditorChrome::drawPickerFooter(fb,footer);
 }
 const char* reviewedStatName(size_t stat) noexcept {
     constexpr const char* names[]={"HP","Atk","Def","Spe","SpA","SpD"};
@@ -1763,6 +1762,8 @@ void drawDecision(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                   std::string title,std::string message,
                   const std::vector<ControllerHint>& keys) {
     dimShared(screen,fb);
+    // The decision owns the frame's touch; the covered hub's footer is never tappable.
+    SharedEditorChrome::beginModal(screen.touchButtons);
     const int w=870,h=230,x=(fb.getWidth()-w)/2;
     const int y=(fb.getHeight()-kNavBarH-h)/2;
     fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);

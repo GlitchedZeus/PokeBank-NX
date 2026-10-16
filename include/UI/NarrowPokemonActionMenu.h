@@ -173,8 +173,26 @@ constexpr bool hasLabel(const Model& m, const char* label) noexcept {
     return false;
 }
 } // namespace detail
-static_assert(!detail::hasLabel(classic(SharedPokemonEditor::actionsForSlot(true, {true, true, true}, true)), "Make Shiny"));
-static_assert(!detail::hasLabel(classic(SharedPokemonEditor::actionsForSlot(true, {true, true, true}, true)), "Add to Master Vault"));
+// Every row of the shared sheet is a real command from the shared vocabulary (no placeholders).
+namespace detail {
+constexpr bool onlySharedLabels(const Model& m) noexcept {
+    constexpr const char* allowed[] = {"View", "Edit", "Clone", "Move", "Release", kOriginLegalityLabel,
+                                       "Add Pokemon", "Review Pending Changes", "Cancel"};
+    for (int i = 0; i < m.count; ++i) {
+        bool ok = false;
+        for (const char* label : allowed) {
+            const char* a = m.rows[static_cast<std::size_t>(i)].label;
+            const char* b = label;
+            while (*a && *a == *b) { ++a; ++b; }
+            ok = ok || *a == *b;
+        }
+        if (!ok) return false;
+    }
+    return true;
+}
+} // namespace detail
+static_assert(detail::onlySharedLabels(classic(SharedPokemonEditor::actionsForSlot(true, {true, true, true}, true))));
+static_assert(detail::onlySharedLabels(gen1(Gen1Editor::actionsForSlot(true, true), true)));
 static_assert(classic(SharedPokemonEditor::actionsForSlot(true, {true, true, true}, true)).count == 7);
 static_assert(classic(SharedPokemonEditor::actionsForSlot(false), false).count == 2);
 static_assert(classic(SharedPokemonEditor::actionsForSlot(true, {true, true, true}, true)).visualIndex(-1) == -1);

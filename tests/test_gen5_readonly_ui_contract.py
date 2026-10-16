@@ -464,7 +464,7 @@ require(read("include/Integration/Gen5/Gen5SharedScreenState.h"),
 require(surface,
         "state.undoSelectedBoxReplacement(staged",
         "state.selectedBoxUndoAvailable(workspace)",
-        '"Y","Undo This Slot"')
+        'footer.yLabel="Undo This Slot"')
 undo_tests=read("tests/test_gen5_readonly_save.cpp")
 require(undo_tests,
         "actionUi.selectedBoxUndoAvailable(ops)",

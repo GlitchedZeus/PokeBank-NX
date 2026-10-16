@@ -2133,7 +2133,7 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
     fb.drawText(x + 270, y + 204, "Game/species/location/level constrained", Colors::Text);
     fb.drawText(x + 34, y + 250, "PID", Colors::TextDim);
     fb.drawText(x + 270, y + 250, "Derived from Nature / Gender / Shiny / Ability", Colors::Text);
-    fb.drawText(x + 34, y + 296, "Deep encounter legality", Colors::TextDim);
+    fb.drawText(x + 34, y + 296, "Legality", Colors::TextDim);
     fb.drawText(x + 270, y + 296, Presentation::legalityLabel(Presentation::LegalityState::NotChecked),
                 Colors::Warning);
     drawNavBar(fb, {{"B", "Back"}});
@@ -2157,7 +2157,9 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
         const std::string title = pokemon ? std::string(pokemon->species()) : "Empty Slot";
         drawNarrowPokemonActions(fb, screen.touchButtons, model, state.actionRow,
             title, screen.legacyProviderLabel() + " GBA SOURCE / READ ONLY", 31600);
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
+        SharedEditorChrome::Presentation::PickerFooterSpec footer;
+        footer.page = false;
+        SharedEditorChrome::drawPickerFooter(fb, footer);
         return;
     }
     std::string error;
@@ -2175,11 +2177,15 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
     drawNarrowPokemonActions(fb, screen.touchButtons, model, state.actionRow,
                             title,
                             screen.legacyProviderLabel() + " GBA SOURCE / READ ONLY", 31600);
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
+    SharedEditorChrome::Presentation::PickerFooterSpec footer;
+    footer.page = false;
+    SharedEditorChrome::drawPickerFooter(fb, footer);
 }
 
 // Second step of Review -> Discard All. Drawn over the review list; nothing changes until Y.
-void drawDiscardAllConfirm(PKSEFramebuffer& fb, const char* generation) {
+// The confirm owns the frame's touch: the review list's rows and footer are not tappable under it.
+void drawDiscardAllConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const char* generation) {
+    SharedEditorChrome::beginModal(screen.touchButtons);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 150));
     constexpr int w = 760, h = 240;
     const int x = (fb.getWidth() - w) / 2;
@@ -2192,6 +2198,7 @@ void drawDiscardAllConfirm(PKSEFramebuffer& fb, const char* generation) {
                 Colors::Text, TextStyle::Body);
     fb.drawText(x + 34, y + 140, "Export Copy first to keep them. The original save is never written.",
                 Colors::TextDim, TextStyle::Caption);
+    drawNavBar(fb, {{"Y", "Discard All"}, {"B", "Keep Changes"}});
 }
 
 void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
@@ -2233,8 +2240,7 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
             changes.size(), visible, state.reviewScroll);
     }
     if (state.confirmDiscardAll && !changes.empty()) {
-        drawDiscardAllConfirm(fb, "Generation III");
-        drawNavBar(fb, {{"Y", "Discard All"}, {"B", "Keep Changes"}});
+        drawDiscardAllConfirm(screen, fb, "Generation III");
     } else if (changes.empty())
         drawNavBar(fb, {{"D-pad/Stick", "Scroll"}, {"Y", "Discard All Staged"}, {"B", "Back"}});
     else
@@ -2243,6 +2249,7 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
 }
 
 void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
+    SharedEditorChrome::beginModal(screen.touchButtons);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Colors::Background);
     constexpr int w = 760, h = 260;
     const int x = (fb.getWidth() - w) / 2;
