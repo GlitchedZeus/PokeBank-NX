@@ -51,8 +51,11 @@ Base: #307 application branch `claude/gen5-integration-20261014`. It was merged 
   - CG03: Gen III–V legality copy reads "Origin & Legality: not checked / incomplete" or "Legality"; no "encounter legality" wording.
   - CG04: the Gen III raw location table carries player-facing names (`tools/gen_locations.py` `GEN3_DISPLAY`: Safari Zone / Victory Road / Altering Cave get a region suffix, Navel Rock / Birth Island none). `LocationDisplayNames.h` only adds what needs the origin game (58, 196, 253–255, "(unused)").
   - CG05: Gen III/IV/V action menus use `SharedEditorChrome::drawPickerFooter`.
+  - CG08 strict (touchButtons.clear() alone is not a touch layer): the Bank release, creator Keep, details Discard, item Remove and Gen V PID confirms also call beginModal and draw a footer (classic-gated outside the Gen V file).
   - CG08: the Gen III/IV Discard All and Release confirms, the Gen IV item remove confirm and the Gen V decision dialog own the touch layer and draw their own footer. The base-reached SaveConfirm, ItemEdit, StatEdit, Bank exit and the Bank Gen 3 convert / Let's Go confirms do the same in Gen I–V sessions only (guarded by `classicSession`, so Gen VI+ is unchanged).
+  - Destructive confirms: in Gen I–V sessions the Bank release and item Remove confirms commit on Y only (A, B and Y+B cancel; the button shows and taps as Y), via `SharedEditorPresentation::destructiveConfirmStep` and `confirmFooter`. Gen VI+ keeps A.
   - CG09: `gen4QuantityRule` resolves the exact game through `QuantityPolicy::gameFromId`.
+  - QA accepted the scoping in 534d6f4 (ActionSheetModel.h and PickerDialog.cpp while CG11 holds; the dispatcher is a router).
   - Left for other lanes: `ActionSheetModel.h` (Gen VI+ sheet, unreachable from Gen I–V per CG11), `PickerDialog.cpp` (same), `PokemonDetailsDispatcher.cpp` (a router: Gen I presenter is Thread C's, Modern is Gen VI+), the Gen1/Gen2/GSC/Classic sites (Thread C), `ClassicInventoryOverlay.cpp` (C/I).
 
 ## Not done / blocked
