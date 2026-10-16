@@ -36,8 +36,8 @@ such field, or derives it from another field that is checked; **none** = no rule
 Severity follows PKHeX: Invalid where PKHeX reports Invalid, and a Warning where PKHeX reports
 "Fishy", so the record stays Incomplete. The exceptions are the deliberate differences listed in
 each generation's inventory and reviewed in `PKHEX_DISAGREEMENT_REVIEW.md`. Most are more
-lenient. The two stricter ones (Gen I/II stored level against EXP, the Gen V name-buffer length) rest
-on decomp evidence.
+lenient. The stricter ones (the stored level against EXP in Gen I/II and Gen IV, the two Gen IV
+met-location fields, and the Gen V name-buffer length) rest on decomp or record-format evidence.
 
 | PKHeX area | Gen I (PK1) | Gen II (PK2) | Gen III (PK3) | Gen IV (PK4) | Gen V (PK5) |
 |---|---|---|---|---|---|
@@ -89,8 +89,8 @@ PKHeX invalid, PokeBank NX "No problems found". Every tool fails on either.
 |---|---|---|---|---|---|
 | I | `pkhex_gb_diff`, 3 x 50,000; app-path parity PK1 20,000 / 20,000 | 0 | 0 | matches PKHeX except the listed differences | yes, except the listed Incomplete cases |
 | II | same, PK2; app-path parity 18,291 / 18,291 (1,709 Korean skipped) | 0 | 0 | same | same |
-| III | `pkhex_gen34_diff` seed 1, 3 mutations (28,836 records) | 0 | 0 | 14,321 / 14,325 (99.97%; the 4 are Enigma Berry) | base 13,935 / 14,511 (96.0%); grown 18,900 / 19,241 (98.2%) |
-| IV | `pkhex_gen34_diff` seeds 1-3, 3 mutations | 0 | 0 | 83,524 / 83,524 (100%) | base 100%; grown 114,408 / 115,268 (99.25%) |
+| III | `pkhex_gen34_diff` seeds 1-3, 3 mutations, plus the grown Gen III corpus | 0 | 0 | 43,110 / 43,120 (99.98%; the 10 are Enigma Berry holders) | base 41,612 / 43,388 (95.91%); grown 56,806 / 57,861 (98.18%) |
+| IV | `pkhex_gen34_diff` seeds 1-3, 3 mutations, plus the grown Gen IV corpus | 0 | 0 | base 83,599 / 83,599 (100%); grown 113,993 / 113,993 (100%) | base 69,298 / 69,410 (99.84%); grown 114,336 / 115,247 (99.21%). Of the uncertified, 112 and 109 are the deliberately stricter met-location rule (`PKHEX_DISAGREEMENT_REVIEW.md` item 14) |
 | V | `pkhex_gen5_diff` seeds 1, 2, 7, 11, 4 mutations (461,340 records) | 0 | 0 | 93.4% | native 117,432 / 117,521; trade 8,579 / 8,579; event 16,061 / 16,074; Gen III/IV transfer 0 / 84,961 |
 
 Before this round, Gen III caught 13-14% and Gen IV 31-32% of PKHeX-invalid records, and
@@ -106,7 +106,7 @@ neither could certify any record.
 | `test_legality_gen3` | 268 cases + 12,000 fuzz records |
 | `test_legality_gen4` | 198 cases + 40,000 fuzz records (400,000 in the gen34 CI job) |
 | `test_legality_gen5` | 121 cases + 40,000 fuzz records |
-| `test_legality_title_matrix` | 118 cases (Gen I, II, III and V titles; Gen IV rows in progress) |
+| `test_legality_title_matrix` | 171 cases across all 20 titles (positive, negative, malformed, Unknown, original-game and title-specific) |
 
 Each also builds with ASan/UBSan, and GCC and Clang where the lane gates require it. The
 lane gates (L1-L6) and their workflows are listed in `LEGALITY_GATE_MATRIX.md`.
