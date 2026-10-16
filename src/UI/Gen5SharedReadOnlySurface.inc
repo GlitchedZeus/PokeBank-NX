@@ -4,6 +4,7 @@
 // source-save writer, Storage/Bank or generic uncontrolled mutation handlers.
 // Touch targets are isolated to verified read-only and native-field staged
 // actions; native bank, source-writing and unsupported mutation routes remain barred.
+#include "Names/LocationDisplayNames.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Integration/Gen5/Gen5BoxTouchNavigation.h"
 #include "Integration/Gen5/Gen5SharedReview.h"
@@ -184,11 +185,8 @@ bool workspaceSurface(Surface surface) noexcept {
 // A location name made only of the full-width placeholder glyphs the Switch
 // font cannot draw (e.g. Gen V location 0) is shown as text instead.
 std::string metLocationText5(uint8_t origin, uint16_t location) {
-    const char* name = Names::getMetLocationName(origin, location);
-    const bool printable = name && name[0] &&
-        std::string_view(name).find('\xEF') == std::string_view::npos;
-    if (location == 0) return "None (ID 0)";
-    return printable ? std::string(name) : "Location ID " + std::to_string(location);
+    // Player-facing name only: no raw id; placeholder-glyph entries read "Unknown location".
+    return Names::getMetLocationDisplayName(origin, location);
 }
 std::string shortValue5(std::string value, size_t limit = 18) {
     if (value.size() <= limit) return value;
@@ -226,7 +224,7 @@ struct Gen5Editor {
         "Valid BW/B2W2 moves • Pwr/Acc/PP • learnability not checked";
     static constexpr const char* kMoveEditorSubtitle =
         "Valid native BW/B2W2 move • species learnability not checked";
-    static constexpr const char* kDataTitle = "GEN V DATA";
+    static constexpr const char* kDataTitle = "Origin & Legality";
 
     static PokeVault::Integration::Gen5::Gen5SharedScreenState& backend(const TrainerViewScreen& screen) {
         return nativeTrainer(const_cast<TrainerViewScreen&>(screen)).sharedScreen();
@@ -442,9 +440,14 @@ struct Gen5Editor {
                 EditorSurface::openPicker(screen, state, PickerTarget::MetLocation,
                                           Fields::metLocationChoices(), p.metLocation());
                 return true;
-            case Pokerus:
-                EditorSurface::openPicker(screen, state, PickerTarget::Pokerus, {0, 1, 2}, p.pokerusMode());
+            case Pokerus: {
+                // Inline toggle: None -> Infected -> Cured -> None (Gen V modes 0 / 2 / 1).
+                // The native record restores the source byte when the original mode returns.
+                const uint32_t mode = p.pokerusMode();
+                const uint32_t next = mode == 0 ? 2u : mode == 2 ? 1u : 0u;
+                stage(screen, Field::Pokerus, 0, next);
                 return true;
+            }
             case Form: {
                 auto forms = Fields::formChoices(d, b2w2(screen));
                 if (forms.size() <= 1) {
@@ -753,6 +756,9 @@ struct Gen5Editor {
             {"Fateful", p.fatefulEncounter() ? "Yes" : "No"},
             {"Egg status", p.egg() ? "Unhatched" : "Not egg"},
             {"OT gender", p.originalTrainerGender() == 0 ? "Male" : "Female"},
+            // Only format validity is checked for Gen V; no legality conclusion is drawn.
+            {"Legality", PokeBank::UIModel::SharedEditorPresentation::legalityLabel(
+                PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked)},
         };
         return rows;
     }
@@ -1566,9 +1572,9 @@ void dimShared(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
 const char* narrowActionLabel5(PokeBank::UIModel::SharedPokemonEditor::Action action) noexcept {
     using A=PokeBank::UIModel::SharedPokemonEditor::Action;
     switch(action) {
-        case A::View:return "View Pokemon";
+        case A::View:return "View";
         case A::Edit:return "Edit";
-        case A::Move:return "Move Pokemon";
+        case A::Move:return "Move";
         case A::Clone:return "Clone";
         case A::Remove:return "Release";
         case A::Add:return "Add Pokemon";
