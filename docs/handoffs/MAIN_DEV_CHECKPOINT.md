@@ -4,7 +4,7 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-16 07:40 UTC (UNIFIED EDITOR CAMPAIGN started; a0633b6d FAILED owner hardware test, #320).
+**Last updated:** 2026-10-16 10:15 UTC (UNIFIED EDITOR CAMPAIGN in progress; #307 at 5150d061).
 
 ## Active milestone: UNIFIED GEN I–V EDITOR CAMPAIGN (owner directive, 2026-10-16)
 
@@ -27,6 +27,7 @@ Status:
 | Phase 8 scroll | Root cause: NavigationRepeat counted frames (18/4), so on a slow screen it ran at 900/200 ms. Fix: a wall-clock HoldRepeatClock in the one shared engine (immediate first step, 250 ms delay, 67 ms repeat, one step per frame), with the keyboard on the same clock and a timing test at 16/33/50 ms frames. Pushing after gates. Trace lines now carry T=ms. |
 | Input chain | No button remap (NpadStandard, logical A/B). Touch goes through the top layer only. No stale edges. Open owner question: in the full Games browser L/R switch PROFILE (documented). Kept for this round, with the footer to show "L/R Profile". |
 | Quota | All lanes stopped on the shared usage limit 07:40–09:10 UTC. Resumed 2R, C, S and I at 09:12. QA is held until lane code lands. |
+| 10:15 check-in | #307 `5150d061`, the coordinator verified the merge ancestry: Phase 8 `c7fd839e`, I `d08c5aa8`, C `dcd8770c`/`e59df023`, S `7fd8d0e4`. 2R reports one full gate green: GCC/Clang host-test, sanitize and qa 335 PASS, 24/24 py, devkitA64. 2R is gating the next batch, b2166f6 (L/R Profile footer, C `47cac826`, S `41271d76`). Queued after that: C `4203ce0d` (Phase 1/5 list fit, Gen I/II bag Remove confirm + a single quantity query, Origin & Legality labels, shared picker footers, shared Pokérus rule) and S `0017d186` (Gen IV/V bags on QuantityPolicy, SharedDataPaneLayout, Gen III PID label). QA `e71d5b69`: cross-gen contract suite CG01–CG10 (CG01b/06/07/10 enforced; the rest XFAIL until lanes land), candidate mode fatal in the exact-binary audit, 20-game UI matrix. Open: S to say which TrainerViewScreenBase dialogs are reachable from Gen I–V; S Phase 12 field-access parity (Gen III PID-derived fields, Gen V Shiny/Language); C ClassicInventoryCatalog → QuantityPolicy delegation (Makefile exception approved); the owner's answer on the hidden Gen I row. Usage: the 7-day limit shows a warning (resets ~09:00 UTC 10-17). |
 | Lane I | **Done:** `d08c5aa8` (ItemQuantityPolicy, 20 games, PKHeX PlayerBag* caps; key items/HMs/Gen V TMs unique). The coordinator built and ran its test: OK. Open findings routed to C: Gen III 99 cap in ClassicInventoryCatalog, Gen I id 50 duplicate, test_classic_inventory_catalog GS BALL. |
 | Lane C | `dcd8770c`: Phase 3 (no Make Shiny/placeholders; order View, Edit, Clone, Release, Legality, Review, Cancel) and Phase 6 (instant Y reroll keeping shiny, Gen II gender and the Unown letter; 200-press tests). Verified in code. Next: Phase 10, then the shared unit for Phases 1/4/7. |
 | Lane S | `7fd8d0e4`: shared unit (SharedMovesPanel, SharedMoveFacts, SharedEditorPresentation with footers, Origin & Legality, toggles and viewport, SharedEditorChrome beginModal). Rows counter and "commits to draft" removed; Gen III–V surfaces adopt it. |
