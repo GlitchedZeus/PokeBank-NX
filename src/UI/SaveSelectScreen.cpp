@@ -19,6 +19,8 @@
 #include "UI/SpriteLayout.h"
 #include "UI/GameLauncher.h"
 #include "UI/TouchInput.h"
+#include "UI/HomeQuitConfirm.h"
+#include "UI/InputTrace.h"
 #include "Enums/GameVersion.h"
 #include "Save/GetSaveFileContents.h"
 #include "Trainer/Trainer.h"
@@ -46,6 +48,9 @@ using namespace Enums;
 
 namespace UI {
     namespace {
+        PokeBank::Diagnostics::InputTrace::Recorder& inputTrace() {
+            return PokeBank::Diagnostics::InputTrace::recorder();
+        }
         constexpr int LEGACY_INSTANCE_VISIBLE_ROWS = 5;
         constexpr int SAVE_WATCH_INTERVAL_FRAMES = 90;
         // A scrolled row may be drawn partially under a clipped viewport. Its touch rectangle
@@ -2091,15 +2096,26 @@ namespace UI {
             legacyNotice = descriptor.detail;
             return false;
         }
-        std::string error;
-        if (!requestGameLaunch(descriptor, error)) {
-            legacyNotice = error;
-            return false;
-        }
-        recordCurrentLaunch();
-        appExitRequested = true;
-        exitRequested = true;
-        return true;
+        // The handoff closes PokeBank NX, so it waits for an explicit Y (P0 #320).
+        openLaunchDecision(LeaveKind::LaunchLegacyInstance, descriptor, title.name,
+                           "origin=legacy-instance-a");
+        return false;
+    }
+
+    void SaveSelectScreen::openLeaveDecision(LeaveKind kind, const char* origin) {
+        leaveReturnOverlay = overlay == Overlay::QuitConfirm ? Overlay::None : overlay;
+        leaveKind = kind;
+        overlay = Overlay::QuitConfirm;
+        inputTrace().event("home", kind == LeaveKind::Quit ? "quit-confirm-open" : "launch-confirm-open",
+                           origin);
+    }
+
+    void SaveSelectScreen::openLaunchDecision(LeaveKind kind, const GameLaunchDescriptor& descriptor,
+                                              const std::string& gameName, const char* origin) {
+        pendingLaunch = descriptor;
+        pendingLaunchName = gameName;
+        pendingLaunchNotice = gameLaunchQuitRouteNotice(previewGameLaunchQuitRoute(descriptor));
+        openLeaveDecision(kind, origin);
     }
 
     const std::string& SaveSelectScreen::currentLaunchQuitNotice() {
@@ -2155,15 +2171,10 @@ namespace UI {
             return false;
         }
 
-        std::string error;
-        if (!requestGameLaunch(launchDescriptor, error)) {
-            hubNotice = error;
-            return false;
-        }
-        recordCurrentLaunch();
-        appExitRequested = true;
-        exitRequested = true;
-        return true;
+        // The handoff closes PokeBank NX, so ZR (or a Launch tap) only opens the visible launch
+        // decision; the emulator starts after an explicit Y there (P0 #320).
+        openLaunchDecision(LeaveKind::LaunchTitle, launchDescriptor, title.name, "origin=launch-zr");
+        return false;
     }
 
     void SaveSelectScreen::openGen4Setup(const std::string& gameId, std::string notice,
@@ -3172,11 +3183,53 @@ namespace UI {
             padGetButtonsDown(&pad), padGetButtons(&pad), stick.x, stick.y,
             HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right)
             | navTouchButton(touch);
+        // Opt-in input trace (P0 #320): raw edges, held state, the logical mask the handlers
+        // below actually see, and the overlay/focus that receives them.
+        if (inputTrace().enabled()) {
+            const UserEntry* tracedUser = currentUser();
+            inputTrace().frame("home", padGetButtonsDown(&pad), padGetButtons(&pad), kDown,
+                "ov=" + std::to_string(static_cast<int>(overlay)) +
+                ",classic=" + std::to_string(classicGamesActive ? 1 : 0) +
+                ",hdr=" + std::to_string(headerActionIndex) +
+                ",feat=" + std::to_string(hubFeatureIndex) +
+                ",dock=" + std::to_string(hubDockFocused ? hubDockIndex : -1) +
+                ",title=" + std::to_string(titleIndex) +
+                ",games=" + std::to_string(tracedUser ? tracedUser->titles.size() : 0) +
+                ",user=" + std::to_string(userIndex) +
+                ",touch=" + std::to_string(touch.justTapped() ? 1 : 0));
+        }
 
         if (overlay == Overlay::OpenFailure) {
             if (kDown & (HidNpadButton_A | HidNpadButton_B)) {
                 overlay = Overlay::None;
                 openFailureMessage.clear();
+            }
+            return;
+        }
+        // P0 #320: leaving PokeBank NX (quit or a launch handoff) needs an explicit Y in a visible
+        // decision; A and B stay on the screen that opened it.
+        if (overlay == Overlay::QuitConfirm) {
+            using PokeBank::UIModel::HomeQuit::Decision;
+            const Decision decision = PokeBank::UIModel::HomeQuit::decide(kDown);
+            if (decision == Decision::Stay) {
+                overlay = leaveReturnOverlay;
+                inputTrace().event("home", "leave-confirm-stay");
+            } else if (decision == Decision::Quit) {
+                overlay = leaveReturnOverlay;
+                if (leaveKind != LeaveKind::Quit) {
+                    std::string error;
+                    if (!requestGameLaunch(pendingLaunch, error)) {
+                        (leaveKind == LeaveKind::LaunchLegacyInstance ? legacyNotice : hubNotice) = error;
+                        inputTrace().event("home", "launch-refused");
+                        return;
+                    }
+                    recordCurrentLaunch();
+                }
+                overlay = Overlay::None;
+                inputTrace().event("home", "app-exit",
+                                   leaveKind == LeaveKind::Quit ? "origin=quit-confirm-y" : "origin=launch-confirm-y");
+                appExitRequested = true;
+                exitRequested = true;
             }
             return;
         }
@@ -3736,8 +3789,9 @@ namespace UI {
                     applyTheme(nextThemeMode(g_themeMode));
                     Utils::saveSettings();
                 } else if (optionsIndex == 1) {
-                    appExitRequested = true;
-                    exitRequested = true;
+                    // Same guarded quit as the Home root B: never an unconfirmed A exit.
+                    openLeaveDecision(LeaveKind::Quit, "origin=options-exit");
+                    return;
                 } else {
                     overlay = Overlay::None;
                 }
@@ -3925,9 +3979,9 @@ namespace UI {
         }
 
         if (kDown & HidNpadButton_B) {
-            // Games is now the app root, so Back exits just as the former root Home did.
-            appExitRequested = true;
-            exitRequested = true;
+            // Games is the app root. B never quits on its own (P0 #320): it opens the visible
+            // "Quit PokeBank NX?" decision, where only Y confirms and A/B stay.
+            openLeaveDecision(LeaveKind::Quit, "origin=home-root-b");
             return;
         }
         if (kDown & HidNpadButton_ZR) {
@@ -4716,15 +4770,42 @@ namespace UI {
         }
 
         // The hero card already carries the big Launch button, so the global footer does not
-        // repeat a ZR Launch hint.
+        // repeat a ZR Launch hint. B only opens the "Quit PokeBank NX?" decision (P0 #320).
         drawNavBar(fb, {{"L/R", "Change Game"}, {"A", "Open"}, {"Y", "Quick Games"},
-                        {"+", "Current Game"}, {"-", "Help"}, {"B", "Exit"}});
+                        {"+", "Current Game"}, {"-", "Help"}, {"B", "Quit"}});
         }
 
         // Blocking overlays are shared by Product Home and the classic artwork browser.
         // Keeping this renderer outside the classic base prevents invisible modals that capture
         // input and look like a frozen application until B is pressed.
-        if (overlay == Overlay::OpenFailure) {
+        // The covered Home footer and hero glyphs never stay tappable under a modal (P0 #320).
+        if (overlay != Overlay::None) beginTopTouchLayer();
+        if (overlay == Overlay::QuitConfirm) {
+            constexpr int w = 1040, h = 250; // wide enough for the longest quit-route notice
+            const int x = (fb.getWidth() - w) / 2;
+            const int y = (fb.getHeight() - h) / 2;
+            fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH,
+                              Color(0, 0, 0, 132));
+            drawModalSurface(fb, x, y, w, h);
+            if (leaveKind == LeaveKind::Quit) {
+                fb.drawText(x + 30, y + 30, "Quit PokeBank NX?",
+                            Colors::TextPrimary, TextStyle::Heading);
+                fb.drawText(x + 30, y + 92, "Press Y to quit. A or B stays in PokeBank NX.",
+                            Colors::TextSecondary, TextStyle::Body);
+                fb.drawText(x + 30, y + 136,
+                            "Source saves are never written; app-owned staged copies stay on the SD card.",
+                            Colors::TextMuted, TextStyle::Caption);
+                drawNavBar(fb, {{"Y", "Quit"}, {"B", "Stay"}, {"A", "Stay"}});
+            } else {
+                fb.drawText(x + 30, y + 30, "Launch " + pendingLaunchName + "?",
+                            Colors::TextPrimary, TextStyle::Heading);
+                fb.drawText(x + 30, y + 92, "PokeBank NX will close. Press Y to launch; A or B cancels.",
+                            Colors::TextSecondary, TextStyle::Body);
+                fb.drawText(x + 30, y + 136, pendingLaunchNotice,
+                            Colors::TextMuted, TextStyle::Caption);
+                drawNavBar(fb, {{"Y", "Launch"}, {"B", "Cancel"}, {"A", "Cancel"}});
+            }
+        } else if (overlay == Overlay::OpenFailure) {
             constexpr int w = 860, h = 280;
             const int x = (fb.getWidth() - w) / 2;
             const int y = (fb.getHeight() - h) / 2;
@@ -5369,7 +5450,7 @@ namespace UI {
                     {"Y", "Open the quick right-side artwork browser"},
                     {"+", "Current Game tools: Overview / Party / Boxes / Trainer / Backups"},
                     {"-", "Help / Controls"},
-                    {"B", "Exit PokeBank NX from Product Home"}
+                    {"B", "Quit PokeBank NX (asks first; Y confirms)"}
                 }, "Games opens the full artwork browser. Profile and Settings use the top-right controls.");
             }
         } else if (overlay == Overlay::Options) {
