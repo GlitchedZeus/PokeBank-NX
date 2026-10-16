@@ -1335,12 +1335,21 @@ void Gen5Analyzer::transfer() {
         a_.invalid(CheckIdentifier::Transfer, "Species above 493 cannot come from Gen III/IV");
     if (p_.nSparkle) a_.invalid(CheckIdentifier::Transfer, "N's sparkle flag on a transferred Pokemon");
     const bool celebi = p_.species == 251, beast = p_.species >= 243 && p_.species <= 245;
-    const bool special = p_.fateful && isGen4Version(p_.version) && (celebi || beast);
-    const bool met =
-        p_.metLocation == kTransfer4 ||
-        (special && celebi && (p_.metLocation == kTransfer4CelebiUnused || p_.metLocation == kTransfer4CelebiUsed)) ||
-        (special && beast && (p_.metLocation == kTransfer4CrownUnused || p_.metLocation == kTransfer4CrownUsed));
-    if (!met) a_.invalid(CheckIdentifier::Transfer, "Met location " + std::to_string(p_.metLocation) + " is not a Poke Transfer location");
+    // PKHeX VerifyTransferLegalityG4: a Gen IV-origin Celebi may carry 30010/30011 and a
+    // Gen IV-origin Raikou/Entei/Suicune 30012/30013; everything else (and every Gen III
+    // origin, VerifyTransferLegalityG3) must be at 30001.
+    const bool capsuleLocation =
+        isGen4Version(p_.version) &&
+        ((celebi && (p_.metLocation == kTransfer4CelebiUnused || p_.metLocation == kTransfer4CelebiUsed)) ||
+         (beast && (p_.metLocation == kTransfer4CrownUnused || p_.metLocation == kTransfer4CrownUsed)));
+    if (p_.metLocation != kTransfer4 && !capsuleLocation)
+        a_.invalid(CheckIdentifier::Transfer, "Met location " + std::to_string(p_.metLocation) + " is not a Poke Transfer location");
+    else if (capsuleLocation && !p_.fateful)
+        // PKHeX's PK4->PK5 converter (PK5.GetTransferMetLocation4) gives these locations
+        // only to fateful (event) Celebi and beasts, but its verifier accepts them on any
+        // Gen IV Celebi or beast, and no original-game source settles it: a Warning.
+        a_.warn(CheckIdentifier::Transfer, "Met location " + std::to_string(p_.metLocation) +
+                                               " is the event-capsule transfer location, but this Pokemon is not a fateful event gift");
     // PKHeX ContestStatVerifier: sheen follows the contest stats Pokeblocks / Poffins
     // gave. In-game trades and Gen IV events start with stats of their own (unknown here).
     const auto sheen = sheenRange(p_, isGen3Version(p_.version));

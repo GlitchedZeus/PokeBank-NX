@@ -380,6 +380,24 @@ exempt name comes from the game's own buffer, which the PK5 format bounds at 8 O
 limit. No PKHeX-built record reached the difference in the Gen V differential (seeds 1, 2, 7,
 11). It stays as is; a real record that reaches it would be the evidence to revisit.
 
+## 13. Gen V capsule transfer location on a non-event Celebi or beast (downgraded)
+
+Found by the Gen V differential in CI on `2877d2a5` (record `m110571-metlocation`: a
+SoulSilver static Raikou, not fateful, transferred with met location 30012).
+
+- **PokeBank NX did:** accept 30010/30011 (Celebi) and 30012/30013 (Raikou, Entei, Suicune)
+  only on a fateful Gen IV-origin record, and call anything else "not a Poke Transfer
+  location" (Invalid).
+- **PKHeX:** `TransferVerifier.VerifyTransferLegalityG4` accepts those locations on any Gen
+  IV-origin Celebi or beast, fateful or not. Only its own PK4-to-PK5 converter
+  (`PK5.GetTransferMetLocation4`) limits them to fateful records; that models Poke Transfer
+  but is not original-game evidence, and there is no Gen V disassembly to settle it.
+- **Change:** a non-fateful Celebi or beast at its capsule location is now a Warning
+  (Incomplete). Every location PKHeX rejects stays Invalid: any other location, a capsule
+  location on another species, and any capsule location on a Gen III origin (PKHeX
+  `VerifyTransferLegalityG3` requires 30001). The CI record is now a fixture in
+  `tests/test_legality_gen5.cpp` (`transfer-crown-nonfateful`).
+
 ## Not disagreements (checked)
 
 These Invalid sites match a PKHeX rule:
