@@ -119,7 +119,10 @@ int main() {
     assert(foundation.find("Add blocked: correct red incompatible move rows first") != std::string::npos);
     assert(foundation.find("Create draft cancelled; staged save unchanged") == std::string::npos);
     assert(unified.find("No local draft is lost on a stray Back press.") != std::string::npos);
-    assert(unified.find("{\"X\", \"Add\"}") != std::string::npos);
+    // The workspace footer (X Add / X Keep) now comes from the shared layer model.
+    assert(unified.find("drawWorkspaceFooter(fb, screen);") != std::string::npos);
+    assert(readFile("include/UI/Gen2WorkspaceLayers.h").find("\"X\", create ? \"Add\" : \"Keep\"") !=
+           std::string::npos);
     assert(unified.find("Stage Add") == std::string::npos);
     assert(foundation.find("Pokemon added to staged copy only; source .srm unchanged") == std::string::npos);
 

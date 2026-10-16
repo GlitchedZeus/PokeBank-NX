@@ -116,3 +116,19 @@ $(HOST_BUILD)/test_gen1_edit_draft: $(GEN1_EDIT_DRAFT_SOURCES) include/UI/Gen1Ed
 $(HOST_BUILD)/test_gen1_edit_draft_sanitize: $(GEN1_EDIT_DRAFT_SOURCES) include/UI/Gen1EditDraft.h src/Integration/Gen1/Gen1PersonalData.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN1_EDIT_DRAFT_SOURCES) -o $@
+
+# Gen II Create/Edit workspace: one input owner per frame, footer == action (hardware a0633b6d).
+GEN2_WORKSPACE_LAYERS_SOURCES := tests/test_gen2_workspace_layers.cpp
+GEN2_WORKSPACE_LAYERS_DEPS := include/UI/Gen2WorkspaceLayers.h include/UI/Gen2FieldSelector.h \
+	include/UI/Gen12RerollDVsConfirm.h src/UI/Gen2UnifiedPokemonWorkspace.inc \
+	src/UI/Gen2PokemonEditorFoundation.inc src/UI/Gen2HardwareFinalFix.inc
+HOST_TESTS += $(HOST_BUILD)/test_gen2_workspace_layers
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_workspace_layers_sanitize
+host-test: $(HOST_BUILD)/test_gen2_workspace_layers
+host-sanitize: $(HOST_BUILD)/test_gen2_workspace_layers_sanitize
+$(HOST_BUILD)/test_gen2_workspace_layers: $(GEN2_WORKSPACE_LAYERS_SOURCES) $(GEN2_WORKSPACE_LAYERS_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN2_WORKSPACE_LAYERS_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_workspace_layers_sanitize: $(GEN2_WORKSPACE_LAYERS_SOURCES) $(GEN2_WORKSPACE_LAYERS_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_WORKSPACE_LAYERS_SOURCES) -o $@
