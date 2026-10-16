@@ -4,9 +4,29 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-16 (candidate a0633b6d FAILED owner hardware test: navigation/exit and Gen II Create controls).
+**Last updated:** 2026-10-16 07:40 UTC (UNIFIED EDITOR CAMPAIGN started; a0633b6d FAILED owner hardware test, #320).
 
-## Active milestone
+## Active milestone: UNIFIED GEN I–V EDITOR CAMPAIGN (owner directive, 2026-10-16)
+
+Goal: ONE consistent Gen I–V editor (generation differences only in the data adapters), Phase 0 controller repair first (#320), then ONE NRO for hardware testing. #307 stays open and draft and is not merged by any thread; #313 stays open; #314 is untouched; no Gen VI+ and no Master Vault. #307 head at campaign start: `c9e243343476a7abdbe43e69a1a1b1cf16b47734`.
+
+| Lane | Session | Branch | Owns | Phases |
+|---|---|---|---|---|
+| 2R | session_01Gn6iaKx8qUJWbAydeQ6ST6 | `claude/gen5-integration-20261014` (#307) | SaveSelectScreen, UI.cpp, NavigationRepeat.h, ScreenChrome, Common, AppShell; integration and the single NRO | 0 (Home/global input, #320), 8 (shared scroll repeat), 14 build |
+| C | session_012Qk8aPZvVGKZhMUyUC6rya | `claude/gen14-campaign-20261015` | Gen1*, Gen2*, Classic*, TrainerViewScreenGSCOverlay*, Gen I/II integration | 0 (Gen II Create, `ae099c77`), 1–7, 9–11 for Gen I/II, Gen I/II bags |
+| S | session_019GeN9mKTkgfpfuqDGPzWhz | `claude/shared-editor-gen35-20261016` | Shared* headers, MovePicker*, NarrowPokemonActionMenu, SharedPokemonEditorSurface, Gen3/4/5 surfaces, LocationNames | Shared Moves panel/chooser/footer/"Origin & Legality"/inline toggle (first push), then 1–7, 9–12 for Gen III–V and their bags |
+| I | session_01WwfzZtJWqDsNSrMV866RJE | `claude/item-quantity-policy-20261016` | include/src Inventory/ItemQuantityPolicy | 2 (source-backed per-game unique/max quantity policy) |
+| QA (4) | session_01VXXPj238uqedMPANHRVViz | `audit/app-qa-20261014` | tests/test_qa_*, docs/qa, QA workflows | 13 (cross-gen contract suite, 20-game matrix), 14 exact-binary audit |
+
+Status:
+
+| Item | State |
+|---|---|
+| #320 Home | 2R: one leave decision (Overlay::QuitConfirm + LeaveKind). Y commits, A/B stay. Root B, ZR/Launch tap and legacy A only open the dialog. Top touch layer; set_terminate trace; opt-in input-trace.log (`config/input_trace.enable`). Not pushed yet. The coordinator verified: Options overlay is dead code (never assigned); legacy-picker A launched at :3808. |
+| Gen II Create | C `ae099c77`, a fast-forward of c9e24334. 2R's permission layer blocked the merge twice. The owner's campaign directive authorises integration into #307 (relayed). |
+| Lanes S, I | Created 07:33 UTC. |
+
+## Previous milestone
 
 **Gen I–V COMPLETION CAMPAIGN** (owner directive, 2026-10-15): continuous work by Threads 2R/C/L/4 until all Gen I–V software scope is done and every gate is green on the final commit, then ONE NRO. #307 head at campaign start: `c952565cf878705726b2541546d085fa9724108d`, CI 8/9 green with GCC host still running; internal build only.
 
