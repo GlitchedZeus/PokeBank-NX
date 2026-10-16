@@ -27,7 +27,7 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 # Contract id -> owning lane, while the fix is not yet on the integration branch.
 # Remove an entry when its contract XPASSes; it is then ENFORCED.
 XFAIL = {
-    "CG08-modal-footer-and-touch-layer": "C (Gen2PokemonDetailsModal beginModal)",
+    "CG08-modal-footer-and-touch-layer": "C (Gen2PokemonDetailsModal) + S (strict touch layer: StoragePanel, ItemEditDialog, Gen V PID)",
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational
@@ -43,6 +43,7 @@ OUT_OF_SCOPE_WHEN_CG11_HOLDS: dict[str, str] = {
     # S e86741c: the router clears pickerActive every frame in a Gen I-V session and CG11 binds every
     # screen-level pickerActive = true open.
     "src/UI/Dialogs/PickerDialog.cpp": "generic Gen VI+ picker; unreachable from Gen I-V while CG11 passes",
+    "src/UI/Modals/PokemonDetailsModal.cpp": "generic Gen VI+ details modal; unreachable from Gen I-V while CG11 passes",
 }
 
 # CG11 (S 647917e): genericUiAllowedForSession(screen, ClassicGenericUi::GenericUi kind) in
@@ -334,7 +335,9 @@ def contracts(sources: list[Source]) -> list[Result]:
                "Every modal draws its own footer, and the covered footer is not tappable while it is open")
     modal_rx = re.compile(r"^draw(?!\w*(Frame|Chrome|Surface|Footer|Shell|Backdrop))\w*(Confirm|Decision|Modal|Dialog|Prompt)\w*$")
     footer_rx = re.compile(r"\b(drawNavBar|drawFooter\w*|drawGlyphButton|drawControllerHints|drawPickerFooter\w*)\s*\(")
-    layer_rx = re.compile(r"beginTopTouchLayer\s*\(|beginModal\s*\(|touchButtons\s*\.\s*clear\s*\(")
+    # Strict (coordinator, 2026-10-16): clearing screen touchButtons alone leaves g_touchGlyphHits /
+    # g_navHits live (the P0 #320 tap-through class), so only a real top touch layer counts.
+    layer_rx = STRICT_LAYER_RX
 
     def every_caller(name: str, def_rel: str, def_ln: int, before: int, after: int, rx: re.Pattern) -> bool:
         """True when the modal is called at least once and EVERY call site supplies rx itself: the

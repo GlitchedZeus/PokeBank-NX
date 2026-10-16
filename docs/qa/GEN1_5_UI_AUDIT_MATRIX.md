@@ -69,7 +69,7 @@ contract lists them as not shown; differences between generations are flagged fo
 | CG05-picker-footer-helper: Every picker footer goes through the shared green-A Select / red-B Cancel helper (no hand-rolled pairs) | FAIL | 13 | 14 | 10 | 9 | 10 |
 | CG06-reroll-without-confirmation: No confirmation modal on draft-only DV/IV/EV reroll; Release / Delete / Discard confirmations still exist | PASS | 0 | 0 | 0 | 0 | 0 |
 | CG07-single-exit-and-launch-site: appExitRequested=true and requestGameLaunch each have exactly one call site, behind the Y-confirmed leave dialog | PASS | 0 | 0 | 0 | 0 | 0 |
-| CG08-modal-footer-and-touch-layer: Every modal draws its own footer, and the covered footer is not tappable while it is open | XFAIL until C (Gen2PokemonDetailsModal beginModal) | 15 | 14 | 15 | 16 | 14 |
+| CG08-modal-footer-and-touch-layer: Every modal draws its own footer, and the covered footer is not tappable while it is open | XFAIL until C (Gen2PokemonDetailsModal) + S (strict touch layer: StoragePanel, ItemEditDialog, Gen V PID) | 25 | 24 | 24 | 25 | 24 |
 | CG09-item-quantity-policy: Item quantity editors consult ItemQuantityPolicy (unique items never get max > 1) | FAIL | 1 | 1 | 1 | 2 | 1 |
 | CG10-single-navigation-repeat-engine: Navigation repeat timings live only in the shared NavigationRepeat engine | PASS | 0 | 0 | 0 | 0 | 0 |
 | CG11-no-generic-modern-ui-in-gen1-5: In a Gen I-V session no path opens the generic action sheet, details modal, PickerDialog or StatEditDialog | FAIL | 9 | 9 | 9 | 9 | 9 |
