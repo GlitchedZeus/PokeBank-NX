@@ -4,6 +4,7 @@
 #include "UI/BackupSelectionScreen.h"
 #include "UI/Common.h"
 #include "UI/ScreenChrome.h"
+#include "UI/SharedEditorChrome.h"
 #include "UI/TouchInput.h"
 #include "UI/Dialogs/DialogFrame.h"
 #include "Utils/HelperUtilities.h"
@@ -292,9 +293,10 @@ namespace UI {
             backups[selectedIndex].legacyUnscoped) {
             drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Ownership Info"}, {"B", "Back"}});
         } else if (selectedIndex > 0) {
-            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Select"}, {"X", "Delete"}, {"B", "Back"}});
+            // The shared green-A Select / red-B Cancel picker footer (SharedEditorChrome).
+            SharedEditorChrome::drawPickerFooter(fb, {.browse = true, .page = false, .xLabel = "Delete"});
         } else {
-            drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Select"}, {"B", "Back"}});
+            SharedEditorChrome::drawPickerFooter(fb, {.browse = true, .page = false});
         }
 
         // Transient failure notice, centred just above the nav bar (same treatment as the editor's).
@@ -335,6 +337,9 @@ namespace UI {
     }
 
     void BackupSelectionScreen::drawDeleteConfirmation(PKSEFramebuffer& fb) {
+        // The modal owns touch: the covered backup-list footer is dropped (P0 #320 layering), and
+        // only the Cancel / Delete buttons drawn below publish targets.
+        beginTopTouchLayer();
         constexpr int w = 560, h = 248;
         const int x = (fb.getWidth() - w) / 2;
         const int y = (fb.getHeight() - h) / 2;
