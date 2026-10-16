@@ -827,10 +827,20 @@ enum class Deferral : uint8_t { None, PIDIVDefer, SlotNumber, Ball, PIDIV };
 
 // ======================================================================= public
 Search searchEncounters3(const Pk4& pk, uint8_t currentLevel) {
+    if (pk.version < 1 || pk.version > 5) {
+        Search s;
+        s.pidiv = analyzePidIv(pk);
+        return s;
+    }
+    return searchEncounters3(pk, originChain3(pk, currentLevel));
+}
+
+Search searchEncounters3(const Pk4& pk, const std::vector<Evo>& chain) {
+    // A format-5 entity runs the same Generation III search (every Gen III template already
+    // treats the met level as the transfer level); only its origin chain differs.
     Search s;
     s.pidiv = analyzePidIv(pk);
     if (pk.version < 1 || pk.version > 5) return s;
-    const std::vector<Evo> chain = originChain3(pk, currentLevel);
     if (chain.empty()) return s;
     Enumerator3 e{pk, chain, {}, {}, false, kMaxNotMatch};
     e.run();

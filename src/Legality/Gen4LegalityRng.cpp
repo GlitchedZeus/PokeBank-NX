@@ -1177,7 +1177,7 @@ int methodJReversalWindow(uint32_t seed, uint8_t nature) noexcept { return rever
 
 LeadSeed leadInfo4(const Pk4& pk, const SlotRef& slot, const PidIv& pidiv, uint8_t levelMin, uint8_t levelMax) noexcept {
     const bool hgss = isHGSS(pk.version);
-    constexpr uint8_t kFormat = 4;
+    const uint8_t kFormat = pk.format; // PKM.Format: 4, or 5 for the view of a transferred PK5
     PidType type = pidiv.type;
     if (type == PidType::ChainShiny) {
         if (pk.isShiny() && !hgss && slot.canUseRadar()) return {pidiv.seed, Lead::None};

@@ -374,19 +374,22 @@ LearnMethod canLearnHGSS(const Pk4& pk, const Evo& evo, uint16_t move, bool past
         return LearnMethod::LevelUp;
     const Personal pi = personal(Table::HGSS, evo.species, evo.form);
     if (isTM(pi, move)) return LearnMethod::TMHM;
-    if (isHM(pi, move, true)) return LearnMethod::TMHM; // format 4: every HM counts
+    // Format 4: every HM counts. A PK5 cannot keep an HM move from Gen IV (Poke Transfer refuses
+    // it) except Whirlpool, which is not an HM in D/P/Pt (LearnSource4HGSS.GetCanLearn).
+    if ((pk.format == 4 || move == kMoveWhirlpool) && isHM(pi, move, true)) return LearnMethod::TMHM;
     if (isTypeTutor(evo.species, move)) return LearnMethod::Tutor;
     if (isSpecialTutorHGSS(evo.species, evo.form, move)) return LearnMethod::Tutor;
     if (isEnhancedTutor(evo.species, pk, move, past)) return LearnMethod::Tutor;
     return LearnMethod::None;
 }
-LearnMethod canLearnPt(const Evo& evo, uint16_t move) noexcept {
+LearnMethod canLearnPt(const Pk4& pk, const Evo& evo, uint16_t move) noexcept {
     uint8_t level = 0;
     if (tryLevelLearn(learnset(Table::Pt, evo.species, evo.form), move, level) && level <= evo.levelMax)
         return LearnMethod::LevelUp;
     const Personal pi = personal(Table::Pt, evo.species, evo.form);
     if (isTM(pi, move)) return LearnMethod::TMHM;
-    if (isHM(pi, move, false)) return LearnMethod::TMHM;
+    // Format 5: only Defog, which is not an HM in HG/SS (LearnSource4Pt.GetCanLearn).
+    if ((pk.format == 4 || move == kMoveDefog) && isHM(pi, move, false)) return LearnMethod::TMHM;
     return LearnMethod::None;
 }
 LearnMethod canLearnDP(const Evo& evo, uint16_t move) noexcept {
@@ -403,7 +406,7 @@ void checkInternal(MoveResults& result, const std::array<uint16_t, 4>& current, 
         if (r.valid()) continue;
         const uint16_t move = current[static_cast<std::size_t>(i)];
         LearnMethod chk = canLearnHGSS(pk, evo, move, past);
-        if (chk == LearnMethod::None) chk = canLearnPt(evo, move);
+        if (chk == LearnMethod::None) chk = canLearnPt(pk, evo, move);
         if (chk == LearnMethod::None) chk = canLearnDP(evo, move);
         if (chk != LearnMethod::None) r = {chk, 0};
     }
@@ -1082,6 +1085,252 @@ bool isValidEvolutionWithMove3(const Pk4& pk, const EncInfo& enc, const History3
     for (std::size_t i = 1; i < 4; ++i) r[i] = {LearnMethod::Empty, 0};
     const std::array<uint16_t, 4> one{move, 0, 0, 0};
     markAndIterate3(r, one, enc, pk, pruned, true);
+    return r[0].valid();
+}
+
+// ======================================================================= format 5 (a PK5 of Gen III/IV origin)
+namespace {
+/// EvolutionTree.Evolves5 reverse lineage (PersonalTable.BW form counts). Only species up to 493
+/// matter here: no Generation V species evolves into or from an older one. The links point into
+/// the Gen V analyzer's static table, so the lineage is built once from the first caller's data.
+const std::vector<Node>& lineage5(const Format5Data& f5) {
+    static std::once_flag once;
+    static std::vector<Node> nodes;
+    std::call_once(once, [&f5] {
+        nodes.assign(D::kEvolutionCount * kMaxForms, Node{});
+        for (uint16_t s = 1; s <= kMaxSpecies4; ++s) {
+            const uint8_t fc = f5.formCountBW(s);
+            for (uint8_t f = 0; f < fc; ++f) {
+                for (const auto& evo : f5.evolutions(s)) {
+                    if (evo.species == 0) break;
+                    const uint8_t dForm = evo.form == 255 ? f : evo.form;
+                    if (evo.species >= D::kEvolutionCount || dForm >= kMaxForms) continue;
+                    Node& node = nodes[evo.species * kMaxForms + dForm];
+                    const Link link{s, f, &evo};
+                    if (node.first.species == 0) node.first = link;
+                    else if (node.second.species == 0) node.second = link;
+                }
+            }
+        }
+    });
+    return nodes;
+}
+bool tryDevolve5(const Evo& head, const Pk4& pk, uint8_t currentMax, uint8_t levelMin, Evo& out, const Format5Data& f5) {
+    if (head.species >= D::kEvolutionCount || head.form >= kMaxForms) return false;
+    return tryDevolveNode(&lineage5(f5)[head.species * kMaxForms + head.form], pk, currentMax, levelMin, out);
+}
+bool tryEvolve5(const Evo& head, const Evo& next, const Pk4& pk, uint8_t currentMax, uint8_t levelMin, Evo& out,
+                const Format5Data& f5) {
+    if (head.species > kMaxSpecies4) return false;
+    return tryEvolveWith(f5.evolutions(head.species), head, next, pk, currentMax, levelMin, out);
+}
+
+/// EvolutionGroup5.Devolve, EvolutionGroup4.Devolve (format 5: Arceus form 0, ceiling at the
+/// transfer level, minimum level 1) and, for a Generation III origin, EvolutionGroup3.Devolve
+/// (format 5 applies no ceiling there and keeps the caller's minimum level).
+void devolve543(std::array<Evo, 3>& r, const Pk4& pk, uint8_t levelMin, bool gen3, const Format5Data& f5) {
+    for (std::size_t i = 1; i < r.size(); ++i) {
+        const Evo prev = r[i - 1];
+        Evo evo{};
+        if (!tryDevolve5(prev, pk, prev.levelMax, levelMin, evo, f5)) continue;
+        if (isBetterDevolution(evo, r[i])) r[i] = evo;
+    }
+    if (pk.species == kArceus) r[0].form = 0;
+    updateCeiling(r, pk.metLevel);
+    for (std::size_t i = 1; i < r.size(); ++i) {
+        const Evo prev = r[i - 1];
+        Evo evo{};
+        if (!tryDevolve(prev, pk, prev.levelMax, 1, evo)) continue;
+        if (isBetterDevolution(evo, r[i])) r[i] = evo;
+    }
+    if (!gen3) return;
+    for (std::size_t i = 1; i < r.size(); ++i) {
+        const Evo prev = r[i - 1];
+        Evo evo{};
+        if (!tryDevolve3(prev, pk, prev.levelMax, levelMin, evo)) continue;
+        if (isBetterDevolution(evo, r[i])) r[i] = evo;
+    }
+}
+
+/// EvolutionGroup3/4/5.Evolve over a chain from GetOriginChain (ConditionBaseChainForward applied).
+void evolveWith(std::span<Evo> c, const Pk4& pk, uint8_t levelMax, int group, const Format5Data& f5) {
+    for (std::size_t i = c.size() - 1; i >= 1; --i) {
+        Evo& dest = c[i - 1];
+        const Evo devolved = c[i];
+        Evo evo{};
+        const bool ok = group == 3 ? tryEvolve3(devolved, dest, pk, levelMax, devolved.levelMin, evo)
+                      : group == 4 ? tryEvolve(devolved, dest, pk, levelMax, devolved.levelMin, evo)
+                                   : tryEvolve5(devolved, dest, pk, levelMax, devolved.levelMin, evo, f5);
+        if (!ok) {
+            if (dest.method == kSentinel) break;
+            continue;
+        }
+        if (isBetterEvolution(evo, dest)) dest = evo;
+    }
+}
+
+/// LearnGroup5.Check over the Generation V history (no Generation V egg encounter applies here).
+bool learnGroup5Check(MoveResults& result, const std::array<uint16_t, 4>& current, const Pk4& pk,
+                      const std::vector<Evo>& evos, bool past, const Format5Data& f5) {
+    const auto check = [&](const Evo& evo) {
+        for (int i = 3; i >= 0; --i) {
+            auto& r = result[static_cast<std::size_t>(i)];
+            if (r.valid()) continue;
+            const LearnMethod chk = f5.learn(pk, evo, current[static_cast<std::size_t>(i)], past);
+            if (chk != LearnMethod::None) r = {chk, 0};
+        }
+    };
+    for (const auto& evo : evos) {
+        if (evo.species == kDeoxys || evo.species == kGiratina || evo.species == kShaymin) {
+            const Personal5 pi = f5.personalB2W2(evo.species, evo.form);
+            if (!pi.valid) continue;
+            for (uint8_t f = 0; f < pi.formCount; ++f) {
+                Evo e = evo;
+                e.form = f;
+                check(e);
+            }
+        } else {
+            check(evo);
+        }
+    }
+    return allParsed(result);
+}
+
+/// LearnVerifierHistory.MarkAndIterate for a PK5: LearnGroup5, then LearnGroup4 unless the
+/// encounter is EncounterInvalid (Gen V context), then LearnGroup3 for a Generation III encounter.
+bool markAndIterate5(MoveResults& result, const std::array<uint16_t, 4>& current, const EncInfo& enc, const Pk4& pk,
+                     const History345& h, bool past, const Format5Data& f5) {
+    if (enc.hasMoves()) {
+        for (auto move : enc.moves) {
+            if (move == 0) break;
+            const int index = indexIn(current, move);
+            if (index != -1) result[static_cast<std::size_t>(index)] = {LearnMethod::Initial, 0};
+        }
+    }
+    if (learnGroup5Check(result, current, pk, h.gen5, past, f5)) return true;
+    if (enc.kind != EncKind::Invalid) {
+        if (learnGroup4Check(result, current, pk, h.gen4, enc, past)) return true;
+        if (isGen3Kind(enc.kind) && learnGroup3Check(result, current, h.gen3, enc)) return true;
+    }
+    for (auto& r : result) if (!r.parsed()) r = {LearnMethod::Unobtainable, 0};
+    return false;
+}
+} // namespace
+
+std::vector<Evo> originChain5(const Pk4& pk, uint8_t currentLevel, bool gen3, const Format5Data& f5) {
+    const uint8_t max = currentLevel;
+    // EncounterOrigin.GetLevelOriginMin3/4 for a format other than the origin generation.
+    const uint8_t min = (!gen3 && pk.eggLocation() != 0) ? 1 : 2;
+    if (pk.isEgg) return {Evo{pk.species, pk.form, 0, max, max, 0}};
+    std::array<Evo, 3> r{};
+    r[0] = Evo{pk.species, pk.form, 0, max, 0, 0};
+    devolve543(r, pk, min, gen3, f5);
+    // EvolutionUtil.Discard against the origin group's table (PersonalTable.E / HGSS).
+    for (int i = 0; i < static_cast<int>(r.size()); ++i) {
+        const auto k = static_cast<std::size_t>(i);
+        if (r[k].species == 0) break;
+        if (gen3 ? isPresentInGameE(r[k].species, r[k].form) : presentHGSS(r[k].species, r[k].form)) continue;
+        for (std::size_t j = k + 1; j < r.size(); ++j) r[j - 1] = r[j];
+        r.back() = Evo{};
+        --i;
+    }
+    std::size_t count = 0;
+    while (count < r.size() && r[count].species != 0) ++count;
+    std::span<Evo> chain(r.data(), count);
+    cleanDevolve(chain, min);
+    // EvolutionUtil.ConditionEncounterNoMet (the original met level was lost on transfer).
+    for (std::size_t i = 0; i + 1 < chain.size(); ++i)
+        if (chain[i].levelUpRequired != 0)
+            chain[i].levelMin = static_cast<uint8_t>(chain[i + 1].levelMin + chain[i].levelUpRequired);
+    return std::vector<Evo>(chain.begin(), chain.end());
+}
+
+History345 evolutionHistory5(const Pk4& pk, const EncInfo& enc, uint8_t currentLevel, const Format5Data& f5) {
+    History345 h;
+    const uint8_t max = currentLevel;
+    if (pk.isEgg) return h; // a PK5 of Gen III/IV origin cannot be an egg (Poke Transfer refuses eggs)
+    if (enc.kind == EncKind::Invalid) {
+        // GetEvolutionChainsSearch in the Gen V context: the head only (encSpecies is the species),
+        // its form reset for Arceus by EvolutionGroup4.Devolve, then EvolutionGroup5.Evolve with
+        // UpdateFloor(met level, current level).
+        Evo head{pk.species, pk.species == kArceus ? static_cast<uint8_t>(0) : pk.form, 0, max, pk.metLevel, 0};
+        if (f5.presentB2W2(head.species, head.form)) h.gen5.push_back(head);
+        return h;
+    }
+    std::array<Evo, 3> chain{};
+    chain[0] = Evo{pk.species, pk.form, 0, max, 0, 0};
+    const bool gen3 = isGen3Kind(enc.kind);
+    devolve543(chain, pk, enc.levelMin, gen3, f5);
+    std::size_t idx = chain.size();
+    for (std::size_t i = 0; i < chain.size(); ++i) if (chain[i].species == enc.species) { idx = i; break; }
+    const std::size_t length = idx == chain.size() ? 0 : idx + 1;
+    if (length == 0) return h;
+    std::span<Evo> c(chain.data(), length);
+    cleanDevolve(c, enc.levelMin);
+    for (auto& evo : c) {
+        if (evo.species == enc.species) break;
+        evo.method = kSentinel;
+    }
+    // EvolutionGroup3/4.Evolve for a format above their generation: level cap is the transfer level.
+    if (gen3) {
+        evolveWith(c, pk, pk.metLevel, 3, f5);
+        h.gen3 = setHistory(c, presentE);
+    }
+    evolveWith(c, pk, pk.metLevel, 4, f5);
+    h.gen4 = setHistory(c);
+    // EvolutionGroup5.Evolve: UpdateFloor(met level, current level), then evolve up to the current level.
+    c[0].levelMax = max;
+    for (auto& evo : c) {
+        if (evo.species == 0) break;
+        evo.levelMin = std::max(evo.levelMin, pk.metLevel);
+    }
+    evolveWith(c, pk, max, 5, f5);
+    h.gen5 = setHistory(c, f5.presentB2W2);
+    return h;
+}
+
+MoveResults verifyMoves5(const Pk4& pk, const EncInfo& enc, const History345& history, const Format5Data& f5) {
+    MoveResults result{};
+    const std::array<uint16_t, 4>& current = pk.moves;
+    if (enc.species == kSmeargle) {
+        // MoveInfo.IsSketchValid(move, Gen5)
+        for (int i = 3; i >= 0; --i) {
+            const auto k = static_cast<std::size_t>(i);
+            const uint16_t move = current[k];
+            if (move == 0) result[k] = {LearnMethod::Empty, 0};
+            else if (move <= 559 && move != kMoveStruggle && move != kMoveChatter) result[k] = {LearnMethod::Sketch, 0};
+            else result[k] = {LearnMethod::Unobtainable, 0};
+        }
+    } else {
+        for (int i = 3; i >= 0; --i) {
+            const auto k = static_cast<std::size_t>(i);
+            if (current[k] != 0) break;
+            result[k] = {LearnMethod::Empty, 0};
+        }
+        markAndIterate5(result, current, enc, pk, history, false, f5);
+    }
+    finalizeMoves(result, current);
+    return result;
+}
+
+bool isValidEvolutionWithMove5(const Pk4& pk, const EncInfo& enc, const History345& history, const MoveResults& moves,
+                               const Format5Data& f5) {
+    const uint16_t species = pk.species;
+    if (enc.species == species) return true;
+    const uint16_t move = evolutionMove(species);
+    if (move == 0) return true;
+    bool slot = false;
+    for (const auto& m : moves) {
+        const auto method = m.method;
+        if (!(method == LearnMethod::EggMove || method == LearnMethod::InheritLevelUp || method == LearnMethod::SpecialEgg)) { slot = true; break; }
+    }
+    if (!slot) return false;
+    const History345 pruned{pruneKeepPreEvolutions(history.gen3, species), pruneKeepPreEvolutions(history.gen4, species),
+                            pruneKeepPreEvolutions(history.gen5, species)};
+    MoveResults r{};
+    for (std::size_t i = 1; i < 4; ++i) r[i] = {LearnMethod::Empty, 0};
+    const std::array<uint16_t, 4> one{move, 0, 0, 0};
+    markAndIterate5(r, one, enc, pk, pruned, true, f5);
     return r[0].valid();
 }
 

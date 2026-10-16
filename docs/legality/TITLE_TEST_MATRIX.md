@@ -93,6 +93,7 @@ Each synthetic save has one General and one Storage block in partition 0, with t
 - **Black, White, Black 2, White 2.** The record has a version byte at 0x5F: 20 White, 21 Black, 22 White 2, 23 Black 2.
   - Encounter matching uses it, so the same bytes can be legal in one title and Invalid in its pair.
   - A Pokemon transferred from Gen III or IV keeps its old version byte. Nothing in the record says which Gen V game received it.
+  - The Gen IV analyzer's origin analysis matches a transfer's original Gen III or IV encounter and moves, so a transfer can read "No problems found" in any Gen V title.
 
 ## The matrix
 
@@ -116,12 +117,12 @@ Verdicts are written as: NP = "No problems found", Inv = Invalid, Inc = Incomple
 | Platinum | NDS save, `Gen4ReadOnlySave::parse` (Pt layout), Gen4ReadOnlyTrainer, Pokemon4ReadOnlyView, `analyze(..., "platinum_nds")` | Giratina-Origin L47, Distortion World, from save bytes: NP. FireRed Bulbasaur through Pal Park: NP | Pal Park Bulbasaur with met location 16: Inv ("A Generation III Pokemon must have been met at Pal Park") | Origin game 0: Inv ("Origin game #0 cannot produce a PK4 (not a Gen III or Gen IV game)"). Record padded to 237 bytes (`analyzePk4`): Inv (structure not read) | Event Arceus that knows Draco Meteor: Inc (Warning "Draco Meteor: Arceus can learn it only from the Pt/HG/SS tutor while holding a Draco Plate") | Rotom met at L15 in the Old Chateau (the script gives L20): Inv. Giratina-Origin with 117 in the D/P met-location field: BUG (expected Inv, engine NP) | Rotom-Wash from save bytes: NP. Turnback Cave Giratina L47 with version Diamond (D/P give L70): Inv. HeartGold Spinarak traded into a Platinum save: NP | 8,525 records, 0 false Valid, 0 false Invalid. Grown: 14,364, 0 false Invalid |
 | HeartGold | NDS save, `Gen4ReadOnlySave::parse` (HG/SS layout, ROM code 7), Gen4ReadOnlyTrainer, Pokemon4ReadOnlyView, `analyze(..., "heartgold_nds")` | Spinarak L2, Route 30, a HeartGold-only night slot, from save bytes: NP | Great Ball at 0x83 and Poke Ball at 0x86: Inv ("HG/SS ball value does not match the D/P/Pt ball value") | Storage block with a bad CRC: Rej (No validated Gen IV General/Storage layout) | Colosseum Shadow Quilava through Pal Park: Inc | Ho-Oh L45, Bell Tower: NP. Ho-Oh L45 with version SoulSilver (SoulSilver gives L70): Inv. Spinarak with 178 in the D/P met-location field: BUG (expected Inv, engine NP) | Spinarak with version SoulSilver: Inv. Spinarak in a Level Ball: NP. Pokewalker Pikachu: NP. SoulSilver save (ROM code 8) assigned to HeartGold: Rej (assigned game/family does not match) | 12,411 records, 0 false Valid, 0 false Invalid. Grown: 16,484, 0 false Invalid |
 | SoulSilver | NDS save, `Gen4ReadOnlySave::parse` (HG/SS layout, ROM code 8), Gen4ReadOnlyTrainer, Pokemon4ReadOnlyView, `analyze(..., "soulsilver_nds")` | Ledyba L3, Route 30, a SoulSilver-only morning slot, from save bytes: NP | Lugia with Shiny Leaf byte 32: Inv ("Shiny Leaf value is not obtainable") | Sanity word 4 (a Bad Egg): Inc, and the reader hides it | XD Shadow Ledyba through Pal Park: Inc | Lugia L45, Whirl Islands: NP. Lugia L45 with version HeartGold (HeartGold gives L70): Inv. Ledyba with 178 in the D/P met-location field: BUG (expected Inv, engine NP) | Ledyba with version HeartGold: Inv. Sport Ball Caterpie from the Bug-Catching Contest: NP. Pokewalker Pikachu with version Platinum: Inv. Platinum Rotom traded into a SoulSilver save: NP | 12,315 records, 0 false Valid, 0 false Invalid. Grown: 16,292, 0 false Invalid |
-| Black | `analyzePk5` (no app reader yet) | Cottonee L14, Pinwheel Forest, Black-only slot: NP | Fateful-encounter flag set: Inv ("Fateful encounter flag is set on a non-event encounter") | Record cut to 135 bytes: Inc (Warning "Not a 136-byte or 220-byte PK5 record", structure not read) | Diamond Caterpie, transferred: Inc (Warning "Gen III/IV origin: the original encounter and moves are not checked") | Platinum Caterpie in a Dream Ball: Inv ("The Dream Ball did not exist in Gen IV") | Same Cottonee with version byte White: Inv ("No Gen V encounter gives Cottonee at met location 33"). N's Purrloin with version byte Black: Inv | 16,290 records, 0 false Valid, 0 false Invalid |
-| White | `analyzePk5` (no app reader yet) | Petilil L14, Pinwheel Forest, White-only slot: NP | Met level 13 on a level-14 slot: Inv ("Closest Gen V encounter ... does not match") | Stored form with one encrypted byte flipped: Inv ("PK5 checksum does not match its data") | FireRed Weedle, transferred: Inc | HeartGold Caterpie in a Dream Ball: Inv ("The Dream Ball did not exist in Gen IV") | Same Petilil with version byte Black: Inv ("No Gen V encounter gives Petilil at met location 33") | 13,718 records, 0 false Valid, 0 false Invalid |
-| Black 2 | `analyzePk5` (no app reader yet) | Cottonee L15, Castelia City, Black 2-only slot: NP | Knows Surf: Inv ("Surf cannot be learned by this Pokemon in Gen V") | Stored form with two encrypted blocks swapped: Inv (checksum). Decrypted blocks A and B swapped: Inv (move ids above 559 and more) | HeartGold Caterpie, transferred: Inc | Platinum Caterpie in a Sport Ball: Inv ("Ball 24 exists only in HeartGold / SoulSilver") | Same Cottonee with version byte White 2: Inv. N's Purrloin (a B2W2 gift): NP | 20,696 records, 0 false Valid, 0 false Invalid |
-| White 2 | `analyzePk5` (no app reader yet) | Petilil L15, Castelia City, White 2-only slot: NP | N's sparkle flag set: Inv ("N's sparkle flag is set on a Pokemon that is not N's") | Species id 0xFFFF: Inv ("Species 65535 is above the Gen V maximum 649"). Nickname and OT all U+0001: Inv (names too long) | LeafGreen Caterpie, transferred: Inc | SoulSilver Caterpie in a Sport Ball: Inc, not Invalid | Same Petilil with version byte Black 2: Inv. N's Purrloin with version byte White 2: NP | 18,954 records, 0 false Valid, 0 false Invalid |
+| Black | `analyzePk5` (no app reader yet) | Cottonee L14, Pinwheel Forest, Black-only slot: NP. Diamond Caterpie, transferred: NP (Info "Gen III/IV origin matches a Gen IV wild encounter (Caterpie)") | Fateful-encounter flag set: Inv ("Fateful encounter flag is set on a non-event encounter") | Record cut to 135 bytes: Inc (Warning "Not a 136-byte or 220-byte PK5 record", structure not read) | XD Shadow Butterfree, transferred: Inc (Warning "Colosseum / XD origin: the original encounter and moves are not checked") | Platinum Caterpie in a Dream Ball: Inv ("The Dream Ball did not exist in Gen IV") | Same Cottonee with version byte White: Inv ("No Gen V encounter gives Cottonee at met location 33"). N's Purrloin with version byte Black: Inv | 16,466 records, 0 false Valid, 0 false Invalid |
+| White | `analyzePk5` (no app reader yet) | Petilil L14, Pinwheel Forest, White-only slot: NP. FireRed Weedle, transferred: NP | Met level 13 on a level-14 slot: Inv ("Closest Gen V encounter ... does not match") | Stored form with one encrypted byte flipped: Inv ("PK5 checksum does not match its data") | Sapphire egg on a TID/SID with no Ruby/Sapphire seed: Inc (Warning, PKHeX Fishy) | HeartGold Caterpie in a Dream Ball: Inv ("The Dream Ball did not exist in Gen IV") | Same Petilil with version byte Black: Inv ("No Gen V encounter gives Petilil at met location 33") | 13,793 records, 0 false Valid, 0 false Invalid |
+| Black 2 | `analyzePk5` (no app reader yet) | Cottonee L15, Castelia City, Black 2-only slot: NP. HeartGold Caterpie, transferred: NP | Knows Surf: Inv ("Surf cannot be learned by this Pokemon in Gen V") | Stored form with two encrypted blocks swapped: Inv (checksum). Decrypted blocks A and B swapped: Inv (move ids above 559 and more) | LeafGreen Caterpie on no reachable Gen III RNG frame: Inc (Warning, PKHeX Fishy) | Platinum Caterpie in a Sport Ball: Inv ("Ball 24 exists only in HeartGold / SoulSilver") | Same Cottonee with version byte White 2: Inv. N's Purrloin (a B2W2 gift): NP | 20,768 records, 0 false Valid, 0 false Invalid |
+| White 2 | `analyzePk5` (no app reader yet) | Petilil L15, Castelia City, White 2-only slot: NP. LeafGreen Caterpie, transferred: NP | N's sparkle flag set: Inv ("N's sparkle flag is set on a Pokemon that is not N's") | Species id 0xFFFF: Inv ("Species 65535 is above the Gen V maximum 649"). Nickname and OT all U+0001: Inv (names too long) | Colosseum Shadow Bayleef, transferred: Inc | SoulSilver Caterpie in a Sport Ball (Bug-Catching Contest): NP | Same Petilil with version byte Black 2: Inv. N's Purrloin with version byte White 2: NP | 18,795 records, 0 false Valid, 0 false Invalid |
 
-Cases per title (171 in all, 3 of them BUG rows):
+Cases per title (175 in all, 3 of them BUG rows):
 
 | Title | Positive | Negative | Malformed | Unknown | Original-game | Title-specific | Total |
 |---|---|---|---|---|---|---|---|
@@ -141,10 +142,10 @@ Cases per title (171 in all, 3 of them BUG rows):
 | Platinum | 2 | 1 | 2 | 1 | 2 | 3 | 11 |
 | HeartGold | 1 | 1 | 1 | 1 | 3 | 4 | 11 |
 | SoulSilver | 1 | 1 | 1 | 1 | 3 | 4 | 11 |
-| Black | 1 | 1 | 1 | 1 | 1 | 2 | 7 |
-| White | 1 | 1 | 1 | 1 | 1 | 1 | 6 |
-| Black 2 | 1 | 1 | 2 | 1 | 1 | 2 | 8 |
-| White 2 | 1 | 1 | 2 | 1 | 1 | 2 | 8 |
+| Black | 2 | 1 | 1 | 1 | 1 | 2 | 8 |
+| White | 2 | 1 | 1 | 1 | 1 | 1 | 7 |
+| Black 2 | 2 | 1 | 2 | 1 | 1 | 2 | 9 |
+| White 2 | 2 | 1 | 2 | 1 | 1 | 2 | 9 |
 
 ## Evidence for each case
 
@@ -314,9 +315,13 @@ Gen V has no disassembly. No pret project for Black, White, Black 2 or White 2 e
 - **Original-game cases use the Gen IV decompilations instead.** They judge Pokemon that came to Gen V by Poke Transfer.
   - pokeplatinum `generated/items.txt:2-17` lists Platinum's balls: Master Ball to Cherish Ball. It has no Dream Ball and no Sport Ball.
   - pokeheartgold `include/constants/items.h:270-285` lists the same 16 balls. Lines 913-921 add the Apricorn balls, the Sport Ball (499) and the Park Ball. No Gen IV game has a Dream Ball.
-  - So a Platinum or HeartGold Pokemon in a Dream Ball is Invalid. A Platinum Pokemon in a Sport Ball is Invalid. A SoulSilver Pokemon in a Sport Ball is fine, and stays Incomplete only because its Gen IV history is not checked.
+  - So a Platinum or HeartGold Pokemon in a Dream Ball is Invalid. A Platinum Pokemon in a Sport Ball is Invalid.
+  - The Bug-Catching Contest has Caterpie at L7-18 (pokeheartgold `files/data/mushi/mushi_encount.csv:2`), and every contest throw is a Sport Ball (`src/battle/battle_controller_player.c:1865-1873`). So the SoulSilver Caterpie in a Sport Ball, transferred at L15, reads "No problems found".
   - These cases do not depend on the Gen V title. The record does not say which Gen V game received it.
-- **Unknown cases.** The Gen V analyzer does not check a transfer's original Gen III or IV encounter or moves. So those records read Incomplete, never "No problems found".
+- **Transfers.** The Gen IV analyzer's origin analysis (`Gen4::analyzeOrigin5`) matches the original Gen III or IV encounter and the moves of a transfer, as PKHeX does for a format-5 record. The four transferred Caterpie and Weedle records come from PKHeX's generator, and PKHeX calls each VALID. They read "No problems found" with an Info naming the matched encounter.
+- **Unknown cases.** These transfers are still not decided here, so they read Incomplete, never "No problems found". PKHeX calls each VALID.
+  - Colosseum and XD encounters (XD Shadow Butterfree, Colosseum Shadow Bayleef) are not modelled: Warning "Colosseum / XD origin: the original encounter and moves are not checked".
+  - Two PKHeX "fishy" results stay Warnings: a Sapphire egg whose TID/SID PKHeX finds no Ruby/Sapphire seed for (`Trainer:TrainerIDNoSeed`), and a LeafGreen Caterpie whose Method 1 seed reaches no frame that gives its slot and level (`PID:EncConditionBadRNGFrame`).
 
 ## PKHeX differentials
 
@@ -430,33 +435,34 @@ Grown run, 76,368 records:
 tools/pkhex_gen5_diff/run.sh /home/user/ext/pkhex 1 4    # seed 1, 4 mutations per record
 ```
 
-The run used `GEN5_DIFF_CORPUS=<saved pkhex.txt> SHOW=100000`. The large `SHOW` worked around an early exit that is now fixed (see Findings).
-
-It covered 115,035 records:
+It covered 115,320 records:
 
 | PKHeX verdict | PokeBank NX verdict | Records |
 |---|---|---|
-| VALID | No problems found | 35,417 |
-| VALID | Incomplete | 21,233 |
-| INVALID | Invalid | 54,534 |
-| INVALID | Incomplete | 3,851 |
+| VALID | No problems found | 55,885 |
+| VALID | Incomplete | 902 |
+| INVALID | Invalid | 58,070 |
+| INVALID | Incomplete | 463 |
 
 - False Valid: 0. False Invalid: 0.
 - Text checks: casing 47,748 units, 0 mismatches. Word-filter lists: 0 mismatches. Word filter: 0 mismatches. Gen III/IV fixed names: 0 missing.
+- Seeds 2, 7 and 11 also give 0 false Valid and 0 false Invalid (`docs/legality/GEN5_PKHEX_RULE_INVENTORY.md`).
 
 The Gen V record carries its title, so this run can be split by title. The split below uses the version byte of each record. It covers native, in-game trade and event records:
 
 | Title | Records | PKHeX VALID: NP / Inc | PKHeX INVALID: Inv / Inc | PKHeX-valid native / trade / event records certified NP |
 |---|---|---|---|---|
-| Black | 16,290 | 8,239 / 9 | 7,973 / 69 | 6,862 of 6,870 / 177 of 177 / 1,200 of 1,201 |
-| White | 13,718 | 6,895 / 4 | 6,763 / 56 | 5,840 of 5,844 / 130 of 130 / 925 of 925 |
-| Black 2 | 20,696 | 10,549 / 5 | 10,088 / 54 | 8,557 of 8,561 / 1,137 of 1,137 / 855 of 856 |
-| White 2 | 18,954 | 9,734 / 5 | 9,163 / 52 | 8,123 of 8,128 / 683 of 683 / 928 of 928 |
+| Black | 16,466 | 8,278 / 9 | 8,094 / 85 | 6,838 of 6,846 / 177 of 177 / 1,263 of 1,264 |
+| White | 13,793 | 6,953 / 4 | 6,779 / 57 | 5,856 of 5,860 / 137 of 137 / 960 of 960 |
+| Black 2 | 20,768 | 10,566 / 6 | 10,144 / 52 | 8,528 of 8,532 / 1,154 of 1,154 / 884 of 886 |
+| White 2 | 18,795 | 9,665 / 6 | 9,074 / 50 | 8,089 of 8,094 / 675 of 675 / 901 of 902 |
 
 Two groups of records have no Gen V title:
 
-- **Transfers (44,690 records).** PKHeX VALID 21,210: all Incomplete. PKHeX INVALID 23,480: 19,860 Invalid, 3,620 Incomplete.
-- **Mutated version bytes (687 records).** These are Gen V records whose version byte the mutator changed to a Gen III or IV game. All are Invalid in both.
+- **Transfers (44,815 records).** PKHeX VALID 21,300: 20,423 No problems found, 877 Incomplete. PKHeX INVALID 23,515: 23,296 Invalid, 219 Incomplete.
+  - The Incomplete PKHeX-valid transfers are the 517 Colosseum / XD records and 360 records with a PKHeX "fishy" Gen III result, which stays a Warning: 314 Ruby/Sapphire eggs whose TID/SID has no Ruby/Sapphire seed, and 46 Gen III wild encounters on no reachable RNG frame.
+  - Every PKHeX-invalid Gen III or IV transfer reads Invalid. The Incomplete ones are Colosseum / XD records (198) and transfers whose version byte the mutator changed to a Gen V game (21).
+- **Mutated version bytes (683 records).** These are Gen V records whose version byte the mutator changed to a Gen III or IV game. All are Invalid in both.
 
 ## Findings
 
