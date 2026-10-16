@@ -241,7 +241,9 @@ int main() {
     assert(finalFix.find("std::max(0, w - 36)") != std::string::npos);
     assert(unified.find("Current level cannot be below this Crystal met level") != std::string::npos);
     assert(nativePresentation.find("Current level below met level") != std::string::npos);
-    assert(picker.find("encounterTimeLabel(encounter.timeMask)") != std::string::npos);
+    assert(picker.find("Gen2Picker::locationRowText(") != std::string::npos);
+    assert(readFile("include/UI/Gen2PokemonPickerModel.h").find("encounterTimeLabel(encounter.timeMask)") !=
+           std::string::npos);
     assert(sharedShell.find("drawVerticalScrollIndicator") != std::string::npos);
     assert(finalFix.find("drawVerticalScrollIndicator") != std::string::npos);
     assert(finalFix.find("visibleMoveFocus = UnifiedContract::normalizeMoveRowFocus") != std::string::npos);
@@ -274,9 +276,9 @@ int main() {
     // Crystal Met Location is species/exact-game aware; accepting it writes the native
     // location and encounter-minimum caught level rather than an arbitrary landmark.
     assert(pickerModel.find("Encounter::forGameSpecies(sourceGameId, species)") != std::string::npos);
-    // The Crystal location picker now announces drag-to-browse behavior. Preserve
+    // The Crystal location chooser is a proportional "Met Location" window (phase 11). Preserve
     // actual species-scoped encounters and native minimum-level presentation.
-    assert(picker.find("Drag naturally to browse Crystal encounters") != std::string::npos);
+    assert(picker.find("\"Met Location\"") != std::string::npos);
     assert(picker.find("model.locationCount()") != std::string::npos);
     assert(picker.find("model.encounterChoices[") != std::string::npos);
     assert(picker.find("encounter->minLevel") != std::string::npos);
