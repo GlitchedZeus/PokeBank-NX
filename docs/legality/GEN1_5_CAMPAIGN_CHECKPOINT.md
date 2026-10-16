@@ -36,22 +36,25 @@ Invalid (the rest are Incomplete); certifies = whether the app can say "No probl
 | 4 | Gold | `GB::checkGen2` (app, since round 2) | Gen II corpus 3 × 50,000; app path parity 18,291/18,291 (seed 1) | 0 (differences in GB_LEGALITY_VERDICTS.md) | matches PKHeX | yes | Done |
 | 5 | Silver | same | same | 0 | matches PKHeX | yes | Done |
 | 6 | Crystal | same | same | 0 | matches PKHeX | yes | Done |
-| 7 | Ruby | `Legality::analyze` (PK3) | 2,846 | 0 | 13% | no | Safe, partial |
-| 8 | Sapphire | same | 2,679 | 0 | 14% | no | Safe, partial |
-| 9 | Emerald | same | 2,805 | 0 | 13% | no | Safe, partial |
-| 10 | FireRed | same | 3,105 | 0 | 13% | no | Safe, partial |
-| 11 | LeafGreen | same | 3,066 | 0 | 13% | no | Safe, partial |
-| 12 | Diamond | `Legality::analyze` (PK4) | 4,176 | 0 | 31% | no | Safe, partial |
-| 13 | Pearl | same | 4,112 | 0 | 31% | no | Safe, partial |
-| 14 | Platinum | same | 3,951 | 0 | 31% | no | Safe, partial |
-| 15 | HeartGold | same | 5,512 | 0 | 32% | no | Safe, partial |
-| 16 | SoulSilver | same | 5,416 | 0 | 32% | no | Safe, partial |
-| 17 | Black | `Legality::analyzePk5` | 227,135 across B/W/B2/W2 (seeds 1, 2, 7, 11) | 0 (false Valid also 0) | 93.4% | yes for native, trade and event records (99.9%); Gen III/IV transfers stay Incomplete | Strong, transfer gap |
+| 7 | Ruby | `Gen3Pk3` analyzer via `Legality::analyze` (app) | 2,845 | 0 (false Valid 0) | 2,891 / 2,891 | 95.8% base, 98.2% grown | Done |
+| 8 | Sapphire | same | 2,681 | 0 | 2,614 / 2,615 | 95.8%, 97.6% | Done |
+| 9 | Emerald | same | 2,805 | 0 | 2,710 / 2,711 | 96.6%, 98.3% | Done |
+| 10 | FireRed | same | 3,105 | 0 | 3,025 / 3,027 | 96.3%, 98.4% | Done |
+| 11 | LeafGreen | same | 3,075 | 0 | 3,081 / 3,081 | 95.6%, 98.7% | Done |
+| 12 | Diamond | `Gen4` analyzer via `Legality::analyze` (app) | 4,172 | 0 (false Valid 0) | 4,872 / 4,872 | 100% base, 99.26% grown | Done |
+| 13 | Pearl | same | 4,122 | 0 | 4,590 / 4,590 | 100%, 99.38% | Done |
+| 14 | Platinum | same | 3,955 | 0 | 4,574 / 4,574 | 100%, 99.28% | Done |
+| 15 | HeartGold | same | 5,514 | 0 | 6,897 / 6,897 | 100%, 99.17% | Done |
+| 16 | SoulSilver | same | 5,376 | 0 | 6,939 / 6,939 | 100%, 99.20% | Done |
+| 17 | Black | `Legality::analyzePk5` (engine only: no PK5 path in the app yet) | 227,135 across B/W/B2/W2 (seeds 1, 2, 7, 11) | 0 (false Valid also 0) | 93.4% | engine: yes for native, trade and event records (99.9%); Gen III/IV transfers stay Incomplete. App: not wired | Engine strong; transfer gap; app wiring with #307 |
 | 18 | White | same | same | same | same | same | same |
 | 19 | Black 2 | same | same | same | same | same | same |
 | 20 | White 2 | same | same | same | same | same | same |
 
-Gen III/IV counts are from `tools/pkhex_gen34_diff/run.sh PKHeX 1 3`; Gen V from
+Gen III counts are from `tools/pkhex_gen34_diff/run.sh PKHeX 1 3 3` (base) and `GROW=1` (grown);
+the uncaught Gen III records all hold an Enigma Berry (a deliberate Unknown). Gen IV counts are
+seed 1 with 3 mutations; seeds 1-3 together caught 83,524 of 83,524 PKHeX-invalid records, and the
+grown percentages are seeds 1-3. Gen V from
 `tools/pkhex_gen5_diff/run.sh PKHeX <seed> 4` for seeds 1, 2, 7 and 11 (461,340 records).
 Gen V "No problems found" by origin: native 117,432/117,521, in-game trade 8,579/8,579,
 event 16,061/16,074, Gen III/IV transfer 0/84,961 (their original encounter is not yet
@@ -59,11 +62,10 @@ checked from the PK5 side).
 
 ## Open Unknown / Incomplete cases
 
-- **Gen III/IV never certify.** Encounter, PID/RNG, moves and egg coverage stay Partial,
-  so every legitimate PK3/PK4 is Incomplete. The largest PKHeX-only rejections:
-  PID/IV correlation (`PIDTypeMismatch`), encounter location/level (`EncInvalid`),
-  Gen IV encounter type, PP/PP-ups, fateful flags and event-card matching, untrained
-  EVs, unobtainable moves, Pokérus, Johto balls, nickname language.
+- **Gen III/IV:** records stay Incomplete when PKHeX itself only calls them "Fishy" (bad RNG
+  frame, PID 0, SID 0, all IVs equal, a Ruby/Sapphire TID without a seed), for a Colosseum/XD
+  origin (Orre tables not ported), a checksum or sanity mismatch, or an Enigma Berry. That is
+  about 2-4% of PKHeX-valid Gen III and 0.75% of grown Gen IV records.
 - **Gen V:** Gen III/IV-origin PK5 records get the Gen V-side transfer checks but not their
   original Gen III/IV encounter, so they stay Incomplete; fateful records that match no PGF
   card (warned, not Invalid: the card list is not proven complete); a BACD PID coincidence
@@ -137,12 +139,28 @@ separately from corpus detection rates and test counts. No merge without the own
   and traded-egg exemptions and is kept. Item 13 (found by CI on 2877d2a5): a non-event
   Celebi/beast at its Gen IV capsule transfer location was Invalid and PKHeX accepts it; with
   no original-game source either way it is now a Warning.
-- (2) In progress: separate Gen III (PK3) and Gen IV (PK4, incl. Pal Park) analyzers measured by
-  `tools/pkhex_gen34_diff` with a false-Valid gate and a grown-record corpus.
+- (2) Done. Gen III: `Gen3Pk3` analyzer (merges `517108e2`, `2877d2a5`); Gen IV: PK4 analyzer
+  incl. Pal Park (merge `b5b44daf`). Both run in the app path and certify "No problems found".
+  0 false Invalid and 0 false Valid on seeds 1-3, base and grown corpora. PKHeX-invalid caught:
+  Gen III 13-14% -> 99.97%, Gen IV 31-32% -> 100%. See
+  [GEN3_PKHEX_RULE_INVENTORY.md](GEN3_PKHEX_RULE_INVENTORY.md) and
+  [GEN4_PKHEX_RULE_INVENTORY.md](GEN4_PKHEX_RULE_INVENTORY.md).
+- (5) [LEGALITY_GATE_MATRIX.md](LEGALITY_GATE_MATRIX.md): 41 gates, every applicable one runs on
+  this branch's head (the L4 event matrix and the lane workflows now fire here; L5 Stage 3 moved
+  to ubuntu-24.04). Final-commit run pending.
+- (6) [TITLE_TEST_MATRIX.md](TITLE_TEST_MATRIX.md): 118 cases over Gen I, II, III and V titles
+  (positive, negative, malformed, Unknown, original-game, title-specific); Gen IV rows in progress.
+- (7) [GEN1_5_RULE_COVERAGE.md](GEN1_5_RULE_COVERAGE.md) reports production-wired rules, corpus
+  detection rates and test counts separately. Gen I-IV are production-wired; Gen V is engine-only
+  until integration with #307.
+- In progress: Gen V Gen III/IV-origin transfers checked against the Gen III/IV analyzers.
+- Integration: [GEN1_5_APP_INTEGRATION_PREP.md](GEN1_5_APP_INTEGRATION_PREP.md) (trial merge with
+  #307, five conflicts, combined test plan). Nothing merged.
 
 ## Next steps
 
-1. Raise Gen III/IV coverage using the differential's top PKHeX-only categories, keeping
-   false Invalid at 0.
-2. Gen V OT/nickname text for trades and event cards.
-3. Combined Gen I–V app and legality test campaign on Switch hardware (owner).
+1. Gen V: certify Gen III/IV-origin transfers through the Gen III/IV analyzers.
+2. Gen IV titles in the 20-title matrix.
+3. Every gate on the exact final commit; final report to the owner.
+4. Reviewed integration with #307 and a combined Gen I-V app and legality test campaign on
+   Switch hardware (owner decides; nothing is merged before that).
