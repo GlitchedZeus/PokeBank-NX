@@ -4,6 +4,7 @@
 // source-save writer, Storage/Bank or generic uncontrolled mutation handlers.
 // Touch targets are isolated to verified read-only and native-field staged
 // actions; native bank, source-writing and unsupported mutation routes remain barred.
+#include "Inventory/ItemQuantityPolicy.h"
 #include "Names/LocationDisplayNames.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Integration/Gen5/Gen5BoxTouchNavigation.h"
@@ -877,6 +878,25 @@ void syncBagCursor(TrainerViewScreen& screen) {
 std::string bagItemLabel(const TrainerViewScreen& screen,uint16_t id) {
     return Names::machineDisplayLabel(screen.trainer.getGameGroup(),id,Names::getItemName(id));
 }
+// The ONE per-item quantity query of the Gen V bag, backed by Thread I's
+// Inventory/ItemQuantityPolicy.h. Never exceeds the native pocket cap the staged bag enforces
+// (bagPocketLayout5 maxCount). Gen V keeps Poke Balls in Items; Key Items and TMs/HMs are unique.
+struct Gen5QuantityRule { bool valid = false; bool editable = false; uint16_t maximum = 0; };
+Gen5QuantityRule gen5QuantityRule(const TrainerViewScreen& screen, size_t pocket, uint16_t id,
+                                  uint16_t nativeCap) noexcept {
+    namespace QP = PokeVault::Inventory::QuantityPolicy;
+    static constexpr std::array<QP::Pocket, 5> kPockets{{
+        QP::Pocket::Items, QP::Pocket::KeyItems, QP::Pocket::TMHM, QP::Pocket::Medicine,
+        QP::Pocket::Berries}};
+    static_assert(kPockets.size() == PokeVault::Integration::Gen5::BagPocket5Count);
+    QP::Game game{};
+    if (pocket >= kPockets.size() || !QP::gameFromId(screen.sourceGameId, game)) return {};
+    const auto rule = QP::quantityRule(game, kPockets[pocket], id);
+    if (!rule.valid || nativeCap == 0) return {};
+    const uint16_t maximum = std::min(rule.maximum, nativeCap);
+    return {true, rule.editable && maximum > 1, maximum};
+}
+
 bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touch) {
     namespace G=PokeVault::Integration::Gen5;
     using BagSurface=G::Gen5BagScreen::Surface;
@@ -904,8 +924,14 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touc
                 bag.cancel();
             } else if(keys&HidNpadButton_A) {
                 const uint16_t id=bag.chosenAddItem();
-                const int maximum=static_cast<int>(bag.addMaximum(ws));
-                const auto r=Utils::promptNumber("Add "+bagItemLabel(screen,id),1,1,maximum);
+                const auto rule=gen5QuantityRule(screen,bag.pocket(),id,bag.addMaximum(ws));
+                // A unique item is added once; only a quantity-editable item asks for an amount.
+                Utils::NumberResult r{};
+                r.accepted=rule.valid;
+                r.value=1;
+                if(!rule.valid) screen.postStatus("This item cannot be added to this Gen V pocket",300);
+                else if(rule.editable)
+                    r=Utils::promptNumber("Add "+bagItemLabel(screen,id),1,1,rule.maximum);
                 screen.controllerNavigation.reset();
                 if(r.accepted) { // Cancel is byte-for-byte inert.
                     if(!bag.confirmAdd(ws,id,r.value,refresh,error))screen.postStatus(error,320);
@@ -979,8 +1005,15 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touc
         screen.controllerNavigation.reset();
     } else if(keys&HidNpadButton_A) {
         if(const auto request=bag.beginQuantity(ws,error)) {
+            const auto rule=gen5QuantityRule(screen,request->pocket,request->itemId,request->maximum);
+            if(!rule.editable || request->current>rule.maximum) {
+                // Unique items get no quantity editor; nothing is staged.
+                screen.postStatus(rule.valid ? "This item is unique; its quantity is fixed at 1"
+                                             : "Gen V item quantity outside native limits",260);
+                return true;
+            }
             const auto r=Utils::promptNumber("Edit "+bagItemLabel(screen,request->itemId),
-                static_cast<int>(request->current),1,static_cast<int>(request->maximum));
+                static_cast<int>(request->current),1,static_cast<int>(rule.maximum));
             screen.controllerNavigation.reset();
             if(r.accepted) { // Cancel cannot mutate the stage.
                 if(!bag.applyQuantity(ws,*request,r.value,refresh,error))
