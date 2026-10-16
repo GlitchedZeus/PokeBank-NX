@@ -1237,6 +1237,8 @@ void cases() {
     // pokeruby include/constants/species.h:1282-1286: the roamer is Latias in Sapphire, Latios otherwise.
     record("Ruby", "title-specific", "the Sapphire roaming Latias with version Ruby (Ruby roams Latios)",
            expect(O::Invalid, {noEncounter}), run(withVersion(kSapphireRoamerLatias, kRuby), "ruby_gba"));
+    record("Ruby", "title-specific", "the Sapphire Seviper traded into a Ruby save", expect(O::NoProblemsFound),
+           runSave(save(F::RubySapphire, fromHex(kSapphireSeviper), kTesterId), SG::RubyGBA));
     record("Sapphire", "title-specific", "the Sapphire Seviper with version Ruby (no Ruby Seviper)",
            expect(O::Invalid, {noEncounter}), run(withVersion(kSapphireSeviper, kRuby), "ruby_gba"));
     record("Sapphire", "title-specific", "the Ruby Zangoose traded into a Sapphire save",
