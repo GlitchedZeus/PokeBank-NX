@@ -3516,12 +3516,59 @@ bool isUnusedInternalSpecies(uint16_t internal) noexcept {
     return internal >= D::kInternalSpeciesCount || (internal != 0 && D::kInternalToNational[internal] == 0);
 }
 
+/// "wild slot (mass outbreak) Seedot at met location 32, level 13" for a matched encounter.
+std::string describeEncounter(const Pk3& pk, const Enc& e) {
+    std::string text = kindName(e.kind);
+    if (e.kind == Kind::Slot && e.area >= D::kAreaCount) text += " (mass outbreak)";
+    if (e.kind == Kind::Static && D::kStatics[e.index].roaming) text += " (roaming)";
+    text += " " + speciesLabel(e.species);
+    text += " at met location " + std::to_string(pk.metLocation) + ", level " + std::to_string(pk.metLevel);
+    return text;
+}
+
+bool isCertified(const Report& r) noexcept { return allCoverageComplete(r.coverage) && r.problemCount() == 0; }
+
+Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId, Verification* out);
+
 } // namespace
 
-} // namespace Gen3Pk3
+std::vector<uint16_t> lineage(uint16_t species) {
+    std::vector<uint16_t> out{species};
+    for (size_t i = 0; i < out.size() && out.size() < 16; ++i) {
+        const uint16_t s = out[i];
+        if (s == 0 || s > D::kMaxSpecies) continue;
+        const auto& node = reverseLineage()[s];
+        for (const EvoLink* link : {&node.first, &node.second})
+            if (link->species != 0 && std::find(out.begin(), out.end(), link->species) == out.end())
+                out.push_back(link->species);
+    }
+    return out;
+}
 
-Report analyzePk3(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId) {
-    using namespace Gen3Pk3;
+Verification verify(const Pokemon::Pokemon& pk, std::string_view exactSourceGameId) {
+    Verification v;
+    if (pk.getGameGroup() != Enums::GameVersion::FRLG) return v;
+    const size_t size = pk.getDataSize();
+    if (size != 80 && size != 100) return v;
+    const std::span<const std::byte> data = pk.getData();
+    if (data.size() < size) return v;
+    std::vector<uint8_t> raw(size);
+    for (size_t i = 0; i < size; ++i) raw[i] = static_cast<uint8_t>(data[i]);
+    v.ran = true;
+    Pk3 fields;
+    read(raw, fields);
+    if (fields.speciesInternal == 0) { // empty slot: Legality::analyze has nothing to validate
+        v.emptySlot = true;
+        return v;
+    }
+    v.report = analyzeDetailed(raw, exactSourceGameId, &v);
+    v.certified = isCertified(v.report);
+    return v;
+}
+
+namespace {
+
+Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId, Verification* out) {
     Report r;
     setAllCoverage(r.coverage, CoverageLevel::Partial);
     auto add = [&r](Severity sev, CheckIdentifier id, std::string text) {
@@ -3583,28 +3630,36 @@ Report analyzePk3(std::span<const uint8_t> decrypted, std::string_view exactSour
     r.coverage.structure = certify ? CoverageLevel::Complete : CoverageLevel::Partial;
     if (certify && !problem && a.enc.kind != Kind::Invalid && isGbaSourceGame(exactSourceGameId))
         setAllCoverage(r.coverage, CoverageLevel::Complete);
+    if (out != nullptr && a.enc.kind != Kind::Invalid) {
+        out->encounter = describeEncounter(pk, a.enc);
+        out->inGameTrade = a.enc.kind == Kind::Trade;
+    }
     return r;
 }
 
-void applyGen3Analyzer(Report& r, const Pokemon::Pokemon& pk, std::string_view exactSourceGameId) {
-    if (pk.getGameGroup() != Enums::GameVersion::FRLG) return;
-    const size_t size = pk.getDataSize();
-    if (size != 80 && size != 100) return;
-    const std::span<const std::byte> data = pk.getData();
-    if (data.size() < size) return;
-    std::vector<uint8_t> raw(size);
-    for (size_t i = 0; i < size; ++i) raw[i] = static_cast<uint8_t>(data[i]);
-    Report g3 = analyzePk3(raw, exactSourceGameId);
-    const bool certified = Gen3Pk3::allCoverageComplete(g3.coverage) && g3.problemCount() == 0;
-    for (auto& issue : g3.issues) {
+} // namespace
+
+} // namespace Gen3Pk3
+
+Report analyzePk3(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId) {
+    return Gen3Pk3::analyzeDetailed(decrypted, exactSourceGameId, nullptr);
+}
+
+void applyGen3Analyzer(Report& r, const Gen3Pk3::Verification& verified, std::string_view exactSourceGameId) {
+    if (!verified.ran || verified.emptySlot) return;
+    for (const auto& issue : verified.report.issues) {
         if (issue.severity == Severity::Info) continue;
         bool duplicate = false;
         for (const auto& existing : r.issues)
             if (existing.text == issue.text) { duplicate = true; break; }
-        if (!duplicate) r.issues.push_back(std::move(issue));
+        if (!duplicate) r.issues.push_back(issue);
     }
-    if (certified && r.problemCount() == 0 && Gen3Pk3::isGbaSourceGame(exactSourceGameId))
+    if (verified.certified && r.problemCount() == 0 && Gen3Pk3::isGbaSourceGame(exactSourceGameId))
         Gen3Pk3::setAllCoverage(r.coverage, CoverageLevel::Complete);
+}
+
+void applyGen3Analyzer(Report& r, const Pokemon::Pokemon& pk, std::string_view exactSourceGameId) {
+    applyGen3Analyzer(r, Gen3Pk3::verify(pk, exactSourceGameId), exactSourceGameId);
 }
 
 } // namespace Legality
