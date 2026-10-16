@@ -104,7 +104,7 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | red | pokedex | PASS | seen 2 / caught 1 / total 151 |
 | red | bag | PASS | Bag item 20 x3 decoded; staged x25 round-trips through strict reparse |
 | red | navigation | PASS | UX3 14-row workspace + addDraftDecision: only StageAdd commits; browsing every slot leaves the staged copy byte-identical (row arithmetic itself is UI code in Gen1PokemonEditorOverlayUXCleanup3.inc) |
-| red | creation | PASS | BoxPokemonCreate{} -> #1 L5 at the first empty slot; species 0, level 0 and a gap rejected |
+| red | creation | PASS | BoxPokemonCreate{} -> #25 L5 at the first empty slot; species 0, level 0 and a gap rejected |
 | red | fields | PASS | species, nickname, OT, level, EXP, TID, moves+PP+PP Ups, DVs, Stat Exp stage, read back and survive finalize + strict reparse (no held item/nature/ability in Gen I) |
 | red | pickers | PASS | 151 named species; Pikachu move list (27 moves) includes Thundershock, all within 1..165 |
 | red | actions | PASS | View/Edit/Clone/Remove/Legality/Cancel (+Review when pending); Clone and Remove execute and reparse |
@@ -125,7 +125,7 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | blue | pokedex | PASS | seen 2 / caught 1 / total 151 |
 | blue | bag | PASS | Bag item 20 x3 decoded; staged x25 round-trips through strict reparse |
 | blue | navigation | PASS | UX3 14-row workspace + addDraftDecision: only StageAdd commits; browsing every slot leaves the staged copy byte-identical (row arithmetic itself is UI code in Gen1PokemonEditorOverlayUXCleanup3.inc) |
-| blue | creation | PASS | BoxPokemonCreate{} -> #1 L5 at the first empty slot; species 0, level 0 and a gap rejected |
+| blue | creation | PASS | BoxPokemonCreate{} -> #25 L5 at the first empty slot; species 0, level 0 and a gap rejected |
 | blue | fields | PASS | species, nickname, OT, level, EXP, TID, moves+PP+PP Ups, DVs, Stat Exp stage, read back and survive finalize + strict reparse (no held item/nature/ability in Gen I) |
 | blue | pickers | PASS | 151 named species; Pikachu move list (27 moves) includes Thundershock, all within 1..165 |
 | blue | actions | PASS | View/Edit/Clone/Remove/Legality/Cancel (+Review when pending); Clone and Remove execute and reparse |
@@ -146,7 +146,7 @@ Totals: PASS=415 KNOWN=0 HW=0 N/A=5 FAIL=0
 | yellow | pokedex | PASS | seen 2 / caught 1 / total 151 |
 | yellow | bag | PASS | Bag item 20 x3 decoded; staged x25 round-trips through strict reparse |
 | yellow | navigation | PASS | UX3 14-row workspace + addDraftDecision: only StageAdd commits; browsing every slot leaves the staged copy byte-identical (row arithmetic itself is UI code in Gen1PokemonEditorOverlayUXCleanup3.inc) |
-| yellow | creation | PASS | BoxPokemonCreate{} -> #1 L5 at the first empty slot; species 0, level 0 and a gap rejected |
+| yellow | creation | PASS | BoxPokemonCreate{} -> #25 L5 at the first empty slot; species 0, level 0 and a gap rejected |
 | yellow | fields | PASS | species, nickname, OT, level, EXP, TID, moves+PP+PP Ups, DVs, Stat Exp stage, read back and survive finalize + strict reparse (no held item/nature/ability in Gen I) |
 | yellow | pickers | PASS | 151 named species; Pikachu move list (30 moves) includes Thundershock, all within 1..165 |
 | yellow | actions | PASS | View/Edit/Clone/Remove/Legality/Cancel (+Review when pending); Clone and Remove execute and reparse |
