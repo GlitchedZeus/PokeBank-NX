@@ -10,11 +10,12 @@
  * analyzer ports PKHeX's Gen IV encounter search (wild slots with the Method J/K
  * lead and frame checks, static and roaming encounters, Pokewalker, in-game trades,
  * My Pokemon Ranch, PCD/PGT gifts and eggs), its PID/IV correlation finder and the
- * verifiers PKHeX runs for a native PK4. A rule is reported Invalid only where PKHeX
- * reports it Invalid; a check this analyzer cannot decide (for example a Pal Park
- * transfer from a Gen III game) is reported as a Warning with partial coverage, never
- * as Invalid. Deliberate differences from PKHeX are lenient and documented next to
- * the rule (see docs/legality/GEN4_PKHEX_RULE_INVENTORY.md).
+ * verifiers PKHeX runs for a native PK4; a Pal Park transfer from Ruby, Sapphire,
+ * Emerald, FireRed or LeafGreen runs PKHeX's Generation III encounter search and rules.
+ * A rule is reported Invalid only where PKHeX reports it Invalid; a check this analyzer
+ * cannot decide (a Pal Park transfer from Colosseum/XD) is reported as a Warning with
+ * partial coverage, never as Invalid. Deliberate differences from PKHeX are lenient and
+ * documented next to the rule (see docs/legality/GEN4_PKHEX_RULE_INVENTORY.md).
  */
 #pragma once
 

@@ -779,7 +779,7 @@ void Analyzer::verifyEvs() {
     }
     bool allSame = true;
     for (std::size_t i = 1; i < 6; ++i) if (pk_.evs[i] != pk_.evs[0]) allSame = false;
-    // PKHeX grades the first two Fishy (EffortValueVerifier.cs:49-52); both come from normal play,
+    // PKHeX grades the first two Fishy (EffortValueVerifier.cs:50-53); both come from normal play,
     // so they are Info here. EXP with no EVs: Rare Candy and the Day Care add EXP and no EVs
     // (pokeplatinum src/item_use_pokemon.c:291-293, src/overlay005/daycare.c:221-224;
     // pokeheartgold src/use_item_on_mon.c:294-296, src/get_egg.c:147-150). A 508 total: battle
