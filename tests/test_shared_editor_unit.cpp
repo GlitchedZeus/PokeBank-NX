@@ -98,6 +98,15 @@ static void testMoveFacts() {
     require(Facts::powerLabel(Facts::facts(69, GameVersion::FRLG)) == "\xE2\x80\x94", "Seismic Toss has no base power");
     // Max PP with PP Ups.
     require(Facts::maxPP(35, 3) == 56 && Facts::maxPP(5, 3) == 8 && Facts::maxPP(40, 0) == 40, "max PP formula");
+    // Gen I/II: per-PP-Up bonus capped at 7 (pret ComputeMaxPP; Gen2StagedEditor maxPP).
+    using Facts::Era;
+    require(Facts::maxPP(40, 3, Era::Gen2) == 61 && Facts::maxPP(40, 3, Era::Gen1) == 61, "Gen I/II 40 PP + 3 Ups = 61");
+    require(Facts::maxPP(40, 3, Era::Gen3) == 64, "Gen III 40 PP + 3 Ups = 64");
+    require(Facts::maxPP(35, 3, Era::Gen2) == 56 && Facts::maxPP(5, 3, Era::Gen1) == 8, "Gen I/II below the cap match");
+    for (int base = 0; base <= 40; base += 5)
+        for (uint8_t ups = 0; ups <= 3; ++ups)
+            require(Facts::maxPP(base, ups, Era::Gen2) == std::min(63, base + std::min(7, base / 5) * ups),
+                    "Gen II formula");
 }
 
 static void testMovesPanelBounds() {

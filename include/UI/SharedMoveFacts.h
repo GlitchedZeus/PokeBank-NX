@@ -150,10 +150,19 @@ inline std::string detailLine(const MoveFacts& f) {
     return line;
 }
 
-// Max PP with PP Ups, from the same base PP shown in the chooser: base * (5 + ups) / 5
-// (PKHeX PKM.GetMovePP; pokeemerald CalculatePPWithBonus).
-constexpr int maxPP(int basePP, uint8_t ppUps) noexcept {
-    return basePP * (5 + (ppUps > 3 ? 3 : ppUps)) / 5;
+// Max PP with PP Ups, from the same base PP shown in the chooser.
+//   Gen III-V: base * (5 + ups) / 5 (PKHeX PKM.GetMovePP; pokeemerald CalculatePPWithBonus).
+//   Gen I/II:  base + min(7, base / 5) * ups, capped at 63 -- pret pokered / pokecrystal
+//              ComputeMaxPP caps the per-PP-Up bonus at 7, so a 40-PP move with three PP Ups
+//              ends at 61, not 64. Mirrors Gen2::StagedEditor::gen2MoveMaxPP (Gen2StagedEditor.cpp).
+constexpr int maxPP(int basePP, uint8_t ppUps, Era era = Era::Gen3) noexcept {
+    const int ups = ppUps > 3 ? 3 : ppUps;
+    if (era == Era::Gen1 || era == Era::Gen2) {
+        const int bonus = basePP / 5 < 7 ? basePP / 5 : 7;
+        const int total = basePP + bonus * ups;
+        return total < 63 ? total : 63;
+    }
+    return basePP * (5 + ups) / 5;
 }
 
 } // namespace PokeBank::UIModel::SharedMoveFacts
