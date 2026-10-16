@@ -404,6 +404,18 @@ namespace UI {
         return NavGestureKind::None;
     }
 
+    // A blocking modal drawn over a screen owns touch exclusively (P0 #320): drop every glyph,
+    // footer badge and gesture target the covered layer published this frame, so a tap can only
+    // inject a button the topmost layer visibly offers. The modal's own glyph buttons and footer
+    // republish their targets after this call.
+    inline void beginTopTouchLayer() {
+        g_touchGlyphAccum.clear();
+        g_touchGlyphHits.clear();
+        g_navHits.clear();
+        g_navGestureHits.clear();
+        g_productHeroSwipeRegistered = false;
+    }
+
     inline bool navContains(int px, int py, int x, int y, int w, int h) {
         return px >= x && px < x + w && py >= y && py < y + h;
     }

@@ -48,3 +48,20 @@ $(HOST_BUILD)/test_quick_games_drawer_motion: tests/test_quick_games_drawer_moti
 $(HOST_BUILD)/test_quick_games_drawer_motion_sanitize: tests/test_quick_games_drawer_motion.cpp include/UI/QuickGamesDrawerMotion.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_quick_games_drawer_motion.cpp -o $@
+
+# P0 #320: Product Home quit guard + opt-in input trace.
+HOME_INPUT_GUARD_TEST := $(HOST_BUILD)/test_home_input_guard
+HOME_INPUT_GUARD_SANITIZE := $(HOST_BUILD)/test_home_input_guard_sanitize
+HOME_INPUT_GUARD_HEADERS := include/UI/HomeQuitConfirm.h include/UI/InputTrace.h
+HOST_TESTS += $(HOME_INPUT_GUARD_TEST)
+HOST_SANITIZE_TESTS += $(HOME_INPUT_GUARD_SANITIZE)
+host-test: $(HOME_INPUT_GUARD_TEST)
+host-sanitize: $(HOME_INPUT_GUARD_SANITIZE)
+
+$(HOME_INPUT_GUARD_TEST): tests/test_home_input_guard.cpp $(HOME_INPUT_GUARD_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(HOME_INPUT_GUARD_SANITIZE): tests/test_home_input_guard.cpp $(HOME_INPUT_GUARD_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@

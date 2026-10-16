@@ -599,7 +599,7 @@ require("openAssignedSource" in stable_open and "discoverGen4Candidates();" not 
 # saves; Product Home refreshes the expensive trainer/party preview only when B leaves the browser.
 update_start = source.index("void SaveSelectScreen::update")
 classic_runtime = source.index("if (classicGamesActive)", update_start)
-root_runtime = source.index("// Games is now the app root", classic_runtime)
+root_runtime = source.index("// Games is the app root. B never quits", classic_runtime)
 classic_runtime_block = source[classic_runtime:root_runtime]
 require("if (userIndex == beforeUser && titleIndex != beforeTitle)" in classic_runtime_block and
         "scrollClassicSelectionIntoView();" in classic_runtime_block,
@@ -734,3 +734,69 @@ require("launchDescriptor.ready() ? currentLaunchQuitNotice() : std::string()" i
         "Quit-route notice must stay in the two caption rows inside the hub panel")
 require("std::string launchQuitNoticeKey;" in header,
         "Quit-route notice must be cached per resolved launch target")
+
+# P0 #320: no single press ever leaves PokeBank NX. B at the root, the legacy Options Exit, ZR /
+# Launch taps and the legacy-instance A launch only OPEN the one visible leave decision; only an
+# explicit Y there quits or hands off to the emulator, A and B stay.
+def body(name):
+    start = source.index(name)
+    return source[start:source.index("\n    }\n", start)]
+root_b = source[source.index("// Games is the app root. B never quits"):]
+root_b = root_b[:root_b.index("return;")]
+require('openLeaveDecision(LeaveKind::Quit, "origin=home-root-b");' in root_b and "appExitRequested" not in root_b,
+        "Home root B must open the quit decision, never exit directly")
+options = source[source.index("if (overlay == Overlay::Options) {"):]
+options = options[:options.index("if (overlay == Overlay::LegacyInstances)")]
+require('openLeaveDecision(LeaveKind::Quit, "origin=options-exit");' in options and "appExitRequested" not in options,
+        "The Options Exit row must route through the same quit decision")
+for launcher, call in (("bool SaveSelectScreen::launchCurrentTitle()", "openLaunchDecision(LeaveKind::LaunchTitle"),
+                       ("bool SaveSelectScreen::launchCurrentLegacyInstance()", "openLaunchDecision(LeaveKind::LaunchLegacyInstance")):
+    fn = body(launcher)
+    require(call in fn and "requestGameLaunch" not in fn and "appExitRequested" not in fn,
+            launcher + " must open the launch decision, never hand off on the press itself")
+leave = source[source.index("if (overlay == Overlay::QuitConfirm) {\n            using"):]
+leave = leave[:leave.index("            return;\n        }\n")]
+require("PokeBank::UIModel::HomeQuit::decide(kDown)" in leave and "Decision::Quit" in leave and
+        "requestGameLaunch(pendingLaunch, error)" in leave and "appExitRequested = true;" in leave,
+        "Only the leave decision's explicit Y may quit or start the launch handoff")
+require(source.count("appExitRequested = true;") == 1 and source.count("requestGameLaunch(") == 1,
+        "App exit and launch handoff each have exactly one site: the leave decision's Y")
+require('"Quit PokeBank NX?"' in source and '{{"Y", "Quit"}, {"B", "Stay"}, {"A", "Stay"}}' in source and
+        '{{"Y", "Launch"}, {"B", "Cancel"}, {"A", "Cancel"}}' in source and "pendingLaunchNotice" in leave + source,
+        "The leave decision is visible, names Y as the only commit and shows the quit-route notice")
+require("inputTrace().frame(\"home\", padGetButtonsDown(&pad), padGetButtons(&pad), kDown," in source,
+        "Product Home records raw edges, held state and the logical mask in the opt-in input trace")
+# Footer hints match the bindings: B is labelled Quit because it opens the quit decision, and
+# Settings + A (button or tap) is a Settings destination that leaves Home, never the app.
+require('{"+", "Current Game"}, {"-", "Help"}, {"B", "Quit"}});' in source and '{"B", "Exit"}' not in source,
+        "The Product Home footer names B as Quit (the decision), never a direct Exit")
+header = source[source.index("        if (headerActionIndex >= 0) {\n            if (kDown & (HidNpadButton_Left"):]
+header = header[:header.index("        if (hubDockFocused) {")]
+require("requestedMainMenuDestination = MainMenuDestination::Settings;" in header and
+        "appExitRequested" not in header, "Settings + A reaches Settings and never exits the app")
+taps = source[source.index("        if (touch.justTapped()) {\n            for (const auto& r : headerRects)"):]
+taps = taps[:taps.index("// L/R changes the selected game from anywhere on Product Home")]
+require("MainMenuDestination::Settings" in taps and "appExitRequested" not in taps,
+        "A Settings tap reaches Settings and never exits the app")
+# Overlay layering (P0 #320, the Gen II Create class of bug): while any Home modal is open the
+# covered footer/hero glyphs are dropped, and every modal draws its OWN footer, so a tap can only
+# inject a button the topmost layer visibly offers.
+chrome = (ROOT / "include/UI/ScreenChrome.h").read_text(encoding="utf-8")
+top = chrome[chrome.index("inline void beginTopTouchLayer()"):]
+top = top[:top.index("\n    }\n")]
+for cleared in ("g_touchGlyphAccum.clear();", "g_touchGlyphHits.clear();", "g_navHits.clear();",
+                "g_navGestureHits.clear();", "g_productHeroSwipeRegistered = false;"):
+    require(cleared in top, "beginTopTouchLayer must drop the covered layer's " + cleared)
+modals = source[source.index("        if (overlay != Overlay::None) beginTopTouchLayer();"):]
+modals = modals[:modals.index("\n    }\n}")]
+branches = modals.split("} else if (overlay == Overlay::")
+require(len(branches) == 16 and "if (overlay == Overlay::QuitConfirm) {" in branches[0],
+        "all 16 Home modals render in the layered overlay section")
+branches[0] = branches[0][branches[0].index("if (overlay == Overlay::QuitConfirm)") + len("if (overlay == Overlay::"):]
+for branch in branches:
+    name = branch[:branch.index(")")].split(" ")[0]
+    require("drawNavBar(" in branch or "drawProductHelpOverlay(" in branch,
+            "Home modal " + name + " must draw its own footer above the covered Home footer")
+require("{\"B\", \"Quit PokeBank NX (asks first; Y confirms)\"}" in source and
+        "Exit PokeBank NX from Product Home" not in source,
+        "Home Help states that B asks before quitting")

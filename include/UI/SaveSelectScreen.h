@@ -203,7 +203,17 @@ namespace UI {
 
         bool titleSelected = false;
         bool exitRequested = false;     // return from Games & Sources to product Home
-        bool appExitRequested = false;  // explicit Options -> Exit PokeBank NX
+        bool appExitRequested = false;  // set only by an explicit Y in the leave decision
+        // P0 #320: every way out of PokeBank NX (quit, or a launch handoff that closes the app)
+        // first opens one visible leave decision; only an explicit Y there commits it.
+        enum class LeaveKind : uint8_t { Quit, LaunchTitle, LaunchLegacyInstance };
+        LeaveKind leaveKind = LeaveKind::Quit;
+        GameLaunchDescriptor pendingLaunch;
+        std::string pendingLaunchName;
+        std::string pendingLaunchNotice;
+        void openLeaveDecision(LeaveKind kind, const char* origin);
+        void openLaunchDecision(LeaveKind kind, const GameLaunchDescriptor& descriptor,
+                                const std::string& gameName, const char* origin);
         MainMenuDestination requestedMainMenuDestination = MainMenuDestination::None;
         bool hubDockFocused = false;
         int headerActionIndex = -1; // -1 = none, 0 = profile, 1 = settings
@@ -221,9 +231,10 @@ namespace UI {
         enum class Overlay { None, Options, Help, OpenFailure, GamesDrawer, ProfilePicker, GameWorkspace,
                              LegacyInstances, LegacyAssignment, LegacyDetails, Gen4Setup,
                              Gen4Candidates, Gen5Setup, Gen5UnassignConfirm,
-                             Gen5Candidates, GameFilePicker };
+                             Gen5Candidates, GameFilePicker, QuitConfirm };
         Overlay overlay = Overlay::None;
         Overlay helpReturnOverlay = Overlay::None;
+        Overlay leaveReturnOverlay = Overlay::None; // where A/B "Stay" returns from the leave decision
         // Touch motion is surface-local. These markers let one centralized fence clear residual
         // drag/coast state whenever an overlay or the full Games browser is entered/exited.
         Overlay touchScrollOverlay = Overlay::None;
