@@ -199,6 +199,13 @@ jobs:
           test "$sum_sha" = "$NRO_SHA256" && test "${sum_name#\*}" = "$NRO_FILE" || { echo "::error::SHA256SUMS.txt disagrees: $sum_sha $sum_name"; exit 1; }
           echo "| BUILD_IDENTITY / SHA256SUMS / NRO bytes | APPLICATION_SHA, TREE_SHA, ARTIFACT, SIZE_BYTES, SHA256, RUN_ID, DEVICE_ACCEPTED=false and sha256sum/stat all match |" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Cross-generation UI contracts on the candidate's own source (candidate mode)
+        run: |
+          set -euo pipefail
+          # Release-candidate mode: XFAIL markers do not excuse a violation in the audited source.
+          python3 tests/test_qa_cross_gen_contract.py --candidate --list --root candidate-src | tee cross-gen-contracts.log
+          { echo; echo '### Cross-generation UI contracts (candidate source)'; echo '```'; cat cross-gen-contracts.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Audit
         run: |
           set -euo pipefail
@@ -221,5 +228,6 @@ jobs:
             HARDWARE_TEST_RECORD.md
             nro-audit.log
             run-artifacts.tsv
+            cross-gen-contracts.log
           if-no-files-found: ignore
           retention-days: 30
