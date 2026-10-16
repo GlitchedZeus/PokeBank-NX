@@ -148,7 +148,7 @@ void lowSeverityRoutes() {
 
     // Gen II Shiny toggle always reports the DVs it rewrote.
     const auto gen2 = read("src/UI/Gen2PokemonEditorFoundation.inc");
-    const auto toggle = between(gen2, "void toggleShiny(", "void randomizeDVs(");
+    const auto toggle = between(gen2, "void toggleShiny(", "bool randomizeDVs(");
     has(toggle, "\"Shiny off: DVs \" + describeDVChanges(before, dvs)");
     has(toggle, "\"Shiny on: \" + changes");
     has(toggle, "changed gender for this species ratio; \" + changes");

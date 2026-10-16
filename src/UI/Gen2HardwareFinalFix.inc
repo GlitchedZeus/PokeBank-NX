@@ -286,7 +286,6 @@ void drawFullscreenGen2Active(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (unified.moveEditor) drawUnifiedMoveEditor(screen, fb, state, unified);
     if (state.itemPicker) drawHeldItemPicker(fb, state);
     if (state.confirmExit) drawConfirm(fb, state);
-    if (unified.reroll.confirming) drawRerollConfirm(screen, fb);
     if (unified.selector.open()) drawFieldSelector(screen, fb, unified.selector);
     if (unified.progressionEditor) drawProgressionEditor(fb, state, unified);
 }

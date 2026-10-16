@@ -1,3 +1,4 @@
+#include "UI/ClassicPokemonActionMenu.h"
 #include "UI/Gen12ReviewDiscardConfirm.h"
 #include "UI/StatsRadar.h"
 #include "UI/TouchScroll.h"
@@ -886,38 +887,11 @@ void ux2DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         Colors::TextDim, TextStyle::Caption);
 }
 
-// Resolve each visual item to the existing Gen I action index. The older
-// narrow menu's unavailable source-transfer options stay visibly greyed out.
+// The Gen I action sheet lists only the commands the staged editor performs, each carrying its
+// native action index (ClassicPokemonActionMenu.h); shiny is edited inside the editor.
 template <typename ActionList>
-PokeBank::UIModel::NarrowPokemonMenu::Model ux2NarrowActions(
-    const ActionList& actions, bool occupied) {
-    namespace Narrow = PokeBank::UIModel::NarrowPokemonMenu;
-    const auto native = [&](UX::Action command) {
-        for (int i = 0; i < static_cast<int>(actions.count); ++i)
-            if (actions[static_cast<std::size_t>(i)] == command) return i;
-        return -1;
-    };
-    Narrow::Model model{};
-    if (!occupied) {
-        model.append("Add Pokemon", native(UX::Action::AddPokemon));
-        const int review = native(UX::Action::ReviewPendingChanges);
-        if (review >= 0) model.append("Review Pending Changes", review);
-        model.append("Cancel", native(UX::Action::Cancel));
-        return model;
-    }
-    model.append("View Pokemon", native(UX::Action::View));
-    model.append("Add to Master Vault");
-    model.append("Add to Bank...");
-    model.append("Transfer to Game...");
-    model.append("Edit", native(UX::Action::Edit));
-    model.append("Clone", native(UX::Action::Clone));
-    model.append("Release", native(UX::Action::Remove));
-    model.append("Make Shiny");
-    model.append("Legality & Provenance", native(UX::Action::LegalityProvenance));
-    const int review = native(UX::Action::ReviewPendingChanges);
-    if (review >= 0) model.append("Review Pending Changes", review);
-    model.append("Cancel", native(UX::Action::Cancel));
-    return model;
+PokeBank::UIModel::NarrowPokemonMenu::Model ux2NarrowActions(const ActionList& actions, bool) {
+    return PokeBank::UIModel::ClassicPokemonActionMenu::fromGen1(actions);
 }
 
 void ux2DrawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int, int, int, int) {
