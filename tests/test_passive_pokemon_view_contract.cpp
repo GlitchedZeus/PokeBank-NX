@@ -48,8 +48,7 @@ int main() {
     assert(gen1Presentation.find("\"STATS\", Colors::Text") != std::string::npos);
     assert(gen1Presentation.find("\"VALUES\"") == std::string::npos);
     assert(gen1Presentation.find("Colors::Accent, TextStyle::Caption") != std::string::npos);
-    assert(gen1Presentation.find("moveStatusRightPad") != std::string::npos);
-    assert(gen1Presentation.find("ppRightOffset") != std::string::npos);
+    assert(gen1Presentation.find("ClassicMovesPanel::draw(") != std::string::npos);
     assert(gen1Presentation.find("drawPanelSurface(fb, workspaceX") == std::string::npos);
     assert(gen1Modal.find("view.sourceGameLabel = sourceGameLabel(screen.sourceGameId)") != std::string::npos);
 

@@ -1,6 +1,7 @@
-// Gen II MOVES panel runs through the ONE shared Moves panel (UI/SharedMovesPanel.h): native
+// Gen I and Gen II MOVES panels run through the ONE shared Moves panel (UI/SharedMovesPanel.h): native
 // max PP (pret/pokecrystal ComputeMaxPP), shared column layout, and touch rows that are exactly
 // the rows the panel outlines.
+#include "Integration/Gen1/Gen1StagedPokemonEditor.h"
 #include "UI/Gen2MovesPanel.h"
 #include "UI/SharedPokemonShell.h"
 
@@ -88,6 +89,28 @@ int main() {
             "the gap between rows hits nothing");
     require(UI::Gen2MovesPanel::hitSlot(l.focusX() + 4, g.y + MP::kDataPaneOffset + 10, g.rightX, g.y, g.rightW) == -1,
             "the data pane is not a move row");
-    std::cout << "Gen II shared moves panel: PASS\n";
+
+    // Gen I goes through the same adapter with its native pret/pokered maximum.
+    using Gen1Editor = PokeVault::Integration::Gen1::StagedPokemonEditor;
+    const std::array<uint16_t, 4> gen1Moves{45, 85, 0, 165};
+    const std::array<uint8_t, 4> gen1PP{61, 24, 0, 1}, gen1Ups{3, 3, 0, 0};
+    std::array<int, 4> gen1Max{};
+    for (std::size_t i = 0; i < 4; ++i) gen1Max[i] = Gen1Editor::moveMaxPP(gen1Moves[i], gen1Ups[i]);
+    require(gen1Max[0] == 61 && gen1Max[1] == 24, "Gen I max PP: 40 PP + 3 Ups = 61, 15 + 3 = 24");
+    const auto gen1Slots = UI::ClassicMovesPanel::slots(gen1Moves, gen1PP, gen1Ups, gen1Max,
+        {Status::Ok, Status::Invalid, Status::Ok, Status::Preserved});
+    require(MP::ppText(gen1Slots[0], Enums::GameVersion::RBY) == "61/61", "Gen I panel shows the native maximum");
+    texts.clear(); rects.clear();
+    UI::ClassicMovesPanel::draw(fb, g.rightX, g.y, g.rightW, gen1Slots, Enums::GameVersion::RBY, 3);
+    for (std::size_t i = 0; i < texts.size(); ++i) {
+        require(texts[i].x + texts[i].w <= g.rightX + g.rightW - 8 && texts[i].y + texts[i].h <= g.y + MP::kDataPaneOffset,
+                "Gen I text inside the panel: " + texts[i].value);
+        for (std::size_t j = i + 1; j < texts.size(); ++j)
+            require(!overlaps(texts[i], texts[j]), "Gen I no overlap: " + texts[i].value);
+    }
+    const auto r = UI::ClassicMovesPanel::slotRect(3, g.rightX, g.y, g.rightW);
+    require(rects.size() == 1 && rects[0].x == r.x && rects[0].y == r.y && rects[0].w == r.w && rects[0].h == r.h,
+            "Gen I touch button equals the focus outline");
+    std::cout << "Gen I/II shared moves panel: PASS\n";
     return 0;
 }
