@@ -1,3 +1,5 @@
+#include "UI/SharedEditorChrome.h"
+#include "UI/SharedEditorPresentation.h"
 #include "UI/Gen1PokemonEditorOverlay.h"
 
 #include "Integration/Gen1/Gen1ExportTransaction.h"
@@ -762,7 +764,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
             {"Edit", "Summary / Moves / DVs / Stat Exp / Trainer"},
             {"Clone", "Choose a destination box; uses its first empty slot"},
             {"Remove", "Stages synchronized Gen I box compaction"},
-            {"Legality & Provenance", "Format validation; full encounter legality not claimed"},
+            {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Format validation; full encounter legality not claimed"},
             {"Review Pending Changes", std::to_string(pendingLines(screen).size()) + " change(s)"},
             {"Cancel", "No mutation"},
         };
@@ -770,7 +772,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
         rows = {
             {"Add Pokemon", "Draft first; no mutation until explicit Stage Add"},
             {"Review Pending Changes", std::to_string(pendingLines(screen).size()) + " change(s)"},
-            {"Legality & Provenance", "International R/B/Y editor capability"},
+            {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "International R/B/Y editor capability"},
             {"Cancel", "No mutation"},
         };
     }
@@ -781,7 +783,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
     }
     fb.drawText(x + 32, y + h - 38, "No live RetroArch or installed-game writes",
                 Colors::TextDim, TextStyle::Caption);
-    drawNavBar(fb, {{"Up/Down", "Choose"}, {"A", "Select"}, {"B", "Cancel"}});
+    UI::SharedEditorChrome::drawPickerFooter(fb, PokeBank::UIModel::SharedEditorPresentation::PickerFooterSpec{true, false});
 }
 
 void drawView(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
@@ -952,7 +954,7 @@ void drawReview(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
 void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
     auto* trainer = rbyTrainer(screen);
     auto* e = editor(screen);
-    fb.drawText(x + 28, y + 20, "Generation I Legality & Provenance", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 28, y + 20, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
     fb.drawText(x + 32, y + 92, "Source game", Colors::TextDim);
     fb.drawText(x + 300, y + 92, screen.sourceGameId, Colors::Text);
     fb.drawText(x + 32, y + 132, "Region/layout", Colors::TextDim);
@@ -963,7 +965,7 @@ void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y
     fb.drawText(x + 300, y + 212, "DEFERRED", Colors::Text);
     fb.drawText(x + 32, y + 252, "Format validation", Colors::TextDim);
     fb.drawText(x + 300, y + 252, "Strict reparse + R/B/Y identity + checksum on export", Colors::Text);
-    fb.drawText(x + 32, y + 292, "Encounter legality", Colors::TextDim);
+    fb.drawText(x + 32, y + 292, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim);
     fb.drawText(x + 300, y + 292, "NOT CLAIMED by this editor", Colors::Accent);
     fb.drawText(x + 32, y + 332, "Original bytes", Colors::TextDim);
     fb.drawText(x + 300, y + 332, e ? std::to_string(e->originalBytes().size()) + " immutable bytes" : "Unavailable", Colors::Text);

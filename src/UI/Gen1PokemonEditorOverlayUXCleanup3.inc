@@ -1,3 +1,10 @@
+// The composite TU includes this file with drawFooter renamed; keep the shared chrome
+// header's own drawFooter intact so later surfaces still find it.
+#pragma push_macro("drawFooter")
+#undef drawFooter
+#include "UI/SharedEditorChrome.h"
+#pragma pop_macro("drawFooter")
+#include "UI/SharedEditorPresentation.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen1/Gen1Shiny.h"
@@ -495,7 +502,7 @@ void ux3DrawEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
     fb.drawText(rightX + 18, contentY + 54, "Move compatibility", Colors::TextDim, TextStyle::Caption);
     fb.drawText(rightX + rightW - 96, contentY + 54, badMove ? "Needs attention" : "OK",
                 badMove ? Colors::Warning : Colors::Accent, TextStyle::Caption);
-    fb.drawText(rightX + 18, contentY + 80, "Encounter legality", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(rightX + 18, contentY + 80, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim, TextStyle::Caption);
     fb.drawText(rightX + rightW - 108, contentY + 80, "Not checked", Colors::Text, TextStyle::Caption);
     fb.drawHDivider(rightX + 16, contentY + 116, rightW - 32);
     fb.drawText(rightX + 18, contentY + 132, "GEN I BATTLE STATS", Colors::Accent, TextStyle::Caption);
@@ -692,11 +699,13 @@ std::string ux3FooterText(const TrainerViewScreen& screen, const UX2State& state
 
 void ux3DrawTouchNavBar(PKSEFramebuffer& fb, const UX2State& state) {
     if (state.picker == UX2Picker::Species) {
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"}, {"Y", "Shiny"}, {"A", "Select"}, {"B", "Cancel"}});
+        PokeBank::UIModel::SharedEditorPresentation::PickerFooterSpec spec;
+        spec.yLabel = "Normal/Shiny";
+        UI::SharedEditorChrome::drawPickerFooter(fb, spec);
         return;
     }
     if (state.picker == UX2Picker::Move) {
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"}, {"A", "Select"}, {"B", "Cancel"}});
+        UI::SharedEditorChrome::drawPickerFooter(fb);
         return;
     }
     switch (state.mode) {

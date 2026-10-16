@@ -88,6 +88,11 @@ ClassicInventoryActionAvailability classicInventoryActionAvailability(
     return inventoryActionAvailability(true, categorySupported, hasSelection, quantityEditable);
 }
 
+ClassicItemQuantity classicItemQuantity(ClassicGame game, ClassicPocket pocket, uint16_t itemId) noexcept {
+    const auto rule = PokeVault::Inventory::quantityRule(game, pocket, itemId);
+    return {rule.editable, rule.minimum, rule.maximum};
+}
+
 bool classicInventoryEmptyState(bool supported, std::size_t visibleItems) noexcept {
     return supported && visibleItems == 0;
 }

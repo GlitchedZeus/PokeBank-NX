@@ -161,7 +161,7 @@ int main() {
     const auto compositeDraw = composite.substr(composite.find("void TrainerViewScreen::draw(PKSEFramebuffer& fb)"));
     assert(compositeDraw.find("if (!Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this))") != std::string::npos);
     assert(shared.find("drawSharedProvenanceSurface") != std::string::npos);
-    assert(shared.find("Encounter legality\", \"Not checked") != std::string::npos);
+    assert(shared.find("kOriginLegalityHeading, \"Not checked") != std::string::npos);
     assert(shared.find("case SharedEditor::Action::Close") != std::string::npos);
 
     // The established inline page owns rendering and exactly two cursor rows.
@@ -201,7 +201,8 @@ int main() {
     assert(unified.find("{\"Friendship\", std::to_string(p.friendship)}") != std::string::npos);
     assert(unified.find("{\"Pokerus\", Gen2Native::pokerusText(p.pokerus)}") != std::string::npos);
     assert(unified.find("std::array<std::pair<std::string, std::string>, 2> capabilityRows") != std::string::npos);
-    assert(unified.find("Encounter legality: Not checked") != std::string::npos);
+    // Origin & Legality moved from under the move rows into the GEN II DATA pane.
+    assert(unified.find("drawGen2SharedMoveRows(") != std::string::npos);
     assert(unified.find("const int first = unified.detailsViewport.firstRow") != std::string::npos);
     // Touching a visually scrolled Details row must not invoke the old
     // independently recalculated focus-centred hit test. The 1700+ row
@@ -241,15 +242,18 @@ int main() {
     assert(finalFix.find("std::max(0, w - 36)") != std::string::npos);
     assert(unified.find("Current level cannot be below this Crystal met level") != std::string::npos);
     assert(nativePresentation.find("Current level below met level") != std::string::npos);
-    assert(picker.find("encounterTimeLabel(encounter.timeMask)") != std::string::npos);
+    assert(picker.find("Gen2Picker::locationRowText(") != std::string::npos);
+    assert(readFile("include/UI/Gen2PokemonPickerModel.h").find("encounterTimeLabel(encounter.timeMask)") !=
+           std::string::npos);
     assert(sharedShell.find("drawVerticalScrollIndicator") != std::string::npos);
     assert(finalFix.find("drawVerticalScrollIndicator") != std::string::npos);
-    assert(finalFix.find("visibleMoveFocus = UnifiedContract::normalizeMoveRowFocus") != std::string::npos);
-    assert(finalFix.find("moveRowFocus(w)") != std::string::npos);
+    // Move rows: one row-wide focus, drawn by the shared Moves panel in every layer.
+    assert(finalFix.find("drawGen2SharedMoveRows(") != std::string::npos);
     assert(unified.find("Unified::moveRowColumn") != std::string::npos);
-    const auto movePanel = unified.substr(unified.find("void drawUnifiedMoves("),
-        unified.find("void drawProgressionEditor(") - unified.find("void drawUnifiedMoves("));
-    assert(movePanel.find("Unified::moveRowFocus(w)") != std::string::npos);
+    const auto movePanel = unified.substr(unified.find("void drawGen2SharedMoveRows("),
+        unified.find("void drawProgressionEditor(") - unified.find("void drawGen2SharedMoveRows("));
+    assert(movePanel.find("visibleMoveFocus = Unified::normalizeMoveRowFocus") != std::string::npos);
+    assert(movePanel.find("UI::Gen2MovesPanel::draw(") != std::string::npos);
     assert(movePanel.find("unified.focus.column == 1") == std::string::npos);
     assert(movePanel.find("unified.focus.column == 2") == std::string::npos);
     assert(unified.find("A/Y/X never mutate a View session") != std::string::npos);
@@ -274,9 +278,9 @@ int main() {
     // Crystal Met Location is species/exact-game aware; accepting it writes the native
     // location and encounter-minimum caught level rather than an arbitrary landmark.
     assert(pickerModel.find("Encounter::forGameSpecies(sourceGameId, species)") != std::string::npos);
-    // The Crystal location picker now announces drag-to-browse behavior. Preserve
+    // The Crystal location chooser is a proportional "Met Location" window (phase 11). Preserve
     // actual species-scoped encounters and native minimum-level presentation.
-    assert(picker.find("Drag naturally to browse Crystal encounters") != std::string::npos);
+    assert(picker.find("\"Met Location\"") != std::string::npos);
     assert(picker.find("model.locationCount()") != std::string::npos);
     assert(picker.find("model.encounterChoices[") != std::string::npos);
     assert(picker.find("encounter->minLevel") != std::string::npos);
@@ -289,7 +293,7 @@ int main() {
     assert(unified.find("if (focus.row == 8)") != std::string::npos);
     // Owner campaign directive: Pokerus uses the shared selector interaction (same three native
     // states None/Infected/Cured, still no strain/days editor) instead of cycling in place.
-    assert(unified.find("p.pokerus = Gen2Native::cyclePokerusState(p.pokerus, state.baseline.pokerus);") != std::string::npos);
+    assert(unified.find("SharedEditorPresentation::nextPokerusByte(") != std::string::npos);
     assert(unified.find("p.pokerus = Gen2Native::cyclePokerusState(p.pokerus)") == std::string::npos);
     assert(picker.find("state.working.caughtData = 0") != std::string::npos);
 

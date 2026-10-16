@@ -1,5 +1,7 @@
 #pragma once
 
+#include "UI/SharedEditorPresentation.h"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -122,15 +124,18 @@ constexpr Footer footer(Layer layer, Session session) noexcept {
     Footer f;
     switch (layer) {
         case Layer::ExitConfirm:
-            detail::push(f, "B", "Back");
-            detail::push(f, "Y", "Discard");
-            detail::push(f, "A", create ? "Keep" : "Save");
+            // The shared confirm footer: B Back, Y Discard, A Keep (Create) / Save (Edit).
+            for (const auto& hint : SharedEditorPresentation::confirmFooter(
+                     "A", create ? "Keep" : "Save", "Y", "Discard"))
+                detail::push(f, hint.glyph, hint.label);
             break;
-        case Layer::FieldSelector:
-            detail::push(f, "D-pad/Stick", "Choose");
-            detail::push(f, "A", "Apply");
-            detail::push(f, "B", "Cancel");
+        case Layer::FieldSelector: {
+            // The shared picker footer (SharedEditorPresentation::pickerFooter): Browse, A Select,
+            // B Cancel; a short chooser has no paging.
+            for (const auto& hint : SharedEditorPresentation::pickerFooter({true, false}))
+                detail::push(f, hint.glyph, hint.label);
             break;
+        }
         default:
             detail::push(f, "D-pad/Stick", "Navigate");
             detail::push(f, "L/R", "Panel");

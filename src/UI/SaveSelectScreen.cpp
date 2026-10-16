@@ -4303,9 +4303,13 @@ namespace UI {
         }
 
         fb.clearClip();
-        drawNavBar(fb, {{"D-pad/Stick","Choose"},{"A","Open"},
+        // L/R switches PROFILE in this full browser (not the game, as on Product Home), so the
+        // footer says so whenever it does anything; with one profile L/R is inert and unlisted.
+        std::vector<ControllerHint> classicHints = {{"D-pad/Stick","Choose"},{"A","Open"},
                         {"X","Save / Source"},{"Y","Sort"},{"+","Favorite"},
-                        {"ZR","Launch"},{"B","Back"}});
+                        {"ZR","Launch"},{"B","Back"}};
+        if (users.size() > 1) classicHints.insert(classicHints.begin() + 2, {"L/R", "Profile"});
+        drawNavBar(fb, classicHints);
     }
 
     void SaveSelectScreen::draw(PKSEFramebuffer& fb) {

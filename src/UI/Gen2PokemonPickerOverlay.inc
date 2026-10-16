@@ -1,3 +1,4 @@
+#include "UI/SharedEditorChrome.h"
 // Named Generation II picker layer. It intercepts only Species and Move activation before
 // the preserved shared editor launches its legacy numeric prompts. Browsing lives entirely in this
 // overlay model; the Gen2PokemonSession changes only when A explicitly applies a selected value.
@@ -161,7 +162,39 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
             },
             [](uint16_t species) { return std::to_string(species) + " - " + Names::getSpeciesName(species); },
             &latestTouchGesture());
-        drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"L/R", "Page"}, {"Y", "Normal/Shiny"}, {"A", "Select"}, {"B", "Cancel"}});
+        PokeBank::UIModel::SharedEditorPresentation::PickerFooterSpec spec;
+        spec.yLabel = "Normal/Shiny";
+        UI::SharedEditorChrome::drawPickerFooter(fb, spec);
+        return;
+    }
+    if (model.kind == Gen2Picker::Kind::Location) {
+        // Crystal Met Location: a proportional chooser (Gen2PokemonPickerModel.h geometry).
+        const int count = model.locationCount();
+        const auto g = Gen2Picker::locationPickerGeometry(count, fb.getWidth(), fb.getHeight());
+        fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Color(0, 0, 0, 165));
+        drawPanelSurface(fb, g.x, g.y, g.width, g.height, false, 18);
+        fb.drawText(g.x + 24, g.y + 18, "Met Location", Colors::Text, TextStyle::Heading);
+        fb.drawText(g.x + 24, g.y + 52, "Where this Pokémon was caught in Crystal",
+                    Colors::TextDim, TextStyle::Caption);
+        overlay.locationViewport.ensure(model.index, count, g.visible);
+        const int first = overlay.locationViewport.firstRow;
+        const int liveOffset = overlay.scroll.offset();
+        const int viewportH = g.visible * g.rowStep;
+        fb.setClipRect(g.listX, g.listY, g.listWidth, viewportH);
+        for (int i = std::max(0, first - 1); i < std::min(count, first + g.visible + 1); ++i) {
+            const int yy = g.listY + (i - first) * g.rowStep + liveOffset;
+            const bool selected = i == model.index;
+            appendClippedTouchButton(screen.touchButtons, 2000 + i, g.listX, yy, g.listWidth, g.rowHeight,
+                                     g.listX, g.listY, g.listWidth, viewportH);
+            if (selected) fb.drawSelectionHighlight(g.listX, yy, g.listWidth, g.rowHeight);
+            const auto text = Gen2Picker::locationRowText(model.encounterChoices[static_cast<std::size_t>(i)]);
+            fb.drawText(g.listX + 14, yy + 9, text.place, selected ? Colors::SelectedText : Colors::Text);
+            int dw = 0, dh = 0;
+            fb.measureText(text.detail, dw, dh, TextStyle::Caption);
+            fb.drawText(g.listX + g.listWidth - 14 - dw, yy + 12, text.detail, Colors::TextDim, TextStyle::Caption);
+        }
+        fb.clearClip();
+        UI::SharedEditorChrome::drawPickerFooter(fb, PokeBank::UIModel::SharedEditorPresentation::PickerFooterSpec{true, false});
         return;
     }
     const int W = fb.getWidth(), H = fb.getHeight();
@@ -172,21 +205,17 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
     drawPanelSurface(fb, x, y, panelW, panelH, false, 18);
 
     const bool species = model.kind == Gen2Picker::Kind::Species;
-    const bool location = model.kind == Gen2Picker::Kind::Location;
-    fb.drawText(x + 24, y + 18, location ? "Met location — Crystal" : species ? "Species — Generation II" : "Move — Generation II",
+    fb.drawText(x + 24, y + 18, species ? "Species — Generation II" : "Move — Generation II",
                 Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
-                location ? "Drag naturally to browse Crystal encounters • tap to choose" : species ? "#001–#251 • browsing does not change the staged Pokemon"
+                species ? "#001–#251 • browsing does not change the staged Pokemon"
                         : "Drag naturally to browse • exact Gen II Acc / Pwr / PP • compatibility at right",
                 Colors::TextDim, TextStyle::Caption);
 
-    const int count = location ? model.locationCount() : species ? 251 : 252;
+    const int count = species ? 251 : 252;
     constexpr int visible = 13;
     constexpr int rowStep = 33;
-    if (location)
-        overlay.locationViewport.ensure(model.index, count, visible);
-    const int first = location ? overlay.locationViewport.firstRow :
-        std::clamp(model.index - visible / 2, 0, std::max(0, count - visible));
+    const int first = std::clamp(model.index - visible / 2, 0, std::max(0, count - visible));
     const int liveOffset = overlay.scroll.offset();
     const int firstDraw = std::max(0, first - 1);
     const int lastDraw = std::min(count, first + visible + 1);
@@ -198,18 +227,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
         appendClippedTouchButton(
             screen.touchButtons, 2000 + i, x + 20, yy - 5, panelW - 40, 30,
             x + 20, listY - 5, panelW - 40, visible * rowStep + 8);
-        if (location) {
-            const auto& encounter = model.encounterChoices[static_cast<std::size_t>(i)];
-            std::string label = std::string(Gen2Native::crystalCaughtLocationName(
-                static_cast<uint8_t>(encounter.location))) + " — " +
-                Encounter::methodName(encounter.method) + " — Lv. " +
-                std::to_string(encounter.minLevel);
-            if (encounter.maxLevel != encounter.minLevel)
-                label += "–" + std::to_string(encounter.maxLevel);
-            const auto time = Gen2Picker::encounterTimeLabel(encounter.timeMask);
-            if (!time.empty()) label += " — " + time;
-            drawPickerRow(fb, x + 20, yy, panelW - 40, label, selected);
-        } else if (species) {
+        if (species) {
             const uint16_t dex = static_cast<uint16_t>(i + 1);
             std::string number = std::to_string(dex);
             while (number.size() < 3) number = "0" + number;
@@ -226,7 +244,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
         }
     }
     fb.clearClip();
-    drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"}, {"A", "Select"}, {"B", "Cancel"}});
+    UI::SharedEditorChrome::drawPickerFooter(fb);
 }
 
 
@@ -281,12 +299,12 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         const int x = (1280 - panelW) / 2;
         const int y = (720 - panelH) / 2;
         if (picker.model.kind == Gen2Picker::Kind::Location) {
-            constexpr int visible = 13;
-            picker.locationViewport.ensure(picker.model.index, pickerCount, visible);
-            const int maxFirst = TouchPickerViewport::maxFirst(pickerCount, visible);
+            const auto g = Gen2Picker::locationPickerGeometry(pickerCount);
+            picker.locationViewport.ensure(picker.model.index, pickerCount, g.visible);
+            const int maxFirst = TouchPickerViewport::maxFirst(pickerCount, g.visible);
             if (maxFirst > 0)
                 picker.scroll.updateVertical(
-                    touch, x + 20, y + 83, panelW - 40, visible * 33 + 10, 33,
+                    touch, g.listX, g.listY, g.listWidth, g.visible * g.rowStep, g.rowStep,
                     picker.locationViewport.firstRow, maxFirst + 1);
             else picker.scroll.stop();
         } else {
@@ -340,7 +358,7 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     }
 
     if (picker.model.kind == Gen2Picker::Kind::Location) {
-        constexpr int visible = 13;
+        const int visible = Gen2Picker::locationPickerGeometry(pickerCount).visible;
         if (nav & (HidNpadButton_Up | HidNpadButton_Down |
                    HidNpadButton_Left | HidNpadButton_Right))
             picker.locationViewport.reveal(picker.model.index, pickerCount, visible);
@@ -348,7 +366,7 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
             !picker.locationViewport.containsSelection(picker.model.index, pickerCount, visible)) {
             picker.scroll.stop();
             picker.locationViewport.reveal(picker.model.index, pickerCount, visible);
-            screen.postStatus("Focused encounter brought into view; press A again or tap a visible row", 220);
+            screen.postStatus("Location brought into view; press A again or tap it", 220);
             return true;
         }
     }

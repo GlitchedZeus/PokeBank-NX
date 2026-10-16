@@ -87,7 +87,8 @@ int main() {
     assert(view.find("\"SpD\"") != std::string::npos);
     assert(view.find("p.battleStats[4]") != std::string::npos);
     assert(view.find("one stored Gen I Special stat") != std::string::npos);
-    assert(view.find("if (move != 0)") != std::string::npos);
+    // Empty slots skip PP inside the shared Moves panel.
+    assert(view.find("ClassicMovesPanel::draw(") != std::string::npos);
 
     std::cout << "Gen I summary/editor stats, capabilities, sprite shininess, radar + View hardware presentation: PASS\n";
 }

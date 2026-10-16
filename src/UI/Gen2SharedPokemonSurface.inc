@@ -1,3 +1,4 @@
+#include "UI/SharedEditorPresentation.h"
 #include "UI/ClassicPokemonActionMenu.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2NativePresentation.h"
@@ -334,7 +335,7 @@ void drawSharedProvenanceSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     constexpr int x = 220, y = 92, w = 840, h = 480;
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
     drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 24, y + 18, "Legality & Provenance", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 24, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52, "Truthful status only — full encounter legality is not implemented", Colors::TextDim, TextStyle::Caption);
     const std::array<std::pair<std::string, std::string>, 7> rows{{
         {"Source game", sharedGameName(screen)},
@@ -343,7 +344,7 @@ void drawSharedProvenanceSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb)
         {"Source mutation", "HARD DISABLED"},
         {"Staged validation", "Strict serialize + reparse"},
         {"Move compatibility", pokemon ? "Checked by exact-game Gen II rules" : "No Pokemon selected"},
-        {"Encounter legality", "Not checked"},
+        {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Not checked"},
     }};
     for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
         const int yy = y + 92 + i * 46;
@@ -491,7 +492,7 @@ void drawSharedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const
     }
     const int statusY = y + 246;
     fb.drawHDivider(x + 14, statusY - 12, w - 28);
-    fb.drawText(x + 18, statusY, "Encounter legality", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 18, statusY, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 152, statusY, "Not checked", Colors::Text, TextStyle::Caption);
     fb.drawText(x + 18, statusY + 28, "GEN II DATA", Colors::Accent, TextStyle::Caption);
 

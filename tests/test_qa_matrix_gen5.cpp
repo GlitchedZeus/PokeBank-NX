@@ -772,6 +772,7 @@ Outcome actions(Ctx& c) {
         (void)ui.back();
     };
     expect(Slot{Region::Party, 0, 0}, {A::View, A::Edit, A::Clone, A::Close}, "party");
+    // The one shared action order (NarrowPokemonActionMenu.h): View, Edit, Clone, Move, Release.
     expect(Slot{Region::Box, 0, 0}, {A::View, A::Edit, A::Clone, A::Move, A::Remove, A::Close}, "box");
     expect(Slot{Region::Box, 0, 1}, {A::Add, A::Close}, "empty box");
     // Cursor wraps; Cancel (Close) returns to Browse without staging.

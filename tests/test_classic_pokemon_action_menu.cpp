@@ -1,5 +1,5 @@
 // Gen I / Gen II Pokemon Actions sheet (owner campaign phase 3): only real commands, in the shared
-// order View, Edit, Clone, Release, then Legality & Provenance, Review, Cancel. No Make Shiny
+// order View, Edit, Clone, Release, then Origin & Legality, Review, Cancel. No Make Shiny
 // (shiny is edited inside the editor) and no greyed placeholders. Every row keeps its native
 // action index, so controller order, touch ids and dispatch are unchanged.
 #include "UI/ClassicPokemonActionMenu.h"
@@ -69,10 +69,10 @@ int main() {
         const auto occupied = Shared::actionsForSlot(true, caps, pending);
         const auto model = Menu::fromShared(occupied);
         if (pending)
-            expectLabels(model, {"View", "Edit", "Clone", "Release", "Legality & Provenance",
+            expectLabels(model, {"View", "Edit", "Clone", "Release", "Origin & Legality",
                                  "Review Pending Changes", "Cancel"});
         else
-            expectLabels(model, {"View", "Edit", "Clone", "Release", "Legality & Provenance", "Cancel"});
+            expectLabels(model, {"View", "Edit", "Clone", "Release", "Origin & Legality", "Cancel"});
         nativeIndicesAreIdentity(model, occupied);
         const auto empty = Shared::actionsForSlot(false, caps, pending);
         const auto emptyModel = Menu::fromShared(empty);
@@ -84,17 +84,17 @@ int main() {
     Shared::ActionCapabilities noRemove = caps;
     noRemove.canRemove = false;
     expectLabels(Menu::fromShared(Shared::actionsForSlot(true, noRemove, false)),
-                 {"View", "Edit", "Clone", "Legality & Provenance", "Cancel"});
+                 {"View", "Edit", "Clone", "Origin & Legality", "Cancel"});
 
     // Gen I: its padded table lists Cancel once.
     for (const bool pending : {false, true}) {
         const auto occupied = Gen1::actionsForSlot(true, pending);
         const auto model = Menu::fromGen1(occupied);
         if (pending)
-            expectLabels(model, {"View", "Edit", "Clone", "Release", "Legality & Provenance",
+            expectLabels(model, {"View", "Edit", "Clone", "Release", "Origin & Legality",
                                  "Review Pending Changes", "Cancel"});
         else
-            expectLabels(model, {"View", "Edit", "Clone", "Release", "Legality & Provenance", "Cancel"});
+            expectLabels(model, {"View", "Edit", "Clone", "Release", "Origin & Legality", "Cancel"});
         nativeIndicesAreIdentity(model, occupied);
         const auto empty = Menu::fromGen1(Gen1::actionsForSlot(false, pending));
         if (pending) expectLabels(empty, {"Add Pokemon", "Review Pending Changes", "Cancel"});
@@ -123,6 +123,29 @@ int main() {
     lacks(legacy, "SlotAction::Shiny");
     lacks(read("include/UI/PokemonViewActions.h"), "SlotAction::Shiny");
 
+    // Gen I/II use the ONE shared builder: identical rows (label + native index) to S's
+    // NarrowPokemonMenu for every capability / pending combination.
+    auto same = [](const Narrow::Model& a, const Narrow::Model& b) {
+        assert(a.count == b.count);
+        for (int i = 0; i < a.count; ++i) {
+            assert(std::strcmp(a.rows[static_cast<std::size_t>(i)].label, b.rows[static_cast<std::size_t>(i)].label) == 0);
+            assert(a.rows[static_cast<std::size_t>(i)].nativeIndex == b.rows[static_cast<std::size_t>(i)].nativeIndex);
+        }
+    };
+    for (int bits = 0; bits < 16; ++bits) {
+        Shared::ActionCapabilities caps;
+        caps.canClone = bits & 1;
+        caps.canRemove = bits & 2;
+        caps.hasLegalityProvenance = bits & 4;
+        const bool pending = bits & 8;
+        for (bool occupied : {true, false})
+            same(Menu::fromShared(Shared::actionsForSlot(occupied, caps, pending)),
+                 Narrow::classic(Shared::actionsForSlot(occupied, caps, pending)));
+    }
+    for (bool occupied : {true, false})
+        for (bool pending : {true, false})
+            same(Menu::fromGen1(Gen1::actionsForSlot(occupied, pending)),
+                 Narrow::gen1(Gen1::actionsForSlot(occupied, pending)));
     std::cout << "Gen I/II Pokemon Actions sheet: real commands only, shared order PASS\n";
     return 0;
 }

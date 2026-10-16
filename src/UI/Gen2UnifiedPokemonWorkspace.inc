@@ -2,6 +2,8 @@
 #include "UI/Gen2WorkspacePresentation.h"
 #include "UI/Gen2FieldSelector.h"
 #include "UI/Gen2WorkspaceLayers.h"
+#include "UI/Gen2MovesPanel.h"
+#include "UI/SharedEditorPresentation.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
 
 namespace UI::Gen2PokemonEditor {
@@ -412,9 +414,10 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             return true;
         }
         if (focus.row == 8) {
-            // A cycles None -> Infected -> Cured in place, no popup; a state the record started
-            // in comes back with its exact strain/days.
-            p.pokerus = Gen2Native::cyclePokerusState(p.pokerus, state.baseline.pokerus);
+            // A cycles None -> Infected -> Cured in place, no popup, with the shared Gen II-V rule:
+            // a state the record started in comes back with its exact strain/days.
+            p.pokerus = PokeBank::UIModel::SharedEditorPresentation::nextPokerusByte(
+                p.pokerus, state.baseline.pokerus);
             return true;
         }
         if (focus.row >= 9 && screen.sourceGameId == "crystal_gbc") {
@@ -886,58 +889,38 @@ void drawUnifiedDetails(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
         fb, x + w - 10, top, visible * rowHeight, rows.size(), visible, first);
 }
 
+std::array<UI::SharedMovesPanel::Slot, 4> gen2MoveSlots(const TrainerViewScreen& screen, const State& state) {
+    std::array<UI::Gen2MovesPanel::Status, 4> status{};
+    for (int slot = 0; slot < 4; ++slot) {
+        const auto compatibility = moveStatus(screen, state, slot);
+        status[static_cast<std::size_t>(slot)] =
+            compatibility == Rules::CompatibilityState::Ok ? UI::Gen2MovesPanel::Status::Ok :
+            compatibility == Rules::CompatibilityState::UnusualPreserved ? UI::Gen2MovesPanel::Status::Preserved :
+            UI::Gen2MovesPanel::Status::Invalid;
+    }
+    return UI::Gen2MovesPanel::slots(state.working.moves, state.working.pp, state.working.ppUps, status);
+}
+
+// The ONE shared Moves panel (UI/SharedMovesPanel.h via UI/Gen2MovesPanel.h), same rows as
+// Gen III-V. Origin & Legality is a row of the GEN II DATA pane below it.
+void drawGen2SharedMoveRows(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
+                            const UnifiedWorkspaceState& unified, int x, int y, int w, bool passive) {
+    const auto visibleMoveFocus = Unified::normalizeMoveRowFocus(
+        Unified::Generation::Gen2, unified.focus, unified.crystal);
+    UI::Gen2MovesPanel::draw(fb, x, y, w, gen2MoveSlots(screen, state),
+        !passive && visibleMoveFocus.panel == Unified::Panel::Moves ? static_cast<int>(visibleMoveFocus.row) : -1);
+}
+
 void drawUnifiedMoves(PKSEFramebuffer& fb, const TrainerViewScreen& screen, const State& state,
                       const UnifiedWorkspaceState& unified, int x, int y, int w, int h, bool passive) {
     drawPanelSurface(fb, x, y, w, h, false, 14);
     fb.drawText(x + 14, y + 10, "MOVES",
         !passive && unified.focus.panel == Unified::Panel::Moves ? Colors::Accent : Colors::Text,
         TextStyle::Heading);
-    fb.drawText(x + 190, y + 42, "PP", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 246, y + 42, "Ups", Colors::TextDim, TextStyle::Caption);
-    const auto visibleMoveFocus = Unified::normalizeMoveRowFocus(
-        Unified::Generation::Gen2, unified.focus, unified.crystal);
-    for (int slot = 0; slot < 4; ++slot) {
-        const int yy = y + 62 + slot * 32;
-        const bool selected = !passive && visibleMoveFocus.panel == Unified::Panel::Moves && visibleMoveFocus.row == slot;
-        if (selected) {
-            const auto cell = Unified::moveRowFocus(w);
-            fb.drawRoundedRect(x + cell.x, yy - 5, cell.width, 28, 6, Colors::FocusBorder, 2);
-        }
-        const uint8_t move = state.working.moves[static_cast<std::size_t>(slot)];
-        const auto status = moveStatus(screen, state, slot);
-        fb.drawText(x + 18, yy, move == 0 ? "Empty" : Names::getMoveName(move),
-                    Colors::Text, TextStyle::Caption);
-        fb.drawText(x + 190, yy, std::to_string(state.working.pp[static_cast<std::size_t>(slot)]),
-                    Colors::Text, TextStyle::Caption);
-        fb.drawText(x + 246, yy, std::to_string(state.working.ppUps[static_cast<std::size_t>(slot)]),
-                    Colors::Text, TextStyle::Caption);
-        fb.drawText(x + 292, yy, status == Rules::CompatibilityState::Ok ? "OK" :
-            status == Rules::CompatibilityState::UnusualPreserved ? "Unusual" : "Invalid", unifiedStatusColor(status), TextStyle::Caption);
-    }
-    Rules::CompatibilityState summary = Rules::CompatibilityState::Ok;
-    for (int slot = 0; slot < 4; ++slot) {
-        const auto status = moveStatus(screen, state, slot);
-        if (static_cast<int>(status) > static_cast<int>(summary)) summary = status;
-    }
-    fb.drawHDivider(x + 14, y + 184, w - 28);
-    fb.drawText(x + 18, y + 194,
-        std::string("Move compatibility: ") + (summary == Rules::CompatibilityState::NeedsCorrection
-            ? "Invalid draft" : Rules::compatibilityText(summary)),
-        unifiedStatusColor(summary), TextStyle::Caption);
-    if (screen.sourceGameId == "crystal_gbc") {
-        const auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
-        const auto legality = Gen2Native::caughtLevelLegality(state.working.level, caught);
-        const Color legalityColor = legality == Gen2Native::CaughtLevelLegality::CurrentBelowMet
-            ? Colors::Error
-            : legality == Gen2Native::CaughtLevelLegality::Valid ? Colors::Success : Colors::TextDim;
-        fb.drawText(x + 18, y + 220,
-            std::string("Encounter legality: ") + Gen2Native::caughtLevelLegalityText(legality),
-            legalityColor, TextStyle::Caption);
-    } else {
-        fb.drawText(x + 18, y + 220, "Encounter legality: Not checked", Colors::TextDim, TextStyle::Caption);
-    }
+    drawGen2SharedMoveRows(fb, screen, state, unified, x, y, w, passive);
     if (const auto game = Rules::exactGameFromSourceId(screen.sourceGameId))
-        Gen2WorkspacePresentation::drawDataAndGraph(fb, x, y + 244, w, h - 256, state.working, *game);
+        Gen2WorkspacePresentation::drawDataAndGraph(fb, x, y + UI::SharedMovesPanel::kDataPaneOffset,
+                                                   w, h - 256, state.working, *game);
 }
 
 void drawProgressionEditor(PKSEFramebuffer& fb, const State& state, const UnifiedWorkspaceState& unified) {

@@ -1,9 +1,11 @@
+#include "UI/SharedEditorPresentation.h"
 #include "UI/Gen1PokemonDetailsPresentation.h"
 
 #include "Integration/Gen1/Gen1StagedPokemonEditor.h"
 #include "Names/MoveNames.h"
 #include "Pokemon/Experience.h"
 #include "UI/ClassicGameContext.h"
+#include "UI/ClassicMovesPanel.h"
 #include "UI/ClassicTypeBadges.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
@@ -169,50 +171,24 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
                 p.battleStatsCalculated ? "Calculated Stat cells are read-only" : "Party battle Stat cells are read-only",
                 Colors::TextDim, TextStyle::Caption);
 
-    // MOVES — PP/Ups and compatibility status own independent fixed regions. The
-    // status is always right-aligned and empty moves never display PP/Ups noise.
+    // MOVES — the ONE shared Moves panel (UI/ClassicMovesPanel.h), same rows as Gen II-V and the
+    // Gen I editor. Status is shown only when compatibility was checked; empty slots show no PP.
     fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
-    constexpr int moveStatusRightPad = 20;
-    constexpr int ppRightOffset = 112;
-    for (int slot = 0; slot < 4; ++slot) {
-        const auto i = static_cast<size_t>(slot);
-        const int y = contentY + 50 + slot * 44;
-        const uint16_t move = p.moves[i];
-        const std::string moveName = move == 0 ? std::string("Empty") : std::string(Names::getMoveName(move));
-        fb.drawText(rightX + 20, y, moveName, Colors::Text, TextStyle::Caption);
-
-        if (move != 0) {
-            const std::string ppText = "PP " + std::to_string(p.pp[i]) + "  Up " + std::to_string(p.ppUps[i]);
-            int ppW = 0, ppH = 0;
-            fb.measureText(ppText, ppW, ppH, TextStyle::Caption);
-            const int ppRight = rightX + rightW - ppRightOffset;
-            fb.drawText(ppRight - ppW, y, ppText, Colors::TextDim, TextStyle::Caption);
+    {
+        std::array<int, 4> maxPP{};
+        std::array<ClassicMovesPanel::Status, 4> status{};
+        for (size_t i = 0; i < 4; ++i) {
+            maxPP[i] = Gen1::StagedPokemonEditor::moveMaxPP(p.moves[i], p.ppUps[i]);
+            status[i] = p.moveCompatible[i] ? ClassicMovesPanel::Status::Ok : ClassicMovesPanel::Status::Preserved;
         }
-
-        if (p.moveCompatibilityChecked) {
-            const std::string status = p.moveCompatible[i] ? "OK" : "Unusual";
-            const Color statusColor = p.moveCompatible[i] ? Colors::Success : Colors::Warning;
-            int statusW = 0, statusH = 0;
-            fb.measureText(status, statusW, statusH, TextStyle::Caption);
-            const int statusX = rightX + rightW - moveStatusRightPad - statusW;
-            fb.drawText(statusX, y, status, statusColor, TextStyle::Caption);
-        }
+        auto slots = ClassicMovesPanel::slots(p.moves, p.pp, p.ppUps, maxPP, status);
+        if (!p.moveCompatibilityChecked)
+            for (auto& slot : slots) slot.status = "";
+        ClassicMovesPanel::draw(fb, rightX, contentY, rightW, slots, Enums::GameVersion::RBY, -1);
     }
 
-    fb.drawHDivider(rightX + 14, contentY + 220, rightW - 28);
-    const std::string compatibilityText = !p.moveCompatibilityChecked
-        ? "Not checked"
-        : (p.moveCompatibilityCompatible ? "OK" : "Unusual preserved");
-    const Color compatibilityColor = !p.moveCompatibilityChecked
-        ? Colors::TextDim
-        : (p.moveCompatibilityCompatible ? Colors::Success : Colors::Warning);
-    compactRow(fb, rightX + 18, contentY + 235, "Move compatibility", compatibilityText, 300,
-               compatibilityColor);
-    compactRow(fb, rightX + 18, contentY + 261, "Encounter legality", "Not checked", 300,
-               Colors::TextDim);
-
-    const int splitY = contentY + 288;
-    const int splitH = contentH - 300;
+    const int splitY = contentY + SharedMovesPanel::kDataPaneOffset;
+    const int splitH = contentH - 256;
     constexpr int inset = 12;
     constexpr int paneGap = 10;
     constexpr int leftPaneW = 136;
@@ -243,6 +219,9 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
                 Colors::Text, TextStyle::Caption);
     fb.drawText(leftPaneX + 10, splitY + 164, "Catch byte", Colors::TextDim, TextStyle::Caption);
     fb.drawText(leftPaneX + 10, splitY + 182, std::to_string(p.catchRate), Colors::Text, TextStyle::Caption);
+    // Origin & Legality (formerly under the move rows): Gen I records no origin to check.
+    fb.drawText(leftPaneX + 10, splitY + 206, "Legality", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 224, "Not checked", Colors::Text, TextStyle::Caption);
 
     fb.drawText(rightPaneX + 10, splitY + 10, "BATTLE STATS", Colors::Accent, TextStyle::Caption);
     if (p.hasBattleStats)

@@ -604,7 +604,7 @@ int main() {
     contains(surface, "SharedHeldItemPickerPresentation::drawHeading(");
     contains(surface, "ItemPickerArtwork::draw(fb, x + w - 35");
     contains(gen3Picker, "ItemPickerArtwork::draw(fb, x + w - 35");
-    contains(gen2Editor, "\"A\", \"Choose\"");
+    contains(gen2Editor, "UI::SharedEditorChrome::drawPickerFooter(fb, footer);"); // A Select / B Cancel
     contains(sharedHeld, "if (value != 0)");
     contains(itemArtwork, "SpriteManager::getItemSprite(exactName)");
     contains(spriteRuntime, "sprites/items/");

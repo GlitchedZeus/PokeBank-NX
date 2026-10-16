@@ -1,3 +1,4 @@
+#include "UI/SharedEditorChrome.h"
 #include "UI/MovePickerRowUI.h"
 // Hardware-retest adapter for the shared Generation II move picker.
 // The underlying picker/session code remains unchanged; this layer narrows the
@@ -95,8 +96,7 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
         MovePickerRowUI::draw(fb,x+40,yy+4,move,Enums::GameVersion::GSC);
     }
     fb.clearClip();
-    drawNavBar(fb, {{"D-pad/Stick", "Browse"}, {"Left/Right", "Page"},
-                    {"A", "Select"}, {"B", "Cancel"}});
+    UI::SharedEditorChrome::drawPickerFooter(fb);
 }
 
 } // namespace
