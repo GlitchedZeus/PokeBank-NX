@@ -21,6 +21,7 @@ on:
       - 'include/Encryption/Encryption5.h'
       - 'src/Names/SpeciesNames.cpp'
       - 'tests/test_legality_gen5.cpp'
+      - 'tests/legality_gen5_test_helpers.h'
       - 'tests/fuzz/fuzz_legality_gen5.cpp'
       - 'tools/gen_legality_gen5_data.py'
       - 'tools/pkhex_gen5_diff/**'
