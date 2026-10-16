@@ -2139,7 +2139,7 @@ namespace Legality {
                     availability == Availability::Preserved) {
                     std::string text =
                         (availability == Availability::Transfer
-                             ? "Move is not native to this record's origin game or the Gen III game it is stored in (transfer required): "
+                             ? "Move is not native to this exact Gen III game or to this record's origin game (transfer required): "
                              : "Move is preserved but not in the audited Gen III native/transfer pool: ") +
                         std::string(Names::getMoveName(moveId));
                     // The pret pools omit event-gift moves, Sketch and some tutor/egg
