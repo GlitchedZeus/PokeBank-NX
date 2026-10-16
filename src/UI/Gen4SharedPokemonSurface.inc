@@ -66,7 +66,7 @@ using Surface::genderText;
 enum class TargetKind : uint8_t { Box, Party };
 
 enum class MenuAction : uint8_t {
-    View, AddMasterVault, AddBank, TransferGame, Edit, MovePokemon, Clone, MakeShiny,
+    View, AddMasterVault, AddBank, TransferGame, Edit, MovePokemon, Clone,
     Legality, Release, Add, Review, Close
 };
 struct MenuActionEntry {
@@ -938,28 +938,18 @@ MenuActionSet gen4Actions(const State& state, bool occupied, bool stagedAvailabl
         return result;
     }
 
-    if (state.target == TargetKind::Party) {
-        // Match the established Gen I-III Party action vocabulary. Rows whose
-        // architecture is intentionally locked stay visible but disabled.
-        add(MenuAction::View, "View Pokemon", true);
-        add(MenuAction::AddMasterVault, "Add to Master Vault", false);
-        add(MenuAction::AddBank, "Add to Bank...", false);
-        add(MenuAction::TransferGame, "Transfer to Game...", false);
-        add(MenuAction::Edit, "Edit", stagedAvailable);
-        add(MenuAction::Clone, "Clone", false);
-        add(MenuAction::MakeShiny, "Make Shiny", false);
-        add(MenuAction::Legality, "Legality & Provenance", true);
-        if (hasPendingChanges) add(MenuAction::Review, "Review Pending Changes", true);
-        add(MenuAction::Close, "Cancel", true);
-        return result;
-    }
-
+    // The shared action order (NarrowPokemonActionMenu.h): View, Edit, Clone, Move, Release,
+    // Origin & Legality, Review, Cancel. Only commands Gen IV really performs are listed:
+    // Party has no Clone/Move/Release in the staged Gen IV editor, and Make Shiny / Master
+    // Vault / Bank / Transfer placeholders are not shown (Shiny is edited in the editor).
     add(MenuAction::View, "View", true);
     add(MenuAction::Edit, "Edit", stagedAvailable);
-    add(MenuAction::MovePokemon, "Move Pokemon", stagedAvailable);
-    add(MenuAction::Clone, "Clone", stagedAvailable);
-    add(MenuAction::Release, "Release", stagedAvailable);
-    add(MenuAction::Legality, "Legality & Provenance", true);
+    if (state.target != TargetKind::Party) {
+        add(MenuAction::Clone, "Clone", stagedAvailable);
+        add(MenuAction::MovePokemon, "Move", stagedAvailable);
+        add(MenuAction::Release, "Release", stagedAvailable);
+    }
+    add(MenuAction::Legality, PokeBank::UIModel::NarrowPokemonMenu::kOriginLegalityLabel, true);
     if (hasPendingChanges) add(MenuAction::Review, "Review Pending Changes", true);
     add(MenuAction::Close, "Cancel", true);
     return result;
@@ -1022,9 +1012,6 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
                 break;
             case MenuAction::Clone:
                 screen.postStatus("Party Clone is not enabled yet; Box Clone is staged and available", 300);
-                break;
-            case MenuAction::MakeShiny:
-                screen.postStatus("Use Edit > Shiny for the staged Gen IV Pokemon", 300);
                 break;
             default:
                 screen.postStatus("This Generation IV action is not enabled", 240);
@@ -1257,7 +1244,7 @@ struct Gen4Editor {
         "Empty + compatible moves only • exact Gen IV Acc / Pwr / PP";
     static constexpr const char* kMoveEditorSubtitle =
         "Gen IV move compatibility • event/encounter legality is not fully checked";
-    static constexpr const char* kDataTitle = "GEN IV DATA";
+    static constexpr const char* kDataTitle = "Origin & Legality";
 
     static State& gen4(Surface::EditorState& state) { return static_cast<State&>(state); }
     static const State& gen4(const Surface::EditorState& state) {
@@ -1493,7 +1480,10 @@ struct Gen4Editor {
             {"Fateful", raw->fatefulEncounter() ? "Yes" : "No"},
             {"Egg status", raw->isEgg() ? "Unhatched" : "Not egg"},
             {"OT gender", raw->originalTrainerGender() == 0 ? "Male" : "Female"},
-            {"PC markings", PokeBank::UIModel::Gen4DataPresentation::markings(raw->markings())}
+            {"PC markings", PokeBank::UIModel::Gen4DataPresentation::markings(raw->markings())},
+            // Structure + move guardrails run; no full encounter/event legality checker exists.
+            {"Legality", PokeBank::UIModel::SharedEditorPresentation::legalityLabel(
+                PokeBank::UIModel::SharedEditorPresentation::LegalityState::Incomplete)}
         };
     }
 };
@@ -1508,43 +1498,14 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
 }
 
 PokeBank::UIModel::NarrowPokemonMenu::Model narrowGen4Actions(
-    const MenuActionSet& actions, bool occupied) {
-    namespace Narrow = PokeBank::UIModel::NarrowPokemonMenu;
-    const auto native = [&](MenuAction action) {
-        for (int i = 0; i < static_cast<int>(actions.count); ++i)
-            if (actions[static_cast<std::size_t>(i)].action == action &&
-                actions[static_cast<std::size_t>(i)].enabled)
-                return i;
-        return -1;
-    };
-    const auto exists = [&](MenuAction action) {
-        for (int i = 0; i < static_cast<int>(actions.count); ++i)
-            if (actions[static_cast<std::size_t>(i)].action == action) return true;
-        return false;
-    };
-    Narrow::Model model{};
-    if (!occupied) {
-        if (exists(MenuAction::Add)) model.append("Add Pokemon", native(MenuAction::Add));
-        if (exists(MenuAction::Review))
-            model.append("Review Pending Changes", native(MenuAction::Review));
-        model.append("Cancel", native(MenuAction::Close));
-        return model;
+    const MenuActionSet& actions, bool /*occupied*/) {
+    // gen4Actions already lists the shared order; each row keeps its native index, and a
+    // disabled command (no validated staged save) stays visible but grey and inert.
+    PokeBank::UIModel::NarrowPokemonMenu::Model model{};
+    for (int i = 0; i < static_cast<int>(actions.count); ++i) {
+        const auto& entry = actions[static_cast<std::size_t>(i)];
+        model.append(entry.label, entry.enabled ? i : -1);
     }
-    model.append("View Pokemon", native(MenuAction::View));
-    model.append("Add to Master Vault");
-    model.append("Add to Bank...");
-    model.append("Transfer to Game...");
-    model.append("Edit", native(MenuAction::Edit));
-    if (exists(MenuAction::MovePokemon))
-        model.append("Move Pokemon", native(MenuAction::MovePokemon));
-    model.append("Clone", native(MenuAction::Clone));
-    if (exists(MenuAction::Release))
-        model.append("Release", native(MenuAction::Release));
-    model.append("Make Shiny");
-    model.append("Legality & Provenance", native(MenuAction::Legality));
-    if (exists(MenuAction::Review))
-        model.append("Review Pending Changes", native(MenuAction::Review));
-    model.append("Cancel", native(MenuAction::Close));
     return model;
 }
 
@@ -1630,7 +1591,8 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
     constexpr int x = 210, y = 82, w = 860, h = 500;
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
     fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
-    fb.drawText(x + 24, y + 18, "Legality & Provenance", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 24, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading,
+                Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52,
                 "Exact Gen IV structural + move guardrails • encounter legality remains advisory",
                 Colors::TextDim, TextStyle::Caption);
@@ -1652,7 +1614,9 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
     fb.drawText(x + 34, y + 180, "Source mutation", Colors::TextDim);
     fb.drawText(x + 250, y + 180, "HARD DISABLED", Colors::Accent);
     fb.drawText(x + 34, y + 218, "Encounter legality", Colors::TextDim);
-    fb.drawText(x + 250, y + 218, "Not fully audited", Colors::Warning);
+    fb.drawText(x + 250, y + 218, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(
+                    PokeBank::UIModel::SharedEditorPresentation::LegalityState::Incomplete),
+                Colors::Warning);
 
     int rowY = y + 270;
     const auto moves = record->moves();

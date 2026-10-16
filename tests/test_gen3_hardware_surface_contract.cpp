@@ -187,7 +187,7 @@ int main() {
     contains(surface, "SharedPokemonShell::drawPortrait"); contains(surface, "getTypeSprite");
     contains(surface, "SharedPokemonShell::drawDataAndGraph");
     contains(shell, "BATTLE STATS"); contains(shell, "StatsRadar::drawGen3Labeled");
-    contains(surface, "GEN III DATA"); contains(surface, "Colors::Panel");
+    contains(surface, "Presentation::kOriginLegalityHeading, rows,"); contains(surface, "Colors::Panel");
     contains(surface, "SharedPokemonShell::drawScrollableDetails");
     contains(shell, "scrollWindow(total, visibleRows, focus)");
     contains(shell, "independentFirstRow >= 0");

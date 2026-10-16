@@ -90,7 +90,7 @@ constexpr const char* actionLabel(Action action) noexcept {
         case Action::Edit: return "Edit";
         case Action::Clone: return "Clone";
         case Action::Remove: return "Remove";
-        case Action::LegalityProvenance: return "Legality & Provenance";
+        case Action::LegalityProvenance: return "Origin & Legality";
         case Action::Add: return "Add Pokemon";
         case Action::Review: return "Review Pending Changes";
         case Action::Close: return "Cancel";

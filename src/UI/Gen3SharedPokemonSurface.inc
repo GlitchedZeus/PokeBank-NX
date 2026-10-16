@@ -1939,11 +1939,11 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         {"Ball", Enums::getBallName(p.ball)},
         {"Met Location", metLocationText(p)},
         {"Encounter origin", encounterOriginText(screen, p)},
-        {"PID fields", "READ ONLY"},
-        {"Legality", "Encounter not checked"}
+        {"PID", "Derived (read-only)"},
+        {"Legality", Presentation::legalityLabel(Presentation::LegalityState::NotChecked)}
     };
     SharedPokemonShell::drawDataAndGraph(fb, rightX, y + 244, rightW, h - 256,
-        "GEN III DATA", rows, state.previewError.empty() ? p.calculatedStats : std::array<uint16_t,6>{});
+        Presentation::kOriginLegalityHeading, rows, state.previewError.empty() ? p.calculatedStats : std::array<uint16_t,6>{});
 
     if (state.session.mode == SessionModel::Mode::View) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}});
@@ -2017,7 +2017,7 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
     constexpr int x = 220, y = 92, w = 840, h = 480;
     fb.drawFilledRoundedRect(x, y, w, h, 18, Colors::Panel);
     fb.drawRoundedRect(x, y, w, h, 18, Colors::Divider, 1);
-    fb.drawText(x + 24, y + 18, "Legality & Provenance", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 24, y + 18, Presentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
     fb.drawText(x + 24, y + 52, "Editor guardrails active • full legality checker is a later milestone",
                 Colors::TextDim, TextStyle::Caption);
     fb.drawText(x + 34, y + 112, "Exact source", Colors::TextDim);
@@ -2026,10 +2026,11 @@ void drawLegality(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) 
     fb.drawText(x + 270, y + 158, "HARD DISABLED", Colors::Accent);
     fb.drawText(x + 34, y + 204, "Encounter guardrails", Colors::TextDim);
     fb.drawText(x + 270, y + 204, "Game/species/location/level constrained", Colors::Text);
-    fb.drawText(x + 34, y + 250, "PID-linked fields", Colors::TextDim);
-    fb.drawText(x + 270, y + 250, "READ ONLY", Colors::Text);
+    fb.drawText(x + 34, y + 250, "PID", Colors::TextDim);
+    fb.drawText(x + 270, y + 250, "Derived from Nature / Gender / Shiny / Ability", Colors::Text);
     fb.drawText(x + 34, y + 296, "Deep encounter legality", Colors::TextDim);
-    fb.drawText(x + 270, y + 296, "Not checked", Colors::Warning);
+    fb.drawText(x + 270, y + 296, Presentation::legalityLabel(Presentation::LegalityState::NotChecked),
+                Colors::Warning);
     drawNavBar(fb, {{"B", "Back"}});
 }
 
@@ -2040,15 +2041,8 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
         const bool occupied = pokemon != nullptr;
         PokeBank::UIModel::NarrowPokemonMenu::Model model{};
         if (occupied) {
-            model.append("View Pokemon", 0);
-            model.append("Add to Master Vault");
-            model.append("Add to Bank...");
-            model.append("Transfer to Game...");
-            model.append("Edit");
-            model.append("Clone");
-            model.append("Release");
-            model.append("Make Shiny");
-            model.append("Legality & Provenance");
+            // No validated staged editor: only the read-only View exists (shared order).
+            model.append("View", 0);
             model.append("Cancel", 1);
         } else {
             model.append("Add Pokemon"); // blocked until a validated staged copy exists

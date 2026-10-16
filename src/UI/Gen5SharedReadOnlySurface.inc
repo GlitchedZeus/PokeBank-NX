@@ -226,7 +226,7 @@ struct Gen5Editor {
         "Valid BW/B2W2 moves • Pwr/Acc/PP • learnability not checked";
     static constexpr const char* kMoveEditorSubtitle =
         "Valid native BW/B2W2 move • species learnability not checked";
-    static constexpr const char* kDataTitle = "GEN V DATA";
+    static constexpr const char* kDataTitle = "Origin & Legality";
 
     static PokeVault::Integration::Gen5::Gen5SharedScreenState& backend(const TrainerViewScreen& screen) {
         return nativeTrainer(const_cast<TrainerViewScreen&>(screen)).sharedScreen();
@@ -753,6 +753,9 @@ struct Gen5Editor {
             {"Fateful", p.fatefulEncounter() ? "Yes" : "No"},
             {"Egg status", p.egg() ? "Unhatched" : "Not egg"},
             {"OT gender", p.originalTrainerGender() == 0 ? "Male" : "Female"},
+            // Only format validity is checked for Gen V; no legality conclusion is drawn.
+            {"Legality", PokeBank::UIModel::SharedEditorPresentation::legalityLabel(
+                PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked)},
         };
         return rows;
     }
@@ -1566,9 +1569,9 @@ void dimShared(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
 const char* narrowActionLabel5(PokeBank::UIModel::SharedPokemonEditor::Action action) noexcept {
     using A=PokeBank::UIModel::SharedPokemonEditor::Action;
     switch(action) {
-        case A::View:return "View Pokemon";
+        case A::View:return "View";
         case A::Edit:return "Edit";
-        case A::Move:return "Move Pokemon";
+        case A::Move:return "Move";
         case A::Clone:return "Clone";
         case A::Remove:return "Release";
         case A::Add:return "Add Pokemon";

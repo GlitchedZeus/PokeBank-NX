@@ -40,6 +40,7 @@
 #include <cstdlib>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -900,6 +901,8 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
     }
 
     const std::vector<DataRow> rows = A::dataRows(screen, state, *raw);
+    // Every generation titles its provenance pane with the one shared heading.
+    static_assert(std::string_view(A::kDataTitle) == Presentation::kOriginLegalityHeading);
     SharedPokemonShell::drawDataAndGraph(
         fb, g.rightX, g.y + 244, g.rightW, g.h - 256, A::kDataTitle, rows, stats);
 
