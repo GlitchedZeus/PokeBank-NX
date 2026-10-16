@@ -260,6 +260,35 @@ static void testOriginPaneBounds() {
     require(heading, "Origin & Legality heading drawn");
 }
 
+static void testDataPaneWrap() {
+    // Phase 9: over-long values wrap inside the 198px data pane; a no-space word is broken on a
+    // code point; overflow ends in "..." -- never into the graph pane or below the panel.
+    constexpr UI::SharedPokemonShell::Geometry g(1280, 720, 56);
+    struct Row { std::string label, value; };
+    const int paneX = g.rightX + 12, paneRight = paneX + 198;
+    for (int extra = 0; extra < 12; ++extra) {
+        std::vector<Row> rows{{"Met Location", "Altering Cave (Sevii Islands)"},
+            {"Encounter origin", "Bulbasaur \xE2\x86\x92 Venusaur"},
+            {"Long", std::string(40, 'W') + "\xC3\xA9\xC3\xA9\xC3\xA9"},
+            {"Legality", "Not checked"}};
+        for (int i = 0; i < extra; ++i) rows.push_back({"Row " + std::to_string(i), "Pok\xC3\xA9mon League Front Gate"});
+        texts.clear(); rects.clear();
+        UI::SharedPokemonShell::drawDataAndGraph(fb_global(), g.rightX, g.y + 244, g.rightW, g.h - 256,
+            P::kOriginLegalityHeading, rows, {1, 2, 3, 4, 5, 6});
+        bool ellipsis = false;
+        for (const auto& t : texts) {
+            if (t.x >= paneRight) continue; // graph pane labels
+            require(t.x >= paneX && t.x + t.w <= paneRight - 10, "data text inside the pane: " + t.value);
+            require(t.y + t.h <= g.y + g.h - 8, "data text above the panel edge: " + t.value);
+            for (std::size_t i = 0; i < t.value.size(); ++i)
+                if ((static_cast<unsigned char>(t.value[i]) & 0xE0) == 0xC0)
+                    require(i + 1 < t.value.size(), "no split UTF-8 sequence");
+            ellipsis |= t.value.size() >= 3 && t.value.compare(t.value.size() - 3, 3, "...") == 0;
+        }
+        if (extra >= 8) require(ellipsis, "overflowing pane ends in an ellipsis");
+    }
+}
+
 static void testLocationNames() {
     // Gen III: no PKHeX source tags or raw ids; duplicates only for the SAME place.
     const std::set<std::string> samePlace{"Birth Island", "Fiery Path", "Jagged Pass",
@@ -329,6 +358,7 @@ int main() {
     testFooterAndToggles();
     testDetailsViewport();
     testOriginPaneBounds();
+    testDataPaneWrap();
     testLocationNames();
     testRealSourcesUseSharedUnit();
     std::cout << "Shared Gen I-V editor unit (moves panel, chooser, footer, toggles, viewport) PASS\n";

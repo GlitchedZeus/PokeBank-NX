@@ -141,14 +141,14 @@ host-test: $(SHARED_EDITOR_UNIT_TEST)
 host-sanitize: $(SHARED_EDITOR_UNIT_SANITIZE)
 
 $(SHARED_EDITOR_UNIT_TEST): $(SHARED_EDITOR_UNIT_SOURCES) include/UI/SharedMovesPanel.h \
-	include/UI/SharedMoveFacts.h include/UI/SharedEditorPresentation.h include/UI/SharedPokemonShell.h \
+	include/UI/SharedMoveFacts.h include/UI/SharedEditorPresentation.h include/UI/SharedPokemonShell.h include/UI/SharedDataPaneLayout.h \
 	include/Names/MoveTypes34.h include/Names/LocationDisplayNames.h src/UI/Gen3SharedPokemonSurface.inc src/UI/SharedPokemonEditorSurface.inc \
 	src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Iinclude $(SHARED_EDITOR_UNIT_SOURCES) -o $@
 
 $(SHARED_EDITOR_UNIT_SANITIZE): $(SHARED_EDITOR_UNIT_SOURCES) include/UI/SharedMovesPanel.h \
-	include/UI/SharedMoveFacts.h include/UI/SharedEditorPresentation.h include/UI/SharedPokemonShell.h \
+	include/UI/SharedMoveFacts.h include/UI/SharedEditorPresentation.h include/UI/SharedPokemonShell.h include/UI/SharedDataPaneLayout.h \
 	include/Names/MoveTypes34.h include/Names/LocationDisplayNames.h src/UI/Gen3SharedPokemonSurface.inc src/UI/SharedPokemonEditorSurface.inc \
 	src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
 	@mkdir -p $(HOST_BUILD)
