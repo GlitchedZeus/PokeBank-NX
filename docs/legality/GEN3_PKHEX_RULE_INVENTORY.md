@@ -230,29 +230,55 @@ Pokemon, held items, trades into another cartridge's save; every record stays PK
 `summarize.py` fails on any false Invalid, false Valid or load failure and prints per-game rates.
 The oracle's PIDs come from PKHeX's unseeded generator, so record counts vary slightly per run.
 
-Production path (`Legality::analyze` on an encrypted `Pokemon3FRLG`), 3 mutations:
+Production path (`Legality::analyze` on an encrypted `Pokemon3FRLG`). The stored corpora are
+the records of the first measurement, re-run through production before and after the section 4a
+fix, so both columns judge the same records:
 
-| Seed | False Invalid | False Valid | PKHeX-invalid caught | No problems found (PKHeX-valid) |
-|---|---|---|---|---|
-| 1 | 0 | 0 | 14325/14329 (99.97%) | 13745/14507 (94.75%) |
-| 2 | 0 | 0 | 14433/14435 (99.99%) | 13598/14401 (94.42%) |
-| 3 | 0 | 0 | 14343/14347 (99.97%) | 13691/14489 (94.49%) |
+| Corpus | Records | False Invalid | False Valid | PKHeX-invalid caught | No problems found (PKHeX-valid), before -> after |
+|---|---|---|---|---|---|
+| Mutation seed 1 | 28836 | 0 | 0 | 14325/14329 (99.97%) | 13745 (94.75%) -> 13949/14507 (96.15%) |
+| Mutation seed 2 | 28836 | 0 | 0 | 14433/14435 (99.99%) | 13598 (94.42%) -> 13814/14401 (95.92%) |
+| Mutation seed 3 | 28836 | 0 | 0 | 14343/14347 (99.97%) | 13691 (94.49%) -> 13905/14489 (95.97%) |
+| Grown seed 1 | 19254 | 0 | 0 | - | 14732 (76.51%) -> 18920/19254 (98.27%) |
+| Grown seed 2 | 19256 | 0 | 0 | - | 14765 (76.68%) -> 18936/19256 (98.34%) |
+| Grown seed 3 | 19221 | 0 | 0 | - | 14704 (76.50%) -> 18878/19221 (98.22%) |
 
-Per game (seed 1): R 2615/2843, S 2542/2686, E 2699/2804, FR 2966/3109, LG 2923/3065 certified;
-every game 0 false Invalid and 0 false Valid. The uncaught PKHeX-invalid records are all Enigma
-Berry holders (section 3).
+Per game, No problems found among PKHeX-valid records, before -> after:
 
-Grown corpus, production path, 3 growths per base record (all PKHeX-VALID):
+| Corpus | R | S | E | FR | LG |
+|---|---|---|---|---|---|
+| Mutation 1 | 91.98 -> 95.85 | 94.64 -> 96.17 | 96.26 -> 96.97 | 95.40 -> 96.11 | 95.37 -> 95.73 |
+| Mutation 2 | 91.04 -> 95.09 | 93.75 -> 95.28 | 95.95 -> 96.89 | 95.54 -> 96.21 | 95.56 -> 96.08 |
+| Mutation 3 | 92.07 -> 95.89 | 93.82 -> 95.59 | 95.72 -> 96.55 | 95.46 -> 96.14 | 95.20 -> 95.68 |
+| Grown 1 | 76.04 -> 98.41 | 74.54 -> 97.82 | 75.11 -> 98.06 | 78.06 -> 98.56 | 78.59 -> 98.44 |
+| Grown 2 | 75.94 -> 98.04 | 75.40 -> 98.50 | 76.14 -> 98.26 | 77.09 -> 98.32 | 78.66 -> 98.57 |
+| Grown 3 | 75.81 -> 98.10 | 76.17 -> 97.78 | 74.91 -> 98.24 | 77.72 -> 98.27 | 77.75 -> 98.65 |
 
-| Seed | Records | False Invalid | No problems found |
-|---|---|---|---|
-| 1 | 19254 | 0 | 14732 (76.51%) |
-| 2 | 19256 | 0 | 14765 (76.68%) |
-| 3 | 19221 | 0 | 14704 (76.50%) |
+Every game has 0 false Invalid and 0 false Valid. The uncaught PKHeX-invalid records are all
+Enigma Berry holders (section 3).
 
-The analyzer alone (`analyzePk3`) certifies 95.8-95.9% of PKHeX-valid mutation records (every
-uncertified one carries a PKHeX Fishy result) and 98.5% of grown records. A stress run with 25
-mutations per encounter (187434 records) also gave 0 false Invalid and 0 false Valid.
+Production now certifies exactly the analyzer's records, apart from the 14 mutated in-game
+trades of section 4a. The remaining PKHeX-valid records are uncertified because of the
+analyzer's own Warnings, which mirror PKHeX Fishy results:
+- no RNG frame produces the wild slot;
+- all IVs equal;
+- TID/SID zero, or a TID/SID pair Ruby/Sapphire cannot generate;
+- a preserved move on a record that has another analyzer Warning.
+
+Fresh `run.sh` / `GROW=1 run.sh` runs at this commit, seeds 1-3. These have new PIDs, so the
+counts differ slightly:
+
+| Corpus | Records | False Invalid | False Valid | PKHeX-invalid caught | No problems found |
+|---|---|---|---|---|---|
+| Mutation seed 1 | 28836 | 0 | 0 | 14317/14321 (99.97%) | 13943/14515 (96.06%) |
+| Mutation seed 2 | 28836 | 0 | 0 | 14421/14423 (99.99%) | 13799/14413 (95.74%) |
+| Mutation seed 3 | 28836 | 0 | 0 | 14334/14338 (99.97%) | 13893/14498 (95.83%) |
+| Grown seed 1 | 19270 | 0 | 0 | - | 18918/19270 (98.17%) |
+| Grown seed 2 | 19338 | 0 | 0 | - | 19006/19338 (98.28%) |
+| Grown seed 3 | 19280 | 0 | 0 | - | 18951/19280 (98.29%) |
+
+A stress run with 25 mutations per encounter (187434 records, before the section 4a fix) also
+gave 0 false Invalid and 0 false Valid.
 
 ## 6. Known gaps
 
