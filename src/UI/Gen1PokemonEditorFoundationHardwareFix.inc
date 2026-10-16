@@ -345,8 +345,6 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
 
     if (view) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
-    } else if (foundationStateFor(screen).reroll.confirming) {
-        drawNavBar(fb, {{"B", "Cancel"}, {"A", "Re-roll"}});
     } else if (foundationStateFor(screen).editExitConfirm) {
         // The exit dialog is modal: its footer offers exactly the dialog's own B/Y/A, so a
         // footer tap (mapped to that button) never reads as a workspace edit shortcut.
@@ -391,7 +389,6 @@ void drawFoundationBottomSplit(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!foundationMainMode(state.mode) || foundationPickerActive(screen)) return;
     drawFullscreenGen1Workspace(screen, fb);
     if (foundationStateFor(screen).editExitConfirm) foundationDrawExitConfirm(screen, fb);
-    foundationDrawRerollConfirm(screen, fb);
 }
 
 } // namespace UI::Gen1PokemonEditor

@@ -101,7 +101,7 @@ int main() {
     const auto editable = unified.substr(unified.find("return handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY);"));
     const auto gate = editable.find("if (layer == Layers::Layer::FieldSelector) {");
     assert(gate != std::string::npos);
-    assert(gate < editable.find("Reroll::step(unified.reroll,"));
+    assert(gate < editable.find("if (down & HidNpadButton_Y) {"));
     assert(gate < editable.find("const int touchedDetail = updateUnifiedDetailsTouch("));
     assert(gate < editable.find("if (down & HidNpadButton_B) {"));
     const auto apply = unified.substr(unified.find("void applyFieldSelector("),

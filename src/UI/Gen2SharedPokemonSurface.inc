@@ -1,3 +1,4 @@
+#include "UI/ClassicPokemonActionMenu.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2NativePresentation.h"
 #include "UI/Gen12ReviewDiscardConfirm.h"
@@ -316,8 +317,7 @@ void drawSharedActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         pokemon.has_value(), gen2ActionCapabilities(), !editor->pendingChanges().empty());
     legacy.pokemonRow = std::clamp(
         legacy.pokemonRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
-    const auto model = PokeBank::UIModel::NarrowPokemonMenu::classic(
-        actions, pokemon.has_value());
+    const auto model = PokeBank::UIModel::ClassicPokemonActionMenu::fromShared(actions);
     drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow,
                             pokemon ? "Pokemon Actions" : "Empty Slot",
                             "GEN II / READ-ONLY SOURCE", 31600);

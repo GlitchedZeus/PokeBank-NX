@@ -1,3 +1,4 @@
+#include "UI/ClassicPokemonActionMenu.h"
 // Staged Release requires A -> Pokemon Actions -> Release and then an
 // explicit Y confirmation; A inside the confirmation itself is inert. No bulk-release path exists.
 
@@ -101,8 +102,7 @@ bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     // The composite has already drawn the box browser. Do not draw another
     // older wide panel behind this single, original narrow greyed-out sheet.
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
-    const auto model = PokeBank::UIModel::NarrowPokemonMenu::gen1(
-        actions, static_cast<bool>(pokemon));
+    const auto model = PokeBank::UIModel::ClassicPokemonActionMenu::fromGen1(actions);
     const std::string title = pokemon
         ? std::string(Names::getSpeciesName(pokemon->species)) : "Empty Slot";
     drawNarrowPokemonActions(fb, screen.touchButtons, model, state.row,
@@ -440,8 +440,7 @@ bool drawReleaseActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         std::max(0, static_cast<int>(actions.count) - 1));
     // This higher-priority composited draw must match the shared Gen II parity
     // sheet, or a 650px legacy popup hides the correct narrow grey/yellow menu.
-    const auto model = PokeBank::UIModel::NarrowPokemonMenu::classic(
-        actions, static_cast<bool>(pokemon));
+    const auto model = PokeBank::UIModel::ClassicPokemonActionMenu::fromShared(actions);
     const std::string title = pokemon
         ? std::string(Names::getSpeciesName(pokemon->species)) : "Empty Slot";
     drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow,
