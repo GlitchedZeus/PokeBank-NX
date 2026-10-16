@@ -3,6 +3,9 @@
 #include "Inventory/ClassicInventoryCatalog.h"
 
 #include <algorithm>
+#include <fstream>
+#include <iterator>
+#include <string>
 #include <cassert>
 #include <iostream>
 
@@ -109,6 +112,43 @@ int main() {
     assert(fixedActions.removeItem);
     const auto unsupportedActions = classicInventoryActionAvailability(false, false, false);
     assert(!unsupportedActions.editAmount && !unsupportedActions.addItem && !unsupportedActions.removeItem);
+
+    // Phase 2: Remove asks first. Only Y (the same confirm as Release) removes; B cancels and wins
+    // a same-frame Y+B; A and no input do nothing.
+    using PokeBank::UIModel::ClassicRemoveConfirm;
+    static_assert(classicRemoveConfirmStep(true, false) == ClassicRemoveConfirm::Remove);
+    static_assert(classicRemoveConfirmStep(false, true) == ClassicRemoveConfirm::Cancel);
+    static_assert(classicRemoveConfirmStep(true, true) == ClassicRemoveConfirm::Cancel);
+    static_assert(classicRemoveConfirmStep(false, false) == ClassicRemoveConfirm::None);
+    // One per-item quantity query: unique items (key items, HMs) have no editor and are fixed at 1;
+    // ordinary items edit 1..99. Every addable Gen I/II item answers consistently.
+    for (const auto game : {PokeVault::Inventory::ClassicGame::Red, PokeVault::Inventory::ClassicGame::Yellow,
+                            PokeVault::Inventory::ClassicGame::Gold, PokeVault::Inventory::ClassicGame::Crystal}) {
+        for (const auto pocket : PokeVault::Inventory::supportedPockets(game)) {
+            for (const uint16_t item : PokeVault::Inventory::addableItems(game, pocket)) {
+                const auto q = classicItemQuantity(game, pocket, item);
+                assert(q.editable == classicInventoryQuantityEditable(game, pocket, item));
+                if (pocket == PokeVault::Inventory::ClassicPocket::KeyItems)
+                    assert(!q.editable && q.minimum == 1 && q.maximum == 1);
+                if (q.editable) assert(q.minimum == 1 && q.maximum == 99);
+                else assert(q.maximum == 1);
+            }
+        }
+    }
+    {
+        std::ifstream in("src/UI/ClassicInventoryOverlay.cpp", std::ios::binary);
+        const std::string overlay((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        // Y on an item opens the question instead of removing; the question owns input and footer.
+        const auto removeAction = overlay.find("if (action == PokeBank::UIModel::ClassicInventoryAction::RemoveItem) {");
+        assert(removeAction != std::string::npos);
+        const auto removeBody = overlay.substr(removeAction, 400);
+        assert(removeBody.find("state.removeConfirmActive = true;") != std::string::npos);
+        assert(removeBody.find("queueMutationWithWarning") == std::string::npos);
+        assert(overlay.find("classicRemoveConfirmStep((down & HidNpadButton_Y) != 0,") != std::string::npos);
+        assert(overlay.find("drawNavBar(fb, {{\"Y\", \"Remove\"}, {\"B\", \"Cancel\"}});") != std::string::npos);
+        // The add and edit quantity editors ask the one per-item query.
+        assert(overlay.find("PokeVault::Inventory::quantityRule(") == std::string::npos);
+    }
 
     std::cout << "classic inventory UI model + polished Gen II display: PASS\n";
 }

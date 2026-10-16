@@ -64,6 +64,7 @@ struct OverlayState {
     bool helpActive = false;
     bool warningActive = false;
     bool discardConfirmActive = false;
+    bool removeConfirmActive = false;
     int pickerRow = 0;
     int optionsRow = 0;
     int reviewRow = 0;
@@ -535,7 +536,7 @@ bool selectPickerItem(TrainerViewScreen& screen) {
         return true;
     }
 
-    const auto rule = PokeVault::Inventory::quantityRule(game, pocket, itemId);
+    const auto rule = PokeBank::UIModel::classicItemQuantity(game, pocket, itemId);
     uint16_t quantity = rule.minimum;
     if (rule.editable) {
         const auto result = Utils::promptNumber(
@@ -608,6 +609,27 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
             screen.selectedCategory = std::clamp(screen.selectedCategory, 0, categoryCount - 1);
         screen.selectedItemIndex = 0;
         screen.currentPage = 0;
+    }
+
+    if (state.removeConfirmActive) {
+        // The Remove question owns every input: Y removes, B cancels, nothing else acts.
+        switch (PokeBank::UIModel::classicRemoveConfirmStep((down & HidNpadButton_Y) != 0,
+                                                            (down & HidNpadButton_B) != 0)) {
+            case PokeBank::UIModel::ClassicRemoveConfirm::Cancel:
+                state.removeConfirmActive = false;
+                break;
+            case PokeBank::UIModel::ClassicRemoveConfirm::Remove: {
+                state.removeConfirmActive = false;
+                ClassicGame game{};
+                ClassicPocket pocket{};
+                if (currentPocket(screen, game, pocket))
+                    queueMutationWithWarning(screen, game, state.pendingPocket, state.pendingItem, 0);
+                break;
+            }
+            case PokeBank::UIModel::ClassicRemoveConfirm::None:
+                break;
+        }
+        return true;
     }
 
     if (state.warningActive) {
@@ -856,7 +878,12 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         return true;
     }
     if (action == PokeBank::UIModel::ClassicInventoryAction::RemoveItem) {
-        if (availability.removeItem) queueMutationWithWarning(screen, game, pocket, itemId, 0);
+        if (availability.removeItem) {
+            state.pendingPocket = pocket;
+            state.pendingItem = itemId;
+            state.pendingQuantity = 0;
+            state.removeConfirmActive = true;
+        }
         return true;
     }
     if (action == PokeBank::UIModel::ClassicInventoryAction::EditAmount) {
@@ -865,7 +892,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
             else screen.postStatus("This item has a fixed/presence-only quantity", 240);
             return true;
         }
-        const auto rule = PokeVault::Inventory::quantityRule(game, pocket, itemId);
+        const auto rule = PokeBank::UIModel::classicItemQuantity(game, pocket, itemId);
         const auto result = Utils::promptNumber(
             "Edit " + PokeVault::Inventory::displayItemName(game, pocket, itemId),
             static_cast<int>(quantity), static_cast<int>(rule.minimum), static_cast<int>(rule.maximum));
@@ -880,7 +907,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!isClassicSource(screen)) return;
     auto& state = stateFor(screen);
     if (!state.pickerActive && !state.optionsActive && !state.reviewActive && !state.helpActive &&
-        !state.warningActive && !state.discardConfirmActive) return;
+        !state.warningActive && !state.discardConfirmActive && !state.removeConfirmActive) return;
 
     screen.touchButtons.clear();
     const bool compactPicker = state.pickerActive;
@@ -903,6 +930,17 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto game = exactGame(screen);
     const auto pocket = game ? PokeBank::UIModel::classicInventoryPocketAt(*game, screen.selectedCategory)
                              : std::optional<ClassicPocket>{};
+
+    if (state.removeConfirmActive) {
+        const auto name = game ? PokeVault::Inventory::displayItemName(*game, state.pendingPocket, state.pendingItem)
+                               : std::string("this item");
+        fb.drawText(x + 30, y + 24, "Remove " + name + "?", Colors::Text, TextStyle::Heading);
+        fb.drawText(x + 30, y + 100, "Removes it from " + std::string(PokeVault::Inventory::pocketName(state.pendingPocket)) +
+                    " in the staged copy.", Colors::Text, TextStyle::Body);
+        fb.drawText(x + 30, y + 142, "The original source save stays unchanged.", Colors::TextDim, TextStyle::Body);
+        drawNavBar(fb, {{"Y", "Remove"}, {"B", "Cancel"}});
+        return;
+    }
 
     if (state.warningActive) {
         fb.drawText(x + 30, y + 24, "Key Item Warning", Colors::Text, TextStyle::Heading);
