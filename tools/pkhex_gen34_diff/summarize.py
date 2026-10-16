@@ -74,6 +74,24 @@ for subset, label in SUBSETS:
         print(f"{'ALL':5} {p:8} " + " ".join(f"{tot[p][v]:>10}" for v in VERDICTS))
 
 
+def pct(n, d):
+    return f"{100.0 * n / d:6.2f}%" if d else "     -"
+
+
+print("\n== Per-game rates (PKHeX-invalid caught as Invalid; PKHeX-valid with No problems found) ==")
+print(f"{'game':5} {'falseInvalid':>12} {'falseValid':>10} {'caught':>15} {'rate':>7} {'noProblems':>15} {'rate':>7}")
+for g in GAMES + ["ALL"]:
+    sel = [r for r in rows if g == "ALL" or r["cart"] == g]
+    if not sel:
+        continue
+    valid = [r for r in sel if r["p"] == "VALID"]
+    invalid = [r for r in sel if r["p"] == "INVALID"]
+    fi = sum(r["ours"] == "INVALID" for r in valid)
+    fv = sum(r["ours"] == "NOPROBLEMS" for r in invalid)
+    caught = sum(r["ours"] == "INVALID" for r in invalid)
+    clean = sum(r["ours"] == "NOPROBLEMS" for r in valid)
+    print(f"{g:5} {fi:>12} {fv:>10} {f'{caught}/{len(invalid)}':>15} {pct(caught, len(invalid)):>7} "
+          f"{f'{clean}/{len(valid)}':>15} {pct(clean, len(valid)):>7}")
 print("\n== Metrics per game (all records) ==")
 print("(clean = PKHeX VALID with no Fishy result; PKHeX's Fishy is our Warning, which blocks certification)")
 print(f"{'game':5} {'PKHeX-valid':>11} {'certified':>10} {'cert%':>7} {'clean':>7} {'cert-clean%':>11} "
@@ -91,7 +109,6 @@ for g in GAMES + ["ALL"]:
                 caught=sum(r["p"] == "INVALID" and r["ours"] == "INVALID" for r in rs),
                 false_invalid=sum(r["p"] == "VALID" and r["ours"] == "INVALID" for r in rs),
                 false_valid=sum(r["p"] == "INVALID" and r["ours"] == "NOPROBLEMS" for r in rs))
-    pct = lambda a, b: f"{100.0 * a / b:6.2f}%" if b else "    n/a"
     print(f"{g:5} {m['valid']:>11} {m['certified']:>10} {pct(m['certified'], m['valid']):>7} {m['clean']:>7} "
           f"{pct(m['clean_certified'], m['clean']):>11} {m['invalid']:>10} "
           f"{m['caught']:>8} {pct(m['caught'], m['invalid']):>7} {m['false_invalid']:>8} {m['false_valid']:>8}")

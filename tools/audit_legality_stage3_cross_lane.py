@@ -23,6 +23,8 @@ SOURCES = [
     "src/Pokemon/Pokemon4ReadOnly.cpp", "src/Pokemon/Pokemon4ReadOnlyView.cpp", "src/Encryption/Encryption4.cpp",
     # Legality.cpp runs the Gen I origin search (GBLegality) since #303.
     "src/Legality/GBLegality.cpp", "src/Legality/GBLegalityData.cpp",
+    # Legality.cpp runs the Gen III PK3 analyzer (Gen3Legality) on R/S/E/FR/LG records.
+    "src/Legality/Gen3Legality.cpp", "src/Legality/Gen3LegalityData.cpp",
 ]
 
 def run(compiler: str, sanitize: bool) -> dict[str, object]:

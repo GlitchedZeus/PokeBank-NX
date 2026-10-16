@@ -341,7 +341,56 @@ Legality::Report nativePk2(uint8_t level, uint32_t exp, std::array<uint8_t, 4> m
     return Legality::analyze(pk, Enums::GameVersion::GSC, "gold_gbc");
 }
 
+// A Gold/Silver record the way the save parser stores it, run through Legality::analyze.
+Legality::Report pk2Verdict(uint16_t species, uint8_t level, uint32_t exp, std::array<uint8_t, 4> moves,
+                            std::array<uint8_t, 4> pp, const char* ot, const char* nick,
+                            const char* source = "gold_gbc") {
+    PokeVault::Integration::Gen2::PokemonRecord rec{};
+    rec.species = species;
+    rec.level = level;
+    rec.experience = exp;
+    rec.moves = moves;
+    rec.pp = pp;
+    rec.trainerId = 1234;
+    rec.dvs = {0, 8, 8, 8, 8};
+    rec.friendship = 70;
+    rec.originalTrainer = ot;
+    rec.nickname = nick;
+    const Pokemon::Pokemon2ReadOnly pk(rec);
+    return Legality::analyze(pk, Enums::GameVersion::GSC, source);
+}
+
 void productionPk2() {
+    // GB::checkGen2 decides the verdict on the production path, as GB::checkGen1 does for PK1.
+    const auto wild = pk2Verdict(16, 5, gameExp(MediumSlow, 5), {33, 28, 0, 0}, {35, 15, 0, 0}, "GOLD", "PIDGEY");
+    check(wild.verdict() == Legality::Verdict::NoProblemsFound, "native PK2 wild Pidgey: No problems found");
+    check(hasIssue(wild, Legality::Severity::Info, "Possible origin"), "native PK2 wild Pidgey: origin named");
+    const auto sourceFree = pk2Verdict(16, 5, gameExp(MediumSlow, 5), {33, 28, 0, 0}, {35, 15, 0, 0}, "GOLD",
+                                       "PIDGEY", "");
+    check(sourceFree.verdict() == Legality::Verdict::NoProblemsFound, "source-free native PK2: No problems found");
+    // Spore is not in Pidgey's Gen II learnset, any tutor or any event: no origin exists.
+    const auto badMove = pk2Verdict(16, 5, gameExp(MediumSlow, 5), {147, 0, 0, 0}, {15, 0, 0, 0}, "GOLD", "PIDGEY");
+    check(badMove.verdict() == Legality::Verdict::Invalid, "native PK2 Pidgey with Spore: Invalid");
+    // Too much PP for the move is a definitive format rule.
+    const auto badPp = pk2Verdict(16, 5, gameExp(MediumSlow, 5), {33, 28, 0, 0}, {63, 15, 0, 0}, "GOLD", "PIDGEY");
+    check(badPp.verdict() == Legality::Verdict::Invalid, "native PK2 Tackle with 63 PP: Invalid");
+    // Battle stat experience with one stat at zero is only unconfirmed (gains are divided).
+    PokeVault::Integration::Gen2::PokemonRecord split{};
+    split.species = 16;
+    split.level = 5;
+    split.experience = gameExp(MediumSlow, 5);
+    split.moves = {33, 28, 0, 0};
+    split.pp = {35, 15, 0, 0};
+    split.trainerId = 1234;
+    split.dvs = {0, 8, 8, 8, 8};
+    split.statExperience = {7, 0, 3, 3, 3};
+    split.originalTrainer = "GOLD";
+    split.nickname = "PIDGEY";
+    const Pokemon::Pokemon2ReadOnly splitPk(split);
+    const auto splitReport = Legality::analyze(splitPk, Enums::GameVersion::GSC, "gold_gbc");
+    check(splitReport.verdict() == Legality::Verdict::Incomplete, "native PK2 split stat experience: Incomplete");
+    check(!splitReport.hasInvalid(), "native PK2 split stat experience: not Invalid");
+
     const uint32_t max = gameExp(MediumSlow, 100);
     check(!hasIssue(nativePk2(100, max, {33, 45, 0, 0}), Legality::Severity::Invalid, "EXP"),
           "native PK2 level 100 at the cap");

@@ -1,14 +1,12 @@
 name: L6 Codex Bounded PK4 Intake
 
 on:
+  # No paths filter: the Gen I-V integration branch (PR #314) must run this
+  # gate on every exact pushed head, not only when these four files change.
   push:
     branches:
       - audit/legality-integration-hardening-20261012
-    paths:
-      - .github/workflows/l6-codex-pk4-intake.yml
-      - include/Pokemon/Gen4NativeRecordBoundary.h
-      - tests/fixtures/legality_l6_stage2_pk4_intake.cpp
-      - tools/audit_l6_stage2_pk4_intake.py
+      - 'claude/gen1-5-legality-**'
   workflow_dispatch:
 
 permissions:

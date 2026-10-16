@@ -43,6 +43,8 @@ if (args.Length >= 2 && args[0] == "probe")
     }
     return 0;
 }
+if (args.Length >= 1 && args[0] == "grow")
+    return Grow3.Run(args); // grown Gen III corpus, see Grow3.cs
 if (args.Length < 3 || args[0] != "generate")
 {
     Console.Error.WriteLine("usage: generate SEED MUTATIONS [3|4|34]");

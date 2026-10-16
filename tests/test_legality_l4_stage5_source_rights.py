@@ -14,7 +14,7 @@ BASE={"schema":"L5_Q08_REDISTRIBUTION_GATE_V1","catalog_id":"Q08",
       "pkhex_reference_license_observed":"GPL-3.0",
       "repo_rows":[{"source":name,"repository":"synthetic://example", "revision":"synthetic",
                     "source_license_claim":"review required",
-                    "proposed_usage":"citation_and_digest_only",
+                    "proposed_usage":rights.SOURCE_SPECIFIC_USAGE.get(name,rights.DEFAULT_USAGE),
                     "legal_basis_or_grant":"not documented in pinned registry",
                     "legal_review_complete":False,
                     **{name:"blocked_pending_review" for name in rights.PERMISSIONS}}
@@ -60,6 +60,23 @@ class SourceRights(unittest.TestCase):
     def test_original_rights_change(self):
         b=copy.deepcopy(BASE);b["repo_rows"][3]["legal_review_complete"]=True
         with self.assertRaisesRegex(ValueError,"legal review"):
+            check(b)
+
+    def test_usage_is_pinned_per_source(self):
+        index={row["source"]:i for i,row in enumerate(BASE["repo_rows"])}
+        for name in rights.EXPECTED_SOURCES:
+            for usage in ("unrestricted",rights.DEFAULT_USAGE,
+                          *rights.SOURCE_SPECIFIC_USAGE.values()):
+                if usage==rights.SOURCE_SPECIFIC_USAGE.get(name,rights.DEFAULT_USAGE):
+                    continue
+                with self.subTest(source=name,usage=usage):
+                    b=copy.deepcopy(BASE)
+                    b["repo_rows"][index[name]]["proposed_usage"]=usage
+                    with self.assertRaisesRegex(ValueError,"usage changed"):
+                        check(b)
+        b=copy.deepcopy(BASE)
+        b["repo_rows"][index["pokediamond"]]["legal_basis_or_grant"]="granted"
+        with self.assertRaisesRegex(ValueError,"usage changed"):
             check(b)
 
     def test_all_global_dispositions(self):

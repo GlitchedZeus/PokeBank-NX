@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - audit/legality-l5-research-qa-20261012
+      # Gen I-V integration branch (PR #314): run on its exact pushed head.
+      - 'claude/gen1-5-legality-**'
   workflow_dispatch:
 
 permissions:
@@ -79,6 +81,28 @@ jobs:
           actual=json.load(open('/tmp/l5-stage5-four-lanes.json'))
           assert local['independent_audit_ledger_executed']
           assert not local['actual_four_sibling_headers_executed']
+          assert actual['actual_four_sibling_headers_executed']
+          assert len(actual['source_blobs_verified'])==5
+          assert len(actual['runs'])==4
+          assert all(x['status']=='PASS' for x in actual['runs'])
+          assert actual['globally_invalid_conclusions']==0
+          assert actual['authenticated_original_retail_receipts']==0
+          assert not actual['release_approved']
+          PY
+      - name: Execute the same four lane headers from this exact integrated checkout
+        # The pinned lane checkouts above prove what L5 audited; on the
+        # integration branch the headers that ship are the ones in this tree.
+        # The tool pins each header blob, so drift here fails closed.
+        if: startsWith(github.ref, 'refs/heads/claude/gen1-5-legality-')
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l5_stage5_crosslane.py --full --timeout 900 \
+            --l1-root . --l2-root . --l3-root . --l4-root . \
+            --output /tmp/l5-stage5-four-lanes-exact-head.json
+          python3 - <<'PY'
+          import json
+          actual=json.load(open('/tmp/l5-stage5-four-lanes-exact-head.json'))
           assert actual['actual_four_sibling_headers_executed']
           assert len(actual['source_blobs_verified'])==5
           assert len(actual['runs'])==4

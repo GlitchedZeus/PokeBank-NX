@@ -341,7 +341,10 @@ int main() {
     assert(hasText(ruby, "not native to this exact Gen III game"));
     assert(ruby.coverage.sourceGame == Legality::CoverageLevel::Complete);
     assert(ruby.coverage.encounter == Legality::CoverageLevel::Partial);
-    assert(ruby.verdict() == Legality::Verdict::Incomplete);
+    // The Gen III analyzer (like PKHeX: Encounter EggFMetLevel_0) rejects this synthetic
+    // record: a Ruby-origin Bulbasaur can only have hatched, and hatching sets met level 0.
+    assert(ruby.verdict() == Legality::Verdict::Invalid);
+    assert(hasText(ruby, "Hatched Pokemon must have met level 0"));
 
     const auto fireRed = Legality::analyze(p, Enums::GameVersion::FRLG, "firered_gba");
     assert(!hasText(fireRed, "not native to this exact Gen III game"));

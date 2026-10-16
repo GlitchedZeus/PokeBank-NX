@@ -1,0 +1,21 @@
+# Per-title acceptance matrix for Gen I, II and V legality (docs/legality/TITLE_TEST_MATRIX.md):
+# synthetic Red/Blue/Yellow and Gold/Silver/Crystal saves through the save parsers and
+# Legality::analyze, and PK5 records through Legality::analyzePk5.
+TITLE_MATRIX_SOURCES := tests/test_legality_title_matrix.cpp \
+	$(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES)) \
+	src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
+	src/Legality/Gen5Legality.cpp src/Legality/Gen5LegalityData.cpp src/Legality/Gen5Text.cpp
+HOST_TESTS += $(HOST_BUILD)/test_legality_title_matrix
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_title_matrix_sanitize
+# host-test/host-sanitize take their prerequisites when Makefile.host.base is read,
+# before this file appends to the lists, so name the new binaries explicitly.
+host-test: $(HOST_BUILD)/test_legality_title_matrix
+host-sanitize: $(HOST_BUILD)/test_legality_title_matrix_sanitize
+
+$(HOST_BUILD)/test_legality_title_matrix: $(TITLE_MATRIX_SOURCES) tests/legality_gen5_test_helpers.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(TITLE_MATRIX_SOURCES) -o $@
+
+$(HOST_BUILD)/test_legality_title_matrix_sanitize: $(TITLE_MATRIX_SOURCES) tests/legality_gen5_test_helpers.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(TITLE_MATRIX_SOURCES) -o $@

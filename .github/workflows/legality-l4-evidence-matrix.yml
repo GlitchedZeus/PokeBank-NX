@@ -1,5 +1,6 @@
-# L4-owned, PR #292-only native evidence verification.
-# Does not modify the shared host workflow, production analyzer or other lanes.
+# L4-owned native evidence verification: PR #292 and the Gen I-V integration branch,
+# which carries the L4 lane (#314). Does not modify the shared host workflow,
+# production analyzer or other lanes.
 name: L4 Event Metadata Exact-Head Verification
 
 on:
@@ -34,7 +35,7 @@ permissions:
 
 jobs:
   l4-native-matrix:
-    if: github.event.pull_request.number == 292
+    if: github.event.pull_request.number == 292 || startsWith(github.event.pull_request.head.ref, 'claude/gen1-5-legality-')
     runs-on: ubuntu-24.04
     timeout-minutes: 65
     strategy:
@@ -67,4 +68,10 @@ jobs:
           L4_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
           L4_SANITIZE: ${{ matrix.sanitize }}
           CXX: ${{ matrix.compiler }}
+          # The integration branch carries the real L5 Q07/Q08 research files,
+          # so the runner's cross-lane event-provenance join (Q07) and rights
+          # gate (Q08) run there instead of being skipped. PR #292 (L4 only)
+          # has neither file; an empty value keeps them off there.
+          L4_L5_Q07_JSON: ${{ startsWith(github.event.pull_request.head.ref, 'claude/gen1-5-legality-') && 'docs/legality/research/l5/Q07_WC4_EVENT_PROVENANCE_JOIN.json' || '' }}
+          L4_L5_Q08_JSON: ${{ startsWith(github.event.pull_request.head.ref, 'claude/gen1-5-legality-') && 'docs/legality/research/l5/Q08_REDISTRIBUTION_GATE.json' || '' }}
         run: bash tests/test_legality_l4_runner.sh

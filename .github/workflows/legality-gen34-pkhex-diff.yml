@@ -6,12 +6,16 @@ name: Gen III/IV legality vs PKHeX
 # false Invalid (PKHeX VALID, PokeBank NX Invalid), any false Valid (PKHeX INVALID,
 # PokeBank NX No problems found) or any record that cannot load. The "grown" corpus
 # plays PKHeX-valid Gen IV records forward (levels, moves, EVs, evolution, items,
-# trades) and transfers PKHeX-valid Gen III records through Pal Park.
+# trades) and transfers PKHeX-valid Gen III records through Pal Park; GROW=1 plays
+# PKHeX-valid Gen III records forward (EXP, level-up moves, EVs, evolution, held items,
+# trades) as PK3.
 #
 # The Gen IV (PK4) analyzer job also checks that the generated Gen IV tables match the
 # pinned PKHeX.Core sources, runs its host test (PKHeX-backed fixtures, rule negatives,
 # malformed records, the Legality::analyze hook, fuzz) with GCC and Clang, normal and
-# ASan/UBSan, and runs libFuzzer for ten minutes.
+# ASan/UBSan, and runs libFuzzer for ten minutes. The Gen III PK3 analyzer
+# (src/Legality/Gen3Legality.cpp) runs its table check, fixture tests and a libFuzzer
+# pass in the gen34 job.
 
 on:
   pull_request:
@@ -31,6 +35,10 @@ on:
       - 'tools/pkhex_gen34_diff/**'
       - 'Makefile.host.base'
       - 'Makefile.host.gen4-legality'
+      - 'tools/gen_legality_gen3_data.py'
+      - 'tests/test_legality_gen3.cpp'
+      - 'tests/fuzz/fuzz_legality_gen3.cpp'
+      - 'Makefile.host.gen3-legality'
       - '.github/workflows/legality-gen34-pkhex-diff.yml'
   workflow_dispatch:
 
@@ -94,7 +102,7 @@ jobs:
 
   gen34:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
         with:
@@ -114,6 +122,33 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+      - name: Generated Gen III tables are up to date
+        run: python3 -I tools/gen_legality_gen3_data.py --pkhex _ref/PKHeX --check
+      - name: Gen III tests (GCC and Clang, normal and ASan/UBSan)
+        run: |
+          set -euo pipefail
+          for cxx in g++ clang++; do
+            # The shared production link graph carries GCC-only pragmas and a helper
+            # Clang reports as unused; the Gen III sources themselves build clean.
+            extra=""
+            if [ "$cxx" = clang++ ]; then extra="-Wno-unknown-warning-option -Wno-unused-function"; fi
+            make -f Makefile.host CXX=$cxx HOST_BUILD=build/host-$cxx \
+              CXXFLAGS="-std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 $extra" \
+              build/host-$cxx/test_legality_gen3 build/host-$cxx/test_legality_gen3_sanitize
+            GEN3_FUZZ_ROUNDS=100000 build/host-$cxx/test_legality_gen3
+            ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+              build/host-$cxx/test_legality_gen3_sanitize
+          done
+      - name: Gen III libFuzzer (Clang, ASan/UBSan, 10 minutes)
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y libclang-rt-18-dev
+          clang++ -std=c++20 -g -O1 -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined \
+            -Wno-unused-parameter -Iinclude tests/fuzz/fuzz_legality_gen3.cpp src/Legality/Gen3Legality.cpp \
+            src/Legality/Gen3LegalityData.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp -o build/fuzz_gen3
+          mkdir -p build/fuzz_corpus_gen3
+          python3 -I -c "import re,sys; [open(f'build/fuzz_corpus_gen3/s{i}','wb').write(bytes([i % 5])+bytes.fromhex(h)) for i,h in enumerate(re.findall(r'\"([0-9A-F]{160})\"', open('tests/test_legality_gen3.cpp').read()))]"
+          build/fuzz_gen3 -max_total_time=600 -max_len=120 build/fuzz_corpus_gen3
       - name: PK3/PK4 verdicts against PKHeX (every Gen III/IV encounter, 3 seeds)
         run: |
           set -euo pipefail
@@ -125,4 +160,10 @@ jobs:
           set -euo pipefail
           for seed in 1 2 3; do
             tools/pkhex_gen34_diff/run.sh _ref/PKHeX "$seed" 3 4 grown
+          done
+      - name: Grown PK3 corpus against PKHeX (EXP, moves, EVs, evolution, items, trades; 3 seeds)
+        run: |
+          set -euo pipefail
+          for seed in 1 2 3; do
+            GROW=1 tools/pkhex_gen34_diff/run.sh _ref/PKHeX "$seed" 3
           done

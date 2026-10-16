@@ -37,9 +37,16 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
+      # Test the exact pull-request head, not GitHub's synthetic merge ref,
+      # like the Gen III/IV and Gen V diffs.
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - name: Exact head
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
       - uses: actions/checkout@v4
         with:
           repository: kwsch/PKHeX

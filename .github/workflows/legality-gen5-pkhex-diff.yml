@@ -5,8 +5,12 @@ name: Gen V legality vs PKHeX
 #  - the PKHeX-backed fixture, malformed-record and fuzz tests pass with GCC and
 #    Clang, normal and ASan/UBSan,
 #  - a libFuzzer run finds no crash, sanitizer report or input write,
-#  - every Gen V encounter PKHeX can build (plus single-field mutations) gets no
-#    false Invalid from PokeBank NX against PKHeX.Core's own verdict.
+#  - every Gen V encounter, in-game trade (all languages) and PGF card PKHeX can build,
+#    Gen III/IV encounters converted the way Pal Park / Poke Transfer do, grown copies
+#    and single-field mutations of each get no false Invalid and no false Valid
+#    ("No problems found" where PKHeX rejects) from PokeBank NX against PKHeX.Core's
+#    own verdict, and the text helpers and the Gen III/IV trade-name table agree with
+#    .NET / PKHeX.
 
 on:
   pull_request:
@@ -17,6 +21,7 @@ on:
       - 'include/Encryption/Encryption5.h'
       - 'src/Names/SpeciesNames.cpp'
       - 'tests/test_legality_gen5.cpp'
+      - 'tests/legality_gen5_test_helpers.h'
       - 'tests/fuzz/fuzz_legality_gen5.cpp'
       - 'tools/gen_legality_gen5_data.py'
       - 'tools/pkhex_gen5_diff/**'
@@ -37,7 +42,7 @@ env:
 jobs:
   gen5:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
         with:
@@ -78,14 +83,14 @@ jobs:
           sudo apt-get install -y libclang-rt-18-dev
           clang++ -std=c++20 -g -O1 -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined -Iinclude \
             tests/fuzz/fuzz_legality_gen5.cpp src/Legality/Gen5Legality.cpp src/Legality/Gen5LegalityData.cpp \
-            src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp src/Pokemon/Experience.cpp -o build/fuzz_gen5
+            src/Legality/Gen5Text.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp src/Pokemon/Experience.cpp -o build/fuzz_gen5
           mkdir -p build/fuzz_corpus
           python3 -I -c "import re,sys; [open(f'build/fuzz_corpus/s{i}','wb').write(b'\0'+bytes.fromhex(h)) for i,h in enumerate(re.findall(r'\"([0-9A-F]{272})\"', open('tests/test_legality_gen5.cpp').read()))]"
           build/fuzz_gen5 -max_total_time=600 -max_len=221 build/fuzz_corpus
 
-      - name: PK5 verdicts against PKHeX (every Gen V encounter, 3 seeds)
+      - name: PK5 verdicts against PKHeX (native, trades, events, transfers; 4 seeds)
         run: |
           set -euo pipefail
-          for seed in 1 7 11; do
+          for seed in 1 2 7 11; do
             tools/pkhex_gen5_diff/run.sh _ref/PKHeX "$seed" 4
           done

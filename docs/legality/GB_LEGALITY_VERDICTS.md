@@ -10,8 +10,9 @@ PKHeX resources, cross-checked against pret (pokered/pokeyellow/pokegold/pokecry
 Where the cartridges and PKHeX disagree, the cartridge source decides and the difference
 is listed below.
 
-Only Gen I verdicts are shown in the app. `Legality::analyze` uses `GB::checkGen1` for
-native PK1 records; `GB::checkGen2` is tested but not yet wired into the app.
+Both are shown in the app. `Legality::analyze` uses `GB::checkGen1` for native PK1
+records and `GB::checkGen2` for native PK2 records; `tools/pkhex_gb_diff/run.sh` checks that
+the app path gives the same verdict as the search on the whole corpus.
 
 ## What each verdict means
 

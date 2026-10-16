@@ -27,6 +27,7 @@ srcs=(src/Legality/Legality.cpp src/Legality/GBLegality.cpp src/Legality/GBLegal
     src/Legality/Gen4Legality.cpp src/Legality/Gen4LegalityHook.cpp src/Legality/Gen4LegalityEncounters.cpp
     src/Legality/Gen4LegalityMoves.cpp src/Legality/Gen4LegalityRng.cpp src/Legality/Gen4LegalityText.cpp
     src/Legality/Gen4LegalityData.cpp src/Legality/Gen4LegalityPalPark.cpp
+    src/Legality/Gen3Legality.cpp src/Legality/Gen3LegalityData.cpp
     src/Integration/Gen1/Gen1MoveCompatibility.cpp src/Integration/Gen2/Gen2MoveCompatibility.cpp
     src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp
     src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/Pokemon1ReadOnly.cpp src/Pokemon/Pokemon2ReadOnly.cpp

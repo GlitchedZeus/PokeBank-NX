@@ -86,9 +86,34 @@ extern const uint16_t kTutorMoves[4][32];
 inline constexpr std::size_t kHeldItemCount = 355;
 extern const uint16_t kHeldItems[]; // ascending
 
+/// In-game trade names by PKHeX LanguageID 0..8 (rows match kTrades). A nickname is
+/// empty when the trade's nickname is not fixed.
+extern const char16_t* const kTradeNicknames[][9];
+extern const char16_t* const kTradeTrainers[][9];
+
+/// Species names (SpeciesName.SpeciesLang) for kSpeciesNameLanguages; [0] is the egg name.
+inline constexpr std::size_t kSpeciesNameCount = 1026;
+inline constexpr std::size_t kSpeciesLanguageCount = 9;
+inline constexpr uint8_t kSpeciesNameLanguages[kSpeciesLanguageCount] = {1, 2, 3, 4, 5, 7, 8, 9, 10};
+extern const char16_t* const kSpeciesNames[kSpeciesLanguageCount][kSpeciesNameCount];
+
+/// Every Gen III/IV in-game trade nickname and OT name (all languages), the XD trade's
+/// fixed nickname and the My Pokemon Ranch OT names, sorted by UTF-16 code units.
+inline constexpr std::size_t kTransferTradeNameCount = 369;
+extern const char16_t* const kTransferTradeNames[];
+
+/// PKHeX word filters: the Switch and 3DS regular expressions, lower-cased as
+/// WordFilter.LoadPatterns does, and the Gen V dictionary (whole words).
+inline constexpr std::size_t kBadWordsSwitchCount = 4533;
+extern const char16_t* const kBadWordsSwitch[];
+inline constexpr std::size_t kBadWords3DSCount = 3405;
+extern const char16_t* const kBadWords3DS[];
+inline constexpr std::size_t kBadWordsGen5Count = 362;
+extern const char16_t* const kBadWordsGen5[];
+
 /// SHA-256 of every PKHeX input, so a regenerated table can be traced to its source.
 struct SourcePin { const char* path; const char* sha256; };
-inline constexpr std::size_t kSourcePinCount = 19;
+inline constexpr std::size_t kSourcePinCount = 76;
 extern const SourcePin kSourcePins[];
 inline constexpr const char* kPkhexCommit = "6501f0ab46e8f8ca048539dbaf8cae8cb104e722";
 
