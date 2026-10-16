@@ -412,8 +412,9 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             return true;
         }
         if (focus.row == 8) {
-            unifiedStateFor(screen).selector = PokeBank::UIModel::Gen2FieldSelector::pokerus(p.pokerus);
-            screen.controllerNavigation.reset();
+            // A cycles None -> Infected -> Cured in place, no popup; a state the record started
+            // in comes back with its exact strain/days.
+            p.pokerus = Gen2Native::cyclePokerusState(p.pokerus, state.baseline.pokerus);
             return true;
         }
         if (focus.row >= 9 && screen.sourceGameId == "crystal_gbc") {
@@ -752,7 +753,7 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
     fb.drawText(x + 18, y + 328, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
 
     const std::array<std::pair<std::string, std::string>, 2> capabilityRows{{
-        {"Shiny", p.shiny ? "Yes (DV-derived)" : "No (DV-derived)"},
+        {"Shiny", p.shiny ? "Yes" : "No"},
         {"Gender", genderText(p.gender)},
     }};
     for (int i = 0; i < 2; ++i) {
