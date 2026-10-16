@@ -1034,7 +1034,7 @@ void Analyzer::verifyMisc() {
     if (palParkPtHGSS && pk_.metLocationExtended != pk_.metLocationDP)
         invalid(CheckIdentifier::Transfer, "Pal Park met location differs between the D/P and Pt/HG/SS fields");
     // Pt/HG/SS write both met-location fields through one setter: a place D/P know goes into both,
-    // any other place puts Faraway Place (3002) in the D/P field (pokeplatinum src/pokemon.c:1731-1739
+    // any other place puts Faraway Place (3002) in the D/P field (pokeplatinum src/pokemon.c:1732-1740
     // with src/unk_02017038.c:38-45; pokeheartgold src/pokemon.c:1286-1292). D/P never write the
     // Pt/HG/SS field, and a non-egg Pokemon's met location is never rewritten; only hatching in D/P
     // rewrites the D/P field alone, so egg-origin records are left out. Every PKHeX Gen IV event

@@ -1671,11 +1671,10 @@ void cases() {
     const auto noEncounter = invalid("No matching Gen IV encounter for this species, level, location, ball and PID/IV");
     const auto colosseumXD = warning("the Colosseum/XD encounter is not verified");
     const auto mismatch = "Assigned game/family does not match the validated save; explicit reassignment required";
-    const auto metLocationBug = [](const std::string& note) {
-        Expect e = expect(Outcome::Invalid);
-        e.knownBug = Outcome::NoProblemsFound;
-        e.bugNote = note;
-        return e;
+    // PKHeX does not compare the two met-location fields (PKHEX_DISAGREEMENT_REVIEW.md item 14).
+    const auto metLocationField = [](int dp, int expected, int met) {
+        return invalid("D/P met location field holds " + std::to_string(dp) + " where Pt/HG/SS write " +
+                       std::to_string(expected) + " for met location " + std::to_string(met));
     };
 
     // Positive: each title's own record read from that title's save bytes.
@@ -1811,8 +1810,7 @@ void cases() {
     // unless the location is one D/P know (src/unk_02017038.c:38-45: 1-111, 2000-2010,
     // 3000-3076). Distortion World is 117 (res/text/location_names.json:473-474).
     record("Platinum", "original-game", "Giratina-Origin whose D/P met-location field says 117 (the game writes 3002)",
-           metLocationBug("Platinum writes 3002 to the D/P met-location field for location 117; the engine "
-                          "(and PKHeX) accept 117 there"),
+           expect(O::Invalid, {metLocationField(117, 3002, 117)}),
            run(edited(kPlatinumGiratinaOrigin, [](std::vector<uint8_t>& pk) { setLe16(pk, kMetLocationDP, 117); }),
                "platinum_nds"));
     // pokeheartgold files/fielddata/script/scr_seq/scr_seq_0021_D17R0110.s:57-72: Ho-Oh is L45
@@ -1831,13 +1829,11 @@ void cases() {
     // LocationIsDiamondPearlCompatible (asm/unk_02017FAC.s:68-97: Twinleaf Town to Battle Park,
     // the Day Care couple to Riley, Lovely Place to Concert Event). Route 30 is 178 (:182).
     record("HeartGold", "original-game", "Spinarak whose D/P met-location field says Route 30 (the game writes 3002)",
-           metLocationBug("HeartGold writes 3002 to the D/P met-location field for Route 30; the engine "
-                          "(and PKHeX) accept 178 there"),
+           expect(O::Invalid, {metLocationField(178, 3002, 178)}),
            run(edited(kHeartGoldSpinarak, [](std::vector<uint8_t>& pk) { setLe16(pk, kMetLocationDP, 178); }),
                "heartgold_nds"));
     record("SoulSilver", "original-game", "Ledyba whose D/P met-location field says Route 30 (the game writes 3002)",
-           metLocationBug("SoulSilver writes 3002 to the D/P met-location field for Route 30; the engine "
-                          "(and PKHeX) accept 178 there"),
+           expect(O::Invalid, {metLocationField(178, 3002, 178)}),
            run(edited(kSoulSilverLedyba, [](std::vector<uint8_t>& pk) { setLe16(pk, kMetLocationDP, 178); }),
                "soulsilver_nds"));
 
