@@ -4,7 +4,8 @@
 //
 // Every number comes from a pinned, generated table already in the repo:
 //   Gen I-IV power / accuracy / base PP  Names/MoveBattleStats.h (retail-decomp tables)
-//   Gen III type, Gen IV type + category Names/MoveTypes34.h      (tools/gen_move_types34.py)
+//   Gen I-III type, Gen IV type + cat.   Names/MoveTypes34.h      (tools/gen_move_types34.py;
+//                                        Gen I/II from pinned pret pokered / pokecrystal moves.asm)
 //   Gen V type / category / power / acc  Names/MoveBattleStats5.h (tools/gen_move_battle_stats5.py)
 //
 // Gen I-III have NO per-move damage category: physical/special follows the move's type.
@@ -93,7 +94,11 @@ inline MoveFacts facts(uint16_t move, Enums::GameVersion game) noexcept {
         f.accuracy = s->accuracy == 0 ? -1 : s->accuracy;
         f.basePP = s->pp;
     }
-    if (era == Era::Gen3 && move < Names::kMoveType3.size()) {
+    if (era == Era::Gen1 && move < Names::kMoveType1.size()) {
+        f.type = Names::kMoveType1[move];
+    } else if (era == Era::Gen2 && move < Names::kMoveType2.size()) {
+        f.type = Names::kMoveType2[move];
+    } else if (era == Era::Gen3 && move < Names::kMoveType3.size()) {
         f.type = Names::kMoveType3[move];
     } else if (era == Era::Gen4 && move < Names::kMoveTypeCategory4.size()) {
         f.type = Names::kMoveTypeCategory4[move].type;
