@@ -45,6 +45,10 @@ OUT_OF_SCOPE: dict[str, str] = {
     # e.g. the base builds a gen4ItemView footer, so Gen IV bags may render through it).
 }
 
+OUT_OF_SCOPE_WHEN_CG11_HOLDS: dict[str, str] = {
+    "include/UI/ActionSheetModel.h": "generic Gen VI+ action sheet; unreachable from Gen I-V while CG11 passes",
+}
+
 # CG11 (S 647917e): genericUiAllowedForSession(screen, ClassicGenericUi::GenericUi kind) in
 # TrainerViewScreenBase.inc wraps ClassicGenericUi::genericUiAllowed(classicSession(gameId), kind)
 # (include/UI/ClassicGenericUiGuard.h). Openers of the generic action sheet and details editor are
@@ -62,6 +66,13 @@ PICKER_FOOTER_HELPER_FILE = re.compile(r"include/UI/SharedEditor(Presentation|Ch
 QUANTITY_POLICY_SYMBOL = "QuantityPolicy"
 QUANTITY_POLICY_USE = re.compile(r"\bQuantityPolicy\b|\bQuantityPolicy::quantityRule\s*\(|\bmayAddItem\s*\(")
 # Per-format wrappers are accepted only where their own definition calls QuantityPolicy.
+def wrapper_call(name: str) -> str:
+    """A call to the wrapper itself: unqualified or qualified by its own namespace, never through another
+    alias (QP::quantityRule is the shared policy's own function, not ClassicInventoryCatalog's)."""
+    return r"(?<![\w:])(?:(?:PokeVault::Inventory|PokeBank::UIModel)::)?" + re.escape(name) + r"\s*\("
+
+
+GEN4_BAG_QUANTITY_HEADER = "include/UI/Gen4BagQuantity.h"
 QUANTITY_POLICY_WRAPPERS = ("gen4QuantityRule", "gen5QuantityRule", "classicItemQuantity", "quantityRule")  # quantityRule: ClassicInventoryCatalog
 QUANTITY_POLICY_HEADER = "include/Inventory/ItemQuantityPolicy.h"
 REPEAT_ENGINE_FILE = "include/UI/NavigationRepeat.h"
@@ -173,6 +184,13 @@ def load_sources(root: Path) -> tuple[list[Source], list[str]]:
     return list(seen.values()), dead
 
 
+def _is_absence_assert(sources, hit: str) -> bool:
+    rel, ln = hit.split(":")[0], int(hit.split(":")[1])
+    src = next(s for s in sources if s.rel == rel)
+    line = src.code.splitlines()[ln - 1] if ln <= len(src.code.splitlines()) else ""
+    return re.search(r"static_assert\s*\(\s*!\s*[\w:]*hasLabel\s*\(", line) is not None
+
+
 def ui(sources: list[Source]) -> list[Source]:
     return [s for s in sources if s.rel.startswith(("src/UI/", "include/UI/"))]
 
@@ -234,7 +252,8 @@ def contracts(sources: list[Source]) -> list[Result]:
 
     r = Result("CG01-no-make-shiny-quick-action",
                'No "Make Shiny" / "Make Non-Shiny" quick action in any Gen I-V action sheet')
-    r.violations = lit_hits(U, r"Make\s+(Non-?)?Shiny", re.I)
+    # A compile-time absence check (static_assert(!...hasLabel(..., "Make Shiny"))) is a test, not a label.
+    r.violations = [v for v in lit_hits(U, r"Make\s+(Non-?)?Shiny", re.I) if not _is_absence_assert(sources, v)]
     res.append(r)
 
     r = Result("CG01b-shiny-editing-still-present",
@@ -327,12 +346,27 @@ def contracts(sources: list[Source]) -> list[Result]:
     r = Result("CG09-item-quantity-policy",
                "Item quantity editors consult ItemQuantityPolicy (unique items never get max > 1)")
     qty_rx = re.compile(r"\b(stageInventoryQuantity|stageSetQuantity|stageBagQuantity|setQuantity|stageQuantity)\s*\(")
-    valid_wrappers = set()
+    # A wrapper counts when its own body uses QuantityPolicy, or (transitively) delegates to a wrapper
+    # that does: classicItemQuantity -> quantityRule, gen4QuantityRule -> Gen4BagQuantity::rule.
+    bodies = []
     for src in sources:
         for name, _, body in function_bodies(src.code, re.compile("^(" + "|".join(QUANTITY_POLICY_WRAPPERS) + ")$")):
-            if re.search(r"\bQuantityPolicy\b", body):
+            bodies.append((name, body))
+        if src.rel == GEN4_BAG_QUANTITY_HEADER:
+            for _, _, body in function_bodies(src.code, re.compile(r"^rule$")):
+                bodies.append(("Gen4BagQuantity::rule", body))
+    valid_wrappers = set()
+    changed = True
+    while changed:
+        changed = False
+        for name, body in bodies:
+            if name in valid_wrappers:
+                continue
+            calls_valid = any(re.search(wrapper_call(w), body) for w in valid_wrappers)
+            if re.search(r"\bQuantityPolicy\b", body) or calls_valid:
                 valid_wrappers.add(name)
-    wrapper_use = re.compile(r"\b(" + "|".join(sorted(valid_wrappers)) + r")\s*\(") if valid_wrappers else None
+                changed = True
+    wrapper_use = re.compile("|".join(wrapper_call(w) for w in sorted(valid_wrappers))) if valid_wrappers else None
     for s in U:
         uses_policy = QUANTITY_POLICY_USE.search(s.code) or (wrapper_use and wrapper_use.search(s.code))
         if qty_rx.search(s.code) and not uses_policy:
@@ -376,9 +410,14 @@ def contracts(sources: list[Source]) -> list[Result]:
     if hdr is None or not re.search(r"\bgenericUiAllowed\s*\(", hdr.code):
         r.violations.append(f"{GENERIC_UI_GUARD_HEADER}: ClassicGenericUi::genericUiAllowed missing")
     res.append(r)
+    # The generic action-sheet model only renders in a Gen VI+ session once CG11 holds (coordinator,
+    # 2026-10-16): its wording leaves scope then, and returns to scope if CG11 regresses.
+    scope = dict(OUT_OF_SCOPE)
+    if not r.violations:
+        scope.update(OUT_OF_SCOPE_WHEN_CG11_HOLDS)
     for r in res:
-        r.out_of_scope = [v for v in r.violations if v.split(":", 1)[0] in OUT_OF_SCOPE]
-        r.violations = [v for v in r.violations if v.split(":", 1)[0] not in OUT_OF_SCOPE]
+        r.out_of_scope = [v for v in r.violations if v.split(":", 1)[0] in scope]
+        r.violations = [v for v in r.violations if v.split(":", 1)[0] not in scope]
     return res
 
 
