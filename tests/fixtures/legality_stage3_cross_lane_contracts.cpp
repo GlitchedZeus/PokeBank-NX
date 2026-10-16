@@ -17,6 +17,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -53,6 +54,12 @@ bool has(const Legality::Report& report, Legality::Severity severity,
         if (issue.severity == severity &&
             (text.empty() || issue.text.find(text) != std::string::npos)) return true;
     return false;
+}
+std::vector<std::string> invalidTexts(const Legality::Report& report) {
+    std::vector<std::string> texts;
+    for (const auto& issue : report.issues)
+        if (issue.severity == Legality::Severity::Invalid) texts.push_back(issue.text);
+    return texts;
 }
 
 void testEncounterMoveCandidateContract(unsigned& checks) {
@@ -161,6 +168,11 @@ void testProductionAnalyzerContract(unsigned& checks) {
     // Bounded real-analyzer property sweep: native PID/nature variation must
     // neither manufacture provenance nor convert a source-label mismatch
     // into an unrelated invalidity.
+    // The synthetic record (a Platinum Bulbasaur met at location 0 with a blank
+    // nickname and OT) is not a legal Pokemon: PKHeX 6501f0ab rejects every PID
+    // variant with exactly EncInvalid, NickInvalidChar and
+    // WordFilterInvalidCharacter_0, and the Gen IV analyzer wired into
+    // Legality::analyze reports exactly those three Invalid findings.
     for (uint32_t variant = 0; variant != 32; ++variant) {
         const auto encrypted = nativePk4(0x12345678u + variant * 2u);
         const auto immutable = encrypted;
@@ -168,13 +180,18 @@ void testProductionAnalyzerContract(unsigned& checks) {
         assert(record.valid() && !record.empty());
         Pokemon::Pokemon4ReadOnlyView view(record);
         const auto sourceFree = Legality::analyze(view, Enums::GameVersion::PT);
-        assert(!sourceFree.hasInvalid() && sourceFree.verdict() == Legality::Verdict::Incomplete);
+        assert(sourceFree.verdict() == Legality::Verdict::Invalid &&
+               invalidTexts(sourceFree).size() == 3 &&
+               has(sourceFree, Legality::Severity::Invalid, "No matching Gen IV encounter") &&
+               has(sourceFree, Legality::Severity::Invalid, "Nickname contains a character") &&
+               has(sourceFree, Legality::Severity::Invalid, "OT name contains a character"));
         // A wrong external source label must be downgraded to a warning and may
-        // not manufacture an unrelated Gen-III candidate contradiction.
+        // not manufacture an unrelated Gen-III candidate contradiction: the
+        // label adds no Invalid finding to the source-free analysis.
         const auto mismatched = Legality::analyze(view, Enums::GameVersion::PT, "firered_gba");
-        assert(!mismatched.hasInvalid() &&
+        assert(invalidTexts(mismatched) == invalidTexts(sourceFree) &&
                has(mismatched, Legality::Severity::Warning, "source-game label conflicts") &&
-               mismatched.verdict() == Legality::Verdict::Incomplete);
+               mismatched.verdict() == Legality::Verdict::Invalid);
         assert(encrypted == immutable);
         checks += 4;
     }
