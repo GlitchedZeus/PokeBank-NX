@@ -71,7 +71,8 @@ int main() {
     assert(gen2Modal.find("promptNumber(") == std::string::npos);
     assert(gen2Final.find("drawFullscreenGen2Passive") != std::string::npos);
     assert(gen2Final.find("* HP DV derived / read-only • one stored Special DV / Stat Exp") == std::string::npos);
-    assert(gen2Final.find("x + w - 18 - statusW") != std::string::npos);
+    // Status is right-aligned by the shared Moves panel (UI/Gen2MovesPanel.h).
+    assert(gen2Final.find("drawGen2SharedMoveRows(") != std::string::npos);
 
     // Gen III read-only Party/Box View keeps navigation visible without enabling mutation.
     assert(gen3Surface.find("state.focus.panel == Shared::Panel::Details") != std::string::npos);

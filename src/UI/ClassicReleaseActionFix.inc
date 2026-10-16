@@ -228,10 +228,8 @@ bool handlePassiveViewTouch(TrainerViewScreen& screen, const TouchInput& touch) 
             return true;
         }
 
-        const auto moveCell = Unified::moveRowFocus(rightW);
-        for (int slot = 0; slot < 4; ++slot) {
-            const int yy = contentY + 62 + slot * 32;
-            if (!inside(px, py, rightX + moveCell.x, yy - 5, moveCell.width, 28)) continue;
+        // Same rows the shared Moves panel draws (UI/Gen2MovesPanel.h).
+        if (const int slot = UI::Gen2MovesPanel::hitSlot(px, py, rightX, contentY, rightW); slot >= 0) {
             unified.focus = {Unified::Panel::Moves, static_cast<uint8_t>(slot), 0};
             return true;
         }
