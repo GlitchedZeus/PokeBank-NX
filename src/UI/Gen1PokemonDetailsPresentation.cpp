@@ -230,7 +230,7 @@ void drawGen1PokemonDetailsPresentation(TrainerViewScreen& screen, PKSEFramebuff
 
     screen.details.leftOrder.clear();
     screen.details.leftScroll = 0;
-    drawNavBar(fb, {{"B", "Back"}});
+    // The caller (details modal / staged View) owns the footer.
 }
 
 } // namespace UI::Modals

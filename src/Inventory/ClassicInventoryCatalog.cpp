@@ -297,22 +297,28 @@ static_assert(static_cast<uint8_t>(QuantityPolicy::Game::Red) == static_cast<uin
               static_cast<uint8_t>(QuantityPolicy::Game::Emerald) == static_cast<uint8_t>(ClassicGame::Emerald) &&
               static_cast<uint8_t>(QuantityPolicy::Game::LeafGreen) == static_cast<uint8_t>(ClassicGame::LeafGreen),
               "QuantityPolicy::Game starts with the classic games in ClassicGame order");
+QuantityPolicy::Game quantityPolicyGame(ClassicGame game) noexcept {
+    // QuantityPolicy::Game lists the classic games first, in ClassicGame order.
+    return static_cast<QuantityPolicy::Game>(static_cast<uint8_t>(game));
+}
+
+QuantityPolicy::Pocket quantityPolicyPocket(ClassicPocket pocket) noexcept {
+    using P = QuantityPolicy::Pocket;
+    switch (pocket) {
+        case ClassicPocket::Items: return P::Items;
+        case ClassicPocket::Medicines: return P::Medicine;
+        case ClassicPocket::Balls: return P::Balls;
+        case ClassicPocket::KeyItems: return P::KeyItems;
+        case ClassicPocket::TMHM: return P::TMHM;
+        case ClassicPocket::Berries: return P::Berries;
+        case ClassicPocket::PCItems: return P::PCItems;
+    }
+    return P::Items;
+}
+
 QuantityRule quantityRule(ClassicGame game, ClassicPocket pocket, uint16_t itemId) noexcept {
     if (!isAddableItem(game, pocket, itemId)) return {false, 0, 0};
-    namespace QP = QuantityPolicy;
-    // QuantityPolicy::Game lists the classic games first, in ClassicGame order.
-    const auto sharedGame = static_cast<QP::Game>(static_cast<uint8_t>(game));
-    QP::Pocket sharedPocket = QP::Pocket::Items;
-    switch (pocket) {
-        case ClassicPocket::Items: sharedPocket = QP::Pocket::Items; break;
-        case ClassicPocket::Medicines: sharedPocket = QP::Pocket::Medicine; break;
-        case ClassicPocket::Balls: sharedPocket = QP::Pocket::Balls; break;
-        case ClassicPocket::KeyItems: sharedPocket = QP::Pocket::KeyItems; break;
-        case ClassicPocket::TMHM: sharedPocket = QP::Pocket::TMHM; break;
-        case ClassicPocket::Berries: sharedPocket = QP::Pocket::Berries; break;
-        case ClassicPocket::PCItems: sharedPocket = QP::Pocket::PCItems; break;
-    }
-    const auto rule = QP::quantityRule(sharedGame, sharedPocket, itemId);
+    const auto rule = QuantityPolicy::quantityRule(quantityPolicyGame(game), quantityPolicyPocket(pocket), itemId);
     if (!rule.valid) return {false, 0, 0};
     return {rule.editable, rule.minimum, rule.maximum};
 }

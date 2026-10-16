@@ -127,7 +127,7 @@ void drawParityGen2Actions(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow,
                             title,
                             screen.legacyProviderLabel() + " GBC SOURCE / READ ONLY", 31600);
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Back"}});
+    UI::SharedEditorChrome::drawPickerFooter(fb, {true, false}); // Browse, A Select, B Cancel
 }
 
 void drawParityGen2Review(TrainerViewScreen& screen, PKSEFramebuffer& fb) {

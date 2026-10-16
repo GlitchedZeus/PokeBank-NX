@@ -677,6 +677,7 @@ void ux3DrawStagedView(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     view.recordLabel = "Staged box record";
     view.sourceStateLabel = "STAGED VIEW / READ ONLY";
     Modals::drawGen1PokemonDetailsPresentation(screen, fb, view);
+    drawNavBar(fb, {{"B", "Back"}});
 }
 
 std::string ux3FooterText(const TrainerViewScreen& screen, const UX2State& state) {
@@ -721,7 +722,7 @@ void ux3DrawTouchNavBar(PKSEFramebuffer& fb, const UX2State& state) {
         case UX2Mode::AddDraft:
             drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"}, {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}}); return;
         case UX2Mode::Actions:
-            drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Select"}, {"B", "Back"}}); return;
+            UI::SharedEditorChrome::drawPickerFooter(fb, {true, false}); return; // Browse, A Select, B Cancel
         case UX2Mode::LevelExpEditor:
         case UX2Mode::MoveEditor:
         case UX2Mode::DVEditor:

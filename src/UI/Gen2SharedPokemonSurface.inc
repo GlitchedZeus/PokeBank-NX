@@ -322,7 +322,7 @@ void drawSharedActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow,
                             pokemon ? "Pokemon Actions" : "Empty Slot",
                             "GEN II / READ-ONLY SOURCE", 31600);
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Cancel"}});
+    UI::SharedEditorChrome::drawPickerFooter(fb, {true, false}); // Browse, A Select, B Cancel
 }
 
 void drawSharedProvenanceSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -336,7 +336,7 @@ void drawSharedProvenanceSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
     drawPanelSurface(fb, x, y, w, h, false, 18);
     fb.drawText(x + 24, y + 18, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52, "Truthful status only — full encounter legality is not implemented", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(x + 24, y + 52, "Origin & Legality: not checked", Colors::TextDim, TextStyle::Caption);
     const std::array<std::pair<std::string, std::string>, 7> rows{{
         {"Source game", sharedGameName(screen)},
         {"Location", "Box " + std::to_string(legacy.pokemonBox + 1) + " / Slot " + std::to_string(legacy.pokemonSlot + 1)},
@@ -580,7 +580,7 @@ void drawSharedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                         {"Y", "Random DVs"}, {"B", "Exit"}});
     }
     if (state.itemPicker) drawHeldItemPicker(fb, state);
-    if (state.confirmExit) drawConfirm(fb, state);
+    if (state.confirmExit) drawConfirm(screen, fb, state);
 }
 
 } // namespace
