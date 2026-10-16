@@ -8,7 +8,9 @@ Three separate measures, kept apart on purpose (owner priority 7):
    corpora. They measure agreement on those corpora, not completeness of the rules.
 3. **Test counts**: how many test cases and fuzz inputs run in the host suites.
 
-Head measured: `b5b44daf84dbfccb30f559f8c440c6f4cfda2e0e` (re-check on the final head).
+Heads measured: the Gen III/IV numbers locally on `d05d64f9e0db42e20a0d505a4e0f5bcd31f0c96e`; Gen V and
+the test counts on `e7572bf5a6e6adcfb9fdc709651c68246024259b` (Gen III/IV verdicts are byte-identical
+between the two). CI reruns every differential on each pushed head.
 Reference: PKHeX.Core `6501f0ab46e8f8ca048539dbaf8cae8cb104e722`.
 
 ## 1. Production wiring
