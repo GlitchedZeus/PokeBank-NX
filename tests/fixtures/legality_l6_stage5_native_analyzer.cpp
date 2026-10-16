@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <string>
 #include <string_view>
 #include <vector>
 namespace Trainer {
@@ -45,6 +46,12 @@ bool contains(const Legality::Report& r,Legality::Severity sev,std::string_view 
         if(i.severity==sev && i.text.find(text)!=std::string::npos)return true;
     return false;
 }
+std::vector<std::string> invalidTexts(const Legality::Report& r) {
+    std::vector<std::string> texts;
+    for(const auto& i:r.issues)
+        if(i.severity==Legality::Severity::Invalid)texts.push_back(i.text);
+    return texts;
+}
 J::Input hypothetical(uint32_t id) {
     J::Input in{};in.pokemonIdentity=id;in.count=2;
     in.everyOriginalRouteEnumerated=in.everyAlternativeMethodEnumerated=false;
@@ -69,8 +76,17 @@ int main() {
         Pokemon::Pokemon4ReadOnlyView view(pk);
         const auto detached=Legality::analyze(view,Enums::GameVersion::PT);
         const auto mislabeled=Legality::analyze(view,Enums::GameVersion::PT,"firered_gba");
-        assert(!detached.hasInvalid() && detached.verdict()==Legality::Verdict::Incomplete);
-        assert(!mislabeled.hasInvalid() &&
+        // The synthetic record (Platinum Bulbasaur met at location 0, blank
+        // nickname and OT) is not a legal Pokemon: PKHeX 6501f0ab rejects every
+        // PID variant with exactly EncInvalid, NickInvalidChar and
+        // WordFilterInvalidCharacter_0, and the Gen IV analyzer reports exactly
+        // those three. The wrong source label adds a Warning and no Invalid.
+        assert(detached.verdict()==Legality::Verdict::Invalid &&
+               invalidTexts(detached).size()==3 &&
+               contains(detached,Legality::Severity::Invalid,"No matching Gen IV encounter") &&
+               contains(detached,Legality::Severity::Invalid,"Nickname contains a character") &&
+               contains(detached,Legality::Severity::Invalid,"OT name contains a character"));
+        assert(invalidTexts(mislabeled)==invalidTexts(detached) &&
                contains(mislabeled,Legality::Severity::Warning,"source-game label conflicts"));
         // This externally proposed, incomplete history can never upgrade the
         // production report. The native record supplies no authenticated L2/L4.

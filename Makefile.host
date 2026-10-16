@@ -16,6 +16,7 @@ include Makefile.host.legality-gen3-safari-methodh
 include Makefile.host.gsc
 include Makefile.host.gb-legality
 include Makefile.host.gen5-legality
+include Makefile.host.gen4-legality
 include Makefile.host.title-matrix
 include Makefile.host.gen3-legality
 include Makefile.host.editor

@@ -10,6 +10,7 @@
 
 #include "Legality/Legality.h"
 #include "Legality/GBLegality.h"
+#include "Legality/Gen4Legality.h"
 #include "Legality/Gen3Legality.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
@@ -3252,7 +3253,7 @@ namespace Legality {
 
         // ---- Gen III PK3 (R/S/E/FR/LG): PKHeX-parity analyzer, see Gen3Legality.cpp ----
         applyGen3Analyzer(r, gen3Verified, exactSourceGameId);
-
+        applyGen4Analyzer(r, pk, context.exactSourceGameId);
         return r;
     }
 

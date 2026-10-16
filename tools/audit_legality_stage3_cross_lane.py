@@ -25,6 +25,11 @@ SOURCES = [
     "src/Legality/GBLegality.cpp", "src/Legality/GBLegalityData.cpp",
     # Legality.cpp runs the Gen III PK3 analyzer (Gen3Legality) on R/S/E/FR/LG records.
     "src/Legality/Gen3Legality.cpp", "src/Legality/Gen3LegalityData.cpp",
+    # Legality.cpp runs the Gen IV PK4 analyzer (Gen4Legality) on D/P/Pt/HG/SS records.
+    "src/Legality/Gen4Legality.cpp", "src/Legality/Gen4LegalityHook.cpp",
+    "src/Legality/Gen4LegalityEncounters.cpp", "src/Legality/Gen4LegalityMoves.cpp",
+    "src/Legality/Gen4LegalityRng.cpp", "src/Legality/Gen4LegalityText.cpp",
+    "src/Legality/Gen4LegalityData.cpp", "src/Legality/Gen4LegalityPalPark.cpp",
 ]
 
 def run(compiler: str, sanitize: bool) -> dict[str, object]:

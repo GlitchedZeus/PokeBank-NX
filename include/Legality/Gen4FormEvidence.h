@@ -55,6 +55,10 @@ inline uint8_t formCount(std::string_view exactGameId,
     // are stored forms in every Gen IV game (PKHeX FormInfo / Unown slots).
     if (species == 201)
         return 28;
+    // Mothim keeps the cloak form value of the Burmy it evolved from (PKHeX
+    // PersonalTable4.IsPresentInGame: Mothim => form < 3) in every Gen IV game.
+    if (species == 414)
+        return 3;
     return personal->formCount;
 }
 
