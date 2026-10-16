@@ -36,6 +36,17 @@ XFAIL = {
     "CG09-item-quantity-policy": "I + C (QuantityPolicy adoption)",
 }
 
+# Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational
+# "out of scope" lines and never count as violations, in gate or candidate mode.
+OUT_OF_SCOPE = {
+    "include/UI/ActionSheetModel.h": "generic TrainerViewScreen / MutationTargetPolicy sheet for the modern Gen VI+ screens (coordinator, 2026-10-16)",
+    "src/UI/Panels/StoragePanel.cpp": "modern storage panel, reached only from TrainerViewScreenBase.inc (Gen VI+)",
+    "src/UI/Dialogs/StatEditDialog.cpp": "modern stat dialog, reached only from TrainerViewScreenBase.inc (Gen VI+)",
+    "src/UI/Dialogs/ItemEditDialog.cpp": "modern item dialog, reached only from TrainerViewScreenBase.inc (Gen VI+)",
+    "src/UI/Dialogs/SaveConfirmDialog.cpp": "modern save dialog, reached only from TrainerViewScreenBase.inc (Gen VI+)",
+    "src/UI/Dialogs/PickerDialog.cpp": "modern picker dialog, reached only from TrainerViewScreenBase.inc (Gen VI+)",
+}
+
 # Names the lanes are introducing. Update when the lane lands if the final name differs.
 # S: include/UI/SharedEditorPresentation.h pickerFooter(PickerFooterSpec) / confirmFooter and
 # include/UI/SharedEditorChrome.h drawPickerFooter / drawFooter / beginModal / drawOriginLegalityHeading.
@@ -206,6 +217,7 @@ class Result:
     cid: str
     title: str
     violations: list[str] = field(default_factory=list)
+    out_of_scope: list[str] = field(default_factory=list)
 
 
 def contracts(sources: list[Source]) -> list[Result]:
@@ -322,6 +334,9 @@ def contracts(sources: list[Source]) -> list[Result]:
         U, r"\b(?:constexpr|const|static|int|unsigned|uint\d+_t|u64|u32)\b[^;\n]*\b\w*(?:REPEAT|Repeat|repeat)\w*(?:DELAY|INTERVAL|Delay|Interval|FRAMES|Frames|Ticks|Ms)\w*\s*=",
         exclude=(REPEAT_ENGINE_FILE,))
     res.append(r)
+    for r in res:
+        r.out_of_scope = [v for v in r.violations if v.split(":", 1)[0] in OUT_OF_SCOPE]
+        r.violations = [v for v in r.violations if v.split(":", 1)[0] not in OUT_OF_SCOPE]
     return res
 
 
@@ -350,6 +365,8 @@ def main(argv: list[str]) -> int:
             print(f"      {v}")
         if not args.list and len(res.violations) > 8:
             print(f"      ... {len(res.violations) - 8} more (use --list)")
+        for v in res.out_of_scope:
+            print(f"      out of scope (Gen VI+, informational): {v}")
     if dead:
         print("Unreachable .inc (not compiled, not checked): " + ", ".join(dead))
     print(f"{failed} contract(s) failing")
