@@ -44,7 +44,7 @@ PKHeX's lazy sequence; the ManualFlag counts only when the last-resort element w
 | AbilityVerifier (VerifyAbilityPreCapsule, VerifyAbilityGen3Transfer) | `verifyAbility` | Invalid |
 | BallVerifier | `verifyBall` | Invalid |
 | FormVerifier | `verifyForm` | Invalid (incl. the Unown letter of a Gen III origin) |
-| MiscVerifier (eggs, MiscVerifierG4 Pal Park fields and split ball, fateful, Pokerus, dates) | `verifyMisc` | Invalid; walking mood on an egg Fishy |
+| MiscVerifier (eggs, MiscVerifierG4 Pal Park fields and split ball, fateful, Pokerus, dates) | `verifyMisc` | Invalid; walking mood on an egg Fishy; plus the two met-location fields of a native record (section 3, stricter) |
 | MovePPVerifier | `verifyMovePP` | Invalid |
 | GenderVerifier | `verifyGender` | Invalid |
 | ItemVerifier | `verifyItem` | Invalid |
@@ -55,7 +55,14 @@ PKHeX's lazy sequence; the ManualFlag counts only when the last-resort element w
 
 ## 3. Severity policy and deliberate differences
 
-Every difference is more lenient than PKHeX (never a new Invalid):
+Every difference in the analyzer is more lenient than PKHeX except one, which is stricter and
+rests on decomp evidence (`PKHEX_DISAGREEMENT_REVIEW.md` item 14):
+
+| Case | PKHeX | Here | Evidence |
+|---|---|---|---|
+| A native non-egg record whose D/P met-location field is not what Pt/HG/SS write for its Pt/HG/SS met location (the same place if D/P know it, else Faraway Place 3002) | VALID: it reads the Pt/HG/SS field first (G4PKM.cs:229-237) and compares the two only for Pal Park (MiscVerifierG4.cs:35-45) | Invalid; Warning for a My Pokemon Ranch record | Pt and HG/SS write both fields through one setter: pokeplatinum src/pokemon.c:1732-1740 with src/unk_02017038.c:38-45; pokeheartgold src/pokemon.c:1286-1292 with asm/unk_02017FAC.s:68-97. Every PKHeX Gen IV event template leaves the Pt/HG/SS field at 0. The Ranch is Wii software with no decomp |
+
+The more lenient differences:
 
 | Case | PKHeX | Here | Evidence |
 |---|---|---|---|
@@ -104,5 +111,7 @@ Invalid applies, as in PKHeX.
 verdict with PKHeX (base: every Gen IV encounter template plus single-field mutations; grown:
 PKHeX-valid records played forward, traded between carts and moved through Pal Park, plus
 mutations). It fails on any false Invalid (PKHeX VALID, Invalid here), false Valid (PKHeX INVALID,
-No problems found here) or unloadable record. CI runs seeds 1-3 for both corpora
+No problems found here) or unloadable record. The one exception is the stricter rule in section 3:
+its records are listed as "deliberately stricter" and pass only when a byte-level predicate
+(`met_location_fields` in `summarize.py`) confirms the two fields disagree. CI runs seeds 1-3 for both corpora
 (`.github/workflows/legality-gen34-pkhex-diff.yml`).

@@ -33,7 +33,8 @@ reading the allow-lists of the three PKHeX differentials:
 
 - `tools/pkhex_gb_diff/compare.py`: the `DELIBERATE` and `UNCERTAIN_REASONS` lists;
 - `tools/pkhex_gen5_diff/run.sh`: the `stricter` allow-list, removed in this review;
-- `tools/pkhex_gen34_diff`: no allow-list at all.
+- `tools/pkhex_gen34_diff`: no allow-list at all at the time. Item 14 (added later) gave it one
+  entry, `DELIBERATE` in `summarize.py`, checked by a predicate over the record bytes.
 
 ## Summary
 
@@ -58,6 +59,8 @@ Direction words:
 | 10 | Gen IV: the stored party level must be the level the EXP gives | `Legality.cpp:2760-2772`, through `Pokemon4ReadOnlyView.cpp:30-34` | stricter | `PKM.cs:389`, `LevelVerifier.cs:46-59`. No legality code in PKHeX reads `Stat_Level` | **Found.** pokeplatinum, pokeheartgold: every write of a party Pokémon's EXP is followed by a level recalculation (§10) | Keep | No |
 | 11 | Gen V: hidden-ability flag with a slot 1/2 ability on a hidden-ability-only template | `Gen5Legality.cpp:700-722` | was stricter, now warns more | `AbilityVerifier.cs:225-226` (VALID on `AbilityNumber == 4`) | **None found**, either way (§11) | **Downgrade to Warning** | **Yes** |
 | 12 | Gen V: a nickname over 10 or an OT over 7 units (no 0xFFFF terminator in the buffer) is Invalid | `Gen5Legality.cpp`, `internal()` text-buffer rule | stricter only in PKHeX's exemptions | `Legal.cs:244-261` gives the same limits for Gen <= 5 (OT 7, nickname 10) and `TrainerNameVerifier.cs:49-53` / `NicknameVerifier.cs:179-184` flag longer names; PKHeX exempts fixed-trainer templates and traded eggs (`TrainerNameVerifier.cs:80-95`) and makes a foreign species-name length Fishy | **Format only.** The PK5 layout stores the OT in 8 and the nickname in 11 UTF-16 units including the terminator (PKHeX `PK5.cs`), so an exempt name still fits the limit; no record PKHeX builds reaches the difference (Gen V differential, 4 seeds) | Keep; revisit if a real record ever reaches it | No |
+| 13 | Gen V: a capsule transfer location (30010-30013) on a non-fateful Gen IV Celebi or beast | `Gen5Legality.cpp`, transfer location rule | was stricter, now warns more | `TransferVerifier.VerifyTransferLegalityG4` accepts it; only `PK5.GetTransferMetLocation4` limits it to fateful records | **None found** (no Gen V decomp) (§13) | **Downgrade to Warning** | **Yes** |
+| 14 | Gen IV: a native non-egg record whose D/P met-location field is not what Pt/HG/SS write for its Pt/HG/SS met location | `Gen4Legality.cpp`, `Analyzer::verifyMisc` | stricter | `G4PKM.cs:229-237` reads the Pt/HG/SS field first; `MiscVerifierG4.cs:35-45` compares the two only for Pal Park | **Found.** pokeplatinum, pokeheartgold: every met-location write goes through one setter that writes both fields (§14). Not for My Pokémon Ranch (Wii, no decomp) | Keep; Warning for Ranch records | New rule |
 
 No other Invalid that PKHeX would not issue was found:
 
@@ -71,6 +74,7 @@ No other Invalid that PKHeX would not issue was found:
   none of them Invalid.
 
 Rows 1 and 10 are the only stricter rules left. Both rest on decompiled game code.
+Row 14, added later, is a third; it rests on decompiled game code too.
 
 ## 1. GB level against EXP (keep)
 
@@ -397,6 +401,44 @@ SoulSilver static Raikou, not fateful, transferred with met location 30012).
   location on another species, and any capsule location on a Gen III origin (PKHeX
   `VerifyTransferLegalityG3` requires 30001). The CI record is now a fixture in
   `tests/test_legality_gen5.cpp` (`transfer-crown-nonfateful`).
+
+## 14. Gen IV met-location fields that disagree (keep, found by the title matrix)
+
+Found by the 20-title matrix (`TITLE_TEST_MATRIX.md`, Gen IV rows): a Platinum Giratina-Origin
+with 117 in the D/P met-location field, and HeartGold and SoulSilver records with 178 there, read
+"No problems found". PKHeX calls them VALID too.
+
+- **The games.** A PK4 has two met-location fields: the D/P field (0x80) and the Pt/HG/SS field
+  (0x46). Platinum and HG/SS write a met location only through one setter, which writes both: a
+  place D/P know (1-111, 2000-2010, 3000-3076; pokeplatinum `src/unk_02017038.c:38-45`,
+  pokeheartgold `asm/unk_02017FAC.s:68-97`) goes into both, and any other place puts Faraway Place
+  (3002) in the D/P field (pokeplatinum `src/pokemon.c:1732-1740`, pokeheartgold
+  `src/pokemon.c:1286-1292`). Neither decomp writes either field anywhere else: every other write
+  is `Pokemon_SetValue`/`BoxPokemon_SetValue` (Platinum) or `SetMonData`/`SetBoxMonData` (HG/SS)
+  through that setter, including gifts and events (pokeplatinum `src/unk_02092494.c:749-900`).
+  The games read the D/P field unless it holds 3002 (pokeplatinum `src/pokemon.c:1168-1174`,
+  pokeheartgold `src/pokemon.c:826-827`). D/P never write the Pt/HG/SS field, and a non-egg
+  Pokémon's met location is not rewritten later.
+- **Left out.** Pal Park records (PKHeX's own rule covers them, `MiscVerifierG4.cs:35-45`) and
+  egg-origin records (hatching in D/P rewrites the D/P field alone). A gift received in D/P keeps
+  the template's Pt/HG/SS field, and all 590 Gen IV event templates in PKHeX's database
+  (`mgdb/wc4.pkl`, decoded) hold 0 there, so the rule does not reach them. My Pokémon Ranch
+  writes its gifts on the Wii, which has no decomp, so a Ranch record only gets a Warning.
+- **Real records.** All 29 PK4 files in PKHeX's test suite (`Tests/PKHeX.Core.Tests/Legality`)
+  satisfy the rule: the Platinum and HG/SS ones hold either the same place in both fields or 3002
+  with the HG/SS place, and the D/P ones hold 0 in the Pt/HG/SS field.
+- **PKHeX.** It reads the Pt/HG/SS field first whenever it is not 0 (`G4PKM.cs:229-237`), so it
+  judges the encounter by that field alone. Its setter writes both fields the way the games do
+  (`G4PKM.cs:238-258`), so every record it builds agrees. Only its mutation of the Pt/HG/SS field
+  alone (`metlocext` in the Gen III/IV oracle) builds records this rule rejects.
+- **Change.** Invalid, with the fixture `met-location-dp-field` in `tests/test_legality_gen4.cpp`
+  and the three matrix rows. The Gen III/IV differential lists these records as "deliberately
+  stricter", and only when `met_location_fields` in `tools/pkhex_gen34_diff/summarize.py`
+  confirms from the record bytes that the two fields disagree; any other record PKHeX accepts
+  and PokeBank NX calls Invalid still fails the run. The CI set of runs
+  (seeds 1-3; mutation corpus with Gen III and IV, grown Gen IV corpus, grown Gen III corpus) has
+  0 false Invalid and 0 false Valid. It lists 112 (mutation) and 109 (grown) records under this
+  rule, every one a `metlocext` mutation, on D, P, Pt, HG and SS records.
 
 ## Not disagreements (checked)
 
