@@ -47,6 +47,22 @@ Each new test fails against the previous code unless marked "pinning".
 | A6 | Gen IV export backs up the source FILE verbatim (`.dsv` footer kept) with SOURCE_CONTAINER / EDITED_CONTAINER / SOURCE_SHA256_SCOPE / ORIGINAL_BACKUP_IS keys matching Gen V (Common fields d9cdcf78) | 40f78f3c | `test_gen4_staged_pokemon_editor` |
 | A7 | `.dsv` backup named `original_backup.dsv` (edited stays `edited.sav`, raw), via shared `editedFileExtension` (0c2fffb6) | this commit | `test_gen4_staged_pokemon_editor` |
 
+## Owner campaign (2026-10-16, Gen I/II lane)
+
+| Phase | Unit | Commit | Tests |
+|---|---|---|---|
+| #320 | Gen II Create/Edit: one input owner per frame; exit dialog footer is its own | ae099c77 | `test_gen2_workspace_layers` |
+| 3 | Gen I/II Actions sheet: real commands only (View, Edit, Clone, Release, ...); no Make Shiny | dcd8770c | `test_classic_pokemon_action_menu` |
+| 6 | Y re-rolls DVs immediately; keeps shiny, Gen II gender, Unown letter | dcd8770c | `test_gen12_dv_reroll` |
+| 10 | Gen II Shiny Yes/No; Pokerus A-cycles in place (original byte restored) | e59df023 | `test_gen2_inline_fields` |
+| 9 | Gen II DATA pane text wraps/clips inside its pane | e59df023 | `test_gsc_workspace_render` |
+| 11 | Crystal Met Location chooser proportional, names only; Gen I has no met location | 47cac826 | `test_gen2_location_picker` |
+| 1/5 | Gen I list editors: whole rows above status line; no Row x/y counters | 9d1d03f9 | `test_gen1_list_fit` |
+| 2 | Bag Remove asks first (Y/B); one per-item quantity query | 3dcce1fd | `test_classic_inventory_ui_model` |
+
+Waiting: Thread S shared unit (Origin & Legality label, green-A/red-B picker footer, shared moves
+panel) for phases 4/7 and the Gen I moves alignment; owner detail on the "hidden row" in Gen I Create.
+
 Open / reported:
 - Coordinator one-liner: pass held/stick to `handleFoundationPassiveViewInput` (Gen I View stick parity).
 - Coordinator wording for `SaveSelectScreen.cpp:914-915` (QA-c).
