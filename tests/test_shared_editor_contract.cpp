@@ -400,10 +400,15 @@ void surfaceSourceContracts() {
     contains(gen5, "static constexpr int kMaxSpecies = Fields::kMaxSpecies;");
     contains(gen5, "static constexpr bool kSpeciesSearch = true;");
     contains(gen5, "for (uint16_t s = 1; s <= Fields::kMaxSpecies; ++s)");
-    // 12: the move row carries type, category and an em dash for undefined values.
-    contains(gen5, "Names::moveCategoryName5(stats->category)");
-    contains(gen5, "SpriteManager::getTypeSprite(SharedSpeciesPicker::canonicalToClassicType(stats->type))");
-    contains(gen5, "std::string(\"—\")");
+    // 12: the move row carries type, category and an em dash for undefined values: the ONE
+    // shared chooser row (UI/SharedMovesPanel.h) fed by the exact BW / B2W2 game version.
+    contains(shared, "SharedMovesPanel::drawChooserRow(fb, columns, yy + 6, value, A::moveGame(screen), selected)");
+    contains(gen5, "return b2w2(screen) ? Enums::GameVersion::B2W2 : Enums::GameVersion::BW;");
+    const auto chooser = read("include/UI/SharedMovesPanel.h");
+    contains(chooser, "Facts::categoryLabel(f)");
+    const auto moveFacts = read("include/UI/SharedMoveFacts.h");
+    contains(moveFacts, "s->power == Names::kMoveValueUndefined5 ? -1 : s->power");
+    contains(moveFacts, "std::string(\"\\xE2\\x80\\x94\")");
     // 8: Gen V uses the narrow Gen I-IV action menu component.
     contains(gen5, "drawNarrowPokemonActions(fb,screen.touchButtons,model,state.actionRow(),title,");
     // 14: Gen I-IV menus are unchanged: the Gen IV adapter keeps its exact
@@ -414,9 +419,7 @@ void surfaceSourceContracts() {
     contains(gen4, "\"Held Item — Generation IV\"");
     contains(gen4, "\"Empty + compatible moves only • exact Gen IV Acc / Pwr / PP\"");
     contains(gen4, "model.append(\"Add to Master Vault\");");
-    contains(gen4, "MovePickerRowUI::draw(fb, x, y, value, bridge(screen).sourceSave().rawFamily());");
-    const auto rowUi = read("include/UI/MovePickerRowUI.h");
-    contains(rowUi, "fb.drawText(x+308,y+9,\"| Acc \"+acc");
+    contains(gen4, "static Enums::GameVersion moveGame(const TrainerViewScreen& screen) { return family(screen); }");
     // Gen I-III keep their accepted editors and the same shared contract layout.
     static_assert(Shared::layoutFor(Shared::Generation::Gen4).detailsRows == 16);
     static_assert(Shared::layoutFor(Shared::Generation::Gen5).detailsRows == F::RowCount);

@@ -1,6 +1,6 @@
 #include "UI/PokemonEditorFoundationContract.h"
 #include "UI/PokemonEditorExitGuard.h"
-#include "UI/Gen12RerollDVsConfirm.h"
+#include "UI/Gen12DVReroll.h"
 #include "UI/Gen1EditDraft.h"
 #include "UI/Gen1PokemonPresentation.h"
 #include "UI/ScreenChrome.h"
@@ -23,12 +23,7 @@ struct FoundationState {
     uint32_t randomState = 0x6D2B79F5u;
     std::optional<PokemonRecord> editBaseline;
     bool editExitConfirm = false;
-    // Y Random DVs is two explicit steps (see Gen12RerollDVsConfirm.h).
-    PokeBank::UIModel::Gen12RerollDVs::State reroll;
 };
-
-constexpr int kRerollCancelTouchId = 5903;
-constexpr int kRerollConfirmTouchId = 5904;
 
 FoundationState& foundationStateFor(const TrainerViewScreen& screen) {
     static FoundationState state;
@@ -54,7 +49,6 @@ void foundationSyncMainMode(TrainerViewScreen& screen) {
         foundation.randomState ^= static_cast<uint32_t>((state.box + 1) * 0x9E37u);
         foundation.randomState ^= static_cast<uint32_t>((state.slot + 1) * 0x85EBu);
         foundation.editExitConfirm = false;
-        foundation.reroll = {};
         if (state.mode == UX2Mode::Edit) {
             std::string error;
             if (!beginEditDraft(screen, error)) {
@@ -182,19 +176,32 @@ void foundationExitMainMode(TrainerViewScreen& screen) {
     foundation.lastMainMode = UX2Mode::Closed;
     foundation.editBaseline.reset();
     foundation.editExitConfirm = false;
-    foundation.reroll = {};
     dropEditDraft();
 }
 
+// Y Random DVs: a new roll every press, keeping the shown shiny state (Gen II rule on Gen I DVs;
+// Gen I stores no flag and has no gender). Gen12DVReroll.h.
 void foundationRandomizeDVs(TrainerViewScreen& screen, bool add) {
     auto& state = ux2StateFor(screen);
     auto& foundation = foundationStateFor(screen);
     auto& ux3 = ux3StateFor(screen);
-    const auto dvs = Foundation::randomDVs(foundation.randomState);
+    std::array<uint8_t, 4> current = state.draft.dvs;
+    if (!add) {
+        std::string error;
+        const auto pokemon = ux2SelectedPokemon(screen, error);
+        if (!pokemon) { screen.postStatus(error.empty() ? "Pokemon unavailable" : error, 300); return; }
+        current = storedDVs(*pokemon);
+    }
+    const auto rolled = PokeBank::UIModel::Gen12DVReroll::reroll(current, foundation.randomState);
+    if (!rolled.changed) {
+        screen.postStatus("No other DVs keep this Pokemon shiny; DVs unchanged", 280);
+        return;
+    }
+    const auto dvs = rolled.dvs;
     if (add) {
         state.draft.dvs = dvs;
         ux3.preShinyDraftDVs.reset();
-        screen.postStatus("Generation I DVs randomized in draft only; Stage Add still required", 280);
+        screen.postStatus("Generation I DVs re-rolled in this draft; Add stages them", 280);
         return;
     }
     BoxPokemonEdit edit;
@@ -371,21 +378,10 @@ void foundationHandleMainInput(TrainerViewScreen& screen, uint64_t down) {
         return;
     }
 
-    if (editable) {
-        // Y Random DVs asks first; while the prompt is open it owns all input (focus, X Add,
-        // B exit and field activation are inert). Only A/Y there re-rolls.
-        namespace Reroll = PokeBank::UIModel::Gen12RerollDVs;
-        switch (Reroll::step(foundation.reroll, (down & HidNpadButton_Y) != 0,
-                             (down & HidNpadButton_A) != 0, (down & HidNpadButton_B) != 0)) {
-            case Reroll::Outcome::NotHandled: break;
-            case Reroll::Outcome::AskConfirm:
-            case Reroll::Outcome::Cancelled:
-            case Reroll::Outcome::Swallowed:
-                return;
-            case Reroll::Outcome::Reroll:
-                foundationRandomizeDVs(screen, add);
-                return;
-        }
+    if (editable && (down & HidNpadButton_Y)) {
+        // Y Random DVs re-rolls the draft at once: no prompt, a new roll on every press.
+        foundationRandomizeDVs(screen, add);
+        return;
     }
 
     if (down & HidNpadButton_Up) foundation.focus = Foundation::moveFocus(foundation.focus, Foundation::Direction::Up);
@@ -495,26 +491,6 @@ void foundationDrawExitConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     screen.touchButtons.push_back({5900, x + 24, cby, cbw, cbh});
     screen.touchButtons.push_back({5901, x + (w - cbw) / 2, cby, cbw, cbh});
     screen.touchButtons.push_back({5902, x + w - 24 - cbw, cby, cbw, cbh});
-}
-
-void foundationDrawRerollConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    namespace Reroll = PokeBank::UIModel::Gen12RerollDVs;
-    if (!foundationStateFor(screen).reroll.confirming) return;
-    const bool add = ux2StateFor(screen).mode == UX2Mode::AddDraft;
-    constexpr int w = 560, h = 226;
-    const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - h) / 2;
-    const int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, Reroll::kTitle, Colors::Orange);
-    fb.drawText(x + 28, cy, Reroll::kConsequence, Colors::Text);
-    fb.drawText(x + 28, cy + 34,
-                add ? "Only this draft changes; nothing is staged until Add."
-                    : "Discard on exit restores the pre-edit Pokemon.",
-                Colors::TextDim, TextStyle::Caption);
-    const int cbw = 190, cbh = TouchTargetMin, cby = y + h - cbh - 18;
-    drawGlyphButton(fb, x + 24, cby, cbw, cbh, "B", "Cancel", Colors::PanelAlt);
-    drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Re-roll", Colors::PanelAlt);
-    screen.touchButtons.push_back({kRerollCancelTouchId, x + 24, cby, cbw, cbh});
-    screen.touchButtons.push_back({kRerollConfirmTouchId, x + w - 24 - cbw, cby, cbw, cbh});
 }
 
 void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -676,7 +652,6 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (add) footer = "D-pad/Stick Navigate   A Edit   Y Randomize DVs   L/R Panel   X Stage Add   B Cancel Draft";
     drawFooter(fb, footer);
     foundationDrawExitConfirm(screen, fb);
-    foundationDrawRerollConfirm(screen, fb);
 }
 
 } // namespace
@@ -720,12 +695,6 @@ uint64_t foundationDirectTouchInput(TrainerViewScreen& screen, uint64_t down, co
         if (activate) down |= HidNpadButton_A;
         return true;
     };
-    if (foundation.reroll.confirming) {
-        // The re-roll prompt is modal: only its own buttons act.
-        if (tapped == kRerollCancelTouchId) down |= HidNpadButton_B;
-        else if (tapped == kRerollConfirmTouchId) down |= HidNpadButton_A;
-        return down;
-    }
     if (foundation.editExitConfirm) {
         if (tapped == 5900) down |= HidNpadButton_B;
         else if (tapped == 5901) down |= HidNpadButton_Y;

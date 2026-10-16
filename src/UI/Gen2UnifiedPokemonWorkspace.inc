@@ -1,7 +1,7 @@
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/Gen2WorkspacePresentation.h"
-#include "UI/Gen12RerollDVsConfirm.h"
 #include "UI/Gen2FieldSelector.h"
+#include "UI/Gen2WorkspaceLayers.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
 
 namespace UI::Gen2PokemonEditor {
@@ -16,8 +16,6 @@ struct UnifiedWorkspaceState {
     Mode lastMode = Mode::None;
     Unified::Focus focus{};
     std::size_t detailsFocus = 0;
-    // Y Random DVs is two explicit steps (see Gen12RerollDVsConfirm.h).
-    PokeBank::UIModel::Gen12RerollDVs::State reroll;
     // Pokerus / Crystal Met Time / Crystal OT Gender selector (Gen2FieldSelector.h).
     PokeBank::UIModel::Gen2FieldSelector::Selector selector;
     // Stable row viewport: drag moves the content, not the semantic focus.
@@ -55,7 +53,8 @@ UnifiedWorkspaceState& unifiedStateFor(const TrainerViewScreen& screen) {
         state.detailsTouchW = state.detailsTouchH = 0;
         state.progressionEditor = false;
         state.progressionRow = 0;
-        state.reroll = {};
+        state.moveEditor = false;
+        state.moveEditorRow = 0;
         state.selector = {};
         state.lastMode = mode;
     }
@@ -63,23 +62,28 @@ UnifiedWorkspaceState& unifiedStateFor(const TrainerViewScreen& screen) {
     return state;
 }
 
-constexpr int kRerollCancelTouchId = 1798;
-constexpr int kRerollConfirmTouchId = 1799;
+// The single owner of this frame's input (and footer); see Gen2WorkspaceLayers.h.
+PokeBank::UIModel::Gen2WorkspaceLayers::Layer workspaceTopLayer(const TrainerViewScreen& screen) {
+    const auto& state = stateFor(screen);
+    const auto& unified = unifiedStateFor(screen);
+    PokeBank::UIModel::Gen2WorkspaceLayers::Open open;
+    open.picker = pickerStateFor(screen).model.active();
+    open.heldItemPicker = state.itemPicker;
+    open.exitConfirm = state.confirmExit;
+    open.progressionEditor = unified.progressionEditor;
+    open.moveEditor = unified.moveEditor;
+    open.fieldSelector = unified.selector.open();
+    return PokeBank::UIModel::Gen2WorkspaceLayers::topLayer(open);
+}
 
-void drawRerollConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    namespace Reroll = PokeBank::UIModel::Gen12RerollDVs;
-    constexpr int w = 560, h = 226;
-    const int x = (fb.getWidth() - w) / 2;
-    const int y = (fb.getHeight() - h) / 2;
-    const int cy = Dialogs::drawDialogFrame(fb, x, y, w, h, Reroll::kTitle, Colors::Orange);
-    fb.drawText(x + 28, cy, Reroll::kConsequence, Colors::Text);
-    fb.drawText(x + 28, cy + 34, "Only this draft changes; nothing is staged until Keep/Add.",
-                Colors::TextDim, TextStyle::Caption);
-    const int cbw = 190, cbh = TouchTargetMin, cby = y + h - cbh - 18;
-    drawGlyphButton(fb, x + 24, cby, cbw, cbh, "B", "Cancel", Colors::PanelAlt);
-    drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A", "Re-roll", Colors::PanelAlt);
-    screen.touchButtons.push_back({kRerollCancelTouchId, x + 24, cby, cbw, cbh});
-    screen.touchButtons.push_back({kRerollConfirmTouchId, x + w - 24 - cbw, cby, cbw, cbh});
+void drawWorkspaceFooter(PKSEFramebuffer& fb, const TrainerViewScreen& screen) {
+    namespace Layers = PokeBank::UIModel::Gen2WorkspaceLayers;
+    const auto footer = Layers::footer(workspaceTopLayer(screen),
+        stateFor(screen).mode == Mode::Create ? Layers::Session::Create : Layers::Session::Edit);
+    std::vector<ControllerHint> hints;
+    for (std::size_t i = 0; i < footer.count; ++i)
+        hints.push_back({footer.hints[i].glyph, footer.hints[i].label});
+    drawNavBar(fb, hints);
 }
 
 void resetUnifiedFocus(TrainerViewScreen& screen) {
@@ -93,7 +97,6 @@ void resetUnifiedFocus(TrainerViewScreen& screen) {
     unified.progressionRow = 0;
     unified.moveEditor = false;
     unified.moveEditorRow = 0;
-    unified.reroll = {};
     unified.selector = {};
     unified.lastMode = stateFor(screen).mode;
     screen.controllerNavigation.reset();
@@ -409,8 +412,9 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             return true;
         }
         if (focus.row == 8) {
-            unifiedStateFor(screen).selector = PokeBank::UIModel::Gen2FieldSelector::pokerus(p.pokerus);
-            screen.controllerNavigation.reset();
+            // A cycles None -> Infected -> Cured in place, no popup; a state the record started
+            // in comes back with its exact strain/days.
+            p.pokerus = Gen2Native::cyclePokerusState(p.pokerus, state.baseline.pokerus);
             return true;
         }
         if (focus.row >= 9 && screen.sourceGameId == "crystal_gbc") {
@@ -593,14 +597,19 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         return true; // A/Y/X never mutate a View session.
     }
 
-    if (pickerStateFor(screen).model.active()) return false;
-    if (state.itemPicker)
+    // Exactly one layer owns this frame (Gen2WorkspaceLayers::topLayer), highest first.
+    namespace Layers = PokeBank::UIModel::Gen2WorkspaceLayers;
+    const auto layer = workspaceTopLayer(screen);
+    if (layer == Layers::Layer::Picker) return false; // the picker overlay handles it next
+    if (layer == Layers::Layer::HeldItemPicker)
         return handleItemPicker(screen, state, down, held, stickX, stickY, touch);
-    if (state.confirmExit) return handleConfirm(screen, state, down);
-    if (handleProgressionEditor(screen, down, held, stickX, stickY)) return true;
-    if (handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY)) return true;
+    if (layer == Layers::Layer::ExitConfirm) return handleConfirm(screen, state, down);
+    if (layer == Layers::Layer::ProgressionEditor)
+        return handleProgressionEditor(screen, down, held, stickX, stickY);
+    if (layer == Layers::Layer::MoveEditor)
+        return handleUnifiedMoveEditor(screen, state, down, held, stickX, stickY);
 
-    if (unified.selector.open()) {
+    if (layer == Layers::Layer::FieldSelector) {
         // The field selector owns all input while open: Up/Down move, A or a tap applies, B
         // cancels; the field keeps focus either way.
         namespace Selector = PokeBank::UIModel::Gen2FieldSelector;
@@ -620,30 +629,16 @@ bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         return true;
     }
 
-    {
-        // Y Random DVs asks first; while the prompt is open it owns all input (fields, taps,
-        // X Add and B exit are inert). Only A/Y (or its Re-roll button) changes the draft.
-        namespace Reroll = PokeBank::UIModel::Gen12RerollDVs;
-        if (unified.reroll.confirming) {
-            const int tapped = screen.touchedButtonId(touch);
-            if (tapped == kRerollCancelTouchId) down |= HidNpadButton_B;
-            else if (tapped == kRerollConfirmTouchId) down |= HidNpadButton_A;
-        }
-        switch (Reroll::step(unified.reroll, (down & HidNpadButton_Y) != 0,
-                             (down & HidNpadButton_A) != 0, (down & HidNpadButton_B) != 0)) {
-            case Reroll::Outcome::NotHandled: break;
-            case Reroll::Outcome::AskConfirm:
-            case Reroll::Outcome::Cancelled:
-                screen.controllerNavigation.reset();
-                return true;
-            case Reroll::Outcome::Swallowed:
-                return true;
-            case Reroll::Outcome::Reroll:
-                randomizeDVs(state); // the local working draft only; nothing is staged
-                screen.postStatus("Generation II DVs re-rolled in this draft; Keep/Add stages them", 240);
-                screen.controllerNavigation.reset();
-                return true;
-        }
+    // Y Random DVs re-rolls this draft at once (Gen12DVReroll.h): every press is a new roll that
+    // keeps the shiny state, the gender and the Unown letter. Nothing is staged until Keep/Add.
+    if (down & HidNpadButton_Y) {
+        if (randomizeDVs(state))
+            screen.postStatus("Generation II DVs re-rolled in this draft; Keep/Add stages them", 240);
+        else
+            screen.postStatus(state.working.shiny
+                ? "No other shiny DVs keep this Pokemon's gender; DVs unchanged"
+                : "No other DVs keep this Pokemon's gender and form; DVs unchanged", 300);
+        return true;
     }
 
     const int touchedDetail = updateUnifiedDetailsTouch(screen, unified, touch, down);
@@ -758,7 +753,7 @@ void drawUnifiedValues(PKSEFramebuffer& fb, const State& state, const UnifiedWor
     fb.drawText(x + 18, y + 328, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
 
     const std::array<std::pair<std::string, std::string>, 2> capabilityRows{{
-        {"Shiny", p.shiny ? "Yes (DV-derived)" : "No (DV-derived)"},
+        {"Shiny", p.shiny ? "Yes" : "No"},
         {"Gender", genderText(p.gender)},
     }};
     for (int i = 0; i < 2; ++i) {
@@ -996,12 +991,8 @@ void drawUnifiedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (view) {
         screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget, 16, fb.getHeight() - 68, 190, 58});
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
-    } else if (create) {
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Cancel Draft"}});
     } else {
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"B", "Back"}});
+        drawWorkspaceFooter(fb, screen);
     }
     if (state.itemPicker) drawHeldItemPicker(fb, state);
     if (state.confirmExit) drawConfirm(fb, state);

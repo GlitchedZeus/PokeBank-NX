@@ -78,7 +78,7 @@ int main() {
     contains(gen4, "species, A::kMaxSpecies, previewShiny");
     contains(gen4, "static constexpr int kMaxSpecies = 493;");
     contains(gen4, "state.speciesPreviewShiny");
-    contains(gen4, "\"Y\", \"Normal/Shiny\"");
+    contains(gen4, "footer.yLabel = \"Normal/Shiny\"");
     contains(gen4, "true, previewTypes");
     contains(gen4, "gen4DexLabel(value)");
     contains(gen4, "Pokemon::getPersonalInfo4HGSS(species, 0)");

@@ -206,7 +206,7 @@ void redrawGen2StatsSemantics(PKSEFramebuffer& fb, const State& state,
     const bool genderSelected = unified.focus.panel == UnifiedContract::Panel::Values && unified.focus.row == 6;
     drawGen2Focus(fb, x + 8, shinyY - 5, w - 16, 30, shinySelected);
     fb.drawText(x + 18, shinyY, "Shiny", shinySelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
-    fb.drawText(x + 134, shinyY, p.shiny ? "Yes (DV-derived)" : "No (DV-derived)",
+    fb.drawText(x + 134, shinyY, p.shiny ? "Yes" : "No",
                 shinySelected ? Colors::SelectedText : (p.shiny ? Colors::ShinyStar : Colors::Text), TextStyle::Caption);
     drawGen2Focus(fb, x + 8, genderY - 5, w - 16, 30, genderSelected);
     fb.drawText(x + 18, genderY, "Gender", genderSelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
@@ -272,16 +272,10 @@ void drawFullscreenGen2Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     if (passive || state.mode == Mode::View) {
         screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget, 16, fb.getHeight() - 68, 190, 58});
         drawNavBar(fb, {{"D-pad", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
-    } else if (unified.selector.open()) {
-        drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Apply"}, {"B", "Cancel"}});
-    } else if (unified.reroll.confirming) {
-        drawNavBar(fb, {{"B", "Cancel"}, {"A", "Re-roll"}});
-    } else if (state.mode == Mode::Create) {
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}});
     } else {
-        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"X", "Keep"}, {"B", "Exit"}});
+        // The footer of the layer that owns input (exit dialog, selector, re-roll prompt or the
+        // workspace), so no visible or tappable glyph means something else (Gen2WorkspaceLayers.h).
+        drawWorkspaceFooter(fb, screen);
     }
 }
 
@@ -292,7 +286,6 @@ void drawFullscreenGen2Active(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (unified.moveEditor) drawUnifiedMoveEditor(screen, fb, state, unified);
     if (state.itemPicker) drawHeldItemPicker(fb, state);
     if (state.confirmExit) drawConfirm(fb, state);
-    if (unified.reroll.confirming) drawRerollConfirm(screen, fb);
     if (unified.selector.open()) drawFieldSelector(screen, fb, unified.selector);
     if (unified.progressionEditor) drawProgressionEditor(fb, state, unified);
 }

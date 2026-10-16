@@ -62,8 +62,8 @@ for needle in (
     'result.append("Review Pending Changes", review);',
 ):
     assert needle in narrow_gen1, f"Gen I narrow menu: {needle}"
-assert 'const auto model = PokeBank::UIModel::NarrowPokemonMenu::gen1(' in classic_actions
-assert 'const auto model = PokeBank::UIModel::NarrowPokemonMenu::classic(' in classic_actions
+assert 'const auto model = PokeBank::UIModel::ClassicPokemonActionMenu::fromGen1(actions);' in classic_actions
+assert 'const auto model = PokeBank::UIModel::ClassicPokemonActionMenu::fromShared(actions);' in classic_actions
 assert 'screen.legacyProviderLabel() + " GB SOURCE / READ ONLY", 300' in classic_actions
 assert 'screen.legacyProviderLabel() + " GBC SOURCE / READ ONLY", 500' in classic_actions
 assert "const int w = pokemon ? 650 : 560;" not in classic_actions

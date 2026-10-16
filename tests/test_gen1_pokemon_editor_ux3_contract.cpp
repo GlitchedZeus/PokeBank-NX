@@ -55,13 +55,15 @@ int main() {
     // does nothing, a clear tilt moves immediately, the lower release threshold prevents chatter,
     // and holding eventually repeats without repeated D-pad taps.
     constexpr std::uint64_t Up = 1, Down = 2, Left = 4, Right = 8;
+    // The shared repeat is wall-clock based (NavigationRepeat.h), so frames carry ~60 fps times.
     PokeBank::UIModel::ControllerNavigation nav;
-    assert(nav.apply(0, 0, 4000, 5000, Up, Down, Left, Right) == 0); // deadzone
-    assert((nav.apply(0, 0, 0, 20000, Up, Down, Left, Right) & Up) != 0); // immediate press
-    assert(nav.apply(0, 0, 0, 12000, Up, Down, Left, Right) == 0); // hysteresis hold, no chatter
+    std::uint64_t ms = 0;
+    assert(nav.apply(0, 0, 4000, 5000, Up, Down, Left, Right, ms += 16) == 0); // deadzone
+    assert((nav.apply(0, 0, 0, 20000, Up, Down, Left, Right, ms += 16) & Up) != 0); // immediate press
+    assert(nav.apply(0, 0, 0, 12000, Up, Down, Left, Right, ms += 16) == 0); // hysteresis hold, no chatter
     bool repeated = false;
     for (int frame = 0; frame < 30; ++frame) {
-        const auto event = nav.apply(0, 0, 0, 20000, Up, Down, Left, Right);
+        const auto event = nav.apply(0, 0, 0, 20000, Up, Down, Left, Right, ms += 16);
         if (event & Up) { repeated = true; break; }
     }
     assert(repeated);
