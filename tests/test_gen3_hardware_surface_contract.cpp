@@ -149,7 +149,9 @@ int main() {
     contains(surface, "state.session.setShiny(state.speciesPreviewShiny)");
     assert(surface.find("state.session.mode == SessionModel::Mode::Create && (down & HidNpadButton_Y)") == std::string::npos);
     contains(surface, "state.speciesPreview, 386, state.speciesPreviewShiny");
-    contains(surface, "{{\"D-pad/Stick\", \"Browse\"}, {\"Y\", \"Shiny\"}, {\"A\", \"Choose\"}, {\"B\", \"Cancel\"}}");
+    // The species picker footer is the shared one: ... Y Normal/Shiny, A Select, B Cancel.
+    contains(surface, "footer.yLabel = \"Normal/Shiny\"");
+    contains(surface, "SharedEditorChrome::drawPickerFooter(fb, footer)");
     contains(surface, "PID (read-only)");
     // Read-only Gen III PID-linked information must remain legible. In passive View
     // mode every derived row is informational; in Create/Edit PID remains readable
@@ -192,11 +194,12 @@ int main() {
     contains(shell, "window.first = std::min<std::size_t>(");
     contains(surface, "state.detailsTouchScroll.updateVertical(");
     contains(surface, "detailPixelOffset, firstDetailRow");
-    contains(shell, "visibleRows = 8");
+    contains(shell, "viewport.visibleRows");
+    contains(shell, "detailsViewport(Geometry(1280, 720, 56)).visibleRows == 8");
     contains(shell, "labelWidth + 28");
     contains(shell, "fitDetailsText");
     contains(shell, "drawVerticalScrollIndicator");
-    contains(shell, "viewportY = y + 216");
+    contains(shell, "viewportY = viewport.top");
     contains(shell, "fb.setClipRect");
     contains(shell, "fb.clearClip()");
     contains(surface, "previewCreate"); contains(surface, "previewEdit");
@@ -220,7 +223,7 @@ int main() {
     contains(surface, "Shared::passiveViewMoveColumn");
     contains(surface, "Shared::normalizePassiveViewFocus");
     contains(surface, "visibleMoveFocus = Shared::normalizeMoveRowFocus");
-    contains(surface, "Shared::moveRowFocus(rightW)");
+    contains(surface, "SharedMovesPanel::draw(fb, movesLayout, slots, kGen3MoveGame");
     contains(surface, "beginMoveEditor(screen, state, static_cast<int>(state.focus.row))");
     const auto contextStart = surface.find("bool handleMoveEditor(");
     const auto contextEnd = surface.find("bool handleWorkspace(", contextStart);
@@ -232,11 +235,11 @@ int main() {
     contains(contextualMoveEditor, "state.moveEditorRow == 2");
     contains(surface, "beginMoveEditor");
     contains(surface, "drawMoveEditor");
-    contains(surface, "Contextual editor — B always cancels this dialog");
+    contains(surface, "SharedMoveFacts::detailLine(");
     contains(surface, "Keep these move details");
     contains(surface, "Discard these move details");
     contains(surface, "\"Move — Generation III\"");
-    contains(surface, "\"Empty + compatible moves only • exact Gen III Acc / Pwr / PP\"");
+    contains(surface, "SharedMovesPanel::drawChooserCaptions(fb, columns, y + 58, kGen3MoveGame)");
     contains(surface, "Gen3::Learnset::directlyLearnable");
     contains(surface, "target != PickerTarget::Ability && target != PickerTarget::Move");
     const auto valuePickerBegin = surface.find("void drawValuePicker(");
@@ -265,7 +268,7 @@ int main() {
     contains(surface, "moveLayout.rowStep");
     contains(surface, "Held Item — Generation III");
     contains(surface, "Names::machineDisplayLabel(Enums::GameVersion::FRLG");
-    contains(surface, "{\"D-pad/Stick\", \"Navigate\"}, {\"L/R\", \"Page\"}");
+    contains(surface, "footer.gridPaging = true;");
     assert(surface.find("Add Pokemon") != std::string::npos); // Box action still exists.
     const auto moveEditorBegin = surface.find("void drawMoveEditor(");
     const auto workspaceBegin = surface.find("void drawWorkspace(", moveEditorBegin);
@@ -315,7 +318,7 @@ int main() {
     contains(move, "resizeSelection(screen, state, nav)");
     contains(move, "D-pad/Stick to resize");
     contains(move, "{\"D-pad/Stick\", \"Resize Selection\"}");
-    contains(surface, "{\"D-pad/Stick\", \"Browse\"}, {\"Y\", \"Shiny\"}");
+    contains(surface, "footer.yLabel = \"Normal/Shiny\"");
     contains(move, "setLegacyHoldingPresentation(screen, true)");
     contains(move, "drawVisual(fb");
     contains(surface, "state.previewRecord");

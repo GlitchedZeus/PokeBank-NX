@@ -238,7 +238,7 @@ int main() {
         UI::SharedSpeciesPicker::drawContent(fb,100,76,dex,251,true,
             [](uint16_t id){ return std::to_string(id); }, [](uint16_t id){ return std::to_string(id); });
         assert((sprites == std::vector<std::pair<uint16_t,bool>>{{dex,false},{dex,true}}));
-        assert(std::any_of(texts.begin(),texts.end(),[](const Text& t){return t.value == "Intended: Shiny";}));
+        assert(std::any_of(texts.begin(),texts.end(),[](const Text& t){return t.value == "Shiny: Yes";}));
     }
     std::cout << "Gen II production Data/Graph and shared species renderer: native gating, exact generation title, bounded nonoverlapping text, sprite identity PASS\n";
 }
