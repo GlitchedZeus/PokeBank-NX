@@ -1112,8 +1112,18 @@ namespace Legality {
         const bool hasExactGen1Source = exactGen1Source(exactSourceGameId, gen1Source);
         const bool hasExactGen2Source = exactGen2Source(exactSourceGameId, gen2Source);
         const bool hasExactGen3Source = exactGen3Source(exactSourceGameId, gen3Source);
+        // Gen III PK3 (R/S/E/FR/LG): the PKHeX-order analyzer (Gen3Legality.cpp) runs once
+        // here. The older Gen III checks below judge their own audited tables and yield to
+        // it only where it certified this exact record; its findings merge at the end.
+        const Gen3Pk3::Verification gen3Verified = Gen3Pk3::verify(pk, exactSourceGameId);
         const uint16_t species = pk.speciesID();
-        if (species == 0) return r;  // empty slot — nothing to validate
+        if (species == 0) {
+            // Empty slot: nothing to validate. A PK3 whose internal species index has no
+            // National Dex number also reads as species 0; the Gen III analyzer reports it
+            // (PKHeX EncInvalid). Other formats and empty PK3 slots are left untouched.
+            applyGen3Analyzer(r, gen3Verified, exactSourceGameId);
+            return r;
+        }
         if (const auto* gen1 = pk.nativePk1ReadOnly())
             return analyzeNativeGen1(pk, *gen1, sourceFormatMismatch);
         if (const auto* gen2 = pk.nativePk2ReadOnly())
@@ -2108,22 +2118,42 @@ namespace Legality {
             const std::array<uint16_t, 4> sourceMoves{
                 pk.move(0), pk.move(1), pk.move(2), pk.move(3)
             };
+            // A PK3 keeps its origin game (version byte). A move native to that game is as
+            // native to this record's history as one native to the cartridge it is stored in
+            // now: a FireRed Diglett traded to Emerald keeps its FireRed level-up moves.
+            PokeVault::Integration::Gen3::SourceGame originSource = gen3Source;
+            const bool hasOriginSource = exactGen3Source(
+                Gen4Origin::exactGen3GameId(pk.originGame()), originSource);
             for (const uint16_t moveId : sourceMoves) {
                 if (moveId == 0) continue;
-                const auto availability =
+                using Availability = PokeVault::Integration::Gen3::Learnset::Availability;
+                auto availability =
                     PokeVault::Integration::Gen3::Learnset::classify(
                         gen3Source, species, moveId, sourceMoves);
-                using Availability = PokeVault::Integration::Gen3::Learnset::Availability;
-                if (availability == Availability::Transfer) {
-                    add(r, Severity::Warning,
-                        "Move is not native to this exact Gen III game (transfer required): " +
-                        std::string(Names::getMoveName(moveId)),
-                        CheckIdentifier::Moves);
-                } else if (availability == Availability::Preserved) {
-                    add(r, Severity::Warning,
-                        "Move is preserved but not in the audited Gen III native/transfer pool: " +
-                        std::string(Names::getMoveName(moveId)),
-                        CheckIdentifier::Moves);
+                if ((availability == Availability::Transfer ||
+                     availability == Availability::Preserved) &&
+                    hasOriginSource &&
+                    PokeVault::Integration::Gen3::Learnset::directlyLearnable(
+                        originSource, species, moveId))
+                    availability = Availability::Direct;
+                if (availability == Availability::Transfer ||
+                    availability == Availability::Preserved) {
+                    std::string text =
+                        (availability == Availability::Transfer
+                             ? "Move is not native to this exact Gen III game or to this record's origin game (transfer required): "
+                             : "Move is preserved but not in the audited Gen III native/transfer pool: ") +
+                        std::string(Names::getMoveName(moveId));
+                    // The pret pools omit event-gift moves, Sketch and some tutor/egg
+                    // paths. When the PKHeX-order analyzer certified this exact record
+                    // (encounter matched, every move verified), the pool gap is a note.
+                    if (gen3Verified.certified) {
+                        add(r, Severity::Info,
+                            text + "; the Gen III analyzer verified every move for its matched " +
+                                gen3Verified.encounter,
+                            CheckIdentifier::Moves);
+                    } else {
+                        add(r, Severity::Warning, std::move(text), CheckIdentifier::Moves);
+                    }
                 } else if (availability == Availability::Invalid) {
                     add(r, Severity::Warning,
                         "Move may not be learnable: " + std::string(Names::getMoveName(moveId)),
@@ -2786,19 +2816,51 @@ namespace Legality {
             (exactGeneration == 4 || (pk.metLocation() != 0 && pk.metLevel() != 0))) {
             using namespace PokeVault::Integration::EncounterGuardrails;
             if (exactGeneration == 3) {
-                const auto candidates =
-                    forGameSpeciesWithGen3Provenance(exactSourceGameId, species);
-                if (!candidates.empty()) {
-                    const bool match = std::any_of(
-                        candidates.begin(), candidates.end(), [&](const auto& choice) {
-                            return choice.encounter.location == pk.metLocation() &&
-                                   choice.encounter.containsLevel(pk.metLevel());
-                        });
-                    if (!match)
-                        add(r, Severity::Warning,
-                            "Met location/level does not match the audited encounter table for " +
-                            std::string(exactSourceGameId),
+                // Judge the record's own origin game (its stored version byte, not the
+                // cartridge it was read from) and every species of its Gen III evolution
+                // lineage: a LeafGreen Caterpie that evolved into Metapod and was traded to
+                // FireRed is checked against LeafGreen Caterpie rows. A Colosseum/XD or
+                // unknown origin has no handheld table here (the analyzer reports it).
+                const std::string_view originGameId =
+                    Gen4Origin::exactGen3GameId(pk.originGame());
+                std::vector<EncounterTemplate> candidates;
+                if (!originGameId.empty()) {
+                    for (const uint16_t lineageSpecies : Gen3Pk3::lineage(species)) {
+                        const auto rows = forGameSpecies(originGameId, lineageSpecies);
+                        candidates.insert(candidates.end(), rows.begin(), rows.end());
+                    }
+                }
+                const bool tableMatch = std::any_of(
+                    candidates.begin(), candidates.end(), [&](const auto& encounter) {
+                        return encounter.location == pk.metLocation() &&
+                               encounter.containsLevel(pk.metLevel());
+                    });
+                if (gen3Verified.inGameTrade && pk.metLocation() != 254) {
+                    // PKHeX (EncounterTrade3.IsMatchExact) matches a Gen III in-game
+                    // trade without checking the met location, but the games always
+                    // store 254 for one (pokeemerald src/trade.c:4555/4577, pokeruby
+                    // src/trade.c:4948/4970, pokefirered src/trade_scene.c:2461/2481). Kept a
+                    // Warning: PKHeX accepts the record, so it is never Invalid here.
+                    add(r, Severity::Warning,
+                        "Met location " + std::to_string(pk.metLocation()) +
+                            " does not fit the in-game trade the Gen III analyzer matched: Gen III in-game trades are always recorded at met location 254",
+                        CheckIdentifier::Encounter);
+                } else if (!candidates.empty() && !tableMatch) {
+                    std::string text =
+                        "Met location/level does not match the audited encounter table for " +
+                        std::string(originGameId);
+                    // The L1 table is a guardrail subset: it has no in-game trades, event
+                    // gifts, Game Corner prizes, roaming routes or mass outbreaks and
+                    // misses some Ruby/FireRed-only statics (decomp evidence in
+                    // docs/legality/GEN3_PKHEX_RULE_INVENTORY.md 4b). When the PKHeX-order
+                    // analyzer certified this exact record, the gap is a note.
+                    if (gen3Verified.certified) {
+                        add(r, Severity::Info,
+                            text + "; the Gen III analyzer matched " + gen3Verified.encounter,
                             CheckIdentifier::Encounter);
+                    } else {
+                        add(r, Severity::Warning, std::move(text), CheckIdentifier::Encounter);
+                    }
                 }
             } else if (exactGeneration == 4) {
                 // Encounter provenance follows the Pokemon's stored origin version, not the
@@ -3190,7 +3252,7 @@ namespace Legality {
             add(r, Severity::Warning, "Stored checksum is invalid");
 
         // ---- Gen III PK3 (R/S/E/FR/LG): PKHeX-parity analyzer, see Gen3Legality.cpp ----
-        applyGen3Analyzer(r, pk, exactSourceGameId);
+        applyGen3Analyzer(r, gen3Verified, exactSourceGameId);
         applyGen4Analyzer(r, pk, context.exactSourceGameId);
         return r;
     }
