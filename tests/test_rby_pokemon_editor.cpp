@@ -250,5 +250,13 @@ int main() {
     // Japanese layout remains browsable but is capability-gated for mutation.
     std::vector<uint8_t> jp(0x8000);jp[0x2ED6]=jp[0x302E]=0xFF;jp[0x3594]=sum(jp,0x2598,0xFFC);
     auto j=parse(jp,SourceGame::Red);assert(j);assert(!StagedPokemonEditor::create(*j.save,error));
+    {
+        // Create default matches Gen II-V (#25 L5) with Pikachu's pokered base moves at base PP.
+        const PokeVault::Integration::Gen1::BoxPokemonCreate defaults{};
+        using E = PokeVault::Integration::Gen1::StagedPokemonEditor;
+        assert(defaults.species == 25 && defaults.level == 5);
+        assert(defaults.moves[0] == 84 && defaults.moves[1] == 45 && defaults.moves[2] == 0 && defaults.moves[3] == 0);
+        for (std::size_t i = 0; i < 4; ++i) assert(defaults.pp[i] == E::moveBasePP(defaults.moves[i]));
+    }
     std::cout<<"Gen I staged boxed Pokemon editor: PASS (R/B/Y fields, lists, encoding, immutable export)\n";
 }

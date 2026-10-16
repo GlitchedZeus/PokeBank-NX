@@ -795,7 +795,8 @@ require(len(branches) == 16 and "if (overlay == Overlay::QuitConfirm) {" in bran
 branches[0] = branches[0][branches[0].index("if (overlay == Overlay::QuitConfirm)") + len("if (overlay == Overlay::"):]
 for branch in branches:
     name = branch[:branch.index(")")].split(" ")[0]
-    require("drawNavBar(" in branch or "drawProductHelpOverlay(" in branch,
+    require("drawNavBar(" in branch or "drawProductHelpOverlay(" in branch or
+            "SharedEditorChrome::drawPickerFooter(" in branch,
             "Home modal " + name + " must draw its own footer above the covered Home footer")
 require("{\"B\", \"Quit PokeBank NX (asks first; Y confirms)\"}" in source and
         "Exit PokeBank NX from Product Home" not in source,

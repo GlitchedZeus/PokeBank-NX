@@ -13,7 +13,7 @@
 #include "UI/Gen1PokemonEditorUX3Contract.h"
 #include "UI/NavigationRepeat.h"
 #include "UI/MovePickerPresentation.h"
-#include "UI/MovePickerRowUI.h"
+#include "UI/SharedMovesPanel.h"
 
 namespace UI::Gen1PokemonEditor {
 namespace {
@@ -542,17 +542,22 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
 
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
     ux2DrawPanel(fb, x, y, w, h);
-    fb.drawText(x + 24, y + 18, "Choose Move", Colors::Text, TextStyle::Heading);
+    fb.drawText(x + 24, y + 18, "Move \xE2\x80\x94 Generation I", Colors::Text, TextStyle::Heading);
 
     const auto choices = ux3MoveChoices(screen);
     int selectedIndex = 0;
     for (int i = 0; i < static_cast<int>(choices.size()); ++i)
         if (choices[static_cast<size_t>(i)] == state.pickerValue) { selectedIndex = i; break; }
-    fb.drawText(x + 24, y + 50,
-        "Compatible with " + speciesCompact(ux3CurrentSpecies(screen)) + " in " +
-        (editor(screen) ? std::string(ux3GameName(editor(screen)->metadata().sourceGame)) : std::string("Gen I")) +
-        " • exact Gen I Acc / Pwr / PP",
-        Colors::TextDim, TextStyle::Caption);
+    {
+        const std::string scope = "Compatible with " + speciesCompact(ux3CurrentSpecies(screen));
+        int sw = 0, sh = 0;
+        fb.measureText(scope, sw, sh, TextStyle::Caption);
+        fb.drawText(x + w - 24 - sw, y + 26, scope, Colors::TextDim, TextStyle::Caption);
+    }
+    // The shared Move chooser rows (UI/SharedMovesPanel.h): No. / Move / Type / Pwr / Acc / PP,
+    // exact Gen I facts from pret/pokered, same columns as Gen II-V.
+    const auto columns = SharedMovesPanel::chooserColumns(x + 40, w - 80);
+    SharedMovesPanel::drawChooserCaptions(fb, columns, y + 60, Enums::GameVersion::RBY);
     constexpr int visible = 9, rowStep = 42;
     const int count = static_cast<int>(choices.size());
     state.pickerViewport.ensure(selectedIndex, count, visible);
@@ -570,8 +575,8 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
         appendClippedTouchButton(screen.touchButtons, 4000 + idx,
             x + 24, rowY, w - 48, 38,
             x + 24, listTop, w - 48, visible * rowStep);
-        MovePickerRowUI::draw(fb,x+40,rowY+4,
-                              static_cast<uint16_t>(move),Enums::GameVersion::RBY);
+        SharedMovesPanel::drawChooserRow(fb, columns, rowY + 8, static_cast<uint16_t>(move),
+                                         Enums::GameVersion::RBY, selected);
     }
     fb.clearClip();
 }
@@ -672,6 +677,7 @@ void ux3DrawStagedView(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     view.recordLabel = "Staged box record";
     view.sourceStateLabel = "STAGED VIEW / READ ONLY";
     Modals::drawGen1PokemonDetailsPresentation(screen, fb, view);
+    drawNavBar(fb, {{"B", "Back"}});
 }
 
 std::string ux3FooterText(const TrainerViewScreen& screen, const UX2State& state) {
@@ -716,7 +722,7 @@ void ux3DrawTouchNavBar(PKSEFramebuffer& fb, const UX2State& state) {
         case UX2Mode::AddDraft:
             drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"}, {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}}); return;
         case UX2Mode::Actions:
-            drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Select"}, {"B", "Back"}}); return;
+            UI::SharedEditorChrome::drawPickerFooter(fb, {true, false}); return; // Browse, A Select, B Cancel
         case UX2Mode::LevelExpEditor:
         case UX2Mode::MoveEditor:
         case UX2Mode::DVEditor:

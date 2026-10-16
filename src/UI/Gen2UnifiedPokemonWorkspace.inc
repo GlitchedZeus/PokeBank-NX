@@ -978,7 +978,7 @@ void drawUnifiedWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         drawWorkspaceFooter(fb, screen);
     }
     if (state.itemPicker) drawHeldItemPicker(fb, state);
-    if (state.confirmExit) drawConfirm(fb, state);
+    if (state.confirmExit) drawConfirm(screen, fb, state);
     if (unified.progressionEditor) drawProgressionEditor(fb, state, unified);
 }
 

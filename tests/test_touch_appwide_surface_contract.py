@@ -739,6 +739,17 @@ require_all("src/UI/BackupSelectionScreen.cpp",
             "if (touch.justTapped()) {",
             "if (in(deleteDeleteBtn))",
             "else if (in(deleteCancelBtn))")
+# Deleting a backup is irreversible, so it is never on A (P0 #320): the tapped Delete
+# button is Y, only the shared Y-confirms decision table deletes, and A/B cancel.
+require_all("src/UI/BackupSelectionScreen.cpp",
+            "if (in(deleteDeleteBtn))      kDown |= HidNpadButton_Y;",
+            "const Decision decision = PokeBank::UIModel::HomeQuit::decide(kDown);",
+            "if (decision == Decision::Quit) {\n                deleteBackup(deleteConfirmationIndex);",
+            '"Delete this backup?"',
+            'confirmFooter(\n                                               "Y", "Delete", "A", "Cancel")',
+            'drawGlyphButton(fb, delX,    by, bw, bh, "Y", "Delete", Colors::Red, Colors::White);')
+backup_src = (ROOT / "src/UI/BackupSelectionScreen.cpp").read_text(encoding="utf-8")
+assert "kDown & HidNpadButton_A) {\n                // Confirm deletion" not in backup_src
 
 # All generations share one clipped Species-picker gesture origin. Horizontal drags
 # and drags starting on the preview panel cannot advance the species on release.

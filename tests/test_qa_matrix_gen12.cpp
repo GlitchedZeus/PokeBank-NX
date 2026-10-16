@@ -683,7 +683,7 @@ void runGen1Version(Matrix& m, const Spec& spec) {
                 c.expect(static_cast<bool>(re), "reparse after add: " + re.detail);
                 if (re) {
                     const auto& p = re.save->boxes()[0].slots.at(slot);
-                    c.expect(p && p->species == 1 && p->level == 5, "created record");
+                    c.expect(p && p->species == 25 && p->level == 5, "created record");
                     if (p) {
                         row.fact("create.default.species", std::to_string(p->species));
                         row.fact("create.default.level", std::to_string(p->level));
@@ -691,7 +691,7 @@ void runGen1Version(Matrix& m, const Spec& spec) {
                 }
             }
             row.check("creation", c.ok(), c.text(),
-                      "BoxPokemonCreate{} -> #1 L5 at the first empty slot; species 0, level 0 and a gap rejected");
+                      "BoxPokemonCreate{} -> #25 L5 at the first empty slot; species 0, level 0 and a gap rejected");
         }
 
         // fields: every BoxPokemonEdit field stages, reads back, and survives finalize + strict reparse.

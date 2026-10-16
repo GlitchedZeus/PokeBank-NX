@@ -744,8 +744,12 @@ void drawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, in
         drawRow(fb, x + 108, rowY, w - 216, std::to_string(value), text, value == state.pickerValue);
         rowY += 50;
     }
-    drawNavBar(fb, {{"Up/Down", "±1"}, {"Left/Right", "±10"},
-                    {"A", "Select"}, {"B", "Cancel"}});
+    PokeBank::UIModel::SharedEditorPresentation::Footer footer;
+    footer.push("Up/Down", "±1");
+    footer.push("Left/Right", "±10");
+    for (const auto& hint : PokeBank::UIModel::SharedEditorPresentation::pickerFooter({false, false}))
+        footer.push(hint.glyph, hint.label); // A Select, B Cancel
+    UI::SharedEditorChrome::drawFooter(fb, footer);
 }
 
 void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
@@ -764,7 +768,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, i
             {"Edit", "Summary / Moves / DVs / Stat Exp / Trainer"},
             {"Clone", "Choose a destination box; uses its first empty slot"},
             {"Remove", "Stages synchronized Gen I box compaction"},
-            {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Format validation; full encounter legality not claimed"},
+            {PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, "Not checked"},
             {"Review Pending Changes", std::to_string(pendingLines(screen).size()) + " change(s)"},
             {"Cancel", "No mutation"},
         };

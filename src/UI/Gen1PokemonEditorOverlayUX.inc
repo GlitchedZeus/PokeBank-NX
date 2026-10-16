@@ -1,4 +1,5 @@
 #include "UI/SharedEditorPresentation.h"
+#include "UI/SharedEditorChrome.h"
 #include "UI/Gen1ListFit.h"
 #include "UI/Gen1PokemonEditorOverlay.h"
 
@@ -1054,6 +1055,10 @@ void drawProvenance(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y
 
 void drawConfirmation(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
     auto& state = stateFor(screen);
+    // The question owns the frame's touch and draws its own footer naming exactly the buttons
+    // its input handler takes (B back, Left/Right box for Clone, A stage).
+    UI::SharedEditorChrome::beginModal(screen.touchButtons);
+    namespace Presentation = PokeBank::UIModel::SharedEditorPresentation;
     if (state.mode == Mode::CloneConfirm) {
         auto* e = editor(screen);
         const int dest = e ? firstEmpty(*e, state.cloneBox) : -1;
@@ -1063,12 +1068,14 @@ void drawConfirmation(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int
             (dest >= 0 ? " / Slot " + std::to_string(dest + 1) : " / FULL"), Colors::Text, TextStyle::Heading);
         fb.drawText(x + 40, y + 186,
             "The source Pokemon stays untouched. Clone uses the first empty contiguous Gen I slot.", Colors::TextDim);
+        UI::SharedEditorChrome::drawFooter(fb, Presentation::confirmFooter("A", "Stage Clone", "Left/Right", "Box"));
     } else {
         fb.drawText(x + 26, y + 18, "Stage Removal?", Colors::Text, TextStyle::Heading);
         fb.drawText(x + 40, y + 120,
             "Removal compacts the Gen I box arrays in staged memory only.", Colors::Text);
         fb.drawText(x + 40, y + 174,
             "The original RetroArch .srm is never written.", Colors::Accent);
+        UI::SharedEditorChrome::drawFooter(fb, Presentation::confirmFooter("A", "Confirm Remove"));
     }
 }
 
@@ -1174,7 +1181,9 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     }
 
     if (state.picker != PickerKind::None) drawPicker(screen, fb, x, y, w, h);
-    drawFooter(fb, footerText(screen, state));
+    // A confirmation draws its own footer (drawConfirmation).
+    if (state.mode != Mode::CloneConfirm && state.mode != Mode::RemoveConfirm)
+        drawFooter(fb, footerText(screen, state));
 }
 
 } // namespace UI::Gen1PokemonEditor

@@ -60,13 +60,17 @@ Each new test fails against the previous code unless marked "pinning".
 | 1/5 | Gen I list editors: whole rows above status line; no Row x/y counters | 9d1d03f9 | `test_gen1_list_fit` |
 | 2 | Bag Remove asks first (Y/B); one per-item quantity query | 3dcce1fd | `test_classic_inventory_ui_model` |
 | 4/7 | "Origin & Legality" label; shared picker footers (pickerFooter); shared Pokerus rule | 4203ce0d + 6e900e27 (native fix) | `test_gen2_inline_fields`, route contracts |
+| 1 | Gen I/II moves on the shared Moves panel (UI/ClassicMovesPanel.h); native max PP; touch == outlined rows; legality row in DATA | ddd52f55, c7355c57 | `test_gen2_moves_panel` |
+| 5 | Gen I/II Actions sheet forwards to S's NarrowPokemonMenu::classic/gen1 | 5d9dc8e5 | `test_classic_pokemon_action_menu` |
+| item 1 | Classic quantity rule delegates to QuantityPolicy (FRLG 999, RSE 99/999, Gen III PC 999) | 28707782 | `test_classic_inventory_ui_model`, `test_gen3_staged_inventory` |
+| 1 | Gen I/II move choosers on the shared chooser rows (pret move types) | 307976f3 | `test_gen2_moves_panel` |
+| item 6 | Gen II data pane on SharedDataPane::layoutRows | see git log | `test_gsc_workspace_render` |
+| — | Gen I Create default #25 Pikachu L5 (Thunder Shock, Growl) | see git log | `test_rby_pokemon_editor`, qa matrix gen12 |
 
 Note: 4203ce0d alone fails the native build (SharedEditorChrome.h first included under the composite's
 `drawFooter` rename); 6e900e27 fixes it with push/pop_macro.
 
-Remaining: item 1 QuantityPolicy (waiting on Makefile link permission); phase 1 Gen I/II moves on
-SharedMovesPanel; item 5 action menu adapter (S 41271d7); item 6 SharedDataPane::layoutRows (S 9c3f6f8);
-owner detail on the "hidden row" in Gen I Create.
+Remaining: owner detail on the "hidden row" in Gen I Create.
 
 Open / reported:
 - Coordinator one-liner: pass held/stick to `handleFoundationPassiveViewInput` (Gen I View stick parity).
@@ -107,5 +111,8 @@ Open / reported:
   native devkitA64 (pinned image) build.
 
 ## Next
+
+Coordinator: C FINAL head goes into the candidate NRO; add nothing after it unless asked.
+Party check (S 647917e): Gen I/II staged editors are box-only, so Party → View loses nothing.
 
 Continue the Gen I–IV audit; Gen IV `.dsv` container once the owner decides; watch PR #318 CI.
