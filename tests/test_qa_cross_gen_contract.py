@@ -38,13 +38,10 @@ XFAIL = {
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational
 # "out of scope" lines and never count as violations, in gate or candidate mode.
-OUT_OF_SCOPE = {
-    "include/UI/ActionSheetModel.h": "generic TrainerViewScreen / MutationTargetPolicy sheet for the modern Gen VI+ screens (coordinator, 2026-10-16)",
-    "src/UI/Panels/StoragePanel.cpp": "modern storage panel, reached only from TrainerViewScreenBase.inc (Gen VI+)",
-    "src/UI/Dialogs/StatEditDialog.cpp": "modern stat dialog, reached only from TrainerViewScreenBase.inc (Gen VI+)",
-    "src/UI/Dialogs/ItemEditDialog.cpp": "modern item dialog, reached only from TrainerViewScreenBase.inc (Gen VI+)",
-    "src/UI/Dialogs/SaveConfirmDialog.cpp": "modern save dialog, reached only from TrainerViewScreenBase.inc (Gen VI+)",
-    "src/UI/Dialogs/PickerDialog.cpp": "modern picker dialog, reached only from TrainerViewScreenBase.inc (Gen VI+)",
+OUT_OF_SCOPE: dict[str, str] = {
+    # Empty until lane S proves a file unreachable from every Gen I-V path (coordinator, 2026-10-16:
+    # TrainerViewScreenBase's dialogs, ItemsPanel/StoragePanel and ActionSheetModel stay IN scope;
+    # e.g. the base builds a gen4ItemView footer, so Gen IV bags may render through it).
 }
 
 # Names the lanes are introducing. Update when the lane lands if the final name differs.
