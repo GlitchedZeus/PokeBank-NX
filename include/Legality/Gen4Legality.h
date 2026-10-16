@@ -79,6 +79,24 @@ bool read(std::span<const uint8_t> decrypted, Pk4& out) noexcept;
 /// Gen IV game ids PokeBank NX uses for exact-source analysis.
 bool isGen4SourceGameId(std::string_view exactSourceGameId) noexcept;
 
+/// What the encounter and move search established for one record (see analyzePk4).
+struct MoveEvidence {
+    /// An encounter template (wild, static, gift, trade, egg, Mystery Gift, Pokewalker,
+    /// Ranch or a Pal Park Generation III encounter) matched the record.
+    bool encounterMatched = false;
+    std::array<uint16_t, 4> moves{};
+    /// How each move slot was verified against the matched encounter and the evolution
+    /// chain ("level-up", "TM/HM", "a move the matched encounter starts with", ...), or
+    /// nullptr when that slot was not verified.
+    std::array<const char*, 4> source{};
+
+    bool allMovesVerified() const noexcept {
+        if (!encounterMatched) return false;
+        for (const char* s : source) if (s == nullptr) return false;
+        return true;
+    }
+};
+
 } // namespace Gen4
 
 /// Analyze one decrypted PK4 record. exactSourceGameId names the cartridge whose save
@@ -86,12 +104,25 @@ bool isGen4SourceGameId(std::string_view exactSourceGameId) noexcept;
 /// "soulsilver_nds"); the origin game itself is read from the record. An all-zero or
 /// species-0 record returns an empty report.
 Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId);
+/// As above; when evidence is not null it also receives what the encounter and move
+/// search established (left default when the search did not run).
+Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId,
+                  Gen4::MoveEvidence* evidence);
 
 /// Folds the Gen IV analyzer into a report produced by analyze() for a native PK4
 /// entity (no-op for any other entity). Invalid and Warning issues are added once each;
 /// coverage becomes Complete only when the analyzer matched a legitimate origin with
 /// every area checked and nothing wrong, and the existing report has no Invalid or
 /// Warning issue. Otherwise the existing coverage is left as it is.
+///
+/// One older check yields to the analyzer: analyze()'s audited Gen IV move pools
+/// (level-up, egg, tutor and TM/HM moves of the current species and its pre-evolutions
+/// in D/P, Pt and HG/SS) do not hold the moves an encounter itself supplies (Mystery
+/// Gift and Pokewalker moves, a Pal Park transfer's Generation III moves). When the
+/// analyzer matched an encounter, reported nothing Invalid and verified every move
+/// against that encounter and the evolution chain, the "Move is outside the audited
+/// direct/transfer pool for this exact Gen IV game" Warning for those moves becomes an
+/// Info note saying how the analyzer verified the move. No Invalid is ever changed.
 void applyGen4Analyzer(Report& report, const Pokemon::Pokemon& pk, std::string_view exactSourceGameId);
 
 } // namespace Legality

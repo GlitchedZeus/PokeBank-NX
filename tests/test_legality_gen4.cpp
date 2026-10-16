@@ -154,6 +154,15 @@ const Case kCases[] = {
     {"p0", Expect::Valid, "platinum_nds", "EncounterEgg3:1", "E77FF0EF0000B5FC01000000F8BBFDA687000000464100020000000000000000000000000000000021002D00000000002328000000000000FFD36F160000000000000000000000002C013F0136012C012B013D012B013F013C01FFFFE0FF000200000000000000003E0149015701580149015601FFFF3F010000001A0A0F00003700000405000000"},  // PKHeX: VALID (Pal Park)
     {"p4", Expect::Valid, "heartgold_nds", "EncounterGift3:1", "90BC9C8A00008AF901000000981A0000804305004641000200000000000000000000000000000000E6004A004C00EB0014280A0500000000CFCF1B150000000000000000000000002C013F0136012C012B013D012B013F013C01FFFFE0FF0002000000000000000022012101DE012B01380133014001FFFF0000001A0A0F000037000004C6000000"},  // PKHeX: VALID (Pal Park)
     {"p8", Expect::Valid, "pearl_nds", "EncounterGift3JPN:1", "4DAB395F00003CC30100000043EB000030020000464100010000000000000000000000000000000021002D004900160023280A0F0000000070F6FC30000000000000000000000000860068005F0071007E00FFFF0000000000000000000000020000000000000000790057005E009800F100FFFF000000000000001A0A0F0000370000040A000000"},  // PKHeX: VALID (Pal Park)
+    // Moves an encounter itself supplies, outside analyze()'s audited Gen IV move pools
+    // (Mystery Gift and Pokewalker moves, Pal Park Generation III moves); PKHeX VALID with
+    // no Fishy result, and certified once the analyzer has verified every move.
+    {"b79799", Expect::Valid, "diamond_nds", "PCD:491", "0C206BBF0000E7E2EB01D000C614AD285A620200007B000200000000000000000000000000000004CB01CC01AB005F0005050F14000000009130CB100000000005000000000000002E012B013C0135013C012B013301FFFFFFFFFFFFFFFF000A00000000000000002B0136012B01370139013D01FFFFFFFF0000001A0A100000F40B0010B2000000"},
+    {"b31280", Expect::Valid, "diamond_nds", "PCD:25", "AF136E240000F5C41900EC00AB1F6E5148E80100460900020000000000000000000000000000000439005500710062000F0F1E1E0000000080B99B140000000001000000000000003A01330135012B012D0132013F01FFFFFFFFFFFFFFFF000A00000000000000003E012D01310141012D01FFFFFFFFFFFF0000001A0A100000F40B001032000000"},
+    {"b53860", Expect::Valid, "heartgold_nds", "EncounterStatic4Pokewalker:446", "FAFFFF4600002F24BE0100005CE08B589C0000004635000200000000000000000000000000000000760021006F0078000A232805000000000000BF3400000000000000000000E90037013F0138012D01320136012B014201FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A100000BA0B000405000400"},
+    {"p9320", Expect::Valid, "platinum_nds", "EncounterEgg3:77", "52ADA93A0000A06C4D000000220763647D000000463200020000000000000000000000000000000062002D00000000001E28000000000000C47EF43F0000000002000000000000003A013901380143013E012B01FFFF000048A10C02E0FF000400000000000000003E0149015701580149015601FFFF00000000001A0A1000003700000405000000"},
+    {"p10120", Expect::Valid, "soulsilver_nds", "EncounterSlot3:84", "6E6879F50000E51B5400000087AB0A6EE34C00004632000200000000000000000000000000000000E4001F00A100630014140A1400000000E1505F230000000002000000000000002E0139012E013F013901FFFF0000000048A10C02E0FF000200000000000000003E0149015701580149015601FFFF00000000001A0A100000370000051B000000"},
+    {"p28412", Expect::Valid, "diamond_nds", "EncounterStatic3:386", "E325582D0000EB3282010000C7FC5E5BD6830000462E0002000000000000000000000000000000001A01BF005E00210114140A0A000000004BF4A4290000000005000000000000002E012F013901420143013D01FFFF000048A10C02E0FF000500000000000000003E0149015701580149015601FFFF00000000001A0A100000370000041E000000"},
 };
 
 enum class Op : uint8_t { Set8, Set16, Set32, Or8, And8, Xor8 };
@@ -559,6 +568,30 @@ int main() {
         if (!sameReport(before, after) || after.coverage.encounter != before.coverage.encounter || after.coverage.moves != before.coverage.moves)
             fail("hook on a PK3 entity: expected no change", after);
         checked += 2;
+    }
+    {
+        // analyze()'s audited Gen IV move-pool Warning yields to the analyzer only when it
+        // matched an encounter, found nothing Invalid and verified every move; the note stays.
+        constexpr std::string_view kPool = "Move is outside the audited direct/transfer pool for this exact Gen IV game: ";
+        for (const char* name : {"b79799", "b31280", "b53860", "p9320", "p10120", "p28412"}) {
+            const auto* pk = findFixture(name);
+            const Report native = analyzeNative(*pk, gameOf(name));
+            if (hasText(native, Severity::Warning, kPool) || !hasText(native, Severity::Info, kPool) ||
+                !hasText(native, Severity::Info, "verified it for this record"))
+                fail(std::string("audited move pool on ") + name + ": expected the Warning to become a verified Info note", native);
+            ++checked;
+        }
+        // Darkrai with Volt Tackle in place of Shock Wave: the analyzer reports the move
+        // Invalid, so the older Warning for its event moves stays a Warning.
+        auto pk = *findFixture("b79799");
+        pk[0x2E] = 344 & 0xFF;
+        pk[0x2F] = 344 >> 8;
+        refreshChecksum(pk);
+        const Report native = analyzeNative(pk, "diamond_nds");
+        if (native.verdict() != Verdict::Invalid || !hasText(native, Severity::Warning, std::string(kPool) + "Roar of Time") ||
+            !hasText(native, Severity::Invalid, "cannot be learned"))
+            fail("audited move pool with an unverified move: expected Invalid and the Warning kept", native);
+        ++checked;
     }
 
     // 5. Fuzz: random bytes at every size class, then one to four random bytes in a valid

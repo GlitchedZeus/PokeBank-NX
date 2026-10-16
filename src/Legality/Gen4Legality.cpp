@@ -232,11 +232,34 @@ std::string moveFailText(std::size_t slot, const MoveResult& m, uint16_t move) {
     return "Move " + std::to_string(slot + 1) + " (#" + std::to_string(move) + ") " + what;
 }
 
+// How LearnVerifier verified a move slot, for MoveEvidence (nullptr: not verified).
+const char* learnMethodText(LearnMethod m) noexcept {
+    switch (m) {
+    case LearnMethod::Empty: return "empty slot";
+    case LearnMethod::Initial: return "a move the matched encounter starts with";
+    case LearnMethod::LevelUp: return "level-up";
+    case LearnMethod::TMHM: return "TM/HM";
+    case LearnMethod::Tutor: return "move tutor";
+    case LearnMethod::Sketch: return "Sketch";
+    case LearnMethod::HOME: return "HOME";
+    case LearnMethod::Encounter: return "the matched encounter";
+    case LearnMethod::Evolution: return "evolution";
+    case LearnMethod::Shared: return "shared egg move";
+    case LearnMethod::ShedinjaEvo: return "Ninjask move kept by Shedinja";
+    case LearnMethod::Relearn: return "relearn";
+    case LearnMethod::EggMove: return "egg move";
+    case LearnMethod::InheritLevelUp: return "inherited level-up move";
+    case LearnMethod::SpecialEgg: return "special egg move";
+    default: return nullptr;
+    }
+}
+
 // ======================================================================= analyzer
 class Analyzer {
 public:
     Analyzer(const Pk4& pk, Table cart) : pk_(pk), cart_(cart) {}
     Report run();
+    MoveEvidence evidence() const noexcept;
 
 private:
     const Pk4& pk_;
@@ -1276,11 +1299,27 @@ Report Analyzer::run() {
     return r;
 }
 
+MoveEvidence Analyzer::evidence() const noexcept {
+    MoveEvidence e;
+    e.encounterMatched = encounterSearched_ && !search_.list.empty() && enc_.kind != EncKind::Invalid;
+    for (std::size_t i = 0; i < 4; ++i) {
+        e.moves[i] = pk_.moves[i];
+        e.source[i] = moves_[i].valid() ? learnMethodText(moves_[i].method) : nullptr;
+    }
+    return e;
+}
+
 } // namespace
 
 } // namespace Gen4
 
 Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId) {
+    return analyzePk4(decrypted, exactSourceGameId, nullptr);
+}
+
+Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId,
+                  Gen4::MoveEvidence* evidence) {
+    if (evidence != nullptr) *evidence = Gen4::MoveEvidence{};
     Report r;
     r.coverage.structure = CoverageLevel::Complete;
     Gen4::Pk4 pk;
@@ -1328,7 +1367,9 @@ Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSour
     if (exactSourceGameId == "diamond_nds" || exactSourceGameId == "pearl_nds") cart = Gen4::Table::DP;
     else if (exactSourceGameId == "platinum_nds") cart = Gen4::Table::Pt;
     Gen4::Analyzer a(pk, cart);
-    return a.run();
+    Report result = a.run();
+    if (evidence != nullptr) *evidence = a.evidence();
+    return result;
 }
 
 } // namespace Legality
