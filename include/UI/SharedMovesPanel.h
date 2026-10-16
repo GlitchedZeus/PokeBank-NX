@@ -80,7 +80,8 @@ struct Slot {
 
 inline std::string ppText(const Slot& slot, Enums::GameVersion game) {
     const auto f = Facts::facts(slot.move, game);
-    const int maximum = slot.maxPP >= 0 ? slot.maxPP : Facts::maxPP(f.basePP, slot.ppUps);
+    const int maximum = slot.maxPP >= 0 ? slot.maxPP
+        : Facts::maxPP(f.basePP, slot.ppUps, Facts::eraFor(game));
     return std::to_string(slot.pp) + "/" + std::to_string(maximum);
 }
 

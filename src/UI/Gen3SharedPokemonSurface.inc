@@ -1421,7 +1421,9 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
         state.actions = false;
         if (occupied && state.actionRow == 0) {
             // Native base View is read-only and does not mutate either save.
-            screen.openPokemonActionSheet({
+            // Target hand-off only (never drawn): open the read-only details that the Gen III
+            // passive View adopts, bypassing the generic-sheet router.
+            screen.actionSheet.open({
                 PokeVault::UIModel::PokemonLocation::SaveBox, state.box, state.slot});
             screen.openActionSheetTargetDetails(true);
             screen.actionSheet.close();

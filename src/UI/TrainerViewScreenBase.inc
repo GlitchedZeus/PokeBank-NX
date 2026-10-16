@@ -6,6 +6,9 @@
 #include <sys/stat.h>
 
 #include "Names/ItemPouches.h"
+#include "UI/ClassicGenericUiGuard.h"  // Gen I-V never reach the generic modern Pokemon UI
+#include "UI/SharedEditorChrome.h"     // shared confirm footer + modal touch ownership
+#include "UI/Gen4BagQuantity.h"        // Gen IV bag footer: one per-item quantity query
 #include "Integration/Gen4/Gen4ReadOnlyInventory.h"   // getPouchItems -> the add-item picker's per-pouch list
 #include "Names/MoveInfo.h"      // getMoveBasePP -> a created/picked move gets real PP, not 0
 #include "Names/MoveNames.h"     // getMoveCount -> scan for a created mon's first legal move
@@ -1834,7 +1837,34 @@ namespace UI {
     }
 
     // Open the details modal on a storage slot (reuses the Box path for the save pane).
+    // ---- Gen I-V generic-UI router (QA CG11) ------------------------------------------------
+    // The ONE guard in front of every generic-UI open site in this file: the generic action
+    // sheet, the editable details modal, its pickers / stat dialog and the generic creator. A
+    // Gen I-V session presents Pokemon through its own generation surface instead; Gen VI+
+    // sessions are unaffected (genericUiAllowed() is true for them).
+    bool genericUiAllowedForSession(const TrainerViewScreen& screen,
+                                    PokeBank::UIModel::ClassicGenericUi::GenericUi kind) {
+        namespace Guard = PokeBank::UIModel::ClassicGenericUi;
+        return Guard::genericUiAllowed(Guard::classicSession(screen.sourceGameId), kind);
+    }
+
+    // Format generation of a record (1..5 for the classic groups, 0 otherwise).
+    int classicTargetGeneration(const Pokemon::Pokemon& pokemon) {
+        switch (pokemon.getGameGroup()) {
+            case GameVersion::RBY: return 1;
+            case GameVersion::GSC: return 2;
+            case GameVersion::FRLG: return 3;
+            case GameVersion::DP: case GameVersion::PT: case GameVersion::HGSS: return 4;
+            case GameVersion::BW: case GameVersion::B2W2: return 5;
+            default: return 0;
+        }
+    }
+
     void TrainerViewScreen::openStorageEditor(int pane, int box, int slot) {
+        if (!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::DetailsEditor)) {
+            postStatus(PokeBank::UIModel::ClassicGenericUi::kForeignPokemonRefusal, 260);
+            return;
+        }
         if (!requireMutableStoragePane(pane, PokeVault::Safety::SourceMutation::Edit)) return;
         if (pane == 1) {
             details.source = EditSource::Bank;
@@ -1880,15 +1910,34 @@ namespace UI {
     }
 
     void TrainerViewScreen::openPokemonActionSheet(PokeVault::UIModel::PokemonTarget target) {
+        namespace Guard = PokeBank::UIModel::ClassicGenericUi;
         actionSheet.open(target);
         const Pokemon::Pokemon* pokemon = actionSheetTargetPokemon();
-        if (!pokemon || pokemon->speciesID() == 0) actionSheet.close();
+        if (!pokemon || pokemon->speciesID() == 0) { actionSheet.close(); return; }
+        if (genericUiAllowedForSession(*this, Guard::GenericUi::ActionSheet)) return;
+        // Gen I-V: never the generic sheet. The session's own Pokemon open its generation's
+        // read-only View (adopted by the Gen I/II presenters or the shared Gen III/IV surface);
+        // a foreign Bank record is refused instead of reaching the modern editor.
+        using PokeVault::UIModel::PokemonLocation;
+        const bool bank = target.location == PokemonLocation::Bank;
+        const auto route = Guard::routeClassicTarget(Guard::classicGeneration(sourceGameId),
+                                                     classicTargetGeneration(*pokemon), bank);
+        if (route == Guard::TargetRoute::Refuse) {
+            actionSheet.close();
+            postStatus(Guard::kForeignPokemonRefusal, 260);
+            return;
+        }
+        openActionSheetTargetDetails(true);
+        actionSheet.close();
+        if (target.location == PokemonLocation::Party && Guard::classicGeneration(sourceGameId) == 3)
+            postStatus(Guard::kGen3PartyViewOnly, 300);
     }
 
     void TrainerViewScreen::openActionSheetTargetDetails(bool readOnly) {
         const auto& target = actionSheet.target();
         readOnly = readOnly || !pokemonTargetMutable(
-            target, PokeVault::Safety::SourceMutation::Edit);
+            target, PokeVault::Safety::SourceMutation::Edit) ||
+            !genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::DetailsEditor);
         if (!actionSheetTargetPokemon()) return;
         using PokeVault::UIModel::PokemonLocation;
         if (target.location == PokemonLocation::Party) {
@@ -2504,6 +2553,7 @@ namespace UI {
             switch (cursorMode) {
                 case CursorMode::Menu:
                     if (pane == 0 && !isLocked(pane, box, slot)) {
+                        if (!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::Creator)) return;
                         if (!requireMutableWorkspace()) return;
                         // Empty save-pane slot: create a new Pokemon here (pick species, then edit).
                         creator.active = true; creator.pane = pane; creator.box = box; creator.slot = slot;
@@ -2578,6 +2628,23 @@ namespace UI {
         // posted from anywhere else (a save result, a box rename) would have stayed on screen
         // forever. update() runs every frame in every view, which is what a timer needs.
         if (storageStatusFrames > 0) --storageStatusFrames;
+
+        // Gen I-V routing (genericUiAllowedForSession): the generic details editor, its pickers,
+        // the stat dialog and the generic creator are never active in a Gen I-V session, whatever
+        // path set them; each generation edits through its own surface. Gen VI+ is untouched.
+        if (!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::Picker)) {
+            pickerActive = false;
+            statEdit.dialogActive = false;
+            creator.active = creator.editing = creator.keepConfirmActive = false;
+            if (details.active) details.readOnly = true;
+            if (actionSheet.isOpen()) {
+                // Reached only by a path that bypassed openPokemonActionSheet: hand the target to
+                // its generation's View or refuse, never draw the generic sheet.
+                const auto target = actionSheet.target();
+                actionSheet.close();
+                openPokemonActionSheet(target);
+            }
+        }
 
         // Defense in depth: immutable source sessions still block source-owned mutators, but
         // Bank targets are PokeBank-owned AppOwnedStorage and remain independently mutable.
@@ -3811,6 +3878,7 @@ namespace UI {
                             [id](const Trainer::InventoryItem& v) { return v.itemId == id; });
                         if (e == pouch.end() || e->count == 0) pickerOrder.push_back(id);   // not currently held
                     }
+                    if (!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::Picker)) return;
                     if (!pickerOrder.empty()) {
                         itemPickerReplace = true;
                         pickerKind = (trainer.getGameGroup() == GameVersion::FRLG)
@@ -4390,6 +4458,7 @@ namespace UI {
                                 blockedByCapacity = true;
                             }
                         }
+                        if (!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::Picker)) return;
                         if (!pickerOrder.empty()) {
                             pickerKind = (trainer.getGameGroup() == GameVersion::FRLG)
                                        ? Dialogs::PickerKind::PouchItemG3
@@ -4536,6 +4605,7 @@ namespace UI {
                             // pick a species, edit it in the details modal, Keep/Discard on exit. The
                             // creator's species-pick handler drops it into boxes[box][slot] via
                             // storageSlot(0,...) and opens the editor with EditSource::Box.
+                            if (!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::Creator)) return;
                             creator.active = true;
                             creator.pane = 0; creator.box = selectedBoxIndex; creator.slot = selectedItemIndex;
                             pickerKind = Dialogs::PickerKind::Species;
@@ -5169,12 +5239,33 @@ namespace UI {
                      sourceGameId=="platinum_nds" ||
                      sourceGameId=="heartgold_nds" || sourceGameId=="soulsilver_nds");
                 if(gen4ItemView) {
-                    instructions = "D-pad/Stick: Items  |  L/R: Pocket  |  X: Add Item  |  B: Back";
-                    if(selectedCategory>=0 &&
-                       selectedCategory<static_cast<int>(trainer.items.size()) &&
-                       selectedItemIndex>=0 &&
-                       selectedItemIndex<static_cast<int>(visibleItemIndices().size()))
-                        instructions += "  |  A: Edit Quantity  |  Y: Remove...";
+                    // The Gen IV bag footer comes from the shared footer model and the ONE Gen IV
+                    // quantity query: A appears only for a quantity-editable item (QuantityPolicy),
+                    // never for a unique Key Item / HM.
+                    namespace Presentation = PokeBank::UIModel::SharedEditorPresentation;
+                    Presentation::Footer footer;
+                    footer.push("D-pad/Stick", "Items");
+                    footer.push("L/R", "Pocket");
+                    const auto visible = visibleItemIndices();
+                    const bool hasItem = selectedCategory >= 0 &&
+                        selectedCategory < static_cast<int>(trainer.items.size()) &&
+                        selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(visible.size());
+                    if (hasItem) {
+                        const auto& pouch = trainer.items[static_cast<size_t>(selectedCategory)];
+                        const auto raw = static_cast<size_t>(visible[static_cast<size_t>(selectedItemIndex)]);
+                        if (raw < pouch.size() &&
+                            PokeBank::UIModel::Gen4BagQuantity::rule(
+                                sourceGameId, static_cast<size_t>(selectedCategory), pouch[raw].itemId).editable)
+                            footer.push("A", "Edit Quantity");
+                    }
+                    footer.push("X", "Add Item");
+                    if (hasItem) footer.push("Y", "Remove");
+                    footer.push("B", "Back");
+                    instructions.clear();
+                    for (const auto& hint : footer) {
+                        if (!instructions.empty()) instructions += "  |  ";
+                        instructions += std::string(hint.glyph) + ": " + hint.label;
+                    }
                 } else if (canOpen)
                     instructions += "  |  A: View / Actions";
                 if (detailViewActive && (selectedMode == ViewMode::Boxes || selectedMode == ViewMode::Storage))
@@ -5214,7 +5305,33 @@ namespace UI {
             Dialogs::drawStatEditDialog(*this, fb);
         }
         if (saveConfirmActive) {
+            const bool classicSessionDialog =
+                PokeBank::UIModel::ClassicGenericUi::classicSession(sourceGameId);
+            // Gen I-V: the dialog owns the frame (the screen footer drawn above stops being
+            // tappable) and draws the shared confirm footer naming exactly what each button
+            // does. Semantics are unchanged; Gen VI+ keeps its original presentation.
+            if (classicSessionDialog) SharedEditorChrome::beginModal(touchButtons);
             Dialogs::drawSaveConfirmDialog(*this, fb);
+            if (classicSessionDialog) {
+                namespace Presentation = PokeBank::UIModel::SharedEditorPresentation;
+                Presentation::Footer footer;
+                if (exitingWithUnsavedChanges && itemsShortcutActive) {
+                    footer.push("B", "Keep Editing");
+                    if (!sourceReadOnly()) {
+                        footer.push("Y", "Discard & Home");
+                        footer.push("A", "Save Working Copy & Home");
+                    } else {
+                        footer.push("A", "Discard & Home");
+                    }
+                } else if (exitingWithUnsavedChanges) {
+                    footer.push("B", "Keep Editing");
+                    footer.push("A", "Discard & Exit");
+                } else {
+                    footer.push("B", "Cancel");
+                    footer.push("A", "Save Changes");
+                }
+                SharedEditorChrome::drawFooter(fb, footer);
+            }
         }
         if (actionSheet.isOpen()) {
             Panels::drawPokemonActionSheet(*this, fb);
