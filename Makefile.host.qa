@@ -51,7 +51,7 @@ QA_CORE_SOURCES := $(sort \
 	src/Pokemon/PersonalInfo4HGSS.cpp src/Pokemon/Pokemon4Mutable.cpp \
 	src/Pokemon/Pokemon1ReadOnly.cpp src/Pokemon/Pokemon2ReadOnly.cpp \
 	src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp \
-	src/Inventory/ClassicInventoryCatalog.cpp \
+	src/Inventory/ClassicInventoryCatalog.cpp src/Inventory/ItemQuantityPolicy.cpp \
 	src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Names/MoveInfo.cpp src/Names/SpeciesNames.cpp \
 	src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Names/ItemPresence.cpp \
 	src/Names/MovePresence.cpp \

@@ -62,7 +62,7 @@ RETROARCH_FRLG_SOURCES := tests/test_retroarch_frlg_discovery.cpp \
 # Trainers with staged classic-inventory sidecars pull these implementation dependencies into
 # every host executable that instantiates them. ItemNames.cpp is already present in both trainer
 # source groups below, so this list intentionally contains only the additional shared catalog pieces.
-CLASSIC_INVENTORY_CATALOG_LINK_SOURCES := src/Inventory/ClassicInventoryCatalog.cpp \
+CLASSIC_INVENTORY_CATALOG_LINK_SOURCES := src/Inventory/ClassicInventoryCatalog.cpp src/Inventory/ItemQuantityPolicy.cpp \
 	src/Names/MoveNames.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
 GEN3_STAGED_INVENTORY_LINK_SOURCES := src/Integration/Gen3/Gen3StagedInventoryEditor.cpp \
 	$(CLASSIC_INVENTORY_CATALOG_LINK_SOURCES)
