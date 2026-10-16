@@ -396,8 +396,10 @@ int main() {
     contains(editPath,"Utils::promptNumber(");
     contains(addPath,"if(!r.accepted)return true;");
     contains(editPath,"if(!r.accepted)return true;");
-    contains(addPath,"Gen4::gen4BagMaxQuantity(");
-    contains(editPath,"Gen4::gen4BagMaxQuantity(");
+    contains(addPath,"gen4QuantityRule(screen,static_cast<size_t>(state.itemAddPocket),id)");
+    contains(addPath,"if(rule.editable)");
+    contains(editPath,"gen4QuantityRule(screen,static_cast<size_t>(pocket),item.itemId)");
+    contains(editPath,"This item is unique; its quantity is fixed at 1");
     contains(addPath,"Gen4::gen4BagItemAllowed(");
     contains(editPath,"itemId!=originalId");
     contains(addPath,"static_cast<uint16_t>(r.value)");
@@ -701,8 +703,9 @@ int main() {
     contains(baseUi, "hasUnsavedChanges || trainer.hasStagedChanges()");
     contains(baseUi, "PokeVault::Integration::Gen4::BagPocketCount");
     contains(baseUi, "sourceGameId==\"platinum_nds\"");
-    contains(baseUi, "A: Edit Quantity  |  Y: Remove...");
-    contains(baseUi, "X: Add Item");
+    contains(baseUi, "footer.push(\"A\", \"Edit Quantity\");"); // only for a quantity-editable item (QuantityPolicy)
+    contains(baseUi, "PokeBank::UIModel::Gen4BagQuantity::rule(");
+    contains(baseUi, "footer.push(\"X\", \"Add Item\");");
 
     contains(baseUi, "immutableSourceBlocksSaveDialog(");
     contains(baseUi, "exitOnlySaveConfirm");

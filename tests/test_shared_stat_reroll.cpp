@@ -5,6 +5,7 @@
 // (87.5% male 31 = 1:7, 75% male 63, 50:50 127, 75% female 191, genderless 255, male-only 0,
 // female-only 254): every press is new and format-valid, and PID / Shiny / Gender / Nature /
 // Ability never change. Format-valid generation only; no legality claim.
+#include "Encryption/Encryption3FRLG.h"
 #include "Encryption/Encryption4.h"
 #include "Integration/Gen5/Gen5PidCoordination.h"
 #include "Integration/Gen5/Gen5StagedPokemonRecord.h"
@@ -14,6 +15,7 @@
 #include "Pokemon/Pokemon4Mutable.h"
 #include "UI/SharedStatReroll.h"
 
+#include <algorithm>
 #include <cassert>
 #include <iostream>
 #include <set>
@@ -182,9 +184,53 @@ void gen5(uint16_t species, bool shiny) {
         previous = next;
     }
 }
+// Phase 12: the Unown letter is the PID-derived Gen III form. Every letter A..Z ! ? is reachable
+// on shiny and non-shiny Unown while nature and shininess stay put, and the record survives a
+// real PK3 encrypt (PID ^ OTID key, substructure shuffle) -> decrypt round trip.
+void gen3UnownLetters() {
+    const uint32_t id32 = kTid | (static_cast<uint32_t>(kSid) << 16);
+    for (const bool shiny : {false, true}) {
+        std::array<uint8_t, 80> raw{};
+        Pokemon::Pokemon3FRLG p(std::span<const std::byte>(
+            reinterpret_cast<const std::byte*>(raw.data()), raw.size()));
+        p.setPID(0x0BADF00Du);
+        p.setTID16(kTid);
+        p.setSID16(kSid);
+        p.setLanguage(2);
+        p.setSpecies(201);
+        p.setLevel(25);
+        p.setShiny(shiny, id32);
+        p.setNature(11);
+        require(p.isShiny(id32, "") == shiny && p.nature() == 11, "Unown fixture");
+        for (uint8_t letter = 0; letter < 28; ++letter) {
+            const uint8_t step = static_cast<uint8_t>((letter * 11) % 28); // visit letters out of order
+            require(p.setUnownLetter(step, id32), "Unown letter reachable");
+            require(p.form() == step && p.nature() == 11 && p.isShiny(id32, "") == shiny,
+                    "Unown letter change keeps Nature and Shiny");
+            // Pokemon3FRLG(raw) decrypts with the PID ^ OTID key and un-shuffles, like a save read.
+            std::byte* encrypted = Encryption::encryptArray3FRLG(p.getData());
+            Pokemon::Pokemon3FRLG back(std::span<const std::byte>(encrypted, 80));
+            const auto canonical = p.getData();
+            require(std::equal(canonical.begin(), canonical.begin() + 80, back.getData().begin()),
+                    "PK3 canonical bytes identical after the round trip");
+            delete[] encrypted;
+            require(back.checksumValid() && back.pid() == p.pid() && back.form() == step &&
+                    back.nature() == 11 && back.isShiny(id32, "") == shiny && back.speciesID() == 201,
+                    "Unown letter survives the PK3 encrypt/decrypt round trip");
+        }
+        require(!p.setUnownLetter(28, id32), "letter 28 refused");
+    }
+    std::array<uint8_t, 80> raw{};
+    Pokemon::Pokemon3FRLG pikachu(std::span<const std::byte>(
+        reinterpret_cast<const std::byte*>(raw.data()), raw.size()));
+    pikachu.setSpecies(25);
+    pikachu.setPID(0x12345678u);
+    require(!pikachu.setUnownLetter(3, id32) && pikachu.pid() == 0x12345678u, "non-Unown refused, unchanged");
+}
 } // namespace
 
 int main() {
+    gen3UnownLetters();
     // Pure model: valid, varied, never repeats the previous press.
     R::Rng rng(1);
     R::Stats previous{};
@@ -207,5 +253,5 @@ int main() {
     }
     require(cases == 42, "every generation x ratio x shiny case ran");
     std::cout << "Shared Y re-roll (Gen III/IV/V, " << cases << " drafts x " << kPresses
-              << " presses, shiny/non-shiny, gender-ratio edges): PASS\n";
+              << " presses, shiny/non-shiny, gender-ratio edges) + Gen III Unown letters: PASS\n";
 }

@@ -2,6 +2,7 @@
 // move facts, picker footer, inline toggles, DETAILS viewport, and source contracts that the
 // real Gen III / IV / V surfaces use these shared pieces (not a host-only mock).
 #include "Names/LocationDisplayNames.h"
+#include "UI/ClassicGenericUiGuard.h"
 #include "UI/MovePickerPresentation.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedMoveFacts.h"
@@ -54,6 +55,7 @@ void PKSEFramebuffer::drawText(int x, int y, const char* s, Color c, TextStyle s
 void PKSEFramebuffer::drawFilledRect(int x, int y, int w, int h, Color) { rects.push_back({x, y, w, h}); }
 void PKSEFramebuffer::drawFilledRoundedRect(int x, int y, int w, int h, int, Color) { rects.push_back({x, y, w, h}); }
 void PKSEFramebuffer::drawRoundedRect(int x, int y, int w, int h, int, Color, int) { rects.push_back({x, y, w, h}); }
+void PKSEFramebuffer::drawFilledCircle(int x, int y, int r, Color) { rects.push_back({x - r, y - r, 2 * r, 2 * r}); }
 void PKSEFramebuffer::setClipRect(int, int, int, int) {}
 void PKSEFramebuffer::clearClip() {}
 } // namespace UI
@@ -85,6 +87,21 @@ static void testMoveFacts() {
     require(bite4.type == 16 && bite4.category == 0 && std::string(Facts::categoryLabel(bite4)) == "Physical", "Gen IV Bite is Physical");
     require(Facts::facts(85, GameVersion::HGSS).category == 1, "Gen IV Thunderbolt is Special");
     require(Facts::facts(85, GameVersion::BW).power == 95, "Gen V Thunderbolt power 95");
+    // Gen I / II types from pinned pret moves.asm: Gen I has Karate Chop, Gust, Sand Attack and
+    // Bite as Normal; Gen II matches Gen III for 1..251. No per-move category before Gen IV.
+    for (const auto& [move, gen1, gen2] : std::array<std::array<int, 3>, 8>{{
+             {2, 0, 1}, {16, 0, 2}, {28, 0, 4}, {44, 0, 16}, {85, 12, 12}, {53, 9, 9}, {94, 13, 13}, {57, 10, 10}}}) {
+        require(Facts::facts(static_cast<uint16_t>(move), GameVersion::RBY).type == gen1, "Gen I type " + std::to_string(move));
+        require(Facts::facts(static_cast<uint16_t>(move), GameVersion::GSC).type == gen2, "Gen II type " + std::to_string(move));
+    }
+    require(Facts::typeLabel(Facts::facts(174, GameVersion::GSC)) == "???" &&
+            Facts::typeLabel(Facts::facts(237, GameVersion::GSC)) == "Varies" &&
+            Facts::typeLabel(Facts::facts(185, GameVersion::GSC)) == "Dark", "Gen II Curse / Hidden Power / Feint Attack");
+    require(Facts::facts(85, GameVersion::RBY).category == -1 && Facts::categoryLabel(Facts::facts(85, GameVersion::GSC))[0] == '\0',
+            "Gen I/II show no per-move category");
+    require(!Facts::moveExists(166, GameVersion::RBY) && !Facts::moveExists(252, GameVersion::GSC), "Gen I/II move bounds");
+    for (uint16_t m = 1; m <= 165; ++m)
+        require(Facts::facts(m, GameVersion::RBY).type != Facts::kNoType, "every Gen I move has a type");
     // Curse is ??? before Gen V and Ghost in Gen V.
     require(Facts::typeLabel(Facts::facts(174, GameVersion::PT)) == "???", "Gen IV Curse is ???");
     require(Facts::typeLabel(Facts::facts(174, GameVersion::B2W2)) == "Ghost", "Gen V Curse is Ghost");
@@ -97,6 +114,15 @@ static void testMoveFacts() {
     require(Facts::powerLabel(Facts::facts(69, GameVersion::FRLG)) == "\xE2\x80\x94", "Seismic Toss has no base power");
     // Max PP with PP Ups.
     require(Facts::maxPP(35, 3) == 56 && Facts::maxPP(5, 3) == 8 && Facts::maxPP(40, 0) == 40, "max PP formula");
+    // Gen I/II: per-PP-Up bonus capped at 7 (pret ComputeMaxPP; Gen2StagedEditor maxPP).
+    using Facts::Era;
+    require(Facts::maxPP(40, 3, Era::Gen2) == 61 && Facts::maxPP(40, 3, Era::Gen1) == 61, "Gen I/II 40 PP + 3 Ups = 61");
+    require(Facts::maxPP(40, 3, Era::Gen3) == 64, "Gen III 40 PP + 3 Ups = 64");
+    require(Facts::maxPP(35, 3, Era::Gen2) == 56 && Facts::maxPP(5, 3, Era::Gen1) == 8, "Gen I/II below the cap match");
+    for (int base = 0; base <= 40; base += 5)
+        for (uint8_t ups = 0; ups <= 3; ++ups)
+            require(Facts::maxPP(base, ups, Era::Gen2) == std::min(63, base + std::min(7, base / 5) * ups),
+                    "Gen II formula");
 }
 
 static void testMovesPanelBounds() {
@@ -104,8 +130,8 @@ static void testMovesPanelBounds() {
     const auto l = UI::SharedMovesPanel::layout(g.rightX, g.y, g.rightW);
     require(l.bottom() <= g.y + UI::SharedMovesPanel::kDataPaneOffset - 4, "moves rows end above the data pane");
     require(l.nameMaxW() >= 200, "move names have room");
-    for (auto game : {GameVersion::FRLG, GameVersion::DP, GameVersion::PT, GameVersion::HGSS,
-                      GameVersion::BW, GameVersion::B2W2}) {
+    for (auto game : {GameVersion::RBY, GameVersion::GSC, GameVersion::FRLG, GameVersion::DP,
+                      GameVersion::PT, GameVersion::HGSS, GameVersion::BW, GameVersion::B2W2}) {
         const uint16_t last = Facts::maxMoveId(Facts::eraFor(game));
         for (int focus = -1; focus < 4; ++focus) {
             texts.clear(); rects.clear();
@@ -147,7 +173,8 @@ static void testChooserBounds() {
     constexpr auto pl = PokeBank::UIModel::MovePickerPresentation::compactPickerLayout();
     const int x = (1280 - pl.width) / 2;
     const auto c = UI::SharedMovesPanel::chooserColumns(x + 40, pl.width - 80);
-    for (auto game : {GameVersion::FRLG, GameVersion::DP, GameVersion::HGSS, GameVersion::BW}) {
+    for (auto game : {GameVersion::RBY, GameVersion::GSC, GameVersion::FRLG, GameVersion::DP,
+                      GameVersion::HGSS, GameVersion::BW}) {
         texts.clear();
         UI::SharedMovesPanel::drawChooserCaptions(fb_global(), c, 58, game);
         const auto captions = texts;
@@ -239,6 +266,76 @@ static void testDetailsViewport() {
     }
 }
 
+static void testOriginPaneBounds() {
+    // The Gen IV pane is the longest (13 rows incl. Legality); nothing may run past the panel.
+    constexpr UI::SharedPokemonShell::Geometry g(1280, 720, 56);
+    struct Row { std::string label, value; };
+    const std::vector<Row> rows{{"Game", "HeartGold"}, {"Origin", "SoulSilver"}, {"Language", "English"},
+        {"Ball", "Poke Ball"}, {"Met", "Route 29 / Lv. 5"}, {"Friendship", "255"},
+        {"Pok\xC3\xA9rus", "Infected"}, {"Fateful", "No"}, {"Egg status", "Not egg"},
+        {"OT gender", "Female"}, {"PC markings", "\xE2\x97\x8F\xE2\x96\xB2"},
+        {"Legality", P::legalityLabel(P::LegalityState::Incomplete)}};
+    texts.clear(); rects.clear();
+    UI::SharedPokemonShell::drawDataAndGraph(fb_global(), g.rightX, g.y + 244, g.rightW, g.h - 256,
+        P::kOriginLegalityHeading, rows, {301, 200, 180, 245, 279, 185});
+    bool heading = false;
+    for (const auto& t : texts) {
+        require(t.y + t.h <= g.y + g.h - 8, "origin pane text above the panel edge: " + t.value);
+        heading |= t.value == P::kOriginLegalityHeading;
+    }
+    require(heading, "Origin & Legality heading drawn");
+}
+
+static void testDataPaneWrap() {
+    // Phase 9: over-long values wrap inside the 198px data pane; a no-space word is broken on a
+    // code point; overflow ends in "..." -- never into the graph pane or below the panel.
+    constexpr UI::SharedPokemonShell::Geometry g(1280, 720, 56);
+    struct Row { std::string label, value; };
+    const int paneX = g.rightX + 12, paneRight = paneX + 198;
+    for (int extra = 0; extra < 12; ++extra) {
+        std::vector<Row> rows{{"Met Location", "Altering Cave (Sevii Islands)"},
+            {"Encounter origin", "Bulbasaur \xE2\x86\x92 Venusaur"},
+            {"Long", std::string(40, 'W') + "\xC3\xA9\xC3\xA9\xC3\xA9"},
+            {"Legality", "Not checked"}};
+        for (int i = 0; i < extra; ++i) rows.push_back({"Row " + std::to_string(i), "Pok\xC3\xA9mon League Front Gate"});
+        texts.clear(); rects.clear();
+        UI::SharedPokemonShell::drawDataAndGraph(fb_global(), g.rightX, g.y + 244, g.rightW, g.h - 256,
+            P::kOriginLegalityHeading, rows, {1, 2, 3, 4, 5, 6});
+        bool ellipsis = false;
+        for (const auto& t : texts) {
+            if (t.x >= paneRight) continue; // graph pane labels
+            require(t.x >= paneX && t.x + t.w <= paneRight - 10, "data text inside the pane: " + t.value);
+            require(t.y + t.h <= g.y + g.h - 8, "data text above the panel edge: " + t.value);
+            for (std::size_t i = 0; i < t.value.size(); ++i)
+                if ((static_cast<unsigned char>(t.value[i]) & 0xE0) == 0xC0)
+                    require(i + 1 < t.value.size(), "no split UTF-8 sequence");
+            ellipsis |= t.value.size() >= 3 && t.value.compare(t.value.size() - 3, 3, "...") == 0;
+        }
+        if (extra >= 8) require(ellipsis, "overflowing pane ends in an ellipsis");
+    }
+}
+
+static void testFieldAccessParity() {
+    // Phase 12: one editable set wherever the format allows it.
+    namespace SE = PokeBank::UIModel::SharedPokemonEditor;
+    using FI = SE::FieldIdentity;
+    for (const auto gen : {SE::Generation::Gen3, SE::Generation::Gen4, SE::Generation::Gen5})
+        for (const auto field : {FI::Species, FI::Nickname, FI::Nature, FI::Gender, FI::Shiny, FI::Ability,
+                                 FI::Form, FI::IV, FI::EV, FI::HeldItem, FI::Pokerus, FI::Ball,
+                                 FI::MetLevel, FI::MetLocation, FI::Move, FI::MovePP, FI::MovePPUps,
+                                 FI::TrainerId, FI::OriginalTrainer, FI::Level, FI::Experience})
+            require(SE::fieldAccessForGeneration(gen, field) == SE::FieldAccess::Editable,
+                    "Gen III-V editable parity for field " + std::to_string(static_cast<int>(field)));
+    for (const auto gen : {SE::Generation::Gen1, SE::Generation::Gen2})
+        for (const auto field : {FI::Move, FI::MovePP, FI::MovePPUps})
+            require(SE::fieldAccessForGeneration(gen, field) == SE::FieldAccess::Editable, "Gen I/II moves editable");
+    // The PID itself is never typed in; Gen V language has no verified native mutation.
+    for (const auto gen : {SE::Generation::Gen3, SE::Generation::Gen4, SE::Generation::Gen5})
+        require(SE::fieldAccessForGeneration(gen, FI::PersonalityId) == SE::FieldAccess::ReadOnly, "PID read-only");
+    require(SE::fieldAccessForGeneration(SE::Generation::Gen5, FI::Language) == SE::FieldAccess::ReadOnly,
+            "Gen V language read-only with a reason");
+}
+
 static void testLocationNames() {
     // Gen III: no PKHeX source tags or raw ids; duplicates only for the SAME place.
     const std::set<std::string> samePlace{"Birth Island", "Fiery Path", "Jagged Pass",
@@ -291,11 +388,44 @@ static void testRealSourcesUseSharedUnit() {
     require(gen4.find("SharedEditorPresentation::nextPokerusByte(") != std::string::npos, "Gen IV Pokerus inline");
     require(gen4.find("openPokerusPicker") == std::string::npos && gen4.find("openLanguagePicker") == std::string::npos, "Gen IV popups retired");
     require(gen5.find("const uint32_t next = mode == 0 ? 2u : mode == 2 ? 1u : 0u;") != std::string::npos, "Gen V Pokerus inline");
+    // Phase 9/12 routing: Gen III/IV summary-panel taps and Gen IV party taps open the native
+    // sheet (never the inherited generic action sheet); Gen IV adopts passive View in draw.
+    for (const auto* text : {&gen3, &gen4})
+        require(text->find("tapped == PokeBank::UIModel::Gen4BoxTouchActions::SummaryPanelTouchId") != std::string::npos,
+                "summary tap routed to the native sheet");
+    require(gen4.find("screen.selectedPartyIndex = previous;") != std::string::npos, "Gen IV party tap guard");
+    require(gen4.find("if (isGen4Nds(screen)) beginPassiveView(screen);\n    if (!ownsFrameImpl(screen)) return false;") != std::string::npos,
+            "Gen IV passive View adopted in draw");
+    require(gen5.find("hints.push_back({\"\",") == std::string::npos, "no dropped glyph-less Gen V hint");
     for (const auto* text : {&gen3, &gen4, &gen5}) {
         require(text->find("(ID \" + std::to_string") == std::string::npos &&
                 text->find("\"Location ID \"") == std::string::npos, "no raw location ids");
         require(text->find("getMetLocationDisplayName(") != std::string::npos, "player-facing location names");
     }
+    namespace Guard = PokeBank::UIModel::ClassicGenericUi;
+    for (const char* id : {"red_gb", "crystal_gbc", "emerald_gba", "leafgreen_gba", "platinum_nds", "white2_nds"})
+        require(Guard::classicSession(id) && !Guard::genericUiAllowed(true, Guard::GenericUi::ActionSheet), "Gen I-V session");
+    for (const char* id : {"", "x_3ds", "sword_switch", "scarlet"})
+        require(!Guard::classicSession(id) && Guard::genericUiAllowed(Guard::classicSession(id), Guard::GenericUi::Picker),
+                "Gen VI+ keeps the generic UI");
+    require(Guard::classicGeneration("emerald_gba") == 3 && Guard::classicGeneration("heartgold_nds") == 4 &&
+            Guard::classicGeneration("black_nds") == 5 && Guard::classicGeneration("gold_gbc") == 2, "session generation");
+    // CG11: ONE named Gen I-V router in front of the generic-UI open points of the base screen.
+    const std::string base = read("src/UI/TrainerViewScreenBase.inc");
+    for (const char* site : {
+             "void TrainerViewScreen::openStorageEditor(int pane, int box, int slot) {\n        if (!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::DetailsEditor)) {",
+             "if (genericUiAllowedForSession(*this, Guard::GenericUi::ActionSheet)) return;",
+             "!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::DetailsEditor);",
+             "if (!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::Picker)) {\n            pickerActive = false;\n            statEdit.dialogActive = false;"})
+        require(base.find(site) != std::string::npos, std::string("CG11 router site: ") + site);
+    std::size_t creatorGuards = 0, pickerGuards = 0;
+    for (std::size_t at = base.find("GenericUi::Creator)) return;"); at != std::string::npos;
+         at = base.find("GenericUi::Creator)) return;", at + 1)) ++creatorGuards;
+    for (std::size_t at = base.find("GenericUi::Picker)) return;"); at != std::string::npos;
+         at = base.find("GenericUi::Picker)) return;", at + 1)) ++pickerGuards;
+    require(creatorGuards == 2 && pickerGuards == 2, "generic creator / item picker opens are guarded");
+    require(base.find("SharedEditorChrome::beginModal(touchButtons);\n            Dialogs::drawSaveConfirmDialog(*this, fb);") != std::string::npos,
+            "exit save dialog owns the touch layer in Gen I-V");
     require(species.find("commits to draft") == std::string::npos &&
             species.find("restores previous committed") == std::string::npos, "species picker has no developer copy");
     require(read("include/UI/SharedPokemonShell.h").find("\"Rows \"") == std::string::npos, "shell row counter removed");
@@ -307,6 +437,9 @@ int main() {
     testChooserBounds();
     testFooterAndToggles();
     testDetailsViewport();
+    testOriginPaneBounds();
+    testFieldAccessParity();
+    testDataPaneWrap();
     testLocationNames();
     testRealSourcesUseSharedUnit();
     std::cout << "Shared Gen I-V editor unit (moves panel, chooser, footer, toggles, viewport) PASS\n";

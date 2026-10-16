@@ -4,7 +4,8 @@
 //
 // Every number comes from a pinned, generated table already in the repo:
 //   Gen I-IV power / accuracy / base PP  Names/MoveBattleStats.h (retail-decomp tables)
-//   Gen III type, Gen IV type + category Names/MoveTypes34.h      (tools/gen_move_types34.py)
+//   Gen I-III type, Gen IV type + cat.   Names/MoveTypes34.h      (tools/gen_move_types34.py;
+//                                        Gen I/II from pinned pret pokered / pokecrystal moves.asm)
 //   Gen V type / category / power / acc  Names/MoveBattleStats5.h (tools/gen_move_battle_stats5.py)
 //
 // Gen I-III have NO per-move damage category: physical/special follows the move's type.
@@ -93,7 +94,11 @@ inline MoveFacts facts(uint16_t move, Enums::GameVersion game) noexcept {
         f.accuracy = s->accuracy == 0 ? -1 : s->accuracy;
         f.basePP = s->pp;
     }
-    if (era == Era::Gen3 && move < Names::kMoveType3.size()) {
+    if (era == Era::Gen1 && move < Names::kMoveType1.size()) {
+        f.type = Names::kMoveType1[move];
+    } else if (era == Era::Gen2 && move < Names::kMoveType2.size()) {
+        f.type = Names::kMoveType2[move];
+    } else if (era == Era::Gen3 && move < Names::kMoveType3.size()) {
         f.type = Names::kMoveType3[move];
     } else if (era == Era::Gen4 && move < Names::kMoveTypeCategory4.size()) {
         f.type = Names::kMoveTypeCategory4[move].type;
@@ -150,10 +155,19 @@ inline std::string detailLine(const MoveFacts& f) {
     return line;
 }
 
-// Max PP with PP Ups, from the same base PP shown in the chooser: base * (5 + ups) / 5
-// (PKHeX PKM.GetMovePP; pokeemerald CalculatePPWithBonus).
-constexpr int maxPP(int basePP, uint8_t ppUps) noexcept {
-    return basePP * (5 + (ppUps > 3 ? 3 : ppUps)) / 5;
+// Max PP with PP Ups, from the same base PP shown in the chooser.
+//   Gen III-V: base * (5 + ups) / 5 (PKHeX PKM.GetMovePP; pokeemerald CalculatePPWithBonus).
+//   Gen I/II:  base + min(7, base / 5) * ups, capped at 63 -- pret pokered / pokecrystal
+//              ComputeMaxPP caps the per-PP-Up bonus at 7, so a 40-PP move with three PP Ups
+//              ends at 61, not 64. Mirrors Gen2::StagedEditor::gen2MoveMaxPP (Gen2StagedEditor.cpp).
+constexpr int maxPP(int basePP, uint8_t ppUps, Era era = Era::Gen3) noexcept {
+    const int ups = ppUps > 3 ? 3 : ppUps;
+    if (era == Era::Gen1 || era == Era::Gen2) {
+        const int bonus = basePP / 5 < 7 ? basePP / 5 : 7;
+        const int total = basePP + bonus * ups;
+        return total < 63 ? total : 63;
+    }
+    return basePP * (5 + ups) / 5;
 }
 
 } // namespace PokeBank::UIModel::SharedMoveFacts

@@ -207,7 +207,7 @@ require_all("src/UI/Gen4SharedPokemonSurface.inc",
             "Gen4BoxTouchActions::selectsTappedBoxSlot(tapped, slots)",
             "screen.selectedItemIndex = tapped;",
             "if (boxEntrySurface(screen)) {", "beginActions(screen);",
-            "if (partyEntry && touch.justTapped())", "screen.selectedPartyIndex = tapped - 6200;",
+            "screen.selectedMode == TrainerViewScreen::ViewMode::Party &&\n        screen.detailViewActive && touch.justTapped()", "screen.selectedPartyIndex = tapped - 6200;",
             "tapped - 6200 < static_cast<int>(screen.trainer.getPartySize())")
 
 # Empty box cells must enter the same guarded action popup as A, never
@@ -216,7 +216,7 @@ for rel, entry in (
     ("src/UI/Gen3SharedPokemonSurface.inc", "screen.detailViewActive && touch.justTapped()) {"),
     ("src/UI/Gen4SharedPokemonSurface.inc", "screen.detailViewActive && touch.justTapped()) {"),
 ):
-    code = read(rel).rsplit(entry, 1)[1].split("if (partyEntry && touch.justTapped())", 1)[0].split(
+    code = read(rel).rsplit(entry, 1)[1].split("screen.selectedMode == TrainerViewScreen::ViewMode::Party &&\n        screen.detailViewActive && touch.justTapped()", 1)[0].split(
         "const bool occupied = selectedOccupied(screen);", 1)[0]
     assert "beginActions(screen);" in code, f"{rel}: empty cell tap must open Actions"
     assert "if (selectedOccupied(screen)) beginActions(screen);" not in code
