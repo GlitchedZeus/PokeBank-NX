@@ -54,6 +54,7 @@ void PKSEFramebuffer::drawText(int x, int y, const char* s, Color c, TextStyle s
 void PKSEFramebuffer::drawFilledRect(int x, int y, int w, int h, Color) { rects.push_back({x, y, w, h}); }
 void PKSEFramebuffer::drawFilledRoundedRect(int x, int y, int w, int h, int, Color) { rects.push_back({x, y, w, h}); }
 void PKSEFramebuffer::drawRoundedRect(int x, int y, int w, int h, int, Color, int) { rects.push_back({x, y, w, h}); }
+void PKSEFramebuffer::drawFilledCircle(int x, int y, int r, Color) { rects.push_back({x - r, y - r, 2 * r, 2 * r}); }
 void PKSEFramebuffer::setClipRect(int, int, int, int) {}
 void PKSEFramebuffer::clearClip() {}
 } // namespace UI
@@ -239,6 +240,26 @@ static void testDetailsViewport() {
     }
 }
 
+static void testOriginPaneBounds() {
+    // The Gen IV pane is the longest (13 rows incl. Legality); nothing may run past the panel.
+    constexpr UI::SharedPokemonShell::Geometry g(1280, 720, 56);
+    struct Row { std::string label, value; };
+    const std::vector<Row> rows{{"Game", "HeartGold"}, {"Origin", "SoulSilver"}, {"Language", "English"},
+        {"Ball", "Poke Ball"}, {"Met", "Route 29 / Lv. 5"}, {"Friendship", "255"},
+        {"Pok\xC3\xA9rus", "Infected"}, {"Fateful", "No"}, {"Egg status", "Not egg"},
+        {"OT gender", "Female"}, {"PC markings", "\xE2\x97\x8F\xE2\x96\xB2"},
+        {"Legality", P::legalityLabel(P::LegalityState::Incomplete)}};
+    texts.clear(); rects.clear();
+    UI::SharedPokemonShell::drawDataAndGraph(fb_global(), g.rightX, g.y + 244, g.rightW, g.h - 256,
+        P::kOriginLegalityHeading, rows, {301, 200, 180, 245, 279, 185});
+    bool heading = false;
+    for (const auto& t : texts) {
+        require(t.y + t.h <= g.y + g.h - 8, "origin pane text above the panel edge: " + t.value);
+        heading |= t.value == P::kOriginLegalityHeading;
+    }
+    require(heading, "Origin & Legality heading drawn");
+}
+
 static void testLocationNames() {
     // Gen III: no PKHeX source tags or raw ids; duplicates only for the SAME place.
     const std::set<std::string> samePlace{"Birth Island", "Fiery Path", "Jagged Pass",
@@ -307,6 +328,7 @@ int main() {
     testChooserBounds();
     testFooterAndToggles();
     testDetailsViewport();
+    testOriginPaneBounds();
     testLocationNames();
     testRealSourcesUseSharedUnit();
     std::cout << "Shared Gen I-V editor unit (moves panel, chooser, footer, toggles, viewport) PASS\n";

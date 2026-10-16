@@ -396,8 +396,10 @@ int main() {
     contains(editPath,"Utils::promptNumber(");
     contains(addPath,"if(!r.accepted)return true;");
     contains(editPath,"if(!r.accepted)return true;");
-    contains(addPath,"Gen4::gen4BagMaxQuantity(");
-    contains(editPath,"Gen4::gen4BagMaxQuantity(");
+    contains(addPath,"gen4QuantityRule(static_cast<size_t>(state.itemAddPocket),id)");
+    contains(addPath,"if(rule.editable)");
+    contains(editPath,"gen4QuantityRule(static_cast<size_t>(pocket),item.itemId)");
+    contains(editPath,"This item is unique; its quantity is fixed at 1");
     contains(addPath,"Gen4::gen4BagItemAllowed(");
     contains(editPath,"itemId!=originalId");
     contains(addPath,"static_cast<uint16_t>(r.value)");

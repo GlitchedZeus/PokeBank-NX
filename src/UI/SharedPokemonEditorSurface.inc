@@ -378,7 +378,13 @@ void cancelMoveEditor(TrainerViewScreen& screen, EditorState& state) {
 template <class A>
 void openMovePicker(TrainerViewScreen& screen, EditorState& state) {
     if (!A::hasWorking(screen, state)) return;
-    openPicker(screen, state, PickerTarget::Move, A::moveChoices(screen, state),
+    // Never list a move that does not exist in this generation (Empty stays the first choice).
+    auto choices = A::moveChoices(screen, state);
+    const auto game = A::moveGame(screen);
+    choices.erase(std::remove_if(choices.begin(), choices.end(), [&](uint16_t move) {
+        return move != 0 && !PokeBank::UIModel::SharedMoveFacts::moveExists(move, game);
+    }), choices.end());
+    openPicker(screen, state, PickerTarget::Move, std::move(choices),
                A::workingMove(screen, state, state.moveEditorSlot));
 }
 

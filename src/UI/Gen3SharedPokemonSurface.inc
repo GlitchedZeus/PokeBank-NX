@@ -617,7 +617,8 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
             // remain valid for an untouched existing Pokemon, but are not offered as new edits.
             state.pickerValues.push_back(0);
             for (uint16_t move = 1; move < Gen3::Learnset::kMoveCount; ++move) {
-                if (Gen3::Learnset::directlyLearnable(*game, state.session.working.species, move))
+                if (PokeBank::UIModel::SharedMoveFacts::moveExists(move, kGen3MoveGame) &&
+                    Gen3::Learnset::directlyLearnable(*game, state.session.working.species, move))
                     state.pickerValues.push_back(move);
             }
         }
