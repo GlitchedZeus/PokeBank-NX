@@ -47,6 +47,9 @@ OUT_OF_SCOPE: dict[str, str] = {
 
 OUT_OF_SCOPE_WHEN_CG11_HOLDS: dict[str, str] = {
     "include/UI/ActionSheetModel.h": "generic Gen VI+ action sheet; unreachable from Gen I-V while CG11 passes",
+    # S e86741c: the router clears pickerActive every frame in a Gen I-V session and CG11 binds every
+    # screen-level pickerActive = true open.
+    "src/UI/Dialogs/PickerDialog.cpp": "generic Gen VI+ picker; unreachable from Gen I-V while CG11 passes",
 }
 
 # CG11 (S 647917e): genericUiAllowedForSession(screen, ClassicGenericUi::GenericUi kind) in
@@ -387,6 +390,11 @@ def contracts(sources: list[Source]) -> list[Result]:
 
     for s in U:
         for name, ln, body in function_bodies(s.code, modal_rx):
+            # A router draws no pixel itself and only delegates to presenters, each checked on its own
+            # (S e86741c: PokemonDetailsDispatcher -> Gen1/Gen2/Modern details modals).
+            if not re.search(r"\bfb\s*\.\s*\w+\s*\(|\bdim\w*\s*\(", body) and \
+                    re.search(r"\bdraw\w+\s*\(", body) and not footer_rx.search(body) and not layer_rx.search(body):
+                continue
             if not footer_rx.search(body) and not every_caller(name, s.rel, ln, 0, 30, footer_rx):
                 r.violations.append(f"{s.rel}:{ln}: {name}() draws no footer of its own")
             if not layer_rx.search(body) and not every_caller(name, s.rel, ln, 20, 0, layer_rx):
@@ -449,6 +457,25 @@ def contracts(sources: list[Source]) -> list[Result]:
                           and re.search(r"actionSheet\s*\.\s*close\s*\(", handoff))
             if not GENERIC_UI_GUARD.search(window) and not is_handoff:
                 r.violations.append(f"{s.rel}:{ln}: {lines[ln - 1].strip()[:120]} (no genericUiAllowedForSession guard)")
+        # The generic PickerDialog (screen-level pickerActive, not a surface's own state.pickerActive):
+        # guarded like the openers above, or opened inside the generic details editor's input block,
+        # which a Gen I-V session never enters (its details.active opens are bound above).
+        detail_blocks = []
+        for m in re.finditer(r"\bif\s*\(\s*details\s*\.\s*active\s*\)\s*\{", s.code):
+            depth, j = 0, m.end() - 1
+            while j < len(s.code):
+                depth += (s.code[j] == "{") - (s.code[j] == "}")
+                if depth == 0:
+                    break
+                j += 1
+            detail_blocks.append((m.start(), j))
+        for m in re.finditer(r"(?<![.\w>])pickerActive\s*=\s*true\b", s.code):
+            ln = s.code.count("\n", 0, m.start()) + 1
+            lines = s.code.splitlines()
+            window = "\n".join(lines[max(0, ln - 40):ln + 6])
+            in_details = any(a < m.start() < b for a, b in detail_blocks)
+            if not GENERIC_UI_GUARD.search(window) and not in_details:
+                r.violations.append(f"{s.rel}:{ln}: {lines[ln - 1].strip()[:120]} (generic picker; no genericUiAllowedForSession guard)")
     base = next((s for s in U if s.rel == "src/UI/TrainerViewScreenBase.inc"), None)
     reset = base and re.search(
         r"if\s*\(\s*!\s*genericUiAllowedForSession\s*\([^)]*\)\s*\)\s*\{(?=[^}]*pickerActive\s*=\s*false)(?=[^}]*statEdit\s*\.\s*dialogActive\s*=\s*false)",
