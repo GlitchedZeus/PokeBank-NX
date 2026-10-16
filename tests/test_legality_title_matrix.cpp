@@ -1,4 +1,4 @@
-// Per-title acceptance matrix for the Gen I, Gen II and Gen V legality analyzers.
+// Per-title acceptance matrix for the Gen I, Gen II, Gen III and Gen V legality analyzers.
 // docs/legality/TITLE_TEST_MATRIX.md lists the same cases with their evidence.
 //
 // Every case prints one line: title | kind | case | expected | actual | PASS or FAIL.
@@ -9,6 +9,11 @@
 // party record goes through Pokemon1ReadOnly / Pokemon2ReadOnly, and then
 // Legality::analyze(pk, pk.getGameGroup(), metadata().sourceGameId) runs, as in
 // Gen1PokemonDetailsModal.cpp and Gen2PokemonDetailsModal.cpp.
+// Gen III: the app's GBA path. Synthetic 128 KiB saves go through Integration::Gen3::parse
+// (the on-device reader, PKSMGen3NativeAdapter.cpp) and FRLGReadOnlyTrainer::create, as in
+// UI.cpp; the box slot goes through Legality::analyze(pk, pk.getGameGroup(),
+// metadata().sourceGameId), as in PokemonDetailsModal.cpp. Record cases load the stored
+// (encrypted) PK3 into Pokemon3FRLG and make the same call with the exact source game id.
 // Gen V: Legality::analyzePk5 on the decrypted record and on its stored (encrypted)
 // form. This branch has no PK5 save reader (that is PR #307), so the app does not call
 // analyzePk5 yet.
@@ -23,15 +28,20 @@
 //
 // Nothing here writes a save or changes a record: every case checks its input bytes
 // afterwards.
+#include "Encryption/Encryption3FRLG.h"
 #include "Encryption/Encryption5.h"
 #include "Integration/Gen1/Gen1ReadOnlySave.h"
 #include "Integration/Gen2/Gen2ReadOnlySave.h"
+#include "Integration/Gen3/PKSMGen3Adapter.h"
+#include "Legacy/FRLGReadOnlyTrainer.h"
+#include "Legality/Gen3Legality.h"
 #include "Legality/Gen5Legality.h"
 #include "Legality/Legality.h"
 #include "Names/ItemNames.h"
 #include "Names/SpeciesNames.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
+#include "Pokemon/Pokemon3FRLG.h"
 #include "legality_gen5_test_helpers.h"
 
 #include <algorithm>
@@ -42,6 +52,7 @@
 #include <cstring>
 #include <functional>
 #include <map>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -135,6 +146,7 @@ int caseCount = 0, failureCount = 0;
 std::map<std::string, std::map<std::string, int>> tally;  // title -> kind -> cases
 
 const char* const kTitles[] = {"Red", "Blue", "Yellow", "Gold", "Silver", "Crystal",
+                               "Ruby", "Sapphire", "Emerald", "FireRed", "LeafGreen",
                                "Black", "White", "Black 2", "White 2"};
 const char* const kKinds[] = {"positive", "negative", "malformed", "unknown", "original-game", "title-specific"};
 
@@ -175,7 +187,7 @@ void record(const std::string& title, const std::string& kind, const std::string
     const bool pass = why.empty();
     if (!pass)
         ++failureCount;
-    std::printf("%-8s | %-14s | %-66s | expected %-30s | actual %-30s | %s\n", title.c_str(), kind.c_str(),
+    std::printf("%-9s | %-14s | %-66s | expected %-30s | actual %-30s | %s\n", title.c_str(), kind.c_str(),
                 name.c_str(), label(e.outcome, e.parserError).c_str(), label(a.outcome, a.parserError).c_str(),
                 pass ? "PASS" : "FAIL");
     for (const auto& w : why)
@@ -881,6 +893,394 @@ void cases() {
 
 }  // namespace gen2
 
+// ---------------------------------------------------------------- Gen III
+
+namespace gen3 {
+
+namespace G3 = PokeVault::Integration::Gen3;
+using Gen5TestHelpers::fromHex;
+
+// Decrypted 80-byte PK3 box records (G/A/E/M order) from the PKHeX-generated corpus of
+// tools/pkhex_gen34_diff (`run.sh PKHEX 1 3 3`, PKHeX kwsch/PKHeX@6501f0ab), built by PKHeX
+// for OT "Tester". PKHeX calls each one VALID. The corpus id follows each name.
+// Ruby: Zangoose L16, Route 114 (met location 29), a Ruby-only grass slot (b26412).
+constexpr const char* kRubyZangoose =
+    "EC7557C6059AD832D4BBC8C1C9C9CDBFFF000202CED9E7E8D9E6FF00047000007C010000E11A0000004600002B0062000E00D2001E1E1E14000000000000000000000000001D10218D63613800000000";
+// Sapphire: Seviper L16, Route 114, a Sapphire-only grass slot (b26472).
+constexpr const char* kSapphireSeviper =
+    "90502E3264BAAC36CDBFD0C3CABFCCFF00000202CED9E7E8D9E6FF00EC0E00007B010000990900000046000023007A002C005601141E1919000000000000000000000000001D90203A10C23600000000";
+// Sapphire: the roaming Latias, L40, met location 16 (b28744).
+constexpr const char* kSapphireRoamerLatias =
+    "3C4D350AC7503EAFC6BBCEC3BBCDFF0000000202CED9E7E8D9E6FF00D3E600009701000080380100005A00005A011F0128015E000F14050A0000000000000000000000000010A8200000000000000000";
+// Sapphire: Seedot L3, Route 102 (met location 17), mass outbreak, moves Bide, Harden and
+// Leech Seed (b20200).
+constexpr const char* kSapphireOutbreakSeedot =
+    "7EADD0DF6ED1B02ACDBFBFBEC9CEFF0000000202CED9E7E8D9E6FF007E6300002A010000390000000046000075006A00490000000A1E0A000000000000000000000000000011832047B6151500000000";
+// Emerald: Smeargle L40, Artisan Cave (met location 202), an Emerald-only grass slot (b19084).
+constexpr const char* kEmeraldSmeargle =
+    "14E4622DC2D1572FCDC7BFBBCCC1C6BFFF000202CED9E7E8D9E6FF0096A70000EB00000000C8000000460000A6000000000000000100000000000000000000000000000000CAA821908ECC1D00000000";
+// Emerald: Lugia L70 from Navel Rock, fateful flag set (tests/test_legality_gen3.cpp b19244).
+constexpr const char* kEmeraldLugia =
+    "A700ECFA4F76F81AC6CFC1C3BBFF000000000202CED9E7E8D9E6FF00B1980000F9000000CE8A06000000000069003800F00081001405051400000000000000000000000000D3C6212070D30C00000080";
+// FireRed: Scyther L25, the Celadon Game Corner prize (met location 94) (b13328).
+constexpr const char* kFireRedScyther =
+    "444F0D1B2C0C571BCDBDD3CEC2BFCCFF00000202CED9E7E8D9E6FF00FD7200007B000000093D0000004600007400E400CE0061001E14281E000000000000000000000000005E19226A09293100000000";
+// LeafGreen: Bellsprout L13, Route 5 (met location 105), a LeafGreen-only grass slot (b6228).
+constexpr const char* kLeafGreenBellsprout =
+    "6529AEEFD0FCDD0DBCBFC6C6CDCACCC9CFCE0202CED9E7E8D9E6FF00EA64000045000000ED0400000046000016004A00230000000A28140000000000000000000000000000698D224140492500000000";
+// LeafGreen: Pinsir L18, the Celadon Game Corner prize (b13480).
+constexpr const char* kLeafGreenPinsir =
+    "0C4D378AB71EE760CAC3C8CDC3CCFF0000000202CED9E7E8D9E6FF0092A000007F0000007A1C0000004600000B007400140045001E1E1414000000000000000000000000005E92223286CB0300000000";
+
+constexpr std::size_t kChecksum = 0x1C, kSpecies = 0x20, kItem = 0x22, kExp = 0x24, kMoves = 0x2C, kEvs = 0x38;
+constexpr std::size_t kPokerus = 0x44, kOrigins = 0x46, kFateful = 0x4F;
+constexpr uint8_t kSapphire = 1, kRuby = 2, kFireRed = 4, kLeafGreen = 5, kColosseumXD = 15;
+constexpr uint16_t kEnigmaBerry = 175;
+
+uint16_t le16(const std::vector<uint8_t>& b, std::size_t o) {
+    return static_cast<uint16_t>(b[o] | (b[o + 1] << 8));
+}
+
+void setLe16(std::vector<uint8_t>& b, std::size_t o, unsigned v) {
+    b[o] = static_cast<uint8_t>(v);
+    b[o + 1] = static_cast<uint8_t>(v >> 8);
+}
+
+void setLe32(std::vector<uint8_t>& b, std::size_t o, uint32_t v) {
+    setLe16(b, o, v & 0xFFFF);
+    setLe16(b, o + 2, v >> 16);
+}
+
+void refreshChecksum(std::vector<uint8_t>& pk) {
+    setLe16(pk, kChecksum, Legality::Gen3Pk3::checksum(pk));
+}
+
+std::vector<uint8_t> edited(const char* hex, const std::function<void(std::vector<uint8_t>&)>& edit) {
+    auto pk = fromHex(hex);
+    edit(pk);
+    refreshChecksum(pk);
+    return pk;
+}
+
+// Origins word (0x46): met level bits 0-6, version bits 7-10, ball bits 11-14, OT gender bit 15.
+std::vector<uint8_t> withVersion(const char* hex, uint8_t version) {
+    return edited(hex, [version](std::vector<uint8_t>& pk) {
+        setLe16(pk, kOrigins, (le16(pk, kOrigins) & ~(0xFu << 7)) | (static_cast<unsigned>(version) << 7));
+    });
+}
+
+std::vector<uint8_t> withMetLevel(const char* hex, uint8_t level) {
+    return edited(hex, [level](std::vector<uint8_t>& pk) {
+        setLe16(pk, kOrigins, (le16(pk, kOrigins) & ~0x7Fu) | level);
+    });
+}
+
+// The record as a save stores it: the 48 data bytes encrypted with PID ^ OT ID and
+// shuffled by PID % 24 (Encryption3FRLG).
+std::vector<uint8_t> stored(const std::vector<uint8_t>& pk) {
+    const auto in = std::span<const std::byte>(reinterpret_cast<const std::byte*>(pk.data()), pk.size());
+    std::unique_ptr<std::byte[]> enc(Encryption::encryptArray3FRLG(in));
+    std::vector<uint8_t> out(pk.size());
+    std::memcpy(out.data(), enc.get(), out.size());
+    return out;
+}
+
+// Record path: the stored bytes go through Pokemon3FRLG and Legality::analyze with the
+// save group and the exact source game id, as PokemonDetailsModal.cpp does for a party or
+// box slot (a Bank slot passes no source id). analyzePk3 on the same bytes must agree.
+Actual run(const std::vector<uint8_t>& pk, const std::string& game) {
+    Actual a;
+    const auto copy = pk;
+    const auto bytes = stored(pk);
+    const Pokemon::Pokemon3FRLG mon(std::span<const std::byte>(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size()));
+    a.report = Legality::analyze(mon, mon.getGameGroup(), game);
+    a.outcome = fromReport(*a.report);
+    if (!Gen5TestHelpers::sameReport(*a.report, Legality::analyze(mon, mon.getGameGroup(), game)))
+        a.problems.push_back("a second analysis gave a different report");
+    const auto pk3 = Legality::analyzePk3(pk, game).verdict();
+    if (pk3 == Legality::Verdict::Invalid && a.outcome != Outcome::Invalid)
+        a.problems.push_back("Legality::analyze dropped an analyzePk3 Invalid");
+    if (a.outcome == Outcome::NoProblemsFound && pk3 != Legality::Verdict::NoProblemsFound)
+        a.problems.push_back("Legality::analyze certified what analyzePk3 did not");
+    if (pk != copy)
+        a.problems.push_back("record bytes changed");
+    return a;
+}
+
+// Engine entry point for bytes the save reader never hands over (a record that is not
+// 80 or 100 bytes long).
+Actual runPk3(const std::vector<uint8_t>& pk, const std::string& game) {
+    Actual a;
+    const auto copy = pk;
+    a.report = Legality::analyzePk3(pk, game);
+    a.outcome = fromReport(*a.report);
+    if (pk != copy)
+        a.problems.push_back("record bytes changed");
+    return a;
+}
+
+// ------------------------------------------------ synthetic 128 KiB GBA saves
+
+enum class Family { RubySapphire, Emerald, FireRedLeafGreen };
+
+constexpr std::size_t kSaveSize = 0x20000, kSectorSize = 0x1000, kSectorData = 0xF80;
+// Bytes each section's checksum covers (Gen3SaveValidation.h kChunkLengths).
+constexpr std::array<std::size_t, 14> kChunkLengths = {0xF2C, 0xF80, 0xF80, 0xF80, 0xF08, 0xF80, 0xF80,
+                                                       0xF80, 0xF80, 0xF80, 0xF80, 0xF80, 0xF80, 0x7D0};
+constexpr uint32_t kTesterId = 0x30394B2Du;  // trainer ID word of the save that receives trades
+constexpr uint32_t kEmeraldSecurityKey = 0xA1B2C3D4u;
+
+uint16_t sectorChecksum(const uint8_t* data, std::size_t length) {
+    uint32_t sum = 0;
+    for (std::size_t o = 0; o < length; o += 4)
+        sum += static_cast<uint32_t>(data[o]) | static_cast<uint32_t>(data[o + 1]) << 8 |
+               static_cast<uint32_t>(data[o + 2]) << 16 | static_cast<uint32_t>(data[o + 3]) << 24;
+    return static_cast<uint16_t>((sum & 0xFFFF) + (sum >> 16));
+}
+
+uint32_t trainerIdOf(const std::vector<uint8_t>& pk) {
+    return static_cast<uint32_t>(le16(pk, 4)) | static_cast<uint32_t>(le16(pk, 6)) << 16;
+}
+
+// Save slot A holds sections 0-13 in order (counter 1); slot B is blank. Section 0: trainer
+// "Tester" with the given ID word, and the family word at 0xAC: 1 on FireRed/LeafGreen, the
+// security key on Emerald, 0 on Ruby/Sapphire. Section 1: money 0 (stored XOR the key on
+// Emerald) and an empty party. Section 5: current box 0, then box 1 slot 1 holds `boxed`.
+std::vector<uint8_t> save(Family family, const std::vector<uint8_t>& boxed, uint32_t trainerId) {
+    std::array<std::vector<uint8_t>, 14> section;
+    for (auto& s : section)
+        s.assign(kSectorData, 0);
+    const uint8_t tester[8] = {0xCE, 0xD9, 0xE7, 0xE8, 0xD9, 0xE6, 0xFF, 0xFF};
+    std::copy(std::begin(tester), std::end(tester), section[0].begin());
+    setLe32(section[0], 0x0A, trainerId);
+    if (family == Family::FireRedLeafGreen)
+        setLe32(section[0], 0xAC, 1);
+    if (family == Family::Emerald) {
+        setLe32(section[0], 0xAC, kEmeraldSecurityKey);
+        setLe32(section[1], 0x490, kEmeraldSecurityKey);  // money 0
+    }
+    const auto record = stored(boxed);
+    std::copy(record.begin(), record.end(), section[5].begin() + 4);
+    std::vector<uint8_t> b(kSaveSize, 0);
+    for (std::size_t id = 0; id < section.size(); ++id) {
+        const std::size_t at = id * kSectorSize;
+        std::copy(section[id].begin(), section[id].end(), b.begin() + static_cast<std::ptrdiff_t>(at));
+        setLe16(b, at + 0xFF4, static_cast<unsigned>(id));
+        setLe16(b, at + 0xFF6, sectorChecksum(b.data() + at, kChunkLengths[id]));
+        setLe32(b, at + 0xFF8, 0x08012025u);
+        setLe32(b, at + 0xFFC, 1);
+    }
+    return b;
+}
+
+std::vector<uint8_t> save(Family family, const std::vector<uint8_t>& boxed) {
+    return save(family, boxed, trainerIdOf(boxed));
+}
+
+// Save path: G3::parse with the release the file was identified as, then
+// FRLGReadOnlyTrainer::create (UI.cpp opens every GBA save this way), then box 1 slot 1
+// through Legality::analyze with metadata().sourceGameId.
+Actual runSave(const std::vector<uint8_t>& bytes, G3::SourceGame game) {
+    Actual a;
+    const auto parsed = G3::parse(bytes, game);
+    if (!parsed) {
+        a.parserError = parsed.detail.empty() ? std::string(G3::errorMessage(parsed.error)) : parsed.detail;
+        return a;
+    }
+    std::string error;
+    const auto trainer = PokeVault::Legacy::FRLGReadOnlyTrainer::create(*parsed.save, error);
+    if (!trainer) {
+        a.parserError = error;
+        return a;
+    }
+    const std::string id(parsed.save->metadata().sourceGameId);
+    if (id != G3::sourceGameId(game) || trainer->sourceGameId() != id)
+        a.problems.push_back("sourceGameId is " + id);
+    if (trainer->boxes.empty() || !trainer->boxes[0][0]) {
+        a.problems.push_back("box 1 slot 1 is empty");
+        return a;
+    }
+    const Pokemon::Pokemon& pk = *trainer->boxes[0][0];
+    a.report = Legality::analyze(pk, pk.getGameGroup(), id);
+    a.outcome = fromReport(*a.report);
+    if (!Gen5TestHelpers::sameReport(*a.report, Legality::analyze(pk, pk.getGameGroup(), id)))
+        a.problems.push_back("a second analysis gave a different report");
+    const auto src = parsed.save->sourceBytes();
+    if (!std::equal(src.begin(), src.end(), bytes.begin(), bytes.end()))
+        a.problems.push_back("save bytes changed");
+    return a;
+}
+
+void cases() {
+    using O = Outcome;
+    using F = Family;
+    using SG = G3::SourceGame;
+    const auto noEncounter = invalid("Unable to match an encounter from the origin game");
+    const auto enigma = warning("Enigma Berry: legality depends on the e-Reader berry stored in the original save");
+    const auto colosseumXD = warning("Colosseum/XD origin; Gen III cartridge rules cannot verify this Pokemon");
+
+    // Positive: each title's own record read from that title's save bytes.
+    record("Ruby", "positive", "Zangoose L16, Route 114, Ruby-only slot, from Ruby save bytes",
+           expect(O::NoProblemsFound), runSave(save(F::RubySapphire, fromHex(kRubyZangoose)), SG::RubyGBA));
+    record("Sapphire", "positive", "Seviper L16, Route 114, Sapphire-only slot, from Sapphire save bytes",
+           expect(O::NoProblemsFound), runSave(save(F::RubySapphire, fromHex(kSapphireSeviper)), SG::SapphireGBA));
+    record("Emerald", "positive", "Smeargle L40, Artisan Cave, Emerald-only Method H slot, Emerald save",
+           expect(O::NoProblemsFound), runSave(save(F::Emerald, fromHex(kEmeraldSmeargle)), SG::EmeraldGBA));
+    record("FireRed", "positive", "Scyther L25, Celadon Game Corner prize, from FireRed save bytes",
+           expect(O::NoProblemsFound, {info("the Gen III analyzer matched static encounter Scyther at met location 94, level 25")}),
+           runSave(save(F::FireRedLeafGreen, fromHex(kFireRedScyther)), SG::FireRedGBA));
+    record("LeafGreen", "positive", "Bellsprout L13, Route 5, LeafGreen-only slot, LeafGreen save",
+           expect(O::NoProblemsFound),
+           runSave(save(F::FireRedLeafGreen, fromHex(kLeafGreenBellsprout)), SG::LeafGreenGBA));
+
+    // Negative: one broken rule each, named in the report.
+    record("Ruby", "negative", "Zangoose with 255/255/10 EVs (total 520, cap 510)",
+           expect(O::Invalid, {invalid("EV total 520 is above 510")}),
+           run(edited(kRubyZangoose, [](std::vector<uint8_t>& pk) {
+                   pk[kEvs] = 255;
+                   pk[kEvs + 1] = 255;
+                   pk[kEvs + 2] = 10;
+               }),
+               "ruby_gba"));
+    record("Sapphire", "negative", "Seviper knowing Wrap twice", expect(O::Invalid, {invalid("Move 1 (Wrap) is a duplicate")}),
+           run(edited(kSapphireSeviper, [](std::vector<uint8_t>& pk) {
+                   pk[kMoves + 2] = pk[kMoves];
+                   pk[kMoves + 3] = pk[kMoves + 1];
+               }),
+               "sapphire_gba"));
+    record("Emerald", "negative", "Smeargle with Pokerus strain 0 and 5 days left",
+           expect(O::Invalid, {invalid("Pokerus days remaining exceed the strain duration")}),
+           run(edited(kEmeraldSmeargle, [](std::vector<uint8_t>& pk) { pk[kPokerus] = 0x05; }), "emerald_gba"));
+    record("FireRed", "negative", "prize Scyther with the fateful encounter flag set",
+           expect(O::Invalid, {invalid("Fateful encounter flag is not possible for this encounter")}),
+           run(edited(kFireRedScyther, [](std::vector<uint8_t>& pk) { pk[kFateful] |= 0x80; }), "firered_gba"));
+    record("LeafGreen", "negative", "Bellsprout with EXP 0x00FFFFFF (above the level-100 total)",
+           expect(O::Invalid, {invalid("EXP is above the level 100 maximum")}),
+           run(edited(kLeafGreenBellsprout, [](std::vector<uint8_t>& pk) { setLe32(pk, kExp, 0x00FFFFFFu); }),
+               "leafgreen_gba"));
+
+    // Malformed: never "No problems found".
+    {
+        // A Bad Egg in box 1: the stored checksum no longer matches the data.
+        auto bytes = save(F::RubySapphire, fromHex(kRubyZangoose));
+        bytes[5 * kSectorSize + 4 + kChecksum] ^= 0x01;
+        setLe16(bytes, 5 * kSectorSize + 0xFF6, sectorChecksum(bytes.data() + 5 * kSectorSize, kChunkLengths[5]));
+        record("Ruby", "malformed", "Ruby save whose box record fails its checksum (a Bad Egg)",
+               rejected("strict Gen III adapter could not enumerate storage boxes"), runSave(bytes, SG::RubyGBA));
+    }
+    {
+        auto pk = fromHex(kSapphireSeviper);
+        pk.pop_back();
+        Expect e = expect(O::Incomplete, {warning("Record is not a Gen III PK3 (79 bytes)")});
+        e.structureNone = true;
+        record("Sapphire", "malformed", "Seviper record cut to 79 bytes (analyzePk3)", e, runPk3(pk, "sapphire_gba"));
+    }
+    record("Emerald", "malformed", "Smeargle with origin game id 0",
+           expect(O::Incomplete, {warning("Origin game id 0 is not a Gen III cartridge")}),
+           run(withVersion(kEmeraldSmeargle, 0), "emerald_gba"));
+    record("FireRed", "malformed", "prize Scyther whose stored checksum does not match its data",
+           expect(O::Incomplete, {warning("PK3 checksum does not match its data")}),
+           run([] {
+               auto pk = fromHex(kFireRedScyther);
+               pk[kChecksum] ^= 0x01;
+               return pk;
+           }(), "firered_gba"));
+    record("LeafGreen", "malformed", "Bellsprout with internal species index 260 (an unused slot)",
+           expect(O::Invalid, {invalid("Species index 260 is not a Gen III Pokemon")}),
+           run(edited(kLeafGreenBellsprout, [](std::vector<uint8_t>& pk) { setLe16(pk, kSpecies, 260); }),
+               "leafgreen_gba"));
+
+    // Unknown: the history depends on data outside the record.
+    record("Ruby", "unknown", "Zangoose holding an Enigma Berry (the berry lives in the save)", expect(O::Incomplete, {enigma}),
+           run(edited(kRubyZangoose, [](std::vector<uint8_t>& pk) { setLe16(pk, kItem, kEnigmaBerry); }), "ruby_gba"));
+    record("Sapphire", "unknown", "Seviper with origin Colosseum/XD (version 15)", expect(O::Incomplete, {colosseumXD}),
+           run(withVersion(kSapphireSeviper, kColosseumXD), "sapphire_gba"));
+    record("Emerald", "unknown", "Colosseum/XD-origin record in box 1 of an Emerald save",
+           expect(O::Incomplete, {colosseumXD}),
+           runSave(save(F::Emerald, withVersion(kEmeraldSmeargle, kColosseumXD)), SG::EmeraldGBA));
+    record("FireRed", "unknown", "prize Scyther holding an Enigma Berry", expect(O::Incomplete, {enigma}),
+           run(edited(kFireRedScyther, [](std::vector<uint8_t>& pk) { setLe16(pk, kItem, kEnigmaBerry); }),
+               "firered_gba"));
+    record("LeafGreen", "unknown", "Bellsprout with origin Colosseum/XD (version 15)", expect(O::Incomplete, {colosseumXD}),
+           run(withVersion(kLeafGreenBellsprout, kColosseumXD), "leafgreen_gba"));
+
+    // Original game: the expected verdict follows from the pret disassemblies.
+    // pokeruby src/data/wild_encounters.json:6292-6349: Route114_Ruby has Zangoose at L15-17 only.
+    record("Ruby", "original-game", "Zangoose met at L14 on Route 114 (Ruby: L15-17)", expect(O::Invalid, {noEncounter}),
+           run(withMetLevel(kRubyZangoose, 14), "ruby_gba"));
+    // pokeemerald src/tv.c:198-203: an Emerald outbreak of Seedot L3 on Route 102 with Bide,
+    // Harden, Leech Seed. pokeruby src/tv.c:1070-1078 copies a record-mixed outbreak show into
+    // the save and src/wild_encounter.c:358-360 creates it with that level and those moves.
+    record("Sapphire", "original-game", "Seedot L3, Route 102, Bide/Harden/Leech Seed (mixed outbreak)",
+           expect(O::NoProblemsFound), run(fromHex(kSapphireOutbreakSeedot), "sapphire_gba"));
+    // pokeemerald data/maps/NavelRock_Bottom/scripts.inc:54 `seteventmon SPECIES_LUGIA, 70`;
+    // asm/macros/event.inc:1990-1995 and src/pokemon.c:2633-2639, 2773-2780: the event mon is
+    // created with MON_DATA_MODERN_FATEFUL_ENCOUNTER set.
+    record("Emerald", "original-game", "Navel Rock Lugia L70 with the fateful flag", expect(O::NoProblemsFound),
+           run(fromHex(kEmeraldLugia), "emerald_gba"));
+    record("Emerald", "original-game", "Navel Rock Lugia L70 without the fateful flag",
+           expect(O::Invalid, {invalid("Event encounter is missing its fateful encounter flag")}),
+           run(edited(kEmeraldLugia, [](std::vector<uint8_t>& pk) { pk[kFateful] &= 0x7F; }), "emerald_gba"));
+    // pokefirered data/maps/CeladonCity_GameCorner_PrizeRoom/scripts.inc:155-156
+    // `givemon VAR_TEMP_1, 25`: the prize Scyther is L25.
+    record("FireRed", "original-game", "prize Scyther with met level 24 (the prize is L25)",
+           expect(O::Invalid, {noEncounter}), run(withMetLevel(kFireRedScyther, 24), "firered_gba"));
+    // scripts.inc:67-78 (LeafGreen: Pinsir) and 171-172 `givemon VAR_TEMP_1, 18`.
+    record("LeafGreen", "original-game", "Pinsir L18 from the Celadon Game Corner prize room",
+           expect(O::NoProblemsFound), run(fromHex(kLeafGreenPinsir), "leafgreen_gba"));
+    record("LeafGreen", "original-game", "prize Pinsir with met level 17 (the prize is L18)",
+           expect(O::Invalid, {noEncounter}), run(withMetLevel(kLeafGreenPinsir, 17), "leafgreen_gba"));
+
+    // Title-specific: the origin version in the record decides which game's encounters apply.
+    record("Ruby", "title-specific", "the Ruby Zangoose with version Sapphire (no Sapphire Zangoose)",
+           expect(O::Invalid, {noEncounter}), run(withVersion(kRubyZangoose, kSapphire), "sapphire_gba"));
+    // pokeruby include/constants/species.h:1282-1286: the roamer is Latias in Sapphire, Latios otherwise.
+    record("Ruby", "title-specific", "the Sapphire roaming Latias with version Ruby (Ruby roams Latios)",
+           expect(O::Invalid, {noEncounter}), run(withVersion(kSapphireRoamerLatias, kRuby), "ruby_gba"));
+    record("Sapphire", "title-specific", "the Sapphire Seviper with version Ruby (no Ruby Seviper)",
+           expect(O::Invalid, {noEncounter}), run(withVersion(kSapphireSeviper, kRuby), "ruby_gba"));
+    record("Sapphire", "title-specific", "the Ruby Zangoose traded into a Sapphire save",
+           expect(O::NoProblemsFound),
+           runSave(save(F::RubySapphire, fromHex(kRubyZangoose), kTesterId), SG::SapphireGBA));
+    // pokeruby has no Artisan Cave map (no ARTISAN anywhere in the tree).
+    record("Emerald", "title-specific", "the Emerald Smeargle with version Ruby (no Artisan Cave)",
+           expect(O::Invalid, {noEncounter}), run(withVersion(kEmeraldSmeargle, kRuby), "ruby_gba"));
+    record("Emerald", "title-specific", "the FireRed prize Scyther traded into an Emerald save",
+           expect(O::NoProblemsFound), runSave(save(F::Emerald, fromHex(kFireRedScyther), kTesterId), SG::EmeraldGBA));
+    record("Emerald", "title-specific", "Ruby/Sapphire save bytes opened as Emerald",
+           rejected("validated Gen III save family does not match the selected source release"),
+           runSave(save(F::RubySapphire, fromHex(kEmeraldSmeargle)), SG::EmeraldGBA));
+    // scripts.inc:80-90: the FireRed counter that gives Scyther gives Dratini in LeafGreen.
+    record("FireRed", "title-specific", "the FireRed prize Scyther with version LeafGreen",
+           expect(O::Invalid, {noEncounter}), run(withVersion(kFireRedScyther, kLeafGreen), "leafgreen_gba"));
+    record("FireRed", "title-specific", "the LeafGreen Bellsprout traded into a FireRed save",
+           expect(O::NoProblemsFound),
+           runSave(save(F::FireRedLeafGreen, fromHex(kLeafGreenBellsprout), kTesterId), SG::FireRedGBA));
+    // scripts.inc:67-78: FireRed gives Dratini where LeafGreen gives Pinsir.
+    record("LeafGreen", "title-specific", "the LeafGreen prize Pinsir with version FireRed",
+           expect(O::Invalid, {noEncounter}), run(withVersion(kLeafGreenPinsir, kFireRed), "firered_gba"));
+    // pokefirered src/data/wild_encounters.json:8620 (sRoute5_FireRed: no Bellsprout). The
+    // nearest FireRed template is an event gift, which the record fails (PKHeX agrees).
+    record("LeafGreen", "title-specific", "the LeafGreen Bellsprout with version FireRed",
+           expect(O::Invalid, {invalid("Event gift is missing its fateful encounter flag")}),
+           run(withVersion(kLeafGreenBellsprout, kFireRed), "firered_gba"));
+    record("LeafGreen", "title-specific", "the Emerald Smeargle traded into a LeafGreen save",
+           expect(O::NoProblemsFound),
+           runSave(save(F::FireRedLeafGreen, fromHex(kEmeraldSmeargle), kTesterId), SG::LeafGreenGBA));
+
+    // Title-specific: the same bytes from the Bank carry no source game and are never certified.
+    const std::pair<const char*, const char*> bank[] = {{"Ruby", kRubyZangoose},
+                                                        {"Sapphire", kSapphireSeviper},
+                                                        {"Emerald", kEmeraldSmeargle},
+                                                        {"FireRed", kFireRedScyther},
+                                                        {"LeafGreen", kLeafGreenBellsprout}};
+    for (const auto& [title, hex] : bank)
+        record(title, "title-specific", std::string("the ") + title + " positive record from the Bank (no source game)",
+               expect(O::Incomplete, {}, {warning(""), invalid("")}), run(fromHex(hex), ""));
+}
+
+}  // namespace gen3
+
 // ---------------------------------------------------------------- Gen V
 
 namespace gen5 {
@@ -1112,15 +1512,16 @@ int main(int argc, char** argv) {
     verbose = argc > 1 && std::strcmp(argv[1], "-v") == 0;
     gen1::cases();
     gen2::cases();
+    gen3::cases();
     gen5::cases();
 
-    std::printf("\nCases per title and kind:\n%-8s", "");
+    std::printf("\nCases per title and kind:\n%-9s", "");
     for (const char* kind : kKinds)
         std::printf(" | %-14s", kind);
     std::printf(" | total\n");
     for (const char* title : kTitles) {
         int total = 0;
-        std::printf("%-8s", title);
+        std::printf("%-9s", title);
         for (const char* kind : kKinds) {
             const int n = tally[title][kind];
             total += n;
@@ -1128,8 +1529,7 @@ int main(int argc, char** argv) {
         }
         std::printf(" | %d\n", total);
     }
-    std::printf("Gen III / IV titles (Ruby, Sapphire, Emerald, FireRed, LeafGreen, Diamond, Pearl, Platinum,\n"
-                "HeartGold, SoulSilver): pending the Gen III/IV analyzer merge.\n");
+    std::printf("Gen IV titles (Diamond, Pearl, Platinum, HeartGold, SoulSilver): pending the Gen IV analyzer merge.\n");
     if (failureCount != 0) {
         std::printf("Title matrix: %d of %d cases FAILED\n", failureCount, caseCount);
         return EXIT_FAILURE;
