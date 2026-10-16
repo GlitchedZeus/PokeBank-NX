@@ -25,6 +25,7 @@
 #include "UI/Dialogs/DialogFrame.h"
 #include "UI/Gen3SharedPokemonSession.h"
 #include "UI/Gen3EncounterPickerModel.h"
+#include "UI/Gen4BoxTouchActions.h"
 #include "UI/MovePickerPresentation.h"
 #include "UI/MovePickerRowUI.h"
 #include "UI/NaturePickerLayout.h"
@@ -2330,6 +2331,14 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
                 return true;
             }
             screen.selectedItemIndex = previous;
+        }
+        // The summary panel's "A / tap: Edit" target (BoxPokemonPanel id 2000) opens the SAME
+        // Gen III sheet as A, never the inherited generic action sheet.
+        if (tapped == PokeBank::UIModel::Gen4BoxTouchActions::SummaryPanelTouchId &&
+            PokeBank::UIModel::Gen4BoxTouchActions::opensSelectedSlotActions(
+                tapped, screen.selectedItemIndex, slots) && boxEntrySurface(screen)) {
+            beginActions(screen);
+            return true;
         }
     }
     const bool inBoxes = boxEntrySurface(screen);

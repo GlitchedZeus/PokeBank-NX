@@ -362,6 +362,15 @@ static void testRealSourcesUseSharedUnit() {
     require(gen4.find("SharedEditorPresentation::nextPokerusByte(") != std::string::npos, "Gen IV Pokerus inline");
     require(gen4.find("openPokerusPicker") == std::string::npos && gen4.find("openLanguagePicker") == std::string::npos, "Gen IV popups retired");
     require(gen5.find("const uint32_t next = mode == 0 ? 2u : mode == 2 ? 1u : 0u;") != std::string::npos, "Gen V Pokerus inline");
+    // Phase 9/12 routing: Gen III/IV summary-panel taps and Gen IV party taps open the native
+    // sheet (never the inherited generic action sheet); Gen IV adopts passive View in draw.
+    for (const auto* text : {&gen3, &gen4})
+        require(text->find("tapped == PokeBank::UIModel::Gen4BoxTouchActions::SummaryPanelTouchId") != std::string::npos,
+                "summary tap routed to the native sheet");
+    require(gen4.find("screen.selectedPartyIndex = previous;") != std::string::npos, "Gen IV party tap guard");
+    require(gen4.find("if (isGen4Nds(screen)) beginPassiveView(screen);\n    if (!ownsFrameImpl(screen)) return false;") != std::string::npos,
+            "Gen IV passive View adopted in draw");
+    require(gen5.find("hints.push_back({\"\",") == std::string::npos, "no dropped glyph-less Gen V hint");
     for (const auto* text : {&gen3, &gen4, &gen5}) {
         require(text->find("(ID \" + std::to_string") == std::string::npos &&
                 text->find("\"Location ID \"") == std::string::npos, "no raw location ids");
