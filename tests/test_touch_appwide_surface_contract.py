@@ -865,9 +865,12 @@ assert " GBC SOURCE / READ ONLY" in read("src/UI/ClassicReleaseActionFix.inc")
 gen3_readonly = read("src/UI/Gen3SharedPokemonSurface.inc")
 assert "const Pokemon::Pokemon* sourceBoxPokemon(" in gen3_readonly
 assert "model.append(\"Add Pokemon\"); // blocked" in gen3_readonly
-for disabled in ('model.append("Edit");', 'model.append("Clone");',
-                 'model.append("Release");'):
-    assert disabled in gen3_readonly
+# Without a validated staged workspace only read-only View exists: Edit / Clone / Release are
+# not offered at all (shared action sheet lists real commands only).
+readonly_menu = gen3_readonly.split("void drawActions(", 1)[1].split("if (!staged) {", 1)[1].split("return;", 1)[0]
+assert 'model.append("View", 0);' in readonly_menu
+for gone in ('"Edit"', '"Clone"', '"Release"', '"Make Shiny"'):
+    assert gone not in readonly_menu, gone
 assert "screen.openActionSheetTargetDetails(true);" in gen3_readonly
 assert "screen.actionSheet.close();" in gen3_readonly
 assert "if (!editor(screen)) return false; // Read-only source" not in gen3_readonly

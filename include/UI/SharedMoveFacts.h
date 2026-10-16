@@ -143,10 +143,10 @@ inline std::string detailLine(const MoveFacts& f) {
     if (!f.exists) return {};
     std::string line = typeLabel(f);
     if (const char* category = categoryLabel(f); *category) {
-        line += " \xC2\xB7 ";
+        line += " \xE2\x80\xA2 ";
         line += category;
     }
-    line += " \xC2\xB7 Pwr " + powerLabel(f) + " \xC2\xB7 Acc " + accuracyLabel(f);
+    line += " \xE2\x80\xA2 Pwr " + powerLabel(f) + " \xE2\x80\xA2 Acc " + accuracyLabel(f);
     return line;
 }
 

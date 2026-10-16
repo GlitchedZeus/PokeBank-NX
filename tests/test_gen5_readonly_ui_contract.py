@@ -745,7 +745,7 @@ require(shared_contract, "case FieldIdentity::FatefulEncounter:",
         "case FieldIdentity::TrainerId:",
         "case FieldIdentity::SecretId:")
 require(surface,
-         "Names::getMetLocationName(",
+         "Names::getMetLocationDisplayName(",
         "Utils::promptNumber(",
 
         )
@@ -1173,7 +1173,7 @@ require(surface, "Fields::detailEditable(draft(screen), row, b2w2(screen))",
         "Fields::toggleShiny(probe, error)", "Fields::toggleFlag(d, row == FatefulEncounter",
         "backendState.speciesRefusal(species)", "backendState.recreateCreateSpecies(",
         "return b2w2(screen) ? Enums::GameVersion::B2W2 : Enums::GameVersion::BW;",
-        "learnability not checked", 'return "None (ID 0)";',
+        "learnability not checked", 'return Names::getMetLocationDisplayName(origin, location);',
         "static constexpr bool kCompactForm = true;", "static constexpr bool kSpeciesSearch = true;")
 require(native_screen, "Gen5SharedPokemonSession& editDraft() noexcept",
         "std::string speciesRefusal(uint32_t species) const",

@@ -1,6 +1,7 @@
 // Shared Gen I-V editor unit: Moves panel + Move chooser layout bounds, generation-correct
 // move facts, picker footer, inline toggles, DETAILS viewport, and source contracts that the
 // real Gen III / IV / V surfaces use these shared pieces (not a host-only mock).
+#include "Names/LocationDisplayNames.h"
 #include "UI/MovePickerPresentation.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedMoveFacts.h"
@@ -11,6 +12,8 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -236,6 +239,36 @@ static void testDetailsViewport() {
     }
 }
 
+static void testLocationNames() {
+    // Gen III: no PKHeX source tags or raw ids; duplicates only for the SAME place.
+    const std::set<std::string> samePlace{"Birth Island", "Fiery Path", "Jagged Pass",
+                                          "Meteor Falls", "Navel Rock"};
+    for (uint8_t origin = 1; origin <= 5; ++origin) {
+        std::map<std::string, int> seen;
+        for (uint16_t id = 0; id < 256; ++id) {
+            const std::string name = Names::getMetLocationDisplayName(origin, id);
+            for (const char* tag : {"(RSE)", "(FRLG)", "(RS)", "(E)", "(unused)", "ID ", " / "})
+                require(name.find(tag) == std::string::npos, "Gen III location tag: " + name);
+            const char* raw = Names::getMetLocationName(origin, id);
+            if (id == 0 || !raw || !*raw) continue;
+            if (++seen[name] > 1) require(samePlace.count(name) == 1, "Gen III duplicate location: " + name);
+        }
+    }
+    require(Names::getMetLocationDisplayName(3, 57) == "Safari Zone (Hoenn)" &&
+            Names::getMetLocationDisplayName(4, 136) == "Safari Zone (Kanto)", "Safari Zone disambiguated");
+    require(Names::getMetLocationDisplayName(3, 58) == "Battle Frontier" &&
+            Names::getMetLocationDisplayName(1, 58) == "Battle Tower", "Battle Tower/Frontier by origin");
+    require(Names::getMetLocationDisplayName(1, 0) == "None", "no met location");
+    // Gen IV / V: never a raw id, even for unknown or placeholder entries.
+    for (const uint8_t origin : {uint8_t{10}, uint8_t{12}, uint8_t{7}, uint8_t{20}, uint8_t{22}})
+        for (uint16_t id : {uint16_t{0}, uint16_t{1}, uint16_t{50}, uint16_t{2000}, uint16_t{3002},
+                            uint16_t{30001}, uint16_t{60002}, uint16_t{65000}}) {
+            const std::string name = Names::getMetLocationDisplayName(origin, id);
+            require(!name.empty() && name.find("ID ") == std::string::npos &&
+                    name.find('\xEF') == std::string::npos, "Gen IV/V location shows no raw id");
+        }
+}
+
 static void testRealSourcesUseSharedUnit() {
     const std::string gen3 = read("src/UI/Gen3SharedPokemonSurface.inc");
     const std::string shared = read("src/UI/SharedPokemonEditorSurface.inc");
@@ -248,6 +281,21 @@ static void testRealSourcesUseSharedUnit() {
         require(text->find("{\"A\", \"Choose\"}") == std::string::npos, "no ad-hoc A Choose footers");
         require(text->find("MovePickerRowUI::draw(") == std::string::npos, "old move row retired");
     }
+    // Phase 6 / 10: Y re-roll in every Gen III-V workspace; inline Pokerus / Language toggles.
+    const std::string gen4 = read("src/UI/Gen4SharedPokemonSurface.inc");
+    const std::string gen5 = read("src/UI/Gen5SharedReadOnlySurface.inc");
+    require(gen3.find("Reroll::reroll(rng, {w.ivs, w.evs})") != std::string::npos, "Gen III Y re-roll");
+    require(shared.find("Reroll::reroll(rng, {A::ivs(*record), A::evs(*record)})") != std::string::npos, "Gen IV/V Y re-roll");
+    require(gen3.find("Presentation::nextPokerusByte(p.pokerus, state.session.baseline.pokerus)") != std::string::npos, "Gen III Pokerus inline");
+    require(gen3.find("Presentation::nextGen3Language(p.language)") != std::string::npos, "Gen III Language inline");
+    require(gen4.find("SharedEditorPresentation::nextPokerusByte(") != std::string::npos, "Gen IV Pokerus inline");
+    require(gen4.find("openPokerusPicker") == std::string::npos && gen4.find("openLanguagePicker") == std::string::npos, "Gen IV popups retired");
+    require(gen5.find("const uint32_t next = mode == 0 ? 2u : mode == 2 ? 1u : 0u;") != std::string::npos, "Gen V Pokerus inline");
+    for (const auto* text : {&gen3, &gen4, &gen5}) {
+        require(text->find("(ID \" + std::to_string") == std::string::npos &&
+                text->find("\"Location ID \"") == std::string::npos, "no raw location ids");
+        require(text->find("getMetLocationDisplayName(") != std::string::npos, "player-facing location names");
+    }
     require(species.find("commits to draft") == std::string::npos &&
             species.find("restores previous committed") == std::string::npos, "species picker has no developer copy");
     require(read("include/UI/SharedPokemonShell.h").find("\"Rows \"") == std::string::npos, "shell row counter removed");
@@ -259,6 +307,7 @@ int main() {
     testChooserBounds();
     testFooterAndToggles();
     testDetailsViewport();
+    testLocationNames();
     testRealSourcesUseSharedUnit();
     std::cout << "Shared Gen I-V editor unit (moves panel, chooser, footer, toggles, viewport) PASS\n";
 }

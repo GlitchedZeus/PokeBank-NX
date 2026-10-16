@@ -800,3 +800,10 @@ for branch in branches:
 require("{\"B\", \"Quit PokeBank NX (asks first; Y confirms)\"}" in source and
         "Exit PokeBank NX from Product Home" not in source,
         "Home Help states that B asks before quitting")
+# The full Games browser binds L/R to profile switching (Home binds it to Change Game); its
+# footer must name that whenever it applies, so the role never surprises the user.
+classic_draw = body("void SaveSelectScreen::drawClassicGameSources")
+require('if (users.size() > 1) classicHints.insert(classicHints.begin() + 2, {"L/R", "Profile"});' in classic_draw,
+        "The full Games browser footer shows L/R Profile when more than one profile exists")
+classic_lr = source[source.index("            if (users.size() > 1) {\n                if (kDown & HidNpadButton_L) setUser(userIndex - 1);"):]
+require("setUser(userIndex + 1)" in classic_lr[:300], "L/R in the full Games browser switches profile only")

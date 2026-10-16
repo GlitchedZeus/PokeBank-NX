@@ -187,7 +187,7 @@ int main() {
     contains(surface, "SharedPokemonShell::drawPortrait"); contains(surface, "getTypeSprite");
     contains(surface, "SharedPokemonShell::drawDataAndGraph");
     contains(shell, "BATTLE STATS"); contains(shell, "StatsRadar::drawGen3Labeled");
-    contains(surface, "GEN III DATA"); contains(surface, "Colors::Panel");
+    contains(surface, "Presentation::kOriginLegalityHeading, rows,"); contains(surface, "Colors::Panel");
     contains(surface, "SharedPokemonShell::drawScrollableDetails");
     contains(shell, "scrollWindow(total, visibleRows, focus)");
     contains(shell, "independentFirstRow >= 0");
@@ -210,7 +210,7 @@ int main() {
     contains(surface, "EncounterPicker::choiceAt");
     contains(surface, "forGameSpeciesWithGen3Provenance");
     contains(surface, "Encounter origin");
-    contains(surface, "origin →");
+    contains(surface, "met as ");
     assert(surface.find("state.pickerValues.push_back(current)") != std::string::npos);
     assert(surface.find("No supported exact-game encounter templates for this Pokemon") != std::string::npos);
     contains(surface, "Met Level for selected encounter");
