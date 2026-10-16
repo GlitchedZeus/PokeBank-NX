@@ -33,12 +33,18 @@ int main() {
                   static_cast<int>(G5::BagPocket5::Berries) == 4);
     const std::string gen4 = read("src/UI/Gen4SharedPokemonSurface.inc");
     const std::string gen5 = read("src/UI/Gen5SharedReadOnlySurface.inc");
-    assert(gen4.find("QP::Pocket::Items, QP::Pocket::KeyItems, QP::Pocket::TMHM, QP::Pocket::Mail,\n"
-                     "        QP::Pocket::Medicine, QP::Pocket::Berries, QP::Pocket::Balls, QP::Pocket::BattleItems}};")
+    const std::string gen4Rule = read("include/UI/Gen4BagQuantity.h");
+    const std::string base = read("src/UI/TrainerViewScreenBase.inc");
+    assert(gen4Rule.find("QP::Pocket::Items, QP::Pocket::KeyItems, QP::Pocket::TMHM, QP::Pocket::Mail,\n"
+                         "        QP::Pocket::Medicine, QP::Pocket::Berries, QP::Pocket::Balls, QP::Pocket::BattleItems}};")
            != std::string::npos);
+    // One query for the surface (A / Add) and the Base Items footer (A shown only if editable).
+    assert(gen4.find("PokeBank::UIModel::Gen4BagQuantity::rule(screen.sourceGameId, pocket, id)") != std::string::npos);
+    assert(base.find("PokeBank::UIModel::Gen4BagQuantity::rule(") != std::string::npos);
+    assert(base.find("instructions += \"  |  A: Edit Quantity  |  Y: Remove...\";") == std::string::npos);
     assert(gen5.find("QP::Pocket::Items, QP::Pocket::KeyItems, QP::Pocket::TMHM, QP::Pocket::Medicine,\n"
                      "        QP::Pocket::Berries}};") != std::string::npos);
-    assert(gen4.find("std::min(rule.maximum, nativeCap)") != std::string::npos);
+    assert(gen4Rule.find("std::min(r.maximum, nativeCap)") != std::string::npos);
     assert(gen5.find("std::min(rule.maximum, nativeCap)") != std::string::npos);
 
     // Every native Gen IV item: the policy is valid where the native catalog allows it, and the

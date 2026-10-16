@@ -2,6 +2,7 @@
 // move facts, picker footer, inline toggles, DETAILS viewport, and source contracts that the
 // real Gen III / IV / V surfaces use these shared pieces (not a host-only mock).
 #include "Names/LocationDisplayNames.h"
+#include "UI/ClassicGenericUiGuard.h"
 #include "UI/MovePickerPresentation.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedMoveFacts.h"
@@ -385,6 +386,30 @@ static void testRealSourcesUseSharedUnit() {
                 text->find("\"Location ID \"") == std::string::npos, "no raw location ids");
         require(text->find("getMetLocationDisplayName(") != std::string::npos, "player-facing location names");
     }
+    namespace Guard = PokeBank::UIModel::ClassicGenericUi;
+    for (const char* id : {"red_gb", "crystal_gbc", "emerald_gba", "leafgreen_gba", "platinum_nds", "white2_nds"})
+        require(Guard::classicSession(id) && !Guard::genericUiAllowed(true, Guard::GenericUi::ActionSheet), "Gen I-V session");
+    for (const char* id : {"", "x_3ds", "sword_switch", "scarlet"})
+        require(!Guard::classicSession(id) && Guard::genericUiAllowed(Guard::classicSession(id), Guard::GenericUi::Picker),
+                "Gen VI+ keeps the generic UI");
+    require(Guard::classicGeneration("emerald_gba") == 3 && Guard::classicGeneration("heartgold_nds") == 4 &&
+            Guard::classicGeneration("black_nds") == 5 && Guard::classicGeneration("gold_gbc") == 2, "session generation");
+    // CG11: ONE named Gen I-V router in front of the generic-UI open points of the base screen.
+    const std::string base = read("src/UI/TrainerViewScreenBase.inc");
+    for (const char* site : {
+             "void TrainerViewScreen::openStorageEditor(int pane, int box, int slot) {\n        if (!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::DetailsEditor)) {",
+             "if (genericUiAllowedForSession(*this, Guard::GenericUi::ActionSheet)) return;",
+             "!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::DetailsEditor);",
+             "if (!genericUiAllowedForSession(*this, PokeBank::UIModel::ClassicGenericUi::GenericUi::Picker)) {\n            pickerActive = false;\n            statEdit.dialogActive = false;"})
+        require(base.find(site) != std::string::npos, std::string("CG11 router site: ") + site);
+    std::size_t creatorGuards = 0, pickerGuards = 0;
+    for (std::size_t at = base.find("GenericUi::Creator)) return;"); at != std::string::npos;
+         at = base.find("GenericUi::Creator)) return;", at + 1)) ++creatorGuards;
+    for (std::size_t at = base.find("GenericUi::Picker)) return;"); at != std::string::npos;
+         at = base.find("GenericUi::Picker)) return;", at + 1)) ++pickerGuards;
+    require(creatorGuards == 2 && pickerGuards == 2, "generic creator / item picker opens are guarded");
+    require(base.find("SharedEditorChrome::beginModal(touchButtons);\n            Dialogs::drawSaveConfirmDialog(*this, fb);") != std::string::npos,
+            "exit save dialog owns the touch layer in Gen I-V");
     require(species.find("commits to draft") == std::string::npos &&
             species.find("restores previous committed") == std::string::npos, "species picker has no developer copy");
     require(read("include/UI/SharedPokemonShell.h").find("\"Rows \"") == std::string::npos, "shell row counter removed");

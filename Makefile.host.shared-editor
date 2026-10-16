@@ -131,7 +131,9 @@ $(SHARED_EDITOR_CONTRACT_SANITIZE): $(SHARED_EDITOR_CONTRACT_INPUTS)
 
 # Shared Gen I-V editor unit: Moves panel, Move chooser, picker footer, inline toggles and the
 # DETAILS viewport, plus source contracts that the real Gen III-V surfaces use them.
-SHARED_EDITOR_UNIT_SOURCES := tests/test_shared_editor_unit.cpp src/Names/MoveNames.cpp src/Names/LocationNames.cpp
+SHARED_EDITOR_UNIT_SOURCES := tests/test_shared_editor_unit.cpp src/Names/MoveNames.cpp src/Names/LocationNames.cpp \
+	src/Inventory/ItemQuantityPolicy.cpp src/Inventory/ClassicInventoryCatalog.cpp src/Names/ItemNames.cpp \
+	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
 SHARED_EDITOR_UNIT_TEST := $(HOST_BUILD)/test_shared_editor_unit
 SHARED_EDITOR_UNIT_SANITIZE := $(HOST_BUILD)/test_shared_editor_unit_sanitize
 

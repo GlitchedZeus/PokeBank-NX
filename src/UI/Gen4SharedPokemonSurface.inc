@@ -1,4 +1,5 @@
 #include "Inventory/ItemQuantityPolicy.h"
+#include "UI/Gen4BagQuantity.h"
 #include "Names/LocationDisplayNames.h"
 #include "Integration/Gen4/Gen4ExactFormatEditorProvider.h"
 #include "UI/Gen4BoxTouchActions.h"
@@ -1661,23 +1662,11 @@ void drawReleaseConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& s
     drawNavBar(fb, {{"Y", "Confirm Release"}, {"B", "Cancel"}});
 }
 
-// The ONE per-item quantity query of the Gen IV bag, backed by Thread I's source-backed
-// Inventory/ItemQuantityPolicy.h (d08c5aa8). Unique items (Key Items, HMs) get no quantity
-// editor; everything else edits 1..max. The cap never exceeds the native writer's own bound
-// (gen4BagMaxQuantity), so the UI can never offer a value the staged editor would refuse.
-struct Gen4QuantityRule { bool valid = false; bool editable = false; uint16_t maximum = 0; };
+// The ONE per-item quantity query of the Gen IV bag (UI/Gen4BagQuantity.h), shared with the
+// Items footer in TrainerViewScreenBase.inc so the footer only offers A where it edits.
+using Gen4QuantityRule = PokeBank::UIModel::Gen4BagQuantity::Rule;
 Gen4QuantityRule gen4QuantityRule(const TrainerViewScreen& screen, size_t pocket, uint16_t id) noexcept {
-    namespace QP = PokeVault::Inventory::QuantityPolicy;
-    static constexpr std::array<QP::Pocket, Gen4::BagPocketCount> kPockets{{
-        QP::Pocket::Items, QP::Pocket::KeyItems, QP::Pocket::TMHM, QP::Pocket::Mail,
-        QP::Pocket::Medicine, QP::Pocket::Berries, QP::Pocket::Balls, QP::Pocket::BattleItems}};
-    QP::Game game{};
-    if (pocket >= kPockets.size() || !QP::gameFromId(screen.sourceGameId, game)) return {};
-    const auto rule = QP::quantityRule(game, kPockets[pocket], id);
-    const uint16_t nativeCap = Gen4::gen4BagMaxQuantity(pocket, id);
-    if (!rule.valid || nativeCap == 0) return {};
-    const uint16_t maximum = std::min(rule.maximum, nativeCap);
-    return {true, rule.editable && maximum > 1, maximum};
+    return PokeBank::UIModel::Gen4BagQuantity::rule(screen.sourceGameId, pocket, id);
 }
 
 bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,

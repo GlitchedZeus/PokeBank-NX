@@ -703,8 +703,9 @@ int main() {
     contains(baseUi, "hasUnsavedChanges || trainer.hasStagedChanges()");
     contains(baseUi, "PokeVault::Integration::Gen4::BagPocketCount");
     contains(baseUi, "sourceGameId==\"platinum_nds\"");
-    contains(baseUi, "A: Edit Quantity  |  Y: Remove...");
-    contains(baseUi, "X: Add Item");
+    contains(baseUi, "footer.push(\"A\", \"Edit Quantity\");"); // only for a quantity-editable item (QuantityPolicy)
+    contains(baseUi, "PokeBank::UIModel::Gen4BagQuantity::rule(");
+    contains(baseUi, "footer.push(\"X\", \"Add Item\");");
 
     contains(baseUi, "immutableSourceBlocksSaveDialog(");
     contains(baseUi, "exitOnlySaveConfirm");
