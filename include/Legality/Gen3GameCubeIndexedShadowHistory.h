@@ -50,7 +50,9 @@ inline Result evaluate(const Candidate& c) {
        c.originalGame==Game::Unknown)return {};
     if(!c.originalRowIndependentlyAttested)
         return {Status::UnknownPhysicalRow};
-    if(!c.originalCaptureStageIndependentlyAttested)
+    if(!c.originalCaptureStageIndependentlyAttested ||
+       !c.originalSpecies || c.originalSpecies>386 ||
+       !c.originalLevel || c.originalLevel>100)
         return {Status::UnknownOriginalStage};
     if(!Gen3PidIv::validStoredIVs(c.originalIVs))
         return {Status::UnknownOriginalStage};

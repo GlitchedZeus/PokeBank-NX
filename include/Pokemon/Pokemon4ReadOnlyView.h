@@ -14,6 +14,7 @@ public:
     explicit Pokemon4ReadOnlyView(const Pokemon4ReadOnly& source);
 
     [[nodiscard]] const Pokemon4ReadOnly& source() const noexcept { return source_; }
+    const Pokemon4ReadOnly* nativePk4ReadOnly() const noexcept override { return &source_; }
 
     uint16_t speciesID() const noexcept override;
     const char* species() const noexcept override;

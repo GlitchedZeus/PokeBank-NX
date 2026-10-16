@@ -1,0 +1,55 @@
+# Gen I/II origin search (src/Legality/GBLegality.cpp) through the production analyzer.
+# Expected verdicts come from PKHeX; tools/pkhex_gb_diff/run.sh reproduces them at scale.
+GB_LEGALITY_GEN1_SOURCES := tests/test_gb_legality_gen1.cpp \
+	$(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES)) \
+	src/Integration/Gen1/Gen1ReadOnlySave.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gb_legality_gen1
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gb_legality_gen1_sanitize
+# host-test/host-sanitize take their prerequisites when Makefile.host.base is read,
+# before this file appends to the lists, so name the new binaries explicitly.
+host-test: $(HOST_BUILD)/test_gb_legality_gen1
+host-sanitize: $(HOST_BUILD)/test_gb_legality_gen1_sanitize
+
+$(HOST_BUILD)/test_gb_legality_gen1: $(GB_LEGALITY_GEN1_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gb_legality_gen1_sanitize: $(GB_LEGALITY_GEN1_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+
+# Gen II origin search (GB::checkGen2) on PK2 records with PKHeX verdicts.
+GB_LEGALITY_GEN2_SOURCES := tests/test_gb_legality_gen2.cpp src/Legality/GBLegality.cpp \
+	src/Legality/GBLegalityData.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp \
+	src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
+	src/Pokemon/Experience.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gb_legality_gen2
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gb_legality_gen2_sanitize
+host-test: $(HOST_BUILD)/test_gb_legality_gen2
+host-sanitize: $(HOST_BUILD)/test_gb_legality_gen2_sanitize
+
+$(HOST_BUILD)/test_gb_legality_gen2: $(GB_LEGALITY_GEN2_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gb_legality_gen2_sanitize: $(GB_LEGALITY_GEN2_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+# Structural Gen I/II rules (duplicate moves, level against EXP, the level-100 EXP total)
+# in the GB engine, the production analyzer, a real Red save and native PK2 records.
+GB_LEGALITY_STRUCTURAL_SOURCES := tests/test_gb_legality_structural.cpp \
+	$(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES)) \
+	src/Integration/Gen1/Gen1ReadOnlySave.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gb_legality_structural
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gb_legality_structural_sanitize
+host-test: $(HOST_BUILD)/test_gb_legality_structural
+host-sanitize: $(HOST_BUILD)/test_gb_legality_structural_sanitize
+
+$(HOST_BUILD)/test_gb_legality_structural: $(GB_LEGALITY_STRUCTURAL_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+
+$(HOST_BUILD)/test_gb_legality_structural_sanitize: $(GB_LEGALITY_STRUCTURAL_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $^ -o $@

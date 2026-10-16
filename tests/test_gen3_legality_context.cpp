@@ -32,6 +32,35 @@ Pokemon::Pokemon3FRLG blankPk3() {
         reinterpret_cast<const std::byte*>(raw.data()), raw.size()));
 }
 
+// Japanese Negai Boshi Jirachi (pinned PKHeX EncountersWC3): Ruby origin,
+// TID 30719 / SID 0, OT "ネガイボシ", PID/IVs from the BA-CD event RNG.
+Pokemon::Pokemon3FRLG negaiBoshiJirachi() {
+    auto p = blankPk3();
+    p.setSpecies(385);
+    p.setTID16(30719);
+    p.setSID16(0);
+    p.setLanguage(1);
+    p.setOTName(u"ネガイボシ");
+    p.setNickname(u"ジラーチ");
+    p.setOriginGame(2);
+    p.setMetLevel(5);
+    p.setMetLocation(255);
+    p.setBall(4);
+    p.setOTGender(0);
+    const uint8_t ivs[6] = {10, 12, 22, 0, 7, 29}; // HP ATK DEF SPE SPA SPD
+    for (int i = 0; i < 6; ++i) p.setIV(i, ivs[i]);
+    p.setPID(0xF86484EAu);
+    p.setLevel(5);
+    p.setMove(0, 273); // Wish
+    p.setMovePP(0, 10);
+    p.refreshChecksum();
+    return p;
+}
+
+bool hasNegaiTemplate(const Legality::Report& report) {
+    return hasText(report, "match the pinned Japanese Negai Boshi Jirachi distribution template");
+}
+
 void setStoredFateful(Pokemon::Pokemon3FRLG& p) {
     p.wr32(0x4C, p.rd32(0x4C) | 0x80000000u);
     p.refreshChecksum();
@@ -240,6 +269,21 @@ void forceFemaleOt(Pokemon::Pokemon3FRLG& p) {
 }
 
 int main() {
+    // Negai Boshi: the analyzer's event candidate compares the stored OT name.
+    // That name must outlive the comparison (it was once a view of a destroyed
+    // temporary; the sanitizer build of this test catches a regression).
+    {
+        auto jirachi = negaiBoshiJirachi();
+        assert(jirachi.otName() == u"ネガイボシ");
+        const auto matched = Legality::analyze(jirachi, Enums::GameVersion::FRLG, "ruby_gba");
+        assert(hasNegaiTemplate(matched));
+        // A different OT name is not the distribution, by the same comparison.
+        jirachi.setOTName(u"ネガイ");
+        jirachi.refreshChecksum();
+        const auto renamed = Legality::analyze(jirachi, Enums::GameVersion::FRLG, "ruby_gba");
+        assert(!hasNegaiTemplate(renamed));
+    }
+
     // Source-backed Gen III Safari Ball *positive-only* production reporting.
     // Pinned Ruby encounter_r.pkl: Pikachu #25 at Safari location57, level25.
     auto safari = safariPikachu();
@@ -297,7 +341,10 @@ int main() {
     assert(hasText(ruby, "not native to this exact Gen III game"));
     assert(ruby.coverage.sourceGame == Legality::CoverageLevel::Complete);
     assert(ruby.coverage.encounter == Legality::CoverageLevel::Partial);
-    assert(ruby.verdict() == Legality::Verdict::Incomplete);
+    // The Gen III analyzer (like PKHeX: Encounter EggFMetLevel_0) rejects this synthetic
+    // record: a Ruby-origin Bulbasaur can only have hatched, and hatching sets met level 0.
+    assert(ruby.verdict() == Legality::Verdict::Invalid);
+    assert(hasText(ruby, "Hatched Pokemon must have met level 0"));
 
     const auto fireRed = Legality::analyze(p, Enums::GameVersion::FRLG, "firered_gba");
     assert(!hasText(fireRed, "not native to this exact Gen III game"));

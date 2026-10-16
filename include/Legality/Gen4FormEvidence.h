@@ -49,7 +49,17 @@ inline const Pokemon::PersonalRecord* basePersonal(
 inline uint8_t formCount(std::string_view exactGameId,
                          uint16_t species) noexcept {
     const auto* personal = basePersonal(exactGameId, species);
-    return personal ? personal->formCount : 0;
+    if (!personal)
+        return 0;
+    // The native personal tables give Unown one entry, but its 28 letters (A-Z, !, ?)
+    // are stored forms in every Gen IV game (PKHeX FormInfo / Unown slots).
+    if (species == 201)
+        return 28;
+    // Mothim keeps the cloak form value of the Burmy it evolved from (PKHeX
+    // PersonalTable4.IsPresentInGame: Mothim => form < 3) in every Gen IV game.
+    if (species == 414)
+        return 3;
+    return personal->formCount;
 }
 
 inline bool isFormValid(std::string_view exactGameId, uint16_t species,

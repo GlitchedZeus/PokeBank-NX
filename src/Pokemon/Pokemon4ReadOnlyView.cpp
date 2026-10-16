@@ -77,18 +77,12 @@ uint8_t Pokemon4ReadOnlyView::otGender() const noexcept { return source_.origina
 uint8_t Pokemon4ReadOnlyView::otFriendship() const noexcept { return source_.friendship(); }
 uint8_t Pokemon4ReadOnlyView::language() const noexcept { return source_.language(); }
 uint8_t Pokemon4ReadOnlyView::ball() const noexcept {
-    // These are separate, format-specific stored bytes: never choose the
-    // numerically larger one. A stale inactive shadow can be nonzero, even
-    // when the visible original Ball belongs to the active native save.
-    switch (source_.sourceGroup()) {
-        case Enums::GameVersion::DP:
-        case Enums::GameVersion::PT:
-            return source_.ballDPPt();
-        case Enums::GameVersion::HGSS:
-            return source_.ballHGSS();
-        default:
-            return 0; // Unknown storage layout, do not fabricate a Ball.
-    }
+    // The capture Ball is a property of the Pokemon, not of the save holding it.
+    // HG/SS writes the real Ball to 0x86 and a D/P/Pt-displayable stand-in
+    // (Poke Ball for Apricorn/Sport) to 0x83; every other origin leaves 0x86 at 0.
+    // The larger byte is therefore the real Ball in every container -- the same
+    // rule PKHeX (G4PKM.Ball) and Pokemon4Mutable::ball() use.
+    return std::max(source_.ballHGSS(), source_.ballDPPt());
 }
 uint16_t Pokemon4ReadOnlyView::metLocation() const noexcept {
     // PK4's canonical display value always prefers the Pt/HGSS extended field when

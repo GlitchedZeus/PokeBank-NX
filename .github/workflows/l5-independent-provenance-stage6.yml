@@ -1,0 +1,98 @@
+name: L5 Independent Stage 6 Provenance Gate
+
+on:
+  push:
+    branches:
+      - audit/legality-l5-research-qa-20261012
+      # Gen I-V integration branch (PR #314): run on its exact pushed head.
+      - 'claude/gen1-5-legality-**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: l5-stage6-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  original-provenance:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify exact original source commit and byte identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          git diff --check
+          test "$(git hash-object tools/audit_legality_l5_stage6_provenance.py)" = "54202cd21b28bc7284ff3677bb349bc9b352cd97"
+          test "$(git hash-object tools/audit_legality_l5_stage6_receipt_chain.h)" = "63a8beff9f5b2bcca86d83eb9575b59789015229"
+          test "$(git hash-object tests/fixtures/legality_l5_stage6_receipt_chain_fuzz.cpp)" = "d07351f551cdb51afc59bcdd4e7e22fe09c31cb4"
+      - name: Execute manifest and chain tampering negative controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l5_stage6_provenance.py --self-test
+      - name: Check all 247 indexed original WC4 manifest records and original-history permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_legality_l5_stage6_provenance.py \
+            --json-out /tmp/l5-stage6-provenance-report.json
+          python3 - <<'PY'
+          import json
+          with open('/tmp/l5-stage6-provenance-report.json',encoding='utf8') as stream:
+              report=json.load(stream)
+          assert report['event_template_rows_indexed']==247
+          assert report['unique_template_identities']==247
+          assert report['ambiguous_card_id_templates']==219
+          assert report['historical_source_requests_missing']==22
+          assert report['archive_original_payload_sha256_authenticated']==0
+          assert report['authenticated_original_distribution_receipts']==0
+          assert report['redistribution_permission']=='BLOCKED'
+          assert report['whole_pokemon_legality']=='NOT_EVALUATED'
+          assert report['release_gate']=='BLOCKED'
+          PY
+      - name: Execute C++ chain-of-custody fuzz GCC and Clang normal / ASan+UBSan
+        shell: bash
+        run: |
+          set -euo pipefail
+          for cc in g++ clang++; do
+            for mode in optimized sanitized; do
+              if [ "$mode" = sanitized ]; then
+                opts="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer"
+              else
+                opts="-O2"
+              fi
+              # shellcheck disable=SC2086
+              "$cc" -std=c++20 -Wall -Wextra -Wpedantic -Werror $opts -I. \
+                tests/fixtures/legality_l5_stage6_receipt_chain_fuzz.cpp \
+                -o "/tmp/l5-stage6-${cc}-${mode}"
+              ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 \
+              UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+                "/tmp/l5-stage6-${cc}-${mode}" | tee "/tmp/l5-stage6-${cc}-${mode}.txt"
+              grep -Fx "L5 Stage6 provenance receipt-chain PASS 930275 assertions (synthetic structural evidence, not retail originality)" \
+                "/tmp/l5-stage6-${cc}-${mode}.txt"
+            done
+          done
+      - name: Ensure QA cannot silently disable native assertions
+        shell: bash
+        run: |
+          set -euo pipefail
+          if g++ -std=c++20 -DNDEBUG -O2 -I. \
+            tests/fixtures/legality_l5_stage6_receipt_chain_fuzz.cpp \
+            -o /tmp/l5-stage6-invalid-assertions-disabled; then
+            echo "FAIL: assertions-disabled QA accepted"
+            exit 1
+          fi
+      - name: Preserve original source and restrict evidence claims
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          test -z "$(git status --porcelain --untracked-files=no)"

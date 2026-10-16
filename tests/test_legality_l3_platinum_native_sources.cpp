@@ -24,7 +24,8 @@ int main(){
         uint8_t previous=0;
         for(uint16_t i=0;i<L::offerCount(species.species);++i){
             const auto packed=L::packedOffer(species.species,i);
-            const auto level=packed>>9,move=packed&511u;
+            const unsigned level=static_cast<unsigned>(packed)>>9u;
+            const unsigned move=static_cast<unsigned>(packed)&511u;
             assert(level>=1 && level<=100 && level>=previous);
             assert(move>=1 && move<=467);
             previous=static_cast<uint8_t>(level);++offers;

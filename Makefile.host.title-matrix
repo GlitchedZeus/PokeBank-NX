@@ -1,0 +1,41 @@
+# Per-title acceptance matrix for Gen I to Gen V legality (docs/legality/TITLE_TEST_MATRIX.md):
+# synthetic Red/Blue/Yellow and Gold/Silver/Crystal saves through the save parsers and
+# Legality::analyze; synthetic Ruby/Sapphire/Emerald/FireRed/LeafGreen saves through the
+# strict Gen III reader and FRLGReadOnlyTrainer (the app's GBA path), plus PK3 records through
+# Pokemon3FRLG and Legality::analyze; synthetic Diamond/Pearl/Platinum/HeartGold/SoulSilver
+# saves through Gen4ReadOnlySave and Gen4ReadOnlyTrainer (the app's NDS path), plus PK4 records
+# through Pokemon4ReadOnly and Legality::analyze; and PK5 records through Legality::analyzePk5.
+# MoveNames.cpp and ItemNames.cpp come in with the Gen III legality sources already.
+TITLE_MATRIX_GBA_SAVE_SOURCES := src/Legacy/FRLGReadOnlyTrainer.cpp \
+	src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Integration/Gen3/FRLGReadModel.cpp \
+	src/Integration/Gen3/Gen3StagedInventoryEditor.cpp src/Inventory/ClassicInventoryCatalog.cpp \
+	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp src/Integration/Gen3/Gen3StagedPokemonEditor.cpp \
+	src/Names/MoveInfo.cpp
+TITLE_MATRIX_NDS_SAVE_SOURCES := src/Integration/Gen4/Gen4ReadOnlySave.cpp \
+	src/Integration/Gen4/Gen4StagedPokemonEditor.cpp src/Legacy/Gen4ReadOnlyTrainer.cpp \
+	src/Pokemon/Pokemon4ReadOnly.cpp src/Pokemon/Pokemon4ReadOnlyView.cpp src/Pokemon/Pokemon4Mutable.cpp \
+	src/Encryption/Encryption4.cpp src/Names/ItemPresence.cpp src/Names/MovePresence.cpp
+TITLE_MATRIX_SOURCES := tests/test_legality_title_matrix.cpp \
+	$(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES)) \
+	src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
+	$(TITLE_MATRIX_GBA_SAVE_SOURCES) $(TITLE_MATRIX_NDS_SAVE_SOURCES) \
+	src/Legality/Gen5Legality.cpp src/Legality/Gen5LegalityData.cpp src/Legality/Gen5Text.cpp
+# The on-device Gen III reader (PKSMGen3NativeAdapter.cpp) builds on the host only with this define.
+# Under Clang, two shared PK3 sources trip -Wunused-function and GCC-only pragmas (as for
+# test_legality_gen4 in Makefile.host.gen4-legality).
+TITLE_MATRIX_FLAGS := -Wno-unused-parameter -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST \
+	$(if $(findstring clang,$(CXX)),-Wno-unused-function -Wno-unknown-warning-option)
+HOST_TESTS += $(HOST_BUILD)/test_legality_title_matrix
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_title_matrix_sanitize
+# host-test/host-sanitize take their prerequisites when Makefile.host.base is read,
+# before this file appends to the lists, so name the new binaries explicitly.
+host-test: $(HOST_BUILD)/test_legality_title_matrix
+host-sanitize: $(HOST_BUILD)/test_legality_title_matrix_sanitize
+
+$(HOST_BUILD)/test_legality_title_matrix: $(TITLE_MATRIX_SOURCES) tests/legality_gen5_test_helpers.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(TITLE_MATRIX_FLAGS) -Iinclude $(TITLE_MATRIX_SOURCES) -o $@
+
+$(HOST_BUILD)/test_legality_title_matrix_sanitize: $(TITLE_MATRIX_SOURCES) tests/legality_gen5_test_helpers.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) $(TITLE_MATRIX_FLAGS) -Iinclude $(TITLE_MATRIX_SOURCES) -o $@

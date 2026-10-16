@@ -14,7 +14,8 @@ enum class Path : uint8_t {
 };
 enum class Status : uint8_t {
     UnknownOriginalGame, UnknownOriginalRow, ForeignGameRowNotEvidence,
-    UnknownOriginalCaptureStage, UnknownOriginalPath, UnknownTreeTrainer,
+    UnknownOriginalCaptureStage, UnknownMalformedOriginalIdentity,
+    UnknownOriginalPath, UnknownTreeTrainer,
     UnknownRadarActivation, UnknownChainShinyStage,
     CandidateOriginalSpeciesOrFormContradicted,
     CandidateOriginalLocationOrLevelContradicted,
@@ -66,6 +67,9 @@ inline Result evaluate(const Candidate& c) noexcept {
         c.originalPath!=Path::RadarWild &&
         c.originalPath!=Path::RadarChainShiny))
         return {Status::UnknownOriginalPath,slot,radar,munchlax};
+    if(c.originalSpecies==0 || c.originalSpecies>493 ||
+       c.originalLevel==0 || c.originalLevel>100)
+        return {Status::UnknownMalformedOriginalIdentity,slot,radar,munchlax};
     if(c.originalSpecies!=W::species(row) ||
        !W::formMatches(W::form(row),c.originalForm))
         return {Status::CandidateOriginalSpeciesOrFormContradicted,slot,radar,munchlax};
