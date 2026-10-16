@@ -111,6 +111,25 @@ int main() {
     const auto r = UI::ClassicMovesPanel::slotRect(3, g.rightX, g.y, g.rightW);
     require(rects.size() == 1 && rects[0].x == r.x && rects[0].y == r.y && rects[0].w == r.w && rects[0].h == r.h,
             "Gen I touch button equals the focus outline");
+
+    // Shared Move chooser rows in the 760 px Gen I/II pickers: real Gen I/II types (Bite is Normal in
+    // Gen I and Dark in Gen II), every caption and cell inside the row, nothing overlapping.
+    const auto chooser = MP::chooserColumns((1280 - 760) / 2 + 40, 760 - 80);
+    for (const auto game : {Enums::GameVersion::RBY, Enums::GameVersion::GSC}) {
+        texts.clear();
+        MP::drawChooserCaptions(fb, chooser, 58, game);
+        MP::drawChooserRow(fb, chooser, 100, 44, game, true);
+        bool biteType = false, unknown = false;
+        for (std::size_t i = 0; i < texts.size(); ++i) {
+            const auto& t = texts[i];
+            biteType |= t.value == (game == Enums::GameVersion::RBY ? "Normal" : "Dark");
+            unknown |= t.value == "???";
+            require(t.x >= chooser.x && t.x + t.w <= chooser.x + chooser.w, "chooser text inside row: " + t.value);
+            for (std::size_t j = i + 1; j < texts.size(); ++j)
+                require(!overlaps(t, texts[j]), "chooser overlap: " + t.value + " / " + texts[j].value);
+        }
+        require(biteType && !unknown, "chooser shows the native Gen I/II type");
+    }
     std::cout << "Gen I/II shared moves panel: PASS\n";
     return 0;
 }

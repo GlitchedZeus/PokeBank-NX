@@ -1,4 +1,5 @@
 #include "Inventory/ClassicInventoryCatalog.h"
+#include "Inventory/ItemQuantityPolicy.h"
 
 #include "Integration/Gen2/Gen2ReadOnlyInventory.h"
 #include "Names/ItemNames.h"
@@ -288,15 +289,32 @@ bool isAddableItem(ClassicGame game, ClassicPocket pocket, uint16_t itemId) noex
     return itemId != 0 && supportsPocket(game, pocket) && contains<uint16_t>(addableItems(game, pocket), itemId);
 }
 
+// The one per-item quantity rule (Inventory/ItemQuantityPolicy.h): native pocket caps (Gen III
+// FRLG bag and RSE Berries/PC to 999), unique key items / HMs. This entry point keeps the classic
+// catalog's addable-item gate and maps the shared rule onto the classic shape.
+static_assert(static_cast<uint8_t>(QuantityPolicy::Game::Red) == static_cast<uint8_t>(ClassicGame::Red) &&
+              static_cast<uint8_t>(QuantityPolicy::Game::Crystal) == static_cast<uint8_t>(ClassicGame::Crystal) &&
+              static_cast<uint8_t>(QuantityPolicy::Game::Emerald) == static_cast<uint8_t>(ClassicGame::Emerald) &&
+              static_cast<uint8_t>(QuantityPolicy::Game::LeafGreen) == static_cast<uint8_t>(ClassicGame::LeafGreen),
+              "QuantityPolicy::Game starts with the classic games in ClassicGame order");
 QuantityRule quantityRule(ClassicGame game, ClassicPocket pocket, uint16_t itemId) noexcept {
     if (!isAddableItem(game, pocket, itemId)) return {false, 0, 0};
-    if (pocket == ClassicPocket::KeyItems) return {false, 1, 1};
-    if (pocket == ClassicPocket::TMHM) {
-        if (game <= ClassicGame::Yellow && itemId >= 196 && itemId <= 200) return {false, 1, 1};
-        if (game <= ClassicGame::Crystal && itemId >= 243) return {false, 1, 1};
-        if (game >= ClassicGame::Ruby && itemId >= 339) return {false, 1, 1};
+    namespace QP = QuantityPolicy;
+    // QuantityPolicy::Game lists the classic games first, in ClassicGame order.
+    const auto sharedGame = static_cast<QP::Game>(static_cast<uint8_t>(game));
+    QP::Pocket sharedPocket = QP::Pocket::Items;
+    switch (pocket) {
+        case ClassicPocket::Items: sharedPocket = QP::Pocket::Items; break;
+        case ClassicPocket::Medicines: sharedPocket = QP::Pocket::Medicine; break;
+        case ClassicPocket::Balls: sharedPocket = QP::Pocket::Balls; break;
+        case ClassicPocket::KeyItems: sharedPocket = QP::Pocket::KeyItems; break;
+        case ClassicPocket::TMHM: sharedPocket = QP::Pocket::TMHM; break;
+        case ClassicPocket::Berries: sharedPocket = QP::Pocket::Berries; break;
+        case ClassicPocket::PCItems: sharedPocket = QP::Pocket::PCItems; break;
     }
-    return {true, 1, 99};
+    const auto rule = QP::quantityRule(sharedGame, sharedPocket, itemId);
+    if (!rule.valid) return {false, 0, 0};
+    return {rule.editable, rule.minimum, rule.maximum};
 }
 
 bool isStorySensitiveKeyItem(ClassicGame, ClassicPocket pocket, uint16_t) noexcept {

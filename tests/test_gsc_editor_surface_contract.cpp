@@ -329,16 +329,12 @@ int main() {
     assert(pickerFix.find("kHardwareMovePickerLayout.rowStep") != std::string::npos);
     assert(pickerFix.find("const int first = overlay.moveViewport.firstRow;") != std::string::npos);
     assert(pickerFix.find("const int liveOffset = overlay.moveScroll.offset();") != std::string::npos);
-    // The shared Gen I-IV row renderer now owns emphasized move typography,
-    // fixed Acc/Pwr/PP columns, and separators (not the Gen II overlay).
-    assert(pickerFix.find("MovePickerRowUI::draw(fb") != std::string::npos);
-    const auto moveRow = readFile("include/UI/MovePickerRowUI.h");
-    assert(moveRow.find("TextStyle::Body") != std::string::npos);
-    assert(pickerFix.find("Empty + compatible moves only • exact Gen II Acc / Pwr / PP") != std::string::npos);
-    // Generation-aware Acc / Pwr / PP now come from the shared move-row
-    // component; old Gen II-only rowLabel string assembly is intentionally gone.
-    assert(pickerFix.find("MovePickerRowUI::draw(fb,x+40,yy+4,move,Enums::GameVersion::GSC)") != std::string::npos);
-    assert(moveRow.find("Names::getMoveBattleStats(move,game)") != std::string::npos);
+    // The shared Gen I-V Move chooser rows (UI/SharedMovesPanel.h) own the columns: No. / Move /
+    // Type / Pwr / Acc / PP from the exact Gen II facts.
+    assert(pickerFix.find("UI::SharedMovesPanel::drawChooserCaptions(fb, columns, y + 58, Enums::GameVersion::GSC)") != std::string::npos);
+    assert(pickerFix.find("UI::SharedMovesPanel::drawChooserRow(fb, columns, yy + 6, move, Enums::GameVersion::GSC, selected)") != std::string::npos);
+    assert(pickerFix.find("Compatible moves only") != std::string::npos);
+    assert(pickerFix.find("MovePickerRowUI") == std::string::npos);
     assert(pickerFix.find("Needs correction") == std::string::npos);
     assert(shared.find("!editor->pendingChanges().empty()") != std::string::npos);
     assert(shared.find("drawNarrowPokemonActions(fb, screen.touchButtons, model") != std::string::npos);
