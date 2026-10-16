@@ -50,7 +50,7 @@ The source game ids are the ones the parsers write: `red_gb`, `blue_gb`, `yellow
 ## Where the game is recorded
 
 - **Red, Blue, Yellow.** A PK1 record does not say which game made it. Only the save does.
-  - Red and Blue saves are byte for byte the same kind. The app's hint decides `red_gb` or `blue_gb`.
+  - Red and Blue use the same save layout, and nothing in the save tells them apart. The app's hint decides `red_gb` or `blue_gb`.
   - A Yellow save is told apart by its starter byte (Pikachu) and its Pikachu friendship byte.
   - The Gen I analyzer does not use the exact title. The same record gets the same verdict in a Red, Blue or Yellow save.
 - **Gold, Silver.** A PK2 record from Gold or Silver does not say which game made it.
@@ -117,49 +117,59 @@ The synthetic records use the games' own numbers.
 
 ### Red, Blue, Yellow
 
+All paths are in pret pokered unless the line says pokeyellow.
+
 - **Red positive.** `data/wild/maps/Route1.asm:3` has `db 3, PIDGEY`.
-  - Pidgey's only level-1 move is Gust (`base_stats/pidgey.asm:13`). Sand-Attack comes at level 5 (`evos_moves.asm:601`).
-  - The record has type bytes NORMAL/FLYING and catch rate 255 (`pidgey.asm:6-7`), and EXP 57 (medium slow, level 3).
+  - Pidgey's only level-1 move is Gust (`data/pokemon/base_stats/pidgey.asm:13`). Sand-Attack comes at level 5 (`data/pokemon/evos_moves.asm:601`).
+  - The record has type bytes NORMAL/FLYING and catch rate 255 (`data/pokemon/base_stats/pidgey.asm:6-7`), and EXP 57 (medium slow, level 3).
 - **Red original-game.** `data/wild/maps/Route4.asm:6-7` has `db 6, EKANS` inside `IF DEF(_RED)`.
-  - Ekans knows Wrap and Leer (`base_stats/ekans.asm:13`). Poison Sting comes at level 10 (`evos_moves.asm:1336`).
+  - Ekans knows Wrap and Leer (`data/pokemon/base_stats/ekans.asm:13`). Poison Sting comes at level 10 (`data/pokemon/evos_moves.asm:1336`).
   - The analyzer names "wild Ekans in Red (level 6+)".
-- **Blue positive.** `Route1.asm:6` has `db 2, RATTATA`.
-  - Rattata knows Tackle and Tail Whip (`rattata.asm:13`). Quick Attack comes at level 7 (`evos_moves.asm:1879`).
-- **Blue original-game.** `Route4.asm:15-16` has `db 6, SANDSHREW` inside `IF DEF(_BLUE)`.
-  - Sandshrew knows Scratch (`sandshrew.asm:13`). Sand-Attack comes at level 10 (`evos_moves.asm:1193`).
+- **Blue positive.** `data/wild/maps/Route1.asm:6` has `db 2, RATTATA`.
+  - Rattata knows Tackle and Tail Whip (`data/pokemon/base_stats/rattata.asm:13`). Quick Attack comes at level 7 (`data/pokemon/evos_moves.asm:1879`).
+- **Blue original-game.** `data/wild/maps/Route4.asm:15-16` has `db 6, SANDSHREW` inside `IF DEF(_BLUE)`.
+  - Sandshrew knows Scratch (`data/pokemon/base_stats/sandshrew.asm:13`). Sand-Attack comes at level 10 (`data/pokemon/evos_moves.asm:1193`).
 - **Red and Blue negatives.**
-  - Spore is not in Pidgey's learnset (`evos_moves.asm:596-605`) or its TM list.
-  - The type bytes must be Rattata's NORMAL/NORMAL (`rattata.asm:6`).
+  - Spore is not in Pidgey's learnset (`data/pokemon/evos_moves.asm:596-605`) or its TM list.
+  - The type bytes must be Rattata's NORMAL/NORMAL (`data/pokemon/base_stats/rattata.asm:6`).
 - **Yellow positive.** pokeyellow `data/wild/maps/ViridianForest.asm:3` has `db 3, CATERPIE`.
-  - Caterpie knows Tackle and String Shot (`base_stats/caterpie.asm`) and learns nothing by level-up (`evos_moves.asm:1499-1504`).
+  - Caterpie knows Tackle and String Shot (pokeyellow `data/pokemon/base_stats/caterpie.asm:13`).
+  - It learns nothing by level-up (pokeyellow `data/pokemon/evos_moves.asm:1499-1504`).
 - **Yellow original-game.** pokeyellow `scripts/OaksLab.asm:1033-1040` gives the level-5 starter Pikachu.
-  - It then writes `LIGHT_BALL_GSC` over its catch rate. That is $A3 (`constants/item_constants.asm:225`).
-  - Pikachu knows ThunderShock and Growl (`base_stats/pikachu.asm`). Tail Whip comes at level 6 (`evos_moves.asm:1095`).
+  - It then writes `LIGHT_BALL_GSC` over its catch rate. That is $A3 (pokeyellow `constants/item_constants.asm:225`).
+  - Pikachu knows ThunderShock and Growl (pokeyellow `data/pokemon/base_stats/pikachu.asm:13`).
+  - Tail Whip comes at level 6 (pokeyellow `data/pokemon/evos_moves.asm:1095`).
 - **Yellow title-specific.** pokeyellow `data/wild/super_rod.asm:25` gives Dragonair L15 in the Safari Zone Center.
-  - Yellow's Dragonair catch rate is 27 (`base_stats/dragonair.asm`). Red and Blue say 45.
+  - Yellow's Dragonair catch rate is 27 (pokeyellow `data/pokemon/base_stats/dragonair.asm:7`). Red and Blue say 45 (pokered, same file and line).
+  - It knows Wrap, Leer and Thunder Wave (pokeyellow `data/pokemon/base_stats/dragonair.asm:13`).
   - The analyzer names "wild Dragonair in Yellow (level 15+)".
-- **Stat experience (Unknown).** pokered `engine/battle/experience.asm` divides battle stat experience among the Pokemon that fought.
+- **Stat experience (Unknown).** `engine/battle/experience.asm:294` (`DivideExpDataByNumMonsGainingExp`) divides battle stat experience among the Pokemon that fought.
   - So a zero stat next to small battle gains can only happen if every one of those battles added nothing to it. The data cannot settle that.
 
 ### Gold, Silver, Crystal
 
-- **Gold positive.** pokegold `data/wild/johto_grass.asm:1577` (Route 29, morning) has `db 3, SENTRET`.
-  - Sentret learns Tackle at 1 and Defense Curl at 5 (`evos_attacks.asm:2192-2193`). It is medium fast (`base_stats/sentret.asm:20`).
-- **Gold original-game.** `johto_grass.asm:1603` opens `IF DEF(_GOLD)` for Route 30, and line 1621 (night) has `db 3, SPINARAK`.
-  - Spinarak learns Poison Sting and String Shot at 1 (`evos_attacks.asm:2276-2277`). It is fast (`spinarak.asm:16`), so level 3 is 21 EXP.
-- **Silver positive.** `johto_grass.asm:1592` (Route 29, night) has `db 2, HOOTHOOT`.
-  - Hoothoot learns Tackle and Growl at 1 (`evos_attacks.asm:2217-2218`).
-- **Silver original-game.** The `ELIF DEF(_SILVER)` branch of Route 30 has `db 3, LEDYBA` (morning) at `johto_grass.asm:1630`.
-  - Ledyba learns Tackle at 1 and Supersonic at 8 (`evos_attacks.asm:2246-2247`).
-- **Gold negative.** pokegold `engine/events/pokerus/pokerus.asm:43-59` picks the strain.
+All Gold and Silver paths are in pret pokegold, and the Crystal paths are in pokecrystal.
+
+- **Gold positive.** `data/wild/johto_grass.asm:1577` (Route 29, morning) has `db 3, SENTRET`.
+  - Sentret learns Tackle at 1 and Defense Curl at 5 (`data/pokemon/evos_attacks.asm:2192-2193`).
+  - It is medium fast (`data/pokemon/base_stats/sentret.asm:20`).
+- **Gold original-game.** `data/wild/johto_grass.asm:1603` opens `IF DEF(_GOLD)` for Route 30, and line 1621 (night) has `db 3, SPINARAK`.
+  - Spinarak learns Poison Sting and String Shot at 1 (`data/pokemon/evos_attacks.asm:2276-2277`).
+  - It is fast (`data/pokemon/base_stats/spinarak.asm:16`), so level 3 is 21 EXP.
+- **Silver positive.** `data/wild/johto_grass.asm:1592` (Route 29, night) has `db 2, HOOTHOOT`.
+  - Hoothoot learns Tackle and Growl at 1 (`data/pokemon/evos_attacks.asm:2217-2218`).
+- **Silver original-game.** The `ELIF DEF(_SILVER)` branch of Route 30 has `db 3, LEDYBA` (morning) at `data/wild/johto_grass.asm:1630`.
+  - Ledyba learns Tackle at 1 and Supersonic at 8 (`data/pokemon/evos_attacks.asm:2246-2247`).
+- **Gold negative.** `engine/events/pokerus/pokerus.asm:43-59` picks the strain.
   - It is `(random & 7) + 1`, or 0, so 1 to 8 or 0. The days are `(strain & 3) + 1`. Strain 9 never happens.
-- **Silver negative.** pokegold `data/items/attributes.asm:23-24` makes the Bicycle a `CANT_TOSS` key item.
+- **Silver negative.** `data/items/attributes.asm:23-24` makes the Bicycle a `CANT_TOSS` key item.
   - `engine/items/pack.asm:241-290` gives such an item a menu without GIVE.
 - **Crystal positive.** pokecrystal `data/wild/johto_grass.asm:1240` has Route 29 morning `db 2, PIDGEY`.
-  - `engine/pokemon/caught_data.asm:163-199` writes the caught data: (time of day + 1) in the top two bits, then the level, then OT gender and the landmark.
-  - Route 29 is landmark 2 (`constants/landmark_constants.asm:7`).
+  - Pidgey learns Tackle at 1 and Sand-Attack at 5 (pokecrystal `data/pokemon/evos_attacks.asm:226-227`).
+  - pokecrystal `engine/pokemon/caught_data.asm:163-199` writes the caught data: (time of day + 1) in the top two bits, then the level, then OT gender and the landmark.
+  - Route 29 is landmark 2 (pokecrystal `constants/landmark_constants.asm:7`).
 - **Crystal original-game.** pokecrystal `data/events/odd_eggs.asm:40-64` is the plain Pichu Odd Egg.
-  - `engine/events/odd_egg.asm:40-94` copies it verbatim into the party as species EGG with OT "ODD".
+  - pokecrystal `engine/events/odd_egg.asm:40-94` copies it verbatim into the party as species EGG with OT "ODD".
   - The OT ID line is `dw 02048`. `dw` is little-endian, so the record's bytes are 00 08.
   - The test uses those exact 48 bytes. The analyzer finds "egg Pichu in Crystal" and the pinned gift encounter.
 
