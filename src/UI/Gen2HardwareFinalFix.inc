@@ -259,7 +259,7 @@ void drawFullscreenGen2Active(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     drawFullscreenGen2Workspace(screen, fb, state, unified, state.mode == Mode::View, gen2RecordContext(state));
     if (unified.moveEditor) drawUnifiedMoveEditor(screen, fb, state, unified);
     if (state.itemPicker) drawHeldItemPicker(fb, state);
-    if (state.confirmExit) drawConfirm(fb, state);
+    if (state.confirmExit) drawConfirm(screen, fb, state);
     if (unified.selector.open()) drawFieldSelector(screen, fb, unified.selector);
     if (unified.progressionEditor) drawProgressionEditor(fb, state, unified);
 }
