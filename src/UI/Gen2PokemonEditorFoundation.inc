@@ -823,7 +823,7 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
     }
 
     const std::array<std::pair<std::string, std::string>, 3> extras{{
-        {"Shiny", p.shiny ? "Yes (DV-derived)" : "No (DV-derived)"},
+        {"Shiny", p.shiny ? "Yes" : "No"},
         {"Friendship", std::to_string(p.friendship)},
         {"Pokerus", pokerusText(p.pokerus)},
     }};

@@ -152,3 +152,18 @@ $(HOST_BUILD)/test_classic_pokemon_action_menu: $(CLASSIC_ACTION_MENU_SOURCES) $
 $(HOST_BUILD)/test_classic_pokemon_action_menu_sanitize: $(CLASSIC_ACTION_MENU_SOURCES) $(CLASSIC_ACTION_MENU_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(CLASSIC_ACTION_MENU_SOURCES) -o $@
+
+# Gen II inline Shiny / Pokerus / Gender (owner campaign phase 10).
+GEN2_INLINE_FIELDS_SOURCES := tests/test_gen2_inline_fields.cpp
+GEN2_INLINE_FIELDS_DEPS := include/UI/Gen2NativePresentation.h src/UI/Gen2UnifiedPokemonWorkspace.inc \
+	src/UI/Gen2PokemonEditorFoundation.inc src/UI/Gen2HardwareFinalFix.inc
+HOST_TESTS += $(HOST_BUILD)/test_gen2_inline_fields
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen2_inline_fields_sanitize
+host-test: $(HOST_BUILD)/test_gen2_inline_fields
+host-sanitize: $(HOST_BUILD)/test_gen2_inline_fields_sanitize
+$(HOST_BUILD)/test_gen2_inline_fields: $(GEN2_INLINE_FIELDS_SOURCES) $(GEN2_INLINE_FIELDS_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN2_INLINE_FIELDS_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_inline_fields_sanitize: $(GEN2_INLINE_FIELDS_SOURCES) $(GEN2_INLINE_FIELDS_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN2_INLINE_FIELDS_SOURCES) -o $@

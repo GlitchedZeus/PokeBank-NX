@@ -289,7 +289,7 @@ int main() {
     assert(unified.find("if (focus.row == 8)") != std::string::npos);
     // Owner campaign directive: Pokerus uses the shared selector interaction (same three native
     // states None/Infected/Cured, still no strain/days editor) instead of cycling in place.
-    assert(unified.find("selector = PokeBank::UIModel::Gen2FieldSelector::pokerus(p.pokerus);") != std::string::npos);
+    assert(unified.find("p.pokerus = Gen2Native::cyclePokerusState(p.pokerus, state.baseline.pokerus);") != std::string::npos);
     assert(unified.find("p.pokerus = Gen2Native::cyclePokerusState(p.pokerus)") == std::string::npos);
     assert(picker.find("state.working.caughtData = 0") != std::string::npos);
 
