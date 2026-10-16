@@ -22,7 +22,7 @@ Status:
 
 | Item | State |
 |---|---|
-| #320 Home | 2R: one leave decision (Overlay::QuitConfirm + LeaveKind). Y commits, A/B stay. Root B, ZR/Launch tap and legacy A only open the dialog. Top touch layer; set_terminate trace; opt-in input-trace.log (`config/input_trace.enable`). Not pushed yet. The coordinator verified: Options overlay is dead code (never assigned); legacy-picker A launched at :3808. |
+| #320 Home | **Pushed `65cbd69a`** (a fast-forward of c9e24334). The coordinator verified it in code: requestGameLaunch and appExitRequested=true each have exactly one site, in the QuitConfirm Y branch (SaveSelectScreen.cpp:3221/3231). decide(): A/B stay, only Y alone quits. Root B, Options Exit, ZR and legacy A only open the dialog. 2R reports GCC/Clang host-test, sanitize and qa green (327 PASS each), plus devkitA64 OK. The stale-candidate audit check is red by design. Opt-in trace: `config/input_trace.enable` → `logs/input-trace.log`. NOT DEVICE TESTED.
 | Gen II Create | C `ae099c77`, a fast-forward of c9e24334. 2R's permission layer blocked the merge twice. The owner's campaign directive authorises integration into #307 (relayed). |
 | Lanes S, I | Created 07:33 UTC. |
 
