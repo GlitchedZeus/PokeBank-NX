@@ -34,6 +34,7 @@ XFAIL = {
     "CG05-picker-footer-helper": "S (SharedEditorChrome drawPickerFooter adoption)",
     "CG08-modal-footer-and-touch-layer": "S + C (editor modals); 2R (Home, done)",
     "CG09-item-quantity-policy": "I + C (QuantityPolicy adoption)",
+    "CG11-no-generic-modern-ui-in-gen1-5": "S (generic sheet unreachable from Gen I-V)",
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational
@@ -43,6 +44,15 @@ OUT_OF_SCOPE: dict[str, str] = {
     # TrainerViewScreenBase's dialogs, ItemsPanel/StoragePanel and ActionSheetModel stay IN scope;
     # e.g. the base builds a gen4ItemView footer, so Gen IV bags may render through it).
 }
+
+# CG11: the Gen I-V refusal guard S adds in front of the generic (Gen VI+) Pokemon UI. Rebind the
+# name when S lands.
+GENERIC_UI_GUARD = re.compile(
+    r"\b(isGen1to5\w*|isGenItoV\w*|gen15\w*Source|isClassicOrNative\w*|genericPokemonUiAllowed|"
+    r"allowsGenericPokemonUi|genericSheetAllowed|isModernGenerationSource|nativeGen15\w*)\s*\(")
+GENERIC_UI_OPEN = re.compile(
+    r"\bactionSheet\s*\.\s*open\s*\(|\bdetails\s*\.\s*active\s*=\s*true\b|"
+    r"\bpickerActive\s*=\s*true\b|\bstatEdit\s*\.\s*dialogActive\s*=\s*true\b")
 
 # Names the lanes are introducing. Update when the lane lands if the final name differs.
 # S: include/UI/SharedEditorPresentation.h pickerFooter(PickerFooterSpec) / confirmFooter and
@@ -339,6 +349,16 @@ def contracts(sources: list[Source]) -> list[Result]:
     r.violations = code_hits(
         U, r"\b(?:constexpr|const|static|int|unsigned|uint\d+_t|u64|u32)\b[^;\n]*\b\w*(?:REPEAT|Repeat|repeat)\w*(?:DELAY|INTERVAL|Delay|Interval|FRAMES|Frames|Ticks|Ms)\w*\s*=",
         exclude=(REPEAT_ENGINE_FILE,))
+    res.append(r)
+
+    r = Result("CG11-no-generic-modern-ui-in-gen1-5",
+               "In a Gen I-V session no path opens the generic action sheet, details modal, PickerDialog or StatEditDialog")
+    for s in U:
+        for m in GENERIC_UI_OPEN.finditer(s.code):
+            ln = s.code.count("\n", 0, m.start()) + 1
+            window = "\n".join(s.code.splitlines()[max(0, ln - 60):ln])
+            if not GENERIC_UI_GUARD.search(window):
+                r.violations.append(f"{s.rel}:{ln}: {s.code.splitlines()[ln - 1].strip()[:120]} (no Gen I-V refusal guard)")
     res.append(r)
     for r in res:
         r.out_of_scope = [v for v in r.violations if v.split(":", 1)[0] in OUT_OF_SCOPE]
