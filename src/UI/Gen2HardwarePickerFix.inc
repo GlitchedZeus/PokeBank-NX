@@ -1,5 +1,5 @@
 #include "UI/SharedEditorChrome.h"
-#include "UI/MovePickerRowUI.h"
+#include "UI/SharedMovesPanel.h"
 // Hardware-retest adapter for the shared Generation II move picker.
 // The underlying picker/session code remains unchanged; this layer narrows the
 // normal Move list to Empty + exact-game-compatible choices, matching Gen I.
@@ -64,9 +64,16 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 165));
     drawPanelSurface(fb, x, y, panelW, panelH, false, 18);
     fb.drawText(x + 24, y + 18, "Move — Generation II", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52,
-                "Empty + compatible moves only • exact Gen II Acc / Pwr / PP",
-                Colors::TextDim, TextStyle::Caption);
+    {
+        const std::string scope = "Compatible moves only";
+        int sw = 0, sh = 0;
+        fb.measureText(scope, sw, sh, TextStyle::Caption);
+        fb.drawText(x + panelW - 24 - sw, y + 26, scope, Colors::TextDim, TextStyle::Caption);
+    }
+    // The shared Move chooser rows (UI/SharedMovesPanel.h): No. / Move / Type / Pwr / Acc / PP,
+    // exact Gen II facts from pret/pokecrystal, same columns as Gen I and Gen III-V.
+    const auto columns = UI::SharedMovesPanel::chooserColumns(x + 40, panelW - 80);
+    UI::SharedMovesPanel::drawChooserCaptions(fb, columns, y + 58, Enums::GameVersion::GSC);
 
     const auto choices = hardwareCompatibleMoveChoices(screen, state);
     const int count = static_cast<int>(choices.size());
@@ -93,7 +100,7 @@ void drawHardwareMovePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, cons
         if (selected)
             fb.drawSelectionHighlight(x + 24, yy, panelW - 48,
                                       kHardwareMovePickerLayout.highlightHeight);
-        MovePickerRowUI::draw(fb,x+40,yy+4,move,Enums::GameVersion::GSC);
+        UI::SharedMovesPanel::drawChooserRow(fb, columns, yy + 6, move, Enums::GameVersion::GSC, selected);
     }
     fb.clearClip();
     UI::SharedEditorChrome::drawPickerFooter(fb);
