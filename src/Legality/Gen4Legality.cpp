@@ -108,7 +108,7 @@ enum : uint8_t {
 };
 enum : uint16_t {
     kLocDaycare4 = 2000, kLocLinkTrade4 = 2002, kLocLinkTrade6 = 30002, kLocTransfer3 = 55, kItemGriseousOrb = 112,
-    kMoveSketch = 166, kSpeciesMew = 151,
+    kMoveSketch = 166, kMoveDracoMeteor = 434, kSpeciesMew = 151,
 };
 enum : uint8_t { kVerS = 1, kVerR = 2, kVerE = 3, kVerFR = 4, kVerLG = 5 };
 enum : uint8_t { kLangJapanese = 1, kLangEnglish = 2, kLangFrench = 3, kLangItalian = 4, kLangSpanish = 7, kLangKorean = 8 };
@@ -1236,8 +1236,13 @@ void Analyzer::verifyGroundTile() {
 }
 
 void Analyzer::verifyMoveResults() {
-    for (std::size_t i = 0; i < 4; ++i)
+    for (std::size_t i = 0; i < 4; ++i) {
         if (!moves_[i].valid()) invalid(CheckIdentifier::Moves, moveFailText(i, moves_[i], pk_.moves[i]));
+        // Lenient difference from PKHeX (see isTypeTutor): Arceus holding a Draco Plate is a
+        // Dragon type for the Pt/HG/SS Draco Meteor tutor, which PKHeX does not accept.
+        else if (pk_.species == kArceus && pk_.moves[i] == kMoveDracoMeteor && moves_[i].method == LearnMethod::Tutor)
+            fishy(CheckIdentifier::Moves, "Draco Meteor: Arceus can learn it only from the Pt/HG/SS tutor while holding a Draco Plate; PKHeX rejects this move");
+    }
 }
 
 // ----------------------------------------------------------------------- run

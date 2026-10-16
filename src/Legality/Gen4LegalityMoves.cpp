@@ -338,7 +338,13 @@ bool isTypeTutor(uint16_t species, uint16_t move) noexcept {
     case kMoveBlastBurn: return std::find(std::begin(kBlast), std::end(kBlast), species) != std::end(kBlast);
     case kMoveHydroCannon: return std::find(std::begin(kHydro), std::end(kHydro), species) != std::end(kHydro);
     case kMoveFrenzyPlant: return std::find(std::begin(kFrenzy), std::end(kFrenzy), species) != std::end(kFrenzy);
-    case kMoveDracoMeteor: return std::find(std::begin(kDraco), std::end(kDraco), species) != std::end(kDraco);
+    case kMoveDracoMeteor:
+        // Lenient difference from PKHeX (SpecialTutorDracoMeteor omits Arceus): the Pt and HG/SS
+        // tutors teach any party Pokemon whose current type is Dragon, and Arceus takes the type
+        // of its held Plate (pokeplatinum res/field/scripts/scripts_route_210_grandma_wilma_house.s:79-81
+        // and src/pokemon.c:1221-1222; pokeheartgold scr_seq_0948_T30R0601.s:251-252 and
+        // src/pokemon.c:862-863). The analyzer reports such a move as a Warning, never as valid.
+        return species == kArceus || std::find(std::begin(kDraco), std::end(kDraco), species) != std::end(kDraco);
     default: return false;
     }
 }

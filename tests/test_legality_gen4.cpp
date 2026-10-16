@@ -162,6 +162,7 @@ const Case kCases[] = {
     {"b53860", Expect::Valid, "heartgold_nds", "EncounterStatic4Pokewalker:446", "FAFFFF4600002F24BE0100005CE08B589C0000004635000200000000000000000000000000000000760021006F0078000A232805000000000000BF3400000000000000000000E90037013F0138012D01320136012B014201FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A100000BA0B000405000400"},
     {"p9320", Expect::Valid, "platinum_nds", "EncounterEgg3:77", "52ADA93A0000A06C4D000000220763647D000000463200020000000000000000000000000000000062002D00000000001E28000000000000C47EF43F0000000002000000000000003A013901380143013E012B01FFFF000048A10C02E0FF000400000000000000003E0149015701580149015601FFFF00000000001A0A1000003700000405000000"},
     {"p10120", Expect::Valid, "soulsilver_nds", "EncounterSlot3:84", "6E6879F50000E51B5400000087AB0A6EE34C00004632000200000000000000000000000000000000E4001F00A100630014140A1400000000E1505F230000000002000000000000002E0139012E013F013901FFFF0000000048A10C02E0FF000200000000000000003E0149015701580149015601FFFF00000000001A0A100000370000051B000000"},
+    {"b79835", Expect::Valid, "diamond_nds", "PCD:493", "EF253B570000ECFEED01D400332BFE74D01213000079000200000000000000000000000000000004C101CB01CC01D3010A050505000000007453CE040000000005000000000000002B013C012D012F013F013D01FFFFFFFFFFFFFFFFFFFF000A000000000000000037014D0147014C014D0152014501FFFF0000001A0A100000F40B001064000000"},
     {"p28412", Expect::Valid, "diamond_nds", "EncounterStatic3:386", "E325582D0000EB3282010000C7FC5E5BD6830000462E0002000000000000000000000000000000001A01BF005E00210114140A0A000000004BF4A4290000000005000000000000002E012F013901420143013D01FFFF000048A10C02E0FF000500000000000000003E0149015701580149015601FFFF00000000001A0A100000370000041E000000"},
 };
 
@@ -579,6 +580,23 @@ int main() {
             if (hasText(native, Severity::Warning, kPool) || !hasText(native, Severity::Info, kPool) ||
                 !hasText(native, Severity::Info, "verified it for this record"))
                 fail(std::string("audited move pool on ") + name + ": expected the Warning to become a verified Info note", native);
+            ++checked;
+        }
+        // Arceus with Draco Meteor in place of Shadow Force. PKHeX: INVALID (its Draco Meteor
+        // tutor list omits Arceus), but the Pt and HG/SS tutors teach any Pokemon whose current
+        // type is Dragon, and Arceus holding a Draco Plate is one: a lenient Warning, never Invalid.
+        {
+            auto arceus = *findFixture("b79835");
+            arceus[0x2E] = 434 & 0xFF;
+            arceus[0x2F] = 434 >> 8;
+            refreshChecksum(arceus);
+            const Report direct = Legality::analyzePk4(arceus, "diamond_nds");
+            if (has(direct, Severity::Invalid) || direct.verdict() != Verdict::Incomplete ||
+                !hasText(direct, Severity::Warning, "Draco Meteor: Arceus can learn it only from the Pt/HG/SS tutor"))
+                fail("Arceus with Draco Meteor: expected the lenient Warning from analyzePk4", direct);
+            const Report native = analyzeNative(arceus, "diamond_nds");
+            if (has(native, Severity::Invalid) || native.verdict() != Verdict::Incomplete)
+                fail("Arceus with Draco Meteor: expected Incomplete from Legality::analyze", native);
             ++checked;
         }
         // Darkrai with Volt Tackle in place of Shock Wave: the analyzer reports the move
