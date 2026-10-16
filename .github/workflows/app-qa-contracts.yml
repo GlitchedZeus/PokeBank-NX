@@ -80,3 +80,5 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - run: make -f Makefile.host qa-tools-test
+      - name: Gen I-V cross-generation UI contracts (enforced contracts fail; XFAIL ones are reported)
+        run: python3 tests/test_qa_cross_gen_contract.py --list
