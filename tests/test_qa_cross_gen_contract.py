@@ -335,11 +335,61 @@ def contracts(sources: list[Source]) -> list[Result]:
                "Every modal draws its own footer, and the covered footer is not tappable while it is open")
     modal_rx = re.compile(r"^draw(?!\w*(Frame|Chrome|Surface|Footer|Shell|Backdrop))\w*(Confirm|Decision|Modal|Dialog|Prompt)\w*$")
     footer_rx = re.compile(r"\b(drawNavBar|drawFooter\w*|drawGlyphButton|drawControllerHints|drawPickerFooter\w*)\s*\(")
+    layer_rx = re.compile(r"beginTopTouchLayer\s*\(|beginModal\s*\(|touchButtons\s*\.\s*clear\s*\(")
+
+    def every_caller(name: str, def_rel: str, def_ln: int, before: int, after: int, rx: re.Pattern) -> bool:
+        """True when the modal is called at least once and EVERY call site supplies rx itself: the
+        layer in the `before` lines leading up to the call, or the footer in the `after` lines that
+        follow it (drawn over the modal, the way TrainerViewScreenBase draws the save confirm)."""
+        call_rx = re.compile(r"(?<![\w.>])(?:\w+::)*" + re.escape(name) + r"\s*\(")
+        sites = 0
+        # File-local helpers share names across generations (drawDiscardAllConfirm in Gen III and IV):
+        # a name defined in more than one file is only called from its own file.
+        defined_in = [c.rel for c in U if any(True for _ in function_bodies(c.code, re.compile("^" + re.escape(name) + "$")))]
+        callers = [c for c in U if c.rel == def_rel] if len(defined_in) > 1 else U
+        for c in callers:
+            lines = c.code.splitlines()
+            for m in call_rx.finditer(c.code):
+                ln = c.code.count("\n", 0, m.start()) + 1
+                if c.rel == def_rel and ln == def_ln:
+                    continue  # the definition itself
+                if re.match(r"\s*(?:void|bool|int|static|inline)\b", lines[ln - 1]):
+                    continue  # another definition / declaration
+                sites += 1
+                # After the call: keep reading while control can still reach the drawn frame (leaving an
+                # enclosing switch/if is fine), but never into a sibling `else` branch or past a return.
+                # A line counts while it is in the call's own block, or, once that block is left, at
+                # the level reached (not inside a later, separately guarded block).
+                tail, depth, low, stop = [], 0, 0, False
+                for line in lines[ln:ln + after]:
+                    start_depth = depth
+                    for k, ch in enumerate(line):
+                        depth += (ch == "{") - (ch == "}")
+                        low = min(low, depth)
+                        if ch == "}" and depth < 0 and re.match(r"\s*else\b", line[k + 1:]):
+                            stop = True
+                            break
+                    if stop:
+                        break
+                    if low == 0 or start_depth <= low:
+                        tail.append(line)
+                    if re.search(r"\breturn\b", line) or (depth < 0 and re.match(r"\}", line)):
+                        break  # the caller's own function ends here
+                head = lines[max(0, ln - 1 - before):ln - 1]
+                for k in range(len(head) - 1, -1, -1):
+                    if re.match(r"\}", head[k]) or re.search(r"\}\s*else\b", head[k]):
+                        head = head[k + 1:]  # previous function / sibling branch
+                        break
+                window = "\n".join(head + [lines[ln - 1]] + tail)
+                if not rx.search(window):
+                    return False
+        return sites > 0
+
     for s in U:
         for name, ln, body in function_bodies(s.code, modal_rx):
-            if not footer_rx.search(body):
+            if not footer_rx.search(body) and not every_caller(name, s.rel, ln, 0, 30, footer_rx):
                 r.violations.append(f"{s.rel}:{ln}: {name}() draws no footer of its own")
-            if not re.search(r"beginTopTouchLayer\s*\(|beginModal\s*\(|touchButtons\s*\.\s*clear\s*\(", body):
+            if not layer_rx.search(body) and not every_caller(name, s.rel, ln, 20, 0, layer_rx):
                 r.violations.append(f"{s.rel}:{ln}: {name}() leaves the covered footer's touch targets live")
     res.append(r)
 
