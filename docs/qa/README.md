@@ -12,7 +12,7 @@ Every input is synthetic and built in code. No real save, ROM or key is read or 
 ## Quick start
 
 ```sh
-git submodule update --init vendor/PKSM-Core
+git submodule update --init --recursive vendor/PKSM-Core   # nested memecrypto is required
 make -f Makefile.host qa                       # fuzz smoke + export contracts + Gen I-V matrix + tooling (CI gate)
 make -f Makefile.host qa-matrix                # Gen I-V acceptance matrix only (docs/qa/GEN1_5_MATRIX.md)
 make -f Makefile.host CXX=clang++ qa           # the same under Clang

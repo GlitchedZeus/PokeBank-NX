@@ -14,26 +14,26 @@ launch/return) is **NOT DEVICE TESTED** until the owner tests the exact candidat
 
 | Game | Home / Games / Instances | Party / Boxes / Trainer / Dex | View / Create / Edit | Bag Add / quantity / Remove / sort | Clone / Move / Release | Review / Discard / Export Copy | Source-save immutability | Launch / return |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Red (Gen 1) | ✅ | ✅ | ⚠ CG01, CG02, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Blue (Gen 1) | ✅ | ✅ | ⚠ CG01, CG02, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Yellow (Gen 1) | ✅ | ✅ | ⚠ CG01, CG02, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Gold (Gen 2) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Silver (Gen 2) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Crystal (Gen 2) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Ruby (Gen 3) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Sapphire (Gen 3) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Emerald (Gen 3) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| FireRed (Gen 3) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| LeafGreen (Gen 3) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Diamond (Gen 4) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Pearl (Gen 4) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Platinum (Gen 4) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| HeartGold (Gen 4) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| SoulSilver (Gen 4) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Black (Gen 5) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| White (Gen 5) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| Black 2 (Gen 5) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
-| White 2 (Gen 5) | ✅ | ✅ | ⚠ CG01, CG03, CG04, CG05 | ⚠ CG09 | ⚠ CG08 | ⚠ CG08 | ✅ | ✅ |
+| Red (Gen 1) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Blue (Gen 1) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Yellow (Gen 1) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Gold (Gen 2) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Silver (Gen 2) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Crystal (Gen 2) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Ruby (Gen 3) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Sapphire (Gen 3) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Emerald (Gen 3) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| FireRed (Gen 3) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| LeafGreen (Gen 3) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Diamond (Gen 4) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Pearl (Gen 4) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Platinum (Gen 4) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| HeartGold (Gen 4) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| SoulSilver (Gen 4) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Black (Gen 5) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| White (Gen 5) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Black 2 (Gen 5) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| White 2 (Gen 5) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ## 2. Editor fields × generation (declared access)
 
@@ -44,35 +44,36 @@ contract lists them as not shown; differences between generations are flagged fo
 | Field | Gen I (R/B/Y) | Gen II (G/S/C) | Gen III (R/S/E/FR/LG) | Gen IV (D/P/Pt/HG/SS) | Gen V (B/W/B2/W2) |
 | --- | --- | --- | --- | --- | --- |
 | Species | Edit | Edit | Edit | Edit | Edit |
-| Moves | Move — / MovePP — / MovePPUps — | Move — / MovePP — / MovePPUps — | Move — / MovePP — / MovePPUps — | Move — / MovePP — / MovePPUps — | Move Edit / MovePP Edit / MovePPUps Edit |
-| Nature | — | — | Read-only | Edit | Edit |
-| Gender | — | Derived | Read-only | Edit | Edit |
-| Shiny | Derived | Derived | Read-only | Edit | Read-only |
-| Ability | — | — | Read-only | Edit | Edit |
+| Moves | Move Edit / MovePP Edit / MovePPUps Edit | Move Edit / MovePP Edit / MovePPUps Edit | Move Edit / MovePP Edit / MovePPUps Edit | Move Edit / MovePP Edit / MovePPUps Edit | Move Edit / MovePP Edit / MovePPUps Edit |
+| Nature | — | — | Edit | Edit | Edit |
+| Gender | — | Derived | Edit | Edit | Edit |
+| Shiny | Derived | Derived | Edit | Edit | Edit |
+| Ability | — | — | Edit | Edit | Edit |
 | Pokérus | — | Edit | Edit | Edit | Edit |
 | Language | — | — | Edit | Edit | Read-only |
 | Met data | MetLevel — / MetLocation — | MetLevel Edit if crystalCaughtData, else — / MetLocation Edit if crystalCaughtData, else — | MetLevel Edit / MetLocation Edit | MetLevel Edit / MetLocation Edit | MetLevel Edit / MetLocation Edit |
 | Held item | — | Edit | Edit | Edit | Edit |
 | Ball | — | — | Edit | Edit | Edit |
-| Form | — | — | Read-only | Edit | Edit |
+| Form | — | — | Edit | Edit | Edit |
 | DV / IV / EV | DV Edit / IV — / EV — / StatExperience Edit | DV Edit / IV — / EV — / StatExperience Edit | DV — / IV Edit / EV Edit / StatExperience — | DV — / IV Edit / EV Edit / StatExperience — | DV — / IV Edit / EV Edit / StatExperience — |
 
 ## 3. Cross-generation UI contracts by generation
 
 | Contract | State | Gen I | Gen II | Gen III | Gen IV | Gen V |
 | --- | --- | --- | --- | --- | --- | --- |
-| CG01-no-make-shiny-quick-action: No "Make Shiny" / "Make Non-Shiny" quick action in any Gen I-V action sheet | FAIL | 3 | 3 | 4 | 5 | 3 |
+| CG01-no-make-shiny-quick-action: No "Make Shiny" / "Make Non-Shiny" quick action in any Gen I-V action sheet | PASS | 0 | 0 | 0 | 0 | 0 |
 | CG01b-shiny-editing-still-present: Shiny remains editable in every generation's editor (native entry point referenced by the UI) | PASS | 0 | 0 | 0 | 0 | 0 |
-| CG02-no-row-counters: No "Rows N-M/T" or "Row x/y" counters drawn in editors | FAIL | 2 | 0 | 0 | 0 | 0 |
-| CG03-origin-legality-heading: Right-panel heading is exactly "Origin & Legality" in all 5 gens; no "Encounter legality" / "Legality & Provenance" | FAIL | 20 | 14 | 9 | 13 | 7 |
-| CG04-no-developer-wording: No "(DV-derived)", "commits to draft"-style wording, "(RSE)" or "(ID nn)"/raw-ID suffixes in user-visible strings | FAIL | 6 | 6 | 8 | 8 | 8 |
-| CG05-picker-footer-helper: Every picker footer goes through the shared green-A Select / red-B Cancel helper (no hand-rolled pairs) | FAIL | 13 | 14 | 10 | 9 | 10 |
+| CG02-no-row-counters: No "Rows N-M/T" or "Row x/y" counters drawn in editors | PASS | 0 | 0 | 0 | 0 | 0 |
+| CG03-origin-legality-heading: Right-panel heading is exactly "Origin & Legality" in all 5 gens; no "Encounter legality" / "Legality & Provenance" | PASS | 0 | 0 | 0 | 0 | 0 |
+| CG04-no-developer-wording: No "(DV-derived)", "commits to draft"-style wording, "(RSE)" or "(ID nn)"/raw-ID suffixes in user-visible strings | PASS | 0 | 0 | 0 | 0 | 0 |
+| CG05-picker-footer-helper: Every picker footer goes through the shared green-A Select / red-B Cancel helper (no hand-rolled pairs) | PASS | 0 | 0 | 0 | 0 | 0 |
 | CG06-reroll-without-confirmation: No confirmation modal on draft-only DV/IV/EV reroll; Release / Delete / Discard confirmations still exist | PASS | 0 | 0 | 0 | 0 | 0 |
 | CG07-single-exit-and-launch-site: appExitRequested=true and requestGameLaunch each have exactly one call site, behind the Y-confirmed leave dialog | PASS | 0 | 0 | 0 | 0 | 0 |
-| CG08-modal-footer-and-touch-layer: Every modal draws its own footer, and the covered footer is not tappable while it is open | FAIL | 25 | 24 | 24 | 25 | 24 |
-| CG09-item-quantity-policy: Item quantity editors consult ItemQuantityPolicy (unique items never get max > 1) | FAIL | 1 | 1 | 1 | 2 | 1 |
+| CG08-modal-footer-and-touch-layer: Every modal draws its own footer, and the covered footer is not tappable while it is open | PASS | 0 | 0 | 0 | 0 | 0 |
+| CG09-item-quantity-policy: Item quantity editors consult ItemQuantityPolicy (unique items never get max > 1) | PASS | 0 | 0 | 0 | 0 | 0 |
 | CG10-single-navigation-repeat-engine: Navigation repeat timings live only in the shared NavigationRepeat engine | PASS | 0 | 0 | 0 | 0 | 0 |
-| CG11-no-generic-modern-ui-in-gen1-5: In a Gen I-V session no path opens the generic action sheet, details modal, PickerDialog or StatEditDialog | FAIL | 9 | 9 | 9 | 9 | 9 |
+| CG11-no-generic-modern-ui-in-gen1-5: In a Gen I-V session no path opens the generic action sheet, details modal, PickerDialog or StatEditDialog | PASS | 0 | 0 | 0 | 0 | 0 |
+| CG14-shared-draggable-scrollbar: Every scrollbar is the one SharedScrollbar: drawn through it, never privately, and draggable (its State is hit-tested with handleTouch) | XFAIL until P (SharedScrollbar call sites, 0867c9b8) | 11 | 15 | 14 | 11 | 11 |
 
 Counts are violations attributed to each generation; a violation in a shared component (no
 generation in its file name) counts for every generation. Full lists:
