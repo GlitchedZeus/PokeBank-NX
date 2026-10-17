@@ -31,7 +31,7 @@ else
 fi
 # Same production sources as GEN34_LANGUAGE_ANALYZER_SOURCES (Makefile.host.legality-language).
 srcs=(src/Legality/Legality.cpp src/Legality/GBLegality.cpp src/Legality/GBLegalityData.cpp
-    src/Legality/Gen3Legality.cpp src/Legality/Gen3LegalityData.cpp
+    src/Legality/Gen3Legality.cpp src/Legality/Gen3LegalityData.cpp src/Legality/Gen3LegalityDataCxd.cpp
     src/Legality/Gen4Legality.cpp src/Legality/Gen4LegalityHook.cpp src/Legality/Gen4LegalityEncounters.cpp
     src/Legality/Gen4LegalityMoves.cpp src/Legality/Gen4LegalityRng.cpp src/Legality/Gen4LegalityText.cpp
     src/Legality/Gen4LegalityData.cpp src/Legality/Gen4LegalityPalPark.cpp
