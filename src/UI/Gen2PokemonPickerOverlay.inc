@@ -24,6 +24,8 @@ struct PickerOverlayState {
     TouchScrollState moveScroll;
     TouchPickerViewport moveViewport;
     TouchPickerViewport locationViewport;
+    SharedScrollbar::State moveScrollbar;       // R2-SCROLLBAR: draggable thumb on the Move chooser
+    SharedScrollbar::State locationScrollbar;   // R2-SCROLLBAR: draggable thumb on Met Location
 };
 
 PickerOverlayState& pickerStateFor(const TrainerViewScreen& screen) {
@@ -194,6 +196,8 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
             fb.drawText(g.listX + g.listWidth - 14 - dw, yy + 12, text.detail, Colors::TextDim, TextStyle::Caption);
         }
         fb.clearClip();
+        SharedScrollbar::drawAndPublish(fb, overlay.locationScrollbar, g.x + g.width - 14, g.listY,
+            SharedScrollbar::kTrackWidth, viewportH, SharedScrollbar::rows(count, g.visible, first));
         UI::SharedEditorChrome::drawPickerFooter(fb, PokeBank::UIModel::SharedEditorPresentation::PickerFooterSpec{true, false});
         return;
     }
@@ -283,6 +287,7 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
 
     const int pickerCount = picker.model.kind == Gen2Picker::Kind::Species
         ? 251 : picker.model.kind == Gen2Picker::Kind::Location ? picker.model.locationCount() : 252;
+    bool pickerBarConsumed = false;   // R2-SCROLLBAR: a held thumb owns this frame's touch
     if (picker.model.kind == Gen2Picker::Kind::Species) {
         // The shared Species renderer follows the finger pixel-for-pixel while held. Commit the
         // semantic preview cursor only on release so the gesture cannot accidentally activate A.
@@ -302,7 +307,15 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
             const auto g = Gen2Picker::locationPickerGeometry(pickerCount);
             picker.locationViewport.ensure(picker.model.index, pickerCount, g.visible);
             const int maxFirst = TouchPickerViewport::maxFirst(pickerCount, g.visible);
-            if (maxFirst > 0)
+            const auto locationBar = SharedScrollbar::handleTouch(picker.locationScrollbar,
+                SharedScrollbar::sample(touch),
+                SharedScrollbar::rows(pickerCount, g.visible, picker.locationViewport.firstRow));
+            if (locationBar.changed) {
+                picker.locationViewport.firstRow = locationBar.scroll;
+                picker.scroll.stop();
+            }
+            pickerBarConsumed = locationBar.consumed;
+            if (maxFirst > 0 && !locationBar.consumed)
                 picker.scroll.updateVertical(
                     touch, g.listX, g.listY, g.listWidth, g.visible * g.rowStep, g.rowStep,
                     picker.locationViewport.firstRow, maxFirst + 1);
@@ -319,7 +332,7 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     const int firstTouchId = speciesIds ? 2001 : 2000;
     const int endTouchId = 2000 + pickerCount + (speciesIds ? 1 : 0);
     int touchTap = screen.touchedButtonId(touch);
-    if (touchTap >= firstTouchId && touchTap < endTouchId) {
+    if (!pickerBarConsumed && touchTap >= firstTouchId && touchTap < endTouchId) {
         if (picker.model.kind == Gen2Picker::Kind::Species)
             picker.model.index = std::clamp(touchTap - 2000, 1, 251) - 1;
         else

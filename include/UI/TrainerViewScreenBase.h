@@ -476,6 +476,7 @@ namespace UI {
         int pickerSlot = 0;   // which of the 4 move slots (when pickerKind == Move)
         int pickerSel = 0;    // highlighted option index
         SharedScrollbar::State pickerScrollbar;   // draggable thumb on the picker list
+        SharedScrollbar::State itemsScrollbar;    // draggable thumb on the paged Items panel list
         int pickerCount = 0;  // number of options in the list
         // A pouch-item picker opened to CHANGE an existing item's type (Potion -> Super Potion),
         // not to add a new one. Changes the confirm behavior + the picker title; reuses PouchItem.

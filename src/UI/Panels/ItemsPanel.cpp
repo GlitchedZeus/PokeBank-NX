@@ -303,6 +303,11 @@ namespace Panels {
             screen.touchButtons.push_back({ i, tileX, ry, tileW, tileH });
             ry += rowPitch;
         }
+        // Shared draggable scrollbar (R2-SCROLLBAR): the list is paged, so the thumb reports the
+        // page's position in the pouch and a drag or track tap changes the page.
+        SharedScrollbar::drawAndPublish(fb, screen.itemsScrollbar, tileX + tileW + 8, y + hH + 40,
+            SharedScrollbar::kTrackWidth, itemsPerPage * rowPitch - (rowPitch - tileH),
+            SharedScrollbar::rows(total, itemsPerPage, startIdx));
 
         // Generation II mail is full 160x144 stationery, not a Gen III/IV
         // miniature icon. Display the authentic-source artwork at a useful

@@ -579,6 +579,9 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
                                          Enums::GameVersion::RBY, selected);
     }
     fb.clearClip();
+    SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, x + w - 18, listTop,
+        SharedScrollbar::kTrackWidth, visible * rowStep,
+        SharedScrollbar::rows(count, visible, start));
 }
 
 void ux3DrawClone(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y, int w, int h) {
@@ -772,7 +775,15 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
         const int count = static_cast<int>(choices.size());
         state.pickerViewport.ensure(current, count, visible);
         const int maxFirst = TouchPickerViewport::maxFirst(count, visible);
-        if (maxFirst > 0)
+        // Shared scrollbar first: a held thumb moves the window, never the chosen Move, and
+        // owns the frame's touch so no row underneath can be tapped or dragged.
+        const auto pickerBar = SharedScrollbar::handleTouch(state.pickerScrollbar, SharedScrollbar::sample(touch),
+            SharedScrollbar::rows(count, visible, state.pickerViewport.firstRow));
+        if (pickerBar.changed) {
+            state.pickerViewport.firstRow = pickerBar.scroll;
+            state.pickerScroll.stop();
+        }
+        if (maxFirst > 0 && !pickerBar.consumed)
             // Exactly the drawn list: the live Move picker is kGen1MovePickerW wide and centred
             // (ux3DrawPicker list = panel x + 24, width w - 48, top y + 86).
             state.pickerScroll.updateVertical(
@@ -788,7 +799,7 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
                     HidNpadButton_L | HidNpadButton_R))
             state.pickerScroll.stop();
         int index = selectedId(4000, static_cast<int>(choices.size()), tapped);
-        if (index >= 0) {
+        if (index >= 0 && !pickerBar.consumed) {
             state.pickerScroll.stop();
             state.pickerValue = choices[static_cast<size_t>(index)];
             down |= HidNpadButton_A;

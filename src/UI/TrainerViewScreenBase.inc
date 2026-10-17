@@ -4422,6 +4422,16 @@ namespace UI {
                         currentPage = 0;
                     }
 
+                    // Shared scrollbar first (R2-SCROLLBAR): a thumb drag or track tap changes the
+                    // page (selection lands on the page's first row, as Left/Right do) and owns the
+                    // frame's touch so no row underneath is swiped or tapped.
+                    const auto itemsBar = SharedScrollbar::handleTouch(itemsScrollbar, SharedScrollbar::sample(touch),
+                        SharedScrollbar::rows(totalItems, itemsPerPage, currentPage * itemsPerPage));
+                    if (itemsBar.changed && totalItems > 0) {
+                        currentPage = std::clamp((itemsBar.scroll + itemsPerPage / 2) / itemsPerPage,
+                                                 0, std::max(0, totalPages - 1));
+                        selectedItemIndex = std::min(currentPage * itemsPerPage, totalItems - 1);
+                    }
                     // Touch-down is provisional: a finger may drag to browse.
                     // Keep the prior semantic selection until a confirmed tap or
                     // a deliberate vertical swipe completes; neither may edit on down.
@@ -4430,7 +4440,7 @@ namespace UI {
                     // and dragging the neighboring categories/header must not move this list.
                     if (totalItems > 0 && touch.justReleased() && touch.dragged()) {
                         const int dy = touch.deltaY();
-                        if (std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
+                        if (!itemsBar.consumed && std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
                             // Only scan the small set of visible row rectangles on drag release,
                             // rather than rebuilding gesture ownership on every render/update frame.
                             const bool startedOnItem = std::any_of(
@@ -4448,7 +4458,7 @@ namespace UI {
                         }
                     }
                     int itemTap = touchedButtonId(touch);
-                    if (itemTap >= 0 && itemTap < totalItems) {
+                    if (!itemsBar.consumed && itemTap >= 0 && itemTap < totalItems) {
                         selectedItemIndex = itemTap;
                         currentPage = selectedItemIndex / itemsPerPage;
                         kDown |= HidNpadButton_A;
