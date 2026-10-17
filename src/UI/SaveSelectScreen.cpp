@@ -22,6 +22,7 @@
 #include "UI/HomeQuitConfirm.h"
 #include "UI/InputTrace.h"
 #include "UI/SharedEditorChrome.h"
+#include "UI/LeaveDecisionLayout.h"
 #include "Enums/GameVersion.h"
 #include "Save/GetSaveFileContents.h"
 #include "Trainer/Trainer.h"
@@ -4865,30 +4866,37 @@ namespace UI {
         // The covered Home footer and hero glyphs never stay tappable under a modal (P0 #320).
         if (overlay != Overlay::None) beginTopTouchLayer();
         if (overlay == Overlay::QuitConfirm) {
-            constexpr int w = 1040, h = 250; // wide enough for the longest quit-route notice
-            const int x = (fb.getWidth() - w) / 2;
-            const int y = (fb.getHeight() - h) / 2;
+            // R2-LAUNCH: frame, message lines and button row come from SharedMenuGeometry's
+            // LaunchConfirm rule (content-driven; no fixed oversized box), the text from
+            // LeaveDecisionLayout (word-wrapped with the bundled font's advances). The buttons
+            // carry the real coloured face-button badges and are touch targets. Semantics are
+            // frozen: only Y commits (Launch / Quit), A and B stay, an ambiguous press stays.
+            namespace G = PokeBank::UIModel::SharedMenuGeometry;
+            const bool quitting = leaveKind == LeaveKind::Quit;
+            const auto text = PokeBank::UIModel::LeaveDecisionLayout::build(
+                quitting, pendingLaunchName, pendingLaunchNotice);
+            const G::Layout layout = G::layout(G::MenuType::LaunchConfirm, 0, fb.getWidth(), fb.getHeight());
+            const G::Rect frame = layout.frame;
             fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH,
                               Color(0, 0, 0, 132));
-            drawModalSurface(fb, x, y, w, h);
-            if (leaveKind == LeaveKind::Quit) {
-                fb.drawText(x + 30, y + 30, "Quit PokeBank NX?",
-                            Colors::TextPrimary, TextStyle::Heading);
-                fb.drawText(x + 30, y + 92, "Press Y to quit. A or B stays in PokeBank NX.",
-                            Colors::TextSecondary, TextStyle::Body);
-                fb.drawText(x + 30, y + 136,
-                            "Source saves are never written; app-owned staged copies stay on the SD card.",
-                            Colors::TextMuted, TextStyle::Caption);
-                drawNavBar(fb, {{"Y", "Quit"}, {"B", "Stay"}, {"A", "Stay"}});
-            } else {
-                fb.drawText(x + 30, y + 30, "Launch " + pendingLaunchName + "?",
-                            Colors::TextPrimary, TextStyle::Heading);
-                fb.drawText(x + 30, y + 92, "PokeBank NX will close. Press Y to launch; A or B cancels.",
-                            Colors::TextSecondary, TextStyle::Body);
-                fb.drawText(x + 30, y + 136, pendingLaunchNotice,
-                            Colors::TextMuted, TextStyle::Caption);
-                drawNavBar(fb, {{"Y", "Launch"}, {"B", "Cancel"}, {"A", "Cancel"}});
+            drawModalSurface(fb, frame.x, frame.y, frame.w, frame.h);
+            const int textX = frame.x + layout.rule.padX;
+            fb.drawText(textX, frame.y + 18, text.heading, Colors::TextPrimary, TextStyle::Heading);
+            for (int i = 0; i < PokeBank::UIModel::LeaveDecisionLayout::kLines; ++i) {
+                if (text.lines[static_cast<size_t>(i)].empty()) continue;
+                fb.drawText(textX, G::bodyLineTop(layout, i), text.lines[static_cast<size_t>(i)],
+                            i == 0 ? Colors::TextSecondary : Colors::TextMuted,
+                            i == 0 ? TextStyle::Body : TextStyle::Caption);
             }
+            const G::Rect back = G::buttonRect(layout, 0, 3);
+            const G::Rect stay = G::buttonRect(layout, 1, 3);
+            const G::Rect commit = G::buttonRect(layout, 2, 3);
+            drawGlyphButton(fb, back.x, back.y, back.w, back.h, "B", "Back");
+            drawGlyphButton(fb, stay.x, stay.y, stay.w, stay.h, "A", "Stay");
+            drawGlyphButton(fb, commit.x, commit.y, commit.w, commit.h, "Y",
+                            quitting ? "Quit" : "Launch", Colors::Accent, Colors::White);
+            SharedEditorChrome::drawFooter(fb, SharedEditorChrome::Presentation::confirmFooter(
+                                                   "Y", quitting ? "Quit" : "Launch", "A", "Stay"));
         } else if (overlay == Overlay::OpenFailure) {
             constexpr int w = 860, h = 280;
             const int x = (fb.getWidth() - w) / 2;
