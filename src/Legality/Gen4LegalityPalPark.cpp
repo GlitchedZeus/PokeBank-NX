@@ -904,6 +904,7 @@ int matchRating3(const Template& t, const Pk4& pk) {
     case EncKind::Trade3: case EncKind::GiftNY3: case EncKind::GiftJP3: return kMatch;
     case EncKind::Gift3: return gift3Rating(D::kGifts3[t.index], pk);
     case EncKind::GiftColo3: return colo3Rating(D::kGiftsColo3[t.index], pk);
+    case EncKind::Cxd3: return kMatch; // the GameCube judge already rated it (Gen4Legality.cpp findCxdEncounter)
     default: return -1; // EncounterEgg3 is not IEncounterMatch
     }
 }
@@ -988,6 +989,7 @@ bool isFixedTrainer3(const Template& t) noexcept {
     switch (t.kind) {
     case EncKind::Trade3: case EncKind::GiftNY3: case EncKind::GiftJP3: case EncKind::GiftColo3: return true;
     case EncKind::Gift3: return D::kGifts3[t.index].fixedTrainer != 0;
+    case EncKind::Cxd3: return t.fixedTrainer; // Duking's trades, bonus-disc gifts: the GameCube judge checked the OT
     default: return false;
     }
 }
@@ -1016,6 +1018,25 @@ bool isNicknameMatch3(const Template& t, const Pk4& pk, std::u16string_view nick
     if (s.species == kJynx && pk.version == kVerLG && language == kLangItalian) language = 2;
     if (language <= 0 || language >= 8) return false;
     return nickname == std::u16string_view(D::kTrade3Strings[s.nicknames + language]);
+}
+
+// ======================================================================= Colosseum/XD judge adapter
+// INTEGRATION POINT for the Gen III GameCube judge (include/Legality/Gen3Cxd.h, Gen III lane).
+// The whole wiring is one hunk in this file:
+//   1. add `#include "Legality/Gen3Cxd.h"` with the includes above;
+//   2. replace the body of judgeCxdOrigin: fill the Gen3Cxd input from `input` (the fields are
+//      the ones a Pal Park transfer keeps; nothing else about the record is known), call the
+//      Gen3Cxd judge, and map its answer onto CxdOriginJudgement: Status (Matched / NoMatch /
+//      Undecided), the matched template's species, form, level range, FixedBall, fateful flag,
+//      Shiny, IFixedTrainer, IShadow3 and IMoveset moves, and its Invalid reasons, Warnings and
+//      notes as strings.
+// Nothing else changes: analyzePk4 already consumes the judgement (Gen4Legality.cpp,
+// Analyzer::findCxdEncounter) and tests/test_legality_gen4.cpp exercises that consumer with
+// fake judges for every Status. Until then every Colosseum/XD origin is Unavailable: a Warning
+// with the origin-independent rules still applied.
+CxdOriginJudgement judgeCxdOrigin(const CxdOriginInput& input) {
+    (void)input;
+    return {}; // CxdOriginJudgement::Status::Unavailable
 }
 
 } // namespace Legality::Gen4
