@@ -1,5 +1,7 @@
 #pragma once
+#include <type_traits>
 #include "UI/ClassicGameContext.h"
+#include "UI/SharedScrollbar.h"
 #include "UI/SharedPokemonEditorContract.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedDataPaneLayout.h"
@@ -71,14 +73,12 @@ inline void drawPortrait(PKSEFramebuffer& fb, int x, int y, uint16_t species, bo
             sprite->width, sprite->height, sprite->data, sprite->channels);
     else fb.drawText(x + 82, y + 104, "Sprite unavailable", Colors::TextDim, TextStyle::Caption);
 }
+// Draw-only wrapper over the one shared scrollbar (UI/SharedScrollbar.h). Surfaces that own a
+// SharedScrollbar::State use drawAndPublish so the same thumb is draggable and the track pages.
 inline void drawVerticalScrollIndicator(PKSEFramebuffer& fb, int x, int y, int height,
     std::size_t totalRows, std::size_t visibleCapacity, std::size_t firstVisible) {
-    constexpr int width = 4;
-    const auto thumb = PokeBank::UIModel::SharedPokemonEditor::scrollThumb(
-        totalRows, visibleCapacity, firstVisible, height);
-    if (!thumb.visible) return;
-    fb.drawFilledRoundedRect(x, y, width, height, 2, Colors::Divider);
-    fb.drawFilledRoundedRect(x, y + thumb.offset, width, thumb.length, 2, Colors::TextDim);
+    SharedScrollbar::paint(fb, SharedScrollbar::layout(x, y, SharedScrollbar::kTrackWidth, height,
+        SharedScrollbar::rows(totalRows, visibleCapacity, firstVisible)));
 }
 
 // Bound inline text without splitting a UTF-8 code point when adding an ellipsis.
@@ -117,9 +117,11 @@ static_assert(Geometry(1280, 720, 56).leftW == PokeBank::UIModel::SharedEditorPr
 // `state(row)` returns the row's SharedFieldState: Editable rows draw as before, ReadOnly rows
 // keep a gold value (also when focused), Disabled rows are muted; the outline is always drawn.
 template <class Label, class Value, class StateFor>
+    requires std::is_invocable_v<StateFor&, std::size_t>
 inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int h,
     std::size_t total, std::size_t focus, bool focused, Label label, Value value,
-    StateFor state, int pixelOffset = 0, int independentFirstRow = -1) {
+    StateFor state, int pixelOffset = 0, int independentFirstRow = -1,
+    SharedScrollbar::State* scrollbar = nullptr) {
     namespace FieldState = PokeBank::UIModel::SharedFieldState;
     const auto viewport = PokeBank::UIModel::SharedEditorPresentation::detailsViewport(y, h);
     const std::size_t visibleRows = static_cast<std::size_t>(viewport.visibleRows);
@@ -159,18 +161,26 @@ inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int 
                     TextStyle::Caption);
     }
     fb.clearClip();
-    drawVerticalScrollIndicator(fb, x + w - 10, viewportY + 6,
-        std::max(0, viewportH - 12), total, visibleRows, window.first);
+    // Owners that pass their SharedScrollbar::State get the draggable thumb (geometry published
+    // for next frame's hit-test); the draw-only indicator is the same component without capture.
+    if (scrollbar)
+        SharedScrollbar::drawAndPublish(fb, *scrollbar, x + w - 10, viewportY + 6,
+            SharedScrollbar::kTrackWidth, std::max(0, viewportH - 12),
+            SharedScrollbar::rows(total, visibleRows, window.first));
+    else
+        drawVerticalScrollIndicator(fb, x + w - 10, viewportY + 6,
+            std::max(0, viewportH - 12), total, visibleRows, window.first);
     // No "Rows N-M / T" counter: the scrollbar alone reports position.
 }
 // Rows without per-row state draw as Editable (the previous presentation).
 template <class Label, class Value>
 inline void drawScrollableDetails(PKSEFramebuffer& fb, int x, int y, int w, int h,
     std::size_t total, std::size_t focus, bool focused, Label label, Value value,
-    int pixelOffset = 0, int independentFirstRow = -1) {
+    int pixelOffset = 0, int independentFirstRow = -1,
+    SharedScrollbar::State* scrollbar = nullptr) {
     drawScrollableDetails(fb, x, y, w, h, total, focus, focused, label, value,
         [](std::size_t) { return PokeBank::UIModel::SharedFieldState::State::Editable; },
-        pixelOffset, independentFirstRow);
+        pixelOffset, independentFirstRow, scrollbar);
 }
 // The native-data and six-stat radar composition is shared by exact-format providers.
 template <class Rows>

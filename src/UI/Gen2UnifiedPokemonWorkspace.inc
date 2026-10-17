@@ -25,6 +25,7 @@ struct UnifiedWorkspaceState {
     // making Held Item and Crystal metadata painful to reach by touch.
     TouchScrollState detailsTouchScroll;
     TouchPickerViewport detailsViewport;
+    SharedScrollbar::State detailsScrollbar;   // draggable thumb beside the Details rows
     int detailsTouchX = 0, detailsTouchY = 0;
     int detailsTouchW = 0, detailsTouchH = 0;
     bool crystal = false;
@@ -550,15 +551,26 @@ int updateUnifiedDetailsTouch(TrainerViewScreen& screen, UnifiedWorkspaceState& 
     const int count = unified.crystal ? 13 : 9;
     unified.detailsViewport.ensure(unified.focus.row, count, kRowsVisible);
     const int maximum = TouchPickerViewport::maxFirst(count, kRowsVisible);
-    unified.detailsTouchScroll.updateVertical(
-        touch, unified.detailsTouchX, unified.detailsTouchY,
-        unified.detailsTouchW, unified.detailsTouchH, kRowHeight,
-        unified.detailsViewport.firstRow, maximum + 1);
+    // Shared scrollbar first: a held thumb moves the Details viewport (not the focused field)
+    // and owns the frame's touch, so no row under the finger is dragged or tapped.
+    const auto detailsBar = SharedScrollbar::handleTouch(unified.detailsScrollbar, SharedScrollbar::sample(touch),
+        SharedScrollbar::rows(count, kRowsVisible, unified.detailsViewport.firstRow));
+    if (detailsBar.changed) {
+        unified.detailsViewport.firstRow = detailsBar.scroll;
+        unified.detailsTouchScroll.stop();
+    }
+    if (detailsBar.consumed)
+        unified.detailsTouchScroll.stop();
+    else
+        unified.detailsTouchScroll.updateVertical(
+            touch, unified.detailsTouchX, unified.detailsTouchY,
+            unified.detailsTouchW, unified.detailsTouchH, kRowHeight,
+            unified.detailsViewport.firstRow, maximum + 1);
     if (down & (HidNpadButton_Up | HidNpadButton_Down |
                 HidNpadButton_L | HidNpadButton_R))
         unified.detailsTouchScroll.stop();
     const int hit = screen.touchedButtonId(touch);
-    return hit >= 1700 && hit < 1700 + count ? hit - 1700 : -1;
+    return !detailsBar.consumed && hit >= 1700 && hit < 1700 + count ? hit - 1700 : -1;
 }
 
 bool handleUnifiedWorkspaceInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
@@ -885,8 +897,12 @@ void drawUnifiedDetails(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
             x + 8, top, w - 16, visible * rowHeight);
     }
     fb.clearClip();
-    SharedPokemonShell::drawVerticalScrollIndicator(
-        fb, x + w - 10, top, visible * rowHeight, rows.size(), visible, first);
+    // Same track geometry as the hardware repaint (Gen2HardwareFinalFix.inc) so the two draws
+    // of this list share one thumb; this call publishes it for next frame's hit-test.
+    SharedScrollbar::drawAndPublish(fb, unified.detailsScrollbar, x + w - 10, y + 222,
+        SharedScrollbar::kTrackWidth, std::max(0, h - 262),
+        SharedScrollbar::rows(rows.size(), static_cast<std::size_t>(visible),
+                              static_cast<std::size_t>(first)));
 }
 
 std::array<UI::SharedMovesPanel::Slot, 4> gen2MoveSlots(const TrainerViewScreen& screen, const State& state) {

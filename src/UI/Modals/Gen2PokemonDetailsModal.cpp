@@ -257,7 +257,7 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     const int nativeBottom = splitY + splitH - 8;
     const int nativeViewH = nativeBottom - nativeTop;
     const auto& liveTouch = latestTouchGesture();
-    const bool liveNativeDrag = liveTouch.down &&
+    const bool liveNativeDrag = !screen.details.leftScrollbar.capturing() && liveTouch.down &&
         liveTouch.startX >= leftPaneX + 1 && liveTouch.startX < leftPaneX + leftPaneW - 1 &&
         liveTouch.startY >= nativeTop && liveTouch.startY < nativeBottom;
     const int nativeScroll = liveNativeDrag
@@ -300,7 +300,7 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     screen.details.leftScrollMax = nativeMax;
     screen.details.leftScroll = std::clamp(screen.details.leftScroll, 0, nativeMax);
     fb.clearClip();
-    drawScrollbar(fb, leftPaneX + leftPaneW - 6, nativeTop, nativeViewH,
+    drawScrollbar(fb, screen.details.leftScrollbar, leftPaneX + leftPaneW - 9, nativeTop, nativeViewH,
                   nativeContentH, std::clamp(nativeScroll, 0, nativeMax));
 
     fb.drawText(rightPaneX + 10, splitY + 8, "BATTLE STATS", Colors::Accent, TextStyle::Caption);

@@ -105,6 +105,7 @@ struct State : Surface::EditorState {
     std::vector<uint16_t> itemAddChoices;
     std::vector<uint16_t> itemAddNativeChoices;
     ItemPickerSort::Mode itemAddSort = ItemPickerSort::Mode::Native;
+    SharedScrollbar::State itemAddScrollbar;   // R2-SCROLLBAR: draggable thumb on the Add Item list
     bool itemRemoveConfirmActive = false;
     int itemRemovePocket = 0;
     int itemRemoveVisibleRow = 0;
@@ -1718,7 +1719,12 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
         const auto onList=[&](int x,int y) {
             return x>=left && x<right && y>=top && y<top+9*rowH;
         };
-        if(touch.justReleased() && touch.dragged()) {
+        // Shared scrollbar first: the window is centred on the selection, so the thumb moves
+        // the selection to the row that puts the window where the finger put it.
+        const auto addBar=SharedScrollbar::handleTouch(state.itemAddScrollbar,SharedScrollbar::sample(touch),
+            SharedScrollbar::rows(size,9,PokeBank::UIModel::Gen4ItemListWindow::first(state.itemAddIndex,size,9)));
+        if(addBar.changed) state.itemAddIndex=std::clamp(addBar.scroll+9/2,0,size-1);
+        if(!addBar.consumed && touch.justReleased() && touch.dragged()) {
             const int dy=touch.deltaY();
             if(onList(touch.startX(),touch.startY()) &&
                std::abs(dy)>=24 && std::abs(dy)>std::abs(touch.deltaX())) {
@@ -1728,7 +1734,7 @@ bool handleItemQuantity(TrainerViewScreen& screen,State& state,u64 down,
             }
             return true;
         }
-        if(touch.justTapped() &&
+        if(!addBar.consumed && touch.justTapped() &&
            onList(touch.startX(),touch.startY()) &&
            onList(touch.x(),touch.y())) {
             const int startRow=(touch.startY()-top)/rowH;
@@ -2070,6 +2076,9 @@ void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State
         ItemPickerArtwork::drawNativeItem(fb,x+w-31,yy+3,32,
                                         screen.trainer.getGameGroup(), id, name);
     }
+    // Shared draggable scrollbar (publishes into the mutable overlay state).
+    SharedScrollbar::drawAndPublish(fb, stateFor(screen).itemAddScrollbar, x + w - 8, y + 88,
+        SharedScrollbar::kTrackWidth, 9 * 43, SharedScrollbar::rows(count, 9, start));
     fb.drawText(x+24,y+h-38,
         std::to_string(state.itemAddIndex+1)+" / "+std::to_string(count)+
         "  |  A opens numeric quantity keypad",

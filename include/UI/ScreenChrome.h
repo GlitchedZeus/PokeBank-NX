@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "UI/PKSEFramebuffer.h"
+#include "UI/SharedScrollbar.h"
 #include "UI/Common.h"
 #include "UI/ControllerModel.h"
 #include "UI/TouchInput.h"
@@ -787,13 +788,18 @@ namespace UI {
     // contentH the full content height, scroll the current offset. Item lists pass contentH =
     // totalItems * rowH and scroll = firstItem * rowH. One helper so every scrolling surface in the
     // app gets the same thumb the details editor uses.
+    // Draw-only wrapper over the one shared component (UI/SharedScrollbar.h); surfaces that own a
+    // SharedScrollbar::State call drawAndPublish there instead so the thumb is also draggable.
     inline void drawScrollbar(PKSEFramebuffer& fb, int x, int trackY, int trackH, int contentH, int scroll) {
-        if (contentH <= trackH || trackH <= 0) return;
-        const int maxS = contentH - trackH;
-        int s = scroll; if (s < 0) s = 0; if (s > maxS) s = maxS;
-        const int thumbH = std::max(24, trackH * trackH / contentH);
-        const int thumbY = trackY + (trackH - thumbH) * s / maxS;
-        fb.drawFilledRoundedRect(x, thumbY, 3, thumbH, 2, Colors::Border);
+        SharedScrollbar::paint(fb, SharedScrollbar::layout(x, trackY, SharedScrollbar::kTrackWidth, trackH,
+                                                          SharedScrollbar::pixels(contentH, trackH, scroll)));
+    }
+    // Same scrollbar, draggable: publishes the track into the owner's SharedScrollbar::State so
+    // the owner's update() can hit-test a thumb drag / track tap on the next frame.
+    inline void drawScrollbar(PKSEFramebuffer& fb, SharedScrollbar::State& bar,
+                              int x, int trackY, int trackH, int contentH, int scroll) {
+        SharedScrollbar::drawAndPublish(fb, bar, x, trackY, SharedScrollbar::kTrackWidth, trackH,
+                                        SharedScrollbar::pixels(contentH, trackH, scroll));
     }
 }
 
