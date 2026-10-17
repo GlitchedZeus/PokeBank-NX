@@ -16,7 +16,7 @@ Report each as PASS / FAIL / NOT VERIFIED, with the game and save used.
 4. Repeat with a unique item (a Key Item): it is added with quantity 1 and offers no quantity editor.
 5. Review Pending Changes lists the addition; Discard removes it; the source save is unchanged.
 
-Host check: Lane I `tests/test_bag_add_flow_gen15.cpp` (pending) and QA CG12 (pending).
+Host check: Lane I `tests/test_bag_add_flow_gen15.cpp` and QA CG12 (lane push `52017cd1`; enforced once on #307).
 
 ## E03 — Origin & Legality wording
 
@@ -36,7 +36,13 @@ Host check: CG03 (enforced; PASS on 7fea1797, audit run 38947904299).
    and (Gen III) Unown letter are preserved.
 3. Discard; the source save is unchanged.
 
-Host check: CG06 (enforced) and Lane R `tests/test_reroll_mechanics_gen15.cpp` (pending).
+What to expect, and why (Lane R, `docs/REROLL_MECHANICS.md`): in Gen I/II a shiny and a non-shiny can
+never have the same DVs, because shininess is the DV pattern itself (Defense, Speed, Special DV 10;
+Attack DV 2, 3, 6, 7, 10, 11, 14 or 15). In Gen III–V shininess comes from the PID and IDs, not the
+IVs, so a shiny and a non-shiny *can* have identical IVs/EVs; that is correct, not a bug.
+
+Host check: CG06 (enforced) and Lane R `tests/test_reroll_mechanics_gen15.cpp` (100 rerolls per case in
+every generation; lane push `951a8993`, not yet on #307).
 
 ## L06 — Party / summary-panel taps
 

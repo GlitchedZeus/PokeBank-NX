@@ -1174,7 +1174,7 @@ require(surface, "Fields::detailEditable(draft(screen), row, b2w2(screen))",
         "backendState.speciesRefusal(species)", "backendState.recreateCreateSpecies(",
         "return b2w2(screen) ? Enums::GameVersion::B2W2 : Enums::GameVersion::BW;",
         "learnability not checked", 'return Names::getMetLocationDisplayName(origin, location);',
-        "static constexpr bool kCompactForm = true;", "static constexpr bool kSpeciesSearch = true;")
+        "static constexpr bool kCompactForm = true;")  # species search: shared chooser, QA CG15
 require(native_screen, "Gen5SharedPokemonSession& editDraft() noexcept",
         "std::string speciesRefusal(uint32_t species) const",
         "bool recreateCreateSpecies(Workspace& ws,uint32_t species,bool shiny,")

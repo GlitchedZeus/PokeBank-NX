@@ -11,18 +11,18 @@ device acceptance.
 
 | FAIL confirmed (owner) | Lane | Host evidence so far |
 | --- | --- | --- |
-| B01 Gen I Add Item workflow (owner: numpad before the item is in the bag) | I (phase 1, `SharedBagAddFlow.h`) | none yet; QA CG12 pending the lane SHA |
-| B02 Gen II Add Item workflow (owner: same as B01) | I | none yet |
-| B03 Gen III item editing (owner: same as B01/B02) | I | none yet |
-| B06 Stackable item quantity editing (owner: part of B01–B03) | I | none yet |
-| S01 Gen V matches the shared Gen I–IV editor (owner note: PP / PP Ups text too close) | S (phase 9) | none yet |
+| B01 Gen I Add Item workflow (owner: numpad before the item is in the bag) | I (phase 1, `SharedBagAddFlow.h`) | lane push `52017cd1` (not yet on #307): `tests/test_bag_add_flow_gen15.cpp`; QA CG12 XPASS on that tree (XFAIL here until merged) |
+| B02 Gen II Add Item workflow (owner: same as B01) | I | as B01 (`52017cd1`) |
+| B03 Gen III item editing (owner: same as B01/B02) | I | as B01 (`52017cd1`) |
+| B06 Stackable item quantity editing (owner: part of B01–B03) | I | as B01 (`52017cd1`): quantity numpad only from an editable inventory row (CG12, `decideRow`) |
+| S01 Gen V matches the shared Gen I–IV editor (owner note: PP / PP Ups text too close) | S (phase 9) | lane push `b1d34f9` (PP/PP Ups spacing, 10-row chooser; not yet on #307) |
 | S03 Gen V Create, Clone, Move and Release (owner note: left-panel species text cut off, parity) | S (phase 12) | none yet |
 
 | NOT VERIFIED (owner) — not a failure | Lane | Host evidence so far |
 | --- | --- | --- |
-| B04 Gen IV/V Add Item | I (phase 13) | none yet |
+| B04 Gen IV/V Add Item | I (phase 13) | lane push `52017cd1`: Gen IV/V through the same flow (`test_gen4_readonly_foundation.cpp` B04 round trip, `test_gen5_bag_screen.cpp`) |
 | E03 Origin & Legality wording | QA (CG03, enforced) | CG03 PASS on 7fea1797 (run 38947904299) |
-| E11 shiny vs non-shiny rerolls | R (phase 10/13) | none yet |
+| E11 shiny vs non-shiny rerolls | R (phase 10/13) | lane push `951a8993`: `tests/test_reroll_mechanics_gen15.cpp` (100 rerolls per case, every generation), `docs/REROLL_MECHANICS.md`; Gen III `rerollPreservingShiny` and Gen IV `rerollPid` defects fixed there |
 | L06 party/summary taps | 2R (phase 13) | none yet |
 | S04 Gen V Review/Discard/Export | S (phase 12) | none yet |
 | S06 exported copy round-trip in an emulator | QA / owner (device only) | host export contracts C1–C5 PASS (`tests/test_qa_export_contracts.cpp`) |
@@ -34,3 +34,14 @@ device acceptance.
 S01/S03: the sheet titles and the owner's notes differ; both are kept verbatim in
 [ROUND1_RESULTS_7fea1797.md](../hardware/ROUND1_RESULTS_7fea1797.md). Whether Gen V
 Create/Clone/Move/Release themselves fail is not stated by the owner and is not recorded as broken.
+
+## E11 — what the owner asked (Lane R's finding, cited in `docs/REROLL_MECHANICS.md`)
+
+The owner wrote that a shiny and a non-shiny Pokémon cannot have the same stats. Lane R's finding:
+this is **true for Gen I/II only**. There shininess *is* a DV pattern (Defense, Speed and Special DV 10;
+Attack DV one of 2, 3, 6, 7, 10, 11, 14, 15), so a shiny and a non-shiny of one species can never share
+a DV spread, and Random DVs on a shiny may only move the Attack DV among those 8 values. In Gen III–V
+shininess comes from the PID with the Trainer and Secret IDs (PID⊕TID⊕SID < 8); IVs and EVs are separate
+fields, so identical stats on a shiny and a non-shiny are valid and there is no minimum "points" rule.
+Documented limit: a Gen V shiny toggle may not preserve the Wurmple-line evolution value
+(legality only, #314). E11 stays NOT VERIFIED until the owner checks the next candidate.
