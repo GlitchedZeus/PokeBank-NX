@@ -392,21 +392,23 @@ int main() {
     contains(addPath,"startRow==endRow && selected<size");
     contains(addPath,"keys|=HidNpadButton_A");
     contains(addPath,"Gen4ItemListWindow::first(");
-    contains(addPath,"Utils::promptNumber(");
+    // B01-B06: Add never opens a keypad. The shared Gen I-V flow (UI/SharedBagAddFlow.h)
+    // stages the item at x1, or focuses an already-held stack; A on the row edits quantity.
+    assert(addPath.find("Utils::promptNumber(")==std::string::npos);
     contains(editPath,"Utils::promptNumber(");
-    contains(addPath,"if(!r.accepted)return true;");
     contains(editPath,"if(!r.accepted)return true;");
-    contains(addPath,"gen4QuantityRule(screen,static_cast<size_t>(state.itemAddPocket),id)");
-    contains(addPath,"if(rule.editable)");
+    contains(addPath,"BagAdd::decidePick(gen4PolicyRule(screen,addPocket,id),pocketState,");
+    contains(addPath,"case BagAdd::PickOutcome::FocusExisting:");
+    contains(addPath,"case BagAdd::PickOutcome::PocketFull:");
+    contains(editPath,"BagAdd::decideRow(");
     contains(editPath,"gen4QuantityRule(screen,static_cast<size_t>(pocket),item.itemId)");
     contains(editPath,"This item is unique; its quantity is fixed at 1");
     contains(addPath,"Gen4::gen4BagItemAllowed(");
     contains(editPath,"itemId!=originalId");
-    contains(addPath,"static_cast<uint16_t>(r.value)");
+    contains(addPath,"stageBagAdd(addPocket,id,decision.quantity,&error)");
     contains(editPath,"static_cast<uint16_t>(r.value)");
     contains(addPath,"*current=std::move(backup)");
     contains(editPath,"*current=std::move(backup)");
-    assert(addPath.find("Utils::promptNumber(")<addPath.find("stageBagAdd("));
     assert(editPath.find("Utils::promptNumber(")<editPath.find("stageBagQuantity("));
     assert(surface.find("drawItemQuantity(")==std::string::npos);
     assert(surface.find("itemQuantityActive")==std::string::npos);

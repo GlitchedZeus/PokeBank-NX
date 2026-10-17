@@ -882,9 +882,9 @@ std::string bagItemLabel(const TrainerViewScreen& screen,uint16_t id) {
 // The ONE per-item quantity query of the Gen V bag, backed by Thread I's
 // Inventory/ItemQuantityPolicy.h. Never exceeds the native pocket cap the staged bag enforces
 // (bagPocketLayout5 maxCount). Gen V keeps Poke Balls in Items; Key Items and TMs/HMs are unique.
-struct Gen5QuantityRule { bool valid = false; bool editable = false; uint16_t maximum = 0; };
-Gen5QuantityRule gen5QuantityRule(const TrainerViewScreen& screen, size_t pocket, uint16_t id,
-                                  uint16_t nativeCap) noexcept {
+// The exact-game policy rule of one Gen V bag item (Gen5Bag.h pocket order).
+PokeVault::Inventory::QuantityPolicy::ItemQuantityRule gen5PolicyRule(
+    const TrainerViewScreen& screen, size_t pocket, uint16_t id) noexcept {
     namespace QP = PokeVault::Inventory::QuantityPolicy;
     static constexpr std::array<QP::Pocket, 5> kPockets{{
         QP::Pocket::Items, QP::Pocket::KeyItems, QP::Pocket::TMHM, QP::Pocket::Medicine,
@@ -892,12 +892,8 @@ Gen5QuantityRule gen5QuantityRule(const TrainerViewScreen& screen, size_t pocket
     static_assert(kPockets.size() == PokeVault::Integration::Gen5::BagPocket5Count);
     QP::Game game{};
     if (pocket >= kPockets.size() || !QP::gameFromId(screen.sourceGameId, game)) return {};
-    const auto rule = QP::quantityRule(game, kPockets[pocket], id);
-    if (!rule.valid || nativeCap == 0) return {};
-    const uint16_t maximum = std::min(rule.maximum, nativeCap);
-    return {true, rule.editable && maximum > 1, maximum};
+    return QP::quantityRule(game, kPockets[pocket], id);
 }
-
 bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touch) {
     namespace G=PokeVault::Integration::Gen5;
     using BagSurface=G::Gen5BagScreen::Surface;
@@ -924,21 +920,14 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touc
             if(keys&HidNpadButton_B) {
                 bag.cancel();
             } else if(keys&HidNpadButton_A) {
+                // Shared Gen I-V Add (UI/SharedBagAddFlow.h): stage x1 with no keypad, or
+                // focus the existing stack; A on the row edits the quantity afterwards.
                 const uint16_t id=bag.chosenAddItem();
-                const auto rule=gen5QuantityRule(screen,bag.pocket(),id,bag.addMaximum(ws));
-                // A unique item is added once; only a quantity-editable item asks for an amount.
-                Utils::NumberResult r{};
-                r.accepted=rule.valid;
-                r.value=1;
-                if(!rule.valid) screen.postStatus("This item cannot be added to this Gen V pocket",300);
-                else if(rule.editable)
-                    r=Utils::promptNumber("Add "+bagItemLabel(screen,id),1,1,rule.maximum);
+                const auto decision=bag.pickAdd(ws,gen5PolicyRule(screen,bag.pocket(),id),
+                                                refresh,error);
                 screen.controllerNavigation.reset();
-                if(r.accepted) { // Cancel is byte-for-byte inert.
-                    if(!bag.confirmAdd(ws,id,r.value,refresh,error))screen.postStatus(error,320);
-                    else screen.postStatus("Gen V item added to staged bag ONLY (x"+
-                                           std::to_string(r.value)+"); SAV5 unchanged",300);
-                }
+                if(!error.empty())screen.postStatus(error,320);
+                else screen.postStatus(decision.message+"; SAV5 unchanged",300);
             }
             syncBagCursor(screen);
             return true;
@@ -1006,15 +995,17 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touc
         screen.controllerNavigation.reset();
     } else if(keys&HidNpadButton_A) {
         if(const auto request=bag.beginQuantity(ws,error)) {
-            const auto rule=gen5QuantityRule(screen,request->pocket,request->itemId,request->maximum);
-            if(!rule.editable || request->current>rule.maximum) {
+            const auto row=PokeBank::UIModel::BagAdd::decideRow(
+                gen5PolicyRule(screen,request->pocket,request->itemId),request->current,
+                request->maximum);
+            if(row.outcome!=PokeBank::UIModel::BagAdd::RowOutcome::EditQuantity) {
                 // Unique items get no quantity editor; nothing is staged.
-                screen.postStatus(rule.valid ? "This item is unique; its quantity is fixed at 1"
-                                             : "Gen V item quantity outside native limits",260);
+                screen.postStatus(row.message,260);
                 return true;
             }
             const auto r=Utils::promptNumber("Edit "+bagItemLabel(screen,request->itemId),
-                static_cast<int>(request->current),1,static_cast<int>(rule.maximum));
+                static_cast<int>(row.current),static_cast<int>(row.minimum),
+                static_cast<int>(row.maximum));
             screen.controllerNavigation.reset();
             if(r.accepted) { // Cancel cannot mutate the stage.
                 if(!bag.applyQuantity(ws,*request,r.value,refresh,error))
@@ -1828,7 +1819,7 @@ void drawBag(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
                                               screen.trainer.getGameGroup(),id,name);
         }
         fb.drawText(x+24,y+h-38,std::to_string(selected+1)+" / "+std::to_string(count)+
-            "  |  A or tap opens the quantity keypad",Colors::Accent,TextStyle::Caption);
+            "  |  A adds x1 (held items: highlights the stack)",Colors::Accent,TextStyle::Caption);
     } else {
         const auto& item=bag.pendingRemove();
         const int w=625,h=244,x=(fb.getWidth()-w)/2;

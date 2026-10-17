@@ -45,7 +45,9 @@ int main() {
     assert(gen5.find("QP::Pocket::Items, QP::Pocket::KeyItems, QP::Pocket::TMHM, QP::Pocket::Medicine,\n"
                      "        QP::Pocket::Berries}};") != std::string::npos);
     assert(gen4Rule.find("std::min(r.maximum, nativeCap)") != std::string::npos);
-    assert(gen5.find("std::min(rule.maximum, nativeCap)") != std::string::npos);
+    // Gen V clamps through the shared Bag Add flow's writer bound (UI/SharedBagAddFlow.h).
+    assert(gen5.find("BagAdd::decideRow(") != std::string::npos);
+    assert(read("include/UI/SharedBagAddFlow.h").find("std::min(rule.maximum, writerCap)") != std::string::npos);
 
     // Every native Gen IV item: the policy is valid where the native catalog allows it, and the
     // effective cap (policy capped by the writer) is 1 exactly for unique items.
