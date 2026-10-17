@@ -1,16 +1,19 @@
 # PokeBank NX — v1.0 Roadmap
 
-## OWNER-LOCKED RELEASE ORDER — OCTOBER 15, 2026
+## OWNER-LOCKED RELEASE ORDER — OCTOBER 17, 2026
 
-**This section takes precedence over older speculative phase ordering below:**
+**This current release order supersedes older speculative phase labels below; it does not authorize unsafe merges or writes.**
 
-1. [Gen I–V application #307](https://github.com/GlitchedZeus/PokeBank-NX/pull/307): finish Gen V, fix real hardware regressions, preserve one shared editor, complete app-owned verified export.
-2. [Full application QA/acceptance #313](https://github.com/GlitchedZeus/PokeBank-NX/issues/313): Claude or independent reviewer maps **every actual action from source**; [106-checkpoint starter list](handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md); all 20 games and every applicable control/source/profile state on real Switch.
-3. One fully green GCC/Clang/ASan/UBSan/fuzz/native/NRO RomFS/source-safety build; freeze and document exact source tree, SHA-256 and owner acceptance.
-4. Fix/retest until no unresolved blocking issue; owner **explicitly** signs off the exact tested Gen I–V NRO.
-5. **Only then** start the different Gen VI/3DS emulator integration. Preserve draft research [#309](https://github.com/GlitchedZeus/PokeBank-NX/pull/309), [#311](https://github.com/GlitchedZeus/PokeBank-NX/pull/311), [#312](https://github.com/GlitchedZeus/PokeBank-NX/pull/312) without claiming it is already application-ready. Vault, transfers, social and other future scope stays [deferred](FUTURE_AFTER_GEN15_BACKLOG.md).
+1. **Gen I–V shared-UI repair round:** [app #307](https://github.com/GlitchedZeus/PokeBank-NX/pull/307) addresses the owner-reported Bag Add/quantity ordering, Gen V PP/PP Ups and left-panel clipping, plus compact shared pickers, live prefix species search, draggable scrollbars, Gen I Trainer/Money, Crystal Met Time and other shared polish. Preserve the **42 owner-confirmed passes** from [`7fea1797`](hardware/OWNER_RETEST_7fea1797_20261017.md).
+2. **Hardware retest / targeted defect round:** one exact GitHub-built NRO, native/RomFS, GCC/Clang, sanitizers, QA cross-gen contracts, app-owned export/reparse, independent exact-binary audit and Switch verification. Distinguish six problem/investigation IDs from six other unverified checks in the 54-item retest. Test exported `edited.sav` with the corresponding emulator; original saves remain untouched. More than two passes are permitted if a safety blocker remains.
+3. **Finish and review [Gen I–V legality #314](https://github.com/GlitchedZeus/PokeBank-NX/pull/314):** PK1–PK4 production analyzers and a PK5 engine path exist on the separate legality branch. Finish source-backed GameCube/Orre and historical provenance where possible, retain Unknown where necessary, rerun full PKHeX differentials and rule audits, and prepare a reviewed Gen V app adapter.
+4. **Reviewed integration after app stabilization:** preserve both branch histories, resolve conflicts forward, test combined app+legality safely and publish one combined exact-NRO candidate, not a false declaration of global PKHeX completeness.
+5. **Full device acceptance:** [all 20 titles and every reachable action](handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md) under [#313](https://github.com/GlitchedZeus/PokeBank-NX/issues/313), all required providers/profiles, control/touch, launch/return, staged Review/Discard/Export and source immutability. Only the owner can approve the exact NRO SHA-256.
+6. **Post-acceptance:** independent final audit, README and project-state review, safe PR/branch consolidation preserving unique commits, then owner-authorized **Gen VI–IX application and new-emulator development**. Gen VI/VII/VIII drafts [#309](https://github.com/GlitchedZeus/PokeBank-NX/pull/309), [#311](https://github.com/GlitchedZeus/PokeBank-NX/pull/311), [#312](https://github.com/GlitchedZeus/PokeBank-NX/pull/312) are preserved research, not current release scope.
 
-The `35cbf163` Gen I–V candidate has **9/9 CI success but no hardware acceptance**; the earlier `fa9cfcea` NRO failed a real Gen V Switch test. CI and PR closure do not supersede this requirement.
+**Latest tested artifact** is [Gen I–V candidate `7fea1797`](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/38946941097/artifacts/12066747065), exact NRO SHA-256 `217f24becaaa4eb940abaef01962c80a2fb5536bc6af77934add92d900bac1d5`. It passed the independent NRO audit and received **42/54 targeted owner-reported checks**, **not** full device acceptance. App #307 and legality #314 remain open draft workstreams.
+
+The rest of this roadmap preserves historical development phases and longer-term capabilities; date-specific claims in older sections do not supersede this release order.
 
 ---
 
