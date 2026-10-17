@@ -10,6 +10,7 @@
 #include "UI/ScreenChrome.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedFieldState.h"
+#include "UI/SharedFieldStateColors.h"
 #include "UI/SharedMenuGeometry.h"
 
 #include <string>
@@ -47,17 +48,7 @@ inline void beginModal(Buttons& screenTouchButtons) {
 
 namespace FieldState = PokeBank::UIModel::SharedFieldState;
 
-inline Color fieldColor(FieldState::Token token) {
-    switch (token) {
-        case FieldState::Token::Text: return Colors::Text;
-        case FieldState::Token::TextDim: return Colors::TextDim;
-        case FieldState::Token::TextMuted: return Colors::TextMuted;
-        case FieldState::Token::Gold: return Colors::ShinyStar;
-        case FieldState::Token::Selected: return Colors::SelectedText;
-        case FieldState::Token::FocusBorder: return Colors::FocusBorder;
-    }
-    return Colors::Text;
-}
+inline Color fieldColor(FieldState::Token token) { return SharedFieldStateColors::color(token); }
 
 // The accepted focus outline (2 px FocusBorder, radius 6), drawn for a focused field of ANY state.
 inline void drawFieldFocus(PKSEFramebuffer& fb, int x, int y, int w, int h,

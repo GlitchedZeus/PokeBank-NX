@@ -422,11 +422,16 @@ std::string detailsValue(const TrainerViewScreen& screen,
 }
 
 constexpr std::array<const char*,16> detailLabels{{
-    "Species", "Nickname", "Level", "Experience", "OT", "Trainer ID", "SID (read-only)",
+    "Species", "Nickname", "Level", "Experience", "OT", "Trainer ID", "SID",
     "Held Item", "Friendship", "Language", "Origin", "Ball",
     "Met Level", "Met Location", "Pokerus", "Form"
 }};
 static_assert(detailLabels.size() == Shared::layoutFor(Shared::Generation::Gen3).detailsRows);
+
+// Locked in every mode (gold ReadOnly field state): SID, Origin, and Form except Unown's letter.
+bool detailLocked(const Gen3::StagedPokemonRecord& p, int row) noexcept {
+    return row == 6 || row == 10 || (row == 15 && p.species != 201);
+}
 
 bool detailEditable(const State& state, int row) noexcept {
     if (!state.session.editable()) return false;
@@ -1915,6 +1920,11 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         state.focus.panel == Shared::Panel::Details,
         [](std::size_t row) { return detailLabels[row]; },
         [&](std::size_t row) { return detailsValue(screen, p, static_cast<int>(row)); },
+        [&](std::size_t row) {
+            return detailLocked(p, static_cast<int>(row))
+                ? PokeBank::UIModel::SharedFieldState::State::ReadOnly
+                : PokeBank::UIModel::SharedFieldState::State::Editable;
+        },
         detailPixelOffset, firstDetailRow);
     {
         // Hitboxes follow the exact scroll position and are clipped to the

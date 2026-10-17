@@ -13,6 +13,7 @@
 // field, whatever its state, so the cursor is never lost on a locked or unsupported row. Only an
 // Editable field switches to SelectedText when focused; a ReadOnly / Disabled field keeps its own
 // colour inside the outline, so focusing a gold value never makes it look like an editable one.
+// Every focused LABEL is bright (Selected) for readability; the VALUE colour carries the state.
 // A on a non-editable field never edits; the caller posts reason(state) instead.
 // Note: Colors::TextDim is an alias of Colors::TextMuted, so Disabled is told apart from Editable
 // by its VALUE colour (muted instead of Text) and from ReadOnly by not being gold.
@@ -55,11 +56,11 @@ constexpr Style style(State state, bool focused) noexcept {
             s.activates = true;
             break;
         case State::ReadOnly:
-            s.label = Token::TextDim;
+            s.label = focused ? Token::Selected : Token::TextDim;
             s.value = Token::Gold;
             break;
         case State::Disabled:
-            s.label = Token::TextMuted;
+            s.label = focused ? Token::Selected : Token::TextMuted;
             s.value = Token::TextMuted;
             break;
     }

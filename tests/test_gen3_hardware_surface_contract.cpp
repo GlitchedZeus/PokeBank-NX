@@ -166,7 +166,8 @@ int main() {
     contains(surface, "(down & HidNpadButton_Left) != 0, (down & HidNpadButton_Right) != 0,\n            (down & HidNpadButton_L) != 0, (down & HidNpadButton_R) != 0,");
     contains(surface, "if (row == 1 || row == 2 || row == 3 || row == 4 || row == 5) return true;");
     contains(surface, "Utils::promptNumber(\"Generation III Experience\"");
-    contains(surface, "p.tid = static_cast<uint16_t>(r.value)"); contains(surface, "SID (read-only)");
+    contains(surface, "p.tid = static_cast<uint16_t>(r.value)"); contains(surface, "\"Trainer ID\", \"SID\",");
+    contains(surface, "bool detailLocked(const Gen3::StagedPokemonRecord& p, int row) noexcept {");
     contains(surface, "SharedPokemonShell::drawChrome");
     contains(gen2, "SharedPokemonShell::drawChrome");
 
@@ -197,7 +198,7 @@ int main() {
     contains(surface, "detailPixelOffset, firstDetailRow");
     contains(shell, "viewport.visibleRows");
     contains(shell, "detailsViewport(Geometry(1280, 720, 56)).visibleRows == 8");
-    contains(shell, "labelWidth + 28");
+    contains(shell, "const int valueInset = kDetailValueInset;"); // S03: one DETAILS column
     contains(shell, "fitDetailsText");
     contains(shell, "drawVerticalScrollIndicator");
     contains(shell, "viewportY = viewport.top");

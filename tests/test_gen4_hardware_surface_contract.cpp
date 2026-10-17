@@ -540,10 +540,10 @@ int main() {
     contains(surface, "\"OT\", \"Trainer ID\"");
     assert(surface.find("OT (read-only)") == std::string::npos);
     assert(surface.find("TID (read-only)") == std::string::npos);
-    contains(surface, "SID (read-only)");
+    contains(surface, "\"SID\", \"Held Item\"");
     contains(surface, "setOriginalTrainerName");
     contains(surface, "setTID");
-    contains(surface, "Origin (read-only)");
+    contains(surface, "case 6: case 10: return true;"); // SID / Origin: gold ReadOnly field state
     contains(surface, "state.focus.row == row && (viewMode || editable);");
     contains(surface, "return gen4(state).session.mode == SessionModel::Mode::View;");
 

@@ -205,7 +205,11 @@ int main() {
     assert(trainer.find("sel ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
 
     const std::string shell = readFile("include/UI/SharedPokemonShell.h");
-    assert(shell.find("selected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);
+    // The shared DETAILS rows take label colours from the field-state contract: every focused
+    // label is bright (Token::Selected), unfocused labels dim; the value colour carries the state.
+    assert(shell.find("FieldState::style(state(row), selected)") != std::string::npos);
+    const std::string fieldState = readFile("include/UI/SharedFieldState.h");
+    assert(fieldState.find("s.label = focused ? Token::Selected : Token::TextDim;") != std::string::npos);
 
     const std::string gen2Shared = readFile("src/UI/Gen2SharedPokemonSurface.inc");
     assert(gen2Shared.find("selected ? Colors::SelectedText : Colors::TextDim") != std::string::npos);

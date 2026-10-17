@@ -436,7 +436,7 @@ std::string gen4FormLabel(uint16_t species, uint8_t form) {
 
 constexpr std::array<const char*, 16> detailLabels{{
     "Species", "Nickname", "Level", "Experience", "OT", "Trainer ID",
-    "SID (read-only)", "Held Item", "Friendship", "Language", "Origin (read-only)", "Ball",
+    "SID", "Held Item", "Friendship", "Language", "Origin", "Ball",
     "Met Level", "Met Location", "Pokerus", "Form"
 }};
 
@@ -1291,6 +1291,17 @@ struct Gen4Editor {
     static bool detailEditable(const TrainerViewScreen&, const Surface::EditorState& state,
                                int row, const Record& p) {
         return UI::Gen4SharedEditorSurface::detailEditable(gen4(state), row, p);
+    }
+    // Locked in every mode: SID and Origin, a transferred Pokemon's encounter data, a fixed form.
+    static bool detailLocked(const TrainerViewScreen&, const Surface::EditorState& state,
+                             int row, const Record& p) {
+        const auto& s = gen4(state);
+        switch (row) {
+            case 6: case 10: return true;
+            case 11: case 13: return !UI::Gen4SharedEditorSurface::nativeGen4Origin(p);
+            case 15: return s.session.working && s.session.working->formCount() <= 1;
+            default: return false;
+        }
     }
     static std::string detailValue(const TrainerViewScreen&, const Surface::EditorState& state,
                                    const Record& p, int row) {

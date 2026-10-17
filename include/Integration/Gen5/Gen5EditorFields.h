@@ -37,8 +37,8 @@ enum Row : int {
 };
 inline constexpr std::array<const char*, RowCount> kDetailLabels{{
     "Species", "Nickname", "Level", "Experience", "OT", "Trainer ID", "SID",
-    "Held Item", "Friendship", "Language (read-only)", "Origin (read-only)", "Ball",
-    "Met Level", "Met Location", "Pokerus", "Form", "OT Gender", "Fateful Encounter"
+    "Held Item", "Friendship", "Language", "Origin", "Ball",
+    "Met Level", "Met Location", "Pokerus", "Form", "OT Gender", "Fateful"
 }};
 
 // STATS PID-linked rows (shared workspace rows 6..10).
@@ -154,6 +154,16 @@ inline constexpr uint16_t kMaxSpecies = 649;
             return hasAlternateForm(draft, b2w2);
         default:
             return false; // Language and Origin are shown, never edited.
+    }
+}
+// Rows that stay locked for this record in every mode (View, Edit, Create): shown in the gold
+// ReadOnly field state (UI/SharedFieldState.h) instead of a "(read-only)" label suffix.
+[[nodiscard]] inline bool detailLocked(const Pokemon5ReadOnly& p, int row, bool singleForm) noexcept {
+    switch (row) {
+        case Language: case Origin: return true;
+        case Ball: case MetLocation: return !gen5Origin5(p.originVersion());
+        case Form: return singleForm;
+        default: return false;
     }
 }
 [[nodiscard]] inline bool pidRowEditable(const Draft& draft, int row, bool b2w2) {

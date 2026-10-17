@@ -322,6 +322,10 @@ struct Gen5Editor {
                                int row, const Record&) {
         return Fields::detailEditable(draft(screen), row, b2w2(screen));
     }
+    static bool detailLocked(const TrainerViewScreen& screen, const EditorSurface::EditorState&,
+                             int row, const Record& p) {
+        return Fields::detailLocked(p, row, singleForm(screen, p));
+    }
     static std::string detailValue(const TrainerViewScreen& screen, const EditorSurface::EditorState&,
                                    const Record& p, int row) {
         using namespace Fields;

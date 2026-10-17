@@ -849,6 +849,11 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
         state.focus.panel == Shared::Panel::Details,
         [](size_t row) { return A::detailLabel(static_cast<int>(row)); },
         [&](size_t row) { return A::detailValue(screen, state, *raw, static_cast<int>(row)); },
+        [&](size_t row) {
+            return A::detailLocked(screen, state, static_cast<int>(row), *raw)
+                ? PokeBank::UIModel::SharedFieldState::State::ReadOnly
+                : PokeBank::UIModel::SharedFieldState::State::Editable;
+        },
         detailPixelOffset, firstDetailRow);
     {
         for (int row = std::max(0, firstDetailRow - 1);

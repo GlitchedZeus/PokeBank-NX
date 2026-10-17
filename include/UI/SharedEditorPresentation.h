@@ -249,6 +249,17 @@ struct DetailsViewport {
     constexpr int bottom() const noexcept { return top + height; }
 };
 
+// S03: ONE label/value column for every generation's DETAILS rows (300 px left panel).
+inline constexpr int kDetailLabelX = 16;
+inline constexpr int kDetailValueInset = 124;
+inline constexpr int kDetailLabelWidth = kDetailValueInset - kDetailLabelX - 12;   // 96 px
+inline constexpr int kDetailValueRightPad = 28;
+inline constexpr int kDetailsPanelWidth = 300;
+constexpr int detailValueWidth(int panelW) noexcept {
+    return panelW - kDetailValueInset - kDetailValueRightPad;
+}
+static_assert(detailValueWidth(kDetailsPanelWidth) == 148, "DETAILS values have 148 px");
+
 inline constexpr int kDetailsRowStep = 38;
 inline constexpr int kDetailsHeaderHeight = 216; // portrait + type badges above the rows
 inline constexpr int kDetailsRowInset = 8;
