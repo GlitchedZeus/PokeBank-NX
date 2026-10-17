@@ -75,6 +75,7 @@ GUARDS: dict[str, tuple[str, G]] = {
         ('host', 'test_home_input_guard', 'tests/test_home_input_guard.cpp', 'void quitDecisionTable()'),
         ('py', 'tests/test_touch_appwide_surface_contract.py', 'deleteDeleteBtn'),
         ('py', 'tests/test_touch_modal_list_contract.py', 'delete_modal = backup_code.split'),
+        ('py', 'tests/test_game_hub_contract.py', 'Deleting an export record needs the explicit-Y decision'),
     ]),
     'C08': ('Pokémon Release / Remove requires Y confirmation', [
         ('host', 'test_shared_editor_unit', 'tests/test_shared_editor_unit.cpp', 'Y+B cancels'),
