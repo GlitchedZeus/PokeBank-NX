@@ -1162,7 +1162,9 @@ void Gen5Analyzer::eggState() {
     if (std::any_of(p_.contest.begin(), p_.contest.end(), [](uint8_t v) { return v != 0; }))
         a_.invalid(CheckIdentifier::Egg, "Egg has contest stats");
     if (p_.heldItem != 0) a_.invalid(CheckIdentifier::Egg, "Egg is holding an item");
-    if (p_.pokerus != 0) a_.invalid(CheckIdentifier::Egg, "Egg has Pokerus");
+    // Pokerus on an egg is not a problem: an egg in the party catches it like any party
+    // member, and PKHeX accepts it (Pokerus.IsObtainable is true for every PK5;
+    // MiscPokerusVerifier checks only the strain and the days). internal() checks the days.
     if (!p_.isNicknamed) a_.invalid(CheckIdentifier::Egg, "Egg is not flagged as nicknamed");
     if (p_.metLevel != 1) a_.invalid(CheckIdentifier::Egg, "Unhatched egg's met level is not 1");
     if (p_.eggLocation == kLinkTrade5 || p_.eggLocation == kLinkTrade5NPC)

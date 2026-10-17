@@ -669,6 +669,7 @@ sealed class Generator(Random rng, int mutations)
                     {
                         var pk = seed.Clone();
                         pk.Form = form;
+                        pk.RefreshAbility(pk.AbilityNumber >> 1); // the fused forms have their own ability
                         pk.SetMove(0, move);
                         pk.HealPP();
                         Emit(pk, origin, "kyurem", withMutations: false);

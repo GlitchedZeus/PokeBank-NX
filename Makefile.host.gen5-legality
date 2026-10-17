@@ -21,3 +21,20 @@ $(HOST_BUILD)/test_legality_gen5: $(GEN5_LEGALITY_SOURCES)
 $(HOST_BUILD)/test_legality_gen5_sanitize: $(GEN5_LEGALITY_SOURCES)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+
+# App adapter (include/Legality/Gen5AppAdapter.h): raw PK5 bytes + the app's source game id.
+GEN5_ADAPTER_SOURCES := tests/test_legality_gen5_adapter.cpp src/Legality/Gen5AppAdapter.cpp \
+	src/Legality/Gen5Legality.cpp src/Legality/Gen5LegalityData.cpp src/Legality/Gen5Text.cpp \
+	src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp src/Pokemon/Experience.cpp $(GEN5_GEN4_ORIGIN_SOURCES)
+HOST_TESTS += $(HOST_BUILD)/test_legality_gen5_adapter
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_gen5_adapter_sanitize
+host-test: $(HOST_BUILD)/test_legality_gen5_adapter
+host-sanitize: $(HOST_BUILD)/test_legality_gen5_adapter_sanitize
+
+$(HOST_BUILD)/test_legality_gen5_adapter: $(GEN5_ADAPTER_SOURCES) include/Legality/Gen5AppAdapter.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN5_ADAPTER_SOURCES) -o $@
+
+$(HOST_BUILD)/test_legality_gen5_adapter_sanitize: $(GEN5_ADAPTER_SOURCES) include/Legality/Gen5AppAdapter.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_ADAPTER_SOURCES) -o $@

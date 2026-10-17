@@ -24,6 +24,7 @@ on:
       - 'include/Encryption/Encryption5.h'
       - 'src/Names/SpeciesNames.cpp'
       - 'tests/test_legality_gen5.cpp'
+      - 'tests/test_legality_gen5_adapter.cpp'
       - 'tests/legality_gen5_test_helpers.h'
       - 'tests/fuzz/fuzz_legality_gen5.cpp'
       - 'tools/gen_legality_gen5_data.py'
@@ -74,10 +75,14 @@ jobs:
           set -euo pipefail
           for cxx in g++ clang++; do
             make -f Makefile.host CXX=$cxx HOST_BUILD=build/host-$cxx \
-              build/host-$cxx/test_legality_gen5 build/host-$cxx/test_legality_gen5_sanitize
+              build/host-$cxx/test_legality_gen5 build/host-$cxx/test_legality_gen5_sanitize \
+              build/host-$cxx/test_legality_gen5_adapter build/host-$cxx/test_legality_gen5_adapter_sanitize
             GEN5_FUZZ_ROUNDS=200000 build/host-$cxx/test_legality_gen5
+            GEN5_FUZZ_ROUNDS=50000 build/host-$cxx/test_legality_gen5_adapter
             ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
               build/host-$cxx/test_legality_gen5_sanitize
+            ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+              build/host-$cxx/test_legality_gen5_adapter_sanitize
           done
 
       - name: libFuzzer (Clang, ASan/UBSan, 10 minutes)
