@@ -397,7 +397,8 @@ void surfaceSourceContracts() {
     contains(shared, "species, A::kMaxSpecies, previewShiny");
     contains(shared, "state.speciesPreviewShiny = !state.speciesPreviewShiny;");
     contains(gen5, "static constexpr int kMaxSpecies = Fields::kMaxSpecies;");
-    contains(gen5, "static constexpr bool kSpeciesSearch = true;");
+    // Species search is no longer a per-adapter flag: the shared chooser (UI/SharedSpeciesPicker.h +
+    // UI/SharedSearchInput.h) searches in every generation; QA CG15 guards it.
     contains(gen5, "for (uint16_t s = 1; s <= Fields::kMaxSpecies; ++s)");
     // 12: the move row carries type, category and an em dash for undefined values: the ONE
     // shared chooser row (UI/SharedMovesPanel.h) fed by the exact BW / B2W2 game version.
@@ -411,8 +412,7 @@ void surfaceSourceContracts() {
     // 8: Gen V uses the narrow Gen I-IV action menu component.
     contains(gen5, "drawNarrowPokemonActions(fb,screen.touchButtons,model,state.actionRow(),title,");
     // 14: Gen I-IV menus are unchanged: the Gen IV adapter keeps its exact
-    // strings, layout, non-compact Form picker and no species search.
-    contains(gen4, "static constexpr bool kSpeciesSearch = false;");
+    // strings, layout and non-compact Form picker (species search: shared chooser, CG15).
     contains(gen4, "static constexpr bool kCompactForm = false;");
     contains(gen4, "static constexpr int kMaxSpecies = 493;");
     contains(gen4, "\"Held Item — Generation IV\"");

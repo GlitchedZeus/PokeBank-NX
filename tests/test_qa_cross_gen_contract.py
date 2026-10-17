@@ -31,6 +31,7 @@ XFAIL: dict[str, str] = {
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
     "CG12-single-bag-add-flow": "I (SharedBagAddFlow, 52017cd1)",
     "CG14-shared-draggable-scrollbar": "P (SharedScrollbar call sites, 0867c9b8)",
+    "CG15-shared-species-search": "P (shared chooser 2876ffe; Gen IV kSpeciesSearch flag removal)",
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational
@@ -45,6 +46,14 @@ OUT_OF_SCOPE: dict[str, str] = {
 BAG_ADD_HEADER = "include/UI/SharedBagAddFlow.h"
 BAG_ADD_SURFACES = ("src/UI/ClassicInventoryOverlay.cpp", "src/UI/Gen4SharedPokemonSurface.inc",
                     "include/Integration/Gen5/Gen5BagScreen.h")
+
+# CG15 (Lane P 2876ffe): live species search in the one shared chooser.
+SEARCH_HEADER = "include/UI/SharedSearchInput.h"
+SPECIES_PICKER_HEADER = "include/UI/SharedSpeciesPicker.h"
+SPECIES_CHOOSER_OWNERS = (("Gen I", "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc"),
+                          ("Gen II", "src/UI/Gen2PokemonPickerOverlay.inc"),
+                          ("Gen III", "src/UI/Gen3SharedPokemonSurface.inc"),
+                          ("Gen IV/V", "src/UI/SharedPokemonEditorSurface.inc"))
 
 # CG14 (Lane P 30b6ea4 / 0867c9b8): include/UI/SharedScrollbar.h is the one scrollbar; the legacy
 # entry points below only delegate to it.
@@ -550,6 +559,25 @@ def contracts(sources: list[Source]) -> list[Result]:
                     r.violations.append(f"{s.rel}:{pln}: {name}() opens a numpad on the Add path")
                 elif not before and qty_stage_rx.search(body[pm.start():pm.start() + 1500]):
                     r.violations.append(f"{s.rel}:{pln}: {name}() edits an item quantity without BagAdd::decideRow")
+    res.append(r)
+
+    r = Result("CG15-shared-species-search",
+               "Species live search (SharedSearchInput prefix filter) is in the one shared chooser for all five "
+               "generations; no generation switches it off")
+    srch = next((x for x in sources if x.rel == SEARCH_HEADER), None)
+    if srch is None or not re.search(r"\bmatchesPrefix\s*\(", srch.code):
+        r.violations.append(f"{SEARCH_HEADER}: SharedSearchInput::matchesPrefix missing")
+    picker = next((x for x in sources if x.rel == SPECIES_PICKER_HEADER), None)
+    if picker is None or not re.search(r"\bstruct\s+Chooser\b", picker.code) or \
+            not re.search(r"\brefilter\s*\(", picker.code) or "SharedSearchInput::" not in picker.code:
+        r.violations.append(f"{SPECIES_PICKER_HEADER}: Chooser / refilter over SharedSearchInput missing")
+    for gens, rel in SPECIES_CHOOSER_OWNERS:
+        src = next((x for x in sources if x.rel == rel), None)
+        if src is None or not re.search(r"\bSharedSpeciesPicker::refilter\s*\(", src.code) or \
+                not re.search(r"\bSharedSpeciesPicker::handle(?:Keys|Touch)?\s*\(", src.code):
+            r.violations.append(f"{rel}: the {gens} species picker does not filter and route input through the "
+                                "shared chooser")
+    r.violations += code_hits(U, r"\bkSpeciesSearch\s*=\s*false\b")
     res.append(r)
 
     r = Result("CG14-shared-draggable-scrollbar",
