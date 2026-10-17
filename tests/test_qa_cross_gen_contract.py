@@ -29,6 +29,7 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 XFAIL: dict[str, str] = {
     # CG01-CG11 XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and are ENFORCED.
     # Round 2 contracts are XFAIL only until their lane's push is on #307.
+    "CG12-single-bag-add-flow": "I (SharedBagAddFlow, 52017cd1)",
     "CG14-shared-draggable-scrollbar": "P (SharedScrollbar call sites, 0867c9b8)",
 }
 
@@ -39,6 +40,11 @@ OUT_OF_SCOPE: dict[str, str] = {
     # TrainerViewScreenBase's dialogs, ItemsPanel/StoragePanel and ActionSheetModel stay IN scope;
     # e.g. the base builds a gen4ItemView footer, so Gen IV bags may render through it).
 }
+
+# CG12 (Lane I 52017cd1): one Gen I-V Add flow, include/UI/SharedBagAddFlow.h.
+BAG_ADD_HEADER = "include/UI/SharedBagAddFlow.h"
+BAG_ADD_SURFACES = ("src/UI/ClassicInventoryOverlay.cpp", "src/UI/Gen4SharedPokemonSurface.inc",
+                    "include/Integration/Gen5/Gen5BagScreen.h")
 
 # CG14 (Lane P 30b6ea4 / 0867c9b8): include/UI/SharedScrollbar.h is the one scrollbar; the legacy
 # entry points below only delegate to it.
@@ -512,6 +518,39 @@ def contracts(sources: list[Source]) -> list[Result]:
         r.violations.append(f"{GENERIC_UI_GUARD_HEADER}: ClassicGenericUi::genericUiAllowed missing")
     res.append(r)
     cg11 = r
+
+    r = Result("CG12-single-bag-add-flow",
+               "Gen I-V Add Item goes through SharedBagAddFlow: staged at quantity 1 with no numpad; "
+               "a quantity editor opens only from an inventory row the rule lets you edit")
+    hdr = next((x for x in sources if x.rel == BAG_ADD_HEADER), None)
+    if hdr is None or not all(re.search(p_, hdr.code) for p_ in
+                              (r"\bdecidePick\s*\(", r"\bdecideRow\s*\(", r"d\.quantity\s*=\s*rule\.minimum")):
+        r.violations.append(f"{BAG_ADD_HEADER}: decidePick / decideRow (new item staged at rule.minimum) missing")
+    for rel in BAG_ADD_SURFACES:
+        src = next((x for x in sources if x.rel == rel), None)
+        if src is None or not re.search(r"\bdecidePick\s*\(", src.code):
+            r.violations.append(f"{rel}: Add does not decide through BagAdd::decidePick")
+    add_rx = re.compile(r"\b(?:decidePick|stageBagAdd|pickAdd|confirmAdd)\s*\(")
+    qty_stage_rx = re.compile(r"\b(?:stageBagQuantity|stageInventoryQuantity|stageSetQuantity|stageQuantity|"
+                              r"setBagQuantity|applyMutation|bagSetQuantity)\s*\(")
+    # Each numpad in a bag function belongs to whichever decision precedes it most closely: after a
+    # decidePick / stageBagAdd it is a numpad on the Add path; a quantity numpad must follow decideRow.
+    row_rx = re.compile(r"\bdecideRow\s*\(")
+    for s in U:
+        for name, ln, body in function_bodies(s.code, re.compile(r".")):
+            if "promptNumber" not in body or not (add_rx.search(body) or row_rx.search(body)
+                                                   or qty_stage_rx.search(body)):
+                continue
+            marks = sorted([(m.start(), "add") for m in add_rx.finditer(body)] +
+                           [(m.start(), "row") for m in row_rx.finditer(body)])
+            for pm in re.finditer(r"\bpromptNumber\s*\(", body):
+                before = [kind for pos, kind in marks if pos < pm.start()]
+                pln = ln + body.count("\n", 0, pm.start())
+                if before and before[-1] == "add":
+                    r.violations.append(f"{s.rel}:{pln}: {name}() opens a numpad on the Add path")
+                elif not before and qty_stage_rx.search(body[pm.start():pm.start() + 1500]):
+                    r.violations.append(f"{s.rel}:{pln}: {name}() edits an item quantity without BagAdd::decideRow")
+    res.append(r)
 
     r = Result("CG14-shared-draggable-scrollbar",
                "Every scrollbar is the one SharedScrollbar: drawn through it, never privately, and draggable "
