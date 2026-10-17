@@ -6,6 +6,7 @@
 #include <map>
 #include <optional>
 #include <vector>
+#include "UI/SourceBackupClassification.h"
 #include <string>
 
 #include <switch.h>
@@ -231,10 +232,19 @@ namespace UI {
         enum class Overlay { None, Options, Help, OpenFailure, GamesDrawer, ProfilePicker, GameWorkspace,
                              LegacyInstances, LegacyAssignment, LegacyDetails, Gen4Setup,
                              Gen4Candidates, Gen5Setup, Gen5UnassignConfirm,
-                             Gen5Candidates, GameFilePicker, QuitConfirm };
+                             Gen5Candidates, GameFilePicker, QuitConfirm,
+                             EmulatorBackups, EmulatorBackupDeleteConfirm };
         Overlay overlay = Overlay::None;
         Overlay helpReturnOverlay = Overlay::None;
         Overlay leaveReturnOverlay = Overlay::None; // where A/B "Stay" returns from the leave decision
+        // + -> Backups for an emulator game (round 2 phase 7): one listing per exact source file.
+        std::vector<PokeBank::UIModel::SourceBackups::Listing> emuBackupListings;
+        struct EmuBackupRow { int listing = 0; int entry = 0; };
+        std::vector<EmuBackupRow> emuBackupRows;
+        int emuBackupIndex = 0;
+        int emuBackupScroll = 0;
+        std::string emuBackupNotice;
+        void openEmulatorBackups(const std::string& notice = {});
         // Touch motion is surface-local. These markers let one centralized fence clear residual
         // drag/coast state whenever an overlay or the full Games browser is entered/exited.
         Overlay touchScrollOverlay = Overlay::None;
