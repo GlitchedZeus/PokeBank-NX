@@ -257,7 +257,7 @@ def make_dry_run(root: Path, target: str) -> str:
                          capture_output=True, text=True)
     if out.returncode != 0:
         raise SystemExit(f"`make -f Makefile.host -n {target}` failed (is vendor/PKSM-Core checked out? "
-                         f"git submodule update --init vendor/PKSM-Core):\n{out.stderr[-2000:]}")
+                         f"git submodule update --init --recursive vendor/PKSM-Core):\n{out.stderr[-2000:]}")
     return out.stdout
 
 

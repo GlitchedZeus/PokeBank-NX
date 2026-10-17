@@ -79,7 +79,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       # The round 1 gate dry-runs `make host-test`, whose Gen IV/V rules list PKSM-Core sources.
-      - run: git submodule update --init vendor/PKSM-Core
+      - run: git submodule update --init --recursive vendor/PKSM-Core
       - name: NRO audit tooling + hardware round 1 regression gate (the owner's 42 PASS items on 7fea1797)
         run: make -f Makefile.host qa-tools-test
       - name: Gen I-V cross-generation UI contracts (enforced contracts fail; XFAIL ones are reported)
