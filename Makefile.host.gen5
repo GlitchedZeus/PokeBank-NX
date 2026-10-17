@@ -119,8 +119,11 @@ $(GEN5_BAG_SANITIZE): $(GEN5_BAG_INPUTS)
 GEN5_BAG_SCREEN_TEST := $(HOST_BUILD)/test_gen5_bag_screen
 GEN5_BAG_SCREEN_SANITIZE := $(HOST_BUILD)/test_gen5_bag_screen_sanitize
 GEN5_BAG_SCREEN_SOURCES := tests/test_gen5_bag_screen.cpp src/Legacy/Gen5ReadOnlyTrainer.cpp \
-    src/Names/SpeciesNames.cpp
+    src/Names/SpeciesNames.cpp src/Inventory/ItemQuantityPolicy.cpp \
+    src/Inventory/ClassicInventoryCatalog.cpp src/Names/ItemNames.cpp src/Names/MoveNames.cpp \
+    src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
 GEN5_BAG_SCREEN_INPUTS := $(GEN5_BAG_SCREEN_SOURCES) include/Integration/Gen5/Gen5BagScreen.h \
+    include/UI/SharedBagAddFlow.h include/Inventory/ItemQuantityPolicy.h \
     include/UI/InventoryUIContract.h include/Legacy/Gen5ReadOnlyTrainer.h \
     include/Integration/Gen5/Gen5SharedScreenState.h $(GEN5_BAG_INPUTS)
 
