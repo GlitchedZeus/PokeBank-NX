@@ -146,7 +146,8 @@ constexpr Rule rule(MenuType type) noexcept {
         case MenuType::LaunchConfirm:
             return {Kind::Confirm, 640, 1, 0, 0, 0, 60, 28, 18, 0, 0, 8, Text::Body, 56, 3};
         case MenuType::SaveDiscard:
-            return {Kind::Confirm, 640, 1, 0, 0, 0, 60, 28, 18, 0, 0, 8, Text::Body, 56, 3};
+            // The accepted Gen I-V exit / save dialog width (Dialogs/SaveConfirmDialog.cpp, 560).
+            return {Kind::Confirm, 560, 1, 0, 0, 0, 60, 24, 16, 0, 0, 8, Text::Body, 56, 3};
         case MenuType::Count: break;
     }
     return {};
