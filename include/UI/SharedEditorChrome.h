@@ -9,6 +9,8 @@
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
 #include "UI/SharedEditorPresentation.h"
+#include "UI/SharedFieldState.h"
+#include "UI/SharedMenuGeometry.h"
 
 #include <string>
 #include <vector>
@@ -39,6 +41,59 @@ template <class Buttons>
 inline void beginModal(Buttons& screenTouchButtons) {
     beginTopTouchLayer();
     screenTouchButtons.clear();
+}
+
+// ---- Field state (UI/SharedFieldState.h) -------------------------------------------------------
+
+namespace FieldState = PokeBank::UIModel::SharedFieldState;
+
+inline Color fieldColor(FieldState::Token token) {
+    switch (token) {
+        case FieldState::Token::Text: return Colors::Text;
+        case FieldState::Token::TextDim: return Colors::TextDim;
+        case FieldState::Token::TextMuted: return Colors::TextMuted;
+        case FieldState::Token::Gold: return Colors::ShinyStar;
+        case FieldState::Token::Selected: return Colors::SelectedText;
+        case FieldState::Token::FocusBorder: return Colors::FocusBorder;
+    }
+    return Colors::Text;
+}
+
+// The accepted focus outline (2 px FocusBorder, radius 6), drawn for a focused field of ANY state.
+inline void drawFieldFocus(PKSEFramebuffer& fb, int x, int y, int w, int h,
+                           const FieldState::Style& style) {
+    if (style.focusOutline) fb.drawRoundedRect(x, y, w, h, 6, fieldColor(style.outline), 2);
+}
+
+// One label/value field row: focus outline, then label and value in their state colours.
+inline void drawField(PKSEFramebuffer& fb, int x, int y, int w, int h, int valueX,
+                      const std::string& label, const std::string& value,
+                      FieldState::State state, bool focused,
+                      TextStyle textStyle = TextStyle::Caption) {
+    const auto style = FieldState::style(state, focused);
+    drawFieldFocus(fb, x, y, w, h, style);
+    const int textY = y + (h - fb.lineHeight(textStyle)) / 2;
+    fb.drawText(x + 10, textY, label, fieldColor(style.label), textStyle);
+    fb.drawText(valueX, textY, value, fieldColor(style.value), textStyle);
+}
+
+// ---- Menu geometry (UI/SharedMenuGeometry.h) ----------------------------------------------------
+
+namespace MenuGeometry = PokeBank::UIModel::SharedMenuGeometry;
+
+// The geometry header works on the 1280x720 contract; this checks the framebuffer agrees.
+inline bool menuScreenMatches(const PKSEFramebuffer& fb) {
+    return fb.getWidth() == MenuGeometry::kScreenW && fb.getHeight() == MenuGeometry::kScreenH;
+}
+static_assert(MenuGeometry::kFooterH == kNavBarH, "menu geometry keeps the screen footer free");
+
+// A cell of a shared menu: focus highlight on the SAME rectangle that is published as its touch
+// target, so what is highlighted is exactly what a tap selects.
+template <class Buttons>
+inline void drawMenuCell(PKSEFramebuffer& fb, Buttons& touchButtons, int touchId,
+                         const MenuGeometry::Rect& cell, bool focused) {
+    if (focused) fb.drawSelectionHighlight(cell.x, cell.y, cell.w, cell.h);
+    touchButtons.push_back({touchId, cell.x, cell.y, cell.w, cell.h});
 }
 
 // ---- Origin & Legality ------------------------------------------------------------------------
