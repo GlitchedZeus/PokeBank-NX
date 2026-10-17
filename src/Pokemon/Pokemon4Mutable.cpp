@@ -1,5 +1,6 @@
 #include "Pokemon/Pokemon4Mutable.h"
 
+#include "Conversion/Gen3PidSearch.h"
 #include "Encryption/Encryption4.h"
 #include "Pokemon/Experience.h"
 #include "Pokemon/PersonalInfo4DP.h"
@@ -851,37 +852,28 @@ bool Pokemon4Mutable::rerollPid(
     int wantShiny, int wantGender, int wantNature, int wantAbilityBit) noexcept {
     if (!valid_) return false;
 
+    // Gen IV keeps the Gen III PID links for nature (PID % 25), gender (low byte vs. ratio),
+    // ability slot (bit 0), shininess (TID ^ SID ^ PID halves < 8) and the Wurmple-line
+    // evolution value; the Unown letter is a stored form here, not a PID field (PKHeX 6501f0ab
+    // PK4). The replacement PID is constructed to hold every pinned trait (Gen3PidSearch.h), so
+    // a shiny of an 87.5%-male dual-ability species keeps its shininess through a nature change
+    // instead of exhausting a filtered walk. A PID that already holds them all is kept.
+    namespace Search = Conversion::Gen3PidSearch;
+    Search::Wanted want;
+    want.shiny = wantShiny;
+    want.gender = wantGender;
+    want.nature = wantNature;
+    want.abilityBit = wantAbilityBit;
+    want.genderRatio = personalFor(sourceGroup_, species(), form()).genderRatio;
+    want.tid32 = static_cast<uint32_t>(tid()) | (static_cast<uint32_t>(sid()) << 16);
     const uint32_t original = pid();
-    const uint8_t ratio = personalFor(sourceGroup_, species(), form()).genderRatio;
-    if (wantGender >= 0) {
-        const uint8_t fixed = fixedGender(ratio);
-        if (fixed != 3 && wantGender != fixed) return false;
-        if (fixed == 3 && wantGender == 2) return false;
-    }
-
-    uint32_t walk = original;
-    for (int i = 0; i < 8000000; ++i) {
-        walk = walk * 0x41C64E6Du + 0x00006073u;
-        const uint32_t candidate = walk;
-        if (wantAbilityBit >= 0 &&
-            static_cast<int>(candidate & 1u) != wantAbilityBit)
-            continue;
-        if (wantNature >= 0 &&
-            static_cast<int>(candidate % 25u) != wantNature)
-            continue;
-        if (wantGender >= 0 &&
-            static_cast<int>(genderForPid(candidate)) != wantGender)
-            continue;
-        if (wantShiny >= 0) {
-            const uint16_t psv = static_cast<uint16_t>(
-                (candidate & 0xFFFFu) ^ (candidate >> 16));
-            const bool isShiny = static_cast<uint16_t>(tid() ^ sid() ^ psv) < 8u;
-            if (isShiny != (wantShiny != 0)) continue;
-        }
-        write32(0x00, candidate);
-        return true;
-    }
-    return false;
+    if (species() >= 265 && species() <= 269)
+        want.wurmpleEvo = Search::wurmpleEvo(original);
+    if (Search::satisfies(original, want)) return true;
+    const auto found = Search::construct(original, want);
+    if (!found) return false;
+    write32(0x00, *found);
+    return true;
 }
 
 bool Pokemon4Mutable::setForm(uint8_t value) noexcept {

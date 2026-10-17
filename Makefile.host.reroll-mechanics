@@ -1,0 +1,47 @@
+# Thread R (phase 10 / owner E11): shiny and non-shiny re-roll mechanics, Gen I-V, through the
+# real DV / PID / record code. Shininess never yields to another edit; DV and PID links are kept.
+REROLL_MECHANICS_TEST := $(HOST_BUILD)/test_reroll_mechanics_gen15
+REROLL_MECHANICS_SANITIZE := $(HOST_BUILD)/test_reroll_mechanics_gen15_sanitize
+REROLL_MECHANICS_SOURCES := tests/test_reroll_mechanics_gen15.cpp \
+	src/Integration/Gen2/Gen2PersonalData.cpp \
+	src/Pokemon/Pokemon3FRLG.cpp \
+	src/Encryption/Encryption3FRLG.cpp \
+	src/Pokemon/BaseStatsGen89.cpp \
+	src/Pokemon/PersonalInfoTable.cpp \
+	src/Pokemon/Experience.cpp \
+	src/Pokemon/Pokemon4Mutable.cpp \
+	src/Pokemon/Pokemon4ReadOnly.cpp \
+	src/Pokemon/PersonalRecord4.cpp \
+	src/Pokemon/PersonalInfo4DP.cpp \
+	src/Pokemon/PersonalInfo4PT.cpp \
+	src/Pokemon/PersonalInfo4HGSS.cpp \
+	src/Encryption/Encryption4.cpp \
+	src/Names/SpeciesNames.cpp \
+	src/Names/ItemPresence.cpp \
+	src/Names/MoveInfo.cpp \
+	src/Names/MovePresence.cpp \
+	src/Names/ItemNames.cpp \
+	src/Names/NatureNames.cpp \
+	src/Names/AbilityNames.cpp \
+	src/Utils/StringHelpers.cpp \
+	src/Utils/HelperUtilities.cpp
+REROLL_MECHANICS_INPUTS := $(REROLL_MECHANICS_SOURCES) \
+	include/Conversion/Gen3PidSearch.h include/UI/Gen12DVReroll.h include/UI/SharedStatReroll.h \
+	include/Integration/Gen1/Gen1Shiny.h include/Integration/Gen5/Gen5PidCoordination.h
+
+HOST_TESTS += $(REROLL_MECHANICS_TEST)
+HOST_SANITIZE_TESTS += $(REROLL_MECHANICS_SANITIZE)
+host-test: $(REROLL_MECHANICS_TEST)
+host-sanitize: $(REROLL_MECHANICS_SANITIZE)
+
+.PHONY: host-reroll-mechanics
+host-reroll-mechanics: $(REROLL_MECHANICS_TEST)
+	./$(REROLL_MECHANICS_TEST)
+
+$(REROLL_MECHANICS_TEST): $(REROLL_MECHANICS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(REROLL_MECHANICS_SOURCES) -o $@
+
+$(REROLL_MECHANICS_SANITIZE): $(REROLL_MECHANICS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(REROLL_MECHANICS_SOURCES) -o $@
