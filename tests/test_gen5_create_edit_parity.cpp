@@ -126,6 +126,16 @@ int main() {
             shell.find("FieldState::style(state(row), selected)") != std::string::npos,
             "DETAILS drawer: fixed column + field state");
 
+    // Phase 4: derived values (calculated stats, PID) are gold ReadOnly in Gen III and Gen IV/V alike.
+    for (const auto* text : {&gen3, &shared}) {
+        std::size_t golds = 0;
+        for (auto at = text->find("SharedFieldState::Token::Gold"); at != std::string::npos;
+             at = text->find("SharedFieldState::Token::Gold", at + 1)) ++golds;
+        require(golds >= 2, "Phase 4: stat column and PID value use the gold ReadOnly token");
+        require(text->find("if (i == 4) valueColor = SharedFieldStateColors::color(") != std::string::npos,
+                "Phase 4: PID value is gold");
+    }
+
     if (failures) {
         std::cerr << failures << " failure(s)\n";
         return EXIT_FAILURE;

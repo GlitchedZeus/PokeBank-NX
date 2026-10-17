@@ -932,7 +932,9 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
                     selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(g.midX + 126, yy, std::to_string(iv[static_cast<size_t>(row)]), Colors::Text, TextStyle::Caption);
         fb.drawText(g.midX + 190, yy, std::to_string(ev[static_cast<size_t>(row)]), Colors::Text, TextStyle::Caption);
-        fb.drawText(g.midX + 274, yy, std::to_string(stats[static_cast<size_t>(row)]), Colors::TextSecondary, TextStyle::Caption);
+        // Phase 4: a calculated stat is derived, never edited: the gold ReadOnly field state.
+        fb.drawText(g.midX + 274, yy, std::to_string(stats[static_cast<size_t>(row)]),
+                    SharedFieldStateColors::color(PokeBank::UIModel::SharedFieldState::Token::Gold), TextStyle::Caption);
     }
     fb.drawHDivider(g.midX + 14, g.y + 310, g.midW - 28);
     fb.drawText(g.midX + 18, g.y + 318, "PID-LINKED / SAFE EDIT", Colors::TextDim, TextStyle::Caption);
@@ -951,6 +953,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState& 
                     TextStyle::Caption);
         Color valueColor = selected ? Colors::SelectedText : Colors::Text;
         if (i == 1 && editable && !selected) valueColor = genderValueColor(A::gender(*raw));
+        if (i == 4) valueColor = SharedFieldStateColors::color(PokeBank::UIModel::SharedFieldState::Token::Gold);   // PID: derived, gold ReadOnly
         fb.drawText(g.midX + 130, yy, A::pidRowValue(screen, *raw, row),
                     valueColor, TextStyle::Caption);
         // Keep the PID status on its own subordinate line, so the 10-digit
