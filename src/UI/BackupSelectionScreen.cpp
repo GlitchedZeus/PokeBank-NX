@@ -169,7 +169,16 @@ namespace UI {
         const int listY = CARD_Y + 62;
         const int listX = CARD_X + 14;
         const int listW = CARD_W - 28;
-        if (maxFirstRow > 0) {
+        // The shared scrollbar runs first: a held thumb owns the frame's touch, so the list
+        // neither finger-scrolls nor taps the tile underneath it.
+        const auto backupBar = SharedScrollbar::handleTouch(backupScrollbar, SharedScrollbar::sample(touch),
+            SharedScrollbar::pixels(count * LIST_ROW_H, LIST_MAX_VISIBLE * LIST_ROW_H,
+                                    backupFirstRow * LIST_ROW_H));
+        if (backupBar.changed) {
+            backupFirstRow = std::clamp((backupBar.scroll + LIST_ROW_H / 2) / LIST_ROW_H, 0, maxFirstRow);
+            backupScroll.stop();
+        }
+        if (maxFirstRow > 0 && !backupBar.consumed) {
             backupScroll.updateVertical(
                 touch, listX, listY, listW, LIST_MAX_VISIBLE * LIST_ROW_H,
                 LIST_ROW_H, backupFirstRow, maxFirstRow + 1);
@@ -187,7 +196,9 @@ namespace UI {
             const int listBottom = listY + LIST_MAX_VISIBLE * LIST_ROW_H;
             const int liveOffset = backupScroll.offset();
             const int drawFirst = std::max(0, backupFirstRow - 1);
-            const int drawLast = std::min(count, backupFirstRow + LIST_MAX_VISIBLE + 1);
+            // A release that ends a scrollbar drag or track tap selects no tile.
+            const int drawLast = backupBar.consumed ? drawFirst
+                : std::min(count, backupFirstRow + LIST_MAX_VISIBLE + 1);
             for (int i = drawFirst; i < drawLast; ++i) {
                 const int itemY = listY + (i - backupFirstRow) * LIST_ROW_H + liveOffset;
                 const int top = std::max(listY, itemY);
@@ -336,8 +347,8 @@ namespace UI {
                          backups[i].displayName, selected, (i == 0));
         }
         fb.clearClip();
-        // Scrollbar follows the exact residual pixel offset instead of snapping by whole rows.
-        drawScrollbar(fb, CARD_X + CARD_W - 10, startY, LIST_MAX_VISIBLE * LIST_ROW_H,
+        // Shared draggable scrollbar; follows the exact residual pixel offset, not whole rows.
+        drawScrollbar(fb, backupScrollbar, CARD_X + CARD_W - 13, startY, LIST_MAX_VISIBLE * LIST_ROW_H,
                       total * LIST_ROW_H, first * LIST_ROW_H - liveOffset);
     }
 

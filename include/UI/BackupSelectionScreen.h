@@ -10,6 +10,7 @@
 #include "UI/NavigationRepeat.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/TouchScroll.h"
+#include "UI/SharedScrollbar.h"
 
 namespace UI {
     class BackupSelectionScreen : public UIScreen {
@@ -39,6 +40,7 @@ namespace UI {
     private:
         PokeBank::UIModel::ControllerNavigation controllerNavigation;
         TouchScrollState backupScroll;
+        SharedScrollbar::State backupScrollbar;   // draggable thumb beside the backup list
         struct BackupInfo {
             std::string timestamp;
             std::string displayName;
