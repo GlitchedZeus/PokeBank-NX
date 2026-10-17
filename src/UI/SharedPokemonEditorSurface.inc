@@ -14,7 +14,7 @@
 //   ivs evs stats setIv setEv pidRowEditable pidRowValue gender editPidRow
 //   moves pp ppUps workingMove workingPP workingPPUps setMove setPP setPPUps
 //   maxPP moveChoices moveStatus moveGame moveEditorPrompt
-//   pickerLabel applyPicker speciesPreviewTypes speciesLabel speciesSearch
+//   pickerLabel applyPicker speciesPreviewTypes speciesLabel
 //   heldItemArtKey chrome portraitTypes dataRows + text constants (k*)
 #include "UI/SharedPokemonEditorWorkspace.h"
 #include "UI/Dialogs/DialogFrame.h"
@@ -74,6 +74,7 @@ struct EditorState {
     TouchScrollState pickerScroll;
     TouchPickerViewport pickerViewport;
     SharedScrollbar::State pickerScrollbar;    // draggable thumb on the value / move picker list
+    SharedSpeciesPicker::Chooser speciesChooser; // R2-SEARCH: live species filter + key grid
     std::vector<uint16_t> pickerValues;
     std::vector<uint16_t> pickerNativeValues;
     ItemPickerSort::Mode pickerSort = ItemPickerSort::Mode::Native;
@@ -173,6 +174,7 @@ inline void openPicker(TrainerViewScreen& screen, EditorState& state, PickerTarg
     state.pickerValues = std::move(values);
     state.pickerNativeValues = state.pickerValues;
     state.pickerSort = ItemPickerSort::Mode::Native;
+    if (target == PickerTarget::Species) state.speciesChooser.reset();   // R2-SEARCH: full native list
     const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), current);
     state.pickerRow = it == state.pickerValues.end() ? 0 :
         static_cast<int>(std::distance(state.pickerValues.begin(), it));
@@ -188,6 +190,17 @@ inline bool compactPicker(PickerTarget target) noexcept {
            target == PickerTarget::Ability || target == PickerTarget::Pokerus ||
            target == PickerTarget::Form;
 }
+
+// R2-SEARCH: the species chooser filters the game's NATIVE species list (pickerValues) by the
+// bare species name; the owner's choice stays pickerRow (an index into pickerValues).
+inline bool speciesAvailableIn(const std::vector<uint16_t>& values, uint16_t species) {
+    return std::find(values.begin(), values.end(), species) != values.end();
+}
+inline int speciesRowIn(const std::vector<uint16_t>& values, uint16_t species, int fallback) {
+    const auto it = std::find(values.begin(), values.end(), species);
+    return it == values.end() ? fallback : static_cast<int>(std::distance(values.begin(), it));
+}
+constexpr auto sharedSpeciesName = [](uint16_t species) { return std::string(Names::getSpeciesName(species)); };
 
 template <class A>
 bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, const TouchInput& touch) {
@@ -221,17 +234,39 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
         state.pickerScroll.stop();
     }
     // The Species modal owns its own gesture. Other pickers scroll only when overflowing.
+    bool speciesTouchOwned = false;   // R2-SEARCH: key grid / scrollbar took this frame's touch
     if (pickerBar.consumed) {
         state.pickerScroll.stop();
     } else if (count > 0 && (state.pickerTarget == PickerTarget::Species || maxFirstRow > 0)) {
         if (state.pickerTarget == PickerTarget::Species) {
+            const auto available = [&](uint16_t s) { return speciesAvailableIn(state.pickerValues, s); };
+            uint16_t chosen = state.pickerValues[static_cast<size_t>(state.pickerRow)];
+            const auto touched = SharedSpeciesPicker::handleTouch(
+                state.speciesChooser, SharedSearchInput::sample(touch), chosen, A::kMaxSpecies,
+                SharedSpeciesPicker::ModalX, SharedSpeciesPicker::ModalY, available, sharedSpeciesName);
+            const PokeBank::UIModel::SharedPickerPaging::Keys gridKeys{
+                (down & HidNpadButton_Up) != 0, (down & HidNpadButton_Down) != 0,
+                (down & HidNpadButton_Left) != 0, (down & HidNpadButton_Right) != 0,
+                (down & HidNpadButton_L) != 0, (down & HidNpadButton_R) != 0,
+                (down & HidNpadButton_ZL) != 0, (down & HidNpadButton_ZR) != 0};
+            const auto keyed = SharedSpeciesPicker::handleKeys(
+                state.speciesChooser, gridKeys, (down & HidNpadButton_A) != 0, (down & HidNpadButton_B) != 0,
+                (down & (HidNpadButton_X | HidNpadButton_Minus)) != 0, chosen, A::kMaxSpecies,
+                available, sharedSpeciesName);
+            state.pickerRow = speciesRowIn(state.pickerValues, chosen, state.pickerRow);
+            speciesTouchOwned = touched.touch;
+            if (touched.keys || keyed.keys)
+                down &= ~(HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right |
+                          HidNpadButton_L | HidNpadButton_R | HidNpadButton_ZL | HidNpadButton_ZR |
+                          HidNpadButton_A | HidNpadButton_B);
             const int dy = touch.deltaY();
-            if (touch.justReleased() && touch.dragged() &&
+            if (!speciesTouchOwned && touch.justReleased() && touch.dragged() &&
                 SharedSpeciesPicker::gestureStartedInList(touch.startX(), touch.startY()) &&
                 std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
                 const int steps = std::max(1, std::abs(dy) / 43);
-                state.pickerRow = std::clamp(
-                    state.pickerRow + (dy < 0 ? steps : -steps), 0, count - 1);
+                state.pickerRow = speciesRowIn(state.pickerValues,
+                    SharedSpeciesPicker::neighbour(state.speciesChooser, chosen, dy < 0 ? steps : -steps),
+                    state.pickerRow);
             }
         } else if (state.pickerTarget == PickerTarget::HeldItem) {
             constexpr int pickerW = HeldItemGrid::modalWidth;
@@ -271,7 +306,7 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
     // Keep semantic focus fixed during picker drags; commit only the
     // release-confirmed visible row or explicit controller activation.
     const int touchTap = screen.touchedButtonId(touch);
-    if (!pickerBar.consumed && touchTap >= 6000 && touchTap < 6000 + count) {
+    if (!pickerBar.consumed && !speciesTouchOwned && touchTap >= 6000 && touchTap < 6000 + count) {
         state.pickerRow = touchTap - 6000;
         down |= HidNpadButton_A;
     }
@@ -294,15 +329,21 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
         state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
         return true;
     }
-    if (A::kSpeciesSearch && state.pickerTarget == PickerTarget::Species &&
-        (down & HidNpadButton_X)) {
-        A::speciesSearch(screen, state);
-        screen.controllerNavigation.reset();
-        return true;
-    }
     if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R | HidNpadButton_ZL | HidNpadButton_ZR))
         state.pickerScroll.stop();
-    if (state.pickerTarget == PickerTarget::HeldItem) {
+    if (state.pickerTarget == PickerTarget::Species) {
+        // Shared paging over the filtered list (R2-SEARCH); Up/Down wrap inside the filter.
+        const PokeBank::UIModel::SharedPickerPaging::Keys keys{
+            (down & HidNpadButton_Up) != 0, (down & HidNpadButton_Down) != 0,
+            (down & HidNpadButton_Left) != 0, (down & HidNpadButton_Right) != 0,
+            (down & HidNpadButton_L) != 0, (down & HidNpadButton_R) != 0,
+            (down & HidNpadButton_ZL) != 0, (down & HidNpadButton_ZR) != 0};
+        if (keys.any())
+            state.pickerRow = speciesRowIn(state.pickerValues,
+                SharedSpeciesPicker::paged(state.speciesChooser,
+                    state.pickerValues[static_cast<size_t>(state.pickerRow)], keys),
+                state.pickerRow);
+    } else if (state.pickerTarget == PickerTarget::HeldItem) {
         if (down & HidNpadButton_Up)
             state.pickerRow = HeldItemGrid::move(state.pickerRow, count, 0, -1);
         if (down & HidNpadButton_Down)
@@ -645,24 +686,22 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         const uint16_t species =
             state.pickerValues[static_cast<size_t>(state.pickerRow)];
         const auto previewTypes = A::speciesPreviewTypes(screen, species);
-        constexpr int visibleSpecies = 9;
-        const int speciesStart = std::clamp(static_cast<int>(species) - visibleSpecies / 2,
-                                            1, A::kMaxSpecies - visibleSpecies + 1);
-        for (int i = 0; i < visibleSpecies; ++i) {
-            const uint16_t value = static_cast<uint16_t>(speciesStart + i);
-            const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), value);
-            if (it != state.pickerValues.end())
-                screen.touchButtons.push_back({6000 + static_cast<int>(std::distance(state.pickerValues.begin(), it)),
-                                               modal.x + 20, modal.y + 84 + i * 43, 560, 39});
-        }
+        SharedSpeciesPicker::refilter(state.speciesChooser, A::kMaxSpecies,
+            [&](uint16_t s) { return speciesAvailableIn(state.pickerValues, s); }, sharedSpeciesName);
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, species, A::kMaxSpecies, previewShiny,
             [](uint16_t value) { return A::speciesLabel(value); },
             [](uint16_t value) { return A::speciesLabel(value); },
-            &latestTouchGesture(), true, previewTypes);
+            &latestTouchGesture(), true, previewTypes, &state.speciesChooser);
+        // Touch ids stay 6000 + pickerValues index; the chooser publishes the rows it drew.
+        for (int i = 0; i < state.speciesChooser.rowCount; ++i) {
+            const auto& row = state.speciesChooser.rows[static_cast<std::size_t>(i)];
+            const int index = speciesRowIn(state.pickerValues, row.species, -1);
+            if (index >= 0) screen.touchButtons.push_back({6000 + index, row.x, row.y, row.w, row.h});
+        }
         Presentation::PickerFooterSpec footer;
         footer.jump = true;
-        footer.xLabel = A::kSpeciesSearch ? "Search" : nullptr;
+        footer.xLabel = "Search";   // R2-SEARCH: in-modal live search in every generation
         footer.yLabel = "Normal/Shiny";
         SharedEditorChrome::drawPickerFooter(fb, footer);
         return;

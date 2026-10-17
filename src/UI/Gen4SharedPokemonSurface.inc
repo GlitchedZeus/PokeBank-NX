@@ -1424,7 +1424,6 @@ struct Gen4Editor {
                 SharedSpeciesPicker::canonicalToClassicType(speciesPersonal.type2)};
     }
     static std::string speciesLabel(uint16_t value) { return gen4DexLabel(value); }
-    static void speciesSearch(TrainerViewScreen&, Surface::EditorState&) {}
     static std::string heldItemArtKey(TrainerViewScreen& screen, uint16_t value) {
         const auto disc = UI::ClassicMachineArtwork::artKey(screen.trainer.getGameGroup(), value);
         return disc.empty() ? Names::getItemName(value) : disc;

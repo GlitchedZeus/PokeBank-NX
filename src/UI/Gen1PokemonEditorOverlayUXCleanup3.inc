@@ -166,8 +166,13 @@ void ux3OpenSpeciesPicker(TrainerViewScreen& screen, uint16_t current, bool shin
     auto& state = ux2StateFor(screen);
     auto& ux3 = ux3StateFor(screen);
     ux2OpenSpeciesPicker(state, current);
+    state.speciesChooser.reset();   // every opening starts with the full Gen I dex
     ux3.pickerPreviewShiny = shiny;
 }
+
+// Gen I offers its whole native dex (1..151); the chooser filters by the bare species name.
+constexpr auto ux3SpeciesAvailable = [](uint16_t) { return true; };
+constexpr auto ux3SpeciesName = [](uint16_t species) { return std::string(Names::getSpeciesName(species)); };
 
 bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
     auto& state = ux2StateFor(screen);
@@ -229,11 +234,24 @@ PokeBank::UIModel::SharedPickerPaging::Keys ux3PickerKeys(uint64_t down) noexcep
 void ux3HandleSpeciesPicker(TrainerViewScreen& screen, uint64_t down) {
     auto& state = ux2StateFor(screen);
     auto& ux3 = ux3StateFor(screen);
-    // Shared list paging (Gen13PickerPaging.h): Up/Down wrap, Left/L/Right/R +-10, ZL/ZR +-50.
+    // R2-SEARCH: X / Minus open the in-modal search; while its key grid is open the D-pad /
+    // stick, A and B type, and the list below stays filtered live (keys phase; touch phase is
+    // in ux3DirectTouchInput). The owner's browsing / A / B run only when the grid did not.
     const auto keys = ux3PickerKeys(down);
-    if (keys.any())
-        state.pickerValue = PokeBank::UIModel::SharedPickerPaging::pagedRow(state.pickerValue - 1, 151, keys) + 1;
+    uint16_t species = static_cast<uint16_t>(std::clamp(state.pickerValue, 1, 151));
+    const auto handled = SharedSpeciesPicker::handleKeys(
+        state.speciesChooser, keys, (down & HidNpadButton_A) != 0, (down & HidNpadButton_B) != 0,
+        (down & (HidNpadButton_X | HidNpadButton_Minus)) != 0, species, 151,
+        ux3SpeciesAvailable, ux3SpeciesName);
+    state.pickerValue = species;
     if (down & HidNpadButton_Y) ux3.pickerPreviewShiny = !ux3.pickerPreviewShiny;
+    if (handled.keys) return;
+    // Shared list paging (Gen13PickerPaging.h): Up/Down wrap, Left/L/Right/R +-10, ZL/ZR +-50 —
+    // over the whole dex when no filter is typed, over the filtered list otherwise.
+    if (keys.any())
+        state.pickerValue = state.speciesChooser.filtered()
+            ? SharedSpeciesPicker::paged(state.speciesChooser, species, keys)
+            : PokeBank::UIModel::SharedPickerPaging::pagedRow(state.pickerValue - 1, 151, keys) + 1;
     if (down & HidNpadButton_B) { state.picker = UX2Picker::None; return; }
     if (down & HidNpadButton_A) ux3ApplySpeciesPicker(screen);
 }
@@ -526,16 +544,16 @@ void ux3DrawPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, int x, int y,
 
     if (speciesPicker) {
         const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
+        SharedSpeciesPicker::refilter(state.speciesChooser, 151, ux3SpeciesAvailable, ux3SpeciesName);
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, state.pickerValue, 151, ux3.pickerPreviewShiny,
             [](uint16_t species) { return UX::speciesPickerRow(species, Names::getSpeciesName(species)); },
             [](uint16_t species) { return speciesCompact(species); },
-            &latestTouchGesture());
-        constexpr int visibleSpecies = 9;
-        const int speciesStart = std::clamp(state.pickerValue - visibleSpecies / 2, 1, 151 - visibleSpecies + 1);
-        for (int i = 0; i < visibleSpecies; ++i) {
-            const int species = speciesStart + i;
-            screen.touchButtons.push_back({3000 + species, modal.x + 20, modal.y + 84 + i * 43, 560, 39});
+            &latestTouchGesture(), true, {0xFF, 0xFF}, &state.speciesChooser);
+        // Touch ids stay 3000 + species; the chooser publishes the rows it actually drew.
+        for (int i = 0; i < state.speciesChooser.rowCount; ++i) {
+            const auto& row = state.speciesChooser.rows[static_cast<std::size_t>(i)];
+            screen.touchButtons.push_back({3000 + row.species, row.x, row.y, row.w, row.h});
         }
         return;
     }
@@ -685,7 +703,7 @@ void ux3DrawStagedView(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
 
 std::string ux3FooterText(const TrainerViewScreen& screen, const UX2State& state) {
     if (state.picker == UX2Picker::Species)
-        return "D-pad/Stick: Navigate | L/R: Page | Y: Shiny | A: Select | B: Cancel";
+        return "D-pad/Stick: Navigate | L/R: Page | X: Search | Y: Shiny | A: Select | B: Cancel";
     if (state.picker == UX2Picker::Move)
         return "D-pad/Stick: Navigate | L/R: Page | A: Select | B: Cancel";
     switch (state.mode) {
@@ -709,6 +727,7 @@ std::string ux3FooterText(const TrainerViewScreen& screen, const UX2State& state
 void ux3DrawTouchNavBar(PKSEFramebuffer& fb, const UX2State& state) {
     if (state.picker == UX2Picker::Species) {
         PokeBank::UIModel::SharedEditorPresentation::PickerFooterSpec spec;
+        spec.xLabel = "Search";
         spec.yLabel = "Normal/Shiny";
         UI::SharedEditorChrome::drawPickerFooter(fb, spec);
         return;
@@ -752,6 +771,13 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
     };
 
     if (state.picker == UX2Picker::Species) {
+        // R2-SEARCH touch phase: the search key grid and the list scrollbar own their touches.
+        uint16_t chosen = static_cast<uint16_t>(std::clamp(state.pickerValue, 1, 151));
+        const auto handled = SharedSpeciesPicker::handleTouch(
+            state.speciesChooser, SharedSearchInput::sample(touch), chosen, 151,
+            SharedSpeciesPicker::ModalX, SharedSpeciesPicker::ModalY, ux3SpeciesAvailable, ux3SpeciesName);
+        state.pickerValue = chosen;
+        if (handled.touch) return down;
         // Keep the existing preview steady while a contact may become a swipe.
         // The release-confirmed row target is the only direct-tap selection.
         int species = selectedId(3000, 152, tapped);
@@ -761,7 +787,8 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
             SharedSpeciesPicker::gestureStartedInList(touch.startX(), touch.startY()) &&
             std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
             const int steps = std::max(1, std::abs(dy) / 43);
-            state.pickerValue = std::clamp(state.pickerValue + (dy < 0 ? steps : -steps), 1, 151);
+            state.pickerValue = SharedSpeciesPicker::neighbour(
+                state.speciesChooser, chosen, dy < 0 ? steps : -steps);
         }
         return down;
     }

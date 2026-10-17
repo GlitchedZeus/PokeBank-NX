@@ -102,6 +102,7 @@ struct State {
     // Discard All in Review is a two-step Y -> Y confirmation; B keeps the staged edits.
     bool confirmDiscardAll = false;
     bool speciesPicker = false;
+    SharedSpeciesPicker::Chooser speciesChooser;   // R2-SEARCH: live species filter + key grid
     bool valuePicker = false;
     PickerTarget pickerTarget = PickerTarget::None;
     int pickerRow = 0;
@@ -734,6 +735,7 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
         state.speciesPreview = std::clamp<uint16_t>(p.species, 1, 386);
         state.speciesPreviewShiny = p.shiny;
         state.speciesPicker = true;
+        state.speciesChooser.reset();   // R2-SEARCH: every opening starts with the full dex
         screen.controllerNavigation.reset();
         return;
     }
@@ -1110,26 +1112,45 @@ bool handleValuePicker(TrainerViewScreen& screen, State& state, u64 down, const 
     return true;
 }
 
+// Gen III offers its whole native dex (1..386); the chooser filters by the bare species name.
+constexpr auto gen3SpeciesAvailable = [](uint16_t) { return true; };
+constexpr auto gen3SpeciesName = [](uint16_t species) { return std::string(Names::getSpeciesName(species)); };
+
 bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
     if (!state.speciesPicker) return false;
+    // R2-SEARCH: the search key grid and the list scrollbar take their touches first; X / Minus
+    // toggle the grid, and while it is open the D-pad / stick, A and B type into it.
+    uint16_t chosen = std::clamp<uint16_t>(state.speciesPreview, 1, 386);
+    const auto touched = SharedSpeciesPicker::handleTouch(
+        state.speciesChooser, SharedSearchInput::sample(touch), chosen, 386,
+        SharedSpeciesPicker::ModalX, SharedSpeciesPicker::ModalY, gen3SpeciesAvailable, gen3SpeciesName);
+    const auto keyed = SharedSpeciesPicker::handleKeys(
+        state.speciesChooser, gen3PickerKeys(down), (down & HidNpadButton_A) != 0,
+        (down & HidNpadButton_B) != 0, (down & (HidNpadButton_X | HidNpadButton_Minus)) != 0,
+        chosen, 386, gen3SpeciesAvailable, gen3SpeciesName);
+    state.speciesPreview = chosen;
+    if (touched.keys || keyed.keys)
+        down &= ~(HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right |
+                  HidNpadButton_L | HidNpadButton_R | HidNpadButton_ZL | HidNpadButton_ZR |
+                  HidNpadButton_A | HidNpadButton_B);
     // A species-list swipe must advance from the actual preview, not
     // a provisional row focused when the finger first landed.
     const int speciesTap = screen.touchedButtonId(touch);
-    if (speciesTap >= 31500 && speciesTap <= 31500 + 386) {
+    if (!touched.touch && speciesTap >= 31500 && speciesTap <= 31500 + 386) {
         state.speciesPreview = static_cast<uint16_t>(speciesTap - 31500);
         down |= HidNpadButton_A;
     }
     const int dy = touch.deltaY();
-    if (touch.justReleased() && touch.dragged() &&
+    if (!touched.touch && touch.justReleased() && touch.dragged() &&
         SharedSpeciesPicker::gestureStartedInList(touch.startX(), touch.startY()) &&
         std::abs(dy) >= 24 && std::abs(dy) > std::abs(touch.deltaX())) {
         const int steps = std::max(1, std::abs(dy) / 43);
-        state.speciesPreview = static_cast<uint16_t>(std::clamp<int>(
-            static_cast<int>(state.speciesPreview) + (dy < 0 ? steps : -steps), 1, 386));
+        state.speciesPreview = SharedSpeciesPicker::neighbour(
+            state.speciesChooser, chosen, dy < 0 ? steps : -steps);
     }
-    if (gen3PickerKeys(down).any())
-        state.speciesPreview = static_cast<uint16_t>(PokeBank::UIModel::SharedPickerPaging::pagedRow(
-            static_cast<int>(state.speciesPreview) - 1, 386, gen3PickerKeys(down)) + 1);
+    if (gen3PickerKeys(down).any())   // shared paging over the filtered list
+        state.speciesPreview = SharedSpeciesPicker::paged(
+            state.speciesChooser, state.speciesPreview, gen3PickerKeys(down));
     if (down & HidNpadButton_B) {
         state.speciesPicker = false;
         return true;
@@ -2132,11 +2153,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     if (state.speciesPicker) {
         SharedEditorChrome::beginModal(screen.touchButtons);
         const auto modal = SharedSpeciesPicker::drawModalChrome(fb);
-        constexpr int visibleSpecies = 9;
-        const int speciesStart = std::clamp(static_cast<int>(state.speciesPreview) - visibleSpecies / 2,
-                                            1, 386 - visibleSpecies + 1);
-        for (int i = 0; i < visibleSpecies; ++i)
-            screen.touchButtons.push_back({31500 + speciesStart + i, modal.x + 20, modal.y + 84 + i * 43, 560, 39});
+        SharedSpeciesPicker::refilter(state.speciesChooser, 386, gen3SpeciesAvailable, gen3SpeciesName);
         SharedSpeciesPicker::drawContent(
             fb, modal.x, modal.y, state.speciesPreview, 386, state.speciesPreviewShiny,
             [](uint16_t species) {
@@ -2145,9 +2162,18 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
             [](uint16_t species) {
                 return std::string(Names::getSpeciesName(species));
             },
-            &latestTouchGesture());
+            &latestTouchGesture(), true, {0xFF, 0xFF}, &state.speciesChooser);
+        // Touch ids stay 31500 + species; the chooser publishes the rows it actually drew
+        // (speciesStart is the dex number the drawn window would start at if it were contiguous,
+        // so the id arithmetic reads as before: 31500 + speciesStart + i == 31500 + species).
+        for (int i = 0; i < state.speciesChooser.rowCount; ++i) {
+            const auto& row = state.speciesChooser.rows[static_cast<std::size_t>(i)];
+            const int speciesStart = static_cast<int>(row.species) - i;
+            screen.touchButtons.push_back({31500 + speciesStart + i, row.x, row.y, row.w, row.h});
+        }
         Presentation::PickerFooterSpec footer;
         footer.jump = true;
+        footer.xLabel = "Search";
         footer.yLabel = "Normal/Shiny";
         SharedEditorChrome::drawPickerFooter(fb, footer);
     }
