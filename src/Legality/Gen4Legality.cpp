@@ -110,7 +110,7 @@ enum : uint16_t {
     kLocDaycare4 = 2000, kLocLinkTrade4 = 2002, kLocLinkTrade6 = 30002, kLocTransfer3 = 55, kItemGriseousOrb = 112,
     kMoveSketch = 166, kMoveDracoMeteor = 434, kSpeciesMew = 151,
 };
-enum : uint8_t { kVerS = 1, kVerR = 2, kVerE = 3, kVerFR = 4, kVerLG = 5 };
+enum : uint8_t { kVerS = 1, kVerR = 2, kVerE = 3, kVerFR = 4, kVerLG = 5, kVerCXD = 15 };
 enum : uint8_t { kLangJapanese = 1, kLangEnglish = 2, kLangFrench = 3, kLangItalian = 4, kLangSpanish = 7, kLangKorean = 8 };
 
 // Ribbon bits: index into Pk4::ribbons (0x24-0x27, 0x3C-0x3F, 0x60-0x63) and bit.
@@ -260,7 +260,9 @@ const char* learnMethodText(LearnMethod m) noexcept {
 // ======================================================================= analyzer
 class Analyzer {
 public:
-    Analyzer(const Pk4& pk, Table cart) : pk_(pk), cart_(cart) {}
+    /// cxd: the Gen III GameCube judge's answer for a Colosseum/XD origin (version 15); null means
+    /// no judge (CxdOriginJudgement::Status::Unavailable). Ignored for every other origin.
+    Analyzer(const Pk4& pk, Table cart, const CxdOriginJudgement* cxd = nullptr) : pk_(pk), cart_(cart), cxd_(cxd) {}
     /// Format-5 mode: pk is the view of a PK5 of Generation III/IV origin (pk.format == 5).
     Analyzer(const Pk4& pk, const Format5Data& f5) : pk_(pk), f5_(&f5) {}
     Report run();
@@ -286,6 +288,8 @@ private:
     Personal piEntity_{};   // PKM.PersonalInfo: PersonalTable.HGSS.GetFormEntry(species, form)
     bool gtsSanitized_ = false;
     bool encounterSearched_ = false;
+    const CxdOriginJudgement* cxd_ = nullptr; // Colosseum/XD origin: the judge's answer (see findCxdEncounter)
+    bool cxdUndecided_ = false;               // Colosseum/XD origin left unverified: encounter-dependent rules are skipped
 
     void add(uint8_t severity, CheckIdentifier id, std::string text) {
         parse_.push_back(Check{severity, id, std::move(text)});
@@ -330,6 +334,7 @@ private:
     Check verifyEncounter5(const Template& t) const;
     Check verifyEgg4Hatched() const;
     void findVerifiedEncounter();
+    void findCxdEncounter();
     Check verifyEvolution(const Template& t, const std::vector<Evo>& history, const MoveResults& moves) const;
 
     // UpdateChecks
@@ -504,6 +509,8 @@ std::string encounterHint(const Pk4& pk) {
 }
 
 void Analyzer::findVerifiedEncounter() {
+    // A Colosseum/XD origin (Pal Park too) is judged by the shared GameCube judge, not by the ported tables.
+    if (!format5() && pk_.version == kVerCXD) { findCxdEncounter(); return; }
     // A Gen III origin (Pal Park) record runs EncounterGenerator3 and the Gen III learn/evolution rules.
     const bool gen3 = gen3Origin();
     if (format5()) {
@@ -586,6 +593,74 @@ void Analyzer::findVerifiedEncounter() {
         invalid(CheckIdentifier::PidRng, "The PID/IV does not match any reachable RNG frame for this wild encounter and lead");
     else if (lastResortReached && search_.manualFlag == 1)
         invalid(CheckIdentifier::PidRng, "The PID/IV correlation type does not match this encounter");
+}
+
+/// Colosseum/XD origin (version 15). PKHeX runs EncounterGenerator3 over the Orre templates
+/// (Encounters3Colo/ColoShadow/XD/XDShadow). Here that search is the Gen III GameCube judge's
+/// (include/Legality/Gen3Cxd.h through Gen4::judgeCxdOrigin); this analyzer consumes its answer:
+///  - Matched: the judge's template becomes the EncKind::Cxd3 encounter and every verifier runs
+///    against it (moves through LearnGroup3 with the template's moves, evolution, level/EXP, EVs,
+///    ribbons with the National Ribbon required for a purified shadow Pokemon, fateful flag, ball,
+///    ability, gender, Pal Park met data); its Invalid reasons and Warnings are reported as such.
+///  - NoMatch: Invalid with the judge's reasons (EncounterVerifier's EncInvalid).
+///  - Undecided / Unavailable: a Warning that the Orre encounter is not verified. The rules that
+///    need the encounter (ribbons, current moves, fateful flag, the EV/EXP comparison against the
+///    encounter level) are skipped; the origin-independent ones (IVs, EVs, level and EXP, names,
+///    language, PP, item, markings, form, gender from the PID, contest sheen, Pokerus, dates, the
+///    Pal Park met data and met location 55) still run. The record is Incomplete, never certified.
+void Analyzer::findCxdEncounter() {
+    using Status = CxdOriginJudgement::Status;
+    encounterSearched_ = true;
+    search_ = Search{};
+    parse_.clear();
+    const CxdOriginJudgement* j = cxd_;
+    const Status status = j != nullptr ? j->status : Status::Unavailable;
+    if (status == Status::Matched) {
+        Template t;
+        t.kind = EncKind::Cxd3;
+        t.species = j->species; t.form = j->form;
+        t.levelMin = j->levelMin; t.levelMax = j->levelMax;
+        t.version = kVerCXD; t.location = 0;
+        t.fixedBall = j->fixedBall; t.fateful = j->fateful; t.shiny = j->shiny;
+        t.gender = j->gender; t.ability = j->ability; t.moves = j->moves;
+        t.fixedTrainer = j->fixedTrainer; t.shadow = j->shadow; t.name = j->templateName;
+        search_.list.push_back(Candidate{EncKind::Cxd3, -1, -1, j->species, kVerCXD, Lead::Invalid});
+        enc_ = t;
+        info_ = encInfo(t);
+        const Check e = verifyEncounter(t);
+        if (e.severity != kValid) parse_.push_back(e);
+        history3_ = evolutionHistory3(pk_, info_, level_);
+        history_ = history3_.gen4;
+        moves_ = verifyMoves3(pk_, info_, history3_);
+        const Check evo = verifyEvolution(t, history_, moves_);
+        if (evo.severity != kValid) parse_.push_back(evo);
+        for (const std::string& r : j->invalidReasons) invalid(CheckIdentifier::Encounter, r);
+        for (const std::string& w : j->warnings) fishy(CheckIdentifier::Encounter, w);
+        for (const std::string& n : j->notes) note(CheckIdentifier::Encounter, n);
+        if (t.name != nullptr) note(CheckIdentifier::Encounter, std::string("Colosseum/XD origin: ") + t.name);
+        return;
+    }
+    // EncounterInvalid view of the record (species, met level, current level).
+    enc_ = makeTemplate3(Candidate{}, pk_);
+    info_ = encInfo(enc_);
+    history3_ = evolutionHistory3(pk_, info_, level_);
+    history_ = history3_.gen4;
+    moves_ = MoveResults{}; // nothing verified: the hook must not treat the moves as verified
+    if (status == Status::NoMatch) {
+        if (j->invalidReasons.empty()) invalid(CheckIdentifier::Encounter, "No Colosseum/XD encounter matches this Pokemon");
+        for (const std::string& r : j->invalidReasons) invalid(CheckIdentifier::Encounter, r);
+        for (const std::string& w : j->warnings) fishy(CheckIdentifier::Encounter, w);
+        for (const std::string& n : j->notes) note(CheckIdentifier::Encounter, n);
+        return;
+    }
+    cxdUndecided_ = true;
+    const char* name = versionName(pk_.version);
+    fishy(CheckIdentifier::Transfer, std::string("Pal Park transfer from ") + (name != nullptr ? name : "Colosseum/XD") +
+                                         ": the Colosseum/XD encounter is not verified");
+    if (j != nullptr) {
+        for (const std::string& w : j->warnings) fishy(CheckIdentifier::Encounter, w);
+        for (const std::string& n : j->notes) note(CheckIdentifier::Encounter, n);
+    }
 }
 
 // ----------------------------------------------------------------------- PID / EC
@@ -880,7 +955,7 @@ void Analyzer::verifyEvs() {
     if (sum > 510) { invalid(CheckIdentifier::Stats, "EV total is above 510"); return; }
     bool vitamins = true;
     for (uint8_t ev : pk_.evs) if (ev != 0 && (ev > 100 || ev % 10 != 0)) vitamins = false;
-    if (!vitamins) {
+    if (!vitamins && !cxdUndecided_) { // the encounter level is unknown for an unverified Colosseum/XD origin
         if (enc_.levelMin == 100) {
             invalid(CheckIdentifier::Stats, "EVs above vitamin limits cannot be gained by a level 100 encounter");
         } else {
@@ -971,6 +1046,12 @@ void Analyzer::verifyRibbons() {
             if (rib(g, kEarth)) { if (!rib(pk_, kEarth)) ++bad; }
             else flag(kEarth); // Earth needs a Gen III encounter
             for (Rib r : kEvent3Ribbons) compare(r);
+        } else if (enc_.kind == EncKind::Cxd3) {
+            // RibbonVerifierEvent3 for an Orre template: the Earth Ribbon (Mt. Battle) is allowed for a
+            // Generation III encounter; RibbonRules.GetValidRibbonStateNational requires the National
+            // Ribbon exactly for a (purified) Shadow Pokemon; the other event ribbons never.
+            if (rib(pk_, kNational) != enc_.shadow) ++bad;
+            flag(kCountry); flag(kChampionBattle); flag(kChampionRegional); flag(kChampionNational);
         } else {
             if (!earthAllowed) flag(kEarth);
             for (Rib r : kEvent3Ribbons) flag(r); // National: only Gen III Shadow Pokemon
@@ -1295,6 +1376,7 @@ void Analyzer::verifyMisc() {
 
 /// MiscFatefulEncounterVerifier (format independent for Generation III/IV encounters).
 void Analyzer::verifyFateful() {
+    if (cxdUndecided_) return; // XD templates set the flag, Colosseum ones do not: needs the encounter
     if (enc_.kind == EncKind::Gift3) {
         const auto& g = D::kGifts3[enc_.index];
         if (g.fateful != 0) {
@@ -1308,7 +1390,8 @@ void Analyzer::verifyFateful() {
             invalid(CheckIdentifier::EventGift, "This Mystery Gift was not distributed to the origin game");
         if (pk_.fateful != giftFateful)
             invalid(CheckIdentifier::EventGift, giftFateful ? "Fateful encounter flag is missing" : "Fateful encounter flag is set");
-    } else if ((enc_.kind == EncKind::Static || enc_.kind == EncKind::Ranch || enc_.kind == EncKind::Static3) && enc_.fateful) {
+    } else if ((enc_.kind == EncKind::Static || enc_.kind == EncKind::Ranch || enc_.kind == EncKind::Static3 ||
+                enc_.kind == EncKind::Cxd3) && enc_.fateful) {
         if (!pk_.fateful) invalid(CheckIdentifier::EventGift, "Fateful encounter flag is missing");
     } else if (pk_.fateful) {
         invalid(CheckIdentifier::EventGift, "Fateful encounter flag is set on a non-event encounter");
@@ -1512,7 +1595,7 @@ Report Analyzer::run() {
     verifyIvs();
     verifyEvs();
     verifyLevel();
-    verifyRibbons();
+    if (!cxdUndecided_) verifyRibbons(); // the National/Earth ribbons need the Orre encounter
     verifyAbility();
     verifyBall();
     verifyForm();
@@ -1523,7 +1606,7 @@ Report Analyzer::run() {
     verifyContest();
     verifyMarking();
     verifyGroundTile();
-    verifyMoveResults();
+    if (!cxdUndecided_) verifyMoveResults(); // the moves need the Orre encounter's moveset
     // ParsePK3: TransferVerifier.VerifyTransferLegalityG3 (Pal Park writes met location 55).
     if (gen3Origin() && pk_.metLocation() != kLocTransfer3)
         invalid(CheckIdentifier::Transfer, "A Generation III Pokemon must have been met at Pal Park");
@@ -1627,11 +1710,35 @@ Origin5 analyzeOrigin5(const Pk4& pk, uint8_t currentLevel, const Format5Data& f
 } // namespace Gen4
 
 Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId) {
-    return analyzePk4(decrypted, exactSourceGameId, nullptr);
+    return analyzePk4(decrypted, exactSourceGameId, nullptr, &Gen4::judgeCxdOrigin);
 }
 
 Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId,
                   Gen4::MoveEvidence* evidence) {
+    return analyzePk4(decrypted, exactSourceGameId, evidence, &Gen4::judgeCxdOrigin);
+}
+
+namespace Gen4 {
+namespace {
+/// The fields a Pal Park transfer keeps from its Colosseum/XD origin, for the GameCube judge.
+CxdOriginInput cxdInput(const Pk4& pk) {
+    CxdOriginInput in;
+    in.species = pk.species; in.form = pk.form;
+    in.level = levelFromExp(pk.exp, personal(Table::HGSS, pk.species, pk.form).expGrowth());
+    in.metLevel = pk.metLevel; in.ball = pk.ball(); in.fateful = pk.fateful; in.isEgg = pk.isEgg;
+    in.isShiny = pk.isShiny(); in.pid = pk.pid; in.ivs = pk.ivs; in.evs = pk.evs; in.exp = pk.exp;
+    in.tid = pk.tid; in.sid = pk.sid; in.otGender = pk.otGender; in.language = pk.language;
+    in.ability = pk.ability; in.heldItem = pk.heldItem;
+    in.otName = otText(pk); in.nickname = nicknameText(pk); in.isNicknamed = pk.isNicknamed;
+    in.moves = pk.moves; in.ribbons = pk.ribbons;
+    in.ribbonNational = rib(pk, kNational); in.ribbonEarth = rib(pk, kEarth);
+    return in;
+}
+} // namespace
+} // namespace Gen4
+
+Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId,
+                  Gen4::MoveEvidence* evidence, Gen4::CxdOriginJudge judge) {
     if (evidence != nullptr) *evidence = Gen4::MoveEvidence{};
     Report r;
     r.coverage.structure = CoverageLevel::Complete;
@@ -1659,17 +1766,6 @@ Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSour
                                  CheckIdentifier::Species});
         return r;
     }
-    if (pk.version == 15) {
-        // Colosseum/XD origin: the Orre encounter tables (shadow, XD wild/static, trades) are not ported.
-        const char* name = Gen4::versionName(pk.version);
-        r.coverage.sourceGame = r.coverage.internal = r.coverage.moves = r.coverage.encounter = CoverageLevel::Partial;
-        r.coverage.eventGift = r.coverage.pidRng = r.coverage.eggBreeding = r.coverage.transfer = CoverageLevel::Partial;
-        r.issues.push_back(Issue{Severity::Warning,
-                                 std::string("Pal Park transfer from ") + (name ? name : "a Gen III game") +
-                                     ": the Colosseum/XD encounter is not verified",
-                                 CheckIdentifier::Transfer});
-        return r;
-    }
     if (!Gen4::isGen4Version(pk.version) && !Gen4::isGen3Version(pk.version)) {
         r.issues.push_back(Issue{Severity::Invalid,
                                  "Origin game #" + std::to_string(pk.version) + " cannot produce a PK4 (not a Gen III or Gen IV game)",
@@ -1679,7 +1775,11 @@ Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSour
     Gen4::Table cart = Gen4::Table::HGSS;
     if (exactSourceGameId == "diamond_nds" || exactSourceGameId == "pearl_nds") cart = Gen4::Table::DP;
     else if (exactSourceGameId == "platinum_nds") cart = Gen4::Table::Pt;
-    Gen4::Analyzer a(pk, cart);
+    // Colosseum/XD origin (version 15): ask the Gen III GameCube judge first (Analyzer::findCxdEncounter).
+    Gen4::CxdOriginJudgement cxd;
+    const bool cxdOrigin = pk.version == 15;
+    if (cxdOrigin && judge != nullptr) cxd = judge(Gen4::cxdInput(pk));
+    Gen4::Analyzer a(pk, cart, cxdOrigin ? &cxd : nullptr);
     Report result = a.run();
     if (evidence != nullptr) *evidence = a.evidence();
     return result;

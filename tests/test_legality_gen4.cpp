@@ -424,6 +424,18 @@ uint32_t next() {
     return static_cast<uint32_t>(rngState >> 16);
 }
 
+// --- Colosseum/XD integration point (Gen4::CxdOriginJudge) ---------------------------
+// Fake judges stand in for the Gen III GameCube judge (include/Legality/Gen3Cxd.h): what the
+// analyzer does with each Status is what is under test here.
+Legality::Gen4::CxdOriginInput lastCxdInput;
+Legality::Gen4::CxdOriginJudgement fakeCxdAnswer;
+int fakeCxdCalls = 0;
+Legality::Gen4::CxdOriginJudgement fakeCxdJudge(const Legality::Gen4::CxdOriginInput& in) {
+    lastCxdInput = in;
+    ++fakeCxdCalls;
+    return fakeCxdAnswer;
+}
+
 }  // namespace
 
 int main() {
@@ -625,6 +637,166 @@ int main() {
             !hasText(native, Severity::Invalid, "cannot be learned"))
             fail("audited move pool with an unverified move: expected Invalid and the Warning kept", native);
         ++checked;
+    }
+
+    // 4b. Colosseum/XD origin (version 15): the Gen4::CxdOriginJudge integration point.
+    {
+        using Legality::Gen4::CxdOriginJudgement;
+        using Status = CxdOriginJudgement::Status;
+        constexpr std::string_view kCxdWarning = "Pal Park transfer from Colosseum/XD: the Colosseum/XD encounter is not verified";
+        const char* game = "soulsilver_nds";
+        // A PKHeX-valid Pal Park record (Emerald wild slot) with its origin game set to Colosseum/XD.
+        auto cxd = *findFixture("p10120");
+        cxd[0x5F] = 15;
+        refreshChecksum(cxd);
+        const auto species = static_cast<uint16_t>(cxd[8] | (cxd[9] << 8));
+        const uint8_t metLevel = static_cast<uint8_t>(cxd[0x84] & 0x7F);
+        const uint8_t ball = cxd[0x86] > cxd[0x83] ? cxd[0x86] : cxd[0x83];
+        const bool fateful = (cxd[0x40] & 1) != 0;
+        auto moveAt = [&](const std::vector<uint8_t>& pk, int i) { return static_cast<uint16_t>(pk[0x28 + 2 * i] | (pk[0x29 + 2 * i] << 8)); };
+        // Production judge (judgeCxdOrigin, not wired yet) and a null judge: Unavailable. Warning,
+        // Incomplete, never Invalid; the hook path agrees and never certifies.
+        const Report direct = Legality::analyzePk4(cxd, game);
+        if (direct.verdict() != Verdict::Incomplete || has(direct, Severity::Invalid) || !hasText(direct, Severity::Warning, kCxdWarning))
+            fail("Colosseum/XD origin, production judge: expected the Warning only", direct);
+        const Report viaNull = Legality::analyzePk4(cxd, game, nullptr, nullptr);
+        if (!sameReport(direct, viaNull)) fail("Colosseum/XD origin, null judge: expected the production judge's report", viaNull);
+        const Report native = analyzeNative(cxd, game);
+        if (native.verdict() != Verdict::Incomplete || has(native, Severity::Invalid) || !hasText(native, Severity::Warning, kCxdWarning))
+            fail("Colosseum/XD origin through Legality::analyze: expected Incomplete with the Warning", native);
+        Legality::Gen4::MoveEvidence ev;
+        (void)Legality::analyzePk4(cxd, game, &ev, nullptr);
+        if (ev.encounterMatched || ev.allMovesVerified()) fail("Colosseum/XD origin unverified: the move evidence must not claim a match", direct);
+        checked += 4;
+        // The origin-independent rules still apply while the Orre encounter is unverified.
+        {
+            auto evs = cxd;
+            for (int i = 0; i < 6; ++i) evs[0x18 + i] = 255;
+            refreshChecksum(evs);
+            const Report r = Legality::analyzePk4(evs, game);
+            if (r.verdict() != Verdict::Invalid || !hasText(r, Severity::Invalid, "EV total is above 510") || !hasText(r, Severity::Warning, kCxdWarning))
+                fail("Colosseum/XD origin with 1530 EVs: expected Invalid and the Warning", r);
+            auto met = cxd;
+            met[0x80] = 56; met[0x46] = 56;
+            refreshChecksum(met);
+            const Report m = Legality::analyzePk4(met, game);
+            if (m.verdict() != Verdict::Invalid || !hasText(m, Severity::Invalid, "must have been met at Pal Park"))
+                fail("Colosseum/XD origin met outside Pal Park: expected Invalid", m);
+            auto pp = cxd;
+            pp[0x30] = 99;
+            refreshChecksum(pp);
+            const Report q = Legality::analyzePk4(pp, game);
+            if (q.verdict() != Verdict::Invalid || !hasText(q, Severity::Invalid, "PP is above its maximum"))
+                fail("Colosseum/XD origin with 99 PP: expected Invalid", q);
+            // Encounter-dependent rules are not applied to an unverified origin: a move the Orre
+            // template might supply, the National Ribbon and the fateful flag stay unjudged (Warning).
+            auto ribbon = cxd;
+            ribbon[0x3F] |= 1 << 5;  // National Ribbon
+            ribbon[0x40] ^= 1;       // fateful flag flipped
+            ribbon[0x2E] = 85; ribbon[0x2F] = 0; ribbon[0x33] = 15;  // move 4: Thunderbolt (Doduo cannot learn it)
+            refreshChecksum(ribbon);
+            const Report u = Legality::analyzePk4(ribbon, game);
+            if (u.verdict() != Verdict::Incomplete || has(u, Severity::Invalid))
+                fail("Colosseum/XD origin unverified: encounter-dependent fields must not be judged", u);
+            checked += 4;
+        }
+        // A judge that matched an Orre template: the record is verified against it.
+        fakeCxdAnswer = CxdOriginJudgement{};
+        fakeCxdAnswer.status = Status::Matched;
+        fakeCxdAnswer.templateName = "fake XD Poke Spot";
+        fakeCxdAnswer.species = species;
+        fakeCxdAnswer.levelMin = fakeCxdAnswer.levelMax = metLevel;
+        fakeCxdAnswer.fixedBall = ball;
+        fakeCxdAnswer.fateful = fateful;
+        for (int i = 0; i < 4; ++i) fakeCxdAnswer.moves[static_cast<size_t>(i)] = moveAt(cxd, i);
+        fakeCxdCalls = 0;
+        const Report matched = Legality::analyzePk4(cxd, game, nullptr, &fakeCxdJudge);
+        if (matched.verdict() != Verdict::NoProblemsFound || !hasText(matched, Severity::Info, "Colosseum/XD origin: fake XD Poke Spot"))
+            fail("Colosseum/XD origin matched by the judge: expected No problems found", matched);
+        const uint32_t pid = static_cast<uint32_t>(cxd[0]) | static_cast<uint32_t>(cxd[1]) << 8 |
+                             static_cast<uint32_t>(cxd[2]) << 16 | static_cast<uint32_t>(cxd[3]) << 24;
+        if (fakeCxdCalls != 1 || lastCxdInput.species != species || lastCxdInput.metLevel != metLevel || lastCxdInput.ball != ball ||
+            lastCxdInput.fateful != fateful || lastCxdInput.pid != pid || lastCxdInput.moves[0] != moveAt(cxd, 0) ||
+            lastCxdInput.otName.empty() || lastCxdInput.nickname.empty() || lastCxdInput.level < metLevel)
+            fail("Colosseum/XD judge input: expected the record's fields", matched);
+        Legality::Gen4::MoveEvidence evm;
+        (void)Legality::analyzePk4(cxd, game, &evm, &fakeCxdJudge);
+        if (!evm.encounterMatched || !evm.allMovesVerified()) fail("Colosseum/XD origin matched: expected the move evidence to say so", matched);
+        checked += 3;
+        // Template-specific rules against the matched template.
+        {
+            auto t = fakeCxdAnswer;
+            t.shadow = true;  // a purified Shadow Pokemon carries the National Ribbon
+            fakeCxdAnswer = t;
+            const Report r = Legality::analyzePk4(cxd, game, nullptr, &fakeCxdJudge);
+            if (r.verdict() != Verdict::Invalid || !hasText(r, Severity::Invalid, "ribbon(s) are not obtainable"))
+                fail("Colosseum/XD shadow template without the National Ribbon: expected Invalid", r);
+            auto purified = cxd;
+            purified[0x3F] |= 1 << 5;
+            refreshChecksum(purified);
+            const Report ok = Legality::analyzePk4(purified, game, nullptr, &fakeCxdJudge);
+            if (ok.verdict() != Verdict::NoProblemsFound) fail("Colosseum/XD shadow template with the National Ribbon: expected No problems found", ok);
+            t.shadow = false;
+            t.fateful = !fateful;  // XD templates set the flag, Colosseum ones do not
+            fakeCxdAnswer = t;
+            const Report f = Legality::analyzePk4(cxd, game, nullptr, &fakeCxdJudge);
+            if (f.verdict() != Verdict::Invalid || !hasText(f, Severity::Invalid, "Fateful encounter flag"))
+                fail("Colosseum/XD template with the other fateful flag: expected Invalid", f);
+            t.fateful = fateful;
+            t.fixedBall = ball == 4 ? 1 : 4;
+            fakeCxdAnswer = t;
+            const Report b = Legality::analyzePk4(cxd, game, nullptr, &fakeCxdJudge);
+            if (b.verdict() != Verdict::Invalid || !hasText(b, Severity::Invalid, "is not possible for this encounter"))
+                fail("Colosseum/XD template with another fixed ball: expected Invalid", b);
+            t.fixedBall = ball;
+            t.moves = {};  // no template moves: the current moves must come from the Gen III learnsets
+            fakeCxdAnswer = t;
+            auto shadowForce = cxd;
+            shadowForce[0x2E] = 85; shadowForce[0x2F] = 0; shadowForce[0x33] = 15;  // Thunderbolt
+            refreshChecksum(shadowForce);
+            const Report mv = Legality::analyzePk4(shadowForce, game, nullptr, &fakeCxdJudge);
+            if (mv.verdict() != Verdict::Invalid || !hasText(mv, Severity::Invalid, "cannot be learned"))
+                fail("Colosseum/XD matched template with an unlearnable move: expected Invalid", mv);
+            t.moves = {85, 0, 0, 0};  // ...unless the template supplies it (IMoveset moves are contiguous)
+            fakeCxdAnswer = t;
+            const Report mv2 = Legality::analyzePk4(shadowForce, game, nullptr, &fakeCxdJudge);
+            if (mv2.verdict() != Verdict::NoProblemsFound) fail("Colosseum/XD template supplying the move: expected No problems found", mv2);
+            t.moves = {};
+            t.invalidReasons = {"fake: the PID/IV pair is not a Colosseum/XD frame"};
+            t.warnings = {"fake: provenance warning"};
+            fakeCxdAnswer = t;
+            const Report reasons = Legality::analyzePk4(cxd, game, nullptr, &fakeCxdJudge);
+            if (reasons.verdict() != Verdict::Invalid || !hasText(reasons, Severity::Invalid, "fake: the PID/IV pair") ||
+                !hasText(reasons, Severity::Warning, "fake: provenance warning"))
+                fail("Colosseum/XD matched template with judge findings: expected them reported", reasons);
+            checked += 6;
+        }
+        // NoMatch: Invalid with the judge's reasons (or a default one).
+        fakeCxdAnswer = CxdOriginJudgement{};
+        fakeCxdAnswer.status = Status::NoMatch;
+        fakeCxdAnswer.invalidReasons = {"fake: no Orre encounter for this species"};
+        const Report none = Legality::analyzePk4(cxd, game, nullptr, &fakeCxdJudge);
+        if (none.verdict() != Verdict::Invalid || !hasText(none, Severity::Invalid, "fake: no Orre encounter"))
+            fail("Colosseum/XD origin rejected by the judge: expected Invalid with its reason", none);
+        fakeCxdAnswer.invalidReasons.clear();
+        const Report none2 = Legality::analyzePk4(cxd, game, nullptr, &fakeCxdJudge);
+        if (none2.verdict() != Verdict::Invalid || !hasText(none2, Severity::Invalid, "No Colosseum/XD encounter matches"))
+            fail("Colosseum/XD origin rejected without a reason: expected the default Invalid", none2);
+        // Undecided: the Warning plus the judge's own warnings and notes; never Invalid.
+        fakeCxdAnswer = CxdOriginJudgement{};
+        fakeCxdAnswer.status = Status::Undecided;
+        fakeCxdAnswer.warnings = {"fake: shadow tables incomplete"};
+        fakeCxdAnswer.notes = {"fake: note"};
+        const Report und = Legality::analyzePk4(cxd, game, nullptr, &fakeCxdJudge);
+        if (und.verdict() != Verdict::Incomplete || has(und, Severity::Invalid) || !hasText(und, Severity::Warning, kCxdWarning) ||
+            !hasText(und, Severity::Warning, "fake: shadow tables incomplete") || !hasText(und, Severity::Info, "fake: note"))
+            fail("Colosseum/XD origin undecided: expected the Warnings and the note", und);
+        // The judge is only consulted for a Colosseum/XD origin.
+        fakeCxdCalls = 0;
+        (void)Legality::analyzePk4(*findFixture("p10120"), game, nullptr, &fakeCxdJudge);
+        (void)Legality::analyzePk4(*findFixture("static"), gameOf("static"), nullptr, &fakeCxdJudge);
+        if (fakeCxdCalls != 0) fail("Colosseum/XD judge consulted for another origin", und);
+        checked += 4;
     }
 
     // 5. Fuzz: random bytes at every size class, then one to four random bytes in a valid
