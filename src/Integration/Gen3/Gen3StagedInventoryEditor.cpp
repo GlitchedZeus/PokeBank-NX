@@ -276,7 +276,13 @@ bool StagedInventoryEditor::stageInventoryQuantity(
         return false;
     }
     const ClassicPocket logicalPocket = semanticPocket(game, pouch, itemId);
-    const auto rule = Inventory::quantityRule(game, logicalPocket, itemId);
+    auto rule = Inventory::quantityRule(game, logicalPocket, itemId);
+    if (pouch == InventoryPouch::PCItems) {
+        // A PC slot stacks to the PC pocket's native cap (QuantityPolicy: 999 in every Gen III
+        // game, PKHeX PlayerBag3RS/E/FRLG); key items and HMs there stay unique.
+        if (const auto pc = Inventory::quantityRule(game, ClassicPocket::PCItems, itemId); pc.maximum > 0)
+            rule = pc;
+    }
     if (quantity != 0 && (quantity < rule.minimum || quantity > rule.maximum)) {
         error = "Item quantity is outside the valid range for this Generation III item";
         return false;

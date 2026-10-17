@@ -152,7 +152,7 @@ int main() {
     assert(actionsDraw.find("drawNarrowPokemonActions(fb, screen.touchButtons") != std::string::npos);
     const auto narrow = readFile("include/UI/NarrowPokemonActionMenu.h");
     assert(narrow.find("int width = 440") != std::string::npos);
-    assert(narrow.find("Add to Master Vault") != std::string::npos);
+    assert(narrow.find("onlySharedLabels(classic(") != std::string::npos); // no placeholder rows (Master Vault, Make Shiny)
     assert(actionsDraw.find("fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2)") == std::string::npos);
     // The composite wrapper must not paint the legacy staged-editor Accent shell first.
     const auto ownsFrame = parity.substr(parity.find("bool finalGen2SurfaceOwnsFrame"),
@@ -161,7 +161,7 @@ int main() {
     const auto compositeDraw = composite.substr(composite.find("void TrainerViewScreen::draw(PKSEFramebuffer& fb)"));
     assert(compositeDraw.find("if (!Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this))") != std::string::npos);
     assert(shared.find("drawSharedProvenanceSurface") != std::string::npos);
-    assert(shared.find("Encounter legality\", \"Not checked") != std::string::npos);
+    assert(shared.find("kOriginLegalityHeading, \"Not checked") != std::string::npos);
     assert(shared.find("case SharedEditor::Action::Close") != std::string::npos);
 
     // The established inline page owns rendering and exactly two cursor rows.
@@ -201,7 +201,8 @@ int main() {
     assert(unified.find("{\"Friendship\", std::to_string(p.friendship)}") != std::string::npos);
     assert(unified.find("{\"Pokerus\", Gen2Native::pokerusText(p.pokerus)}") != std::string::npos);
     assert(unified.find("std::array<std::pair<std::string, std::string>, 2> capabilityRows") != std::string::npos);
-    assert(unified.find("Encounter legality: Not checked") != std::string::npos);
+    // Origin & Legality moved from under the move rows into the GEN II DATA pane.
+    assert(unified.find("drawGen2SharedMoveRows(") != std::string::npos);
     assert(unified.find("const int first = unified.detailsViewport.firstRow") != std::string::npos);
     // Touching a visually scrolled Details row must not invoke the old
     // independently recalculated focus-centred hit test. The 1700+ row
@@ -241,15 +242,18 @@ int main() {
     assert(finalFix.find("std::max(0, w - 36)") != std::string::npos);
     assert(unified.find("Current level cannot be below this Crystal met level") != std::string::npos);
     assert(nativePresentation.find("Current level below met level") != std::string::npos);
-    assert(picker.find("encounterTimeLabel(encounter.timeMask)") != std::string::npos);
+    assert(picker.find("Gen2Picker::locationRowText(") != std::string::npos);
+    assert(readFile("include/UI/Gen2PokemonPickerModel.h").find("encounterTimeLabel(encounter.timeMask)") !=
+           std::string::npos);
     assert(sharedShell.find("drawVerticalScrollIndicator") != std::string::npos);
     assert(finalFix.find("drawVerticalScrollIndicator") != std::string::npos);
-    assert(finalFix.find("visibleMoveFocus = UnifiedContract::normalizeMoveRowFocus") != std::string::npos);
-    assert(finalFix.find("moveRowFocus(w)") != std::string::npos);
+    // Move rows: one row-wide focus, drawn by the shared Moves panel in every layer.
+    assert(finalFix.find("drawGen2SharedMoveRows(") != std::string::npos);
     assert(unified.find("Unified::moveRowColumn") != std::string::npos);
-    const auto movePanel = unified.substr(unified.find("void drawUnifiedMoves("),
-        unified.find("void drawProgressionEditor(") - unified.find("void drawUnifiedMoves("));
-    assert(movePanel.find("Unified::moveRowFocus(w)") != std::string::npos);
+    const auto movePanel = unified.substr(unified.find("void drawGen2SharedMoveRows("),
+        unified.find("void drawProgressionEditor(") - unified.find("void drawGen2SharedMoveRows("));
+    assert(movePanel.find("visibleMoveFocus = Unified::normalizeMoveRowFocus") != std::string::npos);
+    assert(movePanel.find("UI::Gen2MovesPanel::draw(") != std::string::npos);
     assert(movePanel.find("unified.focus.column == 1") == std::string::npos);
     assert(movePanel.find("unified.focus.column == 2") == std::string::npos);
     assert(unified.find("A/Y/X never mutate a View session") != std::string::npos);
@@ -274,9 +278,9 @@ int main() {
     // Crystal Met Location is species/exact-game aware; accepting it writes the native
     // location and encounter-minimum caught level rather than an arbitrary landmark.
     assert(pickerModel.find("Encounter::forGameSpecies(sourceGameId, species)") != std::string::npos);
-    // The Crystal location picker now announces drag-to-browse behavior. Preserve
+    // The Crystal location chooser is a proportional "Met Location" window (phase 11). Preserve
     // actual species-scoped encounters and native minimum-level presentation.
-    assert(picker.find("Drag naturally to browse Crystal encounters") != std::string::npos);
+    assert(picker.find("\"Met Location\"") != std::string::npos);
     assert(picker.find("model.locationCount()") != std::string::npos);
     assert(picker.find("model.encounterChoices[") != std::string::npos);
     assert(picker.find("encounter->minLevel") != std::string::npos);
@@ -289,7 +293,7 @@ int main() {
     assert(unified.find("if (focus.row == 8)") != std::string::npos);
     // Owner campaign directive: Pokerus uses the shared selector interaction (same three native
     // states None/Infected/Cured, still no strain/days editor) instead of cycling in place.
-    assert(unified.find("p.pokerus = Gen2Native::cyclePokerusState(p.pokerus, state.baseline.pokerus);") != std::string::npos);
+    assert(unified.find("SharedEditorPresentation::nextPokerusByte(") != std::string::npos);
     assert(unified.find("p.pokerus = Gen2Native::cyclePokerusState(p.pokerus)") == std::string::npos);
     assert(picker.find("state.working.caughtData = 0") != std::string::npos);
 
@@ -325,16 +329,12 @@ int main() {
     assert(pickerFix.find("kHardwareMovePickerLayout.rowStep") != std::string::npos);
     assert(pickerFix.find("const int first = overlay.moveViewport.firstRow;") != std::string::npos);
     assert(pickerFix.find("const int liveOffset = overlay.moveScroll.offset();") != std::string::npos);
-    // The shared Gen I-IV row renderer now owns emphasized move typography,
-    // fixed Acc/Pwr/PP columns, and separators (not the Gen II overlay).
-    assert(pickerFix.find("MovePickerRowUI::draw(fb") != std::string::npos);
-    const auto moveRow = readFile("include/UI/MovePickerRowUI.h");
-    assert(moveRow.find("TextStyle::Body") != std::string::npos);
-    assert(pickerFix.find("Empty + compatible moves only • exact Gen II Acc / Pwr / PP") != std::string::npos);
-    // Generation-aware Acc / Pwr / PP now come from the shared move-row
-    // component; old Gen II-only rowLabel string assembly is intentionally gone.
-    assert(pickerFix.find("MovePickerRowUI::draw(fb,x+40,yy+4,move,Enums::GameVersion::GSC)") != std::string::npos);
-    assert(moveRow.find("Names::getMoveBattleStats(move,game)") != std::string::npos);
+    // The shared Gen I-V Move chooser rows (UI/SharedMovesPanel.h) own the columns: No. / Move /
+    // Type / Pwr / Acc / PP from the exact Gen II facts.
+    assert(pickerFix.find("UI::SharedMovesPanel::drawChooserCaptions(fb, columns, y + 58, Enums::GameVersion::GSC)") != std::string::npos);
+    assert(pickerFix.find("UI::SharedMovesPanel::drawChooserRow(fb, columns, yy + 6, move, Enums::GameVersion::GSC, selected)") != std::string::npos);
+    assert(pickerFix.find("Compatible moves only") != std::string::npos);
+    assert(pickerFix.find("MovePickerRowUI") == std::string::npos);
     assert(pickerFix.find("Needs correction") == std::string::npos);
     assert(shared.find("!editor->pendingChanges().empty()") != std::string::npos);
     assert(shared.find("drawNarrowPokemonActions(fb, screen.touchButtons, model") != std::string::npos);

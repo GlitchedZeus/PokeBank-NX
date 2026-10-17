@@ -1,5 +1,7 @@
+#include "UI/SharedEditorPresentation.h"
 #include "UI/ClassicGameContext.h"
 #include "UI/SharedPokemonShell.h"
+#include "UI/ClassicMovesPanel.h"
 
 namespace UI::Gen1PokemonEditor {
 
@@ -152,8 +154,6 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     const auto& types = presentation.nativeTypes;
     const auto& moves = add ? state.draft.moves : pokemon->moves;
     const auto& pp = add ? state.draft.pp : pokemon->pp;
-    const auto badMove = MoveCompatibility::firstIncompatible(e->metadata().sourceGame, species, moves);
-    const Color incompatibleColor = add ? Colors::Error : Colors::Warning;
     // View is read-only but navigable: focus outlines and field targets are drawn in every
     // mode; only Edit/Create activation (A) changes values.
 
@@ -281,41 +281,30 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     fb.drawText(gridX + 260, gridY + 362, splitSpecial, Colors::TextSecondary, TextStyle::Caption);
     fb.drawText(gridX + 12, gridY + 392, "one stored Gen I Special stat; split display only", Colors::TextDim, TextStyle::Caption);
 
-    // MOVES — selected row gets only the compact focus outline; text does not become red.
+    // MOVES — the ONE shared Moves panel (UI/ClassicMovesPanel.h), same rows as Gen II-V.
+    // An unlearnable move is Invalid in Create (it must be fixed) and Preserved in Edit.
     fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
-    for (int i = 0; i < 4; ++i) {
-        const int rowY = contentY + 44 + i * 40;
-        const bool selected = foundation.focus.panel == Foundation::Panel::Moves && foundation.focus.row == i;
-        drawClassicFocus(fb, rightX + 10, rowY, rightW - 20, 36, selected);
-        screen.touchButtons.push_back({5200 + i, rightX + 10, rowY, rightW - 20, 36});
-        const bool incompatible = !MoveCompatibility::canLearnMove(e->metadata().sourceGame, species, moves[static_cast<size_t>(i)]);
-        std::string moveText = moves[static_cast<size_t>(i)] == 0 ? "Empty" : std::string(Names::getMoveName(moves[static_cast<size_t>(i)]));
-        if (incompatible) moveText = "[!] " + moveText;
-        fb.drawText(rightX + 20, rowY + 8, moveText, incompatible ? incompatibleColor : Colors::Text, TextStyle::Caption);
-        const std::string status = incompatible ? (add ? "Invalid" : "Unusual") : "OK";
-        int statusW = 0, statusH = 0;
-        fb.measureText(status, statusW, statusH, TextStyle::Caption);
-        const int statusX = rightX + rightW - 16 - statusW;
-        fb.drawText(statusX, rowY + 8, status, incompatible ? incompatibleColor : Colors::Success, TextStyle::Caption);
-        const auto ups = add ? state.draft.ppUps[static_cast<size_t>(i)] : pokemon->ppUps[static_cast<size_t>(i)];
-        if (moves[static_cast<size_t>(i)] != 0) {
-            const std::string ppText = "PP " + std::to_string(pp[static_cast<size_t>(i)]) + "  Up " + std::to_string(ups);
-            int ppW = 0, ppH = 0;
-            fb.measureText(ppText, ppW, ppH, TextStyle::Caption);
-            fb.drawText(statusX - 12 - ppW, rowY + 8, ppText, Colors::TextDim, TextStyle::Caption);
+    {
+        const auto& ups = add ? state.draft.ppUps : pokemon->ppUps;
+        std::array<int, 4> maxPP{};
+        std::array<ClassicMovesPanel::Status, 4> status{};
+        for (int i = 0; i < 4; ++i) {
+            const auto slot = static_cast<size_t>(i);
+            maxPP[slot] = Editor::moveMaxPP(moves[slot], ups[slot]);
+            const bool incompatible = !MoveCompatibility::canLearnMove(e->metadata().sourceGame, species, moves[slot]);
+            status[slot] = !incompatible ? ClassicMovesPanel::Status::Ok
+                : add ? ClassicMovesPanel::Status::Invalid : ClassicMovesPanel::Status::Preserved;
+            const auto rect = ClassicMovesPanel::slotRect(i, rightX, contentY, rightW);
+            screen.touchButtons.push_back({5200 + i, rect.x, rect.y, rect.w, rect.h});
         }
+        const int focusedMove = foundation.focus.panel == Foundation::Panel::Moves ? foundation.focus.row : -1;
+        ClassicMovesPanel::draw(fb, rightX, contentY, rightW,
+                                ClassicMovesPanel::slots(moves, pp, ups, maxPP, status),
+                                Enums::GameVersion::RBY, focusedMove);
     }
-    const int statusY = contentY + 214;
-    fb.drawHDivider(rightX + 14, statusY - 12, rightW - 28);
-    fb.drawText(rightX + 18, statusY, "Move compatibility", Colors::TextDim, TextStyle::Caption);
-    const std::string compatibilityText = !badMove ? "OK" : (add ? "Needs correction" : "Unusual preserved");
-    const Color compatibilityColor = !badMove ? Colors::Success : (add ? Colors::Error : Colors::Warning);
-    fb.drawText(rightX + rightW - 154, statusY, compatibilityText, compatibilityColor, TextStyle::Caption);
-    fb.drawText(rightX + 18, statusY + 26, "Encounter legality", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(rightX + rightW - 120, statusY + 26, "Not checked", Colors::Text, TextStyle::Caption);
 
-    const int splitY = contentY + 276;
-    const int splitH = contentH - 288;
+    const int splitY = contentY + SharedMovesPanel::kDataPaneOffset;
+    const int splitH = contentH - 256;
     constexpr int inset = 12, paneGap = 10, leftPaneW = 148;
     const int innerW = rightW - inset * 2;
     const int rightPaneW = innerW - paneGap - leftPaneW;
@@ -339,6 +328,9 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     fb.drawText(leftPaneX + 10, splitY + 164, "Catch byte", Colors::TextDim, TextStyle::Caption);
     fb.drawText(leftPaneX + 10, splitY + 182,
                 add ? std::string("Species default") : std::to_string(pokemon->catchRate), Colors::Text, TextStyle::Caption);
+    // Origin & Legality (formerly under the move rows): Gen I records no origin to check.
+    fb.drawText(leftPaneX + 10, splitY + 206, "Legality", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 224, "Not checked", Colors::Text, TextStyle::Caption);
 
     fb.drawText(rightPaneX + 10, splitY + 10, "BATTLE STATS", Colors::Accent, TextStyle::Caption);
     StatsRadar::drawGen1Labeled(fb, rightPaneX + 8, splitY + 32, rightPaneW - 16, splitH - 40, stats);

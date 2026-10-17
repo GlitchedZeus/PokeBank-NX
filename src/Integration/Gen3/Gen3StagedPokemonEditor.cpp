@@ -123,6 +123,26 @@ constexpr bool validPokerus(uint8_t raw) noexcept { return raw == 0 || (raw >> 4
 constexpr std::size_t maxNicknameLength(uint8_t language) noexcept { return language == 1 ? 5 : 10; }
 constexpr std::size_t maxOtLength(uint8_t language) noexcept { return language == 1 ? 5 : 7; }
 
+// Unown (201) is the only Gen III species whose form is stored: its letter is PID-derived
+// (Pokemon3FRLG::form, PKHeX PK3 Form / EntityPID.GetUnownForm3). Deoxys' form follows the game.
+bool applyUnownLetter(Pokemon::Pokemon3FRLG& pokemon, const std::optional<uint8_t>& form,
+                      std::string& error) {
+    if (!form || *form == pokemon.form()) return true;
+    if (pokemon.speciesID() != 201) {
+        error = "Only Unown stores a form (its letter) in a Generation III record";
+        return false;
+    }
+    if (*form >= 28) {
+        error = "Unown letter must be A-Z, ! or ?";
+        return false;
+    }
+    if (!pokemon.setUnownLetter(*form, pokemon.id32())) {
+        error = "No Generation III PID gives that Unown letter with this Nature and Shiny state";
+        return false;
+    }
+    return true;
+}
+
 bool validLanguage(uint8_t language) noexcept {
     // PK3 language ids: Japanese, English, French, Italian, German, Spanish.
     return language == 1 || language == 2 || language == 3 ||
@@ -502,7 +522,7 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
 
     const bool pidLinkedEdit =
         edit.nature.has_value() || edit.gender.has_value() ||
-        edit.shiny.has_value() || edit.abilityNumber.has_value();
+        edit.shiny.has_value() || edit.abilityNumber.has_value() || edit.form.has_value();
     const uint8_t expectedNature = edit.nature.value_or(pokemon.nature());
     const uint8_t expectedGender = edit.gender.value_or(pokemon.gender());
     const bool expectedShiny = edit.shiny.value_or(pokemon.isShiny(pokemon.id32(), ""));
@@ -530,11 +550,14 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         }
         pokemon.setAbilityNumber(*edit.abilityNumber);
     }
+    // Unown's letter is the fourth PID-derived trait; set last so it keeps the others.
+    if (!applyUnownLetter(pokemon, edit.form, error)) return false;
 
     if (pokemon.nature() != expectedNature ||
         pokemon.gender() != expectedGender ||
         pokemon.isShiny(pokemon.id32(), "") != expectedShiny ||
-        pokemon.abilityNumber() != expectedAbilityNumber) {
+        pokemon.abilityNumber() != expectedAbilityNumber ||
+        (edit.form && pokemon.form() != *edit.form)) {
         error = "Requested Generation III PID-linked field combination is not representable";
         return false;
     }
@@ -702,10 +725,12 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
         }
         pokemon.setAbilityNumber(*create.abilityNumber);
     }
+    if (!applyUnownLetter(pokemon, create.form, error)) return false;
     if (pokemon.nature() != expectedNature ||
         pokemon.gender() != expectedGender ||
         pokemon.isShiny(pokemon.id32(), "") != expectedShiny ||
-        pokemon.abilityNumber() != expectedAbilityNumber) {
+        pokemon.abilityNumber() != expectedAbilityNumber ||
+        (create.form && pokemon.form() != *create.form)) {
         error = "Requested Generation III Create PID-linked field combination is not representable";
         return false;
     }

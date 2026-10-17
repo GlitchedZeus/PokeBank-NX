@@ -2,6 +2,7 @@
 #pragma once
 #include "UI/Gen2NativePresentation.h"
 #include "UI/Gen2PokemonSession.h"
+#include "UI/SharedDataPaneLayout.h"
 #include "UI/StatsRadar.h"
 #include "Integration/Gen2/Gen2BattleStats.h"
 #include <algorithm>
@@ -41,69 +42,18 @@ inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame ga
     } else {
         rows.push_back({"Caught history", "No caught data recorded"});
     }
+    // Origin & Legality (formerly under the move rows): Crystal checks the current level against
+    // the recorded met level; Gold/Silver record nothing to check.
+    rows.push_back({"Legality", game == G::SourceGame::Crystal
+        ? Gen2Native::caughtLevelLegalityText(Gen2Native::caughtLevelLegality(p.level, caught))
+        : "Not checked"});
     return rows;
 }
 
-// The GEN II DATA pane is 198 px wide (SharedPokemonShell::drawDataAndGraph, dataW) with a
-// 10 px text inset either side. Rows are laid out inside it: "Label: value" on one line when it
-// fits, otherwise the label then the value word-wrapped beneath it (a word wider than the pane is
-// broken by characters). Lines that would run below the pane end with an ellipsis instead, so
-// caught-history text can never spill into the BATTLE STATS graph or past the panel.
-constexpr int kDataPaneTextWidth = 198 - 20;
-constexpr int kDataLineHeight = 20;
-constexpr int kDataTextTop = 34;  // below the pane title
-constexpr int kDataTextBottom = 8;
-
-struct DataLine {
-    std::string text;
-    bool label = false; // dim label line (the value follows on its own line)
-    int y = 0;          // offset from the first text line
-};
-
-template <class Measure>
-std::vector<DataLine> layoutDataRows(const std::vector<DataRow>& rows, int width, int height,
-                                     Measure measure) {
-    std::vector<std::pair<std::string, bool>> wrapped;
-    const auto wrapValue = [&](const std::string& value) {
-        std::string line;
-        std::size_t i = 0;
-        while (i < value.size()) {
-            std::size_t end = value.find(' ', i);
-            if (end == std::string::npos) end = value.size();
-            std::string word = value.substr(i, end - i);
-            i = end < value.size() ? end + 1 : end;
-            const std::string candidate = line.empty() ? word : line + " " + word;
-            if (measure(candidate) <= width) { line = candidate; continue; }
-            if (!line.empty()) { wrapped.push_back({line, false}); line.clear(); }
-            while (!word.empty() && measure(word) > width) {
-                std::size_t cut = word.size();
-                while (cut > 1 && measure(word.substr(0, cut)) > width) --cut;
-                wrapped.push_back({word.substr(0, cut), false});
-                word = word.substr(cut);
-            }
-            line = word;
-        }
-        if (!line.empty()) wrapped.push_back({line, false});
-    };
-    for (const auto& row : rows) {
-        const std::string combined = row.label + ": " + row.value;
-        if (measure(combined) <= width) { wrapped.push_back({combined, false}); continue; }
-        wrapped.push_back({row.label, true});
-        wrapValue(row.value);
-    }
-    const int capacity = std::max(0, height / kDataLineHeight);
-    std::vector<DataLine> lines;
-    for (std::size_t i = 0; i < wrapped.size() && static_cast<int>(lines.size()) < capacity; ++i)
-        lines.push_back({wrapped[i].first, wrapped[i].second, static_cast<int>(lines.size()) * kDataLineHeight});
-    if (lines.size() < wrapped.size() && !lines.empty()) {
-        auto& last = lines.back();
-        last.label = false;
-        std::string text = last.text;
-        while (!text.empty() && measure(text + "...") > width) text.pop_back();
-        last.text = text + "...";
-    }
-    return lines;
-}
+// The GEN II DATA pane text is laid out by the ONE shared data-pane layout
+// (UI/SharedDataPaneLayout.h, SharedDataPane::layoutRows): "Label: value" when it fits, otherwise
+// the label then the value wrapped beneath it, "..." where the pane runs out, so caught-history
+// text never spills into the BATTLE STATS graph or past the panel.
 } // namespace PokeBank::UIModel::Gen2Workspace
 
 namespace UI::Gen2WorkspacePresentation {
@@ -126,14 +76,15 @@ inline void drawDataAndGraph(PKSEFramebuffer& fb, int x, int y, int w, int h,
     namespace W = PokeBank::UIModel::Gen2Workspace;
     SharedPokemonShell::drawDataAndGraph(fb, x, y, w, h, "GEN II DATA", std::vector<W::DataRow>{},
         W::battleStats(p));
-    const auto lines = W::layoutDataRows(rows, W::kDataPaneTextWidth,
-        h - W::kDataTextTop - W::kDataTextBottom, [&fb](const std::string& text) {
+    namespace Pane = PokeBank::UIModel::SharedDataPane;
+    const auto lines = Pane::layoutRows(rows, Pane::kTextWidth,
+        h - Pane::kTextTop - Pane::kTextBottom, [&fb](const std::string& text) {
             int tw = 0, th = 0;
             fb.measureText(text, tw, th, TextStyle::Caption);
             return tw;
         });
     for (const auto& line : lines)
-        fb.drawText(x + 12 + 10, y + W::kDataTextTop + line.y, line.text,
+        fb.drawText(x + 12 + Pane::kTextInset, y + Pane::kTextTop + line.y, line.text,
                     line.label ? Colors::TextDim : Colors::Text, TextStyle::Caption);
 }
 } // namespace UI::Gen2WorkspacePresentation

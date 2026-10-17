@@ -411,6 +411,20 @@ void runGame(SourceGame game, Family family) {
         correlated = editor->boxedPokemon(0, 3, error);
         assert(correlated && correlated->encryptedBytes == correlatedEditPreview->encryptedBytes);
 
+        // Unown's letter is the PID-derived Gen III form: the staged editor reaches it through a
+        // PID re-roll that keeps Nature / Shiny, and refuses a letter for any other species.
+        {
+            BoxPokemonEdit unown;
+            unown.species = 201;
+            unown.form = 7; // H
+            auto unownPreview = editor->previewEdit(0, 3, unown, error);
+            assert(unownPreview && error.empty() && unownPreview->form == 7);
+            assert(unownPreview->nature == correlated->nature && unownPreview->shiny == correlated->shiny);
+            BoxPokemonEdit wrongSpecies;
+            wrongSpecies.form = 3;
+            assert(!editor->previewEdit(0, 3, wrongSpecies, error));
+        }
+
         const auto beforeImpossible = editor->stagedBytes();
         BoxPokemonEdit impossibleGender;
         impossibleGender.species = 81; // Magnemite is genderless.

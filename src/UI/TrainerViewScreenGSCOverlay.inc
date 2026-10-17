@@ -810,7 +810,7 @@ void drawStagedEditor(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             rowY += actionRowStep;
         }
         fb.drawText(x + 32, y + h - 40,
-                    "A Select    X Review    B Close/Review    FORMAT VALID != full encounter legality",
+                    "Origin & Legality: not checked",
                     Colors::TextDim, TextStyle::Caption);
         return;
     }

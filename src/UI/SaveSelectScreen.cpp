@@ -21,6 +21,7 @@
 #include "UI/TouchInput.h"
 #include "UI/HomeQuitConfirm.h"
 #include "UI/InputTrace.h"
+#include "UI/SharedEditorChrome.h"
 #include "Enums/GameVersion.h"
 #include "Save/GetSaveFileContents.h"
 #include "Trainer/Trainer.h"
@@ -4303,9 +4304,13 @@ namespace UI {
         }
 
         fb.clearClip();
-        drawNavBar(fb, {{"D-pad/Stick","Choose"},{"A","Open"},
+        // L/R switches PROFILE in this full browser (not the game, as on Product Home), so the
+        // footer says so whenever it does anything; with one profile L/R is inert and unlisted.
+        std::vector<ControllerHint> classicHints = {{"D-pad/Stick","Choose"},{"A","Open"},
                         {"X","Save / Source"},{"Y","Sort"},{"+","Favorite"},
-                        {"ZR","Launch"},{"B","Back"}});
+                        {"ZR","Launch"},{"B","Back"}};
+        if (users.size() > 1) classicHints.insert(classicHints.begin() + 2, {"L/R", "Profile"});
+        drawNavBar(fb, classicHints);
     }
 
     void SaveSelectScreen::draw(PKSEFramebuffer& fb) {
@@ -5323,7 +5328,7 @@ namespace UI {
             }
             if(!gen5Notice.empty())
                 drawGen5SourceNotice(fb,gen5Notice,x+28,y+h-44,w-56);
-            drawNavBar(fb,{{"D-pad/Stick","Choose"},{"A","Select"},{"B","Back"}});
+            SharedEditorChrome::drawPickerFooter(fb, {.browse = true, .page = false});
         } else if (overlay == Overlay::Gen5UnassignConfirm && u) {
             constexpr int w=760,h=270;
             const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-h)/2;
@@ -5401,7 +5406,7 @@ namespace UI {
             if (!gen4Notice.empty())
                 fb.drawText(x + 28, y + h - 42, gen4Notice.substr(0, 100),
                             Colors::TextMuted, TextStyle::Caption);
-            drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Select"}, {"B", "Back"}});
+            SharedEditorChrome::drawPickerFooter(fb, {.browse = true, .page = false});
         } else if (overlay == Overlay::Gen4Candidates && u) {
             constexpr int w = 900, h = 540, rowH = 76, visibleRows = 5;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
@@ -5473,7 +5478,7 @@ namespace UI {
                             i == optionsIndex ? Colors::TextPrimary : Colors::TextSecondary);
                 ry += rowH;
             }
-            drawNavBar(fb, {{"D-pad/Stick", "Choose"}, {"A", "Select"}, {"B", "Cancel"}});
+            SharedEditorChrome::drawPickerFooter(fb, {.browse = true, .page = false});
         }
     }
 }

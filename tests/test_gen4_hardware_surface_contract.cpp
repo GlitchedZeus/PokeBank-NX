@@ -76,18 +76,13 @@ int main() {
     // disabled transfer command available through touch or controller A.
     constexpr auto actions = Shared::actionsForSlot(true, {true, true, true}, true);
     constexpr auto rendered = Narrow::classic(actions, true);
-    static_assert(rendered.count == 11);
-    static_assert(rendered.rows[0].nativeIndex == 0);
-    static_assert(rendered.rows[1].nativeIndex == -1);
-    static_assert(rendered.rows[2].nativeIndex == -1);
-    static_assert(rendered.rows[3].nativeIndex == -1);
-    static_assert(rendered.rows[4].nativeIndex == 1);
-    static_assert(rendered.rows[5].nativeIndex == 2);
-    static_assert(rendered.rows[6].nativeIndex == 3);
-    static_assert(rendered.rows[7].nativeIndex == -1);
-    static_assert(rendered.rows[8].nativeIndex == 4);
-    static_assert(rendered.rows[9].nativeIndex == 5);
-    static_assert(rendered.rows[10].nativeIndex == 6);
+    // Shared order, only real commands: View, Edit, Clone, Release, Origin & Legality,
+    // Review, Cancel. No greyed placeholders (Make Shiny, Master Vault, Bank, Transfer).
+    static_assert(rendered.count == 7);
+    static_assert(rendered.rows[0].nativeIndex == 0 && rendered.rows[6].nativeIndex == 6);
+    for (int i = 0; i < rendered.count; ++i)
+        assert(rendered.rows[static_cast<std::size_t>(i)].nativeIndex == i);
+    assert(std::string(rendered.rows[4].label) == "Origin & Legality");
     static_assert(Narrow::geometry(12).width == 440);
     static_assert(Narrow::geometry(12).height <= 720 - 56);
     static_assert(Narrow::geometry(9).rowHeight >= 54);
@@ -401,8 +396,10 @@ int main() {
     contains(editPath,"Utils::promptNumber(");
     contains(addPath,"if(!r.accepted)return true;");
     contains(editPath,"if(!r.accepted)return true;");
-    contains(addPath,"Gen4::gen4BagMaxQuantity(");
-    contains(editPath,"Gen4::gen4BagMaxQuantity(");
+    contains(addPath,"gen4QuantityRule(screen,static_cast<size_t>(state.itemAddPocket),id)");
+    contains(addPath,"if(rule.editable)");
+    contains(editPath,"gen4QuantityRule(screen,static_cast<size_t>(pocket),item.itemId)");
+    contains(editPath,"This item is unique; its quantity is fixed at 1");
     contains(addPath,"Gen4::gen4BagItemAllowed(");
     contains(editPath,"itemId!=originalId");
     contains(addPath,"static_cast<uint16_t>(r.value)");
@@ -436,7 +433,7 @@ int main() {
     contains(surface, "status = \"Preserved\"");
     contains(surface, "MoveResult::Unsupported");
     contains(surface, "status = \"Transfer\"");
-    contains(surface, "Gen IV move compatibility • event/encounter legality is not fully checked");
+    contains(surface, "Gen IV move compatibility checked • Origin & Legality: incomplete");
     assert(surface.find("Names::isMovePresent") == std::string::npos);
     assert(surface.find("Native Gen IV move catalog") == std::string::npos);
     assert(surface.find("move choice read-only in G4-03") == std::string::npos);
@@ -482,11 +479,9 @@ int main() {
     contains(boxPanel, "? \"A / tap: Actions\" : \"A / tap: Edit\"");
     contains(surface, "add(MenuAction::Clone, \"Clone\", stagedAvailable);");
     contains(surface, "add(MenuAction::Release, \"Release\", stagedAvailable);");
-    contains(surface, "add(MenuAction::AddMasterVault, \"Add to Master Vault\", false);");
-    contains(surface, "add(MenuAction::AddBank, \"Add to Bank...\", false);");
-    contains(surface, "add(MenuAction::TransferGame, \"Transfer to Game...\", false);");
-    contains(surface, "add(MenuAction::Clone, \"Clone\", false);");
-    contains(surface, "add(MenuAction::MakeShiny, \"Make Shiny\", false);");
+    contains(surface, "add(MenuAction::MovePokemon, \"Move\", stagedAvailable);");
+    assert(surface.find("\"Make Shiny\"") == std::string::npos);
+    assert(surface.find("add(MenuAction::AddMasterVault") == std::string::npos);
     contains(surface, "PickerTarget::Species");
     assert(surface.find("createSpeciesInitialized") == std::string::npos);
     contains(surface, "state.session.working->setSpecies(value)");
@@ -518,11 +513,7 @@ int main() {
     assert(surface.find("Create is not enabled in the Edit milestone") == std::string::npos);
     contains(surface, "\"Clone\"");
     contains(surface, "\"Release\"");
-    contains(surface, "\"Legality & Provenance\"");
-    contains(surface, "\"Add to Master Vault\"");
-    contains(surface, "\"Add to Bank...\"");
-    contains(surface, "\"Transfer to Game...\"");
-    contains(surface, "\"Make Shiny\"");
+    contains(surface, "NarrowPokemonMenu::kOriginLegalityLabel");
     contains(staged, "stageCloneBoxPokemon");
     contains(staged, "stageReleaseBoxPokemon");
     contains(surface, "partyEntrySurface");
@@ -613,7 +604,7 @@ int main() {
     contains(surface, "SharedHeldItemPickerPresentation::drawHeading(");
     contains(surface, "ItemPickerArtwork::draw(fb, x + w - 35");
     contains(gen3Picker, "ItemPickerArtwork::draw(fb, x + w - 35");
-    contains(gen2Editor, "\"A\", \"Choose\"");
+    contains(gen2Editor, "UI::SharedEditorChrome::drawPickerFooter(fb, footer);"); // A Select / B Cancel
     contains(sharedHeld, "if (value != 0)");
     contains(itemArtwork, "SpriteManager::getItemSprite(exactName)");
     contains(spriteRuntime, "sprites/items/");
@@ -625,8 +616,8 @@ int main() {
     // Gen I is included in the shared move text formatting requirements:
     // all four native picker paths consume the identical separator formatter.
     const auto fixedMoveRows = read("include/UI/MovePickerRowUI.h");
-    contains(gen1Move, "MovePickerRowUI::draw(fb");
-    contains(gen2Move, "MovePickerRowUI::draw(fb");
+    contains(gen1Move, "SharedMovesPanel::drawChooserRow(fb");
+    contains(gen2Move, "SharedMovesPanel::drawChooserRow(fb");
     contains(gen3Picker, "SharedMovesPanel::drawChooserRow(fb");
     contains(surface, "SharedMovesPanel::drawChooserRow(fb");
     contains(fixedMoveRows, "Presentation::numberedName(move)");
@@ -712,8 +703,9 @@ int main() {
     contains(baseUi, "hasUnsavedChanges || trainer.hasStagedChanges()");
     contains(baseUi, "PokeVault::Integration::Gen4::BagPocketCount");
     contains(baseUi, "sourceGameId==\"platinum_nds\"");
-    contains(baseUi, "A: Edit Quantity  |  Y: Remove...");
-    contains(baseUi, "X: Add Item");
+    contains(baseUi, "footer.push(\"A\", \"Edit Quantity\");"); // only for a quantity-editable item (QuantityPolicy)
+    contains(baseUi, "PokeBank::UIModel::Gen4BagQuantity::rule(");
+    contains(baseUi, "footer.push(\"X\", \"Add Item\");");
 
     contains(baseUi, "immutableSourceBlocksSaveDialog(");
     contains(baseUi, "exitOnlySaveConfirm");

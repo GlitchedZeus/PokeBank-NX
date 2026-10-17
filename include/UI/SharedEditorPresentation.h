@@ -120,6 +120,14 @@ constexpr Footer confirmFooter(const char* confirmGlyph, const char* confirmLabe
     return f;
 }
 
+// A destructive confirm (Release, Remove, Discard): only Y commits. A and B both back out, and
+// a frame with B held alongside Y cancels, so a stray press can never destroy anything.
+enum class DestructiveConfirm : uint8_t { None, Commit, Cancel };
+constexpr DestructiveConfirm destructiveConfirmStep(bool y, bool a, bool b) noexcept {
+    if (a || b) return DestructiveConfirm::Cancel;
+    return y ? DestructiveConfirm::Commit : DestructiveConfirm::None;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Inline toggles: A cycles a small value set in place, no popup.
 // ---------------------------------------------------------------------------------------------

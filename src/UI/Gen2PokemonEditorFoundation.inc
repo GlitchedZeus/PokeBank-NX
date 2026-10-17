@@ -1,3 +1,4 @@
+#include "UI/SharedEditorChrome.h"
 // Generation II shared DETAILS | VALUES | MOVES workspace.
 // This stays layered over the accepted GSC discovery/export/action-sheet implementation.
 // Browsing edits only a local session record; StagedEditor is touched solely by Add / Keep.
@@ -929,13 +930,18 @@ void drawHeldItemPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const St
             gridX, gridY - 3, Grid::modalWidth - 2 * Grid::gridInsetX,
             Grid::rows * Grid::rowPitch);
     }
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Page"},
-                    {"A", "Choose"}, {"B", "Cancel"}, {"X", "Sort"}});
+    PokeBank::UIModel::SharedEditorPresentation::PickerFooterSpec footer;
+    footer.gridPaging = true;
+    footer.xLabel = "Sort";
+    UI::SharedEditorChrome::drawPickerFooter(fb, footer);
 }
 
-void drawConfirm(PKSEFramebuffer& fb, const State& state) {
+void drawConfirm(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State& state) {
     // Reuse PKSE's native creator/details confirmation chrome. Generation II keeps its
     // existing PokeBank staging semantics underneath; this changes presentation/input only.
+    // The dialog owns the frame's touch and draws its own footer (the shared confirm footer
+    // from Gen2WorkspaceLayers), so nothing underneath it stays tappable.
+    UI::SharedEditorChrome::beginModal(screen.touchButtons);
     const bool create = state.mode == Mode::Create;
     const int w = create ? 540 : 560;
     constexpr int h = 226;
@@ -958,6 +964,13 @@ void drawConfirm(PKSEFramebuffer& fb, const State& state) {
     drawGlyphButton(fb, x + (w - cbw) / 2, cby, cbw, cbh, "Y", "Discard", Colors::PanelAlt);
     drawGlyphButton(fb, x + w - 24 - cbw, cby, cbw, cbh, "A",
                     create ? "Keep" : "Save", Colors::PanelAlt);
+    namespace Layers = PokeBank::UIModel::Gen2WorkspaceLayers;
+    const auto footer = Layers::footer(Layers::Layer::ExitConfirm,
+                                       create ? Layers::Session::Create : Layers::Session::Edit);
+    std::vector<ControllerHint> hints;
+    for (std::size_t i = 0; i < footer.count; ++i)
+        hints.push_back({footer.hints[i].glyph, footer.hints[i].label});
+    drawNavBar(fb, hints);
 }
 
 } // namespace
@@ -1002,7 +1015,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
                         {"Y", "Random DVs"}, {"B", "Back"}});
 
     if (state.itemPicker) drawHeldItemPicker(screen, fb, state);
-    if (state.confirmExit) drawConfirm(fb, state);
+    if (state.confirmExit) drawConfirm(screen, fb, state);
 }
 
 } // namespace UI::Gen2PokemonEditor

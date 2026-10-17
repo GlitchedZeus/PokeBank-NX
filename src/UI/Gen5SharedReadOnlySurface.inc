@@ -4,6 +4,8 @@
 // source-save writer, Storage/Bank or generic uncontrolled mutation handlers.
 // Touch targets are isolated to verified read-only and native-field staged
 // actions; native bank, source-writing and unsupported mutation routes remain barred.
+#include "Inventory/ItemQuantityPolicy.h"
+#include "Names/LocationDisplayNames.h"
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Integration/Gen5/Gen5BoxTouchNavigation.h"
 #include "Integration/Gen5/Gen5SharedReview.h"
@@ -184,11 +186,8 @@ bool workspaceSurface(Surface surface) noexcept {
 // A location name made only of the full-width placeholder glyphs the Switch
 // font cannot draw (e.g. Gen V location 0) is shown as text instead.
 std::string metLocationText5(uint8_t origin, uint16_t location) {
-    const char* name = Names::getMetLocationName(origin, location);
-    const bool printable = name && name[0] &&
-        std::string_view(name).find('\xEF') == std::string_view::npos;
-    if (location == 0) return "None (ID 0)";
-    return printable ? std::string(name) : "Location ID " + std::to_string(location);
+    // Player-facing name only: no raw id; placeholder-glyph entries read "Unknown location".
+    return Names::getMetLocationDisplayName(origin, location);
 }
 std::string shortValue5(std::string value, size_t limit = 18) {
     if (value.size() <= limit) return value;
@@ -218,7 +217,7 @@ struct Gen5Editor {
     static constexpr bool kSpeciesSearch = true;
     static constexpr bool kCompactForm = true;
     static constexpr const char* kDetailReadOnly =
-        "Language and Origin are fixed in a Generation V record";
+        "Language and Origin are read-only for a Generation V record in this editor";
     static constexpr const char* kValueReadOnly = "This Generation V value is read-only";
     static constexpr const char* kHeldItemTitle = "Held Item — Generation V";
     static constexpr const char* kMovePickerTitle = "Move — Generation V";
@@ -226,7 +225,7 @@ struct Gen5Editor {
         "Valid BW/B2W2 moves • Pwr/Acc/PP • learnability not checked";
     static constexpr const char* kMoveEditorSubtitle =
         "Valid native BW/B2W2 move • species learnability not checked";
-    static constexpr const char* kDataTitle = "GEN V DATA";
+    static constexpr const char* kDataTitle = "Origin & Legality";
 
     static PokeVault::Integration::Gen5::Gen5SharedScreenState& backend(const TrainerViewScreen& screen) {
         return nativeTrainer(const_cast<TrainerViewScreen&>(screen)).sharedScreen();
@@ -442,9 +441,14 @@ struct Gen5Editor {
                 EditorSurface::openPicker(screen, state, PickerTarget::MetLocation,
                                           Fields::metLocationChoices(), p.metLocation());
                 return true;
-            case Pokerus:
-                EditorSurface::openPicker(screen, state, PickerTarget::Pokerus, {0, 1, 2}, p.pokerusMode());
+            case Pokerus: {
+                // Inline toggle: None -> Infected -> Cured -> None (Gen V modes 0 / 2 / 1).
+                // The native record restores the source byte when the original mode returns.
+                const uint32_t mode = p.pokerusMode();
+                const uint32_t next = mode == 0 ? 2u : mode == 2 ? 1u : 0u;
+                stage(screen, Field::Pokerus, 0, next);
                 return true;
+            }
             case Form: {
                 auto forms = Fields::formChoices(d, b2w2(screen));
                 if (forms.size() <= 1) {
@@ -753,6 +757,9 @@ struct Gen5Editor {
             {"Fateful", p.fatefulEncounter() ? "Yes" : "No"},
             {"Egg status", p.egg() ? "Unhatched" : "Not egg"},
             {"OT gender", p.originalTrainerGender() == 0 ? "Male" : "Female"},
+            // Only format validity is checked for Gen V; no legality conclusion is drawn.
+            {"Legality", PokeBank::UIModel::SharedEditorPresentation::legalityLabel(
+                PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked)},
         };
         return rows;
     }
@@ -805,7 +812,8 @@ bool handlePidConfirmation(TrainerViewScreen& screen, Gen5EditorState& state, u6
 void drawPidConfirmation(TrainerViewScreen& screen, PKSEFramebuffer& fb, const Gen5EditorState& state) {
     const auto& pending = state.pid;
     if (!pending.active) return;
-    screen.touchButtons.clear();
+    // The confirm owns the touch layer: covered glyphs and footer badges never inject a button.
+    SharedEditorChrome::beginModal(screen.touchButtons);
     fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - kNavBarH, Color(0, 0, 0, 150));
     constexpr int w = 700, h = 290;
     const int x = (fb.getWidth() - w) / 2;
@@ -817,7 +825,7 @@ void drawPidConfirmation(TrainerViewScreen& screen, PKSEFramebuffer& fb, const G
     fb.drawText(x + 28, cy + 62, pidHex5(pending.before) + "  ->  " + pidHex5(pending.after),
                 Colors::Text, TextStyle::Body);
     fb.drawText(x + 28, cy + 98, "Gender, ability and shininess stay linked to the new PID. "
-                "Encounter legality is not evaluated.", Colors::TextDim, TextStyle::Caption);
+                "Origin & Legality: not checked.", Colors::TextDim, TextStyle::Caption);
     const int bw = 190, bh = TouchTargetMin, by = y + h - bh - 18;
     drawGlyphButton(fb, x + 24, by, bw, bh, "B", "Cancel", Colors::PanelAlt);
     drawGlyphButton(fb, x + w - 24 - bw, by, bw, bh, "A", "Change PID", Colors::PanelAlt);
@@ -871,6 +879,25 @@ void syncBagCursor(TrainerViewScreen& screen) {
 std::string bagItemLabel(const TrainerViewScreen& screen,uint16_t id) {
     return Names::machineDisplayLabel(screen.trainer.getGameGroup(),id,Names::getItemName(id));
 }
+// The ONE per-item quantity query of the Gen V bag, backed by Thread I's
+// Inventory/ItemQuantityPolicy.h. Never exceeds the native pocket cap the staged bag enforces
+// (bagPocketLayout5 maxCount). Gen V keeps Poke Balls in Items; Key Items and TMs/HMs are unique.
+struct Gen5QuantityRule { bool valid = false; bool editable = false; uint16_t maximum = 0; };
+Gen5QuantityRule gen5QuantityRule(const TrainerViewScreen& screen, size_t pocket, uint16_t id,
+                                  uint16_t nativeCap) noexcept {
+    namespace QP = PokeVault::Inventory::QuantityPolicy;
+    static constexpr std::array<QP::Pocket, 5> kPockets{{
+        QP::Pocket::Items, QP::Pocket::KeyItems, QP::Pocket::TMHM, QP::Pocket::Medicine,
+        QP::Pocket::Berries}};
+    static_assert(kPockets.size() == PokeVault::Integration::Gen5::BagPocket5Count);
+    QP::Game game{};
+    if (pocket >= kPockets.size() || !QP::gameFromId(screen.sourceGameId, game)) return {};
+    const auto rule = QP::quantityRule(game, kPockets[pocket], id);
+    if (!rule.valid || nativeCap == 0) return {};
+    const uint16_t maximum = std::min(rule.maximum, nativeCap);
+    return {true, rule.editable && maximum > 1, maximum};
+}
+
 bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touch) {
     namespace G=PokeVault::Integration::Gen5;
     using BagSurface=G::Gen5BagScreen::Surface;
@@ -898,8 +925,14 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touc
                 bag.cancel();
             } else if(keys&HidNpadButton_A) {
                 const uint16_t id=bag.chosenAddItem();
-                const int maximum=static_cast<int>(bag.addMaximum(ws));
-                const auto r=Utils::promptNumber("Add "+bagItemLabel(screen,id),1,1,maximum);
+                const auto rule=gen5QuantityRule(screen,bag.pocket(),id,bag.addMaximum(ws));
+                // A unique item is added once; only a quantity-editable item asks for an amount.
+                Utils::NumberResult r{};
+                r.accepted=rule.valid;
+                r.value=1;
+                if(!rule.valid) screen.postStatus("This item cannot be added to this Gen V pocket",300);
+                else if(rule.editable)
+                    r=Utils::promptNumber("Add "+bagItemLabel(screen,id),1,1,rule.maximum);
                 screen.controllerNavigation.reset();
                 if(r.accepted) { // Cancel is byte-for-byte inert.
                     if(!bag.confirmAdd(ws,id,r.value,refresh,error))screen.postStatus(error,320);
@@ -973,8 +1006,15 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touc
         screen.controllerNavigation.reset();
     } else if(keys&HidNpadButton_A) {
         if(const auto request=bag.beginQuantity(ws,error)) {
+            const auto rule=gen5QuantityRule(screen,request->pocket,request->itemId,request->maximum);
+            if(!rule.editable || request->current>rule.maximum) {
+                // Unique items get no quantity editor; nothing is staged.
+                screen.postStatus(rule.valid ? "This item is unique; its quantity is fixed at 1"
+                                             : "Gen V item quantity outside native limits",260);
+                return true;
+            }
             const auto r=Utils::promptNumber("Edit "+bagItemLabel(screen,request->itemId),
-                static_cast<int>(request->current),1,static_cast<int>(request->maximum));
+                static_cast<int>(request->current),1,static_cast<int>(rule.maximum));
             screen.controllerNavigation.reset();
             if(r.accepted) { // Cancel cannot mutate the stage.
                 if(!bag.applyQuantity(ws,*request,r.value,refresh,error))
@@ -1566,9 +1606,9 @@ void dimShared(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
 const char* narrowActionLabel5(PokeBank::UIModel::SharedPokemonEditor::Action action) noexcept {
     using A=PokeBank::UIModel::SharedPokemonEditor::Action;
     switch(action) {
-        case A::View:return "View Pokemon";
+        case A::View:return "View";
         case A::Edit:return "Edit";
-        case A::Move:return "Move Pokemon";
+        case A::Move:return "Move";
         case A::Clone:return "Clone";
         case A::Remove:return "Release";
         case A::Add:return "Add Pokemon";
@@ -1593,11 +1633,10 @@ void drawActions(TrainerViewScreen& screen,PKSEFramebuffer& fb,
     drawNarrowPokemonActions(fb,screen.touchButtons,model,state.actionRow(),title,
                              screen.legacyProviderLabel()+" NDS SOURCE / READ ONLY",
                              kGen5ActionTouchBase);
-    if(state.selectedBoxUndoAvailable(workspace))
-        drawNavBar(fb,{{"D-pad/Stick","Navigate"},{"A","Select"},
-                       {"Y","Undo This Slot"},{"B","Cancel"}});
-    else
-        drawNavBar(fb,{{"D-pad/Stick","Navigate"},{"A","Select"},{"B","Cancel"}});
+    SharedEditorChrome::Presentation::PickerFooterSpec footer;
+    footer.page=false;
+    if(state.selectedBoxUndoAvailable(workspace))footer.yLabel="Undo This Slot";
+    SharedEditorChrome::drawPickerFooter(fb,footer);
 }
 const char* reviewedStatName(size_t stat) noexcept {
     constexpr const char* names[]={"HP","Atk","Def","Spe","SpA","SpD"};
@@ -1724,6 +1763,8 @@ void drawDecision(TrainerViewScreen& screen,PKSEFramebuffer& fb,
                   std::string title,std::string message,
                   const std::vector<ControllerHint>& keys) {
     dimShared(screen,fb);
+    // The decision owns the frame's touch; the covered hub's footer is never tappable.
+    SharedEditorChrome::beginModal(screen.touchButtons);
     const int w=870,h=230,x=(fb.getWidth()-w)/2;
     const int y=(fb.getHeight()-kNavBarH-h)/2;
     fb.drawFilledRoundedRect(x,y,w,h,18,Colors::Panel);
@@ -1745,10 +1786,18 @@ void drawBag(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
     std::vector<ControllerHint> hints;
     for(const auto& entry:bag.footer(ws))hints.push_back({entry.glyph,entry.label});
     if(bag.surface()==BagSurface::Browse) {
+        // A glyph-less segment is a state marker (accent text). The vector overload drops hints
+        // without a button, so serialize it here or "view only" would never be shown.
+        std::string serialized;
+        for(const auto& hint:hints) {
+            if(hint.button.empty() || hint.label.empty()) continue;
+            if(!serialized.empty()) serialized+="  |  ";
+            serialized+=hint.button+": "+hint.label;
+        }
         if(!G::Gen5BagScreen::mutablePocket(bag.pocket()) &&
            G::Gen5BagScreen::available(ws))
-            hints.push_back({"","Key Items/TMs view only"});
-        drawNavBar(fb,hints);
+            serialized+="  |  Key Items/TMs view only";
+        drawNavBar(fb,serialized);
         return;
     }
     fb.drawFilledRect(0,0,fb.getWidth(),fb.getHeight()-kNavBarH,Color(0,0,0,160));

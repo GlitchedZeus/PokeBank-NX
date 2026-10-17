@@ -207,7 +207,7 @@ require_all("src/UI/Gen4SharedPokemonSurface.inc",
             "Gen4BoxTouchActions::selectsTappedBoxSlot(tapped, slots)",
             "screen.selectedItemIndex = tapped;",
             "if (boxEntrySurface(screen)) {", "beginActions(screen);",
-            "if (partyEntry && touch.justTapped())", "screen.selectedPartyIndex = tapped - 6200;",
+            "screen.selectedMode == TrainerViewScreen::ViewMode::Party &&\n        screen.detailViewActive && touch.justTapped()", "screen.selectedPartyIndex = tapped - 6200;",
             "tapped - 6200 < static_cast<int>(screen.trainer.getPartySize())")
 
 # Empty box cells must enter the same guarded action popup as A, never
@@ -216,7 +216,7 @@ for rel, entry in (
     ("src/UI/Gen3SharedPokemonSurface.inc", "screen.detailViewActive && touch.justTapped()) {"),
     ("src/UI/Gen4SharedPokemonSurface.inc", "screen.detailViewActive && touch.justTapped()) {"),
 ):
-    code = read(rel).rsplit(entry, 1)[1].split("if (partyEntry && touch.justTapped())", 1)[0].split(
+    code = read(rel).rsplit(entry, 1)[1].split("screen.selectedMode == TrainerViewScreen::ViewMode::Party &&\n        screen.detailViewActive && touch.justTapped()", 1)[0].split(
         "const bool occupied = selectedOccupied(screen);", 1)[0]
     assert "beginActions(screen);" in code, f"{rel}: empty cell tap must open Actions"
     assert "if (selectedOccupied(screen)) beginActions(screen);" not in code
@@ -426,12 +426,12 @@ require_all("src/UI/Gen2PokemonPickerOverlay.inc",
             "appendClippedTouchButton(",
             "x + 20, listY - 5, panelW - 40, visible * rowStep + 8",
             "TouchPickerViewport locationViewport;",
-            "picker.locationViewport.ensure(picker.model.index, pickerCount, visible);",
+            "picker.locationViewport.ensure(picker.model.index, pickerCount, g.visible);",
             "picker.locationViewport.firstRow, maxFirst + 1",
-            "const int first = location ? overlay.locationViewport.firstRow :",
+            "const int first = overlay.locationViewport.firstRow;",
             "picker.locationViewport.reveal(picker.model.index, pickerCount, visible);",
             "!picker.locationViewport.containsSelection(",
-            "Focused encounter brought into view; press A again or tap a visible row")
+            "Location brought into view; press A again or tap it")
 picker_hit = read("src/UI/Gen2PokemonPickerOverlay.inc")
 assert "screen.touchButtons.push_back({2000 + i" not in picker_hit, (
     "Gen II picker should not publish unclipped hitboxes for hidden rows"
@@ -739,6 +739,17 @@ require_all("src/UI/BackupSelectionScreen.cpp",
             "if (touch.justTapped()) {",
             "if (in(deleteDeleteBtn))",
             "else if (in(deleteCancelBtn))")
+# Deleting a backup is irreversible, so it is never on A (P0 #320): the tapped Delete
+# button is Y, only the shared Y-confirms decision table deletes, and A/B cancel.
+require_all("src/UI/BackupSelectionScreen.cpp",
+            "if (in(deleteDeleteBtn))      kDown |= HidNpadButton_Y;",
+            "const Decision decision = PokeBank::UIModel::HomeQuit::decide(kDown);",
+            "if (decision == Decision::Quit) {\n                deleteBackup(deleteConfirmationIndex);",
+            '"Delete this backup?"',
+            'confirmFooter(\n                                               "Y", "Delete", "A", "Cancel")',
+            'drawGlyphButton(fb, delX,    by, bw, bh, "Y", "Delete", Colors::Red, Colors::White);')
+backup_src = (ROOT / "src/UI/BackupSelectionScreen.cpp").read_text(encoding="utf-8")
+assert "kDown & HidNpadButton_A) {\n                // Confirm deletion" not in backup_src
 
 # All generations share one clipped Species-picker gesture origin. Horizontal drags
 # and drags starting on the preview panel cannot advance the species on release.
@@ -865,9 +876,12 @@ assert " GBC SOURCE / READ ONLY" in read("src/UI/ClassicReleaseActionFix.inc")
 gen3_readonly = read("src/UI/Gen3SharedPokemonSurface.inc")
 assert "const Pokemon::Pokemon* sourceBoxPokemon(" in gen3_readonly
 assert "model.append(\"Add Pokemon\"); // blocked" in gen3_readonly
-for disabled in ('model.append("Edit");', 'model.append("Clone");',
-                 'model.append("Release");'):
-    assert disabled in gen3_readonly
+# Without a validated staged workspace only read-only View exists: Edit / Clone / Release are
+# not offered at all (shared action sheet lists real commands only).
+readonly_menu = gen3_readonly.split("void drawActions(", 1)[1].split("if (!staged) {", 1)[1].split("return;", 1)[0]
+assert 'model.append("View", 0);' in readonly_menu
+for gone in ('"Edit"', '"Clone"', '"Release"', '"Make Shiny"'):
+    assert gone not in readonly_menu, gone
 assert "screen.openActionSheetTargetDetails(true);" in gen3_readonly
 assert "screen.actionSheet.close();" in gen3_readonly
 assert "if (!editor(screen)) return false; // Read-only source" not in gen3_readonly

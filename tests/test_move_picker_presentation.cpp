@@ -15,13 +15,10 @@ const auto compact=M::compactPickerLayout();assert(compact.width==760&&compact.h
 // The active Gen I-IV picker path now uses one shared, aligned text renderer.
 // Gen II's normal editor is hosted in Gen2HardwarePickerFix.inc; the older
 // picker overlay still supplies fallback routing, not final displayed rows.
+// Gen I-V all use the shared compact Move chooser row (UI/SharedMovesPanel.h).
 for(const char* p:{"src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
-                   "src/UI/Gen2HardwarePickerFix.inc"}){
-    const auto s=read(p);
-    assert(s.find("MovePickerRowUI::draw(")!=std::string::npos);
-}
-// Gen III-V moved to the shared compact Move chooser row (UI/SharedMovesPanel.h).
-for(const char* p:{"src/UI/Gen3SharedPokemonSurface.inc",
+                   "src/UI/Gen2HardwarePickerFix.inc",
+                   "src/UI/Gen3SharedPokemonSurface.inc",
                    "src/UI/SharedPokemonEditorSurface.inc"}){
     const auto s=read(p);
     assert(s.find("SharedMovesPanel::drawChooserRow(")!=std::string::npos);

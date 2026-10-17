@@ -320,14 +320,13 @@ void nativeCatalogContracts() {
 // 8: the narrow Gen I-IV action menu, same geometry for every generation.
 void actionMenuContract() {
     Menu::Model gen4Like{};
-    for (const char* label : {"View Pokemon", "Add to Master Vault", "Add to Bank...",
-                              "Transfer to Game...", "Edit", "Move Pokemon", "Clone",
-                              "Release", "Make Shiny", "Legality & Provenance", "Cancel"})
+    for (const char* label : {"View", "Edit", "Clone", "Move", "Release",
+                              "Origin & Legality", "Review Pending Changes", "Cancel"})
         gen4Like.append(label, 0);
     const auto g4 = Menu::geometry(gen4Like.count);
     assert(g4.width == 440 && g4.headerHeight == 78);
     Menu::Model gen5{};
-    for (const char* label : {"View Pokemon", "Edit", "Move Pokemon", "Clone", "Release", "Cancel"})
+    for (const char* label : {"View", "Edit", "Clone", "Move", "Release", "Cancel"})
         gen5.append(label, gen5.count);
     const auto g5 = Menu::geometry(gen5.count);
     assert(g5.width == g4.width && g5.headerHeight == g4.headerHeight && g5.rowHeight == 54);
@@ -418,12 +417,12 @@ void surfaceSourceContracts() {
     contains(gen4, "static constexpr int kMaxSpecies = 493;");
     contains(gen4, "\"Held Item — Generation IV\"");
     contains(gen4, "\"Empty + compatible moves only • exact Gen IV Acc / Pwr / PP\"");
-    contains(gen4, "model.append(\"Add to Master Vault\");");
+    contains(gen4, "model.append(entry.label, entry.enabled ? i : -1);");
     contains(gen4, "static Enums::GameVersion moveGame(const TrainerViewScreen& screen) { return family(screen); }");
     // Gen I-III keep their accepted editors and the same shared contract layout.
     static_assert(Shared::layoutFor(Shared::Generation::Gen4).detailsRows == 16);
     static_assert(Shared::layoutFor(Shared::Generation::Gen5).detailsRows == F::RowCount);
-    static_assert(Shared::layoutFor(Shared::Generation::Gen3).detailsRows == 15);
+    static_assert(Shared::layoutFor(Shared::Generation::Gen3).detailsRows == 16);
 }
 
 // Owner hardware rule (every Gen I-V editor field): D-pad Left/Right and the

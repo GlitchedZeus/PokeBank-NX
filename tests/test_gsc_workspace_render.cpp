@@ -1,3 +1,5 @@
+#include <iterator>
+#include <fstream>
 #include "UI/Gen2WorkspacePresentation.h"
 #include "UI/SharedSpeciesPicker.h"
 #include "UI/Gen2HeldItemPicker.h"
@@ -127,11 +129,19 @@ int main() {
         std::vector<W::DataRow> rows{{"Met", "A landmark name that is far too long for this narrow pane"},
                                      {"Note", "Supercalifragilisticexpialidocious"}};
         for (int i = 0; i < 20; ++i) rows.push_back({"Row", std::to_string(i)});
-        const auto lines = W::layoutDataRows(rows, W::kDataPaneTextWidth, 200, measure);
-        assert(!lines.empty() && static_cast<int>(lines.size()) == 200 / W::kDataLineHeight);
+        // Gen II rows go through the ONE shared data-pane layout.
+        {
+            std::ifstream in("include/UI/Gen2WorkspacePresentation.h", std::ios::binary);
+            const std::string header((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            assert(header.find("Pane::layoutRows(rows, Pane::kTextWidth") != std::string::npos);
+            assert(header.find("layoutDataRows") == std::string::npos); // no second Gen II copy
+        }
+        namespace Pane = PokeBank::UIModel::SharedDataPane;
+        const auto lines = Pane::layoutRows(rows, Pane::kTextWidth, 200, measure);
+        assert(!lines.empty() && static_cast<int>(lines.size()) == 200 / Pane::kLineHeight);
         for (const auto& line : lines) {
-            assert(measure(line.text) <= W::kDataPaneTextWidth);
-            assert(line.y + W::kDataLineHeight <= 200);
+            assert(measure(line.text) <= Pane::kTextWidth);
+            assert(line.y + Pane::kLineHeight <= 200);
         }
         assert(lines.front().label && lines.front().text == "Met");
         assert(lines.back().text.size() >= 3 && lines.back().text.substr(lines.back().text.size() - 3) == "...");

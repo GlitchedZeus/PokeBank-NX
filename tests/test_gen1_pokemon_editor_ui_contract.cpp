@@ -237,10 +237,10 @@ int main() {
     const auto fullscreen = readFile("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc");
     const auto passive = readFile("src/UI/Gen1PokemonEditorPassiveView.inc");
     assert(passive.find("drawFullscreenGen1Workspace(screen, fb)") != std::string::npos);
-    assert(fullscreen.find("MoveCompatibility::firstIncompatible") != std::string::npos);
     assert(fullscreen.find("MoveCompatibility::canLearnMove") != std::string::npos);
-    assert(fullscreen.find("Move compatibility") != std::string::npos);
-    assert(fullscreen.find("Encounter legality") != std::string::npos);
+    // Per-slot status in the shared Moves panel; legality is a GEN I DATA row.
+    assert(fullscreen.find("ClassicMovesPanel::draw(") != std::string::npos);
+    assert(fullscreen.find("\"Legality\"") != std::string::npos);
 
     // The independent legacy details routes still use the presentation object and
     // retain their explicit compatibility initialization.
@@ -248,8 +248,9 @@ int main() {
                              "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc"})
         assert(readFile(path).find("view.setMoveCompatibility(") != std::string::npos);
     const auto passivePresentation = readFile("src/UI/Gen1PokemonDetailsPresentation.cpp");
-    assert(passivePresentation.find("p.moveCompatible[i] ? \"OK\" : \"Unusual\"") != std::string::npos);
-    assert(passivePresentation.find("Encounter legality\", \"Not checked") != std::string::npos);
+    assert(passivePresentation.find("p.moveCompatible[i] ? ClassicMovesPanel::Status::Ok : ClassicMovesPanel::Status::Preserved") != std::string::npos);
+    assert(passivePresentation.find("if (!p.moveCompatibilityChecked)") != std::string::npos);
+    assert(passivePresentation.find("\"Legality\"") != std::string::npos);
 
     const auto hardware = readFile("src/UI/Gen1PokemonEditorFoundationHardwareFix.inc");
     assert(hardware.find("Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r)") != std::string::npos);
