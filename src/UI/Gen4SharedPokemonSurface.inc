@@ -1228,7 +1228,6 @@ struct Gen4Editor {
     static constexpr auto generation = Shared::Generation::Gen4;
     static constexpr int kDetailRows = static_cast<int>(detailLabels.size());
     static constexpr int kMaxSpecies = 493;
-    static constexpr bool kSpeciesSearch = false;
     static constexpr bool kCompactForm = false;
     static constexpr const char* kDetailReadOnly =
         "This Generation IV field is visible but read-only in the current G4-04 slice";

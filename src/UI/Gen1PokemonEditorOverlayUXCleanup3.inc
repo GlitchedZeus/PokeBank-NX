@@ -246,12 +246,13 @@ void ux3HandleSpeciesPicker(TrainerViewScreen& screen, uint64_t down) {
     state.pickerValue = species;
     if (down & HidNpadButton_Y) ux3.pickerPreviewShiny = !ux3.pickerPreviewShiny;
     if (handled.keys) return;
-    // Shared list paging (Gen13PickerPaging.h): Up/Down wrap, Left/L/Right/R +-10, ZL/ZR +-50 —
-    // over the whole dex when no filter is typed, over the filtered list otherwise.
-    if (keys.any())
-        state.pickerValue = state.speciesChooser.filtered()
-            ? SharedSpeciesPicker::paged(state.speciesChooser, species, keys)
-            : PokeBank::UIModel::SharedPickerPaging::pagedRow(state.pickerValue - 1, 151, keys) + 1;
+    // Shared list paging (Gen13PickerPaging.h): Up/Down wrap, Left/L/Right/R +-10, ZL/ZR +-50.
+    if (keys.any()) {
+        state.pickerValue = PokeBank::UIModel::SharedPickerPaging::pagedRow(state.pickerValue - 1, 151, keys) + 1;
+        // R2-SEARCH: with a filter typed, the same keys page over the filtered list instead.
+        if (state.speciesChooser.filtered())
+            state.pickerValue = SharedSpeciesPicker::paged(state.speciesChooser, species, keys);
+    }
     if (down & HidNpadButton_B) { state.picker = UX2Picker::None; return; }
     if (down & HidNpadButton_A) ux3ApplySpeciesPicker(screen);
 }

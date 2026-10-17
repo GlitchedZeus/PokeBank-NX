@@ -1148,9 +1148,13 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down, cons
         state.speciesPreview = SharedSpeciesPicker::neighbour(
             state.speciesChooser, chosen, dy < 0 ? steps : -steps);
     }
-    if (gen3PickerKeys(down).any())   // shared paging over the filtered list
-        state.speciesPreview = SharedSpeciesPicker::paged(
-            state.speciesChooser, state.speciesPreview, gen3PickerKeys(down));
+    // Shared paging (Gen13PickerPaging.h): over the whole dex when no filter is typed, over the
+    // filtered list otherwise (R2-SEARCH).
+    if (gen3PickerKeys(down).any())
+        state.speciesPreview = state.speciesChooser.filtered()
+            ? SharedSpeciesPicker::paged(state.speciesChooser, state.speciesPreview, gen3PickerKeys(down))
+            : static_cast<uint16_t>(PokeBank::UIModel::SharedPickerPaging::pagedRow(
+                  static_cast<int>(state.speciesPreview) - 1, 386, gen3PickerKeys(down)) + 1);
     if (down & HidNpadButton_B) {
         state.speciesPicker = false;
         return true;

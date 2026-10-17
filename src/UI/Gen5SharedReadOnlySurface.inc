@@ -215,7 +215,6 @@ struct Gen5Editor {
     static constexpr auto generation = PokeBank::UIModel::SharedPokemonEditor::Generation::Gen5;
     static constexpr int kDetailRows = Fields::RowCount;
     static constexpr int kMaxSpecies = Fields::kMaxSpecies;
-    static constexpr bool kSpeciesSearch = true;
     static constexpr bool kCompactForm = true;
     static constexpr const char* kDetailReadOnly =
         "Language and Origin are read-only for a Generation V record in this editor";
