@@ -270,6 +270,26 @@ Personal personal(uint16_t species, uint8_t form) {
     return i < 0 ? Personal{} : Personal{D::kPersonalB2W2 + i * D::kPersonalB2W2Size};
 }
 
+// PersonalTable.BW for Black / White (20, 21), PersonalTable.B2W2 otherwise: the game
+// that bred an egg decides its TM compatibility (PKHeX MoveBreed5.Validate).
+Personal personalForVersion(uint8_t version, uint16_t species, uint8_t form) {
+    if (version == 20 || version == 21) {
+        const int i = indexBW(species, form);
+        return i < 0 ? Personal{} : Personal{D::kPersonalBW + i * D::kPersonalBWSize};
+    }
+    return personal(species, form);
+}
+
+const char* gameName5(uint8_t version) {
+    switch (version) {
+        case 20: return "White";
+        case 21: return "Black";
+        case 22: return "White 2";
+        case 23: return "Black 2";
+        default: return "an unknown game";
+    }
+}
+
 // ---------------------------------------------------------------- evolution chain
 
 // One species in the evolution chain. `child` is the stage it evolves into
@@ -679,16 +699,120 @@ void checkCommon(const Pk5& p, const Template& t, const Personal& cur, std::vect
     }
 }
 
+bool canInheritLevelUp(uint16_t species);
+
+// ---------------------------------------------------------------- egg move inheritance
+//
+// PKHeX MoveBreed5.Validate (Legality/Moves/Breeding/MoveBreed5.cs): an unhatched Gen V
+// egg's moves are built in EggSource5 order, Base (the species' level-1 moves, at most the
+// last four: Learnset.GetBaseEggMoves), then egg moves from the father (FatherEgg), then
+// level-up moves both parents know (ParentLevelUp, only for species that can inherit:
+// Breeding.GetCanInheritMoves), then TMs the father knows (FatherTM; unlike Gen III/IV
+// these come after the level-up moves), and Volt Tackle last for Pichu. Later sources push
+// earlier moves out of the first slots. The learnset and TM list are those of the game that
+// bred the egg (B/W or B2/W2); the egg moves are the B/W table, which B2/W2 share.
+namespace Breed5 {
+
+enum Source : uint8_t { None = 0, Base = 1, FatherEgg = 2, ParentLevelUp = 3, FatherTM = 4, Max = 5, VoltTackle = 6 };
+
+struct Info {
+    std::array<uint16_t, 4> moves{};
+    std::array<uint8_t, 4> actual{};    // EggSource5 chosen for each slot
+    std::array<uint8_t, 4> possible{};  // bit (1 << Source) for each source that can give the slot's move
+    std::vector<uint16_t> baseMoves;    // Learnset.GetBaseEggMoves(1)
+};
+
+// MoveBreed5.VerifyBaseMoves: the leading Base slots are the tail of the base moves, in
+// order; a base move pushed out can only come back once enough later moves precede it.
+bool verifyBaseMoves(const Info& info) {
+    int count = 0;
+    for (uint8_t x : info.actual) {
+        if (x == Base) ++count;
+        else break;
+    }
+    const auto& moves = info.moves;
+    const auto& base = info.baseMoves;
+    if (static_cast<int>(base.size()) < count) return false;
+    if (moves[3] == 0 && count != static_cast<int>(base.size())) return false;
+    for (int i = count - 1, b = static_cast<int>(base.size()) - 1; i >= 0; --i, --b)
+        if (base[static_cast<std::size_t>(b)] != moves[static_cast<std::size_t>(i)]) return false;
+    if (static_cast<int>(base.size()) == count) return true;
+    for (int i = count; i < 4; ++i) {
+        if (!((info.possible[static_cast<std::size_t>(i)] >> Base) & 1u)) continue;
+        int baseIndex = -1;
+        for (std::size_t b = 0; b < base.size(); ++b) if (base[b] == moves[static_cast<std::size_t>(i)]) { baseIndex = static_cast<int>(b); break; }
+        const int min = 4 - static_cast<int>(base.size()) + baseIndex;
+        if (i < min + count) return false;
+    }
+    return true;
+}
+
+// MoveBreed5.RecurseMovesForOrigin: assign a non-increasing source to each slot from the
+// last one backwards, trying the lower source first.
+bool recurse(Info& info, int start, uint8_t type) {
+    int i = start;
+    do {
+        const uint8_t unpeel = static_cast<uint8_t>(type - 1);
+        if (unpeel != None && recurse(info, i, unpeel)) return true;
+        if (!((info.possible[static_cast<std::size_t>(i)] >> type) & 1u)) return false;
+        info.actual[static_cast<std::size_t>(i)] = type;
+    } while (--i >= 0);
+    return verifyBaseMoves(info);
+}
+
+// MoveBreed5.Validate for `species` bred in `version` (20-23) holding `moves`.
+bool valid(uint16_t species, uint8_t version, const std::array<uint16_t, 4>& moves) {
+    int count = 0;
+    while (count < 4 && moves[static_cast<std::size_t>(count)] != 0) ++count;
+    if (count == 0) return false;
+    const bool bw = version == 20 || version == 21;
+    const D::LevelMove* learn = bw ? D::kLevelUpBW : D::kLevelUpB2W2;
+    const uint16_t* start = bw ? D::kLevelUpBWStart : D::kLevelUpB2W2Start;
+    const std::size_t total = bw ? D::kLearnsetBWCount : D::kLearnsetB2W2Count;
+    const int index = bw ? indexBW(species, 0) : indexB2W2(species, 0);
+    Info info;
+    info.moves = moves;
+    std::vector<uint16_t> levelUp;
+    if (index >= 0 && static_cast<std::size_t>(index) < total) {
+        for (uint16_t i = start[index]; i < start[index + 1]; ++i) levelUp.push_back(learn[i].move);
+        // GetBaseEggMoves(level 1): the leading entries at level <= 1, keeping the last four.
+        std::size_t n = 0;
+        for (uint16_t i = start[index]; i < start[index + 1] && learn[i].level <= 1; ++i) ++n;
+        const std::size_t first = n > 4 ? n - 4 : 0;
+        for (std::size_t i = first; i < n; ++i) info.baseMoves.push_back(learn[start[index] + i].move);
+    }
+    if (species == 172 && moves[static_cast<std::size_t>(count - 1)] == 344) info.actual[static_cast<std::size_t>(--count)] = VoltTackle;
+    if (count == 0) return verifyBaseMoves(info);
+    const bool inherit = canInheritLevelUp(species);
+    const Personal pi = personalForVersion(version, species, 0);
+    for (int i = 0; i < count; ++i) {
+        const uint16_t move = moves[static_cast<std::size_t>(i)];
+        uint8_t& possible = info.possible[static_cast<std::size_t>(i)];
+        if (std::find(info.baseMoves.begin(), info.baseMoves.end(), move) != info.baseMoves.end()) possible |= 1u << Base;
+        if (inherit && std::find(levelUp.begin(), levelUp.end(), move) != levelUp.end()) possible |= 1u << ParentLevelUp;
+        if (species < D::kEggMoveCount)
+            for (uint16_t e = D::kEggMoveStart[species]; e < D::kEggMoveStart[species + 1]; ++e)
+                if (D::kEggMoves[e] == move) { possible |= 1u << FatherEgg; break; }
+        // PersonalInfo5BW.MachineMoves without its last entry (HM06), as PKHeX's TM list.
+        for (std::size_t t = 0; t + 1 < D::kMachineCount; ++t)
+            if (D::kMachineMoves[t] == move && pi.rec && pi.tm(static_cast<int>(t))) { possible |= 1u << FatherTM; break; }
+    }
+    return recurse(info, count - 1, static_cast<uint8_t>(Max - 1));
+}
+
+} // namespace Breed5
+
 // ---------------------------------------------------------------- analyzer
 
 class Gen5Analyzer {
 public:
-    Gen5Analyzer(const Pk5& p, std::span<const uint8_t> decrypted) : p_(p), raw_(decrypted) {}
+    Gen5Analyzer(const Pk5& p, std::span<const uint8_t> decrypted, const Pk5Input& in) : p_(p), raw_(decrypted), in_(in) {}
     Report run();
 
 private:
     const Pk5& p_;
     std::span<const uint8_t> raw_; // the decrypted record p_ was read from
+    const Pk5Input& in_;           // save-side context (game, slot, trainer); all optional
     Analysis a_;
     // Gen III/IV origin analysis of a transferred Pokemon (Gen4::analyzeOrigin5).
     G4::Origin5 origin_;
@@ -715,7 +839,10 @@ private:
     void encounterGen5();
     void transfer();
     void movePool();
-    std::bitset<kMaxMove + 1> movesFor(const Template* t) const;
+    void evolutionMove();
+    void saveContext();
+    int stageLevelMax(std::size_t stage) const;
+    std::bitset<kMaxMove + 1> movesFor(const Template* t, bool preEvolutionsOnly = false) const;
     void ribbons();
     void transferRibbons();
     void genderFromDual();
@@ -985,9 +1112,11 @@ void Gen5Analyzer::forms() {
         case 555: // Darmanitan Zen Mode
             if (p_.form & 1u) a_.invalid(CheckIdentifier::Species, "Battle-only form stored outside battle");
             break;
-        case 492: // Shaymin Sky Forme reverts in the PC
-            if (p_.form != 0 && !p_.party) a_.invalid(CheckIdentifier::Species, "Shaymin Sky Forme cannot be stored in a box");
+        case 492: { // Shaymin Sky Forme reverts in the PC (PKHeX FormVerifier FormParty)
+            const bool boxed = in_.slot == Pk5Slot::Box || (in_.slot == Pk5Slot::Unknown && !p_.party);
+            if (p_.form != 0 && boxed) a_.invalid(CheckIdentifier::Species, "Shaymin Sky Forme cannot be stored in a box");
             break;
+        }
         case 487: // Giratina Origin Forme needs the Griseous Orb
             if ((p_.form == 1) != (p_.heldItem == 112))
                 a_.invalid(CheckIdentifier::Items, "Giratina's form does not match the Griseous Orb");
@@ -1066,6 +1195,17 @@ void Gen5Analyzer::movesBasic() {
         const uint8_t base = D::kMovePP[m];
         const unsigned max = base * (5u + std::min<uint8_t>(p_.ppUps[i], 3)) / 5u;
         if (p_.pp[i] > max) a_.invalid(CheckIdentifier::Moves, "PP of " + moveName(m) + " is above its maximum");
+        // PKHeX MovePPVerifier.GetIsStoredHealed: a PK5 read from a box (or the GTS / Battle
+        // Box) was healed when it was deposited, so its PP is full. Eggs: eggState().
+        else if (in_.slot == Pk5Slot::Box && !p_.isEgg && p_.pp[i] != max)
+            a_.invalid(CheckIdentifier::Moves, "PP of " + moveName(m) + " is not full on a boxed Pokemon, which the game healed when it was deposited");
+        // PKHeX LearnVerifier.FlagFormExclusiveKyurem: a fused Kyurem swaps Scary Face for its
+        // fusion move; the fusion moves exist only on the matching form.
+        if (p_.species == 646) {
+            if (m == 558 && p_.form != 1) a_.invalid(CheckIdentifier::Moves, "Fusion Flare is only known by White Kyurem");
+            if (m == 559 && p_.form != 2) a_.invalid(CheckIdentifier::Moves, "Fusion Bolt is only known by Black Kyurem");
+            if (m == 184 && p_.form != 0) a_.invalid(CheckIdentifier::Moves, "Scary Face is replaced by the fusion move on a fused Kyurem");
+        }
     }
     if (p_.moves[0] == 0) a_.invalid(CheckIdentifier::Moves, "First move slot is empty");
 }
@@ -1374,6 +1514,18 @@ void Gen5Analyzer::encounterGen5() {
         // Dream World entries repeat per special move; any matching one may be the source.
         for (const auto& c : all)
             if (c.fails.empty()) matchAll_.push_back(c.t);
+        // PKHeX EncounterSlot5.GetMatchRating: a Combee slot for a Vespiquen whose PID made the
+        // Combee male is DeferredErrors, so any other matching template is preferred; it is
+        // kept only when nothing else matches (genderFromDual then reports it).
+        if (p_.species == 416 && (p_.pid & 0xFFu) >= 0x1F) {
+            const auto other = std::find_if(matchAll_.begin(), matchAll_.end(),
+                                            [](const Template& t) { return !(t.kind == Kind::Slot && t.species == 415); });
+            if (other != matchAll_.end()) match_ = *other;
+        }
+        // PKHeX BallVerifier.VerifyEvolvedShedinja: Nincada evolving into Shedinja gives it a
+        // Poke Ball (the Gen III/IV exceptions do not apply to a Gen V encounter).
+        if (p_.species == 292 && match_.species == 290 && p_.ball != kBallPoke)
+            a_.invalid(CheckIdentifier::Origin, "Shedinja evolved from Nincada in Gen V is always in a Poke Ball");
         cov.encounter = CoverageLevel::Complete;
         cov.pidRng = CoverageLevel::Complete;
         cov.eventGift = CoverageLevel::Complete;
@@ -1587,13 +1739,24 @@ bool canInheritLevelUp(uint16_t species) {
     return p.rec && p.genderRatio() != 0 && p.genderRatio() != 255;
 }
 
+// PKHeX EvolutionReversal.Devolve: the highest level a pre-evolution can have had is the
+// current level less one for every level-up evolution between it and the current species
+// (EvoCriteria.LevelMax; the stage that evolves by levelling up keeps the level it reached).
+int Gen5Analyzer::stageLevelMax(std::size_t stage) const {
+    int level = level_;
+    for (int at = chain_[stage].child; at > 0; at = chain_[static_cast<std::size_t>(at)].child)
+        if (chain_[static_cast<std::size_t>(at)].levelUp) --level;
+    return std::max(level, 1);
+}
+
 // Moves a Pokemon can know when `t` is its encounter (nullptr: any stage of the
-// chain, used when the encounter is not known).
-std::bitset<kMaxMove + 1> Gen5Analyzer::movesFor(const Template* t) const {
+// chain, used when the encounter is not known). With preEvolutionsOnly the current
+// species' own sources are left out (PKHeX EvolutionHistory.PruneKeepPreEvolutions).
+std::bitset<kMaxMove + 1> Gen5Analyzer::movesFor(const Template* t, bool preEvolutionsOnly) const {
     std::bitset<kMaxMove + 1> pool;
     // PKHeX EvolutionChain.GetEvolutionChainsAllGens: only the encounter species and
     // the species it evolved into can have learned moves, every stage up to the
-    // current level (EvolutionUtil.CleanEvolve).
+    // level it can have reached (EvolutionUtil.CleanEvolve).
     std::vector<bool> stage(chain_.size(), t == nullptr);
     if (t) {
         int at = -1;
@@ -1602,15 +1765,17 @@ std::bitset<kMaxMove + 1> Gen5Analyzer::movesFor(const Template* t) const {
         if (at < 0) std::fill(stage.begin(), stage.end(), true);
         for (; at >= 0; at = chain_[static_cast<std::size_t>(at)].child) stage[static_cast<std::size_t>(at)] = true;
     }
+    if (preEvolutionsOnly) stage[0] = false;
     for (std::size_t i = 0; i < chain_.size(); ++i) {
         if (!stage[i]) continue;
         const auto& s = chain_[i];
         const bool current = i == 0;
+        const int cap = stageLevelMax(i);
         if (s.species == 386 || s.species == 487 || s.species == 492) { // Deoxys, Giratina, Shaymin: every form
             const Personal p = personal(s.species, 0);
-            for (uint8_t f = 0; p.rec && f < p.formCount(); ++f) addStageMoves(pool, s.species, f, level_, p_.form, current);
+            for (uint8_t f = 0; p.rec && f < p.formCount(); ++f) addStageMoves(pool, s.species, f, cap, p_.form, current);
         } else {
-            addStageMoves(pool, s.species, s.form, level_, p_.form, current);
+            addStageMoves(pool, s.species, s.form, cap, p_.form, current);
         }
     }
     if (!t) return pool;
@@ -1686,15 +1851,79 @@ void Gen5Analyzer::movePool() {
     }
     if (!found)
         for (uint16_t m : best) a_.invalid(CheckIdentifier::Moves, moveName(m) + " cannot be learned by this Pokemon in Gen V");
-    // An unhatched bred egg's moves follow the inheritance order (PKHeX MoveBreed),
-    // which is not replayed here; once hatched, each move only needs a source.
-    if (p_.isEgg && match_.kind == Kind::Egg) {
-        cov.eggBreeding = CoverageLevel::Partial;
-        cov.moves = CoverageLevel::Partial;
-        a_.warn(CheckIdentifier::Moves, "Unhatched egg: the order of inherited egg moves is not checked here");
-        return;
+    // An unhatched bred egg's moves must follow the inheritance order (PKHeX
+    // LearnVerifierRelearn.VerifyEggMoveset -> MoveBreed5.Validate); once hatched, each
+    // move only needs a source.
+    if (p_.isEgg && match_.kind == Kind::Egg && !Breed5::valid(match_.species, p_.version, p_.moves)) {
+        a_.invalid(CheckIdentifier::Moves, "Unhatched egg's moves are not in an order Gen V egg move inheritance can produce "
+                                           "(level-1 moves, then the father's egg moves, inherited level-up moves and TMs)");
     }
     cov.moves = CoverageLevel::Complete;
+}
+
+// PKHeX EvolutionRestrictions.IsValidEvolutionWithMove (EvolutionVerifier): a species that
+// evolves by levelling up while knowing a move must have been able to know it as a
+// pre-evolution. The move need not still be known, but a bred Pokemon whose four moves
+// are all inherited egg moves had no slot to forget it from (IsMoveSlotAvailable).
+void Gen5Analyzer::evolutionMove() {
+    if (!gen5Origin_ || !matched_ || match_.species == p_.species) return;
+    uint16_t move = 0;
+    switch (p_.species) {
+        case 122: case 185: move = 102; break;             // Mr. Mime, Sudowoodo: Mimic
+        case 424: move = 458; break;                       // Ambipom: Double Hit
+        case 463: move = 205; break;                       // Lickilicky: Rollout
+        case 465: case 469: case 473: move = 246; break;   // Tangrowth, Yanmega, Mamoswine: AncientPower
+        default: return;
+    }
+    // A move is an egg source (LearnGroup5.CheckEncounterMoves) only when no stage of the
+    // chain teaches it and the egg's father could pass it on.
+    if (match_.kind == Kind::Egg) {
+        const auto chainPool = movesFor(nullptr);
+        bool slot = false;
+        for (uint16_t m : p_.moves) {
+            if (m == 0 || m > kMaxMove) { slot = true; break; }
+            if (chainPool.test(m)) { slot = true; break; }
+        }
+        if (!slot) {
+            a_.invalid(CheckIdentifier::Species, speciesName(p_.species) + " evolves by knowing " + moveName(move) +
+                                                 ", but every move slot holds an inherited egg move, so it never had the move");
+            return;
+        }
+    }
+    // MemoryPermissions.GetCanKnowMove over the pre-evolutions (LearnOption.AtAnyTimeChain),
+    // including the encounter's own moves and, for an egg, the inherited ones.
+    if (!movesFor(&match_, true).test(move))
+        a_.invalid(CheckIdentifier::Species, speciesName(p_.species) + " evolves by knowing " + moveName(move) + ", which " +
+                                             speciesName(match_.species) + " cannot have known by level " +
+                                             std::to_string(stageLevelMax(1)) + " in Gen V");
+}
+
+// Save-side context from Pk5Input: the save's game and trainer. Information only, except a
+// trainer ID equal to the save's with another OT name or gender.
+void Gen5Analyzer::saveContext() {
+    if (in_.game != 0) {
+        if (!isGen5Version(in_.game)) {
+            a_.report.coverage.sourceGame = CoverageLevel::Partial;
+            a_.warn(CheckIdentifier::SourceGame, "Save game id " + std::to_string(in_.game) + " is not a Gen V game; the record was checked without it");
+        } else if (gen5Origin_ && p_.version != in_.game) {
+            a_.info(CheckIdentifier::SourceGame, std::string("Originates from ") + gameName5(p_.version) + " and sits in a " +
+                                                 gameName5(in_.game) + " save: it was traded in");
+        }
+    }
+    if (!in_.trainer.present) return;
+    const auto& tr = in_.trainer;
+    const bool id = tr.tid == p_.tid && tr.sid == p_.sid;
+    bool name = true;
+    for (std::size_t i = 0; i < 8; ++i) {
+        if (tr.ot[i] != p_.ot[i]) { name = false; break; }
+        if (tr.ot[i] == 0xFFFF) break;
+    }
+    const bool gender = tr.female == p_.otGender;
+    if (id && name && gender) a_.info(CheckIdentifier::Trainer, "Original Trainer is the save's trainer");
+    else if (id) a_.warn(CheckIdentifier::Trainer, "Trainer ID and Secret ID are the save's, but the OT name or gender is not; suspicious provenance");
+    else a_.info(CheckIdentifier::Trainer, "Original Trainer is not the save's trainer (received in a trade)");
+    if (tr.language != 0 && tr.language != p_.language)
+        a_.info(CheckIdentifier::Trainer, "Language differs from the save's language");
 }
 
 // PKHeX RibbonVerifier for a Gen III/IV-origin PK5 (RibbonVerifierCommon3/4,
@@ -2144,6 +2373,7 @@ Report Gen5Analyzer::run() {
     genderFromDual();
     wurmple();
     movePool();
+    evolutionMove();
     ribbons();
     if (gen5Origin_) namesGen5();
     else if (originMatched()) namesOrigin();
@@ -2151,6 +2381,7 @@ Report Gen5Analyzer::run() {
     cov.internal = textUnknown_ ? CoverageLevel::Partial : CoverageLevel::Complete;
     if (!gen5Origin_) cov.eggBreeding = CoverageLevel::Partial;
     mergeOrigin();
+    saveContext();
     return a_.report;
 }
 
@@ -2184,7 +2415,7 @@ Report analyzePk5(std::span<const uint8_t> record, const Pk5Input& input) {
         return report;
     }
     if (p.species == 0) return report;
-    return Gen5Analyzer(p, plain).run();
+    return Gen5Analyzer(p, plain, input).run();
 }
 
 } // namespace Legality
