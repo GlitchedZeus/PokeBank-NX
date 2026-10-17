@@ -26,8 +26,9 @@ DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 
 # Contract id -> owning lane, while the fix is not yet on the integration branch.
 # Remove an entry when its contract XPASSes; it is then ENFORCED.
-XFAIL = {
-    "CG08-modal-footer-and-touch-layer": "C (Gen2PokemonDetailsModal) + S (strict touch layer: StoragePanel, ItemEditDialog, Gen V PID)",
+XFAIL: dict[str, str] = {
+    # Empty: every contract XPASSed on candidate 7fea1797 (app-qa-nro-audit run 38947904299) and is
+    # ENFORCED. Re-add an entry only for a NEW contract whose fix has not landed yet.
 }
 
 # Gen VI+-only code (no Gen VI-IX work this campaign): hits here are listed as informational
