@@ -126,7 +126,9 @@ constexpr Rule rule(MenuType type) noexcept {
         case MenuType::LocationPicker:
             return {Kind::List, 640, 1, 44, 4, 10, 64, 20, 16, 12, 0, 8, Text::Body};
         case MenuType::BoxMenu:
-            return {Kind::List, 440, 1, 52, 4, 6, 60, 10, 12, 16, 0, 8, Text::Body};
+            // The narrow Pokemon actions sheet over the box grid (NarrowPokemonActionMenu.h):
+            // context + title header, up to 11 commands (the sheets list 3-9), never scrolls.
+            return {Kind::List, 440, 1, 46, 6, 11, 78, 10, 34, 18, 0, 8, Text::Body};
         case MenuType::BackupMenu:
             return {Kind::List, 760, 1, 56, 6, 7, 64, 20, 16, 16, 0, 8, Text::Body};
         case MenuType::KeyItemWarning:

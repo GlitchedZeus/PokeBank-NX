@@ -329,7 +329,7 @@ void actionMenuContract() {
     for (const char* label : {"View", "Edit", "Clone", "Move", "Release", "Cancel"})
         gen5.append(label, gen5.count);
     const auto g5 = Menu::geometry(gen5.count);
-    assert(g5.width == g4.width && g5.headerHeight == g4.headerHeight && g5.rowHeight == 54);
+    assert(g5.width == g4.width && g5.headerHeight == g4.headerHeight && g5.rowHeight == 46); // shared BoxMenu rule
     assert(g5.rowX() == (1280 - 440) / 2 + 10);
 }
 
