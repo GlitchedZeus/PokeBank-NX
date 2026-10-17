@@ -45,8 +45,8 @@ Round 1 results as reported by the owner (verbatim classification, do not reclas
 | I (items) | session_01WwfzZtJWqDsNSrMV866RJE | `claude/item-quantity-policy-20261016` | 1 (bag Add/quantity state machine, Gen I–V), 13/B04 host tests |
 | C (Gen I/II) | session_012Qk8aPZvVGKZhMUyUC6rya | `claude/gen14-campaign-20261015` | 4 (Gen I gold/HP DV; Gen II Special), 5 (Gen I trainer editing + Trainer footer all gens), 11 (Crystal Met Time inline) |
 | S (shared editor, Gen III–V) | session_019GeN9mKTkgfpfuqDGPzWhz | `claude/shared-editor-gen35-20261016` | 2 (SharedMenuGeometry), 4 (shared field-state styling contract), 9 (move chooser rows, Gen V PP captions), 12 (Gen V Create/Edit parity + Review/Discard/Export trace), 14 |
-| P (pickers) | new | `claude/pickers-search-scrollbar-20261017` | 3 (live species search), 8 (draggable scrollbars) |
-| R (rerolls) | new | `claude/reroll-mechanics-20261017` | 10 (Gen I–V reroll mechanics audit + tests + doc), 13/E11 |
+| P (pickers) | session_01UKYxj88TVKN6B3ScHi7Pmh | `claude/pickers-search-scrollbar-20261017` | 3 (live species search), 8 (draggable scrollbars) |
+| R (rerolls) | session_01LE7d2kdkMRGYK7Er3cmZrg | `claude/reroll-mechanics-20261017` | 10 (Gen I–V reroll mechanics audit + tests + doc), 13/E11 |
 | 2R (Home/integration) | session_01Gn6iaKx8qUJWbAydeQ6ST6 | `claude/gen5-integration-20261014` | 6 (launch dialog), 7 (emulator backups), 13/L06, integration, CI, ONE candidate |
 | QA | session_01VXXPj238uqedMPANHRVViz | `audit/app-qa-20261014` | Part 1 regression gate (42), Part 2 classification, 13 instructions, 15 tests/matrix/audit, retest checklist |
 
