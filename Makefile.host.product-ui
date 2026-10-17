@@ -85,3 +85,22 @@ $(EMU_BACKUP_TEST): $(EMU_BACKUP_INPUTS)
 $(EMU_BACKUP_SANITIZE): $(EMU_BACKUP_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(EMU_BACKUP_SOURCES) -o $@
+
+# Round 2 phase 13 / L06: party and summary-panel taps open the native Actions sheet (Gen III-V).
+L06_TAP_TEST := $(HOST_BUILD)/test_party_summary_tap_routing
+L06_TAP_SANITIZE := $(HOST_BUILD)/test_party_summary_tap_routing_sanitize
+L06_TAP_INPUTS := tests/test_party_summary_tap_routing.cpp include/UI/Gen4BoxTouchActions.h \
+	include/Integration/Gen5/Gen5BoxTouchNavigation.h src/UI/Gen3SharedPokemonSurface.inc \
+	src/UI/Gen4SharedPokemonSurface.inc src/UI/Gen5SharedReadOnlySurface.inc
+HOST_TESTS += $(L06_TAP_TEST)
+HOST_SANITIZE_TESTS += $(L06_TAP_SANITIZE)
+host-test: $(L06_TAP_TEST)
+host-sanitize: $(L06_TAP_SANITIZE)
+
+$(L06_TAP_TEST): $(L06_TAP_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(L06_TAP_SANITIZE): $(L06_TAP_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
