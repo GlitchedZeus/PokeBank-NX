@@ -43,9 +43,14 @@ inline std::string getMetLocationDisplayName(uint8_t originVersion, uint16_t loc
             default: break;
         }
     }
+    if (locationId == 0) return "None";   // every generation's "no location" (PKHeX dash sentinel)
     const char* raw = getMetLocationName(originVersion, locationId);
-    if (!raw || !*raw) return locationId == 0 ? "None" : "Unknown location";
-    // Gen V's table carries placeholder glyphs (U+EFxx) for some special entries.
+    if (!raw || !*raw) return "Unknown location";
+    // Gen V's table carries placeholder glyphs (U+EFxx) for some special entries, and PKHeX keeps
+    // the game's text-variable escapes ("\xf000...'s ...", a name the game builds from save data)
+    // verbatim. Neither is a place name the player would recognise, so neither is shown.
+    const std::string_view text(raw);
+    if (text.find("\\x") != std::string_view::npos) return "Unknown location";
     for (const char* p = raw; *p; ++p)
         if (static_cast<unsigned char>(*p) == 0xEF) return "Unknown location";
     return gen3 ? stripLocationSourceTags(raw) : std::string(raw);
