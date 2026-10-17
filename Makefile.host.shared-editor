@@ -156,6 +156,30 @@ $(SHARED_EDITOR_UNIT_SANITIZE): $(SHARED_EDITOR_UNIT_SOURCES) include/UI/SharedM
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(SHARED_EDITOR_UNIT_SOURCES) -o $@
 
+# Round 2: one geometry per menu kind (SharedMenuGeometry.h) and one field-state contract
+# (SharedFieldState.h), checked against every real Gen I-V species / item / location name with the
+# bundled font's advances (NunitoMetrics.h).
+SHARED_MENU_GEOMETRY_SOURCES := tests/test_shared_menu_geometry.cpp src/Names/SpeciesNames.cpp \
+	src/Names/ItemNames.cpp src/Names/LocationNames.cpp
+SHARED_MENU_GEOMETRY_INPUTS := $(SHARED_MENU_GEOMETRY_SOURCES) include/UI/SharedMenuGeometry.h \
+	include/UI/SharedFieldState.h include/UI/NunitoMetrics.h include/Names/LocationDisplayNames.h \
+	include/UI/SharedPokemonEditorContract.h
+SHARED_MENU_GEOMETRY_TEST := $(HOST_BUILD)/test_shared_menu_geometry
+SHARED_MENU_GEOMETRY_SANITIZE := $(HOST_BUILD)/test_shared_menu_geometry_sanitize
+
+HOST_TESTS += $(SHARED_MENU_GEOMETRY_TEST)
+HOST_SANITIZE_TESTS += $(SHARED_MENU_GEOMETRY_SANITIZE)
+host-test: $(SHARED_MENU_GEOMETRY_TEST)
+host-sanitize: $(SHARED_MENU_GEOMETRY_SANITIZE)
+
+$(SHARED_MENU_GEOMETRY_TEST): $(SHARED_MENU_GEOMETRY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(SHARED_MENU_GEOMETRY_SOURCES) -o $@
+
+$(SHARED_MENU_GEOMETRY_SANITIZE): $(SHARED_MENU_GEOMETRY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(SHARED_MENU_GEOMETRY_SOURCES) -o $@
+
 # Phase 6: Y re-rolls IVs/EVs through the real PK3 / PK4 / PK5 record code; Shiny, Gender,
 # Nature and Ability never change (shiny/non-shiny drafts, gender-ratio edge cases).
 SHARED_REROLL_SOURCES := tests/test_shared_stat_reroll.cpp \
