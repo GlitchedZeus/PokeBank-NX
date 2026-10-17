@@ -4,7 +4,7 @@ Maintained by the Main Development coordinator. Only the coordinator edits this
 file; threads report to it. GitHub is authoritative: re-fetch before relying on
 any SHA below.
 
-**Last updated:** 2026-10-17 12:15 UTC (Round 2: #307 = 9cc6caa9 with Phase 7; all lanes stalled on the 5-hour limit 09:05–12:10, resumed).
+**Last updated:** 2026-10-17 12:30 UTC (Round 2: #307 = 19dd0db; S headers, L06 test, QA docs merged; Phase 6 local at 2R; P scrollbars 5bea036 pending gate).
 
 ## Active milestone: UNIFIED GEN I–V EDITOR CAMPAIGN (owner directive, 2026-10-16)
 
@@ -39,6 +39,7 @@ Status:
 | R2 start | Owner hardware round 1 on 7fea1797: 42 of 54 PASS. Confirmed FAIL: B01/B02/B03/B06 (Bag Add asks quantity first), S01 (Gen V PP captions), S03 (Gen V left-panel clipping/parity). Not verified: B04, E03, E11, L06, S04, S06. Round 2 campaign dispatched per docs/handoffs/ROUND2_LANE_PLAN.md (lanes I, C, S, P-new, R-new, 2R, QA). |
 | R2 09:05 | #307 = 315ad61 (QA 46c5a0b2 merged). S pushed dddfe353: SharedMenuGeometry.h, SharedFieldState.h, NunitoMetrics.h, test_shared_menu_geometry.cpp, LocationDisplayNames Gen V id-3 fix. QA pushed ee0aaaab (round-1 results, round-2 status, phase-13 steps). 2R: Phase 7 emulator backups + L06 test implemented locally, not yet pushed. Lanes P, R, I, 2R hit the weekly usage limit at ~07:45 UTC (reset 09:00); resumed at 09:01. C running. P and R branches not yet on origin. |
 | R2 12:15 | 2R pushed Phase 7 to #307: 9cc6caa9 (emulator-save Backups list; only app-owned export records deletable, Y-confirmed; original sources read-only). R pushed fe48d713 on claude/reroll-mechanics-20261017 (Gen III/IV PID construction preserves shininess). P branch still not on origin. All seven lanes hit the 5-hour session limit (~09:05–12:10 UTC); all resumed at 12:12. Pending merges into #307: S dddfe353, QA ee0aaaab, then I/C/P/R/S as reported. |
+| R2 12:30 | #307 → 19dd0db: L06 test (test_party_summary_tap_routing.cpp), S dddfe353, QA ee0aaaab, Nunito pinned to google/fonts 47d54ca1. Gate: 25/25 contracts, CG candidate 0, devkitA64 OK, GCC+Clang host-test/sanitize/qa green. 2R local (next push): Phase 6 launch dialog 14a592b (LaunchConfirm geometry, glyph buttons, Y-only), QA b6da32e+85c6ac4 (round-1 regression gate, 116 guards), P 30b6ea4. P 5bea036 (all scrollbar call sites) waits on P full-gate report. I: B01–B04/B06 fix gated, SharedBagAddPicker follow-up drafted (4 QA literal edits approved). R fe48d713 unmerged pending handoff. |
 | Lane I | **Done:** `d08c5aa8` (ItemQuantityPolicy, 20 games, PKHeX PlayerBag* caps; key items/HMs/Gen V TMs unique). The coordinator built and ran its test: OK. Open findings routed to C: Gen III 99 cap in ClassicInventoryCatalog, Gen I id 50 duplicate, test_classic_inventory_catalog GS BALL. |
 | Lane C | `dcd8770c`: Phase 3 (no Make Shiny/placeholders; order View, Edit, Clone, Release, Legality, Review, Cancel) and Phase 6 (instant Y reroll keeping shiny, Gen II gender and the Unown letter; 200-press tests). Verified in code. Next: Phase 10, then the shared unit for Phases 1/4/7. |
 | Lane S | `7fd8d0e4`: shared unit (SharedMovesPanel, SharedMoveFacts, SharedEditorPresentation with footers, Origin & Legality, toggles and viewport, SharedEditorChrome beginModal). Rows counter and "commits to draft" removed; Gen III–V surfaces adopt it. |
